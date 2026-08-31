@@ -227,7 +227,7 @@ def probe_komponenten(jahrgang: KfaZuweisungen) -> dict:
                                  "grund": f"{summe:.0f} statt {w['nettobetrag']:.0f} T€"})
     n = len(jahrgang.staedte)
     return {"geprueft": n, "abweichungen": abweichungen, "ok": not abweichungen,
-            "ergebnis": (f"{n - len(abweichungen)} von {n} Städten: "
+            "result": (f"{n - len(abweichungen)} von {n} Städten: "
                          f"Gemeinde- plus Kreis- plus übertragene Aufgaben minus "
                          f"Umlage ergibt den ausgewiesenen Nettobetrag "
                          f"(Ausgleichsjahr {jahrgang.year})")}
@@ -244,14 +244,14 @@ def probe_gegen_jahrbuch(jahrgang: KfaZuweisungen, jahrbuch_teur: float,
     """
     wert = (jahrgang.staedte.get(schluessel) or {}).get("nettobetrag")
     if wert is None:
-        return {"ok": False, "ergebnis": f"kein Nettobetrag für {schluessel}"}
+        return {"ok": False, "result": f"kein Nettobetrag für {schluessel}"}
     abstand = abs(wert - jahrbuch_teur)
     anteil = abstand / max(jahrbuch_teur, 1)
     return {
         "ok": anteil <= JAHRBUCH_TOLERANZ,
         "lsn_teur": wert, "jahrbuch_teur": jahrbuch_teur,
         "abweichung_prozent": round(anteil * 100, 4),
-        "ergebnis": (f"Ausgleichsjahr {jahrgang.year}: {wert:,.0f} T€ (Land) "
+        "result": (f"Ausgleichsjahr {jahrgang.year}: {wert:,.0f} T€ (Land) "
                      f"gegen {jahrbuch_teur:,.0f} T€ (Jahrbuch 1103) — "
                      f"{anteil * 100:.4f} % Abstand".replace(",", ".")),
     }

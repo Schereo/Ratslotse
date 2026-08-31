@@ -59,7 +59,7 @@ def w(x0, x1, y, text):
     return (float(x0), float(x1), float(y), text)
 
 
-def betrag(text, x1, y):
+def amount(text, x1, y):
     """Ein rechtsbündiger Betrag: die rechte Kante ist die Aussage."""
     return w(x1 - 4 * len(text), x1, y, text)
 
@@ -88,7 +88,7 @@ def position(y, lfd, thh, beitraege, produkt="P10.111011.003",
         aus.append(w(x, x + 5 * len(teil), y, teil))
         x += 5 * len(teil) + 5
     for text, spalte in beitraege:
-        aus.append(betrag(text, 407 if spalte == "e" else 470, y))
+        aus.append(amount(text, 407 if spalte == "e" else 470, y))
     return aus
 
 
@@ -144,12 +144,12 @@ def test_miniliste_rundlauf():
     assert aus.jahrgang == 2026
     assert aus.eigene_zeile == {2026: "Änderungsliste Verw. I"}
     z1, z2, z3, z4 = aus.zeilen
-    assert (z1.ertrag, z1.aufwand) == (22_389, 89_554)
-    assert (z2.ertrag, z2.aufwand) == (None, 200_000)
+    assert (z1.revenue, z1.expense) == (22_389, 89_554)
+    assert (z2.revenue, z2.expense) == (None, 200_000)
     assert z2.bezeichnung == "Fliegerhorst"
-    assert (z3.ertrag, z3.aufwand) == (-4_400_000, None)
+    assert (z3.revenue, z3.expense) == (-4_400_000, None)
     assert z1.seite_entwurf == 300 and z1.produkt == "P10.111011.003"
-    assert z4.thh is None and z4.ertrag is None and z4.aufwand is None
+    assert z4.thh is None and z4.revenue is None and z4.expense is None
     # Ohne Tabellenlinien gibt es keine Erläuterungen — nie geraten.
     assert all(z.erlaeuterung is None for z in aus.zeilen)
 
@@ -280,7 +280,7 @@ def test_erlaeuterungen_folgen_den_tabellenlinien():
     assert z1.erlaeuterung == "Mittel für Bescheinigungen im Brand- und Katastrophenschutz."
     assert z2.erlaeuterung == "VWG: Zuschuss 1.234.567 Euro."
     # Die Zahl in der Erläuterung ist Text geblieben, kein Betrag:
-    assert (z2.ertrag, z2.aufwand) == (None, 200_000)
+    assert (z2.revenue, z2.expense) == (None, 200_000)
 
 
 def test_zwei_positionen_in_einem_band_bleiben_leer():

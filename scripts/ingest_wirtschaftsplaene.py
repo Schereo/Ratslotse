@@ -123,8 +123,8 @@ def main() -> int:
 
         for plan, _ in sorted(gefunden, key=lambda x: (x[0].betrieb, x[0].year)):
             print(f"  {plan.year}  {plan.betrieb:8s} "
-                  f"Erträge {plan.ertraege / 1e6:7.1f} Mio. €  "
-                  f"Ergebnis {plan.ergebnis / 1e6:8.3f} Mio. €  "
+                  f"Erträge {plan.revenues / 1e6:7.1f} Mio. €  "
+                  f"Ergebnis {plan.result / 1e6:8.3f} Mio. €  "
                   f"Vermögensplan {(plan.vermoegensplan or 0) / 1e6:7.1f} Mio. €  "
                   f"({plan.template_number}, Entwurf {plan.entwurf_vom})")
 
@@ -193,8 +193,8 @@ def main() -> int:
             print("\nAus dem Erfolgsplan der Anlage:")
             for plan, proben, a in sorted(aus_anlage, key=lambda x: (x[0].betrieb, x[0].year)):
                 print(f"  {plan.year}  {plan.betrieb:8s} "
-                      f"Erträge {plan.ertraege / 1e6:7.3f} Mio. €  "
-                      f"Ergebnis {plan.ergebnis / 1e6:+7.3f} Mio. €  "
+                      f"Erträge {plan.revenues / 1e6:7.3f} Mio. €  "
+                      f"Ergebnis {plan.result / 1e6:+7.3f} Mio. €  "
                       f"({len(proben)} Spalten geprüft, Anlage {a['document_id']})")
         if ohne_text:
             print("\nAnlage ohne Volltext — nichts zu lesen:")
@@ -238,7 +238,7 @@ def main() -> int:
             for plan, wort, lage, _ in sorted(kernzahlen,
                                               key=lambda x: (x[0].betrieb, x[0].year)):
                 print(f"  {plan.year}  {plan.betrieb:16s} "
-                      f"Ergebnis {plan.ergebnis / 1e6:+8.3f} Mio. €   "
+                      f"Ergebnis {plan.result / 1e6:+8.3f} Mio. €   "
                       f"[{lage}] {BELEGLAGE[lage]}")
 
         if args.trockenlauf:

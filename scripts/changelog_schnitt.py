@@ -162,13 +162,13 @@ def _git_betreffe(pfad: Path, wurzel: Path) -> list[str]:
     Fragment noch ungetrackt ist), fallen wir auf alle Commits der Datei zurück.
     """
     def lauf(zusatz: list[str]) -> list[str]:
-        ergebnis = subprocess.run(
+        result = subprocess.run(
             ["git", "log", "--reverse", "--format=%s", *zusatz, "--", str(pfad)],
             cwd=wurzel, capture_output=True, text=True,
         )
-        if ergebnis.returncode != 0:
+        if result.returncode != 0:
             return []
-        return [z for z in ergebnis.stdout.splitlines() if z.strip()]
+        return [z for z in result.stdout.splitlines() if z.strip()]
 
     return lauf(["--diff-filter=A"]) or lauf([])
 
@@ -334,7 +334,7 @@ def main() -> int:
         p.error(f"'{args.version}' sieht nicht wie eine Version aus (x.y.z)")
 
     try:
-        ergebnis = schnitt(args.version, args.datum, trocken=args.trocken)
+        result = schnitt(args.version, args.datum, trocken=args.trocken)
     except (FragmentFehler, ValueError) as fehler:
         print(f"FEHLER: {fehler}", file=sys.stderr)
         return 1
@@ -342,12 +342,12 @@ def main() -> int:
     if args.trocken:
         # Vorspann, das leere [Unreleased] und der frisch geschnittene Block —
         # die 900 Zeilen Historie darunter interessieren beim Probelauf nicht.
-        teile = ergebnis.text.split("\n## [")
+        teile = result.text.split("\n## [")
         print("\n## [".join(teile[:3]))
-        print(f"\n— Probelauf: {len(ergebnis.fragmente)} Fragment(e), nichts geschrieben.",
+        print(f"\n— Probelauf: {len(result.fragmente)} Fragment(e), nichts geschrieben.",
               file=sys.stderr)
     else:
-        print(f"{len(ergebnis.fragmente)} Fragment(e) in Version {args.version} übernommen "
+        print(f"{len(result.fragmente)} Fragment(e) in Version {args.version} übernommen "
               f"und gelöscht. Jetzt: Tag v{args.version} setzen und pushen.")
     return 0
 

@@ -85,11 +85,11 @@ def test_echte_datei_besteht_die_summenprobe(text, year, ein, aus):
     r = inv.lies(text, year)
     assert r["bestanden"] is True
     assert len(r["zeilen"]) == 13
-    assert r["gesamt"]["einzahlungen"] == ein
-    assert r["gesamt"]["auszahlungen"] == aus
+    assert r["gesamt"]["inflows"] == ein
+    assert r["gesamt"]["outflows"] == aus
     # Die Probe rechnet wirklich, statt die Zeile nur abzuschreiben.
-    assert sum(z["einzahlungen"] for z in r["zeilen"]) == ein
-    assert sum(z["auszahlungen"] for z in r["zeilen"]) == aus
+    assert sum(z["inflows"] for z in r["zeilen"]) == ein
+    assert sum(z["outflows"] for z in r["zeilen"]) == aus
     # Der Nachweis steht später neben der Zahl auf der Seite.
     assert "13 Teilhaushalte" in r["nachweis"]
     # Deutsche Schreibweise: Der Satz steht später im Beleg neben der Zahl.
@@ -105,9 +105,9 @@ def test_gesamtbetrag_finanzhaushalt_wird_getrennt_gefuehrt():
     """Die Bezugsgröße ist um ein Vielfaches größer als die Investitionen —
     genau deshalb darf sie nicht in derselben Summe landen."""
     r = inv.lies(FH_2025, 2025)
-    assert r["finanzhaushalt"]["auszahlungen"] == 850_520_503
-    assert r["gesamt"]["auszahlungen"] == 80_781_520
-    assert r["finanzhaushalt"]["auszahlungen"] > 10 * r["gesamt"]["auszahlungen"]
+    assert r["finanzhaushalt"]["outflows"] == 850_520_503
+    assert r["gesamt"]["outflows"] == 80_781_520
+    assert r["finanzhaushalt"]["outflows"] > 10 * r["gesamt"]["outflows"]
 
 
 # --- Die Probe reißt: verworfen statt geschätzt ------------------------------
@@ -229,7 +229,7 @@ def _speichern(store: CouncilStore, text: str, year: int) -> dict:
         year, r["zeilen"], r["gesamt"],
         herkunft.Herkunft(probe="investitionen_summenzeile",
                           fundstelle="Datensatz 1101, Tabellenblatt Finanzhaushalt",
-                          probe_ergebnis=r["nachweis"], **anker),
+                          probe_result=r["nachweis"], **anker),
         finanzhaushalt=r["finanzhaushalt"],
         herkunft_finanzhaushalt=herkunft.Herkunft(
             probe=herkunft.UNGEPRUEFT,
@@ -247,7 +247,7 @@ def test_speichern_und_lesen(tmp_path):
     assert {z["bezeichnung"] for z in zeilen} >= {"Schule und Bildung"}
     gesamt = store.get_investitionen(year=2025, ebene="investitionen")
     assert len(gesamt) == 1
-    assert gesamt[0]["auszahlungen"] == 80_781_520
+    assert gesamt[0]["outflows"] == 80_781_520
     # Jede Zeile weiß, woher sie kommt.
     assert store.herkunft_luecken() == {}
     assert all(z["herkunft_id"] is not None for z in store.get_investitionen())

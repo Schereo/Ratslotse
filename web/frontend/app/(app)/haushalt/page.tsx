@@ -69,8 +69,8 @@ export default function HaushaltPage() {
   const zeilen = aktJahr && data ? data.jahre[String(aktJahr)] ?? [] : [];
   const gesamt = summe(zeilen);
   // Aus Rohwerten gerundet — 883,9 − 812,9 ergäbe 71,0, tatsächlich sind es 71,1.
-  const defizit = gesamt?.ertraege != null && gesamt?.aufwendungen != null
-    ? mio(gesamt.aufwendungen - gesamt.ertraege) : null;
+  const defizit = gesamt?.revenues != null && gesamt?.expenses != null
+    ? mio(gesamt.expenses - gesamt.revenues) : null;
   const luecken = fehlendeJahre(jahre);
   const quelle = aktJahr ? quellenLabel(zeilen, aktJahr) : null;
 
@@ -91,7 +91,7 @@ export default function HaushaltPage() {
             year: y,
             teile: [{
               art: data.ausgabenreihe.regelwerke[z.regelwerk].titel,
-              wert: z.betrag / 1e6,
+              wert: z.amount / 1e6,
             }],
           }
         : { year: y, fehlt: "kein Wert in den beiden Veröffentlichungen der Stadt" });
@@ -329,8 +329,8 @@ export default function HaushaltPage() {
             </h2>
             <p className="mt-1.5 max-w-[74ch] text-sm leading-relaxed text-foreground/90">
               Die Veröffentlichungen der Stadt nennen für {langErster.year} insgesamt{" "}
-              {deMio(langErster.betrag / 1e6)}&#8239;Mio.&nbsp;€ und für {langLetzter.year}{" "}
-              {deMio(langLetzter.betrag / 1e6)}&#8239;Mio.&nbsp;€ Ausgaben
+              {deMio(langErster.amount / 1e6)}&#8239;Mio.&nbsp;€ und für {langLetzter.year}{" "}
+              {deMio(langLetzter.amount / 1e6)}&#8239;Mio.&nbsp;€ Ausgaben
               <Beleg q="ausgabenreihe" />.{" "}
               {nahtAb != null && (
                 <>Zwischen {nahtAb - 1} und {nahtAb} wechselte die Stadt ihr
@@ -394,13 +394,13 @@ export default function HaushaltPage() {
               </p>
               <p className="mt-2 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
                 Für {k.year} stehen zwei amtliche Gesamtsummen nebeneinander:{" "}
-                {AUSGABEN_QUELLE_LABEL[k.quelle]} nennt {deMio(k.betrag / 1e6)}&#8239;Mio.&nbsp;€,{" "}
+                {AUSGABEN_QUELLE_LABEL[k.quelle]} nennt {deMio(k.amount / 1e6)}&#8239;Mio.&nbsp;€,{" "}
                 {k.konflikt_quelle
                   ? AUSGABEN_QUELLE_LABEL[k.konflikt_quelle]
                   : "die andere Veröffentlichung"}{" "}
-                dagegen {deMio((k.konflikt_betrag ?? 0) / 1e6)}&#8239;Mio.&nbsp;€.
+                dagegen {deMio((k.conflict_amount ?? 0) / 1e6)}&#8239;Mio.&nbsp;€.
                 Das sind rund{" "}
-                {deMio(Math.abs((k.konflikt_betrag ?? 0) - k.betrag) / 1e6)}
+                {deMio(Math.abs((k.conflict_amount ?? 0) - k.amount) / 1e6)}
                 &#8239;Mio.&nbsp;€ Unterschied. Die Grafik verwendet den ersten Wert.{" "}
                 {/* Nur behaupten, was diese Zeile auch belegt hat: Der Verweis
                     auf den Abschluss steht an der Zeile als bestandene Probe.

@@ -89,11 +89,11 @@ def main() -> int:
     store = CouncilStore(Path(args.db))
     p = finanzquellen.Protokoll()
     schuetzen = not args.auch_schrumpfen
-    ergebnis: dict = {}
+    result: dict = {}
 
     def uebernehmen(name: str, teil: dict) -> None:
         for schluessel, wert in teil.items():
-            ergebnis[f"{name}_{schluessel}" if schluessel in _EIGEN else schluessel] = wert
+            result[f"{name}_{schluessel}" if schluessel in _EIGEN else schluessel] = wert
 
     try:
         if args.nur in (None, "jahresabschluss"):
@@ -141,11 +141,11 @@ def main() -> int:
         # Zeilen, die nicht sagen, woher sie kommen. Leer ist der Sollzustand;
         # steht hier etwas, hat eine Zieltabelle ihre `herkunft_id` nicht
         # gefüllt (siehe council/herkunft.py).
-        ergebnis["herkunft_verwaist"] = store.herkunft_aufraeumen()
-        ergebnis["ohne_herkunft"] = store.herkunft_luecken()
+        result["herkunft_verwaist"] = store.herkunft_aufraeumen()
+        result["ohne_herkunft"] = store.herkunft_luecken()
     finally:
         store.close()
-    print(f"Fertig: {ergebnis}")
+    print(f"Fertig: {result}")
     return 0
 
 

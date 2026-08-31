@@ -189,7 +189,7 @@ def test_die_kaskade_geht_auf():
     drei Bereichen — an ihnen zu hängen hieße, drei Vokabulare zu pflegen."""
     b = parse_anlage(teile_anlagen(ANLAGE_1_2025)[0])
     assert b.kostenkalkulation == 11_661_361.0
-    assert b.abzuege == -(3_668_314 + 5_000 + 240_000 + 361_777)
+    assert b.deductions == -(3_668_314 + 5_000 + 240_000 + 361_777)
     assert b.zu_deckende_kosten == 7_386_270.0
 
 
@@ -230,7 +230,7 @@ def test_positive_ueberdeckung_wird_nur_bei_exakter_kaskade_abgezogen():
     """
     b = parse_anlage(text)
     assert b.year == 2020
-    assert b.abzuege == -(2_881_800 + 3_000 + 168_200 + 280_500)
+    assert b.deductions == -(2_881_800 + 3_000 + 168_200 + 280_500)
     assert b.zu_deckende_kosten == 6_428_050
     assert b.gebuehr == 121.974 and b.bezugsmenge == 52_700
 
@@ -256,7 +256,7 @@ def test_zerrissene_zahl_mit_leerzeichen_nach_dem_punkt():
     """„-295. 000 €" — hier IST entscheidbar, dass die Zahl weitergeht:
     vor dem Punkt eine Ziffer, dahinter genau drei."""
     b = parse_anlage(teile_anlagen(ANLAGE_1_2026)[0])
-    assert b.abzuege == -(3_731_300 + 6_500 + 295_000 + 359_470)
+    assert b.deductions == -(3_731_300 + 6_500 + 295_000 + 359_470)
     assert b.zu_deckende_kosten == 8_163_280.0
 
 
@@ -332,7 +332,7 @@ def test_die_herkunft_nennt_nur_die_gelaufenen_proben():
     mit = parse_anlage(teile_anlagen(ANLAGE_1_2025)[0])
     h2 = herkunft_fuer(mit, url=None, dokument_id=283467, label="x")
     assert PROBE_KASKADE in h2.probe and PROBE_DIVISION in h2.probe
-    assert "÷" in h2.probe_ergebnis
+    assert "÷" in h2.probe_result
 
 
 # --------------------------------------------------------------------------
@@ -363,10 +363,10 @@ def test_altes_layout_liefert_zwoelf_benannte_tarife():
         ANLAGE_1_2025 + ANLAGE_3_2025 + ANLAGE_4_2025, "24/0999")
     assert len(saetze) == 12
     assert {s.year for s in saetze} == {2025}
-    assert next(s for s in saetze if s.schluessel == "grundgebuehr").betrag == 50
-    assert next(s for s in saetze if s.schluessel == "litergebuehr").betrag == 1.34
-    assert next(s for s in saetze if s.schluessel == "sperrmuell_2m3").betrag == 16
-    assert next(s for s in saetze if s.schluessel == "gruengut_05m3").betrag == 3
+    assert next(s for s in saetze if s.schluessel == "grundgebuehr").amount == 50
+    assert next(s for s in saetze if s.schluessel == "litergebuehr").amount == 1.34
+    assert next(s for s in saetze if s.schluessel == "sperrmuell_2m3").amount == 16
+    assert next(s for s in saetze if s.schluessel == "gruengut_05m3").amount == 3
 
 
 def test_neues_layout_prueft_jede_aenderung_gegen_das_vorjahr():
@@ -374,7 +374,7 @@ def test_neues_layout_prueft_jede_aenderung_gegen_das_vorjahr():
         ANLAGE_1_2026 + ANLAGE_3_2026 + ANLAGE_4_2026, "25/0999")
     grund = next(s for s in saetze if s.schluessel == "grundgebuehr")
     assert len(saetze) == 12
-    assert (grund.betrag, grund.vorjahr, grund.veraenderung_prozent) == (62, 50, 24)
+    assert (grund.amount, grund.prior_year, grund.change_pct) == (62, 50, 24)
 
     kaputt = ANLAGE_4_2026.replace("24,00%", "23,00%")
     with pytest.raises(GebuehrenFehler, match="ergeben 24.00 %"):

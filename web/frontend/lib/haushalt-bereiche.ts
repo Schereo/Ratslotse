@@ -303,7 +303,7 @@ export function bereichSchluessel(name: string): BereichSchluessel | null {
   return bereichKanon(name).schluessel;
 }
 
-/** Die Summenzeile trägt keinen Bereichsnamen — `is_summe` der Zeile ist die
+/** Die Summenzeile trägt keinen Bereichsnamen — `is_total` der Zeile ist die
  *  belastbare Prüfung, dies hier der Notnagel für Namenslisten ohne Zeile. */
 export function istSummenzeile(name: string): boolean {
   return normalisiereBereich(name) === "summe";

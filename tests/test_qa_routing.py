@@ -535,17 +535,17 @@ def test_juengste_sitzungen_mit_beschluessen(tmp_path):
 
 def test_haushalt_block_und_matching(tmp_path):
     ctx = qa._haushalt_block([{"year": 2026, "bereich": "Verkehr und Straßenbau",
-                               "aufwendungen": 46194645.0, "ertraege": 17510637.0}])
+                               "expenses": 46194645.0, "revenues": 17510637.0}])
     assert "STADTHAUSHALT" in ctx and "46.194.645" in ctx
     assert qa._haushalt_block([]) == ""
 
     store = CouncilStore(tmp_path / "c.sqlite")
     with store._conn:
         store._conn.execute(
-            "INSERT INTO council_haushalt (year, bereich, ertraege, aufwendungen, ergebnis, is_summe, fetched_at) "
+            "INSERT INTO council_haushalt (year, bereich, revenues, expenses, result, is_total, fetched_at) "
             "VALUES (2026, 'Verkehr und Straßenbau', 1, 2, -1, 0, '')")
         store._conn.execute(
-            "INSERT INTO council_haushalt (year, bereich, ertraege, aufwendungen, ergebnis, is_summe, fetched_at) "
+            "INSERT INTO council_haushalt (year, bereich, revenues, expenses, result, is_total, fetched_at) "
             "VALUES (2026, 'Summe', 10, 20, -10, 1, '')")
     assert [r["bereich"] for r in store.haushalt_fuer_begriffe(["Verkehr", "Radweg"])] == ["Verkehr und Straßenbau"]
     # Summenzeile nur bei ausdrücklicher Haushaltsfrage.
@@ -574,20 +574,20 @@ def test_beschluss_kontext_traegt_deutsches_datum():
 
 def test_steuern_block_trennt_ist_von_plan():
     ctx = qa._steuern_block([{"art": "Gewerbesteuer (-umlage)", "year": 2025,
-                              "betrag": 222117000.0, "jahr_davor": 2015,
-                              "betrag_davor": 120000000.0}])
+                              "amount": 222117000.0, "year_before": 2015,
+                              "amount_before": 120000000.0}])
     assert "IST-Zahlen" in ctx and "NICHT der Haushaltsplan" in ctx
     assert "222.117.000" in ctx and "120.000.000" in ctx
     assert "2015" in ctx  # Entwicklung wird mitgegeben
     assert qa._steuern_block([]) == ""
     # „insgesamt" bekommt einen sprechenden Namen statt des CSV-Schlüssels.
     assert "Steuereinnahmen insgesamt" in qa._steuern_block(
-        [{"art": "insgesamt", "year": 2025, "betrag": 387208000.0}])
+        [{"art": "insgesamt", "year": 2025, "amount": 387208000.0}])
 
 
 def test_steuerkraft_block_nennt_die_daempfer_regel():
     ctx = qa._steuerkraft_block({"year": 2024, "messzahl": 325716249.0,
-                                 "zuweisungen": 69209992.0, "jahr_davor": 2023,
+                                 "zuweisungen": 69209992.0, "year_before": 2023,
                                  "messzahl_davor": 279815776.0,
                                  "zuweisungen_davor": 99569120.0})
     assert "FINANZAUSGLEICH" in ctx
@@ -601,20 +601,20 @@ def test_steuerkraft_block_nennt_die_daempfer_regel():
 def test_steuern_fuer_begriffe_matcht_kuratierte_synonyme(tmp_path):
     store = CouncilStore(tmp_path / "c.sqlite")
     with store._conn:
-        for year, art, betrag in [
+        for year, art, amount in [
             (2025, "Gewerbesteuer (-umlage)", 222117000.0),
             (2015, "Gewerbesteuer (-umlage)", 120000000.0),
             (2025, "Grundsteuer A+B", 32585000.0),
             (2025, "insgesamt", 387208000.0),
         ]:
             store._conn.execute(
-                "INSERT INTO council_steuern (year, art, betrag, fetched_at) VALUES (?,?,?,'')",
-                (year, art, betrag))
+                "INSERT INTO council_steuern (year, art, amount, fetched_at) VALUES (?,?,?,'')",
+                (year, art, amount))
 
     treffer = store.steuern_fuer_begriffe(["Wie", "hoch", "ist", "die", "Gewerbesteuer"])
     assert [t["art"] for t in treffer] == ["Gewerbesteuer (-umlage)"]
-    assert treffer[0]["betrag"] == 222117000.0
-    assert treffer[0]["jahr_davor"] == 2015 and treffer[0]["betrag_davor"] == 120000000.0
+    assert treffer[0]["amount"] == 222117000.0
+    assert treffer[0]["year_before"] == 2015 and treffer[0]["amount_before"] == 120000000.0
 
     # Allgemeine Geldfrage → Gesamtsumme; unpassende Frage → nichts.
     assert [t["art"] for t in store.steuern_fuer_begriffe(["Steuereinnahmen"])] == ["insgesamt"]
@@ -636,7 +636,7 @@ def test_steuerkraft_kontext_braucht_zwei_jahre(tmp_path):
             "INSERT INTO council_steuerkraft (year, messzahl, zuweisungen, fetched_at) "
             "VALUES (2024, 325716249, 69209992, '')")
     k = store.steuerkraft_kontext()
-    assert k["year"] == 2024 and k["jahr_davor"] == 2023
+    assert k["year"] == 2024 and k["year_before"] == 2023
     assert k["zuweisungen"] == 69209992.0 and k["zuweisungen_davor"] == 99569120.0
     store.close()
 
@@ -646,19 +646,19 @@ def test_haushalt_fuer_begriffe_traegt_entwicklung(tmp_path):
     with store._conn:
         for year, aufw in [(2020, 30000000.0), (2026, 46194645.0)]:
             store._conn.execute(
-                "INSERT INTO council_haushalt (year, bereich, ertraege, aufwendungen, ergebnis, "
-                "is_summe, fetched_at) VALUES (?, 'Verkehr und Straßenbau', 1, ?, -1, 0, '')",
+                "INSERT INTO council_haushalt (year, bereich, revenues, expenses, result, "
+                "is_total, fetched_at) VALUES (?, 'Verkehr und Straßenbau', 1, ?, -1, 0, '')",
                 (year, aufw))
         # Bereich mit geändertem Zuschnitt: NUR im neuesten Jahr vorhanden.
         store._conn.execute(
-            "INSERT INTO council_haushalt (year, bereich, ertraege, aufwendungen, ergebnis, "
-            "is_summe, fetched_at) VALUES (2026, 'Klima/Umwelt/Mobilität', 1, 2, -1, 0, '')")
+            "INSERT INTO council_haushalt (year, bereich, revenues, expenses, result, "
+            "is_total, fetched_at) VALUES (2026, 'Klima/Umwelt/Mobilität', 1, 2, -1, 0, '')")
 
     r = store.haushalt_fuer_begriffe(["Verkehr"])[0]
-    assert r["jahr_davor"] == 2020 and r["aufwendungen_davor"] == 30000000.0
+    assert r["year_before"] == 2020 and r["expenses_before"] == 30000000.0
     assert "30.000.000" in qa._haushalt_block([r])
 
     # Umbenannter Bereich bekommt KEINEN erfundenen Vorjahreswert.
     k = store.haushalt_fuer_begriffe(["Klima"])[0]
-    assert "jahr_davor" not in k
+    assert "year_before" not in k
     store.close()

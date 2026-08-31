@@ -416,7 +416,7 @@ def ueberlappungsprobe(zeilen: list[dict]) -> tuple[int, list[dict]]:
                 "kennzahl": kennzahl, "year": year,
                 "alt": aelter["wert"], "alt_bericht": aelter["bericht_jahr"],
                 "neu": juenger["wert"], "neu_bericht": juenger["bericht_jahr"],
-                "differenz": round(diff, 4)})
+                "difference": round(diff, 4)})
     return bestaetigt, funde
 
 
@@ -498,7 +498,7 @@ def vermoegensprobe(zeilen: list[dict], bilanz: list[dict]) -> tuple[int, list[d
         else:
             risse.append({"bericht_jahr": bericht_jahr, "year": year,
                           "gerechnet": round(ist, 2), "bilanz": round(soll, 2),
-                          "differenz": round(ist - soll, 2)})
+                          "difference": round(ist - soll, 2)})
     return geprueft, risse
 
 

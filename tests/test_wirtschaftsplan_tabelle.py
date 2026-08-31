@@ -72,9 +72,9 @@ def test_liest_layout_a_und_findet_die_planspalte():
     über die Position."""
     plan, proben = parse_erfolgsplan("24/0671", "awb", 2025, LAYOUT_A)
     assert plan.year == 2025
-    assert plan.ertraege == 25_197_796.0
-    assert plan.aufwendungen == 24_570_285.0
-    assert plan.ergebnis == 627_511.0
+    assert plan.revenues == 25_197_796.0
+    assert plan.expenses == 24_570_285.0
+    assert plan.result == 627_511.0
     assert len(proben) == 6, "alle sechs Spalten werden geprüft, nicht nur die gespeicherte"
 
 
@@ -82,9 +82,9 @@ def test_liest_layout_b_mit_anderen_beschriftungen():
     """2026 heißt dieselbe Zeile „Summe Erträge" statt „Gesamtertrag" — und der
     Kopf schreibt „Ergebnis 2024" statt „Ist 2024"."""
     plan, proben = parse_erfolgsplan("25/0642", "awb", 2026, LAYOUT_B)
-    assert plan.ertraege == 26_747_250.0
-    assert plan.aufwendungen == 26_036_000.0
-    assert plan.ergebnis == 711_250.0
+    assert plan.revenues == 26_747_250.0
+    assert plan.expenses == 26_036_000.0
+    assert plan.result == 711_250.0
     assert len(proben) == 6
 
 
@@ -94,9 +94,9 @@ def test_das_ergebnis_ist_nicht_der_jahresueberschuss():
     sonst gälte `Erträge − Aufwendungen = Ergebnis` in der gespeicherten Zeile
     nicht mehr."""
     plan, _ = parse_erfolgsplan("25/0642", "awb", 2026, LAYOUT_B)
-    assert plan.ergebnis == 711_250.0, "Ergebnis nach Steuern"
-    assert plan.ergebnis != 688_600.0, "NICHT der Jahresüberschuss"
-    assert abs(plan.ertraege - plan.aufwendungen - plan.ergebnis) <= TOLERANZ_EUR
+    assert plan.result == 711_250.0, "Ergebnis nach Steuern"
+    assert plan.result != 688_600.0, "NICHT der Jahresüberschuss"
+    assert abs(plan.revenues - plan.expenses - plan.result) <= TOLERANZ_EUR
 
 
 def test_die_gespeicherte_zeile_erfuellt_dieselbe_beziehung_wie_der_beschlusstext():
@@ -105,7 +105,7 @@ def test_die_gespeicherte_zeile_erfuellt_dieselbe_beziehung_wie_der_beschlusstex
     Die Null bei `steuern` ist deshalb eine Aussage, keine Lücke."""
     plan, _ = parse_erfolgsplan("24/0671", "awb", 2025, LAYOUT_A)
     assert plan.steuern == 0.0
-    assert abs(plan.ertraege - plan.aufwendungen - plan.steuern - plan.ergebnis) <= TOLERANZ_EUR
+    assert abs(plan.revenues - plan.expenses - plan.steuern - plan.result) <= TOLERANZ_EUR
 
 
 def test_kopfspalten_lesen_art_und_jahr():
@@ -152,7 +152,7 @@ def test_fehlende_prosa_reisst_nicht():
     hat deswegen keine falschen Zahlen."""
     ohne = "\n".join(z for z in LAYOUT_A.splitlines() if "umfasst" not in z)
     plan, _ = parse_erfolgsplan("24/0671", "awb", 2025, ohne)
-    assert plan.ertraege == 25_197_796.0
+    assert plan.revenues == 25_197_796.0
 
 
 def test_bereichsprobe_misst_die_zweige():
@@ -172,9 +172,9 @@ def test_widerspruch_in_den_zweigen_reisst_den_jahrgang_nicht():
     Aufteilung und nicht die Summe (dieselbe Regel wie 2022 bei den Schulden).
     """
     plan, _ = parse_erfolgsplan("24/0671", "awb", 2025, LAYOUT_A)
-    assert plan.ertraege == 25_197_796.0
+    assert plan.revenues == 25_197_796.0
     _, reste = bereichsprobe(LAYOUT_A, "awb")
-    assert abs(reste[2]) / plan.ertraege < BEREICHE_SCHWELLE
+    assert abs(reste[2]) / plan.revenues < BEREICHE_SCHWELLE
 
 
 def test_ein_betriebszweig_statt_der_gesamtzeile_faellt_durch():
@@ -220,7 +220,7 @@ def test_speichern_neben_dem_beschlusstext(tmp_path):
         store.save_wirtschaftsplan(plan, herkunft_fuer(
             plan, proben, url="https://example.org/x", dokument_id=283481))
         zeilen = store.get_wirtschaftsplaene("awb")
-        assert len(zeilen) == 1 and zeilen[0]["ertraege"] == 25_197_796.0
+        assert len(zeilen) == 1 and zeilen[0]["revenues"] == 25_197_796.0
         assert "wirtschaftsplan_spalten" in zeilen[0]["proben"]
         assert store.wirtschaftsplan_jahre("awb") == [2025]
         assert "council_wirtschaftsplaene" not in store.herkunft_luecken()
@@ -272,9 +272,9 @@ def test_das_alte_layout_liest_sich_ohne_zutun():
     steht. Der Befund „der Parser kennt dieses Layout nicht" war ein Artefakt
     des abgeschnittenen Textes, kein Befund über das Dokument."""
     plan, proben = parse_erfolgsplan("18/0741", "awb", 2019, LAYOUT_C)
-    assert plan.ertraege == 20_280_001.0
-    assert plan.aufwendungen == 19_989_470.0
-    assert plan.ergebnis == 290_531.0
+    assert plan.revenues == 20_280_001.0
+    assert plan.expenses == 19_989_470.0
+    assert plan.result == 290_531.0
     assert len(proben) == 6 and all(p.geht_auf for p in proben)
 
 
@@ -283,8 +283,8 @@ def test_das_ergebnis_ist_nicht_das_jahresergebnis():
     Gesamtergebnis (290.531 €) steht noch ein „Jahresergebnis" (93.031 €) —
     die Differenz ist die Eigenkapitalverzinsung an den städtischen Haushalt."""
     plan, _ = parse_erfolgsplan("18/0741", "awb", 2019, LAYOUT_C)
-    assert plan.ergebnis == 290_531.0
-    assert plan.ergebnis != 93_031.0
+    assert plan.result == 290_531.0
+    assert plan.result != 93_031.0
 
 
 # --------------------------------------------------------------------------
@@ -322,7 +322,7 @@ def test_millionen_im_vorbericht_sperren_nicht():
     kann keine einzige Tabelle mehr lesen — deshalb ein enges Fenster um die
     Kopfzeile statt einer Suche im ganzen Dokument."""
     plan, _ = parse_erfolgsplan("18/0741", "awb", 2019, VORBERICHT + LAYOUT_C)
-    assert plan.ertraege == 20_280_001.0
+    assert plan.revenues == 20_280_001.0
 
 
 def test_das_fenster_endet_wo_es_soll():

@@ -291,7 +291,7 @@ def _ausblick_store(tmp_path):
              (2, "26/2", "Bürgerbeteiligung an einem Windkraftwerk"),
              (3, "26/3", "Sachstandsbericht EU-Wiederherstellungsverordnung")])
         store._conn.executemany(
-            "INSERT INTO council_beratungen (kvonr, datum, gremium, ergebnis, fetched_at) "
+            "INSERT INTO council_beratungen (kvonr, datum, gremium, result, fetched_at) "
             "VALUES (?, ?, ?, ?, datetime('now'))",
             [(1, "2099-01-05", "Umweltausschuss", "Vorberatung"),
              (2, "2099-02-01", "Umweltausschuss", "Kenntnisnahme"),
@@ -301,7 +301,7 @@ def _ausblick_store(tmp_path):
 
 
 def test_geplante_beratungen_ignoriert_das_ergebnis_feld(tmp_path):
-    """Bei KÜNFTIGEN Stationen trägt ``ergebnis`` die geplante Behandlung
+    """Bei KÜNFTIGEN Stationen trägt ``result`` die geplante Behandlung
     („Vorberatung"), kein Resultat. Die erste Fassung verlangte ein leeres
     Feld — und lieferte damit auf Prod dauerhaft nichts (0 von 22 Terminen)."""
     store = _ausblick_store(tmp_path)
@@ -351,7 +351,7 @@ def test_kommende_beratungen_ignoriert_strasse(tmp_path):
                 [(1, "26/1", "Widmung der Straße \"Sylter Ring\" - Beschluss"),
                  (2, "26/2", "Sachstand Hannah-Arendt-Straße (B-Plan S-745 A)")])
             store._conn.executemany(
-                "INSERT INTO council_beratungen (kvonr, datum, gremium, ergebnis, fetched_at) "
+                "INSERT INTO council_beratungen (kvonr, datum, gremium, result, fetched_at) "
                 "VALUES (?, ?, ?, ?, datetime('now'))",
                 [(1, "2099-01-05", "Verkehrsausschuss", "Vorberatung"),
                  (2, "2099-01-05", "Verkehrsausschuss", "Kenntnisnahme")])

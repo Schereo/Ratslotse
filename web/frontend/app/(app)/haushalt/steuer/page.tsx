@@ -83,8 +83,8 @@ function SteuerInner() {
   const reihe = useMemo(() => {
     if (!data || !art?.datenArt) return [];
     return data.steuern
-      .filter((s) => s.art === art.datenArt && s.betrag != null && s.betrag > 0)
-      .map((s) => ({ year: s.year, betrag: s.betrag as number }))
+      .filter((s) => s.art === art.datenArt && s.amount != null && s.amount > 0)
+      .map((s) => ({ year: s.year, amount: s.amount as number }))
       .sort((a, b) => a.year - b.year);
   }, [data, art]);
 
@@ -115,15 +115,15 @@ function SteuerInner() {
   const zuw = data.steuerkraft.filter((k) => k.zuweisungen != null);
   const istZuweisung = art.slug === "schluesselzuweisungen";
   const zuwReihe = istZuweisung
-    ? zuw.map((k) => ({ year: k.year, betrag: k.zuweisungen as number }))
+    ? zuw.map((k) => ({ year: k.year, amount: k.zuweisungen as number }))
     : [];
-  // Die dritte Herkunft: der Jahresabschluss. `ergebnis` ist nullbar — ein
+  // Die dritte Herkunft: der Jahresabschluss. `result` ist nullbar — ein
   // Jahrgang, dessen Posten noch nicht gelesen ist, bekommt keinen Punkt auf
   // der Kurve statt einer Null.
   const istEntgelt = !!art.ergebnisPosten;
   const entgeltReihe = entgelt
-    .filter((z) => z.ergebnis != null)
-    .map((z) => ({ year: z.year, betrag: z.ergebnis as number }));
+    .filter((z) => z.result != null)
+    .map((z) => ({ year: z.year, amount: z.result as number }));
 
   const anzeigeReihe = istZuweisung ? zuwReihe : istEntgelt ? entgeltReihe : reihe;
   const letzte = anzeigeReihe.at(-1);
@@ -138,16 +138,16 @@ function SteuerInner() {
       ? {
           wert: (data.ergebnisrechnung ?? []).find(
             (z) => z.nr === 12 && z.thh_nr === null && z.year === letzte?.year,
-          )?.ergebnis ?? null,
+          )?.result ?? null,
           was: "aller ordentlichen Erträge",
         }
       : {
           wert: data.steuern.find(
             (s) => s.year === letzte?.year && s.art === "insgesamt",
-          )?.betrag ?? null,
+          )?.amount ?? null,
           was: "aller Steuereinnahmen",
         };
-  const anteil = letzte && bezug?.wert ? Math.round((letzte.betrag / bezug.wert) * 100) : null;
+  const anteil = letzte && bezug?.wert ? Math.round((letzte.amount / bezug.wert) * 100) : null;
   const einwohner = data.einwohner?.einwohner ?? 0;
 
   // Welche Quelle den Hauptbetrag trägt — einmal bestimmt, überall derselbe
@@ -206,7 +206,7 @@ function SteuerInner() {
   // benannt. Nur wo Betrag und Hebesatz dieselbe Steuer meinen: Bei der
   // Grundsteuer tun sie das nicht (siehe `punktUnmoeglich`).
   const proPunkt = punktSatz && letzte && !art.punktUnmoeglich
-    ? letzte.betrag / punktSatz : null;
+    ? letzte.amount / punktSatz : null;
 
   // Für den Befund weiter unten („die Verwaltung schlug vor, der Rat lehnte
   // ab") zwei Zahlen — und zwar bewusst aus ZWEI Quellen:
@@ -230,7 +230,7 @@ function SteuerInner() {
   // Hebesatz-Sprung. Ohne ihn liest sich „+21 %" als „alle zahlen 21 % mehr",
   // und das war 2025 nachweislich falsch.
   const aufkommen: Record<number, number> = {};
-  for (const s of reihe) aufkommen[s.year] = s.betrag;
+  for (const s of reihe) aufkommen[s.year] = s.amount;
 
   // Die Quellen dieser Seite in Lese-Reihenfolge — daraus zählt der Provider
   // die Fußnoten-Nummern.
@@ -294,7 +294,7 @@ function SteuerInner() {
               {istZuweisung ? `Erhalten ${letzte.year}` : `Eingenommen ${letzte.year}`}
             </p>
             <p className="mt-1.5 font-display text-[27px] font-bold leading-none tracking-tight tabular-nums text-[color:var(--hh-ein-0)]">
-              {deMio(letzte.betrag / 1e6)}
+              {deMio(letzte.amount / 1e6)}
               <span className="text-sm font-semibold text-muted-foreground">&#8239;Mio.&nbsp;€</span>
               <Beleg q={hauptQuelle} />
             </p>
@@ -506,7 +506,7 @@ function SteuerInner() {
            und kommt ebenfalls vom Land. Der Satz benennt jetzt, was er
            teilt; die vollständige Zahl steht auf /haushalt/einnahmen. */
         <LottiVergleich
-          betragMio={letzte.betrag / 1e6}
+          betragMio={letzte.amount / 1e6}
           einwohner={einwohner}
           /* Die Steckbrief-Titel haben drei Genera; ein eingesetzter Titel ergab
              „aus der Gebühren und Beiträge". Wo der Artikel nicht passt, sagt
@@ -663,7 +663,7 @@ function SteuerInner() {
                   meinen — und genau das ist die Annahme, auf der der
                   Überschlag beruht. */}
               <p className="mt-1.5 text-[12.5px] leading-relaxed text-foreground/80">
-                Überschlagen: {deMio(letzte!.betrag / 1e6)}&#8239;Mio.&nbsp;€ (Ist {letzte!.year})
+                Überschlagen: {deMio(letzte!.amount / 1e6)}&#8239;Mio.&nbsp;€ (Ist {letzte!.year})
                 bei {punktSatz} Punkten, geteilt durch {punktSatz}.
               </p>
               {/* Hier stand bis 16.08. „Brutto — was davon in der Stadtkasse

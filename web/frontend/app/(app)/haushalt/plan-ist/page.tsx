@@ -181,8 +181,8 @@ function PlanIstInner() {
       const te = summe(teil, 12), ta = summe(teil, 20);
       return {
         nr, name: teil[0]?.thh_name ?? `Teilhaushalt ${nr}`,
-        aufwPlan: mio(ta?.plan), aufwIst: mio(ta?.ergebnis),
-        ertrPlan: mio(te?.plan), ertrIst: mio(te?.ergebnis),
+        aufwPlan: mio(ta?.plan), aufwIst: mio(ta?.result),
+        ertrPlan: mio(te?.plan), ertrIst: mio(te?.result),
       };
     });
     type Aufw = { aufwPlan: number | null; aufwIst: number | null };
@@ -204,8 +204,8 @@ function PlanIstInner() {
 
     return {
       gesamt: {
-        ertrPlan: mio(e?.plan), ertrIst: mio(e?.ergebnis),
-        aufwPlan: mio(a?.plan), aufwIst: mio(a?.ergebnis),
+        ertrPlan: mio(e?.plan), ertrIst: mio(e?.result),
+        aufwPlan: mio(a?.plan), aufwIst: mio(a?.result),
       },
       bereiche, arten,
       planArt: (a?.plan_art ?? e?.plan_art ?? "ansatz") as PlanArt,
@@ -244,14 +244,14 @@ function PlanIstInner() {
   // `planGegenIst()` in lib/haushalt.ts rechnet seit jeher mit 21 + 24 und
   // begründet es im Docstring; diese Seite war die einzige Stelle, die der
   // Regel nicht folgte. Deshalb hier derselbe Weg statt einer zweiten Formel.
-  const jahresergebnis = (art: "plan" | "ergebnis") => {
+  const jahresergebnis = (art: "plan" | "result") => {
     const teile = [21, 24].map((nr) => (data.ergebnisrechnung ?? []).find(
       (p) => p.year === year && p.nr === nr && p.thh_nr == null));
     if (teile.some((t) => !t || t[art] == null)) return null;
     return teile.reduce((s, t) => s + (t![art] as number), 0) / 1e6;
   };
   const saldoPlan = jahresergebnis("plan");
-  const saldoIst = jahresergebnis("ergebnis");
+  const saldoIst = jahresergebnis("result");
   const kasse = kassensicht(data, year);
   // `ratsbeschluss` kommt dazu, sobald der Nachbewilligungs-Block etwas zu
   // zeigen hat: Seine Liste verlinkt Vorlagen aus dem Bürgerinformations-
@@ -509,28 +509,28 @@ function PlanIstInner() {
             <KassenZeile
               label="Aus laufender Arbeit blieb übrig"
               hinweis="Steuern, Gebühren und Zuweisungen minus Personal, Sachkosten und Sozialleistungen"
-              wert={mio(kasse.saldo_verwaltung?.ergebnis)} />
+              wert={mio(kasse.balance_operating?.result)} />
             <KassenZeile
               label="Für Investitionen floss ab"
-              hinweis={kasse.summe_aus_investition?.ergebnis != null
-                ? `${deMio(mio(kasse.summe_aus_investition.ergebnis))} Mio. € ausgezahlt für Bau, Grundstücke, Geräte und Zuschüsse — abzüglich der Einzahlungen`
+              hinweis={kasse.total_out_capital?.result != null
+                ? `${deMio(mio(kasse.total_out_capital.result))} Mio. € ausgezahlt für Bau, Grundstücke, Geräte und Zuschüsse — abzüglich der Einzahlungen`
                 : undefined}
-              wert={mio(kasse.saldo_investition?.ergebnis)} />
+              wert={mio(kasse.balance_capital?.result)} />
             <KassenZeile
               label={kasse.finanzmittel?.bezeichnung ?? "Finanzmittel-Überschuss/-Fehlbetrag"}
-              wert={mio(kasse.finanzmittel?.ergebnis)} stark />
-            {kasse.finanzmittelveraenderung && kasse.saldo_finanzierung && (
+              wert={mio(kasse.finanzmittel?.result)} stark />
+            {kasse.finanzmittelveraenderung && kasse.balance_financing && (
               <KassenZeile
                 label="Nach Kredittilgung"
-                hinweis={`${deMio(mio(Math.abs(kasse.saldo_finanzierung.ergebnis ?? 0)))} Mio. € Tilgung`}
-                wert={mio(kasse.finanzmittelveraenderung.ergebnis)} />
+                hinweis={`${deMio(mio(Math.abs(kasse.balance_financing.result ?? 0)))} Mio. € Tilgung`}
+                wert={mio(kasse.finanzmittelveraenderung.result)} />
             )}
           </dl>
-          {kasse.anfangsbestand?.ergebnis != null && kasse.endbestand?.ergebnis != null && (
+          {kasse.anfangsbestand?.result != null && kasse.endbestand?.result != null && (
             <p className="mt-3 max-w-[70ch] text-[13px] leading-relaxed text-foreground/85">
-              Am 1. Januar lagen <strong>{deMio(mio(kasse.anfangsbestand.ergebnis))}&#8239;Mio.&nbsp;€</strong>{" "}
+              Am 1. Januar lagen <strong>{deMio(mio(kasse.anfangsbestand.result))}&#8239;Mio.&nbsp;€</strong>{" "}
               in der Kasse, am 31. Dezember{" "}
-              <strong>{deMio(mio(kasse.endbestand.ergebnis))}&#8239;Mio.&nbsp;€</strong>
+              <strong>{deMio(mio(kasse.endbestand.result))}&#8239;Mio.&nbsp;€</strong>
               <Beleg q="finanzrechnung" />.
             </p>
           )}
@@ -539,11 +539,11 @@ function PlanIstInner() {
               Geplante nicht gebaut? Weil ein Teil des Geldes aus Vorjahren
               stammt und die Genehmigung mitwandert — der Plan des Jahres ist
               nicht die Grenze dessen, was ausgegeben werden darf. */}
-          {kasse.summe_aus_investition?.ermaechtigung != null && (
+          {kasse.total_out_capital?.ermaechtigung != null && (
             <p className="mt-3 max-w-[70ch] border-t border-border/60 pt-3 text-[13px] leading-relaxed text-foreground/85">
               Ausgeben durfte die Stadt für Investitionen mehr als die geplanten{" "}
-              {deMio(mio(kasse.summe_aus_investition.plan))}&#8239;Mio.&nbsp;€: Weitere{" "}
-              <strong>{deMio(mio(kasse.summe_aus_investition.ermaechtigung))}&#8239;Mio.&nbsp;€</strong>{" "}
+              {deMio(mio(kasse.total_out_capital.plan))}&#8239;Mio.&nbsp;€: Weitere{" "}
+              <strong>{deMio(mio(kasse.total_out_capital.ermaechtigung))}&#8239;Mio.&nbsp;€</strong>{" "}
               standen als Ermächtigungen aus Vorjahren offen — bewilligtes Geld für
               Vorhaben, die noch nicht fertig sind, und das deshalb mit ins nächste Jahr
               wandert<Beleg q="finanzrechnung" />.
@@ -608,7 +608,7 @@ function PlanIstInner() {
               <div className="flex w-max flex-none items-center gap-1 rounded-full border border-border bg-muted/40 p-1">
                 {([
                   ["prozent", "Abweichung in Prozent"],
-                  ["betrag", "Abweichung in Millionen"],
+                  ["amount", "Abweichung in Millionen"],
                 ] as [HantelMassstab, string][]).map(([wert, text]) => (
                   <button key={wert} type="button" onClick={() => setMassstab(wert)}
                     className={cn("whitespace-nowrap rounded-full px-3 py-1 text-[12.5px]",

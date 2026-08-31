@@ -1600,10 +1600,10 @@ def _haushalt_block(zeilen: list[dict] | None) -> str:
         return ""
     teile = []
     for r in zeilen:
-        s = (f"- {r['bereich']} ({r['year']}): Aufwendungen {_eur(r.get('aufwendungen'))}, "
-             f"Erträge {_eur(r.get('ertraege'))}")
-        if r.get("jahr_davor"):
-            s += (f" — {r['jahr_davor']} waren es {_eur(r.get('aufwendungen_davor'))} "
+        s = (f"- {r['bereich']} ({r['year']}): Aufwendungen {_eur(r.get('expenses'))}, "
+             f"Erträge {_eur(r.get('revenues'))}")
+        if r.get("year_before"):
+            s += (f" — {r['year_before']} waren es {_eur(r.get('expenses_before'))} "
                   f"Aufwendungen")
         teile.append(s)
     return ("\nSTADTHAUSHALT (GEPLANTE Zahlen aus dem beschlossenen Haushaltsplan; nur\n"
@@ -1622,9 +1622,9 @@ def _steuern_block(zeilen: list[dict] | None) -> str:
     teile = []
     for r in zeilen:
         name = "Steuereinnahmen insgesamt" if r["art"] == "insgesamt" else r["art"]
-        s = f"- {name} ({r['year']}, tatsächlich eingenommen): {_eur(r.get('betrag'))}"
-        if r.get("jahr_davor") and r.get("betrag_davor"):
-            s += f" — {r['jahr_davor']} waren es {_eur(r['betrag_davor'])}"
+        s = f"- {name} ({r['year']}, tatsächlich eingenommen): {_eur(r.get('amount'))}"
+        if r.get("year_before") and r.get("amount_before"):
+            s += f" — {r['year_before']} waren es {_eur(r['amount_before'])}"
         teile.append(s)
     return ("\nSTEUEREINNAHMEN (IST-Zahlen der Stadt, NICHT der Haushaltsplan — nie mit\n"
             "den Plan-Zahlen oben vermischen; im Text als „tatsächlich eingenommen“\n"
@@ -1641,9 +1641,9 @@ def _steuerkraft_block(k: dict | None) -> str:
         "\nFINANZAUSGLEICH (Hintergrund, nur nutzen, wenn nach Hebesätzen oder\n"
         "höheren Einnahmen gefragt wird; NIE mit [id]):\n"
         f"- Steuerkraftmesszahl {k['year']}: {_eur(k['messzahl'])} "
-        f"(davor {k['jahr_davor']}: {_eur(k['messzahl_davor'])})\n"
+        f"(davor {k['year_before']}: {_eur(k['messzahl_davor'])})\n"
         f"- Schlüsselzuweisungen des Landes {k['year']}: {_eur(k['zuweisungen'])} "
-        f"(davor {k['jahr_davor']}: {_eur(k['zuweisungen_davor'])})\n"
+        f"(davor {k['year_before']}: {_eur(k['zuweisungen_davor'])})\n"
         "- REGEL: Steigt die eigene Steuerkraft, sinken die Schlüsselzuweisungen des\n"
         "  Landes. Von einer Steuererhöhung bleibt der Stadt deshalb nur ein Teil —\n"
         "  sag das dazu, wenn du über mehr Einnahmen sprichst. Nenne keine\n"
@@ -1998,7 +1998,7 @@ def geld_kontext(store, frage: str, begriffe: str = "", typ: str = "thema") -> d
         if aus.get("steuern") or _F_AUSGLEICH.search(_falte(frage or "")):
             aus["steuerkraft"] = _sicher(store.steuerkraft_kontext)
     if "ist" in facetten:
-        aus["ist"] = _sicher(store.ergebnis_ist_fuer_begriffe, woerter)
+        aus["ist"] = _sicher(store.result_actual_for_terms, woerter)
     if "gruende" in facetten:
         aus["gruende"] = _sicher(store.abweichungsgruende_fuer_begriffe, woerter, standard=[])
     if "pruefung" in facetten:
@@ -2115,9 +2115,9 @@ def geld_grafik(store, geld: dict) -> dict | None:
         # sie schon aufgelöst („gewinnt die erste": sie ist die, nach der
         # gefragt wurde; die weiteren sind Beifang der Synonyme).
         art = geld["steuern"][0]["art"]
-        reihe = [{"year": r["year"], "wert": round(r["betrag"] / 1e6, 1)}
+        reihe = [{"year": r["year"], "wert": round(r["amount"] / 1e6, 1)}
                  for r in store.get_steuereinnahmen()
-                 if r["art"] == art and r.get("betrag") is not None]
+                 if r["art"] == art and r.get("amount") is not None]
         if len(reihe) >= 2:
             titel = ("Steuereinnahmen insgesamt" if art == "insgesamt"
                      else f"{art} — Ist-Einnahmen")
@@ -2169,7 +2169,7 @@ def _gebuehren_block(g: dict | None) -> str:
         for r in gruppe.get("werte") or []:
             s = (f"- {r['bereich_name']} {r['year']}: Kostenkalkulation "
                  f"{_eur(r.get('kostenkalkulation'))}, Abzüge "
-                 f"{_eur(r.get('abzuege'))}, durch Gebühren zu decken "
+                 f"{_eur(r.get('deductions'))}, durch Gebühren zu decken "
                  f"{_eur(r.get('zu_deckende_kosten'))}")
             if r.get("gebuehr") is not None:
                 einheit = f" je {r['bezugseinheit']}" if r.get("bezugseinheit") else ""
@@ -2202,9 +2202,9 @@ def _ist_block(ist: dict | None) -> str:
     if not ist or not ist.get("gesamt"):
         return ""
     g = ist["gesamt"]
-    zeilen = [f"- Gesamt {ist['year']}: Aufwendungen geplant {_eur(g.get('aufwendungen_plan'))}, "
-              f"tatsächlich {_eur(g.get('aufwendungen_ist'))}; Erträge geplant "
-              f"{_eur(g.get('ertraege_plan'))}, tatsächlich {_eur(g.get('ertraege_ist'))}"]
+    zeilen = [f"- Gesamt {ist['year']}: Aufwendungen geplant {_eur(g.get('expenses_planned'))}, "
+              f"tatsächlich {_eur(g.get('expenses_actual'))}; Erträge geplant "
+              f"{_eur(g.get('revenues_planned'))}, tatsächlich {_eur(g.get('revenues_actual'))}"]
     if g.get("plan_art") and g["plan_art"] != "ansatz":
         # 2018 ist die Bezugsgröße die Gesamtermächtigung, 2020 der Ansatz samt
         # Nachtrag (27 Mio. Unterschied). Ohne diesen Hinweis vergleicht die
@@ -2213,8 +2213,8 @@ def _ist_block(ist: dict | None) -> str:
                       f"nicht der nackte Haushaltsansatz — sag das dazu)")
     for b in ist.get("bereiche") or []:
         zeilen.append(f"- {b.get('name')} {ist['year']}: Aufwendungen geplant "
-                      f"{_eur(b.get('aufwendungen_plan'))}, tatsächlich "
-                      f"{_eur(b.get('aufwendungen_ist'))}")
+                      f"{_eur(b.get('expenses_planned'))}, tatsächlich "
+                      f"{_eur(b.get('expenses_actual'))}")
     return ("\nGEPLANT UND TATSÄCHLICH (Jahresabschluss "
             f"{ist['year']} — ABGERECHNETE Zahlen, nicht der Haushaltsplan; nenne\n"
             "IMMER das Jahr dazu und nie mit [id] zitieren)"
@@ -2267,8 +2267,8 @@ def _produkte_block(p: dict | None) -> str:
         s = f"- {r['produkt_name']} ({p['year']}"
         if r.get("amt"):
             s += f", {r['amt']}"
-        s += f"): Aufwendungen {_eur(r.get('aufwendungen'))}, Zuschussbedarf " \
-             f"{_eur(abs(r['ergebnis']) if r.get('ergebnis') is not None else None)}"
+        s += f"): Aufwendungen {_eur(r.get('expenses'))}, Zuschussbedarf " \
+             f"{_eur(abs(r['result']) if r.get('result') is not None else None)}"
         if r.get("auftragsgrundlage"):
             s += f" — Rechtsgrundlage laut Haushaltsplan: " \
                  f"{' '.join(r['auftragsgrundlage'].split())[:220]}"
@@ -2284,17 +2284,17 @@ def _produkte_block(p: dict | None) -> str:
 
 def _konzern_block(k: dict | None) -> str:
     """Der Konzern Stadt — was der Kernhaushalt nicht zeigt."""
-    if not k or k.get("aufwendungen") is None:
+    if not k or k.get("expenses") is None:
         return ""
-    zeilen = [f"- Konzern {k['year']}: Aufwendungen {_eur(k.get('aufwendungen'))}, "
-              f"Erträge {_eur(k.get('ertraege'))}"]
+    zeilen = [f"- Konzern {k['year']}: Aufwendungen {_eur(k.get('expenses'))}, "
+              f"Erträge {_eur(k.get('revenues'))}"]
     kern = k.get("kern") or {}
-    if kern.get("aufwendungen"):
+    if kern.get("expenses"):
         zeilen.append(f"- Davon Kernverwaltung (der „normale“ Haushalt) {k['year']}: "
-                      f"Aufwendungen {_eur(kern['aufwendungen'])} — die Differenz sind "
+                      f"Aufwendungen {_eur(kern['expenses'])} — die Differenz sind "
                       f"Eigenbetriebe und Beteiligungen")
     for t in (k.get("traeger") or [])[:4]:
-        zeilen.append(f"- {t['traeger']}: {_eur((t.get('betrag_teur') or 0) * 1000)} "
+        zeilen.append(f"- {t['traeger']}: {_eur((t.get('amount_keur') or 0) * 1000)} "
                       f"Aufwendungen (auf Tausend Euro genau, mehr gibt der Bericht nicht her)")
     return (f"\nDER KONZERN STADT OLDENBURG (konsolidierter Gesamtabschluss {k['year']} —\n"
             "Kernverwaltung PLUS Eigenbetriebe und Beteiligungen). Nutze das, wenn nach\n"
@@ -2321,7 +2321,7 @@ def _ansatz_block(a: dict | None) -> str:
     Ausgabearten, wo `council_haushalt` nur Teilhaushalte kennt."""
     if not a or not a.get("posten"):
         return ""
-    zeilen = [f"- {p['bezeichnung']}: {_eur(p.get('betrag'))}" for p in a["posten"]]
+    zeilen = [f"- {p['bezeichnung']}: {_eur(p.get('amount'))}" for p in a["posten"]]
     return (f"\nHAUSHALTSANSATZ {a['year']} nach Ertrags- und Aufwandsarten (GEPLANT,\n"
             "aus dem Gesamtergebnishaushalt — der Stand der Einbringung, nicht\n"
             "zwingend der Beschluss des Rates; Jahr immer nennen, NIE mit [id])"
@@ -2421,7 +2421,7 @@ def _kennzahlen_block(k: dict | None) -> str:
         """Eine Kennzahl so schreiben, wie der Bericht sie druckt."""
         if einheit == "prozent":
             return f"{wert:.{stellen}f} %".replace(".", ",")
-        if einheit == "anzahl":
+        if einheit == "count":
             return f"{wert:,.0f}".replace(",", ".")
         return (f"{wert:,.{stellen}f} €".replace(",", "\u0001")
                 .replace(".", ",").replace("\u0001", "."))
@@ -2430,7 +2430,7 @@ def _kennzahlen_block(k: dict | None) -> str:
     for name, wert, einheit, stellen, formel in k["werte"]:
         if einheit == "prozent":
             gezeigt = f"{wert:.{stellen}f} %".replace(".", ",")
-        elif einheit == "anzahl":
+        elif einheit == "count":
             gezeigt = f"{wert:,.0f}".replace(",", ".")
         else:
             # Mit den GEDRUCKTEN Nachkommastellen, nicht mit `_eur`: Neben
@@ -2477,8 +2477,8 @@ def _schulden_block(s: dict | None) -> str:
     if s.get("hoch"):
         zeilen.append(f"- Höchster Stand der Reihe (sie beginnt {s['reihe_ab']}): "
                       f"{s['hoch']['year']} mit {_eur(s['hoch']['insgesamt'])}")
-    for titel, betrag in s.get("arten") or []:
-        zeilen.append(f"  - davon {titel}: {_eur(betrag)}")
+    for titel, amount in s.get("arten") or []:
+        zeilen.append(f"  - davon {titel}: {_eur(amount)}")
     if s.get("aufteilung_verworfen"):
         zeilen.append("  - Die Aufteilung nach Schuldenarten fehlt für dieses Jahr: "
                       "Sie ging in der Quelle selbst nicht auf und wurde deshalb "
@@ -2489,7 +2489,7 @@ def _schulden_block(s: dict | None) -> str:
     # der Zufall der Facette. Nebeneinander sind sie die ehrliche Antwort.
     for w in s.get("weitere") or []:
         zeilen.append(f"- Dieselbe Frage, andere Abgrenzung — {w['art']} "
-                      f"{w['year']}: {_eur(w['betrag'])} (Quelle: {w['quelle']})")
+                      f"{w['year']}: {_eur(w['amount'])} (Quelle: {w['quelle']})")
     if s.get("weitere"):
         zeilen.append("  Diese Zahlen NIE addieren: Die größere enthält die "
                       "kleinere. Wer nach „den Schulden“ fragt, bekommt die "
@@ -2524,10 +2524,10 @@ def _investitionen_block(i: dict | None) -> str:
         return ""
     g = i["gesamt"]
     zeilen = [f"- {g['bezeichnung']} ({i['year']}): Auszahlungen "
-              f"{_eur(g.get('auszahlungen'))}, Einzahlungen {_eur(g.get('einzahlungen'))}"]
+              f"{_eur(g.get('outflows'))}, Einzahlungen {_eur(g.get('inflows'))}"]
     for r in i.get("teilhaushalte") or []:
-        zeilen.append(f"  - {r['bezeichnung']}: Auszahlungen {_eur(r.get('auszahlungen'))}, "
-                      f"Einzahlungen {_eur(r.get('einzahlungen'))}")
+        zeilen.append(f"  - {r['bezeichnung']}: Auszahlungen {_eur(r.get('outflows'))}, "
+                      f"Einzahlungen {_eur(r.get('inflows'))}")
     return (f"\nINVESTITIONEN (Finanzhaushalt des Haushaltsplans {i['year']} — GEPLANT).\n"
             "ES SIND ZWEI HAUSHALTE, NICHT EINER: Hier steht, was die Stadt bauen und\n"
             "kaufen will. Im Ergebnishaushalt (Aufwendungen und Erträge, eigener\n"
@@ -2561,8 +2561,8 @@ def _gebaut_block(g: dict | None) -> str:
     if g.get("hoch"):
         zeilen.append(f"- Höchster Wert der Reihe (sie beginnt {g['reihe_ab']}): "
                       f"{g['hoch']['year']} mit {_eur(g['hoch']['insgesamt'])}")
-    for titel, betrag in g.get("arten") or []:
-        zeilen.append(f"  - davon {titel}: {_eur(betrag)}")
+    for titel, amount in g.get("arten") or []:
+        zeilen.append(f"  - davon {titel}: {_eur(amount)}")
     if g.get("fehlend"):
         jahre = ", ".join(str(j) for j in g["fehlend"])
         zeilen.append(f"- NICHT im Bestand: {jahre}. Dort ergeben die "
@@ -2596,7 +2596,7 @@ def _stellenplan_block(s: dict | None) -> str:
         zeilen.append(
             f"- Teil {t['teil']} ({t['teil_name']}): {_stellen(t.get('stellen_plan'))} "
             f"Stellen im Haushaltsjahr {s['jahrgang']}. Im Vorjahr waren es "
-            f"{_stellen(t.get('stellen_vorjahr'))} Stellen, davon "
+            f"{_stellen(t.get('positions_prior_year'))} Stellen, davon "
             f"{_stellen(t.get('besetzt'))} besetzt und "
             f"{_stellen(t.get('nicht_besetzt'))} nicht besetzt")
     if s.get("fehlend"):
@@ -2635,7 +2635,7 @@ def _antraege_block(a: dict | None) -> str:
                      "eigenen Entwurfs, kein Fraktionsantrag)")
         zeilen.append(kopf)
         for u in st.get("urheber") or []:
-            zeilen.append(f"  - {u['name']}: {u['anzahl']} — davon {u['angenommen']} "
+            zeilen.append(f"  - {u['name']}: {u['count']} — davon {u['angenommen']} "
                           f"angenommen, {u['abgelehnt']} abgelehnt")
         b = st.get("official_text") or {}
         if b.get("outcome"):

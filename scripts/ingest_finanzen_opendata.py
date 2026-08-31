@@ -150,7 +150,7 @@ def main() -> int:
                                "Gesamtinvestitionen“. Für welches Jahr die Datei "
                                "gilt, steht nicht in ihr, sondern in ihrem "
                                f"Dateinamen (…_{year}_Finanzhaushalt.csv)",
-                    probe_ergebnis=gelesen["nachweis"],
+                    probe_result=gelesen["nachweis"],
                     stand=f"Haushaltsplan {year} — Plan, nicht Ist",
                     **anker),
                 finanzhaushalt=gelesen["finanzhaushalt"],
@@ -172,8 +172,8 @@ def main() -> int:
             gespeichert.append(year)
             g = gelesen["gesamt"]
             print(f"Investitionen {year}: {len(gelesen['zeilen'])} Teilhaushalte, "
-                  f"{n} Zeilen · Auszahlungen {g['auszahlungen']/1e6:.1f} Mio. · "
-                  f"Einzahlungen {g['einzahlungen']/1e6:.1f} Mio. · "
+                  f"{n} Zeilen · Auszahlungen {g['outflows']/1e6:.1f} Mio. · "
+                  f"Einzahlungen {g['inflows']/1e6:.1f} Mio. · "
                   f"{gelesen['nachweis']}")
         if gespeichert:
             print(f"Investitionen gesamt: {len(gespeichert)} Jahrgänge "

@@ -153,14 +153,14 @@ def entzerren(text: str) -> str:
 #: Reihenfolge ist Absicht: „außerordentliche Erträge" muss vor der
 #: Ertragssumme geprüft werden, sonst fängt die Summe es ein.
 ROLLEN: tuple[tuple[str, str], ...] = (
-    ("ao_ertraege", r"^außerordentliche\s+erträge"),
-    ("ao_aufwendungen", r"^außerordentliche\s+aufwendungen"),
+    ("extraordinary_revenues", r"^außerordentliche\s+erträge"),
+    ("extraordinary_expenses", r"^außerordentliche\s+aufwendungen"),
     # 2019 schreibt „Außerordentlichen Ergebnis" — Tippfehler der Quelle, der
     # sich über vier Jahrgänge hält. Die Endung bleibt deshalb offen.
     ("ao_ergebnis", r"^außerordentliche[nrs]?\s+(gesamt)?ergebnis"),
     ("gesamtergebnis", r"^gesamtjahres(ergebnis|überschuss|fehlbetrag)"),
-    ("ertraege_summe", r"^(ordentliche\s+gesamterträge|summe\s+ordentliche\s+erträge)"),
-    ("aufwendungen_summe",
+    ("revenues_total", r"^(ordentliche\s+gesamterträge|summe\s+ordentliche\s+erträge)"),
+    ("expenses_total",
      r"^(ordentliche\s+gesamtaufwendungen|summe\s+ordentliche\s+aufwendungen)"),
     ("ord_ergebnis", r"^ordentliche[ns]?\s+(gesamt)?ergebnis"),
     ("zinsaufwand", r"^zinsen und (ähnliche|sonstige) (aufwendungen|finanzaufwendungen)"),
@@ -171,7 +171,7 @@ ROLLEN: tuple[tuple[str, str], ...] = (
 #: Rollen, die Summen oder Salden sind — keine eigenständige Ertrags- oder
 #: Aufwandsart. Eine Torte aus allen Posten wäre sonst doppelt gezählt.
 SUMMEN_ROLLEN = frozenset({
-    "ertraege_summe", "aufwendungen_summe", "ord_ergebnis",
+    "revenues_total", "expenses_total", "ord_ergebnis",
     "ao_ergebnis", "gesamtergebnis"})
 
 _ANKER = re.compile(r"1\.\s*Steuern und ähnliche Abgaben")
@@ -228,7 +228,7 @@ def _posten_zeilen(rumpf: str, tausend: bool) -> list[dict]:
     Summe der ordentlichen Aufwendungen wegzuwerfen — und mit ihr die erste
     Rechenprobe und damit den ganzen Jahrgang."""
     erster = re.compile(rf"({_EUR})")
-    nur_vorjahr = re.compile(rf"^\s*({_TEUR if tausend else _EUR})\s*$")
+    only_prior_year = re.compile(rf"^\s*({_TEUR if tausend else _EUR})\s*$")
     offen_nr: int | None = None
     offen_text = ""
     aus: list[dict] = []
@@ -251,17 +251,17 @@ def _posten_zeilen(rumpf: str, tausend: bool) -> list[dict]:
             offen_text = f"{offen_text} {zeile}".strip()
             continue
         text = " ".join(f"{offen_text} {zeile[:treffer.start()]}".split())
-        betrag = _zahl(treffer.group(1))
+        amount = _zahl(treffer.group(1))
         offen_text = ""
         nr, offen_nr = offen_nr, None
-        if betrag is None or not text or _ZAHL_IM_TEXT.search(text):
+        if amount is None or not text or _ZAHL_IM_TEXT.search(text):
             continue
-        rest = nur_vorjahr.match(zeile[treffer.end():])
-        vorjahr = _zahl(rest.group(1), dezimal=not tausend) if rest else None
-        if vorjahr is not None and tausend:
-            vorjahr *= 1000.0
+        rest = only_prior_year.match(zeile[treffer.end():])
+        prior_year = _zahl(rest.group(1), dezimal=not tausend) if rest else None
+        if prior_year is not None and tausend:
+            prior_year *= 1000.0
         aus.append({"nr": nr, "bezeichnung": text, "rolle": _rolle(text),
-                    "betrag": betrag, "vorjahr": vorjahr})
+                    "amount": amount, "prior_year": prior_year})
         # Das Gesamtjahresergebnis schließt die Tabelle ab. Ohne diesen Halt
         # liest der Parser in die Anlagenübersicht weiter, die gleich darauf
         # folgt und ebenfalls mit „1." beginnt.
@@ -289,25 +289,25 @@ def parse_gesamtergebnisrechnung(text: str) -> dict | None:
         kopf, rumpf = roh[max(0, m.start() - 600):m.start()], roh[m.start():m.start() + 12000]
         posten = _posten_zeilen(rumpf, _vorjahr_in_tausend(kopf))
         nach_rolle = {p["rolle"]: p for p in posten if p["rolle"]}
-        if "ertraege_summe" not in nach_rolle or "gesamtergebnis" not in nach_rolle:
+        if "revenues_total" not in nach_rolle or "gesamtergebnis" not in nach_rolle:
             continue  # Anlagenübersicht o. Ä. — sieht am Anfang ähnlich aus.
 
         def wert(rolle: str) -> float | None:
             eintrag = nach_rolle.get(rolle)
-            return eintrag["betrag"] if eintrag else None
+            return eintrag["amount"] if eintrag else None
 
         ord_ergebnis = wert("ord_ergebnis")
         ao_ergebnis = wert("ao_ergebnis")
         proben = [p for p in (
             _probe("Erträge − Aufwendungen = ordentliches Ergebnis",
-                   (wert("ertraege_summe") or 0) - (wert("aufwendungen_summe") or 0)
-                   if wert("ertraege_summe") is not None
-                   and wert("aufwendungen_summe") is not None else None,
+                   (wert("revenues_total") or 0) - (wert("expenses_total") or 0)
+                   if wert("revenues_total") is not None
+                   and wert("expenses_total") is not None else None,
                    ord_ergebnis),
             _probe("a.o. Erträge − a.o. Aufwendungen = a.o. Ergebnis",
-                   (wert("ao_ertraege") or 0) - (wert("ao_aufwendungen") or 0)
-                   if wert("ao_ertraege") is not None
-                   and wert("ao_aufwendungen") is not None else None,
+                   (wert("extraordinary_revenues") or 0) - (wert("extraordinary_expenses") or 0)
+                   if wert("extraordinary_revenues") is not None
+                   and wert("extraordinary_expenses") is not None else None,
                    ao_ergebnis),
             _probe("ordentliches + a.o. Ergebnis = Gesamtjahresergebnis",
                    (ord_ergebnis or 0) + (ao_ergebnis or 0)
@@ -340,8 +340,8 @@ TRAEGER: tuple[tuple[str, str, str], ...] = (
 #: Womit die beiden Aufstellungen anfangen. Der Bericht kündigt sie wörtlich
 #: an; die Überschrift „4.1.1" steht im Extrakt nicht zuverlässig davor.
 _TRAEGER_ANKER = (
-    ("ertraege", re.compile(r"ordentlichen Gesamterträge entwickelten sich")),
-    ("aufwendungen", re.compile(r"ordentlichen Gesamtaufwendungen entwickelten sich")),
+    ("revenues", re.compile(r"ordentlichen Gesamterträge entwickelten sich")),
+    ("expenses", re.compile(r"ordentlichen Gesamtaufwendungen entwickelten sich")),
 )
 _TRAEGER_ZEILE = re.compile(
     rf"^(.{{4,70}}?)\s+({_TEUR})\s+({_TEUR})\s+({_TEUR})\s*$")
@@ -387,8 +387,8 @@ def parse_traeger(text: str) -> list[dict]:
                     continue
                 key, anzeige = erkannt
                 zeilen.append({"art": art, "traeger_key": key, "traeger": anzeige,
-                               "betrag_teur": werte[0], "vorjahr_teur": werte[1],
-                               "veraenderung_teur": werte[2],
+                               "amount_keur": werte[0], "prior_year_keur": werte[1],
+                               "change_keur": werte[2],
                                "probe_ok": abs((werte[0] - werte[1]) - werte[2])
                                <= TOLERANZ_TEUR})
                 continue
@@ -397,22 +397,22 @@ def parse_traeger(text: str) -> list[dict]:
                 if treffer:
                     werte = [_zahl(treffer.group(i), dezimal=False) for i in (1, 2, 3)]
                     if all(w is not None for w in werte):
-                        summe = {"betrag_teur": werte[0], "vorjahr_teur": werte[1]}
+                        summe = {"amount_keur": werte[0], "prior_year_keur": werte[1]}
                         break
         if not zeilen or summe is None:
             continue
         gut = [z for z in zeilen if z["probe_ok"]]
-        gerechnet = sum(z["betrag_teur"] for z in zeilen)
+        gerechnet = sum(z["amount_keur"] for z in zeilen)
         aus.append({
             "art": art,
             "zeilen": gut,
             "verworfen": len(zeilen) - len(gut),
-            "summe_teur": summe["betrag_teur"],
+            "total_keur": summe["amount_keur"],
             # Spaltenprobe: alle Träger plus Konsolidierungszeile ergeben die
             # ausgewiesene Gesamtsumme. Die Konsolidierungszeile steht in
             # `zeilen` und trägt ihr Minus selbst — nichts abzuziehen.
-            "spaltenprobe_ok": abs(gerechnet - summe["betrag_teur"]) <= TOLERANZ_TEUR,
-            "spaltenprobe_delta": round(gerechnet - summe["betrag_teur"], 2),
+            "spaltenprobe_ok": abs(gerechnet - summe["amount_keur"]) <= TOLERANZ_TEUR,
+            "spaltenprobe_delta": round(gerechnet - summe["amount_keur"], 2),
         })
     return aus
 
@@ -420,7 +420,7 @@ def parse_traeger(text: str) -> list[dict]:
 # --- Beides zusammen --------------------------------------------------------
 
 #: Welche Rolle der Gesamtergebnisrechnung zu welcher Trägeraufstellung gehört.
-_QUERPROBE = {"ertraege": "ertraege_summe", "aufwendungen": "aufwendungen_summe"}
+_QUERPROBE = {"revenues": "revenues_total", "expenses": "expenses_total"}
 
 
 def lies(text: str) -> dict:
@@ -447,7 +447,7 @@ def lies(text: str) -> dict:
         verworfen += block["verworfen"]
         summenposten = nach_rolle.get(_QUERPROBE[block["art"]])
         block["querprobe_delta"] = (
-            round(block["summe_teur"] - summenposten["betrag"] / 1000.0, 2)
+            round(block["total_keur"] - summenposten["amount"] / 1000.0, 2)
             if summenposten else None)
         block["querprobe_ok"] = (block["querprobe_delta"] is not None
                                  and abs(block["querprobe_delta"]) <= TOLERANZ_TEUR)

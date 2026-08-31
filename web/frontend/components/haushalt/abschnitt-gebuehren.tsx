@@ -119,13 +119,13 @@ function Tarifliste({ tarife }: { tarife: GebuehrensatzZeile[] }) {
             </dt>
             <dd className="max-w-[48%] flex-none text-right tabular-nums">
               <span className="block text-[12px] font-semibold">
-                <Euro wert={t.betrag} stellen={2} />
+                <Euro wert={t.amount} stellen={2} />
               </span>
               <span className="block text-[10.5px] leading-snug text-muted-foreground">
                 {t.einheit}
-                {t.veraenderung_prozent != null && t.veraenderung_prozent !== 0 && (
-                  <> · {t.veraenderung_prozent > 0 ? "+" : ""}
-                    {deZahl(t.veraenderung_prozent, 2)}&#8239;%</>
+                {t.change_pct != null && t.change_pct !== 0 && (
+                  <> · {t.change_pct > 0 ? "+" : ""}
+                    {deZahl(t.change_pct, 2)}&#8239;%</>
                 )}
               </span>
             </dd>
@@ -175,7 +175,7 @@ function BereichsKarte({ zeilen, tarife, herkunftFuer }: {
         <Zeile label={`Was der Bereich ${letzte.year} kostet`}
           wert={letzte.kostenkalkulation} />
         <Zeile label="davon getragen von Dritten, Erlösen und Vorjahren"
-          wert={letzte.abzuege} />
+          wert={letzte.deductions} />
         <Zeile label="Von den Gebühren zu decken"
           wert={letzte.zu_deckende_kosten} summe />
       </div>

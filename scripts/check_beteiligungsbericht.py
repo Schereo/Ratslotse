@@ -168,7 +168,7 @@ def main(db: str | None = None, heute: date | None = None, trocken: bool = False
     p = protokoll or finanzquellen.Protokoll(still=still)
     store = CouncilStore(Path(db or COUNCIL_DB))
     fehler: list[str] = []
-    ergebnis: dict = {"gesellschaften": 0, "texte": 0, "kennzahlen": 0,
+    result: dict = {"gesellschaften": 0, "texte": 0, "kennzahlen": 0,
                       "personen": 0, "eigentuemer": 0, "ohne_zuordnung": 0,
                       "verworfen": 0, "widersprueche": 0, "bestand_geschuetzt": 0,
                       "jahrgaenge": [], "konzernvergleich": 0}
@@ -221,7 +221,7 @@ def main(db: str | None = None, heute: date | None = None, trocken: bool = False
                     f"{len(dokumente[year]['seiten'])} Seiten")
 
         if dokumente and not trocken:
-            ergebnis = beteiligungsbericht.einlesen(store, dokumente, p, schuetzen)
+            result = beteiligungsbericht.einlesen(store, dokumente, p, schuetzen)
             store.herkunft_aufraeumen()
         vorhanden = sorted(store.beteiligungsbericht_jahre())
         ohne_herkunft = store.herkunft_luecken()
@@ -245,34 +245,34 @@ def main(db: str | None = None, heute: date | None = None, trocken: bool = False
                  f"nicht, woher sie kommen (siehe council/herkunft.py)")
 
     befund = sorted([f"fehlt:{j}" for j in fehlend] + [f"fehler:{f}" for f in fehler]
-                    + ([f"widerspruch:{ergebnis['widersprueche']}"]
-                       if ergebnis["widersprueche"] else []))
+                    + ([f"widerspruch:{result['widersprueche']}"]
+                       if result["widersprueche"] else []))
     gemeldet = False
     if befund and not trocken and not _schon_gemeldet(befund):
         from kern.alerts import notify_admin
 
         notify_admin(
-            _hinweis_text(fehlend, fehler, ergebnis["widersprueche"], heute),
+            _hinweis_text(fehlend, fehler, result["widersprueche"], heute),
             betreff="Ratslotse – Beteiligungsbericht: es fehlt etwas",
             fusszeile="Hinweis des Cron-Jobs check_beteiligungsbericht — kein Fehler.")
         gemeldet = True
 
     aus = {
-        "Berichte gelesen": len(ergebnis["jahrgaenge"]),
-        "Gesellschaften": ergebnis["gesellschaften"],
-        "Textabschnitte": ergebnis["texte"],
-        "Kennzahlen": ergebnis["kennzahlen"],
-        "Aufsichtspersonen": ergebnis.get("personen", 0),
-        "Eigentümer": ergebnis.get("eigentuemer", 0),
+        "Berichte gelesen": len(result["jahrgaenge"]),
+        "Gesellschaften": result["gesellschaften"],
+        "Textabschnitte": result["texte"],
+        "Kennzahlen": result["kennzahlen"],
+        "Aufsichtspersonen": result.get("personen", 0),
+        "Eigentümer": result.get("eigentuemer", 0),
         # Wie oft die Spaltenprobe der Aufsichtsorgane gerissen ist. Kein
         # Fehler, sondern eine Eigenschaft des Dokuments: Dort führt der
         # Bericht mehr Namen als Ämter, und dann steht bei dieser
         # Gesellschaft an keinem Namen ein Amt.
-        "Ämter nicht zuordenbar": ergebnis.get("ohne_zuordnung", 0),
-        "Ohne Probe verworfen": ergebnis["verworfen"],
-        "Widersprüche": ergebnis["widersprueche"],
-        "Auch im Gesamtabschluss": ergebnis.get("konzernvergleich", 0),
-        "Bestand geschützt": ergebnis["bestand_geschuetzt"],
+        "Ämter nicht zuordenbar": result.get("ohne_zuordnung", 0),
+        "Ohne Probe verworfen": result["verworfen"],
+        "Widersprüche": result["widersprueche"],
+        "Auch im Gesamtabschluss": result.get("konzernvergleich", 0),
+        "Bestand geschützt": result["bestand_geschuetzt"],
         "Download-Fehler": len(fehler),
         "Hinweis verschickt": 1 if gemeldet else 0,
         "Zeilen ohne Herkunft": sum(ohne_herkunft.values()),

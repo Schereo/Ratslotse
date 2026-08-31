@@ -101,8 +101,8 @@ def _serie(store: CouncilStore, trocken: bool) -> dict:
                         stationen[0] if stationen else None)
         zeilen.append({
             "template_number": b.template_number, "year": b.year, "titel": b.titel,
-            "art": b.art, "kategorie": b.kategorie, "betrag": b.betrag,
-            "betrag_quelle": b.betrag_quelle, "beschlossen": b.beschlossen,
+            "art": b.art, "kategorie": b.kategorie, "amount": b.amount,
+            "amount_source": b.amount_source, "beschlossen": b.beschlossen,
             "im_rat": b.im_rat, "ratsentscheidung": b.ratsentscheidung,
             "beschluss_id": (fuehrend or {}).get("id"),
             "gremien": sorted({str(d.get("committee") or "") for d in stationen}),
@@ -110,9 +110,9 @@ def _serie(store: CouncilStore, trocken: bool) -> dict:
         })
 
     einzel = [z for z in zeilen if z["art"] != nb.ART_SCHWELLE]
-    aus_titel = sum(1 for z in einzel if z["betrag_quelle"] == "titel")
-    aus_text = sum(1 for z in einzel if z["betrag_quelle"] == "beschlussvorschlag")
-    ohne = [z["template_number"] for z in einzel if z["betrag_quelle"] is None]
+    aus_titel = sum(1 for z in einzel if z["amount_source"] == "titel")
+    aus_text = sum(1 for z in einzel if z["amount_source"] == "beschlussvorschlag")
+    ohne = [z["template_number"] for z in einzel if z["amount_source"] is None]
     geprueft = sum(1 for z in zeilen if z["volltextprobe"])
     quote = (aus_titel + aus_text) / len(einzel) * 100 if einzel else 0.0
 
@@ -139,9 +139,9 @@ def _serie(store: CouncilStore, trocken: bool) -> dict:
         probe=nb.PROBE_VOLLTEXT,
         stand=f"Haushaltsjahre {min(z['year'] for z in zeilen if z['year'])}"
               f"–{max(z['year'] for z in zeilen if z['year'])}",
-        probe_ergebnis=nachweis))
-    return {"vorlagen": len(zeilen), "mit_betrag": aus_titel + aus_text,
-            "ohne_betrag": len(ohne)}
+        probe_result=nachweis))
+    return {"vorlagen": len(zeilen), "with_amount": aus_titel + aus_text,
+            "without_amount": len(ohne)}
 
 
 def _berichte(store: CouncilStore, serie: list[nb.Bewilligung],
@@ -164,7 +164,7 @@ def _berichte(store: CouncilStore, serie: list[nb.Bewilligung],
             serie, kap, nb.vorlagen_im_kapitel(text))
         rat = kap.kanal("rat")
         print(f"  {year}: {kap.gesamt:>15,.2f} € gesamt · Rat "
-              f"{rat.betrag:>15,.2f} € ({kap.rats_anteil:.1f} %) · "
+              f"{rat.amount:>15,.2f} € ({kap.rats_anteil:.1f} %) · "
               f"{len(kap.kanaele)} Wege")
         print(f"        Tabellenprobe: {probe.als_text()}")
         print(f"        Ratsabgleich:  {abgleich.als_text()}")
@@ -176,17 +176,17 @@ def _berichte(store: CouncilStore, serie: list[nb.Bewilligung],
         # Zeile, deren Probe nicht aufging, ist keine Zeile ohne Probe.
         store.save_nachbewilligung_jahr(
             {"year": year,
-             "summe_konsumtiv": kap.summe_konsumtiv,
-             "summe_investiv": kap.summe_investiv,
+             "total_operating": kap.total_operating,
+             "total_capital": kap.total_capital,
              "text_gesamt": kap.text_gesamt,
-             "verpflichtungen_betrag": kap.verpflichtungen_betrag,
+             "commitments_amount": kap.commitments_amount,
              "probe_ok": probe.bestanden,
              "probe_text": probe.als_text()},
             [{"kanal": k.schluessel, "label": k.label,
-              "anzahl_konsumtiv": k.anzahl_konsumtiv,
-              "betrag_konsumtiv": k.betrag_konsumtiv,
-              "anzahl_investiv": k.anzahl_investiv,
-              "betrag_investiv": k.betrag_investiv} for k in kap.kanaele],
+              "count_operating": k.count_operating,
+              "amount_operating": k.amount_operating,
+              "count_capital": k.count_capital,
+              "amount_capital": k.amount_capital} for k in kap.kanaele],
             h.Herkunft(
                 art="ris", dokument_id=dokument,
                 label=BERICHT_LABEL.format(year=year),
@@ -194,7 +194,7 @@ def _berichte(store: CouncilStore, serie: list[nb.Bewilligung],
                            "Aufwendungen und Auszahlungen",
                 probe=[nb.PROBE_TABELLE, nb.PROBE_RAT],
                 stand=f"Haushaltsjahr {year}",
-                probe_ergebnis=f"{probe.als_text()} {abgleich.als_text()}"))
+                probe_result=f"{probe.als_text()} {abgleich.als_text()}"))
         gelesen += 1
     return {"berichte": gelesen, "widersprueche": len(widersprueche)}
 
@@ -209,7 +209,7 @@ def main() -> dict:
     store = CouncilStore(args.db)
     try:
         print("Nachbewilligungen aus dem Ratsinformationssystem:")
-        ergebnis = _serie(store, args.trockenlauf)
+        result = _serie(store, args.trockenlauf)
 
         # Für den Abgleich wird die Serie noch einmal als Objekte gebraucht —
         # aus derselben Lesung, damit Probe und Bestand dasselbe meinen.
@@ -217,7 +217,7 @@ def main() -> dict:
         serie = nb.aus_vorlagen(vorlagen, beschluesse)
 
         print("Rechenschaftsberichte, Kapitel 3:")
-        ergebnis |= _berichte(store, serie, args.trockenlauf)
+        result |= _berichte(store, serie, args.trockenlauf)
 
         if not args.trockenlauf:
             store.herkunft_aufraeumen()
@@ -226,10 +226,10 @@ def main() -> dict:
             if luecken:
                 print(f"WARNUNG: Zeilen ohne Herkunft: {luecken}",
                       file=sys.stderr)
-                ergebnis["herkunft_luecken"] = sum(luecken.values())
+                result["herkunft_luecken"] = sum(luecken.values())
     finally:
         store.close()
-    return ergebnis
+    return result
 
 
 if __name__ == "__main__":

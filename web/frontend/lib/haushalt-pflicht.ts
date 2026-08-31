@@ -171,7 +171,7 @@ export type SpielraumBefund = {
   schluessel: BereichSchluessel;
   produkte: number;
   /** Summe der Aufwendungen aller Produkte dieses Teilhaushalts, in Euro. */
-  aufwand: number;
+  expense: number;
   /** Anteil am Aufwand je Stufe, 0–1. `ohne` = Produkte ohne Angabe. */
   anteil: Record<Spielraum | "ohne", number>;
   /** Die Stufe mit dem größten Aufwandsanteil, oder `null` bei Gleichstand
@@ -203,20 +203,20 @@ export function spielraumBefunde(
     let b = aus.get(s);
     if (!b) {
       b = {
-        year, schluessel: s, produkte: 0, aufwand: 0,
+        year, schluessel: s, produkte: 0, expense: 0,
         anteil: leerZaehler(), dominant: null, groesste: null,
       };
       aus.set(s, b);
     }
-    const a = p.aufwendungen ?? 0;
+    const a = p.expenses ?? 0;
     b.produkte += 1;
-    b.aufwand += a;
+    b.expense += a;
     b.anteil[p.beeinflussbarkeit ?? "ohne"] += a;
-    if (!b.groesste || a > (b.groesste.aufwendungen ?? 0)) b.groesste = p;
+    if (!b.groesste || a > (b.groesste.expenses ?? 0)) b.groesste = p;
   }
   for (const b of aus.values()) {
     const roh = { ...b.anteil };
-    const summe = b.aufwand;
+    const summe = b.expense;
     for (const k of ["niedrig", "mittel", "hoch", "ohne"] as const) {
       b.anteil[k] = summe > 0 ? roh[k] / summe : 0;
     }

@@ -60,7 +60,7 @@ import {
 import { useFetch } from "@/lib/use-fetch";
 import {
   HaushaltAuswahl, haushaltUrl, Produkt, ProdukteAntwort, SPIELRAUM_TEXT, Spielraum,
-  bereichSlug, betrag,
+  bereichSlug, amount,
 } from "@/lib/haushalt";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import { Beleg } from "@/components/haushalt/quelle";
@@ -71,9 +71,9 @@ import { cn } from "@/lib/utils";
 const STUFEN: Spielraum[] = ["niedrig", "mittel", "hoch"];
 
 /** Zuschussbedarf in Euro — was das Produkt die Stadt unterm Strich kostet.
- *  `ergebnis` ist negativ, wenn es zuschussbedürftig ist. */
+ *  `result` ist negativ, wenn es zuschussbedürftig ist. */
 function netto(p: Produkt): number {
-  return -(p.ergebnis ?? 0);
+  return -(p.result ?? 0);
 }
 
 /** Aufeinanderfolgende Jahre zu Spannen bündeln: [2019, 2020, 2022] →
@@ -153,7 +153,7 @@ function Treffer({ p, max, aktiv, alleJahre, eingebettet = false }: {
   eingebettet?: boolean;
 }) {
   const n = netto(p);
-  const b = betrag(Math.abs(n));
+  const b = amount(Math.abs(n));
   return (
     <Link
       href={`/haushalt/produkte?nr=${encodeURIComponent(p.produkt_nr)}`}
@@ -414,9 +414,9 @@ function FuerWen({ text }: { text: string }) {
  *  Lücke wird nicht mit einer Vermutung gefüllt. */
 function Steckbrief({ p, year, alleJahre }: { p: Produkt; year: number; alleJahre: number[] }) {
   const n = netto(p);
-  const gross = betrag(Math.abs(n));
-  const aus = betrag(p.aufwendungen ?? 0);
-  const ein = betrag(p.ertraege ?? 0);
+  const gross = amount(Math.abs(n));
+  const aus = amount(p.expenses ?? 0);
+  const ein = amount(p.revenues ?? 0);
   const spielraum = p.beeinflussbarkeit ? SPIELRAUM_TEXT[p.beeinflussbarkeit] : null;
 
   return (
@@ -646,7 +646,7 @@ export function ProdukteAbschnitt({ onBestand }: {
    *  Fließtext"). Aus den Facetten, nicht aus `treffer`: Die Facetten zählen
    *  das ganze Jahr, egal welcher Filter gerade gesetzt ist. */
   onBestand?: (b: {
-    anzahl: number;
+    count: number;
     year: number;
     /** Die drei größten Aufgaben nach Zuschussbedarf — fürs Minibild der
      *  Bühne, mit echten Namen statt einer abstrakten Baum-Skizze
@@ -701,12 +701,12 @@ export function ProdukteAbschnitt({ onBestand }: {
     // Seite, nicht die gerade getippte Suche — beim Filtern bleibt der
     // zuletzt gemeldete Bestand stehen.
     if (entprellt.trim() || amt || spielraum) return;
-    const anzahl = (data.facetten?.aemter ?? []).reduce((s, a) => s + a.anzahl, 0);
+    const count = (data.facetten?.aemter ?? []).reduce((s, a) => s + a.count, 0);
     const beispiele = [...data.produkte]
       .sort((a, b) => Math.abs(netto(b)) - Math.abs(netto(a)))
       .slice(0, 3)
       .map((pr) => ({ name: pr.produkt_name, wert: Math.abs(netto(pr)) }));
-    onBestand(anzahl > 0 ? { anzahl, year, beispiele } : null);
+    onBestand(count > 0 ? { count, year, beispiele } : null);
   }, [onBestand, uebersicht.loading, loading, data, year, entprellt, amt, spielraum]);
 
   // Leerzustand mit „Ähnlich klingen" (H4-04): Erst wenn die gefilterte
@@ -746,7 +746,7 @@ export function ProdukteAbschnitt({ onBestand }: {
   const gefiltert = Boolean(entprellt.trim() || amt || spielraum);
   const aemter = data?.facetten?.aemter ?? [];
   const stufen = data?.facetten?.spielraum ?? {};
-  const gesamt = aemter.reduce((s, a) => s + a.anzahl, 0);
+  const gesamt = aemter.reduce((s, a) => s + a.count, 0);
   const mitBeschreibung = data?.facetten?.mit_feld?.kurzbeschreibung ?? 0;
   const aktiv = data?.produkt ?? null;
 
@@ -814,7 +814,7 @@ export function ProdukteAbschnitt({ onBestand }: {
                 className="h-9 w-full rounded-lg border border-border bg-background px-2 text-[12.5px] outline-none focus:border-primary/50">
                 <option value="">Alle Ämter ({gesamt})</option>
                 {aemter.map((a) => (
-                  <option key={a.amt} value={a.amt}>{a.amt} ({a.anzahl})</option>
+                  <option key={a.amt} value={a.amt}>{a.amt} ({a.count})</option>
                 ))}
               </select>
             </label>

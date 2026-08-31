@@ -162,7 +162,7 @@ export function VerfahrensWegKarte({ daten, jahrgang, className }: {
                     }} />
                   {s.label}
                 </span>
-                <Mio euro={s.saldo} />
+                <Mio euro={s.balance} />
               </p>
             );
           })}

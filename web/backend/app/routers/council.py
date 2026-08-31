@@ -392,10 +392,10 @@ def zahl_der_woche(
     for days in (7, 30):
         top = store.top_amount_since((today - timedelta(days=days)).isoformat())
         if top:
-            return {"kind": "betrag", "amount_eur": top["amount_eur"],
+            return {"kind": "amount", "amount_eur": top["amount_eur"],
                     "decision_id": top["id"], "title": top["title"],
                     "session_date": top["session_date"], "window_days": days}
-    return {"kind": "anzahl",
+    return {"kind": "count",
             "count": store.count_decisions_since((today - timedelta(days=7)).isoformat()),
             "window_days": 7}
 
@@ -443,11 +443,11 @@ def haushalt_produkte(
     einzeln = store.produkt(year, nr) if nr else None
     if einzeln:
         einzeln["jahre"] = abdeckung.get(einzeln["produkt_nr"], [])
-    summe = sum(p["aufwendungen"] or 0 for p in store.get_produkte(year))
-    plan = next((z for z in store.get_haushalt(year) if z["is_summe"]), None)
-    quote = round(summe / plan["aufwendungen"] * 100, 1) if plan and plan["aufwendungen"] else None
+    summe = sum(p["expenses"] or 0 for p in store.get_produkte(year))
+    plan = next((z for z in store.get_haushalt(year) if z["is_total"]), None)
+    quote = round(summe / plan["expenses"] * 100, 1) if plan and plan["expenses"] else None
     return {"year": year, "produkte": produkte, "abdeckung_prozent": quote,
-            "plan_aufwendungen": plan["aufwendungen"] if plan else None,
+            "plan_expenses": plan["expenses"] if plan else None,
             "treffer": len(produkte),
             "alle_jahre": store.produkte_jahre(),
             "facetten": store.produkt_facetten(year),
@@ -600,7 +600,7 @@ def haushalt_konzern(
         eintrag = je_jahr.setdefault(
             p["year"], {"year": p["year"], "herkunft_id": p["herkunft_id"]})
         if p["rolle"]:
-            eintrag[p["rolle"]] = p["betrag"]
+            eintrag[p["rolle"]] = p["amount"]
 
     # Gegenprobe: Trägerzeile „Stadt Oldenburg" (TEUR) gegen unseren
     # Jahresabschluss (Euro). Abgeglichen wird auf Tausend genau — feiner
@@ -614,8 +614,8 @@ def haushalt_konzern(
             continue
         gegenprobe.append({
             "year": t["year"], "art": t["art"],
-            "konzern": t["betrag_teur"] * 1000.0, "jahresabschluss": ist,
-            "ok": abs(t["betrag_teur"] - ist / 1000.0) <= 1.0,
+            "konzern": t["amount_keur"] * 1000.0, "jahresabschluss": ist,
+            "ok": abs(t["amount_keur"] - ist / 1000.0) <= 1.0,
         })
 
     ids = sorted({z["herkunft_id"] for z in (*posten, *traeger)
@@ -623,9 +623,9 @@ def haushalt_konzern(
     return {
         "jahre": store.konzern_jahre(),
         "konzern": [je_jahr[j] for j in sorted(je_jahr)],
-        "traeger": [{**t, "betrag": t["betrag_teur"] * 1000.0,
-                     "vorjahr": (t["vorjahr_teur"] * 1000.0
-                                 if t["vorjahr_teur"] is not None else None)}
+        "traeger": [{**t, "amount": t["amount_keur"] * 1000.0,
+                     "prior_year": (t["prior_year_keur"] * 1000.0
+                                 if t["prior_year_keur"] is not None else None)}
                     for t in traeger],
         "posten": posten,
         "gegenprobe": gegenprobe,
@@ -972,7 +972,7 @@ def haushalt_uebersicht(
     - ``finanzrechnung``: die Kassensicht aus demselben Jahresabschluss
       (Abschnitt 4.1) — nicht was gebucht, sondern was **gezahlt** wurde.
       Jede Zeile trägt neben der Nummer des Dokuments eine ``rolle``
-      (``saldo_verwaltung``, ``saldo_investition``, ``finanzmittel``, …);
+      (``balance_operating``, ``balance_capital``, ``finanzmittel``, …);
       **an der Rolle hängen, nicht an der Nummer**: Die Tabelle hat
       2017–2020 eine Zeile mehr als ab 2021, alle Nummern ab 08
       verschieben sich dadurch. ``ermaechtigung`` ist das aus Vorjahren
@@ -995,7 +995,7 @@ def haushalt_uebersicht(
       Kernhaushalt addierbar** — der Eigenbetrieb Gebäudewirtschaft vermietet
       der Stadt ihre eigenen Gebäude, seine Erträge sind zu großen Teilen
       Aufwand des Kernhaushalts; herausgerechnet wird das erst im
-      Gesamtabschluss. ``ertraege``/``aufwendungen`` sind ``null``, wo die
+      Gesamtabschluss. ``revenues``/``expenses`` sind ``null``, wo die
       Quelle nur das Ergebnis nennt, und ``proben`` sagt, welche Rechenprobe
       für die Zeile gelaufen ist,
     - ``abweichungsgruende``: warum ein Posten vom Plan abwich, in den Worten
@@ -1009,7 +1009,7 @@ def haushalt_uebersicht(
     - ``ausgabenreihe``: die lange Reihe aus Datensatz 1102 — ein Betrag je
       Jahr seit 1972. ``zeilen`` trägt je Jahrgang ``regelwerk`` (die Naht
       2009/2010), die bestandenen ``proben`` und, wo die beiden Quellen sich
-      widersprechen, den Betrag der unterlegenen (``konflikt_betrag``).
+      widersprechen, den Betrag der unterlegenen (``conflict_amount``).
       ``regelwerke`` nennt zu jedem Regelwerk den Titel der Quelle und ihre
       Abgrenzung — **beide gehören an jede Anzeige**: Links der Naht steht das
       Anordnungssoll des Verwaltungshaushalts, rechts die ordentlichen
@@ -1095,7 +1095,7 @@ def haushalt_uebersicht(
         # — der Haushalt NEBEN dem Haushalt. Klein genug für die Übersicht (29
         # Zeilen), deshalb kein eigener Endpunkt.
         #
-        # `ertraege` und `aufwendungen` sind oft NULL, und das ist die Auskunft
+        # `revenues` und `expenses` sind oft NULL, und das ist die Auskunft
         # und keine Lücke: Nur zwei der sechs Betriebe nennen in einer prüfbaren
         # Form ein Erträge/Aufwendungen-Paar, die übrigen nur das beschlossene
         # Jahresergebnis. Wer die Spalten anzeigt, muss die Leerstellen
@@ -1168,7 +1168,7 @@ def haushalt_uebersicht(
         # eine Teilmenge davon, und sie schrumpft (88 → 73 %). Eine Anzeige,
         # die nur `serie` zeigt, muss das dazusagen.
         #
-        # `verpflichtungen_betrag` steht bewusst getrennt und gehört in
+        # `commitments_amount` steht bewusst getrennt und gehört in
         # **keine** Summe: Eine Verpflichtungsermächtigung bindet künftige
         # Jahre, sie fließt nicht in diesem. Der Bericht zählt sie ebenso
         # getrennt.
@@ -1399,16 +1399,16 @@ def _spenden_jahre(vorlagen: list[dict]) -> list[dict]:
     jedem Lauf neu stimmen müsste."""
     jahre: dict[int, dict] = {}
     for v in vorlagen:
-        e = jahre.setdefault(v["year"], {"year": v["year"], "betrag": 0.0, "vorlagen": 0,
+        e = jahre.setdefault(v["year"], {"year": v["year"], "amount": 0.0, "vorlagen": 0,
                                          "rat": 0, "verwaltungsausschuss": 0})
-        e["betrag"] += v["betrag"]
+        e["amount"] += v["amount"]
         e["vorlagen"] += 1
         if v.get("gremium") == "Rat":
             e["rat"] += 1
         elif v.get("gremium") == "Verwaltungsausschuss":
             e["verwaltungsausschuss"] += 1
     for e in jahre.values():
-        e["betrag"] = round(e["betrag"], 2)
+        e["amount"] = round(e["amount"], 2)
     return [jahre[j] for j in sorted(jahre)]
 
 
@@ -2402,7 +2402,7 @@ def _stations_signature(rows: list[dict]) -> str:
     nachgetragen wurde. Genau das ist die Nachricht, auf die man wartet.
     """
     return json.dumps(
-        [f"{r.get('datum') or ''}|{r.get('gremium') or ''}|{r.get('ergebnis') or ''}" for r in rows],
+        [f"{r.get('datum') or ''}|{r.get('gremium') or ''}|{r.get('result') or ''}" for r in rows],
         ensure_ascii=False,
     )
 
@@ -2590,7 +2590,7 @@ def preview(kind: str, key: str, store: CouncilStore = Depends(get_council_store
         if not d:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Beschluss nicht gefunden.")
         titel = (d.get("title") or "Beschluss des Oldenburger Stadtrats").strip()
-        ergebnis = _PREVIEW_OUTCOME.get(d.get("outcome") or "")
+        result = _PREVIEW_OUTCOME.get(d.get("outcome") or "")
         kopf = " · ".join(x for x in (d.get("committee"), _preview_datum(d.get("session_date"))) if x)
         satz = (d.get("simple_summary") or d.get("summary") or d.get("official_text") or "").strip()
         # Erst kürzen, dann das Ergebnis anhängen: Es ist die wertvollste
@@ -2601,7 +2601,7 @@ def preview(kind: str, key: str, store: CouncilStore = Depends(get_council_store
         if not satz:
             satz = "Tagesordnungspunkt, Ergebnis und Zusammenhang im Ratslotse."
         return {
-            "title": f"{titel} — {ergebnis}" if ergebnis else titel,
+            "title": f"{titel} — {result}" if result else titel,
             "description": " ".join(x for x in (f"{kopf}." if kopf else "", satz) if x)[:300],
         }
 
@@ -3741,7 +3741,7 @@ def haushalt_gebaut(
     Lücke **benennen**, statt sie als Null zu zeichnen oder still zu
     überspringen.
 
-    Je Lücke steht dort neben dem Jahr die gemessene ``differenz`` in Euro
+    Je Lücke steht dort neben dem Jahr die gemessene ``difference`` in Euro
     (Auszahlungsarten minus ausgewiesene Summe, vorzeichenbehaftet) — die
     Zahl, die der Ingest-Lauf beim Verwerfen gemessen hat
     (``council_investitionen_ist_verworfen``). Sie ist der Unterschied
@@ -3759,7 +3759,7 @@ def haushalt_gebaut(
     gruppen = store.get_vermoegensgruppen()
     ids = sorted({z["herkunft_id"] for z in (*reihe, *anlagen, *gruppen)
                   if z["herkunft_id"] is not None})
-    gemessen = {(v["regelwerk"], v["year"]): v.get("differenz")
+    gemessen = {(v["regelwerk"], v["year"]): v.get("difference")
                 for v in store.get_investitionen_ist_verworfen()}
 
     # Lücken je Regelwerk: Was zwischen dem ersten und dem letzten belegten
@@ -3772,7 +3772,7 @@ def haushalt_gebaut(
         jahre = sorted(z["year"] for z in reihe if z["regelwerk"] == regelwerk)
         if len(jahre) < 2:
             continue
-        luecke = [{"year": j, "differenz": gemessen.get((regelwerk, j))}
+        luecke = [{"year": j, "difference": gemessen.get((regelwerk, j))}
                   for j in range(jahre[0], jahre[-1] + 1) if j not in set(jahre)]
         if luecke:
             fehlend[regelwerk] = luecke
@@ -3914,11 +3914,11 @@ def haushalt_schulden(
                 # mal einen einzelnen Teilhaushalt unter derselben Überschrift.
                 if posten.get("thh_nr") is not None:
                     continue
-                if posten.get("ergebnis") is None:
+                if posten.get("result") is None:
                     continue          # ein Jahrgang ohne Ist trägt hier nichts
                 zins.append({
                     "year": year,
-                    "aufwand": posten["ergebnis"],
+                    "expense": posten["result"],
                     "herkunft_id": posten.get("herkunft_id"),
                 })
     except Exception:  # noqa: BLE001 — Zusatzangabe, nie Blocker für die Seite
@@ -3948,7 +3948,7 @@ def haushalt_schulden(
         "reihe": zeilen,
         "jahre": [z["year"] for z in zeilen],
         "abgrenzung": _s.ABGRENZUNG,
-        # `genau` und `aus_folgejahr` sind Angaben über den BELEG, nicht über
+        # `genau` und `out_next_year` sind Angaben über den BELEG, nicht über
         # die Zahl: 2019/2020 stehen auf den Cent im Dokument, ab 2022 rundet
         # die Quelle selbst auf Zehntel-Millionen, und 2021 steht überhaupt
         # nur im Abschluss des Folgejahres. Wer alle sechs gleich formatiert,

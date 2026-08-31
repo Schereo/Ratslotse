@@ -69,8 +69,8 @@ export type Aufsichtsperson = {
 export type Eigentuemer = {
   gesellschaft: string;
   name: string;
-  betrag_eur: number | null;
-  anteil_prozent: number | null;
+  amount_eur: number | null;
+  share_pct: number | null;
   reihenfolge: number;
   herkunft_id: number | null;
 };
@@ -101,7 +101,7 @@ export type Konzernzeile = {
   year: number;
   konzern_beitrag: number;
   jahresergebnis: number;
-  differenz: number;
+  difference: number;
 };
 
 export type BeteiligungsDaten = {
@@ -230,7 +230,7 @@ export function einordnungFuer(daten: BeteiligungsDaten, g: Gesellschaft,
   const juengstes = ergebnisse[ergebnisse.length - 1];
   const vergleich = daten.konzernvergleich.find((z) => z.gesellschaft === g.gesellschaft);
   if (juengstes && vergleich && vergleich.year === juengstes.year
-      && Math.abs(vergleich.differenz) <= 1000) {
+      && Math.abs(vergleich.difference) <= 1000) {
     return "Der Betrag ist deckungsgleich mit dem Gesamtabschluss — zwei Quellen, "
       + "eine Zahl.";
   }
@@ -325,7 +325,7 @@ export function stadtAnteil(daten: BeteiligungsDaten | null,
                             gesellschaft: string): number | null {
   const zeile = eigentuemerVon(daten, gesellschaft)
     .find((e) => /^Stadt Oldenburg\b/.test(e.name.trim()));
-  return zeile?.anteil_prozent ?? null;
+  return zeile?.share_pct ?? null;
 }
 
 /** Hält die Stadt weniger als die Hälfte?
@@ -345,7 +345,7 @@ export function istMinderheit(anteil: number | null): boolean {
  *  Quelle steht; eine aus dem Betrag gerechnete Quote bekäme sonst dieselbe
  *  Autorität wie eine gedruckte. */
 export function anteilsGewicht(e: Eigentuemer): number {
-  return e.anteil_prozent ?? e.betrag_eur ?? 0;
+  return e.share_pct ?? e.amount_eur ?? 0;
 }
 
 /** Euro-Betrag, kompakt und ohne Bewertung.

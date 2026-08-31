@@ -135,11 +135,11 @@ class FhhZeile:
     produkt: str | None         # Investitionscode, z. B. „I10.089904.500“
     bezeichnung: str
     #: Die fünf Betragsspalten. ``None`` = Zelle leer, ``0`` = Strich.
-    soll_entwurf: int | None
-    einzahlung: int | None
-    auszahlung: int | None
+    planned_draft: int | None
+    inflow: int | None
+    outflow: int | None
     ve: int | None
-    soll_neu: int | None
+    planned_new: int | None
     erlaeuterung: str | None = None
     urheber: str | None = None
 
@@ -151,9 +151,9 @@ class FhhSumme:
     year: int
     typ: str  # "entwurf" | "liste" | "endsumme"
     label: str
-    einzahlungen: int
-    auszahlungen: int
-    saldo: int
+    inflows: int
+    outflows: int
+    balance: int
     #: Verpflichtungsermächtigungen — die Verwaltungslisten weisen sie aus,
     #: die Beschluss-Dateien nicht. Sie zählen NICHT in den Saldo (dieselbe
     #: Regel wie bei den Nachbewilligungen).
@@ -178,13 +178,13 @@ class FhhErgebnis:
 class FhhSpalten:
     """Die gezeichneten Spalten einer FHH-Tabellenseite.
 
-    ``betrag`` sind die fünf Betragsspalten als (links, rechts) in
+    ``amount`` sind die fünf Betragsspalten als (links, rechts) in
     Leserichtung: Soll laut Entwurf, Einzahlungen, Auszahlungen, VE, neues
     Soll. ``bez`` ist die Bezeichnungs-Spalte, ``erl`` die linke Kante der
     Erläuterungen.
     """
 
-    betrag: tuple[tuple[float, float], ...]
+    amount: tuple[tuple[float, float], ...]
     bez: tuple[float, float]
     erl: float
 
@@ -241,7 +241,7 @@ def _spalten(zeilen: list[list[Wort]], senkrecht: list[float]) -> FhhSpalten | N
     if i == 0:
         return None                     # keine Bezeichnungs-Kante davor
     spalten = FhhSpalten(
-        betrag=tuple(zip(sechs[:-1], sechs[1:])),
+        amount=tuple(zip(sechs[:-1], sechs[1:])),
         bez=(kanten[i - 1], sechs[0]),
         erl=sechs[-1],
     )
@@ -270,7 +270,7 @@ def _koepfe_passen(zeilen: list[list[Wort]], spalten: FhhSpalten) -> bool:
         if len(treffer) < 2:
             continue
         for x0, x1, text in treffer:
-            links, rechts = spalten.betrag[_KOPF_BETRAG.index(text)]
+            links, rechts = spalten.amount[_KOPF_BETRAG.index(text)]
             if not (links - 2 <= (x0 + x1) / 2 <= rechts + 2):
                 return False
     return True
@@ -338,7 +338,7 @@ def _position_lesen(zeile: list[Wort], year: int, spalten: FhhSpalten) -> FhhZei
     bezeichnung: list[str] = []
     bez_links, bez_rechts = spalten.bez
     for x0, x1, _y, text in zeile[2:]:
-        if x0 >= spalten.betrag[0][0] - 1:
+        if x0 >= spalten.amount[0][0] - 1:
             break                       # ab hier beginnen die Beträge
         if bez_links - 1 <= x0 and x1 <= bez_rechts + 1:
             bezeichnung.append(text)
@@ -355,8 +355,8 @@ def _position_lesen(zeile: list[Wort], year: int, spalten: FhhSpalten) -> FhhZei
     return FhhZeile(
         year=year, lfd=lfd, thh=thh, seite_entwurf=seite, produkt=produkt,
         bezeichnung=" ".join(bezeichnung),
-        soll_entwurf=None, einzahlung=None, auszahlung=None,
-        ve=None, soll_neu=None,
+        planned_draft=None, inflow=None, outflow=None,
+        ve=None, planned_new=None,
     )
 
 
@@ -374,7 +374,7 @@ def _bezeichnungsfragment(zeile: list[Wort], spalten: FhhSpalten) -> str | None:
         return None
     if any(w[1] < links - 1 for w in zeile):
         return None
-    if any(_zelle([w], *spalten.betrag[i]) is not None
+    if any(_zelle([w], *spalten.amount[i]) is not None
            for w in zeile for i in range(5)):
         return None
     return " ".join(w[3] for w in teil)
@@ -420,7 +420,7 @@ class SummenSpalten:
 
     ein: float
     aus: float
-    saldo: float
+    balance: float
     ve: float | None
 
 
@@ -440,12 +440,12 @@ def _summen_spalten(zeilen: list[list[Wort]]) -> SummenSpalten | None:
             elif text == "Auszahlungen":
                 kanten.setdefault("aus", x1)
             elif _SALDO_KOPF.fullmatch(text):
-                kanten.setdefault("saldo", x1)
+                kanten.setdefault("balance", x1)
             elif text == "VE":
                 kanten.setdefault("ve", x1)
-    if not {"ein", "aus", "saldo"} <= kanten.keys():
+    if not {"ein", "aus", "balance"} <= kanten.keys():
         return None
-    return SummenSpalten(kanten["ein"], kanten["aus"], kanten["saldo"],
+    return SummenSpalten(kanten["ein"], kanten["aus"], kanten["balance"],
                          kanten.get("ve"))
 
 
@@ -458,7 +458,7 @@ def _summen_zellen(zeile: list[Wort], spalten: SummenSpalten,
     Das ist die Eintrittskarte — was hier durchfällt, ist keine
     Zusammenstellungs-Zeile.
     """
-    felder = {"ein": spalten.ein, "aus": spalten.aus, "saldo": spalten.saldo}
+    felder = {"ein": spalten.ein, "aus": spalten.aus, "balance": spalten.balance}
     if spalten.ve is not None:
         felder["ve"] = spalten.ve
     zellen: dict[str, int] = {}
@@ -476,7 +476,7 @@ def _summen_zellen(zeile: list[Wort], spalten: SummenSpalten,
         zellen[name] = wert
         erster = x0 if erster is None else min(erster, x0)
         letzter = x1 if letzter is None else max(letzter, x1)
-    if not {"ein", "aus", "saldo"} <= zellen.keys():
+    if not {"ein", "aus", "balance"} <= zellen.keys():
         return None
     return zellen, erster, letzter
 
@@ -489,17 +489,17 @@ def _summen_zeile(year: int, typ: str, zeile: list[Wort],
     Saldo nicht trägt, ist ein Lesefehler — und dann soll das Dokument
     fallen, nicht die Zeile.
     """
-    ein, aus, saldo = zellen["ein"], zellen["aus"], zellen["saldo"]
-    if abs(ein - aus - saldo) > 2:
+    ein, aus, balance = zellen["ein"], zellen["aus"], zellen["balance"]
+    if abs(ein - aus - balance) > 2:
         raise ListenFehler(
-            f"Zeilenprobe {year}: {ein:,} − {aus:,} ≠ {saldo:,} "
+            f"Zeilenprobe {year}: {ein:,} − {aus:,} ≠ {balance:,} "
             f"in „{' '.join(w[3] for w in zeile)[:70]}“")
     # Links des ersten Betrags steht die Beschriftung, rechts des letzten der
     # Urheber („Vorschlag von" — nur die Beschluss-Dateien führen ihn).
     label = " ".join(w[3] for w in zeile if w[1] <= erster).strip()
     urheber = " ".join(w[3] for w in zeile if w[0] >= letzter).strip()
     return FhhSumme(year=year, typ=typ, label=(label or urheber or "liste"),
-                    einzahlungen=ein, auszahlungen=aus, saldo=saldo,
+                    inflows=ein, outflows=aus, balance=balance,
                     ve=zellen.get("ve"))
 
 
@@ -644,7 +644,7 @@ def _doppelzeilen_falten(zeilen: list[FhhZeile]) -> list[FhhZeile]:
         if erste is None:
             aus[schluessel] = z
             continue
-        for feld in ("soll_entwurf", "einzahlung", "auszahlung", "ve", "soll_neu"):
+        for feld in ("planned_draft", "inflow", "outflow", "ve", "planned_new"):
             alt_wert, neu_wert = getattr(erste, feld), getattr(z, feld)
             if neu_wert is None:
                 continue
@@ -699,7 +699,7 @@ def _fragmente_anbauen(positionen: list[tuple[float, FhhZeile]],
         position.bezeichnung = " ".join(t for _, t in alle if t)
 
 
-#: Der Index der Spalte „neues Soll" in :attr:`FhhSpalten.betrag`.
+#: Der Index der Spalte „neues Soll" in :attr:`FhhSpalten.amount`.
 _SOLL_NEU = 4
 
 
@@ -731,7 +731,7 @@ def _betragszeilen(zeilen: list[list[Wort]], spalten: FhhSpalten,
         zellen: dict[int, int] = {}
         mehrdeutig = set()
         for w in zeile:
-            for i, (links, rechts) in enumerate(spalten.betrag):
+            for i, (links, rechts) in enumerate(spalten.amount):
                 if not (links < w[1] <= rechts + 1 and w[0] >= links - 1):
                     continue
                 wert = _wert(w[3])
@@ -803,8 +803,8 @@ def _betraege_anbauen(positionen: list[tuple[float, FhhZeile]],
     for y, zellen in _betragszeilen(zeilen, spalten, boden):
         for oben, position, unten in spannen:
             if oben - 2 <= y < unten:
-                (position.soll_entwurf, position.einzahlung,
-                 position.auszahlung, position.ve, position.soll_neu) = (
+                (position.planned_draft, position.inflow,
+                 position.outflow, position.ve, position.planned_new) = (
                     zellen.get(i) for i in range(5))
                 break
 
@@ -862,15 +862,15 @@ def _proben(aus: FhhErgebnis) -> None:
        eine Zusammenstellungs-Zeile.
     """
     voll = [z for z in aus.zeilen
-            if None not in (z.soll_entwurf, z.einzahlung, z.auszahlung, z.soll_neu)]
+            if None not in (z.planned_draft, z.inflow, z.outflow, z.planned_new)]
     schief = [z for z in voll
-              if abs((z.soll_entwurf or 0) + (z.einzahlung or 0)
-                     + (z.auszahlung or 0) - (z.soll_neu or 0)) > 2]
+              if abs((z.planned_draft or 0) + (z.inflow or 0)
+                     + (z.outflow or 0) - (z.planned_new or 0)) > 2]
     if schief:
         z = schief[0]
         raise ListenFehler(
-            f"Zeilenprobe {z.year}/lfd {z.lfd}: {z.soll_entwurf:,} + "
-            f"{z.einzahlung:,} + {z.auszahlung:,} ≠ {z.soll_neu:,} "
+            f"Zeilenprobe {z.year}/lfd {z.lfd}: {z.planned_draft:,} + "
+            f"{z.inflow:,} + {z.outflow:,} ≠ {z.planned_new:,} "
             f"({len(schief)} von {len(voll)} Zeilen betroffen)")
 
     for year in sorted({z.year for z in aus.zeilen}):
@@ -900,19 +900,19 @@ def _proben(aus: FhhErgebnis) -> None:
         kette_ok = not (entwurf and ende) or all(
             abs(getattr(entwurf[0], feld) + sum(getattr(s, feld) for s in listen)
                 - getattr(ende[0], feld)) <= toleranz
-            for feld in ("einzahlungen", "auszahlungen"))
+            for feld in ("inflows", "outflows"))
 
-        pos_e = sum(z.einzahlung or 0 for z in aus.zeilen if z.year == year)
-        pos_a = sum(z.auszahlung or 0 for z in aus.zeilen if z.year == year)
+        pos_e = sum(z.inflow or 0 for z in aus.zeilen if z.year == year)
+        pos_a = sum(z.outflow or 0 for z in aus.zeilen if z.year == year)
         if kette_ok:
-            ziele = [(s.label, s.einzahlungen, s.auszahlungen) for s in listen]
+            ziele = [(s.label, s.inflows, s.outflows) for s in listen]
             if len(listen) > 1:
-                ziele.append(("alle", sum(s.einzahlungen for s in listen),
-                              sum(s.auszahlungen for s in listen)))
+                ziele.append(("alle", sum(s.inflows for s in listen),
+                              sum(s.outflows for s in listen)))
         else:
             ziele = [("beschlossen",
-                      ende[0].einzahlungen - entwurf[0].einzahlungen,
-                      ende[0].auszahlungen - entwurf[0].auszahlungen)] if ende and entwurf else []
+                      ende[0].inflows - entwurf[0].inflows,
+                      ende[0].outflows - entwurf[0].outflows)] if ende and entwurf else []
         treffer = [label for label, e, a in ziele
                    if abs(e - pos_e) <= toleranz and abs(a - pos_a) <= toleranz]
         if len(treffer) != 1:

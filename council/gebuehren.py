@@ -154,7 +154,7 @@ class Gebuehrenbedarf:
     kostenkalkulation: float
     #: Alles, was davon abgezogen wird — negativ. Erstattungen Dritter,
     #: Erlöse, Rückstellungen und die Über-/Unterdeckung aus Vorjahren.
-    abzuege: float
+    deductions: float
     #: Was die Gebührenzahler tragen.
     zu_deckende_kosten: float
     #: Wonach die Gebühr bemessen wird (Tonnen, Liter, Meter Quadratwurzel).
@@ -174,7 +174,7 @@ class Gebuehrenbedarf:
 class Gebuehrensatz:
     """Ein ausdrücklich benannter Tarif aus Anlage 4.
 
-    ``betrag`` ist ein Vorschlag der Verwaltung, nicht automatisch der vom
+    ``amount`` ist ein Vorschlag der Verwaltung, nicht automatisch der vom
     Rat beschlossene Satz. Diese Unterscheidung reist bis zur Herkunft mit.
     """
 
@@ -182,10 +182,10 @@ class Gebuehrensatz:
     schluessel: str
     bereich: str
     bezeichnung: str
-    betrag: float
+    amount: float
     einheit: str
-    vorjahr: float | None
-    veraenderung_prozent: float | None
+    prior_year: float | None
+    change_pct: float | None
     template_number: str | None
 
 
@@ -413,14 +413,14 @@ def parse_anlage(teil: str, template_number: str | None = None) -> Gebuehrenbeda
     if k and d:
         kalkulation, zu_decken = _eur(k.group(1)), _eur(d.group(1))
         kaskade = teil[k.end():d.start()]
-        abzuege = sum(_eur(x) for x in _BETRAG_RE.findall(kaskade)
+        deductions = sum(_eur(x) for x in _BETRAG_RE.findall(kaskade)
                       if x.strip().startswith("-"))
-        rest = kalkulation + abzuege - zu_decken
+        rest = kalkulation + deductions - zu_decken
         ueberdeckung = _UEBER_UNTERDECKUNG.search(kaskade)
         if ueberdeckung is not None:
             wert = _eur(ueberdeckung.group(1))
             if wert > 0 and abs(rest - wert) <= TOLERANZ_EUR:
-                abzuege -= wert
+                deductions -= wert
     else:
         # Beschriftungen und Beträge stehen in getrennten Blöcken (2024).
         ueber_reihenfolge = _kaskade_aus_der_reihenfolge(teil)
@@ -430,12 +430,12 @@ def parse_anlage(teil: str, template_number: str | None = None) -> Gebuehrenbeda
                 + ("Kostenkalkulation fehlt. " if not k else "")
                 + ("Zeile „zu decken sind“ fehlt. " if not d else "")
                 + "Auch über die Reihenfolge der Beträge geht keine Kaskade auf.")
-        kalkulation, abzuege, zu_decken = ueber_reihenfolge
-    rest = kalkulation + abzuege - zu_decken
+        kalkulation, deductions, zu_decken = ueber_reihenfolge
+    rest = kalkulation + deductions - zu_decken
     if abs(rest) > TOLERANZ_EUR:
         raise GebuehrenFehler(
             f"{bereich[1]} {year.group(1)}: Kalkulation {kalkulation:,.2f} € "
-            f"und Abzüge {abzuege:,.2f} € ergeben {kalkulation + abzuege:,.2f} €, "
+            f"und Abzüge {deductions:,.2f} € ergeben {kalkulation + deductions:,.2f} €, "
             f"die Zeile nennt {zu_decken:,.2f} € — Rest {rest:+,.2f} €.")
 
     # NICHT JEDER BEREICH HAT EINE EINZELNE GEBÜHR. Die Abfallsammlung
@@ -477,7 +477,7 @@ def parse_anlage(teil: str, template_number: str | None = None) -> Gebuehrenbeda
 
     return Gebuehrenbedarf(
         year=int(year.group(1)), bereich=bereich[0], bereich_name=bereich[1],
-        kostenkalkulation=kalkulation, abzuege=abzuege,
+        kostenkalkulation=kalkulation, deductions=deductions,
         zu_deckende_kosten=zu_decken, bezugsmenge=menge, bezugseinheit=einheit,
         gebuehr=gebuehr,
         gebuehrenvorschlag=(float(v.group(1).replace(".", "").replace(",", "."))
@@ -530,8 +530,8 @@ def _saetze_altes_layout(teil: str, template_number: str | None) -> list[Gebuehr
             "Tarifbeträge in der Vorschlagszeile — nichts gespeichert.")
     return [Gebuehrensatz(
         year=year, schluessel=art.schluessel, bereich=art.bereich,
-        bezeichnung=art.bezeichnung, betrag=wert, einheit=art.einheit,
-        vorjahr=None, veraenderung_prozent=None, template_number=template_number)
+        bezeichnung=art.bezeichnung, amount=wert, einheit=art.einheit,
+        prior_year=None, change_pct=None, template_number=template_number)
         for art, wert in zip(SATZARTEN, werte, strict=True)]
 
 
@@ -552,18 +552,18 @@ def _saetze_neues_layout(teil: str, template_number: str | None) -> list[Gebuehr
         if not m:
             raise GebuehrenFehler(
                 f"Anlage 4 für {year}: Tarifzeile „{art.bezeichnung}“ fehlt")
-        veraenderung = _satz_eur(m.group(1))
-        betrag, vorjahr = _satz_eur(m.group(2)), _satz_eur(m.group(3))
-        errechnet = round((betrag / vorjahr - 1) * 100, 2) if vorjahr else 0.0
-        if abs(errechnet - veraenderung) > 0.011:
+        change = _satz_eur(m.group(1))
+        amount, prior_year = _satz_eur(m.group(2)), _satz_eur(m.group(3))
+        errechnet = round((amount / prior_year - 1) * 100, 2) if prior_year else 0.0
+        if abs(errechnet - change) > 0.011:
             raise GebuehrenFehler(
-                f"Anlage 4 für {year}, {art.bezeichnung}: {betrag:.2f} € gegen "
-                f"{vorjahr:.2f} € ergeben {errechnet:.2f} %, gedruckt sind "
-                f"{veraenderung:.2f} %.")
+                f"Anlage 4 für {year}, {art.bezeichnung}: {amount:.2f} € gegen "
+                f"{prior_year:.2f} € ergeben {errechnet:.2f} %, gedruckt sind "
+                f"{change:.2f} %.")
         aus.append(Gebuehrensatz(
             year=year, schluessel=art.schluessel, bereich=art.bereich,
-            bezeichnung=art.bezeichnung, betrag=betrag, einheit=art.einheit,
-            vorjahr=vorjahr, veraenderung_prozent=veraenderung,
+            bezeichnung=art.bezeichnung, amount=amount, einheit=art.einheit,
+            prior_year=prior_year, change_pct=change,
             template_number=template_number))
     return aus
 
@@ -589,16 +589,16 @@ def lies_gebuehrensaetze(text: str, template_number: str | None = None) -> list[
         b.bereich: b.gebuehrenvorschlag for b in bedarfe
         if b.year == year and b.bereich in ("abfallbehandlung", "strassenreinigung")
     }
-    tarifwerte = {s.bereich: s.betrag for s in saetze
+    tarifwerte = {s.bereich: s.amount for s in saetze
                   if s.schluessel in ("abfallbehandlung_mg", "strassenreinigung_qw")}
     if set(eckwerte) != {"abfallbehandlung", "strassenreinigung"}:
         details = f"; gerissene Anlagen: {' | '.join(risse)}" if risse else ""
         raise GebuehrenFehler(
             f"Anlage 4 für {year}: Eckwerte aus Anlagen 1 und 3 fehlen{details}")
-    for bereich, betrag in tarifwerte.items():
-        if eckwerte[bereich] is None or abs(betrag - eckwerte[bereich]) > 0.011:
+    for bereich, amount in tarifwerte.items():
+        if eckwerte[bereich] is None or abs(amount - eckwerte[bereich]) > 0.011:
             raise GebuehrenFehler(
-                f"Anlage 4 für {year}: {bereich} nennt {betrag:.2f} €, "
+                f"Anlage 4 für {year}: {bereich} nennt {amount:.2f} €, "
                 f"die eigene Bedarfsberechnung {eckwerte[bereich]} €.")
     return saetze
 
@@ -606,22 +606,22 @@ def lies_gebuehrensaetze(text: str, template_number: str | None = None) -> list[
 def herkunft_fuer_satz(satz: Gebuehrensatz, *, url: str | None,
                        dokument_id: int | None, label: str | None) -> Herkunft:
     proben = [PROBE_SATZANZAHL, PROBE_ECKWERTE]
-    ergebnis = ("12 von 12 Tarifarten gelesen; Gebühren je Mg und je Meter "
+    result = ("12 von 12 Tarifarten gelesen; Gebühren je Mg und je Meter "
                 "Quadratwurzel stimmen mit Anlagen 1 und 3 überein")
-    if satz.veraenderung_prozent is not None:
+    if satz.change_pct is not None:
         proben.append(PROBE_VORJAHRESVERGLEICH)
-        ergebnis += (f"; {satz.betrag:.2f} € gegen {satz.vorjahr:.2f} € = "
-                     f"{satz.veraenderung_prozent:.2f} %")
+        result += (f"; {satz.amount:.2f} € gegen {satz.prior_year:.2f} € = "
+                     f"{satz.change_pct:.2f} %")
     return Herkunft(
         art="ris", probe=proben, dokument_id=dokument_id, label=label,
         url=url, fundstelle=f"Anlage 4, {satz.bezeichnung}, Vorschlag {satz.year}",
-        probe_ergebnis=ergebnis, stand=f"Gebührenvorschlag {satz.year}")
+        probe_result=result, stand=f"Gebührenvorschlag {satz.year}")
 
 
 def herkunft_fuer(bedarf: Gebuehrenbedarf, *, url: str | None,
                   dokument_id: int | None, label: str | None) -> Herkunft:
     """Die Herkunft: die Anlage, und was an ihr nachgerechnet wurde."""
-    rest = bedarf.kostenkalkulation + bedarf.abzuege - bedarf.zu_deckende_kosten
+    rest = bedarf.kostenkalkulation + bedarf.deductions - bedarf.zu_deckende_kosten
     proben = [PROBE_KASKADE]
     division = ""
     if bedarf.gebuehr is not None and bedarf.bezugsmenge:
@@ -636,6 +636,6 @@ def herkunft_fuer(bedarf: Gebuehrenbedarf, *, url: str | None,
         label=label or f"Gebührenbedarfsberechnung {bedarf.year}",
         url=url,
         fundstelle=f"Gebührenbedarfsberechnung {bedarf.year}, {bedarf.bereich_name}",
-        probe_ergebnis=f"Kaskade geht auf (Rest {rest:+.2f} €){division}",
+        probe_result=f"Kaskade geht auf (Rest {rest:+.2f} €){division}",
         stand=f"Gebührenbedarfsberechnung {bedarf.year}",
     )

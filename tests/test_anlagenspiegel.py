@@ -55,7 +55,7 @@ def test_dreizehn_spalten_und_drei_ketten():
     assert z["spalten"] == 13
     assert z["zugaenge"] == 13_478_238.51
     assert z["abschreibung"] == -6_523_027.43
-    assert z["buchwert"] == 91_394_171.68
+    assert z["book_value"] == 91_394_171.68
 
     bestanden, risse = asp.probe(z)
     assert risse == []
@@ -86,8 +86,8 @@ def test_zwoelf_spalten_werden_erkannt_und_gefuellt():
     z = g[0]
     assert z["spalten"] == 12
     assert z["abschr_umbuchungen"] == 0.0    # gibt es in diesem Layout nicht
-    assert z["buchwert"] == 338_832_070.05   # NICHT um eine Spalte verschoben
-    assert z["buchwert_vorjahr"] == 336_559_565.31
+    assert z["book_value"] == 338_832_070.05   # NICHT um eine Spalte verschoben
+    assert z["book_value_prior_year"] == 336_559_565.31
 
     bestanden, risse = asp.probe(z)
     # Die AHK-Kette und der Buchwert gehen auf; die Abschreibungskette wird
@@ -131,12 +131,12 @@ def test_umbuchungen_muessen_sich_aufheben():
         {"nr": "2.1", "abschr_anfang": -50.0, "abschreibung": -5.0, "aufloesungen": 0.0,
          "zuschreibungen": 0.0, "abschr_umbuchungen": 0.0, "abschr_ende": -105.0},
     ]
-    saldo, risse = asp.umbuchungsprobe(zeilen)
-    assert saldo == 0.0 and risse == []
+    balance, risse = asp.umbuchungsprobe(zeilen)
+    assert balance == 0.0 and risse == []
 
     zeilen[1]["abschr_ende"] = -300.0            # jetzt fehlen 30
-    saldo, risse = asp.umbuchungsprobe(zeilen)
-    assert abs(saldo + 30.0) < 0.01 and len(risse) == 1
+    balance, risse = asp.umbuchungsprobe(zeilen)
+    assert abs(balance + 30.0) < 0.01 and len(risse) == 1
 
 
 def test_die_bilanz_gegenprobe_kennt_nur_das_immaterielle_vermoegen():
@@ -172,9 +172,9 @@ def test_die_strassenzeile_ueberlebt_den_zeilenumbruch():
     strassen = [g for g in gruppen if "traße" in g["gruppe"]]
     assert len(strassen) == 1
     s = strassen[0]
-    assert s["buchwert_vorjahr"] == 142_874_798.00
-    assert s["buchwert"] == 133_281_788.00
+    assert s["book_value_prior_year"] == 142_874_798.00
+    assert s["book_value"] == 133_281_788.00
     # Die Reihenfolge ist Vorjahr, dann Jahr — gedreht würde aus dem
     # Substanzverlust ein Zuwachs.
-    assert s["buchwert"] < s["buchwert_vorjahr"]
+    assert s["book_value"] < s["book_value_prior_year"]
     assert "kungsanlagen" not in s["gruppe"].replace("Verkehrslenkungsanlagen", "")

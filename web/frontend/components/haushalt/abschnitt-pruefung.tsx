@@ -198,7 +198,7 @@ export function PruefungAbschnitt({ onBestand }: {
    *  Schlussbericht — die Lücke gehört in den Kopf, nicht in die Fußnote. */
   onBestand?: (b: {
     gesamt: number;
-    jeJahr: { year: number; anzahl: number }[];
+    jeJahr: { year: number; count: number }[];
     ohneBericht: number[];
   } | null) => void;
 } = {}) {
@@ -212,7 +212,7 @@ export function PruefungAbschnitt({ onBestand }: {
       gesamt: data.feststellungen.length,
       jeJahr: data.jahre.map((j) => ({
         year: j,
-        anzahl: data.feststellungen.filter((f) => f.year === j).length,
+        count: data.feststellungen.filter((f) => f.year === j).length,
       })),
       ohneBericht: data.ohne_bericht,
     });

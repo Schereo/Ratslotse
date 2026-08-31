@@ -147,7 +147,7 @@ def treffer(store, name: str, text: str, *, deckel: int = DECKEL,
 
 
 def zaehle_treffer(store, name: str, text: str) -> tuple[int, bool] | None:
-    """``(anzahl, gedeckelt)`` nach derselben Definition — oder ``None``.
+    """``(count, gedeckelt)`` nach derselben Definition — oder ``None``.
 
     Die ausfallsichere Fassung für den Web-Request: ``None`` heißt „lässt sich
     hier gerade nicht nach der einen Definition bestimmen" (kein fastembed,
@@ -353,7 +353,7 @@ def analyse(store, name: str, description: str = "") -> dict:
     # die Belege — dann ist die Zahl grob, aber wenigstens nicht aus einer
     # zweiten, dauerhaft danebenliegenden Quelle.
     gezaehlt = zaehle_treffer(store, clean, f"{clean}. {(description or '').strip()}".strip())
-    anzahl, gedeckelt = gezaehlt if gezaehlt is not None else (len(belege), False)
+    count, gedeckelt = gezaehlt if gezaehlt is not None else (len(belege), False)
 
     obj = _call_model(clean, belege)
 
@@ -361,21 +361,21 @@ def analyse(store, name: str, description: str = "") -> dict:
         # Modell weg: Wir dürfen weder fälschlich anlegen noch grundlos ablehnen.
         # Belege entscheiden — mit genug Treffern gilt es als belegt, sonst als
         # plausibel. „Ungeeignet" behaupten wir ohne Urteil nie.
-        belegt = anzahl >= MIN_MATCHES
+        belegt = count >= MIN_MATCHES
         return {"verdict": "belegt" if belegt else "plausibel", "is_council_topic": True,
                 "description": _fallback_description(clean, belege),
-                "matches": anzahl if belegt else 0,
+                "matches": count if belegt else 0,
                 "matches_capped": gedeckelt if belegt else False,
                 "examples": examples if belegt else [], "reason": ""}
 
     desc = str(obj.get("beschreibung") or "").strip()[:_MAX_DESC]
     verdict = str(obj.get("einordnung") or "").strip().lower()
     if verdict not in VERDICTS:
-        verdict = "belegt" if anzahl >= MIN_MATCHES else "plausibel"
+        verdict = "belegt" if count >= MIN_MATCHES else "plausibel"
     # Das Modell darf nur nach unten korrigieren: Es sieht die Beschlüsse und
     # erkennt, dass „Grundschule Krusenbusch" von der Wunderburg-Schule handelt —
     # eine Trefferzahl allein kann das nicht.
-    if verdict == "belegt" and anzahl < MIN_MATCHES:
+    if verdict == "belegt" and count < MIN_MATCHES:
         verdict = "plausibel"
     belegt = verdict == "belegt"
     return {
@@ -384,7 +384,7 @@ def analyse(store, name: str, description: str = "") -> dict:
         "description": "" if verdict == "ungeeignet" else (desc or _fallback_description(clean, belege)),
         # Nur belegte Treffer zählen: Sonst stünde „12 Beschlüsse passen dazu"
         # unter einem Thema, zu dem das Modell gerade das Gegenteil gesagt hat.
-        "matches": anzahl if belegt else 0,
+        "matches": count if belegt else 0,
         "matches_capped": gedeckelt if belegt else False,
         "examples": examples if belegt else [],
         "reason": str(obj.get("begruendung") or "").strip()[:200] if verdict == "ungeeignet" else "",

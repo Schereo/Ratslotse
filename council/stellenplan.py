@@ -119,9 +119,9 @@ import re
 #: Arbeitnehmer*innen · nicht besetzt · Vermerke.
 #: Teil B (8 Spalten): dasselbe ohne die Aufteilung der Besetzung.
 LAYOUT: dict[int, tuple[str, ...]] = {
-    9: ("stellen_plan", "stellen_vorjahr", "besetzt_beamte",
+    9: ("stellen_plan", "positions_prior_year", "besetzt_beamte",
         "besetzt_arbeitnehmer", "nicht_besetzt"),
-    8: ("stellen_plan", "stellen_vorjahr", "besetzt", "nicht_besetzt"),
+    8: ("stellen_plan", "positions_prior_year", "besetzt", "nicht_besetzt"),
 }
 
 #: Welcher Teil welche Spaltenzahl haben muss. Ein Teil A mit acht Spalten ist
@@ -136,7 +136,7 @@ TEIL_SPALTEN: dict[str, int] = {"A": 9, "B": 8}
 #: sie ist es wert, weil sonst jede Auswertung beide Teile verschieden
 #: behandeln müsste.
 ALLE_WERTFELDER: tuple[str, ...] = (
-    "stellen_plan", "stellen_vorjahr", "besetzt_beamte",
+    "stellen_plan", "positions_prior_year", "besetzt_beamte",
     "besetzt_arbeitnehmer", "besetzt", "nicht_besetzt")
 
 #: Wie die Teile für Leser*innen heißen. „Tarifbeschäftigte" ist das Wort, das
@@ -357,7 +357,7 @@ def _teile_lesen(text: str) -> dict[str, dict]:
 
 def _besetzungsrest(satz: dict) -> float:
     """besetzt + nicht besetzt − Stellen im Vorjahr."""
-    return satz["besetzt"] + satz["nicht_besetzt"] - satz["stellen_vorjahr"]
+    return satz["besetzt"] + satz["nicht_besetzt"] - satz["positions_prior_year"]
 
 
 def besetzungstoleranz(zeilen: int) -> float:
@@ -419,7 +419,7 @@ def besetzungsprobe(summen: list[dict]) -> tuple[bool, str]:
             return False, (f"„{s.get('name') or 'Summe'}“: besetzt "
                            f"{s['besetzt']:.2f} + nicht besetzt "
                            f"{s['nicht_besetzt']:.2f} ergeben nicht die "
-                           f"{s['stellen_vorjahr']:.2f} Stellen des Vorjahres "
+                           f"{s['positions_prior_year']:.2f} Stellen des Vorjahres "
                            f"({rest:+.2f}, erlaubt sind {toleranz:.2f} bei "
                            f"{s['zeilen']} Zeilen)")
     return True, ""
@@ -572,7 +572,7 @@ def lies(text: str) -> dict:
     in diesem Jahrgang nicht" und „Teil B ist in diesem PDF nicht lesbar" —
     ohne diese Angabe stünde beides gleich da."""
     roh = _teile_lesen(text)
-    ergebnis: list[dict] = []
+    result: list[dict] = []
     jahre: set[int] = set()
 
     for name in sorted(roh):
@@ -583,14 +583,14 @@ def lies(text: str) -> dict:
 
         if t["spalten"] != soll or t["spaltenstreit"]:
             gesehen = sorted({t["spalten"], *t["spaltenstreit"]} - {None})
-            ergebnis.append({
+            result.append({
                 "teil": name, "stichtag": None, "year": None, "zeilen": [],
                 "proben": [], "bestanden": False, "verworfen": len(t["zeilen"]),
                 "nachweis": f"Teil {name} nennt {gesehen or 'keine'} Spalten "
                             f"statt {soll} — nicht gelesen"})
             continue
         if len(t["jahre"]) != 1 or len(t["stichtage"]) > 1:
-            ergebnis.append({
+            result.append({
                 "teil": name, "stichtag": None, "year": None, "zeilen": [],
                 "proben": [], "bestanden": False, "verworfen": len(t["zeilen"]),
                 "nachweis": f"Teil {name}: der Tabellenkopf nennt "
@@ -616,7 +616,7 @@ def lies(text: str) -> dict:
         # Vorfilter ist, hieße den Beleg um sein Fundament zu kürzen.
         proben.append({"probe": "stellenplan_spaltenprobe", "ok": True,
                        "warum": ""})
-        for name_probe, ergebnis_probe in (
+        for name_probe, result_probe in (
             ("stellenplan_gruppensummen", gruppenprobe(gruppen)),
             ("stellenplan_besetzung", besetzungsprobe(alle_summen)),
             # Die dritte Stufe nur, wo das Dokument eine eigene Gesamtzeile
@@ -625,15 +625,15 @@ def lies(text: str) -> dict:
             *((("stellenplan_gesamtsumme", gesamtprobe(gruppen, gesamt)),)
               if gesamt else ()),
         ):
-            proben.append({"probe": name_probe, "ok": ergebnis_probe[0],
-                           "warum": ergebnis_probe[1]})
+            proben.append({"probe": name_probe, "ok": result_probe[0],
+                           "warum": result_probe[1]})
 
         bestanden = all(p["ok"] for p in proben)
         unstimmig = unstimmige_zeilen(einzeln)
         year = next(iter(t["jahre"]))
         if bestanden:
             jahre.add(year)
-        ergebnis.append({
+        result.append({
             "teil": name, "year": year,
             "stichtag": next(iter(t["stichtage"]), None),
             "zeilen": (_zeilen_bauen(gruppen, gesamt, unstimmig)
@@ -644,7 +644,7 @@ def lies(text: str) -> dict:
                           for z in unstimmig],
             "nachweis": nachweis(gruppen, gesamt, einzeln, unstimmig, proben)})
 
-    return {"jahrgang": jahrgang(text), "teile": ergebnis,
+    return {"jahrgang": jahrgang(text), "teile": result,
             "glyphen": bool(_GLYPHEN.search(text or "")),
             "jahre": sorted(jahre)}
 

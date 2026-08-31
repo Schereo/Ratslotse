@@ -445,7 +445,7 @@ def test_gespeicherte_kennzahl_traegt_probe_und_messwert(tmp_path):
     assert h["probe"] == "beteiligung_bilanzprobe"
     assert "Abschnitt 2.2.1" in h["fundstelle"]
     assert h["seite"] == 2
-    assert "0.00" in h["probe_ergebnis"]
+    assert "0.00" in h["probe_result"]
     store.close()
 
 
@@ -506,10 +506,10 @@ def test_konzernvergleich_ist_einordnung_und_verwirft_nichts(tmp_path):
                                url="https://example.org/ga2024.pdf",
                                probe="konzern_traegersumme")
     store.save_konzern_jahrgang(2024, [], [
-        {"art": "ertraege", "traeger_key": "egh", "traeger": "EGH",
-         "betrag_teur": 69889.0, "vorjahr_teur": None},
-        {"art": "aufwendungen", "traeger_key": "egh", "traeger": "EGH",
-         "betrag_teur": 72590.0, "vorjahr_teur": None},
+        {"art": "revenues", "traeger_key": "egh", "traeger": "EGH",
+         "amount_keur": 69889.0, "prior_year_keur": None},
+        {"art": "expenses", "traeger_key": "egh", "traeger": "EGH",
+         "amount_keur": 72590.0, "prior_year_keur": None},
     ], quelle)
 
     v = bb.konzernvergleich(store, 2024)
@@ -518,7 +518,7 @@ def test_konzernvergleich_ist_einordnung_und_verwirft_nichts(tmp_path):
     assert v[0]["konzern_beitrag"] == pytest.approx(-2701000.0)
     assert v[0]["jahresergebnis"] == pytest.approx(-2726407.50)
     # 25 TEUR Unterschied — und die Kennzahl steht trotzdem im Bestand.
-    assert abs(v[0]["differenz"]) == pytest.approx(25407.50)
+    assert abs(v[0]["difference"]) == pytest.approx(25407.50)
     assert store.get_gesellschaft_kennzahlen("egh")
     store.close()
 
@@ -733,7 +733,7 @@ def test_stammkapital_ist_kein_eigentuemer():
     assert [e.name for e in eigner] == [
         "Stadt Oldenburg", "Landkreis Ammerland", "Landkreis Cloppenburg",
         "Landkreis Oldenburg", "Landkreis Wesermarsch", "Stadt Delmenhorst"]
-    assert all(e.betrag_eur == 20000.0 and e.anteil_prozent == 16.67
+    assert all(e.amount_eur == 20000.0 and e.share_pct == 16.67
                for e in eigner)
     assert "120.000,00" in probe and "100,02" in probe
 
@@ -743,8 +743,8 @@ def test_eigentuemer_fuegt_umbrochene_namen_zusammen():
     assert len(eigner) == 8
     assert eigner[1].name == ("Norddeutsche Landesbank Girozentrale, Hannover "
                               "(Kommanditistin)")
-    assert eigner[1].betrag_eur == 102258.38
-    assert eigner[0].anteil_prozent == 51.0
+    assert eigner[1].amount_eur == 102258.38
+    assert eigner[0].share_pct == 51.0
     assert probe and "1.147.850,29" in probe
     # Der Steckbrief-Kasten hinter der Tabelle ist kein Gesellschafter.
     assert not any("Amtsgericht" in e.name or "26129" in e.name for e in eigner)
@@ -780,10 +780,10 @@ def test_personen_und_eigentuemer_landen_mit_herkunft_im_bestand(tmp_path):
 
     eigner = store.get_gesellschaft_eigentuemer()
     assert [e["name"] for e in eigner] == ["Stadt Oldenburg"]
-    assert eigner[0]["betrag_eur"] == 22000000.0
+    assert eigner[0]["amount_eur"] == 22000000.0
     he = store.get_herkunft([eigner[0]["herkunft_id"]])[0]
     assert he["probe"] == "beteiligung_anteilsprobe"
-    assert "22.000.000,00" in he["probe_ergebnis"]
+    assert "22.000.000,00" in he["probe_result"]
 
     # Keine Zeile ohne Herkunft — auch die beiden neuen Tabellen nicht.
     store.herkunft_aufraeumen()

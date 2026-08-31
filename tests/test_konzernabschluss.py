@@ -31,7 +31,7 @@ def _herkunft(fundstelle: str, proben: list[str], messwert: str = "") -> herkunf
     return herkunft.Herkunft(
         art="ris", dokument_id=302709, label="Prüfbericht GA 2024",
         url="https://example.org/ga2024.pdf", fundstelle=fundstelle,
-        probe=proben, probe_ergebnis=messwert or None,
+        probe=proben, probe_result=messwert or None,
         stand="Gesamtabschluss zum 31.12.2024")
 
 # --- Fixtures: Dokumentköpfe ------------------------------------------------
@@ -171,8 +171,8 @@ TRAEGER_2018_AUFW = (
 )
 
 
-def _rollen(ergebnis: dict) -> dict[str, float]:
-    return {p["rolle"]: p["betrag"] for p in ergebnis["posten"] if p["rolle"]}
+def _rollen(result: dict) -> dict[str, float]:
+    return {p["rolle"]: p["amount"] for p in result["posten"] if p["rolle"]}
 
 
 # --- Erkennung --------------------------------------------------------------
@@ -198,40 +198,40 @@ def test_schlussbericht_ist_kein_gesamtabschluss():
 
 def test_alte_nummerierung_wird_an_der_beschriftung_erkannt():
     """2018: Posten 15 ist die Ertragssumme, nicht Posten 13."""
-    ergebnis = ka.parse_gesamtergebnisrechnung(GER_2018)
-    assert ergebnis["bestanden"]
-    rollen = _rollen(ergebnis)
-    assert rollen["ertraege_summe"] == 927894462.76
-    assert rollen["aufwendungen_summe"] == 878621831.00
+    result = ka.parse_gesamtergebnisrechnung(GER_2018)
+    assert result["bestanden"]
+    rollen = _rollen(result)
+    assert rollen["revenues_total"] == 927894462.76
+    assert rollen["expenses_total"] == 878621831.00
     assert rollen["ord_ergebnis"] == 49272631.76
     assert rollen["gesamtergebnis"] == 54743572.80
     assert rollen["zinsaufwand"] == 9637446.97
     # Die Nummer wandert mit dem Jahrgang, die Rolle nicht.
-    nummern = {p["rolle"]: p["nr"] for p in ergebnis["posten"] if p["rolle"]}
-    assert nummern["ertraege_summe"] == 15
+    nummern = {p["rolle"]: p["nr"] for p in result["posten"] if p["rolle"]}
+    assert nummern["revenues_total"] == 15
 
 
 def test_neue_nummerierung_liefert_dieselben_rollen():
     """2019 zählt anders (13/21/22) — die Rollen heißen weiter gleich."""
-    ergebnis = ka.parse_gesamtergebnisrechnung(GER_2019)
-    assert ergebnis["bestanden"]
-    rollen = _rollen(ergebnis)
-    assert rollen["ertraege_summe"] == 932052457.60
-    assert rollen["aufwendungen_summe"] == 922350191.52
+    result = ka.parse_gesamtergebnisrechnung(GER_2019)
+    assert result["bestanden"]
+    rollen = _rollen(result)
+    assert rollen["revenues_total"] == 932052457.60
+    assert rollen["expenses_total"] == 922350191.52
     assert rollen["gesamtergebnis"] == 18601580.40
-    nummern = {p["rolle"]: p["nr"] for p in ergebnis["posten"] if p["rolle"]}
-    assert nummern["ertraege_summe"] == 13
+    nummern = {p["rolle"]: p["nr"] for p in result["posten"] if p["rolle"]}
+    assert nummern["revenues_total"] == 13
 
 
 def test_zeilenumbrueche_werden_wiederhergestellt():
     """2019 hat gar keine Umbrüche — trotzdem müssen alle Posten da sein,
     inklusive des negativen Werts mit Leerzeichen hinterm Minus."""
-    ergebnis = ka.parse_gesamtergebnisrechnung(GER_2019)
-    posten = {p["nr"]: p for p in ergebnis["posten"]}
-    assert posten[1]["betrag"] == 274850289.05
-    assert posten[1]["vorjahr"] == 269835099.83
-    assert posten[10]["betrag"] == 91324.19
-    assert posten[10]["vorjahr"] == -510903.43
+    result = ka.parse_gesamtergebnisrechnung(GER_2019)
+    posten = {p["nr"]: p for p in result["posten"]}
+    assert posten[1]["amount"] == 274850289.05
+    assert posten[1]["prior_year"] == 269835099.83
+    assert posten[10]["amount"] == 91324.19
+    assert posten[10]["prior_year"] == -510903.43
     assert posten[2]["bezeichnung"].startswith("Zuwendungen und allgemeine Umlagen")
 
 
@@ -242,36 +242,36 @@ def test_entzerren_laesst_saubere_jahrgaenge_unveraendert():
 def test_anlagenuebersicht_wird_nicht_mitgelesen():
     """Direkt hinter der Tabelle folgt die Anlagenübersicht, die ebenfalls
     mit „1." beginnt. Nach dem Gesamtjahresergebnis ist Schluss."""
-    ergebnis = ka.parse_gesamtergebnisrechnung(GER_2019)
-    assert ergebnis["posten"][-1]["rolle"] == "gesamtergebnis"
-    assert not any("Konzessionen" in p["bezeichnung"] for p in ergebnis["posten"])
+    result = ka.parse_gesamtergebnisrechnung(GER_2019)
+    assert result["posten"][-1]["rolle"] == "gesamtergebnis"
+    assert not any("Konzessionen" in p["bezeichnung"] for p in result["posten"])
 
 
 def test_vorjahresspalte_in_tausend_wird_umgerechnet():
     """2014: Kopf ``EUR EUR TEUR`` — die Vorjahreszahlen stehen in Tausend."""
-    ergebnis = ka.parse_gesamtergebnisrechnung(GER_2014)
-    assert ergebnis["bestanden"]
-    posten = {p["nr"]: p for p in ergebnis["posten"]}
-    assert posten[1]["betrag"] == 205903460.52
-    assert posten[1]["vorjahr"] == 183330000.0
-    assert posten[15]["vorjahr"] == 711430000.0
+    result = ka.parse_gesamtergebnisrechnung(GER_2014)
+    assert result["bestanden"]
+    posten = {p["nr"]: p for p in result["posten"]}
+    assert posten[1]["amount"] == 205903460.52
+    assert posten[1]["prior_year"] == 183330000.0
+    assert posten[15]["prior_year"] == 711430000.0
 
 
 def test_unterposten_reissen_die_summe_nicht_an_sich():
     """2014 führt Posten 20 als Unterposten 20.1/20.2, die Summe steht auf
     einer eigenen Zeile ohne Nummer. Sie dem offenen Posten zuzuschlagen
     ergäbe 11,2 statt 12,1 Mio. Zinsaufwand — lieber gar kein Wert."""
-    ergebnis = ka.parse_gesamtergebnisrechnung(GER_2014)
-    rollen = _rollen(ergebnis)
+    result = ka.parse_gesamtergebnisrechnung(GER_2014)
+    rollen = _rollen(result)
     assert "zinsaufwand" not in rollen
-    assert not any(p["betrag"] == 11209002.22 for p in ergebnis["posten"])
+    assert not any(p["amount"] == 11209002.22 for p in result["posten"])
 
 
 def test_betrag_mit_leerzeichen_wird_verworfen():
     """„105.667.339, 23" ist kein lesbarer Betrag — die Zeile fällt weg,
     statt eine geratene Zahl zu liefern."""
-    ergebnis = ka.parse_gesamtergebnisrechnung(GER_2014)
-    nummern = {p["nr"] for p in ergebnis["posten"]}
+    result = ka.parse_gesamtergebnisrechnung(GER_2014)
+    nummern = {p["nr"] for p in result["posten"]}
     assert 2 not in nummern
     assert 16 not in nummern
     assert 15 in nummern  # der saubere Nachbar bleibt
@@ -279,10 +279,10 @@ def test_betrag_mit_leerzeichen_wird_verworfen():
 
 def test_gerissene_probe_verwirft_den_jahrgang():
     """Die zentrale Regel: Was die Rechenprobe reißt, kommt nicht durch."""
-    ergebnis = ka.parse_gesamtergebnisrechnung(GER_KAPUTT)
-    assert ergebnis is not None
-    assert not ergebnis["bestanden"]
-    gerissen = [p for p in ergebnis["proben"] if not p["ok"]]
+    result = ka.parse_gesamtergebnisrechnung(GER_KAPUTT)
+    assert result is not None
+    assert not result["bestanden"]
+    gerissen = [p for p in result["proben"] if not p["ok"]]
     assert len(gerissen) == 1
     assert gerissen[0]["delta"] == 100000.0
     # `lies` gibt dann gar keine Posten heraus.
@@ -300,62 +300,62 @@ def test_traeger_werden_mit_schluessel_gelesen():
     bloecke = ka.parse_traeger(TRAEGER_2024)
     assert len(bloecke) == 1
     block = bloecke[0]
-    assert block["art"] == "ertraege"
+    assert block["art"] == "revenues"
     assert block["spaltenprobe_ok"]
     assert block["verworfen"] == 0
     nach_key = {z["traeger_key"]: z for z in block["zeilen"]}
-    assert nach_key["stadt"]["betrag_teur"] == 799057
-    assert nach_key["klinikum"]["betrag_teur"] == 368100
-    assert nach_key["konsolidierung"]["betrag_teur"] == -98506
-    assert block["summe_teur"] == 1241548
+    assert nach_key["stadt"]["amount_keur"] == 799057
+    assert nach_key["klinikum"]["amount_keur"] == 368100
+    assert nach_key["konsolidierung"]["amount_keur"] == -98506
+    assert block["total_keur"] == 1241548
 
 
 def test_spaltenprobe_verwirft_widerspruechliche_aufstellung():
     """2018 Aufwendungen: Die Konsolidierungszeile des Berichts passt nicht
     zu seiner eigenen Summenzeile (64 TEUR Unterschied)."""
     block = ka.parse_traeger(TRAEGER_2018_AUFW)[0]
-    assert block["art"] == "aufwendungen"
+    assert block["art"] == "expenses"
     assert not block["spaltenprobe_ok"]
     assert block["spaltenprobe_delta"] == -64.0
     # Und `lies` nimmt sie deshalb nicht auf.
-    ergebnis = ka.lies(GER_2018 + TRAEGER_2018_AUFW)
-    assert ergebnis["bestanden"]          # die Postentabelle bleibt gültig
-    assert ergebnis["traeger"] == []      # die Aufstellung nicht
-    assert ergebnis["traeger_gefunden"] == 1
+    result = ka.lies(GER_2018 + TRAEGER_2018_AUFW)
+    assert result["bestanden"]          # die Postentabelle bleibt gültig
+    assert result["traeger"] == []      # die Aufstellung nicht
+    assert result["traeger_gefunden"] == 1
 
 
 def test_querprobe_verlangt_uebereinstimmung_mit_der_postentabelle():
     """Trägersumme und Summenposten stammen aus verschiedenen Kapiteln
     desselben Berichts — sie müssen dasselbe sagen."""
-    ergebnis = ka.lies(GER_2019 + TRAEGER_2024)
+    result = ka.lies(GER_2019 + TRAEGER_2024)
     # 2019er Postentabelle gegen 2024er Trägerliste: passt nicht zusammen.
-    assert ergebnis["traeger"] == []
-    assert ergebnis["traeger_gefunden"] == 1
+    assert result["traeger"] == []
+    assert result["traeger_gefunden"] == 1
 
 
 def test_vorzeichen_mit_leerzeichen():
     """Bis 2020 schreibt der Bericht „ - 80.462" und „+ 16.098"."""
     block = ka.parse_traeger(TRAEGER_2018_AUFW)[0]
     nach_key = {z["traeger_key"]: z for z in block["zeilen"]}
-    assert nach_key["konsolidierung"]["betrag_teur"] == -80462
-    assert nach_key["stadt"]["vorjahr_teur"] == 521420
+    assert nach_key["konsolidierung"]["amount_keur"] == -80462
+    assert nach_key["stadt"]["prior_year_keur"] == 521420
 
 
 def test_ohne_traegeraufstellung_keine_warnung():
     """Bis 2016 kennt der Bericht den Abschnitt 4.1.1 noch nicht. Das ist
     eine Lücke der Quelle, keine gerissene Probe."""
-    ergebnis = ka.lies(GER_2014)
-    assert ergebnis["bestanden"]
-    assert ergebnis["traeger_gefunden"] == 0
-    assert ergebnis["verworfen"] == 0
+    result = ka.lies(GER_2014)
+    assert result["bestanden"]
+    assert result["traeger_gefunden"] == 0
+    assert result["verworfen"] == 0
 
 
 # --- Zusammenspiel ----------------------------------------------------------
 
 def test_lies_liefert_probennachweis():
-    ergebnis = ka.lies(GER_2018 + TRAEGER_2024.replace(
+    result = ka.lies(GER_2018 + TRAEGER_2024.replace(
         "1.241.548 1.139.376 102.172", "927.894 864.627 63.267"))
-    nachweis = ka.probennachweis(ergebnis["proben"])
+    nachweis = ka.probennachweis(result["proben"])
     assert "ordentliches Ergebnis" in nachweis
     assert "Gesamtjahresergebnis" in nachweis
     assert "Δ 0.00" in nachweis
@@ -366,30 +366,30 @@ def test_speichern_und_lesen(tmp_path):
     stehen in Euro, Trägerzeilen in TEUR."""
     store = CouncilStore(tmp_path / "council.sqlite")
     try:
-        ergebnis = ka.lies(GER_2024_ZUSAMMEN)
-        assert ergebnis["bestanden"]
+        result = ka.lies(GER_2024_ZUSAMMEN)
+        assert result["bestanden"]
         traeger = [z | {"art": b["art"]}
-                   for b in ergebnis["traeger"] for z in b["zeilen"]]
+                   for b in result["traeger"] for z in b["zeilen"]]
         store.save_konzern_jahrgang(
-            2024, ergebnis["posten"], traeger,
+            2024, result["posten"], traeger,
             _herkunft("Abschnitt 3.2, Gesamtergebnisrechnung des Konzerns",
                       ["konzern_ergebnisprobe", "konzern_ausserordentlich",
                        "konzern_gesamtergebnis"],
-                      ka.probennachweis(ergebnis["proben"])),
+                      ka.probennachweis(result["proben"])),
             _herkunft("Abschnitt 4.1.1, Aufstellung nach Aufgabenträgern",
                       ["konzern_zeilenprobe", "konzern_traegersumme",
                        "konzern_querprobe"],
-                      ka.traegernachweis(ergebnis["traeger"])))
+                      ka.traegernachweis(result["traeger"])))
 
         assert store.konzern_jahre() == [2024]
         posten = {p["rolle"]: p for p in store.get_konzern_posten(2024) if p["rolle"]}
-        assert posten["ertraege_summe"]["betrag"] == 1241548906.55
+        assert posten["revenues_total"]["amount"] == 1241548906.55
 
         zeilen = {z["traeger_key"]: z for z in store.get_konzern_traeger(2024)}
-        assert zeilen["stadt"]["betrag_teur"] == 799057
+        assert zeilen["stadt"]["amount_keur"] == 799057
 
         # Zwei Abschnitte, zwei Herkünfte — nicht eine für den ganzen Jahrgang.
-        hid_posten = posten["ertraege_summe"]["herkunft_id"]
+        hid_posten = posten["revenues_total"]["herkunft_id"]
         hid_traeger = zeilen["stadt"]["herkunft_id"]
         assert hid_posten != hid_traeger
         nach_id = {h["id"]: h for h in store.get_herkunft()}
@@ -410,16 +410,16 @@ def test_speichern_und_lesen(tmp_path):
         # zweite Herkunft an (idempotent über den Fingerabdruck).
         vorher = len(store.get_herkunft())
         store.save_konzern_jahrgang(
-            2024, ergebnis["posten"], traeger,
+            2024, result["posten"], traeger,
             _herkunft("Abschnitt 3.2, Gesamtergebnisrechnung des Konzerns",
                       ["konzern_ergebnisprobe", "konzern_ausserordentlich",
                        "konzern_gesamtergebnis"],
-                      ka.probennachweis(ergebnis["proben"])),
+                      ka.probennachweis(result["proben"])),
             _herkunft("Abschnitt 4.1.1, Aufstellung nach Aufgabenträgern",
                       ["konzern_zeilenprobe", "konzern_traegersumme",
                        "konzern_querprobe"],
-                      ka.traegernachweis(ergebnis["traeger"])))
-        assert len(store.get_konzern_posten(2024)) == len(ergebnis["posten"])
+                      ka.traegernachweis(result["traeger"])))
+        assert len(store.get_konzern_posten(2024)) == len(result["posten"])
         assert len(store.get_herkunft()) == vorher
     finally:
         store.close()
@@ -442,21 +442,21 @@ def test_gegenprobe_gegen_die_kernverwaltung(tmp_path):
     try:
         store.save_ergebnisrechnung(2024, [
             {"nr": 12, "bezeichnung": "Summe ordentliche Erträge",
-             "ergebnis": 799057202.86, "ist_summe": 1},
+             "result": 799057202.86, "is_total": 1},
             {"nr": 20, "bezeichnung": "Summe ordentliche Aufwendungen",
-             "ergebnis": 764416063.76, "ist_summe": 1},
+             "result": 764416063.76, "is_total": 1},
         ], herkunft.Herkunft(
             art="ris", probe="strukturprobe", dokument_id=295294,
             label="Jahresabschluss 2024", url="https://example.org/ja2024.pdf"))
 
         ist = store.kernverwaltung_ist()
-        assert ist[2024]["ertraege"] == 799057202.86
+        assert ist[2024]["revenues"] == 799057202.86
 
-        ergebnis = ka.lies(GER_2024_ZUSAMMEN)
-        stadt = next(z for b in ergebnis["traeger"] for z in b["zeilen"]
+        result = ka.lies(GER_2024_ZUSAMMEN)
+        stadt = next(z for b in result["traeger"] for z in b["zeilen"]
                      if z["traeger_key"] == "stadt")
         # Der Bericht rundet auf Tausend — genauer geht der Abgleich nicht.
-        assert abs(stadt["betrag_teur"] - ist[2024]["ertraege"] / 1000.0) <= 1.0
+        assert abs(stadt["amount_keur"] - ist[2024]["revenues"] / 1000.0) <= 1.0
     finally:
         store.close()
 

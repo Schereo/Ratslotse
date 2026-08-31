@@ -382,7 +382,7 @@ def test_abgeschalteter_anlass_wird_gar_nicht_erst_eingereiht(store, monkeypatch
     # Ein anderer Anlass bleibt unberührt.
     assert notify.einreihen(store, owner, notify.N3_ERGEBNIS, "y", "<p>y</p>",
                             "/council/decision?id=1", jetzt=_zeit("2026-08-18", 9)) > 0
-    assert [p["kind"] for p in store.due_notifications(owner, "2999-01-01")] == ["n3_ergebnis"]
+    assert [p["kind"] for p in store.due_notifications(owner, "2999-01-01")] == ["n3_result"]
 
 
 def test_vorgaben_aus_dem_artboard():
@@ -429,7 +429,7 @@ def test_ergebnis_meldung_nennt_das_sitzungsdatum(store, monkeypatch, tmp_path):
     posten = store.due_notifications(owner, "2999-01-01")
     assert len(posten) == 1
     p = posten[0]
-    assert p["kind"] == "n3_ergebnis"
+    assert p["kind"] == "n3_result"
     assert p["title"] == "Radweg Nadorster Straße: angenommen"
     assert "Verkehrsausschuss am 8. Juni" in p["body_html"]      # Datum steht drin
     assert "mehrheitlich" in p["body_html"] and "11 dagegen" in p["body_html"]

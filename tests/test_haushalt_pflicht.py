@@ -53,7 +53,7 @@ const befunde = spielraumBefunde(ein.produkte ?? [], ein.year ?? 2023);
 const alsObjekt = {};
 for (const [k, b] of befunde) {
   alsObjekt[k] = {
-    produkte: b.produkte, aufwand: b.aufwand, anteil: b.anteil,
+    produkte: b.produkte, expense: b.expense, anteil: b.anteil,
     dominant: b.dominant, groesste: b.groesste ? b.groesste.produkt_nr : null,
   };
 }
@@ -115,10 +115,10 @@ def _lauf(tmp_path: Path, **ein) -> dict:
     return json.loads(fertig.stdout)
 
 
-def _p(nr: str, thh: str, aufwand: float, stufe: str | None, year: int = 2023) -> dict:
+def _p(nr: str, thh: str, expense: float, stufe: str | None, year: int = 2023) -> dict:
     return {"year": year, "produkt_nr": nr, "produkt_name": nr, "thh_nr": None,
-            "thh_name": thh, "amt": None, "ertraege": None,
-            "aufwendungen": aufwand, "ergebnis": None,
+            "thh_name": thh, "amt": None, "revenues": None,
+            "expenses": expense, "result": None,
             "beeinflussbarkeit": stufe, "auftragsgrundlage": "SGB VIII",
             "quelle_label": None, "quelle_url": None}
 

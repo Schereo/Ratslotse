@@ -42,7 +42,7 @@ import { useFetch } from "@/lib/use-fetch";
 import { fragenHref } from "@/lib/routes";
 import {
   ERTRAGSART_KURZ, HaushaltAuswahl, haushaltUrl, HaushaltZeile, PLAN_ART_LABEL, PlanArt,
-  ProdukteAntwort, betrag, bereichInfo, bereichSlug, bereiche, bereichsReihe,
+  ProdukteAntwort, amount, bereichInfo, bereichSlug, bereiche, bereichsReihe,
   deMio, deckung, gruendeFuerBereich, jahreSortiert, mio, quellenLabel,
 } from "@/lib/haushalt";
 import { BEREICHE, bereichKanon, bereichSchluessel } from "@/lib/haushalt-bereiche";
@@ -89,12 +89,12 @@ function EigeneErtraege({ daten, schluessel, planEin, planJahr }: {
 }) {
   const posten = (daten.ergebnisrechnung ?? []).filter(
     (p) => p.thh_name != null && bereichSchluessel(p.thh_name) === schluessel
-           && p.nr >= 1 && p.nr <= 11 && (p.ergebnis ?? 0) > 0);
+           && p.nr >= 1 && p.nr <= 11 && (p.result ?? 0) > 0);
   if (!posten.length || !schluessel) return null;
   const year = Math.max(...posten.map((p) => p.year));
   const arten = posten
     .filter((p) => p.year === year)
-    .map((p) => ({ nr: p.nr, label: ERTRAGSART_KURZ[p.nr] ?? p.bezeichnung, wert: p.ergebnis as number }))
+    .map((p) => ({ nr: p.nr, label: ERTRAGSART_KURZ[p.nr] ?? p.bezeichnung, wert: p.result as number }))
     .sort((a, b) => b.wert - a.wert);
   if (arten.length < 2) return null;
   const gesamt = arten.reduce((s, a) => s + a.wert, 0);
@@ -122,17 +122,17 @@ function EigeneErtraege({ daten, schluessel, planEin, planJahr }: {
             </div>
             {/* `whitespace-nowrap`: „10,9 Mio. €" brach sonst hinter „Mio."
                 um, und das € stand allein in einer zweiten Zeile. Die Einheit
-                steht je Zeile, weil `betrag()` sie mit der Größenordnung
+                steht je Zeile, weil `amount()` sie mit der Größenordnung
                 wechselt — ein gemeinsamer Kopf wäre für die kleinen Posten
                 falsch. */}
             <span className="w-[86px] flex-none whitespace-nowrap text-right font-mono text-[11.5px] tabular-nums">
-              {betrag(a.wert).wert}&#8239;<span className="text-muted-foreground">{betrag(a.wert).einheit}</span>
+              {amount(a.wert).wert}&#8239;<span className="text-muted-foreground">{amount(a.wert).einheit}</span>
             </span>
           </div>
         ))}
       </div>
       <p className="mt-3 border-t border-border/60 pt-2.5 text-[11.5px] leading-relaxed text-muted-foreground">
-        Zusammen {betrag(gesamt).wert}&nbsp;{betrag(gesamt).einheit} — aus dem Jahresabschluss
+        Zusammen {amount(gesamt).wert}&nbsp;{amount(gesamt).einheit} — aus dem Jahresabschluss
         {" "}{year}<Beleg q="ergebnisrechnung_thh" />. Der Plan für {planJahr} weist
         {" "}{deMio(planEin)}&nbsp;Mio.&nbsp;€ aus; die Aufteilung dazu gibt es erst,
         wenn das Jahr abgerechnet ist.
@@ -207,11 +207,11 @@ function BereichInner() {
     );
   }
 
-  const aus = mio(z.aufwendungen) ?? 0;
-  const ein = mio(z.ertraege) ?? 0;
-  const netto = -(mio(z.ergebnis) ?? 0);
+  const aus = mio(z.expenses) ?? 0;
+  const ein = mio(z.revenues) ?? 0;
+  const netto = -(mio(z.result) ?? 0);
   const alle = bereiche(zeilen)
-    .map((r) => ({ r, netto: -(mio(r.ergebnis) ?? 0), brutto: mio(r.aufwendungen) ?? 0, d: deckung(r) }))
+    .map((r) => ({ r, netto: -(mio(r.result) ?? 0), brutto: mio(r.expenses) ?? 0, d: deckung(r) }))
     .sort((a, b) => (ranking === "netto" ? b.netto - a.netto : b.brutto - a.brutto));
   const nachNetto = [...alle].sort((a, b) => b.netto - a.netto);
   const nachBrutto = [...alle].sort((a, b) => b.brutto - a.brutto);
@@ -231,8 +231,8 @@ function BereichInner() {
   // Wasserfall zuvor seine Summenprobe hatte). Auch die RICHTUNG der Rechnung
   // kommt deshalb aus den Rohwerten, damit Basis und Rest-Label nie
   // auseinanderfallen.
-  const rohAus = (z.aufwendungen ?? 0) / 1_000_000;
-  const rohEin = (z.ertraege ?? 0) / 1_000_000;
+  const rohAus = (z.expenses ?? 0) / 1_000_000;
+  const rohEin = (z.revenues ?? 0) / 1_000_000;
   const einVoran = rohEin > rohAus; // Überschuss-Fall: die Einnahmen sind die Basis
   // Kein `imBalken`: Bei EINEM Segment je Leiste stünde im Balken derselbe
   // Text, der als Legende direkt darunter steht — zweimal untereinander.
@@ -252,7 +252,7 @@ function BereichInner() {
   // Wendung — 283,1 zu 169,2 ist Faktor 1,67. Solche Größenverhältnisse
   // werden gerechnet und mitgeschrieben, nicht getextet.
   const vergleich = nachBrutto.find((x) => x.r.bereich !== z.bereich) ?? null;
-  const faktor = vergleich && (mio(z.aufwendungen) ?? 0) > 0
+  const faktor = vergleich && (mio(z.expenses) ?? 0) > 0
     ? Math.round((vergleich.brutto / aus) * 10) / 10 : null;
 
   // Zeilen des Jahresabschlusses zu diesem Teilhaushalt — über den kanonischen
@@ -268,7 +268,7 @@ function BereichInner() {
       // nackte Ansatz — 2018 und 2020 weichen ab (Fußnote unten).
       return {
         label: String(j) + (a?.plan_art && a.plan_art !== "ansatz" ? "*" : ""),
-        plan: mio(a?.plan), ist: mio(a?.ergebnis),
+        plan: mio(a?.plan), ist: mio(a?.result),
         // Kein Erklärsatz je Jahr: Die bereichsbezogenen Erläuterungen des
         // Abschlusses stehen direkt unter der Hantel („Was der Abschluss …
         // sagt") — ein zweiter Satz in der Zeile wäre derselbe Text zweimal.
@@ -279,8 +279,8 @@ function BereichInner() {
   const hatPlanIst = planIstZeilen.length > 0;
 
   const produktZeilen = (produkte?.produkte ?? [])
-    .filter((p) => p.ergebnis != null && p.ergebnis < 0)
-    .sort((a, b) => (a.ergebnis as number) - (b.ergebnis as number))
+    .filter((p) => p.result != null && p.result < 0)
+    .sort((a, b) => (a.result as number) - (b.result as number))
     .slice(0, 6);
 
   const quellen: QuellenSchluessel[] = [
@@ -456,7 +456,7 @@ function BereichInner() {
             <p className="mt-3 rounded-lg bg-muted/60 p-2.5 text-xs leading-relaxed text-foreground/90">
               In der Brutto-Sicht steht {bereichKanon(bruttoTop.r.bereich).name} mit
               {" "}{deMio(bruttoTop.brutto)}&#8239;Mio.&nbsp;€ an erster Stelle. Weil dort aber
-              {" "}{deMio(mio(bruttoTop.r.ertraege))}&#8239;Mio.&nbsp;€ an Erstattungen und eigenen
+              {" "}{deMio(mio(bruttoTop.r.revenues))}&#8239;Mio.&nbsp;€ an Erstattungen und eigenen
               Einnahmen zurückfließen, bleibt {bereichKanon(nachNetto[0].r.bereich).name} unterm
               Strich am teuersten.
             </p>
@@ -493,7 +493,7 @@ function BereichInner() {
             </div>
             <div className="mt-3 flex flex-col gap-1">
               {produktZeilen.map((p) => {
-                const b = betrag(-(p.ergebnis as number));
+                const b = amount(-(p.result as number));
                 return (
                   <Link key={p.produkt_nr}
                     href={`/haushalt/produkte?nr=${encodeURIComponent(p.produkt_nr)}`}
@@ -539,7 +539,7 @@ function BereichInner() {
             </span>
           </div>
           {reihe.length >= 2 ? (() => {
-            const werte = reihe.map((r) => -(mio(r.zeile.ergebnis) ?? 0));
+            const werte = reihe.map((r) => -(mio(r.zeile.result) ?? 0));
             // Welche Größe die Reihe überhaupt beschreibt, entscheidet ihr
             // Vorzeichen. Ein Bereich mit Überschuss (Finanzmanagement) hat
             // durchweg negative Netto-Werte; „−80,0 Mio. € weniger
@@ -591,7 +591,7 @@ function BereichInner() {
                         {werte[i] > 0 ? `−${deMio(werte[i])}` : `+${deMio(-werte[i])}`}&#8239;Mio.&nbsp;€ netto
                       </span>
                       <span className="text-right text-muted-foreground">
-                        {deMio(mio(zeile.aufwendungen))}&#8239;Mio.&nbsp;€ Ausgaben
+                        {deMio(mio(zeile.expenses))}&#8239;Mio.&nbsp;€ Ausgaben
                       </span>
                     </div>
                   ))}
@@ -677,7 +677,7 @@ function BereichInner() {
                     Mio. zu weit. */}
                 {/* `alpha` hält die Jahre chronologisch — eine Zeitreihe nach
                     |Abweichung| sortiert wäre keine mehr. */}
-                <Hantel zeilen={planIstZeilen} massstab="betrag" sortierung="alpha" />
+                <Hantel zeilen={planIstZeilen} massstab="amount" sortierung="alpha" />
                 {abweichend.length > 0 && (
                   <p className="mt-2.5 text-[11px] leading-relaxed text-muted-foreground">
                     * In {[...new Set(abweichend.map((p) => p.year))].join(" und ")} vergleicht der

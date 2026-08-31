@@ -120,7 +120,7 @@ def main() -> int:
                 url=quelle_url or isch.UEBERSICHT_URL,
                 fundstelle=f"Tabelle 2, Blatt {isch.BLATT}, "
                            f"Regionalschlüssel {isch.ARS_OLDENBURG}",
-                probe_ergebnis=warum,
+                probe_result=warum,
                 stand=f"31.12.{gefunden['year']}"))
         print(f"  gespeichert: Stichtag {gefunden['year']}")
     finally:

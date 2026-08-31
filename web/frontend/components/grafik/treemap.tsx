@@ -74,7 +74,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import {
   beschriftet as traegtText, kachelHoehe, kacheln, namenszeilen, schmal,
 } from "@/components/grafik/kachelflaeche";
-import { betrag, deMio, deZahl } from "@/components/grafik/format";
+import { amount, deMio, deZahl } from "@/components/grafik/format";
 import { RanglisteSchiene } from "@/components/grafik/rangliste-schiene";
 import { useBreite } from "@/lib/use-breite";
 import { cn } from "@/lib/utils";
@@ -127,7 +127,7 @@ export function Treemap({
   flaecheLabel?: string;
   /** Der Satz über nicht-positive Knoten — die Vorgabe ist der
    *  Investitionen-Fall (Tilgungen, Zuschüsse, Verkäufe). */
-  verworfenSatz?: (anzahl: number) => string;
+  verworfenSatz?: (count: number) => string;
   /** Die Ablesezeile nennt zusätzlich den Anteil an der Gesamtfläche. Nur
    *  sinnvoll, wo die Kacheln ein GANZES zerlegen — im Investitionen-Fall
    *  zeigt die Fläche einen Ausschnitt, dort wäre der Anteil eine
@@ -171,7 +171,7 @@ export function Treemap({
   if (!positive.length) return null;
 
   const geld = (euro: number) => {
-    const b = betrag(euro);
+    const b = amount(euro);
     return `${b.wert} ${b.einheit}`;
   };
 

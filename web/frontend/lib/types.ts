@@ -420,7 +420,7 @@ export interface Beratung {
   gremium: string;
   top: string | null;
   is_public: number | null;
-  ergebnis: string | null;
+  result: string | null;
   ksinr: number | null;
   future: boolean;
 }
@@ -433,9 +433,9 @@ export interface ImportanceBreakdown {
   /** RL-U16: KI-Tragweite 0–100 (fehlt, solange der Backfill sie nicht hat). */
   impact?: number | null;
   /** 0–1 je Signal, null wenn das Signal für diesen Beschluss fehlt. */
-  signals: { geld: number | null; umstritten: number | null; verbindlich: number | null; aufwand: number | null };
+  signals: { geld: number | null; umstritten: number | null; verbindlich: number | null; expense: number | null };
   /** Gewichteter Punkte-Beitrag je Signal; Summe = `base_score`. */
-  contributions?: { geld: number | null; umstritten: number | null; verbindlich: number | null; aufwand: number | null };
+  contributions?: { geld: number | null; umstritten: number | null; verbindlich: number | null; expense: number | null };
   /** RL-U16: 1-Satz-Begründung des Tragweite-Scores (fehlt vor dem Backfill). */
   impact_reason?: string | null;
 }
@@ -496,7 +496,7 @@ export interface DecisionDetail {
     titel: string;
     template_number: string;
     year?: number | null;
-    betrag?: number | null;
+    amount?: number | null;
   } | null;
   /** P1: document_id der gerenderten Planzeichnung — B-Plan-Beschlüsse
    *  zeigen sie als Bild statt nur als Anlagen-Download. */

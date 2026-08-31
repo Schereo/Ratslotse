@@ -27,13 +27,13 @@ Aufruf::
 
     # Dateien vorher laden (Nummern von der LSN-Übersichtsseite)
     python scripts/ingest_staedtevergleich.py \\
-        --kfa kfa2026.xlsx --kfa-vorjahr kfa2025.xlsx \\
+        --kfa kfa2026.xlsx --kfa-prior_year kfa2025.xlsx \\
         --realsteuer realsteuer2025.xlsx
 
     # oder direkt von der Adresse holen
     python scripts/ingest_staedtevergleich.py \\
         --kfa https://www.statistik.niedersachsen.de/download/227086 \\
-        --kfa-vorjahr https://www.statistik.niedersachsen.de/download/216492 \\
+        --kfa-prior_year https://www.statistik.niedersachsen.de/download/216492 \\
         --realsteuer https://www.statistik.niedersachsen.de/download/230730
 
 Die Übersichtsseiten, auf denen die jeweils neuen Nummern stehen:
@@ -95,7 +95,7 @@ def main() -> int:
     ap.add_argument("--db", default=str(COUNCIL_DB))
     ap.add_argument("--kfa", required=True,
                     help="Kommunaler Finanzausgleich, JÜNGERER Jahrgang (Datei oder Adresse)")
-    ap.add_argument("--kfa-vorjahr", required=True,
+    ap.add_argument("--kfa-prior_year", required=True,
                     help="derselbe Bericht ein Jahr früher — die Gegenprobe")
     ap.add_argument("--realsteuer", required=True,
                     help="Realsteuervergleich (Datei oder Adresse)")
@@ -115,14 +115,14 @@ def main() -> int:
             # --- Steuerkraft: zwei Jahrgänge, weil die Probe zwei braucht ---
             print("Kommunaler Finanzausgleich:")
             pfad_neu, url_neu = _holen(args.kfa, ablage)
-            pfad_alt, _ = _holen(args.kfa_vorjahr, ablage)
+            pfad_alt, _ = _holen(args.kfa_prior_year, ablage)
             neu = sv.lies_kfa(str(pfad_neu))
             alt = sv.lies_kfa(str(pfad_alt))
-            print(f"  Ausgleichsjahr {neu.year} (Vorjahresspalte {neu.vorjahr}), "
+            print(f"  Ausgleichsjahr {neu.year} (Vorjahresspalte {neu.prior_year}), "
                   f"{len(neu.staedte)} Gemeinden, Stand {neu.stand}")
 
             probe = sv.probe_ueberlappung(alt, neu)
-            print(f"  Zwei-Jahres-Überlappung: {probe['ergebnis']}")
+            print(f"  Zwei-Jahres-Überlappung: {probe['result']}")
             if not probe["ok"]:
                 for a in probe["abweichungen"][:10]:
                     print(f"    ABWEICHUNG {a['schluessel']} {a['stadt']}: "
@@ -141,7 +141,7 @@ def main() -> int:
                     url=url_neu or QUELLEN_STAND.get(f"kfa{neu.year}"),
                     fundstelle="Blatt „ST_KR_MESS_VGL“ — Steuerkraftmesszahlen "
                                "je Gemeinde, zwei Ausgleichsjahre nebeneinander",
-                    probe_ergebnis=probe["ergebnis"],
+                    probe_result=probe["result"],
                     stand=neu.stand))
             print(f"  gespeichert: {geschrieben['steuerkraft']} Werte "
                   f"({len(sv.KREISFREIE_STAEDTE)} kreisfreie Städte)")
@@ -155,7 +155,7 @@ def main() -> int:
             proben: list[str] = []
             for jahrgang in sk.lies_zuweisungen(str(pfad_neu)):
                 probe_k = sk.probe_komponenten(jahrgang)
-                print(f"  {probe_k['ergebnis']}")
+                print(f"  {probe_k['result']}")
                 if not probe_k["ok"]:
                     for abw in probe_k["abweichungen"][:8]:
                         print(f"    ABWEICHUNG {abw['stadt']}: {abw['grund']}")
@@ -163,17 +163,17 @@ def main() -> int:
                           "in die Datenbank.")
                     continue
                 zeilen_fa += sk.zeilen_finanzausgleich(jahrgang)
-                proben.append(probe_k["ergebnis"])
+                proben.append(probe_k["result"])
                 if args.jahrbuch_1103:
                     jahr_s, _, wert_s = args.jahrbuch_1103.partition(":")
                     if jahr_s.strip().isdigit() and int(jahr_s) == jahrgang.year:
                         probe_j = sk.probe_gegen_jahrbuch(jahrgang, float(wert_s))
-                        print(f"  {probe_j['ergebnis']} "
+                        print(f"  {probe_j['result']} "
                               f"— {'geht auf' if probe_j['ok'] else 'REISST'}")
                         if not probe_j["ok"]:
                             print("  ABBRUCH: Land und Stadt widersprechen sich.")
                             return 1
-                        proben.append(probe_j["ergebnis"])
+                        proben.append(probe_j["result"])
             if zeilen_fa:
                 geschrieben["finanzausgleich"] = store.save_staedtevergleich(
                     "finanzausgleich", zeilen_fa,
@@ -187,7 +187,7 @@ def main() -> int:
                                    "Gemeinde- und Kreisaufgaben, Zuweisungen für "
                                    "Aufgaben des übertragenen Wirkungskreises und "
                                    "Finanzausgleichsumlage je kreisfreier Stadt",
-                        probe_ergebnis=" · ".join(proben),
+                        probe_result=" · ".join(proben),
                         stand=neu.stand))
                 print(f"  gespeichert: {geschrieben['finanzausgleich']} Werte")
 
@@ -199,7 +199,7 @@ def main() -> int:
 
             zeilen, verworfen = sv.zeilen_realsteuern(rs)
             for v in verworfen:
-                print(f"    VERWORFEN {v['stadt']}: {v['grund']} — {v['ergebnis']}")
+                print(f"    VERWORFEN {v['stadt']}: {v['grund']} — {v['result']}")
             if not zeilen:
                 print("  ABBRUCH: keine einzige Stadt hat ihre Probe bestanden.")
                 return 1
@@ -213,7 +213,7 @@ def main() -> int:
                     fundstelle="Blatt 2.1 — Grundbeträge, Hebesätze und "
                                "Ist-Aufkommen je kreisfreier Stadt; Blatt 5.1 — "
                                "durchschnittliche Steuereinnahmekraft, drei Jahre",
-                    probe_ergebnis=(f"{len(sv.KREISFREIE_STAEDTE) - len(verworfen)} "
+                    probe_result=(f"{len(sv.KREISFREIE_STAEDTE) - len(verworfen)} "
                                     f"von {len(sv.KREISFREIE_STAEDTE)} Städten "
                                     f"vollständig geprüft"),
                     stand=rs.stand))

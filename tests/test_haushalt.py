@@ -50,17 +50,17 @@ Summe 812.860.891 883.918.387 -71.057.496 3.840.050 1.462.000 2.378.050
 
 def test_parse_ergebnishaushalt():
     rows = haushalt.parse_ergebnishaushalt(PAGE_2026)
-    assert len(rows) == 14 and sum(r["is_summe"] for r in rows) == 1
+    assert len(rows) == 14 and sum(r["is_total"] for r in rows) == 1
     soziales = next(r for r in rows if r["bereich"] == "Soziales und Gesundheit")
-    assert soziales["ertraege"] == 169_924_514 and soziales["aufwendungen"] == 283_120_052
-    assert soziales["ergebnis"] == -113_195_538
-    summe = next(r for r in rows if r["is_summe"])
-    assert summe["aufwendungen"] == 883_918_387
+    assert soziales["revenues"] == 169_924_514 and soziales["expenses"] == 283_120_052
+    assert soziales["result"] == -113_195_538
+    summe = next(r for r in rows if r["is_total"])
+    assert summe["expenses"] == 883_918_387
     # Kopf-/Fußzeilen („-Euro-", Spaltennummern, Seitenzahl) fallen raus:
     assert not any("Euro" in r["bereich"] for r in rows)
     # Summen-Validierung stimmt (Basis des extract_from_pdf-Guards):
-    parts = [r for r in rows if not r["is_summe"]]
-    assert abs(sum(r["aufwendungen"] for r in parts) - summe["aufwendungen"]) < 0.01 * summe["aufwendungen"]
+    parts = [r for r in rows if not r["is_total"]]
+    assert abs(sum(r["expenses"] for r in parts) - summe["expenses"]) < 0.01 * summe["expenses"]
 
 
 def test_build_questions_grounded_and_asymmetric():
@@ -85,8 +85,8 @@ def test_build_questions_grounded_and_asymmetric():
     assert top["options"][top["correct_index"]] == "Soziales und Gesundheit"
     assert len(top["options"]) == 4 and len(set(top["options"])) == 4
     # Ertrags-MC → Finanzmanagement und Recht.
-    ertrag = next(q for q in mc if "Einnahmen" in q["question"])
-    assert ertrag["options"][ertrag["correct_index"]] == "Finanzmanagement und Recht"
+    revenue = next(q for q in mc if "Einnahmen" in q["question"])
+    assert revenue["options"][revenue["correct_index"]] == "Finanzmanagement und Recht"
 
 
 def test_chart_json_shape():
@@ -147,9 +147,9 @@ def test_extract_from_pdf_rejects_broken_sums(monkeypatch, tmp_path):
 
 def _shift(rows: list[dict], factor: float) -> list[dict]:
     """Fixture-Jahre simulieren: alle Beträge skaliert (Namen identisch)."""
-    return [{**r, "ertraege": r["ertraege"] * factor,
-             "aufwendungen": r["aufwendungen"] * factor,
-             "ergebnis": r["ergebnis"] * factor} for r in rows]
+    return [{**r, "revenues": r["revenues"] * factor,
+             "expenses": r["expenses"] * factor,
+             "result": r["result"] * factor} for r in rows]
 
 
 def test_v2_share_ertraege_ranking():
@@ -163,12 +163,12 @@ def test_v2_share_ertraege_ranking():
     assert share["items"][0]["highlight"] and share["items"][0]["value"] == 32
     assert share["items"][1]["value"] == 68
     # Erträge-Frage: 812,9 Mio → 813, Balken-Chart über die Erträge.
-    ertraege = next(q for q in qs if "einzunehmen" in q["question"])
-    assert ertraege["answer_value"] == 813.0
-    assert json.loads(ertraege["chart"])["title"].startswith("Geplante Erträge")
+    revenues = next(q for q in qs if "einzunehmen" in q["question"])
+    assert revenues["answer_value"] == 813.0
+    assert json.loads(revenues["chart"])["title"].startswith("Geplante Erträge")
     # Ranking-MC „am wenigsten": korrekt = kleinster der vier Optionen.
     wenigsten = next(q for q in qs if "am wenigsten" in q["question"])
-    by_name = {r["bereich"]: r["aufwendungen"] for r in rows if not r["is_summe"]}
+    by_name = {r["bereich"]: r["expenses"] for r in rows if not r["is_total"]}
     vals = [by_name[o] for o in wenigsten["options"]]
     assert by_name[wenigsten["options"][wenigsten["correct_index"]]] == min(vals)
 
@@ -278,14 +278,14 @@ CSV_STEUERKRAFT = """Ausgleichsjahr;Steuerkraftmesszahl [Euro];Steuerkraftmessza
 def test_parse_opendata_ergebnishaushalt():
     rows = haushalt.parse_opendata_ergebnishaushalt(CSV_2024)
     # 6 Teilhaushalte + Summe; die redundante Fehlbedarf-Zeile fällt weg.
-    assert len(rows) == 7 and sum(r["is_summe"] for r in rows) == 1
+    assert len(rows) == 7 and sum(r["is_total"] for r in rows) == 1
     vf = next(r for r in rows if r["bereich"] == "Verwaltungsführung")  # Umlaut restauriert
-    assert vf["ertraege"] == 446_540.0 and vf["aufwendungen"] == 8_153_186.0
-    assert vf["ergebnis"] == 446_540.0 - 8_153_186.0
+    assert vf["revenues"] == 446_540.0 and vf["expenses"] == 8_153_186.0
+    assert vf["result"] == 446_540.0 - 8_153_186.0
     sich = next(r for r in rows if "Sicherheit" in r["bereich"])
     assert sich["bereich"] == "Sicherheit und Ordnung"  # Doppel-Leerzeichen normalisiert
     assert any(r["bereich"] == "Verkehr und Straßenbau" for r in rows)
-    summe = next(r for r in rows if r["is_summe"])
+    summe = next(r for r in rows if r["is_total"])
     assert summe["bereich"] == "Summe"  # PDF-Konvention, damit Trends matchen
 
 
@@ -298,7 +298,7 @@ def test_parse_steuereinnahmen_langformat():
     rows = haushalt.parse_steuereinnahmen(CSV_STEUERN)
     assert len(rows) == 16  # 2 Jahre × 8 Spalten
     gew_2025 = next(r for r in rows if r["year"] == 2025 and r["art"].startswith("Gewerbesteuer"))
-    assert gew_2025["betrag"] == 222_117_000.0
+    assert gew_2025["amount"] == 222_117_000.0
     # Umlaute restauriert, Kopf-Leerzeichen weg:
     arten = {r["art"] for r in rows}
     assert "Vergnügungssteuer" in arten and "Gemeindeanteil an der Umsatzsteuer" in arten
@@ -651,12 +651,12 @@ def test_parse_ergebnisrechnung_plan_und_ist():
     nach_nr = {p["nr"]: p for p in posten}
     steuern = nach_nr[1]
     assert steuern["ansatz"] == 287_275_000.0      # geplant
-    assert steuern["ergebnis"] == 341_608_473.52   # tatsächlich
-    assert steuern["vorjahr"] == 305_411_797.55
+    assert steuern["result"] == 341_608_473.52   # tatsächlich
+    assert steuern["prior_year"] == 305_411_797.55
     # Mehrzeilige Bezeichnung („Zuwendungen und allgemeine\nUmlagen 1)")
-    assert nach_nr[2]["ergebnis"] == 168_262_169.22
+    assert nach_nr[2]["result"] == 168_262_169.22
     # Summenzeilen als solche markiert
-    assert nach_nr[12]["ist_summe"] == 1 and nach_nr[20]["ist_summe"] == 1
+    assert nach_nr[12]["is_total"] == 1 and nach_nr[20]["is_total"] == 1
     assert nach_nr[12]["ansatz"] == 664_574_528.42
     # Die Gesamtergebnisrechnung (anderer Umfang!) darf NICHT mitgelesen werden.
     assert steuern["ansatz"] != 888_888_888.88
@@ -679,10 +679,10 @@ def test_parse_teilergebnishaushalt_produkte():
     assert p["thh_nr"] == 6 and p["amt"] == "Amt für Kultur, Museen und Sport"
     # Haushaltsjahr = ERSTER Ansatz (2019), nicht das letzte Finanzplanungsjahr
     assert p["year"] == 2019
-    assert p["ertraege"] == 4206.0 and p["aufwendungen"] == 484_239.0
-    assert p["ergebnis"] == -480_033.0
+    assert p["revenues"] == 4206.0 and p["expenses"] == 484_239.0
+    assert p["result"] == -480_033.0
     # Die angeklebte Seitenzahl (601) darf kein Wert werden.
-    assert p["ergebnis"] != 601
+    assert p["result"] != 601
 
 
 def test_teilergebnishaushalt_prueft_summe():
@@ -703,12 +703,12 @@ def test_teilergebnishaushalt_ab_plan_2025_mit_zwei_beschriftungszeilen():
     assert p["amt"] == "Rechnungsprüfungsamt"
     # Haushaltsjahr = ERSTER Ansatz (2024), nicht die Finanzplanungsjahre.
     assert p["year"] == 2024
-    assert p["ertraege"] == 160_800.0 and p["aufwendungen"] == 1_349_214.0
-    assert p["ergebnis"] == -1_188_414.0
+    assert p["revenues"] == 160_800.0 and p["expenses"] == 1_349_214.0
+    assert p["result"] == -1_188_414.0
     # Die Rechenprobe des Dokuments geht auf: 12 − 20 = 21.
-    assert p["ertraege"] - p["aufwendungen"] == p["ergebnis"]
+    assert p["revenues"] - p["expenses"] == p["result"]
     # Die angeklebte Seitenzahl (280) darf kein Wert werden.
-    assert p["ergebnis"] != 280
+    assert p["result"] != 280
 
 
 def test_wertezeile_ueberspringt_seitenumbruch_zwischen_den_beschriftungen():
@@ -901,7 +901,7 @@ def test_produkt_steckbrief_migration(tmp_path):
         "CREATE TABLE council_produkte ("
         "year INTEGER NOT NULL, produkt_nr TEXT NOT NULL, produkt_name TEXT NOT NULL, "
         "thh_nr INTEGER, thh_name TEXT, amt TEXT, "
-        "ertraege REAL, aufwendungen REAL, ergebnis REAL, "
+        "revenues REAL, expenses REAL, result REAL, "
         "quelle_label TEXT, quelle_url TEXT, fetched_at TEXT NOT NULL, "
         "PRIMARY KEY (year, produkt_nr))")
     conn.execute("INSERT INTO council_produkte VALUES "
@@ -986,14 +986,14 @@ def test_parse_teilergebnisrechnungen():
     # Die Werte stammen aus der Teil-ERGEBNISrechnung, nicht aus der
     # Teil-Finanzrechnung, die direkt darunter dieselben Postennummern trägt.
     assert nach_nr[12]["ansatz"] == 568_542.15
-    assert nach_nr[12]["ergebnis"] == 475_819.90
+    assert nach_nr[12]["result"] == 475_819.90
     assert nach_nr[12]["ansatz"] != 222_222.22
 
 
-def _summenzeilen(ertraege_plan, ertraege_ist, aufw_plan, aufw_ist):
+def _summenzeilen(revenues_planned, revenues_actual, aufw_plan, aufw_ist):
     """Kleine Hilfe: die beiden Summenzeilen einer Ebene."""
-    return [{"nr": 12, "plan": ertraege_plan, "ergebnis": ertraege_ist},
-            {"nr": 20, "plan": aufw_plan, "ergebnis": aufw_ist}]
+    return [{"nr": 12, "plan": revenues_planned, "result": revenues_actual},
+            {"nr": 20, "plan": aufw_plan, "result": aufw_ist}]
 
 
 def test_summenprobe_faengt_stille_fehlgriffe():
@@ -1035,15 +1035,15 @@ def test_store_plan_ist(tmp_path, quelle):
 
     assert store.plan_ist_jahre() == [2023]
     pi = store.get_plan_ist(2023)
-    assert pi["gesamt"]["ertraege_plan"] == 664_574_528.42
-    assert pi["gesamt"]["ertraege_ist"] == 732_987_197.61
+    assert pi["gesamt"]["revenues_planned"] == 664_574_528.42
+    assert pi["gesamt"]["revenues_actual"] == 732_987_197.61
     assert len(pi["bereiche"]) == 1
     # 2023 vergleicht gegen den nackten Ansatz — Plan und Ansatz fallen zusammen.
-    assert pi["gesamt"]["ertraege_ansatz"] == 664_574_528.42
+    assert pi["gesamt"]["revenues_budgeted"] == 664_574_528.42
     assert pi["gesamt"]["plan_art"] == "ansatz"
     b = pi["bereiche"][0]
     assert b["thh_nr"] == 1 and b["thh_name"] == "Verwaltungsführung"
-    assert b["ertraege_plan"] == 568_542.15 and b["ertraege_ist"] == 475_819.90
+    assert b["revenues_planned"] == 568_542.15 and b["revenues_actual"] == 475_819.90
     # Gesamtzeile und Teilhaushalt liegen nebeneinander in derselben Tabelle.
     assert len(store.get_ergebnisrechnung(2023)) > len(gesamt)
     store.close()
@@ -1169,11 +1169,11 @@ def test_ergebnisrechnung_2017_ergebnis_steht_vor_dem_ansatz():
     Eine feste Reihenfolgeannahme vertauschte hier Plan und Ist."""
     nach_nr = {p["nr"]: p for p in finanzberichte.parse_ergebnisrechnung(JA_2017, 2017)}
     assert nach_nr[1]["ansatz"] == 231_033_600.00        # geplant
-    assert nach_nr[1]["ergebnis"] == 239_004_300.84      # tatsächlich
-    assert nach_nr[1]["vorjahr"] == 230_255_777.11
+    assert nach_nr[1]["result"] == 239_004_300.84      # tatsächlich
+    assert nach_nr[1]["prior_year"] == 230_255_777.11
     # Die Summenzeilen heißen „12.= Summe" ohne Leerzeichen vor dem Gleich.
     assert nach_nr[12]["ansatz"] == 509_437_536.75
-    assert nach_nr[12]["ergebnis"] == 539_271_147.21
+    assert nach_nr[12]["result"] == 539_271_147.21
     assert nach_nr[20]["ansatz"] == 509_265_601.41
     # Ohne Nachtrag und ohne Ermächtigungsspalte ist der Plan der Ansatz.
     assert nach_nr[12]["plan"] == nach_nr[12]["ansatz"]
@@ -1185,17 +1185,17 @@ def test_ergebnisrechnung_2018_bezug_ist_die_gesamtermaechtigung():
     Gesamtermächtigung — 7,9 bzw. 11,1 Mio. € Unterschied. Beide Werte
     müssen erhalten bleiben, sonst ist die Mehrjahres-Kurve still falsch."""
     nach_nr = {p["nr"]: p for p in finanzberichte.parse_ergebnisrechnung(JA_2018, 2018)}
-    ertraege, aufwendungen = nach_nr[12], nach_nr[20]
-    assert ertraege["plan_art"] == "gesamtermaechtigung"
-    assert ertraege["plan"] == 556_836_784.71          # Bezug der Abweichung
-    assert ertraege["ansatz"] == 548_948_733.89        # ursprünglicher Ansatz
-    assert ertraege["ergebnis"] == 591_905_846.44
-    assert aufwendungen["plan"] == 551_114_889.77
-    assert aufwendungen["ansatz"] == 540_007_674.03
-    assert aufwendungen["ergebnis"] == 537_517_730.88
+    revenues, expenses = nach_nr[12], nach_nr[20]
+    assert revenues["plan_art"] == "gesamtermaechtigung"
+    assert revenues["plan"] == 556_836_784.71          # Bezug der Abweichung
+    assert revenues["ansatz"] == 548_948_733.89        # ursprünglicher Ansatz
+    assert revenues["result"] == 591_905_846.44
+    assert expenses["plan"] == 551_114_889.77
+    assert expenses["ansatz"] == 540_007_674.03
+    assert expenses["result"] == 537_517_730.88
     # Die Abweichung bezieht sich auf den Plan, nicht auf den Ansatz.
-    assert abs((aufwendungen["ergebnis"] - aufwendungen["plan"])
-               - aufwendungen["deviation"]) < 0.01
+    assert abs((expenses["result"] - expenses["plan"])
+               - expenses["deviation"]) < 0.01
 
 
 def test_ergebnisrechnung_2020_bezug_ist_ansatz_plus_nachtrag():
@@ -1204,15 +1204,15 @@ def test_ergebnisrechnung_2020_bezug_ist_ansatz_plus_nachtrag():
     weniger ausgegeben als geplant" hat oder „5,7 Mio. mehr", entscheidet
     allein diese Wahl — beide Zahlen stehen in derselben Zeile."""
     nach_nr = {p["nr"]: p for p in finanzberichte.parse_ergebnisrechnung(JA_2020, 2020)}
-    aufwendungen = nach_nr[20]
-    assert aufwendungen["plan_art"] == "ansatz_nachtrag"
-    assert aufwendungen["ansatz"] == 582_261_479.18                 # vor Nachtrag
-    assert aufwendungen["plan"] == 609_469_629.18                   # + 27,2 Mio.
-    assert aufwendungen["ergebnis"] == 587_980_452.10
-    assert round(aufwendungen["plan"] - aufwendungen["ansatz"], 2) == 27_208_150.00
+    expenses = nach_nr[20]
+    assert expenses["plan_art"] == "ansatz_nachtrag"
+    assert expenses["ansatz"] == 582_261_479.18                 # vor Nachtrag
+    assert expenses["plan"] == 609_469_629.18                   # + 27,2 Mio.
+    assert expenses["result"] == 587_980_452.10
+    assert round(expenses["plan"] - expenses["ansatz"], 2) == 27_208_150.00
     # Gegen den Plan: 21,5 Mio. weniger. Gegen den Ansatz: 5,7 Mio. mehr.
-    assert round(aufwendungen["deviation"] / 1e6, 1) == -21.5
-    assert round((aufwendungen["ergebnis"] - aufwendungen["ansatz"]) / 1e6, 1) == 5.7
+    assert round(expenses["deviation"] / 1e6, 1) == -21.5
+    assert round((expenses["result"] - expenses["ansatz"]) / 1e6, 1) == 5.7
     # Zeilen ohne Nachtrag vergleichen in derselben Tabelle gegen den Ansatz.
     assert nach_nr[3]["plan_art"] == "ansatz"
     assert nach_nr[3]["plan"] == nach_nr[3]["ansatz"] == 14_900_000.00
@@ -1228,7 +1228,7 @@ def test_strukturprobe_12_minus_20_ist_21():
     posten = finanzberichte.parse_ergebnisrechnung(JA_2017, 2017)
     for p in posten:
         if p["nr"] == 21:
-            p["ergebnis"] += 5000
+            p["result"] += 5000
     ok, warum = finanzberichte.strukturprobe(posten)
     assert ok is False and "12 − 20 − 21" in warum
 
@@ -1244,7 +1244,7 @@ def test_vorjahreskette_ueber_dokumentgrenzen():
     verbogen = [dict(p) for p in p2017]
     for p in verbogen:
         if p["nr"] == 12:
-            p["ergebnis"] = 1.0
+            p["result"] = 1.0
     kaputt = finanzberichte.vorjahreskette({2017: verbogen, 2018: p2018})
     assert kaputt and kaputt[0][0] == 2017 and kaputt[0][1] == 2018
 
@@ -1276,14 +1276,14 @@ def test_vorzeichen_reparatur_faellt_nicht_auf_nullzeilen_herein():
     """Ohne Zusatzbedingung erfüllt jedes „X | 0,00 | X" die Vorzeichenprobe.
     Im Abschluss 2018 hätte das für THH11 ein Ist von 0,00 € eingetragen,
     richtig sind 105,0 Mio. €."""
-    kopf = {"positionen": {"vorjahr": 0, "ansatz": 1, "ergebnis": 2, "deviation": 3},
-            "varianten": ("ansatz",), "hat_vorjahr": True}
+    kopf = {"positionen": {"prior_year": 0, "ansatz": 1, "result": 2, "deviation": 3},
+            "varianten": ("ansatz",), "has_prior_year": True}
     # Vorjahr, dann das tückische Tripel, dann die echte Spaltenfolge.
     zahlen = [102_428_787.88, 105_442_887.67, 0.0, 105_442_887.67,
               61_095.97, 105_503_983.64, 104_950_447.44, -553_536.20]
     werte = finanzberichte._spalten_zuordnen(zahlen, kopf)
     assert werte is not None
-    assert werte["ergebnis"] == 104_950_447.44      # nicht 0,00
+    assert werte["result"] == 104_950_447.44      # nicht 0,00
     assert werte["plan"] == 105_503_983.64
     assert werte["vorzeichen_repariert"] is False
 
@@ -1490,7 +1490,7 @@ def test_abschlussfragen_tragen_stabile_schluessel_ohne_jahr(tmp_path):
     c.execute("INSERT INTO council_bilanz (year, rolle, seite, ebene, bezeichnung, wert, "
               " fetched_at) VALUES (2024, 'geldschulden', 'passiva', 2, 'Geldschulden', "
               " 43690972, '2026-08-18')")
-    c.execute("INSERT INTO council_buergschaften (year, bestand, genau, aus_folgejahr, "
+    c.execute("INSERT INTO council_buergschaften (year, bestand, genau, out_next_year, "
               " quelle, proben, fetched_at) VALUES (2024, 220300000, 1, 0, "
               " 'jahresabschluss', '', '2026-08-18')")
     c.commit()
@@ -1602,7 +1602,7 @@ def test_haushalts_anschluss_nur_wo_er_belegt_ist(tmp_path):
     c.execute("INSERT INTO council_vorlagen (kvonr, template_number, title, fetched_at) "
               "VALUES (2, '24/0999', 'Neubau einer Schule', '2026-08-18')")
     c.execute("INSERT INTO council_nachbewilligungen (template_number, titel, art, kategorie, "
-              " beschlossen, im_rat, ratsentscheidung, volltextprobe, betrag, year, "
+              " beschlossen, im_rat, ratsentscheidung, volltextprobe, amount, year, "
               " beschluss_id, gremien, fetched_at) "
               "VALUES ('18/0187', 'Außerplanmäßige Bewilligung', 'ausserplanmaessig', "
               " 'sonstiges', 1, 1, 1, 1, 500000.0, 2018, 812, '[]', '2026-08-18')")

@@ -70,13 +70,13 @@ def fetch_beratungsfolge(scraper: CouncilScraper, kvonr: int) -> list[dict]:
             txt = _DATE_RE.sub("", txt, count=1).strip()
 
         is_public: bool | None = None
-        ergebnis: str | None = None
+        result: str | None = None
         rest = txt
         vm = _VISIBILITY_RE.match(txt)
         if vm:
             rest = vm.group(1).strip()
             is_public = "nicht" not in vm.group(2).replace(" ", "").lower()
-            ergebnis = (vm.group(3) or "").strip() or None
+            result = (vm.group(3) or "").strip() or None
 
         tm = _TOP_RE.match(rest)
         gremium = (tm.group(1) if tm else rest).strip()
@@ -92,7 +92,7 @@ def fetch_beratungsfolge(scraper: CouncilScraper, kvonr: int) -> list[dict]:
         if gremium or datum:
             out.append({
                 "datum": datum, "gremium": gremium, "top": top,
-                "is_public": is_public, "ergebnis": ergebnis, "ksinr": ksinr,
+                "is_public": is_public, "result": result, "ksinr": ksinr,
             })
     return out
 

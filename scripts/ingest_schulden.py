@@ -52,7 +52,7 @@ COUNCIL_DB = Path(os.environ.get("COUNCIL_DB") or ROOT / "data" / "council.sqlit
 _UA = {"User-Agent": "Ratslotse/1.0 (ratslotse.de; Haushalts-Bereich)"}
 
 #: Probenschlüssel → wie die Probe im Messwert heißt. Der Schlüssel steht
-#: schon in ``Herkunft.probe``; ``probe_ergebnis`` ist der Satz daneben und
+#: schon in ``Herkunft.probe``; ``probe_result`` ist der Satz daneben und
 #: soll ihn nicht bloß wiederholen.
 PROBENNAMEN = {"schulden_summenzeile": "Summenprobe",
                "schulden_prokopf": "Pro-Kopf-Gegenprobe"}
@@ -132,13 +132,13 @@ def main() -> int:
                       "Pro-Kopf-Gegenprobe entfällt. Vorher "
                       "scripts/ingest_finanzen_opendata.py laufen lassen.")
 
-            ergebnis = schulden.lies(text, einwohner)
-            zeilen = ergebnis["zeilen"]
+            result = schulden.lies(text, einwohner)
+            zeilen = result["zeilen"]
             print(f"  {len(zeilen)} Jahrgänge übernommen · "
-                  f"{schulden.probennachweis(ergebnis)}")
-            for v in ergebnis["verworfen"]:
+                  f"{schulden.probennachweis(result)}")
+            for v in result["verworfen"]:
                 print(f"    VERWORFEN {v['year']}: {v['grund']}", file=sys.stderr)
-            for f in ergebnis["fehlende_jahrgaenge"]:
+            for f in result["fehlende_jahrgaenge"]:
                 print(f"    FEHLT {f}: im Titel angekündigt, nicht gelesen",
                       file=sys.stderr)
             ohne_arten = [z for z in zeilen if z["aufteilung_verworfen"] is not None]
@@ -228,7 +228,7 @@ def main() -> int:
                                    "deshalb nicht gespeichert")
                 geschrieben += store.save_schulden(teil, h.Herkunft(
                     probe=list(probenlage), fundstelle=fundstelle,
-                    probe_ergebnis=nachweis, **anker))
+                    probe_result=nachweis, **anker))
             print(f"  gespeichert: {geschrieben} Jahrgänge")
 
         store.herkunft_aufraeumen()

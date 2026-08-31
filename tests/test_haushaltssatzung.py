@@ -92,10 +92,10 @@ def test_die_satzung_prueft_sich_selbst():
     Das ist der einzige Grund, dass diese Schicht ohne Zweitquelle auskommt:
     Zwei unabhängig gesetzte Stellen desselben Dokuments."""
     s = parse_satzung(SATZUNG_2024)
-    assert s.ein_laufend + s.ein_invest + s.ein_finanz == s.ein_gesamt
-    assert s.aus_laufend + s.aus_invest + s.aus_finanz == s.aus_gesamt
-    assert s.ein_gesamt == 696_646_544.0
-    assert s.aus_gesamt == 785_265_003.0
+    assert s.in_operating + s.in_capital + s.in_financing == s.in_total
+    assert s.out_operating + s.aus_invest + s.out_financing == s.out_total
+    assert s.in_total == 696_646_544.0
+    assert s.out_total == 785_265_003.0
 
 
 def test_eine_verstellte_zahl_faellt_durch():
@@ -166,7 +166,7 @@ def test_EUR_statt_Euro():
     Fehler, sondern eine fehlende Zeile."""
     s = parse_satzung(SATZUNG_2020_EUR)
     assert s.year == 2020
-    assert s.ein_gesamt == 696_646_544.0
+    assert s.in_total == 696_646_544.0
 
 
 def test_kredite_nicht_veranschlagt_ist_eine_null_und_keine_luecke():

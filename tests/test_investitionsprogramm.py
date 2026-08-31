@@ -205,12 +205,12 @@ def test_massnahmen_ergeben_die_abschnittssumme(gelesen):
     """Probe 1, auf den Euro — nicht auf ein Prozent."""
     massnahmen = gelesen["abschnitte"][4]["massnahmen"]
     assert len(massnahmen) == 16
-    assert sum(m["gesamtsumme"] for m in massnahmen) == THH04_SUMME
+    assert sum(m["grand_total"] for m in massnahmen) == THH04_SUMME
 
 
 def test_abschnittssumme_steht_ein_zweites_mal_in_der_kopftabelle(gelesen):
     """Probe 2 — die stärkste: zwei Stellen, siebzig Seiten auseinander."""
-    betraege = [z["gesamtsumme"] for z in gelesen["kopftabelle"]]
+    betraege = [z["grand_total"] for z in gelesen["kopftabelle"]]
     assert THH04_SUMME in betraege
     ok, warum = ip.probe_wiederholung(gelesen["kopftabelle"],
                                       gelesen["abschnitte"])
@@ -220,11 +220,11 @@ def test_abschnittssumme_steht_ein_zweites_mal_in_der_kopftabelle(gelesen):
 def test_kopftabelle_ergibt_ihre_gesamtsumme(gelesen):
     """Probe 3 — die elf Teilhaushalte ergeben 170.140.918 €."""
     assert len(gelesen["kopftabelle"]) == 11
-    assert sum(z["gesamtsumme"] for z in gelesen["kopftabelle"]) == GESAMT_2026
+    assert sum(z["grand_total"] for z in gelesen["kopftabelle"]) == GESAMT_2026
 
 
 def test_nachweis_nennt_zahlen_statt_behauptungen(gelesen):
-    """Der Satz landet als ``probe_ergebnis`` im Beleg an der Zahl."""
+    """Der Satz landet als ``probe_result`` im Beleg an der Zahl."""
     assert "16 Maßnahmen" in gelesen["nachweis"]
     assert "170.140.918,00" in gelesen["nachweis"]
 
@@ -239,7 +239,7 @@ def test_detailzeilen_zaehlen_nicht_mit(gelesen):
     assert "I10.090126" in codes
     # Doppelt gezählt käme glatt das Doppelte heraus — der Test soll bei
     # einem Rückfall genau das zeigen.
-    assert sum(m["gesamtsumme"] for m in gelesen["abschnitte"][4]["massnahmen"]) \
+    assert sum(m["grand_total"] for m in gelesen["abschnitte"][4]["massnahmen"]) \
         != 2 * THH04_SUMME
 
 
@@ -260,7 +260,7 @@ Gesamtsumme 0 0
     abschnitte = ip._lies_abschnitte(text.splitlines())
     massnahmen = abschnitte[12]["massnahmen"]
     assert [m["code"] for m in massnahmen] == ["I10.060126"]
-    assert massnahmen[0]["gesamtsumme"] == 0
+    assert massnahmen[0]["grand_total"] == 0
 
 
 # --- Detailnamen (26.08.2026) ------------------------------------------------
@@ -293,7 +293,7 @@ Gesamtsumme 14.764.602 13.764.602
 """
     massnahmen = ip._lies_abschnitte(text.splitlines())[7]["massnahmen"]
     assert [m["bezeichnung"] for m in massnahmen] == ["SG Kreyenbrück Nord"]
-    assert massnahmen[0]["gesamtsumme"] == 14_764_602
+    assert massnahmen[0]["grand_total"] == 14_764_602
 
 
 def test_mehrstufige_sachkonten_bleiben_detailzeilen():
@@ -320,7 +320,7 @@ def test_name_auf_eigener_zeile_vor_den_betraegen(gelesen):
     m = next(m for m in gelesen["abschnitte"][4]["massnahmen"]
              if m["code"] == "I10.090126")
     assert m["bezeichnung"] == "Umlage nach dem KHG, 2026"
-    assert m["gesamtsumme"] == 4_749_040
+    assert m["grand_total"] == 4_749_040
 
 
 def test_jahr_teilt_sich_die_zeile_mit_den_betraegen():
@@ -422,13 +422,13 @@ def test_speichern_legt_drei_ebenen_an(tmp_path):
                               "investitionsprogramm_wiederholung",
                               "investitionsprogramm_kopftabelle"],
             dokument_id=297440, label="2026 004 Vw Investitionsprogramm",
-            probe_ergebnis=g["nachweis"]))
+            probe_result=g["nachweis"]))
 
         assert store.investitionsprogramm_jahre() == [2026]
         massnahmen = store.get_investitionsmassnahmen(year=2026, ebene="massnahme")
         assert len(massnahmen) == 16
         gesamt = store.get_investitionsmassnahmen(year=2026, ebene="gesamt")
-        assert gesamt[0]["gesamtsumme"] == GESAMT_2026
+        assert gesamt[0]["grand_total"] == GESAMT_2026
         # Keine Zeile ohne Herkunft — sonst meldet sie `herkunft_luecken`.
         assert all(m["herkunft_id"] for m in massnahmen)
         assert not store.herkunft_luecken().get("council_investitionsmassnahmen")

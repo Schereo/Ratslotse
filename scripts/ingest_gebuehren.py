@@ -91,7 +91,7 @@ def main() -> dict:
             print("\nKonkrete Tarife aus Anlage 4:", flush=True)
             for saetze, _ in sorted(saetze_gelesen, key=lambda x: x[0][0].year):
                 beispiele = ", ".join(
-                    f"{s.bezeichnung}: {s.betrag:.2f} €"
+                    f"{s.bezeichnung}: {s.amount:.2f} €"
                     for s in saetze if s.schluessel in
                     ("grundgebuehr", "litergebuehr", "strassenreinigung_qw"))
                 print(f"  {saetze[0].year}: {len(saetze)} Tarife — {beispiele}",

@@ -187,15 +187,15 @@ BLOECKE: tuple[tuple[str, str], ...] = (
 #: Die neun Wertespalten von Blatt 6.1 — Block × Rolle.
 ERWARTET_KREISE: tuple[str, ...] = tuple(
     f"{block}_{rolle}" for block, _ in BLOECKE
-    for rolle in ("anzahl", "positiv", "betrag"))
+    for rolle in ("count", "positiv", "amount"))
 
 #: Blatt 6.2 führt nur den Gesamtblock, dafür den Hebesatz.
-ERWARTET_GEMEINDEN: tuple[str, ...] = ("gesamt_anzahl", "gesamt_positiv",
-                                       "gesamt_betrag")
+ERWARTET_GEMEINDEN: tuple[str, ...] = ("gesamt_count", "gesamt_positiv",
+                                       "gesamt_amount")
 
 
 def spaltenzuordnung(spalten: dict[int, str]) -> dict[str, int]:
-    """Ausgeschriebener Tabellenkopf → ``{"gesamt_anzahl": 2, …}``.
+    """Ausgeschriebener Tabellenkopf → ``{"gesamt_count": 2, …}``.
 
     Eingeordnet wird über **Block und Rolle**, nicht über den ganzen Kopftext:
     Die Formulierungen haben sich zwischen den Jahrgängen zweimal geändert
@@ -224,10 +224,10 @@ def spaltenzuordnung(spalten: dict[int, str]) -> dict[str, int]:
         if block is None:
             continue
         if re.match(r"\s*Anzahl\b", text, re.IGNORECASE):
-            rolle = "positiv" if "positiv" in text.lower() else "anzahl"
+            rolle = "positiv" if "positiv" in text.lower() else "count"
         elif "steuermessbetrag" in text.lower() and not re.search(
                 r"Prozent|%", text, re.IGNORECASE):
-            rolle = "betrag"
+            rolle = "amount"
         else:
             continue
         # Die erste passende Spalte gewinnt. 2017 wiederholt Blatt 6.1 die
@@ -396,9 +396,9 @@ def lies_bericht(pfad: str) -> Gewerbesteuerjahrgang:
 # --- Die Proben -------------------------------------------------------------
 
 #: Die drei Größen, die sich aus ihren beiden Teilen zusammensetzen.
-_TEILSUMMEN = (("gesamt_anzahl", "festsetzung_anzahl", "zerlegung_anzahl"),
+_TEILSUMMEN = (("gesamt_count", "festsetzung_count", "zerlegung_count"),
                ("gesamt_positiv", "festsetzung_positiv", "zerlegung_positiv"),
-               ("gesamt_betrag", "festsetzung_betrag", "zerlegung_betrag"))
+               ("gesamt_amount", "festsetzung_amount", "zerlegung_amount"))
 
 
 def probe_summen(eintrag: dict) -> dict:
@@ -431,7 +431,7 @@ def probe_summen(eintrag: dict) -> dict:
     gelaufen = [t for t in teilproben if t["ok"] is not None]
     return {"ok": bool(gelaufen) and not fehler,
             "teilproben": teilproben,
-            "ergebnis": (f"{len(gelaufen)} von 3 Summen nachgerechnet"
+            "result": (f"{len(gelaufen)} von 3 Summen nachgerechnet"
                          + (f", ABWEICHUNG: {'; '.join(fehler)}" if fehler else ""))}
 
 
@@ -461,7 +461,7 @@ def probe_blaetter(jahrgang: Gewerbesteuerjahrgang) -> dict:
                                      "grund": f"{name}: {a} gegen {b}"})
     return {"ok": geprueft > 0 and not abweichungen,
             "geprueft": geprueft, "abweichungen": abweichungen,
-            "ergebnis": (f"{geprueft} Werte in beiden Blättern verglichen, "
+            "result": (f"{geprueft} Werte in beiden Blättern verglichen, "
                          f"{len(abweichungen)} Abweichungen")}
 
 
@@ -503,11 +503,11 @@ def probe_hebesatz(jahrgang: Gewerbesteuerjahrgang, schluessel: str,
     satz = eintrag.get("hebesatz")
     if satz is None or hebesatz_1105 is None:
         return {"ok": None,
-                "ergebnis": ("kein Vergleichswert" if satz is not None
+                "result": ("kein Vergleichswert" if satz is not None
                              else "Blatt 6.2 nennt keinen Hebesatz")}
     ok = abs(satz - hebesatz_1105) < 0.5
     return {"ok": ok,
-            "ergebnis": (f"Hebesatz {satz:.0f} % (Landesamt) gegen "
+            "result": (f"Hebesatz {satz:.0f} % (Landesamt) gegen "
                          f"{hebesatz_1105:.0f} % (Jahrbuch 1105) für "
                          f"{jahrgang.year}")}
 
@@ -537,17 +537,17 @@ def zeilen(jahrgang: Gewerbesteuerjahrgang) -> tuple[list[dict], list[dict]]:
         # sich, es steht nur nichts da. Der Unterschied gehört ins Protokoll,
         # sonst sucht beim nächsten Lauf jemand einen Parserfehler, den es
         # nicht gibt.
-        if eintrag.get("gesamt_anzahl") is None and eintrag.get("gesperrt"):
+        if eintrag.get("gesamt_count") is None and eintrag.get("gesperrt"):
             verworfen.append({"schluessel": key, "stadt": eintrag["stadt"],
                               "grund": "Geheimhaltung",
-                              "ergebnis": "das Landesamt weist für diese Stadt "
+                              "result": "das Landesamt weist für diese Stadt "
                                           "keine Zahlen aus (§ 16 BStatG)"})
             continue
         probe = probe_summen(eintrag)
         if not probe["ok"]:
             verworfen.append({"schluessel": key, "stadt": eintrag["stadt"],
                               "grund": "Summenprobe",
-                              "ergebnis": probe["ergebnis"]})
+                              "result": probe["result"]})
             continue
         gemeinde = jahrgang.gemeinden.get(key) or {}
         aus.append({
@@ -558,15 +558,15 @@ def zeilen(jahrgang: Gewerbesteuerjahrgang) -> tuple[list[dict], list[dict]]:
             # „Oldenburg (Oldenburg)"), und eine Reihe, die ihren eigenen
             # Namen wechselt, sieht in jeder Anzeige nach zwei Städten aus.
             "stadt": STAEDTE[key],
-            "faelle": eintrag["gesamt_anzahl"],
+            "faelle": eintrag["gesamt_count"],
             "faelle_positiv": eintrag["gesamt_positiv"],
-            "messbetrag_eur": eintrag["gesamt_betrag"],
-            "festsetzungen": eintrag["festsetzung_anzahl"],
+            "messbetrag_eur": eintrag["gesamt_amount"],
+            "festsetzungen": eintrag["festsetzung_count"],
             "festsetzungen_positiv": eintrag["festsetzung_positiv"],
-            "festsetzung_messbetrag_eur": eintrag["festsetzung_betrag"],
-            "zerlegungen": eintrag["zerlegung_anzahl"],
+            "festsetzung_messbetrag_eur": eintrag["festsetzung_amount"],
+            "zerlegungen": eintrag["zerlegung_count"],
             "zerlegungen_positiv": eintrag["zerlegung_positiv"],
-            "zerlegung_messbetrag_eur": eintrag["zerlegung_betrag"],
+            "zerlegung_messbetrag_eur": eintrag["zerlegung_amount"],
             "hebesatz": gemeinde.get("hebesatz"),
             "gesperrt": bool(eintrag.get("gesperrt")),
         })

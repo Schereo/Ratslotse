@@ -970,13 +970,13 @@ class Eigentuemer:
     """Ein Gesellschafter mit seinem Anteil."""
 
     name: str
-    betrag_eur: float | None
-    anteil_prozent: float | None
+    amount_eur: float | None
+    share_pct: float | None
     reihenfolge: int
 
 
 def beteiligungsverhaeltnisse(text: str) -> tuple[list[Eigentuemer], str | None]:
-    """Abschnitt 2 zerlegen — ``(eigentuemer, probe_ergebnis)``.
+    """Abschnitt 2 zerlegen — ``(eigentuemer, probe_result)``.
 
     Die Probe rechnet nach, was das Dokument selbst vorrechnet: Die Anteile
     ergeben zusammen das Stammkapital, und ihre Prozentsätze ergeben 100.
@@ -992,7 +992,7 @@ def beteiligungsverhaeltnisse(text: str) -> tuple[list[Eigentuemer], str | None]
 
     Reißt die Probe, kommt **nichts** zurück: keine halb gelesene Tabelle,
     keine Zeile „wahrscheinlich". Der Rohtext steht ohnehin daneben, und ein
-    Mensch liest ihn richtig. ``probe_ergebnis`` ist der Messwert für die
+    Mensch liest ihn richtig. ``probe_result`` ist der Messwert für die
     Herkunft; es ist ``None``, wenn die Probe gerissen ist."""
     zeilen = _zeilen_fuegen(_entzerren(text or ""))
     for n, z in enumerate(zeilen):
@@ -1018,13 +1018,13 @@ def beteiligungsverhaeltnisse(text: str) -> tuple[list[Eigentuemer], str | None]
         if _STAMMKAPITAL.match(name):
             summe = (eur, proz)
             continue
-        eigner.append(Eigentuemer(name=name, betrag_eur=eur,
-                                  anteil_prozent=proz, reihenfolge=len(eigner)))
+        eigner.append(Eigentuemer(name=name, amount_eur=eur,
+                                  share_pct=proz, reihenfolge=len(eigner)))
 
     if not eigner or summe is None:
         return [], None
-    delta_eur = abs(sum(e.betrag_eur or 0.0 for e in eigner) - summe[0])
-    delta_proz = abs(sum(e.anteil_prozent or 0.0 for e in eigner) - 100.0)
+    delta_eur = abs(sum(e.amount_eur or 0.0 for e in eigner) - summe[0])
+    delta_proz = abs(sum(e.share_pct or 0.0 for e in eigner) - 100.0)
     if delta_eur > TOLERANZ_EUR or delta_proz > TOLERANZ_PROZENT:
         return [], None
     return eigner, (f"Die Anteile ergeben das ausgewiesene Stammkapital von "
@@ -1174,7 +1174,7 @@ def konzernvergleich(store, year: int) -> list[dict]:
     Protokoll — nichts, was einen Wert verwirft."""
     traeger: dict[str, dict[str, float]] = {}
     for z in store.get_konzern_traeger(year):
-        traeger.setdefault(z["traeger_key"], {})[z["art"]] = z["betrag_teur"]
+        traeger.setdefault(z["traeger_key"], {})[z["art"]] = z["amount_keur"]
     if not traeger:
         return []
 
@@ -1189,14 +1189,14 @@ def konzernvergleich(store, year: int) -> list[dict]:
         if g["gesellschaft"] not in ergebnisse:
             continue
         v = traeger[schluessel]
-        if "ertraege" not in v or "aufwendungen" not in v:
+        if "revenues" not in v or "expenses" not in v:
             continue
-        beitrag = (v["ertraege"] - v["aufwendungen"]) * 1000.0
+        beitrag = (v["revenues"] - v["expenses"]) * 1000.0
         eigen = ergebnisse[g["gesellschaft"]]
         aus.append({"gesellschaft": g["gesellschaft"], "name": g["name"],
                     "year": year, "konzern_beitrag": beitrag,
-                    "jahresergebnis": eigen, "differenz": beitrag - eigen})
-    return sorted(aus, key=lambda z: abs(z["differenz"]), reverse=True)
+                    "jahresergebnis": eigen, "difference": beitrag - eigen})
+    return sorted(aus, key=lambda z: abs(z["difference"]), reverse=True)
 
 
 def _nachweis(delta: float | None, berichte: int) -> str:
@@ -1236,24 +1236,24 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
     gelesen: dict[int, dict] = {}
     for dateijahr in sorted(dokumente):
         d = dokumente[dateijahr]
-        ergebnis = lies(d["seiten"])
-        for w in ergebnis["warnungen"]:
+        result = lies(d["seiten"])
+        for w in result["warnungen"]:
             p.warnen(f"  {dateijahr}: {w}")
-        if not ergebnis["gesellschaften"]:
+        if not result["gesellschaften"]:
             continue
         # Über den Jahrgang entscheidet das Dokument, nicht der Dateiname.
-        echt = ergebnis["jahrgang"]
+        echt = result["jahrgang"]
         if echt != dateijahr:
             p.warnen(f"  Datei für {dateijahr} nennt sich im Kopf "
                      f"„Beteiligungsbericht {echt}“ — es gilt das Dokument")
-        gerissen = [x for x in ergebnis["dokumentproben"] if not x["ok"]]
+        gerissen = [x for x in result["dokumentproben"] if not x["ok"]]
         for x in gerissen:
             p.warnen(f"  {echt}: {x['gesellschaft']}/{x['kennzahl']} {x['year']}: "
                      f"Dokumentprobe gerissen (Δ {x['delta']:.2f}) — verworfen")
-        gelesen[echt] = {**ergebnis, **d, "bericht_jahr": echt}
-        p.sagen(f"  {echt}: {len(ergebnis['gesellschaften'])} Gesellschaften, "
-                f"{len(ergebnis['dokumentproben']) - len(gerissen)}/"
-                f"{len(ergebnis['dokumentproben'])} Dokumentproben bestanden")
+        gelesen[echt] = {**result, **d, "bericht_jahr": echt}
+        p.sagen(f"  {echt}: {len(result['gesellschaften'])} Gesellschaften, "
+                f"{len(result['dokumentproben']) - len(gerissen)}/"
+                f"{len(result['dokumentproben'])} Dokumentproben bestanden")
 
     if not gelesen:
         p.warnen("  Kein lesbarer Jahrgang — Bestand bleibt unangetastet")
@@ -1304,7 +1304,7 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
                 "herkunft": _h.Herkunft(
                     probe="beteiligung_seitenprobe",
                     fundstelle=f"Abschnitt {g.gliederung} — {g.name}",
-                    probe_ergebnis=f"Inhaltsverzeichnis und Trennseite nennen "
+                    probe_result=f"Inhaltsverzeichnis und Trennseite nennen "
                                    f"beide Seite {g.seite_gedruckt}",
                     **gemeinsam)})
             for key, _, ueberschrift in TEXTABSCHNITTE:
@@ -1342,7 +1342,7 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
                                else _h.UNGEPRUEFT),
                         fundstelle=f"Abschnitt {g.gliederung} — "
                                    f"{person.gremium}",
-                        probe_ergebnis=(f"{len(liste)} Namen, "
+                        probe_result=(f"{len(liste)} Namen, "
                                         f"{len(liste)} Funktionen"
                                         if person.funktion else None),
                         **gemeinsam)})
@@ -1353,13 +1353,13 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
                 eigentuemer.append({
                     "bericht_jahr": year, "gesellschaft": g.key,
                     "reihenfolge": e_.reihenfolge, "name": e_.name,
-                    "betrag_eur": e_.betrag_eur,
-                    "anteil_prozent": e_.anteil_prozent,
+                    "amount_eur": e_.amount_eur,
+                    "share_pct": e_.share_pct,
                     "herkunft": _h.Herkunft(
                         probe="beteiligung_anteilsprobe",
                         fundstelle=f"Abschnitt {g.gliederung} — "
                                    f"Beteiligungsverhältnisse",
-                        probe_ergebnis=anteilsprobe,
+                        probe_result=anteilsprobe,
                         **gemeinsam)})
 
     if ohne_zuordnung:
@@ -1394,7 +1394,7 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
             "herkunft": _h.Herkunft(
                 probe=proben,
                 fundstelle=f"Abschnitt {g.gliederung} — Kennzahlen im Zeitverlauf",
-                probe_ergebnis=_nachweis(delta, len(je_bericht)),
+                probe_result=_nachweis(delta, len(je_bericht)),
                 **anker(e, g))})
 
     # Bestandsschutz: Ein leeres oder deutlich geschrumpftes Ergebnis ersetzt
@@ -1424,7 +1424,7 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
     if vergleich:
         p.sagen(f"  Abgleich mit dem Gesamtabschluss {juengster_bericht}: "
                 f"{len(vergleich)} Gesellschaft(en) in beiden, größte Differenz "
-                f"{vergleich[0]['differenz'] / 1000:,.0f} TEUR "
+                f"{vergleich[0]['difference'] / 1000:,.0f} TEUR "
                 f"({vergleich[0]['gesellschaft']})")
     return {**bericht, "verworfen": verworfen,
             "widersprueche": len(u["widersprueche"]), "bestand_geschuetzt": 0,

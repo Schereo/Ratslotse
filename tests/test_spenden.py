@@ -134,7 +134,7 @@ def test_die_zerlegung_traegt_den_betrag():
         "insgesamt 435.941 Euro gemäß der anliegenden Liste an.")])
     assert len(erg["vorlagen"]) == 1
     v = erg["vorlagen"][0]
-    assert v["betrag"] == 435_941
+    assert v["amount"] == 435_941
     assert v["zweitstelle"] == "zerlegung"
     assert v["layout"] == "neu"
     assert spenden.ZWEITSTELLE in v["proben"]
@@ -151,7 +151,7 @@ def test_das_aeltere_layout_traegt_dieselbe_probe():
         "Die Stadt Oldenburg nimmt die angebotenen Zuwendungen in Höhe von "
         "insgesamt 140.664,24 EUR laut anliegender Liste an.")])
     v = erg["vorlagen"][0]
-    assert v["betrag"] == 140_664.24
+    assert v["amount"] == 140_664.24
     assert v["layout"] == "alt"
     assert v["zweitstelle"] == "zerlegung"
 
@@ -164,7 +164,7 @@ def test_die_identische_zweitstelle_zaehlt_auch():
         "insgesamt 1.800,00 EUR laut anliegender Liste an.",
         titel="Annahme von Zuwendungen durch den Verwaltungsausschuss")])
     v = erg["vorlagen"][0]
-    assert v["betrag"] == 1_800
+    assert v["amount"] == 1_800
     assert v["zweitstelle"] == "identisch"
     assert v["gremium"] == "Verwaltungsausschuss"
 
@@ -278,7 +278,7 @@ def test_die_summe_einer_va_vorlage_darf_ueber_der_schwelle_liegen():
         "insgesamt 2.746,20 Euro laut anliegender Liste an.",
         titel="Annahme von Zuwendungen durch den Verwaltungsausschuss")])
     v = erg["vorlagen"][0]
-    assert v["betrag"] == 2_746.20
+    assert v["amount"] == 2_746.20
     assert v["gremium"] == "Verwaltungsausschuss"
 
 
@@ -297,7 +297,7 @@ def test_je_vorlage_bleibt_eine_zeile():
     assert len(erg["vorlagen"]) == 1
     # Gezählt wird die Sitzung, in der entschieden wurde.
     assert erg["vorlagen"][0]["sitzung"] == "2026-04-13"
-    assert [j["betrag"] for j in erg["jahre"]] == [435_941]
+    assert [j["amount"] for j in erg["jahre"]] == [435_941]
     assert erg["jahre"][0]["vorlagen"] == 1
 
 
@@ -309,7 +309,7 @@ def test_die_jahresreihe_trennt_rat_und_verwaltungsausschuss():
               "Zuwendungen in Höhe von insgesamt 1.800,00 EUR", sitzung="2024-03-04",
               titel="Annahme von Zuwendungen durch den Verwaltungsausschuss"),
     ])
-    assert erg["jahre"] == [{"year": 2024, "betrag": 437_741.0, "vorlagen": 2,
+    assert erg["jahre"] == [{"year": 2024, "amount": 437_741.0, "vorlagen": 2,
                              "rat": 1, "verwaltungsausschuss": 1}]
 
 
@@ -346,18 +346,18 @@ def test_speichern_und_lesen(tmp_path):
         "Zuwendungen in Höhe von insgesamt 435.941 Euro")])
     lauf = herkunft.Herkunft(
         art="ris", url="https://buergerinfo.example.org/vo040.asp",
-        probe=[spenden.ZWEITSTELLE], probe_ergebnis=spenden.probennachweis(erg))
+        probe=[spenden.ZWEITSTELLE], probe_result=spenden.probennachweis(erg))
     for v in erg["vorlagen"]:
         v["herkunft"] = herkunft.Herkunft(
             art="ris", dokument_id=v["dokument_id"], probe=v["proben"],
-            fundstelle=spenden.FUNDSTELLE, probe_ergebnis="Zerlegung geht auf")
+            fundstelle=spenden.FUNDSTELLE, probe_result="Zerlegung geht auf")
 
     store = CouncilStore(tmp_path / "council.sqlite")
     try:
         assert store.save_spenden(erg["vorlagen"], erg["verworfen"], lauf) == 1
         zurueck = store.get_spenden()
         assert len(zurueck) == 1
-        assert zurueck[0]["betrag"] == 435_941
+        assert zurueck[0]["amount"] == 435_941
         assert zurueck[0]["proben"] == [spenden.ZWEITSTELLE, spenden.PROTOKOLLABGLEICH]
         assert all(z["herkunft_id"] for z in zurueck)
         assert store.spenden_jahre() == [2024]
@@ -374,7 +374,7 @@ def test_verworfene_zeilen_kommen_mit_ihrem_grund_in_den_bestand(tmp_path):
         "(ohne lfd. Nr. 2).",
         titel="Annahme von Zuwendungen durch den Verwaltungsausschuss")])
     lauf = herkunft.Herkunft(art="ris", url="https://buergerinfo.example.org/vo040.asp",
-                             probe=[spenden.ZWEITSTELLE], probe_ergebnis="0 Vorlagen")
+                             probe=[spenden.ZWEITSTELLE], probe_result="0 Vorlagen")
     store = CouncilStore(tmp_path / "council.sqlite")
     try:
         store.save_spenden(erg["vorlagen"], erg["verworfen"], lauf)
@@ -391,7 +391,7 @@ def test_eine_teillieferung_raeumt_den_bestand_nicht_ab(tmp_path):
     """`INSERT OR REPLACE`, kein `DELETE FROM` — sonst kostet ein halber Lauf
     die halbe Reihe."""
     lauf = herkunft.Herkunft(art="ris", url="https://buergerinfo.example.org/vo040.asp",
-                             probe=[spenden.ZWEITSTELLE], probe_ergebnis="Probe")
+                             probe=[spenden.ZWEITSTELLE], probe_result="Probe")
     a = spenden.lies([zeile("24/0001", VORLAGE_NEU,
                             "Zuwendungen in Höhe von insgesamt 435.941 Euro",
                             sitzung="2024-02-05")])

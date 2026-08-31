@@ -57,12 +57,12 @@ def main() -> int:
     p = finanzquellen.Protokoll()
     try:
         print("Konsolidierte Gesamtabschlüsse (Konzern Stadt Oldenburg):")
-        ergebnis = finanzquellen.lies_konzernabschluesse(
+        result = finanzquellen.lies_konzernabschluesse(
             store, p, nur_fehlende=args.nur_fehlende,
             schuetzen=not args.auch_schrumpfen)
     finally:
         store.close()
-    print(f"Fertig: {ergebnis}")
+    print(f"Fertig: {result}")
     return 0
 
 

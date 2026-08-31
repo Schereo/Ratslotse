@@ -40,7 +40,7 @@ def vorlage(store, kvonr, nr, titel):
 
 def beratung(store, kvonr, datum, gremium, rolle, ksinr, top):
     store.save_beratungen(kvonr, [{"datum": datum, "gremium": gremium, "top": top,
-                                   "is_public": True, "ergebnis": rolle, "ksinr": ksinr}])
+                                   "is_public": True, "result": rolle, "ksinr": ksinr}])
 
 
 def runde_2026(store):
@@ -65,9 +65,9 @@ def runde_2026(store):
     beratung(store, 101, "2025-11-11", "Schulausschuss", "Kenntnisnahme", 2, "4")
     store.save_beratungen(102, [
         {"datum": "2025-12-15", "gremium": "Rat", "top": "5", "is_public": True,
-         "ergebnis": "Entscheidung", "ksinr": 3},
+         "result": "Entscheidung", "ksinr": 3},
         {"datum": "2026-02-09", "gremium": "Rat", "top": "6", "is_public": True,
-         "ergebnis": "Entscheidung", "ksinr": 4},
+         "result": "Entscheidung", "ksinr": 4},
     ])
 
 
@@ -86,11 +86,11 @@ def test_runde_hat_einbringung_fachausschuesse_und_stationen(store):
     assert r["einbringung"]["top"] == "Ö 5"
 
     assert r["fachausschuesse"] == {
-        "von": "2025-11-11", "bis": "2025-11-11", "anzahl": 1,
+        "von": "2025-11-11", "bis": "2025-11-11", "count": 1,
         "gremien": ["Schulausschuss"],
     }
 
-    assert [(s["datum"], s["gremium"], s["ergebnis"]) for s in r["stationen"]] == [
+    assert [(s["datum"], s["gremium"], s["result"]) for s in r["stationen"]] == [
         ("2025-12-15", "Rat", "zurückgestellt/abgesetzt"),
         ("2026-02-09", "Rat", "geändert beschlossen"),
     ]
@@ -100,7 +100,7 @@ def test_ergebnis_ohne_die_angehaengte_stimmenzaehlung(store):
     """Am TOP hängt mal eine Zählung, mal nicht — sie gehört nicht ins Ergebnis."""
     runde_2026(store)
     [r] = store.haushalt_weg()
-    assert r["stationen"][-1]["ergebnis"] == "geändert beschlossen"
+    assert r["stationen"][-1]["result"] == "geändert beschlossen"
 
 
 def test_falsch_betitelte_vorlage_verschiebt_den_zeitraum_nicht(store):
@@ -116,7 +116,7 @@ def test_falsch_betitelte_vorlage_verschiebt_den_zeitraum_nicht(store):
 
     [r] = store.haushalt_weg()
     assert r["fachausschuesse"]["bis"] == "2025-11-11"
-    assert r["fachausschuesse"]["anzahl"] == 1
+    assert r["fachausschuesse"]["count"] == 1
 
 
 @pytest.mark.parametrize("titel", [

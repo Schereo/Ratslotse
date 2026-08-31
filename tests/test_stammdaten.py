@@ -47,13 +47,13 @@ def test_beratungsfolge_parses_stations():
     rows = stammdaten.fetch_beratungsfolge(_FakeScraper(_VO0053), 1)
     assert len(rows) == 3
     assert rows[0] == {"datum": "2026-06-10", "gremium": "Sportausschuss", "top": "8.1",
-                       "is_public": True, "ergebnis": "Kenntnisnahme", "ksinr": 4590}
+                       "is_public": True, "result": "Kenntnisnahme", "ksinr": 4590}
     # Geplante Station: kein Ergebnis, Datum in der Zukunft
-    assert rows[1]["ergebnis"] is None and rows[1]["ksinr"] == 9999
+    assert rows[1]["result"] is None and rows[1]["ksinr"] == 9999
     assert stammdaten.is_future(rows[1]["datum"])
     # Nichtöffentlich wird erkannt (auch ohne Sitzungs-Link)
     assert rows[2]["is_public"] is False and rows[2]["ksinr"] is None
-    assert rows[2]["gremium"] == "Verwaltungsausschuss" and rows[2]["ergebnis"] == "Vorberatung"
+    assert rows[2]["gremium"] == "Verwaltungsausschuss" and rows[2]["result"] == "Vorberatung"
 
 
 # ---- Mandatsträger (kp0041) ---------------------------------------------------
@@ -104,18 +104,18 @@ def test_store_beratungen_roundtrip_and_replace(tmp_path):
     store = CouncilStore(tmp_path / "c.sqlite")
     store.save_beratungen(10, [
         {"datum": "2026-06-25", "gremium": "Betriebsausschuss", "top": "5",
-         "is_public": True, "ergebnis": "Vorberatung", "ksinr": 4679},
+         "is_public": True, "result": "Vorberatung", "ksinr": 4679},
         {"datum": "2099-06-29", "gremium": "Rat", "top": "12.1",
-         "is_public": True, "ergebnis": None, "ksinr": None},
+         "is_public": True, "result": None, "ksinr": None},
     ])
     rows = store.get_beratungen(10)
     assert [r["gremium"] for r in rows] == ["Betriebsausschuss", "Rat"]
-    assert rows[0]["ergebnis"] == "Vorberatung" and rows[1]["ergebnis"] is None
+    assert rows[0]["result"] == "Vorberatung" and rows[1]["result"] is None
     # Replace-Semantik: erneutes Speichern ersetzt vollständig
     store.save_beratungen(10, [{"datum": "2099-06-29", "gremium": "Rat", "top": "12.1",
-                                "is_public": True, "ergebnis": "Entscheidung", "ksinr": 4695}])
+                                "is_public": True, "result": "Entscheidung", "ksinr": 4695}])
     rows = store.get_beratungen(10)
-    assert len(rows) == 1 and rows[0]["ergebnis"] == "Entscheidung"
+    assert len(rows) == 1 and rows[0]["result"] == "Entscheidung"
     # Rescan-Kandidaten: offene künftige Station → kvonr taucht auf
     assert 10 in store.kvonrs_for_beratungen_rescan()
     store.close()

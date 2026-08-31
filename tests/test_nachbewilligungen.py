@@ -290,7 +290,7 @@ RB 46
 @pytest.mark.parametrize("nr,titel,erwartet", TITEL_REGEL + TITEL_AUSREISSER)
 def test_betrag_aus_titel(nr, titel, erwartet):
     """Jeder Regelfall und jeder Ausreißer wird aus dem Titel gelesen."""
-    wert, quelle = nb.betrag(titel)
+    wert, quelle = nb.amount(titel)
     assert wert == pytest.approx(erwartet), nr
     assert quelle == "titel", nr
 
@@ -298,12 +298,12 @@ def test_betrag_aus_titel(nr, titel, erwartet):
 @pytest.mark.parametrize("titel", TITEL_OHNE_BETRAG)
 def test_titel_ohne_betrag_liefert_nichts(titel):
     """Ohne Betrag im Titel und ohne Vorschlag bleibt es leer — nicht 0."""
-    assert nb.betrag(titel) == (None, None)
+    assert nb.amount(titel) == (None, None)
 
 
 def test_rueckgabe_ist_wert_dann_quelle():
     """Die Reihenfolge des Tupels ist (Betrag, Quelle) — nicht umgekehrt."""
-    wert, quelle = nb.betrag(TITEL_REGEL[0][1])
+    wert, quelle = nb.amount(TITEL_REGEL[0][1])
     assert isinstance(wert, float)
     assert quelle == "titel"
 
@@ -312,7 +312,7 @@ def test_rueckgabe_ist_wert_dann_quelle():
 
 def test_zweite_stufe_schliesst_die_luecke():
     """Ein Titel ohne Betrag, ein Vorschlag mit — die Stufe greift."""
-    wert, quelle = nb.betrag(
+    wert, quelle = nb.amount(
         "Überplanmäßige Bewilligung für den Teilhaushalt 04, Budget 22",
         VORSCHLAG_RECHTSAMT)
     assert wert == pytest.approx(65_000.0)
@@ -321,7 +321,7 @@ def test_zweite_stufe_schliesst_die_luecke():
 
 def test_zweite_stufe_liest_mehrauszahlung_von():
     """„eine Mehrauszahlung **von** 7,3 Millionen Euro" — ohne „in Höhe"."""
-    wert, quelle = nb.betrag(
+    wert, quelle = nb.amount(
         "Überplanmäßige Eigenkapitalstärkung für das Klinikum Oldenburg AöR",
         VORSCHLAG_KLINIKUM)
     assert wert == pytest.approx(7_300_000.0)
@@ -331,7 +331,7 @@ def test_zweite_stufe_liest_mehrauszahlung_von():
 def test_deckungsbetrag_gewinnt_nicht():
     """Die Deckungsvorschlags-Falle: der **erste** Betrag zählt, nicht der
     größte. Nähme man den größten, stünden hier 2.500.000 statt 800.000."""
-    wert, _ = nb.betrag(
+    wert, _ = nb.amount(
         "Überplanmäßige Bewilligung für Mehraufwendungen für den Teilhaushalt 04",
         VORSCHLAG_DECKUNG_GROESSER)
     assert wert == pytest.approx(800_000.0)
@@ -341,7 +341,7 @@ def test_zweite_stufe_aus_volltext_wenn_spalte_leer():
     """``beschlussvorschlag`` ist im Bestand fast überall leer (7 von 5019).
     Steht sie nicht, wird der Vorschlag aus ``raw_text`` geerntet."""
     volltext = "Sachverhalt und Vorgeschichte\n\n" + VORSCHLAG_STRASSENBAU
-    wert, quelle = nb.betrag(
+    wert, quelle = nb.amount(
         "Antrag auf Bewilligung einer außerplanmäßigen Auszahlung für die "
         "Straßenbaumaßnahme Kreuzung Schützenhofstraße/Bremer Straße",
         None, volltext)
@@ -356,7 +356,7 @@ def test_sammelbericht_schwelle_ist_kein_betrag(titel):
     """„bis zu 50.000 Euro" ist die Wertgrenze, unter der der Rat gar nicht
     entscheidet — nicht die Summe dessen, was darunter anfiel."""
     assert nb.art(titel) == nb.ART_SCHWELLE
-    assert nb.betrag(titel) == (None, None)
+    assert nb.amount(titel) == (None, None)
 
 
 def test_sammelbericht_schlaegt_verpflichtungsermaechtigung():
@@ -374,19 +374,19 @@ def test_verpflichtungsermaechtigung_zaehlt_nicht_mit():
     Der Rechenschaftsbericht zählt sie getrennt, wir auch."""
     ve = nb.Bewilligung(
         template_number="23/0359", titel="…", art=nb.ART_VERPFLICHTUNG,
-        kategorie="ausserplanmaessig", year=2023, betrag=840_000.0,
-        betrag_quelle="titel",
+        kategorie="ausserplanmaessig", year=2023, amount=840_000.0,
+        amount_source="titel",
         beschluesse=({"committee": "Rat", "outcome": "angenommen"},))
     echt = nb.Bewilligung(
         template_number="23/0617", titel="…", art=nb.ART_BEWILLIGUNG,
-        kategorie="ueberplanmaessig", year=2023, betrag=11_716_000.0,
-        betrag_quelle="titel",
+        kategorie="ueberplanmaessig", year=2023, amount=11_716_000.0,
+        amount_source="titel",
         beschluesse=({"committee": "Rat", "outcome": "angenommen"},))
     assert not ve.zaehlt_in_summe
     summen = nb.jahressummen([ve, echt])
     assert summen[2023]["summe"] == pytest.approx(11_716_000.0)
     assert summen[2023]["verpflichtungen"] == 1
-    assert summen[2023]["verpflichtungen_betrag"] == pytest.approx(840_000.0)
+    assert summen[2023]["commitments_amount"] == pytest.approx(840_000.0)
 
 
 def test_januar_beschluss_zaehlt_zum_vorjahr():
@@ -408,8 +408,8 @@ def test_ohne_beschluss_keine_summe():
     bewilligtes Geld — 22/0925 allein verschöbe 2022 um 1,4 Mio. €."""
     beantragt = nb.Bewilligung(
         template_number="22/0925", titel="…", art=nb.ART_BEWILLIGUNG,
-        kategorie="ueberplanmaessig", year=2022, betrag=1_400_000.0,
-        betrag_quelle="titel", beschluesse=())
+        kategorie="ueberplanmaessig", year=2022, amount=1_400_000.0,
+        amount_source="titel", beschluesse=())
     assert not beantragt.beschlossen
     assert not beantragt.zaehlt_in_summe
     assert nb.jahressummen([beantragt]) == {}
@@ -421,8 +421,8 @@ def test_nur_kenntnis_ist_kein_ratsbeschluss():
     Vermerk „1 und BM"."""
     unterrichtung = nb.Bewilligung(
         template_number="22/0544", titel="…", art=nb.ART_BEWILLIGUNG,
-        kategorie="ueberplanmaessig", year=2022, betrag=180_000.0,
-        betrag_quelle="titel",
+        kategorie="ueberplanmaessig", year=2022, amount=180_000.0,
+        amount_source="titel",
         beschluesse=({"committee": "Rat", "outcome": "zur_kenntnis"},))
     assert unterrichtung.nur_kenntnis
     assert not unterrichtung.im_rat
@@ -483,25 +483,25 @@ def test_probe_volltext():
 def test_probe_volltext_ohne_titelbetrag_ist_nicht_bestanden():
     """„Nicht geprüft" darf nicht wie „bestanden" aussehen."""
     b = nb.Bewilligung(template_number="24/0836", titel="…", art=nb.ART_BEWILLIGUNG,
-                       kategorie="ueberplanmaessig", year=2024, betrag=65_000.0,
-                       betrag_quelle="beschlussvorschlag")
+                       kategorie="ueberplanmaessig", year=2024, amount=65_000.0,
+                       amount_source="beschlussvorschlag")
     assert not nb.probe_volltext(b, VORSCHLAG_RECHTSAMT)
 
 
 # --- Kapitel 3: die vier Kanäle --------------------------------------------
 
-@pytest.mark.parametrize("text,year,rat_betrag,rat_anzahl,gesamt", [
+@pytest.mark.parametrize("text,year,council_amount,rat_anzahl,gesamt", [
     (RB_2022, 2022, 23_825_742.00, 11, 26_681_523.30),
     (RB_2023, 2023, 33_871_700.00, 26, 40_236_162.59),
     (RB_2024, 2024, 42_171_646.29, 21, 57_492_845.28),
 ])
-def test_kapitel3_liest_die_vier_kanaele(text, year, rat_betrag, rat_anzahl, gesamt):
+def test_kapitel3_liest_die_vier_kanaele(text, year, council_amount, rat_anzahl, gesamt):
     kap = nb.kapitel3(text, year)
     assert kap is not None
     assert len(kap.kanaele) == 4, "alle vier Wege, auch die leeren"
     rat = kap.kanal("rat")
-    assert rat.betrag == pytest.approx(rat_betrag)
-    assert rat.anzahl == rat_anzahl
+    assert rat.amount == pytest.approx(council_amount)
+    assert rat.count == rat_anzahl
     assert kap.gesamt == pytest.approx(gesamt)
 
 
@@ -511,10 +511,10 @@ def test_eilentscheidung_ohne_konsumtiven_betrag():
     Anzahl der nächsten Zeile als Betrag der vorigen."""
     kap = nb.kapitel3(RB_2022, 2022)
     eil = kap.kanal("eilentscheidung")
-    assert eil.anzahl_konsumtiv == 0
-    assert eil.betrag_konsumtiv == 0.0
-    assert eil.anzahl_investiv == 1
-    assert eil.betrag_investiv == pytest.approx(180_000.0)
+    assert eil.count_operating == 0
+    assert eil.amount_operating == 0.0
+    assert eil.count_capital == 1
+    assert eil.amount_capital == pytest.approx(180_000.0)
 
 
 def test_kanal_findet_die_tabelle_nicht_die_prosa():
@@ -527,9 +527,9 @@ def test_kanal_findet_die_tabelle_nicht_die_prosa():
 def test_verpflichtungsermaechtigungen_kommen_aus_dem_fliesstext():
     """Sie stehen hinter „Darüber hinaus" und **nie** in der Gesamtsumme.
     Der Zwischenraum enthält „bzw." — ein Punkt-Verbot bräche daran ab."""
-    assert nb.kapitel3(RB_2022, 2022).verpflichtungen_betrag == pytest.approx(150_000.0)
-    assert nb.kapitel3(RB_2023, 2023).verpflichtungen_betrag == pytest.approx(4_870_000.0)
-    assert nb.kapitel3(RB_2024, 2024).verpflichtungen_betrag == pytest.approx(1_480_000.0)
+    assert nb.kapitel3(RB_2022, 2022).commitments_amount == pytest.approx(150_000.0)
+    assert nb.kapitel3(RB_2023, 2023).commitments_amount == pytest.approx(4_870_000.0)
+    assert nb.kapitel3(RB_2024, 2024).commitments_amount == pytest.approx(1_480_000.0)
 
 
 def test_ratsanteil_sinkt():
@@ -564,7 +564,7 @@ def test_probe_tabelle_meldet_die_288000_von_2022():
     assert p.spalten_ok, "die Spalten selbst stimmen"
     assert not p.gesamt_ok
     assert p.abweichung_gesamt == pytest.approx(288_000.0)
-    # Deutsche Schreibweise — der Satz landet über `probe_ergebnis` im
+    # Deutsche Schreibweise — der Satz landet über `probe_result` im
     # Beleg-Chip und damit vor Leser*innen.
     assert "288.000,00 €" in p.als_text()
 
@@ -605,9 +605,9 @@ def test_probe_ratsabgleich_meldet_die_abweichung():
 
 def test_de_betrag_schreibt_deutsch():
     """Diese Sätze stehen im Beleg-Chip, nicht im Log."""
-    assert nb.de_betrag(288_000.0) == "288.000,00"
-    assert nb.de_betrag(288_000.0, vorzeichen=True) == "+288.000,00"
-    assert nb.de_betrag(-1_051_184.65, vorzeichen=True) == "−1.051.184,65"
+    assert nb.de_amount(288_000.0) == "288.000,00"
+    assert nb.de_amount(288_000.0, vorzeichen=True) == "+288.000,00"
+    assert nb.de_amount(-1_051_184.65, vorzeichen=True) == "−1.051.184,65"
 
 
 #: Die am vollen Bestand gemessenen Werte der Rats-Serie. Sie stehen hier,
@@ -638,8 +638,8 @@ def test_gemessene_abweichungen_sind_festgenagelt(year):
     soll = GEMESSEN[year]
     kap = nb.kapitel3({2022: RB_2022, 2023: RB_2023, 2024: RB_2024}[year], year)
     rat = kap.kanal("rat")
-    assert rat.betrag == pytest.approx(soll["bericht"])
-    assert rat.anzahl == soll["bericht_faelle"]
+    assert rat.amount == pytest.approx(soll["bericht"])
+    assert rat.count == soll["bericht_faelle"]
     # Und die Rechnung, die daraus die Abweichung macht.
     assert soll["unsere"] - soll["bericht"] == pytest.approx(soll["deviation"])
 
@@ -653,9 +653,9 @@ def test_2024er_abweichung_ist_auf_den_cent_erklaert():
         ("24/0678", 430_000.00, 230_000.00),
         ("24/0648", 11_232_400.00, 10_646_446.29),
     ]
-    differenz = sum(beantragt - gebucht for _, beantragt, gebucht
+    difference = sum(beantragt - gebucht for _, beantragt, gebucht
                     in niedriger_gebucht)
-    assert differenz == pytest.approx(GEMESSEN[2024]["deviation"])
+    assert difference == pytest.approx(GEMESSEN[2024]["deviation"])
 
 
 def test_probe_ratsabgleich_nennt_die_fehlenden_nummern():
@@ -696,11 +696,11 @@ def test_vorlagen_im_kapitel_2024():
 
 # --- Der Rats-Anteil folgt dem Bericht, nicht dem Gremiennamen -------------
 
-def _bewilligung(nr, betrag, committee, outcome="angenommen"):
+def _bewilligung(nr, amount, committee, outcome="angenommen"):
     return nb.Bewilligung(
         template_number=nr, titel="…", art=nb.ART_BEWILLIGUNG,
-        kategorie="ueberplanmaessig", year=2024, betrag=betrag,
-        betrag_quelle="titel",
+        kategorie="ueberplanmaessig", year=2024, amount=amount,
+        amount_source="titel",
         beschluesse=({"committee": committee, "outcome": outcome},))
 
 
@@ -745,6 +745,6 @@ def test_herkunft_laesst_sich_bauen():
     h = herkunft.Herkunft(
         art="ris", probe=[nb.PROBE_TABELLE, nb.PROBE_RAT],
         dokument_id=295295, fundstelle="Kapitel 3",
-        probe_ergebnis="Spalten und Gesamtsumme gehen auf den Cent auf.")
+        probe_result="Spalten und Gesamtsumme gehen auf den Cent auf.")
     assert h.geprueft
     assert h.proben == [nb.PROBE_TABELLE, nb.PROBE_RAT]

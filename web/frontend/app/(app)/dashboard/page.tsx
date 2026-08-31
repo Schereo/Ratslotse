@@ -265,7 +265,7 @@ export default function DashboardPage() {
               wenigsten Breite. */}
           <Card className="flex flex-col border-signal/30 bg-signal/5 p-5 @3xl/raster:order-3 @6xl/raster:order-none">
             <h2 className="font-display text-base font-bold text-foreground">Zahl der Woche</h2>
-            {zahl?.kind === "betrag" && (
+            {zahl?.kind === "amount" && (
               <>
                 <p className="mt-3 font-display text-[40px] font-extrabold leading-none tracking-tight text-signal">
                   <CountUpEuro amount={zahl.amount_eur} /></p>
@@ -280,7 +280,7 @@ export default function DashboardPage() {
                 </Link>
               </>
             )}
-            {zahl?.kind === "anzahl" && (
+            {zahl?.kind === "count" && (
               <>
                 <p className="mt-3 font-display text-[40px] font-extrabold leading-none tracking-tight text-signal">
                   <CountUpNumber value={zahl.count} />

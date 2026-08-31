@@ -240,14 +240,14 @@ def test_ansatz_und_finanzplanung_landen_getrennt():
 def test_die_gespeicherten_betraege_sind_die_des_dokuments():
     """Stichproben gegen das PDF — die dritte Spalte, nicht die letzte."""
     r = eh.lies(GEH_2026)
-    ansatz = {z["nr"]: z["betrag"] for z in r["zeilen"] if z["art"] == "ansatz"}
+    ansatz = {z["nr"]: z["amount"] for z in r["zeilen"] if z["art"] == "ansatz"}
     assert ansatz[1] == 388_377_600.0        # Steuern und ähnliche Abgaben
     assert ansatz[12] == 788_574_714.0       # Summe ordentliche Erträge
     assert ansatz[20] == 880_775_058.0       # Summe ordentliche Aufwendungen
     assert ansatz[21] == -92_200_345.0       # ordentliches Ergebnis
 
     # Die Finanzplanung trägt andere Zahlen — und zwar die des richtigen Jahres.
-    fp = {(z["year"], z["nr"]): z["betrag"] for z in r["zeilen"]
+    fp = {(z["year"], z["nr"]): z["amount"] for z in r["zeilen"]
           if z["art"] == "finanzplanung"}
     assert fp[(2027, 1)] == 366_584_100.0
     assert fp[(2028, 1)] == 372_762_700.0
@@ -361,7 +361,7 @@ def test_fussnotenzeichen_kosten_keinen_posten():
     Ohne diesen Schnitt fielen die Posten 02 und 05 aus, mit ihnen die
     Summenprobe und damit die Jahrgänge 2025 und 2026, um die es hier geht."""
     r = eh.lies(GEH_2026)
-    ansatz = {z["nr"]: z["betrag"] for z in r["zeilen"] if z["art"] == "ansatz"}
+    ansatz = {z["nr"]: z["amount"] for z in r["zeilen"] if z["art"] == "ansatz"}
     assert ansatz[2] == 145_012_116.0     # nicht 1,0
     assert ansatz[5] == 26_622_594.0
 
@@ -379,13 +379,13 @@ def test_leerer_posten_faellt_nicht_auf_die_kontenzeile_herein():
     assert r["bestanden"] is True
     # Die Konzessionsabgabe der Kontenzeile ist nirgends gelandet.
     assert 2_507_748.56 not in set(r["ist"].values())
-    assert 2_800_000.0 not in {z["betrag"] for z in r["zeilen"]}
+    assert 2_800_000.0 not in {z["amount"] for z in r["zeilen"]}
 
 
 def test_umbrochene_postennamen_bleiben_lesbar():
     """„07. Kostenerstattungen und\\nKostenumlagen" steht über zwei Zeilen."""
     r = eh.lies(GEH_2026)
-    ansatz = {z["nr"]: z["betrag"] for z in r["zeilen"] if z["art"] == "ansatz"}
+    ansatz = {z["nr"]: z["amount"] for z in r["zeilen"] if z["art"] == "ansatz"}
     assert ansatz[7] == 146_842_124.0
     assert ansatz[15] == 53_098_053.0
 
@@ -394,7 +394,7 @@ def test_zeile_ohne_nummer_hinter_posten_24_bleibt_draussen():
     """Direkt hinter Posten 24 steht „Jahresergebnis …" ohne Postennummer.
     Ihre Zahlen gehörten sonst noch zu 24."""
     r = eh.lies(GEH_2026)
-    ansatz = {z["nr"]: z["betrag"] for z in r["zeilen"] if z["art"] == "ansatz"}
+    ansatz = {z["nr"]: z["amount"] for z in r["zeilen"] if z["art"] == "ansatz"}
     assert ansatz[24] == 2_909_050.0          # nicht -89.291.295 (Jahresergebnis)
 
 
@@ -423,7 +423,7 @@ def test_store_haelt_ansatz_und_finanzplanung_auseinander(tmp_path):
     assert store.ergebnishaushalt_jahrgaenge() == [2025, 2026]
     # 2026 steht zweimal in der Tabelle — einmal als beschlossener Ansatz,
     # einmal als das, was der Plan 2025 dafür vorausgesehen hatte.
-    fuer_2026 = {(z["plan_jahrgang"], z["art"]): z["betrag"]
+    fuer_2026 = {(z["plan_jahrgang"], z["art"]): z["amount"]
                  for z in store.get_ergebnishaushalt(year=2026) if z["nr"] == 12}
     assert fuer_2026 == {(2026, "ansatz"): 788_574_714.0,
                          (2025, "finanzplanung"): 755_494_699.0}
@@ -431,7 +431,7 @@ def test_store_haelt_ansatz_und_finanzplanung_auseinander(tmp_path):
     # Und die Frage „was gilt?" hat genau eine Antwort.
     (beschlossen,) = [z for z in store.get_ergebnishaushalt(year=2026, art="ansatz")
                       if z["nr"] == 12]
-    assert beschlossen["betrag"] == 788_574_714.0
+    assert beschlossen["amount"] == 788_574_714.0
     assert beschlossen["plan_jahrgang"] == 2026
     store.close()
 
@@ -452,7 +452,7 @@ def test_jede_zeile_weiss_woher_sie_kommt(tmp_path):
     store.save_ergebnishaushalt(2026, eh.lies(GEH_2026)["zeilen"], _quelle())
     assert store.herkunft_luecken() == {}
     zeile = store._conn.execute(
-        "SELECT p.betrag, h.probe, h.dokument_id, h.fundstelle "
+        "SELECT p.amount, h.probe, h.dokument_id, h.fundstelle "
         "FROM council_ergebnishaushalt p "
         "JOIN council_herkunft h ON h.id = p.herkunft_id LIMIT 1").fetchone()
     assert zeile["dokument_id"] == 297441
@@ -603,10 +603,10 @@ def test_plan_faellt_auf_ansatz_zurueck(tmp_path):
     # So sieht eine Zeile aus, die vor #510 geschrieben wurde: ansatz ja,
     # plan und plan_art nein.
     alt = [{"nr": 12, "bezeichnung": "Summe ordentliche Erträge", "ansatz": 664_574_528.42,
-            "plan": None, "ergebnis": 732_987_197.61, "ist_summe": 1},
+            "plan": None, "result": 732_987_197.61, "is_total": 1},
            {"nr": 20, "bezeichnung": "Summe ordentliche Aufwendungen",
-            "ansatz": 674_305_462.42, "plan": None, "ergebnis": 683_032_270.32,
-            "ist_summe": 1}]
+            "ansatz": 674_305_462.42, "plan": None, "result": 683_032_270.32,
+            "is_total": 1}]
     store.save_ergebnisrechnung(2023, alt, q)
     store.save_ergebnisrechnung(2023, alt, q, thh_nr=7, thh_name="Stadtplanung")
     # Der Schreibweg füllt `plan` schon aus `ansatz` …
@@ -618,8 +618,8 @@ def test_plan_faellt_auf_ansatz_zurueck(tmp_path):
     store._conn.execute("UPDATE council_ergebnisrechnung SET plan = NULL")
     store._conn.commit()
     d = store.get_plan_ist(2023)
-    assert d["gesamt"]["ertraege_plan"] == 664_574_528.42
-    assert d["gesamt"]["aufwendungen_plan"] == 674_305_462.42
+    assert d["gesamt"]["revenues_planned"] == 664_574_528.42
+    assert d["gesamt"]["expenses_planned"] == 674_305_462.42
     # Auch je Bereich — sonst stünde die Gesamtzeile da und die Tabelle leer.
-    assert d["bereiche"][0]["ertraege_plan"] == 664_574_528.42
+    assert d["bereiche"][0]["revenues_planned"] == 664_574_528.42
     store.close()

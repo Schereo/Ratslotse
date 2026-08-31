@@ -30,7 +30,7 @@ from tests.test_staedtevergleich import schreibe_xlsx
 _HINWEIS = "Der Tabellenkopf für Vorlesehilfen befindet sich in Zeile 8"
 
 
-def _kopf(vorjahr: int, year: int, ew_schreibweise: str) -> list:
+def _kopf(prior_year: int, year: int, ew_schreibweise: str) -> list:
     def block(j: int) -> list:
         return [
             f"Schlüsselzuweisungen für Gemeindeaufgaben im Jahr {j}, Beträge in 1000 Euro",
@@ -46,9 +46,9 @@ def _kopf(vorjahr: int, year: int, ew_schreibweise: str) -> list:
             f"im Jahr {j}), Beträge in {ew_schreibweise}2)",
         ]
     return (["Schlüsselnummer der Kreisfreien Stadt", "Bezeichnung der kreisfreien Stadt"]
-            + block(vorjahr) + block(year)
+            + block(prior_year) + block(year)
             + [f"Abweichung des Nettobetrags1) des Jahres {year} vom Nettobetrag1) des "
-               f"Jahres {vorjahr} in 1000 Euro"])
+               f"Jahres {prior_year} in 1000 Euro"])
 
 
 def _blatt(schluessel_lang: bool, ew_schreibweise: str) -> dict[int, list]:
@@ -154,7 +154,7 @@ def test_komponentenprobe_geht_fuer_alle_staedte_auf(kfa2026):
         probe = sk.probe_komponenten(jahrgang)
         assert probe["ok"], probe["abweichungen"]
         assert probe["geprueft"] == 3
-        assert "3 von 3 Städten" in probe["ergebnis"]
+        assert "3 von 3 Städten" in probe["result"]
 
 
 def test_komponentenprobe_faellt_auf_wenn_ein_teil_fehlt(kfa2026):
@@ -216,7 +216,7 @@ def test_gespeichert_kommt_je_ausgleichsjahr_eine_zeile_zurueck(tmp_path, kfa202
         store.save_staedtevergleich("finanzausgleich", zeilen, Herkunft(
             art="lsn", probe=["kfa_komponentenprobe", "kfa_jahrbuchabgleich"],
             label="KFA 2026", url="https://example.org/kfa.xlsx",
-            probe_ergebnis="3 von 3 Städten"))
+            probe_result="3 von 3 Städten"))
 
         reihe = store.get_finanzausgleich()
         assert [r["year"] for r in reihe] == [2025, 2026]

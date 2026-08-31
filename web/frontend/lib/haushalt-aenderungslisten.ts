@@ -22,8 +22,8 @@ export type AenderungsZeile = {
   produkt: string | null;
   bezeichnung: string;
   /** Euro, negativ = Minderung; `null` = kein Betrag in dieser Spalte. */
-  ertrag: number | null;
-  aufwand: number | null;
+  revenue: number | null;
+  expense: number | null;
   /** Die Erläuterungs-Spalte des Dokuments — was diese Änderung ist.
    *  `null` = Zelle leer oder Zuordnung nicht eindeutig (dann lieber gar
    *  kein Text als einer von der falschen Zeile). */
@@ -42,9 +42,9 @@ export type AenderungsSumme = {
   year: number;
   typ: string; // "entwurf" | "liste" | "endsumme"
   label: string;
-  ertraege: number;
-  aufwendungen: number;
-  saldo: number;
+  revenues: number;
+  expenses: number;
+  balance: number;
   /** 1 = die Zeile, die die Positionen dieses Dokuments summiert. */
   eigene: number;
   dokument_id: number;
@@ -72,12 +72,12 @@ export type FhhZeile = {
   bezeichnung: string;
   /** Euro. `null` = Zelle leer (reine Haushaltsvermerke tragen gar keine
    *  Beträge), `0` = Gedankenstrich, also eine ausdrückliche Null. */
-  soll_entwurf: number | null;
-  einzahlung: number | null;
-  auszahlung: number | null;
+  planned_draft: number | null;
+  inflow: number | null;
+  outflow: number | null;
   /** Verpflichtungsermächtigungen — zählen NICHT in den Saldo. */
   ve: number | null;
-  soll_neu: number | null;
+  planned_new: number | null;
   erlaeuterung: string | null;
   urheber: string | null;
   dokument_id: number;
@@ -90,9 +90,9 @@ export type FhhSumme = {
   year: number;
   typ: string;
   label: string;
-  einzahlungen: number;
-  auszahlungen: number;
-  saldo: number;
+  inflows: number;
+  outflows: number;
+  balance: number;
   ve: number | null;
   eigene: number;
   dokument_id: number;
@@ -138,7 +138,7 @@ export type ListeImJahr = {
    *  einrechnen als sie ausweisen, Endsumme minus Entwurf. `null`, wenn
    *  beides fehlt (dann trägt die Karte keine Summenzeile statt einer
    *  gerechneten, die das Dokument nicht deckt). */
-  saldo: { ertraege: number; aufwendungen: number; saldo: number } | null;
+  balance: { revenues: number; expenses: number; balance: number } | null;
   /** Bis zu welchem Planjahr die Liste außerdem ändert — `null`, wenn sie
    *  nur den Jahrgang selbst betrifft. */
   bisPlanjahr: number | null;
@@ -160,13 +160,13 @@ export function listenFuerJahr(
     const eigene = imJahr.find((s) => s.eigene === 1);
     const entwurf = imJahr.find((s) => s.typ === "entwurf");
     const ende = imJahr.find((s) => s.typ === "endsumme");
-    const saldo = eigene
-      ? { ertraege: eigene.ertraege, aufwendungen: eigene.aufwendungen, saldo: eigene.saldo }
+    const balance = eigene
+      ? { revenues: eigene.revenues, expenses: eigene.expenses, balance: eigene.balance }
       : entwurf && ende
         ? {
-            ertraege: ende.ertraege - entwurf.ertraege,
-            aufwendungen: ende.aufwendungen - entwurf.aufwendungen,
-            saldo: ende.saldo - entwurf.saldo,
+            revenues: ende.revenues - entwurf.revenues,
+            expenses: ende.expenses - entwurf.expenses,
+            balance: ende.balance - entwurf.balance,
           }
         : null;
     const bis = Math.max(...summen.map((s) => s.year));
@@ -174,7 +174,7 @@ export function listenFuerJahr(
       schluessel,
       name: LISTEN_NAME[schluessel] ?? schluessel,
       zeilen,
-      saldo,
+      balance,
       bisPlanjahr: bis > year ? bis : null,
       herkunft: herkunftVon(daten, zeilen[0].herkunft_id),
     });
@@ -281,13 +281,13 @@ export function verfahrensWeg(
 
   const listen = zeilen.filter((s) => s.typ === "liste");
   const politisch = listen.filter((s) => !s.label.includes("nderungsliste"));
-  const summeSaldo = (xs: AenderungsSumme[]) => xs.reduce((a, s) => a + s.saldo, 0);
+  const summeSaldo = (xs: AenderungsSumme[]) => xs.reduce((a, s) => a + s.balance, 0);
 
   return {
     jahrgang,
-    entwurf: entwurf.saldo,
-    ende: ende.saldo,
-    bewegt: ende.saldo - entwurf.saldo,
+    entwurf: entwurf.balance,
+    ende: ende.balance,
+    bewegt: ende.balance - entwurf.balance,
     verwaltung: summeSaldo(listen.filter((s) => s.label.includes("nderungsliste"))),
     politik: summeSaldo(politisch),
     politikZeilen: politisch,
@@ -309,7 +309,7 @@ export type FhhListeImJahr = {
   zeilen: FhhZeile[];
   /** Was die Liste im Jahrgang bewegt — die „eigene" Zeile der
    *  Zusammenstellung, sonst `null`. */
-  saldo: { einzahlungen: number; auszahlungen: number; saldo: number } | null;
+  balance: { inflows: number; outflows: number; balance: number } | null;
   herkunft: Herkunft | null;
 };
 
@@ -321,7 +321,7 @@ export function fhhListenFuerJahr(
   for (const schluessel of REIHENFOLGE) {
     const zeilen = (daten.fhh_zeilen ?? []).filter(
       (z) => z.jahrgang === year && z.liste === schluessel
-        && (z.einzahlung != null || z.auszahlung != null));
+        && (z.inflow != null || z.outflow != null));
     if (!zeilen.length) continue;
     const eigene = (daten.fhh_summen ?? []).find(
       (s) => s.jahrgang === year && s.year === year && s.liste === schluessel
@@ -330,9 +330,9 @@ export function fhhListenFuerJahr(
       schluessel,
       name: LISTEN_NAME[schluessel] ?? schluessel,
       zeilen,
-      saldo: eigene
-        ? { einzahlungen: eigene.einzahlungen, auszahlungen: eigene.auszahlungen,
-            saldo: eigene.saldo }
+      balance: eigene
+        ? { inflows: eigene.inflows, outflows: eigene.outflows,
+            balance: eigene.balance }
         : null,
       herkunft: herkunftVon(daten, zeilen[0].herkunft_id),
     });

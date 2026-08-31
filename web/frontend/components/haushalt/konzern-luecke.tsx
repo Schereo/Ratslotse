@@ -25,12 +25,12 @@
 import { deMio } from "@/lib/haushalt";
 import { KonzernDaten, kernAnteil } from "@/lib/haushalt-konzern";
 
-export type LueckeArt = "ertraege" | "aufwendungen";
+export type LueckeArt = "revenues" | "expenses";
 
 export function KonzernLuecke({ daten, art }: { daten: KonzernDaten; art: LueckeArt }) {
   const zeilen = daten.konzern
     .map((k) => {
-      const konzern = art === "ertraege" ? k.ertraege_summe : k.aufwendungen_summe;
+      const konzern = art === "revenues" ? k.revenues_total : k.expenses_total;
       if (konzern == null) return null;
       const anteil = kernAnteil(daten, k.year, art);
       return { year: k.year, konzern, kern: anteil?.kern ?? null };
@@ -107,7 +107,7 @@ export function KonzernLuecke({ daten, art }: { daten: KonzernDaten; art: Luecke
         </span>
       </div>
       <p className="mt-2 max-w-[86ch] text-[11.5px] leading-relaxed text-muted-foreground">
-        Alle Beträge in Mio.&nbsp;€, {art === "ertraege" ? "ordentliche Erträge" : "ordentliche Aufwendungen"}.
+        Alle Beträge in Mio.&nbsp;€, {art === "revenues" ? "ordentliche Erträge" : "ordentliche Aufwendungen"}.
         Die Balkenlänge steht für die Konzernsumme des Jahres — der dunkle Teil ist
         die Kernverwaltung darin.
       </p>

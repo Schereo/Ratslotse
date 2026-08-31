@@ -16,18 +16,18 @@ import { cn } from "@/lib/utils";
  *  Die Farbe folgt der Ergebnis-Grammatik der App, der Text nicht: „geändert
  *  beschlossen" ist genauer als „Angenommen", und es ist die Formulierung,
  *  unter der man den Punkt im Original wiederfindet. */
-export function ErgebnisAbzeichen({ ergebnis, className }: {
-  ergebnis: string | null;
+export function ErgebnisAbzeichen({ result, className }: {
+  result: string | null;
   className?: string;
 }) {
-  if (!ergebnis) return null;
+  if (!result) return null;
   return (
     <span className={cn(
       "shrink-0 rounded-md px-2 py-0.5 text-[11px] font-medium",
-      OUTCOME_META[ergebnisArt(ergebnis)].cls,
+      OUTCOME_META[ergebnisArt(result)].cls,
       className,
     )}>
-      {ergebnis}
+      {result}
     </span>
   );
 }
@@ -51,7 +51,7 @@ export function StationsZeile({ station, rolle, children }: {
         <p className="font-mono text-[10px] font-medium uppercase tracking-[0.1em] text-muted-foreground">
           {rolle}
         </p>
-        <ErgebnisAbzeichen ergebnis={station.ergebnis} />
+        <ErgebnisAbzeichen result={station.result} />
       </div>
       <p className="mt-1 text-[13.5px] font-bold leading-snug">{station.gremium}</p>
       {/* Der Fließtext der Station hält Lesebreite — ohne Deckel lief er über

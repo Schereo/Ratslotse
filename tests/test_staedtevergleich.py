@@ -313,7 +313,7 @@ def test_doctype_wird_abgelehnt(tmp_path):
 
 def test_kfa_liest_die_acht_staedte(kfa2026):
     jahrgang = sv.lies_kfa(kfa2026)
-    assert (jahrgang.year, jahrgang.vorjahr) == (2026, 2025)
+    assert (jahrgang.year, jahrgang.prior_year) == (2026, 2025)
     assert jahrgang.stand == "26.03.2026"
     # Alle Gemeinden der Datei, nicht nur die Städte: Die Überlappungsprobe
     # ist nur dann etwas wert, wenn sie über den ganzen Bestand läuft.
@@ -321,7 +321,7 @@ def test_kfa_liest_die_acht_staedte(kfa2026):
     ol = jahrgang.staedte["403000"]
     assert ol["messzahl_teur"] == 348164
     assert ol["einwohner"] == 176410
-    assert ol["vorjahr_messzahl_teur"] == 325716
+    assert ol["prior_year_tax_index_keur"] == 325716
 
 
 def test_kfa_findet_die_kopfzeile_ueber_den_hinweis_der_datei(tmp_path):
@@ -350,7 +350,7 @@ def test_ueberlappungsprobe_geht_ueber_alle_gemeinden_auf(kfa2025, kfa2026):
     probe = sv.probe_ueberlappung(sv.lies_kfa(kfa2025), sv.lies_kfa(kfa2026))
     assert probe["ok"]
     assert probe["geprueft"] == len(KFA2026_ZEILEN)
-    assert "10 von 10" in probe["ergebnis"]
+    assert "10 von 10" in probe["result"]
 
 
 def test_ueberlappungsprobe_schlaegt_an_wenn_ein_wert_abweicht(tmp_path, kfa2026):
@@ -507,7 +507,7 @@ def _herkunft(probe="lsn_zweijahresueberlappung") -> herkunft.Herkunft:
     return herkunft.Herkunft(
         art="lsn", probe=probe, label="Kommunaler Finanzausgleich 2026",
         url="https://example.org/kfa2026.xlsx",
-        fundstelle="Blatt ST_KR_MESS_VGL", probe_ergebnis="403 von 403",
+        fundstelle="Blatt ST_KR_MESS_VGL", probe_result="403 von 403",
         stand="26.03.2026")
 
 

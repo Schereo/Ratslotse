@@ -9,7 +9,7 @@ import { shortCommittee } from "@/lib/committees";
 type Station = {
   datum: string | null;
   gremium: string;
-  ergebnis: string | null;
+  result: string | null;
 };
 
 type Follow = {
@@ -27,7 +27,7 @@ type Follow = {
 
 /** Eine Station als eine Zeile: „Verkehrsausschuss · 13.08.2026 · angenommen". */
 function stationLine(s: Station): string {
-  return [shortCommittee(s.gremium), s.datum ? formatDate(s.datum) : null, s.ergebnis]
+  return [shortCommittee(s.gremium), s.datum ? formatDate(s.datum) : null, s.result]
     .filter(Boolean)
     .join(" · ");
 }

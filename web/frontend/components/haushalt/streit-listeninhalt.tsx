@@ -87,10 +87,10 @@ function ListenKarte({ liste, year }: { liste: ListeImJahr; year: number }) {
           {liste.zeilen.length} Position{liste.zeilen.length === 1 ? "" : "en"} für {year}
           {zeigeUrheber && ` · von ${urheber.size} Vorschlagenden`}
         </span>
-        {liste.saldo && (
+        {liste.balance && (
           <span className={cn("ml-auto whitespace-nowrap font-mono text-[11.5px] font-medium tabular-nums",
-            liste.saldo.saldo < 0 ? "text-signal" : "text-foreground")}>
-            Saldo {deltaBetrag(liste.saldo.saldo)}
+            liste.balance.balance < 0 ? "text-signal" : "text-foreground")}>
+            Saldo {deltaBetrag(liste.balance.balance)}
           </span>
         )}
       </summary>
@@ -106,19 +106,19 @@ function ListenKarte({ liste, year }: { liste: ListeImJahr; year: number }) {
             { titel: "Ertrag", zahl: true },
             { titel: "Aufwand", zahl: true },
           ]}
-          fuss={liste.saldo && (
+          fuss={liste.balance && (
             <tr>
               <TextZelle className="border-t-border/60 py-2">
                 <span className="text-[11.5px] font-semibold text-foreground">Summe der Liste</span>
                 <span className={cn("ml-2 whitespace-nowrap font-mono text-[11px] font-medium tabular-nums",
-                  liste.saldo.saldo < 0 ? "text-signal" : "text-muted-foreground")}>
-                  Saldo {deltaBetrag(liste.saldo.saldo)}
+                  liste.balance.balance < 0 ? "text-signal" : "text-muted-foreground")}>
+                  Saldo {deltaBetrag(liste.balance.balance)}
                 </span>
                 <Beleg q="aenderungsliste" h={liste.herkunft} />
               </TextZelle>
-              <BetragZelle euro={liste.saldo.ertraege} text={deltaBetrag(liste.saldo.ertraege)}
+              <BetragZelle euro={liste.balance.revenues} text={deltaBetrag(liste.balance.revenues)}
                 label="Ertrag" className="border-t-border/60 py-2 font-medium" />
-              <BetragZelle euro={liste.saldo.aufwendungen} text={deltaBetrag(liste.saldo.aufwendungen)}
+              <BetragZelle euro={liste.balance.expenses} text={deltaBetrag(liste.balance.expenses)}
                 label="Aufwand" className="border-t-border/60 py-2 font-medium" />
             </tr>
           )}
@@ -148,8 +148,8 @@ function ListenKarte({ liste, year }: { liste: ListeImJahr; year: number }) {
                   </span>
                 )}
               </TextZelle>
-              <BetragZelle euro={z.ertrag} text={deltaBetrag(z.ertrag)} label="Ertrag" />
-              <BetragZelle euro={z.aufwand} text={deltaBetrag(z.aufwand)} label="Aufwand" />
+              <BetragZelle euro={z.revenue} text={deltaBetrag(z.revenue)} label="Ertrag" />
+              <BetragZelle euro={z.expense} text={deltaBetrag(z.expense)} label="Aufwand" />
             </tr>
           ))}
         </ZahlenTabelle>
@@ -212,7 +212,7 @@ export function StreitListenInhalt({ daten, year }: {
               return (
                 <p key={s.label} className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
                   <UrheberMarke label={s.label} />
-                  <SummenWerte e={s.ertraege} a={s.aufwendungen} s={s.saldo} />
+                  <SummenWerte e={s.revenues} a={s.expenses} s={s.balance} />
                   {eigene.length > 0 && (
                     <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
                       aus {eigene.length} Position{eigene.length === 1 ? "" : "en"}

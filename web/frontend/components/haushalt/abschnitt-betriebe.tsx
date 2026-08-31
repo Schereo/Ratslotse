@@ -155,7 +155,7 @@ function BetriebsKarte({ zeilen, juengstesJahr, herkunftFuer }: {
   const nach = [...zeilen].sort((a, b) => a.year - b.year);
   const letzte = juengsteZeile(zeilen);
   const b = beleg(letzte.proben);
-  const reihe: JahrPunkt[] = nach.map((z) => ({ year: z.year, wert: z.ergebnis / 1e6 }));
+  const reihe: JahrPunkt[] = nach.map((z) => ({ year: z.year, wert: z.result / 1e6 }));
   const zeigKurve = nach.length >= 3;
 
   return (
@@ -186,12 +186,12 @@ function BetriebsKarte({ zeilen, juengstesJahr, herkunftFuer }: {
       <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-[13px]">
         <dt className="text-muted-foreground">Erträge</dt>
         <dd className="text-right font-semibold">
-          <Betrag wert={letzte.ertraege}
+          <Betrag wert={letzte.revenues}
             fehltWeil="Diese Quelle nennt nur das Jahresergebnis." />
         </dd>
         <dt className="text-muted-foreground">Aufwendungen</dt>
         <dd className="text-right font-semibold">
-          <Betrag wert={letzte.aufwendungen}
+          <Betrag wert={letzte.expenses}
             fehltWeil="Diese Quelle nennt nur das Jahresergebnis." />
         </dd>
         <dt className="border-t border-border pt-1 font-semibold">Ergebnis</dt>
@@ -201,7 +201,7 @@ function BetriebsKarte({ zeilen, juengstesJahr, herkunftFuer }: {
           // politische Entscheidung, Bäder zu bezuschussen, und kein Missstand
           // (dieselbe Regel wie im ganzen Bereich, s. grafik/hantel.tsx).
         )}>
-          {deMio(letzte.ergebnis / 1e6)}&#8239;Mio.&nbsp;€
+          {deMio(letzte.result / 1e6)}&#8239;Mio.&nbsp;€
         </dd>
       </dl>
 
@@ -216,7 +216,7 @@ function BetriebsKarte({ zeilen, juengstesJahr, herkunftFuer }: {
           Die Bedingung hängt an der PROBE und nicht am Betriebskürzel: Wer
           künftig ebenfalls ausgeglichen plant, bekommt denselben Satz, ohne dass
           ihn jemand hier einträgt. */}
-      {letzte.ergebnis === 0 && letzte.proben.includes("kernzahl") && (
+      {letzte.result === 0 && letzte.proben.includes("kernzahl") && (
         <p className="mt-2 max-w-[62ch] text-[12px] leading-relaxed text-muted-foreground">
           <span className="font-semibold text-foreground">Ein ausgeglichener
           Plan.</span> Die Null ist keine fehlende Zahl, sondern die Absicht:
@@ -276,7 +276,7 @@ function BetriebsKarte({ zeilen, juengstesJahr, herkunftFuer }: {
       {!zeigKurve && nach.length > 1 && (
         <p className="mt-2 text-[12px] text-muted-foreground">
           Frühere Jahrgänge:{" "}
-          {nach.slice(0, -1).map((z) => `${z.year}: ${deMio(z.ergebnis / 1e6)} Mio. €`)
+          {nach.slice(0, -1).map((z) => `${z.year}: ${deMio(z.result / 1e6)} Mio. €`)
             .join(" · ")}
         </p>
       )}
@@ -300,7 +300,7 @@ export function BetriebeAbschnitt({ data, loading }: {
     // Zuschussbedarf steht oben.
     return [...gruppen.values()].sort((a, b) => {
       const gross = (l: WirtschaftsplanZeile[]) =>
-        Math.abs(l[l.length - 1]?.ergebnis ?? 0);
+        Math.abs(l[l.length - 1]?.result ?? 0);
       return gross(b) - gross(a);
     });
   }, [data]);

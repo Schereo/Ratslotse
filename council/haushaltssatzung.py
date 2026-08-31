@@ -90,20 +90,20 @@ class Haushaltssatzung:
     #: beschlossene Fassung dazu, stünde sie daneben und nicht an ihrer Stelle.
     fassung: str
 
-    ordentliche_ertraege: float
-    ordentliche_aufwendungen: float
-    ao_ertraege: float
-    ao_aufwendungen: float
+    ordinary_revenues: float
+    ordinary_expenses: float
+    extraordinary_revenues: float
+    extraordinary_expenses: float
 
-    ein_laufend: float
-    aus_laufend: float
-    ein_invest: float
+    in_operating: float
+    out_operating: float
+    in_capital: float
     aus_invest: float
-    ein_finanz: float
-    aus_finanz: float
+    in_financing: float
+    out_financing: float
     #: Die „Nachrichtlich"-Zeilen — nachgerechnet, nicht übernommen.
-    ein_gesamt: float
-    aus_gesamt: float
+    in_total: float
+    out_total: float
 
     #: § 2. ``0.0`` heißt „nicht veranschlagt" und ist eine Aussage;
     #: ``None`` hieße „der Paragraph fehlt", und das kam bisher nicht vor.
@@ -134,18 +134,18 @@ _SITZUNG = re.compile(r"in der Sitzung am\s*(\d{2}\.\d{2}\.\d{4})")
 _ENTWURF = re.compile(r"Verwaltungsentwurf|Haushaltsentwurf|xx\.xx", re.I)
 
 _ERGEBNIS = {
-    "ordentliche_ertraege": r"1\.1 der ordentlichen Ertr[äa]ge auf\s*",
-    "ordentliche_aufwendungen": r"1\.2 der ordentlichen Aufwendungen auf\s*",
-    "ao_ertraege": r"1\.3 der au[ßs]erordentlichen Ertr[äa]ge auf\s*",
-    "ao_aufwendungen": r"1\.4 der au[ßs]erordentlichen Aufwendungen auf\s*",
+    "ordinary_revenues": r"1\.1 der ordentlichen Ertr[äa]ge auf\s*",
+    "ordinary_expenses": r"1\.2 der ordentlichen Aufwendungen auf\s*",
+    "extraordinary_revenues": r"1\.3 der au[ßs]erordentlichen Ertr[äa]ge auf\s*",
+    "extraordinary_expenses": r"1\.4 der au[ßs]erordentlichen Aufwendungen auf\s*",
 }
 _FINANZ = {
-    "ein_laufend": r"2\.1 der Einzahlungen aus laufender Verwaltungst[äa]tigkeit\s*",
-    "aus_laufend": r"2\.2 der Auszahlungen aus laufender Verwaltungst[äa]tigkeit\s*",
-    "ein_invest": r"2\.3 der Einzahlungen f[üu]r Investitionst[äa]tigkeit\s*",
+    "in_operating": r"2\.1 der Einzahlungen aus laufender Verwaltungst[äa]tigkeit\s*",
+    "out_operating": r"2\.2 der Auszahlungen aus laufender Verwaltungst[äa]tigkeit\s*",
+    "in_capital": r"2\.3 der Einzahlungen f[üu]r Investitionst[äa]tigkeit\s*",
     "aus_invest": r"2\.4 der Auszahlungen f[üu]r Investitionst[äa]tigkeit\s*",
-    "ein_finanz": r"2\.5 der Einzahlungen f[üu]r Finanzierungst[äa]tigkeit\s*",
-    "aus_finanz": r"2\.6 der Auszahlungen f[üu]r Finanzierungst[äa]tigkeit\s*",
+    "in_financing": r"2\.5 der Einzahlungen f[üu]r Finanzierungst[äa]tigkeit\s*",
+    "out_financing": r"2\.6 der Auszahlungen f[üu]r Finanzierungst[äa]tigkeit\s*",
 }
 _NACHRICHTLICH_EIN = re.compile(
     r"Gesamtbetrag der Einzahlungen des Finanzhaushaltes\s*" + _BETRAG)
@@ -210,12 +210,12 @@ def parse_satzung(text: str, template_number: str | None = None) -> Haushaltssat
         raise SatzungFehler(
             "Die „Nachrichtlich“-Zeilen fehlen — ohne sie prüft diese Schicht "
             "nichts nach, und eine ungeprüfte Zahl wird nicht gespeichert.")
-    ein_gesamt, aus_gesamt = _eur(ne.group(1)), _eur(na.group(1))
+    in_total, out_total = _eur(ne.group(1)), _eur(na.group(1))
 
-    summe_ein = werte["ein_laufend"] + werte["ein_invest"] + werte["ein_finanz"]
-    summe_aus = werte["aus_laufend"] + werte["aus_invest"] + werte["aus_finanz"]
-    for name, gerechnet, gedruckt in (("Einzahlungen", summe_ein, ein_gesamt),
-                                      ("Auszahlungen", summe_aus, aus_gesamt)):
+    total_in = werte["in_operating"] + werte["in_capital"] + werte["in_financing"]
+    total_out = werte["out_operating"] + werte["aus_invest"] + werte["out_financing"]
+    for name, gerechnet, gedruckt in (("Einzahlungen", total_in, in_total),
+                                      ("Auszahlungen", total_out, out_total)):
         if abs(gerechnet - gedruckt) > TOLERANZ_EUR:
             raise SatzungFehler(
                 f"{name} des Finanzhaushalts: Die drei Zeilen ergeben "
@@ -241,7 +241,7 @@ def parse_satzung(text: str, template_number: str | None = None) -> Haushaltssat
         # `unbekannt` und NICHT `beschlossen` — behauptet wird nichts.
         fassung="entwurf" if _ENTWURF.search(text) else "unbekannt",
         **werte,
-        ein_gesamt=ein_gesamt, aus_gesamt=aus_gesamt,
+        in_total=in_total, out_total=out_total,
         kredite_investitionen=kredite,
         verpflichtungsermaechtigungen=_eur(ve.group(1)) if ve else None,
         liquiditaetskredite=liqui,
@@ -258,11 +258,11 @@ def herkunft_fuer(satzung: Haushaltssatzung, *, url: str | None,
                   hebesatz_geprueft: str | None = None) -> Herkunft:
     """Die Herkunft: die Anlage, und was an ihr nachgerechnet wurde."""
     proben = [PROBE_FINANZHAUSHALT]
-    ergebnis = (f"Einzahlungen {satzung.ein_gesamt:,.0f} € und Auszahlungen "
-                f"{satzung.aus_gesamt:,.0f} € aus je drei Zeilen nachgerechnet")
+    result = (f"Einzahlungen {satzung.in_total:,.0f} € und Auszahlungen "
+                f"{satzung.out_total:,.0f} € aus je drei Zeilen nachgerechnet")
     if hebesatz_geprueft:
         proben.append(PROBE_HEBESATZ)
-        ergebnis += f"; {hebesatz_geprueft}"
+        result += f"; {hebesatz_geprueft}"
     return Herkunft(
         art="ris",
         probe=proben,
@@ -270,7 +270,7 @@ def herkunft_fuer(satzung: Haushaltssatzung, *, url: str | None,
         label=label or f"Haushaltssatzung {satzung.year}",
         url=url,
         fundstelle=f"Haushaltssatzung {satzung.year}, §§ 1–5",
-        probe_ergebnis=ergebnis,
+        probe_result=result,
         # Die Fassung gehört in den STAND und nicht in eine Fußnote: Wer diese
         # Zahlen liest, liest einen Vorschlag der Verwaltung.
         stand=(f"Haushaltssatzung {satzung.year}, "

@@ -139,11 +139,11 @@ TOLERANZ_EUR = 2.0
 #: unter einem Namen, den nie jemand nachgeschlagen hat.
 VOKABULAR: dict[str, dict[str, tuple[str, ...]]] = {
     "awb": {
-        "ertraege": (r"Gesamtertrag", r"Summe Ertr[äa]ge"),
-        "aufwendungen": (r"Gesamtaufwendungen", r"Summe Aufwendungen"),
+        "revenues": (r"Gesamtertrag", r"Summe Ertr[äa]ge"),
+        "expenses": (r"Gesamtaufwendungen", r"Summe Aufwendungen"),
         # „Gesamtergebnis" (Layout A) bzw. „11. Ergebnis nach Steuern"
         # (Layout B) — beide stehen unmittelbar unter ihren zwei Summanden.
-        "ergebnis": (r"Gesamtergebnis", r"1?1?\.?\s*Ergebnis nach Steuern"),
+        "result": (r"Gesamtergebnis", r"1?1?\.?\s*Ergebnis nach Steuern"),
     },
 }
 
@@ -157,8 +157,8 @@ _KOPFSPALTE = re.compile(r"(Ist|Plan|Ergebnis)\s+(20\d{2})")
 #: über einen Zeilenumbruch — deshalb wird der Text vorher geglättet.
 _PROSA = re.compile(
     r"Erfolgsplan\s+(?P<year>\d{4})\s+umfasst.{0,80}?Ertr[äa]ge.{0,60}?insgesamt\s+"
-    r"(?P<ertraege>[\d.]+)\s*(?:€|Euro).{0,90}?Aufwendungen.{0,60}?insgesamt\s+"
-    r"(?P<aufwendungen>[\d.]+)\s*(?:€|Euro)")
+    r"(?P<revenues>[\d.]+)\s*(?:€|Euro).{0,90}?Aufwendungen.{0,60}?insgesamt\s+"
+    r"(?P<expenses>[\d.]+)\s*(?:€|Euro)")
 
 #: Wie weit die Betriebszweige von ihrer Gesamtzeile abweichen dürfen, damit
 #: sie noch als deren Teile gelten: 5 %.
@@ -191,13 +191,13 @@ class Spaltenprobe:
 
     art: str          # ist | ansatz | finanzplanung
     year: int
-    ertraege: float
-    aufwendungen: float
-    ergebnis: float
+    revenues: float
+    expenses: float
+    result: float
 
     @property
     def rest(self) -> float:
-        return self.ertraege - self.aufwendungen - self.ergebnis
+        return self.revenues - self.expenses - self.result
 
     @property
     def geht_auf(self) -> bool:
@@ -333,9 +333,9 @@ def spaltenproben(text: str, betrieb: str) -> list[Spaltenprobe]:
             f"{breite} Beträge")
 
     return [
-        Spaltenprobe(art=art, year=year, ertraege=e, aufwendungen=a, ergebnis=g)
+        Spaltenprobe(art=art, year=year, revenues=e, expenses=a, result=g)
         for (art, year), e, a, g in zip(
-            kopf, gefunden["ertraege"], gefunden["aufwendungen"], gefunden["ergebnis"])
+            kopf, gefunden["revenues"], gefunden["expenses"], gefunden["result"])
     ]
 
 
@@ -349,7 +349,7 @@ def bereichsprobe(text: str, betrieb: str) -> tuple[int, list[float]] | None:
 
     ``None``, wenn es keine Zweige gibt (dann greift die Probe nicht).
     """
-    muster = VOKABULAR.get(betrieb, {}).get("ertraege", ())
+    muster = VOKABULAR.get(betrieb, {}).get("revenues", ())
     zeilen: list[list[float]] = []
     for zeile in text.splitlines():
         if not any(re.search(rf"^\s*{m}\b", zeile) for m in muster):
@@ -370,12 +370,12 @@ def prosa_summen(text: str) -> tuple[int, float, float] | None:
     if not m:
         return None
     return (int(m.group("year")),
-            _eur(m.group("ertraege")), _eur(m.group("aufwendungen")))
+            _eur(m.group("revenues")), _eur(m.group("expenses")))
 
 
 def plan_bezug(proben: list[Spaltenprobe], year: int) -> float:
     """Die Ertragssumme des Planjahres — Bezugsgröße der Bereichsprobe."""
-    return next((p.ertraege for p in proben if p.year == year), 0.0)
+    return next((p.revenues for p in proben if p.year == year), 0.0)
 
 
 def parse_erfolgsplan(template_number: str, betrieb: str, haushaltsjahr: int,
@@ -419,26 +419,26 @@ def parse_erfolgsplan(template_number: str, betrieb: str, haushaltsjahr: int,
 
     prosa = prosa_summen(text)
     if prosa and prosa[0] == haushaltsjahr:
-        _, p_ertraege, p_aufwendungen = prosa
-        if (abs(p_ertraege - plan.ertraege) > TOLERANZ_EUR
-                or abs(p_aufwendungen - plan.aufwendungen) > TOLERANZ_EUR):
+        _, p_revenues, p_expenses = prosa
+        if (abs(p_revenues - plan.revenues) > TOLERANZ_EUR
+                or abs(p_expenses - plan.expenses) > TOLERANZ_EUR):
             raise WirtschaftsplanFehler(
                 f"{template_number}: Der Satz unter der Tabelle nennt "
-                f"{p_ertraege:.0f} / {p_aufwendungen:.0f} €, die Planspalte "
-                f"{plan.ertraege:.0f} / {plan.aufwendungen:.0f} € — "
+                f"{p_revenues:.0f} / {p_expenses:.0f} €, die Planspalte "
+                f"{plan.revenues:.0f} / {plan.expenses:.0f} € — "
                 "zwei Stellen desselben Dokuments widersprechen sich")
 
     name = BETRIEBE[betrieb][1]
     return Wirtschaftsplan(
         betrieb=betrieb, betrieb_name=name, year=haushaltsjahr,
         template_number=template_number,
-        ertraege=plan.ertraege, aufwendungen=plan.aufwendungen,
+        revenues=plan.revenues, expenses=plan.expenses,
         # Kein eigener Steuerposten: Was der Beschlusstext des EGH als
         # „steuerliche Aufwendungen" gesondert ausweist, steckt hier in den
         # Aufwendungen. Die Null ist deshalb eine Aussage und keine Lücke —
         # sie hält `Erträge − Aufwendungen − Steuern = Ergebnis` in jeder
         # gespeicherten Zeile wahr, egal aus welcher Quelle sie stammt.
-        steuern=0.0, ergebnis=plan.ergebnis,
+        steuern=0.0, result=plan.result,
         # Der Vermögensplan steht in einer eigenen Tabelle dieser Anlage und
         # bringt eigene Proben mit; er ist nicht Teil dieser Schicht.
         vermoegensplan=None, verpflichtungen=None,
@@ -459,10 +459,10 @@ def herkunft_fuer(plan: Wirtschaftsplan, proben: list[Spaltenprobe],
     """
     geprueft = len(proben)
     schaerfste = max((abs(p.rest) for p in proben), default=0.0)
-    ergebnis = (f"{geprueft} Spalten geprüft, größte Abweichung "
+    result = (f"{geprueft} Spalten geprüft, größte Abweichung "
                 f"{schaerfste:.2f} €")
     if ocr_modell:
-        ergebnis += f"; Anlage per OCR gelesen ({ocr_modell})"
+        result += f"; Anlage per OCR gelesen ({ocr_modell})"
     return Herkunft(
         art="ris",
         probe=[PROBE_SPALTEN, PROBE_PROSA],
@@ -476,6 +476,6 @@ def herkunft_fuer(plan: Wirtschaftsplan, proben: list[Spaltenprobe],
         url=url,
         fundstelle=("Erfolgsplan der Anlage (per OCR gelesen)" if ocr_modell
                     else "Erfolgsplan der Anlage"),
-        probe_ergebnis=ergebnis,
+        probe_result=result,
         stand=f"Wirtschaftsplan {plan.year}, Fassung der Anlage",
     )

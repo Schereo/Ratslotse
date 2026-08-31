@@ -34,14 +34,14 @@ export function EntgeltePlanIst({ zeilen, beleg }: {
   // Beide Werte müssen da sein: Eine Hantel mit einem Ende ist keine Hantel,
   // sondern ein Punkt, der so tut, als wäre er ein Vergleich.
   const sortiert = zeilen
-    .filter((z) => z.plan != null && z.plan > 0 && z.ergebnis != null)
+    .filter((z) => z.plan != null && z.plan > 0 && z.result != null)
     .sort((a, b) => a.year - b.year);
   if (sortiert.length < 2) return null;
 
   const hantelZeilen: HantelZeile[] = sortiert.map((z) => ({
     label: String(z.year),
     plan: (z.plan as number) / 1e6,
-    ist: (z.ergebnis as number) / 1e6,
+    ist: (z.result as number) / 1e6,
     // Die Bezugsgröße dieses Jahrgangs, im Klartext des Dokuments. Wo sie
     // fehlt, wird sie nicht durch „Ansatz" ersetzt — dann steht sie eben nicht
     // da, statt geraten zu werden.

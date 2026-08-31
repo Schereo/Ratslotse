@@ -103,10 +103,10 @@ function Detail({ z, gepinnt, onClose, onOpen }: {
         )}
       </div>
       <p className="mt-1 text-[11.5px] leading-relaxed text-foreground/80">
-        {deMio(mio(z.aufwendungen))}&#8239;Mio.&nbsp;€ geplante Ausgaben · {deMio(mio(z.ertraege))}&#8239;Mio.&nbsp;€ Erträge des Bereichs
+        {deMio(mio(z.expenses))}&#8239;Mio.&nbsp;€ geplante Ausgaben · {deMio(mio(z.revenues))}&#8239;Mio.&nbsp;€ Erträge des Bereichs
         <br />
-        <strong className="text-foreground">{deMio(mio(z.ergebnis))}&#8239;Mio.&nbsp;€</strong>{" "}
-        {(z.ergebnis ?? 0) < 0 ? "Zuschussbedarf" : "Überschuss"}
+        <strong className="text-foreground">{deMio(mio(z.result))}&#8239;Mio.&nbsp;€</strong>{" "}
+        {(z.result ?? 0) < 0 ? "Zuschussbedarf" : "Überschuss"}
       </p>
       <button type="button" className="mt-1.5 text-[11.5px] font-semibold text-primary"
         onClick={() => onOpen(z.bereich)}>
@@ -130,25 +130,25 @@ export function Gegenbalken({ zeilen, year }: { zeilen: HaushaltZeile[]; year: n
   const pinnen = (w: Wahl) =>
     setGepinnt((g) => (g?.bereich === w.bereich && g.seite === w.seite ? null : w));
 
-  const parts = zeilen.filter((z) => z.is_summe !== 1);
-  const gesamt = zeilen.find((z) => z.is_summe === 1);
+  const parts = zeilen.filter((z) => z.is_total !== 1);
+  const gesamt = zeilen.find((z) => z.is_total === 1);
   if (!gesamt || !parts.length) return null;
 
-  const einSumme = mio(gesamt.ertraege) ?? 0;
-  const ausSumme = mio(gesamt.aufwendungen) ?? 0;
+  const einSumme = mio(gesamt.revenues) ?? 0;
+  const ausSumme = mio(gesamt.expenses) ?? 0;
   const skala = Math.max(einSumme, ausSumme);
   // Saldo aus den Rohwerten runden — 812,9 − 883,9 ergäbe −71,0, tatsächlich −71,1.
-  const saldo = mio((gesamt.ertraege ?? 0) - (gesamt.aufwendungen ?? 0)) ?? 0;
+  const balance = mio((gesamt.revenues ?? 0) - (gesamt.expenses ?? 0)) ?? 0;
   const einEnde = (einSumme / skala) * 100; // wo die kürzere Leiste endet
 
-  const sortiert = (key: "ertraege" | "aufwendungen") =>
+  const sortiert = (key: "revenues" | "expenses") =>
     [...parts]
       .map((z) => ({ z, wert: mio(z[key]) ?? 0 }))
       .filter((x) => x.wert > 0)
       .sort((a, b) => b.wert - a.wert);
 
-  const ein = sortiert("ertraege");
-  const aus = sortiert("aufwendungen");
+  const ein = sortiert("revenues");
+  const aus = sortiert("expenses");
   const gewaehlte = aktiv ? parts.find((z) => z.bereich === aktiv) : null;
   const oeffnen = (bereich: string) => router.push(`/haushalt/bereich?name=${bereichSlug(bereich)}`);
 
@@ -220,9 +220,9 @@ export function Gegenbalken({ zeilen, year }: { zeilen: HaushaltZeile[]; year: n
           bei Plus ein grüner Überschuss-Vermerk — nie interpoliert. Bei
           schmalem Überhang steht das Label rechtsbündig UNTER dem Kasten
           (wie H-03 mobil), sonst liefe es aus der Karte. */}
-      <div className={cn("relative my-3.5", 100 - einEnde < 20 && saldo < 0 ? "h-10" : "h-6")}>
+      <div className={cn("relative my-3.5", 100 - einEnde < 20 && balance < 0 ? "h-10" : "h-6")}>
         <div className="absolute inset-x-0 top-3 border-t border-border/60" />
-        {saldo < 0 && (
+        {balance < 0 && (
           <>
             <div className="absolute -top-1.5 h-9 border-l border-dashed border-signal" style={{ left: `${einEnde}%` }} />
             <div
@@ -231,13 +231,13 @@ export function Gegenbalken({ zeilen, year }: { zeilen: HaushaltZeile[]; year: n
             >
               {100 - einEnde >= 20 && (
                 <span className="whitespace-nowrap font-mono text-[9.5px] font-bold uppercase text-signal">
-                  {deMio(-saldo)}&#8239;Mio.&nbsp;€ geplantes Minus
+                  {deMio(-balance)}&#8239;Mio.&nbsp;€ geplantes Minus
                 </span>
               )}
             </div>
             {100 - einEnde < 20 && (
               <p className="absolute right-0 top-6 font-mono text-[9.5px] font-bold uppercase text-signal">
-                {deMio(-saldo)}&#8239;Mio.&nbsp;€ geplantes Minus
+                {deMio(-balance)}&#8239;Mio.&nbsp;€ geplantes Minus
               </p>
             )}
           </>
@@ -248,9 +248,9 @@ export function Gegenbalken({ zeilen, year }: { zeilen: HaushaltZeile[]; year: n
             bis 16.08. den Erfolgs-Tint aus der Beschluss-Semantik und stand
             damit als Gegenstück zum orangefarbenen Minus da: gut gegen
             schlecht, ohne dass irgendwer das behaupten wollte. */}
-        {saldo > 0 && (
+        {balance > 0 && (
           <span className="absolute right-0 top-0 rounded-full border border-border bg-muted px-2 py-0.5 text-[10.5px] font-semibold text-foreground/80">
-            +{deMio(saldo)}&#8239;Mio.&nbsp;€ Überschuss geplant
+            +{deMio(balance)}&#8239;Mio.&nbsp;€ Überschuss geplant
           </span>
         )}
       </div>

@@ -34,7 +34,7 @@ export type WegStation = {
   /** TOP-Nummer mit Präfix („Ö 6") — ohne Präfix zeigt der Link daneben. */
   top: string | null;
   /** Ergebnis in den Worten der Tagesordnung („geändert beschlossen"). */
-  ergebnis: string | null;
+  result: string | null;
   /** Der Beschluss über die Haushaltssatzung in dieser Sitzung, falls es ihn gibt. */
   votum: WegVotum | null;
 };
@@ -44,7 +44,7 @@ export type WegRunde = {
   template_number: string | null;
   kvonr: number | null;
   einbringung: WegStation | null;
-  fachausschuesse: { von: string; bis: string; anzahl: number; gremien: string[] } | null;
+  fachausschuesse: { von: string; bis: string; count: number; gremien: string[] } | null;
   stationen: WegStation[];
 };
 
@@ -86,7 +86,7 @@ export function tageZumJahresbeginn(r: WegRunde): number | null {
 export type Rhythmus = {
   jahrgaenge: number;
   /** Monate, in denen der Entwurf eingebracht wurde — häufigster zuerst. */
-  entwurfMonate: { monat: number; anzahl: number }[];
+  entwurfMonate: { monat: number; count: number }[];
   /** Die beiden Ränder der Streuung, gemessen am Beginn des Haushaltsjahres. */
   frueheste: WegRunde | null;
   spaeteste: WegRunde | null;
@@ -103,8 +103,8 @@ export function rhythmus(runden: WegRunde[]): Rhythmus {
     zaehler.set(m, (zaehler.get(m) ?? 0) + 1);
   }
   const entwurfMonate = [...zaehler.entries()]
-    .map(([monat, anzahl]) => ({ monat, anzahl }))
-    .sort((a, b) => b.anzahl - a.anzahl || a.monat - b.monat);
+    .map(([monat, count]) => ({ monat, count }))
+    .sort((a, b) => b.count - a.count || a.monat - b.monat);
 
   const mitBeschluss = runden.filter((r) => tageZumJahresbeginn(r) !== null);
   const sortiert = [...mitBeschluss].sort(
@@ -215,9 +215,9 @@ export function naechsterHaushaltsTermin(sitzungen: KommendeSitzung[] | undefine
  *  Original-Wortlaut: „geändert beschlossen" sagt mehr als „Angenommen", und
  *  es ist die Formulierung, unter der man den Punkt im Original wiederfindet. */
 export function ergebnisArt(
-  ergebnis: string | null,
+  result: string | null,
 ): "angenommen" | "abgelehnt" | "vertagt" | "zur_kenntnis" | "kein_beschluss" {
-  const e = (ergebnis ?? "").toLowerCase();
+  const e = (result ?? "").toLowerCase();
   if (!e) return "kein_beschluss";
   if (e.includes("abgelehnt")) return "abgelehnt";
   if (e.includes("beschlossen")) return "angenommen";

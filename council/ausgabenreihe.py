@@ -119,7 +119,7 @@ passiert ist: Er weist als Ergebnis 608.910.073,82 € aus und in der Spalte
 genau der **Plan** des Jahres. In dieser einen Zeile ist die Spalte verrutscht.
 
 Wir korrigieren das nicht still: Der PDF-Wert kommt herein, der CSV-Wert steht
-als ``konflikt_betrag`` daneben im Bestand, und die Seite schreibt beides an.
+als ``conflict_amount`` daneben im Bestand, und die Seite schreibt beides an.
 Eine stille Korrektur wäre hier besonders verlockend und besonders falsch —
 sie sähe aus wie eine saubere Reihe und wäre eine Behauptung über eine amtliche
 Quelle.
@@ -224,7 +224,7 @@ GEGENPROBE_TOLERANZ = 0.001
 GEGENPROBE_UNTERGRENZE = -TAUSEND / 2
 
 #: Die drei Proben, in einem Halbsatz — für den Messwert der Herkunft
-#: (``probe_ergebnis``), der auf der Seite im Beleg landet. Die vollständigen
+#: (``probe_result``), der auf der Seite im Beleg landet. Die vollständigen
 #: Erklärsätze für Leser*innen stehen in ``council/herkunft.PROBEN``; hier
 #: braucht es die Kurzform, weil der Messwert alle bestandenen Proben einer
 #: Gruppe hintereinander nennt.
@@ -318,7 +318,7 @@ def erkenne(text: str) -> dict[str, tuple[int, int]]:
 
 
 def parse_pdf(text: str) -> list[dict]:
-    """Die Datenzeilen des PDFs → ``{year, einwohner, betrag, je_einwohner,
+    """Die Datenzeilen des PDFs → ``{year, einwohner, amount, je_einwohner,
     revidiert, quelle}``, Beträge in Euro.
 
     Beide Blöcke stehen auf derselben Seite untereinander; getrennt wird am
@@ -335,10 +335,10 @@ def parse_pdf(text: str) -> list[dict]:
         # Drei Wertspalten: Einwohner, Betrag (Tausend Euro), je Einwohner.
         if len(felder) != 3 or any(w is None for w, _ in felder):
             continue
-        (ew, _), (betrag, _), (kopf, marke) = felder
+        (ew, _), (amount, _), (kopf, marke) = felder
         zeilen.append({
             "year": int(m.group(1)), "einwohner": int(ew or 0),
-            "betrag": (betrag or 0.0) * TAUSEND, "je_einwohner": kopf,
+            "amount": (amount or 0.0) * TAUSEND, "je_einwohner": kopf,
             "revidiert": marke == "r", "quelle": "pdf",
         })
     return zeilen
@@ -363,7 +363,7 @@ def parse_csv(csv_text: str) -> list[dict]:
             continue
         zeilen.append({
             "year": int(c[0]), "einwohner": int(c[1]),
-            "betrag": float(c[2]) * TAUSEND, "je_einwohner": float(c[3]),
+            "amount": float(c[2]) * TAUSEND, "je_einwohner": float(c[3]),
             "revidiert": False, "quelle": "csv",
         })
     return zeilen
@@ -380,9 +380,9 @@ def prokopfprobe(zeile: dict) -> tuple[bool, float | None]:
     hängen allein an ihr. Sie ist zugleich die einzige, die eine falsche
     Einheit aufdecken kann."""
     ew, kopf = zeile.get("einwohner"), zeile.get("je_einwohner")
-    if not ew or kopf is None or zeile.get("betrag") is None:
+    if not ew or kopf is None or zeile.get("amount") is None:
         return False, None
-    gerechnet = zeile["betrag"] / ew
+    gerechnet = zeile["amount"] / ew
     return abs(gerechnet - kopf) <= PROKOPF_TOLERANZ, gerechnet
 
 
@@ -394,11 +394,11 @@ def zweitquellenprobe(a: dict, b: dict) -> tuple[bool, float]:
     auf den Euro überein. Eine Toleranz würde nur den einen Jahrgang
     durchwinken, für den sie gedacht wäre — und der liegt mit 4,66 Mio. €
     ohnehin weit jenseits jeder Rundung."""
-    differenz = (a.get("betrag") or 0.0) - (b.get("betrag") or 0.0)
-    return differenz == 0.0, differenz
+    difference = (a.get("amount") or 0.0) - (b.get("amount") or 0.0)
+    return difference == 0.0, difference
 
 
-def gegenprobe(betrag: float, kernverwaltung: float | None) -> tuple[bool | None, float | None]:
+def gegenprobe(amount: float, kernverwaltung: float | None) -> tuple[bool | None, float | None]:
     """Passt der Betrag zur Ergebnisrechnung desselben Jahres?
 
     ``kernverwaltung`` ist Posten 20 („Summe ordentliche Aufwendungen") der
@@ -412,7 +412,7 @@ def gegenprobe(betrag: float, kernverwaltung: float | None) -> tuple[bool | None
     Normalfall und für 2025 der eigentliche Reiz der Reihe, kein Mangel."""
     if not kernverwaltung:
         return None, None
-    anteil = (betrag - kernverwaltung) / kernverwaltung
+    anteil = (amount - kernverwaltung) / kernverwaltung
     return GEGENPROBE_UNTERGRENZE / kernverwaltung <= anteil <= GEGENPROBE_TOLERANZ, anteil
 
 
@@ -428,7 +428,7 @@ def _wähle(kandidaten: list[dict]) -> tuple[dict | None, dict | None, str]:
     bestanden = [k for k in kandidaten if prokopfprobe(k)[0]]
     if not bestanden:
         return None, None, "keine Quelle besteht die Pro-Kopf-Probe"
-    if len({k["betrag"] for k in kandidaten}) == 1:
+    if len({k["amount"] for k in kandidaten}) == 1:
         # Einig. Das PDF gewinnt als Fundstelle, weil es die Untertitel und
         # Fußnoten trägt — der Betrag ist ohnehin derselbe. Gewählt wird nur
         # aus den Zeilen, die ihre eigene Rechnung bestanden haben.
@@ -456,7 +456,7 @@ def lies(csv_kameral: str, csv_doppik: str, pdf_text: str | None = None,
         Die übernommenen Jahrgänge, aufsteigend. Jeder trägt ``regelwerk``,
         ``quelle`` (welche Datei den Betrag geliefert hat), die Namen seiner
         bestandenen ``proben`` und — wo die Quellen sich widersprachen —
-        ``konflikt_betrag``/``konflikt_quelle``.
+        ``conflict_amount``/``konflikt_quelle``.
     ``verworfen``
         Jahrgänge, die keine tragfähige Probe bestanden haben, mit ``grund``.
         Sie stehen nirgends in der Datenbank.
@@ -533,7 +533,7 @@ def lies(csv_kameral: str, csv_doppik: str, pdf_text: str | None = None,
             if ok:
                 proben.append("ausgabenreihe_zweitquelle")
 
-        g_ok, anteil = gegenprobe(gewaehlt["betrag"], ergebnisrechnung.get(year))
+        g_ok, anteil = gegenprobe(gewaehlt["amount"], ergebnisrechnung.get(year))
         if g_ok is None:
             zaehler["ohne_jahresabschluss"] += 1
         else:
@@ -554,9 +554,9 @@ def lies(csv_kameral: str, csv_doppik: str, pdf_text: str | None = None,
 
         zeile = {
             "year": year, "regelwerk": regelwerk_von(year),
-            "betrag": gewaehlt["betrag"], "quelle": gewaehlt["quelle"],
+            "amount": gewaehlt["amount"], "quelle": gewaehlt["quelle"],
             "revidiert": bool(gewaehlt.get("revidiert")),
-            "konflikt_betrag": konflikt["betrag"] if konflikt else None,
+            "conflict_amount": konflikt["amount"] if konflikt else None,
             "konflikt_quelle": konflikt["quelle"] if konflikt else None,
             "proben": proben,
         }
@@ -564,10 +564,10 @@ def lies(csv_kameral: str, csv_doppik: str, pdf_text: str | None = None,
         if konflikt:
             konflikte.append({
                 "year": year, "gewaehlt": gewaehlt["quelle"],
-                "betrag": gewaehlt["betrag"],
+                "amount": gewaehlt["amount"],
                 "verworfen": konflikt["quelle"],
-                "konflikt_betrag": konflikt["betrag"],
-                "differenz": konflikt["betrag"] - gewaehlt["betrag"],
+                "conflict_amount": konflikt["amount"],
+                "difference": konflikt["amount"] - gewaehlt["amount"],
             })
 
     da = {z["year"] for z in zeilen}
@@ -599,11 +599,11 @@ def lies(csv_kameral: str, csv_doppik: str, pdf_text: str | None = None,
     }
 
 
-def probennachweis(ergebnis: dict) -> str:
+def probennachweis(result: dict) -> str:
     """Der Messwert für die Herkunft — „was ist wirklich gelaufen?".
 
     Steht später im Beleg auf der Seite; deshalb Zahlen und keine Adjektive."""
-    p = ergebnis["proben"]
+    p = result["proben"]
     teile = [f"Pro-Kopf-Probe {p['prokopf_bestanden']} von "
              f"{p['prokopf_bestanden'] + p['prokopf_gerissen']} gelesenen Zeilen"]
     zwei = p["zweitquelle_bestanden"] + p["zweitquelle_gerissen"]

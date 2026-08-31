@@ -43,9 +43,9 @@ function verteile100<T extends { wert: number }>(rows: T[], gesamt: number) {
 export function Steuereuro({ zeilen, year }: { zeilen: HaushaltZeile[]; year: number }) {
   // Welcher Bereich gerade hervorgehoben ist — null = keiner, der Ruhezustand.
   const [hervor, setHervor] = useState<number | null>(null);
-  const parts = zeilen.filter((z) => z.is_summe !== 1);
-  const gesamt = zeilen.find((z) => z.is_summe === 1);
-  if (!gesamt?.aufwendungen) return null;
+  const parts = zeilen.filter((z) => z.is_total !== 1);
+  const gesamt = zeilen.find((z) => z.is_total === 1);
+  if (!gesamt?.expenses) return null;
 
   // Namen aus dem Wörterbuch (`lib/haushalt-bereiche.ts`): Die Schreibweise
   // wechselt je Jahrgang, die Legende soll beim Jahreswechsel aber nicht
@@ -53,7 +53,7 @@ export function Steuereuro({ zeilen, year }: { zeilen: HaushaltZeile[]; year: nu
   const sortiert = [...parts]
     .map((z) => {
       const kanon = bereichKanon(z.bereich);
-      return { name: kanon.name, kurz: kanon.kurz, wert: z.aufwendungen ?? 0 };
+      return { name: kanon.name, kurz: kanon.kurz, wert: z.expenses ?? 0 };
     })
     .filter((r) => r.wert > 0)
     .sort((a, b) => b.wert - a.wert);
@@ -67,12 +67,12 @@ export function Steuereuro({ zeilen, year }: { zeilen: HaushaltZeile[]; year: nu
         wert: kleine.reduce((s, r) => s + r.wert, 0),
       }]
     : gross;
-  const felder = verteile100(rows, gesamt.aufwendungen);
+  const felder = verteile100(rows, gesamt.expenses);
 
-  const einMio = mio(gesamt.ertraege) ?? 0;
-  const ausMio = mio(gesamt.aufwendungen) ?? 0;
+  const einMio = mio(gesamt.revenues) ?? 0;
+  const ausMio = mio(gesamt.expenses) ?? 0;
   // Fehlbetrag aus Rohwerten runden (812,9/883,9 ergäbe 71,0 statt 71,1).
-  const fehltMio = mio((gesamt.aufwendungen ?? 0) - (gesamt.ertraege ?? 0)) ?? 0;
+  const fehltMio = mio((gesamt.expenses ?? 0) - (gesamt.revenues ?? 0)) ?? 0;
   const eingenommen = Math.min(100, Math.round((einMio / ausMio) * 100));
 
   // Zellen 0–99 den Bereichen der Reihe nach zuordnen (Leserichtung).

@@ -90,9 +90,9 @@ def summarize_agenda(
 _MAX_TOPS_PRO_LAUF = 20
 
 
-def _budget(anzahl: int) -> int:
+def _budget(count: int) -> int:
     """Token-Budget nach Anzahl der Punkte — ein Satz je TOP braucht Platz."""
-    return min(4000, 400 + 130 * anzahl)
+    return min(4000, 400 + 130 * count)
 
 
 def _analyse(committee: str, session_date: str,

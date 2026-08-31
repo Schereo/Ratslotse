@@ -90,17 +90,17 @@ def _befuellen(store: CouncilStore, ohne_posten: int | None = None) -> None:
     anteil_e = ERTRAEGE_PLAN / ERTRAEGE_IST
     gesamt = [
         {"nr": nr, "bezeichnung": bez, "ansatz": round(wert * anteil_e, 2),
-         "ergebnis": wert, "deviation": round(wert - wert * anteil_e, 2), "ist_summe": 0}
+         "result": wert, "deviation": round(wert - wert * anteil_e, 2), "is_total": 0}
         for nr, bez, wert in ERTRAGSARTEN if nr != ohne_posten
     ]
     gesamt += [
         {"nr": 12, "bezeichnung": "Summe ordentliche Erträge", "ansatz": ERTRAEGE_PLAN,
-         "ergebnis": ERTRAEGE_IST, "ist_summe": 1},
+         "result": ERTRAEGE_IST, "is_total": 1},
         {"nr": 20, "bezeichnung": "Summe ordentliche Aufwendungen", "ansatz": AUFWENDUNGEN_PLAN,
-         "ergebnis": AUFWENDUNGEN_IST, "ist_summe": 1},
+         "result": AUFWENDUNGEN_IST, "is_total": 1},
         {"nr": 21, "bezeichnung": "ordentliches Ergebnis",
          "ansatz": ERTRAEGE_PLAN - AUFWENDUNGEN_PLAN,
-         "ergebnis": ERTRAEGE_IST - AUFWENDUNGEN_IST, "ist_summe": 1},
+         "result": ERTRAEGE_IST - AUFWENDUNGEN_IST, "is_total": 1},
     ]
     store.save_ergebnisrechnung(JAHR, gesamt, _quelle(JAHR))
 
@@ -108,7 +108,7 @@ def _befuellen(store: CouncilStore, ohne_posten: int | None = None) -> None:
     for nr, name, wert in TEILHAUSHALTE:
         store.save_ergebnisrechnung(JAHR, [
             {"nr": 20, "bezeichnung": "Summe ordentliche Aufwendungen",
-             "ansatz": round(wert * anteil_a, 2), "ergebnis": wert, "ist_summe": 1},
+             "ansatz": round(wert * anteil_a, 2), "result": wert, "is_total": 1},
         ], _quelle(JAHR, "summenprobe"), thh_nr=nr, thh_name=name)
 
 
@@ -140,7 +140,7 @@ console.log(JSON.stringify({
   jahre: flussJahre(daten),
   stand: bild.stand,
   skala: bild.skala,
-  saldo: bild.saldo,
+  balance: bild.balance,
   summeLinks: bild.summeLinks,
   summeRechts: bild.summeRechts,
   stimmt: bild.stimmt,
@@ -296,11 +296,11 @@ def test_nur_jahre_mit_beiden_seiten(tmp_path):
     _befuellen(store)
     store.save_ergebnisrechnung(2019, [
         {"nr": 1, "bezeichnung": "Steuern und ähnliche Abgaben",
-         "ansatz": 1.0, "ergebnis": 300_000_000.0, "ist_summe": 0},
+         "ansatz": 1.0, "result": 300_000_000.0, "is_total": 0},
         {"nr": 12, "bezeichnung": "Summe ordentliche Erträge",
-         "ansatz": 1.0, "ergebnis": 300_000_000.0, "ist_summe": 1},
+         "ansatz": 1.0, "result": 300_000_000.0, "is_total": 1},
         {"nr": 20, "bezeichnung": "Summe ordentliche Aufwendungen",
-         "ansatz": 1.0, "ergebnis": 310_000_000.0, "ist_summe": 1},
+         "ansatz": 1.0, "result": 310_000_000.0, "is_total": 1},
     ], _quelle(2019))
     r = _fluss(tmp_path, _daten(store))
     store.close()
@@ -318,14 +318,14 @@ def test_store_liefert_genau_die_felder_die_das_bild_liest(tmp_path):
     zeilen = store.get_ergebnisrechnung(JAHR)
     store.close()
 
-    for feld in ("year", "nr", "bezeichnung", "thh_nr", "thh_name", "ansatz", "ergebnis"):
+    for feld in ("year", "nr", "bezeichnung", "thh_nr", "thh_name", "ansatz", "result"):
         assert all(feld in z for z in zeilen), feld
     arten = [z for z in zeilen if z["thh_nr"] is None and 1 <= z["nr"] <= 11]
     bereiche = [z for z in zeilen if z["thh_nr"] is not None and z["nr"] == 20]
     assert len(arten) == 11 and len(bereiche) == 12
     # Und die Probe auf der Datengrundlage selbst.
-    assert sum(z["ergebnis"] for z in arten) == pytest.approx(ERTRAEGE_IST, abs=0.01)
-    assert sum(z["ergebnis"] for z in bereiche) == pytest.approx(AUFWENDUNGEN_IST, abs=0.01)
+    assert sum(z["result"] for z in arten) == pytest.approx(ERTRAEGE_IST, abs=0.01)
+    assert sum(z["result"] for z in bereiche) == pytest.approx(AUFWENDUNGEN_IST, abs=0.01)
 
 
 def _lies(rel: str) -> str:

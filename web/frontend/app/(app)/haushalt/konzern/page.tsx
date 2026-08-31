@@ -76,7 +76,7 @@ function KonzernSeiteInner() {
     const jeBetrieb = new Map<string, typeof zeilen>();
     for (const z of zeilen) jeBetrieb.set(z.betrieb, [...(jeBetrieb.get(z.betrieb) ?? []), z]);
     const gruppen = [...jeBetrieb.values()]
-      .sort((a, b) => Math.abs(b.at(-1)?.ergebnis ?? 0) - Math.abs(a.at(-1)?.ergebnis ?? 0));
+      .sort((a, b) => Math.abs(b.at(-1)?.result ?? 0) - Math.abs(a.at(-1)?.result ?? 0));
     const urls = gruppen
       .map((g) => [...g].sort((a, b) => a.year - b.year).at(-1))
       .map((z) => (z ? herkunftVon(data, z.herkunft_id)?.url : undefined))

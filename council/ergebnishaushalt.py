@@ -298,9 +298,9 @@ def lies(text: str) -> dict:
     nachweis}``:
 
     * ``zeilen`` — je Posten und Planjahr ein dict mit ``year``, ``art``
-      (``ansatz``/``finanzplanung``), ``nr``, ``bezeichnung``, ``betrag``,
-      ``ist_summe``. Nur, was gespeichert werden darf.
-    * ``ist`` — die Ist-Spalte des Vorvorjahres, ``{nr: betrag}``. Sie wird
+      (``ansatz``/``finanzplanung``), ``nr``, ``bezeichnung``, ``amount``,
+      ``is_total``. Nur, was gespeichert werden darf.
+    * ``ist`` — die Ist-Spalte des Vorvorjahres, ``{nr: amount}``. Sie wird
       **nicht** gespeichert (dafür gibt es ``council_ergebnisrechnung``),
       sondern dient als Gegenprobe gegen den Jahresabschluss.
     * ``bestanden`` — ob beide Pflicht-Proben aufgehen. Ist sie ``False``, ist
@@ -329,8 +329,8 @@ def lies(text: str) -> dict:
                 zeilen.append({
                     "year": jahre[sp], "art": art, "nr": nr,
                     "bezeichnung": ERGEBNIS_POSTEN[nr],
-                    "betrag": werte[sp],
-                    "ist_summe": 1 if nr in SUMMEN_POSTEN else 0,
+                    "amount": werte[sp],
+                    "is_total": 1 if nr in SUMMEN_POSTEN else 0,
                 })
     return {
         "jahrgang": jahre[2], "jahre": jahre, "zeilen": zeilen,

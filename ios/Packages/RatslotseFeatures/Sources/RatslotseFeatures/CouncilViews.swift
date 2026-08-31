@@ -1434,8 +1434,8 @@ struct DecisionDetailView: View {
           ],
           "importance_breakdown": {"score":82,"impact_reason":"Der Beschluss betrifft nahezu alle Aufgaben der Stadt und legt den finanziellen Rahmen für das ganze Jahr fest."},
           "beratungsfolge": [
-            {"datum":"2026-01-21","gremium":"Finanzen und Beteiligungen","top":"4","ergebnis":"empfohlen","ksinr":87,"future":false},
-            {"datum":"2026-02-09","gremium":"Rat der Stadt","top":"6.5","ergebnis":"angenommen","ksinr":88,"future":false}
+            {"datum":"2026-01-21","gremium":"Finanzen und Beteiligungen","top":"4","result":"empfohlen","ksinr":87,"future":false},
+            {"datum":"2026-02-09","gremium":"Rat der Stadt","top":"6.5","result":"angenommen","ksinr":88,"future":false}
           ],
           "follow":{"kvonr":901,"following":false},
           "similar": [],

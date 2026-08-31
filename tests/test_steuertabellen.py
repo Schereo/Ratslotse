@@ -71,16 +71,16 @@ Kapitel 11 - Verwaltung und Finanzen
 nach dem
 Haushaltsplan
  Rechnungs-
-ergebnis
+result
 nach dem
 Haushaltsplan
  Rechnungs-
-ergebnis
+result
 nach dem
 Haushaltsplan
 vorläufiges
 Rechnungs-
-ergebnis
+result
 Fachdienst Geo und Daten"""
 
 #: **Die Ausgabe davor** — 2022 bis 2024. Sie ist nicht mehr abrufbar (die
@@ -255,9 +255,9 @@ def test_eine_fehlende_zeile_reisst_die_summenprobe():
     übrigen Zahlen blieben richtig — der Fehler wäre unsichtbar."""
     ohne = PDF_1103.replace(
         "Hundesteuer 805 0,21 813 0,19 820 0,21 819 0,17 820 0,20 819 0,18\n", "")
-    ergebnis = stt.lies_1103(ohne, IST_REIHE)
-    assert ergebnis["zeilen"] == []
-    assert "Summenprobe" in ergebnis["abbruch"]
+    result = stt.lies_1103(ohne, IST_REIHE)
+    assert result["zeilen"] == []
+    assert "Summenprobe" in result["abbruch"]
 
 
 def test_anteilsprobe_haelt_betrag_und_prozentsatz_zusammen():
@@ -270,19 +270,19 @@ def test_ein_verrutschtes_feld_reisst_die_anteilsprobe():
     verrutscht = PDF_1103.replace(
         "-umlage 124.234 31,86 176.840 40,52",
         "-umlage 124.234 40,52 176.840 31,86")
-    ergebnis = stt.lies_1103(verrutscht, IST_REIHE)
-    assert ergebnis["zeilen"] == []
-    assert "Anteilsprobe" in ergebnis["abbruch"]
+    result = stt.lies_1103(verrutscht, IST_REIHE)
+    assert result["zeilen"] == []
+    assert "Anteilsprobe" in result["abbruch"]
 
 
 # --- Die Jahresbeschriftung — die Lehre aus Datensatz 1106 -------------------
 
 def test_die_beschriftung_wird_gegen_tabelle_1104_geprueft():
     """Alle drei Jahrgänge kommen herein, weil die zweite Tabelle sie bestätigt."""
-    ergebnis = stt.lies_1103(PDF_1103, IST_REIHE)
-    assert ergebnis["jahre"] == [2023, 2024, 2025]
-    assert ergebnis["verworfen"] == []
-    assert "steuerplan_istabgleich" in ergebnis["proben"]
+    result = stt.lies_1103(PDF_1103, IST_REIHE)
+    assert result["jahre"] == [2023, 2024, 2025]
+    assert result["verworfen"] == []
+    assert "steuerplan_istabgleich" in result["proben"]
 
 
 def test_ein_jahresversatz_wuerde_auffallen():
@@ -292,10 +292,10 @@ def test_ein_jahresversatz_wuerde_auffallen():
     Hier ist die Ist-Reihe um ein Jahr verschoben; kein einziger Jahrgang darf
     dann noch durchkommen."""
     verschoben = {year + 1: werte for year, werte in IST_REIHE.items()}
-    ergebnis = stt.lies_1103(PDF_1103, verschoben)
-    assert ergebnis["zeilen"] == []
-    assert ergebnis["jahre"] == []
-    assert len(ergebnis["verworfen"]) == 3
+    result = stt.lies_1103(PDF_1103, verschoben)
+    assert result["zeilen"] == []
+    assert result["jahre"] == []
+    assert len(result["verworfen"]) == 3
 
 
 def test_ein_jahrgang_ohne_zweitquelle_kommt_nicht_rein():
@@ -304,20 +304,20 @@ def test_ein_jahrgang_ohne_zweitquelle_kommt_nicht_rein():
     Nicht der ganze Lauf scheitert: Ein künftiger Jahrgang, den die Ist-Reihe
     noch nicht führt, ist kein Fehler, sondern eine Wartezeit."""
     ohne_2025 = {j: w for j, w in IST_REIHE.items() if j != 2025}
-    ergebnis = stt.lies_1103(PDF_1103, ohne_2025)
-    assert ergebnis["jahre"] == [2023, 2024]
-    assert [v["year"] for v in ergebnis["verworfen"]] == [2025]
-    assert "ohne Zweitquelle" in ergebnis["verworfen"][0]["grund"]
-    assert all(z["year"] != 2025 for z in ergebnis["zeilen"])
+    result = stt.lies_1103(PDF_1103, ohne_2025)
+    assert result["jahre"] == [2023, 2024]
+    assert [v["year"] for v in result["verworfen"]] == [2025]
+    assert "ohne Zweitquelle" in result["verworfen"][0]["grund"]
+    assert all(z["year"] != 2025 for z in result["zeilen"])
 
 
 def test_ein_widersprechender_betrag_verwirft_den_jahrgang():
     """Nicht nur fehlende Jahre — auch abweichende Beträge."""
     falsch = {j: dict(w) for j, w in IST_REIHE.items()}
     falsch[2024][GEWERBE] = 199_000_000
-    ergebnis = stt.lies_1103(PDF_1103, falsch)
-    assert ergebnis["jahre"] == [2023, 2025]
-    assert "1103 202918 vs. 1104 199000" in ergebnis["verworfen"][0]["grund"]
+    result = stt.lies_1103(PDF_1103, falsch)
+    assert result["jahre"] == [2023, 2025]
+    assert "1103 202918 vs. 1104 199000" in result["verworfen"][0]["grund"]
 
 
 # --- Das Archiv: die Reihe wächst -------------------------------------------
@@ -388,9 +388,9 @@ def test_vertauschte_spalten_lassen_nichts_herein():
     dem Namen der Grundsteuer heraus — plausibel und falsch."""
     gedreht = PDF_1105.replace("                      Grundsteuer Gewerbe-\nA B steuer",
                                "                      Gewerbe- Grundsteuer\nsteuer A B")
-    ergebnis = stt.lies_1105(gedreht, GRUNDSTEUER_IST)
-    assert ergebnis["zeilen"] == []
-    assert "Reihenfolge" in ergebnis["abbruch"]
+    result = stt.lies_1105(gedreht, GRUNDSTEUER_IST)
+    assert result["zeilen"] == []
+    assert "Reihenfolge" in result["abbruch"]
 
 
 def test_die_treppe_wird_nicht_interpoliert():
@@ -419,9 +419,9 @@ def test_eine_zeile_die_nichts_aendert_faellt_auf():
     doppelt = PDF_1105.replace("2025 500 539 439",
                                "2024 390 445 439\n2025 500 539 439")
     assert stt.treppenprobe(stt.parse_1105(doppelt)) == [2024]
-    ergebnis = stt.lies_1105(doppelt, GRUNDSTEUER_IST)
-    assert ergebnis["zeilen"] == []
-    assert "Änderungsjahre" in ergebnis["abbruch"]
+    result = stt.lies_1105(doppelt, GRUNDSTEUER_IST)
+    assert result["zeilen"] == []
+    assert "Änderungsjahre" in result["abbruch"]
 
 
 # --- Die Jahresbeschriftung von 1105 ----------------------------------------
@@ -454,9 +454,9 @@ def test_ein_jahresversatz_wuerde_die_sprungjahr_probe_reissen():
         assert sprung["bestanden"] == [], richtung
         assert [e["year"] for e in sprung["gerissen"]] == [2002, 2011, 2015], richtung
 
-        ergebnis = stt.lies_1105(PDF_1105, verschoben)
-        assert ergebnis["zeilen"] == [], richtung
-        assert "Jahresversatz" in ergebnis["abbruch"], richtung
+        result = stt.lies_1105(PDF_1105, verschoben)
+        assert result["zeilen"] == [], richtung
+        assert "Jahresversatz" in result["abbruch"], richtung
 
 
 def test_das_reformjahr_wird_nicht_faelschlich_als_versatz_gelesen():
@@ -499,11 +499,11 @@ def test_jede_probe_ist_dem_herkunfts_system_bekannt():
 def test_gespeichert_wird_mit_herkunft_und_kommt_gleich_wieder_heraus(tmp_path):
     store = CouncilStore(tmp_path / "council.sqlite")
     try:
-        ergebnis = stt.lies_1103(PDF_1103, IST_REIHE)
-        store.save_steuerplan(ergebnis["zeilen"], herkunft.Herkunft(
+        result = stt.lies_1103(PDF_1103, IST_REIHE)
+        store.save_steuerplan(result["zeilen"], herkunft.Herkunft(
             art="stadt", url=stt.TABELLE_1103_URL,
             label="Statistisches Jahrbuch, Tabelle 1103",
-            probe=ergebnis["proben"]))
+            probe=result["proben"]))
         hebe = stt.lies_1105(PDF_1105, GRUNDSTEUER_IST)
         store.save_hebesaetze(hebe["zeilen"], herkunft.Herkunft(
             art="stadt", url=stt.TABELLE_1105_URL,

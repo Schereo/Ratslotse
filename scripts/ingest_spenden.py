@@ -37,12 +37,12 @@ COUNCIL_DB = ROOT / "data" / "council.sqlite"
 LABEL = "Ratsvorlage „Annahme von Zuwendungen“ im Bürgerinformationssystem"
 
 
-def _lauf_herkunft(ergebnis: dict) -> h.Herkunft:
+def _lauf_herkunft(result: dict) -> h.Herkunft:
     """Die Herkunft des **Laufs** — für die verworfenen Zeilen.
 
     Sie zeigt auf die Suche im Bürgerinfo statt auf ein einzelnes Dokument:
     Eine verworfene Zeile hat ihren Beleg ja gerade nicht."""
-    jahre = [v["year"] for v in ergebnis["vorlagen"]]
+    jahre = [v["year"] for v in result["vorlagen"]]
     spanne = f"{min(jahre)}–{max(jahre)}" if jahre else "—"
     return h.Herkunft(
         art="ris",
@@ -51,7 +51,7 @@ def _lauf_herkunft(ergebnis: dict) -> h.Herkunft:
         fundstelle=spenden.FUNDSTELLE,
         stand=f"Sitzungsjahre {spanne}",
         probe=[spenden.ZWEITSTELLE],
-        probe_ergebnis=spenden.probennachweis(ergebnis))
+        probe_result=spenden.probennachweis(result))
 
 
 def main() -> int:
@@ -64,14 +64,14 @@ def main() -> int:
     store = CouncilStore(args.db)
     try:
         roh = store.zuwendungsbeschluesse()
-        ergebnis = spenden.lies(roh)
-        vorlagen, verworfen = ergebnis["vorlagen"], ergebnis["verworfen"]
+        result = spenden.lies(roh)
+        vorlagen, verworfen = result["vorlagen"], result["verworfen"]
 
-        print(f"Beschlusszeilen gelesen: {ergebnis['proben'].get('zeilen', 0)}")
+        print(f"Beschlusszeilen gelesen: {result['proben'].get('zeilen', 0)}")
         print(f"Vorlagen mit Zweitstelle: {len(vorlagen)}")
         print(f"Zeilen ohne Zweitstelle:  {len(verworfen)}")
-        for j in ergebnis["jahre"]:
-            print(f"  {j['year']}  {spenden.euro(j['betrag']):>14} €  "
+        for j in result["jahre"]:
+            print(f"  {j['year']}  {spenden.euro(j['amount']):>14} €  "
                   f"{j['vorlagen']:>2} Vorlagen "
                   f"(Rat {j['rat']}, VA {j['verwaltungsausschuss']})")
         for v in verworfen:
@@ -111,14 +111,14 @@ def main() -> int:
                 fundstelle=spenden.FUNDSTELLE,
                 stand=f"Sitzung vom {v['sitzung']}",
                 probe=v["proben"],
-                probe_ergebnis=(
-                    f"Beschlossen {spenden.euro(v['betrag'])} Euro; derselbe "
+                probe_result=(
+                    f"Beschlossen {spenden.euro(v['amount'])} Euro; derselbe "
                     f"Betrag steht im Abschnitt zu den finanziellen Auswirkungen "
                     + ("noch einmal." if v["zweitstelle"] == "identisch"
                        else f"als Zerlegung in {v['teile']} Teilbeträge, die sich "
                             f"auf den Cent aufaddieren.")))
 
-        n = store.save_spenden(vorlagen, verworfen, _lauf_herkunft(ergebnis))
+        n = store.save_spenden(vorlagen, verworfen, _lauf_herkunft(result))
         print(f"  gespeichert: {n} Vorlagen, {len(verworfen)} verworfene Zeilen")
 
         store.herkunft_aufraeumen()

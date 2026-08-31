@@ -53,13 +53,13 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronRight } from "lucide-react";
 import { Segmented } from "@/components/ui";
 import { useFetch } from "@/lib/use-fetch";
-import { betrag, deMio, mio } from "@/lib/haushalt";
+import { amount, deMio, mio } from "@/lib/haushalt";
 import {
   Herkunft, InvestitionenDaten, InvestitionsZeile, finanzhaushaltJahr,
   gesamtJahr, herkunftVon, investitionsAnteil, netto, reihe, teilhaushalte,
 } from "@/lib/haushalt-investitionen";
 import {
-  ProgrammDaten, anzahl, passenderJahrgang,
+  ProgrammDaten, count, passenderJahrgang,
 } from "@/lib/haushalt-investitionsprogramm";
 import { Beleg } from "@/components/haushalt/quelle";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
@@ -112,11 +112,11 @@ function Rang({ zeile, skala, aufVorhaben, vorhandene }: {
    *  Zeile bleibt eine Zeile statt zu einem Knopf zu werden, der nichts tut. */
   vorhandene: number;
 }) {
-  const aus = betrag(zeile.auszahlungen);
-  const gegen = zeile.einzahlungen > 0 ? betrag(zeile.einzahlungen) : null;
-  const breite = skala > 0 ? Math.max(0.6, (zeile.auszahlungen / skala) * 100) : 0;
-  const gegenAnteil = zeile.auszahlungen > 0
-    ? (zeile.einzahlungen / zeile.auszahlungen) * 100
+  const aus = amount(zeile.outflows);
+  const gegen = zeile.inflows > 0 ? amount(zeile.inflows) : null;
+  const breite = skala > 0 ? Math.max(0.6, (zeile.outflows / skala) * 100) : 0;
+  const gegenAnteil = zeile.outflows > 0
+    ? (zeile.inflows / zeile.outflows) * 100
     : 0;
   return (
     <li className="flex flex-col gap-1.5 py-3">
@@ -233,7 +233,7 @@ export function InvestitionsplanAbschnitt({ onBestand }: {
   const farbe = useMemo(
     () => (thhNr: number) => `var(--hh-aus-${stufe(thhNr)})`, [stufe]);
 
-  const skala = zeilen.length ? zeilen[0].auszahlungen : 0;
+  const skala = zeilen.length ? zeilen[0].outflows : 0;
   const h = herkunftVon(data, gesamt?.herkunft_id);
   const hBezug = herkunftVon(data, bezug?.herkunft_id);
   const zeitreihe = reihe(data);
@@ -261,8 +261,8 @@ export function InvestitionsplanAbschnitt({ onBestand }: {
     );
   }
 
-  const ausMio = mio(gesamt.auszahlungen);
-  const einMio = mio(gesamt.einzahlungen);
+  const ausMio = mio(gesamt.outflows);
+  const einMio = mio(gesamt.inflows);
 
   return (
       <div className="flex flex-col gap-4">
@@ -326,7 +326,7 @@ export function InvestitionsplanAbschnitt({ onBestand }: {
             <p className="mt-3.5 max-w-[86ch] text-[11.5px] leading-relaxed text-muted-foreground">
               Der ganze Finanzhaushalt {aktJahr} umfasst{" "}
               <strong className="font-semibold text-foreground/90">
-                {deMio(mio(bezug.auszahlungen))} Mio. €
+                {deMio(mio(bezug.outflows))} Mio. €
               </strong>{" "}
               Auszahlungen — Investitionen sind davon{" "}
               <strong className="font-semibold text-foreground/90">
@@ -390,7 +390,7 @@ export function InvestitionsplanAbschnitt({ onBestand }: {
                 zeile={z}
                 skala={skala}
                 vorhandene={programmJahr != null
-                  ? anzahl(programm, programmJahr, z.thh_nr) : 0}
+                  ? count(programm, programmJahr, z.thh_nr) : 0}
                 aufVorhaben={(nr) => {
                   setBereich(nr);
                   document.getElementById("vorhaben")
@@ -453,8 +453,8 @@ export function InvestitionsplanAbschnitt({ onBestand }: {
             </p>
             <ul className="mt-3.5 flex flex-col gap-2">
               {zeitreihe.map((z) => {
-                const groesste = Math.max(...zeitreihe.map((x) => x.auszahlungen));
-                const breite = groesste > 0 ? (z.auszahlungen / groesste) * 100 : 0;
+                const groesste = Math.max(...zeitreihe.map((x) => x.outflows));
+                const breite = groesste > 0 ? (z.outflows / groesste) * 100 : 0;
                 return (
                   <li key={z.year} className="flex items-center gap-3">
                     <span className={cn(
@@ -474,7 +474,7 @@ export function InvestitionsplanAbschnitt({ onBestand }: {
                       />
                     </span>
                     <span className="w-20 flex-none text-right font-display text-[13px] font-bold tabular-nums">
-                      {deMio(mio(z.auszahlungen))}
+                      {deMio(mio(z.outflows))}
                       <span className="ml-1 text-[9.5px] font-medium text-muted-foreground">
                         Mio.&nbsp;€
                       </span>

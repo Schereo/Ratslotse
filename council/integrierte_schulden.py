@@ -93,12 +93,12 @@ KERN_TOLERANZ = 1.0
 #: gekürzt. Die Nummern sind Spaltenindizes, keine Tabellennummern.
 SPALTEN: dict[str, int] = {
     "ars": 0, "name": 1, "verwaltungsform": 2, "bevoelkerung": 3,
-    "insgesamt": 4, "insgesamt_veraenderung": 5, "je_einwohner": 6,
-    "gesamthaushalt": 7, "gesamthaushalt_veraenderung": 8,
-    "kernhaushalt": 9, "kernhaushalt_veraenderung": 10,
-    "extrahaushalte": 11, "extrahaushalte_veraenderung": 12,
+    "insgesamt": 4, "insgesamt_change": 5, "je_einwohner": 6,
+    "gesamthaushalt": 7, "gesamthaushalt_change": 8,
+    "kernhaushalt": 9, "kernhaushalt_change": 10,
+    "extrahaushalte": 11, "extrahaushalte_change": 12,
     "extra_100": 13, "extra_50_100": 14, "extra_unter_50": 15,
-    "sonstige": 16, "sonstige_veraenderung": 17,
+    "sonstige": 16, "sonstige_change": 17,
     "sonstige_100": 18, "sonstige_50_100": 19, "sonstige_unter_50": 20,
 }
 

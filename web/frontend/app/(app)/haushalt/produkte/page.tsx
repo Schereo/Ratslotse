@@ -44,7 +44,7 @@ function ProdukteSeiteInner() {
   // `undefined` = lädt (Platzhalter hält die Höhe), `null` = entschieden
   // nichts (keine Bühne), sonst die Werte.
   const [bestand, setBestand] = useState<{
-    anzahl: number; year: number; beispiele: { name: string; wert: number }[];
+    count: number; year: number; beispiele: { name: string; wert: number }[];
   } | null | undefined>(undefined);
   return (
     // KEIN gemeinsames `year`: Die Bereichs-Übersicht zeigt den jüngsten
@@ -77,7 +77,7 @@ function ProdukteSeiteInner() {
         {bestand ? (
           <Seitenbuehne
             kicker={`Produktebene · Haushaltsjahr ${bestand.year}`}
-            zahl={<><ZaehlZahl wert={bestand.anzahl} /> einzelne Aufgaben, vom Stadtarchiv
+            zahl={<><ZaehlZahl wert={bestand.count} /> einzelne Aufgaben, vom Stadtarchiv
               bis zum Schwimmbad</>}
             sub="jede mit Kosten, zuständigem Amt und Auftragsgrundlage"
             minibild={{

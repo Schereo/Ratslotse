@@ -74,7 +74,7 @@ type Gruppe = { label: string; arten: string[]; farbe: string };
 /** Die Gruppen einer Farbwelt: größte Arten zuerst (eigene Gruppen), der
  *  Rest gebündelt als „übrige“. Gerechnet über alle Jahre der Welt, damit
  *  die Stapel-Reihenfolge über die Jahre stabil bleibt. */
-function gruppiere(jahre: NahtJahr[], anzahl: number, toene: readonly string[]): Gruppe[] {
+function gruppiere(jahre: NahtJahr[], count: number, toene: readonly string[]): Gruppe[] {
   const summen = new Map<string, number>();
   for (const j of jahre) {
     if (istLuecke(j)) continue;
@@ -82,7 +82,7 @@ function gruppiere(jahre: NahtJahr[], anzahl: number, toene: readonly string[]):
   }
   const sortiert = [...summen.entries()].sort((a, b) => b[1] - a[1]).map(([a]) => a);
   if (!sortiert.length) return [];
-  const eigene = Math.min(Math.max(anzahl - 1, 1), sortiert.length);
+  const eigene = Math.min(Math.max(count - 1, 1), sortiert.length);
   const gruppen: Gruppe[] = sortiert.slice(0, eigene).map((art, i) => ({
     label: art, arten: [art], farbe: toene[Math.min(i, toene.length - 1)],
   }));

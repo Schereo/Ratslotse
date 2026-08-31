@@ -69,10 +69,10 @@ function ListenKarte({ liste, year }: { liste: FhhListeImJahr; year: number }) {
           {liste.zeilen.length} Position{liste.zeilen.length === 1 ? "" : "en"} für {year}
           {mitCode > 0 && ` · ${mitCode} mit Vorhaben-Nummer`}
         </span>
-        {liste.saldo && (
+        {liste.balance && (
           <span className={cn("ml-auto whitespace-nowrap font-mono text-[11.5px] font-medium tabular-nums",
-            liste.saldo.saldo < 0 ? "text-signal" : "text-foreground")}>
-            Saldo {deltaBetrag(liste.saldo.saldo)}
+            liste.balance.balance < 0 ? "text-signal" : "text-foreground")}>
+            Saldo {deltaBetrag(liste.balance.balance)}
           </span>
         )}
       </summary>
@@ -85,21 +85,21 @@ function ListenKarte({ liste, year }: { liste: FhhListeImJahr; year: number }) {
             { titel: "Einzahlung", zahl: true },
             { titel: "Auszahlung", zahl: true },
           ]}
-          fuss={liste.saldo && (
+          fuss={liste.balance && (
             <tr>
               <TextZelle className="border-t-border/60 py-2">
                 <span className="text-[11.5px] font-semibold text-foreground">Summe der Liste</span>
                 <span className={cn("ml-2 whitespace-nowrap font-mono text-[11px] font-medium tabular-nums",
-                  liste.saldo.saldo < 0 ? "text-signal" : "text-muted-foreground")}>
-                  Saldo {deltaBetrag(liste.saldo.saldo)}
+                  liste.balance.balance < 0 ? "text-signal" : "text-muted-foreground")}>
+                  Saldo {deltaBetrag(liste.balance.balance)}
                 </span>
                 <Beleg q="aenderungsliste" h={liste.herkunft} />
               </TextZelle>
-              <BetragZelle euro={liste.saldo.einzahlungen} label="Einzahlung"
-                text={deltaBetrag(liste.saldo.einzahlungen)}
+              <BetragZelle euro={liste.balance.inflows} label="Einzahlung"
+                text={deltaBetrag(liste.balance.inflows)}
                 className="border-t-border/60 py-2 font-medium" />
-              <BetragZelle euro={liste.saldo.auszahlungen} label="Auszahlung"
-                text={deltaBetrag(liste.saldo.auszahlungen)}
+              <BetragZelle euro={liste.balance.outflows} label="Auszahlung"
+                text={deltaBetrag(liste.balance.outflows)}
                 className="border-t-border/60 py-2 font-medium" />
             </tr>
           )}
@@ -153,10 +153,10 @@ function ListenKarte({ liste, year }: { liste: FhhListeImJahr; year: number }) {
                   </span>
                 )}
               </TextZelle>
-              <BetragZelle euro={z.einzahlung} label="Einzahlung"
-                text={deltaBetrag(z.einzahlung)} />
-              <BetragZelle euro={z.auszahlung} label="Auszahlung"
-                text={deltaBetrag(z.auszahlung)} />
+              <BetragZelle euro={z.inflow} label="Einzahlung"
+                text={deltaBetrag(z.inflow)} />
+              <BetragZelle euro={z.outflow} label="Auszahlung"
+                text={deltaBetrag(z.outflow)} />
             </tr>
           ))}
         </ZahlenTabelle>

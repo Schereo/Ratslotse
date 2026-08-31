@@ -2868,7 +2868,7 @@ private struct EvidenceChartData {
         for (index, row) in rows.enumerated() {
             guard let fields = row.object else { continue }
             var number: Double?
-            for key in ["wert", "value", "betrag"] {
+            for key in ["wert", "value", "amount"] {
                 if case .number(let found)? = fields[key] {
                     number = found
                     break
