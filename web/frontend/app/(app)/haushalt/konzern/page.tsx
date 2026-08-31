@@ -52,7 +52,7 @@ const MARKEN = [
   { id: "summe", titel: "Die ganze Stadt" },
   { id: "gesellschaften", titel: "Wer dahintersteckt" },
   { id: "betriebe", titel: "Was sie planen" },
-  { id: "gebuehren", titel: "Was Sie zahlen" },
+  { id: "gebuehren", titel: "Was du zahlst" },
 ];
 
 function KonzernSeiteInner() {

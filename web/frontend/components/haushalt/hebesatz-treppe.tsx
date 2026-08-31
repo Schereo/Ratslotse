@@ -11,7 +11,7 @@
 //
 // WARUM NICHT GB-11 (Zeitstrahl). Der Zeitstrahl war der naheliegende
 // Kandidat und ist der falsche: Er ist ein VERFAHRENS-Strahl — Stationen auf
-// einer Monatsskala mit „Sie sind hier"-Pin und Terminen aus dem
+// einer Monatsskala mit „Du bist hier"-Pin und Terminen aus dem
 // Ratskalender. Er hat **keine Wertachse**. Die Aussage dieser Reihe ist aber
 // genau ein Wert: 300 % (1980) → 539 % (2025). Auf einem Strahl wären das
 // neun Textschnipsel; man könnte nicht sehen, dass sich der Satz fast
