@@ -635,7 +635,7 @@ def _anlage_matrix(store):
 _ANLAGE_META_STOPP = {
     "anlage", "anlagen", "dokument", "dokumente", "welche", "welcher", "welchem",
     "steht", "sagt", "nennt", "wurde", "wurden", "fuer", "uber", "ueber",
-    "official_text", "beschlossen", "vorlage", "stadt", "oldenburger", "oldenburg",
+    "beschluss", "beschlossen", "vorlage", "stadt", "oldenburger", "oldenburg",
 }
 
 

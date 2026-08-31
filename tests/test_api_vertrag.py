@@ -308,3 +308,44 @@ def test_oeffentliche_pfade_bleiben_stehen(endpunkte):
         + "\nEine URL ist eine öffentliche Schnittstelle. Entweder den Pfad "
           "zurückbenennen oder den Aufrufer (ratslotse-social) mitziehen."
     )
+
+
+#: Wörter, die in den deutschen Sperrlisten stehen MÜSSEN. Sie filtern
+#: Nutzerfragen und Dokumenttexte — ein englischer Name darin ist wirkungslos
+#: und lässt zugleich das deutsche Wort durch.
+_SPERRLISTEN = (
+    ("council/qa.py", "_STOP", "beschluss"),
+    ("council/embeddings.py", "_ANLAGE_META_STOPP", "beschluss"),
+    ("council/fundstueck.py", "_ALLERWELT", "beschluss"),
+    ("council/store.py", "_AUSBLICK_STOPP", "beschluss"),
+    ("council/store.py", "_RUBRIK_WORTE", "beschluss"),
+)
+
+
+def test_deutsche_sperrlisten_bleiben_deutsch():
+    """Die Sperrlisten filtern DEUTSCHEN Text — sie dürfen nicht mitumbenannt werden.
+
+    Beim Beschluss-Schnitt ist genau das passiert: Aus ``"beschluss"`` wurde in
+    fünf Listen ``"official_text"``. Das Wort kommt in keiner deutschen Frage
+    vor, also filterte die Liste nichts mehr — und ließ dafür „Beschluss"
+    durch, das in fast jedem Ratsdokument steht. Gemessen an der Stadion-Frage
+    hängte das vier fremde Vorlagen an die Antwort.
+
+    Kein anderer Test schlägt an: Die Listen sind Heuristiken, ihr Schaden ist
+    schlechtere Treffer, kein Fehler.
+    """
+    wurzel = Path(__file__).resolve().parents[1]
+    fehlend = []
+    for datei, liste, wort in _SPERRLISTEN:
+        text = (wurzel / datei).read_text()
+        start = text.find(liste)
+        assert start > 0, f"{liste} gibt es in {datei} nicht mehr"
+        block = text[start:start + 900]
+        block = block[:block.find("}") + 1]
+        if f'"{wort}"' not in block:
+            fehlend.append(f"{datei}::{liste} führt {wort!r} nicht mehr")
+
+    assert not fehlend, (
+        "Diese deutschen Sperrlisten haben ihr Stichwort verloren — vermutlich "
+        "hat ein Umbenennen es mitgenommen:\n  " + "\n  ".join(fehlend)
+    )
