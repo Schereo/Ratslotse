@@ -1089,7 +1089,7 @@ def lies(seiten: list[str]) -> dict:
                     links, rechts = abs(links), abs(rechts)
                 delta = abs(links - rechts)
                 dokumentproben.append(
-                    {"gesellschaft": g.key, "indicator": indicator, "year": j,
+                    {"company": g.key, "indicator": indicator, "year": j,
                      "delta": delta, "ok": delta <= TOLERANZ_EUR})
             if series and not gemeinsam:
                 warnungen.append(
@@ -1129,7 +1129,7 @@ def ueberlappung(jahrgaenge: dict[int, list[Gesellschaft]]) -> dict:
         elif len(werte) == 1:
             bestaetigt[schluessel] = len(je_bericht)
         else:
-            widersprueche.append({"gesellschaft": schluessel[0],
+            widersprueche.append({"company": schluessel[0],
                                   "indicator": schluessel[1], "year": schluessel[2],
                                   "werte": dict(je_bericht)})
     return {"bestaetigt": bestaetigt, "widersprueche": widersprueche,
@@ -1178,7 +1178,7 @@ def konzernvergleich(store, year: int) -> list[dict]:
     if not entity:
         return []
 
-    ergebnisse = {z["gesellschaft"]: z["wert"]
+    ergebnisse = {z["company"]: z["wert"]
                   for z in store.get_gesellschaft_kennzahlen()
                   if z["indicator"] == "jahresergebnis" and z["year"] == year}
     aus: list[dict] = []
@@ -1186,14 +1186,14 @@ def konzernvergleich(store, year: int) -> list[dict]:
         schluessel = g.get("consolidated_key")
         if not schluessel or schluessel not in entity:
             continue
-        if g["gesellschaft"] not in ergebnisse:
+        if g["company"] not in ergebnisse:
             continue
         v = entity[schluessel]
         if "revenues" not in v or "expenses" not in v:
             continue
         beitrag = (v["revenues"] - v["expenses"]) * 1000.0
-        eigen = ergebnisse[g["gesellschaft"]]
-        aus.append({"gesellschaft": g["gesellschaft"], "name": g["name"],
+        eigen = ergebnisse[g["company"]]
+        aus.append({"company": g["company"], "name": g["name"],
                     "year": year, "konzern_beitrag": beitrag,
                     "jahresergebnis": eigen, "difference": beitrag - eigen})
     return sorted(aus, key=lambda z: abs(z["difference"]), reverse=True)
@@ -1248,7 +1248,7 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
                      f"„Beteiligungsbericht {echt}“ — es gilt das Dokument")
         gerissen = [x for x in result["dokumentproben"] if not x["ok"]]
         for x in gerissen:
-            p.warnen(f"  {echt}: {x['gesellschaft']}/{x['indicator']} {x['year']}: "
+            p.warnen(f"  {echt}: {x['company']}/{x['indicator']} {x['year']}: "
                      f"Dokumentprobe gerissen (Δ {x['delta']:.2f}) — verworfen")
         gelesen[echt] = {**result, **d, "report_year": echt}
         p.sagen(f"  {echt}: {len(result['gesellschaften'])} Gesellschaften, "
@@ -1269,7 +1269,7 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
                 continue
             name = ("beteiligung_bilanzprobe" if x["indicator"] == "bilanzsumme"
                     else "beteiligung_ergebnisprobe")
-            s = (x["gesellschaft"], x["indicator"], x["year"])
+            s = (x["company"], x["indicator"], x["year"])
             # Die **größte** gemessene Abweichung gewinnt: Belegen mehrere
             # Berichte dieselbe Zahl, ist der schlechteste Messwert die
             # ehrliche Angabe, nicht der schönste.
@@ -1278,10 +1278,10 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
 
     nach_jahrgang = {j: e["gesellschaften"] for j, e in gelesen.items()}
     u = ueberlappung(nach_jahrgang)
-    strittig = {(w["gesellschaft"], w["indicator"], w["year"])
+    strittig = {(w["company"], w["indicator"], w["year"])
                 for w in u["widersprueche"]}
     for w in u["widersprueche"]:
-        p.warnen(f"  {w['gesellschaft']}/{w['indicator']} {w['year']}: Berichte "
+        p.warnen(f"  {w['company']}/{w['indicator']} {w['year']}: Berichte "
                  f"widersprechen sich ({w['werte']}) — Wert verworfen")
 
     def anker(e: dict, g: Gesellschaft) -> dict:
@@ -1298,7 +1298,7 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
         for g in e["gesellschaften"]:
             gemeinsam = anker(e, g)
             stammdaten.append({
-                "report_year": year, "gesellschaft": g.key, "name": g.name,
+                "report_year": year, "company": g.key, "name": g.name,
                 "classification": g.classification, "page": g.seite_gedruckt,
                 "consolidated_key": g.consolidated_key,
                 "herkunft": _h.Herkunft(
@@ -1311,7 +1311,7 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
                 if key not in g.abschnitte:
                     continue
                 texte.append({
-                    "report_year": year, "gesellschaft": g.key, "section": key,
+                    "report_year": year, "company": g.key, "section": key,
                     "text": g.abschnitte[key],
                     # Fließtext trägt keine Rechenprobe, und eine zu behaupten
                     # wäre gelogen. Woher er stammt, steht trotzdem da.
@@ -1328,7 +1328,7 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
                 ohne_zuordnung.append(f"{year}/{g.key}")
             for person in liste:
                 personen.append({
-                    "report_year": year, "gesellschaft": g.key,
+                    "report_year": year, "company": g.key,
                     "sort_order": person.sort_order, "gremium": person.gremium,
                     "name": person.name, "position": person.position,
                     "chair_role": person.chair_role, "note": person.note,
@@ -1351,7 +1351,7 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
                 g.abschnitte.get("beteiligungsverhaeltnisse", ""))
             for e_ in eigner:
                 eigentuemer.append({
-                    "report_year": year, "gesellschaft": g.key,
+                    "report_year": year, "company": g.key,
                     "sort_order": e_.sort_order, "name": e_.name,
                     "amount_eur": e_.amount_eur,
                     "share_pct": e_.share_pct,
@@ -1388,7 +1388,7 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
         e = gelesen[juengster]
         g = next(x for x in e["gesellschaften"] if x.key == key)
         kennzahlen_zeilen.append({
-            "gesellschaft": key, "indicator": indicator, "year": year,
+            "company": key, "indicator": indicator, "year": year,
             "wert": je_bericht[juengster], "einheit": EINHEITEN[indicator],
             "report_year": juengster, "n_reports": len(je_bericht),
             "herkunft": _h.Herkunft(
@@ -1425,7 +1425,7 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
         p.sagen(f"  Abgleich mit dem Gesamtabschluss {juengster_bericht}: "
                 f"{len(vergleich)} Gesellschaft(en) in beiden, größte Differenz "
                 f"{vergleich[0]['difference'] / 1000:,.0f} TEUR "
-                f"({vergleich[0]['gesellschaft']})")
+                f"({vergleich[0]['company']})")
     return {**bericht, "verworfen": verworfen,
             "widersprueche": len(u["widersprueche"]), "bestand_geschuetzt": 0,
             "ohne_zuordnung": len(ohne_zuordnung),

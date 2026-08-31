@@ -514,7 +514,7 @@ def test_konzernvergleich_ist_einordnung_und_verwirft_nichts(tmp_path):
 
     v = bb.konzernvergleich(store, 2024)
     assert len(v) == 1
-    assert v[0]["gesellschaft"] == "egh"
+    assert v[0]["company"] == "egh"
     assert v[0]["konzern_beitrag"] == pytest.approx(-2701000.0)
     assert v[0]["jahresergebnis"] == pytest.approx(-2726407.50)
     # 25 TEUR Unterschied — und die Kennzahl steht trotzdem im Bestand.

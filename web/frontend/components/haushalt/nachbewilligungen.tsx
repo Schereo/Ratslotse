@@ -336,7 +336,7 @@ export function NachbewilligungsBefund({ daten }: { daten: HaushaltAuswahl<"nach
     .filter((n) => n.art !== "schwelle");
   if (serie.length < 20) return null;
   const jahre = serie.map((n) => n.year).filter((j): j is number => j != null);
-  const beschlossen = serie.filter((n) => n.beschlossen === 1).length;
+  const beschlossen = serie.filter((n) => n.decided === 1).length;
   // Die Differenz wird ausgeschrieben statt verschwiegen — sonst fragt sich
   // jede*r, was mit dem Rest passiert ist, und die naheliegende Vermutung
   // („abgelehnt") wäre genau die falsche. Es sind zwei Gruppen: Vorlagen, mit
@@ -344,7 +344,7 @@ export function NachbewilligungsBefund({ daten }: { daten: HaushaltAuswahl<"nach
   // Oberbürgermeister oder eine Eilentscheidung), und solche, zu denen im
   // Bestand kein Ergebnis steht.
   const unterrichtet = serie.filter(
-    (n) => n.beschlossen === 0 && n.committees.length > 0).length;
+    (n) => n.decided === 0 && n.committees.length > 0).length;
   const ohneErgebnis = serie.length - beschlossen - unterrichtet;
   return (
     <p className="max-w-[86ch] text-[11.5px] leading-relaxed text-muted-foreground">

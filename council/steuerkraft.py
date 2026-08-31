@@ -115,7 +115,7 @@ class KfaZuweisungen:
 
     year: int
     stand: str | None
-    #: Schlüssel (sechsstellig) → {stadt, zuweisungen_*, nettobetrag,
+    #: Schlüssel (sechsstellig) → {city, zuweisungen_*, nettobetrag,
     #: nettobetrag_je_ew}. Alle Beträge in **Tausend Euro**, wie im Blatt.
     staedte: dict[str, dict] = field(default_factory=dict)
 
@@ -199,7 +199,7 @@ def lies_zuweisungen(pfad: str) -> list[KfaZuweisungen]:
                      for name, i in vollstaendig[year].items()}
             if werte.get("nettobetrag") is None:
                 continue
-            werte["stadt"] = " ".join(str(zeile[c_name] or "").split())
+            werte["city"] = " ".join(str(zeile[c_name] or "").split())
             budget_year.staedte[key] = werte
         if budget_year.staedte:
             aus.append(budget_year)
@@ -218,12 +218,12 @@ def probe_komponenten(budget_year: KfaZuweisungen) -> dict:
         teile = [w.get("zuweisungen_gemeindeaufgaben"),
                  w.get("zuweisungen_kreisaufgaben"), w.get(UEBERTRAGEN)]
         if any(t is None for t in teile) or w.get("nettobetrag") is None:
-            abweichungen.append({"schluessel": key, "stadt": w.get("stadt"),
+            abweichungen.append({"schluessel": key, "city": w.get("city"),
                                  "grund": "Komponente fehlt"})
             continue
         summe = sum(teile) - (w.get("finanzausgleichsumlage") or 0)
         if abs(summe - w["nettobetrag"]) > 1:
-            abweichungen.append({"schluessel": key, "stadt": w.get("stadt"),
+            abweichungen.append({"schluessel": key, "city": w.get("city"),
                                  "grund": f"{summe:.0f} statt {w['nettobetrag']:.0f} T€"})
     n = len(budget_year.staedte)
     return {"geprueft": n, "abweichungen": abweichungen, "ok": not abweichungen,
@@ -276,9 +276,9 @@ def zeilen_finanzausgleich(budget_year: KfaZuweisungen) -> list[dict]:
     aus: list[dict] = []
     for key, w in sorted(budget_year.staedte.items()):
         for name, wert in sorted(w.items()):
-            if name in ("stadt", "nettobetrag_je_ew") or wert is None:
+            if name in ("city", "nettobetrag_je_ew") or wert is None:
                 continue
             aus.append({"year": budget_year.year, "schluessel": key,
-                        "stadt": sv.KREISFREIE_STAEDTE.get(key, w.get("stadt", "")),
+                        "city": sv.KREISFREIE_STAEDTE.get(key, w.get("city", "")),
                         "indicator": name, "wert": float(wert), "einheit": "teur"})
     return aus

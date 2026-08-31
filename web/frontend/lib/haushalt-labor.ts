@@ -87,7 +87,7 @@ export function staedteHebesaetze(
   return vergleich.werte
     .filter((w) => w.series === "realsteuern" && w.year === year && w.indicator === indicator)
     .map((w) => ({
-      stadt: w.stadt, wert: w.wert, year: w.year,
+      stadt: w.city, wert: w.wert, year: w.year,
       istOldenburg: w.schluessel === oldenburg,
     }))
     .sort((a, b) => b.wert - a.wert);

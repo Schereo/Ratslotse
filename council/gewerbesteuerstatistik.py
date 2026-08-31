@@ -286,9 +286,9 @@ class Gewerbesteuerjahrgang:
     erschienen: str | None = None
     #: „Korrigierte Fassung vom 11.02.2026", wo es eine gibt (Jahrgang 2020).
     korrektur: str | None = None
-    #: Schlüssel → die neun Werte aus Blatt 6.1 plus ``stadt``/``gesperrt``.
+    #: Schlüssel → die neun Werte aus Blatt 6.1 plus ``city``/``gesperrt``.
     staedte: dict[str, dict] = field(default_factory=dict)
-    #: Schlüssel → ``{stadt, gesamt_*, rate, gesperrt}`` aus Blatt 6.2.
+    #: Schlüssel → ``{city, gesamt_*, rate, gesperrt}`` aus Blatt 6.2.
     gemeinden: dict[str, dict] = field(default_factory=dict)
 
     @property
@@ -370,7 +370,7 @@ def _blatt(pfad: str, blatt: str, erwartet: tuple[str, ...],
         if key not in STAEDTE:
             continue
         eintrag: dict = {
-            "stadt": " ".join(str(_zelle(zeile, c_name) or "").split()),
+            "city": " ".join(str(_zelle(zeile, c_name) or "").split()),
             "gesperrt": False,
         }
         for name in erwartet:
@@ -448,7 +448,7 @@ def probe_blaetter(budget_year: Gewerbesteuerjahrgang) -> dict:
     for key, kreis in sorted(budget_year.staedte.items()):
         gemeinde = budget_year.gemeinden.get(key)
         if not gemeinde:
-            abweichungen.append({"schluessel": key, "stadt": kreis["stadt"],
+            abweichungen.append({"schluessel": key, "city": kreis["city"],
                                  "grund": "fehlt in Blatt 6.2"})
             continue
         for name in ERWARTET_GEMEINDEN:
@@ -457,7 +457,7 @@ def probe_blaetter(budget_year: Gewerbesteuerjahrgang) -> dict:
                 continue
             geprueft += 1
             if a is None or b is None or abs(a - b) >= 0.5:
-                abweichungen.append({"schluessel": key, "stadt": kreis["stadt"],
+                abweichungen.append({"schluessel": key, "city": kreis["city"],
                                      "grund": f"{name}: {a} gegen {b}"})
     return {"ok": geprueft > 0 and not abweichungen,
             "geprueft": geprueft, "abweichungen": abweichungen,
@@ -538,14 +538,14 @@ def zeilen(budget_year: Gewerbesteuerjahrgang) -> tuple[list[dict], list[dict]]:
         # sonst sucht beim nächsten Lauf jemand einen Parserfehler, den es
         # nicht gibt.
         if eintrag.get("gesamt_count") is None and eintrag.get("gesperrt"):
-            verworfen.append({"schluessel": key, "stadt": eintrag["stadt"],
+            verworfen.append({"schluessel": key, "city": eintrag["city"],
                               "grund": "Geheimhaltung",
                               "result": "das Landesamt weist für diese Stadt "
                                           "keine Zahlen aus (§ 16 BStatG)"})
             continue
         probe = probe_summen(eintrag)
         if not probe["ok"]:
-            verworfen.append({"schluessel": key, "stadt": eintrag["stadt"],
+            verworfen.append({"schluessel": key, "city": eintrag["city"],
                               "grund": "Summenprobe",
                               "result": probe["result"]})
             continue
@@ -557,7 +557,7 @@ def zeilen(budget_year: Gewerbesteuerjahrgang) -> tuple[list[dict], list[dict]]:
             # schreibt ihn je Jahrgang anders („Oldenburg (Oldb)" gegen
             # „Oldenburg (Oldenburg)"), und eine Reihe, die ihren eigenen
             # Namen wechselt, sieht in jeder Anzeige nach zwei Städten aus.
-            "stadt": STAEDTE[key],
+            "city": STAEDTE[key],
             "cases": eintrag["gesamt_count"],
             "cases_positive": eintrag["gesamt_positiv"],
             "tax_base_eur": eintrag["gesamt_amount"],

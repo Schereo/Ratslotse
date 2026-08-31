@@ -2308,7 +2308,7 @@ def _vergleich_block(v: dict | None) -> str:
     if not v or not v.get("staedte"):
         return ""
     einheit = f" {v['einheit']}" if v.get("einheit") else ""
-    zeilen = [f"- {s['stadt']}: {s['wert']:,.0f}{einheit}".replace(",", ".")
+    zeilen = [f"- {s['city']}: {s['wert']:,.0f}{einheit}".replace(",", ".")
               for s in v["staedte"][:8] if s.get("wert") is not None]
     return (f"\nIM VERGLEICH ({v['indicator']}, {v['year']}, amtliche Statistik des\n"
             "Landesamts für Statistik Niedersachsen — alle kreisfreien Städte\n"
@@ -2597,7 +2597,7 @@ def _stellenplan_block(s: dict | None) -> str:
             f"- Teil {t['teil']} ({t['teil_name']}): {_stellen(t.get('positions_planned'))} "
             f"Stellen im Haushaltsjahr {s['budget_year']}. Im Vorjahr waren es "
             f"{_stellen(t.get('positions_prior_year'))} Stellen, davon "
-            f"{_stellen(t.get('besetzt'))} besetzt und "
+            f"{_stellen(t.get('filled'))} besetzt und "
             f"{_stellen(t.get('vacant'))} nicht besetzt")
     if s.get("fehlend"):
         zeilen.append(f"- NICHT im Bestand: der Teil für {', '.join(s['fehlend'])}. "

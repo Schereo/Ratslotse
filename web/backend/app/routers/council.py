@@ -765,7 +765,7 @@ def haushalt_beteiligungen(
     gesellschaften = store.get_gesellschaften()
     kennzahlen = store.get_gesellschaft_kennzahlen()
     texte = [t for g in gesellschaften
-             for t in store.get_gesellschaft_texte(g["gesellschaft"])]
+             for t in store.get_gesellschaft_texte(g["company"])]
     personen = store.get_gesellschaft_personen()
     eigentuemer = store.get_gesellschaft_eigentuemer()
     vergleich = (beteiligungsbericht.konzernvergleich(store, berichtsjahre[-1])
@@ -775,7 +775,7 @@ def haushalt_beteiligungen(
     # wird sie einmal an die Gesellschaft gehängt, damit die Seite sie zeigen
     # kann, ohne die Personen durchzugehen. Wer gar keine Personen hat, hat
     # auch nichts falsch zuzuordnen.
-    gerissen = {p["gesellschaft"] for p in personen if not p["roles_assignable"]}
+    gerissen = {p["company"] for p in personen if not p["roles_assignable"]}
     verzeichnis = _lexikon_zuordnung(store, personen)
 
     ids = sorted({z["herkunft_id"]
@@ -786,7 +786,7 @@ def haushalt_beteiligungen(
         "berichtsjahre": berichtsjahre,
         "jahre": sorted({z["year"] for z in kennzahlen}),
         "gesellschaften": [{**g, "roles_assignable":
-                            g["gesellschaft"] not in gerissen}
+                            g["company"] not in gerissen}
                            for g in gesellschaften],
         "texte": texte,
         "personen": [{**p, "roles_assignable":

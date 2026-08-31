@@ -19,7 +19,7 @@ export type { Herkunft };
 
 export type Gesellschaft = {
   report_year: number;
-  gesellschaft: string;
+  company: string;
   name: string;
   classification: string;
   page: number | null;
@@ -41,7 +41,7 @@ export type Gesellschaft = {
  *  Vorsitz steht dagegen in der Namenszeile selbst („…, Vorsitzende") und
  *  bleibt auch dann bekannt, wenn die Paarung scheitert. */
 export type Aufsichtsperson = {
-  gesellschaft: string;
+  company: string;
   /** Wie das Organ im Bericht heißt — aus der Kopfzeile der Liste. */
   gremium: string | null;
   name: string;
@@ -67,7 +67,7 @@ export type Aufsichtsperson = {
  *  kein Eigentümer. Fällt die Probe, liefert die API für diese Gesellschaft
  *  gar keine Eigentümer — dann steht der Rohtext des Abschnitts da. */
 export type Eigentuemer = {
-  gesellschaft: string;
+  company: string;
   name: string;
   amount_eur: number | null;
   share_pct: number | null;
@@ -77,14 +77,14 @@ export type Eigentuemer = {
 
 export type Textabschnitt = {
   report_year: number;
-  gesellschaft: string;
+  company: string;
   section: string;
   text: string;
   herkunft_id: number | null;
 };
 
 export type Kennzahl = {
-  gesellschaft: string;
+  company: string;
   indicator: "jahresergebnis" | "bilanzsumme" | "eigenkapitalquote";
   year: number;
   wert: number;
@@ -96,7 +96,7 @@ export type Kennzahl = {
 };
 
 export type Konzernzeile = {
-  gesellschaft: string;
+  company: string;
   name: string;
   year: number;
   konzern_beitrag: number;
@@ -144,10 +144,10 @@ export function herkunftVon(daten: BeteiligungsDaten | null, id: number | null |
 
 /** Die Kennzahlen einer Gesellschaft, nach Kennzahl gebündelt und je Reihe
  *  nach Jahr sortiert. */
-export function reihen(daten: BeteiligungsDaten | null, gesellschaft: string) {
+export function reihen(daten: BeteiligungsDaten | null, company: string) {
   const aus = new Map<Kennzahl["indicator"], Kennzahl[]>();
   for (const k of daten?.kennzahlen ?? []) {
-    if (k.gesellschaft !== gesellschaft) continue;
+    if (k.company !== company) continue;
     const liste = aus.get(k.indicator) ?? [];
     liste.push(k);
     aus.set(k.indicator, liste);
@@ -162,26 +162,26 @@ export function reihen(daten: BeteiligungsDaten | null, gesellschaft: string) {
  *  führt noch im Bericht für 2024 die Jahre bis 2021, weil ihr Abschluss
  *  später vorlag. Wer stur das Berichtsjahr abfragt, zeigt für sie nichts —
  *  obwohl fünf Jahre danebenstehen. */
-export function juengster(daten: BeteiligungsDaten | null, gesellschaft: string,
+export function juengster(daten: BeteiligungsDaten | null, company: string,
                           indicator: Kennzahl["indicator"]): Kennzahl | null {
   let treffer: Kennzahl | null = null;
   for (const k of daten?.kennzahlen ?? []) {
-    if (k.gesellschaft !== gesellschaft || k.indicator !== indicator) continue;
+    if (k.company !== company || k.indicator !== indicator) continue;
     if (!treffer || k.year > treffer.year) treffer = k;
   }
   return treffer;
 }
 
-export function textVon(daten: BeteiligungsDaten | null, gesellschaft: string,
+export function textVon(daten: BeteiligungsDaten | null, company: string,
                         section: string): Textabschnitt | null {
   return (daten?.texte ?? []).find(
-    (t) => t.gesellschaft === gesellschaft && t.section === section) ?? null;
+    (t) => t.company === company && t.section === section) ?? null;
 }
 
 /** Der erste Satz des Unternehmensgegenstands — für die Karte in der Liste.
  *  Abgeschnitten wird am Satzende, nicht nach n Zeichen. */
 export function auftragSatz(daten: BeteiligungsDaten, g: Gesellschaft): string | null {
-  const gegenstand = textVon(daten, g.gesellschaft, "gegenstand");
+  const gegenstand = textVon(daten, g.company, "gegenstand");
   if (!gegenstand) return null;
   const glatt = gegenstand.text.replace(/\s+/g, " ");
   return glatt.match(/^.{20,200}?\.(?=\s|$)/)?.[0] ?? glatt.slice(0, 160);
@@ -221,14 +221,14 @@ export function einordnungFuer(daten: BeteiligungsDaten, g: Gesellschaft,
       + "bezahlbar sein, nicht profitabel.",
     gsg: "Überschüsse bleiben im Unternehmen und finanzieren Neubau und Sanierung.",
   };
-  if (redaktionell[g.gesellschaft]) return redaktionell[g.gesellschaft];
+  if (redaktionell[g.company]) return redaktionell[g.company];
 
   if (ergebnisse.length >= 2 && ergebnisse.every((k) => k.wert === 0)) {
     return "Die Null ist Vertragslage, kein Stillstand: Der Betrieb führt sein "
       + "Ergebnis an die Stadt ab oder bekommt es ausgeglichen.";
   }
   const juengstes = ergebnisse[ergebnisse.length - 1];
-  const vergleich = daten.konzernvergleich.find((z) => z.gesellschaft === g.gesellschaft);
+  const vergleich = daten.konzernvergleich.find((z) => z.company === g.company);
   if (juengstes && vergleich && vergleich.year === juengstes.year
       && Math.abs(vergleich.difference) <= 1000) {
     return "Der Betrag ist deckungsgleich mit dem Gesamtabschluss — zwei Quellen, "
@@ -242,9 +242,9 @@ export function einordnungFuer(daten: BeteiligungsDaten, g: Gesellschaft,
 
 /** Die Mitglieder des Aufsichtsorgans, in der Reihenfolge des Berichts. */
 export function aufsichtspersonen(daten: BeteiligungsDaten | null,
-                                  gesellschaft: string): Aufsichtsperson[] {
+                                  company: string): Aufsichtsperson[] {
   return (daten?.personen ?? [])
-    .filter((p) => p.gesellschaft === gesellschaft)
+    .filter((p) => p.company === company)
     .sort((a, b) => a.sort_order - b.sort_order);
 }
 
@@ -305,9 +305,9 @@ export function aufsichtsgruppen(personen: Aufsichtsperson[],
 
 /** Die Eigentümer, in der Reihenfolge des Berichts. */
 export function eigentuemerVon(daten: BeteiligungsDaten | null,
-                               gesellschaft: string): Eigentuemer[] {
+                               company: string): Eigentuemer[] {
   return (daten?.eigentuemer ?? [])
-    .filter((e) => e.gesellschaft === gesellschaft)
+    .filter((e) => e.company === company)
     .sort((a, b) => a.sort_order - b.sort_order);
 }
 
@@ -322,8 +322,8 @@ export function eigentuemerVon(daten: BeteiligungsDaten | null,
  *  der TGO Besitz führt er statt Anteilseignern nur Entsendungsrechte. Eine
  *  fehlende Quote als „0 %" zu zeigen wäre eine Falschaussage. */
 export function stadtAnteil(daten: BeteiligungsDaten | null,
-                            gesellschaft: string): number | null {
-  const zeile = eigentuemerVon(daten, gesellschaft)
+                            company: string): number | null {
+  const zeile = eigentuemerVon(daten, company)
     .find((e) => /^Stadt Oldenburg\b/.test(e.name.trim()));
   return zeile?.share_pct ?? null;
 }
@@ -393,12 +393,12 @@ export function sortiert(daten: BeteiligungsDaten | null): Gesellschaft[] {
  *  könne keine GmbH mehr sein. Die Quote steht deshalb als eigenes Zeichen
  *  neben der Form (`stadtAnteil`, `istMinderheit`) — seit die
  *  Gesellschaftertabelle mit Probe gelesen wird. */
-export type Rechtsform = "eigenbetrieb" | "aoer" | "gesellschaft";
+export type Rechtsform = "eigenbetrieb" | "aoer" | "company";
 
 export const RECHTSFORM_TITEL: Record<Rechtsform, string> = {
   eigenbetrieb: "Eigenbetrieb",
   aoer: "Anstalt öffentlichen Rechts",
-  gesellschaft: "GmbH / Co. KG",
+  company: "GmbH / Co. KG",
 };
 
 /** Rechtsform aus der Gliederungsnummer des Berichts — deterministisch, aus
@@ -415,6 +415,6 @@ export function rechtsform(g: Pick<Gesellschaft, "classification">): Rechtsform 
   const gruppe = g.classification.split(".")[1];
   if (gruppe === "2") return "eigenbetrieb";
   if (gruppe === "3") return "aoer";
-  if (gruppe === "4") return "gesellschaft";
+  if (gruppe === "4") return "company";
   return null;
 }

@@ -640,7 +640,7 @@ def _befuellter_store(tmp_path) -> CouncilStore:
              ("klinikum", "Klinikum Oldenburg AöR", 390_000.0),
              ("konsolidierung", "Konsolidierung", -120_000.0)])
         store._conn.executemany(
-            "INSERT INTO council_staedtevergleich (series, year, schluessel, stadt, indicator, "
+            "INSERT INTO council_staedtevergleich (series, year, schluessel, city, indicator, "
             " wert, einheit, herkunft_id, fetched_at) VALUES "
             "('steuerkraft',2024,?,?,'Steuerkraftmesszahl je Einwohner',?,'EUR',1,'')",
             [("03403", "Oldenburg", 1834.0), ("03404", "Osnabrück", 1712.0),
@@ -693,7 +693,7 @@ def _befuellter_store(tmp_path) -> CouncilStore:
         # nicht_besetzt = stellen_vorjahr (die Besetzungsprobe des Plans).
         store._conn.executemany(
             "INSERT INTO council_stellenplan (budget_year, teil, zeile, art, label, "
-            " positions_planned, positions_prior_year, besetzt, vacant, as_of_date, "
+            " positions_planned, positions_prior_year, filled, vacant, as_of_date, "
             " herkunft_id, fetched_at) VALUES (2026,?,0,'gesamt',?,?,?,?,?,'30.06.2025',?,'')",
             [("A", "Gesamt Teil A", 815.50, 802.00, 761.25, 40.75, 5),
              ("B", "Gesamt Teil B", 1_702.25, 1_688.50, 1_579.00, 109.50, 6)])
