@@ -68,7 +68,7 @@ export type ErgebnishaushaltZeile = {
   plan_budget_year: number;
   /** Das Jahr, für das sie gilt. */
   year: number;
-  art: "ansatz" | "finanzplanung";
+  kind: "budget" | "financial_plan";
   nr: number;
   label: string;
   amount: number;
@@ -283,7 +283,7 @@ export type Kennzahlen = {
 
 export type HaushaltDaten = {
   years: Record<string, HaushaltZeile[]>;
-  taxes: { year: number; art: string; amount: number | null }[];
+  taxes: { year: number; kind: string; amount: number | null }[];
   tax_capacity: {
     year: number; tax_index: number | null; tax_capacity_per_capita: number | null;
     allocations: number | null; allocations_per_capita: number | null;
@@ -442,7 +442,7 @@ export function herkunftVon(
  *  Titelbetrag (50.000 €) ist die Grenze, nicht die Summe, und sie tragen
  *  deshalb gar keinen Betrag. */
 export type NachbewilligungsArt =
-  | "bewilligung" | "verpflichtungsermaechtigung" | "schwelle";
+  | "approval" | "commitment_authorization" | "threshold";
 
 /** Über- oder außerplanmäßig — und der Unterschied ist keine Wortklauberei:
  *  **überplanmäßig** heißt, der Posten stand im Haushalt und das Geld reichte
@@ -464,7 +464,7 @@ export type Nachbewilligung = {
    *  Sitzungsdatum — Januar-Vorlagen zählen zum Vorjahr. */
   year: number | null;
   title: string;
-  art: NachbewilligungsArt;
+  kind: NachbewilligungsArt;
   category: NachbewilligungsKategorie;
   /** In Euro. `null` bei `art === "schwelle"`. */
   amount: number | null;
@@ -566,7 +566,7 @@ export type SpendenVorlage = {
 
 /** Plan neben Ist je Steuerart — Tabelle 1103 des Statistischen Jahrbuchs.
  *
- *  `art` trägt **dieselbe** Schreibweise wie `HaushaltDaten.taxes[].art`;
+ *  `kind` trägt **dieselbe** Schreibweise wie `HaushaltDaten.taxes[].kind`;
  *  darüber findet ein Steckbrief seine Zeilen, und daran hängt die Prüfung der
  *  Jahresbeschriftung im Ingest. */
 export type Steuerplan = {
@@ -577,7 +577,7 @@ export type Steuerplan = {
 
 export type SteuerplanZeile = {
   year: number;
-  art: string;
+  kind: string;
   /** Ansatz der beschlossenen Haushaltssatzung, in Euro. */
   plan: number;
   /** Rechnungsergebnis desselben Jahres, in Euro. */
@@ -651,7 +651,7 @@ export type GewerbesteuerstatistikZeile = {
 export type HebesatzZeile = {
   year: number;
   /** „Grundsteuer A" · „Grundsteuer B" · „Gewerbesteuer". */
-  art: string;
+  kind: string;
   /** Prozentpunkte. */
   rate: number;
   /** Der Satz, der bis zu diesem Jahr galt — `null` in der ersten Zeile. */
@@ -1152,7 +1152,7 @@ export type EinnahmeartenPlan = {
  *  zu zeigen, steht die Herkunftsseite allein da — ausdrücklich als halbes
  *  Bild und ohne Gegenstück.
  *
- *  **Nur `art === "ansatz"`.** Die Finanzplanungsjahre desselben Dokuments
+ *  **Nur `kind === "budget"`.** Die Finanzplanungsjahre desselben Dokuments
  *  sind eine Vorausschau nach § 8 NKomVG; sie hier mitzunehmen hieße, für 2029
  *  einen Haushalt zu zeigen, den nie jemand aufgestellt hat.
  *
@@ -1163,7 +1163,7 @@ export function einnahmearten(
   daten: HaushaltAuswahl<"income_budget" | "years">, year: number,
 ): EinnahmeartenPlan | null {
   const zeilen = (daten.income_budget ?? [])
-    .filter((z) => z.year === year && z.art === "ansatz");
+    .filter((z) => z.year === year && z.kind === "budget");
   if (!zeilen.length) return null;
 
   const arten = zeilen
@@ -1353,9 +1353,9 @@ export function nachbewilligungsJahre(
   };
   for (const n of daten.supplementary_approvals?.serie ?? []) {
     if (n.year == null) continue;
-    if (n.art === "schwelle") {
+    if (n.kind === "threshold") {
       hol(n.year).sammelberichte += 1;
-    } else if (n.art === "verpflichtungsermaechtigung") {
+    } else if (n.kind === "commitment_authorization") {
       if (!n.decided) continue;
       const e = hol(n.year);
       e.commitments += 1;
@@ -1376,7 +1376,7 @@ export function nachbewilligungenFuerJahr(
   daten: HaushaltAuswahl<"supplementary_approvals">, year: number,
 ): Nachbewilligung[] {
   return (daten.supplementary_approvals?.serie ?? [])
-    .filter((n) => n.year === year && n.art === "bewilligung"
+    .filter((n) => n.year === year && n.kind === "approval"
       && n.decided === 1 && n.amount != null)
     .sort((a, b) => (b.amount ?? 0) - (a.amount ?? 0));
 }

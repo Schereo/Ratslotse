@@ -1223,10 +1223,10 @@ def lies_ergebnishaushalte(store: CouncilStore, p: Protokoll,
             # Seite muss das sagen können.
             as_of=f"Haushaltsplan {budget_year}, Anlage 005 — Stand der Einbringung"))
 
-        ansatz = [z for z in gelesen["zeilen"] if z["kind"] == "ansatz"]
+        ansatz = [z for z in gelesen["zeilen"] if z["kind"] == "budget"]
         e = next((z["amount"] for z in ansatz if z["nr"] == 12), None)
         a = next((z["amount"] for z in ansatz if z["nr"] == 20), None)
-        fp = sorted({z["year"] for z in gelesen["zeilen"] if z["kind"] == "finanzplanung"})
+        fp = sorted({z["year"] for z in gelesen["zeilen"] if z["kind"] == "financial_plan"})
         je_jahrgang[budget_year] = {"zeilen": len(gelesen["zeilen"]),
                                  "ansatz": len(ansatz), "finanzplanung": fp}
         p.sagen(f"  {budget_year}: Ansatz {e/1e6:.1f} Mio. Erträge / {a/1e6:.1f} Mio. "
@@ -1420,7 +1420,7 @@ def lies_stellenplaene(store: CouncilStore, p: Protokoll,
                 as_of_date=part["as_of_date"])
             neue_einheiten.add((budget_year, name))
 
-            gesamt = next((z for z in part["zeilen"] if z["kind"] == "gesamt"), None)
+            gesamt = next((z for z in part["zeilen"] if z["kind"] == "total"), None)
             je_jahrgang[budget_year]["teile"][name] = {
                 "zeilen": len(part["zeilen"]),
                 "stellen": gesamt["positions_planned"] if gesamt else None,

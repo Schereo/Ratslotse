@@ -3684,7 +3684,7 @@
       "QaShareDebatte": {
         "properties": {
           "art": {
-            "default": "rede",
+            "default": "speech",
             "maxLength": 30,
             "title": "Art",
             "type": "string"

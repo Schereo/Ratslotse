@@ -27,7 +27,7 @@ import Testing
       }],
       "vorlage_url": "https://buergerinfo.oldenburg.de/vo0050.php?__kvonr=901",
       "vorlage": {
-        "template_number": "26/0400", "title": "Radweg", "art": "Beschlussvorlage",
+        "template_number": "26/0400", "title": "Radweg", "kind": "Beschlussvorlage",
         "document_url": "https://example.test/vorlage.pdf", "n_pages": 3,
         "excerpt": "Sachverhalt: Die Stadt plant einen Radweg.", "office": "Amt für Verkehr"
       },
@@ -36,8 +36,8 @@ import Testing
         "is_motion": 1, "applicants": ["SPD"], "status": "ok"
       }],
       "beteiligung": {
-        "title": "Beteiligung zum Plan", "schritt": "Entwurf", "von": "2026-01-01",
-        "bis": "2026-02-15", "url": "https://example.test/beteiligung", "status": "laufend"
+        "title": "Beteiligung zum Plan", "schritt": "Entwurf", "valid_from": "2026-01-01",
+        "valid_until": "2026-02-15", "url": "https://example.test/beteiligung", "status": "laufend"
       },
       "importance_breakdown": {"score": 81, "impact_reason": "Betrifft viele Menschen."},
       "follow": {"kvonr": 901, "following": true},
@@ -51,6 +51,11 @@ import Testing
     #expect(detail.subVotes.first?.factions == ["CDU"])
     #expect(detail.consultations.first?.result == "angenommen")
     #expect(detail.template?.department == "Amt für Verkehr")
+    // Beide Felder haben beim Umbau ihren Namen auf der Leitung geändert
+    // (`art`→`kind`, `von`/`bis`→`valid_from`/`valid_until`). Ohne diese
+    // zwei Zeilen dekodierte die App still `nil` und zeigte nichts an.
+    #expect(detail.template?.kind == "Beschlussvorlage")
+    #expect(detail.participation?.from == "2026-01-01")
     #expect(detail.attachments.first?.applicants == ["SPD"])
     #expect(detail.participation?.until == "2026-02-15")
     #expect(detail.importance?.score == 81)

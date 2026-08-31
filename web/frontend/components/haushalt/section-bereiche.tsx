@@ -52,7 +52,7 @@ function zentralePosten(daten: Daten): Posten[] {
   for (const s of STEUERARTEN) {
     if (s.datenArt) {
       const treffer = daten.taxes
-        .filter((r) => r.art === s.datenArt && r.amount != null)
+        .filter((r) => r.kind === s.datenArt && r.amount != null)
         .sort((a, b) => a.year - b.year);
       const letzte = treffer[treffer.length - 1];
       if (letzte) {

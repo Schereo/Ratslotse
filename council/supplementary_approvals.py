@@ -132,12 +132,12 @@ from dataclasses import dataclass, field
 from council import ernte, herkunft
 
 #: Eine Bewilligung, die dieses Jahr Geld kostet — zählt in die Jahressumme.
-ART_BEWILLIGUNG = "bewilligung"
+ART_BEWILLIGUNG = "approval"
 #: Eine Verpflichtungsermächtigung — bindet künftige Jahre, zählt **nie** mit.
-ART_VERPFLICHTUNG = "verpflichtungsermaechtigung"
+ART_VERPFLICHTUNG = "commitment_authorization"
 #: Ein Sammelbericht über die Fälle unter der Wertgrenze. Der Betrag im Titel
 #: ist die Grenze, nicht die Summe — deshalb trägt so eine Zeile keinen.
-ART_SCHWELLE = "schwelle"
+ART_SCHWELLE = "threshold"
 
 #: Die vier Wege, auf denen in Oldenburg eine Nachbewilligung zustande kommt.
 #: Reihenfolge und Wortlaut stammen aus der Übersichtstabelle des

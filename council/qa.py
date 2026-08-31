@@ -1540,8 +1540,8 @@ def _debatten_block(debatten: list[dict] | None, eng: bool = False) -> str:
     Beschlüsse: nie mit [id] zitieren, sondern „Laut Protokoll sagte/fragte …"."""
     if not debatten:
         return ""
-    art_label = {"anfrage": "Anfrage", "einwohnerfrage": "Einwohnerfrage",
-                 "zusage": "Zusage der Verwaltung", "rede": "Redebeitrag"}
+    art_label = {"inquiry": "Anfrage", "citizen_question": "Einwohnerfrage",
+                 "pledge": "Zusage der Verwaltung", "speech": "Redebeitrag"}
     zeilen = []
     for d in debatten:
         wer = d.get("speaker") or "?"

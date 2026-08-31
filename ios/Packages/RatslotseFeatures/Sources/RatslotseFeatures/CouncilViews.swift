@@ -1421,7 +1421,7 @@ struct DecisionDetailView: View {
           "vorlage": {
             "template_number":"26/0456",
             "title":"Haushaltssatzung und Haushaltsplan 2026",
-            "art":"Beschlussvorlage",
+            "kind":"Beschlussvorlage",
             "document_url":"https://ratslotse.de",
             "excerpt":"Die Verwaltung legt den Entwurf des Haushaltsplans vor. Er bündelt laufende Aufgaben und geplante Investitionen der Stadt.",
             "office":"Amt für Finanzen",

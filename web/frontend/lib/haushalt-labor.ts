@@ -25,7 +25,7 @@ export function hebesatzHeute(
   zeilen: HebesatzZeile[] | undefined, art: string,
 ): { satz: number; seit: number } | null {
   const series = (zeilen ?? [])
-    .filter((z) => z.art === art && z.rate != null)
+    .filter((z) => z.kind === art && z.rate != null)
     .sort((a, b) => a.year - b.year);
   const letzte = series.at(-1);
   return letzte ? { satz: letzte.rate as number, seit: letzte.year } : null;
@@ -33,11 +33,11 @@ export function hebesatzHeute(
 
 /** Der jüngste Ist-Betrag einer Steuerart aus dem Open-Data-Satz. */
 export function letzterSteuerbetrag(
-  taxes: { year: number; art: string; amount: number | null }[],
+  taxes: { year: number; kind: string; amount: number | null }[],
   art: string,
 ): { year: number; amount: number } | null {
   const z = taxes
-    .filter((s) => s.art === art && s.amount)
+    .filter((s) => s.kind === art && s.amount)
     .sort((a, b) => a.year - b.year)
     .at(-1);
   return z ? { year: z.year, amount: z.amount as number } : null;

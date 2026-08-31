@@ -27,7 +27,7 @@ MODEL = os.environ.get("COUNCIL_WORTBEITRAG_MODEL", "google/gemini-2.5-flash")
 
 FENSTER = 48_000       # Zeichen je LLM-Fenster
 UEBERLAPP = 3_000
-ARTEN = {"rede", "anfrage", "einwohnerfrage", "zusage"}
+ARTEN = {"speech", "inquiry", "citizen_question", "pledge"}
 # Ab dieser Fensterlänge ist ein leeres Ergebnis fast sicher ein Provider-
 # Aussetzer (ein ganzes Sitzungsprotokoll ohne einen einzigen Wortbeitrag
 # gibt es praktisch nicht) → einmal neu versuchen. Kleine Restfenster am
@@ -122,7 +122,7 @@ def extract_wortbeitraege(raw_text: str, model: str = MODEL) -> list[dict]:
             if key in gesehen:
                 continue
             gesehen.add(key)
-            art = str(r.get("kind") or "rede").strip().lower()
+            art = str(r.get("kind") or "speech").strip().lower()
 
             def field(name: str, max_len: int | None = None) -> str | None:
                 value = str(r.get(name) or "").strip()
@@ -139,7 +139,7 @@ def extract_wortbeitraege(raw_text: str, model: str = MODEL) -> list[dict]:
                 return value or None
 
             beitraege.append({
-                "kind": art if art in ARTEN else "rede",
+                "kind": art if art in ARTEN else "speech",
                 "top": field("top", 120),
                 "speaker": field("speaker", 80),
                 # 40 war zu knapp: „BUND für Umwelt und Naturschutz

@@ -802,7 +802,7 @@ class CouncilStore:
             self._conn.execute(
                 "CREATE TABLE IF NOT EXISTS council_migrationsmarken ("
                 "marke TEXT PRIMARY KEY, gesetzt_am TEXT NOT NULL)")
-        marke = "herkunft_key_kind"   # zuvor "herkunft_key_as_of" (s. #880)
+        marke = "herkunft_key_city"   # zuvor "…_as_of" (#880) und "…_kind" (#886)
         if self._conn.execute(
                 "SELECT 1 FROM council_migrationsmarken WHERE marke = ?", (marke,)).fetchone():
             return
@@ -1039,6 +1039,20 @@ class CouncilStore:
                 ("ansatz_nachtrag", "supplementary_budget"),
                 ("gesamtermaechtigung", "total_authorization"),
                 ("ansatz", "budget")])
+        # Die Aufzählungen der `kind`-Spalten. ZUERST die Werte, DANN die
+        # Fingerabdrücke: `council_herkunft.kind` geht in den Hash ein.
+        self._werte_umschreiben("council_wortbeitraege", "kind", [
+            ("rede", "speech"), ("anfrage", "inquiry"),
+            ("zusage", "pledge"), ("einwohnerfrage", "citizen_question")])
+        self._werte_umschreiben("council_stellenplan", "kind", [
+            ("posten", "item"), ("gruppe", "group"), ("gesamt", "total")])
+        self._werte_umschreiben("council_nachbewilligungen", "kind", [
+            ("bewilligung", "approval"), ("schwelle", "threshold"),
+            ("verpflichtungsermaechtigung", "commitment_authorization")])
+        self._werte_umschreiben("council_ergebnishaushalt", "kind", [
+            ("ansatz", "budget"), ("finanzplanung", "financial_plan")])
+        # `ris`, `opendata` und `lsn` sind Kürzel und bleiben.
+        self._werte_umschreiben("council_herkunft", "kind", [("stadt", "city")])
         self._herkunft_schluessel_neu()
         self._doppelte_bildspalte_aufloesen()
         # Der Parteien-Cache hält die ROHE Modellantwort als JSON; sie trug
@@ -1562,7 +1576,7 @@ class CouncilStore:
         # Ohne `plan_budget_year` im Schlüssel überschriebe der jüngste Plan
         # stillschweigend, was der ältere für dasselbe Jahr sagte. Mit ihm
         # ist beides nachlesbar, und die Frage „was war der Ansatz für 2026?"
-        # hat genau eine Antwort: art='ansatz'.
+        # hat genau eine Antwort: kind='budget'.
         #
         # Herkunft ausschließlich über `herkunft_id` — die Tabelle ist neu und
         # hat keinen Altbestand (s. council/herkunft.py).
@@ -6109,7 +6123,7 @@ class CouncilStore:
         # Der Gesamtergebnishaushalt (Anlage 005 des Haushaltsplans) — dieselbe
         # Postengliederung für Jahre ohne Abschluss.
         #
-        # Der Filter auf ``art = 'ansatz'`` ist hier PFLICHT und keine
+        # Der Filter auf ``kind = 'budget'`` ist hier PFLICHT und keine
         # Verfeinerung: Ein Dokument trägt sein Planjahr UND drei
         # Finanzplanungsjahre, dieselbe Jahreszahl kommt also in drei
         # Haushaltsplänen vor (2026 im Plan 2024 als Vorausschau, im Plan 2025
@@ -6118,7 +6132,7 @@ class CouncilStore:
         # anderes. Mit ihm gilt ``year == plan_budget_year``, und es bleibt genau
         # eines.
         "income_budget":     ("council_ergebnishaushalt", "year",
-                                 "t.kind = 'ansatz'", None),
+                                 "t.kind = 'budget'", None),
         # Vierte Ebene: Abschnitt 2.1, die Bilanz. Der älteste Stichtag (2016)
         # stammt aus der Vorjahresspalte des Abschlusses 2017 — er trägt
         # deshalb dessen Dokument, mit eigener Fundstelle.
@@ -6789,7 +6803,7 @@ class CouncilStore:
                              kind: str | None = None) -> list[dict]:
         """Planzahlen je Posten — gefiltert nach Jahr und/oder Art.
 
-        ``art="ansatz"`` ist die Frage, die eine Seite fast immer meint: „was
+        ``kind="budget"`` ist die Frage, die eine Seite fast immer meint: „was
         ist für dieses Jahr geplant?". Ohne Filter kommt auch die
         Finanzplanung mit; sie ist als solche beschriftet und darf nur so
         gezeigt werden."""
@@ -6817,7 +6831,7 @@ class CouncilStore:
         try:
             return [r[0] for r in self._conn.execute(
                 "SELECT DISTINCT year FROM council_ergebnishaushalt "
-                "WHERE kind = 'ansatz' ORDER BY year")]
+                "WHERE kind = 'budget' ORDER BY year")]
         except sqlite3.OperationalError:
             return []
 
@@ -6872,7 +6886,7 @@ class CouncilStore:
                         budget_year: int | None = None) -> list[dict]:
         """Stellenplan-Zeilen — gefiltert nach Stufe und/oder Jahrgang.
 
-        ``kind="gesamt"`` ist die Frage, die die Übersichtsseite meint („wie
+        ``kind="total"`` ist die Frage, die die Übersichtsseite meint („wie
         viele Stellen, wie viele davon unbesetzt?"); ohne Filter kommen alle
         rund tausend Einzelposten mit."""
         wo, werte = [], []
@@ -12377,21 +12391,21 @@ class CouncilStore:
         """Einnahme- und Ausgabearten des jüngsten **Planjahres** aus dem
         Gesamtergebnishaushalt.
 
-        Nur ``art='ansatz'``: Die Finanzplanungsjahre desselben Dokuments sind
+        Nur ``kind='budget'``: Die Finanzplanungsjahre desselben Dokuments sind
         eine Vorausschau nach § 8 NKomVG und kein beschlossener Haushalt. Sie
         in einen Antwort-Kontext zu legen hieße, dem Modell einen Plan für
         2029 anzubieten, den nie jemand aufgestellt hat."""
         try:
             year = self._conn.execute(
                 "SELECT MAX(year) FROM council_ergebnishaushalt "
-                "WHERE kind = 'ansatz'").fetchone()[0]
+                "WHERE kind = 'budget'").fetchone()[0]
         except sqlite3.OperationalError:
             return None
         if not year:
             return None
         rows = [dict(r) for r in self._conn.execute(
             "SELECT nr, label, amount, is_total, herkunft_id "
-            "FROM council_ergebnishaushalt WHERE year = ? AND kind = 'ansatz' ORDER BY nr",
+            "FROM council_ergebnishaushalt WHERE year = ? AND kind = 'budget' ORDER BY nr",
             (year,))]
         if not rows:
             return None
@@ -12838,7 +12852,7 @@ class CouncilStore:
         try:
             budget_year = budget_year or self._conn.execute(
                 "SELECT MAX(budget_year) FROM council_stellenplan "
-                "WHERE kind = 'gesamt'").fetchone()[0]
+                "WHERE kind = 'total'").fetchone()[0]
         except sqlite3.OperationalError:
             return None
         if not budget_year:
@@ -12846,7 +12860,7 @@ class CouncilStore:
         rows = [dict(r) for r in self._conn.execute(
             "SELECT part, label, positions_planned, positions_prior_year, filled, "
             " vacant, as_of_date, herkunft_id FROM council_stellenplan "
-            "WHERE budget_year = ? AND kind = 'gesamt' ORDER BY part", (budget_year,))]
+            "WHERE budget_year = ? AND kind = 'total' ORDER BY part", (budget_year,))]
         if not rows:
             return None
         from council import stellenplan as _stellenplan
@@ -13229,7 +13243,7 @@ class CouncilStore:
                     "INSERT INTO council_wortbeitraege "
                     "(ksinr, position, kind, top, speaker, party, text, answer, extracted_at) "
                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                    (ksinr, pos, r.get("kind") or "rede", r.get("top"),
+                    (ksinr, pos, r.get("kind") or "speech", r.get("top"),
                      r.get("speaker"), r.get("party"), text[:2000],
                      (r.get("answer") or "").strip()[:2000] or None, now))
                 inhalt = " ".join(x for x in (r.get("speaker"), r.get("party"), r.get("top"),

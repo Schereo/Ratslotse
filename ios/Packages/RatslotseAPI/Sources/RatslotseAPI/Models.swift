@@ -403,9 +403,8 @@ public struct CouncilTemplate: Codable, Sendable, Equatable {
     public let financialCheck: String?
 
     enum CodingKeys: String, CodingKey {
-        case title, excerpt
+        case title, excerpt, kind
         case number = "template_number"
-        case kind = "art"
         case documentURL = "document_url"
         case pageCount = "n_pages"
         case department = "office"
@@ -452,8 +451,8 @@ public struct CouncilParticipation: Codable, Sendable, Equatable {
     enum CodingKeys: String, CodingKey {
         case title = "title"
         case step = "schritt"
-        case from = "von"
-        case until = "bis"
+        case from = "valid_from"
+        case until = "valid_until"
         case url, status
     }
 }

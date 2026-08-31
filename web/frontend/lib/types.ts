@@ -475,7 +475,7 @@ export interface DecisionDetail {
   vorlage?: {
     template_number: string | null;
     title: string | null;
-    art: string | null;
+    kind: string | null;
     document_url: string | null;
     n_pages: number | null;
     excerpt: string | null;

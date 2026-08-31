@@ -790,8 +790,7 @@ struct PublicPersonProfile: Codable, Sendable {
         let sessionDate: String
 
         enum CodingKeys: String, CodingKey {
-            case text, committee
-            case kind = "art"
+            case text, committee, kind
             case agendaItem = "top"
             case sessionDate = "session_date"
         }

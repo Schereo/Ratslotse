@@ -525,9 +525,9 @@ def haushalt_stellenplan(
     Und die Besetzungszahlen gehören zur **Vorjahresspalte**, nicht zum
     Haushaltsjahr: Geplant wird vorwärts, gezählt werden kann nur rückwärts.
     ``as_of_date`` sagt, auf welchen Tag sie sich beziehen."""
-    summen = store.get_stellenplan(kind="gesamt")
-    gruppen = store.get_stellenplan(kind="gruppe")
-    zeilen = (store.get_stellenplan(kind="posten", budget_year=budget_year)
+    summen = store.get_stellenplan(kind="total")
+    gruppen = store.get_stellenplan(kind="group")
+    zeilen = (store.get_stellenplan(kind="item", budget_year=budget_year)
               if budget_year is not None else [])
     jahrgaenge = sorted({z["budget_year"] for z in summen})
 
@@ -2017,7 +2017,7 @@ class QaShareQuelle(BaseModel):
 class QaShareDebatte(BaseModel):
     speaker: str | None = Field(default=None, max_length=120)
     party: str | None = Field(default=None, max_length=60)
-    art: str = Field(default="rede", max_length=30)
+    art: str = Field(default="speech", max_length=30)
     top: str | None = Field(default=None, max_length=300)
     auszug: str = Field(default="", max_length=2000)
     committee: str | None = Field(default=None, max_length=120)
