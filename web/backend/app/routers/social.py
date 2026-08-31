@@ -150,7 +150,11 @@ def neue_beschluesse(
     return zeilen[:limit] if limit else zeilen
 
 
-@router.get("/hoechste-official_text-id", dependencies=[Depends(bot_token)])
+# Der Pfad trägt bewusst weiter „beschluss": Ihn ruft der Instagram-Bot aus
+# einem ANDEREN Repo (ratslotse-social) über HTTP auf. Eine URL ist eine
+# öffentliche Schnittstelle, kein Bezeichner — sie wandert bei einer
+# Umbenennung nicht mit. `tests/test_api_vertrag.py` hält das fest.
+@router.get("/hoechste-beschluss-id", dependencies=[Depends(bot_token)])
 def hoechste_beschluss_id(store: CouncilStore = Depends(get_council_store)) -> HoechsteBeschlussId:
     """Aktueller Zählerstand — der Startpunkt fürs erste Merken beim Bot,
     damit sein Ereignis-Cron nicht den gesamten Bestand als „neu" meldet."""

@@ -271,3 +271,40 @@ def test_keine_wirkungslosen_migrationspaare():
         "Diese Umbenennungspaare sind wirkungslos — vermutlich hat ein "
         "Suchen-und-Ersetzen den alten Namen mitgenommen:\n  " + "\n  ".join(treffer)
     )
+
+
+#: Pfade, die von AUSSERHALB dieses Repos aufgerufen werden. Eine URL ist eine
+#: öffentliche Schnittstelle, kein Bezeichner — sie wandert bei einer
+#: Umbenennung nicht mit.
+#:
+#: Die vier ``/social/``-Pfade ruft der Instagram-Bot (Repo ratslotse-social,
+#: ``ratslotse_social/quellen.py``) über HTTP auf. Genau das ist beim
+#: Beschluss-Schnitt schiefgegangen: Aus ``/hoechste-beschluss-id`` wurde
+#: ``/hoechste-official_text-id``, der Bot rief ins Leere, und weil er in
+#: einem anderen Repo lebt, wurde dort nichts rot.
+#:
+#: Nicht in der Liste: ``/api/social/orte``. Den Pfad ruft der Bot zwar auf,
+#: aber dieses Repo hat ihn NIE angeboten (keine Spur in der Historie) — der
+#: Bot fällt dort auf seinen direkten Datenbankweg zurück. Das ist ein Befund
+#: für das andere Repo, kein Ziel für einen Wächter hier.
+OEFFENTLICHE_PFADE = (
+    "/api/social/hoechste-beschluss-id",
+    "/api/social/neue-beschluesse",
+    "/api/social/wochenvorschau",
+)
+
+
+def test_oeffentliche_pfade_bleiben_stehen(endpunkte):
+    """Pfade mit Aufrufern ausserhalb dieses Repos dürfen sich nicht ändern.
+
+    Wer einen davon wirklich umbenennen will, zieht den Aufrufer mit nach —
+    und ändert diese Liste bewusst, nicht als Beifang eines Ersetzens.
+    """
+    vorhanden = {p for _, p, _, _ in endpunkte}
+    fehlend = [p for p in OEFFENTLICHE_PFADE if p not in vorhanden]
+    assert not fehlend, (
+        "Diese Pfade werden von ausserhalb aufgerufen und gibt es nicht mehr:\n  "
+        + "\n  ".join(fehlend)
+        + "\nEine URL ist eine öffentliche Schnittstelle. Entweder den Pfad "
+          "zurückbenennen oder den Aufrufer (ratslotse-social) mitziehen."
+    )

@@ -178,7 +178,7 @@ def test_neue_beschluesse_filtert_wichtigkeit_und_id(client, monkeypatch, counci
 def test_hoechste_beschluss_id_ohne_bestand_ist_null(client, monkeypatch, council_store):
     token = _mit_token(monkeypatch)
     try:
-        r = client.get("/api/social/hoechste-official_text-id",
+        r = client.get("/api/social/hoechste-beschluss-id",
                        headers={"X-Social-Token": token})
         assert r.status_code == 200 and r.json() == {"hoechste_id": 0}
     finally:

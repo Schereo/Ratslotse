@@ -3310,7 +3310,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/social/hoechste-official_text-id": {
+    "/api/social/hoechste-beschluss-id": {
         parameters: {
             query?: never;
             header?: never;
@@ -3322,7 +3322,7 @@ export interface paths {
          * @description Aktueller Zählerstand — der Startpunkt fürs erste Merken beim Bot,
          *     damit sein Ereignis-Cron nicht den gesamten Bestand als „neu" meldet.
          */
-        get: operations["hoechste_beschluss_id_api_social_hoechste_official_text_id_get"];
+        get: operations["hoechste_beschluss_id_api_social_hoechste_beschluss_id_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -10350,7 +10350,7 @@ export interface operations {
             };
         };
     };
-    hoechste_beschluss_id_api_social_hoechste_official_text_id_get: {
+    hoechste_beschluss_id_api_social_hoechste_beschluss_id_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -10898,4 +10898,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 8a074b059561c4b248c1bfa102cda31c024a534d9a6b8becb44dc374e22950fa
+// vertrag-sha256: f2f05d774d2587add73b7297386e9d05451673b5e9f363ddf76647562d4ea877

@@ -12055,10 +12055,10 @@
         ]
       }
     },
-    "/api/social/hoechste-official_text-id": {
+    "/api/social/hoechste-beschluss-id": {
       "get": {
         "description": "Aktueller Zählerstand — der Startpunkt fürs erste Merken beim Bot,\ndamit sein Ereignis-Cron nicht den gesamten Bestand als „neu\" meldet.",
-        "operationId": "hoechste_beschluss_id_api_social_hoechste_official_text_id_get",
+        "operationId": "hoechste_beschluss_id_api_social_hoechste_beschluss_id_get",
         "responses": {
           "200": {
             "content": {
