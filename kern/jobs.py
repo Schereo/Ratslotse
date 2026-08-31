@@ -31,6 +31,13 @@ JOBS: list[dict] = [
         "max_age_h": 30,
     },
     {
+        "key": "check_council_videos",
+        "label": "Video-Ergebnisse (vorläufig)",
+        "description": "Abstimmungsergebnisse aus der O1-Aufzeichnung der Ratssitzung — als vorläufiger Stand, bis das Protokoll kommt.",
+        "schedule": "täglich 10:30 Uhr",
+        "max_age_h": 30,
+    },
+    {
         "key": "abendmeldungen",
         "label": "Abend-Anlässe (30a)",
         "description": "N5 Vorabend-Erinnerung (täglich) und N6 Wochenüberblick (sonntags).",
