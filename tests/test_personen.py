@@ -115,8 +115,8 @@ def _wb_store(tmp_path):
             [(1, "Rat", "2026-06-01"), (2, "Verkehrsausschuss", "2026-05-01")])
         store._conn.executemany(
             "INSERT INTO council_attendance (ksinr, name, party, role) VALUES (?, ?, ?, ?)",
-            [(1, "Tim Harms", "SPD", "mitglied"), (1, "Dr. Ingo Harms", "CDU", "mitglied"),
-             (2, "Tim Harms", "SPD", "mitglied")])
+            [(1, "Tim Harms", "SPD", "member"), (1, "Dr. Ingo Harms", "CDU", "member"),
+             (2, "Tim Harms", "SPD", "member")])
         store._conn.executemany(
             "INSERT INTO council_wortbeitraege (ksinr, position, sprecher, partei, art, top, "
             "text, extracted_at) VALUES (?, ?, ?, 'SPD', 'rede', 'Ö 1', ?, datetime('now'))",
@@ -231,12 +231,12 @@ def test_personen_lexikon_rat_verwaltung_und_zeitlichkeit(tmp_path):
             store._conn.executemany(
                 "INSERT INTO council_attendance (ksinr, name, party, role, note) "
                 "VALUES (?, ?, ?, ?, ?)",
-                [(2, "Jens Lükermann", "FDP/Volt", "mitglied", None),
-                 (1, "Hans-Henning Adler", "DIE LINKE.", "mitglied", None),
-                 (2, "Jürgen Krogmann", "Verwaltung", "verwaltung", "Oberbürgermeister"),
-                 (2, "Jürgen Krogmann", "Verwaltung", "verwaltung", "Oberbürgermeister, bis TOP 8.2"),
-                 (1, "Gabriele Nießen", "Verwaltung", "verwaltung", "Stadtbaurätin"),
-                 (2, "Dagmar Sachse", "Verwaltung", "verwaltung", "Für Oberbürgermeister Krogmann")])
+                [(2, "Jens Lükermann", "FDP/Volt", "member", None),
+                 (1, "Hans-Henning Adler", "DIE LINKE.", "member", None),
+                 (2, "Jürgen Krogmann", "Verwaltung", "administration", "Oberbürgermeister"),
+                 (2, "Jürgen Krogmann", "Verwaltung", "administration", "Oberbürgermeister, bis TOP 8.2"),
+                 (1, "Gabriele Nießen", "Verwaltung", "administration", "Stadtbaurätin"),
+                 (2, "Dagmar Sachse", "Verwaltung", "administration", "Für Oberbürgermeister Krogmann")])
         lex = {p["slug"]: p for p in store.personen_lexikon()}
 
         lk = lex["jens-luekermann"]
@@ -263,7 +263,7 @@ def _bericht_personen(store, zeilen):
     with store._conn:
         store._conn.executemany(
             "INSERT INTO council_gesellschaft_personen (report_year, gesellschaft, "
-            "sort_order, gremium, name, position, vorsitz, note, "
+            "sort_order, gremium, name, position, chair_role, note, "
             "roles_assignable, fetched_at) "
             "VALUES (?, 'gsg', ?, 'Aufsichtsrat', ?, ?, NULL, NULL, 1, datetime('now'))",
             [(j, i, n, f) for i, (j, n, f) in enumerate(zeilen)])
@@ -322,18 +322,18 @@ def _varianten_store(tmp_path):
         zeilen = []
         # Thomas Klein: dreimal voll, einmal nur als „Klein" — eine Person.
         for ks in (1, 2, 3):
-            zeilen.append((ks, "Thomas Klein", "SPD", "mitglied"))
-        zeilen.append((2, "Klein", "SPD", "mitglied"))
+            zeilen.append((ks, "Thomas Klein", "SPD", "member"))
+        zeilen.append((2, "Klein", "SPD", "member"))
         # Britta Klein sitzt in der Verwaltung — anderer Namensraum, bleibt.
-        zeilen.append((3, "Britta Klein", "Verwaltung", "verwaltung"))
+        zeilen.append((3, "Britta Klein", "Verwaltung", "administration"))
         # Namensänderung: „Tim Harms" heißt zuletzt „Tim Ebbeke Harms".
-        zeilen += [(1, "Tim Harms", "Bündnis 90/Die Grünen", "mitglied"),
-                   (2, "Tim Harms", "Bündnis 90/Die Grünen", "mitglied"),
-                   (3, "Tim Ebbeke Harms", "Bündnis 90/Die Grünen", "mitglied")]
+        zeilen += [(1, "Tim Harms", "Bündnis 90/Die Grünen", "member"),
+                   (2, "Tim Harms", "Bündnis 90/Die Grünen", "member"),
+                   (3, "Tim Ebbeke Harms", "Bündnis 90/Die Grünen", "member")]
         # Zwei echte Namensvetterinnen derselben Fraktion: NICHT zusammenlegen.
-        zeilen += [(3, "Meike Bruns", "CDU", "mitglied"), (3, "Sarah Bruns", "CDU", "mitglied")]
+        zeilen += [(3, "Meike Bruns", "CDU", "member"), (3, "Sarah Bruns", "CDU", "member")]
         # Gleicher Nachname, verschiedene Fraktion: erst recht nicht.
-        zeilen += [(3, "Meyer", "SPD", "mitglied"), (3, "Jan-Martin Meyer", "DIE LINKE.", "mitglied")]
+        zeilen += [(3, "Meyer", "SPD", "member"), (3, "Jan-Martin Meyer", "DIE LINKE.", "member")]
         store._conn.executemany(
             "INSERT INTO council_attendance (ksinr, name, party, role, note) "
             "VALUES (?, ?, ?, ?, NULL)", zeilen)
@@ -381,8 +381,8 @@ def test_personen_lexikon_beteiligung_ueberschreibt_kein_ratsmandat(tmp_path):
             store._conn.executemany(
                 "INSERT INTO council_attendance (ksinr, name, party, role, note) "
                 "VALUES (1, ?, ?, ?, ?)",
-                [("Dr. Ruth Regina Drügemöller", "SPD", "mitglied", None),
-                 ("Jürgen Krogmann", "Verwaltung", "verwaltung", "Oberbürgermeister")])
+                [("Dr. Ruth Regina Drügemöller", "SPD", "member", None),
+                 ("Jürgen Krogmann", "Verwaltung", "administration", "Oberbürgermeister")])
         _bericht_personen(store, [
             (2024, "Ruth Drügemöller", "Ratsmitglied"),
             (2024, "Jürgen Krogmann", "Oberbürgermeister"),
@@ -417,14 +417,14 @@ def _mandats_store(tmp_path):
              (3, "Ausschuss für Stadtgrün, Umwelt und Klima", frisch)])
         store._conn.executemany(
             "INSERT INTO council_attendance (ksinr, name, party, role, note) VALUES (?, ?, ?, ?, ?)",
-            [(1, "Paul Behrens", "SPD", "mitglied", None),          # Plenum → Mandat
-             (2, "Paul Behrens", "SPD", "mitglied", None),
-             (2, "Ben Carlsson Skiba", "Fridays for Future Oldenburg", "mitglied",
+            [(1, "Paul Behrens", "SPD", "member", None),          # Plenum → Mandat
+             (2, "Paul Behrens", "SPD", "member", None),
+             (2, "Ben Carlsson Skiba", "Fridays for Future Oldenburg", "member",
               "Beratendes Mitglied"),                               # nur Ausschuss
-             (3, "Ben Carlsson Skiba", None, "mitglied", "beratend"),
-             (2, "Sabine Görg", "Behindertenbeirat", "mitglied", None),
-             (2, "Jörg Kowollik", "beratend", "mitglied", None),     # nur ein Rollenwort
-             (1, "Franz Norrenbrock", "WFO-LKR", "mitglied", None)])  # Gruppe im Plenum
+             (3, "Ben Carlsson Skiba", None, "member", "beratend"),
+             (2, "Sabine Görg", "Behindertenbeirat", "member", None),
+             (2, "Jörg Kowollik", "beratend", "member", None),     # nur ein Rollenwort
+             (1, "Franz Norrenbrock", "WFO-LKR", "member", None)])  # Gruppe im Plenum
     return store
 
 
@@ -522,7 +522,7 @@ def test_personen_lexikon_beteiligung_heilt_druckfehler_nicht_zu_neuer_person(tm
                 "VALUES (1, 'Rat', ?, '', '', datetime('now'))", (frisch,))
             store._conn.execute(
                 "INSERT INTO council_attendance (ksinr, name, party, role, note) "
-                "VALUES (1, 'Claudia Oeljeschläger', 'SPD', 'mitglied', NULL)")
+                "VALUES (1, 'Claudia Oeljeschläger', 'SPD', 'member', NULL)")
         _bericht_personen(store, [(2024, "Claudia Oeljeschleger", "Ratsmitglied")])
 
         slugs = {p["slug"] for p in store.personen_lexikon()}
@@ -618,8 +618,8 @@ def test_verwaltung_detail_nur_mit_erkanntem_amt(tmp_path):
                 "location, fetched_at) VALUES (1, 'Rat', ?, '', '', datetime('now'))", (frisch,))
             store._conn.executemany(
                 "INSERT INTO council_attendance (ksinr, name, party, role, note) VALUES (1, ?, ?, ?, ?)",
-                [("Jürgen Krogmann", "Verwaltung", "verwaltung", "Oberbürgermeister"),
-                 ("Dagmar Sachse", "Verwaltung", "verwaltung", "Für Oberbürgermeister Krogmann")])
+                [("Jürgen Krogmann", "Verwaltung", "administration", "Oberbürgermeister"),
+                 ("Dagmar Sachse", "Verwaltung", "administration", "Für Oberbürgermeister Krogmann")])
             store._conn.executemany(
                 "INSERT INTO council_wortbeitraege (ksinr, position, sprecher, partei, art, top, "
                 "text, extracted_at) VALUES (1, ?, ?, NULL, 'zusage', 'Ö 1', ?, datetime('now'))",
@@ -656,7 +656,7 @@ def test_lexikon_fuehrt_fraktions_phasen_nur_bei_wechslern(tmp_path):
                 [(1, frueher), (2, frisch)])
             store._conn.executemany(
                 "INSERT INTO council_attendance (ksinr, name, party, role, note) "
-                "VALUES (?, ?, ?, 'mitglied', NULL)",
+                "VALUES (?, ?, ?, 'member', NULL)",
                 [(1, "Vally Finke", "SPD"), (2, "Vally Finke", "Für Oldenburg"),
                  (1, "Paul Behrens", "SPD"), (2, "Paul Behrens", "SPD")])
         lex = {p["slug"]: p for p in store.personen_lexikon()}
@@ -687,7 +687,7 @@ def test_gruppen_label_wird_zur_partei_aufgeloest(tmp_path):
                 [(1, frueher), (2, frisch)])
             store._conn.executemany(
                 "INSERT INTO council_attendance (ksinr, name, party, role, note) "
-                "VALUES (?, ?, ?, 'mitglied', NULL)",
+                "VALUES (?, ?, ?, 'member', NULL)",
                 [(1, "Benno Schulz", "FDP"), (2, "Benno Schulz", "FDP/Volt"),
                  (2, "Dr. Gunnar Meister", "FDP/Volt"),         # nie einzeln geführt
                  (2, "Jens Lükermann", "FDP/Volt"),             # löst über die Stammdaten auf
@@ -732,7 +732,7 @@ def test_personen_seite_kopf_loest_gruppe_auf_zeitreihe_bleibt(tmp_path):
                 [(1, frueher), (2, frisch)])
             store._conn.executemany(
                 "INSERT INTO council_attendance (ksinr, name, party, role, note) "
-                "VALUES (?, ?, ?, 'mitglied', NULL)",
+                "VALUES (?, ?, ?, 'member', NULL)",
                 [(1, "Benno Schulz", "FDP"), (2, "Benno Schulz", "FDP/Volt"),
                  (1, "Paul Behrens", "SPD"), (2, "Paul Behrens", "SPD")])
         d = store.member_detail("benno-schulz")
@@ -770,9 +770,9 @@ def test_personen_lexikon_blocker_fuer_gaeste(tmp_path):
             store._conn.executemany(
                 "INSERT INTO council_attendance (ksinr, name, party, role, note) "
                 "VALUES (1, ?, ?, ?, NULL)",
-                [("Mara-Marciel Oltmanns", "NABU", "mitglied"),
-                 ("Rüdiger Oltmanns", "Wasserstraßen- und Schifffahrtsamt", "gast"),
-                 ("Herr Oltmanns", None, "gast")])
+                [("Mara-Marciel Oltmanns", "NABU", "member"),
+                 ("Rüdiger Oltmanns", "Wasserstraßen- und Schifffahrtsamt", "guest"),
+                 ("Herr Oltmanns", None, "guest")])
         lex = store.personen_lexikon()
         oltmanns = [p for p in lex if p["nachname"] == "oltmanns"]
         arten = sorted(p["art"] for p in oltmanns)

@@ -1015,8 +1015,8 @@ def test_haushalt_beteiligungen_liefert_texte_kennzahlen_und_herkunft(client):
     assert [p["name"] for p in personen] == ["Ruth Regina Drügemöller",
                                              "Ingrid Kruse"]
     assert personen[0]["gremium"] == "Betriebsausschuss"
-    assert personen[0]["vorsitz"] == "vorsitz"
-    assert personen[1]["vorsitz"] == "stellvertretung"
+    assert personen[0]["chair_role"] == "chair"
+    assert personen[1]["chair_role"] == "deputy"
     assert all(p["position"] == "Ratsmitglied" for p in personen)
     # Ohne Personenverzeichnis im Testbestand gibt es keinen Treffer — und
     # dann steht dort ausdrücklich nichts statt irgendwer.
@@ -4685,7 +4685,7 @@ def _seed_geteilter_beschluss(ksinr=5150, mit_vorgang=True) -> int:
                         4711 if mit_vorgang else None, None)
     cs._conn.execute(
         "INSERT INTO council_attendance (ksinr, name, party, role, note) VALUES (?, ?, ?, ?, ?)",
-        (ksinr, "Anke Lüdtke", "SPD", "mitglied", None))
+        (ksinr, "Anke Lüdtke", "SPD", "member", None))
     cs._conn.commit()
     did = cs._conn.execute(
         "SELECT id FROM council_decisions WHERE ksinr = ?", (ksinr,)).fetchone()[0]
@@ -4755,8 +4755,8 @@ def test_verwaltung_mit_erkanntem_amt_hat_eigenen_steckbrief(client):
     cs = CouncilStore(COUNCIL_DB)
     cs._conn.executemany(
         "INSERT INTO council_attendance (ksinr, name, party, role, note) VALUES (?, ?, ?, ?, ?)",
-        [(5153, "Jürgen Krogmann", "Verwaltung", "verwaltung", "Oberbürgermeister"),
-         (5153, "Dagmar Sachse", "Verwaltung", "verwaltung", "Für Oberbürgermeister Krogmann")])
+        [(5153, "Jürgen Krogmann", "Verwaltung", "administration", "Oberbürgermeister"),
+         (5153, "Dagmar Sachse", "Verwaltung", "administration", "Für Oberbürgermeister Krogmann")])
     cs._conn.commit()
     cs.close()
 

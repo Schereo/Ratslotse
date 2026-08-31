@@ -775,8 +775,8 @@ class Aufsichtsperson:
     #: Aus der zweiten Spalte — ``None``, wenn die Rechenprobe gerissen ist
     #: oder der Bericht für dieses Gremium keine Funktionsspalte führt.
     position: str | None
-    #: ``"vorsitz"`` | ``"stellvertretung"`` | ``None``.
-    vorsitz: str | None
+    #: ``"chair"`` | ``"deputy"`` | ``None``.
+    chair_role: str | None
     #: Amtszeit-Zusatz, wörtlich: „bis 30. Juni 2022".
     note: str | None
     #: Position in der Liste des Berichts, je Gesellschaft fortlaufend.
@@ -840,18 +840,18 @@ def _person_zerlegen(zeile: str, gremium: str, sort_order: int) -> Aufsichtspers
     # vor den Bindestrich. Das ist derselbe Schaden wie bei den Beträgen.
     zeile = re.sub(r"\s+-\s*(?=\w)", "-", " ".join(zeile.split()))
 
-    vorsitz: str | None = None
+    chair_role: str | None = None
     hinweise: list[str] = []
 
     def einordnen(teil: str) -> None:
-        nonlocal vorsitz
+        nonlocal chair_role
         teil = teil.strip(" ,;")
         if not teil:
             return
         if _STELLV.search(teil):
-            vorsitz = vorsitz or "stellvertretung"
+            chair_role = chair_role or "deputy"
         elif _VORSITZ.match(teil):
-            vorsitz = vorsitz or "vorsitz"
+            chair_role = chair_role or "chair"
         elif _ZEITRAUM.match(teil):
             hinweise.append(teil.strip("()"))
 
@@ -861,7 +861,7 @@ def _person_zerlegen(zeile: str, gremium: str, sort_order: int) -> Aufsichtspers
         einordnen(t)
     return Aufsichtsperson(
         gremium=gremium, name=" ".join(teile[0].split()), position=None,
-        vorsitz=vorsitz, note=", ".join(hinweise) or None,
+        chair_role=chair_role, note=", ".join(hinweise) or None,
         sort_order=sort_order)
 
 
@@ -1331,7 +1331,7 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
                     "report_year": year, "gesellschaft": g.key,
                     "sort_order": person.sort_order, "gremium": person.gremium,
                     "name": person.name, "position": person.position,
-                    "vorsitz": person.vorsitz, "note": person.note,
+                    "chair_role": person.chair_role, "note": person.note,
                     "roles_assignable": zuordenbar,
                     # Der Name selbst trägt keine Probe — er steht einmal im
                     # Bericht. Geprüft ist die **Zuordnung** des Amtes; wo sie

@@ -610,7 +610,7 @@ def test_aufsichtsorgane_paart_spalten_wenn_die_probe_haelt():
         "Benno Sönke Schulz", "Dr. Georg Rohe"]
     assert all(p.position == "Ratsmitglied" for p in personen)
     assert all(p.gremium == "Betriebsausschuss" for p in personen)
-    assert [p.vorsitz for p in personen[:3]] == ["vorsitz", "stellvertretung", None]
+    assert [p.chair_role for p in personen[:3]] == ["chair", "deputy", None]
     assert personen[3].note == "bis 17. Juni 2024"
     assert personen[4].note == "ab 17. Juni 2024"
     assert [p.sort_order for p in personen] == [0, 1, 2, 3, 4]
@@ -631,7 +631,7 @@ def test_aufsichtsorgane_ohne_probe_bleibt_jedes_amt_leer():
         "Klaus Raschke", "Dr. Sebastian Rohe", "Claudia Petra Küpker",
         "Dr. Alaa Alhamwi", "Ruth Regina Drügemöller", "Claudia Oeljeschleger",
         "Christine Wolff", "Jens Lükermann"]
-    assert personen[2].vorsitz == "stellvertretung"
+    assert personen[2].chair_role == "deputy"
     assert personen[2].note == "ab 28.02.2023"
 
 
@@ -668,7 +668,7 @@ def test_aufsichtsorgane_trennt_mehrere_gremien():
     # Die Reihenfolge läuft über beide Gremien durch — sie ist der Schlüssel.
     assert [p.sort_order for p in personen] == list(range(13))
     aufsichtsrat = [p for p in personen if p.gremium == "Aufsichtsrat"]
-    assert aufsichtsrat[4].vorsitz == "vorsitz"
+    assert aufsichtsrat[4].chair_role == "chair"
     assert aufsichtsrat[-1].position == "Vertreter Hochschule"
 
 

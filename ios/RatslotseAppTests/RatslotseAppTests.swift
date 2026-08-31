@@ -375,7 +375,7 @@ import Testing
         "raw_result": "mehrheitlich",
         "protocol_url": "https://example.test/protokoll.pdf"
       },
-      "attendance": [{"name":"Erika Beispiel","party":"SPD","role":"mitglied"}],
+      "attendance": [{"name":"Erika Beispiel","party":"SPD","role":"member"}],
       "entities": [{"slug":"haushalt-2026","name":"Haushalt 2026"}],
       "present_parties": [],
       "similar": [],

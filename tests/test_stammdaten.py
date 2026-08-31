@@ -154,7 +154,7 @@ def test_member_detail_faction_timeline(tmp_path):
         for (ksinr, _), p in zip(sessions, parties):
             store._conn.execute(
                 "INSERT INTO council_attendance (ksinr, name, party, role, note) "
-                "VALUES (?, 'Hans-Henning Adler', ?, 'mitglied', NULL)", (ksinr, p))
+                "VALUES (?, 'Hans-Henning Adler', ?, 'member', NULL)", (ksinr, p))
     detail = store.member_detail(store._person_slug("Hans-Henning Adler"))
     tl = detail["faction_timeline"]
     # Ausreißer (eine einzelne SPD-Sitzung) liegt zwischen zwei VERSCHIEDENEN
@@ -187,7 +187,7 @@ def test_member_party_is_latest_not_most_frequent(tmp_path):
         for (ksinr, _), p in zip(sessions, parties):
             store._conn.execute(
                 "INSERT INTO council_attendance (ksinr, name, party, role, note) "
-                "VALUES (?, 'Jens Lükermann', ?, 'mitglied', NULL)", (ksinr, p))
+                "VALUES (?, 'Jens Lükermann', ?, 'member', NULL)", (ksinr, p))
     [m] = store.list_members()
     assert m["party"] == "Volt"
     detail = store.member_detail(store._person_slug("Jens Lükermann"))
@@ -199,7 +199,7 @@ def test_member_party_is_latest_not_most_frequent(tmp_path):
             "VALUES (7, 'Rat', '2024-09-01', '18:00', '', '')")
         store._conn.execute(
             "INSERT INTO council_attendance (ksinr, name, party, role, note) "
-            "VALUES (7, 'Jens Lükermann', NULL, 'mitglied', NULL)")
+            "VALUES (7, 'Jens Lükermann', NULL, 'member', NULL)")
     [m] = store.list_members()
     assert m["party"] == "Volt"
 
@@ -239,12 +239,12 @@ def test_member_detail_groups_and_parteilos(tmp_path):
         for ksinr, p in zip((1, 2, 3, 4, 5), ("FDP/Volt", "FDP/Volt", "FDP/Volt", "Volt", "Volt")):
             store._conn.execute(
                 "INSERT INTO council_attendance (ksinr, name, party, role, note) "
-                "VALUES (?, 'Jens Lükermann', ?, 'mitglied', NULL)", (ksinr, p))
+                "VALUES (?, 'Jens Lükermann', ?, 'member', NULL)", (ksinr, p))
         # Finke: SPD → parteilos (leeres Label) → Gruppe Für Oldenburg.
         for ksinr, p in zip((1, 2, 3, 4, 5), ("SPD", "", "", "Für Oldenburg", "Für Oldenburg")):
             store._conn.execute(
                 "INSERT INTO council_attendance (ksinr, name, party, role, note) "
-                "VALUES (?, 'Vally Finke', ?, 'mitglied', NULL)", (ksinr, p))
+                "VALUES (?, 'Vally Finke', ?, 'member', NULL)", (ksinr, p))
 
     luek = store.member_detail(store._person_slug("Jens Lükermann"))
     assert luek["party"] == "Volt"  # aktuelle Zugehörigkeit — NICHT FDP
