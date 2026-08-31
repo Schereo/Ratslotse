@@ -62,8 +62,8 @@ def test_rate_batch_filters_and_signals(monkeypatch):
     seen = {}
     def fake(**kw):
         seen["user"] = kw["messages"][1]["content"]
-        return _fake_resp({"ratings": [{"id": 7, "score": 92, "grund": "Haushalt"},
-                                       {"id": 99, "score": 10, "grund": "halluziniert"}]})
+        return _fake_resp({"ratings": [{"id": 7, "score": 92, "reason": "Haushalt"},
+                                       {"id": 99, "score": 10, "reason": "halluziniert"}]})
     monkeypatch.setattr(impact.llm, "chat_complete", fake)
     assert impact.rate_batch(decisions) == [(7, 92, "Haushalt")]
     # Struktur-Signale stehen im Prompt (Kalibrier-Anforderung aus RL-U16).

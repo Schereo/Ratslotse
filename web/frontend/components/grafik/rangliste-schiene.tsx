@@ -33,14 +33,14 @@ export type RanglisteZeile = {
 };
 
 export function RanglisteSchiene({
-  zeilen, schiene = "null-bis-max", einheit, nachkomma = 0, mittelmarke, beleg,
+  zeilen, schiene = "null-bis-max", unit, nachkomma = 0, mittelmarke, beleg,
 }: {
   zeilen: RanglisteZeile[];
   /** `"null-bis-max"` (Default) oder ein festes Paar `[min, max]` — die
    *  Null-Basis ist die Voreinstellung, kein Sonderfall. */
   schiene?: "null-bis-max" | [number, number];
   /** Steht hinter jedem Wert: „%", „€", „Mio. €". */
-  einheit: string;
+  unit: string;
   nachkomma?: number;
   /** Eine beschriftete Marke auf der Schiene, z. B. der Mittelwert. */
   mittelmarke?: { wert: number; label: string };
@@ -84,7 +84,7 @@ export function RanglisteSchiene({
       "whitespace-nowrap text-right font-mono text-[12px] tabular-nums",
       z.hervorgehoben ? "font-bold text-foreground" : "text-muted-foreground",
     )}>
-      {deZahl(z.wert, nachkomma)}&nbsp;{einheit}
+      {deZahl(z.wert, nachkomma)}&nbsp;{unit}
     </span>
   );
 
@@ -132,7 +132,7 @@ export function RanglisteSchiene({
           {mittelmarke && (
             <span className="inline-flex items-center gap-1.5">
               <span aria-hidden="true" className="h-2.5 w-px bg-foreground/50" />
-              {mittelmarke.label}: {deZahl(mittelmarke.wert, nachkomma)}&nbsp;{einheit}
+              {mittelmarke.label}: {deZahl(mittelmarke.wert, nachkomma)}&nbsp;{unit}
             </span>
           )}
           {beleg}

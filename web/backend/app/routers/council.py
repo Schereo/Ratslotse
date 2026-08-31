@@ -1112,7 +1112,7 @@ def haushalt_uebersicht(
         # Die Haushaltssatzung — der Rahmen um den Plan (Kreditermächtigung,
         # Dispo-Höchstbetrag, Verpflichtungsermächtigungen, Finanzhaushalt).
         #
-        # `fassung` GEHÖRT AN JEDE ANZEIGE. Im Ratsinformationssystem liegen
+        # `version` GEHÖRT AN JEDE ANZEIGE. Im Ratsinformationssystem liegen
         # ausschließlich Verwaltungsentwürfe; die beschlossene Satzung
         # erscheint im Amtsblatt. Wer das Feld wegblendet, macht aus einem
         # Vorschlag der Verwaltung einen Ratsbeschluss.
@@ -1147,7 +1147,7 @@ def haushalt_uebersicht(
         # 2021 einmal 49,05 % hieß.
         #
         # `formeln` sind die von der Stadt GEDRUCKTEN Rechenwege, im Wortlaut.
-        # Sie tragen `fassung`: Wechselt die Nummer zwischen zwei Berichten,
+        # Sie tragen `version`: Wechselt die Nummer zwischen zwei Berichten,
         # darf über die Stelle keine Linie laufen.
         #
         # `funde` sind die Unterschiede zwischen zwei Berichten, eingeteilt in
@@ -1184,7 +1184,7 @@ def haushalt_uebersicht(
             "years": _spenden_jahre(store.get_spenden()),
             "vorlagen": store.get_spenden(),
             "ohne_beleg": store.get_spenden_verworfen(),
-            "schwellen": [{"gremium": g, "ab": unten, "bis": oben}
+            "schwellen": [{"committee": g, "ab": unten, "bis": oben}
                           for g, unten, oben in spenden_mod.SCHWELLEN],
         },
         # Die beiden Steuertabellen des Jahrbuchs (council/steuertabellen.py).
@@ -1301,11 +1301,11 @@ def _kennzahlen(store: CouncilStore) -> dict:
 
     fassungen: dict[tuple[str, int], dict] = {}
     for f in store.get_kennzahl_formeln():
-        schluessel = (f["indicator"], f["fassung"])
+        schluessel = (f["indicator"], f["version"])
         eintrag = fassungen.get(schluessel)
         if eintrag is None:
             fassungen[schluessel] = {
-                "indicator": f["indicator"], "fassung": f["fassung"],
+                "indicator": f["indicator"], "version": f["version"],
                 "heading": f["heading"], "formula": f["formula"],
                 "von_bericht": f["report_year"], "bis_bericht": f["report_year"],
                 "herkunft_id": f["herkunft_id"]}
@@ -1320,13 +1320,13 @@ def _kennzahlen(store: CouncilStore) -> dict:
 
     return {
         "label": {k.key: k.label for k in kennzahlen_mod.KENNZAHLEN},
-        "einheit": {k.key: k.einheit for k in kennzahlen_mod.KENNZAHLEN},
+        "unit": {k.key: k.unit for k in kennzahlen_mod.KENNZAHLEN},
         "series": [{"indicator": z["indicator"], "year": z["year"], "wert": z["wert"],
-                   "stellen": z["stellen"], "fassung": z["fassung"],
+                   "stellen": z["stellen"], "version": z["version"],
                    "report_year": z["report_year"], "herkunft_id": z["herkunft_id"]}
                   for z in kennzahlen_mod.neueste(staende)],
         "formeln": sorted(fassungen.values(),
-                          key=lambda f: (f["indicator"], f["fassung"])),
+                          key=lambda f: (f["indicator"], f["version"])),
         "funde": funde,
     }
 
@@ -1403,9 +1403,9 @@ def _spenden_jahre(vorlagen: list[dict]) -> list[dict]:
                                          "rat": 0, "verwaltungsausschuss": 0})
         e["amount"] += v["amount"]
         e["vorlagen"] += 1
-        if v.get("gremium") == "Rat":
+        if v.get("committee") == "Rat":
             e["rat"] += 1
-        elif v.get("gremium") == "Verwaltungsausschuss":
+        elif v.get("committee") == "Verwaltungsausschuss":
             e["verwaltungsausschuss"] += 1
     for e in years.values():
         e["amount"] = round(e["amount"], 2)
@@ -1847,7 +1847,7 @@ class QaFeedbackBody(BaseModel):
     frage: str = Field(min_length=1, max_length=300)
     answer_excerpt: str | None = Field(default=None, max_length=500)
     rating: str = Field(pattern="^(up|down)$")
-    grund: str | None = Field(default=None, max_length=500)
+    reason: str | None = Field(default=None, max_length=500)
 
 
 @router.post("/qa-feedback", status_code=status.HTTP_201_CREATED)
@@ -1863,7 +1863,7 @@ def qa_feedback(
     Rate-Limit hält Skript-Flutung von Tabelle und Backups fern."""
     qa_feedback_limiter.check(request)
     store.save_qa_feedback(body.frage, body.answer_excerpt, body.rating,
-                           body.grund, user_id=(user or {}).get("id"))
+                           body.reason, user_id=(user or {}).get("id"))
     return {"ok": True}
 
 
@@ -2104,7 +2104,7 @@ def _grafik_pruefen(g: dict | None) -> dict | None:
         mehr = None
     return {"art": str(g.get("art") or "")[:30],
             "titel": str(g.get("titel") or "")[:120],
-            "einheit": str(g.get("einheit") or "")[:20],
+            "unit": str(g.get("unit") or "")[:20],
             "nachkomma": max(0, min(int(g.get("nachkomma") or 0), 3)),
             "series": series,
             "note": (str(g["note"])[:500] if g.get("note") else None),
@@ -2402,7 +2402,7 @@ def _stations_signature(rows: list[dict]) -> str:
     nachgetragen wurde. Genau das ist die Nachricht, auf die man wartet.
     """
     return json.dumps(
-        [f"{r.get('datum') or ''}|{r.get('gremium') or ''}|{r.get('result') or ''}" for r in rows],
+        [f"{r.get('datum') or ''}|{r.get('committee') or ''}|{r.get('result') or ''}" for r in rows],
         ensure_ascii=False,
     )
 
@@ -2714,7 +2714,7 @@ def person(slug: str, store: CouncilStore = Depends(get_council_store)) -> Perso
 
 
 @router.get("/person/{slug}/wortbeitraege")
-def person_wortbeitraege(slug: str, gremium: str | None = None,
+def person_wortbeitraege(slug: str, committee: str | None = None,
                          offset: int = Query(default=0, ge=0),
                          limit: int = Query(default=20, ge=1, le=100),
                          store: CouncilStore = Depends(get_council_store)) -> Wortbeitraege:
@@ -2727,7 +2727,7 @@ def person_wortbeitraege(slug: str, gremium: str | None = None,
     name = store.member_name(slug) or store.verwaltung_name(slug)
     if not name:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Person nicht gefunden.")
-    return store.wortbeitraege_person(name, gremium=gremium, offset=offset, limit=limit)
+    return store.wortbeitraege_person(name, committee=committee, offset=offset, limit=limit)
 
 
 _EMPTY_GOAL = {"voran": 0, "bremst": 0, "neutral": 0, "total": 0}

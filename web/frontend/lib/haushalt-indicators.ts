@@ -64,16 +64,16 @@ export const GRUPPEN: { titel: string; question: string; keys: string[] }[] = [
  *  Die Nachkommastellen kommen aus den Daten (`stellen`), nicht aus dieser
  *  Datei: 2019 stand „48%", ab 2021 „53,15%". Wer hier zwei Stellen erzwingt,
  *  macht aus einer gerundeten Angabe eine genaue. */
-export function schreibe(einheit: string, wert: number, stellen = 2): string {
-  if (einheit === "percent") return `${deZahl(wert, stellen)} %`;
-  if (einheit === "anzahl") return deZahl(wert, 0);
+export function schreibe(unit: string, wert: number, stellen = 2): string {
+  if (unit === "percent") return `${deZahl(wert, stellen)} %`;
+  if (unit === "anzahl") return deZahl(wert, 0);
   return `${deZahl(wert, stellen)} €`;
 }
 
 /** Das Format für die Ableseleiste einer Kennzahl — feste Stellen, weil eine
  *  Achse sonst zwischen den Jahren die Genauigkeit wechselte. */
-export function formatVon(einheit: string): (wert: number) => string {
-  return (wert) => schreibe(einheit, wert, einheit === "anzahl" ? 0 : 2);
+export function formatVon(unit: string): (wert: number) => string {
+  return (wert) => schreibe(unit, wert, unit === "anzahl" ? 0 : 2);
 }
 
 /** Das Format für die Vorjahresdifferenz.
@@ -82,14 +82,14 @@ export function formatVon(einheit: string): (wert: number) => string {
  *  Von 54,62 % auf 50,11 % sind 4,51 Prozentpunkte — der relative Rückgang
  *  wäre 8,3 %. Beides „−4,51 %" zu schreiben, wären zwei Zahlen unter einer
  *  Schreibweise. Bei Euro und Personen ändert sich nichts. */
-export function differenzFormatVon(einheit: string): (wert: number) => string {
-  if (einheit !== "percent") return formatVon(einheit);
+export function differenzFormatVon(unit: string): (wert: number) => string {
+  if (unit !== "percent") return formatVon(unit);
   return (wert) => `${deZahl(wert, 2)} %-Punkte`;
 }
 
 /** Die Einheit für die Kopfzeile der Grafik. */
-export function einheitWort(einheit: string): string {
-  return einheit === "percent" ? "%" : einheit === "anzahl" ? "Personen" : "€";
+export function einheitWort(unit: string): string {
+  return unit === "percent" ? "%" : unit === "anzahl" ? "Personen" : "€";
 }
 
 /** Alle Punkte einer Kennzahl, nach Jahr. */
@@ -119,12 +119,12 @@ export function reiheVon(daten: Kennzahlen, key: string): {
     return { series: punkte.map((p) => ({ year: p.year, wert: p.wert })), anmerkung: null };
   }
 
-  const einheit = daten.einheit[key] ?? "eur";
-  const juengste = Math.max(...punkte.map((p) => p.fassung ?? 0));
-  const erstesNeues = punkte.find((p) => (p.fassung ?? 0) === juengste)?.year ?? null;
+  const unit = daten.unit[key] ?? "eur";
+  const juengste = Math.max(...punkte.map((p) => p.version ?? 0));
+  const erstesNeues = punkte.find((p) => (p.version ?? 0) === juengste)?.year ?? null;
   const text = `Ab dem Rechenschaftsbericht ${wechsel.neu_bericht} rechnet die `
     + `Stadt anders. Für ${wechsel.year} ergibt der alte Weg `
-    + `${schreibe(einheit, wechsel.alt)}, der neue ${schreibe(einheit, wechsel.neu)} `
+    + `${schreibe(unit, wechsel.alt)}, der neue ${schreibe(unit, wechsel.neu)} `
     + `— deshalb läuft die Linie hier nicht durch.`;
   return {
     series: punkte.map((p) => ({

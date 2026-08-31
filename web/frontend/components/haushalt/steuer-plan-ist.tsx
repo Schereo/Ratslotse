@@ -92,7 +92,7 @@ export function SteuerPlanIst({ zeilen, abgrenzung, beleg }: {
       <div className="mt-3">
         <Hantel
           zeilen={hantelZeilen}
-          einheit="Mio. €"
+          unit="Mio. €"
           /* Jahres-Zeilen wollen ihre Chronologie, nicht die Rangfolge der
              Abweichung: Ob 2024 weiter danebenlag als 2023, liest man an der
              Länge — dass 2024 auf 2023 folgt, muss die Reihenfolge tragen. */

@@ -132,7 +132,7 @@ function normalisiere(series: JahrPunkt[], treppe = false): Stelle[] {
 }
 
 export function Zeitreihe({
-  series, einheit, ariaTitel, titel, nachkomma = 1, format, zweitreihe,
+  series, unit, ariaTitel, titel, nachkomma = 1, format, zweitreihe,
   annotationen, spruenge = false, vorjahresdifferenz = false, differenzFormat,
   tabelle = false, leisteHaftet = true,
   umschalter, beleg, nullbasis = true, note, treppe = false, className,
@@ -140,7 +140,7 @@ export function Zeitreihe({
   /** Punkte UND Lücken in einer Liste (Daten-Vertrag GB-00). */
   series: JahrPunkt[];
   /** Steht in der Ableseleiste und der Kopf-Zeile, z. B. „Mio. €". */
-  einheit: string;
+  unit: string;
   /** Der Satz für die Vorlesehilfe — Pflicht, eine Grafik ohne Namen ist
    *  für den Screenreader ein leeres Rechteck. */
   ariaTitel: string;
@@ -458,8 +458,8 @@ export function Zeitreihe({
     const zweit = zweitNach.get(s.year);
     const werteZeile: AbleseWert[] =
       s.art === "wert"
-        ? [{ label: einheit, wert: fmt(s.punkt.wert), farbe: TON }]
-        : [{ label: einheit, wert: "—", signal: true }];
+        ? [{ label: unit, wert: fmt(s.punkt.wert), farbe: TON }]
+        : [{ label: unit, wert: "—", signal: true }];
     // Die Veränderung zum Vorjahr — nur wenn beide Jahre einen Wert haben
     // und wirklich benachbart sind.
     const vorher = i > 0 ? stellenListe[i - 1] : null;
@@ -482,7 +482,7 @@ export function Zeitreihe({
         farbe: TON_ZWEIT,
       });
     }
-    const grund = s.art === "luecke" ? s.punkt.fehlt : s.art === "unerklaert" ? "keine Angabe" : null;
+    const reason = s.art === "luecke" ? s.punkt.fehlt : s.art === "unerklaert" ? "keine Angabe" : null;
     const anno = annotationNach.get(s.year);
     return {
       titel: String(s.year) + (anno ? " ⓘ" : ""),
@@ -490,7 +490,7 @@ export function Zeitreihe({
       anmerkung: anno?.text,
       vorlesen: [
         `${s.year}:`,
-        s.art === "wert" ? `${fmt(s.punkt.wert)} ${einheit}.` : `keine Zahl — ${grund}.`,
+        s.art === "wert" ? `${fmt(s.punkt.wert)} ${unit}.` : `keine Zahl — ${reason}.`,
         zweitreihe && zweit?.art === "wert"
           ? `${zweitreihe.label} ${fmtZweit((zweit.punkt as JahrWert).wert)}.`
           : "",
@@ -502,7 +502,7 @@ export function Zeitreihe({
   const beschreibung = [
     `${ariaTitel}, ${von} bis ${bis}.`,
     werte.map((s) => `${s.year}: ${fmt((s.punkt as JahrWert).wert)}`).join(", "),
-    `${einheit}.`,
+    `${unit}.`,
     luecken.length
       ? `Ohne Zahl: ${luecken.map((s) =>
           `${s.year} (${s.art === "luecke" ? s.punkt.fehlt : "keine Angabe"})`).join(", ")}.`
@@ -549,7 +549,7 @@ export function Zeitreihe({
             {titel}
           </p>
           <span className="font-mono text-[10px] uppercase text-muted-foreground">
-            {von}–{bis} · {werte.length} Werte · {einheit}
+            {von}–{bis} · {werte.length} Werte · {unit}
           </span>
         </div>
       )}
@@ -721,7 +721,7 @@ export function Zeitreihe({
           Er wirbt für die einzige Stelle, an der der Anmerkungssatz steht —
           eine Seite, die ihn wegformuliert, versteckte ihre Annotationen. */}
       <Ableseleiste haftet={leisteHaftet} className="mt-2" stelle={ableseStellen[ablesen.aktiv]} steuerung={ablesen}
-        note={(note ?? `${einheit} · Jahr überfahren, antippen oder mit den Pfeiltasten wechseln.`)
+        note={(note ?? `${unit} · Jahr überfahren, antippen oder mit den Pfeiltasten wechseln.`)
           + ((annotationen ?? []).length ? " ⓘ-Jahre tragen eine Anmerkung." : "")} />
 
       {/* Lücken beschriftet die GRAFIK (GB-00) — nie einklappbar. */}
@@ -729,7 +729,7 @@ export function Zeitreihe({
         <div className="mt-2 flex flex-col gap-1.5">
           {luecken.map((s) => (
             <LueckenFeld key={s.year} label={String(s.year)}
-              grund={s.art === "luecke" ? s.punkt.fehlt : "in der Reihe ohne Wert und ohne Grund"}
+              reason={s.art === "luecke" ? s.punkt.fehlt : "in der Reihe ohne Wert und ohne Grund"}
               datum={s.art === "luecke" ? s.punkt.datum : undefined} />
           ))}
         </div>

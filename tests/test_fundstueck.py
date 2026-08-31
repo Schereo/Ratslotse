@@ -154,9 +154,9 @@ def test_rate_batch_filters_hallucinated_ids(monkeypatch):
          "session_date": "2024-01-01", "outcome": "angenommen"},
     ]
     payload = {"ratings": [
-        {"id": 1, "score": 77, "grund": "gut"},
-        {"id": 999, "score": 50, "grund": "halluziniert"},
-        {"id": 2, "score": 130, "grund": "out of range"},
+        {"id": 1, "score": 77, "reason": "gut"},
+        {"id": 999, "score": 50, "reason": "halluziniert"},
+        {"id": 2, "score": 130, "reason": "out of range"},
     ]}
     monkeypatch.setattr(interest.llm, "chat_complete", lambda **kw: _fake_resp(payload))
     assert interest.rate_batch(decisions) == [(1, 77, "gut")]

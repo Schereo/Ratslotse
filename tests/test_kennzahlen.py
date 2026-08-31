@@ -247,9 +247,9 @@ def test_ueberlappung_unterscheidet_korrektur_und_definitionswechsel():
     Wechsel im Bestand gar keine sind: „Gesamtschulden" wurde „Schulden",
     und die Werte blieben auf den Cent gleich.
     """
-    def zelle(bericht, wert, fassung=1, indicator="steuerquote"):
+    def zelle(bericht, wert, version=1, indicator="steuerquote"):
         return {"indicator": indicator, "year": 2021, "report_year": bericht,
-                "wert": wert, "stellen": 2, "fassung": fassung}
+                "wert": wert, "stellen": 2, "version": version}
 
     bestaetigt, funde = kz.ueberlappungsprobe([
         zelle(2021, 45.90), zelle(2022, 49.05), zelle(2023, 45.92),

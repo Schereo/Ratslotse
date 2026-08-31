@@ -65,7 +65,7 @@ def test_main_findet_offene_einrichtung(db):
     result = mod.main()
     assert result["kandidaten"] == 1
     assert result["gesendet"] == 0
-    assert result["grund"] == "kein_mailversand"
+    assert result["reason"] == "kein_mailversand"
 
     # Wichtig: ohne Versand darf niemand als „erinnert" markiert werden,
     # sonst verlöre man den Kandidaten stillschweigend.

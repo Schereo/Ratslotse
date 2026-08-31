@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 
 /** Künftige Beratungsstation einer zitierten Vorlage (Sitzungskalender). */
 export type Planung = {
-  kvonr: number; datum: string | null; gremium: string | null;
+  kvonr: number; datum: string | null; committee: string | null;
   template_number: string | null; vorlage_titel: string | null;
 };
 
@@ -337,7 +337,7 @@ export function WieEsWeitergeht({ planungen }: { planungen: Planung[] }) {
                 {p.vorlage_titel || p.template_number || "Vorlage"}
               </p>
               <p className="mt-0.5 font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
-                {p.gremium}{p.datum ? ` · ${fmtDatum(p.datum)}` : ""}
+                {p.committee}{p.datum ? ` · ${fmtDatum(p.datum)}` : ""}
               </p>
             </div>
           </div>

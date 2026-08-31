@@ -350,10 +350,10 @@ function Fundstelle({ ziel }: { ziel: Belegziel }) {
 function Vorgang({ ziel }: { ziel: Belegziel }) {
   const b = ziel.dokument.official_text;
   if (!b || !b.datum) return null;
-  const gremium = b.gremium ? gremiumKurz(b.gremium) : "Der Rat";
+  const committee = b.committee ? gremiumKurz(b.committee) : "Der Rat";
   return (
     <span className="mt-1 block text-[11px] leading-relaxed text-foreground/80">
-      {gremium} hat das am {datumLang(b.datum)} {vorgangVerb(b.outcome)}
+      {committee} hat das am {datumLang(b.datum)} {vorgangVerb(b.outcome)}
       {b.template_number && (
         <span className="text-muted-foreground"> · Vorlage {b.template_number}</span>
       )}

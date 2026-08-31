@@ -219,12 +219,12 @@ def probe_komponenten(budget_year: KfaZuweisungen) -> dict:
                  w.get("zuweisungen_kreisaufgaben"), w.get(UEBERTRAGEN)]
         if any(t is None for t in teile) or w.get("nettobetrag") is None:
             abweichungen.append({"schluessel": key, "city": w.get("city"),
-                                 "grund": "Komponente fehlt"})
+                                 "reason": "Komponente fehlt"})
             continue
         summe = sum(teile) - (w.get("finanzausgleichsumlage") or 0)
         if abs(summe - w["nettobetrag"]) > 1:
             abweichungen.append({"schluessel": key, "city": w.get("city"),
-                                 "grund": f"{summe:.0f} statt {w['nettobetrag']:.0f} T€"})
+                                 "reason": f"{summe:.0f} statt {w['nettobetrag']:.0f} T€"})
     n = len(budget_year.staedte)
     return {"geprueft": n, "abweichungen": abweichungen, "ok": not abweichungen,
             "result": (f"{n - len(abweichungen)} von {n} Städten: "
@@ -280,5 +280,5 @@ def zeilen_finanzausgleich(budget_year: KfaZuweisungen) -> list[dict]:
                 continue
             aus.append({"year": budget_year.year, "schluessel": key,
                         "city": sv.KREISFREIE_STAEDTE.get(key, w.get("city", "")),
-                        "indicator": name, "wert": float(wert), "einheit": "teur"})
+                        "indicator": name, "wert": float(wert), "unit": "teur"})
     return aus

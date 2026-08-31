@@ -43,7 +43,7 @@ export type Gesellschaft = {
 export type Aufsichtsperson = {
   company: string;
   /** Wie das Organ im Bericht heißt — aus der Kopfzeile der Liste. */
-  gremium: string | null;
+  committee: string | null;
   name: string;
   position: string | null;
   chair_role: "chair" | "deputy" | null;
@@ -88,7 +88,7 @@ export type Kennzahl = {
   indicator: "jahresergebnis" | "bilanzsumme" | "eigenkapitalquote";
   year: number;
   wert: number;
-  einheit: "eur" | "percent";
+  unit: "eur" | "percent";
   report_year: number;
   /** In wie vielen Berichten dieser Wert übereinstimmend steht. */
   n_reports: number;
@@ -252,7 +252,7 @@ export function aufsichtspersonen(daten: BeteiligungsDaten | null,
  *  Nennen mehrere Zeilen verschiedene Organe, gewinnt keines — dann steht
  *  die neutrale Überschrift des Abschnitts. */
 export function gremiumName(personen: Aufsichtsperson[]): string | null {
-  const namen = new Set(personen.map((p) => p.gremium).filter(Boolean));
+  const namen = new Set(personen.map((p) => p.committee).filter(Boolean));
   return namen.size === 1 ? ([...namen][0] as string) : null;
 }
 
@@ -373,7 +373,7 @@ export function percent(wert: number): string {
 }
 
 export function wertText(k: Kennzahl): string {
-  return k.einheit === "percent" ? percent(k.wert) : eur(k.wert);
+  return k.unit === "percent" ? percent(k.wert) : eur(k.wert);
 }
 
 /** Die Gesellschaften, sortiert wie im Bericht (Eigenbetriebe, Anstalten,

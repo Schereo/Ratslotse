@@ -75,7 +75,7 @@ def main() -> int:
                   f"{j['vorlagen']:>2} Vorlagen "
                   f"(Rat {j['rat']}, VA {j['verwaltungsausschuss']})")
         for v in verworfen:
-            print(f"  ohne Beleg: {v['template_number']} — {v['grund']}", file=sys.stderr)
+            print(f"  ohne Beleg: {v['template_number']} — {v['reason']}", file=sys.stderr)
 
         if args.trockenlauf:
             print("Trockenlauf — nichts gespeichert.")

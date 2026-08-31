@@ -47,7 +47,7 @@ export type Ratsvorgang = {
   outcome: string | null;
   vote: string | null;
   template_number: string | null;
-  gremium: string | null;
+  committee: string | null;
   datum: string | null;
 };
 

@@ -66,5 +66,5 @@ def rate_batch(decisions: list[dict]) -> list[tuple[int, int, str]]:
         except (TypeError, ValueError):
             continue
         if did in valid_ids and 0 <= score <= 100:
-            out.append((did, score, str(r.get("grund") or "").strip()[:300]))
+            out.append((did, score, str(r.get("reason") or "").strip()[:300]))
     return out

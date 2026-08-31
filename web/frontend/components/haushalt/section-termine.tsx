@@ -90,7 +90,7 @@ export function TermineAbschnitt({ onBestand }: {
    *  Zeitstrahl (H5-02). `null`, wenn keiner im Kalender steht: Die Bühne
    *  erfindet dann keinen. */
   onBestand?: (b: {
-    naechster: { datum: string; gremium: string } | null;
+    naechster: { datum: string; committee: string } | null;
     /** Die vier Phasen des jüngsten Haushaltswegs, für den Phasen-Strahl der
      *  Bühne (Tim, 26.08.: „der Zeitstrahl sollte wenigstens anzeigen, wo wir
      *  uns befinden, welche Phasen es gerade gibt"). Aus derselben Runde, die
@@ -142,7 +142,7 @@ export function TermineAbschnitt({ onBestand }: {
     }));
     onBestand({
       naechster: kommend[0]
-        ? { datum: kommend[0].datum, gremium: kommend[0].gremium } : null,
+        ? { datum: kommend[0].datum, committee: kommend[0].committee } : null,
       phasen,
       year: r.year,
     });
@@ -192,7 +192,7 @@ export function TermineAbschnitt({ onBestand }: {
     });
   }
   const ankerEntscheidung = entscheidung(anker);
-  if (ankerEntscheidung && ankerEntscheidung.gremium === "Rat") {
+  if (ankerEntscheidung && ankerEntscheidung.committee === "Rat") {
     stationen.push({
       label: "Ratsbeschluss",
       von: ankerEntscheidung.datum,
@@ -422,7 +422,7 @@ function Weg({ runde }: { runde: WegRunde }) {
         <StationsZeile
           key={`${s.ksinr}-${i}`}
           station={s}
-          role={s.gremium === "Rat"
+          role={s.committee === "Rat"
             ? (s === letzte ? "Entscheidung im Rat" : "Im Rat aufgerufen")
             : "Vorberatung"}
         >

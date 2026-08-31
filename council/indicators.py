@@ -101,7 +101,7 @@ class Kennzahl:
 
     key: str
     label: str
-    einheit: str          # "prozent" | "eur" | "anzahl"
+    unit: str          # "percent" | "eur" | "count"
     muster: str
 
     def passt(self, beschriftung: str) -> bool:
@@ -229,12 +229,12 @@ def parse_kennzahlen(text: str, report_year: int) -> tuple[list[dict], list[str]
                 # Das Prozentzeichen ist ein zweites, unabhängiges Signal für
                 # die Einheit — steht es an einer Euro-Kennzahl, stimmt die
                 # Spaltenzuordnung nicht.
-                if percent != (treffer.einheit == "percent"):
+                if percent != (treffer.unit == "percent"):
                     unbekannt.append(f"{treffer.key}: Einheit passt nicht zum Wert {wert}")
                     break
                 zeilen.append({"report_year": report_year, "indicator": treffer.key,
                                "label": treffer.label, "year": year, "wert": wert,
-                               "einheit": treffer.einheit, "stellen": stellen})
+                               "unit": treffer.unit, "stellen": stellen})
         beschriftung.clear()
         werte.clear()
 
@@ -347,7 +347,7 @@ def stempeln(zeilen: list[dict], formeln: list[dict]) -> list[dict]:
     """
     nummern = fassungen(formeln)
     for z in zeilen:
-        z["fassung"] = nummern.get((z["indicator"], z["report_year"]))
+        z["version"] = nummern.get((z["indicator"], z["report_year"]))
     return zeilen
 
 
@@ -405,8 +405,8 @@ def ueberlappungsprobe(zeilen: list[dict]) -> tuple[int, list[dict]]:
         for aelter, juenger in zip(gruppe, gruppe[1:]):
             diff = juenger["wert"] - aelter["wert"]
             gleich = abs(diff) <= toleranz(aelter["stellen"], juenger["stellen"])
-            umgestellt = (aelter.get("fassung") and juenger.get("fassung")
-                          and aelter["fassung"] != juenger["fassung"])
+            umgestellt = (aelter.get("version") and juenger.get("version")
+                          and aelter["version"] != juenger["version"])
             if gleich and not umgestellt:
                 bestaetigt += 1
                 continue

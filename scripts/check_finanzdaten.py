@@ -171,18 +171,18 @@ def _hinweis_text(zeilen: list[dict], gesehen: dict[str, set[int]],
         faellig = q.faellig_ab(budget_year)
         monat = finanzquellen.MONATE[q.erwarteter_monat]
         if budget_year in gesehen.get(z["key"], set()):
-            grund = ("<b>Dokument liegt vor, wird aber nicht übernommen</b> — "
+            reason = ("<b>Dokument liegt vor, wird aber nicht übernommen</b> — "
                      "Erkennung oder Parser prüfen")
         elif q.herkunft == "ris":
-            grund = "kein passendes Dokument in council_anlagen"
+            reason = "kein passendes Dokument in council_anlagen"
         else:
             # Was zu tun ist, weiß die Schicht selbst — hier stand bis 08/2026
             # ein fester Satz über oldenburg.de, und der schickte den Leser
             # bei der Landesstatistik zur falschen Stelle.
-            grund = q.nachschub or "wird von Hand eingelesen"
+            reason = q.nachschub or "wird von Hand eingelesen"
         teile.append(
             f"• <b>{html.escape(q.label)} {budget_year}</b> — üblich im {monat} "
-            f"{faellig.year}, seit {(heute - faellig).days} Tagen offen: {grund}")
+            f"{faellig.year}, seit {(heute - faellig).days} Tagen offen: {reason}")
 
     if rest:
         if teile:

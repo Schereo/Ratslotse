@@ -171,9 +171,9 @@ def parse_bestand(text: str, year: int) -> dict | None:
             if vor:
                 gefunden["prior_year_year"] = year - 1
                 gefunden["prior_year_stock"] = nach_jahr[year - 1]
-            grund = _GRUND.search(t[satz.start():satz.start() + 900])
-            if grund:
-                gefunden["grund"] = _glatt(grund.group(1)).strip()
+            reason = _GRUND.search(t[satz.start():satz.start() + 900])
+            if reason:
+                gefunden["reason"] = _glatt(reason.group(1)).strip()
             return gefunden
 
     # Weg 2: die frühe Übersichtstabelle (2019/2020) — auf den Cent.
@@ -231,10 +231,10 @@ def series(gefundene: list[dict]) -> list[dict]:
 
 def klinikum_amount(gefunden: dict) -> float | None:
     """Die Zahl aus dem Grund-Satz, wo er eine nennt (2022: 135,9 Mio. €)."""
-    grund = gefunden.get("grund")
-    if not grund:
+    reason = gefunden.get("reason")
+    if not reason:
         return None
-    treffer = _KLINIKUM.search(grund)
+    treffer = _KLINIKUM.search(reason)
     return float(treffer.group(1).replace(",", ".")) * 1e6 if treffer else None
 
 

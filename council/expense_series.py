@@ -458,7 +458,7 @@ def lies(csv_kameral: str, csv_doppik: str, pdf_text: str | None = None,
         bestandenen ``probes`` und — wo die Quellen sich widersprachen —
         ``conflict_amount``/``conflict_source``.
     ``verworfen``
-        Jahrgänge, die keine tragfähige Probe bestanden haben, mit ``grund``.
+        Jahrgänge, die keine tragfähige Probe bestanden haben, mit ``reason``.
         Sie stehen nirgends in der Datenbank.
     ``konflikte``
         Die aufgelösten Widersprüche zwischen PDF und CSV, mit gemessener
@@ -491,7 +491,7 @@ def lies(csv_kameral: str, csv_doppik: str, pdf_text: str | None = None,
             if erwartet and regelwerk_von(z["year"]) != erwartet:
                 verworfen.append({
                     "year": z["year"],
-                    "grund": f"steht in der Datei für das {erwartet}e "
+                    "reason": f"steht in der Datei für das {erwartet}e "
                              f"Rechnungswesen, gehört nach dem "
                              f"Umstellungsdatum aber ins "
                              f"{regelwerk_von(z['year'])}e"})
@@ -500,7 +500,7 @@ def lies(csv_kameral: str, csv_doppik: str, pdf_text: str | None = None,
             if z["quelle"] in je_quelle:
                 verworfen.append({
                     "year": z["year"],
-                    "grund": f"steht in derselben Quelle ({z['quelle']}) "
+                    "reason": f"steht in derselben Quelle ({z['quelle']}) "
                              f"mehr als einmal"})
                 je_quelle[z["quelle"]] = {"doppelt": True}
                 continue
@@ -521,9 +521,9 @@ def lies(csv_kameral: str, csv_doppik: str, pdf_text: str | None = None,
         for k in kand:
             zaehler["prokopf_bestanden" if prokopfprobe(k)[0]
                     else "prokopf_gerissen"] += 1
-        gewaehlt, konflikt, grund = _wähle(kand)
+        gewaehlt, konflikt, reason = _wähle(kand)
         if gewaehlt is None:
-            verworfen.append({"year": year, "grund": grund})
+            verworfen.append({"year": year, "reason": reason})
             continue
 
         probes = ["ausgabenreihe_prokopf"]
@@ -544,7 +544,7 @@ def lies(csv_kameral: str, csv_doppik: str, pdf_text: str | None = None,
                 # Statistik die Nacherzählung.
                 verworfen.append({
                     "year": year,
-                    "grund": f"weicht um {de_zahl(anteil * 100, 3, True)} % von "
+                    "reason": f"weicht um {de_zahl(anteil * 100, 3, True)} % von "
                              f"der Ergebnisrechnung des Jahresabschlusses ab "
                              f"(erlaubt sind "
                              f"{de_zahl(GEGENPROBE_TOLERANZ * 100, 1)} % für die "

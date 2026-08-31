@@ -83,9 +83,9 @@ ZIEL: {label}
 Für JEDEN Beschluss liefere:
 - "relevant": true NUR wenn der Beschluss das Ziel konkret betrifft, sonst false
 - "stance": wenn relevant — "voran" (bringt das Ziel voran), "bremst" (wirkt entgegen) oder "neutral" (betrifft es, aber neutral/gemischt); sonst "neutral"
-- "grund": max. ein kurzer Satz (deutsch)
+- "reason": max. ein kurzer Satz (deutsch)
 
-Antworte mit NUR JSON: {{"results": [{{"id": <id>, "relevant": <true|false>, "stance": "<voran|bremst|neutral>", "grund": "..."}}]}}
+Antworte mit NUR JSON: {{"results": [{{"id": <id>, "relevant": <true|false>, "stance": "<voran|bremst|neutral>", "reason": "..."}}]}}
 Regeln:
 - jede vorgelegte id exact einmal mit exakt dieser id; im Zweifel relevant=false.
 - Der Ausgang steht in [eckigen Klammern]. Beschlüsse, die nur ZUR KENNTNIS genommen
@@ -140,7 +140,7 @@ def assess_batch(goal_key: str, decisions: list[dict], model: str = MODEL):
                 continue
             relevant = bool(r.get("relevant"))
             stance = r.get("stance") if r.get("stance") in STANCES else "neutral"
-            out[rid] = {"relevant": relevant, "stance": stance, "grund": (r.get("grund") or "").strip()[:200]}
+            out[rid] = {"relevant": relevant, "stance": stance, "reason": (r.get("reason") or "").strip()[:200]}
         if out:
             return out, resp.usage
         last_err = ValueError("no valid results")

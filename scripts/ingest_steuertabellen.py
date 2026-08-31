@@ -239,7 +239,7 @@ def main() -> int:
                     print(f"  {name}: {result['abbruch']}", file=sys.stderr)
                     continue
                 for v in result["verworfen"]:
-                    print(f"  {name}: VERWORFEN {v['year']} — {v['grund']}",
+                    print(f"  {name}: VERWORFEN {v['year']} — {v['reason']}",
                           file=sys.stderr)
                 if not result["zeilen"]:
                     continue
@@ -285,7 +285,7 @@ def main() -> int:
                           f"Aufkommen im Jahr {e['im_jahr'] * 100:+.2f} %, "
                           f"danach {e['danach'] * 100:+.2f} %")
                 for e in sprung["nicht_pruefbar"]:
-                    print(f"    nicht prüfbar {e['year']}: {e['grund']}")
+                    print(f"    nicht prüfbar {e['year']}: {e['reason']}")
 
             if not zeilen_1103 and not zeilen_1105:
                 print("ABBRUCH: keine der beiden Tabellen hat eine Probe "

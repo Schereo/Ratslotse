@@ -213,7 +213,7 @@ export function EinnahmenWerkbank({
               wirkung={
                 grundstPunkte === 0 ? (
                   <>Ein Punkt bringt überschlagen {amount(proPunktGrundst * 1e6).wert}&#8239;
-                  {amount(proPunktGrundst * 1e6).einheit} <Beleg q="taxes" /> — bei
+                  {amount(proPunktGrundst * 1e6).unit} <Beleg q="taxes" /> — bei
                   unveränderten Messbeträgen.</>
                 ) : (
                   <>
@@ -258,13 +258,13 @@ export function EinnahmenWerkbank({
             anzeige={
               hundePct === 0
                 ? <span className="text-muted-foreground">
-                    {amount(hunde.amount).wert}&nbsp;{amount(hunde.amount).einheit}<Beleg q="taxes" />
+                    {amount(hunde.amount).wert}&nbsp;{amount(hunde.amount).unit}<Beleg q="taxes" />
                   </span>
                 : <strong className="text-signal">
                     {hundePct === -100
                       ? <>0&nbsp;€ (abgeschafft)</>
                       : <>{amount(hunde.amount * (1 + hundePct / 100)).wert}&nbsp;
-                        {amount(hunde.amount * (1 + hundePct / 100)).einheit}{" "}
+                        {amount(hunde.amount * (1 + hundePct / 100)).unit}{" "}
                         ({hundePct > 0 ? "+" : "−"}{Math.abs(hundePct)}&nbsp;%)</>}
                   </strong>
             }

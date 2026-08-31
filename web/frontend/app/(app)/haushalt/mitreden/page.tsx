@@ -67,7 +67,7 @@ function MitredenInner() {
   // Quellenzeile. Kein zweiter Abruf, keine zweite Wahrheit.
   // `undefined` = lädt, `null`/leer = entschieden nichts.
   const [termine, setTermine] = useState<{
-    naechster: { datum: string; gremium: string } | null;
+    naechster: { datum: string; committee: string } | null;
     phasen: { titel: string; datum: string | null; erledigt: boolean; aktuell: boolean }[];
     year: number;
   } | null | undefined>(undefined);
@@ -159,7 +159,7 @@ function MitredenInner() {
                 zahl={tage === 0 ? <>Nächster Termin: heute</>
                   : tage === 1 ? <>Nächster Termin: morgen</>
                     : <>Nächster Termin: in <ZaehlZahl wert={tage} /> Tagen</>}
-                sub={`${naechster.gremium} am ${deDatum(naechster.datum)}`}
+                sub={`${naechster.committee} am ${deDatum(naechster.datum)}`}
                 minibild={minibild}
               />
             );

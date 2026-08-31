@@ -24,7 +24,7 @@ export type WegVotum = {
 export type WegStation = {
   kvonr: number;
   datum: string;
-  gremium: string;
+  committee: string;
   /** Rolle laut Beratungsfolge: Kenntnisnahme, Vorberatung, Entscheidung. */
   role: string | null;
   is_public: number | null;
@@ -70,7 +70,7 @@ export function deTagMonat(iso: string): string {
 /** Die abschließende Station: die letzte im Rat, sonst schlicht die letzte.
  *  In den Ausschüssen wird vorberaten, entschieden wird im Rat. */
 export function entscheidung(r: WegRunde): WegStation | null {
-  const rat = r.stationen.filter((s) => s.gremium === "Rat");
+  const rat = r.stationen.filter((s) => s.committee === "Rat");
   return rat[rat.length - 1] ?? r.stationen[r.stationen.length - 1] ?? null;
 }
 

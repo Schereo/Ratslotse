@@ -260,7 +260,7 @@ def test_abkuerzung_bekommt_immer_die_langform_als_hauptnamen(monkeypatch):
     monkeypatch.setattr(
         aliases.llm, "chat_complete",
         lambda **kw: _fake_response(
-            '{"paare": [{"id": 0, "gleich": true, "kanonisch": "VWG", "grund": "Abkürzung"}]}'))
+            '{"paare": [{"id": 0, "gleich": true, "kanonisch": "VWG", "reason": "Abkürzung"}]}'))
 
     got = aliases.decide(pairs, ents, {})
     assert len(got) == 1
@@ -273,7 +273,7 @@ def test_llm_ablehnung_wird_respektiert(monkeypatch):
     pairs = [{"a": 1, "b": 2, "art": "teilstring", "overlap": 0.02, "emb": 0.64}]
     monkeypatch.setattr(
         aliases.llm, "chat_complete",
-        lambda **kw: _fake_response('{"paare": [{"id": 0, "gleich": false, "grund": "Schule am Ort"}]}'))
+        lambda **kw: _fake_response('{"paare": [{"id": 0, "gleich": false, "reason": "Schule am Ort"}]}'))
     assert aliases.decide(pairs, ents, {}) == []
 
 

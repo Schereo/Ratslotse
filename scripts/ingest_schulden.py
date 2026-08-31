@@ -137,7 +137,7 @@ def main() -> int:
             print(f"  {len(zeilen)} Jahrgänge übernommen · "
                   f"{schulden.probennachweis(result)}")
             for v in result["verworfen"]:
-                print(f"    VERWORFEN {v['year']}: {v['grund']}", file=sys.stderr)
+                print(f"    VERWORFEN {v['year']}: {v['reason']}", file=sys.stderr)
             for f in result["fehlende_jahrgaenge"]:
                 print(f"    FEHLT {f}: im Titel angekündigt, nicht gelesen",
                       file=sys.stderr)

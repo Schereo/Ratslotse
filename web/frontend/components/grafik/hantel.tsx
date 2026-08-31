@@ -83,13 +83,13 @@ const AUSGABEN_KEINE_WERTUNG =
   + "oder eine Stelle nicht besetzt wurde.";
 
 export function Hantel({
-  zeilen, einheit = "Mio. €", massstab = "percent",
+  zeilen, unit = "Mio. €", massstab = "percent",
   sortierung = "deviation", schwelle, beleg,
   wovon = "der Bereich", keineWertung = AUSGABEN_KEINE_WERTUNG,
 }: {
   zeilen: HantelZeile[];
   /** Einheit der Beträge — steht an den Skalenenden und in der Legende. */
-  einheit?: string;
+  unit?: string;
   /** Woran die Streckenlänge hängt — siehe Kommentar oben. */
   massstab?: HantelMassstab;
   /** |Abweichung| absteigend (Default, H4-07) oder nach Label. */
@@ -149,7 +149,7 @@ export function Hantel({
   const skalenEnde = (v: number) =>
     massstab === "percent"
       ? `${v > 0 ? "+" : ""}${Math.round(v)} %`
-      : `${v > 0 ? "+" : ""}${deMio(v)} ${einheit}`;
+      : `${v > 0 ? "+" : ""}${deMio(v)} ${unit}`;
 
   const gitter = "grid-cols-[minmax(96px,150px)_1fr_auto]";
 
@@ -300,7 +300,7 @@ export function Hantel({
         </span>
         <span className="inline-flex items-center gap-1.5">
           <span className="h-[3px] w-4 rounded-full bg-signal/70" />
-          {massstab === "percent" ? "Abweichung in Prozent des Plans" : `Abweichung in ${einheit}`}
+          {massstab === "percent" ? "Abweichung in Prozent des Plans" : `Abweichung in ${unit}`}
         </span>
         {beleg && <span>{beleg}</span>}
         <span className="basis-full text-[11px] leading-relaxed">

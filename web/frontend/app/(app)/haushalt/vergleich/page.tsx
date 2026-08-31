@@ -296,11 +296,11 @@ export default function VergleichSeite() {
                   vonLabel={`${rsVorjahr}`}
                   bisLabel={`${rsJahr} · Reform`}
                   bruchLabel={`ab ${rsJahr} neue Messbeträge`}
-                  einheit="%"
+                  unit="%"
                   beleg={<Beleg q="lsn_realsteuern" />}
                 />
               ) : (
-                <Staedtevergleich zeilen={grundsteuer} einheit="percent" />
+                <Staedtevergleich zeilen={grundsteuer} unit="percent" />
               )}
             </div>
             {/* Zwei Sätze für zwei Datenlagen. Der Bruch-Hinweis gehört an

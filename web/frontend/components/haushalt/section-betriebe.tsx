@@ -265,7 +265,7 @@ function BetriebsKarte({ zeilen, juengstesJahr, herkunftFuer }: {
         <div className="mt-3">
           <Zeitreihe
             series={series}
-            einheit="Mio. €"
+            unit="Mio. €"
             nachkomma={2}
             titel="Jahresergebnis im Plan"
             ariaTitel={`Geplantes Jahresergebnis ${letzte.enterprise_name}, `

@@ -276,7 +276,7 @@ export function Kassenzettel({ daten, year, population, className }: {
         bezahltMitTitel="Im Plan gedeckt durch"
         teiler={{
           zahl: kopf,
-          einheit: "Einwohner*innen",
+          unit: "Einwohner*innen",
           as_of_date: `31.12.${population.year - 1}`,
           quelle: <>amtliche Zahl der Stadt<Beleg q="population" /></>,
         }}
@@ -389,7 +389,7 @@ export function Kassenzettel({ daten, year, population, className }: {
               className="mt-3"
               series={ruecklagenVerlauf}
               titel="Verfügbar nach Jahresergebnis"
-              einheit="Mio. €"
+              unit="Mio. €"
               nachkomma={1}
               ariaTitel={`Verfügbare Überschussrücklage nach Jahresergebnis, `
                 + `${ruecklagenVerlauf[0].year} bis ${reserves.year}`}

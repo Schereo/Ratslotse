@@ -281,7 +281,7 @@ function StationsAntraege({ s }: { s: StreitStation }) {
     <section className="border-t border-dashed border-border pt-3 first:border-t-0 first:pt-0">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
         <h3 className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-foreground/70">
-          {gremiumKurz(s.gremium)}
+          {gremiumKurz(s.committee)}
         </h3>
         <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
           {datumLang(s.datum)} · {fraktionen.length} aus dem Rat
@@ -468,7 +468,7 @@ export function StreitAbschnitt({ onBestand }: {
                 Wie es ausging
               </h2>
               <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
-                {gremiumKurz(schluss.gremium)} · {datumLang(schluss.datum)}
+                {gremiumKurz(schluss.committee)} · {datumLang(schluss.datum)}
               </span>
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -558,7 +558,7 @@ export function StreitAbschnitt({ onBestand }: {
                 Aus der Haushaltsdebatte
               </h2>
               <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
-                {debatte.debatte.length} Wortbeiträge · {gremiumKurz(debatte.gremium)},{" "}
+                {debatte.debatte.length} Wortbeiträge · {gremiumKurz(debatte.committee)},{" "}
                 {datumLang(debatte.datum)}
               </span>
             </div>

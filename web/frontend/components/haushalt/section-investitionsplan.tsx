@@ -125,14 +125,14 @@ function Rang({ zeile, skala, aufVorhaben, vorhandene }: {
         <span className="flex-none font-display text-[15px] font-bold tabular-nums">
           {aus.wert}
           <span className="ml-1 text-[10.5px] font-medium text-muted-foreground">
-            {aus.einheit}
+            {aus.unit}
           </span>
         </span>
       </div>
       <div
         className="h-2 w-full overflow-hidden rounded-full bg-muted/60"
         role="img"
-        aria-label={`${zeile.label}: ${aus.wert} ${aus.einheit} geplante Auszahlungen`}
+        aria-label={`${zeile.label}: ${aus.wert} ${aus.unit} geplante Auszahlungen`}
       >
         <div
           className="h-full rounded-full bg-[var(--hh-aus-2)]"
@@ -143,7 +143,7 @@ function Rang({ zeile, skala, aufVorhaben, vorhandene }: {
         {gegen ? (
           <p className="text-[11px] leading-snug text-muted-foreground">
             <span className="font-medium text-foreground/80">Davon gedeckt:</span>{" "}
-            {gegen.wert} {gegen.einheit} durch Zuschüsse, Verkäufe oder Beiträge
+            {gegen.wert} {gegen.unit} durch Zuschüsse, Verkäufe oder Beiträge
             {gegenAnteil > 0 && (
               <> · {gegenAnteil.toLocaleString("de-DE", { maximumFractionDigits: 0 })} %</>
             )}

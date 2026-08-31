@@ -25,9 +25,9 @@ const H = 210, Y0 = 172, YTOP = 22;
 // Ziffern (die 2000er-Linie lief genau durch das „42,7").
 const halo = { paintOrder: "stroke", strokeWidth: 3, strokeLinejoin: "round" } as const;
 
-export function IstKurve({ series, einheit = "Mio. Euro" }: {
+export function IstKurve({ series, unit = "Mio. Euro" }: {
   series: Punkt[];
-  einheit?: string;
+  unit?: string;
 }) {
   const [tabelle, setTabelle] = useState(false);
   // viewBox-Breite = Containerbreite, sonst staucht das SVG die Schrift mit:
@@ -128,7 +128,7 @@ export function IstKurve({ series, einheit = "Mio. Euro" }: {
     return {
       titel: String(p.year),
       werte: [
-        { label: einheit.startsWith("Mio") ? "Mio. €" : einheit, wert: deMio(wert), farbe: "var(--hh-ein-0)" },
+        { label: unit.startsWith("Mio") ? "Mio. €" : unit, wert: deMio(wert), farbe: "var(--hh-ein-0)" },
         ...(deltaText ? [{ label: "ggü. Vorjahr", wert: deltaText, signal: (vor as number) < 0 }] : []),
       ],
       vorlesen: `${p.year}: ${deMio(wert)} Millionen Euro`
@@ -143,7 +143,7 @@ export function IstKurve({ series, einheit = "Mio. Euro" }: {
           Tatsächlich eingenommen
         </p>
         <span className="font-mono text-[10px] uppercase text-muted-foreground">
-          {erste.year}–{letzte.year} · {series.length} Werte · {einheit}
+          {erste.year}–{letzte.year} · {series.length} Werte · {unit}
         </span>
       </div>
       <p className="mb-3 max-w-[72ch] text-sm leading-relaxed text-foreground/90">

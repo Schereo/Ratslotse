@@ -46,14 +46,14 @@ _VO0053 = """
 def test_beratungsfolge_parses_stations():
     rows = stammdaten.fetch_beratungsfolge(_FakeScraper(_VO0053), 1)
     assert len(rows) == 3
-    assert rows[0] == {"datum": "2026-06-10", "gremium": "Sportausschuss", "top": "8.1",
+    assert rows[0] == {"datum": "2026-06-10", "committee": "Sportausschuss", "top": "8.1",
                        "is_public": True, "result": "Kenntnisnahme", "ksinr": 4590}
     # Geplante Station: kein Ergebnis, Datum in der Zukunft
     assert rows[1]["result"] is None and rows[1]["ksinr"] == 9999
     assert stammdaten.is_future(rows[1]["datum"])
     # Nichtöffentlich wird erkannt (auch ohne Sitzungs-Link)
     assert rows[2]["is_public"] is False and rows[2]["ksinr"] is None
-    assert rows[2]["gremium"] == "Verwaltungsausschuss" and rows[2]["result"] == "Vorberatung"
+    assert rows[2]["committee"] == "Verwaltungsausschuss" and rows[2]["result"] == "Vorberatung"
 
 
 # ---- Mandatsträger (kp0041) ---------------------------------------------------
@@ -91,7 +91,7 @@ _KP0050 = """
 def test_person_mitarbeit_parses_memberships():
     rows = stammdaten.fetch_person_mitarbeit(_FakeScraper(_KP0050), 4)
     assert len(rows) == 2
-    assert rows[0] == {"kgrnr": 22, "gremium": "Rat", "role": "Ratsmitglied",
+    assert rows[0] == {"kgrnr": 22, "committee": "Rat", "role": "Ratsmitglied",
                        "von": "1996-11-01", "bis": "2021-10-31"}
     # Gremium ohne eigene Seite: kein kgrnr, laufend (bis=None)
     assert rows[1]["kgrnr"] is None and rows[1]["bis"] is None
@@ -103,16 +103,16 @@ def test_person_mitarbeit_parses_memberships():
 def test_store_beratungen_roundtrip_and_replace(tmp_path):
     store = CouncilStore(tmp_path / "c.sqlite")
     store.save_beratungen(10, [
-        {"datum": "2026-06-25", "gremium": "Betriebsausschuss", "top": "5",
+        {"datum": "2026-06-25", "committee": "Betriebsausschuss", "top": "5",
          "is_public": True, "result": "Vorberatung", "ksinr": 4679},
-        {"datum": "2099-06-29", "gremium": "Rat", "top": "12.1",
+        {"datum": "2099-06-29", "committee": "Rat", "top": "12.1",
          "is_public": True, "result": None, "ksinr": None},
     ])
     rows = store.get_beratungen(10)
-    assert [r["gremium"] for r in rows] == ["Betriebsausschuss", "Rat"]
+    assert [r["committee"] for r in rows] == ["Betriebsausschuss", "Rat"]
     assert rows[0]["result"] == "Vorberatung" and rows[1]["result"] is None
     # Replace-Semantik: erneutes Speichern ersetzt vollständig
-    store.save_beratungen(10, [{"datum": "2099-06-29", "gremium": "Rat", "top": "12.1",
+    store.save_beratungen(10, [{"datum": "2099-06-29", "committee": "Rat", "top": "12.1",
                                 "is_public": True, "result": "Entscheidung", "ksinr": 4695}])
     rows = store.get_beratungen(10)
     assert len(rows) == 1 and rows[0]["result"] == "Entscheidung"
@@ -125,8 +125,8 @@ def test_store_persons_memberships_and_slug_match(tmp_path):
     store = CouncilStore(tmp_path / "c.sqlite")
     store.save_person(4, "Hans-Henning Adler", "BSW")
     store.save_memberships(4, [
-        {"kgrnr": 22, "gremium": "Rat", "role": "Ratsmitglied", "von": "1996-11-01", "bis": "2021-10-31"},
-        {"kgrnr": 22, "gremium": "Rat", "role": "Ratsmitglied", "von": "2022-12-19", "bis": None},
+        {"kgrnr": 22, "committee": "Rat", "role": "Ratsmitglied", "von": "1996-11-01", "bis": "2021-10-31"},
+        {"kgrnr": 22, "committee": "Rat", "role": "Ratsmitglied", "von": "2022-12-19", "bis": None},
     ])
     # Slug-Match über Titel-Varianten hinweg (Anwesenheit schreibt teils "Dr. ...")
     p = store.person_stammdaten_for_names(["Dr. Hans-Henning Adler"])

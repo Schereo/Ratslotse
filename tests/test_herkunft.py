@@ -544,9 +544,9 @@ def _vorgang(store, *, kvonr=900, document_id=7001, stationen=()):
     store.save_anlagen(kvonr, [{"document_id": document_id,
                                 "label": "Jahresabschluss 2024",
                                 "url": "https://example.org/ja2024.pdf"}])
-    for ksinr, gremium, datum, outcome in stationen:
+    for ksinr, committee, datum, outcome in stationen:
         store.save_session(CouncilSession(
-            ksinr=ksinr, committee=gremium, session_date=datum,
+            ksinr=ksinr, committee=committee, session_date=datum,
             session_time="17:00", location="Rathaus",
             agenda_items=[AgendaItem(item_number="5", title="Jahresabschluss 2024",
                                      kvonr=kvonr)]))
@@ -573,7 +573,7 @@ def test_beschluss_haengt_am_dokument(tmp_path):
 
     (h,) = store.get_herkunft([hid])
     assert h["official_text"]["datum"] == "2025-09-16"
-    assert h["official_text"]["gremium"] == "Rat"
+    assert h["official_text"]["committee"] == "Rat"
     assert h["official_text"]["outcome"] == "angenommen"
     assert h["official_text"]["kvonr"] == 900
     store.close()
@@ -592,7 +592,7 @@ def test_rat_sticht_den_ausschuss(tmp_path):
     hid = _herkunft_mit_dokument(store)
 
     (h,) = store.get_herkunft([hid])
-    assert h["official_text"]["gremium"] == "Rat"
+    assert h["official_text"]["committee"] == "Rat"
     assert h["official_text"]["datum"] == "2025-09-16"
     store.close()
 

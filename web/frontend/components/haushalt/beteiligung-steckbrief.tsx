@@ -360,7 +360,7 @@ function Aufsichtsorgan({ personen, zuordenbar, herkunft }: {
 }) {
   const gruppen = useMemo(() => aufsichtsgruppen(personen, zuordenbar),
     [personen, zuordenbar]);
-  const gremium = gremiumName(personen);
+  const committee = gremiumName(personen);
 
   return (
     <Abschnitt kicker={TITEL.aufsichtsorgane} className="@container/organ"
@@ -368,9 +368,9 @@ function Aufsichtsorgan({ personen, zuordenbar, herkunft }: {
       {/* Kein „x von y Namen wiedergefunden": Wie gut unser Abgleich mit dem
           Personenverzeichnis läuft, ist kein Seiteninhalt (DESIGNSPRACHE § 7).
           Wer einen Eintrag hat, ist verlinkt — das sieht man. */}
-      {gremium && (
+      {committee && (
         <p className="mt-1.5 text-[13px] leading-relaxed text-foreground/90">
-          Das Aufsichtsorgan ist der {gremium}.
+          Das Aufsichtsorgan ist der {committee}.
         </p>
       )}
 

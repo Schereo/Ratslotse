@@ -353,7 +353,7 @@ function BelegPeek({ quelle, nummer, onClose, onListe }: {
 function FeedbackDaumen({ turn }: { turn: Turn }) {
   const [abgegeben, setAbgegeben] = useState<"up" | "down" | null>(null);
   const [frageGrund, setFrageGrund] = useState(false);
-  const [grund, setGrund] = useState("");
+  const [reason, setGrund] = useState("");
   const post = (rating: "up" | "down", grundText?: string) =>
     void fetch(apiUrl("/council/qa-feedback"), {
       method: "POST",
@@ -363,7 +363,7 @@ function FeedbackDaumen({ turn }: { turn: Turn }) {
         question: turn.question.slice(0, 300),
         answer_excerpt: turn.answer.slice(0, 500) || null,
         rating,
-        grund: grundText?.trim() || null,
+        reason: grundText?.trim() || null,
       }),
     }).catch(() => {});
   const senden = (rating: "up" | "down") => {
@@ -383,7 +383,7 @@ function FeedbackDaumen({ turn }: { turn: Turn }) {
     setFrageGrund(false);
     // Nur mit echtem Text nachsenden — die Grund-Zeile ersetzt beim Auswerten
     // den nackten Daumen (gleiche Frage, jüngerer Zeitstempel).
-    if (grund.trim()) post("down", grund);
+    if (reason.trim()) post("down", reason);
     toast.success("Danke für die Rückmeldung!");
   };
   return (
@@ -412,7 +412,7 @@ function FeedbackDaumen({ turn }: { turn: Turn }) {
           onSubmit={(e) => { e.preventDefault(); grundNachreichen(); }}>
           {/* 16px auf Touch: Unter 16px zoomt iOS-Safari beim Fokus in das
               Feld hinein (Tims Befund beim Daumen runter). */}
-          <input value={grund} onChange={(e) => setGrund(e.target.value)} autoFocus
+          <input value={reason} onChange={(e) => setGrund(e.target.value)} autoFocus
             placeholder="Was war falsch? (optional)" maxLength={500}
             className="h-7 w-44 min-w-0 rounded-md border border-border bg-card px-2 text-[16px] outline-none placeholder:text-muted-foreground/60 focus:border-primary sm:h-6 sm:w-40 sm:text-[11px]" />
           <button type="submit" className="text-[11px] font-medium text-primary hover:underline">Senden</button>

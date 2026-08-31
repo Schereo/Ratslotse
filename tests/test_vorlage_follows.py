@@ -51,7 +51,7 @@ def _seed(ratslotse_db: Path, council_db: Path, stations: list[tuple], *, snapsh
 
 
 def _rows(stations: list[tuple]) -> list[dict]:
-    return [{"datum": d, "gremium": g, "result": e, "top": None, "is_public": 1, "ksinr": None}
+    return [{"datum": d, "committee": g, "result": e, "top": None, "is_public": 1, "ksinr": None}
             for d, g, e in stations]
 
 

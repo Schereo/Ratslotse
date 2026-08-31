@@ -641,7 +641,7 @@ def _befuellter_store(tmp_path) -> CouncilStore:
              ("konsolidierung", "Konsolidierung", -120_000.0)])
         store._conn.executemany(
             "INSERT INTO council_staedtevergleich (series, year, schluessel, city, indicator, "
-            " wert, einheit, herkunft_id, fetched_at) VALUES "
+            " wert, unit, herkunft_id, fetched_at) VALUES "
             "('tax_capacity',2024,?,?,'Steuerkraftmesszahl je Einwohner',?,'EUR',1,'')",
             [("03403", "Oldenburg", 1834.0), ("03404", "Osnabrück", 1712.0),
              ("03401", "Delmenhorst", 1104.0)])
@@ -1404,7 +1404,7 @@ def test_geld_grafik_liefert_rohreihen_aus_dem_store(tmp_path):
     assert g and g["art"] == "schulden"
     assert [p["year"] for p in g["series"]] == [1995, 2024, 2025]
     assert g["series"][-1]["wert"] == 337.0            # Mio, gerundet
-    assert g["einheit"] == "Mio. €"
+    assert g["unit"] == "Mio. €"
     assert g["note"], "Die Abgrenzung reist mit der Grafik"
 
     geld = qa.geld_kontext(store, "Wie hoch sind Schulden und Gewerbesteuer?")
@@ -1436,7 +1436,7 @@ def test_grafik_pruefung_am_share_snapshot():
     sys.path.insert(0, "web/backend")
     from app.routers.council import _grafik_pruefen
 
-    gut = {"art": "schulden", "titel": "Schuldenstand", "einheit": "Mio. €",
+    gut = {"art": "schulden", "titel": "Schuldenstand", "unit": "Mio. €",
            "nachkomma": 1, "series": [{"year": 1995, "wert": 190.0},
                                      {"year": 2025, "wert": 337.0}],
            "note": "Stadt als Rechtsträger", "quelle": "Jahrbuch 1108"}

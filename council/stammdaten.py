@@ -79,7 +79,7 @@ def fetch_beratungsfolge(scraper: CouncilScraper, kvonr: int) -> list[dict]:
             result = (vm.group(3) or "").strip() or None
 
         tm = _TOP_RE.match(rest)
-        gremium = (tm.group(1) if tm else rest).strip()
+        committee = (tm.group(1) if tm else rest).strip()
         top = tm.group(2) if tm else None
 
         ksinr = None
@@ -89,9 +89,9 @@ def fetch_beratungsfolge(scraper: CouncilScraper, kvonr: int) -> list[dict]:
             if m:
                 ksinr = int(m.group(1))
 
-        if gremium or datum:
+        if committee or datum:
             out.append({
-                "datum": datum, "gremium": gremium, "top": top,
+                "datum": datum, "committee": committee, "top": top,
                 "is_public": is_public, "result": result, "ksinr": ksinr,
             })
     return out
@@ -150,7 +150,7 @@ def fetch_mandatstraeger(scraper: CouncilScraper, wpnr: int | None = None) -> li
 
 def fetch_person_mitarbeit(scraper: CouncilScraper, kpenr: int) -> list[dict]:
     """Alle Gremien-Mitgliedschaften einer Person über alle Wahlperioden:
-    ``[{kgrnr, gremium, role, von, bis}]``.
+    ``[{kgrnr, committee, role, von, bis}]``.
 
     Die Tabellenzeilen tragen am Ende einen Volltext „von DD.MM.YYYY
     [bis DD.MM.YYYY]" — die zuverlässigste Quelle für den Zeitraum. Die
@@ -161,8 +161,8 @@ def fetch_person_mitarbeit(scraper: CouncilScraper, kpenr: int) -> list[dict]:
         tds = tr.find_all("td")
         if len(tds) < 3:
             continue  # Abschnitts-Überschriften („vom Rat", „Grundmandat" …)
-        gremium = " ".join(tds[0].get_text(" ", strip=True).split())
-        if not gremium:
+        committee = " ".join(tds[0].get_text(" ", strip=True).split())
+        if not committee:
             continue
         kgrnr = None
         a = tr.find("a", href=re.compile(r"__kgrnr=\d+"))
@@ -187,13 +187,13 @@ def fetch_person_mitarbeit(scraper: CouncilScraper, kpenr: int) -> list[dict]:
         role = None
         for td in tds[1:]:
             t = " ".join(td.get_text(" ", strip=True).split())
-            if t and not any(ch.isdigit() for ch in t) and t != gremium:
+            if t and not any(ch.isdigit() for ch in t) and t != committee:
                 role = t
         if role and len(role) > 60:  # Kombi-Zelle erwischt → letztes Wortpaar
             role = role.split()[-1]
 
         if von or kgrnr:
-            out.append({"kgrnr": kgrnr, "gremium": gremium, "role": role,
+            out.append({"kgrnr": kgrnr, "committee": committee, "role": role,
                         "von": von, "bis": bis})
     return out
 

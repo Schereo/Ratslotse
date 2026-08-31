@@ -58,7 +58,7 @@ def test_anhang_liefert_beide_enden_und_den_grund():
     # Das zweite Ende ist der Anfangsbestand: die halbe Kettenprobe.
     assert g["prior_year_year"] == 2023
     assert g["prior_year_stock"] == 214_800_000.0
-    assert "getilgt" in g["grund"]
+    assert "getilgt" in g["reason"]
 
 
 def test_zweiundzwanzig_traegt_die_klinikums_zahl():
@@ -73,7 +73,7 @@ def test_zweiundzwanzig_traegt_die_klinikums_zahl():
     assert g["prior_year_stock"] == 83_700_000.0
     # Die Zahl, ohne die der Sprung von 83,7 auf 217,6 unerklärt dasteht.
     assert b.klinikum_amount(g) == 135_900_000.0
-    assert "Klinikum" in g["grund"]
+    assert "Klinikum" in g["reason"]
 
 
 def test_die_frueheren_jahrgaenge_kommen_auf_den_cent():

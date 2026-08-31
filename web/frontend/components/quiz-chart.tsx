@@ -85,7 +85,7 @@ function Rangliste({ chart }: { chart: QuizChartData }) {
     wert: it.value,
     hervorgehoben: it.highlight,
   }));
-  return <RanglisteSchiene zeilen={zeilen} einheit={einheitKurz(chart.unit)} />;
+  return <RanglisteSchiene zeilen={zeilen} unit={einheitKurz(chart.unit)} />;
 }
 
 /** Diagramm in der Quiz-Auflösung. Die Einheit trägt jede Form selbst (Zeile,
@@ -125,7 +125,7 @@ export function QuizChart({ chart, className }: { chart: QuizChartData; classNam
         <Gegenbalken
           zeilen={[{ titel: chart.title, segmente }]}
           basis={basis}
-          einheit={einheitKurz(chart.unit)}
+          unit={einheitKurz(chart.unit)}
           nachkomma={0}
         />
       </div>
@@ -138,7 +138,7 @@ export function QuizChart({ chart, className }: { chart: QuizChartData; classNam
       <p className="text-xs font-semibold text-foreground">{chart.title}</p>
       <div className="mt-2">
         {series
-          ? <Zeitreihe series={series} einheit={einheitKurz(chart.unit)}
+          ? <Zeitreihe series={series} unit={einheitKurz(chart.unit)}
               ariaTitel={chart.title} nachkomma={0} />
           : <Rangliste chart={chart} />}
       </div>

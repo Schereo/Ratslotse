@@ -384,7 +384,7 @@ export interface MemberDetail {
     kpenr: number;
     name: string;
     current_faction: string | null;
-    memberships: { kgrnr: number | null; gremium: string; role: string | null; von: string | null; bis: string | null }[];
+    memberships: { kgrnr: number | null; committee: string; role: string | null; von: string | null; bis: string | null }[];
   } | null;
   committees: { committee: string; n: number; chair: boolean }[];
   recent: { ksinr: number; committee: string; session_date: string }[];
@@ -417,7 +417,7 @@ export type PersonProfil = MemberDetail | VerwaltungDetail;
 /** Eine Station der offiziellen Beratungsfolge einer Vorlage. */
 export interface Beratung {
   datum: string | null;
-  gremium: string;
+  committee: string;
   top: string | null;
   is_public: number | null;
   result: string | null;

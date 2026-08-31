@@ -110,7 +110,7 @@ export type Buergschaft = {
   out_next_year: boolean;
   quelle: string;
   /** Die Begründung im Wortlaut der Stadt, wo das Dokument eine nennt. */
-  grund: string | null;
+  reason: string | null;
   /** Die im Grund genannte Einzelzahl — 2022 die 135,9 Mio. fürs Klinikum. */
   single_amount: number | null;
   probes: string[];

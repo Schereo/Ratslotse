@@ -906,40 +906,40 @@ def _finde_sitzungen(store, frage: str) -> list[dict]:
     from datetime import date as _date
     heute = _date.today().isoformat()
     datum, monat_tag = _datum_in_frage(frage)
-    gremium = _gremium_in_frage(store, frage)
+    committee = _gremium_in_frage(store, frage)
     frage_f = _falte(frage)
     rows: list[dict] = []
-    if (datum or monat_tag) and not gremium and not _SITZUNG_ANLASS_RE.search(frage_f):
+    if (datum or monat_tag) and not committee and not _SITZUNG_ANLASS_RE.search(frage_f):
         return []
     if datum:
         rows = [r for r in store.sessions_on(datum)
-                if gremium is None or _gremium_passt(gremium, r.get("committee"))]
+                if committee is None or _gremium_passt(committee, r.get("committee"))]
     elif monat_tag:
         # Ohne Jahr: die jüngste vergangene Sitzung an diesem Monatstag —
         # gibt es nur künftige, die nächstliegende.
         alle = [r for r in store.sitzungen_am_monatstag(monat_tag)
-                if gremium is None or _gremium_passt(gremium, r.get("committee"))]
+                if committee is None or _gremium_passt(committee, r.get("committee"))]
         vergangene = [r for r in alle if str(r.get("session_date") or "") <= heute]
         rows = vergangene[:1] if vergangene else sorted(
             alle, key=lambda r: str(r.get("session_date") or ""))[:1]
-        if rows and gremium is None:
+        if rows and committee is None:
             # Datum ohne Gremium meint den TAG — alle Sitzungen dieses Tages.
             rows = store.sessions_on(rows[0]["session_date"])
-    elif gremium and _SITZUNG_ZURUECK_RE.search(frage_f):
+    elif committee and _SITZUNG_ZURUECK_RE.search(frage_f):
         rows = [r for r in store.recent_sessions(limit=80)
-                if _gremium_passt(gremium, r.get("committee"))][:1]
+                if _gremium_passt(committee, r.get("committee"))][:1]
         if rows and not store.decision_ids_der_sitzung(rows[0]["ksinr"]):
             # Trägt die jüngste Sitzung noch kein ausgewertetes Protokoll,
             # gehört die letzte MIT Beschlüssen dazu — die Antwort kann dann
             # beides ehrlich benennen statt stumm leer auszugehen.
             for r in store.recent_sessions(limit=80):
-                if _gremium_passt(gremium, r.get("committee")) \
+                if _gremium_passt(committee, r.get("committee")) \
                         and store.decision_ids_der_sitzung(r["ksinr"]):
                     rows.append(r)
                     break
-    elif gremium and _SITZUNG_VORAUS_RE.search(frage_f):
+    elif committee and _SITZUNG_VORAUS_RE.search(frage_f):
         rows = [r for r in store.upcoming_sessions(limit=40)
-                if _gremium_passt(gremium, r.get("committee"))][:1]
+                if _gremium_passt(committee, r.get("committee"))][:1]
     out: list[dict] = []
     for r in rows[:_SITZUNGEN_MAX]:
         s = {"ksinr": r.get("ksinr"), "committee": r.get("committee"),
@@ -1204,9 +1204,9 @@ def _build_context(candidates: list[dict]) -> str:
         ns = c.get("neuere_station")
         if ns and ns.get("datum"):
             verweis = f", siehe [{ns['id']}]" if ns.get("id") else ""
-            gremium = f" ({ns['committee']})" if ns.get("committee") else ""
+            committee = f" ({ns['committee']})" if ns.get("committee") else ""
             suffix += (f" — ⚠ ÄLTERE STATION: Zu dieser Vorlage gibt es eine NEUERE Station "
-                       f"vom {_datum_de(ns['datum'])}{gremium}{verweis} — "
+                       f"vom {_datum_de(ns['datum'])}{committee}{verweis} — "
                        f"die neuere gilt als aktueller Stand")
         lines.append(f"[{c['id']}] {(c.get('title') or '').strip()} ({meta}): {body}{suffix}")
     return "\n".join(lines) or "(keine passenden Beschlüsse gefunden)"
@@ -1311,7 +1311,7 @@ def _planungen_block(planungen: list[dict] | None) -> str:
     if not planungen:
         return ""
     zeilen = "\n".join(
-        f"- {p.get('vorlage_titel') or p.get('template_number')}: {p.get('gremium')} am "
+        f"- {p.get('vorlage_titel') or p.get('template_number')}: {p.get('committee')} am "
         f"{_datum_de(p.get('datum'))}" for p in planungen[:8])
     return ("\nGEPLANTE NÄCHSTE STATIONEN (aus den Beratungsfolgen — für den Abschnitt "
             "„Wie es weitergeht“; als Termin nennen, NIE mit [id]):\n" + zeilen + "\n")
@@ -1503,7 +1503,7 @@ def partei_meinungen(question: str, rows: list[dict], model: str = MODEL) -> lis
                 "speaker": b.get("speaker"),
                 "datum": _datum_de(b.get("session_date")),
                 "art": b.get("art"),
-                "gremium": b.get("committee"),
+                "committee": b.get("committee"),
                 "text": (b.get("text") or "").strip()[:2000],
             } for b in gruppen[e["partei"]]],
         })
@@ -2094,7 +2094,7 @@ def geld_grafik(store, geld: dict) -> dict | None:
             return {
                 "art": "schulden",
                 "titel": "Schuldenstand der Stadt",
-                "einheit": "Mio. €",
+                "unit": "Mio. €",
                 "nachkomma": 1,
                 "series": series,
                 # Die Abgrenzung reist mit der Grafik wie mit jeder Zahl:
@@ -2124,7 +2124,7 @@ def geld_grafik(store, geld: dict) -> dict | None:
             return {
                 "art": "taxes",
                 "titel": titel,
-                "einheit": "Mio. €",
+                "unit": "Mio. €",
                 "nachkomma": 1,
                 "series": series,
                 "note": ("Abrechnungszahlen der Stadt, keine Planwerte — "
@@ -2172,8 +2172,8 @@ def _gebuehren_block(g: dict | None) -> str:
                  f"{_eur(r.get('deductions'))}, durch Gebühren zu decken "
                  f"{_eur(r.get('costs_to_cover'))}")
             if r.get("fee") is not None:
-                einheit = f" je {r['reference_unit']}" if r.get("reference_unit") else ""
-                s += f"; errechnete Gebühr {geld(r['fee'], 3)}{einheit}"
+                unit = f" je {r['reference_unit']}" if r.get("reference_unit") else ""
+                s += f"; errechnete Gebühr {geld(r['fee'], 3)}{unit}"
             else:
                 s += ("; keine einzelne Gebühr ausgewiesen (Grundgebühr und "
                       "volumenabhängige Gebühr werden getrennt berechnet)")
@@ -2307,8 +2307,8 @@ def _vergleich_block(v: dict | None) -> str:
     """Die anderen kreisfreien Städte — Einordnung statt nackter Zahl."""
     if not v or not v.get("staedte"):
         return ""
-    einheit = f" {v['einheit']}" if v.get("einheit") else ""
-    zeilen = [f"- {s['city']}: {s['wert']:,.0f}{einheit}".replace(",", ".")
+    unit = f" {v['unit']}" if v.get("unit") else ""
+    zeilen = [f"- {s['city']}: {s['wert']:,.0f}{unit}".replace(",", ".")
               for s in v["staedte"][:8] if s.get("wert") is not None]
     return (f"\nIM VERGLEICH ({v['indicator']}, {v['year']}, amtliche Statistik des\n"
             "Landesamts für Statistik Niedersachsen — alle kreisfreien Städte\n"
@@ -2417,20 +2417,20 @@ def _kennzahlen_block(k: dict | None) -> str:
     """
     if not k or not k.get("werte"):
         return ""
-    def zeig(wert: float, einheit: str, stellen: int = 2) -> str:
+    def zeig(wert: float, unit: str, stellen: int = 2) -> str:
         """Eine Kennzahl so schreiben, wie der Bericht sie druckt."""
-        if einheit == "percent":
+        if unit == "percent":
             return f"{wert:.{stellen}f} %".replace(".", ",")
-        if einheit == "count":
+        if unit == "count":
             return f"{wert:,.0f}".replace(",", ".")
         return (f"{wert:,.{stellen}f} €".replace(",", "\u0001")
                 .replace(".", ",").replace("\u0001", "."))
 
     zeilen = []
-    for name, wert, einheit, stellen, formula in k["werte"]:
-        if einheit == "percent":
+    for name, wert, unit, stellen, formula in k["werte"]:
+        if unit == "percent":
             gezeigt = f"{wert:.{stellen}f} %".replace(".", ",")
-        elif einheit == "count":
+        elif unit == "count":
             gezeigt = f"{wert:,.0f}".replace(",", ".")
         else:
             # Mit den GEDRUCKTEN Nachkommastellen, nicht mit `_eur`: Neben
@@ -2442,10 +2442,10 @@ def _kennzahlen_block(k: dict | None) -> str:
         if formula:
             zeile += f" (so rechnet die Stadt: {formula})"
         zeilen.append(zeile)
-    for name, year, alt, alt_b, neu, neu_b, einheit in k.get("korrekturen") or []:
+    for name, year, alt, alt_b, neu, neu_b, unit in k.get("korrekturen") or []:
         zeilen.append(f"- ACHTUNG, später korrigiert: {name} {year} stand im Bericht "
-                      f"{alt_b} noch bei {zeig(alt, einheit)}, im Bericht {neu_b} bei "
-                      f"{zeig(neu, einheit)}. Nenne den jüngeren Wert und sag, dass "
+                      f"{alt_b} noch bei {zeig(alt, unit)}, im Bericht {neu_b} bei "
+                      f"{zeig(neu, unit)}. Nenne den jüngeren Wert und sag, dass "
                       f"korrigiert wurde.")
     return (f"\nKENNZAHLEN {k['year']} (Rechenschaftsbericht, Anlage "
             "„Kennzahlenübersicht und\nBerechnungsmethoden“). Die Rechenwege sind "
@@ -2502,8 +2502,8 @@ def _schulden_block(s: dict | None) -> str:
             zeile += (f"; davon hält die Stadt {_eur(b['rueckstellung'])} als "
                       f"Rückstellung für den erwarteten Ausfall vor")
         zeilen.append(zeile + _beleg_text(b.get("beleg")))
-        if b.get("grund"):
-            zeilen.append(f"  - Wofür: {b['grund']}")
+        if b.get("reason"):
+            zeilen.append(f"  - Wofür: {b['reason']}")
         zeilen.append("  Eine Bürgschaft kostet nichts, solange sie nicht "
                       "gezogen wird — sie gehört in keine Schuldensumme.")
     return ("\nSCHULDENSTAND (Statistisches Jahrbuch der Stadt, Tabelle 1108). Das ist\n"
@@ -2628,7 +2628,7 @@ def _antraege_block(a: dict | None) -> str:
         return ""
     zeilen = []
     for st in a["stationen"]:
-        kopf = (f"- {st['gremium']}, {_datum_de(st.get('datum'))}: "
+        kopf = (f"- {st['committee']}, {_datum_de(st.get('datum'))}: "
                 f"{st['gesamt']} Änderungslisten zur Abstimmung")
         if st.get("verwaltung"):
             kopf += (f", davon {st['verwaltung']} der Verwaltung (Fortschreibung des "

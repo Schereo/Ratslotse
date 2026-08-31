@@ -307,7 +307,7 @@ def test_ein_jahrgang_ohne_zweitquelle_kommt_nicht_rein():
     result = stt.lies_1103(PDF_1103, ohne_2025)
     assert result["years"] == [2023, 2024]
     assert [v["year"] for v in result["verworfen"]] == [2025]
-    assert "ohne Zweitquelle" in result["verworfen"][0]["grund"]
+    assert "ohne Zweitquelle" in result["verworfen"][0]["reason"]
     assert all(z["year"] != 2025 for z in result["zeilen"])
 
 
@@ -317,7 +317,7 @@ def test_ein_widersprechender_betrag_verwirft_den_jahrgang():
     falsch[2024][GEWERBE] = 199_000_000
     result = stt.lies_1103(PDF_1103, falsch)
     assert result["years"] == [2023, 2025]
-    assert "1103 202918 vs. 1104 199000" in result["verworfen"][0]["grund"]
+    assert "1103 202918 vs. 1104 199000" in result["verworfen"][0]["reason"]
 
 
 # --- Das Archiv: die Reihe wächst -------------------------------------------
@@ -470,7 +470,7 @@ def test_das_reformjahr_wird_nicht_faelschlich_als_versatz_gelesen():
     mit_2026 = {**GRUNDSTEUER_IST, 2026: 33_000_000}
     sprung = stt.sprungjahrprobe(stt.parse_1105(PDF_1105), mit_2026)
     assert 2025 not in [e["year"] for e in sprung["gerissen"]]
-    offen = {e["year"]: e["grund"] for e in sprung["nicht_pruefbar"]}
+    offen = {e["year"]: e["reason"] for e in sprung["nicht_pruefbar"]}
     assert "Grundsteuerreform" in offen[2025]
     # Und die Reihe kommt trotzdem herein.
     assert stt.lies_1105(PDF_1105, mit_2026)["abbruch"] is None

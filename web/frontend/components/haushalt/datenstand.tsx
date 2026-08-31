@@ -49,7 +49,7 @@ export type Datenschicht = {
   automatisch: boolean;
   /** Wie eine Einheit heißt („Teilhaushalte"), wo ein Jahrgang aus mehreren
    *  Dokumenten besteht — sonst null. */
-  einheit: string | null;
+  unit: string | null;
   /** Je Jahrgang die Zahl der Einheiten, und wie viele der bestbelegte hat. */
   einheiten: Record<string, number>;
   einheiten_voll: number | null;
@@ -204,7 +204,7 @@ export function Datenstand() {
           // Nur der jüngste unvollständige Jahrgang wird benannt: Die älteren
           // sind eine Geschichte für sich und würden die Zeile zumauern.
           const offen = s.teilweise[s.teilweise.length - 1];
-          const satz = s.einheit ? LUECKENTEXT[s.einheit] : undefined;
+          const satz = s.unit ? LUECKENTEXT[s.unit] : undefined;
           const luecke = offen != null && satz && s.einheiten_voll
             ? satz(offen, s.einheiten[String(offen)], s.einheiten_voll)
             : null;

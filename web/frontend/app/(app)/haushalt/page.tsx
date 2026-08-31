@@ -349,7 +349,7 @@ export default function HaushaltPage() {
                 + "dem Wechsel dürfen deshalb nicht zu einer gemeinsamen Entwicklung "
                 + "verrechnet werden.",
             } : undefined}
-            einheit="Mio. €"
+            unit="Mio. €"
             titel="Ausgaben der Stadt Oldenburg"
             beleg={<Beleg q="expense_series" />}
           />

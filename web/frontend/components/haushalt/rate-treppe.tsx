@@ -130,7 +130,7 @@ export function HebesatzTreppe({
               format: (v) => `${deZahl(v, 0)} %`,
             }
             : undefined}
-          einheit="%"
+          unit="%"
           nachkomma={0}
           format={(v) => deZahl(v, 0)}
           ariaTitel={`Hebesatz der ${titel} von ${erste.year} bis ${letzte.year},`

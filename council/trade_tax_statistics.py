@@ -420,7 +420,7 @@ def probe_summen(eintrag: dict) -> dict:
         werte = [eintrag.get(summe), eintrag.get(a), eintrag.get(b)]
         if any(w is None for w in werte):
             teilproben.append({"groesse": summe, "ok": None,
-                               "grund": "confidential oder nicht ausgewiesen"})
+                               "reason": "confidential oder nicht ausgewiesen"})
             continue
         deviation = abs(werte[0] - (werte[1] + werte[2]))
         ok = deviation < 0.5
@@ -449,7 +449,7 @@ def probe_blaetter(budget_year: Gewerbesteuerjahrgang) -> dict:
         gemeinde = budget_year.gemeinden.get(key)
         if not gemeinde:
             abweichungen.append({"schluessel": key, "city": kreis["city"],
-                                 "grund": "fehlt in Blatt 6.2"})
+                                 "reason": "fehlt in Blatt 6.2"})
             continue
         for name in ERWARTET_GEMEINDEN:
             a, b = kreis.get(name), gemeinde.get(name)
@@ -458,7 +458,7 @@ def probe_blaetter(budget_year: Gewerbesteuerjahrgang) -> dict:
             geprueft += 1
             if a is None or b is None or abs(a - b) >= 0.5:
                 abweichungen.append({"schluessel": key, "city": kreis["city"],
-                                     "grund": f"{name}: {a} gegen {b}"})
+                                     "reason": f"{name}: {a} gegen {b}"})
     return {"ok": geprueft > 0 and not abweichungen,
             "geprueft": geprueft, "abweichungen": abweichungen,
             "result": (f"{geprueft} Werte in beiden Blättern verglichen, "
@@ -539,14 +539,14 @@ def zeilen(budget_year: Gewerbesteuerjahrgang) -> tuple[list[dict], list[dict]]:
         # nicht gibt.
         if eintrag.get("gesamt_count") is None and eintrag.get("confidential"):
             verworfen.append({"schluessel": key, "city": eintrag["city"],
-                              "grund": "Geheimhaltung",
+                              "reason": "Geheimhaltung",
                               "result": "das Landesamt weist für diese Stadt "
                                           "keine Zahlen aus (§ 16 BStatG)"})
             continue
         probe = probe_summen(eintrag)
         if not probe["ok"]:
             verworfen.append({"schluessel": key, "city": eintrag["city"],
-                              "grund": "Summenprobe",
+                              "reason": "Summenprobe",
                               "result": probe["result"]})
             continue
         gemeinde = budget_year.gemeinden.get(key) or {}

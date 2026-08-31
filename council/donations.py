@@ -156,7 +156,7 @@ def _erster(text: str | None) -> float | None:
     return b[0] if b else None
 
 
-def gremium(titel: str | None) -> str | None:
+def committee(titel: str | None) -> str | None:
     """„Rat" oder „Verwaltungsausschuss" — aus dem Titel, sonst nirgendwo."""
     t = titel or ""
     if _RAT.search(t):
@@ -212,8 +212,8 @@ def lies(zeilen: Iterable[dict]) -> dict:
     Liefert:
 
     * ``vorlagen`` — je Vorlage **eine** Zeile, geprüft, mit ``probes``,
-      ``amount``, ``year``, ``gremium``, ``layout``.
-    * ``verworfen`` — je Eintrag ``{template_number, grund}``; der Grund ist ein
+      ``amount``, ``year``, ``committee``, ``layout``.
+    * ``verworfen`` — je Eintrag ``{template_number, reason}``; der Grund ist ein
       vollständiger Satz und für Leser*innen geschrieben.
     * ``years`` — die Jahresreihe, je Jahr Summe und Zahl der Vorlagen.
     * ``probes`` — Zähler, was wie oft griff.
@@ -231,7 +231,7 @@ def lies(zeilen: Iterable[dict]) -> dict:
 
         if (z.get("outcome") or "") != "angenommen":
             verworfen.append({"template_number": nr, "sitzung": z.get("sitzung"),
-                              "grund": "Der Tagesordnungspunkt wurde nicht beschlossen — "
+                              "reason": "Der Tagesordnungspunkt wurde nicht beschlossen — "
                                        "angenommen wurde nichts, also ist auch nichts "
                                        "eingenommen worden."})
             zaehler["nicht_beschlossen"] += 1
@@ -240,7 +240,7 @@ def lies(zeilen: Iterable[dict]) -> dict:
         kopf = _erster(z.get("official_text"))
         if kopf is None:
             verworfen.append({"template_number": nr, "sitzung": z.get("sitzung"),
-                              "grund": "Das Protokoll hält für diese Sitzung keinen Betrag "
+                              "reason": "Das Protokoll hält für diese Sitzung keinen Betrag "
                                        "fest, sondern nur, dass angenommen wurde."})
             zaehler["ohne_protokollbetrag"] += 1
             continue
@@ -252,7 +252,7 @@ def lies(zeilen: Iterable[dict]) -> dict:
 
         if not art:
             verworfen.append({"template_number": nr, "sitzung": z.get("sitzung"),
-                              "grund": _grund(raw, section, kopf, vorschlag, teile)})
+                              "reason": _grund(raw, section, kopf, vorschlag, teile)})
             zaehler["ohne_zweitstelle"] += 1
             continue
 
@@ -265,7 +265,7 @@ def lies(zeilen: Iterable[dict]) -> dict:
 
         kandidaten.append({
             "template_number": nr, "amount": kopf, "sitzung": z.get("sitzung"),
-            "year": int(str(z.get("sitzung"))[:4]), "gremium": gremium(z.get("titel")),
+            "year": int(str(z.get("sitzung"))[:4]), "committee": committee(z.get("titel")),
             "layout": layout, "second_mention": art, "teile": len(teile),
             "probes": probes, "document_id": z.get("document_id"),
             "dokument_url": z.get("dokument_url"),
@@ -287,9 +287,9 @@ def lies(zeilen: Iterable[dict]) -> dict:
                                          "rat": 0, "verwaltungsausschuss": 0})
         e["amount"] += v["amount"]
         e["vorlagen"] += 1
-        if v["gremium"] == "Rat":
+        if v["committee"] == "Rat":
             e["rat"] += 1
-        elif v["gremium"] == "Verwaltungsausschuss":
+        elif v["committee"] == "Verwaltungsausschuss":
             e["verwaltungsausschuss"] += 1
     for e in years.values():
         e["amount"] = round(e["amount"], 2)

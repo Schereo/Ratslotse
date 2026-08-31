@@ -12,7 +12,7 @@
 // Grund für die Komponente:
 //
 //  1. **Der Nenner steht dran.** Ein Anteil ohne Bezugsgröße ist keine Zahl,
-//     sondern ein Gefühl. `gesamt` und `einheit` gehören deshalb in die
+//     sondern ein Gefühl. `gesamt` und `unit` gehören deshalb in die
 //     Beschriftung, nicht in den Fließtext daneben.
 //  2. **Keine Bewertungsfarben.** Die Segmente kommen aus der Ausgabenrampe
 //     `--hh-aus-*` (dunkel = wenig Spielraum), nie aus Ampelfarben. Ein
@@ -59,13 +59,13 @@ function schraffur(farbe: string): string {
 }
 
 export function Anteilsbalken({
-  segmente, gesamt, einheit = "Mio. €", mark, hoehe = 14,
+  segmente, gesamt, unit = "Mio. €", mark, hoehe = 14,
   legende = true, titel, className,
 }: {
   segmente: Anteil[];
   gesamt: number;
   /** Steht in der Legende hinter jedem Wert. */
-  einheit?: string;
+  unit?: string;
   /** Ein beschrifteter Strich quer über den Balken. */
   mark?: Marke;
   hoehe?: number;
@@ -137,7 +137,7 @@ export function Anteilsbalken({
               />
               <span className="min-w-0 flex-1 leading-snug">{s.label}</span>
               <span className="flex-none tabular-nums text-muted-foreground">
-                {s.wert.toLocaleString("de-DE", { maximumFractionDigits: 1 })}&nbsp;{einheit}
+                {s.wert.toLocaleString("de-DE", { maximumFractionDigits: 1 })}&nbsp;{unit}
               </span>
               <span className="w-[52px] flex-none text-right font-semibold tabular-nums">
                 {deProzent(percent(s.wert, gesamt))}

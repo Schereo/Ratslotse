@@ -21,14 +21,14 @@
 
 import { cn } from "@/lib/utils";
 
-export function LueckenFeld({ label, grund, datum, className }: {
+export function LueckenFeld({ label, reason, datum, className }: {
   /** Was fehlt — meist die Jahreszahl („2019"), sonst der Teil
    *  („Teil B 2026"). */
   label: string;
   /** Warum es fehlt, als ganzer Grund: „verworfen: 1,3 Mio. € Differenz im
    *  Dokument", „PDF ohne lesbare Zeichen". Nie leer — eine Lücke ohne
    *  Grund ist keine Auskunft, sondern ein Loch. */
-  grund: string;
+  reason: string;
   /** Stichtag der Feststellung, wo bekannt („12.08.2026"). */
   datum?: string;
   className?: string;
@@ -49,7 +49,7 @@ export function LueckenFeld({ label, grund, datum, className }: {
           {label}
         </span>
         {" — "}
-        {grund}
+        {reason}
         {datum && (
           <span className="ml-1.5 whitespace-nowrap font-mono text-[9.5px] uppercase tracking-wide text-muted-foreground">
             Stand {datum}

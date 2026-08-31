@@ -109,12 +109,12 @@ function Zeile({ s, von, bis, skala, nachkomma }: {
   );
 }
 
-export function Wasserfall({ schritte, einheit, kicker, beleg, nachkomma = 1, className }: {
+export function Wasserfall({ schritte, unit, kicker, beleg, nachkomma = 1, className }: {
   /** Die Rechnung von oben nach unten: erst `start`, dann Abzüge, zuletzt
    *  das Ergebnis („aus Steuermitteln", „trägt die Stadt"). */
   schritte: WasserfallSchritt[];
   /** Achsen-Einheit, steht rechts oben: „Mio. € 2026". */
-  einheit: string;
+  unit: string;
   /** Mono-Kicker links oben; ohne ihn beginnt die Karte mit der Rechnung. */
   kicker?: string;
   /** Beleg-Chip-Slot (GB-00) — die Seite kennt ihren Quellenkontext. */
@@ -140,13 +140,13 @@ export function Wasserfall({ schritte, einheit, kicker, beleg, nachkomma = 1, cl
 
   return (
     <div className={className}>
-      {(kicker || einheit) && (
+      {(kicker || unit) && (
         <div className="mb-3 flex items-baseline justify-between gap-3">
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
             {kicker}{beleg}
           </p>
           <span className="flex-none font-mono text-[9.5px] uppercase tracking-[0.09em] text-muted-foreground">
-            {einheit}
+            {unit}
           </span>
         </div>
       )}

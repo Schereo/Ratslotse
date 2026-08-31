@@ -660,7 +660,7 @@ function PlanIstInner() {
                       {abw > 0 ? "+" : ""}{deMio(abw)}&#8239;Mio.&nbsp;€
                     </span>
                   </div>
-                  <Warum grund={grundZuPosten(data, year, p.nr)} />
+                  <Warum reason={grundZuPosten(data, year, p.nr)} />
                 </div>
               );
             })}
@@ -700,7 +700,7 @@ function PlanIstInner() {
                     )}
                   </span>
                 </div>
-                <Warum grund={g} />
+                <Warum reason={g} />
               </div>
             ))}
           </div>

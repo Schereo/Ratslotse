@@ -166,7 +166,7 @@ def test_die_identische_zweitstelle_zaehlt_auch():
     v = erg["vorlagen"][0]
     assert v["amount"] == 1_800
     assert v["second_mention"] == "identical"
-    assert v["gremium"] == "Verwaltungsausschuss"
+    assert v["committee"] == "Verwaltungsausschuss"
 
 
 # --- Die Probe hält NICHT ---------------------------------------------------
@@ -179,8 +179,8 @@ def test_eine_vorlage_ohne_zweitstelle_kommt_nicht_rein():
         "total 7.500,00 EUR laut anliegender Liste an.")])
     assert erg["vorlagen"] == []
     assert len(erg["verworfen"]) == 1
-    grund = erg["verworfen"][0]["grund"]
-    assert "finanziellen" in grund and grund.endswith(".")
+    reason = erg["verworfen"][0]["reason"]
+    assert "finanziellen" in reason and reason.endswith(".")
 
 
 def test_ein_geaenderter_beschluss_kommt_nicht_ungeprueft_rein():
@@ -195,8 +195,8 @@ def test_ein_geaenderter_beschluss_kommt_nicht_ungeprueft_rein():
         "total 2.500,00 EUR laut anliegender Liste an (ohne lfd. Nr. 2).",
         titel="Annahme von Zuwendungen durch den Verwaltungsausschuss")])
     assert erg["vorlagen"] == []
-    assert "22.500,00" in erg["verworfen"][0]["grund"]
-    assert "2.500,00" in erg["verworfen"][0]["grund"]
+    assert "22.500,00" in erg["verworfen"][0]["reason"]
+    assert "2.500,00" in erg["verworfen"][0]["reason"]
 
 
 def test_der_grund_traegt_die_zahlen_der_zeile_und_nicht_die_deutung():
@@ -214,9 +214,9 @@ def test_der_grund_traegt_die_zahlen_der_zeile_und_nicht_die_deutung():
         "Die Stadt Oldenburg nimmt die angebotenen Zuwendungen in Höhe von "
         "total 2.500,00 EUR laut anliegender Liste an (ohne lfd. Nr. 2).",
         titel="Annahme von Zuwendungen durch den Verwaltungsausschuss")])
-    grund = erg["verworfen"][0]["grund"]
-    assert "Zahlendreher" not in grund and "geändert" not in grund
-    assert len(grund) < 120, grund
+    reason = erg["verworfen"][0]["reason"]
+    assert "Zahlendreher" not in reason and "geändert" not in reason
+    assert len(reason) < 120, reason
 
 
 def test_ein_abgesetzter_punkt_ist_keine_einnahme():
@@ -225,7 +225,7 @@ def test_ein_abgesetzter_punkt_ist_keine_einnahme():
         "21/0694", None, "Der Tagesordnungspunkt wurde abgesetzt.",
         outcome="vertagt")])
     assert erg["vorlagen"] == []
-    assert "nicht beschlossen" in erg["verworfen"][0]["grund"]
+    assert "nicht beschlossen" in erg["verworfen"][0]["reason"]
 
 
 # --- Die drei Reparaturen am Textextrakt ------------------------------------
@@ -279,7 +279,7 @@ def test_die_summe_einer_va_vorlage_darf_ueber_der_schwelle_liegen():
         titel="Annahme von Zuwendungen durch den Verwaltungsausschuss")])
     v = erg["vorlagen"][0]
     assert v["amount"] == 2_746.20
-    assert v["gremium"] == "Verwaltungsausschuss"
+    assert v["committee"] == "Verwaltungsausschuss"
 
 
 # --- Aufbereitung -----------------------------------------------------------
@@ -381,7 +381,7 @@ def test_verworfene_zeilen_kommen_mit_ihrem_grund_in_den_bestand(tmp_path):
         ohne = store.get_spenden_verworfen()
         assert len(ohne) == 1
         assert ohne[0]["template_number"] == "18/0587"
-        assert "22.500,00" in ohne[0]["grund"]
+        assert "22.500,00" in ohne[0]["reason"]
         assert ohne[0]["herkunft_id"]
     finally:
         store.close()

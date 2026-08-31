@@ -697,7 +697,7 @@ function Selbstauskunft({ befund, year }: { befund: SpielraumBefund; year: numbe
               <p className="text-[11.5px] font-semibold leading-snug">
                 {groesste.product_name}
                 <span className="ml-1.5 font-normal tabular-nums text-muted-foreground">
-                  {amount(groesste.expenses).wert}&nbsp;{amount(groesste.expenses).einheit}
+                  {amount(groesste.expenses).wert}&nbsp;{amount(groesste.expenses).unit}
                 </span>
               </p>
               {/* Wortlaut des Teilhaushaltsplans, ungekürzt: Die Rechtsgrundlagen

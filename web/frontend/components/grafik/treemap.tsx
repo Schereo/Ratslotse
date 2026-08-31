@@ -172,7 +172,7 @@ export function Treemap({
 
   const geld = (euro: number) => {
     const b = amount(euro);
-    return `${b.wert} ${b.einheit}`;
+    return `${b.wert} ${b.unit}`;
   };
 
   // Mobil: dieselben Daten, dieselbe Sortierung — als Rangliste mit Schiene.
@@ -180,7 +180,7 @@ export function Treemap({
     return (
       <div ref={box} className="flex flex-col gap-2.5">
         <RanglisteSchiene
-          einheit="Mio. €" nachkomma={1}
+          unit="Mio. €" nachkomma={1}
           zeilen={top.map((k) => ({
             label: k.name,
             wert: k.wert / 1e6,

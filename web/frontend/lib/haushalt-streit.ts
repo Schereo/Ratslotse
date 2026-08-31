@@ -68,7 +68,7 @@ export type StreitBeschluss = {
 
 export type StreitStation = {
   ksinr: number;
-  gremium: string;
+  committee: string;
   datum: string;
   top: string | null;
   official_text: StreitBeschluss | null;
@@ -169,7 +169,7 @@ export function verhandlungsBilanz(r: StreitRunde | null): BilanzZeile[] {
     // Die Stationen sind in Oldenburg der Ausschuss für Finanzen und
     // Beteiligungen und der Rat (council/store.haushalt_streit) — alles,
     // was nicht der Rat ist, zählt deshalb zur Ausschuss-Spalte.
-    const page: keyof Omit<BilanzZeile, "author"> = s.gremium === "Rat" ? "rat" : "fa";
+    const page: keyof Omit<BilanzZeile, "author"> = s.committee === "Rat" ? "rat" : "fa";
     for (const a of s.antraege) {
       if (a.ist_verwaltung) continue;
       const author = a.author ?? EINZELNE;

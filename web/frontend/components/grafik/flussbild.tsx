@@ -162,9 +162,9 @@ function stapeln(baender: FlussPosten[], faktor: number, gap: number, start: num
 
 /** Die aufgeklappte Auflistung eines Sammelpostens — dieselbe Grammatik wie
  *  die Detail-Box des Gegenbalkens (Karte mit Schließen-Knopf). */
-function SammelPanel({ lage, titel, teile, skala, format, einheit, onClose }: {
+function SammelPanel({ lage, titel, teile, skala, format, unit, onClose }: {
   lage: SeitenLage; titel: string; teile: FlussPosten[]; skala: number;
-  format: (w: number) => string; einheit: string; onClose: () => void;
+  format: (w: number) => string; unit: string; onClose: () => void;
 }) {
   const groesste = Math.max(...teile.map((t) => t.wert), 1);
   return (
@@ -187,13 +187,13 @@ function SammelPanel({ lage, titel, teile, skala, format, einheit, onClose }: {
                 style={{ width: `${(t.wert / groesste) * 100}%`, background: farbe(lage, 2, 4, "posten") }} />
             </span>
             <span className="whitespace-nowrap text-right text-[12px] tabular-nums">
-              {format(t.wert)}&#8239;{einheit}
+              {format(t.wert)}&#8239;{unit}
             </span>
           </div>
         ))}
       </div>
       <p className="mt-2 text-[11px] text-muted-foreground">
-        Zusammen {format(teile.reduce((s, t) => s + t.wert, 0))}&#8239;{einheit} —
+        Zusammen {format(teile.reduce((s, t) => s + t.wert, 0))}&#8239;{unit} —
         {" "}{((teile.reduce((s, t) => s + t.wert, 0) / skala) * 100).toLocaleString("de-DE", { maximumFractionDigits: 1 })}
         &nbsp;% von allem.
       </p>
@@ -204,9 +204,9 @@ function SammelPanel({ lage, titel, teile, skala, format, einheit, onClose }: {
 /** Eine Zeile der Listenfassung: Name, Balken auf der gemeinsamen Skala,
  *  Betrag. Der Balken misst gegen dieselbe Skala wie die Bänder — sonst
  *  erzählten Listen- und Bandfassung zwei verschiedene Geschichten. */
-function ListenZeile({ band, lage, rang, count, skala, format, einheit, sammel, offen, onToggle }: {
+function ListenZeile({ band, lage, rang, count, skala, format, unit, sammel, offen, onToggle }: {
   band: FlussPosten; lage: SeitenLage; rang: number; count: number; skala: number;
-  format: (w: number) => string; einheit: string;
+  format: (w: number) => string; unit: string;
   sammel: boolean; offen: boolean; onToggle: () => void;
 }) {
   const anteil = (band.wert / skala) * 100;
@@ -218,7 +218,7 @@ function ListenZeile({ band, lage, rang, count, skala, format, einheit, sammel, 
           {band.art === "posten" ? band.label : band.lang}
         </span>
         <span className="flex-none text-[12px] tabular-nums">
-          {format(band.wert)}<span className="text-muted-foreground">&#8239;{einheit}</span>
+          {format(band.wert)}<span className="text-muted-foreground">&#8239;{unit}</span>
         </span>
       </span>
       <span className="mt-1 block h-2.5 w-full">
@@ -243,8 +243,8 @@ function ListenZeile({ band, lage, rang, count, skala, format, einheit, sammel, 
 
 /** Der Kollektorknoten als eigener Block (Listen-Fassung) — er trägt die
  *  Aussage, deshalb steht sie in ihm und nicht darunter. */
-function TopfBlock({ topf, format, einheit }: {
-  topf: FlussTopf; format: (w: number) => string; einheit: string;
+function TopfBlock({ topf, format, unit }: {
+  topf: FlussTopf; format: (w: number) => string; unit: string;
 }) {
   return (
     <div className="my-3 rounded-xl border border-border bg-muted/70 px-3 py-2.5">
@@ -252,7 +252,7 @@ function TopfBlock({ topf, format, einheit }: {
         {topf.lang}
       </p>
       <p className="mt-1 font-display text-[19px] font-bold tabular-nums tracking-tight">
-        {format(topf.wert)}<span className="text-xs font-semibold text-muted-foreground">&#8239;{einheit}&nbsp;€</span>
+        {format(topf.wert)}<span className="text-xs font-semibold text-muted-foreground">&#8239;{unit}&nbsp;€</span>
       </p>
       <p className="mt-1 text-[11.5px] leading-relaxed text-foreground/80">
         {topf.note}
@@ -263,14 +263,14 @@ function TopfBlock({ topf, format, einheit }: {
 
 /** Listen-Fassung für schmale Bildschirme: Stapel, der Topf dazwischen —
  *  dieselben Zahlen und dieselbe Bündelung wie die Bänder. */
-function Listen({ seiten, topf, empfaenger, skala, mindestAnteil, format, einheit, offen, setOffen }: {
+function Listen({ seiten, topf, empfaenger, skala, mindestAnteil, format, unit, offen, setOffen }: {
   seiten: { lage: SeitenLage; daten: FlussSeiteDaten }[];
   topf: FlussTopf;
   empfaenger?: string;
   skala: number;
   mindestAnteil: number;
   format: (w: number) => string;
-  einheit: string;
+  unit: string;
   offen: SeitenLage | null;
   setOffen: (s: SeitenLage | null) => void;
 }) {
@@ -280,24 +280,24 @@ function Listen({ seiten, topf, empfaenger, skala, mindestAnteil, format, einhei
         const { gezeigt, gebuendelt } = fasseKleineZusammen(daten.baender, skala, mindestAnteil);
         return (
           <div key={lage}>
-            {si === 1 && <TopfBlock topf={topf} format={format} einheit={einheit} />}
+            {si === 1 && <TopfBlock topf={topf} format={format} unit={unit} />}
             <div className="mb-2 flex items-baseline justify-between gap-3">
               <p className="text-[12.5px] font-semibold">{daten.titel}</p>
               <span className="font-mono text-[10px] uppercase text-muted-foreground">
-                {daten.hint} · {format(daten.gesamt)}&#8239;{einheit}
+                {daten.hint} · {format(daten.gesamt)}&#8239;{unit}
               </span>
             </div>
             <div className="flex flex-col gap-2">
               {gezeigt.map((b, i) => (
                 <ListenZeile key={b.id} band={b} lage={lage} rang={i} count={gezeigt.length}
-                  skala={skala} format={format} einheit={einheit}
+                  skala={skala} format={format} unit={unit}
                   sammel={b.id === "weitere"} offen={offen === lage}
                   onToggle={() => setOffen(offen === lage ? null : lage)} />
               ))}
             </div>
             {offen === lage && gebuendelt.length > 0 && (
               <SammelPanel lage={lage} titel={daten.sammelTitel} teile={gebuendelt}
-                skala={skala} format={format} einheit={einheit}
+                skala={skala} format={format} unit={unit}
                 onClose={() => setOffen(null)} />
             )}
           </div>
@@ -305,7 +305,7 @@ function Listen({ seiten, topf, empfaenger, skala, mindestAnteil, format, einhei
       })}
       {seiten.length === 1 && (
         <>
-          <TopfBlock topf={topf} format={format} einheit={einheit} />
+          <TopfBlock topf={topf} format={format} unit={unit} />
           {empfaenger && (
             <p className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
               <ArrowDown aria-hidden className="h-3.5 w-3.5" /> {empfaenger}
@@ -318,7 +318,7 @@ function Listen({ seiten, topf, empfaenger, skala, mindestAnteil, format, einhei
 }
 
 export function Flussbild({
-  links, rechts, empfaenger, topf, skala, format, einheit = "Mio. €",
+  links, rechts, empfaenger, topf, skala, format, unit = "Mio. €",
   mindestAnteil = 0.05, beschreibung, className,
 }: {
   /** Die Quellen — laufen in den Topf (Einnahmen-Rampe). */
@@ -334,7 +334,7 @@ export function Flussbild({
   /** Fertige de-DE-Formatierung eines Wertes (GB-00: Intl, `format.ts`). */
   format: (wert: number) => string;
   /** Suffix hinter formatierten Werten („Mio."). */
-  einheit?: string;
+  unit?: string;
   /** Unter diesem Anteil der Skala wandert ein Posten in den Sammelposten. */
   mindestAnteil?: number;
   /** Der ganze Satz für die Vorlesehilfe der Band-Fassung. */
@@ -371,11 +371,11 @@ export function Flussbild({
           // Ohne rechte Seite gibt es keine Band-Geometrie zu zeigen — die
           // Listen-Fassung trägt den Ein-Seiten-Fall auf jeder Breite.
           <Listen seiten={seiten} topf={topf} empfaenger={empfaenger} skala={skala}
-            mindestAnteil={mindestAnteil} format={format} einheit={einheit}
+            mindestAnteil={mindestAnteil} format={format} unit={unit}
             offen={offen} setOffen={setOffen} />
         ) : (
           <Baender links={links} rechts={rechts} topf={topf} skala={skala}
-            mindestAnteil={mindestAnteil} format={format} einheit={einheit}
+            mindestAnteil={mindestAnteil} format={format} unit={unit}
             breite={breite} musterId={musterId} beschreibung={beschreibung}
             offen={offen} setOffen={setOffen} />
         )}
@@ -386,7 +386,7 @@ export function Flussbild({
         const { gebuendelt } = fasseKleineZusammen(s.baender, skala, mindestAnteil);
         return gebuendelt.length ? (
           <SammelPanel lage={offen} titel={s.sammelTitel} teile={gebuendelt}
-            skala={skala} format={format} einheit={einheit}
+            skala={skala} format={format} unit={unit}
             onClose={() => setOffen(null)} />
         ) : null;
       })()}
@@ -396,14 +396,14 @@ export function Flussbild({
 
 /** Die Bandfassung. Eigene Komponente, weil sie das ganze Koordinatensystem
  *  aufspannt und sonst die Lesbarkeit der Hülle frisst. */
-function Baender({ links, rechts, topf, skala, mindestAnteil, format, einheit, breite, musterId, beschreibung, offen, setOffen }: {
+function Baender({ links, rechts, topf, skala, mindestAnteil, format, unit, breite, musterId, beschreibung, offen, setOffen }: {
   links: FlussSeiteDaten;
   rechts: FlussSeiteDaten;
   topf: FlussTopf;
   skala: number;
   mindestAnteil: number;
   format: (w: number) => string;
-  einheit: string;
+  unit: string;
   breite: number;
   musterId: string;
   beschreibung: string;
@@ -506,7 +506,7 @@ function Baender({ links, rechts, topf, skala, mindestAnteil, format, einheit, b
       </text>
       <text x={xTopf + TOPF / 2} y={topfOben + hoeheTopf + 29} textAnchor="middle"
         fontSize={10} className="fill-muted-foreground font-mono">
-        {einheit.toUpperCase()} EURO
+        {unit.toUpperCase()} EURO
       </text>
       <text x={xTopf + TOPF / 2} y={topfOben + hoeheTopf / 2} textAnchor="middle"
         fontSize={11.5} fontWeight={600} className="fill-muted-foreground"

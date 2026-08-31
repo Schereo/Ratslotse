@@ -229,7 +229,7 @@ function Leiste({ zeile, basis, nachkomma, restLabel, mark }: {
 }
 
 export function Gegenbalken({
-  zeilen, basis, einheit = "Mio. €", nachkomma = 1, restLabel, mark, beleg, className,
+  zeilen, basis, unit = "Mio. €", nachkomma = 1, restLabel, mark, beleg, className,
 }: {
   /** Eine oder zwei Leisten — mehr wären keine Gegenüberstellung mehr. */
   zeilen: GegenbalkenZeile[];
@@ -237,7 +237,7 @@ export function Gegenbalken({
    *  Summen — nie je Zeile die eigene. */
   basis: number;
   /** Steht als Mono-Zeile rechts über den Leisten. */
-  einheit?: string;
+  unit?: string;
   /** Feste Nachkommastellen aller Beträge. */
   nachkomma?: number;
   /** Name der Lücke zwischen kürzerer Zeile und Basis („aus dem
@@ -258,7 +258,7 @@ export function Gegenbalken({
       <div className="mb-2.5 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <span className="font-mono text-[9.5px] font-medium uppercase tracking-[0.09em] text-muted-foreground">
           {gezeigt.length > 1 ? "Eine Basis für beide Leisten: " : "Basis: "}
-          {deZahl(basis, nachkomma)} {einheit} = 100&nbsp;%{beleg}
+          {deZahl(basis, nachkomma)} {unit} = 100&nbsp;%{beleg}
         </span>
       </div>
       <div className="flex flex-col gap-3.5">
