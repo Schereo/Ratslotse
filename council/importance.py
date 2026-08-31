@@ -53,7 +53,7 @@ _MONEY_CAP = 50_000_000.0
 # (1,00) — und damit 34 % des Wichtig-Werts — für einen Feststellungsbeschluss.
 NON_SPENDING_TITLES = (
     "jahresabschluss", "lagebericht", "gesamtabschluss", "wirtschaftsplan",
-    "haushaltsplan", "haushaltssatzung", "nachtragshaushalt", "finanzbericht",
+    "haushaltsplan", "budget_bylaw", "nachtragshaushalt", "finanzbericht",
     "beteiligungsbericht", "jahresrechnung", "quartalsbericht", "zwischenbericht",
     "umschuldung", "kreditrichtlinie", "kassenkredite",
 )

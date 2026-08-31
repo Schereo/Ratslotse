@@ -533,10 +533,10 @@ function kurzerGegenstand(roh: string): string {
  *  in der Meta-Zeile; leer, wenn nichts zitiert wurde. */
 function stuetztAuf(zitierte: QaSource[]): string {
   if (zitierte.length === 0) return "";
-  const jahre = zitierte.map((s) => year(s.session_date)).filter(Boolean).sort();
+  const years = zitierte.map((s) => year(s.session_date)).filter(Boolean).sort();
   const n = zitierte.length;
-  if (jahre.length === 0) return `stützt sich auf ${n} ${n === 1 ? "Beschluss" : "Beschlüsse"}`;
-  const von = jahre[0], bis = jahre[jahre.length - 1];
+  if (years.length === 0) return `stützt sich auf ${n} ${n === 1 ? "Beschluss" : "Beschlüsse"}`;
+  const von = years[0], bis = years[years.length - 1];
   const zeitraum = von === bis ? `aus ${von}` : `von ${von} bis ${bis}`;
   return `stützt sich auf ${n} ${n === 1 ? "Beschluss" : "Beschlüsse"} ${zeitraum}`;
 }

@@ -56,9 +56,9 @@ const TEILE: {
 ];
 
 export function ZuweisungDreiteilig({ series }: { series?: FinanzausgleichJahr[] }) {
-  const jahre = (series ?? []).filter((j) => j.nettobetrag != null);
-  if (!jahre.length) return null;
-  const j = jahre[jahre.length - 1];
+  const years = (series ?? []).filter((j) => j.nettobetrag != null);
+  if (!years.length) return null;
+  const j = years[years.length - 1];
 
   // Was der Open-Data-Datensatz führt — nicht aus ihm gelesen, sondern aus
   // denselben Zeilen gerechnet, damit die beiden Zahlen im Block garantiert

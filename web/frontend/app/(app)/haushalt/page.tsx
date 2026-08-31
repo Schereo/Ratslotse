@@ -44,34 +44,34 @@ import { Zeitreihe } from "@/components/haushalt/zeitreihe";
 import { NahtSaeulen, type NahtJahr } from "@/components/grafik/naht-saeulen";
 import {
   AUSGABEN_QUELLE_LABEL, HaushaltAuswahl, haushaltUrl,
-  ausgabenKonflikte, ausgabenreihe,
+  ausgabenKonflikte, expense_series,
   deMio, fehlendeJahre, flussJahre, jahreSortiert, mio, quellenLabel, summe,
 } from "@/lib/haushalt";
 
 /** Was diese Seite rendert — und damit alles, was sie holt.
  *  Feldliste und Typ kommen aus derselben Zeile: Ein Zugriff auf ein
  *  nicht angefordertes Feld ist ein Fehler beim Bauen, kein leerer Block. */
-const FELDER = ["jahre", "ausgabenreihe", "ergebnisrechnung", "einwohner",
+const FELDER = ["years", "expense_series", "income_statement", "population",
   // Die Ertragsarten der Planjahre — für Jahre ohne Jahresabschluss die
   // einzige Seite, die das Flussbild zeigen kann (Posten 01–11, `ansatz`).
-  "ergebnishaushalt", "ruecklage"] as const;
+  "income_budget", "reserves"] as const;
 
 export default function HaushaltPage() {
   // Nur den Aufwands-Posten je Teilhaushalt: Das Flussbild zeichnet rechts
   // genau ihn. Die volle Ebene wären 795 statt 178 KB — bei identischem Bild.
   const { data, loading } = useFetch<HaushaltAuswahl<typeof FELDER[number]>>(haushaltUrl(FELDER, "20"));
-  const jahre = useMemo(() => (data ? jahreSortiert(data) : []), [data]);
+  const years = useMemo(() => (data ? jahreSortiert(data) : []), [data]);
   const [year, setJahr] = useState<number | null>(null);
   const [visual, setVisual] = useState<"balken" | "euro">("balken");
   const jahrLeiste = useRef<HTMLDivElement>(null);
 
-  const aktJahr = year ?? jahre[jahre.length - 1] ?? null;
-  const zeilen = aktJahr && data ? data.jahre[String(aktJahr)] ?? [] : [];
+  const aktJahr = year ?? years[years.length - 1] ?? null;
+  const zeilen = aktJahr && data ? data.years[String(aktJahr)] ?? [] : [];
   const gesamt = summe(zeilen);
   // Aus Rohwerten gerundet — 883,9 − 812,9 ergäbe 71,0, tatsächlich sind es 71,1.
   const defizit = gesamt?.revenues != null && gesamt?.expenses != null
     ? mio(gesamt.expenses - gesamt.revenues) : null;
-  const luecken = fehlendeJahre(jahre);
+  const luecken = fehlendeJahre(years);
   const quelle = aktJahr ? quellenLabel(zeilen, aktJahr) : null;
 
   // --- Die lange Reihe (Datensatz 1102) ------------------------------------
@@ -79,9 +79,9 @@ export default function HaushaltPage() {
   // Werte in Mio. €, `art` ist der Titel, den die Quelle ihrem Block gibt —
   // daraus wird die Legende, und die nennt damit beide Abgrenzungen beim
   // Namen statt „alt"/„neu".
-  const lange = useMemo(() => (data ? ausgabenreihe(data) : []), [data]);
+  const lange = useMemo(() => (data ? expense_series(data) : []), [data]);
   const langeJahre = useMemo<NahtJahr[]>(() => {
-    if (!data?.ausgabenreihe || lange.length < 2) return [];
+    if (!data?.expense_series || lange.length < 2) return [];
     const nach = new Map(lange.map((z) => [z.year, z]));
     const js: NahtJahr[] = [];
     for (let y = lange[0].year; y <= lange[lange.length - 1].year; y++) {
@@ -90,7 +90,7 @@ export default function HaushaltPage() {
         ? {
             year: y,
             teile: [{
-              art: data.ausgabenreihe.accounting_systems[z.accounting_system].titel,
+              art: data.expense_series.accounting_systems[z.accounting_system].titel,
               wert: z.amount / 1e6,
             }],
           }
@@ -133,7 +133,7 @@ export default function HaushaltPage() {
 
   // Der Kassenzettel braucht die amtliche Einwohnerzahl und läuft nur fürs
   // jüngste Planjahr (Begründung im Kopf dieser Datei).
-  const zeigtZettel = aktJahr === jahre[jahre.length - 1] && data.einwohner != null;
+  const zeigtZettel = aktJahr === years[years.length - 1] && data.population != null;
 
   // Angemeldet wird nur, was auf DIESER Seite auch zitiert wird — sonst stünde
   // im Verzeichnis ein Beleg für nichts, und die seitenweise Nummerierung
@@ -143,7 +143,7 @@ export default function HaushaltPage() {
     "plan",
     ...(zeigtZettel ? kassenzettelQuellen(data, aktJahr) : []),
     ...flussbildQuellen(data, aktJahr),
-    ...(langeJahre.length > 0 ? (["ausgabenreihe"] as const) : []),
+    ...(langeJahre.length > 0 ? (["expense_series"] as const) : []),
   ];
 
   // Die lange Reihe: Endpunkte, Naht und die beiden Befunde, die dazugehören.
@@ -151,13 +151,13 @@ export default function HaushaltPage() {
   // Jahrgang still falsch (Hausregel des Bereichs).
   const langErster = lange[0] ?? null;
   const langLetzter = lange[lange.length - 1] ?? null;
-  const nahtAb = data.ausgabenreihe?.naht_ab ?? null;
+  const nahtAb = data.expense_series?.naht_ab ?? null;
   const konflikte = ausgabenKonflikte(data);
   // Das jüngste Jahr der Reihe steht hier, bevor sein Jahresabschluss vorliegt
   // — der eigentliche Nebengewinn dieser Quelle. Gemessen an dem, was wir an
   // Abschlüssen haben, nicht an einer Jahreszahl im Code.
   const juengsterAbschluss = Math.max(
-    0, ...(data.ergebnisrechnung ?? []).map((p) => p.year));
+    0, ...(data.income_statement ?? []).map((p) => p.year));
   const vorDemAbschluss =
     langLetzter && juengsterAbschluss > 0 && langLetzter.year > juengsterAbschluss
       ? langLetzter.year : null;
@@ -181,9 +181,9 @@ export default function HaushaltPage() {
             <div className="flex flex-none items-center gap-1 rounded-full border border-border bg-card p-1">
               {(() => {
                 const alle: number[] = [];
-                for (let y = jahre[0]; y <= jahre[jahre.length - 1]; y++) alle.push(y);
+                for (let y = years[0]; y <= years[years.length - 1]; y++) alle.push(y);
                 return alle.map((y) =>
-                  jahre.includes(y) ? (
+                  years.includes(y) ? (
                     <button key={y} type="button" data-year={y} onClick={() => setJahr(y)}
                       className={
                         "rounded-full px-3 py-1 text-[12.5px] " + (y === aktJahr
@@ -221,7 +221,7 @@ export default function HaushaltPage() {
       <Tafel
         zeilen={zeilen}
         year={aktJahr}
-        aktuell={aktJahr === jahre[jahre.length - 1]}
+        aktuell={aktJahr === years[years.length - 1]}
         aktion={
           <Segmented value={visual} onChange={setVisual} options={[
             { value: "balken", label: "Balken" },
@@ -262,8 +262,8 @@ export default function HaushaltPage() {
       {/* Der Kassenzettel (H2-02): die Kernzahl in einer Einheit, die man
           fühlt — und die Zeile, um die es politisch geht, als letzte des Bons
           („aus dem Ersparten"). */}
-      {zeigtZettel && data.einwohner ? (
-        <Kassenzettel daten={data} year={aktJahr} einwohner={data.einwohner} />
+      {zeigtZettel && data.population ? (
+        <Kassenzettel daten={data} year={aktJahr} population={data.population} />
       ) : defizit != null && defizit > 0 ? (
         <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
@@ -308,7 +308,7 @@ export default function HaushaltPage() {
       <div className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
         <Zeitreihe daten={data} />
         <p className="mt-2.5 border-t border-dashed border-border pt-2.5 text-[11px] text-muted-foreground">
-          Quelle: Beschlossene Haushaltspläne {jahre[0]}–{jahre[jahre.length - 1]}, Stadt Oldenburg · jeweils Planwerte, nicht Jahresabschluss.
+          Quelle: Beschlossene Haushaltspläne {years[0]}–{years[years.length - 1]}, Stadt Oldenburg · jeweils Planwerte, nicht Jahresabschluss.
         </p>
       </div>
 
@@ -321,7 +321,7 @@ export default function HaushaltPage() {
           Die Naht 2009/2010 rendert <NahtSaeulen> selbst — samt Farbwechsel,
           Trennlinie und dem Satz darunter. Die Seite kann sie nicht
           wegkürzen, und die Komponente rechnet nichts über sie hinweg. */}
-      {langeJahre.length > 0 && langErster && langLetzter && data.ausgabenreihe && (
+      {langeJahre.length > 0 && langErster && langLetzter && data.expense_series && (
         <section className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
           <div>
             <h2 className="max-w-[30ch] font-display text-[19px] font-bold leading-snug tracking-tight">
@@ -331,7 +331,7 @@ export default function HaushaltPage() {
               Die Veröffentlichungen der Stadt nennen für {langErster.year} insgesamt{" "}
               {deMio(langErster.amount / 1e6)}&#8239;Mio.&nbsp;€ und für {langLetzter.year}{" "}
               {deMio(langLetzter.amount / 1e6)}&#8239;Mio.&nbsp;€ Ausgaben
-              <Beleg q="ausgabenreihe" />.{" "}
+              <Beleg q="expense_series" />.{" "}
               {nahtAb != null && (
                 <>Zwischen {nahtAb - 1} und {nahtAb} wechselte die Stadt ihr
                 Rechnungswesen. Die Werte vor und nach diesem Wechsel beruhen deshalb
@@ -340,7 +340,7 @@ export default function HaushaltPage() {
             </p>
           </div>
           <NahtSaeulen
-            jahre={langeJahre}
+            years={langeJahre}
             naht={nahtAb != null ? {
               zwischen: [nahtAb - 1, nahtAb],
               text: `Zum 1. Januar ${nahtAb} stellte die Stadt von der `
@@ -351,7 +351,7 @@ export default function HaushaltPage() {
             } : undefined}
             einheit="Mio. €"
             titel="Ausgaben der Stadt Oldenburg"
-            beleg={<Beleg q="ausgabenreihe" />}
+            beleg={<Beleg q="expense_series" />}
           />
           {/* Was links und was rechts gezählt wird — in den Worten der
               Quelle, nicht in unseren. Die Legende der Grafik nennt die
@@ -362,10 +362,10 @@ export default function HaushaltPage() {
                  ["doppik", `ab ${nahtAb}`]] as const).map(([r, spanne]) => (
                 <div key={r}>
                   <dt className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-                    {spanne} · {data.ausgabenreihe!.accounting_systems[r].titel}
+                    {spanne} · {data.expense_series!.accounting_systems[r].titel}
                   </dt>
                   <dd className="mt-1 max-w-[74ch] text-[12px] leading-relaxed text-foreground/80">
-                    {data.ausgabenreihe!.accounting_systems[r].abgrenzung}
+                    {data.expense_series!.accounting_systems[r].abgrenzung}
                   </dd>
                 </div>
               ))}
@@ -429,7 +429,7 @@ export default function HaushaltPage() {
               <p className="mt-2 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
                 Der jüngste verfügbare Jahresabschluss ist der von {juengsterAbschluss}.
                 Die Gesamtausgaben für {vorDemAbschluss} veröffentlicht die Stadt bereits
-                vor dem vollständigen Abschluss<Beleg q="ausgabenreihe" />. Die Tabelle
+                vor dem vollständigen Abschluss<Beleg q="expense_series" />. Die Tabelle
                 zeigt aber noch nicht, wie sich die Summe auf die Bereiche verteilt oder
                 wie stark das Ergebnis vom Plan abweicht. Diese Angaben folgen erst mit
                 dem Jahresabschluss.

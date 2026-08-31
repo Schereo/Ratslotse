@@ -97,10 +97,10 @@ function Zelle({ year, mark, luecke, mitJahr }: {
   );
 }
 
-export function KettenMatrix({ ketten, jahre, lueckenJahre, marken, detail, beleg, className }: {
+export function KettenMatrix({ ketten, years, lueckenJahre, marken, detail, beleg, className }: {
   ketten: MatrixKette[];
   /** Jahrgänge MIT Bericht, aufsteigend. */
-  jahre: number[];
+  years: number[];
   /** Jahrgänge OHNE Bericht — rendern in jeder Zeile als Lücken-Zelle und
    *  über der Matrix als <LueckenFeld> mit Grund. */
   lueckenJahre: { year: number; grund: string; datum?: string }[];
@@ -118,10 +118,10 @@ export function KettenMatrix({ ketten, jahre, lueckenJahre, marken, detail, bele
   const zeilenKnoepfe = useRef<(HTMLButtonElement | null)[]>([]);
   const karten = breite < SCHWELLE_KARTEN;
 
-  if (!ketten.length || jahre.length + lueckenJahre.length === 0) return null;
+  if (!ketten.length || years.length + lueckenJahre.length === 0) return null;
 
   const spalten: { year: number; luecke: boolean }[] = [
-    ...jahre.map((year) => ({ year, luecke: false })),
+    ...years.map((year) => ({ year, luecke: false })),
     ...lueckenJahre.map((l) => ({ year: l.year, luecke: true })),
   ].sort((a, b) => a.year - b.year);
 

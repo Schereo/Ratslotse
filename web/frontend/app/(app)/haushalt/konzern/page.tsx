@@ -18,7 +18,7 @@
 // EIN DATENAUFRUF FÜR ZWEI ABSCHNITTE. Betriebe und Gebühren brauchen beide
 // `herkunft`, und `useFetch` hat keinen Zwischenspeicher — zwei Abschnitte mit
 // eigenem Aufruf wären zwei Requests auf fast dieselbe Adresse. Die Seite holt
-// deshalb `wirtschaftsplaene`, `gebuehren`, `gebuehrensaetze` und `herkunft`
+// deshalb `business_plans`, `fees`, `fee_rates` und `herkunft`
 // zusammen und reicht
 // sie durch. Sie braucht die Wirtschaftsplan-Zeilen ohnehin selbst: Aus ihnen
 // entsteht `jeDokument`, die Nummerierung der einzelnen Pläne.
@@ -37,22 +37,22 @@ import { Seitenbuehne, SeitenbuehneLaedt, ZaehlZahl } from "@/components/haushal
 import { KonzernAbschnitt } from "@/components/haushalt/section-konzern";
 import { GesellschaftenAbschnitt } from "@/components/haushalt/section-gesellschaften";
 import { BetriebeAbschnitt } from "@/components/haushalt/section-betriebe";
-import { GebuehrenAbschnitt } from "@/components/haushalt/section-gebuehren";
+import { GebuehrenAbschnitt } from "@/components/haushalt/section-fees";
 
-const FELDER = ["wirtschaftsplaene", "gebuehren", "gebuehrensaetze", "herkunft"] as const;
+const FELDER = ["business_plans", "fees", "fee_rates", "herkunft"] as const;
 
 /** Ausgeschrieben, nicht zusammengesetzt: `tests/test_quellen_dokumente.py`
  *  liest die Literale dieser Liste. Reihenfolge = Nummerierung der Chips, also
  *  die Reihenfolge der Abschnitte. */
 const QUELLEN: QuellenSchluessel[] = [
-  "gesamtabschluss", "beteiligungsbericht", "wirtschaftsplan", "gebuehren",
+  "gesamtabschluss", "beteiligungsbericht", "wirtschaftsplan", "fees",
 ];
 
 const MARKEN = [
   { id: "summe", titel: "Die ganze Stadt" },
   { id: "gesellschaften", titel: "Wer dahintersteckt" },
   { id: "betriebe", titel: "Was sie planen" },
-  { id: "gebuehren", titel: "Was du zahlst" },
+  { id: "fees", titel: "Was du zahlst" },
 ];
 
 function KonzernSeiteInner() {
@@ -64,7 +64,7 @@ function KonzernSeiteInner() {
   // `undefined` = lädt, `null` = entschieden nichts — dann keine Bühne.
   const [kern, setKern] = useState<{ anteil: number; year: number } | null | undefined>(undefined);
   const [bericht, setBericht] = useState<{
-    gesellschaften: number; kennzahlen: number; von: number; bis: number;
+    gesellschaften: number; indicators: number; von: number; bis: number;
   } | null | undefined>(undefined);
 
   // Die Adressen der Pläne, die die Betriebs-Karten zeigen — aus den KARTEN,
@@ -72,7 +72,7 @@ function KonzernSeiteInner() {
   // Stadion-Planung endete 2024. Ihre Papiere stehen in keiner Jahrgangsliste
   // von 2026, ihre Karten aber sehr wohl auf der Seite.
   const jeDokument = useMemo(() => {
-    const zeilen = data?.wirtschaftsplaene ?? [];
+    const zeilen = data?.business_plans ?? [];
     const jeBetrieb = new Map<string, typeof zeilen>();
     for (const z of zeilen) jeBetrieb.set(z.enterprise, [...(jeBetrieb.get(z.enterprise) ?? []), z]);
     const gruppen = [...jeBetrieb.values()]
@@ -110,7 +110,7 @@ function KonzernSeiteInner() {
             kicker={`Gesamtabschluss · Konzern Oldenburg · ${kern.year}`}
             zahl={<>Der Kernhaushalt ist <ZaehlZahl wert={kern.anteil * 100} />&#8239;% der Stadt</>}
             sub={bericht
-              ? `${bericht.gesellschaften} Betriebe und Gesellschaften · ${bericht.kennzahlen} Kennzahlen aus den Jahren ${bericht.von}–${bericht.bis}`
+              ? `${bericht.gesellschaften} Betriebe und Gesellschaften · ${bericht.indicators} Kennzahlen aus den Jahren ${bericht.von}–${bericht.bis}`
               : "gemessen an den Erträgen des jüngsten Gesamtabschlusses"}
             minibild={{
               href: "#summe",
@@ -159,7 +159,7 @@ function KonzernSeiteInner() {
           <BetriebeAbschnitt data={data} loading={loading} />
         </section>
 
-        <section id="gebuehren" className={`${ANKER_KLASSE} border-t border-border pt-4`}>
+        <section id="fees" className={`${ANKER_KLASSE} border-t border-border pt-4`}>
           <GebuehrenAbschnitt data={data} loading={loading} />
         </section>
 

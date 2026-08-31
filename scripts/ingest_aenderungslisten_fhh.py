@@ -114,14 +114,14 @@ def main() -> dict:
 
         print("\nGelesen:", flush=True)
         for (budget_year, schluessel), (r, _s, e) in sorted(je_liste.items()):
-            jahre = sorted({z.year for z in e.zeilen})
+            years = sorted({z.year for z in e.zeilen})
             politisch = sorted({s.label for s in e.summen if s.typ == "liste"
                                 and "nderungslist" not in s.label
                                 and not s.label.startswith("Verw")})
             zusatz = f"  · politische Zeile: {', '.join(politisch)}" if politisch else ""
             mit_code = sum(1 for z in e.zeilen if z.product)
             print(f"  {budget_year}  {schluessel:16} Dok. {r['document_id']}  "
-                  f"{len(e.zeilen):>3} Positionen ({jahre[0]}–{jahre[-1]}), "
+                  f"{len(e.zeilen):>3} Positionen ({years[0]}–{years[-1]}), "
                   f"{mit_code} mit Investitionscode{zusatz}", flush=True)
 
         for titel, eintraege in (("Dubletten", dubletten),

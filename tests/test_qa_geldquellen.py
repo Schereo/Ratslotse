@@ -60,7 +60,7 @@ KORPUS: list[tuple[str, str, set[str]]] = [
     # Das „Warum" steht in den Erläuterungen; die Steuer-Ist-Zahlen und der
     # NFAG-Dämpfer gehören dazu, sonst klingt jede Mehreinnahme nach Gewinn.
     ("Warum kam so viel mehr Gewerbesteuer rein?", "money",
-     {"gruende", "ist", "steuern", "ausgleich", "kassensicht"}),
+     {"gruende", "ist", "taxes", "ausgleich", "kassensicht"}),
     # Präzise und allein: eine Prüfbericht-Frage will keinen Haushaltsplan.
     ("Was hat das Rechnungsprüfungsamt beanstandet?", "topic", {"pruefung"}),
     # „Insgesamt" ist das Stichwort für den Konzern: der Kernhaushalt
@@ -69,19 +69,19 @@ KORPUS: list[tuple[str, str, set[str]]] = [
     # Keine Betragsfrage — eine Rechtsfrage. Nur die Produktebene führt die
     # Auftragsgrundlage je Aufgabe.
     ("Muss die Stadt das Theater betreiben?", "topic", {"produkte"}),
-    ("Warum steigen die Abfallgebühren?", "topic", {"gebuehren"}),
-    ("Wie hoch ist die Straßenreinigungsgebühr?", "money", {"gebuehren"}),
-    ("Wie werden die Müllgebühren berechnet?", "topic", {"gebuehren"}),
+    ("Warum steigen die Abfallgebühren?", "topic", {"fees"}),
+    ("Wie hoch ist die Straßenreinigungsgebühr?", "money", {"fees"}),
+    ("Wie werden die Müllgebühren berechnet?", "topic", {"fees"}),
 
     # --- Weitere echte Fragen ----------------------------------------------
     ("Wie viel gibt Oldenburg für Soziales aus?", "money", {"plan", "produkte"}),
-    ("Wie hoch ist der Hebesatz der Grundsteuer?", "money", {"steuern", "ausgleich"}),
+    ("Wie hoch ist der Hebesatz der Grundsteuer?", "money", {"taxes", "ausgleich"}),
     ("Wie steht Oldenburg im Vergleich zu Osnabrück da?", "money", {"vergleich"}),
     ("Welche Aufgaben könnte die Stadt streichen?", "topic", {"produkte"}),
     # „Steuereinnahmen" trägt „einnahm" und zieht damit auch die Plan-Seite —
     # gewollt: Die Antwort kann Ist und Ansatz nebeneinanderstellen.
     ("Wie hoch waren die Steuereinnahmen?", "money",
-     {"plan", "ansatz", "steuern", "ausgleich"}),
+     {"plan", "ansatz", "taxes", "ausgleich"}),
 
     # --- Die vier Schichten, die die KI-Frage bis 17.08. nicht kannte -------
     # Vorher zog jede dieser Fragen die falsche Quelle oder gar keine; die
@@ -151,16 +151,16 @@ KORPUS: list[tuple[str, str, set[str]]] = [
      {"bilanz", "kassensicht"}),   # „liquide" trifft beide Quellen — richtig so
 
     # 6–7: Nachbewilligungen. Geld außerhalb des beschlossenen Haushalts.
-    ("Was wurde 2024 nachbewilligt?", "money", {"nachbewilligungen"}),
-    ("Wie viel wurde überplanmäßig bewilligt?", "money", {"nachbewilligungen"}),
+    ("Was wurde 2024 nachbewilligt?", "money", {"supplementary_approvals"}),
+    ("Wie viel wurde überplanmäßig bewilligt?", "money", {"supplementary_approvals"}),
 
     # 8–10: Die Kennzahlen. Die einzige Quelle, die ihre Formeln mitliefert —
     # „Eigenkapitalquote" zieht zusätzlich die Bilanz, aus der sie stammt.
-    ("Wie hoch ist die Eigenkapitalquote?", "money", {"bilanz", "kennzahlen"}),
+    ("Wie hoch ist die Eigenkapitalquote?", "money", {"bilanz", "indicators"}),
     ("Wie hat sich die Steuerquote entwickelt?", "money",
-     {"kennzahlen", "steuern", "ausgleich"}),
+     {"indicators", "taxes", "ausgleich"}),
     ("Welche Kennzahlen nennt die Stadt zu ihrem Abschluss?", "money",
-     {"kennzahlen"}),
+     {"indicators"}),
 
     # 11–13: Die Bürgschaften — 220,3 Mio. €, die in keiner Schuldenreihe
     # stehen. Sie hängen an der Schulden-Facette, weil sie nur neben den
@@ -179,14 +179,14 @@ KORPUS: list[tuple[str, str, set[str]]] = [
 #: Welche Store-Methode eine Facette anfasst. Die zweite Hälfte der Messung:
 #: „richtige Quelle" heißt richtige Facette UND richtiger Datenzugriff.
 ERWARTETE_METHODEN = {
-    "gebuehren": "gebuehren_fuer_begriffe",
+    "fees": "gebuehren_fuer_begriffe",
     "plan": "haushalt_fuer_begriffe",
     "ansatz": "ansatz_fuer_begriffe",
     "ist": "result_actual_for_terms",
     "gruende": "abweichungsgruende_fuer_begriffe",
     "pruefung": "pruefberichte_fuer_begriffe",
     "produkte": "produkte_fuer_begriffe",
-    "steuern": "steuern_fuer_begriffe",
+    "taxes": "steuern_fuer_begriffe",
     "ausgleich": "steuerkraft_kontext",
     "konzern": "konzern_kontext",
     "vergleich": "staedtevergleich_kontext",
@@ -197,8 +197,8 @@ ERWARTETE_METHODEN = {
     "antraege": "haushaltsantraege_kontext",
     "bilanz": "bilanz_kontext",
     "kassensicht": "kassensicht_kontext",
-    "nachbewilligungen": "nachbewilligungen_kontext",
-    "kennzahlen": "kennzahlen_kontext",
+    "supplementary_approvals": "nachbewilligungen_kontext",
+    "indicators": "kennzahlen_kontext",
 }
 
 
@@ -261,7 +261,7 @@ class _MessStore:
     def konzern_kontext(self):
         return self._merken("konzern_kontext", None)
 
-    def staedtevergleich_kontext(self, series="steuerkraft"):
+    def staedtevergleich_kontext(self, series="tax_capacity"):
         return self._merken("staedtevergleich_kontext", None)
 
     def schulden_kontext(self):
@@ -642,7 +642,7 @@ def _befuellter_store(tmp_path) -> CouncilStore:
         store._conn.executemany(
             "INSERT INTO council_staedtevergleich (series, year, schluessel, city, indicator, "
             " wert, einheit, herkunft_id, fetched_at) VALUES "
-            "('steuerkraft',2024,?,?,'Steuerkraftmesszahl je Einwohner',?,'EUR',1,'')",
+            "('tax_capacity',2024,?,?,'Steuerkraftmesszahl je Einwohner',?,'EUR',1,'')",
             [("03403", "Oldenburg", 1834.0), ("03404", "Osnabrück", 1712.0),
              ("03401", "Delmenhorst", 1104.0)])
         store._conn.executemany(
@@ -740,7 +740,7 @@ def _befuellter_store(tmp_path) -> CouncilStore:
              (6, "k6", "Haushaltsplan 2026, Stellenplan Teil B",
               "https://example.org/sp-b", "Anlage 22", "besetzungsprobe", "30.06.2025"),
              (7, "k7", "Gebührenbedarfsberechnung Abfall 2026",
-              "https://example.org/gebuehren", "Anlagen 1 und 2",
+              "https://example.org/fees", "Anlagen 1 und 2",
               "gebuehren_kaskade,gebuehren_division", "2026")])
         store._conn.executemany(
             "INSERT INTO council_gebuehren (year, area, area_name, "
@@ -1413,7 +1413,7 @@ def test_geld_grafik_liefert_rohreihen_aus_dem_store(tmp_path):
 
     geld = qa.geld_kontext(store, "Wie hat sich die Gewerbesteuer entwickelt?")
     g = qa.geld_grafik(store, geld)
-    assert g and g["art"] == "steuern"
+    assert g and g["art"] == "taxes"
     assert g["series"][-1]["wert"] == 222.1
 
     leer = CouncilStore(str(tmp_path / "leer.sqlite"))

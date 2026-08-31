@@ -215,7 +215,7 @@ def parse_kernzahl(template_number: str, titel: str, vorlage_text: str,
         template_number=template_number,
         # Diese Quelle nennt nur das Ergebnis. NULL heißt „sagt sie nicht" —
         # eine 0 wäre eine Behauptung über Erträge, die nirgends steht.
-        revenues=None, expenses=None, steuern=None,
+        revenues=None, expenses=None, taxes=None,
         result=amount,
         capital_plan=None, commitments=None, draft_date=None,
         # Der zweite Satz über Geld in derselben Vorlage — mit eigener

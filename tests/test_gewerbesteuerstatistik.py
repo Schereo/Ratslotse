@@ -28,7 +28,7 @@ from __future__ import annotations
 
 import pytest
 
-from council import gewerbesteuerstatistik as gs
+from council import trade_tax_statistics as gs
 from council import herkunft
 from council.store import CouncilStore
 from tests.test_staedtevergleich import schreibe_xlsx

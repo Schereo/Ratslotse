@@ -80,7 +80,7 @@ function eur(v: number): string {
 
 /** Geplant gegen tatsächlich (Jahresabschlüsse) — der Maßstab dafür, wie
  *  belastbar die Zahl ist, gegen die hier angerechnet wird. */
-function PlanIst({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"> }) {
+function PlanIst({ daten }: { daten: HaushaltAuswahl<"income_statement"> }) {
   const series = planGegenIst(daten);
   if (series.length < 2) return null;
   const spanne = Math.max(...series.flatMap((r) => [Math.abs(r.plan), Math.abs(r.ist)]));
@@ -168,9 +168,9 @@ const WERKBAENKE: { id: Werkbank; nr: number; titel: string; zielgroesse: string
 ];
 
 export function Labor({ daten, produkte, produktJahr, vergleich, programm, schulden }: {
-  daten: HaushaltAuswahl<"jahre" | "steuern" | "steuerkraft" | "einwohner"
-    | "ergebnisrechnung" | "hebesaetze" | "ergebnishaushalt" | "gebuehren"
-    | "haushaltssatzung" | "ruecklage">;
+  daten: HaushaltAuswahl<"years" | "taxes" | "tax_capacity" | "population"
+    | "income_statement" | "tax_rates" | "income_budget" | "fees"
+    | "budget_bylaw" | "reserves">;
   produkte: Produkt[];
   produktJahr: number | null;
   vergleich: VergleichDaten | null;
@@ -191,9 +191,9 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
   const [kredit, setKredit] = useState(false);
 
   const basis = useMemo(() => {
-    const jahre = jahreSortiert(daten);
-    const year = jahre[jahre.length - 1];
-    const zeilen = daten.jahre[String(year)] ?? [];
+    const years = jahreSortiert(daten);
+    const year = years[years.length - 1];
+    const zeilen = daten.years[String(year)] ?? [];
     const g = summe(zeilen);
     const defizit = g?.revenues != null && g?.expenses != null
       ? mio(g.expenses - g.revenues) ?? 0 : 0;
@@ -201,7 +201,7 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
       .filter((z) => PFLICHT_ZUORDNUNG[z.area]?.stufe === "freiwillig")
       .map((z) => ({ area: z.area, aus: mio(z.expenses) ?? 0 }))
       .sort((a, b) => b.aus - a.aus);
-    const kraft = daten.steuerkraft.filter((k) => k.tax_index != null && k.allocations != null).slice(-2);
+    const kraft = daten.tax_capacity.filter((k) => k.tax_index != null && k.allocations != null).slice(-2);
     return { year, defizit, freiwillig, kraft };
   }, [daten]);
 
@@ -210,13 +210,13 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
   // B-Hebesatz UND die Aufteilung des gemeinsamen Aufkommens „A+B“ aus dem
   // Realsteuervergleich des Landes — fehlt einer, zeigt die Werkbank den
   // ehrlichen Kasten von früher statt des Reglers.
-  const gewst = hebesatzHeute(daten.hebesaetze?.zeilen, "Gewerbesteuer");
-  const grundst = hebesatzHeute(daten.hebesaetze?.zeilen, "Grundsteuer B");
-  const gewstBetrag = letzterSteuerbetrag(daten.steuern, "Gewerbesteuer (-umlage)");
-  const grundstBetrag = letzterSteuerbetrag(daten.steuern, "Grundsteuer A+B");
+  const gewst = hebesatzHeute(daten.tax_rates?.zeilen, "Gewerbesteuer");
+  const grundst = hebesatzHeute(daten.tax_rates?.zeilen, "Grundsteuer B");
+  const gewstBetrag = letzterSteuerbetrag(daten.taxes, "Gewerbesteuer (-umlage)");
+  const grundstBetrag = letzterSteuerbetrag(daten.taxes, "Grundsteuer A+B");
   // Die Zeile „sonstige Steuern“ IST die Hundesteuer — der Abgleich mit
   // Jahrbuch 1103 beweist es jahrgangsweise (council/steuertabellen.py).
-  const hunde = letzterSteuerbetrag(daten.steuern, "sonstige Steuern");
+  const hunde = letzterSteuerbetrag(daten.taxes, "sonstige Steuern");
   const anteilA = useMemo(() => grundsteuerAnteilA(vergleich), [vergleich]);
   const staedte = useMemo(
     () => staedteHebesaetze(vergleich, "hebesatz_gewerbesteuer"), [vergleich]);
@@ -225,7 +225,7 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
   const proPunktGrundst = grundstBetrag && grundst && anteilA != null
     ? (grundstBetrag.amount * (1 - anteilA)) / 1e6 / grundst.satz : null;
 
-  const einwohner = daten.einwohner?.einwohner ?? 0;
+  const population = daten.population?.population ?? 0;
   const mehrEinnahmen = Math.round(
     (proPunktGewst * punkte
       + (proPunktGrundst ?? 0) * grundstPunkte
@@ -249,14 +249,14 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
   // Ohne die Reihe des Gesamtergebnishaushalts bleibt die alte
   // Reichweiten-Division stehen.
   const planjahre = useMemo(
-    () => planjahrErgebnisse(daten.ergebnishaushalt), [daten.ergebnishaushalt]);
-  const ruecklage = juengsteRuecklage(daten);
-  const ruecklageMio = (ruecklage?.state_after_result ?? 0) / 1e6;
+    () => planjahrErgebnisse(daten.income_budget), [daten.income_budget]);
+  const reserves = juengsteRuecklage(daten);
+  const ruecklageMio = (reserves?.state_after_result ?? 0) / 1e6;
   const pfadOhne = planjahre && ruecklageMio > 0
     ? ruecklagenPfad(planjahre.series, 0, ruecklageMio) : null;
   const pfadMit = planjahre && ruecklageMio > 0
     ? ruecklagenPfad(planjahre.series, wirkung, ruecklageMio) : null;
-  const daempfer = useMemo(() => daempferSpanne(daten.steuerkraft), [daten.steuerkraft]);
+  const daempfer = useMemo(() => daempferSpanne(daten.tax_capacity), [daten.tax_capacity]);
   const reichweiteVorher = basis.defizit > 0 && ruecklageMio > 0
     ? ruecklageMio / basis.defizit : Infinity;
   const reichweiteNachher = neuesDefizit > 0 && ruecklageMio > 0
@@ -269,7 +269,7 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
   // Zahl unverändert, „zurücksetzen" erscheint — und nichts erklärt es).
   // Gleicher Schlüssel wie in der Invest-Werkbank: code || bezeichnung.
   const investGestrichenMio = useMemo(() => {
-    const jahrInv = programm?.jahre.at(-1) ?? null;
+    const jahrInv = programm?.years.at(-1) ?? null;
     if (jahrInv == null) return 0;
     const summe = (programm?.massnahmen ?? [])
       .filter((z) => z.year === jahrInv && vorhabenAus[z.code || z.label])
@@ -282,7 +282,7 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
   const anteilText = (m: number) =>
     basis.defizit > 0 ? `${Math.round((m / basis.defizit) * 100)} % der Lücke` : "";
   const jeEinwohner = (m: number) =>
-    einwohner > 0 ? `${eur((m * 1e6) / einwohner)} € je Einwohner*in` : "";
+    population > 0 ? `${eur((m * 1e6) / population)} € je Einwohner*in` : "";
 
   const zuruecksetzen = () => {
     setPunkte(0); setGrundstPunkte(0); setHundePct(0);
@@ -419,7 +419,7 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
           {deMio(mehrEinnahmen)}&#8239;Mio.&nbsp;€ mehr Steuerkraft blieben erfahrungsgemäß{" "}
           <span className="tabular-nums">
             {deMio(mehrEinnahmen * daempfer.verbleibVon)} bis {deMio(mehrEinnahmen * daempfer.verbleibBis)}
-          </span>&#8239;Mio.&nbsp;€ übrig <Beleg q="steuerkraft" /> — die Spanne aus{" "}
+          </span>&#8239;Mio.&nbsp;€ übrig <Beleg q="tax_capacity" /> — die Spanne aus{" "}
           {daempfer.paare} Ausgleichsjahren. Verrechnet wird sie nicht: Auch der Landestopf
           schwankt, die Richtung kann kippen.
         </p>
@@ -478,8 +478,8 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
                   )}
                 </p>
                 <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
-                  {deMio(ruecklageMio)}&#8239;Mio.&nbsp;€ Rücklage <Beleg q="ruecklage" /> gegen die
-                  Jahresergebnisse der Planjahre <Beleg q="ergebnishaushalt" /> — Entwurf der
+                  {deMio(ruecklageMio)}&#8239;Mio.&nbsp;€ Rücklage <Beleg q="reserves" /> gegen die
+                  Jahresergebnisse der Planjahre <Beleg q="income_budget" /> — Entwurf der
                   Verwaltung, Finanzplanung nach §&nbsp;8 NKomVG, deine Wirkung konstant
                   fortgeschrieben. Hinter {pfadMit.letztesPlanjahr} liegen keine Planzahlen.
                   Unsere Rechnung, keine Prognose der Stadt.
@@ -501,13 +501,13 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
               )}
             </p>
             <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-              {deMio(ruecklageMio)}&#8239;Mio.&nbsp;€ Rücklage <Beleg q="ruecklage" /> geteilt durch das Minus —
+              {deMio(ruecklageMio)}&#8239;Mio.&nbsp;€ Rücklage <Beleg q="reserves" /> geteilt durch das Minus —
               unsere Rechnung, keine Prognose der Stadt.
-              {/* Der Schlüssel `ergebnishaushalt` gehört zum Pfad oben; im
+              {/* Der Schlüssel `income_budget` gehört zum Pfad oben; im
                   Rückfall ohne die Reihe bliebe er stumm — deshalb hängt er
                   hier an der Auskunft, WARUM nur die einfache Division steht. */}
               {" "}Für den Rücklagen-Pfad fehlt gerade die Planjahres-Reihe des
-              Gesamtergebnishaushalts <Beleg q="ergebnishaushalt" />.
+              Gesamtergebnishaushalts <Beleg q="income_budget" />.
             </p>
           </>
         ) : (
@@ -594,8 +594,8 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
               grundst={grundst} proPunktGrundst={proPunktGrundst} anteilA={anteilA}
               hundePct={hundePct} setHundePct={setHundePct} hunde={hunde}
               staedte={staedte}
-              historie={(daten.hebesaetze?.zeilen ?? []).filter((z) => z.art === "Gewerbesteuer")}
-              gebuehren={daten.gebuehren}
+              historie={(daten.tax_rates?.zeilen ?? []).filter((z) => z.art === "Gewerbesteuer")}
+              fees={daten.fees}
               maxPunkte={MAX_PUNKTE}
               jeEinwohner={jeEinwohner} anteilText={anteilText}
             />
@@ -613,7 +613,7 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
           {werkbank === "invest" && (
             <InvestWerkbank
               programm={programm} schulden={schulden}
-              satzung={daten.haushaltssatzung}
+              satzung={daten.budget_bylaw}
               vorhabenAus={vorhabenAus}
               toggleVorhaben={(s) => setVorhabenAus((v) => ({ ...v, [s]: !v[s] }))}
               kredit={kredit} setKredit={setKredit}

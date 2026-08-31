@@ -233,7 +233,7 @@ def test_entzerren_raeumt_beide_schadensarten():
 # --- Kennzahlen -------------------------------------------------------------
 
 def test_kennzahlen_absteigende_jahresspalten():
-    reihen, warnungen = bb.kennzahlen(KENN_EGH_2024)
+    reihen, warnungen = bb.indicators(KENN_EGH_2024)
     assert warnungen == []
     assert reihen["jahresergebnis"][2024] == -2726407.50
     assert reihen["jahresergebnis"][2020] == 1195102.99
@@ -245,7 +245,7 @@ def test_kennzahlen_aufsteigende_jahresspalten():
     """Dieselbe Tabelle, andere Richtung — die Kopfzeile entscheidet.
 
     Ohne sie läge das Jahresergebnis 2024 (294.324,26) unter 2020."""
-    reihen, warnungen = bb.kennzahlen(KENN_AWB_2024)
+    reihen, warnungen = bb.indicators(KENN_AWB_2024)
     assert warnungen == []
     assert reihen["jahresergebnis"][2024] == 294324.26
     assert reihen["jahresergebnis"][2020] == 394110.66
@@ -253,7 +253,7 @@ def test_kennzahlen_aufsteigende_jahresspalten():
 
 
 def test_kennzahlen_mit_leerraum_in_den_betraegen():
-    reihen, warnungen = bb.kennzahlen(KENN_AWB_2023)
+    reihen, warnungen = bb.indicators(KENN_AWB_2023)
     assert warnungen == []
     assert reihen["jahresergebnis"][2023] == 650289.04
     assert reihen["bilanzsumme"][2022] == 23439654.83
@@ -264,7 +264,7 @@ def test_tippfehler_verwirft_die_zeile_statt_sie_zu_raten():
 
     Vier Werte auf fünf Jahre zu verteilen hieße raten, welches Jahr leer
     ausgeht. Die beiden anderen Zeilen bleiben."""
-    reihen, warnungen = bb.kennzahlen(KENN_GSG_2022)
+    reihen, warnungen = bb.indicators(KENN_GSG_2022)
     assert "jahresergebnis" not in reihen
     assert reihen["bilanzsumme"][2018] == 279624042.36
     assert reihen["eigenkapitalquote"][2022] == 38.1
@@ -273,13 +273,13 @@ def test_tippfehler_verwirft_die_zeile_statt_sie_zu_raten():
 
 def test_berichtsjahr_steht_nicht_immer_in_der_tabelle():
     """Die Großleitstelle führt im Bericht für 2024 die Jahre 2017–2021."""
-    reihen, _ = bb.kennzahlen(KENN_GOL)
+    reihen, _ = bb.indicators(KENN_GOL)
     assert sorted(reihen["jahresergebnis"]) == [2017, 2018, 2019, 2020, 2021]
     assert 2024 not in reihen["jahresergebnis"]
 
 
 def test_historische_daten_liegen_nicht_vor_ist_kein_fehler():
-    reihen, warnungen = bb.kennzahlen(
+    reihen, warnungen = bb.indicators(
         "Kennzahlen im Zeitverlauf: \nHistorische Daten liegen noch nicht vor. \n")
     assert reihen == {}
     assert warnungen == []
@@ -382,7 +382,7 @@ def test_lies_ganzer_bericht_mit_proben():
     assert e["budget_year"] == 2024
     assert [g.key for g in e["gesellschaften"]] == ["egh", "gsg"]
     egh = e["gesellschaften"][0]
-    assert egh.kennzahlen["bilanzsumme"][2024] == 580193968.91
+    assert egh.indicators["bilanzsumme"][2024] == 580193968.91
     assert egh.abschnitte["gegenstand"]
     # Bilanzprobe und Ergebnisprobe für die drei Bilanzjahre.
     probes = {(x["indicator"], x["year"]): x for x in e["dokumentproben"]}
@@ -394,10 +394,10 @@ def test_lies_ganzer_bericht_mit_proben():
 def test_ueberlappung_bestaetigt_und_widerspricht():
     a = bb.Gesellschaft(key="egh", name="EGH", classification="2.2.1", page=3,
                         seite_gedruckt=2)
-    a.kennzahlen = {"bilanzsumme": {2022: 559822592.60, 2023: 572543885.42}}
+    a.indicators = {"bilanzsumme": {2022: 559822592.60, 2023: 572543885.42}}
     b = bb.Gesellschaft(key="egh", name="EGH", classification="2.2.1", page=3,
                         seite_gedruckt=2)
-    b.kennzahlen = {"bilanzsumme": {2022: 559822592.60, 2023: 999.0}}
+    b.indicators = {"bilanzsumme": {2022: 559822592.60, 2023: 999.0}}
     u = bb.ueberlappung({2023: [a], 2024: [b]})
     assert u["bestaetigt"][("egh", "bilanzsumme", 2022)] == 2
     assert [w["year"] for w in u["widersprueche"]] == [2023]
@@ -421,7 +421,7 @@ def test_einlesen_speichert_nur_geprueftes(tmp_path):
     assert aus["widersprueche"] == 0
     # Der einzelne Bericht kann nur die Bilanz- und die Ergebnisprobe bieten;
     # was keine trägt (die Jahre ohne Bilanz, die Eigenkapitalquote), fällt weg.
-    assert aus["kennzahlen"] > 0
+    assert aus["indicators"] > 0
     assert aus["verworfen"] > 0
     assert store.beteiligungsbericht_jahre() == [2024]
     # Jede Zeile trägt ihre Herkunft.
@@ -483,7 +483,7 @@ def test_leeres_ergebnis_ersetzt_keinen_bestand(tmp_path):
         "seiten": ["Beteiligungsbericht \nfür das Berichtsjahr 2024 \n"],
         "url": "https://example.org/bb2024.pdf",
         "label": "Beteiligungsbericht 2024"}}, p)
-    assert aus["kennzahlen"] == 0
+    assert aus["indicators"] == 0
     assert len(store.get_gesellschaft_kennzahlen()) == vorher
     store.close()
 

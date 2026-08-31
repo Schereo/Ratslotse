@@ -224,7 +224,7 @@ export function GesellschaftenAbschnitt({ onBestand }: {
   /** Meldet den Bestand des Beteiligungsberichts nach oben — für die
    *  Subline der Seitenbühne (H5-02): wie viele Gesellschaften, wie viele
    *  Kennzahlen, aus welchen Jahren. */
-  onBestand?: (b: { gesellschaften: number; kennzahlen: number; von: number; bis: number }) => void;
+  onBestand?: (b: { gesellschaften: number; indicators: number; von: number; bis: number }) => void;
 } = {}) {
   const params = useSearchParams();
   const router = useRouter();
@@ -239,18 +239,18 @@ export function GesellschaftenAbschnitt({ onBestand }: {
   const liste = useMemo(() => sortiert(data), [data]);
 
   useEffect(() => {
-    if (!onBestand || !data || !liste.length || !data.jahre.length) return;
+    if (!onBestand || !data || !liste.length || !data.years.length) return;
     onBestand({
       gesellschaften: liste.length,
-      kennzahlen: data.kennzahlen.length,
-      von: Math.min(...data.jahre),
-      bis: Math.max(...data.jahre),
+      indicators: data.indicators.length,
+      von: Math.min(...data.years),
+      bis: Math.max(...data.years),
     });
   }, [onBestand, data, liste]);
 
   const aktiv = liste.find((g) => g.company === gewaehlt) ?? null;
   const bericht = data?.berichtsjahre?.[data.berichtsjahre.length - 1] ?? null;
-  const jahre = data?.jahre ?? [];
+  const years = data?.years ?? [];
   const quelleUrl = herkunftVon(data, liste[0]?.herkunft_id)?.url ?? null;
 
   const gefiltert = useMemo(() => {
@@ -311,7 +311,7 @@ export function GesellschaftenAbschnitt({ onBestand }: {
                 Betriebe und Gesellschaften übernehmen Leistungen vom Klinikum bis zur
                 Volkshochschule. Die Rechtsform bestimmt, wie die Einheit rechtlich und
                 organisatorisch zur Stadt gehört; die Zahlen
-                reichen {jahre.length ? `von ${jahre[0]} bis ${jahre.at(-1)}` : "mehrere Jahre"} zurück.
+                reichen {years.length ? `von ${years[0]} bis ${years.at(-1)}` : "mehrere Jahre"} zurück.
               </p>
             </div>
             {quelleUrl && (
@@ -452,7 +452,7 @@ export function GesellschaftenAbschnitt({ onBestand }: {
               <li>
                 <strong>Die Jahrgänge vor 2022 fehlen.</strong> Die Stadt hat den Bericht
                 mit dem Berichtsjahr 2022 umgestellt; davor steht die Bilanz zweispaltig
-                und ohne Kennzahlen-Tabelle. Die Zahlen reichen trotzdem bis {jahre[0] ?? 2017} zurück,
+                und ohne Kennzahlen-Tabelle. Die Zahlen reichen trotzdem bis {years[0] ?? 2017} zurück,
                 weil jeder Bericht mehrere Jahre nebeneinander führt.
               </li>
               <li>

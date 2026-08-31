@@ -323,7 +323,7 @@ def test_probe_haengt_nur_dran_wo_sie_lief():
         return Wirtschaftsplan(
             enterprise="bbo", enterprise_name="Bäderbetrieb der Stadt Oldenburg",
             year=2026, template_number="25/0818/1", revenues=None, expenses=None,
-            steuern=None, result=0.0, capital_plan=None,
+            taxes=None, result=0.0, capital_plan=None,
             commitments=None, draft_date=None, investitionen=investitionen)
 
     mit = herkunft_fuer(plan(10_752_000.0), "0,00 Euro", "ausgeglichen",

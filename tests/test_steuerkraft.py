@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import pytest
 
-from council import steuerkraft as sk
+from council import tax_capacity as sk
 from council.store import CouncilStore
 from tests.test_staedtevergleich import schreibe_xlsx
 
@@ -213,7 +213,7 @@ def test_gespeichert_kommt_je_ausgleichsjahr_eine_zeile_zurueck(tmp_path, kfa202
         zeilen: list[dict] = []
         for budget_year in sk.lies_zuweisungen(kfa2026):
             zeilen += sk.zeilen_finanzausgleich(budget_year)
-        store.save_staedtevergleich("finanzausgleich", zeilen, Herkunft(
+        store.save_staedtevergleich("fiscal_equalization", zeilen, Herkunft(
             art="lsn", probe=["kfa_komponentenprobe", "kfa_jahrbuchabgleich"],
             label="KFA 2026", url="https://example.org/kfa.xlsx",
             probe_result="3 von 3 Städten"))
@@ -223,7 +223,7 @@ def test_gespeichert_kommt_je_ausgleichsjahr_eine_zeile_zurueck(tmp_path, kfa202
         assert series[0]["zuweisungen_uebertragener_wirkungskreis"] == 10575
         assert series[1]["nettobetrag"] == 93438
         # Und die Steuerkraft-Reihe bleibt davon unberührt.
-        assert store.get_staedtevergleich("steuerkraft") == []
+        assert store.get_staedtevergleich("tax_capacity") == []
     finally:
         store.close()
 

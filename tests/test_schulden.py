@@ -409,7 +409,7 @@ def test_endpunkt_liefert_reihe_abgrenzung_und_belege(tmp_path, gelesen):
         store.save_schulden(gelesen["zeilen"], _herkunft())
         antwort = haushalt_schulden(_user=None, store=store)
 
-        assert antwort["jahre"][-1] == 2025
+        assert antwort["years"][-1] == 2025
         assert antwort["series"][-1]["insgesamt"] == 336_994_000
         # Die Abgrenzung kommt aus dem Parser-Modul, nicht aus dem Frontend.
         assert antwort["abgrenzung"] == schulden.ABGRENZUNG
@@ -438,7 +438,7 @@ def test_endpunkt_bleibt_ohne_bestand_ruhig(tmp_path):
     store = CouncilStore(tmp_path / "leer.sqlite")
     try:
         antwort = haushalt_schulden(_user=None, store=store)
-        assert antwort["series"] == [] and antwort["jahre"] == []
+        assert antwort["series"] == [] and antwort["years"] == []
         assert antwort["abgrenzung"]
     finally:
         store.close()

@@ -60,9 +60,9 @@ export type Datenschicht = {
 export type Antwort = { heute: string; schichten: Datenschicht[] };
 
 /** „2017–2024" bzw. „2024" — und nichts, wo nichts ist. */
-function spanne(jahre: number[]): string | null {
-  if (jahre.length === 0) return null;
-  const von = jahre[0], bis = jahre[jahre.length - 1];
+function spanne(years: number[]): string | null {
+  if (years.length === 0) return null;
+  const von = years[0], bis = years[years.length - 1];
   return von === bis ? String(von) : `${von}–${bis}`;
 }
 

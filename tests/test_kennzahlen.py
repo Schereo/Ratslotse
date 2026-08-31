@@ -6,7 +6,7 @@ Falle, die beim Vermessen der sechs Jahrgänge aufgefallen ist.
 
 Der Aufbau folgt ``tests/test_anlagenspiegel.py``.
 """
-from council import kennzahlen as kz
+from council import indicators as kz
 
 # Dok 295295, Rechenschaftsbericht 2024 — fünf Jahresspalten, Beschriftungen
 # über bis zu drei Zeilen, Werte in drei Formaten (Prozent, Tausenderpunkt,
@@ -276,7 +276,7 @@ def test_vermoegensprobe_multipliziert_zwei_zeilen_gegen_die_bilanz():
     zeilen = [
         {"indicator": "vermoegen_je_einwohner", "year": 2024, "report_year": 2024,
          "wert": 8294.05, "stellen": 2},
-        {"indicator": "einwohner", "year": 2024, "report_year": 2024,
+        {"indicator": "population", "year": 2024, "report_year": 2024,
          "wert": 176_068.0, "stellen": 0},
     ]
     bilanz = [{"year": 2024, "role": r, "wert": w} for r, w in (
@@ -300,7 +300,7 @@ def test_vermoegensprobe_mischt_keine_berichte():
     zeilen = [
         {"indicator": "vermoegen_je_einwohner", "year": 2024, "report_year": 2024,
          "wert": 8294.05, "stellen": 2},
-        {"indicator": "einwohner", "year": 2024, "report_year": 2023,
+        {"indicator": "population", "year": 2024, "report_year": 2023,
          "wert": 176_068.0, "stellen": 0},
     ]
     bilanz = [{"year": 2024, "role": "sachvermoegen", "wert": 1.0}]

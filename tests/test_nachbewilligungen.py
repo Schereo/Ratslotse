@@ -27,7 +27,7 @@ from __future__ import annotations
 import pytest
 
 from council import herkunft
-from council import nachbewilligungen as nb
+from council import supplementary_approvals as nb
 
 # --- Fixtures: echte Vorlagentitel -----------------------------------------
 

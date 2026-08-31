@@ -72,7 +72,7 @@ import { BilanzBlock } from "@/components/haushalt/bilanz-block";
 // einen Beleg-Chip darauf setzt. `Beleg` rendert dann bewusst nichts
 // („lieber keinen Chip als eine falsche Nummer") — und der Satz endete
 // mit einer Fußnote, die es nicht gab.
-const QUELLEN = ["schulden", "bilanz", "haushaltssatzung",
+const QUELLEN = ["schulden", "bilanz", "budget_bylaw",
                  "jahresabschluss"] as const;
 
 /** Die Haushaltssatzung wird über den Bausteine-Endpunkt geholt und nicht über
@@ -83,7 +83,7 @@ const QUELLEN = ["schulden", "bilanz", "haushaltssatzung",
 // `herkunft` mit — der Rahmen-Block zeigte seine drei Zahlen bis zum
 // 21.08.2026 ganz ohne Beleg: Die Quelle stand im Verzeichnis am Seitenfuß,
 // an den Zahlen selbst stand nichts.
-const SATZUNG_FELDER = ["haushaltssatzung", "herkunft"] as const;
+const SATZUNG_FELDER = ["budget_bylaw", "herkunft"] as const;
 
 /** Wo eine Angabe im Dokument steht: welcher Abschnitt, welcher Stand. Das
  *  Quellenverzeichnis am Seitenende beschreibt die Quelle der ganzen Seite;
@@ -489,7 +489,7 @@ function RahmenBlock({ zeile, herkunft }: {
     <section className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <h2 className="font-display text-[17px] font-bold tracking-tight">
-          Was der Rahmen erlaubt<Beleg q="haushaltssatzung" />
+          Was der Rahmen erlaubt<Beleg q="budget_bylaw" />
         </h2>
         <span className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
           Satzung {zeile.year}
@@ -554,7 +554,7 @@ export default function SchuldenPage() {
   // Der jüngste Jahrgang — die Satzung, die gerade gilt bzw. vorgeschlagen
   // ist. Sortiert wird hier und nicht im Vertrauen auf die API.
   const satzung = useMemo(() => {
-    const zeilen = (satzungDaten?.haushaltssatzung ?? [])
+    const zeilen = (satzungDaten?.budget_bylaw ?? [])
       .filter((z) => z.supplement === 0);
     return zeilen.length
       ? zeilen.reduce((a, b) => (b.year > a.year ? b : a))

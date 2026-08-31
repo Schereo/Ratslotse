@@ -167,7 +167,7 @@ ROLLEN: tuple[tuple[str, str], ...] = (
      r"^zinsen und (ähnliche|sonstige) (aufwendungen|finanzaufwendungen)"),
     ("personnel_expenses",
      r"^(personalaufwendungen|aufwendungen für aktives personal)"),
-    ("taxes", r"^steuern und ähnliche abgaben"),
+    ("taxes", r"^taxes und ähnliche abgaben"),
 )
 
 #: Rollen, die Summen oder Salden sind — keine eigenständige Ertrags- oder

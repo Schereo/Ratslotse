@@ -113,9 +113,9 @@ export default function VergleichSeite() {
     );
   }
 
-  const skJahr = juengstesJahr(data, "steuerkraft");
+  const skJahr = juengstesJahr(data, "tax_capacity");
   const rsJahr = juengstesJahr(data, "realsteuern");
-  const steuerkraft = skJahr ? steuerkraftJeEinwohner(data, skJahr) : [];
+  const tax_capacity = skJahr ? steuerkraftJeEinwohner(data, skJahr) : [];
   const grundsteuer = rsJahr ? balken(data, "realsteuern", "hebesatz_grundsteuer_b", rsJahr) : [];
   const einnahmekraft = rsJahr ? balken(data, "realsteuern", "steuereinnahmekraft_je_ew", rsJahr) : [];
 
@@ -126,7 +126,7 @@ export default function VergleichSeite() {
   // wird kein Vorjahr.
   //
   // GEMESSEN WIRD AN DER KENNZAHL, NICHT AM JAHRGANG (Fund 17.08.). Vorher
-  // stand hier `data.jahre.realsteuern.includes(rsJahr - 1)` — und die Liste
+  // stand hier `data.years.realsteuern.includes(rsJahr - 1)` — und die Liste
   // führt 2023, 2024, 2025, weil die Steuereinnahmekraft so weit zurückreicht.
   // Die HEBESÄTZE liegen aber nur für 2025 vor. Folge: `rsVorjahr` war 2024,
   // `grundsteuerVorher` leer, der Slope fiel auf die Rangliste zurück — und
@@ -135,7 +135,7 @@ export default function VergleichSeite() {
   // einen Vergleich, den die Seite gar nicht zeigte. Jetzt entscheidet, ob
   // die Werte wirklich dastehen.
   const rsVorjahrKandidat = rsJahr != null
-    && (data.jahre.realsteuern ?? []).includes(rsJahr - 1) ? rsJahr - 1 : null;
+    && (data.years.realsteuern ?? []).includes(rsJahr - 1) ? rsJahr - 1 : null;
   const grundsteuerVorher = rsVorjahrKandidat != null
     ? balken(data, "realsteuern", "hebesatz_grundsteuer_b", rsVorjahrKandidat) : [];
   const rsVorjahr = grundsteuerVorher.length > 0 ? rsVorjahrKandidat : null;
@@ -149,13 +149,13 @@ export default function VergleichSeite() {
     })
     .sort((a, b) => b.vorher - a.vorher);
   const springer = sprungPaare.filter((p) => p.vorher !== p.nachher).length;
-  const platz = platzVonOldenburg(steuerkraft);
-  const oldenburg = steuerkraft.find((z) => z.ist_oldenburg);
+  const platz = platzVonOldenburg(tax_capacity);
+  const oldenburg = tax_capacity.find((z) => z.ist_oldenburg);
 
   // Die Herkunft hängt an der Zeile, nicht an der Seite — beide Reihen haben
   // eine eigene (verschiedene Dateien, verschiedene Proben).
   const hSteuerkraft = herkunftVon(data,
-    data.werte.find((w) => w.series === "steuerkraft")?.herkunft_id);
+    data.werte.find((w) => w.series === "tax_capacity")?.herkunft_id);
   const hRealsteuern = herkunftVon(data,
     data.werte.find((w) => w.series === "realsteuern")?.herkunft_id);
 
@@ -164,7 +164,7 @@ export default function VergleichSeite() {
 
   const antwort = antwortAnlage(data.beleg);
   const antrag = antragAnlage(data.beleg);
-  const hatZahlen = steuerkraft.length > 0 || grundsteuer.length > 0;
+  const hatZahlen = tax_capacity.length > 0 || grundsteuer.length > 0;
 
   return (
     <Quellenkontext schluessel={[...QUELLEN]}>
@@ -183,23 +183,23 @@ export default function VergleichSeite() {
             Seite — dieselbe Rechnung wie der Satz an der Rangliste, zu der
             das Minibild (die Städte-Leiter) springt. Ohne Steuerkraft-Reihe
             keine Bühne: kein erfundener Platz. */}
-        {platz != null && steuerkraft.length > 1 && skJahr && (
+        {platz != null && tax_capacity.length > 1 && skJahr && (
           <Seitenbuehne
             kicker="Kreisfreie Städte Niedersachsens"
-            zahl={<>Platz <ZaehlZahl wert={platz} /> von {steuerkraft.length} bei
+            zahl={<>Platz <ZaehlZahl wert={platz} /> von {tax_capacity.length} bei
               der Steuerkraft</>}
             sub={`Steuerkraftmesszahl je Einwohner*in · Ausgleichsjahr ${skJahr} — unsere Pro-Kopf-Rechnung, keine amtliche Kennzahl`}
             minibild={{
-              href: "#steuerkraft",
+              href: "#tax_capacity",
               label: "Städte-Leiter — Oldenburg markiert, klickt zur Rangliste",
               skizze: (() => {
-                const werte = steuerkraft.map((z) => z.wert);
+                const werte = tax_capacity.map((z) => z.wert);
                 const min = Math.min(...werte), max = Math.max(...werte);
                 const pos = (w: number) => max > min ? 2 + ((w - min) / (max - min)) * 90 : 50;
                 return (
                   <span className="relative block h-[18px]">
                     <span className="absolute inset-x-0 top-2 h-[2px]" style={{ background: "var(--sb-blass)" }} />
-                    {steuerkraft.map((z) => z.ist_oldenburg ? (
+                    {tax_capacity.map((z) => z.ist_oldenburg ? (
                       <span key={z.schluessel} className="absolute top-[3px] h-3 w-3 rounded-full shadow-[0_0_0_3px_hsl(var(--primary)/0.18)]"
                         style={{ left: `${pos(z.wert)}%`, background: "var(--sb-voll)" }} />
                     ) : (
@@ -230,7 +230,7 @@ export default function VergleichSeite() {
         />
 
         {hatZahlen && skJahr && (
-          <Abschnitt id="steuerkraft" kicker="Steuerkraft je Einwohner*in"
+          <Abschnitt id="tax_capacity" kicker="Steuerkraft je Einwohner*in"
             zusatz={`Ausgleichsjahr ${skJahr} · alle acht kreisfreien Städte`}>
             <p className="mt-1.5 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
               Die <GlossaryText text="Steuerkraftmesszahl" /> ist die Größe, mit der das
@@ -242,12 +242,12 @@ export default function VergleichSeite() {
               )}
               {oldenburg && platz !== null && platz > 1 && (
                 <> Oldenburg steht mit <strong>{Math.round(oldenburg.wert).toLocaleString("de-DE")}&nbsp;Euro
-                je Einwohner*in</strong> auf Platz {platz} von {steuerkraft.length}.</>
+                je Einwohner*in</strong> auf Platz {platz} von {tax_capacity.length}.</>
               )}
               <Beleg q="lsn_finanzausgleich" />
             </p>
             <div className="mt-3">
-              <Staedtevergleich zeilen={steuerkraft} hinweisUnter100k />
+              <Staedtevergleich zeilen={tax_capacity} hinweisUnter100k />
             </div>
             <p className="mt-2.5 max-w-[86ch] text-[11.5px] leading-relaxed text-muted-foreground">
               Unsere Rechnung: Steuerkraftmesszahl geteilt durch die Einwohnerzahl, beide

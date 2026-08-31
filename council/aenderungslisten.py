@@ -849,19 +849,19 @@ def _block_jahr(block_jahr: int | None, aus: Ergebnis, typ: str) -> int:
     """
     if block_jahr is not None:
         return block_jahr
-    jahre = sorted({z.year for z in aus.zeilen})
+    years = sorted({z.year for z in aus.zeilen})
     entwuerfe = sum(1 for s in aus.summen if s.typ == "entwurf")
     idx = entwuerfe if typ == "entwurf" else entwuerfe - 1
-    if 0 <= idx < len(jahre):
-        return jahre[idx]
+    if 0 <= idx < len(years):
+        return years[idx]
     raise ListenFehler("Zusammenstellungs-Block ohne erkennbares Planjahr.")
 
 
 def _proben(aus: Ergebnis) -> None:
     """Kettenprobe und Positionsprobe je Planjahr (die Zeilenprobe lief schon
     beim Lesen jeder Summenzeile)."""
-    jahre = sorted({z.year for z in aus.zeilen})
-    for year in jahre:
+    years = sorted({z.year for z in aus.zeilen})
+    for year in years:
         entwurf = [s for s in aus.summen if s.year == year and s.typ == "entwurf"]
         listen = [s for s in aus.summen if s.year == year and s.typ == "liste"]
         ende = [s for s in aus.summen if s.year == year and s.typ == "endsumme"]

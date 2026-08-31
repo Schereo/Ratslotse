@@ -77,7 +77,7 @@ Es ist der **Verwaltungsentwurf**, nicht der Beschluss: Der Text sagt das
 selbst („in der Fassung des Verwaltungsentwurfes vom 01.10.2025 — unter
 Einbeziehung der sich aus den Beschlüssen … ergebenden Änderungen"). Das Datum
 wird mitgelesen und gehört an jede Anzeige, dieselbe Vorsicht wie beim
-Gesamtergebnishaushalt (``council/ergebnishaushalt.py``).
+Gesamtergebnishaushalt (``council/income_budget.py``).
 
 Und sie sind **nicht** mit dem Kernhaushalt verrechenbar. Der EGH vermietet der
 Stadt ihre eigenen Gebäude; seine Erträge sind zu einem großen Teil Aufwand des
@@ -135,7 +135,7 @@ _BETRAG = r"([+-]?\s*\d{1,3}(?:\.\d{3})*(?:,\d{2})?)"
 _ZEILEN = {
     "revenues":   r"mit Ertr[äa]gen von\s*" + _BETRAG,
     "expenses": r"mit Aufwendungen von\s*" + _BETRAG,
-    "steuern":    r"mit steuerlichen Aufwendungen von\s*" + _BETRAG,
+    "taxes":    r"mit steuerlichen Aufwendungen von\s*" + _BETRAG,
     "result":   r"und einem Jahresergebnis von\s*" + _BETRAG,
     "capital_plan": r"Einzahlungen und Auszahlungen von je\s*" + _BETRAG,
     "commitments": r"Verpflichtungserm[äa]chtigungen von\s*" + _BETRAG,
@@ -193,7 +193,7 @@ class Wirtschaftsplan:
     template_number: str
     revenues: float
     expenses: float
-    steuern: float
+    taxes: float
     result: float
     #: Einzahlungen = Auszahlungen; das Dokument nennt nur eine Zahl.
     capital_plan: float | None
@@ -215,7 +215,7 @@ class Wirtschaftsplan:
     @property
     def probe_result(self) -> str:
         """Der Messwert der Probe, für die Herkunft."""
-        rest = self.revenues - self.expenses - self.steuern - self.result
+        rest = self.revenues - self.expenses - self.taxes - self.result
         return f"Erfolgsplan geht auf, Restbetrag {rest:.2f} €"
 
 
@@ -265,19 +265,19 @@ def parse_wirtschaftsplan(template_number: str, titel: str, text: str) -> Wirtsc
         if m:
             werte[feld] = _eur(m.group(1))
 
-    # Ohne diese drei ist es kein Eckwert-Block. `steuern` darf fehlen (bis
+    # Ohne diese drei ist es kein Eckwert-Block. `taxes` darf fehlen (bis
     # 2020 gab es die Zeile nicht), `capital_plan` und `commitments`
     # ebenfalls — sie stehen in einem eigenen Absatz, den ein künftiges Layout
     # anders setzen könnte, ohne die Erfolgsplan-Zeilen zu berühren.
     if not {"revenues", "expenses", "result"} <= werte.keys():
         return None
 
-    steuern = werte.get("steuern", 0.0)
-    rest = werte["revenues"] - werte["expenses"] - steuern - werte["result"]
+    taxes = werte.get("taxes", 0.0)
+    rest = werte["revenues"] - werte["expenses"] - taxes - werte["result"]
     if abs(rest) > TOLERANZ_EUR:
         raise WirtschaftsplanFehler(
             f"{template_number}: Erfolgsplan geht nicht auf — "
-            f"{werte['revenues']:.2f} − {werte['expenses']:.2f} − {steuern:.2f} "
+            f"{werte['revenues']:.2f} − {werte['expenses']:.2f} − {taxes:.2f} "
             f"≠ {werte['result']:.2f} (Restbetrag {rest:.2f} €)")
 
     m_jahr = _JAHR_TEXT.search(flach)
@@ -307,7 +307,7 @@ def parse_wirtschaftsplan(template_number: str, titel: str, text: str) -> Wirtsc
     return Wirtschaftsplan(
         enterprise=key, enterprise_name=name, year=year, template_number=template_number,
         revenues=werte["revenues"], expenses=werte["expenses"],
-        steuern=steuern, result=werte["result"],
+        taxes=taxes, result=werte["result"],
         capital_plan=werte.get("capital_plan"),
         commitments=werte.get("commitments"),
         draft_date=m_entwurf.group(1) if m_entwurf else None,

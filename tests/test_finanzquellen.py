@@ -365,7 +365,7 @@ def test_fehlende_teilhaushalts_ebene_wird_nachgezogen(bestand, tmp_path):
         bestand._conn.execute(  # noqa: SLF001
             "DELETE FROM council_abweichungsgruende WHERE year = 2024")
     assert 2024 in bestand.ergebnisrechnung_jahre(), "die Gesamtrechnung steht noch"
-    assert 2024 not in bestand.plan_ist_jahre()
+    assert 2024 not in bestand.plan_actual_years()
     bestand.close()
 
     bericht = check_finanzdaten.main(db=str(tmp_path / "council.sqlite"),
@@ -374,7 +374,7 @@ def test_fehlende_teilhaushalts_ebene_wird_nachgezogen(bestand, tmp_path):
     store = CouncilStore(tmp_path / "council.sqlite")
     try:
         # Ohne die Korrektur bleibt 2024 für immer ohne Teilhaushalte.
-        assert 2024 in store.plan_ist_jahre()
+        assert 2024 in store.plan_actual_years()
         # Die Erläuterungen reiten mit: Sie hängen am selben Dokument.
         assert inhalt(store) == vollstaendig
     finally:
@@ -651,7 +651,7 @@ def test_ein_jahrgang_landet_ganz_oder_gar_nicht(bestand, monkeypatch):
         # 2024 ist komplett zurückgerollt — keine halbe Gesamtrechnung, keine
         # halben Teilhaushalte, die den nächsten Lauf glauben ließen, es stünde.
         assert 2024 not in bestand.ergebnisrechnung_jahre()
-        assert 2024 not in bestand.plan_ist_jahre()
+        assert 2024 not in bestand.plan_actual_years()
         assert bestand.get_abweichungsgruende(2024) == []
     finally:
         bestand.close()
@@ -895,12 +895,12 @@ def test_hinweis_trennt_spaete_stadt_von_kaputtem_muster(bestand, tmp_path):
 # Jahrgang, der nach seinem üblichen Monat plus Karenz ausbleibt, ist eine
 # Meldung wert, sonst erinnert sich nach zwölf Monaten niemand.
 
-def staedtevergleich(store: CouncilStore, series: str, jahre: list[int]) -> None:
+def staedtevergleich(store: CouncilStore, series: str, years: list[int]) -> None:
     """Ein paar Zeilen je Jahrgang — der Inhalt ist hier egal, gezählt wird
     das Jahr."""
     from council import herkunft as h
 
-    for year in jahre:
+    for year in years:
         store.save_staedtevergleich(series, [
             {"year": year, "schluessel": "403000", "city": "Oldenburg (Oldb), Stadt",
              "indicator": "steuerkraftmesszahl", "wert": 1.0, "einheit": "teur"},
@@ -917,7 +917,7 @@ def lsn_bestand(tmp_path):
     gebaut sind: Eine KFA-Datei trägt genau ein Ausgleichsjahr in den Bestand
     (das zweite ist ihre Rechenprobe), ein Realsteuervergleich drei."""
     store = CouncilStore(tmp_path / "council.sqlite")
-    staedtevergleich(store, "steuerkraft", [2026])
+    staedtevergleich(store, "tax_capacity", [2026])
     staedtevergleich(store, "realsteuern", [2023, 2024, 2025])
     return store
 

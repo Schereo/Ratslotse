@@ -168,7 +168,7 @@ def main(db: str | None = None, heute: date | None = None, trocken: bool = False
     p = protokoll or finanzquellen.Protokoll(still=still)
     store = CouncilStore(Path(db or COUNCIL_DB))
     fehler: list[str] = []
-    result: dict = {"gesellschaften": 0, "texte": 0, "kennzahlen": 0,
+    result: dict = {"gesellschaften": 0, "texte": 0, "indicators": 0,
                       "personen": 0, "eigentuemer": 0, "ohne_zuordnung": 0,
                       "verworfen": 0, "widersprueche": 0, "bestand_geschuetzt": 0,
                       "jahrgaenge": [], "konzernvergleich": 0}
@@ -261,7 +261,7 @@ def main(db: str | None = None, heute: date | None = None, trocken: bool = False
         "Berichte gelesen": len(result["jahrgaenge"]),
         "Gesellschaften": result["gesellschaften"],
         "Textabschnitte": result["texte"],
-        "Kennzahlen": result["kennzahlen"],
+        "Kennzahlen": result["indicators"],
         "Aufsichtspersonen": result.get("personen", 0),
         "Eigentümer": result.get("eigentuemer", 0),
         # Wie oft die Spaltenprobe der Aufsichtsorgane gerissen ist. Kein

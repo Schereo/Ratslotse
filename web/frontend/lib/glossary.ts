@@ -5,7 +5,7 @@
  *  „Bebauungsplans" oder „Vergnügungsstätten" mitgefunden werden. */
 export const GLOSSARY: Record<string, string> = {
   "Vergnügungsstätte":
-    "Betriebe wie Spielhallen, Wettbüros, Diskotheken oder Bordelle. Im Baurecht eine eigene Nutzungsart, die die Stadt über Bebauungspläne räumlich steuern kann.",
+    "Betriebe wie Spielhallen, Wettbüros, Diskotheken oder Bordelle. Im Baurecht eine eigene Nutzungsart, die die Stadt über Bebauungspläne räumlich taxes kann.",
   "Bebauungsplan":
     "Eine kommunale Satzung, die für ein bestimmtes Gebiet verbindlich festlegt, was und wie dort gebaut werden darf.",
   "Flächennutzungsplan":

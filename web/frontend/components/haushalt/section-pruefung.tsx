@@ -176,7 +176,7 @@ function AbschnittsFeld({ text_number, section, eintraege }: {
 function alsMatrixKetten(ketten: Kette[], jahreAnzahl: number): MatrixKette[] {
   return ketten.map((k) => {
     const zellen: { year: number; mark: string }[] = [];
-    for (const year of k.jahre) {
+    for (const year of k.years) {
       const hier = k.eintraege.filter((f) => f.year === year)
         .sort((a, b) => markeRang(a.mark) - markeRang(b.mark));
       if (hier[0]) zellen.push({ year, mark: hier[0].mark });
@@ -210,7 +210,7 @@ export function PruefungAbschnitt({ onBestand }: {
     if (!data?.feststellungen.length) { onBestand(null); return; }
     onBestand({
       gesamt: data.feststellungen.length,
-      jeJahr: data.jahre.map((j) => ({
+      jeJahr: data.years.map((j) => ({
         year: j,
         count: data.feststellungen.filter((f) => f.year === j).length,
       })),
@@ -221,12 +221,12 @@ export function PruefungAbschnitt({ onBestand }: {
   // Link soll den Bericht zeigen, wie er ist — vollständig.
   const [nurSchwer, setNurSchwer] = useState(false);
 
-  const jahre = data?.jahre ?? [];
-  const year = gewaehltesJahr && jahre.includes(gewaehltesJahr) ? gewaehltesJahr : jahre.at(-1) ?? null;
+  const years = data?.years ?? [];
+  const year = gewaehltesJahr && years.includes(gewaehltesJahr) ? gewaehltesJahr : years.at(-1) ?? null;
   const alle = useMemo(() => data?.feststellungen ?? [], [data]);
   const ketten = useMemo(() => wiederholungsketten(alle), [alle]);
   const matrixKetten = useMemo(
-    () => alsMatrixKetten(ketten, jahre.length), [ketten, jahre.length]);
+    () => alsMatrixKetten(ketten, years.length), [ketten, years.length]);
   const zahl = useMemo(() => markenZaehlen(alle), [alle]);
   const imJahr = useMemo(
     () => (year ? alle.filter((f) => f.year === year) : []), [alle, year]);
@@ -261,7 +261,7 @@ export function PruefungAbschnitt({ onBestand }: {
     <div className="flex flex-col gap-4">
       <div>
         <p className="font-mono text-[10.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-          Rechnungsprüfungsamt · {jahre[0]}–{jahre.at(-1)}
+          Rechnungsprüfungsamt · {years[0]}–{years.at(-1)}
         </p>
         {/* Die Überschrift wird gerechnet, nicht geschrieben — ein fester
             Satz wäre beim nächsten Jahrgang still falsch. */}
@@ -281,7 +281,7 @@ export function PruefungAbschnitt({ onBestand }: {
           erst darunter erklärt der Satz, was sie bedeuten. */}
       <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
         <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-          {jahre.length} geprüfte Jahresabschlüsse · {jahre[0]}–{jahre.at(-1)}
+          {years.length} geprüfte Jahresabschlüsse · {years[0]}–{years.at(-1)}
         </p>
         <div className="mt-2.5 grid grid-cols-3 gap-2">
           {([
@@ -353,7 +353,7 @@ export function PruefungAbschnitt({ onBestand }: {
               Wiederholungs-Ketten · was über Jahre offen blieb
             </p>
             <span className="font-mono text-[10px] uppercase text-muted-foreground">
-              {ketten.length} Themen · {jahre[0]}–{jahre.at(-1)}
+              {ketten.length} Themen · {years[0]}–{years.at(-1)}
             </span>
           </div>
           <p className="mb-3 max-w-[70ch] text-[12.5px] leading-relaxed text-muted-foreground">
@@ -365,7 +365,7 @@ export function PruefungAbschnitt({ onBestand }: {
           </p>
           <KettenMatrix
             ketten={matrixKetten}
-            jahre={jahre}
+            years={years}
             lueckenJahre={data.ohne_bericht.map((j) => ({ year: j, grund: LUECKEN_GRUND }))}
             marken={data.legende}
             beleg={<Beleg q="pruefbericht" />}
@@ -414,7 +414,7 @@ export function PruefungAbschnitt({ onBestand }: {
             </span>
             <div className="scrollbar-none -mx-1 flex items-center gap-1 overflow-x-auto px-1 py-0.5">
               <div className="flex flex-none items-center gap-1 rounded-full border border-border bg-muted/40 p-1">
-                {jahre.map((j) => (
+                {years.map((j) => (
                   <Link key={j} href={`/haushalt/pruefung?year=${j}`} scroll={false}
                     className={cn("rounded-full px-3 py-1 text-[12.5px]",
                       j === year ? "bg-primary font-semibold text-primary-foreground" : "text-foreground/75 hover:bg-accent")}>

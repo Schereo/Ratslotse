@@ -160,8 +160,8 @@ export function TermineAbschnitt({ onBestand }: {
     );
   }
 
-  const jahre = runden.map((r) => r.year);
-  const year = gewaehlt != null && jahre.includes(gewaehlt) ? gewaehlt : jahre[jahre.length - 1];
+  const years = runden.map((r) => r.year);
+  const year = gewaehlt != null && years.includes(gewaehlt) ? gewaehlt : years[years.length - 1];
   const runde = runden.find((r) => r.year === year)!;
   const rh = rhythmus(runden);
   const haeufigster = rh.entwurfMonate[0];

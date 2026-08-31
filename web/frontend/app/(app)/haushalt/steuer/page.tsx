@@ -19,7 +19,7 @@ import { HaushaltAuswahl, haushaltUrl, deMio } from "@/lib/haushalt";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import {
   STEUERARTEN, SPIELRAUM_LABEL, type SteuerArt, steuerartNachSlug,
-} from "@/lib/haushalt-steuern";
+} from "@/lib/haushalt-taxes";
 import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
 import { LottiErklaert, LottiVergleich } from "@/components/haushalt/lotti-erklaert";
 import { IstKurve } from "@/components/haushalt/ist-kurve";
@@ -82,7 +82,7 @@ function SteuerInner() {
 
   const series = useMemo(() => {
     if (!data || !art?.datenArt) return [];
-    return data.steuern
+    return data.taxes
       .filter((s) => s.art === art.datenArt && s.amount != null && s.amount > 0)
       .map((s) => ({ year: s.year, amount: s.amount as number }))
       .sort((a, b) => a.year - b.year);
@@ -94,7 +94,7 @@ function SteuerInner() {
   // hier nie: Sie ergeben dieselbe Summe noch einmal.
   const entgelt = useMemo(() => {
     if (!data || !art?.ergebnisPosten) return [];
-    return (data.ergebnisrechnung ?? [])
+    return (data.income_statement ?? [])
       .filter((z) => z.nr === art.ergebnisPosten && z.sub_budget_no === null)
       .sort((a, b) => a.year - b.year);
   }, [data, art]);
@@ -112,7 +112,7 @@ function SteuerInner() {
   }
 
   // Schlüsselzuweisungen kommen aus der Steuerkraft-Tabelle, nicht aus den Steuern.
-  const zuw = data.steuerkraft.filter((k) => k.allocations != null);
+  const zuw = data.tax_capacity.filter((k) => k.allocations != null);
   const istZuweisung = art.slug === "schluesselzuweisungen";
   const zuwReihe = istZuweisung
     ? zuw.map((k) => ({ year: k.year, amount: k.allocations as number }))
@@ -136,35 +136,35 @@ function SteuerInner() {
     ? null
     : istEntgelt
       ? {
-          wert: (data.ergebnisrechnung ?? []).find(
+          wert: (data.income_statement ?? []).find(
             (z) => z.nr === 12 && z.sub_budget_no === null && z.year === letzte?.year,
           )?.result ?? null,
           was: "aller ordentlichen Erträge",
         }
       : {
-          wert: data.steuern.find(
+          wert: data.taxes.find(
             (s) => s.year === letzte?.year && s.art === "insgesamt",
           )?.amount ?? null,
           was: "aller Steuereinnahmen",
         };
   const anteil = letzte && bezug?.wert ? Math.round((letzte.amount / bezug.wert) * 100) : null;
-  const einwohner = data.einwohner?.einwohner ?? 0;
+  const population = data.population?.population ?? 0;
 
   // Welche Quelle den Hauptbetrag trägt — einmal bestimmt, überall derselbe
   // Beleg-Chip. Drei Stellen zeigten ihn vorher einzeln an, und eine vierte
   // hätte die Reihe still zerrissen.
   const hauptQuelle: QuellenSchluessel = istZuweisung
-    ? "steuerkraft" : istEntgelt ? "jahresabschluss" : "steuern";
+    ? "tax_capacity" : istEntgelt ? "jahresabschluss" : "taxes";
 
   // Plan neben Ist — nur diese Steuer, nur die Jahrgänge, die Tabelle 1103
   // führt (drei je Ausgabe). `datenArt` ist derselbe Schlüssel wie in der
   // Ist-Reihe; daran hängt im Ingest auch die Prüfung der Jahresbeschriftung.
-  const planIst = (data.steuerplan?.zeilen ?? [])
+  const planIst = (data.tax_plan?.zeilen ?? [])
     .filter((z) => art.datenArt && z.art === art.datenArt);
 
   // Die Hebesatz-Treppe dieser Steuer. Zwei Reihen nur bei der Grundsteuer
   // (B und A, dieselbe Einheit, derselbe Beschluss).
-  const hebeAlle = data.hebesaetze?.zeilen ?? [];
+  const hebeAlle = data.tax_rates?.zeilen ?? [];
   const hebeHaupt = art.hebesatzArten?.[0]
     ? hebeAlle.filter((z) => z.art === art.hebesatzArten![0]) : [];
   const hebeZweit = art.hebesatzArten?.[1]
@@ -176,13 +176,13 @@ function SteuerInner() {
   // Die Statistik erscheint rund fünf Jahre nach dem Erhebungsjahr. Dass beide
   // Zahlen aus verschiedenen Jahren stammen, schreibt der Block selbst an.
   const statistik = art.slug === "gewerbesteuer"
-    ? (data.gewerbesteuerstatistik?.zeilen ?? []).at(-1) ?? null
+    ? (data.trade_tax_statistics?.zeilen ?? []).at(-1) ?? null
     : null;
 
   // Das Jahr, für das gerade ein Haushalt gilt — das jüngste mit einem
   // beschlossenen Ansatz. Daran hängt, ob der Befund unten noch der aktuelle
-  // ist; `ansatz_jahre` führt die Finanzplanungsjahre bewusst nicht mit.
-  const aktuellerHaushalt = data.ansatz_jahre?.at(-1) ?? null;
+  // ist; `budgeted_years` führt die Finanzplanungsjahre bewusst nicht mit.
+  const aktuellerHaushalt = data.budgeted_years?.at(-1) ?? null;
 
   // Der Hebesatz, der im Jahr des Aufkommens GALT.
   //
@@ -222,7 +222,7 @@ function SteuerInner() {
   //    Trägt der Bestand ihn nicht oder liegt er nicht über dem geltenden
   //    Satz, zeigt die Grafik keine Höhe (die Komponente entscheidet das).
   const geltendeStufe = hebeHaupt.at(-1) ?? null;
-  const vorgeschlagen = (satzungDaten?.haushaltssatzung ?? [])
+  const vorgeschlagen = (satzungDaten?.budget_bylaw ?? [])
     .find((z) => z.year === HEBESATZ_ABGELEHNT.year && z.supplement === 0)
     ?.trade_tax_rate ?? null;
 
@@ -241,11 +241,11 @@ function SteuerInner() {
   const zeigtBefund = art.slug === HEBESATZ_ABGELEHNT.steuer
     && aktuellerHaushalt === HEBESATZ_ABGELEHNT.year;
   const quellen: QuellenSchluessel[] = istZuweisung
-    ? ["steuerkraft", "plan"]
+    ? ["tax_capacity", "plan"]
     : istEntgelt
       ? ["jahresabschluss", "ergebnisrechnung_thh"]
-      : ["steuern", ...(planIst.length ? (["steuerplan"] as const) : []),
-         "hebesaetze", ...(zeigtBefund ? (["haushaltssatzung"] as const) : []),
+      : ["taxes", ...(planIst.length ? (["tax_plan"] as const) : []),
+         "tax_rates", ...(zeigtBefund ? (["budget_bylaw"] as const) : []),
          /* Die Landesstatistik steht nur im Verzeichnis, wenn ihre Zahlen auch
             auf der Seite stehen — sonst führte die Fußnotenliste eine Quelle,
             aus der hier nichts stammt (dieselbe Regel wie bei
@@ -459,7 +459,7 @@ function SteuerInner() {
           Gebühren eigentlich?", und die stellt sich, nachdem die Summe da ist. */}
       {istEntgelt && letzte && (
         <EntgelteBereiche
-          zeilen={(data.ergebnisrechnung ?? []).filter(
+          zeilen={(data.income_statement ?? []).filter(
             (z) => z.nr === art.ergebnisPosten && z.sub_budget_no !== null && z.year === letzte.year,
           )}
           year={letzte.year}
@@ -479,7 +479,7 @@ function SteuerInner() {
             <GlossaryText text={art.grenze} />
           </p>
           <Link
-            href="/haushalt/konzern#gebuehren"
+            href="/haushalt/konzern#fees"
             className="mt-2.5 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-primary hover:underline"
           >
             Was du dafür zahlst — die Gebührenbedarfsberechnung
@@ -494,12 +494,12 @@ function SteuerInner() {
       {planIst.length > 0 && (
         <SteuerPlanIst
           zeilen={planIst}
-          abgrenzung={data.steuerplan?.abgrenzung ?? ""}
-          beleg={<Beleg q="steuerplan" />}
+          abgrenzung={data.tax_plan?.abgrenzung ?? ""}
+          beleg={<Beleg q="tax_plan" />}
         />
       )}
 
-      {letzte && einwohner > 0 && (
+      {letzte && population > 0 && (
         /* „vom Land" stand hier bis 17.08. und war zu weit: Der Betrag ist
            die Schlüsselzuweisung, also zwei von drei Komponenten des
            Ausgleichs — die dritte (übertragener Wirkungskreis) fehlt darin
@@ -507,7 +507,7 @@ function SteuerInner() {
            teilt; die vollständige Zahl steht auf /haushalt/einnahmen. */
         <LottiVergleich
           betragMio={letzte.amount / 1e6}
-          einwohner={einwohner}
+          population={population}
           /* Die Steckbrief-Titel haben drei Genera; ein eingesetzter Titel ergab
              „aus der Gebühren und Beiträge". Wo der Artikel nicht passt, sagt
              `proKopfWas` den Satz selbst. */
@@ -530,7 +530,7 @@ function SteuerInner() {
           statt stehen zu bleiben. */}
       {art.slug === "gewerbesteuer" && (
         <WerZahlt
-          steuern={data.steuern}
+          taxes={data.taxes}
           art={art.datenArt}
           /* Gemessen wird gegen die ANDERE Steuer mit einem Hebesatz: Nur so
              ist der Vergleich fair — gleicher Datensatz, gleiche Jahre, gleiche
@@ -539,12 +539,12 @@ function SteuerInner() {
              nicht aus einem zweiten Literal daneben. */
           vergleichArt={steuerartNachSlug("grundsteuer")?.datenArt ?? null}
           vergleichTitel={steuerartNachSlug("grundsteuer")?.titel ?? "Grundsteuer"}
-          hebesaetze={hebeHaupt}
+          tax_rates={hebeHaupt}
           /* Der Nenner und der Satz, der zu ihm gehört. Beide reisen aus der
              API mit: Die Abgrenzung ist Teil der Zahl, nicht des Layouts. */
           statistik={statistik}
-          statistikKurz={data.gewerbesteuerstatistik?.abgrenzung_kurz ?? ""}
-          statistikAbgrenzung={data.gewerbesteuerstatistik?.abgrenzung ?? ""}
+          statistikKurz={data.trade_tax_statistics?.abgrenzung_kurz ?? ""}
+          statistikAbgrenzung={data.trade_tax_statistics?.abgrenzung ?? ""}
         />
       )}
 
@@ -569,8 +569,8 @@ function SteuerInner() {
                „ein Punkt mehr" verbietet (`punktUnmoeglich`). */
             aufkommenLabel={art.slug === "grundsteuer"
               ? "Grundsteuer A und B zusammen" : `${art.titel}`}
-            bemessungNeu={data.hebesaetze?.bemessung_neu ?? {}}
-            abgrenzung={data.hebesaetze?.abgrenzung ?? ""}
+            bemessungNeu={data.tax_rates?.bemessung_neu ?? {}}
+            abgrenzung={data.tax_rates?.abgrenzung ?? ""}
             /* Woran die Bemessungsgrundlage hängt — sonst liest sich die Liste
                darunter falsch herum. Bei der Gewerbesteuer fiel 2011 das
                Aufkommen, obwohl der Rat den Hebesatz erhöhte; das lag an den
@@ -583,8 +583,8 @@ function SteuerInner() {
                   ? "Hier hängt der Messbetrag am Wert des Grundstücks, den das Finanzamt festsetzt. 2025 hat es alle Werte auf einmal neu bestimmt."
                   : undefined
             }
-            beleg={<Beleg q="hebesaetze" />}
-            aufkommenBeleg={<Beleg q="steuern" />}
+            beleg={<Beleg q="tax_rates" />}
+            aufkommenBeleg={<Beleg q="taxes" />}
           />
           </div>
         ) : (
@@ -631,8 +631,8 @@ function SteuerInner() {
                   geltendSeit={geltendeStufe.year}
                   vorgeschlagen={vorgeschlagen}
                   proPunkt={proPunkt}
-                  beleg={<Beleg q="hebesaetze" />}
-                  satzungBeleg={<Beleg q="haushaltssatzung" />}
+                  beleg={<Beleg q="tax_rates" />}
+                  satzungBeleg={<Beleg q="budget_bylaw" />}
                 />
               )}
               {/* Der Verweis auf die Treppe nur, wo eine steht: Ohne
@@ -674,7 +674,7 @@ function SteuerInner() {
                   sich nicht beziffern (components/haushalt/finanzausgleich-daempfer.tsx). */}
               <p className="mt-1.5 text-[11.5px] leading-relaxed text-muted-foreground">
                 Der Betrag ist bereits <strong>nach Abzug der Umlage</strong> an Bund und Land —
-                so führt der offene Datensatz die Gewerbesteuer.<Beleg q="steuern" /> Ob das Land
+                so führt der offene Datensatz die Gewerbesteuer.<Beleg q="taxes" /> Ob das Land
                 über den Finanzausgleich zusätzlich gegenrechnet, hängt an seiner Formel; wie
                 stark, geben die Zahlen nicht her.
               </p>
@@ -716,16 +716,16 @@ function SteuerInner() {
 /** Was diese Seite rendert — und damit alles, was sie holt.
  *  Feldliste und Typ kommen aus derselben Zeile: Ein Zugriff auf ein
  *  nicht angefordertes Feld ist ein Fehler beim Bauen, kein leerer Block. */
-// `ansatz_jahre` ist die kleinste Auskunft darüber, für welches Jahr gerade
+// `budgeted_years` ist die kleinste Auskunft darüber, für welches Jahr gerade
 // ein Haushalt gilt (eine Liste von Zahlen). Die Seite braucht sie, damit der
 // Befund zum abgelehnten Hebesatz-Vorschlag nicht überlebt, was er beschreibt.
-// `ergebnisrechnung` kam am 24.08.2026 dazu — der zweite Weg an die Zahl, für
+// `income_statement` kam am 24.08.2026 dazu — der zweite Weg an die Zahl, für
 // Einnahmearten, die keine Steuer sind (`ergebnisPosten`). Die Liste trägt
 // alle Jahrgänge und Teilhaushalte; gefiltert wird hier, nicht im Backend, wie
 // auf /haushalt/bereich und /haushalt/plan-ist auch.
-const FELDER = ["steuern", "steuerkraft", "steuerplan", "hebesaetze", "einwohner",
-  "ansatz_jahre", "ergebnisrechnung", "gewerbesteuerstatistik"] as const;
-const SATZUNG_FELDER = ["haushaltssatzung"] as const;
+const FELDER = ["taxes", "tax_capacity", "tax_plan", "tax_rates", "population",
+  "budgeted_years", "income_statement", "trade_tax_statistics"] as const;
+const SATZUNG_FELDER = ["budget_bylaw"] as const;
 
 export default function SteuerPage() {
   return (

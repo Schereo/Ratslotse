@@ -508,11 +508,11 @@ def _block_jahr(block_jahr: int | None, aus: FhhErgebnis, typ: str) -> int:
     Überschrift fehlt: Jeder Block beginnt mit seinem Verwaltungsentwurf."""
     if block_jahr is not None:
         return block_jahr
-    jahre = sorted({z.year for z in aus.zeilen})
+    years = sorted({z.year for z in aus.zeilen})
     entwuerfe = sum(1 for s in aus.summen if s.typ == "entwurf")
     idx = entwuerfe if typ == "entwurf" else entwuerfe - 1
-    if 0 <= idx < len(jahre):
-        return jahre[idx]
+    if 0 <= idx < len(years):
+        return years[idx]
     raise ListenFehler("Zusammenstellungs-Block ohne erkennbares Planjahr.")
 
 

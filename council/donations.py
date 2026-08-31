@@ -215,7 +215,7 @@ def lies(zeilen: Iterable[dict]) -> dict:
       ``amount``, ``year``, ``gremium``, ``layout``.
     * ``verworfen`` — je Eintrag ``{template_number, grund}``; der Grund ist ein
       vollständiger Satz und für Leser*innen geschrieben.
-    * ``jahre`` — die Jahresreihe, je Jahr Summe und Zahl der Vorlagen.
+    * ``years`` — die Jahresreihe, je Jahr Summe und Zahl der Vorlagen.
     * ``probes`` — Zähler, was wie oft griff.
     """
     kandidaten: list[dict] = []
@@ -281,9 +281,9 @@ def lies(zeilen: Iterable[dict]) -> dict:
         je_vorlage.setdefault(k["template_number"], k)
     vorlagen = sorted(je_vorlage.values(), key=lambda k: (k["sitzung"] or "", k["template_number"]))
 
-    jahre: dict[int, dict] = {}
+    years: dict[int, dict] = {}
     for v in vorlagen:
-        e = jahre.setdefault(v["year"], {"year": v["year"], "amount": 0.0, "vorlagen": 0,
+        e = years.setdefault(v["year"], {"year": v["year"], "amount": 0.0, "vorlagen": 0,
                                          "rat": 0, "verwaltungsausschuss": 0})
         e["amount"] += v["amount"]
         e["vorlagen"] += 1
@@ -291,13 +291,13 @@ def lies(zeilen: Iterable[dict]) -> dict:
             e["rat"] += 1
         elif v["gremium"] == "Verwaltungsausschuss":
             e["verwaltungsausschuss"] += 1
-    for e in jahre.values():
+    for e in years.values():
         e["amount"] = round(e["amount"], 2)
 
     return {
         "vorlagen": vorlagen,
         "verworfen": verworfen,
-        "jahre": [jahre[j] for j in sorted(jahre)],
+        "years": [years[j] for j in sorted(years)],
         "probes": dict(zaehler),
     }
 

@@ -29,7 +29,7 @@ import { ProdukteAbschnitt } from "@/components/haushalt/section-produkte";
  *  Leserichtung — die Bereichs-Übersicht belegt sich mit `plan`, die
  *  Produktebene mit `teilhaushalt`. */
 const QUELLEN: QuellenSchluessel[] = [
-  "plan", "steuern", "steuerkraft", "teilhaushalt",
+  "plan", "taxes", "tax_capacity", "teilhaushalt",
 ];
 
 const MARKEN = [

@@ -45,7 +45,7 @@ import { haushaltUrl, type HaushaltAuswahl } from "@/lib/haushalt";
 import {
   GRUPPEN, differenzFormatVon, einheitWort, formatVon, formelVon, juengstesJahr,
   korrekturenVon, punkteVon, reiheVon, schreibe,
-} from "@/lib/haushalt-kennzahlen";
+} from "@/lib/haushalt-indicators";
 import { Zeitreihe } from "@/components/grafik/zeitreihe";
 import { Beleg } from "@/components/haushalt/quelle";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
@@ -57,7 +57,7 @@ const ZAHLWORT: Record<number, string> = {
   7: "sieben", 8: "acht", 9: "neun", 10: "zehn", 11: "elf", 12: "zwölf",
 };
 
-const FELDER = ["kennzahlen"] as const;
+const FELDER = ["indicators"] as const;
 type Daten = HaushaltAuswahl<(typeof FELDER)[number]>;
 
 /** Der Stand des jüngsten Jahres, alle dreizehn auf einmal.
@@ -72,7 +72,7 @@ type Daten = HaushaltAuswahl<(typeof FELDER)[number]>;
 function Standtafel({
   daten, year, gewaehlt, aufWahl,
 }: {
-  daten: NonNullable<Daten["kennzahlen"]>;
+  daten: NonNullable<Daten["indicators"]>;
   year: number;
   gewaehlt: string;
   aufWahl: (key: string) => void;
@@ -156,7 +156,7 @@ function Standtafel({
 function Verlauf({
   daten, gewaehlt,
 }: {
-  daten: NonNullable<Daten["kennzahlen"]>;
+  daten: NonNullable<Daten["indicators"]>;
   gewaehlt: string;
 }) {
   const einheit = daten.einheit[gewaehlt] ?? "eur";
@@ -189,7 +189,7 @@ function Verlauf({
           </p>
           <p className="mt-1 max-w-[80ch] text-[13px] leading-relaxed text-foreground/90">
             <span className="font-medium">{formel.heading}</span> — „Ermittlung:{" "}
-            {formel.formel}“<Beleg q="kennzahlen" />
+            {formel.formel}“<Beleg q="indicators" />
           </p>
           <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">
             {formel.von_bericht === formel.bis_bericht
@@ -226,7 +226,7 @@ function Verlauf({
  *  Bewusst OHNE Vorwurf im Ton: Dass ein Abschluss nachträglich korrigiert
  *  wird, ist normal; dass es nirgends steht, ist der Punkt. Die Liste sagt,
  *  was sich geändert hat, und überlässt die Einordnung den Lesenden. */
-function Korrekturen({ daten }: { daten: NonNullable<Daten["kennzahlen"]> }) {
+function Korrekturen({ daten }: { daten: NonNullable<Daten["indicators"]> }) {
   const alle = korrekturenVon(daten);
   if (!alle.length) return null;
   return (
@@ -243,7 +243,7 @@ function Korrekturen({ daten }: { daten: NonNullable<Daten["kennzahlen"]> }) {
         <p className="mt-1.5 max-w-[74ch] text-[13px] leading-relaxed text-muted-foreground">
           Weil jeder Bericht fünf Jahre druckt, steht dasselbe Jahr in bis zu fünf
           Berichten. Meistens steht dort dieselbe Zahl. Hier nicht — und angesagt
-          wurde es an keiner Stelle.<Beleg q="kennzahlen" />
+          wurde es an keiner Stelle.<Beleg q="indicators" />
         </p>
       </div>
       <ul className="flex flex-col divide-y divide-border">
@@ -278,9 +278,9 @@ export function KennzahlenAbschnitt() {
   const { data } = useFetch<Daten>(haushaltUrl([...FELDER]));
   const [gewaehlt, setGewaehlt] = useState("eigenkapitalquote_1");
 
-  const daten = data?.kennzahlen ?? null;
+  const daten = data?.indicators ?? null;
   const year = daten ? juengstesJahr(daten) : null;
-  const jahre = useMemo(
+  const years = useMemo(
     () => (daten ? [...new Set(daten.series.map((p) => p.year))].sort((a, b) => a - b) : []),
     [daten],
   );
@@ -310,7 +310,7 @@ export function KennzahlenAbschnitt() {
             <p className="mt-1.5 max-w-[66ch] text-sm leading-relaxed text-muted-foreground">
               Am Ende jedes Rechenschaftsberichts fasst die Stadt ihren Jahresabschluss
               in dreizehn Kennzahlen zusammen. Zu jeder Kennzahl veröffentlicht sie auch
-              den verwendeten Rechenweg. {jahre[0]}–{jahre[jahre.length - 1]} aus{" "}
+              den verwendeten Rechenweg. {years[0]}–{years[years.length - 1]} aus{" "}
               {ZAHLWORT[n_reports.length] ?? n_reports.length} Berichten.
             </p>
           </div>

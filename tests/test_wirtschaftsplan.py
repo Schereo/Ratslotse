@@ -102,7 +102,7 @@ def test_liest_die_eckwerte_des_aktuellen_jahrgangs():
     assert p.year == 2026, "das Haushaltsjahr, nicht das Jahr der Vorlage (2025)"
     assert p.revenues == 82_815_150.0
     assert p.expenses == 82_824_771.0
-    assert p.steuern == 6_000.0
+    assert p.taxes == 6_000.0
     assert p.result == -15_621.0
     assert p.capital_plan == 51_134_100.0
     assert p.commitments == 104_980_000.0
@@ -119,7 +119,7 @@ def test_das_vorzeichen_ueberlebt_den_leerraum():
 
 def test_die_probe_des_dokuments_geht_auf():
     p = parse_wirtschaftsplan("25/0722", TITEL_2026, TEXT_2026)
-    rest = p.revenues - p.expenses - p.steuern - p.result
+    rest = p.revenues - p.expenses - p.taxes - p.result
     assert abs(rest) <= TOLERANZ_EUR
     assert "geht auf" in p.probe_result
 
@@ -133,9 +133,9 @@ def test_liest_den_alten_aufbau_ohne_steuerzeile():
     und ein Wort, das über den Zeilenumbruch getrennt ist."""
     p = parse_wirtschaftsplan("18/0880", TITEL_2019, TEXT_2019)
     assert p.year == 2019
-    assert p.steuern == 0.0, "keine Steuerzeile heißt 0, nicht None"
+    assert p.taxes == 0.0, "keine Steuerzeile heißt 0, nicht None"
     assert p.result == 349_700.0
-    assert abs(p.revenues - p.expenses - p.steuern - p.result) <= TOLERANZ_EUR
+    assert abs(p.revenues - p.expenses - p.taxes - p.result) <= TOLERANZ_EUR
 
 
 # --------------------------------------------------------------------------

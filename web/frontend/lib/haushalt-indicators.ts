@@ -17,7 +17,7 @@
 // von 26,03 % auf 25,09 %. Über diese Stelle darf keine Linie laufen.
 //
 // Unterschieden wird das **nicht hier**, sondern im Backend an den Daten
-// selbst (`council/kennzahlen.py`, `ueberlappungsprobe`): Wo zwei Berichte
+// selbst (`council/indicators.py`, `ueberlappungsprobe`): Wo zwei Berichte
 // dasselbe Jahr drucken, wird verglichen — auch über einen Rechenwegwechsel
 // hinweg. Kommt dasselbe heraus, heißt der Fund `umbenennung`, sonst
 // `definition`. Diese Datei liest nur das Ergebnis. Eine zweite Fassung
@@ -47,7 +47,7 @@ export const GRUPPEN: { titel: string; question: string; keys: string[] }[] = [
     titel: "Was auf jede*n entfällt",
     question: "Dieselben Beträge, geteilt durch die Zahl der Einwohnenden — "
       + "die Reihe, die vom Wachstum der Stadt abhängt.",
-    keys: ["einwohner", "vermoegen_je_einwohner", "verschuldung_je_einwohner",
+    keys: ["population", "vermoegen_je_einwohner", "verschuldung_je_einwohner",
            "verschuldung_mit_rueckstellungen_je_einwohner",
            "neuverschuldung_je_einwohner", "netto_neuinvestitionen_je_einwohner"],
   },
@@ -159,6 +159,6 @@ export function korrekturenVon(daten: Kennzahlen, key?: string): KennzahlFund[] 
 
 /** Das jüngste Jahr, für das überhaupt eine Kennzahl vorliegt. */
 export function juengstesJahr(daten: Kennzahlen): number | null {
-  const jahre = daten.series.map((p) => p.year);
-  return jahre.length ? Math.max(...jahre) : null;
+  const years = daten.series.map((p) => p.year);
+  return years.length ? Math.max(...years) : null;
 }

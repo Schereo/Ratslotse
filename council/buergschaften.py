@@ -84,7 +84,7 @@ ABSCHNITT = "6.2.10 Eventualverbindlichkeiten"
 TABELLENZEILE = "Bürgschaftsverpflichtungen"
 
 #: Was diese Zahl ist und was sie nicht ist — reist mit den Zahlen statt im
-#: Frontend zu stehen, dieselbe Regel wie bei `ausgabenreihe.ABGRENZUNG`: Eine
+#: Frontend zu stehen, dieselbe Regel wie bei `expense_series.ABGRENZUNG`: Eine
 #: Erklärung, die es in zwei Sprachen gibt, driftet. Und ohne sie liest sich
 #: „220 Millionen" wie eine Rechnung, die demnächst kommt.
 ABGRENZUNG = (

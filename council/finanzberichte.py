@@ -1450,10 +1450,10 @@ def parse_teilergebnishaushalt(text: str) -> list[dict]:
         # die mittelfristige Finanzplanung (bis +4 Jahre). Die letzte Spalte
         # zu nehmen hieße, Finanzplanungswerte als Haushaltsansatz auszugeben.
         kopf = re.findall(r"(Ergebnis|Ansatz)\s+(20\d\d)", block[:600])
-        jahre = [int(j) for _, j in kopf]
-        if len(jahre) < 2:
+        years = [int(j) for _, j in kopf]
+        if len(years) < 2:
             continue
-        spalten = len(jahre)
+        spalten = len(years)
         ansatz_idx = next((i for i, (art, _) in enumerate(kopf) if art == "Ansatz"), None)
         if ansatz_idx is None:
             continue
@@ -1478,7 +1478,7 @@ def parse_teilergebnishaushalt(text: str) -> list[dict]:
         gefunden[product_no] = {
             "sub_budget_no": int(sub_budget_no), "sub_budget_name": sub_budget_name.strip(),
             "product_no": product_no, "product_name": product_name.strip(),
-            "office": office.strip(), "year": jahre[ansatz_idx], **werte,
+            "office": office.strip(), "year": years[ansatz_idx], **werte,
             **steckbrief,
             "controllability": normalisiere_beeinflussbarkeit(
                 steckbrief["controllability_raw"]),

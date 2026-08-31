@@ -89,7 +89,7 @@ _VOR, _NACH = 70, 40
 #: ein Haushalt ist von Natur aus jährlich. Diese Trennung ist der Unterschied
 #: zwischen „3,90 € je Essen" (kein Volumen) und „13.739,52 EUR jährlich"
 #: (Volumen).
-_EINHEIT = (r"m²|m2|qm|quadratmeter|kwh|stück|stk|einwohner|kopf|person|kind|"
+_EINHEIT = (r"m²|m2|qm|quadratmeter|kwh|stück|stk|population|kopf|person|kind|"
             r"schüler|teilnehmer|mitglied|verein|fachkraft|fall|antrag|platz|"
             r"fahrt|essen|mahlzeit|nutzung|ausweis|karte|ticket|tonne|liter|"
             r"km|kilometer")

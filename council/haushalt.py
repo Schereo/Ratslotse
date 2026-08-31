@@ -121,7 +121,7 @@ STEUERKRAFT_CSV_URL = ("https://opendata.oldenburg.de/sites/default/files/"
 # PDF derselben Tabelle 1102 („Ordentliche Aufwendungen des Ergebnishaushalts
 # — Gesamtergebnisrechnung —"), und der Abgleich gegen die Jahresabschlüsse
 # geht auf den Tausender genau auf. Die Spalte wird deshalb jetzt gelesen, aber
-# NICHT hier: `council/ausgabenreihe.py` liest sie zusammen mit dem PDF und mit
+# NICHT hier: `council/expense_series.py` liest sie zusammen mit dem PDF und mit
 # der älteren CSV desselben Datensatzes (Verwaltungshaushalt 1972–2009), weil
 # erst die zweite Quelle die Proben liefert, an denen der Wert hängt. Was `Ist`
 # hier heißt und wo der Versatz von 0,03–0,05 % gegen `council_ergebnisrechnung`
@@ -175,15 +175,15 @@ def parse_steuereinnahmen(csv_text: str) -> list[dict]:
 
 def parse_einwohner(csv_text: str) -> list[dict]:
     """Einwohnerzahlen je Haushaltsjahr (Stichtag 31.12. des Vorjahres) →
-    ``{year, einwohner}``. Basis für Pro-Kopf-Einordnungen; die
-    Aufwendungs-Spalten desselben CSV liest ``council/ausgabenreihe.py``
+    ``{year, population}``. Basis für Pro-Kopf-Einordnungen; die
+    Aufwendungs-Spalten desselben CSV liest ``council/expense_series.py``
     (s. o.)."""
     rows: list[dict] = []
     for line in csv_text.splitlines()[1:]:
         cells = [c.strip() for c in line.split(";")]
         if len(cells) < 2 or not cells[0].isdigit() or not cells[1].isdigit():
             continue
-        rows.append({"year": int(cells[0]), "einwohner": int(cells[1])})
+        rows.append({"year": int(cells[0]), "population": int(cells[1])})
     return rows
 
 
@@ -832,8 +832,8 @@ def build_abschluss_questions(store) -> list[dict]:
                 f"{_mio(schulden['insgesamt'])} Mio. Euro ({schulden['year']})",
                 f"{_mio(konzern['amount'])} Mio. Euro ({konzern['year']})",
                 richtig]
-        jahre = {kern["year"], schulden["year"], konzern["year"]}
-        nachsatz = ("" if len(jahre) == 1 else
+        years = {kern["year"], schulden["year"], konzern["year"]}
+        nachsatz = ("" if len(years) == 1 else
                     " Die drei Stände sind nicht aus demselben Jahr: Jede Quelle "
                     "erscheint zu ihrer eigenen Zeit, und die jüngste ist immer "
                     "die, die vorliegt.")

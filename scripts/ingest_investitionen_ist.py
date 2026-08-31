@@ -112,8 +112,8 @@ def main() -> int:
             for v in result["verworfen"]:
                 print(f"    VERWORFEN {v['year']} ({v['accounting_system']}): {v['grund']}",
                       file=sys.stderr)
-            for accounting_system, jahre in sorted(result["fehlende_jahrgaenge"].items()):
-                for j in jahre:
+            for accounting_system, years in sorted(result["fehlende_jahrgaenge"].items()):
+                for j in years:
                     print(f"    FEHLT {j} ({accounting_system}): im Titel angekündigt, "
                           f"nicht übernommen", file=sys.stderr)
             if not zeilen:

@@ -101,7 +101,7 @@ function breiteVon(el: HTMLElement | null): number | null {
   return w > 0 ? Math.max(w, 280) : null;
 }
 
-export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung" | "jahre"> }) {
+export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"income_statement" | "years"> }) {
   const aussen = useRef<HTMLDivElement>(null);
   const bildBox = useRef<HTMLDivElement>(null);
   // Startwerte klein: Der erste Frame läuft dann einspaltig durch, statt eine
@@ -136,10 +136,10 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
     ? { achse: 13, year: 14, balance: 12.5, legende: 13, mark: 12.5 }
     : { achse: 11, year: 12, balance: 11.5, legende: 12, mark: 12 };
 
-  const jahre = jahreSortiert(daten);
-  const punkte: Punkt[] = jahre
+  const years = jahreSortiert(daten);
+  const punkte: Punkt[] = years
     .map((year) => {
-      const s = summe(daten.jahre[String(year)] ?? []);
+      const s = summe(daten.years[String(year)] ?? []);
       const ein = mio(s?.revenues), aus = mio(s?.expenses);
       const balance = mio((s?.revenues ?? 0) - (s?.expenses ?? 0));
       return ein != null && aus != null && balance != null ? { year, ein, aus, balance } : null;
@@ -163,7 +163,7 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
   // Ebene trägt auch `council_haushalt` — nur so sind Plan und Ist auf
   // derselben Achse überhaupt vergleichbar. Jahrgänge, in denen ein Posten
   // fehlt, fallen ganz heraus statt halb gerechnet zu werden.
-  const abschluss = daten.ergebnisrechnung ?? [];
+  const abschluss = daten.income_statement ?? [];
   const istNach = new Map<number, IstPunkt>();
   for (const year of alleJahre) {
     const g = abschluss.filter((p) => p.year === year && p.sub_budget_no == null);

@@ -413,9 +413,9 @@ def _run(job: DeepJob, ratslotse_db: str, council_db: str) -> None:
         # zu lassen. Die Frage entscheidet, die Begriffe füllen.
         geld = qa.geld_kontext(store, job.suchfrage, begriffe_alle, "topic")
 
-        jahre = sorted({str(c.get("session_date") or "")[:4]
+        years = sorted({str(c.get("session_date") or "")[:4]
                         for c in candidates if c.get("session_date")})
-        zeitraum = f"{jahre[0]}–{jahre[-1]}" if len(jahre) > 1 else (jahre[0] if jahre else "")
+        zeitraum = f"{years[0]}–{years[-1]}" if len(years) > 1 else (years[0] if years else "")
         gelesen = (len(candidates) + len(debatten_rows) + len(presse_rows)
                    + len(anlagen_rows))
 

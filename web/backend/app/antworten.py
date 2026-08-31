@@ -943,7 +943,7 @@ class HaushaltStellenplan(TypedDict):
 
 class HaushaltPruefberichte(TypedDict):
     feststellungen: list[Any]
-    jahre: Any
+    years: Any
     legende: Any
     ohne_bericht: list[Any]
 
@@ -951,7 +951,7 @@ class HaushaltPruefberichte(TypedDict):
 class HaushaltKonzern(TypedDict):
     gegenprobe: Any
     herkunft: dict[str, Any]
-    jahre: Any
+    years: Any
     konzern: list[Any]
     posten: Any
     entity: list[Any]
@@ -962,8 +962,8 @@ class HaushaltBeteiligungen(TypedDict):
     eigentuemer: Any
     gesellschaften: list[Any]
     herkunft: dict[str, Any]
-    jahre: list[Any]
-    kennzahlen: Any
+    years: list[Any]
+    indicators: Any
     konzernvergleich: Any
     personen: list[Any]
     texte: Any
@@ -973,14 +973,14 @@ class HaushaltInvestitionen(TypedDict):
     finanzhaushalt: list[Any]
     gesamt: list[Any]
     herkunft: dict[str, Any]
-    jahre: Any
+    years: Any
     teilhaushalte: list[Any]
 
 
 class HaushaltInvestitionsprogramm(TypedDict):
     gesamt: list[Any]
     herkunft: dict[str, Any]
-    jahre: Any
+    years: Any
     massnahmen: list[Any]
     teilhaushalte: list[Any]
 
@@ -1131,7 +1131,7 @@ class ZielDetail(TypedDict):
 class HaushaltVergleich(TypedDict):
     beleg: Any
     herkunft: dict[str, Any]
-    jahre: Any
+    years: Any
     staedte: Any
     werte: Any
 
@@ -1141,7 +1141,7 @@ class HaushaltGebaut(TypedDict):
     anlagen: dict[str, Any]
     fehlend: Any
     herkunft: dict[str, Any]
-    jahre: list[Any]
+    years: list[Any]
     accounting_systems: list[Any]
     series: Any
 
@@ -1149,7 +1149,7 @@ class HaushaltGebaut(TypedDict):
 class HaushaltBilanz(TypedDict):
     erlaeuterungen: Any
     herkunft: dict[str, Any]
-    jahre: Any
+    years: Any
     posten: Any
 
 
@@ -1159,6 +1159,6 @@ class HaushaltSchulden(TypedDict):
     buergschaften: dict[str, Any]
     herkunft: dict[str, Any]
     integrierte_schulden: Any
-    jahre: list[Any]
+    years: list[Any]
     series: Any
     zinslast: Any

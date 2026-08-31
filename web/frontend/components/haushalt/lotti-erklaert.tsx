@@ -76,16 +76,16 @@ export function LottiErklaert({
 /** Große Zahl → Alltagsgröße. `pro_kopf` rechnet mit der Einwohnerzahl, die
  *  als Quelle mitgegeben wird; ohne sie erscheint der Baustein nicht. */
 export function LottiVergleich({
-  betragMio, einwohner, was, className,
+  betragMio, population, was, className,
 }: {
   betragMio: number;
-  einwohner: number;
+  population: number;
   /** Wofür das Geld ist — steht im Satz („für Kitas und Jugendhilfe"). */
   was: string;
   className?: string;
 }) {
-  if (!einwohner) return null;
-  const proKopf = Math.round((betragMio * 1_000_000) / einwohner);
+  if (!population) return null;
+  const proKopf = Math.round((betragMio * 1_000_000) / population);
   const proKopfMonat = Math.round(proKopf / 12);
   return (
     // Dieselbe Bauform wie `LottiErklaert` — Deckel an der Karte, s. dort.
@@ -106,7 +106,7 @@ export function LottiVergleich({
           {proKopfMonat >= 1 && <> — rund {proKopfMonat.toLocaleString("de-DE")}&nbsp;€ im Monat</>}.
         </p>
         <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-          Unsere Rechnung: Betrag geteilt durch {einwohner.toLocaleString("de-DE")} Einwohner*innen.
+          Unsere Rechnung: Betrag geteilt durch {population.toLocaleString("de-DE")} Einwohner*innen.
           Keine amtliche Kennzahl — die Stadt weist sie so nicht aus.
         </p>
       </div>

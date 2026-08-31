@@ -49,8 +49,8 @@ _UA = {"User-Agent": "Ratslotse/1.0 (ratslotse.de; Haushalts-Bereich)"}
 
 def _spanne(rows: list[dict]) -> str:
     """„1998–2025" aus den Jahrgängen einer Datensatz-Lieferung."""
-    jahre = sorted({r["year"] for r in rows})
-    return f"{jahre[0]}–{jahre[-1]}" if jahre else ""
+    years = sorted({r["year"] for r in rows})
+    return f"{years[0]}–{years[-1]}" if years else ""
 
 
 def main() -> int:
@@ -58,22 +58,22 @@ def main() -> int:
     try:
         r = requests.get(haushalt.STEUERN_CSV_URL, headers=_UA, timeout=120)
         r.raise_for_status()
-        steuern = haushalt.parse_steuereinnahmen(r.text)
-        if not steuern:
+        taxes = haushalt.parse_steuereinnahmen(r.text)
+        if not taxes:
             print("Steuereinnahmen-CSV nicht lesbar — nichts gespeichert.", file=sys.stderr)
             return 1
         # Diese drei Datensätze tragen keine Rechenprobe: eine Zeile je Jahr,
         # keine Summe, gegen die sich etwas prüfen ließe. Das ausdrücklich zu
         # sagen ist ehrlicher, als eine Probe zu behaupten — und es steht auf
         # der Seite dann auch so.
-        n = store.save_steuereinnahmen(steuern, herkunft.Herkunft(
+        n = store.save_steuereinnahmen(taxes, herkunft.Herkunft(
             art="opendata", probe=herkunft.UNGEPRUEFT,
             url=haushalt.STEUERN_CSV_URL,
             label="Steuereinnahmen der Stadt Oldenburg",
             citation="Datensatz 1104 — eine Zeile je Haushaltsjahr, "
                        "Spalten je Steuerart (Ist, Gewerbesteuer nach Umlage)",
-            stand=_spanne(steuern)))
-        print(f"Steuereinnahmen: {n} Zeilen ({_spanne(steuern)}).")
+            stand=_spanne(taxes)))
+        print(f"Steuereinnahmen: {n} Zeilen ({_spanne(taxes)}).")
 
         r = requests.get(haushalt.STEUERKRAFT_CSV_URL, headers=_UA, timeout=120)
         r.raise_for_status()

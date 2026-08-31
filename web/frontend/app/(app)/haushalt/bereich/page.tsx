@@ -87,7 +87,7 @@ function EigeneErtraege({ daten, schluessel, planEin, planJahr }: {
   planEin: number;
   planJahr: number;
 }) {
-  const posten = (daten.ergebnisrechnung ?? []).filter(
+  const posten = (daten.income_statement ?? []).filter(
     (p) => p.sub_budget_name != null && bereichSchluessel(p.sub_budget_name) === schluessel
            && p.nr >= 1 && p.nr <= 11 && (p.result ?? 0) > 0);
   if (!posten.length || !schluessel) return null;
@@ -178,16 +178,16 @@ function BereichInner() {
   const [ranking, setRanking] = useState<"netto" | "brutto">("netto");
   const [reiter, setReiter] = useState<ReiterId>("ueberblick");
 
-  const jahre = useMemo(() => (data ? jahreSortiert(data) : []), [data]);
-  const year = jahre[jahre.length - 1];
-  const zeilen = data && year ? data.jahre[String(year)] ?? [] : [];
+  const years = useMemo(() => (data ? jahreSortiert(data) : []), [data]);
+  const year = years[years.length - 1];
+  const zeilen = data && year ? data.years[String(year)] ?? [] : [];
   const z = bereichAusParam(zeilen, slug);
   const kanon = z ? bereichKanon(z.area) : null;
 
   // Produktebene: das jüngste Jahr, für das sie vorliegt — und nur für diesen
   // Teilhaushalt. Ohne Nummer (unbekannter Bereich) fragen wir gar nicht erst.
   const produktJahr = useMemo(() => {
-    const js = (data?.produkt_jahre ?? []).slice().sort((a, b) => a - b);
+    const js = (data?.product_years ?? []).slice().sort((a, b) => a - b);
     return js[js.length - 1] ?? null;
   }, [data]);
   const { data: produkte } = useFetch<ProdukteAntwort>(
@@ -257,7 +257,7 @@ function BereichInner() {
 
   // Zeilen des Jahresabschlusses zu diesem Teilhaushalt — über den kanonischen
   // Schlüssel, nicht über das erste Wort des Namens.
-  const abschluss = (data.ergebnisrechnung ?? []).filter(
+  const abschluss = (data.income_statement ?? []).filter(
     (p) => p.sub_budget_name != null && bereichSchluessel(p.sub_budget_name) === kanon.schluessel
            && (p.nr === 12 || p.nr === 20));
   const planIstJahre = [...new Set(abschluss.map((p) => p.year))].sort((a, b) => a - b);
@@ -597,7 +597,7 @@ function BereichInner() {
                   ))}
                 </div>
                 <p className="mt-2.5 text-[11px] leading-relaxed text-muted-foreground">
-                  {series.length < jahre.length
+                  {series.length < years.length
                     ? <>Vor {series[0].year} führte der Plan den Bereich unter anderem Namen — die
                         Reihe beginnt dort, wo der Name belegt ist.</>
                     : <>Der Bereich heißt seit {series[0].year} unverändert; nur deshalb zeigen wir
@@ -742,7 +742,7 @@ function BereichInner() {
 /** Was diese Seite rendert — und damit alles, was sie holt.
  *  Feldliste und Typ kommen aus derselben Zeile: Ein Zugriff auf ein
  *  nicht angefordertes Feld ist ein Fehler beim Bauen, kein leerer Block. */
-const FELDER = ["jahre", "ergebnisrechnung", "produkt_jahre", "abweichungsgruende"] as const;
+const FELDER = ["years", "income_statement", "product_years", "variance_reasons"] as const;
 
 /** Der Ausschnitt, den diese Seite holt. */
 type Daten = HaushaltAuswahl<typeof FELDER[number]>;

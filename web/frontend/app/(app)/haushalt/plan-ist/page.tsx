@@ -58,7 +58,7 @@ import { MarkePille } from "@/components/haushalt/mark";
 import { Hantel, HantelMassstab } from "@/components/grafik/hantel";
 import {
   NachbewilligungsBefund, NachbewilligungsBlock,
-} from "@/components/haushalt/nachbewilligungen";
+} from "@/components/haushalt/supplementary-approvals";
 import { cn } from "@/lib/utils";
 import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 import { SchrittPfad } from "@/components/haushalt/schritt-pfad";
@@ -99,7 +99,7 @@ function PruefungsHinweis() {
         {juengste.text}
       </p>
       <span className="flex items-center gap-1 text-[12.5px] font-semibold text-primary">
-        In {kette.jahre.length} von {data?.jahre.length} geprüften Jahren als wiederholte
+        In {kette.years.length} von {data?.years.length} geprüften Jahren als wiederholte
         Beanstandung ausgewiesen — alle Feststellungen ansehen
         <ArrowRight size={14} strokeWidth={2} className="transition-transform group-hover:translate-x-0.5" />
       </span>
@@ -160,8 +160,8 @@ function PlanIstInner() {
   const [zahlenOffen, setZahlenOffen] = useState(false);
   const [massstab, setMassstab] = useState<HantelMassstab>("prozent");
 
-  const jahre = data?.plan_ist_jahre ?? [];
-  const year = gewaehltesJahr && jahre.includes(gewaehltesJahr) ? gewaehltesJahr : jahre.at(-1) ?? null;
+  const years = data?.plan_actual_years ?? [];
+  const year = gewaehltesJahr && years.includes(gewaehltesJahr) ? gewaehltesJahr : years.at(-1) ?? null;
 
   const { gesamt, bereiche, arten, planArt, ansatzAbweichend } = useMemo(() => {
     const leer = {
@@ -170,7 +170,7 @@ function PlanIstInner() {
       ansatzAbweichend: null as null | { ertr: number | null; aufw: number | null },
     };
     if (!data || !year) return leer;
-    const zeilen = (data.ergebnisrechnung ?? []).filter((p) => p.year === year);
+    const zeilen = (data.income_statement ?? []).filter((p) => p.year === year);
     const summe = (rows: ErgebnisPosten[], nr: number) => rows.find((p) => p.nr === nr);
     const g = zeilen.filter((p) => p.sub_budget_no == null);
     const e = summe(g, 12), a = summe(g, 20);
@@ -245,7 +245,7 @@ function PlanIstInner() {
   // begründet es im Docstring; diese Seite war die einzige Stelle, die der
   // Regel nicht folgte. Deshalb hier derselbe Weg statt einer zweiten Formel.
   const jahresergebnis = (art: "plan" | "result") => {
-    const teile = [21, 24].map((nr) => (data.ergebnisrechnung ?? []).find(
+    const teile = [21, 24].map((nr) => (data.income_statement ?? []).find(
       (p) => p.year === year && p.nr === nr && p.sub_budget_no == null));
     if (teile.some((t) => !t || t[art] == null)) return null;
     return teile.reduce((s, t) => s + (t![art] as number), 0) / 1e6;
@@ -257,10 +257,10 @@ function PlanIstInner() {
   // zeigen hat: Seine Liste verlinkt Vorlagen aus dem Bürgerinformations-
   // system, und ein Beleg-Chip ohne angemeldete Quelle rendert nichts (siehe
   // `components/haushalt/quelle.tsx`) — die Zeilen stünden dann ohne Beleg da.
-  const hatNachbewilligungen = (data.nachbewilligungen?.serie ?? []).length > 0;
+  const hatNachbewilligungen = (data.supplementary_approvals?.serie ?? []).length > 0;
   const quellen: QuellenSchluessel[] = [
     "jahresabschluss",
-    ...(kasse ? (["finanzrechnung"] as const) : []),
+    ...(kasse ? (["cash_flow_statement"] as const) : []),
     "plan",
     ...(hatNachbewilligungen ? (["ratsbeschluss"] as const) : []),
   ];
@@ -310,7 +310,7 @@ function PlanIstInner() {
   // Bereichs-Sätze auch; hier der Rest — nichts doppelt, aber auch nichts
   // verloren: Was für die Hantel zu lang war, steht genau deshalb hier.
   const obenGezeigt = new Set([...arten.map((p) => p.nr), ...imBild]);
-  const uebrigeGruende = (data.abweichungsgruende ?? [])
+  const uebrigeGruende = (data.variance_reasons ?? [])
     .filter((g) => g.year === year && !obenGezeigt.has(g.nr))
     .sort((a, b) => Math.abs(b.delta_meur ?? 0) - Math.abs(a.delta_meur ?? 0));
 
@@ -403,14 +403,14 @@ function PlanIstInner() {
       </p>
 
       {/* Jahr-Umschalter: nur Jahre mit echtem Abschluss (scrollbar wie #497). */}
-      {jahre.length > 1 && (
+      {years.length > 1 && (
         <div className="flex flex-col gap-1.5">
           <span className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
             Abgeschlossenes Haushaltsjahr
           </span>
           <div className="scrollbar-none -mx-1 flex items-center gap-1 overflow-x-auto px-1 py-0.5">
             <div className="flex flex-none items-center gap-1 rounded-full border border-border bg-card p-1">
-              {jahre.map((j) => (
+              {years.map((j) => (
                 <Link key={j} href={`/haushalt/plan-ist?year=${j}`} scroll={false}
                   className={cn("rounded-full px-3 py-1 text-[12.5px]",
                     j === year ? "bg-primary font-semibold text-primary-foreground" : "text-foreground/75 hover:bg-accent")}>
@@ -502,7 +502,7 @@ function PlanIstInner() {
           <p className="mt-2 max-w-[70ch] text-[15px] leading-relaxed text-foreground/90">
             Die Zahlen oben stammen aus der Ergebnisrechnung: Sie erfasst Erträge und
             Aufwendungen, auch wenn dabei nicht sofort Geld fließt. Die Finanzrechnung
-            <Beleg q="finanzrechnung" /> zeigt dagegen ausschließlich die tatsächlichen
+            <Beleg q="cash_flow_statement" /> zeigt dagegen ausschließlich die tatsächlichen
             Ein- und Auszahlungen.
           </p>
           <dl className="mt-3 divide-y divide-border/60 border-t border-border/60">
@@ -531,7 +531,7 @@ function PlanIstInner() {
               Am 1. Januar lagen <strong>{deMio(mio(kasse.opening_balance.result))}&#8239;Mio.&nbsp;€</strong>{" "}
               in der Kasse, am 31. Dezember{" "}
               <strong>{deMio(mio(kasse.closing_balance.result))}&#8239;Mio.&nbsp;€</strong>
-              <Beleg q="finanzrechnung" />.
+              <Beleg q="cash_flow_statement" />.
             </p>
           )}
           {/* Die Ermächtigungen sind die Antwort auf die Frage, die sich beim
@@ -546,7 +546,7 @@ function PlanIstInner() {
               <strong>{deMio(mio(kasse.total_out_capital.authorization))}&#8239;Mio.&nbsp;€</strong>{" "}
               standen als Ermächtigungen aus Vorjahren offen — bewilligtes Geld für
               Vorhaben, die noch nicht fertig sind, und das deshalb mit ins nächste Jahr
-              wandert<Beleg q="finanzrechnung" />.
+              wandert<Beleg q="cash_flow_statement" />.
             </p>
           )}
           <p className="mt-3 max-w-[70ch] text-[12.5px] leading-relaxed text-muted-foreground">
@@ -841,7 +841,7 @@ function PlanIstInner() {
 /** Was diese Seite rendert — und damit alles, was sie holt.
  *  Feldliste und Typ kommen aus derselben Zeile: Ein Zugriff auf ein
  *  nicht angefordertes Feld ist ein Fehler beim Bauen, kein leerer Block. */
-const FELDER = ["jahre", "ergebnisrechnung", "abweichungsgruende", "nachbewilligungen", "plan_ist_jahre", "finanzrechnung", "pruefbericht_quellen"] as const;
+const FELDER = ["years", "income_statement", "variance_reasons", "supplementary_approvals", "plan_actual_years", "cash_flow_statement", "audit_report_sources"] as const;
 
 export default function PlanIstPage() {
   return (

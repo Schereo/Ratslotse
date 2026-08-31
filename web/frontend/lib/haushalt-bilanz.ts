@@ -55,7 +55,7 @@ export type BilanzErlaeuterung = {
 };
 
 export type BilanzDaten = {
-  jahre: number[];
+  years: number[];
   posten: BilanzPosten[];
   erlaeuterungen: BilanzErlaeuterung[];
   herkunft: Record<string, Herkunft>;
@@ -101,8 +101,8 @@ export const KURZ: Partial<Record<BilanzRolle, string>> = {
  *  ist. Unvollständig heißt hier: Ein Hauptposten fehlt, dann geht die
  *  Bilanzsumme nicht auf und es gibt nichts zu zeigen. */
 export function juengsterStichtag(daten: BilanzDaten | null): Stichtag | null {
-  if (!daten?.jahre?.length) return null;
-  const year = daten.jahre[daten.jahre.length - 1];
+  if (!daten?.years?.length) return null;
+  const year = daten.years[daten.years.length - 1];
   return as_of_date(daten, year);
 }
 

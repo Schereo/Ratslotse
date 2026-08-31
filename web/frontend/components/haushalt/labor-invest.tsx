@@ -64,7 +64,7 @@ export function InvestWerkbank({
    *  der Betrag, um den es beim Kredit-Schalter geht. */
   neuesDefizit: number;
 }) {
-  const year = programm?.jahre.at(-1) ?? null;
+  const year = programm?.years.at(-1) ?? null;
   const vorhaben = year != null
     ? (programm?.massnahmen ?? [])
         .filter((z) => z.year === year && z.grand_total > 0)
@@ -216,7 +216,7 @@ export function InvestWerkbank({
                 <>Die Haushaltssatzung sagt {ohneKredit === satzSelbst.length
                   ? <>in allen {ohneKredit} Jahrgängen</>
                   : <>in {ohneKredit} von {satzSelbst.length} Jahrgängen</>} dasselbe:
-                Kredite für Investitionen „nicht veranschlagt“<Beleg q="haushaltssatzung" /> —
+                Kredite für Investitionen „nicht veranschlagt“<Beleg q="budget_bylaw" /> —
                 die Stadt zehrt lieber die Rücklage auf. </>
               ) : null}
               Der Schalter zeigt den Preis der Alternative — oben im Ergebnis, hier die
@@ -234,7 +234,7 @@ export function InvestWerkbank({
                   {zinsProzent(spanne.von)}–{zinsProzent(spanne.bis)}&nbsp;%
                 </p>
                 <p className="mt-0.5 text-[10.5px] leading-relaxed text-muted-foreground">
-                  Zinsaufwand ÷ Schuldenstand, Abschlüsse {spanne.jahre[0]}–{spanne.jahre[1]}
+                  Zinsaufwand ÷ Schuldenstand, Abschlüsse {spanne.years[0]}–{spanne.years[1]}
                   <Beleg q="jahresabschluss" /> — zuletzt {deMio(zinsLetzte.expense / 1e6)}&#8239;Mio.&nbsp;€
                   Zinsen im Jahr {zinsLetzte.year}. Neue Kredite bekämen heutige Sätze;
                   mehr als die gezahlte Spanne behaupten wir nicht.

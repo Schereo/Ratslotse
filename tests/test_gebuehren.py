@@ -18,7 +18,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from council.gebuehren import (  # noqa: E402
+from council.fees import (  # noqa: E402
     PROBE_DIVISION,
     PROBE_KASKADE,
     PROBE_SATZANZAHL,

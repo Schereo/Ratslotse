@@ -38,7 +38,7 @@ export type GebautLuecke = { year: number; difference: number | null };
 
 export type GebautDaten = {
   series: GebautJahr[];
-  jahre: number[];
+  years: number[];
   /** Was diese Zahlen zählen — kommt aus `council/investitionen_ist.py`,
    *  damit Oberfläche und Datenbank dieselbe Auskunft geben. */
   abgrenzung: string;
@@ -89,9 +89,9 @@ export type VermoegensGruppe = {
 
 export type Anlagen = {
   series: AnlagePosten[];
-  jahre: number[];
+  years: number[];
   gruppen: VermoegensGruppe[];
-  /** Die Jahre MIT Untergliederung — kürzer als `jahre`, und das muss die
+  /** Die Jahre MIT Untergliederung — kürzer als `years`, und das muss die
    *  Seite sagen dürfen, statt eine Lücke als Null zu zeichnen. */
   gruppen_jahre: number[];
   probes: Record<string, string>;
@@ -143,7 +143,7 @@ export function herkunftVon(daten: GebautDaten | null, id: number | null): Herku
 export type Reihe = {
   schluessel: string;
   titel: string;
-  jahre: GebautJahr[];
+  years: GebautJahr[];
   /** Was in dieser Reihe fehlt — je Lücke das Jahr und die gemessene
    *  Differenz, soweit der Bestand eine führt. */
   fehlend: GebautLuecke[];
@@ -160,10 +160,10 @@ export function reihen(daten: GebautDaten | null): Reihe[] {
     .map((r) => ({
       schluessel: r.schluessel,
       titel: r.titel,
-      jahre: daten.series.filter((z) => z.accounting_system === r.schluessel),
+      years: daten.series.filter((z) => z.accounting_system === r.schluessel),
       fehlend: daten.fehlend[r.schluessel] ?? [],
     }))
-    .filter((r) => r.jahre.length > 0);
+    .filter((r) => r.years.length > 0);
 }
 
 /** Die jüngste Reihe — die, auf die sich die große Zahl im Kopf bezieht.
@@ -175,7 +175,7 @@ export function juengsteReihe(daten: GebautDaten | null): Reihe | null {
   const alle = reihen(daten);
   if (!alle.length) return null;
   return alle.reduce((a, b) =>
-    (b.jahre[b.jahre.length - 1].year > a.jahre[a.jahre.length - 1].year ? b : a));
+    (b.years[b.years.length - 1].year > a.years[a.years.length - 1].year ? b : a));
 }
 
 /** Der größte Posten eines Jahrgangs — gerechnet, nicht beschriftet.
@@ -196,7 +196,7 @@ export function groessterPosten(z: GebautJahr | null): Art | null {
 export function artenDerReihe(r: Reihe | null): { feld: string; titel: string }[] {
   if (!r) return [];
   const gesehen = new Map<string, string>();
-  for (const z of r.jahre) {
+  for (const z of r.years) {
     for (const a of z.arten) if (!gesehen.has(a.feld)) gesehen.set(a.feld, a.titel);
   }
   return [...gesehen].map(([feld, titel]) => ({ feld, titel }));

@@ -320,7 +320,7 @@ def test_kfa_liest_die_acht_staedte(kfa2026):
     assert len(budget_year.staedte) == len(KFA2026_ZEILEN)
     ol = budget_year.staedte["403000"]
     assert ol["tax_index_keur"] == 348164
-    assert ol["einwohner"] == 176410
+    assert ol["population"] == 176410
     assert ol["prior_year_tax_index_keur"] == 325716
 
 
@@ -376,7 +376,7 @@ def test_steuerkraft_zeilen_nur_kreisfreie_staedte_und_ohne_pro_kopf(kfa2026):
     assert schluessel == set(sv.KREISFREIE_STAEDTE)
     assert "151009" not in schluessel   # Gifhorn ist kreisangehörig
     # Der Pro-Kopf-Wert ist UNSERE Division und wird deshalb nicht gespeichert.
-    assert {z["indicator"] for z in zeilen} == {"steuerkraftmesszahl", "einwohner"}
+    assert {z["indicator"] for z in zeilen} == {"steuerkraftmesszahl", "population"}
     assert all(z["year"] == 2026 for z in zeilen)
     # Der Name kommt aus unserer Liste, nicht aus der Datei — sonst wechselte
     # er mit dem Jahrgang mit.
@@ -389,7 +389,7 @@ def test_steuerkraft_je_einwohner_ergibt_die_veroeffentlichten_werte(kfa2026):
     je_stadt: dict[str, dict] = {}
     for z in zeilen:
         je_stadt.setdefault(z["city"], {})[z["indicator"]] = z["wert"]
-    je_ew = {stadt: w["steuerkraftmesszahl"] * 1000 / w["einwohner"]
+    je_ew = {stadt: w["steuerkraftmesszahl"] * 1000 / w["population"]
              for stadt, w in je_stadt.items()}
     assert je_ew["Oldenburg"] == pytest.approx(1973.61, abs=0.01)
     assert je_ew["Osnabrück"] == pytest.approx(1650.96, abs=0.01)
@@ -404,7 +404,7 @@ def test_realsteuervergleich_liest_hebesaetze_und_einnahmekraft(realsteuer):
     rs = sv.lies_realsteuervergleich(realsteuer)
     assert rs.year == 2025
     assert rs.stand == "Korrigierte Version vom 30.07.2026"
-    ol = rs.hebesaetze["403000"]
+    ol = rs.tax_rates["403000"]
     assert (ol["rate_grundsteuer_a"], ol["rate_grundsteuer_b"],
             ol["rate_gewerbesteuer"]) == (500, 539, 439)
     # Angezeigt wird netto — brutto behält die Stadt nicht.
@@ -414,8 +414,8 @@ def test_realsteuervergleich_liest_hebesaetze_und_einnahmekraft(realsteuer):
 
 def test_zwischenueberschriften_und_summenzeilen_sind_keine_staedte(realsteuer):
     rs = sv.lies_realsteuervergleich(realsteuer)
-    assert set(rs.hebesaetze) <= set(sv.KREISFREIE_STAEDTE)
-    assert "001000" not in rs.hebesaetze     # die Regions-Summenzeile
+    assert set(rs.tax_rates) <= set(sv.KREISFREIE_STAEDTE)
+    assert "001000" not in rs.tax_rates     # die Regions-Summenzeile
 
 
 def test_hebesatzprobe_traegt_auch_die_winzige_grundsteuer_a(realsteuer):
@@ -425,7 +425,7 @@ def test_hebesatzprobe_traegt_auch_die_winzige_grundsteuer_a(realsteuer):
     der Rundung auf volle Tausend Euro, und damit besteht sie.
     """
     rs = sv.lies_realsteuervergleich(realsteuer)
-    probe = sv.probe_hebesatz(rs.hebesaetze["403000"])
+    probe = sv.probe_hebesatz(rs.tax_rates["403000"])
     assert probe["ok"], probe
     grundsteuer_a = next(t for t in probe["teilproben"] if t["steuer"] == "Grundsteuer A")
     assert grundsteuer_a["deviation"] == pytest.approx(2.0)
@@ -440,7 +440,7 @@ def test_hebesatzprobe_prueft_die_gewerbesteuer_gegen_brutto(realsteuer):
     Abweichung exakt die Umlage — bei Oldenburg 18.343 T€.
     """
     rs = sv.lies_realsteuervergleich(realsteuer)
-    ol = rs.hebesaetze["403000"]
+    ol = rs.tax_rates["403000"]
     assert ol["ist_gewerbesteuer"] == 235920        # brutto, für die Probe
     assert ol["netto_gewerbesteuer"] == 217576      # netto, für die Anzeige
     # Auch diese Identität geht nur auf Tausend Euro genau auf: Das LSN rundet
@@ -493,8 +493,8 @@ def test_jeder_jahreswert_traegt_sein_eigenes_jahr(realsteuer):
     """Der Realsteuervergleich 2025 führt auch 2023 und 2024. Alles unter dem
     Dateijahr abzulegen machte aus drei Jahren eines."""
     zeilen, _ = sv.zeilen_realsteuern(sv.lies_realsteuervergleich(realsteuer))
-    jahre = {z["year"] for z in zeilen if z["indicator"] == "steuereinnahmekraft_je_ew"}
-    assert jahre == {2023, 2024, 2025}
+    years = {z["year"] for z in zeilen if z["indicator"] == "steuereinnahmekraft_je_ew"}
+    assert years == {2023, 2024, 2025}
     assert {z["year"] for z in zeilen if z["indicator"].startswith("hebesatz_")} == {2025}
     ol25 = next(z for z in zeilen if z["city"] == "Oldenburg"
                 and z["indicator"] == "steuereinnahmekraft_je_ew" and z["year"] == 2023)
@@ -524,8 +524,8 @@ def test_speichern_und_lesen(tmp_path, kfa2026):
     store = CouncilStore(tmp_path / "c.sqlite")
     try:
         zeilen = sv.zeilen_steuerkraft(sv.lies_kfa(kfa2026))
-        assert store.save_staedtevergleich("steuerkraft", zeilen, _herkunft()) == 16
-        gelesen = store.get_staedtevergleich("steuerkraft")
+        assert store.save_staedtevergleich("tax_capacity", zeilen, _herkunft()) == 16
+        gelesen = store.get_staedtevergleich("tax_capacity")
         assert len(gelesen) == 16
         assert all(z["herkunft_id"] for z in gelesen)
         assert store.herkunft_luecken().get("council_staedtevergleich") is None
@@ -545,17 +545,17 @@ def test_erneutes_speichern_ersetzt_nur_die_eigene_reihe(tmp_path, kfa2026, real
     store = CouncilStore(tmp_path / "c.sqlite")
     try:
         store.save_staedtevergleich(
-            "steuerkraft", sv.zeilen_steuerkraft(sv.lies_kfa(kfa2026)), _herkunft())
+            "tax_capacity", sv.zeilen_steuerkraft(sv.lies_kfa(kfa2026)), _herkunft())
         zeilen, _ = sv.zeilen_realsteuern(sv.lies_realsteuervergleich(realsteuer))
         store.save_staedtevergleich("realsteuern", zeilen,
                                     _herkunft(probe="lsn_hebesatzprobe"))
-        assert len(store.get_staedtevergleich("steuerkraft")) == 16
+        assert len(store.get_staedtevergleich("tax_capacity")) == 16
 
         # Steuerkraft erneut — die Realsteuern bleiben unangetastet.
         vorher = len(store.get_staedtevergleich("realsteuern"))
         store.save_staedtevergleich(
-            "steuerkraft", sv.zeilen_steuerkraft(sv.lies_kfa(kfa2026)), _herkunft())
-        assert len(store.get_staedtevergleich("steuerkraft")) == 16
+            "tax_capacity", sv.zeilen_steuerkraft(sv.lies_kfa(kfa2026)), _herkunft())
+        assert len(store.get_staedtevergleich("tax_capacity")) == 16
         assert len(store.get_staedtevergleich("realsteuern")) == vorher
         assert len(store.get_staedtevergleich()) == 16 + vorher
     finally:
@@ -582,7 +582,7 @@ def test_endpunkt_liefert_werte_und_den_beleg(tmp_path, kfa2026):
     store = CouncilStore(tmp_path / "c.sqlite")
     try:
         store.save_staedtevergleich(
-            "steuerkraft", sv.zeilen_steuerkraft(sv.lies_kfa(kfa2026)), _herkunft())
+            "tax_capacity", sv.zeilen_steuerkraft(sv.lies_kfa(kfa2026)), _herkunft())
         antwort = haushalt_vergleich(_user=None, store=store)
 
         assert len(antwort["staedte"]) == 8
@@ -592,7 +592,7 @@ def test_endpunkt_liefert_werte_und_den_beleg(tmp_path, kfa2026):
         assert next(s for s in antwort["staedte"]
                     if s["name"] == "Delmenhorst")["unter_100k"] is True
 
-        assert antwort["jahre"]["steuerkraft"] == [2026]
+        assert antwort["years"]["tax_capacity"] == [2026]
         assert len(antwort["werte"]) == 16
         assert antwort["herkunft"]
 

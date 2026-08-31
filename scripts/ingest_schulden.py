@@ -126,13 +126,13 @@ def main() -> int:
             # Der Divisor der unabhängigen Gegenprobe. Fehlt er, bleibt es bei
             # der Summenprobe — das ist eine Einschränkung, keine Ausrede, und
             # sie steht unten im Nachweis.
-            einwohner = store.einwohner_je_jahr()
-            if not einwohner:
+            population = store.einwohner_je_jahr()
+            if not population:
                 print("HINWEIS: keine Einwohnerzahlen im Bestand — die "
                       "Pro-Kopf-Gegenprobe entfällt. Vorher "
                       "scripts/ingest_finanzen_opendata.py laufen lassen.")
 
-            result = schulden.lies(text, einwohner)
+            result = schulden.lies(text, population)
             zeilen = result["zeilen"]
             print(f"  {len(zeilen)} Jahrgänge übernommen · "
                   f"{schulden.probennachweis(result)}")
@@ -209,9 +209,9 @@ def main() -> int:
             geschrieben = 0
             for probenlage in sorted({tuple(z["probes"]) for z in zeilen}):
                 teil = [z for z in zeilen if tuple(z["probes"]) == probenlage]
-                jahre = [z["year"] for z in teil]
-                spanne_teil = (f"Jahrgänge {jahre[0]}–{jahre[-1]}" if len(jahre) > 1
-                               else f"Jahrgang {jahre[0]}")
+                years = [z["year"] for z in teil]
+                spanne_teil = (f"Jahrgänge {years[0]}–{years[-1]}" if len(years) > 1
+                               else f"Jahrgang {years[0]}")
                 namen = " und ".join(PROBENNAMEN[p] for p in probenlage)
                 nachweis = (f"{spanne_teil} ({len(teil)} von "
                             f"{len(zeilen)}): {namen} bestanden")

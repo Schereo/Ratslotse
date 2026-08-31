@@ -29,7 +29,7 @@
 //  4. **Der Nenner darf gesagt werden.** Seit 08/2026 steht er auch da: Wie
 //     viele Betriebe erfasst sind und wie viele davon überhaupt zahlen,
 //     veröffentlicht das Landesamt für Statistik je Gemeinde
-//     (`council/gewerbesteuerstatistik.py`). Zwei Dinge gehören zwingend
+//     (`council/trade_tax_statistics.py`). Zwei Dinge gehören zwingend
 //     daneben, und beide stehen im Block: Das ist die **Veranlagung**, nicht
 //     das Aufkommen der Kurve weiter oben (Messbetrag mal Hebesatz lag in den
 //     prüfbaren Jahren zwischen 13 % darunter und 27 % darüber) — und der
@@ -41,7 +41,7 @@
 //
 // Alle Zahlen rechnet die Komponente aus den übergebenen Reihen. Keine steht
 // im Quelltext — dieselbe Lehre wie beim Hebesatz „439" (siehe
-// `lib/haushalt-steuern.ts`), der hier jahrelang als Konstante stand und nur
+// `lib/haushalt-taxes.ts`), der hier jahrelang als Konstante stand und nur
 // zufällig stimmte.
 
 import { Beleg } from "@/components/haushalt/quelle";
@@ -131,17 +131,17 @@ function Zeile({ label, wert, anteil, farbe }: {
   );
 }
 
-export function WerZahlt({ steuern, art, vergleichArt, vergleichTitel, hebesaetze,
+export function WerZahlt({ taxes, art, vergleichArt, vergleichTitel, tax_rates,
                            statistik = null, statistikKurz = "",
                            statistikAbgrenzung = "" }: {
-  steuern: SteuerZeile[];
+  taxes: SteuerZeile[];
   /** Die Schreibweise der Gewerbesteuer in `council_steuern.art`. */
   art: string | null;
   /** Die Steuer, gegen die gemessen wird — die andere mit einem Hebesatz. */
   vergleichArt: string | null;
   vergleichTitel: string;
   /** Die Hebesatz-Treppe DIESER Steuer, für die Frage, ob ein Sprung am Rat lag. */
-  hebesaetze: Hebesatz[];
+  tax_rates: Hebesatz[];
   /** Der jüngste Erhebungsjahrgang der Gewerbesteuerstatistik — der Nenner.
    *  `null`, solange der Ingest auf dieser Maschine nicht lief; dann bleibt
    *  der Block, was er vorher war. */
@@ -153,8 +153,8 @@ export function WerZahlt({ steuern, art, vergleichArt, vergleichTitel, hebesaetz
    *  er gegen die Angabe an den Daten. */
   statistikAbgrenzung?: string;
 }) {
-  const eigen = series(steuern, art);
-  const andere = series(steuern, vergleichArt);
+  const eigen = series(taxes, art);
+  const andere = series(taxes, vergleichArt);
 
   // Beide Reihen auf denselben Zeitraum: Ein Mittelwert über 28 Jahre neben
   // einem über 12 verglichen zwei verschiedene Epochen und hieße trotzdem
@@ -191,7 +191,7 @@ export function WerZahlt({ steuern, art, vergleichArt, vergleichTitel, hebesaetz
   // der Block schrieb den größten Sprung der Reihe dem falschen Grund zu
   // (gesehen in der Vorschau am 24.08.2026).
   const beschlussJahre = new Set(
-    hebesaetze
+    tax_rates
       .filter((z) => z.prior_rate != null && z.rate !== z.prior_rate)
       .map((z) => z.year)
       .filter((j) => j > von && j <= bis));
@@ -341,7 +341,7 @@ export function WerZahlt({ steuern, art, vergleichArt, vergleichTitel, hebesaetz
             Veränderung über den ganzen Zeitraum — die steht in der Kurve oben. Hier zählt jedes
             Jahr einzeln: Unsere Rechnung aus der Ist-Reihe beider Steuern, Ausschläge ohne
             Vorzeichen gemittelt, damit sich ein gutes und ein schlechtes Jahr nicht aufheben.
-            <Beleg q="steuern" />
+            <Beleg q="taxes" />
           </p>
         </div>
       )}

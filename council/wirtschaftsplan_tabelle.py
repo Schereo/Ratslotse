@@ -438,7 +438,7 @@ def parse_erfolgsplan(template_number: str, enterprise: str, haushaltsjahr: int,
         # Aufwendungen. Die Null ist deshalb eine Aussage und keine Lücke —
         # sie hält `Erträge − Aufwendungen − Steuern = Ergebnis` in jeder
         # gespeicherten Zeile wahr, egal aus welcher Quelle sie stammt.
-        steuern=0.0, result=plan.result,
+        taxes=0.0, result=plan.result,
         # Der Vermögensplan steht in einer eigenen Tabelle dieser Anlage und
         # bringt eigene Proben mit; er ist nicht Teil dieser Schicht.
         capital_plan=None, commitments=None,

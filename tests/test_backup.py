@@ -33,10 +33,10 @@ def test_backup_nimmt_jede_datenbank_planzeichnungen_und_env(tmp_path, monkeypat
     monkeypatch.setattr(b, "BACKUP_DIR", data / "backups")
     monkeypatch.delenv("BACKUP_RSYNC_TARGET", raising=False)
 
-    kennzahlen = b.main()
-    assert kennzahlen["Datenbanken gesichert"] == 3
-    assert kennzahlen["Planzeichnungen"] == 1
-    assert kennzahlen[".env gesichert"] == "ja"
+    indicators = b.main()
+    assert indicators["Datenbanken gesichert"] == 3
+    assert indicators["Planzeichnungen"] == 1
+    assert indicators[".env gesichert"] == "ja"
 
     kopien = {p.name.split("_")[0] for p in (data / "backups").glob("*.sqlite")}
     assert kopien == {"ratslotse", "council", "neue"}   # neue_datenbank → Präfix "neue"

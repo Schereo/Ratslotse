@@ -338,8 +338,8 @@ def main(db: str | None = None, heute: date | None = None,
         "Zeilen ohne Herkunft": sum(ohne_herkunft.values()),
         "ausbleibend": ausbleibend,
     }
-    for key, jahre in neu_gesamt.items():
-        result[finanzquellen.QUELLEN[key].label] = ", ".join(map(str, jahre))
+    for key, years in neu_gesamt.items():
+        result[finanzquellen.QUELLEN[key].label] = ", ".join(map(str, years))
     p.sagen(f"Fertig: {result}")
     # Das Protokoll bleibt im Log, nicht in `job_runs`: Die Kennzahlen eines
     # Laufs stehen im Admin-Panel, und dort gehört keine Textwand hin.
