@@ -1,6 +1,6 @@
 "use client";
 
-// „Was Sie dafür zahlen" — der VIERTE Abschnitt von /haushalt/konzern.
+// „Was du dafür zahlst" — der VIERTE Abschnitt von /haushalt/konzern.
 //
 // Bis zum 21.08.2026 die eigene Seite /haushalt/gebuehren. Sie steht hinter
 // den Wirtschaftsplänen, weil die Abfallgebühren aus genau einem davon
@@ -294,7 +294,7 @@ export function GebuehrenAbschnitt({ data, loading }: {
       <div className="flex flex-col gap-4">
         <header>
           <h2 className="font-display text-xl font-bold tracking-tight sm:text-[22px]">
-            Was Sie dafür zahlen
+            Was du dafür zahlst
           </h2>
           <p className="mt-2 max-w-[68ch] text-[13.5px] leading-relaxed text-foreground/85">
             Abfall- und Straßenreinigungsgebühren werden jährlich anhand der erwarteten

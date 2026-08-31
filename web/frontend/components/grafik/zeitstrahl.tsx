@@ -3,7 +3,7 @@
 // <Zeitstrahl> — der liegende Verfahrens-Strahl (GB-11).
 //
 // Ein Kreis hat kein Heute — der Strahl schon (H3-06). Er zeigt, WANN die
-// Stationen eines Verfahrens liegen, mit einem „Sie sind hier"-Pin auf dem
+// Stationen eines Verfahrens liegen, mit einem „Du bist hier"-Pin auf dem
 // aktuellen Datum. Die Geometrie rechnet `scaleTime` (d3-scale), die
 // Monats-Ticks kommen aus `scale.ticks()` — das sind die d3-time-Intervalle
 // (GB-15: Beifang von scaleTime, offiziell nutzbar). Gerendert wird eigenes
@@ -179,7 +179,7 @@ export function Zeitstrahl({ stationen, heute, termin, beleg, className }: {
 
   const heuteX = skala(heute);
   const terminX = termin ? skala(datumAus(termin.datum)) : null;
-  const heuteText = `Sie sind hier · ${TAG_MONAT.format(heute)}`;
+  const heuteText = `Du bist hier · ${TAG_MONAT.format(heute)}`;
 
   return (
     <div className={cn(className)}>

@@ -482,7 +482,7 @@ function SteuerInner() {
             href="/haushalt/konzern#gebuehren"
             className="mt-2.5 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-primary hover:underline"
           >
-            Was Sie dafür zahlen — die Gebührenbedarfsberechnung
+            Was du dafür zahlst — die Gebührenbedarfsberechnung
             <ChevronRight className="h-3.5 w-3.5" />
           </Link>
         </div>
