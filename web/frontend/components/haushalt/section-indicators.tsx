@@ -173,7 +173,7 @@ function Verlauf({
         series={series}
         unit={einheitWort(unit)}
         format={format}
-        nachkomma={unit === "anzahl" ? 0 : 2}
+        nachkomma={unit === "count" ? 0 : 2}
         title={label}
         ariaTitel={`${label} im Verlauf, wie die Rechenschaftsberichte sie ausweisen`}
         vorjahresdifferenz

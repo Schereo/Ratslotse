@@ -226,8 +226,8 @@ struct PublicProfileView: View {
                         .init(ksinr: 8102, committee: "Sozialausschuss", sessionDate: "2026-08-21"),
                     ],
                     speeches: [
-                        .init(kind: "rede", agendaItem: "Fahrradstraßen in Oldenburg", text: "Anne Beispiel hebt hervor, dass sichere Schulwege und durchgehende Radverbindungen gemeinsam geplant werden müssen.", committee: "Verkehrsausschuss", sessionDate: "2026-08-28"),
-                        .init(kind: "anfrage", agendaItem: "Ganztagsbetreuung", text: "Sie fragt nach dem Zeitplan für zusätzliche Betreuungsplätze und der Beteiligung der Schulen.", committee: "Sozialausschuss", sessionDate: "2026-08-21"),
+                        .init(kind: "speech", agendaItem: "Fahrradstraßen in Oldenburg", text: "Anne Beispiel hebt hervor, dass sichere Schulwege und durchgehende Radverbindungen gemeinsam geplant werden müssen.", committee: "Verkehrsausschuss", sessionDate: "2026-08-28"),
+                        .init(kind: "inquiry", agendaItem: "Ganztagsbetreuung", text: "Sie fragt nach dem Zeitplan für zusätzliche Betreuungsplätze und der Beteiligung der Schulen.", committee: "Sozialausschuss", sessionDate: "2026-08-21"),
                     ],
                     speechCount: 24,
                     speechCommittees: [
@@ -1390,10 +1390,10 @@ private struct PersonProfileOverview: View {
 
     private func speechKind(_ kind: String) -> String {
         switch kind {
-        case "rede": "REDE"
-        case "anfrage": "ANFRAGE"
-        case "einwohnerfrage": "EINWOHNERFRAGE"
-        case "zusage": "ZUSAGE"
+        case "speech": "REDE"
+        case "inquiry": "ANFRAGE"
+        case "citizen_question": "EINWOHNERFRAGE"
+        case "pledge": "ZUSAGE"
         default: kind.uppercased()
         }
     }
@@ -2027,7 +2027,7 @@ struct QuizView: View {
         round = (0..<4).map { number in
             QuizQuestion(
                 id: number,
-                areaType: "stadtteil",
+                areaType: "district",
                 areaKey: "Osternburg",
                 category: "Oldenburg",
                 difficulty: "mittel",
@@ -2079,9 +2079,9 @@ struct QuizView: View {
         selectedCategories = ["ratspolitik", "orte"]
         stats = QuizStats(
             byArea: [
-                .init(areaType: "stadtteil", areaKey: "Osternburg", points: 18, answered: 14, correct: 7, lastAt: "2026-08-28"),
-                .init(areaType: "thema", areaKey: "schulwege", points: 22, answered: 12, correct: 10, lastAt: "2026-08-27"),
-                .init(areaType: "stadtteil", areaKey: "Nadorst", points: 31, answered: 18, correct: 14, lastAt: "2026-08-26"),
+                .init(areaType: "district", areaKey: "Osternburg", points: 18, answered: 14, correct: 7, lastAt: "2026-08-28"),
+                .init(areaType: "topic", areaKey: "schulwege", points: 22, answered: 12, correct: 10, lastAt: "2026-08-27"),
+                .init(areaType: "district", areaKey: "Nadorst", points: 31, answered: 18, correct: 14, lastAt: "2026-08-26"),
             ],
             total: .init(points: 148, answered: 63, correct: 47),
             wrong: 6,
@@ -2393,7 +2393,7 @@ private struct QuizAreaProgressTile: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 9) {
             HStack(alignment: .top, spacing: 8) {
-                Image(systemName: area.areaType == "thema" ? "sparkles" : "mappin.and.ellipse")
+                Image(systemName: area.areaType == "topic" ? "sparkles" : "mappin.and.ellipse")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(RatsColor.primary)
                     .frame(width: 28, height: 28)

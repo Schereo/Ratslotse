@@ -658,7 +658,7 @@ def zeilen_steuerkraft(budget_year: KfaJahrgang) -> list[dict]:
                     "value": eintrag["tax_index_keur"], "unit": "teur"})
         if eintrag.get("population"):
             aus.append({**gemeinsam, "indicator": "population",
-                        "value": eintrag["population"], "unit": "anzahl"})
+                        "value": eintrag["population"], "unit": "count"})
     return aus
 
 

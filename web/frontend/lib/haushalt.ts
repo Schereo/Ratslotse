@@ -1391,7 +1391,7 @@ export function nachbewilligungenFuerJahr(
  *  fallen (2022), sagt `probe_text` es an. */
 export function ratsAnteil(j: NachbewilligungsJahr): number | null {
   const gesamt = j.total_operating + j.total_capital;
-  const rat = j.channels.find((k) => k.channel === "rat");
+  const rat = j.channels.find((k) => k.channel === "council");
   if (!gesamt || !rat) return null;
   return ((rat.amount_operating + rat.amount_capital) / gesamt) * 100;
 }

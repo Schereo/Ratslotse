@@ -112,7 +112,7 @@ export interface CouncilDecision {
    *  die zu diesem Beschluss gehören — für die Unterzeile in der Trefferliste. */
   subvote_summary?: { count: number; factions: string[]; outcomes: string[] } | null;
   /** Regex-Ernte: Wie stark weicht der Beschluss vom Verwaltungsvorschlag ab? */
-  deviation?: "unveraendert" | "leicht" | "stark" | null;
+  deviation?: "unchanged" | "slight" | "strong" | null;
   /** Beim Ortsfilter: konkrete Treffer samt Fundstelle zur manuellen Prüfung. */
   location_matches?: DecisionLocationMatch[];
 }
