@@ -46,7 +46,7 @@ THEMA_BLOCK_DAYS = 45
 #: Thema zu erkennen, und würden alles sperren.
 _ALLERWELT = {
     "oldenburg", "stadt", "staedtische", "städtische", "staedtischen", "städtischen",
-    "official_text", "beschlusses", "antrag", "antrags", "bericht", "berichts",
+    "beschluss", "beschlusses", "antrag", "antrags", "bericht", "berichts",
     "fraktion", "fraktionen", "vorlage", "satzung", "aenderung", "änderung",
     "aenderungen", "änderungen", "verwaltung", "sitzung", "gruppe", "ausschuss",
     "gemeinsamer", "gemeinsame", "weiteren", "weitere", "sachstand",

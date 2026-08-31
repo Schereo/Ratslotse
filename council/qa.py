@@ -28,7 +28,7 @@ MODEL = os.environ.get("COUNCIL_QA_MODEL", "google/gemini-2.5-flash")
 EXPAND_MODEL = os.environ.get("COUNCIL_QA_EXPAND_MODEL", "google/gemini-2.5-flash-lite")
 
 _STOP = {
-    "wurde", "wurden", "wird", "werden", "beschlossen", "official_text", "stadt", "stadtrat",
+    "wurde", "wurden", "wird", "werden", "beschlossen", "beschluss", "stadt", "stadtrat",
     "oldenburg", "welche", "welcher", "welches", "wann", "warum", "wieso", "wofür",
     "haben", "hat", "gibt", "über", "zum", "zur", "eine", "einen", "einer", "nicht",
 }

@@ -684,6 +684,13 @@ class CouncilStore:
             ("ao_aufwendungen", "extraordinary_expenses")])
         self._werte_umschreiben("council_herkunft", "probe", [
             ("anlagen_buchwert", "assets_book_value")])
+        # Die Herkunft eines Ortsbezugs steht als WERT in der Zeile und trug
+        # denselben Begriff wie die Spalte `beschluss`, die zu `official_text`
+        # wurde. `council/locations.py` lässt nur noch {title, official_text,
+        # vorlage} durch — alles andere fällt auf "vorlage" zurück. Ohne diese
+        # Migration wären auf dev 1.681 Ortsbezüge falsch beschriftet.
+        self._werte_umschreiben("council_decision_locations", "source", [
+            ("beschluss", "official_text")])
 
         cols = {r[1] for r in self._conn.execute("PRAGMA table_info(committee_notifications)").fetchall()}
         if "agenda_hash" not in cols:
@@ -3181,7 +3188,7 @@ class CouncilStore:
         "antraege", "antrag", "fraktionen", "fraktion", "gruppen", "gruppe",
         "ratsund", "ausschussmitglieder", "mitglieder", "berichte", "bericht",
         "anfragen", "anregungen", "mitteilungen", "verschiedenes", "verwaltung",
-        "official_text", "beschluesse", "vorlagen", "sonstiges", "genehmigung",
+        "beschluss", "beschluesse", "vorlagen", "sonstiges", "genehmigung",
         "protokolle", "protokolls", "tagesordnung", "oeffentlicher", "teil",
     })
 
@@ -5128,7 +5135,7 @@ class CouncilStore:
     #: Verkehrsausschuss-Termine an „Wie es weitergeht" (gemessen 19.08.,
     #: Tims Screenshot-Befund — nur „strasse" traf, kein n>=2 gefordert).
     _AUSBLICK_STOPP = {
-        "stand", "sachstand", "aktuell", "official_text", "beschlusse", "beschluesse",
+        "stand", "sachstand", "aktuell", "beschluss", "beschlusse", "beschluesse",
         "stadt", "oldenburg", "planung", "bericht", "vorlage", "thema", "themen",
         "strasse",
     }
@@ -10868,7 +10875,7 @@ class CouncilStore:
                 money[r["q"]] = r["eur"] or 0
 
         # Procedural tags aren't "topics" — keep them out of the emerging list.
-        procedural = {"bericht", "annahme", "vertagung", "kenntnisnahme", "official_text",
+        procedural = {"bericht", "annahme", "vertagung", "kenntnisnahme", "beschluss",
                       "antrag", "anfrage", "mitteilung", "vorlage", "abstimmung", "resolution"}
         recent = set(all_q[-2:])
         tagc: Counter = Counter()
