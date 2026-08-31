@@ -811,7 +811,7 @@ def search_zusagen(store, query: str, expanded: str, top_k: int = 2,
 
     Gleiche Torwächter-Logik wie die anderen Kanäle — lieber leer als Rauschen.
     """
-    ids_zusage = set(store.wortbeitrag_ids_nach_art("zusage"))
+    ids_zusage = set(store.wortbeitrag_ids_nach_art("pledge"))
     if not ids_zusage:
         return []
     best: dict[int, float] = {}

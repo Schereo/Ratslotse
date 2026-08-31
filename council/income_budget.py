@@ -140,7 +140,7 @@ SPALTEN = 6
 #: Spalte 0 ist das Ist des Vorvorjahres (Gegenprobe, s. Modulkopf),
 #: Spalte 1 der fortgeschriebene Vorjahresansatz.
 SPALTEN_ARTEN: tuple[str | None, ...] = (
-    None, None, "ansatz", "finanzplanung", "finanzplanung", "finanzplanung")
+    None, None, "budget", "financial_plan", "financial_plan", "financial_plan")
 
 #: Die Summenbeziehungen, die das Dokument selbst führt:
 #: ``(Summenposten, Teilposten…)``.

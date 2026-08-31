@@ -113,7 +113,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "Du liest einen Ausschnitt aus einem amtlichen Sitzungsprotokoll des Oldenburger "
             "Stadtrats bzw. seiner Ausschüsse. Extrahiere daraus ALLE inhaltlichen Wortbeiträge "
             "als JSON-Array. Ein Eintrag je Beitrag:\n"
-            '{{"kind": "rede"|"anfrage"|"einwohnerfrage"|"zusage", "top": "Tagesordnungspunkt-Nummer '
+            '{{"kind": "speech"|"inquiry"|"citizen_question"|"pledge", "top": "Tagesordnungspunkt-Nummer '
             'oder -Titel, falls erkennbar", "speaker": "Name ohne Anrede, falls genannt", '
             '"party": "Fraktion/Gruppe falls genannt, sonst null", '
             '"text": "Kernaussage in 1-3 Sätzen, dicht am Wortlaut", '

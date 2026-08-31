@@ -463,7 +463,7 @@ def test_schuldenfrage_zieht_weder_plan_noch_stellenplan():
     Modell Jahresbeträge neben einen Bestand zu legen."""
     f = qa.geld_facetten("Wie viel Schulden hat Oldenburg?", "money")
     assert f == {"schulden"}
-    assert "plan" not in f and "ansatz" not in f and "stellenplan" not in f
+    assert "plan" not in f and "budget" not in f and "stellenplan" not in f
 
 
 def test_investitionsfrage_zieht_nicht_den_ergebnishaushalt():
@@ -647,7 +647,7 @@ def _befuellter_store(tmp_path) -> CouncilStore:
              ("03401", "Delmenhorst", 1104.0)])
         store._conn.executemany(
             "INSERT INTO council_ergebnishaushalt (plan_budget_year, year, kind, nr, label, "
-            " amount, is_total, fetched_at, herkunft_id) VALUES (2026,2026,'ansatz',?,?,?,?,'',1)",
+            " amount, is_total, fetched_at, herkunft_id) VALUES (2026,2026,'budget',?,?,?,?,'',1)",
             [(1, "Steuern und ähnliche Abgaben", 430_000_000.0, 0),
              (12, "Summe ordentliche Erträge", 812_000_000.0, 1),
              (20, "Summe ordentliche Aufwendungen", 846_000_000.0, 1)])
@@ -659,7 +659,7 @@ def _befuellter_store(tmp_path) -> CouncilStore:
         store._conn.execute(
             "INSERT INTO council_ergebnishaushalt (plan_budget_year, year, kind, nr, label, "
             " amount, is_total, fetched_at, herkunft_id) "
-            "VALUES (2026, 2029, 'finanzplanung', 12, 'Summe ordentliche Erträge', "
+            "VALUES (2026, 2029, 'financial_plan', 12, 'Summe ordentliche Erträge', "
             " ?, 1, '', 1)", (999_000_000.0,))
         store._conn.execute(
             "INSERT INTO council_haushalt (year, area, revenues, expenses, result, "
@@ -694,7 +694,7 @@ def _befuellter_store(tmp_path) -> CouncilStore:
         store._conn.executemany(
             "INSERT INTO council_stellenplan (budget_year, part, row_no, kind, label, "
             " positions_planned, positions_prior_year, filled, vacant, as_of_date, "
-            " herkunft_id, fetched_at) VALUES (2026,?,0,'gesamt',?,?,?,?,?,'30.06.2025',?,'')",
+            " herkunft_id, fetched_at) VALUES (2026,?,0,'total',?,?,?,?,?,'30.06.2025',?,'')",
             [("A", "Gesamt Teil A", 815.50, 802.00, 761.25, 40.75, 5),
              ("B", "Gesamt Teil B", 1_702.25, 1_688.50, 1_579.00, 109.50, 6)])
         # Der Streit ums Geld: eine Runde zum Haushalt 2026 mit zwei

@@ -5102,7 +5102,7 @@ export interface components {
         QaShareDebatte: {
             /**
              * Art
-             * @default rede
+             * @default speech
              */
             art: string;
             /**
@@ -10766,4 +10766,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 227a0394583eaafbfe8d1963a1787530c8de15a3e3fea895899ee867146dfb1f
+// vertrag-sha256: ecb2391825a538d983bbd75f840836edde9f1284a54e0911969ce817a55c693a

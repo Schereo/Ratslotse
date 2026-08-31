@@ -188,7 +188,7 @@ def _teil(text: str, name: str = "A") -> dict:
 
 
 def _gesamt(part: dict) -> dict:
-    return next(z for z in part["zeilen"] if z["kind"] == "gesamt")
+    return next(z for z in part["zeilen"] if z["kind"] == "total")
 
 
 # --- 1. Wem die unbesetzten Stellen gehören ---------------------------------
@@ -229,7 +229,7 @@ def test_der_seitenwechsel_verdoppelt_keine_zeile():
     """Kopf und Spaltennummern stehen auf jeder Seite noch einmal. Sie dürfen
     weder als Daten noch als zweiter Teil A durchgehen."""
     part = _teil(STELLENPLAN_2026_A)
-    posten = [z for z in part["zeilen"] if z["kind"] == "posten"]
+    posten = [z for z in part["zeilen"] if z["kind"] == "item"]
     assert len(posten) == 42
     assert [z["seq_no"] for z in posten] == list(range(1, 43))
 
@@ -370,7 +370,7 @@ def test_widerspruechliche_zeilen_werden_gekennzeichnet_nicht_verworfen():
     assert [u["seq_no"] for u in part["unstimmig"]] == [34, 40]
     assert [u["deviation"] for u in part["unstimmig"]] == [1.0, -1.0]
 
-    posten = {z["seq_no"]: z for z in part["zeilen"] if z["kind"] == "posten"}
+    posten = {z["seq_no"]: z for z in part["zeilen"] if z["kind"] == "item"}
     assert posten[34]["consistent"] == 0
     assert posten[40]["consistent"] == 0
     # Und der Wert selbst bleibt der des Dokuments — nicht zurechtgerechnet.
@@ -438,10 +438,10 @@ def test_die_summen_kommen_aus_dem_dokument_nicht_aus_unserer_addition(tmp_path)
     _anlage(store, STELLENPLAN_2026_A)
     finanzquellen.lies_stellenplaene(store, finanzquellen.Protokoll(still=True))
 
-    summen = store.get_stellenplan(kind="gesamt")
+    summen = store.get_stellenplan(kind="total")
     assert len(summen) == 1
     assert summen[0]["positions_planned"] == 815.0
-    assert [g["pay_group"] for g in store.get_stellenplan(kind="gruppe")] == [
+    assert [g["pay_group"] for g in store.get_stellenplan(kind="group")] == [
         "Beamte auf Zeit", "Laufbahngruppe 2", "Laufbahngruppe 1"]
     store.close()
 

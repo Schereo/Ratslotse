@@ -540,19 +540,19 @@ def _zeilen_bauen(gruppen: list[dict], gesamt: list[dict],
     aus: list[dict] = []
     for g in gruppen:
         for z in g["zeilen"]:
-            aus.append({"kind": "posten", "pay_group": g["name"],
+            aus.append({"kind": "item", "pay_group": g["name"],
                         "consistent": 0 if id(z) in schief else 1, **z})
-        aus.append({"kind": "gruppe", "pay_group": g["name"], "seq_no": None,
+        aus.append({"kind": "group", "pay_group": g["name"], "seq_no": None,
                     "label": f"Summe {g['name']}", "pay_grade": None,
                     "consistent": 1, **g["summe"]})
     # Führt ein Teil die Gesamtzeile zweimal, wird sie einmal gespeichert:
     # Die zweite ist die Probe, nicht ein zweiter Wert.
     if gesamt:
-        aus.append({"kind": "gesamt", "pay_group": None, "seq_no": None,
+        aus.append({"kind": "total", "pay_group": None, "seq_no": None,
                     "label": "Summe", "pay_grade": None, "consistent": 1,
                     **gesamt[0]["werte"]})
     elif len(gruppen) == 1:
-        aus.append({"kind": "gesamt", "pay_group": None, "seq_no": None,
+        aus.append({"kind": "total", "pay_group": None, "seq_no": None,
                     "label": "Summe", "pay_grade": None, "consistent": 1,
                     **gruppen[0]["summe"]})
     return aus

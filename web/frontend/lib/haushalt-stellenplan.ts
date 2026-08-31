@@ -30,7 +30,7 @@ export type StellenTeil = "A" | "B";
 export type StellenZeile = {
   budget_year: number;
   part: StellenTeil;
-  art: "posten" | "gruppe" | "gesamt";
+  kind: "item" | "group" | "total";
   pay_group: string | null;
   seq_no: number | null;
   label: string;
@@ -124,7 +124,7 @@ export function jahrgaengeMitTeil(daten: StellenplanDaten,
 export function groessteLuecken(zeilen: StellenZeile[], part: StellenTeil,
                                 count = 8): StellenZeile[] {
   return zeilen
-    .filter((z) => z.art === "posten" && z.part === part && z.consistent === 1)
+    .filter((z) => z.kind === "item" && z.part === part && z.consistent === 1)
     .filter((z) => z.vacant > 0)
     .sort((a, b) => b.vacant - a.vacant)
     .slice(0, count);

@@ -97,14 +97,14 @@ export default function EinnahmenPage() {
   const year = Math.max(...data.taxes.map((s) => s.year), 0);
   const betragFuer = (art: string | null) => {
     if (!art) return null;
-    return data.taxes.find((s) => s.year === year && s.art === art)?.amount ?? null;
+    return data.taxes.find((s) => s.year === year && s.kind === art)?.amount ?? null;
   };
   const zuweisungJahr = data.tax_capacity.filter((k) => k.allocations != null).at(-1);
   // Der vollständige Ausgleich aus den Tabellen des Landes (Tausend Euro).
   // Optional: Ohne einen Lauf von scripts/ingest_staedtevergleich.py ist das
   // Feld leer, und die Seite zeigt weiter nur die Schlüsselzuweisungen.
   const ausgleich = (data.fiscal_equalization ?? []).filter((f) => f.nettobetrag != null).at(-1);
-  const gesamt = data.taxes.find((s) => s.year === year && s.art === "total")?.amount ?? null;
+  const gesamt = data.taxes.find((s) => s.year === year && s.kind === "total")?.amount ?? null;
 
   // Karten: Betrag aus den Daten, innerhalb der Gruppe nach Betrag sortiert
   // (Quellen ohne Zahl ans Ende).
@@ -140,7 +140,7 @@ export default function EinnahmenPage() {
   // Finanzplanungsjahre. Die Seite zeigt damit neben den jüngsten Ist-Werten
   // erstmals auch vollständig, woher das Geld im geltenden Plan kommen soll.
   const planJahr = Math.max(0, ...(data.income_budget ?? [])
-    .filter((z) => z.art === "ansatz")
+    .filter((z) => z.kind === "budget")
     .map((z) => z.year));
   const planErtraege = planJahr ? einnahmearten(data, planJahr) : null;
 

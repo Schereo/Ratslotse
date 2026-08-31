@@ -333,7 +333,7 @@ export function NachbewilligungsBlock({ daten, year }: {
  *  erreicht den Rat meist gar nicht erst. */
 export function NachbewilligungsBefund({ daten }: { daten: HaushaltAuswahl<"supplementary_approvals"> }) {
   const serie = (daten.supplementary_approvals?.serie ?? [])
-    .filter((n) => n.art !== "schwelle");
+    .filter((n) => n.kind !== "threshold");
   if (serie.length < 20) return null;
   const years = serie.map((n) => n.year).filter((j): j is number => j != null);
   const beschlossen = serie.filter((n) => n.decided === 1).length;

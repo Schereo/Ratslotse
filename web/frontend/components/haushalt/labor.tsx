@@ -594,7 +594,7 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
               grundst={grundst} proPunktGrundst={proPunktGrundst} anteilA={anteilA}
               hundePct={hundePct} setHundePct={setHundePct} hunde={hunde}
               staedte={staedte}
-              historie={(daten.tax_rates?.zeilen ?? []).filter((z) => z.art === "Gewerbesteuer")}
+              historie={(daten.tax_rates?.zeilen ?? []).filter((z) => z.kind === "Gewerbesteuer")}
               fees={daten.fees}
               maxPunkte={MAX_PUNKTE}
               jeEinwohner={jeEinwohner} anteilText={anteilText}

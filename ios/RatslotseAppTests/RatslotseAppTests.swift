@@ -653,7 +653,7 @@ private final class FeedbackURLProtocol: URLProtocol {
           },
           "committees": [{"committee": "Rat", "n": 39, "chair": true}],
           "recent": [{"ksinr": 4599, "committee": "Kulturausschuss", "session_date": "2026-06-16"}],
-          "wortbeitraege": [{"art": "rede", "top": "TOP 5", "text": "Beitrag", "committee": "Rat", "session_date": "2026-06-16"}],
+          "wortbeitraege": [{"kind": "speech", "top": "TOP 5", "text": "Beitrag", "committee": "Rat", "session_date": "2026-06-16"}],
           "wortbeitraege_gesamt": 18,
           "wortbeitraege_gremien": [{"committee": "Rat", "n": 18}]
         }

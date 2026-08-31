@@ -872,7 +872,7 @@ function DebattenZeile({ d, artLabel }: { d: DebattenHinweis; artLabel: Record<s
           {/* Zusagen der Verwaltung sind Selbstverpflichtungen — kein
               Meinungsbeitrag unter vielen. Sie bekommen deshalb ein eigenes
               Abzeichen statt nur ein graues Wörtchen. */}
-          {d.art === "zusage" ? (
+          {d.art === "pledge" ? (
             <span className="ml-1.5 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
               Zusage der Verwaltung
             </span>

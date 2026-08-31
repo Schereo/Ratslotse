@@ -83,7 +83,7 @@ function SteuerInner() {
   const series = useMemo(() => {
     if (!data || !art?.datenArt) return [];
     return data.taxes
-      .filter((s) => s.art === art.datenArt && s.amount != null && s.amount > 0)
+      .filter((s) => s.kind === art.datenArt && s.amount != null && s.amount > 0)
       .map((s) => ({ year: s.year, amount: s.amount as number }))
       .sort((a, b) => a.year - b.year);
   }, [data, art]);
@@ -143,7 +143,7 @@ function SteuerInner() {
         }
       : {
           value: data.taxes.find(
-            (s) => s.year === letzte?.year && s.art === "total",
+            (s) => s.year === letzte?.year && s.kind === "total",
           )?.amount ?? null,
           was: "aller Steuereinnahmen",
         };
@@ -160,15 +160,15 @@ function SteuerInner() {
   // führt (drei je Ausgabe). `datenArt` ist derselbe Schlüssel wie in der
   // Ist-Reihe; daran hängt im Ingest auch die Prüfung der Jahresbeschriftung.
   const planIst = (data.tax_plan?.zeilen ?? [])
-    .filter((z) => art.datenArt && z.art === art.datenArt);
+    .filter((z) => art.datenArt && z.kind === art.datenArt);
 
   // Die Hebesatz-Treppe dieser Steuer. Zwei Reihen nur bei der Grundsteuer
   // (B und A, dieselbe Einheit, derselbe Beschluss).
   const hebeAlle = data.tax_rates?.zeilen ?? [];
   const hebeHaupt = art.hebesatzArten?.[0]
-    ? hebeAlle.filter((z) => z.art === art.hebesatzArten![0]) : [];
+    ? hebeAlle.filter((z) => z.kind === art.hebesatzArten![0]) : [];
   const hebeZweit = art.hebesatzArten?.[1]
-    ? hebeAlle.filter((z) => z.art === art.hebesatzArten![1]) : [];
+    ? hebeAlle.filter((z) => z.kind === art.hebesatzArten![1]) : [];
 
   // Der Nenner zur Gewerbesteuer: wie viele Betriebe sie aufbringen
   // (Gewerbesteuerstatistik des Landesamts). Genommen wird der JÜNGSTE

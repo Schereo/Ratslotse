@@ -49,7 +49,7 @@ import { Gesetz } from "@/components/haushalt/gesetz";
 import { GlossaryText } from "@/components/glossary-text";
 import type { GewerbesteuerstatistikZeile } from "@/lib/haushalt";
 
-type SteuerZeile = { year: number; art: string; amount: number | null };
+type SteuerZeile = { year: number; kind: string; amount: number | null };
 type Hebesatz = { year: number; rate: number; prior_rate: number | null };
 
 /** Ab wann ein Jahressprung „groß" heißt. Die Schwelle ist gesetzt, nicht
@@ -60,7 +60,7 @@ const SPRUNG = 15;
 function series(zeilen: SteuerZeile[], art: string | null) {
   if (!art) return [];
   return zeilen
-    .filter((z) => z.art === art && z.amount != null && z.amount > 0)
+    .filter((z) => z.kind === art && z.amount != null && z.amount > 0)
     .map((z) => ({ year: z.year, amount: z.amount as number }))
     .sort((a, b) => a.year - b.year);
 }
