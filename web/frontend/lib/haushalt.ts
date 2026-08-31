@@ -463,14 +463,14 @@ export type Nachbewilligung = {
   /** Haushaltsjahr aus dem Jahrgang der Vorlagen-Nummer, nicht aus dem
    *  Sitzungsdatum — Januar-Vorlagen zählen zum Vorjahr. */
   year: number | null;
-  titel: string;
+  title: string;
   art: NachbewilligungsArt;
   category: NachbewilligungsKategorie;
   /** In Euro. `null` bei `art === "schwelle"`. */
   amount: number | null;
   /** Aus welcher Stufe der Betrag stammt: dem Titel oder dem
    *  Beschlussvorschlag der Vorlage. */
-  amount_source: "titel" | "proposed_decision" | null;
+  amount_source: "title" | "proposed_decision" | null;
   decided: 0 | 1;
   /** Hat das **Plenum** selbst abgestimmt? Die wörtliche Auskunft — taugt als
    *  Zeilenhinweis („im Fachausschuss beschlossen"), aber **nie** als Basis
@@ -711,7 +711,7 @@ export type Ausgabenreihe = {
   naht_ab: number;
   /** Je Regelwerk der Titel der Quelle und ihre Abgrenzung. Beide reisen mit
    *  den Daten, damit die Legende nicht in zwei Sprachen existiert. */
-  accounting_systems: Record<Regelwerk, { label: string; titel: string; abgrenzung: string }>;
+  accounting_systems: Record<Regelwerk, { label: string; title: string; abgrenzung: string }>;
 };
 
 /** „Geplant gegen tatsächlich" je abgeschlossenem Jahr, in Mio.
@@ -852,7 +852,7 @@ export type FlussSeite = {
 
 export type FlussDaten = {
   year: number;
-  stand: "plan" | "ist";
+  as_of: "plan" | "ist";
   herkunft: FlussSeite;
   verwendung: FlussSeite;
   /** Gemeinsame Achse beider Seiten in Euro — die größere der beiden Summen. */
@@ -926,10 +926,10 @@ function flussSeite(
  *  je `sub_budget_no`) — beide aus derselben Tabelle desselben Jahres, damit nie zwei
  *  Stände nebeneinander stehen. `null`, wenn eine Seite fehlt. */
 export function flussbild(
-  daten: HaushaltAuswahl<"income_statement">, year: number, stand: "plan" | "ist",
+  daten: HaushaltAuswahl<"income_statement">, year: number, as_of: "plan" | "ist",
 ): FlussDaten | null {
   const zahl = (p: ErgebnisPosten | undefined) =>
-    p ? (stand === "ist" ? p.result : p.ansatz) : null;
+    p ? (as_of === "ist" ? p.result : p.ansatz) : null;
   const rows = (daten.income_statement ?? []).filter((p) => p.year === year);
   const gesamt = rows.filter((p) => p.sub_budget_no == null);
 
@@ -975,7 +975,7 @@ export function flussbild(
   const summeRechts = verwendung.baender.reduce((s, b) => s + b.value, 0);
   const luecke = (s: FlussSeite) => Math.abs(s.gesamt - s.teile);
   return {
-    year, stand, herkunft, verwendung, skala,
+    year, as_of, herkunft, verwendung, skala,
     balance: revenues - expenses,
     summeLinks, summeRechts,
     stimmt: Math.abs(summeLinks - summeRechts) <= FLUSS_TOLERANZ
@@ -1470,13 +1470,13 @@ export function bereichSlug(name: string): string {
  *  ist dann die ehrliche Antwort, keine fehlende. */
 export function bereichsReihe(
   daten: HaushaltAuswahl<"years">, name: string,
-): { year: number; zeile: HaushaltZeile }[] {
+): { year: number; row: HaushaltZeile }[] {
   return jahreSortiert(daten)
     .map((year) => {
       const z = daten.years[String(year)]?.find((r) => r.area === name);
-      return z ? { year, zeile: z } : null;
+      return z ? { year, row: z } : null;
     })
-    .filter((x): x is { year: number; zeile: HaushaltZeile } => x !== null);
+    .filter((x): x is { year: number; row: HaushaltZeile } => x !== null);
 }
 
 /** Quelle einer Jahres-Scheibe menschenlesbar (PDF vs. Open-Data-CSV). */
@@ -1565,7 +1565,7 @@ const BEREICH_TEXTE: Record<BereichSchluessel, string> = {
 };
 
 /** Dieselben Texte unter jedem Namen, unter dem der Bereich in der Datenbank
- *  auftaucht. Bestehende Aufrufe (`BEREICH_INFO[zeile.area]`) bleiben damit
+ *  auftaucht. Bestehende Aufrufe (`BEREICH_INFO[row.area]`) bleiben damit
  *  gültig und treffen jetzt auch die Schreibweisen fremder Jahrgänge. */
 export const BEREICH_INFO: Record<string, string> = Object.fromEntries(
   BEREICHE.flatMap((b) => b.aliase.map((a) => [a, BEREICH_TEXTE[b.key]])),

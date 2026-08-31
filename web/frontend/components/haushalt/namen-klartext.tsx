@@ -45,7 +45,7 @@ import { useBreite } from "@/lib/use-breite";
 import { cn } from "@/lib/utils";
 
 export type KlartextZeile = {
-  zeile: HaushaltZeile;
+  row: HaushaltZeile;
   /** Ausgaben in Mio. — die Größe, nach der beschriftet wird. */
   aus: number;
   /** Zuschussbedarf in Mio. (Ausgaben − eigene Erträge); negativ heißt
@@ -64,7 +64,7 @@ export function klartextZeilen(zeilen: HaushaltZeile[]): KlartextZeile[] {
     .map((z) => {
       const k = bereichKanon(z.area);
       return {
-        zeile: z,
+        row: z,
         aus: mio(z.expenses) ?? 0,
         stadt: z.result != null ? mio(-z.result) : null,
         eigen: mio(z.revenues),
@@ -255,7 +255,7 @@ export function NamenKlartext({ zeilen, year, aktiv, className }: {
 
       <div>
         {gezeigt.map((z) => (
-          <Zeile key={z.zeile.area} z={z} skala={skala} breit={breit}
+          <Zeile key={z.row.area} z={z} skala={skala} breit={breit}
             aktiv={z.slug === aktivSlug} />
         ))}
       </div>

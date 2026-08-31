@@ -22,7 +22,7 @@ async function anmelden(page: import("@playwright/test").Page) {
  *  vollständige Antwort mit Aktionszeile erzeugt. */
 const SSE_ANTWORT = [
   `data: ${JSON.stringify({ type: "step", step: "answer" })}\n\n`,
-  `data: ${JSON.stringify({ type: "sources", sources: [], frage: "Was wurde zum Radverkehr beschlossen?" })}\n\n`,
+  `data: ${JSON.stringify({ type: "sources", sources: [], question: "Was wurde zum Radverkehr beschlossen?" })}\n\n`,
   `data: ${JSON.stringify({ type: "token", text: "Der Rat hat mehrere Fahrradstraßen beschlossen." })}\n\n`,
   `data: ${JSON.stringify({ type: "done" })}\n\n`,
 ].join("");

@@ -48,29 +48,29 @@ JUDGE_MODEL = os.environ.get("COUNCIL_QUALITY_JUDGE_MODEL", "google/gemini-2.5-f
 # Formulierungen (Recency) und Beratungsfolgen (Supersedes).
 FRAGEN: list[dict] = [
     {"id": "stadion-stand", "fokus": "stadion+recency",
-     "frage": "Wie ist der Stand beim Stadionneubau?"},
+     "question": "Wie ist der Stand beim Stadionneubau?"},
     {"id": "stadion-kosten", "fokus": "stadion+geld",
-     "frage": "Was kostet das neue Stadion und wer bezahlt es?"},
+     "question": "Was kostet das neue Stadion und wer bezahlt es?"},
     {"id": "stadion-parteien", "fokus": "stadion+partei",
-     "frage": "Wie stehen die Parteien zum Stadionneubau?"},
+     "question": "Wie stehen die Parteien zum Stadionneubau?"},
     {"id": "stadion-verlauf", "fokus": "stadion+verlauf",
-     "frage": "Wie hat sich die Stadionplanung seit 2023 entwickelt?"},
+     "question": "Wie hat sich die Stadionplanung seit 2023 entwickelt?"},
     {"id": "caeci-was", "fokus": "entitaet",
-     "frage": "Was passiert mit der Cäcilienbrücke?"},
+     "question": "Was passiert mit der Cäcilienbrücke?"},
     {"id": "caeci-slang", "fokus": "entitaet+glossar",
-     "frage": "Was ist eigentlich mit der Cäci los?"},
+     "question": "Was ist eigentlich mit der Cäci los?"},
     {"id": "floetenteich", "fokus": "entitaet",
-     "frage": "Was wurde zum Flötenteich beschlossen?"},
+     "question": "Was wurde zum Flötenteich beschlossen?"},
     {"id": "fliegerhorst", "fokus": "entitaet",
-     "frage": "Was ist auf dem Fliegerhorst geplant?"},
+     "question": "Was ist auf dem Fliegerhorst geplant?"},
     {"id": "entlastungsstrasse-stand", "fokus": "recency",
-     "frage": "Wie ist der aktuelle Stand bei der Entlastungsstraße?"},
+     "question": "Wie ist der aktuelle Stand bei der Entlastungsstraße?"},
     {"id": "bplan831", "fokus": "recency+supersedes",
-     "frage": "Was gilt aktuell beim Bebauungsplan 831?"},
+     "question": "Was gilt aktuell beim Bebauungsplan 831?"},
     {"id": "radverkehr-zuletzt", "fokus": "recency",
-     "frage": "Was wurde zuletzt zum Radverkehr beschlossen?"},
+     "question": "Was wurde zuletzt zum Radverkehr beschlossen?"},
     {"id": "schulen-sanierung", "fokus": "breit",
-     "frage": "Welche Schulen werden saniert?"},
+     "question": "Welche Schulen werden saniert?"},
 ]
 
 
@@ -85,7 +85,7 @@ def erzeugen(label: str, db: Path) -> Path:
     try:
         for f in FRAGEN:
             t0 = time.perf_counter()
-            analyse = qa.analyse_query(f["frage"])
+            analyse = qa.analyse_query(f["question"])
             expanded, typ = analyse["terms"], analyse["kind"]
             q_suche = analyse["question"]
             hits = emb.hybrid_search(store, q_suche, expanded, top_k=40, pool=55,
@@ -126,13 +126,13 @@ def erzeugen(label: str, db: Path) -> Path:
             except Exception:  # noqa: BLE001
                 pass
             answer, cited = qa.answer_question(
-                f["frage"], ctx, typ=typ, presse=presse_rows,
+                f["question"], ctx, typ=typ, presse=presse_rows,
                 haushalt=haushalt, debatten=debatten_rows, gross=gross)
             cases.append({
-                "id": f["id"], "fokus": f["fokus"], "frage": f["frage"], "typ": typ,
+                "id": f["id"], "fokus": f["fokus"], "question": f["question"], "typ": typ,
                 "answer": qa.split_followups(answer)[0], "cited": cited,
                 "quellen": [{"id": c["id"], "title": c.get("title"),
-                             "datum": c.get("session_date")} for c in ctx],
+                             "date": c.get("session_date")} for c in ctx],
                 "debatten_n": len(debatten_rows), "presse_n": len(presse_rows),
                 "ms": round((time.perf_counter() - t0) * 1000),
             })
@@ -150,7 +150,7 @@ def erzeugen(label: str, db: Path) -> Path:
 
 JUDGE_PROMPT = """Du vergleichst zwei Antworten eines Ratsinformations-Assistenten auf dieselbe Bürgerfrage über den Oldenburger Stadtrat. Du weißt nicht, welche Antwort von welcher Systemversion stammt.
 
-FRAGE: {frage}
+FRAGE: {question}
 
 ANTWORT A:
 {a}
@@ -183,11 +183,11 @@ def judge(label_a: str, label_b: str) -> Path:
         fb = b_by_id.get(fa["id"])
         if not fb:
             continue
-        getauscht = int(hashlib.sha1(fa["frage"].encode()).hexdigest(), 16) % 2 == 1
+        getauscht = int(hashlib.sha1(fa["question"].encode()).hexdigest(), 16) % 2 == 1
         links, rechts = (fb, fa) if getauscht else (fa, fb)
 
         def qliste(f):
-            return "; ".join(f"{q['title']} · {q['datum']}" for q in f["quellen"][:8])
+            return "; ".join(f"{q['title']} · {q['date']}" for q in f["quellen"][:8])
 
         raw = None
         for versuch in range(2):
@@ -195,7 +195,7 @@ def judge(label_a: str, label_b: str) -> Path:
                 model=JUDGE_MODEL, _feature="quality_judge", temperature=0,
                 max_tokens=2500, timeout=120.0, response_format={"type": "json_object"},
                 messages=[{"role": "user", "content": JUDGE_PROMPT.format(
-                    frage=fa["frage"], a=links["answer"][:5000], b=rechts["answer"][:5000],
+                    question=fa["question"], a=links["answer"][:5000], b=rechts["answer"][:5000],
                     qa=qliste(links), qb=qliste(rechts))}])
             try:
                 raw = json.loads((resp.choices[0].message.content or "{}").strip())
@@ -236,8 +236,8 @@ def judge(label_a: str, label_b: str) -> Path:
         fb = b_by_id.get(fa["id"])
         if not fb:
             continue
-        ja = max((q["datum"] or "" for q in fa["quellen"]), default="")
-        jb = max((q["datum"] or "" for q in fb["quellen"]), default="")
+        ja = max((q["date"] or "" for q in fa["quellen"]), default="")
+        jb = max((q["date"] or "" for q in fb["quellen"]), default="")
         sieger = label_b if jb > ja else (label_a if ja > jb else "gleich")
         frische.append((fa["id"], ja, jb, sieger))
 

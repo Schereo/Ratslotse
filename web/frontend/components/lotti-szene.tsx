@@ -51,7 +51,7 @@ function seiteZeichnen(variante: number): THREE.CanvasTexture {
 
   const M = 34;
   let y = 44;
-  const zeile = (breite: number, hoehe: number, farbe: string) => {
+  const row = (breite: number, hoehe: number, farbe: string) => {
     g.fillStyle = farbe;
     g.fillRect(M, y, (300 - M * 2) * breite, hoehe);
     y += hoehe + 9;
@@ -59,15 +59,15 @@ function seiteZeichnen(variante: number): THREE.CanvasTexture {
 
   g.fillStyle = "rgba(20,58,92,0.30)";
   g.fillRect(M, y, 78, 7); y += 20;
-  zeile(0.86, 13, "rgba(20,58,92,0.62)");
-  zeile(0.54, 13, "rgba(20,58,92,0.62)");
+  row(0.86, 13, "rgba(20,58,92,0.62)");
+  row(0.54, 13, "rgba(20,58,92,0.62)");
   y += 7;
   g.strokeStyle = "rgba(20,58,92,0.18)"; g.lineWidth = 2;
   g.beginPath(); g.moveTo(M, y); g.lineTo(300 - M, y); g.stroke();
   y += 16;
 
   const absatz = (n: number) => {
-    for (let i = 0; i < n; i++) zeile(0.62 + Math.random() * 0.38, 6, "rgba(20,58,92,0.20)");
+    for (let i = 0; i < n; i++) row(0.62 + Math.random() * 0.38, 6, "rgba(20,58,92,0.20)");
     y += 8;
   };
   if (variante === 0) { absatz(5); absatz(4); absatz(3); }

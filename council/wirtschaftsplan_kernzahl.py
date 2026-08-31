@@ -159,7 +159,7 @@ def in_anlage_belegt(amount: float, anlagen_texte: list[str]) -> bool:
     return any(ziffern in (t or "").replace(" ", "") for t in anlagen_texte)
 
 
-def parse_kernzahl(template_number: str, titel: str, vorlage_text: str,
+def parse_kernzahl(template_number: str, title: str, vorlage_text: str,
                    year: int, anlagen_texte: list[str],
                    ) -> tuple[Wirtschaftsplan, str, str] | None:
     """Das beschlossene Jahresergebnis — belegt durch die Anlage.
@@ -205,10 +205,10 @@ def parse_kernzahl(template_number: str, titel: str, vorlage_text: str,
     else:
         beleglage = "belegt"
 
-    key = _betrieb_key(titel)
+    key = _betrieb_key(title)
     if key is None:
         raise WirtschaftsplanFehler(
-            f"{template_number}: Betrieb unbekannt — Titel: {titel!r}")
+            f"{template_number}: Betrieb unbekannt — Titel: {title!r}")
 
     plan = Wirtschaftsplan(
         enterprise=key, enterprise_name=BETRIEBE[key][1], year=year,
@@ -284,10 +284,10 @@ def investitionen_aus_beschluss(text: str) -> float | None:
     return gesamt
 
 
-def _betrieb_key(titel: str) -> str | None:
+def _betrieb_key(title: str) -> str | None:
     from council.wirtschaftsplan import betrieb_aus_titel
 
-    erkannt = betrieb_aus_titel(titel)
+    erkannt = betrieb_aus_titel(title)
     return erkannt[0] if erkannt else None
 
 
@@ -315,5 +315,5 @@ def herkunft_fuer(plan: Wirtschaftsplan, wort: str, beleglage: str,
                     if kvonr else None),
         citation="Beschlussvorschlag der Vorlage",
         probe_result=f"„{wort}“ — {BELEGLAGE[beleglage]}",
-        stand=f"Wirtschaftsplan {plan.year}, Fassung des Ratsbeschlusses",
+        as_of=f"Wirtschaftsplan {plan.year}, Fassung des Ratsbeschlusses",
     )

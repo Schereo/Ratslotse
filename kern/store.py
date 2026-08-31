@@ -571,6 +571,66 @@ class Store:
             self._conn.execute("DROP TABLE prompts")
         log.warning("Tabelle `prompts` entfernt (Prompt-Overrides ausgebaut).")
 
+    #: JSON-Schlüssel, die in gespeicherten Blobs mit umgezogen sind. NUR
+    #: diese — `haltung`, `einig`, `auszug`, `top`, `art` und die Blocknamen
+    #: (`debatten`, `presse`, `anlagen`, `parteien`) bleiben, wie sie sind.
+    _JSON_SCHLUESSEL = {
+        "sprecher": "speaker", "partei": "party", "datum": "date", "titel": "title",
+        "hinweis": "note", "quellen": "sources", "bericht": "report",
+        "frage": "question", "antwort": "answer", "wert": "value",
+        "einheit": "unit", "grund": "reason", "stand": "as_of",
+        "gremium": "committee", "fassung": "version", "schluessel": "key",
+    }
+
+    def _json_schluessel_umbenennen(self, tabelle: str, spalte: str, marke: str) -> None:
+        """Die Schlüssel INNERHALB eines JSON-Blobs nachziehen — einmalig.
+
+        Die Spalten sind längst englisch, ihr INHALT nicht: Ein gespeicherter
+        Gesprächsverlauf trägt seine Debattenzeilen mit `sprecher`/`partei`/
+        `datum`. Die Oberfläche liest sie neuerdings englisch und zeigte
+        deshalb leere Namen. Eine Marke sorgt dafür, dass der Umbau genau
+        einmal läuft und frisch geschriebene Zeilen nicht noch einmal trifft.
+        """
+        import json as _js
+        with self._conn:
+            self._conn.execute(
+                "CREATE TABLE IF NOT EXISTS migrationsmarken ("
+                "marke TEXT PRIMARY KEY, gesetzt_am TEXT NOT NULL)")
+        if self._conn.execute(
+                "SELECT 1 FROM migrationsmarken WHERE marke = ?", (marke,)).fetchone():
+            return
+        spalten = {r[1] for r in self._conn.execute(f"PRAGMA table_info({tabelle})")}
+        if spalte not in spalten:
+            return
+
+        def um(x):
+            if isinstance(x, dict):
+                return {self._JSON_SCHLUESSEL.get(k, k): um(v) for k, v in x.items()}
+            if isinstance(x, list):
+                return [um(v) for v in x]
+            return x
+
+        geaendert = []
+        for rid, roh in self._conn.execute(f"SELECT rowid, {spalte} FROM {tabelle} "
+                                           f"WHERE {spalte} IS NOT NULL"):
+            try:
+                daten = _js.loads(roh)
+            except (ValueError, TypeError):
+                continue
+            neu = _js.dumps(um(daten), ensure_ascii=False)
+            if neu != roh:
+                geaendert.append((neu, rid))
+        with self._conn:
+            if geaendert:
+                self._conn.executemany(
+                    f"UPDATE {tabelle} SET {spalte} = ? WHERE rowid = ?", geaendert)
+            self._conn.execute(
+                "INSERT INTO migrationsmarken (marke, gesetzt_am) VALUES (?, datetime('now'))",
+                (marke,))
+        if geaendert:
+            logging.getLogger("kern.store").warning(
+                "JSON-Schlüssel nachgezogen: %s.%s (%d Zeilen)", tabelle, spalte, len(geaendert))
+
     def _migrate(self) -> None:
         # 08/2026: Die Prompt-Overrides sind ausgebaut — die Prompt-Texte leben
         # nur noch als Code in `kern/prompts.py` (Tims Entscheidung,
@@ -579,6 +639,10 @@ class Store:
         # doch etwas darin stehen, landet es vorher im Log — ein stillschweigend
         # gelöschter, von Hand geschriebener Prompttext wäre ein schlechter Tausch.
         self._prompts_tabelle_entfernen()
+        for tabelle, spalte in (("qa_gespraech_turns", "sources"),
+                                ("qa_shares", "extras"),
+                                ("deep_research_jobs", "sources")):
+            self._json_schluessel_umbenennen(tabelle, spalte, f"json_englisch_{tabelle}_{spalte}")
         # 08/2026: Reste der NWZ-Abo-Prüfung. Seit der Ausgliederung des
         # Zeitungs-Scrapers liest sie kein Code mehr; auf Tims Anweisung
         # (30.08.2026) verschwinden sie samt Inhalt. Backup lag vor.
@@ -1654,7 +1718,7 @@ class Store:
             self._conn.execute("UPDATE web_users SET qa_speichern = ? WHERE id = ?",
                                (1 if an else 0, user_id))
 
-    def qa_share_anlegen(self, user_id: int, frage: str, answer: str,
+    def qa_share_anlegen(self, user_id: int, question: str, answer: str,
                          quellen: list[dict] | None,
                          extras: dict | None = None) -> str:
         """Snapshot einer geteilten Antwort (Task 31) → öffentliches Token.
@@ -1670,7 +1734,7 @@ class Store:
             self._conn.execute(
                 "INSERT INTO qa_shares (token, user_id, question, answer, sources, created, extras) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?)",
-                (token, user_id, frage[:300], answer[:8000],
+                (token, user_id, question[:300], answer[:8000],
                  json.dumps(quellen or [], ensure_ascii=False), now,
                  json.dumps(extras, ensure_ascii=False) if extras else None))
         return token
@@ -1717,7 +1781,7 @@ class Store:
 
     # ---- „Gründliche Recherche" (RG-10, Task 34) ---------------------------
 
-    def deep_job_anlegen(self, user_id: int, frage: str) -> str:
+    def deep_job_anlegen(self, user_id: int, question: str) -> str:
         """Neuen Recherche-Job registrieren → unerratbare Job-ID."""
         import secrets
 
@@ -1726,7 +1790,7 @@ class Store:
         with self._conn:
             self._conn.execute(
                 "INSERT INTO deep_research_jobs (id, user_id, question, status, created, updated) "
-                "VALUES (?, ?, ?, 'laeuft', ?, ?)", (job_id, user_id, frage[:300], now, now))
+                "VALUES (?, ?, ?, 'laeuft', ?, ?)", (job_id, user_id, question[:300], now, now))
         return job_id
 
     def deep_job_update(self, job_id: str, status: str, bericht: str | None = None,
@@ -1792,7 +1856,7 @@ class Store:
                 "WHERE status = 'laeuft'", (now,))
             return cur.rowcount
 
-    def qa_gespraech_start(self, user_id: int, titel: str) -> int | None:
+    def qa_gespraech_start(self, user_id: int, title: str) -> int | None:
         """None, wenn es das Konto (nicht mehr) gibt — schließt das Fenster,
         in dem eine Konto-Löschung zwischen Einwilligungs-Check und Insert
         verwaiste Gesprächsdaten hinterließe (Review-Befund B3)."""
@@ -1802,10 +1866,10 @@ class Store:
                 return None
             cur = self._conn.execute(
                 "INSERT INTO qa_gespraeche (user_id, title, created, updated) VALUES (?, ?, ?, ?)",
-                (user_id, (titel or "Gespräch").strip()[:120], now, now))
+                (user_id, (title or "Gespräch").strip()[:120], now, now))
             return int(cur.lastrowid)
 
-    def qa_turn_speichern(self, gespraech_id: int, user_id: int, frage: str,
+    def qa_turn_speichern(self, gespraech_id: int, user_id: int, question: str,
                           answer: str, quellen_json: str | None) -> bool:
         """Turn anhängen — nur ins eigene Gespräch (user_id doppelt geprüft)."""
         now = datetime.utcnow().isoformat(timespec="seconds")
@@ -1818,7 +1882,7 @@ class Store:
             self._conn.execute(
                 "INSERT INTO qa_gespraech_turns (conversation_id, user_id, question, answer, sources, created) "
                 "VALUES (?, ?, ?, ?, ?, ?)",
-                (gespraech_id, user_id, frage[:600], answer[:8000], quellen_json, now))
+                (gespraech_id, user_id, question[:600], answer[:8000], quellen_json, now))
             self._conn.execute("UPDATE qa_gespraeche SET updated = ? WHERE id = ?",
                                (now, gespraech_id))
             return True
@@ -1880,17 +1944,17 @@ class Store:
             (gespraech_id,)).fetchall()
         return {**dict(g), "turns": [dict(t) for t in turns]}
 
-    def qa_gespraech_umbenennen(self, gespraech_id: int, user_id: int, titel: str) -> bool:
+    def qa_gespraech_umbenennen(self, gespraech_id: int, user_id: int, title: str) -> bool:
         """Titel ändern — nur am eigenen Gespräch (Design 9a②: Wisch links →
         Umbenennen). ``updated`` bleibt unberührt: Umbenennen ist Pflege, kein
         Gesprächsfortschritt, und soll die Liste nicht umsortieren."""
-        titel = " ".join((titel or "").split())[:120]
-        if not titel:
+        title = " ".join((title or "").split())[:120]
+        if not title:
             return False
         with self._conn:
             cur = self._conn.execute(
                 "UPDATE qa_gespraeche SET title = ? WHERE id = ? AND user_id = ?",
-                (titel, gespraech_id, user_id))
+                (title, gespraech_id, user_id))
             return (cur.rowcount or 0) > 0
 
     def qa_gespraech_loeschen(self, gespraech_id: int, user_id: int) -> bool:
@@ -2270,9 +2334,9 @@ class Store:
         „schon lange bekannt" (s. ``_reparatur_matched_at``); nach dem ersten
         Besuch zählen solche Zeilen deshalb nicht mehr mit.
         """
-        stand = self._conn.execute(
+        as_of = self._conn.execute(
             "SELECT topics_seen_at FROM web_users WHERE id = ?", (owner_id,)).fetchone()
-        seit = stand["topics_seen_at"] if stand else None
+        seit = as_of["topics_seen_at"] if as_of else None
         sql = """SELECT COUNT(*) FROM council_topic_matches m
                  JOIN topics t ON t.id = m.topic_id AND t.owner_id = m.owner_id
                  LEFT JOIN topic_hits_seen s

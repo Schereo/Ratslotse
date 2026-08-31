@@ -74,7 +74,7 @@ const TRIO = ["jahresergebnis", "bilanzsumme", "eigenkapitalquote"] as const;
  *  hieße derselbe Abschnitt in der Struktur-Fassung anders als im Rückfall
  *  auf den Wortlaut. */
 const TITEL: Record<string, string> = Object.fromEntries(
-  ABSCHNITTE.map((a) => [a.key, a.titel]));
+  ABSCHNITTE.map((a) => [a.key, a.title]));
 
 /** Wo eine Angabe im Dokument steht — bei 200 Seiten der Unterschied zwischen
  *  „steht in dem PDF" und „steht auf Seite 178, Abschnitt 2.4.8". */
@@ -135,11 +135,11 @@ function ergebnisReihe(ergebnisse: Kennzahl[]): JahrPunkt[] {
 
 /** Eine Zahl im Kopf: Kennzahl, Jahr, Betrag — und wo nichts dasteht, der
  *  Satz, dass nichts dasteht. */
-function Kopfzahl({ titel, k }: { titel: string; k: Kennzahl | null }) {
+function Kopfzahl({ title, k }: { title: string; k: Kennzahl | null }) {
   return (
     <div className="min-w-0">
       <dt className="font-mono text-[9.5px] font-medium uppercase tracking-[0.1em] text-muted-foreground">
-        {titel} {k ? k.year : ""}
+        {title} {k ? k.year : ""}
       </dt>
       {k ? (
         <dd className="font-display text-[21px] font-bold leading-tight tracking-tight tabular-nums">
@@ -186,7 +186,7 @@ function Zahlenkopf({ daten, g }: { daten: BeteiligungsDaten; g: Gesellschaft })
           {TRIO.map((k) => {
             const liste = alleReihen.get(k) ?? [];
             return (
-              <Kopfzahl key={k} titel={KENNZAHL_TITEL[k]}
+              <Kopfzahl key={k} title={KENNZAHL_TITEL[k]}
                 k={liste[liste.length - 1] ?? null} />
             );
           })}
@@ -314,7 +314,7 @@ function Eigentuemerstreifen({ liste, herkunft }: {
  *  keine Fläche (Designsprache § 2): Eine parteigefärbte Karte machte aus
  *  einem Aufsichtsmandat ein Plakat. */
 function Person({ p, zeigeFunktion }: { p: Aufsichtsperson; zeigeFunktion: boolean }) {
-  const dot = p.partei ? parteiDot(p.partei) : null;
+  const dot = p.party ? parteiDot(p.party) : null;
   const zusatz = [zeigeFunktion ? p.position : null, p.note].filter(Boolean).join(" · ");
 
   return (
@@ -338,9 +338,9 @@ function Person({ p, zeigeFunktion }: { p: Aufsichtsperson; zeigeFunktion: boole
         ) : (
           <span className="text-[13px] font-semibold leading-snug">{p.name}</span>
         )}
-        {p.partei && (
+        {p.party && (
           <span className="text-[10.5px] font-medium text-muted-foreground">
-            {parteiKuerzel(p.partei)}
+            {parteiKuerzel(p.party)}
           </span>
         )}
       </span>
@@ -378,7 +378,7 @@ function Aufsichtsorgan({ personen, zuordenbar, herkunft }: {
         {gruppen.map((gr) => (
           <div key={gr.key}>
             <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.1em] text-muted-foreground">
-              {gr.titel}
+              {gr.title}
             </p>
             <ul className="mt-1.5 grid gap-1.5 @xl/organ:grid-cols-2 @4xl/organ:grid-cols-3">
               {gr.personen.map((p, i) => (

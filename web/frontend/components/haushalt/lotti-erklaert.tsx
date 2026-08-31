@@ -20,9 +20,9 @@ import { GlossaryText } from "@/components/glossary-text";
 import { cn } from "@/lib/utils";
 
 export function LottiErklaert({
-  titel, text, pose = "point", className,
+  title, text, pose = "point", className,
 }: {
-  titel: string;
+  title: string;
   text: string;
   pose?: "point" | "search" | "wave" | "confused";
   className?: string;
@@ -63,7 +63,7 @@ export function LottiErklaert({
       <Mascot pose={pose} decorative className="h-11 w-11 flex-none sm:h-12 sm:w-12" />
       <div className="min-w-0">
         <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-primary">
-          {titel}
+          {title}
         </p>
         <p className="mt-1.5 text-[13px] leading-relaxed text-foreground/90">
           <GlossaryText text={text} />

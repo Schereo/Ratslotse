@@ -132,7 +132,7 @@ function normalisiere(series: JahrPunkt[], treppe = false): Stelle[] {
 }
 
 export function Zeitreihe({
-  series, unit, ariaTitel, titel, nachkomma = 1, format, zweitreihe,
+  series, unit, ariaTitel, title, nachkomma = 1, format, zweitreihe,
   annotationen, spruenge = false, vorjahresdifferenz = false, differenzFormat,
   tabelle = false, leisteHaftet = true,
   umschalter, beleg, nullbasis = true, note, treppe = false, className,
@@ -146,9 +146,9 @@ export function Zeitreihe({
   ariaTitel: string;
   /** Sichtbare Kopfzeile über dem Bild („Schulden insgesamt"). Rechts daneben
    *  setzt die Komponente die gemessene Menge: Spanne, Zahl der Werte,
-   *  Einheit — nie „viele Jahre", immer die Zahl. Ohne `titel` keine
+   *  Einheit — nie „viele Jahre", immer die Zahl. Ohne `title` keine
    *  Kopfzeile: Eine leere Überschriftenzeile wäre ein Versprechen. */
-  titel?: string;
+  title?: string;
   nachkomma?: number;
   /** Eigenes Zahlenformat (Vorgabe: `deZahl` mit `nachkomma`). Für Reihen,
    *  deren Werte nicht als Mio. kommen — gebaut aus `format.ts`, nie aus
@@ -361,10 +361,10 @@ export function Zeitreihe({
   /** Die erste freie Zeile über dem Punkt, sonst darunter. */
   const ausweichen = (py: number, kasten: (ty: number) => Kasten,
                       belegt: Kasten[]): number => {
-    const zeile = fs.mark + 4;
+    const row = fs.mark + 4;
     const kandidaten: number[] = [];
-    for (let n = 0; n < 6 && py - 10 - n * zeile - fs.mark > YTOP; n++) {
-      kandidaten.push(py - 10 - n * zeile);
+    for (let n = 0; n < 6 && py - 10 - n * row - fs.mark > YTOP; n++) {
+      kandidaten.push(py - 10 - n * row);
     }
     kandidaten.push(Math.min(py + 9 + fs.mark, Y0 - 4));
     return kandidaten.find((k) => !belegt.some((b) => stoert(kasten(k), b)))
@@ -485,7 +485,7 @@ export function Zeitreihe({
     const reason = s.art === "luecke" ? s.punkt.fehlt : s.art === "unerklaert" ? "keine Angabe" : null;
     const anno = annotationNach.get(s.year);
     return {
-      titel: String(s.year) + (anno ? " ⓘ" : ""),
+      title: String(s.year) + (anno ? " ⓘ" : ""),
       werte: werteZeile,
       anmerkung: anno?.text,
       vorlesen: [
@@ -543,10 +543,10 @@ export function Zeitreihe({
 
       {/* Kopfzeile: links, was gezeigt wird — rechts, wie viel davon
           gemessen ist. Ehrliche Mengen sind Vertrag des Baukastens. */}
-      {titel && (
+      {title && (
         <div className="mb-2 flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-            {titel}
+            {title}
           </p>
           <span className="font-mono text-[10px] uppercase text-muted-foreground">
             {von}–{bis} · {werte.length} Werte · {unit}
@@ -730,7 +730,7 @@ export function Zeitreihe({
           {luecken.map((s) => (
             <LueckenFeld key={s.year} label={String(s.year)}
               reason={s.art === "luecke" ? s.punkt.fehlt : "in der Reihe ohne Wert und ohne Grund"}
-              datum={s.art === "luecke" ? s.punkt.datum : undefined} />
+              date={s.art === "luecke" ? s.punkt.date : undefined} />
           ))}
         </div>
       )}

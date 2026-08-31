@@ -54,8 +54,8 @@ def test_faengt_den_echten_fall(tmp_path):
     )
     treffer = pruefen([pfad])
     assert len(treffer) == 1
-    _, zeile, fund = treffer[0]
-    assert zeile == 3 and fund == adresse
+    _, row, fund = treffer[0]
+    assert row == 3 and fund == adresse
 
 
 @pytest.mark.parametrize("adresse", [

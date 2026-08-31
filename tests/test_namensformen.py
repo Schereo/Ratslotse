@@ -92,7 +92,7 @@ def store(tmp_path):
              (5, "Christine Berta Wolff", "Bündnis 90/Die Grünen", "member"),
              (6, "Christine Wolff", "Bündnis 90/Die Grünen", "member")])
         st._conn.executemany(
-            "INSERT INTO council_wortbeitraege (ksinr, position, speaker, partei, art, top, "
+            "INSERT INTO council_wortbeitraege (ksinr, position, speaker, party, art, top, "
             "text, extracted_at) VALUES (?, ?, ?, 'Bündnis 90/Die Grünen', 'rede', 'Ö 1', ?, "
             "datetime('now'))",
             [(1, 1, "Tim Harms", "Unter der älteren Namensform"),

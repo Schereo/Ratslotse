@@ -32,7 +32,7 @@ def _herkunft(citation: str, probes: list[str], messwert: str = "") -> herkunft.
         art="ris", document_id=302709, label="Prüfbericht GA 2024",
         url="https://example.org/ga2024.pdf", citation=citation,
         probe=probes, probe_result=messwert or None,
-        stand="Gesamtabschluss zum 31.12.2024")
+        as_of="Gesamtabschluss zum 31.12.2024")
 
 # --- Fixtures: Dokumentköpfe ------------------------------------------------
 
@@ -396,7 +396,7 @@ def test_speichern_und_lesen(tmp_path):
         assert nach_id[hid_posten]["citation"].startswith("Abschnitt 3.2")
         assert nach_id[hid_traeger]["citation"].startswith("Abschnitt 4.1.1")
         assert nach_id[hid_posten]["document_id"] == 302709
-        assert nach_id[hid_posten]["stand"] == "Gesamtabschluss zum 31.12.2024"
+        assert nach_id[hid_posten]["as_of"] == "Gesamtabschluss zum 31.12.2024"
         # Die Erklärsätze für die Leserin kommen aus herkunft.PROBEN.
         assert len(nach_id[hid_posten]["probes"]) == 3
         assert "ordentliches Ergebnis" in " ".join(nach_id[hid_posten]["probes"])

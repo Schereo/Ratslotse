@@ -393,7 +393,7 @@ export function GesellschaftenAbschnitt({ onBestand }: {
           </div>
 
           <LottiErklaert
-            titel="Warum hat eine Stadt Gesellschaften?"
+            title="Warum hat eine Stadt Gesellschaften?"
             text={"Für Aufgaben wie ein Krankenhaus oder einen Verkehrsbetrieb nutzt die "
               + "Stadt rechtlich oder organisatorisch eigenständige Einheiten mit eigenen "
               + "Verträgen, Beschäftigten und Büchern. Je nach Rechtsform bleibt die Stadt "
@@ -476,7 +476,7 @@ export function GesellschaftenAbschnitt({ onBestand }: {
                 Schritt {schrittNummer("/haushalt/konzern")} · Und ist das die ganze Stadt?
               </span>
               <span className="mt-0.5 block text-[13.5px] font-semibold leading-snug">
-                Wie groß der Konzern Stadt total ist — Kernverwaltung und alle
+                Wie groß der Konzern Stadt insgesamt ist — Kernverwaltung und alle
                 Einheiten zusammen — zeigt der Gesamtabschluss.
               </span>
             </span>

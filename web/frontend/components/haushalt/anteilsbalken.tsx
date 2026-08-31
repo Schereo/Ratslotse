@@ -60,7 +60,7 @@ function schraffur(farbe: string): string {
 
 export function Anteilsbalken({
   segmente, gesamt, unit = "Mio. €", mark, hoehe = 14,
-  legende = true, titel, className,
+  legende = true, title, className,
 }: {
   segmente: Anteil[];
   gesamt: number;
@@ -71,7 +71,7 @@ export function Anteilsbalken({
   hoehe?: number;
   legende?: boolean;
   /** Mono-Kicker über dem Balken. */
-  titel?: string;
+  title?: string;
   className?: string;
 }) {
   const gezeigt = segmente.filter((s) => s.value > 0);
@@ -81,14 +81,14 @@ export function Anteilsbalken({
 
   return (
     <div className={className}>
-      {titel && (
+      {title && (
         <p className="mb-1.5 font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-          {titel}
+          {title}
         </p>
       )}
       <div
         role="img"
-        aria-label={`${titel ? `${titel}: ` : ""}${beschreibung || "keine Angaben"}`}
+        aria-label={`${title ? `${title}: ` : ""}${beschreibung || "keine Angaben"}`}
         // `relative` trägt die Marke, `overflow-hidden` schneidet die
         // Segmentkanten auf den Radius — die Marke sitzt darüber und darf
         // deshalb nicht mitgeschnitten werden.

@@ -99,10 +99,10 @@ def _verlauf_zeilen(verlauf: list[dict] | None) -> str:
     """Gesprächsverlauf als kompakte Zeilen (leer ohne Verlauf)."""
     zeilen = []
     for runde in (verlauf or [])[-VERLAUF_MAX_RUNDEN:]:
-        frage = " ".join(str(runde.get("question") or "").split())[:_VERLAUF_FRAGE_MAX]
+        question = " ".join(str(runde.get("question") or "").split())[:_VERLAUF_FRAGE_MAX]
         answer = " ".join(str(runde.get("answer") or "").split())[:_VERLAUF_ANTWORT_MAX]
-        if frage:
-            zeilen.append(f"- Frage: {frage}" + (f" — Antwort (gekürzt): {answer}" if answer else ""))
+        if question:
+            zeilen.append(f"- Frage: {question}" + (f" — Antwort (gekürzt): {answer}" if answer else ""))
     return "\n".join(zeilen)
 
 
@@ -321,10 +321,10 @@ def analyse_query(question: str, model: str = EXPAND_MODEL,
             messages=[{"role": "user", "content": prompt}], **extra,
         )
         data = json.loads(_strip_fences(resp.choices[0].message.content or ""))
-        frage = " ".join(str(data.get("question") or "").split())[:300]
+        umgeschrieben = " ".join(str(data.get("question") or "").split())[:300]
         begriffe = " ".join(str(data.get("terms") or "").split())
         typ = str(data.get("kind") or "").strip().lower()
-        partei = (str(data.get("party")).strip() or None) if data.get("party") else None
+        party = (str(data.get("party")).strip() or None) if data.get("party") else None
         # Multi-Query (Task 32): Perspektiv-Umformulierungen füllen Lücken,
         # die die eine Expansion verfehlt („Wie ist der Stand?" findet keine
         # Finanzierungs-Beschlüsse). Kandidaten-Union passiert in hybrid_search.
@@ -340,9 +340,9 @@ def analyse_query(question: str, model: str = EXPAND_MODEL,
             # fehlt die Person bzw. die aufgelöste Sitzung.
             typ = "topic"
         if typ != "party":
-            partei = None
-        out = {"question": frage or question, "terms": begriffe or question,
-               "kind": typ, "party": partei, "variants": varianten, "eng": eng,
+            party = None
+        out = {"question": umgeschrieben or question, "terms": begriffe or question,
+               "kind": typ, "party": party, "variants": varianten, "eng": eng,
                "rechercheplan": _research_plan(data)}
         if begriffe:  # nur brauchbare Analysen cachen
             if len(_ANALYSE_CACHE) >= _EXPAND_CACHE_MAX:
@@ -489,14 +489,14 @@ _LATEST_RE = re.compile(
 )
 
 
-def recency_intent(frage: str) -> bool:
+def recency_intent(question: str) -> bool:
     """Fragt jemand nach dem HEUTIGEN Stand? Wortliste statt LLM-Feld —
     deterministisch, kostenlos, testbar. Eine konkrete Jahreszahl in der
     Frage schaltet den Bonus ab (wer nach 2019 fragt, will 2019)."""
-    return bool(_RECENCY_RE.search(frage)) and not _HISTORISCH_RE.search(frage)
+    return bool(_RECENCY_RE.search(question)) and not _HISTORISCH_RE.search(question)
 
 
-def latest_intent(frage: str) -> bool:
+def latest_intent(question: str) -> bool:
     """Will die Frage ausdrücklich die zeitlich neuesten Entscheidungen?
 
     Enger als :func:`recency_intent`: Ein allgemeiner „aktueller Stand“ braucht
@@ -504,7 +504,7 @@ def latest_intent(frage: str) -> bool:
     ist dagegen das Datum die eigentliche Antwort und darf nicht gegen den
     semantisch ähnlichsten älteren Titel verlieren.
     """
-    return bool(_LATEST_RE.search(frage or "")) and not _HISTORISCH_RE.search(frage or "")
+    return bool(_LATEST_RE.search(question or "")) and not _HISTORISCH_RE.search(question or "")
 
 
 def latest_real_decision(candidates: list[dict]) -> dict | None:
@@ -534,23 +534,23 @@ def latest_place_answer(candidates: list[dict]) -> str:
     decision = latest_real_decision(candidates)
     if not decision:
         latest = candidates[0]
-        datum = _datum_de(latest.get("session_date"))
+        date = _datum_de(latest.get("session_date"))
         title = " ".join(str(latest.get("title") or "Unbenannter Vorgang").split())[:300]
         return (
             "Einen angenommenen oder abgelehnten Beschluss habe ich dazu nicht gefunden. "
-            f"Der jüngste Ratsvorgang war am {datum}: „{title}“ "
+            f"Der jüngste Ratsvorgang war am {date}: „{title}“ "
             f"(Ergebnis: {latest.get('outcome') or 'nicht angegeben'}) [{latest['id']}]."
         )
 
-    datum = _datum_de(decision.get("session_date"))
+    date = _datum_de(decision.get("session_date"))
     title = " ".join(str(decision.get("title") or "Unbenannter Beschluss").split())[:300]
     if decision.get("outcome") == "abgelehnt":
         answer = (
-            f"Die jüngste Abstimmungsentscheidung war am {datum}: „{title}“ wurde "
+            f"Die jüngste Abstimmungsentscheidung war am {date}: „{title}“ wurde "
             f"abgelehnt, also nicht beschlossen [{decision['id']}]."
         )
     else:
-        answer = f"Am {datum} wurde „{title}“ beschlossen [{decision['id']}]."
+        answer = f"Am {date} wurde „{title}“ beschlossen [{decision['id']}]."
 
     # Ein neuerer Bericht ist nützlich, darf aber nie als neuerer „Beschluss“
     # erscheinen. Höchstens einen nennen, damit die Antwort kurz bleibt.
@@ -582,13 +582,13 @@ def _falte(text: str) -> str:
 _ANKER_STOPP = {"stadt", "oldenburg", "stadt oldenburg", "rat", "stadtrat"}
 
 
-def finde_entitaeten(store, frage: str, max_n: int = 2) -> list[dict]:
+def finde_entitaeten(store, question: str, max_n: int = 2) -> list[dict]:
     """Deterministischer Frage-Anker: welche bekannten Entitäten (Themen-
     Seiten) nennt die Frage wörtlich? Matcht ganze Wörter auf gefalteten
     Namen UND den kuratierten Glossar-Aliassen (council_entity_aliases,
     source='glossar' — dieselbe Tabelle wie die Themen-Dubletten). Längere
     (spezifischere) Treffer zuerst, dann nach Beschlusszahl."""
-    frage_f = f" {_falte(frage)} "
+    frage_f = f" {_falte(question)} "
     treffer: dict[int, tuple[int, int, str]] = {}
     for eid, name, n in store.entity_suchindex():
         name_f = _falte(name)
@@ -623,28 +623,28 @@ def _nachname_gefaltet(name: str) -> str | None:
 def parteien_aufloesen(store, rows: list[dict]) -> None:
     """FDP/Volt-Beiträge über den Sprecher in die EINZEL-Partei auflösen
     (Tims Standing-Punkt): Das Protokoll labelt nur die Gruppe, die
-    Stammdaten kennen die Partei. Mutiert ``partei`` in-place; ohne
+    Stammdaten kennen die Partei. Mutiert ``party`` in-place; ohne
     Stammdaten-Treffer bleibt das quellentreue Gruppen-Label stehen.
     Zeitlich bleibt alles korrekt — die Protokoll-Labels selbst sind die
     zeitrichtige Quelle (Höpken stand damals als Linke im Protokoll), hier
     wird nur INNERHALB einer bestehenden Gruppe verfeinert."""
     betroffen = [r for r in rows
-                 if _fraktions_label(r.get("partei")) in _AUFLOESBARE_GRUPPEN]
+                 if _fraktions_label(r.get("party")) in _AUFLOESBARE_GRUPPEN]
     if not betroffen:
         return
     try:
         mapping = {}
-        for name, partei in store.personen_suchindex():
+        for name, party in store.personen_suchindex():
             nn = _nachname_gefaltet(name)
             if nn:
-                mapping[nn] = partei
+                mapping[nn] = party
     except Exception:  # noqa: BLE001 — Auflösung ist Zusatz, nie Blocker
         return
     for r in betroffen:
         toks = _falte(r.get("speaker") or "").split()
-        partei = next((mapping[t] for t in reversed(toks) if t in mapping), None)
-        if partei:
-            r["partei"] = partei
+        party = next((mapping[t] for t in reversed(toks) if t in mapping), None)
+        if party:
+            r["party"] = party
 
 
 def protokolle_verlinken(store, rows: list[dict]) -> None:
@@ -661,7 +661,7 @@ def protokolle_verlinken(store, rows: list[dict]) -> None:
         r["protokoll_url"] = urls.get(r.get("ksinr"))
 
 
-def finde_person(store, frage: str) -> dict | None:
+def finde_person(store, question: str) -> dict | None:
     """Personen-Fragetyp: Nennt die Frage eine Ratsperson (Voll- oder
     Nachname, umlaut-gefaltet, ganze Wörter)? Liefert
     {name, partei, nachname} — deterministisch, kostenlos."""
@@ -669,9 +669,9 @@ def finde_person(store, frage: str) -> dict | None:
         index = store.personen_suchindex()
     except Exception:  # noqa: BLE001
         return None
-    frage_f = f" {_falte(frage)} "
+    frage_f = f" {_falte(question)} "
     treffer: list[tuple[int, dict]] = []
-    for name, partei in index:
+    for name, party in index:
         name_f = _falte(name)
         nachname_f = _nachname_gefaltet(name)
         if not nachname_f or len(nachname_f) < 4:
@@ -687,13 +687,13 @@ def finde_person(store, frage: str) -> dict | None:
         # Sprecher-Feld nie treffen (Faltung kennt keinen Rückweg).
         original = next((t for t in reversed(name.replace(".", " ").split())
                          if _falte(t) == nachname_f), name.split()[-1])
-        treffer.append((laenge, {"name": name, "partei": partei, "nachname": original}))
+        treffer.append((laenge, {"name": name, "party": party, "nachname": original}))
     if not treffer:
         return None
     return max(treffer, key=lambda t: t[0])[1]
 
 
-def finde_ort(frage: str, store=None) -> dict | None:
+def finde_ort(question: str, store=None) -> dict | None:
     """Katalogort in einer Frage deterministisch erkennen.
 
     Längere Aliase gewinnen, sodass „Neu-Donnerschwee“ nicht zusätzlich als
@@ -702,7 +702,7 @@ def finde_ort(frage: str, store=None) -> dict | None:
     from council import places
 
     catalog_places = store.all_places() if store is not None else None
-    found = places.find_mentions(frage, max_n=1, catalog_places=catalog_places)
+    found = places.find_mentions(question, max_n=1, catalog_places=catalog_places)
     if not found:
         return None
     place = found[0]
@@ -711,18 +711,18 @@ def finde_ort(frage: str, store=None) -> dict | None:
             "description": place.description}
 
 
-def anker_ids_fuer(store, frage: str) -> list[int]:
+def anker_ids_fuer(store, question: str) -> list[int]:
     """Bequemer Einzeiler für alle Aufrufer (Router, Deep-Research, Evals):
     erkannte Entitäten → deren Beschluss-ids, neueste zuerst. Leer bei
     Fehlern — der Anker ist Zusatz, nie Blocker."""
     try:
-        ent = finde_entitaeten(store, frage)
+        ent = finde_entitaeten(store, question)
         return store.decision_ids_for_entities([e["id"] for e in ent]) if ent else []
     except Exception:  # noqa: BLE001
         return []
 
 
-def steckbriefe_fuer(store, frage: str, max_n: int = 2) -> list[dict]:
+def steckbriefe_fuer(store, question: str, max_n: int = 2) -> list[dict]:
     """Kurzbeschreibungen der in der Frage genannten Entitäten.
 
     „Was ist die GSG, was macht sie?" (echte Nutzerfrage 11.08.) lässt sich aus
@@ -731,7 +731,7 @@ def steckbriefe_fuer(store, frage: str, max_n: int = 2) -> list[dict]:
     Leer bei Fehlern: Hintergrund ist Zusatz, nie Blocker.
     """
     try:
-        ent = finde_entitaeten(store, frage, max_n=max_n)
+        ent = finde_entitaeten(store, question, max_n=max_n)
         return store.entity_steckbriefe([e["id"] for e in ent]) if ent else []
     except Exception:  # noqa: BLE001
         return []
@@ -782,12 +782,12 @@ _MORGEN_TAGESZEIT_RE = re.compile(
     r"\b(guten|am|jeden|den|diesen|des)\s*$", re.IGNORECASE)
 
 
-def _datum_in_frage(frage: str) -> tuple[str | None, str | None]:
+def _datum_in_frage(question: str) -> tuple[str | None, str | None]:
     """(ISO-Datum, None) bei vollem Datum, (None, "-MM-DD") ohne Jahr,
     (None, None) ohne Fund. Eine Zeitraum-Präposition davor („seit dem …")
     disqualifiziert den Fund — das ist eine Spannen-, keine Terminangabe."""
-    for m in list(_DATUM_NUM_RE.finditer(frage)) + list(_DATUM_WORT_RE.finditer(frage)):
-        if _ZEITRAUM_PREP_RE.search(frage[:m.start()]):
+    for m in list(_DATUM_NUM_RE.finditer(question)) + list(_DATUM_WORT_RE.finditer(question)):
+        if _ZEITRAUM_PREP_RE.search(question[:m.start()]):
             continue
         tag, monat_raw = int(m.group(1)), m.group(2)
         monat = int(monat_raw) if monat_raw.isdigit() else _MONATE[_falte(monat_raw)]
@@ -799,11 +799,11 @@ def _datum_in_frage(frage: str) -> tuple[str | None, str | None]:
                 year += 2000
             return f"{year:04d}-{monat:02d}-{tag:02d}", None
         return None, f"-{monat:02d}-{tag:02d}"
-    for m in _RELATIV_RE.finditer(frage):
-        if _ZEITRAUM_PREP_RE.search(frage[:m.start()]):
+    for m in _RELATIV_RE.finditer(question):
+        if _ZEITRAUM_PREP_RE.search(question[:m.start()]):
             continue  # „bis heute", „seit gestern", „ab morgen" sind Spannen
         wort = (m.group(1) or m.group(2)).lower()
-        if wort == "morgen" and _MORGEN_TAGESZEIT_RE.search(frage[:m.start()]):
+        if wort == "morgen" and _MORGEN_TAGESZEIT_RE.search(question[:m.start()]):
             continue  # „Guten Morgen …", „am Morgen" — Gruß/Tageszeit, kein Tag
         from datetime import date as _date, timedelta as _timedelta
         return (_date.today() + _timedelta(days=_RELATIV_TAGE[wort])).isoformat(), None
@@ -839,13 +839,13 @@ def _gremium_genannt(name_f: str, frage_f: str) -> bool:
     return re.search(muster, frage_f) is not None
 
 
-def _gremium_in_frage(store, frage: str) -> str | None:
+def _gremium_in_frage(store, question: str) -> str | None:
     """Gefaltetes Namens-Fragment des gefragten Gremiums, ``"rat"`` fürs
     Plenum, None ohne Gremium. Vollnamen kommen aus dem Bestand (sie ändern
     sich über die Jahre), Kurzformen („Bauausschuss") aus der Alias-Tabelle.
     „Rat"/„Stadtrat" allein ist bewusst NUR ein Gremium-Signal — den Ausschlag
     gibt erst das Datum bzw. die Sitzungs-Phrase (finde_sitzungen)."""
-    frage_f = f" {_falte(frage)} "
+    frage_f = f" {_falte(question)} "
     beste: str | None = None
     try:
         namen = store.get_all_committee_names()
@@ -875,7 +875,7 @@ def _gremium_passt(fragment: str, committee: str | None) -> bool:
 # Sitzungs-Anlass: Ein Datum allein macht noch keine Sitzungsfrage („Der
 # Bericht vom 12.06. sagt …") — es braucht ein Gremium oder ein Sitzungswort.
 _SITZUNG_ANLASS_RE = re.compile(
-    r"\b(sitzung\w*|beschloss\w*|official_text\w*|beschluesse\w*|entschied\w*|"
+    r"\b(sitzung\w*|beschloss\w*|beschluss\w*|beschluesse\w*|entschied\w*|"
     r"entscheidung\w*|tagesordnung\w*|getagt|tagte?n?|beraten|abgestimmt|"
     r"ergebnis\w*)\b")
 _SITZUNG_ZURUECK_RE = re.compile(
@@ -889,7 +889,7 @@ _SITZUNG_VORAUS_RE = re.compile(
 _SITZUNGEN_MAX = 3
 
 
-def finde_sitzungen(store, frage: str) -> list[dict]:
+def finde_sitzungen(store, question: str) -> list[dict]:
     """Sitzungs-Fragetyp: Nennt die Frage ein konkretes Sitzungsdatum („am
     17.06.2026", „17. Juni") oder die letzte/nächste Sitzung eines Gremiums?
     Liefert die gemeinten Sitzungen, jede mit ``beschluss_ids`` in
@@ -897,22 +897,22 @@ def finde_sitzungen(store, frage: str) -> list[dict]:
     Tagesordnung. Deterministisch wie finde_person; leer bei Fehlern, der
     Sitzungs-Anker ist Zusatz, nie Blocker."""
     try:
-        return _finde_sitzungen(store, frage)
+        return _finde_sitzungen(store, question)
     except Exception:  # noqa: BLE001
         return []
 
 
-def _finde_sitzungen(store, frage: str) -> list[dict]:
+def _finde_sitzungen(store, question: str) -> list[dict]:
     from datetime import date as _date
     heute = _date.today().isoformat()
-    datum, monat_tag = _datum_in_frage(frage)
-    committee = _gremium_in_frage(store, frage)
-    frage_f = _falte(frage)
+    date, monat_tag = _datum_in_frage(question)
+    committee = _gremium_in_frage(store, question)
+    frage_f = _falte(question)
     rows: list[dict] = []
-    if (datum or monat_tag) and not committee and not _SITZUNG_ANLASS_RE.search(frage_f):
+    if (date or monat_tag) and not committee and not _SITZUNG_ANLASS_RE.search(frage_f):
         return []
-    if datum:
-        rows = [r for r in store.sessions_on(datum)
+    if date:
+        rows = [r for r in store.sessions_on(date)
                 if committee is None or _gremium_passt(committee, r.get("committee"))]
     elif monat_tag:
         # Ohne Jahr: die jüngste vergangene Sitzung an diesem Monatstag —
@@ -1001,10 +1001,10 @@ def _sitzungen_block(sitzungen: list[dict] | None) -> str:
                      "das der normale Ablauf und kein Fehler ist.")
         zeilen.append(kopf)
         for a in (s.get("agenda") or [])[:_SITZUNG_AGENDA_MAX]:
-            zeile = f"  · TOP {a.get('item_number') or '?'}: {(a.get('title') or '')[:160]}"
+            row = f"  · TOP {a.get('item_number') or '?'}: {(a.get('title') or '')[:160]}"
             if a.get("summary"):
-                zeile += f" — {' '.join(a['summary'].split())[:200]}"
-            zeilen.append(zeile)
+                row += f" — {' '.join(a['summary'].split())[:200]}"
+            zeilen.append(row)
     return ("\nZUR GEFRAGTEN SITZUNG (aus dem Sitzungskalender — Termin und "
             "Tagesordnung als „Laut Sitzungskalender …“ nennen, NIE mit [id]):\n"
             + "\n".join(zeilen) + "\n"
@@ -1019,7 +1019,7 @@ def sitzungs_leer_text(sitzungen: list[dict]) -> str:
     Frage nach einer protokolllosen Sitzung das pauschale „nichts gefunden"."""
     s = sitzungen[0]
     name = s.get("committee") or "Das Gremium"
-    datum = _datum_de(s["session_date"]) if s.get("session_date") else "unbekanntem Datum"
+    date = _datum_de(s["session_date"]) if s.get("session_date") else "unbekanntem Datum"
     roh = [a for a in (s.get("agenda") or []) if (a.get("title") or "").strip()]
     try:
         # Der Anriss nennt INHALTE, keine Formalien (Beschlussfähigkeit,
@@ -1031,9 +1031,9 @@ def sitzungs_leer_text(sitzungen: list[dict]) -> str:
     tops = [f"„{a['title'].strip()}“" for a in (inhalt or roh)[:3]]
     to = f" Auf der Tagesordnung: {', '.join(tops)}." if tops else ""
     if s.get("kuenftig"):
-        return (f"{name} tagt erst am {datum} — Beschlüsse gibt es von dieser "
+        return (f"{name} tagt erst am {date} — Beschlüsse gibt es von dieser "
                 f"Sitzung also noch nicht.{to}")
-    return (f"{name} hat am {datum} getagt, aber das Protokoll liegt noch "
+    return (f"{name} hat am {date} getagt, aber das Protokoll liegt noch "
             f"nicht vor — die Stadt veröffentlicht Protokolle in der Regel "
             f"erst einige Wochen bis ein, zwei Monate nach dem Termin. Das "
             f"ist der normale Ablauf, kein Fehler. Sobald das Protokoll da "
@@ -1126,7 +1126,7 @@ def markiere_veraltete(store, candidates: list[dict],
         top = max(juengere, key=lambda r: str(r.get("session_date") or ""))
         c["neuere_station"] = {
             "id": top["id"] if top["id"] in kandidaten_ids else None,
-            "datum": top.get("session_date"), "committee": top.get("committee"),
+            "date": top.get("session_date"), "committee": top.get("committee"),
         }
 
 
@@ -1147,8 +1147,8 @@ def _build_context(candidates: list[dict]) -> str:
     for c in candidates:
         # Datum deutsch: das Modell übernimmt Formate aus dem Kontext wörtlich,
         # ein ISO-Datum landet sonst als „am 2026-06-01" in der Antwort.
-        datum = _datum_de(c["session_date"]) if c.get("session_date") else None
-        meta = " · ".join(p for p in (c.get("committee"), datum, c.get("outcome")) if p)
+        date = _datum_de(c["session_date"]) if c.get("session_date") else None
+        meta = " · ".join(p for p in (c.get("committee"), date, c.get("outcome")) if p)
         body = (c.get("summary") or c.get("official_text") or "").strip()[:450]
         vorlage = (c.get("vorlage_excerpt") or "").strip()
         suffix = f" — Aus der Vorlage: {vorlage}" if vorlage else ""
@@ -1202,11 +1202,11 @@ def _build_context(candidates: list[dict]) -> str:
         # ein Gremium — das Modell soll den älteren Stand nie als aktuell
         # verkaufen (markiere_veraltete setzt das Feld deterministisch).
         ns = c.get("neuere_station")
-        if ns and ns.get("datum"):
+        if ns and ns.get("date"):
             verweis = f", siehe [{ns['id']}]" if ns.get("id") else ""
             committee = f" ({ns['committee']})" if ns.get("committee") else ""
             suffix += (f" — ⚠ ÄLTERE STATION: Zu dieser Vorlage gibt es eine NEUERE Station "
-                       f"vom {_datum_de(ns['datum'])}{committee}{verweis} — "
+                       f"vom {_datum_de(ns['date'])}{committee}{verweis} — "
                        f"die neuere gilt als aktueller Stand")
         lines.append(f"[{c['id']}] {(c.get('title') or '').strip()} ({meta}): {body}{suffix}")
     return "\n".join(lines) or "(keine passenden Beschlüsse gefunden)"
@@ -1224,17 +1224,17 @@ def _factions_of(c: dict) -> list[str]:
     return [str(f).strip() for f in raw or [] if str(f).strip()]
 
 
-def deep_zerlege(frage: str, model: str = EXPAND_MODEL) -> list[dict]:
+def deep_zerlege(question: str, model: str = EXPAND_MODEL) -> list[dict]:
     """Deep Research (Task 34): Frage → 3-5 Recherche-Facetten
     [{name, frage, begriffe}]. Fallback: eine Facette = die Frage selbst."""
-    fallback = [{"name": "Gesamtbild", "question": frage, "terms": frage}]
+    fallback = [{"name": "Gesamtbild", "question": question, "terms": question}]
     extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in model else {}
     try:
         resp = llm.chat_complete(
             model=model, _feature="deep_zerlegung", temperature=0, max_tokens=500,
             timeout=12.0, response_format={"type": "json_object"},
             messages=[{"role": "user", "content": prompts.render("deep_zerlegung",
-                                                                 frage=frage.strip()[:300])}],
+                                                                 question=question.strip()[:300])}],
             **extra)
         data = json.loads(_strip_fences(resp.choices[0].message.content or ""))
         facetten = []
@@ -1246,7 +1246,7 @@ def deep_zerlege(frage: str, model: str = EXPAND_MODEL) -> list[dict]:
                 continue
             facetten.append({
                 "name": " ".join(str(f.get("name") or "Facette").split())[:40],
-                "frage": fr,
+                "question": fr,
                 "terms": " ".join(str(f.get("terms") or fr).split())[:200],
             })
         return facetten or fallback
@@ -1312,12 +1312,12 @@ def _planungen_block(planungen: list[dict] | None) -> str:
         return ""
     zeilen = "\n".join(
         f"- {p.get('vorlage_titel') or p.get('template_number')}: {p.get('committee')} am "
-        f"{_datum_de(p.get('datum'))}" for p in planungen[:8])
+        f"{_datum_de(p.get('date'))}" for p in planungen[:8])
     return ("\nGEPLANTE NÄCHSTE STATIONEN (aus den Beratungsfolgen — für den Abschnitt "
             "„Wie es weitergeht“; als Termin nennen, NIE mit [id]):\n" + zeilen + "\n")
 
 
-def deep_bericht_stream(frage: str, candidates: list[dict],
+def deep_bericht_stream(question: str, candidates: list[dict],
                         presse: list[dict] | None = None,
                         debatten: list[dict] | None = None,
                         haushalt: list[dict] | None = None,
@@ -1342,7 +1342,7 @@ def deep_bericht_stream(frage: str, candidates: list[dict],
     geld = _geld_vereinheitlichen(geld, haushalt, taxes, tax_capacity)
     zusatz = (_debatten_block(debatten) + _presse_block(presse)
               + geld_regeln(geld) + geld_block(geld) + _anlagen_block(anlagen))
-    prompt = prompts.render("deep_bericht", frage=frage.strip()[:300],
+    prompt = prompts.render("deep_bericht", question=question.strip()[:300],
                             context=_build_context(candidates),
                             zusatz=zusatz,
                             planungen=_planungen_block(planungen))
@@ -1436,7 +1436,7 @@ def partei_meinungen(question: str, rows: list[dict], model: str = MODEL) -> lis
         # Beiträge (an der Stadion-Frage gesehen: SPD 10 + SPD-Fraktion 1).
         # Gruppen („FDP/Volt", „Für Oldenburg") bleiben ungeteilt, alles
         # Unbekannte behält sein quellentreues Label.
-        label = ratspartei_label(r.get("partei")) or _fraktions_label(r.get("partei"))
+        label = ratspartei_label(r.get("party")) or _fraktions_label(r.get("party"))
         if not label:
             continue  # Verwaltung, Einwohner, Referenten — keine Fraktionsmeinung
         gruppen.setdefault(label, []).append(r)
@@ -1464,7 +1464,7 @@ def partei_meinungen(question: str, rows: list[dict], model: str = MODEL) -> lis
             f"{(b.get('text') or '').strip()[:300]}"
             for b in gruppen[label])
         teile.append(f"{label} ({len(gruppen[label])} Beiträge):\n{zeilen}")
-    prompt = prompts.render("partei_meinungen", frage=question.strip()[:300],
+    prompt = prompts.render("partei_meinungen", question=question.strip()[:300],
                             beitraege="\n".join(teile))
     extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in model else {}
     # 2000 Token reichten nicht mehr: Mit dem Beschluss-Anker stehen bis zu 15
@@ -1481,12 +1481,12 @@ def partei_meinungen(question: str, rows: list[dict], model: str = MODEL) -> lis
         return None
     out = []
     for e in data:
-        if not isinstance(e, dict) or e.get("partei") not in gruppen:
+        if not isinstance(e, dict) or e.get("party") not in gruppen:
             continue  # Halluzinations-Guard: nur Fraktionen aus dem Input
         kern = e.get("kernaussage") if isinstance(e.get("kernaussage"), dict) else None
         haltung = str(e.get("haltung") or "").strip().lower()
         out.append({
-            "partei": e["partei"],
+            "party": e["party"],
             "haltung": haltung if haltung in ("dafür", "dagegen", "offen", "gewandelt") else "offen",
             "position": str(e.get("position") or "").strip()[:400],
             "einig": bool(e.get("einig", True)),
@@ -1494,18 +1494,18 @@ def partei_meinungen(question: str, rows: list[dict], model: str = MODEL) -> lis
             "kernaussage": {
                 "text": str(kern.get("text") or "").strip()[:300],
                 "speaker": str(kern.get("speaker") or "").strip()[:80] or None,
-                "datum": str(kern.get("datum") or "").strip()[:10] or None,
+                "date": str(kern.get("date") or "").strip()[:10] or None,
             } if kern and kern.get("text") else None,
-            "beitraege": len(gruppen[e["partei"]]),
+            "beitraege": len(gruppen[e["party"]]),
             # Aufklappbare Zeile (Tims Wunsch): die verdichteten Beiträge im
             # Wortlaut — dieselben, die auch das LLM gesehen hat.
             "beitraege_liste": [{
                 "speaker": b.get("speaker"),
-                "datum": _datum_de(b.get("session_date")),
+                "date": _datum_de(b.get("session_date")),
                 "art": b.get("art"),
                 "committee": b.get("committee"),
                 "text": (b.get("text") or "").strip()[:2000],
-            } for b in gruppen[e["partei"]]],
+            } for b in gruppen[e["party"]]],
         })
     return [e for e in out if e["position"]] or None
 
@@ -1525,7 +1525,7 @@ def _presse_block(presse: list[dict] | None) -> str:
     if not presse:
         return ""
     zeilen = "\n".join(
-        f"- {p.get('titel', '')} (Pressemitteilung der Stadt vom {_datum_de(p.get('datum'))}): "
+        f"- {p.get('title', '')} (Pressemitteilung der Stadt vom {_datum_de(p.get('date'))}): "
         f"{(p.get('auszug') or '').strip()[:280]}"
         for p in presse)
     return ("\nAKTUELLES VON DER STADT (thematisch geprüfte Pressemitteilungen). Ergänze\n"
@@ -1545,8 +1545,8 @@ def _debatten_block(debatten: list[dict] | None, eng: bool = False) -> str:
     zeilen = []
     for d in debatten:
         wer = d.get("speaker") or "?"
-        if d.get("partei"):
-            wer += f" ({d['partei']})"
+        if d.get("party"):
+            wer += f" ({d['party']})"
         kopf = f"{art_label.get(d.get('art') or 'rede', 'Redebeitrag')} von {wer}"
         if d.get("session_date"):
             kopf += f" am {_datum_de(d['session_date'])}"
@@ -1560,10 +1560,10 @@ def _debatten_block(debatten: list[dict] | None, eng: bool = False) -> str:
         # Beschluss zu zitieren.
         if d.get("zu_beschluss"):
             kopf += f" — Aussprache zum Beschluss [{d['zu_beschluss']}]"
-        zeile = f"- {kopf}: {(d.get('text') or '').strip()[:400]}"
+        row = f"- {kopf}: {(d.get('text') or '').strip()[:400]}"
         if d.get("answer"):
-            zeile += f" — Antwort der Verwaltung: {(d['answer'] or '').strip()[:300]}"
-        zeilen.append(zeile)
+            row += f" — Antwort der Verwaltung: {(d['answer'] or '').strip()[:300]}"
+        zeilen.append(row)
     if eng:
         # Punktfrage: Die Wortbeiträge bleiben im Kontext (manchmal steckt die
         # gesuchte Tatsache genau dort), aber der Meinungsbild-Zwang entfällt —
@@ -1826,7 +1826,7 @@ _F_NACHBEWILLIGUNG = re.compile(
 _F_KENNZAHL = re.compile(
     r"kennzahl|eigenkapitalquote|anlagenintensitaet|infrastrukturquote|"
     r"steuerquote|personalintensitaet|reinvestitionsquote|"
-    r"vermoegen je population|vermoegen pro population")
+    r"vermoegen je einwohner|vermoegen pro einwohner")
 _F_INVEST = re.compile(
     r"investit|investier|investiv|\bgebaut\b|\bbauen\b|neubau|baumassnahm|"
     r"finanzhaushalt|auszahlung")
@@ -1858,17 +1858,17 @@ _F_STREIT = re.compile(
 _F_JAHRGANG = re.compile(r"\b(19[89]\d|20[0-4]\d)\b")
 
 
-def haushaltsjahr(frage: str) -> int | None:
+def haushaltsjahr(question: str) -> int | None:
     """Das Haushaltsjahr aus der Frage, falls eines darinsteht.
 
     Nur die Änderungslisten brauchen das: Sie liegen je Jahrgang vor, und
     „Wer wollte den Haushalt 2024 ändern?" meint 2024 und nicht den jüngsten
     Jahrgang. Steht keine Jahreszahl da, entscheidet die Quelle."""
-    m = _F_JAHRGANG.search(frage or "")
+    m = _F_JAHRGANG.search(question or "")
     return int(m.group(1)) if m else None
 
 
-def geld_facetten(frage: str, typ: str = "topic") -> set[str]:
+def geld_facetten(question: str, typ: str = "topic") -> set[str]:
     """Welche Haushalts-Quellen beantworten diese Frage? (Deterministisch.)
 
     Gemessen am ROHEN Fragewortlaut — nicht an den expandierten Suchbegriffen
@@ -1881,7 +1881,7 @@ def geld_facetten(frage: str, typ: str = "topic") -> set[str]:
     ist der Normalfall — „Wie ist der Stand beim Stadion?" soll ihn nicht
     haben.
     """
-    t = _falte(frage or "")
+    t = _falte(question or "")
     f: set[str] = set()
     if _F_PRUEFUNG.search(t):
         f.add("pruefung")
@@ -1973,7 +1973,7 @@ def _sicher(fn, *args, standard=None):
         return standard
 
 
-def geld_kontext(store, frage: str, begriffe: str = "", typ: str = "topic") -> dict:
+def geld_kontext(store, question: str, begriffe: str = "", typ: str = "topic") -> dict:
     """Alle einschlägigen Haushalts-Quellen zu einer Frage in EINEM Aufruf.
 
     Der Router ruft nur noch das hier; welche Store-Methoden dabei laufen,
@@ -1982,9 +1982,9 @@ def geld_kontext(store, frage: str, begriffe: str = "", typ: str = "topic") -> d
     Quellen-Ereignis, und im Log ist damit ohne Rätselraten zu sehen, warum
     eine Antwort eine Zahl kannte oder eben nicht.
     """
-    facetten = geld_facetten(frage, typ)
+    facetten = geld_facetten(question, typ)
     # Die Begriffe kommen aus der Expansion; ohne sie tut es die Frage selbst.
-    woerter = [w for w in (begriffe or frage or "").split() if w]
+    woerter = [w for w in (begriffe or question or "").split() if w]
     aus: dict = {"facetten": sorted(facetten)}
     if "fees" in facetten:
         aus["fees"] = _sicher(store.gebuehren_fuer_begriffe, woerter)
@@ -1995,7 +1995,7 @@ def geld_kontext(store, frage: str, begriffe: str = "", typ: str = "topic") -> d
     if "ausgleich" in facetten:
         # Wie bisher: der Dämpfer nur, wenn es wirklich um Steuern geht —
         # sonst hinge er an jeder Zuweisungs-Frage ohne Bezug.
-        if aus.get("taxes") or _F_AUSGLEICH.search(_falte(frage or "")):
+        if aus.get("taxes") or _F_AUSGLEICH.search(_falte(question or "")):
             aus["tax_capacity"] = _sicher(store.steuerkraft_kontext)
     if "ist" in facetten:
         aus["ist"] = _sicher(store.result_actual_for_terms, woerter)
@@ -2023,7 +2023,7 @@ def geld_kontext(store, frage: str, begriffe: str = "", typ: str = "topic") -> d
         aus["kassensicht"] = _sicher(store.kassensicht_kontext)
     if "supplementary_approvals" in facetten:
         aus["supplementary_approvals"] = _sicher(store.nachbewilligungen_kontext,
-                                           haushaltsjahr(frage))
+                                           haushaltsjahr(question))
     if "indicators" in facetten:
         aus["indicators"] = _sicher(store.kennzahlen_kontext)
     if "investitionen" in facetten:
@@ -2035,7 +2035,7 @@ def geld_kontext(store, frage: str, begriffe: str = "", typ: str = "topic") -> d
     if "antraege" in facetten:
         # Das Jahr aus der FRAGE, nicht aus den Begriffen: Die Expansion
         # streut Jahreszahlen ein, die niemand getippt hat.
-        aus["antraege"] = _sicher(store.haushaltsantraege_kontext, haushaltsjahr(frage))
+        aus["antraege"] = _sicher(store.haushaltsantraege_kontext, haushaltsjahr(question))
     return aus
 
 
@@ -2093,7 +2093,7 @@ def geld_grafik(store, geld: dict) -> dict | None:
             s = geld["schulden"]
             return {
                 "art": "schulden",
-                "titel": "Schuldenstand der Stadt",
+                "title": "Schuldenstand der Stadt",
                 "unit": "Mio. €",
                 "nachkomma": 1,
                 "series": series,
@@ -2119,11 +2119,11 @@ def geld_grafik(store, geld: dict) -> dict | None:
                  for r in store.get_steuereinnahmen()
                  if r["art"] == art and r.get("amount") is not None]
         if len(series) >= 2:
-            titel = ("Steuereinnahmen insgesamt" if art == "total"
+            title = ("Steuereinnahmen insgesamt" if art == "total"
                      else f"{art} — Ist-Einnahmen")
             return {
                 "art": "taxes",
-                "titel": titel,
+                "title": title,
                 "unit": "Mio. €",
                 "nachkomma": 1,
                 "series": series,
@@ -2150,8 +2150,8 @@ def _beleg_text(b: dict | None) -> str:
         teile.append(f"S. {b['page']}")
     if not teile:
         return ""
-    stand = f", Stand {b['stand']}" if b.get("stand") else ""
-    return f" — Beleg: {', '.join(str(t) for t in teile)}{stand}"
+    as_of = f", Stand {b['as_of']}" if b.get("as_of") else ""
+    return f" — Beleg: {', '.join(str(t) for t in teile)}{as_of}"
 
 
 def _gebuehren_block(g: dict | None) -> str:
@@ -2438,10 +2438,10 @@ def _kennzahlen_block(k: dict | None) -> str:
             # statt 156,43 €) und daneben der Rechenweg, der sie nicht ergibt.
             gezeigt = (f"{value:,.{stellen}f} €".replace(",", "\u0001")
                        .replace(".", ",").replace("\u0001", "."))
-        zeile = f"- {name} {k['year']}: {gezeigt}"
+        row = f"- {name} {k['year']}: {gezeigt}"
         if formula:
-            zeile += f" (so rechnet die Stadt: {formula})"
-        zeilen.append(zeile)
+            row += f" (so rechnet die Stadt: {formula})"
+        zeilen.append(row)
     for name, year, alt, alt_b, neu, neu_b, unit in k.get("korrekturen") or []:
         zeilen.append(f"- ACHTUNG, später korrigiert: {name} {year} stand im Bericht "
                       f"{alt_b} noch bei {zeig(alt, unit)}, im Bericht {neu_b} bei "
@@ -2477,8 +2477,8 @@ def _schulden_block(s: dict | None) -> str:
     if s.get("hoch"):
         zeilen.append(f"- Höchster Stand der Reihe (sie beginnt {s['reihe_ab']}): "
                       f"{s['hoch']['year']} mit {_eur(s['hoch']['total'])}")
-    for titel, amount in s.get("arten") or []:
-        zeilen.append(f"  - davon {titel}: {_eur(amount)}")
+    for title, amount in s.get("arten") or []:
+        zeilen.append(f"  - davon {title}: {_eur(amount)}")
     if s.get("breakdown_rejected"):
         zeilen.append("  - Die Aufteilung nach Schuldenarten fehlt für dieses Jahr: "
                       "Sie ging in der Quelle selbst nicht auf und wurde deshalb "
@@ -2496,12 +2496,12 @@ def _schulden_block(s: dict | None) -> str:
                       "Abgrenzung dazu, sonst ist die Zahl beliebig.")
     b = s.get("buergschaften")
     if b and b.get("balance") is not None:
-        zeile = (f"- Zusätzlich verbürgt (KEINE Schuld, sondern ein Einstehen für "
+        row = (f"- Zusätzlich verbürgt (KEINE Schuld, sondern ein Einstehen für "
                  f"fremde Kredite) {b['year']}: {_eur(b['balance'])}")
         if b.get("rueckstellung") is not None:
-            zeile += (f"; davon hält die Stadt {_eur(b['rueckstellung'])} als "
+            row += (f"; davon hält die Stadt {_eur(b['rueckstellung'])} als "
                       f"Rückstellung für den erwarteten Ausfall vor")
-        zeilen.append(zeile + _beleg_text(b.get("beleg")))
+        zeilen.append(row + _beleg_text(b.get("beleg")))
         if b.get("reason"):
             zeilen.append(f"  - Wofür: {b['reason']}")
         zeilen.append("  Eine Bürgschaft kostet nichts, solange sie nicht "
@@ -2561,8 +2561,8 @@ def _gebaut_block(g: dict | None) -> str:
     if g.get("hoch"):
         zeilen.append(f"- Höchster Wert der Reihe (sie beginnt {g['reihe_ab']}): "
                       f"{g['hoch']['year']} mit {_eur(g['hoch']['total'])}")
-    for titel, amount in g.get("arten") or []:
-        zeilen.append(f"  - davon {titel}: {_eur(amount)}")
+    for title, amount in g.get("arten") or []:
+        zeilen.append(f"  - davon {title}: {_eur(amount)}")
     if g.get("fehlend"):
         years = ", ".join(str(j) for j in g["fehlend"])
         zeilen.append(f"- NICHT im Bestand: {years}. Dort ergeben die "
@@ -2612,7 +2612,7 @@ def _stellenplan_block(s: dict | None) -> str:
             "werden kann nur rückwärts. Rechne deshalb NIE\n„Stellen im Haushaltsjahr "
             "minus besetzt“: Das mischt zwei Stichtage und steht\nin keinem Dokument. "
             "Die unbesetzten Stellen stehen als eigene Angabe da.\nEine Zeile „Stellen "
-            "total“ gibt es im Plan nicht; addiere die Teile nicht.\nNIE mit [id]"
+            "insgesamt“ gibt es im Plan nicht; addiere die Teile nicht.\nNIE mit [id]"
             + _beleg_text(s.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n")
 
 
@@ -2628,7 +2628,7 @@ def _antraege_block(a: dict | None) -> str:
         return ""
     zeilen = []
     for st in a["stationen"]:
-        kopf = (f"- {st['committee']}, {_datum_de(st.get('datum'))}: "
+        kopf = (f"- {st['committee']}, {_datum_de(st.get('date'))}: "
                 f"{st['gesamt']} Änderungslisten zur Abstimmung")
         if st.get("verwaltung"):
             kopf += (f", davon {st['verwaltung']} der Verwaltung (Fortschreibung des "
@@ -2644,7 +2644,7 @@ def _antraege_block(a: dict | None) -> str:
     return (f"\nDER STREIT UM DEN HAUSHALT {a['year']} (Änderungslisten aus den "
             "Sitzungs-\nprotokollen; Jahreszahl = HAUSHALTSjahr, der Beschluss fällt "
             "oft im Jahr\ndavor).\nDIE GRENZE DIESER QUELLE GEHÖRT IN DIE ANTWORT: Sie "
-            "sagt, WER etwas ändern\nwollte und ob es durchkam — nicht WAS exact. "
+            "sagt, WER etwas ändern\nwollte und ob es durchkam — nicht WAS genau. "
             "Welche Position um welchen Betrag\nsteht in den Anlagen der Vorlage und "
             "liegt uns nicht als Text vor; erfinde\nkeine Inhalte dazu und leite auch "
             "keine aus dem Titel ab. Gemeinsame Listen\nzählen für jede beteiligte "
@@ -2779,7 +2779,7 @@ _EIGENES_PRAEDIKAT = re.compile(
     r"gefordert|vorgesehen|zuletzt|wann)\b", re.IGNORECASE)
 
 
-def steckbrief_karte_zeigen(frage: str) -> bool:
+def steckbrief_karte_zeigen(question: str) -> bool:
     """Soll der Steckbrief als eigene Karte ÜBER der Antwort stehen?
 
     Der Hintergrund geht immer in den Prompt — er macht die Antwort besser.
@@ -2795,9 +2795,9 @@ def steckbrief_karte_zeigen(frage: str) -> bool:
       Also die Karte weglassen — die Antwort erklärt es selbst, und die hat
       obendrein Quellen unter jedem Satz.
     """
-    if not _DEFINITIONSFRAGE.match(frage or ""):
+    if not _DEFINITIONSFRAGE.match(question or ""):
         return True
-    return bool(_EIGENES_PRAEDIKAT.search(frage or ""))
+    return bool(_EIGENES_PRAEDIKAT.search(question or ""))
 
 #: Wenige und schwache Treffer → der Ton muss mitgehen. Ohne diese Regel klingt
 #: eine dünn belegte Antwort wie eine gut belegte; genau daran hing das einzige
@@ -2833,7 +2833,7 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "topic",
         ortsregel = (
             f"\nORTSFILTER: Die Frage nennt den Katalogort „{ort.get('name', '')}“ "
             f"({ort.get('kind_label', 'Ort')}). Verwende nur Beschlüsse mit "
-            "belegtem Bezug zu exact diesem Ort; die konkrete Fundstelle steht "
+            "belegtem Bezug zu genau diesem Ort; die konkrete Fundstelle steht "
             "im Kontext als „Ortsbezug“. Verwechsle einen kleineren Ort nicht "
             "mit seinem größeren Ortsbereich und benenne eine dünne Datenlage ehrlich."
         )
@@ -2898,7 +2898,7 @@ _VEREINFACHEN_RE = re.compile(
     re.IGNORECASE)
 
 
-def will_vereinfachung(frage: str) -> bool:
+def will_vereinfachung(question: str) -> bool:
     """Bittet diese Frage darum, die vorige Antwort einfacher zu erklären?
 
     Deterministisch statt per LLM — der Knopf schickt immer denselben Satz, und
@@ -2906,7 +2906,7 @@ def will_vereinfachung(frage: str) -> bool:
     bitte"), meint dasselbe. Eine lange, inhaltliche Frage bleibt eine Frage,
     auch wenn irgendwo „einfacher" darin vorkommt.
     """
-    text = " ".join((frage or "").split())
+    text = " ".join((question or "").split())
     if len(text) > 160:
         return False
     return bool(_VEREINFACHEN_RE.search(text))
@@ -2931,13 +2931,13 @@ def _bisher_block(bisher: str | None) -> str:
             f"{text[:VEREINFACHEN_MAX_CHARS]}\n---\n\n")
 
 
-def vereinfachen_messages(frage: str, bisher: str | None, candidates: list[dict],
+def vereinfachen_messages(question: str, bisher: str | None, candidates: list[dict],
                           model: str = MODEL) -> tuple[list[dict], dict]:
     """Prompt für den Vereinfachungs-Modus. Bewusst OHNE Presse-, Debatten- und
     Haushalts-Block: Deren Kontext-Anweisungen („ergänze IMMER einen Absatz zum
     Meinungsbild") arbeiten gegen die Kürze — genau daran ist die beiläufige
     Bitte im normalen Prompt schon gescheitert."""
-    prompt = prompts.render("qa_einfach", frage=frage.strip()[:300],
+    prompt = prompts.render("qa_einfach", question=question.strip()[:300],
                             bisher=_bisher_block(bisher),
                             context=_build_context(candidates))
     extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in model else {}
@@ -2948,19 +2948,19 @@ def vereinfachen_messages(frage: str, bisher: str | None, candidates: list[dict]
 VEREINFACHEN_TOKENS = 700
 
 
-def vereinfachen_stream(frage: str, bisher: str | None, candidates: list[dict],
+def vereinfachen_stream(question: str, bisher: str | None, candidates: list[dict],
                         model: str = MODEL):
     """Die einfache Fassung als Token-Stream (wie answer_stream)."""
-    messages, extra = vereinfachen_messages(frage, bisher, candidates, model)
+    messages, extra = vereinfachen_messages(question, bisher, candidates, model)
     yield from llm.chat_stream(model=model, _feature="qa_einfach", temperature=0.2,
                                max_tokens=VEREINFACHEN_TOKENS, messages=messages, **extra)
 
 
-def vereinfachen_question(frage: str, bisher: str | None, candidates: list[dict],
+def vereinfachen_question(question: str, bisher: str | None, candidates: list[dict],
                           model: str = MODEL):
     """One-shot-Variante für den Ersatzweg, wenn der Stream abreißt.
     Liefert ``(answer, cited_ids)`` wie answer_question."""
-    messages, extra = vereinfachen_messages(frage, bisher, candidates, model)
+    messages, extra = vereinfachen_messages(question, bisher, candidates, model)
     resp = llm.chat_complete(model=model, _feature="qa_einfach", temperature=0.2,
                              max_tokens=VEREINFACHEN_TOKENS, messages=messages, **extra)
     answer = (resp.choices[0].message.content or "").strip()

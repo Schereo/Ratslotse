@@ -45,7 +45,7 @@ export type GegenbalkenSegment = {
 
 export type GegenbalkenZeile = {
   /** „Wo das Geld eingeht" — steht über der Leiste, mit der Zeilensumme. */
-  titel: string;
+  title: string;
   segmente: GegenbalkenSegment[];
   /** Welche Rampe die Vorgabefarben stellt. Vorgabe: `aus`. */
   rampe?: "ein" | "aus";
@@ -123,12 +123,12 @@ function schraffur(farbe: string): string {
   return `repeating-linear-gradient(45deg, ${farbe} 0 3px, transparent 3px 6px)`;
 }
 
-function Leiste({ zeile, basis, nachkomma, restLabel, mark }: {
-  zeile: GegenbalkenZeile; basis: number; nachkomma: number; restLabel?: string;
+function Leiste({ row, basis, nachkomma, restLabel, mark }: {
+  row: GegenbalkenZeile; basis: number; nachkomma: number; restLabel?: string;
   mark?: { value: number; label: string };
 }) {
-  const rampe = zeile.rampe ?? "aus";
-  const gezeigt = zeile.segmente.filter((s) => s.value > 0);
+  const rampe = row.rampe ?? "aus";
+  const gezeigt = row.segmente.filter((s) => s.value > 0);
   const summe = gezeigt.reduce((n, s) => n + s.value, 0);
   // Die Lücke zur Basis. Unterhalb eines halben Anzeigeschritts ist sie
   // Rundungsrauschen, kein Rest.
@@ -149,14 +149,14 @@ function Leiste({ zeile, basis, nachkomma, restLabel, mark }: {
   return (
     <div>
       <p className="mb-1.5 text-[12.5px] font-semibold">
-        {zeile.titel}
+        {row.title}
         {zeigeSumme && (
           <span className="font-normal text-muted-foreground"> — {deZahl(summe, nachkomma)}</span>
         )}
       </p>
       <div
         role="img"
-        aria-label={`${zeile.titel}: ${beschreibung}`}
+        aria-label={`${row.title}: ${beschreibung}`}
         // `relative` trägt die Marke; sie sitzt über dem Balken und wird
         // deshalb nicht vom `overflow-hidden` des Innenkastens beschnitten.
         className="relative flex h-7 rounded-md bg-muted"
@@ -184,7 +184,7 @@ function Leiste({ zeile, basis, nachkomma, restLabel, mark }: {
                   color: "var(--hh-seg-text)",
                 }}
               >
-                {zeile.imBalken && !s.offen && s.value / basis >= MINDEST_ANTEIL && (
+                {row.imBalken && !s.offen && s.value / basis >= MINDEST_ANTEIL && (
                   <SegmentText stufen={[
                     `${s.label} · ${deZahl(s.value, nachkomma)}`,
                     ...(s.kurz ? [`${s.kurz} · ${deZahl(s.value, nachkomma)}`, s.kurz] : []),
@@ -263,7 +263,7 @@ export function Gegenbalken({
       </div>
       <div className="flex flex-col gap-3.5">
         {gezeigt.map((z, i) => (
-          <Leiste key={z.titel} zeile={z} basis={basis} nachkomma={nachkomma}
+          <Leiste key={z.title} row={z} basis={basis} nachkomma={nachkomma}
             restLabel={restLabel} mark={i === 0 ? mark : undefined} />
         ))}
       </div>

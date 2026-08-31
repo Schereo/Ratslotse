@@ -44,7 +44,7 @@ def _send_activation_email(email: str) -> None:
         + knopf(login, "Jetzt anmelden"),
         held="freigeschaltet",
         kicker="Dein Konto",
-        titel="Du bist freigeschaltet!",
+        title="Du bist freigeschaltet!",
         fusszeile="Fragen oder Feedback? Antworte einfach auf diese E-Mail.",
     )
     text = (

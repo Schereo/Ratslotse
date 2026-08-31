@@ -57,8 +57,8 @@ function deTagMonatJahr(iso: string): string {
 }
 
 const MARKEN = [
-  { id: "termine", titel: "Wann entschieden wird" },
-  { id: "streit", titel: "Der Streit ums Geld" },
+  { id: "termine", title: "Wann entschieden wird" },
+  { id: "streit", title: "Der Streit ums Geld" },
 ];
 
 function MitredenInner() {
@@ -67,8 +67,8 @@ function MitredenInner() {
   // Quellenzeile. Kein zweiter Abruf, keine zweite Wahrheit.
   // `undefined` = lädt, `null`/leer = entschieden nichts.
   const [termine, setTermine] = useState<{
-    naechster: { datum: string; committee: string } | null;
-    phasen: { titel: string; datum: string | null; erledigt: boolean; aktuell: boolean }[];
+    naechster: { date: string; committee: string } | null;
+    phasen: { title: string; date: string | null; erledigt: boolean; aktuell: boolean }[];
     year: number;
   } | null | undefined>(undefined);
   const [streit, setStreit] = useState<{ beitraege: number; von: number; bis: number } | null | undefined>(undefined);
@@ -107,7 +107,7 @@ function MitredenInner() {
           const heute0 = new Date(heute.getFullYear(), heute.getMonth(), heute.getDate()).getTime();
           const naechster = termine?.naechster ?? null;
           const tage = naechster
-            ? Math.round((new Date(naechster.datum).getTime() - heute0) / 86400000)
+            ? Math.round((new Date(naechster.date).getTime() - heute0) / 86400000)
             : null;
           const phasen = termine?.phasen ?? [];
           const minibild = phasen.length ? {
@@ -117,7 +117,7 @@ function MitredenInner() {
               // Linie läuft DURCH die Zeile (nicht als Stummel unter dem
               // Punkt, das sah aus wie Karten-Pins), und vier flache Zeilen
               // halten die Bühne so hoch wie ihren Text — kein Loch daneben.
-              <span key={ph.titel} className="relative flex items-center gap-2 py-[3px]">
+              <span key={ph.title} className="relative flex items-center gap-2 py-[3px]">
                 <span aria-hidden className="relative flex h-4 w-2.5 flex-none items-center justify-center">
                   {i > 0 && (
                     <span className="absolute bottom-1/2 left-1/2 h-[11px] w-[1.5px] -translate-x-1/2" style={{
@@ -140,13 +140,13 @@ function MitredenInner() {
                 </span>
                 <span className={cn("min-w-0 flex-1 truncate text-[10px] leading-none",
                   ph.aktuell ? "font-semibold text-foreground" : "text-muted-foreground")}>
-                  {ph.titel}
+                  {ph.title}
                 </span>
-                {ph.datum && (
+                {ph.date && (
                   <span className="flex-none font-mono text-[9px] leading-none tabular-nums text-muted-foreground">
-                    {ph.titel.startsWith("Haushaltsjahr")
+                    {ph.title.startsWith("Haushaltsjahr")
                       ? (ph.aktuell ? "läuft" : "beendet")
-                      : deTagMonatJahr(ph.datum)}
+                      : deTagMonatJahr(ph.date)}
                   </span>
                 )}
               </span>
@@ -159,7 +159,7 @@ function MitredenInner() {
                 zahl={tage === 0 ? <>Nächster Termin: heute</>
                   : tage === 1 ? <>Nächster Termin: morgen</>
                     : <>Nächster Termin: in <ZaehlZahl value={tage} /> Tagen</>}
-                sub={`${naechster.committee} am ${deDatum(naechster.datum)}`}
+                sub={`${naechster.committee} am ${deDatum(naechster.date)}`}
                 minibild={minibild}
               />
             );

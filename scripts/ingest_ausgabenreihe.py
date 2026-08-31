@@ -106,15 +106,15 @@ def _spanne(years: list[int]) -> str:
 
 def _fundstelle(accounting_system: str, source: str, mit_abschluss: bool) -> str:
     """Wo genau die Zahlen dieser Gruppe stehen — je nach Quellenlage."""
-    titel = ar.TITEL[accounting_system]
+    title = ar.TITEL[accounting_system]
     if source == "csv":
-        return (f"Datensatz 1102, Spalte „{titel}“ — je Haushaltsjahr die "
+        return (f"Datensatz 1102, Spalte „{title}“ — je Haushaltsjahr die "
                 f"Einwohnerzahl (Stichtag 31.12. des Vorjahres), der Betrag in "
                 f"Tausend Euro und der Betrag je Einwohner*in. Diese Jahrgänge "
                 f"führt nur das Open-Data-Portal; im PDF des Statistischen "
                 f"Jahrbuchs beginnt die Tabelle später")
     text = (f"Kapitel 11 „Verwaltung und Finanzen“, Tabelle 1102, Block "
-            f"„{titel}“ — je Haushaltsjahr die Einwohnerzahl (Stichtag 31.12. "
+            f"„{title}“ — je Haushaltsjahr die Einwohnerzahl (Stichtag 31.12. "
             f"des Vorjahres), der Betrag in Tausend Euro und der Betrag je "
             f"Einwohner*in. Dieselben Jahrgänge stehen im Open-Data-Portal als "
             f"CSV; beide werden getrennt gelesen")
@@ -227,14 +227,14 @@ def main() -> int:
             if not finanzquellen.bestandsschutz(
                     p, "Ausgabenreihe", alt, len(zeilen),
                     schuetzen=not args.schrumpf_erlauben):
-                for zeile in p.warnungen:
-                    print(zeile.strip(), file=sys.stderr)
+                for row in p.warnungen:
+                    print(row.strip(), file=sys.stderr)
                 print("ABBRUCH: Der vorhandene Bestand bleibt unangetastet. Wenn "
                       "das Schrumpfen Absicht ist: --schrumpf-erlauben.",
                       file=sys.stderr)
                 return 1
-            for zeile in p.zeilen:
-                print(zeile.strip())
+            for row in p.zeilen:
+                print(row.strip())
 
             # --- Schreiben, eine Herkunft je Beleg-Lage ---------------------
             #
@@ -274,7 +274,7 @@ def main() -> int:
                            f"1102 — {ar.TITEL[accounting_system]}" if source == "csv"
                            else "Statistisches Jahrbuch der Stadt Oldenburg, "
                                 f"Tabelle 1102 — {ar.TITEL[accounting_system]}"),
-                    stand=f"Haushaltsjahre {spanne} · {ar.ABGRENZUNG[accounting_system]}",
+                    as_of=f"Haushaltsjahre {spanne} · {ar.ABGRENZUNG[accounting_system]}",
                     probe=list(probes),
                     citation=_fundstelle(
                         accounting_system, source,

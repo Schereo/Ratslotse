@@ -299,15 +299,15 @@ def parse(text: str, accounting_system: str) -> list[dict]:
             zeilen.append({"year": int(m.group(1)), "accounting_system": accounting_system,
                            "unlesbar": roh.strip()})
             continue
-        zeile: dict = {"year": int(m.group(1)), "accounting_system": accounting_system,
+        row: dict = {"year": int(m.group(1)), "accounting_system": accounting_system,
                        "unlesbar": None}
         for (field, _), value in zip(spalten, felder):
-            zeile[field] = value * TAUSEND
-        zeilen.append(zeile)
+            row[field] = value * TAUSEND
+        zeilen.append(row)
     return zeilen
 
 
-def zeilensumme(zeile: dict) -> tuple[bool, float]:
+def zeilensumme(row: dict) -> tuple[bool, float]:
     """Ergeben die Auszahlungsarten die ausgewiesene Summe der Zeile?
 
     Rückgabe ``(bestanden, Abweichung in Euro)``. Ohne Toleranz: Die Quelle
@@ -315,9 +315,9 @@ def zeilensumme(zeile: dict) -> tuple[bool, float]:
     den Euro auf. Eine Toleranz würde hier nur den einen Jahrgang durchwinken,
     für den sie gedacht wäre — und der ist mit 1,3 Mio. € ohnehin zu weit weg,
     um von einer Rundungstoleranz gedeckt zu sein."""
-    arten = ARTEN[zeile["accounting_system"]]
-    summe = sum(zeile.get(a) or 0.0 for a in arten)
-    deviation = summe - (zeile.get("total") or 0.0)
+    arten = ARTEN[row["accounting_system"]]
+    summe = sum(row.get(a) or 0.0 for a in arten)
+    deviation = summe - (row.get("total") or 0.0)
     return deviation == 0.0, deviation
 
 
@@ -361,29 +361,29 @@ def lies(text: str) -> dict:
             # Kein Titel, keine Tabelle: Ein Abschnitt ohne seinen eigenen
             # Titel ist Beifang aus dem Seitenkopf und keine Datenquelle.
             continue
-        for zeile in parse(section, accounting_system):
-            if zeile.get("unlesbar"):
+        for row in parse(section, accounting_system):
+            if row.get("unlesbar"):
                 verworfen.append({
-                    "year": zeile["year"], "accounting_system": accounting_system,
+                    "year": row["year"], "accounting_system": accounting_system,
                     # Keine Differenz: Ohne zerlegte Felder gibt es keine
                     # Summe, die man gegen die ausgewiesene halten könnte.
                     "difference": None,
                     "reason": f"Zeile nicht in {len(SPALTEN[accounting_system])} Felder "
-                             f"zerlegbar: {zeile['unlesbar']!r}"})
+                             f"zerlegbar: {row['unlesbar']!r}"})
                 continue
-            ok, deviation = zeilensumme(zeile)
+            ok, deviation = zeilensumme(row)
             bestanden += bool(ok)
             gerissen += not ok
             if not ok:
                 verworfen.append({
-                    "year": zeile["year"], "accounting_system": accounting_system,
+                    "year": row["year"], "accounting_system": accounting_system,
                     # Die Zahl neben dem Satz — s. Rückgabe-Beschreibung.
                     "difference": deviation,
                     "reason": f"Zeilensumme um "
                              f"{de_zahl(deviation, vorzeichen=True)} € gerissen; "
                              f"eine zweite Probe trägt diese Tabelle nicht"})
                 continue
-            uebernommen = dict(zeile)
+            uebernommen = dict(row)
             uebernommen.pop("unlesbar", None)
             uebernommen["probe"] = "investitionen_ist_zeilensumme"
             zeilen.append(uebernommen)

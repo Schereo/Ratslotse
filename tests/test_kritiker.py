@@ -25,7 +25,7 @@ def test_erfundene_zahl_faellt_durch():
     """„94 Hektar" stand am 30.08. auf der Karte. In der Vorlage stehen
     105,05 / 91,84 / 69 / 89 — die 94 gibt es nirgends."""
     maengel = kritiker.pruefe(
-        "Beantragt ist der Plan, der bis 2032 Flächen von total 94 Hektar ausweist.",
+        "Beantragt ist der Plan, der bis 2032 Flächen von insgesamt 94 Hektar ausweist.",
         QUELLE_WIND)
     assert any("94" in m for m in maengel), maengel
 

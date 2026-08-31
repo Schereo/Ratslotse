@@ -112,7 +112,7 @@ def main() -> int:
                 pfad, url = _holen(ort, ablage)
                 budget_year = gs.lies_bericht(str(pfad))
                 print(f"Erhebungsjahr {budget_year.year} "
-                      f"({budget_year.stand or 'ohne Erscheinungsvermerk'}):")
+                      f"({budget_year.as_of or 'ohne Erscheinungsvermerk'}):")
 
                 # --- Probe 1: die Rechnung in der Zeile ---
                 zeilen, verworfen = gs.zeilen(budget_year)
@@ -161,7 +161,7 @@ def main() -> int:
                                    "kreisfreie Städte; Blatt 6.2 — dieselben "
                                    "Zahlen je Gemeinde, mit dem Hebesatz",
                         probe_result=" · ".join(ergebnisse),
-                        stand=budget_year.stand))
+                        as_of=budget_year.as_of))
                 print(f"  gespeichert: {geschrieben[budget_year.year]} Städte")
 
         store.herkunft_aufraeumen()

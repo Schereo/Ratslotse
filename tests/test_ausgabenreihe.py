@@ -68,7 +68,7 @@ Fachdienst Geo und Daten
 """
 
 #: Die ältere CSV — mit ihrem falschen Spaltenkopf („in Euro").
-CSV_KAMERAL = """Haushaltsjahr;EW am 31.12. des Vorjahres;Ausgaben total in Euro;Ausgaben je Einwohner in Euro
+CSV_KAMERAL = """Haushaltsjahr;EW am 31.12. des Vorjahres;Ausgaben insgesamt in Euro;Ausgaben je Einwohner in Euro
 1972;133212;76493;574
 2001;154832;315559;2038
 2002;155908;338725;2173
@@ -146,7 +146,7 @@ def test_eine_echte_euro_datei_faellt_komplett_durch():
     steht, sondern eine, die in jeder Zeile geprüft wird. Eine Datei mit
     echten Euro-Beträgen reißt die Pro-Kopf-Probe um den Faktor 1000 — und
     dann steht dort nichts statt des Tausendfachen."""
-    euro = ("Haushaltsjahr;EW;Ausgaben total in Euro;je Einwohner\n"
+    euro = ("Haushaltsjahr;EW;Ausgaben insgesamt in Euro;je Einwohner\n"
             "1972;133212;76493000;574\n")
     result = ar.lies(euro, "", None, None)
     assert result["zeilen"] == []

@@ -129,7 +129,7 @@ def _analyse(committee: str, session_date: str,
 
     system = prompts.get("committee_summary_system")
     prompt = prompts.render("committee_summary_user", committee=committee,
-                            datum=datum_deutsch(session_date), items_text=items_text)
+                            date=datum_deutsch(session_date), items_text=items_text)
 
     # Trotz response_format=json_object liefern Modelle vereinzelt kein valides
     # JSON (leerer Content, Markdown-Zaun, Prosa) — das crashte den ganzen

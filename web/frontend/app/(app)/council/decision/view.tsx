@@ -842,7 +842,7 @@ function DecisionDetailInner() {
                   ? data.beratungsfolge.map((b, i) => {
                       const current = b.ksinr != null && b.ksinr === d.ksinr;
                       return (
-                        <div key={`${b.ksinr ?? "x"}-${b.datum ?? i}-${b.committee}`} className="relative">
+                        <div key={`${b.ksinr ?? "x"}-${b.date ?? i}-${b.committee}`} className="relative">
                           <span className={cn(
                             "absolute -left-[19px] top-1.5 h-2 w-2 rounded-full",
                             current ? "bg-primary" : b.future ? "border border-primary/60 bg-background" : "bg-border",
@@ -853,7 +853,7 @@ function DecisionDetailInner() {
                               {shortCommittee(b.committee)}
                             </span>
                             <span className="text-[11px] text-muted-foreground">
-                              {b.datum ? formatDate(b.datum) : "Termin offen"}
+                              {b.date ? formatDate(b.date) : "Termin offen"}
                               {b.is_public === 0 && " · nichtöffentlich"}
                               {current && " · hier"}
                             </span>

@@ -114,5 +114,5 @@ def test_betreff_bleibt_einzeilig_und_gekappt():
     lang = watcher._einzeilig("x" * 200)
     assert len(lang) <= 90 and lang.endswith("…")
 
-    titel = watcher._titel_thema(_sitzung(), "Bäume\nund\tGrünflächen")
-    assert titel == "„Bäume und Grünflächen“ kommt auf den Tisch"
+    title = watcher._titel_thema(_sitzung(), "Bäume\nund\tGrünflächen")
+    assert title == "„Bäume und Grünflächen“ kommt auf den Tisch"

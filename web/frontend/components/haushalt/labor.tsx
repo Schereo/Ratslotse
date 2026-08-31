@@ -161,10 +161,10 @@ function PlanIst({ daten }: { daten: HaushaltAuswahl<"income_statement"> }) {
 
 type Werkbank = "einnahmen" | "ausgaben" | "invest";
 
-const WERKBAENKE: { id: Werkbank; nr: number; titel: string; zielgroesse: string }[] = [
-  { id: "einnahmen", nr: 1, titel: "Einnahmen", zielgroesse: "Zielgröße: die Lücke" },
-  { id: "ausgaben", nr: 2, titel: "Ausgaben", zielgroesse: "Zielgröße: die Lücke" },
-  { id: "invest", nr: 3, titel: "Investitionen & Finanzierung", zielgroesse: "Zielgröße: Kasse & Schulden" },
+const WERKBAENKE: { id: Werkbank; nr: number; title: string; zielgroesse: string }[] = [
+  { id: "einnahmen", nr: 1, title: "Einnahmen", zielgroesse: "Zielgröße: die Lücke" },
+  { id: "ausgaben", nr: 2, title: "Ausgaben", zielgroesse: "Zielgröße: die Lücke" },
+  { id: "invest", nr: 3, title: "Investitionen & Finanzierung", zielgroesse: "Zielgröße: Kasse & Schulden" },
 ];
 
 export function Labor({ daten, produkte, produktJahr, vergleich, programm, schulden }: {
@@ -547,7 +547,7 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
               Werkbank {w.nr}{werkbank === w.id && " · aktiv"}
             </span>
             <span className="mt-0.5 block font-display text-[14.5px] font-bold leading-snug text-foreground">
-              {w.titel}
+              {w.title}
             </span>
             <span className="mt-0.5 block text-[11px] text-muted-foreground">{w.zielgroesse}</span>
           </button>
@@ -671,7 +671,7 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
           <ul className="mt-2.5 max-w-[76ch] space-y-2.5 text-[12px] leading-relaxed text-foreground/85">
             <li>
               <strong>Die Umlage.</strong> Von der Gewerbesteuer geht ein Anteil an Bund und Land.
-              Wie viel exact, führt der offene Datensatz nicht getrennt aus — die Zahl oben ist
+              Wie viel genau, führt der offene Datensatz nicht getrennt aus — die Zahl oben ist
               bereits ein Netto-Wert nach Umlage, ein zusätzlicher Punkt bringt aber ebenfalls
               weniger als brutto.
             </li>

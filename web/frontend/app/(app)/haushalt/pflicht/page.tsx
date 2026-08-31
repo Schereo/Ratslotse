@@ -290,7 +290,7 @@ export default function PflichtPage() {
             Defizit-Marke als Signal-Strich mit Erklärsatz. */}
         <Gegenbalken
           className="mt-3"
-          zeilen={[{ titel: `Alle Ausgaben ${year}`, segmente }]}
+          zeilen={[{ title: `Alle Ausgaben ${year}`, segmente }]}
           basis={gesamtAus}
           mark={defizit > 0 && gesamtAus > 0 ? {
             value: defizit,
@@ -380,7 +380,7 @@ export default function PflichtPage() {
           Menge. */}
       {weicht.length > 0 && (
         <LottiErklaert
-          titel="Zwei Antworten auf dieselbe Frage"
+          title="Zwei Antworten auf dieselbe Frage"
           text={`Unsere Einordnung und die Angabe der Stadt beantworten unterschiedliche Fragen. Wir fragen, ob eine Aufgabe verpflichtend ist. Die Stadt bewertet auf Produktebene, wie stark sich ihre Kosten beeinflussen lassen. Deshalb können beide Einschätzungen voneinander abweichen.`}
         />
       )}

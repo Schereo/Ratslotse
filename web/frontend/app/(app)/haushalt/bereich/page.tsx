@@ -239,11 +239,11 @@ function BereichInner() {
   // Auf dem Einstieg trägt der Text im Balken, weil dort 13 Segmente ihre
   // Legende entlasten.
   const balkenAus = {
-    titel: "Geplante Aufwendungen", rampe: "aus" as const,
+    title: "Geplante Aufwendungen", rampe: "aus" as const,
     segmente: [{ label: "Aufwendungen des Bereichs", value: rohAus }],
   };
   const balkenEin = {
-    titel: "Geplante eigene Erträge", rampe: "ein" as const,
+    title: "Geplante eigene Erträge", rampe: "ein" as const,
     segmente: [{ label: "eigene Erträge", value: rohEin }],
   };
 
@@ -539,7 +539,7 @@ function BereichInner() {
             </span>
           </div>
           {series.length >= 2 ? (() => {
-            const werte = series.map((r) => -(mio(r.zeile.result) ?? 0));
+            const werte = series.map((r) => -(mio(r.row.result) ?? 0));
             // Welche Größe die Reihe überhaupt beschreibt, entscheidet ihr
             // Vorzeichen. Ein Bereich mit Überschuss (Finanzmanagement) hat
             // durchweg negative Netto-Werte; „−80,0 Mio. € weniger
@@ -578,7 +578,7 @@ function BereichInner() {
                   </div>
                 )}
                 <div className="mt-3 grid grid-cols-[auto_1fr_auto_auto] items-center gap-x-3 gap-y-1 text-xs tabular-nums">
-                  {series.map(({ year: j, zeile }, i) => (
+                  {series.map(({ year: j, row }, i) => (
                     <div key={j} className="contents">
                       <span className="font-mono text-muted-foreground">{j}</span>
                       <div className="h-2.5 rounded-[3px] bg-muted">
@@ -591,7 +591,7 @@ function BereichInner() {
                         {werte[i] > 0 ? `−${deMio(werte[i])}` : `+${deMio(-werte[i])}`}&#8239;Mio.&nbsp;€ netto
                       </span>
                       <span className="text-right text-muted-foreground">
-                        {deMio(mio(zeile.expenses))}&#8239;Mio.&nbsp;€ Ausgaben
+                        {deMio(mio(row.expenses))}&#8239;Mio.&nbsp;€ Ausgaben
                       </span>
                     </div>
                   ))}

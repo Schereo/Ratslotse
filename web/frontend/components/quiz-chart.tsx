@@ -120,10 +120,10 @@ export function QuizChart({ chart, className }: { chart: QuizChartData; classNam
     const basis = segmente.reduce((s, x) => s + x.value, 0);
     return (
       <div className={rahmen}>
-        {/* Der Titel steht hier IN der Leiste (`titel`), nicht über dem
+        {/* Der Titel steht hier IN der Leiste (`title`), nicht über dem
             Rahmen — sonst stünde er zweimal. */}
         <Gegenbalken
-          zeilen={[{ titel: chart.title, segmente }]}
+          zeilen={[{ title: chart.title, segmente }]}
           basis={basis}
           unit={einheitKurz(chart.unit)}
           nachkomma={0}

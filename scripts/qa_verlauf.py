@@ -60,44 +60,44 @@ def main() -> dict:
               f"({'ja' if speichern == 1 else 'nein — dann liegen hier keine Verläufe'})")
 
         gespraeche = ratslotse._conn.execute(
-            "SELECT id, titel, created FROM qa_gespraeche WHERE user_id = ? ORDER BY id",
+            "SELECT id, title, created FROM qa_gespraeche WHERE user_id = ? ORDER BY id",
             (uid,)).fetchall()
         print(f"\n=== Gespräche: {len(gespraeche)} ===")
         n_turns = 0
         for g in gespraeche:
-            print(f"\n--- Gespräch {g['id']} ({str(g['created'])[:16]}): {g['titel']}")
+            print(f"\n--- Gespräch {g['id']} ({str(g['created'])[:16]}): {g['title']}")
             turns = ratslotse._conn.execute(
-                "SELECT frage, answer, quellen, created FROM qa_gespraech_turns "
-                "WHERE gespraech_id = ? ORDER BY id", (g["id"],)).fetchall()
+                "SELECT question, answer, sources, created FROM qa_gespraech_turns "
+                "WHERE conversation_id = ? ORDER BY id", (g["id"],)).fetchall()
             n_turns += len(turns)
             for t in turns:
                 q = json.loads(t["quellen"] or "{}")
                 quellen, zitiert = q.get("sources", []), q.get("cited", [])
-                print(f"\n  [{str(t['created'])[:16]}] FRAGE: {t['frage']}")
+                print(f"\n  [{str(t['created'])[:16]}] FRAGE: {t['question']}")
                 print(f"  ANTWORT: {len(t['answer'] or '')} Zeichen, "
                       f"{len(zitiert)} Zitate, {len(quellen)} Quellen"
                       + "".join(f", {len(q[k])} {k}" for k in
                                 ("debatten", "presse", "planungen", "anlagen") if q.get(k)))
                 if not args.kurz:
-                    for zeile in (t["answer"] or "").splitlines():
-                        if zeile.strip():
-                            print(f"    {zeile}")
+                    for row in (t["answer"] or "").splitlines():
+                        if row.strip():
+                            print(f"    {row}")
                 for s in quellen[:12]:
                     print(f"    [{s.get('id')}] {str(s.get('session_date'))[:10]} "
                           f"{str(s.get('committee'))[:24]:24s} {str(s.get('title'))[:64]}")
 
         print("\n=== Gründliche Recherchen ===")
         for r in ratslotse._conn.execute(
-                "SELECT frage, status, length(bericht) n, created FROM deep_research_jobs "
+                "SELECT question, status, length(report) n, created FROM deep_research_jobs "
                 "WHERE user_id = ? ORDER BY created", (uid,)):
             print(f"  {str(r['created'])[:16]} {r['status']:12s} "
-                  f"{r['n'] or 0:5d} Zeichen · {r['frage']}")
+                  f"{r['n'] or 0:5d} Zeichen · {r['question']}")
 
         print("\n=== Feedback ===")
         for f in council._conn.execute(
-                "SELECT created, rating, frage, reason FROM council_qa_feedback "
+                "SELECT created, rating, question, reason FROM council_qa_feedback "
                 "WHERE user_id = ? ORDER BY created", (uid,)):
-            print(f"  {str(f['created'])[:16]} {f['rating']} · {f['frage'][:70]}"
+            print(f"  {str(f['created'])[:16]} {f['rating']} · {f['question'][:70]}"
                   + (f"\n      Grund: {f['reason']}" if f["reason"] else ""))
         return {"Gespräche": len(gespraeche), "Fragen": n_turns}
     finally:

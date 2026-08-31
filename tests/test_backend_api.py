@@ -1020,7 +1020,7 @@ def test_haushalt_beteiligungen_liefert_texte_kennzahlen_und_herkunft(client):
     assert all(p["position"] == "Ratsmitglied" for p in personen)
     # Ohne Personenverzeichnis im Testbestand gibt es keinen Treffer — und
     # dann steht dort ausdrücklich nichts statt irgendwer.
-    assert all(p["slug"] is None and p["partei"] is None for p in personen)
+    assert all(p["slug"] is None and p["party"] is None for p in personen)
     assert egh["roles_assignable"] is True
 
     eigner = [e for e in b["eigentuemer"] if e["company"] == "egh"]
@@ -1050,18 +1050,18 @@ def test_beteiligungen_namensvetter_bekommt_keinen_slug():
             return [
                 {"slug": "sebastian-rohe", "name": "Dr. Sebastian Rohe",
                  "vorname": "sebastian", "nachname": "rohe", "art": "rat",
-                 "partei": "Grüne"},
+                 "party": "Grüne"},
                 {"slug": "georg-rohe", "name": "Georg Rohe", "vorname": "georg",
-                 "nachname": "rohe", "art": "rat", "partei": "CDU"},
+                 "nachname": "rohe", "art": "rat", "party": "CDU"},
                 {"slug": "christine-wolff", "name": "Christine Wolff",
                  "vorname": "christine", "nachname": "wolff", "art": "rat",
-                 "partei": "Grüne"},
+                 "party": "Grüne"},
                 {"slug": "christine-berta-wolff", "name": "Christine Berta Wolff",
                  "vorname": "christine", "nachname": "wolff", "art": "rat",
-                 "partei": "Grüne"},
+                 "party": "Grüne"},
                 # Ein Blocker trägt keinen Namen und darf nie gewinnen.
                 {"slug": "gast-schmidt", "name": None, "vorname": "",
-                 "nachname": "schmidt", "art": "blocker", "partei": None},
+                 "nachname": "schmidt", "art": "blocker", "party": None},
             ]
 
     z = _lexikon_zuordnung(Lexikon(), [
@@ -1069,8 +1069,8 @@ def test_beteiligungen_namensvetter_bekommt_keinen_slug():
             "Dr. Sebastian Rohe", "Dr. Georg Rohe", "Rohe", "Christine Wolff",
             "Peter Schmidt", "Vertreter/in der Landessparkasse zu Oldenburg")])
     # Vor- und Nachname zusammen sind eindeutig — Titel zählen nicht mit.
-    assert z["Dr. Sebastian Rohe"] == {"slug": "sebastian-rohe", "partei": "Grüne"}
-    assert z["Dr. Georg Rohe"] == {"slug": "georg-rohe", "partei": "CDU"}
+    assert z["Dr. Sebastian Rohe"] == {"slug": "sebastian-rohe", "party": "Grüne"}
+    assert z["Dr. Georg Rohe"] == {"slug": "georg-rohe", "party": "CDU"}
     # Ein kahler Nachname ist es nicht.
     assert z["Rohe"]["slug"] is None
     # Derselbe Mensch zweimal im Verzeichnis: Der gedruckte Name entscheidet.
@@ -1101,12 +1101,12 @@ def test_beteiligungen_verlinkt_nur_wer_eine_seite_hat():
             return [
                 {"slug": "juergen-krogmann", "name": "Jürgen Krogmann",
                  "vorname": "juergen", "nachname": "krogmann", "art": "stadt",
-                 "partei": None},
+                 "party": None},
                 {"slug": "karin-harms", "name": "Karin Harms", "vorname": "karin",
-                 "nachname": "harms", "art": "beteiligung", "partei": None},
+                 "nachname": "harms", "art": "beteiligung", "party": None},
                 {"slug": "claudia-oeljeschlaeger", "name": "Claudia Oeljeschläger",
                  "vorname": "claudia", "nachname": "oeljeschlaeger", "art": "rat",
-                 "partei": "SPD"},
+                 "party": "SPD"},
             ]
 
     z = _lexikon_zuordnung(Lexikon(), [
@@ -1119,7 +1119,7 @@ def test_beteiligungen_verlinkt_nur_wer_eine_seite_hat():
     assert z["Karin Harms"]["slug"] is None
     # Druckfehler eines Ratsmitglieds → Link samt Partei.
     assert z["Claudia Oeljeschleger"] == {"slug": "claudia-oeljeschlaeger",
-                                          "partei": "SPD"}
+                                          "party": "SPD"}
 
 
 def test_haushalt_konzern_liefert_luecke_und_gegenprobe(client):
@@ -2969,27 +2969,27 @@ def test_qa_share_traegt_bausteine(client):
         "answer": "Der Rat stimmte zu [5].",
         "sources": [{"id": 5, "title": "Stadionneubau", "session_date": "2026-06-01",
                      "committee": "Rat", "outcome": "angenommen"}],
-        "debatten": [{"speaker": "Ratsherr Wenzel", "partei": "SPD", "art": "rede",
+        "debatten": [{"speaker": "Ratsherr Wenzel", "party": "SPD", "art": "rede",
                       "top": "6.1 Stadionneubau", "auszug": "Warnte vor einem Millionengrab.",
-                      "committee": "Rat", "datum": "2026-06-01",
+                      "committee": "Rat", "date": "2026-06-01",
                       "protokoll_url": "https://buergerinfo.oldenburg.de/getfile.php?id=4711&type=do",
                       "protokoll_seite": 6},
                      # Der Snapshot ist öffentlich und die URL kommt vom
                      # Client: alles außerhalb des Ratsinfo-Systems wird
                      # verworfen statt als „Protokoll" verlinkt.
-                     {"speaker": "Ratsfrau Muster", "partei": "CDU", "art": "rede",
+                     {"speaker": "Ratsfrau Muster", "party": "CDU", "art": "rede",
                       "top": "6.1 Stadionneubau", "auszug": "Begrüßte den Plan.",
-                      "committee": "Rat", "datum": "2026-06-01",
+                      "committee": "Rat", "date": "2026-06-01",
                       "protokoll_url": "https://boese.example.org/phishing.pdf"}],
-        "presse": [{"titel": "Stadion: Stadt informiert",
-                    "url": "https://www.oldenburg.de/x", "datum": "2026-06-02"}],
+        "presse": [{"title": "Stadion: Stadt informiert",
+                    "url": "https://www.oldenburg.de/x", "date": "2026-06-02"}],
         "anlagen": [{"label": "Machbarkeitsstudie", "url": "https://ris/anlage.pdf",
                      "template_number": "26/0123", "vorlage_titel": "Stadionneubau",
                      "auszug": "Kapazität 15.000."}],
-        "parteien": [{"partei": "SPD", "haltung": "dagegen", "position": "Skeptisch.",
+        "parteien": [{"party": "SPD", "haltung": "dagegen", "position": "Skeptisch.",
                       "einig": True, "note": None, "beitraege": 3,
                       "kernaussage": {"text": "Kein zweites Millionengrab.",
-                                      "speaker": "Wenzel", "datum": "01.06.2026"}}],
+                                      "speaker": "Wenzel", "date": "01.06.2026"}}],
     })
     assert r.status_code == 201
     token = r.json()["token"]
@@ -3047,13 +3047,13 @@ def test_qa_share_public_report_and_admin_removal(client):
 
 def test_qa_share_filters_objectionable_or_embedded_web_content(client):
     _register(client)
-    for frage, answer in (
+    for question, answer in (
         ("Sieg Heil", "Antwort."),
         ("Normale Frage", "Hier klicken: https://phishing.invalid"),
         ("Normale Frage", "<script>alert(1)</script>"),
     ):
         response = client.post("/api/council/qa-share", json={
-            "question": frage,
+            "question": question,
             "answer": answer,
             "sources": [],
         })
@@ -3077,26 +3077,26 @@ def test_partei_meinungen_endpoint(client, monkeypatch):
         return [(zaehler["n"], 0.5)]
 
     monkeypatch.setattr(emb, "search_wortbeitraege_je_fraktion", hits)
-    meinung = [{"partei": "SPD", "haltung": "dafür", "position": "Dafür.", "einig": True,
+    meinung = [{"party": "SPD", "haltung": "dafür", "position": "Dafür.", "einig": True,
                 "note": None, "kernaussage": None, "beitraege": 3}]
     monkeypatch.setattr(qa_mod, "partei_meinungen", lambda *a, **k: meinung)
-    r = client.post("/api/council/partei-meinungen", json={"frage": "Stadionneubau?"})
+    r = client.post("/api/council/party-meinungen", json={"question": "Stadionneubau?"})
     assert r.status_code == 200 and r.json()["parteien"] == meinung
 
     monkeypatch.setattr(qa_mod, "partei_meinungen", lambda *a, **k: None)
-    assert client.post("/api/council/partei-meinungen",
-                       json={"frage": "Stadionneubau?"}).json()["parteien"] == []
+    assert client.post("/api/council/party-meinungen",
+                       json={"question": "Stadionneubau?"}).json()["parteien"] == []
 
     def kaputt(*a, **k):
         raise RuntimeError("llm down")
     monkeypatch.setattr(qa_mod, "partei_meinungen", kaputt)
-    r = client.post("/api/council/partei-meinungen", json={"frage": "Stadionneubau?"})
+    r = client.post("/api/council/party-meinungen", json={"question": "Stadionneubau?"})
     assert r.status_code == 200 and r.json()["parteien"] == []
 
     # Cache-Hit: gleiche Treffer-IDs wie Fall 1 → Ergebnis kommt ohne LLM
     # (partei_meinungen ist noch der kaputt-Mock — er darf nicht laufen).
     zaehler["n"] = 0
-    r = client.post("/api/council/partei-meinungen", json={"frage": "Anders formuliert?"})
+    r = client.post("/api/council/party-meinungen", json={"question": "Anders formuliert?"})
     assert r.status_code == 200 and r.json()["parteien"] == meinung
 
 
@@ -3110,19 +3110,19 @@ def test_partei_meinungen_nimmt_beschluss_anker_dazu(client, monkeypatch):
 
     _register(client)
     monkeypatch.setattr(emb, "search_wortbeitraege_je_fraktion", lambda *a, **k: [])
-    anker = [{"id": 4711, "partei": "CDU", "speaker": "Woltmann",
+    anker = [{"id": 4711, "party": "CDU", "speaker": "Woltmann",
               "text": "Die CDU-Fraktion lehnt die Satzung ab.", "session_date": "2026-06-12"}]
     gesehen = {}
     monkeypatch.setattr(CouncilStore, "wortbeitraege_zu_beschluessen",
                         lambda self, decisions, **k: (gesehen.update(dec=decisions) or anker))
     monkeypatch.setattr(CouncilStore, "get_decisions_by_ids",
                         lambda self, ids: [{"id": i} for i in ids])
-    meinung = [{"partei": "CDU", "haltung": "dagegen", "position": "Dagegen.", "einig": True,
+    meinung = [{"party": "CDU", "haltung": "dagegen", "position": "Dagegen.", "einig": True,
                 "note": None, "kernaussage": None, "beitraege": 1}]
     monkeypatch.setattr(qa_mod, "partei_meinungen",
-                        lambda frage, rows, **k: (gesehen.update(rows=rows) or meinung))
-    r = client.post("/api/council/partei-meinungen",
-                    json={"frage": "Baumschutzsatzung?", "beschluss_ids": [20032, 20431]})
+                        lambda question, rows, **k: (gesehen.update(rows=rows) or meinung))
+    r = client.post("/api/council/party-meinungen",
+                    json={"question": "Baumschutzsatzung?", "beschluss_ids": [20032, 20431]})
     assert r.status_code == 200 and r.json()["parteien"] == meinung
     assert [d["id"] for d in gesehen["dec"]] == [20032, 20431]
     assert [row["id"] for row in gesehen["rows"]] == [4711]
@@ -3353,9 +3353,9 @@ def test_ask_kombiniert_person_mit_ort_ueber_beschlussanker(client, monkeypatch)
     cs.save_person(42, "Bernhard Ellberg", "SPD")
     cs.save_wortbeitraege(88, [
         {"art": "rede", "top": "Ö 7 Sporthalle Kreyenbrück", "speaker": "Bernhard Ellberg",
-         "partei": "SPD", "text": "Die Sanierung sei dringend.", "answer": None},
+         "party": "SPD", "text": "Die Sanierung sei dringend.", "answer": None},
         {"art": "rede", "top": "Ö 7 Sporthalle Kreyenbrück", "speaker": "Anna Beispiel",
-         "partei": "CDU", "text": "Die Kosten müssten geprüft werden.", "answer": None},
+         "party": "CDU", "text": "Die Kosten müssten geprüft werden.", "answer": None},
     ])
     cs.close()
 
@@ -3409,8 +3409,8 @@ def test_ask_neueste_ortsfrage_sortiert_strikt_chronologisch(client, monkeypatch
         (102, 902, "2026-04-21", "Neuer echter Beschluss", "angenommen"),
         (103, 903, "2026-04-28", "Neuester Sachstandsbericht", "zur_kenntnis"),
     ]
-    for decision_id, ksinr, datum, title, outcome in rows:
-        cs.save_session(CouncilSession(ksinr, "Rat", datum, "17:00", "Rathaus"))
+    for decision_id, ksinr, tag, title, outcome in rows:
+        cs.save_session(CouncilSession(ksinr, "Rat", tag, "17:00", "Rathaus"))
         with cs._conn:
             cs._conn.execute(
                 "INSERT INTO council_decisions "
@@ -3663,10 +3663,10 @@ def test_ask_sitzungsfrage_holt_die_ganze_sitzung(client, monkeypatch):
         cs._conn.execute(
             "INSERT INTO council_sessions (ksinr, committee, session_date, session_time, location, fetched_at) "
             "VALUES (4673, 'Jugendhilfeausschuss', '2026-06-17', '16:00', 'Rathaus', '')")
-        for i, titel in ((1, "Krippengruppe"), (2, "Kita-Bericht"), (3, "Richtlinien Jugendarbeit")):
+        for i, title in ((1, "Krippengruppe"), (2, "Kita-Bericht"), (3, "Richtlinien Jugendarbeit")):
             cs._conn.execute(
                 "INSERT INTO council_decisions (id, ksinr, position, item_number, kind, title, outcome) "
-                "VALUES (?, 4673, ?, ?, 'decision', ?, 'angenommen')", (i, i, str(i + 4), titel))
+                "VALUES (?, 4673, ?, ?, 'decision', ?, 'angenommen')", (i, i, str(i + 4), title))
         cs._conn.execute(  # Subvotes sind kein eigener Tagesordnungspunkt
             "INSERT INTO council_decisions (id, ksinr, position, kind, title) "
             "VALUES (9, 4673, 9, 'subvote', 'Änderungsantrag')")
@@ -3779,7 +3779,7 @@ def test_ask_keine_debatten_vor_der_sitzung(client, monkeypatch):
     monkeypatch.setattr(emb_mod, "search_wortbeitraege", lambda *a, **k: [(77, 0.9)])
     monkeypatch.setattr(emb_mod, "search_zusagen", lambda *a, **k: [])
     monkeypatch.setattr(CouncilStore, "wortbeitraege_by_ids", lambda self, ids: [
-        {"id": 77, "speaker": "Alt Redner", "partei": None, "art": "rede",
+        {"id": 77, "speaker": "Alt Redner", "party": None, "art": "rede",
          "top": "Altes Thema", "text": "Ein alter Beitrag.", "session_date": "2021-01-01",
          "committee": "Rat", "page": None, "ksinr": 100}] if ids else [])
     monkeypatch.setattr(CouncilStore, "wortbeitraege_zu_beschluessen", lambda self, c: [])
@@ -3871,8 +3871,8 @@ def test_ask_einfacher_erklaeren_nimmt_den_eigenen_prompt(client, monkeypatch):
     monkeypatch.setattr(qa_mod, "expand_query", lambda q, **k: q)
     gesehen: dict = {}
 
-    def fake_vereinfachen(frage, bisher, ctx, *a, **k):
-        gesehen.update(frage=frage, bisher=bisher, ids=[c["id"] for c in ctx])
+    def fake_vereinfachen(question, bisher, ctx, *a, **k):
+        gesehen.update(question=question, bisher=bisher, ids=[c["id"] for c in ctx])
         yield "Die Stadt zahlt, wenn der Verein den Kredit nicht bedient [5]."
 
     def darf_nicht_laufen(*a, **k):
@@ -3895,7 +3895,7 @@ def test_ask_einfacher_erklaeren_nimmt_den_eigenen_prompt(client, monkeypatch):
     # auch keine Fußnote der einfachen Fassung werden können.
     assert gesehen["ids"] == [5, 6]
     # Ohne Analyse-Call (kein API-Key im Test) trägt der Verlauf das Thema.
-    assert gesehen["frage"] == "Was wurde am 1. Juni beschlossen?"
+    assert gesehen["question"] == "Was wurde am 1. Juni beschlossen?"
 
     # Gegenprobe: eine inhaltliche Frage geht weiter den normalen Weg.
     monkeypatch.setattr(qa_mod, "answer_stream", lambda *a, **k: iter(["Normal [5]."]))
@@ -4482,10 +4482,10 @@ def _seed_vorlage(kvonr: int = 4711, template_number: str = "26/0396",
         council._conn.execute(
             "INSERT OR REPLACE INTO council_vorlagen(kvonr, template_number, title, fetched_at) "
             "VALUES (?,?,?,'2026-01-01')", (kvonr, template_number, "Stadionneubau Maastrichter Straße"))
-        for datum, committee, result in (stations or []):
+        for date, committee, result in (stations or []):
             council._conn.execute(
-                "INSERT INTO council_beratungen(kvonr, datum, committee, result, fetched_at) "
-                "VALUES (?,?,?,?,'2026-01-01')", (kvonr, datum, committee, result))
+                "INSERT INTO council_beratungen(kvonr, date, committee, result, fetched_at) "
+                "VALUES (?,?,?,?,'2026-01-01')", (kvonr, date, committee, result))
     council.close()
 
 
@@ -4912,7 +4912,7 @@ def test_ask_reicht_verlauf_an_die_analyse(client, monkeypatch):
     gesehen = {}
 
     def fake_analyse(q, model=None, verlauf=None):
-        gesehen["frage"] = q
+        gesehen["question"] = q
         gesehen["verlauf"] = verlauf
         return {"question": "Was kostet der Neubau der Cäcilienbrücke?",
                 "terms": "Kosten Cäcilienbrücke", "kind": "money", "party": None}
@@ -4943,7 +4943,7 @@ def _deep_mocks(monkeypatch):
     from council import embeddings as emb_mod
     from council import qa as qa_mod
 
-    monkeypatch.setattr(qa_mod, "deep_zerlege", lambda frage, **k: [
+    monkeypatch.setattr(qa_mod, "deep_zerlege", lambda question, **k: [
         {"name": "Beschlusslage", "question": "Stand Stadion", "terms": "stadion neubau"},
         {"name": "Kosten", "question": "Kosten Stadion", "terms": "kosten finanzierung"},
     ])
@@ -4972,12 +4972,12 @@ def _deep_mocks(monkeypatch):
                         lambda self, ids: [dict(c) for c in cand if c["id"] in ids])
     monkeypatch.setattr(CouncilStore, "orte_fuer_decisions", lambda self, ids: {})
     monkeypatch.setattr(CouncilStore, "geplante_beratungen_fuer", lambda self, kv: [
-        {"kvonr": 111, "datum": "2099-09-14", "committee": "Ausschuss für Finanzen",
+        {"kvonr": 111, "date": "2099-09-14", "committee": "Ausschuss für Finanzen",
          "template_number": "26/0815", "vorlage_titel": "Finanzierungsbeschluss Projektgesellschaft"}])
     monkeypatch.setattr(CouncilStore, "haushalt_fuer_begriffe", lambda self, w: [])
     monkeypatch.setattr(CouncilStore, "vorlage_texts_for", lambda self, nrs: {})
     monkeypatch.setattr(qa_mod, "deep_bericht_stream",
-                        lambda frage, cands, **k: iter(["## Beschlusslage\nDer Rat hat den Neubau",
+                        lambda question, cands, **k: iter(["## Beschlusslage\nDer Rat hat den Neubau",
                                                         " beschlossen [5]."]))
 
 
@@ -5060,18 +5060,18 @@ def test_deep_research_loest_anschlussfrage_auf(client, monkeypatch):
     zerlegt: list[str] = []
     berichtet: list[str] = []
 
-    def _analyse(frage, **k):
-        gesehen["frage"] = frage
+    def _analyse(question, **k):
+        gesehen["question"] = question
         gesehen["verlauf"] = k.get("verlauf")
         return {"question": "Wichtigste Themen in Krusenbusch in den letzten Jahren",
                 "terms": "krusenbusch wohnquartier", "kind": "topic", "party": None}
 
-    def _zerlege(frage, **k):
-        zerlegt.append(frage)
-        return [{"name": "Beschlusslage", "question": frage, "terms": "krusenbusch"}]
+    def _zerlege(question, **k):
+        zerlegt.append(question)
+        return [{"name": "Beschlusslage", "question": question, "terms": "krusenbusch"}]
 
-    def _bericht(frage, cands, **k):
-        berichtet.append(frage)
+    def _bericht(question, cands, **k):
+        berichtet.append(question)
         return iter(["## Beschlusslage\nWohnquartier am Krusenbusch [5]."])
 
     monkeypatch.setattr(qa_mod, "analyse_query", _analyse)
@@ -5087,13 +5087,13 @@ def test_deep_research_loest_anschlussfrage_auf(client, monkeypatch):
     events = _deep_events(client, job_id)  # blockiert bis der Job fertig ist
 
     # Die Analyse bekam die getippte Frage MIT Verlauf …
-    assert gesehen["frage"] == "Nochmal bitte ausführlich"
+    assert gesehen["question"] == "Nochmal bitte ausführlich"
     assert gesehen["verlauf"] == verlauf
     # … und ihre eigenständige Fassung ist es, die recherchiert und berichtet wird.
     assert zerlegt == ["Wichtigste Themen in Krusenbusch in den letzten Jahren"]
     assert berichtet == ["Wichtigste Themen in Krusenbusch in den letzten Jahren"]
     src = next(e for e in events if e["type"] == "sources")
-    assert src["frage"] == "Wichtigste Themen in Krusenbusch in den letzten Jahren"
+    assert src["question"] == "Wichtigste Themen in Krusenbusch in den letzten Jahren"
 
     # Anzeige und DB behalten die getippte Frage, der Kontext die aufgelöste.
     snap = client.get(f"/api/council/deep-research/{job_id}").json()
@@ -5126,7 +5126,7 @@ def test_deep_research_meldet_sich_am_ende(client, monkeypatch):
     assert gemeldet == ["fertig"]
 
     gemeldet.clear()
-    job = deepresearch.DeepJob(id="x", user_id=1, frage="egal")
+    job = deepresearch.DeepJob(id="x", user_id=1, question="egal")
     deepresearch._gestoppt(job, RATSLOTSE_DB)
     assert gemeldet == []
 
@@ -5186,7 +5186,7 @@ def test_deep_research_stop_teilbericht_und_verwaiste(client, monkeypatch):
 
         # Gestoppter Job mit gesichertem Material (wie nach „Abbrechen").
         job_id = store.deep_job_anlegen(uid, "Stand beim Stadionneubau?")
-        job = deepresearch.DeepJob(id=job_id, user_id=uid, frage="Stand beim Stadionneubau?")
+        job = deepresearch.DeepJob(id=job_id, user_id=uid, question="Stand beim Stadionneubau?")
         job.facetten_fertig, job.facetten_gesamt = 2, 5
         job.material = {
             "candidates": [{"id": 5, "title": "Grundsatzbeschluss", "summary": "Neubau",
@@ -5207,7 +5207,7 @@ def test_deep_research_stop_teilbericht_und_verwaiste(client, monkeypatch):
         assert r.status_code == 409  # schon beendet — kein Doppel-Stopp
 
         monkeypatch.setattr(qa_mod, "deep_bericht_stream",
-                            lambda frage, cands, **k: iter(["Bisheriger Stand [5]."]))
+                            lambda question, cands, **k: iter(["Bisheriger Stand [5]."]))
         assert client.post(f"/api/council/deep-research/{job_id}/teilbericht").status_code == 200
         events = _deep_events(client, job_id)  # wartet auf den Teilbericht-Thread
         done = next(e for e in events if e["type"] == "done")
@@ -5327,9 +5327,9 @@ def test_gespraech_snapshot_traegt_presse_und_debatten(client, monkeypatch):
     monkeypatch.setattr(emb_mod, "search_presse", lambda *a, **k: [(9, 0.5)])
     monkeypatch.setattr(emb_mod, "search_wortbeitraege", lambda *a, **k: [(7, 0.4)])
     monkeypatch.setattr(CouncilStore, "presse_by_ids", lambda self, ids: [
-        {"id": 9, "titel": "Stadt informiert zum Stadion", "url": "https://x/pm", "datum": "2026-07-27"}])
+        {"id": 9, "title": "Stadt informiert zum Stadion", "url": "https://x/pm", "date": "2026-07-27"}])
     monkeypatch.setattr(CouncilStore, "wortbeitraege_by_ids", lambda self, ids: [
-        {"id": 7, "speaker": "Höpken", "partei": "BSW", "art": "rede", "top": "Ö 10",
+        {"id": 7, "speaker": "Höpken", "party": "BSW", "art": "rede", "top": "Ö 10",
          "text": "Endlich kommt das Stadion.", "committee": "Rat", "session_date": "2026-06-01"}])
 
     store = Store(RATSLOTSE_DB)
@@ -5343,7 +5343,7 @@ def test_gespraech_snapshot_traegt_presse_und_debatten(client, monkeypatch):
         gid = next(e for e in events if e["type"] == "done")["conversation_id"]
         turns = store.qa_gespraech(gid, uid)["turns"]
         quellen = json.loads(turns[0]["sources"]) if isinstance(turns[0]["sources"], str) else turns[0]["sources"]
-        assert quellen["presse"][0]["titel"] == "Stadt informiert zum Stadion"
+        assert quellen["presse"][0]["title"] == "Stadt informiert zum Stadion"
         assert quellen["debatten"][0]["speaker"] == "Höpken"
         assert quellen["debatten"][0]["auszug"].startswith("Endlich")
         # Der Lese-Endpoint reicht den Snapshot durch (Frontend stellt daraus her).
@@ -5489,7 +5489,7 @@ def test_haushalt_bilanz_liefert_posten_erlaeuterungen_und_herkunft(client):
             art="ris", probe=["bilanz_ausgleich", "bilanz_kassenprobe"],
             citation="Abschnitt 2.1 — Bilanz der Stadt Oldenburg zum 31.12.2024",
             probe_result="Aktiva und Passiva stimmen auf den Cent überein",
-            stand="31.12.2024", document_id=295294, label="Jahresabschluss 2024",
+            as_of="31.12.2024", document_id=295294, label="Jahresabschluss 2024",
             url="https://example.org/ja.pdf")
         cs.save_bilanz(2024, [
             {"role": "geldschulden", "page": bilanz.PASSIVA, "level": 2,
@@ -5509,7 +5509,7 @@ def test_haushalt_bilanz_liefert_posten_erlaeuterungen_und_herkunft(client):
         ], herkunft.Herkunft(
             art="ris", probe="bilanz_erlaeuterung",
             citation="Abschnitt 6.2 — Erläuterung der wesentlichen Bilanzpositionen",
-            stand="Jahresabschluss 2024", document_id=295294,
+            as_of="Jahresabschluss 2024", document_id=295294,
             label="Jahresabschluss 2024", url="https://example.org/ja.pdf"))
 
         daten = client.get("/api/council/haushalt/bilanz").json()

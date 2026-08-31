@@ -136,7 +136,7 @@ def repo(tmp_path):
 
 
 def test_schnitt_sortiert_ein_und_raeumt_auf(repo):
-    result = schnitt("1.13.0", datum="2026-08-17", wurzel=repo, nummern=lambda pfad: 777)
+    result = schnitt("1.13.0", tag_iso="2026-08-17", wurzel=repo, nummern=lambda pfad: 777)
     text = (repo / "CHANGELOG.md").read_text(encoding="utf-8")
 
     assert result.geschrieben and len(result.fragmente) == 2 and not result.ohne_nummer
@@ -170,7 +170,7 @@ def test_schnitt_sortiert_ein_und_raeumt_auf(repo):
 
 
 def test_schnitt_zieht_die_vergleichslinks_nach(repo):
-    schnitt("1.13.0", datum="2026-08-17", wurzel=repo, nummern=lambda pfad: 777)
+    schnitt("1.13.0", tag_iso="2026-08-17", wurzel=repo, nummern=lambda pfad: 777)
     text = (repo / "CHANGELOG.md").read_text(encoding="utf-8")
     assert "[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v1.13.0...main" in text
     assert "[1.13.0]: https://github.com/Schereo/Ratslotse/compare/v1.12.0...v1.13.0" in text
@@ -178,7 +178,7 @@ def test_schnitt_zieht_die_vergleichslinks_nach(repo):
 
 def test_trocken_schreibt_nichts(repo):
     vorher = (repo / "CHANGELOG.md").read_text(encoding="utf-8")
-    result = schnitt("1.13.0", datum="2026-08-17", wurzel=repo,
+    result = schnitt("1.13.0", tag_iso="2026-08-17", wurzel=repo,
                        trocken=True, nummern=lambda pfad: 777)
     assert not result.geschrieben
     assert "## [1.13.0] – 2026-08-17" in result.text     # gerechnet …
@@ -188,7 +188,7 @@ def test_trocken_schreibt_nichts(repo):
 
 def test_fragment_ohne_auffindbare_nummer(repo, capsys):
     """Kein Commit gefunden → Eintrag ohne Nummer plus Warnung, kein Abbruch."""
-    result = schnitt("1.13.0", datum="2026-08-17", wurzel=repo, nummern=lambda pfad: None)
+    result = schnitt("1.13.0", tag_iso="2026-08-17", wurzel=repo, nummern=lambda pfad: None)
     text = (repo / "CHANGELOG.md").read_text(encoding="utf-8")
     neu = text.split("## [1.13.0]")[1].split("## [1.12.0]")[0]
     assert "**Eine neue Karte.**" in neu and "(#777)" not in neu

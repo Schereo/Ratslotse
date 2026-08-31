@@ -680,9 +680,9 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sp]);
   // Design 29a (P8): Entwurf überlebt den Sitzungs-Rauswurf.
-  useEffect(() => entwurfMelden("ki-frage", () => q), [q]);
+  useEffect(() => entwurfMelden("ki-question", () => q), [q]);
   useEffect(() => {
-    const gerettet = entwurfAbholen("ki-frage");
+    const gerettet = entwurfAbholen("ki-question");
     if (gerettet) setQ((prev) => prev || gerettet);
   }, []);
 
@@ -1426,8 +1426,8 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
       await fetch(apiUrl(`/council/gespraeche/${id}`), { method: "DELETE", credentials: "include", headers: authHeaders() });
     } catch { /* Liste wird beim nächsten Öffnen neu geladen */ }
   };
-  const gespraechUmbenennen = async (id: number, titel: string) => {
-    const sauber = titel.replace(/\s+/g, " ").trim().slice(0, 120);
+  const gespraechUmbenennen = async (id: number, title: string) => {
+    const sauber = title.replace(/\s+/g, " ").trim().slice(0, 120);
     if (!sauber) return;
     setGespraeche((gs) => gs.map((g) => (g.id === id ? { ...g, title: sauber } : g)));
     try {
@@ -1482,7 +1482,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     window.dispatchEvent(new CustomEvent("rl:gespraeche-status", {
       detail: {
         sichtbar: zeigeGespraecheKnopf,
-        titel: aktiv?.title ?? null,   // Ereignis-Schlüssel ist intern, der Wert kommt vom Server
+        title: aktiv?.title ?? null,   // Ereignis-Schlüssel ist intern, der Wert kommt vom Server
         // Design 15: Der Kopf-Knopf zählt mit („Gespräche · 4").
         count: gesamt,
       },
@@ -1666,7 +1666,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
             onNeu={() => { setSheetOffen(false); neuesGespraech(); }}
             onLaden={(id) => void gespraechLaden(id)}
             onLoeschen={(id) => void gespraechLoeschen(id)}
-            onUmbenennen={(id, titel) => void gespraechUmbenennen(id, titel)}
+            onUmbenennen={(id, title) => void gespraechUmbenennen(id, title)}
             onClose={() => { setSheetOffen(false); setSuche(""); setSucheListe(null); }}
           />
         )}
@@ -1837,7 +1837,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                 onJump={(id) => { jumpZuQuelle(ti, id, ti === turns.length - 1); flash(id); }}
                 onRetry={() => { setTurns((ts) => ts.slice(0, -1)); void ask(t.question); }}
                 onEigeneFrage={() => inputRef.current?.focus()}
-                onDazuFragen={(titel) => frageStellen(`Erzähl mir mehr zu „${titel}".`)}
+                onDazuFragen={(title) => frageStellen(`Erzähl mir mehr zu „${title}".`)}
                 onFrageStellen={(text) => frageStellen(text)}
                 onDeepStop={() => void deepStop(t)}
                 onDeepTeilbericht={() => void deepTeilbericht(t)}
@@ -2089,7 +2089,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                 </p>
               )}
               <BelegeSpalte turn={letzter} flashId={flashId}
-                onDazuFragen={(titel) => frageStellen(`Erzähl mir mehr zu „${titel}".`)}
+                onDazuFragen={(title) => frageStellen(`Erzähl mir mehr zu „${title}".`)}
                 onFlash={flash} />
             </>
           ) : loading || deepAktiv ? (
@@ -2122,7 +2122,7 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
   turn: Turn; turnIdx: number; istLetzter: boolean; loading: boolean;
   step: Step | null; word: string; flashId: number | null;
   onJump: (id: number) => void; onRetry: () => void; onEigeneFrage: () => void;
-  onDazuFragen?: (titel: string) => void;
+  onDazuFragen?: (title: string) => void;
   onFrageStellen?: (text: string) => void;
   onDeepStop?: () => void; onDeepTeilbericht?: () => void; onDeepVerwerfen?: () => void;
   onDeepFortsetzen?: () => void; onDeepSchnell?: () => void;
@@ -2468,7 +2468,7 @@ function SheetZeile({ g, aktiv, offen, inAelter, aufklappen, onLaden, onLoeschen
   /** In „Heute"/„Gestern" wäre ein Datum je Zeile doppelt — nur „Älter" trägt eins. */
   inAelter: boolean;
   aufklappen: (id: number | null) => void;
-  onLaden: () => void; onLoeschen: () => void; onUmbenennen: (titel: string) => void;
+  onLaden: () => void; onLoeschen: () => void; onUmbenennen: (title: string) => void;
 }) {
   const AKTIONEN_BREITE = 148;
   const start = useRef<{ x: number; y: number } | null>(null);
@@ -2606,7 +2606,7 @@ function GespraecheSheet({ gespraeche, gesamt, treffer, weitere, laedtMehr, such
   suche: string; onSuche: (q: string) => void; onMehr: () => void;
   aktivId: number | null;
   onNeu: () => void; onLaden: (id: number) => void; onLoeschen: (id: number) => void;
-  onUmbenennen: (id: number, titel: string) => void; onClose: () => void;
+  onUmbenennen: (id: number, title: string) => void; onClose: () => void;
 }) {
   const [offenId, setOffenId] = useState<number | null>(null);
   const startY = useRef<number | null>(null);
@@ -2687,7 +2687,7 @@ function GespraecheSheet({ gespraeche, gesamt, treffer, weitere, laedtMehr, such
                     aufklappen={setOffenId}
                     onLaden={() => onLaden(g.id)}
                     onLoeschen={() => { setOffenId(null); onLoeschen(g.id); }}
-                    onUmbenennen={(titel) => onUmbenennen(g.id, titel)} />
+                    onUmbenennen={(title) => onUmbenennen(g.id, title)} />
                 ))}
               </div>
             </div>
@@ -2720,7 +2720,7 @@ function GespraecheSheet({ gespraeche, gesamt, treffer, weitere, laedtMehr, such
 
 function BelegeSpalte({ turn, flashId, onFlash, onDazuFragen }: {
   turn: Turn; flashId: number | null; onFlash: (id: number) => void;
-  onDazuFragen?: (titel: string) => void;
+  onDazuFragen?: (title: string) => void;
 }) {
   const [showAll, setShowAll] = useState(false);
   const idToNum = useIdToNum(turn);
@@ -2754,7 +2754,7 @@ function BelegeSpalte({ turn, flashId, onFlash, onDazuFragen }: {
 function QuellenBlock({ turn, turnIdx, idToNum, zitierte, showAll, setShowAll, flashId, ankerPrefix, onDazuFragen }: {
   turn: Turn; turnIdx: number; idToNum: Map<number, number>; zitierte: QaSource[];
   showAll: boolean; setShowAll: (fn: (v: boolean) => boolean) => void; flashId: number | null;
-  ankerPrefix: string; onDazuFragen?: (titel: string) => void;
+  ankerPrefix: string; onDazuFragen?: (title: string) => void;
 }) {
   const router = useRouter();
   // Der Ausklapper zeigt NUR die noch nicht gelisteten Treffer. Vorher lief
@@ -2898,15 +2898,15 @@ function TeilenKnopf({ turn, zitierte }: { turn: Turn; zitierte: QaSource[] }) {
               committee: q.committee ?? null, outcome: q.outcome ?? null,
             })),
             debatten: (turn.debatten ?? []).slice(0, 20).map((d) => ({
-              speaker: d.speaker, partei: d.partei, art: d.art,
+              speaker: d.speaker, party: d.party, art: d.art,
               top: (d.top ?? "")?.slice(0, 300) || null,
               auszug: (d.auszug ?? "").slice(0, 2000),
-              committee: d.committee, datum: d.datum,
+              committee: d.committee, date: d.date,
               protokoll_url: d.protokoll_url?.slice(0, 500) ?? null,
               protokoll_seite: d.protokoll_seite ?? null,
             })),
             presse: (turn.presse ?? []).slice(0, 10).map((p) => ({
-              titel: p.titel.slice(0, 300), url: p.url.slice(0, 500), datum: p.datum,
+              title: p.title.slice(0, 300), url: p.url.slice(0, 500), date: p.date,
             })),
             // nr muss mit: Ohne sie fänden die „[A1]"-Belege im geteilten
             // Text ihre Anlage nicht und würden ersatzlos geschluckt.
@@ -2918,7 +2918,7 @@ function TeilenKnopf({ turn, zitierte }: { turn: Turn; zitierte: QaSource[] }) {
             // Ohne beitraege_liste: die Aufklapp-Beiträge blähen den Snapshot,
             // die geteilte Seite zeigt Position und Kernaussage.
             parteien: parteien.slice(0, 12).map((p) => ({
-              partei: p.partei, haltung: p.haltung ?? null,
+              party: p.party, haltung: p.haltung ?? null,
               position: (p.position ?? "").slice(0, 800), einig: p.einig,
               note: p.note, kernaussage: p.kernaussage, beitraege: p.beitraege,
             })),
@@ -2956,7 +2956,7 @@ function TeilenKnopf({ turn, zitierte }: { turn: Turn; zitierte: QaSource[] }) {
   };
   return (
     <button type="button" onClick={() => void teilen()} aria-label="Antwort teilen"
-      title="Antwort teilen (Link zeigt exact diese Antwort)"
+      title="Antwort teilen (Link zeigt genau diese Antwort)"
       className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
       {laedt ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Share2 className="h-3.5 w-3.5" />}
     </button>
@@ -3169,7 +3169,7 @@ function ParteienBaustein({ question, beschlussIds, onFrageStellen }: {
       return;
     }
     let aktiv = true;
-    fetch(apiUrl("/council/partei-meinungen"), {
+    fetch(apiUrl("/council/party-meinungen"), {
       method: "POST", credentials: "include",
       headers: { "Content-Type": "application/json", ...authHeaders() },
       // Die belegten Beschlüsse mitgeben: Über sie holt der Endpoint die

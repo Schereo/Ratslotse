@@ -100,16 +100,16 @@ export function Staedtevergleich({
  *  Bewusst kein Diagramm: Drei Punkte tragen keine Achsen. Die Zahlen
  *  nebeneinander mit dem Prozentsatz dahinter sagen dasselbe auf einer Zeile. */
 export function Zeitreihe({
-  titel, punkte, change: delta,
+  title, punkte, change: delta,
 }: {
-  titel: string;
+  title: string;
   punkte: { year: number; value: number }[];
   change: number | null;
 }) {
   if (!punkte.length) return null;
   return (
     <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-      <span className="text-[12.5px] font-semibold">{titel}</span>
+      <span className="text-[12.5px] font-semibold">{title}</span>
       {/* Selbst umbruchfähig, nicht nur die Zeile darüber: Auf 375 px passen
           drei Wertepaare nicht nebeneinander, und als EIN Flex-Element ließe
           sich die Kette nicht unter ihre Inhaltsbreite drücken — sie stand

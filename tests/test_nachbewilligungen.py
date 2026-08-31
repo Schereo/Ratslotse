@@ -64,7 +64,7 @@ TITEL_AUSREISSER = [
      187_804.11),
     # „insgesamt" zwischen Wendung und Zahl.
     ("25/0559", "Außerplanmäßige Bewilligung zweier Verpflichtungsermächtigungen "
-                "in Höhe von total 500.000 Euro für einen Vertrag mit den "
+                "in Höhe von insgesamt 500.000 Euro für einen Vertrag mit den "
                 "Nds. Landesforsten - Kompensation -Beschluss", 500_000.0),
 ]
 
@@ -152,7 +152,7 @@ as Haushaltsjahr 2022 hat der Rat gemäß § 117 NKomVG über- und außer-
 planmäßige Aufwendungen und Auszahlungen beschlossen beziehungsweise wurde
 er über Eilentscheidungen und die vom Oberbürgermeister oder Vertretung als uner-
 heblich gemäß § 6 der Haushaltssatzung entschiedenen Fälle unterrichtet. Es wur-
-den über- und außerplanmäßige Aufwendungen und Auszahlungen von total
+den über- und außerplanmäßige Aufwendungen und Auszahlungen von insgesamt
 26.969.523,30 Euro genehmigt. Davon entfielen 10.032.086,30 Euro auf investive
 und 16.649.437,00 Euro auf konsumtive Zwecke. Darüber hinaus wurde im Jahr
 2022 eine überplanmäßige Verpflichtungsermächtigung in Höhe von 150.000 Euro
@@ -198,11 +198,11 @@ Für das Haushaltsjahr 2023 hat der Rat gemäß § 117 NKomVG über- und außer-
 planmäßige Aufwendungen und Auszahlungen beschlossen beziehungsweise wurde
 er über Eilentscheidungen und die vom Oberbürgermeister oder Vertretung als uner-
 heblich gemäß § 6 der Haushaltssatzung entschiedenen Fälle unterrichtet. Es wur-
-den über- und außerplanmäßige Aufwendungen und Auszahlungen von total
+den über- und außerplanmäßige Aufwendungen und Auszahlungen von insgesamt
 40.236.162,59 Euro genehmigt. Davon entfielen 8.835.307,05 Euro auf investive und
 31.400.855,54 Euro auf konsumtive Zwecke. Darüber hinaus wurden im Jahr 2023
 vom Rat sechs über- bzw. außerplanmäßige Verpflichtungsermächtigungen in Höhe
-von total 4.870.000,00 Euro bewilligt.
+von insgesamt 4.870.000,00 Euro bewilligt.
 
 Über-/ außerplanmäßige
 Aufwendungen bzw. Aus-
@@ -244,11 +244,11 @@ Für das Haushaltsjahr 2024 hat der Rat gemäß § 117 NKomVG über- und außer-
 planmäßige Aufwendungen und Auszahlungen beschlossen beziehungsweise wurde
 er über Eilentscheidungen und die vom Oberbürgermeister oder Vertretung als uner-
 heblich gemäß § 6 der Haushaltssatzung entschiedenen Fälle unterrichtet. Es wur-
-den über- und außerplanmäßige Aufwendungen und Auszahlungen von total
+den über- und außerplanmäßige Aufwendungen und Auszahlungen von insgesamt
 57.492.845,28 Euro genehmigt. Davon entfielen 11.653.645,24 Euro auf investive
 und 45.839.200,04 Euro auf konsumtive Zwecke. Darüber hinaus wurden im Jahr
 2024 vom Rat drei über- bzw. außerplanmäßige Verpflichtungsermächtigungen in
-Höhe von total 1.480.000,00 Euro bewilligt. Zudem wurde eine außerplanmä-
+Höhe von insgesamt 1.480.000,00 Euro bewilligt. Zudem wurde eine außerplanmä-
 ßige Verpflichtungsermächtigung in Höhe von 35.000,00 Euro durch den Oberbür-
 germeister bewilligt. Der Rat wurde hierüber nachrichtlich unterrichtet.
 
@@ -287,25 +287,25 @@ RB 46
 
 # --- Stufe 1: der Titel -----------------------------------------------------
 
-@pytest.mark.parametrize("nr,titel,erwartet", TITEL_REGEL + TITEL_AUSREISSER)
-def test_betrag_aus_titel(nr, titel, erwartet):
+@pytest.mark.parametrize("nr,title,erwartet", TITEL_REGEL + TITEL_AUSREISSER)
+def test_betrag_aus_titel(nr, title, erwartet):
     """Jeder Regelfall und jeder Ausreißer wird aus dem Titel gelesen."""
-    value, source = nb.amount(titel)
+    value, source = nb.amount(title)
     assert value == pytest.approx(erwartet), nr
-    assert source == "titel", nr
+    assert source == "title", nr
 
 
-@pytest.mark.parametrize("titel", TITEL_OHNE_BETRAG)
-def test_titel_ohne_betrag_liefert_nichts(titel):
+@pytest.mark.parametrize("title", TITEL_OHNE_BETRAG)
+def test_titel_ohne_betrag_liefert_nichts(title):
     """Ohne Betrag im Titel und ohne Vorschlag bleibt es leer — nicht 0."""
-    assert nb.amount(titel) == (None, None)
+    assert nb.amount(title) == (None, None)
 
 
 def test_rueckgabe_ist_wert_dann_quelle():
     """Die Reihenfolge des Tupels ist (Betrag, Quelle) — nicht umgekehrt."""
     value, source = nb.amount(TITEL_REGEL[0][1])
     assert isinstance(value, float)
-    assert source == "titel"
+    assert source == "title"
 
 
 # --- Stufe 2: der Beschlussvorschlag ---------------------------------------
@@ -351,36 +351,36 @@ def test_zweite_stufe_aus_volltext_wenn_spalte_leer():
 
 # --- Die drei Fallen -------------------------------------------------------
 
-@pytest.mark.parametrize("titel", TITEL_SAMMEL)
-def test_sammelbericht_schwelle_ist_kein_betrag(titel):
+@pytest.mark.parametrize("title", TITEL_SAMMEL)
+def test_sammelbericht_schwelle_ist_kein_betrag(title):
     """„bis zu 50.000 Euro" ist die Wertgrenze, unter der der Rat gar nicht
     entscheidet — nicht die Summe dessen, was darunter anfiel."""
-    assert nb.art(titel) == nb.ART_SCHWELLE
-    assert nb.amount(titel) == (None, None)
+    assert nb.art(title) == nb.ART_SCHWELLE
+    assert nb.amount(title) == (None, None)
 
 
 def test_sammelbericht_schlaegt_verpflichtungsermaechtigung():
     """Der Sammelbericht 21/0023 nennt beides im Titel. Er ist trotzdem eine
     Schwelle — sonst stünde eine Wertgrenze als Verpflichtungsermächtigung im
     Bestand."""
-    titel = ("Über- und außerplanmäßige Auszahlungen, Aufwendungen und "
+    title = ("Über- und außerplanmäßige Auszahlungen, Aufwendungen und "
              "Verpflichtungsermächtigungen bis zu 50.000 Euro in der Zeit vom "
              "01.01.2020 bis 31.12.2020 - Bericht")
-    assert nb.art(titel) == nb.ART_SCHWELLE
+    assert nb.art(title) == nb.ART_SCHWELLE
 
 
 def test_verpflichtungsermaechtigung_zaehlt_nicht_mit():
     """Eine VE bindet künftige Jahre; sie ist keine Ausgabe dieses Jahres.
     Der Rechenschaftsbericht zählt sie getrennt, wir auch."""
     commitment_authorizations = nb.Bewilligung(
-        template_number="23/0359", titel="…", art=nb.ART_VERPFLICHTUNG,
+        template_number="23/0359", title="…", art=nb.ART_VERPFLICHTUNG,
         category="ausserplanmaessig", year=2023, amount=840_000.0,
-        amount_source="titel",
+        amount_source="title",
         beschluesse=({"committee": "Rat", "outcome": "angenommen"},))
     echt = nb.Bewilligung(
-        template_number="23/0617", titel="…", art=nb.ART_BEWILLIGUNG,
+        template_number="23/0617", title="…", art=nb.ART_BEWILLIGUNG,
         category="ueberplanmaessig", year=2023, amount=11_716_000.0,
-        amount_source="titel",
+        amount_source="title",
         beschluesse=({"committee": "Rat", "outcome": "angenommen"},))
     assert not commitment_authorizations.zaehlt_in_summe
     summen = nb.jahressummen([commitment_authorizations, echt])
@@ -407,9 +407,9 @@ def test_ohne_beschluss_keine_summe():
     """Fünf Vorlagen tragen gar keine Beschlusszeile. Beantragtes ist kein
     bewilligtes Geld — 22/0925 allein verschöbe 2022 um 1,4 Mio. €."""
     beantragt = nb.Bewilligung(
-        template_number="22/0925", titel="…", art=nb.ART_BEWILLIGUNG,
+        template_number="22/0925", title="…", art=nb.ART_BEWILLIGUNG,
         category="ueberplanmaessig", year=2022, amount=1_400_000.0,
-        amount_source="titel", beschluesse=())
+        amount_source="title", beschluesse=())
     assert not beantragt.decided
     assert not beantragt.zaehlt_in_summe
     assert nb.jahressummen([beantragt]) == {}
@@ -420,9 +420,9 @@ def test_nur_kenntnis_ist_kein_ratsbeschluss():
     ein anderer. Der Rechenschaftsbericht bestätigt das für 22/0544 mit dem
     Vermerk „1 und BM"."""
     unterrichtung = nb.Bewilligung(
-        template_number="22/0544", titel="…", art=nb.ART_BEWILLIGUNG,
+        template_number="22/0544", title="…", art=nb.ART_BEWILLIGUNG,
         category="ueberplanmaessig", year=2022, amount=180_000.0,
-        amount_source="titel",
+        amount_source="title",
         beschluesse=({"committee": "Rat", "outcome": "zur_kenntnis"},))
     assert unterrichtung.nur_kenntnis
     assert not unterrichtung.in_plenary
@@ -482,7 +482,7 @@ def test_probe_volltext():
 
 def test_probe_volltext_ohne_titelbetrag_ist_nicht_bestanden():
     """„Nicht geprüft" darf nicht wie „bestanden" aussehen."""
-    b = nb.Bewilligung(template_number="24/0836", titel="…", art=nb.ART_BEWILLIGUNG,
+    b = nb.Bewilligung(template_number="24/0836", title="…", art=nb.ART_BEWILLIGUNG,
                        category="ueberplanmaessig", year=2024, amount=65_000.0,
                        amount_source="proposed_decision")
     assert not nb.probe_volltext(b, VORSCHLAG_RECHTSAMT)
@@ -698,9 +698,9 @@ def test_vorlagen_im_kapitel_2024():
 
 def _bewilligung(nr, amount, committee, outcome="angenommen"):
     return nb.Bewilligung(
-        template_number=nr, titel="…", art=nb.ART_BEWILLIGUNG,
+        template_number=nr, title="…", art=nb.ART_BEWILLIGUNG,
         category="ueberplanmaessig", year=2024, amount=amount,
-        amount_source="titel",
+        amount_source="title",
         beschluesse=({"committee": committee, "outcome": outcome},))
 
 

@@ -54,14 +54,14 @@ def main() -> dict:
               f"{'' if args.schreiben else ' (Vorschau — nichts wird geschrieben)'}")
 
         gefunden = 0
-        for ksinr, committee, datum in offen:
+        for ksinr, committee, date in offen:
             sitzung = scraper.fetch_session(ksinr)
             ort = (sitzung.location if sitzung else "").strip()
             if not ort:
-                print(f"  {datum} {committee}: kein Ort auf der Seite")
+                print(f"  {date} {committee}: kein Ort auf der Seite")
                 continue
             gefunden += 1
-            print(f"  {datum} {committee}: {ort}")
+            print(f"  {date} {committee}: {ort}")
             if args.schreiben:
                 with store._conn:
                     store._conn.execute(

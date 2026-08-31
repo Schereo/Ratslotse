@@ -90,7 +90,7 @@ function Fundstelle({ h }: { h: Herkunft | null }) {
       </p>
       {h.citation && (
         <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">
-          {h.citation}{h.stand ? ` · ${h.stand}` : ""}
+          {h.citation}{h.as_of ? ` · ${h.as_of}` : ""}
         </p>
       )}
     </div>
@@ -102,8 +102,8 @@ function Fundstelle({ h }: { h: Herkunft | null }) {
  *  Der Balken misst an den Auszahlungen des größten Bereichs, nicht an der
  *  Gesamtsumme: Sonst wäre die längste Strecke halb so lang wie das Feld und
  *  die zehn kleinen Bereiche unsichtbar. */
-function Rang({ zeile, skala, aufVorhaben, vorhandene }: {
-  zeile: InvestitionsZeile;
+function Rang({ row, skala, aufVorhaben, vorhandene }: {
+  row: InvestitionsZeile;
   skala: number;
   /** Der Weg nach unten: von der Summe zu den einzelnen Vorhaben. */
   aufVorhaben: (thhNr: number) => void;
@@ -112,16 +112,16 @@ function Rang({ zeile, skala, aufVorhaben, vorhandene }: {
    *  Zeile bleibt eine Zeile statt zu einem Knopf zu werden, der nichts tut. */
   vorhandene: number;
 }) {
-  const aus = amount(zeile.outflows);
-  const gegen = zeile.inflows > 0 ? amount(zeile.inflows) : null;
-  const breite = skala > 0 ? Math.max(0.6, (zeile.outflows / skala) * 100) : 0;
-  const gegenAnteil = zeile.outflows > 0
-    ? (zeile.inflows / zeile.outflows) * 100
+  const aus = amount(row.outflows);
+  const gegen = row.inflows > 0 ? amount(row.inflows) : null;
+  const breite = skala > 0 ? Math.max(0.6, (row.outflows / skala) * 100) : 0;
+  const gegenAnteil = row.outflows > 0
+    ? (row.inflows / row.outflows) * 100
     : 0;
   return (
     <li className="flex flex-col gap-1.5 py-3">
       <div className="flex items-baseline justify-between gap-3">
-        <span className="min-w-0 text-[13px] font-medium leading-snug">{zeile.label}</span>
+        <span className="min-w-0 text-[13px] font-medium leading-snug">{row.label}</span>
         <span className="flex-none font-display text-[15px] font-bold tabular-nums">
           {aus.value}
           <span className="ml-1 text-[10.5px] font-medium text-muted-foreground">
@@ -132,7 +132,7 @@ function Rang({ zeile, skala, aufVorhaben, vorhandene }: {
       <div
         className="h-2 w-full overflow-hidden rounded-full bg-muted/60"
         role="img"
-        aria-label={`${zeile.label}: ${aus.value} ${aus.unit} geplante Auszahlungen`}
+        aria-label={`${row.label}: ${aus.value} ${aus.unit} geplante Auszahlungen`}
       >
         <div
           className="h-full rounded-full bg-[var(--hh-aus-2)]"
@@ -152,7 +152,7 @@ function Rang({ zeile, skala, aufVorhaben, vorhandene }: {
         {vorhandene > 0 && (
           <button
             type="button"
-            onClick={() => aufVorhaben(zeile.sub_budget_no)}
+            onClick={() => aufVorhaben(row.sub_budget_no)}
             className="text-[11px] text-primary hover:underline"
           >
             {vorhandene} einzelne Vorhaben ansehen
@@ -348,7 +348,7 @@ export function InvestitionsplanAbschnitt({ onBestand }: {
         </section>
 
         <LottiErklaert
-          titel="Zwei Haushalte, nicht einer"
+          title="Zwei Haushalte, nicht einer"
           text={
             "Ergebnis- und Finanzhaushalt betrachten dieselbe Tätigkeit aus zwei Perspektiven. " +
             "Im Ergebnishaushalt stehen die laufenden Aufwendungen eines Jahres, etwa Löhne, " +
@@ -387,7 +387,7 @@ export function InvestitionsplanAbschnitt({ onBestand }: {
             {zeilen.map((z) => (
               <Rang
                 key={z.sub_budget_no}
-                zeile={z}
+                row={z}
                 skala={skala}
                 vorhandene={programmJahr != null
                   ? count(programm, programmJahr, z.sub_budget_no) : 0}

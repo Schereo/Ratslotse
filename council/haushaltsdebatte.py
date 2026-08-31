@@ -461,7 +461,7 @@ _SAMMELABSTIMMUNG = re.compile(
 class Antrag:
     """Eine Änderungsliste, so wie das Protokoll sie benennt und abstimmt."""
 
-    titel: str
+    title: str
     outcome: str | None
     vote: str | None
     author: str | None       # gruppen-bewusstes Label, None bei Verwaltung
@@ -471,7 +471,7 @@ class Antrag:
 
     def als_dict(self) -> dict:
         return {
-            "titel": self.titel,
+            "title": self.title,
             "outcome": self.outcome,
             "vote": self.vote,
             "author": self.author,
@@ -500,7 +500,7 @@ _URHEBER_MUSTER: list[tuple[re.Pattern, str]] = [
 ]
 
 
-def author(titel: str) -> list[str]:
+def author(title: str) -> list[str]:
     """Alle Fraktionen/Gruppen, die eine Änderungsliste tragen — in der
     Reihenfolge, in der das Protokoll sie nennt.
 
@@ -512,7 +512,7 @@ def author(titel: str) -> list[str]:
     belegt: list[tuple[int, int]] = []
     gefunden: list[tuple[int, str]] = []
     for muster, label in _URHEBER_MUSTER:
-        for m in muster.finditer(titel):
+        for m in muster.finditer(title):
             if any(m.start() < b and a < m.end() for a, b in belegt):
                 continue
             belegt.append((m.start(), m.end()))
@@ -524,20 +524,20 @@ def author(titel: str) -> list[str]:
     return raus
 
 
-def antrag_aus_zeile(zeile: dict) -> Antrag | None:
+def antrag_aus_zeile(row: dict) -> Antrag | None:
     """Macht aus einer ``subvote``-Zeile einen Antrag — oder ``None``, wenn die
     Zeile die Schlussabstimmung über das Ganze ist."""
-    titel = (zeile.get("title") or "").strip()
-    if not titel or _SAMMELABSTIMMUNG.match(titel):
+    title = (row.get("title") or "").strip()
+    if not title or _SAMMELABSTIMMUNG.match(title):
         return None
-    ist_verw = bool(_VERWALTUNGSLISTE.search(titel))
-    entity = [] if ist_verw else author(titel)
+    ist_verw = bool(_VERWALTUNGSLISTE.search(title))
+    entity = [] if ist_verw else author(title)
     return Antrag(
-        titel=titel,
-        outcome=zeile.get("outcome"),
-        vote=zeile.get("vote"),
+        title=title,
+        outcome=row.get("outcome"),
+        vote=row.get("vote"),
         author=" / ".join(entity) if entity else None,
         ist_verwaltung=ist_verw,
-        top=zeile.get("item_number"),
-        ksinr=zeile.get("ksinr"),
+        top=row.get("item_number"),
+        ksinr=row.get("ksinr"),
     )

@@ -49,10 +49,10 @@ const QUELLEN: QuellenSchluessel[] = [
 ];
 
 const MARKEN = [
-  { id: "summe", titel: "Die ganze Stadt" },
-  { id: "gesellschaften", titel: "Wer dahintersteckt" },
-  { id: "betriebe", titel: "Was sie planen" },
-  { id: "fees", titel: "Was du zahlst" },
+  { id: "summe", title: "Die ganze Stadt" },
+  { id: "gesellschaften", title: "Wer dahintersteckt" },
+  { id: "betriebe", title: "Was sie planen" },
+  { id: "fees", title: "Was du zahlst" },
 ];
 
 function KonzernSeiteInner() {

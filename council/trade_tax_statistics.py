@@ -237,11 +237,11 @@ def spaltenzuordnung(spalten: dict[int, str]) -> dict[str, int]:
     return aus
 
 
-def _zelle(zeile: list[object], idx: int | None) -> object:
+def _zelle(row: list[object], idx: int | None) -> object:
     """Zellwert oder ``None`` — ohne IndexError, denn XLSX-Zeilen enden früh."""
-    if idx is None or idx >= len(zeile):
+    if idx is None or idx >= len(row):
         return None
-    return zeile[idx]
+    return row[idx]
 
 
 def _wert(roh: object) -> tuple[float | None, bool]:
@@ -278,7 +278,7 @@ class Gewerbesteuerjahrgang:
     ``year`` ist das **Erhebungsjahr** der Veranlagung, das die Datei selbst
     im Titel nennt — nicht das Jahr, in dem der Bericht erschien. Zwischen
     beiden liegen rund fünf Jahre, und genau deshalb steht das Erscheinen
-    getrennt daneben (:attr:`stand`).
+    getrennt daneben (:attr:`as_of`).
     """
 
     year: int
@@ -292,7 +292,7 @@ class Gewerbesteuerjahrgang:
     gemeinden: dict[str, dict] = field(default_factory=dict)
 
     @property
-    def stand(self) -> str | None:
+    def as_of(self) -> str | None:
         """Was über die gelesene Fassung zu sagen ist, in einem Feld.
 
         Beides gehört an die Zahl: wann der Bericht erschien (der Verzug ist
@@ -313,8 +313,8 @@ def _kopf(pfad: str) -> tuple[int, str | None, str | None]:
     """
     year = jahr_nummer = None
     korrektur = None
-    for zeile in sv.blatt_lesen(pfad, "Titel"):
-        for zelle in zeile:
+    for row in sv.blatt_lesen(pfad, "Titel"):
+        for zelle in row:
             text = " ".join(str(zelle or "").split())
             if (m := re.search(r"Gewerbesteuerstatistik\s+(\d{4})", text)):
                 year = int(m.group(1))
@@ -327,8 +327,8 @@ def _kopf(pfad: str) -> tuple[int, str | None, str | None]:
         raise ValueError(f"{pfad}: Auf dem Titelblatt steht kein Erhebungsjahr")
 
     erschienen = None
-    for zeile in sv.blatt_lesen(pfad, "Impressum"):
-        for zelle in zeile:
+    for row in sv.blatt_lesen(pfad, "Impressum"):
+        for zelle in row:
             text = " ".join(str(zelle or "").split())
             if (m := re.search(r"(Erschienen im \w+ \d{4})", text)):
                 erschienen = m.group(1)
@@ -363,22 +363,22 @@ def _blatt(pfad: str, blatt: str, erwartet: tuple[str, ...],
         raise ValueError(f"{pfad}: Blatt {blatt} ohne Hebesatzspalte")
 
     aus: dict[str, dict] = {}
-    for zeile in zeilen[kopf_idx + 1:]:
-        if not zeile:
+    for row in zeilen[kopf_idx + 1:]:
+        if not row:
             continue
-        key = sv.schluessel_normalisieren(_zelle(zeile, c_key))
+        key = sv.schluessel_normalisieren(_zelle(row, c_key))
         if key not in STAEDTE:
             continue
         eintrag: dict = {
-            "city": " ".join(str(_zelle(zeile, c_name) or "").split()),
+            "city": " ".join(str(_zelle(row, c_name) or "").split()),
             "confidential": False,
         }
         for name in erwartet:
-            value, confidential = _wert(_zelle(zeile, zuordnung[name]))
+            value, confidential = _wert(_zelle(row, zuordnung[name]))
             eintrag[name] = value
             eintrag["confidential"] = eintrag["confidential"] or confidential
         if mit_hebesatz:
-            eintrag["rate"] = sv._zahl(_zelle(zeile, c_hebesatz))
+            eintrag["rate"] = sv._zahl(_zelle(row, c_hebesatz))
         aus[key] = eintrag
     return aus
 

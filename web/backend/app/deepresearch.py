@@ -66,7 +66,7 @@ class DeepJob:
     """Ein laufender (oder gestoppter, Teilbericht-fähiger) Job im Speicher."""
     id: str
     user_id: int
-    frage: str
+    question: str
     gespraech_id: int | None = None
     #: Die letzten Gesprächsrunden (wie bei /ask), um Rückbezüge aufzulösen.
     verlauf: list[dict] = field(default_factory=list)
@@ -92,10 +92,10 @@ class DeepJob:
     @property
     def suchfrage(self) -> str:
         """Womit gesucht, zerlegt und berichtet wird: bei einer Anschlussfrage
-        die aufgelöste Fassung, sonst die getippte. ``frage`` bleibt daneben
+        die aufgelöste Fassung, sonst die getippte. ``question`` bleibt daneben
         stehen — sie ist, was der Mensch geschrieben hat, und gehört so in
         Anzeige, Gesprächs-Turn und DB."""
-        return self.recherche_frage or self.frage
+        return self.recherche_frage or self.question
 
 
 _registry: dict[str, DeepJob] = {}
@@ -187,12 +187,12 @@ def teilbericht_starten(job: DeepJob, ratslotse_db: str, council_db: str) -> boo
     return True
 
 
-def _melde_text(status: str, frage: str) -> tuple[str, str]:
+def _melde_text(status: str, question: str) -> tuple[str, str]:
     """Titel und Text der Fertig-Meldung. Die Frage steht im Text, nicht im
     Titel: Auf dem Sperrbildschirm ist der Titel fett und kurz, die Frage darf
     umbrechen — und ohne sie wüsste bei zwei Recherchen am Tag niemand, welche
     gemeint ist."""
-    kurz = frage.strip()
+    kurz = question.strip()
     if len(kurz) > 120:
         kurz = kurz[:119].rsplit(" ", 1)[0] + " …"
     zitat = "„" + kurz + "“"
@@ -235,8 +235,8 @@ def _melden_jetzt(job: DeepJob, ratslotse_db: str, status: str) -> None:
             return
         store = Store(ratslotse_db)
         try:
-            zeile = store.deep_job_get(job.id, job.user_id)
-            if not zeile or zeile.get("seen"):
+            row = store.deep_job_get(job.id, job.user_id)
+            if not row or row.get("seen"):
                 return
             owner = store.get_owner_delivery(job.user_id)
         finally:
@@ -246,8 +246,8 @@ def _melden_jetzt(job: DeepJob, ratslotse_db: str, status: str) -> None:
             store.close()
         if not owner:
             return
-        titel, text = _melde_text(status, job.suchfrage)
-        if delivery.push_quittung(owner, titel, text, MELDE_ZIEL):
+        title, text = _melde_text(status, job.suchfrage)
+        if delivery.push_quittung(owner, title, text, MELDE_ZIEL):
             _log.info("deep %s: Fertig-Meldung an Konto %s (%s)", job.id, job.user_id, status)
     except Exception:  # noqa: BLE001 — eine Meldung darf nichts umbringen
         _log.exception("deep %s: Fertig-Meldung fehlgeschlagen", job.id)
@@ -286,11 +286,11 @@ def _run(job: DeepJob, ratslotse_db: str, council_db: str) -> None:
         # Analyse die eigenständige Fassung (Tims Befund 30.08.2026).
         if job.verlauf:
             try:
-                job.recherche_frage = (qa.analyse_query(job.frage, verlauf=job.verlauf)
+                job.recherche_frage = (qa.analyse_query(job.question, verlauf=job.verlauf)
                                        .get("question") or "").strip()
             except Exception:  # noqa: BLE001 — schlimmstenfalls die Originalfrage
                 _log.warning("deep %s: Frage-Auflösung scheiterte", job.id, exc_info=True)
-            if job.recherche_frage and job.recherche_frage != job.frage:
+            if job.recherche_frage and job.recherche_frage != job.question:
                 _log.info("deep %s: Anschlussfrage aufgelöst → %r", job.id, job.recherche_frage)
         facetten = qa.deep_zerlege(job.suchfrage)
         job.facetten_gesamt = len(facetten)
@@ -426,13 +426,13 @@ def _run(job: DeepJob, ratslotse_db: str, council_db: str) -> None:
             "facetten_fertig": job.facetten_fertig, "gelesen": gelesen,
             "zeitraum": zeitraum, "kontext": job.suchfrage,
             "sources": [_qa_source(c) for c in candidates],
-            "presse_kompakt": [{"titel": p.get("titel"), "url": p.get("url"),
-                                "datum": p.get("datum")} for p in presse_rows],
-            "debatten_kompakt": [{"speaker": d.get("speaker"), "partei": d.get("partei"),
+            "presse_kompakt": [{"title": p.get("title"), "url": p.get("url"),
+                                "date": p.get("date")} for p in presse_rows],
+            "debatten_kompakt": [{"speaker": d.get("speaker"), "party": d.get("party"),
                                   "art": d.get("art"), "top": d.get("top"),
                                   "auszug": (d.get("text") or "")[:2000],
                                   "committee": d.get("committee"),
-                                  "datum": d.get("session_date"),
+                                  "date": d.get("session_date"),
                                   "protokoll_url": d.get("protokoll_url"),
                                   "protokoll_seite": d.get("page")} for d in debatten_rows],
             "anlagen_kompakt": [{"nr": a.get("nr"), "label": a.get("label"),
@@ -444,7 +444,7 @@ def _run(job: DeepJob, ratslotse_db: str, council_db: str) -> None:
         }
         m = job.material
         _emit(job, {"type": "sources", "mode": "recherche", "qtype": "deep",
-                    "frage": job.suchfrage, "sources": m["sources"],
+                    "question": job.suchfrage, "sources": m["sources"],
                     "presse": m["presse_kompakt"], "debatten": m["debatten_kompakt"],
                     "anlagen": m["anlagen_kompakt"],
                     "planungen": m["planungen"], "gelesen": gelesen,
@@ -603,7 +603,7 @@ def _gespraech_anhaengen(ratslotse: Store, job: DeepJob, bericht: str,
              "gelesen": m.get("gelesen"), "zeitraum": m.get("zeitraum"),
              "kontext": m.get("kontext")},
             ensure_ascii=False)
-        if not ratslotse.qa_turn_speichern(gespraech_id, job.user_id, job.frage,
+        if not ratslotse.qa_turn_speichern(gespraech_id, job.user_id, job.question,
                                      bericht, quellen_json):
             if neu:
                 ratslotse.qa_gespraech_loeschen(gespraech_id, job.user_id)

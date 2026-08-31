@@ -263,9 +263,9 @@ def test_keine_wirkungslosen_migrationspaare():
     muster = re.compile(r'\(\s*"([a-z_]+)"\s*,\s*"\1"\s*\)')
     treffer = []
     for datei in (wurzel / "kern" / "store.py", wurzel / "council" / "store.py"):
-        for nr, zeile in enumerate(datei.read_text().splitlines(), 1):
-            if muster.search(zeile):
-                treffer.append(f"{datei.relative_to(wurzel)}:{nr}: {zeile.strip()}")
+        for nr, row in enumerate(datei.read_text().splitlines(), 1):
+            if muster.search(row):
+                treffer.append(f"{datei.relative_to(wurzel)}:{nr}: {row.strip()}")
 
     assert not treffer, (
         "Diese Umbenennungspaare sind wirkungslos — vermutlich hat ein "

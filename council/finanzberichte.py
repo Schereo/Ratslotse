@@ -234,8 +234,8 @@ def _posten_aus_block(block: str, year: int) -> list[dict]:
         # Spalten, deshalb etwas mehr Luft als die früher genügenden 200.
         # Hinter Posten 24 steht die Zeile „Jahresergebnis" ohne Nummer; ohne
         # diesen Schnitt gehörten ihre Zahlen noch zu Posten 24.
-        zeile = re.split(r"Jahresergebnis", roh[:240])[0]
-        zahlen = [_eur(z) for z in _BETRAG.findall(zeile)]
+        row = re.split(r"Jahresergebnis", roh[:240])[0]
+        zahlen = [_eur(z) for z in _BETRAG.findall(row)]
         werte = _spalten_zuordnen(zahlen, kopf)
         if werte is None:
             continue
@@ -998,8 +998,8 @@ def parse_abweichungsgruende(text: str, year: int) -> list[dict]:
     gewaehlt = None
     for i, s in enumerate(stellen):
         # „in der Ergebnis-rechnung der Kernverwaltung" — nach dem Entfalten.
-        titel = _kopf_normalisieren(text[s:s + 130]).replace(" ", "")
-        if "Ergebnisrechnung" not in titel:
+        title = _kopf_normalisieren(text[s:s + 130]).replace(" ", "")
+        if "Ergebnisrechnung" not in title:
             continue
         ende = stellen[i + 1] if i + 1 < len(stellen) else len(text)
         block = text[s:min(ende, s + 16000)]
@@ -1125,9 +1125,9 @@ _PRODUKT_KOPF = re.compile(
 _THH_BETRAG = re.compile(r"-?\d{1,3}(?:\.\d{3})*(?:,\d{2})?")
 
 
-def _thh_zahlen(zeile: str) -> list[float]:
+def _thh_zahlen(row: str) -> list[float]:
     out = []
-    for s in _THH_BETRAG.findall(zeile):
+    for s in _THH_BETRAG.findall(row):
         if s in {"-", ""}:
             continue
         out.append(float(s.replace(".", "").replace(",", ".")))
@@ -1204,14 +1204,14 @@ def _thh_wertezeile(block: str, muster: str, spalten: int) -> list[float] | None
     m = re.search(muster, block)
     if not m:
         return None
-    for zeile in block[m.end():].split("\n")[:_THH_MAX_ZEILEN]:
-        if _THH_NEUE_ZEILE.match(zeile):
+    for row in block[m.end():].split("\n")[:_THH_MAX_ZEILEN]:
+        if _THH_NEUE_ZEILE.match(row):
             return None
-        if not zeile.strip():
+        if not row.strip():
             continue
-        if not _THH_NUR_ZAHLEN.fullmatch(zeile.rstrip()):
+        if not _THH_NUR_ZAHLEN.fullmatch(row.rstrip()):
             continue
-        zahlen = _thh_zahlen(zeile)
+        zahlen = _thh_zahlen(row)
         if len(zahlen) >= spalten:
             return zahlen
     return None
@@ -1343,12 +1343,12 @@ def _saeubern(roh: str) -> str | None:
     diese Zahlenwüste als „Zielgruppe" auf der Seite. Deshalb wird nur der
     zusammenhängende Fließtext-Block am Ende übernommen."""
     absatz: list[str] = []
-    for zeile in reversed(_ohne_seitenkopf(roh.split("\n"))):
-        if not zeile.strip():
+    for row in reversed(_ohne_seitenkopf(roh.split("\n"))):
+        if not row.strip():
             continue
-        if _KEIN_FLIESSTEXT.match(zeile):
+        if _KEIN_FLIESSTEXT.match(row):
             break
-        absatz.append(zeile)
+        absatz.append(row)
     text = re.sub(r"\s+", " ", " ".join(reversed(absatz))).strip(" -–—·\t")
     # Zu kurz ist kein Inhalt (etwa ein übrig gebliebener Doppelpunkt), zu lang
     # heißt: Ein Label fehlte und wir haben doch eine Tabelle mitgelesen.
@@ -1392,8 +1392,8 @@ def _steckbrief(block: str) -> dict[str, str | None]:
             # Inhalt steht hinter dem Doppelpunkt, auf DERSELBEN Zeile: Ein
             # Umbruch bedeutet hier, dass der Wert fehlt — die nächste Zeile
             # gehört schon zum nächsten Feld.
-            zeile = stamm[m.end():].split("\n", 1)[0]
-            out[name] = _saeubern(zeile)
+            row = stamm[m.end():].split("\n", 1)[0]
+            out[name] = _saeubern(row)
     return out
 
 

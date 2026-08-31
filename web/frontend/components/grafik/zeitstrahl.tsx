@@ -56,7 +56,7 @@ export type ZeitstrahlStation = {
 export type ZeitstrahlTermin = {
   label: string;
   /** ISO-Datum. */
-  datum: string;
+  date: string;
   /** Herkunft ist Teil des Vertrags: Der Strahl zeigt nur Termine, die
    *  wirklich im Ratskalender stehen — nichts Erratenes. */
   source: "kalender";
@@ -122,7 +122,7 @@ export function Zeitstrahl({ stationen, heute, termin, beleg, className }: {
   const { skala, ticks } = useMemo(() => {
     const daten = sortiert.flatMap((s) => [datumAus(s.von), datumAus(s.bis ?? s.von)]);
     daten.push(heute);
-    if (termin) daten.push(datumAus(termin.datum));
+    if (termin) daten.push(datumAus(termin.date));
     const min = new Date(Math.min(...daten.map((d) => +d)));
     const max = new Date(Math.max(...daten.map((d) => +d)));
     // Auf Monatsgrenzen erweitern, damit weder der erste noch der letzte
@@ -178,7 +178,7 @@ export function Zeitstrahl({ stationen, heute, termin, beleg, className }: {
   const H = RAIL_TOP + BAND + (termin ? 64 : 48);
 
   const heuteX = skala(heute);
-  const terminX = termin ? skala(datumAus(termin.datum)) : null;
+  const terminX = termin ? skala(datumAus(termin.date)) : null;
   const heuteText = `Du bist hier · ${TAG_MONAT.format(heute)}`;
 
   return (
@@ -284,7 +284,7 @@ export function Zeitstrahl({ stationen, heute, termin, beleg, className }: {
                 textAnchor="middle" fontSize={9}
                 className="fill-muted-foreground font-mono uppercase tracking-[0.08em]"
               >
-                {termin.label} · {TAG_MONAT.format(datumAus(termin.datum))} · Ratskalender
+                {termin.label} · {TAG_MONAT.format(datumAus(termin.date))} · Ratskalender
               </text>
             </>
           )}
@@ -340,8 +340,8 @@ export function Zeitstrahl({ stationen, heute, termin, beleg, className }: {
                 <>
                   <p className="text-[13px] font-semibold leading-snug">{termin.label}</p>
                   <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.07em] text-muted-foreground">
-                    {TAG_MONAT.format(datumAus(termin.datum))}{" "}
-                    {datumAus(termin.datum).getFullYear()} · aus dem Ratskalender
+                    {TAG_MONAT.format(datumAus(termin.date))}{" "}
+                    {datumAus(termin.date).getFullYear()} · aus dem Ratskalender
                   </p>
                 </>
               ) : e.station ? (
@@ -393,7 +393,7 @@ function StationsText({ s, kompakt = false }: { s: ZeitstrahlStation; kompakt?: 
 type SenkrechtEintrag = {
   key: string;
   art: "station" | "heute" | "termin";
-  datum: string;
+  date: string;
   station?: ZeitstrahlStation;
 };
 
@@ -407,9 +407,9 @@ function senkrechteEintraege(
   const iso = (d: Date) =>
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   const liste: SenkrechtEintrag[] = stationen.map((s) => ({
-    key: `s-${s.label}`, art: "station", datum: s.von, station: s,
+    key: `s-${s.label}`, art: "station", date: s.von, station: s,
   }));
-  liste.push({ key: "heute", art: "heute", datum: iso(heute) });
-  if (termin) liste.push({ key: "termin", art: "termin", datum: termin.datum });
-  return liste.sort((a, b) => a.datum.localeCompare(b.datum));
+  liste.push({ key: "heute", art: "heute", date: iso(heute) });
+  if (termin) liste.push({ key: "termin", art: "termin", date: termin.date });
+  return liste.sort((a, b) => a.date.localeCompare(b.date));
 }

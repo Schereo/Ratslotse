@@ -15,7 +15,7 @@ export type { Herkunft };
  *  mit der Zeile, statt hier zu stehen: Die beiden Rechnungswesen benennen
  *  ihre Arten verschieden, und eine Liste im Frontend wäre die zweite,
  *  konkurrierende Wahrheit. */
-export type Art = { field: string; titel: string; amount: number };
+export type Art = { field: string; title: string; amount: number };
 
 export type GebautJahr = {
   year: number;
@@ -42,7 +42,7 @@ export type GebautDaten = {
   /** Was diese Zahlen zählen — kommt aus `council/investitionen_ist.py`,
    *  damit Oberfläche und Datenbank dieselbe Auskunft geben. */
   abgrenzung: string;
-  accounting_systems: { key: string; titel: string }[];
+  accounting_systems: { key: string; title: string }[];
   /** Jahre, die INNERHALB einer Reihe fehlen, je Regelwerk. Sie sind nicht
    *  null, sondern unbelegt: Ihre Zeilensumme geht in der Quelle selbst nicht
    *  auf, und anders als bei den Schulden gibt es keine zweite Probe, die
@@ -142,7 +142,7 @@ export function herkunftVon(daten: GebautDaten | null, id: number | null): Herku
 
 export type Reihe = {
   key: string;
-  titel: string;
+  title: string;
   years: GebautJahr[];
   /** Was in dieser Reihe fehlt — je Lücke das Jahr und die gemessene
    *  Differenz, soweit der Bestand eine führt. */
@@ -159,7 +159,7 @@ export function reihen(daten: GebautDaten | null): Reihe[] {
   return daten.accounting_systems
     .map((r) => ({
       key: r.key,
-      titel: r.titel,
+      title: r.title,
       years: daten.series.filter((z) => z.accounting_system === r.key),
       fehlend: daten.fehlend[r.key] ?? [],
     }))
@@ -193,13 +193,13 @@ export function groessterPosten(z: GebautJahr | null): Art | null {
  *
  *  Aus den Daten und nicht aus einer Konstante: Käme eine Art dazu oder fiele
  *  eine weg, stünde die Legende sonst gegen die Balken. */
-export function artenDerReihe(r: Reihe | null): { field: string; titel: string }[] {
+export function artenDerReihe(r: Reihe | null): { field: string; title: string }[] {
   if (!r) return [];
   const gesehen = new Map<string, string>();
   for (const z of r.years) {
-    for (const a of z.arten) if (!gesehen.has(a.field)) gesehen.set(a.field, a.titel);
+    for (const a of z.arten) if (!gesehen.has(a.field)) gesehen.set(a.field, a.title);
   }
-  return [...gesehen].map(([field, titel]) => ({ field, titel }));
+  return [...gesehen].map(([field, title]) => ({ field, title }));
 }
 
 /** Deutsche Anzeige eines Euro-Betrags in Millionen, eine Nachkommastelle. */

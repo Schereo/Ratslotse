@@ -37,8 +37,8 @@ const QUELLEN: QuellenSchluessel[] = [
 ];
 
 const MARKEN = [
-  { id: "plan", titel: "Was gebaut werden soll" },
-  { id: "gebaut", titel: "Was daraus wurde" },
+  { id: "plan", title: "Was gebaut werden soll" },
+  { id: "gebaut", title: "Was daraus wurde" },
 ];
 
 function InvestitionenInner() {

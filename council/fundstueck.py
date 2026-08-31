@@ -54,20 +54,20 @@ _ALLERWELT = {
 MAX_BESCHLUSS_CHARS = 4000
 
 
-def _kernworte(titel: str) -> set[str]:
+def _kernworte(title: str) -> set[str]:
     """Die eigentümlichen Wörter eines Titels — daran hängt das Thema.
 
     Sechs Zeichen aufwärts, ohne die Allerweltswörter: „Stadionneubau",
     „Maastrichter", „Ausfallbürgschaft" bleiben; „Beschluss", „Stadt",
     „Oldenburg" fliegen raus.
     """
-    worte = re.findall(r"[A-Za-zÄÖÜäöüß]{6,}", (titel or "").lower())
+    worte = re.findall(r"[A-Za-zÄÖÜäöüß]{6,}", (title or "").lower())
     return {w for w in worte if w not in _ALLERWELT}
 
 
-def _thema_frei(titel: str, confidential: list[set[str]]) -> bool:
+def _thema_frei(title: str, confidential: list[set[str]]) -> bool:
     """Kein eigentümliches Wort mit einem der letzten Funde gemeinsam."""
-    meine = _kernworte(titel)
+    meine = _kernworte(title)
     return not any(meine & andere for andere in confidential)
 
 

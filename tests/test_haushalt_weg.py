@@ -25,21 +25,21 @@ def store(tmp_path):
     s.close()
 
 
-def sitzung(store, ksinr, committee, datum, tops):
+def sitzung(store, ksinr, committee, date, tops):
     """Eine Sitzung samt Tagesordnung. `tops` = [(nummer, titel, kvonr)]."""
     store.save_session(CouncilSession(
-        ksinr=ksinr, committee=committee, session_date=datum,
+        ksinr=ksinr, committee=committee, session_date=date,
         session_time="17:00", location="Rathaus",
         agenda_items=[AgendaItem(item_number=n, title=t, kvonr=k) for n, t, k in tops],
     ))
 
 
-def vorlage(store, kvonr, nr, titel):
-    store.save_vorlage({"kvonr": kvonr, "template_number": nr, "title": titel})
+def vorlage(store, kvonr, nr, title):
+    store.save_vorlage({"kvonr": kvonr, "template_number": nr, "title": title})
 
 
-def beratung(store, kvonr, datum, committee, role, ksinr, top):
-    store.save_beratungen(kvonr, [{"datum": datum, "committee": committee, "top": top,
+def beratung(store, kvonr, date, committee, role, ksinr, top):
+    store.save_beratungen(kvonr, [{"date": date, "committee": committee, "top": top,
                                    "is_public": True, "result": role, "ksinr": ksinr}])
 
 
@@ -64,9 +64,9 @@ def runde_2026(store):
              "Kenntnisnahme", 1, "5")
     beratung(store, 101, "2025-11-11", "Schulausschuss", "Kenntnisnahme", 2, "4")
     store.save_beratungen(102, [
-        {"datum": "2025-12-15", "committee": "Rat", "top": "5", "is_public": True,
+        {"date": "2025-12-15", "committee": "Rat", "top": "5", "is_public": True,
          "result": "Entscheidung", "ksinr": 3},
-        {"datum": "2026-02-09", "committee": "Rat", "top": "6", "is_public": True,
+        {"date": "2026-02-09", "committee": "Rat", "top": "6", "is_public": True,
          "result": "Entscheidung", "ksinr": 4},
     ])
 
@@ -79,7 +79,7 @@ def test_runde_hat_einbringung_fachausschuesse_und_stationen(store):
     assert r["template_number"] == "25/0667"
 
     # Die Einbringung ist die früheste Beratung einer Entwurfs-Vorlage.
-    assert r["einbringung"]["datum"] == "2025-10-01"
+    assert r["einbringung"]["date"] == "2025-10-01"
     assert r["einbringung"]["committee"] == "Ausschuss für Finanzen und Beteiligungen"
     # Die TOP-Nummer kommt vollständig aus der Tagesordnung („Ö 5", nicht „5“) —
     # sonst zeigt der Link auf der Sitzungsseite auf den falschen Punkt.
@@ -90,7 +90,7 @@ def test_runde_hat_einbringung_fachausschuesse_und_stationen(store):
         "committees": ["Schulausschuss"],
     }
 
-    assert [(s["datum"], s["committee"], s["result"]) for s in r["stationen"]] == [
+    assert [(s["date"], s["committee"], s["result"]) for s in r["stationen"]] == [
         ("2025-12-15", "Rat", "zurückgestellt/abgesetzt"),
         ("2026-02-09", "Rat", "geändert beschlossen"),
     ]
@@ -119,15 +119,15 @@ def test_falsch_betitelte_vorlage_verschiebt_den_zeitraum_nicht(store):
     assert r["fachausschuesse"]["count"] == 1
 
 
-@pytest.mark.parametrize("titel", [
+@pytest.mark.parametrize("title", [
     "Haushalt 2026 - Verwaltungsentwurf - Teilhaushalt 12 Schule",
     "Haushaltsentwurf 2026 Verwaltungsentwurf -Teilhaushalt 02 Personal",
     "HH 2026– Verwaltungsentwurf THH 12 Schule und Bildung - Bericht",
 ])
-def test_schreibweisen_des_titels(store, titel):
+def test_schreibweisen_des_titels(store, title):
     """Drei Schreibweisen, ein Jahrgang — alle drei stehen so im Bestand."""
     runde_2026(store)
-    store._conn.execute("UPDATE council_vorlagen SET title = ? WHERE kvonr = 101", (titel,))
+    store._conn.execute("UPDATE council_vorlagen SET title = ? WHERE kvonr = 101", (title,))
     [r] = store.haushalt_weg()
     assert r["fachausschuesse"]["committees"] == ["Schulausschuss"]
 

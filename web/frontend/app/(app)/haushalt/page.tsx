@@ -90,7 +90,7 @@ export default function HaushaltPage() {
         ? {
             year: y,
             teile: [{
-              art: data.expense_series.accounting_systems[z.accounting_system].titel,
+              art: data.expense_series.accounting_systems[z.accounting_system].title,
               value: z.amount / 1e6,
             }],
           }
@@ -246,7 +246,7 @@ export default function HaushaltPage() {
           vom späteren Ergebnis. Die Einwohnerzahl steht erst im Kassenzettel
           darunter, weil sie dort für die Pro-Kopf-Rechnung benötigt wird. */}
       <LottiErklaert
-        titel="Was ist der Haushalt?"
+        title="Was ist der Haushalt?"
         text="Der Haushalt ist der Geldplan der Stadt für ein Jahr. Darin schätzt Oldenburg, wie viel Geld hereinkommt, und plant, wie viel für Kitas, Straßen, Feuerwehr und andere Aufgaben zur Verfügung steht. Der Rat beschließt diesen finanziellen Rahmen. Wichtig: Geplant ist noch nicht ausgegeben — was tatsächlich eingenommen und ausgegeben wurde, zeigt später der Jahresabschluss."
       />
 
@@ -298,7 +298,7 @@ export default function HaushaltPage() {
           </div>
 
           <LottiErklaert
-            titel="Kann man Einnahmen einzelnen Ausgaben zuordnen?"
+            title="Kann man Einnahmen einzelnen Ausgaben zuordnen?"
             text="Meistens nicht. Steuern und allgemeine Zuweisungen fließen in den Gesamthaushalt, aus dem die Stadt ihre verschiedenen Aufgaben finanziert. Zweckgebundene Zuschüsse und bestimmte Gebühren sind Ausnahmen. Deshalb lässt sich zum Beispiel nicht sagen, dass die Gewerbesteuer unmittelbar die Feuerwehr bezahlt."
           />
         </>
@@ -328,7 +328,7 @@ export default function HaushaltPage() {
               Die Ausgaben der Stadt seit {langErster.year}
             </h2>
             <p className="mt-1.5 max-w-[74ch] text-sm leading-relaxed text-foreground/90">
-              Die Veröffentlichungen der Stadt nennen für {langErster.year} total{" "}
+              Die Veröffentlichungen der Stadt nennen für {langErster.year} insgesamt{" "}
               {deMio(langErster.amount / 1e6)}&#8239;Mio.&nbsp;€ und für {langLetzter.year}{" "}
               {deMio(langLetzter.amount / 1e6)}&#8239;Mio.&nbsp;€ Ausgaben
               <Beleg q="expense_series" />.{" "}
@@ -350,7 +350,7 @@ export default function HaushaltPage() {
                 + "verrechnet werden.",
             } : undefined}
             unit="Mio. €"
-            titel="Ausgaben der Stadt Oldenburg"
+            title="Ausgaben der Stadt Oldenburg"
             beleg={<Beleg q="expense_series" />}
           />
           {/* Was links und was rechts gezählt wird — in den Worten der
@@ -362,7 +362,7 @@ export default function HaushaltPage() {
                  ["doppik", `ab ${nahtAb}`]] as const).map(([r, spanne]) => (
                 <div key={r}>
                   <dt className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-                    {spanne} · {data.expense_series!.accounting_systems[r].titel}
+                    {spanne} · {data.expense_series!.accounting_systems[r].title}
                   </dt>
                   <dd className="mt-1 max-w-[74ch] text-[12px] leading-relaxed text-foreground/80">
                     {data.expense_series!.accounting_systems[r].abgrenzung}

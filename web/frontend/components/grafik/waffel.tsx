@@ -55,7 +55,7 @@ export function Waffel({
   /** Eine Lücke, die zu dieser Waffel gehört (Teil B 2026: PDF unlesbar).
    *  Rendert die Komponente, nie die Seite — so bleibt sie auch mobil eine
    *  sichtbare Zeile (H4-05). */
-  luecke?: { label: string; reason: string; datum?: string };
+  luecke?: { label: string; reason: string; date?: string };
   className?: string;
 }) {
   const quadrate = Math.max(Math.round(gesamt / proQuadrat), 0);
@@ -118,7 +118,7 @@ export function Waffel({
       </p>
 
       {luecke && (
-        <LueckenFeld label={luecke.label} reason={luecke.reason} datum={luecke.datum} />
+        <LueckenFeld label={luecke.label} reason={luecke.reason} date={luecke.date} />
       )}
     </div>
   );

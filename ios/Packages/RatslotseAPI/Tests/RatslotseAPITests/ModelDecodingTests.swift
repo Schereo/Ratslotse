@@ -22,7 +22,7 @@ import Testing
         "ksinr": 87, "committee": "Ausschuss", "session_date": "2026-01-20", "item_number": "Ö 3"
       }],
       "beratungsfolge": [{
-        "datum": "2026-02-01", "committee": "Rat", "top": "Ö 2", "result": "angenommen",
+        "date": "2026-02-01", "committee": "Rat", "top": "Ö 2", "result": "angenommen",
         "ksinr": 88, "future": false
       }],
       "vorlage_url": "https://buergerinfo.oldenburg.de/vo0050.php?__kvonr=901",
@@ -36,7 +36,7 @@ import Testing
         "is_motion": 1, "applicants": ["SPD"], "status": "ok"
       }],
       "beteiligung": {
-        "titel": "Beteiligung zum Plan", "schritt": "Entwurf", "von": "2026-01-01",
+        "title": "Beteiligung zum Plan", "schritt": "Entwurf", "von": "2026-01-01",
         "bis": "2026-02-15", "url": "https://example.test/beteiligung", "status": "laufend"
       },
       "importance_breakdown": {"score": 81, "impact_reason": "Betrifft viele Menschen."},
@@ -105,8 +105,8 @@ import Testing
     let followsJSON = #"""
     {"follows":[{
       "id":7,"kvonr":901,"template_number":"26/0400","title":"Radweg","url":"https://example.test/vorlage",
-      "n_stationen":2,"naechste":{"datum":"2026-10-01","committee":"Rat","result":null},
-      "letzte":{"datum":"2026-02-01","committee":"Ausschuss","result":"angenommen"}
+      "n_stationen":2,"naechste":{"date":"2026-10-01","committee":"Rat","result":null},
+      "letzte":{"date":"2026-02-01","committee":"Ausschuss","result":"angenommen"}
     }]}
     """#
     let bookmarks = try JSONDecoder().decode(BookmarkPage.self, from: Data(bookmarksJSON.utf8))

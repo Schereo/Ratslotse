@@ -28,7 +28,7 @@ export function Grenzen({ art }: { art: SteuerArt }) {
       icon: Calculator,
       /* Dieselbe Frage wie auf der Zahl-Karte der anderen Steuerarten —
          der Text darunter ist ihre Antwort, nicht ihre Wiederholung. */
-      titel: "Was brächte ein Punkt mehr?",
+      title: "Was brächte ein Punkt mehr?",
       /* Kein Link ins Labor: Dort fehlt derselbe Regler aus demselben Grund —
          ein Verweis verspräche, was die nächste Seite auch nicht kann. */
       text: art.punktUnmoeglich,
@@ -37,18 +37,18 @@ export function Grenzen({ art }: { art: SteuerArt }) {
     {
       key: "beschluesse",
       icon: Search,
-      titel: "Was der Rat dazu entschieden hat",
+      title: "Was der Rat dazu entschieden hat",
       text: "Die automatische Verknüpfung von Beschlüssen mit Einnahmearten "
         + "bauen wir noch. Bis dahin findet die Suche, was dazu beschlossen wurde.",
       link: {
-        href: `/council?q=${encodeURIComponent(art.titel)}`,
-        text: `Beschlüsse zu „${art.titel}“ suchen`,
+        href: `/council?q=${encodeURIComponent(art.title)}`,
+        text: `Beschlüsse zu „${art.title}“ suchen`,
       },
     },
   ].filter(Boolean) as {
     key: string;
     icon: typeof Search;
-    titel: string;
+    title: string;
     text: string;
     link: { href: string; text: string } | null;
   }[];
@@ -64,7 +64,7 @@ export function Grenzen({ art }: { art: SteuerArt }) {
             <e.icon aria-hidden
               className="mt-0.5 h-4 w-4 flex-none text-muted-foreground" />
             <div className="min-w-0">
-              <p className="text-[12.5px] font-semibold leading-snug">{e.titel}</p>
+              <p className="text-[12.5px] font-semibold leading-snug">{e.title}</p>
               <p className="mt-1 max-w-[70ch] text-[12.5px] leading-relaxed text-foreground/80">
                 {e.text}
               </p>

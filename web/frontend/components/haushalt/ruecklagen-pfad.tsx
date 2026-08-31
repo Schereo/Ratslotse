@@ -23,14 +23,14 @@ export function RuecklagenPfadGrafik({ ohne, mit }: { ohne: Pfad; mit: Pfad }) {
   const startJahr = years[0] - 1;
   const x = (year: number) =>
     ((year - startJahr) / (years[years.length - 1] - startJahr)) * B;
-  const y = (stand: number) =>
-    OBEN + (1 - stand / ohne.start) * (H - OBEN - UNTEN);
+  const y = (as_of: number) =>
+    OBEN + (1 - as_of / ohne.start) * (H - OBEN - UNTEN);
 
   const linie = (p: Pfad) =>
     [`${x(startJahr)},${y(p.start)}`,
-      ...p.punkte.map((pt) => `${x(pt.year)},${y(pt.stand)}`)].join(" ");
+      ...p.punkte.map((pt) => `${x(pt.year)},${y(pt.as_of)}`)].join(" ");
   const verschieden = mit.punkte.some(
-    (pt, i) => Math.abs(pt.stand - ohne.punkte[i].stand) > 0.05);
+    (pt, i) => Math.abs(pt.as_of - ohne.punkte[i].as_of) > 0.05);
 
   return (
     <svg viewBox={`0 0 ${B} ${H}`} className="mt-1 block w-full" aria-hidden>

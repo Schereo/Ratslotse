@@ -126,7 +126,7 @@ export default function LaborPage() {
       <VerfahrensWegKarte daten={listen ?? null} budget_year={jahreSortiert(data).at(-1) ?? null} />
 
       <LottiErklaert
-        titel="Warum das kein Sparvorschlag ist"
+        title="Warum das kein Sparvorschlag ist"
         text="Dieses Labor rechnet mit ganzen Bereichen und vereinfachten Annahmen. Der echte Haushalt wird dagegen Position für Position geplant, in den Ausschüssen beraten und vom Rat beschlossen. Die Ergebnisse des Labors zeigen Größenordnungen; sie sind keine Prognose und kein Haushaltsentwurf."
       />
 

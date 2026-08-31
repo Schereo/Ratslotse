@@ -111,8 +111,8 @@ export function BilanzBlock() {
           basis={s.bilanzsumme / 1e6}
           nachkomma={1}
           zeilen={[
-            { titel: "Worin es steckt", rampe: "ein", segmente: segmente(s, "aktiva") },
-            { titel: "Wem es zusteht", rampe: "aus", segmente: segmente(s, "passiva") },
+            { title: "Worin es steckt", rampe: "ein", segmente: segmente(s, "aktiva") },
+            { title: "Wem es zusteht", rampe: "aus", segmente: segmente(s, "passiva") },
           ]}
         />
         <Einordnung

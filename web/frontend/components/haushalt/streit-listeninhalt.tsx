@@ -102,9 +102,9 @@ function ListenKarte({ liste, year }: { liste: ListeImJahr; year: number }) {
         <ZahlenTabelle
           className="mt-2"
           spalten={[
-            { titel: "Position" },
-            { titel: "Ertrag", zahl: true },
-            { titel: "Aufwand", zahl: true },
+            { title: "Position" },
+            { title: "Ertrag", zahl: true },
+            { title: "Aufwand", zahl: true },
           ]}
           fuss={liste.balance && (
             <tr>

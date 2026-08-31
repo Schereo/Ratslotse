@@ -56,7 +56,7 @@ def catalog() -> dict:
     if len(set(ids)) != len(ids) or len(set(names)) != len(names):
         raise ValueError("Ortskatalog muss eindeutige IDs und Namen enthalten")
     if len(primary) != 31 or any(not row.get("wahlbereiche") for row in primary):
-        raise ValueError("Ortskatalog muss exact 31 flächendeckende Ortsbereiche enthalten")
+        raise ValueError("Ortskatalog muss genau 31 flächendeckende Ortsbereiche enthalten")
     kinds = set(data.get("kinds") or {})
     source_ids = {source.get("id") for source in data.get("sources") or []}
     for row in rows:

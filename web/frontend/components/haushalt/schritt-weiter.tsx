@@ -39,7 +39,7 @@ export function SchrittWeiter({ href }: { href: string }) {
           {/* Das Zeichen des ZIELS, nicht der aktuellen Seite — dieselbe Form
               steht in seiner Wegweiser-Zeile (`wegweiser.tsx`). */}
           <naechster.zeichen aria-hidden size={15} strokeWidth={2} className="flex-none" />
-          Weiter: {naechster.nr} · {naechster.titel}
+          Weiter: {naechster.nr} · {naechster.title}
           <ArrowRight
             size={15}
             strokeWidth={2}

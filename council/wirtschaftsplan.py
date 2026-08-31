@@ -240,15 +240,15 @@ def _glaetten(text: str) -> str:
     return re.sub(r"\s+", " ", text)
 
 
-def betrieb_aus_titel(titel: str) -> tuple[str, str] | None:
+def betrieb_aus_titel(title: str) -> tuple[str, str] | None:
     """Kürzel und Klarname des Betriebs — oder ``None``, wenn unbekannt."""
     for key, (muster, name) in BETRIEBE.items():
-        if re.search(muster, titel, re.I):
+        if re.search(muster, title, re.I):
             return key, name
     return None
 
 
-def parse_wirtschaftsplan(template_number: str, titel: str, text: str) -> Wirtschaftsplan | None:
+def parse_wirtschaftsplan(template_number: str, title: str, text: str) -> Wirtschaftsplan | None:
     """Die Eckwerte aus dem Beschlusstext einer Wirtschaftsplan-Vorlage.
 
     ``None``, wenn der Beschlusstext keine Eckwerte trägt — der Normalfall
@@ -290,17 +290,17 @@ def parse_wirtschaftsplan(template_number: str, titel: str, text: str) -> Wirtsc
     # Zweite Probe: Steht dasselbe Jahr im Titel? Der Titel führt oft auch die
     # Vorlagen-Jahreszahl („25/0722"), deshalb wird auf ENTHALTENSEIN geprüft
     # und nicht auf Gleichheit mit dem ersten Fund.
-    titel_jahre = {int(j) for j in _JAHR_TITEL.findall(titel)}
+    titel_jahre = {int(j) for j in _JAHR_TITEL.findall(title)}
     if titel_jahre and year not in titel_jahre:
         raise WirtschaftsplanFehler(
             f"{template_number}: Haushaltsjahr {year} steht so nicht im Titel "
             f"(dort: {sorted(titel_jahre)}) — eines von beiden ist falsch gelesen")
 
-    erkannt = betrieb_aus_titel(titel)
+    erkannt = betrieb_aus_titel(title)
     if not erkannt:
         raise WirtschaftsplanFehler(
             f"{template_number}: Eckwerte gefunden, aber der Betrieb ist unbekannt — "
-            f"Titel: {titel!r}. Erst in BETRIEBE eintragen.")
+            f"Titel: {title!r}. Erst in BETRIEBE eintragen.")
     key, name = erkannt
 
     m_entwurf = _ENTWURF.search(flach)
@@ -314,18 +314,18 @@ def parse_wirtschaftsplan(template_number: str, titel: str, text: str) -> Wirtsc
     )
 
 
-def ohne_eckwerte(template_number: str, titel: str) -> dict:
+def ohne_eckwerte(template_number: str, title: str) -> dict:
     """Eine Vorlage, die keine Eckwerte im Beschlusstext trägt — mit dem Grund.
 
     Damit die Lücke **gezählt** dasteht statt zu verschwinden: „38 von 46
     Wirtschaftsplänen nennen im Beschlusstext keine Zahl" ist eine Auskunft,
     ein stilles Überspringen wäre keine."""
-    erkannt = betrieb_aus_titel(titel)
+    erkannt = betrieb_aus_titel(title)
     return {
         "template_number": template_number,
         "enterprise": erkannt[0] if erkannt else None,
         "enterprise_name": erkannt[1] if erkannt else None,
-        "titel": titel,
+        "title": title,
         "reason": "Der Beschlusstext stimmt der anliegenden Fassung zu, ohne die "
                  "Eckwerte zu nennen — die Zahlen stehen in der Anlage.",
     }
@@ -364,6 +364,6 @@ def herkunft_fuer(plan: Wirtschaftsplan, url: str | None,
         url=url,
         citation="Beschlussvorschlag der Vorlage",
         probe_result=plan.probe_result,
-        stand=(f"Verwaltungsentwurf vom {plan.draft_date}"
+        as_of=(f"Verwaltungsentwurf vom {plan.draft_date}"
                if plan.draft_date else "Fassung der Einbringung"),
     )

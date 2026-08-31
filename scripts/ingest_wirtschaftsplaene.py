@@ -74,7 +74,7 @@ COUNCIL_DB = ROOT / "data" / "council.sqlite"
 TITEL_MUSTER = "%Wirtschaftsplan%"
 
 
-def jahr_aus_titel(titel: str) -> int | None:
+def jahr_aus_titel(title: str) -> int | None:
     """Das Haushaltsjahr aus dem Vorlagentitel.
 
     Bei den Anlagen-Betrieben gibt es keinen Beschlusstext, der „für das
@@ -82,7 +82,7 @@ def jahr_aus_titel(titel: str) -> int | None:
     mehr als eine Jahreszahl, wird geraten, und das ist hier nicht erlaubt:
     Dann kommt ``None``, und der Jahrgang bleibt liegen.
     """
-    years = {int(j) for j in re.findall(r"\b(20\d{2})\b", titel)}
+    years = {int(j) for j in re.findall(r"\b(20\d{2})\b", title)}
     return years.pop() if len(years) == 1 else None
 
 

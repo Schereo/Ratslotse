@@ -317,10 +317,10 @@ def test_quelle_steht_im_datenstand(tmp_path):
     assert q.automatisch is False
     assert q.nachschub and "ingest_finanzen_opendata" in q.nachschub
 
-    zeile = next(z for z in finanzquellen.datenstand(store)
+    row = next(z for z in finanzquellen.datenstand(store)
                  if z["key"] == "investitionen")
-    assert zeile["jahrgaenge"] == [2025]
-    assert zeile["source"] == "Open-Data-Portal der Stadt"
+    assert row["jahrgaenge"] == [2025]
+    assert row["source"] == "Open-Data-Portal der Stadt"
 
 
 def test_takt_meldet_den_jahrgang_erst_im_folgejahr():

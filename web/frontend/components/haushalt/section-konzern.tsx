@@ -83,7 +83,7 @@ function Fundstelle({ h, className }: { h: Herkunft | null; className?: string }
         Woher diese Zahlen kommen
       </p>
       <p className="mt-1 max-w-[86ch] text-[11.5px] leading-relaxed text-muted-foreground">
-        {h.citation}{h.stand ? ` · ${h.stand}` : ""}
+        {h.citation}{h.as_of ? ` · ${h.as_of}` : ""}
       </p>
     </div>
   );
@@ -205,7 +205,7 @@ export function KonzernAbschnitt({ onBestand }: {
         <Lueckenkopf daten={data} year={kopfJahr} />
 
         <LottiErklaert
-          titel="Was ist ein Gesamtabschluss?"
+          title="Was ist ein Gesamtabschluss?"
           text={"Viele städtische Aufgaben liegen bei Eigenbetrieben oder Gesellschaften. "
             + "Im Gesamtabschluss führt die Stadt deren Abschlüsse mit dem eigenen Abschluss "
             + "zusammen. Geschäfte innerhalb des Konzerns werden dabei herausgerechnet, damit "

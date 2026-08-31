@@ -654,8 +654,8 @@ def _anlage_lexikalisch(store, query: str, expanded: str, limit: int) -> list[in
     wortgleicher Metadaten außerhalb der zwölf semantischen Kandidaten. Dieser
     kleine Pfad rankt nur Metadaten und ersetzt weder Embedding noch Reranker.
     """
-    frage = f"{query} {expanded}"
-    q_tokens = _anlage_meta_tokens(frage)
+    question = f"{query} {expanded}"
+    q_tokens = _anlage_meta_tokens(question)
     if not q_tokens:
         return []
     scored: list[tuple[float, int]] = []
@@ -898,7 +898,7 @@ def search_wortbeitraege_je_fraktion(store, query: str, expanded: str,
         key=lambda x: -x[1])[:WB_FRAKTION_POOL]
     rows = store.wortbeitraege_by_ids([wid for wid, _ in kandidaten])
     text_von = {r["id"]: " — ".join(t for t in (r.get("top"), r.get("text")) if t) for r in rows}
-    partei_von = {r["id"]: _fraktions_label(r.get("partei")) for r in rows}
+    partei_von = {r["id"]: _fraktions_label(r.get("party")) for r in rows}
     # Welche Fraktionen überhaupt antreten: die mit dem besten Einzeltreffer.
     bester: dict[str, float] = {}
     for wid, s in kandidaten:

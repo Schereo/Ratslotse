@@ -114,7 +114,7 @@ function Fundstelle({ h }: { h: Herkunft | null }) {
         Woher diese Zahlen kommen
       </p>
       <p className="mt-1 max-w-[86ch] text-[11.5px] leading-relaxed text-muted-foreground">
-        {h.citation}{h.stand ? ` · ${h.stand}` : ""}
+        {h.citation}{h.as_of ? ` · ${h.as_of}` : ""}
       </p>
     </div>
   );
@@ -175,7 +175,7 @@ function BeschlussStrahl({ vorlagen }: { vorlagen: BuergschaftsVorlage[] }) {
             <li key={v.template_number}
               className="flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5 border-l-2 border-border py-1.5 pl-3">
               <span className="flex-none font-mono text-[10.5px] tabular-nums text-muted-foreground">
-                {v.datum ? v.datum.slice(0, 7).split("-").reverse().join("/") : "—"}
+                {v.date ? v.date.slice(0, 7).split("-").reverse().join("/") : "—"}
               </span>
               <span className="min-w-0 flex-1 text-[12.5px] leading-snug text-foreground/90">
                 {v.decision_id ? (
@@ -311,7 +311,7 @@ function BuergschaftsBlock({ daten }: { daten: SchuldenDaten | null }) {
         series={verbuergt}
         zweitreihe={{ label: "eigene Geldschulden", series: eigene }}
         unit="Mio. €"
-        titel="Verbürgt und selbst geschuldet"
+        title="Verbürgt und selbst geschuldet"
         ariaTitel={`Bürgschaftsbestand und eigene Geldschulden der Stadt Oldenburg, `
           + `${erster.year} bis ${letzter.year}, in Millionen Euro`}
         annotationen={annotationen}
@@ -380,11 +380,11 @@ function DritteZahlBlock({ daten }: { daten: SchuldenDaten | null }) {
   const entity = series.find((z) => z.year === s.year)?.total ?? null;
 
   const stufen = [
-    { titel: "Kernhaushalt", value: s.core_budget,
+    { title: "Kernhaushalt", value: s.core_budget,
       was: "Investitionskredite der Stadtverwaltung selbst" },
-    { titel: "Stadt als Rechtsträger", value: entity,
+    { title: "Stadt als Rechtsträger", value: entity,
       was: "dazu die Eigenbetriebe — die Zahl oben auf dieser Seite" },
-    { titel: "Der ganze Konzern", value: s.total,
+    { title: "Der ganze Konzern", value: s.total,
       was: "dazu Extrahaushalte und Beteiligungen, anteilig nach Beteiligungshöhe" },
   ].filter((x) => x.value != null);
 
@@ -409,10 +409,10 @@ function DritteZahlBlock({ daten }: { daten: SchuldenDaten | null }) {
 
       <ol className="flex flex-col gap-2">
         {stufen.map((x) => (
-          <li key={x.titel}
+          <li key={x.title}
             className="flex flex-col gap-0.5 rounded-xl border border-border bg-background/40 p-3">
             <span className="flex flex-wrap items-baseline justify-between gap-x-3">
-              <span className="text-[13px] font-semibold text-foreground">{x.titel}</span>
+              <span className="text-[13px] font-semibold text-foreground">{x.title}</span>
               <span className="font-semibold tabular-nums text-foreground">
                 {deMio((x.value as number) / 1e6)}&#8239;Mio.&nbsp;€
               </span>
@@ -460,26 +460,26 @@ function DritteZahlBlock({ daten }: { daten: SchuldenDaten | null }) {
  *  liegen ausschließlich Verwaltungsentwürfe; die beschlossene Satzung
  *  erscheint im Amtsblatt. Ohne den Satz behaupteten diese Zahlen einen
  *  Ratsbeschluss, den wir nicht belegt haben. */
-function RahmenBlock({ zeile, herkunft }: {
-  zeile: HaushaltssatzungZeile; herkunft: Herkunft | null;
+function RahmenBlock({ row, herkunft }: {
+  row: HaushaltssatzungZeile; herkunft: Herkunft | null;
 }) {
   const posten: { label: string; value: number | null; erklaerung: string }[] = [
     {
       label: "Kredite für Investitionen",
-      value: zeile.investment_loans,
+      value: row.investment_loans,
       erklaerung: "Wie viel die Stadt sich im Haushaltsjahr für Investitionen "
         + "leihen darf (§ 2).",
     },
     {
       label: "Höchstbetrag für Liquiditätskredite",
-      value: zeile.liquidity_loans,
+      value: row.liquidity_loans,
       erklaerung: "Bis zu diesem Höchstbetrag darf die Stadt kurzfristige Kredite "
         + "aufnehmen, um ihre Zahlungsfähigkeit zu sichern (§ 4). Der Betrag ist eine "
         + "Ermächtigung und nicht der tatsächlich genutzte Kredit.",
     },
     {
       label: "Verpflichtungsermächtigungen",
-      value: zeile.commitment_authorizations,
+      value: row.commitment_authorizations,
       erklaerung: "Was die Stadt in diesem Jahr bestellen darf, obwohl die "
         + "Rechnung erst in kommenden Jahren kommt (§ 3).",
     },
@@ -492,7 +492,7 @@ function RahmenBlock({ zeile, herkunft }: {
           Was der Rahmen erlaubt<Beleg q="budget_bylaw" />
         </h2>
         <span className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
-          Satzung {zeile.year}
+          Satzung {row.year}
         </span>
       </div>
       <p className="mt-1.5 max-w-[64ch] text-[13px] leading-relaxed text-foreground/85">
@@ -503,7 +503,7 @@ function RahmenBlock({ zeile, herkunft }: {
       {/* Steht VOR den Zahlen, nicht als Fußnote darunter: Wer sie erst liest
           und dann erfährt, dass sie nicht beschlossen sind, hat sie schon
           geglaubt (dieselbe Regel wie der Summen-Kasten auf /haushalt/betriebe). */}
-      {zeile.version !== "beschlossen" && (
+      {row.version !== "beschlossen" && (
         <p className="mt-3 rounded-xl border border-signal/40 bg-signal/5 px-3 py-2
                       text-[12.5px] leading-relaxed text-foreground/85">
           <strong>Entwurf der Verwaltung, kein Ratsbeschluss.</strong> Im
@@ -538,7 +538,7 @@ function RahmenBlock({ zeile, herkunft }: {
           </div>
         ))}
       </dl>
-      <Dokumentbeleg h={herkunft} vorlageNr={zeile.template_number}
+      <Dokumentbeleg h={herkunft} vorlageNr={row.template_number}
         className="mt-3 border-t border-dashed border-border pt-2.5" />
     </section>
   );
@@ -641,10 +641,10 @@ export default function SchuldenPage() {
           if (!st) return null;
           const entity = (data?.series ?? []).find((z) => z.year === st.year)?.total ?? null;
           const stufen = [
-            { titel: "Kernhaushalt", value: st.core_budget },
-            { titel: "Stadt als Rechtsträger", value: entity },
-            { titel: "der ganze Konzern", value: st.total },
-          ].filter((x): x is { titel: string; value: number } => x.value != null);
+            { title: "Kernhaushalt", value: st.core_budget },
+            { title: "Stadt als Rechtsträger", value: entity },
+            { title: "der ganze Konzern", value: st.total },
+          ].filter((x): x is { title: string; value: number } => x.value != null);
           if (stufen.length < 2) return null;
           const max = Math.max(...stufen.map((x) => x.value));
           const toene = ["var(--sb-voll)", "var(--sb-mittel)", "var(--sb-blass)"];
@@ -655,9 +655,9 @@ export default function SchuldenPage() {
                 im weitesten Begriff</>}
               sub={<>
                 {stufen.map((x, i) => (
-                  <span key={x.titel}>
+                  <span key={x.title}>
                     {i > 0 && " · "}
-                    {x.titel}{" "}
+                    {x.title}{" "}
                     <ZaehlZahl value={x.value / 1e6} nachkomma={1} dauerMs={350}
                       verzoegerungMs={i * 150} className="font-semibold" />
                   </span>
@@ -670,7 +670,7 @@ export default function SchuldenPage() {
                 skizze: (
                   <span className="flex items-end gap-1.5" style={{ height: 64 }}>
                     {stufen.map((x, i) => (
-                      <span key={x.titel} className="flex-1 rounded-t-[6px] rounded-b-[3px]"
+                      <span key={x.title} className="flex-1 rounded-t-[6px] rounded-b-[3px]"
                         style={{
                           height: `${Math.max((x.value / max) * 100, 6)}%`,
                           background: toene[stufen.length - 1 - i] ?? toene[2],
@@ -768,7 +768,7 @@ export default function SchuldenPage() {
         })()}
 
         <LottiErklaert
-          titel="Warum es zwei Schuldenzahlen gibt"
+          title="Warum es zwei Schuldenzahlen gibt"
           text={"Die Stadt hat Betriebe, die zu ihr gehören, und Gesellschaften, die ihr "
             + "gehören. Das ist nicht dasselbe: Ein Eigenbetrieb wie die Gebäudewirtschaft "
             + "ist rechtlich die Stadt — seine Schulden sind ihre Schulden. Eine GmbH oder "
@@ -804,7 +804,7 @@ export default function SchuldenPage() {
               Beleg steht darunter in „Zwei Sprünge, die keine Politik waren". */}
           <Zeitreihe
             series={kurve}
-            titel={ansicht === "total" ? "Schulden total" : "Schulden je Einwohner*in"}
+            title={ansicht === "total" ? "Schulden total" : "Schulden je Einwohner*in"}
             ariaTitel={`Schuldenstand ${erster.year} bis ${letzter.year}`}
             unit={ansicht === "total" ? "Mio. €" : "€ je Einwohner*in"}
             // Millionen mit einer Stelle, Pro-Kopf-Beträge ohne — sonst stünde
@@ -1028,7 +1028,7 @@ export default function SchuldenPage() {
           </ul>
         </section>
 
-        {satzung && <RahmenBlock zeile={satzung}
+        {satzung && <RahmenBlock row={satzung}
           herkunft={herkunftVon(satzungDaten, satzung.herkunft_id)} />}
 
         <Link href="/haushalt"

@@ -285,16 +285,16 @@ class _MessStore:
 # 1. Die Messtabelle
 # ---------------------------------------------------------------------------
 
-@pytest.mark.parametrize("frage,typ,erwartet", KORPUS,
+@pytest.mark.parametrize("question,typ,erwartet", KORPUS,
                          ids=[f"{k[0][:44]}" for k in KORPUS])
-def test_korpus_zieht_die_richtigen_quellen(frage, typ, erwartet):
+def test_korpus_zieht_die_richtigen_quellen(question, typ, erwartet):
     """Erkennung: zieht diese Frage genau die Quellen, die sie beantworten?"""
-    assert qa.geld_facetten(frage, typ) == erwartet
+    assert qa.geld_facetten(question, typ) == erwartet
 
 
-@pytest.mark.parametrize("frage,typ,erwartet", KORPUS,
+@pytest.mark.parametrize("question,typ,erwartet", KORPUS,
                          ids=[f"{k[0][:44]}" for k in KORPUS])
-def test_korpus_ruft_die_richtigen_store_methoden(frage, typ, erwartet):
+def test_korpus_ruft_die_richtigen_store_methoden(question, typ, erwartet):
     """Verdrahtung: wird zu jeder erkannten Facette auch wirklich die
     zugehörige Store-Methode aufgerufen — und keine andere?
 
@@ -302,7 +302,7 @@ def test_korpus_ruft_die_richtigen_store_methoden(frage, typ, erwartet):
     zwar erkannt wird, deren Abfrage aber niemand mehr auslöst, sähe an
     ``geld_facetten`` allein völlig gesund aus."""
     store = _MessStore()
-    kontext = qa.geld_kontext(store, frage, "Suchbegriffe der Expansion", typ)
+    kontext = qa.geld_kontext(store, question, "Suchbegriffe der Expansion", typ)
     assert set(kontext["facetten"]) == erwartet
     erwartete_calls = {ERWARTETE_METHODEN[f] for f in erwartet}
     # `steuerkraft_kontext` läuft nur bei echtem Steuer-Treffer oder bei
@@ -318,12 +318,12 @@ def test_negativfaelle_fassen_die_datenbank_nicht_an():
 
     Ohne ihn optimiert man auf „lädt immer alles" — der Kontext ist knapp, und
     jede geladene Quelle verdrängt Beschlüsse, nach denen gefragt wurde."""
-    for frage, typ, erwartet in KORPUS:
+    for question, typ, erwartet in KORPUS:
         if erwartet:
             continue
         store = _MessStore()
-        kontext = qa.geld_kontext(store, frage, "Stadion Neubau Finanzierung Kosten", typ)
-        assert store.aufrufe == [], f"{frage} fasste {store.aufrufe} an"
+        kontext = qa.geld_kontext(store, question, "Stadion Neubau Finanzierung Kosten", typ)
+        assert store.aufrufe == [], f"{question} fasste {store.aufrufe} an"
         assert qa.geld_block(kontext) == ""
         assert qa.geld_regeln(kontext) == ""
 
@@ -353,8 +353,8 @@ STADION_FRAGEN = [
 ]
 
 
-@pytest.mark.parametrize("frage", STADION_FRAGEN)
-def test_stadion_regression(frage, tmp_path):
+@pytest.mark.parametrize("question", STADION_FRAGEN)
+def test_stadion_regression(question, tmp_path):
     """Tims stehende Direktive: Jede Verbesserung an der Suche wird an den
     Stadion-Fragen geprüft.
 
@@ -367,10 +367,10 @@ def test_stadion_regression(frage, tmp_path):
     Die Facette entscheidet, ob GEFRAGT wird, die Quelle, ob etwas
     ZURÜCKKOMMT."""
     store = _befuellter_store(tmp_path)
-    kontext = qa.geld_kontext(store, frage, "Stadion Neubau Finanzierung Kosten", "topic")
+    kontext = qa.geld_kontext(store, question, "Stadion Neubau Finanzierung Kosten", "topic")
     assert qa.geld_block(kontext) == "", sorted(kontext["facetten"])
     messages, _ = qa._answer_messages(
-        frage, [{"id": 5, "title": "Stadion Marschweg", "official_text": "Zugestimmt.",
+        question, [{"id": 5, "title": "Stadion Marschweg", "official_text": "Zugestimmt.",
                  "amount_eur": 4_200_000}], typ="topic", geld=kontext)
     prompt = messages[0]["content"]
     assert "Volumen: 4.200.000 €" in prompt          # der Beschluss-Betrag bleibt
@@ -423,9 +423,9 @@ NEUE_FACETTEN = [
 @pytest.mark.parametrize("facette,fragen", NEUE_FACETTEN, ids=[f[0] for f in NEUE_FACETTEN])
 def test_neue_facetten_werden_erkannt(facette, fragen):
     """Fünf Formulierungen je Schicht — alle müssen ihre Quelle ziehen."""
-    for frage in fragen:
-        gefunden = qa.geld_facetten(frage, "topic")
-        assert facette in gefunden, f"„{frage}“ → {sorted(gefunden)}"
+    for question in fragen:
+        gefunden = qa.geld_facetten(question, "topic")
+        assert facette in gefunden, f"„{question}“ → {sorted(gefunden)}"
 
 
 @pytest.mark.parametrize("facette,fragen", NEUE_FACETTEN, ids=[f[0] for f in NEUE_FACETTEN])
@@ -448,10 +448,10 @@ def test_neue_facetten_ziehen_sich_nicht_gegenseitig(facette, fragen):
               # Zahl, die nicht im Kontext steht (council/qa.py).
               "investitionen": {"gebaut"}}
     erlaubt = {facette} | zusatz.get(facette, set())
-    for frage in fragen:
-        gefunden = qa.geld_facetten(frage, "topic")
+    for question in fragen:
+        gefunden = qa.geld_facetten(question, "topic")
         fremde = gefunden - erlaubt
-        assert not fremde, f"„{frage}“ zieht zusätzlich {sorted(fremde)}"
+        assert not fremde, f"„{question}“ zieht zusätzlich {sorted(fremde)}"
 
 
 def test_schuldenfrage_zieht_weder_plan_noch_stellenplan():
@@ -558,11 +558,11 @@ def test_umformulierungen_landen_bei_derselben_quelle(name, fragen, erwartet):
     „Feuerwehr Kosten" tippt, und niemand sähe warum."""
     leitfacette = {"Kosten einer Aufgabe": "produkte", "Plan gegen Ist": "ist",
                    "Prüfbericht": "pruefung", "Pflichtaufgabe": "produkte"}[name]
-    for frage in fragen:
-        f = qa.geld_facetten(frage, "topic")
-        assert leitfacette in f, f"„{frage}“ verfehlt die Quelle {leitfacette} (fand {sorted(f)})"
+    for question in fragen:
+        f = qa.geld_facetten(question, "topic")
+        assert leitfacette in f, f"„{question}“ verfehlt die Quelle {leitfacette} (fand {sorted(f)})"
         if erwartet is not None:
-            assert f == erwartet, f"„{frage}“ → {sorted(f)}"
+            assert f == erwartet, f"„{question}“ → {sorted(f)}"
 
 
 # ---------------------------------------------------------------------------
@@ -576,12 +576,12 @@ def _befuellter_store(tmp_path) -> CouncilStore:
     with store._conn:
         store._conn.execute(
             "INSERT INTO council_herkunft (id, key, art, label, url, citation, "
-            " page, probe, stand, fetched_at) VALUES "
+            " page, probe, as_of, fetched_at) VALUES "
             "(1, 'k1', 'ris', 'Jahresabschluss 2024', 'https://example.org/ja2024', "
             " 'Abschnitt 6.2 Ergebnisrechnung', 41, 'summenprobe', '31.12.2024', '2026-08-16')")
         store._conn.execute(
             "INSERT INTO council_herkunft (id, key, art, label, url, citation, "
-            " probe, stand, fetched_at) VALUES "
+            " probe, as_of, fetched_at) VALUES "
             "(2, 'k2', 'ris', 'Schlussbericht RPA 2023', 'https://example.org/rpa', "
             " 'Randmarken des Berichts', 'randmarkenprobe', '2023', '2026-08-16')")
         # Ergebnisrechnung: Gesamt + ein Teilhaushalt, je Erträge (12)/Aufwendungen (20)
@@ -692,7 +692,7 @@ def _befuellter_store(tmp_path) -> CouncilStore:
         # Stellenplan: beide Teile, nur die Gesamtzeilen. besetzt +
         # nicht_besetzt = stellen_vorjahr (die Besetzungsprobe des Plans).
         store._conn.executemany(
-            "INSERT INTO council_stellenplan (budget_year, part, zeile, art, label, "
+            "INSERT INTO council_stellenplan (budget_year, part, row_no, art, label, "
             " positions_planned, positions_prior_year, filled, vacant, as_of_date, "
             " herkunft_id, fetched_at) VALUES (2026,?,0,'gesamt',?,?,?,?,?,'30.06.2025',?,'')",
             [("A", "Gesamt Teil A", 815.50, 802.00, 761.25, 40.75, 5),
@@ -722,15 +722,15 @@ def _befuellter_store(tmp_path) -> CouncilStore:
                 ("So geänderter Ergebnishaushalt einschließlich der Änderungslisten",
                  "angenommen"),
             ]
-            for i, (titel, result) in enumerate(listen):
+            for i, (title, result) in enumerate(listen):
                 eintraege.append((ksinr, lauf + i, "subvote", f"{top}.{i + 1}",
-                                  titel, result, "mehrheitlich"))
+                                  title, result, "mehrheitlich"))
         store._conn.executemany(
             "INSERT INTO council_decisions (ksinr, position, kind, item_number, title, "
             " outcome, vote) VALUES (?,?,?,?,?,?,?)", eintraege)
         store._conn.executemany(
             "INSERT INTO council_herkunft (id, key, art, label, url, citation, "
-            " probe, stand, fetched_at) VALUES (?,?,'ris',?,?,?,?,?,'2026-08-17')",
+            " probe, as_of, fetched_at) VALUES (?,?,'ris',?,?,?,?,?,'2026-08-17')",
             [(3, "k3", "Statistisches Jahrbuch, Tabelle 1108",
               "https://example.org/1108", "Tabelle 1108", "prokopfprobe", "2025"),
              (4, "k4", "Haushaltsplan 2026, Finanzhaushalt",
@@ -977,7 +977,7 @@ def test_antraege_block_sagt_wer_und_zieht_die_grenze(tmp_path):
     # Die Schlussabstimmung über die Sache selbst.
     assert "Schlussabstimmung über die Haushaltssatzung: angenommen" in text
     # Und die Grenze der Quelle.
-    assert "WER etwas ändern" in text and "nicht WAS exact" in text
+    assert "WER etwas ändern" in text and "nicht WAS genau" in text
     assert "erfinde" in text and "nicht als Text vor" in text
     assert "nicht\naddierbar" in text
     # „So geänderter Ergebnishaushalt …" ist die Sammelabstimmung, kein Antrag.
@@ -1003,12 +1003,12 @@ def test_leere_datenbank_liefert_leere_bausteine(tmp_path):
     bleiben es. Jede der vierzehn Quellen muss das aushalten — deshalb hier
     zwei Fragen, die zusammen alle vier Neuzugänge ziehen."""
     store = CouncilStore(tmp_path / "leer.sqlite")
-    for frage in ("Was kostet die Stadt insgesamt?",
+    for question in ("Was kostet die Stadt insgesamt?",
                   "Wie viel Schulden hat Oldenburg, was wird gebaut, wie viele "
                   "Stellen sind unbesetzt und wer wollte den Haushalt ändern?"):
-        kontext = qa.geld_kontext(store, frage, "", "money")
-        assert qa.geld_block(kontext) == "", frage
-        assert qa.geld_regeln(kontext) == "", frage
+        kontext = qa.geld_kontext(store, question, "", "money")
+        assert qa.geld_block(kontext) == "", question
+        assert qa.geld_regeln(kontext) == "", question
     store.close()
 
 
@@ -1062,11 +1062,11 @@ def test_neuer_baustein_bleibt_in_seiner_groesse(facette, grenze, tmp_path):
     """Jeder neue Baustein einzeln vermessen — wächst einer davon, fällt es
     hier auf und nicht erst, wenn er im Prompt die Beschlüsse verdrängt."""
     store = _befuellter_store(tmp_path)
-    frage = {"schulden": "Wie viel Schulden hat Oldenburg?",
+    question = {"schulden": "Wie viel Schulden hat Oldenburg?",
              "stellenplan": "Wie viele Stellen sind unbesetzt?",
              "investitionen": "Was wird gebaut?",
              "antraege": "Welche Änderungslisten gab es zum Haushalt 2026?"}[facette]
-    kontext = qa.geld_kontext(store, frage, frage, "topic")
+    kontext = qa.geld_kontext(store, question, question, "topic")
     key, bauer = qa._GELD_BAUSTEINE[facette]
     text = bauer(kontext.get(key))
     assert text, f"{facette} liefert nichts — Fixture verrutscht?"
@@ -1082,16 +1082,16 @@ def test_echte_fragen_bleiben_weit_unter_dem_deckel(tmp_path):
     den Normalfall keine Fessel — er greift erst bei Fragen, die ein halbes
     Dutzend Quellen auf einmal ziehen, und genau dafür ist er da."""
     store = _befuellter_store(tmp_path)
-    for frage in ["Wie viel Schulden hat Oldenburg?",
+    for question in ["Wie viel Schulden hat Oldenburg?",
                   "Was wird gebaut?",
                   "Wie viele Stellen sind unbesetzt?",
                   "Wer wollte den Haushalt 2026 ändern?",
                   "Wie viel gibt die Stadt für Personal aus?",
                   "Was kostet die Feuerwehr?",
                   "Warum kam so viel mehr Gewerbesteuer rein?"]:
-        kontext = qa.geld_kontext(store, frage, frage, "topic")
+        kontext = qa.geld_kontext(store, question, question, "topic")
         laenge = len(qa.geld_block(kontext))
-        assert 0 < laenge <= 2200, f"„{frage}“: {laenge} Zeichen"
+        assert 0 < laenge <= 2200, f"„{question}“: {laenge} Zeichen"
     store.close()
 
 
@@ -1284,13 +1284,13 @@ def _messlauf() -> int:
     print(kopf)
     print("-" * len(kopf))
     abweichungen = 0
-    for frage, erwartet_typ, erwartete_facetten in KORPUS:
-        analyse = qa.analyse_query(frage)
+    for question, erwartet_typ, erwartete_facetten in KORPUS:
+        analyse = qa.analyse_query(question)
         typ = analyse["kind"]
         facetten = qa.geld_facetten(analyse["question"], typ)
         passt = facetten == erwartete_facetten
         abweichungen += 0 if passt else 1
-        print(f"{frage[:52]:52} {typ:12} {erwartet_typ:10} "
+        print(f"{question[:52]:52} {typ:12} {erwartet_typ:10} "
               f"{'OK ' if passt else 'ABW'} {sorted(facetten)}")
     print(f"\n{len(KORPUS) - abweichungen}/{len(KORPUS)} Fälle mit den erwarteten Quellen.")
     return 1 if abweichungen else 0
@@ -1362,17 +1362,17 @@ def test_buergschaftsfragen_ziehen_die_schuldenquelle_ohne_oldenburg_zu_fangen()
     """
     from council import qa
 
-    for frage in ("Wofür bürgt die Stadt Oldenburg?",
+    for question in ("Wofür bürgt die Stadt Oldenburg?",
                   "Wie hoch ist der Bürgschaftsbestand?",
                   "Für welche Kredite hat die Stadt sich verbürgt?",
                   "Welche Eventualverbindlichkeiten hat die Stadt?"):
-        assert "schulden" in qa.geld_facetten(frage), frage
+        assert "schulden" in qa.geld_facetten(question), question
 
-    for frage in ("Wie viele Bürgerinnen und Bürger hat Oldenburg?",
+    for question in ("Wie viele Bürgerinnen und Bürger hat Oldenburg?",
                   "Wie ist der Stand beim Bürgerbegehren?",
                   "Was ist in Oldenburg mit dem Stadion?",
                   "Wie viele Einwohner hat Oldenburg?"):
-        assert "schulden" not in qa.geld_facetten(frage), frage
+        assert "schulden" not in qa.geld_facetten(question), question
 
 
 def test_geld_grafik_liefert_rohreihen_aus_dem_store(tmp_path):
@@ -1436,7 +1436,7 @@ def test_grafik_pruefung_am_share_snapshot():
     sys.path.insert(0, "web/backend")
     from app.routers.council import _grafik_pruefen
 
-    gut = {"art": "schulden", "titel": "Schuldenstand", "unit": "Mio. €",
+    gut = {"art": "schulden", "title": "Schuldenstand", "unit": "Mio. €",
            "nachkomma": 1, "series": [{"year": 1995, "value": 190.0},
                                      {"year": 2025, "value": 337.0}],
            "note": "Stadt als Rechtsträger", "source": "Jahrbuch 1108"}
@@ -1451,8 +1451,8 @@ def test_grafik_pruefung_am_share_snapshot():
     assert _grafik_pruefen("kein dict") is None
     assert _grafik_pruefen(None) is None
     # Längen werden gekappt — der Snapshot ist kein Blob-Speicher.
-    lang = _grafik_pruefen({**gut, "titel": "x" * 999})
-    assert lang and len(lang["titel"]) == 120
+    lang = _grafik_pruefen({**gut, "title": "x" * 999})
+    assert lang and len(lang["title"]) == 120
 
     # Der „Mehr dazu"-Link: NUR relative Ziele in den Haushalts-Bereich.
     # Der Snapshot ist öffentlich — ein durchgereichtes href wäre sonst ein

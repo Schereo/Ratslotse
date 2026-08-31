@@ -56,7 +56,7 @@ export function markeRang(mark: string): number {
 export type Kette = {
   key: string;
   /** Titel aus dem jüngsten Jahrgang — Abschnitte werden umbenannt. */
-  titel: string;
+  title: string;
   years: number[];
   eintraege: Feststellung[];
   /** Jahre, in denen der Abschnitt eine Beanstandung trug (B oder WB). */
@@ -92,14 +92,14 @@ export function wiederholungsketten(feststellungen: Feststellung[]): Kette[] {
       sortiert.filter((f) => f.mark === "B" || f.mark === "WB").map((f) => f.year))];
     ketten.push({
       key,
-      titel: sortiert[sortiert.length - 1].section,
+      title: sortiert[sortiert.length - 1].section,
       years, eintraege: sortiert, beanstandet,
     });
   }
   return ketten.sort((a, b) =>
     b.beanstandet.length - a.beanstandet.length
     || (b.beanstandet.at(-1) ?? 0) - (a.beanstandet.at(-1) ?? 0)
-    || a.titel.localeCompare(b.titel, "de"));
+    || a.title.localeCompare(b.title, "de"));
 }
 
 /** Feststellungen eines Jahrgangs, nach Textziffer gebündelt — so steht auf

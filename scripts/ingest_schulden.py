@@ -178,21 +178,21 @@ def main() -> int:
             if not finanzquellen.bestandsschutz(
                     p, "Schuldenzeitreihe", alt, len(zeilen),
                     schuetzen=not args.schrumpf_erlauben):
-                for zeile in p.warnungen:
-                    print(zeile.strip(), file=sys.stderr)
+                for row in p.warnungen:
+                    print(row.strip(), file=sys.stderr)
                 print("ABBRUCH: Der vorhandene Bestand bleibt unangetastet. Wenn "
                       "das Schrumpfen Absicht ist: --schrumpf-erlauben.",
                       file=sys.stderr)
                 return 1
-            for zeile in p.zeilen:
-                print(zeile.strip())
+            for row in p.zeilen:
+                print(row.strip())
 
             # Zwei Herkünfte, weil zwei verschiedene Probenlagen vorliegen und
             # eine gemeinsame Angabe für beide ungenau wäre: Die meisten
             # Jahrgänge stehen auf der Summenprobe (2010+ zusätzlich auf der
             # Gegenprobe), 2022 allein auf der Gegenprobe. Was ein Leser im
             # Beleg sieht, soll für SEINE Zahl gelten.
-            # `stand` nennt NUR den Stichtag. Die Abgrenzung stünde hier zwar
+            # `as_of` nennt NUR den Stichtag. Die Abgrenzung stünde hier zwar
             # gut, steht aber schon als eigenes Feld an der Antwort des
             # Endpunkts (`abgrenzung`) und damit auf der Seite direkt an der
             # großen Zahl — zweimal im Abstand von zwei Absätzen gelesen wirkt
@@ -201,7 +201,7 @@ def main() -> int:
                 art="stadt", url=url or schulden.TABELLE_URL,
                 label=f"Statistisches Jahrbuch der Stadt Oldenburg, Tabelle 1108 — "
                       f"Stand der Verschuldung {spanne[0]} bis {spanne[1]}",
-                stand=f"Schuldenstand zum 31.12.{spanne[1]}")
+                as_of=f"Schuldenstand zum 31.12.{spanne[1]}")
             citation = ("Kapitel 11 „Verwaltung und Finanzen“, Tabelle 1108 — "
                           "je Jahr die vier Schuldenarten (Spalten S 2 bis S 5), "
                           "ihre Summe (S 6) und der Betrag je Einwohner*in (S 7)")

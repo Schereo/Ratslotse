@@ -45,7 +45,7 @@ import {
  *  bedient, steht redaktionell schon in `lib/haushalt-taxes.ts` und wird von
  *  `/haushalt/einnahmen` und den Steckbriefen benutzt. Eine zweite Fassung
  *  hier wäre ein zweiter Stand derselben Aussage. */
-type Posten = { slug: string; titel: string; wer: string; mioWert: number; year: number };
+type Posten = { slug: string; title: string; wer: string; mioWert: number; year: number };
 
 function zentralePosten(daten: Daten): Posten[] {
   const out: Posten[] = [];
@@ -57,7 +57,7 @@ function zentralePosten(daten: Daten): Posten[] {
       const letzte = treffer[treffer.length - 1];
       if (letzte) {
         out.push({
-          slug: s.slug, titel: s.titel, wer: s.stellschraube,
+          slug: s.slug, title: s.title, wer: s.stellschraube,
           mioWert: mio(letzte.amount) ?? 0, year: letzte.year,
         });
       }
@@ -75,7 +75,7 @@ function zentralePosten(daten: Daten): Posten[] {
       const letzte = treffer[treffer.length - 1];
       if (letzte) {
         out.push({
-          slug: s.slug, titel: s.titel, wer: s.stellschraube,
+          slug: s.slug, title: s.title, wer: s.stellschraube,
           mioWert: mio(letzte.allocations) ?? 0, year: letzte.year,
         });
       }
@@ -127,7 +127,7 @@ function Finanzkachel({ z, daten, year }: {
               <Link key={p.slug} href={`/haushalt/steuer?art=${p.slug}`}
                 className="group rounded-xl border border-border bg-card p-3 shadow-sm transition-colors hover:border-primary/40">
                 <p className="flex items-center gap-1 text-[12.5px] font-bold leading-snug">
-                  {p.titel}
+                  {p.title}
                   <ChevronRight aria-hidden className="h-3.5 w-3.5 flex-none text-muted-foreground transition-transform group-hover:translate-x-0.5" />
                 </p>
                 <p className="mt-1.5 font-display text-[17px] font-bold tabular-nums">
@@ -266,7 +266,7 @@ export function BereicheAbschnitt() {
         )}
 
         <LottiErklaert
-          titel="Warum die Namen sich ändern"
+          title="Warum die Namen sich ändern"
           text={"Die Stadt schneidet ihre Teilhaushalte gelegentlich neu zu und benennt sie um, "
             + "ohne dass sich die Aufgaben dahinter ändern müssen. Teilhaushalt 9 hieß in sieben "
             + "Jahrgängen viermal verschieden. Wir zeigen deshalb immer die jüngste amtliche "

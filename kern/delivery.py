@@ -97,7 +97,7 @@ def wants_push(owner: dict) -> bool:
     )
 
 
-def push_quittung(owner: dict, titel: str, text: str, url: str) -> bool:
+def push_quittung(owner: dict, title: str, text: str, url: str) -> bool:
     """Push OHNE Warteschlange — für die **Quittung einer Handlung** des Nutzers
     („deine Recherche ist fertig"), nicht für einen Ratsvorgang.
 
@@ -118,7 +118,7 @@ def push_quittung(owner: dict, titel: str, text: str, url: str) -> bool:
     devices = owner.get("push_tokens") or []
     if not devices or not push_ready():
         return False
-    _send_push_and_prune(devices, titel, text, {"url": url})
+    _send_push_and_prune(devices, title, text, {"url": url})
     return True
 
 

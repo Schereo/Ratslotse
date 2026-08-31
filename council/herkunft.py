@@ -144,7 +144,7 @@ PROBEN: dict[str, str] = {
         "Gebühr — Menge und Gebühr stehen an anderer Stelle als die Kaskade.",
     "gebuehrensaetze_anzahl":
         "Anlage 4 enthält jede der zwölf ausdrücklich benannten Tarifarten "
-        "exact einmal — eine fehlende oder zusätzliche Zahl verwirft die Zeile.",
+        "genau einmal — eine fehlende oder zusätzliche Zahl verwirft die Zeile.",
     "gebuehrensaetze_eckwerte":
         "Die Gebühr je Mg und die Straßenreinigungsgebühr aus Anlage 4 stimmen "
         "mit den getrennt errechneten Vorschlägen in Anlagen 1 und 3 überein.",
@@ -260,7 +260,7 @@ PROBEN: dict[str, str] = {
     "bilanz_erlaeuterung":
         "Der Anhang erläutert die Bilanz Position für Position. Dass jeder "
         "Text an der Position steht, zu der er gehört, ist hier geprüft: Die "
-        "neun Abschnitte tragen die Namen der neun Hauptposten, in exact "
+        "neun Abschnitte tragen die Namen der neun Hauptposten, in genau "
         "deren Reihenfolge.",
     "abweichungstext":
         "Die Erläuterung nennt ihre Abweichung doppelt, als Betrag und als "
@@ -514,7 +514,7 @@ PROBEN: dict[str, str] = {
     # kostet.
     "steuerplan_summenzeile":
         "Die einzelnen Steuerarten und die Finanzzuweisungen ergeben zusammen "
-        "genau die Zeile „total“, die dieselbe Tabelle ausweist — und zwar "
+        "genau die Zeile „insgesamt“, die dieselbe Tabelle ausweist — und zwar "
         "in jeder ihrer sechs Spalten: im Haushaltsplan wie im "
         "Rechnungsergebnis, für jedes der drei Jahre.",
     "steuerplan_anteilsprobe":
@@ -771,7 +771,7 @@ class Herkunft:
     #: Stichtag/Datenstand des Inhalts — nicht der Abrufzeitpunkt. Bei den
     #: Beteiligungen der Punkt, an dem sich Konzern- und Einzelabschluss
     #: unterscheiden.
-    stand: str | None = None
+    as_of: str | None = None
 
     def __post_init__(self) -> None:
         if self.art not in ARTEN:
@@ -806,7 +806,7 @@ class Herkunft:
                 "label": self.label, "url": self.url,
                 "citation": self.citation, "page": self.page,
                 "probe": str(self.probe), "probe_result": self.probe_result,
-                "stand": self.stand}
+                "as_of": self.as_of}
 
     def key(self) -> str:
         """Inhaltlicher Fingerabdruck — macht das Eintragen idempotent.

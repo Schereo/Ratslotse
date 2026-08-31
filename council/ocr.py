@@ -291,7 +291,7 @@ Regeln:
 2. Kopfzeilen, Fußzeilen, Seitenzahlen, Spaltenüberschriften und Einheiten
    ("in TEUR", "in Mio. EUR", "Angaben in Euro") gehören dazu. Sie sind kein
    Rauschen — sie sagen, was die Zahlen darunter bedeuten.
-3. Zahlen exact so schreiben, wie sie dastehen: 1.234.567,89 bleibt
+3. Zahlen genau so schreiben, wie sie dastehen: 1.234.567,89 bleibt
    1.234.567,89. Nicht umrechnen, nicht runden, keine Trennzeichen ändern,
    keine Vorzeichen ergänzen oder weglassen.
 4. Tabellen als Text mit Tabulatoren zwischen den Spalten, eine Zeile je

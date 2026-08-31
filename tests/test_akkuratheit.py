@@ -86,9 +86,9 @@ def test_recency_boost_kippt_nur_nahe_scores():
 
 # ---- „Ältere Station"-Marker ------------------------------------------------
 
-def _decision(id_, kvonr, template_number, datum, committee="Rat", titel="Stadionneubau"):
+def _decision(id_, kvonr, template_number, date, committee="Rat", title="Stadionneubau"):
     return {"id": id_, "kvonr": kvonr, "template_number": template_number,
-            "session_date": datum, "committee": committee, "title": titel,
+            "session_date": date, "committee": committee, "title": title,
             "summary": "", "outcome": "angenommen"}
 
 
@@ -117,7 +117,7 @@ def test_markiere_veraltete_ueber_kvonr_und_revisionen(tmp_path):
         # markiert wird die JÜNGSTE (102, Rat, 01.06.2026), ohne [id]-Verweis,
         # weil 102 nicht im Kandidatenset liegt.
         marker = kandidaten[0].get("neuere_station")
-        assert marker and marker["datum"] == "2026-06-01" and marker["committee"] == "Rat"
+        assert marker and marker["date"] == "2026-06-01" and marker["committee"] == "Rat"
         assert marker.get("id") is None
         # Der unbeteiligte Kandidat bleibt sauber.
         assert "neuere_station" not in kandidaten[1]
@@ -137,7 +137,7 @@ def test_markiere_veraltete_ueber_kvonr_und_revisionen(tmp_path):
 
 def test_build_context_rendert_stations_hinweis():
     c = _decision(101, 500, "24/0100", "2024-03-01", "Bauausschuss")
-    c["neuere_station"] = {"id": 102, "datum": "2026-06-01", "committee": "Rat"}
+    c["neuere_station"] = {"id": 102, "date": "2026-06-01", "committee": "Rat"}
     ctx = qa._build_context([c])
     assert "NEUERE Station" in ctx or "neuere Station" in ctx.lower()
     assert "01.06.2026" in ctx and "[102]" in ctx
@@ -291,7 +291,7 @@ def _ausblick_store(tmp_path):
              (2, "26/2", "Bürgerbeteiligung an einem Windkraftwerk"),
              (3, "26/3", "Sachstandsbericht EU-Wiederherstellungsverordnung")])
         store._conn.executemany(
-            "INSERT INTO council_beratungen (kvonr, datum, committee, result, fetched_at) "
+            "INSERT INTO council_beratungen (kvonr, date, committee, result, fetched_at) "
             "VALUES (?, ?, ?, ?, datetime('now'))",
             [(1, "2099-01-05", "Umweltausschuss", "Vorberatung"),
              (2, "2099-02-01", "Umweltausschuss", "Kenntnisnahme"),
@@ -307,9 +307,9 @@ def test_geplante_beratungen_ignoriert_das_ergebnis_feld(tmp_path):
     store = _ausblick_store(tmp_path)
     try:
         plan = store.geplante_beratungen_fuer([1, 2])
-        assert [p["datum"] for p in plan] == ["2099-01-05", "2099-02-01"]  # nach Datum
+        assert [p["date"] for p in plan] == ["2099-01-05", "2099-02-01"]  # nach Datum
         assert plan[0]["art"] == "Vorberatung"        # Behandlungsart kommt mit
-        assert all(p["datum"] >= "2099" for p in plan)  # Vergangenes bleibt draußen
+        assert all(p["date"] >= "2099" for p in plan)  # Vergangenes bleibt draußen
         assert store.geplante_beratungen_fuer([]) == []
     finally:
         store.close()
@@ -327,7 +327,7 @@ def test_kommende_beratungen_matcht_auf_wortgrenzen(tmp_path):
         assert store.kommende_beratungen(["windkraft"])[0]["template_number"] == "26/2"
         # Generisches „Stand" trifft NICHTS mehr (weder Stoppliste noch Wortmitte).
         assert store.kommende_beratungen(["stand"]) == []
-        assert store.kommende_beratungen(["sachstand", "official_text"]) == []
+        assert store.kommende_beratungen(["sachstand", "beschluss"]) == []
         # Kurze Wörter zählen nicht, leere Eingabe liefert leer.
         assert store.kommende_beratungen(["rat"]) == []
         assert store.kommende_beratungen([]) == []
@@ -351,7 +351,7 @@ def test_kommende_beratungen_ignoriert_strasse(tmp_path):
                 [(1, "26/1", "Widmung der Straße \"Sylter Ring\" - Beschluss"),
                  (2, "26/2", "Sachstand Hannah-Arendt-Straße (B-Plan S-745 A)")])
             store._conn.executemany(
-                "INSERT INTO council_beratungen (kvonr, datum, committee, result, fetched_at) "
+                "INSERT INTO council_beratungen (kvonr, date, committee, result, fetched_at) "
                 "VALUES (?, ?, ?, ?, datetime('now'))",
                 [(1, "2099-01-05", "Verkehrsausschuss", "Vorberatung"),
                  (2, "2099-01-05", "Verkehrsausschuss", "Kenntnisnahme")])

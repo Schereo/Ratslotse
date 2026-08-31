@@ -124,11 +124,11 @@ def main() -> dict:
                   f"{len(e.zeilen):>3} Positionen ({years[0]}–{years[-1]}), "
                   f"{mit_code} mit Investitionscode{zusatz}", flush=True)
 
-        for titel, eintraege in (("Dubletten", dubletten),
+        for title, eintraege in (("Dubletten", dubletten),
                                  ("Widersprüche", konflikte),
                                  ("Nicht gelesen", risse)):
             if eintraege:
-                print(f"\n{titel}:", flush=True)
+                print(f"\n{title}:", flush=True)
                 for satz in eintraege:
                     print(f"  {satz}", flush=True)
 

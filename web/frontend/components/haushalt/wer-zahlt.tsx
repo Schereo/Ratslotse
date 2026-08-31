@@ -290,7 +290,7 @@ export function WerZahlt({ taxes, art, vergleichArt, vergleichTitel, tax_rates,
             {statistikAbgrenzung && (
               <details className="group mt-1.5">
                 <summary className="cursor-pointer list-none text-[11px] font-semibold text-primary marker:content-none">
-                  <span className="group-open:hidden">Was diese Zahlen exact umfassen</span>
+                  <span className="group-open:hidden">Was diese Zahlen genau umfassen</span>
                   <span className="hidden group-open:inline">Weniger</span>
                 </summary>
                 <p className="mt-1.5 text-[11.5px] leading-relaxed text-muted-foreground">

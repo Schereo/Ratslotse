@@ -267,15 +267,15 @@ def _verifiziere_items(session: CouncilSession, roh: list) -> list[str]:
         if isinstance(eintrag, str):
             eintrag = {"number": eintrag}
         nummer = " ".join(str(eintrag.get("number") or "").split()).upper()
-        titel = _falte_titel(eintrag.get("title") or "")
+        title = _falte_titel(eintrag.get("title") or "")
         item = per_nummer.get(nummer)
         if item is None and nummer:
             # „14.7" ohne Ö/N-Präfix: nur übernehmen, wenn eindeutig.
             kandidaten = [i for i in items
                           if " ".join(str(i.item_number).split()).upper().split(" ", 1)[-1] == nummer]
             item = kandidaten[0] if len(kandidaten) == 1 else None
-        if titel:
-            anker = titel[:32]
+        if title:
+            anker = title[:32]
             passt = item is not None and anker[:20] and anker[:20] in _falte_titel(item.title)
             if not passt:
                 treffer = [i for i in items if anker and anker in _falte_titel(i.title)]
@@ -333,8 +333,8 @@ def _format_alert(session: CouncilSession, topic_matches: dict[int, list[str]], 
     for topic_idx, item_numbers in topic_matches.items():
         for num in item_numbers:
             item = item_map.get(num)
-            titel = _esc(item.title) if item else _esc(num)
-            zeilen.append(f"<b>TOP {_esc(num)}</b> — {titel}")
+            title = _esc(item.title) if item else _esc(num)
+            zeilen.append(f"<b>TOP {_esc(num)}</b> — {title}")
 
     wann = _datum(session.session_date)
     if session.session_time:
@@ -355,7 +355,7 @@ def _esc(text: str) -> str:
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
-def _melden(ratslotse_store, owner: dict, art: str, titel: str, html: str, url: str,
+def _melden(ratslotse_store, owner: dict, art: str, title: str, html: str, url: str,
             deliver_message) -> None:
     """Eine Meldung abgeben — über die Warteschlange, wenn es sie gibt.
 
@@ -365,9 +365,9 @@ def _melden(ratslotse_store, owner: dict, art: str, titel: str, html: str, url: 
     weiter ohne Datenbank prüfbar ist.
     """
     if ratslotse_store is None:
-        deliver_message(owner, html, email_subject=titel, push_url=url)
+        deliver_message(owner, html, email_subject=title, push_url=url)
         return
-    notify.einreihen(ratslotse_store, owner["owner_id"], art, titel, html, url)
+    notify.einreihen(ratslotse_store, owner["owner_id"], art, title, html, url)
 
 
 def _agenda_hash(agenda_items) -> str:

@@ -230,7 +230,7 @@ def parse_anlagenspiegel(text: str, year: int) -> list[dict]:
     return zeilen
 
 
-def probe(zeile: dict) -> tuple[list[str], list[str]]:
+def probe(row: dict) -> tuple[list[str], list[str]]:
     """Welche Ketten dieser Zeile aufgehen — und welche reißen.
 
     Liefert (bestanden, risse). Gerechnet wird mit **Addition**: Abgänge und
@@ -243,12 +243,12 @@ def probe(zeile: dict) -> tuple[list[str], list[str]]:
         if abs(ist - soll) <= TOLERANZ:
             bestanden.append(name)
         else:
-            risse.append(f"{zeile['nr']} {zeile['label'][:28]}: {was} "
+            risse.append(f"{row['nr']} {row['label'][:28]}: {was} "
                          f"{ist:,.2f} gegen {soll:,.2f} ({abs(ist - soll):,.2f} €)")
 
     pruefe(PROBE_AHK,
-           zeile["cost_opening"] + zeile["additions"] + zeile["disposals"] + zeile["transfers"],
-           zeile["cost_closing"], "Anschaffungswerte")
+           row["cost_opening"] + row["additions"] + row["disposals"] + row["transfers"],
+           row["cost_closing"], "Anschaffungswerte")
     # Bis 2020 fehlt dem Abschreibungs-Block die Umbuchungs-Spalte. Die Kette
     # KANN dort nicht schließen, wo in dem Jahr etwas zwischen den
     # Vermögensarten verschoben wurde — das ist eine Eigenschaft der Vorlage,
@@ -256,13 +256,13 @@ def probe(zeile: dict) -> tuple[list[str], list[str]]:
     # anzuhängen, den es nicht hat; sie stillschweigend glattzurechnen wäre
     # schlimmer. Stattdessen wird der Rest als `umbuchung_abgeleitet`
     # ausgewiesen und über den Jahrgang geprüft (`umbuchungsprobe`).
-    if zeile.get("spalten") == 13:
+    if row.get("spalten") == 13:
         pruefe(PROBE_ABSCHREIBUNG,
-               (zeile["depreciation_opening"] + zeile["depreciation"] + zeile["depreciation_releases"]
-                + zeile["write_ups"] + zeile["depreciation_transfers"]),
-               zeile["depreciation_closing"], "Abschreibungen")
-    pruefe(PROBE_BUCHWERT, zeile["cost_closing"] + zeile["depreciation_closing"],
-           zeile["book_value"], "Buchwert")
+               (row["depreciation_opening"] + row["depreciation"] + row["depreciation_releases"]
+                + row["write_ups"] + row["depreciation_transfers"]),
+               row["depreciation_closing"], "Abschreibungen")
+    pruefe(PROBE_BUCHWERT, row["cost_closing"] + row["depreciation_closing"],
+           row["book_value"], "Buchwert")
     return bestanden, risse
 
 
@@ -338,7 +338,7 @@ def parse_sachvermoegen_gruppen(text: str, year: int) -> list[dict]:
     return gruppen
 
 
-def umbuchung_abgeleitet(zeile: dict) -> float:
+def umbuchung_abgeleitet(row: dict) -> float:
     """Was die Abschreibungskette nicht erklärt — bei zwölf Spalten.
 
     Bis 2020 zeigt die Vorlage im Abschreibungs-Block keine Umbuchungen. Was
@@ -346,9 +346,9 @@ def umbuchung_abgeleitet(zeile: dict) -> float:
     Differenz zwischen der Spaltensumme und dem ausgewiesenen Endstand.
     Ab 2021 gibt es die Spalte, und der Rest ist null.
     """
-    chain = (zeile["depreciation_opening"] + zeile["depreciation"] + zeile["depreciation_releases"]
-             + zeile["write_ups"] + zeile["depreciation_transfers"])
-    return zeile["depreciation_closing"] - chain
+    chain = (row["depreciation_opening"] + row["depreciation"] + row["depreciation_releases"]
+             + row["write_ups"] + row["depreciation_transfers"])
+    return row["depreciation_closing"] - chain
 
 
 def umbuchungsprobe(zeilen: list[dict]) -> tuple[float, list[str]]:

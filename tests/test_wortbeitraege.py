@@ -41,7 +41,7 @@ def test_fenster_splitting():
 
 def test_extract_validierung(monkeypatch):
     rows = [
-        {"art": "anfrage", "top": "Ö 5", "speaker": "Ratsfrau Meyer", "partei": "SPD",
+        {"art": "anfrage", "top": "Ö 5", "speaker": "Ratsfrau Meyer", "party": "SPD",
          "text": "Wann wird der Radweg an der Alexanderstraße saniert?",
          "answer": "Die Verwaltung sagt eine Prüfung bis Q3 zu."},
         {"art": "quatsch", "speaker": "Herr Schulz",
@@ -136,7 +136,7 @@ def store(tmp_path):
 
 
 BEITRAG = {"art": "einwohnerfrage", "top": "Ö 2", "speaker": "Peter Petersen",
-           "partei": None, "text": "Warum dauert die Sanierung des Fliegerhorst-Geländes so lange?",
+           "party": None, "text": "Warum dauert die Sanierung des Fliegerhorst-Geländes so lange?",
            "answer": "Die Altlastenprüfung läuft noch."}
 
 
@@ -267,7 +267,7 @@ def test_seiten_aufloesen_ankert_am_sprecher(store):
     ]
     _protokoll_mit_seiten(store, 100, seiten)
     store.save_wortbeitraege(100, [
-        {"art": "rede", "top": "5", "speaker": "Dr. Ratjen-Damerau", "partei": "FDP",
+        {"art": "rede", "top": "5", "speaker": "Dr. Ratjen-Damerau", "party": "FDP",
          "text": "Die FDP begrüßt die Neuausrichtung des Stadtmuseums und den "
                  "Architektenwettbewerb.", "answer": None}])
     from council.wortbeitraege import seiten_aufloesen
@@ -369,11 +369,11 @@ def test_search_je_fraktion_filtert_und_deckelt(store, monkeypatch):
     verstopfen keine Slots, je Fraktion greift der Deckel."""
     np = pytest.importorskip("numpy")
     from council import embeddings as emb
-    rows = ([dict(BEITRAG, partei=None, text=f"Verwaltungsantwort Nummer {i} zur Sache.")
+    rows = ([dict(BEITRAG, party=None, text=f"Verwaltungsantwort Nummer {i} zur Sache.")
              for i in range(6)]
-            + [dict(BEITRAG, partei="SPD", speaker=f"S{i}", text=f"SPD-Beitrag {i} zur Sache im Rat.")
+            + [dict(BEITRAG, party="SPD", speaker=f"S{i}", text=f"SPD-Beitrag {i} zur Sache im Rat.")
                for i in range(7)]
-            + [dict(BEITRAG, partei="CDU", speaker="C1", text="CDU-Beitrag zur Sache im Rat.")])
+            + [dict(BEITRAG, party="CDU", speaker="C1", text="CDU-Beitrag zur Sache im Rat.")])
     store.save_wortbeitraege(100, rows)
     alle = [r[0] for r in store._conn.execute("SELECT id FROM council_wortbeitraege ORDER BY id")]
     mat = np.ones((len(alle), 2), dtype="float32") / np.sqrt(2)  # alle gleich relevant
@@ -382,7 +382,7 @@ def test_search_je_fraktion_filtert_und_deckelt(store, monkeypatch):
     monkeypatch.setattr(emb, "rerank", lambda q, docs: [(i, 0.0) for i, _ in docs])
     hits = emb.search_wortbeitraege_je_fraktion(store, "Frage", "Frage", je_partei=5)
     gewaehlt = store.wortbeitraege_by_ids([w for w, _ in hits])
-    parteien = [r.get("partei") for r in gewaehlt]
+    parteien = [r.get("party") for r in gewaehlt]
     assert None not in parteien
     assert parteien.count("SPD") == 5  # Deckel greift (7 vorhanden)
     assert parteien.count("CDU") == 1
@@ -398,10 +398,10 @@ def test_search_je_fraktion_sammelt_aus_ganzem_feld(store, monkeypatch):
     from council import embeddings as emb
     # 130 Verwaltungs-Beiträge mit HÖHEREM Score als die beiden Fraktions-
     # Beiträge — genau die Konstellation, die den alten Schnitt auslöste.
-    rows = ([dict(BEITRAG, partei=None, text=f"Verwaltungsantwort Nummer {i} zur Sache.")
+    rows = ([dict(BEITRAG, party=None, text=f"Verwaltungsantwort Nummer {i} zur Sache.")
              for i in range(130)]
-            + [dict(BEITRAG, partei="SPD", speaker="S1", text="SPD-Rede zur Satzung."),
-               dict(BEITRAG, partei="CDU", speaker="C1", text="CDU-Rede zur Satzung.")])
+            + [dict(BEITRAG, party="SPD", speaker="S1", text="SPD-Rede zur Satzung."),
+               dict(BEITRAG, party="CDU", speaker="C1", text="CDU-Rede zur Satzung.")])
     store.save_wortbeitraege(100, rows)
     alle = [r[0] for r in store._conn.execute("SELECT id FROM council_wortbeitraege ORDER BY id")]
     # Score = erste Komponente: absteigend, die Fraktions-Beiträge am Ende.
@@ -411,7 +411,7 @@ def test_search_je_fraktion_sammelt_aus_ganzem_feld(store, monkeypatch):
     monkeypatch.setattr(emb, "embed", lambda texts: np.array([[1.0, 0.0]], dtype="float32"))
     monkeypatch.setattr(emb, "rerank", lambda q, docs: [(i, 0.0) for i, _ in docs])
     hits = emb.search_wortbeitraege_je_fraktion(store, "Frage", "Frage")
-    parteien = [r.get("partei") for r in store.wortbeitraege_by_ids([w for w, _ in hits])]
+    parteien = [r.get("party") for r in store.wortbeitraege_by_ids([w for w, _ in hits])]
     assert sorted(parteien) == ["CDU", "SPD"]
 
 
@@ -423,24 +423,24 @@ def test_partei_meinungen_deckel_und_einzelstimmen(monkeypatch):
 
     def fake(**kwargs):
         gesehen["prompt"] = kwargs["messages"][0]["content"]
-        answer = json.dumps([{"partei": "SPD", "haltung": "dafür", "position": "Dafür.",
+        answer = json.dumps([{"party": "SPD", "haltung": "dafür", "position": "Dafür.",
                                "einig": True},
-                              {"partei": "AfD", "haltung": "dagegen", "position": "Dagegen.",
+                              {"party": "AfD", "haltung": "dagegen", "position": "Dagegen.",
                                "einig": True},
-                              {"partei": "Jägerschaft", "haltung": "offen", "position": "Egal.",
+                              {"party": "Jägerschaft", "haltung": "offen", "position": "Egal.",
                                "einig": True}])
         return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=answer))],
                                usage=None)
 
     monkeypatch.setattr(qa.llm, "chat_complete", fake)
-    rows = [{"partei": "SPD", "speaker": f"Redner {i}", "text": f"SPD-Beitrag {i} zur Sache.",
+    rows = [{"party": "SPD", "speaker": f"Redner {i}", "text": f"SPD-Beitrag {i} zur Sache.",
              "session_date": f"2026-01-{i + 1:02d}"} for i in range(15)]
-    rows.append({"partei": "AfD", "speaker": "Einzeln", "text": "Einzige AfD-Rede zur Sache.",
+    rows.append({"party": "AfD", "speaker": "Einzeln", "text": "Einzige AfD-Rede zur Sache.",
                  "session_date": "2026-02-01"})
-    rows.append({"partei": "Jägerschaft", "speaker": "Gast", "text": "Einzige Wortmeldung.",
+    rows.append({"party": "Jägerschaft", "speaker": "Gast", "text": "Einzige Wortmeldung.",
                  "session_date": "2026-02-02"})
     out = qa.partei_meinungen("Frage?", rows)
-    assert [e["partei"] for e in out] == ["SPD", "AfD"]  # Jägerschaft: nur eine Stimme
+    assert [e["party"] for e in out] == ["SPD", "AfD"]  # Jägerschaft: nur eine Stimme
     assert out[0]["beitraege"] == qa.MAX_BEITRAEGE_JE_PARTEI == 12
     assert len(out[0]["beitraege_liste"]) == 12
     # Gekappt wird vorne: der älteste fällt raus, der jüngste bleibt.
@@ -457,17 +457,17 @@ def test_partei_meinungen_fasst_schreibvarianten_zusammen(monkeypatch):
     def fake(**kwargs):
         gesehen["prompt"] = kwargs["messages"][0]["content"]
         return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(
-            content=json.dumps([{"partei": "SPD", "haltung": "dafür", "position": "Dafür.",
+            content=json.dumps([{"party": "SPD", "haltung": "dafür", "position": "Dafür.",
                                  "einig": True},
-                                {"partei": "Bündnis 90/Die Grünen", "haltung": "dafür",
+                                {"party": "Bündnis 90/Die Grünen", "haltung": "dafür",
                                  "position": "Auch dafür.", "einig": True}])))], usage=None)
 
     monkeypatch.setattr(qa.llm, "chat_complete", fake)
-    rows = [{"partei": p, "speaker": "R", "text": f"Beitrag der {p} zur Sache.",
+    rows = [{"party": p, "speaker": "R", "text": f"Beitrag der {p} zur Sache.",
              "session_date": "2026-01-01"}
             for p in ("SPD", "SPD-Fraktion", "Die Grünen", "Bündnis 90/ Die Grünen")]
     out = qa.partei_meinungen("Frage?", rows)
-    assert [e["partei"] for e in out] == ["SPD", "Bündnis 90/Die Grünen"]
+    assert [e["party"] for e in out] == ["SPD", "Bündnis 90/Die Grünen"]
     assert [e["beitraege"] for e in out] == [2, 2]
     assert "SPD-Fraktion (" not in gesehen["prompt"]
 
@@ -475,14 +475,14 @@ def test_partei_meinungen_fasst_schreibvarianten_zusammen(monkeypatch):
 def test_partei_meinungen_rettet_abgeschnittene_antwort(monkeypatch):
     """Läuft die Verdichtung ins Token-Limit, ist ein halber Baustein besser
     als gar keiner — der Rest des Arrays wird geborgen (Befund 21.08.)."""
-    torso = ('[{"partei": "SPD", "haltung": "dafür", "position": "Dafür.", "einig": true},'
-             ' {"partei": "CDU", "haltung": "dagegen", "position": "Dage')
+    torso = ('[{"party": "SPD", "haltung": "dafür", "position": "Dafür.", "einig": true},'
+             ' {"party": "CDU", "haltung": "dagegen", "position": "Dage')
     monkeypatch.setattr(qa.llm, "chat_complete", lambda **k: SimpleNamespace(
         choices=[SimpleNamespace(message=SimpleNamespace(content=torso))], usage=None))
-    rows = [{"partei": p, "speaker": "R", "text": f"Beitrag der {p} zur Sache.",
+    rows = [{"party": p, "speaker": "R", "text": f"Beitrag der {p} zur Sache.",
              "session_date": "2026-01-01"} for p in ("SPD", "SPD", "CDU", "CDU")]
     out = qa.partei_meinungen("Frage?", rows)
-    assert [e["partei"] for e in out] == ["SPD"]
+    assert [e["party"] for e in out] == ["SPD"]
     assert qa._json_array_notfalls_gerettet("kein json") is None
 
 
@@ -491,34 +491,34 @@ def test_partei_meinungen_schwellen(monkeypatch):
     def nie(**kwargs):
         raise AssertionError("LLM darf hier nicht gerufen werden")
     monkeypatch.setattr(qa.llm, "chat_complete", nie)
-    r = {"partei": "SPD", "speaker": "A", "text": "x" * 30, "session_date": "2026-06-01"}
+    r = {"party": "SPD", "speaker": "A", "text": "x" * 30, "session_date": "2026-06-01"}
     assert qa.partei_meinungen("Frage?", [r] * 5) is None          # nur 1 Fraktion
-    assert qa.partei_meinungen("Frage?", [r, dict(r, partei="CDU"), r]) is None  # nur 3 Beiträge
+    assert qa.partei_meinungen("Frage?", [r, dict(r, party="CDU"), r]) is None  # nur 3 Beiträge
     # Beiträge ohne Fraktion (Verwaltung/Einwohner) zählen nicht mit.
-    assert qa.partei_meinungen("Frage?", [r, dict(r, partei=None), dict(r, partei=None),
-                                          dict(r, partei="CDU")]) is None
+    assert qa.partei_meinungen("Frage?", [r, dict(r, party=None), dict(r, party=None),
+                                          dict(r, party="CDU")]) is None
 
 
 def test_partei_meinungen_aggregation(monkeypatch):
     """Label-Bereinigung, Halluzinations-Guard, uneinig-Flag, Zähler."""
     answer = json.dumps([
-        {"partei": "DIE LINKE", "haltung": "dagegen", "position": "Lehnt die Trasse ab.",
+        {"party": "DIE LINKE", "haltung": "dagegen", "position": "Lehnt die Trasse ab.",
          "einig": True,
          "kernaussage": {"text": "Kein Bedarf für die Straße.", "speaker": "Höpken",
-                         "datum": "01.06.2026"}},
-        {"partei": "AfD", "haltung": "quatsch",
+                         "date": "01.06.2026"}},
+        {"party": "AfD", "haltung": "quatsch",
          "position": "Uneinheitlich zwischen Investition und Haushalt.",
          "einig": False, "note": "Paul dafür, Beitrag vom Februar dagegen"},
-        {"partei": "Die Grauen", "position": "erfunden", "einig": True},
+        {"party": "Die Grauen", "position": "erfunden", "einig": True},
     ])
     monkeypatch.setattr(qa.llm, "chat_complete", lambda **k: SimpleNamespace(
         choices=[SimpleNamespace(message=SimpleNamespace(content=answer))], usage=None))
-    rows = ([{"partei": "Fraktion DIE LINKE.", "speaker": "Höpken",
+    rows = ([{"party": "Fraktion DIE LINKE.", "speaker": "Höpken",
               "text": "Ablehnung " * 5, "session_date": "2026-06-01"}] * 3
-            + [{"partei": "AfD", "speaker": "Paul", "text": "Zustimmung " * 5,
+            + [{"party": "AfD", "speaker": "Paul", "text": "Zustimmung " * 5,
                 "session_date": "2026-06-01"}] * 2)
     out = qa.partei_meinungen("Was ist mit der Trasse?", rows)
-    assert [e["partei"] for e in out] == ["DIE LINKE", "AfD"]  # „Die Grauen" gefiltert
+    assert [e["party"] for e in out] == ["DIE LINKE", "AfD"]  # „Die Grauen" gefiltert
     assert out[0]["kernaussage"]["speaker"] == "Höpken"
     assert out[0]["beitraege"] == 3
     assert out[0]["haltung"] == "dagegen"
@@ -529,7 +529,7 @@ def test_partei_meinungen_aggregation(monkeypatch):
 def test_partei_meinungen_cache(store):
     """Server-Cache über den ID-Hash: Treffer innerhalb der TTL, Fremd-
     Schlüssel leer, kaputtes JSON leer statt Crash."""
-    daten = [{"partei": "SPD", "haltung": "dafür", "position": "Dafür.", "einig": True,
+    daten = [{"party": "SPD", "haltung": "dafür", "position": "Dafür.", "einig": True,
               "note": None, "kernaussage": None, "beitraege": 4}]
     store.partei_meinungen_cache_set("abc123", "Stadionfrage?", daten)
     assert store.partei_meinungen_cache_get("abc123") == daten
@@ -541,10 +541,10 @@ def test_partei_meinungen_cache(store):
 
 def test_debatten_block_format():
     block = qa._debatten_block([
-        {"art": "anfrage", "speaker": "Ratsfrau Meyer", "partei": "SPD",
+        {"art": "anfrage", "speaker": "Ratsfrau Meyer", "party": "SPD",
          "top": "Radweg", "text": "Wann wird saniert?", "answer": "Prüfung bis Q3.",
          "committee": "Verkehrsausschuss", "session_date": "2026-04-12"},
-        {"art": "rede", "speaker": None, "partei": None, "top": None,
+        {"art": "rede", "speaker": None, "party": None, "top": None,
          "text": "Beitrag ohne Metadaten.", "answer": None,
          "committee": None, "session_date": None},
     ])
@@ -563,7 +563,7 @@ def test_debatten_block_format():
 def test_debatten_block_im_antwortprompt(monkeypatch):
     messages, _ = qa._answer_messages(
         "Was ist mit dem Radweg?", [{"id": 1, "title": "T", "official_text": "B"}],
-        debatten=[{"art": "zusage", "speaker": "Stadtbaurat", "partei": None,
+        debatten=[{"art": "zusage", "speaker": "Stadtbaurat", "party": None,
                    "top": None, "text": "Die Verwaltung sagt die Prüfung zu.",
                    "answer": None, "committee": None, "session_date": None}])
     assert "Zusage der Verwaltung von Stadtbaurat" in messages[0]["content"]
@@ -590,11 +590,11 @@ def test_wortbeitraege_zu_beschluessen_koppelt_ueber_die_station(store):
         "VALUES (4663, 'Ausschuss für Stadtgrün', '2026-02-12', '17:00', 'Rathaus', '2026-02-13')")
     store.save_wortbeitraege(4663, [
         {"art": "rede", "top": "Fliegerhorst Oldenburg - 2. Grundwassermonitoring ehemalige Schießanlage",
-         "speaker": "Jaekel", "partei": None,
+         "speaker": "Jaekel", "party": None,
          "text": "Vinylchlorid stammt wahrscheinlich aus der militärischen Nutzung.", "answer": None},
         # Sammel-TOP derselben Sitzung: darf NIE mitkommen.
         {"art": "anfrage", "top": "16 Anfragen und Anregungen", "speaker": "Oltmanns",
-         "partei": None, "text": "Frage zu Baumfällungen.", "answer": None},
+         "party": None, "text": "Frage zu Baumfällungen.", "answer": None},
     ])
     official_text = {"id": 20852, "ksinr": 4663, "item_number": "10",
                  "title": "Fliegerhorst Oldenburg - 2. Grundwassermonitoring ehemalige Schießanlage - Bericht"}
@@ -613,9 +613,9 @@ def test_wortbeitraege_zu_beschluessen_filtert_optional_nach_person(store):
     anderer Personen aus demselben TOP mitzunehmen."""
     store.save_wortbeitraege(100, [
         {"art": "rede", "top": "Ö 7 Sporthalle Kreyenbrück", "speaker": "Bernhard Ellberg",
-         "partei": "SPD", "text": "Die Halle soll zügig saniert werden.", "answer": None},
+         "party": "SPD", "text": "Die Halle soll zügig saniert werden.", "answer": None},
         {"art": "rede", "top": "Ö 7 Sporthalle Kreyenbrück", "speaker": "Anna Beispiel",
-         "partei": "CDU", "text": "Die Finanzierung müsse geklärt werden.", "answer": None},
+         "party": "CDU", "text": "Die Finanzierung müsse geklärt werden.", "answer": None},
     ])
     official_text = {"id": 77, "ksinr": 100, "item_number": "7",
                  "title": "Sporthalle Kreyenbrück - Beschluss"}
@@ -630,7 +630,7 @@ def test_wortbeitraege_zu_beschluessen_deckelt_die_menge(store):
         "VALUES (5000, 'Rat', '2026-03-01', '17:00', 'Rathaus', '2026-03-02')")
     store.save_wortbeitraege(5000, [
         {"art": "rede", "top": "Grosses Thema", "speaker": f"Redner {i}",
-         "partei": None, "text": f"Beitrag {i}", "answer": None} for i in range(10)
+         "party": None, "text": f"Beitrag {i}", "answer": None} for i in range(10)
     ])
     b = [{"id": 7, "ksinr": 5000, "item_number": "3", "title": "Grosses Thema"}]
     assert len(store.wortbeitraege_zu_beschluessen(b)) == 4          # max_je_top

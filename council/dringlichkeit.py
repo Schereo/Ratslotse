@@ -130,8 +130,8 @@ def titel_aus_label(label: str) -> str:
     return f"Dringlichkeitsantrag: {thema}" if thema else "Dringlichkeitsantrag"
 
 
-def _ist_formalie(titel: str) -> bool:
-    return bool(_FORMALIE_RE.search(titel or ""))
+def _ist_formalie(title: str) -> bool:
+    return bool(_FORMALIE_RE.search(title or ""))
 
 
 def zusatz_punkte(items: list) -> list:

@@ -66,7 +66,7 @@ def test_routing_eval_meldet_zu_viele_und_fehlende_kanaele():
         "forbidden_channels": ["debates"],
     }
     analysis = {
-        "frage": case["question"], "typ": "history",
+        "question": case["question"], "typ": "history",
         "rechercheplan": qa._research_plan({"rechercheplan": {
             "intent": "timeline", "channels": ["decisions", "debates"],
             "needs": ["statements"],

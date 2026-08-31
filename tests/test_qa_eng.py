@@ -10,7 +10,7 @@ def test_eng_regel_ersetzt_die_typ_regeln_und_die_debatten_pflicht():
     """Bei eng=True steht die Kürze-Regel im Prompt — und der Debatten-Block
     verlangt KEIN Meinungsbild mehr. Ohne das gewann die „IMMER ergänzen"-
     Anweisung des Blocks gegen die Kürze (im Test genau so gemessen)."""
-    debatten = [{"speaker": "Meier", "partei": "SPD", "datum": "2026-01-01",
+    debatten = [{"speaker": "Meier", "party": "SPD", "date": "2026-01-01",
                  "text": "Ein Beitrag zur Sache.", "art": "rede"}]
     block_eng = qa._debatten_block(debatten, eng=True)
     block_normal = qa._debatten_block(debatten, eng=False)
@@ -34,13 +34,13 @@ def test_analyse_liest_eng_aus_der_antwort(monkeypatch):
         def __init__(self, text):
             self.choices = [type("C", (), {"message": type("M", (), {"content": text})()})()]
 
-    payload = json.dumps({"frage": "Wann wurde X beschlossen?", "begriffe": "X Beschluss",
+    payload = json.dumps({"question": "Wann wurde X beschlossen?", "begriffe": "X Beschluss",
                           "typ": "topic", "eng": True, "varianten": []})
     monkeypatch.setattr(qa.llm, "chat_complete", lambda **kw: _Antwort(payload))
     qa._ANALYSE_CACHE.clear()
     assert qa.analyse_query("Wann wurde X beschlossen?")["eng"] is True
 
-    payload2 = json.dumps({"frage": "Was wurde zu X entschieden?", "begriffe": "X",
+    payload2 = json.dumps({"question": "Was wurde zu X entschieden?", "begriffe": "X",
                            "typ": "topic", "eng": False, "varianten": []})
     monkeypatch.setattr(qa.llm, "chat_complete", lambda **kw: _Antwort(payload2))
     qa._ANALYSE_CACHE.clear()

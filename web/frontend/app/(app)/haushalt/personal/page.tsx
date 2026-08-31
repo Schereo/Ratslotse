@@ -78,7 +78,7 @@ function Fundstelle({ daten, id }: { daten: StellenplanDaten; id: number | null 
       </p>
       {h.citation && (
         <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">
-          {h.citation}{h.stand ? ` · ${h.stand}` : ""}
+          {h.citation}{h.as_of ? ` · ${h.as_of}` : ""}
         </p>
       )}
     </div>
@@ -304,7 +304,7 @@ export default function PersonalPage() {
                 aktJahr={teilNeu}
                 zeilen={alle.map((j) => ({
                   budget_year: j,
-                  zeile: gesamt(daten, j, part),
+                  row: gesamt(daten, j, part),
                   fehlt: FEHLT_GRUND,
                 }))}
               />
@@ -338,7 +338,7 @@ export default function PersonalPage() {
         </div>
 
         <LottiErklaert
-          titel="Was ist ein Stellenplan?"
+          title="Was ist ein Stellenplan?"
           text={"Der Rat beschließt mit dem Haushalt nicht nur, wie viel Geld die Stadt "
             + "ausgeben darf, sondern auch, wie viele Stellen sie haben darf — für jede "
             + "Amtsbezeichnung einzeln. Gezählt werden Stellen, nicht Menschen: Zwei "
@@ -429,7 +429,7 @@ export default function PersonalPage() {
                   ))}
                 </ul>
                 <p className="mt-2.5 text-[11.5px] leading-relaxed text-muted-foreground">
-                  Rechts die unbesetzten Stellen, daneben wie viele es in dieser Zeile total
+                  Rechts die unbesetzten Stellen, daneben wie viele es in dieser Zeile insgesamt
                   gab. Die Bezeichnungen sind Amtsbezeichnungen aus dem Besoldungsrecht, keine
                   Berufsbezeichnungen — hinter „Stadtoberinspektor/-in" steckt kein Beruf,
                   sondern eine Besoldungsstufe, auf der sehr verschiedene Aufgaben liegen.

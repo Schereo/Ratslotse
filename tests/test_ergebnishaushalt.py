@@ -451,12 +451,12 @@ def test_jede_zeile_weiss_woher_sie_kommt(tmp_path):
     store = CouncilStore(tmp_path / "c.sqlite")
     store.save_ergebnishaushalt(2026, eh.lies(GEH_2026)["zeilen"], _quelle())
     assert store.herkunft_luecken() == {}
-    zeile = store._conn.execute(
+    row = store._conn.execute(
         "SELECT p.amount, h.probe, h.document_id, h.citation "
         "FROM council_ergebnishaushalt p "
         "JOIN council_herkunft h ON h.id = p.herkunft_id LIMIT 1").fetchone()
-    assert zeile["document_id"] == 297441
-    assert zeile["probe"] == ("ergebnishaushalt_summenzeilen,"
+    assert row["document_id"] == 297441
+    assert row["probe"] == ("ergebnishaushalt_summenzeilen,"
                               "ergebnishaushalt_planspalte")
     # Beide Proben tragen einen Satz für Leserinnen — sonst ließe sich die
     # Herkunft gar nicht erst bauen.
@@ -501,7 +501,7 @@ def test_herkunft_sagt_dass_es_der_entwurf_ist(tmp_path):
     finanzquellen.lies_ergebnishaushalte(store, finanzquellen.Protokoll(still=True))
 
     (h,) = store.get_herkunft()
-    assert h["stand"] == "Haushaltsplan 2026, Anlage 005 — Stand der Einbringung"
+    assert h["as_of"] == "Haushaltsplan 2026, Anlage 005 — Stand der Einbringung"
     assert "Ansatz 2026" in h["citation"]
     store.close()
 

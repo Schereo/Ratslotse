@@ -65,7 +65,7 @@ function Fundstelle({ h }: { h: Herkunft | null }) {
         Woher diese Zahlen kommen
       </p>
       <p className="mt-1 max-w-[86ch] text-[11.5px] leading-relaxed text-muted-foreground">
-        {h.citation}{h.stand ? ` · ${h.stand}` : ""}
+        {h.citation}{h.as_of ? ` · ${h.as_of}` : ""}
       </p>
     </div>
   );
@@ -222,7 +222,7 @@ export default function VergleichSeite() {
 
         {/* --- Teil 1: Was sich vergleichen lässt --- */}
         <LottiErklaert
-          titel="Warum ausgerechnet Steuern?"
+          title="Warum ausgerechnet Steuern?"
           text={"Steuern erhebt die Stadt selbst. Die Steuerkraft berechnet das Land für "
             + "alle Gemeinden nach derselben Formel. Dadurch sind diese Werte grundsätzlich "
             + "vergleichbar. Bei Ausgaben hängt der Wert dagegen davon ab, welche Aufgaben "
@@ -348,9 +348,9 @@ export default function VergleichSeite() {
                   beantwortet das eindrucksvoller als jede Erklärung — dort hängt sie an
                   einem einzigen Unternehmen.
                 </p>
-                <Zeitreihe titel="Oldenburg" punkte={olReihe}
+                <Zeitreihe title="Oldenburg" punkte={olReihe}
                   change={change(olReihe)} />
-                <Zeitreihe titel="Wolfsburg" punkte={wobReihe}
+                <Zeitreihe title="Wolfsburg" punkte={wobReihe}
                   change={change(wobReihe)} />
               </div>
             )}
@@ -390,7 +390,7 @@ export default function VergleichSeite() {
                 Oldenburg führt Gebäudewirtschaft, Abfallwirtschaft und Bäder als
                 Eigenbetriebe, das Klinikum als eigene Anstalt. Diese Betriebe rechnen
                 selbst ab; im Haushalt tauchen sie höchstens als Zuschusszeile auf. Von
-                allem, was die Stadt total bewegt, stehen deshalb nur rund{" "}
+                allem, was die Stadt insgesamt bewegt, stehen deshalb nur rund{" "}
                 <strong>64 Prozent</strong> im Kernhaushalt — nachzulesen unter{" "}
                 <Link href="/haushalt/konzern" className="font-semibold text-primary">
                   Der Konzern Stadt
@@ -400,7 +400,7 @@ export default function VergleichSeite() {
               </p>
               <p>
                 Das müssen wir nicht selbst herleiten. <strong>Die Stadt Oldenburg hat
-                exact diesen Vergleich schon einmal angestellt</strong> — und im selben
+                genau diesen Vergleich schon einmal angestellt</strong> — und im selben
                 Dokument entwertet.
               </p>
             </div>
@@ -446,7 +446,7 @@ export default function VergleichSeite() {
                   <Link href={decisionHref(data.beleg.decision_id)}
                     className="group inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-primary">
                     <FileText className="h-3.5 w-3.5 flex-none" />
-                    Der Vorgang bei uns: {data.beleg.titel ?? data.beleg.template_number}
+                    Der Vorgang bei uns: {data.beleg.title ?? data.beleg.template_number}
                     <ArrowRight size={13} strokeWidth={2}
                       className="transition-transform group-hover:translate-x-0.5" />
                   </Link>

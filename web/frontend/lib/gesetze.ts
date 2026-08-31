@@ -47,7 +47,7 @@ export type Gesetz = {
    *  wo ein ganzes Gesetz gemeint ist. */
   kurz: string;
   /** Die amtliche Überschrift der Vorschrift — oder der Gesetzestitel. */
-  titel: string;
+  title: string;
   /** Das Gesetz ausgeschrieben, für alle, denen „GewStG" nichts sagt. */
   gesetz: string;
   level: Gesetzesebene;
@@ -73,7 +73,7 @@ export type GesetzSchluessel =
 export const GESETZE: Record<GesetzSchluessel, Gesetz> = {
   gewstg: {
     kurz: "Gewerbesteuergesetz",
-    titel: "Gewerbesteuergesetz",
+    title: "Gewerbesteuergesetz",
     gesetz: "Gewerbesteuergesetz (GewStG)",
     level: "Bund",
     zusammenfassung:
@@ -85,7 +85,7 @@ export const GESETZE: Record<GesetzSchluessel, Gesetz> = {
   },
   "gewstg-11": {
     kurz: "§ 11 GewStG",
-    titel: "Steuermesszahl und Steuermessbetrag",
+    title: "Steuermesszahl und Steuermessbetrag",
     gesetz: "Gewerbesteuergesetz",
     level: "Bund",
     zusammenfassung:
@@ -96,7 +96,7 @@ export const GESETZE: Record<GesetzSchluessel, Gesetz> = {
   },
   "gewstg-16": {
     kurz: "§ 16 GewStG",
-    titel: "Hebesatz",
+    title: "Hebesatz",
     gesetz: "Gewerbesteuergesetz",
     level: "Bund",
     zusammenfassung:
@@ -109,7 +109,7 @@ export const GESETZE: Record<GesetzSchluessel, Gesetz> = {
   },
   "gewstg-29": {
     kurz: "§ 29 GewStG",
-    titel: "Zerlegungsmaßstab",
+    title: "Zerlegungsmaßstab",
     gesetz: "Gewerbesteuergesetz",
     level: "Bund",
     zusammenfassung:
@@ -121,7 +121,7 @@ export const GESETZE: Record<GesetzSchluessel, Gesetz> = {
   },
   "ao-30": {
     kurz: "§ 30 AO",
-    titel: "Steuergeheimnis",
+    title: "Steuergeheimnis",
     gesetz: "Abgabenordnung",
     level: "Bund",
     zusammenfassung:
@@ -134,7 +134,7 @@ export const GESETZE: Record<GesetzSchluessel, Gesetz> = {
 
   ngrstg: {
     kurz: "NGrStG",
-    titel: "Niedersächsisches Grundsteuergesetz",
+    title: "Niedersächsisches Grundsteuergesetz",
     gesetz: "Niedersächsisches Grundsteuergesetz (NGrStG)",
     level: "Land",
     zusammenfassung:
@@ -146,7 +146,7 @@ export const GESETZE: Record<GesetzSchluessel, Gesetz> = {
   },
   "ngrstg-6": {
     kurz: "§ 6 NGrStG",
-    titel: "Grundsteuermesszahlen",
+    title: "Grundsteuermesszahlen",
     gesetz: "Niedersächsisches Grundsteuergesetz",
     level: "Land",
     zusammenfassung:
@@ -158,7 +158,7 @@ export const GESETZE: Record<GesetzSchluessel, Gesetz> = {
   },
   "ngrstg-7": {
     kurz: "§ 7 NGrStG",
-    titel: "Hebesatz",
+    title: "Hebesatz",
     gesetz: "Niedersächsisches Grundsteuergesetz",
     level: "Land",
     zusammenfassung:
@@ -170,7 +170,7 @@ export const GESETZE: Record<GesetzSchluessel, Gesetz> = {
 
   estg: {
     kurz: "Einkommensteuergesetz",
-    titel: "Einkommensteuergesetz",
+    title: "Einkommensteuergesetz",
     gesetz: "Einkommensteuergesetz (EStG)",
     level: "Bund",
     zusammenfassung:
@@ -181,7 +181,7 @@ export const GESETZE: Record<GesetzSchluessel, Gesetz> = {
   },
   "gemfinrefg-1": {
     kurz: "§ 1 GemFinRefG",
-    titel: "Gemeindeanteil an der Einkommensteuer",
+    title: "Gemeindeanteil an der Einkommensteuer",
     gesetz: "Gemeindefinanzreformgesetz",
     level: "Bund",
     zusammenfassung:
@@ -193,7 +193,7 @@ export const GESETZE: Record<GesetzSchluessel, Gesetz> = {
   },
   ustg: {
     kurz: "Umsatzsteuergesetz",
-    titel: "Umsatzsteuergesetz",
+    title: "Umsatzsteuergesetz",
     gesetz: "Umsatzsteuergesetz (UStG)",
     level: "Bund",
     zusammenfassung:
@@ -204,7 +204,7 @@ export const GESETZE: Record<GesetzSchluessel, Gesetz> = {
   },
   "gemfinrefg-5a": {
     kurz: "§ 5a GemFinRefG",
-    titel: "Verteilung des Gemeindeanteils an der Umsatzsteuer",
+    title: "Verteilung des Gemeindeanteils an der Umsatzsteuer",
     gesetz: "Gemeindefinanzreformgesetz",
     level: "Bund",
     zusammenfassung:
@@ -217,7 +217,7 @@ export const GESETZE: Record<GesetzSchluessel, Gesetz> = {
 
   nkag: {
     kurz: "NKAG",
-    titel: "Niedersächsisches Kommunalabgabengesetz",
+    title: "Niedersächsisches Kommunalabgabengesetz",
     gesetz: "Niedersächsisches Kommunalabgabengesetz (NKAG)",
     level: "Land",
     zusammenfassung:
@@ -229,7 +229,7 @@ export const GESETZE: Record<GesetzSchluessel, Gesetz> = {
   },
   nfag: {
     kurz: "NFAG",
-    titel: "Niedersächsisches Finanzausgleichsgesetz",
+    title: "Niedersächsisches Finanzausgleichsgesetz",
     gesetz: "Niedersächsisches Finanzausgleichsgesetz (NFAG)",
     level: "Land",
     zusammenfassung:

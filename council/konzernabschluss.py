@@ -167,7 +167,7 @@ ROLLEN: tuple[tuple[str, str], ...] = (
      r"^zinsen und (ähnliche|sonstige) (aufwendungen|finanzaufwendungen)"),
     ("personnel_expenses",
      r"^(personalaufwendungen|aufwendungen für aktives personal)"),
-    ("taxes", r"^taxes und ähnliche abgaben"),
+    ("taxes", r"^steuern und ähnliche abgaben"),
 )
 
 #: Rollen, die Summen oder Salden sind — keine eigenständige Ertrags- oder
@@ -235,30 +235,30 @@ def _posten_zeilen(rumpf: str, tausend: bool) -> list[dict]:
     offen_text = ""
     aus: list[dict] = []
     for roh in rumpf.split("\n"):
-        zeile = roh.strip()
-        if not zeile:
+        row = roh.strip()
+        if not row:
             continue
-        if _UNTERPOSTEN.match(zeile):
+        if _UNTERPOSTEN.match(row):
             offen_nr, offen_text = None, ""
             continue
-        m = _POSTEN.match(zeile)
+        m = _POSTEN.match(row)
         if m:
-            offen_nr, zeile = int(m.group(1)), m.group(2).strip()
+            offen_nr, row = int(m.group(1)), m.group(2).strip()
             offen_text = ""
         if offen_nr is None:
             continue
-        treffer = erster.search(zeile)
+        treffer = erster.search(row)
         if not treffer:
             # Reine Beschriftungszeile — Text merken, Beträge folgen.
-            offen_text = f"{offen_text} {zeile}".strip()
+            offen_text = f"{offen_text} {row}".strip()
             continue
-        text = " ".join(f"{offen_text} {zeile[:treffer.start()]}".split())
+        text = " ".join(f"{offen_text} {row[:treffer.start()]}".split())
         amount = _zahl(treffer.group(1))
         offen_text = ""
         nr, offen_nr = offen_nr, None
         if amount is None or not text or _ZAHL_IM_TEXT.search(text):
             continue
-        rest = only_prior_year.match(zeile[treffer.end():])
+        rest = only_prior_year.match(row[treffer.end():])
         prior_year = _zahl(rest.group(1), dezimal=not tausend) if rest else None
         if prior_year is not None and tausend:
             prior_year *= 1000.0
@@ -376,10 +376,10 @@ def parse_traeger(text: str) -> list[dict]:
         zeilen: list[dict] = []
         summe: dict | None = None
         for roh in text[m.end():m.end() + 2200].split("\n"):
-            zeile = roh.strip()
-            if not zeile:
+            row = roh.strip()
+            if not row:
                 continue
-            treffer = _TRAEGER_ZEILE.match(zeile)
+            treffer = _TRAEGER_ZEILE.match(row)
             if treffer:
                 erkannt = _traeger_key(treffer.group(1))
                 if not erkannt:
@@ -395,7 +395,7 @@ def parse_traeger(text: str) -> list[dict]:
                                <= TOLERANZ_TEUR})
                 continue
             if zeilen and summe is None:
-                treffer = _SUMMEN_ZEILE.match(zeile)
+                treffer = _SUMMEN_ZEILE.match(row)
                 if treffer:
                     werte = [_zahl(treffer.group(i), dezimal=False) for i in (1, 2, 3)]
                     if all(w is not None for w in werte):

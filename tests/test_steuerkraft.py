@@ -96,7 +96,7 @@ def kfa2023(tmp_path) -> str:
 def test_beide_ausgleichsjahre_werden_gelesen(kfa2026):
     jahrgaenge = sk.lies_zuweisungen(kfa2026)
     assert [j.year for j in jahrgaenge] == [2025, 2026]
-    assert all(j.stand == "26.03.2026" for j in jahrgaenge)
+    assert all(j.as_of == "26.03.2026" for j in jahrgaenge)
 
 
 def test_die_dritte_komponente_ist_die_luecke_im_open_data_datensatz(kfa2026):

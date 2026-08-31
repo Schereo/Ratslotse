@@ -227,8 +227,8 @@ def test_ein_buendel_zaehlt_als_eine_zustellung(store, monkeypatch):
 
 # ---- Termingebundene Meldungen haben ihr eigenes Kontingent -----------------
 
-def _vorabend_einreihen(store, owner, jetzt, titel="18. August, 16:45 Uhr: Rat tagt"):
-    return notify.einreihen(store, owner, notify.N5_VORABEND, titel, "<p>x</p>",
+def _vorabend_einreihen(store, owner, jetzt, title="18. August, 16:45 Uhr: Rat tagt"):
+    return notify.einreihen(store, owner, notify.N5_VORABEND, title, "<p>x</p>",
                             "/council?tab=sessions&ksinr=1", jetzt=jetzt)
 
 
@@ -594,10 +594,10 @@ def test_wirklich_neue_treffer_zaehlen_weiter(store, tmp_path):
         store._conn.execute("UPDATE council_topic_matches SET matched_at = '2026-01-01T00:00:00'")
     store.save_topic_decision_matches(thema.id, owner, [(a, 0.9), (b, 0.8)])
 
-    stand = dict(store._conn.execute(
+    as_of = dict(store._conn.execute(
         "SELECT decision_id, matched_at FROM council_topic_matches").fetchall())
-    assert stand[a] == "2026-01-01T00:00:00"
-    assert stand[b] > "2026-01-01T00:00:00"      # frisch gestempelt
+    assert as_of[a] == "2026-01-01T00:00:00"
+    assert as_of[b] > "2026-01-01T00:00:00"      # frisch gestempelt
 
     store.save_topic_decision_matches(thema.id, owner, [(b, 0.8)])
     assert [r[0] for r in store._conn.execute(
@@ -897,12 +897,12 @@ def test_wieder_einschalten_faengt_bei_null_an(store, monkeypatch):
     store.set_delivery_channel(owner, "email")
     notify.einreihen(store, owner, notify.N2_THEMA, "danach", "<p>neu</p>", "/council",
                      jetzt=_zeit("2026-08-19", 9))
-    titel: list[str] = []
+    title: list[str] = []
     monkeypatch.setattr(
         "kern.delivery.deliver_message",
-        lambda o, html, email_subject, push_url="/", push_text=None: (titel.append(email_subject), ["email"])[1])
+        lambda o, html, email_subject, push_url="/", push_text=None: (title.append(email_subject), ["email"])[1])
     assert notify.zustellen(store, jetzt=_zeit("2026-08-19", 10)) == 1
-    assert titel == ["danach"]
+    assert title == ["danach"]
 
 
 def test_abgeschaltet_bekommt_keine_einrichtungs_erinnerung(store):

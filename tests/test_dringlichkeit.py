@@ -108,12 +108,12 @@ def test_der_punkt_ueberlebt_die_wochenvorschau(tmp_path):
             "INSERT INTO council_sessions (ksinr, committee, session_date, "
             "session_time, location, fetched_at) VALUES (1, 'Rat', ?, '18:00', 'PFL', 'x')",
             (tag,))
-        for nr, titel in (("Ö 2", "Genehmigung der Tagesordnung (öffentlicher Teil)"),
+        for nr, title in (("Ö 2", "Genehmigung der Tagesordnung (öffentlicher Teil)"),
                           ("DZT 1", "Dringlichkeitsantrag: festegestellte PAK Belastung"),
                           ("Ö 9.1", "Sachlicher Teilflächennutzungsplan Windenergie")):
             store._conn.execute(
                 "INSERT INTO council_agenda_items (ksinr, item_number, title, is_public) "
-                "VALUES (1, ?, ?, 1)", (nr, titel))
+                "VALUES (1, ?, ?, 1)", (nr, title))
         for nr, value in (("DZT 1", 70), ("Ö 9.1", 85)):
             store._conn.execute(
                 "INSERT INTO agenda_item_impact (ksinr, item_number, impact, reason, "
@@ -139,11 +139,11 @@ def test_der_punkt_ueberlebt_die_wochenvorschau(tmp_path):
             "INSERT INTO council_sessions (ksinr, committee, session_date, "
             "session_time, location, fetched_at) VALUES (1, 'Rat', ?, '18:00', 'PFL', 'x')",
             (tag,))
-        for nr, titel in (("DZT 1", "Dringlichkeitsantrag: Lachgas"),
+        for nr, title in (("DZT 1", "Dringlichkeitsantrag: Lachgas"),
                           ("Ö 7", "Bericht über den Stand der Digitalisierung")):
             store2._conn.execute(
                 "INSERT INTO council_agenda_items (ksinr, item_number, title, is_public) "
-                "VALUES (1, ?, ?, 1)", (nr, titel))
+                "VALUES (1, ?, ?, 1)", (nr, title))
         store2._conn.commit()
         nummern = [p["item_number"]
                    for p in store2.wochenvorschau(tage=10, max_punkte=40)["punkte"]]
@@ -221,13 +221,13 @@ def test_der_boden_wirkt_in_der_wochenvorschau(tmp_path):
             "INSERT INTO council_sessions (ksinr, committee, session_date, "
             "session_time, location, fetched_at) VALUES (1, 'Rat', ?, '18:00', 'PFL', 'x')",
             (tag,))
-        for nr, titel, value in (
+        for nr, title, value in (
                 ("DZT 1", "Dringlichkeitsantrag: festegestellte PAK Belastung", 55),
                 ("DZT 2", "Dringlichkeitsantrag: Resolution Iran", 80),
                 ("Ö 9.1", "Sachlicher Teilflächennutzungsplan Windenergie", 85)):
             store._conn.execute(
                 "INSERT INTO council_agenda_items (ksinr, item_number, title, is_public) "
-                "VALUES (1, ?, ?, 1)", (nr, titel))
+                "VALUES (1, ?, ?, 1)", (nr, title))
             store._conn.execute(
                 "INSERT INTO agenda_item_impact (ksinr, item_number, impact, reason, "
                 "created_at) VALUES (1, ?, ?, 'Ein Grund', 'x')", (nr, value))

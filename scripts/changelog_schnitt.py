@@ -119,12 +119,12 @@ def lies_fragment(pfad: Path) -> Fragment:
     kopf, rumpf = treffer.group(1), treffer.group(2)
 
     werte = {}
-    for zeile in kopf.splitlines():
-        if not zeile.strip():
+    for row in kopf.splitlines():
+        if not row.strip():
             continue
-        paar = SCHLUESSEL.match(zeile)
+        paar = SCHLUESSEL.match(row)
         if not paar:
-            raise FragmentFehler(f"{pfad.name}: '{zeile.strip()}' ist kein 'key: value'")
+            raise FragmentFehler(f"{pfad.name}: '{row.strip()}' ist kein 'key: value'")
         werte[paar.group(1).lower()] = paar.group(2)
 
     roh_kategorie = werte.get("kategorie", "").strip().lower()
@@ -224,8 +224,8 @@ def _vergleichslinks(zeilen: list[str], version: str) -> list[str]:
     Warnung — der Schnitt selbst darf daran nicht scheitern.
     """
     muster = re.compile(r"^\[Unreleased\]:\s*(\S*/compare/)v(\S+?)\.\.\.(\S+)\s*$")
-    for i, zeile in enumerate(zeilen):
-        treffer = muster.match(zeile)
+    for i, row in enumerate(zeilen):
+        treffer = muster.match(row)
         if not treffer:
             continue
         basis, vorher, ziel = treffer.groups()
@@ -243,7 +243,7 @@ def _vergleichslinks(zeilen: list[str], version: str) -> list[str]:
 
 
 def einsetzen(changelog: str, eintraege_je_ueberschrift: dict[str, list[str]],
-              version: str, datum: str) -> str:
+              version: str, date: str) -> str:
     """Den ``[Unreleased]``-Block zur Version machen und Fragmente einsortieren."""
     zeilen = changelog.split("\n")
     start = next((i for i, z in enumerate(zeilen) if z.startswith("## [Unreleased]")), None)
@@ -269,7 +269,7 @@ def einsetzen(changelog: str, eintraege_je_ueberschrift: dict[str, list[str]],
 
     neu = (
         zeilen[:start]
-        + ["## [Unreleased]", "", f"## [{version}] – {datum}"]
+        + ["## [Unreleased]", "", f"## [{version}] – {date}"]
         + block
         + [""]
         + zeilen[ende:]
@@ -277,14 +277,14 @@ def einsetzen(changelog: str, eintraege_je_ueberschrift: dict[str, list[str]],
     return "\n".join(_vergleichslinks(neu, version))
 
 
-def schnitt(version: str, datum: str | None = None, wurzel: Path = WURZEL,
+def schnitt(version: str, tag_iso: str | None = None, wurzel: Path = WURZEL,
             trocken: bool = False, nummern=None) -> Ergebnis:
     """Den Versionsschnitt ausführen (bzw. bei ``trocken`` nur berechnen).
 
     ``nummern`` ist die Auflösung Fragment → PR-Nummer; per Default die
     Git-Historie. Die Tests reichen hier eine Attrappe herein.
     """
-    datum = datum or date.today().isoformat()
+    tag_iso = tag_iso or date.today().isoformat()
     finder = nummern or (lambda pfad: pr_nummer(pfad, wurzel))
 
     fragmente = sammle_fragmente(wurzel / "changelog.d")
@@ -299,7 +299,7 @@ def schnitt(version: str, datum: str | None = None, wurzel: Path = WURZEL,
         eintraege.setdefault(fragment.heading, []).extend(eintrag(fragment, nummer))
 
     pfad = wurzel / "CHANGELOG.md"
-    text = einsetzen(pfad.read_text(encoding="utf-8"), eintraege, version, datum)
+    text = einsetzen(pfad.read_text(encoding="utf-8"), eintraege, version, tag_iso)
 
     if trocken:
         return Ergebnis(text=text, fragmente=fragmente, ohne_nummer=ohne_nummer)
@@ -313,7 +313,7 @@ def schnitt(version: str, datum: str | None = None, wurzel: Path = WURZEL,
 def main() -> int:
     p = argparse.ArgumentParser(description="Changelog-Fragmente zur Version zusammenfassen")
     p.add_argument("version", nargs="?", help="neue Version, z. B. 1.13.0")
-    p.add_argument("--datum", help="Datum des Schnitts (Default: heute)")
+    p.add_argument("--date", help="Datum des Schnitts (Default: heute)")
     p.add_argument("--trocken", action="store_true", help="Ergebnis zeigen, nichts schreiben")
     p.add_argument("--pruefen", action="store_true",
                    help="nur prüfen, ob alle Fragmente wohlgeformt sind")
@@ -334,7 +334,7 @@ def main() -> int:
         p.error(f"'{args.version}' sieht nicht wie eine Version aus (x.y.z)")
 
     try:
-        result = schnitt(args.version, args.datum, trocken=args.trocken)
+        result = schnitt(args.version, args.date, trocken=args.trocken)
     except (FragmentFehler, ValueError) as fehler:
         print(f"FEHLER: {fehler}", file=sys.stderr)
         return 1

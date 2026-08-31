@@ -14,7 +14,7 @@ from kern import prompts
 
 def test_defaults_render_with_placeholders():
     # Format prompts must accept their documented placeholders.
-    prompts.render("committee_summary_user", committee="C", datum="18.08.2026", items_text="I")
+    prompts.render("committee_summary_user", committee="C", date="18.08.2026", items_text="I")
     prompts.render("council_watcher_user", committee="C", session_date="d", items_text="I", topics_text="T")
 
 

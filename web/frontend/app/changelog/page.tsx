@@ -79,12 +79,12 @@ function mergeFragments(versions: Version[], fragmente: Fragment[]): Version[] {
     unreleased = { version: "Unreleased", date: "", sections: [] };
     versions = [unreleased, ...versions];
   }
-  for (const titel of FRAGMENT_REIHENFOLGE) {
-    const passend = fragmente.filter((f) => f.section === titel);
+  for (const title of FRAGMENT_REIHENFOLGE) {
+    const passend = fragmente.filter((f) => f.section === title);
     if (passend.length === 0) continue;
-    let sec = unreleased.sections.find((s) => s.title === titel);
+    let sec = unreleased.sections.find((s) => s.title === title);
     if (!sec) {
-      sec = { title: titel, items: [] };
+      sec = { title: title, items: [] };
       unreleased.sections.push(sec);
     }
     sec.items.push(...passend.map((f) => f.text));

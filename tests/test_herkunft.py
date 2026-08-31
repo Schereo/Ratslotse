@@ -166,17 +166,17 @@ def test_altbestand_erbt_label_und_url_und_gewinnt_den_anker(alte_db):
     dazu: Sie lässt sich über die URL eindeutig in `council_anlagen`
     auflösen. Das ist Ableitung, keine Vermutung."""
     store = CouncilStore(alte_db)
-    zeile = store._conn.execute(
+    row = store._conn.execute(
         "SELECT h.* FROM council_ergebnisrechnung e "
         "JOIN council_herkunft h ON h.id = e.herkunft_id "
         "WHERE e.year = 2023 AND e.sub_budget_no IS NULL AND e.nr = 12").fetchone()
     store.close()
-    assert zeile["label"] == JA_LABEL
-    assert zeile["url"] == JA_URL
-    assert zeile["art"] == "ris"
-    assert zeile["document_id"] == 280861     # der Anker, den der Altbestand nicht hatte
+    assert row["label"] == JA_LABEL
+    assert row["url"] == JA_URL
+    assert row["art"] == "ris"
+    assert row["document_id"] == 280861     # der Anker, den der Altbestand nicht hatte
     # Der Zeitstempel der Zeilen, nicht der Zeitpunkt der Migration.
-    assert zeile["fetched_at"] == "2026-08-14T07:12:01"
+    assert row["fetched_at"] == "2026-08-14T07:12:01"
 
 
 def test_altbestand_bekommt_unbekannt_statt_einer_erfundenen_probe(alte_db):
@@ -239,18 +239,18 @@ def test_geschriebene_zeile_weiss_wo_sie_steht_und_womit_sie_gedeckt_ist(tmp_pat
         label="Jahresabschluss 2024 der Kernverwaltung",
         url="https://buergerinfo.oldenburg.de/getfile.php?id=280863&type=do",
         citation="Ergebnisrechnung der Kernverwaltung, Posten 1–24",
-        page=161, stand="Jahresabschluss 2024"))
+        page=161, as_of="Jahresabschluss 2024"))
 
-    zeile = store._conn.execute(
-        "SELECT e.result, h.citation, h.page, h.probe, h.document_id, h.stand "
+    row = store._conn.execute(
+        "SELECT e.result, h.citation, h.page, h.probe, h.document_id, h.as_of "
         "FROM council_ergebnisrechnung e "
         "JOIN council_herkunft h ON h.id = e.herkunft_id").fetchone()
-    assert zeile["result"] == 799.1e6
-    assert zeile["citation"] == "Ergebnisrechnung der Kernverwaltung, Posten 1–24"
-    assert zeile["page"] == 161
-    assert zeile["probe"] == "strukturprobe,vorjahreskette"
-    assert zeile["document_id"] == 280863
-    assert zeile["stand"] == "Jahresabschluss 2024"
+    assert row["result"] == 799.1e6
+    assert row["citation"] == "Ergebnisrechnung der Kernverwaltung, Posten 1–24"
+    assert row["page"] == 161
+    assert row["probe"] == "strukturprobe,vorjahreskette"
+    assert row["document_id"] == 280863
+    assert row["as_of"] == "Jahresabschluss 2024"
 
     # Und lesbar für die Oberfläche: zwei Erklärsätze, einer je Probe.
     (h,) = store.get_herkunft()
@@ -270,10 +270,10 @@ def test_die_alten_spalten_tragen_weiter_dieselben_werte(tmp_path):
     store.save_produkte(2023, [{"product_no": "P10.111023", "product_name": "Archivierung",
                                 "sub_budget_no": 1, "revenues": 1.0, "expenses": 2.0,
                                 "result": -1.0}], q)
-    zeile = store.get_produkte(2023)[0]
-    assert zeile["source_label"] == "007 THH01"
-    assert zeile["source_url"] == "https://example.org/thh01.pdf"
-    assert zeile["herkunft_id"] is not None
+    row = store.get_produkte(2023)[0]
+    assert row["source_label"] == "007 THH01"
+    assert row["source_url"] == "https://example.org/thh01.pdf"
+    assert row["herkunft_id"] is not None
     store.close()
 
 
@@ -544,9 +544,9 @@ def _vorgang(store, *, kvonr=900, document_id=7001, stationen=()):
     store.save_anlagen(kvonr, [{"document_id": document_id,
                                 "label": "Jahresabschluss 2024",
                                 "url": "https://example.org/ja2024.pdf"}])
-    for ksinr, committee, datum, outcome in stationen:
+    for ksinr, committee, date, outcome in stationen:
         store.save_session(CouncilSession(
-            ksinr=ksinr, committee=committee, session_date=datum,
+            ksinr=ksinr, committee=committee, session_date=date,
             session_time="17:00", location="Rathaus",
             agenda_items=[AgendaItem(item_number="5", title="Jahresabschluss 2024",
                                      kvonr=kvonr)]))
@@ -572,7 +572,7 @@ def test_beschluss_haengt_am_dokument(tmp_path):
     hid = _herkunft_mit_dokument(store)
 
     (h,) = store.get_herkunft([hid])
-    assert h["official_text"]["datum"] == "2025-09-16"
+    assert h["official_text"]["date"] == "2025-09-16"
     assert h["official_text"]["committee"] == "Rat"
     assert h["official_text"]["outcome"] == "angenommen"
     assert h["official_text"]["kvonr"] == 900
@@ -593,7 +593,7 @@ def test_rat_sticht_den_ausschuss(tmp_path):
 
     (h,) = store.get_herkunft([hid])
     assert h["official_text"]["committee"] == "Rat"
-    assert h["official_text"]["datum"] == "2025-09-16"
+    assert h["official_text"]["date"] == "2025-09-16"
     store.close()
 
 

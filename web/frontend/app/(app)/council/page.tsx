@@ -20,14 +20,14 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   const tabTitel = TAB_TITEL[searchParams?.tab ?? ""];
   if (tabTitel) return { title: tabTitel };
   const q = searchParams?.q?.trim();
-  const titel = q ? `„${q}“ — Suche` : "Suche";
+  const title = q ? `„${q}“ — Suche` : "Suche";
   const text =
     "Beschlüsse des Oldenburger Stadtrats durchsuchen — "
     + "mit Ergebnis, Gremium, Datum und Quellenangabe.";
   // openGraph mitgeben, nicht nur title/description: Messenger lesen die
   // og:-Felder zuerst — ohne sie zeigte eine geteilte Suche wieder die
   // allgemeine Kachel, genau das, was 29a abstellen sollte.
-  return { title: titel, description: text, openGraph: { title: titel, description: text } };
+  return { title: title, description: text, openGraph: { title: title, description: text } };
 }
 
 export default function Page() {

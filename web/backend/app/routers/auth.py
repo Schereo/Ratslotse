@@ -110,7 +110,7 @@ def _notify_admins_registration(new_email: str) -> None:
         + knopf(admin_url, "Im Admin-Bereich ansehen"),
         held=None,
         kicker="Für dich als Admin",
-        titel="Neue Registrierung",
+        title="Neue Registrierung",
         fusszeile="Nur zur Info — es ist nichts zu tun. Du bekommst diese E-Mail, "
                   "weil dein Ratslotse-Konto Admin-Rechte hat.",
     )
@@ -274,7 +274,7 @@ def _send_reset_email(email: str, raw_token: str, display_name: str | None = Non
         greeting_name=display_name,
         held="passwort",
         kicker="Dein Konto",
-        titel="Passwort zurücksetzen",
+        title="Passwort zurücksetzen",
         fusszeile="Wenn du das nicht warst, ignoriere diese E-Mail — "
                   "dein Passwort bleibt unverändert.",
     )
@@ -350,7 +350,7 @@ def _send_verification_email(email: str, raw_token: str, display_name: str | Non
         greeting_name=display_name,
         held="willkommen",
         kicker="Willkommen an Bord",
-        titel="Schön, dass du da bist!",
+        title="Schön, dass du da bist!",
         fusszeile="Wenn du dich nicht registriert hast, ignoriere diese E-Mail — "
                   "dann passiert nichts.",
     )

@@ -55,7 +55,7 @@ export type Aufsichtsperson = {
    *  zwar im Verzeichnis, haben aber keine Seite (nur Mandatsträger*innen
    *  haben eine) — sie bleiben deshalb bewusst unverlinkt. */
   slug: string | null;
-  partei: string | null;
+  party: string | null;
   sort_order: number;
   herkunft_id: number | null;
 };
@@ -123,12 +123,12 @@ export type BeteiligungsDaten = {
  *  Berichts. Der Schlüssel kommt aus `beteiligungsbericht.TEXTABSCHNITTE`;
  *  die Wortwahl hier ist die für Leserinnen, nicht die amtliche
  *  („Besetzung der Aufsichtsorgane" → „Wer sie beaufsichtigt"). */
-export const ABSCHNITTE: { key: string; titel: string }[] = [
-  { key: "gegenstand", titel: "Was die Gesellschaft tut" },
-  { key: "beteiligungsverhaeltnisse", titel: "Wem sie gehört" },
-  { key: "aufsichtsorgane", titel: "Wer sie beaufsichtigt" },
-  { key: "beteiligungen", titel: "Woran sie selbst beteiligt ist" },
-  { key: "haushalt", titel: "Was sie für den städtischen Haushalt bedeutet" },
+export const ABSCHNITTE: { key: string; title: string }[] = [
+  { key: "gegenstand", title: "Was die Gesellschaft tut" },
+  { key: "beteiligungsverhaeltnisse", title: "Wem sie gehört" },
+  { key: "aufsichtsorgane", title: "Wer sie beaufsichtigt" },
+  { key: "beteiligungen", title: "Woran sie selbst beteiligt ist" },
+  { key: "haushalt", title: "Was sie für den städtischen Haushalt bedeutet" },
 ];
 
 export const KENNZAHL_TITEL: Record<Kennzahl["indicator"], string> = {
@@ -259,7 +259,7 @@ export function gremiumName(personen: Aufsichtsperson[]): string | null {
 export type Aufsichtsgruppe = {
   key: string;
   /** Überschrift der Gruppe — das Wort des Berichts, nicht unseres. */
-  titel: string;
+  title: string;
   personen: Aufsichtsperson[];
 };
 
@@ -293,14 +293,14 @@ export function aufsichtsgruppen(personen: Aufsichtsperson[],
   return [...nach.entries()]
     .map(([key, liste]) => ({
       key,
-      titel: key === "chair" ? "Vorsitz" : key || "Weitere Mitglieder",
+      title: key === "chair" ? "Vorsitz" : key || "Weitere Mitglieder",
       // Im Vorsitz steht die Vorsitzende vor ihrer Stellvertretung, sonst
       // bleibt die Reihenfolge des Berichts.
       personen: key === "chair"
         ? [...liste].sort((a, b) => (a.chair_role === "chair" ? 0 : 1) - (b.chair_role === "chair" ? 0 : 1))
         : liste,
     }))
-    .sort((a, b) => gruppenRang(a.key) - gruppenRang(b.key) || a.titel.localeCompare(b.titel, "de"));
+    .sort((a, b) => gruppenRang(a.key) - gruppenRang(b.key) || a.title.localeCompare(b.title, "de"));
 }
 
 /** Die Eigentümer, in der Reihenfolge des Berichts. */
@@ -323,9 +323,9 @@ export function eigentuemerVon(daten: BeteiligungsDaten | null,
  *  fehlende Quote als „0 %" zu zeigen wäre eine Falschaussage. */
 export function stadtAnteil(daten: BeteiligungsDaten | null,
                             company: string): number | null {
-  const zeile = eigentuemerVon(daten, company)
+  const row = eigentuemerVon(daten, company)
     .find((e) => /^Stadt Oldenburg\b/.test(e.name.trim()));
-  return zeile?.share_pct ?? null;
+  return row?.share_pct ?? null;
 }
 
 /** Hält die Stadt weniger als die Hälfte?

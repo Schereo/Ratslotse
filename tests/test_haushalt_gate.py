@@ -158,9 +158,9 @@ def test_jede_geld_quelle_wird_abgesichert_abgefragt():
     körper = körper[:körper.index("\ndef ", 1)]
 
     ungeschützt = [
-        zeile.strip()
-        for zeile in körper.splitlines()
-        if "store." in zeile and "_sicher(" not in zeile and not zeile.strip().startswith("#")
+        row.strip()
+        for row in körper.splitlines()
+        if "store." in row and "_sicher(" not in row and not row.strip().startswith("#")
     ]
     assert not ungeschützt, (
         "Store-Abfrage in geld_kontext() ohne _sicher() — bei fehlender Tabelle "

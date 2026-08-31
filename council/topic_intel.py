@@ -425,7 +425,7 @@ _GENERIC = {
     # Gattungsbegriffe, die als Themen-Name nichts eingrenzen. Sie kommen aus
     # der Entitäten-Erkennung durch und würden als Vorschlag Beschlüsse quer
     # durch die Stadt einsammeln.
-    "bericht", "berichte", "antrag", "anträge", "official_text", "beschlüsse",
+    "bericht", "berichte", "antrag", "anträge", "beschluss", "beschlüsse",
     "haushalt", "stadt", "oldenburg", "rat", "verwaltung", "ausschuss",
     "sitzung", "vorlage", "projekt", "maßnahme", "planung", "konzept",
     "innenstadt", "klima", "wohnen", "schule", "schulen", "verkehr", "umwelt",

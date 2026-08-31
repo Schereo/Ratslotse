@@ -539,7 +539,7 @@ def build_questions(rows: list[dict], year: int, source_url: str) -> list[dict]:
 
     # 1) Gesamt-Ausgaben — die eine Zahl, die man kennen sollte (entjargonisiert).
     q1 = _estimate(
-        f"Wie viel Geld plant die Stadt Oldenburg {year} total auszugeben — "
+        f"Wie viel Geld plant die Stadt Oldenburg {year} insgesamt auszugeben — "
         "alle laufenden Ausgaben von Personal bis Sozialleistungen?",
         gesamt, lo=max(50, round(gesamt * 0.28, -1)), hi=round(gesamt * 2.1, -2),
         year=year, source_url=source_url, chart_json=chart_all, detail=zusammensetzung,

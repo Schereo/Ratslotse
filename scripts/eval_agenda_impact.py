@@ -86,12 +86,12 @@ def punkte_der_woche(store: CouncilStore, von: str, bis: str) -> list[dict]:
 
     punkte = []
     for r in rohe:
-        titel = (r["title"] or "").strip()
-        if not titel or store._FORMALIE_RE.search(titel):
+        title = (r["title"] or "").strip()
+        if not title or store._FORMALIE_RE.search(title):
             continue
         sitz = nach_sitzung[r["ksinr"]]
         punkte.append({
-            "ksinr": r["ksinr"], "item_number": r["item_number"], "title": titel,
+            "ksinr": r["ksinr"], "item_number": r["item_number"], "title": title,
             "summary": (r["summary"] or "").strip() or None,
             "sachverhalt": r["sachverhalt"], "template_number": r["template_number"], "kvonr": r["kvonr"],
             "committee": sitz["committee"], "session_date": sitz["session_date"],
@@ -102,14 +102,14 @@ def punkte_der_woche(store: CouncilStore, von: str, bis: str) -> list[dict]:
     if kvonrs:
         ph2 = ",".join("?" * len(kvonrs))
         for b in store._conn.execute(
-                f"SELECT kvonr, datum, result FROM council_beratungen "
-                f"WHERE kvonr IN ({ph2}) ORDER BY datum", kvonrs):
+                f"SELECT kvonr, date, result FROM council_beratungen "
+                f"WHERE kvonr IN ({ph2}) ORDER BY date", kvonrs):
             stationen.setdefault(b["kvonr"], []).append(dict(b))
     for p in punkte:
         series = stationen.get(p["kvonr"] or 0, [])
-        heutige = next((b for b in series if b["datum"] == p["session_date"]), None)
+        heutige = next((b for b in series if b["date"] == p["session_date"]), None)
         p["behandlung"] = (heutige or {}).get("result")
-        p["vorgeschichte"] = sum(1 for b in series if (b["datum"] or "9999") < p["session_date"])
+        p["vorgeschichte"] = sum(1 for b in series if (b["date"] or "9999") < p["session_date"])
         p["applicants"], p["titel_kurz"] = store._titel_zerlegen(p["title"])
         p["topic_name"] = None
         p["stationen"] = len(series)

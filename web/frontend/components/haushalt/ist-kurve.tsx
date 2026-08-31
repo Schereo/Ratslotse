@@ -105,9 +105,9 @@ export function IstKurve({ series, unit = "Mio. Euro" }: {
         ({ x1: m.mitte - m.w / 2, x2: m.mitte + m.w / 2, y1: ty - fs.mark, y2: ty + 3 });
       // Erst über dem Punkt, zeilenweise höher; wenn oben nichts frei ist
       // (Einbruch im letzten Jahr, direkt am großen Endwert), darunter.
-      const zeile = fs.mark + 4;
+      const row = fs.mark + 4;
       const kandidaten: number[] = [];
-      for (let n = 0; n < 6 && m.py - 9 - n * zeile - fs.mark > YTOP; n++) kandidaten.push(m.py - 9 - n * zeile);
+      for (let n = 0; n < 6 && m.py - 9 - n * row - fs.mark > YTOP; n++) kandidaten.push(m.py - 9 - n * row);
       kandidaten.push(Math.min(m.py + 9 + fs.mark, Y0 - 4));
       const ty = kandidaten.find((k) => !belegt.some((b) => stoert(kasten(k), b))) ?? kandidaten.at(-1)!;
       belegt.push(kasten(ty));
@@ -126,7 +126,7 @@ export function IstKurve({ series, unit = "Mio. Euro" }: {
     const vor = i > 0 ? (p.amount - series[i - 1].amount) / 1e6 : null;
     const deltaText = vor == null ? null : `${vor > 0 ? "+" : ""}${deMio(vor)}`;
     return {
-      titel: String(p.year),
+      title: String(p.year),
       werte: [
         { label: unit.startsWith("Mio") ? "Mio. €" : unit, value: deMio(value), farbe: "var(--hh-ein-0)" },
         ...(deltaText ? [{ label: "ggü. Vorjahr", value: deltaText, signal: (vor as number) < 0 }] : []),

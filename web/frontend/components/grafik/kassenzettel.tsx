@@ -75,12 +75,12 @@ function Bonzeile({ z }: { z: BonZeile }) {
 }
 
 export function Kassenzettel({
-  titel, untertitel, stempel, posten, summe, summeLabel = "Summe",
+  title, untertitel, stempel, posten, summe, summeLabel = "Summe",
   bezahltMit, bezahltMitTitel = "Bezahlt mit", teiler, nichtAussagen,
   fuss, source, daneben, danach, darunter, className,
 }: {
   /** Kopf des Bons: „Stadt Oldenburg" / „Haushaltsplan 2026". */
-  titel: string;
+  title: string;
   untertitel: string;
   /** Der Signal-Stempel unter dem Kopf („je Einwohner*in"), samt Beleg. */
   stempel?: ReactNode;
@@ -122,7 +122,7 @@ export function Kassenzettel({
           <Papierkante />
           <div className="bg-card px-5 pb-4 font-mono text-[11.5px] leading-none text-foreground shadow-[0_18px_40px_-22px_rgba(2,32,71,0.35)]">
             <p className="text-center text-[12px] font-medium uppercase tracking-[0.16em]">
-              {titel}
+              {title}
             </p>
             <p className="mt-1.5 text-center text-[10.5px] uppercase tracking-[0.07em] text-muted-foreground">
               {untertitel}

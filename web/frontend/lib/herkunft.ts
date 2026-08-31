@@ -43,12 +43,12 @@ export type Ratsvorgang = {
   ksinr: number;
   kvonr: number | null;
   top: string | null;
-  titel: string | null;
+  title: string | null;
   outcome: string | null;
   vote: string | null;
   template_number: string | null;
   committee: string | null;
-  datum: string | null;
+  date: string | null;
 };
 
 /** Woher eine Zeile kommt — das gemeinsame Format aller Finanz-Schichten.
@@ -81,7 +81,7 @@ export type Herkunft = {
    *  findet nicht, was hier ankommt. */
   probes: string[];
   probe_result: string | null;
-  stand: string | null;
+  as_of: string | null;
   /** „Zuletzt bestätigt", nicht „zuerst gesehen": Der Zeitstempel wandert bei
    *  jedem Lauf vorwärts, der die Zeile wiedersieht (`merke_herkunft`). */
   fetched_at: string;

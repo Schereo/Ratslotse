@@ -71,17 +71,17 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
   const beschreibung = (ersterSatz.length >= 40 && ersterSatz.length <= 200
     ? ersterSatz
     : sauber.slice(0, 160).replace(/\s+\S*$/, "") + (sauber.length > 160 ? " …" : ""));
-  const titel = share.question.trim() || "Frag den Rat";
+  const title = share.question.trim() || "Frag den Rat";
   const bild = { url: "/og-teilen.png", width: 1200, height: 630, alt: "Ratslotse — Frag den Rat" };
   return {
-    title: `${titel} – Ratslotse`,
+    title: `${title} – Ratslotse`,
     description: beschreibung,
     robots: { index: false }, // geteilte Inhalte nicht in Suchmaschinen sammeln
     openGraph: {
-      title: titel, description: beschreibung, siteName: "Ratslotse", type: "article",
+      title: title, description: beschreibung, siteName: "Ratslotse", type: "article",
       images: [bild],
     },
-    twitter: { card: "summary_large_image", title: titel, description: beschreibung,
+    twitter: { card: "summary_large_image", title: title, description: beschreibung,
       images: [bild.url] },
   };
 }

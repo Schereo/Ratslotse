@@ -23,8 +23,8 @@ from app import deepresearch as DEEP  # noqa: E402
 # ---- Text der Meldung ----------------------------------------------------
 
 def test_melde_text_nennt_die_frage():
-    titel, text = DEEP._melde_text("fertig", "Wie ist der Stand beim Stadionneubau?")
-    assert titel == "Deine Recherche ist fertig"
+    title, text = DEEP._melde_text("fertig", "Wie ist der Stand beim Stadionneubau?")
+    assert title == "Deine Recherche ist fertig"
     assert "Stadionneubau" in text
     # Der Fehlschlag nimmt der Meldung die Sorge ums Kontingent.
     _, fehler = DEEP._melde_text("fehler", "Wie ist der Stand?")
@@ -82,7 +82,7 @@ def welt(tmp_path, monkeypatch):
     monkeypatch.setattr(delivery, "push_ready", lambda: True)
     monkeypatch.setattr(delivery, "_send_push_and_prune",
                         lambda d, t, b, data: gesendet.append((t, b, data)))
-    job = DEEP.DeepJob(id=job_id, user_id=uid, frage="Wie ist der Stand beim Stadionneubau?")
+    job = DEEP.DeepJob(id=job_id, user_id=uid, question="Wie ist der Stand beim Stadionneubau?")
     return db, job, gesendet, uid
 
 
@@ -90,8 +90,8 @@ def test_meldung_geht_raus_wenn_niemand_zusieht(welt):
     db, job, gesendet, _ = welt
     DEEP._melden_jetzt(job, db, "fertig")
     assert len(gesendet) == 1
-    titel, text, data = gesendet[0]
-    assert titel == "Deine Recherche ist fertig"
+    title, text, data = gesendet[0]
+    assert title == "Deine Recherche ist fertig"
     assert "Stadionneubau" in text
     # Antippen muss auf der Frage-Seite landen — dort holt der Client den
     # ungesehenen Bericht von selbst zurück.

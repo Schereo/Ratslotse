@@ -29,7 +29,7 @@ import textwrap
 DEFAULTS: dict[str, dict[str, str]] = {
     "deep_zerlegung": {
         "title": "Gründliche Recherche – Facetten-Zerlegung",
-        "description": "Zerlegt eine Frage in 3–5 Recherche-Facetten für den Deep-Research-Modus (Task 34). Platzhalter: {frage}.",
+        "description": "Zerlegt eine Frage in 3–5 Recherche-Facetten für den Deep-Research-Modus (Task 34). Platzhalter: {question}.",
         "template": (
             "Zerlege die Frage an das Ratsinformations-Archiv der Stadt Oldenburg in "
             "3-5 RECHERCHE-FACETTEN als JSON:\n"
@@ -42,12 +42,12 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "Gutachten), Debatte/Positionen, aktueller Stand/nächste Schritte.\n"
             "- Bei einer engen Frage reichen 3 Facetten; keine Dubletten.\n"
             "- KEINE Floskeln in den begriffen (kein „beschlossen“, „Stadtrat“).\n"
-            "Antworte NUR mit dem JSON.\n\nFRAGE: {frage}"
+            "Antworte NUR mit dem JSON.\n\nFRAGE: {question}"
         ),
     },
     "deep_bericht": {
         "title": "Gründliche Recherche – Bericht",
-        "description": "Der lange, gegliederte Recherche-Bericht des Deep-Research-Modus (Task 34). Platzhalter: {frage}, {context}, {zusatz}, {planungen}.",
+        "description": "Der lange, gegliederte Recherche-Bericht des Deep-Research-Modus (Task 34). Platzhalter: {question}, {context}, {zusatz}, {planungen}.",
         "template": (
             "Du bist der Recherche-Assistent von ratslotse.de und schreibst einen "
             "GRÜNDLICHEN BERICHT zu einer Frage über den Oldenburger Stadtrat — nur aus "
@@ -74,7 +74,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "Ratslotse, keine Aussagen des Rates: Sie steuern deine Gewichtung, dürfen "
             "aber NIE als Feststellung in den Bericht.\n"
             "{planungen}"
-            "\nBESCHLÜSSE:\n{context}\n{zusatz}\nFRAGE: {frage}"
+            "\nBESCHLÜSSE:\n{context}\n{zusatz}\nFRAGE: {question}"
         ),
     },
     "partei_meinungen": {
@@ -84,10 +84,10 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "Du bekommst Wortbeiträge aus Sitzungsprotokollen des Oldenburger Stadtrats "
             "zu einer Frage, gruppiert nach Fraktion. Verdichte je Fraktion die Position "
             "als JSON-Array:\n"
-            '[{{"partei": "Label wie angegeben", "haltung": "dafür"|"dagegen"|"offen"|"gewandelt", '
+            '[{{"party": "Label wie angegeben", "haltung": "dafür"|"dagegen"|"offen"|"gewandelt", '
             '"position": "1-2 Sätze Haltung zur Sache mit Kernargument", "einig": true, '
-            '"hinweis": null, "kernaussage": {{"text": "prägnanteste Aussage, dicht an der '
-            'Vorlage", "sprecher": "Name", "datum": "TT.MM.JJJJ"}}}}]\n\n'
+            '"note": null, "kernaussage": {{"text": "prägnanteste Aussage, dicht an der '
+            'Vorlage", "speaker": "Name", "date": "TT.MM.JJJJ"}}}}]\n\n'
             "Regeln:\n"
             "- NUR aus den Beiträgen; nichts erfinden, keine Fraktion hinzufügen, "
             "Labels exakt übernehmen.\n"
@@ -99,11 +99,11 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "Sache; „gewandelt\" NUR, wenn sich die Haltung über die Zeit erkennbar "
             "geändert hat (dann steht die Wende auch in position); sonst „offen\".\n"
             "- einig=false NUR bei echtem inhaltlichem Widerspruch INNERHALB der "
-            "Fraktion — dann trägt hinweis einen Halbsatz, woran es liegt.\n"
+            "Fraktion — dann trägt note einen Halbsatz, woran es liegt.\n"
             "- Fraktionen ohne verwertbare inhaltliche Substanz weglassen.\n"
             "- Reihenfolge: stärkste Substanz zuerst.\n"
             "Antworte NUR mit dem JSON-Array.\n\n"
-            "FRAGE: {frage}\n\nBEITRÄGE:\n{beitraege}"
+            "FRAGE: {question}\n\nBEITRÄGE:\n{beitraege}"
         ),
     },
     "wortbeitraege_extract": {
@@ -114,18 +114,18 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "Stadtrats bzw. seiner Ausschüsse. Extrahiere daraus ALLE inhaltlichen Wortbeiträge "
             "als JSON-Array. Ein Eintrag je Beitrag:\n"
             '{{"art": "rede"|"anfrage"|"einwohnerfrage"|"zusage", "top": "Tagesordnungspunkt-Nummer '
-            'oder -Titel, falls erkennbar", "sprecher": "Name ohne Anrede, falls genannt", '
-            '"partei": "Fraktion/Gruppe falls genannt, sonst null", '
+            'oder -Titel, falls erkennbar", "speaker": "Name ohne Anrede, falls genannt", '
+            '"party": "Fraktion/Gruppe falls genannt, sonst null", '
             '"text": "Kernaussage in 1-3 Sätzen, dicht am Wortlaut", '
-            '"antwort": "Antwort der Verwaltung, falls vorhanden, sonst null"}}\n\n'
+            '"answer": "Antwort der Verwaltung, falls vorhanden, sonst null"}}\n\n'
             "Regeln:\n"
             "- \"rede\": inhaltliche Debattenbeiträge zu Tagesordnungspunkten (Positionen, Kritik, "
             "Begründungen). KEINE Formalien (Begrüßung, Feststellung der Beschlussfähigkeit, "
             "Abstimmungsergebnisse, Genehmigung der Niederschrift).\n"
             "- \"anfrage\": Punkte aus „Anfragen und Anregungen\" — die Frage/Anregung als text, "
-            "die Verwaltungsantwort (auch nachgereichte) als antwort.\n"
+            "die Verwaltungsantwort (auch nachgereichte) als answer.\n"
             "- \"einwohnerfrage\": Beiträge aus der Einwohnerfragestunde — Fragesteller*innen nur nennen, "
-            "wenn im Protokoll ausgeschrieben; sonst sprecher null.\n"
+            "wenn im Protokoll ausgeschrieben; sonst speaker null.\n"
             "- \"zusage\": ausdrückliche Zusagen der Verwaltung (etwas zu prüfen, nachzureichen, "
             "umzusetzen) — auch wenn sie innerhalb einer Antwort fallen.\n"
             "- Namen und Parteien exakt wie im Protokoll; nichts erraten, nichts erfinden.\n"
@@ -184,10 +184,10 @@ DEFAULTS: dict[str, dict[str, str]] = {
     },
     "committee_summary_user": {
         "title": "Ausschuss-Zusammenfassung – Aufgabe",
-        "description": "Tagesordnung + JSON-Format. Platzhalter: {committee}, {datum}, {items_text}.",
+        "description": "Tagesordnung + JSON-Format. Platzhalter: {committee}, {date}, {items_text}.",
         "template": textwrap.dedent("""\
             Ausschuss: {committee}
-            Sitzungstermin: {datum} (die Sitzung findet erst noch statt)
+            Sitzungstermin: {date} (die Sitzung findet erst noch statt)
             Tagesordnungspunkte:
             {items_text}
 
@@ -278,10 +278,10 @@ DEFAULTS: dict[str, dict[str, str]] = {
     },
     "social_kritiker_user": {
         "title": "Social-Kartentext – Kritiker, Aufgabe",
-        "description": "Quelle und Satz. Platzhalter: {quelle}, {text}.",
+        "description": "Quelle und Satz. Platzhalter: {source}, {text}.",
         "template": textwrap.dedent("""\
             QUELLE:
-            {quelle}
+            {source}
 
             SATZ:
             {text}
@@ -552,7 +552,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
         "description": (
             "Schreibt eine schon vorliegende Antwort in einfache Sprache um (Knopf "
             "„Einfacher erklären“). Ton wie „Lotti erklärt's einfach“. Platzhalter: "
-            "{frage}, {bisher}, {context}."
+            "{question}, {bisher}, {context}."
         ),
         "template": (
             "Du erklärst die Arbeit des Oldenburger Stadtrats in einfacher Sprache — für\n"
@@ -590,7 +590,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "- Was in der Ausgangsantwort OHNE Nummer stand, bleibt ohne Nummer: Sätze aus\n"
             "  Ratsdebatten („Laut Protokoll sagte …“), Pressemitteilungen und Hintergrund\n"
             "  sind keine Beschlüsse. Hänge ihnen nie eine Nummer an.\n\n"
-            "ES GING UM DIESE FRAGE: {frage}\n\n"
+            "ES GING UM DIESE FRAGE: {question}\n\n"
             "BESCHLÜSSE (nur zum Nachschlagen von Fakten, Zahlen und Nummern — ihre\n"
             "Formulierungen sind Amtsdeutsch und werden NICHT übernommen):\n"
             "{context}\n\n"
@@ -649,7 +649,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "Nutze die mitgelieferten Signale (Art, Ergebnis, Gremium, Betrag, Textlänge) — "
             "abgelehnte oder vertagte Anträge binden nichts (Bindung nahe 0, Präzedenz ggf. > 0).\n"
             "Antworte als JSON: {\"ratings\": [{\"id\": <id>, \"score\": <0-100>, "
-            "\"grund\": \"<max. 1 kurzer Satz, benennt die stärkste Rubrik>\"}]} — "
+            "\"reason\": \"<max. 1 kurzer Satz, benennt die stärkste Rubrik>\"}]} — "
             "genau ein Eintrag je vorgelegtem Beschluss."
         ),
     },
@@ -754,7 +754,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "Kenntnisnahmen. Mittel (30–55): solide Sachbeschlüsse ohne Erzählwert. Hoch (60–85): "
             "konkret, alltagsnah, erzählbar. Sehr hoch (90–100): kurios oder stadtbekannt.\n"
             "Antworte als JSON: {\"ratings\": [{\"id\": <id>, \"score\": <0-100>, "
-            "\"grund\": \"<max. 1 kurzer Satz>\"}]} — genau ein Eintrag je vorgelegtem Beschluss."
+            "\"reason\": \"<max. 1 kurzer Satz>\"}]} — genau ein Eintrag je vorgelegtem Beschluss."
         ),
     },
     "interest_bewertung_user": {
@@ -818,7 +818,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "vollständigen Namen — den, den Bürger*innen suchen würden.\n\n"
             "Antworte mit NUR JSON: {{\"paare\": [{{\"id\": <id>, \"gleich\": true|false, "
             "\"kanonisch\": \"<einer der beiden Namen, nur bei gleich=true>\", "
-            "\"grund\": \"<max. 1 kurzer Satz>\"}}]}} — genau ein Eintrag je vorgelegtem Paar."
+            "\"reason\": \"<max. 1 kurzer Satz>\"}}]}} — genau ein Eintrag je vorgelegtem Paar."
         ),
     },
     "entity_dubletten_user": {

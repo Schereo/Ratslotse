@@ -113,8 +113,8 @@ function RatsListe({ posten }: { posten: Nachbewilligung[] }) {
   return (
     <div className="mt-3 flex flex-col gap-1.5">
       {sichtbar.map((n) => {
-        const titel = (
-          <span className="text-[12.5px] leading-snug">{n.titel}</span>
+        const title = (
+          <span className="text-[12.5px] leading-snug">{n.title}</span>
         );
         return (
           <div key={n.template_number}
@@ -123,9 +123,9 @@ function RatsListe({ posten }: { posten: Nachbewilligung[] }) {
               {n.decision_id != null ? (
                 <Link href={decisionHref(n.decision_id)}
                   className="text-[12.5px] leading-snug text-primary hover:underline">
-                  {n.titel}
+                  {n.title}
                 </Link>
-              ) : titel}
+              ) : title}
               <span className="font-mono text-[9.5px] uppercase tracking-[0.09em] text-muted-foreground">
                 {n.template_number}
                 {n.category === "ausserplanmaessig" && " · außerplanmäßig"}
@@ -315,7 +315,7 @@ export function NachbewilligungsBlock({ daten, year }: {
       {!bericht && (
         <p className="mt-3 max-w-[74ch] text-[11.5px] leading-relaxed text-muted-foreground">
           Für {year} liegt noch kein Rechenschaftsbericht vor. Wie viel
-          total nachbewilligt wurde — also auch das, was die Verwaltung
+          insgesamt nachbewilligt wurde — also auch das, was die Verwaltung
           ohne den Rat entschieden hat —, steht erst dort. Was hier zu sehen
           ist, sind ausschließlich die Beschlüsse aus Rat und Fachausschuss.
         </p>

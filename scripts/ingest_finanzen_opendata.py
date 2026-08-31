@@ -72,7 +72,7 @@ def main() -> int:
             label="Steuereinnahmen der Stadt Oldenburg",
             citation="Datensatz 1104 — eine Zeile je Haushaltsjahr, "
                        "Spalten je Steuerart (Ist, Gewerbesteuer nach Umlage)",
-            stand=_spanne(taxes)))
+            as_of=_spanne(taxes)))
         print(f"Steuereinnahmen: {n} Zeilen ({_spanne(taxes)}).")
 
         r = requests.get(haushalt.STEUERKRAFT_CSV_URL, headers=_UA, timeout=120)
@@ -93,7 +93,7 @@ def main() -> int:
                        "Statistik (KFA 2016–2026) und gegen die Ist-Beträge "
                        "in den Haushaltsplänen der Stadt. Die Pro-Kopf-Spalten "
                        "des Datensatzes übernehmen wir deshalb nicht",
-            stand=_spanne(kraft)))
+            as_of=_spanne(kraft)))
         print(f"Steuerkraft/Schlüsselzuweisungen: {n} Jahre ({_spanne(kraft)}).")
 
         r = requests.get(haushalt.EINWOHNER_CSV_URL, headers=_UA, timeout=120)
@@ -108,7 +108,7 @@ def main() -> int:
                            "des Vorjahres) — die Aufwendungs-Spalte derselben "
                            "Datei ist eine eigene Schicht mit eigenen Proben "
                            "(council_ausgabenreihe)",
-                stand=_spanne(ew)))
+                as_of=_spanne(ew)))
             print(f"Einwohnerzahlen: {n} Jahre ({_spanne(ew)}).")
         else:
             print("Einwohner-CSV nicht lesbar — übersprungen.", file=sys.stderr)
@@ -151,7 +151,7 @@ def main() -> int:
                                "gilt, steht nicht in ihr, sondern in ihrem "
                                f"Dateinamen (…_{year}_Finanzhaushalt.csv)",
                     probe_result=gelesen["nachweis"],
-                    stand=f"Haushaltsplan {year} — Plan, nicht Ist",
+                    as_of=f"Haushaltsplan {year} — Plan, nicht Ist",
                     **anker),
                 finanzhaushalt=gelesen["finanzhaushalt"],
                 herkunft_finanzhaushalt=herkunft.Herkunft(
@@ -167,7 +167,7 @@ def main() -> int:
                                "Verwaltungstätigkeit. Bezugsgröße für den "
                                "Investitionsanteil, nicht Teil der geprüften "
                                "Rechnung",
-                    stand=f"Haushaltsplan {year} — Plan, nicht Ist",
+                    as_of=f"Haushaltsplan {year} — Plan, nicht Ist",
                     **anker) if gelesen["finanzhaushalt"] else None)
             gespeichert.append(year)
             g = gelesen["gesamt"]

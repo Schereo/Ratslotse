@@ -139,10 +139,10 @@ function Reihe({ z, skala }: { z: Zeile; skala: number }) {
 
 /** Ein Grund, warum die hellen Teile so verschieden groß sind — Text, keine
  *  Zahl: Der Haushaltsplan weist die Aufteilung auf dieser Ebene nicht aus. */
-function Grund({ titel, text }: { titel: string; text: string }) {
+function Grund({ title, text }: { title: string; text: string }) {
   return (
     <div className="border-t border-border pt-2.5 first:border-t-0 first:pt-0">
-      <p className="text-[12.5px] font-semibold">{titel}</p>
+      <p className="text-[12.5px] font-semibold">{title}</p>
       <p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">{text}</p>
     </div>
   );
@@ -361,11 +361,11 @@ export function Bereichstabelle({ zeilen, year }: { zeilen: HaushaltZeile[]; yea
           <div className="rounded-xl border border-border p-3.5">
             <p className="text-[13px] font-bold">Warum die hellen Teile so verschieden groß sind</p>
             <div className="mt-2.5 flex flex-col gap-2.5">
-              <Grund titel="Das Gesetz sieht Erstattungen vor"
+              <Grund title="Das Gesetz sieht Erstattungen vor"
                 text="Bei vielen Sozialleistungen zahlt die Stadt zunächst aus. Bund und Land erstatten anschließend einen Teil der Kosten." />
-              <Grund titel="Für manche Leistungen erhebt die Stadt Gebühren"
+              <Grund title="Für manche Leistungen erhebt die Stadt Gebühren"
                 text="Das gilt etwa für Müllentsorgung, Friedhöfe und teilweise für Kitas. Die Gebühren sind an die jeweilige Leistung gebunden und dürfen grundsätzlich nicht über deren Kosten hinausgehen." />
-              <Grund titel="Viele Aufgaben haben keine direkten Erträge"
+              <Grund title="Viele Aufgaben haben keine direkten Erträge"
                 text="Straßen, Grünflächen, Feuerwehr oder Bibliotheken werden überwiegend aus allgemeinen Einnahmen finanziert. Ihr Balken ist deshalb fast vollständig dunkel." />
             </div>
           </div>

@@ -69,10 +69,10 @@ def _bestand(store: CouncilStore) -> dict[str, dict]:
 
 
 def _zeile(slug: str, e: dict) -> str:
-    partei = ", ".join(p for p, _ in e["parteien"].most_common(2)) or "—"
+    party = ", ".join(p for p, _ in e["parteien"].most_common(2)) or "—"
     roles = ", ".join(f"{r}×{n}" for r, n in e["roles"].most_common())
     return (f"    {slug:34s} {len(e['ksinr']):4d} Sitzungen  "
-            f"{e['erste']} … {e['letzte']}  [{roles}]  {partei}")
+            f"{e['erste']} … {e['letzte']}  [{roles}]  {party}")
 
 
 def main(alle: bool = False, db: Path | None = None) -> dict:

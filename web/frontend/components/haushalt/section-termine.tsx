@@ -90,12 +90,12 @@ export function TermineAbschnitt({ onBestand }: {
    *  Zeitstrahl (H5-02). `null`, wenn keiner im Kalender steht: Die Bühne
    *  erfindet dann keinen. */
   onBestand?: (b: {
-    naechster: { datum: string; committee: string } | null;
+    naechster: { date: string; committee: string } | null;
     /** Die vier Phasen des jüngsten Haushaltswegs, für den Phasen-Strahl der
      *  Bühne (Tim, 26.08.: „der Zeitstrahl sollte wenigstens anzeigen, wo wir
      *  uns befinden, welche Phasen es gerade gibt"). Aus derselben Runde, die
      *  der große Zeitstrahl unten zeichnet. */
-    phasen: { titel: string; datum: string | null; erledigt: boolean; aktuell: boolean }[];
+    phasen: { title: string; date: string | null; erledigt: boolean; aktuell: boolean }[];
     year: number;
   }) => void;
 } = {}) {
@@ -111,8 +111,8 @@ export function TermineAbschnitt({ onBestand }: {
     const tag = `${heute.getFullYear()}-${String(heute.getMonth() + 1).padStart(2, "0")}-${String(heute.getDate()).padStart(2, "0")}`;
     const kommend = data.runden
       .flatMap((r) => r.stationen)
-      .filter((st) => st.datum >= tag)
-      .sort((a, b) => a.datum.localeCompare(b.datum));
+      .filter((st) => st.date >= tag)
+      .sort((a, b) => a.date.localeCompare(b.date));
 
     // Die Phasen der jüngsten Runde — dieselben vier Stationen, die der
     // Zeitstrahl unten ausführlich zeichnet. „erledigt" heißt: liegt hinter
@@ -122,16 +122,16 @@ export function TermineAbschnitt({ onBestand }: {
     const ratsbeschluss = [...r.stationen]
       .filter((st) => st.role === "Entscheidung" && st.result
         && !/zurückgestellt|abgesetzt|vertagt/i.test(st.result))
-      .sort((a, b) => a.datum.localeCompare(b.datum))
+      .sort((a, b) => a.date.localeCompare(b.date))
       .at(-1) ?? null;
     const roh = [
-      { titel: "Einbringung", datum: r.einbringung?.datum ?? null },
-      { titel: r.fachausschuesse ? `Beratung, ${r.fachausschuesse.count}\u00d7` : "Beratung",
-        datum: r.fachausschuesse?.bis ?? null },
-      { titel: "Beschluss im Rat", datum: ratsbeschluss?.datum ?? null },
-      { titel: `Haushaltsjahr ${r.year}`, datum: `${r.year}-01-01` },
+      { title: "Einbringung", date: r.einbringung?.date ?? null },
+      { title: r.fachausschuesse ? `Beratung, ${r.fachausschuesse.count}\u00d7` : "Beratung",
+        date: r.fachausschuesse?.bis ?? null },
+      { title: "Beschluss im Rat", date: ratsbeschluss?.date ?? null },
+      { title: `Haushaltsjahr ${r.year}`, date: `${r.year}-01-01` },
     ];
-    const erledigt = roh.map((ph) => ph.datum != null && ph.datum <= tag);
+    const erledigt = roh.map((ph) => ph.date != null && ph.date <= tag);
     const laufend = erledigt.findIndex((e) => !e);
     const phasen = roh.map((ph, i) => ({
       ...ph,
@@ -142,7 +142,7 @@ export function TermineAbschnitt({ onBestand }: {
     }));
     onBestand({
       naechster: kommend[0]
-        ? { datum: kommend[0].datum, committee: kommend[0].committee } : null,
+        ? { date: kommend[0].date, committee: kommend[0].committee } : null,
       phasen,
       year: r.year,
     });
@@ -175,7 +175,7 @@ export function TermineAbschnitt({ onBestand }: {
   if (anker.einbringung && haeufigster) {
     stationen.push({
       label: "Einbringung",
-      von: anker.einbringung.datum,
+      von: anker.einbringung.date,
       offen: true,
       gemessen: `in ${haeufigster.count} von ${rh.jahrgaenge} Jahrgängen im ${MONATE[haeufigster.monat - 1]}`,
       href: sessionHref(anker.einbringung.ksinr, anker.einbringung.top ? [anker.einbringung.top] : undefined),
@@ -195,7 +195,7 @@ export function TermineAbschnitt({ onBestand }: {
   if (ankerEntscheidung && ankerEntscheidung.committee === "Rat") {
     stationen.push({
       label: "Ratsbeschluss",
-      von: ankerEntscheidung.datum,
+      von: ankerEntscheidung.date,
       gemessen: `${rh.imJahrSelbst} von ${rh.jahrgaenge} Jahrgängen erst beschlossen, als das Jahr schon lief`,
       href: sessionHref(ankerEntscheidung.ksinr, ankerEntscheidung.top ? [ankerEntscheidung.top] : undefined),
     });
@@ -221,7 +221,7 @@ export function TermineAbschnitt({ onBestand }: {
   }
 
   const lebtMonate = anker.einbringung && abschlussVon
-    ? monateZwischen(anker.einbringung.datum, abschlussVon)
+    ? monateZwischen(anker.einbringung.date, abschlussVon)
     : null;
 
   return (
@@ -296,7 +296,7 @@ export function TermineAbschnitt({ onBestand }: {
             )}
             {rh.frueheste && rh.spaeteste && rh.frueheste.year !== rh.spaeteste.year && (
               <Befund
-                zahl={`${deTagMonat(entscheidung(rh.frueheste)!.datum)} – ${deTagMonat(entscheidung(rh.spaeteste)!.datum)}`}
+                zahl={`${deTagMonat(entscheidung(rh.frueheste)!.date)} – ${deTagMonat(entscheidung(rh.spaeteste)!.date)}`}
                 text={`weit streut der Tag, an dem der Rat abschließend entschied — gemessen am Beginn des Haushaltsjahres am frühesten für ${rh.frueheste.year}, am spätesten für ${rh.spaeteste.year}. Ein fester Monat lässt sich daraus nicht machen.`}
               />
             )}
@@ -366,7 +366,7 @@ function Weg({ runde }: { runde: WegRunde }) {
       {/* Vorlauf ohne Datenpunkt: Was in der Verwaltung passiert, bevor der
           Entwurf öffentlich wird, steht in keiner Sitzung — also auch bei uns
           nicht mit Datum. */}
-      <Ablauf titel="Vorher, in der Verwaltung">
+      <Ablauf title="Vorher, in der Verwaltung">
         Die Fachbereiche melden an, was sie im nächsten Jahr brauchen; die Kämmerei baut daraus
         einen Entwurf. Das passiert verwaltungsintern und taucht in keiner öffentlichen Sitzung
         auf — wir können dir dazu kein Datum nennen.
@@ -375,7 +375,7 @@ function Weg({ runde }: { runde: WegRunde }) {
       {runde.einbringung && (
         <StationsZeile station={runde.einbringung} role="Entwurf eingebracht">
           <p className="mt-1 text-[12.5px] leading-relaxed text-foreground/85">
-            {deDatum(runde.einbringung.datum)} — ab hier sind der Entwurf und alle Zahlen
+            {deDatum(runde.einbringung.date)} — ab hier sind der Entwurf und alle Zahlen
             öffentlich einsehbar.
           </p>
           <SitzungsLink station={runde.einbringung} />
@@ -427,7 +427,7 @@ function Weg({ runde }: { runde: WegRunde }) {
             : "Vorberatung"}
         >
           <p className="mt-1 text-[12.5px] leading-relaxed text-foreground/85">
-            {deDatum(s.datum)}
+            {deDatum(s.date)}
             {s.is_public === 1 && " · öffentliche Sitzung"}
           </p>
           {s.votum && <Votum votum={s.votum} />}
@@ -435,7 +435,7 @@ function Weg({ runde }: { runde: WegRunde }) {
         </StationsZeile>
       ))}
 
-      <Ablauf titel="Danach">
+      <Ablauf title="Danach">
         Die beschlossene Haushaltssatzung wird der Kommunalaufsicht angezeigt;
         genehmigungsbedürftig sind nur einzelne Teile, etwa der Gesamtbetrag der Kredite.
         Die Satzung als Ganze wartet also auf keine Freigabe. Dann läuft das Haushaltsjahr,
@@ -480,12 +480,12 @@ function SitzungsLink({ station }: { station: WegStation }) {
 
 /** Ablaufbeschreibung ohne Datenpunkt — bewusst ohne Beleg-Chip und optisch
  *  abgesetzt, damit niemand sie für eine belegte Station hält. */
-function Ablauf({ titel, children }: { titel: string; children: React.ReactNode }) {
+function Ablauf({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="flex gap-3 border-t border-dashed border-border py-3 first:border-t-0">
       <div className="min-w-0 flex-1">
         <p className="font-mono text-[10px] font-medium uppercase tracking-[0.1em] text-muted-foreground">
-          {titel}
+          {title}
         </p>
         <p className="mt-1 max-w-[76ch] text-[12.5px] leading-relaxed text-muted-foreground">
           {children}

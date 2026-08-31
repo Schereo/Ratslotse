@@ -124,8 +124,8 @@ def _daten(store: CouncilStore) -> dict:
 SKRIPT = r"""
 import { flussbild, flussJahre, fasseKleineZusammen } from "%(lib)s";
 const eingabe = JSON.parse(process.argv[2]);
-const { daten, year, stand } = eingabe;
-const bild = flussbild(daten, year, stand);
+const { daten, year, as_of } = eingabe;
+const bild = flussbild(daten, year, as_of);
 if (!bild) { console.log(JSON.stringify({ bild: null })); process.exit(0); }
 const page = (s) => ({
   gesamt: s.gesamt,
@@ -138,7 +138,7 @@ const page = (s) => ({
 const geb = fasseKleineZusammen(bild.herkunft.baender, bild.skala, 0.05);
 console.log(JSON.stringify({
   years: flussJahre(daten),
-  stand: bild.stand,
+  as_of: bild.as_of,
   skala: bild.skala,
   balance: bild.balance,
   summeLinks: bild.summeLinks,
@@ -173,13 +173,13 @@ def _lib_fuer_node(tmp_path: Path) -> Path:
     return ziel / "haushalt.ts"
 
 
-def _fluss(tmp_path: Path, daten: dict, year: int = JAHR, stand: str = "ist") -> dict:
+def _fluss(tmp_path: Path, daten: dict, year: int = JAHR, as_of: str = "ist") -> dict:
     skript = tmp_path / "fluss.mjs"
     skript.write_text(SKRIPT % {"lib": _lib_fuer_node(tmp_path).as_posix()},
                       encoding="utf-8")
     fertig = subprocess.run(
         [_NODE, "--no-warnings", str(skript),
-         json.dumps({"daten": daten, "year": year, "stand": stand})],
+         json.dumps({"daten": daten, "year": year, "as_of": as_of})],
         capture_output=True, text=True, timeout=90)
     if fertig.returncode != 0:
         pytest.skip(f"Node kann das TypeScript-Modul nicht laden: {fertig.stderr[:400]}")
@@ -245,7 +245,7 @@ def test_ueberschuss_landet_auf_der_anderen_seite(tmp_path):
         if p["sub_budget_no"] is None and p["nr"] == 12:
             p["ansatz"] = AUFWENDUNGEN_PLAN + 30_000_000.0
 
-    r = _fluss(tmp_path, daten, stand="plan")
+    r = _fluss(tmp_path, daten, as_of="plan")
     ausgleich = [b for b in r["verwendung"]["baender"] if b["art"] == "ausgleich"]
     assert len(ausgleich) == 1
     assert ausgleich[0]["label"] == "bleibt übrig"

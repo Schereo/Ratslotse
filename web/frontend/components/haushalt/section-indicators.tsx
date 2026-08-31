@@ -80,9 +80,9 @@ function Standtafel({
   return (
     <div className="flex flex-col gap-4">
       {GRUPPEN.map((g, i) => (
-        <section key={g.titel} className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
+        <section key={g.title} className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-            {g.titel}
+            {g.title}
           </p>
           <p className="mt-1 max-w-[70ch] text-[13px] leading-relaxed text-muted-foreground">
             {g.question}
@@ -174,7 +174,7 @@ function Verlauf({
         unit={einheitWort(unit)}
         format={format}
         nachkomma={unit === "anzahl" ? 0 : 2}
-        titel={label}
+        title={label}
         ariaTitel={`${label} im Verlauf, wie die Rechenschaftsberichte sie ausweisen`}
         vorjahresdifferenz
         differenzFormat={differenzFormatVon(unit)}
@@ -342,7 +342,7 @@ export function KennzahlenAbschnitt() {
         <Korrekturen daten={daten} />
 
         <LottiErklaert
-          titel="Warum der Rechenweg zu jeder Kennzahl gehört"
+          title="Warum der Rechenweg zu jeder Kennzahl gehört"
           text={
             "Eine Quote setzt zwei Größen ins Verhältnis. Ändert sich ihre Definition, "
             + "kann sich die Quote verändern, obwohl die zugrunde liegende Situation gleich "

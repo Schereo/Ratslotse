@@ -20,7 +20,7 @@ Annahme von Zuwendungen durch den Rat
 - Beschluss
 
 Beschlussvorschlag:
-Die Stadt Oldenburg nimmt die angebotenen Zuwendungen in Höhe von total
+Die Stadt Oldenburg nimmt die angebotenen Zuwendungen in Höhe von insgesamt
 435.941 Euro gemäß der anliegenden Liste an.
 
 Anlass:
@@ -32,7 +32,7 @@ Gemäß § 111 Absatz 8 NKomVG und § 26 KomHKVO sowie der Ratsentscheidung vom
 Auswirkungen:
  a) Finanzen
 Durch die Zuwendungen entstehen in den Teilhaushalten 04, 06 und 11 sowie im
-Schulbudget und im Budget des EGH Mehrerträge in Höhe von total 421.316
+Schulbudget und im Budget des EGH Mehrerträge in Höhe von insgesamt 421.316
 Euro. Die Mehrerträge werden unterjährig eingesetzt und führen zu entsprechenden
 Mehraufwendungen.
 
@@ -50,7 +50,7 @@ Annahme von Zuwendungen durch den Rat
 
 Beschlussvorschlag:
 
-Die Stadt Oldenburg nimmt die angebotenen Zuwendungen in Höhe von total
+Die Stadt Oldenburg nimmt die angebotenen Zuwendungen in Höhe von insgesamt
 140.664,24 EUR laut anliegender Liste an.
 
 Begründung:
@@ -73,7 +73,7 @@ In Vertretung
 VORLAGE_EUR_ZERLEGT = """
 Annahme von Zuwendungen durch den Verwaltungsausschuss
 Beschlussvorschlag:
-Die Stadt Oldenburg nimmt die angebotenen Zuwendungen in Höhe von total
+Die Stadt Oldenburg nimmt die angebotenen Zuwendungen in Höhe von insgesamt
 1.800,00 EUR laut anliegender Liste an.
 
 Finanzielle Auswirkungen:
@@ -85,7 +85,7 @@ ne Mehrerträge in Höhe von 1.800,00 E UR. Die Mehrerträge werden unterjährig
 VORLAGE_ZAHL_ZERLEGT = """
 Annahme von Zuwendungen durch den Rat
 Beschlussvorschlag:
-Die Stadt Oldenburg nimmt die angebotenen Zuwendungen in Höhe von total
+Die Stadt Oldenburg nimmt die angebotenen Zuwendungen in Höhe von insgesamt
 154.472,86 EUR laut anliegender Liste an.
 
 Finanzielle Auswirkungen:
@@ -96,7 +96,7 @@ Durch die Zuwendungen entstehen zweckgebundene Mehrerträge in Höhe von 154 .47
 VORLAGE_GEAENDERT = """
 Annahme von Zuwendungen durch den Verwaltungsausschuss
 Beschlussvorschlag:
-Die Stadt Oldenburg nimmt die angebotenen Zuwendungen in Höhe von total
+Die Stadt Oldenburg nimmt die angebotenen Zuwendungen in Höhe von insgesamt
 22.500,00 EUR laut anliegender Liste an.
 
 Finanzielle Auswirkungen:
@@ -107,7 +107,7 @@ Durch die Zuwendungen entstehen zweckgebundene Mehrerträge in Höhe von 22.500,
 VORLAGE_OHNE_ZWEITSTELLE = """
 Annahme von Zuwendungen durch den Rat
 Beschlussvorschlag:
-Die Stadt Oldenburg nimmt die angebotenen Zuwendungen in Höhe von total
+Die Stadt Oldenburg nimmt die angebotenen Zuwendungen in Höhe von insgesamt
 7.500,00 EUR laut anliegender Liste an.
 
 Begründung:
@@ -115,9 +115,9 @@ Eine Begründung ist in der Anlage aufgeführt.
 """
 
 
-def zeile(nr, raw, official_text, *, titel=None, outcome="angenommen",
+def row(nr, raw, official_text, *, title=None, outcome="angenommen",
           sitzung="2024-03-11", gremiensitzung="Rat", document_id=4711):
-    return {"template_number": nr, "titel": titel or "Annahme von Zuwendungen durch den Rat",
+    return {"template_number": nr, "title": title or "Annahme von Zuwendungen durch den Rat",
             "official_text": official_text, "outcome": outcome, "sitzung": sitzung,
             "gremiensitzung": gremiensitzung, "raw_text": raw,
             "document_id": document_id,
@@ -128,10 +128,10 @@ def zeile(nr, raw, official_text, *, titel=None, outcome="angenommen",
 
 def test_die_zerlegung_traegt_den_betrag():
     """26/0207: 421.316 + 14.625 = 435.941 — die Zweitstelle als Rechnung."""
-    erg = donations.lies([zeile(
+    erg = donations.lies([row(
         "26/0207", VORLAGE_NEU,
         "Die Stadt Oldenburg nimmt die angebotenen Zuwendungen in Höhe von "
-        "total 435.941 Euro gemäß der anliegenden Liste an.")])
+        "insgesamt 435.941 Euro gemäß der anliegenden Liste an.")])
     assert len(erg["vorlagen"]) == 1
     v = erg["vorlagen"][0]
     assert v["amount"] == 435_941
@@ -146,10 +146,10 @@ def test_das_aeltere_layout_traegt_dieselbe_probe():
 
     Eine frühere Messung hielt 88 Vorlagen für „ohne Struktur" — die Struktur
     war da und hieß nur anders. Ohne diesen Test käme das zurück."""
-    erg = donations.lies([zeile(
+    erg = donations.lies([row(
         "18/0002", VORLAGE_ALT,
         "Die Stadt Oldenburg nimmt die angebotenen Zuwendungen in Höhe von "
-        "total 140.664,24 EUR laut anliegender Liste an.")])
+        "insgesamt 140.664,24 EUR laut anliegender Liste an.")])
     v = erg["vorlagen"][0]
     assert v["amount"] == 140_664.24
     assert v["layout"] == "alt"
@@ -158,11 +158,11 @@ def test_das_aeltere_layout_traegt_dieselbe_probe():
 
 def test_die_identische_zweitstelle_zaehlt_auch():
     """19/0709: Der Abschnitt nennt denselben Betrag, ohne ihn zu zerlegen."""
-    erg = donations.lies([zeile(
+    erg = donations.lies([row(
         "19/0709", VORLAGE_EUR_ZERLEGT,
         "Die Stadt Oldenburg nimmt die angebotenen Zuwendungen in Höhe von "
-        "total 1.800,00 EUR laut anliegender Liste an.",
-        titel="Annahme von Zuwendungen durch den Verwaltungsausschuss")])
+        "insgesamt 1.800,00 EUR laut anliegender Liste an.",
+        title="Annahme von Zuwendungen durch den Verwaltungsausschuss")])
     v = erg["vorlagen"][0]
     assert v["amount"] == 1_800
     assert v["second_mention"] == "identical"
@@ -173,10 +173,10 @@ def test_die_identische_zweitstelle_zaehlt_auch():
 
 def test_eine_vorlage_ohne_zweitstelle_kommt_nicht_rein():
     """Der Betrag steht nur einmal — dann fehlt die Zeile, mit Begründung."""
-    erg = donations.lies([zeile(
+    erg = donations.lies([row(
         "24/9999", VORLAGE_OHNE_ZWEITSTELLE,
         "Die Stadt Oldenburg nimmt die angebotenen Zuwendungen in Höhe von "
-        "total 7.500,00 EUR laut anliegender Liste an.")])
+        "insgesamt 7.500,00 EUR laut anliegender Liste an.")])
     assert erg["vorlagen"] == []
     assert len(erg["verworfen"]) == 1
     reason = erg["verworfen"][0]["reason"]
@@ -189,11 +189,11 @@ def test_ein_geaenderter_beschluss_kommt_nicht_ungeprueft_rein():
     Der Rat hat eine Position gestrichen. Die Vorlage belegt damit den
     beschlossenen Betrag nicht mehr — die Zeile fällt, statt 20.000 Euro zu
     buchen, die nie angenommen wurden."""
-    erg = donations.lies([zeile(
+    erg = donations.lies([row(
         "18/0587", VORLAGE_GEAENDERT,
         "Die Stadt Oldenburg nimmt die angebotenen Zuwendungen in Höhe von "
-        "total 2.500,00 EUR laut anliegender Liste an (ohne lfd. Nr. 2).",
-        titel="Annahme von Zuwendungen durch den Verwaltungsausschuss")])
+        "insgesamt 2.500,00 EUR laut anliegender Liste an (ohne lfd. Nr. 2).",
+        title="Annahme von Zuwendungen durch den Verwaltungsausschuss")])
     assert erg["vorlagen"] == []
     assert "22.500,00" in erg["verworfen"][0]["reason"]
     assert "2.500,00" in erg["verworfen"][0]["reason"]
@@ -209,11 +209,11 @@ def test_der_grund_traegt_die_zahlen_der_zeile_und_nicht_die_deutung():
     wörtlich untereinander. Er steht jetzt einmal über der Liste. Wer ihn
     hierher zurückholt, löscht diesen Test — dann ist es eine Entscheidung,
     kein Versehen."""
-    erg = donations.lies([zeile(
+    erg = donations.lies([row(
         "18/0587", VORLAGE_GEAENDERT,
         "Die Stadt Oldenburg nimmt die angebotenen Zuwendungen in Höhe von "
-        "total 2.500,00 EUR laut anliegender Liste an (ohne lfd. Nr. 2).",
-        titel="Annahme von Zuwendungen durch den Verwaltungsausschuss")])
+        "insgesamt 2.500,00 EUR laut anliegender Liste an (ohne lfd. Nr. 2).",
+        title="Annahme von Zuwendungen durch den Verwaltungsausschuss")])
     reason = erg["verworfen"][0]["reason"]
     assert "Zahlendreher" not in reason and "geändert" not in reason
     assert len(reason) < 120, reason
@@ -221,7 +221,7 @@ def test_der_grund_traegt_die_zahlen_der_zeile_und_nicht_die_deutung():
 
 def test_ein_abgesetzter_punkt_ist_keine_einnahme():
     """21/0694: „Der Tagesordnungspunkt wurde abgesetzt.“"""
-    erg = donations.lies([zeile(
+    erg = donations.lies([row(
         "21/0694", None, "Der Tagesordnungspunkt wurde abgesetzt.",
         outcome="vertagt")])
     assert erg["vorlagen"] == []
@@ -247,7 +247,7 @@ def test_die_zerlegte_zahl_wird_gelesen_die_satzgrenze_nicht():
 
 def test_die_kurzform_mit_strich_wird_gelesen():
     """„6.000,- EUR" ist die Protokoll-Kurzform für 6.000,00."""
-    assert donations.betraege("in Höhe von total 6.000,- EUR") == [6_000.0]
+    assert donations.betraege("in Höhe von insgesamt 6.000,- EUR") == [6_000.0]
 
 
 # --- Zuständigkeit ----------------------------------------------------------
@@ -267,16 +267,16 @@ def test_die_summe_einer_va_vorlage_darf_ueber_der_schwelle_liegen():
     Maßgeblich ist die EINZELNE Zuwendung, nicht die Summe der Liste. Wer die
     Summe gegen 2.000 prüfte, prüfte etwas, das die Regel nicht behauptet —
     dieser Test hält fest, dass wir das nicht tun."""
-    erg = donations.lies([zeile(
+    erg = donations.lies([row(
         "22/0020",
         "Beschlussvorschlag:\nDie Stadt Oldenburg nimmt die angebotenen Zuwendungen "
-        "in Höhe von total 2.746,20 Euro laut anliegender Liste an.\n\n"
+        "in Höhe von insgesamt 2.746,20 Euro laut anliegender Liste an.\n\n"
         "Finanzielle Auswirkungen:\nMehrerträge in Höhe von 2.000,00 Euro sowie im "
         "Schulbudget 500,00 Euro. Die Sachspenden im Wert von 246,20 Euro wirken "
         "sich nicht aus.",
         "Die Stadt Oldenburg nimmt die angebotenen Zuwendungen in Höhe von "
-        "total 2.746,20 Euro laut anliegender Liste an.",
-        titel="Annahme von Zuwendungen durch den Verwaltungsausschuss")])
+        "insgesamt 2.746,20 Euro laut anliegender Liste an.",
+        title="Annahme von Zuwendungen durch den Verwaltungsausschuss")])
     v = erg["vorlagen"][0]
     assert v["amount"] == 2_746.20
     assert v["committee"] == "Verwaltungsausschuss"
@@ -287,11 +287,11 @@ def test_die_summe_einer_va_vorlage_darf_ueber_der_schwelle_liegen():
 def test_je_vorlage_bleibt_eine_zeile():
     """Dieselbe Liste läuft durch Fachausschuss UND Rat — einmal zählen."""
     official_text = ("Die Stadt Oldenburg nimmt die angebotenen Zuwendungen in Höhe "
-                 "von total 435.941 Euro gemäß der anliegenden Liste an.")
+                 "von insgesamt 435.941 Euro gemäß der anliegenden Liste an.")
     erg = donations.lies([
-        zeile("26/0207", VORLAGE_NEU, official_text, sitzung="2026-04-08",
+        row("26/0207", VORLAGE_NEU, official_text, sitzung="2026-04-08",
               gremiensitzung="Ausschuss für Finanzen und Beteiligungen"),
-        zeile("26/0207", VORLAGE_NEU, official_text, sitzung="2026-04-13",
+        row("26/0207", VORLAGE_NEU, official_text, sitzung="2026-04-13",
               gremiensitzung="Rat"),
     ])
     assert len(erg["vorlagen"]) == 1
@@ -303,11 +303,11 @@ def test_je_vorlage_bleibt_eine_zeile():
 
 def test_die_jahresreihe_trennt_rat_und_verwaltungsausschuss():
     erg = donations.lies([
-        zeile("24/0001", VORLAGE_NEU,
-              "Zuwendungen in Höhe von total 435.941 Euro", sitzung="2024-02-05"),
-        zeile("24/0002", VORLAGE_EUR_ZERLEGT,
-              "Zuwendungen in Höhe von total 1.800,00 EUR", sitzung="2024-03-04",
-              titel="Annahme von Zuwendungen durch den Verwaltungsausschuss"),
+        row("24/0001", VORLAGE_NEU,
+              "Zuwendungen in Höhe von insgesamt 435.941 Euro", sitzung="2024-02-05"),
+        row("24/0002", VORLAGE_EUR_ZERLEGT,
+              "Zuwendungen in Höhe von insgesamt 1.800,00 EUR", sitzung="2024-03-04",
+              title="Annahme von Zuwendungen durch den Verwaltungsausschuss"),
     ])
     assert erg["years"] == [{"year": 2024, "amount": 437_741.0, "vorlagen": 2,
                              "rat": 1, "verwaltungsausschuss": 1}]
@@ -324,9 +324,9 @@ def test_fremde_beschluesse_werden_nicht_angefasst():
 
 
 def test_der_probennachweis_nennt_zahlen():
-    erg = donations.lies([zeile(
+    erg = donations.lies([row(
         "26/0207", VORLAGE_NEU,
-        "Zuwendungen in Höhe von total 435.941 Euro")])
+        "Zuwendungen in Höhe von insgesamt 435.941 Euro")])
     nachweis = donations.probennachweis(erg)
     assert "1" in nachweis and "Zweitstelle" in nachweis
     for wertung in ("gut", "zuverlässig", "korrekt", "sauber", "sorgfältig"):
@@ -341,9 +341,9 @@ def test_euro_schreibt_deutsch():
 # --- Der Weg in den Bestand -------------------------------------------------
 
 def test_speichern_und_lesen(tmp_path):
-    erg = donations.lies([zeile(
+    erg = donations.lies([row(
         "26/0207", VORLAGE_NEU,
-        "Zuwendungen in Höhe von total 435.941 Euro")])
+        "Zuwendungen in Höhe von insgesamt 435.941 Euro")])
     lauf = herkunft.Herkunft(
         art="ris", url="https://buergerinfo.example.org/vo040.asp",
         probe=[donations.ZWEITSTELLE], probe_result=donations.probennachweis(erg))
@@ -368,11 +368,11 @@ def test_speichern_und_lesen(tmp_path):
 
 def test_verworfene_zeilen_kommen_mit_ihrem_grund_in_den_bestand(tmp_path):
     """Eine Lücke ist eine Auskunft — sie steht in der Datenbank, nicht nur im Log."""
-    erg = donations.lies([zeile(
+    erg = donations.lies([row(
         "18/0587", VORLAGE_GEAENDERT,
-        "Zuwendungen in Höhe von total 2.500,00 EUR laut anliegender Liste an "
+        "Zuwendungen in Höhe von insgesamt 2.500,00 EUR laut anliegender Liste an "
         "(ohne lfd. Nr. 2).",
-        titel="Annahme von Zuwendungen durch den Verwaltungsausschuss")])
+        title="Annahme von Zuwendungen durch den Verwaltungsausschuss")])
     lauf = herkunft.Herkunft(art="ris", url="https://buergerinfo.example.org/vo040.asp",
                              probe=[donations.ZWEITSTELLE], probe_result="0 Vorlagen")
     store = CouncilStore(tmp_path / "council.sqlite")
@@ -392,11 +392,11 @@ def test_eine_teillieferung_raeumt_den_bestand_nicht_ab(tmp_path):
     die halbe Reihe."""
     lauf = herkunft.Herkunft(art="ris", url="https://buergerinfo.example.org/vo040.asp",
                              probe=[donations.ZWEITSTELLE], probe_result="Probe")
-    a = donations.lies([zeile("24/0001", VORLAGE_NEU,
-                            "Zuwendungen in Höhe von total 435.941 Euro",
+    a = donations.lies([row("24/0001", VORLAGE_NEU,
+                            "Zuwendungen in Höhe von insgesamt 435.941 Euro",
                             sitzung="2024-02-05")])
-    b = donations.lies([zeile("25/0001", VORLAGE_ALT,
-                            "Zuwendungen in Höhe von total 140.664,24 EUR",
+    b = donations.lies([row("25/0001", VORLAGE_ALT,
+                            "Zuwendungen in Höhe von insgesamt 140.664,24 EUR",
                             sitzung="2025-02-05")])
     store = CouncilStore(tmp_path / "council.sqlite")
     try:
