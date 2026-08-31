@@ -587,17 +587,6 @@ export interface FieldRecap {
   generated_at: string;
 }
 
-export interface Prompt {
-  key: string;
-  title: string;
-  description: string;
-  content: string;
-  default: string;
-  is_overridden: boolean;
-  updated_at?: string | null;
-  updated_by?: string | null;
-}
-
 export interface WebUser {
   id: number;
   email: string;

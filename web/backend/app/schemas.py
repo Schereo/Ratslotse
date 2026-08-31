@@ -144,23 +144,6 @@ class SubscriptionIn(BaseModel):
     committee_name: str
 
 
-# ---- admin: prompts ----
-class PromptOut(BaseModel):
-    key: str
-    title: str
-    description: str
-    content: str
-    default: str
-    is_overridden: bool
-    # Design 21a: „geändert von … · wann“.
-    updated_at: str | None = None
-    updated_by: str | None = None
-
-
-class PromptUpdate(BaseModel):
-    content: str
-
-
 class EntityAliasIn(BaseModel):
     """Zwei Themen von Hand zusammenführen (Admin)."""
     slug: str

@@ -1,4 +1,10 @@
-"""Tests for the admin-editable prompt store (kern/prompts.py)."""
+"""Die Prompt-Vorlagen aus `kern/prompts.py`.
+
+Seit 08/2026 gibt es keine Overrides mehr — die Vorlagen sind Code. Geprüft
+wird deshalb nur noch, was auch als Code schiefgehen kann: dass jede Vorlage
+sich mit ihren dokumentierten Platzhaltern füllen lässt, und dass die
+JSON-Beispiele darin ihre geschweiften Klammern richtig verdoppeln.
+"""
 from __future__ import annotations
 
 import pytest
@@ -6,54 +12,34 @@ import pytest
 from kern import prompts
 
 
-@pytest.fixture
-def temp_prompt_db(tmp_path, monkeypatch):
-    """Point the prompt store at a throwaway DB so overrides don't touch real data."""
-    monkeypatch.setattr(prompts, "_DB_PATH", tmp_path / "ratslotse.sqlite")
-    return tmp_path
-
-
-def test_defaults_render_with_placeholders(temp_prompt_db):
+def test_defaults_render_with_placeholders():
     # Format prompts must accept their documented placeholders.
     prompts.render("committee_summary_user", committee="C", datum="18.08.2026", items_text="I")
     prompts.render("council_watcher_user", committee="C", session_date="d", items_text="I", topics_text="T")
 
 
-def test_raw_prompts_have_valid_json_braces(temp_prompt_db):
-    # Raw prompts are used without .format(); their literal braces must survive.
+def test_raw_prompts_have_valid_json_braces():
+    # Prompts without placeholders must keep literal JSON braces escaped.
     assert '{"vague": true/false' in prompts.get("vagueness_check_system")
 
 
-def test_get_returns_default_when_no_override(temp_prompt_db):
-    assert prompts.get("council_watcher_system") == prompts.DEFAULTS["council_watcher_system"]["template"]
-    assert prompts.is_overridden("council_watcher_system") is False
-
-
-def test_set_override_takes_effect(temp_prompt_db):
-    prompts.set_content("council_watcher_system", "Neuer Text {session_date}")
-    assert prompts.is_overridden("council_watcher_system") is True
-    assert prompts.get("council_watcher_system") == "Neuer Text {session_date}"
-    assert prompts.render("council_watcher_system", session_date="X") == "Neuer Text X"
-
-
-def test_reset_restores_default(temp_prompt_db):
-    prompts.set_content("council_watcher_system", "X")
-    prompts.reset("council_watcher_system")
-    assert prompts.is_overridden("council_watcher_system") is False
-    assert prompts.get("council_watcher_system") == prompts.DEFAULTS["council_watcher_system"]["template"]
-
-
-def test_list_all_reports_override_state(temp_prompt_db):
-    prompts.set_content("committee_summary_system", "Custom")
-    by_key = {p["key"]: p for p in prompts.list_all()}
-    assert len(by_key) == len(prompts.DEFAULTS)
-    assert by_key["committee_summary_system"]["is_overridden"] is True
-    assert by_key["committee_summary_system"]["content"] == "Custom"
-    assert by_key["council_watcher_system"]["is_overridden"] is False
-
-
-def test_unknown_key_raises(temp_prompt_db):
+def test_unknown_key_raises():
     with pytest.raises(KeyError):
         prompts.get("does_not_exist")
-    with pytest.raises(KeyError):
-        prompts.set_content("does_not_exist", "x")
+
+
+def test_jede_vorlage_ist_formatierbar():
+    """Keine Vorlage darf eine einzelne geschweifte Klammer tragen.
+
+    `render()` ruft `str.format()`; eine unverdoppelte Klammer in einem
+    JSON-Beispiel fliegt dort erst zur Laufzeit auf — im Zweifel mitten in
+    einem Cron-Lauf. Hier fällt sie sofort auf.
+    """
+    import string
+    kaputt = []
+    for key, meta in prompts.DEFAULTS.items():
+        try:
+            list(string.Formatter().parse(meta["template"]))
+        except ValueError as e:
+            kaputt.append(f"{key}: {e}")
+    assert not kaputt, "Vorlagen mit fehlerhaften Klammern:\n  " + "\n  ".join(kaputt)

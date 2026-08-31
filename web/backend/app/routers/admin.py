@@ -1,4 +1,10 @@
-"""Admin: edit LLM prompts, manage web users and the Telegram whitelist."""
+"""Admin: manage web users, moderation and the Telegram whitelist.
+
+Die LLM-Prompts stehen NICHT mehr hier: Sie leben seit 08/2026 nur noch als
+Code in `kern/prompts.py`, versioniert und im Pull Request les- und
+diskutierbar. Ein Prompt aus der Hüfte zu ändern war zu leicht und die
+Wirkung zu schwer abzuschätzen (Tims Entscheidung, 31.08.2026).
+"""
 from __future__ import annotations
 
 import logging
@@ -7,7 +13,6 @@ from datetime import datetime
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 
 from council.store import CouncilStore
-from kern import prompts
 from kern.digest_email import knopf, render_html_email
 from kern.email import send_email
 from kern.store import Store
@@ -19,8 +24,7 @@ from ..antworten import (AdminAliasGeloescht, AdminAliasListe, AdminFeedbackGele
                         AdminOrtsKandidaten, AdminQuizStatistik, AdminUngelesen,
                         AdminWachstum, Ok)
 from ..deps import get_council_store, get_store, require_admin
-from ..schemas import (EntityAliasIn, EntityAliasOut, LimitsUpdate, PlaceReviewIn, PromptOut,
-                       PromptUpdate, RoleUpdate, StatusUpdate, WebUserOut)
+from ..schemas import (EntityAliasIn, EntityAliasOut, LimitsUpdate, PlaceReviewIn,                        RoleUpdate, StatusUpdate, WebUserOut)
 
 logger = logging.getLogger("ratslotse.web.admin")
 
@@ -153,31 +157,6 @@ def llm_usage(_admin: dict = Depends(require_admin)) -> AdminLlmVerbrauch:
     Monatskosten mit Hochrechnung und Budget-Ampel (aus llm_usage in ratslotse.sqlite)."""
     from kern import usage
     return usage.dashboard(budget_monthly=get_settings().llm_budget_monthly)
-
-
-# ---- prompts ----
-@router.get("/prompts", response_model=list[PromptOut])
-def list_prompts(_admin: dict = Depends(require_admin)) -> list[PromptOut]:
-    return [PromptOut(**p) for p in prompts.list_all()]
-
-
-@router.put("/prompts/{key}", response_model=PromptOut)
-def update_prompt(key: str, body: PromptUpdate, admin: dict = Depends(require_admin)) -> PromptOut:
-    if key not in prompts.DEFAULTS:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Unbekannter Prompt.")
-    error = prompts.validate_template(key, body.content)
-    if error:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, f"Ungültiges Template: {error}")
-    prompts.set_content(key, body.content, by=admin.get("email"))
-    return PromptOut(**next(p for p in prompts.list_all() if p["key"] == key))
-
-
-@router.post("/prompts/{key}/reset", response_model=PromptOut)
-def reset_prompt(key: str, _admin: dict = Depends(require_admin)) -> PromptOut:
-    if key not in prompts.DEFAULTS:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Unbekannter Prompt.")
-    prompts.reset(key)
-    return PromptOut(**next(p for p in prompts.list_all() if p["key"] == key))
 
 
 # ---- Feedback ----

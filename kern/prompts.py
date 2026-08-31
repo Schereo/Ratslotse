@@ -1,25 +1,30 @@
-"""Admin-editable prompt store.
+"""Die LLM-Prompts dieses Projekts — als Code, nicht als Datenbankinhalt.
 
-All LLM prompts used by the bot and the cron jobs live here as named templates
-with sensible defaults. An admin can override any of them at runtime via the web
-frontend; overrides are persisted in the ``prompts`` table of ``ratslotse.sqlite`` and
-take effect on the next call (no restart needed).
+Alle Prompts des Bots und der Cron-Jobs stehen hier als benannte Vorlagen.
+Wer einen ändern will, ändert ihn HIER: im Pull Request sichtbar, mit Diff,
+mit Review, mit Historie.
 
-Templates use ``str.format()`` placeholders. Literal braces (e.g. in JSON
-examples) must be escaped as ``{{`` / ``}}``.
+Bis 08/2026 ließ sich jeder Prompt zusätzlich im Admin-Panel überschreiben
+(Tabelle ``prompts`` in ratslotse.sqlite). Das ist ausgebaut, aus zwei
+Gründen: Ein Prompt aus der Hüfte zu ändern war zu leicht und die Wirkung zu
+schwer abzuschätzen (Tims Entscheidung, 31.08.2026) — und ein Override war
+ein stiller Killer für jede Umbenennung. Die Prompts schreiben dem Modell
+JSON-Schlüssel vor, die der Parser wieder einliest; wandert der Schlüssel im
+Code, der Override in der Datenbank aber nicht, liefert das Modell weiter den
+alten Namen und die Extraktion ist leer — ohne Fehler.
+
+Vorlagen benutzen ``str.format()``-Platzhalter. Geschweifte Klammern, die
+wörtlich gemeint sind (etwa in JSON-Beispielen), gehören als ``{{`` / ``}}``
+verdoppelt.
 """
 from __future__ import annotations
 
-import sqlite3
 import textwrap
-from datetime import datetime
-from pathlib import Path
-
-_DB_PATH = Path(__file__).resolve().parent.parent / "data" / "ratslotse.sqlite"
 
 # --- Default prompt templates -------------------------------------------------
-# Each entry: key -> (title, description, template). Title/description are shown
-# in the admin UI. The template is what the model receives after .format().
+# Je Eintrag: key -> (title, description, template). Titel und Beschreibung sind
+# die Kurzerklärung für Menschen, die hier lesen; `template` ist das, was das
+# Modell nach .format() bekommt.
 
 DEFAULTS: dict[str, dict[str, str]] = {
     "deep_zerlegung": {
@@ -824,134 +829,13 @@ DEFAULTS: dict[str, dict[str, str]] = {
 }
 
 
-def _connect() -> sqlite3.Connection:
-    _DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(_DB_PATH)
-    conn.row_factory = sqlite3.Row
-    conn.execute(
-        """CREATE TABLE IF NOT EXISTS prompts (
-               key        TEXT PRIMARY KEY,
-               content    TEXT NOT NULL,
-               updated_at TEXT NOT NULL,
-               updated_by TEXT
-           )"""
-    )
-    # Bestandsdaten: updated_by (Admin-E-Mail) nachrüsten (Design 21a).
-    cols = {r[1] for r in conn.execute("PRAGMA table_info(prompts)").fetchall()}
-    if "updated_by" not in cols:
-        conn.execute("ALTER TABLE prompts ADD COLUMN updated_by TEXT")
-    conn.commit()
-    return conn
-
-
 def get(key: str) -> str:
-    """Return the active template for ``key`` (admin override or default)."""
+    """Die Vorlage zu ``key``."""
     if key not in DEFAULTS:
         raise KeyError(f"Unknown prompt key: {key}")
-    try:
-        conn = _connect()
-        row = conn.execute("SELECT content FROM prompts WHERE key = ?", (key,)).fetchone()
-        conn.close()
-        if row is not None:
-            return row[0]
-    except sqlite3.Error:
-        pass
     return DEFAULTS[key]["template"]
 
 
 def render(key: str, **kwargs) -> str:
-    """Return the active template formatted with the given keyword arguments."""
+    """Die Vorlage zu ``key``, mit den übergebenen Platzhaltern gefüllt."""
     return get(key).format(**kwargs)
-
-
-def is_overridden(key: str) -> bool:
-    try:
-        conn = _connect()
-        row = conn.execute("SELECT 1 FROM prompts WHERE key = ?", (key,)).fetchone()
-        conn.close()
-        return row is not None
-    except sqlite3.Error:
-        return False
-
-
-def list_all() -> list[dict]:
-    """Return every known prompt with its current and default content for the admin UI."""
-    conn = _connect()
-    overrides = {
-        r["key"]: r for r in conn.execute("SELECT key, content, updated_at, updated_by FROM prompts").fetchall()
-    }
-    conn.close()
-    result = []
-    for key, meta in DEFAULTS.items():
-        ov = overrides.get(key)
-        result.append(
-            {
-                "key": key,
-                "title": meta["title"],
-                "description": meta["description"],
-                "default": meta["template"],
-                "content": ov["content"] if ov else meta["template"],
-                "is_overridden": ov is not None,
-                "updated_at": ov["updated_at"] if ov else None,
-                "updated_by": (ov["updated_by"] if ov else None),
-            }
-        )
-    return result
-
-
-def set_content(key: str, content: str, by: str | None = None) -> None:
-    if key not in DEFAULTS:
-        raise KeyError(f"Unknown prompt key: {key}")
-    now = datetime.utcnow().isoformat(timespec="seconds")
-    conn = _connect()
-    with conn:
-        conn.execute(
-            "INSERT OR REPLACE INTO prompts (key, content, updated_at, updated_by) VALUES (?, ?, ?, ?)",
-            (key, content, now, by),
-        )
-    conn.close()
-
-
-def reset(key: str) -> None:
-    """Remove an override so the default takes effect again."""
-    conn = _connect()
-    with conn:
-        conn.execute("DELETE FROM prompts WHERE key = ?", (key,))
-    conn.close()
-
-
-def validate_template(key: str, content: str) -> str | None:
-    """Validate a prompt template. Returns an error message or None if valid.
-
-    Checks for syntax errors and for placeholder names not present in the
-    original default (those would cause a KeyError at runtime when the bot
-    calls ``render()``).
-    """
-    import string as _string
-
-    try:
-        fields = [(name, fmt) for _, name, fmt, _ in _string.Formatter().parse(content) if name is not None]
-    except ValueError as e:
-        return f"Syntaxfehler im Template: {e}"
-
-    if key in DEFAULTS:
-        default_template = DEFAULTS[key]["template"]
-        try:
-            expected = {name for _, name, _, _ in _string.Formatter().parse(default_template) if name is not None}
-        except ValueError:
-            expected = set()
-        new_fields = {name for name, _ in fields if name and name not in expected}
-        if new_fields:
-            sorted_expected = ", ".join(sorted(expected)) or "(keine)"
-            return (
-                f"Unbekannte Platzhalter: {{{', '.join(sorted(new_fields))}}}. "
-                f"Erlaubt: {sorted_expected}."
-            )
-
-    dummy = {name: "BEISPIEL" for name, _ in fields if name}
-    try:
-        content.format(**dummy)
-    except (KeyError, ValueError, IndexError) as e:
-        return f"Template-Fehler beim Ausfüllen: {e}"
-
-    return None

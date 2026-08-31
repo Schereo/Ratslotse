@@ -393,7 +393,7 @@ def analyse(store, name: str, description: str = "") -> dict:
 
 def check_vagueness(name: str, description: str) -> dict:
     """Die bestehende Vagheits-Prüfung — bis 26a lag sie brach: Der Prompt war
-    seit jeher admin-editierbar hinterlegt, aber es gab keinen einzigen Aufruf.
+    seit jeher als Vorlage hinterlegt, aber es gab keinen einzigen Aufruf.
 
     Rückgabe ``{vague, hint, suggestion}``. Bei jedem Fehler „nicht vage": Eine
     kaputte Prüfung darf niemanden am Anlegen hindern.

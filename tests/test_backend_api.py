@@ -24,7 +24,6 @@ os.environ["DISABLE_RATE_LIMIT"] = "1"  # avoid state bleeding across tests
 
 from fastapi.testclient import TestClient  # noqa: E402
 from app.main import app  # noqa: E402
-from kern import prompts  # noqa: E402
 from kern.store import Store  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
 from council.scraper import CouncilSession, AgendaItem  # noqa: E402
@@ -449,21 +448,6 @@ def test_me_requires_auth(client):
 
 
 # ---- admin: prompts ----
-def test_admin_prompts_crud(client):
-    _register(client)
-    r = client.get("/api/admin/prompts")
-    # Gegen DEFAULTS statt gegen eine feste Zahl — sonst bricht der Test bei jedem
-    # neuen Prompt, obwohl er "liefert alle Prompts" prüfen will, nicht "es sind 16".
-    assert r.status_code == 200 and len(r.json()) == len(prompts.DEFAULTS)
-    key = "council_watcher_system"
-    upd = client.put(f"/api/admin/prompts/{key}", json={"content": "Angepasster Watcher-Systemprompt."})
-    assert upd.status_code == 200 and upd.json()["is_overridden"] is True
-    # Design 21a: „geändert von … · wann“ wird mitgeführt.
-    assert upd.json()["updated_by"] == "admin@test.de" and upd.json()["updated_at"]
-    rst = client.post(f"/api/admin/prompts/{key}/reset")
-    assert rst.json()["is_overridden"] is False
-
-
 def test_admin_quiz_stats(client):
     """Design 21a: Quiz-Kennzahlen + Gebiets-Warnung (leere DB → Nullen)."""
     _register(client)
@@ -554,7 +538,6 @@ def test_admin_endpoints_forbidden_for_regular_user(client):
     _register(client)  # admin
     bob = TestClient(app)
     bob.post("/api/auth/register", json={"email": "bob@test.de", "password": "password123"})
-    assert bob.get("/api/admin/prompts").status_code == 403
     assert bob.get("/api/admin/users").status_code == 403
 
 

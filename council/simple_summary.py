@@ -3,7 +3,7 @@
 Nur echte Beschlüsse (kind='decision') mit substanziellem Beschlusstext
 (≥ 200 Zeichen) bekommen eine Kurzfassung; Auswahl + Persistenz übernimmt
 ``CouncilStore`` (decisions_needing_simple_summary / save_simple_summary).
-Prompts liegen in kern/prompts.py und sind über das Admin-UI editierbar.
+Prompts liegen in kern/prompts.py.
 """
 from __future__ import annotations
 
