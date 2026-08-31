@@ -63,7 +63,7 @@ cd docs-site && npm install && npm run dev
 .venv/bin/pip install -r requirements-dev.txt && .venv/bin/python -m pytest tests/ -q
 ```
 
-Zwei SQLite-DBs unter `data/` (gitignored): `ratslotse.sqlite` (Konten, Themen, Prompts)
+Zwei SQLite-DBs unter `data/` (gitignored): `ratslotse.sqlite` (Konten, Themen, Gespräche)
 und `council.sqlite` (Sitzungen, Beschlüsse). Beide werden lokal beim ersten Lauf
 angelegt.
 
@@ -264,7 +264,12 @@ NWZ_OPENROUTER_ZDR=1                 # "0" lockert die Zero-Data-Retention-Pflic
   `off` greift in `kern.notify.gewuenscht()`, also **vor** der Warteschlange —
   wer einen neuen Meldeanlass baut, muss ihn über `notify.einreihen` schicken,
   sonst umgeht er Aus-Schalter, Nachtruhe und Tagesgrenze zugleich.
-- **Prompts** liegen in `kern/prompts.py` (DB-Tabelle `prompts`) und sind über das
-  Admin-UI live editierbar — Defaults greifen, solange kein Override existiert.
+- **Prompts** liegen in `kern/prompts.py` — als Code, nicht als Datenbankinhalt.
+  Wer einen ändert, ändert ihn dort: im PR sichtbar, mit Diff und Historie. Die
+  Möglichkeit, sie im Admin-UI zu überschreiben, ist seit 08/2026 ausgebaut (Tims
+  Entscheidung) — ein Prompt aus der Hüfte war zu leicht geändert und die Wirkung
+  zu schwer abzuschätzen. Nebeneffekt: Die Prompts schreiben dem Modell
+  JSON-Schlüssel vor, die der Parser wieder einliest; ein Override hätte jede
+  Umbenennung still zerlegt.
 - **Sicherheit**: Der Reverse-Proxy setzt `X-Forwarded-For` selbst
   (verhindert Rate-Limit-Bypass via XFF-Spoofing).

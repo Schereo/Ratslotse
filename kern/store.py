@@ -558,7 +558,27 @@ class Store:
                 logging.getLogger("kern.store").warning(
                     "Tote Spalte entfernt: %s.%s", tabelle, spalte)
 
+    def _prompts_tabelle_entfernen(self) -> None:
+        """Die Tabelle der Prompt-Overrides fallen lassen — mit Protokoll."""
+        vorhanden = self._conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='prompts'").fetchone()
+        if not vorhanden:
+            return
+        log = logging.getLogger("kern.store")
+        for key, content in self._conn.execute("SELECT key, content FROM prompts"):
+            log.warning("Prompt-Override wird verworfen: %s — %r", key, (content or "")[:400])
+        with self._conn:
+            self._conn.execute("DROP TABLE prompts")
+        log.warning("Tabelle `prompts` entfernt (Prompt-Overrides ausgebaut).")
+
     def _migrate(self) -> None:
+        # 08/2026: Die Prompt-Overrides sind ausgebaut — die Prompt-Texte leben
+        # nur noch als Code in `kern/prompts.py` (Tims Entscheidung,
+        # 31.08.2026). Die Tabelle darf mit; gemessen war sie auf dev leer und
+        # auf Prod gar nicht angelegt. Sollte in einer unbekannten Umgebung
+        # doch etwas darin stehen, landet es vorher im Log — ein stillschweigend
+        # gelöschter, von Hand geschriebener Prompttext wäre ein schlechter Tausch.
+        self._prompts_tabelle_entfernen()
         # 08/2026: Reste der NWZ-Abo-Prüfung. Seit der Ausgliederung des
         # Zeitungs-Scrapers liest sie kein Code mehr; auf Tims Anweisung
         # (30.08.2026) verschwinden sie samt Inhalt. Backup lag vor.

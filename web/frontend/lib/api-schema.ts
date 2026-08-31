@@ -337,57 +337,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/admin/prompts": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Prompts */
-        get: operations["list_prompts_api_admin_prompts_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/admin/prompts/{key}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** Update Prompt */
-        put: operations["update_prompt_api_admin_prompts__key__put"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/admin/prompts/{key}/reset": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Reset Prompt */
-        post: operations["reset_prompt_api_admin_prompts__key__reset_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/admin/qa-shares/{token}": {
         parameters: {
             query?: never;
@@ -5059,30 +5008,6 @@ export interface components {
             /** Status */
             status: string;
         };
-        /** PromptOut */
-        PromptOut: {
-            /** Content */
-            content: string;
-            /** Default */
-            default: string;
-            /** Description */
-            description: string;
-            /** Is Overridden */
-            is_overridden: boolean;
-            /** Key */
-            key: string;
-            /** Title */
-            title: string;
-            /** Updated At */
-            updated_at?: string | null;
-            /** Updated By */
-            updated_by?: string | null;
-        };
-        /** PromptUpdate */
-        PromptUpdate: {
-            /** Content */
-            content: string;
-        };
         /** PushRegisterRequest */
         PushRegisterRequest: {
             /** Platform */
@@ -6784,92 +6709,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Ok"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    list_prompts_api_admin_prompts_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PromptOut"][];
-                };
-            };
-        };
-    };
-    update_prompt_api_admin_prompts__key__put: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                key: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["PromptUpdate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PromptOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    reset_prompt_api_admin_prompts__key__reset_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                key: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PromptOut"];
                 };
             };
             /** @description Validation Error */
@@ -10902,4 +10741,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: df40ba62fd69e395650550336be48c8b92bc3467b577bed79e30dc32f9ea66f5
+// vertrag-sha256: 9ad27b51fbb3d1f1794d5e5ea5931e2a397a14ebf6d8bba89210d20e6185ea60

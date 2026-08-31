@@ -32,6 +32,13 @@ def _db() -> str:
 
 
 def _connect() -> sqlite3.Connection:
+    # `data/` selbst anlegen: Bis zum Ausbau der Prompt-Overrides (08/2026) tat
+    # das `kern/prompts.py::_connect` nebenbei, und zwar bei JEDEM Prompt-Abruf.
+    # Auf einem frischen Checkout ohne `data/` wäre das hier sonst ein
+    # „unable to open database file".
+    pfad = Path(_db())
+    if pfad.parent.name:
+        pfad.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(_db(), timeout=5)
     conn.row_factory = sqlite3.Row
     conn.execute(

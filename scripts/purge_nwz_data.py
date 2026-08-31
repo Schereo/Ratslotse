@@ -66,21 +66,6 @@ def _purge_db(path: Path, tables: list[str], do_it: bool) -> None:
                 print(f"  {path.name}.{t}: {n} Zeilen gelöscht")
             else:
                 print(f"  {path.name}.{t}: {n} Zeilen (würde gelöscht)")
-        # Prompt-Overrides für entfernte NWZ-Prompts mitnehmen (falls vorhanden).
-        try:
-            like = con.execute(
-                "SELECT COUNT(*) FROM prompts WHERE key LIKE 'ratslotse\\_%' ESCAPE '\\' "
-                "OR key LIKE 'weekly_highlights%'"
-            ).fetchone()[0]
-            if do_it and like:
-                con.execute(
-                    "DELETE FROM prompts WHERE key LIKE 'ratslotse\\_%' ESCAPE '\\' "
-                    "OR key LIKE 'weekly_highlights%'"
-                )
-            print(f"  {path.name}.prompts: {like} NWZ-Overrides "
-                  f"{'gelöscht' if do_it else 'würden gelöscht'}")
-        except sqlite3.OperationalError:
-            pass
         if do_it:
             con.commit()
             con.execute("VACUUM")

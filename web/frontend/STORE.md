@@ -152,7 +152,7 @@ Personenbezogene Daten Dritter: In den amtlichen Protokollen kommen Ratsmitglied
 
 Native Funktionen: Push-Benachrichtigungen zu abonnierten Themen und Gremien (APNs, ohne Firebase), Offline-Zugriff auf zuletzt gelesene Beschlüsse, Teilen über das System-Menü, Termin-Export ins Share-Sheet, Universal Links, Anmeldung mit Apple.
 
-Administrationsbereich: Konten mit der Rolle „admin" sehen zusätzlich einen Verwaltungsbereich (Statistik, Prompts, Moderation). Der Demo-Zugang hat diese Rolle nicht — der Bereich ist kein verstecktes Feature, sondern die Betriebsoberfläche des Betreibers.
+Administrationsbereich: Konten mit der Rolle „admin" sehen zusätzlich einen Verwaltungsbereich (Statistik, Moderation, Nutzerverwaltung). Der Demo-Zugang hat diese Rolle nicht — der Bereich ist kein verstecktes Feature, sondern die Betriebsoberfläche des Betreibers.
 
 Keine Käufe und keine Werbung. Bewusst geteilte KI-Antworten sind öffentliche,
 nicht gelistete Links: Jeder Link hat einen Meldeweg ohne Anmeldung; Admins
