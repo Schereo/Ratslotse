@@ -143,7 +143,7 @@ function SteuerInner() {
         }
       : {
           wert: data.taxes.find(
-            (s) => s.year === letzte?.year && s.art === "insgesamt",
+            (s) => s.year === letzte?.year && s.art === "total",
           )?.amount ?? null,
           was: "aller Steuereinnahmen",
         };

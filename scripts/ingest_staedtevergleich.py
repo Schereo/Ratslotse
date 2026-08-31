@@ -81,11 +81,11 @@ def _holen(ort: str, ablage: Path) -> tuple[Path, str | None]:
         return Path(ort), None
     import requests
 
-    antwort = requests.get(ort, timeout=120)
-    antwort.raise_for_status()
+    answer = requests.get(ort, timeout=120)
+    answer.raise_for_status()
     ziel = ablage / (ort.rstrip("/").rsplit("/", 1)[-1] + ".xlsx")
-    ziel.write_bytes(antwort.content)
-    print(f"  geladen: {ort} ({len(antwort.content):,} Bytes)".replace(",", "."))
+    ziel.write_bytes(answer.content)
+    print(f"  geladen: {ort} ({len(answer.content):,} Bytes)".replace(",", "."))
     return ziel, ort
 
 

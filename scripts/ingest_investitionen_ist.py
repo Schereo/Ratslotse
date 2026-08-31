@@ -54,9 +54,9 @@ def link_suchen() -> str | None:
 
     ``None``, wenn die Seite ihn nicht (mehr) führt — dann greift die
     hinterlegte Adresse, und der Lauf sagt, dass er das tut."""
-    antwort = requests.get(ii.JAHRBUCH_URL, headers=_UA, timeout=120)
-    antwort.raise_for_status()
-    treffer = ii.LINK_MUSTER.search(antwort.text)
+    answer = requests.get(ii.JAHRBUCH_URL, headers=_UA, timeout=120)
+    answer.raise_for_status()
+    treffer = ii.LINK_MUSTER.search(answer.text)
     return urljoin(ii.JAHRBUCH_URL, treffer.group(1)) if treffer else None
 
 
@@ -90,11 +90,11 @@ def main() -> int:
                     url = ii.TABELLE_URL
                     print(f"HINWEIS: Die Übersichtsseite führt keinen Link auf "
                           f"1107 mehr — es gilt die hinterlegte Adresse: {url}")
-                antwort = requests.get(url, headers=_UA, timeout=120)
-                antwort.raise_for_status()
+                answer = requests.get(url, headers=_UA, timeout=120)
+                answer.raise_for_status()
                 pfad = Path(tmp) / "1107.pdf"
-                pfad.write_bytes(antwort.content)
-                print(f"  geladen: {ii.de_zahl(len(antwort.content))} Bytes")
+                pfad.write_bytes(answer.content)
+                print(f"  geladen: {ii.de_zahl(len(answer.content))} Bytes")
 
             text = pdf_text(pfad)
             spannen = ii.erkenne(text)
@@ -130,7 +130,7 @@ def main() -> int:
                 titel = dict(ii.SPALTEN["doppik"]).get(
                     groesste[0], "") if groesste else ""
                 print(f"  jüngster Jahrgang {j['year']}: "
-                      f"{ii.de_zahl(j['insgesamt'] / 1e6, 1)} Mio. € insgesamt"
+                      f"{ii.de_zahl(j['total'] / 1e6, 1)} Mio. € total"
                       + (f", größter Posten „{titel}“ mit "
                          f"{ii.de_zahl(groesste[1] / 1e6, 1)} Mio. €" if groesste else ""))
 
@@ -168,13 +168,13 @@ def main() -> int:
             # der großen Zahl.
             geschrieben = 0
             for accounting_system in ("kameral", "doppik"):
-                teil = [z for z in zeilen if z["accounting_system"] == accounting_system]
+                part = [z for z in zeilen if z["accounting_system"] == accounting_system]
                 verw = [v for v in result["verworfen"]
                         if v["accounting_system"] == accounting_system]
                 # Ein Regelwerk ganz ohne Jahrgänge wird trotzdem geschrieben,
                 # WENN es verworfene hat: Sonst verlöre die Seite genau dann
                 # die Begründung ihrer Lücke, wenn alles gerissen ist.
-                if not teil and not verw:
+                if not part and not verw:
                     continue
                 von, bis = spannen[accounting_system]
                 nummer = "1107-1" if accounting_system == "doppik" else "1107"
@@ -183,9 +183,9 @@ def main() -> int:
                               f"{nummer} — je Jahr die Auszahlungsarten "
                               f"({arten}) und ihre Summe")
                 nachweis = (
-                    f"Jahrgänge {teil[0]['year']}–{teil[-1]['year']} "
-                    f"({len(teil)} von {bis - von + 1} angekündigten): "
-                    f"Zeilensumme bestanden" if teil else
+                    f"Jahrgänge {part[0]['year']}–{part[-1]['year']} "
+                    f"({len(part)} von {bis - von + 1} angekündigten): "
+                    f"Zeilensumme bestanden" if part else
                     f"Kein Jahrgang von {bis - von + 1} angekündigten hat die "
                     f"Zeilensumme bestanden")
                 fehlt = result["fehlende_jahrgaenge"].get(accounting_system) or []
@@ -202,7 +202,7 @@ def main() -> int:
                 # Differenz ist die Auskunft, die die Lücke auf der Seite
                 # beziffert — im Fließtext des Grundes wäre sie für die
                 # Oberfläche verloren.
-                geschrieben += store.save_investitionen_ist(teil, h.Herkunft(
+                geschrieben += store.save_investitionen_ist(part, h.Herkunft(
                     art="stadt", url=url or ii.TABELLE_URL,
                     label=f"Statistisches Jahrbuch der Stadt Oldenburg, Tabelle "
                           f"{nummer} — Investitionen {von} bis {bis}",

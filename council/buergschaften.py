@@ -148,7 +148,7 @@ def parse_bestand(text: str, year: int) -> dict | None:
     """Den Bürgschaftsbestand aus einem Jahresabschluss lesen.
 
     Liefert ``None``, wenn der Jahrgang ihn nicht nennt (2017, 2018, 2021).
-    Sonst ein dict mit ``bestand``, ``exact`` und — wo die Quelle ihn nennt —
+    Sonst ein dict mit ``balance``, ``exact`` und — wo die Quelle ihn nennt —
     ``prior_year_stock``/``prior_year_year`` für die Kettenprobe.
     """
     t = _glatt(text)
@@ -161,7 +161,7 @@ def parse_bestand(text: str, year: int) -> dict | None:
         if year in nach_jahr:
             gefunden: dict = {
                 "year": year,
-                "bestand": nach_jahr[year],
+                "balance": nach_jahr[year],
                 "exact": False,
                 "quelle": "anhang",
                 "citation": ABSCHNITT,
@@ -183,7 +183,7 @@ def parse_bestand(text: str, year: int) -> dict | None:
         if amount:
             return {
                 "year": year,
-                "bestand": _zahl(amount.group(1)),
+                "balance": _zahl(amount.group(1)),
                 "exact": True,
                 "quelle": "tabelle",
                 "citation": TABELLENZEILE,
@@ -203,7 +203,7 @@ def out_next_year(gefunden: dict) -> dict | None:
         return None
     return {
         "year": gefunden["prior_year_year"],
-        "bestand": gefunden["prior_year_stock"],
+        "balance": gefunden["prior_year_stock"],
         "exact": False,
         "quelle": "anhang",
         "citation": f"{ABSCHNITT} (Jahresabschluss {gefunden['year']})",
@@ -251,10 +251,10 @@ def kettenprobe(zeilen: list[dict]) -> list[str]:
         prior_rate = nach_jahr.get(z["prior_year_year"])
         if not prior_rate:
             continue
-        ab = abs(prior_rate["bestand"] - z["prior_year_stock"])
+        ab = abs(prior_rate["balance"] - z["prior_year_stock"])
         if ab > KETTE_TOLERANZ:
             risse.append(
                 f"{z['year']}: nennt {z['prior_year_stock']/1e6:.1f} Mio. € als Stand "
                 f"31.12.{z['prior_year_year']}, der Abschluss {z['prior_year_year']} nennt "
-                f"{prior_rate['bestand']/1e6:.1f} Mio. € ({ab/1e6:.1f} Mio. Unterschied)")
+                f"{prior_rate['balance']/1e6:.1f} Mio. € ({ab/1e6:.1f} Mio. Unterschied)")
     return risse

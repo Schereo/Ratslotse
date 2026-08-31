@@ -100,9 +100,9 @@ def _verlauf_zeilen(verlauf: list[dict] | None) -> str:
     zeilen = []
     for runde in (verlauf or [])[-VERLAUF_MAX_RUNDEN:]:
         frage = " ".join(str(runde.get("question") or "").split())[:_VERLAUF_FRAGE_MAX]
-        antwort = " ".join(str(runde.get("answer") or "").split())[:_VERLAUF_ANTWORT_MAX]
+        answer = " ".join(str(runde.get("answer") or "").split())[:_VERLAUF_ANTWORT_MAX]
         if frage:
-            zeilen.append(f"- Frage: {frage}" + (f" — Antwort (gekürzt): {antwort}" if antwort else ""))
+            zeilen.append(f"- Frage: {frage}" + (f" — Antwort (gekürzt): {answer}" if answer else ""))
     return "\n".join(zeilen)
 
 
@@ -641,7 +641,7 @@ def parteien_aufloesen(store, rows: list[dict]) -> None:
     except Exception:  # noqa: BLE001 — Auflösung ist Zusatz, nie Blocker
         return
     for r in betroffen:
-        toks = _falte(r.get("sprecher") or "").split()
+        toks = _falte(r.get("speaker") or "").split()
         partei = next((mapping[t] for t in reversed(toks) if t in mapping), None)
         if partei:
             r["partei"] = partei
@@ -1460,7 +1460,7 @@ def partei_meinungen(question: str, rows: list[dict], model: str = MODEL) -> lis
         gruppen[label] = sorted(gruppen[label],
                                 key=lambda b: b.get("session_date") or "")[-MAX_BEITRAEGE_JE_PARTEI:]
         zeilen = "\n".join(
-            f"  - {b.get('sprecher') or '?'} am {_datum_de(b.get('session_date'))}: "
+            f"  - {b.get('speaker') or '?'} am {_datum_de(b.get('session_date'))}: "
             f"{(b.get('text') or '').strip()[:300]}"
             for b in gruppen[label])
         teile.append(f"{label} ({len(gruppen[label])} Beiträge):\n{zeilen}")
@@ -1493,14 +1493,14 @@ def partei_meinungen(question: str, rows: list[dict], model: str = MODEL) -> lis
             "note": (str(e.get("note")) or "").strip()[:200] or None if e.get("note") else None,
             "kernaussage": {
                 "text": str(kern.get("text") or "").strip()[:300],
-                "sprecher": str(kern.get("sprecher") or "").strip()[:80] or None,
+                "speaker": str(kern.get("speaker") or "").strip()[:80] or None,
                 "datum": str(kern.get("datum") or "").strip()[:10] or None,
             } if kern and kern.get("text") else None,
             "beitraege": len(gruppen[e["partei"]]),
             # Aufklappbare Zeile (Tims Wunsch): die verdichteten Beiträge im
             # Wortlaut — dieselben, die auch das LLM gesehen hat.
             "beitraege_liste": [{
-                "sprecher": b.get("sprecher"),
+                "speaker": b.get("speaker"),
                 "datum": _datum_de(b.get("session_date")),
                 "art": b.get("art"),
                 "gremium": b.get("committee"),
@@ -1544,7 +1544,7 @@ def _debatten_block(debatten: list[dict] | None, eng: bool = False) -> str:
                  "zusage": "Zusage der Verwaltung", "rede": "Redebeitrag"}
     zeilen = []
     for d in debatten:
-        wer = d.get("sprecher") or "?"
+        wer = d.get("speaker") or "?"
         if d.get("partei"):
             wer += f" ({d['partei']})"
         kopf = f"{art_label.get(d.get('art') or 'rede', 'Redebeitrag')} von {wer}"
@@ -1561,8 +1561,8 @@ def _debatten_block(debatten: list[dict] | None, eng: bool = False) -> str:
         if d.get("zu_beschluss"):
             kopf += f" — Aussprache zum Beschluss [{d['zu_beschluss']}]"
         zeile = f"- {kopf}: {(d.get('text') or '').strip()[:400]}"
-        if d.get("antwort"):
-            zeile += f" — Antwort der Verwaltung: {(d['antwort'] or '').strip()[:300]}"
+        if d.get("answer"):
+            zeile += f" — Antwort der Verwaltung: {(d['answer'] or '').strip()[:300]}"
         zeilen.append(zeile)
     if eng:
         # Punktfrage: Die Wortbeiträge bleiben im Kontext (manchmal steckt die
@@ -1621,7 +1621,7 @@ def _steuern_block(zeilen: list[dict] | None) -> str:
         return ""
     teile = []
     for r in zeilen:
-        name = "Steuereinnahmen insgesamt" if r["art"] == "insgesamt" else r["art"]
+        name = "Steuereinnahmen insgesamt" if r["art"] == "total" else r["art"]
         s = f"- {name} ({r['year']}, tatsächlich eingenommen): {_eur(r.get('amount'))}"
         if r.get("year_before") and r.get("amount_before"):
             s += f" — {r['year_before']} waren es {_eur(r['amount_before'])}"
@@ -2087,8 +2087,8 @@ def geld_grafik(store, geld: dict) -> dict | None:
     Antwort sieht aus wie bisher — das Gate erledigt sich über die Daten.
     """
     if geld.get("schulden"):
-        series = [{"year": r["year"], "wert": round(r["insgesamt"] / 1e6, 1)}
-                 for r in store.get_schulden() if r.get("insgesamt") is not None]
+        series = [{"year": r["year"], "wert": round(r["total"] / 1e6, 1)}
+                 for r in store.get_schulden() if r.get("total") is not None]
         if len(series) >= 2:
             s = geld["schulden"]
             return {
@@ -2119,7 +2119,7 @@ def geld_grafik(store, geld: dict) -> dict | None:
                  for r in store.get_steuereinnahmen()
                  if r["art"] == art and r.get("amount") is not None]
         if len(series) >= 2:
-            titel = ("Steuereinnahmen insgesamt" if art == "insgesamt"
+            titel = ("Steuereinnahmen insgesamt" if art == "total"
                      else f"{art} — Ist-Einnahmen")
             return {
                 "art": "taxes",
@@ -2250,7 +2250,7 @@ def _pruefung_block(p: dict | None) -> str:
     verteilung = ", ".join(f"{n}× {name}" for name, n in sorted(
         (p.get("nach_marke") or {}).items(), key=lambda kv: -kv[1]))
     return (f"\nRECHNUNGSPRÜFUNGSAMT, Schlussbericht zum Jahresabschluss {p['year']}\n"
-            f"(insgesamt {p.get('gesamt')} Feststellungen"
+            f"(total {p.get('gesamt')} Feststellungen"
             + (f": {verteilung}" if verteilung else "") + "). Unten eine AUSWAHL —\n"
             "sag, dass es eine Auswahl ist, nenne die Textziffer als Fundstelle und\n"
             "das geprüfte Jahr; NIE mit [id] zitieren"
@@ -2388,7 +2388,7 @@ def _nachbewilligungen_block(n: dict | None) -> str:
              "mayor": "vom Oberbürgermeister",
              "department_200": "vom Fachdienst Finanzen",
              "urgent_decision": "als Eilentscheidung"}
-    zeilen = [f"- Nachbewilligt {n['year']} insgesamt: {_eur(n['gesamt'])} "
+    zeilen = [f"- Nachbewilligt {n['year']} total: {_eur(n['gesamt'])} "
               f"(konsumtiv {_eur(n['konsumtiv'])}, investiv {_eur(n['investiv'])})"]
     for channel, kons, inv in n.get("channels") or []:
         summe = (kons or 0) + (inv or 0)
@@ -2419,7 +2419,7 @@ def _kennzahlen_block(k: dict | None) -> str:
         return ""
     def zeig(wert: float, einheit: str, stellen: int = 2) -> str:
         """Eine Kennzahl so schreiben, wie der Bericht sie druckt."""
-        if einheit == "prozent":
+        if einheit == "percent":
             return f"{wert:.{stellen}f} %".replace(".", ",")
         if einheit == "count":
             return f"{wert:,.0f}".replace(",", ".")
@@ -2427,8 +2427,8 @@ def _kennzahlen_block(k: dict | None) -> str:
                 .replace(".", ",").replace("\u0001", "."))
 
     zeilen = []
-    for name, wert, einheit, stellen, formel in k["werte"]:
-        if einheit == "prozent":
+    for name, wert, einheit, stellen, formula in k["werte"]:
+        if einheit == "percent":
             gezeigt = f"{wert:.{stellen}f} %".replace(".", ",")
         elif einheit == "count":
             gezeigt = f"{wert:,.0f}".replace(",", ".")
@@ -2439,8 +2439,8 @@ def _kennzahlen_block(k: dict | None) -> str:
             gezeigt = (f"{wert:,.{stellen}f} €".replace(",", "\u0001")
                        .replace(".", ",").replace("\u0001", "."))
         zeile = f"- {name} {k['year']}: {gezeigt}"
-        if formel:
-            zeile += f" (so rechnet die Stadt: {formel})"
+        if formula:
+            zeile += f" (so rechnet die Stadt: {formula})"
         zeilen.append(zeile)
     for name, year, alt, alt_b, neu, neu_b, einheit in k.get("korrekturen") or []:
         zeilen.append(f"- ACHTUNG, später korrigiert: {name} {year} stand im Bericht "
@@ -2463,9 +2463,9 @@ def _schulden_block(s: dict | None) -> str:
     nicht vorkommt. Die Abgrenzung steht ausdrücklich dabei: Zwei Zahlen
     heißen „die Schulden der Stadt" und unterscheiden sich um ein Vielfaches.
     """
-    if not s or s.get("insgesamt") is None:
+    if not s or s.get("total") is None:
         return ""
-    kopf = f"- Schuldenstand am Jahresende {s['year']}: {_eur(s['insgesamt'])}"
+    kopf = f"- Schuldenstand am Jahresende {s['year']}: {_eur(s['total'])}"
     if s.get("per_capita"):
         kopf += f" — das sind {_eur(s['per_capita'])} je Einwohner*in"
     if s.get("revised"):
@@ -2473,10 +2473,10 @@ def _schulden_block(s: dict | None) -> str:
     zeilen = [kopf]
     if s.get("davor"):
         zeilen.append(f"- Ein Jahr davor ({s['davor']['year']}): "
-                      f"{_eur(s['davor']['insgesamt'])}")
+                      f"{_eur(s['davor']['total'])}")
     if s.get("hoch"):
         zeilen.append(f"- Höchster Stand der Reihe (sie beginnt {s['reihe_ab']}): "
-                      f"{s['hoch']['year']} mit {_eur(s['hoch']['insgesamt'])}")
+                      f"{s['hoch']['year']} mit {_eur(s['hoch']['total'])}")
     for titel, amount in s.get("arten") or []:
         zeilen.append(f"  - davon {titel}: {_eur(amount)}")
     if s.get("breakdown_rejected"):
@@ -2495,9 +2495,9 @@ def _schulden_block(s: dict | None) -> str:
                       "kleinere. Wer nach „den Schulden“ fragt, bekommt die "
                       "Abgrenzung dazu, sonst ist die Zahl beliebig.")
     b = s.get("buergschaften")
-    if b and b.get("bestand") is not None:
+    if b and b.get("balance") is not None:
         zeile = (f"- Zusätzlich verbürgt (KEINE Schuld, sondern ein Einstehen für "
-                 f"fremde Kredite) {b['year']}: {_eur(b['bestand'])}")
+                 f"fremde Kredite) {b['year']}: {_eur(b['balance'])}")
         if b.get("rueckstellung") is not None:
             zeile += (f"; davon hält die Stadt {_eur(b['rueckstellung'])} als "
                       f"Rückstellung für den erwarteten Ausfall vor")
@@ -2551,16 +2551,16 @@ def _gebaut_block(g: dict | None) -> str:
 
     Die Lücke wird ausdrücklich genannt: Ohne sie liest ein Modell die Reihe
     als geschlossen und bildet Durchschnitte über ein Loch."""
-    if not g or g.get("insgesamt") is None:
+    if not g or g.get("total") is None:
         return ""
     zeilen = [f"- Tatsächliche Investitions-Auszahlungen {g['year']}: "
-              f"{_eur(g['insgesamt'])}"]
+              f"{_eur(g['total'])}"]
     if g.get("davor"):
         zeilen.append(f"- Ein Jahr davor ({g['davor']['year']}): "
-                      f"{_eur(g['davor']['insgesamt'])}")
+                      f"{_eur(g['davor']['total'])}")
     if g.get("hoch"):
         zeilen.append(f"- Höchster Wert der Reihe (sie beginnt {g['reihe_ab']}): "
-                      f"{g['hoch']['year']} mit {_eur(g['hoch']['insgesamt'])}")
+                      f"{g['hoch']['year']} mit {_eur(g['hoch']['total'])}")
     for titel, amount in g.get("arten") or []:
         zeilen.append(f"  - davon {titel}: {_eur(amount)}")
     if g.get("fehlend"):
@@ -2594,7 +2594,7 @@ def _stellenplan_block(s: dict | None) -> str:
     zeilen = []
     for t in s["teile"]:
         zeilen.append(
-            f"- Teil {t['teil']} ({t['teil_name']}): {_stellen(t.get('positions_planned'))} "
+            f"- Teil {t['part']} ({t['teil_name']}): {_stellen(t.get('positions_planned'))} "
             f"Stellen im Haushaltsjahr {s['budget_year']}. Im Vorjahr waren es "
             f"{_stellen(t.get('positions_prior_year'))} Stellen, davon "
             f"{_stellen(t.get('filled'))} besetzt und "
@@ -2612,7 +2612,7 @@ def _stellenplan_block(s: dict | None) -> str:
             "werden kann nur rückwärts. Rechne deshalb NIE\n„Stellen im Haushaltsjahr "
             "minus besetzt“: Das mischt zwei Stichtage und steht\nin keinem Dokument. "
             "Die unbesetzten Stellen stehen als eigene Angabe da.\nEine Zeile „Stellen "
-            "insgesamt“ gibt es im Plan nicht; addiere die Teile nicht.\nNIE mit [id]"
+            "total“ gibt es im Plan nicht; addiere die Teile nicht.\nNIE mit [id]"
             + _beleg_text(s.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n")
 
 
@@ -2959,7 +2959,7 @@ def vereinfachen_stream(frage: str, bisher: str | None, candidates: list[dict],
 def vereinfachen_question(frage: str, bisher: str | None, candidates: list[dict],
                           model: str = MODEL):
     """One-shot-Variante für den Ersatzweg, wenn der Stream abreißt.
-    Liefert ``(antwort, cited_ids)`` wie answer_question."""
+    Liefert ``(answer, cited_ids)`` wie answer_question."""
     messages, extra = vereinfachen_messages(frage, bisher, candidates, model)
     resp = llm.chat_complete(model=model, _feature="qa_einfach", temperature=0.2,
                              max_tokens=VEREINFACHEN_TOKENS, messages=messages, **extra)

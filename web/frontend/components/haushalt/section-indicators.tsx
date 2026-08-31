@@ -162,7 +162,7 @@ function Verlauf({
   const einheit = daten.einheit[gewaehlt] ?? "eur";
   const label = daten.label[gewaehlt] ?? gewaehlt;
   const { series, anmerkung } = useMemo(() => reiheVon(daten, gewaehlt), [daten, gewaehlt]);
-  const formel = formelVon(daten, gewaehlt);
+  const formula = formelVon(daten, gewaehlt);
   const korrekturen = korrekturenVon(daten, gewaehlt);
   const format = formatVon(einheit);
   if (!series.length) return null;
@@ -182,20 +182,20 @@ function Verlauf({
         annotationen={anmerkung ? [anmerkung] : undefined}
       />
 
-      {formel && (
+      {formula && (
         <div className="rounded-xl bg-muted/60 px-3 py-2.5">
           <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
             So rechnet die Stadt
           </p>
           <p className="mt-1 max-w-[80ch] text-[13px] leading-relaxed text-foreground/90">
-            <span className="font-medium">{formel.heading}</span> — „Ermittlung:{" "}
-            {formel.formel}“<Beleg q="indicators" />
+            <span className="font-medium">{formula.heading}</span> — „Ermittlung:{" "}
+            {formula.formula}“<Beleg q="indicators" />
           </p>
           <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">
-            {formel.von_bericht === formel.bis_bericht
-              ? `So gedruckt im Rechenschaftsbericht ${formel.von_bericht}.`
-              : `So gedruckt in den Rechenschaftsberichten ${formel.von_bericht} `
-                + `bis ${formel.bis_bericht}.`}
+            {formula.von_bericht === formula.bis_bericht
+              ? `So gedruckt im Rechenschaftsbericht ${formula.von_bericht}.`
+              : `So gedruckt in den Rechenschaftsberichten ${formula.von_bericht} `
+                + `bis ${formula.bis_bericht}.`}
           </p>
         </div>
       )}

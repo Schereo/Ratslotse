@@ -231,7 +231,7 @@ export function Vorhaben({
       </div>
       <p className="mt-1 max-w-[86ch] text-[12.5px] leading-relaxed text-foreground/90">
         Der Haushaltsplan führt jedes Vorhaben einzeln auf — mit Namen und mit
-        dem, was es insgesamt kosten soll. Ein eigenes Dokument, nicht der
+        dem, was es total kosten soll. Ein eigenes Dokument, nicht der
         Datensatz von oben: das Investitionsprogramm, Anlage 004.
       </p>
 
@@ -392,7 +392,7 @@ export function Vorhaben({
           . Die Summen stimmen nicht mit dem Finanzhaushalt weiter oben überein,
           weil das Investitionsprogramm auch aktivierbare Eigenleistungen enthält,
           für die kein Geld ausgezahlt wird. Angegeben ist je Vorhaben, was es{" "}
-          <strong className="font-semibold text-foreground/85">insgesamt</strong>{" "}
+          <strong className="font-semibold text-foreground/85">total</strong>{" "}
           kosten soll — über alle Jahre, nicht nur {effJahr}; die
           Jahresaufteilung lässt sich aus dem Dokument nicht verlässlich
           auslesen, deshalb zeigen wir sie nicht.

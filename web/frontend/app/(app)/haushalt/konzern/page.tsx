@@ -116,16 +116,16 @@ function KonzernSeiteInner() {
               href: "#summe",
               label: "Anteilsbalken: Kernhaushalt und Rest — klickt zur Summe",
               skizze: (() => {
-                const prozent = Math.round(kern.anteil * 100);
+                const percent = Math.round(kern.anteil * 100);
                 return (
                   <>
                     <span className="flex h-[22px] overflow-hidden rounded-[6px]">
-                      <span style={{ width: `${prozent}%`, background: "var(--sb-voll)" }} />
+                      <span style={{ width: `${percent}%`, background: "var(--sb-voll)" }} />
                       <span className="flex-1" style={{ background: "var(--sb-blass)" }} />
                     </span>
                     <span className="flex justify-between text-[9.5px] text-muted-foreground">
-                      <span>Kernhaushalt {prozent}&#8239;%</span>
-                      <span>daneben {100 - prozent}&#8239;%</span>
+                      <span>Kernhaushalt {percent}&#8239;%</span>
+                      <span>daneben {100 - percent}&#8239;%</span>
                     </span>
                   </>
                 );

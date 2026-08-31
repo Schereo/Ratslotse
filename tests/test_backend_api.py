@@ -847,7 +847,7 @@ def test_haushalt_aenderungslisten_liefert_nur_den_jahrgang(client):
     # ihre Urheber-Marke und ihren „nur die Summe"-Satz.
     assert b["zeilen"][0]["author"] == "Verw. I"
     assert {s["year"] for s in b["summen"]} == {2026, 2027}
-    eigene = {s["label"]: s["eigene"] for s in b["summen"] if s["year"] == 2026}
+    eigene = {s["label"]: s["own"] for s in b["summen"] if s["year"] == 2026}
     assert eigene["Änderungsliste Verw. I"] == 1
     assert eigene["SPD/ CDU/ FDP"] == 0
     # Jede Zeile findet ihr Papier: Die Herkunft-Karte deckt alle Verweise.
@@ -2205,7 +2205,7 @@ def test_own_quiz_estimate(client):
     assert yq["range_min"] == 1877 and yq["range_max"] == 1977
     # Kleine „Jahre"-Dauer bleibt beim Standard-Bereich (0..2×)
     did = client.post("/api/quiz/own", json={
-        "question": "Seit wie vielen Jahren gesperrt?", "category": "schaetzen",
+        "question": "Seit wie vielen Jahren confidential?", "category": "schaetzen",
         "answer_value": 6, "unit": "Jahre"}).json()["id"]
     dq = next(q for q in client.get("/api/quiz/own").json()["questions"] if q["id"] == did)
     assert dq["range_min"] == 0 and dq["range_max"] == 12
@@ -2593,8 +2593,8 @@ def test_verlaengerung_laesst_den_sse_strom_in_ruhe(client, monkeypatch):
 
     assert frisch and frisch != alt  # verlängert wurde trotzdem
     events = [json.loads(z[6:]) for z in body.splitlines() if z.startswith("data: ")]
-    antwort = "".join(e["text"] for e in events if e["type"] == "token")
-    assert antwort.strip() == "Die Veloroute 4 wird ausgebaut [5]."
+    answer = "".join(e["text"] for e in events if e["type"] == "token")
+    assert answer.strip() == "Die Veloroute 4 wird ausgebaut [5]."
     assert [e for e in events if e["type"] == "done"]
 
 
@@ -2969,7 +2969,7 @@ def test_qa_share_traegt_bausteine(client):
         "answer": "Der Rat stimmte zu [5].",
         "sources": [{"id": 5, "title": "Stadionneubau", "session_date": "2026-06-01",
                      "committee": "Rat", "outcome": "angenommen"}],
-        "debatten": [{"sprecher": "Ratsherr Wenzel", "partei": "SPD", "art": "rede",
+        "debatten": [{"speaker": "Ratsherr Wenzel", "partei": "SPD", "art": "rede",
                       "top": "6.1 Stadionneubau", "auszug": "Warnte vor einem Millionengrab.",
                       "committee": "Rat", "datum": "2026-06-01",
                       "protokoll_url": "https://buergerinfo.oldenburg.de/getfile.php?id=4711&type=do",
@@ -2977,7 +2977,7 @@ def test_qa_share_traegt_bausteine(client):
                      # Der Snapshot ist öffentlich und die URL kommt vom
                      # Client: alles außerhalb des Ratsinfo-Systems wird
                      # verworfen statt als „Protokoll" verlinkt.
-                     {"sprecher": "Ratsfrau Muster", "partei": "CDU", "art": "rede",
+                     {"speaker": "Ratsfrau Muster", "partei": "CDU", "art": "rede",
                       "top": "6.1 Stadionneubau", "auszug": "Begrüßte den Plan.",
                       "committee": "Rat", "datum": "2026-06-01",
                       "protokoll_url": "https://boese.example.org/phishing.pdf"}],
@@ -2989,14 +2989,14 @@ def test_qa_share_traegt_bausteine(client):
         "parteien": [{"partei": "SPD", "haltung": "dagegen", "position": "Skeptisch.",
                       "einig": True, "note": None, "beitraege": 3,
                       "kernaussage": {"text": "Kein zweites Millionengrab.",
-                                      "sprecher": "Wenzel", "datum": "01.06.2026"}}],
+                                      "speaker": "Wenzel", "datum": "01.06.2026"}}],
     })
     assert r.status_code == 201
     token = r.json()["token"]
 
     client.cookies.clear()  # öffentlich lesbar
     body = client.get(f"/api/council/qa-share/{token}").json()
-    assert body["debatten"][0]["sprecher"] == "Ratsherr Wenzel"
+    assert body["debatten"][0]["speaker"] == "Ratsherr Wenzel"
     assert body["debatten"][0]["protokoll_url"] == (
         "https://buergerinfo.oldenburg.de/getfile.php?id=4711&type=do")
     assert body["debatten"][0]["protokoll_seite"] == 6
@@ -3047,14 +3047,14 @@ def test_qa_share_public_report_and_admin_removal(client):
 
 def test_qa_share_filters_objectionable_or_embedded_web_content(client):
     _register(client)
-    for frage, antwort in (
+    for frage, answer in (
         ("Sieg Heil", "Antwort."),
         ("Normale Frage", "Hier klicken: https://phishing.invalid"),
         ("Normale Frage", "<script>alert(1)</script>"),
     ):
         response = client.post("/api/council/qa-share", json={
             "question": frage,
-            "answer": antwort,
+            "answer": answer,
             "sources": [],
         })
         assert response.status_code == 422
@@ -3110,7 +3110,7 @@ def test_partei_meinungen_nimmt_beschluss_anker_dazu(client, monkeypatch):
 
     _register(client)
     monkeypatch.setattr(emb, "search_wortbeitraege_je_fraktion", lambda *a, **k: [])
-    anker = [{"id": 4711, "partei": "CDU", "sprecher": "Woltmann",
+    anker = [{"id": 4711, "partei": "CDU", "speaker": "Woltmann",
               "text": "Die CDU-Fraktion lehnt die Satzung ab.", "session_date": "2026-06-12"}]
     gesehen = {}
     monkeypatch.setattr(CouncilStore, "wortbeitraege_zu_beschluessen",
@@ -3352,10 +3352,10 @@ def test_ask_kombiniert_person_mit_ort_ueber_beschlussanker(client, monkeypatch)
     }], "local")
     cs.save_person(42, "Bernhard Ellberg", "SPD")
     cs.save_wortbeitraege(88, [
-        {"art": "rede", "top": "Ö 7 Sporthalle Kreyenbrück", "sprecher": "Bernhard Ellberg",
-         "partei": "SPD", "text": "Die Sanierung sei dringend.", "antwort": None},
-        {"art": "rede", "top": "Ö 7 Sporthalle Kreyenbrück", "sprecher": "Anna Beispiel",
-         "partei": "CDU", "text": "Die Kosten müssten geprüft werden.", "antwort": None},
+        {"art": "rede", "top": "Ö 7 Sporthalle Kreyenbrück", "speaker": "Bernhard Ellberg",
+         "partei": "SPD", "text": "Die Sanierung sei dringend.", "answer": None},
+        {"art": "rede", "top": "Ö 7 Sporthalle Kreyenbrück", "speaker": "Anna Beispiel",
+         "partei": "CDU", "text": "Die Kosten müssten geprüft werden.", "answer": None},
     ])
     cs.close()
 
@@ -3387,9 +3387,9 @@ def test_ask_kombiniert_person_mit_ort_ueber_beschlussanker(client, monkeypatch)
     events = [json.loads(line[6:]) for line in body.splitlines() if line.startswith("data: ")]
     sources = next(event for event in events if event["type"] == "sources")
     assert gesehen["typ"] == "person"
-    assert [row["sprecher"] for row in gesehen["debatten"]] == ["Bernhard Ellberg"]
+    assert [row["speaker"] for row in gesehen["debatten"]] == ["Bernhard Ellberg"]
     assert gesehen["debatten"][0]["zu_beschluss"] == 5
-    assert [row["sprecher"] for row in sources["debatten"]] == ["Bernhard Ellberg"]
+    assert [row["speaker"] for row in sources["debatten"]] == ["Bernhard Ellberg"]
     assert [row["id"] for row in sources["sources"]] == [5]
     assert sources["beleglage"] == "solide"
 
@@ -3589,11 +3589,11 @@ def test_ask_dokumentenplan_sucht_anlagen_und_gibt_sie_ins_prompt(client, monkey
                         lambda self, nrs: {"26/0100": "Sachverhalt zum Lärmschutz"})
     gesehen = {}
 
-    def antwort(*args, **kwargs):
+    def answer(*args, **kwargs):
         gesehen["anlagen"] = kwargs.get("anlagen")
         return iter(["Das Gutachten sieht die Grenzwerte eingehalten [A1]."])
 
-    monkeypatch.setattr(qa_mod, "answer_stream", antwort)
+    monkeypatch.setattr(qa_mod, "answer_stream", answer)
     with client.stream("POST", "/api/council/ask", json={
             "question": "Was steht im Schallgutachten zum Stadionneubau?"}) as response:
         events = [json.loads(line[6:]) for line in "".join(response.iter_text()).splitlines()
@@ -3779,7 +3779,7 @@ def test_ask_keine_debatten_vor_der_sitzung(client, monkeypatch):
     monkeypatch.setattr(emb_mod, "search_wortbeitraege", lambda *a, **k: [(77, 0.9)])
     monkeypatch.setattr(emb_mod, "search_zusagen", lambda *a, **k: [])
     monkeypatch.setattr(CouncilStore, "wortbeitraege_by_ids", lambda self, ids: [
-        {"id": 77, "sprecher": "Alt Redner", "partei": None, "art": "rede",
+        {"id": 77, "speaker": "Alt Redner", "partei": None, "art": "rede",
          "top": "Altes Thema", "text": "Ein alter Beitrag.", "session_date": "2021-01-01",
          "committee": "Rat", "page": None, "ksinr": 100}] if ids else [])
     monkeypatch.setattr(CouncilStore, "wortbeitraege_zu_beschluessen", lambda self, c: [])
@@ -3800,7 +3800,7 @@ def test_ask_keine_debatten_vor_der_sitzung(client, monkeypatch):
     # dieselben Mocks liefern hier sichtbar den Beitrag).
     src = frag("Was hat der Jugendhilfeausschuss am 17.06.2026 beschlossen?")
     assert src["qtype"] == "session"
-    assert [d["sprecher"] for d in src["debatten"]] == ["Alt Redner"]
+    assert [d["speaker"] for d in src["debatten"]] == ["Alt Redner"]
 
 
 def test_ask_sitzungsfrage_ohne_protokoll_antwortet_ehrlich(client, monkeypatch):
@@ -5329,7 +5329,7 @@ def test_gespraech_snapshot_traegt_presse_und_debatten(client, monkeypatch):
     monkeypatch.setattr(CouncilStore, "presse_by_ids", lambda self, ids: [
         {"id": 9, "titel": "Stadt informiert zum Stadion", "url": "https://x/pm", "datum": "2026-07-27"}])
     monkeypatch.setattr(CouncilStore, "wortbeitraege_by_ids", lambda self, ids: [
-        {"id": 7, "sprecher": "Höpken", "partei": "BSW", "art": "rede", "top": "Ö 10",
+        {"id": 7, "speaker": "Höpken", "partei": "BSW", "art": "rede", "top": "Ö 10",
          "text": "Endlich kommt das Stadion.", "committee": "Rat", "session_date": "2026-06-01"}])
 
     store = Store(RATSLOTSE_DB)
@@ -5344,7 +5344,7 @@ def test_gespraech_snapshot_traegt_presse_und_debatten(client, monkeypatch):
         turns = store.qa_gespraech(gid, uid)["turns"]
         quellen = json.loads(turns[0]["sources"]) if isinstance(turns[0]["sources"], str) else turns[0]["sources"]
         assert quellen["presse"][0]["titel"] == "Stadt informiert zum Stadion"
-        assert quellen["debatten"][0]["sprecher"] == "Höpken"
+        assert quellen["debatten"][0]["speaker"] == "Höpken"
         assert quellen["debatten"][0]["auszug"].startswith("Endlich")
         # Der Lese-Endpoint reicht den Snapshot durch (Frontend stellt daraus her).
         g = client.get(f"/api/council/gespraeche/{gid}").json()
@@ -5439,9 +5439,9 @@ def test_haushalt_schulden_traegt_die_zinslast_aus_dem_jahresabschluss(client):
                              url="https://example.org/ja.pdf"),
             sub_budget_no=4, sub_budget_name="Finanzmanagement und Recht")
 
-        antwort = client.get("/api/council/haushalt/schulden")
-        assert antwort.status_code == 200
-        daten = antwort.json()
+        answer = client.get("/api/council/haushalt/schulden")
+        assert answer.status_code == 200
+        daten = answer.json()
 
         zins = daten["zinslast"]
         assert [z["year"] for z in zins] == [2024], "je Jahr genau eine Zinslast"
@@ -5460,9 +5460,9 @@ def test_haushalt_schulden_ohne_jahresabschluss_bleibt_die_zinslast_leer(client)
     eine Null, die wie „keine Zinsen" aussieht.
     """
     _register(client)
-    antwort = client.get("/api/council/haushalt/schulden")
-    assert antwort.status_code == 200
-    assert antwort.json()["zinslast"] == []
+    answer = client.get("/api/council/haushalt/schulden")
+    assert answer.status_code == 200
+    assert answer.json()["zinslast"] == []
 
 
 def test_haushalt_bilanz_liefert_posten_erlaeuterungen_und_herkunft(client):
@@ -5540,9 +5540,9 @@ def test_haushalt_bilanz_ohne_bestand_bleibt_leer(client):
     Endpunkt darf daran nicht scheitern — die Seite lässt den Block dann
     einfach weg, statt eine halbe Bilanz zu behaupten."""
     _register(client)
-    antwort = client.get("/api/council/haushalt/bilanz")
-    assert antwort.status_code == 200
-    assert antwort.json() == {"years": [], "posten": [], "erlaeuterungen": [],
+    answer = client.get("/api/council/haushalt/bilanz")
+    assert answer.status_code == 200
+    assert answer.json() == {"years": [], "posten": [], "erlaeuterungen": [],
                               "herkunft": {}}
 
 
@@ -5660,8 +5660,8 @@ def test_haushalt_thh_posten_schneidet_die_ergebnisrechnung_zu(client):
         cs.close()
 
     def hole(**q):
-        teil = "&".join(f"{k}={v}" for k, v in q.items())
-        return client.get(f"/api/council/haushalt?felder=income_statement&{teil}"
+        part = "&".join(f"{k}={v}" for k, v in q.items())
+        return client.get(f"/api/council/haushalt?felder=income_statement&{part}"
                           ).json()["income_statement"]
 
     voll = hole()
@@ -5684,8 +5684,8 @@ def test_haushalt_thh_posten_schneidet_die_ergebnisrechnung_zu(client):
     assert {z["nr"] for z in fluss if z["sub_budget_no"] is None} == {12, 20}
 
     # Ein Tippfehler ist ein Fehler, keine stille Luecke — wie bei `felder`.
-    antwort = client.get("/api/council/haushalt?felder=income_statement&thh_posten=zwanzig")
-    assert antwort.status_code == 400 and "zwanzig" in antwort.json()["detail"]
+    answer = client.get("/api/council/haushalt?felder=income_statement&thh_posten=zwanzig")
+    assert answer.status_code == 400 and "zwanzig" in answer.json()["detail"]
 
 
 def test_haushalt_felder_schneidet_zu_und_meldet_tippfehler(client):
@@ -5715,9 +5715,9 @@ def test_haushalt_felder_schneidet_zu_und_meldet_tippfehler(client):
     assert set(client.get(
         "/api/council/haushalt?felder= years , ,taxes ").json()) == {"years", "taxes"}
 
-    antwort = client.get("/api/council/haushalt?felder=years,produktjahre")
-    assert antwort.status_code == 400
-    assert "produktjahre" in antwort.json()["detail"]
+    answer = client.get("/api/council/haushalt?felder=years,produktjahre")
+    assert answer.status_code == 400
+    assert "produktjahre" in answer.json()["detail"]
 
 
 def test_haushalt_schickt_nur_belegte_herkunft(client):
@@ -5774,7 +5774,7 @@ def test_haushalt_schulden_stellt_buergschaften_neben_die_eigenen_schulden(clien
     cs = CouncilStore(COUNCIL_DB)
     try:
         cs.save_buergschaften([{
-            "year": 2024, "bestand": 220_300_000.0, "exact": False,
+            "year": 2024, "balance": 220_300_000.0, "exact": False,
             "out_next_year": False, "quelle": "anhang",
             "grund": "Hintergrund ist, dass die verbürgten Bestandsdarlehen "
                      "seitens der Beteiligungen getilgt wurden.",
@@ -5789,7 +5789,7 @@ def test_haushalt_schulden_stellt_buergschaften_neben_die_eigenen_schulden(clien
     b = client.get("/api/council/haushalt/schulden").json()["buergschaften"]
     assert [z["year"] for z in b["series"]] == [2024]
     z = b["series"][0]
-    assert z["bestand"] == 220_300_000.0
+    assert z["balance"] == 220_300_000.0
     # Die Quelle rundet selbst — das muss an der Zahl stehen bleiben.
     assert z["exact"] is False and z["out_next_year"] is False
     # Was eine Bürgschaft ist, reist mit den Zahlen statt im Frontend zu stehen.
@@ -5821,9 +5821,9 @@ def test_haushalt_schulden_liefert_die_dritte_zahl_mit_ihren_warnsaetzen(client)
     try:
         cs.save_integrierte_schulden({
             "year": 2024, "ars": isch.ARS_OLDENBURG, "population": 176_336.0,
-            "insgesamt": 740_330_163.0, "per_capita": 4_198.41,
+            "total": 740_330_163.0, "per_capita": 4_198.41,
             "core_budget": 43_690_972.0, "extra_budgets": 140_916_720.89,
-            "sonstige": 555_722_470.11, "extra_under_50": 2_397_841.89,
+            "other": 555_722_470.11, "extra_under_50": 2_397_841.89,
             "other_below_50": 431_522_725.5, "insgesamt_change": -13.6,
             "probes": [isch.PROBE_KERNHAUSHALT],
         }, h_mod.Herkunft(art="lsn", probe=[isch.PROBE_KERNHAUSHALT],
@@ -5835,7 +5835,7 @@ def test_haushalt_schulden_liefert_die_dritte_zahl_mit_ihren_warnsaetzen(client)
 
     i = client.get("/api/council/haushalt/schulden").json()["integrierte_schulden"]
     assert i["as_of_date"]["year"] == 2024
-    assert i["as_of_date"]["insgesamt"] == 740_330_163.0
+    assert i["as_of_date"]["total"] == 740_330_163.0
     # Der Anteil wird gerechnet, nicht abgeschrieben — er entscheidet, wie die
     # Zahl gelesen werden darf, und ändert sich mit jeder Ausgabe.
     assert 0.58 < i["anteil_unter_50"] < 0.59

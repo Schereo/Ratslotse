@@ -187,7 +187,7 @@ _ZEILEN: tuple[tuple[str, str], ...] = (
     # Jahrgang für Jahrgang.
     ("hundesteuer",      "sonstige Steuern"),
     ("finanzzuweisung",  ZUWEISUNGEN),
-    ("insgesamt",        SUMME),
+    ("total",        SUMME),
 )
 
 #: Die drei Realsteuer-Hebesätze aus 1105, in der Spaltenreihenfolge der
@@ -239,14 +239,14 @@ _SPALTENMARKE = re.compile(r"^\s*S\s*1(\s+S\s*\d+)+\s*$")
 _ENDE = re.compile(r"^\s*(Quelle\s*:|\d\s+[A-ZÄÖÜ])")
 
 
-def _teur(feld: str) -> int:
+def _teur(field: str) -> int:
     """„124.234" → 124234. Tausenderpunkte raus, sonst nichts."""
-    return int(feld.replace(".", ""))
+    return int(field.replace(".", ""))
 
 
-def _prozent(feld: str) -> float:
+def _prozent(field: str) -> float:
     """„8,66" → 8.66."""
-    return float(feld.replace(".", "").replace(",", "."))
+    return float(field.replace(".", "").replace(",", "."))
 
 
 def erkenne_1103(text: str) -> tuple[int, int] | None:
@@ -447,7 +447,7 @@ def lies_1103(text: str, ist_reihe: dict[int, dict[str, float]]) -> dict:
                 "spanne": gelesen["spanne"], "unbekannt": gelesen["unbekannt"],
                 "abbruch": (
                     "Die Summenprobe reißt: Die Steuerarten ergeben nicht die "
-                    f"Zeile „insgesamt“ (größte Abweichung {schlimmste} T€). "
+                    f"Zeile „total“ (größte Abweichung {schlimmste} T€). "
                     "Entweder fehlt eine Zeile, oder die Tabelle ist anders "
                     "gebaut als bisher."
                     + (f" Nicht zugeordnet: {gelesen['unbekannt']}."

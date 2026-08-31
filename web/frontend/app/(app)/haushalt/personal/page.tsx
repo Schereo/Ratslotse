@@ -87,7 +87,7 @@ function Fundstelle({ daten, id }: { daten: StellenplanDaten; id: number | null 
 
 export default function PersonalPage() {
   const [year, setJahr] = useState<number | null>(null);
-  const [teil, setTeil] = useState<StellenTeil>("A");
+  const [part, setTeil] = useState<StellenTeil>("A");
   // Detailtabelle mobil hinter „alle Gruppen zeigen" (H4-05); ab Tablet
   // immer offen — die Klassen dazu stehen in globals.css (gb-nur-mobil).
   const [gruppenOffen, setGruppenOffen] = useState(false);
@@ -106,8 +106,8 @@ export default function PersonalPage() {
   // sein. Obergrenze ist der größte Wert, den ein Balken zeigen kann.
   const skala = useMemo(() => Math.max(
     1, ...(daten?.summen ?? [])
-      .filter((z) => z.teil === teil)
-      .flatMap((z) => [z.positions_planned, z.filled])), [daten, teil]);
+      .filter((z) => z.part === part)
+      .flatMap((z) => [z.positions_planned, z.filled])), [daten, part]);
 
   if (jahrgaenge.loading) {
     return <div className="py-16 text-center text-sm text-muted-foreground">
@@ -126,15 +126,15 @@ export default function PersonalPage() {
   // Der jüngste Jahrgang, für den der GEWÄHLTE Teil vorliegt — für Teil B
   // ist das 2025, weil 2026 im PDF nicht lesbar ist. Die Lücke selbst steht
   // in den Jahrgangs-Zeilen, nicht versteckt in einer Fußnote.
-  const teilJahre = jahrgaengeMitTeil(daten, teil);
+  const teilJahre = jahrgaengeMitTeil(daten, part);
   const teilNeu = teilJahre.at(-1) ?? null;
-  const kern = teilNeu ? gesamt(daten, teilNeu, teil) : null;
+  const kern = teilNeu ? gesamt(daten, teilNeu, part) : null;
   const kernLuecke = luecke(kern);
 
   const detailZeilen = detail.data?.zeilen ?? [];
-  const luecken = groessteLuecken(detailZeilen, teil);
-  const teilGesamt = gesamt(daten, aktJahr, teil);
-  const teilFehlt = fehlt(daten, aktJahr, teil);
+  const luecken = groessteLuecken(detailZeilen, part);
+  const teilGesamt = gesamt(daten, aktJahr, part);
+  const teilFehlt = fehlt(daten, aktJahr, part);
   const quelleUrl = herkunftVon(daten, kern?.herkunft_id)?.url ?? null;
 
   // Der Vergleichs-Satz unterm Umschalter — gerechnet, nicht behauptet:
@@ -145,7 +145,7 @@ export default function PersonalPage() {
     const bis = js.length > 1 ? gesamt(daten, js[js.length - 1], t) : null;
     const l = luecke(bis ?? von);
     return von && bis && l ? {
-      teil: t,
+      part: t,
       spanne: `${deStellen(von.positions_planned)} → ${deStellen(bis.positions_planned)}`,
       anteil: pct(l.anteil),
     } : null;
@@ -189,7 +189,7 @@ export default function PersonalPage() {
             ? Math.round(quadrate * besetztAnteil) : quadrate;
           return (
             <Seitenbuehne
-              kicker={`Stellenplan Teil ${teil} · ${TEIL_LABEL[teil]} · Plan ${teilNeu}`}
+              kicker={`Stellenplan Teil ${part} · ${TEIL_LABEL[part]} · Plan ${teilNeu}`}
               zahl={<><ZaehlZahl wert={kern.positions_planned}
                 nachkomma={Number.isInteger(kern.positions_planned) ? 0 : 1} /> Stellen
                 hält die Stadt vor</>}
@@ -235,9 +235,9 @@ export default function PersonalPage() {
                 Die Karte behält so eine Überschrift für die Gliederung, ohne
                 die Zahl der Bühne zu wiederholen. */}
             <h2 className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-              Stellenplan · {TEIL_LABEL[teil]}<Beleg q="stellenplan" />
+              Stellenplan · {TEIL_LABEL[part]}<Beleg q="stellenplan" />
             </h2>
-            <Segmented<StellenTeil> value={teil} onChange={setTeil}
+            <Segmented<StellenTeil> value={part} onChange={setTeil}
               className="w-full min-[480px]:w-auto [&_button]:min-h-[44px] sm:[&_button]:min-h-0"
               options={[
                 { value: "A", label: "Teil A · Beamt*innen" },
@@ -274,7 +274,7 @@ export default function PersonalPage() {
                 </>
               ) : (
                 <p className="text-[13px] leading-relaxed text-muted-foreground">
-                  Für {TEIL_LABEL[teil]} liegt kein Jahrgang readable vor.
+                  Für {TEIL_LABEL[part]} liegt kein Jahrgang readable vor.
                 </p>
               )}
 
@@ -304,7 +304,7 @@ export default function PersonalPage() {
                 aktJahr={teilNeu}
                 zeilen={alle.map((j) => ({
                   budget_year: j,
-                  zeile: gesamt(daten, j, teil),
+                  zeile: gesamt(daten, j, part),
                   fehlt: FEHLT_GRUND,
                 }))}
               />
@@ -363,7 +363,7 @@ export default function PersonalPage() {
         <section className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-              Wo die Lücken am größten sind · {TEIL_LABEL[teil]}
+              Wo die Lücken am größten sind · {TEIL_LABEL[part]}
             </h2>
             {alle.length > 1 && (
               <div className="flex flex-wrap gap-1">
@@ -384,7 +384,7 @@ export default function PersonalPage() {
 
           {teilFehlt ? (
             <p className="mt-2.5 max-w-[76ch] text-[13px] leading-relaxed text-muted-foreground">
-              Für {aktJahr} liegt {TEIL_LABEL[teil]} nicht vor: Das PDF des Stellenplans gibt
+              Für {aktJahr} liegt {TEIL_LABEL[part]} nicht vor: Das PDF des Stellenplans gibt
               auf diesen Seiten keine Buchstaben aus, sondern Zeichen-Nummern. Wir könnten die
               Zahlen nur raten, und das tun wir nicht.
             </p>
@@ -392,7 +392,7 @@ export default function PersonalPage() {
             <p className="mt-2.5 text-[13px] text-muted-foreground">Wird geladen …</p>
           ) : luecken.length === 0 ? (
             <p className="mt-2.5 text-[13px] text-muted-foreground">
-              Für {aktJahr} weist der Plan in {TEIL_LABEL[teil]} keine unbesetzten Stellen aus.
+              Für {aktJahr} weist der Plan in {TEIL_LABEL[part]} keine unbesetzten Stellen aus.
             </p>
           ) : (
             <>
@@ -429,7 +429,7 @@ export default function PersonalPage() {
                   ))}
                 </ul>
                 <p className="mt-2.5 text-[11.5px] leading-relaxed text-muted-foreground">
-                  Rechts die unbesetzten Stellen, daneben wie viele es in dieser Zeile insgesamt
+                  Rechts die unbesetzten Stellen, daneben wie viele es in dieser Zeile total
                   gab. Die Bezeichnungen sind Amtsbezeichnungen aus dem Besoldungsrecht, keine
                   Berufsbezeichnungen — hinter „Stadtoberinspektor/-in" steckt kein Beruf,
                   sondern eine Besoldungsstufe, auf der sehr verschiedene Aufgaben liegen.

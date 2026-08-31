@@ -73,9 +73,9 @@ def link_suchen() -> str | None:
 
     ``None``, wenn die Seite ihn nicht (mehr) führt — dann greift die
     hinterlegte Adresse, und der Lauf sagt, dass er das tut."""
-    antwort = requests.get(schulden.JAHRBUCH_URL, headers=_UA, timeout=120)
-    antwort.raise_for_status()
-    treffer = schulden.LINK_MUSTER.search(antwort.text)
+    answer = requests.get(schulden.JAHRBUCH_URL, headers=_UA, timeout=120)
+    answer.raise_for_status()
+    treffer = schulden.LINK_MUSTER.search(answer.text)
     return urljoin(schulden.JAHRBUCH_URL, treffer.group(1)) if treffer else None
 
 
@@ -109,11 +109,11 @@ def main() -> int:
                     url = schulden.TABELLE_URL
                     print(f"HINWEIS: Die Übersichtsseite führt keinen Link auf "
                           f"1108 mehr — es gilt die hinterlegte Adresse: {url}")
-                antwort = requests.get(url, headers=_UA, timeout=120)
-                antwort.raise_for_status()
+                answer = requests.get(url, headers=_UA, timeout=120)
+                answer.raise_for_status()
                 pfad = Path(tmp) / "1108.pdf"
-                pfad.write_bytes(antwort.content)
-                print(f"  geladen: {_de(len(antwort.content))} Bytes")
+                pfad.write_bytes(answer.content)
+                print(f"  geladen: {_de(len(answer.content))} Bytes")
 
             text = pdf_text(pfad)
             spanne = schulden.erkenne(text)
@@ -154,7 +154,7 @@ def main() -> int:
 
             juengster = zeilen[-1]
             print(f"  jüngster Jahrgang {juengster['year']}: "
-                  f"{_de(juengster['insgesamt'] / 1e6, 1)} Mio. € insgesamt, "
+                  f"{_de(juengster['total'] / 1e6, 1)} Mio. € total, "
                   f"{_de(juengster['per_capita'])} € je Einwohner*in")
 
             if args.trockenlauf:
@@ -208,17 +208,17 @@ def main() -> int:
 
             geschrieben = 0
             for probenlage in sorted({tuple(z["probes"]) for z in zeilen}):
-                teil = [z for z in zeilen if tuple(z["probes"]) == probenlage]
-                years = [z["year"] for z in teil]
+                part = [z for z in zeilen if tuple(z["probes"]) == probenlage]
+                years = [z["year"] for z in part]
                 spanne_teil = (f"Jahrgänge {years[0]}–{years[-1]}" if len(years) > 1
                                else f"Jahrgang {years[0]}")
                 namen = " und ".join(PROBENNAMEN[p] for p in probenlage)
-                nachweis = (f"{spanne_teil} ({len(teil)} von "
+                nachweis = (f"{spanne_teil} ({len(part)} von "
                             f"{len(zeilen)}): {namen} bestanden")
                 # Wo die Summenprobe fehlt, gehört ihr Messwert dazu — sonst
                 # liest sich „Pro-Kopf-Gegenprobe bestanden" wie eine
                 # Vollständigkeit, die dieser Jahrgang nicht hat.
-                fehlend = [z for z in teil if z["breakdown_rejected"] is not None]
+                fehlend = [z for z in part if z["breakdown_rejected"] is not None]
                 if fehlend:
                     nachweis += ("; die Summenprobe reißt um "
                                  + ", ".join(
@@ -226,7 +226,7 @@ def main() -> int:
                                      + " €" for z in fehlend)
                                  + " — die Aufteilung nach Schuldenarten ist "
                                    "deshalb nicht gespeichert")
-                geschrieben += store.save_schulden(teil, h.Herkunft(
+                geschrieben += store.save_schulden(part, h.Herkunft(
                     probe=list(probenlage), citation=citation,
                     probe_result=nachweis, **anker))
             print(f"  gespeichert: {geschrieben} Jahrgänge")

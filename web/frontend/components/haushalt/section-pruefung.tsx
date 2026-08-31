@@ -71,7 +71,7 @@ import {
   nachAbschnitt, wiederholungsketten,
 } from "@/lib/haushalt-pruefung";
 import { KettenMatrix, type MatrixKette } from "@/components/grafik/ketten-matrix";
-import { LueckenFeld } from "@/components/grafik/luecken-feld";
+import { LueckenFeld } from "@/components/grafik/luecken-field";
 import { Beleg } from "@/components/haushalt/quelle";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { MarkePille } from "@/components/haushalt/mark";

@@ -118,27 +118,27 @@ def test_aggregate_latency_percentiles_and_missing_keys():
 # ---- Debatten-Erwartung (Gold-Case „fliegerhorst-sondermuell-debatte") ----
 
 DEBATTEN = [
-    {"id": 1, "sprecher": "Jaekel", "session_date": "2026-02-12",
-     "text": "Vinylchlorid im Grundwasser stammt aus der militärischen Nutzung.", "antwort": None},
-    {"id": 2, "sprecher": "Müller", "session_date": "2025-06-12",
-     "text": "Durch die Verfüllung können keine Schadstoffe austreten.", "antwort": None},
+    {"id": 1, "speaker": "Jaekel", "session_date": "2026-02-12",
+     "text": "Vinylchlorid im Grundwasser stammt aus der militärischen Nutzung.", "answer": None},
+    {"id": 2, "speaker": "Müller", "session_date": "2025-06-12",
+     "text": "Durch die Verfüllung können keine Schadstoffe austreten.", "answer": None},
 ]
 
 
 def test_debatten_treffer_matcht_ueber_natuerliche_schluessel():
     from eval.run_qa import debatten_treffer
-    assert debatten_treffer([{"sprecher": "jaekel"}], DEBATTEN) == [True]
+    assert debatten_treffer([{"speaker": "jaekel"}], DEBATTEN) == [True]
     assert debatten_treffer([{"text_like": "Vinylchlorid"}], DEBATTEN) == [True]
     # Alle Felder eines Specs müssen zusammen passen — nicht irgendeins.
-    assert debatten_treffer([{"sprecher": "Müller", "text_like": "Vinylchlorid"}], DEBATTEN) == [False]
+    assert debatten_treffer([{"speaker": "Müller", "text_like": "Vinylchlorid"}], DEBATTEN) == [False]
     assert debatten_treffer([{"session_date": "2026-02-12"}, {"session_date": "1999-01-01"}],
                             DEBATTEN) == [True, False]
 
 
 def test_debatten_treffer_prueft_auch_die_verwaltungsantwort():
     from eval.run_qa import debatten_treffer
-    rows = [{"sprecher": "Finke", "text": "Frage zu Messpunkten",
-             "antwort": "Die Werte liegen unter dem Prüfwert."}]
+    rows = [{"speaker": "Finke", "text": "Frage zu Messpunkten",
+             "answer": "Die Werte liegen unter dem Prüfwert."}]
     assert debatten_treffer([{"text_like": "Prüfwert"}], rows) == [True]
 
 

@@ -21,7 +21,7 @@ import {
   spendenGremien, spendenJahre, spendenLaufend,
 } from "@/lib/haushalt";
 import { ZeitreiheMini } from "@/components/grafik/zeitreihe";
-import { LueckenFeld } from "@/components/grafik/luecken-feld";
+import { LueckenFeld } from "@/components/grafik/luecken-field";
 import { SPIELRAUM_LABEL, STEUERARTEN, Spielraum } from "@/lib/haushalt-taxes";
 import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
@@ -104,7 +104,7 @@ export default function EinnahmenPage() {
   // Optional: Ohne einen Lauf von scripts/ingest_staedtevergleich.py ist das
   // Feld leer, und die Seite zeigt weiter nur die Schlüsselzuweisungen.
   const ausgleich = (data.fiscal_equalization ?? []).filter((f) => f.nettobetrag != null).at(-1);
-  const gesamt = data.taxes.find((s) => s.year === year && s.art === "insgesamt")?.amount ?? null;
+  const gesamt = data.taxes.find((s) => s.year === year && s.art === "total")?.amount ?? null;
 
   // Karten: Betrag aus den Daten, innerhalb der Gruppe nach Betrag sortiert
   // (Quellen ohne Zahl ans Ende).

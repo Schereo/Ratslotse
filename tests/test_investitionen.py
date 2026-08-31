@@ -312,7 +312,7 @@ def test_quelle_steht_im_datenstand(tmp_path):
     assert "investitionen" in finanzquellen.REIHENFOLGE
     q = finanzquellen.QUELLEN["investitionen"]
     assert q.tabelle == "council_investitionen"
-    assert q.bestand(store) == {(2025,)}
+    assert q.balance(store) == {(2025,)}
     # Kein Selbstlauf: Der Cron lädt nichts herunter, er meldet nur.
     assert q.automatisch is False
     assert q.nachschub and "ingest_finanzen_opendata" in q.nachschub

@@ -98,8 +98,8 @@ export function FinanzausgleichDaempfer({ tax_capacity }: { tax_capacity: Kraft[
   const hi = Math.ceil(hoechst / 100) * 100;
   const x = (i: number) => X0 + (i / (series.length - 1)) * (X1 - X0);
   const y = (v: number) => Y0 - (v / hi) * (Y0 - YTOP);
-  const pfad = (feld: "tax_index" | "allocations") =>
-    series.map((k, i) => `${i ? "L" : "M"}${x(i)} ${y(k[feld] / 1e6)}`).join(" ");
+  const pfad = (field: "tax_index" | "allocations") =>
+    series.map((k, i) => `${i ? "L" : "M"}${x(i)} ${y(k[field] / 1e6)}`).join(" ");
 
   const gitter = [0.5, 1].map((f) => Math.round(hi * f));
   const schritt = Math.ceil(series.length / (schmal ? 4 : 7));

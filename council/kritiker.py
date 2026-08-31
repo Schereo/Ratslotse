@@ -252,16 +252,16 @@ def pruefe_llm(text: str, quelle: str) -> tuple[bool, str]:
         if roh.startswith("```"):
             roh = roh.strip("`")
             roh = roh[roh.find("{"):]
-        antwort = json.loads(roh)
+        answer = json.loads(roh)
     except Exception:  # noqa: BLE001 — siehe Docstring
         return True, ""
 
-    if antwort.get("covered") is False:
-        return False, " ".join(str(antwort.get("reason") or "ohne Grund").split())[:200]
+    if answer.get("covered") is False:
+        return False, " ".join(str(answer.get("reason") or "ohne Grund").split())[:200]
 
     # „Gedeckt" gilt nur mit Beleg: Jedes genannte Zitat muss in der Quelle
     # stehen. Erfundene Belege sind das eine Schlupfloch dieser Bauart.
-    for zitat in (antwort.get("evidence") or []):
+    for zitat in (answer.get("evidence") or []):
         if not _steht_da(str(zitat), quelle):
             return False, f"Beleg steht nicht in der Quelle: „{str(zitat)[:80]}“"
     return True, ""

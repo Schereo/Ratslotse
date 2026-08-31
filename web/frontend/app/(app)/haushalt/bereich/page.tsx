@@ -556,10 +556,10 @@ function BereichInner() {
               const von = groesse[0];
               const bis = groesse[groesse.length - 1];
               const delta = Math.round((bis - von) * 10) / 10;
-              const prozent = von !== 0 ? Math.round(Math.abs(delta / von) * 100) : null;
+              const percent = von !== 0 ? Math.round(Math.abs(delta / von) * 100) : null;
               const monoton = groesse.every((w, i) => i === 0 || w >= groesse[i - 1])
                 || groesse.every((w, i) => i === 0 || w <= groesse[i - 1]);
-              return { delta, prozent, monoton, von, bis, wort: zuschuss ? "Zuschussbedarf" : "Überschuss" };
+              return { delta, percent, monoton, von, bis, wort: zuschuss ? "Zuschussbedarf" : "Überschuss" };
             })();
             return (
               <>
@@ -572,7 +572,7 @@ function BereichInner() {
                       Mio.&nbsp;€ gegenüber {series[0].year}: Der {kopf.wort} des Bereichs
                       {" "}{kopf.delta >= 0 ? "stieg" : "sank"} von {deMio(kopf.von)} auf
                       {" "}{deMio(kopf.bis)}&nbsp;Mio.&nbsp;€
-                      {kopf.prozent != null && <> — {kopf.delta >= 0 ? "ein Plus" : "ein Minus"} von {kopf.prozent}&nbsp;%</>}
+                      {kopf.percent != null && <> — {kopf.delta >= 0 ? "ein Plus" : "ein Minus"} von {kopf.percent}&nbsp;%</>}
                       {kopf.monoton && groesse!.length > 2 && <>, in jedem Jahr in dieselbe Richtung</>}.
                     </p>
                   </div>

@@ -150,7 +150,7 @@ import Testing
       "answer": "Der Rat hat zugestimmt [42].",
       "created": "2026-08-29T08:15:00",
       "sources": [{"id":42,"title":"Sichere Querung","session_date":"2026-08-28","committee":"Rat","outcome":"angenommen"}],
-      "debatten": [{"sprecher":"Anna Beispiel","partei":"SPD","auszug":"Wir stimmen zu."}],
+      "debatten": [{"speaker":"Anna Beispiel","partei":"SPD","auszug":"Wir stimmen zu."}],
       "presse": [{"titel":"Mitteilung","url":"https://www.oldenburg.de/presse"}],
       "anlagen": [{"nr":1,"label":"Lageplan","url":"https://buergerinfo.oldenburg.de/getfile.php?id=42"}],
       "parteien": [
@@ -460,7 +460,7 @@ import Testing
 
     let party = QuestionEvidenceAvailability(fields: [
         "qtype": .string("partei"),
-        "debatten": .array([.object(["sprecher": .string("Muster")])]),
+        "debatten": .array([.object(["speaker": .string("Muster")])]),
     ])
     #expect(party.showsPartyOpinions)
     #expect(party.showsDebates)

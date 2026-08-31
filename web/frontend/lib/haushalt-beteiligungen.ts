@@ -88,7 +88,7 @@ export type Kennzahl = {
   indicator: "jahresergebnis" | "bilanzsumme" | "eigenkapitalquote";
   year: number;
   wert: number;
-  einheit: "eur" | "prozent";
+  einheit: "eur" | "percent";
   report_year: number;
   /** In wie vielen Berichten dieser Wert übereinstimmend steht. */
   n_reports: number;
@@ -367,13 +367,13 @@ export function eur(wert: number): string {
   return `${wert.toLocaleString("de-DE", { maximumFractionDigits: 2 })} €`;
 }
 
-export function prozent(wert: number): string {
+export function percent(wert: number): string {
   return `${wert.toLocaleString("de-DE", {
     minimumFractionDigits: 1, maximumFractionDigits: 2 })} %`;
 }
 
 export function wertText(k: Kennzahl): string {
-  return k.einheit === "prozent" ? prozent(k.wert) : eur(k.wert);
+  return k.einheit === "percent" ? percent(k.wert) : eur(k.wert);
 }
 
 /** Die Gesellschaften, sortiert wie im Bericht (Eigenbetriebe, Anstalten,

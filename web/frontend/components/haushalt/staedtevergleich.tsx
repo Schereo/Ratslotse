@@ -31,9 +31,9 @@ export function Staedtevergleich({
   zeilen, einheit = "eur_je_ew", hinweisUnter100k = false,
 }: {
   zeilen: Balken[];
-  /** `eur_je_ew` schreibt „€", `prozent` schreibt „%" — die Hebesätze sind
+  /** `eur_je_ew` schreibt „€", `percent` schreibt „%" — die Hebesätze sind
    *  keine Beträge, und ein Euro-Zeichen daran wäre schlicht falsch. */
-  einheit?: "eur_je_ew" | "prozent";
+  einheit?: "eur_je_ew" | "percent";
   /** Die Fußnote zur 100.000-Einwohner-Schwelle im Finanzausgleich. Nur bei
    *  der Steuerkraft — die Steuereinnahmekraft kennt die Schwelle nicht. */
   hinweisUnter100k?: boolean;
@@ -75,7 +75,7 @@ export function Staedtevergleich({
                 "text-right font-mono text-[12px] tabular-nums",
                 z.ist_oldenburg ? "font-bold text-foreground" : "text-muted-foreground",
               )}>
-                {einheit === "prozent"
+                {einheit === "percent"
                   ? `${Math.round(z.wert)} %`
                   : `${euroJeEw(z.wert)} €`}
               </span>

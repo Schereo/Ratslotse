@@ -315,7 +315,7 @@ def parse_feststellungen(text: str) -> dict:
     """Alle Prüfungsfeststellungen eines Schlussberichts.
 
     Liefert ``{year, legende, feststellungen, verworfen}``. Jede Feststellung
-    trägt ``{seq, mark, mark_name, mark_explanation, kette, text_number,
+    trägt ``{seq, mark, mark_name, mark_explanation, chain, text_number,
     section, page, text, follow_paragraph}`` — also alles, was zum Nachschlagen
     im Originaldokument nötig ist.
 
@@ -389,7 +389,7 @@ def parse_feststellungen(text: str) -> dict:
             "mark": mark,
             "mark_name": legende[mark]["name"],
             "mark_explanation": legende[mark]["explanation"],
-            "kette": kettenschluessel(section),
+            "chain": kettenschluessel(section),
             "text_number": text_number,
             "section": section,
             "page": int(seiten[-1]) if seiten else None,

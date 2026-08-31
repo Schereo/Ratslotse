@@ -143,7 +143,7 @@ SPALTEN: tuple[tuple[str, str], ...] = (
     ("public_authorities", "Schulden bei Gebietskörperschaften"),
     ("municipal_enterprises", "Schulden der Eigenbetriebe einschließlich Kliniken "
                       "und innere Darlehen"),
-    ("insgesamt", "Schulden insgesamt"),
+    ("total", "Schulden insgesamt"),
     ("per_capita", "Schulden je Einwohner*in"),
 )
 
@@ -166,7 +166,7 @@ _ZELLE = re.compile(r"^(\d{1,3}(?:\.\d{3})*)([1-9]|r)?$")
 TAUSEND = 1000
 
 
-def _zelle(feld: str) -> tuple[float | None, str]:
+def _zelle(field: str) -> tuple[float | None, str]:
     """Ein Tabellenfeld → (Zahl, Marke). ``(None, "")``, wenn es keine ist.
 
     Ohne Tausenderpunkt gilt das Feld ungeteilt: ``891`` sind 891 und nicht
@@ -174,10 +174,10 @@ def _zelle(feld: str) -> tuple[float | None, str]:
     Punkt, eine Fußnote an einem punktlosen Feld gäbe es also nur, wenn sich
     das Format änderte — und dann soll die Zahl lieber unverändert durch die
     Summenprobe fallen, als still um eine Stelle zu schrumpfen."""
-    feld = feld.strip()
-    if "." not in feld:
-        return (float(feld), "") if feld.isdigit() else (None, "")
-    m = _ZELLE.match(feld)
+    field = field.strip()
+    if "." not in field:
+        return (float(field), "") if field.isdigit() else (None, "")
+    m = _ZELLE.match(field)
     if not m:
         return (None, "")
     return float(m.group(1).replace(".", "")), m.group(2) or ""
@@ -212,9 +212,9 @@ def parse(text: str) -> list[dict]:
             zeilen.append({"year": int(m.group(1)), "unlesbar": roh.strip()})
             continue
         zeile: dict = {"year": int(m.group(1)), "unlesbar": None}
-        for (feld, _), (wert, mark) in zip(SPALTEN, felder):
+        for (field, _), (wert, mark) in zip(SPALTEN, felder):
             # Der Pro-Kopf-Betrag steht schon in Euro, die Schuldenarten nicht.
-            zeile[feld] = wert if feld == "per_capita" else wert * TAUSEND
+            zeile[field] = wert if field == "per_capita" else wert * TAUSEND
             if mark == "r":
                 zeile["revised"] = True
         zeile.setdefault("revised", False)
@@ -230,7 +230,7 @@ def summenprobe(zeile: dict) -> tuple[bool, float]:
     den Euro stimmig — eine Toleranz würde hier nur den einen Jahrgang
     durchwinken, für den sie gedacht wäre."""
     summe = sum(zeile.get(a) or 0.0 for a in ARTEN)
-    deviation = summe - (zeile.get("insgesamt") or 0.0)
+    deviation = summe - (zeile.get("total") or 0.0)
     return deviation == 0.0, deviation
 
 
@@ -247,9 +247,9 @@ def prokopfprobe(zeile: dict, population: int | None) -> tuple[bool | None, floa
     ganze Einheit: Die Quelle rundet den Pro-Kopf-Betrag auf volle Euro, und
     schon deshalb ist der letzte Euro nicht zu halten."""
     ausgewiesen = zeile.get("per_capita")
-    if not population or ausgewiesen is None or zeile.get("insgesamt") is None:
+    if not population or ausgewiesen is None or zeile.get("total") is None:
         return None, None
-    gerechnet = zeile["insgesamt"] / population
+    gerechnet = zeile["total"] / population
     return abs(gerechnet - ausgewiesen) <= 1.0, gerechnet
 
 

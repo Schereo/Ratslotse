@@ -66,11 +66,11 @@ def position(y, seq, sub_budget, werte, product="I10.089904.500",
     if product:
         aus.append(w(134, 194, y, product))
     x = 200
-    for teil in label:
-        aus.append(w(x, x + 5 * len(teil), y, teil))
-        x += 5 * len(teil) + 5
-    for feld, text in werte.items():
-        aus.append(amount(text, KANTE[feld], y))
+    for part in label:
+        aus.append(w(x, x + 5 * len(part), y, part))
+        x += 5 * len(part) + 5
+    for field, text in werte.items():
+        aus.append(amount(text, KANTE[field], y))
     return aus
 
 
@@ -86,17 +86,17 @@ def summenblock(year, zeilen):
     for label, ein, aus_, balance, commitment_authorizations, author in zeilen:
         y += 20
         x = 45
-        for teil in label.split():
-            aus.append(w(x, x + 5 * len(teil), y, teil))
-            x += 5 * len(teil) + 5
+        for part in label.split():
+            aus.append(w(x, x + 5 * len(part), y, part))
+            x += 5 * len(part) + 5
         for text, kante in ((ein, 312), (aus_, 382), (balance, 455), (commitment_authorizations, 519)):
             if text is not None:
                 aus.append(amount(text, kante, y))
         if author:
             x = 530
-            for teil in author.split():
-                aus.append(w(x, x + 5 * len(teil), y, teil))
-                x += 5 * len(teil) + 5
+            for part in author.split():
+                aus.append(w(x, x + 5 * len(part), y, part))
+                x += 5 * len(part) + 5
     return aus
 
 

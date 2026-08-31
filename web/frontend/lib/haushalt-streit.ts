@@ -203,7 +203,7 @@ export function ohneZuordnung(daten: StreitDaten | null): { ohne: number; gesamt
 /** Die ehrliche Mengenangabe der Quelle: wie viele Änderungslisten (alle,
  *  auch die der Verwaltung) und Wortbeiträge über welchen Zeitraum im
  *  Bestand stehen — gezählt, nicht geschrieben. */
-export function bestand(daten: StreitDaten | null): {
+export function balance(daten: StreitDaten | null): {
   listen: number; beitraege: number; jahrgaenge: number; von: number; bis: number;
 } {
   const runden = daten?.runden ?? [];

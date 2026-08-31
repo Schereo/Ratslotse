@@ -346,9 +346,9 @@ def umbuchung_abgeleitet(zeile: dict) -> float:
     Differenz zwischen der Spaltensumme und dem ausgewiesenen Endstand.
     Ab 2021 gibt es die Spalte, und der Rest ist null.
     """
-    kette = (zeile["depreciation_opening"] + zeile["depreciation"] + zeile["depreciation_releases"]
+    chain = (zeile["depreciation_opening"] + zeile["depreciation"] + zeile["depreciation_releases"]
              + zeile["write_ups"] + zeile["depreciation_transfers"])
-    return zeile["depreciation_closing"] - kette
+    return zeile["depreciation_closing"] - chain
 
 
 def umbuchungsprobe(zeilen: list[dict]) -> tuple[float, list[str]]:

@@ -127,7 +127,7 @@ export type FinanzZeile = {
  *  passen. */
 export type Abweichungsgrund = {
   year: number; nr: number; label: string;
-  delta_meur: number | null; prozent: number | null;
+  delta_meur: number | null; percent: number | null;
   text: string;
   source_label: string | null; source_url: string | null;
 };
@@ -248,7 +248,7 @@ export type KennzahlFormel = {
   fassung: number;
   /** Wie die Überschrift im Bericht lautet — nicht unser Label. */
   heading: string;
-  formel: string;
+  formula: string;
   von_bericht: number;
   bis_bericht: number;
   herkunft_id?: number | null;
@@ -645,7 +645,7 @@ export type GewerbesteuerstatistikZeile = {
   /** Der Hebesatz, den das Landesamt nachrichtlich beilegt (Prozentpunkte). */
   rate: number | null;
   /** Ob für diese Stadt ein Betrag der Geheimhaltung unterliegt. */
-  gesperrt: number;
+  confidential: number;
 };
 
 export type HebesatzZeile = {

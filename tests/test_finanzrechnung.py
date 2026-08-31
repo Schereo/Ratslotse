@@ -403,13 +403,13 @@ def test_die_kaskade_geht_in_beiden_layouts_auf(text, year):
     assert fehler == []
     assert uebernommen == zeilen
     r = {z["role"]: z for z in zeilen if z["role"]}
-    for feld in ("result", "plan"):
-        assert (r["total_in_operating"][feld] - r["total_out_operating"][feld]
-                == pytest.approx(r["balance_operating"][feld], abs=1.0))
-        assert (r["total_in_capital"][feld] - r["total_out_capital"][feld]
-                == pytest.approx(r["balance_capital"][feld], abs=1.0))
-        assert (r["balance_operating"][feld] + r["balance_capital"][feld]
-                == pytest.approx(r["cash_surplus"][feld], abs=1.0))
+    for field in ("result", "plan"):
+        assert (r["total_in_operating"][field] - r["total_out_operating"][field]
+                == pytest.approx(r["balance_operating"][field], abs=1.0))
+        assert (r["total_in_capital"][field] - r["total_out_capital"][field]
+                == pytest.approx(r["balance_capital"][field], abs=1.0))
+        assert (r["balance_operating"][field] + r["balance_capital"][field]
+                == pytest.approx(r["cash_surplus"][field], abs=1.0))
 
 
 def test_die_nummern_verschieben_sich_die_rollen_nicht():

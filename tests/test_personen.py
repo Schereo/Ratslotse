@@ -20,11 +20,11 @@ class _PersonenStore:
 
 def test_parteien_aufloesen_trennt_fdp_volt():
     rows = [
-        {"sprecher": "Jens Lükermann", "partei": "FDP/Volt", "text": "…"},
-        {"sprecher": "Pfeiffer", "partei": "Fraktion FDP/Volt", "text": "…"},
-        {"sprecher": "Ratsherr Unbekannt", "partei": "FDP/Volt", "text": "…"},
-        {"sprecher": "Finke", "partei": "Für Oldenburg", "text": "…"},
-        {"sprecher": "Oeljeschläger", "partei": "SPD", "text": "…"},
+        {"speaker": "Jens Lükermann", "partei": "FDP/Volt", "text": "…"},
+        {"speaker": "Pfeiffer", "partei": "Fraktion FDP/Volt", "text": "…"},
+        {"speaker": "Ratsherr Unbekannt", "partei": "FDP/Volt", "text": "…"},
+        {"speaker": "Finke", "partei": "Für Oldenburg", "text": "…"},
+        {"speaker": "Oeljeschläger", "partei": "SPD", "text": "…"},
     ]
     qa.parteien_aufloesen(_PersonenStore(), rows)
     assert rows[0]["partei"] == "Volt"
@@ -55,7 +55,7 @@ def test_wortbeitraege_von_sprecher_umlaut_varianten(tmp_path):
                 "INSERT INTO council_sessions (ksinr, committee, session_date, session_time, "
                 "location, fetched_at) VALUES (1, 'Rat', '2026-06-01', '', '', datetime('now'))")
             store._conn.executemany(
-                "INSERT INTO council_wortbeitraege (ksinr, position, sprecher, partei, art, "
+                "INSERT INTO council_wortbeitraege (ksinr, position, speaker, partei, art, "
                 "top, text, extracted_at) VALUES (1, ?, ?, 'FDP/Volt', 'rede', 'Ö 1', ?, "
                 "datetime('now'))",
                 [(1, "Jens Lükermann", "Beitrag mit Umlaut"),
@@ -72,7 +72,7 @@ def test_search_wortbeitraege_von_person_fallback(monkeypatch):
     kommen die neuesten Beiträge — die Person wurde ausdrücklich gefragt."""
     class _S:
         def wortbeitraege_von_sprecher(self, nachname, limit=120):
-            return [{"id": i, "sprecher": "Lükermann", "partei": "FDP/Volt",
+            return [{"id": i, "speaker": "Lükermann", "partei": "FDP/Volt",
                      "art": "rede", "top": None, "text": f"Beitrag {i}",
                      "committee": "Rat", "session_date": f"2026-0{7 - i}-01"}
                     for i in (1, 2, 3)]
@@ -118,7 +118,7 @@ def _wb_store(tmp_path):
             [(1, "Tim Harms", "SPD", "member"), (1, "Dr. Ingo Harms", "CDU", "member"),
              (2, "Tim Harms", "SPD", "member")])
         store._conn.executemany(
-            "INSERT INTO council_wortbeitraege (ksinr, position, sprecher, partei, art, top, "
+            "INSERT INTO council_wortbeitraege (ksinr, position, speaker, partei, art, top, "
             "text, extracted_at) VALUES (?, ?, ?, 'SPD', 'rede', 'Ö 1', ?, datetime('now'))",
             [(1, 1, "Tim Harms", "Voller Name im Rat"),
              (1, 2, "Harms", "Nur Nachname"),
@@ -621,7 +621,7 @@ def test_verwaltung_detail_nur_mit_erkanntem_amt(tmp_path):
                 [("Jürgen Krogmann", "Verwaltung", "administration", "Oberbürgermeister"),
                  ("Dagmar Sachse", "Verwaltung", "administration", "Für Oberbürgermeister Krogmann")])
             store._conn.executemany(
-                "INSERT INTO council_wortbeitraege (ksinr, position, sprecher, partei, art, top, "
+                "INSERT INTO council_wortbeitraege (ksinr, position, speaker, partei, art, top, "
                 "text, extracted_at) VALUES (1, ?, ?, NULL, 'zusage', 'Ö 1', ?, datetime('now'))",
                 [(1, "Krogmann", "Wird geprüft.")])
 

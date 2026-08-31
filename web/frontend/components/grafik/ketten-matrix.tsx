@@ -28,7 +28,7 @@
 import { useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { useBreite } from "@/lib/use-breite";
 import { cn } from "@/lib/utils";
-import { LueckenFeld } from "./luecken-feld";
+import { LueckenFeld } from "./luecken-field";
 
 /** Ein belegtes Jahr einer Kette: die Marke, die der Bericht dort setzt. */
 export type KettenZelle = { year: number; mark: string };
@@ -108,7 +108,7 @@ export function KettenMatrix({ ketten, years, lueckenJahre, marken, detail, bele
    *  eine Matrix, die ihre Marken selbst erklärt, würde raten. */
   marken: MatrixLegende;
   /** Aufklappbarer Zeilen-Inhalt (der Wortlaut der Feststellungen). */
-  detail?: (kette: MatrixKette) => ReactNode;
+  detail?: (chain: MatrixKette) => ReactNode;
   /** Beleg-Chip-Slot (GB-00). */
   beleg?: ReactNode;
   className?: string;

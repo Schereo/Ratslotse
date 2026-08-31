@@ -97,7 +97,7 @@ function TopEntityCard({ e, maxRecent }: { e: Entity; maxRecent: number }) {
           <div className="h-full rounded-full" style={{ width: `${Math.max(6, (recent / maxRecent) * 100)}%`, background: color }} />
         </div>
         <p className="mt-2 text-[11px] text-muted-foreground">
-          {e.n} insgesamt{last ? ` · zuletzt ${last}` : ""}
+          {e.n} total{last ? ` · zuletzt ${last}` : ""}
         </p>
       </Card>
     </Link>

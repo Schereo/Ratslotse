@@ -68,7 +68,7 @@ def test_recency_intent_wortliste():
     assert qa.recency_intent("Was wurde zuletzt zum Radverkehr beschlossen?")
     assert qa.recency_intent("Was gilt aktuell beim Bebauungsplan 831?")
     assert not qa.recency_intent("Was wurde 2019 zum Stadion beschlossen?")
-    assert not qa.recency_intent("Warum wurde die Brücke gesperrt?")
+    assert not qa.recency_intent("Warum wurde die Brücke confidential?")
 
 
 def test_recency_boost_kippt_nur_nahe_scores():

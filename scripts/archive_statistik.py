@@ -379,7 +379,7 @@ def _sichern(url: str, area: str, name: str, archiv: Path, manifest: dict,
         sagen(f"  würde prüfen: {url}")
         return
     try:
-        antwort = hole(url, etag=stand.get("etag"),
+        answer = hole(url, etag=stand.get("etag"),
                        last_modified=stand.get("last_modified"), session=session)
     except AbrufFehler as exc:
         zaehler["fehler"].append(str(exc))
@@ -389,7 +389,7 @@ def _sichern(url: str, area: str, name: str, archiv: Path, manifest: dict,
         manifest[url] = eintrag
         return
 
-    if antwort.inhalt is None:
+    if answer.inhalt is None:
         zaehler["unveraendert"] += 1
         eintrag = dict(stand)
         eintrag["zuletzt_gesehen"] = heute.isoformat()
@@ -399,7 +399,7 @@ def _sichern(url: str, area: str, name: str, archiv: Path, manifest: dict,
         return
 
     time.sleep(PAUSE)
-    zaehler["bytes"] += len(antwort.inhalt)
+    zaehler["bytes"] += len(answer.inhalt)
     if zaehler["bytes"] > MAX_LAUF_BYTES:
         raise RuntimeError(
             f"Der Lauf hat {zaehler['bytes'] / 1e6:.0f} MB geladen und damit die "
@@ -407,10 +407,10 @@ def _sichern(url: str, area: str, name: str, archiv: Path, manifest: dict,
             f"sich etwas grundsätzlich geändert — bitte nachsehen, statt die "
             f"Platte zu füllen.")
 
-    pfad, neu = version_ablegen(archiv, area, name, antwort.inhalt, heute)
+    pfad, neu = version_ablegen(archiv, area, name, answer.inhalt, heute)
     if neu:
         zaehler["neu"] += 1
-        sagen(f"  NEU  {area}/{name}  ({len(antwort.inhalt) / 1024:.0f} KB) "
+        sagen(f"  NEU  {area}/{name}  ({len(answer.inhalt) / 1024:.0f} KB) "
               f"→ {pfad.name}")
     else:
         # Der Server hat geliefert, aber die Bytes kennen wir schon: geänderter
@@ -418,8 +418,8 @@ def _sichern(url: str, area: str, name: str, archiv: Path, manifest: dict,
         zaehler["unveraendert"] += 1
     manifest[url] = {
         "area": area, "datei": name,
-        "etag": antwort.etag, "last_modified": antwort.last_modified,
-        "hash": inhalts_hash(antwort.inhalt), "bytes": len(antwort.inhalt),
+        "etag": answer.etag, "last_modified": answer.last_modified,
+        "hash": inhalts_hash(answer.inhalt), "bytes": len(answer.inhalt),
         "pfad": str(pfad.relative_to(archiv)),
         "zuerst_gesehen": stand.get("zuerst_gesehen") or heute.isoformat(),
         "zuletzt_gesehen": heute.isoformat(),
@@ -488,16 +488,16 @@ def main(archiv: str | Path | None = None, heute: date | None = None,
             if katalog_text is None and not trocken:
                 stand = manifest.get(KATALOG_URL, {})
                 try:
-                    antwort = hole(KATALOG_URL, etag=stand.get("etag"),
+                    answer = hole(KATALOG_URL, etag=stand.get("etag"),
                                    last_modified=stand.get("last_modified"),
                                    session=session)
-                    if antwort.inhalt is not None:
-                        katalog_text = antwort.inhalt.decode("utf-8", "replace")
+                    if answer.inhalt is not None:
+                        katalog_text = answer.inhalt.decode("utf-8", "replace")
                         manifest[KATALOG_URL] = {
                             "area": "opendata", "datei": "data.json",
-                            "etag": antwort.etag,
-                            "last_modified": antwort.last_modified,
-                            "hash": inhalts_hash(antwort.inhalt),
+                            "etag": answer.etag,
+                            "last_modified": answer.last_modified,
+                            "hash": inhalts_hash(answer.inhalt),
                             "zuerst_gesehen": stand.get("zuerst_gesehen") or heute.isoformat(),
                             "zuletzt_gesehen": heute.isoformat()}
                     else:

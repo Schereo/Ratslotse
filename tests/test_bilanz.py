@@ -389,11 +389,11 @@ def test_vorjahreskette_findet_einen_riss():
     """Der Stichtagswert des einen Abschlusses steht im nächsten noch einmal
     als Vorjahr. Zwei getrennt gelesene Dokumente, dieselbe Zahl — weicht
     eine ab, hat sich einer der beiden verlesen."""
-    kette = _kette()
-    for p in kette[2023]["posten"]:
+    chain = _kette()
+    for p in chain[2023]["posten"]:
         if p["role"] == "sachvermoegen":
             p["wert"] += 1000.0
-    risse = bilanz.vorjahreskette(kette)
+    risse = bilanz.vorjahreskette(chain)
     assert len(risse) == 1
     year, folge, warum = risse[0]
     assert (year, folge) == (2023, 2024)

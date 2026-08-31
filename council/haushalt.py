@@ -539,7 +539,7 @@ def build_questions(rows: list[dict], year: int, source_url: str) -> list[dict]:
 
     # 1) Gesamt-Ausgaben — die eine Zahl, die man kennen sollte (entjargonisiert).
     q1 = _estimate(
-        f"Wie viel Geld plant die Stadt Oldenburg {year} insgesamt auszugeben — "
+        f"Wie viel Geld plant die Stadt Oldenburg {year} total auszugeben — "
         "alle laufenden Ausgaben von Personal bis Sozialleistungen?",
         gesamt, lo=max(50, round(gesamt * 0.28, -1)), hi=round(gesamt * 2.1, -2),
         year=year, source_url=source_url, chart_json=chart_all, detail=zusammensetzung,
@@ -829,7 +829,7 @@ def build_abschluss_questions(store) -> list[dict]:
         # nebeneinandergestellt wäre die Frage angreifbar — zu Recht.
         richtig = "Alle drei — je nachdem, was mitgezählt wird"
         opts = [f"{_mio(kern['amount'])} Mio. Euro ({kern['year']})",
-                f"{_mio(schulden['insgesamt'])} Mio. Euro ({schulden['year']})",
+                f"{_mio(schulden['total'])} Mio. Euro ({schulden['year']})",
                 f"{_mio(konzern['amount'])} Mio. Euro ({konzern['year']})",
                 richtig]
         years = {kern["year"], schulden["year"], konzern["year"]}
@@ -846,7 +846,7 @@ def build_abschluss_questions(store) -> list[dict]:
                 f"Alle drei Zahlen stimmen — sie zählen Verschiedenes. "
                 f"{_mio(kern['amount'])} Mio. Euro ({kern['year']}) sind die "
                 f"Geldschulden des Kernhaushalts, "
-                f"{_mio(schulden['insgesamt'])} Mio. Euro ({schulden['year']}) die "
+                f"{_mio(schulden['total'])} Mio. Euro ({schulden['year']}) die "
                 f"der Stadt samt ihren Eigenbetrieben, und "
                 f"{_mio(konzern['amount'])} Mio. Euro ({konzern['year']}) die des "
                 f"ganzen Konzerns mit allen Beteiligungen." + nachsatz),
@@ -859,10 +859,10 @@ def build_abschluss_questions(store) -> list[dict]:
 
     # 2) Die Bürgschaften — eine Zahl, die in keiner Schuldenreihe steht.
     buerg = (schulden or {}).get("buergschaften")
-    if buerg and buerg.get("bestand"):
-        amount = _mio(buerg["bestand"])
+    if buerg and buerg.get("balance"):
+        amount = _mio(buerg["balance"])
         eigene = _mio(kern["amount"]) if kern else None
-        vergleich = (f" Das ist rund das {buerg['bestand'] / kern['amount']:.0f}-Fache "
+        vergleich = (f" Das ist rund das {buerg['balance'] / kern['amount']:.0f}-Fache "
                      f"der {eigene} Mio. Euro, die der Kernhaushalt selbst schuldet."
                      if kern and kern["amount"] else "")
         qs.append(_estimate(
@@ -883,7 +883,7 @@ def build_abschluss_questions(store) -> list[dict]:
         zusatz = ""
         if buerg.get("rueckstellung"):
             rueck = _komma(buerg["rueckstellung"] / 1e6, 2)
-            anteil = _komma(buerg["rueckstellung"] / buerg["bestand"] * 100, 2)
+            anteil = _komma(buerg["rueckstellung"] / buerg["balance"] * 100, 2)
             zusatz = (f" Für den erwarteten Ausfall hält die Stadt {rueck} Mio. Euro "
                       f"zurück — {anteil} Prozent des Bestands.")
         qs[-1]["explanation"] = (

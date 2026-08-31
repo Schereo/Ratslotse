@@ -13,7 +13,7 @@ export type SchuldenJahr = {
   special_funds: number | null;
   public_authorities: number | null;
   municipal_enterprises: number | null;
-  insgesamt: number;
+  total: number;
   /** Betrag je Einwohner*in — die Angabe DER QUELLE, nicht unsere Division. */
   per_capita: number | null;
   breakdown_rejected: number | null;
@@ -39,7 +39,7 @@ export type SchuldenDaten = {
   /** Was diese Zahlen zählen — kommt aus `council/schulden.py`, damit
    *  Oberfläche und Datenbank dieselbe Auskunft geben. */
   abgrenzung: string;
-  arten: { feld: string; titel: string }[];
+  arten: { field: string; titel: string }[];
   /** Was der Schuldenstand im Jahr kostet: Posten 17 der Ergebnisrechnung
    *  („Zinsen und ähnliche Aufwendungen"), also Ist aus dem Jahresabschluss —
    *  nicht aus dem Jahrbuch, aus dem der Bestand kommt.
@@ -83,7 +83,7 @@ export type SchuldenDaten = {
    *  die die Stadt nicht haftet (2024: 58 %). */
   integrierte_schulden?: {
     as_of_date: {
-      year: number; insgesamt: number; per_capita: number | null;
+      year: number; total: number; per_capita: number | null;
       core_budget: number | null; extra_budgets: number | null;
       sonstige: number | null; population: number | null;
       change: number | null; herkunft_id: number | null;
@@ -105,7 +105,7 @@ export type SchuldenDaten = {
  *  Jahrgänge gleich aus. */
 export type Buergschaft = {
   year: number;
-  bestand: number;
+  balance: number;
   exact: boolean;
   out_next_year: boolean;
   quelle: string;
@@ -141,7 +141,7 @@ export { herkunftVon } from "@/lib/haushalt";
  *  gewachsen. Nur die absolute Reihe zu zeigen hieße, das Wachstum der Stadt
  *  als Schuldenaufbau zu lesen; nur die Pro-Kopf-Reihe zu zeigen, den
  *  absoluten Anstieg zu verschweigen. */
-export type Ansicht = "insgesamt" | "per_capita";
+export type Ansicht = "total" | "per_capita";
 
 export type Punkt = { year: number; wert: number };
 
@@ -151,7 +151,7 @@ export function punkte(series: SchuldenJahr[], ansicht: Ansicht): Punkt[] {
       year: z.year,
       // Absolutbeträge in Mio., Pro-Kopf-Beträge in Euro — sonst stünde die
       // eine Reihe bei 337 und die andere bei 0,0019.
-      wert: ansicht === "insgesamt" ? z.insgesamt / 1e6 : (z.per_capita ?? NaN),
+      wert: ansicht === "total" ? z.total / 1e6 : (z.per_capita ?? NaN),
     }))
     .filter((p) => Number.isFinite(p.wert));
 }

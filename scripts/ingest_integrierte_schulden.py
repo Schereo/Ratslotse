@@ -58,8 +58,8 @@ KOPFZEILEN = {"User-Agent": "Ratslotse/1.0 (+https://ratslotse.de)"}
 def link_finden() -> str:
     """Die Adresse des aktuellen Tabellenbands von der Übersichtsseite."""
     anfrage = urllib.request.Request(isch.UEBERSICHT_URL, headers=KOPFZEILEN)
-    with urllib.request.urlopen(anfrage, timeout=60) as antwort:  # noqa: S310
-        page = antwort.read().decode("utf-8", "replace")
+    with urllib.request.urlopen(anfrage, timeout=60) as answer:  # noqa: S310
+        page = answer.read().decode("utf-8", "replace")
     treffer = isch.LINK_MUSTER.search(page)
     if not treffer:
         raise SystemExit(
@@ -82,8 +82,8 @@ def main() -> int:
         source_url = link_finden()
         print(f"Tabellenband: {source_url}")
         anfrage = urllib.request.Request(source_url, headers=KOPFZEILEN)
-        with urllib.request.urlopen(anfrage, timeout=180) as antwort:  # noqa: S310
-            roh = antwort.read()
+        with urllib.request.urlopen(anfrage, timeout=180) as answer:  # noqa: S310
+            roh = answer.read()
         tmp = tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False)
         tmp.write(roh)
         tmp.close()
@@ -97,7 +97,7 @@ def main() -> int:
                          f"im Blatt {isch.BLATT}.")
 
     anteil = isch.anteil_unter_50(gefunden)
-    print(f"{gefunden['year']}: {gefunden['insgesamt']/1e6:.2f} Mio. € "
+    print(f"{gefunden['year']}: {gefunden['total']/1e6:.2f} Mio. € "
           f"({gefunden['per_capita']:,.0f} € je Einwohner*in)")
     print(f"  davon aus Beteiligungen unter 50 %: {anteil*100:.1f} %")
 

@@ -302,13 +302,13 @@ def summenprobe(teilhaushalte: list[dict], gesamt: list[dict],
     Gibt ``(besteht, groesste_abweichung)`` zurück."""
     schlimmste = 0.0
     for nr in (12, 20):
-        for feld in ("plan", "result"):
-            ganz = next((p.get(feld) for p in gesamt if p["nr"] == nr), None)
+        for field in ("plan", "result"):
+            ganz = next((p.get(field) for p in gesamt if p["nr"] == nr), None)
             if not ganz:
                 return False, 1.0
-            teil = sum(next((p.get(feld) for p in x["posten"] if p["nr"] == nr), 0) or 0
+            part = sum(next((p.get(field) for p in x["posten"] if p["nr"] == nr), 0) or 0
                        for x in teilhaushalte)
-            schlimmste = max(schlimmste, abs(teil - ganz) / abs(ganz))
+            schlimmste = max(schlimmste, abs(part - ganz) / abs(ganz))
     return schlimmste <= toleranz, schlimmste
 
 
@@ -325,13 +325,13 @@ def strukturprobe(posten: list[dict], toleranz: float = _TOLERANZ) -> tuple[bool
     nach_nr = {p["nr"]: p for p in posten}
     if not {12, 20, 21} <= set(nach_nr):
         return False, "Posten 12, 20 oder 21 fehlt"
-    for feld in ("plan", "result"):
-        werte = [nach_nr[n].get(feld) for n in (12, 20, 21)]
+    for field in ("plan", "result"):
+        werte = [nach_nr[n].get(field) for n in (12, 20, 21)]
         if any(w is None for w in werte):
-            return False, f"{feld}: Wert fehlt"
+            return False, f"{field}: Wert fehlt"
         rest = (werte[0] - werte[1]) - werte[2]
         if abs(rest) > toleranz:
-            return False, f"{feld}: 12 − 20 − 21 = {rest:+.2f} €"
+            return False, f"{field}: 12 − 20 − 21 = {rest:+.2f} €"
     return True, ""
 
 
@@ -817,19 +817,19 @@ def finanzprobe(posten: list[dict], toleranz: float = _FR_TOLERANZ
     fehler: list[str] = []
     hinweise: list[str] = []
 
-    def summe(von: int, bis: int, feld: str) -> float:
-        return sum(nach_nr[n].get(feld) or 0 for n in range(von, bis + 1) if n in nach_nr)
+    def summe(von: int, bis: int, field: str) -> float:
+        return sum(nach_nr[n].get(field) or 0 for n in range(von, bis + 1) if n in nach_nr)
 
-    for feld, wie in (("result", "Ist"), ("plan", "Ansatz")):
+    for field, wie in (("result", "Ist"), ("plan", "Ansatz")):
         for name, von, bis, role in bereiche:
-            soll, ist = nach_rolle[role].get(feld), summe(von, bis, feld)
+            soll, ist = nach_rolle[role].get(field), summe(von, bis, field)
             if soll is None:
                 fehler.append(f"{wie}: {name} — Summenzeile ohne Wert")
             elif abs(ist - soll) > toleranz:
                 fehler.append(f"{wie}: {name} — Einzelzeilen {ist:,.2f} € ≠ "
                               f"Summenzeile {soll:,.2f} € (Δ {ist - soll:+,.2f} €)")
         for a, b, ziel, vorzeichen in _SALDEN:
-            werte = [nach_rolle[r].get(feld) for r in (a, b, ziel)]
+            werte = [nach_rolle[r].get(field) for r in (a, b, ziel)]
             if any(v is None for v in werte):
                 fehler.append(f"{wie}: {ziel} nicht nachrechenbar — Wert fehlt")
             elif abs((werte[0] + vorzeichen * werte[1]) - werte[2]) > toleranz:
@@ -980,8 +980,8 @@ def parse_abweichungsgruende(text: str, year: int) -> list[dict]:
     """Abschnitt 6.3.1 des Jahresabschlusses: **warum** ein Posten vom Plan
     abweicht, je Posten und in den Worten der Verwaltung.
 
-    Liefert je Posten ``{nr, label, delta_meur, prozent, text}``.
-    ``delta_meur`` und ``prozent`` sind die Werte, die die Überschrift selbst
+    Liefert je Posten ``{nr, label, delta_meur, percent, text}``.
+    ``delta_meur`` und ``percent`` sind die Werte, die die Überschrift selbst
     nennt — sie sind die Eintrittskarte: Erst der Abgleich mit der geparsten
     Tabellenzeile (``pruefe_abweichungsgruende``) entscheidet, ob die
     Erläuterung übernommen wird.
@@ -1022,7 +1022,7 @@ def parse_abweichungsgruende(text: str, year: int) -> list[dict]:
             "year": year, "nr": nr,
             "label": " ".join(m.group(2).split()),
             "delta_meur": _eur_lose(m.group(4)) * vorzeichen,
-            "prozent": _eur_lose(m.group(6)) * vz_prozent,
+            "percent": _eur_lose(m.group(6)) * vz_prozent,
             "text": _bis_abschnittsende(_fliesstext(gewaehlt[m.end():ende])),
         })
     return out
@@ -1067,9 +1067,9 @@ def pruefe_abweichungsgruende(gruende: list[dict], posten: list[dict],
         plan = p.get("plan")
         if plan:
             ist_prozent = p["deviation"] / plan * 100
-            if abs(ist_prozent - g["prozent"]) > toleranz_prozent:
+            if abs(ist_prozent - g["percent"]) > toleranz_prozent:
                 abgelehnt.append(
-                    f"Posten {g['nr']}: Text {g['prozent']:+.2f} % ≠ Tabelle {ist_prozent:+.2f} %")
+                    f"Posten {g['nr']}: Text {g['percent']:+.2f} % ≠ Tabelle {ist_prozent:+.2f} %")
                 continue
         angenommen.append(g)
     return angenommen, abgelehnt

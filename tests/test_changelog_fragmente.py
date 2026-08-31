@@ -71,17 +71,17 @@ def test_umlaut_schreibweise_wird_gelesen(tmp_path):
     assert lies_fragment(pfad).heading == "Geändert"
 
 
-@pytest.mark.parametrize("inhalt,teil", [
+@pytest.mark.parametrize("inhalt,part", [
     ("Kein Frontmatter, nur Text.\n", "Frontmatter"),
     ("---\nkategorie: repariert\n---\n\nText.\n", "unbekannt"),
     ("---\nkategorie: behoben\n---\n\n   \n", "kein Text"),
     ("---\nkategorie\n---\n\nText.\n", "schluessel"),
 ])
-def test_kaputte_fragmente_werfen(tmp_path, inhalt, teil):
+def test_kaputte_fragmente_werfen(tmp_path, inhalt, part):
     pfad = _fragment(tmp_path, inhalt)
     with pytest.raises(FragmentFehler) as fehler:
         lies_fragment(pfad)
-    assert teil in str(fehler.value)
+    assert part in str(fehler.value)
 
 
 def test_readme_und_unterstrich_sind_keine_fragmente(tmp_path):

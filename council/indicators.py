@@ -113,9 +113,9 @@ class Kennzahl:
 #: andere ein.
 KENNZAHLEN: tuple[Kennzahl, ...] = (
     Kennzahl("eigenkapitalquote_1", "Eigenkapitalquote I (ohne Sonderposten)",
-             "prozent", r"eigenkap.?talquote i(?!i)"),
+             "percent", r"eigenkap.?talquote i(?!i)"),
     Kennzahl("eigenkapitalquote_2", "Eigenkapitalquote II (mit Sonderposten)",
-             "prozent", r"eigenkap.?talquote ii"),
+             "percent", r"eigenkap.?talquote ii"),
     Kennzahl("einwohner", "Einwohnende am 31.12.",
              "anzahl", r"anzahl der einwohnenden"),
     Kennzahl("verschuldung_je_einwohner",
@@ -133,15 +133,15 @@ KENNZAHLEN: tuple[Kennzahl, ...] = (
              "Netto-Neuinvestitionen je Einwohner*in",
              "eur", r"netto-neuinvestitionen"),
     Kennzahl("anlagenintensitaet", "Anlagenintensität",
-             "prozent", r"anlagenintensit[äa]t"),
+             "percent", r"anlagenintensit[äa]t"),
     Kennzahl("reinvestitionsquote", "Reinvestitionsquote auf Sachvermögen",
-             "prozent", r"reinvestitionsquote"),
+             "percent", r"reinvestitionsquote"),
     Kennzahl("infrastrukturquote", "Infrastrukturquote",
-             "prozent", r"infrastrukturquote"),
+             "percent", r"infrastrukturquote"),
     Kennzahl("personalintensitaet", "Personalintensität",
-             "prozent", r"(aktive )?personalintensit[äa]t"),
+             "percent", r"(aktive )?personalintensit[äa]t"),
     Kennzahl("steuerquote", "Steuerquote",
-             "prozent", r"steuerquote"),
+             "percent", r"steuerquote"),
 )
 
 #: Was sich aus unserer Bilanz nachrechnen lässt: Kennzahl → (Zähler-Rolle,
@@ -225,11 +225,11 @@ def parse_kennzahlen(text: str, report_year: int) -> tuple[list[dict], list[str]
         if treffer is None:
             unbekannt.append(_flach(text_) or "(ohne Beschriftung)")
         else:
-            for year, (wert, stellen, prozent) in zip(years, werte):
+            for year, (wert, stellen, percent) in zip(years, werte):
                 # Das Prozentzeichen ist ein zweites, unabhängiges Signal für
                 # die Einheit — steht es an einer Euro-Kennzahl, stimmt die
                 # Spaltenzuordnung nicht.
-                if prozent != (treffer.einheit == "prozent"):
+                if percent != (treffer.einheit == "percent"):
                     unbekannt.append(f"{treffer.key}: Einheit passt nicht zum Wert {wert}")
                     break
                 zeilen.append({"report_year": report_year, "indicator": treffer.key,
@@ -274,7 +274,7 @@ def parse_formeln(text: str, report_year: int) -> list[dict]:
         stelle = zeile.find("Ermittlung")
         if stelle < 0:
             continue
-        formel = zeile[stelle:].split(":", 1)[-1].strip()
+        formula = zeile[stelle:].split(":", 1)[-1].strip()
         # WO EINE FORMEL AUFHÖRT. Sie bricht auf zwei Arten um: mit Trennstrich
         # („Gesamtaufwen-\ndungen") und ohne („… / ordentliche
         # \nGesamtaufwendungen"). Eine Regel, die nur den Trennstrich kennt,
@@ -294,18 +294,18 @@ def parse_formeln(text: str, report_year: int) -> list[dict]:
             if any(k.passt(weiter) for k in KENNZAHLEN):
                 break
             j += 1
-            formel = (formel[:-1] if formel.endswith("-") else formel + " ") + weiter
+            formula = (formula[:-1] if formula.endswith("-") else formula + " ") + weiter
         heading = next((z.strip() for z in reversed(zeilen[:i]) if z.strip()), "")
         treffer = next((k for k in KENNZAHLEN if k.passt(heading)), None)
         if treffer:
             formeln.append({"report_year": report_year, "indicator": treffer.key,
                             "heading": re.sub(r"\s+", " ", heading).strip(),
-                            "formel": re.sub(r"\s+", " ", formel).strip()})
+                            "formula": re.sub(r"\s+", " ", formula).strip()})
     return formeln
 
 
-def _formel_flach(formel: str) -> str:
-    text = _flach(formel)
+def _formel_flach(formula: str) -> str:
+    text = _flach(formula)
     for muster, ersatz in SCHREIBWEISEN:
         text = re.sub(muster, ersatz, text)
     return text.strip()
@@ -332,7 +332,7 @@ def fassungen(formeln: list[dict]) -> dict[tuple[str, int], int]:
     bekannt: dict[str, dict[str, int]] = {}
     for f in sorted(formeln, key=lambda f: (f["indicator"], f["report_year"])):
         je_kennzahl = bekannt.setdefault(f["indicator"], {})
-        text = _formel_flach(f["formel"])
+        text = _formel_flach(f["formula"])
         nummern[(f["indicator"], f["report_year"])] = je_kennzahl.setdefault(
             text, len(je_kennzahl) + 1)
     return nummern

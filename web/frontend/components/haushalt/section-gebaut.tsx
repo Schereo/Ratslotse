@@ -54,7 +54,7 @@ import {
   strassen, verzehr,
 } from "@/lib/haushalt-gebaut";
 import { Gegenbalken } from "@/components/grafik/gegenbalken";
-import { LueckenFeld } from "@/components/grafik/luecken-feld";
+import { LueckenFeld } from "@/components/grafik/luecken-field";
 import { NahtSaeulen, type NahtJahr } from "@/components/grafik/naht-saeulen";
 import { Anteilsbalken } from "@/components/haushalt/anteilsbalken";
 import { Beleg } from "@/components/haushalt/quelle";
@@ -314,7 +314,7 @@ export function GebautAbschnitt({ onBestand }: {
             <p className="mt-1.5 max-w-[64ch] text-sm leading-relaxed text-muted-foreground">
               Der Haushaltsplan sagt, was die Stadt bauen und kaufen will. Hier steht,
               was im Jahr {letzter.year} tatsächlich abgeflossen ist:{" "}
-              {deMioEuro(letzter.insgesamt)}&#8239;Mio.&nbsp;€.
+              {deMioEuro(letzter.total)}&#8239;Mio.&nbsp;€.
             </p>
           </div>
           {quelleUrl && (
@@ -376,7 +376,7 @@ export function GebautAbschnitt({ onBestand }: {
           <div className="flex flex-wrap items-end gap-x-8 gap-y-3">
             <div>
               <p className="font-display text-[28px] font-bold leading-none tracking-tight tabular-nums sm:text-[32px]">
-                {deMioEuro(letzter.insgesamt)}&#8239;Mio.&nbsp;€
+                {deMioEuro(letzter.total)}&#8239;Mio.&nbsp;€
               </p>
               <p className="mt-1 text-[12px] text-muted-foreground">
                 ausgezahlt für Investitionen<Beleg q="gebaut" />
@@ -496,7 +496,7 @@ export function GebautAbschnitt({ onBestand }: {
               label: a.titel, wert: a.amount / 1e6,
               farbe: TOENE[Math.min(i, TOENE.length - 1)],
             }))}
-            gesamt={letzter.insgesamt / 1e6}
+            gesamt={letzter.total / 1e6}
           />
           {/* „Sonstige Investitionstätigkeit" ist in den jüngeren Jahrgängen
               einer der größten Posten. Was darin steckt, sagt das Jahrbuch

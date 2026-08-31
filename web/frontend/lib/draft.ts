@@ -16,7 +16,7 @@ const HALTBAR_MS = 30 * 60 * 1000;
 
 export type Entwurf = {
   /** Wer den Text zurückholt — frei gewählte Kennung des Feldes. */
-  feld: string;
+  field: string;
   text: string;
   /** Wohin es nach der Anmeldung zurückgehen soll (Pfad inkl. Query). */
   zurueck: string;
@@ -28,19 +28,19 @@ export type Entwurf = {
 const offen = new Map<string, () => string>();
 
 /** Ein Eingabefeld anmelden. Gibt die Abmeldung zurück (für useEffect). */
-export function entwurfMelden(feld: string, lesen: () => string): () => void {
-  offen.set(feld, lesen);
-  return () => { offen.delete(feld); };
+export function entwurfMelden(field: string, lesen: () => string): () => void {
+  offen.set(field, lesen);
+  return () => { offen.delete(field); };
 }
 
 /** Bei 401 aufgerufen: den längsten offenen Entwurf sichern. Mehrere Felder
  *  gleichzeitig zu retten brächte nichts — zurück kommt man nur an eine Stelle. */
 export function entwurfSichern(zurueck: string): void {
-  let beste: { feld: string; text: string } | null = null;
-  for (const [feld, lesen] of offen) {
+  let beste: { field: string; text: string } | null = null;
+  for (const [field, lesen] of offen) {
     let text = "";
     try { text = lesen().trim(); } catch { /* Komponente schon weg */ }
-    if (text.length > 2 && (!beste || text.length > beste.text.length)) beste = { feld, text };
+    if (text.length > 2 && (!beste || text.length > beste.text.length)) beste = { field, text };
   }
   if (!beste) return;
   try {
@@ -52,12 +52,12 @@ export function entwurfSichern(zurueck: string): void {
 }
 
 /** Gesicherten Entwurf für dieses Feld holen und dabei löschen (einmalig). */
-export function entwurfAbholen(feld: string): string | null {
+export function entwurfAbholen(field: string): string | null {
   try {
     const roh = sessionStorage.getItem(KEY);
     if (!roh) return null;
     const e = JSON.parse(roh) as Entwurf;
-    if (e.feld !== feld) return null;
+    if (e.field !== field) return null;
     sessionStorage.removeItem(KEY);
     if (Date.now() - e.gespeichertAm > HALTBAR_MS) return null;
     return e.text || null;

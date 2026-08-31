@@ -162,7 +162,7 @@ export default function VergleichSeite() {
   const olReihe = series(data, "steuereinnahmekraft_je_ew", "403000");
   const wobReihe = series(data, "steuereinnahmekraft_je_ew", WOLFSBURG);
 
-  const antwort = antwortAnlage(data.beleg);
+  const answer = antwortAnlage(data.beleg);
   const antrag = antragAnlage(data.beleg);
   const hatZahlen = tax_capacity.length > 0 || grundsteuer.length > 0;
 
@@ -300,7 +300,7 @@ export default function VergleichSeite() {
                   beleg={<Beleg q="lsn_realsteuern" />}
                 />
               ) : (
-                <Staedtevergleich zeilen={grundsteuer} einheit="prozent" />
+                <Staedtevergleich zeilen={grundsteuer} einheit="percent" />
               )}
             </div>
             {/* Zwei Sätze für zwei Datenlagen. Der Bruch-Hinweis gehört an
@@ -390,7 +390,7 @@ export default function VergleichSeite() {
                 Oldenburg führt Gebäudewirtschaft, Abfallwirtschaft und Bäder als
                 Eigenbetriebe, das Klinikum als eigene Anstalt. Diese Betriebe rechnen
                 selbst ab; im Haushalt tauchen sie höchstens als Zuschusszeile auf. Von
-                allem, was die Stadt insgesamt bewegt, stehen deshalb nur rund{" "}
+                allem, was die Stadt total bewegt, stehen deshalb nur rund{" "}
                 <strong>64 Prozent</strong> im Kernhaushalt — nachzulesen unter{" "}
                 <Link href="/haushalt/konzern" className="font-semibold text-primary">
                   Der Konzern Stadt
@@ -451,8 +451,8 @@ export default function VergleichSeite() {
                       className="transition-transform group-hover:translate-x-0.5" />
                   </Link>
                 )}
-                {antwort?.url && (
-                  <a href={antwort.url} target="_blank" rel="noopener noreferrer"
+                {answer?.url && (
+                  <a href={answer.url} target="_blank" rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-primary">
                     <ExternalLink className="h-3.5 w-3.5 flex-none" />
                     Antwort der Verwaltung im Original (PDF)

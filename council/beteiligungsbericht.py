@@ -436,7 +436,7 @@ KENNZAHLEN: tuple[tuple[str, str, str], ...] = (
     ("bilanzsumme", r"Bilanzsumme", "eur"),
     # „Eigenkapitaquote" ist der Tippfehler des Berichts 2022, „Eigenkapital-
     # Quote in Prozent" die Schreibweise des Klinikums.
-    ("eigenkapitalquote", r"Eigenkapita\s*l?\s*-?\s*[qQ]uote", "prozent"),
+    ("eigenkapitalquote", r"Eigenkapita\s*l?\s*-?\s*[qQ]uote", "percent"),
 )
 
 _KENN_ANKER = re.compile(r"Kennzahlen im Zeitverlauf")
@@ -843,17 +843,17 @@ def _person_zerlegen(zeile: str, gremium: str, sort_order: int) -> Aufsichtspers
     chair_role: str | None = None
     hinweise: list[str] = []
 
-    def einordnen(teil: str) -> None:
+    def einordnen(part: str) -> None:
         nonlocal chair_role
-        teil = teil.strip(" ,;")
-        if not teil:
+        part = part.strip(" ,;")
+        if not part:
             return
-        if _STELLV.search(teil):
+        if _STELLV.search(part):
             chair_role = chair_role or "deputy"
-        elif _VORSITZ.match(teil):
+        elif _VORSITZ.match(part):
             chair_role = chair_role or "chair"
-        elif _ZEITRAUM.match(teil):
-            hinweise.append(teil.strip("()"))
+        elif _ZEITRAUM.match(part):
+            hinweise.append(part.strip("()"))
 
     rest = re.sub(r"\(([^)]*)\)", lambda m: (einordnen(m.group(1)) or " "), zeile)
     teile = [t.strip() for t in rest.split(",")]

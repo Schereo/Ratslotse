@@ -185,10 +185,10 @@ def test_nullable_felder_sind_swift_lesbar():
     spec = json.loads((Path(__file__).resolve().parents[1] / "api" / "openapi.json").read_text())
     offen = set()
     for name, s in spec["components"]["schemas"].items():
-        for feld, p in (s.get("properties") or {}).items():
+        for field, p in (s.get("properties") or {}).items():
             zweige = p.get("anyOf")
             if isinstance(zweige, list) and {"type": "null"} in zweige:
-                offen.add(f"{name}.{feld}")
+                offen.add(f"{name}.{field}")
 
     neu = offen - bekannt
     assert not neu, (

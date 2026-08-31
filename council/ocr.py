@@ -311,7 +311,7 @@ def lies_seite(bild: Seitenbild, model: str = MODEL) -> str:
     """
     from kern.llm import chat_complete  # noqa: PLC0415 — hält den Importbaum flach
 
-    antwort = chat_complete(
+    answer = chat_complete(
         model=model,
         temperature=TEMPERATUR,
         messages=[{"role": "user", "content": [
@@ -320,7 +320,7 @@ def lies_seite(bild: Seitenbild, model: str = MODEL) -> str:
         ]}],
         _feature="anlagen_ocr",
     )
-    text = (antwort.choices[0].message.content or "").strip()
+    text = (answer.choices[0].message.content or "").strip()
     return text[:MAX_SEITE]
 
 

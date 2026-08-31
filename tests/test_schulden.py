@@ -59,7 +59,7 @@ Ostfriesischen Wasserverband übertragen.
 4  Gründung des Eigenbetriebes Gebäudewirtschaft und Hochbau (EGH) zum 01.Januar 2010.
 Kapitel 11 - Verwaltung und Finanzen
 Jahr
-         Schulden in Tausend Euro insgesamt
+         Schulden in Tausend Euro total
 Schulden aus
 Kreditmarkt-
 mittel
@@ -102,7 +102,7 @@ def test_fremdes_dokument_wird_nicht_gelesen():
 # --- Zellen: Fußnoten und Marken -------------------------------------------
 
 
-@pytest.mark.parametrize("feld,wert,mark", [
+@pytest.mark.parametrize("field,wert,mark", [
     ("301.516", 301516, ""),      # gewöhnlich
     ("0", 0, ""),
     ("891", 891, ""),             # dreistellig ohne Punkt
@@ -112,14 +112,14 @@ def test_fremdes_dokument_wird_nicht_gelesen():
     ("251.160r", 251160, "r"),    # revidiert
     ("1.673r", 1673, "r"),
 ])
-def test_fussnoten_und_marken_kleben_nicht_am_betrag(feld, wert, mark):
+def test_fussnoten_und_marken_kleben_nicht_am_betrag(field, wert, mark):
     """``26.5981`` sind 26.598 mit Fußnote 1 und nicht 265.981.
 
     Auflösbar, weil deutsche Tausendergruppen genau drei Ziffern haben — was
     hinter der letzten vollständigen Gruppe steht, gehört nicht zur Zahl. Ein
     Parser, der bloß die Punkte entfernt, liest hier das Zehnfache und meldet
     nichts."""
-    assert schulden._zelle(feld) == (wert, mark)
+    assert schulden._zelle(field) == (wert, mark)
 
 
 def test_punktloses_feld_gilt_ungeteilt():
@@ -149,7 +149,7 @@ def test_summenprobe_faengt_eine_verdrehte_spalte():
     ist der Fehler, den zeilenweises Lesen nicht bemerkt."""
     zeile = dict(_zeile(schulden.lies(TABELLE, EINWOHNER), 2025))
     zeile["credit_market"], zeile["municipal_enterprises"] = 296_190_000, 40_804_000
-    zeile["insgesamt"] = 336_994_000
+    zeile["total"] = 336_994_000
     ok, _ = schulden.summenprobe(zeile)
     assert ok, "Vertauschen zweier Summanden ändert die Summe nicht"
     zeile["municipal_enterprises"] = 41_000_000
@@ -186,7 +186,7 @@ def test_prokopfprobe_faengt_einen_faktor_tausend():
     """Die Quelle rechnet in Tausend Euro. Wer die Umrechnung vergisst, liegt
     um Faktor 1000 daneben — die Summenprobe merkt davon nichts, weil sie
     innerhalb derselben Einheit rechnet. Diese hier merkt es."""
-    zeile = {"year": 2025, "insgesamt": 336_994, "per_capita": 1908}
+    zeile = {"year": 2025, "total": 336_994, "per_capita": 1908}
     ok, _ = schulden.prokopfprobe(zeile, 176614)
     assert not ok
 
@@ -203,7 +203,7 @@ def test_2022_verliert_seine_aufteilung_aber_nicht_seine_summe(gelesen):
     Die **Summe** trägt die unabhängige Pro-Kopf-Probe und bleibt: Sie zu
     verwerfen hieße, eine belegte Zahl wegzuwerfen."""
     z = _zeile(gelesen, 2022)
-    assert z["insgesamt"] == 281_457_000
+    assert z["total"] == 281_457_000
     assert z["per_capita"] == 1652
     assert all(z[art] is None for art in schulden.ARTEN)
     assert z["breakdown_rejected"] == 1_078_000
@@ -230,7 +230,7 @@ def test_betraege_kommen_in_euro_an(gelesen):
     """Die Quelle rechnet in Tausend Euro, gespeichert wird wie überall im
     Bereich in Euro — der Pro-Kopf-Betrag steht dort schon."""
     z = _zeile(gelesen, 2025)
-    assert z["insgesamt"] == 336_994_000
+    assert z["total"] == 336_994_000
     assert z["credit_market"] == 40_804_000
     assert z["municipal_enterprises"] == 296_190_000
     assert z["per_capita"] == 1908
@@ -253,7 +253,7 @@ def test_die_umbuchung_von_2010_bleibt_sichtbar(gelesen):
     assert nachher["credit_market"] < vorher["credit_market"] * 0.3
     assert nachher["municipal_enterprises"] > vorher["municipal_enterprises"] * 6
     # Die Summe bewegt sich um weniger als 5 % — es ist eine Umbuchung.
-    assert abs(nachher["insgesamt"] - vorher["insgesamt"]) < vorher["insgesamt"] * 0.05
+    assert abs(nachher["total"] - vorher["total"]) < vorher["total"] * 0.05
 
 
 def test_kein_jahrgang_der_angekuendigten_spanne_geht_verloren():
@@ -296,7 +296,7 @@ def test_speichern_und_lesen(tmp_path, gelesen):
         # NULL bleibt NULL und wird nicht unterwegs zu einer Null.
         z2022 = next(z for z in zeilen if z["year"] == 2022)
         assert z2022["credit_market"] is None
-        assert z2022["insgesamt"] == 281_457_000
+        assert z2022["total"] == 281_457_000
         assert z2022["breakdown_rejected"] == 1_078_000
     finally:
         store.close()
@@ -337,8 +337,8 @@ def test_verschiedene_probenlagen_bekommen_verschiedene_herkuenfte(tmp_path, gel
     store = CouncilStore(tmp_path / "c.sqlite")
     try:
         for lage in {tuple(z["probes"]) for z in gelesen["zeilen"]}:
-            teil = [z for z in gelesen["zeilen"] if tuple(z["probes"]) == lage]
-            store.save_schulden(teil, _herkunft(probe=list(lage)))
+            part = [z for z in gelesen["zeilen"] if tuple(z["probes"]) == lage]
+            store.save_schulden(part, _herkunft(probe=list(lage)))
         zeilen = {z["year"]: z for z in store.get_schulden()}
         h2022 = store.get_herkunft([zeilen[2022]["herkunft_id"]])[0]
         h2025 = store.get_herkunft([zeilen[2025]["herkunft_id"]])[0]
@@ -407,17 +407,17 @@ def test_endpunkt_liefert_reihe_abgrenzung_und_belege(tmp_path, gelesen):
     store = CouncilStore(tmp_path / "c.sqlite")
     try:
         store.save_schulden(gelesen["zeilen"], _herkunft())
-        antwort = haushalt_schulden(_user=None, store=store)
+        answer = haushalt_schulden(_user=None, store=store)
 
-        assert antwort["years"][-1] == 2025
-        assert antwort["series"][-1]["insgesamt"] == 336_994_000
+        assert answer["years"][-1] == 2025
+        assert answer["series"][-1]["total"] == 336_994_000
         # Die Abgrenzung kommt aus dem Parser-Modul, nicht aus dem Frontend.
-        assert antwort["abgrenzung"] == schulden.ABGRENZUNG
-        assert [a["feld"] for a in antwort["arten"]] == list(schulden.ARTEN)
+        assert answer["abgrenzung"] == schulden.ABGRENZUNG
+        assert [a["field"] for a in answer["arten"]] == list(schulden.ARTEN)
 
         # Jede Zeile findet ihren Beleg, und der trägt Erklärsätze.
-        for zeile in antwort["series"]:
-            h = antwort["herkunft"][str(zeile["herkunft_id"])]
+        for zeile in answer["series"]:
+            h = answer["herkunft"][str(zeile["herkunft_id"])]
             assert h["probes"], "Beleg ohne Erklärsatz"
             assert h["url"]
     finally:
@@ -437,9 +437,9 @@ def test_endpunkt_bleibt_ohne_bestand_ruhig(tmp_path):
 
     store = CouncilStore(tmp_path / "leer.sqlite")
     try:
-        antwort = haushalt_schulden(_user=None, store=store)
-        assert antwort["series"] == [] and antwort["years"] == []
-        assert antwort["abgrenzung"]
+        answer = haushalt_schulden(_user=None, store=store)
+        assert answer["series"] == [] and answer["years"] == []
+        assert answer["abgrenzung"]
     finally:
         store.close()
 

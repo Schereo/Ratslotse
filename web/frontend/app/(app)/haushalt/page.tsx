@@ -328,7 +328,7 @@ export default function HaushaltPage() {
               Die Ausgaben der Stadt seit {langErster.year}
             </h2>
             <p className="mt-1.5 max-w-[74ch] text-sm leading-relaxed text-foreground/90">
-              Die Veröffentlichungen der Stadt nennen für {langErster.year} insgesamt{" "}
+              Die Veröffentlichungen der Stadt nennen für {langErster.year} total{" "}
               {deMio(langErster.amount / 1e6)}&#8239;Mio.&nbsp;€ und für {langLetzter.year}{" "}
               {deMio(langLetzter.amount / 1e6)}&#8239;Mio.&nbsp;€ Ausgaben
               <Beleg q="expense_series" />.{" "}

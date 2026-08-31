@@ -479,7 +479,7 @@ struct QuestionsView: View {
         input = ""
         Task { await model.reportBadgeEvent("frage") }
         let history = turns.suffix(4).map {
-            AskRound(frage: $0.question, antwort: String($0.answer.prefix(600)))
+            AskRound(frage: $0.question, answer: String($0.answer.prefix(600)))
         }
         turns.append(QuestionTurn(question: question, status: "Beschlüsse durchsuchen …"))
         let index = turns.count - 1
@@ -861,7 +861,7 @@ struct QuestionsView: View {
               "url": "https://example.org/presse"
             }],
             "debatten": [{
-              "sprecher": "Mara Beispiel",
+              "speaker": "Mara Beispiel",
               "partei": "GRÜNE",
               "art": "Wortbeitrag",
               "datum": "2026-08-26",
@@ -1924,13 +1924,13 @@ struct PartyCoreStatement: Codable, Sendable {
 
     enum CodingKeys: String, CodingKey {
         case text
-        case speaker = "sprecher"
+        case speaker = "speaker"
         case date = "datum"
     }
 
     var jsonValue: JSONValue {
         var fields: [String: JSONValue] = ["text": .string(text)]
-        if let speaker { fields["sprecher"] = .string(speaker) }
+        if let speaker { fields["speaker"] = .string(speaker) }
         if let date { fields["datum"] = .string(date) }
         return .object(fields)
     }
@@ -2449,7 +2449,7 @@ private struct QuestionAnswerActions: View {
         rating = value
         struct Body: Codable, Sendable {
             let frage: String
-            let antwort_auszug: String?
+            let answer_excerpt: String?
             let rating: String
             let grund: String?
         }
@@ -2458,7 +2458,7 @@ private struct QuestionAnswerActions: View {
                 "/api/council/qa-feedback",
                 body: Body(
                     frage: String(turn.question.prefix(300)),
-                    antwort_auszug: String(turn.answer.prefix(500)),
+                    answer_excerpt: String(turn.answer.prefix(500)),
                     rating: value,
                     grund: nil
                 )
@@ -2476,7 +2476,7 @@ private struct QuestionAnswerActions: View {
         }
         struct Body: Codable, Sendable {
             let frage: String
-            let antwort: String
+            let answer: String
             let quellen: [Source]
             let debatten: [JSONValue]
             let presse: [JSONValue]
@@ -2494,7 +2494,7 @@ private struct QuestionAnswerActions: View {
                 "/api/council/qa-share",
                 body: Body(
                     frage: String(turn.question.prefix(300)),
-                    antwort: String(turn.answer.prefix(8000)),
+                    answer: String(turn.answer.prefix(8000)),
                     quellen: turn.sources.map {
                         Source(
                             id: $0.id,
@@ -2760,7 +2760,7 @@ struct CouncilEvidenceBlocks: View {
             DisclosureGroup {
                 VStack(alignment: .leading, spacing: 12) {
                     ForEach(Array(debates.enumerated()), id: \.offset) { _, item in
-                        let speaker = item["sprecher"]?.string ?? "Ohne Namen"
+                        let speaker = item["speaker"]?.string ?? "Ohne Namen"
                         let party = item["partei"]?.string
                         let kind = item["art"]?.string?.capitalized
                         let row = EvidenceTextRow(

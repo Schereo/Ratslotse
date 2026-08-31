@@ -129,13 +129,13 @@ def emit_keys(store, cases: list[dict]) -> None:
 # Metrik-Kern — pure Funktionen, offline testbar
 # --------------------------------------------------------------------------- #
 
-DEBATTE_FIELDS = ("sprecher", "session_date", "text_like")
+DEBATTE_FIELDS = ("speaker", "session_date", "text_like")
 
 
 def debatten_treffer(specs: list[dict], rows: list[dict]) -> list[bool]:
     """Je erwartetem Wortbeitrag: liegt er in den gefundenen Debatten?
 
-    Ein Spec beschreibt den Beitrag über natürliche Merkmale (``sprecher``,
+    Ein Spec beschreibt den Beitrag über natürliche Merkmale (``speaker``,
     ``session_date``, ``text_like``) statt über eine id — dieselbe Portabilität
     wie bei ``expected_keys``. Alle angegebenen Felder müssen passen;
     ``text_like`` prüft Teilstring in Beitrag ODER Verwaltungsantwort."""
@@ -146,12 +146,12 @@ def debatten_treffer(specs: list[dict], rows: list[dict]) -> list[bool]:
             raise ValueError(f"unbekannte Debatten-Schluessel {sorted(unknown)}")
         hit = False
         for r in rows:
-            if spec.get("sprecher") and spec["sprecher"].lower() not in (r.get("sprecher") or "").lower():
+            if spec.get("speaker") and spec["speaker"].lower() not in (r.get("speaker") or "").lower():
                 continue
             if spec.get("session_date") and spec["session_date"] != (r.get("session_date") or ""):
                 continue
             if spec.get("text_like"):
-                heu = f"{r.get('text') or ''} {r.get('antwort') or ''}".lower()
+                heu = f"{r.get('text') or ''} {r.get('answer') or ''}".lower()
                 if spec["text_like"].lower() not in heu:
                     continue
             hit = True

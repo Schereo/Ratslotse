@@ -42,7 +42,7 @@ CREATE TABLE council_ergebnisrechnung (
   PRIMARY KEY (year, sub_budget_no, nr));
 CREATE TABLE council_abweichungsgruende (
   year INTEGER NOT NULL, nr INTEGER NOT NULL, label TEXT NOT NULL,
-  delta_meur REAL, prozent REAL, text TEXT NOT NULL,
+  delta_meur REAL, percent REAL, text TEXT NOT NULL,
   source_label TEXT, source_url TEXT, fetched_at TEXT NOT NULL,
   PRIMARY KEY (year, nr));
 CREATE TABLE council_pruefbericht_quellen (
@@ -90,7 +90,7 @@ def alte_db(tmp_path):
           JA_LABEL, JA_URL, "2026-08-14T07:12:01")])
     cn.execute(
         "INSERT INTO council_abweichungsgruende (year, nr, label, delta_meur, "
-        " prozent, text, source_label, source_url, fetched_at) VALUES (?,?,?,?,?,?,?,?,?)",
+        " percent, text, source_label, source_url, fetched_at) VALUES (?,?,?,?,?,?,?,?,?)",
         (2023, 1, "Steuern und ähnliche Abgaben", 75.1, 24.82,
          "Die Mehrerträge entfallen nahezu auf den Bereich der Gewerbesteuer.",
          JA_LABEL, JA_URL, "2026-08-14T07:12:00"))
@@ -455,9 +455,9 @@ def test_ein_jahrgang_darf_mehrere_dokumente_tragen(tmp_path):
                      label=f"007 THH0{sub_budget}",
                      url=f"https://buergerinfo.oldenburg.de/getfile.php?id={sub_budget}&type=do"))
 
-    teil = store.haushalt_dokumente()["teilhaushalt"]
-    assert {d["year"] for d in teil} == {2023}
-    assert {d["label"] for d in teil} == {"007 THH01", "007 THH04"}
+    part = store.haushalt_dokumente()["teilhaushalt"]
+    assert {d["year"] for d in part} == {2023}
+    assert {d["label"] for d in part} == {"007 THH01", "007 THH04"}
     store.close()
 
 

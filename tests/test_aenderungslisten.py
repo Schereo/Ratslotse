@@ -84,9 +84,9 @@ def position(y, seq, sub_budget, beitraege, product="P10.111011.003",
     if product:
         aus.append(w(152, 210, y, product))
     x = 223
-    for teil in label:
-        aus.append(w(x, x + 5 * len(teil), y, teil))
-        x += 5 * len(teil) + 5
+    for part in label:
+        aus.append(w(x, x + 5 * len(part), y, part))
+        x += 5 * len(part) + 5
     for text, spalte in beitraege:
         aus.append(amount(text, 407 if spalte == "e" else 470, y))
     return aus
@@ -102,16 +102,16 @@ def summenblock(year, zeilen, heading=None):
     for vor, e, a, s, nach in zeilen:
         y += 20
         x = 40
-        for teil in vor.split():
-            aus.append(w(x, x + 5 * len(teil), y, teil))
-            x += 5 * len(teil) + 5
+        for part in vor.split():
+            aus.append(w(x, x + 5 * len(part), y, part))
+            x += 5 * len(part) + 5
         for text in (e, a, s):
             x = max(x, 300)
             aus.append(w(x, x + 4 * len(text), y, text))
             x += 4 * len(text) + 20
-        for teil in nach.split():
-            aus.append(w(x, x + 5 * len(teil), y, teil))
-            x += 5 * len(teil) + 5
+        for part in nach.split():
+            aus.append(w(x, x + 5 * len(part), y, part))
+            x += 5 * len(part) + 5
     return aus
 
 

@@ -20,7 +20,7 @@ export type Feststellung = {
   text_number: string;
   section: string;
   /** Schlüssel, unter dem dieselbe Sache über Jahrgänge zusammenfindet. */
-  kette: string | null;
+  chain: string | null;
   page: number | null;
   text: string;
   /** Der Absatz, der im Bericht direkt darauf folgt — dort steht oft die
@@ -78,10 +78,10 @@ export type Kette = {
 export function wiederholungsketten(feststellungen: Feststellung[]): Kette[] {
   const nach = new Map<string, Feststellung[]>();
   for (const f of feststellungen) {
-    if (!f.kette) continue;
-    const liste = nach.get(f.kette);
+    if (!f.chain) continue;
+    const liste = nach.get(f.chain);
     if (liste) liste.push(f);
-    else nach.set(f.kette, [f]);
+    else nach.set(f.chain, [f]);
   }
   const ketten: Kette[] = [];
   for (const [schluessel, eintraege] of nach) {

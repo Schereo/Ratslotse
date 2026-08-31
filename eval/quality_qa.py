@@ -125,12 +125,12 @@ def erzeugen(label: str, db: Path) -> Path:
                         c["vorlage_excerpt"] = vorlagen_mod.excerpt(t, 350)
             except Exception:  # noqa: BLE001
                 pass
-            antwort, cited = qa.answer_question(
+            answer, cited = qa.answer_question(
                 f["frage"], ctx, typ=typ, presse=presse_rows,
                 haushalt=haushalt, debatten=debatten_rows, gross=gross)
             cases.append({
                 "id": f["id"], "fokus": f["fokus"], "frage": f["frage"], "typ": typ,
-                "antwort": qa.split_followups(antwort)[0], "cited": cited,
+                "answer": qa.split_followups(answer)[0], "cited": cited,
                 "quellen": [{"id": c["id"], "title": c.get("title"),
                              "datum": c.get("session_date")} for c in ctx],
                 "debatten_n": len(debatten_rows), "presse_n": len(presse_rows),
@@ -195,7 +195,7 @@ def judge(label_a: str, label_b: str) -> Path:
                 model=JUDGE_MODEL, _feature="quality_judge", temperature=0,
                 max_tokens=2500, timeout=120.0, response_format={"type": "json_object"},
                 messages=[{"role": "user", "content": JUDGE_PROMPT.format(
-                    frage=fa["frage"], a=links["antwort"][:5000], b=rechts["antwort"][:5000],
+                    frage=fa["frage"], a=links["answer"][:5000], b=rechts["answer"][:5000],
                     qa=qliste(links), qb=qliste(rechts))}])
             try:
                 raw = json.loads((resp.choices[0].message.content or "{}").strip())

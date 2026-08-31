@@ -27,7 +27,7 @@
 // einzeln ansteuerbar sind (`role="group"`, s. ablesen.tsx).
 
 import type { CSSProperties, ReactNode } from "react";
-import { LueckenFeld } from "@/components/grafik/luecken-feld";
+import { LueckenFeld } from "@/components/grafik/luecken-field";
 import { deZahl } from "@/components/grafik/format";
 import { cn } from "@/lib/utils";
 

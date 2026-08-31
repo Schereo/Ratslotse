@@ -271,7 +271,7 @@ def _rs_blatt(kopf: list[str], daten: dict[int, list]) -> dict[int, list]:
         nr += 1
     # Eine Summenzeile der Region — sie trägt eine Zahl in Spalte 1 (1) und
     # darf trotzdem nicht als Stadt gelesen werden.
-    blatt[nr] = [1, "Statistische Region Braunschweig insgesamt"]
+    blatt[nr] = [1, "Statistische Region Braunschweig total"]
     return blatt
 
 
@@ -583,23 +583,23 @@ def test_endpunkt_liefert_werte_und_den_beleg(tmp_path, kfa2026):
     try:
         store.save_staedtevergleich(
             "tax_capacity", sv.zeilen_steuerkraft(sv.lies_kfa(kfa2026)), _herkunft())
-        antwort = haushalt_vergleich(_user=None, store=store)
+        answer = haushalt_vergleich(_user=None, store=store)
 
-        assert len(antwort["staedte"]) == 8
-        oldenburg = next(s for s in antwort["staedte"] if s["ist_oldenburg"])
+        assert len(answer["staedte"]) == 8
+        oldenburg = next(s for s in answer["staedte"] if s["ist_oldenburg"])
         assert oldenburg["name"] == "Oldenburg"
         assert oldenburg["unter_100k"] is False
-        assert next(s for s in antwort["staedte"]
+        assert next(s for s in answer["staedte"]
                     if s["name"] == "Delmenhorst")["unter_100k"] is True
 
-        assert antwort["years"]["tax_capacity"] == [2026]
-        assert len(antwort["werte"]) == 16
-        assert antwort["herkunft"]
+        assert answer["years"]["tax_capacity"] == [2026]
+        assert len(answer["werte"]) == 16
+        assert answer["herkunft"]
 
         # Ohne Vorlagen-Bestand bleibt der Beleg leer — aber er ist da, und
         # die Vorlagennummer steht drin.
-        assert antwort["beleg"]["template_number"] == VERGLEICH_BELEG_VORLAGE
-        assert "17170" in antwort["beleg"]["vorlage_url"]
-        assert antwort["beleg"]["decision_id"] is None
+        assert answer["beleg"]["template_number"] == VERGLEICH_BELEG_VORLAGE
+        assert "17170" in answer["beleg"]["vorlage_url"]
+        assert answer["beleg"]["decision_id"] is None
     finally:
         store.close()

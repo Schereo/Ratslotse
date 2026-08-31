@@ -267,7 +267,7 @@ def test_oldenburg_wird_vollstaendig_gelesen(bericht2021):
     # Der Hebesatz kommt aus dem ANDEREN Blatt und muss trotzdem an der Zeile
     # stehen — er ist die Brücke zum Statistischen Jahrbuch.
     assert ol["rate"] == 439
-    assert ol["gesperrt"] is False
+    assert ol["confidential"] is False
 
 
 def test_landkreise_und_summenzeilen_kommen_nicht_herein(bericht2021):
@@ -312,7 +312,7 @@ def test_gesperrter_betrag_wird_nicht_zu_null(bericht2021):
     zeilen, _ = gs.zeilen(jg)
     sz = next(z for z in zeilen if z["schluessel"] == "102000")
     assert sz["tax_base_eur"] is None
-    assert sz["gesperrt"] is True
+    assert sz["confidential"] is True
     # Die Anzahlen stehen trotzdem da und sind die eigentliche Auskunft.
     assert sz["cases"] == 2968
     assert sz["cases_positive"] == 1337
@@ -327,7 +327,7 @@ def test_vollstaendig_gesperrte_stadt_ist_kein_probenfehler(tmp_path):
     blatt[10] = ["102", "Salzgitter, Stadt"] + ["g"] * 9 + ["Zeilenende"]
     blatt62 = {**_BLATT_62_2021}
     blatt62[10] = ["102000", "Salzgitter, Stadt", "g", "g", "g", 440, "Zeilenende"]
-    pfad = _mappe(tmp_path, "gesperrt.xlsx", blatt, blatt62, _TITEL_2021,
+    pfad = _mappe(tmp_path, "confidential.xlsx", blatt, blatt62, _TITEL_2021,
                   _IMPRESSUM_2021)
     zeilen, verworfen = gs.zeilen(gs.lies_bericht(pfad))
     assert [v["grund"] for v in verworfen] == ["Geheimhaltung"]
@@ -440,7 +440,7 @@ def test_speichern_und_lesen(tmp_path, bericht2021):
         # Der gesperrte Betrag bleibt NULL — und ist von „null Euro" zu
         # unterscheiden, weil die Zeile es sagt.
         sz = [z for z in store.get_gewerbesteuerstatistik() if z["schluessel"] == "102000"]
-        assert sz[0]["tax_base_eur"] is None and sz[0]["gesperrt"] == 1
+        assert sz[0]["tax_base_eur"] is None and sz[0]["confidential"] == 1
     finally:
         store.close()
 

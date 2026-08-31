@@ -65,10 +65,10 @@ def _kernworte(titel: str) -> set[str]:
     return {w for w in worte if w not in _ALLERWELT}
 
 
-def _thema_frei(titel: str, gesperrt: list[set[str]]) -> bool:
+def _thema_frei(titel: str, confidential: list[set[str]]) -> bool:
     """Kein eigentümliches Wort mit einem der letzten Funde gemeinsam."""
     meine = _kernworte(titel)
-    return not any(meine & andere for andere in gesperrt)
+    return not any(meine & andere for andere in confidential)
 
 
 def pick_candidate(store: CouncilStore, day: date) -> tuple[dict, int] | None:
@@ -82,7 +82,7 @@ def pick_candidate(store: CouncilStore, day: date) -> tuple[dict, int] | None:
     eine Straßenbenennung, während ein 79-Millionen-Beschluss wartete.
     """
     used = store.recent_fundstueck_decision_ids(REUSE_BLOCK_DAYS)
-    gesperrt = [_kernworte(t) for t in
+    confidential = [_kernworte(t) for t in
                 store.recent_fundstueck_titles(THEMA_BLOCK_DAYS)]
 
     # 1) Archiv-Feld zuerst holen: Es ist der Maßstab, an dem sich der
@@ -92,14 +92,14 @@ def pick_candidate(store: CouncilStore, day: date) -> tuple[dict, int] | None:
     # Generator ließ Tage ohne Karte (gemessen 20.08.26).
     top = [c for c in store.fundstueck_candidates(exclude_ids=used, limit=120)
            if (c.get("fundwert") or 0) >= MIN_FUNDWERT_ARCHIV
-           and _thema_frei(c.get("title") or "", gesperrt)]
+           and _thema_frei(c.get("title") or "", confidential)]
 
     # 2) Jahrestag: gleicher Kalendertag, früheres Jahr, ordentlicher Wert.
     mmdd = day.strftime("%m-%d")
     for c in store.fundstueck_candidates(mmdd=mmdd, exclude_ids=used, limit=5):
         if (c.get("fundwert") or 0) < MIN_FUNDWERT_JAHRESTAG:
             continue
-        if not _thema_frei(c.get("title") or "", gesperrt):
+        if not _thema_frei(c.get("title") or "", confidential):
             continue
         years = day.year - int(str(c["session_date"])[:4])
         if years < 1:

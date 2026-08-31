@@ -260,10 +260,10 @@ def parse_wirtschaftsplan(template_number: str, titel: str, text: str) -> Wirtsc
     flach = _glaetten(text)
 
     werte: dict[str, float] = {}
-    for feld, muster in _ZEILEN.items():
+    for field, muster in _ZEILEN.items():
         m = re.search(muster, flach)
         if m:
-            werte[feld] = _eur(m.group(1))
+            werte[field] = _eur(m.group(1))
 
     # Ohne diese drei ist es kein Eckwert-Block. `taxes` darf fehlen (bis
     # 2020 gab es die Zeile nicht), `capital_plan` und `commitments`
