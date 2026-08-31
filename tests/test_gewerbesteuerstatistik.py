@@ -259,11 +259,11 @@ def test_oldenburg_wird_vollstaendig_gelesen(bericht2021):
     assert not verworfen
     ol = next(z for z in zeilen if z["schluessel"] == gs.OLDENBURG)
     assert ol["faelle"] == 8421
-    assert ol["faelle_positiv"] == 3642
-    assert ol["messbetrag_eur"] == 30015356
+    assert ol["cases_positive"] == 3642
+    assert ol["tax_base_eur"] == 30015356
     assert ol["festsetzungen"] == 6996
-    assert ol["zerlegungen_positiv"] == 879
-    assert ol["zerlegung_messbetrag_eur"] == 15911807
+    assert ol["apportionments_positive"] == 879
+    assert ol["apportioned_assessment_eur"] == 15911807
     # Der Hebesatz kommt aus dem ANDEREN Blatt und muss trotzdem an der Zeile
     # stehen — er ist die Brücke zum Statistischen Jahrbuch.
     assert ol["hebesatz"] == 439
@@ -299,7 +299,7 @@ def test_alte_schreibweise_ergibt_dieselben_zahlen(bericht2017):
     zeilen, verworfen = gs.zeilen(jg)
     assert not verworfen
     assert zeilen[0]["faelle"] == 8071
-    assert zeilen[0]["messbetrag_eur"] == 26579797
+    assert zeilen[0]["tax_base_eur"] == 26579797
     assert zeilen[0]["hebesatz"] == 439
 
 
@@ -311,11 +311,11 @@ def test_gesperrter_betrag_wird_nicht_zu_null(bericht2021):
     jg = gs.lies_bericht(bericht2021)
     zeilen, _ = gs.zeilen(jg)
     sz = next(z for z in zeilen if z["schluessel"] == "102000")
-    assert sz["messbetrag_eur"] is None
+    assert sz["tax_base_eur"] is None
     assert sz["gesperrt"] is True
     # Die Anzahlen stehen trotzdem da und sind die eigentliche Auskunft.
     assert sz["faelle"] == 2968
-    assert sz["faelle_positiv"] == 1337
+    assert sz["cases_positive"] == 1337
 
 
 def test_vollstaendig_gesperrte_stadt_ist_kein_probenfehler(tmp_path):
@@ -384,10 +384,10 @@ def test_hebesatz_kommt_aus_der_treppe_nicht_aus_dem_jahr():
     Zeile — es gilt der Satz von 2015. Wer auf Gleichheit sucht, findet
     nichts und hielte die Probe für nicht durchführbar."""
     treppe = [
-        {"year": 2011, "art": "Gewerbesteuer", "hebesatz": 430, "vorheriger": 410},
-        {"year": 2015, "art": "Gewerbesteuer", "hebesatz": 439, "vorheriger": 430},
-        {"year": 2015, "art": "Grundsteuer B", "hebesatz": 445, "vorheriger": 430},
-        {"year": 2025, "art": "Grundsteuer B", "hebesatz": 539, "vorheriger": 445},
+        {"year": 2011, "art": "Gewerbesteuer", "hebesatz": 430, "prior_rate": 410},
+        {"year": 2015, "art": "Gewerbesteuer", "hebesatz": 439, "prior_rate": 430},
+        {"year": 2015, "art": "Grundsteuer B", "hebesatz": 445, "prior_rate": 430},
+        {"year": 2025, "art": "Grundsteuer B", "hebesatz": 539, "prior_rate": 445},
     ]
     assert gs.hebesatz_im_jahr(treppe, 2021) == 439
     assert gs.hebesatz_im_jahr(treppe, 2012) == 430
@@ -431,7 +431,7 @@ def test_speichern_und_lesen(tmp_path, bericht2021):
         assert store.save_gewerbesteuerstatistik(zeilen, _herkunft()) == 3
         gelesen = store.get_gewerbesteuerstatistik(gs.OLDENBURG)
         assert [z["year"] for z in gelesen] == [2021]
-        assert gelesen[0]["faelle_positiv"] == 3642
+        assert gelesen[0]["cases_positive"] == 3642
         assert all(z["herkunft_id"] for z in gelesen)
         assert store.herkunft_luecken().get("council_gewerbesteuerstatistik") is None
         h = store.get_herkunft([gelesen[0]["herkunft_id"]])[0]
@@ -440,7 +440,7 @@ def test_speichern_und_lesen(tmp_path, bericht2021):
         # Der gesperrte Betrag bleibt NULL — und ist von „null Euro" zu
         # unterscheiden, weil die Zeile es sagt.
         sz = [z for z in store.get_gewerbesteuerstatistik() if z["schluessel"] == "102000"]
-        assert sz[0]["messbetrag_eur"] is None and sz[0]["gesperrt"] == 1
+        assert sz[0]["tax_base_eur"] is None and sz[0]["gesperrt"] == 1
     finally:
         store.close()
 

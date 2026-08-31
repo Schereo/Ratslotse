@@ -7,16 +7,16 @@ export type { Herkunft };
 export type SchuldenJahr = {
   year: number;
   /** Die vier Schuldenarten in Euro. `null`, wo die Aufteilung an ihrer Probe
-   *  gescheitert ist — dann steht in `aufteilung_verworfen`, wie groß die
+   *  gescheitert ist — dann steht in `breakdown_rejected`, wie groß die
    *  Lücke war. Die Summe daneben bleibt trotzdem gültig. */
-  kreditmarkt: number | null;
-  sondermittel: number | null;
-  gebietskoerperschaften: number | null;
-  eigenbetriebe: number | null;
+  credit_market: number | null;
+  special_funds: number | null;
+  public_authorities: number | null;
+  municipal_enterprises: number | null;
   insgesamt: number;
   /** Betrag je Einwohner*in — die Angabe DER QUELLE, nicht unsere Division. */
   je_einwohner: number | null;
-  aufteilung_verworfen: number | null;
+  breakdown_rejected: number | null;
   /** Die Quelle hat diesen Jahrgang nachträglich korrigiert („r"). */
   revised: number;
   herkunft_id: number | null;
@@ -30,7 +30,7 @@ export type BuergschaftsVorlage = {
   /** Datum der jüngsten Beratung; `null`, solange keine Sitzung verknüpft ist. */
   datum: string | null;
   /** Zeigt auf die vorhandene Beschluss-Seite. */
-  beschluss_id: number | null;
+  decision_id: number | null;
 };
 
 export type SchuldenDaten = {
@@ -84,8 +84,8 @@ export type SchuldenDaten = {
   integrierte_schulden?: {
     as_of_date: {
       year: number; insgesamt: number; je_einwohner: number | null;
-      kernhaushalt: number | null; extrahaushalte: number | null;
-      sonstige: number | null; bevoelkerung: number | null;
+      kernhaushalt: number | null; extra_budgets: number | null;
+      sonstige: number | null; population: number | null;
       change: number | null; herkunft_id: number | null;
     };
     anteil_unter_50: number | null;
@@ -165,19 +165,19 @@ export function punkte(reihe: SchuldenJahr[], ansicht: Ansicht): Punkt[] {
  *  Eigenbetrieb gründete und 108,9 Mio. € Kredite dorthin übertrug.
  *  `null`, wo die Aufteilung nicht belegt ist. */
 export function kernhaushalt(z: SchuldenJahr): number | null {
-  if (z.kreditmarkt == null) return null;
-  return z.kreditmarkt + (z.sondermittel ?? 0) + (z.gebietskoerperschaften ?? 0);
+  if (z.credit_market == null) return null;
+  return z.credit_market + (z.special_funds ?? 0) + (z.public_authorities ?? 0);
 }
 
-export type Aufteilung = { year: number; kern: number; eigenbetriebe: number };
+export type Aufteilung = { year: number; kern: number; municipal_enterprises: number };
 
 /** Nur die Jahre, für die eine belegte Aufteilung vorliegt. */
 export function aufteilungen(reihe: SchuldenJahr[]): Aufteilung[] {
   const aus: Aufteilung[] = [];
   for (const z of reihe) {
     const kern = kernhaushalt(z);
-    if (kern == null || z.eigenbetriebe == null) continue;
-    aus.push({ year: z.year, kern, eigenbetriebe: z.eigenbetriebe });
+    if (kern == null || z.municipal_enterprises == null) continue;
+    aus.push({ year: z.year, kern, municipal_enterprises: z.municipal_enterprises });
   }
   return aus;
 }
@@ -185,7 +185,7 @@ export function aufteilungen(reihe: SchuldenJahr[]): Aufteilung[] {
 /** Die Jahre ohne belegte Aufteilung — die Seite benennt sie, statt einen
  *  leeren Balken unkommentiert zu lassen. */
 export function ohneAufteilung(reihe: SchuldenJahr[]): SchuldenJahr[] {
-  return reihe.filter((z) => z.aufteilung_verworfen != null);
+  return reihe.filter((z) => z.breakdown_rejected != null);
 }
 
 /** Die größte Veränderung von einem Jahr aufs nächste — aus den Daten

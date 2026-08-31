@@ -264,7 +264,7 @@ def _bericht_personen(store, zeilen):
         store._conn.executemany(
             "INSERT INTO council_gesellschaft_personen (report_year, gesellschaft, "
             "sort_order, gremium, name, funktion, vorsitz, note, "
-            "funktionen_zuordenbar, fetched_at) "
+            "roles_assignable, fetched_at) "
             "VALUES (?, 'gsg', ?, 'Aufsichtsrat', ?, ?, NULL, NULL, 1, datetime('now'))",
             [(j, i, n, f) for i, (j, n, f) in enumerate(zeilen)])
 

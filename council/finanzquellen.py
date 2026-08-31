@@ -1423,16 +1423,16 @@ def lies_stellenplaene(store: CouncilStore, p: Protokoll,
             gesamt = next((z for z in teil["zeilen"] if z["art"] == "gesamt"), None)
             je_jahrgang[budget_year]["teile"][name] = {
                 "zeilen": len(teil["zeilen"]),
-                "stellen": gesamt["stellen_plan"] if gesamt else None,
-                "nicht_besetzt": gesamt["nicht_besetzt"] if gesamt else None,
+                "stellen": gesamt["positions_planned"] if gesamt else None,
+                "vacant": gesamt["vacant"] if gesamt else None,
             }
             je_jahrgang[budget_year]["unstimmig"] += len(teil["unstimmig"])
             unstimmig_gesamt += len(teil["unstimmig"])
             if gesamt:
-                anteil = (gesamt["nicht_besetzt"] / gesamt["positions_prior_year"] * 100
+                anteil = (gesamt["vacant"] / gesamt["positions_prior_year"] * 100
                           if gesamt["positions_prior_year"] else 0.0)
-                p.sagen(f"  {budget_year} Teil {name}: {gesamt['stellen_plan']:,.2f} Stellen "
-                        f"geplant · am {teil['as_of_date']} waren {gesamt['nicht_besetzt']:,.2f} "
+                p.sagen(f"  {budget_year} Teil {name}: {gesamt['positions_planned']:,.2f} Stellen "
+                        f"geplant · am {teil['as_of_date']} waren {gesamt['vacant']:,.2f} "
                         f"von {gesamt['positions_prior_year']:,.2f} nicht besetzt "
                         f"({anteil:.1f} %) · {len(teil['zeilen'])} Zeilen · "
                         f"Dokument {r['document_id']}")

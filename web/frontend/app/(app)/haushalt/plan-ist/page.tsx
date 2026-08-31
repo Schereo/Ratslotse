@@ -312,7 +312,7 @@ function PlanIstInner() {
   const obenGezeigt = new Set([...arten.map((p) => p.nr), ...imBild]);
   const uebrigeGruende = (data.abweichungsgruende ?? [])
     .filter((g) => g.year === year && !obenGezeigt.has(g.nr))
-    .sort((a, b) => Math.abs(b.delta_mio ?? 0) - Math.abs(a.delta_mio ?? 0));
+    .sort((a, b) => Math.abs(b.delta_meur ?? 0) - Math.abs(a.delta_meur ?? 0));
 
   return (
     <Quellenkontext schluessel={quellen} year={year}>
@@ -691,7 +691,7 @@ function PlanIstInner() {
                 <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
                   <span className="text-[12.5px] font-semibold">{g.label}</span>
                   <span className="whitespace-nowrap font-mono text-[11px] tabular-nums text-signal">
-                    {(g.delta_mio ?? 0) > 0 ? "+" : ""}{deMio(g.delta_mio)}&#8239;Mio.&nbsp;€
+                    {(g.delta_meur ?? 0) > 0 ? "+" : ""}{deMio(g.delta_meur)}&#8239;Mio.&nbsp;€
                     {g.prozent != null && (
                       <span className="text-muted-foreground">
                         {" "}({g.prozent > 0 ? "+" : ""}

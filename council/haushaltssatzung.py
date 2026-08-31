@@ -107,11 +107,11 @@ class Haushaltssatzung:
 
     #: § 2. ``0.0`` heißt „nicht veranschlagt" und ist eine Aussage;
     #: ``None`` hieße „der Paragraph fehlt", und das kam bisher nicht vor.
-    kredite_investitionen: float | None
+    investment_loans: float | None
     #: § 3.
-    verpflichtungsermaechtigungen: float | None
+    commitment_authorizations: float | None
     #: § 4 — der Dispo der Stadt.
-    liquiditaetskredite: float | None
+    liquidity_loans: float | None
 
     #: § 5. Ab 2026 nennt die Satzung nur noch die Gewerbesteuer und verweist
     #: für die Grundsteuer auf eine eigene Satzung — die beiden Felder sind
@@ -121,7 +121,7 @@ class Haushaltssatzung:
     hebesatz_gewerbesteuer: int | None
 
     #: Das im Text genannte Sitzungsdatum, ``None`` bei „xx.xx.20xx".
-    sitzung_am: str | None
+    session_date: str | None
     template_number: str | None
 
 
@@ -242,13 +242,13 @@ def parse_satzung(text: str, template_number: str | None = None) -> Haushaltssat
         fassung="entwurf" if _ENTWURF.search(text) else "unbekannt",
         **werte,
         in_total=in_total, out_total=out_total,
-        kredite_investitionen=kredite,
-        verpflichtungsermaechtigungen=_eur(ve.group(1)) if ve else None,
-        liquiditaetskredite=liqui,
+        investment_loans=kredite,
+        commitment_authorizations=_eur(ve.group(1)) if ve else None,
+        liquidity_loans=liqui,
         hebesatz_grundsteuer_a=_zahl(_GRUNDSTEUER_A, t),
         hebesatz_grundsteuer_b=_zahl(_GRUNDSTEUER_B, t),
         hebesatz_gewerbesteuer=_zahl(_GEWERBESTEUER, t),
-        sitzung_am=(m.group(1) if (m := _SITZUNG.search(t)) else None),
+        session_date=(m.group(1) if (m := _SITZUNG.search(t)) else None),
         template_number=template_number,
     )
 

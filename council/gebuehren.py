@@ -156,17 +156,17 @@ class Gebuehrenbedarf:
     #: Erlöse, Rückstellungen und die Über-/Unterdeckung aus Vorjahren.
     deductions: float
     #: Was die Gebührenzahler tragen.
-    zu_deckende_kosten: float
+    costs_to_cover: float
     #: Wonach die Gebühr bemessen wird (Tonnen, Liter, Meter Quadratwurzel).
     #: ``None`` bei der Abfallsammlung: Sie erhebt eine Grundgebühr UND eine
     #: Gebühr je Liter, es gibt dort also keine einzelne Division. Die
     #: Kaskade ist trotzdem geprüft.
-    bezugsmenge: float | None
-    bezugseinheit: str | None
+    reference_quantity: float | None
+    reference_unit: str | None
     gebuehr: float | None
     #: Der gerundete Vorschlag an den Rat — das, was am Ende erhoben wird.
     #: ``None``, wo das Dokument ihn nicht gesondert ausweist.
-    gebuehrenvorschlag: float | None
+    fee_proposed: float | None
     template_number: str | None
 
 
@@ -478,9 +478,9 @@ def parse_anlage(teil: str, template_number: str | None = None) -> Gebuehrenbeda
     return Gebuehrenbedarf(
         year=int(year.group(1)), area=area[0], area_name=area[1],
         kostenkalkulation=kalkulation, deductions=deductions,
-        zu_deckende_kosten=zu_decken, bezugsmenge=menge, bezugseinheit=einheit,
+        costs_to_cover=zu_decken, reference_quantity=menge, reference_unit=einheit,
         gebuehr=gebuehr,
-        gebuehrenvorschlag=(float(v.group(1).replace(".", "").replace(",", "."))
+        fee_proposed=(float(v.group(1).replace(".", "").replace(",", "."))
                             if v else None),
         template_number=template_number,
     )
@@ -586,7 +586,7 @@ def lies_gebuehrensaetze(text: str, template_number: str | None = None) -> list[
     year = saetze[0].year
     bedarfe, risse = lies(text, template_number)
     eckwerte = {
-        b.area: b.gebuehrenvorschlag for b in bedarfe
+        b.area: b.fee_proposed for b in bedarfe
         if b.year == year and b.area in ("abfallbehandlung", "strassenreinigung")
     }
     tarifwerte = {s.area: s.amount for s in saetze
@@ -621,13 +621,13 @@ def herkunft_fuer_satz(satz: Gebuehrensatz, *, url: str | None,
 def herkunft_fuer(bedarf: Gebuehrenbedarf, *, url: str | None,
                   document_id: int | None, label: str | None) -> Herkunft:
     """Die Herkunft: die Anlage, und was an ihr nachgerechnet wurde."""
-    rest = bedarf.kostenkalkulation + bedarf.deductions - bedarf.zu_deckende_kosten
+    rest = bedarf.kostenkalkulation + bedarf.deductions - bedarf.costs_to_cover
     probes = [PROBE_KASKADE]
     division = ""
-    if bedarf.gebuehr is not None and bedarf.bezugsmenge:
+    if bedarf.gebuehr is not None and bedarf.reference_quantity:
         probes.append(PROBE_DIVISION)
-        division = (f"; {bedarf.zu_deckende_kosten:,.0f} € ÷ "
-                    f"{bedarf.bezugsmenge:,.0f} {bedarf.bezugseinheit} = "
+        division = (f"; {bedarf.costs_to_cover:,.0f} € ÷ "
+                    f"{bedarf.reference_quantity:,.0f} {bedarf.reference_unit} = "
                     f"{bedarf.gebuehr:.3f} €")
     return Herkunft(
         art="ris",

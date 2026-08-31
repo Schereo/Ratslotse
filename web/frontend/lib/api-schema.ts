@@ -1642,7 +1642,7 @@ export interface paths {
          *     viel die Betriebe bewegen, diese Seite, was sie damit machen.
          *
          *     - ``gesellschaften``: je Gesellschaft Name, Gliederungsnummer und Seite im
-         *       jüngsten Bericht, dazu ``konzern_key``, wo der Gesamtabschluss sie als
+         *       jüngsten Bericht, dazu ``consolidated_key``, wo der Gesamtabschluss sie als
          *       eigenen Träger führt,
          *     - ``texte``: die beschreibenden Abschnitte (Gegenstand, Eigentümer,
          *       Aufsichtsorgane, eigene Beteiligungen, Auswirkungen auf den Haushalt) —
@@ -1652,7 +1652,7 @@ export interface paths {
          *       Vorsitz, Amtszeit-Hinweis und — wo das Verzeichnis die Person
          *       eindeutig kennt — ``slug`` und ``partei`` für die Personen-Seite.
          *       ``funktion`` steht nur da, wo die Spaltenprobe gehalten hat; siehe
-         *       ``funktionen_zuordenbar`` an der Gesellschaft. Zwei der fünf Abschnitte
+         *       ``roles_assignable`` an der Gesellschaft. Zwei der fünf Abschnitte
          *       sind nämlich keine Prosa, sondern Tabellen, die der PDF-Extrakt
          *       spaltenweise ausgibt (``council/beteiligungsbericht.py``),
          *     - ``eigentuemer``: wem die Gesellschaft gehört, mit Betrag und Anteil.
@@ -2114,7 +2114,7 @@ export interface paths {
          *     Datensatz passt, ist die Probe, die den Wert überhaupt hereingelassen hat
          *     (``herkunft[…].probes``).
          *
-         *     Wo ``aufteilung_verworfen`` gesetzt ist, fehlen die vier Artenspalten:
+         *     Wo ``breakdown_rejected`` gesetzt ist, fehlen die vier Artenspalten:
          *     Dort ergeben sie im Dokument selbst nicht die ausgewiesene Summe. Die
          *     Summe steht trotzdem — sie hängt an der unabhängigen Pro-Kopf-Probe. Die
          *     Oberfläche kann den fehlenden Balken damit **erklären**, statt ihn als
@@ -2235,7 +2235,7 @@ export interface paths {
          *     - ``beleg``: die Ratsvorlage 18/0911, in der die Stadt Oldenburg 2018 auf
          *       Antrag der FDP-Fraktion sieben Städte verglichen und im selben Dokument
          *       festgestellt hat, dass dieser Vergleich nichts aussagt. Aufgelöst wird
-         *       sie über die Vorlagennummer; ``beschluss_id`` zeigt auf den Eintrag in
+         *       sie über die Vorlagennummer; ``decision_id`` zeigt auf den Eintrag in
          *       unserem eigenen Bestand (der Ausschuss hat den Bericht zur Kenntnis
          *       genommen), ``anlagen`` auf Antrag und Antwort im Original.
          *
@@ -10902,4 +10902,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: b8011626e06d8e55a9e94f7aff96c586067dc3b24e62ee9b59b0447f07ac0036
+// vertrag-sha256: c28a749ded611ea646216c6cbf99ebea366b0541b4dd1df4dde0bbf4a5eab015

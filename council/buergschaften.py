@@ -248,13 +248,13 @@ def kettenprobe(zeilen: list[dict]) -> list[str]:
     for z in zeilen:
         if "prior_year_stock" not in z:
             continue
-        vorheriger = nach_jahr.get(z["prior_year_year"])
-        if not vorheriger:
+        prior_rate = nach_jahr.get(z["prior_year_year"])
+        if not prior_rate:
             continue
-        ab = abs(vorheriger["bestand"] - z["prior_year_stock"])
+        ab = abs(prior_rate["bestand"] - z["prior_year_stock"])
         if ab > KETTE_TOLERANZ:
             risse.append(
                 f"{z['year']}: nennt {z['prior_year_stock']/1e6:.1f} Mio. € als Stand "
                 f"31.12.{z['prior_year_year']}, der Abschluss {z['prior_year_year']} nennt "
-                f"{vorheriger['bestand']/1e6:.1f} Mio. € ({ab/1e6:.1f} Mio. Unterschied)")
+                f"{prior_rate['bestand']/1e6:.1f} Mio. € ({ab/1e6:.1f} Mio. Unterschied)")
     return risse

@@ -600,6 +600,6 @@ def test_endpunkt_liefert_werte_und_den_beleg(tmp_path, kfa2026):
         # die Vorlagennummer steht drin.
         assert antwort["beleg"]["template_number"] == VERGLEICH_BELEG_VORLAGE
         assert "17170" in antwort["beleg"]["vorlage_url"]
-        assert antwort["beleg"]["beschluss_id"] is None
+        assert antwort["beleg"]["decision_id"] is None
     finally:
         store.close()

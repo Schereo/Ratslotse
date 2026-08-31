@@ -42,7 +42,7 @@ CREATE TABLE council_ergebnisrechnung (
   PRIMARY KEY (year, sub_budget_no, nr));
 CREATE TABLE council_abweichungsgruende (
   year INTEGER NOT NULL, nr INTEGER NOT NULL, label TEXT NOT NULL,
-  delta_mio REAL, prozent REAL, text TEXT NOT NULL,
+  delta_meur REAL, prozent REAL, text TEXT NOT NULL,
   source_label TEXT, source_url TEXT, fetched_at TEXT NOT NULL,
   PRIMARY KEY (year, nr));
 CREATE TABLE council_pruefbericht_quellen (
@@ -89,7 +89,7 @@ def alte_db(tmp_path):
           21_000_000.0, 21_000_000.0, "ansatz", 20_400_000.0, -600_000.0, 1,
           JA_LABEL, JA_URL, "2026-08-14T07:12:01")])
     cn.execute(
-        "INSERT INTO council_abweichungsgruende (year, nr, label, delta_mio, "
+        "INSERT INTO council_abweichungsgruende (year, nr, label, delta_meur, "
         " prozent, text, source_label, source_url, fetched_at) VALUES (?,?,?,?,?,?,?,?,?)",
         (2023, 1, "Steuern und ähnliche Abgaben", 75.1, 24.82,
          "Die Mehrerträge entfallen nahezu auf den Bereich der Gewerbesteuer.",

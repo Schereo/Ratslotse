@@ -70,13 +70,13 @@ function zentralePosten(daten: Daten): Posten[] {
     // die Seite erklären will.
     if (s.slug === "schluesselzuweisungen") {
       const treffer = daten.steuerkraft
-        .filter((r) => r.zuweisungen != null)
+        .filter((r) => r.allocations != null)
         .sort((a, b) => a.year - b.year);
       const letzte = treffer[treffer.length - 1];
       if (letzte) {
         out.push({
           slug: s.slug, titel: s.titel, wer: s.stellschraube,
-          mioWert: mio(letzte.zuweisungen) ?? 0, year: letzte.year,
+          mioWert: mio(letzte.allocations) ?? 0, year: letzte.year,
         });
       }
     }

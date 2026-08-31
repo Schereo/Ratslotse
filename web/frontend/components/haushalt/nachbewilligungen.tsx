@@ -120,8 +120,8 @@ function RatsListe({ posten }: { posten: Nachbewilligung[] }) {
           <div key={n.template_number}
             className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 border-t border-border/60 pt-1.5 first:border-t-0 first:pt-0">
             <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-              {n.beschluss_id != null ? (
-                <Link href={decisionHref(n.beschluss_id)}
+              {n.decision_id != null ? (
+                <Link href={decisionHref(n.decision_id)}
                   className="text-[12.5px] leading-snug text-primary hover:underline">
                   {n.titel}
                 </Link>
@@ -129,7 +129,7 @@ function RatsListe({ posten }: { posten: Nachbewilligung[] }) {
               <span className="font-mono text-[9.5px] uppercase tracking-[0.09em] text-muted-foreground">
                 {n.template_number}
                 {n.category === "ausserplanmaessig" && " · außerplanmäßig"}
-                {n.im_rat === 0 && " · im Fachausschuss beschlossen"}
+                {n.in_plenary === 0 && " · im Fachausschuss beschlossen"}
               </span>
             </span>
             <span className="whitespace-nowrap text-right text-[12px] font-semibold tabular-nums">

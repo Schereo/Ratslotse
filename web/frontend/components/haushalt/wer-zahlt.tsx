@@ -50,7 +50,7 @@ import { GlossaryText } from "@/components/glossary-text";
 import type { GewerbesteuerstatistikZeile } from "@/lib/haushalt";
 
 type SteuerZeile = { year: number; art: string; amount: number | null };
-type Hebesatz = { year: number; hebesatz: number; vorheriger: number | null };
+type Hebesatz = { year: number; hebesatz: number; prior_rate: number | null };
 
 /** Ab wann ein Jahressprung „groß" heißt. Die Schwelle ist gesetzt, nicht
  *  gemessen — deshalb steht sie im Text, den der Block ausgibt. */
@@ -192,7 +192,7 @@ export function WerZahlt({ steuern, art, vergleichArt, vergleichTitel, hebesaetz
   // (gesehen in der Vorschau am 24.08.2026).
   const beschlussJahre = new Set(
     hebesaetze
-      .filter((z) => z.vorheriger != null && z.hebesatz !== z.vorheriger)
+      .filter((z) => z.prior_rate != null && z.hebesatz !== z.prior_rate)
       .map((z) => z.year)
       .filter((j) => j > von && j <= bis));
   const mitBeschluss = spruenge.filter((p) => beschlussJahre.has(p.year)).length;
@@ -200,25 +200,25 @@ export function WerZahlt({ steuern, art, vergleichArt, vergleichTitel, hebesaetz
   // --- Der Nenner ---------------------------------------------------------
   // Alles gerechnet, nichts geschrieben: Kommt ein neuer Erhebungsjahrgang
   // herein, ändern sich die Sätze mit. Der Zerlegungs-Anteil bleibt weg, wo
-  // ein Betrag der Geheimhaltung unterliegt (`messbetrag_eur === null`) —
+  // ein Betrag der Geheimhaltung unterliegt (`tax_base_eur === null`) —
   // dann gibt es keinen Nenner, durch den sich teilen ließe. Für Oldenburg
   // ist das in keinem der Jahrgänge 2017–2021 der Fall, für Salzgitter und
   // Wolfsburg in jedem.
-  const ohneSteuer = statistik ? statistik.faelle - statistik.faelle_positiv : 0;
+  const ohneSteuer = statistik ? statistik.faelle - statistik.cases_positive : 0;
   const zahlenAnteil = statistik && statistik.faelle
-    ? (statistik.faelle_positiv / statistik.faelle) * 100 : 0;
-  const zerlegtAnteil = statistik?.messbetrag_eur && statistik.zerlegung_messbetrag_eur != null
-    ? (statistik.zerlegung_messbetrag_eur / statistik.messbetrag_eur) * 100 : null;
+    ? (statistik.cases_positive / statistik.faelle) * 100 : 0;
+  const zerlegtAnteil = statistik?.tax_base_eur && statistik.apportioned_assessment_eur != null
+    ? (statistik.apportioned_assessment_eur / statistik.tax_base_eur) * 100 : null;
   // Wie viel mehr eine zerlegte Betriebsstätte trägt als eine rein örtliche
   // Firma — je zahlendem Fall, nicht je Fall: Wer die Betriebe ohne
   // Steuermessbetrag mitteilte, vergliche zwei Zahlen, in denen unterschiedlich
   // viele Nullen stecken.
   const je = (amount: number | null, faelle: number | null) =>
     amount != null && faelle ? amount / faelle : null;
-  const jeZerlegt = je(statistik?.zerlegung_messbetrag_eur ?? null,
-                       statistik?.zerlegungen_positiv ?? null);
-  const jeOertlich = je(statistik?.festsetzung_messbetrag_eur ?? null,
-                        statistik?.festsetzungen_positiv ?? null);
+  const jeZerlegt = je(statistik?.apportioned_assessment_eur ?? null,
+                       statistik?.apportionments_positive ?? null);
+  const jeOertlich = je(statistik?.assessment_tax_base_eur ?? null,
+                        statistik?.assessments_positive ?? null);
   const zerlegtFaktor = jeZerlegt && jeOertlich ? jeZerlegt / jeOertlich : null;
 
   return (
@@ -265,12 +265,12 @@ export function WerZahlt({ steuern, art, vergleichArt, vergleichTitel, hebesaetz
               wert={deZahl(statistik.faelle)}
               label="Betriebe und Betriebsstätten sind in Oldenburg erfasst" />
             <Kennzahl betont
-              wert={deZahl(statistik.faelle_positiv)}
+              wert={deZahl(statistik.cases_positive)}
               label={`davon zahlen überhaupt Gewerbesteuer — ${deProzent(zahlenAnteil, 0)}\u00a0%`} />
-            {zerlegtAnteil != null && statistik.zerlegungen_positiv != null && (
+            {zerlegtAnteil != null && statistik.apportionments_positive != null && (
               <Kennzahl
                 wert={deProzent(zerlegtAnteil)} einheit="%"
-                label={`des Steuermessbetrags kommen von ${deZahl(statistik.zerlegungen_positiv)} `
+                label={`des Steuermessbetrags kommen von ${deZahl(statistik.apportionments_positive)} `
                        + "Betriebsstätten größerer Firmen"} />
             )}
           </div>

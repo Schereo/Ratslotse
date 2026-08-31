@@ -425,7 +425,7 @@ def test_nur_kenntnis_ist_kein_ratsbeschluss():
         amount_source="titel",
         beschluesse=({"committee": "Rat", "outcome": "zur_kenntnis"},))
     assert unterrichtung.nur_kenntnis
-    assert not unterrichtung.im_rat
+    assert not unterrichtung.in_plenary
     assert not unterrichtung.zaehlt_in_summe
 
 
@@ -714,8 +714,8 @@ def test_finanzausschuss_zaehlt_als_ratsbeschluss():
     plenum = _bewilligung("24/0359", 100_000.0, "Rat")
     ausschuss = _bewilligung("24/0834", 375_000.0,
                              "Ausschuss für Finanzen und Beteiligungen")
-    assert plenum.im_rat and plenum.ratsentscheidung
-    assert not ausschuss.im_rat, "das Plenum hat nicht abgestimmt"
+    assert plenum.in_plenary and plenum.ratsentscheidung
+    assert not ausschuss.in_plenary, "das Plenum hat nicht abgestimmt"
     assert ausschuss.ratsentscheidung, "der Bericht bucht es trotzdem als Rat"
     summen = nb.jahressummen([plenum, ausschuss], nur_rat=True)
     assert summen[2024]["summe"] == pytest.approx(475_000.0)

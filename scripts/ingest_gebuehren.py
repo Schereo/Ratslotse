@@ -73,12 +73,12 @@ def main() -> dict:
         if gelesen:
             print("\nGelesen:", flush=True)
             for b, _ in sorted(gelesen, key=lambda x: (x[0].year, x[0].area)):
-                division = (f"÷ {b.bezugsmenge:>9,.0f} {b.bezugseinheit:18} "
+                division = (f"÷ {b.reference_quantity:>9,.0f} {b.reference_unit:18} "
                             f"= {b.gebuehr:>8.3f} €"
                             if b.gebuehr is not None
                             else "(Grundgebühr und Gebühr je Liter, keine Division)")
                 print(f"  {b.year}  {b.area_name[:24]:26} "
-                      f"{b.zu_deckende_kosten:>12,.0f} €  {division}", flush=True)
+                      f"{b.costs_to_cover:>12,.0f} €  {division}", flush=True)
 
         if ohne_text:
             print("\nOhne Volltext — nichts zu lesen:", flush=True)

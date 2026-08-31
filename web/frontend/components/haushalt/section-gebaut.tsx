@@ -149,7 +149,7 @@ function AnlagenBlock({ daten }: { daten: GebautDaten | null }) {
         </p>
         <h2 className="mt-1 text-[17px] font-semibold leading-snug text-foreground">
           {v.faktor && v.faktor > 1
-            ? `Beim Infrastrukturvermögen schreibt die Stadt ${deMioEuro(v.abschreibung)}\u2009Mio.\u00a0€ ab und baut ${deMioEuro(v.zugaenge)}\u2009Mio.\u00a0€ zu`
+            ? `Beim Infrastrukturvermögen schreibt die Stadt ${deMioEuro(v.abschreibung)}\u2009Mio.\u00a0€ ab und baut ${deMioEuro(v.additions)}\u2009Mio.\u00a0€ zu`
             : "Zugänge und Abschreibungen des Infrastrukturvermögens"}
         </h2>
         <p className="mt-2 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
@@ -169,9 +169,9 @@ function AnlagenBlock({ daten }: { daten: GebautDaten | null }) {
           { titel: `Abgeschrieben ${year}`, rampe: "aus",
             segmente: [{ label: "Wertverlust des Jahres", wert: v.abschreibung / 1e6 }] },
           { titel: `Zugegangen ${year}`, rampe: "ein",
-            segmente: [{ label: "Neu ins Vermögen", wert: v.zugaenge / 1e6 }] },
+            segmente: [{ label: "Neu ins Vermögen", wert: v.additions / 1e6 }] },
         ]}
-        basis={Math.max(v.abschreibung, v.zugaenge) / 1e6}
+        basis={Math.max(v.abschreibung, v.additions) / 1e6}
         einheit="Mio. €"
         beleg={<Beleg q="jahresabschluss" />}
       />

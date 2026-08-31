@@ -470,7 +470,7 @@ def _presse_matrix(store):
         import numpy as np
 
         rows = store.get_presse_embeddings()
-        ids = [r["presse_id"] for r in rows]
+        ids = [r["press_id"] for r in rows]
         texts = [r["chunk_text"] for r in rows]
         if rows:
             buf = b"".join(bytes(r["vector"]) for r in rows)
@@ -507,7 +507,7 @@ def _rerank_kontext(query: str, kandidaten: list[tuple], top_k: int,
 
 def search_presse(store, query: str, expanded: str, top_k: int = 3,
                   min_score: float = 0.45) -> list[tuple]:
-    """Beste Pressemitteilungen zur Frage → ``[(presse_id, score)]``.
+    """Beste Pressemitteilungen zur Frage → ``[(press_id, score)]``.
     Vektor-Kanal (bester Chunk je PM) als Kandidaten-Lieferant, Cross-Encoder
     als Torwächter — der Block „Aktuelles von der Stadt" soll nur auftauchen,
     wenn es wirklich Einschlägiges gibt. BM25 nur als Fallback, solange kein
@@ -750,7 +750,7 @@ def _wb_matrix(store):
 def search_wortbeitraege(store, query: str, expanded: str, top_k: int = 4,
                          min_score: float = 0.45) -> list[tuple]:
     """Beste Wortbeiträge (Debatten, Anfragen, Einwohnerfragen) zur Frage →
-    ``[(wb_id, score)]``. Wie search_presse: Vektor liefert Kandidaten, der
+    ``[(contribution_id, score)]``. Wie search_presse: Vektor liefert Kandidaten, der
     Cross-Encoder bestätigt — der Debatten-Block soll nur bei echter
     Einschlägigkeit kommen. BM25 nur als Fallback ohne Index."""
     best: dict[int, float] = {}
@@ -797,7 +797,7 @@ ZUSAGE_RERANK_MIN = float(os.environ.get("COUNCIL_ZUSAGE_RERANK_MIN", "-0.5"))
 
 def search_zusagen(store, query: str, expanded: str, top_k: int = 2,
                    min_score: float = 0.42) -> list[tuple]:
-    """Zusagen der Verwaltung zum Thema → ``[(wb_id, score)]``.
+    """Zusagen der Verwaltung zum Thema → ``[(contribution_id, score)]``.
 
     Eigener Kanal, weil sie im allgemeinen Debatten-Ranking untergehen: Über
     sechs Testfragen war genau EINER von 19 Belegen eine Zusage — und selbst

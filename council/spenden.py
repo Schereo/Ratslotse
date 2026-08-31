@@ -269,7 +269,7 @@ def lies(zeilen: Iterable[dict]) -> dict:
             "layout": layout, "zweitstelle": art, "teile": len(teile),
             "probes": probes, "document_id": z.get("document_id"),
             "dokument_url": z.get("dokument_url"),
-            "im_rat": z.get("gremiensitzung") == "Rat",
+            "in_plenary": z.get("gremiensitzung") == "Rat",
         })
 
     # Je Vorlage bleibt eine Zeile: dieselbe Liste wird im vorberatenden
@@ -277,7 +277,7 @@ def lies(zeilen: Iterable[dict]) -> dict:
     # sonst die frühere — beide nennen denselben Betrag (im Bestand ohne
     # Ausnahme geprüft), aber die Rats-Zeile ist die Entscheidung.
     je_vorlage: dict[str, dict] = {}
-    for k in sorted(kandidaten, key=lambda k: (not k["im_rat"], k["sitzung"] or "")):
+    for k in sorted(kandidaten, key=lambda k: (not k["in_plenary"], k["sitzung"] or "")):
         je_vorlage.setdefault(k["template_number"], k)
     vorlagen = sorted(je_vorlage.values(), key=lambda k: (k["sitzung"] or "", k["template_number"]))
 

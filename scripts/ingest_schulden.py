@@ -141,10 +141,10 @@ def main() -> int:
             for f in result["fehlende_jahrgaenge"]:
                 print(f"    FEHLT {f}: im Titel angekündigt, nicht gelesen",
                       file=sys.stderr)
-            ohne_arten = [z for z in zeilen if z["aufteilung_verworfen"] is not None]
+            ohne_arten = [z for z in zeilen if z["breakdown_rejected"] is not None]
             for z in ohne_arten:
                 print(f"    {z['year']}: Aufteilung verworfen — die Schuldenarten "
-                      f"ergeben {_de(z['aufteilung_verworfen'], vorzeichen=True)} € "
+                      f"ergeben {_de(z['breakdown_rejected'], vorzeichen=True)} € "
                       f"gegenüber der ausgewiesenen Summe. Die Summe trägt die "
                       f"Pro-Kopf-Gegenprobe und bleibt.")
             if not zeilen:
@@ -218,11 +218,11 @@ def main() -> int:
                 # Wo die Summenprobe fehlt, gehört ihr Messwert dazu — sonst
                 # liest sich „Pro-Kopf-Gegenprobe bestanden" wie eine
                 # Vollständigkeit, die dieser Jahrgang nicht hat.
-                fehlend = [z for z in teil if z["aufteilung_verworfen"] is not None]
+                fehlend = [z for z in teil if z["breakdown_rejected"] is not None]
                 if fehlend:
                     nachweis += ("; die Summenprobe reißt um "
                                  + ", ".join(
-                                     _de(z["aufteilung_verworfen"], vorzeichen=True)
+                                     _de(z["breakdown_rejected"], vorzeichen=True)
                                      + " €" for z in fehlend)
                                  + " — die Aufteilung nach Schuldenarten ist "
                                    "deshalb nicht gespeichert")

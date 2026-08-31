@@ -92,14 +92,14 @@ KERN_TOLERANZ = 1.0
 #: Die Spalten des Blatts, in ihrer Reihenfolge. Namen sind die der Quelle,
 #: gekürzt. Die Nummern sind Spaltenindizes, keine Tabellennummern.
 SPALTEN: dict[str, int] = {
-    "ars": 0, "name": 1, "verwaltungsform": 2, "bevoelkerung": 3,
+    "ars": 0, "name": 1, "verwaltungsform": 2, "population": 3,
     "insgesamt": 4, "insgesamt_change": 5, "je_einwohner": 6,
     "gesamthaushalt": 7, "gesamthaushalt_change": 8,
     "kernhaushalt": 9, "kernhaushalt_change": 10,
-    "extrahaushalte": 11, "extrahaushalte_change": 12,
-    "extra_100": 13, "extra_50_100": 14, "extra_unter_50": 15,
+    "extra_budgets": 11, "extrahaushalte_change": 12,
+    "extra_100": 13, "extra_50_100": 14, "extra_under_50": 15,
     "sonstige": 16, "sonstige_change": 17,
-    "sonstige_100": 18, "sonstige_50_100": 19, "sonstige_unter_50": 20,
+    "sonstige_100": 18, "sonstige_50_100": 19, "other_below_50": 20,
 }
 
 #: Der Satz, den die Quelle selbst über ihre Grenzen schreibt — reist mit den
@@ -171,7 +171,7 @@ def anteil_unter_50(gefunden: dict) -> float | None:
     gesamt = gefunden.get("insgesamt")
     if not gesamt:
         return None
-    unter = (gefunden.get("extra_unter_50") or 0.0) + (gefunden.get("sonstige_unter_50") or 0.0)
+    unter = (gefunden.get("extra_under_50") or 0.0) + (gefunden.get("other_below_50") or 0.0)
     return unter / gesamt
 
 

@@ -40,7 +40,7 @@ import type { HebesatzZeile } from "@/lib/haushalt";
 type Stufe = {
   year: number;
   hebesatz: number;
-  vorheriger: number | null;
+  prior_rate: number | null;
   /** Aufkommen im Änderungsjahr und im Jahr davor, in Euro. */
   aufkommen: { vorher: number; nachher: number } | null;
   /** Grund, falls sich auch die Bemessungsgrundlage änderte. */
@@ -84,7 +84,7 @@ export function HebesatzTreppe({
     return {
       year: z.year,
       hebesatz: z.hebesatz,
-      vorheriger: z.vorheriger,
+      prior_rate: z.prior_rate,
       aufkommen: vorher != null && nachher != null ? { vorher, nachher } : null,
       bemessung: bemessungNeu[String(z.year)] ?? null,
     };
@@ -95,11 +95,11 @@ export function HebesatzTreppe({
   // nur die Gewerbesteuer. Ein „445 → 445 %" im Steckbrief der Grundsteuer
   // wäre eine Änderung, die es nicht gab.
   const echteAenderungen = stufen.filter(
-    (s) => s.vorheriger == null || s.hebesatz !== s.vorheriger);
+    (s) => s.prior_rate == null || s.hebesatz !== s.prior_rate);
   const erste = sortiert[0];
   const letzte = sortiert[sortiert.length - 1];
   const ohneAufkommen = echteAenderungen.filter(
-    (s) => s.vorheriger != null && !s.aufkommen).map((s) => s.year);
+    (s) => s.prior_rate != null && !s.aufkommen).map((s) => s.year);
 
   return (
     <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
@@ -149,9 +149,9 @@ export function HebesatzTreppe({
           Was sich wann geändert hat — und was hereinkam
         </p>
         <ul className="mt-2 flex flex-col gap-2">
-          {echteAenderungen.filter((s) => s.vorheriger != null).map((s) => {
-            const punkte = s.hebesatz - (s.vorheriger as number);
-            const relativ = (s.hebesatz / (s.vorheriger as number) - 1) * 100;
+          {echteAenderungen.filter((s) => s.prior_rate != null).map((s) => {
+            const punkte = s.hebesatz - (s.prior_rate as number);
+            const relativ = (s.hebesatz / (s.prior_rate as number) - 1) * 100;
             const auf = s.aufkommen;
             const aufRelativ = auf ? (auf.nachher / auf.vorher - 1) * 100 : null;
             return (
@@ -161,7 +161,7 @@ export function HebesatzTreppe({
                     {s.year}
                   </span>
                   <span className="text-[12.5px] font-semibold tabular-nums">
-                    {deZahl(s.vorheriger, 0)} → {deZahl(s.hebesatz, 0)}&nbsp;%
+                    {deZahl(s.prior_rate, 0)} → {deZahl(s.hebesatz, 0)}&nbsp;%
                   </span>
                   <span className="text-[11.5px] tabular-nums text-muted-foreground">
                     {mitVorzeichen(punkte, 0)} Punkte · {mitVorzeichen(relativ)}&nbsp;%

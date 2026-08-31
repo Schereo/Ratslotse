@@ -201,7 +201,7 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
       .filter((z) => PFLICHT_ZUORDNUNG[z.area]?.stufe === "freiwillig")
       .map((z) => ({ area: z.area, aus: mio(z.expenses) ?? 0 }))
       .sort((a, b) => b.aus - a.aus);
-    const kraft = daten.steuerkraft.filter((k) => k.messzahl != null && k.zuweisungen != null).slice(-2);
+    const kraft = daten.steuerkraft.filter((k) => k.messzahl != null && k.allocations != null).slice(-2);
     return { year, defizit, freiwillig, kraft };
   }, [daten]);
 
@@ -683,7 +683,7 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
                   {" "}Zuletzt: {basis.kraft[0].year} auf {basis.kraft[1].year} stieg die
                   Steuerkraft um {deMio(((basis.kraft[1].messzahl ?? 0) - (basis.kraft[0].messzahl ?? 0)) / 1e6)}
                   &#8239;Mio.&nbsp;€ und die Zuweisung um{" "}
-                  {deMio(((basis.kraft[1].zuweisungen ?? 0) - (basis.kraft[0].zuweisungen ?? 0)) / 1e6)}
+                  {deMio(((basis.kraft[1].allocations ?? 0) - (basis.kraft[0].allocations ?? 0)) / 1e6)}
                   {/* Keine feste Aussage über dritte Jahrgänge, die basis.kraft
                       gar nicht führt — was immer gilt, ist die Mechanik
                       (Vorgeschichte: Git-Historie dieser Datei). */}

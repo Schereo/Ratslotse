@@ -148,11 +148,11 @@ def test_summenprobe_faengt_eine_verdrehte_spalte():
     """Wären zwei Spalten vertauscht, ginge die Rechnung nicht mehr auf — das
     ist der Fehler, den zeilenweises Lesen nicht bemerkt."""
     zeile = dict(_zeile(schulden.lies(TABELLE, EINWOHNER), 2025))
-    zeile["kreditmarkt"], zeile["eigenbetriebe"] = 296_190_000, 40_804_000
+    zeile["credit_market"], zeile["municipal_enterprises"] = 296_190_000, 40_804_000
     zeile["insgesamt"] = 336_994_000
     ok, _ = schulden.summenprobe(zeile)
     assert ok, "Vertauschen zweier Summanden ändert die Summe nicht"
-    zeile["eigenbetriebe"] = 41_000_000
+    zeile["municipal_enterprises"] = 41_000_000
     ok, deviation = schulden.summenprobe(zeile)
     assert not ok and deviation != 0
 
@@ -206,11 +206,11 @@ def test_2022_verliert_seine_aufteilung_aber_nicht_seine_summe(gelesen):
     assert z["insgesamt"] == 281_457_000
     assert z["je_einwohner"] == 1652
     assert all(z[art] is None for art in schulden.ARTEN)
-    assert z["aufteilung_verworfen"] == 1_078_000
+    assert z["breakdown_rejected"] == 1_078_000
     assert z["probes"] == ["schulden_prokopf"]
     # Und die Nachbarjahre behalten ihre Aufteilung — es fällt nur der eine.
-    assert _zeile(gelesen, 2021)["kreditmarkt"] == 53_074_000
-    assert _zeile(gelesen, 2023)["kreditmarkt"] == 46_577_000
+    assert _zeile(gelesen, 2021)["credit_market"] == 53_074_000
+    assert _zeile(gelesen, 2023)["credit_market"] == 46_577_000
 
 
 def test_ohne_jede_bestandene_probe_faellt_der_jahrgang_ganz_weg():
@@ -231,8 +231,8 @@ def test_betraege_kommen_in_euro_an(gelesen):
     Bereich in Euro — der Pro-Kopf-Betrag steht dort schon."""
     z = _zeile(gelesen, 2025)
     assert z["insgesamt"] == 336_994_000
-    assert z["kreditmarkt"] == 40_804_000
-    assert z["eigenbetriebe"] == 296_190_000
+    assert z["credit_market"] == 40_804_000
+    assert z["municipal_enterprises"] == 296_190_000
     assert z["je_einwohner"] == 1908
 
 
@@ -250,8 +250,8 @@ def test_die_umbuchung_von_2010_bleibt_sichtbar(gelesen):
     Spalte zeigte, verkündete einen Schuldenabbau um drei Viertel, den es nie
     gab — deshalb speichern wir die Spalten einzeln."""
     vorher, nachher = _zeile(gelesen, 2009), _zeile(gelesen, 2010)
-    assert nachher["kreditmarkt"] < vorher["kreditmarkt"] * 0.3
-    assert nachher["eigenbetriebe"] > vorher["eigenbetriebe"] * 6
+    assert nachher["credit_market"] < vorher["credit_market"] * 0.3
+    assert nachher["municipal_enterprises"] > vorher["municipal_enterprises"] * 6
     # Die Summe bewegt sich um weniger als 5 % — es ist eine Umbuchung.
     assert abs(nachher["insgesamt"] - vorher["insgesamt"]) < vorher["insgesamt"] * 0.05
 
@@ -295,9 +295,9 @@ def test_speichern_und_lesen(tmp_path, gelesen):
         # Der Jahrgang ohne Aufteilung kommt auch aus der Datenbank ohne sie —
         # NULL bleibt NULL und wird nicht unterwegs zu einer Null.
         z2022 = next(z for z in zeilen if z["year"] == 2022)
-        assert z2022["kreditmarkt"] is None
+        assert z2022["credit_market"] is None
         assert z2022["insgesamt"] == 281_457_000
-        assert z2022["aufteilung_verworfen"] == 1_078_000
+        assert z2022["breakdown_rejected"] == 1_078_000
     finally:
         store.close()
 

@@ -128,7 +128,7 @@ def test_jede_satzung_im_ris_ist_ein_entwurf():
     einen Ratsbeschluss."""
     s = parse_satzung(SATZUNG_2024)
     assert s.fassung == "entwurf"
-    assert s.sitzung_am is None, "„xx.xx.2023“ ist kein Datum"
+    assert s.session_date is None, "„xx.xx.2023“ ist kein Datum"
 
 
 def test_ohne_entwurfsvermerk_heisst_es_unbekannt_und_nicht_beschlossen():
@@ -138,7 +138,7 @@ def test_ohne_entwurfsvermerk_heisst_es_unbekannt_und_nicht_beschlossen():
                            .replace("xx.xx.2023", "15.12.2023"))
     s = parse_satzung(neutral)
     assert s.fassung == "unbekannt"
-    assert s.sitzung_am == "15.12.2023"
+    assert s.session_date == "15.12.2023"
 
 
 def test_die_herkunft_nennt_die_fassung_im_stand():
@@ -173,7 +173,7 @@ def test_kredite_nicht_veranschlagt_ist_eine_null_und_keine_luecke():
     """§ 2 sagt in jedem gelesenen Jahrgang „werden nicht veranschlagt".
     Das ist eine Aussage — die Stadt nimmt keine Investitionskredite auf."""
     s = parse_satzung(SATZUNG_2024)
-    assert s.kredite_investitionen == 0.0
+    assert s.investment_loans == 0.0
 
 
 def test_fehlende_grundsteuer_ist_keine_luecke_im_einlesen():
@@ -232,8 +232,8 @@ def test_speichern_und_wiederlesen(tmp_path):
         assert len(zeilen) == 1
         z = zeilen[0]
         assert z["year"] == 2024 and z["fassung"] == "entwurf"
-        assert z["liquiditaetskredite"] == 100_000_000.0
-        assert z["kredite_investitionen"] == 0.0
+        assert z["liquidity_loans"] == 100_000_000.0
+        assert z["investment_loans"] == 0.0
         assert store.haushaltssatzung_jahre() == [2024]
         assert "council_haushaltssatzung" not in store.herkunft_luecken()
     finally:

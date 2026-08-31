@@ -587,7 +587,7 @@ def test_steuern_block_trennt_ist_von_plan():
 
 def test_steuerkraft_block_nennt_die_daempfer_regel():
     ctx = qa._steuerkraft_block({"year": 2024, "messzahl": 325716249.0,
-                                 "zuweisungen": 69209992.0, "year_before": 2023,
+                                 "allocations": 69209992.0, "year_before": 2023,
                                  "messzahl_davor": 279815776.0,
                                  "zuweisungen_davor": 99569120.0})
     assert "FINANZAUSGLEICH" in ctx
@@ -628,16 +628,16 @@ def test_steuerkraft_kontext_braucht_zwei_jahre(tmp_path):
     store = CouncilStore(tmp_path / "c.sqlite")
     with store._conn:
         store._conn.execute(
-            "INSERT INTO council_steuerkraft (year, messzahl, zuweisungen, fetched_at) "
+            "INSERT INTO council_steuerkraft (year, messzahl, allocations, fetched_at) "
             "VALUES (2023, 279815776, 99569120, '')")
     assert store.steuerkraft_kontext() is None  # ein Jahr reicht nicht
     with store._conn:
         store._conn.execute(
-            "INSERT INTO council_steuerkraft (year, messzahl, zuweisungen, fetched_at) "
+            "INSERT INTO council_steuerkraft (year, messzahl, allocations, fetched_at) "
             "VALUES (2024, 325716249, 69209992, '')")
     k = store.steuerkraft_kontext()
     assert k["year"] == 2024 and k["year_before"] == 2023
-    assert k["zuweisungen"] == 69209992.0 and k["zuweisungen_davor"] == 99569120.0
+    assert k["allocations"] == 69209992.0 and k["zuweisungen_davor"] == 99569120.0
     store.close()
 
 

@@ -34,16 +34,16 @@ export type StellenZeile = {
   gruppe: string | null;
   seq_no: number | null;
   label: string;
-  besoldung: string | null;
+  pay_grade: string | null;
   /** Stellen im Haushaltsjahr — die Planspalte. */
-  stellen_plan: number;
+  positions_planned: number;
   /** Stellen im Vorjahr. Auf DIESE Zahl beziehen sich alle Besetzungswerte. */
   positions_prior_year: number;
   besetzt: number;
   /** Nur Teil A: Eine Beamtenstelle darf mit Tarifbeschäftigten besetzt werden. */
-  besetzt_beamte: number | null;
-  besetzt_arbeitnehmer: number | null;
-  nicht_besetzt: number;
+  filled_by_officials: number | null;
+  filled_by_employees: number | null;
+  vacant: number;
   /** Tag, auf den sich die Besetzung bezieht (ISO). */
   as_of_date: string | null;
   /** 0 = In dieser Zeile ergeben besetzt + unbesetzt nicht die Stellen des
@@ -91,18 +91,18 @@ export function fehlt(daten: StellenplanDaten, budget_year: number,
  *
  *  `anteil` ist unsere einzige Division auf dieser Seite und steht auf der
  *  Seite als solche gekennzeichnet. Sie teilt durch `positions_prior_year`, nicht
- *  durch `stellen_plan`: Beides sind Stellen, aber zu verschiedenen
+ *  durch `positions_planned`: Beides sind Stellen, aber zu verschiedenen
  *  Zeitpunkten (s. Kopf dieser Datei). */
 export function luecke(z: StellenZeile | null): {
-  stellen: number; besetzt: number; nicht_besetzt: number;
+  stellen: number; besetzt: number; vacant: number;
   anteil: number; as_of_date: string | null;
 } | null {
   if (!z || !z.positions_prior_year) return null;
   return {
     stellen: z.positions_prior_year,
     besetzt: z.besetzt,
-    nicht_besetzt: z.nicht_besetzt,
-    anteil: z.nicht_besetzt / z.positions_prior_year,
+    vacant: z.vacant,
+    anteil: z.vacant / z.positions_prior_year,
     as_of_date: z.as_of_date,
   };
 }
@@ -125,8 +125,8 @@ export function groessteLuecken(zeilen: StellenZeile[], teil: StellenTeil,
                                 count = 8): StellenZeile[] {
   return zeilen
     .filter((z) => z.art === "posten" && z.teil === teil && z.consistent === 1)
-    .filter((z) => z.nicht_besetzt > 0)
-    .sort((a, b) => b.nicht_besetzt - a.nicht_besetzt)
+    .filter((z) => z.vacant > 0)
+    .sort((a, b) => b.vacant - a.vacant)
     .slice(0, count);
 }
 

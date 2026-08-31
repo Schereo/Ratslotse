@@ -44,7 +44,7 @@ export type VergleichBeleg = {
   vorlage_url: string;
   /** Der Eintrag in unserem eigenen Bestand — der Ausschuss hat den Bericht
    *  zur Kenntnis genommen. `null`, wenn der Bestand ihn (noch) nicht kennt. */
-  beschluss_id: number | null;
+  decision_id: number | null;
   titel: string | null;
   anlagen: { document_id: number; label: string | null; url: string | null; is_antrag: number }[];
 };

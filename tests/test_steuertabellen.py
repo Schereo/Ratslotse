@@ -408,7 +408,7 @@ def test_die_treppe_wird_nicht_interpoliert():
     b = {z["year"]: z for z in zeilen if z["art"] == "Grundsteuer B"}
     assert b[2015]["hebesatz"] == 445
     assert b[2025] == {"year": 2025, "art": "Grundsteuer B",
-                       "hebesatz": 539, "vorheriger": 445}
+                       "hebesatz": 539, "prior_rate": 445}
 
 
 def test_eine_zeile_die_nichts_aendert_faellt_auf():

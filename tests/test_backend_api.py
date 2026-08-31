@@ -1001,7 +1001,7 @@ def test_haushalt_beteiligungen_liefert_texte_kennzahlen_und_herkunft(client):
     egh = next(g for g in b["gesellschaften"] if g["gesellschaft"] == "egh")
     # Der Verweis auf den Gesamtabschluss steht am Stammdatensatz — er macht
     # aus zwei Seiten über dieselbe Gesellschaft einen Zusammenhang.
-    assert egh["konzern_key"] == "egh"
+    assert egh["consolidated_key"] == "egh"
     assert egh["page"] == 2
 
     bilanz = next(k for k in b["kennzahlen"]
@@ -1038,7 +1038,7 @@ def test_haushalt_beteiligungen_liefert_texte_kennzahlen_und_herkunft(client):
     # Ohne Personenverzeichnis im Testbestand gibt es keinen Treffer — und
     # dann steht dort ausdrücklich nichts statt irgendwer.
     assert all(p["slug"] is None and p["partei"] is None for p in personen)
-    assert egh["funktionen_zuordenbar"] is True
+    assert egh["roles_assignable"] is True
 
     eigner = [e for e in b["eigentuemer"] if e["gesellschaft"] == "egh"]
     assert [e["name"] for e in eigner] == ["Stadt Oldenburg"]
@@ -5837,11 +5837,11 @@ def test_haushalt_schulden_liefert_die_dritte_zahl_mit_ihren_warnsaetzen(client)
     cs = CouncilStore(COUNCIL_DB)
     try:
         cs.save_integrierte_schulden({
-            "year": 2024, "ars": isch.ARS_OLDENBURG, "bevoelkerung": 176_336.0,
+            "year": 2024, "ars": isch.ARS_OLDENBURG, "population": 176_336.0,
             "insgesamt": 740_330_163.0, "je_einwohner": 4_198.41,
-            "kernhaushalt": 43_690_972.0, "extrahaushalte": 140_916_720.89,
-            "sonstige": 555_722_470.11, "extra_unter_50": 2_397_841.89,
-            "sonstige_unter_50": 431_522_725.5, "insgesamt_change": -13.6,
+            "kernhaushalt": 43_690_972.0, "extra_budgets": 140_916_720.89,
+            "sonstige": 555_722_470.11, "extra_under_50": 2_397_841.89,
+            "other_below_50": 431_522_725.5, "insgesamt_change": -13.6,
             "probes": [isch.PROBE_KERNHAUSHALT],
         }, h_mod.Herkunft(art="lsn", probe=[isch.PROBE_KERNHAUSHALT],
                           label="Integrierte Schulden der Gemeinden",

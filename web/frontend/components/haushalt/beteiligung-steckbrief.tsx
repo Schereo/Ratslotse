@@ -33,7 +33,7 @@
 // `funktion: null` HEISST UNBEKANNT, NICHT „KEINE". Der Bericht führt Namen
 // und Funktionen in zwei getrennten Spalten; paaren lassen sie sich nur nach
 // Position, und das nur bei exakt gleicher Länge. Wo die Probe scheitert
-// (`funktionen_zuordenbar === false`), zeigt die Seite die Namen OHNE Ämter
+// (`roles_assignable === false`), zeigt die Seite die Namen OHNE Ämter
 // und sagt in einem Satz, warum. Der Vorsitz bleibt trotzdem stehen: Er
 // steht in der Namenszeile selbst („…, Vorsitzende"), nicht in der Spalte.
 //
@@ -513,7 +513,7 @@ export function Steckbrief({ daten, g, zurueck }: {
         <Aufsichtsorgan personen={personen}
           // Ohne Angabe gilt „unbekannt": Eine alte API, die das Feld nicht
           // kennt, darf keine Ämter behaupten.
-          zuordenbar={g.funktionen_zuordenbar === true}
+          zuordenbar={g.roles_assignable === true}
           herkunft={herkunftVon(daten, personen[0].herkunft_id ?? organe?.herkunft_id ?? null)} />
       ) : organe ? (
         <Rohtext kicker={TITEL.aufsichtsorgane} text={organe.text}

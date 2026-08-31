@@ -178,8 +178,8 @@ function BeschlussStrahl({ vorlagen }: { vorlagen: BuergschaftsVorlage[] }) {
                 {v.datum ? v.datum.slice(0, 7).split("-").reverse().join("/") : "—"}
               </span>
               <span className="min-w-0 flex-1 text-[12.5px] leading-snug text-foreground/90">
-                {v.beschluss_id ? (
-                  <Link href={`/council/decision?id=${v.beschluss_id}`}
+                {v.decision_id ? (
+                  <Link href={`/council/decision?id=${v.decision_id}`}
                     className="hover:text-primary">{v.title}</Link>
                 ) : v.title}
               </span>
@@ -466,20 +466,20 @@ function RahmenBlock({ zeile, herkunft }: {
   const posten: { label: string; wert: number | null; erklaerung: string }[] = [
     {
       label: "Kredite für Investitionen",
-      wert: zeile.kredite_investitionen,
+      wert: zeile.investment_loans,
       erklaerung: "Wie viel die Stadt sich im Haushaltsjahr für Investitionen "
         + "leihen darf (§ 2).",
     },
     {
       label: "Höchstbetrag für Liquiditätskredite",
-      wert: zeile.liquiditaetskredite,
+      wert: zeile.liquidity_loans,
       erklaerung: "Bis zu diesem Höchstbetrag darf die Stadt kurzfristige Kredite "
         + "aufnehmen, um ihre Zahlungsfähigkeit zu sichern (§ 4). Der Betrag ist eine "
         + "Ermächtigung und nicht der tatsächlich genutzte Kredit.",
     },
     {
       label: "Verpflichtungsermächtigungen",
-      wert: zeile.verpflichtungsermaechtigungen,
+      wert: zeile.commitment_authorizations,
       erklaerung: "Was die Stadt in diesem Jahr bestellen darf, obwohl die "
         + "Rechnung erst in kommenden Jahren kommt (§ 3).",
     },
@@ -922,9 +922,9 @@ export default function SchuldenPage() {
             <div className="mt-3 flex h-7 w-full overflow-hidden rounded-lg">
               {([
                 ["Verwaltung", jTeilung.kern, "var(--hh-aus-0)"],
-                ["Eigenbetriebe", jTeilung.eigenbetriebe, "var(--hh-aus-2)"],
+                ["Eigenbetriebe", jTeilung.municipal_enterprises, "var(--hh-aus-2)"],
               ] as const).map(([label, wert, farbe]) => {
-                const anteil = (wert / (jTeilung.kern + jTeilung.eigenbetriebe)) * 100;
+                const anteil = (wert / (jTeilung.kern + jTeilung.municipal_enterprises)) * 100;
                 return (
                   <div key={label} className="flex items-center px-2"
                     style={{ width: `${anteil}%`, background: farbe }}>
@@ -952,7 +952,7 @@ export default function SchuldenPage() {
                   style={{ background: "var(--hh-aus-2)" }} />
                 <dt className="text-muted-foreground">Eigenbetriebe</dt>
                 <dd className="font-semibold tabular-nums">
-                  {deMio(jTeilung.eigenbetriebe / 1e6)}&#8239;Mio.&nbsp;€
+                  {deMio(jTeilung.municipal_enterprises / 1e6)}&#8239;Mio.&nbsp;€
                 </dd>
               </div>
             </dl>

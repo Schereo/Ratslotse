@@ -255,7 +255,7 @@ function GlanceCard({
       {/* Die Anschlussstelle, die etwas SAGT. Der Satz oben steht an jedem
           Beschluss mit Finanz-Feld und ist deshalb für keinen eine Auskunft;
           diese Karte gibt es nur, wo eine echte Verknüpfung sie deckt —
-          entweder zeigt `council_nachbewilligungen.beschluss_id` auf genau
+          entweder zeigt `council_nachbewilligungen.decision_id` auf genau
           diesen Beschluss, oder seine Vorlage steht im Bürgschafts-Zeitstrahl.
           Sonst kommt sie gar nicht (`haushalts_anschluss === null`). */}
       {HAUSHALT_FREI && data.haushalts_anschluss && (
