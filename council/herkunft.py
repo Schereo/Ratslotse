@@ -50,7 +50,7 @@ Für einen neuen Parser
 -----------------------
 Drei Dinge, mehr nicht (ausführlich in ``docs-site/.../haushalt.md``):
 
-1. Eine :class:`Herkunft` bauen — ``art`` und ``probe`` sind Pflicht, alles
+1. Eine :class:`Herkunft` bauen — ``kind`` und ``probe`` sind Pflicht, alles
    andere so vollständig, wie das Dokument es hergibt.
 2. Sie an die ``save_*``-Methode des Stores geben. Die trägt sie ein und
    verknüpft die Zeilen (``store.merke_herkunft``).
@@ -749,7 +749,7 @@ class Herkunft:
     """
 
     #: Schlüssel aus :data:`ARTEN`.
-    art: str
+    kind: str
     #: Name(n) aus :data:`PROBEN`, oder :data:`UNGEPRUEFT`.
     probe: str | Sequence[str]
     #: ``council_anlagen.document_id`` — überlebt Label- und URL-Wechsel.
@@ -774,9 +774,9 @@ class Herkunft:
     as_of: str | None = None
 
     def __post_init__(self) -> None:
-        if self.art not in ARTEN:
+        if self.kind not in ARTEN:
             raise ValueError(
-                f"Unbekannte Quellenart {self.art!r}. Bekannt sind: "
+                f"Unbekannte Quellenart {self.kind!r}. Bekannt sind: "
                 f"{', '.join(sorted(ARTEN))}.")
         # Der Aufrufer darf einen Namen oder eine Liste übergeben; gespeichert
         # wird immer die kanonische, geprüfte Fassung.
@@ -802,7 +802,7 @@ class Herkunft:
 
     def felder(self) -> dict:
         """Die Spaltenwerte für ``council_herkunft`` (ohne ``fetched_at``)."""
-        return {"art": self.art, "document_id": self.document_id,
+        return {"kind": self.kind, "document_id": self.document_id,
                 "label": self.label, "url": self.url,
                 "citation": self.citation, "page": self.page,
                 "probe": str(self.probe), "probe_result": self.probe_result,

@@ -85,7 +85,7 @@ def parse_vorlage_page(html: str) -> dict | None:
     return {
         "template_number": nr_cell.get_text(" ", strip=True) if nr_cell else "",
         "title": title_cell.get_text(" ", strip=True) if title_cell else "",
-        "art": art_cell.get_text(" ", strip=True) if art_cell else "",
+        "kind": art_cell.get_text(" ", strip=True) if art_cell else "",
         "document_id": document_id,
         "document_url": document_url,
         "anlagen": anlagen,

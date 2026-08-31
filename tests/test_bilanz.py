@@ -628,7 +628,7 @@ def source():
         probe=["bilanz_ausgleich", "bilanz_kassenprobe"],
         citation="Abschnitt 2.1 — Bilanz der Stadt Oldenburg zum 31.12.2024",
         probe_result="Aktiva und Passiva stimmen auf den Cent überein",
-        as_of="31.12.2024", art="ris", document_id=4711,
+        as_of="31.12.2024", kind="ris", document_id=4711,
         label="Jahresabschluss 2024", url="https://example.org/ja2024.pdf")
 
 

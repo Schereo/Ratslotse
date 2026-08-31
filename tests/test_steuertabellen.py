@@ -231,7 +231,7 @@ def test_die_quelle_sagt_selbst_welches_ergebnis_vorlaeufig_ist():
 def test_der_befund_steht_wie_gedruckt():
     """Die drei Gewerbesteuer-Jahre, gegen die Tabelle nachgeschlagen."""
     zeilen = {z["year"]: z for z in stt.lies_1103(PDF_1103, IST_REIHE)["zeilen"]
-              if z["art"] == GEWERBE}
+              if z["kind"] == GEWERBE}
     assert zeilen[2023]["plan"] == 124_234_000
     assert zeilen[2023]["actual"] == 176_840_000
     assert zeilen[2024]["plan"] == 133_440_000
@@ -334,7 +334,7 @@ def test_das_archiv_verlaengert_die_reihe_ueber_drei_jahrgaenge_hinaus():
 
     zusammen = stt.zusammenlegen(
         [("1103-2024-AZ.pdf", alt["zeilen"]), ("1103-2025-AZ.pdf", neu["zeilen"])],
-        lambda z: (z["year"], z["art"]))
+        lambda z: (z["year"], z["kind"]))
     assert sorted({z["year"] for z in zusammen}) == [2022, 2023, 2024, 2025]
 
 
@@ -345,9 +345,9 @@ def test_bei_gleichem_jahrgang_gewinnt_die_juengere_ausgabe():
     Ausgabe als Quelle nennen, der nur in der älteren enthaltene die ältere."""
     alt = stt.lies_1103(PDF_1103_AUSGABE_2024, IST_REIHE)["zeilen"]
     neu = stt.lies_1103(PDF_1103, IST_REIHE)["zeilen"]
-    zusammen = {(z["year"], z["art"]): z for z in stt.zusammenlegen(
+    zusammen = {(z["year"], z["kind"]): z for z in stt.zusammenlegen(
         [("1103-2024-AZ.pdf", alt), ("1103-2025-AZ.pdf", neu)],
-        lambda z: (z["year"], z["art"]))}
+        lambda z: (z["year"], z["kind"]))}
     assert zusammen[(2022, GEWERBE)]["ausgabe"] == "1103-2024-AZ.pdf"
     assert zusammen[(2024, GEWERBE)]["ausgabe"] == "1103-2025-AZ.pdf"
     # 2024 stand in beiden Ausgaben mit demselben Ergebnis — die jüngere
@@ -405,9 +405,9 @@ def test_die_treppe_wird_nicht_interpoliert():
     assert years == [1980, 1984, 1988, 1994, 1997, 2002, 2011, 2015, 2025]
     # Kein Jahr zwischen zwei Stufen, insbesondere keines der zehn ab 2016.
     assert not [j for j in range(2016, 2025) if j in years]
-    b = {z["year"]: z for z in zeilen if z["art"] == "Grundsteuer B"}
+    b = {z["year"]: z for z in zeilen if z["kind"] == "Grundsteuer B"}
     assert b[2015]["rate"] == 445
-    assert b[2025] == {"year": 2025, "art": "Grundsteuer B",
+    assert b[2025] == {"year": 2025, "kind": "Grundsteuer B",
                        "rate": 539, "prior_rate": 445}
 
 
@@ -501,16 +501,16 @@ def test_gespeichert_wird_mit_herkunft_und_kommt_gleich_wieder_heraus(tmp_path):
     try:
         result = stt.lies_1103(PDF_1103, IST_REIHE)
         store.save_steuerplan(result["zeilen"], herkunft.Herkunft(
-            art="stadt", url=stt.TABELLE_1103_URL,
+            kind="stadt", url=stt.TABELLE_1103_URL,
             label="Statistisches Jahrbuch, Tabelle 1103",
             probe=result["probes"]))
         hebe = stt.lies_1105(PDF_1105, GRUNDSTEUER_IST)
         store.save_hebesaetze(hebe["zeilen"], herkunft.Herkunft(
-            art="stadt", url=stt.TABELLE_1105_URL,
+            kind="stadt", url=stt.TABELLE_1105_URL,
             label="Statistisches Jahrbuch, Tabelle 1105",
             probe=hebe["probes"]))
 
-        plan = {(z["year"], z["art"]): z for z in store.get_steuerplan()}
+        plan = {(z["year"], z["kind"]): z for z in store.get_steuerplan()}
         assert plan[(2024, GEWERBE)]["plan"] == 133_440_000
         assert plan[(2025, GEWERBE)]["provisional"] == 1
         assert store.steuerplan_jahre() == [2023, 2024, 2025]
@@ -529,7 +529,7 @@ def test_ein_zweiter_lauf_wirft_aeltere_jahrgaenge_nicht_weg(tmp_path):
     Jahrgänge der ersten nicht mit wegräumen — sonst wäre das Archiv umsonst."""
     store = CouncilStore(tmp_path / "council.sqlite")
     try:
-        h = herkunft.Herkunft(art="stadt", url=stt.TABELLE_1103_URL,
+        h = herkunft.Herkunft(kind="stadt", url=stt.TABELLE_1103_URL,
                               probe=["steuerplan_summenzeile"])
         store.save_steuerplan(
             stt.lies_1103(PDF_1103_AUSGABE_2024, IST_REIHE)["zeilen"], h)

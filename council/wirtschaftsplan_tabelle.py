@@ -464,7 +464,7 @@ def herkunft_fuer(plan: Wirtschaftsplan, probes: list[Spaltenprobe],
     if ocr_model:
         result += f"; Anlage per OCR gelesen ({ocr_model})"
     return Herkunft(
-        art="ris",
+        kind="ris",
         probe=[PROBE_SPALTEN, PROBE_PROSA],
         document_id=document_id,
         # Nicht das RIS-Label der Datei („25.10.27 - Anlage Wirtschafts-und

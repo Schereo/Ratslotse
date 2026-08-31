@@ -441,7 +441,7 @@ def test_gespeicherte_kennzahl_traegt_probe_und_messwert(tmp_path):
               if z["indicator"] == "bilanzsumme" and z["year"] == 2024]
     assert len(zeilen) == 1
     h = store.get_herkunft([zeilen[0]["herkunft_id"]])[0]
-    assert h["art"] == "stadt"
+    assert h["kind"] == "stadt"
     assert h["probe"] == "beteiligung_bilanzprobe"
     assert "Abschnitt 2.2.1" in h["citation"]
     assert h["page"] == 2
@@ -501,14 +501,14 @@ def test_konzernvergleich_ist_einordnung_und_verwirft_nichts(tmp_path):
         "label": "Beteiligungsbericht 2024"}},
         finanzquellen.Protokoll(still=True))
 
-    source = herkunft.Herkunft(art="ris", document_id=302709,
+    source = herkunft.Herkunft(kind="ris", document_id=302709,
                                label="Gesamtabschluss 2024",
                                url="https://example.org/ga2024.pdf",
                                probe="konzern_traegersumme")
     store.save_konzern_jahrgang(2024, [], [
-        {"art": "revenues", "entity_key": "egh", "entity": "EGH",
+        {"kind": "revenues", "entity_key": "egh", "entity": "EGH",
          "amount_keur": 69889.0, "prior_year_keur": None},
-        {"art": "expenses", "entity_key": "egh", "entity": "EGH",
+        {"kind": "expenses", "entity_key": "egh", "entity": "EGH",
          "amount_keur": 72590.0, "prior_year_keur": None},
     ], source)
 

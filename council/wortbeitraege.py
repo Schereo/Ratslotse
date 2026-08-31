@@ -122,7 +122,7 @@ def extract_wortbeitraege(raw_text: str, model: str = MODEL) -> list[dict]:
             if key in gesehen:
                 continue
             gesehen.add(key)
-            art = str(r.get("art") or "rede").strip().lower()
+            art = str(r.get("kind") or "rede").strip().lower()
 
             def field(name: str, max_len: int | None = None) -> str | None:
                 value = str(r.get(name) or "").strip()
@@ -139,7 +139,7 @@ def extract_wortbeitraege(raw_text: str, model: str = MODEL) -> list[dict]:
                 return value or None
 
             beitraege.append({
-                "art": art if art in ARTEN else "rede",
+                "kind": art if art in ARTEN else "rede",
                 "top": field("top", 120),
                 "speaker": field("speaker", 80),
                 # 40 war zu knapp: „BUND für Umwelt und Naturschutz

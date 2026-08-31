@@ -61,7 +61,7 @@ def test_kontext_nimmt_vorlage_und_anlagen():
     """Der Kern der Sache: Das Modell sieht Beschlussvorschlag, Kosten,
     Vorlagentext UND Anlagen — nicht nur den Titel wie die Kurzfassung."""
     punkt = {"committee": "Rat", "session_date": "2026-08-31",
-             "title": "Bebauungsplan 837", "art": "Beschlussvorlage",
+             "title": "Bebauungsplan 837", "kind": "Beschlussvorlage",
              "office": "Stadtplanung", "proposed_decision": "Der Rat beschließt …",
              "financial_impact": "Kosten: 1,2 Mio Euro", "climate_impact": None,
              "raw_text": "Briefkopf. Sachverhalt: 8,6 Hektar, davon 3,9 im "

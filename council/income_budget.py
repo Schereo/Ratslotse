@@ -327,7 +327,7 @@ def lies(text: str) -> dict:
                 continue
             for nr, werte in sorted(gelesen.items()):
                 zeilen.append({
-                    "year": years[sp], "art": art, "nr": nr,
+                    "year": years[sp], "kind": art, "nr": nr,
                     "label": ERGEBNIS_POSTEN[nr],
                     "amount": werte[sp],
                     "is_total": 1 if nr in SUMMEN_POSTEN else 0,

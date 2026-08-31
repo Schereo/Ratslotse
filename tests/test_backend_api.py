@@ -782,7 +782,7 @@ def test_haushalt_dokumente_nennt_je_jahrgang_das_richtige_pdf(client):
                 {"nr": 12, "label": "Summe ordentliche Erträge",
                  "result": 1.0, "is_total": 1}],
                 herkunft.Herkunft(
-                    art="ris", probe="strukturprobe", document_id=doc,
+                    kind="ris", probe="strukturprobe", document_id=doc,
                     label=f"Jahresabschluss {year}",
                     url=f"https://buergerinfo.oldenburg.de/getfile.php?id={doc}&type=do",
                     citation="Ergebnisrechnung der Kernverwaltung", page=161))
@@ -917,7 +917,7 @@ def test_haushalt_investitionen_trennt_geprueft_von_bezugsgroesse(client):
             "Finanzhaushalt Gesamtinvestitionen;;35089163;63352260\n"
             "Gesamtbetrag des Finanzhaushaltes;;743796496;850520503\n", 2025)
         assert gelesen["bestanden"] is True
-        anker = dict(art="opendata", label="Finanzhaushalt der Stadt Oldenburg 2025",
+        anker = dict(kind="opendata", label="Finanzhaushalt der Stadt Oldenburg 2025",
                      url="https://example.org/1101_2025_Finanzhaushalt.csv")
         cs.save_investitionen(
             2025, gelesen["zeilen"], gelesen["gesamt"],
@@ -1136,20 +1136,20 @@ def test_haushalt_konzern_liefert_luecke_und_gegenprobe(client):
         cs.save_ergebnisrechnung(2024, [
             {"nr": 12, "label": "Summe ordentliche Erträge",
              "result": 799057202.86, "is_total": 1},
-        ], herkunft.Herkunft(art="ris", probe="strukturprobe", document_id=295294,
+        ], herkunft.Herkunft(kind="ris", probe="strukturprobe", document_id=295294,
                              label="Jahresabschluss 2024",
                              url="https://example.org/ja.pdf"))
-        anker = dict(art="ris", document_id=302709, label="Prüfbericht GA 2024",
+        anker = dict(kind="ris", document_id=302709, label="Prüfbericht GA 2024",
                      url="https://example.org/ga.pdf")
         cs.save_konzern_jahrgang(
             2024,
             [{"nr": 13, "label": "Summe ordentliche Erträge",
               "role": "revenues_total", "amount": 1241548906.55,
               "prior_year": 1139375959.21, "is_total": 1}],
-            [{"art": "revenues", "entity_key": "stadt",
+            [{"kind": "revenues", "entity_key": "stadt",
               "entity": "Kernverwaltung (Stadt Oldenburg)",
               "amount_keur": 799057.0, "prior_year_keur": 732987.0},
-             {"art": "revenues", "entity_key": "klinikum",
+             {"kind": "revenues", "entity_key": "klinikum",
               "entity": "Klinikum Oldenburg AöR",
               "amount_keur": 368100.0, "prior_year_keur": 336858.0}],
             herkunft.Herkunft(probe=["konzern_ergebnisprobe", "konzern_ausserordentlich",
@@ -1205,7 +1205,7 @@ def test_haushalt_gebaut_beziffert_seine_luecken(client):
         verworfen = [{"year": 2019, "accounting_system": "doppik", "difference": -1_304_000.0,
                       "reason": "Zeilensumme um -1.304.000 € gerissen"}]
         cs.save_investitionen_ist(gut, herkunft.Herkunft(
-            art="stadt", url="https://example.org/1107.pdf",
+            kind="stadt", url="https://example.org/1107.pdf",
             probe="investitionen_ist_zeilensumme",
             citation="Kapitel 11, Tabelle 1107-1"), verworfen=verworfen)
     finally:
@@ -1232,7 +1232,7 @@ def test_haushalt_gebaut_erfindet_keine_differenz(client):
             "2018 6.377 1.977 15.885 4.536 478 19.000 48.253\n"
             "2020 9.165 1.753 16.462 8.340 495 34.266 70.481\n", "doppik")
         cs.save_investitionen_ist(zeilen, herkunft.Herkunft(
-            art="stadt", url="https://example.org/1107.pdf",
+            kind="stadt", url="https://example.org/1107.pdf",
             probe="investitionen_ist_zeilensumme"))
     finally:
         cs.close()
@@ -1280,13 +1280,13 @@ def test_decision_detail_includes_vorlage(client):
                         "angenommen", None, None, None, [], "26/0400", None, None)
     cs._conn.commit()
     did = cs._conn.execute("SELECT id FROM council_decisions WHERE ksinr = 88").fetchone()[0]
-    cs.save_vorlage({"kvonr": 901, "template_number": "26/0400", "title": "Radweg", "art": "Beschlussvorlage",
+    cs.save_vorlage({"kvonr": 901, "template_number": "26/0400", "title": "Radweg", "kind": "Beschlussvorlage",
                      "document_id": 12, "document_url": "https://buergerinfo.oldenburg.de/getfile.php?id=12",
                      "raw_text": "Sachverhalt:\nDie Stadt plant einen Radweg entlang der Haaren.",
                      "n_pages": 3, "status": "ok"})
     cs.close()
     data = client.get(f"/api/council/decision/{did}").json()
-    assert data["vorlage"]["art"] == "Beschlussvorlage"
+    assert data["vorlage"]["kind"] == "Beschlussvorlage"
     assert "Radweg entlang der Haaren" in data["vorlage"]["excerpt"]
     assert "kvonr=901" in data["vorlage_url"]
     assert data["anlagen"] == []  # keine Anlagen geseedet → leere Liste, kein Fehlen
@@ -1301,7 +1301,7 @@ def test_decision_detail_lists_anlagen_and_analysis_has_antrag_stats(client):
                         "angenommen", None, None, None, [], "26/0500", None, None)
     cs._conn.commit()
     did = cs._conn.execute("SELECT id FROM council_decisions WHERE ksinr = 89").fetchone()[0]
-    cs.save_vorlage({"kvonr": 902, "template_number": "26/0500", "title": "Lastenräder", "art": "Beschlussvorlage",
+    cs.save_vorlage({"kvonr": 902, "template_number": "26/0500", "title": "Lastenräder", "kind": "Beschlussvorlage",
                      "raw_text": "Sachverhalt: Förderung.", "n_pages": 2, "status": "ok"})
     cs.save_anlagen(902, [
         {"document_id": 77, "url": "https://x/77", "label": "Antrag der SPD-Fraktion vom 01.02.2026",
@@ -5421,7 +5421,7 @@ def test_haushalt_schulden_traegt_die_zinslast_aus_dem_jahresabschluss(client):
              "result": 7_250_000.0, "is_total": 0},
             {"nr": 12, "label": "Summe ordentliche Erträge",
              "result": 799_057_202.86, "is_total": 1},
-        ], herkunft.Herkunft(art="ris", probe="strukturprobe", document_id=295294,
+        ], herkunft.Herkunft(kind="ris", probe="strukturprobe", document_id=295294,
                              label="Jahresabschluss 2024",
                              url="https://example.org/ja.pdf"))
 
@@ -5433,7 +5433,7 @@ def test_haushalt_schulden_traegt_die_zinslast_aus_dem_jahresabschluss(client):
             {"nr": schulden.POSTEN_ZINSAUFWAND,
              "label": "Zinsen und ähnliche Aufwendungen",
              "result": 4_084_574.90, "is_total": 0},
-        ], herkunft.Herkunft(art="ris", probe="strukturprobe", document_id=295294,
+        ], herkunft.Herkunft(kind="ris", probe="strukturprobe", document_id=295294,
                              label="Jahresabschluss 2024",
                              citation="Teil-Ergebnisrechnung THH04",
                              url="https://example.org/ja.pdf"),
@@ -5486,7 +5486,7 @@ def test_haushalt_bilanz_liefert_posten_erlaeuterungen_und_herkunft(client):
     cs = CouncilStore(COUNCIL_DB)
     try:
         q = herkunft.Herkunft(
-            art="ris", probe=["bilanz_ausgleich", "bilanz_kassenprobe"],
+            kind="ris", probe=["bilanz_ausgleich", "bilanz_kassenprobe"],
             citation="Abschnitt 2.1 — Bilanz der Stadt Oldenburg zum 31.12.2024",
             probe_result="Aktiva und Passiva stimmen auf den Cent überein",
             as_of="31.12.2024", document_id=295294, label="Jahresabschluss 2024",
@@ -5507,7 +5507,7 @@ def test_haushalt_bilanz_liefert_posten_erlaeuterungen_und_herkunft(client):
             {"role": "schulden", "nr": 7, "heading": "Schulden",
              "text": "… ergibt sich eine Bilanzverlängerung … 138,2 Millionen Euro."},
         ], herkunft.Herkunft(
-            art="ris", probe="bilanz_erlaeuterung",
+            kind="ris", probe="bilanz_erlaeuterung",
             citation="Abschnitt 6.2 — Erläuterung der wesentlichen Bilanzpositionen",
             as_of="Jahresabschluss 2024", document_id=295294,
             label="Jahresabschluss 2024", url="https://example.org/ja.pdf"))
@@ -5567,7 +5567,7 @@ def test_haushalt_indicators_kommen_mit_ihrer_genauigkeit(client):
               "decimals": 1, "version": None}],
             [{"indicator": "eigenkapitalquote_1", "heading": "Eigenkapitalquote I",
               "formula": "100 * Nettoposition / Bilanzsumme", "version": None}],
-            herkunft.Herkunft(art="stadt", url="https://example.org/rechenschaft.pdf",
+            herkunft.Herkunft(kind="stadt", url="https://example.org/rechenschaft.pdf",
                               label="Rechenschaftsbericht 2024", probe=[herkunft.UNGEPRUEFT]))
     finally:
         cs.close()
@@ -5600,21 +5600,21 @@ def test_haushalt_liefert_die_spenden_mit_luecke_und_beleg(client):
              "second_mention": "zerlegung",
              "probes": [donations.ZWEITSTELLE, donations.PROTOKOLLABGLEICH],
              "herkunft": herkunft.Herkunft(
-                 art="ris", document_id=304791, probe=[donations.ZWEITSTELLE],
+                 kind="ris", document_id=304791, probe=[donations.ZWEITSTELLE],
                  citation=donations.FUNDSTELLE,
                  probe_result="421.316 + 14.625 = 435.941")},
             {"template_number": "26/0044", "year": 2026, "session_date": "2026-02-09",
              "amount": 1_800.0, "committee": "Verwaltungsausschuss", "layout": "alt",
              "second_mention": "identisch", "probes": [donations.ZWEITSTELLE],
              "herkunft": herkunft.Herkunft(
-                 art="ris", document_id=300001, probe=[donations.ZWEITSTELLE],
+                 kind="ris", document_id=300001, probe=[donations.ZWEITSTELLE],
                  probe_result="identisch")},
         ]
         verworfen = [{"template_number": "23/0265", "session_date": "2023-05-03",
                       "reason": "Die Vorlage schlug 52.000,00 Euro vor, das Protokoll "
                                "hält 51.500,00 Euro fest."}]
         cs.save_spenden(zeilen, verworfen, herkunft.Herkunft(
-            art="ris", url="https://buergerinfo.example.org/vo040.asp",
+            kind="ris", url="https://buergerinfo.example.org/vo040.asp",
             probe=[donations.ZWEITSTELLE], probe_result="2 Vorlagen belegt"))
 
         daten = client.get("/api/council/haushalt").json()
@@ -5671,7 +5671,7 @@ def test_haushalt_thh_posten_schneidet_die_ergebnisrechnung_zu(client):
     _register(client)
     cs = CouncilStore(COUNCIL_DB)
     try:
-        h = h_mod.Herkunft(art="ris", probe="strukturprobe", document_id=295294,
+        h = h_mod.Herkunft(kind="ris", probe="strukturprobe", document_id=295294,
                            label="Jahresabschluss 2024",
                            url="https://example.org/ja.pdf")
         cs.save_ergebnisrechnung(2024, [
@@ -5773,7 +5773,7 @@ def test_haushalt_schickt_nur_belegte_herkunft(client):
         cs.save_ergebnisrechnung(2024, [
             {"nr": 12, "label": "Summe ordentliche Erträge",
              "result": 799_057_202.86, "is_total": 1},
-        ], h_mod.Herkunft(art="ris", probe="strukturprobe", document_id=295294,
+        ], h_mod.Herkunft(kind="ris", probe="strukturprobe", document_id=295294,
                           label="Jahresabschluss 2024",
                           url="https://example.org/ja.pdf"))
     finally:
@@ -5811,7 +5811,7 @@ def test_haushalt_schulden_stellt_buergschaften_neben_die_eigenen_schulden(clien
             "reason": "Hintergrund ist, dass die verbürgten Bestandsdarlehen "
                      "seitens der Beteiligungen getilgt wurden.",
             "single_amount": None, "probes": [bg.PROBE_KETTE],
-        }], h_mod.Herkunft(art="ris", probe=[bg.PROBE_KETTE], document_id=295294,
+        }], h_mod.Herkunft(kind="ris", probe=[bg.PROBE_KETTE], document_id=295294,
                            label="Jahresabschluss 2024 der Kernverwaltung",
                            citation=bg.ABSCHNITT,
                            url="https://example.org/ja2024.pdf"))
@@ -5858,7 +5858,7 @@ def test_haushalt_schulden_liefert_die_dritte_zahl_mit_ihren_warnsaetzen(client)
             "other": 555_722_470.11, "extra_under_50": 2_397_841.89,
             "other_below_50": 431_522_725.5, "insgesamt_change": -13.6,
             "probes": [isch.PROBE_KERNHAUSHALT],
-        }, h_mod.Herkunft(art="lsn", probe=[isch.PROBE_KERNHAUSHALT],
+        }, h_mod.Herkunft(kind="lsn", probe=[isch.PROBE_KERNHAUSHALT],
                           label="Integrierte Schulden der Gemeinden",
                           url="https://example.org/tabellenband.xlsx",
                           citation=f"Tabelle 2, Blatt {isch.BLATT}"))

@@ -357,7 +357,7 @@ def herkunft_fuer(plan: Wirtschaftsplan, url: str | None,
                   document_id: int | None = None) -> Herkunft:
     """Die Herkunft einer Zeile: die Vorlage selbst, nicht eine Anlage."""
     return Herkunft(
-        art="ris",
+        kind="ris",
         probe=[PROBE_ERFOLGSPLAN, PROBE_JAHR],
         document_id=document_id,
         label=dokument_name(plan),

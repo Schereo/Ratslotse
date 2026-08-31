@@ -372,7 +372,7 @@ def anteilsprobe(gelesen: dict) -> list[dict]:
                 gerechnet = round(werte[spalte] / gesamt[spalte] * 100, 2)
                 gedruckt = werte[f"{spalte}_anteil"]
                 if abs(gerechnet - gedruckt) > 0.011:
-                    fehler.append({"art": art, "year": year, "spalte": spalte,
+                    fehler.append({"kind": art, "year": year, "spalte": spalte,
                                    "gerechnet": gerechnet, "gedruckt": gedruckt})
     return fehler
 
@@ -472,12 +472,12 @@ def lies_1103(text: str, ist_reihe: dict[int, dict[str, float]]) -> dict:
         for year in abgleich["bestanden"]:
             werte = je_jahr[year]
             zeilen.append({
-                "year": year, "art": art,
+                "year": year, "kind": art,
                 "plan": werte["plan"] * 1000.0,
                 "actual": werte["actual"] * 1000.0,
                 "provisional": year in gelesen["provisional"],
             })
-    zeilen.sort(key=lambda z: (z["year"], z["art"]))
+    zeilen.sort(key=lambda z: (z["year"], z["kind"]))
     return {"zeilen": zeilen, "years": abgleich["bestanden"],
             "verworfen": abgleich["verworfen"], "probes": probes,
             "spanne": gelesen["spanne"], "unbekannt": gelesen["unbekannt"],
@@ -683,7 +683,7 @@ def lies_1105(text: str, grundsteuer_ist: dict[int, float]) -> dict:
         vorher = roh[i - 1] if i else None
         for art in HEBESATZ_ARTEN:
             zeilen.append({
-                "year": eintrag["year"], "art": art,
+                "year": eintrag["year"], "kind": art,
                 "rate": eintrag[art],
                 "prior_rate": vorher[art] if vorher else None,
             })

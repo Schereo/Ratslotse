@@ -67,7 +67,7 @@ def main() -> int:
         # sagen ist ehrlicher, als eine Probe zu behaupten — und es steht auf
         # der Seite dann auch so.
         n = store.save_steuereinnahmen(taxes, herkunft.Herkunft(
-            art="opendata", probe=herkunft.UNGEPRUEFT,
+            kind="opendata", probe=herkunft.UNGEPRUEFT,
             url=haushalt.STEUERN_CSV_URL,
             label="Steuereinnahmen der Stadt Oldenburg",
             citation="Datensatz 1104 — eine Zeile je Haushaltsjahr, "
@@ -82,7 +82,7 @@ def main() -> int:
             print("Steuerkraft-CSV nicht lesbar — nichts gespeichert.", file=sys.stderr)
             return 1
         n = store.save_steuerkraft(kraft, herkunft.Herkunft(
-            art="opendata", probe=herkunft.UNGEPRUEFT,
+            kind="opendata", probe=herkunft.UNGEPRUEFT,
             url=haushalt.STEUERKRAFT_CSV_URL,
             label="Steuerkraftmesszahlen und Schlüsselzuweisungen",
             citation="Datensatz 1106 — je Jahr Steuerkraftmesszahl und "
@@ -101,7 +101,7 @@ def main() -> int:
         ew = haushalt.parse_einwohner(r.text)
         if ew:
             n = store.save_einwohner(ew, herkunft.Herkunft(
-                art="opendata", probe=herkunft.UNGEPRUEFT,
+                kind="opendata", probe=herkunft.UNGEPRUEFT,
                 url=haushalt.EINWOHNER_CSV_URL,
                 label="Einwohnerzahlen je Haushaltsjahr",
                 citation="Datensatz 1102, Einwohner-Spalte (Stichtag 31.12. "
@@ -137,7 +137,7 @@ def main() -> int:
             if not finanzquellen.bestandsschutz(p, f"Investitionen {year}", alt, neu):
                 continue
 
-            anker = dict(art="opendata", url=url,
+            anker = dict(kind="opendata", url=url,
                          label=f"Finanzhaushalt der Stadt Oldenburg {year}")
             n = store.save_investitionen(
                 year, gelesen["zeilen"], gelesen["gesamt"],

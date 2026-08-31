@@ -271,7 +271,7 @@ def test_kein_jahrgang_der_angekuendigten_spanne_geht_verloren():
 
 def _herkunft(probe="schulden_summenzeile"):
     return herkunft.Herkunft(
-        art="stadt", probe=probe, url=schulden.TABELLE_URL,
+        kind="stadt", probe=probe, url=schulden.TABELLE_URL,
         label="Statistisches Jahrbuch, Tabelle 1108",
         citation="Kapitel 11, Tabelle 1108",
         probe_result="Testlauf", as_of="Schuldenstand zum 31.12.2025")
@@ -289,7 +289,7 @@ def test_speichern_und_lesen(tmp_path, gelesen):
         assert store.schulden_jahre()[-1] == 2025
 
         h = store.get_herkunft([zeilen[0]["herkunft_id"]])[0]
-        assert h["art"] == "stadt"
+        assert h["kind"] == "stadt"
         assert h["probes"] and "Schuldenarten" in h["probes"][0]
 
         # Der Jahrgang ohne Aufteilung kommt auch aus der Datenbank ohne sie —

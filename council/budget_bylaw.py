@@ -264,7 +264,7 @@ def herkunft_fuer(satzung: Haushaltssatzung, *, url: str | None,
         probes.append(PROBE_HEBESATZ)
         result += f"; {hebesatz_geprueft}"
     return Herkunft(
-        art="ris",
+        kind="ris",
         probe=probes,
         document_id=document_id,
         label=label or f"Haushaltssatzung {satzung.year}",

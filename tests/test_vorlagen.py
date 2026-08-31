@@ -26,7 +26,7 @@ def test_parse_vorlage_page():
     meta = vorlagen.parse_vorlage_page(VO_HTML)
     assert meta["template_number"] == "26/0330"
     assert meta["title"].startswith("Radweg Haarenufer")
-    assert meta["art"] == "Beschlussvorlage"
+    assert meta["kind"] == "Beschlussvorlage"
     # Haupt-PDF ist der Link mit Label "Vorlage" — nicht die Anlage.
     assert meta["document_id"] == 307787
     assert "getfile.php?id=307787" in meta["document_url"]
@@ -100,7 +100,7 @@ def test_vorlagen_store_roundtrip(store):
     assert store.missing_vorlage_kvonrs() == [555]
     store.save_vorlage({
         "kvonr": 555, "template_number": "26/0330", "title": "Radweg Haarenufer",
-        "art": "Beschlussvorlage", "document_id": 1, "document_url": "https://x/pdf",
+        "kind": "Beschlussvorlage", "document_id": 1, "document_url": "https://x/pdf",
         "raw_text": "Sachverhalt: Es soll ein Radweg gebaut werden.", "n_pages": 2, "status": "ok",
     })
     assert store.missing_vorlage_kvonrs() == []

@@ -996,7 +996,7 @@ def lies_ehh_liste(pdf_bytes: bytes) -> Ergebnis:
 
 def herkunft_fuer(label: str, url: str | None, document_id: int) -> Herkunft:
     return Herkunft(
-        art="ris",
+        kind="ris",
         probe=("aenderungsliste_summen", "aenderungsliste_positionen",
                "aenderungsliste_erlaeuterungen", "aenderungsliste_urheber"),
         label=label,

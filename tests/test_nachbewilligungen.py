@@ -373,12 +373,12 @@ def test_verpflichtungsermaechtigung_zaehlt_nicht_mit():
     """Eine VE bindet künftige Jahre; sie ist keine Ausgabe dieses Jahres.
     Der Rechenschaftsbericht zählt sie getrennt, wir auch."""
     commitment_authorizations = nb.Bewilligung(
-        template_number="23/0359", title="…", art=nb.ART_VERPFLICHTUNG,
+        template_number="23/0359", title="…", kind=nb.ART_VERPFLICHTUNG,
         category="ausserplanmaessig", year=2023, amount=840_000.0,
         amount_source="title",
         beschluesse=({"committee": "Rat", "outcome": "angenommen"},))
     echt = nb.Bewilligung(
-        template_number="23/0617", title="…", art=nb.ART_BEWILLIGUNG,
+        template_number="23/0617", title="…", kind=nb.ART_BEWILLIGUNG,
         category="ueberplanmaessig", year=2023, amount=11_716_000.0,
         amount_source="title",
         beschluesse=({"committee": "Rat", "outcome": "angenommen"},))
@@ -407,7 +407,7 @@ def test_ohne_beschluss_keine_summe():
     """Fünf Vorlagen tragen gar keine Beschlusszeile. Beantragtes ist kein
     bewilligtes Geld — 22/0925 allein verschöbe 2022 um 1,4 Mio. €."""
     beantragt = nb.Bewilligung(
-        template_number="22/0925", title="…", art=nb.ART_BEWILLIGUNG,
+        template_number="22/0925", title="…", kind=nb.ART_BEWILLIGUNG,
         category="ueberplanmaessig", year=2022, amount=1_400_000.0,
         amount_source="title", beschluesse=())
     assert not beantragt.decided
@@ -420,7 +420,7 @@ def test_nur_kenntnis_ist_kein_ratsbeschluss():
     ein anderer. Der Rechenschaftsbericht bestätigt das für 22/0544 mit dem
     Vermerk „1 und BM"."""
     unterrichtung = nb.Bewilligung(
-        template_number="22/0544", title="…", art=nb.ART_BEWILLIGUNG,
+        template_number="22/0544", title="…", kind=nb.ART_BEWILLIGUNG,
         category="ueberplanmaessig", year=2022, amount=180_000.0,
         amount_source="title",
         beschluesse=({"committee": "Rat", "outcome": "zur_kenntnis"},))
@@ -482,7 +482,7 @@ def test_probe_volltext():
 
 def test_probe_volltext_ohne_titelbetrag_ist_nicht_bestanden():
     """„Nicht geprüft" darf nicht wie „bestanden" aussehen."""
-    b = nb.Bewilligung(template_number="24/0836", title="…", art=nb.ART_BEWILLIGUNG,
+    b = nb.Bewilligung(template_number="24/0836", title="…", kind=nb.ART_BEWILLIGUNG,
                        category="ueberplanmaessig", year=2024, amount=65_000.0,
                        amount_source="proposed_decision")
     assert not nb.probe_volltext(b, VORSCHLAG_RECHTSAMT)
@@ -698,7 +698,7 @@ def test_vorlagen_im_kapitel_2024():
 
 def _bewilligung(nr, amount, committee, outcome="angenommen"):
     return nb.Bewilligung(
-        template_number=nr, title="…", art=nb.ART_BEWILLIGUNG,
+        template_number=nr, title="…", kind=nb.ART_BEWILLIGUNG,
         category="ueberplanmaessig", year=2024, amount=amount,
         amount_source="title",
         beschluesse=({"committee": committee, "outcome": outcome},))
@@ -743,7 +743,7 @@ def test_proben_sind_in_herkunft_eingetragen():
 
 def test_herkunft_laesst_sich_bauen():
     h = herkunft.Herkunft(
-        art="ris", probe=[nb.PROBE_TABELLE, nb.PROBE_RAT],
+        kind="ris", probe=[nb.PROBE_TABELLE, nb.PROBE_RAT],
         document_id=295295, citation="Kapitel 3",
         probe_result="Spalten und Gesamtsumme gehen auf den Cent auf.")
     assert h.geprueft

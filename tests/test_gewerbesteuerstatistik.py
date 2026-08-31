@@ -384,10 +384,10 @@ def test_hebesatz_kommt_aus_der_treppe_nicht_aus_dem_jahr():
     Zeile — es gilt der Satz von 2015. Wer auf Gleichheit sucht, findet
     nichts und hielte die Probe für nicht durchführbar."""
     treppe = [
-        {"year": 2011, "art": "Gewerbesteuer", "rate": 430, "prior_rate": 410},
-        {"year": 2015, "art": "Gewerbesteuer", "rate": 439, "prior_rate": 430},
-        {"year": 2015, "art": "Grundsteuer B", "rate": 445, "prior_rate": 430},
-        {"year": 2025, "art": "Grundsteuer B", "rate": 539, "prior_rate": 445},
+        {"year": 2011, "kind": "Gewerbesteuer", "rate": 430, "prior_rate": 410},
+        {"year": 2015, "kind": "Gewerbesteuer", "rate": 439, "prior_rate": 430},
+        {"year": 2015, "kind": "Grundsteuer B", "rate": 445, "prior_rate": 430},
+        {"year": 2025, "kind": "Grundsteuer B", "rate": 539, "prior_rate": 445},
     ]
     assert gs.hebesatz_im_jahr(treppe, 2021) == 439
     assert gs.hebesatz_im_jahr(treppe, 2012) == 430
@@ -408,7 +408,7 @@ def test_hebesatzprobe_gegen_das_jahrbuch(bericht2021):
 
 def _herkunft() -> herkunft.Herkunft:
     return herkunft.Herkunft(
-        art="lsn",
+        kind="lsn",
         probe=["gewst_summenprobe", "gewst_blattprobe", "gewst_hebesatzprobe"],
         label="Gewerbesteuerstatistik 2021 (Statistischer Bericht L IV 13)",
         url="https://example.org/gewst2021.xlsx",
@@ -435,7 +435,7 @@ def test_speichern_und_lesen(tmp_path, bericht2021):
         assert all(z["herkunft_id"] for z in gelesen)
         assert store.herkunft_luecken().get("council_gewerbesteuerstatistik") is None
         h = store.get_herkunft([gelesen[0]["herkunft_id"]])[0]
-        assert h["art"] == "lsn"
+        assert h["kind"] == "lsn"
         assert len(h["probes"]) == 3
         # Der gesperrte Betrag bleibt NULL — und ist von „null Euro" zu
         # unterscheiden, weil die Zeile es sagt.

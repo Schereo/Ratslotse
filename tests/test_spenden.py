@@ -345,11 +345,11 @@ def test_speichern_und_lesen(tmp_path):
         "26/0207", VORLAGE_NEU,
         "Zuwendungen in Höhe von insgesamt 435.941 Euro")])
     lauf = herkunft.Herkunft(
-        art="ris", url="https://buergerinfo.example.org/vo040.asp",
+        kind="ris", url="https://buergerinfo.example.org/vo040.asp",
         probe=[donations.ZWEITSTELLE], probe_result=donations.probennachweis(erg))
     for v in erg["vorlagen"]:
         v["herkunft"] = herkunft.Herkunft(
-            art="ris", document_id=v["document_id"], probe=v["probes"],
+            kind="ris", document_id=v["document_id"], probe=v["probes"],
             citation=donations.FUNDSTELLE, probe_result="Zerlegung geht auf")
 
     store = CouncilStore(tmp_path / "council.sqlite")
@@ -373,7 +373,7 @@ def test_verworfene_zeilen_kommen_mit_ihrem_grund_in_den_bestand(tmp_path):
         "Zuwendungen in Höhe von insgesamt 2.500,00 EUR laut anliegender Liste an "
         "(ohne lfd. Nr. 2).",
         title="Annahme von Zuwendungen durch den Verwaltungsausschuss")])
-    lauf = herkunft.Herkunft(art="ris", url="https://buergerinfo.example.org/vo040.asp",
+    lauf = herkunft.Herkunft(kind="ris", url="https://buergerinfo.example.org/vo040.asp",
                              probe=[donations.ZWEITSTELLE], probe_result="0 Vorlagen")
     store = CouncilStore(tmp_path / "council.sqlite")
     try:
@@ -390,7 +390,7 @@ def test_verworfene_zeilen_kommen_mit_ihrem_grund_in_den_bestand(tmp_path):
 def test_eine_teillieferung_raeumt_den_bestand_nicht_ab(tmp_path):
     """`INSERT OR REPLACE`, kein `DELETE FROM` — sonst kostet ein halber Lauf
     die halbe Reihe."""
-    lauf = herkunft.Herkunft(art="ris", url="https://buergerinfo.example.org/vo040.asp",
+    lauf = herkunft.Herkunft(kind="ris", url="https://buergerinfo.example.org/vo040.asp",
                              probe=[donations.ZWEITSTELLE], probe_result="Probe")
     a = donations.lies([row("24/0001", VORLAGE_NEU,
                             "Zuwendungen in Höhe von insgesamt 435.941 Euro",

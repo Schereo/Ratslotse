@@ -55,7 +55,7 @@ def test_wortbeitraege_von_sprecher_umlaut_varianten(tmp_path):
                 "INSERT INTO council_sessions (ksinr, committee, session_date, session_time, "
                 "location, fetched_at) VALUES (1, 'Rat', '2026-06-01', '', '', datetime('now'))")
             store._conn.executemany(
-                "INSERT INTO council_wortbeitraege (ksinr, position, speaker, party, art, "
+                "INSERT INTO council_wortbeitraege (ksinr, position, speaker, party, kind, "
                 "top, text, extracted_at) VALUES (1, ?, ?, 'FDP/Volt', 'rede', 'Ö 1', ?, "
                 "datetime('now'))",
                 [(1, "Jens Lükermann", "Beitrag mit Umlaut"),
@@ -118,7 +118,7 @@ def _wb_store(tmp_path):
             [(1, "Tim Harms", "SPD", "member"), (1, "Dr. Ingo Harms", "CDU", "member"),
              (2, "Tim Harms", "SPD", "member")])
         store._conn.executemany(
-            "INSERT INTO council_wortbeitraege (ksinr, position, speaker, party, art, top, "
+            "INSERT INTO council_wortbeitraege (ksinr, position, speaker, party, kind, top, "
             "text, extracted_at) VALUES (?, ?, ?, 'SPD', 'rede', 'Ö 1', ?, datetime('now'))",
             [(1, 1, "Tim Harms", "Voller Name im Rat"),
              (1, 2, "Harms", "Nur Nachname"),
@@ -621,7 +621,7 @@ def test_verwaltung_detail_nur_mit_erkanntem_amt(tmp_path):
                 [("Jürgen Krogmann", "Verwaltung", "administration", "Oberbürgermeister"),
                  ("Dagmar Sachse", "Verwaltung", "administration", "Für Oberbürgermeister Krogmann")])
             store._conn.executemany(
-                "INSERT INTO council_wortbeitraege (ksinr, position, speaker, party, art, top, "
+                "INSERT INTO council_wortbeitraege (ksinr, position, speaker, party, kind, top, "
                 "text, extracted_at) VALUES (1, ?, ?, NULL, 'zusage', 'Ö 1', ?, datetime('now'))",
                 [(1, "Krogmann", "Wird geprüft.")])
 

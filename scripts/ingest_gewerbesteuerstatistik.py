@@ -152,7 +152,7 @@ def main() -> int:
                 geschrieben[budget_year.year] = store.save_gewerbesteuerstatistik(
                     zeilen,
                     h.Herkunft(
-                        art="lsn", probe=probes,
+                        kind="lsn", probe=probes,
                         label=f"Gewerbesteuerstatistik {budget_year.year} "
                               f"(Statistischer Bericht L IV 13)",
                         url=url or QUELLEN_STAND.get(budget_year.year),

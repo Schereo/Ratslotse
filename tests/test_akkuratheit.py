@@ -308,7 +308,7 @@ def test_geplante_beratungen_ignoriert_das_ergebnis_feld(tmp_path):
     try:
         plan = store.geplante_beratungen_fuer([1, 2])
         assert [p["date"] for p in plan] == ["2099-01-05", "2099-02-01"]  # nach Datum
-        assert plan[0]["art"] == "Vorberatung"        # Behandlungsart kommt mit
+        assert plan[0]["kind"] == "Vorberatung"        # Behandlungsart kommt mit
         assert all(p["date"] >= "2099" for p in plan)  # Vergangenes bleibt draußen
         assert store.geplante_beratungen_fuer([]) == []
     finally:

@@ -933,7 +933,7 @@ def lies_fhh_liste(pdf_bytes: bytes) -> FhhErgebnis:
 
 def herkunft_fuer(label: str, url: str | None, document_id: int) -> Herkunft:
     return Herkunft(
-        art="ris",
+        kind="ris",
         probe=("aenderungsliste_fhh_zeilen", "aenderungsliste_summen",
                "aenderungsliste_positionen"),
         label=label,

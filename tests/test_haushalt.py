@@ -297,10 +297,10 @@ def test_parse_opendata_rejects_broken_sums():
 def test_parse_steuereinnahmen_langformat():
     rows = haushalt.parse_steuereinnahmen(CSV_STEUERN)
     assert len(rows) == 16  # 2 Jahre × 8 Spalten
-    gew_2025 = next(r for r in rows if r["year"] == 2025 and r["art"].startswith("Gewerbesteuer"))
+    gew_2025 = next(r for r in rows if r["year"] == 2025 and r["kind"].startswith("Gewerbesteuer"))
     assert gew_2025["amount"] == 222_117_000.0
     # Umlaute restauriert, Kopf-Leerzeichen weg:
-    arten = {r["art"] for r in rows}
+    arten = {r["kind"] for r in rows}
     assert "Vergnügungssteuer" in arten and "Gemeindeanteil an der Umsatzsteuer" in arten
 
 
@@ -1601,7 +1601,7 @@ def test_haushalts_anschluss_nur_wo_er_belegt_ist(tmp_path):
               "Oldenburg für die Volkshochschule', '2026-08-18')")
     c.execute("INSERT INTO council_vorlagen (kvonr, template_number, title, fetched_at) "
               "VALUES (2, '24/0999', 'Neubau einer Schule', '2026-08-18')")
-    c.execute("INSERT INTO council_nachbewilligungen (template_number, title, art, category, "
+    c.execute("INSERT INTO council_nachbewilligungen (template_number, title, kind, category, "
               " decided, in_plenary, council_decision, fulltext_probe, amount, year, "
               " decision_id, committees, fetched_at) "
               "VALUES ('18/0187', 'Außerplanmäßige Bewilligung', 'ausserplanmaessig', "

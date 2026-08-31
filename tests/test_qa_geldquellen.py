@@ -575,12 +575,12 @@ def _befuellter_store(tmp_path) -> CouncilStore:
     store = CouncilStore(tmp_path / "c.sqlite")
     with store._conn:
         store._conn.execute(
-            "INSERT INTO council_herkunft (id, key, art, label, url, citation, "
+            "INSERT INTO council_herkunft (id, key, kind, label, url, citation, "
             " page, probe, as_of, fetched_at) VALUES "
             "(1, 'k1', 'ris', 'Jahresabschluss 2024', 'https://example.org/ja2024', "
             " 'Abschnitt 6.2 Ergebnisrechnung', 41, 'summenprobe', '31.12.2024', '2026-08-16')")
         store._conn.execute(
-            "INSERT INTO council_herkunft (id, key, art, label, url, citation, "
+            "INSERT INTO council_herkunft (id, key, kind, label, url, citation, "
             " probe, as_of, fetched_at) VALUES "
             "(2, 'k2', 'ris', 'Schlussbericht RPA 2023', 'https://example.org/rpa', "
             " 'Randmarken des Berichts', 'randmarkenprobe', '2023', '2026-08-16')")
@@ -634,7 +634,7 @@ def _befuellter_store(tmp_path) -> CouncilStore:
             [(13, 'Summe ordentliche Erträge', 'revenues_total', 1_238_000_000.0),
              (21, 'Summe ordentliche Aufwendungen', 'expenses_total', 1_242_000_000.0)])
         store._conn.executemany(
-            "INSERT INTO council_konzern_traeger (year, art, entity_key, entity, "
+            "INSERT INTO council_konzern_traeger (year, kind, entity_key, entity, "
             " amount_keur, fetched_at, herkunft_id) VALUES (2024,'expenses',?,?,?,'',1)",
             [("stadt", "Stadt Oldenburg (Kernverwaltung)", 812_300.0),
              ("klinikum", "Klinikum Oldenburg AöR", 390_000.0),
@@ -646,7 +646,7 @@ def _befuellter_store(tmp_path) -> CouncilStore:
             [("03403", "Oldenburg", 1834.0), ("03404", "Osnabrück", 1712.0),
              ("03401", "Delmenhorst", 1104.0)])
         store._conn.executemany(
-            "INSERT INTO council_ergebnishaushalt (plan_budget_year, year, art, nr, label, "
+            "INSERT INTO council_ergebnishaushalt (plan_budget_year, year, kind, nr, label, "
             " amount, is_total, fetched_at, herkunft_id) VALUES (2026,2026,'ansatz',?,?,?,?,'',1)",
             [(1, "Steuern und ähnliche Abgaben", 430_000_000.0, 0),
              (12, "Summe ordentliche Erträge", 812_000_000.0, 1),
@@ -657,7 +657,7 @@ def _befuellter_store(tmp_path) -> CouncilStore:
         # SQLite-Versionen schlucken sie klaglos, die der CI nicht — lokal
         # grün, in der CI 17 Fehler (16.08.).
         store._conn.execute(
-            "INSERT INTO council_ergebnishaushalt (plan_budget_year, year, art, nr, label, "
+            "INSERT INTO council_ergebnishaushalt (plan_budget_year, year, kind, nr, label, "
             " amount, is_total, fetched_at, herkunft_id) "
             "VALUES (2026, 2029, 'finanzplanung', 12, 'Summe ordentliche Erträge', "
             " ?, 1, '', 1)", (999_000_000.0,))
@@ -692,7 +692,7 @@ def _befuellter_store(tmp_path) -> CouncilStore:
         # Stellenplan: beide Teile, nur die Gesamtzeilen. besetzt +
         # nicht_besetzt = stellen_vorjahr (die Besetzungsprobe des Plans).
         store._conn.executemany(
-            "INSERT INTO council_stellenplan (budget_year, part, row_no, art, label, "
+            "INSERT INTO council_stellenplan (budget_year, part, row_no, kind, label, "
             " positions_planned, positions_prior_year, filled, vacant, as_of_date, "
             " herkunft_id, fetched_at) VALUES (2026,?,0,'gesamt',?,?,?,?,?,'30.06.2025',?,'')",
             [("A", "Gesamt Teil A", 815.50, 802.00, 761.25, 40.75, 5),
@@ -729,7 +729,7 @@ def _befuellter_store(tmp_path) -> CouncilStore:
             "INSERT INTO council_decisions (ksinr, position, kind, item_number, title, "
             " outcome, vote) VALUES (?,?,?,?,?,?,?)", eintraege)
         store._conn.executemany(
-            "INSERT INTO council_herkunft (id, key, art, label, url, citation, "
+            "INSERT INTO council_herkunft (id, key, kind, label, url, citation, "
             " probe, as_of, fetched_at) VALUES (?,?,'ris',?,?,?,?,?,'2026-08-17')",
             [(3, "k3", "Statistisches Jahrbuch, Tabelle 1108",
               "https://example.org/1108", "Tabelle 1108", "prokopfprobe", "2025"),
@@ -1394,7 +1394,7 @@ def test_geld_grafik_liefert_rohreihen_aus_dem_store(tmp_path):
         c.execute("INSERT INTO council_schulden (year, total, fetched_at) "
                   "VALUES (?, ?, '2026-08-18')", (year, amount))
     for year, amount in ((1998, 80_000_000), (2025, 222_100_000)):
-        c.execute("INSERT INTO council_steuern (year, art, amount, fetched_at) "
+        c.execute("INSERT INTO council_steuern (year, kind, amount, fetched_at) "
                   "VALUES (?, 'Gewerbesteuer (-umlage)', ?, '2026-08-18')",
                   (year, amount))
     c.commit()
