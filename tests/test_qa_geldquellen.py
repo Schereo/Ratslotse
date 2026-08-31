@@ -591,12 +591,12 @@ def _befuellter_store(tmp_path) -> CouncilStore:
                  240_000_000.0, 251_900_000.0)]:
             store._conn.execute(
                 "INSERT INTO council_ergebnisrechnung (year, sub_budget_no, sub_budget_name, nr, label, "
-                " ansatz, plan, plan_art, result, deviation, is_total, fetched_at, herkunft_id) "
+                " budgeted, plan, plan_art, result, deviation, is_total, fetched_at, herkunft_id) "
                 "VALUES (2024,?,?,12,'Summe ordentliche Erträge',?,?,'ansatz',?,0,1,'',1)",
                 (sub_budget, name, e_plan, e_plan, e_ist))
             store._conn.execute(
                 "INSERT INTO council_ergebnisrechnung (year, sub_budget_no, sub_budget_name, nr, label, "
-                " ansatz, plan, plan_art, result, deviation, is_total, fetched_at, herkunft_id) "
+                " budgeted, plan, plan_art, result, deviation, is_total, fetched_at, herkunft_id) "
                 "VALUES (2024,?,?,20,'Summe ordentliche Aufwendungen',?,?,'ansatz',?,0,1,'',1)",
                 (sub_budget, name, a_plan, a_plan, a_ist))
         store._conn.execute(

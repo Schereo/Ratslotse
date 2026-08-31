@@ -628,7 +628,7 @@ function DecisionDetailInner() {
           <span className="min-w-0">
             <span className="font-medium text-foreground">Bürgerbeteiligung läuft: </span>
             {data.beteiligung.schritt}
-            {data.beteiligung.bis ? ` — Stellungnahme bis ${formatDate(data.beteiligung.bis)}` : ""}
+            {data.beteiligung.valid_until ? ` — Stellungnahme bis ${formatDate(data.beteiligung.valid_until)}` : ""}
             <span className="text-muted-foreground"> (oldenburg.planungsbeteiligung.de)</span>
           </span>
         </a>

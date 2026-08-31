@@ -91,6 +91,6 @@ def fetch_planfaelle() -> list[dict]:
                 von = f"{m.group(3)}-{m.group(2)}-{m.group(1)}"
                 bis = f"{m.group(6)}-{m.group(5)}-{m.group(4)}"
         out.append({"title": title, "ort": ort, "schritt": schritt,
-                    "von": von, "bis": bis, "url": url or LIST_URL,
+                    "valid_from": von, "valid_until": bis, "url": url or LIST_URL,
                     "plan_nrs": plan_nummern(title)})
     return out

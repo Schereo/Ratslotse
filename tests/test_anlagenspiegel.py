@@ -52,7 +52,7 @@ def test_dreizehn_spalten_und_drei_ketten():
     g = asp.parse_anlagenspiegel(KOPF_13 + ZEILE_2024, 2024)
     assert len(g) == 1
     z = g[0]
-    assert z["spalten"] == 13
+    assert z["n_columns"] == 13
     assert z["additions"] == 13_478_238.51
     assert z["depreciation"] == -6_523_027.43
     assert z["book_value"] == 91_394_171.68
@@ -84,7 +84,7 @@ def test_zwoelf_spalten_werden_erkannt_und_gefuellt():
     g = asp.parse_anlagenspiegel(KOPF_12 + ZEILE_2019_INFRA, 2019)
     assert len(g) == 1
     z = g[0]
-    assert z["spalten"] == 12
+    assert z["n_columns"] == 12
     assert z["depreciation_transfers"] == 0.0    # gibt es in diesem Layout nicht
     assert z["book_value"] == 338_832_070.05   # NICHT um eine Spalte verschoben
     assert z["book_value_prior_year"] == 336_559_565.31
@@ -169,7 +169,7 @@ def test_die_strassenzeile_ueberlebt_den_zeilenumbruch():
               "142.874.798,00 € 133.281.788,00 € "
               "Strom-, Gas-, Wasserleitungen 107.417,00 € 102.412,00 €")
     gruppen = asp.parse_sachvermoegen_gruppen(auszug, 2024)
-    strassen = [g for g in gruppen if "traße" in g["gruppe"]]
+    strassen = [g for g in gruppen if "traße" in g["group_name"]]
     assert len(strassen) == 1
     s = strassen[0]
     assert s["book_value_prior_year"] == 142_874_798.00
@@ -177,4 +177,4 @@ def test_die_strassenzeile_ueberlebt_den_zeilenumbruch():
     # Die Reihenfolge ist Vorjahr, dann Jahr — gedreht würde aus dem
     # Substanzverlust ein Zuwachs.
     assert s["book_value"] < s["book_value_prior_year"]
-    assert "kungsanlagen" not in s["gruppe"].replace("Verkehrslenkungsanlagen", "")
+    assert "kungsanlagen" not in s["group_name"].replace("Verkehrslenkungsanlagen", "")

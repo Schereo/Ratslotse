@@ -92,9 +92,9 @@ def test_person_mitarbeit_parses_memberships():
     rows = stammdaten.fetch_person_mitarbeit(_FakeScraper(_KP0050), 4)
     assert len(rows) == 2
     assert rows[0] == {"kgrnr": 22, "committee": "Rat", "role": "Ratsmitglied",
-                       "von": "1996-11-01", "bis": "2021-10-31"}
+                       "valid_from": "1996-11-01", "valid_until": "2021-10-31"}
     # Gremium ohne eigene Seite: kein kgrnr, laufend (bis=None)
-    assert rows[1]["kgrnr"] is None and rows[1]["bis"] is None
+    assert rows[1]["kgrnr"] is None and rows[1]["valid_until"] is None
     assert rows[1]["role"] == "Beigeordnete/r"
 
 
@@ -125,14 +125,14 @@ def test_store_persons_memberships_and_slug_match(tmp_path):
     store = CouncilStore(tmp_path / "c.sqlite")
     store.save_person(4, "Hans-Henning Adler", "BSW")
     store.save_memberships(4, [
-        {"kgrnr": 22, "committee": "Rat", "role": "Ratsmitglied", "von": "1996-11-01", "bis": "2021-10-31"},
-        {"kgrnr": 22, "committee": "Rat", "role": "Ratsmitglied", "von": "2022-12-19", "bis": None},
+        {"kgrnr": 22, "committee": "Rat", "role": "Ratsmitglied", "valid_from": "1996-11-01", "valid_until": "2021-10-31"},
+        {"kgrnr": 22, "committee": "Rat", "role": "Ratsmitglied", "valid_from": "2022-12-19", "valid_until": None},
     ])
     # Slug-Match über Titel-Varianten hinweg (Anwesenheit schreibt teils "Dr. ...")
     p = store.person_stammdaten_for_names(["Dr. Hans-Henning Adler"])
     assert p and p["kpenr"] == 4 and p["current_faction"] == "BSW"
     # Laufende Mitgliedschaft zuerst
-    assert p["memberships"][0]["bis"] is None
+    assert p["memberships"][0]["valid_until"] is None
     assert store.person_stammdaten_for_names(["Unbekannte Person"]) is None
     stats = store.stammdaten_stats()
     assert stats["personen"] == 1 and stats["mitgliedschaften"] == 2

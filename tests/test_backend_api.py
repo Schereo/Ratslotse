@@ -5546,6 +5546,38 @@ def test_haushalt_bilanz_ohne_bestand_bleibt_leer(client):
                               "herkunft": {}}
 
 
+def test_haushalt_indicators_kommen_mit_ihrer_genauigkeit(client):
+    """Der Kennzahlen-Block — mit `decimals`, der gedruckten Genauigkeit.
+
+    Die Lücke, die diesen Test nötig machte: `?felder=indicators` lief bis
+    zum 31.08.2026 durch **keinen** Test mit echten Zeilen. Ein Umbenennen
+    von `stellen` nach `decimals` ließ deshalb die ganze Kennzahlen-Seite mit
+    500 auflaufen, und die Suite blieb grün. Wer den Block anfasst, merkt es
+    ab jetzt hier.
+    """
+    from council import herkunft
+
+    _register(client)
+    cs = CouncilStore(COUNCIL_DB)
+    try:
+        cs.save_kennzahlen(
+            2024,
+            [{"report_year": 2024, "indicator": "eigenkapitalquote_1", "year": 2023,
+              "label": "Eigenkapitalquote I", "value": 48.0, "unit": "percent",
+              "decimals": 1, "version": None}],
+            [{"indicator": "eigenkapitalquote_1", "heading": "Eigenkapitalquote I",
+              "formula": "100 * Nettoposition / Bilanzsumme", "version": None}],
+            herkunft.Herkunft(art="stadt", url="https://example.org/rechenschaft.pdf",
+                              label="Rechenschaftsbericht 2024", probe=[herkunft.UNGEPRUEFT]))
+    finally:
+        cs.close()
+
+    b = client.get("/api/council/haushalt?felder=indicators").json()["indicators"]
+    zeile = next(z for z in b["series"] if z["indicator"] == "eigenkapitalquote_1")
+    assert zeile["value"] == 48.0 and zeile["decimals"] == 1
+    assert b["label"]["eigenkapitalquote_1"].startswith("Eigenkapitalquote I")
+
+
 def test_haushalt_liefert_die_spenden_mit_luecke_und_beleg(client):
     """Zuwendungen an die Stadt: Reihe, Aufteilung, Lücke — und die Herkunft.
 
@@ -5563,7 +5595,7 @@ def test_haushalt_liefert_die_spenden_mit_luecke_und_beleg(client):
     cs = CouncilStore(COUNCIL_DB)
     try:
         zeilen = [
-            {"template_number": "26/0207", "year": 2026, "sitzung": "2026-04-13",
+            {"template_number": "26/0207", "year": 2026, "session_date": "2026-04-13",
              "amount": 435_941.0, "committee": "Rat", "layout": "neu",
              "second_mention": "zerlegung",
              "probes": [donations.ZWEITSTELLE, donations.PROTOKOLLABGLEICH],
@@ -5571,14 +5603,14 @@ def test_haushalt_liefert_die_spenden_mit_luecke_und_beleg(client):
                  art="ris", document_id=304791, probe=[donations.ZWEITSTELLE],
                  citation=donations.FUNDSTELLE,
                  probe_result="421.316 + 14.625 = 435.941")},
-            {"template_number": "26/0044", "year": 2026, "sitzung": "2026-02-09",
+            {"template_number": "26/0044", "year": 2026, "session_date": "2026-02-09",
              "amount": 1_800.0, "committee": "Verwaltungsausschuss", "layout": "alt",
              "second_mention": "identisch", "probes": [donations.ZWEITSTELLE],
              "herkunft": herkunft.Herkunft(
                  art="ris", document_id=300001, probe=[donations.ZWEITSTELLE],
                  probe_result="identisch")},
         ]
-        verworfen = [{"template_number": "23/0265", "sitzung": "2023-05-03",
+        verworfen = [{"template_number": "23/0265", "session_date": "2023-05-03",
                       "reason": "Die Vorlage schlug 52.000,00 Euro vor, das Protokoll "
                                "hält 51.500,00 Euro fest."}]
         cs.save_spenden(zeilen, verworfen, herkunft.Herkunft(

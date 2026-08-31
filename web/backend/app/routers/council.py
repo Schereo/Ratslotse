@@ -1322,7 +1322,7 @@ def _kennzahlen(store: CouncilStore) -> dict:
         "label": {k.key: k.label for k in kennzahlen_mod.KENNZAHLEN},
         "unit": {k.key: k.unit for k in kennzahlen_mod.KENNZAHLEN},
         "series": [{"indicator": z["indicator"], "year": z["year"], "value": z["value"],
-                   "stellen": z["stellen"], "version": z["version"],
+                   "decimals": z["decimals"], "version": z["version"],
                    "report_year": z["report_year"], "herkunft_id": z["herkunft_id"]}
                   for z in kennzahlen_mod.neueste(staende)],
         "formeln": sorted(fassungen.values(),
@@ -1669,8 +1669,8 @@ def decision_detail(
     try:
         from council import beteiligung as bet_mod
         out["beteiligung"] = next(
-            ({"title": b["title"], "schritt": b["schritt"], "von": b["von"],
-              "bis": b["bis"], "url": b["url"], "status": b.get("status") or "laufend",
+            ({"title": b["title"], "schritt": b["schritt"], "valid_from": b["valid_from"],
+              "valid_until": b["valid_until"], "url": b["url"], "status": b.get("status") or "laufend",
               "beendet_am": b.get("beendet_am")}
              # Auch beendete: Sie sind der einzige Ort, an dem eine
              # abgelaufene Beteiligung überhaupt noch dokumentiert ist.
@@ -1736,7 +1736,7 @@ def decision_detail(
             label = (a.get("label") or "").lower()
             return 0 if ("planzeichnung" in label or "plandarstellung" in label) else 1
 
-        bilder = sorted((a for a in out["anlagen"] if a.get("bild") == 1), key=_plan_rang)
+        bilder = sorted((a for a in out["anlagen"] if a.get("is_image") == 1), key=_plan_rang)
         out["plan_bild"] = bilder[0]["document_id"] if bilder else None
         # Offizielle Beratungsfolge aus dem Ratsinfo — reicher als die aus
         # unseren Tagesordnungen abgeleitete Journey (Ergebnis je Station,
@@ -3491,7 +3491,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     b = next((b for b in bets
                               if bet_mod.passt_zu_titel(b["plan_nrs"], c.get("title") or "")), None)
                     if b:
-                        frist = f" bis {b['bis']}" if b.get("bis") else ""
+                        frist = f" bis {b['valid_until']}" if b.get("valid_until") else ""
                         c["beteiligung"] = f"{b['schritt']}{frist}"
             except Exception:  # noqa: BLE001 — Zusatzsignal, nie Blocker
                 pass

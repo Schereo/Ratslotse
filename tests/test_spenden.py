@@ -118,7 +118,7 @@ Eine Begründung ist in der Anlage aufgeführt.
 def row(nr, raw, official_text, *, title=None, outcome="angenommen",
           sitzung="2024-03-11", gremiensitzung="Rat", document_id=4711):
     return {"template_number": nr, "title": title or "Annahme von Zuwendungen durch den Rat",
-            "official_text": official_text, "outcome": outcome, "sitzung": sitzung,
+            "official_text": official_text, "outcome": outcome, "session_date": sitzung,
             "gremiensitzung": gremiensitzung, "raw_text": raw,
             "document_id": document_id,
             "dokument_url": f"https://buergerinfo.example.org/getfile.php?id={document_id}"}
@@ -296,7 +296,7 @@ def test_je_vorlage_bleibt_eine_zeile():
     ])
     assert len(erg["vorlagen"]) == 1
     # Gezählt wird die Sitzung, in der entschieden wurde.
-    assert erg["vorlagen"][0]["sitzung"] == "2026-04-13"
+    assert erg["vorlagen"][0]["session_date"] == "2026-04-13"
     assert [j["amount"] for j in erg["years"]] == [435_941]
     assert erg["years"][0]["vorlagen"] == 1
 

@@ -220,7 +220,7 @@ def parse_kernzahl(template_number: str, title: str, vorlage_text: str,
         capital_plan=None, commitments=None, draft_date=None,
         # Der zweite Satz über Geld in derselben Vorlage — mit eigener
         # Probe, sonst `None` (s. `investitionen_aus_beschluss`).
-        investitionen=investitionen_aus_beschluss(vorlage_text),
+        investments=investitionen_aus_beschluss(vorlage_text),
     )
     return plan, wort, beleglage
 
@@ -308,7 +308,7 @@ def herkunft_fuer(plan: Wirtschaftsplan, wort: str, beleglage: str,
         # Die zweite Probe steht nur dran, wo sie auch gelaufen ist: Sie hängt
         # an einem Satz, den nicht jede Vorlage schreibt.
         probe=([PROBE_KERNZAHL, PROBE_INVESTITIONEN]
-               if plan.investitionen is not None else [PROBE_KERNZAHL]),
+               if plan.investments is not None else [PROBE_KERNZAHL]),
         # Der Name statt des Aktenzeichens — s. `wirtschaftsplan.dokument_name`.
         label=dokument_name(plan),
         url=url or (f"https://buergerinfo.oldenburg.de/vo0050.php?__kvonr={kvonr}"

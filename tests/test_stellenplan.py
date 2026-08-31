@@ -441,7 +441,7 @@ def test_die_summen_kommen_aus_dem_dokument_nicht_aus_unserer_addition(tmp_path)
     summen = store.get_stellenplan(art="gesamt")
     assert len(summen) == 1
     assert summen[0]["positions_planned"] == 815.0
-    assert [g["gruppe"] for g in store.get_stellenplan(art="gruppe")] == [
+    assert [g["pay_group"] for g in store.get_stellenplan(art="gruppe")] == [
         "Beamte auf Zeit", "Laufbahngruppe 2", "Laufbahngruppe 1"]
     store.close()
 

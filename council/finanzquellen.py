@@ -930,9 +930,9 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
                 p.sagen(f"  {year}: {len(posten)} Posten · Erträge {e['plan']/1e6:.1f} → "
                         f"{e['result']/1e6:.1f} · Aufwendungen {a['plan']/1e6:.1f} → "
                         f"{a['result']/1e6:.1f} · Bezug {'/'.join(arten)}")
-                if a["plan"] != a["ansatz"] or e["plan"] != e["ansatz"]:
-                    p.sagen(f"      ursprünglicher Ansatz: Erträge {e['ansatz']/1e6:.1f} · "
-                            f"Aufwendungen {a['ansatz']/1e6:.1f}")
+                if a["plan"] != a["budgeted"] or e["plan"] != e["budgeted"]:
+                    p.sagen(f"      ursprünglicher Ansatz: Erträge {e['budgeted']/1e6:.1f} · "
+                            f"Aufwendungen {a['budgeted']/1e6:.1f}")
             else:
                 p.sagen(f"  {year}: Gesamtrechnung steht bereits — nur die fehlende "
                         f"Teilhaushalts-Ebene wird nachgezogen")
@@ -1575,7 +1575,7 @@ def lies_anlagenspiegel(store: CouncilStore, p: Protokoll) -> dict:
             p.warnen(f"  Anlagenspiegel {year} verworfen — {len(risse)} Beanstandung(en)")
             continue
 
-        if abs(balance) <= anlagenspiegel.TOLERANZ and zeilen[0]["spalten"] == 12:
+        if abs(balance) <= anlagenspiegel.TOLERANZ and zeilen[0]["n_columns"] == 12:
             for z in zeilen:
                 z["probes"] = [*z["probes"], anlagenspiegel.PROBE_UMBUCHUNG]
 

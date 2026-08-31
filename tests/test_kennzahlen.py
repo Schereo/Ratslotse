@@ -249,7 +249,7 @@ def test_ueberlappung_unterscheidet_korrektur_und_definitionswechsel():
     """
     def zelle(bericht, value, version=1, indicator="steuerquote"):
         return {"indicator": indicator, "year": 2021, "report_year": bericht,
-                "value": value, "stellen": 2, "version": version}
+                "value": value, "decimals": 2, "version": version}
 
     bestaetigt, funde = kz.ueberlappungsprobe([
         zelle(2021, 45.90), zelle(2022, 49.05), zelle(2023, 45.92),
@@ -275,9 +275,9 @@ def test_vermoegensprobe_multipliziert_zwei_zeilen_gegen_die_bilanz():
     """
     zeilen = [
         {"indicator": "vermoegen_je_einwohner", "year": 2024, "report_year": 2024,
-         "value": 8294.05, "stellen": 2},
+         "value": 8294.05, "decimals": 2},
         {"indicator": "population", "year": 2024, "report_year": 2024,
-         "value": 176_068.0, "stellen": 0},
+         "value": 176_068.0, "decimals": 0},
     ]
     bilanz = [{"year": 2024, "role": r, "value": w} for r, w in (
         ("immaterielles_vermoegen", 91_394_171.68), ("sachvermoegen", 605_573_107.06),
@@ -299,9 +299,9 @@ def test_vermoegensprobe_mischt_keine_berichte():
     """Zwei Zeilen aus zwei Berichten wären eine andere Rechnung."""
     zeilen = [
         {"indicator": "vermoegen_je_einwohner", "year": 2024, "report_year": 2024,
-         "value": 8294.05, "stellen": 2},
+         "value": 8294.05, "decimals": 2},
         {"indicator": "population", "year": 2024, "report_year": 2023,
-         "value": 176_068.0, "stellen": 0},
+         "value": 176_068.0, "decimals": 0},
     ]
     bilanz = [{"year": 2024, "role": "sachvermoegen", "value": 1.0}]
     assert kz.vermoegensprobe(zeilen, bilanz) == (0, [])
@@ -318,7 +318,7 @@ def test_bilanz_gegenprobe_kennt_nur_die_drei_quoten():
         "eigenkapitalquote_2", "anlagenintensitaet", "infrastrukturquote"}
 
     zeilen = [{"indicator": "anlagenintensitaet", "year": 2024, "report_year": 2024,
-               "value": 40.92, "stellen": 2}]
+               "value": 40.92, "decimals": 2}]
     bilanz = [{"year": 2024, "role": r, "value": w} for r, w in (
         ("immaterielles_vermoegen", 91_394_171.68), ("sachvermoegen", 605_573_107.06),
         ("finanzvermoegen", 645_348_451.45), ("liquide_mittel", 118_001_891.26),

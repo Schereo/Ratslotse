@@ -170,8 +170,8 @@ def _plan_zuerst(kopf: dict, art: str) -> bool:
 def parse_ergebnisrechnung(text: str, year: int) -> list[dict]:
     """Ergebnisrechnung der Kernverwaltung aus dem Jahresabschluss-Volltext.
 
-    Liefert je Posten ``{nr, label, prior_year, ansatz, result,
-    deviation}`` in Euro. ``ansatz`` ist der Planwert des Jahres,
+    Liefert je Posten ``{nr, label, prior_year, budgeted, result,
+    deviation}`` in Euro. ``budgeted`` ist der Planwert des Jahres,
     ``result`` das tatsächliche Ergebnis — genau das Paar, aus dem
     „geplant gegen tatsächlich" wird.
 
@@ -440,7 +440,7 @@ def _spalten_zuordnen(zahlen: list[float], kopf: dict) -> dict | None:
             ansatz = zahlen[1]
         else:
             ansatz = plan
-        return {"prior_year": prior_year, "ansatz": ansatz, "plan": plan,
+        return {"prior_year": prior_year, "budgeted": ansatz, "plan": plan,
                 "plan_art": art, "result": result, "deviation": deviation,
                 "vorzeichen_repariert": repariert,
                 # Wo das gefundene Fenster in der Zahlenfolge anfängt. Die
@@ -588,7 +588,7 @@ def _leerer_ansatz(zahlen: list[float], has_prior_year: bool) -> dict | None:
         if len(zahlen) > i + 1 and zahlen[i] and zahlen[i] == zahlen[i + 1] \
                 and not any(zahlen[i + 2:]):
             return {"prior_year": zahlen[0] if i else None,
-                    "ansatz": None, "plan": None, "plan_art": None,
+                    "budgeted": None, "plan": None, "plan_art": None,
                     "result": zahlen[i], "deviation": zahlen[i + 1],
                     "vorzeichen_repariert": False, "_fenster_start": i}
     return None
@@ -635,7 +635,7 @@ def _ohne_vorjahr(zahlen: list[float], kopf: dict) -> dict | None:
         if not gefunden:
             continue
         plan, result, deviation, start, repariert = gefunden
-        return {"prior_year": None, "ansatz": plan, "plan": plan, "plan_art": art,
+        return {"prior_year": None, "budgeted": plan, "plan": plan, "plan_art": art,
                 "result": result, "deviation": deviation,
                 "vorzeichen_repariert": repariert, "_fenster_start": start}
     return None

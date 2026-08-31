@@ -233,9 +233,9 @@ def test_der_befund_steht_wie_gedruckt():
     zeilen = {z["year"]: z for z in stt.lies_1103(PDF_1103, IST_REIHE)["zeilen"]
               if z["art"] == GEWERBE}
     assert zeilen[2023]["plan"] == 124_234_000
-    assert zeilen[2023]["ist"] == 176_840_000
+    assert zeilen[2023]["actual"] == 176_840_000
     assert zeilen[2024]["plan"] == 133_440_000
-    assert zeilen[2025]["ist"] == 222_117_000
+    assert zeilen[2025]["actual"] == 222_117_000
 
 
 # --- Tabelle 1103: die Proben -----------------------------------------------
@@ -245,7 +245,7 @@ def test_summenprobe_geht_in_allen_sechs_spalten_auf():
     abweichungen = stt.summenprobe(stt.parse_1103(PDF_1103))
     assert set(abweichungen) == {2023, 2024, 2025}
     for year, spalten in abweichungen.items():
-        assert spalten == {"plan": 0, "ist": 0}, year
+        assert spalten == {"plan": 0, "actual": 0}, year
 
 
 def test_eine_fehlende_zeile_reisst_die_summenprobe():
@@ -352,7 +352,7 @@ def test_bei_gleichem_jahrgang_gewinnt_die_juengere_ausgabe():
     assert zusammen[(2024, GEWERBE)]["ausgabe"] == "1103-2025-AZ.pdf"
     # 2024 stand in beiden Ausgaben mit demselben Ergebnis — die jüngere
     # gewinnt trotzdem, weil nur so ein revidierter Wert ankäme.
-    assert zusammen[(2024, GEWERBE)]["ist"] == 202_918_000
+    assert zusammen[(2024, GEWERBE)]["actual"] == 202_918_000
 
 
 # --- Tabelle 1105: die Hebesatz-Treppe --------------------------------------

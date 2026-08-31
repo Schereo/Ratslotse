@@ -230,7 +230,7 @@ def lies(zeilen: Iterable[dict]) -> dict:
         raw = z.get("raw_text")
 
         if (z.get("outcome") or "") != "angenommen":
-            verworfen.append({"template_number": nr, "sitzung": z.get("sitzung"),
+            verworfen.append({"template_number": nr, "session_date": z.get("session_date"),
                               "reason": "Der Tagesordnungspunkt wurde nicht beschlossen — "
                                        "angenommen wurde nichts, also ist auch nichts "
                                        "eingenommen worden."})
@@ -239,7 +239,7 @@ def lies(zeilen: Iterable[dict]) -> dict:
 
         kopf = _erster(z.get("official_text"))
         if kopf is None:
-            verworfen.append({"template_number": nr, "sitzung": z.get("sitzung"),
+            verworfen.append({"template_number": nr, "session_date": z.get("session_date"),
                               "reason": "Das Protokoll hält für diese Sitzung keinen Betrag "
                                        "fest, sondern nur, dass angenommen wurde."})
             zaehler["ohne_protokollbetrag"] += 1
@@ -251,7 +251,7 @@ def lies(zeilen: Iterable[dict]) -> dict:
         art, teile = pruefe_zweitstelle(kopf, section)
 
         if not art:
-            verworfen.append({"template_number": nr, "sitzung": z.get("sitzung"),
+            verworfen.append({"template_number": nr, "session_date": z.get("session_date"),
                               "reason": _grund(raw, section, kopf, vorschlag, teile)})
             zaehler["ohne_zweitstelle"] += 1
             continue
@@ -264,8 +264,8 @@ def lies(zeilen: Iterable[dict]) -> dict:
         zaehler[f"layout_{layout}"] += 1
 
         kandidaten.append({
-            "template_number": nr, "amount": kopf, "sitzung": z.get("sitzung"),
-            "year": int(str(z.get("sitzung"))[:4]), "committee": committee(z.get("title")),
+            "template_number": nr, "amount": kopf, "session_date": z.get("session_date"),
+            "year": int(str(z.get("session_date"))[:4]), "committee": committee(z.get("title")),
             "layout": layout, "second_mention": art, "teile": len(teile),
             "probes": probes, "document_id": z.get("document_id"),
             "dokument_url": z.get("dokument_url"),
@@ -277,9 +277,9 @@ def lies(zeilen: Iterable[dict]) -> dict:
     # sonst die frühere — beide nennen denselben Betrag (im Bestand ohne
     # Ausnahme geprüft), aber die Rats-Zeile ist die Entscheidung.
     je_vorlage: dict[str, dict] = {}
-    for k in sorted(kandidaten, key=lambda k: (not k["in_plenary"], k["sitzung"] or "")):
+    for k in sorted(kandidaten, key=lambda k: (not k["in_plenary"], k["session_date"] or "")):
         je_vorlage.setdefault(k["template_number"], k)
-    vorlagen = sorted(je_vorlage.values(), key=lambda k: (k["sitzung"] or "", k["template_number"]))
+    vorlagen = sorted(je_vorlage.values(), key=lambda k: (k["session_date"] or "", k["template_number"]))
 
     years: dict[int, dict] = {}
     for v in vorlagen:

@@ -194,7 +194,7 @@ def fetch_person_mitarbeit(scraper: CouncilScraper, kpenr: int) -> list[dict]:
 
         if von or kgrnr:
             out.append({"kgrnr": kgrnr, "committee": committee, "role": role,
-                        "von": von, "bis": bis})
+                        "valid_from": von, "valid_until": bis})
     return out
 
 

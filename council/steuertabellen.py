@@ -319,7 +319,7 @@ def parse_1103(text: str) -> dict:
             block = felder[i * 4:(i + 1) * 4]
             je_jahr[year] = {
                 "plan": _teur(block[0]), "plan_anteil": _prozent(block[1]),
-                "ist": _teur(block[2]), "ist_anteil": _prozent(block[3]),
+                "actual": _teur(block[2]), "actual_anteil": _prozent(block[3]),
             }
         zeilen[art] = je_jahr
     return {"years": years, "zeilen": zeilen, "unbekannt": unbekannt,
@@ -340,7 +340,7 @@ def summenprobe(gelesen: dict) -> dict[int, dict[str, float]]:
     teile = [a for a in zeilen if a != SUMME]
     for year in gelesen["years"]:
         aus[year] = {}
-        for spalte in ("plan", "ist"):
+        for spalte in ("plan", "actual"):
             summe = sum(zeilen[a][year][spalte] for a in teile
                         if year in zeilen[a])
             aus[year][spalte] = summe - zeilen[SUMME][year][spalte]
@@ -366,7 +366,7 @@ def anteilsprobe(gelesen: dict) -> list[dict]:
             continue
         for year, werte in je_jahr.items():
             gesamt = zeilen[SUMME][year]
-            for spalte in ("plan", "ist"):
+            for spalte in ("plan", "actual"):
                 if not gesamt[spalte]:
                     continue
                 gerechnet = round(werte[spalte] / gesamt[spalte] * 100, 2)
@@ -408,7 +408,7 @@ def istabgleich(gelesen: dict, ist_reihe: dict[int, dict[str, float]]) -> dict:
             continue
         abweichend = []
         for art in arten:
-            hier = zeilen[art][year]["ist"]
+            hier = zeilen[art][year]["actual"]
             dort = round(ist_reihe[year][art] / 1000)
             if hier != dort:
                 abweichend.append(f"{art}: 1103 {hier} vs. 1104 {dort} T€")
@@ -474,7 +474,7 @@ def lies_1103(text: str, ist_reihe: dict[int, dict[str, float]]) -> dict:
             zeilen.append({
                 "year": year, "art": art,
                 "plan": werte["plan"] * 1000.0,
-                "ist": werte["ist"] * 1000.0,
+                "actual": werte["actual"] * 1000.0,
                 "provisional": year in gelesen["provisional"],
             })
     zeilen.sort(key=lambda z: (z["year"], z["art"]))

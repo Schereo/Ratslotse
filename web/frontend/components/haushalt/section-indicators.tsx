@@ -112,7 +112,7 @@ function Standtafel({
                        die Vorlesehilfe vorlesen soll — samt dem, was ein Tipp
                        bewirkt. */
                     aria-label={`${daten.label[key] ?? key}: ${
-                      hier ? schreibe(unit, hier.value, hier.stellen)
+                      hier ? schreibe(unit, hier.value, hier.decimals)
                            : `für ${year} nicht ausgewiesen`
                     }${hier ? ` im Jahr ${year}` : ""} — Verlauf anzeigen`}
                     className={`flex w-full flex-col items-start gap-0.5 rounded-xl border px-3 py-2.5 text-left transition-colors ${
@@ -123,7 +123,7 @@ function Standtafel({
                   >
                     <span className="font-display text-[19px] font-bold leading-none tracking-tight tabular-nums">
                       {hier
-                        ? schreibe(unit, hier.value, hier.stellen)
+                        ? schreibe(unit, hier.value, hier.decimals)
                         : <span className="text-muted-foreground">—</span>}
                     </span>
                     <span className="text-[12px] leading-snug text-muted-foreground">
