@@ -81,6 +81,9 @@ class Sitzungszeile(TypedDict):
     # Vom Sitzungs-Endpunkt angereichert: die TOPs dieser Sitzung, die zu
     # einem Thema des Kontos passen.
     my_topic_items: NotRequired[list[dict[str, Any]]]
+    # Ende des „läuft gerade"-Fensters (``council.live``), nur an Sitzungen
+    # von HEUTE — für alle anderen fehlt das Feld.
+    live_until: NotRequired[str | None]
 
 
 class Beschlusszeile(TypedDict):
@@ -761,13 +764,31 @@ class Sitzungspause(TypedDict):
     next_session_date: str | None
 
 
-class HeuteSitzung(TypedDict):
-    state: Literal["heute"]
+class HeuteTagesSitzung(TypedDict):
+    """Eine Sitzung des heutigen Tages im „Heute im Rat"-Briefing."""
     committee: str
     session_time: str
+    # Ende des „läuft gerade"-Fensters (``council.live``): die Startzeit der
+    # nächsten Sitzung desselben Tages, sonst ein Deckel ab Beginn.
+    live_until: str | None
+    tops: list[str]
+    rest: int
+
+
+class HeuteSitzung(TypedDict):
+    state: Literal["heute"]
+    # Die Felder der ERSTEN Sitzung des Tages, flach — so lasen ältere
+    # App-Installationen das Briefing, bevor es ``sessions`` gab.
+    committee: str
+    session_time: str
+    live_until: str | None
     tops: list[str]
     rest: int
     n_sessions_today: int
+    # Alle Sitzungen des Tages: An Ratstagen tagen drei Gremien nacheinander,
+    # und erst mit der ganzen Liste kann die Leiste auf die laufende
+    # umschalten. Ohne diese Zeile schnitte die Antwort sie still ab.
+    sessions: list[HeuteTagesSitzung]
 
 
 class HeuteNaechste(TypedDict):
