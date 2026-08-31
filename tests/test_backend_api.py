@@ -3277,11 +3277,11 @@ def test_ask_kombiniert_geldfrage_mit_ort_und_liefert_fundstelle(client, monkeyp
         )
     cs.save_decision_locations(1, [{
         "name": "Kreyenbrück", "kind": "district", "source": "title",
-        "evidence": "Sporthalle Kreyenbrück", "method": "ortskatalog", "confidence": 0.99,
+        "evidence": "Sporthalle Kreyenbrück", "method": "place_catalog", "confidence": 0.99,
     }], "local")
     cs.save_decision_locations(2, [{
-        "name": "Rathaus", "kind": "gebaeude", "source": "title",
-        "evidence": "Sanierung Rathaus", "method": "ortskatalog", "confidence": 0.99,
+        "name": "Rathaus", "kind": "building", "source": "title",
+        "evidence": "Sanierung Rathaus", "method": "place_catalog", "confidence": 0.99,
     }], "foreign")
     with cs._conn:
         cs._conn.execute(
@@ -3348,7 +3348,7 @@ def test_ask_kombiniert_person_mit_ort_ueber_beschlussanker(client, monkeypatch)
             "'accepted','decision')")
     cs.save_decision_locations(5, [{
         "name": "Kreyenbrück", "kind": "district", "source": "title",
-        "evidence": "Sporthalle Kreyenbrück", "method": "ortskatalog", "confidence": 0.99,
+        "evidence": "Sporthalle Kreyenbrück", "method": "place_catalog", "confidence": 0.99,
     }], "local")
     cs.save_person(42, "Bernhard Ellberg", "SPD")
     cs.save_wortbeitraege(88, [
@@ -3419,7 +3419,7 @@ def test_ask_neueste_ortsfrage_sortiert_strikt_chronologisch(client, monkeypatch
                 (decision_id, ksinr, title, "Kreyenbrück", outcome))
         cs.save_decision_locations(decision_id, [{
             "name": "Kreyenbrück", "kind": "district", "source": "summary",
-            "evidence": "Kreyenbrück", "method": "ortskatalog", "confidence": 0.99,
+            "evidence": "Kreyenbrück", "method": "place_catalog", "confidence": 0.99,
         }], f"local-{decision_id}")
     cs.close()
 
@@ -4294,22 +4294,22 @@ def test_decisions_district_filter_is_combined_and_explains_matches(client):
             ],
         )
     council.save_decision_locations(1, [
-        {"name": "Klingenbergplatz", "kind": "platz", "source": "title",
+        {"name": "Klingenbergplatz", "kind": "square", "source": "title",
          "evidence": "Widmung Klingenbergplatz", "method": "regex", "confidence": 0.98},
-        {"name": "Cloppenburger Straße", "kind": "strasse", "source": "official_text",
+        {"name": "Cloppenburger Straße", "kind": "street", "source": "official_text",
          "evidence": "an der Cloppenburger Straße", "method": "regex", "confidence": 0.94},
     ], "hash-1")
     council.save_decision_locations(2, [
-        {"name": "Sportpark Kreyenbrück", "kind": "gebaeude", "source": "title",
+        {"name": "Sportpark Kreyenbrück", "kind": "building", "source": "title",
          "evidence": "Sportpark Kreyenbrück", "method": "llm", "confidence": 0.9},
     ], "hash-2")
     council.save_decision_locations(3, [
-        {"name": "Rathaus", "kind": "gebaeude", "source": "title",
+        {"name": "Rathaus", "kind": "building", "source": "title",
          "evidence": "Sanierung Rathaus", "method": "llm", "confidence": 0.9},
     ], "hash-3")
     council.save_decision_locations(4, [
         {"name": "Kreyenbrück", "kind": "district", "source": "title",
-         "evidence": "Bericht aus Kreyenbrück", "method": "stadtteilliste", "confidence": 0.99},
+         "evidence": "Bericht aus Kreyenbrück", "method": "district_list", "confidence": 0.99},
     ], "hash-4")
     with council._conn:
         council._conn.execute(
@@ -4374,10 +4374,10 @@ def test_curated_place_alias_filters_by_stable_id_and_has_profile(client):
         )
     council.save_decision_locations(1, [{
         "name": "Donnerschwee-Kaserne",
-        "kind": "gebiet",
+        "kind": "area",
         "source": "title",
         "evidence": "Neues aus der Donnerschwee-Kaserne",
-        "method": "ortskatalog",
+        "method": "place_catalog",
         "confidence": 0.99,
     }], "hash-1")
     row = council._conn.execute(
@@ -4422,7 +4422,7 @@ def test_admin_reviews_place_candidate_and_map_links_exact_decisions(client):
         )
     for decision_id in (1, 2, 3):
         council.save_decision_locations(decision_id, [{
-            "name": "Testanger", "kind": "gebiet", "source": "title",
+            "name": "Testanger", "kind": "area", "source": "title",
             "evidence": "Planung Testanger", "method": "llm", "confidence": 0.92,
         }], f"hash-{decision_id}")
     with council._conn:
@@ -4436,7 +4436,7 @@ def test_admin_reviews_place_candidate_and_map_links_exact_decisions(client):
     assert pending.status_code == 200
     assert pending.json()["candidates"][0]["slug"] == "testanger"
     concrete = client.put("/api/admin/place-candidates/testanger", json={
-        "status": "concrete", "name": "Testanger", "kind": "gebaeude",
+        "status": "concrete", "name": "Testanger", "kind": "building",
     })
     assert concrete.status_code == 200 and concrete.json()["status"] == "concrete"
     concrete_list = client.get("/api/admin/place-candidates?status=concrete")
@@ -5596,7 +5596,7 @@ def test_haushalt_liefert_die_spenden_mit_luecke_und_beleg(client):
     try:
         zeilen = [
             {"template_number": "26/0207", "year": 2026, "session_date": "2026-04-13",
-             "amount": 435_941.0, "committee": "Rat", "layout": "neu",
+             "amount": 435_941.0, "committee": "Rat", "layout": "new",
              "second_mention": "zerlegung",
              "probes": [donations.ZWEITSTELLE, donations.PROTOKOLLABGLEICH],
              "herkunft": herkunft.Herkunft(
@@ -5604,7 +5604,7 @@ def test_haushalt_liefert_die_spenden_mit_luecke_und_beleg(client):
                  citation=donations.FUNDSTELLE,
                  probe_result="421.316 + 14.625 = 435.941")},
             {"template_number": "26/0044", "year": 2026, "session_date": "2026-02-09",
-             "amount": 1_800.0, "committee": "Verwaltungsausschuss", "layout": "alt",
+             "amount": 1_800.0, "committee": "Verwaltungsausschuss", "layout": "old",
              "second_mention": "identisch", "probes": [donations.ZWEITSTELLE],
              "herkunft": herkunft.Herkunft(
                  kind="ris", document_id=300001, probe=[donations.ZWEITSTELLE],

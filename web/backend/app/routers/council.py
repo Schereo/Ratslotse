@@ -869,9 +869,9 @@ def haushalt_investitionen(
     ids = sorted({z["herkunft_id"] for z in zeilen if z["herkunft_id"] is not None})
     return {
         "years": store.investitionen_jahre(),
-        "teilhaushalte": [z for z in zeilen if z["level"] == "teilhaushalt"],
-        "gesamt": [z for z in zeilen if z["level"] == "investitionen"],
-        "finanzhaushalt": [z for z in zeilen if z["level"] == "finanzhaushalt"],
+        "teilhaushalte": [z for z in zeilen if z["level"] == "sub_budget"],
+        "gesamt": [z for z in zeilen if z["level"] == "investments"],
+        "finanzhaushalt": [z for z in zeilen if z["level"] == "financial_budget"],
         "herkunft": {str(h["id"]): h for h in store.get_herkunft(ids)},
     }
 
@@ -911,9 +911,9 @@ def haushalt_investitionsprogramm(
     ids = sorted({z["herkunft_id"] for z in zeilen if z["herkunft_id"] is not None})
     return {
         "years": store.investitionsprogramm_jahre(),
-        "massnahmen": [z for z in zeilen if z["level"] == "massnahme"],
-        "teilhaushalte": [z for z in zeilen if z["level"] == "teilhaushalt"],
-        "gesamt": [z for z in zeilen if z["level"] == "gesamt"],
+        "massnahmen": [z for z in zeilen if z["level"] == "measure"],
+        "teilhaushalte": [z for z in zeilen if z["level"] == "sub_budget"],
+        "gesamt": [z for z in zeilen if z["level"] == "total"],
         "herkunft": {str(h["id"]): h for h in store.get_herkunft(ids)},
     }
 

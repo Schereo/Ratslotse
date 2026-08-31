@@ -262,7 +262,7 @@ _BEIDES = re.compile(
 
 
 def category(title: str) -> str:
-    """``ueberplanmaessig`` | ``ausserplanmaessig`` | ``beides``.
+    """``excess`` | ``unbudgeted`` | ``both``.
 
     Der Unterschied ist kein Detail: **überplanmäßig** heißt, der Posten stand
     im Haushalt, das Geld reicht nicht; **außerplanmäßig** heißt, den Posten
@@ -271,12 +271,12 @@ def category(title: str) -> str:
     nennt die Deckung."""
     t = title or ""
     if _BEIDES.search(t):
-        return "beides"
+        return "both"
     ueber = bool(re.search(r"(?:über|ueber)planmäßig", t, re.IGNORECASE))
     ausser = bool(re.search(r"(?:außer|ausser)planmäßig", t, re.IGNORECASE))
     if ueber and ausser:
-        return "beides"
-    return "ueberplanmaessig" if ueber else "ausserplanmaessig"
+        return "both"
+    return "excess" if ueber else "unbudgeted"
 
 
 def haushaltsjahr(template_number: str) -> int | None:

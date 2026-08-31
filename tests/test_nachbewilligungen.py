@@ -374,12 +374,12 @@ def test_verpflichtungsermaechtigung_zaehlt_nicht_mit():
     Der Rechenschaftsbericht zählt sie getrennt, wir auch."""
     commitment_authorizations = nb.Bewilligung(
         template_number="23/0359", title="…", kind=nb.ART_VERPFLICHTUNG,
-        category="ausserplanmaessig", year=2023, amount=840_000.0,
+        category="unbudgeted", year=2023, amount=840_000.0,
         amount_source="title",
         beschluesse=({"committee": "Rat", "outcome": "accepted"},))
     echt = nb.Bewilligung(
         template_number="23/0617", title="…", kind=nb.ART_BEWILLIGUNG,
-        category="ueberplanmaessig", year=2023, amount=11_716_000.0,
+        category="excess", year=2023, amount=11_716_000.0,
         amount_source="title",
         beschluesse=({"committee": "Rat", "outcome": "accepted"},))
     assert not commitment_authorizations.zaehlt_in_summe
@@ -408,7 +408,7 @@ def test_ohne_beschluss_keine_summe():
     bewilligtes Geld — 22/0925 allein verschöbe 2022 um 1,4 Mio. €."""
     beantragt = nb.Bewilligung(
         template_number="22/0925", title="…", kind=nb.ART_BEWILLIGUNG,
-        category="ueberplanmaessig", year=2022, amount=1_400_000.0,
+        category="excess", year=2022, amount=1_400_000.0,
         amount_source="title", beschluesse=())
     assert not beantragt.decided
     assert not beantragt.zaehlt_in_summe
@@ -421,7 +421,7 @@ def test_nur_kenntnis_ist_kein_ratsbeschluss():
     Vermerk „1 und BM"."""
     unterrichtung = nb.Bewilligung(
         template_number="22/0544", title="…", kind=nb.ART_BEWILLIGUNG,
-        category="ueberplanmaessig", year=2022, amount=180_000.0,
+        category="excess", year=2022, amount=180_000.0,
         amount_source="title",
         beschluesse=({"committee": "Rat", "outcome": "noted"},))
     assert unterrichtung.nur_kenntnis
@@ -432,9 +432,9 @@ def test_nur_kenntnis_ist_kein_ratsbeschluss():
 # --- Klassifikation --------------------------------------------------------
 
 def test_kategorie_unterscheidet_ueber_und_ausser():
-    assert nb.category("Überplanmäßige Bewilligung …") == "ueberplanmaessig"
-    assert nb.category("Außerplanmäßige Bewilligung …") == "ausserplanmaessig"
-    assert nb.category("Über- und außerplanmäßige Auszahlungen …") == "beides"
+    assert nb.category("Überplanmäßige Bewilligung …") == "excess"
+    assert nb.category("Außerplanmäßige Bewilligung …") == "unbudgeted"
+    assert nb.category("Über- und außerplanmäßige Auszahlungen …") == "both"
 
 
 def test_einschlag_erkennt_umgedrehte_wortstellung():
@@ -483,7 +483,7 @@ def test_probe_volltext():
 def test_probe_volltext_ohne_titelbetrag_ist_nicht_bestanden():
     """„Nicht geprüft" darf nicht wie „bestanden" aussehen."""
     b = nb.Bewilligung(template_number="24/0836", title="…", kind=nb.ART_BEWILLIGUNG,
-                       category="ueberplanmaessig", year=2024, amount=65_000.0,
+                       category="excess", year=2024, amount=65_000.0,
                        amount_source="proposed_decision")
     assert not nb.probe_volltext(b, VORSCHLAG_RECHTSAMT)
 
@@ -699,7 +699,7 @@ def test_vorlagen_im_kapitel_2024():
 def _bewilligung(nr, amount, committee, outcome="accepted"):
     return nb.Bewilligung(
         template_number=nr, title="…", kind=nb.ART_BEWILLIGUNG,
-        category="ueberplanmaessig", year=2024, amount=amount,
+        category="excess", year=2024, amount=amount,
         amount_source="title",
         beschluesse=({"committee": committee, "outcome": outcome},))
 

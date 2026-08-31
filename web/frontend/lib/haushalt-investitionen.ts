@@ -25,7 +25,7 @@ export type { Herkunft };
 /** Eine Zeile aus `council_investitionen`. */
 export type InvestitionsZeile = {
   year: number;
-  level: "teilhaushalt" | "investitionen" | "finanzhaushalt";
+  level: "sub_budget" | "investments" | "financial_budget";
   /** 0 auf den beiden Summenzeilen — sie tragen keine Teilhaushaltsnummer. */
   sub_budget_no: number;
   label: string;

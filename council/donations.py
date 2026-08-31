@@ -178,7 +178,7 @@ def finanzabschnitt(raw: str | None) -> tuple[str | None, str | None]:
     """Der Abschnitt mit der Zweitstelle plus die Angabe, welches Layout griff."""
     if not raw:
         return None, None
-    for rx, name in ((_FINANZ_NEU, "neu"), (_FINANZ_ALT, "alt")):
+    for rx, name in ((_FINANZ_NEU, "new"), (_FINANZ_ALT, "old")):
         m = rx.search(raw)
         if m:
             return m.group(1), name

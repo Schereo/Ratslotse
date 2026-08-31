@@ -73,7 +73,7 @@ export interface DecisionLocationMatch {
   district: string;
   place_id?: string | null;
   ortsbereich_id?: string | null;
-  source: "title" | "official_text" | "vorlage";
+  source: "title" | "official_text" | "template";
   evidence: string;
   method: string;
   confidence: number;

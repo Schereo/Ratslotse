@@ -138,7 +138,7 @@ def test_location_storage_replaces_per_decision_and_keeps_one_off_places(tmp_pat
     store._conn.commit()
 
     store.save_decision_locations(7, [{
-        "name": "Junkerstraße", "kind": "strasse", "source": "title",
+        "name": "Junkerstraße", "kind": "street", "source": "title",
         "evidence": "Bau an der Junkerstraße", "method": "regex", "confidence": 0.98,
     }], source_hash="hash-1")
 
@@ -160,7 +160,7 @@ def test_location_storage_replaces_per_decision_and_keeps_one_off_places(tmp_pat
     # Ein neuer Lauf ersetzt die Zuordnungen dieses Beschlusses atomar; der Ort
     # muss nicht wie bei Themen-Entitäten in mindestens zwei Beschlüssen vorkommen.
     store.save_decision_locations(7, [{
-        "name": "Hochheider Weg", "kind": "strasse", "source": "vorlage",
+        "name": "Hochheider Weg", "kind": "street", "source": "vorlage",
         "evidence": "nördlich Hochheider Weg", "method": "llm", "confidence": 0.9,
     }], source_hash="hash-2")
     assert [r["name"] for r in store.decision_locations(7)] == ["Hochheider Weg"]
@@ -169,7 +169,7 @@ def test_location_storage_replaces_per_decision_and_keeps_one_off_places(tmp_pat
 
 def test_llm_locations_require_a_real_fundstelle(monkeypatch):
     payload = {"results": [{"id": 7, "locations": [
-        {"name": "GS Röwekamp", "kind": "gebaeude", "source": "title",
+        {"name": "GS Röwekamp", "kind": "building", "source": "title",
          "evidence": "GS Röwekamp, Umbau und Erweiterung", "confidence": "high"},
         {"name": "Eversten", "kind": "district", "source": "title",
          "evidence": "frei erfunden", "confidence": "high"},
@@ -192,7 +192,7 @@ def test_llm_locations_require_a_real_fundstelle(monkeypatch):
 
 def test_llm_locations_accept_top_level_array(monkeypatch):
     payload = [{"id": 7, "locations": [{
-        "name": "GS Röwekamp", "kind": "gebaeude", "source": "title",
+        "name": "GS Röwekamp", "kind": "building", "source": "title",
         "evidence": "GS Röwekamp", "confidence": "high",
     }]}]
     response = SimpleNamespace(
@@ -209,11 +209,11 @@ def test_llm_locations_accept_top_level_array(monkeypatch):
 
 def test_llm_locations_reject_organizations_foreign_districts_and_unrelated_evidence(monkeypatch):
     payload = {"results": [{"id": 7, "locations": [
-        {"name": "Verkehr und Wasser GmbH", "kind": "sonstiges", "source": "title",
+        {"name": "Verkehr und Wasser GmbH", "kind": "other", "source": "title",
          "evidence": "Verkehr und Wasser GmbH", "confidence": "high"},
         {"name": "Bremen", "kind": "district", "source": "vorlage",
          "evidence": "bis Bremen", "confidence": "high"},
-        {"name": "VOSS", "kind": "sonstiges", "source": "official_text",
+        {"name": "VOSS", "kind": "other", "source": "official_text",
          "evidence": "Das Jahresergebnis wird vorgetragen", "confidence": "high"},
         {"name": "Eversten", "kind": "district", "source": "vorlage",
          "evidence": "Stadtteil Eversten", "confidence": "high"},
@@ -240,7 +240,7 @@ def test_llm_locations_reject_organizations_foreign_districts_and_unrelated_evid
     ("Tweelbäker Tredde", "Flächen an der Tweekbäker Tredde"),
 ])
 def test_llm_fundstelle_allows_abbreviation_hyphen_and_inflection(name, evidence):
-    assert locations.valid_llm_location(name, "strasse", evidence)
+    assert locations.valid_llm_location(name, "street", evidence)
 
 
 def test_incremental_process_picks_up_only_new_decisions(tmp_path):
@@ -306,7 +306,7 @@ def test_known_stadtteil_is_geocoded_without_network(tmp_path, monkeypatch):
     store._conn.commit()
     store.save_decision_locations(7, [{
         "name": "Kreyenbrück", "kind": "district", "source": "title",
-        "evidence": "Kreyenbrück", "method": "stadtteilliste", "confidence": 0.99,
+        "evidence": "Kreyenbrück", "method": "district_list", "confidence": 0.99,
     }], "hash")
     store.close()
 
@@ -325,7 +325,7 @@ def test_ortskatalog_alias_is_extracted_as_canonical_name():
         "Die Verwaltung berichtet aus dem Drielaker Moor.", source="title")
     assert got == [{
         "name": "Drielaker-Moor", "kind": "district", "source": "title",
-        "evidence": "Drielaker Moor", "method": "ortskatalog", "confidence": 0.99,
+        "evidence": "Drielaker Moor", "method": "place_catalog", "confidence": 0.99,
     }]
 
 
@@ -333,8 +333,8 @@ def test_secondary_place_alias_is_extracted_with_canonical_id_ready_name():
     got = locations.extract_explicit_locations(
         "Die Verbindung zur ehemaligen Donnerschwee-Kaserne wird gebaut.", source="title")
     assert got == [{
-        "name": "Neu-Donnerschwee", "kind": "gebiet", "source": "title",
-        "evidence": "ehemaligen Donnerschwee-Kaserne", "method": "ortskatalog",
+        "name": "Neu-Donnerschwee", "kind": "area", "source": "title",
+        "evidence": "ehemaligen Donnerschwee-Kaserne", "method": "place_catalog",
         "confidence": 0.99,
     }]
 
@@ -374,7 +374,7 @@ def test_revalidation_removes_only_invalid_llm_links(tmp_path):
     )
     store._conn.commit()
     store.save_decision_locations(7, [{
-        "name": "VOSS", "kind": "sonstiges", "source": "official_text",
+        "name": "VOSS", "kind": "other", "source": "official_text",
         "evidence": "Das Jahresergebnis wird vorgetragen", "method": "llm",
         "confidence": 0.9,
     }, {
@@ -405,7 +405,7 @@ def test_revalidation_repairs_changed_regex_matches(tmp_path):
     )
     store._conn.commit()
     store.save_decision_locations(8, [{
-        "name": "Alan-Turing", "kind": "strasse", "source": "title",
+        "name": "Alan-Turing", "kind": "street", "source": "title",
         "evidence": "Alan-Turing", "method": "regex", "confidence": 0.98,
     }], "hash")
     store.close()
@@ -433,7 +433,7 @@ def test_revalidation_replaces_invalid_llm_link_with_regex_in_one_run(tmp_path):
     )
     store._conn.commit()
     store.save_decision_locations(9, [{
-        "name": "Alan-Turing-Straße", "kind": "strasse", "source": "title",
+        "name": "Alan-Turing-Straße", "kind": "street", "source": "title",
         "evidence": "unbelegte Fundstelle", "method": "llm", "confidence": 0.9,
     }], "hash")
     store.close()
@@ -487,7 +487,7 @@ def test_reviewed_place_joins_catalog_extraction_search_and_map(tmp_path):
     store._conn.commit()
     for decision_id in range(1, 4):
         store.save_decision_locations(decision_id, [{
-            "name": "Testquartier", "kind": "gebiet", "source": "title",
+            "name": "Testquartier", "kind": "area", "source": "title",
             "evidence": "am Testquartier", "method": "llm", "confidence": 0.91,
         }], f"hash-{decision_id}")
     store._conn.execute(
@@ -505,8 +505,8 @@ def test_reviewed_place_joins_catalog_extraction_search_and_map(tmp_path):
         store.review_location_candidate(
             "testquartier", status="concrete", kind="quartier")
     concrete = store.review_location_candidate(
-        "testquartier", status="concrete", kind="gebaeude", updated_by="admin@test.de")
-    assert concrete["status"] == "concrete" and concrete["review_kind"] == "gebaeude"
+        "testquartier", status="concrete", kind="building", updated_by="admin@test.de")
+    assert concrete["status"] == "concrete" and concrete["review_kind"] == "building"
     assert not store.resolve_place("Testquartier")
     point = next(p for p in store.decision_location_map_points() if p["slug"] == "testquartier")
     assert point["target"] == "location" and point["place_id"] is None
@@ -564,7 +564,7 @@ def test_reviewed_alias_resolves_to_existing_catalog_place(tmp_path):
     )
     store._conn.commit()
     store.save_decision_locations(1, [{
-        "name": "Nadorster Gebiet", "kind": "gebiet", "source": "title",
+        "name": "Nadorster Gebiet", "kind": "area", "source": "title",
         "evidence": "Nadorster Gebiet", "method": "llm", "confidence": 0.9,
     }], "hash")
     store.review_location_candidate(

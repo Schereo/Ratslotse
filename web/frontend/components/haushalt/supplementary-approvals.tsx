@@ -128,7 +128,7 @@ function RatsListe({ posten }: { posten: Nachbewilligung[] }) {
               ) : title}
               <span className="font-mono text-[9.5px] uppercase tracking-[0.09em] text-muted-foreground">
                 {n.template_number}
-                {n.category === "ausserplanmaessig" && " · außerplanmäßig"}
+                {n.category === "unbudgeted" && " · außerplanmäßig"}
                 {n.in_plenary === 0 && " · im Fachausschuss beschlossen"}
               </span>
             </span>
