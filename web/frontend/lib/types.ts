@@ -27,6 +27,10 @@ export interface CouncilSession {
   committee: string;
   session_date: string;
   session_time: string;
+  /** Nur bei heutigen Sitzungen: Startzeit der nächsten desselben Tages und
+   *  damit das Ende des LIVE-Fensters (s. `lib/live`). Fehlt bei der letzten
+   *  Sitzung des Tages. */
+  live_until?: string | null;
   location: string;
   n_items: number;
   // Present on text search: the agenda items that matched the query.

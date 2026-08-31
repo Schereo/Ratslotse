@@ -2297,8 +2297,9 @@ export interface paths {
         /**
          * Heute
          * @description RL-901: „Heute im Rat" für die Landing — public (wie public-stats).
-         *     Drei Zustände: Sitzung heute (mit 2 Top-TOPs + Restzähler) · nächste
-         *     Sitzung · Sitzungspause. Cache 15 min.
+         *     Drei Zustände: Sitzung heute (``sessions``: alle des Tages, je mit 2
+         *     Top-TOPs, Restzähler und ``live_until``) · nächste Sitzung ·
+         *     Sitzungspause. Cache 15 min — die Uhr liest der Client selbst.
          */
         get: operations["heute_api_council_heute_get"];
         put?: never;
@@ -10455,4 +10456,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: b04f531914a3bfeec68d193f5f43aa65c9aeb531038ec1e9a560a5d857dea175
+// vertrag-sha256: 53bba57da92c33975cf0a732776a9706c5037689c21d0c6538ace7ed555c6650

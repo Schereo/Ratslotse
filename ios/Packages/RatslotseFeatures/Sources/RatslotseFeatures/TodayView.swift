@@ -203,15 +203,30 @@ struct TodayView: View {
 
     private func openSessions() { model.navigation.append(.sessions(ksinr: nil, tops: [])) }
 
+    /// The one session running right now — at most one, because they wait for
+    /// each other: council days run 16:00 general committee → 16:30
+    /// administrative committee → 18:00 council in the same building, so
+    /// whichever starts next ends the previous round. The server computes the
+    /// end of every window and sends it as `live_until` (see `council/live.py`);
+    /// the cap below only catches responses that predate that field. With
+    /// several candidates the most recently started one wins.
     private var liveSession: CouncilSession? {
-        upcomingSessions.first { session in
-            guard session.sessionDate.prefix(10) == localISODate(now),
-                  let time = session.sessionTime,
-                  let start = sessionStart(time, on: now)
-            else { return false }
-            let age = now.timeIntervalSince(start)
-            return age >= 0 && age <= 4 * 60 * 60
-        }
+        upcomingSessions
+            .compactMap { session -> (CouncilSession, Date)? in
+                guard session.sessionDate.prefix(10) == localISODate(now),
+                      let time = session.sessionTime,
+                      let start = sessionStart(time, on: now),
+                      now >= start
+                else { return nil }
+                if let until = session.liveUntil, let end = sessionStart(until, on: now), end > start {
+                    guard now < end else { return nil }
+                } else {
+                    let cap = isCouncil(session.committee) ? liveCapHoursCouncil : liveCapHours
+                    guard now.timeIntervalSince(start) <= Double(cap) * 60 * 60 else { return nil }
+                }
+                return (session, start)
+            }
+            .max { $0.1 < $1.1 }?.0
     }
 
     private func load() async {
@@ -223,7 +238,10 @@ struct TodayView: View {
             async let foundRequest: FoundPiece = model.api.get("/api/council/fundstueck")
             async let sessionsRequest: SessionPage? = try? await model.api.get(
                 "/api/council/sessions",
-                query: [.init(name: "scope", value: "upcoming"), .init(name: "limit", value: "3")]
+                // Sechs statt drei: Ein Ratstag bringt drei Gremien nacheinander
+                // (siehe `liveSession`) — mit einem knappen Limit fehlte die
+                // laufende Sitzung in der Liste.
+                query: [.init(name: "scope", value: "upcoming"), .init(name: "limit", value: "6")]
             )
             async let hitsRequest: DashboardTopicHits? = try? await model.api.get(
                 "/api/topics/latest-hits", query: [.init(name: "limit", value: "2")]
@@ -406,9 +424,7 @@ private struct LiveCouncilCard: View {
         }
     }
 
-    private var isCouncil: Bool {
-        ["rat", "stadtrat"].contains(session.committee.trimmingCharacters(in: .whitespacesAndNewlines).lowercased())
-    }
+    private var isCouncil: Bool { RatslotseFeatures.isCouncil(session.committee) }
 
     private var topicItemCount: Int {
         Set((session.myTopicItems ?? []).compactMap { $0.object?["item_number"]?.string }).count
@@ -520,6 +536,19 @@ private struct DashboardWeekNumberCard: View {
         let count = number.count ?? 0
         return "\(count == 1 ? "Beschluss" : "Beschlüsse") in den letzten \(number.windowDays) Tagen"
     }
+}
+
+/// How long a session counts as running when no other follows it that day —
+/// committees wrap up in about three hours, the council itself sits longer.
+/// Mirrors `council.live`; normally the server sends the computed end.
+let liveCapHours = 3
+let liveCapHoursCouncil = 4
+
+/// The council itself — not a district council, an advisory board or the
+/// administrative committee. Matches `council.live._COUNCIL_NAMES`.
+func isCouncil(_ committee: String) -> Bool {
+    ["rat", "stadtrat", "rat der stadt", "rat der stadt oldenburg"]
+        .contains(committee.trimmingCharacters(in: .whitespacesAndNewlines).lowercased())
 }
 
 private func localISODate(_ date: Date) -> String {

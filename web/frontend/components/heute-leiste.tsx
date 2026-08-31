@@ -3,11 +3,20 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { isLiveTodayTime, isStadtrat, laufzeitText, O1_STREAM_URL } from "@/lib/live";
+import { currentSession, isStadtrat, runningTimeText, timeOnDay, O1_STREAM_URL } from "@/lib/live";
 import { cn } from "@/lib/utils";
 
+type HeuteSitzung = {
+  committee: string;
+  session_time: string;
+  /** Startzeit der nächsten Sitzung des Tages — Ende des Live-Fensters. */
+  live_until?: string | null;
+  tops: string[];
+  rest: number;
+};
+
 type Heute =
-  | { state: "heute"; committee: string; session_time: string; tops: string[]; rest: number; n_sessions_today: number }
+  | ({ state: "heute"; n_sessions_today: number; sessions?: HeuteSitzung[] } & HeuteSitzung)
   | { state: "naechste"; committee: string; session_date: string; session_time: string }
   | { state: "pause"; label: string | null; until: string | null };
 
@@ -18,8 +27,8 @@ const fmt = (iso: string) =>
  *  unter dem Header mit Mono-Kicker + Punkt. Vier Zustände (LIVE · heute ·
  *  nächste Sitzung · Pause) — die Leiste verschwindet nie; feste Höhe
  *  verhindert Layout-Shift, bis die Daten da sind. LIVE (RL-U10) wird rein
- *  clientseitig aus der Startzeit abgeleitet (bis Start + 4 h) und tickt
- *  minütlich; beim Stadtrat verlinkt sie auf den O1-Stream. */
+ *  clientseitig aus den Startzeiten des Tages abgeleitet und tickt minütlich;
+ *  beim Stadtrat verlinkt sie auf den O1-Stream. */
 export function HeuteLeiste() {
   const [data, setData] = useState<Heute | null>(null);
   const [now, setNow] = useState(() => new Date());
@@ -32,10 +41,28 @@ export function HeuteLeiste() {
     return () => clearInterval(id);
   }, []);
 
-  const live = data?.state === "heute" && isLiveTodayTime(data.session_time, now);
-  const heute = data?.state === "heute" && !live;
-  const nTops = data?.state === "heute" ? data.tops.length + data.rest : 0;
-  const stadtrat = data?.state === "heute" && isStadtrat(data.committee);
+  // An Ratstagen tagen drei Gremien NACHEINANDER (16:00 Ausschuss für
+  // Allgemeine Angelegenheiten → 16:30 Verwaltungsausschuss → 18:00 Rat, s.
+  // `lib/live`). Die Leiste nennt deshalb nicht stur die erste des Tages,
+  // sondern die laufende — und vor dem Beginn die nächste, die noch kommt.
+  // Der Rückfall auf die Kopf-Felder trägt ältere Antworten aus dem Cache.
+  const tagesSitzungen: HeuteSitzung[] =
+    data?.state === "heute"
+      ? data.sessions ?? [{ committee: data.committee, session_time: data.session_time, tops: data.tops, rest: data.rest }]
+      : [];
+  const laufend = currentSession(tagesSitzungen, now);
+  const aktuell =
+    laufend ??
+    tagesSitzungen.find((s) => {
+      const start = timeOnDay(s.session_time, now);
+      return start !== null && now < start;
+    }) ??
+    tagesSitzungen[0];
+
+  const live = Boolean(laufend);
+  const heute = Boolean(aktuell) && !live;
+  const nTops = aktuell ? aktuell.tops.length + aktuell.rest : 0;
+  const stadtrat = Boolean(aktuell) && isStadtrat(aktuell.committee);
 
   return (
     <div
@@ -66,18 +93,18 @@ export function HeuteLeiste() {
           {live ? "Live" : data?.state === "heute" ? "Heute im Rat" : data?.state === "naechste" ? "Nächste Sitzung" : data?.state === "pause" ? "Sitzungspause" : " "}
         </span>
         <span className="min-w-0 flex-1 truncate text-foreground">
-          {live && data?.state === "heute" && (
+          {live && aktuell && (
             <>
-              {stadtrat ? "Der Stadtrat tagt" : `${data.committee} tagt`} — seit{" "}
-              {laufzeitText(data.session_time, now)}
+              {stadtrat ? "Der Stadtrat tagt" : `${aktuell.committee} tagt`} — seit{" "}
+              {runningTimeText(aktuell.session_time, now)}
               {nTops > 0 && <span className="text-muted-foreground">, {nTops} {nTops === 1 ? "TOP" : "TOPs"}</span>}
             </>
           )}
-          {heute && data?.state === "heute" && (
+          {heute && aktuell && (
             <>
-              {data.committee}, {data.session_time} Uhr
-              {data.tops.length > 0 && <span className="text-muted-foreground"> — {data.tops.join(" · ")}</span>}
-              {data.rest > 0 && <span className="text-muted-foreground"> + {data.rest} weitere</span>}
+              {aktuell.committee}, {aktuell.session_time} Uhr
+              {aktuell.tops.length > 0 && <span className="text-muted-foreground"> — {aktuell.tops.join(" · ")}</span>}
+              {aktuell.rest > 0 && <span className="text-muted-foreground"> + {aktuell.rest} weitere</span>}
             </>
           )}
           {data?.state === "naechste" && (
