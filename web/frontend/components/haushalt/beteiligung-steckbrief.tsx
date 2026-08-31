@@ -161,7 +161,7 @@ function Kopfzahl({ titel, k }: { titel: string; k: Kennzahl | null }) {
  *  reichen — ein gemeinsames „Stand 2024" über allen dreien wäre für die
  *  Eigenkapitalquote schlicht falsch. */
 function Zahlenkopf({ daten, g }: { daten: BeteiligungsDaten; g: Gesellschaft }) {
-  const alleReihen = useMemo(() => reihen(daten, g.gesellschaft), [daten, g.gesellschaft]);
+  const alleReihen = useMemo(() => reihen(daten, g.company), [daten, g.company]);
   const ergebnisse = alleReihen.get("jahresergebnis") ?? [];
   const series = ergebnisReihe(ergebnisse);
   const von = ergebnisse[0]?.year, bis = ergebnisse[ergebnisse.length - 1]?.year;
@@ -460,15 +460,15 @@ function Reihe({ daten, zeilen }: { daten: BeteiligungsDaten; zeilen: Kennzahl[]
 export function Steckbrief({ daten, g, zurueck }: {
   daten: BeteiligungsDaten; g: Gesellschaft; zurueck: () => void;
 }) {
-  const alleReihen = useMemo(() => reihen(daten, g.gesellschaft), [daten, g.gesellschaft]);
-  const vergleich = daten.konzernvergleich.find((z) => z.gesellschaft === g.gesellschaft);
+  const alleReihen = useMemo(() => reihen(daten, g.company), [daten, g.company]);
+  const vergleich = daten.konzernvergleich.find((z) => z.company === g.company);
   const form = rechtsform(g);
 
-  const personen = useMemo(() => aufsichtspersonen(daten, g.gesellschaft),
-    [daten, g.gesellschaft]);
-  const eigentuemer = useMemo(() => eigentuemerVon(daten, g.gesellschaft),
-    [daten, g.gesellschaft]);
-  const text = (key: string) => textVon(daten, g.gesellschaft, key);
+  const personen = useMemo(() => aufsichtspersonen(daten, g.company),
+    [daten, g.company]);
+  const eigentuemer = useMemo(() => eigentuemerVon(daten, g.company),
+    [daten, g.company]);
+  const text = (key: string) => textVon(daten, g.company, key);
   const gegenstand = text("gegenstand");
   const besitz = text("beteiligungsverhaeltnisse");
   const organe = text("aufsichtsorgane");

@@ -203,10 +203,10 @@ def test_besetzung_gehoert_zum_stichtag_nicht_zum_haushaltsjahr():
     assert g["positions_planned"] == 815.00
     assert g["positions_prior_year"] == 796.00
     assert g["vacant"] == 143.71
-    assert g["besetzt"] == pytest.approx(652.31)
+    assert g["filled"] == pytest.approx(652.31)
     # Die Rechnung geht gegen das Vorjahr auf — und gegen das Planjahr nicht.
-    assert g["besetzt"] + g["vacant"] == pytest.approx(796.00, abs=0.05)
-    assert abs(g["besetzt"] + g["vacant"] - g["positions_planned"]) > 18
+    assert g["filled"] + g["vacant"] == pytest.approx(796.00, abs=0.05)
+    assert abs(g["filled"] + g["vacant"] - g["positions_planned"]) > 18
 
 
 def test_stichtag_steht_an_der_zeile():
@@ -220,7 +220,7 @@ def test_teil_a_trennt_beamte_und_tarifbeschaeftigte():
     g = _gesamt(_teil(STELLENPLAN_2026_A))
     assert g["filled_by_officials"] == 455.86
     assert g["filled_by_employees"] == 196.45
-    assert g["besetzt"] == pytest.approx(455.86 + 196.45)
+    assert g["filled"] == pytest.approx(455.86 + 196.45)
 
 
 # --- 2. Was der Textextrakt an Fallen stellt --------------------------------
@@ -340,7 +340,7 @@ def test_besetzung_gegen_die_falsche_spalte_reisst_die_probe():
     Vorjahresspalte das Planjahr, ginge besetzt + nicht besetzt nicht mehr
     auf — hier um 19 Stellen daneben, weit jenseits jeder Rundung."""
     ok, warum = sp.besetzungsprobe([{
-        "positions_prior_year": 815.00, "besetzt": 652.31,
+        "positions_prior_year": 815.00, "filled": 652.31,
         "vacant": 143.71, "name": "Stadt Oldenburg", "zeilen": 42}])
     assert ok is False
     assert "-19.0" in warum or "-18.9" in warum
@@ -374,7 +374,7 @@ def test_widerspruechliche_zeilen_werden_gekennzeichnet_nicht_verworfen():
     assert posten[34]["consistent"] == 0
     assert posten[40]["consistent"] == 0
     # Und der Wert selbst bleibt der des Dokuments — nicht zurechtgerechnet.
-    assert posten[34]["besetzt"] == 52.79
+    assert posten[34]["filled"] == 52.79
     assert _gesamt(teil)["consistent"] == 1
 
 

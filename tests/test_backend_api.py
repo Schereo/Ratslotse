@@ -979,16 +979,16 @@ def test_haushalt_beteiligungen_liefert_texte_kennzahlen_und_herkunft(client):
 
     b = client.get("/api/council/haushalt/beteiligungen").json()
     assert b["berichtsjahre"] == [2024]
-    keys = {g["gesellschaft"] for g in b["gesellschaften"]}
+    keys = {g["company"] for g in b["gesellschaften"]}
     assert keys == {"egh", "gsg"}
-    egh = next(g for g in b["gesellschaften"] if g["gesellschaft"] == "egh")
+    egh = next(g for g in b["gesellschaften"] if g["company"] == "egh")
     # Der Verweis auf den Gesamtabschluss steht am Stammdatensatz — er macht
     # aus zwei Seiten über dieselbe Gesellschaft einen Zusammenhang.
     assert egh["consolidated_key"] == "egh"
     assert egh["page"] == 2
 
     bilanz = next(k for k in b["kennzahlen"]
-                  if k["gesellschaft"] == "egh" and k["indicator"] == "bilanzsumme"
+                  if k["company"] == "egh" and k["indicator"] == "bilanzsumme"
                   and k["year"] == 2024)
     assert bilanz["wert"] == 580193968.91
     assert bilanz["einheit"] == "eur"
@@ -1002,7 +1002,7 @@ def test_haushalt_beteiligungen_liefert_texte_kennzahlen_und_herkunft(client):
     assert h_zahl["probes"]
 
     gegenstand = next(t for t in b["texte"]
-                      if t["gesellschaft"] == "egh" and t["section"] == "gegenstand")
+                      if t["company"] == "egh" and t["section"] == "gegenstand")
     assert "gebäudewirtschaftlichen" in gegenstand["text"]
     h_text = b["herkunft"][str(gegenstand["herkunft_id"])]
     assert h_text["probe"] == herkunft.UNGEPRUEFT
@@ -1011,7 +1011,7 @@ def test_haushalt_beteiligungen_liefert_texte_kennzahlen_und_herkunft(client):
 
     # Zwei der fünf Abschnitte sind Tabellen und kommen zerlegt heraus —
     # sonst müsste die Seite den zweispaltigen PDF-Extrakt am Stück zeigen.
-    personen = [p for p in b["personen"] if p["gesellschaft"] == "egh"]
+    personen = [p for p in b["personen"] if p["company"] == "egh"]
     assert [p["name"] for p in personen] == ["Ruth Regina Drügemöller",
                                              "Ingrid Kruse"]
     assert personen[0]["gremium"] == "Betriebsausschuss"
@@ -1023,7 +1023,7 @@ def test_haushalt_beteiligungen_liefert_texte_kennzahlen_und_herkunft(client):
     assert all(p["slug"] is None and p["partei"] is None for p in personen)
     assert egh["roles_assignable"] is True
 
-    eigner = [e for e in b["eigentuemer"] if e["gesellschaft"] == "egh"]
+    eigner = [e for e in b["eigentuemer"] if e["company"] == "egh"]
     assert [e["name"] for e in eigner] == ["Stadt Oldenburg"]
     assert eigner[0]["share_pct"] == 100.0
     # Die Summenzeile ist die Probe und kein Gesellschafter.

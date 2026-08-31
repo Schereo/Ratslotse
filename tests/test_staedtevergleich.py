@@ -380,7 +380,7 @@ def test_steuerkraft_zeilen_nur_kreisfreie_staedte_und_ohne_pro_kopf(kfa2026):
     assert all(z["year"] == 2026 for z in zeilen)
     # Der Name kommt aus unserer Liste, nicht aus der Datei — sonst wechselte
     # er mit dem Jahrgang mit.
-    assert {z["stadt"] for z in zeilen if z["schluessel"] == "403000"} == {"Oldenburg"}
+    assert {z["city"] for z in zeilen if z["schluessel"] == "403000"} == {"Oldenburg"}
 
 
 def test_steuerkraft_je_einwohner_ergibt_die_veroeffentlichten_werte(kfa2026):
@@ -388,7 +388,7 @@ def test_steuerkraft_je_einwohner_ergibt_die_veroeffentlichten_werte(kfa2026):
     zeilen = sv.zeilen_steuerkraft(sv.lies_kfa(kfa2026))
     je_stadt: dict[str, dict] = {}
     for z in zeilen:
-        je_stadt.setdefault(z["stadt"], {})[z["indicator"]] = z["wert"]
+        je_stadt.setdefault(z["city"], {})[z["indicator"]] = z["wert"]
     je_ew = {stadt: w["steuerkraftmesszahl"] * 1000 / w["einwohner"]
              for stadt, w in je_stadt.items()}
     assert je_ew["Oldenburg"] == pytest.approx(1973.61, abs=0.01)
@@ -464,15 +464,15 @@ def test_stadt_mit_kaputter_hebesatzprobe_wird_verworfen(tmp_path):
     pfad = _realsteuer_mappe(tmp_path, "kaputt.xlsx", zwei_eins=kaputt)
     zeilen, verworfen = sv.zeilen_realsteuern(sv.lies_realsteuervergleich(pfad))
 
-    assert [v["stadt"] for v in verworfen] == ["Oldenburg"]
+    assert [v["city"] for v in verworfen] == ["Oldenburg"]
     assert verworfen[0]["grund"] == "Hebesatzprobe"
     # Die anderen Städte bleiben — ein Fehler in einer Zeile darf nicht den
     # ganzen Jahrgang mitnehmen.
-    hebesatz_staedte = {z["stadt"] for z in zeilen if z["indicator"].startswith("hebesatz_")}
+    hebesatz_staedte = {z["city"] for z in zeilen if z["indicator"].startswith("hebesatz_")}
     assert hebesatz_staedte == {"Braunschweig", "Delmenhorst", "Osnabrück"}
     # Die Steuereinnahmekraft steht in einem anderen Blatt und ist von der
     # Hebesatzprobe nicht betroffen — Oldenburg bleibt dort drin.
-    assert any(z["stadt"] == "Oldenburg"
+    assert any(z["city"] == "Oldenburg"
                and z["indicator"] == "steuereinnahmekraft_je_ew" for z in zeilen)
 
 
@@ -496,7 +496,7 @@ def test_jeder_jahreswert_traegt_sein_eigenes_jahr(realsteuer):
     jahre = {z["year"] for z in zeilen if z["indicator"] == "steuereinnahmekraft_je_ew"}
     assert jahre == {2023, 2024, 2025}
     assert {z["year"] for z in zeilen if z["indicator"].startswith("hebesatz_")} == {2025}
-    ol25 = next(z for z in zeilen if z["stadt"] == "Oldenburg"
+    ol25 = next(z for z in zeilen if z["city"] == "Oldenburg"
                 and z["indicator"] == "steuereinnahmekraft_je_ew" and z["year"] == 2023)
     assert ol25["wert"] == pytest.approx(1673.43)
 

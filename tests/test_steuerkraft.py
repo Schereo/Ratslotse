@@ -202,7 +202,7 @@ def test_zeilen_tragen_tausend_euro_und_keine_pro_kopf_spalte(kfa2026):
                   "zuweisungen_kreisaufgaben": 17557.0,
                   "zuweisungen_uebertragener_wirkungskreis": 10575.0,
                   "finanzausgleichsumlage": 0.0, "nettobetrag": 79785.0}
-    assert {z["stadt"] for z in zeilen if z["schluessel"] == "403000"} == {"Oldenburg"}
+    assert {z["city"] for z in zeilen if z["schluessel"] == "403000"} == {"Oldenburg"}
 
 
 def test_gespeichert_kommt_je_ausgleichsjahr_eine_zeile_zurueck(tmp_path, kfa2026):

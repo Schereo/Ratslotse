@@ -331,7 +331,7 @@ class Bewilligung:
     beschluesse: tuple[dict, ...] = field(default_factory=tuple)
 
     @property
-    def beschlossen(self) -> bool:
+    def decided(self) -> bool:
         """Wurde die Bewilligung wirklich erteilt?
 
         Fünf der 161 Vorlagen tragen **gar keine** Beschlusszeile (19/0528,
@@ -348,13 +348,13 @@ class Bewilligung:
         heißt Eilentscheidung oder Entscheidung des Oberbürgermeisters. Auch
         das RIS kennt die vier Kanäle also, es sagt sie nur nicht so deutlich
         wie der Rechenschaftsbericht."""
-        return bool(self.beschluesse) and not self.beschlossen
+        return bool(self.beschluesse) and not self.decided
 
     @property
     def zaehlt_in_summe(self) -> bool:
         """Nur erteilte Bewilligungen mit Betrag gehen in eine Jahressumme."""
         return (self.art == ART_BEWILLIGUNG and self.amount is not None
-                and self.beschlossen)
+                and self.decided)
 
     @property
     def in_plenary(self) -> bool:
@@ -480,7 +480,7 @@ def jahressummen(bewilligungen: list[Bewilligung],
         # beschlossen worden".
         if b.art == ART_SCHWELLE:
             eintrag(b.year)["sammelberichte"] += 1
-        elif b.art == ART_VERPFLICHTUNG and b.beschlossen:
+        elif b.art == ART_VERPFLICHTUNG and b.decided:
             e = eintrag(b.year)
             e["commitments"] += 1
             e["commitments_amount"] += b.amount or 0.0
@@ -914,7 +914,7 @@ def probe_ratsabgleich(bewilligungen: list[Bewilligung], kap: Kapitel3,
       (180.000 €) führt der Bericht mit dem Vermerk „1 und BM", also als
       Entscheidung des **Oberbürgermeisters**. Das RIS führt dazu zwar eine
       Rats-Zeile, aber nur als *Kenntnisnahme* — und weil
-      :attr:`Bewilligung.beschlossen` einen angenommenen Beschluss verlangt,
+      :attr:`Bewilligung.decided` einen angenommenen Beschluss verlangt,
       fällt sie ohnehin heraus. Die beiden Quellen widersprechen sich hier
       also nicht, sie sagen dasselbe.
 

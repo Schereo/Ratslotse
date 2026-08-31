@@ -69,7 +69,7 @@ export function StellenPaare({ zeilen, skala, aktJahr }: {
                     }} />
                   <div className="h-2.5 rounded-[3px]"
                     style={{
-                      width: `${Math.min(zeile.besetzt / skala, 1) * 100}%`,
+                      width: `${Math.min(zeile.filled / skala, 1) * 100}%`,
                       background: "var(--hh-ein-4)",
                     }} />
                 </div>
@@ -77,13 +77,13 @@ export function StellenPaare({ zeilen, skala, aktJahr }: {
                     Differenz. Vorgelesen wird der ganze Satz. */}
                 <span
                   aria-label={`${budget_year}: ${deStellen(zeile.positions_planned)} Stellen `
-                    + `vorgehalten, ${deStellen(zeile.besetzt)} besetzt am Stichtag `
+                    + `vorgehalten, ${deStellen(zeile.filled)} besetzt am Stichtag `
                     + `des Vorjahres`}
                   className={cn(
                     "text-right font-mono text-[12.5px] tabular-nums",
                     akt ? "font-semibold text-foreground" : "text-muted-foreground",
                   )}>
-                  {deStellen(zeile.positions_planned)} · {deStellen(zeile.besetzt)}
+                  {deStellen(zeile.positions_planned)} · {deStellen(zeile.filled)}
                 </span>
               </>
             ) : (

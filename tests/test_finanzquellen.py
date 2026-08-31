@@ -902,7 +902,7 @@ def staedtevergleich(store: CouncilStore, series: str, jahre: list[int]) -> None
 
     for year in jahre:
         store.save_staedtevergleich(series, [
-            {"year": year, "schluessel": "403000", "stadt": "Oldenburg (Oldb), Stadt",
+            {"year": year, "schluessel": "403000", "city": "Oldenburg (Oldb), Stadt",
              "indicator": "steuerkraftmesszahl", "wert": 1.0, "einheit": "teur"},
         ], h.Herkunft(art="lsn", probe=h.UNGEPRUEFT,
                       url="https://www.statistik.niedersachsen.de/download/227086"))

@@ -30,7 +30,7 @@ export type VergleichWert = {
   series: "steuerkraft" | "realsteuern";
   year: number;
   schluessel: string;
-  stadt: string;
+  city: string;
   indicator: string;
   wert: number;
   einheit: string;

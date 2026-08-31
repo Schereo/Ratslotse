@@ -90,14 +90,14 @@ function Karte({ daten, g, onOeffnen }: {
 }) {
   const form = rechtsform(g);
   const ergebnisse = useMemo(
-    () => reihen(daten, g.gesellschaft).get("jahresergebnis") ?? [],
-    [daten, g.gesellschaft]);
+    () => reihen(daten, g.company).get("jahresergebnis") ?? [],
+    [daten, g.company]);
   const juengstes = ergebnisse[ergebnisse.length - 1] ?? null;
   const satz = auftragSatz(daten, g);
   const einordnung = einordnungFuer(daten, g, ergebnisse);
   const series = ergebnisReihe(ergebnisse);
   const von = ergebnisse[0]?.year, bis = juengstes?.year;
-  const anteil = stadtAnteil(daten, g.gesellschaft);
+  const anteil = stadtAnteil(daten, g.company);
 
   // Aufbau als Artikel mit aufgespanntem Öffnen-Knopf (kein Block- und kein
   // interaktiver Inhalt IN einem <button> — der Beleg-Chip ist selbst einer).
@@ -248,7 +248,7 @@ export function GesellschaftenAbschnitt({ onBestand }: {
     });
   }, [onBestand, data, liste]);
 
-  const aktiv = liste.find((g) => g.gesellschaft === gewaehlt) ?? null;
+  const aktiv = liste.find((g) => g.company === gewaehlt) ?? null;
   const bericht = data?.berichtsjahre?.[data.berichtsjahre.length - 1] ?? null;
   const jahre = data?.jahre ?? [];
   const quelleUrl = herkunftVon(data, liste[0]?.herkunft_id)?.url ?? null;
@@ -352,7 +352,7 @@ export function GesellschaftenAbschnitt({ onBestand }: {
               </div>
               <div className="flex items-baseline gap-2.5">
                 <dt className="flex flex-none items-center gap-1.5">
-                  <FormZeichen form="gesellschaft" />
+                  <FormZeichen form="company" />
                   <span className="text-[12.5px] font-semibold">GmbH / Co. KG</span>
                 </dt>
                 <dd className="text-[12.5px] leading-relaxed text-muted-foreground">
@@ -361,7 +361,7 @@ export function GesellschaftenAbschnitt({ onBestand }: {
               </div>
               <div className="flex items-baseline gap-2.5 border-t border-dashed border-border pt-1.5">
                 <dt className="flex flex-none items-center gap-1.5">
-                  <FormZeichen form="gesellschaft" minderheit />
+                  <FormZeichen form="company" minderheit />
                   <span className="text-[12.5px] font-semibold">Minderheitsanteil</span>
                 </dt>
                 <dd className="text-[12.5px] leading-relaxed text-muted-foreground">
@@ -415,8 +415,8 @@ export function GesellschaftenAbschnitt({ onBestand }: {
             {gefiltert.length ? (
               <div className="grid gap-2.5 ab-tablet:grid-cols-2">
                 {gefiltert.map((g) => (
-                  <Karte key={g.gesellschaft} daten={data} g={g}
-                    onOeffnen={() => oeffne(g.gesellschaft)} />
+                  <Karte key={g.company} daten={data} g={g}
+                    onOeffnen={() => oeffne(g.company)} />
                 ))}
               </div>
             ) : (

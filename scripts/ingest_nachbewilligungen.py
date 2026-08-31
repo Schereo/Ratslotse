@@ -102,7 +102,7 @@ def _serie(store: CouncilStore, trocken: bool) -> dict:
         zeilen.append({
             "template_number": b.template_number, "year": b.year, "titel": b.titel,
             "art": b.art, "category": b.category, "amount": b.amount,
-            "amount_source": b.amount_source, "beschlossen": b.beschlossen,
+            "amount_source": b.amount_source, "decided": b.decided,
             "in_plenary": b.in_plenary, "council_decision": b.council_decision,
             "decision_id": (fuehrend or {}).get("id"),
             "committees": sorted({str(d.get("committee") or "") for d in stationen}),

@@ -288,7 +288,7 @@ def test_der_gespeicherte_name_ist_unserer_nicht_der_der_datei(bericht2017, beri
     neu, _ = gs.zeilen(gs.lies_bericht(bericht2021))
     beide = [z for z in alt + neu if z["schluessel"] == gs.OLDENBURG]
     assert len(beide) == 2
-    assert {z["stadt"] for z in beide} == {"Oldenburg"}
+    assert {z["city"] for z in beide} == {"Oldenburg"}
 
 
 def test_alte_schreibweise_ergibt_dieselben_zahlen(bericht2017):

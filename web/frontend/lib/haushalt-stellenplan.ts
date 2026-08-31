@@ -39,7 +39,7 @@ export type StellenZeile = {
   positions_planned: number;
   /** Stellen im Vorjahr. Auf DIESE Zahl beziehen sich alle Besetzungswerte. */
   positions_prior_year: number;
-  besetzt: number;
+  filled: number;
   /** Nur Teil A: Eine Beamtenstelle darf mit Tarifbeschäftigten besetzt werden. */
   filled_by_officials: number | null;
   filled_by_employees: number | null;
@@ -94,13 +94,13 @@ export function fehlt(daten: StellenplanDaten, budget_year: number,
  *  durch `positions_planned`: Beides sind Stellen, aber zu verschiedenen
  *  Zeitpunkten (s. Kopf dieser Datei). */
 export function luecke(z: StellenZeile | null): {
-  stellen: number; besetzt: number; vacant: number;
+  stellen: number; filled: number; vacant: number;
   anteil: number; as_of_date: string | null;
 } | null {
   if (!z || !z.positions_prior_year) return null;
   return {
     stellen: z.positions_prior_year,
-    besetzt: z.besetzt,
+    filled: z.filled,
     vacant: z.vacant,
     anteil: z.vacant / z.positions_prior_year,
     as_of_date: z.as_of_date,

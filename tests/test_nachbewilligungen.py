@@ -410,7 +410,7 @@ def test_ohne_beschluss_keine_summe():
         template_number="22/0925", titel="…", art=nb.ART_BEWILLIGUNG,
         category="ueberplanmaessig", year=2022, amount=1_400_000.0,
         amount_source="titel", beschluesse=())
-    assert not beantragt.beschlossen
+    assert not beantragt.decided
     assert not beantragt.zaehlt_in_summe
     assert nb.jahressummen([beantragt]) == {}
 

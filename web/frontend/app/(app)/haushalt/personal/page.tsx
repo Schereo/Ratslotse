@@ -107,7 +107,7 @@ export default function PersonalPage() {
   const skala = useMemo(() => Math.max(
     1, ...(daten?.summen ?? [])
       .filter((z) => z.teil === teil)
-      .flatMap((z) => [z.positions_planned, z.besetzt])), [daten, teil]);
+      .flatMap((z) => [z.positions_planned, z.filled])), [daten, teil]);
 
   if (jahrgaenge.loading) {
     return <div className="py-16 text-center text-sm text-muted-foreground">

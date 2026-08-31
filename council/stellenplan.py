@@ -121,7 +121,7 @@ import re
 LAYOUT: dict[int, tuple[str, ...]] = {
     9: ("positions_planned", "positions_prior_year", "filled_by_officials",
         "filled_by_employees", "vacant"),
-    8: ("positions_planned", "positions_prior_year", "besetzt", "vacant"),
+    8: ("positions_planned", "positions_prior_year", "filled", "vacant"),
 }
 
 #: Welcher Teil welche Spaltenzahl haben muss. Ein Teil A mit acht Spalten ist
@@ -130,14 +130,14 @@ TEIL_SPALTEN: dict[str, int] = {"A": 9, "B": 8}
 
 #: Alle Zahlenfelder, die eine gespeicherte Zeile tragen kann — in fester
 #: Reihenfolge, damit Summen und Spaltenvergleiche reproduzierbar sind.
-#: ``besetzt`` ist die einzige Angabe, die nicht in der Tabelle steht: In
+#: ``filled`` ist die einzige Angabe, die nicht in der Tabelle steht: In
 #: Teil B ist sie die Besetzungsspalte selbst, in Teil A die Summe der beiden
 #: Besetzungsarten. Sie ist damit die einzige Zahl, die **wir** rechnen — und
 #: sie ist es wert, weil sonst jede Auswertung beide Teile verschieden
 #: behandeln müsste.
 ALLE_WERTFELDER: tuple[str, ...] = (
     "positions_planned", "positions_prior_year", "filled_by_officials",
-    "filled_by_employees", "besetzt", "vacant")
+    "filled_by_employees", "filled", "vacant")
 
 #: Wie die Teile für Leser*innen heißen. „Tarifbeschäftigte" ist das Wort, das
 #: die Oberfläche benutzt; das Dokument selbst schreibt „Arbeitnehmerinnen und
@@ -222,11 +222,11 @@ def _summenregex(spalten: int) -> re.Pattern:
 
 
 def _werte(spalten: int, roh: tuple) -> dict:
-    """Die gelesenen Zahlen unter ihre Namen — plus ``besetzt`` als Summe der
+    """Die gelesenen Zahlen unter ihre Namen — plus ``filled`` als Summe der
     Besetzungsarten, damit beide Teile dieselbe Frage gleich beantworten."""
     feld = dict(zip(LAYOUT[spalten], (_wert(g) for g in roh)))
-    if "besetzt" not in feld:
-        feld["besetzt"] = feld["filled_by_officials"] + feld["filled_by_employees"]
+    if "filled" not in feld:
+        feld["filled"] = feld["filled_by_officials"] + feld["filled_by_employees"]
     return feld
 
 
@@ -357,7 +357,7 @@ def _teile_lesen(text: str) -> dict[str, dict]:
 
 def _besetzungsrest(satz: dict) -> float:
     """besetzt + nicht besetzt − Stellen im Vorjahr."""
-    return satz["besetzt"] + satz["vacant"] - satz["positions_prior_year"]
+    return satz["filled"] + satz["vacant"] - satz["positions_prior_year"]
 
 
 def besetzungstoleranz(zeilen: int) -> float:
@@ -417,7 +417,7 @@ def besetzungsprobe(summen: list[dict]) -> tuple[bool, str]:
         toleranz = besetzungstoleranz(s["zeilen"])
         if abs(rest) > toleranz:
             return False, (f"„{s.get('name') or 'Summe'}“: besetzt "
-                           f"{s['besetzt']:.2f} + nicht besetzt "
+                           f"{s['filled']:.2f} + nicht besetzt "
                            f"{s['vacant']:.2f} ergeben nicht die "
                            f"{s['positions_prior_year']:.2f} Stellen des Vorjahres "
                            f"({rest:+.2f}, erlaubt sind {toleranz:.2f} bei "
@@ -455,7 +455,7 @@ def _wertfelder(satz: dict) -> tuple[str, ...]:
 
     Aus dem Satz selbst und nicht aus einer festen Liste: Ein Teil A trägt
     fünf Wertespalten, ein Teil B vier, und beide führen zusätzlich das
-    gerechnete ``besetzt``. Wer hier eine feste Liste nähme, addierte bei
+    gerechnete ``filled``. Wer hier eine feste Liste nähme, addierte bei
     Teil B irgendwann eine Spalte, die es dort nicht gibt."""
     return tuple(f for f in ALLE_WERTFELDER if f in satz)
 

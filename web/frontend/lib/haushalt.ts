@@ -471,7 +471,7 @@ export type Nachbewilligung = {
   /** Aus welcher Stufe der Betrag stammt: dem Titel oder dem
    *  Beschlussvorschlag der Vorlage. */
   amount_source: "titel" | "proposed_decision" | null;
-  beschlossen: 0 | 1;
+  decided: 0 | 1;
   /** Hat das **Plenum** selbst abgestimmt? Die wörtliche Auskunft — taugt als
    *  Zeilenhinweis („im Fachausschuss beschlossen"), aber **nie** als Basis
    *  eines Rats-Anteils. */
@@ -1356,11 +1356,11 @@ export function nachbewilligungsJahre(
     if (n.art === "schwelle") {
       hol(n.year).sammelberichte += 1;
     } else if (n.art === "verpflichtungsermaechtigung") {
-      if (!n.beschlossen) continue;
+      if (!n.decided) continue;
       const e = hol(n.year);
       e.commitments += 1;
       e.verpflichtungenBetrag += n.amount ?? 0;
-    } else if (n.beschlossen && n.amount != null) {
+    } else if (n.decided && n.amount != null) {
       const e = hol(n.year);
       e.summe += n.amount;
       e.cases += 1;
@@ -1377,7 +1377,7 @@ export function nachbewilligungenFuerJahr(
 ): Nachbewilligung[] {
   return (daten.nachbewilligungen?.serie ?? [])
     .filter((n) => n.year === year && n.art === "bewilligung"
-      && n.beschlossen === 1 && n.amount != null)
+      && n.decided === 1 && n.amount != null)
     .sort((a, b) => (b.amount ?? 0) - (a.amount ?? 0));
 }
 
