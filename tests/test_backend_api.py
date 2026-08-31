@@ -5461,7 +5461,7 @@ def test_haushalt_schulden_traegt_die_zinslast_aus_dem_jahresabschluss(client):
         daten = antwort.json()
 
         zins = daten["zinslast"]
-        assert [z["year"] for z in zins] == [2024], "je Jahr exact eine Zinslast"
+        assert [z["year"] for z in zins] == [2024], "je Jahr genau eine Zinslast"
         assert zins[0]["expense"] == 7_250_000.0
         # Die Herkunft muss mitkommen — sonst steht die Zahl ohne Beleg da.
         assert str(zins[0]["herkunft_id"]) in daten["herkunft"]

@@ -294,7 +294,7 @@ def _call_model(name: str, matches: list[dict]) -> dict | None:
         )
         obj = _parse(resp.choices[0].message.content or "")
         if obj is None:
-            logger.warning("Themen-Beschreibung für %r: Modellantwort nicht readable — Schablone greift",
+            logger.warning("Themen-Beschreibung für %r: Modellantwort nicht lesbar — Schablone greift",
                            name[:80])
         return obj
     except Exception:  # noqa: BLE001 — LLM aus/Timeout

@@ -4915,7 +4915,7 @@ export interface components {
                 /** Fetched At */
                 fetched_at?: string | null;
                 /** Ksinr */
-                ksinr: number;
+                ksinr: number | null;
                 /** Location */
                 location?: string | null;
                 /** My Topic Items */
@@ -5685,7 +5685,7 @@ export interface components {
             /** Fetched At */
             fetched_at?: string | null;
             /** Ksinr */
-            ksinr: number;
+            ksinr: number | null;
             /** Location */
             location?: string | null;
             /** My Topic Items */
@@ -10898,4 +10898,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: f2f05d774d2587add73b7297386e9d05451673b5e9f363ddf76647562d4ea877
+// vertrag-sha256: 16d2f04c4b7015e9fe88c222a859372f590fd5bec7de4ddfbe443e8a8f801792

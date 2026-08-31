@@ -233,7 +233,7 @@ export function StreitListenInhalt({ daten, year }: {
                 <em> jeder</em> Position eine Spalte „Vorschlag von“ — was die Fraktionen
                 wollten, steht deshalb unten in der Liste Zeile für Zeile, nicht nur als
                 Summe. Dass die Zuordnung stimmt, rechnet sich nach: Die Positionen jedes
-                Urhebers ergeben exact seine Summe hier oben.
+                Urhebers ergeben genau seine Summe hier oben.
               </>
             ) : (
               <>Was in den Fraktionslisten im Einzelnen stand, sagt für diesen Jahrgang

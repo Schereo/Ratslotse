@@ -3035,7 +3035,10 @@
               },
               "ksinr": {
                 "title": "Ksinr",
-                "type": "integer"
+                "type": [
+                  "integer",
+                  "null"
+                ]
               },
               "location": {
                 "title": "Location",
@@ -5058,7 +5061,10 @@
           },
           "ksinr": {
             "title": "Ksinr",
-            "type": "integer"
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "location": {
             "title": "Location",

@@ -240,7 +240,7 @@ def test_uebersprungene_seiten_werden_gezaehlt(monkeypatch, tmp_path):
     assert lesung.gelesen == 2
     assert lesung.uebersprungen == 1
     assert lesung.vollstaendig is False
-    assert "[Seite 2: nicht readable gemacht]" in lesung.text
+    assert "[Seite 2: nicht lesbar gemacht]" in lesung.text
 
 
 def test_vollstaendig_gelesen(monkeypatch):
@@ -393,7 +393,7 @@ def test_null_gelesene_seiten_werden_nicht_gespeichert(monkeypatch, tmp_path):
     store = _store_mit_anlage(tmp_path, "empty")
     try:
         leer = ocr.Lesung(
-            text="[Seite 1: nicht readable gemacht]\n" * 22,
+            text="[Seite 1: nicht lesbar gemacht]\n" * 22,
             seiten=22, gelesen=0, uebersprungen=22, skalen=(),
             modell="modell/x", weg="keiner")
         assert len(leer.text) > ocr.MIN_SEITE, "der Platzhalter ist lang genug"

@@ -7090,7 +7090,7 @@ class CouncilStore:
         """Die vollständigen zwölf Tarife eines Vorschlagsjahres ersetzen."""
         saetze, herkuenfte = list(saetze), list(herkuenfte)
         if len(saetze) != len(herkuenfte):
-            raise ValueError("Jeder Gebührensatz braucht exact eine Herkunft")
+            raise ValueError("Jeder Gebührensatz braucht genau eine Herkunft")
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self.transaktion():
             for satz, herkunft in zip(saetze, herkuenfte, strict=True):

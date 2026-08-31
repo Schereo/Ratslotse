@@ -673,7 +673,7 @@ def lies_1105(text: str, grundsteuer_ist: dict[int, float]) -> dict:
                 "abbruch": (
                     f"Die Sprungjahr-Probe reißt für {jahre}: Das Aufkommen "
                     "zieht dort nicht im genannten Jahr an, sondern später. "
-                    "Das ist exact das Muster eines Jahresversatzes (vgl. "
+                    "Das ist genau das Muster eines Jahresversatzes (vgl. "
                     "Datensatz 1106) — es wird nichts übernommen.")}
     if sprung["bestanden"]:
         probes.append("hebesatz_sprungjahr")

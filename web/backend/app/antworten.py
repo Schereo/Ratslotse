@@ -60,7 +60,12 @@ class Sitzungszeile(TypedDict):
     Felder sind die Spalten von ``council_sessions`` — ein Wächter-Test
     (``test_api_vertrag``) schlägt an, wenn die Tabelle wächst, damit hier
     nichts still abgeschnitten wird."""
-    ksinr: int
+    # NULL für terminierte Sitzungen OHNE veröffentlichte Tagesordnung: Die
+    # liefert `upcoming_sessions` mit, und im Ratsinformationssystem gibt es
+    # sie noch nicht als Sitzung mit Nummer (s. `social.wochenvorschau`).
+    # Als `int` deklariert war das ein 500 an genau den Wochen, in denen die
+    # nächste Ratssitzung noch keine Tagesordnung hat.
+    ksinr: int | None
     committee: str
     session_date: str
     session_time: NotRequired[str | None]

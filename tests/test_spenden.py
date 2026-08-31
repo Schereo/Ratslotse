@@ -192,7 +192,7 @@ def test_ein_geaenderter_beschluss_kommt_nicht_ungeprueft_rein():
     erg = spenden.lies([zeile(
         "18/0587", VORLAGE_GEAENDERT,
         "Die Stadt Oldenburg nimmt die angebotenen Zuwendungen in Höhe von "
-        "insgesamt 2.500,00 EUR laut anliegender Liste an (ohne seq. Nr. 2).",
+        "insgesamt 2.500,00 EUR laut anliegender Liste an (ohne lfd. Nr. 2).",
         titel="Annahme von Zuwendungen durch den Verwaltungsausschuss")])
     assert erg["vorlagen"] == []
     assert "22.500,00" in erg["verworfen"][0]["grund"]
@@ -212,7 +212,7 @@ def test_der_grund_traegt_die_zahlen_der_zeile_und_nicht_die_deutung():
     erg = spenden.lies([zeile(
         "18/0587", VORLAGE_GEAENDERT,
         "Die Stadt Oldenburg nimmt die angebotenen Zuwendungen in Höhe von "
-        "insgesamt 2.500,00 EUR laut anliegender Liste an (ohne seq. Nr. 2).",
+        "insgesamt 2.500,00 EUR laut anliegender Liste an (ohne lfd. Nr. 2).",
         titel="Annahme von Zuwendungen durch den Verwaltungsausschuss")])
     grund = erg["verworfen"][0]["grund"]
     assert "Zahlendreher" not in grund and "geändert" not in grund
@@ -371,7 +371,7 @@ def test_verworfene_zeilen_kommen_mit_ihrem_grund_in_den_bestand(tmp_path):
     erg = spenden.lies([zeile(
         "18/0587", VORLAGE_GEAENDERT,
         "Zuwendungen in Höhe von insgesamt 2.500,00 EUR laut anliegender Liste an "
-        "(ohne seq. Nr. 2).",
+        "(ohne lfd. Nr. 2).",
         titel="Annahme von Zuwendungen durch den Verwaltungsausschuss")])
     lauf = herkunft.Herkunft(art="ris", url="https://buergerinfo.example.org/vo040.asp",
                              probe=[spenden.ZWEITSTELLE], probe_result="0 Vorlagen")
