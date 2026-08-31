@@ -40,7 +40,7 @@ export type AenderungsSumme = {
   budget_year: number;
   list_key: string;
   year: number;
-  kind: string; // "entwurf" | "liste" | "endsumme"
+  kind: string; // "draft" | "list" | "final_total"
   label: string;
   revenues: number;
   expenses: number;
@@ -119,14 +119,14 @@ export function herkunftVon(
  *  ergänzt, zieht ihn hier nach (eine unbekannte Liste erscheint sonst
  *  gar nicht, s. `listenFuerJahr`). */
 export const LISTEN_NAME: Record<string, string> = {
-  verwaltung_1: "Änderungsliste der Verwaltung I",
-  verwaltung_2: "Änderungsliste der Verwaltung II",
-  verwaltung_3: "Änderungsliste der Verwaltung III",
-  afb_beschlossen: "Beschlossene Änderungen (Finanzausschuss)",
+  administration_1: "Änderungsliste der Verwaltung I",
+  administration_2: "Änderungsliste der Verwaltung II",
+  administration_3: "Änderungsliste der Verwaltung III",
+  fc_decided: "Beschlossene Änderungen (Finanzausschuss)",
 };
 
 /** Verw. I → II → III → Beschluss: die Reihenfolge des Verfahrens. */
-const REIHENFOLGE = ["verwaltung_1", "verwaltung_2", "verwaltung_3", "afb_beschlossen"];
+const REIHENFOLGE = ["administration_1", "administration_2", "administration_3", "fc_decided"];
 
 export type ListeImJahr = {
   key: string;
@@ -158,8 +158,8 @@ export function listenFuerJahr(
       (s) => s.budget_year === year && s.list_key === key);
     const imJahr = summen.filter((s) => s.year === year);
     const eigene = imJahr.find((s) => s.own === 1);
-    const entwurf = imJahr.find((s) => s.kind === "entwurf");
-    const ende = imJahr.find((s) => s.kind === "endsumme");
+    const entwurf = imJahr.find((s) => s.kind === "draft");
+    const ende = imJahr.find((s) => s.kind === "final_total");
     const balance = eigene
       ? { revenues: eigene.revenues, expenses: eigene.expenses, balance: eigene.balance }
       : entwurf && ende
@@ -191,7 +191,7 @@ export function politikZeilen(
 ): AenderungsSumme[] {
   if (!daten || year == null) return [];
   return daten.summen.filter(
-    (s) => s.budget_year === year && s.year === year && s.kind === "liste"
+    (s) => s.budget_year === year && s.year === year && s.kind === "list"
       && !s.label.includes("nderungsliste"));
 }
 
@@ -275,11 +275,11 @@ export function verfahrensWeg(
   if (!liste) return null;
   const zeilen = imJahr.filter((s) => s.list_key === liste);
 
-  const entwurf = zeilen.find((s) => s.kind === "entwurf");
-  const ende = zeilen.find((s) => s.kind === "endsumme");
+  const entwurf = zeilen.find((s) => s.kind === "draft");
+  const ende = zeilen.find((s) => s.kind === "final_total");
   if (!entwurf || !ende) return null;
 
-  const listen = zeilen.filter((s) => s.kind === "liste");
+  const listen = zeilen.filter((s) => s.kind === "list");
   const politisch = listen.filter((s) => !s.label.includes("nderungsliste"));
   const summeSaldo = (xs: AenderungsSumme[]) => xs.reduce((a, s) => a + s.balance, 0);
 
@@ -291,7 +291,7 @@ export function verfahrensWeg(
     verwaltung: summeSaldo(listen.filter((s) => s.label.includes("nderungsliste"))),
     politik: summeSaldo(politisch),
     politikZeilen: politisch,
-    beschlossen: liste === "afb_beschlossen",
+    beschlossen: liste === "fc_decided",
     herkunft: herkunftVon(daten, entwurf.herkunft_id),
   };
 }

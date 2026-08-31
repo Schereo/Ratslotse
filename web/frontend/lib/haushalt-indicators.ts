@@ -66,14 +66,14 @@ export const GRUPPEN: { title: string; question: string; keys: string[] }[] = [
  *  macht aus einer gerundeten Angabe eine genaue. */
 export function schreibe(unit: string, value: number, stellen = 2): string {
   if (unit === "percent") return `${deZahl(value, stellen)} %`;
-  if (unit === "anzahl") return deZahl(value, 0);
+  if (unit === "count") return deZahl(value, 0);
   return `${deZahl(value, stellen)} €`;
 }
 
 /** Das Format für die Ableseleiste einer Kennzahl — feste Stellen, weil eine
  *  Achse sonst zwischen den Jahren die Genauigkeit wechselte. */
 export function formatVon(unit: string): (value: number) => string {
-  return (value) => schreibe(unit, value, unit === "anzahl" ? 0 : 2);
+  return (value) => schreibe(unit, value, unit === "count" ? 0 : 2);
 }
 
 /** Das Format für die Vorjahresdifferenz.
@@ -89,7 +89,7 @@ export function differenzFormatVon(unit: string): (value: number) => string {
 
 /** Die Einheit für die Kopfzeile der Grafik. */
 export function einheitWort(unit: string): string {
-  return unit === "percent" ? "%" : unit === "anzahl" ? "Personen" : "€";
+  return unit === "percent" ? "%" : unit === "count" ? "Personen" : "€";
 }
 
 /** Alle Punkte einer Kennzahl, nach Jahr. */

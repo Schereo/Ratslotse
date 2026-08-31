@@ -202,7 +202,7 @@ function GlanceCard({
       {/* Regex-Ernte, minimiert (Feedback-Runde 3): beide nur als Zeile mit
           Symbol — die Erklärung öffnet sich erst auf Klick, die Erzählspalte
           links bleibt clean. */}
-      {d.deviation === "stark" && d.official_text && (
+      {d.deviation === "strong" && d.official_text && (
         <GlanceDisclosure
           icon={<GitCompareArrows className="h-3.5 w-3.5 text-signal" />}
           label="Vom Vorschlag abgewichen"
@@ -572,7 +572,7 @@ function DecisionDetailInner() {
   const present = presentMembers(data.attendance);
   const byParty: Record<string, number> = {};
   for (const a of data.attendance) {
-    if (a.role === "verwaltung" || a.role === "protokoll" || a.role === "gast") continue;
+    if (a.role === "administration" || a.role === "minutes" || a.role === "guest") continue;
     const p = normalizeParty(a.party || "—");
     byParty[p] = (byParty[p] ?? 0) + 1;
   }
