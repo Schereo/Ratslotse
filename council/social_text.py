@@ -110,8 +110,8 @@ def kontext(punkt: dict, anlagen: list[dict]) -> tuple[str, str]:
              f"Tagesordnungspunkt: {punkt['title']}"]
     if punkt.get("art"):
         teile.append(f"Art der Vorlage: {punkt['art']}")
-    if punkt.get("amt"):
-        teile.append(f"Federführung: {punkt['amt']}")
+    if punkt.get("office"):
+        teile.append(f"Federführung: {punkt['office']}")
     if punkt.get("beschlussvorschlag"):
         teile.append("Beschlussvorschlag (ein VORSCHLAG, noch kein Beschluss): "
                      + _eine_zeile(punkt["beschlussvorschlag"])[:4000])
@@ -133,9 +133,9 @@ def kontext(punkt: dict, anlagen: list[dict]) -> tuple[str, str]:
         text = _eine_zeile(a.get("raw_text"))[:min(ANLAGE_EINZELN, budget)]
         if not text:
             continue
-        marke = "Antrag" if a.get("is_antrag") else "Anlage"
+        mark = "Antrag" if a.get("is_antrag") else "Anlage"
         wer = f" von {a['antragsteller']}" if a.get("antragsteller") else ""
-        teile.append(f"{marke}{wer} – {a.get('label') or 'ohne Titel'}: {text}")
+        teile.append(f"{mark}{wer} – {a.get('label') or 'ohne Titel'}: {text}")
         budget -= len(text)
         genutzt += 1
 
@@ -233,7 +233,7 @@ def _dringlichkeit_nachladen(punkt: dict) -> None:
         text, _seiten = _pdf_text(punkt["anlage_url"])
         punkt["raw_text"] = text
     except Exception as fehler:  # noqa: BLE001 — ein kaputtes PDF kippt keinen Lauf
-        print(f"  {punkt['item_number']}: PDF nicht lesbar ({fehler})")
+        print(f"  {punkt['item_number']}: PDF nicht readable ({fehler})")
 
 
 def _mit_anlagen(store, punkte: list[dict]) -> list[tuple[dict, list[dict]]]:

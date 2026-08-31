@@ -25,9 +25,9 @@ type Seite = "ein" | "aus";
 // Font-Swap stehen dort.
 
 function Leiste({
-  seite, zeilen, skala, onHover, onPin, aktiv,
+  page, zeilen, skala, onHover, onPin, aktiv,
 }: {
-  seite: Seite;
+  page: Seite;
   zeilen: { z: HaushaltZeile; wert: number }[];
   skala: number;
   onHover: (name: string) => void;
@@ -38,22 +38,22 @@ function Leiste({
     <div className="flex h-8 gap-[1.5px] overflow-hidden rounded-md" role="list">
       {zeilen.map(({ z, wert }, i) => {
         const breite = (wert / skala) * 100;
-        const gewaehlt = aktiv === z.bereich;
+        const gewaehlt = aktiv === z.area;
         // Kurzname aus dem Wörterbuch (`lib/haushalt-bereiche.ts`), nicht am
         // Trennzeichen abgeschnitten: „Klima/Umwelt/Mobilität/Bau/Grün/Friedh."
         // wurde so zu „Klima", „Personal/Organisation/Digitalisierung/IT" zu
         // „Personal" — beides sagt weniger, als der Bereich enthält, und beim
         // nächsten Namenswechsel wäre es wieder etwas anderes.
-        const kanon = bereichKanon(z.bereich);
+        const kanon = bereichKanon(z.area);
         return (
           <button
-            key={z.bereich}
+            key={z.area}
             type="button"
             role="listitem"
             aria-label={`${kanon.name}: ${deMio(wert)} Mio. Euro`}
-            onClick={() => onPin(z.bereich)}
-            onMouseEnter={() => onHover(z.bereich)}
-            onFocus={() => onHover(z.bereich)}
+            onClick={() => onPin(z.area)}
+            onMouseEnter={() => onHover(z.area)}
+            onFocus={() => onHover(z.area)}
             className={cn(
               // KEIN Padding am Button: Es zählt zur Elementbreite und macht
               // die Leiste auf schmalen Bildschirmen unmaßstäblich — bei 13
@@ -65,7 +65,7 @@ function Leiste({
               aktiv && !gewaehlt && "opacity-35",
               gewaehlt && "z-[2] rounded ring-2 ring-signal",
             )}
-            style={{ width: `${breite}%`, background: `var(--hh-${seite}-${Math.min(i, seite === "ein" ? 6 : 9)})`, color: "var(--hh-seg-text)" }}
+            style={{ width: `${breite}%`, background: `var(--hh-${page}-${Math.min(i, page === "ein" ? 6 : 9)})`, color: "var(--hh-seg-text)" }}
           >
             <SegmentText stufen={[
               `${kanon.name} · ${deMio(wert)} Mio. €`,
@@ -88,13 +88,13 @@ function Detail({ z, gepinnt, onClose, onOpen }: {
   z: HaushaltZeile | null | undefined;
   gepinnt: boolean;
   onClose: () => void;
-  onOpen: (bereich: string) => void;
+  onOpen: (area: string) => void;
 }) {
   if (!z) return null;
   return (
     <div className="mt-2.5 inline-block rounded-xl border border-border bg-card px-3 py-2.5 shadow-[0_12px_32px_-10px_rgba(2,32,71,0.28)]">
       <div className="flex items-start gap-3">
-        <p className="text-[12.5px] font-bold">{bereichKanon(z.bereich).name}</p>
+        <p className="text-[12.5px] font-bold">{bereichKanon(z.area).name}</p>
         {gepinnt && (
           <button type="button" onClick={onClose} aria-label="Schließen"
             className="-mr-1 -mt-0.5 rounded p-0.5 text-muted-foreground hover:text-foreground">
@@ -109,7 +109,7 @@ function Detail({ z, gepinnt, onClose, onOpen }: {
         {(z.result ?? 0) < 0 ? "Zuschussbedarf" : "Überschuss"}
       </p>
       <button type="button" className="mt-1.5 text-[11.5px] font-semibold text-primary"
-        onClick={() => onOpen(z.bereich)}>
+        onClick={() => onOpen(z.area)}>
         Bereich öffnen →
       </button>
     </div>
@@ -122,13 +122,13 @@ export function Gegenbalken({ zeilen, year }: { zeilen: HaushaltZeile[]; year: n
   // Verlassen des Segments. Vorher schloss das onMouseLeave des Segments die
   // Detail-Box genau in dem Moment, in dem man sie anklicken wollte
   // (Tim, 16.08.) — jetzt hält der Container den Hover, und ein Klick pinnt.
-  type Wahl = { seite: Seite; bereich: string };
+  type Wahl = { page: Seite; area: string };
   const [hover, setHover] = useState<Wahl | null>(null);
   const [gepinnt, setGepinnt] = useState<Wahl | null>(null);
   const wahl = gepinnt ?? hover;
-  const aktiv = wahl?.bereich ?? null;
+  const aktiv = wahl?.area ?? null;
   const pinnen = (w: Wahl) =>
-    setGepinnt((g) => (g?.bereich === w.bereich && g.seite === w.seite ? null : w));
+    setGepinnt((g) => (g?.area === w.area && g.page === w.page ? null : w));
 
   const parts = zeilen.filter((z) => z.is_total !== 1);
   const gesamt = zeilen.find((z) => z.is_total === 1);
@@ -149,8 +149,8 @@ export function Gegenbalken({ zeilen, year }: { zeilen: HaushaltZeile[]; year: n
 
   const ein = sortiert("revenues");
   const aus = sortiert("expenses");
-  const gewaehlte = aktiv ? parts.find((z) => z.bereich === aktiv) : null;
-  const oeffnen = (bereich: string) => router.push(`/haushalt/bereich?name=${bereichSlug(bereich)}`);
+  const gewaehlte = aktiv ? parts.find((z) => z.area === aktiv) : null;
+  const oeffnen = (area: string) => router.push(`/haushalt/bereich?name=${bereichSlug(area)}`);
 
   // Legende: alles, was in der Leiste kein Label mehr trägt, steht hier als Text.
   const legende = (rows: { z: HaushaltZeile; wert: number }[]) => {
@@ -190,15 +190,15 @@ export function Gegenbalken({ zeilen, year }: { zeilen: HaushaltZeile[]; year: n
         Wo Einnahmen verbucht werden <span className="font-normal text-muted-foreground">— {deMio(einSumme)}&#8239;Mio.&nbsp;€</span>
       </p>
       <div style={{ width: `${einEnde}%` }}>
-        <Leiste seite="ein" zeilen={ein} skala={einSumme} aktiv={aktiv}
-          onHover={(b) => setHover({ seite: "ein", bereich: b })}
-          onPin={(b) => pinnen({ seite: "ein", bereich: b })} />
+        <Leiste page="ein" zeilen={ein} skala={einSumme} aktiv={aktiv}
+          onHover={(b) => setHover({ page: "ein", area: b })}
+          onPin={(b) => pinnen({ page: "ein", area: b })} />
       </div>
       <div className="mt-1.5 flex flex-wrap gap-x-3.5 gap-y-1">
         {einLeg.gezeigt.map(({ z, wert }, i) => (
-          <span key={z.bereich} className="inline-flex items-center gap-1.5 text-[11px] text-foreground/80">
+          <span key={z.area} className="inline-flex items-center gap-1.5 text-[11px] text-foreground/80">
             <span className="h-2 w-2 rounded-[2px]" style={{ background: `var(--hh-ein-${Math.min(ein.findIndex((e) => e.z === z), 6)})` }} />
-            {bereichKanon(z.bereich).name} {deMio(wert)}&#8239;Mio.&nbsp;€
+            {bereichKanon(z.area).name} {deMio(wert)}&#8239;Mio.&nbsp;€
           </span>
         ))}
         {einLeg.rest.length > 0 && (
@@ -208,12 +208,12 @@ export function Gegenbalken({ zeilen, year }: { zeilen: HaushaltZeile[]; year: n
       {ein[0] && (
         <p className="mt-1.5 max-w-[74ch] text-[11.5px] leading-relaxed text-muted-foreground">
           Der größte Abschnitt ist keine einzelne Einnahmequelle. Im Bereich
-          „{bereichKanon(ein[0].z.bereich).name}“ verbucht die Stadt Steuern und allgemeine
+          „{bereichKanon(ein[0].z.area).name}“ verbucht die Stadt Steuern und allgemeine
           Zuweisungen zentral. Die tatsächlichen Einnahmearten zeigt weiter unten der
           Abschnitt <em>Woher kommt das Geld?</em>
         </p>
       )}
-      {wahl?.seite === "ein" && <Detail z={gewaehlte} gepinnt={!!gepinnt} onClose={() => { setGepinnt(null); setHover(null); }} onOpen={oeffnen} />}
+      {wahl?.page === "ein" && <Detail z={gewaehlte} gepinnt={!!gepinnt} onClose={() => { setGepinnt(null); setHover(null); }} onOpen={oeffnen} />}
       </div>
 
       {/* Achse mit Überhang: Bei Minus ein schraffierter Rücklagen-Kasten,
@@ -260,22 +260,22 @@ export function Gegenbalken({ zeilen, year }: { zeilen: HaushaltZeile[]; year: n
         Wo Ausgaben verbucht werden <span className="font-normal text-muted-foreground">— {deMio(ausSumme)}&#8239;Mio.&nbsp;€</span>
       </p>
       <div style={{ width: `${(ausSumme / skala) * 100}%` }}>
-        <Leiste seite="aus" zeilen={aus} skala={ausSumme} aktiv={aktiv}
-          onHover={(b) => setHover({ seite: "aus", bereich: b })}
-          onPin={(b) => pinnen({ seite: "aus", bereich: b })} />
+        <Leiste page="aus" zeilen={aus} skala={ausSumme} aktiv={aktiv}
+          onHover={(b) => setHover({ page: "aus", area: b })}
+          onPin={(b) => pinnen({ page: "aus", area: b })} />
       </div>
       <div className="mt-1.5 flex flex-wrap gap-x-3.5 gap-y-1">
         {ausLeg.gezeigt.map(({ z, wert }) => (
-          <span key={z.bereich} className="inline-flex items-center gap-1.5 text-[11px] text-foreground/80">
+          <span key={z.area} className="inline-flex items-center gap-1.5 text-[11px] text-foreground/80">
             <span className="h-2 w-2 rounded-[2px]" style={{ background: `var(--hh-aus-${Math.min(aus.findIndex((a) => a.z === z), 9)})` }} />
-            {bereichKanon(z.bereich).name} {deMio(wert)}&#8239;Mio.&nbsp;€
+            {bereichKanon(z.area).name} {deMio(wert)}&#8239;Mio.&nbsp;€
           </span>
         ))}
         {ausLeg.rest.length > 0 && (
           <span className="text-[11px] text-muted-foreground">{ausLeg.rest.length} weitere {deMio(ausLeg.restSumme)}&#8239;Mio.&nbsp;€</span>
         )}
       </div>
-      {wahl?.seite === "aus" && <Detail z={gewaehlte} gepinnt={!!gepinnt} onClose={() => { setGepinnt(null); setHover(null); }} onOpen={oeffnen} />}
+      {wahl?.page === "aus" && <Detail z={gewaehlte} gepinnt={!!gepinnt} onClose={() => { setGepinnt(null); setHover(null); }} onOpen={oeffnen} />}
       </div>
 
     </div>

@@ -116,12 +116,12 @@ Eine Begründung ist in der Anlage aufgeführt.
 
 
 def zeile(nr, raw, official_text, *, titel=None, outcome="angenommen",
-          sitzung="2024-03-11", gremiensitzung="Rat", dokument_id=4711):
+          sitzung="2024-03-11", gremiensitzung="Rat", document_id=4711):
     return {"template_number": nr, "titel": titel or "Annahme von Zuwendungen durch den Rat",
             "official_text": official_text, "outcome": outcome, "sitzung": sitzung,
             "gremiensitzung": gremiensitzung, "raw_text": raw,
-            "dokument_id": dokument_id,
-            "dokument_url": f"https://buergerinfo.example.org/getfile.php?id={dokument_id}"}
+            "document_id": document_id,
+            "dokument_url": f"https://buergerinfo.example.org/getfile.php?id={document_id}"}
 
 
 # --- Die Probe hält ---------------------------------------------------------
@@ -137,8 +137,8 @@ def test_die_zerlegung_traegt_den_betrag():
     assert v["amount"] == 435_941
     assert v["zweitstelle"] == "zerlegung"
     assert v["layout"] == "neu"
-    assert spenden.ZWEITSTELLE in v["proben"]
-    assert spenden.PROTOKOLLABGLEICH in v["proben"]
+    assert spenden.ZWEITSTELLE in v["probes"]
+    assert spenden.PROTOKOLLABGLEICH in v["probes"]
 
 
 def test_das_aeltere_layout_traegt_dieselbe_probe():
@@ -192,7 +192,7 @@ def test_ein_geaenderter_beschluss_kommt_nicht_ungeprueft_rein():
     erg = spenden.lies([zeile(
         "18/0587", VORLAGE_GEAENDERT,
         "Die Stadt Oldenburg nimmt die angebotenen Zuwendungen in Höhe von "
-        "insgesamt 2.500,00 EUR laut anliegender Liste an (ohne lfd. Nr. 2).",
+        "insgesamt 2.500,00 EUR laut anliegender Liste an (ohne seq. Nr. 2).",
         titel="Annahme von Zuwendungen durch den Verwaltungsausschuss")])
     assert erg["vorlagen"] == []
     assert "22.500,00" in erg["verworfen"][0]["grund"]
@@ -212,7 +212,7 @@ def test_der_grund_traegt_die_zahlen_der_zeile_und_nicht_die_deutung():
     erg = spenden.lies([zeile(
         "18/0587", VORLAGE_GEAENDERT,
         "Die Stadt Oldenburg nimmt die angebotenen Zuwendungen in Höhe von "
-        "insgesamt 2.500,00 EUR laut anliegender Liste an (ohne lfd. Nr. 2).",
+        "insgesamt 2.500,00 EUR laut anliegender Liste an (ohne seq. Nr. 2).",
         titel="Annahme von Zuwendungen durch den Verwaltungsausschuss")])
     grund = erg["verworfen"][0]["grund"]
     assert "Zahlendreher" not in grund and "geändert" not in grund
@@ -349,8 +349,8 @@ def test_speichern_und_lesen(tmp_path):
         probe=[spenden.ZWEITSTELLE], probe_result=spenden.probennachweis(erg))
     for v in erg["vorlagen"]:
         v["herkunft"] = herkunft.Herkunft(
-            art="ris", dokument_id=v["dokument_id"], probe=v["proben"],
-            fundstelle=spenden.FUNDSTELLE, probe_result="Zerlegung geht auf")
+            art="ris", document_id=v["document_id"], probe=v["probes"],
+            citation=spenden.FUNDSTELLE, probe_result="Zerlegung geht auf")
 
     store = CouncilStore(tmp_path / "council.sqlite")
     try:
@@ -358,7 +358,7 @@ def test_speichern_und_lesen(tmp_path):
         zurueck = store.get_spenden()
         assert len(zurueck) == 1
         assert zurueck[0]["amount"] == 435_941
-        assert zurueck[0]["proben"] == [spenden.ZWEITSTELLE, spenden.PROTOKOLLABGLEICH]
+        assert zurueck[0]["probes"] == [spenden.ZWEITSTELLE, spenden.PROTOKOLLABGLEICH]
         assert all(z["herkunft_id"] for z in zurueck)
         assert store.spenden_jahre() == [2024]
         assert "council_spenden" not in store.herkunft_luecken()
@@ -371,7 +371,7 @@ def test_verworfene_zeilen_kommen_mit_ihrem_grund_in_den_bestand(tmp_path):
     erg = spenden.lies([zeile(
         "18/0587", VORLAGE_GEAENDERT,
         "Zuwendungen in Höhe von insgesamt 2.500,00 EUR laut anliegender Liste an "
-        "(ohne lfd. Nr. 2).",
+        "(ohne seq. Nr. 2).",
         titel="Annahme von Zuwendungen durch den Verwaltungsausschuss")])
     lauf = herkunft.Herkunft(art="ris", url="https://buergerinfo.example.org/vo040.asp",
                              probe=[spenden.ZWEITSTELLE], probe_result="0 Vorlagen")

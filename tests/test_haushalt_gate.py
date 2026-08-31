@@ -55,9 +55,9 @@ def test_jede_seite_liegt_unter_dem_layout():
     """
     seiten = sorted(BEREICH.rglob("page.tsx"))
     assert len(seiten) >= 13, f"nur {len(seiten)} Seiten gefunden — Fund verschoben?"
-    for seite in seiten:
+    for page in seiten:
         assert (BEREICH / "layout.tsx").exists()
-        assert BEREICH in seite.parents, f"{seite} liegt nicht unter dem Gate"
+        assert BEREICH in page.parents, f"{page} liegt nicht unter dem Gate"
 
     # Keine zweite Haushalts-Route außerhalb des gegateten Verzeichnisses.
     app = FRONTEND / "app"

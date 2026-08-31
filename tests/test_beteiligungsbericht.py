@@ -190,9 +190,9 @@ def _bericht_2024() -> list[str]:
 # --- Erkennung und Formatbruch ----------------------------------------------
 
 def test_jahrgang_aus_dem_kopf():
-    assert bb.jahrgang("Beteiligungsbericht \nfür das Berichtsjahr 2024 \n") == 2024
-    assert bb.jahrgang("Stadt Oldenburg – Beteiligungsbericht 2022 \n- 3/201 -") == 2022
-    assert bb.jahrgang("Irgendein anderes Dokument") is None
+    assert bb.budget_year("Beteiligungsbericht \nfür das Berichtsjahr 2024 \n") == 2024
+    assert bb.budget_year("Stadt Oldenburg – Beteiligungsbericht 2022 \n- 3/201 -") == 2022
+    assert bb.budget_year("Irgendein anderes Dokument") is None
 
 
 def test_alte_jahrgaenge_werden_gar_nicht_erst_gelesen():
@@ -201,7 +201,7 @@ def test_alte_jahrgaenge_werden_gar_nicht_erst_gelesen():
     Kein stiller Fehlschlag: Ein leeres Ergebnis ohne Begründung sähe aus wie
     ein kaputter Parser."""
     e = bb.lies(["Beteiligungsbericht \nfür das Berichtsjahr 2021 \n"])
-    assert e["jahrgang"] == 2021
+    assert e["budget_year"] == 2021
     assert e["gesellschaften"] == []
     assert any("Formatbruch" in w for w in e["warnungen"])
 
@@ -317,7 +317,7 @@ def test_guv_schlusszeile_ohne_postennummer():
 
 def test_gliederung_verlangt_dass_beide_angaben_uebereinstimmen():
     seiten = _bericht_2024()
-    ges, warnungen = bb.gliederung(seiten)
+    ges, warnungen = bb.classification(seiten)
     assert [g.key for g in ges] == ["egh", "gsg"]
     assert [g.seite_gedruckt for g in ges] == [2, 5]
     assert warnungen == []
@@ -330,7 +330,7 @@ def test_verschobene_trennseite_wird_uebersprungen():
     # Eingeschoben hinter der EGH-Trennseite: EGH steht weiter richtig, die
     # GSG rutscht eine Seite weiter und passt nicht mehr zum Verzeichnis.
     seiten.insert(3, "Eine eingeschobene Seite \n")
-    ges, warnungen = bb.gliederung(seiten)
+    ges, warnungen = bb.classification(seiten)
     assert [g.key for g in ges] == ["egh"]
     assert any("nicht gesichert" in " ".join(w.split()) for w in warnungen)
 
@@ -379,23 +379,23 @@ def test_kontaktangaben_werden_nicht_gespeichert():
 
 def test_lies_ganzer_bericht_mit_proben():
     e = bb.lies(_bericht_2024())
-    assert e["jahrgang"] == 2024
+    assert e["budget_year"] == 2024
     assert [g.key for g in e["gesellschaften"]] == ["egh", "gsg"]
     egh = e["gesellschaften"][0]
     assert egh.kennzahlen["bilanzsumme"][2024] == 580193968.91
     assert egh.abschnitte["gegenstand"]
     # Bilanzprobe und Ergebnisprobe für die drei Bilanzjahre.
-    proben = {(x["kennzahl"], x["year"]): x for x in e["dokumentproben"]}
-    assert proben[("bilanzsumme", 2024)]["ok"]
-    assert proben[("jahresergebnis", 2024)]["ok"]
+    probes = {(x["indicator"], x["year"]): x for x in e["dokumentproben"]}
+    assert probes[("bilanzsumme", 2024)]["ok"]
+    assert probes[("jahresergebnis", 2024)]["ok"]
     assert all(x["ok"] for x in e["dokumentproben"])
 
 
 def test_ueberlappung_bestaetigt_und_widerspricht():
-    a = bb.Gesellschaft(key="egh", name="EGH", gliederung="2.2.1", seite=3,
+    a = bb.Gesellschaft(key="egh", name="EGH", classification="2.2.1", page=3,
                         seite_gedruckt=2)
     a.kennzahlen = {"bilanzsumme": {2022: 559822592.60, 2023: 572543885.42}}
-    b = bb.Gesellschaft(key="egh", name="EGH", gliederung="2.2.1", seite=3,
+    b = bb.Gesellschaft(key="egh", name="EGH", classification="2.2.1", page=3,
                         seite_gedruckt=2)
     b.kennzahlen = {"bilanzsumme": {2022: 559822592.60, 2023: 999.0}}
     u = bb.ueberlappung({2023: [a], 2024: [b]})
@@ -438,13 +438,13 @@ def test_gespeicherte_kennzahl_traegt_probe_und_messwert(tmp_path):
         "label": "Beteiligungsbericht 2024"}},
         finanzquellen.Protokoll(still=True))
     zeilen = [z for z in store.get_gesellschaft_kennzahlen("egh")
-              if z["kennzahl"] == "bilanzsumme" and z["year"] == 2024]
+              if z["indicator"] == "bilanzsumme" and z["year"] == 2024]
     assert len(zeilen) == 1
     h = store.get_herkunft([zeilen[0]["herkunft_id"]])[0]
     assert h["art"] == "stadt"
     assert h["probe"] == "beteiligung_bilanzprobe"
-    assert "Abschnitt 2.2.1" in h["fundstelle"]
-    assert h["seite"] == 2
+    assert "Abschnitt 2.2.1" in h["citation"]
+    assert h["page"] == 2
     assert "0.00" in h["probe_result"]
     store.close()
 
@@ -463,7 +463,7 @@ def test_texte_stehen_ausdruecklich_als_ungeprueft(tmp_path):
         h = store.get_herkunft([t["herkunft_id"]])[0]
         assert h["probe"] == herkunft.UNGEPRUEFT
         assert h["url"]
-        assert h["fundstelle"]
+        assert h["citation"]
     store.close()
 
 
@@ -501,7 +501,7 @@ def test_konzernvergleich_ist_einordnung_und_verwirft_nichts(tmp_path):
         "label": "Beteiligungsbericht 2024"}},
         finanzquellen.Protokoll(still=True))
 
-    quelle = herkunft.Herkunft(art="ris", dokument_id=302709,
+    quelle = herkunft.Herkunft(art="ris", document_id=302709,
                                label="Gesamtabschluss 2024",
                                url="https://example.org/ga2024.pdf",
                                probe="konzern_traegersumme")
@@ -611,9 +611,9 @@ def test_aufsichtsorgane_paart_spalten_wenn_die_probe_haelt():
     assert all(p.funktion == "Ratsmitglied" for p in personen)
     assert all(p.gremium == "Betriebsausschuss" for p in personen)
     assert [p.vorsitz for p in personen[:3]] == ["vorsitz", "stellvertretung", None]
-    assert personen[3].hinweis == "bis 17. Juni 2024"
-    assert personen[4].hinweis == "ab 17. Juni 2024"
-    assert [p.reihenfolge for p in personen] == [0, 1, 2, 3, 4]
+    assert personen[3].note == "bis 17. Juni 2024"
+    assert personen[4].note == "ab 17. Juni 2024"
+    assert [p.sort_order for p in personen] == [0, 1, 2, 3, 4]
 
 
 def test_aufsichtsorgane_ohne_probe_bleibt_jedes_amt_leer():
@@ -632,7 +632,7 @@ def test_aufsichtsorgane_ohne_probe_bleibt_jedes_amt_leer():
         "Dr. Alaa Alhamwi", "Ruth Regina Drügemöller", "Claudia Oeljeschleger",
         "Christine Wolff", "Jens Lükermann"]
     assert personen[2].vorsitz == "stellvertretung"
-    assert personen[2].hinweis == "ab 28.02.2023"
+    assert personen[2].note == "ab 28.02.2023"
 
 
 def test_aufsichtsorgane_verwirft_den_seitenrand():
@@ -666,7 +666,7 @@ def test_aufsichtsorgane_trennt_mehrere_gremien():
     assert [p.gremium for p in personen] == (
         ["Gesellschafterversammlung"] * 5 + ["Aufsichtsrat"] * 8)
     # Die Reihenfolge läuft über beide Gremien durch — sie ist der Schlüssel.
-    assert [p.reihenfolge for p in personen] == list(range(13))
+    assert [p.sort_order for p in personen] == list(range(13))
     aufsichtsrat = [p for p in personen if p.gremium == "Aufsichtsrat"]
     assert aufsichtsrat[4].vorsitz == "vorsitz"
     assert aufsichtsrat[-1].funktion == "Vertreter Hochschule"
@@ -776,7 +776,7 @@ def test_personen_und_eigentuemer_landen_mit_herkunft_im_bestand(tmp_path):
     assert all(p["funktionen_zuordenbar"] == 1 for p in personen)
     h = store.get_herkunft([personen[0]["herkunft_id"]])[0]
     assert h["probe"] == "beteiligung_spaltenprobe"
-    assert "Betriebsausschuss" in h["fundstelle"]
+    assert "Betriebsausschuss" in h["citation"]
 
     eigner = store.get_gesellschaft_eigentuemer()
     assert [e["name"] for e in eigner] == ["Stadt Oldenburg"]

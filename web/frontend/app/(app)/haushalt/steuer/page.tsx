@@ -89,13 +89,13 @@ function SteuerInner() {
   }, [data, art]);
 
   // Der zweite Weg an die Zahl: die Ergebnisrechnung des Jahresabschlusses.
-  // Nur die Gesamt-Zeilen der Kernverwaltung (`thh_nr === null`) — die
+  // Nur die Gesamt-Zeilen der Kernverwaltung (`sub_budget_no === null`) — die
   // Teilhaushalte kommen weiter unten als Aufschlüsselung, addiert werden sie
   // hier nie: Sie ergeben dieselbe Summe noch einmal.
   const entgelt = useMemo(() => {
     if (!data || !art?.ergebnisPosten) return [];
     return (data.ergebnisrechnung ?? [])
-      .filter((z) => z.nr === art.ergebnisPosten && z.thh_nr === null)
+      .filter((z) => z.nr === art.ergebnisPosten && z.sub_budget_no === null)
       .sort((a, b) => a.year - b.year);
   }, [data, art]);
 
@@ -137,7 +137,7 @@ function SteuerInner() {
     : istEntgelt
       ? {
           wert: (data.ergebnisrechnung ?? []).find(
-            (z) => z.nr === 12 && z.thh_nr === null && z.year === letzte?.year,
+            (z) => z.nr === 12 && z.sub_budget_no === null && z.year === letzte?.year,
           )?.result ?? null,
           was: "aller ordentlichen Erträge",
         }
@@ -223,7 +223,7 @@ function SteuerInner() {
   //    Satz, zeigt die Grafik keine Höhe (die Komponente entscheidet das).
   const geltendeStufe = hebeHaupt.at(-1) ?? null;
   const vorgeschlagen = (satzungDaten?.haushaltssatzung ?? [])
-    .find((z) => z.year === HEBESATZ_ABGELEHNT.year && z.nachtrag === 0)
+    .find((z) => z.year === HEBESATZ_ABGELEHNT.year && z.supplement === 0)
     ?.hebesatz_gewerbesteuer ?? null;
 
   // Das Aufkommen als `{year: euro}` — der Pflicht-Kontext neben jedem
@@ -429,7 +429,7 @@ function SteuerInner() {
             <p className="mt-1.5 inline-block rounded-lg border border-border bg-muted/40 px-2.5 py-1.5 font-mono text-[12.5px]">
               {art.beispiel.rechnung}
             </p>
-            <p className="mt-1.5 text-[11.5px] leading-relaxed text-muted-foreground">{art.beispiel.hinweis}</p>
+            <p className="mt-1.5 text-[11.5px] leading-relaxed text-muted-foreground">{art.beispiel.note}</p>
           </div>
         )}
       </div>
@@ -460,7 +460,7 @@ function SteuerInner() {
       {istEntgelt && letzte && (
         <EntgelteBereiche
           zeilen={(data.ergebnisrechnung ?? []).filter(
-            (z) => z.nr === art.ergebnisPosten && z.thh_nr !== null && z.year === letzte.year,
+            (z) => z.nr === art.ergebnisPosten && z.sub_budget_no !== null && z.year === letzte.year,
           )}
           year={letzte.year}
           beleg={<Beleg q="ergebnisrechnung_thh" />}

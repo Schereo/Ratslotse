@@ -1424,7 +1424,7 @@ struct DecisionDetailView: View {
             "art":"Beschlussvorlage",
             "document_url":"https://ratslotse.de",
             "excerpt":"Die Verwaltung legt den Entwurf des Haushaltsplans vor. Er bündelt laufende Aufgaben und geplante Investitionen der Stadt.",
-            "amt":"Amt für Finanzen",
+            "office":"Amt für Finanzen",
             "klima_check":"Mehrere Investitionen betreffen energetische Sanierungen und klimafreundliche Mobilität.",
             "finanz_check":"Die vorgesehenen Investitionen sind in der mittelfristigen Finanzplanung berücksichtigt."
           },

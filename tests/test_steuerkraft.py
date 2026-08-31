@@ -150,34 +150,34 @@ def test_blatt_ohne_erwartete_spalten_bricht_ab(tmp_path):
 # --- Proben -----------------------------------------------------------------
 
 def test_komponentenprobe_geht_fuer_alle_staedte_auf(kfa2026):
-    for jahrgang in sk.lies_zuweisungen(kfa2026):
-        probe = sk.probe_komponenten(jahrgang)
+    for budget_year in sk.lies_zuweisungen(kfa2026):
+        probe = sk.probe_komponenten(budget_year)
         assert probe["ok"], probe["abweichungen"]
         assert probe["geprueft"] == 3
         assert "3 von 3 Städten" in probe["result"]
 
 
 def test_komponentenprobe_faellt_auf_wenn_ein_teil_fehlt(kfa2026):
-    jahrgang = sk.lies_zuweisungen(kfa2026)[0]
-    jahrgang.staedte["403000"][sk.UEBERTRAGEN] = 0     # die Lücke, um die es geht
-    probe = sk.probe_komponenten(jahrgang)
+    budget_year = sk.lies_zuweisungen(kfa2026)[0]
+    budget_year.staedte["403000"][sk.UEBERTRAGEN] = 0     # die Lücke, um die es geht
+    probe = sk.probe_komponenten(budget_year)
     assert not probe["ok"]
     assert probe["abweichungen"][0]["schluessel"] == "403000"
     assert "69210 statt 79785" in probe["abweichungen"][0]["grund"]
 
 
 def test_rundung_auf_volle_tausend_reisst_die_probe_nicht(kfa2026):
-    jahrgang = sk.lies_zuweisungen(kfa2026)[0]
-    jahrgang.staedte["403000"]["nettobetrag"] = 79786   # 1 T€ Rundung
-    assert sk.probe_komponenten(jahrgang)["ok"]
+    budget_year = sk.lies_zuweisungen(kfa2026)[0]
+    budget_year.staedte["403000"]["nettobetrag"] = 79786   # 1 T€ Rundung
+    assert sk.probe_komponenten(budget_year)["ok"]
 
 
 def test_jahrbuchabgleich_geht_auf_und_nennt_beide_zahlen(kfa2026):
     """Die stärkere Probe: eine Landesbehörde gegen die Bücher der Stadt.
     Tabelle 1103 des Statistischen Jahrbuchs nennt für das Haushaltsjahr 2025
     unter „Finanzzuweisungen" 79.787 T€ (vorläufiges Rechnungsergebnis)."""
-    jahrgang = sk.lies_zuweisungen(kfa2026)[0]
-    probe = sk.probe_gegen_jahrbuch(jahrgang, 79787)
+    budget_year = sk.lies_zuweisungen(kfa2026)[0]
+    probe = sk.probe_gegen_jahrbuch(budget_year, 79787)
     assert probe["ok"]
     assert probe["lsn_teur"] == 79785 and probe["jahrbuch_teur"] == 79787
     assert probe["abweichung_prozent"] < 0.01
@@ -186,9 +186,9 @@ def test_jahrbuchabgleich_geht_auf_und_nennt_beide_zahlen(kfa2026):
 def test_jahrbuchabgleich_reisst_wenn_eine_komponente_fehlt(kfa2026):
     """Die Toleranz ist so gewählt, dass die kleinste Komponente (13 % der
     Summe) sie zwangsläufig reißt — sonst wäre sie keine Probe."""
-    jahrgang = sk.lies_zuweisungen(kfa2026)[0]
-    jahrgang.staedte["403000"]["nettobetrag"] = 69210   # ohne die dritte
-    assert not sk.probe_gegen_jahrbuch(jahrgang, 79787)["ok"]
+    budget_year = sk.lies_zuweisungen(kfa2026)[0]
+    budget_year.staedte["403000"]["nettobetrag"] = 69210   # ohne die dritte
+    assert not sk.probe_gegen_jahrbuch(budget_year, 79787)["ok"]
 
 
 # --- Speichern --------------------------------------------------------------
@@ -196,8 +196,8 @@ def test_jahrbuchabgleich_reisst_wenn_eine_komponente_fehlt(kfa2026):
 def test_zeilen_tragen_tausend_euro_und_keine_pro_kopf_spalte(kfa2026):
     zeilen = sk.zeilen_finanzausgleich(sk.lies_zuweisungen(kfa2026)[0])
     assert {z["einheit"] for z in zeilen} == {"teur"}
-    assert not [z for z in zeilen if z["kennzahl"] == "nettobetrag_je_ew"]
-    ol = {z["kennzahl"]: z["wert"] for z in zeilen if z["schluessel"] == "403000"}
+    assert not [z for z in zeilen if z["indicator"] == "nettobetrag_je_ew"]
+    ol = {z["indicator"]: z["wert"] for z in zeilen if z["schluessel"] == "403000"}
     assert ol == {"zuweisungen_gemeindeaufgaben": 51653.0,
                   "zuweisungen_kreisaufgaben": 17557.0,
                   "zuweisungen_uebertragener_wirkungskreis": 10575.0,
@@ -211,8 +211,8 @@ def test_gespeichert_kommt_je_ausgleichsjahr_eine_zeile_zurueck(tmp_path, kfa202
     store = CouncilStore(tmp_path / "council.sqlite")
     try:
         zeilen: list[dict] = []
-        for jahrgang in sk.lies_zuweisungen(kfa2026):
-            zeilen += sk.zeilen_finanzausgleich(jahrgang)
+        for budget_year in sk.lies_zuweisungen(kfa2026):
+            zeilen += sk.zeilen_finanzausgleich(budget_year)
         store.save_staedtevergleich("finanzausgleich", zeilen, Herkunft(
             art="lsn", probe=["kfa_komponentenprobe", "kfa_jahrbuchabgleich"],
             label="KFA 2026", url="https://example.org/kfa.xlsx",

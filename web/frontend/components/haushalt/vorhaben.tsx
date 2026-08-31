@@ -80,7 +80,7 @@ function Zeile({ zeile, skala, bereichName }: {
     <li className="flex flex-col gap-1 py-2">
       <div className="flex items-baseline justify-between gap-3">
         <span className="min-w-0 text-[13px] font-medium">
-          {zeile.bezeichnung}
+          {zeile.label}
           {bereichName && (
             <span className="ml-1.5 font-mono text-[9.5px] font-normal uppercase tracking-[0.09em] text-muted-foreground">
               {bereichName}
@@ -163,7 +163,7 @@ export function Vorhaben({
 
   const nameVon = useMemo(() => {
     const zu = new Map<number, string>();
-    for (const b of bereiche) zu.set(b.thh_nr, b.bezeichnung);
+    for (const b of bereiche) zu.set(b.sub_budget_no, b.label);
     return (nr: number) => zu.get(nr) ?? `Teilhaushalt ${nr}`;
   }, [bereiche]);
 
@@ -187,25 +187,25 @@ export function Vorhaben({
       : (daten?.massnahmen ?? []).filter((z) => z.year === effJahr);
     const zuName = (nr: number) => {
       const b = (daten?.teilhaushalte ?? []).find(
-        (t) => t.year === effJahr && t.thh_nr === nr);
-      return b?.bezeichnung ?? `Teilhaushalt ${nr}`;
+        (t) => t.year === effJahr && t.sub_budget_no === nr);
+      return b?.label ?? `Teilhaushalt ${nr}`;
     };
     return quelle.map((z) => ({
-      key: `${z.thh_nr}-${z.code}`,
-      name: z.bezeichnung,
+      key: `${z.sub_budget_no}-${z.code}`,
+      name: z.label,
       wert: z.grand_total,
-      gruppe: zuName(z.thh_nr),
-      zusatz: aktiv == null ? zuName(z.thh_nr) : undefined,
+      gruppe: zuName(z.sub_budget_no),
+      zusatz: aktiv == null ? zuName(z.sub_budget_no) : undefined,
     }));
   }, [daten, effJahr, aktiv]);
   const suchtreffer = useMemo(
-    () => (suchend ? new Set(treffer.map((z) => `${z.thh_nr}-${z.code}`)) : undefined),
+    () => (suchend ? new Set(treffer.map((z) => `${z.sub_budget_no}-${z.code}`)) : undefined),
     [suchend, treffer]);
 
   const zeigen = useMemo(() => {
     const basis = suchend ? treffer : liste;
     return sortierung === "alpha"
-      ? [...basis].sort((a, b) => a.bezeichnung.localeCompare(b.bezeichnung, "de"))
+      ? [...basis].sort((a, b) => a.label.localeCompare(b.label, "de"))
       : basis;
   }, [suchend, treffer, liste, sortierung]);
   // Einmal je Liste, nicht einmal je Zeile: Bei 565 Vorhaben wäre die
@@ -295,8 +295,8 @@ export function Vorhaben({
           >
             <option value="">alle Teilhaushalte</option>
             {bereiche.map((b) => (
-              <option key={b.thh_nr} value={b.thh_nr}>
-                {b.bezeichnung} ({count(daten, effJahr, b.thh_nr)})
+              <option key={b.sub_budget_no} value={b.sub_budget_no}>
+                {b.label} ({count(daten, effJahr, b.sub_budget_no)})
               </option>
             ))}
           </select>
@@ -321,14 +321,14 @@ export function Vorhaben({
         <Treemap
           knoten={knoten}
           farbe={(gruppe) => {
-            const nr = bereiche.find((b) => b.bezeichnung === gruppe)?.thh_nr;
+            const nr = bereiche.find((b) => b.label === gruppe)?.sub_budget_no;
             return nr != null ? farbeVonThh(nr) : "var(--hh-aus-9)";
           }}
           // Bis 24.08. stand auf JEDER Kachel weißer Text. Am blassen Ende der
           // Ausgaben-Rampe (Stufe 3 aufwärts) war er damit unlesbar bis
           // unsichtbar — „Krippenausbau 2022" auf `--hh-aus-8` hielt 1,25 : 1.
           textFarbe={(gruppe) => {
-            const nr = bereiche.find((b) => b.bezeichnung === gruppe)?.thh_nr;
+            const nr = bereiche.find((b) => b.label === gruppe)?.sub_budget_no;
             return rampenText("aus", nr != null ? stufeVonThh(nr) : 9);
           }}
           buendelnAb={12}
@@ -369,8 +369,8 @@ export function Vorhaben({
         <ul className="mt-1 divide-y divide-[color:var(--border)]">
           {zeigen.map((z) => (
             <Zeile
-              key={`${z.thh_nr}-${z.code}`} zeile={z} skala={massstab}
-              bereichName={suchend ? nameVon(z.thh_nr) : undefined}
+              key={`${z.sub_budget_no}-${z.code}`} zeile={z} skala={massstab}
+              bereichName={suchend ? nameVon(z.sub_budget_no) : undefined}
             />
           ))}
         </ul>
@@ -410,7 +410,7 @@ export function Vorhaben({
           <ArrowUp className="h-3 w-3" />
           Zurück zu den Summen je Bereich
         </a>
-        {h?.fundstelle && (
+        {h?.citation && (
           <span className="text-[11px] text-muted-foreground">
             {h.stand}
           </span>

@@ -285,7 +285,7 @@ def hole(url: str, etag: str | None = None, last_modified: str | None = None,
                    last_modified=kopfzeilen.get("Last-Modified"))
 
 
-def seite(url: str, session=None) -> str:
+def page(url: str, session=None) -> str:
     """Eine Übersichtsseite als Text holen."""
     import requests
 
@@ -365,7 +365,7 @@ def katalog_dateien(katalog: dict) -> list[tuple[str, str, str]]:
 
 # --- Der Lauf ---------------------------------------------------------------
 
-def _sichern(url: str, bereich: str, name: str, archiv: Path, manifest: dict,
+def _sichern(url: str, area: str, name: str, archiv: Path, manifest: dict,
              zaehler: dict, heute: date, session, trocken: bool,
              sagen) -> None:
     """Eine Adresse: bedingt holen, bei Änderung versioniert ablegen.
@@ -407,17 +407,17 @@ def _sichern(url: str, bereich: str, name: str, archiv: Path, manifest: dict,
             f"sich etwas grundsätzlich geändert — bitte nachsehen, statt die "
             f"Platte zu füllen.")
 
-    pfad, neu = version_ablegen(archiv, bereich, name, antwort.inhalt, heute)
+    pfad, neu = version_ablegen(archiv, area, name, antwort.inhalt, heute)
     if neu:
         zaehler["neu"] += 1
-        sagen(f"  NEU  {bereich}/{name}  ({len(antwort.inhalt) / 1024:.0f} KB) "
+        sagen(f"  NEU  {area}/{name}  ({len(antwort.inhalt) / 1024:.0f} KB) "
               f"→ {pfad.name}")
     else:
         # Der Server hat geliefert, aber die Bytes kennen wir schon: geänderter
         # ETag ohne geänderten Inhalt. Genau dafür entscheidet der Hash.
         zaehler["unveraendert"] += 1
     manifest[url] = {
-        "bereich": bereich, "datei": name,
+        "area": area, "datei": name,
         "etag": antwort.etag, "last_modified": antwort.last_modified,
         "hash": inhalts_hash(antwort.inhalt), "bytes": len(antwort.inhalt),
         "pfad": str(pfad.relative_to(archiv)),
@@ -494,7 +494,7 @@ def main(archiv: str | Path | None = None, heute: date | None = None,
                     if antwort.inhalt is not None:
                         katalog_text = antwort.inhalt.decode("utf-8", "replace")
                         manifest[KATALOG_URL] = {
-                            "bereich": "opendata", "datei": "data.json",
+                            "area": "opendata", "datei": "data.json",
                             "etag": antwort.etag,
                             "last_modified": antwort.last_modified,
                             "hash": inhalts_hash(antwort.inhalt),
@@ -548,7 +548,7 @@ def main(archiv: str | Path | None = None, heute: date | None = None,
             sagen("Statistisches Jahrbuch:")
             if jahrbuch_html is None and not trocken:
                 try:
-                    jahrbuch_html = seite(JAHRBUCH_URL, session=session)
+                    jahrbuch_html = page(JAHRBUCH_URL, session=session)
                 except AbrufFehler as exc:
                     zaehler["fehler"].append(str(exc))
             links = jahrbuch_links(jahrbuch_html or "")
@@ -569,7 +569,7 @@ def main(archiv: str | Path | None = None, heute: date | None = None,
             sagen("Kommunaler Finanzausgleich (LSN):")
             if kfa_html is None and not trocken:
                 try:
-                    kfa_html = seite(KFA_URL, session=session)
+                    kfa_html = page(KFA_URL, session=session)
                 except AbrufFehler as exc:
                     zaehler["fehler"].append(str(exc))
             mappen = kfa_links(kfa_html or "")

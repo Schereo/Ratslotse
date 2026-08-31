@@ -381,7 +381,7 @@ def _run(job: DeepJob, ratslotse_db: str, council_db: str) -> None:
                 # Liste im Frontend zählen darüber gemeinsam — ohne sie hinge
                 # die Zuordnung an der Listenreihenfolge zweier Datenwege.
                 for i, a in enumerate(anlagen_rows):
-                    a["fundstelle"] = fundstellen.get(a["document_id"], "")
+                    a["citation"] = fundstellen.get(a["document_id"], "")
                     a["nr"] = i + 1
             except Exception:  # noqa: BLE001
                 pass
@@ -434,12 +434,12 @@ def _run(job: DeepJob, ratslotse_db: str, council_db: str) -> None:
                                   "committee": d.get("committee"),
                                   "datum": d.get("session_date"),
                                   "protokoll_url": d.get("protokoll_url"),
-                                  "protokoll_seite": d.get("seite")} for d in debatten_rows],
+                                  "protokoll_seite": d.get("page")} for d in debatten_rows],
             "anlagen_kompakt": [{"nr": a.get("nr"), "label": a.get("label"),
                                  "url": a.get("url"),
                                  "template_number": a.get("template_number"),
                                  "vorlage_titel": a.get("vorlage_titel"),
-                                 "auszug": (a.get("fundstelle") or "")[:220]}
+                                 "auszug": (a.get("citation") or "")[:220]}
                                 for a in anlagen_rows],
         }
         m = job.material

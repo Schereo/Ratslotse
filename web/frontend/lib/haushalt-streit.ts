@@ -169,14 +169,14 @@ export function verhandlungsBilanz(r: StreitRunde | null): BilanzZeile[] {
     // Die Stationen sind in Oldenburg der Ausschuss für Finanzen und
     // Beteiligungen und der Rat (council/store.haushalt_streit) — alles,
     // was nicht der Rat ist, zählt deshalb zur Ausschuss-Spalte.
-    const seite: keyof Omit<BilanzZeile, "urheber"> = s.gremium === "Rat" ? "rat" : "fa";
+    const page: keyof Omit<BilanzZeile, "urheber"> = s.gremium === "Rat" ? "rat" : "fa";
     for (const a of s.antraege) {
       if (a.ist_verwaltung) continue;
       const urheber = a.urheber ?? EINZELNE;
       const z = bilanz.get(urheber)
         ?? { urheber, fa: { ein: 0, durch: 0 }, rat: { ein: 0, durch: 0 } };
-      z[seite].ein += 1;
-      if (a.outcome === "angenommen") z[seite].durch += 1;
+      z[page].ein += 1;
+      if (a.outcome === "angenommen") z[page].durch += 1;
       bilanz.set(urheber, z);
     }
   }

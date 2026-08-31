@@ -59,7 +59,7 @@ function schraffur(farbe: string): string {
 }
 
 export function Anteilsbalken({
-  segmente, gesamt, einheit = "Mio. €", marke, hoehe = 14,
+  segmente, gesamt, einheit = "Mio. €", mark, hoehe = 14,
   legende = true, titel, className,
 }: {
   segmente: Anteil[];
@@ -67,7 +67,7 @@ export function Anteilsbalken({
   /** Steht in der Legende hinter jedem Wert. */
   einheit?: string;
   /** Ein beschrifteter Strich quer über den Balken. */
-  marke?: Marke;
+  mark?: Marke;
   hoehe?: number;
   legende?: boolean;
   /** Mono-Kicker über dem Balken. */
@@ -111,19 +111,19 @@ export function Anteilsbalken({
             />
           ))}
         </div>
-        {marke && gesamt > 0 && (
+        {mark && gesamt > 0 && (
           <div
             className="pointer-events-none absolute top-0 z-10"
-            style={{ left: `${prozent(marke.wert, gesamt)}%`, height: hoehe }}
+            style={{ left: `${prozent(mark.wert, gesamt)}%`, height: hoehe }}
           >
             <div className="h-full w-0.5 -translate-x-1/2 bg-signal" />
           </div>
         )}
       </div>
-      {marke && gesamt > 0 && (
+      {mark && gesamt > 0 && (
         <p className="mt-1.5 flex items-start gap-1.5 text-[11.5px] leading-snug text-signal">
           <span aria-hidden="true" className="mt-[3px] h-3 w-0.5 flex-none bg-signal" />
-          <span>{marke.label}</span>
+          <span>{mark.label}</span>
         </p>
       )}
       {legende && gezeigt.length > 0 && (

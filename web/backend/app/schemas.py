@@ -59,7 +59,7 @@ class AppConfigOut(BaseModel):
     """Compatibility contract consumed before a native app starts loading data."""
 
     min_build: int = 0
-    hinweis: str | None = None
+    note: str | None = None
 
 
 class TopicIn(BaseModel):

@@ -373,9 +373,9 @@ def prosa_summen(text: str) -> tuple[int, float, float] | None:
             _eur(m.group("revenues")), _eur(m.group("expenses")))
 
 
-def plan_bezug(proben: list[Spaltenprobe], year: int) -> float:
+def plan_bezug(probes: list[Spaltenprobe], year: int) -> float:
     """Die Ertragssumme des Planjahres — Bezugsgröße der Bereichsprobe."""
-    return next((p.revenues for p in proben if p.year == year), 0.0)
+    return next((p.revenues for p in probes if p.year == year), 0.0)
 
 
 def parse_erfolgsplan(template_number: str, betrieb: str, haushaltsjahr: int,
@@ -386,19 +386,19 @@ def parse_erfolgsplan(template_number: str, betrieb: str, haushaltsjahr: int,
     der Finanzplanungsjahre, die nicht gespeichert werden — sie belegen, dass
     der Textextrakt der ganzen Tabelle trägt).
     """
-    proben = spaltenproben(text, betrieb)
+    probes = spaltenproben(text, betrieb)
 
-    gerissen = [p for p in proben if not p.geht_auf]
+    gerissen = [p for p in probes if not p.geht_auf]
     if gerissen:
         raise WirtschaftsplanFehler(
-            f"{template_number}: {len(gerissen)} von {len(proben)} Spalten gehen nicht "
+            f"{template_number}: {len(gerissen)} von {len(probes)} Spalten gehen nicht "
             "auf — " + "; ".join(f"{p.year}: Rest {p.rest:+.2f} €" for p in gerissen))
 
-    plan = next((p for p in proben if p.year == haushaltsjahr), None)
+    plan = next((p for p in probes if p.year == haushaltsjahr), None)
     if plan is None:
         raise WirtschaftsplanFehler(
             f"{template_number}: Haushaltsjahr {haushaltsjahr} steht nicht in der "
-            f"Kopfzeile (dort: {sorted(p.year for p in proben)})")
+            f"Kopfzeile (dort: {sorted(p.year for p in probes)})")
 
     # Die Bereichsprobe beantwortet: Haben wir die Gesamtzeile erwischt? Ein
     # Betriebszweig wäre um ein Vielfaches kleiner und fiele hier durch, lange
@@ -408,9 +408,9 @@ def parse_erfolgsplan(template_number: str, betrieb: str, haushaltsjahr: int,
     bereiche = bereichsprobe(text, betrieb)
     if bereiche:
         n_zweige, reste = bereiche
-        i = next((k for k, p_ in enumerate(proben) if p_.year == haushaltsjahr), None)
-        if i is not None and i < len(reste) and plan_bezug(proben, haushaltsjahr):
-            abstand = abs(reste[i]) / max(plan_bezug(proben, haushaltsjahr), 1.0)
+        i = next((k for k, p_ in enumerate(probes) if p_.year == haushaltsjahr), None)
+        if i is not None and i < len(reste) and plan_bezug(probes, haushaltsjahr):
+            abstand = abs(reste[i]) / max(plan_bezug(probes, haushaltsjahr), 1.0)
             if abstand > BEREICHE_SCHWELLE:
                 raise WirtschaftsplanFehler(
                     f"{template_number}: Die {n_zweige} Betriebszweige weichen um "
@@ -443,30 +443,30 @@ def parse_erfolgsplan(template_number: str, betrieb: str, haushaltsjahr: int,
         # bringt eigene Proben mit; er ist nicht Teil dieser Schicht.
         vermoegensplan=None, verpflichtungen=None,
         entwurf_vom=None,
-    ), proben
+    ), probes
 
 
-def herkunft_fuer(plan: Wirtschaftsplan, proben: list[Spaltenprobe],
-                  url: str | None, dokument_id: int | None,
-                  ocr_modell: str | None = None) -> Herkunft:
+def herkunft_fuer(plan: Wirtschaftsplan, probes: list[Spaltenprobe],
+                  url: str | None, document_id: int | None,
+                  ocr_model: str | None = None) -> Herkunft:
     """Die Herkunft: die **Anlage**, nicht die Vorlage.
 
-    ``ocr_modell`` steht drin, wenn die Anlage keine Textebene hatte und ein
+    ``ocr_model`` steht drin, wenn die Anlage keine Textebene hatte und ein
     Sehmodell sie gelesen hat (`scripts/backfill_anlagen_ocr.py`). Das gehört
     an die Zahl und nicht nur ins Log: Wer später eine dieser Zahlen prüft,
     muss wissen, dass zwischen Papier und Datenbank ein Modell stand — die
     Spaltenprobe belegt die Rechnung, nicht die Ziffernerkennung.
     """
-    geprueft = len(proben)
-    schaerfste = max((abs(p.rest) for p in proben), default=0.0)
+    geprueft = len(probes)
+    schaerfste = max((abs(p.rest) for p in probes), default=0.0)
     result = (f"{geprueft} Spalten geprüft, größte Abweichung "
                 f"{schaerfste:.2f} €")
-    if ocr_modell:
-        result += f"; Anlage per OCR gelesen ({ocr_modell})"
+    if ocr_model:
+        result += f"; Anlage per OCR gelesen ({ocr_model})"
     return Herkunft(
         art="ris",
         probe=[PROBE_SPALTEN, PROBE_PROSA],
-        dokument_id=dokument_id,
+        document_id=document_id,
         # Nicht das RIS-Label der Datei („25.10.27 - Anlage Wirtschafts-und
         # Finanzplan 2026 AWB"): Das ist ein Dateiname mit Datumspräfix, kein
         # Dokumentname. Der Betrieb steht zwar darin, aber hinter Ballast —
@@ -474,7 +474,7 @@ def herkunft_fuer(plan: Wirtschaftsplan, proben: list[Spaltenprobe],
         # Betrieb sie unterscheidet (s. `wirtschaftsplan.dokument_name`).
         label=dokument_name(plan),
         url=url,
-        fundstelle=("Erfolgsplan der Anlage (per OCR gelesen)" if ocr_modell
+        citation=("Erfolgsplan der Anlage (per OCR gelesen)" if ocr_model
                     else "Erfolgsplan der Anlage"),
         probe_result=result,
         stand=f"Wirtschaftsplan {plan.year}, Fassung der Anlage",

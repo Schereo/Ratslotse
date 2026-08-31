@@ -41,7 +41,7 @@
 export type Quelle = {
   titel: string;
   /** Wo genau im Dokument die Zahlen stehen — der Punkt, an dem man nachschlägt. */
-  fundstelle: string;
+  citation: string;
   herausgeber: string;
   /** Datenstand, nicht Abrufdatum: Was die Zahl beschreibt, nicht wann wir sie
    *  holten. Rückfall — wo `standWort` gesetzt ist, gewinnt die gerechnete
@@ -169,7 +169,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     // unser Verfahren — genau die Selbstvergewisserung, die DESIGNSPRACHE.md
     // als Anti-Pattern führt. Was eine Quelle NICHT hergibt, steht weiterhin
     // dabei (siehe steuern, teilhaushalt, pruefbericht).
-    fundstelle:
+    citation:
       "Übersicht „Ergebnishaushalt“ — ordentliche Erträge und Aufwendungen je Teilhaushalt.",
     herausgeber: "Stadt Oldenburg, Controlling und Finanzen",
     standWort: "Haushaltsjahre",
@@ -181,7 +181,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
   },
   steuern: {
     titel: "Steuereinnahmen der Stadt Oldenburg seit 1998",
-    fundstelle:
+    citation:
       "Datensatz 1104, eine Zeile je Haushaltsjahr, Spalten je Steuerart. " +
       "Ist-Werte (abgerechnet), Gewerbesteuer nach Abzug der Umlage. " +
       "Anders als die Dokumente aus dem Ratsinformationssystem trägt dieser " +
@@ -196,12 +196,12 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
   },
   steuerkraft: {
     titel: "Steuerkraftmesszahlen und Schlüsselzuweisungen seit 1993",
-    fundstelle:
+    citation:
       "Datensatz 1106: Steuerkraftmesszahl und Schlüsselzuweisungen (Anordnungssoll) " +
       "je Ausgleichsjahr. Die einzige Stelle im Bereich, an der wir eine Quelle nicht " +
       "unverändert übernehmen: Der Datensatz beschriftet seine Jahrgänge um ein Jahr " +
       "zu früh, wir rücken sie zurecht. Die Beträge des Landesamts für Statistik " +
-      "Niedersachsen stehen dort auf den Euro genau — nur ein Jahr später (geprüft für " +
+      "Niedersachsen stehen dort auf den Euro exact — nur ein Jahr später (geprüft für " +
       "die Ausgleichsjahre 2016 bis 2026), und die Haushaltspläne der Stadt weisen " +
       "dieselben Summen als Ist des jeweils späteren Jahres aus. Die Pro-Kopf-Spalten " +
       "des Datensatzes lassen wir deshalb liegen: Sie rechnen gegen die Einwohnerzahl " +
@@ -219,7 +219,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
   // auf demselben Blatt wie die Steuereinnahmen, die wir längst lesen.
   hebesaetze: {
     titel: "Realsteuer-Hebesätze der Stadt Oldenburg seit 1980",
-    fundstelle:
+    citation:
       "Tabelle 1105, je Änderungsjahr die Hebesätze für Grundsteuer A, Grundsteuer B " +
       "und Gewerbesteuer. Die Tabelle führt nach eigener Fußnote nur die Jahre, in denen " +
       "sich ein Satz geändert hat — neun in 45 Jahren. Zwischen zwei Änderungen gilt der " +
@@ -235,7 +235,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
   },
   steuerplan: {
     titel: "Steuern und Finanzzuweisungen — Plan neben Ergebnis",
-    fundstelle:
+    citation:
       "Tabelle 1103, je Steuerart zwei Spalten pro Jahr: der Ansatz nach dem beschlossenen " +
       "Haushaltsplan und das Rechnungsergebnis desselben Jahres. Wo die Tabelle ihr " +
       "Ergebnis selbst „vorläufig“ nennt, steht das an der Zahl. " +
@@ -255,7 +255,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     // Ein Satz, ein Gedanke: Die erste Fassung packte Fundstelle, zwei
     // Prüfregeln und die Bezugsgrößen-Frage in Schachtelsätze — lesbar für
     // den, der die Antwort schon kennt (16.08.).
-    fundstelle:
+    citation:
       "Die Ergebnisrechnung, einmal für die Kernverwaltung und einmal je Teilhaushalt: " +
       "Plan und Ergebnis nebeneinander, Posten 1–24. Dazu die Erläuterungen der " +
       "Verwaltung zu den erheblichen Abweichungen (Abschnitt 6.3.1). " +
@@ -270,7 +270,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
   },
   wirtschaftsplan: {
     titel: "Wirtschaftspläne der Eigenbetriebe und städtischen Gesellschaften",
-    fundstelle:
+    citation:
       "Die Ratsvorlage, mit der ein Wirtschaftsplan beschlossen wird — je nach " +
       "Betrieb der Beschlusstext selbst (er nennt Erträge, Aufwendungen und " +
       "Ergebnis) oder der Erfolgsplan der beigefügten Anlage. Bei den " +
@@ -289,7 +289,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
   },
   gebuehren: {
     titel: "Gebührenbedarfsberechnungen des Abfallwirtschaftsbetriebs",
-    fundstelle:
+    citation:
       "Die Anlagen 1 bis 4 der jährlichen Ratsvorlage " +
       "„Gebührenbedarfsberechnungen“: je eine Rechnung für " +
       "Abfallbehandlungsanlagen, Abfallsammlung und Straßenreinigung. Jede " +
@@ -305,7 +305,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
   },
   aenderungsliste: {
     titel: "Änderungslisten zum Haushaltsentwurf",
-    fundstelle:
+    citation:
       "Die Anlagen der Haushalts-Vorlage, in denen der Entwurf zwischen " +
       "Einbringung und Beschluss fortgeschrieben wird: die Änderungslisten " +
       "der Verwaltung (Verw. I–III) und die Datei „beschlossene Änderungen“ " +
@@ -324,7 +324,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
   },
   haushaltssatzung: {
     titel: "Haushaltssatzungen der Stadt Oldenburg",
-    fundstelle:
+    citation:
       "Die Haushaltssatzung, die dem Haushaltsplan als Anlage beiliegt — drei " +
       "Seiten je Jahrgang: die Gesamtbeträge des Ergebnis- und des " +
       "Finanzhaushalts (§ 1), die Kreditermächtigung für Investitionen (§ 2), " +
@@ -343,11 +343,11 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
   },
   ergebnishaushalt: {
     titel: "Gesamtergebnishaushalte der Stadt Oldenburg (Planjahre)",
-    fundstelle:
+    citation:
       "Anlage 005 des Haushaltsplans: die Erträge und Aufwendungen des kommenden " +
       "Jahres nach denselben Posten 1–24, die auch der Jahresabschluss führt — für " +
       "Jahre, die noch keinen Abschluss haben. " +
-      "Von den fünf Spalten, die das Dokument „Ansatz“ nennt, ist genau eine der " +
+      "Von den fünf Spalten, die das Dokument „Ansatz“ nennt, ist exact eine der " +
       "Haushaltsansatz; die übrigen sind mittelfristige Finanzplanung nach § 8 NKomVG " +
       "und werden hier nicht gezeigt. " +
       "Es ist der Entwurf der Verwaltung: Die Anlage hängt an der Einbringungs-Vorlage, " +
@@ -361,7 +361,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
   },
   teilhaushalt: {
     titel: "Teilhaushaltspläne der Stadt Oldenburg (Produktebene)",
-    fundstelle:
+    citation:
       "Teilergebnishaushalte je Teilhaushalt (THH 01–13): was einzelne Aufgaben kosten, " +
       "mit Produktnummer und zuständigem Amt. Die Abdeckung ist unvollständig — " +
       "nicht jeder Teilhaushalt liegt für jedes Jahr auslesbar vor.",
@@ -373,7 +373,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
   },
   stellenplan: {
     titel: "Stellenpläne der Stadt Oldenburg",
-    fundstelle:
+    citation:
       "Die Anlage zum Haushaltsplan, in der jede Stelle steht: Teil A für " +
       "Beamtinnen und Beamte, Teil B für Tarifbeschäftigte. Je Zeile eine " +
       "Amtsbezeichnung mit Besoldungs- oder Entgeltgruppe, die Zahl der " +
@@ -395,7 +395,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
   },
   pruefbericht: {
     titel: "Schlussberichte des Rechnungsprüfungsamtes der Stadt Oldenburg",
-    fundstelle:
+    citation:
       "Die Randmarken des Berichts (B, WB, H, K) und der Absatz, der jeweils dahinter steht — " +
       "mit der Textziffer und der Seite, unter der er dort geführt wird. " +
       "Der Jahrgang 2024 fehlt, weil sein PDF keine Zeichenzuordnung mitbringt — der " +
@@ -409,7 +409,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
   },
   gesamtabschluss: {
     titel: "Konsolidierte Gesamtabschlüsse der Stadt Oldenburg",
-    fundstelle:
+    citation:
       "Der Bericht, mit dem das Rechnungsprüfungsamt den Gesamtabschluss nach § 128 NKomVG " +
       "prüft — die einzige Rechnung, in der Kernverwaltung, Eigenbetriebe und Beteiligungen " +
       "zusammen stehen. Wir lesen zwei Tabellen daraus: die Gesamtergebnisrechnung " +
@@ -432,7 +432,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
   },
   ruecklage: {
     titel: "Überschussrücklage aus den Jahresabschlüssen",
-    fundstelle:
+    citation:
       "Bilanzposition 1.2.1 „Rücklagen aus Überschüssen des ordentlichen " +
       "Ergebnisses“ plus das am Stichtag noch separat ausgewiesene " +
       "Jahresergebnis. Der genehmigte Vorbericht 2026 bestätigt diese Lesart " +
@@ -449,7 +449,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
   // niemals bestehende Einträge umsortieren oder umformatieren.
   einwohner: {
     titel: "Einwohnerzahlen der Stadt Oldenburg je Haushaltsjahr",
-    fundstelle:
+    citation:
       "Datensatz 1102, Einwohner-Spalte — eine Zeile je Haushaltsjahr, Stichtag " +
       "jeweils der 31.12. des Vorjahres. Bezugsgröße aller Pro-Kopf-Angaben; das " +
       "jüngste Jahr mit Einwohnerzahl steht deshalb an der Zahl dabei. Die " +
@@ -465,7 +465,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
   },
   ergebnisrechnung_thh: {
     titel: "Ergebnisrechnung je Teilhaushalt (Jahresabschlüsse)",
-    fundstelle:
+    citation:
       "Dieselben Jahresabschlüsse wie oben, aber die Ebene darunter: die " +
       "Ergebnisrechnung eines einzelnen Teilhaushalts, Posten 1–24 mit Plan und " +
       "Ergebnis nebeneinander. Hier steht, was ein Bereich tatsächlich eingenommen " +
@@ -479,7 +479,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
   },
   finanzrechnung: {
     titel: "Finanzrechnung der Kernverwaltung (Jahresabschlüsse)",
-    fundstelle:
+    citation:
       "Abschnitt 4.1 derselben Jahresabschlüsse: die Ein- und Auszahlungen des " +
       "Jahres, getrennt nach laufender Verwaltung, Investitionen und " +
       "Finanzierung, mit Ansatz und Ergebnis nebeneinander. Diese Tabelle " +
@@ -496,7 +496,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
   },
   bilanz: {
     titel: "Bilanz der Stadt Oldenburg (Jahresabschlüsse)",
-    fundstelle:
+    citation:
       "Abschnitt 2.1 derselben Jahresabschlüsse, im amtlichen Muster nach " +
       "NKomVG: was die Stadt zum 31. Dezember besitzt und wem es zusteht. " +
       "Anders als Ergebnis- und Finanzrechnung zählt diese Tabelle kein Jahr, " +
@@ -515,7 +515,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
   },
   kennzahlen: {
     titel: "Kennzahlenübersicht der Rechenschaftsberichte",
-    fundstelle:
+    citation:
       "Die Anlage „Kennzahlenübersicht und Berechnungsmethoden“ am Ende jedes " +
       "Rechenschaftsberichts: dreizehn Zahlen, auf die die Stadt ihren " +
       "Jahresabschluss selbst eindampft — und darunter, im Wortlaut, wie sie " +
@@ -535,7 +535,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
   },
   ratsbeschluss: {
     titel: "Sitzungen, Vorlagen und Beschlüsse des Rates (Bürgerinformationssystem)",
-    fundstelle:
+    citation:
       "Der amtliche Weg einer Vorlage: Sitzungstermin, Tagesordnungspunkt, " +
       "Beratungsfolge und Beschluss, wie das Ratsinformationssystem der Stadt sie " +
       "führt. Wir übernehmen nur öffentlich einsehbare Sitzungen und verlinken " +
@@ -551,7 +551,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
   // ihr Wert: eine Stelle, eine Abgrenzung, alle Gemeinden.
   lsn_finanzausgleich: {
     titel: "Kommunaler Finanzausgleich in Niedersachsen — Vergleichstabellen",
-    fundstelle:
+    citation:
       "Blatt „ST_KR_MESS_VGL“: die Steuerkraftmesszahl jeder niedersächsischen " +
       "Gemeinde, zwei Ausgleichsjahre nebeneinander, dazu die Einwohnerzahl. " +
       "Berechnet mit Nivellierungshebesätzen (§ 11 NFAG, amtlich " +
@@ -574,7 +574,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
   },
   lsn_realsteuern: {
     titel: "Realsteuervergleich Niedersachsen",
-    fundstelle:
+    citation:
       "Blatt 2.1: Grundbeträge, Hebesätze und Ist-Aufkommen der Grundsteuern A und B " +
       "sowie der Gewerbesteuer je kreisfreier Stadt. Blatt 5.1: die " +
       "Steuereinnahmekraft je Einwohner*in über drei Jahre. " +
@@ -592,7 +592,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
   },
   lsn_gewerbesteuer: {
     titel: "Gewerbesteuerstatistik Niedersachsen",
-    fundstelle:
+    citation:
       "Blatt 6.1: je kreisfreier Stadt die Zahl der Betriebe und " +
       "Betriebsstätten, wie viele davon einen positiven Steuermessbetrag " +
       "haben, und die Summe dieser Messbeträge — aufgeteilt in reine " +
@@ -618,7 +618,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
   },
   vergleich_2018: {
     titel: "Personalentwicklung seit dem Jahr 2000 — Antrag der FDP-Fraktion und Antwort der Verwaltung",
-    fundstelle:
+    citation:
       "Ratsvorlage 18/0911 mit zwei Anlagen: dem Antrag der FDP-Fraktion vom " +
       "13.11.2018 und der Antwort der Verwaltung. Die Antwort enthält eine Tabelle " +
       "der Personalintensitätsquote über sieben Städte und neun Jahrgänge, die " +
@@ -635,7 +635,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     titel:
       "Statistisches Jahrbuch der Stadt Oldenburg, Tabellen 1107 und 1107-1 — " +
       "Investitionen der Stadt",
-    fundstelle:
+    citation:
       "Kapitel 11 „Verwaltung und Finanzen“: die Rechnungsergebnisse, also was " +
       "im Haushaltsjahr tatsächlich abgeflossen ist, je Jahr aufgeteilt nach " +
       "Auszahlungsart und mit der Summe daneben. " +
@@ -659,7 +659,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
   },
   schulden: {
     titel: "Statistisches Jahrbuch der Stadt Oldenburg, Tabelle 1108 — Stand der Verschuldung",
-    fundstelle:
+    citation:
       "Kapitel 11 „Verwaltung und Finanzen“: eine Zeile je Jahr seit 1995, " +
       "aufgeteilt nach Kreditmarktmitteln, öffentlichen Sondermitteln, Schulden " +
       "bei Gebietskörperschaften und Schulden der Eigenbetriebe, dazu die Summe " +
@@ -682,7 +682,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     titel:
       "Ausgaben der Stadt Oldenburg seit 1972 — Datensatz 1102 " +
       "(Statistisches Jahrbuch und Open-Data-Portal)",
-    fundstelle:
+    citation:
       "Ein Betrag je Haushaltsjahr, daneben die Einwohnerzahl zum 31.12. des " +
       "Vorjahres und der Betrag je Einwohner*in. " +
       "Die Reihe zerfällt in zwei Teile, und der Schnitt ist die wichtigste " +
@@ -719,7 +719,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     titel:
       "Ratsvorlagen „Annahme von Zuwendungen“ — Beschlüsse des Rates und des " +
       "Verwaltungsausschusses",
-    fundstelle:
+    citation:
       "Acht- bis zwölfmal im Jahr beschließen Rat oder Verwaltungsausschuss, " +
       "welche angebotenen Zuwendungen die Stadt annimmt. Der Beschluss nennt " +
       "eine Summe („in Höhe von insgesamt … EUR laut anliegender Liste“); " +
@@ -748,7 +748,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
   // keine haben.
   investitionen: {
     titel: "Finanzhaushalt der Stadt Oldenburg — Investitionen je Teilhaushalt",
-    fundstelle:
+    citation:
       "Datensatz 1101, Tabellenblatt „Finanzhaushalt“: je Teilhaushalt eine Zeile " +
       "mit den Ein- und Auszahlungen aus Investitionstätigkeit, darunter die " +
       "Summenzeile „Finanzhaushalt Gesamtinvestitionen“. " +
@@ -771,7 +771,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
   // Quelle: nicht dem Open-Data-Portal, sondern dem Haushaltsplan selbst.
   investitionsprogramm: {
     titel: "Investitionsprogramm zum Haushaltsplan (Anlage 004)",
-    fundstelle:
+    citation:
       "Je Teilhaushalt ein Abschnitt „Investitionen und " +
       "Investitionsförderungsmaßnahmen“ mit einer Zeile je Vorhaben, davor das " +
       "„Gesamtinvestitionsprogramm“ mit den Investitionssummen je Teilhaushalt. " +
@@ -793,7 +793,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
   },
   beteiligungsbericht: {
     titel: "Beteiligungsbericht der Stadt Oldenburg (§ 151 NKomVG)",
-    fundstelle:
+    citation:
       "Je Gesellschaft ein Abschnitt mit acht Teilen: Gegenstand, " +
       "Beteiligungsverhältnisse, Aufsichtsorgane, eigene Beteiligungen, " +
       "Geschäftsverlauf, Bilanz und Kennzahlen, öffentlicher Zweck, " +

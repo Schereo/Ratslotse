@@ -81,7 +81,7 @@ def _quelle(year: int, probe: str = "strukturprobe") -> Herkunft:
     Das Flussbild liest Zahlen, nicht Belege."""
     return Herkunft(art="ris", probe=probe, label=f"Jahresabschluss {year}",
                     url=f"https://example.org/ja-{year}.pdf",
-                    fundstelle="Ergebnisrechnung der Kernverwaltung")
+                    citation="Ergebnisrechnung der Kernverwaltung")
 
 
 def _befuellen(store: CouncilStore, ohne_posten: int | None = None) -> None:
@@ -89,16 +89,16 @@ def _befuellen(store: CouncilStore, ohne_posten: int | None = None) -> None:
     wie sie entsteht, wenn eine Zeile im PDF nicht lesbar war."""
     anteil_e = ERTRAEGE_PLAN / ERTRAEGE_IST
     gesamt = [
-        {"nr": nr, "bezeichnung": bez, "ansatz": round(wert * anteil_e, 2),
+        {"nr": nr, "label": bez, "ansatz": round(wert * anteil_e, 2),
          "result": wert, "deviation": round(wert - wert * anteil_e, 2), "is_total": 0}
         for nr, bez, wert in ERTRAGSARTEN if nr != ohne_posten
     ]
     gesamt += [
-        {"nr": 12, "bezeichnung": "Summe ordentliche Erträge", "ansatz": ERTRAEGE_PLAN,
+        {"nr": 12, "label": "Summe ordentliche Erträge", "ansatz": ERTRAEGE_PLAN,
          "result": ERTRAEGE_IST, "is_total": 1},
-        {"nr": 20, "bezeichnung": "Summe ordentliche Aufwendungen", "ansatz": AUFWENDUNGEN_PLAN,
+        {"nr": 20, "label": "Summe ordentliche Aufwendungen", "ansatz": AUFWENDUNGEN_PLAN,
          "result": AUFWENDUNGEN_IST, "is_total": 1},
-        {"nr": 21, "bezeichnung": "ordentliches Ergebnis",
+        {"nr": 21, "label": "ordentliches Ergebnis",
          "ansatz": ERTRAEGE_PLAN - AUFWENDUNGEN_PLAN,
          "result": ERTRAEGE_IST - AUFWENDUNGEN_IST, "is_total": 1},
     ]
@@ -107,9 +107,9 @@ def _befuellen(store: CouncilStore, ohne_posten: int | None = None) -> None:
     anteil_a = AUFWENDUNGEN_PLAN / AUFWENDUNGEN_IST
     for nr, name, wert in TEILHAUSHALTE:
         store.save_ergebnisrechnung(JAHR, [
-            {"nr": 20, "bezeichnung": "Summe ordentliche Aufwendungen",
+            {"nr": 20, "label": "Summe ordentliche Aufwendungen",
              "ansatz": round(wert * anteil_a, 2), "result": wert, "is_total": 1},
-        ], _quelle(JAHR, "summenprobe"), thh_nr=nr, thh_name=name)
+        ], _quelle(JAHR, "summenprobe"), sub_budget_no=nr, sub_budget_name=name)
 
 
 def _daten(store: CouncilStore) -> dict:
@@ -127,7 +127,7 @@ const eingabe = JSON.parse(process.argv[2]);
 const { daten, year, stand } = eingabe;
 const bild = flussbild(daten, year, stand);
 if (!bild) { console.log(JSON.stringify({ bild: null })); process.exit(0); }
-const seite = (s) => ({
+const page = (s) => ({
   gesamt: s.gesamt,
   teile: s.teile,
   summe: s.baender.reduce((a, b) => a + b.wert, 0),
@@ -145,8 +145,8 @@ console.log(JSON.stringify({
   summeRechts: bild.summeRechts,
   stimmt: bild.stimmt,
   aufgeschluesselt: bild.aufgeschluesselt,
-  herkunft: seite(bild.herkunft),
-  verwendung: seite(bild.verwendung),
+  herkunft: page(bild.herkunft),
+  verwendung: page(bild.verwendung),
   gebuendeltSumme: geb.gezeigt.reduce((a, b) => a + b.wert, 0),
   gebuendeltAnzahl: geb.gebuendelt.length,
 }));
@@ -242,7 +242,7 @@ def test_ueberschuss_landet_auf_der_anderen_seite(tmp_path):
     store.close()
     # Plan-Stand umdrehen: Erträge über Aufwendungen.
     for p in daten["ergebnisrechnung"]:
-        if p["thh_nr"] is None and p["nr"] == 12:
+        if p["sub_budget_no"] is None and p["nr"] == 12:
             p["ansatz"] = AUFWENDUNGEN_PLAN + 30_000_000.0
 
     r = _fluss(tmp_path, daten, stand="plan")
@@ -295,11 +295,11 @@ def test_nur_jahre_mit_beiden_seiten(tmp_path):
     store = CouncilStore(tmp_path / "c.sqlite")
     _befuellen(store)
     store.save_ergebnisrechnung(2019, [
-        {"nr": 1, "bezeichnung": "Steuern und ähnliche Abgaben",
+        {"nr": 1, "label": "Steuern und ähnliche Abgaben",
          "ansatz": 1.0, "result": 300_000_000.0, "is_total": 0},
-        {"nr": 12, "bezeichnung": "Summe ordentliche Erträge",
+        {"nr": 12, "label": "Summe ordentliche Erträge",
          "ansatz": 1.0, "result": 300_000_000.0, "is_total": 1},
-        {"nr": 20, "bezeichnung": "Summe ordentliche Aufwendungen",
+        {"nr": 20, "label": "Summe ordentliche Aufwendungen",
          "ansatz": 1.0, "result": 310_000_000.0, "is_total": 1},
     ], _quelle(2019))
     r = _fluss(tmp_path, _daten(store))
@@ -318,10 +318,10 @@ def test_store_liefert_genau_die_felder_die_das_bild_liest(tmp_path):
     zeilen = store.get_ergebnisrechnung(JAHR)
     store.close()
 
-    for feld in ("year", "nr", "bezeichnung", "thh_nr", "thh_name", "ansatz", "result"):
+    for feld in ("year", "nr", "label", "sub_budget_no", "sub_budget_name", "ansatz", "result"):
         assert all(feld in z for z in zeilen), feld
-    arten = [z for z in zeilen if z["thh_nr"] is None and 1 <= z["nr"] <= 11]
-    bereiche = [z for z in zeilen if z["thh_nr"] is not None and z["nr"] == 20]
+    arten = [z for z in zeilen if z["sub_budget_no"] is None and 1 <= z["nr"] <= 11]
+    bereiche = [z for z in zeilen if z["sub_budget_no"] is not None and z["nr"] == 20]
     assert len(arten) == 11 and len(bereiche) == 12
     # Und die Probe auf der Datengrundlage selbst.
     assert sum(z["result"] for z in arten) == pytest.approx(ERTRAEGE_IST, abs=0.01)

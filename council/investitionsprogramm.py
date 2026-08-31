@@ -169,7 +169,7 @@ def _de(amount: float, vorzeichen: bool = False) -> str:
     return ("−" if amount < 0 else "") + s
 
 
-def jahrgang(text: str | None) -> int | None:
+def budget_year(text: str | None) -> int | None:
     """Für welchen Haushaltsjahrgang ein Investitionsprogramm gilt.
 
     **Nicht aus dem Label.** Die vier ältesten der acht Anlagen heißen schlicht
@@ -266,11 +266,11 @@ def lies(text: str, year: int) -> dict:
 
     Liefert ``{year, kopftabelle, kopfsumme, abschnitte, bestanden, nachweis}``:
 
-    * ``kopftabelle`` — ``[{bezeichnung, grand_total}]`` je Teilhaushalt aus
+    * ``kopftabelle`` — ``[{label, grand_total}]`` je Teilhaushalt aus
       dem Gesamtinvestitionsprogramm.
     * ``kopfsumme`` — deren ausgewiesene ``Gesamtsumme``.
-    * ``abschnitte`` — ``{thh_nr: {name, summe, massnahmen}}``; je Maßnahme
-      ``{code, bezeichnung, grand_total}``.
+    * ``abschnitte`` — ``{sub_budget_no: {name, summe, massnahmen}}``; je Maßnahme
+      ``{code, label, grand_total}``.
     * ``bestanden`` — ob **alle drei** Proben aufgehen. Ist sie ``False``, sind
       ``abschnitte`` und ``kopftabelle`` leer: Ein Jahrgang, dessen Rechnung
       nicht aufgeht, gibt keine halben Maßnahmen her.
@@ -313,7 +313,7 @@ def _lies_kopftabelle(zeilen: list[str]) -> tuple[list[dict], int | None]:
         if betragslauf(s) is not None:
             name, amount = _name_und_betrag(blob)
             if name and amount is not None:
-                zeilenmenge.append({"bezeichnung": name, "grand_total": amount})
+                zeilenmenge.append({"label": name, "grand_total": amount})
             blob = []
     return zeilenmenge, summe
 
@@ -363,7 +363,7 @@ def _lies_abschnitte(zeilen: list[str]) -> dict[int, dict]:
             if amount is not None:
                 det = details.pop(code, [])
                 abschnitte[akt]["massnahmen"].append(
-                    {"code": code, "bezeichnung": name or _name_aus_details(det),
+                    {"code": code, "label": name or _name_aus_details(det),
                      "grand_total": amount, "details": det})
         code, blob = None, []
 
@@ -407,20 +407,20 @@ def _lies_abschnitte(zeilen: list[str]) -> dict[int, dict]:
     return abschnitte
 
 
-def probe_abschnitt(abschnitt: dict, toleranz: float = TOLERANZ_EUR
+def probe_abschnitt(section: dict, toleranz: float = TOLERANZ_EUR
                     ) -> tuple[bool, str]:
     """Ergeben die Maßnahmen eines Teilhaushalts seine ``Gesamtsumme``?"""
-    if abschnitt["summe"] is None:
+    if section["summe"] is None:
         return False, f"„{GESAMTSUMME}“ fehlt"
-    if len(abschnitt["massnahmen"]) < MINDEST_MASSNAHMEN:
-        return False, (f"nur {len(abschnitt['massnahmen'])} Maßnahmen gelesen "
+    if len(section["massnahmen"]) < MINDEST_MASSNAHMEN:
+        return False, (f"nur {len(section['massnahmen'])} Maßnahmen gelesen "
                        f"(mindestens {MINDEST_MASSNAHMEN} erwartet)")
-    gerechnet = sum(m["grand_total"] for m in abschnitt["massnahmen"])
-    rest = gerechnet - abschnitt["summe"]
+    gerechnet = sum(m["grand_total"] for m in section["massnahmen"])
+    rest = gerechnet - section["summe"]
     if abs(rest) > toleranz:
-        return False, (f"{len(abschnitt['massnahmen'])} Maßnahmen ergeben "
+        return False, (f"{len(section['massnahmen'])} Maßnahmen ergeben "
                        f"{_de(gerechnet)} €, der Abschnitt weist "
-                       f"{_de(abschnitt['summe'])} € aus "
+                       f"{_de(section['summe'])} € aus "
                        f"({_de(rest, vorzeichen=True)} €)")
     return True, ""
 
@@ -494,6 +494,6 @@ def massnahmen(gelesen: dict) -> list[dict]:
     Reihenfolge: Teilhaushalt aufsteigend, darin wie im Dokument — die ist
     nicht alphabetisch, sondern nach IPSP-Element, und trägt damit die
     Gliederung der Verwaltung."""
-    return [{"thh_nr": nr, "thh_name": a["name"], **m}
+    return [{"sub_budget_no": nr, "sub_budget_name": a["name"], **m}
             for nr, a in sorted(gelesen.get("abschnitte", {}).items())
             for m in a["massnahmen"]]

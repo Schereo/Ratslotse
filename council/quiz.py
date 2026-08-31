@@ -420,7 +420,7 @@ QUELLEN (nur hieraus Fakten nehmen — NICHTS erfinden):
 {sources}
 
 Regeln:
-- Jede Frage hat GENAU 4 Antwortmöglichkeiten, davon genau eine richtig.
+- Jede Frage hat GENAU 4 Antwortmöglichkeiten, davon exact eine richtig.
 - Die richtige Antwort muss EINDEUTIG aus den Quellen belegbar sein; die drei
   falschen plausibel, aber klar falsch.
 - Allgemeinverständlich und FAIR: Die Mehrheit der Fragen leicht bis mittel,

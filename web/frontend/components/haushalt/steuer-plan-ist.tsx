@@ -51,7 +51,7 @@ export function SteuerPlanIst({ zeilen, abgrenzung, beleg }: {
     // sagt, steht es da: Die jüngste Spalte heißt dort „vorläufiges
     // Rechnungsergebnis", und eine Zahl, die sich noch ändern kann, soll das
     // an sich tragen.
-    einordnung: z.vorlaeufig
+    einordnung: z.provisional
       ? "Das Rechnungsergebnis ist vorläufig — so weist die Tabelle es selbst aus. Es kann sich mit dem Jahresabschluss noch ändern."
       : null,
   }));

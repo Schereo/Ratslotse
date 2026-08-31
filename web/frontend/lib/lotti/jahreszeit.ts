@@ -127,11 +127,11 @@ export function lottiAnziehen(THREE: TH, lotti: THREE_NS.Group, theme: MascotThe
     const polsterM = stoff(THREE, FARBE.scarfCool, 0.95);
     (
       [["links", 1], ["rechts", -1]] as [string, number][]
-    ).forEach(([seite, v]) => {
+    ).forEach(([page, v]) => {
       const p = new THREE.SphereGeometry(0.0145, 22, 16);
       p.scale(0.62, 1, 1);
       p.translate(v * 0.0625, 0.152 - KD, 0.008);
-      teil(THREE, kopf, "ohrpolster-" + seite, p, polsterM);
+      teil(THREE, kopf, "ohrpolster-" + page, p, polsterM);
     });
     const buegel = new THREE.TorusGeometry(0.0630, 0.0032, 10, 40, Math.PI);
     buegel.rotateZ(Math.PI);          // offene Seite nach oben …

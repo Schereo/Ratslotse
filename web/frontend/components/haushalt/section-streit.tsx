@@ -4,7 +4,7 @@
 //
 // Bis zum 21.08.2026 die eigene Seite /haushalt/streit. Zusammengelegt mit
 // „Wann entschieden wird" und dem Haushalts-Labor; Begründung im Kopf von
-// `abschnitt-termine.tsx`. Der Jahrgangs-Umschalter arbeitet weiter mit
+// `section-termine.tsx`. Der Jahrgangs-Umschalter arbeitet weiter mit
 // `?year=` — die Suspense-Grenze dafür liegt jetzt bei der Seite.
 
 // /haushalt/streit — „Der Streit ums Geld".

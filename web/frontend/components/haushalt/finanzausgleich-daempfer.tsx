@@ -198,7 +198,7 @@ export function FinanzausgleichDaempfer({ steuerkraft }: { steuerkraft: Kraft[] 
           />
         </svg>
         <Ableseleiste className="mt-2" stelle={stellen[ablesen.aktiv]} steuerung={ablesen}
-          hinweis="Mio. € · Ausgleichsjahr überfahren, antippen oder mit den Pfeiltasten wechseln." />
+          note="Mio. € · Ausgleichsjahr überfahren, antippen oder mit den Pfeiltasten wechseln." />
       </div>
 
       <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">

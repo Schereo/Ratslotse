@@ -67,14 +67,14 @@ function WegZeile({ label, euro, stark }: {
   );
 }
 
-export function VerfahrensWegKarte({ daten, jahrgang, className }: {
+export function VerfahrensWegKarte({ daten, budget_year, className }: {
   daten: AenderungslistenDaten | null;
   /** Der Jahrgang, mit dem das Labor rechnet — nicht der neueste im Bestand:
    *  Ein Maßstab aus einem anderen Jahr als die Lücke wäre keiner. */
-  jahrgang: number | null;
+  budget_year: number | null;
   className?: string;
 }) {
-  const weg: VerfahrensWeg | null = verfahrensWeg(daten, jahrgang);
+  const weg: VerfahrensWeg | null = verfahrensWeg(daten, budget_year);
   if (!weg || weg.bewegt === 0) return null;
 
   // Der Balken zerlegt eine Summe in Teile — das trägt nur, wenn die Teile in
@@ -95,12 +95,12 @@ export function VerfahrensWegKarte({ daten, jahrgang, className }: {
           Wie viel im echten Verfahren bewegt wurde
         </h2>
         <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
-          Haushalt {weg.jahrgang}
+          Haushalt {weg.budget_year}
         </span>
       </div>
 
       <p className="mt-1 max-w-[70ch] text-[12.5px] leading-relaxed text-muted-foreground">
-        Bevor du hier Regler bewegst: So weit ist der Haushalt {weg.jahrgang} im
+        Bevor du hier Regler bewegst: So weit ist der Haushalt {weg.budget_year} im
         echten Verfahren gewandert — vom Entwurf der Verwaltung bis zu dem
         Stand, den{weg.beschlossen
           ? " der Finanzausschuss beschlossen hat"
@@ -109,7 +109,7 @@ export function VerfahrensWegKarte({ daten, jahrgang, className }: {
       </p>
 
       <div className="mt-3 flex flex-col gap-1 rounded-xl bg-muted/40 p-3">
-        <WegZeile label={`Entwurf der Verwaltung ${weg.jahrgang}`} euro={weg.entwurf} />
+        <WegZeile label={`Entwurf der Verwaltung ${weg.budget_year}`} euro={weg.entwurf} />
         <WegZeile
           label={weg.beschlossen
             ? "Vom Finanzausschuss beschlossen"

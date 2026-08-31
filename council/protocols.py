@@ -73,7 +73,7 @@ def extract_pdf_text(url: str) -> tuple[str, int, list[int]]:
 
 
 _PROMPT = """Du extrahierst strukturierte Daten aus dem Protokoll einer Stadtrats- oder \
-Ausschusssitzung in Oldenburg. Antworte mit NUR JSON in genau dieser Form:
+Ausschusssitzung in Oldenburg. Antworte mit NUR JSON in exact dieser Form:
 
 {{
   "protocol_nr": "z.B. AFB 01/26 oder null",

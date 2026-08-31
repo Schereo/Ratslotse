@@ -137,7 +137,7 @@ def main() -> dict:
                 widersprueche.append(str(fehler))
                 continue
             store.save_haushaltssatzung(satzung, herkunft_fuer(
-                satzung, url=r["url"], dokument_id=r["document_id"],
+                satzung, url=r["url"], document_id=r["document_id"],
                 label=r["label"], hebesatz_geprueft=geprueft))
             gespeichert += 1
 

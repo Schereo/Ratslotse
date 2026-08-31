@@ -30,13 +30,13 @@ export type BilanzRolle =
 export type BilanzPosten = {
   year: number;
   rolle: BilanzRolle;
-  seite: "aktiva" | "passiva";
+  page: "aktiva" | "passiva";
   /** 1 = Hauptposten; nur diese ergeben zusammen die Bilanzsumme. */
-  ebene: number;
+  level: number;
   /** Gliederungsnummer des Dokuments — für die Anzeige, nicht als Schlüssel. */
   nr: string | null;
   /** Wortlaut des Dokuments. */
-  bezeichnung: string;
+  label: string;
   wert: number;
   herkunft_id: number | null;
 };
@@ -49,7 +49,7 @@ export type BilanzErlaeuterung = {
   year: number;
   rolle: BilanzRolle;
   nr: number;
-  ueberschrift: string;
+  heading: string;
   text: string;
   herkunft_id: number | null;
 };
@@ -83,7 +83,7 @@ export const PASSIVA_HAUPT: BilanzRolle[] = [
 
 /** Kurznamen für die Legende. Der Wortlaut des Dokuments („Aktive
  *  Rechnungsabgrenzung") ist korrekt, aber in einer Balkenlegende unlesbar;
- *  er steht deshalb weiter in `bezeichnung` und wird in der Tabelle
+ *  er steht deshalb weiter in `label` und wird in der Tabelle
  *  darunter gezeigt. */
 export const KURZ: Partial<Record<BilanzRolle, string>> = {
   immaterielles_vermoegen: "Immaterielles",
@@ -103,10 +103,10 @@ export const KURZ: Partial<Record<BilanzRolle, string>> = {
 export function juengsterStichtag(daten: BilanzDaten | null): Stichtag | null {
   if (!daten?.jahre?.length) return null;
   const year = daten.jahre[daten.jahre.length - 1];
-  return stichtag(daten, year);
+  return as_of_date(daten, year);
 }
 
-export function stichtag(daten: BilanzDaten | null, year: number): Stichtag | null {
+export function as_of_date(daten: BilanzDaten | null, year: number): Stichtag | null {
   if (!daten) return null;
   const posten: Partial<Record<BilanzRolle, BilanzPosten>> = {};
   for (const p of daten.posten) {
@@ -127,11 +127,11 @@ export function stichtag(daten: BilanzDaten | null, year: number): Stichtag | nu
  *  seine Rampe dunkel nach hell in der übergebenen Reihenfolge, und ein
  *  0,6-%-Posten als dunkelstes Segment ganz links wäre eine Betonung, die
  *  der Betrag nicht trägt. */
-export function segmente(s: Stichtag, seite: "aktiva" | "passiva") {
-  const rollen = seite === "aktiva" ? AKTIVA_HAUPT : PASSIVA_HAUPT;
+export function segmente(s: Stichtag, page: "aktiva" | "passiva") {
+  const rollen = page === "aktiva" ? AKTIVA_HAUPT : PASSIVA_HAUPT;
   return rollen
     .map((r) => ({
-      label: KURZ[r] ?? s.posten[r]?.bezeichnung ?? r,
+      label: KURZ[r] ?? s.posten[r]?.label ?? r,
       kurz: KURZ[r],
       wert: (s.posten[r]?.wert ?? 0) / 1e6,
       rolle: r,
@@ -153,7 +153,7 @@ export function vielfaches(s: Stichtag): number | null {
 }
 
 /** Die Erläuterung des Anhangs zu einem Hauptposten. */
-export function erlaeuterung(
+export function explanation(
   daten: BilanzDaten | null, year: number, rolle: BilanzRolle,
 ): BilanzErlaeuterung | null {
   if (!daten) return null;
@@ -175,7 +175,7 @@ export function erlaeuterung(
 export function cashPoolingHinweis(
   daten: BilanzDaten | null, year: number,
 ): BilanzErlaeuterung | null {
-  return erlaeuterung(daten, year, "schulden");
+  return explanation(daten, year, "schulden");
 }
 
 export function herkunftVon(daten: BilanzDaten | null, id: number | null): Herkunft | null {

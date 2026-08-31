@@ -13,7 +13,7 @@ import {
 import type { Herkunft } from "@/lib/herkunft";
 
 export type HaushaltZeile = {
-  bereich: string;
+  area: string;
   revenues: number | null;
   expenses: number | null;
   result: number | null;
@@ -40,14 +40,14 @@ export const PLAN_ART_LABEL: Record<PlanArt, string> = {
  *  Haushaltsansatz, `result` = was es tatsächlich wurde. In den meisten
  *  Jahrgängen sind `plan` und `ansatz` derselbe Wert. */
 export type ErgebnisPosten = {
-  year: number; nr: number; bezeichnung: string;
+  year: number; nr: number; label: string;
   /** null = Kernverwaltung gesamt, sonst der Teilhaushalt (1–13). */
-  thh_nr: number | null; thh_name: string | null;
+  sub_budget_no: number | null; sub_budget_name: string | null;
   prior_year: number | null; ansatz: number | null;
   plan: number | null; plan_art: PlanArt | null;
   result: number | null; deviation: number | null;
   is_total: 0 | 1;
-  quelle_label: string | null; quelle_url: string | null;
+  source_label: string | null; source_url: string | null;
 };
 
 /** Eine Zeile des **Gesamtergebnishaushalts** — dieselbe Postengliederung wie
@@ -61,16 +61,16 @@ export type ErgebnisPosten = {
  *    Vorausschau, die jeder neue Haushalt neu schreibt (von 23 Posten bleiben
  *    zwischen zwei Plänen 0 bis 2 gleich). **Ohne diese Angabe darf keine Zahl
  *    aus dieser Liste angezeigt werden.**
- *  * `plan_jahrgang` sagt, aus welchem Haushalt die Zeile stammt — dasselbe
+ *  * `plan_budget_year` sagt, aus welchem Haushalt die Zeile stammt — dasselbe
  *    Jahr kommt in mehreren Plänen vor. */
 export type ErgebnishaushaltZeile = {
   /** Der Haushalt, aus dem die Zahl stammt. */
-  plan_jahrgang: number;
+  plan_budget_year: number;
   /** Das Jahr, für das sie gilt. */
   year: number;
   art: "ansatz" | "finanzplanung";
   nr: number;
-  bezeichnung: string;
+  label: string;
   amount: number;
   is_total: 0 | 1;
   herkunft_id: number | null;
@@ -101,7 +101,7 @@ export type FinanzRolle =
 /** Eine Zeile der Finanzrechnung der Kernverwaltung (Abschnitt 4.1 desselben
  *  Jahresabschlusses): nicht was gebucht, sondern was **gezahlt** wurde.
  *
- *  `ermaechtigung` ist die Spalte „Ermächtigungen aus Haushaltsvorjahren" —
+ *  `authorization` ist die Spalte „Ermächtigungen aus Haushaltsvorjahren" —
  *  Geld aus früheren Jahren, das in diesem Jahr noch ausgegeben werden durfte.
  *  Sie ist `null`, wo der Jahrgang die Spalte nicht führt.
  *
@@ -113,11 +113,11 @@ export type FinanzZeile = {
   /** Zeilennummer des Dokuments — nur für die Fundstelle, nie zum Suchen. */
   nr: number;
   rolle: FinanzRolle | null;
-  bezeichnung: string;
+  label: string;
   prior_year: number | null; ansatz: number | null;
   plan: number | null; plan_art: PlanArt | null;
   result: number | null; deviation: number | null;
-  ermaechtigung: number | null;
+  authorization: number | null;
   is_total: 0 | 1;
 };
 
@@ -126,17 +126,17 @@ export type FinanzZeile = {
  *  besteht: Betrag UND Prozentsatz der Überschrift müssen zur Tabellenzeile
  *  passen. */
 export type Abweichungsgrund = {
-  year: number; nr: number; bezeichnung: string;
+  year: number; nr: number; label: string;
   delta_mio: number | null; prozent: number | null;
   text: string;
-  quelle_label: string | null; quelle_url: string | null;
+  source_label: string | null; source_url: string | null;
 };
 
-/** Fundstelle des Schlussberichts des Rechnungsprüfungsamts. `lesbar === 0`
+/** Fundstelle des Schlussberichts des Rechnungsprüfungsamts. `readable === 0`
  *  heißt: Das PDF liegt vor, sein Textextrakt ist aber unbrauchbar (2024). */
 export type Pruefbericht = {
   year: number; label: string | null; url: string | null;
-  n_pages: number | null; lesbar: 0 | 1;
+  n_pages: number | null; readable: 0 | 1;
 };
 
 /** Produktebene aus den Teilhaushalts-Plänen (#500) — was einzelne Aufgaben
@@ -149,20 +149,20 @@ export type Pruefbericht = {
 export type Spielraum = "niedrig" | "mittel" | "hoch";
 
 export type Produkt = {
-  year: number; produkt_nr: string; produkt_name: string;
-  thh_nr: number | null; thh_name: string | null; amt: string | null;
+  year: number; product_no: string; product_name: string;
+  sub_budget_no: number | null; sub_budget_name: string | null; office: string | null;
   revenues: number | null; expenses: number | null; result: number | null;
-  kurzbeschreibung?: string | null;
+  short_description?: string | null;
   /** Die Rechtsgrundlagen, im Wortlaut des Plans. */
-  auftragsgrundlage?: string | null;
+  legal_basis?: string | null;
   /** Normalisiert. Der Plan schreibt mal „niedrig", mal „gering". */
-  beeinflussbarkeit?: Spielraum | null;
+  controllability?: Spielraum | null;
   /** Der Wortlaut des Plans — steht neben der normalisierten Stufe, damit
    *  Mischformen („niedrig/mittel bei Prävention") nicht verschwinden. */
-  beeinflussbarkeit_roh?: string | null;
-  wirkungskreis?: string | null;
-  zielgruppe?: string | null;
-  quelle_label: string | null; quelle_url: string | null;
+  controllability_raw?: string | null;
+  scope?: string | null;
+  target_group?: string | null;
+  source_label: string | null; source_url: string | null;
   /** Jahrgänge, in denen dieses Produkt im Bestand steht — gegen
    *  `alle_jahre` gehalten wird daraus das Abdeckungs-Badge (H4-04). */
   jahre?: number[];
@@ -176,13 +176,13 @@ export type ProdukteAntwort = {
   alle_jahre?: number[];
   /** Filterwerte mit Anzahl + wie viele Produkte welches Feld tragen. */
   facetten?: {
-    aemter: { amt: string; count: number }[];
+    aemter: { office: string; count: number }[];
     spielraum: Partial<Record<Spielraum, number>>;
     mit_feld: Record<string, number>;
   };
   /** Das per `?nr=` angeforderte Produkt — auch wenn ein Filter es aus der
    *  Liste nähme. */
-  produkt?: Produkt | null;
+  product?: Produkt | null;
 };
 
 /** Wie die Stadt den Spielraum selbst benennt, in Alltagssprache übersetzt.
@@ -231,23 +231,23 @@ export type FinanzausgleichJahr = {
  *  Jahren, darf über die Stelle **keine Linie laufen**: Die Stadt hat dann
  *  etwas anderes gemessen, nicht etwas anderes herausbekommen. */
 export type KennzahlPunkt = {
-  kennzahl: string;
+  indicator: string;
   year: number;
   wert: number;
   stellen: number;
   fassung: number | null;
   /** Aus welchem Rechenschaftsbericht dieser Stand stammt. */
-  bericht_jahr: number;
+  report_year: number;
   herkunft_id?: number | null;
 };
 
 /** Ein gedruckter Rechenweg, im Wortlaut, mit der Spanne der Berichte, in
  *  denen er so stand. */
 export type KennzahlFormel = {
-  kennzahl: string;
+  indicator: string;
   fassung: number;
   /** Wie die Überschrift im Bericht lautet — nicht unser Label. */
-  ueberschrift: string;
+  heading: string;
   formel: string;
   von_bericht: number;
   bis_bericht: number;
@@ -262,7 +262,7 @@ export type KennzahlFormel = {
  *  - `umbenennung` — anderer Rechenweg, **gleicher** Wert: nur umformuliert. */
 export type KennzahlFund = {
   art: "revision" | "definition" | "umbenennung";
-  kennzahl: string;
+  indicator: string;
   year: number;
   alt: number;
   alt_bericht: number;
@@ -465,7 +465,7 @@ export type Nachbewilligung = {
   year: number | null;
   titel: string;
   art: NachbewilligungsArt;
-  kategorie: NachbewilligungsKategorie;
+  category: NachbewilligungsKategorie;
   /** In Euro. `null` bei `art === "schwelle"`. */
   amount: number | null;
   /** Aus welcher Stufe der Betrag stammt: dem Titel oder dem
@@ -486,7 +486,7 @@ export type Nachbewilligung = {
   /** Ziel für den Link auf die vorhandene Beschluss-Seite. */
   beschluss_id: number | null;
   gremien: string[];
-  volltextprobe: 0 | 1;
+  fulltext_probe: 0 | 1;
   herkunft_id: number | null;
 };
 
@@ -560,7 +560,7 @@ export type SpendenVorlage = {
   gremium?: string | null;
   /** „identisch" oder „zerlegung" — wie die Zweitstelle den Betrag belegt. */
   zweitstelle: string;
-  proben: string[];
+  probes: string[];
   herkunft_id?: number | null;
 };
 
@@ -584,7 +584,7 @@ export type SteuerplanZeile = {
   ist: number;
   /** Die Quelle nennt dieses Ergebnis selbst „vorläufig" — es kann sich noch
    *  ändern, und das gehört an die Zahl. */
-  vorlaeufig: 0 | 1;
+  provisional: 0 | 1;
 };
 
 /** Die Hebesatz-Treppe — Tabelle 1105.
@@ -681,7 +681,7 @@ export const AUSGABEN_QUELLE_LABEL: Record<Ausgabenquelle, string> = {
 
 /** Ein Jahrgang der langen Reihe. `amount` in Euro.
  *
- *  `proben` sind die Rechenproben, die dieser Jahrgang bestanden hat — sie
+ *  `probes` sind die Rechenproben, die dieser Jahrgang bestanden hat — sie
  *  sind gestaffelt: Die dreißig ältesten Jahre hängen allein an der
  *  Pro-Kopf-Rechnung der Quelle, die jüngeren zusätzlich am Abgleich der
  *  beiden Veröffentlichungen und am Jahresabschluss. Die Erklärsätze dazu
@@ -696,12 +696,12 @@ export type AusgabenreiheJahr = {
   regelwerk: Regelwerk;
   amount: number;
   quelle: Ausgabenquelle;
-  proben: string[];
+  probes: string[];
   /** Was die andere Veröffentlichung für dieses Jahr nennt — nur gefüllt, wo
    *  die beiden sich widersprechen. */
   conflict_amount: number | null;
-  konflikt_quelle: Ausgabenquelle | null;
-  revidiert: 0 | 1;
+  conflict_source: Ausgabenquelle | null;
+  revised: 0 | 1;
   herkunft_id: number | null;
 };
 
@@ -735,7 +735,7 @@ export function planGegenIst(
   return jahre
     .map((year) => {
       const teile = [21, 24].map((nr) =>
-        posten.find((p) => p.year === year && p.nr === nr && p.thh_nr == null));
+        posten.find((p) => p.year === year && p.nr === nr && p.sub_budget_no == null));
       if (teile.some((t) => !t || t.plan == null || t.result == null)) return null;
       const plan = teile.reduce((s, t) => s + (t!.plan as number), 0) / 1e6;
       const ist = teile.reduce((s, t) => s + (t!.result as number), 0) / 1e6;
@@ -881,12 +881,12 @@ export function flussJahre(daten: HaushaltAuswahl<"ergebnisrechnung">): number[]
   return [...new Set(posten.map((p) => p.year))]
     .sort((a, b) => a - b)
     .filter((year) => {
-      const gesamt = posten.filter((p) => p.year === year && p.thh_nr == null);
+      const gesamt = posten.filter((p) => p.year === year && p.sub_budget_no == null);
       return (
         gesamt.some((p) => p.nr >= 1 && p.nr <= 11) &&
         gesamt.some((p) => p.nr === 12) &&
         gesamt.some((p) => p.nr === 20) &&
-        posten.some((p) => p.year === year && p.thh_nr != null && p.nr === 20)
+        posten.some((p) => p.year === year && p.sub_budget_no != null && p.nr === 20)
       );
     });
 }
@@ -923,7 +923,7 @@ function flussSeite(
 /** Das Flussbild eines Jahres in einem Stand (Plan oder Ist).
  *
  *  Links die Ertragsarten (Posten 01–11), rechts die Teilhaushalte (Posten 20
- *  je `thh_nr`) — beide aus derselben Tabelle desselben Jahres, damit nie zwei
+ *  je `sub_budget_no`) — beide aus derselben Tabelle desselben Jahres, damit nie zwei
  *  Stände nebeneinander stehen. `null`, wenn eine Seite fehlt. */
 export function flussbild(
   daten: HaushaltAuswahl<"ergebnisrechnung">, year: number, stand: "plan" | "ist",
@@ -931,7 +931,7 @@ export function flussbild(
   const zahl = (p: ErgebnisPosten | undefined) =>
     p ? (stand === "ist" ? p.result : p.ansatz) : null;
   const rows = (daten.ergebnisrechnung ?? []).filter((p) => p.year === year);
-  const gesamt = rows.filter((p) => p.thh_nr == null);
+  const gesamt = rows.filter((p) => p.sub_budget_no == null);
 
   const revenues = zahl(gesamt.find((p) => p.nr === 12));
   const expenses = zahl(gesamt.find((p) => p.nr === 20));
@@ -941,17 +941,17 @@ export function flussbild(
     .filter((p) => p.nr >= 1 && p.nr <= 11 && (zahl(p) ?? 0) > 0)
     .map((p) => ({
       id: `art-${p.nr}`,
-      label: ERTRAGSART_KURZ[p.nr] ?? p.bezeichnung,
-      lang: p.bezeichnung,
+      label: ERTRAGSART_KURZ[p.nr] ?? p.label,
+      lang: p.label,
       wert: zahl(p) as number,
       art: "posten" as const,
     }));
   const bereiche: FlussBand[] = rows
-    .filter((p) => p.thh_nr != null && p.nr === 20 && (zahl(p) ?? 0) > 0)
+    .filter((p) => p.sub_budget_no != null && p.nr === 20 && (zahl(p) ?? 0) > 0)
     .map((p) => ({
-      id: `thh-${p.thh_nr}`,
-      label: p.thh_name ?? `Teilhaushalt ${p.thh_nr}`,
-      lang: p.thh_name ?? `Teilhaushalt ${p.thh_nr}`,
+      id: `sub_budget-${p.sub_budget_no}`,
+      label: p.sub_budget_name ?? `Teilhaushalt ${p.sub_budget_no}`,
+      lang: p.sub_budget_name ?? `Teilhaushalt ${p.sub_budget_no}`,
       wert: zahl(p) as number,
       art: "posten" as const,
     }));
@@ -1002,8 +1002,8 @@ export function flussbild(
 export type GebuehrenZeile = {
   year: number;
   /** `abfallbehandlung` · `abfallsammlung` · `strassenreinigung`. */
-  bereich: string;
-  bereich_name: string;
+  area: string;
+  area_name: string;
   /** Was der Bereich im Jahr insgesamt kostet. */
   kostenkalkulation: number;
   /** Alles, was davon abgeht — negativ. */
@@ -1017,7 +1017,7 @@ export type GebuehrenZeile = {
   /** Der gerundete Vorschlag an den Rat — das, was erhoben wird. */
   gebuehrenvorschlag: number | null;
   template_number: string | null;
-  proben: string;
+  probes: string;
   herkunft_id: number | null;
 };
 
@@ -1029,14 +1029,14 @@ export type GebuehrenZeile = {
 export type GebuehrensatzZeile = {
   year: number;
   schluessel: string;
-  bereich: string;
-  bezeichnung: string;
+  area: string;
+  label: string;
   amount: number;
   einheit: string;
   prior_year: number | null;
   change_pct: number | null;
   template_number: string | null;
-  proben: string;
+  probes: string;
   herkunft_id: number | null;
 };
 
@@ -1050,7 +1050,7 @@ export type GebuehrensatzZeile = {
 export type HaushaltssatzungZeile = {
   year: number;
   /** 0 = die Satzung selbst. Nachträge werden (noch) nicht gelesen. */
-  nachtrag: number;
+  supplement: number;
   /** `entwurf` | `unbekannt` — nie `beschlossen`, s. o. */
   fassung: string;
 
@@ -1087,7 +1087,7 @@ export type HaushaltssatzungZeile = {
   /** Das im Text genannte Sitzungsdatum, `null` bei „xx.xx.JJJJ". */
   sitzung_am: string | null;
   template_number: string | null;
-  proben: string;
+  probes: string;
   herkunft_id: number | null;
 };
 
@@ -1115,7 +1115,7 @@ export type WirtschaftsplanZeile = {
   /** Stand des Verwaltungsentwurfs, wo das Dokument ihn nennt. */
   entwurf_vom: string | null;
   /** Komma-getrennt, welche Rechenproben für diese Zeile gelaufen sind. */
-  proben: string;
+  probes: string;
   herkunft_id: number | null;
 };
 
@@ -1170,8 +1170,8 @@ export function einnahmearten(
     .filter((z) => z.nr >= 1 && z.nr <= 11 && z.amount > 0)
     .map((z) => ({
       nr: z.nr,
-      label: ERTRAGSART_KURZ[z.nr] ?? z.bezeichnung,
-      lang: z.bezeichnung,
+      label: ERTRAGSART_KURZ[z.nr] ?? z.label,
+      lang: z.label,
       amount: z.amount,
     }))
     .sort((a, b) => b.amount - a.amount);
@@ -1186,7 +1186,7 @@ export function einnahmearten(
   const tafelErtraege = summe(daten.jahre?.[String(year)] ?? [])?.revenues ?? null;
   return {
     year,
-    planJahrgang: zeilen[0].plan_jahrgang,
+    planJahrgang: zeilen[0].plan_budget_year,
     arten,
     gesamt,
     teile,
@@ -1237,7 +1237,7 @@ export function naechstesProdukt(
 ): Produkt | null {
   if (mioBetrag < 0.2) return null;
   const passend = produkte.filter((p) =>
-    p.result != null && p.result < 0 && (!thhName || p.thh_name === thhName));
+    p.result != null && p.result < 0 && (!thhName || p.sub_budget_name === thhName));
   if (!passend.length) return null;
   return passend.reduce((best, p) =>
     Math.abs(-(p.result as number) / 1e6 - mioBetrag)
@@ -1473,7 +1473,7 @@ export function bereichsReihe(
 ): { year: number; zeile: HaushaltZeile }[] {
   return jahreSortiert(daten)
     .map((year) => {
-      const z = daten.jahre[String(year)]?.find((r) => r.bereich === name);
+      const z = daten.jahre[String(year)]?.find((r) => r.area === name);
       return z ? { year, zeile: z } : null;
     })
     .filter((x): x is { year: number; zeile: HaushaltZeile } => x !== null);
@@ -1565,7 +1565,7 @@ const BEREICH_TEXTE: Record<BereichSchluessel, string> = {
 };
 
 /** Dieselben Texte unter jedem Namen, unter dem der Bereich in der Datenbank
- *  auftaucht. Bestehende Aufrufe (`BEREICH_INFO[zeile.bereich]`) bleiben damit
+ *  auftaucht. Bestehende Aufrufe (`BEREICH_INFO[zeile.area]`) bleiben damit
  *  gültig und treffen jetzt auch die Schreibweisen fremder Jahrgänge. */
 export const BEREICH_INFO: Record<string, string> = Object.fromEntries(
   BEREICHE.flatMap((b) => b.aliase.map((a) => [a, BEREICH_TEXTE[b.schluessel]])),

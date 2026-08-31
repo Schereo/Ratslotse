@@ -348,7 +348,7 @@ def lies(text: str) -> dict:
         Was die Titel für jede Tabelle ankündigen.
     ``fehlende_jahrgaenge``
         Was daraus fehlt, je Regelwerk. Ein Befund, keine Geschmacksfrage.
-    ``proben``
+    ``probes``
         Was gerechnet wurde, in Zahlen — Grundlage des Beleg-Texts.
     """
     spannen = erkenne(text)
@@ -356,12 +356,12 @@ def lies(text: str) -> dict:
     verworfen: list[dict] = []
     bestanden = gerissen = 0
 
-    for regelwerk, abschnitt in _abschnitte(text).items():
+    for regelwerk, section in _abschnitte(text).items():
         if regelwerk not in spannen:
             # Kein Titel, keine Tabelle: Ein Abschnitt ohne seinen eigenen
             # Titel ist Beifang aus dem Seitenkopf und keine Datenquelle.
             continue
-        for zeile in parse(abschnitt, regelwerk):
+        for zeile in parse(section, regelwerk):
             if zeile.get("unlesbar"):
                 verworfen.append({
                     "year": zeile["year"], "regelwerk": regelwerk,
@@ -401,7 +401,7 @@ def lies(text: str) -> dict:
         "verworfen": verworfen,
         "spannen": spannen,
         "fehlende_jahrgaenge": luecken,
-        "proben": {"bestanden": bestanden, "gerissen": gerissen},
+        "probes": {"bestanden": bestanden, "gerissen": gerissen},
     }
 
 
@@ -409,7 +409,7 @@ def probennachweis(result: dict) -> str:
     """Der Messwert für die Herkunft — „was ist wirklich gelaufen?".
 
     Steht später im Beleg auf der Seite; deshalb Zahlen und keine Adjektive."""
-    p = result["proben"]
+    p = result["probes"]
     gesamt = p["bestanden"] + p["gerissen"]
     text = f"Zeilensumme {p['bestanden']} von {gesamt} Jahrgängen"
     if p["gerissen"]:

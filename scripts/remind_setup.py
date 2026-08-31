@@ -90,7 +90,7 @@ def main() -> dict:
                     held="erinnerung",
                     kicker="Deine Einrichtung",
                     titel="Fast fertig eingerichtet",
-                    fusszeile="Diese Erinnerung schicken wir genau einmal — "
+                    fusszeile="Diese Erinnerung schicken wir exact einmal — "
                               "du bekommst sie nicht noch einmal.",
                 ),
             )

@@ -64,7 +64,7 @@ export function Gesetz({ g, className }: {
             </span>
             {/* Bund oder Land — die Antwort auf „wer könnte das ändern?". */}
             <span className="font-mono text-[9.5px] uppercase tracking-[0.09em] text-muted-foreground">
-              {gesetz.ebene === "Bund" ? "Bundesrecht" : "Landesrecht"}
+              {gesetz.level === "Bund" ? "Bundesrecht" : "Landesrecht"}
             </span>
           </span>
           <span className="mt-1 block text-[12.5px] font-bold leading-snug text-foreground">

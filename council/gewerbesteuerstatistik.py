@@ -435,7 +435,7 @@ def probe_summen(eintrag: dict) -> dict:
                          + (f", ABWEICHUNG: {'; '.join(fehler)}" if fehler else ""))}
 
 
-def probe_blaetter(jahrgang: Gewerbesteuerjahrgang) -> dict:
+def probe_blaetter(budget_year: Gewerbesteuerjahrgang) -> dict:
     """Blatt 6.2 wiederholt für jede kreisfreie Stadt, was Blatt 6.1 sagt.
 
     Zwei getrennt gelesene Tabellen desselben Berichts, verschieden gebaut
@@ -445,8 +445,8 @@ def probe_blaetter(jahrgang: Gewerbesteuerjahrgang) -> dict:
     beiden Blätter die falsche Spalte erwischt, risse dieser Vergleich.
     """
     geprueft, abweichungen = 0, []
-    for key, kreis in sorted(jahrgang.staedte.items()):
-        gemeinde = jahrgang.gemeinden.get(key)
+    for key, kreis in sorted(budget_year.staedte.items()):
+        gemeinde = budget_year.gemeinden.get(key)
         if not gemeinde:
             abweichungen.append({"schluessel": key, "stadt": kreis["stadt"],
                                  "grund": "fehlt in Blatt 6.2"})
@@ -484,7 +484,7 @@ def hebesatz_im_jahr(zeilen: list[dict], year: int,
     return float(max(passend, key=lambda z: int(z["year"]))["hebesatz"])
 
 
-def probe_hebesatz(jahrgang: Gewerbesteuerjahrgang, schluessel: str,
+def probe_hebesatz(budget_year: Gewerbesteuerjahrgang, schluessel: str,
                    hebesatz_1105: float | None) -> dict:
     """Der nachrichtliche Hebesatz aus 6.2 gegen Tabelle 1105 des Jahrbuchs.
 
@@ -499,7 +499,7 @@ def probe_hebesatz(jahrgang: Gewerbesteuerjahrgang, schluessel: str,
     Ohne Vergleichswert (leerer Bestand, Jahr vor Beginn der Reihe) gilt die
     Probe als nicht gelaufen — nicht als bestanden.
     """
-    eintrag = jahrgang.gemeinden.get(schluessel) or {}
+    eintrag = budget_year.gemeinden.get(schluessel) or {}
     satz = eintrag.get("hebesatz")
     if satz is None or hebesatz_1105 is None:
         return {"ok": None,
@@ -509,12 +509,12 @@ def probe_hebesatz(jahrgang: Gewerbesteuerjahrgang, schluessel: str,
     return {"ok": ok,
             "result": (f"Hebesatz {satz:.0f} % (Landesamt) gegen "
                          f"{hebesatz_1105:.0f} % (Jahrbuch 1105) für "
-                         f"{jahrgang.year}")}
+                         f"{budget_year.year}")}
 
 
 # --- Was in die Datenbank geht ---------------------------------------------
 
-def zeilen(jahrgang: Gewerbesteuerjahrgang) -> tuple[list[dict], list[dict]]:
+def zeilen(budget_year: Gewerbesteuerjahrgang) -> tuple[list[dict], list[dict]]:
     """Speicherzeilen eines Jahrgangs — und was daran scheiterte.
 
     Gibt ``(zeilen, verworfen)`` zurück. Eine Stadt, deren Summenprobe nicht
@@ -529,7 +529,7 @@ def zeilen(jahrgang: Gewerbesteuerjahrgang) -> tuple[list[dict], list[dict]]:
     """
     aus: list[dict] = []
     verworfen: list[dict] = []
-    for key, eintrag in sorted(jahrgang.staedte.items()):
+    for key, eintrag in sorted(budget_year.staedte.items()):
         # Zuerst der Fall, der KEIN Fehler ist: eine Stadt, für die das
         # Landesamt gar nichts ausweist. 2020 trifft das Salzgitter und
         # Wolfsburg — dort steht in allen neun Spalten „g". Das als
@@ -549,9 +549,9 @@ def zeilen(jahrgang: Gewerbesteuerjahrgang) -> tuple[list[dict], list[dict]]:
                               "grund": "Summenprobe",
                               "result": probe["result"]})
             continue
-        gemeinde = jahrgang.gemeinden.get(key) or {}
+        gemeinde = budget_year.gemeinden.get(key) or {}
         aus.append({
-            "year": jahrgang.year,
+            "year": budget_year.year,
             "schluessel": key,
             # Der Name aus unserer Liste, nicht der aus der Datei: Die Datei
             # schreibt ihn je Jahrgang anders („Oldenburg (Oldb)" gegen

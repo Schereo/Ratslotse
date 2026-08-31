@@ -135,7 +135,7 @@ Der Bericht beantwortet das selbst zweimal. Das Inhaltsverzeichnis nennt für
 jede Gesellschaft ihre Gliederungsnummer und ihre Anfangsseite; auf genau
 dieser Seite steht eine Trennseite, die dieselbe Nummer trägt. Stimmen beide
 nicht überein, ist die Zuordnung nicht gesichert und der Jahrgang fällt weg
-(:func:`gliederung`). In allen drei gelesenen Jahrgängen gehen 45 von 45
+(:func:`classification`). In allen drei gelesenen Jahrgängen gehen 45 von 45
 Zuordnungen auf.
 
 Fünf Eigenheiten, an denen ein naiver Parser scheitert
@@ -188,7 +188,7 @@ _TITEL = re.compile(
 ERSTER_JAHRGANG = 2022
 
 
-def jahrgang(kopf: str | None) -> int | None:
+def budget_year(kopf: str | None) -> int | None:
     """Für welches Berichtsjahr ein Dokument gilt — ``None``, wenn unklar."""
     m = _TITEL.search(" ".join((kopf or "").split())[:4000])
     return int(m.group(1)) if m else None
@@ -288,9 +288,9 @@ class Gesellschaft:
 
     key: str
     name: str
-    gliederung: str
+    classification: str
     #: PDF-Seite der Trennseite (1-basiert).
-    seite: int
+    page: int
     #: Fußzeilen-Seite — die steht im Inhaltsverzeichnis und im Dokument.
     seite_gedruckt: int
     konzern_key: str | None = None
@@ -303,7 +303,7 @@ class Gesellschaft:
     guv: dict[int, float] = field(default_factory=dict)
 
 
-def gliederung(seiten: list[str]) -> tuple[list[Gesellschaft], list[str]]:
+def classification(seiten: list[str]) -> tuple[list[Gesellschaft], list[str]]:
     """Welche Gesellschaft ab welcher Seite — und ob das Dokument es bestätigt.
 
     Zwei unabhängige Angaben desselben Berichts: das Inhaltsverzeichnis (Nummer
@@ -349,7 +349,7 @@ def gliederung(seiten: list[str]) -> tuple[list[Gesellschaft], list[str]]:
             warnungen.append(f"„{name}“ steht noch nicht in "
                              f"beteiligungsbericht.GESELLSCHAFTEN — "
                              f"Notschlüssel {key!r}")
-        aus.append(Gesellschaft(key=key, name=anzeige, gliederung=nr, seite=i,
+        aus.append(Gesellschaft(key=key, name=anzeige, classification=nr, page=i,
                                 seite_gedruckt=gedruckt, konzern_key=konzern,
                                 bekannt=bekannt))
     for nr, (name, _) in sorted(ivz.items()):
@@ -449,10 +449,10 @@ _JAHRZEILE = re.compile(r"((?:20\d\d[ \t]+){1,6}20\d\d)")
 _SEITENKOPF = re.compile(r"Stadt Oldenburg\s*[–-]\s*Beteiligungsbericht")
 
 
-def kennzahlen(abschnitt: str) -> tuple[dict[str, dict[int, float]], list[str]]:
+def kennzahlen(section: str) -> tuple[dict[str, dict[int, float]], list[str]]:
     """Die Tabelle „Kennzahlen im Zeitverlauf" eines Abschnitts lesen.
 
-    Liefert ``({kennzahl: {year: wert}}, warnungen)``.
+    Liefert ``({indicator: {year: wert}}, warnungen)``.
 
     Die Jahre kommen aus der Kopfzeile, nie aus der Reihenfolge: Der EGH führt
     2024 → 2020, der AWB 2020 → 2024 (s. Modulkopf). Und eine Zeile wird nur
@@ -460,16 +460,16 @@ def kennzahlen(abschnitt: str) -> tuple[dict[str, dict[int, float]], list[str]]:
     Jahre hat. Alles andere hieße raten, welcher Wert zu welchem Jahr gehört —
     lieber keine Zeile als eine verschobene."""
     treffer = None
-    for m in _KENN_ANKER.finditer(abschnitt):
-        if _SPEZIFISCH.search(abschnitt[max(0, m.start() - 40):m.start()].rstrip()):
+    for m in _KENN_ANKER.finditer(section):
+        if _SPEZIFISCH.search(section[max(0, m.start() - 40):m.start()].rstrip()):
             continue
         treffer = m
         break
     if treffer is None:
         return {}, []
 
-    ende = abschnitt.find("Beteiligungsspezifische", treffer.end())
-    rumpf = _entzerren(abschnitt[treffer.end():ende if ende > 0 else treffer.end() + 900])
+    ende = section.find("Beteiligungsspezifische", treffer.end())
+    rumpf = _entzerren(section[treffer.end():ende if ende > 0 else treffer.end() + 900])
 
     jm = _JAHRZEILE.search(rumpf)
     if not jm:
@@ -509,7 +509,7 @@ _BILANZSUMME = re.compile(r"BILANZSUMME\s*([^\n]*)")
 _STICHTAGE = re.compile(r"((?:31\.12\.20\d\d\s+){1,5}31\.12\.20\d\d)")
 
 
-def bilanzsummen(abschnitt: str) -> dict[int, float]:
+def bilanzsummen(section: str) -> dict[int, float]:
     """Die Bilanzsumme je Stichtagsjahr — nur, wenn die Bilanz aufgeht.
 
     Die Probe ist die Bilanz selbst: Aktiva und Passiva müssen dieselbe Summe
@@ -525,10 +525,10 @@ def bilanzsummen(abschnitt: str) -> dict[int, float]:
     31.12.2023"), und wer deren Kopf auf die dreispaltige Bilanz anwendet,
     zählt zwei Jahre gegen drei Werte und verwirft eine Bilanz, die
     tadellos ist."""
-    abschnitt = _entzerren(abschnitt)
+    section = _entzerren(section)
     reihen: list[tuple[list[int], list[float]]] = []
-    for m in _BILANZSUMME.finditer(abschnitt):
-        koepfe = list(_STICHTAGE.finditer(abschnitt[:m.start()]))
+    for m in _BILANZSUMME.finditer(section):
+        koepfe = list(_STICHTAGE.finditer(section[:m.start()]))
         if not koepfe:
             continue
         jahre = [int(t.rsplit(".", 1)[1]) for t in koepfe[-1].group(1).split()]
@@ -553,7 +553,7 @@ _GUV_SCHLUSS = re.compile(
     re.M | re.I)
 
 
-def guv_ergebnisse(abschnitt: str) -> dict[int, float]:
+def guv_ergebnisse(section: str) -> dict[int, float]:
     """Das Jahresergebnis, wie die Gewinn- und Verlustrechnung es ausweist.
 
     Zweite, unabhängige Stelle für dieselbe Zahl — und die einzige, die auch
@@ -574,10 +574,10 @@ def guv_ergebnisse(abschnitt: str) -> dict[int, float]:
     weist dort 2023 und 2024 je 0,00 aus, weil der Gewinn abgeführt wurde,
     während die GuV 1.136,76 und 8.473,96 nennt. Beide stimmen — sie sagen
     Verschiedenes."""
-    abschnitt = _entzerren(abschnitt)
+    section = _entzerren(section)
     aus: dict[int, float] = {}
-    for m in _GUV_SCHLUSS.finditer(abschnitt):
-        koepfe = list(_STICHTAGE.finditer(abschnitt[:m.start()]))
+    for m in _GUV_SCHLUSS.finditer(section):
+        koepfe = list(_STICHTAGE.finditer(section[:m.start()]))
         if not koepfe:
             continue
         jahre = [int(t.rsplit(".", 1)[1]) for t in koepfe[-1].group(1).split()]
@@ -778,9 +778,9 @@ class Aufsichtsperson:
     #: ``"vorsitz"`` | ``"stellvertretung"`` | ``None``.
     vorsitz: str | None
     #: Amtszeit-Zusatz, wörtlich: „bis 30. Juni 2022".
-    hinweis: str | None
+    note: str | None
     #: Position in der Liste des Berichts, je Gesellschaft fortlaufend.
-    reihenfolge: int
+    sort_order: int
 
 
 def _zeilen_fuegen(rumpf: str) -> list[str]:
@@ -827,7 +827,7 @@ def _gremiumsname(roh: str) -> str:
     return name
 
 
-def _person_zerlegen(zeile: str, gremium: str, reihenfolge: int) -> Aufsichtsperson:
+def _person_zerlegen(zeile: str, gremium: str, sort_order: int) -> Aufsichtsperson:
     """Eine Zeile der Namensspalte → Name, Vorsitz und Amtszeit-Zusatz.
 
     Der Name ist, was **vor** dem ersten Komma und außerhalb aller Klammern
@@ -861,8 +861,8 @@ def _person_zerlegen(zeile: str, gremium: str, reihenfolge: int) -> Aufsichtsper
         einordnen(t)
     return Aufsichtsperson(
         gremium=gremium, name=" ".join(teile[0].split()), funktion=None,
-        vorsitz=vorsitz, hinweis=", ".join(hinweise) or None,
-        reihenfolge=reihenfolge)
+        vorsitz=vorsitz, note=", ".join(hinweise) or None,
+        sort_order=sort_order)
 
 
 def aufsichtsorgane(text: str) -> tuple[list[Aufsichtsperson], bool]:
@@ -972,7 +972,7 @@ class Eigentuemer:
     name: str
     amount_eur: float | None
     share_pct: float | None
-    reihenfolge: int
+    sort_order: int
 
 
 def beteiligungsverhaeltnisse(text: str) -> tuple[list[Eigentuemer], str | None]:
@@ -1019,7 +1019,7 @@ def beteiligungsverhaeltnisse(text: str) -> tuple[list[Eigentuemer], str | None]
             summe = (eur, proz)
             continue
         eigner.append(Eigentuemer(name=name, amount_eur=eur,
-                                  share_pct=proz, reihenfolge=len(eigner)))
+                                  share_pct=proz, sort_order=len(eigner)))
 
     if not eigner or summe is None:
         return [], None
@@ -1046,27 +1046,27 @@ def lies(seiten: list[str]) -> dict:
     keine Formatierung, sondern die Grundlage der Zuordnung: Eine Gesellschaft
     beginnt auf ihrer Trennseite, und die steht im Inhaltsverzeichnis.
 
-    Liefert ``{"jahrgang", "gesellschaften", "warnungen", "dokumentproben"}``.
+    Liefert ``{"budget_year", "gesellschaften", "warnungen", "dokumentproben"}``.
     ``gesellschaften`` sind :class:`Gesellschaft`-Objekte; welche Kennzahl
     welche Probe bestanden hat, entscheidet erst :func:`pruefe` im
     Zusammenspiel mit den anderen Jahrgängen."""
-    jg = jahrgang("\n".join(seiten[:3]))
-    ges, warnungen = gliederung(seiten)
+    jg = budget_year("\n".join(seiten[:3]))
+    ges, warnungen = classification(seiten)
     if jg is None:
-        return {"jahrgang": None, "gesellschaften": [],
+        return {"budget_year": None, "gesellschaften": [],
                 "warnungen": ["Kein Berichtsjahr im Dokumentkopf gefunden"],
                 "dokumentproben": []}
     if jg < ERSTER_JAHRGANG:
-        return {"jahrgang": jg, "gesellschaften": [], "dokumentproben": [],
+        return {"budget_year": jg, "gesellschaften": [], "dokumentproben": [],
                 "warnungen": [
                     f"Berichtsjahr {jg} liegt vor dem Formatbruch "
                     f"{ERSTER_JAHRGANG}: keine Kennzahlen-Tabellen, Bilanz "
                     f"zweispaltig — nicht maschinenlesbar (s. Modulkopf)"]}
 
-    grenzen = [g.seite for g in ges] + [len(seiten) + 1]
+    grenzen = [g.page for g in ges] + [len(seiten) + 1]
     dokumentproben: list[dict] = []
     for i, g in enumerate(ges):
-        text = "\n".join(seiten[g.seite - 1:grenzen[i + 1] - 1])
+        text = "\n".join(seiten[g.page - 1:grenzen[i + 1] - 1])
         g.abschnitte = abschnitte(text)
         g.kennzahlen, kw = kennzahlen(text)
         g.bilanzsummen = bilanzsummen(text)
@@ -1078,10 +1078,10 @@ def lies(seiten: list[str]) -> dict:
         # Großleitstelle führt noch im Bericht für 2024 die Jahre 2017–2021,
         # und ihre Bilanz steht auf demselben Stand. Wer nur das Berichtsjahr
         # prüft, hat für sie nie eine Probe.
-        for kennzahl, gegen, betragsweise in (
+        for indicator, gegen, betragsweise in (
                 ("bilanzsumme", g.bilanzsummen, False),
                 ("jahresergebnis", g.guv, True)):
-            reihe = g.kennzahlen.get(kennzahl) or {}
+            reihe = g.kennzahlen.get(indicator) or {}
             gemeinsam = sorted(set(reihe) & set(gegen))
             for j in gemeinsam:
                 links, rechts = reihe[j], gegen[j]
@@ -1089,14 +1089,14 @@ def lies(seiten: list[str]) -> dict:
                     links, rechts = abs(links), abs(rechts)
                 delta = abs(links - rechts)
                 dokumentproben.append(
-                    {"gesellschaft": g.key, "kennzahl": kennzahl, "year": j,
+                    {"gesellschaft": g.key, "indicator": indicator, "year": j,
                      "delta": delta, "ok": delta <= TOLERANZ_EUR})
             if reihe and not gemeinsam:
                 warnungen.append(
-                    f"{g.name}: {kennzahl} ohne Gegenstelle im Dokument "
+                    f"{g.name}: {indicator} ohne Gegenstelle im Dokument "
                     f"(dort {sorted(gegen) or '—'}, in den Kennzahlen "
                     f"{sorted(reihe)})")
-    return {"jahrgang": jg, "gesellschaften": ges, "warnungen": warnungen,
+    return {"budget_year": jg, "gesellschaften": ges, "warnungen": warnungen,
             "dokumentproben": dokumentproben}
 
 
@@ -1110,14 +1110,14 @@ def ueberlappung(jahrgaenge: dict[int, list[Gesellschaft]]) -> dict:
     ist bestätigt; wo sie sich widersprechen, verrät die Probe nicht, welches
     recht hat, und **beide** Werte fallen weg.
 
-    Liefert ``{"bestaetigt": {(key, kennzahl, year) -> n}, "widersprueche":
+    Liefert ``{"bestaetigt": {(key, indicator, year) -> n}, "widersprueche":
     [...], "einzeln": n}``."""
     gesammelt: dict[tuple[str, str, int], dict[int, float]] = {}
     for bericht, liste in sorted(jahrgaenge.items()):
         for g in liste:
-            for kennzahl, reihe in g.kennzahlen.items():
+            for indicator, reihe in g.kennzahlen.items():
                 for year, wert in reihe.items():
-                    gesammelt.setdefault((g.key, kennzahl, year), {})[bericht] = wert
+                    gesammelt.setdefault((g.key, indicator, year), {})[bericht] = wert
 
     bestaetigt: dict[tuple[str, str, int], int] = {}
     widersprueche: list[dict] = []
@@ -1130,7 +1130,7 @@ def ueberlappung(jahrgaenge: dict[int, list[Gesellschaft]]) -> dict:
             bestaetigt[schluessel] = len(je_bericht)
         else:
             widersprueche.append({"gesellschaft": schluessel[0],
-                                  "kennzahl": schluessel[1], "year": schluessel[2],
+                                  "indicator": schluessel[1], "year": schluessel[2],
                                   "werte": dict(je_bericht)})
     return {"bestaetigt": bestaetigt, "widersprueche": widersprueche,
             "einzeln": einzeln}
@@ -1151,11 +1151,11 @@ def alle_werte(jahrgaenge: dict[int, list[Gesellschaft]]
     und Jahrgang, gefragt ist aber „welche Berichte nennen diesen einen Wert?"
     — und das ist genau die Frage der Überlappungsprobe."""
     aus: dict[tuple[str, str, int], dict[int, float]] = {}
-    for bericht_jahr, liste in sorted(jahrgaenge.items()):
+    for report_year, liste in sorted(jahrgaenge.items()):
         for g in liste:
-            for kennzahl, reihe in g.kennzahlen.items():
+            for indicator, reihe in g.kennzahlen.items():
                 for year, wert in reihe.items():
-                    aus.setdefault((g.key, kennzahl, year), {})[bericht_jahr] = wert
+                    aus.setdefault((g.key, indicator, year), {})[report_year] = wert
     return aus
 
 
@@ -1180,7 +1180,7 @@ def konzernvergleich(store, year: int) -> list[dict]:
 
     ergebnisse = {z["gesellschaft"]: z["wert"]
                   for z in store.get_gesellschaft_kennzahlen()
-                  if z["kennzahl"] == "jahresergebnis" and z["year"] == year}
+                  if z["indicator"] == "jahresergebnis" and z["year"] == year}
     aus: list[dict] = []
     for g in store.get_gesellschaften():
         schluessel = g.get("konzern_key")
@@ -1216,7 +1216,7 @@ def _nachweis(delta: float | None, berichte: int) -> str:
 def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> dict:
     """Alle vorliegenden Berichte lesen, prüfen und den Bestand ersetzen.
 
-    ``dokumente`` ist ``{bericht_jahr: {"seiten": [str], "url": str,
+    ``dokumente`` ist ``{report_year: {"seiten": [str], "url": str,
     "label": str}}`` — was der Cron geholt und ``pypdf`` extrahiert hat.
 
     **Immer alle auf einmal**, nie einzeln. Die Überlappungsprobe vergleicht
@@ -1242,15 +1242,15 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
         if not result["gesellschaften"]:
             continue
         # Über den Jahrgang entscheidet das Dokument, nicht der Dateiname.
-        echt = result["jahrgang"]
+        echt = result["budget_year"]
         if echt != dateijahr:
             p.warnen(f"  Datei für {dateijahr} nennt sich im Kopf "
                      f"„Beteiligungsbericht {echt}“ — es gilt das Dokument")
         gerissen = [x for x in result["dokumentproben"] if not x["ok"]]
         for x in gerissen:
-            p.warnen(f"  {echt}: {x['gesellschaft']}/{x['kennzahl']} {x['year']}: "
+            p.warnen(f"  {echt}: {x['gesellschaft']}/{x['indicator']} {x['year']}: "
                      f"Dokumentprobe gerissen (Δ {x['delta']:.2f}) — verworfen")
-        gelesen[echt] = {**result, **d, "bericht_jahr": echt}
+        gelesen[echt] = {**result, **d, "report_year": echt}
         p.sagen(f"  {echt}: {len(result['gesellschaften'])} Gesellschaften, "
                 f"{len(result['dokumentproben']) - len(gerissen)}/"
                 f"{len(result['dokumentproben'])} Dokumentproben bestanden")
@@ -1267,9 +1267,9 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
         for x in e["dokumentproben"]:
             if not x["ok"]:
                 continue
-            name = ("beteiligung_bilanzprobe" if x["kennzahl"] == "bilanzsumme"
+            name = ("beteiligung_bilanzprobe" if x["indicator"] == "bilanzsumme"
                     else "beteiligung_ergebnisprobe")
-            s = (x["gesellschaft"], x["kennzahl"], x["year"])
+            s = (x["gesellschaft"], x["indicator"], x["year"])
             # Die **größte** gemessene Abweichung gewinnt: Belegen mehrere
             # Berichte dieselbe Zahl, ist der schlechteste Messwert die
             # ehrliche Angabe, nicht der schönste.
@@ -1278,16 +1278,16 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
 
     nach_jahrgang = {j: e["gesellschaften"] for j, e in gelesen.items()}
     u = ueberlappung(nach_jahrgang)
-    strittig = {(w["gesellschaft"], w["kennzahl"], w["year"])
+    strittig = {(w["gesellschaft"], w["indicator"], w["year"])
                 for w in u["widersprueche"]}
     for w in u["widersprueche"]:
-        p.warnen(f"  {w['gesellschaft']}/{w['kennzahl']} {w['year']}: Berichte "
+        p.warnen(f"  {w['gesellschaft']}/{w['indicator']} {w['year']}: Berichte "
                  f"widersprechen sich ({w['werte']}) — Wert verworfen")
 
     def anker(e: dict, g: Gesellschaft) -> dict:
         return {"art": "stadt", "url": e["url"], "label": e["label"],
-                "seite": g.seite_gedruckt,
-                "stand": f"Beteiligungsbericht {e['bericht_jahr']}"}
+                "page": g.seite_gedruckt,
+                "stand": f"Beteiligungsbericht {e['report_year']}"}
 
     stammdaten: list[dict] = []
     texte: list[dict] = []
@@ -1298,26 +1298,26 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
         for g in e["gesellschaften"]:
             gemeinsam = anker(e, g)
             stammdaten.append({
-                "bericht_jahr": year, "gesellschaft": g.key, "name": g.name,
-                "gliederung": g.gliederung, "seite": g.seite_gedruckt,
+                "report_year": year, "gesellschaft": g.key, "name": g.name,
+                "classification": g.classification, "page": g.seite_gedruckt,
                 "konzern_key": g.konzern_key,
                 "herkunft": _h.Herkunft(
                     probe="beteiligung_seitenprobe",
-                    fundstelle=f"Abschnitt {g.gliederung} — {g.name}",
+                    citation=f"Abschnitt {g.classification} — {g.name}",
                     probe_result=f"Inhaltsverzeichnis und Trennseite nennen "
                                    f"beide Seite {g.seite_gedruckt}",
                     **gemeinsam)})
-            for key, _, ueberschrift in TEXTABSCHNITTE:
+            for key, _, heading in TEXTABSCHNITTE:
                 if key not in g.abschnitte:
                     continue
                 texte.append({
-                    "bericht_jahr": year, "gesellschaft": g.key, "abschnitt": key,
+                    "report_year": year, "gesellschaft": g.key, "section": key,
                     "text": g.abschnitte[key],
                     # Fließtext trägt keine Rechenprobe, und eine zu behaupten
                     # wäre gelogen. Woher er stammt, steht trotzdem da.
                     "herkunft": _h.Herkunft(
                         probe=_h.UNGEPRUEFT,
-                        fundstelle=f"Abschnitt {g.gliederung} — {ueberschrift}",
+                        citation=f"Abschnitt {g.classification} — {heading}",
                         **gemeinsam)})
 
             # Zwei der fünf Abschnitte sind in Wahrheit Tabellen. Sie bleiben
@@ -1328,10 +1328,10 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
                 ohne_zuordnung.append(f"{year}/{g.key}")
             for person in liste:
                 personen.append({
-                    "bericht_jahr": year, "gesellschaft": g.key,
-                    "reihenfolge": person.reihenfolge, "gremium": person.gremium,
+                    "report_year": year, "gesellschaft": g.key,
+                    "sort_order": person.sort_order, "gremium": person.gremium,
                     "name": person.name, "funktion": person.funktion,
-                    "vorsitz": person.vorsitz, "hinweis": person.hinweis,
+                    "vorsitz": person.vorsitz, "note": person.note,
                     "funktionen_zuordenbar": zuordenbar,
                     # Der Name selbst trägt keine Probe — er steht einmal im
                     # Bericht. Geprüft ist die **Zuordnung** des Amtes; wo sie
@@ -1340,7 +1340,7 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
                     "herkunft": _h.Herkunft(
                         probe=("beteiligung_spaltenprobe" if person.funktion
                                else _h.UNGEPRUEFT),
-                        fundstelle=f"Abschnitt {g.gliederung} — "
+                        citation=f"Abschnitt {g.classification} — "
                                    f"{person.gremium}",
                         probe_result=(f"{len(liste)} Namen, "
                                         f"{len(liste)} Funktionen"
@@ -1351,13 +1351,13 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
                 g.abschnitte.get("beteiligungsverhaeltnisse", ""))
             for e_ in eigner:
                 eigentuemer.append({
-                    "bericht_jahr": year, "gesellschaft": g.key,
-                    "reihenfolge": e_.reihenfolge, "name": e_.name,
+                    "report_year": year, "gesellschaft": g.key,
+                    "sort_order": e_.sort_order, "name": e_.name,
                     "amount_eur": e_.amount_eur,
                     "share_pct": e_.share_pct,
                     "herkunft": _h.Herkunft(
                         probe="beteiligung_anteilsprobe",
-                        fundstelle=f"Abschnitt {g.gliederung} — "
+                        citation=f"Abschnitt {g.classification} — "
                                    f"Beteiligungsverhältnisse",
                         probe_result=anteilsprobe,
                         **gemeinsam)})
@@ -1370,30 +1370,30 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
     kennzahlen_zeilen: list[dict] = []
     verworfen = 0
     for schluessel, je_bericht in sorted(alle_werte(nach_jahrgang).items()):
-        key, kennzahl, year = schluessel
+        key, indicator, year = schluessel
         if schluessel in strittig:
             verworfen += 1
             continue
-        proben: list[str] = []
+        probes: list[str] = []
         delta = None
         if schluessel in dokumentprobe:
             name, delta = dokumentprobe[schluessel]
-            proben.append(name)
+            probes.append(name)
         if len(je_bericht) > 1:
-            proben.append("beteiligung_ueberlappung")
-        if not proben:
+            probes.append("beteiligung_ueberlappung")
+        if not probes:
             verworfen += 1
             continue
         juengster = max(je_bericht)
         e = gelesen[juengster]
         g = next(x for x in e["gesellschaften"] if x.key == key)
         kennzahlen_zeilen.append({
-            "gesellschaft": key, "kennzahl": kennzahl, "year": year,
-            "wert": je_bericht[juengster], "einheit": EINHEITEN[kennzahl],
-            "bericht_jahr": juengster, "berichte": len(je_bericht),
+            "gesellschaft": key, "indicator": indicator, "year": year,
+            "wert": je_bericht[juengster], "einheit": EINHEITEN[indicator],
+            "report_year": juengster, "berichte": len(je_bericht),
             "herkunft": _h.Herkunft(
-                probe=proben,
-                fundstelle=f"Abschnitt {g.gliederung} — Kennzahlen im Zeitverlauf",
+                probe=probes,
+                citation=f"Abschnitt {g.classification} — Kennzahlen im Zeitverlauf",
                 probe_result=_nachweis(delta, len(je_bericht)),
                 **anker(e, g))})
 

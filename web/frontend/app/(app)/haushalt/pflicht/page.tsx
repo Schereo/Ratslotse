@@ -154,8 +154,8 @@ export default function PflichtPage() {
     : 0;
 
   const rows: Zeile[] = bereiche(zeilen).map((z) => {
-    const kanon = bereichKanon(z.bereich);
-    const eintrag = pflichtFuer(z.bereich);
+    const kanon = bereichKanon(z.area);
+    const eintrag = pflichtFuer(z.area);
     const befund = kanon.schluessel ? befunde.get(kanon.schluessel) : undefined;
     return {
       z,
@@ -292,7 +292,7 @@ export default function PflichtPage() {
           className="mt-3"
           zeilen={[{ titel: `Alle Ausgaben ${year}`, segmente }]}
           basis={gesamtAus}
-          marke={defizit > 0 && gesamtAus > 0 ? {
+          mark={defizit > 0 && gesamtAus > 0 ? {
             wert: defizit,
             label: `Der Strich markiert das geplante Minus: ${deMio(defizit)} Mio. €, `
               + `also ${((defizit / gesamtAus) * 100).toLocaleString("de-DE", { maximumFractionDigits: 1 })} % derselben Ausgaben.`,
@@ -355,7 +355,7 @@ export default function PflichtPage() {
             {weicht.length > 0 && (
               <> Bei <strong>{weicht.length} von {geprueft.length} Bereichen</strong> weicht
               diese Angabe von unserer Einordnung ab:{" "}
-              {weicht.map((r) => bereichKanon(r.z.bereich).name).join(", ")}.</>
+              {weicht.map((r) => bereichKanon(r.z.area).name).join(", ")}.</>
             )}
           </p>
           <p className="mt-1.5 text-[11.5px] leading-relaxed text-muted-foreground">
@@ -411,7 +411,7 @@ export default function PflichtPage() {
               {PFLICHT_ERKLAERUNG[s]}
             </p>
             {gruppe.map((r) => (
-              <BereichsZeile key={r.z.bereich} r={r} gesamt={gesamtAus} produktJahr={produktJahr} />
+              <BereichsZeile key={r.z.area} r={r} gesamt={gesamtAus} produktJahr={produktJahr} />
             ))}
           </section>
         );
@@ -426,7 +426,7 @@ export default function PflichtPage() {
             Summen zu fallen.
           </p>
           {ohneStufe.map((r) => (
-            <BereichsZeile key={r.z.bereich} r={r} gesamt={gesamtAus} produktJahr={produktJahr} />
+            <BereichsZeile key={r.z.area} r={r} gesamt={gesamtAus} produktJahr={produktJahr} />
           ))}
         </section>
       )}
@@ -535,7 +535,7 @@ function BereichsZeile({ r, gesamt, produktJahr }: {
   gesamt: number;
   produktJahr: number | null;
 }) {
-  const kanon = bereichKanon(r.z.bereich);
+  const kanon = bereichKanon(r.z.area);
   const befund = r.befund;
   const anteil = gesamt > 0 ? Math.min((r.aus / gesamt) * 100, 100) : 0;
   // Zwei Nachkommastellen erst unter 0,1 %: „0,05 %" (Stiftungen, 0,4 Mio.)
@@ -557,7 +557,7 @@ function BereichsZeile({ r, gesamt, produktJahr }: {
                 `break-words` allein nicht: Ein Flex-Kind schrumpft ohne
                 `min-w-0` nicht unter seine längste unteilbare Stelle. */}
             <Link
-              href={`/haushalt/bereich?name=${bereichSlug(r.z.bereich)}`}
+              href={`/haushalt/bereich?name=${bereichSlug(r.z.area)}`}
               className="min-w-0 text-[13px] font-bold leading-snug break-words hover:text-primary"
             >
               {kanon.name}
@@ -684,7 +684,7 @@ function Selbstauskunft({ befund, year }: { befund: SpielraumBefund; year: numbe
           )}
           <Beleg q="teilhaushalt" />
         </p>
-        {groesste?.auftragsgrundlage && (
+        {groesste?.legal_basis && (
           <details className="group mt-1.5">
             <summary className={cn(
               "cursor-pointer list-none text-[11.5px] font-semibold text-primary",
@@ -695,7 +695,7 @@ function Selbstauskunft({ befund, year }: { befund: SpielraumBefund; year: numbe
             </summary>
             <div className="mt-1.5 rounded-lg border border-border bg-muted/40 p-2.5">
               <p className="text-[11.5px] font-semibold leading-snug">
-                {groesste.produkt_name}
+                {groesste.product_name}
                 <span className="ml-1.5 font-normal tabular-nums text-muted-foreground">
                   {amount(groesste.expenses).wert}&nbsp;{amount(groesste.expenses).einheit}
                 </span>
@@ -705,10 +705,10 @@ function Selbstauskunft({ befund, year }: { befund: SpielraumBefund; year: numbe
                   oder auf einem Ratsbeschluss beruht — sie zu paraphrasieren
                   hieße, genau die Auskunft wegzuwerfen. */}
               <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">
-                {groesste.auftragsgrundlage}
+                {groesste.legal_basis}
               </p>
               <Link
-                href={`/haushalt/produkte?nr=${encodeURIComponent(groesste.produkt_nr)}`}
+                href={`/haushalt/produkte?nr=${encodeURIComponent(groesste.product_no)}`}
                 className="mt-1.5 inline-block text-[11.5px] font-semibold text-primary"
               >
                 Steckbrief dieser Aufgabe

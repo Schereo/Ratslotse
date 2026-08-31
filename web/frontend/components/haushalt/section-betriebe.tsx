@@ -3,7 +3,7 @@
 // „Was planen die Betriebe?" — der DRITTE Abschnitt von /haushalt/konzern.
 //
 // Bis zum 21.08.2026 die eigene Seite /haushalt/betriebe. Siehe den Kopf von
-// `abschnitt-konzern.tsx`.
+// `section-konzern.tsx`.
 
 // /haushalt/betriebe — der Haushalt neben dem Haushalt.
 //
@@ -111,9 +111,9 @@ const BELEGLAGE: Record<string, { kurz: string; lang: string }> = {
   },
 };
 
-function beleg(proben: string): { kurz: string; lang: string } {
+function beleg(probes: string): { kurz: string; lang: string } {
   for (const schluessel of Object.keys(BELEGLAGE)) {
-    if (proben.includes(schluessel)) return BELEGLAGE[schluessel];
+    if (probes.includes(schluessel)) return BELEGLAGE[schluessel];
   }
   return { kurz: "geprüft", lang: "Die Rechenprobe dieser Zeile ist gelaufen." };
 }
@@ -154,7 +154,7 @@ function BetriebsKarte({ zeilen, juengstesJahr, herkunftFuer }: {
   // Entwicklung. Sortiert wird hier und nicht im Vertrauen auf die API.
   const nach = [...zeilen].sort((a, b) => a.year - b.year);
   const letzte = juengsteZeile(zeilen);
-  const b = beleg(letzte.proben);
+  const b = beleg(letzte.probes);
   const reihe: JahrPunkt[] = nach.map((z) => ({ year: z.year, wert: z.result / 1e6 }));
   const zeigKurve = nach.length >= 3;
 
@@ -216,7 +216,7 @@ function BetriebsKarte({ zeilen, juengstesJahr, herkunftFuer }: {
           Die Bedingung hängt an der PROBE und nicht am Betriebskürzel: Wer
           künftig ebenfalls ausgeglichen plant, bekommt denselben Satz, ohne dass
           ihn jemand hier einträgt. */}
-      {letzte.result === 0 && letzte.proben.includes("kernzahl") && (
+      {letzte.result === 0 && letzte.probes.includes("kernzahl") && (
         <p className="mt-2 max-w-[62ch] text-[12px] leading-relaxed text-muted-foreground">
           <span className="font-semibold text-foreground">Ein ausgeglichener
           Plan.</span> Die Null ist keine fehlende Zahl, sondern die Absicht:

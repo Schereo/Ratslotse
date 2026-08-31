@@ -202,13 +202,13 @@ def main() -> int:
                 label=f"Statistisches Jahrbuch der Stadt Oldenburg, Tabelle 1108 — "
                       f"Stand der Verschuldung {spanne[0]} bis {spanne[1]}",
                 stand=f"Schuldenstand zum 31.12.{spanne[1]}")
-            fundstelle = ("Kapitel 11 „Verwaltung und Finanzen“, Tabelle 1108 — "
+            citation = ("Kapitel 11 „Verwaltung und Finanzen“, Tabelle 1108 — "
                           "je Jahr die vier Schuldenarten (Spalten S 2 bis S 5), "
                           "ihre Summe (S 6) und der Betrag je Einwohner*in (S 7)")
 
             geschrieben = 0
-            for probenlage in sorted({tuple(z["proben"]) for z in zeilen}):
-                teil = [z for z in zeilen if tuple(z["proben"]) == probenlage]
+            for probenlage in sorted({tuple(z["probes"]) for z in zeilen}):
+                teil = [z for z in zeilen if tuple(z["probes"]) == probenlage]
                 jahre = [z["year"] for z in teil]
                 spanne_teil = (f"Jahrgänge {jahre[0]}–{jahre[-1]}" if len(jahre) > 1
                                else f"Jahrgang {jahre[0]}")
@@ -227,7 +227,7 @@ def main() -> int:
                                  + " — die Aufteilung nach Schuldenarten ist "
                                    "deshalb nicht gespeichert")
                 geschrieben += store.save_schulden(teil, h.Herkunft(
-                    probe=list(probenlage), fundstelle=fundstelle,
+                    probe=list(probenlage), citation=citation,
                     probe_result=nachweis, **anker))
             print(f"  gespeichert: {geschrieben} Jahrgänge")
 

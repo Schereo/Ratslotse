@@ -1,7 +1,7 @@
 """Woher eine gespeicherte Zahl stammt — ein Format für alle Finanz-Schichten.
 
 Der Haushalts-Bereich trug seine Herkunft bis 08/2026 in drei verschiedenen
-Schreibweisen: ``quelle_label``/``quelle_url`` in den einen Tabellen,
+Schreibweisen: ``source_label``/``source_url`` in den einen Tabellen,
 ``label``/``url`` in der nächsten, ``source_url`` in den vier ältesten. Und
 überall fehlte dasselbe: die Fundstelle **im** Dokument, die bestandene
 Rechenprobe und ein Anker, der einen Dokumentwechsel überlebt.
@@ -30,8 +30,8 @@ Der Preis ist ein Join. Er fällt auf einer Tabelle mit einigen hundert Zeilen
 nicht ins Gewicht, und die Lesewege des Bereichs holen ohnehin ganze
 Jahrgänge auf einmal.
 
-Was die alten Spalten angeht: Sie **bleiben**. ``quelle_label``,
-``quelle_url`` und ``source_url`` stehen weiter dort, wo sie standen, und
+Was die alten Spalten angeht: Sie **bleiben**. ``source_label``,
+``source_url`` und ``source_url`` stehen weiter dort, wo sie standen, und
 werden weiter aus derselben Angabe gefüllt. Sie zu entfernen hieße, neun
 Tabellen neu zu schreiben — darunter vier, deren Inhalt nur über einen
 Download von oldenburg.de wiederzubeschaffen wäre. Der Gewinn wäre kosmetisch,
@@ -117,7 +117,7 @@ PROBEN: dict[str, str] = {
         "Die Summe der gelesenen Einzelpositionen trifft je Planjahr die "
         "Zusammenstellung — die Zeile, die dieses Dokument summiert, oder "
         "bei kumulierten Beschluss-Dateien Endsumme minus Entwurf. Stünde "
-        "ein Betrag in der falschen Spalte, ginge genau das nicht auf.",
+        "ein Betrag in der falschen Spalte, ginge exact das nicht auf.",
     "aenderungsliste_erlaeuterungen":
         "Die Erläuterungs-Texte folgen den gedruckten Tabellenlinien: Jeder "
         "Absatz steht in dem Zeilenband, in dem auch seine Position steht — "
@@ -144,7 +144,7 @@ PROBEN: dict[str, str] = {
         "Gebühr — Menge und Gebühr stehen an anderer Stelle als die Kaskade.",
     "gebuehrensaetze_anzahl":
         "Anlage 4 enthält jede der zwölf ausdrücklich benannten Tarifarten "
-        "genau einmal — eine fehlende oder zusätzliche Zahl verwirft die Zeile.",
+        "exact einmal — eine fehlende oder zusätzliche Zahl verwirft die Zeile.",
     "gebuehrensaetze_eckwerte":
         "Die Gebühr je Mg und die Straßenreinigungsgebühr aus Anlage 4 stimmen "
         "mit den getrennt errechneten Vorschlägen in Anlagen 1 und 3 überein.",
@@ -243,7 +243,7 @@ PROBEN: dict[str, str] = {
         "Bestätigung neben den beiden Seiten.",
     "rueckstellungs_gliederung":
         "Die Rückstellungen für Pensionen und die für Beihilfe ergeben "
-        "zusammen genau den Sammelposten, den die Bilanz eine Zeile darüber "
+        "zusammen exact den Sammelposten, den die Bilanz eine Zeile darüber "
         "ausweist. Damit steht fest, welche der beiden Zahlen gemeint ist, "
         "die im Umlauf sind.",
     "bilanz_vorjahreskette":
@@ -260,7 +260,7 @@ PROBEN: dict[str, str] = {
     "bilanz_erlaeuterung":
         "Der Anhang erläutert die Bilanz Position für Position. Dass jeder "
         "Text an der Position steht, zu der er gehört, ist hier geprüft: Die "
-        "neun Abschnitte tragen die Namen der neun Hauptposten, in genau "
+        "neun Abschnitte tragen die Namen der neun Hauptposten, in exact "
         "deren Reihenfolge.",
     "abweichungstext":
         "Die Erläuterung nennt ihre Abweichung doppelt, als Betrag und als "
@@ -295,7 +295,7 @@ PROBEN: dict[str, str] = {
         "jeder Spalte, nicht nur bei den geplanten Stellen.",
     "stellenplan_besetzung":
         "Die Rechnung hinter den unbesetzten Stellen geht auf: besetzte plus "
-        "unbesetzte Stellen ergeben genau die Zahl der Stellen, die der Plan "
+        "unbesetzte Stellen ergeben exact die Zahl der Stellen, die der Plan "
         "für den Stichtag ausweist.",
     "stellenplan_gesamtsumme":
         "Die Gruppensummen ergeben zusammen die Gesamtzeile des Plans. Der "
@@ -321,10 +321,10 @@ PROBEN: dict[str, str] = {
         "außerordentliche Aufwendungen = außerordentliches Ergebnis.",
     "konzern_gesamtergebnis":
         "Beide Teile zusammen ergeben das ausgewiesene Gesamtjahresergebnis — "
-        "die Tabelle ist also von oben bis unten in sich stimmig.",
+        "die Tabelle ist also von oben bis unten in sich consistent.",
     "konzern_traegersumme":
         "Die einbezogenen Betriebe und Gesellschaften ergeben zusammen mit der "
-        "Verrechnung untereinander genau die Summe, die der Bericht ausweist.",
+        "Verrechnung untereinander exact die Summe, die der Bericht ausweist.",
     "konzern_querprobe":
         "Dieselbe Summe steht an zwei Stellen des Berichts — in der "
         "Ergebnisrechnung des Konzerns und in der Aufstellung, wer wie viel "
@@ -342,14 +342,14 @@ PROBEN: dict[str, str] = {
         "Die Rechnung, die eine Grundsteuer oder Gewerbesteuer ausmacht, geht "
         "auf: Grundbetrag mal Hebesatz ergibt das Aufkommen, das die Tabelle "
         "ausweist. Bei der Gewerbesteuer zusätzlich, dass nach Abzug der "
-        "Umlage genau der Betrag bleibt, den wir zeigen.",
+        "Umlage exact der Betrag bleibt, den wir zeigen.",
     # Gewerbesteuerstatistik des LSN (council/gewerbesteuerstatistik.py). Drei
     # Proben, die aufeinander aufbauen: die Rechnung in der Zeile, dieselbe
     # Zeile im zweiten Blatt, und ein Wert daraus gegen ein Dokument aus einem
     # anderen Haus.
     "gewst_summenprobe":
         "Jeder Fall ist entweder eine reine Festsetzung oder eine Zerlegung. "
-        "Beide Gruppen ergeben zusammen genau die Gesamtzahl, die dieselbe "
+        "Beide Gruppen ergeben zusammen exact die Gesamtzahl, die dieselbe "
         "Zeile ausweist — für die Betriebe, für die zahlenden darunter und "
         "für den Steuermessbetrag.",
     "gewst_blattprobe":
@@ -366,13 +366,13 @@ PROBEN: dict[str, str] = {
     "kfa_komponentenprobe":
         "Die drei Bestandteile der Zuweisung — für Gemeindeaufgaben, für "
         "Kreisaufgaben und für die übertragenen staatlichen Aufgaben — ergeben "
-        "nach Abzug der Finanzausgleichsumlage genau den Nettobetrag, den "
+        "nach Abzug der Finanzausgleichsumlage exact den Nettobetrag, den "
         "dieselbe Zeile ausweist. Für alle acht kreisfreien Städte und beide "
         "Jahre, die eine Ausgabe führt.",
     "kfa_jahrbuchabgleich":
         "Was das Land als Zuweisung festsetzt, taucht in den Büchern der Stadt "
         "wieder auf: Tabelle 1103 des Statistischen Jahrbuchs nennt unter "
-        "„Finanzzuweisungen“ für 2023 und 2024 auf das Tausend genau denselben "
+        "„Finanzzuweisungen“ für 2023 und 2024 auf das Tausend exact denselben "
         "Betrag. Für 2025 stehen 79.785 gegen 79.787 Tausend Euro — dort ist "
         "das Rechnungsergebnis der Stadt noch vorläufig.",
     "lsn_dreijahresmittel":
@@ -383,7 +383,7 @@ PROBEN: dict[str, str] = {
     # Investitionen aus dem Finanzhaushalt (council/investitionen.py). Die
     # einzige Portal-CSV des Bereichs, die eine Probe mitbringt.
     "investitionen_summenzeile":
-        "Die Teilhaushalte ergeben zusammen genau die Summenzeile, die dieselbe "
+        "Die Teilhaushalte ergeben zusammen exact die Summenzeile, die dieselbe "
         "Datei ausweist — in beiden Spalten, bei den Einzahlungen wie bei den "
         "Auszahlungen.",
     # Die Ist-Investitionen aus den Tabellen 1107/1107-1 des Statistischen
@@ -393,7 +393,7 @@ PROBEN: dict[str, str] = {
     # sie reißt, wird deshalb ganz verworfen und nicht halb übernommen.
     "investitionen_ist_zeilensumme":
         "Die Auszahlungsarten des Jahres — Baumaßnahmen, Grundstücke, "
-        "bewegliches Vermögen und die übrigen — ergeben zusammen genau den "
+        "bewegliches Vermögen und die übrigen — ergeben zusammen exact den "
         "Betrag, den dieselbe Zeile daneben als Summe ausweist.",
     # Investitionsprogramm, Anlage 004 des Haushaltsplans
     # (council/investitionsprogramm.py). Drei Proben, die das Dokument selbst
@@ -401,7 +401,7 @@ PROBEN: dict[str, str] = {
     # zweite ist die stärkste — sie verbindet zwei Stellen, die siebzig Seiten
     # auseinanderliegen.
     "investitionsprogramm_abschnitt":
-        "Die einzelnen Vorhaben eines Teilhaushalts ergeben zusammen genau die "
+        "Die einzelnen Vorhaben eines Teilhaushalts ergeben zusammen exact die "
         "Gesamtsumme, die das Investitionsprogramm am Ende seines Abschnitts "
         "ausweist.",
     "investitionsprogramm_wiederholung":
@@ -409,7 +409,7 @@ PROBEN: dict[str, str] = {
         "rund siebzig Seiten früher, in der Übersicht über alle Teilhaushalte. "
         "Beide Stellen stimmen überein.",
     "investitionsprogramm_kopftabelle":
-        "In dieser Übersicht ergeben die Teilhaushalte zusammen genau die "
+        "In dieser Übersicht ergeben die Teilhaushalte zusammen exact die "
         "Gesamtsumme des Investitionsprogramms.",
     # Schuldenzeitreihe aus Tabelle 1108 des Statistischen Jahrbuchs
     # (council/schulden.py). Die zweite ist die stärkere: Ihr Divisor kommt aus
@@ -418,7 +418,7 @@ PROBEN: dict[str, str] = {
     "schulden_summenzeile":
         "Die vier Schuldenarten der Tabelle — Kreditmarkt, öffentliche "
         "Sondermittel, Gebietskörperschaften und Eigenbetriebe — ergeben "
-        "zusammen genau die Summe, die daneben ausgewiesen ist.",
+        "zusammen exact die Summe, die daneben ausgewiesen ist.",
     "schulden_prokopf":
         "Die ausgewiesene Gesamtschuld, geteilt durch die Einwohnerzahl aus "
         "dem Open-Data-Datensatz der Stadt, ergibt den Betrag je Einwohner*in, "
@@ -481,7 +481,7 @@ PROBEN: dict[str, str] = {
         "letzte Nachkommastelle überein.",
     "kennzahlen_vermoegensprobe":
         "„Vermögen je Einwohner*in“ mal „Anzahl der "
-        "Einwohnenden“ — zwei Zeilen derselben Tabelle — ergibt genau "
+        "Einwohnenden“ — zwei Zeilen derselben Tabelle — ergibt exact "
         "die Bilanzsumme ohne "
         "Rechnungsabgrenzung, wie die Bilanz sie ausweist.",
     "kennzahlen_ueberlappung":
@@ -501,7 +501,7 @@ PROBEN: dict[str, str] = {
         "Beschlussvorschlag, einmal im Abschnitt zu den finanziellen "
         "Auswirkungen. Dort entweder als dieselbe Zahl oder zerlegt in "
         "Mehrerträge und Sachspenden — und diese Zerlegung addiert sich auf "
-        "den Cent genau auf den Gesamtbetrag.",
+        "den Cent exact auf den Gesamtbetrag.",
     "spenden_protokollabgleich":
         "Was die Vorlage vorschlägt, hat der Rat auch beschlossen: Das "
         "Sitzungsprotokoll nennt denselben Betrag wie der Beschlussvorschlag. "
@@ -514,12 +514,12 @@ PROBEN: dict[str, str] = {
     # kostet.
     "steuerplan_summenzeile":
         "Die einzelnen Steuerarten und die Finanzzuweisungen ergeben zusammen "
-        "genau die Zeile „insgesamt“, die dieselbe Tabelle ausweist — und zwar "
+        "exact die Zeile „insgesamt“, die dieselbe Tabelle ausweist — und zwar "
         "in jeder ihrer sechs Spalten: im Haushaltsplan wie im "
         "Rechnungsergebnis, für jedes der drei Jahre.",
     "steuerplan_anteilsprobe":
         "Neben jedem Betrag druckt die Tabelle seinen Anteil an der "
-        "Gesamtsumme. Der Betrag, geteilt durch die Summe, ergibt genau diesen "
+        "Gesamtsumme. Der Betrag, geteilt durch die Summe, ergibt exact diesen "
         "Prozentsatz — damit steht fest, dass jeder Betrag in der Spalte steht, "
         "in der wir ihn gelesen haben.",
     "steuerplan_istabgleich":
@@ -548,7 +548,7 @@ PROBEN: dict[str, str] = {
     # das noch in keinem zweiten Bericht steht.
     "beteiligung_seitenprobe":
         "Der Bericht sagt zweimal, wo diese Gesellschaft steht: Sein "
-        "Inhaltsverzeichnis nennt die Seite, und auf genau dieser Seite steht "
+        "Inhaltsverzeichnis nennt die Seite, und auf exact dieser Seite steht "
         "ihre Gliederungsnummer. Damit gehört der Abschnitt nachweislich zu "
         "ihr und nicht zur Gesellschaft davor.",
     "beteiligung_bilanzprobe":
@@ -557,7 +557,7 @@ PROBEN: dict[str, str] = {
         "Kennzahlen-Tabelle desselben Abschnitts nennt sie ein drittes Mal. "
         "Alle drei stimmen überein.",
     "beteiligung_ergebnisprobe":
-        "Die Gewinn- und Verlustrechnung der Gesellschaft schließt mit genau "
+        "Die Gewinn- und Verlustrechnung der Gesellschaft schließt mit exact "
         "dem Jahresergebnis, das die Kennzahlen-Tabelle desselben Abschnitts "
         "führt.",
     "beteiligung_spaltenprobe":
@@ -568,7 +568,7 @@ PROBEN: dict[str, str] = {
         "Längen auseinanderlaufen, steht bei dieser Gesellschaft an keinem "
         "Namen ein Amt.",
     "beteiligung_anteilsprobe":
-        "Die Anteile der Gesellschafter ergeben zusammen genau das "
+        "Die Anteile der Gesellschafter ergeben zusammen exact das "
         "Stammkapital, das dieselbe Tabelle als Summe ausweist — und ihre "
         "Prozentsätze zusammen 100.",
     "beteiligung_ueberlappung":
@@ -638,7 +638,7 @@ HERKUNFT_TABELLEN: tuple[str, ...] = (
     "council_pruefberichte",
     # Beide neu mit dem Konzern-Bereich und ohne Altbestand: Sie führen ihre
     # Herkunft ausschließlich über `herkunft_id`, tragen also keine
-    # `quelle_label`/`quelle_url`-Spalten mehr, aus denen etwas nachzutragen
+    # `source_label`/`source_url`-Spalten mehr, aus denen etwas nachzutragen
     # wäre (s. `CouncilStore._HERKUNFT_ALTFELDER`).
     "council_konzern_posten",
     "council_konzern_traeger",
@@ -741,10 +741,10 @@ class Herkunft:
 
     Pflicht sind ``art`` und ``probe`` — ohne sie lässt sich der Datensatz
     nicht bauen. Dazu muss mindestens einer der beiden Verweise stehen:
-    ``dokument_id`` (der stabile Anker) oder ``url``. Eine Herkunft, die auf
+    ``document_id`` (der stabile Anker) oder ``url``. Eine Herkunft, die auf
     nichts zeigt, wäre eine Behauptung.
 
-    ``fundstelle`` bleibt leer, solange ein Parser sie nicht kennt — leer ist
+    ``citation`` bleibt leer, solange ein Parser sie nicht kennt — leer ist
     hier ehrlicher als geraten. Sie wird nachgerüstet, wo sie bekannt ist.
     """
 
@@ -755,16 +755,16 @@ class Herkunft:
     #: ``council_anlagen.document_id`` — überlebt Label- und URL-Wechsel.
     #: Der Gesamtabschluss 2016 heißt im Bürgerinfo schlicht „Anlage"; wer
     #: über das Label ankert, verliert ihn beim nächsten Umbenennen.
-    dokument_id: int | None = None
+    document_id: int | None = None
     #: Wie das Dokument heißt — für Menschen, nicht als Schlüssel.
     label: str | None = None
     url: str | None = None
     #: Wo im Dokument: „Abschnitt 6.3.1", „Übersicht Ergebnishaushalt",
     #: „Datensatz 1104". Bei 300 Seiten ist die URL allein zu wenig.
-    fundstelle: str | None = None
+    citation: str | None = None
     #: Seitenzahl, falls das Dokument eine trägt — macht aus dem Link einen
     #: Sprung (``…pdf#page=161``).
-    seite: int | None = None
+    page: int | None = None
     #: Der Messwert der Probe, wo sie einen liefert: „0,02 % Abweichung".
     #: Belegt, dass sie wirklich lief und nicht nur behauptet wird.
     probe_result: str | None = None
@@ -781,13 +781,13 @@ class Herkunft:
         # Der Aufrufer darf einen Namen oder eine Liste übergeben; gespeichert
         # wird immer die kanonische, geprüfte Fassung.
         object.__setattr__(self, "probe", _proben_normalisieren(self.probe))
-        if self.dokument_id is None and not self.url:
+        if self.document_id is None and not self.url:
             raise ValueError(
-                "Herkunft ohne Verweis: mindestens dokument_id (der stabile "
+                "Herkunft ohne Verweis: mindestens document_id (der stabile "
                 "Anker aus council_anlagen) oder url muss stehen.")
 
     @property
-    def proben(self) -> list[str]:
+    def probes(self) -> list[str]:
         """Die Probennamen einzeln."""
         return [n for n in str(self.probe).split(",") if n]
 
@@ -798,13 +798,13 @@ class Herkunft:
         ``UNBEKANNT`` gilt als geprüft: Diese Zeilen **haben** eine Probe
         bestanden, nur ist nicht festgehalten, welche. Nur ``UNGEPRUEFT``
         heißt, dass es keine gab."""
-        return self.proben != [UNGEPRUEFT]
+        return self.probes != [UNGEPRUEFT]
 
     def felder(self) -> dict:
         """Die Spaltenwerte für ``council_herkunft`` (ohne ``fetched_at``)."""
-        return {"art": self.art, "dokument_id": self.dokument_id,
+        return {"art": self.art, "document_id": self.document_id,
                 "label": self.label, "url": self.url,
-                "fundstelle": self.fundstelle, "seite": self.seite,
+                "citation": self.citation, "page": self.page,
                 "probe": str(self.probe), "probe_result": self.probe_result,
                 "stand": self.stand}
 

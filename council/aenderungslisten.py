@@ -143,14 +143,14 @@ class Zeile:
     """Eine Position einer Änderungsliste — ein Planjahr, eine Zeile."""
 
     year: int
-    lfd: int
+    seq: int
     #: ``None`` = die Position gilt pauschal „alle“ Teilhaushalte — so führt
     #: der 2019er-Jahrgang globale Minderausgaben (Zeilen 16/17, je „diverse“
     #: Produkte, zusammen −3,35 Mio. € Aufwand).
-    thh: int | None
-    seite_entwurf: int | None
-    produkt: str | None
-    bezeichnung: str
+    sub_budget: int | None
+    page_draft: int | None
+    product: str | None
+    label: str
     #: Euro, negativ = Minderung. ``None`` = Zeile ohne Betrag in dieser
     #: Spalte (auch beides ``None`` kommt vor: reine Haushaltsvermerke).
     revenue: int | None
@@ -159,7 +159,7 @@ class Zeile:
     #: Entwurf des Wirtschaftsplans 2026 weist einen Zuschussbedarf …“).
     #: ``None``, wenn die Zelle leer ist oder ihre Zuordnung nicht eindeutig
     #: über die Tabellenlinien läuft (s. ``_erlaeuterungen_anbauen``).
-    erlaeuterung: str | None = None
+    explanation: str | None = None
     #: WER diese Position vorgeschlagen hat — aus der Spalte „Vorschlag von“.
     #: ``None`` überall dort, wo das Dokument die Spalte nicht führt (17 von
     #: 18 EHH-Dokumenten); s. ``_urheber_anbauen``.
@@ -189,7 +189,7 @@ class Ergebnis:
     stand: str | None = None
 
     @property
-    def jahrgang(self) -> int:
+    def budget_year(self) -> int:
         """Der Haushaltsjahrgang = das erste Planjahr der Liste."""
         return min(z.year for z in self.zeilen)
 
@@ -214,10 +214,10 @@ def seiten_woerter(pdf_bytes: bytes) -> list[list[Wort]]:
 
     aus: list[list[Wort]] = []
     with pymupdf.open(stream=pdf_bytes, filetype="pdf") as doc:
-        for seite in doc:
-            mat = seite.rotation_matrix
+        for page in doc:
+            mat = page.rotation_matrix
             woerter: list[Wort] = []
-            for w in seite.get_text("words"):
+            for w in page.get_text("words"):
                 r = pymupdf.Rect(w[:4]) * mat
                 woerter.append((round(r.x0, 1), round(r.x1, 1),
                                 round(r.y0, 1), w[4]))
@@ -244,11 +244,11 @@ def seiten_linien(pdf_bytes: bytes) -> list[Linien]:
 
     aus: list[Linien] = []
     with pymupdf.open(stream=pdf_bytes, filetype="pdf") as doc:
-        for seite in doc:
-            mat = seite.rotation_matrix
+        for page in doc:
+            mat = page.rotation_matrix
             waagerecht: list[float] = []
             senkrecht: list[float] = []
-            for zug in seite.get_drawings():
+            for zug in page.get_drawings():
                 for item in zug["items"]:
                     if item[0] == "l":
                         p1, p2 = item[1] * mat, item[2] * mat
@@ -337,7 +337,7 @@ class Spalten:
     expense: float  # x-Mitte des Kopfs „Aufwand“
     #: Linke Kante des Kopfworts „Bezeichnung“ — für die Fragment-Nachlese
     #: mehrzeiliger Bezeichnungen. ``None``, wenn der Kopf fehlt.
-    bezeichnung: float | None = None
+    label: float | None = None
     #: Die GEZEICHNETE Bezeichnungs-Spalte (linke/rechte senkrechte Linie um
     #: den Kopf). Wo die Seite ihr Raster zeichnet, gilt es statt der aus dem
     #: Kopfwort geschätzten Zone — s. :func:`_bezeichnungsfragment`.
@@ -363,24 +363,24 @@ def _spalten(zeilen: list[list[Wort]],
     trägt nur die Bezeichnungs-Spalte bei — das Linienpaar, das den Kopf
     „Bezeichnung“ einschließt.
     """
-    revenue = expense = bezeichnung = None
+    revenue = expense = label = None
     for zeile in zeilen[:14]:
         for x0, x1, _y, text in zeile:
             if text == "Ertrag" and revenue is None:
                 revenue = (x0 + x1) / 2
             elif text == "Aufwand" and expense is None:
                 expense = (x0 + x1) / 2
-            elif text == "Bezeichnung" and bezeichnung is None:
-                bezeichnung = x0
+            elif text == "Bezeichnung" and label is None:
+                label = x0
     if revenue is None or expense is None:
         return None
     spalte = None
-    if senkrecht and bezeichnung is not None:
-        links = [x for x in senkrecht if x < bezeichnung]
-        rechts = [x for x in senkrecht if x > bezeichnung]
+    if senkrecht and label is not None:
+        links = [x for x in senkrecht if x < label]
+        rechts = [x for x in senkrecht if x > label]
         if links and rechts:
             spalte = (max(links), min(rechts))
-    return Spalten(revenue=revenue, expense=expense, bezeichnung=bezeichnung,
+    return Spalten(revenue=revenue, expense=expense, label=label,
                    bez_spalte=spalte)
 
 
@@ -389,12 +389,12 @@ def _zahl(text: str) -> int:
 
 
 def _position_lesen(zeile: list[Wort], year: int, spalten: Spalten) -> Zeile:
-    lfd = int(zeile[0][3])
-    thh = int(zeile[1][3]) if zeile[1][3] != "alle" else None
+    seq = int(zeile[0][3])
+    sub_budget = int(zeile[1][3]) if zeile[1][3] != "alle" else None
 
-    seite_entwurf: int | None = None
-    produkt: str | None = None
-    bezeichnung: list[str] = []
+    page_draft: int | None = None
+    product: str | None = None
+    label: list[str] = []
     revenue: int | None = None
     expense: int | None = None
 
@@ -413,19 +413,19 @@ def _position_lesen(zeile: list[Wort], year: int, spalten: Spalten) -> Zeile:
             if x1 > zone_rechts:
                 break  # Zahl in der Erläuterung — dahinter kommt nichts mehr
             # Kleine Zahl vor der Bezeichnung: die Seite im HH-Entwurf.
-            if (text.isdigit() and seite_entwurf is None
-                    and not bezeichnung and produkt is None):
-                seite_entwurf = int(text)
+            if (text.isdigit() and page_draft is None
+                    and not label and product is None):
+                page_draft = int(text)
             continue
         if x0 > spalten.mitte:
             break  # erster Text rechts der Mitte: die Erläuterung beginnt
-        if _PRODUKT.match(text) and not bezeichnung and produkt is None:
-            produkt = text
+        if _PRODUKT.match(text) and not label and product is None:
+            product = text
             continue
-        bezeichnung.append(text)
+        label.append(text)
 
-    return Zeile(year=year, lfd=lfd, thh=thh, seite_entwurf=seite_entwurf,
-                 produkt=produkt, bezeichnung=" ".join(bezeichnung),
+    return Zeile(year=year, seq=seq, sub_budget=sub_budget, page_draft=page_draft,
+                 product=product, label=" ".join(label),
                  revenue=revenue, expense=expense)
 
 
@@ -471,8 +471,8 @@ def _bezeichnungsfragment(zeile: list[Wort], spalten: Spalten) -> str | None:
         # auf ihrer Linie auf (gemessen 230011: „Männern“ endet bei 355,0 bei
         # einer Spaltenlinie 359,4 — die Kante ist die Linie, nicht das Wort).
         links, rechts = spalten.bez_spalte[0] - 1, spalten.bez_spalte[1] + 1
-    elif spalten.bezeichnung is not None:
-        links, rechts = spalten.bezeichnung - 25, zone_links - 2
+    elif spalten.label is not None:
+        links, rechts = spalten.label - 25, zone_links - 2
     else:
         return None
     teil = [w for w in zeile if links <= w[0] and w[1] <= rechts]
@@ -535,7 +535,7 @@ def parse_ehh_seiten(seiten: list[list[Wort]],
     ``linien`` (je Seite die Tabellenlinien, s. :func:`seiten_linien`) ist
     optional und trägt die Textspalten bei: die Erläuterungen, die
     Bezeichnungs-Spalte und den Urheber je Position. Ohne Linien bleiben die
-    Beträge vollständig, ``erlaeuterung`` und ``urheber`` einfach ``None``
+    Beträge vollständig, ``explanation`` und ``urheber`` einfach ``None``
     und die Bezeichnungs-Nachlese fällt auf ihre Kopf-Schätzung zurück.
     """
     aus = Ergebnis()
@@ -645,8 +645,8 @@ def _fragmente_anbauen(positionen: list[tuple[float, Zeile]],
         if not teile:
             continue
         # Nach Grundlinie sortiert, die Zeile der Position an ihrem Platz.
-        alle = sorted(teile + [(py, position.bezeichnung)])
-        position.bezeichnung = " ".join(t for _, t in alle if t)
+        alle = sorted(teile + [(py, position.label)])
+        position.label = " ".join(t for _, t in alle if t)
 
 
 def _urheber_grenze(woerter: list[Wort], senkrecht: list[float],
@@ -783,7 +783,7 @@ def _erlaeuterungen_anbauen(positionen: list[tuple[float, Zeile]],
             continue
         woerter = sorted(baender.get(band, []), key=lambda w: (w[2], w[0]))
         if woerter:
-            position.erlaeuterung = _zeilen_falten(_zeilen_bilden(woerter))
+            position.explanation = _zeilen_falten(_zeilen_bilden(woerter))
 
 
 #: Wörter, vor denen ein Trennstrich am Zeilenende KEIN Trennstrich ist,
@@ -949,7 +949,7 @@ def _urheber_probe(aus: Ergebnis, year: int, listen: list[SummenZeile],
         raise ListenFehler(
             f"Urheberprobe {year}: {len(ohne)} von {len(mit) + len(ohne)} "
             f"Positionen ohne Urheber, obwohl die Seite die Spalte führt "
-            f"(erste: lfd. {ohne[0].lfd}).")
+            f"(erste: seq. {ohne[0].seq}).")
 
     gruppen: dict[str, list[int]] = {}
     for z in mit:
@@ -994,14 +994,14 @@ def lies_ehh_liste(pdf_bytes: bytes) -> Ergebnis:
 
 # ---------------------------------------------------------------------- Herkunft
 
-def herkunft_fuer(label: str, url: str | None, dokument_id: int) -> Herkunft:
+def herkunft_fuer(label: str, url: str | None, document_id: int) -> Herkunft:
     return Herkunft(
         art="ris",
         probe=("aenderungsliste_summen", "aenderungsliste_positionen",
                "aenderungsliste_erlaeuterungen", "aenderungsliste_urheber"),
         label=label,
-        url=url or f"https://buergerinfo.oldenburg.de/getfile.php?id={dokument_id}&type=do",
-        dokument_id=dokument_id,
+        url=url or f"https://buergerinfo.oldenburg.de/getfile.php?id={document_id}&type=do",
+        document_id=document_id,
     )
 
 

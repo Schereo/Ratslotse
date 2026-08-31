@@ -25,10 +25,10 @@ export type { Herkunft };
 /** Eine Zeile aus `council_investitionen`. */
 export type InvestitionsZeile = {
   year: number;
-  ebene: "teilhaushalt" | "investitionen" | "finanzhaushalt";
+  level: "teilhaushalt" | "investitionen" | "finanzhaushalt";
   /** 0 auf den beiden Summenzeilen — sie tragen keine Teilhaushaltsnummer. */
-  thh_nr: number;
-  bezeichnung: string;
+  sub_budget_no: number;
+  label: string;
   inflows: number;
   outflows: number;
   herkunft_id: number | null;

@@ -129,18 +129,18 @@ class FhhZeile:
     """Eine Position einer FHH-Änderungsliste — ein Planjahr, eine Zeile."""
 
     year: int
-    lfd: int
-    thh: int | None
-    seite_entwurf: str | None   # auch „neu“ — dann steht die Zeile nicht im Entwurf
-    produkt: str | None         # Investitionscode, z. B. „I10.089904.500“
-    bezeichnung: str
+    seq: int
+    sub_budget: int | None
+    page_draft: str | None   # auch „neu“ — dann steht die Zeile nicht im Entwurf
+    product: str | None         # Investitionscode, z. B. „I10.089904.500“
+    label: str
     #: Die fünf Betragsspalten. ``None`` = Zelle leer, ``0`` = Strich.
     planned_draft: int | None
     inflow: int | None
     outflow: int | None
     ve: int | None
     planned_new: int | None
-    erlaeuterung: str | None = None
+    explanation: str | None = None
     urheber: str | None = None
 
 
@@ -168,7 +168,7 @@ class FhhErgebnis:
     stand: str | None = None
 
     @property
-    def jahrgang(self) -> int:
+    def budget_year(self) -> int:
         return min(z.year for z in self.zeilen)
 
 
@@ -330,22 +330,22 @@ _PRODUKT = re.compile(r"[IP]\d[\d.]*")
 
 
 def _position_lesen(zeile: list[Wort], year: int, spalten: FhhSpalten) -> FhhZeile:
-    lfd = int(zeile[0][3])
-    thh = int(zeile[1][3]) if zeile[1][3] != "alle" else None
+    seq = int(zeile[0][3])
+    sub_budget = int(zeile[1][3]) if zeile[1][3] != "alle" else None
 
-    seite: str | None = None
-    produkt: str | None = None
-    bezeichnung: list[str] = []
+    page: str | None = None
+    product: str | None = None
+    label: list[str] = []
     bez_links, bez_rechts = spalten.bez
     for x0, x1, _y, text in zeile[2:]:
         if x0 >= spalten.amount[0][0] - 1:
             break                       # ab hier beginnen die Beträge
         if bez_links - 1 <= x0 and x1 <= bez_rechts + 1:
-            bezeichnung.append(text)
+            label.append(text)
         elif _PRODUKT.fullmatch(text) or text.startswith("."):
-            produkt = (produkt or "") + text if produkt else text
-        elif seite is None:
-            seite = text                # „92“, „neu“ — beides kommt vor
+            product = (product or "") + text if product else text
+        elif page is None:
+            page = text                # „92“, „neu“ — beides kommt vor
 
     # Die BETRÄGE stehen hier bewusst noch nicht: Ein Teil der Dokumente
     # setzt sie auf eigene Grundlinien neben der Positionszeile (210923: die
@@ -353,8 +353,8 @@ def _position_lesen(zeile: list[Wort], year: int, spalten: FhhSpalten) -> FhhZei
     # ihrer Grundlinie leer). Sie kommen deshalb aus dem ZEILENBAND —
     # dieselbe Geometrie, die schon Erläuterung und Urheber zuordnet.
     return FhhZeile(
-        year=year, lfd=lfd, thh=thh, seite_entwurf=seite, produkt=produkt,
-        bezeichnung=" ".join(bezeichnung),
+        year=year, seq=seq, sub_budget=sub_budget, page_draft=page, product=product,
+        label=" ".join(label),
         planned_draft=None, inflow=None, outflow=None,
         ve=None, planned_new=None,
     )
@@ -639,7 +639,7 @@ def _doppelzeilen_falten(zeilen: list[FhhZeile]) -> list[FhhZeile]:
     """
     aus: dict[tuple[int, int], FhhZeile] = {}
     for z in zeilen:
-        schluessel = (z.year, z.lfd)
+        schluessel = (z.year, z.seq)
         erste = aus.get(schluessel)
         if erste is None:
             aus[schluessel] = z
@@ -650,10 +650,10 @@ def _doppelzeilen_falten(zeilen: list[FhhZeile]) -> list[FhhZeile]:
                 continue
             if alt_wert is not None and alt_wert != neu_wert:
                 raise ListenFehler(
-                    f"Position {z.year}/lfd {z.lfd} steht zweimal mit "
+                    f"Position {z.year}/seq {z.seq} steht zweimal mit "
                     f"verschiedenem {feld}: {alt_wert:,} und {neu_wert:,}.")
             setattr(erste, feld, neu_wert)
-        for feld in ("erlaeuterung", "bezeichnung", "urheber"):
+        for feld in ("explanation", "label", "urheber"):
             alt_text, neu_text = getattr(erste, feld), getattr(z, feld)
             if neu_text and neu_text != alt_text:
                 setattr(erste, feld, f"{alt_text} {neu_text}".strip()
@@ -673,8 +673,8 @@ def _produkt_anbauen(positionen: list[tuple[float, FhhZeile]], y: float,
     if len(sortiert) > 1 and abs(sortiert[1][0] - y) < 2 * abs(sortiert[0][0] - y):
         return
     ziel = sortiert[0][1]
-    if ziel.produkt and not ziel.produkt.endswith(schwanz):
-        ziel.produkt += schwanz
+    if ziel.product and not ziel.product.endswith(schwanz):
+        ziel.product += schwanz
 
 
 def _fragmente_anbauen(positionen: list[tuple[float, FhhZeile]],
@@ -695,8 +695,8 @@ def _fragmente_anbauen(positionen: list[tuple[float, FhhZeile]],
         teile = anbau.get(id(position))
         if not teile:
             continue
-        alle = sorted(teile + [(py, position.bezeichnung)])
-        position.bezeichnung = " ".join(t for _, t in alle if t)
+        alle = sorted(teile + [(py, position.label)])
+        position.label = " ".join(t for _, t in alle if t)
 
 
 #: Der Index der Spalte „neues Soll" in :attr:`FhhSpalten.amount`.
@@ -793,7 +793,7 @@ def _betraege_anbauen(positionen: list[tuple[float, FhhZeile]],
     # blöcke) besitzen EINE Zeile, nicht zwei.
     sortiert: list[tuple[float, FhhZeile]] = []
     for py, position in sorted(positionen, key=lambda p: p[0]):
-        if sortiert and sortiert[-1][1].lfd == position.lfd:
+        if sortiert and sortiert[-1][1].seq == position.seq:
             continue
         sortiert.append((py, position))
 
@@ -843,7 +843,7 @@ def _texte_anbauen(positionen: list[tuple[float, FhhZeile]],
         if sum(1 for qy, _ in positionen if band(waagerecht, qy) == b) > 1:
             continue
         if (woerter := sorted(erl_baender.get(b, []), key=lambda w: (w[2], w[0]))):
-            position.erlaeuterung = zeilen_falten(zeilen_bilden(woerter))
+            position.explanation = zeilen_falten(zeilen_bilden(woerter))
         if (woerter := sorted(urh_baender.get(b, []), key=lambda w: (w[2], w[0]))):
             position.urheber = " ".join(
                 " ".join(w[3] for w in z) for z in zeilen_bilden(woerter))
@@ -869,7 +869,7 @@ def _proben(aus: FhhErgebnis) -> None:
     if schief:
         z = schief[0]
         raise ListenFehler(
-            f"Zeilenprobe {z.year}/lfd {z.lfd}: {z.planned_draft:,} + "
+            f"Zeilenprobe {z.year}/seq {z.seq}: {z.planned_draft:,} + "
             f"{z.inflow:,} + {z.outflow:,} ≠ {z.planned_new:,} "
             f"({len(schief)} von {len(voll)} Zeilen betroffen)")
 
@@ -930,12 +930,12 @@ def lies_fhh_liste(pdf_bytes: bytes) -> FhhErgebnis:
     return parse_fhh_seiten(seiten_woerter(pdf_bytes), seiten_linien(pdf_bytes))
 
 
-def herkunft_fuer(label: str, url: str | None, dokument_id: int) -> Herkunft:
+def herkunft_fuer(label: str, url: str | None, document_id: int) -> Herkunft:
     return Herkunft(
         art="ris",
         probe=("aenderungsliste_fhh_zeilen", "aenderungsliste_summen",
                "aenderungsliste_positionen"),
         label=label,
-        url=url or f"https://buergerinfo.oldenburg.de/getfile.php?id={dokument_id}&type=do",
-        dokument_id=dokument_id,
+        url=url or f"https://buergerinfo.oldenburg.de/getfile.php?id={document_id}&type=do",
+        document_id=document_id,
     )

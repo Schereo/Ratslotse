@@ -166,11 +166,11 @@ def _hinweis_text(zeilen: list[dict], gesehen: dict[str, set[int]],
     if faellige:
         teile.append("Im Haushalts-Bereich fehlen Jahrgänge, die inzwischen "
                      "vorliegen müssten:")
-    for z, jahrgang in faellige:
+    for z, budget_year in faellige:
         q = finanzquellen.QUELLEN[z["key"]]
-        faellig = q.faellig_ab(jahrgang)
+        faellig = q.faellig_ab(budget_year)
         monat = finanzquellen.MONATE[q.erwarteter_monat]
-        if jahrgang in gesehen.get(z["key"], set()):
+        if budget_year in gesehen.get(z["key"], set()):
             grund = ("<b>Dokument liegt vor, wird aber nicht übernommen</b> — "
                      "Erkennung oder Parser prüfen")
         elif q.herkunft == "ris":
@@ -181,7 +181,7 @@ def _hinweis_text(zeilen: list[dict], gesehen: dict[str, set[int]],
             # bei der Landesstatistik zur falschen Stelle.
             grund = q.nachschub or "wird von Hand eingelesen"
         teile.append(
-            f"• <b>{html.escape(q.label)} {jahrgang}</b> — üblich im {monat} "
+            f"• <b>{html.escape(q.label)} {budget_year}</b> — üblich im {monat} "
             f"{faellig.year}, seit {(heute - faellig).days} Tagen offen: {grund}")
 
     if rest:
@@ -354,8 +354,8 @@ def _cli() -> int:
     ap.add_argument("--heute", default=None,
                     help="Stichtag JJJJ-MM-TT (nur zum Prüfen der Fälligkeiten)")
     args = ap.parse_args()
-    stichtag = date.fromisoformat(args.heute) if args.heute else None
-    main(db=args.db, heute=stichtag, trocken=args.trocken)
+    as_of_date = date.fromisoformat(args.heute) if args.heute else None
+    main(db=args.db, heute=as_of_date, trocken=args.trocken)
     return 0
 
 

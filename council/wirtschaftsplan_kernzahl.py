@@ -180,8 +180,8 @@ def parse_kernzahl(template_number: str, titel: str, vorlage_text: str,
         return None
     wort, amount = erkannt
 
-    lesbar = [x for x in anlagen_texte if x and x.strip()]
-    if amount != 0 and lesbar and not in_anlage_belegt(amount, lesbar):
+    readable = [x for x in anlagen_texte if x and x.strip()]
+    if amount != 0 and readable and not in_anlage_belegt(amount, readable):
         raise WirtschaftsplanFehler(
             f"{template_number}: Der Beschlusstext nennt {amount:,.2f} € "
             f"(„{wort}“), aber die Zahl steht in keiner Anlage — zwei "
@@ -200,7 +200,7 @@ def parse_kernzahl(template_number: str, titel: str, vorlage_text: str,
     #     nicht nachgeladen). Das kann sich ändern.
     if amount == 0:
         beleglage = "ausgeglichen"
-    elif not lesbar:
+    elif not readable:
         beleglage = "ohne_anlage"
     else:
         beleglage = "belegt"
@@ -313,7 +313,7 @@ def herkunft_fuer(plan: Wirtschaftsplan, wort: str, beleglage: str,
         label=dokument_name(plan),
         url=url or (f"https://buergerinfo.oldenburg.de/vo0050.php?__kvonr={kvonr}"
                     if kvonr else None),
-        fundstelle="Beschlussvorschlag der Vorlage",
+        citation="Beschlussvorschlag der Vorlage",
         probe_result=f"„{wort}“ — {BELEGLAGE[beleglage]}",
         stand=f"Wirtschaftsplan {plan.year}, Fassung des Ratsbeschlusses",
     )

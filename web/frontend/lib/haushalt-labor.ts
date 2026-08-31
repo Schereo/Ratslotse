@@ -58,10 +58,10 @@ export function grundsteuerAnteilA(vergleich: VergleichDaten | null): number | n
   if (!oldenburg) return null;
   const werte = vergleich.werte.filter(
     (w) => w.reihe === "realsteuern" && w.schluessel === oldenburg
-      && (w.kennzahl === "ist_je_ew_grundsteuer_a" || w.kennzahl === "ist_je_ew_grundsteuer_b"));
+      && (w.indicator === "ist_je_ew_grundsteuer_a" || w.indicator === "ist_je_ew_grundsteuer_b"));
   const year = Math.max(...werte.map((w) => w.year), -Infinity);
-  const a = werte.find((w) => w.year === year && w.kennzahl === "ist_je_ew_grundsteuer_a")?.wert;
-  const b = werte.find((w) => w.year === year && w.kennzahl === "ist_je_ew_grundsteuer_b")?.wert;
+  const a = werte.find((w) => w.year === year && w.indicator === "ist_je_ew_grundsteuer_a")?.wert;
+  const b = werte.find((w) => w.year === year && w.indicator === "ist_je_ew_grundsteuer_b")?.wert;
   if (a == null || b == null || a + b <= 0) return null;
   return a / (a + b);
 }
@@ -77,7 +77,7 @@ export type StadtHebesatz = {
  *  absteigend sortiert — die Leiter, die am Regler mitläuft. */
 export function staedteHebesaetze(
   vergleich: VergleichDaten | null,
-  kennzahl: "hebesatz_gewerbesteuer" | "hebesatz_grundsteuer_b",
+  indicator: "hebesatz_gewerbesteuer" | "hebesatz_grundsteuer_b",
 ): StadtHebesatz[] {
   if (!vergleich) return [];
   const jahre = vergleich.jahre.realsteuern ?? [];
@@ -85,7 +85,7 @@ export function staedteHebesaetze(
   if (year == null) return [];
   const oldenburg = vergleich.staedte.find((s) => s.ist_oldenburg)?.schluessel;
   return vergleich.werte
-    .filter((w) => w.reihe === "realsteuern" && w.year === year && w.kennzahl === kennzahl)
+    .filter((w) => w.reihe === "realsteuern" && w.year === year && w.indicator === indicator)
     .map((w) => ({
       stadt: w.stadt, wert: w.wert, year: w.year,
       istOldenburg: w.schluessel === oldenburg,
@@ -141,8 +141,8 @@ export function planjahrErgebnisse(
   zeilen: ErgebnishaushaltZeile[] | undefined,
 ): { planJahrgang: number; reihe: { year: number; ergebnisMio: number }[] } | null {
   if (!zeilen?.length) return null;
-  const jahrgang = Math.max(...zeilen.map((z) => z.plan_jahrgang));
-  const eigene = zeilen.filter((z) => z.plan_jahrgang === jahrgang);
+  const budget_year = Math.max(...zeilen.map((z) => z.plan_budget_year));
+  const eigene = zeilen.filter((z) => z.plan_budget_year === budget_year);
   const jahre = [...new Set(eigene.map((z) => z.year))].sort((a, b) => a - b);
   const reihe = jahre.flatMap((year) => {
     const ordentlich = eigene.find((z) => z.year === year && z.nr === 21)?.amount;
@@ -150,7 +150,7 @@ export function planjahrErgebnisse(
     const ausser = eigene.find((z) => z.year === year && z.nr === 24)?.amount ?? 0;
     return [{ year, ergebnisMio: (ordentlich + ausser) / 1e6 }];
   });
-  return reihe.length >= 2 ? { planJahrgang: jahrgang, reihe } : null;
+  return reihe.length >= 2 ? { planJahrgang: budget_year, reihe } : null;
 }
 
 export type PfadPunkt = { year: number; stand: number };

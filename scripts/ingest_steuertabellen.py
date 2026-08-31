@@ -123,7 +123,7 @@ def _ausgaben(bereich_muster: str, live_url: str | None, live_text: str | None,
         try:
             aus.append((name, pdf_text(pfad)))
         except Exception as exc:                            # noqa: BLE001
-            sagen(f"  Archiv-Fassung {name} nicht lesbar: {exc}")
+            sagen(f"  Archiv-Fassung {name} nicht readable: {exc}")
     if aus:
         sagen(f"  Archiv: {len(aus)} Ausgabe(n) — "
               f"{', '.join(n for n, _ in aus)}")
@@ -141,20 +141,20 @@ def _ausgaben(bereich_muster: str, live_url: str | None, live_text: str | None,
 
 
 def _herkunft_1103(name: str, url: str | None, jahre: list[int],
-                   proben: list[str], nachweis: str) -> h.Herkunft:
+                   probes: list[str], nachweis: str) -> h.Herkunft:
     spanne = (f"{jahre[0]}–{jahre[-1]}" if len(jahre) > 1 else str(jahre[0]))
     return h.Herkunft(
         art="stadt",
         url=url or stt.TABELLE_1103_URL,
         label=f"Statistisches Jahrbuch der Stadt Oldenburg, Tabelle 1103 ({name})",
-        fundstelle=(
+        citation=(
             "Kapitel 11 „Verwaltung und Finanzen“, Tabelle 1103 „Steuern und "
             "steuerähnliche Erträge sowie allgemeine Finanzzuweisungen und "
             "Umlagen“ — je Steuerart und Jahr zwei Spalten: der Ansatz nach dem "
             "Haushaltsplan und das Rechnungsergebnis. Jede Ausgabe der Tabelle "
             "führt nur drei Jahrgänge"),
         stand=f"Haushaltsjahre {spanne} · {stt.ABGRENZUNG_1103}",
-        probe=proben,
+        probe=probes,
         probe_result=nachweis)
 
 
@@ -244,7 +244,7 @@ def main() -> int:
                 if not result["zeilen"]:
                     continue
                 gelesen.append((name, result["zeilen"]))
-                proben_je_ausgabe[name] = result["proben"]
+                proben_je_ausgabe[name] = result["probes"]
                 urls[name] = url_1103 if text is text_1103 else None
                 print(f"  {name}: {len(result['zeilen'])} Zeilen, "
                       f"Jahrgänge {result['jahre']}")
@@ -270,7 +270,7 @@ def main() -> int:
                     print(f"  {name}: {result['abbruch']}", file=sys.stderr)
                     continue
                 gelesen5.append((name, result["zeilen"]))
-                proben_1105 = result["proben"]
+                proben_1105 = result["probes"]
                 sprung = result["sprungjahre"]
                 print(f"  {name}: {len(result['zeilen'])} Zeilen")
             zeilen_1105 = stt.zusammenlegen(
@@ -328,14 +328,14 @@ def main() -> int:
                 nach_ausgabe.setdefault(zeile["ausgabe"], []).append(zeile)
             for name, teil in sorted(nach_ausgabe.items()):
                 jahre = sorted({z["year"] for z in teil})
-                proben = proben_je_ausgabe.get(name) or ["steuerplan_summenzeile"]
+                probes = proben_je_ausgabe.get(name) or ["steuerplan_summenzeile"]
                 nachweis = (
                     f"{len(jahre)} Jahrgänge ({jahre[0]}–{jahre[-1]}), "
                     f"bestanden: "
-                    + ", ".join(stt.PROBEN_KURZ.get(n, n) for n in proben))
+                    + ", ".join(stt.PROBEN_KURZ.get(n, n) for n in probes))
                 geschrieben += store.save_steuerplan(
                     teil, _herkunft_1103(name, urls.get(name), jahre,
-                                         proben, nachweis))
+                                         probes, nachweis))
                 print(f"  1103 {name}: {len(teil)} Zeilen, "
                       f"Jahrgänge {jahre[0]}–{jahre[-1]}")
 
@@ -360,7 +360,7 @@ def main() -> int:
                     url=url_1105 or stt.TABELLE_1105_URL,
                     label="Statistisches Jahrbuch der Stadt Oldenburg, "
                           f"Tabelle 1105 ({letzte_ausgabe})",
-                    fundstelle=(
+                    citation=(
                         "Kapitel 11 „Verwaltung und Finanzen“, Tabelle 1105 "
                         "„Realsteuer-Hebesätze in Prozent seit 1980“ — je "
                         "Änderungsjahr die Hebesätze für Grundsteuer A, "

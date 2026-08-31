@@ -120,11 +120,11 @@ function transferAnteil(daten: HaushaltAuswahl<"ergebnisrechnung" | "jahre">, th
   year: number; prozent: number;
 } | null {
   const posten = daten.ergebnisrechnung ?? [];
-  const jahre = [...new Set(posten.filter((p) => p.thh_nr === thhNr).map((p) => p.year))]
+  const jahre = [...new Set(posten.filter((p) => p.sub_budget_no === thhNr).map((p) => p.year))]
     .sort((a, b) => b - a);
   for (const year of jahre) {
     const wert = (nr: number) => posten.find(
-      (p) => p.year === year && p.thh_nr === thhNr && p.nr === nr)?.result ?? null;
+      (p) => p.year === year && p.sub_budget_no === thhNr && p.nr === nr)?.result ?? null;
     const transfer = wert(18);
     const gesamt = wert(20);
     if (transfer != null && gesamt != null && gesamt > 0) {
@@ -147,7 +147,7 @@ export function kassenzettelQuellen(daten: HaushaltAuswahl<"ergebnisrechnung" | 
   if (!g || g.expenses == null) return [];
   const q: QuellenSchluessel[] = ["einwohner"];
   if (g.revenues != null && g.revenues < g.expenses) q.push("ruecklage");
-  if (transferAnteil(daten, BEREICH_NACH_SCHLUESSEL.finanzen.thh)) {
+  if (transferAnteil(daten, BEREICH_NACH_SCHLUESSEL.finanzen.sub_budget)) {
     q.push("ergebnisrechnung_thh");
   }
   return q;
@@ -219,8 +219,8 @@ export function Kassenzettel({ daten, year, einwohner, className }: {
   const posten = bereiche(zeilen)
     .filter((z) => z.expenses != null && z.expenses > 0)
     .map((z) => ({
-      roh: z.bereich,
-      kanon: bereichKanon(z.bereich),
+      roh: z.area,
+      kanon: bereichKanon(z.area),
       euro: z.expenses as number,
       wert: jeKopf(z.expenses as number),
     }))
@@ -245,7 +245,7 @@ export function Kassenzettel({ daten, year, einwohner, className }: {
   const quelle = quellenLabel(zeilen, year);
   const finanzen = BEREICH_NACH_SCHLUESSEL.finanzen;
   const finanzenZeile = posten.find((p) => p.kanon.schluessel === "finanzen");
-  const transfer = transferAnteil(daten, finanzen.thh);
+  const transfer = transferAnteil(daten, finanzen.sub_budget);
   const gross = posten.slice(0, 2);
 
   const bezahltMit: BonZeile[] | undefined = einJeKopf != null ? [
@@ -277,7 +277,7 @@ export function Kassenzettel({ daten, year, einwohner, className }: {
         teiler={{
           zahl: kopf,
           einheit: "Einwohner*innen",
-          stichtag: `31.12.${einwohner.year - 1}`,
+          as_of_date: `31.12.${einwohner.year - 1}`,
           quelle: <>amtliche Zahl der Stadt<Beleg q="einwohner" /></>,
         }}
         nichtAussagen={NICHT_AUSSAGEN}

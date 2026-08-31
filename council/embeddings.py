@@ -678,7 +678,7 @@ def _anlage_lexikalisch(store, query: str, expanded: str, limit: int) -> list[in
 def search_anlagen(store, query: str, expanded: str, top_k: int = 6,
                    min_score: float = 0.45) -> list[tuple]:
     """Beste Anlagen (Gutachten, Konzepte) zur Frage →
-    ``[(document_id, score, fundstelle)]``. Vektor liefert Kandidaten (bester
+    ``[(document_id, score, citation)]``. Vektor liefert Kandidaten (bester
     Chunk je Anlage), der Cross-Encoder bestätigt — kein BM25-Fallback. Der
     Kanal läuft nur, wenn der Rechercheplan Dokumentinhalte verlangt, und darf
     in schneller wie gründlicher Recherche leer sein."""

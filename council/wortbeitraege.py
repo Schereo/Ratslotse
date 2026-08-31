@@ -226,8 +226,8 @@ def seiten_aufloesen(store, ksinr: int) -> int:
                    for i in range(len(offsets))]
     gesetzt = 0
     for wb in store.wortbeitraege_ohne_seite(ksinr):
-        seite = _beste_seite(wb.get("sprecher"), wb.get("text") or "", seiten_norm)
-        if seite is not None:
-            store.set_wortbeitrag_seite(wb["id"], seite)
+        page = _beste_seite(wb.get("sprecher"), wb.get("text") or "", seiten_norm)
+        if page is not None:
+            store.set_wortbeitrag_seite(wb["id"], page)
             gesetzt += 1
     return gesetzt

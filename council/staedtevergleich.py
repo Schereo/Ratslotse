@@ -364,7 +364,7 @@ def lies_kfa(pfad: str) -> KfaJahrgang:
             if (m := re.search(r"Stand:\s*([\d.]+)", str(zelle or ""))):
                 stand = m.group(1)
 
-    jahrgang = KfaJahrgang(year=j_jahr, prior_year=j_vor, stand=stand)
+    budget_year = KfaJahrgang(year=j_jahr, prior_year=j_vor, stand=stand)
     for zeile in zeilen[kopf_idx + 1:]:
         if not zeile:
             continue
@@ -374,13 +374,13 @@ def lies_kfa(pfad: str) -> KfaJahrgang:
         messzahl = _zahl(zeile[c_jahr]) if c_jahr < len(zeile) else None
         if messzahl is None:
             continue
-        jahrgang.staedte[key] = {
+        budget_year.staedte[key] = {
             "stadt": " ".join(str(zeile[c_name] or "").split()),
             "einwohner": _zahl(zeile[c_ew]) if c_ew < len(zeile) else None,
             "messzahl_teur": messzahl,
             "prior_year_tax_index_keur": _zahl(zeile[c_vor]) if c_vor < len(zeile) else None,
         }
-    return jahrgang
+    return budget_year
 
 
 def probe_ueberlappung(alt: KfaJahrgang, neu: KfaJahrgang) -> dict:
@@ -442,7 +442,7 @@ def lies_realsteuervergleich(pfad: str) -> Realsteuerjahrgang:
     den Namen.
     """
     year, stand = _realsteuer_kopf(pfad)
-    jahrgang = Realsteuerjahrgang(year=year, stand=stand)
+    budget_year = Realsteuerjahrgang(year=year, stand=stand)
 
     # --- Blatt 2_1: Hebesätze, Grundbeträge, Ist-Aufkommen ---
     zeilen = blatt_lesen(pfad, "2_1")
@@ -491,7 +491,7 @@ def lies_realsteuervergleich(pfad: str) -> Realsteuerjahrgang:
             for feld, idx in cols.items():
                 eintrag[f"{feld}_{suffix}"] = (
                     _zahl(zeile[idx]) if idx is not None and idx < len(zeile) else None)
-        jahrgang.hebesaetze[key] = eintrag
+        budget_year.hebesaetze[key] = eintrag
 
     # --- Blatt 5_1: Steuereinnahmekraft, drei Jahre + Durchschnitt ---
     zeilen = blatt_lesen(pfad, "5_1")
@@ -522,7 +522,7 @@ def lies_realsteuervergleich(pfad: str) -> Realsteuerjahrgang:
             je_ew = _zahl(zeile[cols["je_ew"]]) if cols["je_ew"] < len(zeile) else None
             if teur is not None and je_ew is not None:
                 je_jahr[j] = {"teur": teur, "je_ew": je_ew}
-        jahrgang.einnahmekraft[key] = {
+        budget_year.einnahmekraft[key] = {
             "stadt": " ".join(str(
                 zeile[c_name] if c_name is not None and c_name < len(zeile) else "").split()),
             "einwohner_schnitt": (_zahl(zeile[c_ew])
@@ -533,7 +533,7 @@ def lies_realsteuervergleich(pfad: str) -> Realsteuerjahrgang:
             "mittel_je_ew": (_zahl(zeile[c_mittel_ew])
                              if c_mittel_ew is not None and c_mittel_ew < len(zeile) else None),
         }
-    return jahrgang
+    return budget_year
 
 
 def _realsteuer_kopf(pfad: str) -> tuple[int, str | None]:
@@ -637,7 +637,7 @@ def probe_dreijahresmittel(eintrag: dict) -> dict:
 
 # --- Was in die Datenbank geht ---------------------------------------------
 
-def zeilen_steuerkraft(jahrgang: KfaJahrgang) -> list[dict]:
+def zeilen_steuerkraft(budget_year: KfaJahrgang) -> list[dict]:
     """Die acht kreisfreien Städte eines KFA-Jahrgangs als Speicherzeilen.
 
     Gespeichert werden **Messzahl und Einwohnerzahl getrennt**, nicht der
@@ -649,20 +649,20 @@ def zeilen_steuerkraft(jahrgang: KfaJahrgang) -> list[dict]:
     """
     aus = []
     for key, name in KREISFREIE_STAEDTE.items():
-        eintrag = jahrgang.staedte.get(key)
+        eintrag = budget_year.staedte.get(key)
         if not eintrag:
             continue
-        gemeinsam = {"reihe": "steuerkraft", "year": jahrgang.year,
+        gemeinsam = {"reihe": "steuerkraft", "year": budget_year.year,
                      "schluessel": key, "stadt": name}
-        aus.append({**gemeinsam, "kennzahl": "steuerkraftmesszahl",
+        aus.append({**gemeinsam, "indicator": "steuerkraftmesszahl",
                     "wert": eintrag["messzahl_teur"], "einheit": "teur"})
         if eintrag.get("einwohner"):
-            aus.append({**gemeinsam, "kennzahl": "einwohner",
+            aus.append({**gemeinsam, "indicator": "einwohner",
                         "wert": eintrag["einwohner"], "einheit": "anzahl"})
     return aus
 
 
-def zeilen_realsteuern(jahrgang: Realsteuerjahrgang) -> tuple[list[dict], list[dict]]:
+def zeilen_realsteuern(budget_year: Realsteuerjahrgang) -> tuple[list[dict], list[dict]]:
     """Speicherzeilen des Realsteuervergleichs — und was daran scheiterte.
 
     Gibt ``(zeilen, verworfen)`` zurück. Eine Stadt, deren Hebesatzprobe nicht
@@ -673,24 +673,24 @@ def zeilen_realsteuern(jahrgang: Realsteuerjahrgang) -> tuple[list[dict], list[d
     zeilen: list[dict] = []
     verworfen: list[dict] = []
 
-    for key, eintrag in sorted(jahrgang.hebesaetze.items()):
+    for key, eintrag in sorted(budget_year.hebesaetze.items()):
         probe = probe_hebesatz(eintrag)
         if not probe["ok"]:
             verworfen.append({"schluessel": key, "stadt": KREISFREIE_STAEDTE[key],
                               "reihe": "realsteuern", "grund": "Hebesatzprobe",
                               "result": probe["result"]})
             continue
-        gemeinsam = {"reihe": "realsteuern", "year": jahrgang.year,
+        gemeinsam = {"reihe": "realsteuern", "year": budget_year.year,
                      "schluessel": key, "stadt": KREISFREIE_STAEDTE[key]}
         for suffix in _REALSTEUERN.values():
             if (wert := eintrag.get(f"hebesatz_{suffix}")) is not None:
-                zeilen.append({**gemeinsam, "kennzahl": f"hebesatz_{suffix}",
+                zeilen.append({**gemeinsam, "indicator": f"hebesatz_{suffix}",
                                "wert": wert, "einheit": "prozent"})
             if (wert := eintrag.get(f"ist_je_ew_{suffix}")) is not None:
-                zeilen.append({**gemeinsam, "kennzahl": f"ist_je_ew_{suffix}",
+                zeilen.append({**gemeinsam, "indicator": f"ist_je_ew_{suffix}",
                                "wert": wert, "einheit": "eur_je_ew"})
 
-    for key, eintrag in sorted(jahrgang.einnahmekraft.items()):
+    for key, eintrag in sorted(budget_year.einnahmekraft.items()):
         probe = probe_dreijahresmittel(eintrag)
         if not probe["ok"]:
             verworfen.append({"schluessel": key, "stadt": KREISFREIE_STAEDTE[key],
@@ -703,6 +703,6 @@ def zeilen_realsteuern(jahrgang: Realsteuerjahrgang) -> tuple[list[dict], list[d
         for year, werte in sorted(eintrag["je_jahr"].items()):
             zeilen.append({"reihe": "realsteuern", "year": year,
                            "schluessel": key, "stadt": KREISFREIE_STAEDTE[key],
-                           "kennzahl": "steuereinnahmekraft_je_ew",
+                           "indicator": "steuereinnahmekraft_je_ew",
                            "wert": werte["je_ew"], "einheit": "eur_je_ew"})
     return zeilen, verworfen

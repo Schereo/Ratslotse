@@ -121,23 +121,23 @@ def _seiten(inhalt: bytes) -> list[str]:
 
     Die Seitengrenzen sind hier keine Formatierung, sondern die Grundlage der
     Zuordnung: Eine Gesellschaft beginnt auf ihrer Trennseite, und welche das
-    ist, sagt das Inhaltsverzeichnis (s. ``beteiligungsbericht.gliederung``).
+    ist, sagt das Inhaltsverzeichnis (s. ``beteiligungsbericht.classification``).
     Ein zusammengeklebter Volltext verlöre genau die Information, mit der sich
     Abschnitt und Gesellschaft überhaupt verknüpfen lassen."""
     from pypdf import PdfReader
 
     reader = PdfReader(io.BytesIO(inhalt))
-    return [(seite.extract_text() or "") for seite in reader.pages]
+    return [(page.extract_text() or "") for page in reader.pages]
 
 
 def _hinweis_text(fehlend: list[int], fehler: list[str], widersprueche: int,
                   heute: date) -> str:
     q = finanzquellen.QUELLEN["beteiligungsbericht"]
     teile: list[str] = []
-    for jahrgang in fehlend:
-        faellig = q.faellig_ab(jahrgang)
+    for budget_year in fehlend:
+        faellig = q.faellig_ab(budget_year)
         teile.append(
-            f"• <b>Beteiligungsbericht {jahrgang}</b> — üblich bis "
+            f"• <b>Beteiligungsbericht {budget_year}</b> — üblich bis "
             f"{finanzquellen.MONATE[q.erwarteter_monat]} {faellig.year}, seit "
             f"{(heute - faellig).days} Tagen offen: auf oldenburg.de liegt "
             f"kein Bericht dafür")

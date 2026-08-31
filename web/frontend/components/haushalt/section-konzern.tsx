@@ -76,14 +76,14 @@ function Fundstelle({ h, className }: { h: Herkunft | null; className?: string }
   // Der Abstand kommt deshalb per `className` von außen statt aus einem
   // Wrapper-<div>: Ein leerer Wrapper mit `mt-3` hinterließe genau die Lücke,
   // die dieses `return null` vermeiden soll.
-  if (!h?.fundstelle) return null;
+  if (!h?.citation) return null;
   return (
     <div className={cn("border-t border-dashed border-border pt-2.5", className)}>
       <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
         Woher diese Zahlen kommen
       </p>
       <p className="mt-1 max-w-[86ch] text-[11.5px] leading-relaxed text-muted-foreground">
-        {h.fundstelle}{h.stand ? ` · ${h.stand}` : ""}
+        {h.citation}{h.stand ? ` · ${h.stand}` : ""}
       </p>
     </div>
   );

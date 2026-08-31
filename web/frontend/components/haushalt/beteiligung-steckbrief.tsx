@@ -81,16 +81,16 @@ const TITEL: Record<string, string> = Object.fromEntries(
 export function Fundstelle({ h, className }: {
   h: ReturnType<typeof herkunftVon>; className?: string;
 }) {
-  if (!h?.fundstelle) return null;
-  const ziel = h.seite && h.url ? `${h.url}#page=${h.seite}` : h.url;
+  if (!h?.citation) return null;
+  const ziel = h.page && h.url ? `${h.url}#page=${h.page}` : h.url;
   return (
     <div className={cn("border-t border-dashed border-border pt-2.5", className)}>
       <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
         Woher das stammt
       </p>
       <p className="mt-1 max-w-[86ch] text-[11.5px] leading-relaxed text-muted-foreground">
-        {h.label ?? "Beteiligungsbericht"}, {h.fundstelle}
-        {h.seite ? `, Seite ${h.seite}` : ""}
+        {h.label ?? "Beteiligungsbericht"}, {h.citation}
+        {h.page ? `, Seite ${h.page}` : ""}
         {ziel && (
           <>
             {" · "}
@@ -315,7 +315,7 @@ function Eigentuemerstreifen({ liste, herkunft }: {
  *  einem Aufsichtsmandat ein Plakat. */
 function Person({ p, zeigeFunktion }: { p: Aufsichtsperson; zeigeFunktion: boolean }) {
   const dot = p.partei ? parteiDot(p.partei) : null;
-  const zusatz = [zeigeFunktion ? p.funktion : null, p.hinweis].filter(Boolean).join(" · ");
+  const zusatz = [zeigeFunktion ? p.funktion : null, p.note].filter(Boolean).join(" · ");
 
   return (
     <li className="min-w-0 rounded-xl border border-border px-3 py-2">
@@ -408,18 +408,18 @@ function Aufsichtsorgan({ personen, zuordenbar, herkunft }: {
  *
  *  `whitespace-pre-line`, weil der Bericht in den Listen-Abschnitten je
  *  Eintrag eine Zeile setzt: Zu einem Absatz verschmolzen wären sie unlesbar. */
-function Rohtext({ kicker, text, herkunft, hinweis }: {
+function Rohtext({ kicker, text, herkunft, note }: {
   kicker: string; text: string; herkunft: ReturnType<typeof herkunftVon>;
-  hinweis?: string;
+  note?: string;
 }) {
   return (
     <Abschnitt kicker={kicker}>
       <p className="mt-1.5 max-w-[76ch] whitespace-pre-line text-[13px] leading-relaxed text-foreground/90">
         {text}
       </p>
-      {hinweis && (
+      {note && (
         <p className="mt-2.5 max-w-[74ch] text-[12px] leading-relaxed text-muted-foreground">
-          {hinweis}
+          {note}
         </p>
       )}
       <Fundstelle h={herkunft} className="mt-3" />
@@ -438,7 +438,7 @@ function Reihe({ daten, zeilen }: { daten: BeteiligungsDaten; zeilen: Kennzahl[]
   return (
     <div>
       <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-        {KENNZAHL_TITEL[zeilen[0].kennzahl]}
+        {KENNZAHL_TITEL[zeilen[0].indicator]}
       </p>
       <dl className="mt-1.5 flex flex-wrap gap-x-5 gap-y-1.5">
         {zeilen.map((k) => (
@@ -487,7 +487,7 @@ export function Steckbrief({ daten, g, zurueck }: {
       <div>
         <p className="flex items-center gap-1.5 font-mono text-[10.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
           {form && <FormZeichen form={form} className="h-3 w-3" />}
-          {form ? RECHTSFORM_TITEL[form] : "Städtische Einheit"} · Bericht {g.bericht_jahr}
+          {form ? RECHTSFORM_TITEL[form] : "Städtische Einheit"} · Bericht {g.report_year}
         </p>
         <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[27px]">
           {g.name}

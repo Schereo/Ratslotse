@@ -157,7 +157,7 @@ def test_die_marke_revidiert_zerlegt_den_pro_kopf_wert_nicht():
     """``3.917r`` sind 3.917 mit der Marke „revidiert", nicht 39.171."""
     z = next(z for z in ar.parse_pdf(PDF) if z["year"] == 2023)
     assert z["je_einwohner"] == 3917
-    assert z["revidiert"] is True
+    assert z["revised"] is True
 
 
 # --- Die Naht ---------------------------------------------------------------
@@ -220,7 +220,7 @@ def test_kein_lesepfad_rechnet_ueber_die_naht(gelesen):
                 if n.startswith(("summe", "wachstum", "change", "trend"))]
     assert not verboten, f"{verboten} lädt zur Rechnung über die Naht ein"
     assert set(gelesen) == {"zeilen", "verworfen", "konflikte", "spannen",
-                            "fehlende_jahrgaenge", "proben"}
+                            "fehlende_jahrgaenge", "probes"}
 
 
 # --- Die Proben -------------------------------------------------------------
@@ -228,8 +228,8 @@ def test_kein_lesepfad_rechnet_ueber_die_naht(gelesen):
 def test_ohne_bestandene_probe_kommt_kein_wert_herein(gelesen):
     """Die Grundregel: Jede Zeile im Bestand nennt ihre Proben."""
     for z in gelesen["zeilen"]:
-        assert z["proben"], z
-        for name in z["proben"]:
+        assert z["probes"], z
+        for name in z["probes"]:
             assert name in herkunft.PROBEN, (
                 f"{name} steht in keiner Erklärung — der Beleg auf der Seite "
                 "bliebe leer")
@@ -238,7 +238,7 @@ def test_ohne_bestandene_probe_kommt_kein_wert_herein(gelesen):
 def test_die_pro_kopf_probe_traegt_jede_zeile(gelesen):
     """Die einzige Probe, die alle 54 Jahrgänge haben — auch die ältesten."""
     for z in gelesen["zeilen"]:
-        assert "ausgabenreihe_prokopf" in z["proben"], z
+        assert "ausgabenreihe_prokopf" in z["probes"], z
 
 
 def test_eine_zeile_ohne_pro_kopf_wert_kommt_nicht_herein():
@@ -260,7 +260,7 @@ def test_die_gegenprobe_erklaert_ihren_versatz(gelesen):
         z = next(z for z in gelesen["zeilen"] if z["year"] == year)
         anteil = (z["amount"] - kern) / kern
         assert 0 < anteil < 0.0005, f"{year}: {anteil:.5%}"
-        assert "ausgabenreihe_jahresabschluss" in z["proben"]
+        assert "ausgabenreihe_jahresabschluss" in z["probes"]
     # Und der Erklärsatz benennt die Ursache statt sie offenzulassen.
     assert "Stiftungen" in herkunft.PROBEN["ausgabenreihe_jahresabschluss"]
 
@@ -281,7 +281,7 @@ def test_jahre_ohne_abschluss_tragen_die_probe_nicht(gelesen):
     Jahres steht hier Monate vor dem Abschluss. Sie darf deshalb nicht so
     aussehen, als sei sie gegen ihn geprüft."""
     z = next(z for z in gelesen["zeilen"] if z["year"] == 2025)
-    assert "ausgabenreihe_jahresabschluss" not in z["proben"]
+    assert "ausgabenreihe_jahresabschluss" not in z["probes"]
     assert z["year"] > max(ABSCHLUESSE)
 
 
@@ -303,10 +303,10 @@ def test_2021_der_widerspruch_wird_festgehalten(gelesen):
     assert z["amount"] == 608_910_000
     assert z["quelle"] == "pdf"
     assert z["conflict_amount"] == 613_572_000
-    assert z["konflikt_quelle"] == "csv"
+    assert z["conflict_source"] == "csv"
     # Die Zweitquellenprobe hat für dieses Jahr NICHT bestanden und steht
     # deshalb auch nicht an der Zeile — der Beleg zeigt, was wirklich trug.
-    assert z["proben"] == ["ausgabenreihe_prokopf", "ausgabenreihe_jahresabschluss"]
+    assert z["probes"] == ["ausgabenreihe_prokopf", "ausgabenreihe_jahresabschluss"]
 
 
 def test_der_widerspruch_steht_auch_als_eigener_befund(gelesen):
@@ -320,7 +320,7 @@ def test_der_widerspruch_steht_auch_als_eigener_befund(gelesen):
 
 def test_es_ist_der_einzige_widerspruch(gelesen):
     """23 der 24 gemeinsamen Jahre stimmen überein — genau eines nicht."""
-    p = gelesen["proben"]
+    p = gelesen["probes"]
     assert p["zweitquelle_gerissen"] == 1
     assert p["zweitquelle_bestanden"] == len(
         [z for z in gelesen["zeilen"] if z["quelle"] == "pdf"]) - 1
@@ -358,7 +358,7 @@ def test_der_probennachweis_nennt_zahlen(gelesen):
     """Der Messwert im Beleg zählt, er bewertet nicht."""
     text = ar.probennachweis(gelesen)
     assert "Pro-Kopf-Probe" in text
-    assert str(gelesen["proben"]["prokopf_bestanden"]) in text
+    assert str(gelesen["probes"]["prokopf_bestanden"]) in text
     for wort in ("gut", "zuverlässig", "korrekt", "sauber"):
         assert wort not in text.lower()
 
@@ -369,14 +369,14 @@ def test_speichern_und_lesen(tmp_path, gelesen):
     try:
         n = store.save_ausgabenreihe(gelesen["zeilen"], herkunft.Herkunft(
             art="stadt", url=ar.TABELLE_URL, probe="ausgabenreihe_prokopf",
-            label="Tabelle 1102", fundstelle="Kapitel 11"))
+            label="Tabelle 1102", citation="Kapitel 11"))
         assert n == len(gelesen["zeilen"])
         zurueck = store.get_ausgabenreihe()
         assert [z["year"] for z in zurueck] == sorted(
             z["year"] for z in gelesen["zeilen"])
         # Die Proben kommen als LISTE zurück, nicht als Trennzeichen-String.
         z2021 = next(z for z in zurueck if z["year"] == 2021)
-        assert z2021["proben"] == ["ausgabenreihe_prokopf",
+        assert z2021["probes"] == ["ausgabenreihe_prokopf",
                                    "ausgabenreihe_jahresabschluss"]
         assert z2021["conflict_amount"] == 613_572_000
         assert all(z["herkunft_id"] for z in zurueck)

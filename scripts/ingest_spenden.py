@@ -33,7 +33,7 @@ from council.store import CouncilStore  # noqa: E402
 COUNCIL_DB = ROOT / "data" / "council.sqlite"
 
 #: Der Beleg-Text, der bei jeder Zeile steht. Die Vorlage selbst ist der
-#: Anker (``dokument_id``); dieses Label sagt, was für ein Dokument das ist.
+#: Anker (``document_id``); dieses Label sagt, was für ein Dokument das ist.
 LABEL = "Ratsvorlage „Annahme von Zuwendungen“ im Bürgerinformationssystem"
 
 
@@ -48,7 +48,7 @@ def _lauf_herkunft(result: dict) -> h.Herkunft:
         art="ris",
         url="https://buergerinfo.oldenburg.de/vo040.asp",
         label=LABEL,
-        fundstelle=spenden.FUNDSTELLE,
+        citation=spenden.FUNDSTELLE,
         stand=f"Sitzungsjahre {spanne}",
         probe=[spenden.ZWEITSTELLE],
         probe_result=spenden.probennachweis(result))
@@ -67,7 +67,7 @@ def main() -> int:
         result = spenden.lies(roh)
         vorlagen, verworfen = result["vorlagen"], result["verworfen"]
 
-        print(f"Beschlusszeilen gelesen: {result['proben'].get('zeilen', 0)}")
+        print(f"Beschlusszeilen gelesen: {result['probes'].get('zeilen', 0)}")
         print(f"Vorlagen mit Zweitstelle: {len(vorlagen)}")
         print(f"Zeilen ohne Zweitstelle:  {len(verworfen)}")
         for j in result["jahre"]:
@@ -105,12 +105,12 @@ def main() -> int:
         for v in vorlagen:
             v["herkunft"] = h.Herkunft(
                 art="ris",
-                dokument_id=v.get("dokument_id"),
+                document_id=v.get("document_id"),
                 url=v.get("dokument_url") or "https://buergerinfo.oldenburg.de/vo040.asp",
                 label=f"{LABEL} — Vorlage {v['template_number']}",
-                fundstelle=spenden.FUNDSTELLE,
+                citation=spenden.FUNDSTELLE,
                 stand=f"Sitzung vom {v['sitzung']}",
-                probe=v["proben"],
+                probe=v["probes"],
                 probe_result=(
                     f"Beschlossen {spenden.euro(v['amount'])} Euro; derselbe "
                     f"Betrag steht im Abschnitt zu den finanziellen Auswirkungen "

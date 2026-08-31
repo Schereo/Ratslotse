@@ -69,7 +69,7 @@ export type SteuerArt = {
   stellschraube: string;
   stufen: SteuerStufe[];
   /** Rechenbeispiel, wo es eines gibt — konkret statt abstrakt. */
-  beispiel?: { rechnung: string; hinweis: string };
+  beispiel?: { rechnung: string; note: string };
   /* Hier stand bis 19.08.2026 `hebesatz?: number` — der aktuelle Satz als
      Zahl im Quelltext (439 bzw. 539). Sie war nicht bloß Deko: Der Steckbrief
      rechnete den Überschlag „was brächte ein Punkt mehr?" damit und druckte
@@ -154,7 +154,7 @@ export const STEUERARTEN: SteuerArt[] = [
     ],
     beispiel: {
       rechnung: "100.000 € Gewinn × 3,5 % = 3.500 € × 439 % = 15.365 € Steuer",
-      hinweis:
+      note:
         "Vereinfacht: Der Freibetrag für Einzelunternehmen und Personengesellschaften ist " +
         "nicht eingerechnet, ebenso wenig die Umlage an Bund und Land.",
     },

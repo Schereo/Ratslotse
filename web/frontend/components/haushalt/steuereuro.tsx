@@ -52,7 +52,7 @@ export function Steuereuro({ zeilen, year }: { zeilen: HaushaltZeile[]; year: nu
   // mitwandern. `kurz` trägt die Überschrift, `name` die Legende.
   const sortiert = [...parts]
     .map((z) => {
-      const kanon = bereichKanon(z.bereich);
+      const kanon = bereichKanon(z.area);
       return { name: kanon.name, kurz: kanon.kurz, wert: z.expenses ?? 0 };
     })
     .filter((r) => r.wert > 0)

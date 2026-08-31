@@ -6,12 +6,12 @@
 // in jedem Teilhaushalt beides steckt. Der Rest stimmt nicht mehr. Die
 // Produktebene trägt zu jeder einzelnen Aufgabe zwei Angaben der Stadt selbst:
 //
-//   `auftragsgrundlage`   — die Gesetze, Satzungen und Ratsbeschlüsse, auf
+//   `legal_basis`   — die Gesetze, Satzungen und Ratsbeschlüsse, auf
 //                           denen die Aufgabe beruht, im Wortlaut des
 //                           Teilhaushaltsplans. 377 von 377 Zeilen (2018–2023).
-//   `beeinflussbarkeit`   — wie viel Spielraum die STADT bei der Aufgabe
+//   `controllability`   — wie viel Spielraum die STADT bei der Aufgabe
 //                           sieht (niedrig/mittel/hoch), 371 von 377. Dazu
-//                           `beeinflussbarkeit_roh` mit dem Originalwortlaut,
+//                           `controllability_raw` mit dem Originalwortlaut,
 //                           damit Mischformen nicht verschwinden.
 //
 // Damit bleibt unsere Einordnung redaktionell — sie wird aber prüfbar. Diese
@@ -148,7 +148,7 @@ export const PFLICHT_ZUORDNUNG: Record<string, PflichtEintrag> = Object.fromEntr
  *  Die Zuordnung ist die naheliegende und wird deshalb offengelegt: „Pflicht"
  *  müsste sich als „kaum Spielraum" wiederfinden, „überwiegend freiwillig"
  *  als „viel Spielraum". Sie ist eine Erwartung, kein Beweis — die Stadt
- *  beantwortet mit `beeinflussbarkeit` eine leicht andere Frage (wie stark
+ *  beantwortet mit `controllability` eine leicht andere Frage (wie stark
  *  lassen sich die KOSTEN beeinflussen, nicht: muss es die Aufgabe geben). */
 export const STUFE_ERWARTET: Record<PflichtStufe, Spielraum> = {
   pflicht: "niedrig",
@@ -187,8 +187,8 @@ function leerZaehler(): Record<Spielraum | "ohne", number> {
 
 /** Produktzeilen eines Jahres zu Befunden je Teilhaushalt verdichten.
  *
- *  Der Teilhaushalt wird über `bereichKanon(thh_name)` bestimmt, nicht über
- *  `thh_nr`: Die Nummer ist im Plan eine Positionsangabe und wurde zwischen
+ *  Der Teilhaushalt wird über `bereichKanon(sub_budget_name)` bestimmt, nicht über
+ *  `sub_budget_no`: Die Nummer ist im Plan eine Positionsangabe und wurde zwischen
  *  Jahrgängen schon neu vergeben, der Name läuft durchs Wörterbuch. Zeilen
  *  ohne auflösbaren Namen fallen heraus — sie einem Bereich zuzuschlagen wäre
  *  geraten. */
@@ -198,7 +198,7 @@ export function spielraumBefunde(
   const aus = new Map<BereichSchluessel, SpielraumBefund>();
   for (const p of produkte) {
     if (p.year !== year) continue;
-    const s = p.thh_name ? bereichKanon(p.thh_name).schluessel : null;
+    const s = p.sub_budget_name ? bereichKanon(p.sub_budget_name).schluessel : null;
     if (!s) continue;
     let b = aus.get(s);
     if (!b) {
@@ -211,7 +211,7 @@ export function spielraumBefunde(
     const a = p.expenses ?? 0;
     b.produkte += 1;
     b.expense += a;
-    b.anteil[p.beeinflussbarkeit ?? "ohne"] += a;
+    b.anteil[p.controllability ?? "ohne"] += a;
     if (!b.groesste || a > (b.groesste.expenses ?? 0)) b.groesste = p;
   }
   for (const b of aus.values()) {

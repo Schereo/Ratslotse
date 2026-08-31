@@ -251,7 +251,7 @@ def _kopfangaben(kopf: str) -> tuple[int | None, str | None]:
             f"{s.group(3)}-{int(s.group(2)):02d}-{int(s.group(1)):02d}" if s else None)
 
 
-def jahrgang(text: str | None) -> int | None:
+def budget_year(text: str | None) -> int | None:
     """Für welches Haushaltsjahr dieser Stellenplan gilt.
 
     Aus dem **Tabellenkopf**, nicht aus dem Label: Die vier Dokumente heißen
@@ -302,11 +302,11 @@ def _teile_lesen(text: str) -> dict[str, dict]:
             # Der Kopf ist zu Ende: Was er über Jahr, Stichtag und Spaltenzahl
             # sagt, wird eingesammelt. Er steht auf jeder Seite noch einmal —
             # widerspricht er sich, fällt das hier auf und nicht später.
-            year, stichtag = _kopfangaben(" ".join(kopf))
+            year, as_of_date = _kopfangaben(" ".join(kopf))
             if year:
                 t["jahre"].add(year)
-            if stichtag:
-                t["stichtage"].add(stichtag)
+            if as_of_date:
+                t["stichtage"].add(as_of_date)
             if t["spalten"] is None:
                 t["spalten"] = spalten
             elif t["spalten"] != spalten:
@@ -347,7 +347,7 @@ def _teile_lesen(text: str) -> dict[str, dict]:
         if not m:
             continue
         bez, gruppe = _bezeichnung(m.group(2), teil)
-        t["zeilen"].append({"lfd_nr": int(m.group(1)), "bezeichnung": bez,
+        t["zeilen"].append({"seq_no": int(m.group(1)), "label": bez,
                             "besoldung": gruppe,
                             **_werte(t["spalten"], m.groups()[2:])})
         puffer = ""
@@ -401,7 +401,7 @@ def besetzungsprobe(summen: list[dict]) -> tuple[bool, str]:
     Als Gate über jede Einzelzeile fiele dafür ein ganzer Teil mit 140 Zeilen
     und 1.643 Stellen — wegen eines Übertrags, den das Dokument an anderer
     Stelle selbst wieder geraderückt. Die abweichenden Zeilen werden deshalb
-    **markiert und gezählt** (:func:`unstimmige_zeilen`, Spalte ``stimmig``),
+    **markiert und gezählt** (:func:`unstimmige_zeilen`, Spalte ``consistent``),
     nicht verworfen: Gespeichert steht dort, was im Plan steht.
 
     Was ein Gate auf Einzelzeilen abfangen sollte — eine verrutschte Spalte —
@@ -533,7 +533,7 @@ def _zeilen_bauen(gruppen: list[dict], gesamt: list[dict],
     ausweist, und nicht eine, die wir nachgerechnet haben — auch wenn beide
     (nachgemessen) identisch sind.
 
-    ``stimmig`` sagt je Zeile, ob dort besetzt + nicht besetzt die Stellen des
+    ``consistent`` sagt je Zeile, ob dort besetzt + nicht besetzt die Stellen des
     Vorjahres ergeben. ``0`` heißt nicht „falsch gelesen", sondern „so steht
     es im Plan, und dort geht es nicht auf" (s. :func:`besetzungsprobe`)."""
     schief = {id(z) for z in unstimmig}
@@ -541,19 +541,19 @@ def _zeilen_bauen(gruppen: list[dict], gesamt: list[dict],
     for g in gruppen:
         for z in g["zeilen"]:
             aus.append({"art": "posten", "gruppe": g["name"],
-                        "stimmig": 0 if id(z) in schief else 1, **z})
-        aus.append({"art": "gruppe", "gruppe": g["name"], "lfd_nr": None,
-                    "bezeichnung": f"Summe {g['name']}", "besoldung": None,
-                    "stimmig": 1, **g["summe"]})
+                        "consistent": 0 if id(z) in schief else 1, **z})
+        aus.append({"art": "gruppe", "gruppe": g["name"], "seq_no": None,
+                    "label": f"Summe {g['name']}", "besoldung": None,
+                    "consistent": 1, **g["summe"]})
     # Führt ein Teil die Gesamtzeile zweimal, wird sie einmal gespeichert:
     # Die zweite ist die Probe, nicht ein zweiter Wert.
     if gesamt:
-        aus.append({"art": "gesamt", "gruppe": None, "lfd_nr": None,
-                    "bezeichnung": "Summe", "besoldung": None, "stimmig": 1,
+        aus.append({"art": "gesamt", "gruppe": None, "seq_no": None,
+                    "label": "Summe", "besoldung": None, "consistent": 1,
                     **gesamt[0]["werte"]})
     elif len(gruppen) == 1:
-        aus.append({"art": "gesamt", "gruppe": None, "lfd_nr": None,
-                    "bezeichnung": "Summe", "besoldung": None, "stimmig": 1,
+        aus.append({"art": "gesamt", "gruppe": None, "seq_no": None,
+                    "label": "Summe", "besoldung": None, "consistent": 1,
                     **gruppen[0]["summe"]})
     return aus
 
@@ -561,8 +561,8 @@ def _zeilen_bauen(gruppen: list[dict], gesamt: list[dict],
 def lies(text: str) -> dict:
     """Einen Stellenplan auswerten.
 
-    Liefert ``{jahrgang, teile, glyphen}``. ``teile`` ist eine Liste — je Teil
-    ein dict mit ``teil`` (``A``/``B``), ``stichtag``, ``zeilen``, ``proben``,
+    Liefert ``{budget_year, teile, glyphen}``. ``teile`` ist eine Liste — je Teil
+    ein dict mit ``teil`` (``A``/``B``), ``as_of_date``, ``zeilen``, ``probes``,
     ``bestanden``, ``nachweis`` und ``verworfen``. Ein Teil, dessen Proben
     nicht aufgehen, hat **keine** ``zeilen``: Eine Tabelle, die sich nicht
     selbst bestätigt, gibt keine halben Zahlen her.
@@ -578,21 +578,21 @@ def lies(text: str) -> dict:
     for name in sorted(roh):
         t = roh[name]
         soll = TEIL_SPALTEN[name]
-        proben: list[dict] = []
+        probes: list[dict] = []
         verworfen = 0
 
         if t["spalten"] != soll or t["spaltenstreit"]:
             gesehen = sorted({t["spalten"], *t["spaltenstreit"]} - {None})
             result.append({
-                "teil": name, "stichtag": None, "year": None, "zeilen": [],
-                "proben": [], "bestanden": False, "verworfen": len(t["zeilen"]),
+                "teil": name, "as_of_date": None, "year": None, "zeilen": [],
+                "probes": [], "bestanden": False, "verworfen": len(t["zeilen"]),
                 "nachweis": f"Teil {name} nennt {gesehen or 'keine'} Spalten "
                             f"statt {soll} — nicht gelesen"})
             continue
         if len(t["jahre"]) != 1 or len(t["stichtage"]) > 1:
             result.append({
-                "teil": name, "stichtag": None, "year": None, "zeilen": [],
-                "proben": [], "bestanden": False, "verworfen": len(t["zeilen"]),
+                "teil": name, "as_of_date": None, "year": None, "zeilen": [],
+                "probes": [], "bestanden": False, "verworfen": len(t["zeilen"]),
                 "nachweis": f"Teil {name}: der Tabellenkopf nennt "
                             f"{sorted(t['jahre']) or 'kein'} Haushaltsjahr und "
                             f"{sorted(t['stichtage']) or 'keinen'} Stichtag"})
@@ -614,7 +614,7 @@ def lies(text: str) -> dict:
         # die Aussage trägt, dass die Spalten bedeuten, was wir ihnen
         # zuschreiben. Eine bestandene Probe zu verschweigen, weil sie ein
         # Vorfilter ist, hieße den Beleg um sein Fundament zu kürzen.
-        proben.append({"probe": "stellenplan_spaltenprobe", "ok": True,
+        probes.append({"probe": "stellenplan_spaltenprobe", "ok": True,
                        "warum": ""})
         for name_probe, result_probe in (
             ("stellenplan_gruppensummen", gruppenprobe(gruppen)),
@@ -625,37 +625,37 @@ def lies(text: str) -> dict:
             *((("stellenplan_gesamtsumme", gesamtprobe(gruppen, gesamt)),)
               if gesamt else ()),
         ):
-            proben.append({"probe": name_probe, "ok": result_probe[0],
+            probes.append({"probe": name_probe, "ok": result_probe[0],
                            "warum": result_probe[1]})
 
-        bestanden = all(p["ok"] for p in proben)
+        bestanden = all(p["ok"] for p in probes)
         unstimmig = unstimmige_zeilen(einzeln)
         year = next(iter(t["jahre"]))
         if bestanden:
             jahre.add(year)
         result.append({
             "teil": name, "year": year,
-            "stichtag": next(iter(t["stichtage"]), None),
+            "as_of_date": next(iter(t["stichtage"]), None),
             "zeilen": (_zeilen_bauen(gruppen, gesamt, unstimmig)
                        if bestanden else []),
-            "proben": proben, "bestanden": bestanden, "verworfen": verworfen,
-            "unstimmig": [{"lfd_nr": z["lfd_nr"], "bezeichnung": z["bezeichnung"],
+            "probes": probes, "bestanden": bestanden, "verworfen": verworfen,
+            "unstimmig": [{"seq_no": z["seq_no"], "label": z["label"],
                            "deviation": round(_besetzungsrest(z), 2)}
                           for z in unstimmig],
-            "nachweis": nachweis(gruppen, gesamt, einzeln, unstimmig, proben)})
+            "nachweis": nachweis(gruppen, gesamt, einzeln, unstimmig, probes)})
 
-    return {"jahrgang": jahrgang(text), "teile": result,
+    return {"budget_year": budget_year(text), "teile": result,
             "glyphen": bool(_GLYPHEN.search(text or "")),
             "jahre": sorted(jahre)}
 
 
 def nachweis(gruppen: list[dict], gesamt: list[dict], zeilen: list[dict],
-             unstimmig: list[dict], proben: list[dict]) -> str:
+             unstimmig: list[dict], probes: list[dict]) -> str:
     """Ein Satz für den Beleg-Chip: was gerechnet wurde und wie es ausging.
 
     In Zahlen statt in Probennamen — „140 Zeilen unter 1 Gruppensumme" ist
     nachvollziehbar, „gruppenprobe ok" nicht."""
-    gerissen = [p["warum"] for p in proben if not p["ok"]]
+    gerissen = [p["warum"] for p in probes if not p["ok"]]
     if gerissen:
         return "; ".join(gerissen)
     stufen = (f"{len(zeilen)} Zeilen unter {len(gruppen)} Gruppensumme"

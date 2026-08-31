@@ -395,8 +395,8 @@ export default function HaushaltPage() {
               <p className="mt-2 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
                 Für {k.year} stehen zwei amtliche Gesamtsummen nebeneinander:{" "}
                 {AUSGABEN_QUELLE_LABEL[k.quelle]} nennt {deMio(k.amount / 1e6)}&#8239;Mio.&nbsp;€,{" "}
-                {k.konflikt_quelle
-                  ? AUSGABEN_QUELLE_LABEL[k.konflikt_quelle]
+                {k.conflict_source
+                  ? AUSGABEN_QUELLE_LABEL[k.conflict_source]
                   : "die andere Veröffentlichung"}{" "}
                 dagegen {deMio((k.conflict_amount ?? 0) / 1e6)}&#8239;Mio.&nbsp;€.
                 Das sind rund{" "}
@@ -406,7 +406,7 @@ export default function HaushaltPage() {
                     auf den Abschluss steht an der Zeile als bestandene Probe.
                     Ohne ihn trägt der Wert allein die Rechnung, die in der
                     Tabelle selbst steht. */}
-                {k.proben.includes("ausgabenreihe_jahresabschluss") ? (
+                {k.probes.includes("ausgabenreihe_jahresabschluss") ? (
                   <>Er stimmt mit der Gesamtergebnisrechnung im Jahresabschluss {k.year}
                   überein<Beleg q="jahresabschluss" />.</>
                 ) : (

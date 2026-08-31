@@ -3,7 +3,7 @@
 // „Die dreizehn Zahlen" — der ZWEITE Abschnitt von /haushalt/pruefung.
 //
 // Bis zum 21.08.2026 die eigene Seite /haushalt/kennzahlen. Siehe den Kopf
-// von `abschnitt-pruefung.tsx`.
+// von `section-pruefung.tsx`.
 
 // /haushalt/kennzahlen — „Die dreizehn Zahlen"
 //
@@ -188,7 +188,7 @@ function Verlauf({
             So rechnet die Stadt
           </p>
           <p className="mt-1 max-w-[80ch] text-[13px] leading-relaxed text-foreground/90">
-            <span className="font-medium">{formel.ueberschrift}</span> — „Ermittlung:{" "}
+            <span className="font-medium">{formel.heading}</span> — „Ermittlung:{" "}
             {formel.formel}“<Beleg q="kennzahlen" />
           </p>
           <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">
@@ -248,12 +248,12 @@ function Korrekturen({ daten }: { daten: NonNullable<Daten["kennzahlen"]> }) {
       </div>
       <ul className="flex flex-col divide-y divide-border">
         {alle.map((k) => {
-          const einheit = daten.einheit[k.kennzahl] ?? "eur";
+          const einheit = daten.einheit[k.indicator] ?? "eur";
           return (
-            <li key={`${k.kennzahl}-${k.year}-${k.neu_bericht}`}
+            <li key={`${k.indicator}-${k.year}-${k.neu_bericht}`}
               className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 py-2 first:pt-0 last:pb-0">
               <span className="min-w-0 flex-1 text-[13px] leading-snug text-foreground">
-                {daten.label[k.kennzahl] ?? k.kennzahl}{" "}
+                {daten.label[k.indicator] ?? k.indicator}{" "}
                 <span className="tabular-nums text-muted-foreground">{k.year}</span>
               </span>
               <span className="flex-none text-[13px] tabular-nums text-muted-foreground">
@@ -297,7 +297,7 @@ export function KennzahlenAbschnitt() {
   }
 
   const korrekturen = korrekturenVon(daten);
-  const berichte = [...new Set(daten.reihe.map((p) => p.bericht_jahr))];
+  const berichte = [...new Set(daten.reihe.map((p) => p.report_year))];
   const quelleUrl = "https://buergerinfo.oldenburg.de";
 
   return (

@@ -67,10 +67,10 @@ class Netz:
         self.abrufe.append(url)
         if url not in self.inhalte:
             raise a.AbrufFehler(f"{url}: HTTP 404")
-        marke = self.etags.get(url, f'"{hash(self.inhalte[url]) & 0xffff:x}"')
-        if etag and etag == marke:
+        mark = self.etags.get(url, f'"{hash(self.inhalte[url]) & 0xffff:x}"')
+        if etag and etag == mark:
             return a.Antwort(inhalt=None, etag=etag, last_modified=last_modified)
-        return a.Antwort(inhalt=self.inhalte[url], etag=marke,
+        return a.Antwort(inhalt=self.inhalte[url], etag=mark,
                          last_modified="Mon, 17 Aug 2026 05:00:00 GMT")
 
 

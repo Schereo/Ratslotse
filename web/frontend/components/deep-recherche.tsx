@@ -137,8 +137,8 @@ export function RechercheFortschritt({ phase, facetten, facettenFertig, dokument
       {text}
     </span>
   );
-  const reihenfolge: DeepPhase[] = ["zerlegen", "suchen", "lesen", "schreiben"];
-  const stufe = reihenfolge.indexOf(phase);
+  const sort_order: DeepPhase[] = ["zerlegen", "suchen", "lesen", "schreiben"];
+  const stufe = sort_order.indexOf(phase);
   const zustand = (i: number) => (i < stufe ? "fertig" : i === stufe ? "aktiv" : "offen") as
     "fertig" | "aktiv" | "offen";
 

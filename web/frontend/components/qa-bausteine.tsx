@@ -59,7 +59,7 @@ export type QaGrafik = {
   einheit: string;
   nachkomma: number;
   reihe: { year: number; wert: number }[];
-  hinweis?: string | null;
+  note?: string | null;
   quelle?: string | null;
   /** Anschlussstelle in den Haushalts-Bereich — der Link erscheint nur
    *  hinter dem Umgebungs-Gate (auf Prod ist /haushalt ein 404). */
@@ -430,7 +430,7 @@ export function PersonBadge({ p, zeilenPartei = null }: {
 
 export type ParteiMeinung = {
   partei: string; haltung?: "dafür" | "dagegen" | "offen" | "gewandelt";
-  position: string; einig: boolean; hinweis: string | null;
+  position: string; einig: boolean; note: string | null;
   kernaussage: { text: string; sprecher: string | null; datum: string | null } | null;
   beitraege: number;
   beitraege_liste?: { sprecher: string | null; datum: string; art: string | null;
@@ -1035,7 +1035,7 @@ export function ParteienListe({ parteien, ohneBeitraege = [], onFrageStellen }: 
                       )}
                     </div>
                     <p className="mt-0.5 text-[12.5px] leading-relaxed text-foreground/90">
-                      {p.position}{!p.einig && p.hinweis ? ` — ${p.hinweis}` : ""}
+                      {p.position}{!p.einig && p.note ? ` — ${p.note}` : ""}
                     </p>
                     {p.kernaussage && (
                       <p className="mt-1 text-[12px] italic leading-snug text-muted-foreground">
@@ -1096,7 +1096,7 @@ export function GrafikKarte({ grafik }: { grafik: QaGrafik }) {
         titel={grafik.titel}
         ariaTitel={`${grafik.titel} im Verlauf, aus den Daten der Stadt`}
         tabelle
-        hinweis={grafik.hinweis ?? undefined}
+        note={grafik.note ?? undefined}
         // Im Chat klebt schon die Eingabezeile am unteren Rand — eine
         // zweite klebende Ebene schob sich darüber (Tims Befund 18.08.).
         leisteHaftet={false}

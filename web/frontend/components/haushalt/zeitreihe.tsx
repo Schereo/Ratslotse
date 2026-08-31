@@ -133,8 +133,8 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
   const breit = aussenBreite >= SCHWELLE_ZWEISPALTIG;
   const schmal = breite < SCHWELLE_SCHMAL;
   const fs = schmal
-    ? { achse: 13, year: 14, balance: 12.5, legende: 13, marke: 12.5 }
-    : { achse: 11, year: 12, balance: 11.5, legende: 12, marke: 12 };
+    ? { achse: 13, year: 14, balance: 12.5, legende: 13, mark: 12.5 }
+    : { achse: 11, year: 12, balance: 11.5, legende: 12, mark: 12 };
 
   const jahre = jahreSortiert(daten);
   const punkte: Punkt[] = jahre
@@ -166,7 +166,7 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
   const abschluss = daten.ergebnisrechnung ?? [];
   const istNach = new Map<number, IstPunkt>();
   for (const year of alleJahre) {
-    const g = abschluss.filter((p) => p.year === year && p.thh_nr == null);
+    const g = abschluss.filter((p) => p.year === year && p.sub_budget_no == null);
     const finde = (nr: number): ErgebnisPosten | undefined => g.find((p) => p.nr === nr);
     const e = finde(12), a = finde(20);
     const ein = mio(e?.result), aus = mio(a?.result);
@@ -325,7 +325,7 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
   // Karte war unten zu zwei Dritteln leer (gemessen 16.08.: 1030 px Karte für
   // 430 px Bild). Unter dem Bild hat die Tabelle außerdem die Breite, die eine
   // fünfspaltige Zahlentafel braucht.
-  const kennzahl = wachsAus != null && wachsEin != null && (
+  const indicator = wachsAus != null && wachsEin != null && (
         <div className="rounded-xl bg-muted/45 p-3.5">
           <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
             Von {erster.year} bis {letzter.year}
@@ -404,7 +404,7 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
       </div>
   );
 
-  const hinweis = (
+  const note = (
       <div className="rounded-xl border border-dashed border-border p-3.5">
         <p className="text-[12px] leading-relaxed text-muted-foreground">
           <strong className="text-foreground">Plan und Ergebnis sind nicht dasselbe:</strong>{" "}
@@ -603,8 +603,8 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
                 if (hoehe < 22) return null;
                 const rechts = x(g.year) < (X0 + XP) / 2;
                 return (
-                  <text x={x(g.year) + (rechts ? 8 : -8)} y={(y(g.ein) + y(g.aus)) / 2 + fs.marke / 3}
-                    textAnchor={rechts ? "start" : "end"} fontSize={fs.marke} fontWeight={700}
+                  <text x={x(g.year) + (rechts ? 8 : -8)} y={(y(g.ein) + y(g.aus)) / 2 + fs.mark / 3}
+                    textAnchor={rechts ? "start" : "end"} fontSize={fs.mark} fontWeight={700}
                     className="fill-signal stroke-card" {...halo}>
                     {vorzeichen(g.balance)}
                   </text>
@@ -648,7 +648,7 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
           </div>
 
           <Ableseleiste className="mt-2" stelle={stellen[ablesen.aktiv]} steuerung={ablesen}
-            hinweis="Mio. € · Jahr mit Maus, Fingertipp oder Pfeiltasten auswählen." />
+            note="Mio. € · Jahr mit Maus, Fingertipp oder Pfeiltasten auswählen." />
 
           <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-border/60 pt-2">
             <span className="inline-flex items-center gap-1.5 text-[11.5px] text-foreground/80">
@@ -680,9 +680,9 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
 
         <div className={breit ? "flex flex-none flex-col gap-3" : "flex flex-col gap-3"}
           style={breit ? { width: SEITE_BREITE } : undefined}>
-          {kennzahl}
+          {indicator}
           {!breit && tabelle}
-          {hinweis}
+          {note}
         </div>
       </div>
     </div>

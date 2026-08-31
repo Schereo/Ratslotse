@@ -137,7 +137,7 @@ def test_notify_new_matches_leads_with_highest_impact(tmp_path):
                                 # Fest statt `heute`: Die Sitzung der Vorrichtung
                                 # ist auf 2026-06-01 genagelt, ein wandernder
                                 # Stichtag machte den Test irgendwann leer.
-                                stichtag="2026-01-01")
+                                as_of_date="2026-01-01")
     assert n == 1
 
     offen = ratslotse.due_notifications(owner, "2999-01-01")
@@ -179,7 +179,7 @@ def test_notify_new_matches_schweigt_wenn_abgeschaltet(tmp_path):
     mod = _match_modul()
     assert mod._notify_new_matches(ratslotse, council, owner_id=owner, topic_name="Finanzen",
                                    new_ids=[ids["Haushaltssatzung 2026"]],
-                                   stichtag="2026-01-01") == 0
+                                   as_of_date="2026-01-01") == 0
     assert ratslotse.due_notifications(owner, "2999-01-01") == []
     ratslotse.close()
     council.close()
@@ -216,7 +216,7 @@ def test_notify_new_matches_schweigt_ueber_alte_beschluesse(tmp_path):
     assert mod._notify_new_matches(ratslotse, council, owner_id=owner,
                                    topic_name="Grundschule Krusenbusch",
                                    new_ids=[ids["Zusätzliche Spätbetreuung"]],
-                                   stichtag="2026-01-01") == 0
+                                   as_of_date="2026-01-01") == 0
     assert ratslotse.due_notifications(owner, "2999-01-01") == []
 
     # Gemischt: Die Mail kommt, zählt aber nur den aktuellen Beschluss — sonst
@@ -225,7 +225,7 @@ def test_notify_new_matches_schweigt_ueber_alte_beschluesse(tmp_path):
                                    topic_name="Grundschule Krusenbusch",
                                    new_ids=[ids["Zusätzliche Spätbetreuung"],
                                             ids["Haushaltssatzung 2026"]],
-                                   stichtag="2026-01-01") == 1
+                                   as_of_date="2026-01-01") == 1
     offen = ratslotse.due_notifications(owner, "2999-01-01")
     assert len(offen) == 1
     assert offen[0]["title"] == "Neu zu „Grundschule Krusenbusch“"   # kein „— 2 Beschlüsse"

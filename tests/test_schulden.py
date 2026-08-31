@@ -102,7 +102,7 @@ def test_fremdes_dokument_wird_nicht_gelesen():
 # --- Zellen: Fußnoten und Marken -------------------------------------------
 
 
-@pytest.mark.parametrize("feld,wert,marke", [
+@pytest.mark.parametrize("feld,wert,mark", [
     ("301.516", 301516, ""),      # gewöhnlich
     ("0", 0, ""),
     ("891", 891, ""),             # dreistellig ohne Punkt
@@ -112,14 +112,14 @@ def test_fremdes_dokument_wird_nicht_gelesen():
     ("251.160r", 251160, "r"),    # revidiert
     ("1.673r", 1673, "r"),
 ])
-def test_fussnoten_und_marken_kleben_nicht_am_betrag(feld, wert, marke):
+def test_fussnoten_und_marken_kleben_nicht_am_betrag(feld, wert, mark):
     """``26.5981`` sind 26.598 mit Fußnote 1 und nicht 265.981.
 
     Auflösbar, weil deutsche Tausendergruppen genau drei Ziffern haben — was
     hinter der letzten vollständigen Gruppe steht, gehört nicht zur Zahl. Ein
     Parser, der bloß die Punkte entfernt, liest hier das Zehnfache und meldet
     nichts."""
-    assert schulden._zelle(feld) == (wert, marke)
+    assert schulden._zelle(feld) == (wert, mark)
 
 
 def test_punktloses_feld_gilt_ungeteilt():
@@ -179,7 +179,7 @@ def test_prokopfprobe_ohne_einwohnerzahl_ist_kein_urteil(gelesen):
     """Vor 2010 kennt der Bestand keine Einwohnerzahlen. Das ist eine fehlende
     Probe und kein Durchfallen — sonst verlöre die Reihe ihre erste Hälfte."""
     assert schulden.prokopfprobe(_zeile(gelesen, 1995), None) == (None, None)
-    assert gelesen["proben"]["prokopf_ohne_einwohnerzahl"] > 0
+    assert gelesen["probes"]["prokopf_ohne_einwohnerzahl"] > 0
 
 
 def test_prokopfprobe_faengt_einen_faktor_tausend():
@@ -207,7 +207,7 @@ def test_2022_verliert_seine_aufteilung_aber_nicht_seine_summe(gelesen):
     assert z["je_einwohner"] == 1652
     assert all(z[art] is None for art in schulden.ARTEN)
     assert z["aufteilung_verworfen"] == 1_078_000
-    assert z["proben"] == ["schulden_prokopf"]
+    assert z["probes"] == ["schulden_prokopf"]
     # Und die Nachbarjahre behalten ihre Aufteilung — es fällt nur der eine.
     assert _zeile(gelesen, 2021)["kreditmarkt"] == 53_074_000
     assert _zeile(gelesen, 2023)["kreditmarkt"] == 46_577_000
@@ -239,8 +239,8 @@ def test_betraege_kommen_in_euro_an(gelesen):
 def test_revidierte_werte_bleiben_als_angabe_erhalten(gelesen):
     """Das ``r`` der Quelle heißt „nachträglich korrigiert". Das ist eine
     Angabe über die Zahl und darf auf der Seite stehen."""
-    assert _zeile(gelesen, 2024)["revidiert"] is True
-    assert _zeile(gelesen, 2025)["revidiert"] is False
+    assert _zeile(gelesen, 2024)["revised"] is True
+    assert _zeile(gelesen, 2025)["revised"] is False
 
 
 def test_die_umbuchung_von_2010_bleibt_sichtbar(gelesen):
@@ -273,7 +273,7 @@ def _herkunft(probe="schulden_summenzeile"):
     return herkunft.Herkunft(
         art="stadt", probe=probe, url=schulden.TABELLE_URL,
         label="Statistisches Jahrbuch, Tabelle 1108",
-        fundstelle="Kapitel 11, Tabelle 1108",
+        citation="Kapitel 11, Tabelle 1108",
         probe_result="Testlauf", stand="Schuldenstand zum 31.12.2025")
 
 
@@ -290,7 +290,7 @@ def test_speichern_und_lesen(tmp_path, gelesen):
 
         h = store.get_herkunft([zeilen[0]["herkunft_id"]])[0]
         assert h["art"] == "stadt"
-        assert h["proben"] and "Schuldenarten" in h["proben"][0]
+        assert h["probes"] and "Schuldenarten" in h["probes"][0]
 
         # Der Jahrgang ohne Aufteilung kommt auch aus der Datenbank ohne sie —
         # NULL bleibt NULL und wird nicht unterwegs zu einer Null.
@@ -336,8 +336,8 @@ def test_verschiedene_probenlagen_bekommen_verschiedene_herkuenfte(tmp_path, gel
     der Beleg auf der Seite muss für SEINE Zahl gelten."""
     store = CouncilStore(tmp_path / "c.sqlite")
     try:
-        for lage in {tuple(z["proben"]) for z in gelesen["zeilen"]}:
-            teil = [z for z in gelesen["zeilen"] if tuple(z["proben"]) == lage]
+        for lage in {tuple(z["probes"]) for z in gelesen["zeilen"]}:
+            teil = [z for z in gelesen["zeilen"] if tuple(z["probes"]) == lage]
             store.save_schulden(teil, _herkunft(probe=list(lage)))
         zeilen = {z["year"]: z for z in store.get_schulden()}
         h2022 = store.get_herkunft([zeilen[2022]["herkunft_id"]])[0]
@@ -418,7 +418,7 @@ def test_endpunkt_liefert_reihe_abgrenzung_und_belege(tmp_path, gelesen):
         # Jede Zeile findet ihren Beleg, und der trägt Erklärsätze.
         for zeile in antwort["reihe"]:
             h = antwort["herkunft"][str(zeile["herkunft_id"])]
-            assert h["proben"], "Beleg ohne Erklärsatz"
+            assert h["probes"], "Beleg ohne Erklärsatz"
             assert h["url"]
     finally:
         store.close()

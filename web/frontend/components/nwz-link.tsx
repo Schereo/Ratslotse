@@ -10,7 +10,7 @@ export function nwzQuery(title: string): string {
   const cleaned = (title || "")
     .replace(/\([^)]*\)/g, " ")                    // Klammer-Zusätze, z. B. (Stadtplanung)
     .replace(/\s[-–—]\s.*$/, " ")                  // alles ab „ - Bericht/Antrag/…"
-    .replace(/\s(?:zum stichtag|gemäß|nach §|für den zeitraum)\s.*$/i, " ")  // Datum/Paragraph/Zeitraum
+    .replace(/\s(?:zum as_of_date|gemäß|nach §|für den zeitraum)\s.*$/i, " ")  // Datum/Paragraph/Zeitraum
     .replace(/\svom\s+\d.*$/i, " ")                // „vom 5. Mai 2025" (nur vor Datum)
     .replace(/["«»„""'']/g, " ")                    // Anführungszeichen
     .replace(/\s+/g, " ")

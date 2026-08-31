@@ -84,7 +84,7 @@ def _flach(text: str) -> str:
     return re.sub(r"\s+", " ", text or "")
 
 
-def jahrgang(kopf: str | None) -> int | None:
+def budget_year(kopf: str | None) -> int | None:
     """Welchen Jahrgang ein Kandidat abdeckt — ``None``, wenn es keiner ist.
 
     Der Titel steht im Rohtext über mehrere Zeilen verteilt und trägt in den
@@ -206,8 +206,8 @@ def _vorjahr_in_tausend(kopf: str) -> bool:
     return bool(treffer) and treffer[-1].startswith("T")
 
 
-def _rolle(bezeichnung: str) -> str | None:
-    klein = " ".join(bezeichnung.lower().split())
+def _rolle(label: str) -> str | None:
+    klein = " ".join(label.lower().split())
     for name, muster in ROLLEN:
         if re.match(muster, klein):
             return name
@@ -260,7 +260,7 @@ def _posten_zeilen(rumpf: str, tausend: bool) -> list[dict]:
         prior_year = _zahl(rest.group(1), dezimal=not tausend) if rest else None
         if prior_year is not None and tausend:
             prior_year *= 1000.0
-        aus.append({"nr": nr, "bezeichnung": text, "rolle": _rolle(text),
+        aus.append({"nr": nr, "label": text, "rolle": _rolle(text),
                     "amount": amount, "prior_year": prior_year})
         # Das Gesamtjahresergebnis schließt die Tabelle ab. Ohne diesen Halt
         # liest der Parser in die Anlagenübersicht weiter, die gleich darauf
@@ -270,18 +270,18 @@ def _posten_zeilen(rumpf: str, tausend: bool) -> list[dict]:
     return aus
 
 
-def _probe(bezeichnung: str, links: float | None, rechts: float | None) -> dict | None:
+def _probe(label: str, links: float | None, rechts: float | None) -> dict | None:
     """Eine Rechenprobe als Nachweis — ``None``, wenn sie nicht rechenbar ist."""
     if links is None or rechts is None:
         return None
     delta = round(links - rechts, 2)
-    return {"probe": bezeichnung, "delta": delta, "ok": abs(delta) <= TOLERANZ_EUR}
+    return {"probe": label, "delta": delta, "ok": abs(delta) <= TOLERANZ_EUR}
 
 
 def parse_gesamtergebnisrechnung(text: str) -> dict | None:
     """Abschnitt 3.2 lesen — oder ``None``, wenn keine Tabelle da ist.
 
-    Zurück kommt ``{"posten": [...], "proben": [...], "bestanden": bool}``.
+    Zurück kommt ``{"posten": [...], "probes": [...], "bestanden": bool}``.
     Die Posten sind vollständig, aber nur die drei Proben entscheiden, ob der
     Jahrgang gespeichert werden darf; das trennt der Aufrufer nicht selbst."""
     roh = entzerren(text or "")
@@ -298,7 +298,7 @@ def parse_gesamtergebnisrechnung(text: str) -> dict | None:
 
         ord_ergebnis = wert("ord_ergebnis")
         ao_ergebnis = wert("ao_ergebnis")
-        proben = [p for p in (
+        probes = [p for p in (
             _probe("Erträge − Aufwendungen = ordentliches Ergebnis",
                    (wert("revenues_total") or 0) - (wert("expenses_total") or 0)
                    if wert("revenues_total") is not None
@@ -314,8 +314,8 @@ def parse_gesamtergebnisrechnung(text: str) -> dict | None:
                    if ord_ergebnis is not None and ao_ergebnis is not None else None,
                    wert("gesamtergebnis")),
         ) if p]
-        return {"posten": posten, "proben": proben,
-                "bestanden": len(proben) == 3 and all(p["ok"] for p in proben)}
+        return {"posten": posten, "probes": probes,
+                "bestanden": len(probes) == 3 and all(p["ok"] for p in probes)}
     return None
 
 
@@ -426,7 +426,7 @@ _QUERPROBE = {"revenues": "revenues_total", "expenses": "expenses_total"}
 def lies(text: str) -> dict:
     """Einen Gesamtabschluss vollständig lesen, mit allen Proben.
 
-    Liefert ``{"posten", "traeger", "proben", "bestanden", "verworfen"}``.
+    Liefert ``{"posten", "traeger", "probes", "bestanden", "verworfen"}``.
     ``bestanden`` sagt nur etwas über die Gesamtergebnisrechnung — sie ist der
     Kern, ohne den der Jahrgang wertlos ist. Die Trägeraufstellung wird je
     Aufstellung einzeln beurteilt: 2018 weist die Aufwendungsseite eine
@@ -462,12 +462,12 @@ def lies(text: str) -> dict:
             # noch gar nicht; das ist eine Lücke der Quelle, keine gerissene
             # Probe, und darf nicht als Warnung im Protokoll landen.
             "traeger_gefunden": len(gefunden),
-            "proben": ger["proben"] if ger else [],
+            "probes": ger["probes"] if ger else [],
             "bestanden": bool(ger and ger["bestanden"]),
             "verworfen": verworfen}
 
 
-def probennachweis(proben: list[dict]) -> str:
+def probennachweis(probes: list[dict]) -> str:
     """Der **Messwert** der Rechenproben, als eine Zeile.
 
     Nicht zu verwechseln mit dem Probennamen: Der steht in
@@ -477,7 +477,7 @@ def probennachweis(proben: list[dict]) -> str:
     # `+ 0.0` macht aus der negativen Null eine gewöhnliche: Sonst steht im
     # Beleg „Δ -0.00 €", und das liest sich wie ein Rest, wo keiner ist.
     return "; ".join(f"{p['probe']}: Δ {p['delta'] + 0.0:.2f} €".replace("-0.00", "0.00")
-                     for p in proben if p["ok"])
+                     for p in probes if p["ok"])
 
 
 def traegernachweis(traeger: list[dict]) -> str:

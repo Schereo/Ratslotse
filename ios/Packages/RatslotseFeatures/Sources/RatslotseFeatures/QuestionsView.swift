@@ -875,7 +875,7 @@ struct QuestionsView: View {
             "grafik": {
               "titel": "Vorgesehene Investitionen",
               "einheit": "Mio. €",
-              "hinweis": "Planwerte aus der Beschlussvorlage.",
+              "note": "Planwerte aus der Beschlussvorlage.",
               "reihe": [
                 {"year": 2026, "wert": 2.1},
                 {"year": 2027, "wert": 4.3},
@@ -1951,7 +1951,7 @@ struct PartyOpinion: Codable, Sendable, Identifiable {
         case party = "partei"
         case stance = "haltung"
         case united = "einig"
-        case hint = "hinweis"
+        case hint = "note"
         case coreStatement = "kernaussage"
         case contributions = "beitraege"
     }
@@ -1963,7 +1963,7 @@ struct PartyOpinion: Codable, Sendable, Identifiable {
         ]
         if let stance { fields["haltung"] = .string(stance) }
         if let united { fields["einig"] = .bool(united) }
-        if let hint { fields["hinweis"] = .string(hint) }
+        if let hint { fields["note"] = .string(hint) }
         if let coreStatement { fields["kernaussage"] = coreStatement.jsonValue }
         if let contributions { fields["beitraege"] = .number(Double(contributions)) }
         return .object(fields)
@@ -2891,7 +2891,7 @@ private struct EvidenceChartData {
         guard points.count >= 2 else { return nil }
         title = root["titel"]?.string ?? "Entwicklung"
         unit = root["einheit"]?.string ?? "Wert"
-        note = root["hinweis"]?.string
+        note = root["note"]?.string
         source = root["quelle"]?.string
         decimals = max(0, min(3, root["nachkomma"]?.int ?? 0))
     }

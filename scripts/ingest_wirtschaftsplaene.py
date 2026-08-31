@@ -161,7 +161,7 @@ def main() -> int:
             if year is None:
                 continue
             anlagen = [dict(a) for a in store._conn.execute(  # noqa: SLF001
-                "SELECT document_id, label, url, status, raw_text, ocr_modell "
+                "SELECT document_id, label, url, status, raw_text, ocr_model "
                 "FROM council_anlagen WHERE kvonr = ? ORDER BY document_id",
                 (r["kvonr"],))]
             # `'ocr'` ZÄHLT MIT. Diese Anlagen tragen keine Textebene, sondern
@@ -172,30 +172,30 @@ def main() -> int:
             # Blockade, und die drei AWB-Jahrgänge 2019–2021 blieben gelesen
             # und trotzdem unsichtbar. Geprüft wird ohnehin die Rechnung, und
             # die ist bei OCR-Text dieselbe wie bei einer Textebene.
-            lesbar = [a for a in anlagen
+            readable = [a for a in anlagen
                       if a["status"] in ANLAGE_LESBAR and (a["raw_text"] or "")]
-            if not lesbar:
+            if not readable:
                 ohne_text.append((r["template_number"], year,
                                   [a["status"] for a in anlagen] or ["keine Anlage"]))
                 continue
-            for a in lesbar:
+            for a in readable:
                 try:
-                    plan, proben = parse_erfolgsplan(
+                    plan, probes = parse_erfolgsplan(
                         r["template_number"], betrieb, year, a["raw_text"])
                 except WirtschaftsplanFehler as fehler:
                     anlagen_risse.append(f"{r['template_number']} (Anlage "
                                          f"{a['document_id']}): {fehler}")
                     continue
-                aus_anlage.append((plan, proben, a))
+                aus_anlage.append((plan, probes, a))
                 break
 
         if aus_anlage:
             print("\nAus dem Erfolgsplan der Anlage:")
-            for plan, proben, a in sorted(aus_anlage, key=lambda x: (x[0].betrieb, x[0].year)):
+            for plan, probes, a in sorted(aus_anlage, key=lambda x: (x[0].betrieb, x[0].year)):
                 print(f"  {plan.year}  {plan.betrieb:8s} "
                       f"Erträge {plan.revenues / 1e6:7.3f} Mio. €  "
                       f"Ergebnis {plan.result / 1e6:+7.3f} Mio. €  "
-                      f"({len(proben)} Spalten geprüft, Anlage {a['document_id']})")
+                      f"({len(probes)} Spalten geprüft, Anlage {a['document_id']})")
         if ohne_text:
             print("\nAnlage ohne Volltext — nichts zu lesen:")
             for vnr, year, stati in ohne_text:
@@ -249,10 +249,10 @@ def main() -> int:
             url = (f"https://buergerinfo.oldenburg.de/vo0050.php?__kvonr={kvonr}"
                    if kvonr else None)
             store.save_wirtschaftsplan(plan, herkunft_fuer(plan, url=url))
-        for plan, proben, a in aus_anlage:
+        for plan, probes, a in aus_anlage:
             store.save_wirtschaftsplan(plan, herkunft_tabelle(
-                plan, proben, url=a["url"], dokument_id=a["document_id"],
-                ocr_modell=a.get("ocr_modell")))
+                plan, probes, url=a["url"], document_id=a["document_id"],
+                ocr_model=a.get("ocr_model")))
         for plan, wort, lage, r in kernzahlen:
             store.save_wirtschaftsplan(plan, herkunft_kernzahl(
                 plan, wort, lage, url=None, kvonr=r["kvonr"]))

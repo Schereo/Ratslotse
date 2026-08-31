@@ -199,11 +199,11 @@ def test_liste_blaettert_statt_bei_50_zu_enden(tmp_path):
 
     gesammelt, offset = [], 0
     while True:
-        seite = store.qa_gespraeche(uid, limit=30, offset=offset)
-        if not seite:
+        page = store.qa_gespraeche(uid, limit=30, offset=offset)
+        if not page:
             break
-        gesammelt += seite
-        offset += len(seite)
+        gesammelt += page
+        offset += len(page)
     assert [g["id"] for g in gesammelt] == list(reversed(ids))   # lückenlos
 
     # Die Konto-Karte will nur die Zahl — limit=0 liefert keine Zeilen.

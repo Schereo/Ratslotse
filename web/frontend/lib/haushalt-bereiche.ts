@@ -49,7 +49,7 @@ export type BereichSchluessel =
 export type Bereich = {
   schluessel: BereichSchluessel;
   /** Nummer des Teilhaushalts im Haushaltsplan (Reihenfolge der Übersicht). */
-  thh: number;
+  sub_budget: number;
   /** Anzeigename: die jüngste amtliche Schreibweise, nicht unsere Erfindung. */
   name: string;
   /** Kurzform fürs Balkensegment und enge Spalten (höchstens 20 Zeichen). */
@@ -69,7 +69,7 @@ export type Bereich = {
 export const BEREICHE: readonly Bereich[] = [
   {
     schluessel: "verwaltungsfuehrung",
-    thh: 1,
+    sub_budget: 1,
     name: "Verwaltungsführung",
     kurz: "Verwaltungsspitze",
     // Gegen den Vorbericht gelesen (H2-13): Sitzungsdienst und Presse- und
@@ -83,7 +83,7 @@ export const BEREICHE: readonly Bereich[] = [
   },
   {
     schluessel: "personal",
-    thh: 2,
+    sub_budget: 2,
     name: "Personal/Organisation/Digitalisierung/IT",
     kurz: "Personal & IT",
     // Der Nachsatz ist die wichtigste Auskunft der Zeile (H2-13): 47 Mio. €
@@ -100,7 +100,7 @@ export const BEREICHE: readonly Bereich[] = [
   },
   {
     schluessel: "wirtschaft",
-    thh: 3,
+    sub_budget: 3,
     name: "Wirtschaftsförderung, Liegenschaften",
     kurz: "Wirtschaft & Flächen",
     klartext:
@@ -110,7 +110,7 @@ export const BEREICHE: readonly Bereich[] = [
   },
   {
     schluessel: "finanzen",
-    thh: 4,
+    sub_budget: 4,
     name: "Finanzmanagement und Recht",
     kurz: "Finanzen",
     klartext:
@@ -120,7 +120,7 @@ export const BEREICHE: readonly Bereich[] = [
   },
   {
     schluessel: "sicherheit",
-    thh: 5,
+    sub_budget: 5,
     name: "Sicherheit und Ordnung",
     kurz: "Sicherheit",
     klartext:
@@ -130,7 +130,7 @@ export const BEREICHE: readonly Bereich[] = [
   },
   {
     schluessel: "kultur",
-    thh: 6,
+    sub_budget: 6,
     name: "Kultur, Museen, Sport",
     kurz: "Kultur & Sport",
     klartext:
@@ -140,7 +140,7 @@ export const BEREICHE: readonly Bereich[] = [
   },
   {
     schluessel: "stadtplanung",
-    thh: 7,
+    sub_budget: 7,
     name: "Stadtplanung",
     kurz: "Stadtplanung",
     klartext:
@@ -150,7 +150,7 @@ export const BEREICHE: readonly Bereich[] = [
   },
   {
     schluessel: "verkehr",
-    thh: 8,
+    sub_budget: 8,
     name: "Verkehr und Straßenbau",
     kurz: "Verkehr & Straßen",
     klartext: "Straßen, Radwege, Brücken und der Nahverkehr.",
@@ -158,7 +158,7 @@ export const BEREICHE: readonly Bereich[] = [
   },
   {
     schluessel: "umwelt",
-    thh: 9,
+    sub_budget: 9,
     name: "Klima/Umwelt/Mobilität/Bau/Grün/Friedh.",
     kurz: "Klima & Umwelt",
     klartext:
@@ -173,7 +173,7 @@ export const BEREICHE: readonly Bereich[] = [
   },
   {
     schluessel: "soziales",
-    thh: 10,
+    sub_budget: 10,
     name: "Soziales und Gesundheit",
     kurz: "Soziales",
     klartext:
@@ -184,7 +184,7 @@ export const BEREICHE: readonly Bereich[] = [
   },
   {
     schluessel: "jugend",
-    thh: 11,
+    sub_budget: 11,
     name: "Jugend und Familie",
     kurz: "Jugend & Familie",
     klartext:
@@ -193,7 +193,7 @@ export const BEREICHE: readonly Bereich[] = [
   },
   {
     schluessel: "schule",
-    thh: 12,
+    sub_budget: 12,
     name: "Schule und Bildung",
     kurz: "Schulen",
     klartext:
@@ -203,7 +203,7 @@ export const BEREICHE: readonly Bereich[] = [
   },
   {
     schluessel: "stiftungen",
-    thh: 13,
+    sub_budget: 13,
     name: "nicht rechtsfähige Stiftungen",
     kurz: "Stiftungen",
     klartext:
@@ -246,7 +246,7 @@ const NACH_ALIAS: Map<string, Bereich> = new Map(
 export type BereichKanon = {
   /** `null`, wenn der Name im Wörterbuch fehlt (neuer Jahrgang). */
   schluessel: BereichSchluessel | null;
-  thh: number | null;
+  sub_budget: number | null;
   /** Anzeigename; bei unbekanntem Namen der Rohname aus der Datenbank. */
   name: string;
   kurz: string;
@@ -270,7 +270,7 @@ export function bereichKanon(name: string): BereichKanon {
     const roh = name.trim();
     return {
       schluessel: null,
-      thh: null,
+      sub_budget: null,
       name: roh,
       kurz: notKurz(roh),
       klartext: null,
@@ -279,7 +279,7 @@ export function bereichKanon(name: string): BereichKanon {
   }
   return {
     schluessel: b.schluessel,
-    thh: b.thh,
+    sub_budget: b.sub_budget,
     name: b.name,
     kurz: b.kurz,
     klartext: b.klartext,

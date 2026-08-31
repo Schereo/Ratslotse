@@ -107,14 +107,14 @@ const SATZUNG_FELDER = ["haushaltssatzung", "herkunft"] as const;
  *  und bewusst nicht geteilt — die drei Seiten sollen einander nicht brechen. */
 function Fundstelle({ h }: { h: Herkunft | null }) {
   // Ohne Fundstelle nichts — sonst bliebe eine Überschrift ohne Inhalt stehen.
-  if (!h?.fundstelle) return null;
+  if (!h?.citation) return null;
   return (
     <div className="border-t border-dashed border-border pt-2.5">
       <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
         Woher diese Zahlen kommen
       </p>
       <p className="mt-1 max-w-[86ch] text-[11.5px] leading-relaxed text-muted-foreground">
-        {h.fundstelle}{h.stand ? ` · ${h.stand}` : ""}
+        {h.citation}{h.stand ? ` · ${h.stand}` : ""}
       </p>
     </div>
   );
@@ -274,8 +274,8 @@ function BuergschaftsBlock({ daten }: { daten: SchuldenDaten | null }) {
 
   // Wie genau die Quelle je Jahrgang ist. Das gehört an die Zahlen und nicht
   // in eine Fußnote am Seitenende — die Reihe mischt zwei Darreichungsformen.
-  const cent = reihe.filter((z) => z.genau).map((z) => z.year);
-  const gerundet = reihe.filter((z) => !z.genau && !z.out_next_year).map((z) => z.year);
+  const cent = reihe.filter((z) => z.exact).map((z) => z.year);
+  const gerundet = reihe.filter((z) => !z.exact && !z.out_next_year).map((z) => z.year);
 
   return (
     <section className="flex flex-col gap-3.5 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
@@ -321,7 +321,7 @@ function BuergschaftsBlock({ daten }: { daten: SchuldenDaten | null }) {
 
       {cent.length > 0 || gerundet.length > 0 ? (
         <p className="max-w-[76ch] text-[12px] leading-relaxed text-muted-foreground">
-          <strong className="text-foreground">Wie genau die Quelle ist.</strong>{" "}
+          <strong className="text-foreground">Wie exact die Quelle ist.</strong>{" "}
           {cent.length > 0 ? (
             <>Für {cent.join(" und ")} nennt der Jahresabschluss den Betrag auf
               den Cent{gerundet.length > 0 ? ", " : ". "}</>
@@ -373,8 +373,8 @@ function BuergschaftsBlock({ daten }: { daten: SchuldenDaten | null }) {
  *  Rendert nichts ohne eingelesenen Tabellenband. */
 function DritteZahlBlock({ daten }: { daten: SchuldenDaten | null }) {
   const i = daten?.integrierte_schulden;
-  if (!i?.stichtag) return null;
-  const s = i.stichtag;
+  if (!i?.as_of_date) return null;
+  const s = i.as_of_date;
   const reihe = daten?.reihe ?? [];
   // Der Rechtsträger-Wert desselben Stichtags — die mittlere der drei Zahlen.
   const traeger = reihe.find((z) => z.year === s.year)?.insgesamt ?? null;
@@ -555,7 +555,7 @@ export default function SchuldenPage() {
   // ist. Sortiert wird hier und nicht im Vertrauen auf die API.
   const satzung = useMemo(() => {
     const zeilen = (satzungDaten?.haushaltssatzung ?? [])
-      .filter((z) => z.nachtrag === 0);
+      .filter((z) => z.supplement === 0);
     return zeilen.length
       ? zeilen.reduce((a, b) => (b.year > a.year ? b : a))
       : null;
@@ -637,7 +637,7 @@ export default function SchuldenPage() {
             die Treppe, maßstäblich zu den Zahlen, und klickt zum Block
             „Warum man drei Zahlen hört". Ohne Tabellenband keine Bühne. */}
         {(() => {
-          const st = data?.integrierte_schulden?.stichtag;
+          const st = data?.integrierte_schulden?.as_of_date;
           if (!st) return null;
           const traeger = (data?.reihe ?? []).find((z) => z.year === st.year)?.insgesamt ?? null;
           const stufen = [
@@ -721,7 +721,7 @@ export default function SchuldenPage() {
           <p className="max-w-[76ch] rounded-xl bg-muted/60 px-3 py-2.5 text-[13px] leading-relaxed text-foreground/90">
             <strong>Gezählt wird:</strong> {data.abgrenzung}
           </p>
-          {letzter.revidiert === 1 && (
+          {letzter.revised === 1 && (
             <p className="text-[11.5px] leading-relaxed text-muted-foreground">
               Die Stadt hat die Werte für {letzter.year} nachträglich korrigiert; hier steht
               der korrigierte Stand.
@@ -823,7 +823,7 @@ export default function SchuldenPage() {
                 + "Eigenbetrieb Gebäudewirtschaft. Dadurch änderte sich die Aufteilung, "
                 + "während die Gesamtsumme nahezu gleich blieb.",
             }] : []}
-            hinweis="Jahr überfahren, antippen oder mit den Pfeiltasten wechseln."
+            note="Jahr überfahren, antippen oder mit den Pfeiltasten wechseln."
           />
           {/* Die beiden Richtungen nebeneinander — der Grund, warum es den
               Umschalter überhaupt gibt. Gerechnet, nicht geschrieben. */}

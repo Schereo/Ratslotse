@@ -62,7 +62,7 @@ def _ingest_year(store: CouncilStore, year: int, url: str | None, pdf: str | Non
     store.save_haushalt(year, rows, herkunft.Herkunft(
         art="stadt", probe="summenzeile", url=url or f"file:{pdf}",
         label=f"Beschlossener Haushaltsplan {year}",
-        fundstelle="Übersicht „Ergebnishaushalt“ — Teilhaushalte mit "
+        citation="Übersicht „Ergebnishaushalt“ — Teilhaushalte mit "
                    "ordentlichen Erträgen und Aufwendungen",
         stand=f"Haushaltsjahr {year}"))
     summe = next((r for r in rows if r["is_total"]), {})
@@ -81,7 +81,7 @@ def _ingest_year_csv(store: CouncilStore, year: int, url: str) -> bool:
     store.save_haushalt(year, rows, herkunft.Herkunft(
         art="opendata", probe="summenzeile", url=url,
         label=f"Ergebnishaushalt {year} (Open-Data-Portal)",
-        fundstelle="Ergebnishaushalt-CSV, eine Zeile je Teilhaushalt plus "
+        citation="Ergebnishaushalt-CSV, eine Zeile je Teilhaushalt plus "
                    "Zeile „Gesamtergebnishaushalt“",
         stand=f"Haushaltsjahr {year}"))
     summe = next((r_ for r_ in rows if r_["is_total"]), {})

@@ -63,7 +63,7 @@ export type AnlagePosten = {
   year: number;
   /** Gliederung wie im Dokument: „1", „1.1", „2", „2.3" … */
   nr: string;
-  bezeichnung: string;
+  label: string;
   /** 12 (bis 2020) oder 13. Bei 12 fehlt dem Abschreibungs-Block die
    *  Umbuchungs-Spalte — die Abschreibungskette KANN dort nicht schließen,
    *  und das ist eine Eigenschaft der Vorlage, kein Fehler. */
@@ -73,7 +73,7 @@ export type AnlagePosten = {
   abschr_anfang: number; abschreibung: number; aufloesungen: number;
   zuschreibungen: number; abschr_umbuchungen: number; abschr_ende: number;
   book_value: number; book_value_prior_year: number;
-  proben: string[];
+  probes: string[];
   herkunft_id: number | null;
 };
 
@@ -94,7 +94,7 @@ export type Anlagen = {
   /** Die Jahre MIT Untergliederung — kürzer als `jahre`, und das muss die
    *  Seite sagen dürfen, statt eine Lücke als Null zu zeichnen. */
   gruppen_jahre: number[];
-  proben: Record<string, string>;
+  probes: Record<string, string>;
 };
 
 /** Die Hauptposition „Sachvermögen" eines Jahres — oder null.

@@ -35,7 +35,7 @@ export function PublicShell({ children }: { children: React.ReactNode }) {
 
       {/* Ebene „huelle" — dieselbe Stufe wie Kopfzeile und Tab-Leiste der
           App-Hülle; die Leiter steht in app/globals.css. */}
-      <header className="sticky top-0 z-[var(--ebene-huelle)] border-b border-border bg-card/95 backdrop-blur">
+      <header className="sticky top-0 z-[var(--level-huelle)] border-b border-border bg-card/95 backdrop-blur">
         <div className="mx-auto flex w-full max-w-7xl items-center gap-3 px-4 pb-3 pt-[calc(env(safe-area-inset-top)+0.75rem)] sm:px-6 lg:px-8">
           <Link href="/" className="flex items-center gap-2.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
             <Image src="/icon-192.png" alt="" width={32} height={32} className="h-8 w-8 rounded-lg" priority />

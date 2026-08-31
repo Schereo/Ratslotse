@@ -27,7 +27,7 @@ sichtbar bleiben:
   nennt nur noch **gerundete Millionen** („rd. 220,3 Millionen Euro"). Die
   frühe Tabelle gibt es dort nicht mehr.
 
-Deshalb trägt jede Zeile ``genau``. Eine Anzeige, die 220,3 Mio. und
+Deshalb trägt jede Zeile ``exact``. Eine Anzeige, die 220,3 Mio. und
 74.991.739,16 € nebeneinander gleich formatiert, behauptet eine Genauigkeit,
 die die Quelle für das eine Jahr hat und für das andere nicht.
 
@@ -148,7 +148,7 @@ def parse_bestand(text: str, year: int) -> dict | None:
     """Den Bürgschaftsbestand aus einem Jahresabschluss lesen.
 
     Liefert ``None``, wenn der Jahrgang ihn nicht nennt (2017, 2018, 2021).
-    Sonst ein dict mit ``bestand``, ``genau`` und — wo die Quelle ihn nennt —
+    Sonst ein dict mit ``bestand``, ``exact`` und — wo die Quelle ihn nennt —
     ``prior_year_stock``/``prior_year_year`` für die Kettenprobe.
     """
     t = _glatt(text)
@@ -162,9 +162,9 @@ def parse_bestand(text: str, year: int) -> dict | None:
             gefunden: dict = {
                 "year": year,
                 "bestand": nach_jahr[year],
-                "genau": False,
+                "exact": False,
                 "quelle": "anhang",
-                "fundstelle": ABSCHNITT,
+                "citation": ABSCHNITT,
                 "out_next_year": False,
             }
             vor = [j for j in nach_jahr if j == year - 1]
@@ -184,9 +184,9 @@ def parse_bestand(text: str, year: int) -> dict | None:
             return {
                 "year": year,
                 "bestand": _zahl(amount.group(1)),
-                "genau": True,
+                "exact": True,
                 "quelle": "tabelle",
-                "fundstelle": TABELLENZEILE,
+                "citation": TABELLENZEILE,
                 "out_next_year": False,
             }
     return None
@@ -204,9 +204,9 @@ def out_next_year(gefunden: dict) -> dict | None:
     return {
         "year": gefunden["prior_year_year"],
         "bestand": gefunden["prior_year_stock"],
-        "genau": False,
+        "exact": False,
         "quelle": "anhang",
-        "fundstelle": f"{ABSCHNITT} (Jahresabschluss {gefunden['year']})",
+        "citation": f"{ABSCHNITT} (Jahresabschluss {gefunden['year']})",
         "out_next_year": True,
     }
 
@@ -223,9 +223,9 @@ def reihe(gefundene: list[dict]) -> list[dict]:
     Jahrgang selbst schweigt. Das ist genau 2021."""
     nach_jahr = {g["year"]: g for g in gefundene}
     for g in gefundene:
-        nachtrag = out_next_year(g)
-        if nachtrag and nachtrag["year"] not in nach_jahr:
-            nach_jahr[nachtrag["year"]] = nachtrag
+        supplement = out_next_year(g)
+        if supplement and supplement["year"] not in nach_jahr:
+            nach_jahr[supplement["year"]] = supplement
     return [nach_jahr[j] for j in sorted(nach_jahr)]
 
 

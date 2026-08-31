@@ -53,7 +53,7 @@ I10.700905.560 Tami-Oelfken-Straße, Beiträge 0,00 -50.000,00 0,00
 def test_anhang_liefert_beide_enden_und_den_grund():
     g = b.parse_bestand(ANHANG_2024, 2024)
     assert g["bestand"] == 220_300_000.0
-    assert g["genau"] is False          # „rd." — die Quelle rundet selbst
+    assert g["exact"] is False          # „rd." — die Quelle rundet selbst
     assert g["quelle"] == "anhang"
     # Das zweite Ende ist der Anfangsbestand: die halbe Kettenprobe.
     assert g["prior_year_year"] == 2023
@@ -79,7 +79,7 @@ def test_zweiundzwanzig_traegt_die_klinikums_zahl():
 def test_die_frueheren_jahrgaenge_kommen_auf_den_cent():
     g = b.parse_bestand(TABELLE_2019, 2019)
     assert g["bestand"] == 74_991_739.16
-    assert g["genau"] is True           # keine Rundung — das darf die Anzeige zeigen
+    assert g["exact"] is True           # keine Rundung — das darf die Anzeige zeigen
     assert g["quelle"] == "tabelle"
     assert "prior_year_stock" not in g   # die Tabelle nennt nur ein Ende
 
@@ -111,7 +111,7 @@ def test_die_luecke_wird_nur_dort_aus_dem_folgejahr_gefuellt_wo_sie_ist():
     for z in r:
         if z["year"] in {2019, 2022, 2024}:
             assert z["out_next_year"] is False, z["year"]
-    assert r[0]["genau"] is True and r[0]["bestand"] == 74_991_739.16
+    assert r[0]["exact"] is True and r[0]["bestand"] == 74_991_739.16
 
 
 def test_kettenprobe_findet_einen_widerspruch():

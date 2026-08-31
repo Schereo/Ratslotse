@@ -17,7 +17,7 @@ import { LiveBanner } from "@/components/live-banner";
 import { FundstueckCard } from "@/components/fundstueck-card";
 import { RecentDecisions } from "@/components/recent-decisions";
 import { WocheImRat, type Wochenvorschau } from "@/components/woche-im-rat";
-import { HinweisSlot } from "@/components/hinweis-slot";
+import { HinweisSlot } from "@/components/note-slot";
 import { PushPrimer } from "@/components/push-primer";
 import { formatEuro, OutcomeDot } from "@/components/decision-ui";
 import { fragenHref, decisionHref } from "@/lib/routes";

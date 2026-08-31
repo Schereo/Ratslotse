@@ -123,7 +123,7 @@ export default function LaborPage() {
           dem echten Verfahren, dann der Hinweis, dass das Labor keine
           Beschlüsse fasst. Zusammen beantworten sie „wie ernst ist das
           hier?" von beiden Seiten. */}
-      <VerfahrensWegKarte daten={listen ?? null} jahrgang={jahreSortiert(data).at(-1) ?? null} />
+      <VerfahrensWegKarte daten={listen ?? null} budget_year={jahreSortiert(data).at(-1) ?? null} />
 
       <LottiErklaert
         titel="Warum das kein Sparvorschlag ist"

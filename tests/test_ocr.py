@@ -29,7 +29,7 @@ def _store_mit_anlage(tmp_path: Path, status: str) -> CouncilStore:
     with store._conn:
         store._conn.execute(
             "INSERT INTO council_anlagen (document_id, kvonr, label, url, raw_text, "
-            "n_pages, fetched_at, status, ocr_modell) "
+            "n_pages, fetched_at, status, ocr_model) "
             "VALUES (4711, 99, ?, 'https://x/4711', ?, 36, datetime('now'), ?, ?)",
             (LABEL_FINANZ, TEXT, status, "modell/x" if status == "ocr" else None))
     return store
@@ -47,14 +47,14 @@ def test_gelesener_scan_ist_durchsuchbar(tmp_path):
     Investitionsprogramm gleich mit aus.
 
     Ein gescannter Wirtschaftsplan ist so durchsuchbar wie ein getippter.
-    Wie er gelesen wurde, steht in `ocr_modell`."""
+    Wie er gelesen wurde, steht in `ocr_model`."""
     store = _store_mit_anlage(tmp_path, "ok")
     try:
         offen = store.anlagen_missing_embeddings()
         assert [z["document_id"] for z in offen] == [4711]
         zeile = store._conn.execute(
-            "SELECT ocr_modell FROM council_anlagen WHERE document_id=4711").fetchone()
-        assert zeile["ocr_modell"] is None or isinstance(zeile["ocr_modell"], str)
+            "SELECT ocr_model FROM council_anlagen WHERE document_id=4711").fetchone()
+        assert zeile["ocr_model"] is None or isinstance(zeile["ocr_model"], str)
     finally:
         store.close()
 
@@ -240,7 +240,7 @@ def test_uebersprungene_seiten_werden_gezaehlt(monkeypatch, tmp_path):
     assert lesung.gelesen == 2
     assert lesung.uebersprungen == 1
     assert lesung.vollstaendig is False
-    assert "[Seite 2: nicht lesbar gemacht]" in lesung.text
+    assert "[Seite 2: nicht readable gemacht]" in lesung.text
 
 
 def test_vollstaendig_gelesen(monkeypatch):
@@ -351,10 +351,10 @@ def test_ein_briefkopf_logo_wird_nicht_fuer_die_seite_gehalten(monkeypatch):
                         or ocr.Seitenbild(b"x", "image/png", "gerendert"))
 
     logo = _Bild("logo.jpg", size=(528, 195))
-    seite = _Seite(logo, text="Ein Deckblatt mit Fließtext darauf." * 5)
-    seite.mediabox = type("_MB", (), {"width": 595.0, "height": 842.0})()
+    page = _Seite(logo, text="Ein Deckblatt mit Fließtext darauf." * 5)
+    page.mediabox = type("_MB", (), {"width": 595.0, "height": 842.0})()
 
-    assert ocr.seite_als_bild(seite).weg == "gerendert"
+    assert ocr.seite_als_bild(page).weg == "gerendert"
     assert gerendert, "eine 64-dpi-Grafik ist kein Seitenscan"
 
 
@@ -393,7 +393,7 @@ def test_null_gelesene_seiten_werden_nicht_gespeichert(monkeypatch, tmp_path):
     store = _store_mit_anlage(tmp_path, "empty")
     try:
         leer = ocr.Lesung(
-            text="[Seite 1: nicht lesbar gemacht]\n" * 22,
+            text="[Seite 1: nicht readable gemacht]\n" * 22,
             seiten=22, gelesen=0, uebersprungen=22, skalen=(),
             modell="modell/x", weg="keiner")
         assert len(leer.text) > ocr.MIN_SEITE, "der Platzhalter ist lang genug"
@@ -468,7 +468,7 @@ class _Schreiber:
     """Ein PdfWriter-Ersatz — `_gerendert` baut ein Ein-Seiten-PDF, und ein
     Stub-Seitenobjekt kommt an `add_page` nicht vorbei."""
 
-    def add_page(self, seite):
+    def add_page(self, page):
         pass
 
     def write(self, puffer):

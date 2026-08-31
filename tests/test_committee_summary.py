@@ -116,13 +116,13 @@ def test_ort_kommt_aus_dem_raum_feld_nicht_aus_der_ueberschrift():
     from bs4 import BeautifulSoup
     from council.scraper import _extract_location
 
-    seite = BeautifulSoup(
+    page = BeautifulSoup(
         "<h1>Kulturausschuss - 18.08.2026 - 17:00 Uhr</h1>"
         "<div class='smc-table-row'>"
         "<div class='smc-table-cell smc-cell-head siort_title'>Raum</div>"
         "<div class='smc-table-cell siort'>GLOBE Oldenburg, Beverbäker Wiesen 4, 26123 Oldenburg</div>"
         "</div>", "html.parser")
-    assert _extract_location(seite) == "GLOBE Oldenburg, Beverbäker Wiesen 4, 26123 Oldenburg"
+    assert _extract_location(page) == "GLOBE Oldenburg, Beverbäker Wiesen 4, 26123 Oldenburg"
 
     # Doppelte Leerzeichen und ein hängendes Komma kommen im Bestand vor.
     mehrzeilig = BeautifulSoup(

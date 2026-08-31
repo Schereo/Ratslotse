@@ -476,7 +476,7 @@ export interface DecisionDetail {
     n_pages: number | null;
     excerpt: string | null;
     /** Regex-Ernte: federführendes Amt aus dem Vorlagen-Kopf. */
-    amt?: string | null;
+    office?: string | null;
     /** Regex-Ernte: Klima-Check der Verwaltung („Auswirkungen: b) Klima"). */
     klima_check?: string | null;
     klima_relevant?: boolean | null;

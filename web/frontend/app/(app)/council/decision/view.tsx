@@ -751,7 +751,7 @@ function DecisionDetailInner() {
                     <p className="text-sm font-semibold text-foreground">Warum es dazu kam</p>
                     <p className="mb-2 text-xs text-muted-foreground/70">
                       Sachverhalt und Begründung aus der {vorlageArt(data.vorlage.art)} der Verwaltung
-                      {data.vorlage.amt ? ` — federführend: ${data.vorlage.amt}` : ""}
+                      {data.vorlage.office ? ` — federführend: ${data.vorlage.office}` : ""}
                     </p>
                     <VorlageExcerpt text={data.vorlage.excerpt} />
                   </div>

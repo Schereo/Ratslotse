@@ -149,7 +149,7 @@ export function Zeitstrahl({ stationen, heute, termin, beleg, className }: {
       const x1 = skala(datumAus(s.bis ?? s.von));
       const anker = (x0 + x1) / 2;
       const gewuenscht = Math.min(Math.max(anker - NOTE_W / 2, 0), Math.max(breite - NOTE_W, 0));
-      return { s, x0, x1, anker, gewuenscht, links: gewuenscht, ebene: 0 };
+      return { s, x0, x1, anker, gewuenscht, links: gewuenscht, level: 0 };
     });
     const frei = [-Infinity, -Infinity, -Infinity];
     const rechts = Math.max(breite - NOTE_W, 0);
@@ -158,21 +158,21 @@ export function Zeitstrahl({ stationen, heute, termin, beleg, className }: {
       const grenze = n.s.bis
         ? Math.max(n.x1 - 48, n.gewuenscht)
         : n.gewuenscht + 40;
-      let ebene = kandidaten.findIndex((k, e) => k >= frei[e] && k <= grenze);
-      if (ebene === -1) {
+      let level = kandidaten.findIndex((k, e) => k >= frei[e] && k <= grenze);
+      if (level === -1) {
         // Notlösung: die Ebene mit dem kleinsten Versatz.
-        ebene = kandidaten.reduce((best, k, e) => (k < kandidaten[best] ? e : best), 0);
+        level = kandidaten.reduce((best, k, e) => (k < kandidaten[best] ? e : best), 0);
       }
-      n.ebene = ebene;
-      n.links = kandidaten[ebene];
-      frei[ebene] = n.links + NOTE_W + 8;
+      n.level = level;
+      n.links = kandidaten[level];
+      frei[level] = n.links + NOTE_W + 8;
     }
     return platziert;
   })();
 
   // Höhe aus den wirklich belegten Ebenen — meist zwei, am Jahreswechsel
   // drei. Der Strahl rückt entsprechend nach unten.
-  const ebenen = Math.max(...noten.map((n) => n.ebene)) + 1;
+  const ebenen = Math.max(...noten.map((n) => n.level)) + 1;
   const RAIL_TOP = ebenen * EBENE_H + 6;
   const RAIL_MITTE = RAIL_TOP + BAND / 2;
   const H = RAIL_TOP + BAND + (termin ? 64 : 48);
@@ -194,12 +194,12 @@ export function Zeitstrahl({ stationen, heute, termin, beleg, className }: {
           {/* Verbinder Notiz → Strahl. Vor dem Band gezeichnet, damit sie
               darunter enden statt darüber zu liegen. Ist eine Notiz zur
               Seite gerutscht, läuft ihr Verbinder schräg zum Anker. */}
-          {noten.map(({ s, anker, links, ebene }) => {
+          {noten.map(({ s, anker, links, level }) => {
             const vonX = Math.min(Math.max(anker, links + 12), links + NOTE_W - 12);
             return (
               <line
                 key={`v-${s.label}`}
-                x1={vonX} y1={ebene * EBENE_H + NOTE_H - 6} x2={anker} y2={RAIL_TOP}
+                x1={vonX} y1={level * EBENE_H + NOTE_H - 6} x2={anker} y2={RAIL_TOP}
                 strokeWidth={1}
                 strokeDasharray={s.ungefaehr ? "3 3" : undefined}
                 className="stroke-border"
@@ -292,11 +292,11 @@ export function Zeitstrahl({ stationen, heute, termin, beleg, className }: {
 
         {/* Die Notizen als echter Text über dem Strahl — Links bleiben Links,
             die Vorlesehilfe liest sie in Zeitreihenfolge. */}
-        {noten.map(({ s, links, ebene }) => (
+        {noten.map(({ s, links, level }) => (
           <div
             key={s.label}
             className="absolute"
-            style={{ left: links, top: ebene * EBENE_H, width: NOTE_W }}
+            style={{ left: links, top: level * EBENE_H, width: NOTE_W }}
           >
             <StationsText s={s} kompakt />
           </div>

@@ -18,7 +18,7 @@ export type SchuldenJahr = {
   je_einwohner: number | null;
   aufteilung_verworfen: number | null;
   /** Die Quelle hat diesen Jahrgang nachträglich korrigiert („r"). */
-  revidiert: number;
+  revised: number;
   herkunft_id: number | null;
 };
 
@@ -82,7 +82,7 @@ export type SchuldenDaten = {
    *  Nebensache: Er sagt, welcher Teil der Summe aus Unternehmen stammt, für
    *  die die Stadt nicht haftet (2024: 58 %). */
   integrierte_schulden?: {
-    stichtag: {
+    as_of_date: {
       year: number; insgesamt: number; je_einwohner: number | null;
       kernhaushalt: number | null; extrahaushalte: number | null;
       sonstige: number | null; bevoelkerung: number | null;
@@ -97,7 +97,7 @@ export type SchuldenDaten = {
 
 /** Ein Jahr Bürgschaftsbestand — mit zwei Angaben über seinen Beleg.
  *
- *  `genau` unterscheidet die beiden Darreichungsformen der Quelle: 2019/2020
+ *  `exact` unterscheidet die beiden Darreichungsformen der Quelle: 2019/2020
  *  stehen auf den Cent in einer Tabelle, ab 2022 nennt der Anhang nur noch
  *  gerundete Millionen. `out_next_year` trifft genau ein Jahr — 2021 nennt
  *  seinen eigenen Bestand nicht, die Zahl steht nur im Abschluss von 2022.
@@ -106,14 +106,14 @@ export type SchuldenDaten = {
 export type Buergschaft = {
   year: number;
   bestand: number;
-  genau: boolean;
+  exact: boolean;
   out_next_year: boolean;
   quelle: string;
   /** Die Begründung im Wortlaut der Stadt, wo das Dokument eine nennt. */
   grund: string | null;
   /** Die im Grund genannte Einzelzahl — 2022 die 135,9 Mio. fürs Klinikum. */
   single_amount: number | null;
-  proben: string[];
+  probes: string[];
   herkunft_id: number | null;
 };
 

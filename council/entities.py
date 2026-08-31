@@ -32,7 +32,7 @@ Regeln:
 - KEINE Neben-Organisationen wie Wirtschaftsprüfer, Treuhänder oder Gutachter — nur der eigentliche Gegenstand.
 - KEINE Partei-/Fraktionsnamen und keine Personennamen.
 - Höchstens 4 je Beschluss; leere Liste, wenn keiner passt.
-- Gib für JEDE vorgelegte id genau ein Ergebnis mit exakt dieser id zurück.
+- Gib für JEDE vorgelegte id exact ein Ergebnis mit exakt dieser id zurück.
 
 Antworte mit NUR JSON: {{"results": [{{"id": <id>, "entities": [{{"name": "...", "kind": "..."}}]}}]}}
 

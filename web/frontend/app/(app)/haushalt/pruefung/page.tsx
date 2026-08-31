@@ -11,8 +11,8 @@
 // hintereinander: Die Kennzahlen sagen, wie die Stadt dasteht, die
 // Feststellungen, wie verlässlich diese Auskunft ist.
 //
-// Der Rahmen liegt hier, der Inhalt in den beiden `abschnitt-*.tsx` (die
-// Begründung steht im Kopf von `abschnitt-termine.tsx`).
+// Der Rahmen liegt hier, der Inhalt in den beiden `section-*.tsx` (die
+// Begründung steht im Kopf von `section-termine.tsx`).
 
 import { Suspense, useState } from "react";
 import Link from "next/link";
@@ -23,8 +23,8 @@ import { Abschnitte, ANKER_KLASSE } from "@/components/haushalt/abschnitte";
 import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 import { SchrittPfad } from "@/components/haushalt/schritt-pfad";
 import { Seitenbuehne, SeitenbuehneLaedt, ZaehlZahl } from "@/components/haushalt/seitenbuehne";
-import { PruefungAbschnitt } from "@/components/haushalt/abschnitt-pruefung";
-import { KennzahlenAbschnitt } from "@/components/haushalt/abschnitt-kennzahlen";
+import { PruefungAbschnitt } from "@/components/haushalt/section-pruefung";
+import { KennzahlenAbschnitt } from "@/components/haushalt/section-kennzahlen";
 
 /** Ausgeschrieben, nicht zusammengesetzt: `tests/test_quellen_dokumente.py`
  *  liest die Literale dieser Liste, um stumme Beleg-Chips zu finden. */
@@ -78,7 +78,7 @@ function PruefungInner() {
             sub={bestand.ohneBericht.length > 0 ? (
               <span className="font-semibold text-[color:hsl(var(--signal))]">
                 {bestand.ohneBericht.join(" und ")} {bestand.ohneBericht.length > 1 ? "fehlen" : "fehlt"} ersatzlos —
-                geprüft wurde, der Schlussbericht ist nicht lesbar veröffentlicht
+                geprüft wurde, der Schlussbericht ist nicht readable veröffentlicht
               </span>
             ) : "erstmalige und wiederholte Beanstandungen, Hinweise und Klarstellungen"}
             minibild={{

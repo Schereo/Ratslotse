@@ -217,11 +217,11 @@ def test_money_by_field_and_trends_drivers(tmp_path):
         (72, "Sanierung Radweg", "verkehr", 2_000_000.0, "22/0200"),
         (73, "Jahresabschluss 2023 der Stadt", "finanzen", 999_000_000.0, "22/0300"),  # Buchhaltung → ausgeschlossen
     ]
-    for i, title, field, amt, vnr in seed:
+    for i, title, field, office, vnr in seed:
         store._conn.execute(
             "INSERT INTO council_decisions(id,ksinr,position,kind,item_number,title,official_text,"
             "outcome,policy_field,amount_eur,template_number) "
-            "VALUES (?,1,0,'decision','1',?,'b','angenommen',?,?,?)", (i, title, field, amt, vnr))
+            "VALUES (?,1,0,'decision','1',?,'b','angenommen',?,?,?)", (i, title, field, office, vnr))
     store._conn.commit()
 
     # Buchhaltung raus, Zwilling dedupliziert → Schwimmbad einmal (5M), Radweg 2M.
@@ -272,11 +272,11 @@ def test_entity_money_dedup(tmp_path):
         (72, "Sanierung Dach", "22/0200", 200000.0),
         (73, "Jahresabschluss 2023 der Hallen GmbH", "22/0300", 99000000.0),  # Buchhaltung → raus
     ]
-    for i, title, vnr, amt in seed:
+    for i, title, vnr, office in seed:
         store._conn.execute(
             "INSERT INTO council_decisions(id,ksinr,position,kind,item_number,title,official_text,"
             "outcome,amount_eur,template_number) VALUES (?,1,0,'decision','1',?,'b','angenommen',?,?)",
-            (i, title, amt, vnr))
+            (i, title, office, vnr))
     store._conn.commit()
     store.save_entities([("halle", "Halle", "ort", 4)], [("halle", i) for i in (70, 71, 72, 73)])
     # 600k (Zwilling einmal) + 200k = 800k; der 99-Mio-Jahresabschluss ist ausgeschlossen.

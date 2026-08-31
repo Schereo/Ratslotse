@@ -534,7 +534,7 @@ def test_juengste_sitzungen_mit_beschluessen(tmp_path):
 
 
 def test_haushalt_block_und_matching(tmp_path):
-    ctx = qa._haushalt_block([{"year": 2026, "bereich": "Verkehr und Straßenbau",
+    ctx = qa._haushalt_block([{"year": 2026, "area": "Verkehr und Straßenbau",
                                "expenses": 46194645.0, "revenues": 17510637.0}])
     assert "STADTHAUSHALT" in ctx and "46.194.645" in ctx
     assert qa._haushalt_block([]) == ""
@@ -542,15 +542,15 @@ def test_haushalt_block_und_matching(tmp_path):
     store = CouncilStore(tmp_path / "c.sqlite")
     with store._conn:
         store._conn.execute(
-            "INSERT INTO council_haushalt (year, bereich, revenues, expenses, result, is_total, fetched_at) "
+            "INSERT INTO council_haushalt (year, area, revenues, expenses, result, is_total, fetched_at) "
             "VALUES (2026, 'Verkehr und Straßenbau', 1, 2, -1, 0, '')")
         store._conn.execute(
-            "INSERT INTO council_haushalt (year, bereich, revenues, expenses, result, is_total, fetched_at) "
+            "INSERT INTO council_haushalt (year, area, revenues, expenses, result, is_total, fetched_at) "
             "VALUES (2026, 'Summe', 10, 20, -10, 1, '')")
-    assert [r["bereich"] for r in store.haushalt_fuer_begriffe(["Verkehr", "Radweg"])] == ["Verkehr und Straßenbau"]
+    assert [r["area"] for r in store.haushalt_fuer_begriffe(["Verkehr", "Radweg"])] == ["Verkehr und Straßenbau"]
     # Summenzeile nur bei ausdrücklicher Haushaltsfrage.
     assert store.haushalt_fuer_begriffe(["Kita"]) == []
-    assert [r["bereich"] for r in store.haushalt_fuer_begriffe(["Haushalt"])] == ["Summe"]
+    assert [r["area"] for r in store.haushalt_fuer_begriffe(["Haushalt"])] == ["Summe"]
     store.close()
 
 
@@ -646,12 +646,12 @@ def test_haushalt_fuer_begriffe_traegt_entwicklung(tmp_path):
     with store._conn:
         for year, aufw in [(2020, 30000000.0), (2026, 46194645.0)]:
             store._conn.execute(
-                "INSERT INTO council_haushalt (year, bereich, revenues, expenses, result, "
+                "INSERT INTO council_haushalt (year, area, revenues, expenses, result, "
                 "is_total, fetched_at) VALUES (?, 'Verkehr und Straßenbau', 1, ?, -1, 0, '')",
                 (year, aufw))
         # Bereich mit geändertem Zuschnitt: NUR im neuesten Jahr vorhanden.
         store._conn.execute(
-            "INSERT INTO council_haushalt (year, bereich, revenues, expenses, result, "
+            "INSERT INTO council_haushalt (year, area, revenues, expenses, result, "
             "is_total, fetched_at) VALUES (2026, 'Klima/Umwelt/Mobilität', 1, 2, -1, 0, '')")
 
     r = store.haushalt_fuer_begriffe(["Verkehr"])[0]

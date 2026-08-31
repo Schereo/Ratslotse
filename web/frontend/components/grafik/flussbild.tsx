@@ -75,7 +75,7 @@ export type FlussTopf = {
   /** Der Satz IM Knoten (Band-Fassung, senkrecht): „Alles Geld der Stadt". */
   satz: string;
   /** Der Satz im Topf-Block der Listen-Fassung. */
-  hinweis: string;
+  note: string;
 };
 
 type SeitenLage = "links" | "rechts";
@@ -255,7 +255,7 @@ function TopfBlock({ topf, format, einheit }: {
         {format(topf.wert)}<span className="text-xs font-semibold text-muted-foreground">&#8239;{einheit}&nbsp;€</span>
       </p>
       <p className="mt-1 text-[11.5px] leading-relaxed text-foreground/80">
-        {topf.hinweis}
+        {topf.note}
       </p>
     </div>
   );

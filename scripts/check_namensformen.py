@@ -85,8 +85,8 @@ def main(alle: bool = False, db: Path | None = None) -> dict:
               f"{len(offen)} ungeprüfte Verdachtspaare\n")
         for p in (paare if alle else offen):
             a, b = bestand[p["a"]], bestand[p["b"]]
-            marke = " (geführt)" if p["gefuehrt"] else ""
-            print(f"  {p['a']}  ↔  {p['b']}{marke}")
+            mark = " (geführt)" if p["gefuehrt"] else ""
+            print(f"  {p['a']}  ↔  {p['b']}{mark}")
             print(_zeile(p["a"], a))
             print(_zeile(p["b"], b))
             gemeinsam = sorted(a["gremien"] & b["gremien"])

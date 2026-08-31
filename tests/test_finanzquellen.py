@@ -126,7 +126,7 @@ JAHRGAENGE = {
 }
 
 
-def teilhaushalt_plan(thh_nr: int, thh_name: str, produkte: list[tuple],
+def teilhaushalt_plan(sub_budget_no: int, sub_budget_name: str, produkte: list[tuple],
                       year: int) -> str:
     """Ein Teilhaushalts-Plan im Layout der echten Dokumente.
 
@@ -134,12 +134,12 @@ def teilhaushalt_plan(thh_nr: int, thh_name: str, produkte: list[tuple],
     stehen sie im PDF-Extrakt, und nur so liest ``_thh_zahlen`` sie als eine
     Zahl. „6900" zerfiele dort in 690 und 0."""
     text = ""
-    for produkt_nr, name, amt, revenues, expenses in produkte:
+    for product_no, name, office, revenues, expenses in produkte:
         result = revenues - expenses
         text += (
-            f"Teilergebnishaushalt THH{thh_nr:02d}: {thh_name}\n"
-            f"Produkt: {name} ({produkt_nr})\n"
-            f"{amt}\n"
+            f"Teilergebnishaushalt THH{sub_budget_no:02d}: {sub_budget_name}\n"
+            f"Produkt: {name} ({product_no})\n"
+            f"{office}\n"
             f"Erträge und Aufwendungen Ergebnis {year - 1}\n- Euro -\n"
             f"Ansatz {year}\n- Euro -\nAnsatz {year + 1}\n- Euro -\n"
             f"12. = Summe ordentliche Erträge {eur(revenues - 100)} {eur(revenues)}"
@@ -206,7 +206,7 @@ def thh_bestand(tmp_path):
 def produkt_einheiten(store: CouncilStore) -> list[tuple]:
     """(Jahr, Teilhaushalt) — die Einheiten, in denen die Produkte hereinkommen."""
     return sorted(tuple(r) for r in store._conn.execute(  # noqa: SLF001
-        "SELECT DISTINCT year, thh_nr FROM council_produkte"))
+        "SELECT DISTINCT year, sub_budget_no FROM council_produkte"))
 
 
 def inhalt(store: CouncilStore) -> dict:
@@ -361,7 +361,7 @@ def test_fehlende_teilhaushalts_ebene_wird_nachgezogen(bestand, tmp_path):
     # Der Zustand nach einem Lauf, in dem nur die Teilhaushalte scheiterten.
     with bestand._conn:  # noqa: SLF001
         bestand._conn.execute(  # noqa: SLF001
-            "DELETE FROM council_ergebnisrechnung WHERE year = 2024 AND thh_nr IS NOT NULL")
+            "DELETE FROM council_ergebnisrechnung WHERE year = 2024 AND sub_budget_no IS NOT NULL")
         bestand._conn.execute(  # noqa: SLF001
             "DELETE FROM council_abweichungsgruende WHERE year = 2024")
     assert 2024 in bestand.ergebnisrechnung_jahre(), "die Gesamtrechnung steht noch"
@@ -419,10 +419,10 @@ def test_zweites_dokument_zum_selben_teilhaushalt_wird_uebersprungen(tmp_path):
         # Es gilt das ERSTE Dokument — die Anlage der Haushaltsvorlage selbst,
         # nicht die Zweitveröffentlichung unter einem Tagesordnungspunkt.
         quellen = {r[0] for r in store._conn.execute(  # noqa: SLF001
-            "SELECT DISTINCT quelle_label FROM council_produkte")}
+            "SELECT DISTINCT source_label FROM council_produkte")}
         assert quellen == {"007 THH01"}
         dokumente = {r[0] for r in store._conn.execute(  # noqa: SLF001
-            "SELECT DISTINCT h.dokument_id FROM council_produkte p "
+            "SELECT DISTINCT h.document_id FROM council_produkte p "
             "JOIN council_herkunft h ON h.id = p.herkunft_id")}
         assert dokumente == {600}
 
@@ -439,8 +439,8 @@ def test_abweichende_zahlen_im_zweiten_dokument_werden_gemeldet(tmp_path):
     ändert einen Ansatz wirklich —, wäre das eine Entscheidung, die niemand
     nebenbei in einem unbeaufsichtigten Lauf treffen soll."""
     name, produkte = THH_PLAENE[1]
-    geaendert = [(nr, n, amt, revenues + 1_000, expenses)
-                 for nr, n, amt, revenues, expenses in produkte]
+    geaendert = [(nr, n, office, revenues + 1_000, expenses)
+                 for nr, n, office, revenues, expenses in produkte]
     store = _zwei_dokumente_ein_teilhaushalt(tmp_path, zweite_produkte=geaendert)
     try:
         p = finanzquellen.Protokoll(still=True)
@@ -601,8 +601,8 @@ def test_leerer_prueferbericht_loescht_die_feststellungen_nicht(tmp_path, quelle
     schreibt; gegen ein leeres Ergebnis darf es dazu gar nicht erst kommen."""
     store = CouncilStore(tmp_path / "council.sqlite")
     store.save_pruefbericht(2023, [
-        {"lfd": i, "marke": "H", "marke_name": "Hinweis", "textziffer": "1.1",
-         "abschnitt": "Prüfungsauftrag", "text": f"Feststellung {i}"}
+        {"seq": i, "mark": "H", "mark_name": "Hinweis", "text_number": "1.1",
+         "section": "Prüfungsauftrag", "text": f"Feststellung {i}"}
         for i in range(1, 21)], quelle("Schlussbericht 2023",
                                        "https://example.org/sb2023.pdf",
                                        probe="legende_und_verzeichnis"))
@@ -636,7 +636,7 @@ def test_ein_jahrgang_landet_ganz_oder_gar_nicht(bestand, monkeypatch):
 
     def platzt(self, year, posten, *a, **kw):
         # Nach der Gesamtrechnung, mitten in den Teilhaushalten von 2024.
-        if year == 2024 and kw.get("thh_nr") is not None:
+        if year == 2024 and kw.get("sub_budget_no") is not None:
             raise RuntimeError("Verbindung weg")
         return echt(self, year, posten, *a, **kw)
 
@@ -700,13 +700,13 @@ def test_teilweise_gelesener_jahrgang_gibt_sich_zu_erkennen(thh_bestand):
     finanzquellen.lies_teilhaushalte(thh_bestand, p2, nur_fehlende=True)
 
     stand = {z["key"]: z for z in finanzquellen.datenstand(thh_bestand, date(2028, 12, 1))}
-    thh = stand["teilhaushalt"]
+    sub_budget = stand["teilhaushalt"]
     try:
-        assert thh["jahrgaenge"] == [2026, 2027]
-        assert thh["einheiten"] == {"2026": 4, "2027": 2}
-        assert thh["einheiten_voll"] == 4
-        assert thh["teilweise"] == [2027], "2027 hat nur zwei von vier Teilhaushalten"
-        assert thh["einheit"] == "Teilhaushalte"
+        assert sub_budget["jahrgaenge"] == [2026, 2027]
+        assert sub_budget["einheiten"] == {"2026": 4, "2027": 2}
+        assert sub_budget["einheiten_voll"] == 4
+        assert sub_budget["teilweise"] == [2027], "2027 hat nur zwei von vier Teilhaushalten"
+        assert sub_budget["einheit"] == "Teilhaushalte"
     finally:
         thh_bestand.close()
 
@@ -903,7 +903,7 @@ def staedtevergleich(store: CouncilStore, reihe: str, jahre: list[int]) -> None:
     for year in jahre:
         store.save_staedtevergleich(reihe, [
             {"year": year, "schluessel": "403000", "stadt": "Oldenburg (Oldb), Stadt",
-             "kennzahl": "steuerkraftmesszahl", "wert": 1.0, "einheit": "teur"},
+             "indicator": "steuerkraftmesszahl", "wert": 1.0, "einheit": "teur"},
         ], h.Herkunft(art="lsn", probe=h.UNGEPRUEFT,
                       url="https://www.statistik.niedersachsen.de/download/227086"))
 

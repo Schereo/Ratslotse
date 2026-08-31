@@ -273,7 +273,7 @@ class _MessStore:
     def investitionen_ist_kontext(self):
         return self._merken("investitionen_ist_kontext", None)
 
-    def stellenplan_kontext(self, jahrgang=None):
+    def stellenplan_kontext(self, budget_year=None):
         return self._merken("stellenplan_kontext", None)
 
     def haushaltsantraege_kontext(self, year=None, limit=8):
@@ -575,61 +575,61 @@ def _befuellter_store(tmp_path) -> CouncilStore:
     store = CouncilStore(tmp_path / "c.sqlite")
     with store._conn:
         store._conn.execute(
-            "INSERT INTO council_herkunft (id, schluessel, art, label, url, fundstelle, "
-            " seite, probe, stand, fetched_at) VALUES "
+            "INSERT INTO council_herkunft (id, schluessel, art, label, url, citation, "
+            " page, probe, stand, fetched_at) VALUES "
             "(1, 'k1', 'ris', 'Jahresabschluss 2024', 'https://example.org/ja2024', "
             " 'Abschnitt 6.2 Ergebnisrechnung', 41, 'summenprobe', '31.12.2024', '2026-08-16')")
         store._conn.execute(
-            "INSERT INTO council_herkunft (id, schluessel, art, label, url, fundstelle, "
+            "INSERT INTO council_herkunft (id, schluessel, art, label, url, citation, "
             " probe, stand, fetched_at) VALUES "
             "(2, 'k2', 'ris', 'Schlussbericht RPA 2023', 'https://example.org/rpa', "
             " 'Randmarken des Berichts', 'randmarkenprobe', '2023', '2026-08-16')")
         # Ergebnisrechnung: Gesamt + ein Teilhaushalt, je Erträge (12)/Aufwendungen (20)
-        for thh, name, e_plan, e_ist, a_plan, a_ist in [
+        for sub_budget, name, e_plan, e_ist, a_plan, a_ist in [
                 (None, None, 760_000_000.0, 781_400_000.0, 799_000_000.0, 812_300_000.0),
                 (5, "Soziales und Jugend", 90_000_000.0, 93_100_000.0,
                  240_000_000.0, 251_900_000.0)]:
             store._conn.execute(
-                "INSERT INTO council_ergebnisrechnung (year, thh_nr, thh_name, nr, bezeichnung, "
+                "INSERT INTO council_ergebnisrechnung (year, sub_budget_no, sub_budget_name, nr, label, "
                 " ansatz, plan, plan_art, result, deviation, is_total, fetched_at, herkunft_id) "
                 "VALUES (2024,?,?,12,'Summe ordentliche Erträge',?,?,'ansatz',?,0,1,'',1)",
-                (thh, name, e_plan, e_plan, e_ist))
+                (sub_budget, name, e_plan, e_plan, e_ist))
             store._conn.execute(
-                "INSERT INTO council_ergebnisrechnung (year, thh_nr, thh_name, nr, bezeichnung, "
+                "INSERT INTO council_ergebnisrechnung (year, sub_budget_no, sub_budget_name, nr, label, "
                 " ansatz, plan, plan_art, result, deviation, is_total, fetched_at, herkunft_id) "
                 "VALUES (2024,?,?,20,'Summe ordentliche Aufwendungen',?,?,'ansatz',?,0,1,'',1)",
-                (thh, name, a_plan, a_plan, a_ist))
+                (sub_budget, name, a_plan, a_plan, a_ist))
         store._conn.execute(
-            "INSERT INTO council_abweichungsgruende (year, nr, bezeichnung, delta_mio, "
+            "INSERT INTO council_abweichungsgruende (year, nr, label, delta_mio, "
             " prozent, text, fetched_at, herkunft_id) VALUES "
             "(2024, 1, 'Steuern und ähnliche Abgaben', 21.4, 5.2, "
             " 'Die Mehrerträge beruhen im Wesentlichen auf Nachveranlagungen bei der "
             "Gewerbesteuer aus Vorjahren.', '', 1)")
         store._conn.execute(
-            "INSERT INTO council_pruefberichte (year, lfd, marke, marke_name, textziffer, "
-            " abschnitt, kette, seite, text, fetched_at, herkunft_id) VALUES "
+            "INSERT INTO council_pruefberichte (year, seq, mark, mark_name, text_number, "
+            " section, kette, page, text, fetched_at, herkunft_id) VALUES "
             "(2023, 1, 'WB', 'Wiederholte Beanstandung', '4.5.2', 'Vergabewesen', 'verg', 87, "
             " 'Die Dokumentation der Vergabeentscheidungen ist erneut unvollständig.', '', 2)")
         store._conn.execute(
-            "INSERT INTO council_pruefberichte (year, lfd, marke, marke_name, textziffer, "
-            " abschnitt, seite, text, fetched_at, herkunft_id) VALUES "
+            "INSERT INTO council_pruefberichte (year, seq, mark, mark_name, text_number, "
+            " section, page, text, fetched_at, herkunft_id) VALUES "
             "(2023, 2, 'H', 'Hinweis', '5.1', 'Anlagenbuchhaltung', 91, "
             " 'Es wird angeregt, die Nutzungsdauern zu überprüfen.', '', 2)")
         store._conn.execute(
-            "INSERT INTO council_produkte (year, produkt_nr, produkt_name, amt, revenues, "
-            " expenses, result, kurzbeschreibung, auftragsgrundlage, beeinflussbarkeit, "
+            "INSERT INTO council_produkte (year, product_no, product_name, office, revenues, "
+            " expenses, result, short_description, legal_basis, controllability, "
             " fetched_at, herkunft_id) VALUES "
             "(2023, 'P12.126001', 'Brandschutz und Feuerwehr', 'Amt für Brandschutz', "
             " 1200000, 23400000, -22200000, 'Abwehrender Brandschutz und Hilfeleistung.', "
             " '§ 2 NBrandSchG', 'niedrig', '', 1)")
         store._conn.execute(
-            "INSERT INTO council_produkte (year, produkt_nr, produkt_name, amt, revenues, "
-            " expenses, result, auftragsgrundlage, beeinflussbarkeit, fetched_at, "
+            "INSERT INTO council_produkte (year, product_no, product_name, office, revenues, "
+            " expenses, result, legal_basis, controllability, fetched_at, "
             " herkunft_id) VALUES "
             "(2023, 'P26.262001', 'Theater und Konzerte', 'Kulturamt', 300000, 9800000, "
             " -9500000, 'Freiwillige Leistung der Stadt', 'hoch', '', 1)")
         store._conn.executemany(
-            "INSERT INTO council_konzern_posten (year, nr, bezeichnung, rolle, amount, "
+            "INSERT INTO council_konzern_posten (year, nr, label, rolle, amount, "
             " is_total, fetched_at, herkunft_id) VALUES (2024,?,?,?,?,1,'',1)",
             [(13, 'Summe ordentliche Erträge', 'revenues_total', 1_238_000_000.0),
              (21, 'Summe ordentliche Aufwendungen', 'expenses_total', 1_242_000_000.0)])
@@ -640,13 +640,13 @@ def _befuellter_store(tmp_path) -> CouncilStore:
              ("klinikum", "Klinikum Oldenburg AöR", 390_000.0),
              ("konsolidierung", "Konsolidierung", -120_000.0)])
         store._conn.executemany(
-            "INSERT INTO council_staedtevergleich (reihe, year, schluessel, stadt, kennzahl, "
+            "INSERT INTO council_staedtevergleich (reihe, year, schluessel, stadt, indicator, "
             " wert, einheit, herkunft_id, fetched_at) VALUES "
             "('steuerkraft',2024,?,?,'Steuerkraftmesszahl je Einwohner',?,'EUR',1,'')",
             [("03403", "Oldenburg", 1834.0), ("03404", "Osnabrück", 1712.0),
              ("03401", "Delmenhorst", 1104.0)])
         store._conn.executemany(
-            "INSERT INTO council_ergebnishaushalt (plan_jahrgang, year, art, nr, bezeichnung, "
+            "INSERT INTO council_ergebnishaushalt (plan_budget_year, year, art, nr, label, "
             " amount, is_total, fetched_at, herkunft_id) VALUES (2026,2026,'ansatz',?,?,?,?,'',1)",
             [(1, "Steuern und ähnliche Abgaben", 430_000_000.0, 0),
              (12, "Summe ordentliche Erträge", 812_000_000.0, 1),
@@ -657,12 +657,12 @@ def _befuellter_store(tmp_path) -> CouncilStore:
         # SQLite-Versionen schlucken sie klaglos, die der CI nicht — lokal
         # grün, in der CI 17 Fehler (16.08.).
         store._conn.execute(
-            "INSERT INTO council_ergebnishaushalt (plan_jahrgang, year, art, nr, bezeichnung, "
+            "INSERT INTO council_ergebnishaushalt (plan_budget_year, year, art, nr, label, "
             " amount, is_total, fetched_at, herkunft_id) "
             "VALUES (2026, 2029, 'finanzplanung', 12, 'Summe ordentliche Erträge', "
             " ?, 1, '', 1)", (999_000_000.0,))
         store._conn.execute(
-            "INSERT INTO council_haushalt (year, bereich, revenues, expenses, result, "
+            "INSERT INTO council_haushalt (year, area, revenues, expenses, result, "
             " is_total, fetched_at) VALUES "
             "(2026, 'Brandschutz und Rettungsdienst', 2000000, 31000000, -29000000, 0, '')")
         # --- Die vier Schichten der 17.08.-Runde ---------------------------
@@ -671,7 +671,7 @@ def _befuellter_store(tmp_path) -> CouncilStore:
         store._conn.executemany(
             "INSERT INTO council_schulden (year, kreditmarkt, sondermittel, "
             " gebietskoerperschaften, eigenbetriebe, insgesamt, je_einwohner, "
-            " revidiert, herkunft_id, fetched_at) VALUES (?,?,?,?,?,?,?,0,3,'')",
+            " revised, herkunft_id, fetched_at) VALUES (?,?,?,?,?,?,?,0,3,'')",
             [(1995, None, None, None, None, 198_000_000.0, 1_420.0),
              (2013, None, None, None, None, 512_400_000.0, 3_180.0),
              (2024, 214_000_000.0, 1_200_000.0, 8_600_000.0, 109_000_000.0,
@@ -681,7 +681,7 @@ def _befuellter_store(tmp_path) -> CouncilStore:
         # Investitionen: Summenzeile, drei Teilhaushalte und die Bezugsgröße
         # `finanzhaushalt` — die darf NICHT im Kontext landen (ungeprüft).
         store._conn.executemany(
-            "INSERT INTO council_investitionen (year, ebene, thh_nr, bezeichnung, "
+            "INSERT INTO council_investitionen (year, level, sub_budget_no, label, "
             " inflows, outflows, herkunft_id, fetched_at) VALUES (2026,?,?,?,?,?,4,'')",
             [("investitionen", 0, "Summe Investitionstätigkeit", 22_300_000.0, 80_800_000.0),
              ("teilhaushalt", 4, "Schule und Sport", 6_100_000.0, 24_600_000.0),
@@ -692,8 +692,8 @@ def _befuellter_store(tmp_path) -> CouncilStore:
         # Stellenplan: beide Teile, nur die Gesamtzeilen. besetzt +
         # nicht_besetzt = stellen_vorjahr (die Besetzungsprobe des Plans).
         store._conn.executemany(
-            "INSERT INTO council_stellenplan (jahrgang, teil, zeile, art, bezeichnung, "
-            " stellen_plan, positions_prior_year, besetzt, nicht_besetzt, stichtag, "
+            "INSERT INTO council_stellenplan (budget_year, teil, zeile, art, label, "
+            " stellen_plan, positions_prior_year, besetzt, nicht_besetzt, as_of_date, "
             " herkunft_id, fetched_at) VALUES (2026,?,0,'gesamt',?,?,?,?,?,'30.06.2025',?,'')",
             [("A", "Gesamt Teil A", 815.50, 802.00, 761.25, 40.75, 5),
              ("B", "Gesamt Teil B", 1_702.25, 1_688.50, 1_579.00, 109.50, 6)])
@@ -729,7 +729,7 @@ def _befuellter_store(tmp_path) -> CouncilStore:
             "INSERT INTO council_decisions (ksinr, position, kind, item_number, title, "
             " outcome, vote) VALUES (?,?,?,?,?,?,?)", eintraege)
         store._conn.executemany(
-            "INSERT INTO council_herkunft (id, schluessel, art, label, url, fundstelle, "
+            "INSERT INTO council_herkunft (id, schluessel, art, label, url, citation, "
             " probe, stand, fetched_at) VALUES (?,?,'ris',?,?,?,?,?,'2026-08-17')",
             [(3, "k3", "Statistisches Jahrbuch, Tabelle 1108",
               "https://example.org/1108", "Tabelle 1108", "prokopfprobe", "2025"),
@@ -743,9 +743,9 @@ def _befuellter_store(tmp_path) -> CouncilStore:
               "https://example.org/gebuehren", "Anlagen 1 und 2",
               "gebuehren_kaskade,gebuehren_division", "2026")])
         store._conn.executemany(
-            "INSERT INTO council_gebuehren (year, bereich, bereich_name, "
+            "INSERT INTO council_gebuehren (year, area, area_name, "
             "kostenkalkulation, deductions, zu_deckende_kosten, bezugsmenge, "
-            "bezugseinheit, gebuehr, gebuehrenvorschlag, template_number, proben, "
+            "bezugseinheit, gebuehr, gebuehrenvorschlag, template_number, probes, "
             "herkunft_id, fetched_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,7,'')",
             [(2025, "abfallbehandlung", "Abfallbehandlungsanlagen", 18_000_000.0,
               -2_000_000.0, 16_000_000.0, 114_475.0, "Mg", 139.772, 139.70,
@@ -762,7 +762,7 @@ def _befuellter_store(tmp_path) -> CouncilStore:
 def test_gebuehrenquelle_filtert_bereiche_und_traegt_belege(tmp_path):
     store = _befuellter_store(tmp_path)
     g = store.gebuehren_fuer_begriffe(["Müllgebühren"])
-    assert [x["bereich"] for x in g["bereiche"]] == [
+    assert [x["area"] for x in g["bereiche"]] == [
         "abfallbehandlung", "abfallsammlung"]
     assert [r["year"] for r in g["bereiche"][0]["werte"]] == [2026, 2025]
     text = qa._gebuehren_block(g)
@@ -796,7 +796,7 @@ def test_abweichungsgrund_findet_die_steuerzeile_ueber_den_wortstamm(tmp_path):
     einen Richtung auch keine gemeinsame Teilzeichenkette."""
     store = _befuellter_store(tmp_path)
     treffer = store.abweichungsgruende_fuer_begriffe(["Gewerbesteuer", "Mehreinnahmen"])
-    assert treffer and treffer[0]["bezeichnung"] == "Steuern und ähnliche Abgaben"
+    assert treffer and treffer[0]["label"] == "Steuern und ähnliche Abgaben"
     text = qa._gruende_block(treffer)
     assert "Nachveranlagungen" in text and "+21.4 Mio" in text
     # Es ist die Begründung der VERWALTUNG, keine Feststellung von uns.
@@ -807,7 +807,7 @@ def test_abweichungsgrund_findet_die_steuerzeile_ueber_den_wortstamm(tmp_path):
 def test_pruefung_block_fuehrt_wiederholte_beanstandung_zuerst(tmp_path):
     store = _befuellter_store(tmp_path)
     p = store.pruefberichte_fuer_begriffe(["Haushalt"])   # kein Treffer → Rangfolge
-    assert p["feststellungen"][0]["marke"] == "WB"
+    assert p["feststellungen"][0]["mark"] == "WB"
     text = qa._pruefung_block(p)
     assert "Wiederholte Beanstandung" in text and "Textziffer 4.5.2" in text
     assert "S. 87" in text
@@ -926,7 +926,7 @@ def test_stellenplan_block_bindet_die_besetzung_an_das_vorjahr(tmp_path):
     store = _befuellter_store(tmp_path)
     s = store.stellenplan_kontext()
     text = qa._stellenplan_block(s)
-    assert s["jahrgang"] == 2026 and s["stichtag"] == "30.06.2025"
+    assert s["budget_year"] == 2026 and s["as_of_date"] == "30.06.2025"
     assert "815,50 Stellen im Haushaltsjahr 2026" in text
     assert "Im Vorjahr waren es 802,00 Stellen" in text
     assert "761,25 besetzt und 40,75 nicht besetzt" in text
@@ -977,7 +977,7 @@ def test_antraege_block_sagt_wer_und_zieht_die_grenze(tmp_path):
     # Die Schlussabstimmung über die Sache selbst.
     assert "Schlussabstimmung über die Haushaltssatzung: angenommen" in text
     # Und die Grenze der Quelle.
-    assert "WER etwas ändern" in text and "nicht WAS genau" in text
+    assert "WER etwas ändern" in text and "nicht WAS exact" in text
     assert "erfinde" in text and "nicht als Text vor" in text
     assert "nicht\naddierbar" in text
     # „So geänderter Ergebnishaushalt …" ist die Sammelabstimmung, kein Antrag.
@@ -1188,7 +1188,7 @@ def test_alter_aufrufweg_bleibt_unveraendert():
     ruft ``geld_kontext`` wie ``/ask``), aber der Parameter-Weg bleibt: Er ist
     die Rückfallebene für Aufrufer außerhalb des Routers, und ein stiller
     Verhaltenswechsel wäre der schlechtere Weg, ihn abzuräumen."""
-    zeilen = [{"year": 2026, "bereich": "Verkehr und Straßenbau",
+    zeilen = [{"year": 2026, "area": "Verkehr und Straßenbau",
                "expenses": 46194645.0, "revenues": 17510637.0}]
     messages, _ = qa._answer_messages("Was kostet der Verkehr?", [], typ="geld",
                                       haushalt=zeilen)
@@ -1323,13 +1323,13 @@ def test_schuldenblock_nennt_alle_drei_abgrenzungen(tmp_path):
     c = store._conn                                       # noqa: SLF001
     c.execute("INSERT INTO council_schulden (year, insgesamt, je_einwohner, fetched_at) "
               "VALUES (2024, 294851000, 1673, '2026-08-18')")
-    c.execute("INSERT INTO council_bilanz (year, rolle, seite, ebene, bezeichnung, wert, "
+    c.execute("INSERT INTO council_bilanz (year, rolle, page, level, label, wert, "
               " fetched_at) VALUES (2024, 'geldschulden', 'passiva', 2, 'Geldschulden', "
               " 43690972, '2026-08-18')")
-    c.execute("INSERT INTO council_integrierte_schulden (year, ars, insgesamt, proben, "
+    c.execute("INSERT INTO council_integrierte_schulden (year, ars, insgesamt, probes, "
               " fetched_at) VALUES (2024, '03403000', 740300000, '', '2026-08-18')")
-    c.execute("INSERT INTO council_buergschaften (year, bestand, genau, out_next_year, "
-              " quelle, proben, fetched_at) "
+    c.execute("INSERT INTO council_buergschaften (year, bestand, exact, out_next_year, "
+              " quelle, probes, fetched_at) "
               "VALUES (2024, 220300000, 1, 0, 'jahresabschluss', '', '2026-08-18')")
     c.commit()
 
@@ -1405,7 +1405,7 @@ def test_geld_grafik_liefert_rohreihen_aus_dem_store(tmp_path):
     assert [p["year"] for p in g["reihe"]] == [1995, 2024, 2025]
     assert g["reihe"][-1]["wert"] == 337.0            # Mio, gerundet
     assert g["einheit"] == "Mio. €"
-    assert g["hinweis"], "Die Abgrenzung reist mit der Grafik"
+    assert g["note"], "Die Abgrenzung reist mit der Grafik"
 
     geld = qa.geld_kontext(store, "Wie hoch sind Schulden und Gewerbesteuer?")
     g = qa.geld_grafik(store, geld)
@@ -1439,7 +1439,7 @@ def test_grafik_pruefung_am_share_snapshot():
     gut = {"art": "schulden", "titel": "Schuldenstand", "einheit": "Mio. €",
            "nachkomma": 1, "reihe": [{"year": 1995, "wert": 190.0},
                                      {"year": 2025, "wert": 337.0}],
-           "hinweis": "Stadt als Rechtsträger", "quelle": "Jahrbuch 1108"}
+           "note": "Stadt als Rechtsträger", "quelle": "Jahrbuch 1108"}
     geprueft = _grafik_pruefen(gut)
     assert geprueft and geprueft["reihe"] == gut["reihe"]
 

@@ -20,7 +20,7 @@ die letzte gedruckte Nachkommastelle mit unserem Bilanz-Parser überein.
 2015–2024 ab, und die mittleren Jahrgänge stehen bis zu fünfmal da — in
 fünf Berichten, aus fünf Jahren Rückschau.
 
-WARUM ``bericht_jahr`` IM SCHLÜSSEL STEHT
+WARUM ``report_year`` IM SCHLÜSSEL STEHT
 ------------------------------------------
 Weil dieselbe Kennzahl desselben Jahres in zwei Berichten **verschiedene
 Werte** hat. Nicht selten und nicht klein:
@@ -32,7 +32,7 @@ Werte** hat. Nicht selten und nicht klein:
 
 Das sind keine Fehler, sondern Nachträge: Der Abschluss eines Jahres wird
 später korrigiert, und der nächste Bericht druckt den korrigierten Wert.
-Ohne ``bericht_jahr`` im Schlüssel überschriebe der neuere Bericht den
+Ohne ``report_year`` im Schlüssel überschriebe der neuere Bericht den
 älteren still — und die Revision, die eine eigene Nachricht ist, wäre weg.
 :func:`ueberlappungsprobe` sucht sie deshalb gezielt.
 
@@ -195,7 +195,7 @@ def jahresspalten(text: str) -> list[int]:
     return [int(j) for j in m.group(1).split()] if m else []
 
 
-def parse_kennzahlen(text: str, bericht_jahr: int) -> tuple[list[dict], list[str]]:
+def parse_kennzahlen(text: str, report_year: int) -> tuple[list[dict], list[str]]:
     """Die Tabelle. Liefert die Werte und die **nicht** zugeordneten Zeilen.
 
     Die zweite Liste ist Absicht: Eine Beschriftung, die zu keiner der
@@ -232,7 +232,7 @@ def parse_kennzahlen(text: str, bericht_jahr: int) -> tuple[list[dict], list[str
                 if prozent != (treffer.einheit == "prozent"):
                     unbekannt.append(f"{treffer.key}: Einheit passt nicht zum Wert {wert}")
                     break
-                zeilen.append({"bericht_jahr": bericht_jahr, "kennzahl": treffer.key,
+                zeilen.append({"report_year": report_year, "indicator": treffer.key,
                                "label": treffer.label, "year": year, "wert": wert,
                                "einheit": treffer.einheit, "stellen": stellen})
         beschriftung.clear()
@@ -255,7 +255,7 @@ def parse_kennzahlen(text: str, bericht_jahr: int) -> tuple[list[dict], list[str
     return zeilen, unbekannt
 
 
-def parse_formeln(text: str, bericht_jahr: int) -> list[dict]:
+def parse_formeln(text: str, report_year: int) -> list[dict]:
     """Die gedruckten Rechenwege, jeder mit der Überschrift darüber.
 
     Auch die Formel gehört zum Bericht und nicht zur Kennzahl: Für die
@@ -295,11 +295,11 @@ def parse_formeln(text: str, bericht_jahr: int) -> list[dict]:
                 break
             j += 1
             formel = (formel[:-1] if formel.endswith("-") else formel + " ") + weiter
-        ueberschrift = next((z.strip() for z in reversed(zeilen[:i]) if z.strip()), "")
-        treffer = next((k for k in KENNZAHLEN if k.passt(ueberschrift)), None)
+        heading = next((z.strip() for z in reversed(zeilen[:i]) if z.strip()), "")
+        treffer = next((k for k in KENNZAHLEN if k.passt(heading)), None)
         if treffer:
-            formeln.append({"bericht_jahr": bericht_jahr, "kennzahl": treffer.key,
-                            "ueberschrift": re.sub(r"\s+", " ", ueberschrift).strip(),
+            formeln.append({"report_year": report_year, "indicator": treffer.key,
+                            "heading": re.sub(r"\s+", " ", heading).strip(),
                             "formel": re.sub(r"\s+", " ", formel).strip()})
     return formeln
 
@@ -330,10 +330,10 @@ def fassungen(formeln: list[dict]) -> dict[tuple[str, int], int]:
     """
     nummern: dict[tuple[str, int], int] = {}
     bekannt: dict[str, dict[str, int]] = {}
-    for f in sorted(formeln, key=lambda f: (f["kennzahl"], f["bericht_jahr"])):
-        je_kennzahl = bekannt.setdefault(f["kennzahl"], {})
+    for f in sorted(formeln, key=lambda f: (f["indicator"], f["report_year"])):
+        je_kennzahl = bekannt.setdefault(f["indicator"], {})
         text = _formel_flach(f["formel"])
-        nummern[(f["kennzahl"], f["bericht_jahr"])] = je_kennzahl.setdefault(
+        nummern[(f["indicator"], f["report_year"])] = je_kennzahl.setdefault(
             text, len(je_kennzahl) + 1)
     return nummern
 
@@ -347,7 +347,7 @@ def stempeln(zeilen: list[dict], formeln: list[dict]) -> list[dict]:
     """
     nummern = fassungen(formeln)
     for z in zeilen:
-        z["fassung"] = nummern.get((z["kennzahl"], z["bericht_jahr"]))
+        z["fassung"] = nummern.get((z["indicator"], z["report_year"]))
     return zeilen
 
 
@@ -396,12 +396,12 @@ def ueberlappungsprobe(zeilen: list[dict]) -> tuple[int, list[dict]]:
     """
     nach_zelle: dict[tuple[str, int], list[dict]] = {}
     for z in zeilen:
-        nach_zelle.setdefault((z["kennzahl"], z["year"]), []).append(z)
+        nach_zelle.setdefault((z["indicator"], z["year"]), []).append(z)
 
     bestaetigt = 0
     funde: list[dict] = []
-    for (kennzahl, year), gruppe in sorted(nach_zelle.items()):
-        gruppe = sorted(gruppe, key=lambda z: z["bericht_jahr"])
+    for (indicator, year), gruppe in sorted(nach_zelle.items()):
+        gruppe = sorted(gruppe, key=lambda z: z["report_year"])
         for aelter, juenger in zip(gruppe, gruppe[1:]):
             diff = juenger["wert"] - aelter["wert"]
             gleich = abs(diff) <= toleranz(aelter["stellen"], juenger["stellen"])
@@ -413,9 +413,9 @@ def ueberlappungsprobe(zeilen: list[dict]) -> tuple[int, list[dict]]:
             funde.append({
                 "art": "umbenennung" if gleich else
                        ("definition" if umgestellt else "revision"),
-                "kennzahl": kennzahl, "year": year,
-                "alt": aelter["wert"], "alt_bericht": aelter["bericht_jahr"],
-                "neu": juenger["wert"], "neu_bericht": juenger["bericht_jahr"],
+                "indicator": indicator, "year": year,
+                "alt": aelter["wert"], "alt_bericht": aelter["report_year"],
+                "neu": juenger["wert"], "neu_bericht": juenger["report_year"],
                 "difference": round(diff, 4)})
     return bestaetigt, funde
 
@@ -439,7 +439,7 @@ def gegen_bilanz(zeilen: list[dict], bilanz: list[dict]) -> tuple[int, list[dict
     geprueft = 0
     risse: list[dict] = []
     for z in zeilen:
-        rolle = BILANZ_QUOTE.get(z["kennzahl"])
+        rolle = BILANZ_QUOTE.get(z["indicator"])
         zaehler = posten.get((z["year"], rolle)) if rolle else None
         if zaehler is None or not summe.get(z["year"]):
             continue
@@ -447,8 +447,8 @@ def gegen_bilanz(zeilen: list[dict], bilanz: list[dict]) -> tuple[int, list[dict
         if abs(eigen - z["wert"]) <= toleranz(z["stellen"], z["stellen"]):
             geprueft += 1
         else:
-            risse.append({"kennzahl": z["kennzahl"], "year": z["year"],
-                          "bericht_jahr": z["bericht_jahr"],
+            risse.append({"indicator": z["indicator"], "year": z["year"],
+                          "report_year": z["report_year"],
                           "gedruckt": z["wert"], "gerechnet": round(eigen, 4)})
     return geprueft, risse
 
@@ -482,11 +482,11 @@ def vermoegensprobe(zeilen: list[dict], bilanz: list[dict]) -> tuple[int, list[d
     # wäre eine andere Rechnung, und ihr Ergebnis sagte nichts über beide.
     je_bericht: dict[tuple[int, int], dict[str, dict]] = {}
     for z in zeilen:
-        je_bericht.setdefault((z["bericht_jahr"], z["year"]), {})[z["kennzahl"]] = z
+        je_bericht.setdefault((z["report_year"], z["year"]), {})[z["indicator"]] = z
 
     geprueft = 0
     risse: list[dict] = []
-    for (bericht_jahr, year), zellen in sorted(je_bericht.items()):
+    for (report_year, year), zellen in sorted(je_bericht.items()):
         kopf = zellen.get("vermoegen_je_einwohner")
         leute = zellen.get("einwohner")
         if not (kopf and leute) or year not in aktiva:
@@ -496,7 +496,7 @@ def vermoegensprobe(zeilen: list[dict], bilanz: list[dict]) -> tuple[int, list[d
         if abs(ist - soll) <= 0.5 * 10 ** -kopf["stellen"] * leute["wert"]:
             geprueft += 1
         else:
-            risse.append({"bericht_jahr": bericht_jahr, "year": year,
+            risse.append({"report_year": report_year, "year": year,
                           "gerechnet": round(ist, 2), "bilanz": round(soll, 2),
                           "difference": round(ist - soll, 2)})
     return geprueft, risse
@@ -510,7 +510,7 @@ def neueste(zeilen: list[dict]) -> list[dict]:
     """
     beste: dict[tuple[str, int], dict] = {}
     for z in zeilen:
-        schluessel = (z["kennzahl"], z["year"])
-        if schluessel not in beste or z["bericht_jahr"] > beste[schluessel]["bericht_jahr"]:
+        schluessel = (z["indicator"], z["year"])
+        if schluessel not in beste or z["report_year"] > beste[schluessel]["report_year"]:
             beste[schluessel] = z
-    return sorted(beste.values(), key=lambda z: (z["kennzahl"], z["year"]))
+    return sorted(beste.values(), key=lambda z: (z["indicator"], z["year"]))

@@ -144,12 +144,12 @@ def test_ohne_entwurfsvermerk_heisst_es_unbekannt_und_nicht_beschlossen():
 def test_die_herkunft_nennt_die_fassung_im_stand():
     """Die Fassung gehört in den Stand und nicht in eine Fußnote."""
     s = parse_satzung(SATZUNG_2024)
-    h = herkunft_fuer(s, url=None, dokument_id=271310, label="Haushaltssatzung 2024")
+    h = herkunft_fuer(s, url=None, document_id=271310, label="Haushaltssatzung 2024")
     assert "Verwaltungsentwurf" in h.stand
     assert PROBE_FINANZHAUSHALT in h.probe
     assert PROBE_HEBESATZ not in h.probe, "ohne Jahrbuch-Abgleich keine Hebesatz-Probe"
 
-    mit = herkunft_fuer(s, url=None, dokument_id=271310, label="x",
+    mit = herkunft_fuer(s, url=None, document_id=271310, label="x",
                         hebesatz_geprueft="Hebesatz gegen Tabelle 1105 gehalten")
     assert PROBE_HEBESATZ in mit.probe
 
@@ -227,7 +227,7 @@ def test_speichern_und_wiederlesen(tmp_path):
     try:
         s = parse_satzung(SATZUNG_2024)
         store.save_haushaltssatzung(s, herkunft_fuer(
-            s, url=None, dokument_id=271310, label="Haushaltssatzung 2024"))
+            s, url=None, document_id=271310, label="Haushaltssatzung 2024"))
         zeilen = store.get_haushaltssatzungen()
         assert len(zeilen) == 1
         z = zeilen[0]
@@ -251,7 +251,7 @@ def test_derselbe_jahrgang_zweimal_gibt_eine_zeile(tmp_path):
         s = parse_satzung(SATZUNG_2024)
         for dokument in (229865, 230043):
             store.save_haushaltssatzung(s, herkunft_fuer(
-                s, url=None, dokument_id=dokument, label="Haushaltssatzung"))
+                s, url=None, document_id=dokument, label="Haushaltssatzung"))
         assert len(store.get_haushaltssatzungen()) == 1
     finally:
         store.close()

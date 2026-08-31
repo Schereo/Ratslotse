@@ -1166,8 +1166,8 @@ def _build_context(candidates: list[dict]) -> str:
             suffix += (f" — BÜRGERBETEILIGUNG LÄUFT: {c['beteiligung']} "
                        f"(Stellungnahme auf oldenburg.planungsbeteiligung.de möglich — "
                        f"erwähne das in der Antwort, wenn es zur Frage passt)")
-        if c.get("amt"):
-            suffix += f" — Federführung: {c['amt']}"
+        if c.get("office"):
+            suffix += f" — Federführung: {c['office']}"
         # Bei Ortsfragen ist nicht nur wichtig, DASS ein Beschluss im
         # gefilterten Pool liegt, sondern WARUM. Die Fundstelle stammt aus dem
         # Beschluss/der Vorlage und macht die Zuordnung auch für das Modell
@@ -1286,16 +1286,16 @@ def _anlagen_block(anlagen: list[dict] | None) -> str:
     gesehen: set[str] = set()
     frisch = []
     for a in anlagen:
-        marke = " ".join(str(a.get("label") or "").split()).lower()[:60]
-        if marke and marke in gesehen:
+        mark = " ".join(str(a.get("label") or "").split()).lower()[:60]
+        if mark and mark in gesehen:
             continue
-        gesehen.add(marke)
+        gesehen.add(mark)
         frisch.append(a)
     zeilen = "\n".join(
         f"[A{a.get('nr') or i + 1}] {a.get('label') or 'Anlage'} "
         f"(zur Vorlage {a.get('template_number') or '?'}"
         f"{' — ' + a['vorlage_titel'][:80] if a.get('vorlage_titel') else ''}): "
-        f"{(a.get('fundstelle') or '').strip()[:ANLAGEN_ZEICHEN]}"
+        f"{(a.get('citation') or '').strip()[:ANLAGEN_ZEICHEN]}"
         for i, a in enumerate(frisch))
     return ("\nAUS DEN ANLAGEN (Gutachten, Konzepte, Stellungnahmen zu den Vorlagen —\n"
             "oft die fachliche Substanz hinter einem Beschluss). Nutze sie für Details\n"
@@ -1490,7 +1490,7 @@ def partei_meinungen(question: str, rows: list[dict], model: str = MODEL) -> lis
             "haltung": haltung if haltung in ("dafür", "dagegen", "offen", "gewandelt") else "offen",
             "position": str(e.get("position") or "").strip()[:400],
             "einig": bool(e.get("einig", True)),
-            "hinweis": (str(e.get("hinweis")) or "").strip()[:200] or None if e.get("hinweis") else None,
+            "note": (str(e.get("note")) or "").strip()[:200] or None if e.get("note") else None,
             "kernaussage": {
                 "text": str(kern.get("text") or "").strip()[:300],
                 "sprecher": str(kern.get("sprecher") or "").strip()[:80] or None,
@@ -1600,7 +1600,7 @@ def _haushalt_block(zeilen: list[dict] | None) -> str:
         return ""
     teile = []
     for r in zeilen:
-        s = (f"- {r['bereich']} ({r['year']}): Aufwendungen {_eur(r.get('expenses'))}, "
+        s = (f"- {r['area']} ({r['year']}): Aufwendungen {_eur(r.get('expenses'))}, "
              f"Erträge {_eur(r.get('revenues'))}")
         if r.get("year_before"):
             s += (f" — {r['year_before']} waren es {_eur(r.get('expenses_before'))} "
@@ -2100,7 +2100,7 @@ def geld_grafik(store, geld: dict) -> dict | None:
                 # Die Abgrenzung reist mit der Grafik wie mit jeder Zahl:
                 # Ohne sie ist „337 Mio. €" eine von drei Zahlen, die alle
                 # „die Schulden der Stadt" heißen.
-                "hinweis": s.get("abgrenzung"),
+                "note": s.get("abgrenzung"),
                 "quelle": "Statistisches Jahrbuch der Stadt Oldenburg, Tabelle 1108",
                 # Die Anschlussstelle in den Haushalts-Bereich — dieselbe
                 # Bauart wie store.haushalts_anschluss: Der Server nennt das
@@ -2127,7 +2127,7 @@ def geld_grafik(store, geld: dict) -> dict | None:
                 "einheit": "Mio. €",
                 "nachkomma": 1,
                 "reihe": reihe,
-                "hinweis": ("Abrechnungszahlen der Stadt, keine Planwerte — "
+                "note": ("Abrechnungszahlen der Stadt, keine Planwerte — "
                             "je Jahr das, was tatsächlich eingenommen wurde."),
                 "quelle": "Statistisches Jahrbuch der Stadt Oldenburg, Ist-Steuereinnahmen",
                 "mehr": _steuer_mehr(art),
@@ -2145,9 +2145,9 @@ def _beleg_text(b: dict | None) -> str:
     nur zitieren, was im Kontext steht."""
     if not b:
         return ""
-    teile = [t for t in (b.get("label"), b.get("fundstelle")) if t]
-    if b.get("seite"):
-        teile.append(f"S. {b['seite']}")
+    teile = [t for t in (b.get("label"), b.get("citation")) if t]
+    if b.get("page"):
+        teile.append(f"S. {b['page']}")
     if not teile:
         return ""
     stand = f", Stand {b['stand']}" if b.get("stand") else ""
@@ -2167,7 +2167,7 @@ def _gebuehren_block(g: dict | None) -> str:
     zeilen: list[str] = []
     for gruppe in g["bereiche"]:
         for r in gruppe.get("werte") or []:
-            s = (f"- {r['bereich_name']} {r['year']}: Kostenkalkulation "
+            s = (f"- {r['area_name']} {r['year']}: Kostenkalkulation "
                  f"{_eur(r.get('kostenkalkulation'))}, Abzüge "
                  f"{_eur(r.get('deductions'))}, durch Gebühren zu decken "
                  f"{_eur(r.get('zu_deckende_kosten'))}")
@@ -2228,7 +2228,7 @@ def _gruende_block(gruende: list[dict] | None) -> str:
     zeilen = []
     for g in gruende:
         delta = f" ({g['delta_mio']:+.1f} Mio. €)" if g.get("delta_mio") is not None else ""
-        zeilen.append(f"- {g['bezeichnung']} {g['year']}{delta}: "
+        zeilen.append(f"- {g['label']} {g['year']}{delta}: "
                       f"{' '.join((g.get('text') or '').split())[:400]}"
                       + _beleg_text(g.get("beleg")))
     return ("\nWARUM DER PLAN NICHT AUFGING (Erläuterungen der Verwaltung zum\n"
@@ -2242,9 +2242,9 @@ def _pruefung_block(p: dict | None) -> str:
     förmliche Kontrolle der Verwaltung durch eine eigene Stelle."""
     if not p or not p.get("feststellungen"):
         return ""
-    zeilen = [f"- [{f['marke']} = {f['marke_name']}] Textziffer {f['textziffer']} "
-              f"„{f['abschnitt']}“"
-              + (f", S. {f['seite']}" if f.get("seite") else "")
+    zeilen = [f"- [{f['mark']} = {f['mark_name']}] Textziffer {f['text_number']} "
+              f"„{f['section']}“"
+              + (f", S. {f['page']}" if f.get("page") else "")
               + f": {' '.join((f.get('text') or '').split())[:350]}"
               for f in p["feststellungen"]]
     verteilung = ", ".join(f"{n}× {name}" for name, n in sorted(
@@ -2264,16 +2264,16 @@ def _produkte_block(p: dict | None) -> str:
         return ""
     zeilen = []
     for r in p["produkte"]:
-        s = f"- {r['produkt_name']} ({p['year']}"
-        if r.get("amt"):
-            s += f", {r['amt']}"
+        s = f"- {r['product_name']} ({p['year']}"
+        if r.get("office"):
+            s += f", {r['office']}"
         s += f"): Aufwendungen {_eur(r.get('expenses'))}, Zuschussbedarf " \
              f"{_eur(abs(r['result']) if r.get('result') is not None else None)}"
-        if r.get("auftragsgrundlage"):
+        if r.get("legal_basis"):
             s += f" — Rechtsgrundlage laut Haushaltsplan: " \
-                 f"{' '.join(r['auftragsgrundlage'].split())[:220]}"
-        if r.get("beeinflussbarkeit"):
-            s += f" — Spielraum der Stadt (Selbstauskunft des Plans): {r['beeinflussbarkeit']}"
+                 f"{' '.join(r['legal_basis'].split())[:220]}"
+        if r.get("controllability"):
+            s += f" — Spielraum der Stadt (Selbstauskunft des Plans): {r['controllability']}"
         zeilen.append(s + _beleg_text(r.get("beleg")))
     return (f"\nAUFGABEN DER STADT MIT KOSTEN UND RECHTSGRUNDLAGE (Produktebene der\n"
             f"Teilhaushalts-Pläne, Stand {p['year']} — PLAN-Zahlen). Die\n"
@@ -2295,7 +2295,7 @@ def _konzern_block(k: dict | None) -> str:
                       f"Eigenbetriebe und Beteiligungen")
     for t in (k.get("traeger") or [])[:4]:
         zeilen.append(f"- {t['traeger']}: {_eur((t.get('amount_keur') or 0) * 1000)} "
-                      f"Aufwendungen (auf Tausend Euro genau, mehr gibt der Bericht nicht her)")
+                      f"Aufwendungen (auf Tausend Euro exact, mehr gibt der Bericht nicht her)")
     return (f"\nDER KONZERN STADT OLDENBURG (konsolidierter Gesamtabschluss {k['year']} —\n"
             "Kernverwaltung PLUS Eigenbetriebe und Beteiligungen). Nutze das, wenn nach\n"
             "der Stadt ALS GANZES gefragt ist; die Zahlen sind mit denen des\n"
@@ -2310,7 +2310,7 @@ def _vergleich_block(v: dict | None) -> str:
     einheit = f" {v['einheit']}" if v.get("einheit") else ""
     zeilen = [f"- {s['stadt']}: {s['wert']:,.0f}{einheit}".replace(",", ".")
               for s in v["staedte"][:8] if s.get("wert") is not None]
-    return (f"\nIM VERGLEICH ({v['kennzahl']}, {v['year']}, amtliche Statistik des\n"
+    return (f"\nIM VERGLEICH ({v['indicator']}, {v['year']}, amtliche Statistik des\n"
             "Landesamts für Statistik Niedersachsen — alle kreisfreien Städte\n"
             "Niedersachsens). Für die Einordnung „wo steht Oldenburg?“; NIE mit [id]"
             + _beleg_text(v.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n")
@@ -2321,7 +2321,7 @@ def _ansatz_block(a: dict | None) -> str:
     Ausgabearten, wo `council_haushalt` nur Teilhaushalte kennt."""
     if not a or not a.get("posten"):
         return ""
-    zeilen = [f"- {p['bezeichnung']}: {_eur(p.get('amount'))}" for p in a["posten"]]
+    zeilen = [f"- {p['label']}: {_eur(p.get('amount'))}" for p in a["posten"]]
     return (f"\nHAUSHALTSANSATZ {a['year']} nach Ertrags- und Aufwandsarten (GEPLANT,\n"
             "aus dem Gesamtergebnishaushalt — der Stand der Einbringung, nicht\n"
             "zwingend der Beschluss des Rates; Jahr immer nennen, NIE mit [id])"
@@ -2468,7 +2468,7 @@ def _schulden_block(s: dict | None) -> str:
     kopf = f"- Schuldenstand am Jahresende {s['year']}: {_eur(s['insgesamt'])}"
     if s.get("je_einwohner"):
         kopf += f" — das sind {_eur(s['je_einwohner'])} je Einwohner*in"
-    if s.get("revidiert"):
+    if s.get("revised"):
         kopf += " (von der Quelle als revidierter Wert gekennzeichnet)"
     zeilen = [kopf]
     if s.get("davor"):
@@ -2523,10 +2523,10 @@ def _investitionen_block(i: dict | None) -> str:
     if not i or not i.get("gesamt"):
         return ""
     g = i["gesamt"]
-    zeilen = [f"- {g['bezeichnung']} ({i['year']}): Auszahlungen "
+    zeilen = [f"- {g['label']} ({i['year']}): Auszahlungen "
               f"{_eur(g.get('outflows'))}, Einzahlungen {_eur(g.get('inflows'))}"]
     for r in i.get("teilhaushalte") or []:
-        zeilen.append(f"  - {r['bezeichnung']}: Auszahlungen {_eur(r.get('outflows'))}, "
+        zeilen.append(f"  - {r['label']}: Auszahlungen {_eur(r.get('outflows'))}, "
                       f"Einzahlungen {_eur(r.get('inflows'))}")
     return (f"\nINVESTITIONEN (Finanzhaushalt des Haushaltsplans {i['year']} — GEPLANT).\n"
             "ES SIND ZWEI HAUSHALTE, NICHT EINER: Hier steht, was die Stadt bauen und\n"
@@ -2595,7 +2595,7 @@ def _stellenplan_block(s: dict | None) -> str:
     for t in s["teile"]:
         zeilen.append(
             f"- Teil {t['teil']} ({t['teil_name']}): {_stellen(t.get('stellen_plan'))} "
-            f"Stellen im Haushaltsjahr {s['jahrgang']}. Im Vorjahr waren es "
+            f"Stellen im Haushaltsjahr {s['budget_year']}. Im Vorjahr waren es "
             f"{_stellen(t.get('positions_prior_year'))} Stellen, davon "
             f"{_stellen(t.get('besetzt'))} besetzt und "
             f"{_stellen(t.get('nicht_besetzt'))} nicht besetzt")
@@ -2603,12 +2603,12 @@ def _stellenplan_block(s: dict | None) -> str:
         zeilen.append(f"- NICHT im Bestand: der Teil für {', '.join(s['fehlend'])}. "
                       "Die Zahlen oben sind deshalb nicht der ganze Stellenplan — "
                       "sag das dazu.")
-    stichtag = f", Stichtag {s['stichtag']}" if s.get("stichtag") else ""
-    return (f"\nSTELLENPLAN {s['jahrgang']} (Anlage des Haushaltsplans). Gezählt werden\n"
+    as_of_date = f", Stichtag {s['as_of_date']}" if s.get("as_of_date") else ""
+    return (f"\nSTELLENPLAN {s['budget_year']} (Anlage des Haushaltsplans). Gezählt werden\n"
             "STELLEN, keine Köpfe — Teilzeit steht als Bruchteil —, und nur die\n"
             "Kernverwaltung: Klinikum, Bäder, Bus und Gebäudewirtschaft haben eigene\n"
             f"Wirtschaftspläne.\nSO IST ES ZU LESEN: „besetzt“ und „nicht besetzt“ "
-            f"gehören zur VORJAHRESSPALTE{stichtag}\n— geplant wird vorwärts, gezählt "
+            f"gehören zur VORJAHRESSPALTE{as_of_date}\n— geplant wird vorwärts, gezählt "
             "werden kann nur rückwärts. Rechne deshalb NIE\n„Stellen im Haushaltsjahr "
             "minus besetzt“: Das mischt zwei Stichtage und steht\nin keinem Dokument. "
             "Die unbesetzten Stellen stehen als eigene Angabe da.\nEine Zeile „Stellen "
@@ -2644,7 +2644,7 @@ def _antraege_block(a: dict | None) -> str:
     return (f"\nDER STREIT UM DEN HAUSHALT {a['year']} (Änderungslisten aus den "
             "Sitzungs-\nprotokollen; Jahreszahl = HAUSHALTSjahr, der Beschluss fällt "
             "oft im Jahr\ndavor).\nDIE GRENZE DIESER QUELLE GEHÖRT IN DIE ANTWORT: Sie "
-            "sagt, WER etwas ändern\nwollte und ob es durchkam — nicht WAS genau. "
+            "sagt, WER etwas ändern\nwollte und ob es durchkam — nicht WAS exact. "
             "Welche Position um welchen Betrag\nsteht in den Anlagen der Vorlage und "
             "liegt uns nicht als Text vor; erfinde\nkeine Inhalte dazu und leite auch "
             "keine aus dem Titel ab. Gemeinsame Listen\nzählen für jede beteiligte "
@@ -2833,7 +2833,7 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "thema",
         ortsregel = (
             f"\nORTSFILTER: Die Frage nennt den Katalogort „{ort.get('name', '')}“ "
             f"({ort.get('kind_label', 'Ort')}). Verwende nur Beschlüsse mit "
-            "belegtem Bezug zu genau diesem Ort; die konkrete Fundstelle steht "
+            "belegtem Bezug zu exact diesem Ort; die konkrete Fundstelle steht "
             "im Kontext als „Ortsbezug“. Verwechsle einen kleineren Ort nicht "
             "mit seinem größeren Ortsbereich und benenne eine dünne Datenlage ehrlich."
         )

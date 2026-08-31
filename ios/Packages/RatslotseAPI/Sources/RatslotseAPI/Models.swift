@@ -6,7 +6,7 @@ public struct AppConfiguration: Codable, Sendable, Equatable {
 
     enum CodingKeys: String, CodingKey {
         case minBuild = "min_build"
-        case notice = "hinweis"
+        case notice = "note"
     }
 }
 
@@ -408,7 +408,7 @@ public struct CouncilTemplate: Codable, Sendable, Equatable {
         case kind = "art"
         case documentURL = "document_url"
         case pageCount = "n_pages"
-        case department = "amt"
+        case department = "office"
         case climateCheck = "klima_check"
         case financialCheck = "finanz_check"
     }

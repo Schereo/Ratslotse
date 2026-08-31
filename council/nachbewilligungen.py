@@ -71,7 +71,7 @@ Woher der Beschlussvorschlag kommt
 ``council_vorlagen.beschlussvorschlag`` ist die richtige Spalte dafür — aber
 im Bestand ist sie fast leer (7 von 5019 Zeilen, alle Jahrgang 2026): Gefüllt
 wird sie erst seit ``council/ernte.py`` und nur beim Neu-Einlesen einer
-Vorlage. Deshalb nimmt :func:`betrag` sie, **wenn** sie steht, und erntet
+Vorlage. Deshalb nimmt :func:`amount` sie, **wenn** sie steht, und erntet
 sonst aus ``raw_text`` mit derselben Funktion, die auch die Spalte füllt.
 Damit hängt die Trefferquote nicht daran, wann eine Vorlage zuletzt geholt
 wurde.
@@ -261,7 +261,7 @@ _BEIDES = re.compile(
     re.IGNORECASE)
 
 
-def kategorie(titel: str) -> str:
+def category(titel: str) -> str:
     """``ueberplanmaessig`` | ``ausserplanmaessig`` | ``beides``.
 
     Der Unterschied ist kein Detail: **überplanmäßig** heißt, der Posten stand
@@ -321,7 +321,7 @@ class Bewilligung:
     titel: str
     #: :data:`ART_BEWILLIGUNG` | :data:`ART_VERPFLICHTUNG` | :data:`ART_SCHWELLE`
     art: str
-    kategorie: str
+    category: str
     year: int | None
     #: ``None`` bei :data:`ART_SCHWELLE` — dort ist der Titelbetrag die Grenze.
     amount: float | None
@@ -446,7 +446,7 @@ def aus_vorlagen(vorlagen: list[dict],
                               v.get("raw_text"))
         out.append(Bewilligung(
             template_number=nr, titel=titel, art=art(titel),
-            kategorie=kategorie(titel), year=haushaltsjahr(nr),
+            category=category(titel), year=haushaltsjahr(nr),
             amount=wert, amount_source=quelle,
             beschluesse=tuple(beschluesse.get(nr, ()))))
     return sorted(out, key=lambda b: b.template_number)

@@ -198,8 +198,8 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
     const defizit = g?.revenues != null && g?.expenses != null
       ? mio(g.expenses - g.revenues) ?? 0 : 0;
     const freiwillig = bereiche(zeilen)
-      .filter((z) => PFLICHT_ZUORDNUNG[z.bereich]?.stufe === "freiwillig")
-      .map((z) => ({ bereich: z.bereich, aus: mio(z.expenses) ?? 0 }))
+      .filter((z) => PFLICHT_ZUORDNUNG[z.area]?.stufe === "freiwillig")
+      .map((z) => ({ area: z.area, aus: mio(z.expenses) ?? 0 }))
       .sort((a, b) => b.aus - a.aus);
     const kraft = daten.steuerkraft.filter((k) => k.messzahl != null && k.zuweisungen != null).slice(-2);
     return { year, defizit, freiwillig, kraft };
@@ -233,7 +233,7 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
   // Negativ gedrehte Bereiche sparen, aufgestockte kosten — `gespart` darf
   // deshalb negativ werden und heißt dann ehrlich „mehr ausgegeben“.
   const gespart = Math.round(
-    basis.freiwillig.reduce((s, f) => s - (f.aus * (aenderung[f.bereich] ?? 0)) / 100, 0) * 10) / 10;
+    basis.freiwillig.reduce((s, f) => s - (f.aus * (aenderung[f.area] ?? 0)) / 100, 0) * 10) / 10;
   const wirkung = mehrEinnahmen + gespart;
   const neuesDefizit = Math.round((basis.defizit - wirkung) * 10) / 10;
   const geschlossen = basis.defizit > 0
@@ -272,7 +272,7 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
     const jahrInv = programm?.jahre.at(-1) ?? null;
     if (jahrInv == null) return 0;
     const summe = (programm?.massnahmen ?? [])
-      .filter((z) => z.year === jahrInv && vorhabenAus[z.code || z.bezeichnung])
+      .filter((z) => z.year === jahrInv && vorhabenAus[z.code || z.label])
       .reduce((s, z) => s + z.grand_total, 0);
     return Math.round((summe / 1e6) * 10) / 10;
   }, [programm, vorhabenAus]);
@@ -289,7 +289,7 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
     setAenderung({}); setVorhabenAus({}); setKredit(false);
   };
   const alle = (pct: number) =>
-    Object.fromEntries(basis.freiwillig.map((f) => [f.bereich, pct]));
+    Object.fromEntries(basis.freiwillig.map((f) => [f.area, pct]));
   const szenarien = [
     { label: "+20 Punkte Hebesatz", punkte: 20, grundst: 0, hunde: 0, pct: 0 },
     { label: "10 % weniger für die Kür", punkte: 0, grundst: 0, hunde: 0, pct: -10 },
@@ -561,7 +561,7 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
         {szenarien.map((s) => {
           const aktiv = punkte === s.punkte && grundstPunkte === s.grundst
             && hundePct === s.hunde
-            && basis.freiwillig.every((f) => (aenderung[f.bereich] ?? 0) === s.pct);
+            && basis.freiwillig.every((f) => (aenderung[f.area] ?? 0) === s.pct);
           return (
             <button key={s.label} type="button"
               onClick={() => {
@@ -605,7 +605,7 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
               freiwillig={basis.freiwillig}
               produkte={produkte} produktJahr={produktJahr} basisJahr={basis.year}
               aenderung={aenderung}
-              setAenderung={(bereich, pct) => setAenderung((k) => ({ ...k, [bereich]: pct }))}
+              setAenderung={(area, pct) => setAenderung((k) => ({ ...k, [area]: pct }))}
               maxProzent={MAX_KUERZUNG}
               jeEinwohner={jeEinwohner} anteilText={anteilText}
             />
@@ -671,7 +671,7 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
           <ul className="mt-2.5 max-w-[76ch] space-y-2.5 text-[12px] leading-relaxed text-foreground/85">
             <li>
               <strong>Die Umlage.</strong> Von der Gewerbesteuer geht ein Anteil an Bund und Land.
-              Wie viel genau, führt der offene Datensatz nicht getrennt aus — die Zahl oben ist
+              Wie viel exact, führt der offene Datensatz nicht getrennt aus — die Zahl oben ist
               bereits ein Netto-Wert nach Umlage, ein zusätzlicher Punkt bringt aber ebenfalls
               weniger als brutto.
             </li>

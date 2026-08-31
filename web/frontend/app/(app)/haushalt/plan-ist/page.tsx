@@ -54,7 +54,7 @@ import { Warum } from "@/components/haushalt/warum";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
-import { MarkePille } from "@/components/haushalt/marke";
+import { MarkePille } from "@/components/haushalt/mark";
 import { Hantel, HantelMassstab } from "@/components/grafik/hantel";
 import {
   NachbewilligungsBefund, NachbewilligungsBlock,
@@ -74,7 +74,7 @@ import { Seitenbuehne, ZaehlZahl } from "@/components/haushalt/seitenbuehne";
 function PruefungsHinweis() {
   // Nur die wiederholten Beanstandungen: Der volle Bestand ist rund 250 kB
   // Prosa und wird auf dieser Seite nirgends angezeigt.
-  const { data } = useFetch<PruefberichtDaten>("/council/haushalt/pruefberichte?marke=WB");
+  const { data } = useFetch<PruefberichtDaten>("/council/haushalt/pruefberichte?mark=WB");
   const kette = useMemo(() => {
     if (!data?.feststellungen?.length) return null;
     return wiederholungsketten(data.feststellungen)
@@ -83,16 +83,16 @@ function PruefungsHinweis() {
   if (!kette) return null;
   // Ausdrücklich die jüngste WIEDERHOLTE Beanstandung, nicht einfach den
   // letzten Eintrag: Der Abschnitt trägt in denselben Jahren auch Hinweise.
-  const juengste = [...kette.eintraege].reverse().find((f) => f.marke === "WB");
+  const juengste = [...kette.eintraege].reverse().find((f) => f.mark === "WB");
   if (!juengste) return null;
 
   return (
     <Link href="/haushalt/pruefung"
       className="group flex flex-col gap-2 rounded-2xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-primary/40">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-        <MarkePille marke={juengste.marke} name={juengste.marke_name} klein />
+        <MarkePille mark={juengste.mark} name={juengste.mark_name} klein />
         <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
-          Rechnungsprüfungsamt · Schlussbericht {juengste.year} · Textziffer {juengste.textziffer}
+          Rechnungsprüfungsamt · Schlussbericht {juengste.year} · Textziffer {juengste.text_number}
         </span>
       </div>
       <p className="border-l-2 border-border pl-3 text-[13.5px] leading-relaxed text-foreground/90">
@@ -114,8 +114,8 @@ function PruefungsHinweis() {
  *  Vorzeichen steht als Zeichen da, nicht als Urteil — deshalb tragen alle
  *  Beträge dieselbe Textfarbe, und `stark` hebt nur die Summenzeile heraus,
  *  wie im Dokument. */
-function KassenZeile({ label, hinweis, wert, stark }: {
-  label: string; hinweis?: string; wert: number | null; stark?: boolean;
+function KassenZeile({ label, note, wert, stark }: {
+  label: string; note?: string; wert: number | null; stark?: boolean;
 }) {
   return (
     <div className="flex items-baseline justify-between gap-4 py-2">
@@ -124,9 +124,9 @@ function KassenZeile({ label, hinweis, wert, stark }: {
           stark ? "font-semibold text-foreground" : "text-foreground/90")}>
           {label}
         </span>
-        {hinweis && (
+        {note && (
           <span className="mt-0.5 block text-[11.5px] leading-snug text-muted-foreground">
-            {hinweis}
+            {note}
           </span>
         )}
       </dt>
@@ -172,15 +172,15 @@ function PlanIstInner() {
     if (!data || !year) return leer;
     const zeilen = (data.ergebnisrechnung ?? []).filter((p) => p.year === year);
     const summe = (rows: ErgebnisPosten[], nr: number) => rows.find((p) => p.nr === nr);
-    const g = zeilen.filter((p) => p.thh_nr == null);
+    const g = zeilen.filter((p) => p.sub_budget_no == null);
     const e = summe(g, 12), a = summe(g, 20);
 
-    const nrs = [...new Set(zeilen.filter((p) => p.thh_nr != null).map((p) => p.thh_nr))];
+    const nrs = [...new Set(zeilen.filter((p) => p.sub_budget_no != null).map((p) => p.sub_budget_no))];
     const bereiche = nrs.map((nr) => {
-      const teil = zeilen.filter((p) => p.thh_nr === nr);
+      const teil = zeilen.filter((p) => p.sub_budget_no === nr);
       const te = summe(teil, 12), ta = summe(teil, 20);
       return {
-        nr, name: teil[0]?.thh_name ?? `Teilhaushalt ${nr}`,
+        nr, name: teil[0]?.sub_budget_name ?? `Teilhaushalt ${nr}`,
         aufwPlan: mio(ta?.plan), aufwIst: mio(ta?.result),
         ertrPlan: mio(te?.plan), ertrIst: mio(te?.result),
       };
@@ -246,7 +246,7 @@ function PlanIstInner() {
   // Regel nicht folgte. Deshalb hier derselbe Weg statt einer zweiten Formel.
   const jahresergebnis = (art: "plan" | "result") => {
     const teile = [21, 24].map((nr) => (data.ergebnisrechnung ?? []).find(
-      (p) => p.year === year && p.nr === nr && p.thh_nr == null));
+      (p) => p.year === year && p.nr === nr && p.sub_budget_no == null));
     if (teile.some((t) => !t || t[art] == null)) return null;
     return teile.reduce((s, t) => s + (t![art] as number), 0) / 1e6;
   };
@@ -508,21 +508,21 @@ function PlanIstInner() {
           <dl className="mt-3 divide-y divide-border/60 border-t border-border/60">
             <KassenZeile
               label="Aus laufender Arbeit blieb übrig"
-              hinweis="Steuern, Gebühren und Zuweisungen minus Personal, Sachkosten und Sozialleistungen"
+              note="Steuern, Gebühren und Zuweisungen minus Personal, Sachkosten und Sozialleistungen"
               wert={mio(kasse.balance_operating?.result)} />
             <KassenZeile
               label="Für Investitionen floss ab"
-              hinweis={kasse.total_out_capital?.result != null
+              note={kasse.total_out_capital?.result != null
                 ? `${deMio(mio(kasse.total_out_capital.result))} Mio. € ausgezahlt für Bau, Grundstücke, Geräte und Zuschüsse — abzüglich der Einzahlungen`
                 : undefined}
               wert={mio(kasse.balance_capital?.result)} />
             <KassenZeile
-              label={kasse.finanzmittel?.bezeichnung ?? "Finanzmittel-Überschuss/-Fehlbetrag"}
+              label={kasse.finanzmittel?.label ?? "Finanzmittel-Überschuss/-Fehlbetrag"}
               wert={mio(kasse.finanzmittel?.result)} stark />
             {kasse.finanzmittelveraenderung && kasse.balance_financing && (
               <KassenZeile
                 label="Nach Kredittilgung"
-                hinweis={`${deMio(mio(Math.abs(kasse.balance_financing.result ?? 0)))} Mio. € Tilgung`}
+                note={`${deMio(mio(Math.abs(kasse.balance_financing.result ?? 0)))} Mio. € Tilgung`}
                 wert={mio(kasse.finanzmittelveraenderung.result)} />
             )}
           </dl>
@@ -539,11 +539,11 @@ function PlanIstInner() {
               Geplante nicht gebaut? Weil ein Teil des Geldes aus Vorjahren
               stammt und die Genehmigung mitwandert — der Plan des Jahres ist
               nicht die Grenze dessen, was ausgegeben werden darf. */}
-          {kasse.total_out_capital?.ermaechtigung != null && (
+          {kasse.total_out_capital?.authorization != null && (
             <p className="mt-3 max-w-[70ch] border-t border-border/60 pt-3 text-[13px] leading-relaxed text-foreground/85">
               Ausgeben durfte die Stadt für Investitionen mehr als die geplanten{" "}
               {deMio(mio(kasse.total_out_capital.plan))}&#8239;Mio.&nbsp;€: Weitere{" "}
-              <strong>{deMio(mio(kasse.total_out_capital.ermaechtigung))}&#8239;Mio.&nbsp;€</strong>{" "}
+              <strong>{deMio(mio(kasse.total_out_capital.authorization))}&#8239;Mio.&nbsp;€</strong>{" "}
               standen als Ermächtigungen aus Vorjahren offen — bewilligtes Geld für
               Vorhaben, die noch nicht fertig sind, und das deshalb mit ins nächste Jahr
               wandert<Beleg q="finanzrechnung" />.
@@ -651,7 +651,7 @@ function PlanIstInner() {
               return (
                 <div key={p.nr} className="flex flex-col gap-1.5">
                   <div className="grid grid-cols-[minmax(110px,190px)_1fr_auto] items-center gap-x-3">
-                    <span className="truncate text-[12.5px]">{p.bezeichnung}</span>
+                    <span className="truncate text-[12.5px]">{p.label}</span>
                     <div className="h-2.5 rounded-full bg-muted">
                       <div className="h-full rounded-full bg-signal/70"
                         style={{ width: `${Math.min((Math.abs(abw) / groesste) * 100, 100)}%` }} />
@@ -689,7 +689,7 @@ function PlanIstInner() {
             {uebrigeGruende.map((g) => (
               <div key={g.nr} className="flex flex-col gap-1">
                 <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-                  <span className="text-[12.5px] font-semibold">{g.bezeichnung}</span>
+                  <span className="text-[12.5px] font-semibold">{g.label}</span>
                   <span className="whitespace-nowrap font-mono text-[11px] tabular-nums text-signal">
                     {(g.delta_mio ?? 0) > 0 ? "+" : ""}{deMio(g.delta_mio)}&#8239;Mio.&nbsp;€
                     {g.prozent != null && (
@@ -801,7 +801,7 @@ function PlanIstInner() {
               <ExternalLink className="h-3 w-3" />
             </a>
           </p>
-          {pruefbericht.lesbar === 0 && (
+          {pruefbericht.readable === 0 && (
             <p className="mt-2 max-w-[74ch] text-[11.5px] leading-relaxed text-muted-foreground">
               Von diesem Jahrgang liegt uns nur das PDF vor: Der Text darin ist nicht
               maschinenlesbar hinterlegt, deshalb können wir daraus nichts zitieren oder

@@ -98,8 +98,8 @@ PASSIVA = "passiva"
 
 #: Die Zeilen, auf die es ankommt, erkannt am Wortlaut des Dokuments.
 #:
-#: ``(rolle, seite, ebene, muster)``. ``ebene`` 1 sind die Hauptposten, aus
-#: denen die Bilanzsumme besteht; ``ebene`` 2 und 3 sind Unterposten, die
+#: ``(rolle, page, level, muster)``. ``level`` 1 sind die Hauptposten, aus
+#: denen die Bilanzsumme besteht; ``level`` 2 und 3 sind Unterposten, die
 #: einzeln etwas erzählen.
 #:
 #: Die Muster sind mit ``$`` verankert, und das ist keine Kosmetik: Ohne den
@@ -151,8 +151,8 @@ ROLLEN: tuple[tuple[str, str, int, str], ...] = (
 
 #: Die Hauptposten je Seite — ihre Summe ist die Bilanzsumme.
 HAUPTPOSTEN: dict[str, tuple[str, ...]] = {
-    seite: tuple(r for r, s, e, _ in ROLLEN if s == seite and e == 1)
-    for seite in (AKTIVA, PASSIVA)
+    page: tuple(r for r, s, e, _ in ROLLEN if s == page and e == 1)
+    for page in (AKTIVA, PASSIVA)
 }
 
 #: Ohne diese Zeilen ist ein Jahrgang wertlos: Fehlt einer der neun
@@ -228,11 +228,11 @@ def _eur(s: str) -> float:
     return float(s.replace(".", "").replace(",", "."))
 
 
-def _rolle(bezeichnung: str) -> tuple[str, str, int] | None:
+def _rolle(label: str) -> tuple[str, str, int] | None:
     """Welche Bilanzposition diese Zeile ist — oder ``None``."""
-    for name, seite, ebene, muster in ROLLEN:
-        if re.search(muster, bezeichnung):
-            return name, seite, ebene
+    for name, page, level, muster in ROLLEN:
+        if re.search(muster, label):
+            return name, page, level
     return None
 
 
@@ -297,7 +297,7 @@ def parse_bilanz(text: str, year: int) -> dict:
     """Die Bilanz eines Jahresabschlusses lesen.
 
     Liefert ``{year, prior_year, posten}``. ``posten`` ist eine Liste aus
-    ``{rolle, seite, ebene, nr, bezeichnung, wert, value_prior_year}`` — ``wert``
+    ``{rolle, page, level, nr, label, wert, value_prior_year}`` — ``wert``
     ist der Stand zum Bilanzstichtag des Jahrgangs, ``value_prior_year`` der
     Stand ein Jahr davor, den dieselbe Tabelle in ihrer ersten Spalte führt.
 
@@ -330,11 +330,11 @@ def parse_bilanz(text: str, year: int) -> dict:
         ende = treffer[i + 1].start() if i + 1 < len(treffer) else len(block)
         satz = block[m.end():ende]
         betraege = _BETRAG.findall(satz)
-        bezeichnung = _label(satz[:satz.find(betraege[0])] if betraege else satz)
-        rolle = _rolle(bezeichnung)
+        label = _label(satz[:satz.find(betraege[0])] if betraege else satz)
+        rolle = _rolle(label)
         if rolle is None:
             continue
-        name, seite, ebene = rolle
+        name, page, level = rolle
         # Eine Bilanzzeile führt genau zwei Spalten: Vorjahr und Stichtag.
         # Alles andere ist ein Lesefehler — meist eine verschluckte
         # Zeilengrenze, hinter der die Beträge der nächsten Zeile mithängen.
@@ -349,8 +349,8 @@ def parse_bilanz(text: str, year: int) -> dict:
             continue
         gesehen.add(name)
         posten.append({
-            "rolle": name, "seite": seite, "ebene": ebene,
-            "nr": m.group(1).rstrip("."), "bezeichnung": bezeichnung,
+            "rolle": name, "page": page, "level": level,
+            "nr": m.group(1).rstrip("."), "label": label,
             "value_prior_year": _eur(betraege[0]) if betraege else 0.0,
             "wert": _eur(betraege[1]) if betraege else 0.0,
         })
@@ -369,14 +369,14 @@ def _wert(posten: list[dict], rolle: str, spalte: str = "wert") -> float | None:
     return None
 
 
-def summe(posten: list[dict], seite: str, spalte: str = "wert") -> float | None:
+def summe(posten: list[dict], page: str, spalte: str = "wert") -> float | None:
     """Die Summe der Hauptposten einer Seite — oder ``None``, wenn einer fehlt."""
-    werte = [_wert(posten, r, spalte) for r in HAUPTPOSTEN[seite]]
+    werte = [_wert(posten, r, spalte) for r in HAUPTPOSTEN[page]]
     return sum(werte) if all(w is not None for w in werte) else None
 
 
 def bilanzprobe(gelesen: dict) -> tuple[dict | None, list[str], list[str]]:
-    """Trägt dieser Jahrgang? Liefert ``(jahrgang, fehler, hinweise)``.
+    """Trägt dieser Jahrgang? Liefert ``(budget_year, fehler, hinweise)``.
 
     Die **Pflichtprobe** ist der Bilanzausgleich: Aktiva = Passiva, auf den
     Cent. Sie ist die Eintrittskarte, und sie ist streng — eine Bilanz, die
@@ -407,15 +407,15 @@ def bilanzprobe(gelesen: dict) -> tuple[dict | None, list[str], list[str]]:
         return None, [f"Bilanz gleicht nicht aus: Aktiva {aktiva:,.2f} € gegen "
                       f"Passiva {passiva:,.2f} €, Differenz {difference:,.2f} €"], []
 
-    jahrgang = {"year": gelesen["year"], "posten": posten,
-                "bilanzsumme": aktiva, "proben": ["bilanz_ausgleich"],
+    budget_year = {"year": gelesen["year"], "posten": posten,
+                "bilanzsumme": aktiva, "probes": ["bilanz_ausgleich"],
                 "balancing_difference": difference}
 
     gedruckt = gelesen.get("gedruckte_summe")
     if gedruckt is not None:
         if abs(gedruckt[1] - aktiva) <= TOLERANZ:
-            jahrgang["proben"].append("bilanzsumme_gedruckt")
-            jahrgang["gedruckte_summe"] = gedruckt[1]
+            budget_year["probes"].append("bilanzsumme_gedruckt")
+            budget_year["gedruckte_summe"] = gedruckt[1]
         else:
             hinweise.append(
                 f"gedruckte Bilanzsumme {gedruckt[1]:,.2f} € weicht von der "
@@ -424,12 +424,12 @@ def bilanzprobe(gelesen: dict) -> tuple[dict | None, list[str], list[str]]:
     pension, beihilfe, gesamt = (_wert(posten, r) for r in PROBE_GLIEDERUNG)
     if None not in (pension, beihilfe, gesamt):
         if abs(pension + beihilfe - gesamt) <= TOLERANZ:
-            jahrgang["proben"].append("rueckstellungs_gliederung")
+            budget_year["probes"].append("rueckstellungs_gliederung")
         else:
             hinweise.append(
                 f"Rückstellungs-Gliederung geht nicht auf: {pension:,.2f} + "
                 f"{beihilfe:,.2f} ≠ {gesamt:,.2f} €")
-    return jahrgang, fehler, hinweise
+    return budget_year, fehler, hinweise
 
 
 def vorjahreskette(jahrgaenge: dict[int, dict]) -> list[tuple[int, int, str]]:
@@ -504,7 +504,7 @@ def parse_erlaeuterungen(text: str, year: int) -> list[dict]:
     Finanzvermögen. **Diese Zahl darf ohne diesen Text nicht angezeigt
     werden.**
 
-    Liefert je Abschnitt ``{rolle, nr, ueberschrift, text}``. Zwei Abschnitte
+    Liefert je Abschnitt ``{rolle, nr, heading, text}``. Zwei Abschnitte
     (6.2.2 Sachvermögen, 6.2.3 Finanzvermögen) betten Tabellen in ihren Text
     ein; als Fließtext gelesen sind das Zahlenkolonnen ohne Spalten. Sie
     werden gespeichert, aber nichts zwingt eine Seite, sie anzuzeigen.
@@ -529,7 +529,7 @@ def parse_erlaeuterungen(text: str, year: int) -> list[dict]:
         absaetze = [" ".join(a.split()) for a in re.split(r"\n\s*\n", roh)]
         inhalt = "\n\n".join(a for a in absaetze if a)
         raus.append({"rolle": PFLICHT_ROLLEN[nr - 1], "nr": nr,
-                     "ueberschrift": " ".join(m.group(2).split()),
+                     "heading": " ".join(m.group(2).split()),
                      "text": inhalt})
     return raus
 
@@ -554,8 +554,8 @@ def erlaeuterungsprobe(erlaeuterungen: list[dict]) -> tuple[bool, str]:
     muster = {r: m for r, _, _, m in ROLLEN}
     for e in erlaeuterungen:
         erwartet = PFLICHT_ROLLEN[e["nr"] - 1]
-        if not re.search(muster[erwartet], e["ueberschrift"]):
-            return False, (f"6.2.{e['nr']} heißt {e['ueberschrift']!r}, "
+        if not re.search(muster[erwartet], e["heading"]):
+            return False, (f"6.2.{e['nr']} heißt {e['heading']!r}, "
                            f"erwartet war die Erläuterung zu {erwartet}")
         if not e["text"].strip():
             return False, f"6.2.{e['nr']} ({erwartet}) hat keinen Text"

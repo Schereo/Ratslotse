@@ -70,22 +70,22 @@ Der Erfolgsplan 2026 umfasst voraussichtlich anfallende Erträge in Höhe von in
 def test_liest_layout_a_und_findet_die_planspalte():
     """Die Planspalte ist die dritte — gefunden über das Haushaltsjahr, nicht
     über die Position."""
-    plan, proben = parse_erfolgsplan("24/0671", "awb", 2025, LAYOUT_A)
+    plan, probes = parse_erfolgsplan("24/0671", "awb", 2025, LAYOUT_A)
     assert plan.year == 2025
     assert plan.revenues == 25_197_796.0
     assert plan.expenses == 24_570_285.0
     assert plan.result == 627_511.0
-    assert len(proben) == 6, "alle sechs Spalten werden geprüft, nicht nur die gespeicherte"
+    assert len(probes) == 6, "alle sechs Spalten werden geprüft, nicht nur die gespeicherte"
 
 
 def test_liest_layout_b_mit_anderen_beschriftungen():
     """2026 heißt dieselbe Zeile „Summe Erträge" statt „Gesamtertrag" — und der
     Kopf schreibt „Ergebnis 2024" statt „Ist 2024"."""
-    plan, proben = parse_erfolgsplan("25/0642", "awb", 2026, LAYOUT_B)
+    plan, probes = parse_erfolgsplan("25/0642", "awb", 2026, LAYOUT_B)
     assert plan.revenues == 26_747_250.0
     assert plan.expenses == 26_036_000.0
     assert plan.result == 711_250.0
-    assert len(proben) == 6
+    assert len(probes) == 6
 
 
 def test_das_ergebnis_ist_nicht_der_jahresueberschuss():
@@ -129,8 +129,8 @@ def test_rundung_von_einem_euro_reisst_nicht():
     """Layout B rundet je Position — die Finanzplanung 2029 liegt im echten
     Dokument um 1 € daneben. Eine cent-genaue Schwelle verwürfe den Jahrgang
     wegen einer Rundung."""
-    plan, proben = parse_erfolgsplan("25/0642", "awb", 2026, LAYOUT_B)
-    letzte = proben[-1]
+    plan, probes = parse_erfolgsplan("25/0642", "awb", 2026, LAYOUT_B)
+    letzte = probes[-1]
     assert abs(letzte.rest) == 1.0 and letzte.geht_auf
 
 
@@ -216,12 +216,12 @@ def test_speichern_neben_dem_beschlusstext(tmp_path):
 
     store = CouncilStore(tmp_path / "c.sqlite")
     try:
-        plan, proben = parse_erfolgsplan("24/0671", "awb", 2025, LAYOUT_A)
+        plan, probes = parse_erfolgsplan("24/0671", "awb", 2025, LAYOUT_A)
         store.save_wirtschaftsplan(plan, herkunft_fuer(
-            plan, proben, url="https://example.org/x", dokument_id=283481))
+            plan, probes, url="https://example.org/x", document_id=283481))
         zeilen = store.get_wirtschaftsplaene("awb")
         assert len(zeilen) == 1 and zeilen[0]["revenues"] == 25_197_796.0
-        assert "wirtschaftsplan_spalten" in zeilen[0]["proben"]
+        assert "wirtschaftsplan_spalten" in zeilen[0]["probes"]
         assert store.wirtschaftsplan_jahre("awb") == [2025]
         assert "council_wirtschaftsplaene" not in store.herkunft_luecken()
     finally:
@@ -271,11 +271,11 @@ def test_das_alte_layout_liest_sich_ohne_zutun():
     weil der Lauf nach sechs Seiten abbrach und sie auf Seite fünf der Tabelle
     steht. Der Befund „der Parser kennt dieses Layout nicht" war ein Artefakt
     des abgeschnittenen Textes, kein Befund über das Dokument."""
-    plan, proben = parse_erfolgsplan("18/0741", "awb", 2019, LAYOUT_C)
+    plan, probes = parse_erfolgsplan("18/0741", "awb", 2019, LAYOUT_C)
     assert plan.revenues == 20_280_001.0
     assert plan.expenses == 19_989_470.0
     assert plan.result == 290_531.0
-    assert len(proben) == 6 and all(p.geht_auf for p in proben)
+    assert len(probes) == 6 and all(p.geht_auf for p in probes)
 
 
 def test_das_ergebnis_ist_nicht_das_jahresergebnis():

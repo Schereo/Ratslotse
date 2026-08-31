@@ -23,7 +23,7 @@
 // Die Reihenfolge ist die des Mitredens: erst WANN (sonst kommt man zu spät),
 // dann WORÜBER gestritten wurde — ausprobieren geht danach im Labor.
 //
-// DER RAHMEN LIEGT HIER, der Inhalt in den `abschnitt-*.tsx`: Quellenkontext
+// DER RAHMEN LIEGT HIER, der Inhalt in den `section-*.tsx`: Quellenkontext
 // und Verzeichnis führen die VEREINIGUNG aller Quellen, und der Beleg-Chip
 // nummeriert seitenweise. Verschachtelte Quellenkontexte hätten
 // konkurrierende Nummerierungen ergeben.
@@ -39,8 +39,8 @@ import { SchrittPfad } from "@/components/haushalt/schritt-pfad";
 import { Seitenbuehne, SeitenbuehneLaedt, ZaehlZahl } from "@/components/haushalt/seitenbuehne";
 import { deDatum } from "@/lib/haushalt-jahr";
 import { cn } from "@/lib/utils";
-import { TermineAbschnitt } from "@/components/haushalt/abschnitt-termine";
-import { StreitAbschnitt } from "@/components/haushalt/abschnitt-streit";
+import { TermineAbschnitt } from "@/components/haushalt/section-termine";
+import { StreitAbschnitt } from "@/components/haushalt/section-streit";
 
 /** Termine und Streit belegen sich mit dem Ratsinformationssystem; seit die
  *  Änderungslisten gelesen werden, kommt deren Dokumentquelle dazu — der

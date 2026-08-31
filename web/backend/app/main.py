@@ -264,5 +264,5 @@ def app_config() -> AppConfigOut:
     """Small public compatibility contract for installed native builds."""
     return AppConfigOut(
         min_build=max(0, settings.app_min_build),
-        hinweis=settings.app_update_notice.strip() or None,
+        note=settings.app_update_notice.strip() or None,
     )

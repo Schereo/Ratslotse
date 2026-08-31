@@ -71,17 +71,17 @@ export function InvestWerkbank({
         .sort((a, b) => b.grand_total - a.grand_total)
         .slice(0, ANZAHL)
     : [];
-  const schluessel = (z: { code: string; bezeichnung: string }) =>
-    z.code || z.bezeichnung;
+  const schluessel = (z: { code: string; label: string }) =>
+    z.code || z.label;
   /** Detailzeilen, die etwas SAGEN: Wiederholt ein Sachkonto nur den
    *  Maßnahmen-Namen (ggf. abgeschnitten), trägt es nichts — was bleibt,
    *  sind die informativen („Eig.kap. Zusch.Stadion Oldb GmbH & Co KG“,
    *  die Bauabschnitte der Fliegerhorst-Straßen). */
-  const detailInfo = (z: { bezeichnung: string; details: string | null }) => {
+  const detailInfo = (z: { label: string; details: string | null }) => {
     if (!z.details) return null;
     const eigene = z.details.split(" · ").filter((d) => {
       const stamm = d.split(",")[0].trim();
-      return !(z.bezeichnung.startsWith(stamm) || stamm.startsWith(z.bezeichnung));
+      return !(z.label.startsWith(stamm) || stamm.startsWith(z.label));
     });
     return eigene.length ? eigene.join(" · ") : null;
   };
@@ -97,7 +97,7 @@ export function InvestWerkbank({
 
   // § 2 der Satzung, aus den Daten statt behauptet: In wie vielen Jahrgängen
   // stand „nicht veranschlagt“ (= 0)?
-  const satzSelbst = (satzung ?? []).filter((z) => z.nachtrag === 0);
+  const satzSelbst = (satzung ?? []).filter((z) => z.supplement === 0);
   const ohneKredit = satzSelbst.filter((z) => z.kredite_investitionen === 0).length;
   const dispo = satzSelbst
     .filter((z) => z.liquiditaetskredite != null)
@@ -134,7 +134,7 @@ export function InvestWerkbank({
               // Kein Vorhaben ohne Namen: Trägt die Summenzeile im Dokument
               // keinen (und die Detailzeilen keinen gemeinsamen), steht hier
               // der Code — eine benannte Lücke statt eines leeren Schalters.
-              const name = z.bezeichnung || `Maßnahme ${z.code}`;
+              const name = z.label || `Maßnahme ${z.code}`;
               return (
                 <div key={schluessel(z)}
                   className="flex items-start gap-3 border-t border-border/60 py-2.5 first:border-t-0">
@@ -151,7 +151,7 @@ export function InvestWerkbank({
                         Namen als Anfrage — ein Suchlink, kein behaupteter
                         Treffer (eine feste Vorlagen-Zuordnung liegt nicht vor). */}
                     <Link
-                      href={`/council?tab=decisions&q=${encodeURIComponent(z.bezeichnung || z.code)}`}
+                      href={`/council?tab=decisions&q=${encodeURIComponent(z.label || z.code)}`}
                       title="In Beschlüssen und Anträgen danach suchen"
                       className="ml-1.5 inline-flex translate-y-[1px] text-muted-foreground hover:text-primary">
                       <Search className="h-3 w-3" strokeWidth={2.2} />
@@ -176,7 +176,7 @@ export function InvestWerkbank({
           </div>
           <p className="mt-2 text-[10.5px] leading-relaxed text-muted-foreground">
             Warum diese Auswahl — und so viel Fliegerhorst? Das Programm nennt nur
-            einen Teil seiner Vorhaben einzeln: Straßenbau sehr genau, Schulen
+            einen Teil seiner Vorhaben einzeln: Straßenbau sehr exact, Schulen
             dagegen nur als Sammelposten. Hier stehen die größten <em>benannten</em>{" "}
             Einzelmaßnahmen — die Gewichtung ist die des Dokuments, nicht unsere.
           </p>

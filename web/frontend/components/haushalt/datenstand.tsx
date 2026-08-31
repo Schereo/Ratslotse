@@ -199,7 +199,7 @@ export function Datenstand() {
 
       <ul className="mt-3 flex flex-col gap-2.5">
         {data.schichten.map((s) => {
-          const bereich = spanne(s.jahrgaenge);
+          const area = spanne(s.jahrgaenge);
           const { text, wartet } = ausblick(s, data.heute);
           // Nur der jüngste unvollständige Jahrgang wird benannt: Die älteren
           // sind eine Geschichte für sich und würden die Zeile zumauern.
@@ -217,7 +217,7 @@ export function Datenstand() {
               <div className="flex items-baseline justify-between gap-3">
                 <span className="min-w-0 text-[13px] font-bold leading-snug">{s.label}</span>
                 <span className="flex-none font-mono text-[11.5px] font-medium tabular-nums text-foreground/80">
-                  {bereich ?? "—"}
+                  {area ?? "—"}
                 </span>
               </div>
               <span className="text-[12px] leading-relaxed text-muted-foreground">{s.was}</span>

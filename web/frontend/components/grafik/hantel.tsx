@@ -306,7 +306,7 @@ export function Hantel({
         <span className="basis-full text-[11px] leading-relaxed">
           {massstab === "prozent"
             ? `Die Strecke misst, um wie viel Prozent ${wovon} vom Plan abwich — so ist eine Zeile von 231 Mio. € mit einer von 6 Mio. € vergleichbar. Der Betrag steht rechts daneben.`
-            : `Die Strecke misst den Betrag der Abweichung. Große Zeilen dominieren dabei; wie genau ${wovon} beim Plan lag, zeigt die Prozent-Ansicht besser.`}{" "}
+            : `Die Strecke misst den Betrag der Abweichung. Große Zeilen dominieren dabei; wie exact ${wovon} beim Plan lag, zeigt die Prozent-Ansicht besser.`}{" "}
           {keineWertung}
         </span>
       </div>

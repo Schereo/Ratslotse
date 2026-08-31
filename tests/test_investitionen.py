@@ -98,7 +98,7 @@ def test_echte_datei_besteht_die_summenprobe(text, year, ein, aus):
 
 def test_teilhaushalte_kommen_sortiert_und_vollstaendig():
     r = inv.lies(FH_2025, 2025)
-    assert [z["thh_nr"] for z in r["zeilen"]] == list(range(1, 14))
+    assert [z["sub_budget_no"] for z in r["zeilen"]] == list(range(1, 14))
 
 
 def test_gesamtbetrag_finanzhaushalt_wird_getrennt_gefuehrt():
@@ -184,7 +184,7 @@ def test_leere_datei():
 def test_teilhaushalt_heisst_ueber_die_jahrgaenge_gleich():
     """Sonst stünden in jeder Zeitreihe zwei Bereiche, wo einer ist."""
     def namen(text, year):
-        return {z["thh_nr"]: z["bezeichnung"] for z in inv.lies(text, year)["zeilen"]}
+        return {z["sub_budget_no"]: z["label"] for z in inv.lies(text, year)["zeilen"]}
 
     a, b = namen(FH_2022, 2022), namen(FH_2025, 2025)
     assert a[8] == b[8] == "Verkehr und Straßenbau"
@@ -228,12 +228,12 @@ def _speichern(store: CouncilStore, text: str, year: int) -> dict:
     store.save_investitionen(
         year, r["zeilen"], r["gesamt"],
         herkunft.Herkunft(probe="investitionen_summenzeile",
-                          fundstelle="Datensatz 1101, Tabellenblatt Finanzhaushalt",
+                          citation="Datensatz 1101, Tabellenblatt Finanzhaushalt",
                           probe_result=r["nachweis"], **anker),
         finanzhaushalt=r["finanzhaushalt"],
         herkunft_finanzhaushalt=herkunft.Herkunft(
             probe=herkunft.UNGEPRUEFT,
-            fundstelle="Zeile „Gesamtbetrag des Finanzhaushaltes“", **anker))
+            citation="Zeile „Gesamtbetrag des Finanzhaushaltes“", **anker))
     return r
 
 
@@ -242,10 +242,10 @@ def test_speichern_und_lesen(tmp_path):
     _speichern(store, FH_2025, 2025)
 
     assert store.investitionen_jahre() == [2025]
-    zeilen = store.get_investitionen(year=2025, ebene="teilhaushalt")
+    zeilen = store.get_investitionen(year=2025, level="teilhaushalt")
     assert len(zeilen) == 13
-    assert {z["bezeichnung"] for z in zeilen} >= {"Schule und Bildung"}
-    gesamt = store.get_investitionen(year=2025, ebene="investitionen")
+    assert {z["label"] for z in zeilen} >= {"Schule und Bildung"}
+    gesamt = store.get_investitionen(year=2025, level="investitionen")
     assert len(gesamt) == 1
     assert gesamt[0]["outflows"] == 80_781_520
     # Jede Zeile weiß, woher sie kommt.
@@ -258,8 +258,8 @@ def test_bezugsgroesse_traegt_ungeprueft_die_investitionen_nicht(tmp_path):
     store = CouncilStore(tmp_path / "c.sqlite")
     _speichern(store, FH_2025, 2025)
 
-    je_ebene = {z["ebene"]: z for z in store.get_investitionen(year=2025)
-                if z["ebene"] != "teilhaushalt"}
+    je_ebene = {z["level"]: z for z in store.get_investitionen(year=2025)
+                if z["level"] != "teilhaushalt"}
     herkuenfte = {h["id"]: h for h in store.get_herkunft()}
     geprueft = herkuenfte[je_ebene["investitionen"]["herkunft_id"]]
     bezug = herkuenfte[je_ebene["finanzhaushalt"]["herkunft_id"]]
@@ -269,7 +269,7 @@ def test_bezugsgroesse_traegt_ungeprueft_die_investitionen_nicht(tmp_path):
     # Zwei verschiedene Aussagen, zwei verschiedene Datensätze.
     assert geprueft["id"] != bezug["id"]
     # Und der Erklärsatz für Leser*innen hängt dran.
-    assert geprueft["proben"] and "Summenzeile" in geprueft["proben"][0]
+    assert geprueft["probes"] and "Summenzeile" in geprueft["probes"][0]
 
 
 def test_erneuter_lauf_ersetzt_statt_zu_verdoppeln(tmp_path):

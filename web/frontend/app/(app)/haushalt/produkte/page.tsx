@@ -8,7 +8,7 @@
 // die einzelnen Produkte darin. Wer den zweiten Schritt ohne den ersten liest,
 // sucht Aufgaben in Bereichen, deren Namen ihm nichts sagen.
 //
-// DIE DRITTE EBENE BLEIBT EINE EIGENE SEITE: `/haushalt/bereich?thh=…` ist der
+// DIE DRITTE EBENE BLEIBT EINE EIGENE SEITE: `/haushalt/bereich?name=…` ist der
 // Steckbrief eines einzelnen Teilhaushalts. Er hat bewusst keinen Schritt im
 // Wegweiser — man kommt dorthin aus der Liste, nicht der Reihe nach.
 
@@ -21,8 +21,8 @@ import { Abschnitte, ANKER_KLASSE } from "@/components/haushalt/abschnitte";
 import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 import { SchrittPfad } from "@/components/haushalt/schritt-pfad";
 import { Seitenbuehne, SeitenbuehneLaedt, ZaehlZahl } from "@/components/haushalt/seitenbuehne";
-import { BereicheAbschnitt } from "@/components/haushalt/abschnitt-bereiche";
-import { ProdukteAbschnitt } from "@/components/haushalt/abschnitt-produkte";
+import { BereicheAbschnitt } from "@/components/haushalt/section-bereiche";
+import { ProdukteAbschnitt } from "@/components/haushalt/section-produkte";
 
 /** Ausgeschrieben, nicht zusammengesetzt: `tests/test_quellen_dokumente.py`
  *  liest die Literale dieser Liste. Vereinigung beider Abschnitte, in

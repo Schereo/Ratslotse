@@ -273,7 +273,7 @@ def test_seiten_aufloesen_ankert_am_sprecher(store):
     from council.wortbeitraege import seiten_aufloesen
     assert seiten_aufloesen(store, 100) == 1
     wb_id = store.search_wortbeitraege_fts("Stadtmuseums")[0][0]
-    assert store.wortbeitraege_by_ids([wb_id])[0]["seite"] == 2
+    assert store.wortbeitraege_by_ids([wb_id])[0]["page"] == 2
     # Idempotent: Beiträge mit Seite werden nicht erneut angefasst.
     assert seiten_aufloesen(store, 100) == 0
 
@@ -292,7 +292,7 @@ def test_seiten_aufloesen_bleibt_bei_zweifel_leer(store):
     _protokoll_mit_seiten(store, 100, seiten)
     assert seiten_aufloesen(store, 100) == 0
     wb_id = store.search_wortbeitraege_fts("Fliegerhorst")[0][0]
-    assert store.wortbeitraege_by_ids([wb_id])[0]["seite"] is None
+    assert store.wortbeitraege_by_ids([wb_id])[0]["page"] is None
 
 
 def test_embeddings_version_wechselt(store):
@@ -508,7 +508,7 @@ def test_partei_meinungen_aggregation(monkeypatch):
                          "datum": "01.06.2026"}},
         {"partei": "AfD", "haltung": "quatsch",
          "position": "Uneinheitlich zwischen Investition und Haushalt.",
-         "einig": False, "hinweis": "Paul dafür, Beitrag vom Februar dagegen"},
+         "einig": False, "note": "Paul dafür, Beitrag vom Februar dagegen"},
         {"partei": "Die Grauen", "position": "erfunden", "einig": True},
     ])
     monkeypatch.setattr(qa.llm, "chat_complete", lambda **k: SimpleNamespace(
@@ -523,14 +523,14 @@ def test_partei_meinungen_aggregation(monkeypatch):
     assert out[0]["beitraege"] == 3
     assert out[0]["haltung"] == "dagegen"
     assert out[1]["haltung"] == "offen"  # unbekannter Wert → offen
-    assert out[1]["einig"] is False and "Paul" in out[1]["hinweis"]
+    assert out[1]["einig"] is False and "Paul" in out[1]["note"]
 
 
 def test_partei_meinungen_cache(store):
     """Server-Cache über den ID-Hash: Treffer innerhalb der TTL, Fremd-
     Schlüssel leer, kaputtes JSON leer statt Crash."""
     daten = [{"partei": "SPD", "haltung": "dafür", "position": "Dafür.", "einig": True,
-              "hinweis": None, "kernaussage": None, "beitraege": 4}]
+              "note": None, "kernaussage": None, "beitraege": 4}]
     store.partei_meinungen_cache_set("abc123", "Stadionfrage?", daten)
     assert store.partei_meinungen_cache_get("abc123") == daten
     assert store.partei_meinungen_cache_get("anderer") is None
