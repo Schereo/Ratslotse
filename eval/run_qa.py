@@ -422,21 +422,21 @@ def main() -> int:
             # Ketten-Faelle (Chat): case["verlauf"] traegt die Vorrunden — die
             # Analyse muss daraus eine eigenstaendige Suchfrage kondensieren.
             analyse = qa.analyse_query(q, verlauf=case.get("verlauf"))
-            expanded, typ = analyse["begriffe"], analyse["typ"]
+            expanded, typ = analyse["terms"], analyse["kind"]
             typen[case["id"]] = typ
             analysen[case["id"]] = analyse
             t["expand_ms"] = round((time.perf_counter() - t_exp) * 1000)
             t["analyse_ct"] = kosten_ct_seit(c_exp)
             t_ret = time.perf_counter()
-            hits = emb.hybrid_search(store, analyse["frage"], expanded, top_k=TOP_K, pool=55, timings=t,
-                                     varianten=analyse.get("varianten"),
-                                     anker_ids=qa.anker_ids_fuer(store, analyse["frage"]),
-                                     recency=qa.recency_intent(analyse["frage"]))
+            hits = emb.hybrid_search(store, analyse["question"], expanded, top_k=TOP_K, pool=55, timings=t,
+                                     varianten=analyse.get("variants"),
+                                     anker_ids=qa.anker_ids_fuer(store, analyse["question"]),
+                                     recency=qa.recency_intent(analyse["question"]))
             cands = store.get_decisions_by_ids([h[0] for h in hits])
             qa.markiere_veraltete(store, cands)
-            if typ == "partei" and analyse.get("partei"):
+            if typ == "partei" and analyse.get("party"):
                 try:
-                    extra_ids = store.antrag_decision_ids(analyse["partei"], expanded)
+                    extra_ids = store.antrag_decision_ids(analyse["party"], expanded)
                     have = {c["id"] for c in cands}
                     cands += store.get_decisions_by_ids([i for i in extra_ids if i not in have])
                 except Exception:  # noqa: BLE001
@@ -513,7 +513,7 @@ def main() -> int:
             analyse = analysen[case["id"]]       # kein zweiter Analyse-Call
             rows: list[dict] = []
             try:
-                hits = emb.search_wortbeitraege(store, analyse["frage"], analyse["begriffe"])
+                hits = emb.search_wortbeitraege(store, analyse["question"], analyse["terms"])
                 rows = store.wortbeitraege_by_ids([wid for wid, _ in hits])
             except Exception:  # noqa: BLE001 — Debatten sind Zusatz, nie Blocker
                 pass

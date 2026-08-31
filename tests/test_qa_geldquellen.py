@@ -1286,8 +1286,8 @@ def _messlauf() -> int:
     abweichungen = 0
     for frage, erwartet_typ, erwartete_facetten in KORPUS:
         analyse = qa.analyse_query(frage)
-        typ = analyse["typ"]
-        facetten = qa.geld_facetten(analyse["frage"], typ)
+        typ = analyse["kind"]
+        facetten = qa.geld_facetten(analyse["question"], typ)
         passt = facetten == erwartete_facetten
         abweichungen += 0 if passt else 1
         print(f"{frage[:52]:52} {typ:12} {erwartet_typ:10} "

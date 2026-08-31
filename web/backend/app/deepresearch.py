@@ -287,7 +287,7 @@ def _run(job: DeepJob, ratslotse_db: str, council_db: str) -> None:
         if job.verlauf:
             try:
                 job.recherche_frage = (qa.analyse_query(job.frage, verlauf=job.verlauf)
-                                       .get("frage") or "").strip()
+                                       .get("question") or "").strip()
             except Exception:  # noqa: BLE001 — schlimmstenfalls die Originalfrage
                 _log.warning("deep %s: Frage-Auflösung scheiterte", job.id, exc_info=True)
             if job.recherche_frage and job.recherche_frage != job.frage:
@@ -313,7 +313,7 @@ def _run(job: DeepJob, ratslotse_db: str, council_db: str) -> None:
             hits: list[tuple[int, float]] = []
             if emb is not None:
                 try:
-                    hits = emb.hybrid_search(store, f["frage"], f["begriffe"],
+                    hits = emb.hybrid_search(store, f["question"], f["terms"],
                                              top_k=JE_FACETTE, pool=45,
                                              anker_ids=anker, recency=frisch)
                 except Exception:  # noqa: BLE001 — eine kaputte Facette killt nicht den Job
@@ -343,7 +343,7 @@ def _run(job: DeepJob, ratslotse_db: str, council_db: str) -> None:
         # Zusatzkanäle wie im /ask-Pfad — Debatten hier breiter (top_k=12),
         # der Bericht hat einen eigenen Debatten-Abschnitt.
         begriffe_alle = " ".join(dict.fromkeys(
-            " ".join(f["begriffe"] for f in facetten).split()))[:300]
+            " ".join(f["terms"] for f in facetten).split()))[:300]
         presse_rows: list[dict] = []
         debatten_rows: list[dict] = []
         anlagen_rows: list[dict] = []

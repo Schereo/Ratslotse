@@ -179,20 +179,20 @@ def test_verifiziere_items_nummer_titel_und_offbyone():
 
     # Off-by-one: Nummer 14.6, Titel gehört zu 14.7 → Titel gewinnt.
     assert _verifiziere_items(session, [
-        {"nummer": "Ö 14.6", "titel": "Umsetzung der Ratsbeschlüsse zum Fliegerhorst"},
+        {"number": "Ö 14.6", "title": "Umsetzung der Ratsbeschlüsse zum Fliegerhorst"},
     ]) == ["Ö 14.7"]
     # Stimmige Paare bleiben; Nummern ohne Präfix werden kanonisch.
     assert _verifiziere_items(session, [
-        {"nummer": "14.6", "titel": "Vorhabenbezogener Bebauungsplan Nr. 81"},
+        {"number": "14.6", "title": "Vorhabenbezogener Bebauungsplan Nr. 81"},
     ]) == ["Ö 14.6"]
     # Altformat (nackte Nummern) funktioniert weiter, erfundene fliegen raus.
     assert _verifiziere_items(session, ["Ö 14.7", "Ö 99"]) == ["Ö 14.7"]
     # Weder Nummer noch Titel auflösbar → kein Treffer statt falscher.
     assert _verifiziere_items(session, [
-        {"nummer": "Ö 99", "titel": "Gibt es nicht"},
+        {"number": "Ö 99", "title": "Gibt es nicht"},
     ]) == []
     # Nichtöffentliche TOPs werden nie gemeldet.
-    assert _verifiziere_items(session, [{"nummer": "N 2", "titel": "Grundstücksangelegenheit"}]) == []
+    assert _verifiziere_items(session, [{"number": "N 2", "title": "Grundstücksangelegenheit"}]) == []
 
 
 def _sess_mit_vorlagen():
@@ -220,7 +220,7 @@ def test_pruefung_verwirft_nur_widerlegte_kandidaten(monkeypatch):
     from council import watcher
 
     monkeypatch.setattr(watcher.llm, "chat_complete",
-                        lambda **kw: _Antwort('{"treffer": ["Ö 5"]}'))
+                        lambda **kw: _Antwort('{"hits": ["Ö 5"]}'))
     auszuege = {"26/0001": "Anlass: Sanierung des Schulgebäudes …",
                 "26/0002": "Anlass: Neubau einer Sporthalle für den Vereinssport …"}
     behalten = watcher._pruefe_am_text(
@@ -244,7 +244,7 @@ def test_pruefung_greift_auch_ohne_vorlage(monkeypatch):
 
     def _fake(**kw):
         gesehen["prompt"] = kw["messages"][0]["content"]
-        return _Antwort('{"treffer": []}')
+        return _Antwort('{"hits": []}')
 
     monkeypatch.setattr(watcher.llm, "chat_complete", _fake)
     behalten = watcher._pruefe_am_text(

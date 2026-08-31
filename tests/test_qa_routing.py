@@ -32,12 +32,12 @@ def _leerer_cache():
 
 def test_analyse_parst_sauberes_json(monkeypatch):
     calls = _llm_antwort(monkeypatch, json.dumps(
-        {"begriffe": "Radverkehr Fahrrad Radweg", "typ": "verlauf", "partei": None}))
+        {"terms": "Radverkehr Fahrrad Radweg", "kind": "verlauf", "party": None}))
     a = qa.analyse_query("Wie lief das mit dem Radweg?")
     # `eng` kam mit den Kurzantworten für Punktfragen dazu (12.08.).
-    assert a == {"frage": "Wie lief das mit dem Radweg?",
-                 "begriffe": "Radverkehr Fahrrad Radweg", "typ": "verlauf", "partei": None,
-                 "varianten": [], "eng": False,
+    assert a == {"question": "Wie lief das mit dem Radweg?",
+                 "terms": "Radverkehr Fahrrad Radweg", "kind": "verlauf", "party": None,
+                 "variants": [], "eng": False,
                  "rechercheplan": {"intent": "overview", "channels": ["decisions"],
                                     "sort": "relevance", "needs": [], "valid": False}}
     # Zweiter Aufruf kommt aus dem Cache — kein weiterer LLM-Call.
@@ -48,12 +48,12 @@ def test_analyse_parst_sauberes_json(monkeypatch):
 def test_analyse_varianten_geparst_und_gekappt(monkeypatch):
     """Multi-Query (Task 32): bis zu 2 saubere Varianten, Müll fliegt raus."""
     _llm_antwort(monkeypatch, json.dumps({
-        "begriffe": "Stadion", "typ": "thema",
-        "varianten": ["Finanzierung des Stadionneubaus", "  B-Plan   Stadion  ",
+        "terms": "Stadion", "kind": "thema",
+        "variants": ["Finanzierung des Stadionneubaus", "  B-Plan   Stadion  ",
                       "dritte wird gekappt", 42, ""],
     }))
     a = qa.analyse_query("Wie läuft es mit dem Stadion?")
-    assert a["varianten"] == ["Finanzierung des Stadionneubaus", "B-Plan Stadion"]
+    assert a["variants"] == ["Finanzierung des Stadionneubaus", "B-Plan Stadion"]
 
 
 def test_gross_regel_und_tokenbudget():
@@ -72,20 +72,20 @@ def test_gross_regel_und_tokenbudget():
 
 def test_analyse_partei_nur_bei_partei_typ(monkeypatch):
     _llm_antwort(monkeypatch, json.dumps(
-        {"begriffe": "Wohnraum", "typ": "geld", "partei": "SPD"}))
-    # partei wird verworfen, wenn der Typ nicht "partei" ist — sonst filtert
+        {"terms": "Wohnraum", "kind": "geld", "party": "SPD"}))
+    # partei wird verworfen, wenn der Typ nicht "party" ist — sonst filtert
     # eine Geld-Frage plötzlich nach Fraktion.
-    assert qa.analyse_query("Was kostet das?")["partei"] is None
+    assert qa.analyse_query("Was kostet das?")["party"] is None
 
 
 def test_analyse_faellt_bei_muell_auf_thema(monkeypatch):
     _llm_antwort(monkeypatch, "kein json {")
     a = qa.analyse_query("Was wurde zum Hafen beschlossen?")
-    assert a["typ"] == "thema"
-    assert a["begriffe"] == "Was wurde zum Hafen beschlossen?"
-    _llm_antwort(monkeypatch, json.dumps({"begriffe": "Hafen", "typ": "quatsch"}))
+    assert a["kind"] == "thema"
+    assert a["terms"] == "Was wurde zum Hafen beschlossen?"
+    _llm_antwort(monkeypatch, json.dumps({"terms": "Hafen", "kind": "quatsch"}))
     qa._ANALYSE_CACHE.clear()
-    assert qa.analyse_query("Hafenfrage?")["typ"] == "thema"
+    assert qa.analyse_query("Hafenfrage?")["kind"] == "thema"
 
 
 def test_analyse_kondensiert_mit_verlauf(monkeypatch):
@@ -93,18 +93,18 @@ def test_analyse_kondensiert_mit_verlauf(monkeypatch):
     # weiter unten ersetzt den Stub, dieser Zähler wäre danach bedeutungslos.
     # Was dieser Test belegt, steht in `b` — nicht in der Zahl der Aufrufe.
     _llm_antwort(monkeypatch, json.dumps(
-        {"frage": "Was kostet der Neubau der Cäcilienbrücke?",
-         "begriffe": "Kosten Neubau Cäcilienbrücke", "typ": "geld", "partei": None}))
+        {"question": "Was kostet der Neubau der Cäcilienbrücke?",
+         "terms": "Kosten Neubau Cäcilienbrücke", "kind": "geld", "party": None}))
     verlauf = [{"question": "Wie ist der Stand bei der Cäcilienbrücke?",
                 "answer": "Der Rat forderte das WSA zur Beschleunigung auf. " * 20}]
     a = qa.analyse_query("Und was kostet das?", verlauf=verlauf)
-    assert a["frage"] == "Was kostet der Neubau der Cäcilienbrücke?"
+    assert a["question"] == "Was kostet der Neubau der Cäcilienbrücke?"
     # Cache-Schlüssel enthält den Verlauf: gleiche Frage OHNE Verlauf ist ein
     # eigener Eintrag und trifft nicht denselben Cache.
-    _llm_antwort(monkeypatch, json.dumps({"frage": "Und was kostet das?",
-                                          "begriffe": "Kosten", "typ": "geld"}))
+    _llm_antwort(monkeypatch, json.dumps({"question": "Und was kostet das?",
+                                          "terms": "Kosten", "kind": "geld"}))
     b = qa.analyse_query("Und was kostet das?")
-    assert b["frage"] == "Und was kostet das?"
+    assert b["question"] == "Und was kostet das?"
 
 
 def test_verlauf_zeilen_kuerzt_und_begrenzt():
@@ -132,15 +132,15 @@ def test_analyse_fehler_liefert_fallback(monkeypatch):
         raise RuntimeError("Provider weg")
     monkeypatch.setattr(qa.llm, "chat_complete", boom)
     a = qa.analyse_query("Frage?")
-    assert a == {"frage": "Frage?", "begriffe": "Frage?", "typ": "thema", "partei": None,
-                 "varianten": [], "eng": False,
+    assert a == {"question": "Frage?", "terms": "Frage?", "kind": "thema", "party": None,
+                 "variants": [], "eng": False,
                  "rechercheplan": {"intent": "overview", "channels": ["decisions"],
                                     "sort": "relevance", "needs": [], "valid": False}}
 
 
 def test_rechercheplan_shadow_validiert_und_harte_kanaele_ergaenzt(monkeypatch):
     _llm_antwort(monkeypatch, json.dumps({
-        "begriffe": "Ellberg Kreyenbrück Schule", "typ": "thema",
+        "terms": "Ellberg Kreyenbrück Schule", "kind": "thema",
         "rechercheplan": {
             "intent": "position",
             "channels": ["debates", "press", "freies_internet", "debates"],

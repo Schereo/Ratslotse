@@ -33,8 +33,8 @@ DEFAULTS: dict[str, dict[str, str]] = {
         "template": (
             "Zerlege die Frage an das Ratsinformations-Archiv der Stadt Oldenburg in "
             "3-5 RECHERCHE-FACETTEN als JSON:\n"
-            '{{"facetten": [{{"name": "Kurzlabel, 2-4 Wörter", "frage": "eigenständige '
-            'Suchfrage zu dieser Facette", "begriffe": "4-8 Suchbegriffe, Substantive, '
+            '{{"facetten": [{{"name": "Kurzlabel, 2-4 Wörter", "question": "eigenständige '
+            'Suchfrage zu dieser Facette", "terms": "4-8 Suchbegriffe, Substantive, '
             'durch Leerzeichen"}}]}}\n\n'
             "Regeln:\n"
             "- Die Facetten decken VERSCHIEDENE Aspekte ab, soweit sie zur Frage passen: "
@@ -272,8 +272,8 @@ DEFAULTS: dict[str, dict[str, str]] = {
             der Art der Vorlage ergeben. Ein Satz ohne harte Angaben ist gedeckt.
 
             Antworte ausschließlich als JSON:
-            {"gedeckt": true/false, "belege": ["wörtliches Zitat", …], "grund": "…"}
-            grund: nur bei false, ein Satz. Sonst leer.
+            {"covered": true/false, "evidence": ["wörtliches Zitat", …], "reason": "…"}
+            reason: nur bei false, ein Satz. Sonst leer.
         """),
     },
     "social_kritiker_user": {
@@ -339,7 +339,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
             - Behalte den Punkt, wenn das Thema dort wirklich verhandelt wird.
 
             Antworte als JSON:
-            {{"treffer": ["Ö 14.5"]}}
+            {{"hits": ["Ö 14.5"]}}
         """),
     },
     "council_watcher_user": {
@@ -356,11 +356,11 @@ DEFAULTS: dict[str, dict[str, str]] = {
             <<<THEMEN
             {topics_text}
             THEMEN
-            Gib für jedes Thema an, welche TOPs passen (leer wenn keiner passt).\n            Übernimm nummer und titel EXAKT aus der Liste oben — nummer und titel\n            müssen zum SELBEN Eintrag gehören.
+            Gib für jedes Thema an, welche TOPs passen (leer wenn keiner passt).\n            Übernimm number und title EXAKT aus der Liste oben — number und title\n            müssen zum SELBEN Eintrag gehören.
             Format:
             {{
               "matches": [
-                {{"topic_index": 1, "items": [{{"nummer": "Ö 6.1", "titel": "erste Worte des TOP-Titels"}}]}},
+                {{"topic_index": 1, "items": [{{"number": "Ö 6.1", "title": "erste Worte des TOP-Titels"}}]}},
                 {{"topic_index": 2, "items": []}}
               ]
             }}
@@ -382,7 +382,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
         "description": "Ein Call vor der Suche: eigenständige Frage, Suchbegriffe, Fragetyp und Rechercheplan im Shadow-Mode als JSON. Platzhalter: {question}, {verlauf}.",
         "template": (
             "Analysiere die Nutzerfrage an ein Stadtrats-Archiv (Oldenburg).{verlauf} Antworte NUR als JSON:\n"
-            '{{"frage": "die Frage als EIGENSTÄNDIGE Suchfrage — löse Rückbezüge wie „dazu“, '
+            '{{"question": "die Frage als EIGENSTÄNDIGE Suchfrage — löse Rückbezüge wie „dazu“, '
             '„das“, „dort“ mit Hilfe des Gesprächsverlaufs auf (z. B. „Und was kostet das?“ nach '
             'einer Brücken-Frage → „Was kostet der Neubau der Cäcilienbrücke?“); ohne Verlauf: die '
             'Frage unverändert", '
@@ -393,21 +393,21 @@ DEFAULTS: dict[str, dict[str, str]] = {
             'Überblick, eine Entwicklung, Meinungen oder mehrere Aspekte will '
             '(\"Was wurde zu X entschieden?\", \"Wie ist der Stand?\", \"Welche '
             'Aussagen …?\"). Im Zweifel false.\n", '
-            '"begriffe": "4-8 deutsche Suchbegriffe, Substantive und nahe Synonyme, durch Leerzeichen"'
-            ', "typ": "thema|verlauf|partei|geld", "partei": "Fraktionsname oder null", '
-            '"varianten": ["bis zu 2 UMFORMULIERUNGEN der Frage aus anderem Blickwinkel — z. B. die '
+            '"terms": "4-8 deutsche Suchbegriffe, Substantive und nahe Synonyme, durch Leerzeichen"'
+            ', "kind": "thema|verlauf|partei|geld", "party": "Fraktionsname oder null", '
+            '"variants": ["bis zu 2 UMFORMULIERUNGEN der Frage aus anderem Blickwinkel — z. B. die '
             "Sachstands-Frage zusätzlich als Finanzierungs- oder Planungs-Frage, die vage Frage "
             'konkretisiert aufs wahrscheinlich gemeinte Vorhaben; jeweils ein kurzer Suchsatz"], '
             '"rechercheplan": {{"intent": "fact|overview|status|timeline|money|position|session", '
             '"channels": ["ein oder mehrere erlaubte Kanalnamen"], '
             '"sort": "relevance|newest|chronological", '
             '"needs": ["ein oder mehrere erlaubte Bedarfsnamen"]}}}}\n\n'
-            "typ-Regeln:\n"
+            "kind-Regeln:\n"
             '- "verlauf": Die Frage zielt auf Werdegang/Chronik/Stand eines Vorgangs '
             '("Wie lief …", "Wie ist der Stand …", "Was wurde aus …", "Chronologie").\n'
             '- "partei": Die Frage fragt nach Position/Anträgen/Verhalten einer bestimmten '
             "Fraktion oder Gruppe (SPD, CDU, Grüne, FDP, Linke, AfD, Volt, BSW, Piraten, "
-            '"Für Oldenburg" …). Dann "partei" auf den Namen setzen.\n'
+            '"Für Oldenburg" …). Dann "party" auf den Namen setzen.\n'
             '- "geld": Es geht um Kosten, Beträge, Förderhöhen, Haushalt ("Wie teuer", "Wie hoch") '
             "— auch dann, wenn die Zahl nicht in einem Beschluss steht, sondern im Haushalt der "
             'Stadt ("Wie viel gibt Oldenburg für Soziales aus?", "Hat die Stadt mehr ausgegeben '

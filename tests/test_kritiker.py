@@ -99,7 +99,7 @@ def test_llm_kritiker_verwirft_was_nicht_dasteht(monkeypatch):
     monkeypatch.setattr(kritiker.prompts, "get", lambda *a, **k: "system")
     monkeypatch.setattr(kritiker.prompts, "render", lambda *a, **k: "user")
     monkeypatch.setattr(kritiker.llm, "chat_complete", lambda **kw: _Antwort(
-        '{"gedeckt": false, "grund": "Von einer Baugruppe steht nichts in der Vorlage."}'))
+        '{"covered": false, "reason": "Von einer Baugruppe steht nichts in der Vorlage."}'))
 
     gedeckt, grund = kritiker.pruefe_llm("Die Kosten trägt die Baugruppe.", "Eigentümer …")
     assert not gedeckt

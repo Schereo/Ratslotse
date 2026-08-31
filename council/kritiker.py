@@ -256,12 +256,12 @@ def pruefe_llm(text: str, quelle: str) -> tuple[bool, str]:
     except Exception:  # noqa: BLE001 — siehe Docstring
         return True, ""
 
-    if antwort.get("gedeckt") is False:
-        return False, " ".join(str(antwort.get("grund") or "ohne Grund").split())[:200]
+    if antwort.get("covered") is False:
+        return False, " ".join(str(antwort.get("reason") or "ohne Grund").split())[:200]
 
     # „Gedeckt" gilt nur mit Beleg: Jedes genannte Zitat muss in der Quelle
     # stehen. Erfundene Belege sind das eine Schlupfloch dieser Bauart.
-    for zitat in (antwort.get("belege") or []):
+    for zitat in (antwort.get("evidence") or []):
         if not _steht_da(str(zitat), quelle):
             return False, f"Beleg steht nicht in der Quelle: „{str(zitat)[:80]}“"
     return True, ""
