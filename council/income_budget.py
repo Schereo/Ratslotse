@@ -77,7 +77,7 @@ Bezugsgröße führt. Das ist eine Größenordnung mehr, als die Stiftungen erkl
 (die machen an der Ist-Spalte höchstens 0,45 Mio. aus) — es ist der Abstand
 zwischen Entwurf und Beschluss.
 
-Deshalb trägt jede Herkunft dieser Schicht ``stand="Haushaltsplan JJJJ, Anlage
+Deshalb trägt jede Herkunft dieser Schicht ``as_of="Haushaltsplan JJJJ, Anlage
 005 — Stand der Einbringung"``. Wer die Zahl anzeigt, zeigt den Vorschlag der
 Verwaltung; das gehört dazugesagt, sonst steht dort „der Rat hat 388,4 Mio. €
 Steuern eingeplant", und beschlossen hat er womöglich etwas anderes.

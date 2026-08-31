@@ -1117,7 +1117,7 @@ function AenderungenSection({ aenderungen }: { aenderungen: AgendaAenderung[] })
                   {z.label}
                 </span>
                 <span className={cn("text-muted-foreground", z.art === "entfernt" && "line-through decoration-muted-foreground/50")}>
-                  {" — "}{z.titel}
+                  {" — "}{z.title}
                 </span>
                 {z.nichtoeffentlich && (
                   <span className="ml-1 text-[11px] text-muted-foreground/70">(nichtöffentlich)</span>
@@ -1137,9 +1137,9 @@ function AenderungenSection({ aenderungen }: { aenderungen: AgendaAenderung[] })
 /** „Dringlichkeitsantrag: festgestellte PAK-Belastung" → „Festgestellte
  *  PAK-Belastung". Die Marke steht schon im Kicker darüber; bleibt nichts
  *  übrig, steht der ganze Titel da. */
-function ohneMarke(titel: string): string {
-  const rest = titel.replace(/^\s*Dringlichkeitsantrag\s*[:–-]\s*/i, "").trim();
-  if (!rest) return titel;
+function ohneMarke(title: string): string {
+  const rest = title.replace(/^\s*Dringlichkeitsantrag\s*[:–-]\s*/i, "").trim();
+  if (!rest) return title;
   return rest[0].toUpperCase() + rest.slice(1);
 }
 

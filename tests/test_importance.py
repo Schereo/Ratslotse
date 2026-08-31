@@ -178,8 +178,8 @@ def test_backfill_importance_store(tmp_path):
         # unwichtig: bloße Kenntnisnahme im Fachausschuss, kein Geld
         c.execute("INSERT INTO council_decisions(ksinr,position,kind,title,outcome) "
                   "VALUES (2,0,'decision','Kenntnisnahme der Niederschrift','zur_kenntnis')")
-        for datum in ("2025-01-01", "2025-02-01"):
-            c.execute("INSERT INTO council_beratungen(kvonr,datum,committee,fetched_at) VALUES (555,?,'Rat','x')", (datum,))
+        for tag in ("2025-01-01", "2025-02-01"):
+            c.execute("INSERT INTO council_beratungen(kvonr,date,committee,fetched_at) VALUES (555,?,'Rat','x')", (tag,))
 
     assert store.backfill_importance() == 2
     by_title = {d["title"]: d for d in store.search_decisions(sort="importance", limit=10)}
@@ -205,9 +205,9 @@ def test_importance_sort_damps_old_decisions(tmp_path):
     alt = (date.today() - timedelta(days=5 * 365)).isoformat()
     neu = (date.today() - timedelta(days=20)).isoformat()
     with c:
-        for ksinr, datum in ((1, alt), (2, neu)):
+        for ksinr, tag in ((1, alt), (2, neu)):
             c.execute("INSERT INTO council_sessions(ksinr,committee,session_date,session_time,location,fetched_at)"
-                      " VALUES (?,'Rat',?,'18:00','Rathaus','x')", (ksinr, datum))
+                      " VALUES (?,'Rat',?,'18:00','Rathaus','x')", (ksinr, tag))
         c.execute("INSERT INTO council_decisions(ksinr,position,kind,title,outcome)"
                   " VALUES (1,0,'decision','Haushaltssatzung 2021','angenommen')")
         c.execute("INSERT INTO council_decisions(ksinr,position,kind,title,outcome)"

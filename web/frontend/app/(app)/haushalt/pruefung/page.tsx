@@ -31,8 +31,8 @@ import { KennzahlenAbschnitt } from "@/components/haushalt/section-indicators";
 const QUELLEN: QuellenSchluessel[] = ["pruefbericht", "indicators", "bilanz"];
 
 const MARKEN = [
-  { id: "feststellungen", titel: "Was geprüft wurde" },
-  { id: "indicators", titel: "Die dreizehn Zahlen" },
+  { id: "feststellungen", title: "Was geprüft wurde" },
+  { id: "indicators", title: "Die dreizehn Zahlen" },
 ];
 
 function PruefungInner() {

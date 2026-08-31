@@ -699,8 +699,8 @@ def test_teilweise_gelesener_jahrgang_gibt_sich_zu_erkennen(thh_bestand):
     p2 = finanzquellen.Protokoll(still=True)
     finanzquellen.lies_teilhaushalte(thh_bestand, p2, nur_fehlende=True)
 
-    stand = {z["key"]: z for z in finanzquellen.datenstand(thh_bestand, date(2028, 12, 1))}
-    sub_budget = stand["teilhaushalt"]
+    as_of = {z["key"]: z for z in finanzquellen.datenstand(thh_bestand, date(2028, 12, 1))}
+    sub_budget = as_of["teilhaushalt"]
     try:
         assert sub_budget["jahrgaenge"] == [2026, 2027]
         assert sub_budget["einheiten"] == {"2026": 4, "2027": 2}
@@ -792,9 +792,9 @@ def test_zeilen_ohne_herkunft_loesen_eine_mail_aus(thh_bestand, tmp_path, monkey
 def test_hinweis_ohne_herkunftsluecke_schweigt_darueber(balance):
     """Der Block erscheint nur, wenn es ihn zu berichten gibt — sonst stünde
     unter jeder Mail eine leere Überschrift."""
-    stand = finanzquellen.datenstand(balance, date(2027, 11, 1))
-    ohne = check_finanzdaten._hinweis_text(stand, {}, {}, date(2027, 11, 1))
-    mit = check_finanzdaten._hinweis_text(stand, {}, {}, date(2027, 11, 1),
+    as_of = finanzquellen.datenstand(balance, date(2027, 11, 1))
+    ohne = check_finanzdaten._hinweis_text(as_of, {}, {}, date(2027, 11, 1))
+    mit = check_finanzdaten._hinweis_text(as_of, {}, {}, date(2027, 11, 1),
                                           {"council_steuern": 7})
     balance.close()
     assert "woher sie kommen" not in ohne
@@ -807,16 +807,16 @@ def test_datenstand_nennt_den_naechsten_jahrgang_und_wann_er_kommt(balance):
 
     # Mitte August 2026: Der Abschluss 2025 kommt üblicherweise im September
     # 2026 — er ist noch nicht überfällig, sondern schlicht noch nicht da.
-    stand = {z["key"]: z for z in
+    as_of = {z["key"]: z for z in
              finanzquellen.datenstand(balance, date(2026, 8, 16))}
-    ja = stand["jahresabschluss"]
+    ja = as_of["jahresabschluss"]
     assert ja["jahrgaenge"] == [2023, 2024, 2025] and ja["neuester"] == 2025
     assert ja["naechster_jahrgang"] == 2026 and ja["naechster_ab"] == "2027-09-01"
     assert ja["ueberfaellig"] == []
 
     # Der Haushaltsplan kommt im Oktober für das FOLGEjahr — anderer Takt,
     # deshalb steht er als eigene Zeile da.
-    plan = stand["haushaltsplan"]
+    plan = as_of["haushaltsplan"]
     assert plan["erwarteter_monat"] == 10 and plan["automatisch"] is False
     balance.close()
 
@@ -828,8 +828,8 @@ def test_ueberfaellig_erst_nach_der_karenz(balance):
     finanzquellen.lies_jahresabschluesse(balance, p)
 
     def offen(heute: date) -> list[int]:
-        stand = {z["key"]: z for z in finanzquellen.datenstand(balance, heute)}
-        return stand["jahresabschluss"]["ueberfaellig"]
+        as_of = {z["key"]: z for z in finanzquellen.datenstand(balance, heute)}
+        return as_of["jahresabschluss"]["ueberfaellig"]
 
     assert offen(date(2027, 9, 15)) == []    # gerade erst fällig
     assert offen(date(2027, 9, 30)) == [2026]  # vier Wochen vorbei
@@ -843,8 +843,8 @@ def test_luecken_im_bestand_bleiben_sichtbar(balance):
         balance._conn.execute(  # noqa: SLF001
             "DELETE FROM council_ergebnisrechnung WHERE year = 2024")
 
-    stand = {z["key"]: z for z in finanzquellen.datenstand(balance, date(2026, 8, 16))}
-    assert stand["jahresabschluss"]["luecken"] == [2024]
+    as_of = {z["key"]: z for z in finanzquellen.datenstand(balance, date(2026, 8, 16))}
+    assert as_of["jahresabschluss"]["luecken"] == [2024]
     balance.close()
 
 
@@ -876,12 +876,12 @@ def test_hinweis_wiederholt_sich_nicht(balance, tmp_path, monkeypatch):
 def test_hinweis_trennt_spaete_stadt_von_kaputtem_muster(balance, tmp_path):
     """Der Unterschied trägt die ganze Nachricht: „kein Dokument da" heißt
     abwarten, „Dokument da, aber nicht übernommen" heißt nachsehen."""
-    stand = finanzquellen.datenstand(balance, date(2027, 11, 1))
-    ohne = check_finanzdaten._hinweis_text(stand, {}, {}, date(2027, 11, 1))
+    as_of = finanzquellen.datenstand(balance, date(2027, 11, 1))
+    ohne = check_finanzdaten._hinweis_text(as_of, {}, {}, date(2027, 11, 1))
     assert "kein passendes Dokument" in ohne
 
     gesehen = {"jahresabschluss": {z for z in range(2000, 2100)}}
-    mit = check_finanzdaten._hinweis_text(stand, gesehen, {}, date(2027, 11, 1))
+    mit = check_finanzdaten._hinweis_text(as_of, gesehen, {}, date(2027, 11, 1))
     assert "wird aber nicht übernommen" in mit
     balance.close()
 
@@ -925,12 +925,12 @@ def lsn_bestand(tmp_path):
 def test_staedtevergleich_steht_im_datenstand(lsn_bestand):
     """Bis 08/2026 fehlte er dort: Wer /haushalt/vergleich las, erfuhr an
     keiner Stelle, bis wann die Reihe reicht."""
-    stand = {z["key"]: z for z in
+    as_of = {z["key"]: z for z in
              finanzquellen.datenstand(lsn_bestand, date(2026, 8, 16))}
 
-    sk = stand["lsn_steuerkraft"]
+    sk = as_of["lsn_steuerkraft"]
     assert sk["jahrgaenge"] == [2026] and sk["ueberfaellig"] == []
-    rs = stand["lsn_realsteuern"]
+    rs = as_of["lsn_realsteuern"]
     assert rs["jahrgaenge"] == [2023, 2024, 2025] and rs["ueberfaellig"] == []
 
     # Kein Cron holt das — und die Fußzeile sagt, wo es stattdessen herkommt.
@@ -946,8 +946,8 @@ def test_die_beiden_reihen_bleiben_zwei_zeilen(lsn_bestand):
     läuft dem Kalender voraus, das Berichtsjahr des Realsteuervergleichs
     hinkt ihm nach. Genau diese Verwechslung ist der Grund, warum der
     Städtevergleich überhaupt eine eigene Tabelle hat."""
-    stand = finanzquellen.datenstand(lsn_bestand, date(2026, 8, 16))
-    zeilen = [z for z in stand if z["tabelle"] == "council_staedtevergleich"]
+    as_of = finanzquellen.datenstand(lsn_bestand, date(2026, 8, 16))
+    zeilen = [z for z in as_of if z["tabelle"] == "council_staedtevergleich"]
     assert [z["key"] for z in zeilen] == ["lsn_steuerkraft", "lsn_realsteuern"]
     # Keine der beiden Zeilen behauptet eine Lücke, die es nicht gibt.
     assert all(z["luecken"] == [] for z in zeilen)
@@ -963,15 +963,15 @@ def test_lsn_takt_ist_an_den_dateien_gemessen(lsn_bestand):
     - Der Realsteuervergleich erscheint im Folgejahr, zuletzt Juni 2022,
       August 2023, November 2024, November 2025, Juli 2026 — November.
     """
-    stand = {z["key"]: z for z in
+    as_of = {z["key"]: z for z in
              finanzquellen.datenstand(lsn_bestand, date(2026, 8, 16))}
 
-    sk = stand["lsn_steuerkraft"]
+    sk = as_of["lsn_steuerkraft"]
     assert sk["erwarteter_monat"] == 4
     # Das Ausgleichsjahr 2027 liegt im April 2027 vor, nicht 2028.
     assert sk["naechster_jahrgang"] == 2027 and sk["naechster_ab"] == "2027-04-01"
 
-    rs = stand["lsn_realsteuern"]
+    rs = as_of["lsn_realsteuern"]
     assert rs["erwarteter_monat"] == 11
     # Das Berichtsjahr 2026 erscheint im November 2027 — ein Jahr später.
     assert rs["naechster_jahrgang"] == 2026 and rs["naechster_ab"] == "2027-11-01"
@@ -984,8 +984,8 @@ def test_ausbleibender_jahrgang_wird_erst_nach_der_karenz_gemeldet(lsn_bestand):
     Bericht, der wie 2026 schon im Juli kommt, ist nie ein Problem; einer, der
     im Dezember immer noch fehlt, schon."""
     def offen(heute: date) -> list[int]:
-        stand = {z["key"]: z for z in finanzquellen.datenstand(lsn_bestand, heute)}
-        return stand["lsn_realsteuern"]["ueberfaellig"]
+        as_of = {z["key"]: z for z in finanzquellen.datenstand(lsn_bestand, heute)}
+        return as_of["lsn_realsteuern"]["ueberfaellig"]
 
     # Das Berichtsjahr 2026 wird erst im November 2027 erwartet — ein Jahr
     # nach dem Jahr, das es beschreibt.
@@ -999,8 +999,8 @@ def test_hinweis_schickt_zum_richtigen_skript(lsn_bestand):
     scripts/ingest_haushalt.py" — bei einer Landesbehörde schickte er den
     Leser zur falschen Stelle und zum falschen Skript."""
     heute = date(2027, 12, 15)  # beide LSN-Jahrgänge sind jetzt überfällig
-    stand = finanzquellen.datenstand(lsn_bestand, heute)
-    text = check_finanzdaten._hinweis_text(stand, {}, {}, heute)
+    as_of = finanzquellen.datenstand(lsn_bestand, heute)
+    text = check_finanzdaten._hinweis_text(as_of, {}, {}, heute)
 
     assert "scripts/ingest_staedtevergleich.py" in text
     assert "Landesamt für Statistik" in text

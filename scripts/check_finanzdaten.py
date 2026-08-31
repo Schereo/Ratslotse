@@ -278,7 +278,7 @@ def main(db: str | None = None, heute: date | None = None,
             store.herkunft_aufraeumen()
         ohne_herkunft = store.herkunft_luecken()
 
-        stand = finanzquellen.datenstand(store, heute)
+        as_of = finanzquellen.datenstand(store, heute)
         # Nach dem Lauf noch offen: Einheiten, für die ein Dokument vorliegt,
         # die aber nicht in die Datenbank gekommen sind. Das ist der Teil, den
         # niemand von selbst bemerkt — ein Jahrgang, der halb dasteht, sieht
@@ -292,7 +292,7 @@ def main(db: str | None = None, heute: date | None = None,
     finally:
         store.close()
 
-    for z in stand:
+    for z in as_of:
         if z["ueberfaellig"]:
             p.warnen(f"  {z['label']}: {', '.join(map(str, z['ueberfaellig']))} überfällig")
     for key, offen in rest.items():
@@ -317,7 +317,7 @@ def main(db: str | None = None, heute: date | None = None,
     # die Lücke von 3 auf 300 Zeilen, ist das eine neue Nachricht und keine
     # Wiederholung.
     ausbleibend = sorted(
-        [f"{z['key']}:{j}" for z in stand for j in z["ueberfaellig"]]
+        [f"{z['key']}:{j}" for z in as_of for j in z["ueberfaellig"]]
         + [f"{key}:offen:{e}" for key, offen in rest.items() for e in sorted(map(str, offen))]
         + [f"herkunft:{tabelle}:{n}" for tabelle, n in ohne_herkunft.items()])
 
@@ -325,7 +325,7 @@ def main(db: str | None = None, heute: date | None = None,
     if ausbleibend and not trocken and not _schon_gemeldet(ausbleibend):
         from kern.alerts import notify_admin
 
-        notify_admin(_hinweis_text(stand, gesehen, rest, heute, ohne_herkunft),
+        notify_admin(_hinweis_text(as_of, gesehen, rest, heute, ohne_herkunft),
                      betreff="Ratslotse – Haushaltsdaten: es fehlt etwas",
                      fusszeile="Hinweis des Cron-Jobs check_finanzdaten — kein Fehler.")
         gemeldet = True

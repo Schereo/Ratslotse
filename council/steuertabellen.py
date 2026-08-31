@@ -289,24 +289,24 @@ def parse_1103(text: str) -> dict:
     im_koerper = False
     puffer: list[str] = []
     for roh in text.splitlines():
-        zeile = roh.rstrip()
+        row = roh.rstrip()
         if not im_koerper:
-            im_koerper = bool(_SPALTENMARKE.match(zeile))
+            im_koerper = bool(_SPALTENMARKE.match(row))
             continue
-        if _ENDE.match(zeile):
+        if _ENDE.match(row):
             break
-        if not zeile.strip():
+        if not row.strip():
             continue
-        treffer = _DATENZEILE.match(zeile.strip())
+        treffer = _DATENZEILE.match(row.strip())
         if not treffer:
-            puffer.append(zeile.strip())
+            puffer.append(row.strip())
             continue
         felder = _ZAHL.findall(treffer.group("zahlen"))
         # Je Jahr zwei Paare (Plan, Ist), je Paar Betrag und Anteil. Alles
         # andere ist keine Zeile dieser Tabelle — eine Kopfzeile, die zufällig
         # Zahlen trägt, oder eine Ausgabe mit anderem Spaltensatz.
         if len(felder) != len(years) * 4:
-            puffer.append(zeile.strip())
+            puffer.append(row.strip())
             continue
         label = " ".join([*puffer, treffer.group("label")]).strip()
         puffer = []
@@ -447,7 +447,7 @@ def lies_1103(text: str, ist_reihe: dict[int, dict[str, float]]) -> dict:
                 "spanne": gelesen["spanne"], "unbekannt": gelesen["unbekannt"],
                 "abbruch": (
                     "Die Summenprobe reißt: Die Steuerarten ergeben nicht die "
-                    f"Zeile „total“ (größte Abweichung {schlimmste} T€). "
+                    f"Zeile „insgesamt“ (größte Abweichung {schlimmste} T€). "
                     "Entweder fehlt eine Zeile, oder die Tabelle ist anders "
                     "gebaut als bisher."
                     + (f" Nicht zugeordnet: {gelesen['unbekannt']}."
@@ -512,10 +512,10 @@ def _bereich_1105(text: str) -> list[str]:
     if start is None:
         return []
     aus: list[str] = []
-    for zeile in zeilen[start + 1:]:
-        if re.match(r"^\s*Quelle\s*:", zeile):
+    for row in zeilen[start + 1:]:
+        if re.match(r"^\s*Quelle\s*:", row):
             break
-        aus.append(zeile)
+        aus.append(row)
     return aus
 
 
@@ -528,10 +528,10 @@ def spaltenprobe(text: str) -> bool:
     Gewerbesteuer unter dem Namen der Grundsteuer.
     """
     kopf: list[str] = []
-    for zeile in _bereich_1105(text):
-        if _SPALTENMARKE.match(zeile):
+    for row in _bereich_1105(text):
+        if _SPALTENMARKE.match(row):
             break
-        kopf.append(zeile)
+        kopf.append(row)
     zusammen = _norm(" ".join(kopf))
     if "grundsteuer" not in zusammen or "gewerbe" not in zusammen:
         return False
@@ -556,8 +556,8 @@ def parse_1105(text: str) -> list[dict]:
     einmal nicht greifen sollte.
     """
     aus: list[dict] = []
-    for zeile in _bereich_1105(text):
-        treffer = _HEBESATZ_ZEILE.match(zeile.strip())
+    for row in _bereich_1105(text):
+        treffer = _HEBESATZ_ZEILE.match(row.strip())
         if not treffer:
             continue
         year = int(treffer.group(1))
@@ -719,6 +719,6 @@ def zusammenlegen(ausgaben: list[tuple[str, list[dict]]],
     """
     nach_schluessel: dict[tuple, dict] = {}
     for herkunft, zeilen in ausgaben:
-        for zeile in zeilen:
-            nach_schluessel[key(zeile)] = {**zeile, "ausgabe": herkunft}
+        for row in zeilen:
+            nach_schluessel[key(row)] = {**row, "ausgabe": herkunft}
     return [nach_schluessel[k] for k in sorted(nach_schluessel)]

@@ -81,9 +81,9 @@ function ListenKarte({ liste, year }: { liste: FhhListeImJahr; year: number }) {
         <ZahlenTabelle
           className="mt-2"
           spalten={[
-            { titel: "Vorhaben" },
-            { titel: "Einzahlung", zahl: true },
-            { titel: "Auszahlung", zahl: true },
+            { title: "Vorhaben" },
+            { title: "Einzahlung", zahl: true },
+            { title: "Auszahlung", zahl: true },
           ]}
           fuss={liste.balance && (
             <tr>

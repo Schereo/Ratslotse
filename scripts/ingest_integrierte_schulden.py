@@ -121,7 +121,7 @@ def main() -> int:
                 citation=f"Tabelle 2, Blatt {isch.BLATT}, "
                            f"Regionalschlüssel {isch.ARS_OLDENBURG}",
                 probe_result=warum,
-                stand=f"31.12.{gefunden['year']}"))
+                as_of=f"31.12.{gefunden['year']}"))
         print(f"  gespeichert: Stichtag {gefunden['year']}")
     finally:
         store.close()

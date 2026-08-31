@@ -222,14 +222,14 @@ def render_html_email(
     *,
     held: str | None = "meldung",
     kicker: str | None = None,
-    titel: str | None = None,
+    title: str | None = None,
     fusszeile: str | None = None,
 ) -> str:
     """Eine fertig formatierte Nachricht in die Ratslotse-Hülle setzen.
 
     Aufbau: Seiten-Grund → Kopfzeile → weiße Karte (Mail-Held oben, Inhalt
     darunter) → Fuß. ``held`` wählt die Lotti-Szene über der Nachricht
-    (Schlüssel aus ``HELDEN``, ``None`` = ohne Bild); ``kicker`` und ``titel``
+    (Schlüssel aus ``HELDEN``, ``None`` = ohne Bild); ``kicker`` und ``title``
     setzen eine Überschrift über den Text — Benachrichtigungen lassen beides
     weg, weil ihr Körper seinen Kopf schon mitbringt. ``fusszeile`` ersetzt
     das Abmelde-Kleingedruckte (fertiges HTML; ``""`` = gar keins) — die
@@ -246,10 +246,10 @@ def render_html_email(
             f"<div style='font-family:{_MONO};font-size:11px;letter-spacing:.11em;"
             f"text-transform:uppercase;color:{_GRAU}'>{_esc(kicker)}</div>"
         )
-    if titel:
+    if title:
         kopf += (
             f"<div style='margin-top:{6 if kicker else 0}px;font-size:21px;font-weight:700;"
-            f"color:{_TEXT};line-height:1.3'>{_esc(titel)}</div>"
+            f"color:{_TEXT};line-height:1.3'>{_esc(title)}</div>"
         )
     greeting = (
         f"<div style='margin-top:{16 if kopf else 0}px;font-size:15px;color:{_TEXT}'>"

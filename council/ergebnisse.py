@@ -102,9 +102,9 @@ def _html(beschluesse: list[dict], committee: str, session_date: str, decision_h
     zeilen = [f"<p>Im {wann} entschieden:</p>", "<ul style='margin:0;padding-left:18px'>"]
     for d in beschluesse:
         wort = ERGEBNIS_WORT.get(d.get("outcome") or "", "entschieden")
-        titel = (d.get("title") or "Beschluss").strip()
+        title = (d.get("title") or "Beschluss").strip()
         zeilen.append(f'<li style="margin-bottom:6px">'
-                      f'<a href="{decision_href(d["id"])}">{titel}</a> — {wort}</li>')
+                      f'<a href="{decision_href(d["id"])}">{title}</a> — {wort}</li>')
     zeilen.append("</ul>")
     return "\n".join(zeilen)
 
@@ -201,12 +201,12 @@ def melde_ergebnisse(council_store, ratslotse_store, ksinrs: list[int]) -> int:
                 # still, wenn keine belastbare Entscheidung vorliegt.
                 if eigene_bookmarks:
                     erster = eigene_bookmarks[0]
-                    titel = erster.get("title") or "Gemerkter Tagesordnungspunkt"
+                    title = erster.get("title") or "Gemerkter Tagesordnungspunkt"
                     top_liste = [str(b.get("item_number") or "") for b in eigene_bookmarks]
                     ziel = sitzung_href(ksinr, top_liste)
                     queued = notify.einreihen(
                         ratslotse_store, owner_id, notify.N3_ERGEBNIS,
-                        f"Protokoll ist da: {titel}",
+                        f"Protokoll ist da: {title}",
                         (f"<p>Das Protokoll des {sitzung['committee']} vom "
                          f"{_datum(sitzung['session_date'])} ist veröffentlicht.</p>"
                          "<p>Für den gemerkten TOP wurde kein eigener Beschluss erkannt — "

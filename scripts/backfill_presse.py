@@ -56,11 +56,11 @@ def main() -> int:
             if not detail:
                 fehlgeschlagen += 1
                 continue
-            datum = detail["datum"] or ""
-            if datum and datum < args.since:
+            date = detail["date"] or ""
+            if date and date < args.since:
                 alt_erreicht += 1
                 continue
-            store.save_presse(e["url"], None, detail["titel"] or e["titel"], detail["datum"], detail["text"])
+            store.save_presse(e["url"], None, detail["title"] or e["title"], detail["date"], detail["text"])
             bekannt.add(e["url"])
             neu += 1
         print(f"  Seite {seiten}: {neu} neu gesamt", flush=True)

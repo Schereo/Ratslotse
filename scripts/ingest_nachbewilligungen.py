@@ -100,7 +100,7 @@ def _serie(store: CouncilStore, trocken: bool) -> dict:
         fuehrend = next((d for d in stationen if d.get("outcome") == "angenommen"),
                         stationen[0] if stationen else None)
         zeilen.append({
-            "template_number": b.template_number, "year": b.year, "titel": b.titel,
+            "template_number": b.template_number, "year": b.year, "title": b.title,
             "art": b.art, "category": b.category, "amount": b.amount,
             "amount_source": b.amount_source, "decided": b.decided,
             "in_plenary": b.in_plenary, "council_decision": b.council_decision,
@@ -110,7 +110,7 @@ def _serie(store: CouncilStore, trocken: bool) -> dict:
         })
 
     einzel = [z for z in zeilen if z["art"] != nb.ART_SCHWELLE]
-    aus_titel = sum(1 for z in einzel if z["amount_source"] == "titel")
+    aus_titel = sum(1 for z in einzel if z["amount_source"] == "title")
     aus_text = sum(1 for z in einzel if z["amount_source"] == "proposed_decision")
     ohne = [z["template_number"] for z in einzel if z["amount_source"] is None]
     geprueft = sum(1 for z in zeilen if z["fulltext_probe"])
@@ -137,7 +137,7 @@ def _serie(store: CouncilStore, trocken: bool) -> dict:
         label="Vorlagen im Ratsinformationssystem der Stadt Oldenburg",
         citation="Titel und Beschlussvorschlag der Vorlage",
         probe=nb.PROBE_VOLLTEXT,
-        stand=f"Haushaltsjahre {min(z['year'] for z in zeilen if z['year'])}"
+        as_of=f"Haushaltsjahre {min(z['year'] for z in zeilen if z['year'])}"
               f"–{max(z['year'] for z in zeilen if z['year'])}",
         probe_result=nachweis))
     return {"vorlagen": len(zeilen), "with_amount": aus_titel + aus_text,
@@ -193,7 +193,7 @@ def _berichte(store: CouncilStore, serie: list[nb.Bewilligung],
                 citation="Kapitel 3 — Über- und außerplanmäßige "
                            "Aufwendungen und Auszahlungen",
                 probe=[nb.PROBE_TABELLE, nb.PROBE_RAT],
-                stand=f"Haushaltsjahr {year}",
+                as_of=f"Haushaltsjahr {year}",
                 probe_result=f"{probe.als_text()} {abgleich.als_text()}"))
         gelesen += 1
     return {"n_reports": gelesen, "widersprueche": len(widersprueche)}

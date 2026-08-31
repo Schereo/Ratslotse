@@ -103,7 +103,7 @@ function Fundstelle({ h }: { h: Herkunft | null }) {
         Woher diese Zahlen kommen
       </p>
       <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">
-        {h.citation}{h.stand ? ` · ${h.stand}` : ""}
+        {h.citation}{h.as_of ? ` · ${h.as_of}` : ""}
       </p>
     </div>
   );
@@ -166,9 +166,9 @@ function AnlagenBlock({ daten }: { daten: GebautDaten | null }) {
         // herein. Die Werte des Anlagenspiegels stehen in Euro; ohne diese
         // Umrechnung stünde „17.036.012,7 Mio. €" da.
         zeilen={[
-          { titel: `Abgeschrieben ${year}`, rampe: "aus",
+          { title: `Abgeschrieben ${year}`, rampe: "aus",
             segmente: [{ label: "Wertverlust des Jahres", value: v.depreciation / 1e6 }] },
-          { titel: `Zugegangen ${year}`, rampe: "ein",
+          { title: `Zugegangen ${year}`, rampe: "ein",
             segmente: [{ label: "Neu ins Vermögen", value: v.additions / 1e6 }] },
         ]}
         basis={Math.max(v.depreciation, v.additions) / 1e6}
@@ -245,7 +245,7 @@ export function GebautAbschnitt({ onBestand }: {
       for (const z of r.years) {
         js.push({
           year: z.year,
-          teile: z.arten.map((a) => ({ art: a.titel, value: a.amount / 1e6 })),
+          teile: z.arten.map((a) => ({ art: a.title, value: a.amount / 1e6 })),
         });
       }
       for (const l of r.fehlend) js.push({ year: l.year, fehlt: lueckeGrund(l) });
@@ -271,7 +271,7 @@ export function GebautAbschnitt({ onBestand }: {
     const rechts = juengste.years[0].year;
     return {
       zwischen: [links, rechts] as [number, number],
-      text: `Links ${alt.titel}, rechts ${juengste.titel} — zwei Regelwerke `
+      text: `Links ${alt.title}, rechts ${juengste.title} — zwei Regelwerke `
         + `mit eigenen Auszahlungsarten und eigenen Namen. Vergleichen ja, `
         + `verrechnen nein.`,
     };
@@ -388,7 +388,7 @@ export function GebautAbschnitt({ onBestand }: {
                   {deMioEuro(gross.amount)}&#8239;Mio.&nbsp;€
                 </p>
                 <p className="mt-1 max-w-[28ch] text-[12px] text-muted-foreground">
-                  größter Posten: {gross.titel}<Beleg q="gebaut" />
+                  größter Posten: {gross.title}<Beleg q="gebaut" />
                 </p>
               </div>
             )}
@@ -401,7 +401,7 @@ export function GebautAbschnitt({ onBestand }: {
         </section>
 
         <LottiErklaert
-          titel="Warum „ausgezahlt“ und nicht „ausgegeben“"
+          title="Warum „ausgezahlt“ und nicht „ausgegeben“"
           text={"Die Ergebnisrechnung zeigt den Ressourcenverbrauch eines Jahres, etwa "
             + "Gehälter, Strom, Zuschüsse und Abschreibungen. Die Finanzrechnung erfasst "
             + "dagegen, wann Geld ein- oder ausgezahlt wird — zum Beispiel für ein "
@@ -431,7 +431,7 @@ export function GebautAbschnitt({ onBestand }: {
             years={nahtJahre}
             naht={naht}
             unit="Mio. €"
-            titel="Auszahlungen für Investitionen"
+            title="Auszahlungen für Investitionen"
             beleg={<Beleg q="gebaut" />}
           />
           <p className="max-w-[76ch] text-[11.5px] leading-relaxed text-muted-foreground">
@@ -491,9 +491,9 @@ export function GebautAbschnitt({ onBestand }: {
         {/* Wofür — der jüngste Jahrgang aufgeschlüsselt. */}
         <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
           <Anteilsbalken
-            titel={`Wofür ${letzter.year}`}
+            title={`Wofür ${letzter.year}`}
             segmente={letzter.arten.map((a, i) => ({
-              label: a.titel, value: a.amount / 1e6,
+              label: a.title, value: a.amount / 1e6,
               farbe: TOENE[Math.min(i, TOENE.length - 1)],
             }))}
             gesamt={letzter.total / 1e6}

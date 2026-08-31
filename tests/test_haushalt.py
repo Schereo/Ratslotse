@@ -78,7 +78,7 @@ def test_build_questions_grounded_and_asymmetric():
         assert q["answer_unit"] in ("Mio. Euro", "Prozent") and q["source_ref"] == "http://pdf"
         assert q["topic"] == "Haushalt" and q["area_key"] == "haushalt"
     # Gesamt-Aufwendungen: 883,9 Mio → 884.
-    gesamt = next(q for q in est if "total" in q["question"])
+    gesamt = next(q for q in est if "insgesamt" in q["question"])
     assert gesamt["answer_value"] == 884.0
     # MC „größter Ausgabenblock" zeigt auf Soziales und Gesundheit.
     top = next(q for q in mc if "am meisten" in q["question"])
@@ -1552,26 +1552,26 @@ def test_buergschafts_vorlagen_je_vorlage_eine_zeile(tmp_path):
 
     store = CouncilStore(str(tmp_path / "c.sqlite"))
     c = store._conn                                       # noqa: SLF001
-    for kvonr, nr, titel in (
+    for kvonr, nr, title in (
             (1, "23/0112", "Ausfallbürgschaft der Stadt Oldenburg über 300.000 EUR "
                            "für die Volkshochschule"),
             (2, "25/0826", "Verlängerung Ausfallbürgschaft der Stadt Oldenburg über "
                            "300.000 Euro für die Volkshochschule"),
             (3, "24/0999", "Neubau einer Schule")):
         c.execute("INSERT INTO council_vorlagen (kvonr, template_number, title, fetched_at) "
-                  "VALUES (?, ?, ?, '2026-08-18')", (kvonr, nr, titel))
-    for ksinr, datum in ((10, "2023-06-01"), (11, "2025-12-03"), (12, "2025-12-15")):
+                  "VALUES (?, ?, ?, '2026-08-18')", (kvonr, nr, title))
+    for ksinr, date in ((10, "2023-06-01"), (11, "2025-12-03"), (12, "2025-12-15")):
         c.execute("INSERT INTO council_sessions (ksinr, session_date, session_time, "
                   " committee, location, fetched_at) "
                   "VALUES (?, ?, '17:00', 'Rat', 'Rathaus', '2026-08-18')",
-                  (ksinr, datum))
+                  (ksinr, date))
     # Dieselbe Vorlage zweimal beschlossen — Ausschuss und Rat.
-    for did, ksinr, nr, titel in ((100, 10, "23/0112", "VHS"),
+    for did, ksinr, nr, title in ((100, 10, "23/0112", "VHS"),
                                   (101, 11, "25/0826", "VHS Verlängerung"),
                                   (102, 12, "25/0826", "VHS Verlängerung")):
         c.execute("INSERT INTO council_decisions (id, ksinr, position, template_number, "
                   " title, kind) VALUES (?, ?, 1, ?, ?, 'decision')",
-                  (did, ksinr, nr, titel))
+                  (did, ksinr, nr, title))
     c.commit()
 
     v = store.buergschafts_vorlagen()
@@ -1579,7 +1579,7 @@ def test_buergschafts_vorlagen_je_vorlage_eine_zeile(tmp_path):
     assert len(v) == 2, "Die Schul-Vorlage gehört nicht dazu"
     # Je Vorlage EIN Eintrag, und zwar der jüngste Beschluss.
     verlaengerung = v[0]
-    assert verlaengerung["datum"] == "2025-12-15"
+    assert verlaengerung["date"] == "2025-12-15"
     assert verlaengerung["decision_id"] == 102
 
 
@@ -1601,7 +1601,7 @@ def test_haushalts_anschluss_nur_wo_er_belegt_ist(tmp_path):
               "Oldenburg für die Volkshochschule', '2026-08-18')")
     c.execute("INSERT INTO council_vorlagen (kvonr, template_number, title, fetched_at) "
               "VALUES (2, '24/0999', 'Neubau einer Schule', '2026-08-18')")
-    c.execute("INSERT INTO council_nachbewilligungen (template_number, titel, art, category, "
+    c.execute("INSERT INTO council_nachbewilligungen (template_number, title, art, category, "
               " decided, in_plenary, council_decision, fulltext_probe, amount, year, "
               " decision_id, committees, fetched_at) "
               "VALUES ('18/0187', 'Außerplanmäßige Bewilligung', 'ausserplanmaessig', "

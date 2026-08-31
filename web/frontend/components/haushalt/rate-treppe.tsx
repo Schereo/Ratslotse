@@ -48,7 +48,7 @@ type Stufe = {
 };
 
 export function HebesatzTreppe({
-  series, zweitreihe, zweitLabel, titel, aufkommen, aufkommenLabel,
+  series, zweitreihe, zweitLabel, title, aufkommen, aufkommenLabel,
   bemessungNeu, abgrenzung, grundlage, beleg, aufkommenBeleg,
 }: {
   /** Die Änderungsjahre DIESER Steuer, aufsteigend. */
@@ -56,7 +56,7 @@ export function HebesatzTreppe({
   /** Zweiter Satz derselben Steuer in derselben Einheit (Grundsteuer A neben B). */
   zweitreihe?: HebesatzZeile[];
   zweitLabel?: string;
-  titel: string;
+  title: string;
   /** Die Ist-Reihe dieser Steuer, `{year: euro}` — der Pflicht-Kontext. */
   aufkommen: Record<number, number>;
   /** Wie das Aufkommen heißt. Bei der Grundsteuer NICHT dasselbe wie der
@@ -133,7 +133,7 @@ export function HebesatzTreppe({
           unit="%"
           nachkomma={0}
           format={(v) => deZahl(v, 0)}
-          ariaTitel={`Hebesatz der ${titel} von ${erste.year} bis ${letzte.year},`
+          ariaTitel={`Hebesatz der ${title} von ${erste.year} bis ${letzte.year},`
             + ` ${echteAenderungen.length - 1} Änderungen, zuletzt`
             + ` ${deZahl(letzte.rate, 0)} Prozent`}
           /* Keine `tabelle`: Die Werte stehen unten ohnehin einzeln — und dort

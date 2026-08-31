@@ -267,7 +267,7 @@ function BetriebsKarte({ zeilen, juengstesJahr, herkunftFuer }: {
             series={series}
             unit="Mio. €"
             nachkomma={2}
-            titel="Jahresergebnis im Plan"
+            title="Jahresergebnis im Plan"
             ariaTitel={`Geplantes Jahresergebnis ${letzte.enterprise_name}, `
               + `${nach[0].year} bis ${letzte.year}, in Millionen Euro`}
           />
@@ -368,7 +368,7 @@ export function BetriebeAbschnitt({ data, loading }: {
         </div>
 
         <LottiErklaert
-          titel="Warum manche Betriebe planmäßig Verlust machen"
+          title="Warum manche Betriebe planmäßig Verlust machen"
           text="Die Eintrittsgelder decken die geplanten Kosten der Oldenburger Schwimmbäder nicht vollständig. Den verbleibenden Fehlbetrag gleicht die Stadt aus, weil sie dieses öffentliche Angebot bereitstellen will. Der Abfallwirtschaftsbetrieb finanziert sich dagegen über kostendeckend kalkulierte Gebühren; deshalb ist sein Plan nahezu ausgeglichen."
         />
 

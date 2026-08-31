@@ -48,9 +48,9 @@ def test_interest_roundtrip_and_selection(tmp_path):
 def _bewerten(store, titel_zu_werten):
     """Interesse UND Tragweite setzen — beides ist seit 20.08.26 Pflicht."""
     ids = {d["title"]: d["id"] for d in store.decisions_needing_interest()}
-    for titel, (interesse, tragweite) in titel_zu_werten.items():
-        store.save_interest(ids[titel], interesse, "")
-        store.save_impact(ids[titel], tragweite, "")
+    for title, (interesse, tragweite) in titel_zu_werten.items():
+        store.save_interest(ids[title], interesse, "")
+        store.save_impact(ids[title], tragweite, "")
     return ids
 
 

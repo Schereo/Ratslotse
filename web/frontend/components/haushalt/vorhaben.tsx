@@ -67,20 +67,20 @@ import { Beleg } from "@/components/haushalt/source";
  *  ersten unsichtbar. Negative Vorhaben bekommen keinen Balken, sondern eine
  *  Marke: Eine Länge nach links wäre ein Bild, das etwas anderes behauptet
  *  („weniger als nichts"). */
-function Zeile({ zeile, skala, bereichName }: {
-  zeile: ProgrammZeile; skala: number;
+function Zeile({ row, skala, bereichName }: {
+  row: ProgrammZeile; skala: number;
   /** Bei bereichsübergreifenden Trefferlisten: wo das Vorhaben liegt. */
   bereichName?: string;
 }) {
-  const b = amount(zeile.grand_total);
-  const breite = skala > 0 && zeile.grand_total > 0
-    ? Math.max(0.6, (zeile.grand_total / skala) * 100)
+  const b = amount(row.grand_total);
+  const breite = skala > 0 && row.grand_total > 0
+    ? Math.max(0.6, (row.grand_total / skala) * 100)
     : 0;
   return (
     <li className="flex flex-col gap-1 py-2">
       <div className="flex items-baseline justify-between gap-3">
         <span className="min-w-0 text-[13px] font-medium">
-          {zeile.label}
+          {row.label}
           {bereichName && (
             <span className="ml-1.5 font-mono text-[9.5px] font-normal uppercase tracking-[0.09em] text-muted-foreground">
               {bereichName}
@@ -94,7 +94,7 @@ function Zeile({ zeile, skala, bereichName }: {
           </span>
         </span>
       </div>
-      {zeile.grand_total >= 0 ? (
+      {row.grand_total >= 0 ? (
         <span className="block h-2 w-full overflow-hidden rounded-sm bg-muted/60">
           <span
             className="block h-full rounded-sm"
@@ -231,7 +231,7 @@ export function Vorhaben({
       </div>
       <p className="mt-1 max-w-[86ch] text-[12.5px] leading-relaxed text-foreground/90">
         Der Haushaltsplan führt jedes Vorhaben einzeln auf — mit Namen und mit
-        dem, was es total kosten soll. Ein eigenes Dokument, nicht der
+        dem, was es insgesamt kosten soll. Ein eigenes Dokument, nicht der
         Datensatz von oben: das Investitionsprogramm, Anlage 004.
       </p>
 
@@ -369,7 +369,7 @@ export function Vorhaben({
         <ul className="mt-1 divide-y divide-[color:var(--border)]">
           {zeigen.map((z) => (
             <Zeile
-              key={`${z.sub_budget_no}-${z.code}`} zeile={z} skala={massstab}
+              key={`${z.sub_budget_no}-${z.code}`} row={z} skala={massstab}
               bereichName={suchend ? nameVon(z.sub_budget_no) : undefined}
             />
           ))}
@@ -412,7 +412,7 @@ export function Vorhaben({
         </a>
         {h?.citation && (
           <span className="text-[11px] text-muted-foreground">
-            {h.stand}
+            {h.as_of}
           </span>
         )}
       </div>

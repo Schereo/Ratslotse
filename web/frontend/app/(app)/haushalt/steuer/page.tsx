@@ -47,7 +47,7 @@ function steuerartFinden(eingang: string): SteuerArt | undefined {
   const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "");
   const gesucht = norm(eingang);
   if (!gesucht) return undefined;
-  return STEUERARTEN.find((a) => norm(a.slug) === gesucht || norm(a.titel) === gesucht);
+  return STEUERARTEN.find((a) => norm(a.slug) === gesucht || norm(a.title) === gesucht);
 }
 
 /** Ein von Hand gepflegter Befund zu **einem** Haushaltsjahr: Die Verwaltung
@@ -260,12 +260,12 @@ function SteuerInner() {
         <ChevronRight className="h-3 w-3" />
         <Link href="/haushalt/einnahmen" className="hover:text-foreground">Woher das Geld kommt</Link>
         <ChevronRight className="h-3 w-3" />
-        <span className="font-semibold text-foreground">{art.titel}</span>
+        <span className="font-semibold text-foreground">{art.title}</span>
       </div>
 
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
-          <h1 className="font-display text-2xl font-bold tracking-tight sm:text-[26px]">{art.titel}</h1>
+          <h1 className="font-display text-2xl font-bold tracking-tight sm:text-[26px]">{art.title}</h1>
           <p className="mt-2 max-w-[62ch] text-[15px] leading-relaxed text-foreground/90">
             <GlossaryText text={art.kurz} />
           </p>
@@ -322,7 +322,7 @@ function SteuerInner() {
         const hoehe = (w: number) => (max > min ? 12 + ((w - min) / (max - min)) * 28 : 24);
         return (
           <Seitenbuehne
-            kicker={`Steuer-Steckbrief · Hebesatz ${art.hebesatzArten?.[0] ?? art.titel}`}
+            kicker={`Steuer-Steckbrief · Hebesatz ${art.hebesatzArten?.[0] ?? art.title}`}
             zahl={<><ZaehlZahl value={akt.rate} />&#8239;% seit {akt.year}</>}
             sub={`davor ${series.length - 1} ${series.length - 1 === 1 ? "Änderung" : "Änderungen"} seit ${series[0].year} — beschlossen jeweils vom Rat`}
             minibild={{
@@ -399,7 +399,7 @@ function SteuerInner() {
           art.stufen.length === 2 ? "sm:grid-cols-2" : "sm:grid-cols-3",
         )}>
           {art.stufen.map((st) => (
-            <div key={st.titel} className={cn(
+            <div key={st.title} className={cn(
               "rounded-xl border p-3",
               st.rat ? "border-signal/55 bg-signal/[0.06]" : "border-border bg-muted/30",
               !st.rat && st.wer.startsWith("Rat") && "border-dashed",
@@ -410,7 +410,7 @@ function SteuerInner() {
               )}>
                 {st.wer}
               </span>
-              <p className="mt-2 text-[13px] font-bold leading-snug">{st.titel}</p>
+              <p className="mt-2 text-[13px] font-bold leading-snug">{st.title}</p>
               <p className="mt-1 text-xs leading-relaxed text-foreground/80">
                 <GlossaryText text={st.text} />
                 {/* Die Rechtsgrundlage der Stufe — führt auf den amtlichen
@@ -434,7 +434,7 @@ function SteuerInner() {
         )}
       </div>
 
-      <LottiErklaert titel={art.lotti.titel} text={art.lotti.text} />
+      <LottiErklaert title={art.lotti.title} text={art.lotti.text} />
 
       {anzeigeReihe.length >= 2 && (
         <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
@@ -513,7 +513,7 @@ function SteuerInner() {
              `proKopfWas` den Satz selbst. */
           was={istZuweisung
             ? "an Schlüsselzuweisungen vom Land"
-            : art.proKopfWas ?? `aus der ${art.titel}`}
+            : art.proKopfWas ?? `aus der ${art.title}`}
         />
       )}
 
@@ -538,7 +538,7 @@ function SteuerInner() {
              Gewinn. Die Schreibweise kommt aus derselben Tabelle wie oben,
              nicht aus einem zweiten Literal daneben. */
           vergleichArt={steuerartNachSlug("grundsteuer")?.datenArt ?? null}
-          vergleichTitel={steuerartNachSlug("grundsteuer")?.titel ?? "Grundsteuer"}
+          vergleichTitel={steuerartNachSlug("grundsteuer")?.title ?? "Grundsteuer"}
           tax_rates={hebeHaupt}
           /* Der Nenner und der Satz, der zu ihm gehört. Beide reisen aus der
              API mit: Die Abgrenzung ist Teil der Zahl, nicht des Layouts. */
@@ -561,14 +561,14 @@ function SteuerInner() {
             series={hebeHaupt}
             zweitreihe={hebeZweit}
             zweitLabel={art.hebesatzArten?.[1]}
-            titel={art.titel}
+            title={art.title}
             aufkommen={aufkommen}
             /* Bei der Grundsteuer heißt das Aufkommen NICHT wie der Hebesatz
                daneben: Der offene Datensatz führt A und B in einer Spalte, die
                Sätze gelten getrennt. Dieselbe Grenze, die auch den Überschlag
                „ein Punkt mehr" verbietet (`punktUnmoeglich`). */
             aufkommenLabel={art.slug === "grundsteuer"
-              ? "Grundsteuer A und B zusammen" : `${art.titel}`}
+              ? "Grundsteuer A und B zusammen" : `${art.title}`}
             bemessungNeu={data.tax_rates?.bemessung_neu ?? {}}
             abgrenzung={data.tax_rates?.abgrenzung ?? ""}
             /* Woran die Bemessungsgrundlage hängt — sonst liest sich die Liste
@@ -702,7 +702,7 @@ function SteuerInner() {
         {STEUERARTEN.filter((a) => a.slug !== art.slug).map((a) => (
           <Link key={a.slug} href={`/haushalt/steuer?art=${a.slug}`}
             className="rounded-full border border-border bg-card px-3 py-1.5 text-[11.5px] hover:border-primary/40">
-            {a.titel}
+            {a.title}
           </Link>
         ))}
       </div>

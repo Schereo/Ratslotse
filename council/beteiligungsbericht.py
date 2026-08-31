@@ -489,8 +489,8 @@ def indicators(section: str) -> tuple[dict[str, dict[int, float]], list[str]]:
     warnungen: list[str] = []
     for i, (_, ab, key) in enumerate(stellen):
         bis = stellen[i + 1][0] if i + 1 < len(stellen) else len(rest)
-        zeile = _SEITENKOPF.split(rest[ab:bis])[0]
-        werte = _zahlen(zeile)
+        row = _SEITENKOPF.split(rest[ab:bis])[0]
+        werte = _zahlen(row)
         if len(werte) == len(years):
             reihen[key] = dict(zip(years, werte))
         else:
@@ -798,16 +798,16 @@ def _zeilen_fuegen(rumpf: str) -> list[str]:
     Klammer — Personennamen tun das ausnahmslos."""
     aus: list[str] = []
     for roh in rumpf.split("\n"):
-        zeile = " ".join(roh.replace(" ", " ").split())
-        if not zeile:
+        row = " ".join(roh.replace(" ", " ").split())
+        if not row:
             continue
-        if aus and zeile[:1].islower():
+        if aus and row[:1].islower():
             if aus[-1].endswith("-"):
-                aus[-1] = aus[-1][:-1] + zeile       # „Vor-" + „sitzende"
+                aus[-1] = aus[-1][:-1] + row       # „Vor-" + „sitzende"
             else:
-                aus[-1] = f"{aus[-1]} {zeile}"
+                aus[-1] = f"{aus[-1]} {row}"
             continue
-        aus.append(zeile)
+        aus.append(row)
     return aus
 
 
@@ -827,7 +827,7 @@ def _gremiumsname(roh: str) -> str:
     return name
 
 
-def _person_zerlegen(zeile: str, committee: str, sort_order: int) -> Aufsichtsperson:
+def _person_zerlegen(row: str, committee: str, sort_order: int) -> Aufsichtsperson:
     """Eine Zeile der Namensspalte → Name, Vorsitz und Amtszeit-Zusatz.
 
     Der Name ist, was **vor** dem ersten Komma und außerhalb aller Klammern
@@ -838,7 +838,7 @@ def _person_zerlegen(zeile: str, committee: str, sort_order: int) -> Aufsichtspe
     Zuordnung gerade die Probe absichert."""
     # „Hans -Georg Heß", „Prof. Dr. -Ing. Weisensee": Der Satz setzt Leerraum
     # vor den Bindestrich. Das ist derselbe Schaden wie bei den Beträgen.
-    zeile = re.sub(r"\s+-\s*(?=\w)", "-", " ".join(zeile.split()))
+    row = re.sub(r"\s+-\s*(?=\w)", "-", " ".join(row.split()))
 
     chair_role: str | None = None
     hinweise: list[str] = []
@@ -855,7 +855,7 @@ def _person_zerlegen(zeile: str, committee: str, sort_order: int) -> Aufsichtspe
         elif _ZEITRAUM.match(part):
             hinweise.append(part.strip("()"))
 
-    rest = re.sub(r"\(([^)]*)\)", lambda m: (einordnen(m.group(1)) or " "), zeile)
+    rest = re.sub(r"\(([^)]*)\)", lambda m: (einordnen(m.group(1)) or " "), row)
     teile = [t.strip() for t in rest.split(",")]
     for t in teile[1:]:
         einordnen(t)
@@ -1003,12 +1003,12 @@ def beteiligungsverhaeltnisse(text: str) -> tuple[list[Eigentuemer], str | None]
     eigner: list[Eigentuemer] = []
     summe: tuple[float, float] | None = None
     puffer: list[str] = []
-    for zeile in zeilen:
-        if _EIGNER_KOPF.match(zeile):
+    for row in zeilen:
+        if _EIGNER_KOPF.match(row):
             continue
-        m = _EIGNER_ZEILE.match(zeile)
+        m = _EIGNER_ZEILE.match(row)
         if not m:
-            puffer.append(zeile)
+            puffer.append(row)
             continue
         eur, proz = _betrag(m.group("eur")), _betrag(m.group("proz"))
         name = " ".join((" ".join(puffer) + " " + m.group("name")).split())
@@ -1287,7 +1287,7 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
     def anker(e: dict, g: Gesellschaft) -> dict:
         return {"art": "stadt", "url": e["url"], "label": e["label"],
                 "page": g.seite_gedruckt,
-                "stand": f"Beteiligungsbericht {e['report_year']}"}
+                "as_of": f"Beteiligungsbericht {e['report_year']}"}
 
     stammdaten: list[dict] = []
     texte: list[dict] = []

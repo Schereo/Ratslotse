@@ -62,7 +62,7 @@ PROBEN: dict[str, str] = {
         "gedruckte Gebühr. Menge und Gebühr stehen an anderer Stelle als die "
         "Kaskade — zwei unabhängige Angaben desselben Dokuments.",
     PROBE_SATZANZAHL:
-        "Anlage 4 enthält jede der zwölf benannten Tarifarten exact einmal.",
+        "Anlage 4 enthält jede der zwölf benannten Tarifarten genau einmal.",
     PROBE_ECKWERTE:
         "Die beiden Eckwerte der Tarifübersicht stimmen mit den getrennten "
         "Berechnungen in Anlagen 1 und 3 überein.",
@@ -615,7 +615,7 @@ def herkunft_fuer_satz(satz: Gebuehrensatz, *, url: str | None,
     return Herkunft(
         art="ris", probe=probes, document_id=document_id, label=label,
         url=url, citation=f"Anlage 4, {satz.label}, Vorschlag {satz.year}",
-        probe_result=result, stand=f"Gebührenvorschlag {satz.year}")
+        probe_result=result, as_of=f"Gebührenvorschlag {satz.year}")
 
 
 def herkunft_fuer(bedarf: Gebuehrenbedarf, *, url: str | None,
@@ -637,5 +637,5 @@ def herkunft_fuer(bedarf: Gebuehrenbedarf, *, url: str | None,
         url=url,
         citation=f"Gebührenbedarfsberechnung {bedarf.year}, {bedarf.area_name}",
         probe_result=f"Kaskade geht auf (Rest {rest:+.2f} €){division}",
-        stand=f"Gebührenbedarfsberechnung {bedarf.year}",
+        as_of=f"Gebührenbedarfsberechnung {bedarf.year}",
     )

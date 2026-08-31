@@ -52,9 +52,9 @@ def test_gelesener_scan_ist_durchsuchbar(tmp_path):
     try:
         offen = store.anlagen_missing_embeddings()
         assert [z["document_id"] for z in offen] == [4711]
-        zeile = store._conn.execute(
+        row = store._conn.execute(
             "SELECT ocr_model FROM council_anlagen WHERE document_id=4711").fetchone()
-        assert zeile["ocr_model"] is None or isinstance(zeile["ocr_model"], str)
+        assert row["ocr_model"] is None or isinstance(row["ocr_model"], str)
     finally:
         store.close()
 
@@ -413,10 +413,10 @@ def test_null_gelesene_seiten_werden_nicht_gespeichert(monkeypatch, tmp_path):
     from council.store import CouncilStore
     nach = CouncilStore(tmp_path / "c_empty.sqlite")
     try:
-        zeile = nach._conn.execute(
+        row = nach._conn.execute(
             "SELECT status, raw_text FROM council_anlagen WHERE document_id=4711"
         ).fetchone()
-        assert zeile["status"] == "empty", (
+        assert row["status"] == "empty", (
             "ein Dokument ohne gelesene Seite bleibt auf der Arbeitsliste")
     finally:
         nach.close()

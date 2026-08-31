@@ -146,7 +146,7 @@ def _vorschau_store(tmp_path):
             "VALUES (1, 'fliegerhorst', 'Fliegerhorst', 'ort', 166)")
         # Behandlungsart je Punkt aus der Beratungsfolge
         store._conn.executemany(
-            "INSERT INTO council_beratungen (kvonr, datum, committee, result, fetched_at) "
+            "INSERT INTO council_beratungen (kvonr, date, committee, result, fetched_at) "
             "VALUES (?, date('now','+2 day'), 'Umweltausschuss', ?, datetime('now'))",
             [(200, "Kenntnisnahme"), (300, "Entscheidung"), (400, "Entscheidung")])
     return store
@@ -160,10 +160,10 @@ def test_wochenvorschau_waehlt_nach_wichtigkeit(tmp_path):
     store = _vorschau_store(tmp_path)
     try:
         d = store.wochenvorschau(max_punkte=99)
-        titel = [p["title"][:30] for p in d["punkte"]]
+        title = [p["title"][:30] for p in d["punkte"]]
         # Formalien fliegen raus.
-        assert not any("Beschlussfähigkeit" in t for t in titel)
-        assert not any("Genehmigung des Protokolls" in t for t in titel)
+        assert not any("Beschlussfähigkeit" in t for t in title)
+        assert not any("Genehmigung des Protokolls" in t for t in title)
 
         rang = {p["title"][:12]: p["rang"] for p in d["punkte"]}
         # Die Satzungsänderung (Entscheidung, bindend) schlägt den
@@ -185,8 +185,8 @@ def test_wochenvorschau_waehlt_nach_wichtigkeit(tmp_path):
         assert bericht[0]["wichtig"] <= store.WICHTIG_MINDEST
         # Unter der Schwelle bleiben draußen: der reine Kenntnisnahme-Bericht
         # und die Gremien-Personalie (formal „Entscheidung", aber Routine).
-        assert not any("Aktionswochen" in t for t in titel)
-        assert not any("Berufung" in t for t in titel)
+        assert not any("Aktionswochen" in t for t in title)
+        assert not any("Berufung" in t for t in title)
         # Ohne die Dämpfung stünde die Personalie gleichauf mit der Satzung —
         # das war der Befund, der die Dämpfung ausgelöst hat.
         roh = [{"title": "Berufung Beratendes Mitglied im Ausschuss",
@@ -338,12 +338,12 @@ def test_bericht_der_verwaltung_ist_nur_allein_eine_formalie(tmp_path):
         assert formalie.search("Bericht der Verwaltung")
         assert formalie.search("  Berichte der Verwaltung  ")
         # … der Zusatz an einem echten Punkt nicht.
-        for titel in (
+        for title in (
             "Ermittlungen Abfallentsorgung Fliegerhorst (CDU-Fraktion vom 14.07.2026) - Bericht der Verwaltung",
             "Bekämpfung des Rattenbefalls in der Stadt Oldenburg (FDP-Fraktion) - Bericht der Verwaltung",
             "Vorhabenbezogener Bebauungsplan Nr. 81: Vorstellung - Bericht der Verwaltung",
         ):
-            assert not formalie.search(titel), titel
+            assert not formalie.search(title), title
     finally:
         store.close()
 
@@ -379,7 +379,7 @@ def _gruppen_store(tmp_path):
             [(101, "26/1", "Beschlussvorlage"), (102, "26/2", "Berichtsvorlage"),
              (103, "26/3", "Beschlussvorlage"), (104, "26/4", "Beschlussvorlage")])
         store._conn.executemany(
-            "INSERT INTO council_beratungen (kvonr, datum, committee, result, fetched_at) "
+            "INSERT INTO council_beratungen (kvonr, date, committee, result, fetched_at) "
             "VALUES (?, date('now','+2 day'), 'Bauausschuss', ?, datetime('now'))",
             [(101, "Vorberatung"), (102, "Kenntnisnahme"),
              (103, "Vorberatung"), (104, "Vorberatung")])

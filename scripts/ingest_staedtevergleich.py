@@ -119,7 +119,7 @@ def main() -> int:
             neu = sv.lies_kfa(str(pfad_neu))
             alt = sv.lies_kfa(str(pfad_alt))
             print(f"  Ausgleichsjahr {neu.year} (Vorjahresspalte {neu.prior_year}), "
-                  f"{len(neu.staedte)} Gemeinden, Stand {neu.stand}")
+                  f"{len(neu.staedte)} Gemeinden, Stand {neu.as_of}")
 
             probe = sv.probe_ueberlappung(alt, neu)
             print(f"  Zwei-Jahres-Überlappung: {probe['result']}")
@@ -142,7 +142,7 @@ def main() -> int:
                     citation="Blatt „ST_KR_MESS_VGL“ — Steuerkraftmesszahlen "
                                "je Gemeinde, zwei Ausgleichsjahre nebeneinander",
                     probe_result=probe["result"],
-                    stand=neu.stand))
+                    as_of=neu.as_of))
             print(f"  gespeichert: {geschrieben['tax_capacity']} Werte "
                   f"({len(sv.KREISFREIE_STAEDTE)} kreisfreie Städte)")
 
@@ -188,14 +188,14 @@ def main() -> int:
                                    "Aufgaben des übertragenen Wirkungskreises und "
                                    "Finanzausgleichsumlage je kreisfreier Stadt",
                         probe_result=" · ".join(probes),
-                        stand=neu.stand))
+                        as_of=neu.as_of))
                 print(f"  gespeichert: {geschrieben['fiscal_equalization']} Werte")
 
             # --- Realsteuervergleich ---
             print("Realsteuervergleich:")
             pfad_rs, url_rs = _holen(args.realsteuer, ablage)
             rs = sv.lies_realsteuervergleich(str(pfad_rs))
-            print(f"  Berichtsjahr {rs.year}, Stand {rs.stand or 'Erstausgabe'}")
+            print(f"  Berichtsjahr {rs.year}, Stand {rs.as_of or 'Erstausgabe'}")
 
             zeilen, verworfen = sv.zeilen_realsteuern(rs)
             for v in verworfen:
@@ -216,7 +216,7 @@ def main() -> int:
                     probe_result=(f"{len(sv.KREISFREIE_STAEDTE) - len(verworfen)} "
                                     f"von {len(sv.KREISFREIE_STAEDTE)} Städten "
                                     f"vollständig geprüft"),
-                    stand=rs.stand))
+                    as_of=rs.as_of))
             print(f"  gespeichert: {geschrieben['realsteuern']} Werte, "
                   f"{len(verworfen)} verworfen")
 

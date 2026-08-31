@@ -89,7 +89,7 @@ _VOR, _NACH = 70, 40
 #: ein Haushalt ist von Natur aus jährlich. Diese Trennung ist der Unterschied
 #: zwischen „3,90 € je Essen" (kein Volumen) und „13.739,52 EUR jährlich"
 #: (Volumen).
-_EINHEIT = (r"m²|m2|qm|quadratmeter|kwh|stück|stk|population|kopf|person|kind|"
+_EINHEIT = (r"m²|m2|qm|quadratmeter|kwh|stück|stk|einwohner|kopf|person|kind|"
             r"schüler|teilnehmer|mitglied|verein|fachkraft|fall|antrag|platz|"
             r"fahrt|essen|mahlzeit|nutzung|ausweis|karte|ticket|tonne|liter|"
             r"km|kilometer")
@@ -222,29 +222,29 @@ def _ist_schwelle(vor: str, ganzer_text: str) -> bool:
     return bool(_SCHWELLE.search(vor) or _WERTGRENZE.search(ganzer_text))
 
 
-def ist_preisbeschluss(titel: str | None) -> bool:
+def ist_preisbeschluss(title: str | None) -> bool:
     """Kündigt der Titel eine Preisentscheidung an (Gebühren, Entgelte, Tarife)?
 
     Dann hat der Beschluss kein Volumen, und jede Zahl darin ist ein Preis."""
-    return bool(_TARIF_TITEL.search(titel or ""))
+    return bool(_TARIF_TITEL.search(title or ""))
 
 
-def ist_sammelbericht(titel: str | None) -> bool:
+def ist_sammelbericht(title: str | None) -> bool:
     """Berichtet der Beschluss über alles *unterhalb* einer Meldeschwelle?
 
     Dann ist die genannte Zahl die Grenze, nicht die Summe — die tatsächlich
     bewilligten Beträge stehen nur in der Anlage."""
-    return bool(_SAMMELBERICHT_TITEL.search(titel or ""))
+    return bool(_SAMMELBERICHT_TITEL.search(title or ""))
 
 
-def extract_amounts(text: str, titel: str | None = None) -> list[float]:
+def extract_amounts(text: str, title: str | None = None) -> list[float]:
     """Alle Euro-Beträge des Textes, die ein Beschlussvolumen sein können.
 
     Stückpreise und Schwellenwerte fallen am Fundort heraus (s. Modul-Kopf).
-    ``titel`` ist optional und trägt die zwei Entscheidungen, die der Fließtext
+    ``title`` ist optional und trägt die zwei Entscheidungen, die der Fließtext
     nicht hergibt: ob der ganze Beschluss über Preise geht, und ob er ein
     Sammelbericht unterhalb einer Meldeschwelle ist."""
-    if not text or ist_preisbeschluss(titel) or ist_sammelbericht(titel):
+    if not text or ist_preisbeschluss(title) or ist_sammelbericht(title):
         return []
     out: list[float] = []
     for rx, skaliert in ((_SCALED, True), (_PLAIN, False)):
@@ -262,7 +262,7 @@ def extract_amounts(text: str, titel: str | None = None) -> list[float]:
     return [a for a in out if 0 < a < _MAX]
 
 
-def largest_amount(text: str, titel: str | None = None) -> float | None:
+def largest_amount(text: str, title: str | None = None) -> float | None:
     """Der größte Euro-Betrag im Text (das finanzielle Gewicht eines Beschlusses)."""
-    amounts = extract_amounts(text, titel)
+    amounts = extract_amounts(text, title)
     return max(amounts) if amounts else None

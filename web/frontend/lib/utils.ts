@@ -16,9 +16,9 @@ export function formatDate(iso: string): string {
 /** „24.07.2026, 09:21“ — für Zeitstempel, bei denen die Uhrzeit zählt
  *  (Feedback-Eingang). Ohne Zeitanteil identisch zu {@link formatDate}. */
 export function formatDateTime(iso: string): string {
-  const [datum, zeit = ""] = (iso || "").split("T");
+  const [date, zeit = ""] = (iso || "").split("T");
   const hhmm = zeit.slice(0, 5);
-  return hhmm ? `${formatDate(datum)}, ${hhmm}` : formatDate(datum);
+  return hhmm ? `${formatDate(date)}, ${hhmm}` : formatDate(date);
 }
 
 /** „heute“ / „morgen“ / „gestern“ — oder null, wenn der Tag weiter weg ist.

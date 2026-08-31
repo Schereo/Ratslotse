@@ -70,7 +70,7 @@ export type AbleseWert = {
 
 export type AbleseStelle = {
   /** Steht links in der Leiste, üblicherweise die Jahreszahl. */
-  titel: string;
+  title: string;
   werte: AbleseWert[];
   /** Der ganze Satz für die Vorlesehilfe. */
   vorlesen: string;
@@ -157,7 +157,7 @@ export function Ableseleiste({ stelle, steuerung, note, className, haftet = true
       <div className="flex flex-col gap-y-1 ab-lesezeile:flex-row ab-lesezeile:flex-wrap
                       ab-lesezeile:items-baseline ab-lesezeile:gap-x-3.5">
         <span className="font-mono text-[12.5px] font-semibold uppercase tracking-[0.08em] tabular-nums">
-          {stelle.titel}
+          {stelle.title}
         </span>
         {stelle.werte.map((w) => (
           <span key={w.label}

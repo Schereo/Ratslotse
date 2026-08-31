@@ -50,7 +50,7 @@ ALIAS_JACCARD = 0.30   # ab hier gilt ein Namens-Teilstring-Paar als dieselbe Sa
 # kein Thema — im Graph würden sie zu Naben, die mit allem verbunden sind.
 _STRUCTURAL = re.compile(
     r"(ausschuss|beirat|rat der stadt|stadtrat|ortsrat|verwaltungsvorstand"
-    r"|kommission|fraktion|committee|ratsversammlung)",
+    r"|kommission|fraktion|gremium|ratsversammlung)",
     re.I,
 )
 

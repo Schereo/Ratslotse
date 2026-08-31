@@ -87,12 +87,17 @@ def funde(db: Path, code: str):
     c = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
     aus: list[tuple[str, str, list[tuple[str, int]]]] = []
     gebaut: list[tuple[str, str, str]] = []
+    #: Die Marken-Tabellen halten Buchhaltung über die Migrationen selbst,
+    #: keine Domänen-Schlüssel. Ihre Werte stehen als Argument im Code —
+    #: aber in Klammern neben dem Tabellennamen, und genau diese Form
+    #: schneidet `_PAAR` als Migrationspaar heraus.
+    OHNE = {"council_migrationsmarken", "migrationsmarken"}
     tabellen = [t for (t,) in c.execute(
         "SELECT name FROM sqlite_master WHERE type='table' "
-        "AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '%_fts_%'")]
+        "AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '%_fts_%'") if t not in OHNE]
     for tabelle in tabellen:
-        for zeile in c.execute(f"PRAGMA table_info({tabelle})"):
-            spalte, typ = zeile[1], (zeile[2] or "").upper()
+        for row in c.execute(f"PRAGMA table_info({tabelle})"):
+            spalte, typ = row[1], (row[2] or "").upper()
             if "TEXT" not in typ and "CHAR" not in typ:
                 continue
             try:

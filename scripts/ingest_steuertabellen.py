@@ -101,10 +101,10 @@ def ist_reihe(store: CouncilStore) -> tuple[dict, dict]:
     ``({year: {art: euro}}, {year: grundsteuer_euro})`` — die erste für den
     Ist-Abgleich von 1103, die zweite für die Sprungjahr-Probe von 1105."""
     alle: dict[int, dict[str, float]] = {}
-    for zeile in store.get_steuereinnahmen():
-        if zeile.get("amount") is None:
+    for row in store.get_steuereinnahmen():
+        if row.get("amount") is None:
             continue
-        alle.setdefault(zeile["year"], {})[zeile["art"]] = float(zeile["amount"])
+        alle.setdefault(row["year"], {})[row["art"]] = float(row["amount"])
     grundsteuer = {j: w[GRUNDSTEUER] for j, w in alle.items() if GRUNDSTEUER in w}
     return alle, grundsteuer
 
@@ -153,7 +153,7 @@ def _herkunft_1103(name: str, url: str | None, years: list[int],
             "Umlagen“ — je Steuerart und Jahr zwei Spalten: der Ansatz nach dem "
             "Haushaltsplan und das Rechnungsergebnis. Jede Ausgabe der Tabelle "
             "führt nur drei Jahrgänge"),
-        stand=f"Haushaltsjahre {spanne} · {stt.ABGRENZUNG_1103}",
+        as_of=f"Haushaltsjahre {spanne} · {stt.ABGRENZUNG_1103}",
         probe=probes,
         probe_result=nachweis)
 
@@ -307,11 +307,11 @@ def main() -> int:
                 heil &= finanzquellen.bestandsschutz(
                     p, "Hebesätze (1105)", len(store.hebesatz_jahre()),
                     len(jahre_1105), schuetzen=not args.schrumpf_erlauben)
-            for zeile in p.zeilen:
-                print(zeile.strip())
+            for row in p.zeilen:
+                print(row.strip())
             if not heil:
-                for zeile in p.warnungen:
-                    print(zeile.strip(), file=sys.stderr)
+                for row in p.warnungen:
+                    print(row.strip(), file=sys.stderr)
                 print("ABBRUCH: Der vorhandene Bestand bleibt unangetastet. "
                       "Wenn das Schrumpfen Absicht ist: --schrumpf-erlauben.",
                       file=sys.stderr)
@@ -324,8 +324,8 @@ def main() -> int:
             # finden, in dem seine Zahl steht.
             geschrieben = 0
             nach_ausgabe: dict[str, list[dict]] = {}
-            for zeile in zeilen_1103:
-                nach_ausgabe.setdefault(zeile["ausgabe"], []).append(zeile)
+            for row in zeilen_1103:
+                nach_ausgabe.setdefault(row["ausgabe"], []).append(row)
             for name, part in sorted(nach_ausgabe.items()):
                 years = sorted({z["year"] for z in part})
                 probes = proben_je_ausgabe.get(name) or ["steuerplan_summenzeile"]
@@ -367,7 +367,7 @@ def main() -> int:
                         "Grundsteuer B und Gewerbesteuer. Die Tabelle führt "
                         "nach eigener Fußnote nur die Jahre, in denen sich ein "
                         "Satz geändert hat"),
-                    stand=f"Änderungsjahre {jahre_1105[0]}–{jahre_1105[-1]} · "
+                    as_of=f"Änderungsjahre {jahre_1105[0]}–{jahre_1105[-1]} · "
                           f"{stt.ABGRENZUNG_1105}",
                     probe=proben_1105,
                     probe_result=nachweis5))

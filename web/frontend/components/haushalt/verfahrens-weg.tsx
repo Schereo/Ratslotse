@@ -124,7 +124,7 @@ export function VerfahrensWegKarte({ daten, budget_year, className }: {
       {gleichgerichtet && (
         <Anteilsbalken
           className="mt-3"
-          titel="Woher diese Bewegung kam"
+          title="Woher diese Bewegung kam"
           gesamt={Math.abs(weg.bewegt)}
           unit="€"
           segmente={[

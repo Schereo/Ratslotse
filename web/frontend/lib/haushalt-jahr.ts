@@ -23,7 +23,7 @@ export type WegVotum = {
 
 export type WegStation = {
   kvonr: number;
-  datum: string;
+  date: string;
   committee: string;
   /** Rolle laut Beratungsfolge: Kenntnisnahme, Vorberatung, Entscheidung. */
   role: string | null;
@@ -79,7 +79,7 @@ export function entscheidung(r: WegRunde): WegStation | null {
 export function tageZumJahresbeginn(r: WegRunde): number | null {
   const e = entscheidung(r);
   if (!e) return null;
-  const [j, m, t] = e.datum.split("-").map(Number);
+  const [j, m, t] = e.date.split("-").map(Number);
   return Math.round((Date.UTC(j, m - 1, t) - Date.UTC(r.year, 0, 1)) / 86_400_000);
 }
 
@@ -99,7 +99,7 @@ export function rhythmus(runden: WegRunde[]): Rhythmus {
   const zaehler = new Map<number, number>();
   for (const r of runden) {
     if (!r.einbringung) continue;
-    const m = Number(r.einbringung.datum.split("-")[1]);
+    const m = Number(r.einbringung.date.split("-")[1]);
     zaehler.set(m, (zaehler.get(m) ?? 0) + 1);
   }
   const entwurfMonate = [...zaehler.entries()]
@@ -139,7 +139,7 @@ export function monateZwischen(von: string, bis: string): number {
  *  der Rat den Abschluss festgestellt hat. */
 export type AbschlussDok = {
   year: number | null;
-  official_text: { datum: string | null } | null;
+  official_text: { date: string | null } | null;
 };
 
 export type AbschlussMass = {
@@ -162,9 +162,9 @@ export function jahresabschlussMass(doks: AbschlussDok[] | undefined): Abschluss
   const monate: number[] = [];
   const versaetze = new Map<number, number>();
   for (const d of doks ?? []) {
-    const datum = d.official_text?.datum;
-    if (d.year == null || !datum) continue;
-    const [bj, bm] = datum.split("-").map(Number);
+    const date = d.official_text?.date;
+    if (d.year == null || !date) continue;
+    const [bj, bm] = date.split("-").map(Number);
     if (!bj || !bm) continue;
     monate.push((bj - d.year) * 12 + bm);
     versaetze.set(bj - d.year, (versaetze.get(bj - d.year) ?? 0) + 1);

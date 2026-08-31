@@ -144,7 +144,7 @@ def extract_wortbeitraege(raw_text: str, model: str = MODEL) -> list[dict]:
                 "speaker": field("speaker", 80),
                 # 40 war zu knapp: „BUND für Umwelt und Naturschutz
                 # Deutschland, Kreisgruppe Stadt Oldenburg" hat 72 Zeichen.
-                "partei": field("partei", 120),
+                "party": field("party", 120),
                 "text": text,
                 "answer": field("answer"),
             })

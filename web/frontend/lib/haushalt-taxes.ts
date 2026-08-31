@@ -25,7 +25,7 @@ export type Spielraum = "frei" | "begrenzt" | "keiner";
 export type SteuerStufe = {
   /** Wer entscheidet: „Bundestag", „Land", „Rat Oldenburg". */
   wer: string;
-  titel: string;
+  title: string;
   text: string;
   /** true = hier entscheidet der Rat (Signal-Rahmen im Design). */
   rat?: boolean;
@@ -61,7 +61,7 @@ export type SteuerArt = {
   /** Der Pro-Kopf-Satz, wo „aus der ${titel}" kein Deutsch ergibt
    *  („aus der Gebühren und Beiträge"). */
   proKopfWas?: string;
-  titel: string;
+  title: string;
   /** Ein Satz, der die Steuer erklärt, ohne ein Fachwort zu benutzen. */
   kurz: string;
   spielraum: Spielraum;
@@ -86,7 +86,7 @@ export type SteuerArt = {
      sondern eine zweite Rechnung neben dem Überschlag. Sie stehen aber im
      Bild neben der Treppe, die die echte Reihe zeichnet — ein Widerspruch
      fiele beim Lesen auf, anders als bei der stillen Division vorher.
-     WER EINEN HEBESATZ NACHZIEHT, fasst genau diese Stellen an: `stufen[].titel`
+     WER EINEN HEBESATZ NACHZIEHT, fasst genau diese Stellen an: `stufen[].title`
      und `.text`, `beispiel.rechnung` sowie `lotti.text`. Sonst nichts. */
   /** Welche Reihen aus `council_hebesaetze` zu diesem Steckbrief gehören —
    *  die erste ist die Haupt-Treppe, eine zweite läuft dünn daneben.
@@ -116,14 +116,14 @@ export type SteuerArt = {
    *  Text zu kürzen. */
   punktUnmoeglich?: string;
   /** Lotti-Erklärung an der schwersten Stelle der Seite. */
-  lotti: { titel: string; text: string };
+  lotti: { title: string; text: string };
 };
 
 export const STEUERARTEN: SteuerArt[] = [
   {
     slug: "gewerbesteuer",
     datenArt: "Gewerbesteuer (-umlage)",
-    titel: "Gewerbesteuer",
+    title: "Gewerbesteuer",
     kurz:
       "Jedes Unternehmen in Oldenburg zahlt sie auf seinen Gewinn — vom Handwerksbetrieb " +
       "bis zum Konzern. Freiberufler und Landwirte sind ausgenommen. Sie ist die größte " +
@@ -134,19 +134,19 @@ export const STEUERARTEN: SteuerArt[] = [
     stufen: [
       {
         wer: "Bundestag",
-        titel: "Was als Gewinn zählt",
+        title: "Was als Gewinn zählt",
         text: "Das Gewerbesteuergesetz legt fest, wer zahlt und was abgezogen werden darf. Daran kann die Stadt nichts ändern.",
         gesetz: "gewstg",
       },
       {
         wer: "Bundestag",
-        titel: "Die Messzahl: 3,5 %",
+        title: "Die Messzahl: 3,5 %",
         text: "Das Finanzamt rechnet den Gewinn mit 3,5 % in einen Messbetrag um — bundesweit gleich.",
         gesetz: "gewstg-11",
       },
       {
         wer: "Rat Oldenburg",
-        titel: "Der Hebesatz: 439 %",
+        title: "Der Hebesatz: 439 %",
         text: "Der Messbetrag wird mit dem Hebesatz multipliziert. Diese eine Zahl beschließt der Rat — jedes Jahr neu mit dem Haushalt.",
         gesetz: "gewstg-16",
         rat: true,
@@ -163,7 +163,7 @@ export const STEUERARTEN: SteuerArt[] = [
     // Drei Steckbriefe trugen bis 16.08. das generische „Lotti erklärt's
     // einfach" — eine Überschrift, die nichts überschreibt.
     lotti: {
-      titel: "Wer an welcher Schraube dreht",
+      title: "Wer an welcher Schraube dreht",
       text:
         "Stell dir die Steuer wie ein Rezept vor: Der Bund bestimmt die Zutaten und die " +
         "Grundmenge, die Stadt dreht am Ende nur an einem Regler — dem Hebesatz. Dreht der " +
@@ -173,7 +173,7 @@ export const STEUERARTEN: SteuerArt[] = [
   {
     slug: "grundsteuer",
     datenArt: "Grundsteuer A+B",
-    titel: "Grundsteuer",
+    title: "Grundsteuer",
     kurz:
       "Wer ein Grundstück oder ein Haus besitzt, zahlt sie — über die Nebenkosten tragen " +
       "sie meist auch Mieter*innen mit. Sie fällt jedes Jahr an, unabhängig davon, " +
@@ -198,7 +198,7 @@ export const STEUERARTEN: SteuerArt[] = [
       // alte Fassung beschrieb das Bundesmodell, nach dem hier niemand zahlt.
       {
         wer: "Land",
-        titel: "Was zählt: Fläche und Lage",
+        title: "Was zählt: Fläche und Lage",
         text:
           "Für Wohn- und Geschäftsgrundstücke rechnet Niedersachsen seit der Reform nicht " +
           "mit dem Wert, sondern mit der Fläche von Grundstück und Gebäude — angepasst um " +
@@ -208,7 +208,7 @@ export const STEUERARTEN: SteuerArt[] = [
       },
       {
         wer: "Land",
-        titel: "Die Steuermesszahl",
+        title: "Die Steuermesszahl",
         text:
           "Daraus wird der Messbetrag, mit Abschlägen unter anderem für Wohnflächen. Die " +
           "Messzahlen stehen im Landesgesetz — auch daran ändert die Stadt nichts.",
@@ -216,7 +216,7 @@ export const STEUERARTEN: SteuerArt[] = [
       },
       {
         wer: "Rat Oldenburg",
-        titel: "Die Hebesätze: 539 % und 500 %",
+        title: "Die Hebesätze: 539 % und 500 %",
         text:
           "539 % für Wohn- und Geschäftsgrundstücke (Grundsteuer B), 500 % für Land- und " +
           "Forstwirtschaft (Grundsteuer A). Beide beschließt der Rat.",
@@ -225,7 +225,7 @@ export const STEUERARTEN: SteuerArt[] = [
       },
     ],
     lotti: {
-      titel: "Warum ist der Satz plötzlich so hoch?",
+      title: "Warum ist der Satz plötzlich so hoch?",
       text:
         "Bis 2024 lag der Hebesatz für Grundsteuer B bei 445 %, seit der Reform bei 539 %. " +
         "Das heißt nicht automatisch, dass alle mehr zahlen: Weil die Finanzämter gleichzeitig " +
@@ -236,7 +236,7 @@ export const STEUERARTEN: SteuerArt[] = [
   {
     slug: "einkommensteueranteil",
     datenArt: "Einkommensteueranteil",
-    titel: "Anteil an der Einkommensteuer",
+    title: "Anteil an der Einkommensteuer",
     kurz:
       "Von der Lohn- und Einkommensteuer, die Menschen in Oldenburg zahlen, bekommt die " +
       "Stadt einen festen Anteil ab. Sie stellt dafür keine eigenen Bescheide aus.",
@@ -245,24 +245,24 @@ export const STEUERARTEN: SteuerArt[] = [
     stufen: [
       {
         wer: "Bundestag",
-        titel: "Die Steuer selbst",
+        title: "Die Steuer selbst",
         text: "Wie viel Einkommensteuer jemand zahlt, steht im Einkommensteuergesetz.",
         gesetz: "estg",
       },
       {
         wer: "Bundestag",
-        titel: "Der Gemeindeanteil",
+        title: "Der Gemeindeanteil",
         text: "Das Gemeindefinanzreformgesetz legt fest, welcher Anteil an die Kommunen geht und nach welchem Schlüssel er verteilt wird.",
         gesetz: "gemfinrefg-1",
       },
       {
         wer: "Rat Oldenburg",
-        titel: "Nichts.",
+        title: "Nichts.",
         text: "Der Rat hat hier keine Stellschraube. Steigt die Summe, liegt es an den Einkommen in der Stadt — nicht an einem Beschluss.",
       },
     ],
     lotti: {
-      titel: "Warum der Rat hier nichts beschließen kann",
+      title: "Warum der Rat hier nichts beschließen kann",
       text:
         "Dieses Geld kommt wie ein Abo aufs Konto: Die Höhe hängt davon ab, wie viel die " +
         "Menschen in Oldenburg verdienen. Der Rat kann daran nichts drehen — er kann nur " +
@@ -272,22 +272,22 @@ export const STEUERARTEN: SteuerArt[] = [
   {
     slug: "umsatzsteueranteil",
     datenArt: "Gemeindeanteil an der Umsatzsteuer",
-    titel: "Anteil an der Umsatzsteuer",
+    title: "Anteil an der Umsatzsteuer",
     kurz:
       "Ein kleiner Teil der bundesweiten Umsatzsteuer wird an die Städte verteilt — nach " +
       "einem Schlüssel, in den unter anderem die örtliche Wirtschaft einfließt.",
     spielraum: "keiner",
     stellschraube: "Bundesweit verteilt, nach Schlüssel",
     stufen: [
-      { wer: "Bundestag", titel: "Die Steuer selbst",
+      { wer: "Bundestag", title: "Die Steuer selbst",
         text: "Höhe und Regeln der Umsatzsteuer sind Bundesrecht.", gesetz: "ustg" },
-      { wer: "Bundestag", titel: "Der Verteilschlüssel",
+      { wer: "Bundestag", title: "Der Verteilschlüssel",
         text: "Er bestimmt, welcher Anteil bei welcher Kommune landet.",
         gesetz: "gemfinrefg-5a" },
-      { wer: "Rat Oldenburg", titel: "Nichts.", text: "Keine kommunale Stellschraube." },
+      { wer: "Rat Oldenburg", title: "Nichts.", text: "Keine kommunale Stellschraube." },
     ],
     lotti: {
-      titel: "Ein kleiner Teil von jedem Einkauf",
+      title: "Ein kleiner Teil von jedem Einkauf",
       text:
         "Von jedem Einkauf fließt Umsatzsteuer an den Staat. Ein sehr kleiner Teil davon " +
         "wandert weiter an die Städte — Oldenburg bekommt seinen Anteil automatisch.",
@@ -296,7 +296,7 @@ export const STEUERARTEN: SteuerArt[] = [
   {
     slug: "kleine-taxes",
     datenArt: "Vergnügungssteuer",
-    titel: "Kleine örtliche Steuern",
+    title: "Kleine örtliche Steuern",
     kurz:
       "Vergnügungssteuer auf Spielautomaten, Hundesteuer, früher auch die Getränkesteuer. " +
       "Der Rat beschließt sie selbst — sie fallen im Gesamthaushalt aber kaum ins Gewicht.",
@@ -305,19 +305,19 @@ export const STEUERARTEN: SteuerArt[] = [
     stufen: [
       {
         wer: "Land",
-        titel: "Der Rahmen",
+        title: "Der Rahmen",
         text: "Das Kommunalabgabengesetz erlaubt Städten, bestimmte örtliche Steuern zu erheben.",
         gesetz: "nkag",
       },
       {
         wer: "Rat Oldenburg",
-        titel: "Ob und wie viel",
+        title: "Ob und wie viel",
         text: "Der Rat beschließt die Satzung und die Sätze — bei der Hundesteuer etwa den Betrag je Hund.",
         rat: true,
       },
     ],
     lotti: {
-      titel: "Klein, aber sichtbar",
+      title: "Klein, aber sichtbar",
       text:
         "Diese Steuern bringen wenig Geld, sind aber die einzigen, bei denen der Rat wirklich " +
         "alles selbst festlegt. Deshalb tauchen sie in Debatten öfter auf, als ihr Anteil " +
@@ -327,7 +327,7 @@ export const STEUERARTEN: SteuerArt[] = [
   {
     slug: "schluesselzuweisungen",
     datenArt: null, // eigene Tabelle: council_steuerkraft
-    titel: "Schlüsselzuweisungen vom Land",
+    title: "Schlüsselzuweisungen vom Land",
     kurz:
       "Niedersachsen gibt Geld an seine Kommunen weiter — nach einer Formel, nicht auf " +
       "Antrag. Wer selbst mehr Steuern einnimmt, bekommt rechnerisch weniger.",
@@ -336,23 +336,23 @@ export const STEUERARTEN: SteuerArt[] = [
     stufen: [
       {
         wer: "Land",
-        titel: "Die Formel und der Topf",
+        title: "Die Formel und der Topf",
         text: "Der Landtag beschließt das Finanzausgleichsgesetz und wie viel Geld insgesamt verteilt wird.",
         gesetz: "nfag",
       },
       {
         wer: "Land",
-        titel: "Die Berechnung je Stadt",
+        title: "Die Berechnung je Stadt",
         text: "Steuerkraft gegen Bedarf — daraus ergibt sich die Summe für Oldenburg.",
       },
       {
         wer: "Rat Oldenburg",
-        titel: "Nichts.",
+        title: "Nichts.",
         text: "Der Rat kann die Höhe nicht beschließen — nur indirekt beeinflussen, weil eigene Steuereinnahmen in die Formel eingehen.",
       },
     ],
     lotti: {
-      titel: "Warum das Land überhaupt zahlt",
+      title: "Warum das Land überhaupt zahlt",
       text:
         "Städte haben sehr unterschiedliche Einnahmen, müssen aber ähnliche Aufgaben " +
         "erfüllen. Der Finanzausgleich gleicht das aus: Wer weniger eigene Steuerkraft hat, " +
@@ -374,7 +374,7 @@ export const STEUERARTEN: SteuerArt[] = [
       "Abfallwirtschaftsbetrieb, und der ist ein Eigenbetrieb — der " +
       "Jahresabschluss der Kernverwaltung zählt ihn nicht mit.",
     proKopfWas: "an Gebühren und Beiträgen",
-    titel: "Gebühren und Beiträge",
+    title: "Gebühren und Beiträge",
     kurz:
       "Wer eine Leistung der Stadt nutzt, zahlt dafür — vom Kita-Beitrag bis zur " +
       "Friedhofsgebühr. Die Sätze beschließt der Rat; höher als die Kosten dürfen " +
@@ -384,19 +384,19 @@ export const STEUERARTEN: SteuerArt[] = [
     stufen: [
       {
         wer: "Land",
-        titel: "Die Grenze",
+        title: "Die Grenze",
         text: "Das Kommunalabgabengesetz erlaubt höchstens kostendeckende Gebühren — Gewinn ist nicht vorgesehen.",
         gesetz: "nkag",
       },
       {
         wer: "Rat Oldenburg",
-        titel: "Die Sätze",
+        title: "Die Sätze",
         text: "Innerhalb dieser Grenze beschließt der Rat die einzelnen Gebührensatzungen.",
         rat: true,
       },
     ],
     lotti: {
-      titel: "Warum Gebühren nicht beliebig steigen",
+      title: "Warum Gebühren nicht beliebig steigen",
       text:
         "Eine Gebühr ist kein Preis, sondern eine Umlage der echten Kosten. Deshalb kann die " +
         "Stadt sie nicht erhöhen, um ein Loch im Haushalt zu stopfen — sie darf nur so viel " +

@@ -150,14 +150,14 @@ import Testing
       "answer": "Der Rat hat zugestimmt [42].",
       "created": "2026-08-29T08:15:00",
       "sources": [{"id":42,"title":"Sichere Querung","session_date":"2026-08-28","committee":"Rat","outcome":"angenommen"}],
-      "debatten": [{"speaker":"Anna Beispiel","partei":"SPD","auszug":"Wir stimmen zu."}],
-      "presse": [{"titel":"Mitteilung","url":"https://www.oldenburg.de/presse"}],
+      "debatten": [{"speaker":"Anna Beispiel","party":"SPD","auszug":"Wir stimmen zu."}],
+      "presse": [{"title":"Mitteilung","url":"https://www.oldenburg.de/presse"}],
       "anlagen": [{"nr":1,"label":"Lageplan","url":"https://buergerinfo.oldenburg.de/getfile.php?id=42"}],
       "parteien": [
-        {"partei":"SPD","haltung":"dafür","position":"Zustimmung","einig":true},
-        {"partei":"CDU","haltung":"dagegen","position":"Ablehnung","einig":false}
+        {"party":"SPD","haltung":"dafür","position":"Zustimmung","einig":true},
+        {"party":"CDU","haltung":"dagegen","position":"Ablehnung","einig":false}
       ],
-      "grafik": {"art":"linie","titel":"Kosten","unit":"Mio. €","series":[{"year":2026,"value":2.5}]}
+      "grafik": {"art":"linie","title":"Kosten","unit":"Mio. €","series":[{"year":2026,"value":2.5}]}
     }
     """#.utf8)
 
@@ -400,7 +400,7 @@ import Testing
         vorname: "ulf",
         nachname: "prange",
         art: "rat",
-        partei: "SPD",
+        party: "SPD",
         aktiv: true
     )
     let oldUlf = QuestionPerson(
@@ -409,7 +409,7 @@ import Testing
         vorname: "ulf",
         nachname: "prange-alt",
         art: "rat",
-        partei: "SPD",
+        party: "SPD",
         aktiv: false
     )
     let anna = QuestionPerson(
@@ -418,7 +418,7 @@ import Testing
         vorname: "anna",
         nachname: "oltmanns",
         art: "rat",
-        partei: "Bündnis 90/Die Grünen",
+        party: "Bündnis 90/Die Grünen",
         aktiv: true
     )
     let bernd = QuestionPerson(
@@ -427,7 +427,7 @@ import Testing
         vorname: "bernd",
         nachname: "oltmanns",
         art: "blocker",
-        partei: nil,
+        party: nil,
         aktiv: false
     )
 
@@ -459,7 +459,7 @@ import Testing
     #expect(!generic.showsSessions)
 
     let party = QuestionEvidenceAvailability(fields: [
-        "qtype": .string("partei"),
+        "qtype": .string("party"),
         "debatten": .array([.object(["speaker": .string("Muster")])]),
     ])
     #expect(party.showsPartyOpinions)
@@ -472,7 +472,7 @@ import Testing
     #expect(documents.showsAttachments)
 
     let status = QuestionEvidenceAvailability(fields: [
-        "planungen": .array([.object(["datum": .string("2026-09-01")])]),
+        "planungen": .array([.object(["date": .string("2026-09-01")])]),
     ])
     #expect(status.showsPlanning)
 
@@ -480,7 +480,7 @@ import Testing
     #expect(budget.showsChart)
 
     let current = QuestionEvidenceAvailability(fields: [
-        "presse": .array([.object(["titel": .string("Mitteilung")])]),
+        "presse": .array([.object(["title": .string("Mitteilung")])]),
     ])
     #expect(current.showsPress)
 
@@ -635,7 +635,7 @@ private final class FeedbackURLProtocol: URLProtocol {
           "party": "Grüne",
           "current_affiliation": {
             "label": "Grüne",
-            "kind": "partei",
+            "kind": "party",
             "parties": ["Grüne"]
           },
           "art": "rat",
@@ -644,7 +644,7 @@ private final class FeedbackURLProtocol: URLProtocol {
           "active_from": "2021-11-22",
           "active_to": "2026-06-16",
           "faction_timeline": [{
-            "label": "Grüne", "kind": "partei", "parties": ["Grüne"],
+            "label": "Grüne", "kind": "party", "parties": ["Grüne"],
             "first": "2021-11-22", "last": "2026-06-16", "n": 136
           }],
           "ris": {
@@ -662,7 +662,7 @@ private final class FeedbackURLProtocol: URLProtocol {
 
     let profile = try JSONDecoder().decode(PublicPersonProfile.self, from: data)
     #expect(profile.currentAffiliation?.label == "Grüne")
-    #expect(profile.currentAffiliation?.kind == "partei")
+    #expect(profile.currentAffiliation?.kind == "party")
     #expect(profile.nSessions == 136)
     #expect(profile.committees.count == 1)
     #expect(profile.recent.count == 1)
@@ -860,13 +860,13 @@ private final class FeedbackURLProtocol: URLProtocol {
             "zeilen": [{
               "art": "neu",
               "label": "Ö 7",
-              "titel": "Sichere Querung an der Cloppenburger Straße",
+              "title": "Sichere Querung an der Cloppenburger Straße",
               "nichtoeffentlich": false,
               "detail": "Neu auf die Tagesordnung gesetzt"
             }, {
               "art": "anlagen",
               "label": "Ö 4",
-              "titel": "Radverkehrskonzept",
+              "title": "Radverkehrskonzept",
               "nichtoeffentlich": 1,
               "detail": "Eine Anlage hinzugefügt"
             }]

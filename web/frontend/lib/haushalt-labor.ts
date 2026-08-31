@@ -153,7 +153,7 @@ export function planjahrErgebnisse(
   return series.length >= 2 ? { planJahrgang: budget_year, series } : null;
 }
 
-export type PfadPunkt = { year: number; stand: number };
+export type PfadPunkt = { year: number; as_of: number };
 
 export type RuecklagenPfad = {
   /** Geprüfter Bestand vor dem ersten Planjahr, in Mio. €. */
@@ -180,14 +180,14 @@ export function ruecklagenPfad(
   wirkungMio: number,
   startMio: number,
 ): RuecklagenPfad {
-  let stand = startMio;
+  let as_of = startMio;
   let kippjahr: number | null = null;
   const punkte: PfadPunkt[] = [];
   for (const e of ergebnisse) {
     const minus = Math.max(0, -e.ergebnisMio - wirkungMio);
-    stand -= minus;
-    if (stand < 0 && kippjahr == null) kippjahr = e.year;
-    punkte.push({ year: e.year, stand: Math.max(0, stand) });
+    as_of -= minus;
+    if (as_of < 0 && kippjahr == null) kippjahr = e.year;
+    punkte.push({ year: e.year, as_of: Math.max(0, as_of) });
   }
   return { start: startMio, punkte, kippjahr, letztesPlanjahr: ergebnisse.at(-1)?.year ?? 0 };
 }

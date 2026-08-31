@@ -216,12 +216,12 @@ def blatt_lesen(pfad: str, name: str) -> list[list[object]]:
         texte = _texte(z)
         wurzel = _xml(z.read(_blattpfad(z, name)))
         zeilen: dict[int, list[object]] = {}
-        for zeile in wurzel.iter(f"{_NS}row"):
-            nr = int(zeile.get("r") or 0)
+        for row in wurzel.iter(f"{_NS}row"):
+            nr = int(row.get("r") or 0)
             if not nr:
                 continue
             werte: dict[int, object] = {}
-            for zelle in zeile.findall(f"{_NS}c"):
+            for zelle in row.findall(f"{_NS}c"):
                 idx = _spaltenindex(zelle.get("r") or "")
                 if idx < 0:
                     continue
@@ -267,8 +267,8 @@ def _kopfzeile(zeilen: list[list[object]]) -> int:
     Bericht nicht gefunden, und zwar mit einer Fehlermeldung über den Aufbau
     der Datei statt über den Satz, der fehlt.
     """
-    for i, zeile in enumerate(zeilen[:12]):
-        for zelle in zeile:
+    for i, row in enumerate(zeilen[:12]):
+        for zelle in row:
             text = str(zelle or "")
             if "Tabellenkopf" not in text:
                 continue
@@ -327,7 +327,7 @@ class KfaJahrgang:
     #: Das mitgelieferte Vorjahr. Es ist die Rechenprobe: Es muss die
     #: Hauptspalte des Vorjahrgangs wiederholen.
     prior_year: int
-    stand: str | None
+    as_of: str | None
     #: Schlüssel → {city, einwohner, tax_index_keur, vorjahr_tax_index_keur}
     staedte: dict[str, dict] = field(default_factory=dict)
 
@@ -358,27 +358,27 @@ def lies_kfa(pfad: str) -> KfaJahrgang:
     # Die Datei stellt das Vorjahr links, das Ausgleichsjahr rechts.
     (c_vor, j_vor), (c_jahr, j_jahr) = years[0], years[1]
 
-    stand = None
-    for zeile in zeilen[:6]:
-        for zelle in zeile:
+    as_of = None
+    for row in zeilen[:6]:
+        for zelle in row:
             if (m := re.search(r"Stand:\s*([\d.]+)", str(zelle or ""))):
-                stand = m.group(1)
+                as_of = m.group(1)
 
-    budget_year = KfaJahrgang(year=j_jahr, prior_year=j_vor, stand=stand)
-    for zeile in zeilen[kopf_idx + 1:]:
-        if not zeile:
+    budget_year = KfaJahrgang(year=j_jahr, prior_year=j_vor, as_of=as_of)
+    for row in zeilen[kopf_idx + 1:]:
+        if not row:
             continue
-        key = schluessel_normalisieren(zeile[c_key] if c_key < len(zeile) else None)
+        key = schluessel_normalisieren(row[c_key] if c_key < len(row) else None)
         if not key:
             continue
-        tax_index = _zahl(zeile[c_jahr]) if c_jahr < len(zeile) else None
+        tax_index = _zahl(row[c_jahr]) if c_jahr < len(row) else None
         if tax_index is None:
             continue
         budget_year.staedte[key] = {
-            "city": " ".join(str(zeile[c_name] or "").split()),
-            "population": _zahl(zeile[c_ew]) if c_ew < len(zeile) else None,
+            "city": " ".join(str(row[c_name] or "").split()),
+            "population": _zahl(row[c_ew]) if c_ew < len(row) else None,
             "tax_index_keur": tax_index,
-            "prior_year_tax_index_keur": _zahl(zeile[c_vor]) if c_vor < len(zeile) else None,
+            "prior_year_tax_index_keur": _zahl(row[c_vor]) if c_vor < len(row) else None,
         }
     return budget_year
 
@@ -426,7 +426,7 @@ class Realsteuerjahrgang:
     """Ein Berichtsjahr des Realsteuervergleichs (Blätter ``2_1`` und ``5_1``)."""
 
     year: int
-    stand: str | None
+    as_of: str | None
     #: Schlüssel → {city, rate_*, grundbetrag_*_teur, ist_*_teur, …}
     tax_rates: dict[str, dict] = field(default_factory=dict)
     #: Schlüssel → {city, einwohner_schnitt, je_jahr: {year: (teur, je_ew)}, …}
@@ -441,8 +441,8 @@ def lies_realsteuervergleich(pfad: str) -> Realsteuerjahrgang:
     Städte unter derselben Schlüsselnummer — verbunden wird darüber, nie über
     den Namen.
     """
-    year, stand = _realsteuer_kopf(pfad)
-    budget_year = Realsteuerjahrgang(year=year, stand=stand)
+    year, as_of = _realsteuer_kopf(pfad)
+    budget_year = Realsteuerjahrgang(year=year, as_of=as_of)
 
     # --- Blatt 2_1: Hebesätze, Grundbeträge, Ist-Aufkommen ---
     zeilen = blatt_lesen(pfad, "2_1")
@@ -479,18 +479,18 @@ def lies_realsteuervergleich(pfad: str) -> Realsteuerjahrgang:
     bezug["gewerbesteuer"]["netto"] = _finde(
         spalten, r"Gewerbesteuer; Ist-Aufkommen netto; in 1000")
 
-    for zeile in zeilen[kopf_idx + 1:]:
-        if not zeile:
+    for row in zeilen[kopf_idx + 1:]:
+        if not row:
             continue
-        key = schluessel_normalisieren(zeile[c_key] if c_key < len(zeile) else None)
+        key = schluessel_normalisieren(row[c_key] if c_key < len(row) else None)
         if key not in KREISFREIE_STAEDTE:
             continue
         eintrag: dict = {"city": " ".join(str(
-            zeile[c_name] if c_name is not None and c_name < len(zeile) else "").split())}
+            row[c_name] if c_name is not None and c_name < len(row) else "").split())}
         for suffix, cols in bezug.items():
             for spaltenname, idx in cols.items():
                 eintrag[f"{spaltenname}_{suffix}"] = (
-                    _zahl(zeile[idx]) if idx is not None and idx < len(zeile) else None)
+                    _zahl(row[idx]) if idx is not None and idx < len(row) else None)
         budget_year.tax_rates[key] = eintrag
 
     # --- Blatt 5_1: Steuereinnahmekraft, drei Jahre + Durchschnitt ---
@@ -510,28 +510,28 @@ def lies_realsteuervergleich(pfad: str) -> Realsteuerjahrgang:
     if c_key is None or not jahresspalten:
         raise ValueError(f"{pfad}: Blatt 5_1 trägt nicht die erwarteten Spalten")
 
-    for zeile in zeilen[kopf_idx + 1:]:
-        if not zeile:
+    for row in zeilen[kopf_idx + 1:]:
+        if not row:
             continue
-        key = schluessel_normalisieren(zeile[c_key] if c_key < len(zeile) else None)
+        key = schluessel_normalisieren(row[c_key] if c_key < len(row) else None)
         if key not in KREISFREIE_STAEDTE:
             continue
         je_jahr = {}
         for j, cols in sorted(jahresspalten.items()):
-            teur = _zahl(zeile[cols["teur"]]) if cols["teur"] < len(zeile) else None
-            je_ew = _zahl(zeile[cols["je_ew"]]) if cols["je_ew"] < len(zeile) else None
+            teur = _zahl(row[cols["teur"]]) if cols["teur"] < len(row) else None
+            je_ew = _zahl(row[cols["je_ew"]]) if cols["je_ew"] < len(row) else None
             if teur is not None and je_ew is not None:
                 je_jahr[j] = {"teur": teur, "je_ew": je_ew}
         budget_year.einnahmekraft[key] = {
             "city": " ".join(str(
-                zeile[c_name] if c_name is not None and c_name < len(zeile) else "").split()),
-            "einwohner_schnitt": (_zahl(zeile[c_ew])
-                                  if c_ew is not None and c_ew < len(zeile) else None),
+                row[c_name] if c_name is not None and c_name < len(row) else "").split()),
+            "einwohner_schnitt": (_zahl(row[c_ew])
+                                  if c_ew is not None and c_ew < len(row) else None),
             "je_jahr": je_jahr,
-            "mittel_teur": (_zahl(zeile[c_mittel])
-                            if c_mittel is not None and c_mittel < len(zeile) else None),
-            "mittel_je_ew": (_zahl(zeile[c_mittel_ew])
-                             if c_mittel_ew is not None and c_mittel_ew < len(zeile) else None),
+            "mittel_teur": (_zahl(row[c_mittel])
+                            if c_mittel is not None and c_mittel < len(row) else None),
+            "mittel_je_ew": (_zahl(row[c_mittel_ew])
+                             if c_mittel_ew is not None and c_mittel_ew < len(row) else None),
         }
     return budget_year
 
@@ -544,17 +544,17 @@ def _realsteuer_kopf(pfad: str) -> tuple[int, str | None]:
     das gehört an die Zahl: Die Fassung, die wir gelesen haben, ist nicht
     zwingend die erste, die es gab.
     """
-    year, stand = None, None
-    for zeile in blatt_lesen(pfad, "Titel"):
-        for zelle in zeile:
+    year, as_of = None, None
+    for row in blatt_lesen(pfad, "Titel"):
+        for zelle in row:
             text = " ".join(str(zelle or "").split())
             if (m := re.search(r"Realsteuervergleich\s+(\d{4})", text)):
                 year = int(m.group(1))
             if (m := re.search(r"(Korrigierte Version vom [\d.]+)", text)):
-                stand = m.group(1)
+                as_of = m.group(1)
     if year is None:
         raise ValueError(f"{pfad}: Auf dem Titelblatt steht kein Berichtsjahr")
-    return year, stand
+    return year, as_of
 
 
 def probe_hebesatz(eintrag: dict) -> dict:

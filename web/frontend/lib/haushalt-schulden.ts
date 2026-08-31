@@ -28,7 +28,7 @@ export type BuergschaftsVorlage = {
   title: string;
   document_url: string | null;
   /** Datum der jüngsten Beratung; `null`, solange keine Sitzung verknüpft ist. */
-  datum: string | null;
+  date: string | null;
   /** Zeigt auf die vorhandene Beschluss-Seite. */
   decision_id: number | null;
 };
@@ -39,7 +39,7 @@ export type SchuldenDaten = {
   /** Was diese Zahlen zählen — kommt aus `council/schulden.py`, damit
    *  Oberfläche und Datenbank dieselbe Auskunft geben. */
   abgrenzung: string;
-  arten: { field: string; titel: string }[];
+  arten: { field: string; title: string }[];
   /** Was der Schuldenstand im Jahr kostet: Posten 17 der Ergebnisrechnung
    *  („Zinsen und ähnliche Aufwendungen"), also Ist aus dem Jahresabschluss —
    *  nicht aus dem Jahrbuch, aus dem der Bestand kommt.

@@ -137,8 +137,8 @@ def as_of_date(zeilen: list[list[object]]) -> int | None:
     Aus dem Blatt gelesen und nicht aus dem Dateinamen: Der Dateiname trägt
     mal „2024_Tabellenband", mal ein angehängtes „_0", und ein Ordner
     „2025-12" nennt das Jahr der Veröffentlichung, nicht das der Zahlen."""
-    for zeile in zeilen[:12]:
-        for value in zeile:
+    for row in zeilen[:12]:
+        for value in row:
             treffer = _STICHTAG.search(str(value or ""))
             if treffer:
                 return int(treffer.group(1))
@@ -147,11 +147,11 @@ def as_of_date(zeilen: list[list[object]]) -> int | None:
 
 def lies_gemeinde(zeilen: list[list[object]], ars: str = ARS_OLDENBURG) -> dict | None:
     """Die Zeile einer Gemeinde, über ihren Regionalschlüssel gefunden."""
-    for zeile in zeilen:
-        if zeile and str(zeile[0]).strip() == ars:
+    for row in zeilen:
+        if row and str(row[0]).strip() == ars:
             gefunden = {}
             for name, index in SPALTEN.items():
-                roh = zeile[index] if index < len(zeile) else None
+                roh = row[index] if index < len(row) else None
                 gefunden[name] = roh if name in ("ars", "name", "verwaltungsform") \
                     else _zahl(roh)
             year = as_of_date(zeilen)

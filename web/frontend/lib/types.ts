@@ -248,7 +248,7 @@ export interface BookmarkEntry {
 export interface AgendaAenderungZeile {
   art: "neu" | "geaendert" | "verschoben" | "vorlage" | "anlagen" | "entfernt";
   label: string;
-  titel: string;
+  title: string;
   nichtoeffentlich: boolean;
   detail: string | null;
 }
@@ -363,7 +363,7 @@ export interface MemberDetail {
   /** Zugehörigkeit für den Seitenkopf — wie im Verzeichnis aufgelöst
    *  („FDP/Volt" → FDP, wo es belegt ist). Die Zeitreihe darunter bleibt
    *  quellentreu. */
-  current_affiliation: { label: string; kind: "partei" | "gruppe" | "parteilos"; parties: string[] } | null;
+  current_affiliation: { label: string; kind: "party" | "group" | "independent"; parties: string[] } | null;
   /** s. `Member.art` — bei „beratend" bleibt `faction_timeline` leer. */
   art: "rat" | "beratend";
   organisation: string | null;
@@ -373,7 +373,7 @@ export interface MemberDetail {
    *  `parties` sind bei einer Gruppe ihre Mitglieds-Parteien. */
   faction_timeline: {
     label: string;
-    kind: "partei" | "gruppe" | "parteilos";
+    kind: "party" | "group" | "independent";
     parties: string[];
     first: string;
     last: string;
@@ -416,7 +416,7 @@ export type PersonProfil = MemberDetail | VerwaltungDetail;
 
 /** Eine Station der offiziellen Beratungsfolge einer Vorlage. */
 export interface Beratung {
-  datum: string | null;
+  date: string | null;
   committee: string;
   top: string | null;
   is_public: number | null;
@@ -457,7 +457,7 @@ export interface DecisionDetail {
   follow?: { kvonr: number; following: boolean };
   /** Stufe 3b: Läuft zu diesem Bauleitplan gerade eine Bürgerbeteiligung?
    *  Kommt von oldenburg.planungsbeteiligung.de, gematcht über die Plan-Nummer. */
-  beteiligung?: { titel: string; schritt: string; von: string | null;
+  beteiligung?: { title: string; schritt: string; von: string | null;
                   bis: string | null; url: string;
                   /** "laufend" oder "beendet": Abgeschlossene Verfahren
                    *  loescht das Portal der Stadt spurlos — bei uns bleiben
@@ -493,7 +493,7 @@ export interface DecisionDetail {
   haushalts_anschluss?: {
     art: "nachbewilligung" | "buergschaft";
     href: string;
-    titel: string;
+    title: string;
     template_number: string;
     year?: number | null;
     amount?: number | null;

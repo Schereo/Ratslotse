@@ -35,16 +35,16 @@ import { deZahl } from "@/components/grafik/format";
  *  eine einzige Liste. Sie stehen hier, weil dreizehn Kacheln nebeneinander
  *  niemand liest, und sie sind nach der Frage geschnitten, die sie
  *  beantworten, nicht nach der Bilanzseite. */
-export const GRUPPEN: { titel: string; question: string; keys: string[] }[] = [
+export const GRUPPEN: { title: string; question: string; keys: string[] }[] = [
   {
-    titel: "Was der Stadt gehört",
+    title: "Was der Stadt gehört",
     question: "Wie viel des Vermögens ist wirklich ihres — und wie viel davon "
       + "steckt in Gebäuden, Straßen und Leitungen?",
     keys: ["eigenkapitalquote_1", "eigenkapitalquote_2", "anlagenintensitaet",
            "infrastrukturquote"],
   },
   {
-    titel: "Was auf jede*n entfällt",
+    title: "Was auf jede*n entfällt",
     question: "Dieselben Beträge, geteilt durch die Zahl der Einwohnenden — "
       + "die Reihe, die vom Wachstum der Stadt abhängt.",
     keys: ["population", "vermoegen_je_einwohner", "verschuldung_je_einwohner",
@@ -52,7 +52,7 @@ export const GRUPPEN: { titel: string; question: string; keys: string[] }[] = [
            "neuverschuldung_je_einwohner", "netto_neuinvestitionen_je_einwohner"],
   },
   {
-    titel: "Wofür das Geld draufgeht",
+    title: "Wofür das Geld draufgeht",
     question: "Welcher Teil der Ausgaben ins Personal fließt, welcher Teil der "
       + "Einnahmen aus Steuern kommt — und ob mehr gebaut als abgeschrieben wird.",
     keys: ["steuerquote", "personalintensitaet", "reinvestitionsquote"],

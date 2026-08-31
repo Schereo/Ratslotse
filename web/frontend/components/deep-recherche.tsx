@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 
 /** Künftige Beratungsstation einer zitierten Vorlage (Sitzungskalender). */
 export type Planung = {
-  kvonr: number; datum: string | null; committee: string | null;
+  kvonr: number; date: string | null; committee: string | null;
   template_number: string | null; vorlage_titel: string | null;
 };
 
@@ -330,14 +330,14 @@ export function WieEsWeitergeht({ planungen }: { planungen: Planung[] }) {
       </p>
       <div className="mt-2 flex flex-col gap-2">
         {planungen.slice(0, 5).map((p, i) => (
-          <div key={`${p.kvonr}-${p.datum}-${i}`} className="flex items-start gap-2.5">
+          <div key={`${p.kvonr}-${p.date}-${i}`} className="flex items-start gap-2.5">
             <CalendarDays className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
             <div className="min-w-0 flex-1">
               <p className="text-[12.5px] leading-snug text-foreground">
                 {p.vorlage_titel || p.template_number || "Vorlage"}
               </p>
               <p className="mt-0.5 font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
-                {p.committee}{p.datum ? ` · ${fmtDatum(p.datum)}` : ""}
+                {p.committee}{p.date ? ` · ${fmtDatum(p.date)}` : ""}
               </p>
             </div>
           </div>

@@ -270,11 +270,11 @@ def parse_formeln(text: str, report_year: int) -> list[dict]:
     zeilen = block.split("\n")
 
     formeln: list[dict] = []
-    for i, zeile in enumerate(zeilen):
-        stelle = zeile.find("Ermittlung")
+    for i, row in enumerate(zeilen):
+        stelle = row.find("Ermittlung")
         if stelle < 0:
             continue
-        formula = zeile[stelle:].split(":", 1)[-1].strip()
+        formula = row[stelle:].split(":", 1)[-1].strip()
         # WO EINE FORMEL AUFHÖRT. Sie bricht auf zwei Arten um: mit Trennstrich
         # („Gesamtaufwen-\ndungen") und ohne („… / ordentliche
         # \nGesamtaufwendungen"). Eine Regel, die nur den Trennstrich kennt,

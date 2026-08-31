@@ -114,7 +114,7 @@ class KfaZuweisungen:
     """Ein Ausgleichsjahr aus Blatt ``9a`` — die acht kreisfreien Städte."""
 
     year: int
-    stand: str | None
+    as_of: str | None
     #: Schlüssel (sechsstellig) → {city, zuweisungen_*, nettobetrag,
     #: nettobetrag_je_ew}. Alle Beträge in **Tausend Euro**, wie im Blatt.
     staedte: dict[str, dict] = field(default_factory=dict)
@@ -178,28 +178,28 @@ def lies_zuweisungen(pfad: str) -> list[KfaZuweisungen]:
             f"(gefunden: {sorted(spalten.values())[:4]}…). Lieber abbrechen als "
             f"über Spaltenpositionen raten.")
 
-    stand = None
-    for zeile in zeilen[:6]:
-        for zelle in zeile:
+    as_of = None
+    for row in zeilen[:6]:
+        for zelle in row:
             if (m := re.search(r"Stand:\s*([\d.]+)", str(zelle or ""))):
-                stand = m.group(1)
+                as_of = m.group(1)
 
     aus: list[KfaZuweisungen] = []
     for year in sorted(vollstaendig):
-        budget_year = KfaZuweisungen(year=year, stand=stand)
-        for zeile in zeilen[kopf_idx + 1:]:
-            if not zeile or c_key >= len(zeile):
+        budget_year = KfaZuweisungen(year=year, as_of=as_of)
+        for row in zeilen[kopf_idx + 1:]:
+            if not row or c_key >= len(row):
                 continue
-            key = sv.schluessel_normalisieren(zeile[c_key])
+            key = sv.schluessel_normalisieren(row[c_key])
             if not key or key not in sv.KREISFREIE_STAEDTE:
                 # Blatt 9a führt nur die acht kreisfreien Städte; alles andere
                 # sind Zwischenüberschriften und Summenzeilen.
                 continue
-            werte = {name: sv._zahl(zeile[i]) if i < len(zeile) else None
+            werte = {name: sv._zahl(row[i]) if i < len(row) else None
                      for name, i in vollstaendig[year].items()}
             if werte.get("nettobetrag") is None:
                 continue
-            werte["city"] = " ".join(str(zeile[c_name] or "").split())
+            werte["city"] = " ".join(str(row[c_name] or "").split())
             budget_year.staedte[key] = werte
         if budget_year.staedte:
             aus.append(budget_year)

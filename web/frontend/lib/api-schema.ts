@@ -1448,7 +1448,7 @@ export interface paths {
          *       „Ansatz", der Haushalt ist aber nur eines der Jahre, und die
          *       Finanzplanung schreibt jeder neue Haushalt neu. Die Zahlen stammen aus
          *       der Einbringungs-Vorlage, sind also der **Entwurf** der Verwaltung —
-         *       der Beleg (``herkunft.stand``) sagt das, die Anzeige sollte es
+         *       der Beleg (``herkunft.as_of``) sagt das, die Anzeige sollte es
          *       anschreiben,
          *     - ``budgeted_years``: die Jahre mit einem Haushaltsansatz — die Liste, aus
          *       der ein Jahr-Umschalter bestehen darf (ohne die Finanzplanungsjahre),
@@ -1599,7 +1599,7 @@ export interface paths {
          *       rechnen,
          *     - ``personen``: die Aufsichtsorgane, Person für Person, mit Gremium,
          *       Vorsitz, Amtszeit-Hinweis und — wo das Verzeichnis die Person
-         *       eindeutig kennt — ``slug`` und ``partei`` für die Personen-Seite.
+         *       eindeutig kennt — ``slug`` und ``party`` für die Personen-Seite.
          *       ``position`` steht nur da, wo die Spaltenprobe gehalten hat; siehe
          *       ``roles_assignable`` an der Gesellschaft. Zwei der fünf Abschnitte
          *       sind nämlich keine Prosa, sondern Tabellen, die der PDF-Extrakt
@@ -2285,31 +2285,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/council/partei-meinungen": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Partei Meinungen Endpoint
-         * @description Baustein „Das sagen die Parteien" (Task 30): Wird vom Frontend NACH der
-         *     gestreamten Antwort geladen (kostet die Hauptantwort keine Latenz). Sammelt
-         *     aus ZWEI Kanälen — fraktions-bewusste Ähnlichkeitssuche (Cross-Encoder-
-         *     geprüft) und die Aussprache zu den belegten Beschlüssen — und verdichtet
-         *     das per LLM je Fraktion. Leer ({parteien: []}), wenn die Datenlage zu dünn
-         *     ist — der Baustein erscheint dann nicht.
-         */
-        post: operations["partei_meinungen_endpoint_api_council_partei_meinungen_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/council/parties": {
         parameters: {
             query?: never;
@@ -2328,6 +2303,31 @@ export interface paths {
         get: operations["parties_api_council_parties_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/council/party-meinungen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Partei Meinungen Endpoint
+         * @description Baustein „Das sagen die Parteien" (Task 30): Wird vom Frontend NACH der
+         *     gestreamten Antwort geladen (kostet die Hauptantwort keine Latenz). Sammelt
+         *     aus ZWEI Kanälen — fraktions-bewusste Ähnlichkeitssuche (Cross-Encoder-
+         *     geprüft) und die Aussprache zu den belegten Beschlüssen — und verdichtet
+         *     das per LLM je Fraktion. Leer ({parteien: []}), wenn die Datenlage zu dünn
+         *     ist — der Baustein erscheint dann nicht.
+         */
+        post: operations["partei_meinungen_endpoint_api_council_party_meinungen_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4964,8 +4964,8 @@ export interface components {
         ParteiMeinungenBody: {
             /** Beschluss Ids */
             beschluss_ids?: number[];
-            /** Frage */
-            frage: string;
+            /** Question */
+            question: string;
         };
         /** ParteienFilter */
         ParteienFilter: {
@@ -5029,8 +5029,8 @@ export interface components {
         QaFeedbackBody: {
             /** Answer Excerpt */
             answer_excerpt?: string | null;
-            /** Frage */
-            frage: string;
+            /** Question */
+            question: string;
             /** Rating */
             rating: string;
             /** Reason */
@@ -5089,10 +5089,10 @@ export interface components {
             auszug: string;
             /** Committee */
             committee?: string | null;
-            /** Datum */
-            datum?: string | null;
-            /** Partei */
-            partei?: string | null;
+            /** Date */
+            date?: string | null;
+            /** Party */
+            party?: string | null;
             /** Protokoll Seite */
             protokoll_seite?: number | null;
             /** Protokoll Url */
@@ -5104,8 +5104,8 @@ export interface components {
         };
         /** QaShareKernaussage */
         QaShareKernaussage: {
-            /** Datum */
-            datum?: string | null;
+            /** Date */
+            date?: string | null;
             /** Speaker */
             speaker?: string | null;
             /**
@@ -5130,8 +5130,8 @@ export interface components {
             haltung?: string | null;
             /** QaShareKernaussage */
             kernaussage?: {
-                /** Datum */
-                datum?: string | null;
+                /** Date */
+                date?: string | null;
                 /** Speaker */
                 speaker?: string | null;
                 /**
@@ -5142,8 +5142,8 @@ export interface components {
             } | null;
             /** Note */
             note?: string | null;
-            /** Partei */
-            partei: string;
+            /** Party */
+            party: string;
             /**
              * Position
              * @default
@@ -5152,10 +5152,10 @@ export interface components {
         };
         /** QaSharePresse */
         QaSharePresse: {
-            /** Datum */
-            datum?: string | null;
-            /** Titel */
-            titel: string;
+            /** Date */
+            date?: string | null;
+            /** Title */
+            title: string;
             /** Url */
             url: string;
         };
@@ -8736,7 +8736,27 @@ export interface operations {
             };
         };
     };
-    partei_meinungen_endpoint_api_council_partei_meinungen_post: {
+    parties_api_council_parties_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParteienFilter"];
+                };
+            };
+        };
+    };
+    partei_meinungen_endpoint_api_council_party_meinungen_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -8765,26 +8785,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    parties_api_council_parties_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ParteienFilter"];
                 };
             };
         };
@@ -10741,4 +10741,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: aa1ebc6ef3c86e10bd3ba483624a83b70a2cb9598270baa6e3280672b65f4d74
+// vertrag-sha256: a6a75bb8c7d043a9534bdda7ad193034636ab084b160d46d0b3d147e1e78d2a3

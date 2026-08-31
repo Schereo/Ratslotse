@@ -1434,8 +1434,8 @@ struct DecisionDetailView: View {
           ],
           "importance_breakdown": {"score":82,"impact_reason":"Der Beschluss betrifft nahezu alle Aufgaben der Stadt und legt den finanziellen Rahmen für das ganze Jahr fest."},
           "beratungsfolge": [
-            {"datum":"2026-01-21","committee":"Finanzen und Beteiligungen","top":"4","result":"empfohlen","ksinr":87,"future":false},
-            {"datum":"2026-02-09","committee":"Rat der Stadt","top":"6.5","result":"angenommen","ksinr":88,"future":false}
+            {"date":"2026-01-21","committee":"Finanzen und Beteiligungen","top":"4","result":"empfohlen","ksinr":87,"future":false},
+            {"date":"2026-02-09","committee":"Rat der Stadt","top":"6.5","result":"angenommen","ksinr":88,"future":false}
           ],
           "follow":{"kvonr":901,"following":false},
           "similar": [],
@@ -3030,14 +3030,14 @@ private struct SessionDetailView: View {
             "changed_at": "2026-08-30T12:15:00+02:00",
             "satz": "Ein TOP wurde ergänzt und eine Anlage aktualisiert.",
             "zeilen": [
-              {"art":"neu","label":"Ö 7","titel":"Sichere Querung an der Cloppenburger Straße","nichtoeffentlich":false,"detail":"Neu auf die Tagesordnung gesetzt"},
-              {"art":"anlagen","label":"Ö 4","titel":"Radverkehrskonzept für Oldenburg","nichtoeffentlich":false,"detail":"Eine Anlage hinzugefügt"}
+              {"art":"neu","label":"Ö 7","title":"Sichere Querung an der Cloppenburger Straße","nichtoeffentlich":false,"detail":"Neu auf die Tagesordnung gesetzt"},
+              {"art":"anlagen","label":"Ö 4","title":"Radverkehrskonzept für Oldenburg","nichtoeffentlich":false,"detail":"Eine Anlage hinzugefügt"}
             ]
           }, {
             "changed_at": "2026-08-28T09:30:00+02:00",
             "satz": "Ein Punkt wurde entfernt.",
             "zeilen": [
-              {"art":"entfernt","label":"Ö 3","titel":"Bericht der Verwaltung","nichtoeffentlich":false,"detail":null}
+              {"art":"entfernt","label":"Ö 3","title":"Bericht der Verwaltung","nichtoeffentlich":false,"detail":null}
             ]
           }]
         }

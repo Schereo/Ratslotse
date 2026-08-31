@@ -21,7 +21,7 @@
 
 import { cn } from "@/lib/utils";
 
-export function LueckenFeld({ label, reason, datum, className }: {
+export function LueckenFeld({ label, reason, date, className }: {
   /** Was fehlt — meist die Jahreszahl („2019"), sonst der Teil
    *  („Teil B 2026"). */
   label: string;
@@ -30,7 +30,7 @@ export function LueckenFeld({ label, reason, datum, className }: {
    *  Grund ist keine Auskunft, sondern ein Loch. */
   reason: string;
   /** Stichtag der Feststellung, wo bekannt („12.08.2026"). */
-  datum?: string;
+  date?: string;
   className?: string;
 }) {
   return (
@@ -50,9 +50,9 @@ export function LueckenFeld({ label, reason, datum, className }: {
         </span>
         {" — "}
         {reason}
-        {datum && (
+        {date && (
           <span className="ml-1.5 whitespace-nowrap font-mono text-[9.5px] uppercase tracking-wide text-muted-foreground">
-            Stand {datum}
+            Stand {date}
           </span>
         )}
       </p>

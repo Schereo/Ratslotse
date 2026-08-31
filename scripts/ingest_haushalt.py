@@ -64,7 +64,7 @@ def _ingest_year(store: CouncilStore, year: int, url: str | None, pdf: str | Non
         label=f"Beschlossener Haushaltsplan {year}",
         citation="Übersicht „Ergebnishaushalt“ — Teilhaushalte mit "
                    "ordentlichen Erträgen und Aufwendungen",
-        stand=f"Haushaltsjahr {year}"))
+        as_of=f"Haushaltsjahr {year}"))
     summe = next((r for r in rows if r["is_total"]), {})
     print(f"  {year}: {len(rows)} Zeilen (Aufwendungen {round((summe.get('expenses') or 0) / 1e6)} Mio. €)")
     return True
@@ -83,7 +83,7 @@ def _ingest_year_csv(store: CouncilStore, year: int, url: str) -> bool:
         label=f"Ergebnishaushalt {year} (Open-Data-Portal)",
         citation="Ergebnishaushalt-CSV, eine Zeile je Teilhaushalt plus "
                    "Zeile „Gesamtergebnishaushalt“",
-        stand=f"Haushaltsjahr {year}"))
+        as_of=f"Haushaltsjahr {year}"))
     summe = next((r_ for r_ in rows if r_["is_total"]), {})
     print(f"  {year}: {len(rows)} Zeilen aus Open-Data-CSV "
           f"(Aufwendungen {round((summe.get('expenses') or 0) / 1e6)} Mio. €)")

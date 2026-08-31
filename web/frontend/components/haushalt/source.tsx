@@ -198,7 +198,7 @@ export function Beleg({ q, h, className }: {
         ref={knopf}
         type="button"
         onClick={() => setOffen((o) => !o)}
-        aria-label={`Beleg ${nr}: ${source.titel}`}
+        aria-label={`Beleg ${nr}: ${source.title}`}
         aria-expanded={offen}
         className={cn(
           "ml-0.5 inline-flex h-4 w-4 items-center justify-center rounded bg-primary/10 align-super text-[9px] font-bold text-primary transition-colors hover:bg-primary/20",
@@ -349,11 +349,11 @@ function Fundstelle({ ziel }: { ziel: Belegziel }) {
  *  „beschlossen" machte aus einer Herkunftsangabe eine Meinung. */
 function Vorgang({ ziel }: { ziel: Belegziel }) {
   const b = ziel.dokument.official_text;
-  if (!b || !b.datum) return null;
+  if (!b || !b.date) return null;
   const committee = b.committee ? gremiumKurz(b.committee) : "Der Rat";
   return (
     <span className="mt-1 block text-[11px] leading-relaxed text-foreground/80">
-      {committee} hat das am {datumLang(b.datum)} {vorgangVerb(b.outcome)}
+      {committee} hat das am {datumLang(b.date)} {vorgangVerb(b.outcome)}
       {b.template_number && (
         <span className="text-muted-foreground"> · Vorlage {b.template_number}</span>
       )}
@@ -398,7 +398,7 @@ function QuelleInhalt({ source, nr, ziel, jahrgaenge, imVerzeichnis }: {
   return (
     <>
       <span className="block text-[11.5px] font-bold leading-snug">
-        {nr}. {source.titel}
+        {nr}. {source.title}
       </span>
       {/* DER LANGE ABSATZ STEHT HIER NICHT MEHR (Tim, 21.08.2026: „der Text,
           der dann erscheint, ist wirklich riesig"). `source.citation` ist
@@ -622,7 +622,7 @@ export function Quellenverzeichnis({ keys }: { keys: QuellenSchluessel[] }) {
                   : nummern[0].nr}
               </span>
               <div className="min-w-0">
-                <p className="text-[12.5px] font-semibold leading-snug">{q.titel}</p>
+                <p className="text-[12.5px] font-semibold leading-snug">{q.title}</p>
                 {/* Im Verzeichnis stehen die schwersten Wörter des ganzen
                     Bereichs — „Gesamtermächtigung", „Ergebnisrechnung",
                     „Ertragsart". Sie hier zu erklären kostet nichts und

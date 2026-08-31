@@ -39,7 +39,7 @@ def _send_goodbye_email(email: str) -> None:
         "wieder willkommen.</p>",
         held="abschied",
         kicker="Dein Konto",
-        titel="Tschüss — und danke!",
+        title="Tschüss — und danke!",
         fusszeile="Falls du diese Löschung nicht selbst ausgelöst hast, "
                   "antworte bitte umgehend auf diese E-Mail.",
     )
@@ -172,7 +172,7 @@ def test_notification(
     sent = deliver_message(
         owner,
         "<p>Moin! Das ist eine <b>Test-Benachrichtigung</b> von Ratslotse — "
-        "exact so sehen Hinweise zu deinen Themen und Tagesordnungen aus.</p>",
+        "genau so sehen Hinweise zu deinen Themen und Tagesordnungen aus.</p>",
         email_subject="Ratslotse – Test-Benachrichtigung",
     )
     return {"sent": sent}

@@ -264,7 +264,7 @@ function AntragsZeile({ a }: { a: StreitAntrag }) {
           <Fraktion label={a.author} />
         )}
         <p className="mt-0.5 max-w-[86ch] text-[12.5px] leading-relaxed text-muted-foreground">
-          {a.titel}
+          {a.title}
         </p>
       </div>
       <span className="flex-none">
@@ -284,7 +284,7 @@ function StationsAntraege({ s }: { s: StreitStation }) {
           {gremiumKurz(s.committee)}
         </h3>
         <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
-          {datumLang(s.datum)} · {fraktionen.length} aus dem Rat
+          {datumLang(s.date)} · {fraktionen.length} aus dem Rat
           {verwaltung.length > 0 && ` · ${verwaltung.length} der Verwaltung`}
         </span>
       </div>
@@ -468,7 +468,7 @@ export function StreitAbschnitt({ onBestand }: {
                 Wie es ausging
               </h2>
               <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
-                {gremiumKurz(schluss.committee)} · {datumLang(schluss.datum)}
+                {gremiumKurz(schluss.committee)} · {datumLang(schluss.date)}
               </span>
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -559,7 +559,7 @@ export function StreitAbschnitt({ onBestand }: {
               </h2>
               <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
                 {debatte.debatte.length} Wortbeiträge · {gremiumKurz(debatte.committee)},{" "}
-                {datumLang(debatte.datum)}
+                {datumLang(debatte.date)}
               </span>
             </div>
             {/* Wer wie oft zu Wort kam. Vorher lief das als nackte Wortkette
@@ -636,7 +636,7 @@ export function StreitAbschnitt({ onBestand }: {
         )}
 
         <LottiErklaert
-          titel="Was eine Änderungsliste ist"
+          title="Was eine Änderungsliste ist"
           pose="point"
           text={
             "Die Verwaltung legt einen Entwurf vor. Wer daran etwas ändern will, sammelt seine " +

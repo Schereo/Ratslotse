@@ -33,8 +33,8 @@ const QUELLEN: QuellenSchluessel[] = [
 ];
 
 const MARKEN = [
-  { id: "bereiche", titel: "Was die Namen heißen" },
-  { id: "produkte", titel: "Was einzelne Aufgaben kosten" },
+  { id: "bereiche", title: "Was die Namen heißen" },
+  { id: "produkte", title: "Was einzelne Aufgaben kosten" },
 ];
 
 function ProdukteSeiteInner() {

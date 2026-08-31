@@ -21,8 +21,8 @@
 export type JahrWert = { year: number; value: number; bruchDavor?: string };
 
 /** Eine Lücke: das Jahr gibt es, den Wert nicht — und der Grund reist mit.
- *  `datum` ist der Stichtag der Feststellung, wo er bekannt ist. */
-export type JahrLuecke = { year: number; fehlt: string; datum?: string };
+ *  `date` ist der Stichtag der Feststellung, wo er bekannt ist. */
+export type JahrLuecke = { year: number; fehlt: string; date?: string };
 
 /** Eine Reihe besteht aus Punkten UND Lücken — in einer Liste, damit die
  *  x-Achse vollständig bleibt und keine Komponente Lücken „vergessen" kann. */

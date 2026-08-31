@@ -139,7 +139,7 @@ def kontext(punkt: dict, anlagen: list[dict]) -> tuple[str, str]:
         budget -= len(text)
         genutzt += 1
 
-    source = "titel"
+    source = "title"
     if kern or punkt.get("proposed_decision"):
         source = "vorlage+anlagen" if genutzt else "vorlage"
     return "\n\n".join(teile), source

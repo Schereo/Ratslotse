@@ -65,8 +65,8 @@ def fetch_beratungsfolge(scraper: CouncilScraper, kvonr: int) -> list[dict]:
         if not txt:
             continue
 
-        datum = _iso(txt)
-        if datum:  # Datum vorn abschneiden
+        date = _iso(txt)
+        if date:  # Datum vorn abschneiden
             txt = _DATE_RE.sub("", txt, count=1).strip()
 
         is_public: bool | None = None
@@ -89,9 +89,9 @@ def fetch_beratungsfolge(scraper: CouncilScraper, kvonr: int) -> list[dict]:
             if m:
                 ksinr = int(m.group(1))
 
-        if committee or datum:
+        if committee or date:
             out.append({
-                "datum": datum, "committee": committee, "top": top,
+                "date": date, "committee": committee, "top": top,
                 "is_public": is_public, "result": result, "ksinr": ksinr,
             })
     return out
@@ -198,6 +198,6 @@ def fetch_person_mitarbeit(scraper: CouncilScraper, kpenr: int) -> list[dict]:
     return out
 
 
-def is_future(datum: str | None) -> bool:
+def is_future(iso: str | None) -> bool:
     """True für Beratungsstationen, die noch bevorstehen."""
-    return bool(datum) and datum > date.today().isoformat()
+    return bool(iso) and iso > date.today().isoformat()

@@ -314,7 +314,7 @@ def test_doctype_wird_abgelehnt(tmp_path):
 def test_kfa_liest_die_acht_staedte(kfa2026):
     budget_year = sv.lies_kfa(kfa2026)
     assert (budget_year.year, budget_year.prior_year) == (2026, 2025)
-    assert budget_year.stand == "26.03.2026"
+    assert budget_year.as_of == "26.03.2026"
     # Alle Gemeinden der Datei, nicht nur die Städte: Die Überlappungsprobe
     # ist nur dann etwas wert, wenn sie über den ganzen Bestand läuft.
     assert len(budget_year.staedte) == len(KFA2026_ZEILEN)
@@ -403,7 +403,7 @@ def test_steuerkraft_je_einwohner_ergibt_die_veroeffentlichten_werte(kfa2026):
 def test_realsteuervergleich_liest_hebesaetze_und_einnahmekraft(realsteuer):
     rs = sv.lies_realsteuervergleich(realsteuer)
     assert rs.year == 2025
-    assert rs.stand == "Korrigierte Version vom 30.07.2026"
+    assert rs.as_of == "Korrigierte Version vom 30.07.2026"
     ol = rs.tax_rates["403000"]
     assert (ol["rate_grundsteuer_a"], ol["rate_grundsteuer_b"],
             ol["rate_gewerbesteuer"]) == (500, 539, 439)
@@ -508,7 +508,7 @@ def _herkunft(probe="lsn_zweijahresueberlappung") -> herkunft.Herkunft:
         art="lsn", probe=probe, label="Kommunaler Finanzausgleich 2026",
         url="https://example.org/kfa2026.xlsx",
         citation="Blatt ST_KR_MESS_VGL", probe_result="403 von 403",
-        stand="26.03.2026")
+        as_of="26.03.2026")
 
 
 def test_lsn_ist_eine_bekannte_quellenart():

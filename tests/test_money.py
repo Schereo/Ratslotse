@@ -139,12 +139,12 @@ def test_der_sammelbericht_traegt_seine_meldeschwelle_nicht_als_betrag():
     Die ältere Fassung schrieb „unter 50.000 EUR", die neuere „bis zu
     50.000 Euro" — nur die erste fiel unter die Fundort-Regel."""
     for grenzwort in ("unter", "bis zu"):
-        titel = (f"Über- und außerplanmäßige Auszahlungen, Aufwendungen und "
+        title = (f"Über- und außerplanmäßige Auszahlungen, Aufwendungen und "
                  f"Verpflichtungsermächtigungen {grenzwort} 50.000 Euro in der "
                  f"Zeit vom 01.01.2025 bis 30.06.2025")
-        assert ist_sammelbericht(titel), grenzwort
-        assert largest_amount(f"{titel}. Der Bericht wird zur Kenntnis genommen.",
-                              titel) is None, grenzwort
+        assert ist_sammelbericht(title), grenzwort
+        assert largest_amount(f"{title}. Der Bericht wird zur Kenntnis genommen.",
+                              title) is None, grenzwort
 
 
 def test_bis_zu_allein_macht_noch_keine_schwelle():

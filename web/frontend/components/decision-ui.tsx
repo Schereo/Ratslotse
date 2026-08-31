@@ -330,12 +330,12 @@ export function AffiliationBadge({
   label, kind, parties = [], className,
 }: {
   label: string;
-  kind: "partei" | "gruppe" | "parteilos";
+  kind: "party" | "group" | "independent";
   parties?: string[];
   className?: string;
 }) {
-  if (kind === "partei") return <PartyBadge party={label} className={className} />;
-  if (kind === "parteilos") {
+  if (kind === "party") return <PartyBadge party={label} className={className} />;
+  if (kind === "independent") {
     return (
       <span className={cn("inline-flex items-center rounded-md border border-border px-2 py-0.5 text-xs font-medium text-muted-foreground", className)}>
         parteilos

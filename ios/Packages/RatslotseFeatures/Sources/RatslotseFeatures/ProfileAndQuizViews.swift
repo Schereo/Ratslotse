@@ -210,7 +210,7 @@ struct PublicProfileView: View {
                     activeFrom: "2021-11-01",
                     activeTo: nil,
                     factionTimeline: [
-                        .init(label: "SPD-Fraktion", kind: "partei", parties: ["SPD"], first: "2021-11-01", last: "2026-08-28", n: 18),
+                        .init(label: "SPD-Fraktion", kind: "party", parties: ["SPD"], first: "2021-11-01", last: "2026-08-28", n: 18),
                     ],
                     ris: .init(kpenr: 42, name: "Anne Beispiel", currentFaction: "SPD-Fraktion", memberships: [
                         .init(kgrnr: 1, committee: "Verkehrsausschuss", role: "Vorsitzende", from: "2021-11-01", until: nil),

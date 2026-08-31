@@ -712,7 +712,7 @@ def _lexikon_zuordnung(store: CouncilStore,
                 vor, nach, fn[0][0] if fn else None, nach_paar)
         verlinkbar = bool(eintrag) and eintrag.get("art") == "rat"
         aus[name] = {"slug": eintrag["slug"] if verlinkbar else None,
-                     "partei": eintrag["partei"] if eintrag else None}
+                     "party": eintrag["party"] if eintrag else None}
     return aus
 
 
@@ -735,7 +735,7 @@ def haushalt_beteiligungen(
       rechnen,
     - ``personen``: die Aufsichtsorgane, Person für Person, mit Gremium,
       Vorsitz, Amtszeit-Hinweis und — wo das Verzeichnis die Person
-      eindeutig kennt — ``slug`` und ``partei`` für die Personen-Seite.
+      eindeutig kennt — ``slug`` und ``party`` für die Personen-Seite.
       ``position`` steht nur da, wo die Spaltenprobe gehalten hat; siehe
       ``roles_assignable`` an der Gesellschaft. Zwei der fünf Abschnitte
       sind nämlich keine Prosa, sondern Tabellen, die der PDF-Extrakt
@@ -986,7 +986,7 @@ def haushalt_uebersicht(
       „Ansatz", der Haushalt ist aber nur eines der Jahre, und die
       Finanzplanung schreibt jeder neue Haushalt neu. Die Zahlen stammen aus
       der Einbringungs-Vorlage, sind also der **Entwurf** der Verwaltung —
-      der Beleg (``herkunft.stand``) sagt das, die Anzeige sollte es
+      der Beleg (``herkunft.as_of``) sagt das, die Anzeige sollte es
       anschreiben,
     - ``budgeted_years``: die Jahre mit einem Haushaltsansatz — die Liste, aus
       der ein Jahr-Umschalter bestehen darf (ohne die Finanzplanungsjahre),
@@ -1132,7 +1132,7 @@ def haushalt_uebersicht(
             "naht_ab": ausgabenreihe_mod.NAHT_AB,
             "accounting_systems": {
                 r: {"label": ausgabenreihe_mod.REGELWERK[r],
-                    "titel": ausgabenreihe_mod.TITEL[r],
+                    "title": ausgabenreihe_mod.TITEL[r],
                     "abgrenzung": ausgabenreihe_mod.ABGRENZUNG[r]}
                 for r in ausgabenreihe_mod.REGELWERK
             },
@@ -1669,7 +1669,7 @@ def decision_detail(
     try:
         from council import beteiligung as bet_mod
         out["beteiligung"] = next(
-            ({"titel": b["titel"], "schritt": b["schritt"], "von": b["von"],
+            ({"title": b["title"], "schritt": b["schritt"], "von": b["von"],
               "bis": b["bis"], "url": b["url"], "status": b.get("status") or "laufend",
               "beendet_am": b.get("beendet_am")}
              # Auch beendete: Sie sind der einzige Ort, an dem eine
@@ -1745,7 +1745,7 @@ def decision_detail(
         if kv:
             today = date.today().isoformat()
             out["beratungsfolge"] = [
-                {**b, "future": bool(b["datum"] and b["datum"] > today)}
+                {**b, "future": bool(b["date"] and b["date"] > today)}
                 for b in store.get_beratungen(kv)
             ]
             # Design 28a/W1: Folgt dieses Konto dem Vorgang schon? Die kvonr
@@ -1844,7 +1844,7 @@ def gespraeche_alle_loeschen(user: dict = Depends(require_active),
 
 
 class QaFeedbackBody(BaseModel):
-    frage: str = Field(min_length=1, max_length=300)
+    question: str = Field(min_length=1, max_length=300)
     answer_excerpt: str | None = Field(default=None, max_length=500)
     rating: str = Field(pattern="^(up|down)$")
     reason: str | None = Field(default=None, max_length=500)
@@ -1862,20 +1862,20 @@ def qa_feedback(
     KI-Frage selbst ist es auch); die Feldlängen begrenzt das Schema, das
     Rate-Limit hält Skript-Flutung von Tabelle und Backups fern."""
     qa_feedback_limiter.check(request)
-    store.save_qa_feedback(body.frage, body.answer_excerpt, body.rating,
+    store.save_qa_feedback(body.question, body.answer_excerpt, body.rating,
                            body.reason, user_id=(user or {}).get("id"))
     return {"ok": True}
 
 
 class ParteiMeinungenBody(BaseModel):
-    frage: str = Field(min_length=3, max_length=300)
+    question: str = Field(min_length=3, max_length=300)
     #: Die Beschlüsse, auf denen die Antwort steht (Reihenfolge = Relevanz).
     #: Über sie kommt die Aussprache dazu, die ZU diesen Stationen gehört —
     #: siehe Kommentar im Endpoint. Leer (ältere Clients) → nur Vektor-Kanal.
     beschluss_ids: list[int] = Field(default_factory=list, max_length=20)
 
 
-@router.post("/partei-meinungen")
+@router.post("/party-meinungen")
 def partei_meinungen_endpoint(
     body: ParteiMeinungenBody,
     request: Request,
@@ -1897,7 +1897,7 @@ def partei_meinungen_endpoint(
         # Fraktions-bewusst sammeln (je Fraktion bis 5 Beiträge) — das globale
         # Top-24 bestand zur Hälfte aus Verwaltungs-Beiträgen ohne Fraktion,
         # die „Parteimeinung" war real eine Einzel-Paraphrase (Befund 10.08.).
-        hits = emb.search_wortbeitraege_je_fraktion(store, body.frage, body.frage)
+        hits = emb.search_wortbeitraege_je_fraktion(store, body.question, body.question)
         # ZWEITER KANAL: die Aussprache, die zu den belegten Beschlüssen GEHÖRT.
         # Der Vektor-Kanal sucht nach Ähnlichkeit zur Frage und findet damit
         # das Wortfeld — nicht zwingend die Debatte zur Sache. Auf „Was ist die
@@ -1931,9 +1931,9 @@ def partei_meinungen_endpoint(
             # auflösen (Tims Standing-Punkt) — der Baustein führt die beiden
             # danach getrennt, statt sie in einen Gruppen-Eimer zu werfen.
             qa.parteien_aufloesen(store, rows)
-            meinungen = qa.partei_meinungen(body.frage, rows)
+            meinungen = qa.partei_meinungen(body.question, rows)
             if meinungen:
-                store.partei_meinungen_cache_set(key, body.frage, meinungen)
+                store.partei_meinungen_cache_set(key, body.question, meinungen)
         # Vollständigkeits-Ehrlichkeit (Tims Direktive 10.08.): Fraktionen, die
         # im Rat aktiv sind, aber ohne passende Wortbeiträge zum Thema — der
         # Baustein sagt das, statt sie stillschweigend wegzulassen. Die
@@ -1946,7 +1946,7 @@ def partei_meinungen_endpoint(
             # in der Ehrlichkeits-Zeile stehen nur echte Ratsparteien (Tims
             # TestFlight-Feedback 11.08.), und „CDU-Fraktion" dedupliziert
             # gegen „CDU" statt daneben zu erscheinen.
-            vertreten = {qa.ratspartei_label(e["partei"]) or qa._fraktions_label(e["partei"])
+            vertreten = {qa.ratspartei_label(e["party"]) or qa._fraktions_label(e["party"])
                          for e in meinungen}
             aktive: list[str] = []
             for x in store.aktive_fraktionen():
@@ -1980,12 +1980,12 @@ class QaShareQuelle(BaseModel):
 
 class QaShareDebatte(BaseModel):
     speaker: str | None = Field(default=None, max_length=120)
-    partei: str | None = Field(default=None, max_length=60)
+    party: str | None = Field(default=None, max_length=60)
     art: str = Field(default="rede", max_length=30)
     top: str | None = Field(default=None, max_length=300)
     auszug: str = Field(default="", max_length=2000)
     committee: str | None = Field(default=None, max_length=120)
-    datum: str | None = Field(default=None, max_length=10)
+    date: str | None = Field(default=None, max_length=10)
     protokoll_url: str | None = Field(default=None, max_length=500)
     protokoll_seite: int | None = Field(default=None, ge=1, le=9999)
 
@@ -2001,9 +2001,9 @@ class QaShareDebatte(BaseModel):
 
 
 class QaSharePresse(BaseModel):
-    titel: str = Field(max_length=300)
+    title: str = Field(max_length=300)
     url: str = Field(max_length=500)
-    datum: str | None = Field(default=None, max_length=10)
+    date: str | None = Field(default=None, max_length=10)
 
 
 class QaShareAnlage(BaseModel):
@@ -2020,11 +2020,11 @@ class QaShareAnlage(BaseModel):
 class QaShareKernaussage(BaseModel):
     text: str = Field(default="", max_length=600)
     speaker: str | None = Field(default=None, max_length=120)
-    datum: str | None = Field(default=None, max_length=10)
+    date: str | None = Field(default=None, max_length=10)
 
 
 class QaSharePartei(BaseModel):
-    partei: str = Field(max_length=60)
+    party: str = Field(max_length=60)
     haltung: str | None = Field(default=None, max_length=20)
     position: str = Field(default="", max_length=800)
     einig: bool = True
@@ -2103,7 +2103,7 @@ def _grafik_pruefen(g: dict | None) -> dict | None:
     else:
         mehr = None
     return {"art": str(g.get("art") or "")[:30],
-            "titel": str(g.get("titel") or "")[:120],
+            "title": str(g.get("title") or "")[:120],
             "unit": str(g.get("unit") or "")[:20],
             "nachkomma": max(0, min(int(g.get("nachkomma") or 0), 3)),
             "series": series,
@@ -2254,10 +2254,10 @@ def deep_research_start(body: DeepResearchBody, user: dict = Depends(require_act
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE,
                             "Gerade laufen viele Recherchen — bitte versuche es gleich nochmal.")
     ratslotse.record_activity(user["id"], "recherche")
-    frage = body.question.strip()
-    job_id = ratslotse.deep_job_anlegen(user["id"], frage)
+    question = body.question.strip()
+    job_id = ratslotse.deep_job_anlegen(user["id"], question)
     settings = get_settings()
-    job = deepresearch.DeepJob(id=job_id, user_id=user["id"], frage=frage,
+    job = deepresearch.DeepJob(id=job_id, user_id=user["id"], question=question,
                                gespraech_id=body.conversation_id,
                                verlauf=[r.model_dump() for r in body.history])
     deepresearch.start_job(job, settings.ratslotse_db, settings.council_db)
@@ -2402,7 +2402,7 @@ def _stations_signature(rows: list[dict]) -> str:
     nachgetragen wurde. Genau das ist die Nachricht, auf die man wartet.
     """
     return json.dumps(
-        [f"{r.get('datum') or ''}|{r.get('committee') or ''}|{r.get('result') or ''}" for r in rows],
+        [f"{r.get('date') or ''}|{r.get('committee') or ''}|{r.get('result') or ''}" for r in rows],
         ensure_ascii=False,
     )
 
@@ -2420,8 +2420,8 @@ def list_follows(
     out = []
     for f in ratslotse.get_vorlage_follows(user["id"]):
         stations = store.get_beratungen(f["kvonr"])
-        naechste = next((b for b in stations if b.get("datum") and b["datum"] > today), None)
-        letzte = next((b for b in reversed(stations) if b.get("datum") and b["datum"] <= today), None)
+        naechste = next((b for b in stations if b.get("date") and b["date"] > today), None)
+        letzte = next((b for b in reversed(stations) if b.get("date") and b["date"] <= today), None)
         out.append({
             **f,
             "url": _vorlage_url(f["kvonr"]),
@@ -2523,7 +2523,7 @@ def public_stats(store: CouncilStore = Depends(get_council_store)) -> Oeffentlic
 # Public wie public-stats: Die geteilten Antwort-Seiten (app/g) brauchen es
 # ohne Konto, und der Inhalt sind amtliche RIS-Daten. Prozess-Cache mit
 # Tages-TTL — die Quelle ändert sich höchstens mit dem täglichen Import.
-_PERSONEN_LEXIKON_CACHE: dict = {"stand": 0.0, "daten": None}
+_PERSONEN_LEXIKON_CACHE: dict = {"as_of": 0.0, "daten": None}
 
 
 @router.get("/personen-lexikon")
@@ -2531,9 +2531,9 @@ def personen_lexikon(response: Response,
                      store: CouncilStore = Depends(get_council_store)) -> PersonenLexikon:
     import time as _time
     if _PERSONEN_LEXIKON_CACHE["daten"] is None or \
-            _time.time() - _PERSONEN_LEXIKON_CACHE["stand"] > 6 * 3600:
+            _time.time() - _PERSONEN_LEXIKON_CACHE["as_of"] > 6 * 3600:
         _PERSONEN_LEXIKON_CACHE["daten"] = store.personen_lexikon()
-        _PERSONEN_LEXIKON_CACHE["stand"] = _time.time()
+        _PERSONEN_LEXIKON_CACHE["as_of"] = _time.time()
     response.headers["Cache-Control"] = "public, max-age=21600"
     return {"personen": _PERSONEN_LEXIKON_CACHE["daten"]}
 
@@ -2589,19 +2589,19 @@ def preview(kind: str, key: str, store: CouncilStore = Depends(get_council_store
         d = store.get_decision(int(key)) if key.isdigit() else None
         if not d:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Beschluss nicht gefunden.")
-        titel = (d.get("title") or "Beschluss des Oldenburger Stadtrats").strip()
+        title = (d.get("title") or "Beschluss des Oldenburger Stadtrats").strip()
         result = _PREVIEW_OUTCOME.get(d.get("outcome") or "")
         kopf = " · ".join(x for x in (d.get("committee"), _preview_datum(d.get("session_date"))) if x)
         satz = (d.get("simple_summary") or d.get("summary") or d.get("official_text") or "").strip()
         # Erst kürzen, dann das Ergebnis anhängen: Es ist die wertvollste
         # Information der Karte und darf nie dem Rotstift zum Opfer fallen.
-        titel = _kuerzen(titel, 90)
+        title = _kuerzen(title, 90)
         # Ohne Beschlusstext blieb hier „Gremium · Datum." stehen — ein Satz,
         # der mitten im Nichts endet. Dann lieber sagen, was die Seite bietet.
         if not satz:
             satz = "Tagesordnungspunkt, Ergebnis und Zusammenhang im Ratslotse."
         return {
-            "title": f"{titel} — {result}" if result else titel,
+            "title": f"{title} — {result}" if result else title,
             "description": " ".join(x for x in (f"{kopf}." if kopf else "", satz) if x)[:300],
         }
 
@@ -2609,10 +2609,10 @@ def preview(kind: str, key: str, store: CouncilStore = Depends(get_council_store
         p = store.member_detail(key)
         if not p:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Ratsmitglied nicht gefunden.")
-        partei = p.get("party")
+        party = p.get("party")
         committees = len(p.get("committees") or [])
         return {
-            "title": f"{p['name']} ({partei})" if partei else p["name"],
+            "title": f"{p['name']} ({party})" if party else p["name"],
             "description": (
                 f"Ratsmitglied in Oldenburg · {p.get('sessions', 0)} Sitzungen"
                 + (f" · {committees} Gremien" if committees else "")
@@ -2651,12 +2651,12 @@ def preview(kind: str, key: str, store: CouncilStore = Depends(get_council_store
         s = store.get_session(int(key)) if key.isdigit() else None
         if not s:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Sitzung nicht gefunden.")
-        datum = _preview_datum(s.get("session_date"))
+        date = _preview_datum(s.get("session_date"))
         return {
-            "title": f"{s['committee']} am {datum}" if datum else s["committee"],
+            "title": f"{s['committee']} am {date}" if date else s["committee"],
             "description": (
                 "Tagesordnung und Beschlüsse der Sitzung"
-                + (f" am {datum}" if datum else "")
+                + (f" am {date}" if date else "")
                 + f" ({s['committee']}) — im Ratslotse verständlich aufbereitet."
             ),
         }
@@ -2859,8 +2859,8 @@ def _qa_source(c: dict) -> dict:
 def _presse_kompakt(rows: list[dict]) -> list[dict]:
     """Anzeige-Form der Presse-Treffer — identisch im sources-Event und im
     Gesprächs-Snapshot, damit ein geladenes Gespräch nichts verliert."""
-    return [{"titel": p.get("titel"), "url": p.get("url"),
-             "datum": p.get("datum")} for p in rows]
+    return [{"title": p.get("title"), "url": p.get("url"),
+             "date": p.get("date")} for p in rows]
 
 
 def _sitzungen_kompakt(sitzungen: list[dict]) -> list[dict]:
@@ -2893,11 +2893,11 @@ def _sitzungen_kompakt(sitzungen: list[dict]) -> list[dict]:
 
 
 def _debatten_kompakt(rows: list[dict]) -> list[dict]:
-    return [{"speaker": d.get("speaker"), "partei": d.get("partei"),
+    return [{"speaker": d.get("speaker"), "party": d.get("party"),
              "art": d.get("art"), "top": d.get("top"),
              "auszug": (d.get("text") or "")[:2000],
              "committee": d.get("committee"),
-             "datum": d.get("session_date"),
+             "date": d.get("session_date"),
              "protokoll_url": d.get("protokoll_url"),
              # PDF-Seite der Fundstelle (Sprecher-Anker); None = Link ohne #page.
              "protokoll_seite": d.get("page")} for d in rows]
@@ -3379,7 +3379,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # 5a/I-06: die kondensierte Frage mitschicken — der Kontext-Chip im
             # Frontend zeigt, worauf sich Anschlussfragen beziehen.
             yield _sse({"type": "sources", "mode": mode, "qtype": typ,
-                        "frage": q_suche,
+                        "question": q_suche,
                         "sources": [_qa_source(c) for c in candidates],
                         "presse": _presse_kompakt(presse_rows),
                         "debatten": _debatten_kompakt(debatten_rows),
@@ -3686,13 +3686,13 @@ def haushalt_vergleich(
     beleg: dict = {"template_number": VERGLEICH_BELEG_VORLAGE,
                    "kvonr": VERGLEICH_BELEG_KVONR,
                    "vorlage_url": _vorlage_url(VERGLEICH_BELEG_KVONR),
-                   "decision_id": None, "titel": None, "anlagen": []}
+                   "decision_id": None, "title": None, "anlagen": []}
     try:
         ids = store.find_decision_ids(template_number=VERGLEICH_BELEG_VORLAGE)
         beleg["decision_id"] = ids[0] if ids else None
         vorlage = store.get_vorlage_by_nr(VERGLEICH_BELEG_VORLAGE)
         if vorlage:
-            beleg["titel"] = vorlage.get("title")
+            beleg["title"] = vorlage.get("title")
         beleg["anlagen"] = [
             {"document_id": a["document_id"], "label": a["label"],
              "url": a["url"], "is_motion": a.get("is_motion", 0)}
@@ -3784,7 +3784,7 @@ def haushalt_gebaut(
         # Wie die beiden Rechnungswesen heißen — damit die Beschriftung nicht
         # in zwei Sprachen existiert (dieselbe Entscheidung wie bei `arten`
         # in /haushalt/schulden).
-        "accounting_systems": [{"key": k, "titel": t}
+        "accounting_systems": [{"key": k, "title": t}
                        for k, t in _ii.REGELWERK.items()],
         "fehlend": fehlend,
         # DIE ANDERE HÄLFTE DER GESCHICHTE. Bis hierher zeigt die Seite, was
@@ -3979,7 +3979,7 @@ def haushalt_schulden(
         "zinslast": zins,
         # Die Spaltenüberschriften der Quelle, in ihrer Reihenfolge — damit die
         # Legende nicht in zwei Sprachen existiert.
-        "arten": [{"field": field, "titel": titel}
-                  for field, titel in _s.SPALTEN[:4]],
+        "arten": [{"field": field, "title": title}
+                  for field, title in _s.SPALTEN[:4]],
         "herkunft": {str(h["id"]): h for h in store.get_herkunft(ids)},
     }

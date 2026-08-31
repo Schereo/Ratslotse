@@ -58,20 +58,20 @@ function SpielraumMarke({ stufe, klasse }: { stufe: Spielraum; klasse: string })
  *
  *  Bewusst kein Text über „die meisten Einnahmen": Welche Gruppe wie groß
  *  ist, rechnet die Seite unten aus den Daten aus. */
-const GRUPPEN: { stufe: Spielraum; titel: string; text: string }[] = [
+const GRUPPEN: { stufe: Spielraum; title: string; text: string }[] = [
   {
     stufe: "frei",
-    titel: "Der Rat entscheidet",
+    title: "Der Rat entscheidet",
     text: "Der Rat beschließt den Satz selbst — jedes Jahr mit dem Haushalt.",
   },
   {
     stufe: "begrenzt",
-    titel: "Begrenzt",
+    title: "Begrenzt",
     text: "Der Rat beschließt, darf aber gesetzlich nicht frei wählen.",
   },
   {
     stufe: "keiner",
-    titel: "Kein Einfluss",
+    title: "Kein Einfluss",
     text: "Höhe und Verteilung legen Bund und Land fest.",
   },
 ];
@@ -297,7 +297,7 @@ export default function EinnahmenPage() {
         <div key={g.stufe}>
           <div className="mb-2.5 flex flex-wrap items-center gap-x-2.5 gap-y-1">
             <SpielraumMarke stufe={g.stufe} klasse="h-4" />
-            <span className="text-[14.5px] font-bold">{g.titel}</span>
+            <span className="text-[14.5px] font-bold">{g.title}</span>
             <span className="text-[12.5px] text-muted-foreground">{g.text}</span>
             <span className="hidden h-px flex-1 bg-border sm:block" />
           </div>
@@ -310,7 +310,7 @@ export default function EinnahmenPage() {
                   // Antwort auf die Frage, mit der Leute herkommen.
                   g.stufe === "frei" ? "border-primary/25 bg-primary/[0.04]" : "border-border",
                 )}>
-                <p className="text-[13px] font-bold leading-snug">{art.titel}</p>
+                <p className="text-[13px] font-bold leading-snug">{art.title}</p>
                 {amount != null ? (
                   <p className="mt-1.5 font-display text-[20px] font-bold leading-none tracking-tight tabular-nums">
                     {deMio(amount / 1e6)}
@@ -362,7 +362,7 @@ export default function EinnahmenPage() {
           falsch. */}
       {gesamt != null && (
         <LottiErklaert
-          titel="Was diese Beträge zusammen sind — und was nicht"
+          title="Was diese Beträge zusammen sind — und was nicht"
           /* Seit 17.08. nennt der Satz den VOLLEN Ausgleich, wenn er vorliegt:
              Die Schlüsselzuweisungen allein sind zwei von drei Komponenten,
              und ein Satz, der ausdrücklich zusammenzählt, darf nicht die
@@ -572,7 +572,7 @@ export default function EinnahmenPage() {
                       key={v.template_number}
                       label={v.template_number}
                       reason={v.reason}
-                      datum={v.sitzung
+                      date={v.sitzung
                         ? new Date(v.sitzung).toLocaleDateString("de-DE")
                         : undefined}
                     />

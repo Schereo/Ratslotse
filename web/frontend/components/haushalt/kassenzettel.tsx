@@ -96,9 +96,9 @@ function ruecklagenReihe(zeilen: RuecklageJahr[]): JahrPunkt[] {
   const nachJahr = new Map(sortiert.map((z) => [z.year, z]));
   const aus: JahrPunkt[] = [];
   for (let year = sortiert[0].year; year <= sortiert[sortiert.length - 1].year; year += 1) {
-    const zeile = nachJahr.get(year);
-    aus.push(zeile
-      ? { year, value: zeile.state_after_result / 1e6 }
+    const row = nachJahr.get(year);
+    aus.push(row
+      ? { year, value: row.state_after_result / 1e6 }
       : {
           year,
           fehlt: "Für dieses Jahr liegt in den eingelesenen Jahresabschlüssen "
@@ -258,11 +258,11 @@ export function Kassenzettel({ daten, year, population, className }: {
 
   return (
     <section
-      aria-labelledby="kassenzettel-titel"
+      aria-labelledby="kassenzettel-title"
       className={cn("rounded-2xl border border-border bg-background p-4 sm:p-5", className)}
     >
       <KassenzettelBon
-        titel="Stadt Oldenburg"
+        title="Stadt Oldenburg"
         untertitel={`Haushaltsplan ${year}`}
         stempel={<>je Einwohner*in<Beleg q="population" /></>}
         posten={posten.map((p) => ({
@@ -303,7 +303,7 @@ export function Kassenzettel({ daten, year, population, className }: {
         source={source.text}
         daneben={
           <div>
-            <h2 id="kassenzettel-titel"
+            <h2 id="kassenzettel-title"
               className="font-display text-[21px] font-bold leading-tight tracking-tight sm:text-[25px]">
               Geplante Ausgaben pro Einwohner*in
             </h2>
@@ -388,7 +388,7 @@ export function Kassenzettel({ daten, year, population, className }: {
             <Zeitreihe
               className="mt-3"
               series={ruecklagenVerlauf}
-              titel="Verfügbar nach Jahresergebnis"
+              title="Verfügbar nach Jahresergebnis"
               unit="Mio. €"
               nachkomma={1}
               ariaTitel={`Verfügbare Überschussrücklage nach Jahresergebnis, `

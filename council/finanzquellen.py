@@ -901,7 +901,7 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
         # ungenau. Die Vorjahres-Kette wird nur genannt, wo sie greift: Ohne
         # gelesenen Nachbarjahrgang gibt es kein Glied, das schließen könnte.
         anker = dict(art="ris", document_id=v["document_id"], label=label,
-                     url=url, stand=f"Jahresabschluss {year}")
+                     url=url, as_of=f"Jahresabschluss {year}")
         proben_gesamt = ["strukturprobe"]
         if year - 1 in gelesen or year + 1 in gelesen:
             proben_gesamt.append("vorjahreskette")
@@ -1029,7 +1029,7 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
                                    f"zum 31.12.{year}",
                         probe_result=f"Aktiva und Passiva stimmen auf den Cent "
                                        f"überein (Bilanzsumme {summe_de} Mio. €)",
-                        stand=f"31.12.{year}",
+                        as_of=f"31.12.{year}",
                         art="ris", document_id=v["document_id"],
                         label=label, url=url))
                     neue_einheiten.add((year, "bilanz"))
@@ -1061,7 +1061,7 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
                                            f"Vorjahresspalte (Stand 31.12.{prior_year})",
                                 probe_result="Aktiva und Passiva der Vorjahresspalte "
                                                "stimmen auf den Cent überein",
-                                stand=f"31.12.{prior_year}",
+                                as_of=f"31.12.{prior_year}",
                                 art="ris", document_id=v["document_id"],
                                 label=label, url=url))
                             p.sagen(f"      + Stichtag {prior_year} aus der "
@@ -1074,7 +1074,7 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
                                 citation="Abschnitt 6.2 — Erläuterung der "
                                            "wesentlichen Bilanzpositionen",
                                 probe_result=v["erlaeuterungsprobe"],
-                                stand=f"Jahresabschluss {year}",
+                                as_of=f"Jahresabschluss {year}",
                                 art="ris", document_id=v["document_id"],
                                 label=label, url=url))
                         mit_erlaeuterungen += 1
@@ -1154,7 +1154,7 @@ def lies_ergebnishaushalte(store: CouncilStore, p: Protokoll,
     es — dann stammt eine Spalte aus dem falschen Jahr.
 
     **Gespeichert wird der Entwurf, nicht der Beschluss** — die Anlage hängt
-    an der Einbringungs-Vorlage. Das steht in der Herkunft (``stand``), damit
+    an der Einbringungs-Vorlage. Das steht in der Herkunft (``as_of``), damit
     eine Seite es anschreiben kann; die Begründung samt Messwerten im
     Modulkopf von ``council/income_budget.py``."""
     source = QUELLEN["income_budget"]
@@ -1163,9 +1163,9 @@ def lies_ergebnishaushalte(store: CouncilStore, p: Protokoll,
 
     # Die Ist-Werte der Kernverwaltung einmal holen — Grundlage der Gegenprobe.
     ist_bestand: dict[int, dict[int, float]] = {}
-    for zeile in store.get_ergebnisrechnung():
-        if zeile.get("sub_budget_no") is None and zeile.get("result") is not None:
-            ist_bestand.setdefault(zeile["year"], {})[zeile["nr"]] = zeile["result"]
+    for row in store.get_ergebnisrechnung():
+        if row.get("sub_budget_no") is None and row.get("result") is not None:
+            ist_bestand.setdefault(row["year"], {})[row["nr"]] = row["result"]
 
     je_jahrgang: dict[int, dict] = {}
     geschuetzt = verworfen = 0
@@ -1221,7 +1221,7 @@ def lies_ergebnishaushalte(store: CouncilStore, p: Protokoll,
             # ordentlichen Erträgen sind das 0,7 bis 13,1 Mio. € gegenüber dem
             # Ansatz, den der spätere Jahresabschluss führt. Der Beleg auf der
             # Seite muss das sagen können.
-            stand=f"Haushaltsplan {budget_year}, Anlage 005 — Stand der Einbringung"))
+            as_of=f"Haushaltsplan {budget_year}, Anlage 005 — Stand der Einbringung"))
 
         ansatz = [z for z in gelesen["zeilen"] if z["art"] == "ansatz"]
         e = next((z["amount"] for z in ansatz if z["nr"] == 12), None)
@@ -1270,7 +1270,7 @@ def lies_investitionsprogramme(store: CouncilStore, p: Protokoll,
 
     Wie beim Gesamtergebnishaushalt hängt die Anlage an der
     Einbringungs-Vorlage: Es ist der **Entwurf der Verwaltung**, nicht der
-    Stand nach den Beratungen. Das steht in der Herkunft (``stand``)."""
+    Stand nach den Beratungen. Das steht in der Herkunft (``as_of``)."""
     source = QUELLEN["investitionsprogramm"]
     rows = source.dokumente(store, "document_id, label, url, raw_text")
     vorhanden = source.vorhandene(store, nur_fehlende)
@@ -1318,7 +1318,7 @@ def lies_investitionsprogramme(store: CouncilStore, p: Protokoll,
                        "die Abschnitte je Teilhaushalt, Spalte "
                        "„Gesamtinvestitionssumme“",
             probe_result=gelesen["nachweis"],
-            stand=f"Haushaltsplan {year}, Anlage 004 — Stand der Einbringung"))
+            as_of=f"Haushaltsplan {year}, Anlage 004 — Stand der Einbringung"))
 
         je_jahrgang[year] = {"massnahmen": n,
                              "teilhaushalte": len(gelesen["abschnitte"]),
@@ -1415,7 +1415,7 @@ def lies_stellenplaene(store: CouncilStore, p: Protokoll,
                     probe_result=part["nachweis"],
                     # Wie beim Gesamtergebnishaushalt: Die Anlage hängt an der
                     # Vorlage, mit der die Verwaltung den Haushalt einbringt.
-                    stand=f"Stellenplan {budget_year} — Stand der Einbringung, "
+                    as_of=f"Stellenplan {budget_year} — Stand der Einbringung, "
                           f"Besetzung am {part['as_of_date']}"),
                 as_of_date=part["as_of_date"])
             neue_einheiten.add((budget_year, name))
@@ -1515,7 +1515,7 @@ def lies_buergschaften(store: CouncilStore, p: Protokoll) -> dict:
                 citation=z["citation"],
                 probe_result=(f"{z['balance']/1e6:.1f} Mio. € Bestand"
                                 + ("" if z["exact"] else ", von der Quelle gerundet")),
-                stand=f"Jahresabschluss {quell_jahr}"))
+                as_of=f"Jahresabschluss {quell_jahr}"))
         woher = " (aus dem Folgejahr)" if z["out_next_year"] else ""
         p.sagen(f"  {z['year']}: {z['balance']/1e6:7.1f} Mio. €{woher}")
     return {"jahrgaenge": len(zeilen), "kette_gerissen": 0, "glieder": glieder}
@@ -1586,7 +1586,7 @@ def lies_anlagenspiegel(store: CouncilStore, p: Protokoll) -> dict:
                 document_id=r["document_id"], label=r["label"], url=r["url"],
                 citation=anlagenspiegel.ABSCHNITT,
                 probe_result=f"{geprueft} Rechenwege geprüft, keiner gerissen",
-                stand=f"Jahresabschluss {year}"))
+                as_of=f"Jahresabschluss {year}"))
         jahrgaenge += 1
         zeilen_gesamt += len(zeilen)
 
@@ -1599,7 +1599,7 @@ def lies_anlagenspiegel(store: CouncilStore, p: Protokoll) -> dict:
                     document_id=r["document_id"], label=r["label"], url=r["url"],
                     citation="Erläuterungen zum Sachvermögen",
                     probe_result=f"{len(gruppen)} Untergruppen",
-                    stand=f"Jahresabschluss {year}"))
+                    as_of=f"Jahresabschluss {year}"))
             gruppen_gesamt += len(gruppen)
         p.sagen(f"  {year}: {len(zeilen)} Positionen, {len(gruppen)} Untergruppen")
 
@@ -1707,7 +1707,7 @@ def lies_kennzahlen(store: CouncilStore, p: Protokoll) -> dict:
                 citation="Anlage: Kennzahlenübersicht und Berechnungsmethoden",
                 probe_result=f"{bilanz_ok} Quoten und {verm_ok} Jahrgänge "
                                f"gegen die Bilanz nachgerechnet",
-                stand=f"Rechenschaftsbericht {report_year}"))
+                as_of=f"Rechenschaftsbericht {report_year}"))
         n_reports += 1
         werte_gesamt += len(zeilen)
         formeln_gesamt += len(formeln)
@@ -1774,7 +1774,7 @@ def lies_schlussbericht_fundstellen(store: CouncilStore, p: Protokoll,
                 citation="Deckblatt und Eingangsformel des Schlussberichts",
                 probe_result=f"Buchstabenanteil im Volltext "
                                f"{treffer['buchstabenanteil']:.2f}",
-                stand=f"Jahresabschluss {treffer['year']}"),
+                as_of=f"Jahresabschluss {treffer['year']}"),
             r["n_pages"], treffer["readable"])
         neu.append(treffer["year"])
         gefunden += 1
@@ -1876,7 +1876,7 @@ def lies_teilhaushalte(store: CouncilStore, p: Protokoll,
                                     else "Teilergebnishaushalt, Produktebene"),
                         probe_result=f"{len(stueck)} Produktzeilen mit "
                                        f"aufgehender Ergebnis-Rechnung",
-                        stand=f"Haushaltsplan {year}"))
+                        as_of=f"Haushaltsplan {year}"))
                     versorgt[(year, sub_budget_no)] = (_produkt_signatur(stueck), r)
                     neue_einheiten.add((year, sub_budget_no))
                     je_jahr[year] = je_jahr.get(year, 0) + len(stueck)
@@ -1974,7 +1974,7 @@ def lies_pruefungsfeststellungen(store: CouncilStore, p: Protokoll,
                 citation="Randmarken B, WB, H und K im Fließtext",
                 probe_result=f"{len(gefunden)} Feststellungen übernommen, "
                                f"{len(result['verworfen'])} verworfen",
-                stand=f"Schlussbericht zum Jahresabschluss {year}"))
+                as_of=f"Schlussbericht zum Jahresabschluss {year}"))
         je_jahr[year] = {"feststellungen": len(gefunden),
                          "verworfen": len(result["verworfen"]),
                          "marken": dict(marken)}
@@ -2049,11 +2049,11 @@ def lies_konzernabschluesse(store: CouncilStore, p: Protokoll,
 
         # Zwei Herkünfte, weil es zwei Abschnitte sind: Die Posten stehen in
         # 3.2, die Trägeraufstellung in 4.1.1, und sie sind durch verschiedene
-        # Proben gedeckt. `stand` nennt den Stichtag des Inhalts — bei den
+        # Proben gedeckt. `as_of` nennt den Stichtag des Inhalts — bei den
         # Beteiligungen ist genau das der Punkt, an dem sich Konzern- und
         # Einzelabschluss unterscheiden werden.
         anker = dict(art="ris", document_id=r["document_id"], label=r["label"],
-                     url=r["url"], stand=f"Gesamtabschluss zum 31.12.{year}")
+                     url=r["url"], as_of=f"Gesamtabschluss zum 31.12.{year}")
         h_posten = herkunft.Herkunft(
             probe=["konzern_ergebnisprobe", "konzern_ausserordentlich",
                    "konzern_gesamtergebnis"],

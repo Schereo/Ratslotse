@@ -156,8 +156,8 @@ _KOPFSPALTE = re.compile(r"(Ist|Plan|Ergebnis)\s+(20\d{2})")
 #: Der Satz unter der Tabelle. „Euro" und „€" kommen beide vor, und er läuft
 #: über einen Zeilenumbruch — deshalb wird der Text vorher geglättet.
 _PROSA = re.compile(
-    r"Erfolgsplan\s+(?P<year>\d{4})\s+umfasst.{0,80}?Ertr[äa]ge.{0,60}?total\s+"
-    r"(?P<revenues>[\d.]+)\s*(?:€|Euro).{0,90}?Aufwendungen.{0,60}?total\s+"
+    r"Erfolgsplan\s+(?P<year>\d{4})\s+umfasst.{0,80}?Ertr[äa]ge.{0,60}?insgesamt\s+"
+    r"(?P<revenues>[\d.]+)\s*(?:€|Euro).{0,90}?Aufwendungen.{0,60}?insgesamt\s+"
     r"(?P<expenses>[\d.]+)\s*(?:€|Euro)")
 
 #: Wie weit die Betriebszweige von ihrer Gesamtzeile abweichen dürfen, damit
@@ -215,11 +215,11 @@ def _glaetten(text: str) -> str:
 
 def _datenzeile(zeilen: list[str], muster: tuple[str, ...]) -> tuple[str, list[float]] | None:
     """Die erste Zeile, die auf eines der Muster passt **und** Zahlen trägt."""
-    for zeile in zeilen:
+    for row in zeilen:
         for m in muster:
-            if not re.search(rf"^\s*{m}\b", zeile):
+            if not re.search(rf"^\s*{m}\b", row):
                 continue
-            betraege = [_eur(x) for x in _BETRAG.findall(zeile)]
+            betraege = [_eur(x) for x in _BETRAG.findall(row)]
             if len(betraege) >= MINDEST_SPALTEN:
                 return m, betraege
     return None
@@ -232,8 +232,8 @@ def kopfspalten(zeilen: list[str], mindestens: int = 4) -> list[tuple[str, int]]
     „Ergebnis") und sonst ``plan``; welches der Planjahre **der** Haushalt ist,
     entscheidet erst der Abgleich mit dem Jahrgang der Vorlage.
     """
-    for zeile in zeilen:
-        treffer = _KOPFSPALTE.findall(zeile)
+    for row in zeilen:
+        treffer = _KOPFSPALTE.findall(row)
         if len(treffer) >= mindestens:
             return [("ist" if wort in ("Ist", "Ergebnis") else "plan", int(year))
                     for wort, year in treffer]
@@ -242,8 +242,8 @@ def kopfspalten(zeilen: list[str], mindestens: int = 4) -> list[tuple[str, int]]
 
 def kopfzeile_index(zeilen: list[str], mindestens: int = 4) -> int:
     """Wo die Kopfzeile steht — ``-1``, wenn es keine gibt."""
-    for i, zeile in enumerate(zeilen):
-        if len(_KOPFSPALTE.findall(zeile)) >= mindestens:
+    for i, row in enumerate(zeilen):
+        if len(_KOPFSPALTE.findall(row)) >= mindestens:
             return i
     return -1
 
@@ -269,8 +269,8 @@ def einheit_an_der_kopfzeile(zeilen: list[str], kopf_index: int) -> str | None:
     Tabelle mehr lesen.
     """
     von = max(0, kopf_index - KOPF_FENSTER)
-    for zeile in zeilen[von:kopf_index + 1]:
-        treffer = _EINHEIT.search(zeile)
+    for row in zeilen[von:kopf_index + 1]:
+        treffer = _EINHEIT.search(row)
         if treffer:
             return " ".join(treffer.group(0).split())
     return None
@@ -351,10 +351,10 @@ def bereichsprobe(text: str, enterprise: str) -> tuple[int, list[float]] | None:
     """
     muster = VOKABULAR.get(enterprise, {}).get("revenues", ())
     zeilen: list[list[float]] = []
-    for zeile in text.splitlines():
-        if not any(re.search(rf"^\s*{m}\b", zeile) for m in muster):
+    for row in text.splitlines():
+        if not any(re.search(rf"^\s*{m}\b", row) for m in muster):
             continue
-        betraege = [_eur(x) for x in _BETRAG.findall(zeile)]
+        betraege = [_eur(x) for x in _BETRAG.findall(row)]
         if len(betraege) >= MINDEST_SPALTEN:
             zeilen.append(betraege)
     if len(zeilen) < 2:
@@ -477,5 +477,5 @@ def herkunft_fuer(plan: Wirtschaftsplan, probes: list[Spaltenprobe],
         citation=("Erfolgsplan der Anlage (per OCR gelesen)" if ocr_model
                     else "Erfolgsplan der Anlage"),
         probe_result=result,
-        stand=f"Wirtschaftsplan {plan.year}, Fassung der Anlage",
+        as_of=f"Wirtschaftsplan {plan.year}, Fassung der Anlage",
     )

@@ -65,7 +65,7 @@ def notify_admin(text: str, betreff: str = "Ratslotse – Cron-Alarm",
                 kicker="Betrieb",
                 # „Ratslotse – Cron-Alarm" → „Cron-Alarm": Die Marke steht schon
                 # in der Kopfzeile der Hülle, doppelt wäre sie Rauschen.
-                titel=re.sub(r"^Ratslotse\s*[–-]\s*", "", betreff),
+                title=re.sub(r"^Ratslotse\s*[–-]\s*", "", betreff),
                 fusszeile=fusszeile,
             ),
             text=re.sub(r"<[^>]+>", "", text),

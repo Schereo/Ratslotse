@@ -127,11 +127,11 @@ def main() -> int:
                 groesste = max(
                     ((f, j[f]) for f in ii.ARTEN["doppik"] if j.get(f)),
                     key=lambda p: p[1], default=None)
-                titel = dict(ii.SPALTEN["doppik"]).get(
+                title = dict(ii.SPALTEN["doppik"]).get(
                     groesste[0], "") if groesste else ""
                 print(f"  jüngster Jahrgang {j['year']}: "
                       f"{ii.de_zahl(j['total'] / 1e6, 1)} Mio. € total"
-                      + (f", größter Posten „{titel}“ mit "
+                      + (f", größter Posten „{title}“ mit "
                          f"{ii.de_zahl(groesste[1] / 1e6, 1)} Mio. €" if groesste else ""))
 
             if args.trockenlauf:
@@ -148,21 +148,21 @@ def main() -> int:
             if not finanzquellen.bestandsschutz(
                     p, "Ist-Investitionen", alt, len(zeilen),
                     schuetzen=not args.schrumpf_erlauben):
-                for zeile in p.warnungen:
-                    print(zeile.strip(), file=sys.stderr)
+                for row in p.warnungen:
+                    print(row.strip(), file=sys.stderr)
                 print("ABBRUCH: Der vorhandene Bestand bleibt unangetastet. Wenn "
                       "das Schrumpfen Absicht ist: --schrumpf-erlauben.",
                       file=sys.stderr)
                 return 1
-            for zeile in p.zeilen:
-                print(zeile.strip())
+            for row in p.zeilen:
+                print(row.strip())
 
             # Eine Herkunft je Regelwerk, weil die beiden Tabellen zwei
             # Dokumentabschnitte mit zwei Abgrenzungen sind — dieselbe Datei,
             # aber nicht dieselbe Fundstelle und nicht dieselbe Aussage. Was
             # ein Leser im Beleg sieht, soll für SEINE Zahl gelten.
             #
-            # `stand` nennt nur den Berichtszeitraum. Die Abgrenzung stünde
+            # `as_of` nennt nur den Berichtszeitraum. Die Abgrenzung stünde
             # hier zwar gut, steht aber schon als eigenes Feld an der Antwort
             # des Endpunkts (`abgrenzung`) und damit auf der Seite direkt an
             # der großen Zahl.
@@ -206,7 +206,7 @@ def main() -> int:
                     art="stadt", url=url or ii.TABELLE_URL,
                     label=f"Statistisches Jahrbuch der Stadt Oldenburg, Tabelle "
                           f"{nummer} — Investitionen {von} bis {bis}",
-                    stand=f"Rechnungsergebnisse {von}–{bis}",
+                    as_of=f"Rechnungsergebnisse {von}–{bis}",
                     probe="investitionen_ist_zeilensumme",
                     citation=citation, probe_result=nachweis),
                     verworfen=verw)

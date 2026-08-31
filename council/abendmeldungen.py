@@ -56,7 +56,7 @@ def _n5_text(sitzung: dict, tops: list[dict]) -> tuple[str, str]:
     wann = f"{_datum(sitzung['session_date'])}{zeit}"
     if tops:
         namen = sorted({t["topic_name"] for t in tops})
-        titel = f"{wann}: {namen[0]} im {sitzung['committee']}" if len(namen) == 1 \
+        title = f"{wann}: {namen[0]} im {sitzung['committee']}" if len(namen) == 1 \
             else f"{wann}: deine Themen im {sitzung['committee']}"
         zeilen = "".join(
             f"<li style='margin-bottom:4px'>TOP {t['item_number']} — {t['topic_name']}</li>"
@@ -65,10 +65,10 @@ def _n5_text(sitzung: dict, tops: list[dict]) -> tuple[str, str]:
                 + (f", {sitzung['location']}" if sitzung.get("location") else "") + ".</p>"
                 f"<ul style='margin:0;padding-left:18px'>{zeilen}</ul>")
     else:
-        titel = f"{wann}: {sitzung['committee']} tagt"
+        title = f"{wann}: {sitzung['committee']} tagt"
         html = (f"<p>{sitzung['committee']} am {_datum(sitzung['session_date'])}{zeit}"
                 + (f", {sitzung['location']}" if sitzung.get("location") else "") + ".</p>")
-    return titel, html
+    return title, html
 
 
 def vorabend(council_store, ratslotse_store, heute: date | None = None) -> int:
@@ -94,8 +94,8 @@ def vorabend(council_store, ratslotse_store, heute: date | None = None) -> int:
             empfaenger.setdefault(owner_id, [])
 
         for owner_id, tops in empfaenger.items():
-            titel, html = _n5_text(sitzung, tops)
-            if notify.einreihen(ratslotse_store, owner_id, notify.N5_VORABEND, titel, html,
+            title, html = _n5_text(sitzung, tops)
+            if notify.einreihen(ratslotse_store, owner_id, notify.N5_VORABEND, title, html,
                                 f"/council?tab=sessions&ksinr={ksinr}"):
                 eingereiht += 1
     return eingereiht
@@ -115,7 +115,7 @@ def _n6_text(beschluesse: list[dict]) -> tuple[str, str]:
         wort = ERGEBNIS_WORT.get(d.get("outcome") or "", "entschieden")
         zaehler[wort] = zaehler.get(wort, 0) + 1
     n = len(beschluesse)
-    titel = f"Diese Woche: {n} {'Beschluss' if n == 1 else 'Beschlüsse'} zu deinen Themen"
+    title = f"Diese Woche: {n} {'Beschluss' if n == 1 else 'Beschlüsse'} zu deinen Themen"
     bilanz = ", ".join(f"{k} {w}" for w, k in sorted(zaehler.items(), key=lambda x: -x[1]))
     # Absolute Links: In einer E-Mail gibt es keine Basis, gegen die
     # ``/council/…`` aufgelöst werden könnte — relativ wären sie dort tot.
@@ -126,7 +126,7 @@ def _n6_text(beschluesse: list[dict]) -> tuple[str, str]:
         f" — {ERGEBNIS_WORT.get(d.get('outcome') or '', 'entschieden')}</li>"
         for d in beschluesse[:10])
     rest = "" if n <= 10 else f"<p>… und {n - 10} weitere.</p>"
-    return titel, f"<p>{bilanz}.</p><ul style='margin:0;padding-left:18px'>{zeilen}</ul>{rest}"
+    return title, f"<p>{bilanz}.</p><ul style='margin:0;padding-left:18px'>{zeilen}</ul>{rest}"
 
 
 def wochenueberblick(council_store, ratslotse_store, heute: date | None = None) -> int:
@@ -143,7 +143,7 @@ def wochenueberblick(council_store, ratslotse_store, heute: date | None = None) 
         beschluesse = council_store.get_decisions_by_ids(ids)
         if not beschluesse:
             continue
-        titel, html = _n6_text(beschluesse)
-        if notify.einreihen(ratslotse_store, owner_id, notify.N6_WOCHE, titel, html, "/topics"):
+        title, html = _n6_text(beschluesse)
+        if notify.einreihen(ratslotse_store, owner_id, notify.N6_WOCHE, title, html, "/topics"):
             eingereiht += 1
     return eingereiht

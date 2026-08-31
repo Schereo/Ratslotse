@@ -358,10 +358,10 @@ def test_betraege_unter_tausend_auf_eigener_zeile():
     assert ip.betragslauf("6.100 4.000 700 700 700") == ("", 6_100)
 
 
-@pytest.mark.parametrize("zeile", ["214", "2026", "2 5431"])
-def test_seitenzahl_spaltenkopf_und_jahr_sind_keine_betragszeile(zeile):
+@pytest.mark.parametrize("row", ["214", "2026", "2 5431"])
+def test_seitenzahl_spaltenkopf_und_jahr_sind_keine_betragszeile(row):
     """Alle drei stehen im Dokument und sähen als Betrag plausibel aus."""
-    assert ip.betragslauf(zeile) is None
+    assert ip.betragslauf(row) is None
 
 
 # --- Was die Probe reißt, wird verworfen ------------------------------------

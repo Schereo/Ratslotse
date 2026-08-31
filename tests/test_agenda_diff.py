@@ -6,8 +6,8 @@ from __future__ import annotations
 from council.agenda_diff import diff_html, diff_satz, diff_tagesordnung, hat_aenderungen
 
 
-def _i(nr: str, titel: str, vorlage: str = "") -> dict:
-    return {"item_number": nr, "title": titel, "template_number": vorlage}
+def _i(nr: str, title: str, vorlage: str = "") -> dict:
+    return {"item_number": nr, "title": title, "template_number": vorlage}
 
 
 def _a(*ids_labels: tuple[str, str]) -> list[dict]:
@@ -297,10 +297,10 @@ def test_aenderungs_chronik_roundtrip(tmp_path):
 def _kaskaden_stand(erste: int, mit_unterpunkt: bool = True) -> list[dict]:
     """Zwölf Sachpunkte ab `erste`, dazu ein Unterpunkt — die Bauform des
     Bauausschusses vom 27.08.2026."""
-    titel = ["B-Plan 858", "Sperre 96", "Sperre 95", "Sperre 94", "EU-Verordnung",
+    title = ["B-Plan 858", "Sperre 96", "Sperre 95", "Sperre 94", "EU-Verordnung",
              "Innenentwicklung", "Dachbegrünung", "VBP 60", "Laufzeiten",
              "Finanzbericht 2025", "Finanzbericht 2026", "Anträge"]
-    items = [_i(f"Ö {erste + i}", t) for i, t in enumerate(titel)]
+    items = [_i(f"Ö {erste + i}", t) for i, t in enumerate(title)]
     if mit_unterpunkt:
         items.append(_i(f"Ö {erste + 11}.1", "Grundsteuer C"))
     items.append(_i(f"Ö {erste + 12}", "Anfragen und Anregungen"))
@@ -318,7 +318,7 @@ def test_kaskade_wird_zu_einer_zeile_gebuendelt():
     zeilen = [z for z in diff_zeilen(d) if z["art"] == "verschoben"]
     assert len(zeilen) == 1
     assert zeilen[0]["label"] == "Verschoben · TOP Ö 22 bis Ö 34"
-    assert zeilen[0]["titel"] == (
+    assert zeilen[0]["title"] == (
         "14 Punkte rücken eine Nummer nach vorn — jetzt TOP Ö 21 bis Ö 33")
     assert diff_satz(d) == "14 Punkte haben eine neue Nummer."
     # Und in der Mail landet genau diese eine Zeile.
@@ -332,7 +332,7 @@ def test_kaskade_nach_hinten_nennt_die_richtung():
     d = diff_tagesordnung(_kaskaden_stand(21), _kaskaden_stand(23))
     zeilen = [z for z in diff_zeilen(d) if z["art"] == "verschoben"]
     assert len(zeilen) == 1
-    assert zeilen[0]["titel"] == (
+    assert zeilen[0]["title"] == (
         "14 Punkte rücken 2 Nummern nach hinten — jetzt TOP Ö 23 bis Ö 35")
 
 

@@ -76,7 +76,7 @@ def test_datum_in_frage_zeitraum_und_muell():
 def _store_mit_sitzungen(tmp_path):
     store = CouncilStore(tmp_path / "c.sqlite")
     with store._conn:
-        for ksinr, committee, datum in (
+        for ksinr, committee, tag in (
                 (1, "Jugendhilfeausschuss", "2026-06-17"),
                 (2, "Sozialausschuss", "2026-06-17"),
                 (3, "Ausschuss für Stadtplanung und Bauen", "2026-06-04"),
@@ -84,14 +84,14 @@ def _store_mit_sitzungen(tmp_path):
             store._conn.execute(
                 "INSERT INTO council_sessions (ksinr, committee, session_date, "
                 "session_time, location, fetched_at) VALUES (?, ?, ?, '16:00', 'Rathaus', '')",
-                (ksinr, committee, datum))
-        for ksinr, pos, titel in ((1, 0, "Krippengruppe"), (1, 1, "Kita-Bericht"),
+                (ksinr, committee, tag))
+        for ksinr, pos, title in ((1, 0, "Krippengruppe"), (1, 1, "Kita-Bericht"),
                                   (1, 2, "Richtlinien Jugendarbeit"),
                                   (2, 0, "Sozialbericht"), (3, 0, "B-Plan"),
                                   (4, 0, "Stadionneubau")):
             store._conn.execute(
                 "INSERT INTO council_decisions (ksinr, position, item_number, kind, title, outcome) "
-                "VALUES (?, ?, ?, 'decision', ?, 'angenommen')", (ksinr, pos, str(pos + 1), titel))
+                "VALUES (?, ?, ?, 'decision', ?, 'angenommen')", (ksinr, pos, str(pos + 1), title))
         # Subvotes zählen nicht als eigene Tagesordnungspunkte.
         store._conn.execute(
             "INSERT INTO council_decisions (ksinr, position, kind, title) "
@@ -149,11 +149,11 @@ def test_finde_sitzungen_letzte_sitzung_mit_protokoll_verzug(tmp_path):
     juengst = (heute - timedelta(days=7)).isoformat()
     aelter = (heute - timedelta(days=40)).isoformat()
     with store._conn:
-        for ksinr, datum in ((1, aelter), (2, juengst)):
+        for ksinr, tag in ((1, aelter), (2, juengst)):
             store._conn.execute(
                 "INSERT INTO council_sessions (ksinr, committee, session_date, "
                 "session_time, location, fetched_at) VALUES (?, 'Sportausschuss', ?, '', '', '')",
-                (ksinr, datum))
+                (ksinr, tag))
         # Nur die ÄLTERE Sitzung hat schon Beschlüsse (Protokoll-Verzug!).
         store._conn.execute(
             "INSERT INTO council_decisions (ksinr, position, kind, title) "

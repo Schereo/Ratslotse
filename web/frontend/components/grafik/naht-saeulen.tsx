@@ -52,7 +52,7 @@ export type NahtTeil = { art: string; value: number };
  *  mit Grund — der Daten-Vertrag des Baukastens (daten.ts). */
 export type NahtJahr =
   | { year: number; teile: NahtTeil[] }
-  | { year: number; fehlt: string; datum?: string };
+  | { year: number; fehlt: string; date?: string };
 
 function istLuecke(j: NahtJahr): j is Extract<NahtJahr, { fehlt: string }> {
   return "fehlt" in j;
@@ -96,7 +96,7 @@ function gruppiere(years: NahtJahr[], count: number, toene: readonly string[]): 
   return gruppen;
 }
 
-export function NahtSaeulen({ years, naht, gruppierungMobil = 2, unit, titel, beleg }: {
+export function NahtSaeulen({ years, naht, gruppierungMobil = 2, unit, title, beleg }: {
   /** Alle Jahre aufsteigend, Lücken eingeschlossen — die x-Achse ist
    *  vollständig, keine Säule kann still fehlen. */
   years: NahtJahr[];
@@ -107,7 +107,7 @@ export function NahtSaeulen({ years, naht, gruppierungMobil = 2, unit, titel, be
   gruppierungMobil?: number;
   /** Einheit aller Werte, z. B. „Mio. €“. */
   unit: string;
-  titel: string;
+  title: string;
   /** Beleg-Chip der Seite, steht an der Kopfzeile. */
   beleg?: ReactNode;
 }) {
@@ -175,7 +175,7 @@ export function NahtSaeulen({ years, naht, gruppierungMobil = 2, unit, titel, be
   const stellen: AbleseStelle[] = years.map((j) => {
     if (istLuecke(j)) {
       return {
-        titel: String(j.year),
+        title: String(j.year),
         werte: [{ label: "keine Angabe", value: "—" }],
         vorlesen: `${j.year}: keine Angabe — ${j.fehlt}.`,
       };
@@ -193,7 +193,7 @@ export function NahtSaeulen({ years, naht, gruppierungMobil = 2, unit, titel, be
     // Name sagt ohnehin mehr als das Wort „insgesamt".
     const eineArt = teile.length === 1;
     return {
-      titel: String(j.year),
+      title: String(j.year),
       werte: eineArt ? teile : [
         { label: "total", value: `${deZahl(summe(j), 1)} ${unit}` },
         ...teile,
@@ -209,7 +209,7 @@ export function NahtSaeulen({ years, naht, gruppierungMobil = 2, unit, titel, be
     <div ref={box}>
       <div className="mb-2 flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
         <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-          {titel}{beleg}
+          {title}{beleg}
         </p>
         <span className="font-mono text-[10px] uppercase text-muted-foreground">
           {years[0].year}–{years[years.length - 1].year} · {belegte.length} Werte · {unit}
@@ -217,14 +217,14 @@ export function NahtSaeulen({ years, naht, gruppierungMobil = 2, unit, titel, be
       </div>
 
       <AbleseBeschreibung id={beschreibungId}>
-        {`${titel}, ${years[0].year} bis ${years[years.length - 1].year} in ${unit}: `
+        {`${title}, ${years[0].year} bis ${years[years.length - 1].year} in ${unit}: `
           + years.map((j) => `${j.year} ${istLuecke(j) ? "keine Angabe" : deZahl(summe(j), 1)}`).join(", ")
           + (naht ? `. ${naht.text}` : "")}
       </AbleseBeschreibung>
 
       <svg viewBox={`0 0 ${W} ${H}`} className="block w-full" role="group"
         aria-describedby={beschreibungId}
-        aria-label={`${titel}, ${years[0].year} bis ${years[years.length - 1].year}`}>
+        aria-label={`${title}, ${years[0].year} bis ${years[years.length - 1].year}`}>
         <defs>
           <pattern id={`${beschreibungId}-luecke`} width="6" height="6"
             patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
@@ -365,7 +365,7 @@ export function NahtSaeulen({ years, naht, gruppierungMobil = 2, unit, titel, be
       )}
       {years.filter(istLuecke).map((j) => (
         <LueckenFeld key={j.year} className="mt-2"
-          label={String(j.year)} reason={j.fehlt} datum={j.datum} />
+          label={String(j.year)} reason={j.fehlt} date={j.date} />
       ))}
     </div>
   );

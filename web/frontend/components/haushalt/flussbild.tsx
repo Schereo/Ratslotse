@@ -294,7 +294,7 @@ export function Flussbild({ daten, year, onJahrWechsel }: {
    *  die Pillen-Notlösung unten. */
   onJahrWechsel?: (year: number) => void;
 }) {
-  const [stand, setStand] = useState<"plan" | "ist">("ist");
+  const [as_of, setStand] = useState<"plan" | "ist">("ist");
   const [tabelle, setTabelle] = useState(false);
 
   const years = useMemo(() => flussJahre(daten), [daten]);
@@ -302,7 +302,7 @@ export function Flussbild({ daten, year, onJahrWechsel }: {
   // keines. Fehlt es, tritt `Luecke` an seine Stelle (Begründung dort).
   const istBild = useMemo(() => flussbild(daten, year, "ist"), [daten, year]);
   const planBild = useMemo(() => flussbild(daten, year, "plan"), [daten, year]);
-  const bild = stand === "ist" ? istBild ?? planBild : planBild ?? istBild;
+  const bild = as_of === "ist" ? istBild ?? planBild : planBild ?? istBild;
 
   // `flussJahre` ist aufsteigend — das jüngste vollständige Jahr steht hinten.
   const letztes = years.length ? years[years.length - 1] : null;
@@ -361,10 +361,10 @@ export function Flussbild({ daten, year, onJahrWechsel }: {
 
   const ersatz = !bild;
   const zeigJahr = ersatz ? letztes : year;
-  const zeigBild = bild ?? (stand === "ist" ? letztesIst ?? letztesPlan : letztesPlan ?? letztesIst);
+  const zeigBild = bild ?? (as_of === "ist" ? letztesIst ?? letztesPlan : letztesPlan ?? letztesIst);
   if (!zeigBild) return <Luecke year={year} letztes={letztes} aufJahr={aufLetztes} />;
 
-  const echterStand: "plan" | "ist" = zeigBild.stand;
+  const echterStand: "plan" | "ist" = zeigBild.as_of;
   const beideStaende = !!istBild && !!planBild;
 
   const saldoMio = mio(zeigBild.balance) ?? 0;
@@ -381,13 +381,13 @@ export function Flussbild({ daten, year, onJahrWechsel }: {
 
   const format = (w: number) => deMio(mio(w));
   const links: FlussSeiteDaten = {
-    titel: "Woher das Geld kommt", kurz: "Woher", hint: "Einnahmearten",
+    title: "Woher das Geld kommt", kurz: "Woher", hint: "Einnahmearten",
     sammelTitel: "Die kleineren Einnahmearten",
     baender: zeigBild.herkunft.baender.map(alsPosten),
     gesamt: zeigBild.herkunft.gesamt,
   };
   const rechts: FlussSeiteDaten = {
-    titel: "Wofür es ausgegeben wird", kurz: "Wohin", hint: "Bereiche",
+    title: "Wofür es ausgegeben wird", kurz: "Wohin", hint: "Bereiche",
     sammelTitel: "Die kleineren Bereiche",
     baender: zeigBild.verwendung.baender.map(alsPosten),
     gesamt: zeigBild.verwendung.gesamt,
@@ -552,7 +552,7 @@ function Tabelle({ bild }: { bild: FlussDaten }) {
         </thead>
         <tbody>
           <tr><td colSpan={3} className="pt-2 font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
-            Woher — {bild.stand === "ist" ? "tatsächlich" : "geplant"} {bild.year}
+            Woher — {bild.as_of === "ist" ? "tatsächlich" : "geplant"} {bild.year}
           </td></tr>
           {zeilen(bild.herkunft.baender)}
           <tr className="border-t-2 border-border font-semibold">
@@ -561,7 +561,7 @@ function Tabelle({ bild }: { bild: FlussDaten }) {
             <td className="py-1 text-right">100&nbsp;%</td>
           </tr>
           <tr><td colSpan={3} className="pt-3 font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
-            Wohin — {bild.stand === "ist" ? "tatsächlich" : "geplant"} {bild.year}
+            Wohin — {bild.as_of === "ist" ? "tatsächlich" : "geplant"} {bild.year}
           </td></tr>
           {zeilen(bild.verwendung.baender)}
           <tr className="border-t-2 border-border font-semibold">

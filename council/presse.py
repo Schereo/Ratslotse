@@ -59,13 +59,13 @@ def fetch_feed() -> list[dict]:
             continue
         guid = item.find("guid")
         m = re.search(r"news-(\d+)", guid.get_text(strip=True) if guid else "")
-        titel = item.find("title")
+        title = item.find("title")
         pubdate = item.find("pubdate")
         out.append({
             "url": link if link.startswith("http") else f"{BASE}{link}",
             "news_id": int(m.group(1)) if m else None,
-            "titel": titel.get_text(strip=True) if titel else "",
-            "datum": _parse_rfc2822(pubdate.get_text(strip=True) if pubdate else ""),
+            "title": title.get_text(strip=True) if title else "",
+            "date": _parse_rfc2822(pubdate.get_text(strip=True) if pubdate else ""),
         })
     return out
 
@@ -89,7 +89,7 @@ def fetch_liste(url: str | None = None) -> tuple[list[dict], str | None]:
         if full in seen:
             continue
         seen.add(full)
-        eintraege.append({"url": full, "titel": a.get_text(" ", strip=True)})
+        eintraege.append({"url": full, "title": a.get_text(" ", strip=True)})
     # Aktuelle Seitenzahl aus der eigenen URL (Startseite = 1), Folge-Link suchen.
     cur = 1
     m = re.search(r"currentPage(?:%5D|\])=(\d+)", url or "")
@@ -122,32 +122,32 @@ def fetch_detail(url: str) -> dict | None:
         return None
     # Titel: og:title trägt die echte Überschrift (das h1 ist das generische
     # „Pressemitteilung"), Fallback news-single__title.
-    titel = ""
+    title = ""
     og = soup.find("meta", attrs={"property": "og:title"})
     if og is not None:
-        titel = (og.get("content") or "").strip()
-    if not titel:
+        title = (og.get("content") or "").strip()
+    if not title:
         h2 = soup.find("h2", class_="news-single__title")
         if h2 is not None:
-            titel = h2.get_text(" ", strip=True)
+            title = h2.get_text(" ", strip=True)
     # Datum: JSON-LD datePublished ist die verlässlichste Quelle der Seite.
-    datum = None
+    date = None
     m = re.search(r'"datePublished"\s*:\s*"(\d{4}-\d{2}-\d{2})', r.text)
     if m:
-        datum = m.group(1)
-    if datum is None:
+        date = m.group(1)
+    if date is None:
         t = soup.find("time")
         if t is not None:
-            datum = _parse_datum(t.get("datetime") or t.get_text(strip=True))
-    if datum is None:
+            date = _parse_datum(t.get("datetime") or t.get_text(strip=True))
+    if date is None:
         # TYPO3 rendert das Datum oft als Fließtext „05. August 2026".
         m = re.search(r"(\d{1,2})\.\s*(Januar|Februar|März|April|Mai|Juni|Juli|August|"
                       r"September|Oktober|November|Dezember)\s+(\d{4})", soup.get_text(" ", strip=True)[:4000])
         if m:
             monate = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli",
                       "August", "September", "Oktober", "November", "Dezember"]
-            datum = f"{m.group(3)}-{monate.index(m.group(2)) + 1:02d}-{int(m.group(1)):02d}"
-    return {"titel": titel, "datum": datum, "text": text}
+            date = f"{m.group(3)}-{monate.index(m.group(2)) + 1:02d}-{int(m.group(1)):02d}"
+    return {"title": title, "date": date, "text": text}
 
 
 def _parse_rfc2822(s: str) -> str | None:

@@ -99,9 +99,9 @@ export function investitionsAnteil(
  *  Investitionen sind nicht nur Ausgaben: Zuschüsse von Bund und Land,
  *  Grundstücksverkäufe und Beiträge stehen als Einzahlungen dagegen. Die
  *  Differenz ist der Betrag, den die Stadt selbst aufbringen muss. */
-export function netto(zeile: InvestitionsZeile | null): number | null {
-  if (!zeile) return null;
-  return zeile.outflows - zeile.inflows;
+export function netto(row: InvestitionsZeile | null): number | null {
+  if (!row) return null;
+  return row.outflows - row.inflows;
 }
 
 /** Die Zeitreihe der Gesamtinvestitionen, aufsteigend nach Jahr. */

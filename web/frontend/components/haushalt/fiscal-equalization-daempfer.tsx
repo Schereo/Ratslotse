@@ -112,7 +112,7 @@ export function FinanzausgleichDaempfer({ tax_capacity }: { tax_capacity: Kraft[
   // hatte dieser Block nie; die vollständige Reihe steht als sr-only-Absatz
   // daneben und wird von der Grafik referenziert.
   const stellen: AbleseStelle[] = series.map((k) => ({
-    titel: String(k.year),
+    title: String(k.year),
     werte: [
       { label: "Steuerkraft", value: deMio(k.tax_index / 1e6), farbe: "var(--hh-ein-0)" },
       { label: "Zuweisungen", value: deMio(k.allocations / 1e6), farbe: "var(--hh-aus-2)" },

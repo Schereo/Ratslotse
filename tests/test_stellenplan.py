@@ -425,8 +425,8 @@ def test_jede_zeile_weiss_woher_sie_kommt(tmp_path):
     assert source["citation"] == "Teil A: Beamtinnen und Beamte"
     # Es ist der Verwaltungsentwurf, nicht der Beschluss — und die Besetzung
     # hat einen Stichtag. Beides muss der Beleg sagen können.
-    assert "Stand der Einbringung" in source["stand"]
-    assert "2025-06-30" in source["stand"]
+    assert "Stand der Einbringung" in source["as_of"]
+    assert "2025-06-30" in source["as_of"]
     assert source["probe"].startswith("stellenplan_spaltenprobe")
     store.close()
 

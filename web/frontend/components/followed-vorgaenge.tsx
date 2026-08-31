@@ -7,7 +7,7 @@ import { Card, formatDate, toast } from "@/components/ui";
 import { shortCommittee } from "@/lib/committees";
 
 type Station = {
-  datum: string | null;
+  date: string | null;
   committee: string;
   result: string | null;
 };
@@ -27,7 +27,7 @@ type Follow = {
 
 /** Eine Station als eine Zeile: „Verkehrsausschuss · 13.08.2026 · angenommen". */
 function stationLine(s: Station): string {
-  return [shortCommittee(s.committee), s.datum ? formatDate(s.datum) : null, s.result]
+  return [shortCommittee(s.committee), s.date ? formatDate(s.date) : null, s.result]
     .filter(Boolean)
     .join(" · ");
 }

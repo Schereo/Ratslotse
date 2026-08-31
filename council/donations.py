@@ -156,9 +156,9 @@ def _erster(text: str | None) -> float | None:
     return b[0] if b else None
 
 
-def committee(titel: str | None) -> str | None:
+def committee(title: str | None) -> str | None:
     """„Rat" oder „Verwaltungsausschuss" — aus dem Titel, sonst nirgendwo."""
-    t = titel or ""
+    t = title or ""
     if _RAT.search(t):
         return "Rat"
     if _VA.search(t):
@@ -197,15 +197,15 @@ def pruefe_zweitstelle(kopf: float | None, section: str | None) -> tuple[str | N
     return None, teile
 
 
-def erkenne(titel: str | None) -> bool:
+def erkenne(title: str | None) -> bool:
     """Ist das eine Zuwendungs-Annahme?"""
-    return bool(TITEL.search((titel or "").strip()))
+    return bool(TITEL.search((title or "").strip()))
 
 
 def lies(zeilen: Iterable[dict]) -> dict:
     """Beschlusszeilen → geprüfte Spendenreihe.
 
-    Erwartet je Zeile: ``template_number``, ``titel``, ``official_text``, ``outcome``,
+    Erwartet je Zeile: ``template_number``, ``title``, ``official_text``, ``outcome``,
     ``sitzung`` (ISO-Datum), ``raw_text`` (Volltext der Vorlage),
     ``document_id``, ``dokument_url``.
 
@@ -223,7 +223,7 @@ def lies(zeilen: Iterable[dict]) -> dict:
     zaehler: Counter = Counter()
 
     for z in zeilen:
-        if not erkenne(z.get("titel")):
+        if not erkenne(z.get("title")):
             continue
         zaehler["zeilen"] += 1
         nr = z.get("template_number")
@@ -265,7 +265,7 @@ def lies(zeilen: Iterable[dict]) -> dict:
 
         kandidaten.append({
             "template_number": nr, "amount": kopf, "sitzung": z.get("sitzung"),
-            "year": int(str(z.get("sitzung"))[:4]), "committee": committee(z.get("titel")),
+            "year": int(str(z.get("sitzung"))[:4]), "committee": committee(z.get("title")),
             "layout": layout, "second_mention": art, "teile": len(teile),
             "probes": probes, "document_id": z.get("document_id"),
             "dokument_url": z.get("dokument_url"),

@@ -784,7 +784,7 @@ export function ProdukteAbschnitt({ onBestand }: {
         </div>
 
         <LottiErklaert
-          titel="Warum das interessant ist"
+          title="Warum das interessant ist"
           text={"Bei vielen Produkten nennt die Stadt zusätzlich den Grad der "
             + "Beeinflussbarkeit. Damit beschreibt sie, wie stark sich die Kosten aus ihrer "
             + "Sicht verändern lassen. Diese Angabe hilft einzuordnen, wo der Rat "

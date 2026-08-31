@@ -414,7 +414,7 @@ def main() -> dict:
                 # kommt die volle Liste — dann soll die Mail aber SAGEN, dass
                 # sie den ganzen Stand zeigt, statt so zu tun, als wäre alles
                 # davon neu (Tims Befund 18.08. an der Jugendhilfe-Mail).
-                ohne_basis = ("<p>Was exact sich geändert hat, lässt sich für diese "
+                ohne_basis = ("<p>Was genau sich geändert hat, lässt sich für diese "
                               "Sitzung nicht mehr nachvollziehen — hier ist der "
                               "aktuelle Stand der Tagesordnung.</p>\n")
                 nachricht = update_prefix + ohne_basis + base_message + grund_update

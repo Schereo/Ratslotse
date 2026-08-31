@@ -140,7 +140,7 @@ def test_miniliste_rundlauf():
 
     aus = parse_ehh_seiten([deckblatt, tabelle, summen])
 
-    assert aus.stand == "24.11.2025"
+    assert aus.as_of == "24.11.2025"
     assert aus.budget_year == 2026
     assert aus.eigene_zeile == {2026: "Änderungsliste Verw. I"}
     z1, z2, z3, z4 = aus.zeilen

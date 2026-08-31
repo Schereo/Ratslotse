@@ -147,13 +147,13 @@ def test_summenprobe_schliesst_wo_die_quelle_stimmt(gelesen):
 def test_summenprobe_faengt_eine_verdrehte_spalte():
     """Wären zwei Spalten vertauscht, ginge die Rechnung nicht mehr auf — das
     ist der Fehler, den zeilenweises Lesen nicht bemerkt."""
-    zeile = dict(_zeile(schulden.lies(TABELLE, EINWOHNER), 2025))
-    zeile["credit_market"], zeile["municipal_enterprises"] = 296_190_000, 40_804_000
-    zeile["total"] = 336_994_000
-    ok, _ = schulden.summenprobe(zeile)
+    row = dict(_zeile(schulden.lies(TABELLE, EINWOHNER), 2025))
+    row["credit_market"], row["municipal_enterprises"] = 296_190_000, 40_804_000
+    row["total"] = 336_994_000
+    ok, _ = schulden.summenprobe(row)
     assert ok, "Vertauschen zweier Summanden ändert die Summe nicht"
-    zeile["municipal_enterprises"] = 41_000_000
-    ok, deviation = schulden.summenprobe(zeile)
+    row["municipal_enterprises"] = 41_000_000
+    ok, deviation = schulden.summenprobe(row)
     assert not ok and deviation != 0
 
 
@@ -186,8 +186,8 @@ def test_prokopfprobe_faengt_einen_faktor_tausend():
     """Die Quelle rechnet in Tausend Euro. Wer die Umrechnung vergisst, liegt
     um Faktor 1000 daneben — die Summenprobe merkt davon nichts, weil sie
     innerhalb derselben Einheit rechnet. Diese hier merkt es."""
-    zeile = {"year": 2025, "total": 336_994, "per_capita": 1908}
-    ok, _ = schulden.prokopfprobe(zeile, 176614)
+    row = {"year": 2025, "total": 336_994, "per_capita": 1908}
+    ok, _ = schulden.prokopfprobe(row, 176614)
     assert not ok
 
 
@@ -274,7 +274,7 @@ def _herkunft(probe="schulden_summenzeile"):
         art="stadt", probe=probe, url=schulden.TABELLE_URL,
         label="Statistisches Jahrbuch, Tabelle 1108",
         citation="Kapitel 11, Tabelle 1108",
-        probe_result="Testlauf", stand="Schuldenstand zum 31.12.2025")
+        probe_result="Testlauf", as_of="Schuldenstand zum 31.12.2025")
 
 
 def test_speichern_und_lesen(tmp_path, gelesen):
@@ -359,12 +359,12 @@ def test_datenstand_kennt_die_schicht(tmp_path, gelesen):
     store = CouncilStore(tmp_path / "c.sqlite")
     try:
         store.save_schulden(gelesen["zeilen"], _herkunft())
-        zeile = next(z for z in finanzquellen.datenstand(store)
+        row = next(z for z in finanzquellen.datenstand(store)
                      if z["key"] == "schulden")
-        assert zeile["neuester"] == 2025
-        assert zeile["source"] == "Portal der Stadt"
+        assert row["neuester"] == 2025
+        assert row["source"] == "Portal der Stadt"
         # Von Hand nachzuziehen — also muss dastehen, womit.
-        assert zeile["automatisch"] is False
+        assert row["automatisch"] is False
         assert "ingest_schulden.py" in finanzquellen.QUELLEN["schulden"].nachschub
     finally:
         store.close()
@@ -416,8 +416,8 @@ def test_endpunkt_liefert_reihe_abgrenzung_und_belege(tmp_path, gelesen):
         assert [a["field"] for a in answer["arten"]] == list(schulden.ARTEN)
 
         # Jede Zeile findet ihren Beleg, und der trägt Erklärsätze.
-        for zeile in answer["series"]:
-            h = answer["herkunft"][str(zeile["herkunft_id"])]
+        for row in answer["series"]:
+            h = answer["herkunft"][str(row["herkunft_id"])]
             assert h["probes"], "Beleg ohne Erklärsatz"
             assert h["url"]
     finally:

@@ -250,7 +250,7 @@ def test_layout_ohne_leerzeilen():
 
 # ---------------------------------------------------------------------- Anträge
 
-@pytest.mark.parametrize("titel, erwartet", [
+@pytest.mark.parametrize("title, erwartet", [
     ("Änderungsliste der CDU-Fraktion", ["CDU"]),
     ("Änderungsliste der Fraktionen SPD, CDU und FDP zum Ergebnishaushalt", ["SPD", "CDU", "FDP"]),
     ("Änderungsliste der CDU-Fraktion und Gruppe FDP/Volt zum Ergebnishaushalt", ["CDU", "FDP/Volt"]),
@@ -260,8 +260,8 @@ def test_layout_ohne_leerzeilen():
     ("Änderungsliste der Fraktionen Bündnis 90/Die Grünen und SPD", ["Grüne", "SPD"]),
     ("Änderungsliste der BSW-Fraktion zum Erfolgsplan", ["BSW"]),
 ])
-def test_urheber(titel, erwartet):
-    assert hd.author(titel) == erwartet
+def test_urheber(title, erwartet):
+    assert hd.author(title) == erwartet
 
 
 def test_gruppe_schluckt_die_einzelparteien():
@@ -280,9 +280,9 @@ def test_verwaltungsliste_ist_kein_fraktionsantrag():
 def test_sammelabstimmung_ist_kein_antrag():
     """„So geänderter Ergebnishaushalt einschließlich der Änderungslisten" ist
     die Schlussabstimmung über das Ganze, kein weiterer Antrag."""
-    for titel in ("So geänderter Erfolgsplan einschließlich der Änderungslisten",
+    for title in ("So geänderter Erfolgsplan einschließlich der Änderungslisten",
                   "Abstimmung über den so geänderten Ergebnishaushalt"):
-        assert hd.antrag_aus_zeile({"title": titel, "outcome": "angenommen", "vote": None,
+        assert hd.antrag_aus_zeile({"title": title, "outcome": "angenommen", "vote": None,
                                     "item_number": "6.5", "ksinr": 1}) is None
 
 
@@ -291,10 +291,10 @@ def test_sammelabstimmung_ist_kein_antrag():
 def _runde_2026(store):
     """Ein Jahrgang, wie er im Bestand liegt: Ausschuss und Rat stimmen über
     dieselben Listen ab, der Rat führt die Debatte."""
-    for ksinr, committee, datum in ((10, "Ausschuss für Finanzen und Beteiligungen", "2026-02-04"),
+    for ksinr, committee, date in ((10, "Ausschuss für Finanzen und Beteiligungen", "2026-02-04"),
                                   (11, "Rat", "2026-02-09")):
         store.save_session(CouncilSession(
-            ksinr=ksinr, committee=committee, session_date=datum, session_time="17:00",
+            ksinr=ksinr, committee=committee, session_date=date, session_time="17:00",
             location="Rathaus",
             agenda_items=[AgendaItem(item_number="6", title="Haushalt 2026", kvonr=None)],
         ))
@@ -348,9 +348,9 @@ def test_haushalt_streit_baut_jahrgang(store):
 def test_nur_antraege_des_sammelpunkts(store):
     _runde_2026(store)
     rat = store.haushalt_streit()[0]["stationen"][1]
-    titel = [a["titel"] for a in rat["antraege"]]
-    assert any("CDU-Fraktion" in t for t in titel)
-    assert not any("Stellenplan" in t for t in titel), (
+    title = [a["title"] for a in rat["antraege"]]
+    assert any("CDU-Fraktion" in t for t in title)
+    assert not any("Stellenplan" in t for t in title), (
         "TOP 7.1 gehört nicht zum Haushalts-Sammelpunkt 6"
     )
     verwaltung = [a for a in rat["antraege"] if a["ist_verwaltung"]]

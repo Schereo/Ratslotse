@@ -43,7 +43,7 @@ export type StreitWortbeitrag = {
 };
 
 export type StreitAntrag = {
-  titel: string;
+  title: string;
   outcome: string | null;
   vote: string | null;
   /** Fraktion(en) bzw. Gruppe hinter der Liste, null bei Verwaltungslisten. */
@@ -56,7 +56,7 @@ export type StreitAntrag = {
 export type StreitBeschluss = {
   id: number;
   top: string | null;
-  titel: string;
+  title: string;
   outcome: string | null;
   vote: string | null;
   no_votes: number | null;
@@ -69,7 +69,7 @@ export type StreitBeschluss = {
 export type StreitStation = {
   ksinr: number;
   committee: string;
-  datum: string;
+  date: string;
   top: string | null;
   official_text: StreitBeschluss | null;
   antraege: StreitAntrag[];

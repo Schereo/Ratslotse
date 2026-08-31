@@ -582,7 +582,7 @@ function PlanIstInner() {
       )}
 
       <LottiErklaert
-        titel="Warum ein Haushalt nie punktgenau aufgeht"
+        title="Warum ein Haushalt nie punktgenau aufgeht"
         text="Ein Haushalt wird ein Jahr im Voraus beschlossen — niemand weiß dann, wie viel Gewerbesteuer hereinkommt, welche Tarife steigen oder wie viele Kinder einen Kitaplatz brauchen. Die Stadt plant deshalb vorsichtig: lieber etwas zu wenig Einnahmen ansetzen als zu viel. Abweichungen sind normal und für sich genommen weder gut noch schlecht."
       />
 

@@ -40,7 +40,7 @@ TABELLE = """Stadt Oldenburg (Oldb) - Statistik
 1107  Ausgaben der Stadt Oldenburg für eigene Investitionen
           in Tausend Euro 2003 bis 2009
                 -  Rechnungsergebnisse
-Haushalts- Gewährung Erwerb von Baumaß- Neuanschaf- total
+Haushalts- Gewährung Erwerb von Baumaß- Neuanschaf- insgesamt
 year von Darlehen Grundver- nahmen fungen von
 mögen beweglichen
 Vermögen
@@ -51,7 +51,7 @@ Quelle: Stadt Oldenburg - Fachdienst Finanzen
 1107-1 Auszahlungen der Stadt Oldenburg für Investitionstätigkeiten
             in Tausend Euro 2010 bis 20251
                -  Rechnungsergebnisse laut Finanzrechnung der Kernverwaltung -
-Haushalts- Aktivierbare Erwerb von Baumaß- Erwerb von Erwerb von Sonstige total
+Haushalts- Aktivierbare Erwerb von Baumaß- Erwerb von Erwerb von Sonstige insgesamt
 year Zuwendungen Grundstücken nahmen beweglichem Sachver- Investitions-
 und Gebäuden mögen tätigkeit
 S 1 S 2 S 3 S 4 S 5 S 6 S 7 S 8
@@ -291,12 +291,12 @@ def test_speichern_und_lesen(store, gelesen):
     assert juengster["accounting_system"] == "doppik"
     assert juengster["total"] == 60_773_000
     # Die Arten kommen in der Spaltenfolge der Quelle und tragen ihren Titel.
-    assert [a["titel"] for a in juengster["arten"]] == [
+    assert [a["title"] for a in juengster["arten"]] == [
         t for _, t in ii.SPALTEN["doppik"][:-1]]
     assert sum(a["amount"] for a in juengster["arten"]) == juengster["total"]
     # Und die kamerale Zeile hat ihre eigenen vier.
     assert len(series[0]["arten"]) == 4
-    assert series[0]["arten"][0]["titel"] == "Gewährung von Darlehen"
+    assert series[0]["arten"][0]["title"] == "Gewährung von Darlehen"
 
 
 def test_jede_zeile_traegt_eine_herkunft(store, gelesen):

@@ -237,7 +237,7 @@ function BereichsKarte({ zeilen, tarife, herkunftFuer }: {
             series={series}
             unit="€"
             nachkomma={2}
-            titel="Gebühr im Zeitverlauf"
+            title="Gebühr im Zeitverlauf"
             // Ohne Jahresspanne: Die Zeitreihe hängt sie selbst an, und
             // zweimal gelesen klingt es wie ein Fehler.
             ariaTitel={`Gebühr ${letzte.area_name}, in Euro `
@@ -327,7 +327,7 @@ export function GebuehrenAbschnitt({ data, loading }: {
         </div>
 
         <LottiErklaert
-          titel="Warum steigt meine Müllgebühr?"
+          title="Warum steigt meine Müllgebühr?"
           text={"Gebühren ändern sich vor allem, wenn die erwarteten Kosten oder Mengen "
             + "steigen oder sinken. Auch Über- und Unterdeckungen aus Vorjahren werden "
             + "in späteren Kalkulationen ausgeglichen."}

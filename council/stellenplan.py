@@ -103,7 +103,7 @@ zeigt, läse sich wie ein Jahr ohne Beamtenstellen.
 
 Wie beim Gesamtergebnishaushalt gilt: Es ist der **Verwaltungsentwurf**. Was
 der Rat in den Beratungen daran ändert, steht nicht darin; die Herkunft sagt
-das über ``stand``.
+das über ``as_of``.
 """
 from __future__ import annotations
 
@@ -196,14 +196,14 @@ def _wert(s: str) -> float:
     return float(s.replace(".", "").replace(",", "."))
 
 
-def _spaltenzeile(zeile: str) -> int | None:
+def _spaltenzeile(row: str) -> int | None:
     """Die Nummernzeile unter dem Tabellenkopf → wie viele Spalten die Tabelle
     hat, sonst ``None``.
 
     Verglichen wird die Ziffernfolge ohne Zwischenräume: Im Stellenplan 2026
     klebt pypdf die ersten beiden Nummern zusammen („12 3 4 5 6"), und eine
     Regex über die Zwischenräume hielte diese Zeile für Daten."""
-    ziffern = re.sub(r"\s+", "", zeile)
+    ziffern = re.sub(r"\s+", "", row)
     if not ziffern.isdigit() or len(ziffern) < 4:
         return None
     return len(ziffern) if ziffern == "123456789"[:len(ziffern)] else None

@@ -483,7 +483,7 @@ def test_qa_feedback_speichern(tmp_path):
     store.save_qa_feedback("Wie lief es?", "Antwort " * 200, "down", "  zu vage  ", user_id=7)
     store.save_qa_feedback("Und sonst?", None, "up", None)
     rows = store._conn.execute(
-        "SELECT frage, rating, reason, user_id, length(answer_excerpt) AS al "
+        "SELECT question, rating, reason, user_id, length(answer_excerpt) AS al "
         "FROM council_qa_feedback ORDER BY id").fetchall()
     assert rows[0]["rating"] == "down" and rows[0]["reason"] == "zu vage"
     assert rows[0]["user_id"] == 7 and rows[0]["al"] <= 500
@@ -519,10 +519,10 @@ def test_juengste_sitzungen_mit_beschluessen(tmp_path):
     # extrahierten Beschlüssen, neueste zuerst.
     store = CouncilStore(tmp_path / "c.sqlite")
     with store._conn:
-        for ksinr, datum in ((1, "2026-06-01"), (2, "2026-07-01"), (3, "2026-07-15")):
+        for ksinr, date in ((1, "2026-06-01"), (2, "2026-07-01"), (3, "2026-07-15")):
             store._conn.execute(
                 "INSERT INTO council_sessions (ksinr, committee, session_date, session_time, location, fetched_at) "
-                "VALUES (?, ?, ?, '18:00', '', '')", (ksinr, f"Gremium {ksinr}", datum))
+                "VALUES (?, ?, ?, '18:00', '', '')", (ksinr, f"Gremium {ksinr}", date))
         for ksinr in (1, 2):  # Sitzung 3 bleibt ohne Beschlüsse (kein Protokoll)
             store._conn.execute(
                 "INSERT INTO council_decisions (ksinr, position, kind, title) "

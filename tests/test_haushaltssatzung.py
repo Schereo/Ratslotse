@@ -145,7 +145,7 @@ def test_die_herkunft_nennt_die_fassung_im_stand():
     """Die Fassung gehört in den Stand und nicht in eine Fußnote."""
     s = parse_satzung(SATZUNG_2024)
     h = herkunft_fuer(s, url=None, document_id=271310, label="Haushaltssatzung 2024")
-    assert "Verwaltungsentwurf" in h.stand
+    assert "Verwaltungsentwurf" in h.as_of
     assert PROBE_FINANZHAUSHALT in h.probe
     assert PROBE_HEBESATZ not in h.probe, "ohne Jahrbuch-Abgleich keine Hebesatz-Probe"
 

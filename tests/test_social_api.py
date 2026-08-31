@@ -114,7 +114,7 @@ def test_tag_muss_ein_datum_sein(client, monkeypatch, tmp_path):
 def test_sitzungen_tag_muss_datum_sein(client, monkeypatch):
     token = _mit_token(monkeypatch)
     try:
-        r = client.get("/api/social/sitzungen/nicht-datum",
+        r = client.get("/api/social/sitzungen/nicht-date",
                        headers={"X-Social-Token": token})
         assert r.status_code == 400
     finally:

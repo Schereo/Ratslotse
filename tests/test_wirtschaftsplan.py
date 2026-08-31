@@ -204,7 +204,7 @@ def test_die_herkunft_zeigt_auf_die_vorlage_und_nennt_den_stand():
     h = herkunft_fuer(p, url="https://buergerinfo.oldenburg.de/vo0050.php?__kvonr=28214")
     assert h.art == "ris"
     assert "Beschlussvorschlag" in h.citation
-    assert "01.10.2025" in h.stand
+    assert "01.10.2025" in h.as_of
     assert "geht auf" in h.probe_result
 
 
@@ -235,9 +235,9 @@ def test_jede_zeile_traegt_ihre_herkunft(tmp_path):
 
     store = CouncilStore(tmp_path / "c.sqlite")
     try:
-        for nr, titel, text in (("25/0722", TITEL_2026, TEXT_2026),
+        for nr, title, text in (("25/0722", TITEL_2026, TEXT_2026),
                                 ("18/0880", TITEL_2019, TEXT_2019)):
-            p = parse_wirtschaftsplan(nr, titel, text)
+            p = parse_wirtschaftsplan(nr, title, text)
             store.save_wirtschaftsplan(p, herkunft_fuer(p, url="https://example.org/x"))
         assert "council_wirtschaftsplaene" not in store.herkunft_luecken()
     finally:

@@ -132,7 +132,7 @@ Kosten, die durch Gebühren zu decken sind 13.762.012 €
 bereitgestelltes Behältervolumen (14 - täglich) für:
 35 - 240 l Behälter 6.300.000 l
 400 - 1100 l Behälter 2.000.000 l
-Behältervolumen total 8.300.000 l
+Behältervolumen insgesamt 8.300.000 l
 """
 
 ANLAGE_3_2025 = """Anlage 3

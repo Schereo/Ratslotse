@@ -49,7 +49,7 @@ def _lauf_herkunft(result: dict) -> h.Herkunft:
         url="https://buergerinfo.oldenburg.de/vo040.asp",
         label=LABEL,
         citation=donations.FUNDSTELLE,
-        stand=f"Sitzungsjahre {spanne}",
+        as_of=f"Sitzungsjahre {spanne}",
         probe=[donations.ZWEITSTELLE],
         probe_result=donations.probennachweis(result))
 
@@ -89,13 +89,13 @@ def main() -> int:
         if not finanzquellen.bestandsschutz(
                 p, "Zuwendungen", len(store.get_spenden()), len(vorlagen),
                 schuetzen=not args.schrumpf_erlauben):
-            for zeile in p.warnungen:
-                print(zeile.strip(), file=sys.stderr)
+            for row in p.warnungen:
+                print(row.strip(), file=sys.stderr)
             print("ABBRUCH: Der vorhandene Bestand bleibt unangetastet. Wenn das "
                   "Schrumpfen Absicht ist: --schrumpf-erlauben.", file=sys.stderr)
             return 1
-        for zeile in p.zeilen:
-            print(zeile.strip())
+        for row in p.zeilen:
+            print(row.strip())
 
         # Je Zeile ihre eigene Herkunft: Jede Vorlage ist ein eigenes PDF, und
         # der Beleg-Chip soll auf genau dieses zeigen — nicht auf „irgendeine
@@ -109,7 +109,7 @@ def main() -> int:
                 url=v.get("dokument_url") or "https://buergerinfo.oldenburg.de/vo040.asp",
                 label=f"{LABEL} — Vorlage {v['template_number']}",
                 citation=donations.FUNDSTELLE,
-                stand=f"Sitzung vom {v['sitzung']}",
+                as_of=f"Sitzung vom {v['sitzung']}",
                 probe=v["probes"],
                 probe_result=(
                     f"Beschlossen {donations.euro(v['amount'])} Euro; derselbe "

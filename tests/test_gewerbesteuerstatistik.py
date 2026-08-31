@@ -166,9 +166,9 @@ _BLATT_62_2017 = {
 
 
 def _mappe(tmp_path, name: str, blatt61: dict, blatt62: dict,
-           titel: dict, impressum: dict) -> str:
+           title: dict, impressum: dict) -> str:
     return schreibe_xlsx(tmp_path / name, {
-        "Titel": titel, "Impressum": impressum,
+        "Titel": title, "Impressum": impressum,
         "6.1": blatt61, "6.2": blatt62})
 
 
@@ -193,7 +193,7 @@ def test_erhebungsjahr_und_erscheinen_stehen_getrennt(bericht2021):
     assert jg.year == 2021
     assert jg.erschienen == "Erschienen im März 2026"
     assert jg.korrektur is None
-    assert jg.stand == "Erschienen im März 2026"
+    assert jg.as_of == "Erschienen im März 2026"
 
 
 def test_korrigierte_fassung_landet_im_stand(tmp_path):
@@ -205,7 +205,7 @@ def test_korrigierte_fassung_landet_im_stand(tmp_path):
                   _IMPRESSUM_2021)
     jg = gs.lies_bericht(pfad)
     assert jg.korrektur == "Korrigierte Fassung vom 11.02.2026"
-    assert jg.stand == "Erschienen im März 2026, Korrigierte Fassung vom 11.02.2026"
+    assert jg.as_of == "Erschienen im März 2026, Korrigierte Fassung vom 11.02.2026"
 
 
 def test_ohne_erhebungsjahr_bricht_der_lauf_ab(tmp_path):
@@ -223,8 +223,8 @@ def test_beide_schreibweisen_ergeben_dieselbe_zuordnung():
     Ohne diesen Test fiele eine Umformulierung erst im Betrieb auf — und dann
     als fehlende Spalte, nicht als falsche Zahl (dafür sorgt die Abbruchregel
     in ``_blatt``)."""
-    def kopf(zeile):
-        return {i: t for i, t in enumerate(zeile) if t != "Zeilenende"}
+    def kopf(row):
+        return {i: t for i, t in enumerate(row) if t != "Zeilenende"}
 
     alt = gs.spaltenzuordnung(kopf(_KOPF_61_2017))
     neu = gs.spaltenzuordnung(kopf(_KOPF_61_2021))
@@ -413,7 +413,7 @@ def _herkunft() -> herkunft.Herkunft:
         label="Gewerbesteuerstatistik 2021 (Statistischer Bericht L IV 13)",
         url="https://example.org/gewst2021.xlsx",
         citation="Blatt 6.1 und 6.2", probe_result="3 Städte nachgerechnet",
-        stand="Erschienen im März 2026")
+        as_of="Erschienen im März 2026")
 
 
 def test_die_proben_sind_bekannte_namen():

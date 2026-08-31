@@ -36,7 +36,7 @@ export type KettenZelle = { year: number; mark: string };
 export type MatrixKette = {
   /** Stabiler Schlüssel (Kettenschlüssel des Backends). */
   key: string;
-  titel: string;
+  title: string;
   /** Ehrliche Zählangabe unter dem Titel („in 6 von 7 Berichten beanstandet"). */
   untertitel?: string;
   /** Nur belegte Jahre; je Jahr höchstens eine (die schwerste) Marke. */
@@ -103,7 +103,7 @@ export function KettenMatrix({ ketten, years, lueckenJahre, marken, detail, bele
   years: number[];
   /** Jahrgänge OHNE Bericht — rendern in jeder Zeile als Lücken-Zelle und
    *  über der Matrix als <LueckenFeld> mit Grund. */
-  lueckenJahre: { year: number; reason: string; datum?: string }[];
+  lueckenJahre: { year: number; reason: string; date?: string }[];
   /** Die Legende der Quelle: Buchstabe → Name (+ Erläuterung). Pflicht —
    *  eine Matrix, die ihre Marken selbst erklärt, würde raten. */
   marken: MatrixLegende;
@@ -131,7 +131,7 @@ export function KettenMatrix({ ketten, years, lueckenJahre, marken, detail, bele
       const mark = k.zellen.find((z) => z.year === s.year)?.mark;
       return mark ? `${s.year}: ${marken[mark]?.name ?? mark}` : null;
     }).filter(Boolean);
-    return `${k.titel}. ${teile.join(", ")}.`;
+    return `${k.title}. ${teile.join(", ")}.`;
   };
 
   const tasten = (e: KeyboardEvent<HTMLButtonElement>, i: number) => {
@@ -157,7 +157,7 @@ export function KettenMatrix({ ketten, years, lueckenJahre, marken, detail, bele
       className="min-w-0 rounded-md text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
     >
       <span className="line-clamp-2 font-display text-[14px] font-bold leading-snug tracking-tight">
-        {k.titel}
+        {k.title}
       </span>
       {k.untertitel && (
         <span className="mt-0.5 block text-[11.5px] leading-snug text-muted-foreground">
@@ -180,7 +180,7 @@ export function KettenMatrix({ ketten, years, lueckenJahre, marken, detail, bele
       {lueckenJahre.length > 0 && (
         <div className="mb-3 flex flex-col gap-1.5">
           {lueckenJahre.map((l) => (
-            <LueckenFeld key={l.year} label={String(l.year)} reason={l.reason} datum={l.datum} />
+            <LueckenFeld key={l.year} label={String(l.year)} reason={l.reason} date={l.date} />
           ))}
         </div>
       )}

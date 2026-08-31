@@ -89,7 +89,7 @@ def main() -> dict:
                     greeting_name=u.get("display_name"),
                     held="erinnerung",
                     kicker="Deine Einrichtung",
-                    titel="Fast fertig eingerichtet",
+                    title="Fast fertig eingerichtet",
                     fusszeile="Diese Erinnerung schicken wir exact einmal — "
                               "du bekommst sie nicht noch einmal.",
                 ),

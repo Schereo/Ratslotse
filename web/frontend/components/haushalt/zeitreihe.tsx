@@ -250,7 +250,7 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"income_statement"
   for (let i = punkte.length - 1; i >= 0; i--) {
     if (punkte[i].balance < 0) seit = punkte[i].year; else break;
   }
-  const titel = seit == null
+  const title = seit == null
     ? `Geplante Einnahmen und Ausgaben ${alleJahre[0]} bis ${alleJahre[alleJahre.length - 1]}`
     : seit === erster.year
       ? `In allen ${punkte.length} Jahren plant Oldenburg mit mehr Ausgaben als Einnahmen`
@@ -299,7 +299,7 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"income_statement"
           ist ? `Tatsächlich laut Jahresabschluss ${alsSatz(ist.balance)}.` : "Noch kein Jahresabschluss.",
         ].join(" ")
       : `${year}: keine Daten.`;
-    return { titel: String(year) + (bezugsJahre.has(year) ? "*" : ""), werte, vorlesen };
+    return { title: String(year) + (bezugsJahre.has(year) ? "*" : ""), werte, vorlesen };
   });
   // Ringe an den Punkten des abgelesenen Jahres — sehen und lesen am selben Ort.
   const ableseMarken = (i: number): AbleseMarke[] => {
@@ -450,7 +450,7 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"income_statement"
           {/* h2 wie die übrigen Blöcke der Seite (Datenstand, Quellen): Die
               Seite hat genau ein h1, darunter je Block eine zweite Ebene. */}
           <h2 className="mt-1 font-display text-[19px] font-bold leading-snug tracking-tight sm:text-[21px]">
-            {titel}
+            {title}
           </h2>
           <p className="mt-1.5 max-w-[74ch] text-sm leading-relaxed text-foreground/90">
             {letztesPlus && (
@@ -476,7 +476,7 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"income_statement"
                 daneben als sr-only-Absatz. */}
             <AbleseBeschreibung id={beschreibungId}>{beschreibung}</AbleseBeschreibung>
             <svg viewBox={`0 0 ${W} ${H}`} className="block w-full" role="group"
-              aria-label={titel} aria-describedby={beschreibungId}>
+              aria-label={title} aria-describedby={beschreibungId}>
               {gitter.map((v) => (
                 <g key={v}>
                   <line x1={X0} y1={y(v)} x2={W - 2} y2={y(v)} className="stroke-border/60" />

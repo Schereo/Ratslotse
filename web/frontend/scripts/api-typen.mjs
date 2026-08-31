@@ -34,8 +34,8 @@ if (pruefen) {
     console.error(`FEHLT: lib/api-schema.ts — einmal \`npm run api:typen\` laufen lassen.`);
     process.exit(1);
   }
-  const zeile = inhalt.trimEnd().split("\n").at(-1) ?? "";
-  if (zeile !== MARKE + summe) {
+  const row = inhalt.trimEnd().split("\n").at(-1) ?? "";
+  if (row !== MARKE + summe) {
     console.error(
       "VERALTET: lib/api-schema.ts passt nicht zu api/openapi.json.\n" +
       "  cd web/frontend && npm run api:typen   # neu erzeugen und mitcommitten",

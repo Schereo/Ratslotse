@@ -370,7 +370,7 @@ public struct CouncilConsultationStop: Codable, Sendable, Hashable, Identifiable
     public let future: Bool?
 
     enum CodingKeys: String, CodingKey {
-        case date = "datum"
+        case date = "date"
         case committee = "committee"
         case itemNumber = "top"
         case result = "result"
@@ -450,7 +450,7 @@ public struct CouncilParticipation: Codable, Sendable, Equatable {
     public let status: String?
 
     enum CodingKeys: String, CodingKey {
-        case title = "titel"
+        case title = "title"
         case step = "schritt"
         case from = "von"
         case until = "bis"
@@ -711,7 +711,7 @@ public struct AgendaChangeLine: Codable, Sendable, Hashable {
 
     enum CodingKeys: String, CodingKey {
         case label, detail
-        case title = "titel"
+        case title = "title"
         case kind = "art"
         case isNonPublic = "nichtoeffentlich"
     }
@@ -963,11 +963,11 @@ public struct BadgeSnapshot: Codable, Sendable, Equatable {
 }
 
 public struct AskRound: Codable, Sendable {
-    public let frage: String
+    public let question: String
     public let answer: String
 
-    public init(frage: String, answer: String) {
-        self.frage = frage
+    public init(question: String, answer: String) {
+        self.question = question
         self.answer = answer
     }
 }

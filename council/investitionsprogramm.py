@@ -186,7 +186,7 @@ def budget_year(text: str | None) -> int | None:
     return int(m.group(1)) if m else None
 
 
-def betragslauf(zeile: str) -> tuple[str, int] | None:
+def betragslauf(row: str) -> tuple[str, int] | None:
     """Der Betragsblock einer Zeile → ``(Namensteil, Gesamtinvestitionssumme)``.
 
     ``None``, wenn die Zeile keine Beträge trägt. Zwei Gestalten, beide belegt:
@@ -203,7 +203,7 @@ def betragslauf(zeile: str) -> tuple[str, int] | None:
        („2026") heraus; der Tausenderpunkt hält die Spaltennummern-Zeile
        („2 5431") heraus.
     """
-    token = zeile.split()
+    token = row.split()
     if not token:
         return None
     if (len(token) >= 2 and all(NUMERISCH.match(t) for t in token)
@@ -247,8 +247,8 @@ def _namen_fuegen(teile: list[str]) -> str:
 def _name_und_betrag(blob: list[str]) -> tuple[str, int | None]:
     """``(Bezeichnung, Gesamtinvestitionssumme)`` aus den Zeilen eines Satzes."""
     teile: list[str] = []
-    for zeile in blob:
-        s = zeile.strip()
+    for row in blob:
+        s = row.strip()
         if not s or MOEBEL.match(s):
             continue
         lauf = betragslauf(s)

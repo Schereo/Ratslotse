@@ -18,8 +18,8 @@ from __future__ import annotations
 import re
 
 
-def _norm_titel(titel: str) -> str:
-    return " ".join(str(titel or "").split()).lower()
+def _norm_titel(title: str) -> str:
+    return " ".join(str(title or "").split()).lower()
 
 
 def _norm_vorlage(nr: str) -> str:
@@ -341,7 +341,7 @@ def _kaskaden_zeile(versatz: int, mitglieder: list) -> dict:
     return {
         "art": "verschoben",
         "label": f"Verschoben · TOP {von_a} bis {bis_a}",
-        "titel": (f"{len(mitglieder)} Punkte rücken {stufen} {richtung} — "
+        "title": (f"{len(mitglieder)} Punkte rücken {stufen} {richtung} — "
                   f"jetzt TOP {von_n} bis {bis_n}"),
         "nichtoeffentlich": all(not m[1].get("is_public", True) for m in mitglieder),
         "detail": "Untereinander bleibt die Reihenfolge gleich",
@@ -352,14 +352,14 @@ def diff_zeilen(diff: dict) -> list[dict]:
     """Der Diff als neutrale Zeilen — EINE Quelle für Mail-HTML und die
     App-Ansicht „Zuletzt geändert" (Tims Wunsch 18.08.). Je Zeile:
     ``art`` (neu|geaendert|verschoben|vorlage|anlagen|entfernt), ``label``
-    (der fette Kopf inkl. TOP-Nummer), ``titel``, ``nichtoeffentlich`` und
+    (der fette Kopf inkl. TOP-Nummer), ``title``, ``nichtoeffentlich`` und
     ``detail`` (leise Zusatzzeile oder None). Alles unescaped — wer HTML
     baut, escapet selbst."""
     zeilen: list[dict] = []
 
     def _z(art: str, label: str, item: dict, detail: str | None = None) -> None:
         zeilen.append({"art": art, "label": label,
-                       "titel": str(item.get("title") or ""),
+                       "title": str(item.get("title") or ""),
                        "nichtoeffentlich": not item.get("is_public", True),
                        "detail": detail})
 
@@ -399,7 +399,7 @@ def diff_html(diff: dict) -> str:
     for z in diff_zeilen(diff):
         mark = (" <span style='color:#8a8f98;font-size:13px'>(nichtöffentlich)</span>"
                  if z["nichtoeffentlich"] else "")
-        inhalt = f"<b>{_esc(z['label'])}</b> — {_esc(z['titel'])}{mark}"
+        inhalt = f"<b>{_esc(z['label'])}</b> — {_esc(z['title'])}{mark}"
         if z["detail"]:
             inhalt += _leise(_esc(z["detail"]))
         zeilen.append(_zeile(farben[z["art"]], inhalt,

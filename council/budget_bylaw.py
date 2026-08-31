@@ -273,7 +273,7 @@ def herkunft_fuer(satzung: Haushaltssatzung, *, url: str | None,
         probe_result=result,
         # Die Fassung gehört in den STAND und nicht in eine Fußnote: Wer diese
         # Zahlen liest, liest einen Vorschlag der Verwaltung.
-        stand=(f"Haushaltssatzung {satzung.year}, "
+        as_of=(f"Haushaltssatzung {satzung.year}, "
                + ("Verwaltungsentwurf" if satzung.version == "entwurf"
                   else "Fassung unbekannt")),
     )

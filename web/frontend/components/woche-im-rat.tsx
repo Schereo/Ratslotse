@@ -225,11 +225,11 @@ export function WocheImRat({ vorschau, heuteIso }: {
   const inRail = sitzungen;
 
   // Tagesweise gruppieren — die Rail trägt den Tag einmal, nicht je Sitzung.
-  const tage: { datum: string; sitzungen: WochenSitzung[] }[] = [];
+  const tage: { date: string; sitzungen: WochenSitzung[] }[] = [];
   for (const s of inRail) {
     const letzter = tage[tage.length - 1];
-    if (letzter && letzter.datum === s.session_date) letzter.sitzungen.push(s);
-    else tage.push({ datum: s.session_date, sitzungen: [s] });
+    if (letzter && letzter.date === s.session_date) letzter.sitzungen.push(s);
+    else tage.push({ date: s.session_date, sitzungen: [s] });
   }
 
   const kicker = [
@@ -255,13 +255,13 @@ export function WocheImRat({ vorschau, heuteIso }: {
 
       {dichte === "mobil" ? (
         <div className="mt-3 flex flex-1 flex-col gap-3">
-          {tage.map(({ datum, sitzungen: tagesSitzungen }) =>
+          {tage.map(({ date, sitzungen: tagesSitzungen }) =>
             tagesSitzungen.map((s, i) => {
               const alle = punkteVon(s.ksinr);
-              const erste = tage[0].datum === datum && i === 0;
+              const erste = tage[0].date === date && i === 0;
               return alle.length > 0 ? (
                 <MobilSitzung
-                  key={s.ksinr ?? `${s.committee}|${datum}`}
+                  key={s.ksinr ?? `${s.committee}|${date}`}
                   sitzung={s}
                   punkte={alle.slice(0, maxPunkte)}
                   rest={restVon(s.ksinr, maxPunkte)}
@@ -269,16 +269,16 @@ export function WocheImRat({ vorschau, heuteIso }: {
                     - (weitereJe[String(s.ksinr)]?.length ?? 0), 0)}
                   badge={relevant[String(s.ksinr)] ?? 0}
                   treffer={treffer_je[String(s.ksinr)] ?? 0}
-                  heute={datum === heuteIso}
+                  heute={date === heuteIso}
                   /* Trennlinie erst ab der zweiten Zeile — die erste sitzt
                      direkt unter der Kopfzeile. */
                   mitTrennlinie={!erste}
                 />
               ) : (
                 <MobilRuhig
-                  key={s.ksinr ?? `${s.committee}|${datum}`}
+                  key={s.ksinr ?? `${s.committee}|${date}`}
                   sitzung={s}
-                  heute={datum === heuteIso}
+                  heute={date === heuteIso}
                   mitTrennlinie={!erste}
                 />
               );
@@ -293,11 +293,11 @@ export function WocheImRat({ vorschau, heuteIso }: {
             columnGap: dichte === "desktop" ? 16 : 13,
           }}
         >
-          {tage.map(({ datum, sitzungen: tagesSitzungen }, ti) => (
+          {tage.map(({ date, sitzungen: tagesSitzungen }, ti) => (
             <RailTag
-              key={datum}
-              datum={datum}
-              heute={datum === heuteIso}
+              key={date}
+              date={date}
+              heute={date === heuteIso}
               letzter={ti === tage.length - 1}
               dichte={dichte}
             >
@@ -305,7 +305,7 @@ export function WocheImRat({ vorschau, heuteIso }: {
                 const p = punkteVon(s.ksinr);
                 return p.length > 0 ? (
                   <RailSitzung
-                    key={s.ksinr ?? `${s.committee}|${datum}`}
+                    key={s.ksinr ?? `${s.committee}|${date}`}
                     sitzung={s}
                     punkte={p.slice(0, maxPunkte)}
                     rest={restVon(s.ksinr, maxPunkte)}
@@ -316,7 +316,7 @@ export function WocheImRat({ vorschau, heuteIso }: {
                   />
                 ) : (
                   <RuhigeZeile
-                    key={s.ksinr ?? `${s.committee}|${datum}`}
+                    key={s.ksinr ?? `${s.committee}|${date}`}
                     sitzung={s}
                     dichte={dichte}
                   />
@@ -337,8 +337,8 @@ export function WocheImRat({ vorschau, heuteIso }: {
 
 /* ------------------------------- Rail (Desktop / iPad) ------------------------------- */
 
-function RailTag({ datum, heute, letzter, dichte, children }: {
-  datum: string; heute: boolean; letzter: boolean; dichte: Dichte; children: React.ReactNode;
+function RailTag({ date, heute, letzter, dichte, children }: {
+  date: string; heute: boolean; letzter: boolean; dichte: Dichte; children: React.ReactNode;
 }) {
   return (
     <>
@@ -349,7 +349,7 @@ function RailTag({ datum, heute, letzter, dichte, children }: {
           </span>
         ) : (
           <span className="pl-0.5 font-mono text-[9.5px] font-medium tracking-[0.08em] text-muted-foreground">
-            {fmtTag(datum)}
+            {fmtTag(date)}
           </span>
         )}
         {/* Die Linie verbindet die Tage; am letzten endet die Rail. */}

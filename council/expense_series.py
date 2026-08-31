@@ -369,7 +369,7 @@ def parse_csv(csv_text: str) -> list[dict]:
     return zeilen
 
 
-def prokopfprobe(zeile: dict) -> tuple[bool, float | None]:
+def prokopfprobe(row: dict) -> tuple[bool, float | None]:
     """Betrag ÷ Einwohnerzahl = der ausgewiesene Pro-Kopf-Betrag?
 
     Die Rechnung steht in der Datei selbst — beide Quellen führen alle drei
@@ -379,10 +379,10 @@ def prokopfprobe(zeile: dict) -> tuple[bool, float | None]:
     beginnt erst 2002, der Jahresabschluss erst 2017, die dreißig Jahre davor
     hängen allein an ihr. Sie ist zugleich die einzige, die eine falsche
     Einheit aufdecken kann."""
-    ew, kopf = zeile.get("population"), zeile.get("per_capita")
-    if not ew or kopf is None or zeile.get("amount") is None:
+    ew, kopf = row.get("population"), row.get("per_capita")
+    if not ew or kopf is None or row.get("amount") is None:
         return False, None
-    gerechnet = zeile["amount"] / ew
+    gerechnet = row["amount"] / ew
     return abs(gerechnet - kopf) <= PROKOPF_TOLERANZ, gerechnet
 
 
@@ -552,7 +552,7 @@ def lies(csv_kameral: str, csv_doppik: str, pdf_text: str | None = None,
                 continue
             probes.append("ausgabenreihe_jahresabschluss")
 
-        zeile = {
+        row = {
             "year": year, "accounting_system": regelwerk_von(year),
             "amount": gewaehlt["amount"], "source": gewaehlt["source"],
             "revised": bool(gewaehlt.get("revised")),
@@ -560,7 +560,7 @@ def lies(csv_kameral: str, csv_doppik: str, pdf_text: str | None = None,
             "conflict_source": konflikt["source"] if konflikt else None,
             "probes": probes,
         }
-        zeilen.append(zeile)
+        zeilen.append(row)
         if konflikt:
             konflikte.append({
                 "year": year, "gewaehlt": gewaehlt["source"],

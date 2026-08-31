@@ -27,19 +27,19 @@ import { GlossaryText } from "@/components/glossary-text";
 /** Die drei Komponenten in der Reihenfolge, in der das Blatt sie führt. */
 const TEILE: {
   field: keyof FinanzausgleichJahr;
-  titel: string;
+  title: string;
   erklaerung: string;
   imDatensatz: boolean;
 }[] = [
   {
     field: "zuweisungen_gemeindeaufgaben",
-    titel: "Für Gemeindeaufgaben",
+    title: "Für Gemeindeaufgaben",
     erklaerung: "Der große Teil des Ausgleichs: Geld für das, was jede Gemeinde tut.",
     imDatensatz: true,
   },
   {
     field: "zuweisungen_kreisaufgaben",
-    titel: "Für Kreisaufgaben",
+    title: "Für Kreisaufgaben",
     erklaerung:
       "Oldenburg ist kreisfrei und erledigt zusätzlich die Aufgaben eines Landkreises — "
       + "Sozialhilfe, Jugendhilfe, Kfz-Zulassung.",
@@ -47,7 +47,7 @@ const TEILE: {
   },
   {
     field: "zuweisungen_uebertragener_wirkungskreis",
-    titel: "Für übertragene staatliche Aufgaben",
+    title: "Für übertragene staatliche Aufgaben",
     erklaerung:
       "Geld dafür, dass die Stadt Aufgaben des Landes miterledigt: Standesamt, "
       + "Melde- und Ausländerwesen, Bauaufsicht. Es ist an diese Aufgaben gebunden.",
@@ -91,7 +91,7 @@ export function ZuweisungDreiteilig({ series }: { series?: FinanzausgleichJahr[]
           return (
             <div key={t.field} className="grid grid-cols-[1fr_auto] items-baseline gap-x-4 py-2.5">
               <dt className="min-w-0">
-                <span className="text-[13px] font-semibold leading-snug">{t.titel}</span>
+                <span className="text-[13px] font-semibold leading-snug">{t.title}</span>
                 {!t.imDatensatz && (
                   <span className="ml-1.5 whitespace-nowrap rounded-full border border-dashed border-border px-1.5 py-0.5 align-middle font-mono text-[9px] uppercase tracking-[0.08em] text-muted-foreground">
                     fehlte bisher
@@ -136,7 +136,7 @@ export function ZuweisungDreiteilig({ series }: { series?: FinanzausgleichJahr[]
         Die Kurve und die Kachel „Schlüsselzuweisungen vom Land“ nennen{" "}
         {deMio(zweiTeile / 1000)}&nbsp;Mio.&nbsp;€ — das ist derselbe Ausgleich, nur ohne den
         dritten Teil. Beide Zahlen stimmen; sie zählen Verschiedenes. Wer wissen will, was vom
-        Land total kommt, nimmt die untere.
+        Land insgesamt kommt, nimmt die untere.
       </p>
       <p className="mt-2 border-t border-dashed border-border pt-2.5 text-[11px] text-muted-foreground">
         Quelle: Landesamt für Statistik Niedersachsen, Blatt „9a“

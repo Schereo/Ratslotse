@@ -158,7 +158,7 @@ _SKALA = r"(?:Mio\.?|Millionen|Million|Mrd\.?|Milliarden?)"
 #: Stufe 1 — der Titel. „in Höhe von [insgesamt] 250.000 EUR", auch
 #: „1 Million EUR", „450.000,00 €" und „99.000,- Euro".
 _TITEL_BETRAG = re.compile(
-    rf"in\s+H(?:ö|oe)he\s+von\s+(?:total\s+)?(?P<zahl>{_NUM})\s*"
+    rf"in\s+H(?:ö|oe)he\s+von\s+(?:insgesamt\s+)?(?P<zahl>{_NUM})\s*"
     rf"(?P<skala>{_SKALA})?\s*(?:,-)?\s*{_WAEHRUNG}", re.IGNORECASE)
 
 #: Stufe 2 — der Beschlussvorschlag. Dasselbe, plus die Schreibweise ohne
@@ -166,7 +166,7 @@ _TITEL_BETRAG = re.compile(
 _TEXT_BETRAG = re.compile(
     rf"(?:in\s+H(?:ö|oe)he\s+von|"
     rf"Mehr(?:auszahlung|aufwand|aufwendungen|einzahlung)\s+von)\s+"
-    rf"(?:total\s+)?(?P<zahl>{_NUM})\s*(?P<skala>{_SKALA})?\s*(?:,-)?\s*"
+    rf"(?:insgesamt\s+)?(?P<zahl>{_NUM})\s*(?P<skala>{_SKALA})?\s*(?:,-)?\s*"
     rf"{_WAEHRUNG}", re.IGNORECASE)
 
 #: Ab hier redet der Beschlussvorschlag über die **Deckung**, nicht mehr über
@@ -192,9 +192,9 @@ _VERPFLICHTUNG = re.compile(r"Verpflichtungserm(?:ä|ae)chtigung", re.IGNORECASE
 _EINSCHLAG = re.compile(r"(?:über|ueber|außer|ausser)planmäßig", re.IGNORECASE)
 
 
-def ist_nachbewilligung(titel: str) -> bool:
+def ist_nachbewilligung(title: str) -> bool:
     """Trägt dieser Vorlagentitel eine Nachbewilligung nach § 117 NKomVG?"""
-    return bool(_EINSCHLAG.search(titel or ""))
+    return bool(_EINSCHLAG.search(title or ""))
 
 
 #: Die Gremien, deren Zustimmung der Rechenschaftsbericht als „Beschluss des
@@ -235,7 +235,7 @@ def _zahl(zahl: str, skala: str | None) -> float:
     return value
 
 
-def art(titel: str) -> str:
+def art(title: str) -> str:
     """Welche der drei Sorten ist das? Reihenfolge zählt.
 
     Die Schwelle wird **zuerst** geprüft: Der Sammelbericht 21/0023 heißt
@@ -243,7 +243,7 @@ def art(titel: str) -> str:
     Verpflichtungsermächtigungen** bis zu 50.000 Euro …" und träfe sonst auf
     die VE-Regel — mit dem Ergebnis, dass eine Schwelle als
     Verpflichtungsermächtigung im Bestand stünde."""
-    t = titel or ""
+    t = title or ""
     if _SCHWELLE.search(t):
         return ART_SCHWELLE
     if _VERPFLICHTUNG.search(t):
@@ -261,7 +261,7 @@ _BEIDES = re.compile(
     re.IGNORECASE)
 
 
-def category(titel: str) -> str:
+def category(title: str) -> str:
     """``ueberplanmaessig`` | ``ausserplanmaessig`` | ``beides``.
 
     Der Unterschied ist kein Detail: **überplanmäßig** heißt, der Posten stand
@@ -269,7 +269,7 @@ def category(titel: str) -> str:
     gab es gar nicht. Gedeckt sind beide — „außerplanmäßig" ist kein
     ungedeckter Griff in die Kasse, sondern eine Umwidmung, und jede Vorlage
     nennt die Deckung."""
-    t = titel or ""
+    t = title or ""
     if _BEIDES.search(t):
         return "beides"
     ueber = bool(re.search(r"(?:über|ueber)planmäßig", t, re.IGNORECASE))
@@ -318,14 +318,14 @@ class Bewilligung:
     """Eine Nachbewilligung, so wie das RIS sie führt — je Vorlage eine."""
 
     template_number: str
-    titel: str
+    title: str
     #: :data:`ART_BEWILLIGUNG` | :data:`ART_VERPFLICHTUNG` | :data:`ART_SCHWELLE`
     art: str
     category: str
     year: int | None
     #: ``None`` bei :data:`ART_SCHWELLE` — dort ist der Titelbetrag die Grenze.
     amount: float | None
-    #: ``titel`` | ``proposed_decision`` | ``None`` — welche Stufe traf.
+    #: ``title`` | ``proposed_decision`` | ``None`` — welche Stufe traf.
     amount_source: str | None
     #: Wie die Vorlage durch die Gremien lief; leer, wenn nur beantragt.
     beschluesse: tuple[dict, ...] = field(default_factory=tuple)
@@ -393,11 +393,11 @@ class Bewilligung:
                    for b in self.beschluesse)
 
 
-def amount(titel: str, vorschlag: str | None = None,
+def amount(title: str, vorschlag: str | None = None,
            volltext: str | None = None) -> tuple[float | None, str | None]:
     """Der Betrag einer Nachbewilligung, zweistufig.
 
-    → ``(amount, source)`` mit ``source`` aus ``titel`` |
+    → ``(amount, source)`` mit ``source`` aus ``title`` |
     ``proposed_decision`` | ``None``. **Die Reihenfolge des Tupels ist
     (Wert, Herkunft)** — nicht umgekehrt.
 
@@ -409,11 +409,11 @@ def amount(titel: str, vorschlag: str | None = None,
 
     Bei :data:`ART_SCHWELLE` gibt es bewusst **nichts** zurück: Der Betrag im
     Titel eines Sammelberichts ist die Wertgrenze."""
-    if art(titel) == ART_SCHWELLE:
+    if art(title) == ART_SCHWELLE:
         return None, None
-    m = _TITEL_BETRAG.search(titel or "")
+    m = _TITEL_BETRAG.search(title or "")
     if m:
-        return _zahl(m.group("zahl"), m.group("skala")), "titel"
+        return _zahl(m.group("zahl"), m.group("skala")), "title"
     text = vorschlag or ernte.proposed_decision(volltext or "")
     value = _betrag_aus_vorschlag(text)
     return (value, "proposed_decision") if value is not None else (None, None)
@@ -438,15 +438,15 @@ def aus_vorlagen(vorlagen: list[dict],
     beschluesse = beschluesse or {}
     out: list[Bewilligung] = []
     for v in vorlagen:
-        titel = v.get("title") or ""
-        if not ist_nachbewilligung(titel):
+        title = v.get("title") or ""
+        if not ist_nachbewilligung(title):
             continue
         nr = v.get("template_number") or ""
-        value, source = amount(titel, v.get("proposed_decision"),
+        value, source = amount(title, v.get("proposed_decision"),
                               v.get("raw_text"))
         out.append(Bewilligung(
-            template_number=nr, titel=titel, art=art(titel),
-            category=category(titel), year=haushaltsjahr(nr),
+            template_number=nr, title=title, art=art(title),
+            category=category(title), year=haushaltsjahr(nr),
             amount=value, amount_source=source,
             beschluesse=tuple(beschluesse.get(nr, ()))))
     return sorted(out, key=lambda b: b.template_number)
@@ -502,7 +502,7 @@ def probe_volltext(bewilligung: Bewilligung, volltext: str | None) -> bool:
 
     Ohne Titelbetrag ist nichts zu prüfen — dann ist die Antwort ``False``,
     nicht ``True``: „nicht geprüft" darf nicht wie „bestanden" aussehen."""
-    if bewilligung.amount_source != "titel" or bewilligung.amount is None:
+    if bewilligung.amount_source != "title" or bewilligung.amount is None:
         return False
     return any(abs(_zahl(m.group("zahl"), m.group("skala")) - bewilligung.amount)
                < 0.005 for m in _TEXT_BETRAG.finditer(volltext or ""))
@@ -519,7 +519,7 @@ _KAP3 = re.compile(
 _KAP4 = re.compile(r"(?m)^\s*4\s+Erm[äa]chtigungs[üu]bertragungen")
 
 _GESAMT = re.compile(
-    rf"Aufwendungen\s+und\s+Auszahlungen\s+von\s+total\s+({_NUM})\s*Euro",
+    rf"Aufwendungen\s+und\s+Auszahlungen\s+von\s+insgesamt\s+({_NUM})\s*Euro",
     re.IGNORECASE | re.DOTALL)
 _AUFTEILUNG = re.compile(
     rf"Davon\s+entfielen\s+({_NUM})\s*Euro\s+auf\s+investive\s+und\s+"
@@ -533,7 +533,7 @@ _AUFTEILUNG = re.compile(
 _VE_TEXT = re.compile(
     rf"Dar[üu]ber\s+hinaus\s+wurden?[\s\S]{{0,200}}?"
     rf"Verpflichtungserm[äa]chtigung(?:en)?\s+in\s+H[öo]he\s+von\s+"
-    rf"(?:total\s+)?({_NUM})\s*Euro", re.IGNORECASE)
+    rf"(?:insgesamt\s+)?({_NUM})\s*Euro", re.IGNORECASE)
 _SUMMENZEILE = re.compile(rf"(?m)^\s*Summe\s+({_NUM})\s+({_NUM})\s*$")
 
 #: Der Kopf der Übersichtstabelle — und die Grenze, ab der die Kanalnamen
@@ -656,8 +656,8 @@ def _kanal(text: str, key: str, muster: str) -> Kanal | None:
     if grenzen:
         rest = rest[:min(grenzen)]
     zellen: list[tuple[int, float]] = []
-    for zeile in rest.splitlines():
-        z = _ZELLE.match(zeile)
+    for row in rest.splitlines():
+        z = _ZELLE.match(row)
         if z:
             zellen.append((int(z.group(1)),
                            _zahl(z.group(2), None) if z.group(2) else 0.0))

@@ -46,11 +46,11 @@ _VO0053 = """
 def test_beratungsfolge_parses_stations():
     rows = stammdaten.fetch_beratungsfolge(_FakeScraper(_VO0053), 1)
     assert len(rows) == 3
-    assert rows[0] == {"datum": "2026-06-10", "committee": "Sportausschuss", "top": "8.1",
+    assert rows[0] == {"date": "2026-06-10", "committee": "Sportausschuss", "top": "8.1",
                        "is_public": True, "result": "Kenntnisnahme", "ksinr": 4590}
     # Geplante Station: kein Ergebnis, Datum in der Zukunft
     assert rows[1]["result"] is None and rows[1]["ksinr"] == 9999
-    assert stammdaten.is_future(rows[1]["datum"])
+    assert stammdaten.is_future(rows[1]["date"])
     # Nichtöffentlich wird erkannt (auch ohne Sitzungs-Link)
     assert rows[2]["is_public"] is False and rows[2]["ksinr"] is None
     assert rows[2]["committee"] == "Verwaltungsausschuss" and rows[2]["result"] == "Vorberatung"
@@ -103,16 +103,16 @@ def test_person_mitarbeit_parses_memberships():
 def test_store_beratungen_roundtrip_and_replace(tmp_path):
     store = CouncilStore(tmp_path / "c.sqlite")
     store.save_beratungen(10, [
-        {"datum": "2026-06-25", "committee": "Betriebsausschuss", "top": "5",
+        {"date": "2026-06-25", "committee": "Betriebsausschuss", "top": "5",
          "is_public": True, "result": "Vorberatung", "ksinr": 4679},
-        {"datum": "2099-06-29", "committee": "Rat", "top": "12.1",
+        {"date": "2099-06-29", "committee": "Rat", "top": "12.1",
          "is_public": True, "result": None, "ksinr": None},
     ])
     rows = store.get_beratungen(10)
     assert [r["committee"] for r in rows] == ["Betriebsausschuss", "Rat"]
     assert rows[0]["result"] == "Vorberatung" and rows[1]["result"] is None
     # Replace-Semantik: erneutes Speichern ersetzt vollständig
-    store.save_beratungen(10, [{"datum": "2099-06-29", "committee": "Rat", "top": "12.1",
+    store.save_beratungen(10, [{"date": "2099-06-29", "committee": "Rat", "top": "12.1",
                                 "is_public": True, "result": "Entscheidung", "ksinr": 4695}])
     rows = store.get_beratungen(10)
     assert len(rows) == 1 and rows[0]["result"] == "Entscheidung"
@@ -209,18 +209,18 @@ def test_classify_faction_groups_vs_parties():
     kollabiert; „/" allein ist kein Gruppen-Signal (Grüne)."""
     from council.parties import classify_faction
     assert classify_faction("FDP/Volt") == {
-        "kind": "gruppe", "label": "FDP/Volt", "parties": ["FDP", "Volt"], "group": "FDP/Volt"}
-    assert classify_faction("Die LINKE./Piratenpartei")["kind"] == "gruppe"
+        "kind": "group", "label": "FDP/Volt", "parties": ["FDP", "Volt"], "group": "FDP/Volt"}
+    assert classify_faction("Die LINKE./Piratenpartei")["kind"] == "group"
     assert classify_faction("Für Oldenburg")["parties"] == ["parteilos", "Piraten"]
     assert classify_faction("Bündnis 90/Die Grünen") == {
-        "kind": "partei", "label": "Grüne", "parties": ["Grüne"], "group": None}
-    assert classify_faction("SPD")["kind"] == "partei"
-    assert classify_faction("")["kind"] == "parteilos"
-    assert classify_faction(None)["kind"] == "parteilos"
-    assert classify_faction("Verwaltung")["kind"] == "unbekannt"
+        "kind": "party", "label": "Grüne", "parties": ["Grüne"], "group": None}
+    assert classify_faction("SPD")["kind"] == "party"
+    assert classify_faction("")["kind"] == "independent"
+    assert classify_faction(None)["kind"] == "independent"
+    assert classify_faction("Verwaltung")["kind"] == "unknown"
     # WFO-LKR ist eine Ratsgruppe (Norrenbrock, Dr. Schreier sitzen im Plenum) —
     # ohne den Eintrag las das Verzeichnis beide als „parteilos" (21.08.2026).
-    assert classify_faction("WFO-LKR")["kind"] == "gruppe"
+    assert classify_faction("WFO-LKR")["kind"] == "group"
     assert classify_faction("WFO -LKR")["label"] == "WFO-LKR"
 
 
@@ -249,14 +249,14 @@ def test_member_detail_groups_and_parteilos(tmp_path):
     luek = store.member_detail(store._person_slug("Jens Lükermann"))
     assert luek["party"] == "Volt"  # aktuelle Zugehörigkeit — NICHT FDP
     assert [(t["kind"], t["label"]) for t in luek["faction_timeline"]] == [
-        ("gruppe", "FDP/Volt"), ("partei", "Volt")]
+        ("group", "FDP/Volt"), ("party", "Volt")]
     assert luek["faction_timeline"][0]["parties"] == ["FDP", "Volt"]
     assert "FDP" not in [t["label"] for t in luek["faction_timeline"]]
 
     finke = store.member_detail(store._person_slug("Vally Finke"))
     assert finke["party"] == "Für Oldenburg"
     assert [(t["kind"], t["label"]) for t in finke["faction_timeline"]] == [
-        ("partei", "SPD"), ("parteilos", "parteilos"), ("gruppe", "Für Oldenburg")]
+        ("party", "SPD"), ("independent", "parteilos"), ("group", "Für Oldenburg")]
 
     members = {m["name"]: m["party"] for m in store.list_members()}
     assert members["Jens Lükermann"] == "Volt"

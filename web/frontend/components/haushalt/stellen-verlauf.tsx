@@ -34,7 +34,7 @@ import { cn } from "@/lib/utils";
 
 export type VerlaufZeile = {
   budget_year: number;
-  zeile: StellenZeile | null;
+  row: StellenZeile | null;
   /** Warum diese Zeile leer ist — nur gesetzt, wo ein Teil fehlt. */
   fehlt?: string;
 };
@@ -48,7 +48,7 @@ export function StellenPaare({ zeilen, skala, aktJahr }: {
 }) {
   return (
     <ol className="flex flex-col gap-3">
-      {zeilen.map(({ budget_year, zeile, fehlt }) => {
+      {zeilen.map(({ budget_year, row, fehlt }) => {
         const akt = budget_year === aktJahr;
         return (
           <li key={budget_year} className="grid grid-cols-[3rem_minmax(0,1fr)_auto] items-center gap-x-3">
@@ -59,31 +59,31 @@ export function StellenPaare({ zeilen, skala, aktJahr }: {
               {budget_year}
             </span>
 
-            {zeile ? (
+            {row ? (
               <>
                 <div className="flex min-w-0 flex-col gap-[3px]" aria-hidden="true">
                   <div className="h-2.5 rounded-[3px]"
                     style={{
-                      width: `${Math.min(zeile.positions_planned / skala, 1) * 100}%`,
+                      width: `${Math.min(row.positions_planned / skala, 1) * 100}%`,
                       background: "var(--hh-ein-0)",
                     }} />
                   <div className="h-2.5 rounded-[3px]"
                     style={{
-                      width: `${Math.min(zeile.filled / skala, 1) * 100}%`,
+                      width: `${Math.min(row.filled / skala, 1) * 100}%`,
                       background: "var(--hh-ein-4)",
                     }} />
                 </div>
                 {/* Die beiden Zahlen der Zeile — Plan und Besetzung, nie ihre
                     Differenz. Vorgelesen wird der ganze Satz. */}
                 <span
-                  aria-label={`${budget_year}: ${deStellen(zeile.positions_planned)} Stellen `
-                    + `vorgehalten, ${deStellen(zeile.filled)} besetzt am Stichtag `
+                  aria-label={`${budget_year}: ${deStellen(row.positions_planned)} Stellen `
+                    + `vorgehalten, ${deStellen(row.filled)} besetzt am Stichtag `
                     + `des Vorjahres`}
                   className={cn(
                     "text-right font-mono text-[12.5px] tabular-nums",
                     akt ? "font-semibold text-foreground" : "text-muted-foreground",
                   )}>
-                  {deStellen(zeile.positions_planned)} · {deStellen(zeile.filled)}
+                  {deStellen(row.positions_planned)} · {deStellen(row.filled)}
                 </span>
               </>
             ) : (

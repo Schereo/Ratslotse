@@ -55,7 +55,7 @@ export type FlussPosten = {
 
 export type FlussSeiteDaten = {
   /** Überschrift der Listen-Fassung: „Woher das Geld kommt". */
-  titel: string;
+  title: string;
   /** Ecken-Label der Band-Fassung: „Woher". */
   kurz: string;
   /** Zählangabe neben der Überschrift: „Einnahmearten". */
@@ -162,8 +162,8 @@ function stapeln(baender: FlussPosten[], faktor: number, gap: number, start: num
 
 /** Die aufgeklappte Auflistung eines Sammelpostens — dieselbe Grammatik wie
  *  die Detail-Box des Gegenbalkens (Karte mit Schließen-Knopf). */
-function SammelPanel({ lage, titel, teile, skala, format, unit, onClose }: {
-  lage: SeitenLage; titel: string; teile: FlussPosten[]; skala: number;
+function SammelPanel({ lage, title, teile, skala, format, unit, onClose }: {
+  lage: SeitenLage; title: string; teile: FlussPosten[]; skala: number;
   format: (w: number) => string; unit: string; onClose: () => void;
 }) {
   const groesste = Math.max(...teile.map((t) => t.value), 1);
@@ -171,7 +171,7 @@ function SammelPanel({ lage, titel, teile, skala, format, unit, onClose }: {
     <div className="mt-3 rounded-xl border border-border bg-card p-3 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-          {titel}
+          {title}
         </p>
         <button type="button" onClick={onClose} aria-label="Schließen"
           className="-mr-0.5 -mt-0.5 rounded p-0.5 text-muted-foreground hover:text-foreground">
@@ -282,7 +282,7 @@ function Listen({ seiten, topf, empfaenger, skala, mindestAnteil, format, unit, 
           <div key={lage}>
             {si === 1 && <TopfBlock topf={topf} format={format} unit={unit} />}
             <div className="mb-2 flex items-baseline justify-between gap-3">
-              <p className="text-[12.5px] font-semibold">{daten.titel}</p>
+              <p className="text-[12.5px] font-semibold">{daten.title}</p>
               <span className="font-mono text-[10px] uppercase text-muted-foreground">
                 {daten.hint} · {format(daten.gesamt)}&#8239;{unit}
               </span>
@@ -296,7 +296,7 @@ function Listen({ seiten, topf, empfaenger, skala, mindestAnteil, format, unit, 
               ))}
             </div>
             {offen === lage && gebuendelt.length > 0 && (
-              <SammelPanel lage={lage} titel={daten.sammelTitel} teile={gebuendelt}
+              <SammelPanel lage={lage} title={daten.sammelTitel} teile={gebuendelt}
                 skala={skala} format={format} unit={unit}
                 onClose={() => setOffen(null)} />
             )}
@@ -385,7 +385,7 @@ export function Flussbild({
         const s = offen === "links" ? links : rechts;
         const { gebuendelt } = fasseKleineZusammen(s.baender, skala, mindestAnteil);
         return gebuendelt.length ? (
-          <SammelPanel lage={offen} titel={s.sammelTitel} teile={gebuendelt}
+          <SammelPanel lage={offen} title={s.sammelTitel} teile={gebuendelt}
             skala={skala} format={format} unit={unit}
             onClose={() => setOffen(null)} />
         ) : null;

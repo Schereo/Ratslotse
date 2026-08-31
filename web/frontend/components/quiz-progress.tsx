@@ -48,7 +48,7 @@ export function QuizProgress({
   );
   const total = quote(stats.total.correct, stats.total.answered);
   const label = (a: QuizStats["by_area"][number]) =>
-    a.area_type === "thema" ? themeLabels[a.area_key] ?? a.area_key : a.area_key;
+    a.area_type === "topic" ? themeLabels[a.area_key] ?? a.area_key : a.area_key;
 
   return (
     <section>

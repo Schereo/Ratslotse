@@ -183,7 +183,7 @@ function alsMatrixKetten(ketten: Kette[], jahreAnzahl: number): MatrixKette[] {
     }
     return {
       key: k.key,
-      titel: k.titel,
+      title: k.title,
       untertitel: `in ${k.beanstandet.length} von ${jahreAnzahl} Berichten beanstandet`
         + (k.beanstandet.length ? ` · zuletzt ${k.beanstandet.at(-1)}` : ""),
       zellen,
@@ -338,7 +338,7 @@ export function PruefungAbschnitt({ onBestand }: {
       </div>
 
       <LottiErklaert
-        titel="Wer hier eigentlich prüft"
+        title="Wer hier eigentlich prüft"
         text="Das Rechnungsprüfungsamt gehört zur Stadt, arbeitet aber für den Rat und nicht für die Verwaltungsspitze. Es schaut jedes Jahr nach, ob der Jahresabschluss stimmt und ob nach den Regeln gewirtschaftet wurde. Ein Hinweis ist dabei kein Vorwurf, sondern eine Notiz für das nächste Mal — erst eine Beanstandung meint einen bedeutsamen Mangel."
       />
 
