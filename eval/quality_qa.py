@@ -105,7 +105,7 @@ def erzeugen(label: str, db: Path) -> Path:
                     [w for w, _ in emb.search_wortbeitraege(store, q_suche, expanded)])
             except Exception:  # noqa: BLE001
                 pass
-            if typ == "geld":
+            if typ == "money":
                 try:
                     haushalt = store.haushalt_fuer_begriffe(expanded.split())
                 except Exception:  # noqa: BLE001
@@ -115,7 +115,7 @@ def erzeugen(label: str, db: Path) -> Path:
             spanne = (int(daten[-1]) - int(daten[0])) if len(daten) >= 2 and daten[0].isdigit() else 0
             gross = len(cands) >= 25 or spanne >= 3
             ctx = cands[:20]
-            if typ == "verlauf":
+            if typ == "history":
                 ctx = qa.sort_verlauf(ctx)
             try:
                 texts = store.vorlage_texts_for([c.get("template_number") or "" for c in ctx])

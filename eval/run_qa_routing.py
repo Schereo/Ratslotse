@@ -31,11 +31,11 @@ def evaluate_routing(cases: list[dict], analyse_fn=qa.analyse_query) -> dict:
 
     for case in cases:
         analysed = analyse_fn(case["question"])
-        typ = analysed.get("typ", "thema")
+        typ = analysed.get("kind", "topic")
         signal = case.get("signals") or {}
         plan = qa.research_plan_with_mandatory(
             analysed.get("rechercheplan") or {}, typ=typ,
-            question=analysed.get("frage") or case["question"],
+            question=analysed.get("question") or case["question"],
             person=bool(signal.get("person")), place=bool(signal.get("place")),
             sessions=bool(signal.get("sessions")),
             latest_decision=bool(signal.get("latest_decision")),
@@ -45,7 +45,7 @@ def evaluate_routing(cases: list[dict], analyse_fn=qa.analyse_query) -> dict:
         forbidden = set(case.get("forbidden_channels") or [])
         expected_facets = set(case.get("expected_facets") or [])
         actual_facets = qa.geld_facetten(
-            analysed.get("frage") or case["question"], typ)
+            analysed.get("question") or case["question"], typ)
 
         type_ok = typ in set(case["allowed_types"])
         valid_ok = bool(plan.get("valid"))

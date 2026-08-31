@@ -394,7 +394,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
             '(\"Was wurde zu X entschieden?\", \"Wie ist der Stand?\", \"Welche '
             'Aussagen …?\"). Im Zweifel false.\n", '
             '"terms": "4-8 deutsche Suchbegriffe, Substantive und nahe Synonyme, durch Leerzeichen"'
-            ', "kind": "thema|verlauf|partei|geld", "party": "Fraktionsname oder null", '
+            ', "kind": "topic|history|party|money", "party": "Fraktionsname oder null", '
             '"variants": ["bis zu 2 UMFORMULIERUNGEN der Frage aus anderem Blickwinkel — z. B. die '
             "Sachstands-Frage zusätzlich als Finanzierungs- oder Planungs-Frage, die vage Frage "
             'konkretisiert aufs wahrscheinlich gemeinte Vorhaben; jeweils ein kurzer Suchsatz"], '
@@ -403,16 +403,16 @@ DEFAULTS: dict[str, dict[str, str]] = {
             '"sort": "relevance|newest|chronological", '
             '"needs": ["ein oder mehrere erlaubte Bedarfsnamen"]}}}}\n\n'
             "kind-Regeln:\n"
-            '- "verlauf": Die Frage zielt auf Werdegang/Chronik/Stand eines Vorgangs '
+            '- "history": Die Frage zielt auf Werdegang/Chronik/Stand eines Vorgangs '
             '("Wie lief …", "Wie ist der Stand …", "Was wurde aus …", "Chronologie").\n'
-            '- "partei": Die Frage fragt nach Position/Anträgen/Verhalten einer bestimmten '
+            '- "party": Die Frage fragt nach Position/Anträgen/Verhalten einer bestimmten '
             "Fraktion oder Gruppe (SPD, CDU, Grüne, FDP, Linke, AfD, Volt, BSW, Piraten, "
             '"Für Oldenburg" …). Dann "party" auf den Namen setzen.\n'
-            '- "geld": Es geht um Kosten, Beträge, Förderhöhen, Haushalt ("Wie teuer", "Wie hoch") '
+            '- "money": Es geht um Kosten, Beträge, Förderhöhen, Haushalt ("Wie teuer", "Wie hoch") '
             "— auch dann, wenn die Zahl nicht in einem Beschluss steht, sondern im Haushalt der "
             'Stadt ("Wie viel gibt Oldenburg für Soziales aus?", "Hat die Stadt mehr ausgegeben '
             'als geplant?", "Was kostet die Stadt insgesamt?").\n'
-            '- sonst "thema".\n'
+            '- sonst "topic".\n'
             "Rechercheplan-Regeln (nur planen, keine Quellen erfinden):\n"
             '- "decisions" immer; "debates" für Aussagen/Positionen, "budget" für Haushaltszahlen, '
             '"press" für aktuellen Verwaltungsstand, "sessions" für konkrete Sitzungen, '

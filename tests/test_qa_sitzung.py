@@ -265,28 +265,28 @@ def test_analyse_sitzung_setzt_nur_der_router(monkeypatch):
     """Behauptet die LLM-Analyse den Typ „sitzung", fehlt die aufgelöste
     Sitzung — dann gilt „thema", wie bei „person"."""
     from types import SimpleNamespace
-    payload = json.dumps({"terms": "Sitzung Juni", "kind": "sitzung"})
+    payload = json.dumps({"terms": "Sitzung Juni", "kind": "session"})
     monkeypatch.setattr(qa.llm, "chat_complete", lambda **kw: SimpleNamespace(
         choices=[SimpleNamespace(message=SimpleNamespace(content=payload))], usage=None))
     qa._ANALYSE_CACHE.clear()
-    assert qa.analyse_query("Was war in der Sitzung?")["kind"] == "thema"
+    assert qa.analyse_query("Was war in der Sitzung?")["kind"] == "topic"
     qa._ANALYSE_CACHE.clear()
 
 
 def test_sitzung_regel_und_tokenbudget():
-    assert qa._answer_tokens("sitzung") == 1400
-    assert qa._answer_tokens("sitzung", gross=True) == 2200
-    assert qa._answer_tokens("sitzung", eng=True) == 320
+    assert qa._answer_tokens("session") == 1400
+    assert qa._answer_tokens("session", gross=True) == 2200
+    assert qa._answer_tokens("session", eng=True) == 320
     messages, _ = qa._answer_messages(
         "Was hat der JHA am 17.06.2026 beschlossen?",
-        [{"id": 1, "title": "T", "official_text": "B"}], typ="sitzung",
+        [{"id": 1, "title": "T", "official_text": "B"}], typ="session",
         sitzungen=[{"committee": "Jugendhilfeausschuss", "session_date": "2026-06-17",
                     "beschluss_ids": [1], "kuenftig": False}])
     prompt = messages[0]["content"]
     assert "EINE KONKRETE SITZUNG" in prompt
     assert "ZUR GEFRAGTEN SITZUNG" in prompt
     # Ohne Sitzungs-Fund bleibt der Prompt frei von dem Block.
-    messages, _ = qa._answer_messages("Frage?", [], typ="thema")
+    messages, _ = qa._answer_messages("Frage?", [], typ="topic")
     assert "ZUR GEFRAGTEN SITZUNG" not in messages[0]["content"]
 
 

@@ -32,11 +32,11 @@ def _leerer_cache():
 
 def test_analyse_parst_sauberes_json(monkeypatch):
     calls = _llm_antwort(monkeypatch, json.dumps(
-        {"terms": "Radverkehr Fahrrad Radweg", "kind": "verlauf", "party": None}))
+        {"terms": "Radverkehr Fahrrad Radweg", "kind": "history", "party": None}))
     a = qa.analyse_query("Wie lief das mit dem Radweg?")
     # `eng` kam mit den Kurzantworten für Punktfragen dazu (12.08.).
     assert a == {"question": "Wie lief das mit dem Radweg?",
-                 "terms": "Radverkehr Fahrrad Radweg", "kind": "verlauf", "party": None,
+                 "terms": "Radverkehr Fahrrad Radweg", "kind": "history", "party": None,
                  "variants": [], "eng": False,
                  "rechercheplan": {"intent": "overview", "channels": ["decisions"],
                                     "sort": "relevance", "needs": [], "valid": False}}
@@ -48,7 +48,7 @@ def test_analyse_parst_sauberes_json(monkeypatch):
 def test_analyse_varianten_geparst_und_gekappt(monkeypatch):
     """Multi-Query (Task 32): bis zu 2 saubere Varianten, Müll fliegt raus."""
     _llm_antwort(monkeypatch, json.dumps({
-        "terms": "Stadion", "kind": "thema",
+        "terms": "Stadion", "kind": "topic",
         "variants": ["Finanzierung des Stadionneubaus", "  B-Plan   Stadion  ",
                       "dritte wird gekappt", 42, ""],
     }))
@@ -58,8 +58,8 @@ def test_analyse_varianten_geparst_und_gekappt(monkeypatch):
 
 def test_gross_regel_und_tokenbudget():
     """Task 32: große Themen bekommen Struktur-Erlaubnis und mehr Budget."""
-    assert qa._answer_tokens("thema") == 1000
-    assert qa._answer_tokens("thema", gross=True) == 2200
+    assert qa._answer_tokens("topic") == 1000
+    assert qa._answer_tokens("topic", gross=True) == 2200
     messages, _ = qa._answer_messages(
         "Wie läuft es mit dem Stadion?", [{"id": 1, "title": "T", "official_text": "B"}],
         gross=True)
@@ -72,7 +72,7 @@ def test_gross_regel_und_tokenbudget():
 
 def test_analyse_partei_nur_bei_partei_typ(monkeypatch):
     _llm_antwort(monkeypatch, json.dumps(
-        {"terms": "Wohnraum", "kind": "geld", "party": "SPD"}))
+        {"terms": "Wohnraum", "kind": "money", "party": "SPD"}))
     # partei wird verworfen, wenn der Typ nicht "party" ist — sonst filtert
     # eine Geld-Frage plötzlich nach Fraktion.
     assert qa.analyse_query("Was kostet das?")["party"] is None
@@ -81,11 +81,11 @@ def test_analyse_partei_nur_bei_partei_typ(monkeypatch):
 def test_analyse_faellt_bei_muell_auf_thema(monkeypatch):
     _llm_antwort(monkeypatch, "kein json {")
     a = qa.analyse_query("Was wurde zum Hafen beschlossen?")
-    assert a["kind"] == "thema"
+    assert a["kind"] == "topic"
     assert a["terms"] == "Was wurde zum Hafen beschlossen?"
     _llm_antwort(monkeypatch, json.dumps({"terms": "Hafen", "kind": "quatsch"}))
     qa._ANALYSE_CACHE.clear()
-    assert qa.analyse_query("Hafenfrage?")["kind"] == "thema"
+    assert qa.analyse_query("Hafenfrage?")["kind"] == "topic"
 
 
 def test_analyse_kondensiert_mit_verlauf(monkeypatch):
@@ -94,7 +94,7 @@ def test_analyse_kondensiert_mit_verlauf(monkeypatch):
     # Was dieser Test belegt, steht in `b` — nicht in der Zahl der Aufrufe.
     _llm_antwort(monkeypatch, json.dumps(
         {"question": "Was kostet der Neubau der Cäcilienbrücke?",
-         "terms": "Kosten Neubau Cäcilienbrücke", "kind": "geld", "party": None}))
+         "terms": "Kosten Neubau Cäcilienbrücke", "kind": "money", "party": None}))
     verlauf = [{"question": "Wie ist der Stand bei der Cäcilienbrücke?",
                 "answer": "Der Rat forderte das WSA zur Beschleunigung auf. " * 20}]
     a = qa.analyse_query("Und was kostet das?", verlauf=verlauf)
@@ -102,7 +102,7 @@ def test_analyse_kondensiert_mit_verlauf(monkeypatch):
     # Cache-Schlüssel enthält den Verlauf: gleiche Frage OHNE Verlauf ist ein
     # eigener Eintrag und trifft nicht denselben Cache.
     _llm_antwort(monkeypatch, json.dumps({"question": "Und was kostet das?",
-                                          "terms": "Kosten", "kind": "geld"}))
+                                          "terms": "Kosten", "kind": "money"}))
     b = qa.analyse_query("Und was kostet das?")
     assert b["question"] == "Und was kostet das?"
 
@@ -132,7 +132,7 @@ def test_analyse_fehler_liefert_fallback(monkeypatch):
         raise RuntimeError("Provider weg")
     monkeypatch.setattr(qa.llm, "chat_complete", boom)
     a = qa.analyse_query("Frage?")
-    assert a == {"question": "Frage?", "terms": "Frage?", "kind": "thema", "party": None,
+    assert a == {"question": "Frage?", "terms": "Frage?", "kind": "topic", "party": None,
                  "variants": [], "eng": False,
                  "rechercheplan": {"intent": "overview", "channels": ["decisions"],
                                     "sort": "relevance", "needs": [], "valid": False}}
@@ -140,7 +140,7 @@ def test_analyse_fehler_liefert_fallback(monkeypatch):
 
 def test_rechercheplan_shadow_validiert_und_harte_kanaele_ergaenzt(monkeypatch):
     _llm_antwort(monkeypatch, json.dumps({
-        "terms": "Ellberg Kreyenbrück Schule", "kind": "thema",
+        "terms": "Ellberg Kreyenbrück Schule", "kind": "topic",
         "rechercheplan": {
             "intent": "position",
             "channels": ["debates", "press", "freies_internet", "debates"],
@@ -167,7 +167,7 @@ def test_rechercheplan_konsistenz_verknuepft_bedarf_und_kanal():
         "needs": ["amounts", "statements", "documents", "current_info",
                   "official_updates", "future_dates"],
     }})
-    resolved = qa.research_plan_with_mandatory(plan, typ="thema")
+    resolved = qa.research_plan_with_mandatory(plan, typ="topic")
     assert resolved["channels"] == [
         "decisions", "budget", "debates", "documents", "press", "future_agenda",
     ]
@@ -187,7 +187,7 @@ def test_deterministische_finanzquelle_macht_budget_zum_pflichtkanal(question):
         "intent": "fact", "channels": ["decisions"], "needs": [],
     }})
     resolved = qa.research_plan_with_mandatory(
-        plan, typ="thema", question=question)
+        plan, typ="topic", question=question)
     assert "budget" in resolved["channels"]
     assert "budget" in resolved["mandatory_channels"]
 
@@ -197,7 +197,7 @@ def test_current_info_koppelt_presse_und_zukunft_nicht_mehr_pauschal():
         "intent": "status", "channels": ["decisions"], "sort": "newest",
         "needs": ["current_info"],
     }})
-    resolved = qa.research_plan_with_mandatory(plan, typ="verlauf")
+    resolved = qa.research_plan_with_mandatory(plan, typ="history")
     assert resolved["channels"] == ["decisions"]
 
     presse = qa._research_plan({"rechercheplan": {
@@ -206,9 +206,9 @@ def test_current_info_koppelt_presse_und_zukunft_nicht_mehr_pauschal():
     zukunft = qa._research_plan({"rechercheplan": {
         "channels": ["decisions"], "needs": ["future_dates"],
     }})
-    assert qa.research_plan_with_mandatory(presse, typ="thema")["channels"] == [
+    assert qa.research_plan_with_mandatory(presse, typ="topic")["channels"] == [
         "decisions", "press"]
-    assert qa.research_plan_with_mandatory(zukunft, typ="thema")["channels"] == [
+    assert qa.research_plan_with_mandatory(zukunft, typ="topic")["channels"] == [
         "decisions", "future_agenda"]
 
 
@@ -217,7 +217,7 @@ def test_reine_zukunftsfrage_entfernt_presse_ueber_bedarfe():
         "intent": "session", "channels": ["decisions", "press", "future_agenda"],
         "needs": ["current_info", "future_dates"],
     }})
-    resolved = qa.research_plan_with_mandatory(nur_zukunft, typ="thema")
+    resolved = qa.research_plan_with_mandatory(nur_zukunft, typ="topic")
     assert resolved["channels"] == ["decisions", "future_agenda"]
     assert resolved["suppressed_channels"] == ["press"]
 
@@ -225,7 +225,7 @@ def test_reine_zukunftsfrage_entfernt_presse_ueber_bedarfe():
         "intent": "status", "channels": ["decisions", "press", "future_agenda"],
         "needs": ["current_info", "official_updates", "future_dates"],
     }})
-    resolved = qa.research_plan_with_mandatory(beides, typ="verlauf")
+    resolved = qa.research_plan_with_mandatory(beides, typ="history")
     assert resolved["channels"] == ["decisions", "press", "future_agenda"]
     assert resolved["suppressed_channels"] == []
 
@@ -235,14 +235,14 @@ def test_dokumentenkanal_braucht_auch_dokumentenbedarf():
         "intent": "fact", "channels": ["decisions", "documents"],
         "needs": ["dates", "votes"],
     }})
-    resolved = qa.research_plan_with_mandatory(vorsorglich, typ="thema")
+    resolved = qa.research_plan_with_mandatory(vorsorglich, typ="topic")
     assert resolved["channels"] == ["decisions"]
     assert resolved["suppressed_channels"] == ["documents"]
 
     fachdetail = qa._research_plan({"rechercheplan": {
         "intent": "fact", "channels": ["decisions"], "needs": ["documents"],
     }})
-    resolved = qa.research_plan_with_mandatory(fachdetail, typ="thema")
+    resolved = qa.research_plan_with_mandatory(fachdetail, typ="topic")
     assert resolved["channels"] == ["decisions", "documents"]
     assert resolved["consistency_added"] == ["documents"]
 
@@ -265,7 +265,7 @@ def test_metadatenfragen_entfernen_vorsorgliche_dokumente():
 
     # Die positive Dokumentabsicht hat Vorrang, selbst bei einer Sitzungsfrage.
     fachfrage = qa.research_plan_with_mandatory(
-        plan, typ="sitzung",
+        plan, typ="session",
         question="Was sagt das Gutachten aus der Sitzung zum Verkehrslärm?",
     )
     assert "documents" in fachfrage["channels"]
@@ -277,7 +277,7 @@ def test_eindeutige_stadtmitteilung_aktiviert_presse_als_leitplanke():
         "needs": ["current_info"],
     }})
     resolved = qa.research_plan_with_mandatory(
-        plan, typ="thema",
+        plan, typ="topic",
         question="Was hat die Stadt zuletzt zum Radverkehr mitgeteilt?",
     )
     assert resolved["channels"] == ["decisions", "press"]
@@ -287,7 +287,7 @@ def test_eindeutige_stadtmitteilung_aktiviert_presse_als_leitplanke():
     # Das Verb allein reicht nicht: Eine Aussage irgendeiner Person ist keine
     # offizielle Veröffentlichung der Stadtverwaltung.
     ohne_offizielle_quelle = qa.research_plan_with_mandatory(
-        plan, typ="thema", question="Was hat Müller zuletzt mitgeteilt?",
+        plan, typ="topic", question="Was hat Müller zuletzt mitgeteilt?",
     )
     assert ohne_offizielle_quelle["channels"] == ["decisions"]
     assert ohne_offizielle_quelle["inferred_needs"] == []
@@ -299,7 +299,7 @@ def test_rechercheplan_entfernt_debatten_bei_neuester_ortsentscheidung():
         "sort": "newest", "needs": ["dates", "statements"],
     }})
     resolved = qa.research_plan_with_mandatory(
-        plan, typ="ort", place=True, latest_decision=True)
+        plan, typ="place", place=True, latest_decision=True)
     assert resolved["channels"] == ["decisions", "places"]
     assert resolved["suppressed_channels"] == ["debates"]
 
@@ -325,7 +325,7 @@ def test_ausdrueckliche_haushaltsdebatte_behaelt_debattenkanal():
         "needs": ["statements"],
     }})
     resolved = qa.research_plan_with_mandatory(
-        plan, typ="verlauf", question="Wie lief die Haushaltsdebatte 2026?")
+        plan, typ="history", question="Wie lief die Haushaltsdebatte 2026?")
     assert "debates" in resolved["channels"]
     assert "debates" not in resolved["suppressed_channels"]
 
@@ -359,7 +359,7 @@ def test_recherchekanal_nur_bei_validem_plan_gesteuert():
 
 def test_rechercheplan_shadow_loggt_keinen_fragetext():
     plan = qa.research_plan_with_mandatory(
-        qa._research_plan({}), typ="geld", place=True)
+        qa._research_plan({}), typ="money", place=True)
     record = qa.research_plan_log_record(
         "Was kostet die Sporthalle in Kreyenbrück?", plan, "geld",
         {"decisions": 4, "budget": 2, "places": 4},
@@ -398,9 +398,9 @@ def test_kontext_markiert_antragsteller_und_volumen():
 
 
 def test_antwortprompt_bekommt_extra_regeln():
-    messages, _ = qa._answer_messages("Wie lief es?", [], typ="verlauf")
+    messages, _ = qa._answer_messages("Wie lief es?", [], typ="history")
     assert "VERLAUF" in messages[0]["content"]
-    messages, _ = qa._answer_messages("Was ist?", [], typ="thema")
+    messages, _ = qa._answer_messages("Was ist?", [], typ="topic")
     assert "VERLAUF" not in messages[0]["content"]
 
 
@@ -418,7 +418,7 @@ def test_ort_ist_mit_geldtyp_kombinierbar_und_fundstelle_im_kontext():
     }]
 
     messages, _ = qa._answer_messages(
-        "Was kostet die Sanierung in Kreyenbrück?", candidates, typ="geld", ort=ort)
+        "Was kostet die Sanierung in Kreyenbrück?", candidates, typ="money", ort=ort)
     prompt = messages[0]["content"]
 
     assert "konkreten Summen" in prompt
