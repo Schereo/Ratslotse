@@ -312,13 +312,13 @@ def test_doctype_wird_abgelehnt(tmp_path):
 
 
 def test_kfa_liest_die_acht_staedte(kfa2026):
-    jahrgang = sv.lies_kfa(kfa2026)
-    assert (jahrgang.year, jahrgang.prior_year) == (2026, 2025)
-    assert jahrgang.stand == "26.03.2026"
+    budget_year = sv.lies_kfa(kfa2026)
+    assert (budget_year.year, budget_year.prior_year) == (2026, 2025)
+    assert budget_year.stand == "26.03.2026"
     # Alle Gemeinden der Datei, nicht nur die Städte: Die Überlappungsprobe
     # ist nur dann etwas wert, wenn sie über den ganzen Bestand läuft.
-    assert len(jahrgang.staedte) == len(KFA2026_ZEILEN)
-    ol = jahrgang.staedte["403000"]
+    assert len(budget_year.staedte) == len(KFA2026_ZEILEN)
+    ol = budget_year.staedte["403000"]
     assert ol["messzahl_teur"] == 348164
     assert ol["einwohner"] == 176410
     assert ol["prior_year_tax_index_keur"] == 325716
@@ -376,7 +376,7 @@ def test_steuerkraft_zeilen_nur_kreisfreie_staedte_und_ohne_pro_kopf(kfa2026):
     assert schluessel == set(sv.KREISFREIE_STAEDTE)
     assert "151009" not in schluessel   # Gifhorn ist kreisangehörig
     # Der Pro-Kopf-Wert ist UNSERE Division und wird deshalb nicht gespeichert.
-    assert {z["kennzahl"] for z in zeilen} == {"steuerkraftmesszahl", "einwohner"}
+    assert {z["indicator"] for z in zeilen} == {"steuerkraftmesszahl", "einwohner"}
     assert all(z["year"] == 2026 for z in zeilen)
     # Der Name kommt aus unserer Liste, nicht aus der Datei — sonst wechselte
     # er mit dem Jahrgang mit.
@@ -388,7 +388,7 @@ def test_steuerkraft_je_einwohner_ergibt_die_veroeffentlichten_werte(kfa2026):
     zeilen = sv.zeilen_steuerkraft(sv.lies_kfa(kfa2026))
     je_stadt: dict[str, dict] = {}
     for z in zeilen:
-        je_stadt.setdefault(z["stadt"], {})[z["kennzahl"]] = z["wert"]
+        je_stadt.setdefault(z["stadt"], {})[z["indicator"]] = z["wert"]
     je_ew = {stadt: w["steuerkraftmesszahl"] * 1000 / w["einwohner"]
              for stadt, w in je_stadt.items()}
     assert je_ew["Oldenburg"] == pytest.approx(1973.61, abs=0.01)
@@ -468,12 +468,12 @@ def test_stadt_mit_kaputter_hebesatzprobe_wird_verworfen(tmp_path):
     assert verworfen[0]["grund"] == "Hebesatzprobe"
     # Die anderen Städte bleiben — ein Fehler in einer Zeile darf nicht den
     # ganzen Jahrgang mitnehmen.
-    hebesatz_staedte = {z["stadt"] for z in zeilen if z["kennzahl"].startswith("hebesatz_")}
+    hebesatz_staedte = {z["stadt"] for z in zeilen if z["indicator"].startswith("hebesatz_")}
     assert hebesatz_staedte == {"Braunschweig", "Delmenhorst", "Osnabrück"}
     # Die Steuereinnahmekraft steht in einem anderen Blatt und ist von der
     # Hebesatzprobe nicht betroffen — Oldenburg bleibt dort drin.
     assert any(z["stadt"] == "Oldenburg"
-               and z["kennzahl"] == "steuereinnahmekraft_je_ew" for z in zeilen)
+               and z["indicator"] == "steuereinnahmekraft_je_ew" for z in zeilen)
 
 
 def test_dreijahresmittel_probe(realsteuer):
@@ -493,11 +493,11 @@ def test_jeder_jahreswert_traegt_sein_eigenes_jahr(realsteuer):
     """Der Realsteuervergleich 2025 führt auch 2023 und 2024. Alles unter dem
     Dateijahr abzulegen machte aus drei Jahren eines."""
     zeilen, _ = sv.zeilen_realsteuern(sv.lies_realsteuervergleich(realsteuer))
-    jahre = {z["year"] for z in zeilen if z["kennzahl"] == "steuereinnahmekraft_je_ew"}
+    jahre = {z["year"] for z in zeilen if z["indicator"] == "steuereinnahmekraft_je_ew"}
     assert jahre == {2023, 2024, 2025}
-    assert {z["year"] for z in zeilen if z["kennzahl"].startswith("hebesatz_")} == {2025}
+    assert {z["year"] for z in zeilen if z["indicator"].startswith("hebesatz_")} == {2025}
     ol25 = next(z for z in zeilen if z["stadt"] == "Oldenburg"
-                and z["kennzahl"] == "steuereinnahmekraft_je_ew" and z["year"] == 2023)
+                and z["indicator"] == "steuereinnahmekraft_je_ew" and z["year"] == 2023)
     assert ol25["wert"] == pytest.approx(1673.43)
 
 
@@ -507,7 +507,7 @@ def _herkunft(probe="lsn_zweijahresueberlappung") -> herkunft.Herkunft:
     return herkunft.Herkunft(
         art="lsn", probe=probe, label="Kommunaler Finanzausgleich 2026",
         url="https://example.org/kfa2026.xlsx",
-        fundstelle="Blatt ST_KR_MESS_VGL", probe_result="403 von 403",
+        citation="Blatt ST_KR_MESS_VGL", probe_result="403 von 403",
         stand="26.03.2026")
 
 
@@ -533,7 +533,7 @@ def test_speichern_und_lesen(tmp_path, kfa2026):
         # Leserin geschrieben.
         h = store.get_herkunft([gelesen[0]["herkunft_id"]])[0]
         assert h["art"] == "lsn"
-        assert h["proben"] and "Finanzausgleichs" in h["proben"][0]
+        assert h["probes"] and "Finanzausgleichs" in h["probes"][0]
     finally:
         store.close()
 

@@ -222,10 +222,10 @@ def test_die_quelle_sagt_selbst_welches_ergebnis_vorlaeufig_ist():
 
     Das ist keine Kosmetik: Eine Zahl, die sich mit dem Jahresabschluss noch
     ändern kann, darf nicht wie eine abgerechnete dastehen."""
-    assert stt.parse_1103(PDF_1103)["vorlaeufig"] == [2025]
+    assert stt.parse_1103(PDF_1103)["provisional"] == [2025]
     zeilen = stt.lies_1103(PDF_1103, IST_REIHE)["zeilen"]
-    vorlaeufig = {z["year"] for z in zeilen if z["vorlaeufig"]}
-    assert vorlaeufig == {2025}
+    provisional = {z["year"] for z in zeilen if z["provisional"]}
+    assert provisional == {2025}
 
 
 def test_der_befund_steht_wie_gedruckt():
@@ -282,7 +282,7 @@ def test_die_beschriftung_wird_gegen_tabelle_1104_geprueft():
     result = stt.lies_1103(PDF_1103, IST_REIHE)
     assert result["jahre"] == [2023, 2024, 2025]
     assert result["verworfen"] == []
-    assert "steuerplan_istabgleich" in result["proben"]
+    assert "steuerplan_istabgleich" in result["probes"]
 
 
 def test_ein_jahresversatz_wuerde_auffallen():
@@ -488,10 +488,10 @@ def test_jahre_ohne_aufkommensreihe_werden_benannt_nicht_behauptet():
 def test_jede_probe_ist_dem_herkunfts_system_bekannt():
     """Ein Probenname, den `council/herkunft.py` nicht kennt, lässt sich gar
     nicht erst speichern (`ValueError`). Hier fällt er schon im Test auf."""
-    proben = (stt.lies_1103(PDF_1103, IST_REIHE)["proben"]
-              + stt.lies_1105(PDF_1105, GRUNDSTEUER_IST)["proben"])
-    assert proben
-    for name in proben:
+    probes = (stt.lies_1103(PDF_1103, IST_REIHE)["probes"]
+              + stt.lies_1105(PDF_1105, GRUNDSTEUER_IST)["probes"])
+    assert probes
+    for name in probes:
         assert name in herkunft.PROBEN
         assert name in stt.PROBEN_KURZ
 
@@ -503,16 +503,16 @@ def test_gespeichert_wird_mit_herkunft_und_kommt_gleich_wieder_heraus(tmp_path):
         store.save_steuerplan(result["zeilen"], herkunft.Herkunft(
             art="stadt", url=stt.TABELLE_1103_URL,
             label="Statistisches Jahrbuch, Tabelle 1103",
-            probe=result["proben"]))
+            probe=result["probes"]))
         hebe = stt.lies_1105(PDF_1105, GRUNDSTEUER_IST)
         store.save_hebesaetze(hebe["zeilen"], herkunft.Herkunft(
             art="stadt", url=stt.TABELLE_1105_URL,
             label="Statistisches Jahrbuch, Tabelle 1105",
-            probe=hebe["proben"]))
+            probe=hebe["probes"]))
 
         plan = {(z["year"], z["art"]): z for z in store.get_steuerplan()}
         assert plan[(2024, GEWERBE)]["plan"] == 133_440_000
-        assert plan[(2025, GEWERBE)]["vorlaeufig"] == 1
+        assert plan[(2025, GEWERBE)]["provisional"] == 1
         assert store.steuerplan_jahre() == [2023, 2024, 2025]
         assert store.hebesatz_jahre() == [
             1980, 1984, 1988, 1994, 1997, 2002, 2011, 2015, 2025]

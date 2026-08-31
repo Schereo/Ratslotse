@@ -886,8 +886,8 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         const heute = new Date().toISOString().slice(0, 10);
         let gesehen: string | null = null;
         try {
-          gesehen = localStorage.getItem("ratslotse:recherche-hinweis");
-          localStorage.setItem("ratslotse:recherche-hinweis", heute);
+          gesehen = localStorage.getItem("ratslotse:recherche-note");
+          localStorage.setItem("ratslotse:recherche-note", heute);
         } catch { /* egal */ }
         setDeepHinweis(gesehen !== heute);
       } else {
@@ -2264,7 +2264,7 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
         <div aria-busy={beschaeftigt} className="flex flex-col gap-3.5">
           {/* RG-10 (8b): Sprungmarken — Pflicht ab 4 Abschnitten. */}
           {turn.recherche && abschnitte.length >= 4 && (
-            <Sprungmarken abschnitte={abschnitte} ankerPrefix={`qa-abschnitt-${turnIdx}`} />
+            <Sprungmarken abschnitte={abschnitte} ankerPrefix={`qa-section-${turnIdx}`} />
           )}
           {/* Steckbrief ÜBER der Antwort: erst wissen, worum es geht. */}
           {(turn.steckbriefe?.length ?? 0) > 0 && (
@@ -2276,7 +2276,7 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
             <AntwortText text={turn.answer} idToNum={idToNum} onJump={(id) => setPeekId(id)}
               anlBuchstaben={anlBuchstaben}
               onAnlage={(nr) => jumpZuAnlage(turnIdx, nr, istLetzter)}
-              ankerPrefix={turn.recherche ? `qa-abschnitt-${turnIdx}` : undefined}
+              ankerPrefix={turn.recherche ? `qa-section-${turnIdx}` : undefined}
               berichtKoepfe={turn.recherche} />
             {((loading && step === "answer") || deepLaeuft) && <span className="ml-0.5 inline-block h-4 w-1.5 animate-pulse bg-primary align-text-bottom" />}
           </div>
@@ -2920,7 +2920,7 @@ function TeilenKnopf({ turn, zitierte }: { turn: Turn; zitierte: QaSource[] }) {
             parteien: parteien.slice(0, 12).map((p) => ({
               partei: p.partei, haltung: p.haltung ?? null,
               position: (p.position ?? "").slice(0, 800), einig: p.einig,
-              hinweis: p.hinweis, kernaussage: p.kernaussage, beitraege: p.beitraege,
+              note: p.note, kernaussage: p.kernaussage, beitraege: p.beitraege,
             })),
             // Die Grafik gehört in den Snapshot wie Debatten und Presse:
             // Wer dem Link folgt, soll sehen, was geteilt wurde.
@@ -2956,7 +2956,7 @@ function TeilenKnopf({ turn, zitierte }: { turn: Turn; zitierte: QaSource[] }) {
   };
   return (
     <button type="button" onClick={() => void teilen()} aria-label="Antwort teilen"
-      title="Antwort teilen (Link zeigt genau diese Antwort)"
+      title="Antwort teilen (Link zeigt exact diese Antwort)"
       className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
       {laedt ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Share2 className="h-3.5 w-3.5" />}
     </button>
@@ -3016,8 +3016,8 @@ function SteckbriefBaustein({ steckbriefe }: {
   const blaettern = (richtung: -1 | 1) => {
     const el = spur.current;
     if (!el) return;
-    const seite = Math.round(el.scrollLeft / Math.max(el.clientWidth, 1));
-    springeZu(Math.min(Math.max(seite + richtung, 0), liste.length - 1));
+    const page = Math.round(el.scrollLeft / Math.max(el.clientWidth, 1));
+    springeZu(Math.min(Math.max(page + richtung, 0), liste.length - 1));
   };
 
   return (

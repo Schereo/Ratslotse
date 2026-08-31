@@ -185,9 +185,9 @@ def finanzabschnitt(raw: str | None) -> tuple[str | None, str | None]:
     return None, None
 
 
-def pruefe_zweitstelle(kopf: float | None, abschnitt: str | None) -> tuple[str | None, list[float]]:
+def pruefe_zweitstelle(kopf: float | None, section: str | None) -> tuple[str | None, list[float]]:
     """Nennt der Finanz-Abschnitt denselben Betrag? („identisch"/„zerlegung")"""
-    teile = betraege(abschnitt) if abschnitt else []
+    teile = betraege(section) if section else []
     if kopf is None or not teile:
         return None, teile
     if any(abs(t - kopf) < _CENT for t in teile):
@@ -207,16 +207,16 @@ def lies(zeilen: Iterable[dict]) -> dict:
 
     Erwartet je Zeile: ``template_number``, ``titel``, ``official_text``, ``outcome``,
     ``sitzung`` (ISO-Datum), ``raw_text`` (Volltext der Vorlage),
-    ``dokument_id``, ``dokument_url``.
+    ``document_id``, ``dokument_url``.
 
     Liefert:
 
-    * ``vorlagen`` — je Vorlage **eine** Zeile, geprüft, mit ``proben``,
+    * ``vorlagen`` — je Vorlage **eine** Zeile, geprüft, mit ``probes``,
       ``amount``, ``year``, ``gremium``, ``layout``.
     * ``verworfen`` — je Eintrag ``{template_number, grund}``; der Grund ist ein
       vollständiger Satz und für Leser*innen geschrieben.
     * ``jahre`` — die Jahresreihe, je Jahr Summe und Zahl der Vorlagen.
-    * ``proben`` — Zähler, was wie oft griff.
+    * ``probes`` — Zähler, was wie oft griff.
     """
     kandidaten: list[dict] = []
     verworfen: list[dict] = []
@@ -247,18 +247,18 @@ def lies(zeilen: Iterable[dict]) -> dict:
 
         mv = _VORSCHLAG.search(raw) if raw else None
         vorschlag = _erster(mv.group(1)) if mv else None
-        abschnitt, layout = finanzabschnitt(raw)
-        art, teile = pruefe_zweitstelle(kopf, abschnitt)
+        section, layout = finanzabschnitt(raw)
+        art, teile = pruefe_zweitstelle(kopf, section)
 
         if not art:
             verworfen.append({"template_number": nr, "sitzung": z.get("sitzung"),
-                              "grund": _grund(raw, abschnitt, kopf, vorschlag, teile)})
+                              "grund": _grund(raw, section, kopf, vorschlag, teile)})
             zaehler["ohne_zweitstelle"] += 1
             continue
 
-        proben = [ZWEITSTELLE]
+        probes = [ZWEITSTELLE]
         if vorschlag is not None and abs(vorschlag - kopf) < _CENT:
-            proben.append(PROTOKOLLABGLEICH)
+            probes.append(PROTOKOLLABGLEICH)
             zaehler["protokollabgleich"] += 1
         zaehler[f"zweitstelle_{art}"] += 1
         zaehler[f"layout_{layout}"] += 1
@@ -267,7 +267,7 @@ def lies(zeilen: Iterable[dict]) -> dict:
             "template_number": nr, "amount": kopf, "sitzung": z.get("sitzung"),
             "year": int(str(z.get("sitzung"))[:4]), "gremium": gremium(z.get("titel")),
             "layout": layout, "zweitstelle": art, "teile": len(teile),
-            "proben": proben, "dokument_id": z.get("dokument_id"),
+            "probes": probes, "document_id": z.get("document_id"),
             "dokument_url": z.get("dokument_url"),
             "im_rat": z.get("gremiensitzung") == "Rat",
         })
@@ -298,7 +298,7 @@ def lies(zeilen: Iterable[dict]) -> dict:
         "vorlagen": vorlagen,
         "verworfen": verworfen,
         "jahre": [jahre[j] for j in sorted(jahre)],
-        "proben": dict(zaehler),
+        "probes": dict(zaehler),
     }
 
 
@@ -307,7 +307,7 @@ def euro(amount: float) -> str:
     return f"{amount:,.2f}".translate(str.maketrans({",": ".", ".": ","}))
 
 
-def _grund(raw, abschnitt, kopf, vorschlag, teile) -> str:
+def _grund(raw, section, kopf, vorschlag, teile) -> str:
     """Warum diese Zeile draußen bleibt — als Satz, nicht als Fehlercode.
 
     **Je Zeile steht hier nur, was an ihr besonders ist.** Der
@@ -325,7 +325,7 @@ def _grund(raw, abschnitt, kopf, vorschlag, teile) -> str:
     if not raw:
         return ("Der Volltext dieser Vorlage liegt nicht vor; damit gibt es keine "
                 "zweite Stelle, an der sich der Betrag prüfen ließe.")
-    if not abschnitt:
+    if not section:
         return ("Die Vorlage führt keinen Abschnitt zu den finanziellen "
                 "Auswirkungen — der Betrag steht nur ein einziges Mal.")
     if vorschlag is not None and kopf is not None and abs(vorschlag - kopf) >= _CENT:
@@ -341,7 +341,7 @@ def _grund(raw, abschnitt, kopf, vorschlag, teile) -> str:
 
 def probennachweis(result: dict) -> str:
     """Der Messwert für die Herkunft — Zahlen, keine Adjektive."""
-    p = result["proben"]
+    p = result["probes"]
     ident = p.get("zweitstelle_identisch", 0)
     zerl = p.get("zweitstelle_zerlegung", 0)
     return (f"{ident + zerl} von {p.get('zeilen', 0)} Beschlusszeilen tragen ihre "

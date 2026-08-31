@@ -164,7 +164,7 @@ def list_topics(
     # dem Umbau vom 28.08.2026 einen Punkt vor jede neue Zeile. Beides stammt
     # aus derselben Abfrage, damit Abzeichen und Punkte nie auseinandergehen.
     unseen_ids = store.unseen_hit_ids(owner_id)
-    stichtag = _vor_sechs_monaten().isoformat()
+    as_of_date = _vor_sechs_monaten().isoformat()
     out = []
     for t in topics:
         hits = sorted((by_id[d] for d in cand.get(t.id, []) if d in by_id),
@@ -198,7 +198,7 @@ def list_topics(
                     )
                     for d in hits[:5]
                 ],
-                hits_6m=sum(1 for d in hits if (d.get("session_date") or "") >= stichtag),
+                hits_6m=sum(1 for d in hits if (d.get("session_date") or "") >= as_of_date),
             )
         )
     return out

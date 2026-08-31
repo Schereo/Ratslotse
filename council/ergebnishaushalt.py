@@ -25,7 +25,7 @@ diese Spalten als Ansatz speichert, behauptet für 2029 einen Plan, den es
 nicht gibt.
 
 Deshalb trägt jede Zeile ihre ``art`` (``ansatz`` oder ``finanzplanung``) und
-den ``plan_jahrgang``, aus dem sie stammt. Erst beides zusammen ist eine
+den ``plan_budget_year``, aus dem sie stammt. Erst beides zusammen ist eine
 ehrliche Angabe: „Finanzplanung für 2029, aufgestellt im Haushalt 2026".
 
 Die **Vorjahresspalte** (hier: Ansatz 2025) wird bewusst **nicht** gespeichert,
@@ -177,7 +177,7 @@ def kopfjahre(text: str) -> list[int]:
     return jahre
 
 
-def jahrgang(text: str | None) -> int | None:
+def budget_year(text: str | None) -> int | None:
     """Für welches Planjahr dieses Dokument der Haushalt ist.
 
     Das ist die **dritte** Kopfspalte, nicht die erste und nicht die letzte:
@@ -219,11 +219,11 @@ def _zeilen_lesen(text: str) -> dict[int, list[float | None]]:
         roh.setdefault(int(teile[i]), teile[i + 1])
 
     aus: dict[int, list[float | None]] = {}
-    for nr, bezeichnung in ERGEBNIS_POSTEN.items():
+    for nr, label in ERGEBNIS_POSTEN.items():
         block = roh.get(nr)
         if not block:
             continue
-        if _erstes_wort(block) != _erstes_wort(bezeichnung):
+        if _erstes_wort(block) != _erstes_wort(label):
             # Die Nummerierung hat sich verschoben (im Gesamtabschluss des
             # Konzerns ist genau das passiert). Lieber nichts als eine Zahl
             # unter falschem Namen.
@@ -294,11 +294,11 @@ def planspaltenprobe(zeilen: dict[int, list[float | None]],
 def lies(text: str) -> dict:
     """Einen Gesamtergebnishaushalt auswerten.
 
-    Liefert ``{jahrgang, jahre, zeilen, ist, ist_jahr, proben, bestanden,
+    Liefert ``{budget_year, jahre, zeilen, ist, ist_jahr, probes, bestanden,
     nachweis}``:
 
     * ``zeilen`` — je Posten und Planjahr ein dict mit ``year``, ``art``
-      (``ansatz``/``finanzplanung``), ``nr``, ``bezeichnung``, ``amount``,
+      (``ansatz``/``finanzplanung``), ``nr``, ``label``, ``amount``,
       ``is_total``. Nur, was gespeichert werden darf.
     * ``ist`` — die Ist-Spalte des Vorvorjahres, ``{nr: amount}``. Sie wird
       **nicht** gespeichert (dafür gibt es ``council_ergebnisrechnung``),
@@ -308,17 +308,17 @@ def lies(text: str) -> dict:
       halben Zahlen her."""
     jahre = kopfjahre(text)
     if not jahre:
-        return {"jahrgang": None, "jahre": [], "zeilen": [], "ist": {},
-                "ist_jahr": None, "proben": [], "bestanden": False,
+        return {"budget_year": None, "jahre": [], "zeilen": [], "ist": {},
+                "ist_jahr": None, "probes": [], "bestanden": False,
                 "nachweis": "Tabellenkopf nicht in der erwarteten Form"}
 
     gelesen = _zeilen_lesen(text)
-    proben = []
+    probes = []
     for name, fn in (("ergebnishaushalt_summenzeilen", summenprobe),
                      ("ergebnishaushalt_planspalte", planspaltenprobe)):
         ok, warum = fn(gelesen)
-        proben.append({"probe": name, "ok": ok, "warum": warum})
-    bestanden = all(p["ok"] for p in proben)
+        probes.append({"probe": name, "ok": ok, "warum": warum})
+    bestanden = all(p["ok"] for p in probes)
 
     zeilen: list[dict] = []
     if bestanden:
@@ -328,24 +328,24 @@ def lies(text: str) -> dict:
             for nr, werte in sorted(gelesen.items()):
                 zeilen.append({
                     "year": jahre[sp], "art": art, "nr": nr,
-                    "bezeichnung": ERGEBNIS_POSTEN[nr],
+                    "label": ERGEBNIS_POSTEN[nr],
                     "amount": werte[sp],
                     "is_total": 1 if nr in SUMMEN_POSTEN else 0,
                 })
     return {
-        "jahrgang": jahre[2], "jahre": jahre, "zeilen": zeilen,
+        "budget_year": jahre[2], "jahre": jahre, "zeilen": zeilen,
         "ist": {nr: w[0] for nr, w in gelesen.items()},
-        "ist_jahr": jahre[0], "proben": proben, "bestanden": bestanden,
-        "nachweis": nachweis(gelesen, proben),
+        "ist_jahr": jahre[0], "probes": probes, "bestanden": bestanden,
+        "nachweis": nachweis(gelesen, probes),
     }
 
 
-def nachweis(zeilen: dict[int, list[float | None]], proben: list[dict]) -> str:
+def nachweis(zeilen: dict[int, list[float | None]], probes: list[dict]) -> str:
     """Ein Satz für den Beleg-Chip: was gerechnet wurde und wie es ausging.
 
     Steht später neben der Zahl auf der Seite, deshalb in Zahlen statt in
     Namen — „18 Summenproben" ist nachvollziehbar, „summenprobe ok" nicht."""
-    gerissen = [p["warum"] for p in proben if not p["ok"]]
+    gerissen = [p["warum"] for p in probes if not p["ok"]]
     if gerissen:
         return "; ".join(gerissen)
     return (f"{len(_SUMMEN) * SPALTEN + SPALTEN} Summenproben über "

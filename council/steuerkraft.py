@@ -121,7 +121,7 @@ class KfaZuweisungen:
 
 
 def _jahresspalten(spalten: dict[int, str]) -> dict[int, dict[str, int]]:
-    """Kopfzeile → ``{year: {kennzahl: spaltenindex}}``.
+    """Kopfzeile → ``{year: {indicator: spaltenindex}}``.
 
     Eine Datei führt **zwei** Ausgleichsjahre nebeneinander; welche Spalte zu
     welchem Jahr gehört, sagt der Kopftext („… im Jahr 2026 …"). Genau das ist
@@ -186,7 +186,7 @@ def lies_zuweisungen(pfad: str) -> list[KfaZuweisungen]:
 
     aus: list[KfaZuweisungen] = []
     for year in sorted(vollstaendig):
-        jahrgang = KfaZuweisungen(year=year, stand=stand)
+        budget_year = KfaZuweisungen(year=year, stand=stand)
         for zeile in zeilen[kopf_idx + 1:]:
             if not zeile or c_key >= len(zeile):
                 continue
@@ -200,13 +200,13 @@ def lies_zuweisungen(pfad: str) -> list[KfaZuweisungen]:
             if werte.get("nettobetrag") is None:
                 continue
             werte["stadt"] = " ".join(str(zeile[c_name] or "").split())
-            jahrgang.staedte[key] = werte
-        if jahrgang.staedte:
-            aus.append(jahrgang)
+            budget_year.staedte[key] = werte
+        if budget_year.staedte:
+            aus.append(budget_year)
     return aus
 
 
-def probe_komponenten(jahrgang: KfaZuweisungen) -> dict:
+def probe_komponenten(budget_year: KfaZuweisungen) -> dict:
     """Die Probe im Dokument: Die drei Komponenten minus Umlage ergeben Netto.
 
     Rundung: Das Blatt führt volle Tausend Euro, deshalb ist ein Abstand von
@@ -214,7 +214,7 @@ def probe_komponenten(jahrgang: KfaZuweisungen) -> dict:
     vergessene oder doppelt gezählte Spalte.
     """
     abweichungen = []
-    for key, w in sorted(jahrgang.staedte.items()):
+    for key, w in sorted(budget_year.staedte.items()):
         teile = [w.get("zuweisungen_gemeindeaufgaben"),
                  w.get("zuweisungen_kreisaufgaben"), w.get(UEBERTRAGEN)]
         if any(t is None for t in teile) or w.get("nettobetrag") is None:
@@ -225,15 +225,15 @@ def probe_komponenten(jahrgang: KfaZuweisungen) -> dict:
         if abs(summe - w["nettobetrag"]) > 1:
             abweichungen.append({"schluessel": key, "stadt": w.get("stadt"),
                                  "grund": f"{summe:.0f} statt {w['nettobetrag']:.0f} T€"})
-    n = len(jahrgang.staedte)
+    n = len(budget_year.staedte)
     return {"geprueft": n, "abweichungen": abweichungen, "ok": not abweichungen,
             "result": (f"{n - len(abweichungen)} von {n} Städten: "
                          f"Gemeinde- plus Kreis- plus übertragene Aufgaben minus "
                          f"Umlage ergibt den ausgewiesenen Nettobetrag "
-                         f"(Ausgleichsjahr {jahrgang.year})")}
+                         f"(Ausgleichsjahr {budget_year.year})")}
 
 
-def probe_gegen_jahrbuch(jahrgang: KfaZuweisungen, jahrbuch_teur: float,
+def probe_gegen_jahrbuch(budget_year: KfaZuweisungen, jahrbuch_teur: float,
                          schluessel: str = sv.OLDENBURG) -> dict:
     """Die zweite Probe: Trifft der Nettobetrag die Bücher der Stadt?
 
@@ -242,7 +242,7 @@ def probe_gegen_jahrbuch(jahrgang: KfaZuweisungen, jahrbuch_teur: float,
     Behörden, dieselbe Zahl — das ist die stärkere der beiden Proben, weil sie
     nicht innerhalb eines Dokuments rechnet.
     """
-    wert = (jahrgang.staedte.get(schluessel) or {}).get("nettobetrag")
+    wert = (budget_year.staedte.get(schluessel) or {}).get("nettobetrag")
     if wert is None:
         return {"ok": False, "result": f"kein Nettobetrag für {schluessel}"}
     abstand = abs(wert - jahrbuch_teur)
@@ -251,13 +251,13 @@ def probe_gegen_jahrbuch(jahrgang: KfaZuweisungen, jahrbuch_teur: float,
         "ok": anteil <= JAHRBUCH_TOLERANZ,
         "lsn_teur": wert, "jahrbuch_teur": jahrbuch_teur,
         "abweichung_prozent": round(anteil * 100, 4),
-        "result": (f"Ausgleichsjahr {jahrgang.year}: {wert:,.0f} T€ (Land) "
+        "result": (f"Ausgleichsjahr {budget_year.year}: {wert:,.0f} T€ (Land) "
                      f"gegen {jahrbuch_teur:,.0f} T€ (Jahrbuch 1103) — "
                      f"{anteil * 100:.4f} % Abstand".replace(",", ".")),
     }
 
 
-def zeilen_finanzausgleich(jahrgang: KfaZuweisungen) -> list[dict]:
+def zeilen_finanzausgleich(budget_year: KfaZuweisungen) -> list[dict]:
     """Ein Jahrgang → Zeilen für ``council_staedtevergleich``.
 
     Bewusst dieselbe Tabelle wie die Steuerkraftmesszahlen und **nicht** eine
@@ -274,11 +274,11 @@ def zeilen_finanzausgleich(jahrgang: KfaZuweisungen) -> list[dict]:
     Einwohnerzahl, die dieselbe Datei in ``reihe='steuerkraft'`` mitliefert.
     """
     aus: list[dict] = []
-    for key, w in sorted(jahrgang.staedte.items()):
+    for key, w in sorted(budget_year.staedte.items()):
         for name, wert in sorted(w.items()):
             if name in ("stadt", "nettobetrag_je_ew") or wert is None:
                 continue
-            aus.append({"year": jahrgang.year, "schluessel": key,
+            aus.append({"year": budget_year.year, "schluessel": key,
                         "stadt": sv.KREISFREIE_STAEDTE.get(key, w.get("stadt", "")),
-                        "kennzahl": name, "wert": float(wert), "einheit": "teur"})
+                        "indicator": name, "wert": float(wert), "einheit": "teur"})
     return aus

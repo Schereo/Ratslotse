@@ -138,7 +138,7 @@ export function HebesatzTreppe({
             + ` ${deZahl(letzte.hebesatz, 0)} Prozent`}
           /* Keine `tabelle`: Die Werte stehen unten ohnehin einzeln — und dort
              mit dem Aufkommen daneben, ohne das ein Hebesatz irreführt. */
-          hinweis="Prozentpunkte · Jahr überfahren, antippen oder mit den Pfeiltasten wechseln."
+          note="Prozentpunkte · Jahr überfahren, antippen oder mit den Pfeiltasten wechseln."
           beleg={beleg}
         />
       </div>

@@ -70,7 +70,7 @@ def test_health(client):
 def test_native_app_config_contract(client):
     response = client.get("/api/app-config")
     assert response.status_code == 200
-    assert response.json() == {"min_build": 0, "hinweis": None}
+    assert response.json() == {"min_build": 0, "note": None}
 
 
 def test_native_api_top_level_contracts(client):
@@ -91,7 +91,7 @@ def test_native_api_top_level_contracts(client):
     object_contracts = [
         ("/api/auth/me", {"id", "email", "role", "status", "delivery_channel",
                           "email_verified", "access_token"}),
-        ("/api/app-config", {"min_build", "hinweis"}),
+        ("/api/app-config", {"min_build", "note"}),
         ("/api/account/notifications", {"kinds", "limits"}),
         ("/api/bookmarks", {"bookmarks"}),
         ("/api/council/gespraeche", {"saves_conversations", "conversations"}),
@@ -796,13 +796,13 @@ def test_haushalt_dokumente_nennt_je_jahrgang_das_richtige_pdf(client):
     try:
         for year, doc in ((2023, 280861), (2024, 295294)):
             cs.save_ergebnisrechnung(year, [
-                {"nr": 12, "bezeichnung": "Summe ordentliche Erträge",
+                {"nr": 12, "label": "Summe ordentliche Erträge",
                  "result": 1.0, "is_total": 1}],
                 herkunft.Herkunft(
-                    art="ris", probe="strukturprobe", dokument_id=doc,
+                    art="ris", probe="strukturprobe", document_id=doc,
                     label=f"Jahresabschluss {year}",
                     url=f"https://buergerinfo.oldenburg.de/getfile.php?id={doc}&type=do",
-                    fundstelle="Ergebnisrechnung der Kernverwaltung", seite=161))
+                    citation="Ergebnisrechnung der Kernverwaltung", page=161))
     finally:
         cs.close()
 
@@ -813,8 +813,8 @@ def test_haushalt_dokumente_nennt_je_jahrgang_das_richtige_pdf(client):
     assert nach_jahr[2023]["url"].endswith("id=280861&type=do")
     assert nach_jahr[2024]["url"].endswith("id=295294&type=do")
     # Und die Fundstelle fährt mit: Bei 300 Seiten ist die URL allein zu wenig.
-    assert nach_jahr[2024]["fundstelle"] == "Ergebnisrechnung der Kernverwaltung"
-    assert nach_jahr[2024]["seite"] == 161
+    assert nach_jahr[2024]["citation"] == "Ergebnisrechnung der Kernverwaltung"
+    assert nach_jahr[2024]["page"] == 161
     # Quellen ohne Dokument fehlen, statt mit einer erfundenen Adresse
     # dazustehen: Die Oberfläche erkennt daran den Rückfall.
     assert "gesamtabschluss" not in doks
@@ -835,7 +835,7 @@ def test_haushalt_aenderungslisten_liefert_nur_den_jahrgang(client):
     erg = Ergebnis(
         zeilen=[
             Zeile(2026, 1, 4, 123, "1.100", "Schulbudget aufstocken", None, 500_000,
-                  erlaeuterung="Mehrbedarf laut Schulentwicklungsplan.",
+                  explanation="Mehrbedarf laut Schulentwicklungsplan.",
                   urheber="Verw. I"),
             Zeile(2027, 1, 4, 123, "1.100", "Schulbudget aufstocken", None, 500_000),
         ],
@@ -859,7 +859,7 @@ def test_haushalt_aenderungslisten_liefert_nur_den_jahrgang(client):
 
     b = client.get("/api/council/haushalt/aenderungslisten").json()
     assert [z["year"] for z in b["zeilen"]] == [2026]
-    assert b["zeilen"][0]["erlaeuterung"] == "Mehrbedarf laut Schulentwicklungsplan."
+    assert b["zeilen"][0]["explanation"] == "Mehrbedarf laut Schulentwicklungsplan."
     # Wer die Position vorschlug, reist mit — die Streit-Seite setzt daran
     # ihre Urheber-Marke und ihren „nur die Summe"-Satz.
     assert b["zeilen"][0]["urheber"] == "Verw. I"
@@ -883,7 +883,7 @@ def test_haushalt_aenderungslisten_liefert_nur_den_jahrgang(client):
         zeilen=[FhhZeile(2026, 1, 7, "neu", "I10.180224.525",
                          "Förderprogramm Dachbegrünung", 0, None, 100_000,
                          None, 100_000,
-                         erlaeuterung="Wird ab Januar im Amt 40 bearbeitet.")],
+                         explanation="Wird ab Januar im Amt 40 bearbeitet.")],
         summen=[FhhSumme(2026, "entwurf", "Verwaltungsentwurf", 0, 0, 0, 0),
                 FhhSumme(2026, "liste", "Änderungsliste Verw. I",
                          0, 100_000, -100_000, 0),
@@ -903,10 +903,10 @@ def test_haushalt_aenderungslisten_liefert_nur_den_jahrgang(client):
     z = b["fhh_zeilen"][0]
     # Der Investitionscode ist der Anschluss an council_investitionsmassnahmen —
     # ohne ihn bliebe die Zeile ein Name ohne Vorhaben.
-    assert z["produkt"] == "I10.180224.525"
+    assert z["product"] == "I10.180224.525"
     assert (z["planned_draft"], z["outflow"], z["planned_new"]) == (0, 100_000, 100_000)
     # „neu" heißt: Die Position stand im Entwurf noch gar nicht.
-    assert z["seite_entwurf"] == "neu"
+    assert z["page_draft"] == "neu"
     assert str(z["herkunft_id"]) in b["herkunft"]
 
 
@@ -939,19 +939,19 @@ def test_haushalt_investitionen_trennt_geprueft_von_bezugsgroesse(client):
         cs.save_investitionen(
             2025, gelesen["zeilen"], gelesen["gesamt"],
             herkunft.Herkunft(probe="investitionen_summenzeile",
-                              fundstelle="Datensatz 1101, Tabellenblatt Finanzhaushalt",
+                              citation="Datensatz 1101, Tabellenblatt Finanzhaushalt",
                               probe_result=gelesen["nachweis"], **anker),
             finanzhaushalt=gelesen["finanzhaushalt"],
             herkunft_finanzhaushalt=herkunft.Herkunft(
                 probe=herkunft.UNGEPRUEFT,
-                fundstelle="Zeile „Gesamtbetrag des Finanzhaushaltes“", **anker))
+                citation="Zeile „Gesamtbetrag des Finanzhaushaltes“", **anker))
     finally:
         cs.close()
 
     b = client.get("/api/council/haushalt/investitionen").json()
     assert b["jahre"] == [2025]
     assert len(b["teilhaushalte"]) == 5
-    assert {z["thh_nr"] for z in b["teilhaushalte"]} == {1, 3, 4, 8, 12}
+    assert {z["sub_budget_no"] for z in b["teilhaushalte"]} == {1, 3, 4, 8, 12}
     assert b["gesamt"][0]["outflows"] == 63352260
     assert b["finanzhaushalt"][0]["outflows"] == 850520503
 
@@ -962,7 +962,7 @@ def test_haushalt_investitionen_trennt_geprueft_von_bezugsgroesse(client):
     assert h_gepr["probe"] == "investitionen_summenzeile"
     assert h_bezug["probe"] == "ungeprueft"
     # Der Erklärsatz für Leser*innen fährt mit, samt Messwert.
-    assert h_gepr["proben"] and "Summenzeile" in h_gepr["proben"][0]
+    assert h_gepr["probes"] and "Summenzeile" in h_gepr["probes"][0]
     assert "Restbetrag 0,00 €" in h_gepr["probe_result"]
     # Die Teilhaushalte hängen an der geprüften Herkunft, nicht an der anderen.
     assert {z["herkunft_id"] for z in b["teilhaushalte"]} == {h_gepr["id"]}
@@ -1002,10 +1002,10 @@ def test_haushalt_beteiligungen_liefert_texte_kennzahlen_und_herkunft(client):
     # Der Verweis auf den Gesamtabschluss steht am Stammdatensatz — er macht
     # aus zwei Seiten über dieselbe Gesellschaft einen Zusammenhang.
     assert egh["konzern_key"] == "egh"
-    assert egh["seite"] == 2
+    assert egh["page"] == 2
 
     bilanz = next(k for k in b["kennzahlen"]
-                  if k["gesellschaft"] == "egh" and k["kennzahl"] == "bilanzsumme"
+                  if k["gesellschaft"] == "egh" and k["indicator"] == "bilanzsumme"
                   and k["year"] == 2024)
     assert bilanz["wert"] == 580193968.91
     assert bilanz["einheit"] == "eur"
@@ -1014,17 +1014,17 @@ def test_haushalt_beteiligungen_liefert_texte_kennzahlen_und_herkunft(client):
     assert bilanz["berichte"] == 1
     h_zahl = b["herkunft"][str(bilanz["herkunft_id"])]
     assert h_zahl["probe"] == "beteiligung_bilanzprobe"
-    assert "Abschnitt 2.2.1" in h_zahl["fundstelle"]
-    assert h_zahl["seite"] == 2
-    assert h_zahl["proben"]
+    assert "Abschnitt 2.2.1" in h_zahl["citation"]
+    assert h_zahl["page"] == 2
+    assert h_zahl["probes"]
 
     gegenstand = next(t for t in b["texte"]
-                      if t["gesellschaft"] == "egh" and t["abschnitt"] == "gegenstand")
+                      if t["gesellschaft"] == "egh" and t["section"] == "gegenstand")
     assert "gebäudewirtschaftlichen" in gegenstand["text"]
     h_text = b["herkunft"][str(gegenstand["herkunft_id"])]
     assert h_text["probe"] == herkunft.UNGEPRUEFT
     # Ungeprüft heißt nicht quellenlos: Dokument und Fundstelle stehen da.
-    assert h_text["url"] and h_text["fundstelle"]
+    assert h_text["url"] and h_text["citation"]
 
     # Zwei der fünf Abschnitte sind Tabellen und kommen zerlegt heraus —
     # sonst müsste die Seite den zweispaltigen PDF-Extrakt am Stück zeigen.
@@ -1151,16 +1151,16 @@ def test_haushalt_konzern_liefert_luecke_und_gegenprobe(client):
     cs = CouncilStore(COUNCIL_DB)
     try:
         cs.save_ergebnisrechnung(2024, [
-            {"nr": 12, "bezeichnung": "Summe ordentliche Erträge",
+            {"nr": 12, "label": "Summe ordentliche Erträge",
              "result": 799057202.86, "is_total": 1},
-        ], herkunft.Herkunft(art="ris", probe="strukturprobe", dokument_id=295294,
+        ], herkunft.Herkunft(art="ris", probe="strukturprobe", document_id=295294,
                              label="Jahresabschluss 2024",
                              url="https://example.org/ja.pdf"))
-        anker = dict(art="ris", dokument_id=302709, label="Prüfbericht GA 2024",
+        anker = dict(art="ris", document_id=302709, label="Prüfbericht GA 2024",
                      url="https://example.org/ga.pdf")
         cs.save_konzern_jahrgang(
             2024,
-            [{"nr": 13, "bezeichnung": "Summe ordentliche Erträge",
+            [{"nr": 13, "label": "Summe ordentliche Erträge",
               "rolle": "revenues_total", "amount": 1241548906.55,
               "prior_year": 1139375959.21, "is_total": 1}],
             [{"art": "revenues", "traeger_key": "stadt",
@@ -1171,10 +1171,10 @@ def test_haushalt_konzern_liefert_luecke_und_gegenprobe(client):
               "amount_keur": 368100.0, "prior_year_keur": 336858.0}],
             herkunft.Herkunft(probe=["konzern_ergebnisprobe", "konzern_ausserordentlich",
                                      "konzern_gesamtergebnis"],
-                              fundstelle="Abschnitt 3.2", **anker),
+                              citation="Abschnitt 3.2", **anker),
             herkunft.Herkunft(probe=["konzern_zeilenprobe", "konzern_traegersumme",
                                      "konzern_querprobe"],
-                              fundstelle="Abschnitt 4.1.1", **anker))
+                              citation="Abschnitt 4.1.1", **anker))
     finally:
         cs.close()
 
@@ -1188,11 +1188,11 @@ def test_haushalt_konzern_liefert_luecke_und_gegenprobe(client):
     # Abschnitte desselben Berichts, verschiedene Proben.
     h_posten = b["herkunft"][str(b["konzern"][0]["herkunft_id"])]
     h_traeger = b["herkunft"][str(stadt["herkunft_id"])]
-    assert h_posten["fundstelle"] == "Abschnitt 3.2"
-    assert h_traeger["fundstelle"] == "Abschnitt 4.1.1"
-    assert h_posten["dokument_id"] == 302709
+    assert h_posten["citation"] == "Abschnitt 3.2"
+    assert h_traeger["citation"] == "Abschnitt 4.1.1"
+    assert h_posten["document_id"] == 302709
     # Die Erklärsätze für die Leserin kommen mit.
-    assert len(h_posten["proben"]) == 3
+    assert len(h_posten["probes"]) == 3
     # Gegenprobe: 799.057 TEUR gegen 799.057.202,86 € — auf Tausend genau.
     assert b["gegenprobe"] == [{"year": 2024, "art": "revenues",
                                 "konzern": 799057000.0,
@@ -1224,7 +1224,7 @@ def test_haushalt_gebaut_beziffert_seine_luecken(client):
         cs.save_investitionen_ist(gut, herkunft.Herkunft(
             art="stadt", url="https://example.org/1107.pdf",
             probe="investitionen_ist_zeilensumme",
-            fundstelle="Kapitel 11, Tabelle 1107-1"), verworfen=verworfen)
+            citation="Kapitel 11, Tabelle 1107-1"), verworfen=verworfen)
     finally:
         cs.close()
 
@@ -3004,7 +3004,7 @@ def test_qa_share_traegt_bausteine(client):
                      "template_number": "26/0123", "vorlage_titel": "Stadionneubau",
                      "auszug": "Kapazität 15.000."}],
         "parteien": [{"partei": "SPD", "haltung": "dagegen", "position": "Skeptisch.",
-                      "einig": True, "hinweis": None, "beitraege": 3,
+                      "einig": True, "note": None, "beitraege": 3,
                       "kernaussage": {"text": "Kein zweites Millionengrab.",
                                       "sprecher": "Wenzel", "datum": "01.06.2026"}}],
     })
@@ -3095,7 +3095,7 @@ def test_partei_meinungen_endpoint(client, monkeypatch):
 
     monkeypatch.setattr(emb, "search_wortbeitraege_je_fraktion", hits)
     meinung = [{"partei": "SPD", "haltung": "dafür", "position": "Dafür.", "einig": True,
-                "hinweis": None, "kernaussage": None, "beitraege": 3}]
+                "note": None, "kernaussage": None, "beitraege": 3}]
     monkeypatch.setattr(qa_mod, "partei_meinungen", lambda *a, **k: meinung)
     r = client.post("/api/council/partei-meinungen", json={"frage": "Stadionneubau?"})
     assert r.status_code == 200 and r.json()["parteien"] == meinung
@@ -3135,7 +3135,7 @@ def test_partei_meinungen_nimmt_beschluss_anker_dazu(client, monkeypatch):
     monkeypatch.setattr(CouncilStore, "get_decisions_by_ids",
                         lambda self, ids: [{"id": i} for i in ids])
     meinung = [{"partei": "CDU", "haltung": "dagegen", "position": "Dagegen.", "einig": True,
-                "hinweis": None, "kernaussage": None, "beitraege": 1}]
+                "note": None, "kernaussage": None, "beitraege": 1}]
     monkeypatch.setattr(qa_mod, "partei_meinungen",
                         lambda frage, rows, **k: (gesehen.update(rows=rows) or meinung))
     r = client.post("/api/council/partei-meinungen",
@@ -3623,7 +3623,7 @@ def test_ask_dokumentenplan_sucht_anlagen_und_gibt_sie_ins_prompt(client, monkey
         "vorlage_titel": "Grundsatzbeschluss Stadionneubau",
         "auszug": "Lärmpegel unter dem Grenzwert",
     }]
-    assert gesehen["anlagen"][0]["fundstelle"] == "Lärmpegel unter dem Grenzwert"
+    assert gesehen["anlagen"][0]["citation"] == "Lärmpegel unter dem Grenzwert"
     assert "[A1]" in "".join(e.get("text", "") for e in events)
 
 
@@ -3798,7 +3798,7 @@ def test_ask_keine_debatten_vor_der_sitzung(client, monkeypatch):
     monkeypatch.setattr(CouncilStore, "wortbeitraege_by_ids", lambda self, ids: [
         {"id": 77, "sprecher": "Alt Redner", "partei": None, "art": "rede",
          "top": "Altes Thema", "text": "Ein alter Beitrag.", "session_date": "2021-01-01",
-         "committee": "Rat", "seite": None, "ksinr": 100}] if ids else [])
+         "committee": "Rat", "page": None, "ksinr": 100}] if ids else [])
     monkeypatch.setattr(CouncilStore, "wortbeitraege_zu_beschluessen", lambda self, c: [])
     alt = {"id": 50, "title": "Altes Bau-Thema", "score": 0.9,
            "session_date": "2021-01-01", "committee": "Rat", "outcome": "angenommen"}
@@ -5434,11 +5434,11 @@ def test_haushalt_schulden_traegt_die_zinslast_aus_dem_jahresabschluss(client):
     try:
         cs.save_ergebnisrechnung(2024, [
             {"nr": schulden.POSTEN_ZINSAUFWAND,
-             "bezeichnung": "Zinsen und ähnliche Aufwendungen",
+             "label": "Zinsen und ähnliche Aufwendungen",
              "result": 7_250_000.0, "is_total": 0},
-            {"nr": 12, "bezeichnung": "Summe ordentliche Erträge",
+            {"nr": 12, "label": "Summe ordentliche Erträge",
              "result": 799_057_202.86, "is_total": 1},
-        ], herkunft.Herkunft(art="ris", probe="strukturprobe", dokument_id=295294,
+        ], herkunft.Herkunft(art="ris", probe="strukturprobe", document_id=295294,
                              label="Jahresabschluss 2024",
                              url="https://example.org/ja.pdf"))
 
@@ -5448,20 +5448,20 @@ def test_haushalt_schulden_traegt_die_zinslast_aus_dem_jahresabschluss(client):
         # mal einen einzelnen Teilhaushalt unter derselben Überschrift.
         cs.save_ergebnisrechnung(2024, [
             {"nr": schulden.POSTEN_ZINSAUFWAND,
-             "bezeichnung": "Zinsen und ähnliche Aufwendungen",
+             "label": "Zinsen und ähnliche Aufwendungen",
              "result": 4_084_574.90, "is_total": 0},
-        ], herkunft.Herkunft(art="ris", probe="strukturprobe", dokument_id=295294,
+        ], herkunft.Herkunft(art="ris", probe="strukturprobe", document_id=295294,
                              label="Jahresabschluss 2024",
-                             fundstelle="Teil-Ergebnisrechnung THH04",
+                             citation="Teil-Ergebnisrechnung THH04",
                              url="https://example.org/ja.pdf"),
-            thh_nr=4, thh_name="Finanzmanagement und Recht")
+            sub_budget_no=4, sub_budget_name="Finanzmanagement und Recht")
 
         antwort = client.get("/api/council/haushalt/schulden")
         assert antwort.status_code == 200
         daten = antwort.json()
 
         zins = daten["zinslast"]
-        assert [z["year"] for z in zins] == [2024], "je Jahr genau eine Zinslast"
+        assert [z["year"] for z in zins] == [2024], "je Jahr exact eine Zinslast"
         assert zins[0]["expense"] == 7_250_000.0
         # Die Herkunft muss mitkommen — sonst steht die Zahl ohne Beleg da.
         assert str(zins[0]["herkunft_id"]) in daten["herkunft"]
@@ -5488,7 +5488,7 @@ def test_haushalt_bilanz_liefert_posten_erlaeuterungen_und_herkunft(client):
     Drei Dinge muss der Endpunkt zusammen ausliefern, sonst steht die
     Oberfläche vor einer Zahl, die sie nicht verantworten kann:
 
-    * die Posten mit ``rolle``, ``seite`` und ``ebene`` — an der
+    * die Posten mit ``rolle``, ``page`` und ``level`` — an der
       Gliederungsnummer darf nichts hängen, „1." ist ab 2021 auf der
       Aktivseite etwas anderes als auf der Passivseite,
     * die **Erläuterungen** des Anhangs. Für ``schulden`` sind sie keine
@@ -5504,29 +5504,29 @@ def test_haushalt_bilanz_liefert_posten_erlaeuterungen_und_herkunft(client):
     try:
         q = herkunft.Herkunft(
             art="ris", probe=["bilanz_ausgleich", "bilanz_kassenprobe"],
-            fundstelle="Abschnitt 2.1 — Bilanz der Stadt Oldenburg zum 31.12.2024",
+            citation="Abschnitt 2.1 — Bilanz der Stadt Oldenburg zum 31.12.2024",
             probe_result="Aktiva und Passiva stimmen auf den Cent überein",
-            stand="31.12.2024", dokument_id=295294, label="Jahresabschluss 2024",
+            stand="31.12.2024", document_id=295294, label="Jahresabschluss 2024",
             url="https://example.org/ja.pdf")
         cs.save_bilanz(2024, [
-            {"rolle": "geldschulden", "seite": bilanz.PASSIVA, "ebene": 2,
-             "nr": "2.1", "bezeichnung": "Geldschulden", "wert": 43_690_971.71},
-            {"rolle": "schulden", "seite": bilanz.PASSIVA, "ebene": 1,
-             "nr": "2", "bezeichnung": "Schulden", "wert": 207_116_175.19},
-            {"rolle": "pensionen_gesamt", "seite": bilanz.PASSIVA, "ebene": 2,
+            {"rolle": "geldschulden", "page": bilanz.PASSIVA, "level": 2,
+             "nr": "2.1", "label": "Geldschulden", "wert": 43_690_971.71},
+            {"rolle": "schulden", "page": bilanz.PASSIVA, "level": 1,
+             "nr": "2", "label": "Schulden", "wert": 207_116_175.19},
+            {"rolle": "pensionen_gesamt", "page": bilanz.PASSIVA, "level": 2,
              "nr": "3.1",
-             "bezeichnung": "Pensionsrückstellungen und ähnliche Verpflichtungen",
+             "label": "Pensionsrückstellungen und ähnliche Verpflichtungen",
              "wert": 311_789_660.00},
-            {"rolle": "liquide_mittel", "seite": bilanz.AKTIVA, "ebene": 1,
-             "nr": "4", "bezeichnung": "Liquide Mittel", "wert": 118_001_891.26},
+            {"rolle": "liquide_mittel", "page": bilanz.AKTIVA, "level": 1,
+             "nr": "4", "label": "Liquide Mittel", "wert": 118_001_891.26},
         ], q)
         cs.save_bilanz_erlaeuterungen(2024, [
-            {"rolle": "schulden", "nr": 7, "ueberschrift": "Schulden",
+            {"rolle": "schulden", "nr": 7, "heading": "Schulden",
              "text": "… ergibt sich eine Bilanzverlängerung … 138,2 Millionen Euro."},
         ], herkunft.Herkunft(
             art="ris", probe="bilanz_erlaeuterung",
-            fundstelle="Abschnitt 6.2 — Erläuterung der wesentlichen Bilanzpositionen",
-            stand="Jahresabschluss 2024", dokument_id=295294,
+            citation="Abschnitt 6.2 — Erläuterung der wesentlichen Bilanzpositionen",
+            stand="Jahresabschluss 2024", document_id=295294,
             label="Jahresabschluss 2024", url="https://example.org/ja.pdf"))
 
         daten = client.get("/api/council/haushalt/bilanz").json()
@@ -5536,8 +5536,8 @@ def test_haushalt_bilanz_liefert_posten_erlaeuterungen_und_herkunft(client):
         # Die beiden Zahlen, die beide „Schulden" heißen — getrennt geführt.
         assert nach_rolle["geldschulden"]["wert"] == 43_690_971.71
         assert nach_rolle["schulden"]["wert"] == 207_116_175.19
-        assert nach_rolle["liquide_mittel"]["seite"] == "aktiva"
-        assert nach_rolle["schulden"]["ebene"] == 1
+        assert nach_rolle["liquide_mittel"]["page"] == "aktiva"
+        assert nach_rolle["schulden"]["level"] == 1
 
         # Ohne diesen Text darf die Seite die 207,1 Mio. € nicht zeigen.
         erl = {e["rolle"]: e for e in daten["erlaeuterungen"]}
@@ -5583,16 +5583,16 @@ def test_haushalt_liefert_die_spenden_mit_luecke_und_beleg(client):
             {"template_number": "26/0207", "year": 2026, "sitzung": "2026-04-13",
              "amount": 435_941.0, "gremium": "Rat", "layout": "neu",
              "zweitstelle": "zerlegung",
-             "proben": [spenden.ZWEITSTELLE, spenden.PROTOKOLLABGLEICH],
+             "probes": [spenden.ZWEITSTELLE, spenden.PROTOKOLLABGLEICH],
              "herkunft": herkunft.Herkunft(
-                 art="ris", dokument_id=304791, probe=[spenden.ZWEITSTELLE],
-                 fundstelle=spenden.FUNDSTELLE,
+                 art="ris", document_id=304791, probe=[spenden.ZWEITSTELLE],
+                 citation=spenden.FUNDSTELLE,
                  probe_result="421.316 + 14.625 = 435.941")},
             {"template_number": "26/0044", "year": 2026, "sitzung": "2026-02-09",
              "amount": 1_800.0, "gremium": "Verwaltungsausschuss", "layout": "alt",
-             "zweitstelle": "identisch", "proben": [spenden.ZWEITSTELLE],
+             "zweitstelle": "identisch", "probes": [spenden.ZWEITSTELLE],
              "herkunft": herkunft.Herkunft(
-                 art="ris", dokument_id=300001, probe=[spenden.ZWEITSTELLE],
+                 art="ris", document_id=300001, probe=[spenden.ZWEITSTELLE],
                  probe_result="identisch")},
         ]
         verworfen = [{"template_number": "23/0265", "sitzung": "2023-05-03",
@@ -5645,7 +5645,7 @@ def test_haushalt_bleibt_ohne_spenden_ruhig(client):
 def test_haushalt_thh_posten_schneidet_die_ergebnisrechnung_zu(client):
     """Die zweite Ebene der Ergebnisrechnung — der groesste Block im Bereich.
 
-    Die Tabelle fuehrt Kernverwaltung (``thh_nr`` NULL) und Teilhaushalte in
+    Die Tabelle fuehrt Kernverwaltung (``sub_budget_no`` NULL) und Teilhaushalte in
     einer Liste; auf dev sind das 1.566 Zeilen, davon 1.381 aus der zweiten
     Ebene. Fast keine Seite braucht sie ganz — aber das Flussbild der
     Uebersicht braucht EINEN Posten daraus, und genau das muss der Zuschnitt
@@ -5656,23 +5656,23 @@ def test_haushalt_thh_posten_schneidet_die_ergebnisrechnung_zu(client):
     _register(client)
     cs = CouncilStore(COUNCIL_DB)
     try:
-        h = h_mod.Herkunft(art="ris", probe="strukturprobe", dokument_id=295294,
+        h = h_mod.Herkunft(art="ris", probe="strukturprobe", document_id=295294,
                            label="Jahresabschluss 2024",
                            url="https://example.org/ja.pdf")
         cs.save_ergebnisrechnung(2024, [
-            {"nr": 12, "bezeichnung": "Summe ordentliche Ertraege",
+            {"nr": 12, "label": "Summe ordentliche Ertraege",
              "result": 799_057_202.86, "is_total": 1},
-            {"nr": 20, "bezeichnung": "Summe ordentliche Aufwendungen",
+            {"nr": 20, "label": "Summe ordentliche Aufwendungen",
              "result": 764_400_000.0, "is_total": 1},
         ], h)
         # Zwei Teilhaushalts-Zeilen: eine, die das Flussbild braucht (Nr. 20),
         # und eine, die nur Ballast ist.
         cs.save_ergebnisrechnung(2024, [
-            {"nr": 20, "bezeichnung": "Summe ordentliche Aufwendungen",
+            {"nr": 20, "label": "Summe ordentliche Aufwendungen",
              "result": 75_300_000.0, "is_total": 1},
-            {"nr": 3, "bezeichnung": "Oeffentlich-rechtliche Entgelte",
+            {"nr": 3, "label": "Oeffentlich-rechtliche Entgelte",
              "result": 1_200_000.0, "is_total": 0},
-        ], h, thh_nr=4, thh_name="Schule und Bildung")
+        ], h, sub_budget_no=4, sub_budget_name="Schule und Bildung")
     finally:
         cs.close()
 
@@ -5686,19 +5686,19 @@ def test_haushalt_thh_posten_schneidet_die_ergebnisrechnung_zu(client):
 
     # `keine`: nur die Kernverwaltung.
     kern = hole(thh_posten="keine")
-    assert {z["thh_nr"] for z in kern} == {None}
+    assert {z["sub_budget_no"] for z in kern} == {None}
     assert len(kern) == 2
 
     # `20`: Kernverwaltung vollstaendig PLUS der eine Posten je Teilhaushalt —
     # das ist der Datensatz, aus dem das Flussbild entsteht.
     fluss = hole(thh_posten="20")
     assert len(fluss) == 3
-    thh = [z for z in fluss if z["thh_nr"] is not None]
-    assert len(thh) == 1 and thh[0]["nr"] == 20
-    assert thh[0]["thh_name"] == "Schule und Bildung"
+    sub_budget = [z for z in fluss if z["sub_budget_no"] is not None]
+    assert len(sub_budget) == 1 and sub_budget[0]["nr"] == 20
+    assert sub_budget[0]["sub_budget_name"] == "Schule und Bildung"
     # Die Kernverwaltung wird NIE beschnitten — auch nicht auf die genannten
     # Posten. Sonst fehlten der Uebersicht die Ertragsarten 1–11.
-    assert {z["nr"] for z in fluss if z["thh_nr"] is None} == {12, 20}
+    assert {z["nr"] for z in fluss if z["sub_budget_no"] is None} == {12, 20}
 
     # Ein Tippfehler ist ein Fehler, keine stille Luecke — wie bei `felder`.
     antwort = client.get("/api/council/haushalt?felder=ergebnisrechnung&thh_posten=zwanzig")
@@ -5756,9 +5756,9 @@ def test_haushalt_schickt_nur_belegte_herkunft(client):
     cs = CouncilStore(COUNCIL_DB)
     try:
         cs.save_ergebnisrechnung(2024, [
-            {"nr": 12, "bezeichnung": "Summe ordentliche Erträge",
+            {"nr": 12, "label": "Summe ordentliche Erträge",
              "result": 799_057_202.86, "is_total": 1},
-        ], h_mod.Herkunft(art="ris", probe="strukturprobe", dokument_id=295294,
+        ], h_mod.Herkunft(art="ris", probe="strukturprobe", document_id=295294,
                           label="Jahresabschluss 2024",
                           url="https://example.org/ja.pdf"))
     finally:
@@ -5791,14 +5791,14 @@ def test_haushalt_schulden_stellt_buergschaften_neben_die_eigenen_schulden(clien
     cs = CouncilStore(COUNCIL_DB)
     try:
         cs.save_buergschaften([{
-            "year": 2024, "bestand": 220_300_000.0, "genau": False,
+            "year": 2024, "bestand": 220_300_000.0, "exact": False,
             "out_next_year": False, "quelle": "anhang",
             "grund": "Hintergrund ist, dass die verbürgten Bestandsdarlehen "
                      "seitens der Beteiligungen getilgt wurden.",
-            "single_amount": None, "proben": [bg.PROBE_KETTE],
-        }], h_mod.Herkunft(art="ris", probe=[bg.PROBE_KETTE], dokument_id=295294,
+            "single_amount": None, "probes": [bg.PROBE_KETTE],
+        }], h_mod.Herkunft(art="ris", probe=[bg.PROBE_KETTE], document_id=295294,
                            label="Jahresabschluss 2024 der Kernverwaltung",
-                           fundstelle=bg.ABSCHNITT,
+                           citation=bg.ABSCHNITT,
                            url="https://example.org/ja2024.pdf"))
     finally:
         cs.close()
@@ -5808,7 +5808,7 @@ def test_haushalt_schulden_stellt_buergschaften_neben_die_eigenen_schulden(clien
     z = b["reihe"][0]
     assert z["bestand"] == 220_300_000.0
     # Die Quelle rundet selbst — das muss an der Zahl stehen bleiben.
-    assert z["genau"] is False and z["out_next_year"] is False
+    assert z["exact"] is False and z["out_next_year"] is False
     # Was eine Bürgschaft ist, reist mit den Zahlen statt im Frontend zu stehen.
     assert "keine Schuld" in b["abgrenzung"]
 
@@ -5842,17 +5842,17 @@ def test_haushalt_schulden_liefert_die_dritte_zahl_mit_ihren_warnsaetzen(client)
             "kernhaushalt": 43_690_972.0, "extrahaushalte": 140_916_720.89,
             "sonstige": 555_722_470.11, "extra_unter_50": 2_397_841.89,
             "sonstige_unter_50": 431_522_725.5, "insgesamt_change": -13.6,
-            "proben": [isch.PROBE_KERNHAUSHALT],
+            "probes": [isch.PROBE_KERNHAUSHALT],
         }, h_mod.Herkunft(art="lsn", probe=[isch.PROBE_KERNHAUSHALT],
                           label="Integrierte Schulden der Gemeinden",
                           url="https://example.org/tabellenband.xlsx",
-                          fundstelle=f"Tabelle 2, Blatt {isch.BLATT}"))
+                          citation=f"Tabelle 2, Blatt {isch.BLATT}"))
     finally:
         cs.close()
 
     i = client.get("/api/council/haushalt/schulden").json()["integrierte_schulden"]
-    assert i["stichtag"]["year"] == 2024
-    assert i["stichtag"]["insgesamt"] == 740_330_163.0
+    assert i["as_of_date"]["year"] == 2024
+    assert i["as_of_date"]["insgesamt"] == 740_330_163.0
     # Der Anteil wird gerechnet, nicht abgeschrieben — er entscheidet, wie die
     # Zahl gelesen werden darf, und ändert sich mit jeder Ausgabe.
     assert 0.58 < i["anteil_unter_50"] < 0.59

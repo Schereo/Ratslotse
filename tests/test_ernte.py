@@ -131,7 +131,7 @@ def test_save_vorlage_erntet_felder(tmp_path):
     store = CouncilStore(tmp_path / "c.sqlite")
     store.save_vorlage({"kvonr": 7, "template_number": "22/0262", "raw_text": VORLAGE_TEXT})
     v = store.get_vorlage(7)
-    assert v["amt"] == "Stadtplanungsamt"
+    assert v["office"] == "Stadtplanungsamt"
     assert v["klima_check"].startswith("Prüfungsrelevant: Ja")
     assert v["finanz_check"].startswith("Kosten von 50.000")
     assert v["beschlussvorschlag"].startswith("Das Vergnügungsstättenkonzept")
@@ -182,7 +182,7 @@ def test_qa_kontext_traegt_ernte_felder(tmp_path):
     ctx = qa._build_context([{
         "id": 5, "title": "Konzept", "committee": "Rat", "session_date": "2026-01-01",
         "outcome": "angenommen", "official_text": "Wird beschlossen.",
-        "amt": "Stadtplanungsamt",
+        "office": "Stadtplanungsamt",
         "klima_check": "Prüfungsrelevant: Ja, steuert den Verkehr.",
         "deviation": "stark",
     }])

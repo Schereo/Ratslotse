@@ -72,26 +72,26 @@ def main() -> dict:
 
         if gelesen:
             print("\nGelesen:", flush=True)
-            for b, _ in sorted(gelesen, key=lambda x: (x[0].year, x[0].bereich)):
+            for b, _ in sorted(gelesen, key=lambda x: (x[0].year, x[0].area)):
                 division = (f"÷ {b.bezugsmenge:>9,.0f} {b.bezugseinheit:18} "
                             f"= {b.gebuehr:>8.3f} €"
                             if b.gebuehr is not None
                             else "(Grundgebühr und Gebühr je Liter, keine Division)")
-                print(f"  {b.year}  {b.bereich_name[:24]:26} "
+                print(f"  {b.year}  {b.area_name[:24]:26} "
                       f"{b.zu_deckende_kosten:>12,.0f} €  {division}", flush=True)
 
         if ohne_text:
             print("\nOhne Volltext — nichts zu lesen:", flush=True)
             for did, label, status in ohne_text:
-                hinweis = (" (Scan — backfill_anlagen_ocr.py macht ihn lesbar)"
+                note = (" (Scan — backfill_anlagen_ocr.py macht ihn readable)"
                            if status == "empty" else "")
-                print(f"  {did}  {label[:50]:52} {status}{hinweis}", flush=True)
+                print(f"  {did}  {label[:50]:52} {status}{note}", flush=True)
 
         if saetze_gelesen:
             print("\nKonkrete Tarife aus Anlage 4:", flush=True)
             for saetze, _ in sorted(saetze_gelesen, key=lambda x: x[0][0].year):
                 beispiele = ", ".join(
-                    f"{s.bezeichnung}: {s.amount:.2f} €"
+                    f"{s.label}: {s.amount:.2f} €"
                     for s in saetze if s.schluessel in
                     ("grundgebuehr", "litergebuehr", "strassenreinigung_qw"))
                 print(f"  {saetze[0].year}: {len(saetze)} Tarife — {beispiele}",
@@ -111,10 +111,10 @@ def main() -> dict:
 
         for b, r in gelesen:
             store.save_gebuehrenbedarf(b, herkunft_fuer(
-                b, url=r["url"], dokument_id=r["document_id"], label=r["label"]))
+                b, url=r["url"], document_id=r["document_id"], label=r["label"]))
         for saetze, r in saetze_gelesen:
             store.save_gebuehrensaetze(saetze, [herkunft_fuer_satz(
-                s, url=r["url"], dokument_id=r["document_id"], label=r["label"])
+                s, url=r["url"], document_id=r["document_id"], label=r["label"])
                 for s in saetze])
         print(f"\n{len(gelesen)} Gebührenbereich(e) gespeichert über "
               f"{len({b.year for b, _ in gelesen})} Jahrgänge; "

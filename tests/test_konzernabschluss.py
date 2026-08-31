@@ -27,11 +27,11 @@ from council.store import CouncilStore
 
 #: Die Herkunft, die ein echter Lauf für den Jahrgang 2024 baut — Anker auf
 #: die Anlage, Fundstelle im Dokument, die drei Proben der Ergebnisrechnung.
-def _herkunft(fundstelle: str, proben: list[str], messwert: str = "") -> herkunft.Herkunft:
+def _herkunft(citation: str, probes: list[str], messwert: str = "") -> herkunft.Herkunft:
     return herkunft.Herkunft(
-        art="ris", dokument_id=302709, label="Prüfbericht GA 2024",
-        url="https://example.org/ga2024.pdf", fundstelle=fundstelle,
-        probe=proben, probe_result=messwert or None,
+        art="ris", document_id=302709, label="Prüfbericht GA 2024",
+        url="https://example.org/ga2024.pdf", citation=citation,
+        probe=probes, probe_result=messwert or None,
         stand="Gesamtabschluss zum 31.12.2024")
 
 # --- Fixtures: Dokumentköpfe ------------------------------------------------
@@ -179,19 +179,19 @@ def _rollen(result: dict) -> dict[str, float]:
 
 def test_jahrgang_aus_umbrochenem_titel():
     """Der Titel steht über fünf Zeilen — das Label sagt nur „Anlage"."""
-    assert ka.jahrgang(KOPF_2016) == 2016
+    assert ka.budget_year(KOPF_2016) == 2016
 
 
 def test_jahrgang_hinter_aktenzeichen_deckblatt():
-    assert ka.jahrgang(KOPF_2024) == 2024
+    assert ka.budget_year(KOPF_2024) == 2024
 
 
 def test_schlussbericht_ist_kein_gesamtabschluss():
     """Er erwähnt den Gesamtabschluss und fällt in denselben Vorfilter —
     trotzdem darf er hier nicht als Jahrgang durchgehen."""
-    assert ka.jahrgang(KOPF_SCHLUSSBERICHT) is None
-    assert ka.jahrgang("") is None
-    assert ka.jahrgang(None) is None
+    assert ka.budget_year(KOPF_SCHLUSSBERICHT) is None
+    assert ka.budget_year("") is None
+    assert ka.budget_year(None) is None
 
 
 # --- Gesamtergebnisrechnung -------------------------------------------------
@@ -232,7 +232,7 @@ def test_zeilenumbrueche_werden_wiederhergestellt():
     assert posten[1]["prior_year"] == 269835099.83
     assert posten[10]["amount"] == 91324.19
     assert posten[10]["prior_year"] == -510903.43
-    assert posten[2]["bezeichnung"].startswith("Zuwendungen und allgemeine Umlagen")
+    assert posten[2]["label"].startswith("Zuwendungen und allgemeine Umlagen")
 
 
 def test_entzerren_laesst_saubere_jahrgaenge_unveraendert():
@@ -244,7 +244,7 @@ def test_anlagenuebersicht_wird_nicht_mitgelesen():
     mit „1." beginnt. Nach dem Gesamtjahresergebnis ist Schluss."""
     result = ka.parse_gesamtergebnisrechnung(GER_2019)
     assert result["posten"][-1]["rolle"] == "gesamtergebnis"
-    assert not any("Konzessionen" in p["bezeichnung"] for p in result["posten"])
+    assert not any("Konzessionen" in p["label"] for p in result["posten"])
 
 
 def test_vorjahresspalte_in_tausend_wird_umgerechnet():
@@ -282,7 +282,7 @@ def test_gerissene_probe_verwirft_den_jahrgang():
     result = ka.parse_gesamtergebnisrechnung(GER_KAPUTT)
     assert result is not None
     assert not result["bestanden"]
-    gerissen = [p for p in result["proben"] if not p["ok"]]
+    gerissen = [p for p in result["probes"] if not p["ok"]]
     assert len(gerissen) == 1
     assert gerissen[0]["delta"] == 100000.0
     # `lies` gibt dann gar keine Posten heraus.
@@ -355,7 +355,7 @@ def test_ohne_traegeraufstellung_keine_warnung():
 def test_lies_liefert_probennachweis():
     result = ka.lies(GER_2018 + TRAEGER_2024.replace(
         "1.241.548 1.139.376 102.172", "927.894 864.627 63.267"))
-    nachweis = ka.probennachweis(result["proben"])
+    nachweis = ka.probennachweis(result["probes"])
     assert "ordentliches Ergebnis" in nachweis
     assert "Gesamtjahresergebnis" in nachweis
     assert "Δ 0.00" in nachweis
@@ -375,7 +375,7 @@ def test_speichern_und_lesen(tmp_path):
             _herkunft("Abschnitt 3.2, Gesamtergebnisrechnung des Konzerns",
                       ["konzern_ergebnisprobe", "konzern_ausserordentlich",
                        "konzern_gesamtergebnis"],
-                      ka.probennachweis(result["proben"])),
+                      ka.probennachweis(result["probes"])),
             _herkunft("Abschnitt 4.1.1, Aufstellung nach Aufgabenträgern",
                       ["konzern_zeilenprobe", "konzern_traegersumme",
                        "konzern_querprobe"],
@@ -393,13 +393,13 @@ def test_speichern_und_lesen(tmp_path):
         hid_traeger = zeilen["stadt"]["herkunft_id"]
         assert hid_posten != hid_traeger
         nach_id = {h["id"]: h for h in store.get_herkunft()}
-        assert nach_id[hid_posten]["fundstelle"].startswith("Abschnitt 3.2")
-        assert nach_id[hid_traeger]["fundstelle"].startswith("Abschnitt 4.1.1")
-        assert nach_id[hid_posten]["dokument_id"] == 302709
+        assert nach_id[hid_posten]["citation"].startswith("Abschnitt 3.2")
+        assert nach_id[hid_traeger]["citation"].startswith("Abschnitt 4.1.1")
+        assert nach_id[hid_posten]["document_id"] == 302709
         assert nach_id[hid_posten]["stand"] == "Gesamtabschluss zum 31.12.2024"
         # Die Erklärsätze für die Leserin kommen aus herkunft.PROBEN.
-        assert len(nach_id[hid_posten]["proben"]) == 3
-        assert "ordentliches Ergebnis" in " ".join(nach_id[hid_posten]["proben"])
+        assert len(nach_id[hid_posten]["probes"]) == 3
+        assert "ordentliches Ergebnis" in " ".join(nach_id[hid_posten]["probes"])
 
         # Keine Zeile ohne Herkunft — das ist der Sollzustand.
         luecken = {t: n for t, n in store.herkunft_luecken().items() if n}
@@ -414,7 +414,7 @@ def test_speichern_und_lesen(tmp_path):
             _herkunft("Abschnitt 3.2, Gesamtergebnisrechnung des Konzerns",
                       ["konzern_ergebnisprobe", "konzern_ausserordentlich",
                        "konzern_gesamtergebnis"],
-                      ka.probennachweis(result["proben"])),
+                      ka.probennachweis(result["probes"])),
             _herkunft("Abschnitt 4.1.1, Aufstellung nach Aufgabenträgern",
                       ["konzern_zeilenprobe", "konzern_traegersumme",
                        "konzern_querprobe"],
@@ -429,9 +429,9 @@ def test_herkunft_ohne_probe_ist_nicht_baubar():
     """Die Regel des Formats, an unserem Fall: Wer speichern will, muss
     sagen, womit die Zahl abgesichert ist."""
     with pytest.raises(ValueError):
-        herkunft.Herkunft(art="ris", probe=[], dokument_id=302709)
+        herkunft.Herkunft(art="ris", probe=[], document_id=302709)
     with pytest.raises(ValueError):
-        herkunft.Herkunft(art="ris", probe="konzern_erfunden", dokument_id=302709)
+        herkunft.Herkunft(art="ris", probe="konzern_erfunden", document_id=302709)
 
 
 def test_gegenprobe_gegen_die_kernverwaltung(tmp_path):
@@ -441,12 +441,12 @@ def test_gegenprobe_gegen_die_kernverwaltung(tmp_path):
     store = CouncilStore(tmp_path / "council.sqlite")
     try:
         store.save_ergebnisrechnung(2024, [
-            {"nr": 12, "bezeichnung": "Summe ordentliche Erträge",
+            {"nr": 12, "label": "Summe ordentliche Erträge",
              "result": 799057202.86, "is_total": 1},
-            {"nr": 20, "bezeichnung": "Summe ordentliche Aufwendungen",
+            {"nr": 20, "label": "Summe ordentliche Aufwendungen",
              "result": 764416063.76, "is_total": 1},
         ], herkunft.Herkunft(
-            art="ris", probe="strukturprobe", dokument_id=295294,
+            art="ris", probe="strukturprobe", document_id=295294,
             label="Jahresabschluss 2024", url="https://example.org/ja2024.pdf"))
 
         ist = store.kernverwaltung_ist()

@@ -60,7 +60,7 @@ def main() -> int:
         r.raise_for_status()
         steuern = haushalt.parse_steuereinnahmen(r.text)
         if not steuern:
-            print("Steuereinnahmen-CSV nicht lesbar — nichts gespeichert.", file=sys.stderr)
+            print("Steuereinnahmen-CSV nicht readable — nichts gespeichert.", file=sys.stderr)
             return 1
         # Diese drei Datensätze tragen keine Rechenprobe: eine Zeile je Jahr,
         # keine Summe, gegen die sich etwas prüfen ließe. Das ausdrücklich zu
@@ -70,7 +70,7 @@ def main() -> int:
             art="opendata", probe=herkunft.UNGEPRUEFT,
             url=haushalt.STEUERN_CSV_URL,
             label="Steuereinnahmen der Stadt Oldenburg",
-            fundstelle="Datensatz 1104 — eine Zeile je Haushaltsjahr, "
+            citation="Datensatz 1104 — eine Zeile je Haushaltsjahr, "
                        "Spalten je Steuerart (Ist, Gewerbesteuer nach Umlage)",
             stand=_spanne(steuern)))
         print(f"Steuereinnahmen: {n} Zeilen ({_spanne(steuern)}).")
@@ -79,13 +79,13 @@ def main() -> int:
         r.raise_for_status()
         kraft = haushalt.parse_steuerkraft(r.text)
         if not kraft:
-            print("Steuerkraft-CSV nicht lesbar — nichts gespeichert.", file=sys.stderr)
+            print("Steuerkraft-CSV nicht readable — nichts gespeichert.", file=sys.stderr)
             return 1
         n = store.save_steuerkraft(kraft, herkunft.Herkunft(
             art="opendata", probe=herkunft.UNGEPRUEFT,
             url=haushalt.STEUERKRAFT_CSV_URL,
             label="Steuerkraftmesszahlen und Schlüsselzuweisungen",
-            fundstelle="Datensatz 1106 — je Jahr Steuerkraftmesszahl und "
+            citation="Datensatz 1106 — je Jahr Steuerkraftmesszahl und "
                        "Schlüsselzuweisungen (Anordnungssoll). Die Jahreszahl "
                        "ist von uns um ein Jahr nach vorn gerückt: Der "
                        "Datensatz beschriftet seine Zeilen um ein Jahr zu "
@@ -104,14 +104,14 @@ def main() -> int:
                 art="opendata", probe=herkunft.UNGEPRUEFT,
                 url=haushalt.EINWOHNER_CSV_URL,
                 label="Einwohnerzahlen je Haushaltsjahr",
-                fundstelle="Datensatz 1102, Einwohner-Spalte (Stichtag 31.12. "
+                citation="Datensatz 1102, Einwohner-Spalte (Stichtag 31.12. "
                            "des Vorjahres) — die Aufwendungs-Spalte derselben "
                            "Datei ist eine eigene Schicht mit eigenen Proben "
                            "(council_ausgabenreihe)",
                 stand=_spanne(ew)))
             print(f"Einwohnerzahlen: {n} Jahre ({_spanne(ew)}).")
         else:
-            print("Einwohner-CSV nicht lesbar — übersprungen.", file=sys.stderr)
+            print("Einwohner-CSV nicht readable — übersprungen.", file=sys.stderr)
 
         # --- Investitionen (Finanzhaushalt) ---------------------------------
         # Die einzige dieser Dateien mit einer Rechenprobe im Dokument selbst.
@@ -143,7 +143,7 @@ def main() -> int:
                 year, gelesen["zeilen"], gelesen["gesamt"],
                 herkunft.Herkunft(
                     probe="investitionen_summenzeile",
-                    fundstelle="Datensatz 1101, Tabellenblatt „Finanzhaushalt“ — "
+                    citation="Datensatz 1101, Tabellenblatt „Finanzhaushalt“ — "
                                "je Teilhaushalt eine Zeile mit Ein- und "
                                "Auszahlungen aus Investitionstätigkeit, darunter "
                                "die Summenzeile „Finanzhaushalt "
@@ -161,7 +161,7 @@ def main() -> int:
                     # was nur danebensteht, wäre die eine Behauptung, die der
                     # ganze Bereich vermeiden soll.
                     probe=herkunft.UNGEPRUEFT,
-                    fundstelle="Datensatz 1101, Zeile „Gesamtbetrag des "
+                    citation="Datensatz 1101, Zeile „Gesamtbetrag des "
                                "Finanzhaushaltes“ — alle Ein- und Auszahlungen "
                                "des Jahres, also samt laufender "
                                "Verwaltungstätigkeit. Bezugsgröße für den "

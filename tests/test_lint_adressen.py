@@ -90,7 +90,7 @@ def test_ausgabe_verraet_die_adresse_nicht():
 
 def test_binaerdateien_stuerzen_nicht_ab(tmp_path):
     pfad = tmp_path / "bild.bin"
-    pfad.write_bytes(b"\xff\xd8\xff\x00 " + _fremd("nicht", "lesbar.invalid").encode() + b" \x00\xfe")
+    pfad.write_bytes(b"\xff\xd8\xff\x00 " + _fremd("nicht", "readable.invalid").encode() + b" \x00\xfe")
     assert pruefen([str(pfad)]) == []
 
 

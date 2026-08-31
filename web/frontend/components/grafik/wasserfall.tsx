@@ -48,7 +48,7 @@ export type WasserfallSchritt = {
   wert: number;
   art: "start" | "deduction" | "result";
   /** Der Halbsatz hinter dem Label („Gebühren, Entgelte, Erstattungen …"). */
-  hinweis?: string;
+  note?: string;
   /** Rampen-Token (`var(--hh-…)`). Ohne Angabe: start `--hh-aus-0`,
    *  abzug `--hh-ein-0`; das Ergebnis ist immer die Schraffur. */
   farbe?: string;
@@ -83,7 +83,7 @@ function Zeile({ s, von, bis, skala, nachkomma }: {
         <p className="min-w-0 flex-1 text-[12.5px] leading-relaxed text-foreground/85">
           {s.art === "deduction" && <span aria-hidden="true">−&#8239;</span>}
           {s.label}
-          {s.hinweis && <span className="text-muted-foreground"> — {s.hinweis}</span>}
+          {s.note && <span className="text-muted-foreground"> — {s.note}</span>}
         </p>
         <span className={cn(
           "flex-none font-display text-[15px] font-bold tabular-nums",

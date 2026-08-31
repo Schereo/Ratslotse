@@ -412,7 +412,7 @@ def _herkunft() -> herkunft.Herkunft:
         probe=["gewst_summenprobe", "gewst_blattprobe", "gewst_hebesatzprobe"],
         label="Gewerbesteuerstatistik 2021 (Statistischer Bericht L IV 13)",
         url="https://example.org/gewst2021.xlsx",
-        fundstelle="Blatt 6.1 und 6.2", probe_result="3 Städte nachgerechnet",
+        citation="Blatt 6.1 und 6.2", probe_result="3 Städte nachgerechnet",
         stand="Erschienen im März 2026")
 
 
@@ -436,7 +436,7 @@ def test_speichern_und_lesen(tmp_path, bericht2021):
         assert store.herkunft_luecken().get("council_gewerbesteuerstatistik") is None
         h = store.get_herkunft([gelesen[0]["herkunft_id"]])[0]
         assert h["art"] == "lsn"
-        assert len(h["proben"]) == 3
+        assert len(h["probes"]) == 3
         # Der gesperrte Betrag bleibt NULL — und ist von „null Euro" zu
         # unterscheiden, weil die Zeile es sagt.
         sz = [z for z in store.get_gewerbesteuerstatistik() if z["schluessel"] == "102000"]

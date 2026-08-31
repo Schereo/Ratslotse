@@ -1488,13 +1488,13 @@ export interface paths {
          *       (``balance_operating``, ``balance_capital``, ``finanzmittel``, …);
          *       **an der Rolle hängen, nicht an der Nummer**: Die Tabelle hat
          *       2017–2020 eine Zeile mehr als ab 2021, alle Nummern ab 08
-         *       verschieben sich dadurch. ``ermaechtigung`` ist das aus Vorjahren
+         *       verschieben sich dadurch. ``authorization`` ist das aus Vorjahren
          *       übertragene Geld und ``NULL``, wo der Jahrgang die Spalte nicht führt,
          *     - ``ergebnishaushalt``: dieselben Posten für Jahre **ohne**
          *       Jahresabschluss, aus dem Gesamtergebnishaushalt der Haushaltspläne.
          *       Jede Zeile trägt ``art`` (``ansatz`` = das Jahr, für das dieser Plan
          *       der Haushalt ist; ``finanzplanung`` = mittelfristige Vorausschau nach
-         *       § 8 NKomVG) und ``plan_jahrgang`` (aus welchem Haushalt sie stammt).
+         *       § 8 NKomVG) und ``plan_budget_year`` (aus welchem Haushalt sie stammt).
          *       **Beides gehört an jede Anzeige**: Der Plan nennt alle fünf Spalten
          *       „Ansatz", der Haushalt ist aber nur eines der Jahre, und die
          *       Finanzplanung schreibt jeder neue Haushalt neu. Die Zahlen stammen aus
@@ -1509,7 +1509,7 @@ export interface paths {
          *       der Stadt ihre eigenen Gebäude, seine Erträge sind zu großen Teilen
          *       Aufwand des Kernhaushalts; herausgerechnet wird das erst im
          *       Gesamtabschluss. ``revenues``/``expenses`` sind ``null``, wo die
-         *       Quelle nur das Ergebnis nennt, und ``proben`` sagt, welche Rechenprobe
+         *       Quelle nur das Ergebnis nennt, und ``probes`` sagt, welche Rechenprobe
          *       für die Zeile gelaufen ist,
          *     - ``abweichungsgruende``: warum ein Posten vom Plan abwich, in den Worten
          *       der Verwaltung (Abschnitt 6.3.1 des Jahresabschlusses),
@@ -1521,7 +1521,7 @@ export interface paths {
          *     - ``plan_ist_jahre``: Jahre mit „geplant gegen tatsächlich" je Teilhaushalt,
          *     - ``ausgabenreihe``: die lange Reihe aus Datensatz 1102 — ein Betrag je
          *       Jahr seit 1972. ``zeilen`` trägt je Jahrgang ``regelwerk`` (die Naht
-         *       2009/2010), die bestandenen ``proben`` und, wo die beiden Quellen sich
+         *       2009/2010), die bestandenen ``probes`` und, wo die beiden Quellen sich
          *       widersprechen, den Betrag der unterlegenen (``conflict_amount``).
          *       ``regelwerke`` nennt zu jedem Regelwerk den Titel der Quelle und ihre
          *       Abgrenzung — **beide gehören an jede Anzeige**: Links der Naht steht das
@@ -1539,7 +1539,7 @@ export interface paths {
          *       keine Lücke, die sich schließt: Sie stehen nur in der Anlage
          *       „Zuwendungsliste", die nicht im Bestand ist (``council/spenden.py``).
          *     - ``steuerplan``: je Steuerart und Jahr der Ansatz des Haushaltsplans neben
-         *       dem Rechnungsergebnis (Jahrbuch-Tabelle 1103). ``vorlaeufig`` ist die
+         *       dem Rechnungsergebnis (Jahrbuch-Tabelle 1103). ``provisional`` ist die
          *       Angabe der Quelle über sich selbst — die jüngste Spalte heißt dort
          *       „vorläufiges Rechnungsergebnis". Die ``art``-Werte sind **dieselben** wie
          *       in ``steuern``; daran hängt die Prüfung der Jahresbeschriftung.
@@ -1599,7 +1599,7 @@ export interface paths {
          *     wurde (``council/aenderungslisten.py``).
          *
          *     - ``zeilen``: NUR die Positionen des Haushaltsjahrgangs selbst
-         *       (``year == jahrgang``). Dieselbe Maßnahme steht im Dokument je
+         *       (``year == budget_year``). Dieselbe Maßnahme steht im Dokument je
          *       Finanzplanungsjahr noch einmal — für die Streit-Erzählung zählt das
          *       Jahr, um das gestritten wurde; die Folgejahre stecken kompakt in den
          *       Summen. ``urheber`` trägt, WER die Position vorschlug — gefüllt nur
@@ -1613,7 +1613,7 @@ export interface paths {
          *       (``council/aenderungslisten_fhh.py``) — also für das, was tatsächlich
          *       fließt und vor allem investiert wird. Getrennte Schlüssel statt einer
          *       gemeinsamen Liste mit Marke: Die Zeilen haben eine andere Form (fünf
-         *       Betragsspalten statt zwei, dazu ``produkt`` mit dem Investitionscode),
+         *       Betragsspalten statt zwei, dazu ``product`` mit dem Investitionscode),
          *       und eine gemeinsame Liste wäre auf jeder Seite zur Hälfte leer.
          *     - ``herkunft``: je ``herkunft_id`` das Papier, aus dem eine Zeile stammt —
          *       für beide Haushalte gemeinsam.
@@ -1704,7 +1704,7 @@ export interface paths {
          *     hängen, nicht an ``nr``**: Die Gliederungsnummer der Bilanz ist bis 2020
          *     römisch, ab 2021 arabisch, und ab 2021 gibt es jede Nummer auf beiden
          *     Seiten — „1.1" ist auf der Aktivseite etwas anderes als auf der
-         *     Passivseite. ``seite`` (``aktiva``/``passiva``) und ``ebene`` (1 = die
+         *     Passivseite. ``page`` (``aktiva``/``passiva``) und ``level`` (1 = die
          *     neun Hauptposten, aus denen die Bilanzsumme besteht) sind die stabilen
          *     Achsen.
          *
@@ -1794,8 +1794,8 @@ export interface paths {
          *     man wieder selbst suchen darf. Hier steht, welches PDF zu welchem Jahr
          *     gehört, damit der Link das Dokument des **gezeigten** Jahres öffnet.
          *
-         *     ``{"dokumente": {"<quellenschluessel>": [{year, url, label, fundstelle,
-         *     seite}, …]}}`` — aufsteigend nach Jahr. Ein Schlüssel fehlt, wo wir kein
+         *     ``{"dokumente": {"<quellenschluessel>": [{year, url, label, citation,
+         *     page}, …]}}`` — aufsteigend nach Jahr. Ein Schlüssel fehlt, wo wir kein
          *     Dokument haben; die Oberfläche fällt dann auf die statische Adresse
          *     zurück und sagt dazu, wohin sie führt.
          *
@@ -2026,7 +2026,7 @@ export interface paths {
          *     geplanten Aufwendungen die gefundenen Produkte erklären — damit die
          *     Oberfläche das nicht als Vollbild ausgeben kann.
          *
-         *     ``q``/``amt``/``spielraum`` filtern **serverseitig**: Mit dem Steckbrief
+         *     ``q``/``office``/``spielraum`` filtern **serverseitig**: Mit dem Steckbrief
          *     trägt jede der knapp 400 Zeilen mehrere hundert Zeichen Fließtext, die
          *     niemand im Browser sortieren muss. ``nr`` holt zusätzlich ein einzelnes
          *     Produkt — die Steckbrief-Ansicht braucht es auch dann, wenn der gerade
@@ -2073,7 +2073,7 @@ export interface paths {
          *     - ``ohne_bericht``: Jahre, für die ein Jahresabschluss ausgelesen ist, ein
          *       Schlussbericht aber nicht — die Lücke gehört sichtbar, nicht kaschiert.
          *
-         *     ``marke`` grenzt auf eine Randmarke ein. Gedacht für den Hinweis auf
+         *     ``mark`` grenzt auf eine Randmarke ein. Gedacht für den Hinweis auf
          *     ``/haushalt/plan-ist``, der nur die Kette der wiederholten Beanstandungen
          *     braucht: Der volle Bestand ist eine Viertel-Megabyte Prosa und hat auf
          *     einer Seite nichts zu suchen, die ihn gar nicht anzeigt. ``jahre`` und
@@ -2112,7 +2112,7 @@ export interface paths {
          *     ``je_einwohner`` ist die Angabe **der Quelle**, nicht unsere Rechnung. Sie
          *     kommt so aus der Tabelle; dass sie zur Einwohnerzahl aus dem Open-Data-
          *     Datensatz passt, ist die Probe, die den Wert überhaupt hereingelassen hat
-         *     (``herkunft[…].proben``).
+         *     (``herkunft[…].probes``).
          *
          *     Wo ``aufteilung_verworfen`` gesetzt ist, fehlen die vier Artenspalten:
          *     Dort ergeben sie im Dokument selbst nicht die ausgewiesene Summe. Die
@@ -2150,7 +2150,7 @@ export interface paths {
          *       im Haushaltsjahr, Stellen im Vorjahr, besetzt, nicht besetzt) samt
          *       Stichtag der Besetzung,
          *     - ``gruppen``: dieselben Zahlen je Laufbahn- bzw. Beschäftigtengruppe,
-         *     - ``zeilen``: die Einzelposten — nur mit ``jahrgang``, weil das rund 190
+         *     - ``zeilen``: die Einzelposten — nur mit ``budget_year``, weil das rund 190
          *       Zeilen je Jahrgang sind,
          *     - ``fehlend``: welche ``(Jahrgang, Teil)`` **nicht** vorliegen, obwohl der
          *       Jahrgang eingelesen ist. Ohne diese Liste sähe ein Jahrgang mit nur
@@ -2166,7 +2166,7 @@ export interface paths {
          *
          *     Und die Besetzungszahlen gehören zur **Vorjahresspalte**, nicht zum
          *     Haushaltsjahr: Geplant wird vorwärts, gezählt werden kann nur rückwärts.
-         *     ``stichtag`` sagt, auf welchen Tag sie sich beziehen.
+         *     ``as_of_date`` sagt, auf welchen Tag sie sich beziehen.
          */
         get: operations["haushalt_stellenplan_api_council_haushalt_stellenplan_get"];
         put?: never;
@@ -3972,13 +3972,13 @@ export interface components {
          * @description Compatibility contract consumed before a native app starts loading data.
          */
         AppConfigOut: {
-            /** Hinweis */
-            hinweis?: string | null;
             /**
              * Min Build
              * @default 0
              */
             min_build: number;
+            /** Note */
+            note?: string | null;
         };
         /** AppleLoginRequest */
         AppleLoginRequest: {
@@ -4580,8 +4580,8 @@ export interface components {
             facetten: unknown;
             /** Plan Expenses */
             plan_expenses: unknown;
-            /** Produkt */
-            produkt: unknown;
+            /** Product */
+            product: unknown;
             /** Produkte */
             produkte: unknown;
             /** Treffer */
@@ -5201,8 +5201,6 @@ export interface components {
             einig: boolean;
             /** Haltung */
             haltung?: string | null;
-            /** Hinweis */
-            hinweis?: string | null;
             /** QaShareKernaussage */
             kernaussage?: {
                 /** Datum */
@@ -5215,6 +5213,8 @@ export interface components {
                  */
                 text: string;
             } | null;
+            /** Note */
+            note?: string | null;
             /** Partei */
             partei: string;
             /**
@@ -8657,9 +8657,9 @@ export interface operations {
         parameters: {
             query: {
                 year: number;
-                thh?: number | null;
+                sub_budget?: number | null;
                 q?: string | null;
-                amt?: string | null;
+                office?: string | null;
                 spielraum?: string | null;
                 nr?: string | null;
             };
@@ -8692,7 +8692,7 @@ export interface operations {
     haushalt_pruefberichte_api_council_haushalt_pruefberichte_get: {
         parameters: {
             query?: {
-                marke?: string | null;
+                mark?: string | null;
             };
             header?: never;
             path?: never;
@@ -8743,7 +8743,7 @@ export interface operations {
     haushalt_stellenplan_api_council_haushalt_stellenplan_get: {
         parameters: {
             query?: {
-                jahrgang?: number | null;
+                budget_year?: number | null;
             };
             header?: never;
             path?: never;
@@ -10898,4 +10898,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: b1d662b683d8130458a2f068ddac57cefc6239a57ebd0325e161e102c3c9d486
+// vertrag-sha256: 8a074b059561c4b248c1bfa102cda31c024a534d9a6b8becb44dc374e22950fa

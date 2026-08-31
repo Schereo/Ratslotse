@@ -179,7 +179,7 @@ def main() -> int:
                 von, bis = spannen[regelwerk]
                 nummer = "1107-1" if regelwerk == "doppik" else "1107"
                 arten = ", ".join(t for _, t in ii.SPALTEN[regelwerk][:-1])
-                fundstelle = (f"Kapitel 11 „Verwaltung und Finanzen“, Tabelle "
+                citation = (f"Kapitel 11 „Verwaltung und Finanzen“, Tabelle "
                               f"{nummer} — je Jahr die Auszahlungsarten "
                               f"({arten}) und ihre Summe")
                 nachweis = (
@@ -208,7 +208,7 @@ def main() -> int:
                           f"{nummer} — Investitionen {von} bis {bis}",
                     stand=f"Rechnungsergebnisse {von}–{bis}",
                     probe="investitionen_ist_zeilensumme",
-                    fundstelle=fundstelle, probe_result=nachweis),
+                    citation=citation, probe_result=nachweis),
                     verworfen=verw)
             print(f"  gespeichert: {geschrieben} Jahrgänge")
 

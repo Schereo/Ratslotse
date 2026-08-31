@@ -276,7 +276,7 @@ def test_detailnamen_werden_eingesammelt(gelesen):
     assert m["details"] == ["Eig.kap. Zusch.Stadion Oldb GmbH & Co KG"]
     vorige = next(m for m in gelesen["abschnitte"][4]["massnahmen"]
                   if m["code"] == "I10.093127")
-    assert vorige["bezeichnung"] == "Ausleihung an Beteiligungen, 2027"
+    assert vorige["label"] == "Ausleihung an Beteiligungen, 2027"
 
 
 def test_namenlose_summenzeile_erbt_von_der_detailzeile():
@@ -292,7 +292,7 @@ I10.000035 14.764.602 13.764.602 500.000 500.000
 Gesamtsumme 14.764.602 13.764.602
 """
     massnahmen = ip._lies_abschnitte(text.splitlines())[7]["massnahmen"]
-    assert [m["bezeichnung"] for m in massnahmen] == ["SG Kreyenbrück Nord"]
+    assert [m["label"] for m in massnahmen] == ["SG Kreyenbrück Nord"]
     assert massnahmen[0]["grand_total"] == 14_764_602
 
 
@@ -319,7 +319,7 @@ def test_name_auf_eigener_zeile_vor_den_betraegen(gelesen):
     """„I10.090126 Umlage nach dem" / „KHG, 2026" / „4.749.040 4.749.040"."""
     m = next(m for m in gelesen["abschnitte"][4]["massnahmen"]
              if m["code"] == "I10.090126")
-    assert m["bezeichnung"] == "Umlage nach dem KHG, 2026"
+    assert m["label"] == "Umlage nach dem KHG, 2026"
     assert m["grand_total"] == 4_749_040
 
 
@@ -406,9 +406,9 @@ def test_fremdes_dokument_wird_nicht_gelesen():
 
 def test_jahrgang_aus_der_ersten_ansatzspalte():
     """Vier der acht Anlagen heißen nur „004 Investitionsprogramm"."""
-    assert ip.jahrgang(IP_2026) == 2026
-    assert ip.jahrgang("Ansatz 2019 Ansatz 2020 VE für 2020") == 2019
-    assert ip.jahrgang("kein Tabellenkopf") is None
+    assert ip.budget_year(IP_2026) == 2026
+    assert ip.budget_year("Ansatz 2019 Ansatz 2020 VE für 2020") == 2019
+    assert ip.budget_year("kein Tabellenkopf") is None
 
 
 # --- Speichern: drei Ebenen, eine Herkunft ---------------------------------
@@ -421,13 +421,13 @@ def test_speichern_legt_drei_ebenen_an(tmp_path):
             art="ris", probe=["investitionsprogramm_abschnitt",
                               "investitionsprogramm_wiederholung",
                               "investitionsprogramm_kopftabelle"],
-            dokument_id=297440, label="2026 004 Vw Investitionsprogramm",
+            document_id=297440, label="2026 004 Vw Investitionsprogramm",
             probe_result=g["nachweis"]))
 
         assert store.investitionsprogramm_jahre() == [2026]
-        massnahmen = store.get_investitionsmassnahmen(year=2026, ebene="massnahme")
+        massnahmen = store.get_investitionsmassnahmen(year=2026, level="massnahme")
         assert len(massnahmen) == 16
-        gesamt = store.get_investitionsmassnahmen(year=2026, ebene="gesamt")
+        gesamt = store.get_investitionsmassnahmen(year=2026, level="gesamt")
         assert gesamt[0]["grand_total"] == GESAMT_2026
         # Keine Zeile ohne Herkunft — sonst meldet sie `herkunft_luecken`.
         assert all(m["herkunft_id"] for m in massnahmen)
@@ -442,11 +442,11 @@ def test_zweiter_lauf_ersetzt_statt_zu_verdoppeln(tmp_path):
     try:
         g = ip.lies(IP_2026, 2026)
         h = herkunft.Herkunft(art="ris", probe="investitionsprogramm_abschnitt",
-                              dokument_id=297440)
+                              document_id=297440)
         store.save_investitionsprogramm(2026, g, h)
         store.save_investitionsprogramm(2026, g, h)
         assert len(store.get_investitionsmassnahmen(year=2026,
-                                                    ebene="massnahme")) == 16
+                                                    level="massnahme")) == 16
     finally:
         store.close()
 

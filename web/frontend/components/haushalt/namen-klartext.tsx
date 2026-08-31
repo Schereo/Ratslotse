@@ -62,7 +62,7 @@ export type KlartextZeile = {
 export function klartextZeilen(zeilen: HaushaltZeile[]): KlartextZeile[] {
   return bereiche(zeilen)
     .map((z) => {
-      const k = bereichKanon(z.bereich);
+      const k = bereichKanon(z.area);
       return {
         zeile: z,
         aus: mio(z.expenses) ?? 0,
@@ -72,7 +72,7 @@ export function klartextZeilen(zeilen: HaushaltZeile[]): KlartextZeile[] {
         // weiter über den Slug des DB-Namens (Regel 2 des Wörterbuchs).
         name: k.name,
         klartext: k.klartext,
-        slug: bereichSlug(z.bereich),
+        slug: bereichSlug(z.area),
       };
     })
     .sort((a, b) => b.aus - a.aus);
@@ -255,7 +255,7 @@ export function NamenKlartext({ zeilen, year, aktiv, className }: {
 
       <div>
         {gezeigt.map((z) => (
-          <Zeile key={z.zeile.bereich} z={z} skala={skala} breit={breit}
+          <Zeile key={z.zeile.area} z={z} skala={skala} breit={breit}
             aktiv={z.slug === aktivSlug} />
         ))}
       </div>

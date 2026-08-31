@@ -362,10 +362,10 @@ def test_anlagen_block_traegt_belegmarker():
     block = qa._anlagen_block([
         {"nr": 1, "label": "Schalltechnisches Gutachten", "template_number": "26/0100",
          "vorlage_titel": "Grundsatzbeschluss Stadionneubau",
-         "fundstelle": "Lärmpegel unter Grenzwert."},
+         "citation": "Lärmpegel unter Grenzwert."},
         # Ohne nr zählt die Position — der Prompt bleibt auch dann belegbar.
         {"label": "Wirtschaftsplan 2024", "template_number": None, "vorlage_titel": None,
-         "fundstelle": "Gesamtinvestitionen 1.050.000 Euro."},
+         "citation": "Gesamtinvestitionen 1.050.000 Euro."},
     ])
     assert "[A1] Schalltechnisches Gutachten (zur Vorlage 26/0100" in block
     assert "[A2] Wirtschaftsplan 2024 (zur Vorlage ?)" in block

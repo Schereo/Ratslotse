@@ -42,8 +42,8 @@ def test_bestand_ist_wohlgeformt():
     """Regressionsschutz für die echten Fragmente unter changelog.d/."""
     fragmente = sammle_fragmente(WURZEL / "changelog.d")
     for fragment in fragmente:
-        assert fragment.kategorie in KATEGORIEN
-        assert fragment.ueberschrift
+        assert fragment.category in KATEGORIEN
+        assert fragment.heading
         assert len(fragment.text) > 30, f"{fragment.pfad.name}: Eintrag zu dünn"
         assert "(#" not in fragment.text, (
             f"{fragment.pfad.name}: Die PR-Nummer gehört nicht ins Fragment — "
@@ -60,15 +60,15 @@ def _fragment(tmp_path: Path, inhalt: str, name: str = "beispiel.md") -> Path:
 def test_liest_frontmatter_und_text(tmp_path):
     pfad = _fragment(tmp_path, "---\nkategorie: behoben\n---\n\n**Kurz.** Und\nüber zwei Zeilen.\n")
     fragment = lies_fragment(pfad)
-    assert fragment.kategorie == "behoben"
-    assert fragment.ueberschrift == "Behoben"
+    assert fragment.category == "behoben"
+    assert fragment.heading == "Behoben"
     # Umbruch-Zeilen werden zu einem Fließtext zusammengezogen.
     assert fragment.text == "**Kurz.** Und über zwei Zeilen."
 
 
 def test_umlaut_schreibweise_wird_gelesen(tmp_path):
     pfad = _fragment(tmp_path, "---\nkategorie: Geändert\n---\n\nEin Eintrag.\n")
-    assert lies_fragment(pfad).ueberschrift == "Geändert"
+    assert lies_fragment(pfad).heading == "Geändert"
 
 
 @pytest.mark.parametrize("inhalt,teil", [

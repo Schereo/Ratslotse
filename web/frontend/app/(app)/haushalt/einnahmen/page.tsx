@@ -114,7 +114,7 @@ export default function EinnahmenPage() {
   // wie die Schlüsselzuweisungen es längst tun.
   const entgeltJahr = (posten: number) =>
     (data.ergebnisrechnung ?? [])
-      .filter((z) => z.nr === posten && z.thh_nr === null && z.result != null)
+      .filter((z) => z.nr === posten && z.sub_budget_no === null && z.result != null)
       .sort((a, b) => a.year - b.year)
       .at(-1) ?? null;
 

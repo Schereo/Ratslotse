@@ -28,12 +28,12 @@ export type StellenTeil = "A" | "B";
  *  Die Summen stehen als eigene Zeilen da, weil sie im Dokument stehen: Auf
  *  der Seite soll die Zahl der Stadt stehen, nicht unsere Addition. */
 export type StellenZeile = {
-  jahrgang: number;
+  budget_year: number;
   teil: StellenTeil;
   art: "posten" | "gruppe" | "gesamt";
   gruppe: string | null;
-  lfd_nr: number | null;
-  bezeichnung: string;
+  seq_no: number | null;
+  label: string;
   besoldung: string | null;
   /** Stellen im Haushaltsjahr — die Planspalte. */
   stellen_plan: number;
@@ -45,10 +45,10 @@ export type StellenZeile = {
   besetzt_arbeitnehmer: number | null;
   nicht_besetzt: number;
   /** Tag, auf den sich die Besetzung bezieht (ISO). */
-  stichtag: string | null;
+  as_of_date: string | null;
   /** 0 = In dieser Zeile ergeben besetzt + unbesetzt nicht die Stellen des
    *  Vorjahres. So steht es im Plan; zwei Zeilen im Bestand sind das. */
-  stimmig: number;
+  consistent: number;
   herkunft_id: number | null;
 };
 
@@ -59,7 +59,7 @@ export type StellenplanDaten = {
   gruppen: StellenZeile[];
   /** Nur für den angefragten Jahrgang — je Jahrgang rund 190 Zeilen. */
   zeilen: StellenZeile[];
-  fehlend: { jahrgang: number; teil: StellenTeil; name: string }[];
+  fehlend: { budget_year: number; teil: StellenTeil; name: string }[];
   herkunft: Record<string, Herkunft>;
 };
 
@@ -75,16 +75,16 @@ export const TEIL_LABEL: Record<StellenTeil, string> = {
 export const TEILE: StellenTeil[] = ["A", "B"];
 
 /** Die Gesamtzeile eines Jahrgangs und Teils — oder `null`, wo sie fehlt. */
-export function gesamt(daten: StellenplanDaten, jahrgang: number,
+export function gesamt(daten: StellenplanDaten, budget_year: number,
                        teil: StellenTeil): StellenZeile | null {
-  return daten.summen.find((z) => z.jahrgang === jahrgang && z.teil === teil) ?? null;
+  return daten.summen.find((z) => z.budget_year === budget_year && z.teil === teil) ?? null;
 }
 
 /** Fehlt dieser Teil im Jahrgang? Dann gibt es ihn nicht als Null, sondern
  *  als Lücke mit Begründung. */
-export function fehlt(daten: StellenplanDaten, jahrgang: number,
+export function fehlt(daten: StellenplanDaten, budget_year: number,
                       teil: StellenTeil): boolean {
-  return daten.fehlend.some((f) => f.jahrgang === jahrgang && f.teil === teil);
+  return daten.fehlend.some((f) => f.budget_year === budget_year && f.teil === teil);
 }
 
 /** Die Besetzungslücke eines Teils — ausschließlich aus der Vorjahresspalte.
@@ -95,7 +95,7 @@ export function fehlt(daten: StellenplanDaten, jahrgang: number,
  *  Zeitpunkten (s. Kopf dieser Datei). */
 export function luecke(z: StellenZeile | null): {
   stellen: number; besetzt: number; nicht_besetzt: number;
-  anteil: number; stichtag: string | null;
+  anteil: number; as_of_date: string | null;
 } | null {
   if (!z || !z.positions_prior_year) return null;
   return {
@@ -103,7 +103,7 @@ export function luecke(z: StellenZeile | null): {
     besetzt: z.besetzt,
     nicht_besetzt: z.nicht_besetzt,
     anteil: z.nicht_besetzt / z.positions_prior_year,
-    stichtag: z.stichtag,
+    as_of_date: z.as_of_date,
   };
 }
 
@@ -111,20 +111,20 @@ export function luecke(z: StellenZeile | null): {
 export function jahrgaengeMitTeil(daten: StellenplanDaten,
                                   teil: StellenTeil): number[] {
   return daten.summen.filter((z) => z.teil === teil)
-    .map((z) => z.jahrgang).sort((a, b) => a - b);
+    .map((z) => z.budget_year).sort((a, b) => a - b);
 }
 
 /** Die Einzelposten mit den größten Besetzungslücken.
  *
  *  Bewusst nach absoluten Stellen sortiert und nicht nach Anteil: Eine Zeile
  *  mit einer von einer Stelle unbesetzt hat 100 %, bewegt aber nichts. Zeilen,
- *  in denen der Plan sich selbst widerspricht (`stimmig === 0`), bleiben
+ *  in denen der Plan sich selbst widerspricht (`consistent === 0`), bleiben
  *  draußen — ihre Lücke ist keine Aussage über den Dienst, sondern über einen
  *  Übertrag. */
 export function groessteLuecken(zeilen: StellenZeile[], teil: StellenTeil,
                                 count = 8): StellenZeile[] {
   return zeilen
-    .filter((z) => z.art === "posten" && z.teil === teil && z.stimmig === 1)
+    .filter((z) => z.art === "posten" && z.teil === teil && z.consistent === 1)
     .filter((z) => z.nicht_besetzt > 0)
     .sort((a, b) => b.nicht_besetzt - a.nicht_besetzt)
     .slice(0, count);

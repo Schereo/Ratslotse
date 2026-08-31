@@ -317,7 +317,7 @@ def _vorname(name: str) -> str:
 _NOTNAME = re.compile(r"^((?:(?:Dr|Prof)\.[ \t]+)*[A-ZÄÖÜ][\wäöüß]*(?:-[A-ZÄÖÜ][\wäöüß]*)?)")
 
 
-def debatte(abschnitt: str, anwesende: list[dict]) -> list[Wortbeitrag]:
+def debatte(section: str, anwesende: list[dict]) -> list[Wortbeitrag]:
     """Zerlegt einen Protokollabschnitt in Redebeiträge und hängt jedem die
     Fraktion aus der Anwesenheitsliste derselben Sitzung an.
 
@@ -326,11 +326,11 @@ def debatte(abschnitt: str, anwesende: list[dict]) -> list[Wortbeitrag]:
     2021 schon. Bleibt eine Person mehrdeutig (Namensvettern im Rat), bleibt
     die Fraktion leer und ``fraktion_unklar`` steht auf ``True``."""
     index = _personen_index(anwesende)
-    treffer = [m for m in _ANREDE_RE.finditer(abschnitt) if _beginnt_beitrag(abschnitt, m.start())]
+    treffer = [m for m in _ANREDE_RE.finditer(section) if _beginnt_beitrag(section, m.start())]
     result: list[Wortbeitrag] = []
     for i, m in enumerate(treffer):
-        ende = treffer[i + 1].start() if i + 1 < len(treffer) else len(abschnitt)
-        roh = abschnitt[m.start():ende]
+        ende = treffer[i + 1].start() if i + 1 < len(treffer) else len(section)
+        roh = section[m.start():ende]
         stopp = _STOPP.search(roh, m.end() - m.start())
         if stopp:
             roh = roh[: stopp.start()]
@@ -342,11 +342,11 @@ def debatte(abschnitt: str, anwesende: list[dict]) -> list[Wortbeitrag]:
         niedrig = anrede.lower()
         rolle = "leitung" if niedrig in _LEITUNG else "verwaltung" if niedrig in _VERWALTUNG else "rat"
 
-        kandidaten, geschrieben = _finde_person(abschnitt[m.end():ende], index)
+        kandidaten, geschrieben = _finde_person(section[m.end():ende], index)
         if kandidaten:
             name = kandidaten[0]["name"] if len(kandidaten) == 1 else geschrieben
         else:
-            notfall = _NOTNAME.match(_glatt(abschnitt[m.end():ende]))
+            notfall = _NOTNAME.match(_glatt(section[m.end():ende]))
             name = notfall.group(1) if notfall else geschrieben or "unbekannt"
 
         beitrag = Wortbeitrag(anrede=anrede, name=name, text=text, rolle=rolle)
@@ -411,8 +411,8 @@ def debatte_zu_top(text: str, top: str, anwesende: list[dict]) -> list[dict]:
     schluessel = _gedaechtnis_schluessel(text, top, anwesende)
     gemerkt = _gedaechtnis.get(schluessel)
     if gemerkt is None:
-        abschnitt = top_abschnitt(saeubern(text), top, bis_unterpunkt=True)
-        gemerkt = [b.als_dict() for b in debatte(abschnitt, anwesende)]
+        section = top_abschnitt(saeubern(text), top, bis_unterpunkt=True)
+        gemerkt = [b.als_dict() for b in debatte(section, anwesende)]
         _gedaechtnis[schluessel] = gemerkt
         while len(_gedaechtnis) > _GEDAECHTNIS_MAX:
             _gedaechtnis.popitem(last=False)

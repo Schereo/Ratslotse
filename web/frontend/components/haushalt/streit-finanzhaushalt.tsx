@@ -59,7 +59,7 @@ function vorhabenNummer(code: string): string {
 
 
 function ListenKarte({ liste, year }: { liste: FhhListeImJahr; year: number }) {
-  const mitCode = liste.zeilen.filter((z) => z.produkt).length;
+  const mitCode = liste.zeilen.filter((z) => z.product).length;
   return (
     <details className="group border-t border-border/60 py-2.5 first:border-t-0 first:pt-0">
       <summary className="flex cursor-pointer list-none flex-wrap items-baseline gap-x-3 gap-y-1">
@@ -105,43 +105,43 @@ function ListenKarte({ liste, year }: { liste: FhhListeImJahr; year: number }) {
           )}
         >
           {liste.zeilen.map((z) => (
-            <tr key={z.lfd}>
+            <tr key={z.seq}>
               <TextZelle>
-                {z.bezeichnung ? (
-                  <span className="text-foreground/90">{z.bezeichnung}</span>
+                {z.label ? (
+                  <span className="text-foreground/90">{z.label}</span>
                 ) : (
                   <span className="italic text-muted-foreground">
-                    Position {z.lfd} (ohne lesbaren Namen)
+                    Position {z.seq} (ohne lesbaren Namen)
                   </span>
                 )}
-                {z.produkt && (
+                {z.product && (
                   <Link
-                    href={`/haushalt/investitionen?vorhaben=${encodeURIComponent(vorhabenNummer(z.produkt))}&year=${z.year}#vorhaben`}
+                    href={`/haushalt/investitionen?vorhaben=${encodeURIComponent(vorhabenNummer(z.product))}&year=${z.year}#vorhaben`}
                     // Bewusst „suchen" und nicht „zum Vorhaben": Der Link
                     // führt auf eine SUCHE, und die findet ihr Vorhaben in gut
                     // der Hälfte der Fälle (gemessen 32 von 56). Ein Link, der
                     // „zum Vorhaben" verspricht und dann leer ankommt, wäre
                     // eine Zusage, die die Daten nicht decken; eine Suche ohne
                     // Treffer ist dagegen ein normales Ergebnis.
-                    title={`Nummer ${vorhabenNummer(z.produkt)} im Investitionsprogramm suchen`}
+                    title={`Nummer ${vorhabenNummer(z.product)} im Investitionsprogramm suchen`}
                     className="ml-2 inline-flex items-center gap-1 font-mono text-[10px] text-muted-foreground hover:text-primary hover:underline"
                   >
                     <Search className="h-2.5 w-2.5" aria-hidden />
-                    {z.produkt}
+                    {z.product}
                   </Link>
                 )}
                 <span className="ml-2 font-mono text-[10px] text-muted-foreground">
-                  {z.thh != null ? `THH ${String(z.thh).padStart(2, "0")}` : "alle THH"}
+                  {z.sub_budget != null ? `THH ${String(z.sub_budget).padStart(2, "0")}` : "alle THH"}
                 </span>
-                {z.seite_entwurf === "neu" && (
+                {z.page_draft === "neu" && (
                   // „neu“ heißt: Diese Zeile stand im Entwurf noch gar nicht.
                   <span className="ml-2 rounded-full bg-muted px-1.5 py-px font-mono text-[9.5px] uppercase tracking-[0.08em] text-muted-foreground">
                     neu im Verfahren
                   </span>
                 )}
-                {z.erlaeuterung && (
+                {z.explanation && (
                   <span className="mt-0.5 block max-w-[75ch] text-[11px] leading-relaxed text-muted-foreground">
-                    {z.erlaeuterung}
+                    {z.explanation}
                   </span>
                 )}
                 {z.ve != null && z.ve !== 0 && (

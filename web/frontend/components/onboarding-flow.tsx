@@ -176,7 +176,7 @@ export function OnboardingFlow() {
     /* Ebene „flaeche": Der Auftakt ERSETZT die App-Hülle (deckend, inset-0),
        das Blatt „Thema anpassen" liegt eine Stufe darüber. Die Leiter steht in
        app/globals.css. */
-    <div ref={rootRef} className="fixed inset-0 z-[var(--ebene-flaeche)] flex flex-col bg-background pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-[calc(0.75rem+env(safe-area-inset-top))]">
+    <div ref={rootRef} className="fixed inset-0 z-[var(--level-flaeche)] flex flex-col bg-background pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-[calc(0.75rem+env(safe-area-inset-top))]">
       {step > 0 && (
         <div className="px-[18px]">
           <div className="flex items-center gap-3">

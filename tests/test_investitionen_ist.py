@@ -279,7 +279,7 @@ def _speichern(store, gelesen):
         store.save_investitionen_ist(teil, herkunft.Herkunft(
             art="stadt", url=ii.TABELLE_URL,
             probe="investitionen_ist_zeilensumme",
-            fundstelle=f"Tabelle {regelwerk}",
+            citation=f"Tabelle {regelwerk}",
             probe_result=f"{len(teil)} Jahrgänge"), verworfen=verworfen)
 
 

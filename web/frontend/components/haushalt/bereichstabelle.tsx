@@ -159,12 +159,12 @@ export function Bereichstabelle({ zeilen, year }: { zeilen: HaushaltZeile[]; yea
     let bedarfRoh = 0;
     let topfRoh = 0;
     for (const z of teile) {
-      const kanon = bereichKanon(z.bereich);
+      const kanon = bereichKanon(z.area);
       const gesamt = mio(z.expenses) ?? 0;
       const eigenRoh = z.revenues ?? 0;
       const result = z.result ?? 0;
       const basis: Zeile = {
-        roh: z.bereich,
+        roh: z.area,
         name: kanon.name,
         klartext: kanon.klartext,
         gesamt,

@@ -115,7 +115,7 @@ function Tarifliste({ tarife }: { tarife: GebuehrensatzZeile[] }) {
           <div key={t.schluessel}
             className="flex items-baseline justify-between gap-3 border-t border-border/70 pt-1.5">
             <dt className="min-w-0 text-[11.5px] leading-snug text-muted-foreground">
-              {t.bezeichnung}
+              {t.label}
             </dt>
             <dd className="max-w-[48%] flex-none text-right tabular-nums">
               <span className="block text-[12px] font-semibold">
@@ -157,15 +157,15 @@ function BereichsKarte({ zeilen, tarife, herkunftFuer }: {
     <section className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <h2 className="font-display text-[16px] font-bold leading-tight">
-          {letzte.bereich_name}
+          {letzte.area_name}
         </h2>
         <span className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
           Berechnung {letzte.year}
         </span>
       </div>
-      {WAS_ES_IST[letzte.bereich] && (
+      {WAS_ES_IST[letzte.area] && (
         <p className="mt-1 max-w-[62ch] text-[12.5px] leading-relaxed text-foreground/80">
-          {WAS_ES_IST[letzte.bereich]}
+          {WAS_ES_IST[letzte.area]}
         </p>
       )}
 
@@ -240,7 +240,7 @@ function BereichsKarte({ zeilen, tarife, herkunftFuer }: {
             titel="Gebühr im Zeitverlauf"
             // Ohne Jahresspanne: Die Zeitreihe hängt sie selbst an, und
             // zweimal gelesen klingt es wie ein Fehler.
-            ariaTitel={`Gebühr ${letzte.bereich_name}, in Euro `
+            ariaTitel={`Gebühr ${letzte.area_name}, in Euro `
               + `${MASSSTAB[letzte.bezugseinheit ?? ""] ?? ""}`}
           />
         </div>
@@ -256,9 +256,9 @@ export function GebuehrenAbschnitt({ data, loading }: {
     const zeilen = data?.gebuehren ?? [];
     const gruppen = new Map<string, GebuehrenZeile[]>();
     for (const z of zeilen) {
-      const liste = gruppen.get(z.bereich) ?? [];
+      const liste = gruppen.get(z.area) ?? [];
       liste.push(z);
-      gruppen.set(z.bereich, liste);
+      gruppen.set(z.area, liste);
     }
     // Feste Reihenfolge: erst das Abholen, dann die Behandlung, dann die
     // Straße — so, wie der Abfall den Weg nimmt.
@@ -319,9 +319,9 @@ export function GebuehrenAbschnitt({ data, loading }: {
 
         <div className="grid gap-4 lg:grid-cols-2">
           {nachBereich.map((zeilen) => (
-            <BereichsKarte key={zeilen[0].bereich} zeilen={zeilen}
+            <BereichsKarte key={zeilen[0].area} zeilen={zeilen}
               tarife={(data?.gebuehrensaetze ?? [])
-                .filter((z) => z.year === tarifJahr && z.bereich === zeilen[0].bereich)}
+                .filter((z) => z.year === tarifJahr && z.area === zeilen[0].area)}
               herkunftFuer={(id) => herkunftVon(data, id)} />
           ))}
         </div>

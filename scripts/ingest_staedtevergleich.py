@@ -139,7 +139,7 @@ def main() -> int:
                     label=f"Kommunaler Finanzausgleich {neu.year}, endgültig — "
                           f"Ergebnis- und Vergleichstabellen",
                     url=url_neu or QUELLEN_STAND.get(f"kfa{neu.year}"),
-                    fundstelle="Blatt „ST_KR_MESS_VGL“ — Steuerkraftmesszahlen "
+                    citation="Blatt „ST_KR_MESS_VGL“ — Steuerkraftmesszahlen "
                                "je Gemeinde, zwei Ausgleichsjahre nebeneinander",
                     probe_result=probe["result"],
                     stand=neu.stand))
@@ -152,9 +152,9 @@ def main() -> int:
             # übertragenen Wirkungskreises" (s. council/steuerkraft.py).
             print("Finanzausgleich, Komponenten (Blatt 9a):")
             zeilen_fa: list[dict] = []
-            proben: list[str] = []
-            for jahrgang in sk.lies_zuweisungen(str(pfad_neu)):
-                probe_k = sk.probe_komponenten(jahrgang)
+            probes: list[str] = []
+            for budget_year in sk.lies_zuweisungen(str(pfad_neu)):
+                probe_k = sk.probe_komponenten(budget_year)
                 print(f"  {probe_k['result']}")
                 if not probe_k["ok"]:
                     for abw in probe_k["abweichungen"][:8]:
@@ -162,18 +162,18 @@ def main() -> int:
                     print("  ÜBERSPRUNGEN: Was seine Probe reißt, kommt nicht "
                           "in die Datenbank.")
                     continue
-                zeilen_fa += sk.zeilen_finanzausgleich(jahrgang)
-                proben.append(probe_k["result"])
+                zeilen_fa += sk.zeilen_finanzausgleich(budget_year)
+                probes.append(probe_k["result"])
                 if args.jahrbuch_1103:
                     jahr_s, _, wert_s = args.jahrbuch_1103.partition(":")
-                    if jahr_s.strip().isdigit() and int(jahr_s) == jahrgang.year:
-                        probe_j = sk.probe_gegen_jahrbuch(jahrgang, float(wert_s))
+                    if jahr_s.strip().isdigit() and int(jahr_s) == budget_year.year:
+                        probe_j = sk.probe_gegen_jahrbuch(budget_year, float(wert_s))
                         print(f"  {probe_j['result']} "
                               f"— {'geht auf' if probe_j['ok'] else 'REISST'}")
                         if not probe_j["ok"]:
                             print("  ABBRUCH: Land und Stadt widersprechen sich.")
                             return 1
-                        proben.append(probe_j["result"])
+                        probes.append(probe_j["result"])
             if zeilen_fa:
                 geschrieben["finanzausgleich"] = store.save_staedtevergleich(
                     "finanzausgleich", zeilen_fa,
@@ -183,11 +183,11 @@ def main() -> int:
                         label=f"Kommunaler Finanzausgleich {neu.year}, endgültig — "
                               f"Ergebnis- und Vergleichstabellen",
                         url=url_neu or QUELLEN_STAND.get(f"kfa{neu.year}"),
-                        fundstelle="Blatt „9a“ — Schlüsselzuweisungen für "
+                        citation="Blatt „9a“ — Schlüsselzuweisungen für "
                                    "Gemeinde- und Kreisaufgaben, Zuweisungen für "
                                    "Aufgaben des übertragenen Wirkungskreises und "
                                    "Finanzausgleichsumlage je kreisfreier Stadt",
-                        probe_result=" · ".join(proben),
+                        probe_result=" · ".join(probes),
                         stand=neu.stand))
                 print(f"  gespeichert: {geschrieben['finanzausgleich']} Werte")
 
@@ -210,7 +210,7 @@ def main() -> int:
                     label=f"Realsteuervergleich {rs.year} (Statistischer Bericht "
                           f"L II 7 / L II 9)",
                     url=url_rs or QUELLEN_STAND.get(f"realsteuer{rs.year}"),
-                    fundstelle="Blatt 2.1 — Grundbeträge, Hebesätze und "
+                    citation="Blatt 2.1 — Grundbeträge, Hebesätze und "
                                "Ist-Aufkommen je kreisfreier Stadt; Blatt 5.1 — "
                                "durchschnittliche Steuereinnahmekraft, drei Jahre",
                     probe_result=(f"{len(sv.KREISFREIE_STAEDTE) - len(verworfen)} "

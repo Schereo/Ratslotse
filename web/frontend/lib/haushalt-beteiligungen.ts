@@ -18,11 +18,11 @@ import type { Herkunft } from "@/lib/herkunft";
 export type { Herkunft };
 
 export type Gesellschaft = {
-  bericht_jahr: number;
+  report_year: number;
   gesellschaft: string;
   name: string;
-  gliederung: string;
-  seite: number | null;
+  classification: string;
+  page: number | null;
   konzern_key: string | null;
   herkunft_id: number | null;
   /** Hielt die Rechenprobe „gleich viele Namen wie Funktionen"? Nur dann
@@ -48,7 +48,7 @@ export type Aufsichtsperson = {
   funktion: string | null;
   vorsitz: "vorsitz" | "stellvertretung" | null;
   /** Klammerzusatz aus dem Bericht, etwa „bis 30. Juni 2022". */
-  hinweis: string | null;
+  note: string | null;
   /** Als **Ratsmitglied** im Personenverzeichnis gefunden — dann führt der
    *  Name auf die Personen-Seite. `null` heißt: kein Link. Das ist mehr als
    *  „nicht gefunden": Verwaltungsleute und die Aufsichtsorgane selbst stehen
@@ -56,7 +56,7 @@ export type Aufsichtsperson = {
    *  haben eine) — sie bleiben deshalb bewusst unverlinkt. */
   slug: string | null;
   partei: string | null;
-  reihenfolge: number;
+  sort_order: number;
   herkunft_id: number | null;
 };
 
@@ -71,25 +71,25 @@ export type Eigentuemer = {
   name: string;
   amount_eur: number | null;
   share_pct: number | null;
-  reihenfolge: number;
+  sort_order: number;
   herkunft_id: number | null;
 };
 
 export type Textabschnitt = {
-  bericht_jahr: number;
+  report_year: number;
   gesellschaft: string;
-  abschnitt: string;
+  section: string;
   text: string;
   herkunft_id: number | null;
 };
 
 export type Kennzahl = {
   gesellschaft: string;
-  kennzahl: "jahresergebnis" | "bilanzsumme" | "eigenkapitalquote";
+  indicator: "jahresergebnis" | "bilanzsumme" | "eigenkapitalquote";
   year: number;
   wert: number;
   einheit: "eur" | "prozent";
-  bericht_jahr: number;
+  report_year: number;
   /** In wie vielen Berichten dieser Wert übereinstimmend steht. */
   berichte: number;
   herkunft_id: number | null;
@@ -131,7 +131,7 @@ export const ABSCHNITTE: { key: string; titel: string }[] = [
   { key: "haushalt", titel: "Was sie für den städtischen Haushalt bedeutet" },
 ];
 
-export const KENNZAHL_TITEL: Record<Kennzahl["kennzahl"], string> = {
+export const KENNZAHL_TITEL: Record<Kennzahl["indicator"], string> = {
   jahresergebnis: "Jahresergebnis",
   bilanzsumme: "Bilanzsumme",
   eigenkapitalquote: "Eigenkapitalquote",
@@ -145,12 +145,12 @@ export function herkunftVon(daten: BeteiligungsDaten | null, id: number | null |
 /** Die Kennzahlen einer Gesellschaft, nach Kennzahl gebündelt und je Reihe
  *  nach Jahr sortiert. */
 export function reihen(daten: BeteiligungsDaten | null, gesellschaft: string) {
-  const aus = new Map<Kennzahl["kennzahl"], Kennzahl[]>();
+  const aus = new Map<Kennzahl["indicator"], Kennzahl[]>();
   for (const k of daten?.kennzahlen ?? []) {
     if (k.gesellschaft !== gesellschaft) continue;
-    const liste = aus.get(k.kennzahl) ?? [];
+    const liste = aus.get(k.indicator) ?? [];
     liste.push(k);
-    aus.set(k.kennzahl, liste);
+    aus.set(k.indicator, liste);
   }
   for (const liste of aus.values()) liste.sort((a, b) => a.year - b.year);
   return aus;
@@ -163,19 +163,19 @@ export function reihen(daten: BeteiligungsDaten | null, gesellschaft: string) {
  *  später vorlag. Wer stur das Berichtsjahr abfragt, zeigt für sie nichts —
  *  obwohl fünf Jahre danebenstehen. */
 export function juengster(daten: BeteiligungsDaten | null, gesellschaft: string,
-                          kennzahl: Kennzahl["kennzahl"]): Kennzahl | null {
+                          indicator: Kennzahl["indicator"]): Kennzahl | null {
   let treffer: Kennzahl | null = null;
   for (const k of daten?.kennzahlen ?? []) {
-    if (k.gesellschaft !== gesellschaft || k.kennzahl !== kennzahl) continue;
+    if (k.gesellschaft !== gesellschaft || k.indicator !== indicator) continue;
     if (!treffer || k.year > treffer.year) treffer = k;
   }
   return treffer;
 }
 
 export function textVon(daten: BeteiligungsDaten | null, gesellschaft: string,
-                        abschnitt: string): Textabschnitt | null {
+                        section: string): Textabschnitt | null {
   return (daten?.texte ?? []).find(
-    (t) => t.gesellschaft === gesellschaft && t.abschnitt === abschnitt) ?? null;
+    (t) => t.gesellschaft === gesellschaft && t.section === section) ?? null;
 }
 
 /** Der erste Satz des Unternehmensgegenstands — für die Karte in der Liste.
@@ -245,7 +245,7 @@ export function aufsichtspersonen(daten: BeteiligungsDaten | null,
                                   gesellschaft: string): Aufsichtsperson[] {
   return (daten?.personen ?? [])
     .filter((p) => p.gesellschaft === gesellschaft)
-    .sort((a, b) => a.reihenfolge - b.reihenfolge);
+    .sort((a, b) => a.sort_order - b.sort_order);
 }
 
 /** Wie das Organ im Bericht heißt („Betriebsausschuss", „Aufsichtsrat").
@@ -308,7 +308,7 @@ export function eigentuemerVon(daten: BeteiligungsDaten | null,
                                gesellschaft: string): Eigentuemer[] {
   return (daten?.eigentuemer ?? [])
     .filter((e) => e.gesellschaft === gesellschaft)
-    .sort((a, b) => a.reihenfolge - b.reihenfolge);
+    .sort((a, b) => a.sort_order - b.sort_order);
 }
 
 /** Der Anteil der Stadt Oldenburg an einer Gesellschaft, in Prozent.
@@ -380,7 +380,7 @@ export function wertText(k: Kennzahl): string {
  *  privatrechtliche) — die Gliederungsnummer trägt diese Ordnung schon. */
 export function sortiert(daten: BeteiligungsDaten | null): Gesellschaft[] {
   return [...(daten?.gesellschaften ?? [])].sort((a, b) =>
-    a.gliederung.localeCompare(b.gliederung, "de", { numeric: true }));
+    a.classification.localeCompare(b.classification, "de", { numeric: true }));
 }
 
 // --- Rechtsform (H3-02: die Formen-Sprache der Konzernkarte) ----------------
@@ -411,8 +411,8 @@ export const RECHTSFORM_TITEL: Record<Rechtsform, string> = {
  *  Der Name allein taugt nicht („Abfallwirtschaftsbetrieb Stadt Oldenburg"
  *  trägt sein „Eigenbetrieb" nicht im Namen). Eine unbekannte Gruppe liefert
  *  `null` — dann rendert die Karte KEINE Form statt einer falschen. */
-export function rechtsform(g: Pick<Gesellschaft, "gliederung">): Rechtsform | null {
-  const gruppe = g.gliederung.split(".")[1];
+export function rechtsform(g: Pick<Gesellschaft, "classification">): Rechtsform | null {
+  const gruppe = g.classification.split(".")[1];
   if (gruppe === "2") return "eigenbetrieb";
   if (gruppe === "3") return "aoer";
   if (gruppe === "4") return "gesellschaft";

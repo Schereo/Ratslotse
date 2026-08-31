@@ -62,7 +62,7 @@ function readFragments(): Fragment[] {
     }
     const m = roh.match(/^---[ \t]*\r?\n([\s\S]*?)\r?\n---[ \t]*\r?\n([\s\S]*)$/);
     if (!m) continue;
-    const kat = m[1].match(/^[ \t]*kategorie[ \t]*:[ \t]*(.+?)[ \t]*$/m);
+    const kat = m[1].match(/^[ \t]*category[ \t]*:[ \t]*(.+?)[ \t]*$/m);
     const section = kat ? KATEGORIEN[kat[1].trim().toLowerCase()] : undefined;
     const text = m[2].replace(/\s+/g, " ").trim();
     // Ein kaputtes Fragment überspringen statt den Build zu kippen — angemeckert

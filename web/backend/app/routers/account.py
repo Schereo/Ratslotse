@@ -172,7 +172,7 @@ def test_notification(
     sent = deliver_message(
         owner,
         "<p>Moin! Das ist eine <b>Test-Benachrichtigung</b> von Ratslotse — "
-        "genau so sehen Hinweise zu deinen Themen und Tagesordnungen aus.</p>",
+        "exact so sehen Hinweise zu deinen Themen und Tagesordnungen aus.</p>",
         email_subject="Ratslotse – Test-Benachrichtigung",
     )
     return {"sent": sent}

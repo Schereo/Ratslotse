@@ -6,7 +6,7 @@
 // Bis zum 21.08.2026 war das die ganze Seite. Zusammengelegt mit „Die
 // dreizehn Zahlen": Beide beantworten dieselbe Frage — wie es gelaufen ist,
 // einmal aus der Sicht der Prüfstelle, einmal aus der Selbstauskunft der
-// Stadt. Der Rahmen liegt bei der Seite (Begründung: `abschnitt-termine.tsx`).
+// Stadt. Der Rahmen liegt bei der Seite (Begründung: `section-termine.tsx`).
 
 // /haushalt/pruefung — „Was das Rechnungsprüfungsamt beanstandet".
 //
@@ -74,7 +74,7 @@ import { KettenMatrix, type MatrixKette } from "@/components/grafik/ketten-matri
 import { LueckenFeld } from "@/components/grafik/luecken-feld";
 import { Beleg } from "@/components/haushalt/quelle";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
-import { MarkePille } from "@/components/haushalt/marke";
+import { MarkePille } from "@/components/haushalt/mark";
 import { cn } from "@/lib/utils";
 
 // NUR der Prüfbericht. `jahresabschluss` stand bis zum 21.08.2026 daneben und
@@ -102,20 +102,20 @@ function FeststellungsZeile({ f, zeigeJahr = false }: { f: Feststellung; zeigeJa
   return (
     <div className="flex flex-col gap-2 border-t border-border/60 pt-3 first:border-t-0 first:pt-0">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-        <MarkePille marke={f.marke} name={f.marke_name} klein />
+        <MarkePille mark={f.mark} name={f.mark_name} klein />
         <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
           {zeigeJahr && <>{f.year} · </>}
-          Textziffer {f.textziffer}
-          {f.seite != null && <> · Seite {f.seite}</>}
+          Textziffer {f.text_number}
+          {f.page != null && <> · Seite {f.page}</>}
         </span>
       </div>
       <Wortlaut text={f.text} />
-      {f.folgeabsatz && (
+      {f.follow_paragraph && (
         <div className="pl-3">
           <p className="font-mono text-[9.5px] uppercase tracking-[0.1em] text-muted-foreground">
             Im Bericht direkt darauf
           </p>
-          <div className="mt-1"><Wortlaut text={f.folgeabsatz} gedaempft /></div>
+          <div className="mt-1"><Wortlaut text={f.follow_paragraph} gedaempft /></div>
         </div>
       )}
       {link && (
@@ -145,18 +145,18 @@ const SCHWER = new Set(["B", "WB"]);
  *  Die Tonfläche ist dieselbe wie im aufgeklappten Detail der Ketten-Matrix
  *  (`bg-muted/35`) — derselbe Inhalt soll auf einer Seite nicht zweimal
  *  verschieden aussehen. */
-function AbschnittsFeld({ textziffer, abschnitt, eintraege }: {
-  textziffer: string; abschnitt: string; eintraege: Feststellung[];
+function AbschnittsFeld({ text_number, section, eintraege }: {
+  text_number: string; section: string; eintraege: Feststellung[];
 }) {
-  const schwer = eintraege.filter((f) => SCHWER.has(f.marke)).length;
+  const schwer = eintraege.filter((f) => SCHWER.has(f.mark)).length;
   return (
     <section className="rounded-xl bg-muted/35 p-3">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
         <h3 className="min-w-0 font-display text-[14.5px] font-bold leading-snug tracking-tight">
           <span className="font-mono text-[11px] font-medium text-muted-foreground">
-            {textziffer}
+            {text_number}
           </span>{" "}
-          {abschnitt}
+          {section}
         </h3>
         <span className="flex-none font-mono text-[9.5px] uppercase tracking-[0.1em] text-muted-foreground">
           {eintraege.length} {eintraege.length === 1 ? "Feststellung" : "Feststellungen"}
@@ -164,7 +164,7 @@ function AbschnittsFeld({ textziffer, abschnitt, eintraege }: {
         </span>
       </div>
       <div className="mt-2.5 flex flex-col gap-3">
-        {eintraege.map((f) => <FeststellungsZeile key={f.lfd} f={f} />)}
+        {eintraege.map((f) => <FeststellungsZeile key={f.seq} f={f} />)}
       </div>
     </section>
   );
@@ -175,11 +175,11 @@ function AbschnittsFeld({ textziffer, abschnitt, eintraege }: {
  *  des Abschnitts in diesem Jahrgang (WB vor B vor K vor H). */
 function alsMatrixKetten(ketten: Kette[], jahreAnzahl: number): MatrixKette[] {
   return ketten.map((k) => {
-    const zellen: { year: number; marke: string }[] = [];
+    const zellen: { year: number; mark: string }[] = [];
     for (const year of k.jahre) {
       const hier = k.eintraege.filter((f) => f.year === year)
-        .sort((a, b) => markeRang(a.marke) - markeRang(b.marke));
-      if (hier[0]) zellen.push({ year, marke: hier[0].marke });
+        .sort((a, b) => markeRang(a.mark) - markeRang(b.mark));
+      if (hier[0]) zellen.push({ year, mark: hier[0].mark });
     }
     return {
       key: k.schluessel,
@@ -231,13 +231,13 @@ export function PruefungAbschnitt({ onBestand }: {
   const imJahr = useMemo(
     () => (year ? alle.filter((f) => f.year === year) : []), [alle, year]);
   const schwerImJahr = useMemo(
-    () => imJahr.filter((f) => SCHWER.has(f.marke)).length, [imJahr]);
+    () => imJahr.filter((f) => SCHWER.has(f.mark)).length, [imJahr]);
   // Die Zahl der Abschnitte im Kartenkopf zählt IMMER den ganzen Bericht —
   // sie beschreibt das Dokument, nicht unsere Ansicht davon.
   const abschnitteGesamt = useMemo(
     () => (year ? nachAbschnitt(imJahr, year).length : 0), [imJahr, year]);
   const gruppen = useMemo(() => (year
-    ? nachAbschnitt(nurSchwer ? imJahr.filter((f) => SCHWER.has(f.marke)) : imJahr, year)
+    ? nachAbschnitt(nurSchwer ? imJahr.filter((f) => SCHWER.has(f.mark)) : imJahr, year)
     : []), [imJahr, year, nurSchwer]);
 
   if (loading || !data) {
@@ -307,7 +307,7 @@ export function PruefungAbschnitt({ onBestand }: {
         <div className="mt-3 flex flex-wrap gap-1.5 border-t border-border/60 pt-3">
           {marken.map((m) => (
             <span key={m} className="inline-flex items-baseline gap-1.5">
-              <MarkePille marke={m} name={data.legende[m].name} />
+              <MarkePille mark={m} name={data.legende[m].name} />
               <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
                 {zahl[m] ?? 0}
               </span>
@@ -324,9 +324,9 @@ export function PruefungAbschnitt({ onBestand }: {
         <dl className="mt-2.5 flex flex-col gap-2">
           {marken.map((m) => (
             <div key={m} className="flex flex-col gap-1 border-t border-border/60 pt-2 first:border-t-0 first:pt-0 sm:flex-row sm:items-baseline sm:gap-3">
-              <dt className="flex-none"><MarkePille marke={m} name={data.legende[m].name} klein /></dt>
+              <dt className="flex-none"><MarkePille mark={m} name={data.legende[m].name} klein /></dt>
               <dd className="text-[12.5px] leading-relaxed text-muted-foreground">
-                {data.legende[m].erlaeuterung ?? "—"}
+                {data.legende[m].explanation ?? "—"}
               </dd>
             </div>
           ))}
@@ -375,7 +375,7 @@ export function PruefungAbschnitt({ onBestand }: {
               return (
                 <div className="flex flex-col gap-3 rounded-xl bg-muted/35 p-3">
                   {k.eintraege.map((f) => (
-                    <FeststellungsZeile key={`${f.year}-${f.lfd}`} f={f} zeigeJahr />
+                    <FeststellungsZeile key={`${f.year}-${f.seq}`} f={f} zeigeJahr />
                   ))}
                 </div>
               );
@@ -463,8 +463,8 @@ export function PruefungAbschnitt({ onBestand }: {
 
         <div className="mt-3 flex flex-col gap-2.5">
           {gruppen.map((g) => (
-            <AbschnittsFeld key={g.textziffer} textziffer={g.textziffer}
-              abschnitt={g.abschnitt} eintraege={g.eintraege} />
+            <AbschnittsFeld key={g.text_number} text_number={g.text_number}
+              section={g.section} eintraege={g.eintraege} />
           ))}
         </div>
       </div>

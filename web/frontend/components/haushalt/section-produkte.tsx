@@ -3,7 +3,7 @@
 // „Was kostet eigentlich …?" — der ZWEITE Abschnitt von /haushalt/produkte.
 //
 // Bis zum 21.08.2026 die eigene Seite. Siehe den Kopf von
-// `abschnitt-bereiche.tsx`.
+// `section-bereiche.tsx`.
 
 // /haushalt/produkte — „Was kostet eigentlich …?"
 //
@@ -156,7 +156,7 @@ function Treffer({ p, max, aktiv, alleJahre, eingebettet = false }: {
   const b = amount(Math.abs(n));
   return (
     <Link
-      href={`/haushalt/produkte?nr=${encodeURIComponent(p.produkt_nr)}`}
+      href={`/haushalt/produkte?nr=${encodeURIComponent(p.product_no)}`}
       // `scroll={false}`: Ein Produkt zu öffnen ist kein Seitenwechsel — es
       // ändert nur `?nr=`. Mit dem Vorgabeverhalten sprang der Browser an den
       // Anfang der Seite, und wer in einer Liste von 400 Zeilen weit unten
@@ -180,9 +180,9 @@ function Treffer({ p, max, aktiv, alleJahre, eingebettet = false }: {
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[13.5px] font-semibold leading-snug">{p.produkt_name}</p>
+          <p className="truncate text-[13.5px] font-semibold leading-snug">{p.product_name}</p>
           <p className="mt-0.5 truncate font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
-            {p.produkt_nr}{p.amt ? ` · ${p.amt}` : ""}
+            {p.product_no}{p.office ? ` · ${p.office}` : ""}
           </p>
         </div>
         <span className="flex-none text-right">
@@ -198,12 +198,12 @@ function Treffer({ p, max, aktiv, alleJahre, eingebettet = false }: {
         <div className="h-full rounded-full bg-primary/60"
           style={{ width: `${Math.max((Math.abs(n) / max) * 100, 1.5)}%` }} />
       </div>
-      {(p.beeinflussbarkeit || (p.jahre && alleJahre.length > 1)) && (
+      {(p.controllability || (p.jahre && alleJahre.length > 1)) && (
         <p className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[11.5px] text-muted-foreground">
           <span>
-            {p.beeinflussbarkeit && (
+            {p.controllability && (
               <>Spielraum der Stadt: <span className="font-semibold text-foreground/80">
-                {SPIELRAUM_TEXT[p.beeinflussbarkeit].kurz}
+                {SPIELRAUM_TEXT[p.controllability].kurz}
               </span></>
             )}
           </span>
@@ -295,7 +295,7 @@ function beschreibungsTeile(text: string): { einleitung: string; punkte: string[
 
 /** „Was dahintersteckt" — Liste, wo eine ist, sonst Prosa mit Auslöser
  *  (dieselbe Form wie im Beteiligungs-Steckbrief). */
-function Dahinter({ text, zielgruppe }: { text: string; zielgruppe?: string | null }) {
+function Dahinter({ text, target_group }: { text: string; target_group?: string | null }) {
   const [offen, setOffen] = useState(false);
   const liste = useMemo(() => beschreibungsTeile(text), [text]);
   const { kopf, rest } = useMemo(() => satzVorschau(text), [text]);
@@ -361,7 +361,7 @@ function Dahinter({ text, zielgruppe }: { text: string; zielgruppe?: string | nu
         </>
       )}
 
-      {zielgruppe && <FuerWen text={zielgruppe} />}
+      {target_group && <FuerWen text={target_group} />}
     </div>
   );
 }
@@ -417,29 +417,29 @@ function Steckbrief({ p, year, alleJahre }: { p: Produkt; year: number; alleJahr
   const gross = amount(Math.abs(n));
   const aus = amount(p.expenses ?? 0);
   const ein = amount(p.revenues ?? 0);
-  const spielraum = p.beeinflussbarkeit ? SPIELRAUM_TEXT[p.beeinflussbarkeit] : null;
+  const spielraum = p.controllability ? SPIELRAUM_TEXT[p.controllability] : null;
 
   return (
     <div className="flex flex-col gap-4">
       <div>
         <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-          {p.produkt_nr} · Haushaltsjahr {year}
+          {p.product_no} · Haushaltsjahr {year}
         </p>
         <h2 className="mt-1 font-display text-[22px] font-bold leading-tight tracking-tight sm:text-2xl">
-          {p.produkt_name}
+          {p.product_name}
         </h2>
         <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-muted-foreground">
-          {p.amt && (
+          {p.office && (
             <span className="inline-flex items-center gap-1.5">
-              <Building2 className="h-3.5 w-3.5" />{p.amt}
+              <Building2 className="h-3.5 w-3.5" />{p.office}
             </span>
           )}
-          {p.thh_name && (
+          {p.sub_budget_name && (
             <>
               <span aria-hidden>·</span>
-              <Link href={`/haushalt/bereich?name=${bereichSlug(p.thh_name)}`}
+              <Link href={`/haushalt/bereich?name=${bereichSlug(p.sub_budget_name)}`}
                 className="font-semibold text-primary hover:underline">
-                {p.thh_name}
+                {p.sub_budget_name}
               </Link>
             </>
           )}
@@ -486,11 +486,11 @@ function Steckbrief({ p, year, alleJahre }: { p: Produkt; year: number; alleJahr
         </p>
       </div>
 
-      {p.kurzbeschreibung && (
-        <Dahinter text={p.kurzbeschreibung} zielgruppe={p.zielgruppe} />
+      {p.short_description && (
+        <Dahinter text={p.short_description} target_group={p.target_group} />
       )}
 
-      {(spielraum || p.beeinflussbarkeit_roh || p.wirkungskreis) && (
+      {(spielraum || p.controllability_raw || p.scope) && (
         <div className="rounded-2xl border border-primary/20 bg-card p-4 shadow-sm">
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-primary">
             Wie viel Spielraum die Stadt hat
@@ -503,7 +503,7 @@ function Steckbrief({ p, year, alleJahre }: { p: Produkt; year: number; alleJahr
                 {STUFEN.map((s) => (
                   <span key={s} className={cn(
                     "h-1.5 flex-1 rounded-full",
-                    s === p.beeinflussbarkeit ? "bg-primary" : "bg-muted",
+                    s === p.controllability ? "bg-primary" : "bg-muted",
                   )} />
                 ))}
               </div>
@@ -512,31 +512,31 @@ function Steckbrief({ p, year, alleJahre }: { p: Produkt; year: number; alleJahr
                 {spielraum.lang}
               </p>
             </>
-          ) : p.beeinflussbarkeit_roh ? (
+          ) : p.controllability_raw ? (
             <p className="mt-2 max-w-[68ch] text-[12.5px] leading-relaxed text-foreground/85">
               Der Plan gibt hier keine der drei Stufen an, sondern schreibt:{" "}
-              <em>„{p.beeinflussbarkeit_roh}"</em>. Diese Formulierung lässt sich keiner
+              <em>„{p.controllability_raw}"</em>. Diese Formulierung lässt sich keiner
               der drei Stufen eindeutig zuordnen.
             </p>
           ) : null}
           <p className="mt-2.5 border-t border-border/60 pt-2.5 text-[11.5px] leading-relaxed text-muted-foreground">
             Selbstauskunft der Stadt aus dem Teilhaushaltsplan
-            {p.beeinflussbarkeit && p.beeinflussbarkeit_roh
-              && p.beeinflussbarkeit_roh.toLowerCase() !== p.beeinflussbarkeit
-              && <> (dort im Wortlaut „{p.beeinflussbarkeit_roh}“)</>}
+            {p.controllability && p.controllability_raw
+              && p.controllability_raw.toLowerCase() !== p.controllability
+              && <> (dort im Wortlaut „{p.controllability_raw}“)</>}
             {" "}— keine Bewertung von uns.<Beleg q="teilhaushalt" />
           </p>
-          {p.wirkungskreis && (
+          {p.scope && (
             <p className="mt-2 text-[12.5px] leading-relaxed text-foreground/85">
               <span className="font-semibold">Wirkungskreis: </span>
-              <GlossaryText text={p.wirkungskreis} />
+              <GlossaryText text={p.scope} />
             </p>
           )}
         </div>
       )}
 
-      {p.auftragsgrundlage && (() => {
-        const glieder = rechtsgrundlagen(p.auftragsgrundlage);
+      {p.legal_basis && (() => {
+        const glieder = rechtsgrundlagen(p.legal_basis);
         return (
           <div className="@container/grundlage rounded-2xl border border-border bg-card p-4 shadow-sm">
             <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
@@ -565,7 +565,7 @@ function Steckbrief({ p, year, alleJahre }: { p: Produkt; year: number; alleJahr
               </ul>
             ) : (
               <p className="mt-2 max-w-[70ch] text-[13px] leading-relaxed text-foreground/90">
-                {p.auftragsgrundlage}
+                {p.legal_basis}
               </p>
             )}
             <p className="mt-2.5 max-w-[70ch] border-t border-border/60 pt-2.5 text-[11.5px] leading-relaxed text-muted-foreground">
@@ -582,13 +582,13 @@ function Steckbrief({ p, year, alleJahre }: { p: Produkt; year: number; alleJahr
           Weiterlesen
         </p>
         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1.5 text-[12.5px] font-semibold text-primary">
-          <Link href={`/council?q=${encodeURIComponent(p.produkt_name.split(",")[0])}`}
+          <Link href={`/council?q=${encodeURIComponent(p.product_name.split(",")[0])}`}
             className="inline-flex items-center gap-1.5">
             <Search className="h-3.5 w-3.5" /> Beschlüsse dazu suchen
           </Link>
-          {p.thh_name && (
-            <Link href={`/haushalt/bereich?name=${bereichSlug(p.thh_name)}`}>
-              Bereich „{p.thh_name}“ ansehen →
+          {p.sub_budget_name && (
+            <Link href={`/haushalt/bereich?name=${bereichSlug(p.sub_budget_name)}`}>
+              Bereich „{p.sub_budget_name}“ ansehen →
             </Link>
           )}
         </div>
@@ -616,7 +616,7 @@ function SteckbriefTeil({ aktiv, year, alleJahre, aufSchliessen }: {
 }) {
   return (
     <section
-      aria-label={`Steckbrief ${aktiv.produkt_name}`}
+      aria-label={`Steckbrief ${aktiv.product_name}`}
       className="border-t border-primary/20 p-3.5 sm:p-4"
     >
       <div className="mb-3 flex items-center justify-between gap-3">
@@ -634,7 +634,7 @@ function SteckbriefTeil({ aktiv, year, alleJahre, aufSchliessen }: {
       {/* `key`: Der Auslöser „Ganzen Wortlaut zeigen" gehört zu DIESEM
           Produkt — ohne Neuaufbau bliebe er beim Wechsel offen und zeigte
           den halben Text des nächsten. */}
-      <Steckbrief key={aktiv.produkt_nr} p={aktiv} year={year} alleJahre={alleJahre} />
+      <Steckbrief key={aktiv.product_no} p={aktiv} year={year} alleJahre={alleJahre} />
     </section>
   );
 }
@@ -661,7 +661,7 @@ export function ProdukteAbschnitt({ onBestand }: {
 
   const [suche, setSuche] = useState("");
   const [entprellt, setEntprellt] = useState("");
-  const [amt, setAmt] = useState("");
+  const [office, setAmt] = useState("");
   const [spielraum, setSpielraum] = useState<Spielraum | "">("");
 
   // Getippt wird schnell, geladen wird langsam: Ohne Entprellung schickt jede
@@ -683,11 +683,11 @@ export function ProdukteAbschnitt({ onBestand }: {
     if (!year) return null;
     const p = new URLSearchParams({ year: String(year) });
     if (entprellt.trim()) p.set("q", entprellt.trim());
-    if (amt) p.set("amt", amt);
+    if (office) p.set("office", office);
     if (spielraum) p.set("spielraum", spielraum);
     if (nr) p.set("nr", nr);
     return `/council/haushalt/produkte?${p}`;
-  }, [year, entprellt, amt, spielraum, nr]);
+  }, [year, entprellt, office, spielraum, nr]);
 
   const { data, loading } = useFetch<ProdukteAntwort>(abfrage);
 
@@ -700,28 +700,28 @@ export function ProdukteAbschnitt({ onBestand }: {
     // Nur der UNGEFILTERTE Stand wird gemeldet: Die Bühne beschreibt die
     // Seite, nicht die gerade getippte Suche — beim Filtern bleibt der
     // zuletzt gemeldete Bestand stehen.
-    if (entprellt.trim() || amt || spielraum) return;
+    if (entprellt.trim() || office || spielraum) return;
     const count = (data.facetten?.aemter ?? []).reduce((s, a) => s + a.count, 0);
     const beispiele = [...data.produkte]
       .sort((a, b) => Math.abs(netto(b)) - Math.abs(netto(a)))
       .slice(0, 3)
-      .map((pr) => ({ name: pr.produkt_name, wert: Math.abs(netto(pr)) }));
+      .map((pr) => ({ name: pr.product_name, wert: Math.abs(netto(pr)) }));
     onBestand(count > 0 ? { count, year, beispiele } : null);
-  }, [onBestand, uebersicht.loading, loading, data, year, entprellt, amt, spielraum]);
+  }, [onBestand, uebersicht.loading, loading, data, year, entprellt, office, spielraum]);
 
   // Leerzustand mit „Ähnlich klingen" (H4-04): Erst wenn die gefilterte
   // Suche wirklich leer ist, wird einmal die ungefilterte Liste geholt und
   // nach Zeichenähnlichkeit durchsucht. `useFetch(null)` überspringt — der
   // Hook läuft immer, die Anfrage nur im Leerfall.
   const leer = !loading && data != null && data.produkte.length === 0
-    && entprellt.trim().length >= 2 && !amt && !spielraum;
+    && entprellt.trim().length >= 2 && !office && !spielraum;
   const { data: alleDaten } = useFetch<ProdukteAntwort>(
     leer && year ? `/council/haushalt/produkte?year=${year}` : null);
   const vorschlaege = useMemo(() => {
     if (!leer || !alleDaten) return [];
     const q = bigramme(entprellt);
     return alleDaten.produkte
-      .map((p) => ({ p, wert: aehnlichkeit(q, bigramme(p.produkt_name)) }))
+      .map((p) => ({ p, wert: aehnlichkeit(q, bigramme(p.product_name)) }))
       .filter((x) => x.wert >= 0.25)
       .sort((a, b) => b.wert - a.wert)
       .slice(0, 3)
@@ -743,12 +743,12 @@ export function ProdukteAbschnitt({ onBestand }: {
   const produkte = data?.produkte ?? [];
   const alleJahre = data?.alle_jahre ?? uebersicht.data?.produkt_jahre ?? [];
   const maxWert = Math.max(...produkte.map((p) => Math.abs(netto(p))), 1);
-  const gefiltert = Boolean(entprellt.trim() || amt || spielraum);
+  const gefiltert = Boolean(entprellt.trim() || office || spielraum);
   const aemter = data?.facetten?.aemter ?? [];
   const stufen = data?.facetten?.spielraum ?? {};
   const gesamt = aemter.reduce((s, a) => s + a.count, 0);
-  const mitBeschreibung = data?.facetten?.mit_feld?.kurzbeschreibung ?? 0;
-  const aktiv = data?.produkt ?? null;
+  const mitBeschreibung = data?.facetten?.mit_feld?.short_description ?? 0;
+  const aktiv = data?.product ?? null;
 
   return (
       <div className="flex flex-col gap-4">
@@ -810,11 +810,11 @@ export function ProdukteAbschnitt({ onBestand }: {
               <span className="mb-1 block font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
                 Amt
               </span>
-              <select value={amt} onChange={(e) => setAmt(e.target.value)}
+              <select value={office} onChange={(e) => setAmt(e.target.value)}
                 className="h-9 w-full rounded-lg border border-border bg-background px-2 text-[12.5px] outline-none focus:border-primary/50">
                 <option value="">Alle Ämter ({gesamt})</option>
                 {aemter.map((a) => (
-                  <option key={a.amt} value={a.amt}>{a.amt} ({a.count})</option>
+                  <option key={a.office} value={a.office}>{a.office} ({a.count})</option>
                 ))}
               </select>
             </label>
@@ -862,18 +862,18 @@ export function ProdukteAbschnitt({ onBestand }: {
           <div className="@container/treffer">
             <div className="grid gap-2 @3xl/treffer:grid-cols-2">
               {produkte.map((p) => {
-                const offen = !!aktiv && p.produkt_nr === nr;
+                const offen = !!aktiv && p.product_no === nr;
                 // Geschlossen ist die Karte ein Rasterkind wie jedes andere.
                 // Geöffnet wird sie zur Hülle: derselbe Rahmen um Kopf und
                 // Steckbrief, im zweispaltigen Raster über die volle Breite.
                 if (!offen) {
                   return (
-                    <Treffer key={p.produkt_nr} p={p} max={maxWert} aktiv={false}
+                    <Treffer key={p.product_no} p={p} max={maxWert} aktiv={false}
                       alleJahre={alleJahre} />
                   );
                 }
                 return (
-                  <div key={p.produkt_nr}
+                  <div key={p.product_no}
                     className="overflow-hidden rounded-xl border border-primary/50 bg-primary/[0.04] shadow-sm @3xl/treffer:col-span-full">
                     <Treffer p={p} max={maxWert} aktiv alleJahre={alleJahre} eingebettet />
                     <SteckbriefTeil aktiv={aktiv} year={year} alleJahre={alleJahre}
@@ -897,9 +897,9 @@ export function ProdukteAbschnitt({ onBestand }: {
               <div className="mx-auto mt-3 flex max-w-[62ch] flex-wrap items-center justify-center gap-1.5">
                 <span className="text-[12px] text-muted-foreground">Ähnlich klingt:</span>
                 {vorschlaege.map((p) => (
-                  <button key={p.produkt_nr} type="button" onClick={() => setSuche(p.produkt_name)}
+                  <button key={p.product_no} type="button" onClick={() => setSuche(p.product_name)}
                     className="rounded-full border border-primary/30 bg-card px-2.5 py-1 text-[12px] font-semibold text-primary transition-colors hover:border-primary/60">
-                    {p.produkt_name}
+                    {p.product_name}
                   </button>
                 ))}
               </div>

@@ -23,13 +23,13 @@ export function AusgabenWerkbank({
   freiwillig, produkte, produktJahr, basisJahr,
   aenderung, setAenderung, maxProzent, jeEinwohner, anteilText,
 }: {
-  freiwillig: { bereich: string; aus: number }[];
+  freiwillig: { area: string; aus: number }[];
   produkte: Produkt[];
   produktJahr: number | null;
   basisJahr: number;
   /** Prozentuale Änderung je Bereich — negativ = kürzen, positiv = aufstocken. */
   aenderung: Record<string, number>;
-  setAenderung: (bereich: string, pct: number) => void;
+  setAenderung: (area: string, pct: number) => void;
   maxProzent: number;
   jeEinwohner: (m: number) => string;
   anteilText: (m: number) => string;
@@ -41,20 +41,20 @@ export function AusgabenWerkbank({
       </p>
       <div className="mt-3 flex flex-col gap-4">
         {freiwillig.map((f) => {
-          const pct = aenderung[f.bereich] ?? 0;
+          const pct = aenderung[f.area] ?? 0;
           /** Positive Beträge = eingespart, negative = zusätzlich ausgegeben. */
           const amount = -Math.round(f.aus * pct) / 100;
           const drin = produkte
-            .filter((p) => p.thh_name === f.bereich && p.result != null && p.result < 0)
+            .filter((p) => p.sub_budget_name === f.area && p.result != null && p.result < 0)
             .slice(0, 3);
-          const vergleich = naechstesProdukt(produkte, Math.abs(amount), f.bereich);
+          const vergleich = naechstesProdukt(produkte, Math.abs(amount), f.area);
           return (
             <Regler
-              key={f.bereich}
-              id={f.bereich}
-              label={f.bereich}
+              key={f.area}
+              id={f.area}
+              label={f.area}
               wert={pct} min={-maxProzent} max={maxProzent} step={5}
-              onChange={(v) => setAenderung(f.bereich, v)}
+              onChange={(v) => setAenderung(f.area, v)}
               geaendert={pct !== 0}
               ist={{ wert: 0, label: "heute" }}
               marken={{ min: `−${maxProzent} %`, max: `+${maxProzent} %` }}
@@ -73,9 +73,9 @@ export function AusgabenWerkbank({
                   drin.length > 0 ? (
                     <>Darin stecken u.&nbsp;a.{" "}
                     {drin.map((p, i) => (
-                      <span key={p.produkt_nr}>
+                      <span key={p.product_no}>
                         {i > 0 && ", "}
-                        {p.produkt_name} ({deMio(-(p.result as number) / 1e6)}&#8239;Mio.&nbsp;€)
+                        {p.product_name} ({deMio(-(p.result as number) / 1e6)}&#8239;Mio.&nbsp;€)
                       </span>
                     ))}.</>
                   ) : (
@@ -86,16 +86,16 @@ export function AusgabenWerkbank({
                     <strong>{deMio(amount)}&#8239;Mio.&nbsp;€ weniger</strong> ·{" "}
                     {jeEinwohner(amount)} · {anteilText(amount)}.
                     {vergleich && (
-                      <> Ungefähr so viel, wie <strong>{vergleich.produkt_name}</strong> im
+                      <> Ungefähr so viel, wie <strong>{vergleich.product_name}</strong> im
                       ganzen Jahr kostet.</>
                     )}
                   </>
                 ) : (
                   <>
-                    <strong>{deMio(-amount)}&#8239;Mio.&nbsp;€ mehr</strong> für {f.bereich} ·{" "}
+                    <strong>{deMio(-amount)}&#8239;Mio.&nbsp;€ mehr</strong> für {f.area} ·{" "}
                     {jeEinwohner(-amount)} — vergrößert das Minus um {anteilText(-amount)}.
                     {vergleich && (
-                      <> So viel kostet <strong>{vergleich.produkt_name}</strong> im ganzen Jahr —
+                      <> So viel kostet <strong>{vergleich.product_name}</strong> im ganzen Jahr —
                       etwa das käme dazu.</>
                     )}
                   </>

@@ -131,7 +131,7 @@ def _zahl(wert: object) -> float | None:
         return None
 
 
-def stichtag(zeilen: list[list[object]]) -> int | None:
+def as_of_date(zeilen: list[list[object]]) -> int | None:
     """Das Jahr aus der Tabellenüberschrift („… am 31.12.2024 …").
 
     Aus dem Blatt gelesen und nicht aus dem Dateinamen: Der Dateiname trägt
@@ -154,7 +154,7 @@ def lies_gemeinde(zeilen: list[list[object]], ars: str = ARS_OLDENBURG) -> dict 
                 roh = zeile[index] if index < len(zeile) else None
                 gefunden[name] = roh if name in ("ars", "name", "verwaltungsform") \
                     else _zahl(roh)
-            year = stichtag(zeilen)
+            year = as_of_date(zeilen)
             if year is None:
                 return None
             gefunden["year"] = year

@@ -54,7 +54,7 @@ const alsObjekt = {};
 for (const [k, b] of befunde) {
   alsObjekt[k] = {
     produkte: b.produkte, expense: b.expense, anteil: b.anteil,
-    dominant: b.dominant, groesste: b.groesste ? b.groesste.produkt_nr : null,
+    dominant: b.dominant, groesste: b.groesste ? b.groesste.product_no : null,
   };
 }
 
@@ -115,12 +115,12 @@ def _lauf(tmp_path: Path, **ein) -> dict:
     return json.loads(fertig.stdout)
 
 
-def _p(nr: str, thh: str, expense: float, stufe: str | None, year: int = 2023) -> dict:
-    return {"year": year, "produkt_nr": nr, "produkt_name": nr, "thh_nr": None,
-            "thh_name": thh, "amt": None, "revenues": None,
+def _p(nr: str, sub_budget: str, expense: float, stufe: str | None, year: int = 2023) -> dict:
+    return {"year": year, "product_no": nr, "product_name": nr, "sub_budget_no": None,
+            "sub_budget_name": sub_budget, "office": None, "revenues": None,
             "expenses": expense, "result": None,
-            "beeinflussbarkeit": stufe, "auftragsgrundlage": "SGB VIII",
-            "quelle_label": None, "quelle_url": None}
+            "controllability": stufe, "legal_basis": "SGB VIII",
+            "source_label": None, "source_url": None}
 
 
 # --- 1. Die Zuordnung überlebt jeden Jahrgangsnamen -------------------------

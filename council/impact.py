@@ -151,8 +151,8 @@ def _agenda_batch_text(items: list[dict]) -> str:
             signals.append(f"Antrag von {it['antragsteller']}")
         if it.get("stationen"):
             signals.append(f"{it['stationen']} Stationen in der Beratungsfolge")
-        if it.get("amt"):
-            signals.append(f"Federführung {it['amt']}")
+        if it.get("office"):
+            signals.append(f"Federführung {it['office']}")
         teile = [f"id {it['id']}: {(it.get('title') or '').strip()}",
                  "  Signale: " + " · ".join(signals)]
         if it.get("beschlussvorschlag"):

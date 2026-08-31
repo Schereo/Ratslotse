@@ -203,7 +203,7 @@ def test_die_herkunft_zeigt_auf_die_vorlage_und_nennt_den_stand():
     p = parse_wirtschaftsplan("25/0722", TITEL_2026, TEXT_2026)
     h = herkunft_fuer(p, url="https://buergerinfo.oldenburg.de/vo0050.php?__kvonr=28214")
     assert h.art == "ris"
-    assert "Beschlussvorschlag" in h.fundstelle
+    assert "Beschlussvorschlag" in h.citation
     assert "01.10.2025" in h.stand
     assert "geht auf" in h.probe_result
 
@@ -221,7 +221,7 @@ def test_speichern_und_lesen(tmp_path):
         assert len(zeilen) == 1
         assert zeilen[0]["result"] == -15_621.0
         assert zeilen[0]["betrieb_name"].startswith("Eigenbetrieb Gebäudewirtschaft")
-        assert "wirtschaftsplan_erfolgsplan" in zeilen[0]["proben"]
+        assert "wirtschaftsplan_erfolgsplan" in zeilen[0]["probes"]
         assert store.wirtschaftsplan_jahre("egh") == [2026]
         assert store.wirtschaftsplan_jahre("bbo") == []
     finally:

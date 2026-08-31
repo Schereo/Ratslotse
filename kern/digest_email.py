@@ -276,19 +276,19 @@ def render_html_email(
 def _fuss(fusszeile: str | None) -> str:
     """Unter der Karte: der Rückweg in die App plus Kleingedrucktes."""
     if fusszeile is None:
-        hinweis = _abmelde_hinweis()
+        note = _abmelde_hinweis()
     elif fusszeile:
-        hinweis = (
+        note = (
             f"<div style='margin-top:10px;color:{_LEISE};font-size:12px;line-height:1.5'>"
             f"{fusszeile}</div>"
         )
     else:
-        hinweis = ""
+        note = ""
     return (
         "<div style='padding:18px 6px 6px'>"
         f"<a href='{APP_BASE_URL}' style='color:{_BLAU};text-decoration:none;"
         "font-size:14px;font-weight:600'>Zu Ratslotse &rarr;</a>"
-        f"{hinweis}"
+        f"{note}"
         "</div>"
     )
 

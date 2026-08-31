@@ -220,7 +220,7 @@ def parse_anlagenspiegel(text: str, year: int) -> list[dict]:
             w = w[:9] + [0.0] + w[9:]
         label = _label(roh)
         zeilen.append({
-            "year": year, "nr": nr, "bezeichnung": label, "spalten": spalten,
+            "year": year, "nr": nr, "label": label, "spalten": spalten,
             "ahk_anfang": w[0], "zugaenge": w[1], "abgaenge": w[2],
             "umbuchungen": w[3], "ahk_ende": w[4],
             "abschr_anfang": w[5], "abschreibung": w[6], "aufloesungen": w[7],
@@ -243,7 +243,7 @@ def probe(zeile: dict) -> tuple[list[str], list[str]]:
         if abs(ist - soll) <= TOLERANZ:
             bestanden.append(name)
         else:
-            risse.append(f"{zeile['nr']} {zeile['bezeichnung'][:28]}: {was} "
+            risse.append(f"{zeile['nr']} {zeile['label'][:28]}: {was} "
                          f"{ist:,.2f} gegen {soll:,.2f} ({abs(ist - soll):,.2f} €)")
 
     pruefe(PROBE_AHK,
@@ -284,7 +284,7 @@ def gegen_bilanz(zeilen: list[dict], bilanz_posten: list[dict]) -> list[str]:
         if bilanz is None:
             continue
         if abs(z["book_value"] - bilanz) > TOLERANZ:
-            risse.append(f"{z['nr']} {z['bezeichnung'][:28]}: Anlagenspiegel "
+            risse.append(f"{z['nr']} {z['label'][:28]}: Anlagenspiegel "
                          f"{z['book_value']:,.2f} gegen Bilanz {bilanz:,.2f}")
     return risse
 

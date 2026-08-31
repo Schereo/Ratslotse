@@ -87,7 +87,7 @@ Für JEDEN Beschluss liefere:
 
 Antworte mit NUR JSON: {{"results": [{{"id": <id>, "relevant": <true|false>, "stance": "<voran|bremst|neutral>", "grund": "..."}}]}}
 Regeln:
-- jede vorgelegte id genau einmal mit exakt dieser id; im Zweifel relevant=false.
+- jede vorgelegte id exact einmal mit exakt dieser id; im Zweifel relevant=false.
 - Der Ausgang steht in [eckigen Klammern]. Beschlüsse, die nur ZUR KENNTNIS genommen
   wurden (Berichte, [zur_kenntnis]) oder VERTAGT sind ([vertagt]), bringen das Ziel
   NICHT voran → "neutral" — AUSSER der Text dokumentiert konkret bereits umgesetzten

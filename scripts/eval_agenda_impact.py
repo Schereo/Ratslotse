@@ -121,7 +121,7 @@ def punkte_der_woche(store: CouncilStore, von: str, bis: str) -> list[dict]:
     if kv:
         ph3 = ",".join("?" * len(kv))
         vor = {r["kvonr"]: dict(r) for r in store._conn.execute(
-            f"SELECT kvonr, beschlussvorschlag, finanz_check, amt FROM council_vorlagen "
+            f"SELECT kvonr, beschlussvorschlag, finanz_check, office FROM council_vorlagen "
             f"WHERE kvonr IN ({ph3})", kv)}
         for p in punkte:
             p.update({k: v for k, v in (vor.get(p["kvonr"]) or {}).items() if k != "kvonr"})

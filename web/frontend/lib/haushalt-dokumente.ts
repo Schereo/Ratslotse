@@ -26,7 +26,7 @@ import type { Ratsvorgang } from "@/lib/herkunft";
 
 export type { Ratsvorgang };
 
-/** Ein konkretes Dokument hinter einer Quelle. `fundstelle` kommt aus
+/** Ein konkretes Dokument hinter einer Quelle. `citation` kommt aus
  *  `council_herkunft` und ist der eigentliche Gewinn: „Abschnitt 3.2" macht
  *  aus 300 Seiten eine Stelle, an der man nachschlägt.
  *
@@ -38,8 +38,8 @@ export type HaushaltDokument = {
   year: number | null;
   url: string;
   label: string | null;
-  fundstelle: string | null;
-  seite: number | null;
+  citation: string | null;
+  page: number | null;
   official_text: Ratsvorgang | null;
 };
 
@@ -69,7 +69,7 @@ export type DokumenteAntwort = {
 export type Belegziel = {
   dokument: HaushaltDokument;
   /** Jahrgang des verlinkten Dokuments (`null`, wo die Quelle keinen führt). */
-  jahrgang: number | null;
+  budget_year: number | null;
   abweichend: boolean;
   weitere: number;
 };
@@ -121,7 +121,7 @@ export function belegziel(
     liste.filter((d) => d.year === dokument.year));
   return {
     dokument,
-    jahrgang: dokument.year,
+    budget_year: dokument.year,
     abweichend: year == null || dokument.year !== year,
     weitere: Math.max(0, gleicherJahrgang.length - 1),
   };
@@ -149,7 +149,7 @@ export function belegzieleAlle(
   const ziel = belegziel(dokumente, q, year);
   if (!ziel) return [];
   return jeAdresseEinmal(
-    (dokumente?.[q] ?? []).filter((d) => d.year === ziel.jahrgang));
+    (dokumente?.[q] ?? []).filter((d) => d.year === ziel.budget_year));
 }
 
 /** Aus einer Liste von Fundstellen die Liste der Dateien — Reihenfolge bleibt. */
@@ -249,8 +249,8 @@ export function nummerFuer(
   const derArt = eintraege.filter((e) => e.q === q);
   if (!derArt.length) return null;
   if (url) {
-    const genau = derArt.find((e) => e.dokument?.url === url);
-    if (genau) return genau;
+    const exact = derArt.find((e) => e.dokument?.url === url);
+    if (exact) return exact;
   }
   return derArt[0];
 }

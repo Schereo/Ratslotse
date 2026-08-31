@@ -123,9 +123,9 @@ function schraffur(farbe: string): string {
   return `repeating-linear-gradient(45deg, ${farbe} 0 3px, transparent 3px 6px)`;
 }
 
-function Leiste({ zeile, basis, nachkomma, restLabel, marke }: {
+function Leiste({ zeile, basis, nachkomma, restLabel, mark }: {
   zeile: GegenbalkenZeile; basis: number; nachkomma: number; restLabel?: string;
-  marke?: { wert: number; label: string };
+  mark?: { wert: number; label: string };
 }) {
   const rampe = zeile.rampe ?? "aus";
   const gezeigt = zeile.segmente.filter((s) => s.wert > 0);
@@ -161,11 +161,11 @@ function Leiste({ zeile, basis, nachkomma, restLabel, marke }: {
         // deshalb nicht vom `overflow-hidden` des Innenkastens beschnitten.
         className="relative flex h-7 rounded-md bg-muted"
       >
-        {marke && marke.wert > 0 && (
+        {mark && mark.wert > 0 && (
           <div
             aria-hidden="true"
             className="pointer-events-none absolute inset-y-0 z-10 w-0.5 -translate-x-1/2 bg-signal"
-            style={{ left: `${Math.min((marke.wert / basis) * 100, 100)}%` }}
+            style={{ left: `${Math.min((mark.wert / basis) * 100, 100)}%` }}
           />
         )}
         <div className="flex h-full gap-[1.5px] overflow-hidden rounded-md" style={{ width: `${Math.min((summe / basis) * 100, 100)}%` }}>
@@ -229,7 +229,7 @@ function Leiste({ zeile, basis, nachkomma, restLabel, marke }: {
 }
 
 export function Gegenbalken({
-  zeilen, basis, einheit = "Mio. €", nachkomma = 1, restLabel, marke, beleg, className,
+  zeilen, basis, einheit = "Mio. €", nachkomma = 1, restLabel, mark, beleg, className,
 }: {
   /** Eine oder zwei Leisten — mehr wären keine Gegenüberstellung mehr. */
   zeilen: GegenbalkenZeile[];
@@ -245,7 +245,7 @@ export function Gegenbalken({
   restLabel?: string;
   /** Ein beschrifteter Signal-Strich quer über der ersten Leiste — „hier
    *  ist die Differenz", nie eine Bewertung. */
-  marke?: { wert: number; label: string };
+  mark?: { wert: number; label: string };
   /** Beleg-Chip-Slot (GB-00). */
   beleg?: ReactNode;
   className?: string;
@@ -264,13 +264,13 @@ export function Gegenbalken({
       <div className="flex flex-col gap-3.5">
         {gezeigt.map((z, i) => (
           <Leiste key={z.titel} zeile={z} basis={basis} nachkomma={nachkomma}
-            restLabel={restLabel} marke={i === 0 ? marke : undefined} />
+            restLabel={restLabel} mark={i === 0 ? mark : undefined} />
         ))}
       </div>
-      {marke && marke.wert > 0 && (
+      {mark && mark.wert > 0 && (
         <p className="mt-2 flex items-start gap-1.5 text-[11.5px] leading-snug text-signal">
           <span aria-hidden="true" className="mt-[3px] h-3 w-0.5 flex-none bg-signal" />
-          <span>{marke.label}</span>
+          <span>{mark.label}</span>
         </p>
       )}
     </div>

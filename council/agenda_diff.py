@@ -397,9 +397,9 @@ def diff_html(diff: dict) -> str:
               "vorlage": GELB, "anlagen": GELB, "entfernt": ROT}
     zeilen: list[str] = []
     for z in diff_zeilen(diff):
-        marke = (" <span style='color:#8a8f98;font-size:13px'>(nichtöffentlich)</span>"
+        mark = (" <span style='color:#8a8f98;font-size:13px'>(nichtöffentlich)</span>"
                  if z["nichtoeffentlich"] else "")
-        inhalt = f"<b>{_esc(z['label'])}</b> — {_esc(z['titel'])}{marke}"
+        inhalt = f"<b>{_esc(z['label'])}</b> — {_esc(z['titel'])}{mark}"
         if z["detail"]:
             inhalt += _leise(_esc(z["detail"]))
         zeilen.append(_zeile(farben[z["art"]], inhalt,

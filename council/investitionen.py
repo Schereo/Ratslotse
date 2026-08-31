@@ -106,7 +106,7 @@ _JAHR_IN_URL = re.compile(r"(20\d\d)_Finanzhaushalt", re.IGNORECASE)
 #: Verwandt mit ``haushalt._CSV_NAMEN`` (dieselbe Portal-Eigenheit im
 #: Ergebnishaushalt-Blatt), aber bewusst eigenständig: Dort sind es
 #: Bereichsnamen einer anderen Tabelle, hier Teilhaushalte mit Nummer. Der
-#: Schlüssel dieser Zeilen ist ohnehin ``thh_nr`` — der Name ist Beschriftung,
+#: Schlüssel dieser Zeilen ist ohnehin ``sub_budget_no`` — der Name ist Beschriftung,
 #: nicht Identität.
 NAMEN: dict[str, str] = {
     "Verwaltungsfuehrung": "Verwaltungsführung",
@@ -224,7 +224,7 @@ def lies(csv_text: str, year: int) -> dict:
 
     Liefert ``{year, zeilen, gesamt, finanzhaushalt, bestanden, nachweis}``:
 
-    * ``zeilen`` — je Teilhaushalt ein dict mit ``thh_nr``, ``bezeichnung``,
+    * ``zeilen`` — je Teilhaushalt ein dict mit ``sub_budget_no``, ``label``,
       ``inflows``, ``outflows``.
     * ``gesamt`` — die Summenzeile *Finanzhaushalt Gesamtinvestitionen*, also
       das Ziel der Rechenprobe.
@@ -257,12 +257,12 @@ def lies(csv_text: str, year: int) -> dict:
         werte = {"inflows": ein, "outflows": aus}
         m = _THH.match(schluessel)
         if m:
-            zeilen.append({"thh_nr": int(m.group(1)),
-                           "bezeichnung": name(teile[1]), **werte})
+            zeilen.append({"sub_budget_no": int(m.group(1)),
+                           "label": name(teile[1]), **werte})
         elif schluessel.startswith(_GESAMT):
-            gesamt = {"bezeichnung": _GESAMT, **werte}
+            gesamt = {"label": _GESAMT, **werte}
         elif schluessel.startswith(_FINANZHAUSHALT):
-            finanzhaushalt = {"bezeichnung": _FINANZHAUSHALT, **werte}
+            finanzhaushalt = {"label": _FINANZHAUSHALT, **werte}
 
     ok, warum = summenprobe(zeilen, gesamt)
     text = nachweis(zeilen, gesamt, ok, warum)
@@ -270,6 +270,6 @@ def lies(csv_text: str, year: int) -> dict:
         # Die Bezugsgröße fällt mit: Ohne geprüfte Investitionssumme daneben
         # wäre sie eine große Zahl ohne Aussage.
         return {**leer, "nachweis": text}
-    return {"year": year, "zeilen": sorted(zeilen, key=lambda z: z["thh_nr"]),
+    return {"year": year, "zeilen": sorted(zeilen, key=lambda z: z["sub_budget_no"]),
             "gesamt": gesamt, "finanzhaushalt": finanzhaushalt,
             "bestanden": True, "nachweis": text}

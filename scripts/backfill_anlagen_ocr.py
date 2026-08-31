@@ -15,7 +15,7 @@ die und schickt jede Seite als Bild an ein Sehmodell (``council/ocr.py``).
     python scripts/backfill_anlagen_ocr.py --document-id 193959 --max-seiten 2
 
 DER GELESENE TEXT IST GANZ NORMALER ANLAGENTEXT. Der Lauf setzt
-``status='ok'`` und vermerkt in ``ocr_modell``, welches Sehmodell ihn gelesen
+``status='ok'`` und vermerkt in ``ocr_model``, welches Sehmodell ihn gelesen
 hat. Ein gescannter Wirtschaftsplan ist damit so durchsuchbar wie ein
 getippter — alles andere wäre eine Sperre gegen die Herkunft des Textes und
 nicht gegen das, was darin steht.
@@ -100,7 +100,7 @@ def kandidaten(store: CouncilStore, nur_finanz: bool, document_id: int | None,
         # noch einmal aufzunehmen hieße, sie ein zweites Mal zu bezahlen.
         wo = ("(status = 'empty' OR (status = 'ok' AND raw_text LIKE ?)) "
               "AND url IS NOT NULL")
-        werte = ["[Seite %nicht lesbar gemacht]%"]
+        werte = ["[Seite %nicht readable gemacht]%"]
         if nur_finanz:
             muster = finanz_muster()
             wo += " AND (" + " OR ".join("label LIKE ?" for _ in muster) + ")"
@@ -213,16 +213,16 @@ def process(db_path: Path, *, nur_finanz: bool, document_id: int | None,
                 with store._conn:
                     store._conn.execute(
                         "UPDATE council_anlagen SET raw_text = ?, n_pages = ?, "
-                        "status = 'ok', ocr_modell = ?, fetched_at = datetime('now') "
+                        "status = 'ok', ocr_model = ?, fetched_at = datetime('now') "
                         "WHERE document_id = ?",
                         (text, lesung.seiten, lesung.modell, did))
                 gelesen += 1
                 if not lesung.vollstaendig:
                     unvollstaendig.append(did)
-                hinweis = (f", Einheit: {', '.join(lesung.skalen)}"
+                note = (f", Einheit: {', '.join(lesung.skalen)}"
                            if lesung.skalen else "")
                 print(f"  [{did}] {lesung.gelesen}/{lesung.seiten} Seiten, "
-                      f"{len(lesung.text)} Zeichen, {lesung.weg}{hinweis}"
+                      f"{len(lesung.text)} Zeichen, {lesung.weg}{note}"
                       f"{'  UNVOLLSTÄNDIG' if not lesung.vollstaendig else ''}",
                       flush=True)
 
@@ -246,7 +246,7 @@ def main() -> dict:
     ap.add_argument("--nur-finanz", action="store_true",
                     help="nur Anlagen, aus denen der Haushalts-Bereich liest")
     ap.add_argument("--document-id", type=int, default=None,
-                    help="genau ein Dokument, unabhängig von seinem Status")
+                    help="exact ein Dokument, unabhängig von seinem Status")
     ap.add_argument("--limit", type=int, default=None)
     ap.add_argument("--max-seiten", type=int, default=MAX_SEITEN)
     ap.add_argument("--workers", type=int, default=3)

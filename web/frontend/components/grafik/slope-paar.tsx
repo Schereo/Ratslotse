@@ -48,16 +48,16 @@ export type SlopePaarZeile = {
  *  mindestens `abstand` unter seinem Vorgänger — und am Ende zurück in die
  *  Zeichenfläche geklemmt. */
 function entzerre(ys: number[], abstand: number, von: number, bis: number): number[] {
-  const reihenfolge = ys.map((y, i) => ({ y, i })).sort((a, b) => a.y - b.y);
+  const sort_order = ys.map((y, i) => ({ y, i })).sort((a, b) => a.y - b.y);
   let letzte = -Infinity;
-  for (const e of reihenfolge) {
+  for (const e of sort_order) {
     e.y = Math.max(e.y, letzte + abstand);
     letzte = e.y;
   }
   // Läuft die Kette unten heraus, alles gemeinsam hochschieben.
-  const ueberhang = Math.max(0, (reihenfolge.at(-1)?.y ?? von) - bis);
+  const ueberhang = Math.max(0, (sort_order.at(-1)?.y ?? von) - bis);
   const aus = new Array<number>(ys.length);
-  for (const e of reihenfolge) aus[e.i] = Math.max(e.y - ueberhang, von);
+  for (const e of sort_order) aus[e.i] = Math.max(e.y - ueberhang, von);
   return aus;
 }
 

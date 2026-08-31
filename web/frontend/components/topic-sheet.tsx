@@ -134,7 +134,7 @@ export function TopicSheet({ topic, nameEditable = false, onClose, onSaved }: {
     // Auf dem Telefon bleibt es ein Blatt an der Unterkante: Dort DECKT es die
     // Tab-Leiste bewusst ab, wie jedes iOS-Sheet.
     <div data-topic-sheet role="dialog" aria-modal="true" aria-labelledby="thema-anpassen-titel"
-      className="fixed inset-0 z-[var(--ebene-dialog)] flex flex-col justify-end sm:items-center sm:justify-center sm:px-6 sm:pb-[calc(env(safe-area-inset-bottom)+5rem)] sm:pt-[calc(env(safe-area-inset-top)+5rem)]">
+      className="fixed inset-0 z-[var(--level-dialog)] flex flex-col justify-end sm:items-center sm:justify-center sm:px-6 sm:pb-[calc(env(safe-area-inset-bottom)+5rem)] sm:pt-[calc(env(safe-area-inset-top)+5rem)]">
       {/* .scrim statt einer eigenen Farbe — s. app/globals.css: Der frühere Ton
           war exakt die dunkle Seitenfarbe und dunkelte im Dunkelmodus nichts ab. */}
       <button type="button" aria-label="Schließen" onClick={onClose}

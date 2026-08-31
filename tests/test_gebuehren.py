@@ -319,18 +319,18 @@ def test_abfallsammlung_hat_keine_division():
     Eine Division „Kosten ÷ Menge" gibt es dort nicht, und eine erfundene
     wäre schlimmer als keine. Die Kaskade ist trotzdem geprüft."""
     b = parse_anlage(teile_anlagen(ANLAGE_2_2026)[0])
-    assert b.bereich == "abfallsammlung"
+    assert b.area == "abfallsammlung"
     assert b.zu_deckende_kosten == 13_762_012.0
     assert b.gebuehr is None and b.bezugsmenge is None
 
 
 def test_die_herkunft_nennt_nur_die_gelaufenen_proben():
     ohne_division = parse_anlage(teile_anlagen(ANLAGE_2_2026)[0])
-    h = herkunft_fuer(ohne_division, url=None, dokument_id=299051, label="x")
+    h = herkunft_fuer(ohne_division, url=None, document_id=299051, label="x")
     assert PROBE_KASKADE in h.probe and PROBE_DIVISION not in h.probe
 
     mit = parse_anlage(teile_anlagen(ANLAGE_1_2025)[0])
-    h2 = herkunft_fuer(mit, url=None, dokument_id=283467, label="x")
+    h2 = herkunft_fuer(mit, url=None, document_id=283467, label="x")
     assert PROBE_KASKADE in h2.probe and PROBE_DIVISION in h2.probe
     assert "÷" in h2.probe_result
 
@@ -342,14 +342,14 @@ def test_die_herkunft_nennt_nur_die_gelaufenen_proben():
 def test_ein_gerissener_bereich_nimmt_die_anderen_nicht_mit():
     kaputt = ANLAGE_1_2025.replace("-240.000 €", "-250.000 €")
     gelesen, risse = lies(kaputt + ANLAGE_2_2026)
-    assert [b.bereich for b in gelesen] == ["abfallsammlung"]
+    assert [b.area for b in gelesen] == ["abfallsammlung"]
     assert len(risse) == 1
 
 
 def test_die_drei_bereiche_werden_getrennt():
     gelesen, risse = lies(ANLAGE_1_2026 + ANLAGE_2_2026 + ANLAGE_3_2026)
     assert not risse
-    assert [b.bereich for b in gelesen] == [
+    assert [b.area for b in gelesen] == [
         "abfallbehandlung", "abfallsammlung", "strassenreinigung"]
     assert {b.year for b in gelesen} == {2026}
 
@@ -396,7 +396,7 @@ def test_tarife_werden_mit_eigener_fundstelle_gespeichert(tmp_path):
     saetze = lies_gebuehrensaetze(
         ANLAGE_1_2026 + ANLAGE_3_2026 + ANLAGE_4_2026, "25/0999")
     herkuenfte = [herkunft_fuer_satz(
-        s, url="https://example.org/299051", dokument_id=299051,
+        s, url="https://example.org/299051", document_id=299051,
         label="Gebührenbedarfsberechnung 2026") for s in saetze]
     assert PROBE_SATZANZAHL in herkuenfte[0].probe
     assert PROBE_VORJAHRESVERGLEICH in herkuenfte[0].probe

@@ -89,7 +89,7 @@ def parse_opendata_ergebnishaushalt(csv_text: str) -> list[dict]:
             continue  # z. B. die Fehlbedarf-Zeile (leere Erträge-Spalte)
         is_total = code.startswith("Gesamtergebnishaushalt")
         rows.append({
-            "bereich": "Summe" if is_total else _CSV_NAMEN.get(name, name),
+            "area": "Summe" if is_total else _CSV_NAMEN.get(name, name),
             "revenues": revenues, "expenses": expenses,
             "result": revenues - expenses,
             "is_total": 1 if is_total else 0,
@@ -266,7 +266,7 @@ def _num(s: str) -> float:
 
 def parse_ergebnishaushalt(text: str) -> list[dict]:
     """Zeilen der „Übersicht Ergebnishaushalt" → Liste
-    ``{bereich, revenues, expenses, result, is_total}`` (Euro).
+    ``{area, revenues, expenses, result, is_total}`` (Euro).
     Kopf-/Fußzeilen (Spaltennummern, Seitenzahl, „-Euro-") fallen am Regex raus."""
     rows: list[dict] = []
     for line in text.splitlines():
@@ -276,7 +276,7 @@ def parse_ergebnishaushalt(text: str) -> list[dict]:
         nums = [_num(x) for x in m["nums"].split()]
         name = m["name"].strip()
         rows.append({
-            "bereich": name,
+            "area": name,
             "revenues": nums[0], "expenses": nums[1], "result": nums[2],
             "is_total": 1 if name == "Summe" else 0,
         })
@@ -322,8 +322,8 @@ def _chart(parts: list[dict], year: int, highlight: str | None = None,
     """Balken-Serie je Teilhaushalt (absteigend, Mio. Euro) als JSON für die
     Auflösung; `highlight` hebt den gefragten Bereich hervor."""
     word = "Aufwendungen" if col == "expenses" else "Erträge"
-    items = [{"label": r["bereich"], "value": _mio(r[col]),
-              **({"highlight": True} if r["bereich"] == highlight else {})}
+    items = [{"label": r["area"], "value": _mio(r[col]),
+              **({"highlight": True} if r["area"] == highlight else {})}
              for r in sorted(parts, key=lambda r: -r[col])]
     return json.dumps({
         "type": "bars",
@@ -333,14 +333,14 @@ def _chart(parts: list[dict], year: int, highlight: str | None = None,
     }, ensure_ascii=False)
 
 
-def _share_chart(bereich: str, share_pct: int, year: int) -> str:
+def _share_chart(area: str, share_pct: int, year: int) -> str:
     """Donut „Anteil eines Bereichs an den Gesamtausgaben" (Rest = übrige)."""
     return json.dumps({
         "type": "share",
         "title": f"Anteil an den geplanten Gesamtausgaben {year}",
         "unit": "Prozent",
         "items": [
-            {"label": bereich, "value": share_pct, "highlight": True},
+            {"label": area, "value": share_pct, "highlight": True},
             {"label": "Übrige Bereiche", "value": 100 - share_pct},
         ],
     }, ensure_ascii=False)
@@ -461,8 +461,8 @@ def _netto_chart(parts: list[dict], year: int, highlight: str) -> str:
     """Balken „Zuschussbedarf je Teilhaushalt" (Aufwendungen minus eigene
     Erträge; nur Bereiche mit Fehlbetrag, absteigend)."""
     neg = [r for r in parts if r["result"] < 0]
-    items = [{"label": r["bereich"], "value": _mio(-r["result"]),
-              **({"highlight": True} if r["bereich"] == highlight else {})}
+    items = [{"label": r["area"], "value": _mio(-r["result"]),
+              **({"highlight": True} if r["area"] == highlight else {})}
              for r in sorted(neg, key=lambda r: r["result"])]
     return json.dumps({
         "type": "bars",
@@ -479,8 +479,8 @@ def _eigen_chart(parts: list[dict], year: int, highlight: str) -> str:
     (``_fachbereiche``) — der zentrale Finanzhaushalt bleibt draußen, sonst
     stünde neben 170 Mio. ein Balken von 529 Mio., der etwas ganz anderes misst
     (die Steuern der ganzen Stadt). Die Auslassung steht im Titel."""
-    items = [{"label": r["bereich"], "value": _mio(r["revenues"]),
-              **({"highlight": True} if r["bereich"] == highlight else {})}
+    items = [{"label": r["area"], "value": _mio(r["revenues"]),
+              **({"highlight": True} if r["area"] == highlight else {})}
              for r in sorted(parts, key=lambda r: -r["revenues"])]
     return json.dumps({
         "type": "bars",
@@ -526,7 +526,7 @@ def build_questions(rows: list[dict], year: int, source_url: str) -> list[dict]:
     gesamt = _mio(summe["expenses"])
     revenues = _mio(summe["revenues"])
     defizit = _mio(summe["revenues"] - summe["expenses"]) * -1
-    top3 = ", ".join(f"{r['bereich']} ({_mio(r['expenses'])} Mio.)" for r in by_aufw[:3])
+    top3 = ", ".join(f"{r['area']} ({_mio(r['expenses'])} Mio.)" for r in by_aufw[:3])
     zusammensetzung = (
         f"Der Haushalt {year} plant laufende Ausgaben von rund {gesamt} Mio. Euro bei "
         f"Einnahmen von rund {revenues} Mio. Euro. Die größten Ausgabenblöcke: {top3}. "
@@ -573,39 +573,39 @@ def build_questions(rows: list[dict], year: int, source_url: str) -> list[dict]:
         if m < 10:
             continue
         lo_f, hi_f = span_pairs[i % len(span_pairs)]
-        info = bereich_info(r["bereich"])
+        info = bereich_info(r["area"])
         rang = "der größte Posten" if i == 0 else "einer der größten Posten"
-        detail = (f"„{r['bereich']}“ umfasst {info} — mit rund {m} Mio. Euro {rang} "
+        detail = (f"„{r['area']}“ umfasst {info} — mit rund {m} Mio. Euro {rang} "
                   f"im Haushalt {year}. " + _PFLICHT_SATZ) if info else (
-                  f"„{r['bereich']}“ ist mit rund {m} Mio. Euro {rang} im Haushalt {year} — "
+                  f"„{r['area']}“ ist mit rund {m} Mio. Euro {rang} im Haushalt {year} — "
                   "das Diagramm zeigt die Größenordnungen aller Bereiche.")
         qi = _estimate(
-            f"Wie viel plant Oldenburg {year} für den Bereich „{r['bereich']}“ auszugeben?",
+            f"Wie viel plant Oldenburg {year} für den Bereich „{r['area']}“ auszugeben?",
             m, lo=max(5, round(m * lo_f)), hi=round(m * hi_f, -1),
             year=year, source_url=source_url,
-            chart_json=_chart(parts, year, highlight=r["bereich"]),
+            chart_json=_chart(parts, year, highlight=r["area"]),
             detail=detail,
         )
-        qi["content_hash"] = key(f"bereich-{i}")
+        qi["content_hash"] = key(f"area-{i}")
         qs.append(qi)
 
     # 6) MC: größter Ausgabenbereich.
-    distractors = [r["bereich"] for r in by_aufw[1:8]]
+    distractors = [r["area"] for r in by_aufw[1:8]]
     rng.shuffle(distractors)
-    opts = [top["bereich"], *distractors[:3]]
+    opts = [top["area"], *distractors[:3]]
     rng.shuffle(opts)
-    top_info = bereich_info(top["bereich"]) or "zentrale Aufgaben der Stadt"
+    top_info = bereich_info(top["area"]) or "zentrale Aufgaben der Stadt"
     qs.append({
         "area_type": "topic", "area_key": "haushalt", "category": "ratspolitik",
         "difficulty": "leicht", "qtype": "mc",
         "question": f"Wofür gibt die Stadt Oldenburg {year} am meisten Geld aus?",
-        "options": opts, "correct_index": opts.index(top["bereich"]),
+        "options": opts, "correct_index": opts.index(top["area"]),
         "explanation": (f"Mit rund {_mio(top['expenses'])} Mio. Euro ist "
-                        f"„{top['bereich']}“ der größte Ausgabenblock — dahinter stehen "
+                        f"„{top['area']}“ der größte Ausgabenblock — dahinter stehen "
                         f"{top_info}."),
         "detail": _PFLICHT_SATZ, "topic": "Haushalt",
         "source_type": "stadt", "source_ref": source_url,
-        "chart": _chart(parts, year, highlight=top["bereich"]),
+        "chart": _chart(parts, year, highlight=top["area"]),
         "content_hash": key("top-expense"),
     })
 
@@ -613,22 +613,22 @@ def build_questions(rows: list[dict], year: int, source_url: str) -> list[dict]:
     by_revenue = sorted(parts, key=lambda r: -r["revenues"])
     e_top = by_revenue[0]
     e_anteil = round(e_top["revenues"] / max(summe["revenues"], 1) * 100)
-    e_opts = [e_top["bereich"], *[r["bereich"] for r in by_revenue[1:4]]]
+    e_opts = [e_top["area"], *[r["area"] for r in by_revenue[1:4]]]
     rng.shuffle(e_opts)
     qs.append({
         "area_type": "topic", "area_key": "haushalt", "category": "ratspolitik",
         "difficulty": "mittel", "qtype": "mc",
         "question": f"In welchem Bereich des städtischen Haushalts landen {year} die höchsten Einnahmen?",
-        "options": e_opts, "correct_index": e_opts.index(e_top["bereich"]),
-        "explanation": (f"„{e_top['bereich']}“ verbucht rund {_mio(e_top['revenues'])} Mio. Euro "
+        "options": e_opts, "correct_index": e_opts.index(e_top["area"]),
+        "explanation": (f"„{e_top['area']}“ verbucht rund {_mio(e_top['revenues'])} Mio. Euro "
                         "an Erträgen — hier laufen zentrale Einnahmen wie Steuern und "
                         "Zuweisungen von Land und Bund auf."),
         "detail": (f"Rund {e_anteil} von 100 Euro aller Einnahmen laufen zentral in "
-                   f"„{e_top['bereich']}“ auf. Die Fachbereiche decken ihre Ausgaben nur zum "
+                   f"„{e_top['area']}“ auf. Die Fachbereiche decken ihre Ausgaben nur zum "
                    "Teil selbst — den Rest verteilt die Stadt aus diesem Topf."),
         "topic": "Haushalt",
         "source_type": "stadt", "source_ref": source_url,
-        "chart": _chart(parts, year, highlight=e_top["bereich"], col="revenues"),
+        "chart": _chart(parts, year, highlight=e_top["area"], col="revenues"),
         "content_hash": key("top-revenue"),
     })
 
@@ -638,11 +638,11 @@ def build_questions(rows: list[dict], year: int, source_url: str) -> list[dict]:
         top3_anteil = round(sum(r["expenses"] for r in by_aufw[:3]) / summe["expenses"] * 100)
         q8 = _estimate(
             f"Wie viel Prozent seiner geplanten Gesamtausgaben {year} entfallen in Oldenburg "
-            f"auf „{top['bereich']}“?",
+            f"auf „{top['area']}“?",
             anteil, lo=max(2, round(anteil * 0.2)), hi=min(95, round(anteil * 2.4)),
             year=year, source_url=source_url,
-            chart_json=_share_chart(top["bereich"], anteil, year),
-            detail=(f"Rund {anteil} von 100 Euro fließen in „{top['bereich']}“ — die drei "
+            chart_json=_share_chart(top["area"], anteil, year),
+            detail=(f"Rund {anteil} von 100 Euro fließen in „{top['area']}“ — die drei "
                     f"größten Bereiche zusammen kommen auf rund {top3_anteil} von 100 Euro. "
                     + _PFLICHT_SATZ),
             unit="Prozent",
@@ -672,31 +672,31 @@ def build_questions(rows: list[dict], year: int, source_url: str) -> list[dict]:
     if len(mid) >= 4:
         pick = [mid[0], mid[2], mid[-2], mid[-1]]
         kleinster = min(pick, key=lambda r: r["expenses"])
-        k_info = bereich_info(kleinster["bereich"])
-        k_opts = [r["bereich"] for r in pick]
+        k_info = bereich_info(kleinster["area"])
+        k_opts = [r["area"] for r in pick]
         rng.shuffle(k_opts)
         qs.append({
             "area_type": "topic", "area_key": "haushalt", "category": "ratspolitik",
             "difficulty": "schwer", "qtype": "mc",
             "question": f"Welcher dieser Bereiche kostet die Stadt Oldenburg {year} am wenigsten?",
-            "options": k_opts, "correct_index": k_opts.index(kleinster["bereich"]),
-            "explanation": (f"„{kleinster['bereich']}“ ist mit rund {_mio(kleinster['expenses'])} Mio. Euro "
+            "options": k_opts, "correct_index": k_opts.index(kleinster["area"]),
+            "explanation": (f"„{kleinster['area']}“ ist mit rund {_mio(kleinster['expenses'])} Mio. Euro "
                             "der kleinste der vier — das Diagramm zeigt die Größenordnungen."),
-            "detail": (f"„{kleinster['bereich']}“ umfasst {k_info}." if k_info else None),
+            "detail": (f"„{kleinster['area']}“ umfasst {k_info}." if k_info else None),
             "topic": "Haushalt",
             "source_type": "stadt", "source_ref": source_url,
-            "chart": _chart(parts, year, highlight=kleinster["bereich"]),
+            "chart": _chart(parts, year, highlight=kleinster["area"]),
             "content_hash": key("kleinster"),
         })
 
     # 11) Netto-Sicht: Brutto ≠ Netto — der stärkste Aha der Ergebnis-Spalte.
     by_netto = sorted(parts, key=lambda r: r["result"])
     n_top = by_netto[0]
-    if n_top["result"] < 0 and n_top["bereich"] != top["bereich"]:
+    if n_top["result"] < 0 and n_top["area"] != top["area"]:
         # Brutto-Spitzenreiter ist Pflicht-Distraktor (der Aha!), Rest aus der
         # Netto-Rangfolge auffüllen — ohne Dubletten.
-        n_opts = [n_top["bereich"], top["bereich"]]
-        n_opts += [r["bereich"] for r in by_netto[1:6] if r["bereich"] not in n_opts][:2]
+        n_opts = [n_top["area"], top["area"]]
+        n_opts += [r["area"] for r in by_netto[1:6] if r["area"] not in n_opts][:2]
         if len(n_opts) == 4:
             rng.shuffle(n_opts)
             qs.append({
@@ -704,16 +704,16 @@ def build_questions(rows: list[dict], year: int, source_url: str) -> list[dict]:
                 "difficulty": "mittel", "qtype": "mc",
                 "question": (f"Welcher Bereich kostet die Stadt Oldenburg {year} unterm Strich "
                              "am meisten — nach Abzug eigener Einnahmen?"),
-                "options": n_opts, "correct_index": n_opts.index(n_top["bereich"]),
-                "explanation": (f"„{n_top['bereich']}“ hat mit rund {_mio(-n_top['result'])} Mio. Euro "
+                "options": n_opts, "correct_index": n_opts.index(n_top["area"]),
+                "explanation": (f"„{n_top['area']}“ hat mit rund {_mio(-n_top['result'])} Mio. Euro "
                                 "den größten Zuschussbedarf — die eigenen Einnahmen decken dort nur "
                                 "einen kleinen Teil der Ausgaben."),
-                "detail": (f"Brutto gibt die Stadt für „{top['bereich']}“ am meisten aus — dort stehen "
+                "detail": (f"Brutto gibt die Stadt für „{top['area']}“ am meisten aus — dort stehen "
                            f"aber auch hohe eigene Einnahmen (z. B. Erstattungen) gegenüber. Unterm "
-                           f"Strich kostet „{n_top['bereich']}“ am meisten."),
+                           f"Strich kostet „{n_top['area']}“ am meisten."),
                 "topic": "Haushalt",
                 "source_type": "stadt", "source_ref": source_url,
-                "chart": _netto_chart(parts, year, n_top["bereich"]),
+                "chart": _netto_chart(parts, year, n_top["area"]),
                 "content_hash": key("netto"),
             })
 
@@ -750,7 +750,7 @@ def build_questions(rows: list[dict], year: int, source_url: str) -> list[dict]:
         e_top = fach[0]
         # Die vier stärksten — ein Feld aus Spitze und Schlusslicht machte die
         # Antwort zur Größenschätzung, nicht zur Frage nach den Einnahmen.
-        f_opts = [r["bereich"] for r in fach[:4]]
+        f_opts = [r["area"] for r in fach[:4]]
         rng.shuffle(f_opts)
         qs.append({
             "area_type": "topic", "area_key": "haushalt", "category": "ratspolitik",
@@ -759,8 +759,8 @@ def build_questions(rows: list[dict], year: int, source_url: str) -> list[dict]:
                          "durch Erstattungen und Zuweisungen von Bund und Land, "
                          "Gebühren und Entgelte?"),
             "options": f_opts,
-            "correct_index": f_opts.index(e_top["bereich"]),
-            "explanation": (f"„{e_top['bereich']}“ bringt rund {_mio(e_top['revenues'])} Mio. Euro "
+            "correct_index": f_opts.index(e_top["area"]),
+            "explanation": (f"„{e_top['area']}“ bringt rund {_mio(e_top['revenues'])} Mio. Euro "
                             "eigene Erträge mit — mehr als jeder andere Fachbereich. Ausgeben "
                             f"tut der Bereich mit rund {_mio(e_top['expenses'])} Mio. Euro "
                             "deutlich mehr; die Differenz trägt die Allgemeinheit."),
@@ -772,7 +772,7 @@ def build_questions(rows: list[dict], year: int, source_url: str) -> list[dict]:
                        "auf; sie nennt je Teilhaushalt eine Ertragssumme."),
             "topic": "Haushalt",
             "source_type": "stadt", "source_ref": source_url,
-            "chart": _eigen_chart(fach, year, e_top["bereich"]),
+            "chart": _eigen_chart(fach, year, e_top["area"]),
             "content_hash": key("deckung"),
         })
 
@@ -975,8 +975,8 @@ def build_trend_questions(by_year: dict[int, list[dict]], source_url: str) -> li
         })
 
     # 2) Bereich mit dem stärksten Wachstum (nur namensgleiche Bereiche).
-    p0 = {r["bereich"]: r for r in by_year[y0] if not r["is_total"]}
-    p1 = {r["bereich"]: r for r in by_year[y1] if not r["is_total"]}
+    p0 = {r["area"]: r for r in by_year[y0] if not r["is_total"]}
+    p1 = {r["area"]: r for r in by_year[y1] if not r["is_total"]}
     common = [b for b in p1 if b in p0 and p0[b]["expenses"] > 1_000_000]
     if len(common) >= 4:
         growth = sorted(common, key=lambda b: p1[b]["expenses"] - p0[b]["expenses"], reverse=True)
@@ -999,7 +999,7 @@ def build_trend_questions(by_year: dict[int, list[dict]], source_url: str) -> li
                            "Bildungsbereichen zu Buche — das Diagramm zeigt den Verlauf der Gesamtausgaben."),
                 "topic": "Haushalt", "source_type": "stadt", "source_ref": source_url,
                 "chart": trend_json,
-                "content_hash": quiz._content_hash("topic", "haushalt", f"trend-bereich-{y0}-{y1}"),
+                "content_hash": quiz._content_hash("topic", "haushalt", f"trend-area-{y0}-{y1}"),
             })
 
     return qs

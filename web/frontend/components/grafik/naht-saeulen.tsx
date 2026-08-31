@@ -328,7 +328,7 @@ export function NahtSaeulen({ jahre, naht, gruppierungMobil = 2, einheit, titel,
       </svg>
 
       <Ableseleiste className="mt-2" stelle={stellen[ablesen.aktiv]} steuerung={ablesen}
-        hinweis={"Jahr überfahren, antippen oder mit den Pfeiltasten wechseln"
+        note={"Jahr überfahren, antippen oder mit den Pfeiltasten wechseln"
           + (belegte.some((j) => !istLuecke(j) && j.teile.length > 1)
             ? " — die Leiste trennt alle Arten." : ".")} />
 

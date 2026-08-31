@@ -62,7 +62,7 @@ def test_kontext_nimmt_vorlage_und_anlagen():
     Vorlagentext UND Anlagen — nicht nur den Titel wie die Kurzfassung."""
     punkt = {"committee": "Rat", "session_date": "2026-08-31",
              "title": "Bebauungsplan 837", "art": "Beschlussvorlage",
-             "amt": "Stadtplanung", "beschlussvorschlag": "Der Rat beschließt …",
+             "office": "Stadtplanung", "beschlussvorschlag": "Der Rat beschließt …",
              "finanz_check": "Kosten: 1,2 Mio Euro", "klima_check": None,
              "raw_text": "Briefkopf. Sachverhalt: 8,6 Hektar, davon 3,9 im "
                          "Landschaftsschutzgebiet."}

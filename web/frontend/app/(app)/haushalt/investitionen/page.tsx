@@ -26,8 +26,8 @@ import { Abschnitte, ANKER_KLASSE } from "@/components/haushalt/abschnitte";
 import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 import { SchrittPfad } from "@/components/haushalt/schritt-pfad";
 import { Seitenbuehne, SeitenbuehneLaedt, ZaehlZahl } from "@/components/haushalt/seitenbuehne";
-import { InvestitionsplanAbschnitt } from "@/components/haushalt/abschnitt-investitionsplan";
-import { GebautAbschnitt } from "@/components/haushalt/abschnitt-gebaut";
+import { InvestitionsplanAbschnitt } from "@/components/haushalt/section-investitionsplan";
+import { GebautAbschnitt } from "@/components/haushalt/section-gebaut";
 
 /** Ausgeschrieben, nicht zusammengesetzt: `tests/test_quellen_dokumente.py`
  *  liest die Literale dieser Liste. Reihenfolge = Nummerierung der Chips,

@@ -45,7 +45,7 @@ def main() -> int:
     ap.add_argument("--db", default=str(COUNCIL_DB))
     ap.add_argument("--auch-schrumpfen", action="store_true",
                     help="einen Jahrgang auch dann ersetzen, wenn er dabei deutlich "
-                         "kleiner wird — für den Fall, dass genau das die Absicht ist. "
+                         "kleiner wird — für den Fall, dass exact das die Absicht ist. "
                          "Ein LEERES Ergebnis ersetzt trotzdem nichts.")
     args = ap.parse_args()
 

@@ -262,8 +262,8 @@ def _bericht_personen(store, zeilen):
     """Aufsichtsorgan-Zeilen einsetzen: (bericht_jahr, name, funktion)."""
     with store._conn:
         store._conn.executemany(
-            "INSERT INTO council_gesellschaft_personen (bericht_jahr, gesellschaft, "
-            "reihenfolge, gremium, name, funktion, vorsitz, hinweis, "
+            "INSERT INTO council_gesellschaft_personen (report_year, gesellschaft, "
+            "sort_order, gremium, name, funktion, vorsitz, note, "
             "funktionen_zuordenbar, fetched_at) "
             "VALUES (?, 'gsg', ?, 'Aufsichtsrat', ?, ?, NULL, NULL, 1, datetime('now'))",
             [(j, i, n, f) for i, (j, n, f) in enumerate(zeilen)])

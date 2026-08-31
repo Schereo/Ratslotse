@@ -126,11 +126,11 @@ export function useAblesen(count: number, standard: number): AbleseSteuerung {
  *  scrollen. Der Abstand nach unten ist die Andockkante der Tab-Leiste
  *  (`TABLEISTE_HOEHE` aus `components/nav.tsx`) plus etwas Luft; das
  *  Verhalten selbst steht in `.gb-ablese-leiste` (app/globals.css). */
-export function Ableseleiste({ stelle, steuerung, hinweis, className, haftet = true }: {
+export function Ableseleiste({ stelle, steuerung, note, className, haftet = true }: {
   stelle: AbleseStelle;
   steuerung: AbleseSteuerung;
   /** Womit man die Stelle wechselt; ohne Angabe steht der Standardsatz da. */
-  hinweis?: string;
+  note?: string;
   className?: string;
   /** Mobil am unteren Rand anheften (Vorgabe) — oder eben nicht.
    *
@@ -185,7 +185,7 @@ export function Ableseleiste({ stelle, steuerung, hinweis, className, haftet = t
         </p>
       )}
       <p className="mt-1 text-[10.5px] leading-snug text-muted-foreground">
-        {hinweis ?? "Überfahren, tippen oder mit den Pfeiltasten wechseln."}
+        {note ?? "Überfahren, tippen oder mit den Pfeiltasten wechseln."}
         {steuerung.gewaehlt && <> · <button type="button" onClick={steuerung.zuruecksetzen}
           className="font-semibold text-primary">zurücksetzen</button></>}
       </p>

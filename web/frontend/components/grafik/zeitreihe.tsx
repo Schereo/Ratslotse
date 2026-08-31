@@ -135,7 +135,7 @@ export function Zeitreihe({
   reihe, einheit, ariaTitel, titel, nachkomma = 1, format, zweitreihe,
   annotationen, spruenge = false, vorjahresdifferenz = false, differenzFormat,
   tabelle = false, leisteHaftet = true,
-  umschalter, beleg, nullbasis = true, hinweis, treppe = false, className,
+  umschalter, beleg, nullbasis = true, note, treppe = false, className,
 }: {
   /** Punkte UND Lücken in einer Liste (Daten-Vertrag GB-00). */
   reihe: JahrPunkt[];
@@ -208,7 +208,7 @@ export function Zeitreihe({
    *  Eingabezeile schon am unteren Rand klebt (s. Ableseleiste). */
   leisteHaftet?: boolean;
   /** Eigener Bedien-Hinweis unter der Ableseleiste. */
-  hinweis?: string;
+  note?: string;
   /** Treppe statt Linie: Der Wert gilt bis zum nächsten Punkt und springt
    *  dort — für Größen, die zwischen zwei Beschlüssen **stillstehen**.
    *
@@ -237,8 +237,8 @@ export function Zeitreihe({
   const fmtZweit = zweitreihe?.format ?? fmt;
   const schmal = breite < 520;
   const fs = schmal
-    ? { achse: 13, year: 13, wert: 14, legende: 12.5, marke: 12.5 }
-    : { achse: 11, year: 11, wert: 13, legende: 12, marke: 11 };
+    ? { achse: 13, year: 13, wert: 14, legende: 12.5, mark: 12.5 }
+    : { achse: 11, year: 11, wert: 13, legende: 12, mark: 11 };
 
   const werte = stellenListe.filter(definiert);
   if (werte.length < 2) return null;
@@ -361,12 +361,12 @@ export function Zeitreihe({
   /** Die erste freie Zeile über dem Punkt, sonst darunter. */
   const ausweichen = (py: number, kasten: (ty: number) => Kasten,
                       belegt: Kasten[]): number => {
-    const zeile = fs.marke + 4;
+    const zeile = fs.mark + 4;
     const kandidaten: number[] = [];
-    for (let n = 0; n < 6 && py - 10 - n * zeile - fs.marke > YTOP; n++) {
+    for (let n = 0; n < 6 && py - 10 - n * zeile - fs.mark > YTOP; n++) {
       kandidaten.push(py - 10 - n * zeile);
     }
-    kandidaten.push(Math.min(py + 9 + fs.marke, Y0 - 4));
+    kandidaten.push(Math.min(py + 9 + fs.mark, Y0 - 4));
     return kandidaten.find((k) => !belegt.some((b) => stoert(kasten(k), b)))
       ?? kandidaten[kandidaten.length - 1];
   };
@@ -389,10 +389,10 @@ export function Zeitreihe({
     ? (() => {
         const text = `${zweitreihe.label} `
           + `(${zweitWerte[0].punkt.year}–${zweitLetzter.year})`;
-        const w = textBreite(text, fs.marke);
+        const w = textBreite(text, fs.mark);
         const tx = Math.min(Math.max(x(zweitLetzter.year), X0 + w), X1);
         const ty = y(zweitLetzter.wert) - 8;
-        belegt.push({ x1: tx - w, x2: tx, y1: ty - fs.marke, y2: ty + 3 });
+        belegt.push({ x1: tx - w, x2: tx, y1: ty - fs.mark, y2: ty + 3 });
         return { text, tx, ty };
       })()
     : null;
@@ -433,7 +433,7 @@ export function Zeitreihe({
       .filter((m, i, alle) => alle.findIndex((n) => n.year === m.year) === i)
       .map((m) => {
         const text = `${m.year}: ${m.delta > 0 ? "+" : "−"}${fmt(Math.abs(m.delta))}`;
-        const w = textBreite(text, fs.marke);
+        const w = textBreite(text, fs.mark);
         return {
           ...m, text, w,
           mitte: Math.min(Math.max(x(m.year), X0 + w / 2), X1 - w / 2),
@@ -444,7 +444,7 @@ export function Zeitreihe({
       .map((m) => {
         const kasten = (ty: number): Kasten => ({
           x1: m.mitte - m.w / 2, x2: m.mitte + m.w / 2,
-          y1: ty - fs.marke, y2: ty + 3,
+          y1: ty - fs.mark, y2: ty + 3,
         });
         const ty = ausweichen(m.py, kasten, belegt);
         belegt.push(kasten(ty));
@@ -640,7 +640,7 @@ export function Zeitreihe({
         )}
         {zweitBeschriftung && (
           <text x={zweitBeschriftung.tx} y={zweitBeschriftung.ty} textAnchor="end"
-            fontSize={fs.marke} className="stroke-card" {...halo}
+            fontSize={fs.mark} className="stroke-card" {...halo}
             style={{ fill: TON_ZWEIT }}>{zweitBeschriftung.text}</text>
         )}
 
@@ -671,7 +671,7 @@ export function Zeitreihe({
             {(Math.abs(m.mitte - x(m.year)) > 2 || m.ty < m.py - 13 || m.ty > m.py) && (
               <line x1={x(m.year)} y1={m.py + (m.ty > m.py ? 6 : -6)}
                 x2={Math.min(Math.max(x(m.year), m.mitte - m.w / 2), m.mitte + m.w / 2)}
-                y2={m.ty > m.py ? m.ty - fs.marke - 2 : m.ty + 4}
+                y2={m.ty > m.py ? m.ty - fs.mark - 2 : m.ty + 4}
                 strokeWidth={1} className="stroke-signal" opacity={0.45} />
             )}
             <circle cx={x(m.year)} cy={m.py} r={4}
@@ -680,7 +680,7 @@ export function Zeitreihe({
         ))}
         {spruengeMarken.map((m) => (
           <text key={`sprung-text-${m.year}`} x={m.mitte} y={m.ty} textAnchor="middle"
-            fontSize={fs.marke} className="fill-signal stroke-card" {...halo}>{m.text}</text>
+            fontSize={fs.mark} className="fill-signal stroke-card" {...halo}>{m.text}</text>
         ))}
 
         {/* Direktbeschriftung: Endwerte immer (GB-01). */}
@@ -721,7 +721,7 @@ export function Zeitreihe({
           Er wirbt für die einzige Stelle, an der der Anmerkungssatz steht —
           eine Seite, die ihn wegformuliert, versteckte ihre Annotationen. */}
       <Ableseleiste haftet={leisteHaftet} className="mt-2" stelle={ableseStellen[ablesen.aktiv]} steuerung={ablesen}
-        hinweis={(hinweis ?? `${einheit} · Jahr überfahren, antippen oder mit den Pfeiltasten wechseln.`)
+        note={(note ?? `${einheit} · Jahr überfahren, antippen oder mit den Pfeiltasten wechseln.`)
           + ((annotationen ?? []).length ? " ⓘ-Jahre tragen eine Anmerkung." : "")} />
 
       {/* Lücken beschriftet die GRAFIK (GB-00) — nie einklappbar. */}

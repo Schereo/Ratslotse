@@ -174,7 +174,7 @@ function Finanzkachel({ z, daten, year }: {
         </>
       )}
 
-      <Link href={`/haushalt/bereich?name=${bereichSlug(z.bereich)}`}
+      <Link href={`/haushalt/bereich?name=${bereichSlug(z.area)}`}
         className="mt-3 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-primary">
         Diesen Bereich im Einzelnen
         <ArrowRight aria-hidden className="h-3.5 w-3.5" />
@@ -209,7 +209,7 @@ export function BereicheAbschnitt() {
     );
   }
 
-  const finanzen = bereiche(zeilen).find((z) => bereichSchluessel(z.bereich) === "finanzen");
+  const finanzen = bereiche(zeilen).find((z) => bereichSchluessel(z.area) === "finanzen");
   const produktJahre = (data.produkt_jahre ?? []).slice().sort((a, b) => a - b);
   const produktBis = produktJahre[produktJahre.length - 1] ?? null;
 

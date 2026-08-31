@@ -19,11 +19,11 @@
 // Was die Trennung stattdessen gebracht hat, war Drift — nachgemessen, bevor
 // diese Datei entstand:
 //
-//   * drei der fünf kannten `dokument_id` nicht, obwohl die API es immer
+//   * drei der fünf kannten `document_id` nicht, obwohl die API es immer
 //     mitschickt. Genau die Angabe, an der der Beleg-Chip hängt;
 //   * zwei deklarierten `probe: string | null`, obwohl die Spalte NOT NULL
 //     ist — die Seiten trugen totes Null-Handling;
-//   * eine führte `proben` als optional, obwohl es nie fehlt.
+//   * eine führte `probes` als optional, obwohl es nie fehlt.
 //
 // Die Seiten waren also nicht voreinander geschützt, sondern vor der
 // Wahrheit. Ein Feld, das die API schickt und der Typ verschweigt, ist für
@@ -54,7 +54,7 @@ export type Ratsvorgang = {
 /** Woher eine Zeile kommt — das gemeinsame Format aller Finanz-Schichten.
  *
  *  Die Feldliste folgt `council/herkunft.py` plus dem, was die Datenbank
- *  ergänzt (`id`, `fetched_at`) und was `get_herkunft` dazurechnet (`proben`,
+ *  ergänzt (`id`, `fetched_at`) und was `get_herkunft` dazurechnet (`probes`,
  *  `beschluss`). */
 export type Herkunft = {
   id: number;
@@ -63,11 +63,11 @@ export type Herkunft = {
   art: string;
   /** Die RIS-Dokumentnummer der Anlage — der stabile Anker, über den der
    *  Ratsvorgang gefunden wird. `null` bei `stadt`/`lsn`. */
-  dokument_id: number | null;
+  document_id: number | null;
   label: string | null;
   url: string | null;
-  fundstelle: string | null;
-  seite: number | null;
+  citation: string | null;
+  page: number | null;
   /** Die bestandenen Proben als Schlüssel, kommagetrennt. NOT NULL in der
    *  Datenbank und im Konstruktor erzwungen — eine Zahl ohne Probe kommt
    *  nicht in den Bestand. */
@@ -75,11 +75,11 @@ export type Herkunft = {
   /** Die Erklärsätze zu diesen Proben — kommen aus `herkunft.PROBEN` im
    *  Backend, damit sie einmal für Leser*innen geschrieben sind.
    *
-   *  ACHTUNG, Namensfalle: Das gleichnamige `Herkunft.proben` in Python
+   *  ACHTUNG, Namensfalle: Das gleichnamige `Herkunft.probes` in Python
    *  liefert die Proben-NAMEN, dieses Feld die ausformulierten Sätze. Beide
    *  heißen gleich und tragen Verschiedenes; wer im Backend nachschlägt,
    *  findet nicht, was hier ankommt. */
-  proben: string[];
+  probes: string[];
   probe_result: string | null;
   stand: string | null;
   /** „Zuletzt bestätigt", nicht „zuerst gesehen": Der Zeitstempel wandert bei

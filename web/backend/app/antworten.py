@@ -914,7 +914,7 @@ class HaushaltProdukte(TypedDict):
     facetten: Any
     year: Any
     plan_expenses: Any
-    produkt: Any
+    product: Any
     produkte: Any
     treffer: int
 

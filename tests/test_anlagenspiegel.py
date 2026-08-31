@@ -69,8 +69,8 @@ def test_umbrueche_im_label_werden_geheilt():
     Wortinneren sähe nach einem Fehler der Stadt aus und wäre einer von uns.
     """
     z = asp.parse_anlagenspiegel(KOPF_13 + ZEILE_2024, 2024)[0]
-    assert z["bezeichnung"] == "Immaterielles Vermögensgegenstände"
-    assert "  " not in z["bezeichnung"]
+    assert z["label"] == "Immaterielles Vermögensgegenstände"
+    assert "  " not in z["label"]
 
 
 def test_zwoelf_spalten_werden_erkannt_und_gefuellt():

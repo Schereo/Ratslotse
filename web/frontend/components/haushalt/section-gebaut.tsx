@@ -5,7 +5,7 @@
 //
 // Bis zum 21.08.2026 die eigene Seite /haushalt/gebaut, und zwar in einer
 // anderen Etappe als der Plan. Siehe den Kopf von
-// `abschnitt-investitionsplan.tsx`.
+// `section-investitionsplan.tsx`.
 
 // /haushalt/gebaut — „Was wurde davon wirklich gebaut?" (Boards H3-03, H4-08)
 //
@@ -96,14 +96,14 @@ const TOENE = ["var(--hh-aus-0)", "var(--hh-aus-2)", "var(--hh-aus-4)",
  *  Schulden-Seite und bewusst nicht geteilt: Die Seiten sollen einander nicht
  *  brechen. */
 function Fundstelle({ h }: { h: Herkunft | null }) {
-  if (!h?.fundstelle) return null;
+  if (!h?.citation) return null;
   return (
     <div className="border-t border-dashed border-border pt-2.5">
       <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
         Woher diese Zahlen kommen
       </p>
       <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">
-        {h.fundstelle}{h.stand ? ` · ${h.stand}` : ""}
+        {h.citation}{h.stand ? ` · ${h.stand}` : ""}
       </p>
     </div>
   );

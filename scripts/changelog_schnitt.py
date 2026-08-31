@@ -81,12 +81,12 @@ class FragmentFehler(ValueError):
 @dataclass(frozen=True)
 class Fragment:
     pfad: Path
-    kategorie: str  # Kürzel, immer ASCII (siehe KATEGORIEN)
+    category: str  # Kürzel, immer ASCII (siehe KATEGORIEN)
     text: str       # einzeiliger Fließtext, ohne PR-Nummer
 
     @property
-    def ueberschrift(self) -> str:
-        return KATEGORIEN[self.kategorie]
+    def heading(self) -> str:
+        return KATEGORIEN[self.category]
 
 
 @dataclass
@@ -128,8 +128,8 @@ def lies_fragment(pfad: Path) -> Fragment:
         werte[paar.group(1).lower()] = paar.group(2)
 
     roh_kategorie = werte.get("kategorie", "").strip().lower()
-    kategorie = ALIASE.get(roh_kategorie, roh_kategorie)
-    if kategorie not in KATEGORIEN:
+    category = ALIASE.get(roh_kategorie, roh_kategorie)
+    if category not in KATEGORIEN:
         erlaubt = ", ".join(KATEGORIEN)
         raise FragmentFehler(
             f"{pfad.name}: kategorie '{werte.get('kategorie', '')}' unbekannt (erlaubt: {erlaubt})"
@@ -139,7 +139,7 @@ def lies_fragment(pfad: Path) -> Fragment:
     if not text:
         raise FragmentFehler(f"{pfad.name}: kein Text unter dem Frontmatter")
 
-    return Fragment(pfad=pfad, kategorie=kategorie, text=text)
+    return Fragment(pfad=pfad, category=category, text=text)
 
 
 def sammle_fragmente(verzeichnis: Path) -> list[Fragment]:
@@ -191,19 +191,19 @@ def eintrag(fragment: Fragment, nummer: int | None) -> list[str]:
     )
 
 
-def _abschnitt_einfuegen(block: list[str], ueberschrift: str, eintraege: list[str]) -> list[str]:
+def _abschnitt_einfuegen(block: list[str], heading: str, eintraege: list[str]) -> list[str]:
     """Einträge ans Ende des passenden ``### …``-Abschnitts hängen.
 
     Fehlt der Abschnitt, entsteht er am Blockende. Alles Vorhandene bleibt
     wortgetreu stehen — auch auskommentierte Entwürfe, die eine Neuformatierung
     zerlegen würde.
     """
-    start = next((i for i, z in enumerate(block) if z.strip() == f"### {ueberschrift}"), None)
+    start = next((i for i, z in enumerate(block) if z.strip() == f"### {heading}"), None)
     if start is None:
         neu = list(block)
         while neu and not neu[-1].strip():
             neu.pop()
-        return neu + ["", f"### {ueberschrift}"] + eintraege
+        return neu + ["", f"### {heading}"] + eintraege
 
     ende = next(
         (i for i in range(start + 1, len(block)) if block[i].startswith("### ")),
@@ -258,9 +258,9 @@ def einsetzen(changelog: str, eintraege_je_ueberschrift: dict[str, list[str]],
     # Zeile landete jedes Fragment so oft im Changelog, wie seine Überschrift
     # dort vorkommt. Einsortiert wird in den **ersten** passenden Abschnitt.
     vorhandene = list(dict.fromkeys(z.strip()[4:] for z in block if z.startswith("### ")))
-    for ueberschrift in vorhandene + [u for u in REIHENFOLGE if u not in vorhandene]:
-        if eintraege_je_ueberschrift.get(ueberschrift):
-            block = _abschnitt_einfuegen(block, ueberschrift, eintraege_je_ueberschrift[ueberschrift])
+    for heading in vorhandene + [u for u in REIHENFOLGE if u not in vorhandene]:
+        if eintraege_je_ueberschrift.get(heading):
+            block = _abschnitt_einfuegen(block, heading, eintraege_je_ueberschrift[heading])
 
     while block and not block[-1].strip():
         block.pop()
@@ -296,7 +296,7 @@ def schnitt(version: str, datum: str | None = None, wurzel: Path = WURZEL,
             ohne_nummer.append(fragment.pfad)
             print(f"  ! {fragment.pfad.name}: keine PR-Nummer gefunden — Eintrag ohne Nummer.",
                   file=sys.stderr)
-        eintraege.setdefault(fragment.ueberschrift, []).extend(eintrag(fragment, nummer))
+        eintraege.setdefault(fragment.heading, []).extend(eintrag(fragment, nummer))
 
     pfad = wurzel / "CHANGELOG.md"
     text = einsetzen(pfad.read_text(encoding="utf-8"), eintraege, version, datum)

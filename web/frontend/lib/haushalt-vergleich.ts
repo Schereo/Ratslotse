@@ -31,7 +31,7 @@ export type VergleichWert = {
   year: number;
   schluessel: string;
   stadt: string;
-  kennzahl: string;
+  indicator: string;
   wert: number;
   einheit: string;
   herkunft_id: number | null;
@@ -67,13 +67,13 @@ export function herkunftVon(daten: VergleichDaten,
  *  Fehlen ist der Normalfall und kein Fehler: Eine Stadt, deren Rechenprobe
  *  nicht aufging, steht gar nicht im Bestand (`council/staedtevergleich.py`).
  *  Die Oberfläche zeigt dann eine Lücke, keine geschätzte Zahl. */
-export function kennzahl(
+export function indicator(
   daten: VergleichDaten, reihe: "steuerkraft" | "realsteuern",
   name: string, year: number,
 ): Map<string, VergleichWert> {
   const aus = new Map<string, VergleichWert>();
   for (const w of daten.werte) {
-    if (w.reihe === reihe && w.kennzahl === name && w.year === year) {
+    if (w.reihe === reihe && w.indicator === name && w.year === year) {
       aus.set(w.schluessel, w);
     }
   }
@@ -103,8 +103,8 @@ export type Balken = {
  *  `LottiVergleich`. Gespeichert wird der Wert bewusst nicht, sonst ließe
  *  sich später nicht mehr unterscheiden, was amtlich ist und was gerechnet. */
 export function steuerkraftJeEinwohner(daten: VergleichDaten, year: number): Balken[] {
-  const messzahl = kennzahl(daten, "steuerkraft", "steuerkraftmesszahl", year);
-  const einwohner = kennzahl(daten, "steuerkraft", "einwohner", year);
+  const messzahl = indicator(daten, "steuerkraft", "steuerkraftmesszahl", year);
+  const einwohner = indicator(daten, "steuerkraft", "einwohner", year);
   const aus: Balken[] = [];
   for (const s of daten.staedte) {
     const m = messzahl.get(s.schluessel);
@@ -122,7 +122,7 @@ export function steuerkraftJeEinwohner(daten: VergleichDaten, year: number): Bal
 /** Eine gespeicherte Pro-Kopf- oder Prozent-Kennzahl als Balkenliste. */
 export function balken(daten: VergleichDaten, reihe: "steuerkraft" | "realsteuern",
                        name: string, year: number): Balken[] {
-  const werte = kennzahl(daten, reihe, name, year);
+  const werte = indicator(daten, reihe, name, year);
   const aus: Balken[] = [];
   for (const s of daten.staedte) {
     const w = werte.get(s.schluessel);
@@ -145,7 +145,7 @@ export function platzVonOldenburg(zeilen: Balken[]): number | null {
 export function reihe(daten: VergleichDaten, name: string,
                       schluessel: string): { year: number; wert: number }[] {
   return daten.werte
-    .filter((w) => w.kennzahl === name && w.schluessel === schluessel)
+    .filter((w) => w.indicator === name && w.schluessel === schluessel)
     .map((w) => ({ year: w.year, wert: w.wert }))
     .sort((a, b) => a.year - b.year);
 }

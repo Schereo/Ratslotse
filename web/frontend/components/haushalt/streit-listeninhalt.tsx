@@ -124,27 +124,27 @@ function ListenKarte({ liste, year }: { liste: ListeImJahr; year: number }) {
           )}
         >
           {liste.zeilen.map((z) => (
-            <tr key={z.lfd}>
+            <tr key={z.seq}>
               <TextZelle>
-                {z.bezeichnung ? (
-                  <span className="text-foreground/90">{z.bezeichnung}</span>
+                {z.label ? (
+                  <span className="text-foreground/90">{z.label}</span>
                 ) : (
                   // Rund 1 % der Zeilen: Die Bezeichnung wickelt im PDF so
                   // uneindeutig, dass die Nachlese sie liegen lässt — lieber
                   // eine benannte Lücke als ein Name von der falschen Zeile.
-                  <span className="italic text-muted-foreground">Position {z.lfd} (ohne lesbaren Namen)</span>
+                  <span className="italic text-muted-foreground">Position {z.seq} (ohne lesbaren Namen)</span>
                 )}
                 <span className="ml-2 font-mono text-[10px] text-muted-foreground">
-                  {z.thh != null ? `THH ${String(z.thh).padStart(2, "0")}` : "alle THH"}
+                  {z.sub_budget != null ? `THH ${String(z.sub_budget).padStart(2, "0")}` : "alle THH"}
                 </span>
                 {zeigeUrheber && z.urheber && (
                   <span className="ml-2 align-baseline">
                     <UrheberMarke label={z.urheber} klein />
                   </span>
                 )}
-                {z.erlaeuterung && (
+                {z.explanation && (
                   <span className="mt-0.5 block max-w-[75ch] text-[11px] leading-relaxed text-muted-foreground">
-                    {z.erlaeuterung}
+                    {z.explanation}
                   </span>
                 )}
               </TextZelle>
@@ -233,7 +233,7 @@ export function StreitListenInhalt({ daten, year }: {
                 <em> jeder</em> Position eine Spalte „Vorschlag von“ — was die Fraktionen
                 wollten, steht deshalb unten in der Liste Zeile für Zeile, nicht nur als
                 Summe. Dass die Zuordnung stimmt, rechnet sich nach: Die Positionen jedes
-                Urhebers ergeben genau seine Summe hier oben.
+                Urhebers ergeben exact seine Summe hier oben.
               </>
             ) : (
               <>Was in den Fraktionslisten im Einzelnen stand, sagt für diesen Jahrgang

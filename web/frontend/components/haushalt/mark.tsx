@@ -17,14 +17,14 @@ import { cn } from "@/lib/utils";
 
 const SCHWER = new Set(["B", "WB"]);
 
-export function MarkePille({ marke, name, klein = false, className }: {
-  marke: string;
+export function MarkePille({ mark, name, klein = false, className }: {
+  mark: string;
   /** Name aus der Legende des jeweiligen Jahrgangs („Wiederholte Beanstandung"). */
   name?: string | null;
   klein?: boolean;
   className?: string;
 }) {
-  const schwer = SCHWER.has(marke);
+  const schwer = SCHWER.has(mark);
   return (
     <span
       title={name ?? undefined}
@@ -40,7 +40,7 @@ export function MarkePille({ marke, name, klein = false, className }: {
         klein ? "text-[9.5px]" : "text-[10px]",
         schwer ? "font-semibold text-foreground" : "text-muted-foreground",
       )}>
-        {marke}
+        {mark}
       </span>
       {name && (
         <span className={cn(

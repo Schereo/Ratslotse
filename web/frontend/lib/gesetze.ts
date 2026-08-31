@@ -20,7 +20,7 @@
 //
 // Bundesrecht steht auf gesetze-im-internet.de (Bundesamt für Justiz),
 // Landesrecht im niedersächsischen Vorschrifteninformationssystem VORIS. Die
-// Trennung steht als `ebene` an jedem Eintrag und wird im Fähnchen angezeigt,
+// Trennung steht als `level` an jedem Eintrag und wird im Fähnchen angezeigt,
 // weil sie die Anschlussfrage beantwortet: Wer könnte das ändern? Beim
 // Hebesatz ist die Antwort „der Rat", beim Steuergeheimnis „der Bundestag" —
 // und dazwischen liegt der ganze Unterschied zwischen einer politischen und
@@ -50,7 +50,7 @@ export type Gesetz = {
   titel: string;
   /** Das Gesetz ausgeschrieben, für alle, denen „GewStG" nichts sagt. */
   gesetz: string;
-  ebene: Gesetzesebene;
+  level: Gesetzesebene;
   /** Was drinsteht — ein bis zwei Sätze, ohne Juristendeutsch. Keine
    *  Zusammenfassung des ganzen Gesetzes, sondern der Teil, wegen dem die
    *  Vorschrift an dieser Stelle der Seite steht. */
@@ -75,7 +75,7 @@ export const GESETZE: Record<GesetzSchluessel, Gesetz> = {
     kurz: "Gewerbesteuergesetz",
     titel: "Gewerbesteuergesetz",
     gesetz: "Gewerbesteuergesetz (GewStG)",
-    ebene: "Bund",
+    level: "Bund",
     zusammenfassung:
       "Regelt bundesweit einheitlich, wer Gewerbesteuer zahlt und wie der " +
       "Gewinn dafür umgerechnet wird — mit Hinzurechnungen (etwa für Mieten " +
@@ -87,7 +87,7 @@ export const GESETZE: Record<GesetzSchluessel, Gesetz> = {
     kurz: "§ 11 GewStG",
     titel: "Steuermesszahl und Steuermessbetrag",
     gesetz: "Gewerbesteuergesetz",
-    ebene: "Bund",
+    level: "Bund",
     zusammenfassung:
       "Aus dem Gewerbeertrag wird der Steuermessbetrag: 3,5 % — bundesweit " +
       "gleich, keine Stellschraube der Stadt. Für Einzelunternehmen und " +
@@ -98,7 +98,7 @@ export const GESETZE: Record<GesetzSchluessel, Gesetz> = {
     kurz: "§ 16 GewStG",
     titel: "Hebesatz",
     gesetz: "Gewerbesteuergesetz",
-    ebene: "Bund",
+    level: "Bund",
     zusammenfassung:
       "Die Gemeinde beschließt den Hebesatz, mit dem der Steuermessbetrag " +
       "multipliziert wird — das ist die eine Zahl, über die der Rat hier " +
@@ -111,7 +111,7 @@ export const GESETZE: Record<GesetzSchluessel, Gesetz> = {
     kurz: "§ 29 GewStG",
     titel: "Zerlegungsmaßstab",
     gesetz: "Gewerbesteuergesetz",
-    ebene: "Bund",
+    level: "Bund",
     zusammenfassung:
       "Hat ein Unternehmen Betriebsstätten in mehreren Gemeinden, wird sein " +
       "Steuermessbetrag unter ihnen aufgeteilt — Maßstab sind die " +
@@ -123,7 +123,7 @@ export const GESETZE: Record<GesetzSchluessel, Gesetz> = {
     kurz: "§ 30 AO",
     titel: "Steuergeheimnis",
     gesetz: "Abgabenordnung",
-    ebene: "Bund",
+    level: "Bund",
     zusammenfassung:
       "Amtsträger dürfen nicht offenbaren, was sie über die steuerlichen " +
       "Verhältnisse einer Person oder Firma erfahren haben. Das gilt auch " +
@@ -136,7 +136,7 @@ export const GESETZE: Record<GesetzSchluessel, Gesetz> = {
     kurz: "NGrStG",
     titel: "Niedersächsisches Grundsteuergesetz",
     gesetz: "Niedersächsisches Grundsteuergesetz (NGrStG)",
-    ebene: "Land",
+    level: "Land",
     zusammenfassung:
       "Niedersachsen rechnet die Grundsteuer seit der Reform nach einem " +
       "eigenen Gesetz: Grundlage sind Flächen und ein Lage-Faktor, nicht der " +
@@ -148,7 +148,7 @@ export const GESETZE: Record<GesetzSchluessel, Gesetz> = {
     kurz: "§ 6 NGrStG",
     titel: "Grundsteuermesszahlen",
     gesetz: "Niedersächsisches Grundsteuergesetz",
-    ebene: "Land",
+    level: "Land",
     zusammenfassung:
       "Aus den Äquivalenzbeträgen eines Grundstücks wird der Messbetrag — " +
       "mit Abschlägen unter anderem für Wohnnutzung und für denkmalgeschützte " +
@@ -160,7 +160,7 @@ export const GESETZE: Record<GesetzSchluessel, Gesetz> = {
     kurz: "§ 7 NGrStG",
     titel: "Hebesatz",
     gesetz: "Niedersächsisches Grundsteuergesetz",
-    ebene: "Land",
+    level: "Land",
     zusammenfassung:
       "Den Hebesatz auf den Messbetrag beschließt die Gemeinde. Seit 2025 " +
       "darf sie für Wohn- und Nichtwohngrundstücke verschiedene Sätze " +
@@ -172,7 +172,7 @@ export const GESETZE: Record<GesetzSchluessel, Gesetz> = {
     kurz: "Einkommensteuergesetz",
     titel: "Einkommensteuergesetz",
     gesetz: "Einkommensteuergesetz (EStG)",
-    ebene: "Bund",
+    level: "Bund",
     zusammenfassung:
       "Bestimmt, wer wie viel Einkommensteuer zahlt — Tarif, Freibeträge, " +
       "abziehbare Kosten. Die Stadt bekommt davon einen Anteil, hat auf die " +
@@ -183,7 +183,7 @@ export const GESETZE: Record<GesetzSchluessel, Gesetz> = {
     kurz: "§ 1 GemFinRefG",
     titel: "Gemeindeanteil an der Einkommensteuer",
     gesetz: "Gemeindefinanzreformgesetz",
-    ebene: "Bund",
+    level: "Bund",
     zusammenfassung:
       "15 % des Aufkommens der Lohn- und veranlagten Einkommensteuer gehen " +
       "an die Gemeinden. Verteilt wird nach den Einkommensteuerbeträgen der " +
@@ -195,7 +195,7 @@ export const GESETZE: Record<GesetzSchluessel, Gesetz> = {
     kurz: "Umsatzsteuergesetz",
     titel: "Umsatzsteuergesetz",
     gesetz: "Umsatzsteuergesetz (UStG)",
-    ebene: "Bund",
+    level: "Bund",
     zusammenfassung:
       "Regelt die Mehrwertsteuer: welche Umsätze steuerpflichtig sind und " +
       "mit welchem Satz. Die Gemeinden bekommen einen Anteil am Aufkommen, " +
@@ -206,7 +206,7 @@ export const GESETZE: Record<GesetzSchluessel, Gesetz> = {
     kurz: "§ 5a GemFinRefG",
     titel: "Verteilung des Gemeindeanteils an der Umsatzsteuer",
     gesetz: "Gemeindefinanzreformgesetz",
-    ebene: "Bund",
+    level: "Bund",
     zusammenfassung:
       "Legt den Schlüssel fest, nach dem der Umsatzsteueranteil auf die " +
       "Gemeinden verteilt wird — überwiegend nach Wirtschaftskraft " +
@@ -219,7 +219,7 @@ export const GESETZE: Record<GesetzSchluessel, Gesetz> = {
     kurz: "NKAG",
     titel: "Niedersächsisches Kommunalabgabengesetz",
     gesetz: "Niedersächsisches Kommunalabgabengesetz (NKAG)",
-    ebene: "Land",
+    level: "Land",
     zusammenfassung:
       "Der Rahmen für alles, was Städte selbst erheben: örtliche Steuern " +
       "wie die Hunde- und die Vergnügungssteuer, dazu Gebühren und Beiträge. " +
@@ -231,7 +231,7 @@ export const GESETZE: Record<GesetzSchluessel, Gesetz> = {
     kurz: "NFAG",
     titel: "Niedersächsisches Finanzausgleichsgesetz",
     gesetz: "Niedersächsisches Finanzausgleichsgesetz (NFAG)",
-    ebene: "Land",
+    level: "Land",
     zusammenfassung:
       "Regelt, wie viel Geld das Land an Kommunen verteilt und nach welcher " +
       "Formel. Die Schlüsselzuweisung einer Stadt ergibt sich aus ihrem " +
@@ -244,7 +244,7 @@ export const GESETZE: Record<GesetzSchluessel, Gesetz> = {
 /** Wer den Volltext herausgibt — steht im Fähnchen unter dem Link, damit
  *  sichtbar ist, dass er von einer amtlichen Stelle kommt und nicht von uns. */
 export function herausgeber(g: Gesetz): string {
-  return g.ebene === "Bund"
+  return g.level === "Bund"
     ? "Bundesamt für Justiz, gesetze-im-internet.de"
     : "Niedersächsisches Vorschrifteninformationssystem (VORIS)";
 }

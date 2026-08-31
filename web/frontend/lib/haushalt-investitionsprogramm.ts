@@ -34,11 +34,11 @@ export type { Herkunft };
 /** Eine Zeile aus `council_investitionsmassnahmen`. */
 export type ProgrammZeile = {
   year: number;
-  ebene: "massnahme" | "teilhaushalt" | "gesamt";
-  thh_nr: number;
+  level: "massnahme" | "teilhaushalt" | "gesamt";
+  sub_budget_no: number;
   /** IPSP-Element („I10.090126"); leer auf den beiden Summenebenen. */
   code: string;
-  bezeichnung: string;
+  label: string;
   /** Gesamtinvestitionssumme — die Kosten über alle Jahre, nicht die
    *  Jahresrate. Die Jahresaufteilung liegt nicht vor. */
   grand_total: number;
@@ -100,7 +100,7 @@ export function vorhaben(
 ): ProgrammZeile[] {
   if (!daten) return [];
   return daten.massnahmen
-    .filter((z) => z.year === year && z.thh_nr === thhNr)
+    .filter((z) => z.year === year && z.sub_budget_no === thhNr)
     .sort((a, b) => b.grand_total - a.grand_total);
 }
 
@@ -111,7 +111,7 @@ export function teilhaushaltSumme(
   thhNr: number,
 ): ProgrammZeile | null {
   return daten?.teilhaushalte.find(
-    (z) => z.year === year && z.thh_nr === thhNr) ?? null;
+    (z) => z.year === year && z.sub_budget_no === thhNr) ?? null;
 }
 
 /** Vorhaben eines Jahrgangs, deren Bezeichnung ODER Nummer zur Suche passt.
@@ -134,7 +134,7 @@ export function suche(
   if (!daten || w.length < 2) return [];
   return daten.massnahmen
     .filter((z) => z.year === year
-      && (z.bezeichnung.toLowerCase().includes(w)
+      && (z.label.toLowerCase().includes(w)
           || (z.code ?? "").toLowerCase().includes(w)))
     .sort((a, b) => b.grand_total - a.grand_total);
 }
@@ -147,7 +147,7 @@ export function count(
 ): number {
   if (!daten) return 0;
   return daten.massnahmen.filter(
-    (z) => z.year === year && z.thh_nr === thhNr).length;
+    (z) => z.year === year && z.sub_budget_no === thhNr).length;
 }
 
 /** Der Jahrgang, den der Block zeigen soll.

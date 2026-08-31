@@ -59,8 +59,8 @@ def link_finden() -> str:
     """Die Adresse des aktuellen Tabellenbands von der Übersichtsseite."""
     anfrage = urllib.request.Request(isch.UEBERSICHT_URL, headers=KOPFZEILEN)
     with urllib.request.urlopen(anfrage, timeout=60) as antwort:  # noqa: S310
-        seite = antwort.read().decode("utf-8", "replace")
-    treffer = isch.LINK_MUSTER.search(seite)
+        page = antwort.read().decode("utf-8", "replace")
+    treffer = isch.LINK_MUSTER.search(page)
     if not treffer:
         raise SystemExit(
             f"Kein xlsx-Link auf {isch.UEBERSICHT_URL} gefunden. Die Seite hat "
@@ -75,13 +75,13 @@ def main() -> int:
     ap.add_argument("--trockenlauf", action="store_true")
     args = ap.parse_args()
 
-    quelle_url = None
+    source_url = None
     if args.datei:
         pfad = args.datei
     else:
-        quelle_url = link_finden()
-        print(f"Tabellenband: {quelle_url}")
-        anfrage = urllib.request.Request(quelle_url, headers=KOPFZEILEN)
+        source_url = link_finden()
+        print(f"Tabellenband: {source_url}")
+        anfrage = urllib.request.Request(source_url, headers=KOPFZEILEN)
         with urllib.request.urlopen(anfrage, timeout=180) as antwort:  # noqa: S310
             roh = antwort.read()
         tmp = tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False)
@@ -113,12 +113,12 @@ def main() -> int:
             print("  Trockenlauf — nichts geschrieben.")
             return 0
         store.save_integrierte_schulden(
-            {**gefunden, "proben": [isch.PROBE_KERNHAUSHALT]},
+            {**gefunden, "probes": [isch.PROBE_KERNHAUSHALT]},
             herkunft_mod.Herkunft(
                 art="lsn", probe=[isch.PROBE_KERNHAUSHALT],
                 label="Integrierte Schulden der Gemeinden und Gemeindeverbände",
-                url=quelle_url or isch.UEBERSICHT_URL,
-                fundstelle=f"Tabelle 2, Blatt {isch.BLATT}, "
+                url=source_url or isch.UEBERSICHT_URL,
+                citation=f"Tabelle 2, Blatt {isch.BLATT}, "
                            f"Regionalschlüssel {isch.ARS_OLDENBURG}",
                 probe_result=warum,
                 stand=f"31.12.{gefunden['year']}"))

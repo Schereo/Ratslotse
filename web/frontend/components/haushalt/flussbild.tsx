@@ -371,12 +371,12 @@ export function Flussbild({ daten, year, onJahrWechsel }: {
   // Nur die Seite benennen, die WIRKLICH klemmt: „792,6 statt 792,6 bei den
   // Ausgaben" ist keine Auskunft, sondern Rauschen.
   const luecken = ([
-    { seite: "Einnahmen", s: zeigBild.herkunft },
-    { seite: "Ausgaben", s: zeigBild.verwendung },
+    { page: "Einnahmen", s: zeigBild.herkunft },
+    { page: "Ausgaben", s: zeigBild.verwendung },
   ] as const)
     .filter(({ s }) => Math.abs(s.gesamt - s.teile) > 0.02 * s.gesamt)
-    .map(({ seite, s }) => ({
-      seite, teile: deMio(mio(s.teile)), gesamt: deMio(mio(s.gesamt)),
+    .map(({ page, s }) => ({
+      page, teile: deMio(mio(s.teile)), gesamt: deMio(mio(s.gesamt)),
     }));
 
   const format = (w: number) => deMio(mio(w));
@@ -446,7 +446,7 @@ export function Flussbild({ daten, year, onJahrWechsel }: {
         // Summe nicht tragen, wird nichts hochgerechnet und nichts gedehnt.
         <p className="rounded-lg border border-dashed border-signal/60 bg-card px-3 py-2.5 text-[12px] leading-relaxed text-foreground/85">
           Die ausgelesenen Einzelposten ergeben nicht die ausgewiesene Gesamtsumme:{" "}
-          {luecken.map((l) => `bei den ${l.seite} ${l.teile} statt ${l.gesamt}`).join(", ")}
+          {luecken.map((l) => `bei den ${l.page} ${l.teile} statt ${l.gesamt}`).join(", ")}
           &#8239;Mio.&nbsp;€. Damit fehlen Teile der Datengrundlage. Eine proportionale Grafik wäre
           irreführend; die verfügbaren Zahlen stehen deshalb nur in der Tabelle.
         </p>
@@ -459,7 +459,7 @@ export function Flussbild({ daten, year, onJahrWechsel }: {
             lang: "Alle Einnahmen im Gesamthaushalt",
             wert: zeigBild.skala,
             satz: "Gemeinsamer Finanzierungsrahmen",
-            hinweis: "Einzelne Einnahmearten sind nicht direkt bestimmten Ausgabenbereichen "
+            note: "Einzelne Einnahmearten sind nicht direkt bestimmten Ausgabenbereichen "
               + "zugeordnet.",
           }}
           skala={zeigBild.skala}

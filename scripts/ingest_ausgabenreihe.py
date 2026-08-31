@@ -75,13 +75,13 @@ def pdf_text(pfad: Path) -> str:
 def kernverwaltung(store: CouncilStore) -> dict[int, float]:
     """``{year: Summe ordentliche Aufwendungen}`` aus den Jahresabschlüssen.
 
-    Die Gesamtrechnung, also ``thh_nr IS NULL`` — dieselbe Ebene, die auch die
+    Die Gesamtrechnung, also ``sub_budget_no IS NULL`` — dieselbe Ebene, die auch die
     Statistik zählt, nur **ohne** die nicht rechtsfähigen Stiftungen. Genau
     dieser Unterschied ist die Toleranz der Gegenprobe (s.
     ``council/ausgabenreihe.gegenprobe``)."""
     werte: dict[int, float] = {}
     for p in store.get_ergebnisrechnung():
-        if p.get("thh_nr") is None and p.get("nr") == POSTEN_AUFWENDUNGEN \
+        if p.get("sub_budget_no") is None and p.get("nr") == POSTEN_AUFWENDUNGEN \
                 and p.get("result") is not None:
             werte[p["year"]] = float(p["result"])
     return werte
@@ -248,16 +248,16 @@ def main() -> int:
             gruppen: dict[tuple, list[dict]] = {}
             for z in zeilen:
                 gruppen.setdefault(
-                    (z["regelwerk"], z["quelle"], tuple(z["proben"])), []).append(z)
+                    (z["regelwerk"], z["quelle"], tuple(z["probes"])), []).append(z)
 
             geschrieben = 0
-            for (regelwerk, quelle, proben), teil in sorted(
+            for (regelwerk, quelle, probes), teil in sorted(
                     gruppen.items(), key=lambda kv: kv[1][0]["year"]):
                 spanne = _spanne([z["year"] for z in teil])
                 count = (f"{len(teil)} Jahrgänge" if len(teil) != 1
                           else "1 Jahrgang")
                 nachweis = f"{count} ({spanne}), bestanden: " \
-                    + ", ".join(ar.PROBEN_KURZ[n] for n in proben)
+                    + ", ".join(ar.PROBEN_KURZ[n] for n in probes)
                 if any(z.get("conflict_amount") for z in teil):
                     k = next(z for z in teil if z.get("conflict_amount"))
                     nachweis += (
@@ -275,10 +275,10 @@ def main() -> int:
                            else "Statistisches Jahrbuch der Stadt Oldenburg, "
                                 f"Tabelle 1102 — {ar.TITEL[regelwerk]}"),
                     stand=f"Haushaltsjahre {spanne} · {ar.ABGRENZUNG[regelwerk]}",
-                    probe=list(proben),
-                    fundstelle=_fundstelle(
+                    probe=list(probes),
+                    citation=_fundstelle(
                         regelwerk, quelle,
-                        "ausgabenreihe_jahresabschluss" in proben),
+                        "ausgabenreihe_jahresabschluss" in probes),
                     probe_result=nachweis))
                 print(f"  {ar.REGELWERK[regelwerk]}, {spanne} "
                       f"({quelle.upper()}): {count}")

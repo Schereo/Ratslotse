@@ -101,19 +101,19 @@ def _serie(store: CouncilStore, trocken: bool) -> dict:
                         stationen[0] if stationen else None)
         zeilen.append({
             "template_number": b.template_number, "year": b.year, "titel": b.titel,
-            "art": b.art, "kategorie": b.kategorie, "amount": b.amount,
+            "art": b.art, "category": b.category, "amount": b.amount,
             "amount_source": b.amount_source, "beschlossen": b.beschlossen,
             "im_rat": b.im_rat, "ratsentscheidung": b.ratsentscheidung,
             "beschluss_id": (fuehrend or {}).get("id"),
             "gremien": sorted({str(d.get("committee") or "") for d in stationen}),
-            "volltextprobe": nb.probe_volltext(b, volltexte.get(b.template_number)),
+            "fulltext_probe": nb.probe_volltext(b, volltexte.get(b.template_number)),
         })
 
     einzel = [z for z in zeilen if z["art"] != nb.ART_SCHWELLE]
     aus_titel = sum(1 for z in einzel if z["amount_source"] == "titel")
     aus_text = sum(1 for z in einzel if z["amount_source"] == "beschlussvorschlag")
     ohne = [z["template_number"] for z in einzel if z["amount_source"] is None]
-    geprueft = sum(1 for z in zeilen if z["volltextprobe"])
+    geprueft = sum(1 for z in zeilen if z["fulltext_probe"])
     quote = (aus_titel + aus_text) / len(einzel) * 100 if einzel else 0.0
 
     print(f"  {len(zeilen)} Vorlagen · Betrag aus dem Titel {aus_titel}, "
@@ -135,7 +135,7 @@ def _serie(store: CouncilStore, trocken: bool) -> dict:
         art="ris",
         url="https://www.oldenburg-kreis.de/bi/",
         label="Vorlagen im Ratsinformationssystem der Stadt Oldenburg",
-        fundstelle="Titel und Beschlussvorschlag der Vorlage",
+        citation="Titel und Beschlussvorschlag der Vorlage",
         probe=nb.PROBE_VOLLTEXT,
         stand=f"Haushaltsjahre {min(z['year'] for z in zeilen if z['year'])}"
               f"–{max(z['year'] for z in zeilen if z['year'])}",
@@ -157,7 +157,7 @@ def _berichte(store: CouncilStore, serie: list[nb.Bewilligung],
             continue
         kap = nb.kapitel3(text, year)
         if not kap:
-            print(f"  {year}: Kapitel 3 nicht lesbar (Dokument {dokument})")
+            print(f"  {year}: Kapitel 3 nicht readable (Dokument {dokument})")
             continue
         probe = nb.probe_tabelle(kap)
         abgleich = nb.probe_ratsabgleich(
@@ -188,9 +188,9 @@ def _berichte(store: CouncilStore, serie: list[nb.Bewilligung],
               "count_capital": k.count_capital,
               "amount_capital": k.amount_capital} for k in kap.kanaele],
             h.Herkunft(
-                art="ris", dokument_id=dokument,
+                art="ris", document_id=dokument,
                 label=BERICHT_LABEL.format(year=year),
-                fundstelle="Kapitel 3 — Über- und außerplanmäßige "
+                citation="Kapitel 3 — Über- und außerplanmäßige "
                            "Aufwendungen und Auszahlungen",
                 probe=[nb.PROBE_TABELLE, nb.PROBE_RAT],
                 stand=f"Haushaltsjahr {year}",

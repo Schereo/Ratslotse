@@ -131,7 +131,7 @@ von 2025 wird frühestens Mitte 2026 beschlossen. Tabelle 1102 führt **2025
 schon** (850.170 T€). Die Gesamtsumme des abgelaufenen Jahres steht hier also
 Monate vor dem Abschluss — die einzige Stelle im Bereich, an der das so ist.
 Sie trägt dort die Pro-Kopf- und die Zweitquellenprobe, aber noch nicht die
-Gegenprobe gegen den Abschluss; ``proben`` je Zeile sagt das.
+Gegenprobe gegen den Abschluss; ``probes`` je Zeile sagt das.
 """
 from __future__ import annotations
 
@@ -319,7 +319,7 @@ def erkenne(text: str) -> dict[str, tuple[int, int]]:
 
 def parse_pdf(text: str) -> list[dict]:
     """Die Datenzeilen des PDFs → ``{year, einwohner, amount, je_einwohner,
-    revidiert, quelle}``, Beträge in Euro.
+    revised, quelle}``, Beträge in Euro.
 
     Beide Blöcke stehen auf derselben Seite untereinander; getrennt wird am
     Titel des zweiten. Der Schnitt ist hier weniger kritisch als bei 1107,
@@ -335,11 +335,11 @@ def parse_pdf(text: str) -> list[dict]:
         # Drei Wertspalten: Einwohner, Betrag (Tausend Euro), je Einwohner.
         if len(felder) != 3 or any(w is None for w, _ in felder):
             continue
-        (ew, _), (amount, _), (kopf, marke) = felder
+        (ew, _), (amount, _), (kopf, mark) = felder
         zeilen.append({
             "year": int(m.group(1)), "einwohner": int(ew or 0),
             "amount": (amount or 0.0) * TAUSEND, "je_einwohner": kopf,
-            "revidiert": marke == "r", "quelle": "pdf",
+            "revised": mark == "r", "quelle": "pdf",
         })
     return zeilen
 
@@ -364,7 +364,7 @@ def parse_csv(csv_text: str) -> list[dict]:
         zeilen.append({
             "year": int(c[0]), "einwohner": int(c[1]),
             "amount": float(c[2]) * TAUSEND, "je_einwohner": float(c[3]),
-            "revidiert": False, "quelle": "csv",
+            "revised": False, "quelle": "csv",
         })
     return zeilen
 
@@ -455,8 +455,8 @@ def lies(csv_kameral: str, csv_doppik: str, pdf_text: str | None = None,
     ``zeilen``
         Die übernommenen Jahrgänge, aufsteigend. Jeder trägt ``regelwerk``,
         ``quelle`` (welche Datei den Betrag geliefert hat), die Namen seiner
-        bestandenen ``proben`` und — wo die Quellen sich widersprachen —
-        ``conflict_amount``/``konflikt_quelle``.
+        bestandenen ``probes`` und — wo die Quellen sich widersprachen —
+        ``conflict_amount``/``conflict_source``.
     ``verworfen``
         Jahrgänge, die keine tragfähige Probe bestanden haben, mit ``grund``.
         Sie stehen nirgends in der Datenbank.
@@ -468,7 +468,7 @@ def lies(csv_kameral: str, csv_doppik: str, pdf_text: str | None = None,
     ``fehlende_jahrgaenge``
         Was aus den angekündigten Spannen fehlt, je Regelwerk — und dazu die
         Löcher in der CSV-Reihe selbst.
-    ``proben``
+    ``probes``
         Was gerechnet wurde, in Zahlen — Grundlage des Beleg-Messwerts.
     """
     ergebnisrechnung = ergebnisrechnung or {}
@@ -526,12 +526,12 @@ def lies(csv_kameral: str, csv_doppik: str, pdf_text: str | None = None,
             verworfen.append({"year": year, "grund": grund})
             continue
 
-        proben = ["ausgabenreihe_prokopf"]
+        probes = ["ausgabenreihe_prokopf"]
         if len(kand) == 2:
             ok, _ = zweitquellenprobe(kand[0], kand[1])
             zaehler["zweitquelle_bestanden" if ok else "zweitquelle_gerissen"] += 1
             if ok:
-                proben.append("ausgabenreihe_zweitquelle")
+                probes.append("ausgabenreihe_zweitquelle")
 
         g_ok, anteil = gegenprobe(gewaehlt["amount"], ergebnisrechnung.get(year))
         if g_ok is None:
@@ -550,15 +550,15 @@ def lies(csv_kameral: str, csv_doppik: str, pdf_text: str | None = None,
                              f"{de_zahl(GEGENPROBE_TOLERANZ * 100, 1)} % für die "
                              f"nicht rechtsfähigen Stiftungen)"})
                 continue
-            proben.append("ausgabenreihe_jahresabschluss")
+            probes.append("ausgabenreihe_jahresabschluss")
 
         zeile = {
             "year": year, "regelwerk": regelwerk_von(year),
             "amount": gewaehlt["amount"], "quelle": gewaehlt["quelle"],
-            "revidiert": bool(gewaehlt.get("revidiert")),
+            "revised": bool(gewaehlt.get("revised")),
             "conflict_amount": konflikt["amount"] if konflikt else None,
-            "konflikt_quelle": konflikt["quelle"] if konflikt else None,
-            "proben": proben,
+            "conflict_source": konflikt["quelle"] if konflikt else None,
+            "probes": probes,
         }
         zeilen.append(zeile)
         if konflikt:
@@ -595,7 +595,7 @@ def lies(csv_kameral: str, csv_doppik: str, pdf_text: str | None = None,
         "konflikte": konflikte,
         "spannen": spannen,
         "fehlende_jahrgaenge": luecken,
-        "proben": zaehler,
+        "probes": zaehler,
     }
 
 
@@ -603,7 +603,7 @@ def probennachweis(result: dict) -> str:
     """Der Messwert für die Herkunft — „was ist wirklich gelaufen?".
 
     Steht später im Beleg auf der Seite; deshalb Zahlen und keine Adjektive."""
-    p = result["proben"]
+    p = result["probes"]
     teile = [f"Pro-Kopf-Probe {p['prokopf_bestanden']} von "
              f"{p['prokopf_bestanden'] + p['prokopf_gerissen']} gelesenen Zeilen"]
     zwei = p["zweitquelle_bestanden"] + p["zweitquelle_gerissen"]

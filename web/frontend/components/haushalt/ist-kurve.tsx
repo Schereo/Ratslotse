@@ -38,8 +38,8 @@ export function IstKurve({ reihe, einheit = "Mio. Euro" }: {
   const beschreibungId = useId();
   const schmal = breite < 520;
   const fs = schmal
-    ? { achse: 13, year: 13, marke: 12.5, wert: 14 }
-    : { achse: 11, year: 11, marke: 11, wert: 13 };
+    ? { achse: 13, year: 13, mark: 12.5, wert: 14 }
+    : { achse: 11, year: 11, mark: 11, wert: 13 };
   const W = breite, X0 = schmal ? 38 : 42, X1 = W - 20;
   if (reihe.length < 2) return null;
 
@@ -91,7 +91,7 @@ export function IstKurve({ reihe, einheit = "Mio. Euro" }: {
   const marken = rueckgaenge
     .map((r) => {
       const text = `${r.year}: ${deMio(r.delta)}`;
-      const w = textBreite(text, fs.marke);
+      const w = textBreite(text, fs.mark);
       return {
         ...r, text, w,
         // In die Zeichenfläche klemmen: links stehen die Achsenzahlen.
@@ -102,13 +102,13 @@ export function IstKurve({ reihe, einheit = "Mio. Euro" }: {
     .sort((a, b) => a.mitte - b.mitte)
     .map((m) => {
       const kasten = (ty: number): Kasten =>
-        ({ x1: m.mitte - m.w / 2, x2: m.mitte + m.w / 2, y1: ty - fs.marke, y2: ty + 3 });
+        ({ x1: m.mitte - m.w / 2, x2: m.mitte + m.w / 2, y1: ty - fs.mark, y2: ty + 3 });
       // Erst über dem Punkt, zeilenweise höher; wenn oben nichts frei ist
       // (Einbruch im letzten Jahr, direkt am großen Endwert), darunter.
-      const zeile = fs.marke + 4;
+      const zeile = fs.mark + 4;
       const kandidaten: number[] = [];
-      for (let n = 0; n < 6 && m.py - 9 - n * zeile - fs.marke > YTOP; n++) kandidaten.push(m.py - 9 - n * zeile);
-      kandidaten.push(Math.min(m.py + 9 + fs.marke, Y0 - 4));
+      for (let n = 0; n < 6 && m.py - 9 - n * zeile - fs.mark > YTOP; n++) kandidaten.push(m.py - 9 - n * zeile);
+      kandidaten.push(Math.min(m.py + 9 + fs.mark, Y0 - 4));
       const ty = kandidaten.find((k) => !belegt.some((b) => stoert(kasten(k), b))) ?? kandidaten.at(-1)!;
       belegt.push(kasten(ty));
       return { ...m, ty };
@@ -197,14 +197,14 @@ export function IstKurve({ reihe, einheit = "Mio. Euro" }: {
             {(Math.abs(m.mitte - x(m.i)) > 2 || m.ty < m.py - 12 || m.ty > m.py) && (
               <line x1={x(m.i)} y1={m.py + (m.ty > m.py ? 6 : -6)}
                 x2={Math.min(Math.max(x(m.i), m.mitte - m.w / 2), m.mitte + m.w / 2)}
-                y2={m.ty > m.py ? m.ty - fs.marke - 2 : m.ty + 4}
+                y2={m.ty > m.py ? m.ty - fs.mark - 2 : m.ty + 4}
                 strokeWidth={1} className="stroke-signal" opacity={0.45} />
             )}
             <circle cx={x(m.i)} cy={m.py} r={4} className="fill-card stroke-signal" strokeWidth={2} />
           </g>
         ))}
         {marken.map((m) => (
-          <text key={m.year} x={m.mitte} y={m.ty} textAnchor="middle" fontSize={fs.marke}
+          <text key={m.year} x={m.mitte} y={m.ty} textAnchor="middle" fontSize={fs.mark}
             className="fill-signal stroke-card" {...halo}>{m.text}</text>
         ))}
 
@@ -239,7 +239,7 @@ export function IstKurve({ reihe, einheit = "Mio. Euro" }: {
       </svg>
 
       <Ableseleiste className="mt-2" stelle={ableseStellen[ablesen.aktiv]} steuerung={ablesen}
-        hinweis="Jahr überfahren, antippen oder mit den Pfeiltasten wechseln." />
+        note="Jahr überfahren, antippen oder mit den Pfeiltasten wechseln." />
 
       <button type="button" onClick={() => setTabelle((t) => !t)}
         aria-expanded={tabelle} className="mt-2 text-[12px] font-semibold text-primary">

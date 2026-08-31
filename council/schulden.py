@@ -212,12 +212,12 @@ def parse(text: str) -> list[dict]:
             zeilen.append({"year": int(m.group(1)), "unlesbar": roh.strip()})
             continue
         zeile: dict = {"year": int(m.group(1)), "unlesbar": None}
-        for (feld, _), (wert, marke) in zip(SPALTEN, felder):
+        for (feld, _), (wert, mark) in zip(SPALTEN, felder):
             # Der Pro-Kopf-Betrag steht schon in Euro, die Schuldenarten nicht.
             zeile[feld] = wert if feld == "je_einwohner" else wert * TAUSEND
-            if marke == "r":
-                zeile["revidiert"] = True
-        zeile.setdefault("revidiert", False)
+            if mark == "r":
+                zeile["revised"] = True
+        zeile.setdefault("revised", False)
         zeilen.append(zeile)
     return zeilen
 
@@ -265,7 +265,7 @@ def lies(text: str, einwohner: dict[int, int] | None = None) -> dict:
     ``verworfen``
         Jahrgänge, die **gar keine** Probe bestanden haben, mit Grund. Sie
         stehen nirgends in der Datenbank.
-    ``proben``
+    ``probes``
         Was gerechnet wurde, in Zahlen — Grundlage des Beleg-Texts.
     """
     einwohner = einwohner or {}
@@ -315,7 +315,7 @@ def lies(text: str, einwohner: dict[int, int] | None = None) -> dict:
             uebernommen["aufteilung_verworfen"] = round(deviation)
         else:
             uebernommen["aufteilung_verworfen"] = None
-        uebernommen["proben"] = bestanden
+        uebernommen["probes"] = bestanden
         zeilen.append(uebernommen)
 
     jahre = sorted(z["year"] for z in zeilen)
@@ -328,7 +328,7 @@ def lies(text: str, einwohner: dict[int, int] | None = None) -> dict:
         # Der Titel nennt seine Spanne selbst — was daraus fehlt, ist ein
         # Befund und keine Geschmacksfrage.
         "fehlende_jahrgaenge": luecken,
-        "proben": {
+        "probes": {
             "summe_bestanden": summe_ok, "summe_gerissen": summe_gerissen,
             "prokopf_bestanden": kopf_ok, "prokopf_gerissen": kopf_gerissen,
             "prokopf_ohne_einwohnerzahl": ohne_einwohner,
@@ -340,7 +340,7 @@ def probennachweis(result: dict) -> str:
     """Der Messwert für die Herkunft — „was ist wirklich gelaufen?".
 
     Steht später im Beleg auf der Seite; deshalb Zahlen und keine Adjektive."""
-    p = result["proben"]
+    p = result["probes"]
     teile = [f"Summenprobe {p['summe_bestanden']} von "
              f"{p['summe_bestanden'] + p['summe_gerissen']} Jahrgängen"]
     geprueft = p["prokopf_bestanden"] + p["prokopf_gerissen"]

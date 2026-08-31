@@ -66,7 +66,7 @@ COUNCIL_DB = ROOT / "data" / "council.sqlite"
 
 
 def _notify_new_matches(ratslotse, council, owner_id: int, topic_name: str, new_ids: list[int],
-                        *, stichtag: str) -> int:
+                        *, as_of_date: str) -> int:
     """13a-D: EIN Push/Mail je Thema — der Titel mit der größten Tragweite
     führt (COALESCE impact, importance — nicht der erste oder kurioseste),
     Rest als „— und n weitere". Tap öffnet die Themen-Trefferliste.
@@ -84,7 +84,7 @@ def _notify_new_matches(ratslotse, council, owner_id: int, topic_name: str, new_
     — für die Person ist es dieselbe Nachricht und gehört unter denselben
     Schalter.
 
-    ``stichtag`` (ISO-Datum) ist der Alters-Riegel: Gemeldet wird nur, was seit
+    ``as_of_date`` (ISO-Datum) ist der Alters-Riegel: Gemeldet wird nur, was seit
     diesem Tag getagt hat. „Neu" heißt hier nämlich bloß „stand letzte Woche
     noch nicht in der Trefferliste" — und das trifft auch uralte Beschlüsse, die
     erst jetzt über die Relevanzschwelle rutschen. Am 30.08.2026 ging so eine
@@ -110,7 +110,7 @@ def _notify_new_matches(ratslotse, council, owner_id: int, topic_name: str, new_
     # Ohne Sitzungsdatum lieber schweigen: `get_decision` verbindet mit
     # `council_sessions`, ein leeres Feld wäre also ein kaputter Datensatz —
     # kein Grund, jemanden zu wecken.
-    decisions = [d for d in decisions if (d.get("session_date") or "") >= stichtag]
+    decisions = [d for d in decisions if (d.get("session_date") or "") >= as_of_date]
     if not decisions:
         return 0
     decisions.sort(key=lambda d: (d.get("impact") if d.get("impact") is not None
@@ -166,7 +166,7 @@ def process(top_k: int = DECKEL, threshold: float = SCHWELLE, *, ohne_meldungen:
         # Einmal je Lauf gerechnet, damit ein Lauf über Mitternacht nicht in der
         # Mitte die Grenze verschiebt — und mit derselben Funktion wie die
         # „n in 6 Monaten" der Themen-Karte.
-        stichtag = vor_sechs_monaten().isoformat()
+        as_of_date = vor_sechs_monaten().isoformat()
 
         by_owner = ratslotse.get_all_owner_topics()  # {owner_id: [TopicRow]}
         n_topics = sum(len(v) for v in by_owner.values())
@@ -206,7 +206,7 @@ def process(top_k: int = DECKEL, threshold: float = SCHWELLE, *, ohne_meldungen:
                 new_ids = [int(did) for did, _ in hits if int(did) not in old_ids]
                 if new_ids and old_ids and not ohne_meldungen:
                     notified += _notify_new_matches(ratslotse, council, owner_id, t.name, new_ids,
-                                                    stichtag=stichtag)
+                                                    as_of_date=as_of_date)
         # Eingereiht ist nicht zugestellt: Ohne diesen Aufruf läge alles bis zum
         # nächsten Cron-Job (7 Uhr) still. Die Nachtruhe verschiebt ohnehin, was
         # jetzt nicht raus darf — dieser Lauf startet sonntags um 3 Uhr.

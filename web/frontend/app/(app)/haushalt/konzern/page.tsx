@@ -34,10 +34,10 @@ import { Abschnitte, ANKER_KLASSE } from "@/components/haushalt/abschnitte";
 import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 import { SchrittPfad } from "@/components/haushalt/schritt-pfad";
 import { Seitenbuehne, SeitenbuehneLaedt, ZaehlZahl } from "@/components/haushalt/seitenbuehne";
-import { KonzernAbschnitt } from "@/components/haushalt/abschnitt-konzern";
-import { GesellschaftenAbschnitt } from "@/components/haushalt/abschnitt-gesellschaften";
-import { BetriebeAbschnitt } from "@/components/haushalt/abschnitt-betriebe";
-import { GebuehrenAbschnitt } from "@/components/haushalt/abschnitt-gebuehren";
+import { KonzernAbschnitt } from "@/components/haushalt/section-konzern";
+import { GesellschaftenAbschnitt } from "@/components/haushalt/section-gesellschaften";
+import { BetriebeAbschnitt } from "@/components/haushalt/section-betriebe";
+import { GebuehrenAbschnitt } from "@/components/haushalt/section-gebuehren";
 
 const FELDER = ["wirtschaftsplaene", "gebuehren", "gebuehrensaetze", "herkunft"] as const;
 

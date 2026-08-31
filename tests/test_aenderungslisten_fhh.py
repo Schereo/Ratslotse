@@ -57,16 +57,16 @@ def kopf(year):
     ]
 
 
-def position(y, lfd, thh, werte, produkt="I10.089904.500",
-             bezeichnung=("Quartiersgarage",), seite="70"):
+def position(y, seq, sub_budget, werte, product="I10.089904.500",
+             label=("Quartiersgarage",), page="70"):
     """Eine Positionszeile. `werte`: dict aus KANTE-Schlüssel → Text."""
-    aus = [w(54, 59, y, str(lfd)), w(78, 88, y, thh)]
-    if seite:
-        aus.append(w(105, 120, y, seite))
-    if produkt:
-        aus.append(w(134, 194, y, produkt))
+    aus = [w(54, 59, y, str(seq)), w(78, 88, y, sub_budget)]
+    if page:
+        aus.append(w(105, 120, y, page))
+    if product:
+        aus.append(w(134, 194, y, product))
     x = 200
-    for teil in bezeichnung:
+    for teil in label:
         aus.append(w(x, x + 5 * len(teil), y, teil))
         x += 5 * len(teil) + 5
     for feld, text in werte.items():
@@ -134,7 +134,7 @@ def test_miniliste_rundlauf():
                                  "neu": "400.000"}),
         *position(180, 2, "04", {"soll": "500.000", "ein": "0", "aus": "230.000",
                                  "neu": "730.000"},
-                  produkt="I10.093753.520", bezeichnung=("VHS",)),
+                  product="I10.093753.520", label=("VHS",)),
     ]
     summen = summenblock(2026, [
         ("Verwaltungsentwurf Stand: 01.10.25", "31.350.463", "93.502.920",
@@ -145,10 +145,10 @@ def test_miniliste_rundlauf():
     aus = parse_fhh_seiten([tabelle, summen], [linien([100, 150, 210]), linien([], [])])
 
     z1, z2 = aus.zeilen
-    assert (z1.lfd, z1.thh, z1.produkt) == (1, 3, "I10.089904.500")
+    assert (z1.seq, z1.sub_budget, z1.product) == (1, 3, "I10.089904.500")
     assert (z1.planned_draft, z1.inflow, z1.outflow, z1.planned_new) == (
         0, 0, 400_000, 400_000)
-    assert z2.bezeichnung == "VHS"
+    assert z2.label == "VHS"
     assert z2.planned_new == 730_000
     # Die Zusammenstellung: Entwurf, eine Liste, die Endsumme ohne Beschriftung.
     assert [s.typ for s in aus.summen] == ["entwurf", "liste", "endsumme"]
@@ -201,8 +201,8 @@ def test_betraege_unter_der_grundlinie():
     Position. Nach Abstand zugeordnet rutschte alles um eine Zeile."""
     tabelle = kopf(2026) + [
         *position(104, 1, "03", {}),
-        *position(182, 2, "04", {}, produkt="I10.093753.520",
-                  bezeichnung=("Zweites",)),
+        *position(182, 2, "04", {}, product="I10.093753.520",
+                  label=("Zweites",)),
         # Die Beträge zu Position 1 stehen 67 pt tiefer, die zu Position 2
         # 45 pt — beide vor der jeweils nächsten Position.
         *[amount(t, KANTE[k], 171)
@@ -257,7 +257,7 @@ def test_klammerbetrag_und_einstelliger_teilhaushalt():
     ])
     aus = parse_fhh_seiten([tabelle, summen], [linien([100, 150]), linien([], [])])
     z = aus.zeilen[0]
-    assert z.thh == 8
+    assert z.sub_budget == 8
     assert z.planned_new == 275_900
 
 
@@ -270,7 +270,7 @@ def test_ohne_entwurf_und_endsumme():
         *position(120, 1, "03", {"soll": "0", "ein": "0", "aus": "400.000",
                                  "neu": "400.000"}),
         *position(180, 2, "04", {"soll": "0", "ein": "0", "aus": "195.000",
-                                 "neu": "195.000"}, bezeichnung=("Zweites",)),
+                                 "neu": "195.000"}, label=("Zweites",)),
     ]
     summen = summenblock(2026, [
         ("Änderungsliste Verw. I", "0", "400.000", "-400.000", None, None),

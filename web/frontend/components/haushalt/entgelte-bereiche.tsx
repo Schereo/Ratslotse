@@ -22,7 +22,7 @@
 //     ein — in Millionen gerundet steht dort „0,0 Mio. € · 0 %", und das liest
 //     sich als „nichts", obwohl wir den Betrag genau kennen. Deshalb `amount()`
 //     mit passender Einheit und „unter 1 %" statt einer gerundeten Null.
-//  4. **Die Namen kommen aus den Daten, nicht von hier.** `thh_name` ist die
+//  4. **Die Namen kommen aus den Daten, nicht von hier.** `sub_budget_name` ist die
 //     Bezeichnung des Dokuments („Klima/Umwelt/Mobilität/Bau/Grün/Friedh."),
 //     Abkürzungen inklusive. Eine schönere Fassung im Frontend wäre eine
 //     zweite Wahrheit neben der Quelle und driftete beim nächsten Jahrgang.
@@ -44,8 +44,8 @@ export function EntgelteBereiche({ zeilen, year, beleg }: {
   // hat dort keine Null, sondern keine Zeile. Beides als 0 zu zeichnen machte
   // aus „kommt hier nicht vor" ein „hat nichts eingenommen".
   const bereiche: Bereich[] = zeilen
-    .filter((z) => z.thh_name && z.result != null && z.result > 0)
-    .map((z) => ({ name: z.thh_name as string, amount: z.result as number }))
+    .filter((z) => z.sub_budget_name && z.result != null && z.result > 0)
+    .map((z) => ({ name: z.sub_budget_name as string, amount: z.result as number }))
     .sort((a, b) => b.amount - a.amount);
 
   if (bereiche.length < 2) return null;

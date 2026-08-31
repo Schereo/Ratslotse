@@ -119,7 +119,7 @@ function Karte({ daten, g, onOeffnen }: {
           )}
         </span>
         <span className="font-mono text-[9.5px] uppercase tracking-[0.1em] text-muted-foreground">
-          Bericht {g.bericht_jahr}
+          Bericht {g.report_year}
         </span>
       </div>
 
@@ -167,7 +167,7 @@ function Karte({ daten, g, onOeffnen }: {
 
       <div className="relative z-10 flex items-center justify-between gap-3 border-t border-dashed border-border pt-2 text-[11px] text-muted-foreground">
         <span>
-          Beteiligungsbericht {g.bericht_jahr} · Abschnitt {g.gliederung}
+          Beteiligungsbericht {g.report_year} · Abschnitt {g.classification}
           <Beleg q="beteiligungsbericht" />
         </span>
         <ArrowRight size={13} strokeWidth={2}

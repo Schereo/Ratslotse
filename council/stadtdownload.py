@@ -183,7 +183,7 @@ def berichtslinks(html: str) -> list[tuple[int, str]]:
     Jahreszahl darin immer das Berichtsjahr ist.
 
     Endgültig entscheidet ohnehin das Dokument selbst: ``beteiligungsbericht.
-    jahrgang()`` liest das Berichtsjahr aus der Kopfzeile, und wenn beide
+    budget_year()`` liest das Berichtsjahr aus der Kopfzeile, und wenn beide
     auseinanderlaufen, gilt das Dokument (s. Cron)."""
     aus: dict[int, str] = {}
     for pfad in _PDF_LINK.findall(html or ""):

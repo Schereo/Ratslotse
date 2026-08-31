@@ -110,12 +110,12 @@ def main() -> int:
             ablage = Path(tmp)
             for ort in args.berichte:
                 pfad, url = _holen(ort, ablage)
-                jahrgang = gs.lies_bericht(str(pfad))
-                print(f"Erhebungsjahr {jahrgang.year} "
-                      f"({jahrgang.stand or 'ohne Erscheinungsvermerk'}):")
+                budget_year = gs.lies_bericht(str(pfad))
+                print(f"Erhebungsjahr {budget_year.year} "
+                      f"({budget_year.stand or 'ohne Erscheinungsvermerk'}):")
 
                 # --- Probe 1: die Rechnung in der Zeile ---
-                zeilen, verworfen = gs.zeilen(jahrgang)
+                zeilen, verworfen = gs.zeilen(budget_year)
                 for v in verworfen:
                     print(f"    ÜBERSPRUNGEN {v['stadt']}: {v['grund']} — "
                           f"{v['result']}")
@@ -125,7 +125,7 @@ def main() -> int:
                     continue
 
                 # --- Probe 2: dasselbe im zweiten Blatt ---
-                blatt = gs.probe_blaetter(jahrgang)
+                blatt = gs.probe_blaetter(budget_year)
                 print(f"  Blattprobe 6.1 gegen 6.2: {blatt['result']}")
                 if not blatt["ok"]:
                     for a in blatt["abweichungen"][:8]:
@@ -135,34 +135,34 @@ def main() -> int:
                     continue
 
                 # --- Probe 3: der Hebesatz gegen das Jahrbuch ---
-                proben = ["gewst_summenprobe", "gewst_blattprobe"]
+                probes = ["gewst_summenprobe", "gewst_blattprobe"]
                 ergebnisse = [f"{len(zeilen)} Städte nachgerechnet",
                               blatt["result"]]
-                erwartet = gs.hebesatz_im_jahr(treppe, jahrgang.year)
-                hebe = gs.probe_hebesatz(jahrgang, gs.OLDENBURG, erwartet)
+                erwartet = gs.hebesatz_im_jahr(treppe, budget_year.year)
+                hebe = gs.probe_hebesatz(budget_year, gs.OLDENBURG, erwartet)
                 print(f"  Hebesatzprobe: {hebe['result']}")
                 if hebe["ok"] is False:
                     print("  ABBRUCH für diesen Jahrgang: Landesamt und "
                           "Jahrbuch nennen verschiedene Hebesätze.")
                     continue
                 if hebe["ok"]:
-                    proben.append("gewst_hebesatzprobe")
+                    probes.append("gewst_hebesatzprobe")
                     ergebnisse.append(hebe["result"])
 
-                geschrieben[jahrgang.year] = store.save_gewerbesteuerstatistik(
+                geschrieben[budget_year.year] = store.save_gewerbesteuerstatistik(
                     zeilen,
                     h.Herkunft(
-                        art="lsn", probe=proben,
-                        label=f"Gewerbesteuerstatistik {jahrgang.year} "
+                        art="lsn", probe=probes,
+                        label=f"Gewerbesteuerstatistik {budget_year.year} "
                               f"(Statistischer Bericht L IV 13)",
-                        url=url or QUELLEN_STAND.get(jahrgang.year),
-                        fundstelle="Blatt 6.1 — Festsetzung und Zerlegung nach "
+                        url=url or QUELLEN_STAND.get(budget_year.year),
+                        citation="Blatt 6.1 — Festsetzung und Zerlegung nach "
                                    "Sitz des Betriebes/der Betriebsstätte, "
                                    "kreisfreie Städte; Blatt 6.2 — dieselben "
                                    "Zahlen je Gemeinde, mit dem Hebesatz",
                         probe_result=" · ".join(ergebnisse),
-                        stand=jahrgang.stand))
-                print(f"  gespeichert: {geschrieben[jahrgang.year]} Städte")
+                        stand=budget_year.stand))
+                print(f"  gespeichert: {geschrieben[budget_year.year]} Städte")
 
         store.herkunft_aufraeumen()
         luecken = {t: n for t, n in store.herkunft_luecken().items()

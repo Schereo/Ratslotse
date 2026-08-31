@@ -24,7 +24,7 @@ def main(db: str | None = None) -> dict:
     store = CouncilStore(db or "data/council.sqlite")
     conn = store._conn  # noqa: SLF001 — Ops-Skript, bewusst direkt auf der DB
 
-    zaehler = {"vorlagen": 0, "amt": 0, "klima": 0, "finanzen": 0, "vorschlag": 0,
+    zaehler = {"vorlagen": 0, "office": 0, "klima": 0, "finanzen": 0, "vorschlag": 0,
                "orte": 0, "kvonr": 0, "deviation": 0}
 
     rows = conn.execute("SELECT kvonr, raw_text FROM council_vorlagen "
@@ -36,17 +36,17 @@ def main(db: str | None = None) -> dict:
     updates = []
     for kvonr, text in rows:
         aus = ernte.auswirkungen(text)
-        amt = ernte.federfuehrendes_amt(text)
+        office = ernte.federfuehrendes_amt(text)
         vorschlag = ernte.beschlussvorschlag(text)
-        updates.append((amt, aus["klima"], aus["finanzen"], vorschlag, kvonr))
+        updates.append((office, aus["klima"], aus["finanzen"], vorschlag, kvonr))
         zaehler["vorlagen"] += 1
-        zaehler["amt"] += bool(amt)
+        zaehler["office"] += bool(office)
         zaehler["klima"] += bool(aus["klima"])
         zaehler["finanzen"] += bool(aus["finanzen"])
         zaehler["vorschlag"] += bool(vorschlag)
     with conn:
         conn.executemany(
-            "UPDATE council_vorlagen SET amt = ?, klima_check = ?, "
+            "UPDATE council_vorlagen SET office = ?, klima_check = ?, "
             "finanz_check = ?, beschlussvorschlag = ? WHERE kvonr = ?", updates)
 
     prot = conn.execute("SELECT ksinr, raw_text FROM council_protocols "

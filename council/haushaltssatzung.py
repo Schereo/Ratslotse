@@ -84,7 +84,7 @@ class Haushaltssatzung:
     year: int
     #: 0 = die Satzung selbst, 1.. = Nachtrag. Nachträge liest dieses Modul
     #: (noch) nicht; das Feld hält den Platz und den Primärschlüssel frei.
-    nachtrag: int
+    supplement: int
     #: Immer ``entwurf``, solange nur das Ratsinformationssystem die Quelle ist
     #: (s. Modul-Kopf). Der Wert ist bewusst kein Boolean: Käme je eine
     #: beschlossene Fassung dazu, stünde sie daneben und nicht an ihrer Stelle.
@@ -235,7 +235,7 @@ def parse_satzung(text: str, template_number: str | None = None) -> Haushaltssat
     ve = _VE.search(t)
 
     return Haushaltssatzung(
-        year=int(year.group(1)), nachtrag=0,
+        year=int(year.group(1)), supplement=0,
         # Der Bestand kennt nur Entwürfe (s. Modul-Kopf). Sollte je ein
         # Dokument ohne jeden Entwurfs-Vermerk auftauchen, heißt es hier
         # `unbekannt` und NICHT `beschlossen` — behauptet wird nichts.
@@ -254,22 +254,22 @@ def parse_satzung(text: str, template_number: str | None = None) -> Haushaltssat
 
 
 def herkunft_fuer(satzung: Haushaltssatzung, *, url: str | None,
-                  dokument_id: int | None, label: str | None,
+                  document_id: int | None, label: str | None,
                   hebesatz_geprueft: str | None = None) -> Herkunft:
     """Die Herkunft: die Anlage, und was an ihr nachgerechnet wurde."""
-    proben = [PROBE_FINANZHAUSHALT]
+    probes = [PROBE_FINANZHAUSHALT]
     result = (f"Einzahlungen {satzung.in_total:,.0f} € und Auszahlungen "
                 f"{satzung.out_total:,.0f} € aus je drei Zeilen nachgerechnet")
     if hebesatz_geprueft:
-        proben.append(PROBE_HEBESATZ)
+        probes.append(PROBE_HEBESATZ)
         result += f"; {hebesatz_geprueft}"
     return Herkunft(
         art="ris",
-        probe=proben,
-        dokument_id=dokument_id,
+        probe=probes,
+        document_id=document_id,
         label=label or f"Haushaltssatzung {satzung.year}",
         url=url,
-        fundstelle=f"Haushaltssatzung {satzung.year}, §§ 1–5",
+        citation=f"Haushaltssatzung {satzung.year}, §§ 1–5",
         probe_result=result,
         # Die Fassung gehört in den STAND und nicht in eine Fußnote: Wer diese
         # Zahlen liest, liest einen Vorschlag der Verwaltung.

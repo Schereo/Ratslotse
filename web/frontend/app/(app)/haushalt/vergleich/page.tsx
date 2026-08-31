@@ -58,14 +58,14 @@ const QUELLEN = ["lsn_finanzausgleich", "lsn_realsteuern", "vergleich_2018"] as 
  *  weiter, sie stehen in der Technik-Doku, aber sie sagen einer Leserin
  *  nichts über die Steuerkraft Oldenburgs. */
 function Fundstelle({ h }: { h: Herkunft | null }) {
-  if (!h?.fundstelle) return null;
+  if (!h?.citation) return null;
   return (
     <div className="mt-3 border-t border-dashed border-border pt-2.5">
       <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
         Woher diese Zahlen kommen
       </p>
       <p className="mt-1 max-w-[86ch] text-[11.5px] leading-relaxed text-muted-foreground">
-        {h.fundstelle}{h.stand ? ` · ${h.stand}` : ""}
+        {h.citation}{h.stand ? ` · ${h.stand}` : ""}
       </p>
     </div>
   );
@@ -78,7 +78,7 @@ function Abschnitt({ kicker, zusatz, id, children }: {
   // eigenen Platz aus, nicht an der Fensterbreite — am Desktop liegt die Karte
   // neben der 240-px-Seitenleiste, auf dem iPad nicht (Designsprache §4).
   return (
-    <section id={id} className="@container/abschnitt scroll-mt-20 rounded-2xl border border-border bg-card p-4 shadow-sm">
+    <section id={id} className="@container/section scroll-mt-20 rounded-2xl border border-border bg-card p-4 shadow-sm">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
           {kicker}
@@ -400,7 +400,7 @@ export default function VergleichSeite() {
               </p>
               <p>
                 Das müssen wir nicht selbst herleiten. <strong>Die Stadt Oldenburg hat
-                genau diesen Vergleich schon einmal angestellt</strong> — und im selben
+                exact diesen Vergleich schon einmal angestellt</strong> — und im selben
                 Dokument entwertet.
               </p>
             </div>
@@ -508,7 +508,7 @@ export default function VergleichSeite() {
               Steckbrief-Karten unter „Woher das Geld kommt"; die Texte sind
               zwei bis drei Sätze und tragen das. Schwelle am CONTAINER
               (Designsprache §4). */}
-          <ul className="mt-3 grid gap-x-6 gap-y-2.5 @5xl/abschnitt:grid-cols-3">
+          <ul className="mt-3 grid gap-x-6 gap-y-2.5 @5xl/section:grid-cols-3">
             {Object.entries(ROLLEN).map(([key, r]) => {
               const stadt = data.staedte.find((s) => s.schluessel === key);
               if (!stadt) return null;

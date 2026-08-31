@@ -76,9 +76,9 @@ function Fundstelle({ daten, id }: { daten: StellenplanDaten; id: number | null 
       <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
         Woher diese Zahlen kommen
       </p>
-      {h.fundstelle && (
+      {h.citation && (
         <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">
-          {h.fundstelle}{h.stand ? ` · ${h.stand}` : ""}
+          {h.citation}{h.stand ? ` · ${h.stand}` : ""}
         </p>
       )}
     </div>
@@ -98,7 +98,7 @@ export default function PersonalPage() {
   // Die Einzelposten kommen nur für das gewählte Jahr — rund 190 Zeilen je
   // Jahrgang, und die Seite zeigt davon acht.
   const detail = useFetch<StellenplanDaten>(
-    aktJahr ? `/council/haushalt/stellenplan?jahrgang=${aktJahr}` : null);
+    aktJahr ? `/council/haushalt/stellenplan?budget_year=${aktJahr}` : null);
   const daten = detail.data ?? jahrgaenge.data;
 
   // Eine Skala je Teil (H3-01): A und B stehen nie gleichzeitig im Bild,
@@ -195,7 +195,7 @@ export default function PersonalPage() {
                 hält die Stadt vor</>}
               sub={kernLuecke
                 ? <>rund {pct(kernLuecke.anteil)}&nbsp;% davon waren zuletzt unbesetzt
-                  (Stichtag {deDatum(kernLuecke.stichtag)}) — Stellen, nicht Köpfe</>
+                  (Stichtag {deDatum(kernLuecke.as_of_date)}) — Stellen, nicht Köpfe</>
                 : "Stellen, nicht Köpfe — die Besetzung wird ein Jahr versetzt erhoben"}
               minibild={{
                 href: "#waffel",
@@ -256,7 +256,7 @@ export default function PersonalPage() {
                   <p className="max-w-[58ch] text-[13px] leading-relaxed text-foreground/90">
                     Jedes Quadrat sind zehn Stellen — gezeigt sind die{" "}
                     {deStellen(kernLuecke.stellen)} Stellen, die es am Stichtag{" "}
-                    <strong>{deDatum(kernLuecke.stichtag)}</strong> gab; die umrandeten
+                    <strong>{deDatum(kernLuecke.as_of_date)}</strong> gab; die umrandeten
                     davon waren nicht besetzt. Die Besetzung wird immer ein Jahr
                     versetzt erhoben.
                   </p>
@@ -268,13 +268,13 @@ export default function PersonalPage() {
                     markiert={{
                       count: kernLuecke.nicht_besetzt,
                       grund: `unbesetzt · rund ${pct(kernLuecke.anteil)} %`,
-                      stichtag: deDatum(kernLuecke.stichtag),
+                      as_of_date: deDatum(kernLuecke.as_of_date),
                     }}
                   />
                 </>
               ) : (
                 <p className="text-[13px] leading-relaxed text-muted-foreground">
-                  Für {TEIL_LABEL[teil]} liegt kein Jahrgang lesbar vor.
+                  Für {TEIL_LABEL[teil]} liegt kein Jahrgang readable vor.
                 </p>
               )}
 
@@ -303,7 +303,7 @@ export default function PersonalPage() {
                 skala={skala}
                 aktJahr={teilNeu}
                 zeilen={alle.map((j) => ({
-                  jahrgang: j,
+                  budget_year: j,
                   zeile: gesamt(daten, j, teil),
                   fehlt: FEHLT_GRUND,
                 }))}
@@ -398,7 +398,7 @@ export default function PersonalPage() {
             <>
               <p className="mt-1.5 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
                 Die acht Amtsbezeichnungen mit den meisten unbesetzten Stellen, Stand{" "}
-                {deDatum(teilGesamt?.stichtag ?? null)}.
+                {deDatum(teilGesamt?.as_of_date ?? null)}.
               </p>
               {!gruppenOffen && (
                 <button type="button" onClick={() => setGruppenOffen(true)}
@@ -409,10 +409,10 @@ export default function PersonalPage() {
               <div className={gruppenOffen ? undefined : "gb-ab-tablet"}>
                 <ul className="mt-3 flex flex-col divide-y divide-border">
                   {luecken.map((z) => (
-                    <li key={`${z.lfd_nr}-${z.besoldung}`}
+                    <li key={`${z.seq_no}-${z.besoldung}`}
                       className="flex items-baseline gap-3 py-2 first:pt-0">
                       <span className="min-w-0 flex-1">
-                        <span className="text-[13px] font-medium">{z.bezeichnung}</span>
+                        <span className="text-[13px] font-medium">{z.label}</span>
                         {z.besoldung && (
                           <span className="ml-2 font-mono text-[10.5px] text-muted-foreground">
                             {z.besoldung}

@@ -33,7 +33,7 @@ import type { StellenZeile } from "@/lib/haushalt-stellenplan";
 import { cn } from "@/lib/utils";
 
 export type VerlaufZeile = {
-  jahrgang: number;
+  budget_year: number;
   zeile: StellenZeile | null;
   /** Warum diese Zeile leer ist — nur gesetzt, wo ein Teil fehlt. */
   fehlt?: string;
@@ -48,15 +48,15 @@ export function StellenPaare({ zeilen, skala, aktJahr }: {
 }) {
   return (
     <ol className="flex flex-col gap-3">
-      {zeilen.map(({ jahrgang, zeile, fehlt }) => {
-        const akt = jahrgang === aktJahr;
+      {zeilen.map(({ budget_year, zeile, fehlt }) => {
+        const akt = budget_year === aktJahr;
         return (
-          <li key={jahrgang} className="grid grid-cols-[3rem_minmax(0,1fr)_auto] items-center gap-x-3">
+          <li key={budget_year} className="grid grid-cols-[3rem_minmax(0,1fr)_auto] items-center gap-x-3">
             <span className={cn(
               "font-mono text-[12px] font-medium tabular-nums",
               akt ? "text-primary" : "text-muted-foreground",
             )}>
-              {jahrgang}
+              {budget_year}
             </span>
 
             {zeile ? (
@@ -76,7 +76,7 @@ export function StellenPaare({ zeilen, skala, aktJahr }: {
                 {/* Die beiden Zahlen der Zeile — Plan und Besetzung, nie ihre
                     Differenz. Vorgelesen wird der ganze Satz. */}
                 <span
-                  aria-label={`${jahrgang}: ${deStellen(zeile.stellen_plan)} Stellen `
+                  aria-label={`${budget_year}: ${deStellen(zeile.stellen_plan)} Stellen `
                     + `vorgehalten, ${deStellen(zeile.besetzt)} besetzt am Stichtag `
                     + `des Vorjahres`}
                   className={cn(
@@ -88,7 +88,7 @@ export function StellenPaare({ zeilen, skala, aktJahr }: {
               </>
             ) : (
               <>
-                <LueckenFeld label={String(jahrgang)}
+                <LueckenFeld label={String(budget_year)}
                   grund={fehlt ?? "liegt nicht vor"} className="min-w-0" />
                 <span className="text-right font-mono text-[12.5px] tabular-nums text-muted-foreground">
                   — · —

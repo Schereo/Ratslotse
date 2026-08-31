@@ -24,7 +24,7 @@ from council.store import CouncilStore
 # --- Eine Datenbank, wie sie vor der Umstellung aussah ------------------------
 #
 # Wörtlich der Stand von vor 08/2026: drei Schreibweisen für dieselbe Sache
-# (`quelle_label`/`quelle_url`, `label`/`url`, `source_url`), keine
+# (`source_label`/`source_url`, `label`/`url`, `source_url`), keine
 # `herkunft_id`, keine `council_herkunft`.
 
 ALTES_SCHEMA = """
@@ -34,25 +34,25 @@ CREATE TABLE council_anlagen (
   raw_text TEXT, n_pages INTEGER, fetched_at TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'listed');
 CREATE TABLE council_ergebnisrechnung (
-  year INTEGER NOT NULL, thh_nr INTEGER, thh_name TEXT,
-  nr INTEGER NOT NULL, bezeichnung TEXT NOT NULL,
+  year INTEGER NOT NULL, sub_budget_no INTEGER, sub_budget_name TEXT,
+  nr INTEGER NOT NULL, label TEXT NOT NULL,
   prior_year REAL, ansatz REAL, plan REAL, plan_art TEXT,
   result REAL, deviation REAL, is_total INTEGER NOT NULL DEFAULT 0,
-  quelle_label TEXT, quelle_url TEXT, fetched_at TEXT NOT NULL,
-  PRIMARY KEY (year, thh_nr, nr));
+  source_label TEXT, source_url TEXT, fetched_at TEXT NOT NULL,
+  PRIMARY KEY (year, sub_budget_no, nr));
 CREATE TABLE council_abweichungsgruende (
-  year INTEGER NOT NULL, nr INTEGER NOT NULL, bezeichnung TEXT NOT NULL,
+  year INTEGER NOT NULL, nr INTEGER NOT NULL, label TEXT NOT NULL,
   delta_mio REAL, prozent REAL, text TEXT NOT NULL,
-  quelle_label TEXT, quelle_url TEXT, fetched_at TEXT NOT NULL,
+  source_label TEXT, source_url TEXT, fetched_at TEXT NOT NULL,
   PRIMARY KEY (year, nr));
 CREATE TABLE council_pruefbericht_quellen (
   year INTEGER PRIMARY KEY, label TEXT, url TEXT, n_pages INTEGER,
-  lesbar INTEGER NOT NULL DEFAULT 1, fetched_at TEXT NOT NULL);
+  readable INTEGER NOT NULL DEFAULT 1, fetched_at TEXT NOT NULL);
 CREATE TABLE council_haushalt (
   id INTEGER PRIMARY KEY AUTOINCREMENT, year INTEGER NOT NULL,
-  bereich TEXT NOT NULL, revenues REAL, expenses REAL, result REAL,
+  area TEXT NOT NULL, revenues REAL, expenses REAL, result REAL,
   is_total INTEGER NOT NULL DEFAULT 0,
-  source_url TEXT, fetched_at TEXT NOT NULL, UNIQUE(year, bereich));
+  source_url TEXT, fetched_at TEXT NOT NULL, UNIQUE(year, area));
 CREATE TABLE council_steuern (
   year INTEGER NOT NULL, art TEXT NOT NULL, amount REAL,
   source_url TEXT, fetched_at TEXT NOT NULL, PRIMARY KEY (year, art));
@@ -76,9 +76,9 @@ def alte_db(tmp_path):
                "n_pages, fetched_at) VALUES (280861, 4711, ?, ?, 312, '2026-08-10T09:00:00')",
                (JA_LABEL, JA_URL))
     cn.executemany(
-        "INSERT INTO council_ergebnisrechnung (year, thh_nr, thh_name, nr, bezeichnung, "
+        "INSERT INTO council_ergebnisrechnung (year, sub_budget_no, sub_budget_name, nr, label, "
         " prior_year, ansatz, plan, plan_art, result, deviation, is_total, "
-        " quelle_label, quelle_url, fetched_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        " source_label, source_url, fetched_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         [(2023, None, None, 12, "Summe ordentliche Erträge", 696_600_000.0,
           664_574_528.42, 664_574_528.42, "ansatz", 732_987_197.61, 68_412_669.19, 1,
           JA_LABEL, JA_URL, "2026-08-14T07:12:00"),
@@ -89,17 +89,17 @@ def alte_db(tmp_path):
           21_000_000.0, 21_000_000.0, "ansatz", 20_400_000.0, -600_000.0, 1,
           JA_LABEL, JA_URL, "2026-08-14T07:12:01")])
     cn.execute(
-        "INSERT INTO council_abweichungsgruende (year, nr, bezeichnung, delta_mio, "
-        " prozent, text, quelle_label, quelle_url, fetched_at) VALUES (?,?,?,?,?,?,?,?,?)",
+        "INSERT INTO council_abweichungsgruende (year, nr, label, delta_mio, "
+        " prozent, text, source_label, source_url, fetched_at) VALUES (?,?,?,?,?,?,?,?,?)",
         (2023, 1, "Steuern und ähnliche Abgaben", 75.1, 24.82,
          "Die Mehrerträge entfallen nahezu auf den Bereich der Gewerbesteuer.",
          JA_LABEL, JA_URL, "2026-08-14T07:12:00"))
     cn.execute(
-        "INSERT INTO council_pruefbericht_quellen (year, label, url, n_pages, lesbar, "
+        "INSERT INTO council_pruefbericht_quellen (year, label, url, n_pages, readable, "
         " fetched_at) VALUES (2023, 'Schlussbericht 2023', ?, 61, 1, '2026-08-14T07:13:00')",
         (JA_URL,))
     cn.executemany(
-        "INSERT INTO council_haushalt (year, bereich, revenues, expenses, result, "
+        "INSERT INTO council_haushalt (year, area, revenues, expenses, result, "
         " is_total, source_url, fetched_at) VALUES (?,?,?,?,?,?,?,?)",
         [(2026, "Jugend und Familie", 40e6, 210e6, -170e6, 0, PLAN_URL, "2026-08-01T06:00:00"),
          (2026, "Summe", 52e6, 271e6, -219e6, 1, PLAN_URL, "2026-08-01T06:00:00")])
@@ -169,12 +169,12 @@ def test_altbestand_erbt_label_und_url_und_gewinnt_den_anker(alte_db):
     zeile = store._conn.execute(
         "SELECT h.* FROM council_ergebnisrechnung e "
         "JOIN council_herkunft h ON h.id = e.herkunft_id "
-        "WHERE e.year = 2023 AND e.thh_nr IS NULL AND e.nr = 12").fetchone()
+        "WHERE e.year = 2023 AND e.sub_budget_no IS NULL AND e.nr = 12").fetchone()
     store.close()
     assert zeile["label"] == JA_LABEL
     assert zeile["url"] == JA_URL
     assert zeile["art"] == "ris"
-    assert zeile["dokument_id"] == 280861     # der Anker, den der Altbestand nicht hatte
+    assert zeile["document_id"] == 280861     # der Anker, den der Altbestand nicht hatte
     # Der Zeitstempel der Zeilen, nicht der Zeitpunkt der Migration.
     assert zeile["fetched_at"] == "2026-08-14T07:12:01"
 
@@ -183,7 +183,7 @@ def test_altbestand_bekommt_unbekannt_statt_einer_erfundenen_probe(alte_db):
     """Was der Altbestand nicht festhielt, wird nicht erfunden.
 
     Die Zeilen SIND durch eine Probe gegangen — welche, steht nirgends. Also
-    steht `unbekannt` da und `fundstelle` bleibt leer, statt „Abschnitt 6.3.1"
+    steht `unbekannt` da und `citation` bleibt leer, statt „Abschnitt 6.3.1"
     zu behaupten, weil es meistens stimmt. Der nächste Einlese-Lauf trägt
     beides nach."""
     store = CouncilStore(alte_db)
@@ -191,10 +191,10 @@ def test_altbestand_bekommt_unbekannt_statt_einer_erfundenen_probe(alte_db):
     store.close()
     assert alle, "keine Herkunft angelegt"
     assert {h["probe"] for h in alle} == {herkunft.UNBEKANNT}
-    assert all(h["fundstelle"] is None for h in alle)
+    assert all(h["citation"] is None for h in alle)
     assert all(h["probe_result"] is None for h in alle)
     # Der Erklärsatz sagt es der Leserin auch.
-    assert any("nächste Einlese-Lauf" in t for t in alle[0]["proben"])
+    assert any("nächste Einlese-Lauf" in t for t in alle[0]["probes"])
 
 
 def test_die_quellenart_kommt_aus_der_url_nicht_aus_der_tabelle(alte_db):
@@ -232,47 +232,47 @@ def test_geschriebene_zeile_weiss_wo_sie_steht_und_womit_sie_gedeckt_ist(tmp_pat
     """Die eigentliche Zusage: Fundstelle **und** Probe stehen an der Zahl."""
     store = CouncilStore(tmp_path / "c.sqlite")
     store.save_ergebnisrechnung(2024, [
-        {"nr": 12, "bezeichnung": "Summe ordentliche Erträge", "ansatz": 693.6e6,
+        {"nr": 12, "label": "Summe ordentliche Erträge", "ansatz": 693.6e6,
          "plan": 693.6e6, "plan_art": "ansatz", "result": 799.1e6, "is_total": 1},
     ], Herkunft(
-        art="ris", probe=["strukturprobe", "vorjahreskette"], dokument_id=280863,
+        art="ris", probe=["strukturprobe", "vorjahreskette"], document_id=280863,
         label="Jahresabschluss 2024 der Kernverwaltung",
         url="https://buergerinfo.oldenburg.de/getfile.php?id=280863&type=do",
-        fundstelle="Ergebnisrechnung der Kernverwaltung, Posten 1–24",
-        seite=161, stand="Jahresabschluss 2024"))
+        citation="Ergebnisrechnung der Kernverwaltung, Posten 1–24",
+        page=161, stand="Jahresabschluss 2024"))
 
     zeile = store._conn.execute(
-        "SELECT e.result, h.fundstelle, h.seite, h.probe, h.dokument_id, h.stand "
+        "SELECT e.result, h.citation, h.page, h.probe, h.document_id, h.stand "
         "FROM council_ergebnisrechnung e "
         "JOIN council_herkunft h ON h.id = e.herkunft_id").fetchone()
     assert zeile["result"] == 799.1e6
-    assert zeile["fundstelle"] == "Ergebnisrechnung der Kernverwaltung, Posten 1–24"
-    assert zeile["seite"] == 161
+    assert zeile["citation"] == "Ergebnisrechnung der Kernverwaltung, Posten 1–24"
+    assert zeile["page"] == 161
     assert zeile["probe"] == "strukturprobe,vorjahreskette"
-    assert zeile["dokument_id"] == 280863
+    assert zeile["document_id"] == 280863
     assert zeile["stand"] == "Jahresabschluss 2024"
 
     # Und lesbar für die Oberfläche: zwei Erklärsätze, einer je Probe.
     (h,) = store.get_herkunft()
-    assert len(h["proben"]) == 2
-    assert "Posten 12" in h["proben"][0] and "Vorjahres" in h["proben"][1]
+    assert len(h["probes"]) == 2
+    assert "Posten 12" in h["probes"][0] and "Vorjahres" in h["probes"][1]
     assert "schluessel" not in h        # interner Fingerabdruck, kein Lesestoff
     store.close()
 
 
 def test_die_alten_spalten_tragen_weiter_dieselben_werte(tmp_path):
-    """`quelle_label`/`quelle_url` verschwinden nicht — sie werden aus
+    """`source_label`/`source_url` verschwinden nicht — sie werden aus
     derselben Angabe gefüllt. Kein Lesepfad muss sich ändern."""
     store = CouncilStore(tmp_path / "c.sqlite")
-    q = Herkunft(art="ris", probe="produktzeile", dokument_id=7,
+    q = Herkunft(art="ris", probe="produktzeile", document_id=7,
                  label="007 THH01", url="https://example.org/thh01.pdf",
-                 fundstelle="Teilergebnishaushalt THH01, Produktebene")
-    store.save_produkte(2023, [{"produkt_nr": "P10.111023", "produkt_name": "Archivierung",
-                                "thh_nr": 1, "revenues": 1.0, "expenses": 2.0,
+                 citation="Teilergebnishaushalt THH01, Produktebene")
+    store.save_produkte(2023, [{"product_no": "P10.111023", "product_name": "Archivierung",
+                                "sub_budget_no": 1, "revenues": 1.0, "expenses": 2.0,
                                 "result": -1.0}], q)
     zeile = store.get_produkte(2023)[0]
-    assert zeile["quelle_label"] == "007 THH01"
-    assert zeile["quelle_url"] == "https://example.org/thh01.pdf"
+    assert zeile["source_label"] == "007 THH01"
+    assert zeile["source_url"] == "https://example.org/thh01.pdf"
     assert zeile["herkunft_id"] is not None
     store.close()
 
@@ -283,20 +283,20 @@ def test_zwei_ebenen_desselben_dokuments_bekommen_zwei_herkuenfte(tmp_path):
     Herkunft wäre für beide ungenau — und genau dieser Fall wiederholt sich
     bei den Beteiligungen (Konzern- gegen Einzelabschluss)."""
     store = CouncilStore(tmp_path / "c.sqlite")
-    gemeinsam = dict(art="ris", dokument_id=99, label="JA 2023",
+    gemeinsam = dict(art="ris", document_id=99, label="JA 2023",
                      url="https://example.org/ja.pdf")
-    posten = [{"nr": 12, "bezeichnung": "Summe ordentliche Erträge", "ansatz": 1.0,
+    posten = [{"nr": 12, "label": "Summe ordentliche Erträge", "ansatz": 1.0,
                "result": 2.0, "is_total": 1}]
     store.save_ergebnisrechnung(2023, posten, Herkunft(
-        probe="strukturprobe", fundstelle="Ergebnisrechnung der Kernverwaltung",
+        probe="strukturprobe", citation="Ergebnisrechnung der Kernverwaltung",
         **gemeinsam))
     store.save_ergebnisrechnung(2023, posten, Herkunft(
-        probe="summenprobe", fundstelle="Teil-Ergebnisrechnung THH07",
+        probe="summenprobe", citation="Teil-Ergebnisrechnung THH07",
         probe_result="0.00 % Abweichung zur Gesamtrechnung", **gemeinsam),
-        thh_nr=7, thh_name="Stadtplanung")
+        sub_budget_no=7, sub_budget_name="Stadtplanung")
 
     nach_ebene = dict(store._conn.execute(
-        "SELECT COALESCE(e.thh_nr, -1), h.fundstelle FROM council_ergebnisrechnung e "
+        "SELECT COALESCE(e.sub_budget_no, -1), h.citation FROM council_ergebnisrechnung e "
         "JOIN council_herkunft h ON h.id = e.herkunft_id").fetchall())
     assert nach_ebene[-1] == "Ergebnisrechnung der Kernverwaltung"
     assert nach_ebene[7] == "Teil-Ergebnisrechnung THH07"
@@ -310,7 +310,7 @@ def test_dieselbe_herkunft_wird_nicht_zweimal_angelegt(tmp_path):
     Zahl der Läufe statt mit der Zahl der Quellen."""
     store = CouncilStore(tmp_path / "c.sqlite")
     q = Herkunft(art="opendata", probe=herkunft.UNGEPRUEFT, url=CSV_URL,
-                 fundstelle="Datensatz 1104")
+                 citation="Datensatz 1104")
     erste = store.merke_herkunft(q)
     zweite = store.merke_herkunft(q)
     assert erste == zweite
@@ -318,7 +318,7 @@ def test_dieselbe_herkunft_wird_nicht_zweimal_angelegt(tmp_path):
     # Eine andere Fundstelle im selben Dokument ist eine andere Herkunft.
     assert store.merke_herkunft(
         Herkunft(art="opendata", probe=herkunft.UNGEPRUEFT, url=CSV_URL,
-                 fundstelle="Datensatz 1106")) != erste
+                 citation="Datensatz 1106")) != erste
     store.close()
 
 
@@ -376,12 +376,12 @@ def test_verwaiste_herkunft_wird_aufgeraeumt(tmp_path):
     bliebe sonst liegen. Aufgeräumt wird auf Ansage aus den Ingest-Skripten,
     nicht beim Öffnen der Datenbank."""
     store = CouncilStore(tmp_path / "c.sqlite")
-    posten = [{"nr": 12, "bezeichnung": "Summe", "ansatz": 1.0, "result": 2.0}]
+    posten = [{"nr": 12, "label": "Summe", "ansatz": 1.0, "result": 2.0}]
     store.save_ergebnisrechnung(2023, posten, Herkunft(
         art="ris", probe=herkunft.UNBEKANNT, url=JA_URL))
     store.save_ergebnisrechnung(2023, posten, Herkunft(
         art="ris", probe="strukturprobe", url=JA_URL,
-        fundstelle="Ergebnisrechnung der Kernverwaltung"))
+        citation="Ergebnisrechnung der Kernverwaltung"))
     assert len(store.get_herkunft()) == 2      # die alte hängt noch herum
 
     assert store.herkunft_aufraeumen() == 1
@@ -405,20 +405,20 @@ def test_dokumente_je_quelle_und_jahrgang(tmp_path):
     genau das war der Fehler: Ein Beleg an einer Zahl von 2023 zeigte auf
     dieselbe Startseite wie einer von 2017."""
     store = CouncilStore(tmp_path / "c.sqlite")
-    posten = [{"nr": 12, "bezeichnung": "Summe", "ansatz": 1.0, "result": 2.0}]
+    posten = [{"nr": 12, "label": "Summe", "ansatz": 1.0, "result": 2.0}]
     for year, doc in ((2023, 280861), (2024, 295294)):
         store.save_ergebnisrechnung(year, posten, Herkunft(
-            art="ris", probe="strukturprobe", dokument_id=doc,
+            art="ris", probe="strukturprobe", document_id=doc,
             label=f"Jahresabschluss {year}",
             url=f"https://buergerinfo.oldenburg.de/getfile.php?id={doc}&type=do",
-            fundstelle="Ergebnisrechnung der Kernverwaltung", seite=161))
+            citation="Ergebnisrechnung der Kernverwaltung", page=161))
 
     nach_jahr = {d["year"]: d for d in store.haushalt_dokumente()["jahresabschluss"]}
     assert nach_jahr[2023]["url"].endswith("id=280861&type=do")
     assert nach_jahr[2024]["url"].endswith("id=295294&type=do")
     # Die Fundstelle fährt mit: Ohne sie ist die URL bei 300 Seiten zu wenig.
-    assert nach_jahr[2024]["fundstelle"] == "Ergebnisrechnung der Kernverwaltung"
-    assert nach_jahr[2024]["seite"] == 161
+    assert nach_jahr[2024]["citation"] == "Ergebnisrechnung der Kernverwaltung"
+    assert nach_jahr[2024]["page"] == 161
     store.close()
 
 
@@ -427,18 +427,18 @@ def test_dokumente_trennen_die_zwei_ebenen_eines_jahresabschlusses(tmp_path):
     Quellen. Sie stehen im selben PDF, aber an verschiedenen Stellen — und
     genau die Stelle ist der Gewinn gegenüber einem nackten Link."""
     store = CouncilStore(tmp_path / "c.sqlite")
-    gemeinsam = dict(art="ris", dokument_id=99, label="JA 2023", url=JA_URL)
-    posten = [{"nr": 12, "bezeichnung": "Summe", "ansatz": 1.0, "result": 2.0}]
+    gemeinsam = dict(art="ris", document_id=99, label="JA 2023", url=JA_URL)
+    posten = [{"nr": 12, "label": "Summe", "ansatz": 1.0, "result": 2.0}]
     store.save_ergebnisrechnung(2023, posten, Herkunft(
-        probe="strukturprobe", fundstelle="Ergebnisrechnung der Kernverwaltung",
+        probe="strukturprobe", citation="Ergebnisrechnung der Kernverwaltung",
         **gemeinsam))
     store.save_ergebnisrechnung(2023, posten, Herkunft(
-        probe="summenprobe", fundstelle="Teil-Ergebnisrechnung THH07",
-        **gemeinsam), thh_nr=7, thh_name="Stadtplanung")
+        probe="summenprobe", citation="Teil-Ergebnisrechnung THH07",
+        **gemeinsam), sub_budget_no=7, sub_budget_name="Stadtplanung")
 
     doks = store.haushalt_dokumente()
-    assert doks["jahresabschluss"][0]["fundstelle"] == "Ergebnisrechnung der Kernverwaltung"
-    assert doks["ergebnisrechnung_thh"][0]["fundstelle"] == "Teil-Ergebnisrechnung THH07"
+    assert doks["jahresabschluss"][0]["citation"] == "Ergebnisrechnung der Kernverwaltung"
+    assert doks["ergebnisrechnung_thh"][0]["citation"] == "Teil-Ergebnisrechnung THH07"
     store.close()
 
 
@@ -447,13 +447,13 @@ def test_ein_jahrgang_darf_mehrere_dokumente_tragen(tmp_path):
     Eine davon zu verlinken und die übrigen zu verschweigen wäre wieder die
     halbe Wahrheit — die API nennt alle, die Seite entscheidet."""
     store = CouncilStore(tmp_path / "c.sqlite")
-    for thh in (1, 4):
+    for sub_budget in (1, 4):
         store.save_produkte(2023, [
-            {"produkt_nr": f"P{thh}", "produkt_name": "Aufgabe", "thh_nr": thh,
+            {"product_no": f"P{sub_budget}", "product_name": "Aufgabe", "sub_budget_no": sub_budget,
              "revenues": 1.0, "expenses": 2.0, "result": -1.0}],
-            Herkunft(art="ris", probe="produktzeile", dokument_id=thh,
-                     label=f"007 THH0{thh}",
-                     url=f"https://buergerinfo.oldenburg.de/getfile.php?id={thh}&type=do"))
+            Herkunft(art="ris", probe="produktzeile", document_id=sub_budget,
+                     label=f"007 THH0{sub_budget}",
+                     url=f"https://buergerinfo.oldenburg.de/getfile.php?id={sub_budget}&type=do"))
 
     teil = store.haushalt_dokumente()["teilhaushalt"]
     assert {d["year"] for d in teil} == {2023}
@@ -472,7 +472,7 @@ def test_ohne_dokument_meldet_sich_die_quelle_gar_nicht(tmp_path):
     # auf die Alt-Spalte greift, sonst verlöre die Umstellung Belege, die es
     # vorher schon gab.
     store._conn.execute(
-        "INSERT INTO council_haushalt (year, bereich, expenses, is_total, "
+        "INSERT INTO council_haushalt (year, area, expenses, is_total, "
         " source_url, fetched_at) VALUES (2020, 'Summe', 1.0, 1, ?, '2026-01-01')",
         (PLAN_URL,))
     store._conn.commit()
@@ -480,8 +480,8 @@ def test_ohne_dokument_meldet_sich_die_quelle_gar_nicht(tmp_path):
     # Anlage, also gibt es keinen Ratsvorgang zu zeigen; das Feld fehlt aber
     # nicht, sonst müsste die Oberfläche zwei Formen unterscheiden.
     assert store.haushalt_dokumente()["plan"] == [
-        {"year": 2020, "url": PLAN_URL, "label": None, "fundstelle": None,
-         "seite": None, "official_text": None}]
+        {"year": 2020, "url": PLAN_URL, "label": None, "citation": None,
+         "page": None, "official_text": None}]
 def test_vergessene_zieltabelle_verliert_ihre_herkunft_nicht(tmp_path):
     """Der Schritt, den man vergisst: eine neue Zieltabelle nicht in
     ``HERKUNFT_TABELLEN`` eintragen.
@@ -495,9 +495,9 @@ def test_vergessene_zieltabelle_verliert_ihre_herkunft_nicht(tmp_path):
     Beides wird jetzt am Schema entschieden, nicht an der Liste."""
     store = CouncilStore(tmp_path / "c.sqlite")
     store.save_ergebnisrechnung(2023, [
-        {"nr": 12, "bezeichnung": "Summe", "ansatz": 1.0, "result": 2.0}],
+        {"nr": 12, "label": "Summe", "ansatz": 1.0, "result": 2.0}],
         Herkunft(art="ris", probe="strukturprobe", url=JA_URL,
-                 fundstelle="Ergebnisrechnung der Kernverwaltung"))
+                 citation="Ergebnisrechnung der Kernverwaltung"))
 
     # Eine Schicht, die es in `HERKUNFT_TABELLEN` nie geschafft hat.
     with store._conn:
@@ -506,7 +506,7 @@ def test_vergessene_zieltabelle_verliert_ihre_herkunft_nicht(tmp_path):
             "year INTEGER, wert REAL, herkunft_id INTEGER)")
         hid = store.merke_herkunft(Herkunft(
             art="ris", probe="summenzeile", url=JA_URL,
-            fundstelle="Abschnitt 4.1.1, Aufstellung nach Aufgabenträgern"))
+            citation="Abschnitt 4.1.1, Aufstellung nach Aufgabenträgern"))
         store._conn.execute(
             "INSERT INTO council_beteiligungen_kennzahlen VALUES (2023, 1.0, ?)", (hid,))
     assert "council_beteiligungen_kennzahlen" not in herkunft.HERKUNFT_TABELLEN
@@ -515,7 +515,7 @@ def test_vergessene_zieltabelle_verliert_ihre_herkunft_nicht(tmp_path):
     assert {h["id"] for h in store.get_herkunft()} == {hid, hid - 1}
     # Und der Verweis zeigt weiter auf genau das Dokument, aus dem er stammt.
     (probe,) = store._conn.execute(
-        "SELECT h.fundstelle FROM council_beteiligungen_kennzahlen k "
+        "SELECT h.citation FROM council_beteiligungen_kennzahlen k "
         "JOIN council_herkunft h ON h.id = k.herkunft_id").fetchone()
     assert probe == "Abschnitt 4.1.1, Aufstellung nach Aufgabenträgern"
 
@@ -531,7 +531,7 @@ def test_vergessene_zieltabelle_verliert_ihre_herkunft_nicht(tmp_path):
 #
 # Der Beleg-Chip kannte bisher das Dokument. Was fehlte, war der Weg vom
 # Dokument zu dem Beschluss, der es verabschiedet hat — die Strecke
-# `council_herkunft.dokument_id` → `council_anlagen.kvonr` →
+# `council_herkunft.document_id` → `council_anlagen.kvonr` →
 # `council_decisions.kvonr`. Erst damit wird aus „steht im Jahresabschluss
 # 2024" ein „der Rat hat das am … beschlossen".
 
@@ -560,9 +560,9 @@ def _vorgang(store, *, kvonr=900, document_id=7001, stationen=()):
 def _herkunft_mit_dokument(store, document_id=7001):
     with store.transaktion():
         return store.merke_herkunft(Herkunft(
-            art="ris", probe="summenzeile", dokument_id=document_id,
+            art="ris", probe="summenzeile", document_id=document_id,
             label="Jahresabschluss 2024", url="https://example.org/ja2024.pdf",
-            fundstelle="Ergebnisrechnung der Kernverwaltung"))
+            citation="Ergebnisrechnung der Kernverwaltung"))
 
 
 def test_beschluss_haengt_am_dokument(tmp_path):
@@ -638,10 +638,10 @@ def test_jahrgaenge_kommen_aus_dem_bestand(tmp_path):
 
     with store._conn:
         store._conn.execute(
-            "INSERT INTO council_haushalt (year, bereich, expenses, is_total, "
+            "INSERT INTO council_haushalt (year, area, expenses, is_total, "
             " source_url, fetched_at) VALUES (2019, 'Summe', 1.0, 1, NULL, '2026-01-01')")
         store._conn.execute(
-            "INSERT INTO council_haushalt (year, bereich, expenses, is_total, "
+            "INSERT INTO council_haushalt (year, area, expenses, is_total, "
             " source_url, fetched_at) VALUES (2020, 'Summe', 1.0, 1, ?, '2026-01-01')",
             (PLAN_URL,))
 
@@ -658,10 +658,10 @@ def test_jahrgaenge_trennen_die_zwei_ebenen_des_abschlusses(tmp_path):
     ihrer Summenprobe scheitern, während die Gesamtrechnung steht."""
     store = CouncilStore(tmp_path / "c.sqlite")
     with store._conn:
-        for year, thh in ((2022, None), (2023, None), (2022, 7)):
+        for year, sub_budget in ((2022, None), (2023, None), (2022, 7)):
             store._conn.execute(
-                "INSERT INTO council_ergebnisrechnung (year, thh_nr, nr, bezeichnung, "
-                " fetched_at) VALUES (?, ?, 12, 'Erträge', '2026-01-01')", (year, thh))
+                "INSERT INTO council_ergebnisrechnung (year, sub_budget_no, nr, label, "
+                " fetched_at) VALUES (?, ?, 12, 'Erträge', '2026-01-01')", (year, sub_budget))
 
     jahre = store.haushalt_jahrgaenge()
     assert jahre["jahresabschluss"] == [2022, 2023]
@@ -677,9 +677,9 @@ def test_herkunft_ohne_dokument_bleibt_unberuehrt(tmp_path):
         hid = store.merke_herkunft(Herkunft(
             art="stadt", probe="summenzeile",
             url="https://oldenburg.de/haushalt.pdf",
-            fundstelle="Gesamtergebnisplan"))
+            citation="Gesamtergebnisplan"))
 
     (h,) = store.get_herkunft([hid])
     assert h["official_text"] is None
-    assert h["dokument_id"] is None
+    assert h["document_id"] is None
     store.close()

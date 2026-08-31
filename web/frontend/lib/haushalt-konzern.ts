@@ -46,7 +46,7 @@ export type KonzernTraeger = {
 export type KonzernPosten = {
   year: number;
   nr: number;
-  bezeichnung: string;
+  label: string;
   rolle: string | null;
   amount: number;
   prior_year: number | null;

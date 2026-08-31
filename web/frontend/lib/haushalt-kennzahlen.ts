@@ -94,7 +94,7 @@ export function einheitWort(einheit: string): string {
 
 /** Alle Punkte einer Kennzahl, nach Jahr. */
 export function punkteVon(daten: Kennzahlen, key: string): KennzahlPunkt[] {
-  return daten.reihe.filter((p) => p.kennzahl === key)
+  return daten.reihe.filter((p) => p.indicator === key)
     .sort((a, b) => a.year - b.year);
 }
 
@@ -114,7 +114,7 @@ export function reiheVon(daten: Kennzahlen, key: string): {
 } {
   const punkte = punkteVon(daten, key);
   const wechsel = daten.funde.find(
-    (f) => f.kennzahl === key && f.art === "definition");
+    (f) => f.indicator === key && f.art === "definition");
   if (!wechsel || !punkte.length) {
     return { reihe: punkte.map((p) => ({ year: p.year, wert: p.wert })), anmerkung: null };
   }
@@ -141,7 +141,7 @@ export function reiheVon(daten: Kennzahlen, key: string): {
 
 /** Der Rechenweg, den die Stadt zuletzt gedruckt hat. */
 export function formelVon(daten: Kennzahlen, key: string): KennzahlFormel | null {
-  const alle = daten.formeln.filter((f) => f.kennzahl === key);
+  const alle = daten.formeln.filter((f) => f.indicator === key);
   return alle.length
     ? alle.reduce((a, b) => (b.bis_bericht > a.bis_bericht ? b : a))
     : null;
@@ -153,7 +153,7 @@ export function formelVon(daten: Kennzahlen, key: string): KennzahlFormel | null
  *  bloße Umbenennung ist keine Nachricht. */
 export function korrekturenVon(daten: Kennzahlen, key?: string): KennzahlFund[] {
   return daten.funde
-    .filter((f) => f.art === "revision" && (!key || f.kennzahl === key))
+    .filter((f) => f.art === "revision" && (!key || f.indicator === key))
     .sort((a, b) => b.neu_bericht - a.neu_bericht || b.year - a.year);
 }
 

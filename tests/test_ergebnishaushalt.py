@@ -197,13 +197,13 @@ def _anlage(store: CouncilStore, text: str, document_id: int = 297441) -> None:
     store._conn.commit()
 
 
-def _quelle(dokument_id: int = 297441) -> herkunft.Herkunft:
+def _quelle(document_id: int = 297441) -> herkunft.Herkunft:
     return herkunft.Herkunft(
         art="ris", probe=["ergebnishaushalt_summenzeilen",
                           "ergebnishaushalt_planspalte"],
-        dokument_id=dokument_id, label="2026 005 Vw Gesamtergebnishaushalt",
+        document_id=document_id, label="2026 005 Vw Gesamtergebnishaushalt",
         url="https://example.org/geh2026.pdf",
-        fundstelle="Gesamtergebnishaushalt, Posten 1–24")
+        citation="Gesamtergebnishaushalt, Posten 1–24")
 
 
 # --- 1. Die Trennlinie -------------------------------------------------------
@@ -213,10 +213,10 @@ def test_planjahr_kommt_aus_dem_kopf_nicht_aus_dem_label():
 
     Und selbst wo eine Jahreszahl im Label steht, wäre sie die falsche Quelle:
     Der Kopf führt sechs Jahre, und das beschlossene ist das **dritte**."""
-    assert eh.jahrgang(GEH_2026) == 2026
+    assert eh.budget_year(GEH_2026) == 2026
     assert eh.kopfjahre(GEH_2026) == [2024, 2025, 2026, 2027, 2028, 2029]
-    assert eh.jahrgang(GEH_2025) == 2025
-    assert eh.jahrgang(None) is None
+    assert eh.budget_year(GEH_2025) == 2025
+    assert eh.budget_year(None) is None
 
 
 def test_ansatz_und_finanzplanung_landen_getrennt():
@@ -255,7 +255,7 @@ def test_die_gespeicherten_betraege_sind_die_des_dokuments():
 
     # Die Bezeichnungen sind dieselben wie im Jahresabschluss — sonst ließe
     # sich keine Zeitreihe über beide Quellen bilden.
-    assert {z["bezeichnung"] for z in r["zeilen"] if z["nr"] == 1} == {
+    assert {z["label"] for z in r["zeilen"] if z["nr"] == 1} == {
         "Steuern und ähnliche Abgaben"}
 
 
@@ -282,8 +282,8 @@ def test_summenprobe_wirft_einen_verrutschten_jahrgang_weg():
     r = eh.lies(kaputt)
     assert r["bestanden"] is False
     assert r["zeilen"] == []
-    assert r["jahrgang"] == 2026          # erkannt, aber nicht übernommen
-    (summen,) = [p for p in r["proben"] if p["probe"] == "ergebnishaushalt_summenzeilen"]
+    assert r["budget_year"] == 2026          # erkannt, aber nicht übernommen
+    (summen,) = [p for p in r["probes"] if p["probe"] == "ergebnishaushalt_summenzeilen"]
     assert summen["ok"] is False
     assert "Posten 1–11" in summen["warum"] and "Spalte 3" in summen["warum"]
     assert summen["warum"] in r["nachweis"]
@@ -304,7 +304,7 @@ def test_summenprobe_prueft_auch_die_finanzplanungsspalten():
     kaputt = GEH_2026.replace("372.762.700 378.699.900", "372.772.700 378.699.900", 1)
     r = eh.lies(kaputt)
     assert r["bestanden"] is False
-    (summen,) = [p for p in r["proben"] if p["probe"] == "ergebnishaushalt_summenzeilen"]
+    (summen,) = [p for p in r["probes"] if p["probe"] == "ergebnishaushalt_summenzeilen"]
     assert "Spalte 5" in summen["warum"]
 
 
@@ -319,8 +319,8 @@ def test_planspaltenprobe_haelt_die_trennlinie():
     r = eh.lies(ohne_echo)
     assert r["bestanden"] is False
     assert r["zeilen"] == []
-    (summen,) = [p for p in r["proben"] if p["probe"] == "ergebnishaushalt_summenzeilen"]
-    (spalte,) = [p for p in r["proben"] if p["probe"] == "ergebnishaushalt_planspalte"]
+    (summen,) = [p for p in r["probes"] if p["probe"] == "ergebnishaushalt_summenzeilen"]
+    (spalte,) = [p for p in r["probes"] if p["probe"] == "ergebnishaushalt_planspalte"]
     assert summen["ok"] is True           # die Tabelle selbst ist in Ordnung …
     assert spalte["ok"] is False          # … aber die Trennlinie ist unbelegt
     assert "Posten 1" in spalte["warum"]
@@ -334,7 +334,7 @@ def test_planspaltenprobe_merkt_wenn_die_wiederholung_woanders_hinzeigt():
     r = eh.lies(verschoben)
     assert r["bestanden"] is False
     assert r["zeilen"] == []
-    (spalte,) = [p for p in r["proben"] if p["probe"] == "ergebnishaushalt_planspalte"]
+    (spalte,) = [p for p in r["probes"] if p["probe"] == "ergebnishaushalt_planspalte"]
     assert "nicht auf das Planjahr" in spalte["warum"]
     assert "366,584,100" in spalte["warum"]     # die Zahl, auf die sie zeigte
 
@@ -350,7 +350,7 @@ def test_fremder_tabellenkopf_liefert_nichts():
         assert eh.kopfjahre(kopf) == []
         r = eh.lies(kopf)
         assert r["bestanden"] is False and r["zeilen"] == []
-        assert r["jahrgang"] is None
+        assert r["budget_year"] is None
 
 
 # --- 3. Die Fallen des Textextrakts -----------------------------------------
@@ -423,7 +423,7 @@ def test_store_haelt_ansatz_und_finanzplanung_auseinander(tmp_path):
     assert store.ergebnishaushalt_jahrgaenge() == [2025, 2026]
     # 2026 steht zweimal in der Tabelle — einmal als beschlossener Ansatz,
     # einmal als das, was der Plan 2025 dafür vorausgesehen hatte.
-    fuer_2026 = {(z["plan_jahrgang"], z["art"]): z["amount"]
+    fuer_2026 = {(z["plan_budget_year"], z["art"]): z["amount"]
                  for z in store.get_ergebnishaushalt(year=2026) if z["nr"] == 12}
     assert fuer_2026 == {(2026, "ansatz"): 788_574_714.0,
                          (2025, "finanzplanung"): 755_494_699.0}
@@ -432,7 +432,7 @@ def test_store_haelt_ansatz_und_finanzplanung_auseinander(tmp_path):
     (beschlossen,) = [z for z in store.get_ergebnishaushalt(year=2026, art="ansatz")
                       if z["nr"] == 12]
     assert beschlossen["amount"] == 788_574_714.0
-    assert beschlossen["plan_jahrgang"] == 2026
+    assert beschlossen["plan_budget_year"] == 2026
     store.close()
 
 
@@ -452,17 +452,17 @@ def test_jede_zeile_weiss_woher_sie_kommt(tmp_path):
     store.save_ergebnishaushalt(2026, eh.lies(GEH_2026)["zeilen"], _quelle())
     assert store.herkunft_luecken() == {}
     zeile = store._conn.execute(
-        "SELECT p.amount, h.probe, h.dokument_id, h.fundstelle "
+        "SELECT p.amount, h.probe, h.document_id, h.citation "
         "FROM council_ergebnishaushalt p "
         "JOIN council_herkunft h ON h.id = p.herkunft_id LIMIT 1").fetchone()
-    assert zeile["dokument_id"] == 297441
+    assert zeile["document_id"] == 297441
     assert zeile["probe"] == ("ergebnishaushalt_summenzeilen,"
                               "ergebnishaushalt_planspalte")
     # Beide Proben tragen einen Satz für Leserinnen — sonst ließe sich die
     # Herkunft gar nicht erst bauen.
     (h,) = store.get_herkunft()
-    assert len(h["proben"]) == 2
-    assert "hervorgehoben" in h["proben"][1]
+    assert len(h["probes"]) == 2
+    assert "hervorgehoben" in h["probes"][1]
     store.close()
 
 
@@ -502,7 +502,7 @@ def test_herkunft_sagt_dass_es_der_entwurf_ist(tmp_path):
 
     (h,) = store.get_herkunft()
     assert h["stand"] == "Haushaltsplan 2026, Anlage 005 — Stand der Einbringung"
-    assert "Ansatz 2026" in h["fundstelle"]
+    assert "Ansatz 2026" in h["citation"]
     store.close()
 
 
@@ -598,17 +598,17 @@ def test_plan_faellt_auf_ansatz_zurueck(tmp_path):
     `/haushalt/plan-ist` schrieb „Planwerte konnten wir nicht auslesen" über
     jeden Jahrgang eines nicht neu eingelesenen Bestands."""
     store = CouncilStore(tmp_path / "c.sqlite")
-    q = herkunft.Herkunft(art="ris", probe=herkunft.UNBEKANNT, dokument_id=1,
+    q = herkunft.Herkunft(art="ris", probe=herkunft.UNBEKANNT, document_id=1,
                           label="Jahresabschluss 2023", url="https://example.org/ja.pdf")
     # So sieht eine Zeile aus, die vor #510 geschrieben wurde: ansatz ja,
     # plan und plan_art nein.
-    alt = [{"nr": 12, "bezeichnung": "Summe ordentliche Erträge", "ansatz": 664_574_528.42,
+    alt = [{"nr": 12, "label": "Summe ordentliche Erträge", "ansatz": 664_574_528.42,
             "plan": None, "result": 732_987_197.61, "is_total": 1},
-           {"nr": 20, "bezeichnung": "Summe ordentliche Aufwendungen",
+           {"nr": 20, "label": "Summe ordentliche Aufwendungen",
             "ansatz": 674_305_462.42, "plan": None, "result": 683_032_270.32,
             "is_total": 1}]
     store.save_ergebnisrechnung(2023, alt, q)
-    store.save_ergebnisrechnung(2023, alt, q, thh_nr=7, thh_name="Stadtplanung")
+    store.save_ergebnisrechnung(2023, alt, q, sub_budget_no=7, sub_budget_name="Stadtplanung")
     # Der Schreibweg füllt `plan` schon aus `ansatz` …
     gespeichert = {z["nr"]: z for z in store.get_ergebnisrechnung(2023)}
     assert gespeichert[12]["plan"] == 664_574_528.42

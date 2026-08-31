@@ -74,17 +74,17 @@ def kopf(year):
     ]
 
 
-def position(y, lfd, thh, beitraege, produkt="P10.111011.003",
-             bezeichnung=("Kommunikation",), seite="300"):
+def position(y, seq, sub_budget, beitraege, product="P10.111011.003",
+             label=("Kommunikation",), page="300"):
     """Eine Positionszeile: Nummern links, Beträge rechtsbündig in den
     Spalten (Ertrag endet um 407, Aufwand um 470)."""
-    aus = [w(70, 79, y, str(lfd)), w(92, 101, y, thh)]
-    if seite:
-        aus.append(w(118, 131, y, seite))
-    if produkt:
-        aus.append(w(152, 210, y, produkt))
+    aus = [w(70, 79, y, str(seq)), w(92, 101, y, sub_budget)]
+    if page:
+        aus.append(w(118, 131, y, page))
+    if product:
+        aus.append(w(152, 210, y, product))
     x = 223
-    for teil in bezeichnung:
+    for teil in label:
         aus.append(w(x, x + 5 * len(teil), y, teil))
         x += 5 * len(teil) + 5
     for text, spalte in beitraege:
@@ -92,12 +92,12 @@ def position(y, lfd, thh, beitraege, produkt="P10.111011.003",
     return aus
 
 
-def summenblock(year, zeilen, ueberschrift=None):
+def summenblock(year, zeilen, heading=None):
     """Ein Zusammenstellungs-Block als Wortzeilen (eigene Seite, kein
     Tabellenkopf). `zeilen`: (vorlabel, e, a, s, nachlabel)."""
     aus = []
     y = 30
-    aus.append(w(200, 380, y, ueberschrift if ueberschrift is not None
+    aus.append(w(200, 380, y, heading if heading is not None
                 else f"Ergebnishaushalt {year}"))
     for vor, e, a, s, nach in zeilen:
         y += 20
@@ -123,11 +123,11 @@ def test_miniliste_rundlauf():
         # zweispaltig · einspaltig Aufwand · einspaltig Ertrag (negativ,
         # ungepunktet ginge auch) · Vermerk über „alle" THH ohne Betrag.
         *position(100, 1, "01", [("22.389", "e"), ("89.554", "a")]),
-        *position(130, 2, "03", [("200.000", "a")], bezeichnung=("Fliegerhorst",)),
+        *position(130, 2, "03", [("200.000", "a")], label=("Fliegerhorst",)),
         *position(160, 3, "04", [("-4.400.000", "e")],
-                  bezeichnung=("Allgemeine", "Finanzwirtschaft")),
-        *position(190, 4, "alle", [], produkt=None, seite=None,
-                  bezeichnung=("diverse",)),
+                  label=("Allgemeine", "Finanzwirtschaft")),
+        *position(190, 4, "alle", [], product=None, page=None,
+                  label=("diverse",)),
         # Erläuterungs-Zahl weit rechts — darf kein Betrag werden.
         w(560, 600, 100, "1.234.567"), w(602, 630, 100, "Euro"),
     ]
@@ -141,17 +141,17 @@ def test_miniliste_rundlauf():
     aus = parse_ehh_seiten([deckblatt, tabelle, summen])
 
     assert aus.stand == "24.11.2025"
-    assert aus.jahrgang == 2026
+    assert aus.budget_year == 2026
     assert aus.eigene_zeile == {2026: "Änderungsliste Verw. I"}
     z1, z2, z3, z4 = aus.zeilen
     assert (z1.revenue, z1.expense) == (22_389, 89_554)
     assert (z2.revenue, z2.expense) == (None, 200_000)
-    assert z2.bezeichnung == "Fliegerhorst"
+    assert z2.label == "Fliegerhorst"
     assert (z3.revenue, z3.expense) == (-4_400_000, None)
-    assert z1.seite_entwurf == 300 and z1.produkt == "P10.111011.003"
-    assert z4.thh is None and z4.revenue is None and z4.expense is None
+    assert z1.page_draft == 300 and z1.product == "P10.111011.003"
+    assert z4.sub_budget is None and z4.revenue is None and z4.expense is None
     # Ohne Tabellenlinien gibt es keine Erläuterungen — nie geraten.
-    assert all(z.erlaeuterung is None for z in aus.zeilen)
+    assert all(z.explanation is None for z in aus.zeilen)
 
 
 def test_falsche_spalte_reisst():
@@ -193,7 +193,7 @@ def test_afb_uebersicht_mit_fraktionszeile():
         ("Änderungsliste v. 19.11.2020", "988.200", "0", "988.200", "Verw. I"),
         ("", "0", "1.728.605", "-1.728.605", "SPD/ BÜNDNIS 90/DIE GRÜNEN"),
         ("Überschuss/ Fehlbedarf:", "100.988.200", "91.728.605", "9.259.595", ""),
-    ], ueberschrift="2021")
+    ], heading="2021")
     aus = parse_ehh_seiten([tabelle, summen])
     assert aus.eigene_zeile == {2021: "alle"}
     labels = {s.label for s in aus.summen if s.typ == "liste"}
@@ -224,13 +224,13 @@ def test_wickel_nachlese():
     tabelle = kopf(2026) + [
         w(264, 337, 92, "Verbraucherschutz"), w(339, 353, 92, "und"),
         w(521, 620, 92, "Lebensmittelkontrolleuren"),   # Erläuterung, stört nicht
-        *position(100, 1, "05", [("26.000", "a")], bezeichnung=()),
+        *position(100, 1, "05", [("26.000", "a")], label=()),
         w(279, 339, 108, "Veterinärwesen"),
         # Zwei dicht folgende Positionen, ein Fragment GENAU dazwischen —
         # nicht eindeutig, wird verworfen.
-        *position(150, 2, "06", [("10.000", "e")], bezeichnung=()),
+        *position(150, 2, "06", [("10.000", "e")], label=()),
         w(264, 300, 160, "Zweifelsfall"),
-        *position(170, 3, "07", [("20.000", "e")], bezeichnung=()),
+        *position(170, 3, "07", [("20.000", "e")], label=()),
     ]
     summen = summenblock(2026, [
         ("Verwaltungsentwurf", "100.000.000", "90.000.000", "10.000.000", ""),
@@ -239,8 +239,8 @@ def test_wickel_nachlese():
     ])
     aus = parse_ehh_seiten([tabelle, summen])
     z1, z2, z3 = aus.zeilen
-    assert z1.bezeichnung == "Verbraucherschutz und Veterinärwesen"
-    assert z2.bezeichnung == "" and z3.bezeichnung == ""
+    assert z1.label == "Verbraucherschutz und Veterinärwesen"
+    assert z2.label == "" and z3.label == ""
 
 
 # ---------------------------------------------------------- Erläuterungs-Spalte
@@ -253,7 +253,7 @@ def test_erlaeuterungen_folgen_den_tabellenlinien():
     außerhalb des Rasters bleiben draußen."""
     tabelle = kopf(2026) + [
         *position(100, 1, "01", [("22.389", "e")]),
-        *position(130, 2, "03", [("200.000", "a")], bezeichnung=("Fliegerhorst",)),
+        *position(130, 2, "03", [("200.000", "a")], label=("Fliegerhorst",)),
         # Erläuterung zu Position 1: drei Grundlinien im selben Band, ein
         # Trennstrich am Umbruch („Bescheini-/gungen“) und ein
         # Ergänzungsstrich am Umbruch („Brand-/und“).
@@ -277,8 +277,8 @@ def test_erlaeuterungen_folgen_den_tabellenlinien():
         [linien([85, 120, 150, 250], [70, 220, 380, 440, 484]), linien([], [])])
 
     z1, z2 = aus.zeilen
-    assert z1.erlaeuterung == "Mittel für Bescheinigungen im Brand- und Katastrophenschutz."
-    assert z2.erlaeuterung == "VWG: Zuschuss 1.234.567 Euro."
+    assert z1.explanation == "Mittel für Bescheinigungen im Brand- und Katastrophenschutz."
+    assert z2.explanation == "VWG: Zuschuss 1.234.567 Euro."
     # Die Zahl in der Erläuterung ist Text geblieben, kein Betrag:
     assert (z2.revenue, z2.expense) == (None, 200_000)
 
@@ -299,7 +299,7 @@ def test_zwei_positionen_in_einem_band_bleiben_leer():
     aus = parse_ehh_seiten(
         [tabelle, summen],
         [linien([85, 150], [484]), linien([], [])])
-    assert all(z.erlaeuterung is None for z in aus.zeilen)
+    assert all(z.explanation is None for z in aus.zeilen)
 
 
 # ------------------------------------------------------- Spalte „Vorschlag von“
@@ -320,9 +320,9 @@ def test_urheber_je_position_aus_der_letzten_spalte():
     gewickelt und auch, wenn das Label ober- und unterhalb der
     Positions-Grundlinie steht (die Zellen sind vertikal zentriert)."""
     tabelle = kopf_mit_urheber(2021) + [
-        *position(100, 1, "01", [("20.000", "a")], bezeichnung=("Gleichstellung",)),
+        *position(100, 1, "01", [("20.000", "a")], label=("Gleichstellung",)),
         *urheber_wort(95, ["SPD/", "BÜNDNIS 90/", "DIE GRÜNEN"]),
-        *position(140, 2, "02", [("30.000", "a")], bezeichnung=("Personal",)),
+        *position(140, 2, "02", [("30.000", "a")], label=("Personal",)),
         *urheber_wort(138, ["Verw.", "I"]),
     ]
     summen = summenblock(2021, [
@@ -339,7 +339,7 @@ def test_urheber_je_position_aus_der_letzten_spalte():
     assert z1.urheber == "SPD/ BÜNDNIS 90/ DIE GRÜNEN"
     assert z2.urheber == "Verw. I"
     # Und die Erläuterungs-Spalte hat den Urheber NICHT mitgenommen:
-    assert z1.erlaeuterung is None and z2.erlaeuterung is None
+    assert z1.explanation is None and z2.explanation is None
 
 
 def test_urheber_bleibt_aus_der_erlaeuterung_heraus():
@@ -347,7 +347,7 @@ def test_urheber_bleibt_aus_der_erlaeuterung_heraus():
     Satz — die Labels wickeln auf eigenen Grundlinien und fielen beim Falten
     zwischen die Wörter („… gegen Gewalt an SPD/ Frauen …“)."""
     tabelle = kopf_mit_urheber(2021) + [
-        *position(100, 1, "01", [("20.000", "a")], bezeichnung=("Gleichstellung",)),
+        *position(100, 1, "01", [("20.000", "a")], label=("Gleichstellung",)),
         w(490, 540, 95, "Mittel"), w(542, 580, 95, "gegen"),
         w(490, 530, 105, "Gewalt."),
         *urheber_wort(95, ["SPD/", "BÜNDNIS 90/", "DIE GRÜNEN"]),
@@ -360,7 +360,7 @@ def test_urheber_bleibt_aus_der_erlaeuterung_heraus():
     aus = parse_ehh_seiten(
         [tabelle, summen],
         [linien([85, 120], [70, 220, 380, 440, 484, 758, 815]), linien([], [])])
-    assert aus.zeilen[0].erlaeuterung == "Mittel gegen Gewalt."
+    assert aus.zeilen[0].explanation == "Mittel gegen Gewalt."
     assert aus.zeilen[0].urheber == "SPD/ BÜNDNIS 90/ DIE GRÜNEN"
 
 
@@ -372,9 +372,9 @@ def test_urheberprobe_reisst_bei_falscher_zuordnung():
     tabelle = kopf_mit_urheber(2021) + [
         # Beide Positionen tragen denselben Urheber — die Koalitionszeile
         # (20.000) bliebe dann ohne Deckung.
-        *position(100, 1, "01", [("20.000", "a")], bezeichnung=("Gleichstellung",)),
+        *position(100, 1, "01", [("20.000", "a")], label=("Gleichstellung",)),
         *urheber_wort(98, ["Verw.", "I"]),
-        *position(140, 2, "02", [("30.000", "a")], bezeichnung=("Personal",)),
+        *position(140, 2, "02", [("30.000", "a")], label=("Personal",)),
         *urheber_wort(138, ["Verw.", "I"]),
     ]
     summen = summenblock(2021, [
@@ -395,7 +395,7 @@ def test_vorschlag_im_fliesstext_ist_keine_spalte():
     einer Erläuterung. Ohne „von“ direkt darunter ist es keine Spalte — die
     Erläuterung bleibt vollständig, der Urheber leer."""
     tabelle = kopf(2024) + [
-        *position(100, 1, "01", [("20.000", "a")], bezeichnung=("Parken",)),
+        *position(100, 1, "01", [("20.000", "a")], label=("Parken",)),
         w(490, 502, 95, "Der"), w(504, 550, 95, "eingebrachte"),
         w(552, 588, 95, "Vorschlag"), w(590, 602, 95, "zur"),
         w(604, 639, 95, "Erhöhung"),
@@ -409,7 +409,7 @@ def test_vorschlag_im_fliesstext_ist_keine_spalte():
         [tabelle, summen],
         [linien([85, 120], [70, 220, 380, 440, 484, 815]), linien([], [])])
     assert aus.zeilen[0].urheber is None
-    assert aus.zeilen[0].erlaeuterung == "Der eingebrachte Vorschlag zur Erhöhung"
+    assert aus.zeilen[0].explanation == "Der eingebrachte Vorschlag zur Erhöhung"
 
 
 # ------------------------------------------- Bezeichnung an gezeichneten Linien
@@ -433,7 +433,7 @@ def test_bezeichnung_folgt_der_gezeichneten_spalte():
     tabelle = kopf_230011 + [
         w(226, 306, 92, "Chancengleichstellung"), w(308, 321, 92, "von"),
         w(324, 355, 92, "Männern"),
-        *position(100, 1, "01", [("20.000", "a")], bezeichnung=()),
+        *position(100, 1, "01", [("20.000", "a")], label=()),
         w(270, 283, 108, "und"), w(286, 311, 108, "Frauen"),
     ]
     summen = summenblock(2021, [
@@ -444,9 +444,9 @@ def test_bezeichnung_folgt_der_gezeichneten_spalte():
     mit = parse_ehh_seiten(
         [tabelle, summen],
         [linien([85, 120], [63, 84, 107, 138, 221, 359, 422, 484]), linien([], [])])
-    assert mit.zeilen[0].bezeichnung == "Chancengleichstellung von Männern und Frauen"
+    assert mit.zeilen[0].label == "Chancengleichstellung von Männern und Frauen"
 
     # Ohne Linien bleibt die alte Schätzung — sie schneidet, und genau das
     # ist der Grund für die Linien-Fassung.
     ohne = parse_ehh_seiten([tabelle, summen])
-    assert ohne.zeilen[0].bezeichnung == "von und Frauen"
+    assert ohne.zeilen[0].label == "von und Frauen"

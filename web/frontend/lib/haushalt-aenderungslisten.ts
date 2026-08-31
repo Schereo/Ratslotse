@@ -12,32 +12,32 @@ import type { Herkunft } from "@/lib/herkunft";
 export type { Herkunft };
 
 export type AenderungsZeile = {
-  jahrgang: number;
+  budget_year: number;
   liste: string;
   year: number;
-  lfd: number;
+  seq: number;
   /** `null` = die Position gilt pauschal „alle" Teilhaushalte (2019). */
-  thh: number | null;
-  seite_entwurf: number | null;
-  produkt: string | null;
-  bezeichnung: string;
+  sub_budget: number | null;
+  page_draft: number | null;
+  product: string | null;
+  label: string;
   /** Euro, negativ = Minderung; `null` = kein Betrag in dieser Spalte. */
   revenue: number | null;
   expense: number | null;
   /** Die Erläuterungs-Spalte des Dokuments — was diese Änderung ist.
    *  `null` = Zelle leer oder Zuordnung nicht eindeutig (dann lieber gar
    *  kein Text als einer von der falschen Zeile). */
-  erlaeuterung: string | null;
+  explanation: string | null;
   /** Wer die Position vorgeschlagen hat („Verw. I", „SPD/ BÜNDNIS 90/ DIE
    *  GRÜNEN"). `null` überall dort, wo das Dokument die Spalte „Vorschlag
    *  von" nicht führt — das sind alle Jahrgänge außer 2021. */
   urheber: string | null;
-  dokument_id: number;
+  document_id: number;
   herkunft_id: number | null;
 };
 
 export type AenderungsSumme = {
-  jahrgang: number;
+  budget_year: number;
   liste: string;
   year: number;
   typ: string; // "entwurf" | "liste" | "endsumme"
@@ -47,7 +47,7 @@ export type AenderungsSumme = {
   balance: number;
   /** 1 = die Zeile, die die Positionen dieses Dokuments summiert. */
   eigene: number;
-  dokument_id: number;
+  document_id: number;
   herkunft_id: number | null;
 };
 
@@ -58,18 +58,18 @@ export type AenderungsSumme = {
  *  des Dokuments — „Soll laut Entwurf", „neues Soll" —, damit sich die Zeile
  *  im PDF wiederfinden lässt. */
 export type FhhZeile = {
-  jahrgang: number;
+  budget_year: number;
   liste: string;
   year: number;
-  lfd: number;
-  thh: number | null;
+  seq: number;
+  sub_budget: number | null;
   /** Auch „neu": Dann steht die Position im Entwurf noch gar nicht. */
-  seite_entwurf: string | null;
+  page_draft: string | null;
   /** Der Investitionscode des Programms („I10.089904.500") — über ihn führt
    *  der Weg zum Vorhaben auf `/haushalt/investitionen`. `null`, wo die
    *  Position keinem einzelnen Vorhaben zugeordnet ist. */
-  produkt: string | null;
-  bezeichnung: string;
+  product: string | null;
+  label: string;
   /** Euro. `null` = Zelle leer (reine Haushaltsvermerke tragen gar keine
    *  Beträge), `0` = Gedankenstrich, also eine ausdrückliche Null. */
   planned_draft: number | null;
@@ -78,14 +78,14 @@ export type FhhZeile = {
   /** Verpflichtungsermächtigungen — zählen NICHT in den Saldo. */
   ve: number | null;
   planned_new: number | null;
-  erlaeuterung: string | null;
+  explanation: string | null;
   urheber: string | null;
-  dokument_id: number;
+  document_id: number;
   herkunft_id: number | null;
 };
 
 export type FhhSumme = {
-  jahrgang: number;
+  budget_year: number;
   liste: string;
   year: number;
   typ: string;
@@ -95,7 +95,7 @@ export type FhhSumme = {
   balance: number;
   ve: number | null;
   eigene: number;
-  dokument_id: number;
+  document_id: number;
   herkunft_id: number | null;
 };
 
@@ -152,10 +152,10 @@ export function listenFuerJahr(
   const aus: ListeImJahr[] = [];
   for (const schluessel of REIHENFOLGE) {
     const zeilen = daten.zeilen.filter(
-      (z) => z.jahrgang === year && z.liste === schluessel);
+      (z) => z.budget_year === year && z.liste === schluessel);
     if (!zeilen.length) continue;
     const summen = daten.summen.filter(
-      (s) => s.jahrgang === year && s.liste === schluessel);
+      (s) => s.budget_year === year && s.liste === schluessel);
     const imJahr = summen.filter((s) => s.year === year);
     const eigene = imJahr.find((s) => s.eigene === 1);
     const entwurf = imJahr.find((s) => s.typ === "entwurf");
@@ -191,7 +191,7 @@ export function politikZeilen(
 ): AenderungsSumme[] {
   if (!daten || year == null) return [];
   return daten.summen.filter(
-    (s) => s.jahrgang === year && s.year === year && s.typ === "liste"
+    (s) => s.budget_year === year && s.year === year && s.typ === "liste"
       && !s.label.includes("nderungsliste"));
 }
 
@@ -217,7 +217,7 @@ export function positionenVon(
   if (!daten) return [];
   const kern = labelKern(summe.label);
   return daten.zeilen.filter(
-    (z) => z.jahrgang === summe.jahrgang && z.year === summe.year
+    (z) => z.budget_year === summe.budget_year && z.year === summe.year
       && z.liste === summe.liste && z.urheber != null
       && kern.includes(labelKern(z.urheber)));
 }
@@ -241,7 +241,7 @@ export function positionenVon(
  *  Beschluss-Datei endet der Weg beim letzten Stand der Verwaltung — das ist
  *  NICHT der beschlossene Haushalt, und die Karte muss es anders nennen. */
 export type VerfahrensWeg = {
-  jahrgang: number;
+  budget_year: number;
   /** Saldo des Verwaltungsentwurfs — der Ausgangspunkt. */
   entwurf: number;
   /** Saldo am Ende des gelesenen Dokuments. */
@@ -261,11 +261,11 @@ export type VerfahrensWeg = {
 };
 
 export function verfahrensWeg(
-  daten: AenderungslistenDaten | null, jahrgang: number | null,
+  daten: AenderungslistenDaten | null, budget_year: number | null,
 ): VerfahrensWeg | null {
-  if (!daten || jahrgang == null) return null;
+  if (!daten || budget_year == null) return null;
   const imJahr = daten.summen.filter(
-    (s) => s.jahrgang === jahrgang && s.year === jahrgang);
+    (s) => s.budget_year === budget_year && s.year === budget_year);
   if (!imJahr.length) return null;
 
   // Das vollständigste Dokument: Beschluss zuerst, sonst die höchste
@@ -284,7 +284,7 @@ export function verfahrensWeg(
   const summeSaldo = (xs: AenderungsSumme[]) => xs.reduce((a, s) => a + s.balance, 0);
 
   return {
-    jahrgang,
+    budget_year,
     entwurf: entwurf.balance,
     ende: ende.balance,
     bewegt: ende.balance - entwurf.balance,
@@ -320,11 +320,11 @@ export function fhhListenFuerJahr(
   const aus: FhhListeImJahr[] = [];
   for (const schluessel of REIHENFOLGE) {
     const zeilen = (daten.fhh_zeilen ?? []).filter(
-      (z) => z.jahrgang === year && z.liste === schluessel
+      (z) => z.budget_year === year && z.liste === schluessel
         && (z.inflow != null || z.outflow != null));
     if (!zeilen.length) continue;
     const eigene = (daten.fhh_summen ?? []).find(
-      (s) => s.jahrgang === year && s.year === year && s.liste === schluessel
+      (s) => s.budget_year === year && s.year === year && s.liste === schluessel
         && s.eigene === 1);
     aus.push({
       schluessel,

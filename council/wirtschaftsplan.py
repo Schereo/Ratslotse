@@ -354,15 +354,15 @@ def dokument_name(plan: Wirtschaftsplan) -> str:
 
 
 def herkunft_fuer(plan: Wirtschaftsplan, url: str | None,
-                  dokument_id: int | None = None) -> Herkunft:
+                  document_id: int | None = None) -> Herkunft:
     """Die Herkunft einer Zeile: die Vorlage selbst, nicht eine Anlage."""
     return Herkunft(
         art="ris",
         probe=[PROBE_ERFOLGSPLAN, PROBE_JAHR],
-        dokument_id=dokument_id,
+        document_id=document_id,
         label=dokument_name(plan),
         url=url,
-        fundstelle="Beschlussvorschlag der Vorlage",
+        citation="Beschlussvorschlag der Vorlage",
         probe_result=plan.probe_result,
         stand=(f"Verwaltungsentwurf vom {plan.entwurf_vom}"
                if plan.entwurf_vom else "Fassung der Einbringung"),

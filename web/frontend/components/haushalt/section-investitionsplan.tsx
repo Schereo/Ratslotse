@@ -7,7 +7,7 @@
 // wirklich gebaut?": Plan und Ist derselben Sache standen in zwei
 // verschiedenen Etappen, und wer wissen wollte, was aus einem Vorhaben
 // geworden ist, musste die Seite wechseln. Der Rahmen liegt bei der Seite
-// (Begründung: `abschnitt-termine.tsx`).
+// (Begründung: `section-termine.tsx`).
 
 // /haushalt/investitionen — „Was baut und kauft die Stadt?"
 //
@@ -88,9 +88,9 @@ function Fundstelle({ h }: { h: Herkunft | null }) {
       <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
         Woher diese Zahlen kommen
       </p>
-      {h.fundstelle && (
+      {h.citation && (
         <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">
-          {h.fundstelle}{h.stand ? ` · ${h.stand}` : ""}
+          {h.citation}{h.stand ? ` · ${h.stand}` : ""}
         </p>
       )}
     </div>
@@ -121,7 +121,7 @@ function Rang({ zeile, skala, aufVorhaben, vorhandene }: {
   return (
     <li className="flex flex-col gap-1.5 py-3">
       <div className="flex items-baseline justify-between gap-3">
-        <span className="min-w-0 text-[13px] font-medium leading-snug">{zeile.bezeichnung}</span>
+        <span className="min-w-0 text-[13px] font-medium leading-snug">{zeile.label}</span>
         <span className="flex-none font-display text-[15px] font-bold tabular-nums">
           {aus.wert}
           <span className="ml-1 text-[10.5px] font-medium text-muted-foreground">
@@ -132,7 +132,7 @@ function Rang({ zeile, skala, aufVorhaben, vorhandene }: {
       <div
         className="h-2 w-full overflow-hidden rounded-full bg-muted/60"
         role="img"
-        aria-label={`${zeile.bezeichnung}: ${aus.wert} ${aus.einheit} geplante Auszahlungen`}
+        aria-label={`${zeile.label}: ${aus.wert} ${aus.einheit} geplante Auszahlungen`}
       >
         <div
           className="h-full rounded-full bg-[var(--hh-aus-2)]"
@@ -152,7 +152,7 @@ function Rang({ zeile, skala, aufVorhaben, vorhandene }: {
         {vorhandene > 0 && (
           <button
             type="button"
-            onClick={() => aufVorhaben(zeile.thh_nr)}
+            onClick={() => aufVorhaben(zeile.sub_budget_no)}
             className="text-[11px] text-primary hover:underline"
           >
             {vorhandene} einzelne Vorhaben ansehen
@@ -196,11 +196,11 @@ export function InvestitionsplanAbschnitt({ onBestand }: {
   // Export (Capacitor) keine dynamischen Segmente kennt.
   const router = useRouter();
   const params = useSearchParams();
-  const gewaehlterBereich = Number(params.get("bereich")) || null;
+  const gewaehlterBereich = Number(params.get("area")) || null;
   const setBereich = (thhNr: number | null) => {
     const q = new URLSearchParams(params.toString());
-    if (thhNr == null) q.delete("bereich");
-    else q.set("bereich", String(thhNr));
+    if (thhNr == null) q.delete("area");
+    else q.set("area", String(thhNr));
     const s = q.toString();
     router.replace(s ? `/haushalt/investitionen?${s}` : "/haushalt/investitionen",
                    { scroll: false });
@@ -227,7 +227,7 @@ export function InvestitionsplanAbschnitt({ onBestand }: {
   // `rampenText`).
   const stufe = useMemo(() => {
     const zu = new Map<number, number>();
-    zeilen.forEach((z, i) => zu.set(z.thh_nr, Math.min(i, 9)));
+    zeilen.forEach((z, i) => zu.set(z.sub_budget_no, Math.min(i, 9)));
     return (thhNr: number) => zu.get(thhNr) ?? 9;
   }, [zeilen]);
   const farbe = useMemo(
@@ -386,11 +386,11 @@ export function InvestitionsplanAbschnitt({ onBestand }: {
           <ul className="mt-2 divide-y divide-[color:var(--border)]">
             {zeilen.map((z) => (
               <Rang
-                key={z.thh_nr}
+                key={z.sub_budget_no}
                 zeile={z}
                 skala={skala}
                 vorhandene={programmJahr != null
-                  ? count(programm, programmJahr, z.thh_nr) : 0}
+                  ? count(programm, programmJahr, z.sub_budget_no) : 0}
                 aufVorhaben={(nr) => {
                   setBereich(nr);
                   document.getElementById("vorhaben")
@@ -542,7 +542,7 @@ export function InvestitionsplanAbschnitt({ onBestand }: {
           </ul>
           {hBezug && (
             <p className="mt-3 max-w-[86ch] text-[11.5px] leading-relaxed text-muted-foreground">
-              Zum Gesamtbetrag des Finanzhaushalts: {hBezug.fundstelle}
+              Zum Gesamtbetrag des Finanzhaushalts: {hBezug.citation}
             </p>
           )}
         </section>

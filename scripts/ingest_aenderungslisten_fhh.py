@@ -55,7 +55,7 @@ def _inhaltsgleich(a: FhhErgebnis, b: FhhErgebnis) -> bool:
     """Zwei Anlagen, ein Dokument? Verglichen wird der INHALT, nicht die
     Datei — die 2021er Beschluss-Datei liegt doppelt im Bestand."""
     def kern(e: FhhErgebnis):
-        return (sorted(((z.year, z.lfd, z.thh, z.produkt, z.bezeichnung,
+        return (sorted(((z.year, z.seq, z.sub_budget, z.product, z.label,
                          z.inflow, z.outflow) for z in e.zeilen), key=repr),
                 sorted(((s.year, s.typ, s.label, s.inflows, s.outflows)
                         for s in e.summen), key=repr))
@@ -98,7 +98,7 @@ def main() -> dict:
         dubletten: list[str] = []
         konflikte: list[str] = []
         for r, schluessel, result in gelesen:
-            key = (result.jahrgang, schluessel)
+            key = (result.budget_year, schluessel)
             if key not in je_liste:
                 je_liste[key] = (r, schluessel, result)
                 continue
@@ -113,14 +113,14 @@ def main() -> dict:
                 je_liste.pop(key)
 
         print("\nGelesen:", flush=True)
-        for (jahrgang, schluessel), (r, _s, e) in sorted(je_liste.items()):
+        for (budget_year, schluessel), (r, _s, e) in sorted(je_liste.items()):
             jahre = sorted({z.year for z in e.zeilen})
             politisch = sorted({s.label for s in e.summen if s.typ == "liste"
                                 and "nderungslist" not in s.label
                                 and not s.label.startswith("Verw")})
             zusatz = f"  · politische Zeile: {', '.join(politisch)}" if politisch else ""
-            mit_code = sum(1 for z in e.zeilen if z.produkt)
-            print(f"  {jahrgang}  {schluessel:16} Dok. {r['document_id']}  "
+            mit_code = sum(1 for z in e.zeilen if z.product)
+            print(f"  {budget_year}  {schluessel:16} Dok. {r['document_id']}  "
                   f"{len(e.zeilen):>3} Positionen ({jahre[0]}–{jahre[-1]}), "
                   f"{mit_code} mit Investitionscode{zusatz}", flush=True)
 
@@ -138,7 +138,7 @@ def main() -> dict:
                     "konflikte": len(konflikte), "risse": len(risse), "trocken": 1}
 
         positionen = 0
-        for (jahrgang, schluessel), (r, _s, e) in sorted(je_liste.items()):
+        for (budget_year, schluessel), (r, _s, e) in sorted(je_liste.items()):
             positionen += store.save_haushalt_aenderungen_fhh(
                 r["document_id"], schluessel, e,
                 herkunft_fuer(r["label"], r["url"], r["document_id"]))

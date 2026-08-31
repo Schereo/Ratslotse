@@ -188,7 +188,7 @@ export function Beleg({ q, h, className }: {
   // Steht die Nummer für genau ein Papier, zeigt das Fähnchen dessen
   // Fundstelle — sonst die der Art (das jüngste Papier des Jahrgangs).
   const ziel = eintrag.dokument
-    ? { dokument: eintrag.dokument, jahrgang: eintrag.dokument.year,
+    ? { dokument: eintrag.dokument, budget_year: eintrag.dokument.year,
         abweichend: year == null || eintrag.dokument.year !== year,
         weitere: 0 }
     : belegziel(dokumente, q, year);
@@ -322,17 +322,17 @@ export function useFaehnchen() {
 
 /** Wo im Dokument die Zahl steht — nur wo die Datenbank es weiß.
  *
- *  Nicht zu verwechseln mit `Quelle.fundstelle`: Das ist der redaktionelle
+ *  Nicht zu verwechseln mit `Quelle.citation`: Das ist der redaktionelle
  *  Absatz über alle Jahrgänge. Dies hier ist der Abschnitt **dieses**
- *  Dokuments, aus `council_herkunft.fundstelle` — die Angabe, mit der man die
+ *  Dokuments, aus `council_herkunft.citation` — die Angabe, mit der man die
  *  Zahl in 300 Seiten tatsächlich wiederfindet. */
 function Fundstelle({ ziel }: { ziel: Belegziel }) {
-  const { fundstelle, seite } = ziel.dokument;
-  if (!fundstelle && seite == null) return null;
+  const { citation, page } = ziel.dokument;
+  if (!citation && page == null) return null;
   return (
     <span className="mt-1.5 block text-[11px] leading-relaxed text-foreground/80">
-      Im Dokument: {fundstelle}
-      {seite != null && <>{fundstelle ? ", " : ""}Seite {seite}</>}
+      Im Dokument: {citation}
+      {page != null && <>{citation ? ", " : ""}Seite {page}</>}
     </span>
   );
 }
@@ -382,9 +382,9 @@ function Zeile({ ziel, quelle, klein }: {
       {/* „Jahrgang 2024" steht NUR da, wo der Link nicht auf das Jahr der
           Seite zeigt. Sonst läse man an jeder Zahl eine Jahreszahl, die schon
           drei Zeilen weiter oben steht. */}
-      {ziel?.abweichend && ziel.jahrgang != null && (
+      {ziel?.abweichend && ziel.budget_year != null && (
         <span className="font-mono text-[9.5px] uppercase tracking-wide text-muted-foreground">
-          Jahrgang {ziel.jahrgang}
+          Jahrgang {ziel.budget_year}
         </span>
       )}
     </span>
@@ -401,7 +401,7 @@ function QuelleInhalt({ quelle, nr, ziel, jahrgaenge, imVerzeichnis }: {
         {nr}. {quelle.titel}
       </span>
       {/* DER LANGE ABSATZ STEHT HIER NICHT MEHR (Tim, 21.08.2026: „der Text,
-          der dann erscheint, ist wirklich riesig"). `quelle.fundstelle` ist
+          der dann erscheint, ist wirklich riesig"). `quelle.citation` ist
           ein redaktioneller Absatz über alle Jahrgänge — bei den
           Wirtschaftsplänen sechs Zeilen, die auf einem Handybildschirm den
           halben Platz einnehmen und dabei nicht das beantworten, wofür man
@@ -463,7 +463,7 @@ export function Dokumentbeleg({ h, vorlageNr, className }: {
   // Die Seitenzahl als Sprungmarke: `#page=` verstehen die PDF-Anzeigen der
   // Browser. Wo wir keine haben, bleibt es beim Dokument — eine geratene
   // Seitenzahl wäre schlimmer als keine.
-  const ziel = h.url && h.seite != null ? `${h.url}#page=${h.seite}` : h.url;
+  const ziel = h.url && h.page != null ? `${h.url}#page=${h.page}` : h.url;
   const name = h.label ?? "Dokument im Ratsinformationssystem";
   const art = h.url ? zielart(h.url) : null;
   return (
@@ -484,8 +484,8 @@ export function Dokumentbeleg({ h, vorlageNr, className }: {
         <span className="font-semibold text-foreground/80">{name}</span>
       )}
       {art === "vorlage" && <span>· Vorlagenseite, nicht die Datei</span>}
-      {h.fundstelle && <span>· {h.fundstelle}</span>}
-      {h.seite != null && <span>· Seite {h.seite}</span>}
+      {h.citation && <span>· {h.citation}</span>}
+      {h.page != null && <span>· Seite {h.page}</span>}
       {/* Das Aktenzeichen nur, wo es nicht schon im Namen steht: Manche
           Herkünfte heißen selbst „Vorlage 25/0819", und dann stünde
           „Vorlage 25/0819 · VORLAGE 25/0819" da. */}
@@ -551,14 +551,14 @@ function Dokumentliste({ dokumente, eintraege }: {
               {nr}
             </span>
           )}
-          <a href={d.seite != null ? `${d.url}#page=${d.seite}` : d.url}
+          <a href={d.page != null ? `${d.url}#page=${d.page}` : d.url}
             target="_blank" rel="noopener noreferrer"
             className="inline-flex items-baseline gap-1 text-[11.5px] font-semibold text-primary">
             {d.label || zielText(d.url)}
             <ExternalLink className="h-3 w-3 flex-none self-center" />
           </a>
-          {d.fundstelle && (
-            <span className="text-[11px] text-muted-foreground">· {d.fundstelle}</span>
+          {d.citation && (
+            <span className="text-[11px] text-muted-foreground">· {d.citation}</span>
           )}
           {d.official_text?.template_number
             && !(d.label ?? "").includes(d.official_text.template_number) && (
@@ -629,7 +629,7 @@ export function Quellenverzeichnis({ schluessel }: { schluessel: QuellenSchluess
                     erspart das Nachschlagen woanders. Im kleinen Beleg-Popover
                     bewusst NICHT: 280 px tragen keinen zweiten Tooltip. */}
                 <p className="mt-0.5 text-[11.5px] leading-relaxed text-muted-foreground">
-                  <GlossaryText text={q.fundstelle} />
+                  <GlossaryText text={q.citation} />
                 </p>
                 <p className="mt-1 flex flex-wrap items-center gap-x-2 font-mono text-[9.5px] uppercase tracking-wide text-muted-foreground">
                   <span>{q.herausgeber}</span><span>·</span>

@@ -211,7 +211,7 @@ def test_besetzung_gehoert_zum_stichtag_nicht_zum_haushaltsjahr():
 
 def test_stichtag_steht_an_der_zeile():
     """Ohne ihn ist „143,71 unbesetzt" eine Zahl ohne Datum."""
-    assert _teil(STELLENPLAN_2026_A)["stichtag"] == "2025-06-30"
+    assert _teil(STELLENPLAN_2026_A)["as_of_date"] == "2025-06-30"
 
 
 def test_teil_a_trennt_beamte_und_tarifbeschaeftigte():
@@ -231,14 +231,14 @@ def test_der_seitenwechsel_verdoppelt_keine_zeile():
     teil = _teil(STELLENPLAN_2026_A)
     posten = [z for z in teil["zeilen"] if z["art"] == "posten"]
     assert len(posten) == 42
-    assert [z["lfd_nr"] for z in posten] == list(range(1, 43))
+    assert [z["seq_no"] for z in posten] == list(range(1, 43))
 
 
 def test_ueber_drei_zeilen_umbrochener_name_bleibt_eine_zeile():
     """Nr. 35 steht im Extrakt als „Lebensmittelkontrollamtsinspektor/-in" /
     „mit AZ" / „A 09 1,00 …" — drei Zeilen, ein Datensatz."""
-    z = next(z for z in _teil(STELLENPLAN_2026_A)["zeilen"] if z["lfd_nr"] == 35)
-    assert z["bezeichnung"] == "Lebensmittelkontrollamtsinspektor/-in mit AZ"
+    z = next(z for z in _teil(STELLENPLAN_2026_A)["zeilen"] if z["seq_no"] == 35)
+    assert z["label"] == "Lebensmittelkontrollamtsinspektor/-in mit AZ"
     assert z["besoldung"] == "A 09"
     assert z["stellen_plan"] == 1.00
 
@@ -247,10 +247,10 @@ def test_vermerke_erzeugen_keine_phantomzeile():
     """Hinter Nr. 24 steht „1,00* KU A11 nach Ende der Besetzung 2,00* KW" —
     eine Zahl, ein Buchstabe-Zahl-Paar und ein Umbruch. Nichts davon ist eine
     Zeile, und nichts davon gehört in die Bezeichnung der nächsten."""
-    zeilen = {z["lfd_nr"]: z for z in _teil(STELLENPLAN_2026_A)["zeilen"]}
-    assert zeilen[24]["bezeichnung"] == "Stadtamtsrat/-rätin"
+    zeilen = {z["seq_no"]: z for z in _teil(STELLENPLAN_2026_A)["zeilen"]}
+    assert zeilen[24]["label"] == "Stadtamtsrat/-rätin"
     assert zeilen[24]["nicht_besetzt"] == 13.97
-    assert zeilen[25]["bezeichnung"] == "Archivamtmann/-frau"
+    assert zeilen[25]["label"] == "Archivamtmann/-frau"
 
 
 def test_die_ausbildungstabelle_wird_nicht_mitgelesen():
@@ -268,7 +268,7 @@ I. Nachwuchskräfte und informatorisch beschäftigte Kräfte im Stellenplan 2026
     assert teil["bestanden"] is True
     assert teil["verworfen"] == 0
     assert _gesamt(teil)["stellen_plan"] == 815.00
-    assert not [z for z in teil["zeilen"] if "Bachelor" in z["bezeichnung"]]
+    assert not [z for z in teil["zeilen"] if "Bachelor" in z["label"]]
 
 
 # --- 3. Die Proben ----------------------------------------------------------
@@ -276,10 +276,10 @@ I. Nachwuchskräfte und informatorisch beschäftigte Kräfte im Stellenplan 2026
 def test_alle_vier_proben_gehen_auf():
     teil = _teil(STELLENPLAN_2026_A)
     assert teil["bestanden"] is True
-    assert [p["probe"] for p in teil["proben"]] == [
+    assert [p["probe"] for p in teil["probes"]] == [
         "stellenplan_spaltenprobe", "stellenplan_gruppensummen",
         "stellenplan_besetzung", "stellenplan_gesamtsumme"]
-    assert all(p["probe"] in herkunft.PROBEN for p in teil["proben"])
+    assert all(p["probe"] in herkunft.PROBEN for p in teil["probes"])
 
 
 def test_teil_b_traegt_drei_proben_statt_vier():
@@ -287,7 +287,7 @@ def test_teil_b_traegt_drei_proben_statt_vier():
     vierte Probe zu behaupten hieße, dieselbe Rechnung zweimal zu zählen."""
     teil = _teil(TEIL_B_KLEIN, "B")
     assert teil["bestanden"] is True
-    assert [p["probe"] for p in teil["proben"]] == [
+    assert [p["probe"] for p in teil["probes"]] == [
         "stellenplan_spaltenprobe", "stellenplan_gruppensummen",
         "stellenplan_besetzung"]
     g = _gesamt(teil)
@@ -299,7 +299,7 @@ def test_teil_b_traegt_drei_proben_statt_vier():
 def test_ueberbesetzung_bleibt_negativ():
     """„nicht besetzt −0,51" heißt: mehr Menschen als Stellen. Das ist eine
     Angabe des Plans und keine Fehlmessung — sie darf nicht auf 0 fallen."""
-    z = next(z for z in _teil(TEIL_B_KLEIN, "B")["zeilen"] if z["lfd_nr"] == 4)
+    z = next(z for z in _teil(TEIL_B_KLEIN, "B")["zeilen"] if z["seq_no"] == 4)
     assert z["nicht_besetzt"] == -0.51
 
 
@@ -367,15 +367,15 @@ def test_widerspruechliche_zeilen_werden_gekennzeichnet_nicht_verworfen():
     Markierung daneben."""
     teil = _teil(UNSTIMMIGE_ZEILEN_2023, "B")
     assert teil["bestanden"] is True
-    assert [u["lfd_nr"] for u in teil["unstimmig"]] == [34, 40]
+    assert [u["seq_no"] for u in teil["unstimmig"]] == [34, 40]
     assert [u["deviation"] for u in teil["unstimmig"]] == [1.0, -1.0]
 
-    posten = {z["lfd_nr"]: z for z in teil["zeilen"] if z["art"] == "posten"}
-    assert posten[34]["stimmig"] == 0
-    assert posten[40]["stimmig"] == 0
+    posten = {z["seq_no"]: z for z in teil["zeilen"] if z["art"] == "posten"}
+    assert posten[34]["consistent"] == 0
+    assert posten[40]["consistent"] == 0
     # Und der Wert selbst bleibt der des Dokuments — nicht zurechtgerechnet.
     assert posten[34]["besetzt"] == 52.79
-    assert _gesamt(teil)["stimmig"] == 1
+    assert _gesamt(teil)["consistent"] == 1
 
 
 def test_ein_stimmiger_jahrgang_meldet_keine_ausreisser():
@@ -421,8 +421,8 @@ def test_jede_zeile_weiss_woher_sie_kommt(tmp_path):
     assert zeilen and all(z["herkunft_id"] for z in zeilen)
 
     quelle = store.get_herkunft([zeilen[0]["herkunft_id"]])[0]
-    assert quelle["dokument_id"] == 297432
-    assert quelle["fundstelle"] == "Teil A: Beamtinnen und Beamte"
+    assert quelle["document_id"] == 297432
+    assert quelle["citation"] == "Teil A: Beamtinnen und Beamte"
     # Es ist der Verwaltungsentwurf, nicht der Beschluss — und die Besetzung
     # hat einen Stichtag. Beides muss der Beleg sagen können.
     assert "Stand der Einbringung" in quelle["stand"]
@@ -494,5 +494,5 @@ def test_jahrgang_kommt_aus_dem_kopf_nicht_aus_dem_label():
     Stellenplan", „2025 022 Vw Stellenplan Haushalt 2025 …" — drei
     Schreibweisen, und eine trägt zwei Jahreszahlen. Der Tabellenkopf sagt es
     einmal und eindeutig."""
-    assert sp.jahrgang(STELLENPLAN_2026_A) == 2026
-    assert sp.jahrgang("2024 021 IVw Stellenplan") is None
+    assert sp.budget_year(STELLENPLAN_2026_A) == 2026
+    assert sp.budget_year("2024 021 IVw Stellenplan") is None

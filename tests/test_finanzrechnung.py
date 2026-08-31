@@ -378,7 +378,7 @@ def test_kassensicht_2024_neben_dem_jahresueberschuss():
     assert r["total_out_capital"]["result"] == 96_370_276.14
     # Und die Antwort auf „warum wird das Geplante nicht gebaut?": Geld aus
     # Vorjahren, das in diesem Jahr noch ausgegeben werden durfte.
-    assert r["total_out_capital"]["ermaechtigung"] == 58_768_256.08
+    assert r["total_out_capital"]["authorization"] == 58_768_256.08
     # Bis in die Kasse hinein: nach Tilgung, mit Anfangs- und Endbestand.
     assert r["finanzmittelveraenderung"]["result"] == -25_264_573.53
     assert r["anfangsbestand"]["result"] == 143_077_382.44
@@ -483,7 +483,7 @@ def test_der_seitenfuss_verdraengt_keinen_posten():
     assert "JA 29" in FR_2024
     zeilen = finanzberichte.parse_finanzrechnung(FR_2024, 2024)
     z29 = next(z for z in zeilen if z["nr"] == 29)
-    assert z29["bezeichnung"].startswith("Sonstige Investitionstätigkeit")
+    assert z29["label"].startswith("Sonstige Investitionstätigkeit")
     assert z29["result"] == 27_581_067.00
 
 
@@ -493,7 +493,7 @@ def test_querverweise_nehmen_der_zeile_nicht_ihre_zahlen():
     assert "(Zeile 10 abzüglich" in FR_2019
     r = _rollen(FR_2019, 2019)
     assert r["balance_operating"]["result"] == 57_180_726.91
-    assert "Zeile" not in r["balance_operating"]["bezeichnung"]
+    assert "Zeile" not in r["balance_operating"]["label"]
 
 
 def test_postennummer_auch_ohne_punkt():
@@ -524,12 +524,12 @@ def test_ermaechtigungsspalte_nur_wo_der_kopf_sie_hinter_dem_ergebnis_fuehrt():
     """2019 und 2024 führen sie rechts außen. Fällt die Spaltenüberschrift
     weg, wird nichts geraten — die letzte Zahl der Zeile ist dann eine
     andere Spalte."""
-    assert _rollen(FR_2019, 2019)["total_out_capital"]["ermaechtigung"] \
+    assert _rollen(FR_2019, 2019)["total_out_capital"]["authorization"] \
         == 35_012_344.79
     ohne = FR_2024.replace("Ermächtigung\naus Haushalts-\nvorjahren", "Zu Spalte 6")
     assert ohne != FR_2024
     r = _rollen(ohne, 2024)
-    assert all(z["ermaechtigung"] is None for z in r.values())
+    assert all(z["authorization"] is None for z in r.values())
     # Die Zahlen selbst bleiben unberührt.
     assert r["finanzmittel"]["result"] == -22_378_427.49
 
@@ -545,7 +545,7 @@ def test_ermaechtigungen_haben_ihre_eigene_probe():
         finanzberichte.parse_finanzrechnung(kaputt, 2024))
     assert fehler == []
     assert any("Ermächtigungen verworfen" in h for h in hinweise)
-    assert all(z["ermaechtigung"] is None for z in uebernommen)
+    assert all(z["authorization"] is None for z in uebernommen)
     r = {z["rolle"]: z for z in uebernommen if z["rolle"]}
     assert r["finanzmittel"]["result"] == -22_378_427.49
 
@@ -587,7 +587,7 @@ def test_store_finanzrechnung_roundtrip(tmp_path, quelle):
     assert store.finanzrechnung_jahre() == [2024]
     geladen = {z["rolle"]: z for z in store.get_finanzrechnung(2024) if z["rolle"]}
     assert geladen["finanzmittel"]["result"] == -22_378_427.49
-    assert geladen["total_out_capital"]["ermaechtigung"] == 58_768_256.08
+    assert geladen["total_out_capital"]["authorization"] == 58_768_256.08
     assert geladen["endbestand"]["plan"] is None
     # Jede Zeile weiß, woher sie kommt.
     assert all(z["herkunft_id"] for z in store.get_finanzrechnung(2024))
