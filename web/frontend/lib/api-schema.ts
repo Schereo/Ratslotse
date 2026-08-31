@@ -4647,17 +4647,37 @@ export interface components {
         HeuteSitzung: {
             /** Committee */
             committee: string;
+            /** Live Until */
+            live_until: string | null;
             /** N Sessions Today */
             n_sessions_today: number;
             /** Rest */
             rest: number;
             /** Session Time */
             session_time: string;
+            /** Sessions */
+            sessions: components["schemas"]["HeuteTagesSitzung"][];
             /**
              * State
              * @constant
              */
             state: "heute";
+            /** Tops */
+            tops: string[];
+        };
+        /**
+         * HeuteTagesSitzung
+         * @description Eine Sitzung des heutigen Tages im „Heute im Rat"-Briefing.
+         */
+        HeuteTagesSitzung: {
+            /** Committee */
+            committee: string;
+            /** Live Until */
+            live_until: string | null;
+            /** Rest */
+            rest: number;
+            /** Session Time */
+            session_time: string;
             /** Tops */
             tops: string[];
         };
@@ -4866,6 +4886,8 @@ export interface components {
                 fetched_at?: string | null;
                 /** Ksinr */
                 ksinr: number | null;
+                /** Live Until */
+                live_until?: string | null;
                 /** Location */
                 location?: string | null;
                 /** My Topic Items */
@@ -5614,6 +5636,8 @@ export interface components {
             fetched_at?: string | null;
             /** Ksinr */
             ksinr: number | null;
+            /** Live Until */
+            live_until?: string | null;
             /** Location */
             location?: string | null;
             /** My Topic Items */
@@ -10742,4 +10766,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 591e67d1e6d357dcc346167289839a1d596d1b2d532888a31b49d1a49916d08d
+// vertrag-sha256: 227a0394583eaafbfe8d1963a1787530c8de15a3e3fea895899ee867146dfb1f

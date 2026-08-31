@@ -2507,6 +2507,13 @@
             "title": "Committee",
             "type": "string"
           },
+          "live_until": {
+            "title": "Live Until",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "n_sessions_today": {
             "title": "N Sessions Today",
             "type": "integer"
@@ -2518,6 +2525,13 @@
           "session_time": {
             "title": "Session Time",
             "type": "string"
+          },
+          "sessions": {
+            "items": {
+              "$ref": "#/components/schemas/HeuteTagesSitzung"
+            },
+            "title": "Sessions",
+            "type": "array"
           },
           "state": {
             "const": "heute",
@@ -2536,11 +2550,53 @@
           "state",
           "committee",
           "session_time",
+          "live_until",
           "tops",
           "rest",
-          "n_sessions_today"
+          "n_sessions_today",
+          "sessions"
         ],
         "title": "HeuteSitzung",
+        "type": "object"
+      },
+      "HeuteTagesSitzung": {
+        "description": "Eine Sitzung des heutigen Tages im „Heute im Rat\"-Briefing.",
+        "properties": {
+          "committee": {
+            "title": "Committee",
+            "type": "string"
+          },
+          "live_until": {
+            "title": "Live Until",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rest": {
+            "title": "Rest",
+            "type": "integer"
+          },
+          "session_time": {
+            "title": "Session Time",
+            "type": "string"
+          },
+          "tops": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tops",
+            "type": "array"
+          }
+        },
+        "required": [
+          "committee",
+          "session_time",
+          "live_until",
+          "tops",
+          "rest"
+        ],
+        "title": "HeuteTagesSitzung",
         "type": "object"
       },
       "HoechsteBeschlussId": {
@@ -3037,6 +3093,13 @@
                 "title": "Ksinr",
                 "type": [
                   "integer",
+                  "null"
+                ]
+              },
+              "live_until": {
+                "title": "Live Until",
+                "type": [
+                  "string",
                   "null"
                 ]
               },
@@ -5002,6 +5065,13 @@
             "title": "Ksinr",
             "type": [
               "integer",
+              "null"
+            ]
+          },
+          "live_until": {
+            "title": "Live Until",
+            "type": [
+              "string",
               "null"
             ]
           },
