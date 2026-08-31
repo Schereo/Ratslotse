@@ -136,7 +136,7 @@ def test_die_zerlegung_traegt_den_betrag():
     v = erg["vorlagen"][0]
     assert v["amount"] == 435_941
     assert v["second_mention"] == "split"
-    assert v["layout"] == "neu"
+    assert v["layout"] == "new"
     assert donations.ZWEITSTELLE in v["probes"]
     assert donations.PROTOKOLLABGLEICH in v["probes"]
 
@@ -152,7 +152,7 @@ def test_das_aeltere_layout_traegt_dieselbe_probe():
         "insgesamt 140.664,24 EUR laut anliegender Liste an.")])
     v = erg["vorlagen"][0]
     assert v["amount"] == 140_664.24
-    assert v["layout"] == "alt"
+    assert v["layout"] == "old"
     assert v["second_mention"] == "split"
 
 

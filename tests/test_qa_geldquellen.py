@@ -683,11 +683,11 @@ def _befuellter_store(tmp_path) -> CouncilStore:
         store._conn.executemany(
             "INSERT INTO council_investitionen (year, level, sub_budget_no, label, "
             " inflows, outflows, herkunft_id, fetched_at) VALUES (2026,?,?,?,?,?,4,'')",
-            [("investitionen", 0, "Summe Investitionstätigkeit", 22_300_000.0, 80_800_000.0),
-             ("teilhaushalt", 4, "Schule und Sport", 6_100_000.0, 24_600_000.0),
-             ("teilhaushalt", 7, "Verkehr und Straßenbau", 3_400_000.0, 10_500_000.0),
-             ("teilhaushalt", 9, "Feuerwehr", 200_000.0, 3_900_000.0),
-             ("finanzhaushalt", 0, "Gesamtbetrag des Finanzhaushaltes",
+            [("investments", 0, "Summe Investitionstätigkeit", 22_300_000.0, 80_800_000.0),
+             ("sub_budget", 4, "Schule und Sport", 6_100_000.0, 24_600_000.0),
+             ("sub_budget", 7, "Verkehr und Straßenbau", 3_400_000.0, 10_500_000.0),
+             ("sub_budget", 9, "Feuerwehr", 200_000.0, 3_900_000.0),
+             ("financial_budget", 0, "Gesamtbetrag des Finanzhaushaltes",
               871_000_000.0, 903_000_000.0)])
         # Stellenplan: beide Teile, nur die Gesamtzeilen. besetzt +
         # nicht_besetzt = stellen_vorjahr (die Besetzungsprobe des Plans).

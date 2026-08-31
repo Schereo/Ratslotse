@@ -34,7 +34,7 @@ export type { Herkunft };
 /** Eine Zeile aus `council_investitionsmassnahmen`. */
 export type ProgrammZeile = {
   year: number;
-  level: "massnahme" | "teilhaushalt" | "gesamt";
+  level: "measure" | "sub_budget" | "total";
   sub_budget_no: number;
   /** IPSP-Element („I10.090126"); leer auf den beiden Summenebenen. */
   code: string;

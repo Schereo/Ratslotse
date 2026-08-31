@@ -17,8 +17,8 @@ from council.kontaktdaten import maskieren
 
 
 CONCRETE_LOCATION_KINDS = {
-    "strasse", "platz", "gebaeude", "gewaesser",
-    "anlage", "bauwerk", "verkehrsweg",
+    "street", "square", "building", "water",
+    "facility", "structure", "route",
 }
 
 
@@ -195,7 +195,7 @@ CREATE TABLE IF NOT EXISTS agenda_item_social (
     ksinr       INTEGER NOT NULL,
     item_number TEXT NOT NULL,
     text        TEXT NOT NULL,
-    source      TEXT NOT NULL,  -- was das Modell sah: "vorlage+anlagen", "vorlage", "title"
+    source      TEXT NOT NULL,  -- was das Modell sah: "template+attachments", "template", "title"
     created_at  TEXT NOT NULL,
     PRIMARY KEY(ksinr, item_number)
 );
@@ -1078,6 +1078,39 @@ class CouncilStore:
             ("einstimmig", "unanimous"), ("mehrheitlich", "majority")])
         self._werte_umschreiben("council_decisions", "deviation", [
             ("unveraendert", "unchanged"), ("leicht", "slight"), ("stark", "strong")])
+        # Die Ortsarten. `anlage`, `bauwerk` und `verkehrsweg` gibt es nur als
+        # Prüf-Entscheidung im Admin-Panel, sie stehen aber in derselben Spalte.
+        ORTSARTEN = [
+            ("strasse", "street"), ("platz", "square"), ("gebaeude", "building"),
+            ("gebiet", "area"), ("gewaesser", "water"), ("sonstiges", "other"),
+            ("anlage", "facility"), ("bauwerk", "structure"), ("verkehrsweg", "route"),
+        ]
+        self._werte_umschreiben("council_locations", "kind", ORTSARTEN)
+        self._werte_umschreiben("council_place_reviews", "kind", ORTSARTEN)
+        # Woher der Ort stammt und wie er gefunden wurde.
+        self._werte_umschreiben("council_decision_locations", "source",
+                                [("vorlage", "template")])
+        self._werte_umschreiben("council_decision_locations", "method", [
+            ("stadtteilliste", "district_list"), ("ortskatalog", "place_catalog"),
+            ("gebaeudemuster", "building_pattern")])
+        # Die Ebenen des Investitionsprogramms.
+        self._werte_umschreiben("council_investitionen", "level", [
+            ("teilhaushalt", "sub_budget"), ("investitionen", "investments"),
+            ("finanzhaushalt", "financial_budget")])
+        self._werte_umschreiben("council_investitionsmassnahmen", "level", [
+            ("massnahme", "measure"), ("teilhaushalt", "sub_budget"), ("gesamt", "total")])
+        # Im Ratsinformationssystem liegen nur Entwürfe der Haushaltssatzung.
+        self._werte_umschreiben("council_haushaltssatzung", "version", [
+            ("entwurf", "draft"), ("unbekannt", "unknown")])
+        # Welcher Abschnitt der Vorlage die Zweitstelle der Spende trug.
+        self._werte_umschreiben("council_spenden", "layout", [("neu", "new"), ("alt", "old")])
+        # Über- oder außerplanmäßig (§ 117 NKomVG) — oder beides in einer Vorlage.
+        self._werte_umschreiben("council_nachbewilligungen", "category", [
+            ("ueberplanmaessig", "excess"), ("ausserplanmaessig", "unbudgeted"),
+            ("beides", "both")])
+        # Was das Modell beim Schreiben des Social-Texts vor sich hatte.
+        self._werte_umschreiben("agenda_item_social", "source", [
+            ("vorlage+anlagen", "template+attachments"), ("vorlage", "template")])
 
         cols = {r[1] for r in self._conn.execute("PRAGMA table_info(committee_notifications)").fetchall()}
         if "agenda_hash" not in cols:
@@ -1685,7 +1718,7 @@ class CouncilStore:
         self._conn.execute(
             "CREATE TABLE IF NOT EXISTS council_investitionen ("
             "year INTEGER NOT NULL, "              # Haushaltsjahr (Plan)
-            "level TEXT NOT NULL, "                # teilhaushalt|investitionen|finanzhaushalt
+            "level TEXT NOT NULL, "                # sub_budget|investments|financial_budget
             "sub_budget_no INTEGER NOT NULL DEFAULT 0, "  # 0 = Summenzeile
             "label TEXT NOT NULL, "
             "inflows REAL NOT NULL, "
@@ -1716,7 +1749,7 @@ class CouncilStore:
         self._conn.execute(
             "CREATE TABLE IF NOT EXISTS council_investitionsmassnahmen ("
             "year INTEGER NOT NULL, "              # Haushaltsjahrgang (Plan)
-            "level TEXT NOT NULL, "                # massnahme|teilhaushalt|gesamt
+            "level TEXT NOT NULL, "                # measure|sub_budget|total
             "sub_budget_no INTEGER NOT NULL DEFAULT 0, "
             "code TEXT NOT NULL DEFAULT '', "      # IPSP-Element
             "label TEXT NOT NULL, "
@@ -2314,7 +2347,7 @@ class CouncilStore:
             "CREATE TABLE IF NOT EXISTS council_haushaltssatzung ("
             "year INTEGER NOT NULL, "
             "supplement INTEGER NOT NULL DEFAULT 0, "   # 0 = die Satzung selbst
-            "version TEXT NOT NULL, "                 # entwurf | unbekannt
+            "version TEXT NOT NULL, "                 # draft | unknown
             "ordinary_revenues REAL NOT NULL, "
             "ordinary_expenses REAL NOT NULL, "
             "extraordinary_revenues REAL NOT NULL, "
@@ -2696,7 +2729,7 @@ class CouncilStore:
             "year INTEGER, "                   # aus der Vorlagen-Nummer
             "title TEXT NOT NULL, "
             "kind TEXT NOT NULL, "             # approval|commitment_auth…|threshold
-            "category TEXT NOT NULL, "        # ueberplanmaessig|ausser…|beides
+            "category TEXT NOT NULL, "        # excess|unbudgeted|both
             "amount REAL, "                    # NULL bei art='schwelle'
             "amount_source TEXT, "             # title | proposed_decision
             "decided INTEGER NOT NULL DEFAULT 0, "
@@ -2763,7 +2796,7 @@ class CouncilStore:
             "session_date TEXT NOT NULL, "     # ISO-Datum
             "amount REAL NOT NULL, "           # in Euro, wie beschlossen
             "committee TEXT, "                   # Rat | Verwaltungsausschuss
-            "layout TEXT, "                    # neu | alt — welcher Abschnitt trug
+            "layout TEXT, "                    # new | old — welcher Abschnitt trug
             "second_mention TEXT NOT NULL, "      # identisch | zerlegung
             "probes TEXT NOT NULL, "           # bestandene Proben, kommagetrennt
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL)"
@@ -6158,11 +6191,11 @@ class CouncilStore:
         # Fundstelle und ohne Probe — ohne diesen Filter stünden je Jahrgang
         # zwei Dokumente im Verzeichnis, wo es eines ist.
         "investitionen":        ("council_investitionen", "year",
-                                 "t.level = 'teilhaushalt'", None),
+                                 "t.level = 'sub_budget'", None),
         # Alle Zeilen eines Jahrgangs teilen sich eine Herkunft; die
         # `gesamt`-Zeile gibt es genau einmal und steht hier für das Dokument.
         "investitionsprogramm": ("council_investitionsmassnahmen", "year",
-                                 "t.level = 'gesamt'", None),
+                                 "t.level = 'total'", None),
         # Ein Jahrgang, zwei Herkünfte (Teil A und Teil B im selben PDF, aber
         # unter verschiedenen Proben). Beide zeigen auf dieselbe Datei; die
         # Fundstelle unterscheidet sie, und `DISTINCT` fasst sie deshalb nicht
@@ -6937,15 +6970,15 @@ class CouncilStore:
             hid = self.merke_herkunft(herkunft, fetched_at=now)
             self._conn.execute(
                 "DELETE FROM council_investitionen WHERE year = ?", (year,))
-            werte = [(year, "teilhaushalt", z["sub_budget_no"], z["label"],
+            werte = [(year, "sub_budget", z["sub_budget_no"], z["label"],
                       z["inflows"], z["outflows"], now, hid)
                      for z in zeilen]
-            werte.append((year, "investitionen", 0, gesamt["label"],
+            werte.append((year, "investments", 0, gesamt["label"],
                           gesamt["inflows"], gesamt["outflows"], now, hid))
             if finanzhaushalt:
                 hid_fh = (self.merke_herkunft(herkunft_finanzhaushalt, fetched_at=now)
                           if herkunft_finanzhaushalt is not None else hid)
-                werte.append((year, "finanzhaushalt", 0,
+                werte.append((year, "financial_budget", 0,
                               finanzhaushalt["label"],
                               finanzhaushalt["inflows"],
                               finanzhaushalt["outflows"], now, hid_fh))
@@ -6964,7 +6997,7 @@ class CouncilStore:
         try:
             return [r[0] for r in self._conn.execute(
                 "SELECT DISTINCT year FROM council_investitionen "
-                "WHERE level = 'investitionen' ORDER BY year")]
+                "WHERE level = 'investments' ORDER BY year")]
         except sqlite3.OperationalError:
             return []
 
@@ -7014,13 +7047,13 @@ class CouncilStore:
             werte = []
             for nr, a in sorted(gelesen["abschnitte"].items()):
                 for m in a["massnahmen"]:
-                    werte.append((year, "massnahme", nr, m["code"],
+                    werte.append((year, "measure", nr, m["code"],
                                   m["label"], m["grand_total"],
                                   " · ".join(m.get("details") or []) or None,
                                   now, hid))
-                werte.append((year, "teilhaushalt", nr, "", a["name"],
+                werte.append((year, "sub_budget", nr, "", a["name"],
                               a["summe"], None, now, hid))
-            werte.append((year, "gesamt", 0, "", "Gesamtinvestitionsprogramm",
+            werte.append((year, "total", 0, "", "Gesamtinvestitionsprogramm",
                           gelesen["kopfsumme"], None, now, hid))
             self._conn.executemany(
                 "INSERT INTO council_investitionsmassnahmen "
@@ -7038,7 +7071,7 @@ class CouncilStore:
         try:
             return [r[0] for r in self._conn.execute(
                 "SELECT DISTINCT year FROM council_investitionsmassnahmen "
-                "WHERE level = 'gesamt' ORDER BY year")]
+                "WHERE level = 'total' ORDER BY year")]
         except sqlite3.OperationalError:
             return []
 
@@ -9100,7 +9133,7 @@ class CouncilStore:
         out: dict[int, list[dict]] = {}
         for r in rows:
             out.setdefault(r["decision_id"], []).append({
-                "name": r["name"], "kind": "sonstiges", "source": "official_text",
+                "name": r["name"], "kind": "other", "source": "official_text",
                 "evidence": r["name"], "method": "entity_obs", "confidence": 0.86,
             })
         return out
@@ -9280,7 +9313,7 @@ class CouncilStore:
                JOIN council_decisions d ON d.id=dl.decision_id AND d.kind='decision'
                JOIN council_sessions cs ON cs.ksinr=d.ksinr
                LEFT JOIN council_place_reviews r ON r.location_slug=l.slug
-               WHERE l.kind IN ('district','gebiet','sonstiges') {review_where} {known_where}
+               WHERE l.kind IN ('district','area','other') {review_where} {known_where}
                GROUP BY l.slug
                HAVING COUNT(DISTINCT dl.decision_id) >= ?
                ORDER BY decision_count DESC, last_date DESC, l.name
@@ -9446,7 +9479,7 @@ class CouncilStore:
                     "district=COALESCE(excluded.district,council_locations.district), "
                     "updated_at=excluded.updated_at",
                     (slug, place.name if place else row["name"],
-                     "district" if place and place.is_primary else row.get("kind") or "sonstiges",
+                     "district" if place and place.is_primary else row.get("kind") or "other",
                      primary.name if primary else None, place.id if place else None,
                      primary.id if primary else None, now),
                 )
@@ -12816,7 +12849,7 @@ class CouncilStore:
         try:
             year = self._conn.execute(
                 "SELECT MAX(year) FROM council_investitionen "
-                "WHERE level = 'investitionen'").fetchone()[0]
+                "WHERE level = 'investments'").fetchone()[0]
         except sqlite3.OperationalError:
             return None
         if not year:
@@ -12824,11 +12857,11 @@ class CouncilStore:
         rows = [dict(r) for r in self._conn.execute(
             "SELECT level, sub_budget_no, label, inflows, outflows, herkunft_id "
             "FROM council_investitionen WHERE year = ? AND level IN "
-            "('investitionen', 'teilhaushalt') ORDER BY sub_budget_no", (year,))]
-        gesamt = next((r for r in rows if r["level"] == "investitionen"), None)
+            "('investments', 'sub_budget') ORDER BY sub_budget_no", (year,))]
+        gesamt = next((r for r in rows if r["level"] == "investments"), None)
         if not gesamt:
             return None
-        teile = [r for r in rows if r["level"] == "teilhaushalt"]
+        teile = [r for r in rows if r["level"] == "sub_budget"]
         bewertet = [(self._trifft(r["label"], begriffe), r) for r in teile]
         passend = [r for n, r in sorted(bewertet, key=lambda x: -x[0]) if n][:limit]
         if not passend:
@@ -13730,12 +13763,12 @@ class CouncilStore:
                 continue
             title = r["title"]
             if "Verwaltungsentwurf" in title:
-                art = "part" if any(k in title for k in self._HH_TEILBERICHT) else "entwurf"
+                art = "part" if any(k in title for k in self._HH_TEILBERICHT) else "draft"
             elif "Beschluss" in title:
                 art = "official_text"
             else:
                 continue
-            vorlagen.setdefault(j, {"entwurf": [], "part": [], "official_text": []})[art].append(dict(r))
+            vorlagen.setdefault(j, {"draft": [], "part": [], "official_text": []})[art].append(dict(r))
 
         runden = []
         for j in sorted(vorlagen):
@@ -13752,7 +13785,7 @@ class CouncilStore:
             return None
 
         entwurf_beratungen = self._hh_beratungen(
-            [v["kvonr"] for v in (*teile["entwurf"], *teile["part"])])
+            [v["kvonr"] for v in (*teile["draft"], *teile["part"])])
         einbringung = entwurf_beratungen[0] if entwurf_beratungen else None
 
         von = einbringung["date"] if einbringung else stationen[0]["date"]

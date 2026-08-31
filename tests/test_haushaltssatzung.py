@@ -127,7 +127,7 @@ def test_jede_satzung_im_ris_ist_ein_entwurf():
     Sitzungsdatum. Wer das wegließe, machte aus einem Vorschlag der Verwaltung
     einen Ratsbeschluss."""
     s = parse_satzung(SATZUNG_2024)
-    assert s.version == "entwurf"
+    assert s.version == "draft"
     assert s.session_date is None, "„xx.xx.2023“ ist kein Datum"
 
 
@@ -137,7 +137,7 @@ def test_ohne_entwurfsvermerk_heisst_es_unbekannt_und_nicht_beschlossen():
     neutral = (SATZUNG_2024.replace("Verwaltungsentwurf", "")
                            .replace("xx.xx.2023", "15.12.2023"))
     s = parse_satzung(neutral)
-    assert s.version == "unbekannt"
+    assert s.version == "unknown"
     assert s.session_date == "15.12.2023"
 
 
@@ -231,7 +231,7 @@ def test_speichern_und_wiederlesen(tmp_path):
         zeilen = store.get_haushaltssatzungen()
         assert len(zeilen) == 1
         z = zeilen[0]
-        assert z["year"] == 2024 and z["version"] == "entwurf"
+        assert z["year"] == 2024 and z["version"] == "draft"
         assert z["liquidity_loans"] == 100_000_000.0
         assert z["investment_loans"] == 0.0
         assert store.haushaltssatzung_jahre() == [2024]

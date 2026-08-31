@@ -21,7 +21,7 @@ WAS HIER STEHT, IST NICHT BESCHLOSSEN. Alle neun Dokumente im Bestand tragen
 auf dem Deckblatt „Verwaltungsentwurf", und ihr Satzungstext nennt als
 Sitzungsdatum „xx.xx.20xx" — eine Vorlage, kein Beschluss. Die beschlossene
 Fassung wird im Amtsblatt veröffentlicht, nicht im Ratsinformationssystem.
-Deshalb trägt **jede** Zeile ``version='entwurf'``, und jede Anzeige muss das
+Deshalb trägt **jede** Zeile ``version='draft'``, und jede Anzeige muss das
 mitführen: Was der Rat daraus macht, steht auf `/haushalt/streit`.
 
 Der Jahrgang **2026** ist die eine Ausnahme mit einem echten Datum
@@ -239,7 +239,7 @@ def parse_satzung(text: str, template_number: str | None = None) -> Haushaltssat
         # Der Bestand kennt nur Entwürfe (s. Modul-Kopf). Sollte je ein
         # Dokument ohne jeden Entwurfs-Vermerk auftauchen, heißt es hier
         # `unbekannt` und NICHT `beschlossen` — behauptet wird nichts.
-        version="entwurf" if _ENTWURF.search(text) else "unbekannt",
+        version="draft" if _ENTWURF.search(text) else "unknown",
         **werte,
         in_total=in_total, out_total=out_total,
         investment_loans=kredite,
@@ -274,6 +274,6 @@ def herkunft_fuer(satzung: Haushaltssatzung, *, url: str | None,
         # Die Fassung gehört in den STAND und nicht in eine Fußnote: Wer diese
         # Zahlen liest, liest einen Vorschlag der Verwaltung.
         as_of=(f"Haushaltssatzung {satzung.year}, "
-               + ("Verwaltungsentwurf" if satzung.version == "entwurf"
+               + ("Verwaltungsentwurf" if satzung.version == "draft"
                   else "Fassung unbekannt")),
     )

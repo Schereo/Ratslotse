@@ -12,7 +12,7 @@ Auszahlungszeilen müssen die Summe ergeben, die sie darunter als
 
 WAS HIER EINGELESEN WIRD, IST NICHT BESCHLOSSEN. Alle Satzungen im
 Ratsinformationssystem sind Verwaltungsentwürfe — die beschlossene Fassung
-steht im Amtsblatt. Jede Zeile trägt deshalb `version='entwurf'`, und der Lauf
+steht im Amtsblatt. Jede Zeile trägt deshalb `version='draft'`, und der Lauf
 sagt es bei jedem Jahrgang noch einmal dazu.
 """
 from __future__ import annotations

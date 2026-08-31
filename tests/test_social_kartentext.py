@@ -80,7 +80,7 @@ def test_kontext_nimmt_vorlage_und_anlagen():
     # Der Beschlussvorschlag ist als VORSCHLAG gekennzeichnet — sonst schreibt
     # das Modell „Der Rat beschließt" und nimmt das Ergebnis vorweg.
     assert "noch kein Beschluss" in ktx
-    assert source == "vorlage+anlagen"
+    assert source == "template+attachments"
 
 
 def test_kontext_meldet_ehrlich_wenn_nur_der_titel_da_ist():

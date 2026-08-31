@@ -141,7 +141,7 @@ def kontext(punkt: dict, anlagen: list[dict]) -> tuple[str, str]:
 
     source = "title"
     if kern or punkt.get("proposed_decision"):
-        source = "vorlage+anlagen" if genutzt else "vorlage"
+        source = "template+attachments" if genutzt else "template"
     return "\n\n".join(teile), source
 
 

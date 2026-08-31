@@ -453,7 +453,7 @@ export type NachbewilligungsArt =
  *  Umwidmung, kein ungedeckter Griff in die Kasse. Wo die Seite das Wort
  *  benutzt, muss dieser Satz in Reichweite stehen. */
 export type NachbewilligungsKategorie =
-  | "ueberplanmaessig" | "ausserplanmaessig" | "beides";
+  | "excess" | "unbudgeted" | "both";
 
 /** Eine Nachbewilligung, wie das Ratsinformationssystem sie führt — je
  *  **Vorlage** eine, nicht je Beschlusszeile: Finanzausschuss und Rat

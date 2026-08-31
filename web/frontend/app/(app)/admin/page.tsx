@@ -869,10 +869,10 @@ function QuizModerationTab() {
 type PlaceReviewStatus = "pending" | "concrete" | "approved" | "alias" | "rejected";
 
 const concretePlaceKinds = [
-  ["strasse", "Straße"], ["platz", "Platz"],
-  ["gebaeude", "Gebäude"], ["gewaesser", "Gewässer"],
-  ["anlage", "Anlage oder Gelände"], ["bauwerk", "Bauwerk"],
-  ["verkehrsweg", "Verkehrsweg"],
+  ["street", "Straße"], ["square", "Platz"],
+  ["building", "Gebäude"], ["water", "Gewässer"],
+  ["facility", "Anlage oder Gelände"], ["structure", "Bauwerk"],
+  ["route", "Verkehrsweg"],
 ] as const;
 
 function PlaceCandidateCard({ candidate, catalog, busy, onReview, onReopen }: {
@@ -896,7 +896,7 @@ function PlaceCandidateCard({ candidate, catalog, busy, onReview, onReopen }: {
     ? candidate.review_kind as typeof concretePlaceKinds[number][0]
     : concretePlaceKinds.some(([key]) => key === candidate.kind)
       ? candidate.kind as typeof concretePlaceKinds[number][0]
-      : "strasse";
+      : "street";
   const [concreteKind, setConcreteKind] = useState(initialConcreteKind);
   const primaries = catalog.places.filter((p) => p.kind === "ortsbereich");
   const targets = catalog.places.filter((p) => p.id !== placeId);

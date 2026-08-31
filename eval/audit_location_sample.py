@@ -78,7 +78,7 @@ def sample(conn: sqlite3.Connection, *, method: str, limit: int, seed: int,
     if current_rules and method == "llm":
         rows = [row for row in rows if valid_llm_location(
             row["name"], row["kind"], row["evidence"])]
-    elif current_rules and method in {"regex", "stadtteilliste", "gebaeudemuster"}:
+    elif current_rules and method in {"regex", "district_list", "building_pattern"}:
         checked = []
         for row in rows:
             text = row["title"] if row["source"] == "title" else row["official_text"]

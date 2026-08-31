@@ -23,7 +23,7 @@ from council.store import CouncilStore  # noqa: E402
 COUNCIL_DB = ROOT / "data" / "council.sqlite"
 
 
-DETERMINISTIC_METHODS = {"regex", "stadtteilliste", "ortskatalog", "gebaeudemuster"}
+DETERMINISTIC_METHODS = {"regex", "district_list", "place_catalog", "building_pattern"}
 
 
 def invalid_llm_links(store: CouncilStore) -> list[dict]:

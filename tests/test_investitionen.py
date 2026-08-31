@@ -242,10 +242,10 @@ def test_speichern_und_lesen(tmp_path):
     _speichern(store, FH_2025, 2025)
 
     assert store.investitionen_jahre() == [2025]
-    zeilen = store.get_investitionen(year=2025, level="teilhaushalt")
+    zeilen = store.get_investitionen(year=2025, level="sub_budget")
     assert len(zeilen) == 13
     assert {z["label"] for z in zeilen} >= {"Schule und Bildung"}
-    gesamt = store.get_investitionen(year=2025, level="investitionen")
+    gesamt = store.get_investitionen(year=2025, level="investments")
     assert len(gesamt) == 1
     assert gesamt[0]["outflows"] == 80_781_520
     # Jede Zeile weiß, woher sie kommt.
@@ -259,10 +259,10 @@ def test_bezugsgroesse_traegt_ungeprueft_die_investitionen_nicht(tmp_path):
     _speichern(store, FH_2025, 2025)
 
     je_ebene = {z["level"]: z for z in store.get_investitionen(year=2025)
-                if z["level"] != "teilhaushalt"}
+                if z["level"] != "sub_budget"}
     herkuenfte = {h["id"]: h for h in store.get_herkunft()}
-    geprueft = herkuenfte[je_ebene["investitionen"]["herkunft_id"]]
-    bezug = herkuenfte[je_ebene["finanzhaushalt"]["herkunft_id"]]
+    geprueft = herkuenfte[je_ebene["investments"]["herkunft_id"]]
+    bezug = herkuenfte[je_ebene["financial_budget"]["herkunft_id"]]
 
     assert geprueft["probe"] == "investitionen_summenzeile"
     assert bezug["probe"] == herkunft.UNGEPRUEFT
