@@ -114,10 +114,10 @@ def test_der_punkt_ueberlebt_die_wochenvorschau(tmp_path):
             store._conn.execute(
                 "INSERT INTO council_agenda_items (ksinr, item_number, title, is_public) "
                 "VALUES (1, ?, ?, 1)", (nr, titel))
-        for nr, wert in (("DZT 1", 70), ("Ö 9.1", 85)):
+        for nr, value in (("DZT 1", 70), ("Ö 9.1", 85)):
             store._conn.execute(
                 "INSERT INTO agenda_item_impact (ksinr, item_number, impact, reason, "
-                "created_at) VALUES (1, ?, ?, 'Grund', 'x')", (nr, wert))
+                "created_at) VALUES (1, ?, ?, 'Grund', 'x')", (nr, value))
         store._conn.commit()
 
         punkte = store.wochenvorschau(tage=10, max_punkte=40)["punkte"]
@@ -221,7 +221,7 @@ def test_der_boden_wirkt_in_der_wochenvorschau(tmp_path):
             "INSERT INTO council_sessions (ksinr, committee, session_date, "
             "session_time, location, fetched_at) VALUES (1, 'Rat', ?, '18:00', 'PFL', 'x')",
             (tag,))
-        for nr, titel, wert in (
+        for nr, titel, value in (
                 ("DZT 1", "Dringlichkeitsantrag: festegestellte PAK Belastung", 55),
                 ("DZT 2", "Dringlichkeitsantrag: Resolution Iran", 80),
                 ("Ö 9.1", "Sachlicher Teilflächennutzungsplan Windenergie", 85)):
@@ -230,7 +230,7 @@ def test_der_boden_wirkt_in_der_wochenvorschau(tmp_path):
                 "VALUES (1, ?, ?, 1)", (nr, titel))
             store._conn.execute(
                 "INSERT INTO agenda_item_impact (ksinr, item_number, impact, reason, "
-                "created_at) VALUES (1, ?, ?, 'Ein Grund', 'x')", (nr, wert))
+                "created_at) VALUES (1, ?, ?, 'Ein Grund', 'x')", (nr, value))
         store._conn.commit()
 
         nach_nr = {p["item_number"]: p

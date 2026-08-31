@@ -102,7 +102,7 @@ def test_fremdes_dokument_wird_nicht_gelesen():
 # --- Zellen: Fußnoten und Marken -------------------------------------------
 
 
-@pytest.mark.parametrize("field,wert,mark", [
+@pytest.mark.parametrize("field,value,mark", [
     ("301.516", 301516, ""),      # gewöhnlich
     ("0", 0, ""),
     ("891", 891, ""),             # dreistellig ohne Punkt
@@ -112,14 +112,14 @@ def test_fremdes_dokument_wird_nicht_gelesen():
     ("251.160r", 251160, "r"),    # revidiert
     ("1.673r", 1673, "r"),
 ])
-def test_fussnoten_und_marken_kleben_nicht_am_betrag(field, wert, mark):
+def test_fussnoten_und_marken_kleben_nicht_am_betrag(field, value, mark):
     """``26.5981`` sind 26.598 mit Fußnote 1 und nicht 265.981.
 
     Auflösbar, weil deutsche Tausendergruppen genau drei Ziffern haben — was
     hinter der letzten vollständigen Gruppe steht, gehört nicht zur Zahl. Ein
     Parser, der bloß die Punkte entfernt, liest hier das Zehnfache und meldet
     nichts."""
-    assert schulden._zelle(field) == (wert, mark)
+    assert schulden._zelle(field) == (value, mark)
 
 
 def test_punktloses_feld_gilt_ungeteilt():
@@ -362,7 +362,7 @@ def test_datenstand_kennt_die_schicht(tmp_path, gelesen):
         zeile = next(z for z in finanzquellen.datenstand(store)
                      if z["key"] == "schulden")
         assert zeile["neuester"] == 2025
-        assert zeile["quelle"] == "Portal der Stadt"
+        assert zeile["source"] == "Portal der Stadt"
         # Von Hand nachzuziehen — also muss dastehen, womit.
         assert zeile["automatisch"] is False
         assert "ingest_schulden.py" in finanzquellen.QUELLEN["schulden"].nachschub

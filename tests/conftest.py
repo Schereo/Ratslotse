@@ -38,7 +38,7 @@ except ImportError:  # dotenv ist nur eine Laufzeit-Abhängigkeit der Skripte
 
 
 @pytest.fixture
-def quelle():
+def source():
     """Eine kurze :class:`council.herkunft.Herkunft` für Speicher-Tests.
 
     Die Finanz-``save_*``-Methoden verlangen seit 08/2026 eine Herkunft statt

@@ -808,7 +808,7 @@ class Herkunft:
                 "probe": str(self.probe), "probe_result": self.probe_result,
                 "stand": self.stand}
 
-    def schluessel(self) -> str:
+    def key(self) -> str:
         """Inhaltlicher Fingerabdruck — macht das Eintragen idempotent.
 
         Bewusst **ohne** ``fetched_at``: Wann wir zuletzt nachgesehen haben,

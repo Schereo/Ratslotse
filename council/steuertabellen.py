@@ -705,7 +705,7 @@ PROBEN_KURZ: dict[str, str] = {
 
 
 def zusammenlegen(ausgaben: list[tuple[str, list[dict]]],
-                  schluessel) -> list[dict]:
+                  key) -> list[dict]:
     """Die Jahrgänge mehrerer Ausgaben zu **einer** Reihe machen.
 
     ``ausgaben`` kommt in der Reihenfolge älteste Ausgabe zuerst; bei gleichem
@@ -720,5 +720,5 @@ def zusammenlegen(ausgaben: list[tuple[str, list[dict]]],
     nach_schluessel: dict[tuple, dict] = {}
     for herkunft, zeilen in ausgaben:
         for zeile in zeilen:
-            nach_schluessel[schluessel(zeile)] = {**zeile, "ausgabe": herkunft}
+            nach_schluessel[key(zeile)] = {**zeile, "ausgabe": herkunft}
     return [nach_schluessel[k] for k in sorted(nach_schluessel)]

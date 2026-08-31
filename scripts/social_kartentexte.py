@@ -61,13 +61,13 @@ def probe(db_path: Path, count: int, tage: int, mindest_wichtig: int) -> None:
         for punkt, anlagen in _mit_anlagen(store, store.agenda_items_needing_social_text(
                 count, tage_voraus=tage, mindest_wichtig=mindest_wichtig)):
             _dringlichkeit_nachladen(punkt)
-            ktx, quelle = kontext(punkt, anlagen)
+            ktx, source = kontext(punkt, anlagen)
             result = text_fuer(punkt, anlagen)
             print("=" * 78)
             print(f"{punkt['committee']} · {punkt['item_number']} · "
                   f"Tragweite {punkt.get('impact')}")
             print(f"TITEL  : {(punkt['title'] or '')[:150]}")
-            print(f"QUELLE : {quelle}, {len(ktx)} Zeichen, {len(anlagen)} Anlagen")
+            print(f"QUELLE : {source}, {len(ktx)} Zeichen, {len(anlagen)} Anlagen")
             print(f"TEXT   : {result[0] if result else '— (kein Text)'}")
     finally:
         store.close()

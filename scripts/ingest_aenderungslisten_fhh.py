@@ -80,7 +80,7 @@ def main() -> dict:
 
         gelesen: list[tuple[dict, str, FhhErgebnis]] = []
         risse: list[str] = []
-        for r, schluessel in kandidaten:
+        for r, key in kandidaten:
             try:
                 pdf = _laden(r["url"])
                 time.sleep(0.6)
@@ -92,35 +92,35 @@ def main() -> dict:
                 risse.append(f"{r['document_id']} ({r['label'][:50]}): "
                              f"Download fehlgeschlagen — {fehler}")
                 continue
-            gelesen.append((r, schluessel, result))
+            gelesen.append((r, key, result))
 
         je_liste: dict[tuple[int, str], tuple[dict, str, FhhErgebnis]] = {}
         dubletten: list[str] = []
         konflikte: list[str] = []
-        for r, schluessel, result in gelesen:
-            key = (result.budget_year, schluessel)
+        for r, key, result in gelesen:
+            key = (result.budget_year, key)
             if key not in je_liste:
-                je_liste[key] = (r, schluessel, result)
+                je_liste[key] = (r, key, result)
                 continue
             if _inhaltsgleich(je_liste[key][2], result):
                 dubletten.append(
-                    f"{key[0]} {schluessel}: Dokument {r['document_id']} ist "
+                    f"{key[0]} {key}: Dokument {r['document_id']} ist "
                     f"inhaltsgleich mit {je_liste[key][0]['document_id']} — übersprungen.")
             else:
                 konflikte.append(
-                    f"{key[0]} {schluessel}: Dokumente {je_liste[key][0]['document_id']} "
+                    f"{key[0]} {key}: Dokumente {je_liste[key][0]['document_id']} "
                     f"und {r['document_id']} widersprechen sich — KEINES gespeichert.")
                 je_liste.pop(key)
 
         print("\nGelesen:", flush=True)
-        for (budget_year, schluessel), (r, _s, e) in sorted(je_liste.items()):
+        for (budget_year, key), (r, _s, e) in sorted(je_liste.items()):
             years = sorted({z.year for z in e.zeilen})
             politisch = sorted({s.label for s in e.summen if s.typ == "liste"
                                 and "nderungslist" not in s.label
                                 and not s.label.startswith("Verw")})
             zusatz = f"  · politische Zeile: {', '.join(politisch)}" if politisch else ""
             mit_code = sum(1 for z in e.zeilen if z.product)
-            print(f"  {budget_year}  {schluessel:16} Dok. {r['document_id']}  "
+            print(f"  {budget_year}  {key:16} Dok. {r['document_id']}  "
                   f"{len(e.zeilen):>3} Positionen ({years[0]}–{years[-1]}), "
                   f"{mit_code} mit Investitionscode{zusatz}", flush=True)
 
@@ -138,9 +138,9 @@ def main() -> dict:
                     "konflikte": len(konflikte), "risse": len(risse), "trocken": 1}
 
         positionen = 0
-        for (budget_year, schluessel), (r, _s, e) in sorted(je_liste.items()):
+        for (budget_year, key), (r, _s, e) in sorted(je_liste.items()):
             positionen += store.save_haushalt_aenderungen_fhh(
-                r["document_id"], schluessel, e,
+                r["document_id"], key, e,
                 herkunft_fuer(r["label"], r["url"], r["document_id"]))
         print(f"\nGespeichert: {len(je_liste)} Liste(n), {positionen} Positionen.",
               flush=True)

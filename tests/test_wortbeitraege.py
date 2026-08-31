@@ -535,7 +535,7 @@ def test_partei_meinungen_cache(store):
     assert store.partei_meinungen_cache_get("abc123") == daten
     assert store.partei_meinungen_cache_get("anderer") is None
     store._conn.execute(
-        "UPDATE council_partei_meinungen_cache SET result = 'kaputt' WHERE schluessel = 'abc123'")
+        "UPDATE council_partei_meinungen_cache SET result = 'kaputt' WHERE key = 'abc123'")
     assert store.partei_meinungen_cache_get("abc123") is None
 
 

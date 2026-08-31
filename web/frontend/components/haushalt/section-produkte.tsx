@@ -63,7 +63,7 @@ import {
   bereichSlug, amount,
 } from "@/lib/haushalt";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
-import { Beleg } from "@/components/haushalt/quelle";
+import { Beleg } from "@/components/haushalt/source";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { GlossaryText } from "@/components/glossary-text";
 import { cn } from "@/lib/utils";
@@ -187,7 +187,7 @@ function Treffer({ p, max, aktiv, alleJahre, eingebettet = false }: {
         </div>
         <span className="flex-none text-right">
           <span className="block font-display text-[15px] font-bold leading-none tabular-nums">
-            {n < 0 && "+"}{b.wert}
+            {n < 0 && "+"}{b.value}
           </span>
           <span className="mt-0.5 block font-mono text-[9.5px] uppercase text-muted-foreground">
             {b.unit}
@@ -452,20 +452,20 @@ function Steckbrief({ p, year, alleJahre }: { p: Produkt; year: number; alleJahr
           Was es die Stadt kostet
         </p>
         <p className="mt-1.5 font-display text-[30px] font-bold leading-none tracking-tight tabular-nums">
-          {n < 0 && "+"}{gross.wert}
+          {n < 0 && "+"}{gross.value}
           <span className="text-base font-semibold text-muted-foreground">&#8239;{gross.unit}</span>
           <Beleg q="teilhaushalt" />
         </p>
         <p className="mt-2 max-w-[62ch] text-[12.5px] leading-relaxed text-foreground/85">
           {n > 0 ? (
-            <>Für {year} sind <strong>{aus.wert}&#8239;{aus.unit}</strong> Aufwendungen
-              geplant. Dem stehen <strong>{ein.wert}&#8239;{ein.unit}</strong> eigene
+            <>Für {year} sind <strong>{aus.value}&#8239;{aus.unit}</strong> Aufwendungen
+              geplant. Dem stehen <strong>{ein.value}&#8239;{ein.unit}</strong> eigene
               Erträge gegenüber, etwa Gebühren oder Erstattungen. Den verbleibenden
               Zuschussbedarf finanziert der allgemeine Haushalt.</>
           ) : (
             <>Bei diesem Produkt übersteigen die geplanten eigenen Erträge von{" "}
-              <strong>{ein.wert}&#8239;{ein.unit}</strong> die geplanten Aufwendungen
-              von {aus.wert}&#8239;{aus.unit}.</>
+              <strong>{ein.value}&#8239;{ein.unit}</strong> die geplanten Aufwendungen
+              von {aus.value}&#8239;{aus.unit}.</>
           )}
         </p>
         {/* Zwei Ehrlichkeits-Zeilen, auf jedem Gerät (H4-04): Ist-Zahlen gibt
@@ -650,8 +650,8 @@ export function ProdukteAbschnitt({ onBestand }: {
     year: number;
     /** Die drei größten Aufgaben nach Zuschussbedarf — fürs Minibild der
      *  Bühne, mit echten Namen statt einer abstrakten Baum-Skizze
-     *  (Tim, 26.08.). `wert` ist |netto| in Euro. */
-    beispiele: { name: string; wert: number }[];
+     *  (Tim, 26.08.). `value` ist |netto| in Euro. */
+    beispiele: { name: string; value: number }[];
   } | null) => void;
 } = {}) {
   const router = useRouter();
@@ -705,7 +705,7 @@ export function ProdukteAbschnitt({ onBestand }: {
     const beispiele = [...data.produkte]
       .sort((a, b) => Math.abs(netto(b)) - Math.abs(netto(a)))
       .slice(0, 3)
-      .map((pr) => ({ name: pr.product_name, wert: Math.abs(netto(pr)) }));
+      .map((pr) => ({ name: pr.product_name, value: Math.abs(netto(pr)) }));
     onBestand(count > 0 ? { count, year, beispiele } : null);
   }, [onBestand, uebersicht.loading, loading, data, year, entprellt, office, spielraum]);
 
@@ -721,9 +721,9 @@ export function ProdukteAbschnitt({ onBestand }: {
     if (!leer || !alleDaten) return [];
     const q = bigramme(entprellt);
     return alleDaten.produkte
-      .map((p) => ({ p, wert: aehnlichkeit(q, bigramme(p.product_name)) }))
-      .filter((x) => x.wert >= 0.25)
-      .sort((a, b) => b.wert - a.wert)
+      .map((p) => ({ p, value: aehnlichkeit(q, bigramme(p.product_name)) }))
+      .filter((x) => x.value >= 0.25)
+      .sort((a, b) => b.value - a.value)
       .slice(0, 3)
       .map((x) => x.p);
   }, [leer, alleDaten, entprellt]);

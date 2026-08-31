@@ -56,7 +56,7 @@ import {
 import type { VergleichDaten } from "@/lib/haushalt-vergleich";
 import type { ProgrammDaten } from "@/lib/haushalt-investitionsprogramm";
 import type { SchuldenDaten } from "@/lib/haushalt-schulden";
-import { Beleg } from "@/components/haushalt/quelle";
+import { Beleg } from "@/components/haushalt/source";
 import { EinnahmenWerkbank } from "@/components/haushalt/labor-einnahmen";
 import { AusgabenWerkbank } from "@/components/haushalt/labor-ausgaben";
 import { InvestWerkbank } from "@/components/haushalt/labor-invest";

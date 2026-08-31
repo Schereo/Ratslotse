@@ -74,7 +74,7 @@ function jahresreihe(items: QuizChartData["items"]): JahrPunkt[] | null {
   for (const it of items) {
     const year = Number(it.label);
     if (!Number.isInteger(year) || year < 1900 || year > 2200) return null;
-    series.push({ year, wert: it.value });
+    series.push({ year, value: it.value });
   }
   return series.length >= 2 ? series : null;
 }
@@ -82,7 +82,7 @@ function jahresreihe(items: QuizChartData["items"]): JahrPunkt[] | null {
 function Rangliste({ chart }: { chart: QuizChartData }) {
   const zeilen: RanglisteZeile[] = chart.items.map((it) => ({
     label: it.label,
-    wert: it.value,
+    value: it.value,
     hervorgehoben: it.highlight,
   }));
   return <RanglisteSchiene zeilen={zeilen} unit={einheitKurz(chart.unit)} />;
@@ -111,13 +111,13 @@ export function QuizChart({ chart, className }: { chart: QuizChartData; classNam
       .sort((a, b) => Number(!!b.highlight) - Number(!!a.highlight))
       .map((it) => ({
         label: it.label,
-        wert: it.value,
+        value: it.value,
         farbe: it.highlight ? "var(--hh-aus-0)" : "var(--hh-aus-5)",
       }));
     // Basis ist die SUMME der Segmente, nicht die runde 100: Rundet das
     // Backend einmal auf 99, zeigt die Leiste 99 als volle Breite statt einer
     // Lücke, die keine ist.
-    const basis = segmente.reduce((s, x) => s + x.wert, 0);
+    const basis = segmente.reduce((s, x) => s + x.value, 0);
     return (
       <div className={rahmen}>
         {/* Der Titel steht hier IN der Leiste (`titel`), nicht über dem

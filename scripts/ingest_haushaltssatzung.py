@@ -61,14 +61,14 @@ def hebesatz_probe(store: CouncilStore, satzung) -> str | None:
         "gewerbesteuer": satzung.trade_tax_rate,
     }
     geprueft = []
-    for art, wert in rows:
+    for art, value in rows:
         eigen = felder.get(art)
         if eigen is None:
             continue
-        if int(wert) != int(eigen):
+        if int(value) != int(eigen):
             raise SatzungFehler(
                 f"Hebesatz {art} {satzung.year}: Die Satzung sagt {eigen} v.H., "
-                f"das Statistische Jahrbuch {int(wert)} v.H. — zwei Häuser "
+                f"das Statistische Jahrbuch {int(value)} v.H. — zwei Häuser "
                 "widersprechen sich.")
         geprueft.append(f"{art} {eigen} v.H.")
     return ("Hebesatz gegen Tabelle 1105 gehalten: " + ", ".join(geprueft)

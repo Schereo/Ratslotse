@@ -36,7 +36,7 @@ import { ChevronDown, Search } from "lucide-react";
 import {
   AenderungslistenDaten, FhhListeImJahr, deltaBetrag, fhhListenFuerJahr,
 } from "@/lib/haushalt-aenderungslisten";
-import { Beleg, Dokumentbeleg } from "@/components/haushalt/quelle";
+import { Beleg, Dokumentbeleg } from "@/components/haushalt/source";
 import { BetragZelle, TextZelle, ZahlenTabelle } from "@/components/haushalt/zahlen-tabelle";
 import { cn } from "@/lib/utils";
 
@@ -200,7 +200,7 @@ export function StreitFinanzhaushalt({ daten, year }: {
       </p>
 
       <div className="mt-3">
-        {listen.map((l) => <ListenKarte key={l.schluessel} liste={l} year={year} />)}
+        {listen.map((l) => <ListenKarte key={l.key} liste={l} year={year} />)}
       </div>
     </div>
   );

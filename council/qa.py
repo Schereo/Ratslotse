@@ -2087,7 +2087,7 @@ def geld_grafik(store, geld: dict) -> dict | None:
     Antwort sieht aus wie bisher — das Gate erledigt sich über die Daten.
     """
     if geld.get("schulden"):
-        series = [{"year": r["year"], "wert": round(r["total"] / 1e6, 1)}
+        series = [{"year": r["year"], "value": round(r["total"] / 1e6, 1)}
                  for r in store.get_schulden() if r.get("total") is not None]
         if len(series) >= 2:
             s = geld["schulden"]
@@ -2101,7 +2101,7 @@ def geld_grafik(store, geld: dict) -> dict | None:
                 # Ohne sie ist „337 Mio. €" eine von drei Zahlen, die alle
                 # „die Schulden der Stadt" heißen.
                 "note": s.get("abgrenzung"),
-                "quelle": "Statistisches Jahrbuch der Stadt Oldenburg, Tabelle 1108",
+                "source": "Statistisches Jahrbuch der Stadt Oldenburg, Tabelle 1108",
                 # Die Anschlussstelle in den Haushalts-Bereich — dieselbe
                 # Bauart wie store.haushalts_anschluss: Der Server nennt das
                 # Ziel, das Frontend entscheidet am Gate, ob es den Link
@@ -2115,7 +2115,7 @@ def geld_grafik(store, geld: dict) -> dict | None:
         # sie schon aufgelöst („gewinnt die erste": sie ist die, nach der
         # gefragt wurde; die weiteren sind Beifang der Synonyme).
         art = geld["taxes"][0]["art"]
-        series = [{"year": r["year"], "wert": round(r["amount"] / 1e6, 1)}
+        series = [{"year": r["year"], "value": round(r["amount"] / 1e6, 1)}
                  for r in store.get_steuereinnahmen()
                  if r["art"] == art and r.get("amount") is not None]
         if len(series) >= 2:
@@ -2129,7 +2129,7 @@ def geld_grafik(store, geld: dict) -> dict | None:
                 "series": series,
                 "note": ("Abrechnungszahlen der Stadt, keine Planwerte — "
                             "je Jahr das, was tatsächlich eingenommen wurde."),
-                "quelle": "Statistisches Jahrbuch der Stadt Oldenburg, Ist-Steuereinnahmen",
+                "source": "Statistisches Jahrbuch der Stadt Oldenburg, Ist-Steuereinnahmen",
                 "mehr": _steuer_mehr(art),
             }
     return None
@@ -2308,8 +2308,8 @@ def _vergleich_block(v: dict | None) -> str:
     if not v or not v.get("staedte"):
         return ""
     unit = f" {v['unit']}" if v.get("unit") else ""
-    zeilen = [f"- {s['city']}: {s['wert']:,.0f}{unit}".replace(",", ".")
-              for s in v["staedte"][:8] if s.get("wert") is not None]
+    zeilen = [f"- {s['city']}: {s['value']:,.0f}{unit}".replace(",", ".")
+              for s in v["staedte"][:8] if s.get("value") is not None]
     return (f"\nIM VERGLEICH ({v['indicator']}, {v['year']}, amtliche Statistik des\n"
             "Landesamts für Statistik Niedersachsen — alle kreisfreien Städte\n"
             "Niedersachsens). Für die Einordnung „wo steht Oldenburg?“; NIE mit [id]"
@@ -2356,8 +2356,8 @@ def _bilanz_block(b: dict | None) -> str:
         "schulden": "Schulden und ähnliche Verbindlichkeiten",
     }
     zeilen = [f"- Bilanzsumme zum 31.12.{b['year']}: {_eur(b['bilanzsumme'])}"]
-    for role, wert in b.get("posten") or []:
-        zeilen.append(f"  - {namen.get(role, role)}: {_eur(wert)}")
+    for role, value in b.get("posten") or []:
+        zeilen.append(f"  - {namen.get(role, role)}: {_eur(value)}")
     return ("\nBILANZ (Jahresabschluss, Abschnitt 2.1). Das ist ein STICHTAG "
             f"(31.12.{b['year']}),\nkein Haushaltsjahr: Diese Beträge NIE mit "
             "Erträgen, Aufwendungen oder dem\nDefizit eines Jahres verrechnen. Nie "
@@ -2370,7 +2370,7 @@ def _kassensicht_block(k: dict | None) -> str:
     scheinbar widerspricht."""
     if not k or not k.get("zeilen"):
         return ""
-    zeilen = [f"- {name}: {_eur(wert)}" for name, wert, _rolle in k["zeilen"]]
+    zeilen = [f"- {name}: {_eur(value)}" for name, value, _rolle in k["zeilen"]]
     return (f"\nKASSENSICHT (Finanzrechnung {k['year']}, Abschnitt 4.1 desselben "
             "Jahresabschlusses).\nSie bucht, wenn GELD FLIESST — die "
             "Ergebnisrechnung bucht, wenn ein Anspruch\nentsteht. Deshalb können "
@@ -2417,26 +2417,26 @@ def _kennzahlen_block(k: dict | None) -> str:
     """
     if not k or not k.get("werte"):
         return ""
-    def zeig(wert: float, unit: str, stellen: int = 2) -> str:
+    def zeig(value: float, unit: str, stellen: int = 2) -> str:
         """Eine Kennzahl so schreiben, wie der Bericht sie druckt."""
         if unit == "percent":
-            return f"{wert:.{stellen}f} %".replace(".", ",")
+            return f"{value:.{stellen}f} %".replace(".", ",")
         if unit == "count":
-            return f"{wert:,.0f}".replace(",", ".")
-        return (f"{wert:,.{stellen}f} €".replace(",", "\u0001")
+            return f"{value:,.0f}".replace(",", ".")
+        return (f"{value:,.{stellen}f} €".replace(",", "\u0001")
                 .replace(".", ",").replace("\u0001", "."))
 
     zeilen = []
-    for name, wert, unit, stellen, formula in k["werte"]:
+    for name, value, unit, stellen, formula in k["werte"]:
         if unit == "percent":
-            gezeigt = f"{wert:.{stellen}f} %".replace(".", ",")
+            gezeigt = f"{value:.{stellen}f} %".replace(".", ",")
         elif unit == "count":
-            gezeigt = f"{wert:,.0f}".replace(",", ".")
+            gezeigt = f"{value:,.0f}".replace(",", ".")
         else:
             # Mit den GEDRUCKTEN Nachkommastellen, nicht mit `_eur`: Neben
             # „so rechnet die Stadt" stünde sonst eine gerundete Zahl (156 €
             # statt 156,43 €) und daneben der Rechenweg, der sie nicht ergibt.
-            gezeigt = (f"{wert:,.{stellen}f} €".replace(",", "\u0001")
+            gezeigt = (f"{value:,.{stellen}f} €".replace(",", "\u0001")
                        .replace(".", ",").replace("\u0001", "."))
         zeile = f"- {name} {k['year']}: {gezeigt}"
         if formula:
@@ -2489,7 +2489,7 @@ def _schulden_block(s: dict | None) -> str:
     # der Zufall der Facette. Nebeneinander sind sie die ehrliche Antwort.
     for w in s.get("weitere") or []:
         zeilen.append(f"- Dieselbe Frage, andere Abgrenzung — {w['art']} "
-                      f"{w['year']}: {_eur(w['amount'])} (Quelle: {w['quelle']})")
+                      f"{w['year']}: {_eur(w['amount'])} (Quelle: {w['source']})")
     if s.get("weitere"):
         zeilen.append("  Diese Zahlen NIE addieren: Die größere enthält die "
                       "kleinere. Wer nach „den Schulden“ fragt, bekommt die "
@@ -2704,8 +2704,8 @@ def geld_block(geld: dict | None) -> str:
     teile: list[str] = []
     laenge = 0
     for facette in GELD_FACETTEN:
-        schluessel, bauer = _GELD_BAUSTEINE[facette]
-        text = bauer(geld.get(schluessel))
+        key, bauer = _GELD_BAUSTEINE[facette]
+        text = bauer(geld.get(key))
         if not text:
             continue
         if laenge + len(text) > GELD_MAX_CHARS and teile:

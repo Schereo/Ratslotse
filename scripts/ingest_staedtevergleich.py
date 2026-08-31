@@ -125,7 +125,7 @@ def main() -> int:
             print(f"  Zwei-Jahres-Überlappung: {probe['result']}")
             if not probe["ok"]:
                 for a in probe["abweichungen"][:10]:
-                    print(f"    ABWEICHUNG {a['schluessel']} {a['stadt']}: "
+                    print(f"    ABWEICHUNG {a['key']} {a['stadt']}: "
                           f"{a['alt']} gegen {a['neu']}")
                 print("  ABBRUCH: Die beiden Jahrgänge widersprechen sich. Es wird "
                       "nichts geschrieben — lieber keine Zahlen als falsche.")

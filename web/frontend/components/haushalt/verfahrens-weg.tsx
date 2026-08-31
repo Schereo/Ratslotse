@@ -27,7 +27,7 @@ import {
   AenderungslistenDaten, VerfahrensWeg, deltaBetrag, verfahrensWeg,
 } from "@/lib/haushalt-aenderungslisten";
 import { Anteilsbalken } from "@/components/haushalt/anteilsbalken";
-import { Beleg } from "@/components/haushalt/quelle";
+import { Beleg } from "@/components/haushalt/source";
 import { parteiDot } from "@/components/qa-bausteine";
 import { cn } from "@/lib/utils";
 
@@ -128,9 +128,9 @@ export function VerfahrensWegKarte({ daten, budget_year, className }: {
           gesamt={Math.abs(weg.bewegt)}
           unit="€"
           segmente={[
-            { label: "Listen der Verwaltung", wert: Math.abs(weg.verwaltung),
+            { label: "Listen der Verwaltung", value: Math.abs(weg.verwaltung),
               farbe: "var(--hh-aus-2)" },
-            { label: "Listen der Fraktionen", wert: Math.abs(weg.politik),
+            { label: "Listen der Fraktionen", value: Math.abs(weg.politik),
               farbe: "var(--hh-aus-5)" },
           ]}
         />

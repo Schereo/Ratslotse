@@ -104,10 +104,10 @@ def _spanne(years: list[int]) -> str:
                      for b in bloecke)
 
 
-def _fundstelle(accounting_system: str, quelle: str, mit_abschluss: bool) -> str:
+def _fundstelle(accounting_system: str, source: str, mit_abschluss: bool) -> str:
     """Wo genau die Zahlen dieser Gruppe stehen — je nach Quellenlage."""
     titel = ar.TITEL[accounting_system]
-    if quelle == "csv":
+    if source == "csv":
         return (f"Datensatz 1102, Spalte „{titel}“ — je Haushaltsjahr die "
                 f"Einwohnerzahl (Stichtag 31.12. des Vorjahres), der Betrag in "
                 f"Tausend Euro und der Betrag je Einwohner*in. Diese Jahrgänge "
@@ -248,10 +248,10 @@ def main() -> int:
             gruppen: dict[tuple, list[dict]] = {}
             for z in zeilen:
                 gruppen.setdefault(
-                    (z["accounting_system"], z["quelle"], tuple(z["probes"])), []).append(z)
+                    (z["accounting_system"], z["source"], tuple(z["probes"])), []).append(z)
 
             geschrieben = 0
-            for (accounting_system, quelle, probes), part in sorted(
+            for (accounting_system, source, probes), part in sorted(
                     gruppen.items(), key=lambda kv: kv[1][0]["year"]):
                 spanne = _spanne([z["year"] for z in part])
                 count = (f"{len(part)} Jahrgänge" if len(part) != 1
@@ -267,21 +267,21 @@ def main() -> int:
                         f" Mio. € — übernommen ist der Wert, der seine "
                         f"Pro-Kopf-Rechnung erfüllt")
                 geschrieben += store.save_ausgabenreihe(part, h.Herkunft(
-                    art="opendata" if quelle == "csv" else "stadt",
-                    url=(ar.CSV_URLS[accounting_system] if quelle == "csv"
+                    art="opendata" if source == "csv" else "stadt",
+                    url=(ar.CSV_URLS[accounting_system] if source == "csv"
                          else (url or ar.TABELLE_URL)),
                     label=("Open-Data-Portal der Stadt Oldenburg, Datensatz "
-                           f"1102 — {ar.TITEL[accounting_system]}" if quelle == "csv"
+                           f"1102 — {ar.TITEL[accounting_system]}" if source == "csv"
                            else "Statistisches Jahrbuch der Stadt Oldenburg, "
                                 f"Tabelle 1102 — {ar.TITEL[accounting_system]}"),
                     stand=f"Haushaltsjahre {spanne} · {ar.ABGRENZUNG[accounting_system]}",
                     probe=list(probes),
                     citation=_fundstelle(
-                        accounting_system, quelle,
+                        accounting_system, source,
                         "ausgabenreihe_jahresabschluss" in probes),
                     probe_result=nachweis))
                 print(f"  {ar.REGELWERK[accounting_system]}, {spanne} "
-                      f"({quelle.upper()}): {count}")
+                      f"({source.upper()}): {count}")
             print(f"  gespeichert: {geschrieben} Jahrgänge")
 
         store.herkunft_aufraeumen()

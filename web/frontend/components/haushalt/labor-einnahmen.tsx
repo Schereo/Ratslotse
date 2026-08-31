@@ -26,7 +26,7 @@ import Link from "next/link";
 import { Lock } from "lucide-react";
 import { deMio, amount, type GebuehrenZeile, type HebesatzZeile } from "@/lib/haushalt";
 import type { StadtHebesatz } from "@/lib/haushalt-labor";
-import { Beleg } from "@/components/haushalt/quelle";
+import { Beleg } from "@/components/haushalt/source";
 import { Regler } from "@/components/haushalt/regler";
 import { StaedteLeiter } from "@/components/haushalt/staedte-leiter";
 
@@ -133,10 +133,10 @@ export function EinnahmenWerkbank({
           <Regler
             id="gewst"
             label="Gewerbesteuer-Hebesatz"
-            wert={punkte} min={-maxPunkte} max={maxPunkte} step={5}
+            value={punkte} min={-maxPunkte} max={maxPunkte} step={5}
             onChange={setPunkte}
             geaendert={punkte !== 0}
-            ist={{ wert: 0, label: `heute ${gewst.satz} %` }}
+            ist={{ value: 0, label: `heute ${gewst.satz} %` }}
             marken={{ min: `${gewst.satz - maxPunkte} %`, max: `${gewst.satz + maxPunkte} %` }}
             anzeige={
               punkte === 0
@@ -198,10 +198,10 @@ export function EinnahmenWerkbank({
             <Regler
               id="grundst"
               label="Grundsteuer B — Hebesatz"
-              wert={grundstPunkte} min={-maxPunkte} max={maxPunkte} step={5}
+              value={grundstPunkte} min={-maxPunkte} max={maxPunkte} step={5}
               onChange={setGrundstPunkte}
               geaendert={grundstPunkte !== 0}
-              ist={{ wert: 0, label: `heute ${grundst.satz} %` }}
+              ist={{ value: 0, label: `heute ${grundst.satz} %` }}
               marken={{ min: `${grundst.satz - maxPunkte} %`, max: `${grundst.satz + maxPunkte} %` }}
               anzeige={
                 grundstPunkte === 0
@@ -212,7 +212,7 @@ export function EinnahmenWerkbank({
               }
               wirkung={
                 grundstPunkte === 0 ? (
-                  <>Ein Punkt bringt überschlagen {amount(proPunktGrundst * 1e6).wert}&#8239;
+                  <>Ein Punkt bringt überschlagen {amount(proPunktGrundst * 1e6).value}&#8239;
                   {amount(proPunktGrundst * 1e6).unit} <Beleg q="taxes" /> — bei
                   unveränderten Messbeträgen.</>
                 ) : (
@@ -250,20 +250,20 @@ export function EinnahmenWerkbank({
           <Regler
             id="hunde"
             label="Hundesteuer"
-            wert={hundePct} min={-100} max={100} step={25}
+            value={hundePct} min={-100} max={100} step={25}
             onChange={setHundePct}
             geaendert={hundePct !== 0}
-            ist={{ wert: 0, label: "heute" }}
+            ist={{ value: 0, label: "heute" }}
             marken={{ min: "abschaffen", max: "verdoppeln" }}
             anzeige={
               hundePct === 0
                 ? <span className="text-muted-foreground">
-                    {amount(hunde.amount).wert}&nbsp;{amount(hunde.amount).unit}<Beleg q="taxes" />
+                    {amount(hunde.amount).value}&nbsp;{amount(hunde.amount).unit}<Beleg q="taxes" />
                   </span>
                 : <strong className="text-signal">
                     {hundePct === -100
                       ? <>0&nbsp;€ (abgeschafft)</>
-                      : <>{amount(hunde.amount * (1 + hundePct / 100)).wert}&nbsp;
+                      : <>{amount(hunde.amount * (1 + hundePct / 100)).value}&nbsp;
                         {amount(hunde.amount * (1 + hundePct / 100)).unit}{" "}
                         ({hundePct > 0 ? "+" : "−"}{Math.abs(hundePct)}&nbsp;%)</>}
                   </strong>

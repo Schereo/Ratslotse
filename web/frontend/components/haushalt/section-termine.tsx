@@ -79,7 +79,7 @@ import {
 import type { DokumenteAntwort } from "@/lib/haushalt-dokumente";
 import { Zeitstrahl, ZeitstrahlStation } from "@/components/grafik/zeitstrahl";
 import { StationsZeile } from "@/components/haushalt/weg-stationen";
-import { Beleg } from "@/components/haushalt/quelle";
+import { Beleg } from "@/components/haushalt/source";
 import { cn } from "@/lib/utils";
 
 

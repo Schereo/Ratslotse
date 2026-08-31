@@ -256,7 +256,7 @@ def test_geschriebene_zeile_weiss_wo_sie_steht_und_womit_sie_gedeckt_ist(tmp_pat
     (h,) = store.get_herkunft()
     assert len(h["probes"]) == 2
     assert "Posten 12" in h["probes"][0] and "Vorjahres" in h["probes"][1]
-    assert "schluessel" not in h        # interner Fingerabdruck, kein Lesestoff
+    assert "key" not in h        # interner Fingerabdruck, kein Lesestoff
     store.close()
 
 
@@ -503,7 +503,7 @@ def test_vergessene_zieltabelle_verliert_ihre_herkunft_nicht(tmp_path):
     with store._conn:
         store._conn.execute(
             "CREATE TABLE council_beteiligungen_kennzahlen ("
-            "year INTEGER, wert REAL, herkunft_id INTEGER)")
+            "year INTEGER, value REAL, herkunft_id INTEGER)")
         hid = store.merke_herkunft(Herkunft(
             art="ris", probe="summenzeile", url=JA_URL,
             citation="Abschnitt 4.1.1, Aufstellung nach Aufgabenträgern"))

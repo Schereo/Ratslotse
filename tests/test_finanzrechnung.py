@@ -576,11 +576,11 @@ def test_kassenkette_schweigt_ohne_bestandszeilen():
 
 # --- Speichern ---------------------------------------------------------------
 
-def test_store_finanzrechnung_roundtrip(tmp_path, quelle):
+def test_store_finanzrechnung_roundtrip(tmp_path, source):
     store = CouncilStore(tmp_path / "c.sqlite")
     zeilen, _, _ = finanzberichte.finanzprobe(
         finanzberichte.parse_finanzrechnung(FR_2024, 2024))
-    q = quelle("Jahresabschluss 2024", "https://example.org/ja2024.pdf",
+    q = source("Jahresabschluss 2024", "https://example.org/ja2024.pdf",
                probe="finanzkaskade")
     assert store.save_finanzrechnung(2024, zeilen, q) == len(zeilen)
     assert store.save_finanzrechnung(2024, zeilen, q) == len(zeilen)  # idempotent

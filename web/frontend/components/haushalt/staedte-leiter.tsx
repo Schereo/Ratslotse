@@ -13,12 +13,12 @@
 
 import { deZahl } from "@/components/grafik/format";
 import type { StadtHebesatz } from "@/lib/haushalt-labor";
-import { Beleg } from "@/components/haushalt/quelle";
+import { Beleg } from "@/components/haushalt/source";
 import { cn } from "@/lib/utils";
 
 type Zeile = {
   name: string;
-  wert: number;
+  value: number;
   role: "stadt" | "heute" | "dein";
 };
 
@@ -36,15 +36,15 @@ export function StaedteLeiter({ staedte, heute, deinWert, geaendert }: {
 
   const zeilen: Zeile[] = staedte.map((s) => ({
     name: s.istOldenburg ? "Oldenburg · heute" : s.stadt,
-    wert: s.istOldenburg ? heute : s.wert,
+    value: s.istOldenburg ? heute : s.value,
     role: s.istOldenburg ? "heute" : "stadt",
   }));
   if (geaendert && deinWert !== heute) {
-    zeilen.push({ name: "Oldenburg · dein Wert", wert: deinWert, role: "dein" });
+    zeilen.push({ name: "Oldenburg · dein Wert", value: deinWert, role: "dein" });
   }
-  zeilen.sort((a, b) => b.wert - a.wert);
+  zeilen.sort((a, b) => b.value - a.value);
 
-  const werte = zeilen.map((z) => z.wert);
+  const werte = zeilen.map((z) => z.value);
   const [min, max] = [Math.min(...werte), Math.max(...werte)];
   const spanne = Math.max(1, max - min);
   const pos = (w: number) => 4 + ((w - min) / spanne) * 92;
@@ -53,7 +53,7 @@ export function StaedteLeiter({ staedte, heute, deinWert, geaendert }: {
   // der Leiter mitnimmt („zöge mit Osnabrück gleich“).
   const dein = zeilen.findIndex((z) => z.role === "dein");
   const gleichauf = dein >= 0
-    ? zeilen.find((z, i) => i !== dein && z.role === "stadt" && z.wert === zeilen[dein].wert)
+    ? zeilen.find((z, i) => i !== dein && z.role === "stadt" && z.value === zeilen[dein].value)
     : undefined;
 
   return (
@@ -74,16 +74,16 @@ export function StaedteLeiter({ staedte, heute, deinWert, geaendert }: {
             <span className="relative h-2 min-w-0 flex-1 rounded-full bg-muted">
               {z.role === "dein" ? (
                 <span className="absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-[2.5px] border-primary bg-card"
-                  style={{ left: `${pos(z.wert)}%` }} />
+                  style={{ left: `${pos(z.value)}%` }} />
               ) : (
                 <span className={cn("absolute top-1/2 w-[2px] -translate-x-1/2 -translate-y-1/2 rounded-full",
                   z.role === "heute" ? "h-3.5 bg-foreground/35" : "h-3 bg-[var(--hh-aus-2)]")}
-                  style={{ left: `${pos(z.wert)}%` }} />
+                  style={{ left: `${pos(z.value)}%` }} />
               )}
             </span>
             <span className={cn("w-12 shrink-0 text-right font-mono text-[11px] tabular-nums",
               z.role === "dein" ? "font-medium text-primary" : "text-muted-foreground")}>
-              {deZahl(z.wert)}&nbsp;%
+              {deZahl(z.value)}&nbsp;%
             </span>
           </div>
         ))}

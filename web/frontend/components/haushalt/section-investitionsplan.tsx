@@ -61,7 +61,7 @@ import {
 import {
   ProgrammDaten, count, passenderJahrgang,
 } from "@/lib/haushalt-investitionsprogramm";
-import { Beleg } from "@/components/haushalt/quelle";
+import { Beleg } from "@/components/haushalt/source";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { Vorhaben } from "@/components/haushalt/vorhaben";
 import { cn } from "@/lib/utils";
@@ -123,7 +123,7 @@ function Rang({ zeile, skala, aufVorhaben, vorhandene }: {
       <div className="flex items-baseline justify-between gap-3">
         <span className="min-w-0 text-[13px] font-medium leading-snug">{zeile.label}</span>
         <span className="flex-none font-display text-[15px] font-bold tabular-nums">
-          {aus.wert}
+          {aus.value}
           <span className="ml-1 text-[10.5px] font-medium text-muted-foreground">
             {aus.unit}
           </span>
@@ -132,7 +132,7 @@ function Rang({ zeile, skala, aufVorhaben, vorhandene }: {
       <div
         className="h-2 w-full overflow-hidden rounded-full bg-muted/60"
         role="img"
-        aria-label={`${zeile.label}: ${aus.wert} ${aus.unit} geplante Auszahlungen`}
+        aria-label={`${zeile.label}: ${aus.value} ${aus.unit} geplante Auszahlungen`}
       >
         <div
           className="h-full rounded-full bg-[var(--hh-aus-2)]"
@@ -143,7 +143,7 @@ function Rang({ zeile, skala, aufVorhaben, vorhandene }: {
         {gegen ? (
           <p className="text-[11px] leading-snug text-muted-foreground">
             <span className="font-medium text-foreground/80">Davon gedeckt:</span>{" "}
-            {gegen.wert} {gegen.unit} durch Zuschüsse, Verkäufe oder Beiträge
+            {gegen.value} {gegen.unit} durch Zuschüsse, Verkäufe oder Beiträge
             {gegenAnteil > 0 && (
               <> · {gegenAnteil.toLocaleString("de-DE", { maximumFractionDigits: 0 })} %</>
             )}

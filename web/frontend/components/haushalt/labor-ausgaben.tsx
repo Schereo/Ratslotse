@@ -16,7 +16,7 @@
 // beides zu vermischen wäre eine Zahl, die es nirgends gibt.
 
 import { deMio, naechstesProdukt, type Produkt } from "@/lib/haushalt";
-import { Beleg } from "@/components/haushalt/quelle";
+import { Beleg } from "@/components/haushalt/source";
 import { Regler } from "@/components/haushalt/regler";
 
 export function AusgabenWerkbank({
@@ -53,10 +53,10 @@ export function AusgabenWerkbank({
               key={f.area}
               id={f.area}
               label={f.area}
-              wert={pct} min={-maxProzent} max={maxProzent} step={5}
+              value={pct} min={-maxProzent} max={maxProzent} step={5}
               onChange={(v) => setAenderung(f.area, v)}
               geaendert={pct !== 0}
-              ist={{ wert: 0, label: "heute" }}
+              ist={{ value: 0, label: "heute" }}
               marken={{ min: `−${maxProzent} %`, max: `+${maxProzent} %` }}
               anzeige={
                 pct === 0

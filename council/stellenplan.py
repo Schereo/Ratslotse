@@ -438,11 +438,11 @@ def unstimmige_zeilen(zeilen: list[dict],
 def _summenvergleich(gerechnet: dict, genannt: dict, wo: str,
                      toleranz: float) -> str:
     """Zwei Wertesätze spaltenweise vergleichen → Fehlertext oder ``""``."""
-    for field, wert in genannt.items():
-        rest = gerechnet.get(field, 0.0) - wert
+    for field, value in genannt.items():
+        rest = gerechnet.get(field, 0.0) - value
         if abs(rest) > toleranz:
             return (f"{wo}: {field} ergibt {gerechnet.get(field, 0.0):.2f}, "
-                    f"die Summenzeile nennt {wert:.2f} ({rest:+.2f})")
+                    f"die Summenzeile nennt {value:.2f} ({rest:+.2f})")
     return ""
 
 

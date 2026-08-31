@@ -44,8 +44,8 @@ import { cn } from "@/lib/utils";
  *  `verzoegerungMs` ist für Sequenzen gedacht, in denen die Reihenfolge die
  *  Aussage trägt (Schulden-Treppe: eng → weiter → ganz, H5-06) — nicht für
  *  Dekor-Stagger; Listen und Zeilen bewegen sich nie (H5-07). */
-export function ZaehlZahl({ wert, nachkomma = 0, dauerMs = 600, verzoegerungMs = 0, className }: {
-  wert: number;
+export function ZaehlZahl({ value, nachkomma = 0, dauerMs = 600, verzoegerungMs = 0, className }: {
+  value: number;
   /** Nachkommastellen — fest, damit die Stelle beim Zählen mitläuft statt zu springen. */
   nachkomma?: number;
   dauerMs?: number;
@@ -70,7 +70,7 @@ export function ZaehlZahl({ wert, nachkomma = 0, dauerMs = 600, verzoegerungMs =
       const tick = (t: number) => {
         const p = Math.min(1, (t - start) / dauerMs);
         const e = 1 - Math.pow(1 - p, 3);
-        el.textContent = fmt.format(wert * e);
+        el.textContent = fmt.format(value * e);
         if (p < 1) raf = requestAnimationFrame(tick);
       };
       raf = requestAnimationFrame(tick);
@@ -93,16 +93,16 @@ export function ZaehlZahl({ wert, nachkomma = 0, dauerMs = 600, verzoegerungMs =
       window.clearTimeout(timeout);
       // Beim Abbruch mitten im Tween (Navigation innerhalb der Seite) den
       // Endwert stehen lassen, falls das Element weiterlebt.
-      if (gespielt.current) el.textContent = fmt.format(wert);
+      if (gespielt.current) el.textContent = fmt.format(value);
     };
-  }, [wert, nachkomma, dauerMs, verzoegerungMs]);
+  }, [value, nachkomma, dauerMs, verzoegerungMs]);
 
   const fmt = new Intl.NumberFormat("de-DE", {
     minimumFractionDigits: nachkomma, maximumFractionDigits: nachkomma,
   });
   return (
     <span ref={knoten} className={cn("tabular-nums", className)}>
-      {fmt.format(wert)}
+      {fmt.format(value)}
     </span>
   );
 }

@@ -54,7 +54,7 @@ export function markeRang(mark: string): number {
 
 /** Eine über Jahre laufende Sache: derselbe Abschnitt, mehrere Jahrgänge. */
 export type Kette = {
-  schluessel: string;
+  key: string;
   /** Titel aus dem jüngsten Jahrgang — Abschnitte werden umbenannt. */
   titel: string;
   years: number[];
@@ -84,14 +84,14 @@ export function wiederholungsketten(feststellungen: Feststellung[]): Kette[] {
     else nach.set(f.chain, [f]);
   }
   const ketten: Kette[] = [];
-  for (const [schluessel, eintraege] of nach) {
+  for (const [key, eintraege] of nach) {
     if (!eintraege.some((f) => f.mark === "WB")) continue;
     const sortiert = [...eintraege].sort((a, b) => a.year - b.year || a.seq - b.seq);
     const years = [...new Set(sortiert.map((f) => f.year))];
     const beanstandet = [...new Set(
       sortiert.filter((f) => f.mark === "B" || f.mark === "WB").map((f) => f.year))];
     ketten.push({
-      schluessel,
+      key,
       titel: sortiert[sortiert.length - 1].section,
       years, eintraege: sortiert, beanstandet,
     });

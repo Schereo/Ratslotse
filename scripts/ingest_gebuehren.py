@@ -92,7 +92,7 @@ def main() -> dict:
             for saetze, _ in sorted(saetze_gelesen, key=lambda x: x[0][0].year):
                 beispiele = ", ".join(
                     f"{s.label}: {s.amount:.2f} €"
-                    for s in saetze if s.schluessel in
+                    for s in saetze if s.key in
                     ("grundgebuehr", "litergebuehr", "strassenreinigung_qw"))
                 print(f"  {saetze[0].year}: {len(saetze)} Tarife — {beispiele}",
                       flush=True)

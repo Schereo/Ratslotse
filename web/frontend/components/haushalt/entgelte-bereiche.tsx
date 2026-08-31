@@ -68,7 +68,7 @@ export function EntgelteBereiche({ zeilen, year, beleg }: {
       <ul className="mt-3 flex flex-col gap-2">
         {bereiche.map((b) => {
           const anteil = Math.round((b.amount / summe) * 100);
-          const { wert, unit } = amount(b.amount);
+          const { value, unit } = amount(b.amount);
           return (
             <li key={b.name}>
               <div className="flex items-baseline justify-between gap-3">
@@ -76,7 +76,7 @@ export function EntgelteBereiche({ zeilen, year, beleg }: {
                   {b.name}
                 </span>
                 <span className="flex-none font-display text-[13px] font-bold tabular-nums">
-                  {wert}
+                  {value}
                   <span className="ml-1 text-[11px] font-semibold text-muted-foreground">
                     {unit}
                   </span>

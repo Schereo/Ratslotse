@@ -320,7 +320,7 @@ def test_quelle_steht_im_datenstand(tmp_path):
     zeile = next(z for z in finanzquellen.datenstand(store)
                  if z["key"] == "investitionen")
     assert zeile["jahrgaenge"] == [2025]
-    assert zeile["quelle"] == "Open-Data-Portal der Stadt"
+    assert zeile["source"] == "Open-Data-Portal der Stadt"
 
 
 def test_takt_meldet_den_jahrgang_erst_im_folgejahr():

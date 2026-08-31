@@ -71,14 +71,14 @@ def quelltext() -> str:
     return _PAAR.sub(" ", "\n".join(teile))
 
 
-def _gebaut(wert: str, code: str) -> bool:
+def _gebaut(value: str, code: str) -> bool:
     """Wird der Wert per f-String zusammengesetzt? (``f"hebesatz_{suffix}"``)
 
     Ohne diese Ausnahme meldet die Prüfung jeden zusammengesetzten Schlüssel
     als tot — er steht ja nirgends als ganze Zeichenkette im Quelltext.
     Gesucht wird jedes Präfix bis zu einem Unterstrich, gefolgt von ``{``.
     """
-    teile = wert.split("_")
+    teile = value.split("_")
     return any(f'"{"_".join(teile[:i])}_{{' in code for i in range(1, len(teile)))
 
 

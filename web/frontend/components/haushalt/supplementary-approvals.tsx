@@ -46,20 +46,20 @@ import {
 import {
   RanglisteSchiene, type RanglisteZeile,
 } from "@/components/grafik/rangliste-schiene";
-import { Beleg } from "@/components/haushalt/quelle";
+import { Beleg } from "@/components/haushalt/source";
 import { decisionHref } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
 /** Ein Euro-Betrag in Millionen, deutsch. */
-function mio(wert: number): string {
-  return (wert / 1e6).toLocaleString("de-DE", {
+function mio(value: number): string {
+  return (value / 1e6).toLocaleString("de-DE", {
     minimumFractionDigits: 2, maximumFractionDigits: 2,
   });
 }
 
 /** Volle Euro, deutsch — für die Einzelposten, wo Millionen zu grob wären. */
-function euro(wert: number): string {
-  return wert.toLocaleString("de-DE", { maximumFractionDigits: 0 });
+function euro(value: number): string {
+  return value.toLocaleString("de-DE", { maximumFractionDigits: 0 });
 }
 
 /** Die vier Entscheidungswege als Rangliste — `<RanglisteSchiene>` (GB-03).
@@ -88,7 +88,7 @@ function KanalRangliste({ channels, beleg }: {
     const count = kanalAnzahl(k);
     return {
       label: k.label,
-      wert: kanalBetrag(k) / 1e6,
+      value: kanalBetrag(k) / 1e6,
       // Der Rat ist die Zeile, um die es geht — hervorgehoben heißt „hier
       // schauen", nicht „das ist die gute".
       hervorgehoben: k.channel === "council",

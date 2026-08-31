@@ -179,7 +179,7 @@ class Gebuehrensatz:
     """
 
     year: int
-    schluessel: str
+    key: str
     area: str
     label: str
     amount: float
@@ -191,7 +191,7 @@ class Gebuehrensatz:
 
 @dataclass(frozen=True)
 class _Satzart:
-    schluessel: str
+    key: str
     area: str
     code: str
     label: str
@@ -320,11 +320,11 @@ def _menge_aus_der_probe(part: str, zu_decken: float, fee: float) -> float:
     kandidaten: list[tuple[float, int]] = []
     for m in _MENGE.finditer(part):
         try:
-            wert = float(m.group(1).replace(".", ""))
+            value = float(m.group(1).replace(".", ""))
         except ValueError:
             continue
-        if wert > 0:
-            kandidaten.append((wert, m.start()))
+        if value > 0:
+            kandidaten.append((value, m.start()))
     # Und die im Textextrakt zerrissenen Formen.
     for m in re.finditer(r"(?<![\d,.])(\d{1,3})\s+([\d.]{3,})(?!\s*€)", part):
         try:
@@ -391,11 +391,11 @@ def _kaskade_aus_der_reihenfolge(part: str) -> tuple[float, float, float] | None
     kalkulation = betraege[0][0]
     gefunden = None
     laufend = 0.0
-    for wert, _ in betraege[1:]:
-        if wert < 0:
-            laufend += wert
-        elif abs(kalkulation + laufend - wert) <= TOLERANZ_EUR:
-            gefunden = (kalkulation, laufend, wert)
+    for value, _ in betraege[1:]:
+        if value < 0:
+            laufend += value
+        elif abs(kalkulation + laufend - value) <= TOLERANZ_EUR:
+            gefunden = (kalkulation, laufend, value)
     return gefunden
 
 
@@ -418,9 +418,9 @@ def parse_anlage(part: str, template_number: str | None = None) -> Gebuehrenbeda
         rest = kalkulation + deductions - zu_decken
         ueberdeckung = _UEBER_UNTERDECKUNG.search(kaskade)
         if ueberdeckung is not None:
-            wert = _eur(ueberdeckung.group(1))
-            if wert > 0 and abs(rest - wert) <= TOLERANZ_EUR:
-                deductions -= wert
+            value = _eur(ueberdeckung.group(1))
+            if value > 0 and abs(rest - value) <= TOLERANZ_EUR:
+                deductions -= value
     else:
         # Beschriftungen und Beträge stehen in getrennten Blöcken (2024).
         ueber_reihenfolge = _kaskade_aus_der_reihenfolge(part)
@@ -464,12 +464,12 @@ def parse_anlage(part: str, template_number: str | None = None) -> Gebuehrenbeda
             # wieder die Division und nicht die Reihenfolge.
             fee = menge = None
             for kandidat in _GEBUEHR_DREISTELLIG.findall(part):
-                wert = float(kandidat.replace(".", "").replace(",", "."))
+                value = float(kandidat.replace(".", "").replace(",", "."))
                 try:
-                    menge = _menge_aus_der_probe(part, zu_decken, wert)
+                    menge = _menge_aus_der_probe(part, zu_decken, value)
                 except GebuehrenFehler:
                     continue
-                fee = wert
+                fee = value
                 break
             if fee is None:
                 raise
@@ -529,10 +529,10 @@ def _saetze_altes_layout(part: str, template_number: str | None) -> list[Gebuehr
             f"Anlage 4 für {year}: {len(werte)} statt {len(SATZARTEN)} "
             "Tarifbeträge in der Vorschlagszeile — nichts gespeichert.")
     return [Gebuehrensatz(
-        year=year, schluessel=art.schluessel, area=art.area,
-        label=art.label, amount=wert, unit=art.unit,
+        year=year, key=art.key, area=art.area,
+        label=art.label, amount=value, unit=art.unit,
         prior_year=None, change_pct=None, template_number=template_number)
-        for art, wert in zip(SATZARTEN, werte, strict=True)]
+        for art, value in zip(SATZARTEN, werte, strict=True)]
 
 
 def _saetze_neues_layout(part: str, template_number: str | None) -> list[Gebuehrensatz] | None:
@@ -561,7 +561,7 @@ def _saetze_neues_layout(part: str, template_number: str | None) -> list[Gebuehr
                 f"{prior_year:.2f} € ergeben {errechnet:.2f} %, gedruckt sind "
                 f"{change:.2f} %.")
         aus.append(Gebuehrensatz(
-            year=year, schluessel=art.schluessel, area=art.area,
+            year=year, key=art.key, area=art.area,
             label=art.label, amount=amount, unit=art.unit,
             prior_year=prior_year, change_pct=change,
             template_number=template_number))
@@ -590,7 +590,7 @@ def lies_gebuehrensaetze(text: str, template_number: str | None = None) -> list[
         if b.year == year and b.area in ("abfallbehandlung", "strassenreinigung")
     }
     tarifwerte = {s.area: s.amount for s in saetze
-                  if s.schluessel in ("abfallbehandlung_mg", "strassenreinigung_qw")}
+                  if s.key in ("abfallbehandlung_mg", "strassenreinigung_qw")}
     if set(eckwerte) != {"abfallbehandlung", "strassenreinigung"}:
         details = f"; gerissene Anlagen: {' | '.join(risse)}" if risse else ""
         raise GebuehrenFehler(

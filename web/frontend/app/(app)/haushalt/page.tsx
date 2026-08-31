@@ -28,7 +28,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Segmented } from "@/components/ui";
-import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
+import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/source";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { Wegweiser } from "@/components/haushalt/wegweiser";
@@ -72,7 +72,7 @@ export default function HaushaltPage() {
   const defizit = gesamt?.revenues != null && gesamt?.expenses != null
     ? mio(gesamt.expenses - gesamt.revenues) : null;
   const luecken = fehlendeJahre(years);
-  const quelle = aktJahr ? quellenLabel(zeilen, aktJahr) : null;
+  const source = aktJahr ? quellenLabel(zeilen, aktJahr) : null;
 
   // --- Die lange Reihe (Datensatz 1102) ------------------------------------
   // Alle Jahre mit Betrag, dazwischen die Lücken als Daten (GB-00-Vertrag).
@@ -91,7 +91,7 @@ export default function HaushaltPage() {
             year: y,
             teile: [{
               art: data.expense_series.accounting_systems[z.accounting_system].titel,
-              wert: z.amount / 1e6,
+              value: z.amount / 1e6,
             }],
           }
         : { year: y, fehlt: "kein Wert in den beiden Veröffentlichungen der Stadt" });
@@ -163,7 +163,7 @@ export default function HaushaltPage() {
       ? langLetzter.year : null;
 
   return (
-    <Quellenkontext schluessel={quellen} year={aktJahr}>
+    <Quellenkontext keys={quellen} year={aktJahr}>
     <div className="flex flex-col gap-4">
       {/* Kopf: Jahr-Umschalter und Quelle. Der Titel der Seite steht auf der
           Anzeigetafel — hier oben nur der Kicker, damit klar ist, wo man ist. */}
@@ -233,11 +233,11 @@ export default function HaushaltPage() {
           ? <Gegenbalken zeilen={zeilen} year={aktJahr} />
           : <Steuereuro zeilen={zeilen} year={aktJahr} />}
       </Tafel>
-      {quelle && (
+      {source && (
         <p className="-mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
-          Quelle: {quelle.url
-            ? <a href={quelle.url} target="_blank" rel="noopener noreferrer" className="underline decoration-dotted">{quelle.text}</a>
-            : quelle.text} · Ergebnishaushalt, ordentliche Erträge und Aufwendungen ·
+          Quelle: {source.url
+            ? <a href={source.url} target="_blank" rel="noopener noreferrer" className="underline decoration-dotted">{source.text}</a>
+            : source.text} · Ergebnishaushalt, ordentliche Erträge und Aufwendungen ·
           Rundung auf eine Nachkommastelle.
         </p>
       )}
@@ -394,7 +394,7 @@ export default function HaushaltPage() {
               </p>
               <p className="mt-2 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
                 Für {k.year} stehen zwei amtliche Gesamtsummen nebeneinander:{" "}
-                {AUSGABEN_QUELLE_LABEL[k.quelle]} nennt {deMio(k.amount / 1e6)}&#8239;Mio.&nbsp;€,{" "}
+                {AUSGABEN_QUELLE_LABEL[k.source]} nennt {deMio(k.amount / 1e6)}&#8239;Mio.&nbsp;€,{" "}
                 {k.conflict_source
                   ? AUSGABEN_QUELLE_LABEL[k.conflict_source]
                   : "die andere Veröffentlichung"}{" "}
@@ -443,7 +443,7 @@ export default function HaushaltPage() {
           die Zahlen gesehen und fragt sich, bis wann sie reichen. */}
       <Datenstand />
 
-      <Quellenverzeichnis schluessel={quellen} />
+      <Quellenverzeichnis keys={quellen} />
     </div>
     </Quellenkontext>
   );

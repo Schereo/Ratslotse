@@ -182,11 +182,11 @@ def verschiebungs_kaskaden(paare: list, mindestens: int = 3) -> tuple[list, list
     gruppen: dict[tuple[str, int], list] = {}
     for paar in paare:
         a, n = paar[0], paar[1]
-        schluessel = _kaskaden_schluessel(a, n)
-        if schluessel is not None:
-            gruppen.setdefault(schluessel, []).append(paar)
-    kaskaden = [(schluessel[1], sorted(mitglieder, key=_alt_sortierung))
-                for schluessel, mitglieder in gruppen.items()
+        key = _kaskaden_schluessel(a, n)
+        if key is not None:
+            gruppen.setdefault(key, []).append(paar)
+    kaskaden = [(key[1], sorted(mitglieder, key=_alt_sortierung))
+                for key, mitglieder in gruppen.items()
                 if len(mitglieder) >= mindestens and _dicht(mitglieder)]
     kaskaden.sort(key=lambda k: _alt_sortierung(k[1][0]))
     gebunden = {id(paar) for _, mitglieder in kaskaden for paar in mitglieder}

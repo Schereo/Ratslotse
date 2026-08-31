@@ -206,11 +206,11 @@ def judge(label_a: str, label_b: str) -> Path:
         if raw is None:
             continue
 
-        def entblinden(wert: str) -> str:
-            if wert not in ("A", "B"):
+        def entblinden(value: str) -> str:
+            if value not in ("A", "B"):
                 return "gleich"
             ist_a_links = not getauscht
-            return (label_a if (wert == "A") == ist_a_links else label_b)
+            return (label_a if (value == "A") == ist_a_links else label_b)
 
         urteil = {k: entblinden(raw.get(k, "gleich"))
                   for k in ("aktualitaet", "quellentreue", "vollstaendigkeit", "klarheit", "gesamt")}

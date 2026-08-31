@@ -1,6 +1,6 @@
 // <Wasserfall> — Brutto, Abzüge, Ergebnis als eine Rechnung (GB-14).
 //
-// Der Vertrag: `schritte: {label, wert, art: "start" | "deduction" | "result"}[]`
+// Der Vertrag: `schritte: {label, value, art: "start" | "deduction" | "result"}[]`
 // auf einer gemeinsamen Achse. Die Abzüge hängen an der LAUFSUMME — gerechnet
 // mit `cumsum` aus d3-array, nicht als „schwebender Balken" von Hand: Wer
 // einen zweiten Abzug einfügt, bekommt seine Position geschenkt statt sie
@@ -45,7 +45,7 @@ import { cn } from "@/lib/utils";
 export type WasserfallSchritt = {
   label: string;
   /** Immer positiv — die Richtung sagt `art`. */
-  wert: number;
+  value: number;
   art: "start" | "deduction" | "result";
   /** Der Halbsatz hinter dem Label („Gebühren, Entgelte, Erstattungen …"). */
   note?: string;
@@ -89,7 +89,7 @@ function Zeile({ s, von, bis, skala, nachkomma }: {
           "flex-none font-display text-[15px] font-bold tabular-nums",
           result && "text-signal",
         )}>
-          {deZahl(s.wert, nachkomma)}
+          {deZahl(s.value, nachkomma)}
         </span>
       </div>
       <div aria-hidden="true" className="mt-1 h-6">
@@ -123,20 +123,20 @@ export function Wasserfall({ schritte, unit, kicker, beleg, nachkomma = 1, class
   nachkomma?: number;
   className?: string;
 }) {
-  const werte = schritte.filter((s) => s.wert > 0 || s.art === "result");
+  const werte = schritte.filter((s) => s.value > 0 || s.art === "result");
   if (!werte.some((s) => s.art === "start")) return null;
 
   // Die Laufsumme: Start zählt hinzu, Abzüge ziehen ab, das Ergebnis ist
   // eine Probe und bewegt sie nicht. `cumsum` liefert die Summe NACH jedem
   // Schritt — die rechte Kante eines Abzugs ist also die Laufsumme davor.
   const lauf = Array.from(cumsum(werte.map((s) =>
-    s.art === "start" ? s.wert : s.art === "deduction" ? -s.wert : 0)));
-  const skala = Math.max(...lauf, ...werte.map((s) => s.wert), 1);
+    s.art === "start" ? s.value : s.art === "deduction" ? -s.value : 0)));
+  const skala = Math.max(...lauf, ...werte.map((s) => s.value), 1);
 
   const letzterStand = lauf[lauf.length - 1] ?? 0;
   const result = werte.find((s) => s.art === "result");
   const probeDaneben = result != null
-    && Math.abs(result.wert - Math.max(letzterStand, 0)) > TOLERANZ;
+    && Math.abs(result.value - Math.max(letzterStand, 0)) > TOLERANZ;
 
   return (
     <div className={className}>
@@ -155,10 +155,10 @@ export function Wasserfall({ schritte, unit, kicker, beleg, nachkomma = 1, class
         {werte.map((s, i) => {
           const vorher = i > 0 ? lauf[i - 1] : 0;
           const [von, bis] = s.art === "start"
-            ? [0, s.wert]
+            ? [0, s.value]
             : s.art === "deduction"
               ? [lauf[i], vorher]
-              : [0, s.wert];
+              : [0, s.value];
           return <Zeile key={`${s.art}-${s.label}`} s={s} von={von} bis={bis}
             skala={skala} nachkomma={nachkomma} />;
         })}
@@ -167,7 +167,7 @@ export function Wasserfall({ schritte, unit, kicker, beleg, nachkomma = 1, class
       {probeDaneben && result && (
         <p className="mt-2.5 text-[11px] leading-relaxed text-signal">
           Summenprobe: Die Schritte ergeben {deZahl(Math.max(letzterStand, 0), nachkomma)},
-          als Ergebnis übergeben sind {deZahl(result.wert, nachkomma)} — die Grafik zeigt
+          als Ergebnis übergeben sind {deZahl(result.value, nachkomma)} — die Grafik zeigt
           das, statt zu strecken.
         </p>
       )}

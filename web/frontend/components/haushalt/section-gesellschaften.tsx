@@ -69,7 +69,7 @@ import { deZahl } from "@/components/grafik/format";
 import { ZeitreiheMini } from "@/components/grafik/zeitreihe";
 import { Einordnung } from "@/components/grafik/einordnung";
 import { FormZeichen, Konzernkarte } from "@/components/haushalt/konzernkarte";
-import { Beleg } from "@/components/haushalt/quelle";
+import { Beleg } from "@/components/haushalt/source";
 import { Steckbrief } from "@/components/haushalt/beteiligung-steckbrief";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { cn } from "@/lib/utils";
@@ -80,7 +80,7 @@ import { schrittNummer } from "@/components/haushalt/schritt-weiter";
  *  Mio. €, ohne erfundene Zwischenjahre — was der Bericht nicht nennt,
  *  bleibt Lücke (die Sparkline bricht dort, `defined()`). */
 function ergebnisReihe(ergebnisse: Kennzahl[]): JahrPunkt[] {
-  return ergebnisse.map((k) => ({ year: k.year, wert: k.wert / 1_000_000 }));
+  return ergebnisse.map((k) => ({ year: k.year, value: k.value / 1_000_000 }));
 }
 
 /** Eine Gesellschafts-Karte (H3-02): Form, Auftrag in einem Satz, eine
@@ -149,7 +149,7 @@ function Karte({ daten, g, onOeffnen }: {
                 series={series}
                 format={(v) => deZahl(v, 1)}
                 ariaLabel={`Jahresergebnis ${von} bis ${bis} in Mio. Euro: ${ergebnisse
-                  .map((k) => `${k.year} ${eur(k.wert)}`).join(", ")}.`}
+                  .map((k) => `${k.year} ${eur(k.value)}`).join(", ")}.`}
               />
             </div>
           )}

@@ -38,8 +38,8 @@ export function IstKurve({ series, unit = "Mio. Euro" }: {
   const beschreibungId = useId();
   const schmal = breite < 520;
   const fs = schmal
-    ? { achse: 13, year: 13, mark: 12.5, wert: 14 }
-    : { achse: 11, year: 11, mark: 11, wert: 13 };
+    ? { achse: 13, year: 13, mark: 12.5, value: 14 }
+    : { achse: 11, year: 11, mark: 11, value: 13 };
   const W = breite, X0 = schmal ? 38 : 42, X1 = W - 20;
   if (series.length < 2) return null;
 
@@ -81,12 +81,12 @@ export function IstKurve({ series, unit = "Mio. Euro" }: {
 
   const ersterText = deMio(erste.amount / 1e6), letzterText = deMio(letzte.amount / 1e6);
   const ersterY = y(erste.amount / 1e6) + 17, letzterY = y(letzte.amount / 1e6) - 10;
-  const letzteBreite = textBreite(letzterText, fs.wert + 1);
+  const letzteBreite = textBreite(letzterText, fs.value + 1);
   // Die beiden Wert-Labels stehen fest — die Marker weichen ihnen aus.
   const belegt: Kasten[] = [
-    { x1: x(0), x2: x(0) + textBreite(ersterText, fs.wert), y1: ersterY - fs.wert, y2: ersterY + 3 },
+    { x1: x(0), x2: x(0) + textBreite(ersterText, fs.value), y1: ersterY - fs.value, y2: ersterY + 3 },
     { x1: x(series.length - 1) - 6 - letzteBreite, x2: x(series.length - 1) - 6,
-      y1: letzterY - fs.wert - 1, y2: letzterY + 3 },
+      y1: letzterY - fs.value - 1, y2: letzterY + 3 },
   ];
   const marken = rueckgaenge
     .map((r) => {
@@ -122,16 +122,16 @@ export function IstKurve({ series, unit = "Mio. Euro" }: {
   // wechselt. Die Tabelle bleibt: 28 Werte nebeneinander kann ein Bild nicht,
   // und wer eine einzelne Jahreszahl sucht, findet sie dort schneller.
   const ableseStellen: AbleseStelle[] = series.map((p, i) => {
-    const wert = p.amount / 1e6;
+    const value = p.amount / 1e6;
     const vor = i > 0 ? (p.amount - series[i - 1].amount) / 1e6 : null;
     const deltaText = vor == null ? null : `${vor > 0 ? "+" : ""}${deMio(vor)}`;
     return {
       titel: String(p.year),
       werte: [
-        { label: unit.startsWith("Mio") ? "Mio. €" : unit, wert: deMio(wert), farbe: "var(--hh-ein-0)" },
-        ...(deltaText ? [{ label: "ggü. Vorjahr", wert: deltaText, signal: (vor as number) < 0 }] : []),
+        { label: unit.startsWith("Mio") ? "Mio. €" : unit, value: deMio(value), farbe: "var(--hh-ein-0)" },
+        ...(deltaText ? [{ label: "ggü. Vorjahr", value: deltaText, signal: (vor as number) < 0 }] : []),
       ],
-      vorlesen: `${p.year}: ${deMio(wert)} Millionen Euro`
+      vorlesen: `${p.year}: ${deMio(value)} Millionen Euro`
         + (vor == null ? "." : `, ${deMio(Math.abs(vor))} Millionen ${vor < 0 ? "weniger" : "mehr"} als im Vorjahr.`),
     };
   });
@@ -210,10 +210,10 @@ export function IstKurve({ series, unit = "Mio. Euro" }: {
 
         <circle cx={x(0)} cy={y(erste.amount / 1e6)} r={4} className="fill-card" strokeWidth={2}
           style={{ stroke: "var(--hh-ein-0)" }} />
-        <text x={x(0)} y={ersterY} fontSize={fs.wert} fontWeight={600} className="stroke-card" {...halo}
+        <text x={x(0)} y={ersterY} fontSize={fs.value} fontWeight={600} className="stroke-card" {...halo}
           style={{ fill: "var(--hh-ein-0)" }}>{ersterText}</text>
         <circle cx={x(series.length - 1)} cy={y(letzte.amount / 1e6)} r={5} style={{ fill: "var(--hh-ein-0)" }} />
-        <text x={x(series.length - 1) - 6} y={letzterY} textAnchor="end" fontSize={fs.wert + 1}
+        <text x={x(series.length - 1) - 6} y={letzterY} textAnchor="end" fontSize={fs.value + 1}
           fontWeight={700} className="stroke-card" {...halo}
           style={{ fill: "var(--hh-ein-0)" }}>{letzterText}</text>
 

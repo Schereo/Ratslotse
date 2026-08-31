@@ -121,12 +121,12 @@ KEINE_REIHE = (
 _STICHTAG = re.compile(r"am\s+31\.12\.(\d{4})")
 
 
-def _zahl(wert: object) -> float | None:
-    if wert is None:
+def _zahl(value: object) -> float | None:
+    if value is None:
         return None
     try:
-        return float(str(wert).replace(".", "").replace(",", ".")
-                     if isinstance(wert, str) and "," in str(wert) else wert)
+        return float(str(value).replace(".", "").replace(",", ".")
+                     if isinstance(value, str) and "," in str(value) else value)
     except (TypeError, ValueError):
         return None
 
@@ -138,8 +138,8 @@ def as_of_date(zeilen: list[list[object]]) -> int | None:
     mal „2024_Tabellenband", mal ein angehängtes „_0", und ein Ordner
     „2025-12" nennt das Jahr der Veröffentlichung, nicht das der Zahlen."""
     for zeile in zeilen[:12]:
-        for wert in zeile:
-            treffer = _STICHTAG.search(str(wert or ""))
+        for value in zeile:
+            treffer = _STICHTAG.search(str(value or ""))
             if treffer:
                 return int(treffer.group(1))
     return None

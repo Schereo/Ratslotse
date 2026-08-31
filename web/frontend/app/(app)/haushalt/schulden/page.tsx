@@ -61,7 +61,7 @@ import type { JahrPunkt } from "@/components/grafik/daten";
 import { deZahl } from "@/components/grafik/format";
 import {
   Beleg, Dokumentbeleg, Quellenkontext, Quellenverzeichnis,
-} from "@/components/haushalt/quelle";
+} from "@/components/haushalt/source";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 import { SchrittPfad } from "@/components/haushalt/schritt-pfad";
@@ -212,8 +212,8 @@ function BuergschaftsBlock({ daten }: { daten: SchuldenDaten | null }) {
   const series = b?.series ?? [];
   if (!series.length) return null;
 
-  const geld = new Map((b?.geldschulden ?? []).map((z) => [z.year, z.wert]));
-  const rueck = new Map((b?.rueckstellung ?? []).map((z) => [z.year, z.wert]));
+  const geld = new Map((b?.geldschulden ?? []).map((z) => [z.year, z.value]));
+  const rueck = new Map((b?.rueckstellung ?? []).map((z) => [z.year, z.value]));
   const letzter = series[series.length - 1];
   const erster = series[0];
   const gsErst = geld.get(erster.year) ?? null;
@@ -229,12 +229,12 @@ function BuergschaftsBlock({ daten }: { daten: SchuldenDaten | null }) {
   // Stichtag, sondern eine Bewegung: Was die Stadt selbst schuldet, sinkt —
   // wofür sie geradesteht, steigt. Nebeneinander gezeichnet sieht man das;
   // untereinander gelistet (so stand es bis 08/2026 hier) muss man es rechnen.
-  const verbuergt: JahrPunkt[] = series.map((z) => ({ year: z.year, wert: z.balance / 1e6 }));
+  const verbuergt: JahrPunkt[] = series.map((z) => ({ year: z.year, value: z.balance / 1e6 }));
   const eigene: JahrPunkt[] = series.map((z) => {
     const w = geld.get(z.year);
     return w == null
       ? { year: z.year, fehlt: "für dieses Jahr liegt keine geparste Bilanz vor" }
-      : { year: z.year, wert: w / 1e6 };
+      : { year: z.year, value: w / 1e6 };
   });
 
   // DIE SCHERE WIRD GEMESSEN, NICHT BEHAUPTET. Der Kernsatz stimmt nur,
@@ -380,13 +380,13 @@ function DritteZahlBlock({ daten }: { daten: SchuldenDaten | null }) {
   const entity = series.find((z) => z.year === s.year)?.total ?? null;
 
   const stufen = [
-    { titel: "Kernhaushalt", wert: s.core_budget,
+    { titel: "Kernhaushalt", value: s.core_budget,
       was: "Investitionskredite der Stadtverwaltung selbst" },
-    { titel: "Stadt als Rechtsträger", wert: entity,
+    { titel: "Stadt als Rechtsträger", value: entity,
       was: "dazu die Eigenbetriebe — die Zahl oben auf dieser Seite" },
-    { titel: "Der ganze Konzern", wert: s.total,
+    { titel: "Der ganze Konzern", value: s.total,
       was: "dazu Extrahaushalte und Beteiligungen, anteilig nach Beteiligungshöhe" },
-  ].filter((x) => x.wert != null);
+  ].filter((x) => x.value != null);
 
   return (
     <section className="flex flex-col gap-3.5 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
@@ -414,7 +414,7 @@ function DritteZahlBlock({ daten }: { daten: SchuldenDaten | null }) {
             <span className="flex flex-wrap items-baseline justify-between gap-x-3">
               <span className="text-[13px] font-semibold text-foreground">{x.titel}</span>
               <span className="font-semibold tabular-nums text-foreground">
-                {deMio((x.wert as number) / 1e6)}&#8239;Mio.&nbsp;€
+                {deMio((x.value as number) / 1e6)}&#8239;Mio.&nbsp;€
               </span>
             </span>
             <span className="text-[12px] leading-relaxed text-muted-foreground">{x.was}</span>
@@ -463,23 +463,23 @@ function DritteZahlBlock({ daten }: { daten: SchuldenDaten | null }) {
 function RahmenBlock({ zeile, herkunft }: {
   zeile: HaushaltssatzungZeile; herkunft: Herkunft | null;
 }) {
-  const posten: { label: string; wert: number | null; erklaerung: string }[] = [
+  const posten: { label: string; value: number | null; erklaerung: string }[] = [
     {
       label: "Kredite für Investitionen",
-      wert: zeile.investment_loans,
+      value: zeile.investment_loans,
       erklaerung: "Wie viel die Stadt sich im Haushaltsjahr für Investitionen "
         + "leihen darf (§ 2).",
     },
     {
       label: "Höchstbetrag für Liquiditätskredite",
-      wert: zeile.liquidity_loans,
+      value: zeile.liquidity_loans,
       erklaerung: "Bis zu diesem Höchstbetrag darf die Stadt kurzfristige Kredite "
         + "aufnehmen, um ihre Zahlungsfähigkeit zu sichern (§ 4). Der Betrag ist eine "
         + "Ermächtigung und nicht der tatsächlich genutzte Kredit.",
     },
     {
       label: "Verpflichtungsermächtigungen",
-      wert: zeile.commitment_authorizations,
+      value: zeile.commitment_authorizations,
       erklaerung: "Was die Stadt in diesem Jahr bestellen darf, obwohl die "
         + "Rechnung erst in kommenden Jahren kommt (§ 3).",
     },
@@ -522,14 +522,14 @@ function RahmenBlock({ zeile, herkunft }: {
             <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5">
               <dt className="text-[13px] font-semibold">{p.label}</dt>
               <dd className="font-display text-[15px] font-bold tabular-nums">
-                {p.wert == null
+                {p.value == null
                   ? <span className="font-normal text-muted-foreground"
                           title="Die Satzung sagt dazu nichts.">—</span>
-                  : p.wert === 0
+                  : p.value === 0
                     // NICHT „0 €". Die Satzung schreibt einen Satz, keine
                     // Ziffer, und der Satz ist die genauere Auskunft.
                     ? <span className="text-[13px]">nicht veranschlagt</span>
-                    : <>{deMio(p.wert / 1e6)}&#8239;Mio.&nbsp;€</>}
+                    : <>{deMio(p.value / 1e6)}&#8239;Mio.&nbsp;€</>}
               </dd>
             </div>
             <p className="mt-0.5 max-w-[62ch] text-[12px] leading-relaxed text-muted-foreground">
@@ -569,7 +569,7 @@ export default function SchuldenPage() {
   // Quelle weist keinen Pro-Kopf-Zins aus, und wir dividieren nicht selbst.
   const zinsreihe = useMemo(
     () => (ansicht === "total"
-      ? (data?.zinslast ?? []).map((z) => ({ year: z.year, wert: z.expense / 1e6 }))
+      ? (data?.zinslast ?? []).map((z) => ({ year: z.year, value: z.expense / 1e6 }))
       : undefined),
     [data, ansicht]);
 
@@ -607,7 +607,7 @@ export default function SchuldenPage() {
   const jTeilung = teilung.at(-1) ?? null;
 
   return (
-    <Quellenkontext schluessel={[...QUELLEN]} year={letzter.year}>
+    <Quellenkontext keys={[...QUELLEN]} year={letzter.year}>
       <div className="flex flex-col gap-4">
         {/* items-start statt items-end (24.08.): Rechts steht jetzt das
             Schritt-Zeichen über dem Quelle-Knopf — die Spalte ist so hoch wie
@@ -641,24 +641,24 @@ export default function SchuldenPage() {
           if (!st) return null;
           const entity = (data?.series ?? []).find((z) => z.year === st.year)?.total ?? null;
           const stufen = [
-            { titel: "Kernhaushalt", wert: st.core_budget },
-            { titel: "Stadt als Rechtsträger", wert: entity },
-            { titel: "der ganze Konzern", wert: st.total },
-          ].filter((x): x is { titel: string; wert: number } => x.wert != null);
+            { titel: "Kernhaushalt", value: st.core_budget },
+            { titel: "Stadt als Rechtsträger", value: entity },
+            { titel: "der ganze Konzern", value: st.total },
+          ].filter((x): x is { titel: string; value: number } => x.value != null);
           if (stufen.length < 2) return null;
-          const max = Math.max(...stufen.map((x) => x.wert));
+          const max = Math.max(...stufen.map((x) => x.value));
           const toene = ["var(--sb-voll)", "var(--sb-mittel)", "var(--sb-blass)"];
           return (
             <Seitenbuehne
               kicker={`Drei Zählweisen, eine Stadt · Stand 31.12.${st.year}`}
-              zahl={<><ZaehlZahl wert={st.total / 1e6} nachkomma={1} />&#8239;Mio.&nbsp;€
+              zahl={<><ZaehlZahl value={st.total / 1e6} nachkomma={1} />&#8239;Mio.&nbsp;€
                 im weitesten Begriff</>}
               sub={<>
                 {stufen.map((x, i) => (
                   <span key={x.titel}>
                     {i > 0 && " · "}
                     {x.titel}{" "}
-                    <ZaehlZahl wert={x.wert / 1e6} nachkomma={1} dauerMs={350}
+                    <ZaehlZahl value={x.value / 1e6} nachkomma={1} dauerMs={350}
                       verzoegerungMs={i * 150} className="font-semibold" />
                   </span>
                 ))}
@@ -672,7 +672,7 @@ export default function SchuldenPage() {
                     {stufen.map((x, i) => (
                       <span key={x.titel} className="flex-1 rounded-t-[6px] rounded-b-[3px]"
                         style={{
-                          height: `${Math.max((x.wert / max) * 100, 6)}%`,
+                          height: `${Math.max((x.value / max) * 100, 6)}%`,
                           background: toene[stufen.length - 1 - i] ?? toene[2],
                         }} />
                     ))}
@@ -923,8 +923,8 @@ export default function SchuldenPage() {
               {([
                 ["Verwaltung", jTeilung.kern, "var(--hh-aus-0)"],
                 ["Eigenbetriebe", jTeilung.municipal_enterprises, "var(--hh-aus-2)"],
-              ] as const).map(([label, wert, farbe]) => {
-                const anteil = (wert / (jTeilung.kern + jTeilung.municipal_enterprises)) * 100;
+              ] as const).map(([label, value, farbe]) => {
+                const anteil = (value / (jTeilung.kern + jTeilung.municipal_enterprises)) * 100;
                 return (
                   <div key={label} className="flex items-center px-2"
                     style={{ width: `${anteil}%`, background: farbe }}>
@@ -1040,7 +1040,7 @@ export default function SchuldenPage() {
 
         <SchrittWeiter href="/haushalt/schulden" />
 
-        <Quellenverzeichnis schluessel={[...QUELLEN]} />
+        <Quellenverzeichnis keys={[...QUELLEN]} />
       </div>
     </Quellenkontext>
   );

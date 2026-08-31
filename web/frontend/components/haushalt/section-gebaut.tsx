@@ -57,7 +57,7 @@ import { Gegenbalken } from "@/components/grafik/gegenbalken";
 import { LueckenFeld } from "@/components/grafik/luecken-field";
 import { NahtSaeulen, type NahtJahr } from "@/components/grafik/naht-saeulen";
 import { Anteilsbalken } from "@/components/haushalt/anteilsbalken";
-import { Beleg } from "@/components/haushalt/quelle";
+import { Beleg } from "@/components/haushalt/source";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 
 // `jahresabschluss` gehört dazu: Zwei Beleg-Chips dieser Seite zeigen
@@ -167,9 +167,9 @@ function AnlagenBlock({ daten }: { daten: GebautDaten | null }) {
         // Umrechnung stünde „17.036.012,7 Mio. €" da.
         zeilen={[
           { titel: `Abgeschrieben ${year}`, rampe: "aus",
-            segmente: [{ label: "Wertverlust des Jahres", wert: v.depreciation / 1e6 }] },
+            segmente: [{ label: "Wertverlust des Jahres", value: v.depreciation / 1e6 }] },
           { titel: `Zugegangen ${year}`, rampe: "ein",
-            segmente: [{ label: "Neu ins Vermögen", wert: v.additions / 1e6 }] },
+            segmente: [{ label: "Neu ins Vermögen", value: v.additions / 1e6 }] },
         ]}
         basis={Math.max(v.depreciation, v.additions) / 1e6}
         unit="Mio. €"
@@ -234,7 +234,7 @@ export function GebautAbschnitt({ onBestand }: {
   const alle = useMemo(() => reihen(data ?? null), [data]);
   const juengste = useMemo(() => juengsteReihe(data ?? null), [data]);
   const aeltere = useMemo(
-    () => alle.filter((r) => r.schluessel !== juengste?.schluessel),
+    () => alle.filter((r) => r.key !== juengste?.key),
     [alle, juengste]);
 
   // Die eine Reihe des Bildes: alle Jahre beider Regelwerke aufsteigend,
@@ -245,7 +245,7 @@ export function GebautAbschnitt({ onBestand }: {
       for (const z of r.years) {
         js.push({
           year: z.year,
-          teile: z.arten.map((a) => ({ art: a.titel, wert: a.amount / 1e6 })),
+          teile: z.arten.map((a) => ({ art: a.titel, value: a.amount / 1e6 })),
         });
       }
       for (const l of r.fehlend) js.push({ year: l.year, fehlt: lueckeGrund(l) });
@@ -493,7 +493,7 @@ export function GebautAbschnitt({ onBestand }: {
           <Anteilsbalken
             titel={`Wofür ${letzter.year}`}
             segmente={letzter.arten.map((a, i) => ({
-              label: a.titel, wert: a.amount / 1e6,
+              label: a.titel, value: a.amount / 1e6,
               farbe: TOENE[Math.min(i, TOENE.length - 1)],
             }))}
             gesamt={letzter.total / 1e6}

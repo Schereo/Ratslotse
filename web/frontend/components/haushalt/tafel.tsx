@@ -29,7 +29,7 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Beleg } from "@/components/haushalt/quelle";
+import { Beleg } from "@/components/haushalt/source";
 import { HaushaltZeile, deMio, mio, summe } from "@/lib/haushalt";
 import { cn } from "@/lib/utils";
 
@@ -40,8 +40,8 @@ import { cn } from "@/lib/utils";
  *  `signal` an die Schraffur-Lücke. Die Einheit hängt an JEDER Zahl statt
  *  einmal am Ende der Reihe: Umbrechen die drei, stünde sie sonst allein in
  *  einer vierten Zeile und gehörte sichtbar zu nichts mehr. */
-export function Summe({ label, wert, ton, beleg }: {
-  label: string; wert: number | null; ton?: "signal" | "ein"; beleg?: ReactNode;
+export function Summe({ label, value, ton, beleg }: {
+  label: string; value: number | null; ton?: "signal" | "ein"; beleg?: ReactNode;
 }) {
   return (
     <div className="min-w-0">
@@ -57,7 +57,7 @@ export function Summe({ label, wert, ton, beleg }: {
           : ton === "ein" ? "text-[color:var(--hh-ein-0)]"
           : "text-foreground",
       )}>
-        {deMio(wert)}
+        {deMio(value)}
         {/* Unter sm steht die Einheit UNTER der Zahl: Drei Summen nebeneinander
             plus je „Mio. €" sind auf 375 px breiter als die Tafel — inline
             gesetzt kippte die Zeile aus der Karte. */}
@@ -130,12 +130,12 @@ export function Tafel({ zeilen, year, aktuell, aktion, children }: {
         </div>
 
         <div className="flex flex-none gap-6 sm:gap-7 sm:pt-1">
-          <Summe label="geplante Einnahmen" wert={einMio} />
-          <Summe label="geplante Ausgaben" wert={ausMio} />
+          <Summe label="geplante Einnahmen" value={einMio} />
+          <Summe label="geplante Ausgaben" value={ausMio} />
           {fehlt != null
-            ? <Summe label="geplantes Minus" wert={fehlt} ton="signal" />
+            ? <Summe label="geplantes Minus" value={fehlt} ton="signal" />
             : ueber != null
-              ? <Summe label="geplantes Plus" wert={ueber} />
+              ? <Summe label="geplantes Plus" value={ueber} />
               : null}
         </div>
       </div>

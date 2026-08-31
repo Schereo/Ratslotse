@@ -64,16 +64,16 @@ export const GRUPPEN: { titel: string; question: string; keys: string[] }[] = [
  *  Die Nachkommastellen kommen aus den Daten (`stellen`), nicht aus dieser
  *  Datei: 2019 stand „48%", ab 2021 „53,15%". Wer hier zwei Stellen erzwingt,
  *  macht aus einer gerundeten Angabe eine genaue. */
-export function schreibe(unit: string, wert: number, stellen = 2): string {
-  if (unit === "percent") return `${deZahl(wert, stellen)} %`;
-  if (unit === "anzahl") return deZahl(wert, 0);
-  return `${deZahl(wert, stellen)} €`;
+export function schreibe(unit: string, value: number, stellen = 2): string {
+  if (unit === "percent") return `${deZahl(value, stellen)} %`;
+  if (unit === "anzahl") return deZahl(value, 0);
+  return `${deZahl(value, stellen)} €`;
 }
 
 /** Das Format für die Ableseleiste einer Kennzahl — feste Stellen, weil eine
  *  Achse sonst zwischen den Jahren die Genauigkeit wechselte. */
-export function formatVon(unit: string): (wert: number) => string {
-  return (wert) => schreibe(unit, wert, unit === "anzahl" ? 0 : 2);
+export function formatVon(unit: string): (value: number) => string {
+  return (value) => schreibe(unit, value, unit === "anzahl" ? 0 : 2);
 }
 
 /** Das Format für die Vorjahresdifferenz.
@@ -82,9 +82,9 @@ export function formatVon(unit: string): (wert: number) => string {
  *  Von 54,62 % auf 50,11 % sind 4,51 Prozentpunkte — der relative Rückgang
  *  wäre 8,3 %. Beides „−4,51 %" zu schreiben, wären zwei Zahlen unter einer
  *  Schreibweise. Bei Euro und Personen ändert sich nichts. */
-export function differenzFormatVon(unit: string): (wert: number) => string {
+export function differenzFormatVon(unit: string): (value: number) => string {
   if (unit !== "percent") return formatVon(unit);
-  return (wert) => `${deZahl(wert, 2)} %-Punkte`;
+  return (value) => `${deZahl(value, 2)} %-Punkte`;
 }
 
 /** Die Einheit für die Kopfzeile der Grafik. */
@@ -116,7 +116,7 @@ export function reiheVon(daten: Kennzahlen, key: string): {
   const wechsel = daten.funde.find(
     (f) => f.indicator === key && f.art === "definition");
   if (!wechsel || !punkte.length) {
-    return { series: punkte.map((p) => ({ year: p.year, wert: p.wert })), anmerkung: null };
+    return { series: punkte.map((p) => ({ year: p.year, value: p.value })), anmerkung: null };
   }
 
   const unit = daten.unit[key] ?? "eur";
@@ -129,7 +129,7 @@ export function reiheVon(daten: Kennzahlen, key: string): {
   return {
     series: punkte.map((p) => ({
       year: p.year,
-      wert: p.wert,
+      value: p.value,
       ...(p.year === erstesNeues && punkte[0].year !== erstesNeues
         ? { bruchDavor: text } : {}),
     })),

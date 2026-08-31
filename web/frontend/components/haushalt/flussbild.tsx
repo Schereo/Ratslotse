@@ -34,7 +34,7 @@ import {
 } from "@/lib/haushalt";
 import { buendelGrenze, rampenText } from "@/components/grafik/kachelflaeche";
 import { Treemap, type TreemapKnoten } from "@/components/grafik/treemap";
-import { Beleg } from "@/components/haushalt/quelle";
+import { Beleg } from "@/components/haushalt/source";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import { ausblick, type Antwort as DatenstandAntwort } from "@/components/haushalt/datenstand";
 import { useFetch } from "@/lib/use-fetch";
@@ -54,7 +54,7 @@ const EIN_STUFEN = 6;
  *  `ausgleich` sind beide Differenz-Bänder (Schraffur + Signal-Kante). */
 function alsPosten(b: FlussBand): FlussPosten {
   return {
-    id: b.id, label: b.label, lang: b.lang, wert: b.wert,
+    id: b.id, label: b.label, lang: b.lang, value: b.value,
     art: b.art === "posten" ? "posten" : "difference",
   };
 }
@@ -133,7 +133,7 @@ export function Herkunftskacheln({ arten }: { arten: EinnahmeartenPlan }) {
     () => arten.arten.map((a) => ({
       key: String(a.nr),
       name: a.label,
-      wert: a.amount,
+      value: a.amount,
       gruppe: a.label,
       zusatz: a.label === a.lang ? undefined : a.lang,
     })),
@@ -269,7 +269,7 @@ function Luecke({ year, letztes, aufJahr }: {
  *  Nummerierung im Verzeichnis läuft über genau diese Liste. Meldet sie eine
  *  Quelle an, die hier gar nicht zitiert wird, steht im Verzeichnis ein Beleg
  *  für nichts; meldet sie eine zu wenig an, verschluckt `<Beleg>` den Chip
- *  stillschweigend (`quelle.tsx`: „lieber keinen Chip als eine falsche
+ *  stillschweigend (`source.tsx`: „lieber keinen Chip als eine falsche
  *  Nummer") — die Zahl stünde dann ohne Beleg da, auf einer Seite, deren
  *  ganzer Anspruch das Gegenteil ist.
  *
@@ -394,7 +394,7 @@ export function Flussbild({ daten, year, onJahrWechsel }: {
   };
   const beschreibe = (s: FlussSeiteDaten) =>
     fasseKleineZusammen(s.baender, zeigBild.skala, MINDEST_ANTEIL)
-      .gezeigt.map((b) => `${b.lang} ${format(b.wert)}`).join(", ");
+      .gezeigt.map((b) => `${b.lang} ${format(b.value)}`).join(", ");
 
   return (
     <div>
@@ -457,7 +457,7 @@ export function Flussbild({ daten, year, onJahrWechsel }: {
           topf={{
             kurz: "Gesamthaushalt",
             lang: "Alle Einnahmen im Gesamthaushalt",
-            wert: zeigBild.skala,
+            value: zeigBild.skala,
             satz: "Gemeinsamer Finanzierungsrahmen",
             note: "Einzelne Einnahmearten sind nicht direkt bestimmten Ausgabenbereichen "
               + "zugeordnet.",
@@ -531,12 +531,12 @@ export function Flussbild({ daten, year, onJahrWechsel }: {
  *  Summenprobe als eigene Zeile, nicht als Behauptung im Fließtext. */
 function Tabelle({ bild }: { bild: FlussDaten }) {
   const zeilen = (baender: FlussBand[]) =>
-    [...baender].sort((a, b) => b.wert - a.wert).map((b) => (
+    [...baender].sort((a, b) => b.value - a.value).map((b) => (
       <tr key={b.id} className="border-t border-border/60">
         <td className="py-1 pr-2">{b.lang}</td>
-        <td className="py-1 pr-2 text-right">{deMio(mio(b.wert))}</td>
+        <td className="py-1 pr-2 text-right">{deMio(mio(b.value))}</td>
         <td className="py-1 text-right text-muted-foreground">
-          {((b.wert / bild.skala) * 100).toLocaleString("de-DE", { maximumFractionDigits: 1 })}&nbsp;%
+          {((b.value / bild.skala) * 100).toLocaleString("de-DE", { maximumFractionDigits: 1 })}&nbsp;%
         </td>
       </tr>
     ));

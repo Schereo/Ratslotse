@@ -126,7 +126,7 @@ export const PFLICHT_NACH_SCHLUESSEL: Record<BereichSchluessel, PflichtEintrag> 
  *  Der bevorzugte Zugriff: er läuft über `bereichKanon()` und übersteht damit
  *  auch Schreibweisen, die nur in Groß-/Kleinschreibung abweichen. */
 export function pflichtFuer(name: string): PflichtEintrag | undefined {
-  const s = bereichKanon(name).schluessel;
+  const s = bereichKanon(name).key;
   return s ? PFLICHT_NACH_SCHLUESSEL[s] : undefined;
 }
 
@@ -137,7 +137,7 @@ export function pflichtFuer(name: string): PflichtEintrag | undefined {
  *  Schreibweise jedes Jahrgangs ab. Wer neu schreibt, nimmt `pflichtFuer()`. */
 export const PFLICHT_ZUORDNUNG: Record<string, PflichtEintrag> = Object.fromEntries(
   BEREICHE.flatMap((b) =>
-    b.aliase.map((a) => [a, PFLICHT_NACH_SCHLUESSEL[b.schluessel]] as const),
+    b.aliase.map((a) => [a, PFLICHT_NACH_SCHLUESSEL[b.key]] as const),
   ),
 );
 
@@ -168,7 +168,7 @@ export const SPIELRAUM_STUFEN: Spielraum[] = ["niedrig", "mittel", "hoch"];
 export type SpielraumBefund = {
   /** Jahr der Produktebene — nicht das Planjahr der Seite. */
   year: number;
-  schluessel: BereichSchluessel;
+  key: BereichSchluessel;
   produkte: number;
   /** Summe der Aufwendungen aller Produkte dieses Teilhaushalts, in Euro. */
   expense: number;
@@ -198,12 +198,12 @@ export function spielraumBefunde(
   const aus = new Map<BereichSchluessel, SpielraumBefund>();
   for (const p of produkte) {
     if (p.year !== year) continue;
-    const s = p.sub_budget_name ? bereichKanon(p.sub_budget_name).schluessel : null;
+    const s = p.sub_budget_name ? bereichKanon(p.sub_budget_name).key : null;
     if (!s) continue;
     let b = aus.get(s);
     if (!b) {
       b = {
-        year, schluessel: s, produkte: 0, expense: 0,
+        year, key: s, produkte: 0, expense: 0,
         anteil: leerZaehler(), dominant: null, groesste: null,
       };
       aus.set(s, b);

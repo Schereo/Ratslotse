@@ -58,10 +58,10 @@ def wegweiser_reihenfolge() -> list[str]:
     Gelesen wird nur der ``STUFEN``-Block: Weiter unten stehen Links, die
     keine Schritte sind (etwa die beiden Steckbriefe am Fuß).
     """
-    quelle = WEGWEISER.read_text(encoding="utf-8")
-    anfang = quelle.index("const STUFEN:")
-    ende = quelle.index("STUFEN_NUMMERIERT")
-    return re.findall(r'href: "/haushalt/([a-z-]+)"', quelle[anfang:ende])
+    source = WEGWEISER.read_text(encoding="utf-8")
+    anfang = source.index("const STUFEN:")
+    ende = source.index("STUFEN_NUMMERIERT")
+    return re.findall(r'href: "/haushalt/([a-z-]+)"', source[anfang:ende])
 
 
 def test_der_wegweiser_ist_lesbar():
@@ -135,13 +135,13 @@ def test_der_wegweiser_ist_eine_echte_route():
     kompakte Variante: einmal zeichnen, nicht über die ganze Übersicht am
     Scrollstand kleben.
     """
-    quelle = WEGWEISER.read_text(encoding="utf-8")
-    assert 'import { Schlangenpfad } from "@/components/grafik/schlangenpfad"' in quelle
-    assert '<Schlangenpfad' in quelle
-    assert 'zeichnungsart="sichtkontakt"' in quelle
-    assert 'data-punkt' in quelle
-    assert 'data-auftritt' in quelle
-    assert "Weg beginnen" in quelle
+    source = WEGWEISER.read_text(encoding="utf-8")
+    assert 'import { Schlangenpfad } from "@/components/grafik/schlangenpfad"' in source
+    assert '<Schlangenpfad' in source
+    assert 'zeichnungsart="sichtkontakt"' in source
+    assert 'data-punkt' in source
+    assert 'data-auftritt' in source
+    assert "Weg beginnen" in source
 
 
 def test_der_weg_steht_vor_den_detailgrafiken():
@@ -149,10 +149,10 @@ def test_der_weg_steht_vor_den_detailgrafiken():
     Bereichstabelle. Nach Tafel und Begriffserklärung müssen Nutzer*innen sie
     sehen, bevor Kassenzettel und Detailgrafiken weiter in die Tiefe gehen.
     """
-    quelle = UEBERSICHT.read_text(encoding="utf-8")
-    weg = quelle.index('<div id="wegweiser"')
-    kassenzettel = quelle.index("<Kassenzettel", weg)
-    bereiche = quelle.index("<Bereichstabelle", weg)
+    source = UEBERSICHT.read_text(encoding="utf-8")
+    weg = source.index('<div id="wegweiser"')
+    kassenzettel = source.index("<Kassenzettel", weg)
+    bereiche = source.index("<Bereichstabelle", weg)
     assert weg < kassenzettel < bereiche
 
 

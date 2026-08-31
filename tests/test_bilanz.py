@@ -167,7 +167,7 @@ def _lies(text: str, year: int) -> dict:
 
 
 def _werte(budget_year: dict) -> dict[str, float]:
-    return {p["role"]: p["wert"] for p in budget_year["posten"]}
+    return {p["role"]: p["value"] for p in budget_year["posten"]}
 
 
 # --- Beide Layouts ----------------------------------------------------------
@@ -376,7 +376,7 @@ def _kette() -> dict[int, dict]:
     """Zwei benachbarte Jahrgänge, wie sie beim Einlesen nebeneinanderliegen:
     2023 aus der Vorjahresspalte von 2024, 2024 aus seiner eigenen."""
     j2024 = _lies(B_2024, 2024)
-    j2023 = {"year": 2023, "posten": [{**p, "wert": p["value_prior_year"]}
+    j2023 = {"year": 2023, "posten": [{**p, "value": p["value_prior_year"]}
                                       for p in j2024["posten"]]}
     return {2023: j2023, 2024: j2024}
 
@@ -392,7 +392,7 @@ def test_vorjahreskette_findet_einen_riss():
     chain = _kette()
     for p in chain[2023]["posten"]:
         if p["role"] == "sachvermoegen":
-            p["wert"] += 1000.0
+            p["value"] += 1000.0
     risse = bilanz.vorjahreskette(chain)
     assert len(risse) == 1
     year, folge, warum = risse[0]
@@ -622,7 +622,7 @@ def test_ein_leerer_abschnitt_zaehlt_nicht_als_erlaeuterung():
 # --- Speichern und wieder herausholen ---------------------------------------
 
 @pytest.fixture()
-def quelle():
+def source():
     from council import herkunft
     return herkunft.Herkunft(
         probe=["bilanz_ausgleich", "bilanz_kassenprobe"],
@@ -632,14 +632,14 @@ def quelle():
         label="Jahresabschluss 2024", url="https://example.org/ja2024.pdf")
 
 
-def test_store_bilanz_roundtrip(tmp_path, quelle):
+def test_store_bilanz_roundtrip(tmp_path, source):
     store = CouncilStore(tmp_path / "council.sqlite")
     try:
         budget_year = _lies(B_2024, 2024)
-        assert store.save_bilanz(2024, budget_year["posten"], quelle) == len(budget_year["posten"])
+        assert store.save_bilanz(2024, budget_year["posten"], source) == len(budget_year["posten"])
         assert store.bilanz_jahre() == [2024]
         rows = store.get_bilanz(2024)
-        werte = {r["role"]: r["wert"] for r in rows}
+        werte = {r["role"]: r["value"] for r in rows}
         assert werte["pensionen_gesamt"] == 311_789_660.00
         assert store.get_ruecklagen() == [{
             "year": 2024,
@@ -648,7 +648,7 @@ def test_store_bilanz_roundtrip(tmp_path, quelle):
             "state_after_result": pytest.approx(195_083_247.54, abs=0.01),
             "herkunft_id": rows[0]["herkunft_id"],
         }]
-        assert sum(r["wert"] for r in rows if r["level"] == 1
+        assert sum(r["value"] for r in rows if r["level"] == 1
                    and r["page"] == "aktiva") == pytest.approx(SUMME[2024], abs=0.01)
         # Aktiva vor Passiva — die Bilanz druckt es so.
         assert rows[0]["page"] == "aktiva" and rows[-1]["page"] == "passiva"
@@ -656,17 +656,17 @@ def test_store_bilanz_roundtrip(tmp_path, quelle):
         h = store.get_herkunft([rows[0]["herkunft_id"]])[0]
         assert "bilanz_kassenprobe" in h["probe"]
         # Ein zweiter Lauf ersetzt den Stichtag, statt ihn zu verdoppeln.
-        store.save_bilanz(2024, budget_year["posten"], quelle)
+        store.save_bilanz(2024, budget_year["posten"], source)
         assert len(store.get_bilanz(2024)) == len(budget_year["posten"])
     finally:
         store.close()
 
 
-def test_store_erlaeuterungen_roundtrip(tmp_path, quelle):
+def test_store_erlaeuterungen_roundtrip(tmp_path, source):
     store = CouncilStore(tmp_path / "council.sqlite")
     try:
         abschnitte = bilanz.parse_erlaeuterungen(ANHANG_2024, 2024)
-        assert store.save_bilanz_erlaeuterungen(2024, abschnitte, quelle) == 9
+        assert store.save_bilanz_erlaeuterungen(2024, abschnitte, source) == 9
         raus = store.get_bilanz_erlaeuterungen(2024)
         assert [r["nr"] for r in raus] == list(range(1, 10))
         schulden = next(r for r in raus if r["role"] == "schulden")

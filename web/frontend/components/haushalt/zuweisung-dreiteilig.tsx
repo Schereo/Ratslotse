@@ -21,7 +21,7 @@
 // nicht. Sie sagt, wie hoch sie ist.
 
 import { FinanzausgleichJahr, deMio } from "@/lib/haushalt";
-import { Beleg } from "@/components/haushalt/quelle";
+import { Beleg } from "@/components/haushalt/source";
 import { GlossaryText } from "@/components/glossary-text";
 
 /** Die drei Komponenten in der Reihenfolge, in der das Blatt sie führt. */
@@ -87,7 +87,7 @@ export function ZuweisungDreiteilig({ series }: { series?: FinanzausgleichJahr[]
 
       <dl className="mt-3 divide-y divide-dashed divide-border border-y border-dashed border-border">
         {TEILE.map((t) => {
-          const wert = j[t.field];
+          const value = j[t.field];
           return (
             <div key={t.field} className="grid grid-cols-[1fr_auto] items-baseline gap-x-4 py-2.5">
               <dt className="min-w-0">
@@ -102,7 +102,7 @@ export function ZuweisungDreiteilig({ series }: { series?: FinanzausgleichJahr[]
                 </span>
               </dt>
               <dd className="whitespace-nowrap font-display text-[15px] font-bold tabular-nums">
-                {typeof wert === "number" ? deMio(wert / 1000) : "—"}
+                {typeof value === "number" ? deMio(value / 1000) : "—"}
                 <span className="ml-1 font-sans text-[10px] font-normal text-muted-foreground">
                   Mio.&nbsp;€
                 </span>

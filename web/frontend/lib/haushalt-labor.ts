@@ -54,21 +54,21 @@ export function letzterSteuerbetrag(
  *  Näherung tragfähig, und genau deshalb steht die Zahl am Regler. */
 export function grundsteuerAnteilA(vergleich: VergleichDaten | null): number | null {
   if (!vergleich) return null;
-  const oldenburg = vergleich.staedte.find((s) => s.ist_oldenburg)?.schluessel;
+  const oldenburg = vergleich.staedte.find((s) => s.ist_oldenburg)?.key;
   if (!oldenburg) return null;
   const werte = vergleich.werte.filter(
-    (w) => w.series === "realsteuern" && w.schluessel === oldenburg
+    (w) => w.series === "realsteuern" && w.key === oldenburg
       && (w.indicator === "ist_je_ew_grundsteuer_a" || w.indicator === "ist_je_ew_grundsteuer_b"));
   const year = Math.max(...werte.map((w) => w.year), -Infinity);
-  const a = werte.find((w) => w.year === year && w.indicator === "ist_je_ew_grundsteuer_a")?.wert;
-  const b = werte.find((w) => w.year === year && w.indicator === "ist_je_ew_grundsteuer_b")?.wert;
+  const a = werte.find((w) => w.year === year && w.indicator === "ist_je_ew_grundsteuer_a")?.value;
+  const b = werte.find((w) => w.year === year && w.indicator === "ist_je_ew_grundsteuer_b")?.value;
   if (a == null || b == null || a + b <= 0) return null;
   return a / (a + b);
 }
 
 export type StadtHebesatz = {
   stadt: string;
-  wert: number;
+  value: number;
   istOldenburg: boolean;
   year: number;
 };
@@ -83,14 +83,14 @@ export function staedteHebesaetze(
   const years = vergleich.years.realsteuern ?? [];
   const year = years.at(-1);
   if (year == null) return [];
-  const oldenburg = vergleich.staedte.find((s) => s.ist_oldenburg)?.schluessel;
+  const oldenburg = vergleich.staedte.find((s) => s.ist_oldenburg)?.key;
   return vergleich.werte
     .filter((w) => w.series === "realsteuern" && w.year === year && w.indicator === indicator)
     .map((w) => ({
-      stadt: w.city, wert: w.wert, year: w.year,
-      istOldenburg: w.schluessel === oldenburg,
+      stadt: w.city, value: w.value, year: w.year,
+      istOldenburg: w.key === oldenburg,
     }))
-    .sort((a, b) => b.wert - a.wert);
+    .sort((a, b) => b.value - a.value);
 }
 
 /** Was vom nächsten Einnahme-Euro nach dem Finanzausgleich übrig bliebe —

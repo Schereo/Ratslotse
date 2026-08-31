@@ -245,7 +245,7 @@ def _zelle(zeile: list[object], idx: int | None) -> object:
 
 
 def _wert(roh: object) -> tuple[float | None, bool]:
-    """Zellwert einer Wertespalte → ``(wert, confidential)``.
+    """Zellwert einer Wertespalte → ``(value, confidential)``.
 
     Drei Fälle, und der mittlere ist der Grund für diese Funktion:
 
@@ -262,9 +262,9 @@ def _wert(roh: object) -> tuple[float | None, bool]:
     Zeile für „leer" statt für „gesperrt" — und damit einen Beschluss des
     Landesamts für einen Lesefehler.
     """
-    wert = sv._zahl(roh)
-    if wert is not None:
-        return wert, False
+    value = sv._zahl(roh)
+    if value is not None:
+        return value, False
     text = "" if roh is None else str(roh).strip()
     return None, bool(text)
 
@@ -374,8 +374,8 @@ def _blatt(pfad: str, blatt: str, erwartet: tuple[str, ...],
             "confidential": False,
         }
         for name in erwartet:
-            wert, confidential = _wert(_zelle(zeile, zuordnung[name]))
-            eintrag[name] = wert
+            value, confidential = _wert(_zelle(zeile, zuordnung[name]))
+            eintrag[name] = value
             eintrag["confidential"] = eintrag["confidential"] or confidential
         if mit_hebesatz:
             eintrag["rate"] = sv._zahl(_zelle(zeile, c_hebesatz))
@@ -448,7 +448,7 @@ def probe_blaetter(budget_year: Gewerbesteuerjahrgang) -> dict:
     for key, kreis in sorted(budget_year.staedte.items()):
         gemeinde = budget_year.gemeinden.get(key)
         if not gemeinde:
-            abweichungen.append({"schluessel": key, "city": kreis["city"],
+            abweichungen.append({"key": key, "city": kreis["city"],
                                  "reason": "fehlt in Blatt 6.2"})
             continue
         for name in ERWARTET_GEMEINDEN:
@@ -457,7 +457,7 @@ def probe_blaetter(budget_year: Gewerbesteuerjahrgang) -> dict:
                 continue
             geprueft += 1
             if a is None or b is None or abs(a - b) >= 0.5:
-                abweichungen.append({"schluessel": key, "city": kreis["city"],
+                abweichungen.append({"key": key, "city": kreis["city"],
                                      "reason": f"{name}: {a} gegen {b}"})
     return {"ok": geprueft > 0 and not abweichungen,
             "geprueft": geprueft, "abweichungen": abweichungen,
@@ -484,7 +484,7 @@ def hebesatz_im_jahr(zeilen: list[dict], year: int,
     return float(max(passend, key=lambda z: int(z["year"]))["rate"])
 
 
-def probe_hebesatz(budget_year: Gewerbesteuerjahrgang, schluessel: str,
+def probe_hebesatz(budget_year: Gewerbesteuerjahrgang, key: str,
                    hebesatz_1105: float | None) -> dict:
     """Der nachrichtliche Hebesatz aus 6.2 gegen Tabelle 1105 des Jahrbuchs.
 
@@ -499,7 +499,7 @@ def probe_hebesatz(budget_year: Gewerbesteuerjahrgang, schluessel: str,
     Ohne Vergleichswert (leerer Bestand, Jahr vor Beginn der Reihe) gilt die
     Probe als nicht gelaufen — nicht als bestanden.
     """
-    eintrag = budget_year.gemeinden.get(schluessel) or {}
+    eintrag = budget_year.gemeinden.get(key) or {}
     satz = eintrag.get("rate")
     if satz is None or hebesatz_1105 is None:
         return {"ok": None,
@@ -538,21 +538,21 @@ def zeilen(budget_year: Gewerbesteuerjahrgang) -> tuple[list[dict], list[dict]]:
         # sonst sucht beim nächsten Lauf jemand einen Parserfehler, den es
         # nicht gibt.
         if eintrag.get("gesamt_count") is None and eintrag.get("confidential"):
-            verworfen.append({"schluessel": key, "city": eintrag["city"],
+            verworfen.append({"key": key, "city": eintrag["city"],
                               "reason": "Geheimhaltung",
                               "result": "das Landesamt weist für diese Stadt "
                                           "keine Zahlen aus (§ 16 BStatG)"})
             continue
         probe = probe_summen(eintrag)
         if not probe["ok"]:
-            verworfen.append({"schluessel": key, "city": eintrag["city"],
+            verworfen.append({"key": key, "city": eintrag["city"],
                               "reason": "Summenprobe",
                               "result": probe["result"]})
             continue
         gemeinde = budget_year.gemeinden.get(key) or {}
         aus.append({
             "year": budget_year.year,
-            "schluessel": key,
+            "key": key,
             # Der Name aus unserer Liste, nicht der aus der Datei: Die Datei
             # schreibt ihn je Jahrgang anders („Oldenburg (Oldb)" gegen
             # „Oldenburg (Oldenburg)"), und eine Reihe, die ihren eigenen

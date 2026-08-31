@@ -206,7 +206,7 @@ export const GLOSSARY: Record<string, string> = {
   "Abschreibung":
     "Der jährlich gebuchte Wertverlust einer Anschaffung. Eine Schule kostet einmal Geld, hält aber Jahrzehnte — deshalb wird ihr Wert über die Nutzungsdauer verteilt und Jahr für Jahr ein Stück davon als Aufwand gebucht.",
   "Buchwert":
-    "Was ein Gegenstand in den Büchern der Stadt noch wert ist: der Anschaffungspreis minus alles, was bisher abgeschrieben wurde. Nicht zu verwechseln mit dem Preis, den er am Markt brächte.",
+    "Was ein Gegenstand in den Büchern der Stadt noch value ist: der Anschaffungspreis minus alles, was bisher abgeschrieben wurde. Nicht zu verwechseln mit dem Preis, den er am Markt brächte.",
   "Anlagenspiegel":
     "Die Tabelle im Jahresabschluss, die für jede Vermögensart zeigt, was im Jahr dazukam, was abging und wie viel abgeschrieben wurde. Aus ihr lässt sich ablesen, ob die Stadt schneller aufbaut, als ihr Bestand verfällt.",
   "Bürgschaft":

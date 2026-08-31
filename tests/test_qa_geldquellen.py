@@ -213,9 +213,9 @@ class _MessStore:
         self.aufrufe: list[str] = []
         self._steuern_treffer = steuern_treffer
 
-    def _merken(self, name, wert):
+    def _merken(self, name, value):
         self.aufrufe.append(name)
-        return wert
+        return value
 
     def bilanz_kontext(self):
         return self._merken("bilanz_kontext", None)
@@ -575,12 +575,12 @@ def _befuellter_store(tmp_path) -> CouncilStore:
     store = CouncilStore(tmp_path / "c.sqlite")
     with store._conn:
         store._conn.execute(
-            "INSERT INTO council_herkunft (id, schluessel, art, label, url, citation, "
+            "INSERT INTO council_herkunft (id, key, art, label, url, citation, "
             " page, probe, stand, fetched_at) VALUES "
             "(1, 'k1', 'ris', 'Jahresabschluss 2024', 'https://example.org/ja2024', "
             " 'Abschnitt 6.2 Ergebnisrechnung', 41, 'summenprobe', '31.12.2024', '2026-08-16')")
         store._conn.execute(
-            "INSERT INTO council_herkunft (id, schluessel, art, label, url, citation, "
+            "INSERT INTO council_herkunft (id, key, art, label, url, citation, "
             " probe, stand, fetched_at) VALUES "
             "(2, 'k2', 'ris', 'Schlussbericht RPA 2023', 'https://example.org/rpa', "
             " 'Randmarken des Berichts', 'randmarkenprobe', '2023', '2026-08-16')")
@@ -640,8 +640,8 @@ def _befuellter_store(tmp_path) -> CouncilStore:
              ("klinikum", "Klinikum Oldenburg AöR", 390_000.0),
              ("konsolidierung", "Konsolidierung", -120_000.0)])
         store._conn.executemany(
-            "INSERT INTO council_staedtevergleich (series, year, schluessel, city, indicator, "
-            " wert, unit, herkunft_id, fetched_at) VALUES "
+            "INSERT INTO council_staedtevergleich (series, year, key, city, indicator, "
+            " value, unit, herkunft_id, fetched_at) VALUES "
             "('tax_capacity',2024,?,?,'Steuerkraftmesszahl je Einwohner',?,'EUR',1,'')",
             [("03403", "Oldenburg", 1834.0), ("03404", "Osnabrück", 1712.0),
              ("03401", "Delmenhorst", 1104.0)])
@@ -729,7 +729,7 @@ def _befuellter_store(tmp_path) -> CouncilStore:
             "INSERT INTO council_decisions (ksinr, position, kind, item_number, title, "
             " outcome, vote) VALUES (?,?,?,?,?,?,?)", eintraege)
         store._conn.executemany(
-            "INSERT INTO council_herkunft (id, schluessel, art, label, url, citation, "
+            "INSERT INTO council_herkunft (id, key, art, label, url, citation, "
             " probe, stand, fetched_at) VALUES (?,?,'ris',?,?,?,?,?,'2026-08-17')",
             [(3, "k3", "Statistisches Jahrbuch, Tabelle 1108",
               "https://example.org/1108", "Tabelle 1108", "prokopfprobe", "2025"),
@@ -1067,8 +1067,8 @@ def test_neuer_baustein_bleibt_in_seiner_groesse(facette, grenze, tmp_path):
              "investitionen": "Was wird gebaut?",
              "antraege": "Welche Änderungslisten gab es zum Haushalt 2026?"}[facette]
     kontext = qa.geld_kontext(store, frage, frage, "topic")
-    schluessel, bauer = qa._GELD_BAUSTEINE[facette]
-    text = bauer(kontext.get(schluessel))
+    key, bauer = qa._GELD_BAUSTEINE[facette]
+    text = bauer(kontext.get(key))
     assert text, f"{facette} liefert nichts — Fixture verrutscht?"
     assert len(text) <= grenze, f"{facette}: {len(text)} Zeichen (Grenze {grenze})"
     store.close()
@@ -1226,12 +1226,12 @@ def test_deepresearch_ruft_geld_kontext_statt_einzelquellen():
     falsche Stelle") steht schon in der Zeile."""
     from pathlib import Path
 
-    quelle = (Path(__file__).resolve().parents[1] / "web" / "backend" / "app"
+    source = (Path(__file__).resolve().parents[1] / "web" / "backend" / "app"
               / "deepresearch.py").read_text(encoding="utf-8")
-    assert "qa.geld_kontext(" in quelle
+    assert "qa.geld_kontext(" in source
     for alt in ("store.haushalt_fuer_begriffe", "store.steuern_fuer_begriffe",
                 "store.steuerkraft_kontext"):
-        assert alt not in quelle, f"{alt} hängt noch am alten Einzelweg"
+        assert alt not in source, f"{alt} hängt noch am alten Einzelweg"
 
 
 def test_facetten_stehen_im_kontext_zum_mitloggen():
@@ -1323,13 +1323,13 @@ def test_schuldenblock_nennt_alle_drei_abgrenzungen(tmp_path):
     c = store._conn                                       # noqa: SLF001
     c.execute("INSERT INTO council_schulden (year, total, per_capita, fetched_at) "
               "VALUES (2024, 294851000, 1673, '2026-08-18')")
-    c.execute("INSERT INTO council_bilanz (year, role, page, level, label, wert, "
+    c.execute("INSERT INTO council_bilanz (year, role, page, level, label, value, "
               " fetched_at) VALUES (2024, 'geldschulden', 'passiva', 2, 'Geldschulden', "
               " 43690972, '2026-08-18')")
     c.execute("INSERT INTO council_integrierte_schulden (year, ars, total, probes, "
               " fetched_at) VALUES (2024, '03403000', 740300000, '', '2026-08-18')")
     c.execute("INSERT INTO council_buergschaften (year, balance, exact, out_next_year, "
-              " quelle, probes, fetched_at) "
+              " source, probes, fetched_at) "
               "VALUES (2024, 220300000, 1, 0, 'jahresabschluss', '', '2026-08-18')")
     c.commit()
 
@@ -1403,7 +1403,7 @@ def test_geld_grafik_liefert_rohreihen_aus_dem_store(tmp_path):
     g = qa.geld_grafik(store, geld)
     assert g and g["art"] == "schulden"
     assert [p["year"] for p in g["series"]] == [1995, 2024, 2025]
-    assert g["series"][-1]["wert"] == 337.0            # Mio, gerundet
+    assert g["series"][-1]["value"] == 337.0            # Mio, gerundet
     assert g["unit"] == "Mio. €"
     assert g["note"], "Die Abgrenzung reist mit der Grafik"
 
@@ -1414,7 +1414,7 @@ def test_geld_grafik_liefert_rohreihen_aus_dem_store(tmp_path):
     geld = qa.geld_kontext(store, "Wie hat sich die Gewerbesteuer entwickelt?")
     g = qa.geld_grafik(store, geld)
     assert g and g["art"] == "taxes"
-    assert g["series"][-1]["wert"] == 222.1
+    assert g["series"][-1]["value"] == 222.1
 
     leer = CouncilStore(str(tmp_path / "leer.sqlite"))
     geld = qa.geld_kontext(leer, "Wie hoch sind die Schulden der Stadt?")
@@ -1437,17 +1437,17 @@ def test_grafik_pruefung_am_share_snapshot():
     from app.routers.council import _grafik_pruefen
 
     gut = {"art": "schulden", "titel": "Schuldenstand", "unit": "Mio. €",
-           "nachkomma": 1, "series": [{"year": 1995, "wert": 190.0},
-                                     {"year": 2025, "wert": 337.0}],
-           "note": "Stadt als Rechtsträger", "quelle": "Jahrbuch 1108"}
+           "nachkomma": 1, "series": [{"year": 1995, "value": 190.0},
+                                     {"year": 2025, "value": 337.0}],
+           "note": "Stadt als Rechtsträger", "source": "Jahrbuch 1108"}
     geprueft = _grafik_pruefen(gut)
     assert geprueft and geprueft["series"] == gut["series"]
 
     # Fremde Felder fallen weg, statt ausgeliefert zu werden.
     assert "boese" not in (_grafik_pruefen({**gut, "boese": "<script>"}) or {})
     # Kaputte Reihen: lieber keine Grafik als eine erfundene.
-    assert _grafik_pruefen({**gut, "series": [{"year": "x", "wert": 1}]}) is None
-    assert _grafik_pruefen({**gut, "series": [{"year": 2025, "wert": 337.0}]}) is None
+    assert _grafik_pruefen({**gut, "series": [{"year": "x", "value": 1}]}) is None
+    assert _grafik_pruefen({**gut, "series": [{"year": 2025, "value": 337.0}]}) is None
     assert _grafik_pruefen("kein dict") is None
     assert _grafik_pruefen(None) is None
     # Längen werden gekappt — der Snapshot ist kein Blob-Speicher.

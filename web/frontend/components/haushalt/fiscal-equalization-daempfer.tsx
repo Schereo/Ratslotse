@@ -45,7 +45,7 @@
 import { useId } from "react";
 import { useBreite } from "@/lib/use-breite";
 import { deMio } from "@/lib/haushalt";
-import { Beleg } from "@/components/haushalt/quelle";
+import { Beleg } from "@/components/haushalt/source";
 import {
   AbleseBeschreibung, AbleseFlaeche, AbleseStelle, Ableseleiste, useAblesen,
 } from "@/components/grafik/ablesen";
@@ -87,7 +87,7 @@ export function FinanzausgleichDaempfer({ tax_capacity }: { tax_capacity: Kraft[
   const gegenlaeufig = steigend.filter((p) => p.dZuw < 0).length;
 
   const schmal = breite < 520;
-  const fs = schmal ? { achse: 12, year: 12, wert: 12.5 } : { achse: 10.5, year: 10.5, wert: 12 };
+  const fs = schmal ? { achse: 12, year: 12, value: 12.5 } : { achse: 10.5, year: 10.5, value: 12 };
   const W = breite, X0 = schmal ? 34 : 40, X1 = W - (schmal ? 8 : 12);
 
   // EINE gemeinsame Achse in Mio. € für beide Reihen. Zwei Achsen mit eigener
@@ -114,8 +114,8 @@ export function FinanzausgleichDaempfer({ tax_capacity }: { tax_capacity: Kraft[
   const stellen: AbleseStelle[] = series.map((k) => ({
     titel: String(k.year),
     werte: [
-      { label: "Steuerkraft", wert: deMio(k.tax_index / 1e6), farbe: "var(--hh-ein-0)" },
-      { label: "Zuweisungen", wert: deMio(k.allocations / 1e6), farbe: "var(--hh-aus-2)" },
+      { label: "Steuerkraft", value: deMio(k.tax_index / 1e6), farbe: "var(--hh-ein-0)" },
+      { label: "Zuweisungen", value: deMio(k.allocations / 1e6), farbe: "var(--hh-aus-2)" },
     ],
     vorlesen: `Ausgleichsjahr ${k.year}: Steuerkraftmesszahl ${deMio(k.tax_index / 1e6)} Millionen Euro, `
       + `Schlüsselzuweisungen ${deMio(k.allocations / 1e6)} Millionen Euro.`,
@@ -163,10 +163,10 @@ export function FinanzausgleichDaempfer({ tax_capacity }: { tax_capacity: Kraft[
             strokeLinecap="round" style={{ stroke: "var(--hh-aus-2)" }} strokeDasharray="5 3" />
 
           <text x={x(series.length - 1)} y={y(letzte.tax_index / 1e6) - 8} textAnchor="end"
-            fontSize={fs.wert} fontWeight={700} className="stroke-card" {...halo}
+            fontSize={fs.value} fontWeight={700} className="stroke-card" {...halo}
             style={{ fill: "var(--hh-ein-0)" }}>{deMio(letzte.tax_index / 1e6)}</text>
           <text x={x(series.length - 1)} y={y(letzte.allocations / 1e6) - 8} textAnchor="end"
-            fontSize={fs.wert} fontWeight={700} className="stroke-card" {...halo}
+            fontSize={fs.value} fontWeight={700} className="stroke-card" {...halo}
             style={{ fill: "var(--hh-aus-2)" }}>{deMio(letzte.allocations / 1e6)}</text>
 
           {/* Die Randbeschriftungen ankern nach innen. Mittig zentriert stand

@@ -33,7 +33,7 @@ import { cn } from "@/lib/utils";
 
 export type BonZeile = {
   label: ReactNode;
-  wert: number;
+  value: number;
   /** `signal` = Differenz („aus dem Ersparten"), `leise` = kleiner Posten. */
   ton?: "signal" | "leise";
 };
@@ -69,7 +69,7 @@ function Bonzeile({ z }: { z: BonZeile }) {
         "min-w-3 flex-1 -translate-y-[3px] border-b border-dotted",
         z.ton === "signal" ? "border-signal/50" : "border-border",
       )} />
-      <span className="flex-none font-medium tabular-nums">{deZahl(z.wert)}</span>
+      <span className="flex-none font-medium tabular-nums">{deZahl(z.value)}</span>
     </div>
   );
 }
@@ -77,7 +77,7 @@ function Bonzeile({ z }: { z: BonZeile }) {
 export function Kassenzettel({
   titel, untertitel, stempel, posten, summe, summeLabel = "Summe",
   bezahltMit, bezahltMitTitel = "Bezahlt mit", teiler, nichtAussagen,
-  fuss, quelle, daneben, danach, darunter, className,
+  fuss, source, daneben, danach, darunter, className,
 }: {
   /** Kopf des Bons: „Stadt Oldenburg" / „Haushaltsplan 2026". */
   titel: string;
@@ -94,13 +94,13 @@ export function Kassenzettel({
   bezahltMit?: BonZeile[];
   bezahltMitTitel?: string;
   /** PFLICHT: Bezugsgröße, Stichtag, Quelle — sichtbar unter dem Zettel. */
-  teiler: { zahl: number; unit: string; as_of_date: string; quelle: ReactNode };
+  teiler: { zahl: number; unit: string; as_of_date: string; source: ReactNode };
   /** PFLICHT: der „Was diese Zahl nicht ist"-Kasten, je Punkt ein Satz. */
   nichtAussagen: NichtAussage[];
   /** Weitere Bon-Abschnitte vor der Quellzeile (z. B. Rücklagen-Stand). */
   fuss?: ReactNode;
   /** Quellzeile am Bon-Fuß. */
-  quelle?: string;
+  source?: string;
   /** Inhalt der Spalte neben dem Bon, ÜBER dem Kasten (Titel, Einordnung). */
   daneben?: ReactNode;
   /** Inhalt der Spalte neben dem Bon, UNTER dem Kasten (Rechen-Karten). */
@@ -110,7 +110,7 @@ export function Kassenzettel({
   darunter?: ReactNode;
   className?: string;
 }) {
-  const teileSumme = posten.reduce((s, p) => s + p.wert, 0);
+  const teileSumme = posten.reduce((s, p) => s + p.value, 0);
 
   return (
     <div className={cn("@container/zettel", className)}>
@@ -173,9 +173,9 @@ export function Kassenzettel({
               </p>
             )}
 
-            {quelle && (
+            {source && (
               <p className="mt-3 border-t border-dashed border-border pt-2.5 text-center text-[9.5px] leading-relaxed text-muted-foreground">
-                {quelle}
+                {source}
               </p>
             )}
           </div>
@@ -186,7 +186,7 @@ export function Kassenzettel({
               wurde und woher die Zahl stammt. */}
           <p className="mt-2 px-1 text-center text-[11px] leading-relaxed text-muted-foreground">
             Berechnet mit <span className="font-medium tabular-nums text-foreground/80">{deZahl(teiler.zahl)}</span>{" "}
-            {teiler.unit} · Stand {teiler.as_of_date} · {teiler.quelle}
+            {teiler.unit} · Stand {teiler.as_of_date} · {teiler.source}
           </p>
         </div>
 

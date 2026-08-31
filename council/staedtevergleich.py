@@ -228,21 +228,21 @@ def blatt_lesen(pfad: str, name: str) -> list[list[object]]:
                 typ = zelle.get("t")
                 if typ == "inlineStr":
                     knoten = zelle.find(f"{_NS}is")
-                    wert: object = ("".join(t.text or "" for t in knoten.iter(f"{_NS}t"))
+                    value: object = ("".join(t.text or "" for t in knoten.iter(f"{_NS}t"))
                                     if knoten is not None else None)
                 else:
                     v = zelle.find(f"{_NS}v")
-                    wert = v.text if v is not None else None
-                    if wert is not None and typ == "s":
-                        i = int(wert)
-                        wert = texte[i] if 0 <= i < len(texte) else None
-                    elif wert is not None:
+                    value = v.text if v is not None else None
+                    if value is not None and typ == "s":
+                        i = int(value)
+                        value = texte[i] if 0 <= i < len(texte) else None
+                    elif value is not None:
                         try:
-                            wert = float(wert)
+                            value = float(value)
                         except ValueError:
                             pass
-                if wert is not None and wert != "":
-                    werte[idx] = wert
+                if value is not None and value != "":
+                    werte[idx] = value
             zeilen[nr] = ([werte.get(i) for i in range(max(werte) + 1)]
                           if werte else [])
         if not zeilen:
@@ -299,13 +299,13 @@ def _finde(spalten: dict[int, str], muster: str) -> int | None:
     return None
 
 
-def _zahl(wert: object) -> float | None:
+def _zahl(value: object) -> float | None:
     """Zellwert → Zahl. ``x`` (»nicht anwendbar«) und Text ergeben ``None``."""
-    if wert is None:
+    if value is None:
         return None
-    if isinstance(wert, (int, float)):
-        return float(wert)
-    text = str(wert).strip().replace(".", "").replace(",", ".")
+    if isinstance(value, (int, float)):
+        return float(value)
+    text = str(value).strip().replace(".", "").replace(",", ".")
     try:
         return float(text)
     except ValueError:
@@ -404,7 +404,7 @@ def probe_ueberlappung(alt: KfaJahrgang, neu: KfaJahrgang) -> dict:
         a = alt.staedte[key]["tax_index_keur"]
         b = neu.staedte[key]["prior_year_tax_index_keur"]
         if b is None or abs(a - b) > 0.5:
-            abweichungen.append({"schluessel": key,
+            abweichungen.append({"key": key,
                                  "city": alt.staedte[key]["city"],
                                  "alt": a, "neu": b})
     return {"geprueft": len(gemeinsam), "abweichungen": abweichungen,
@@ -653,12 +653,12 @@ def zeilen_steuerkraft(budget_year: KfaJahrgang) -> list[dict]:
         if not eintrag:
             continue
         gemeinsam = {"series": "tax_capacity", "year": budget_year.year,
-                     "schluessel": key, "city": name}
+                     "key": key, "city": name}
         aus.append({**gemeinsam, "indicator": "steuerkraftmesszahl",
-                    "wert": eintrag["tax_index_keur"], "unit": "teur"})
+                    "value": eintrag["tax_index_keur"], "unit": "teur"})
         if eintrag.get("population"):
             aus.append({**gemeinsam, "indicator": "population",
-                        "wert": eintrag["population"], "unit": "anzahl"})
+                        "value": eintrag["population"], "unit": "anzahl"})
     return aus
 
 
@@ -676,24 +676,24 @@ def zeilen_realsteuern(budget_year: Realsteuerjahrgang) -> tuple[list[dict], lis
     for key, eintrag in sorted(budget_year.tax_rates.items()):
         probe = probe_hebesatz(eintrag)
         if not probe["ok"]:
-            verworfen.append({"schluessel": key, "city": KREISFREIE_STAEDTE[key],
+            verworfen.append({"key": key, "city": KREISFREIE_STAEDTE[key],
                               "series": "realsteuern", "reason": "Hebesatzprobe",
                               "result": probe["result"]})
             continue
         gemeinsam = {"series": "realsteuern", "year": budget_year.year,
-                     "schluessel": key, "city": KREISFREIE_STAEDTE[key]}
+                     "key": key, "city": KREISFREIE_STAEDTE[key]}
         for suffix in _REALSTEUERN.values():
-            if (wert := eintrag.get(f"rate_{suffix}")) is not None:
+            if (value := eintrag.get(f"rate_{suffix}")) is not None:
                 zeilen.append({**gemeinsam, "indicator": f"hebesatz_{suffix}",
-                               "wert": wert, "unit": "percent"})
-            if (wert := eintrag.get(f"ist_je_ew_{suffix}")) is not None:
+                               "value": value, "unit": "percent"})
+            if (value := eintrag.get(f"ist_je_ew_{suffix}")) is not None:
                 zeilen.append({**gemeinsam, "indicator": f"ist_je_ew_{suffix}",
-                               "wert": wert, "unit": "eur_je_ew"})
+                               "value": value, "unit": "eur_je_ew"})
 
     for key, eintrag in sorted(budget_year.einnahmekraft.items()):
         probe = probe_dreijahresmittel(eintrag)
         if not probe["ok"]:
-            verworfen.append({"schluessel": key, "city": KREISFREIE_STAEDTE[key],
+            verworfen.append({"key": key, "city": KREISFREIE_STAEDTE[key],
                               "series": "realsteuern", "reason": "Dreijahresmittel",
                               "result": probe["result"]})
             continue
@@ -702,7 +702,7 @@ def zeilen_realsteuern(budget_year: Realsteuerjahrgang) -> tuple[list[dict], lis
         # die alles unter 2025 ablegte, machte aus drei Jahren eines.
         for year, werte in sorted(eintrag["je_jahr"].items()):
             zeilen.append({"series": "realsteuern", "year": year,
-                           "schluessel": key, "city": KREISFREIE_STAEDTE[key],
+                           "key": key, "city": KREISFREIE_STAEDTE[key],
                            "indicator": "steuereinnahmekraft_je_ew",
-                           "wert": werte["je_ew"], "unit": "eur_je_ew"})
+                           "value": werte["je_ew"], "unit": "eur_je_ew"})
     return zeilen, verworfen

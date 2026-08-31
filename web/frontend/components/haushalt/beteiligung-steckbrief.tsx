@@ -63,7 +63,7 @@ import { ZeitreiheMini } from "@/components/grafik/zeitreihe";
 import { Einordnung } from "@/components/grafik/einordnung";
 import { Anteilsbalken } from "@/components/haushalt/anteilsbalken";
 import { FormZeichen } from "@/components/haushalt/konzernkarte";
-import { Beleg } from "@/components/haushalt/quelle";
+import { Beleg } from "@/components/haushalt/source";
 import { parteiDot, parteiKuerzel } from "@/components/qa-bausteine";
 import { cn } from "@/lib/utils";
 
@@ -130,7 +130,7 @@ function Abschnitt({ kicker, zusatz, className, children }: {
 /** Die Zeitreihe als `JahrPunkt[]` für den Baukasten: Werte in Mio. €, ohne
  *  erfundene Zwischenjahre — was der Bericht nicht nennt, bleibt Lücke. */
 function ergebnisReihe(ergebnisse: Kennzahl[]): JahrPunkt[] {
-  return ergebnisse.map((k) => ({ year: k.year, wert: k.wert / 1_000_000 }));
+  return ergebnisse.map((k) => ({ year: k.year, value: k.value / 1_000_000 }));
 }
 
 /** Eine Zahl im Kopf: Kennzahl, Jahr, Betrag — und wo nichts dasteht, der
@@ -197,7 +197,7 @@ function Zahlenkopf({ daten, g }: { daten: BeteiligungsDaten; g: Gesellschaft })
               series={series}
               format={(v) => deZahl(v, 1)}
               ariaLabel={`Jahresergebnis ${von} bis ${bis} in Mio. Euro: ${ergebnisse
-                .map((k) => `${k.year} ${eur(k.wert)}`).join(", ")}.`}
+                .map((k) => `${k.year} ${eur(k.value)}`).join(", ")}.`}
             />
             <p className="mt-0.5 text-center font-mono text-[9px] uppercase tracking-[0.1em] text-muted-foreground">
               Jahresergebnis in Mio. €
@@ -268,7 +268,7 @@ function Eigentuemerstreifen({ liste, herkunft }: {
   if (!(summe > 0)) return null;
   const segmente = liste.map((e, i) => ({
     label: e.name,
-    wert: anteilsGewicht(e),
+    value: anteilsGewicht(e),
     farbe: `var(--hh-ein-${Math.min(i, 6)})`,
   }));
 

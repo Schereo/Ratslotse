@@ -158,8 +158,8 @@ def neue_beschluesse(
 def hoechste_beschluss_id(store: CouncilStore = Depends(get_council_store)) -> HoechsteBeschlussId:
     """Aktueller Zählerstand — der Startpunkt fürs erste Merken beim Bot,
     damit sein Ereignis-Cron nicht den gesamten Bestand als „neu" meldet."""
-    wert = store._conn.execute("SELECT MAX(id) FROM council_decisions").fetchone()[0]
-    return {"hoechste_id": int(wert or 0)}
+    value = store._conn.execute("SELECT MAX(id) FROM council_decisions").fetchone()[0]
+    return {"hoechste_id": int(value or 0)}
 
 
 def _zielverzeichnis(tag: str) -> Path:

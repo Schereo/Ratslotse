@@ -250,18 +250,18 @@ def lies(csv_text: str, year: int) -> dict:
         teile = line.split(";")
         if len(teile) < 4:
             continue
-        schluessel = " ".join(teile[0].split())
+        key = " ".join(teile[0].split())
         ein, aus = _eur(teile[2]), _eur(teile[3])
         if ein is None or aus is None:
             continue
         werte = {"inflows": ein, "outflows": aus}
-        m = _THH.match(schluessel)
+        m = _THH.match(key)
         if m:
             zeilen.append({"sub_budget_no": int(m.group(1)),
                            "label": name(teile[1]), **werte})
-        elif schluessel.startswith(_GESAMT):
+        elif key.startswith(_GESAMT):
             gesamt = {"label": _GESAMT, **werte}
-        elif schluessel.startswith(_FINANZHAUSHALT):
+        elif key.startswith(_FINANZHAUSHALT):
             finanzhaushalt = {"label": _FINANZHAUSHALT, **werte}
 
     ok, warum = summenprobe(zeilen, gesamt)

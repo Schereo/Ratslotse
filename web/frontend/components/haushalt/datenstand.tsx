@@ -26,7 +26,7 @@
 // eine Änderung an den Texten der Übersichtsseite soll ihn nicht anfassen.
 
 import { Check, Clock } from "lucide-react";
-import { Apparat } from "@/components/haushalt/quelle";
+import { Apparat } from "@/components/haushalt/source";
 import { useFetch } from "@/lib/use-fetch";
 import { cn } from "@/lib/utils";
 
@@ -45,7 +45,7 @@ export type Datenschicht = {
   monat: string;
   herkunft: string;
   /** Die veröffentlichende Stelle im Klartext („Portal der Stadt"). */
-  quelle: string;
+  source: string;
   automatisch: boolean;
   /** Wie eine Einheit heißt („Teilhaushalte"), wo ein Jahrgang aus mehreren
    *  Dokumenten besteht — sonst null. */
@@ -95,13 +95,13 @@ function aufzaehlung(teile: string[]): string {
  *  für Statistik — mit dem alten Satz hätte die Seite eine Landesbehörde zur
  *  Stadtverwaltung erklärt. Die Namen der Stellen kommen deshalb aus den
  *  Daten, genau wie die der Schichten. */
-function vonHandNachStelle(schichten: Datenschicht[]): { quelle: string; labels: string[] }[] {
-  const gruppen: { quelle: string; labels: string[] }[] = [];
+function vonHandNachStelle(schichten: Datenschicht[]): { source: string; labels: string[] }[] {
+  const gruppen: { source: string; labels: string[] }[] = [];
   for (const s of schichten) {
     if (s.automatisch) continue;
-    const treffer = gruppen.find((g) => g.quelle === s.quelle);
+    const treffer = gruppen.find((g) => g.source === s.source);
     if (treffer) treffer.labels.push(s.label);
-    else gruppen.push({ quelle: s.quelle, labels: [s.label] });
+    else gruppen.push({ source: s.source, labels: [s.label] });
   }
   return gruppen;
 }
@@ -162,8 +162,8 @@ export function Fussnote({ schichten }: { schichten: Datenschicht[] }) {
           eine beliebige Liste nicht grammatisch bilden. Die Stelle steht in
           Klammern dahinter — ein Satzbau, der auch bei vier Stellen hält. */}
       {vonHand.length > 0 && <> Nicht dabei: {vonHand.map((g, i) => (
-        <span key={g.quelle}>
-          {i > 0 && "; "}{aufzaehlung(g.labels)} ({g.quelle})
+        <span key={g.source}>
+          {i > 0 && "; "}{aufzaehlung(g.labels)} ({g.source})
         </span>
       ))} — diese Zahlen werden aus weiteren amtlichen Veröffentlichungen übernommen.</>}
     </p>

@@ -367,7 +367,7 @@ function TopicStep({ onNext }: { onNext: () => void }) {
   // die Entitäts-Erkennung den Namen im letzten Jahr gesehen hat — eine andere
   // Größe als die Treffer auf die Beschreibung. Beide „12 Beschlüsse" zu nennen
   // war genau Tims Befund vom 16.08. („die zahlen passen nicht zusammen").
-  const [matchCount, setMatchCount] = useState<Record<string, { n: number; quelle: "year" | "treffer" }>>({});
+  const [matchCount, setMatchCount] = useState<Record<string, { n: number; source: "year" | "treffer" }>>({});
   const topics = useQuery({
     queryKey: ["topics"],
     queryFn: () => api.get<TopicRow[]>("/topics"),
@@ -397,7 +397,7 @@ function TopicStep({ onNext }: { onNext: () => void }) {
     setNote(null);
     try {
       let description = presetDescription ?? "";
-      if (typeof presetMatches === "number") setMatchCount((m) => ({ ...m, [clean]: { n: presetMatches, quelle: "year" } }));
+      if (typeof presetMatches === "number") setMatchCount((m) => ({ ...m, [clean]: { n: presetMatches, source: "year" } }));
       if (!description) {
         const d = await api.post<Described>("/topics/describe", { name: clean });
         if (d.verdict === "ungeeignet") {
@@ -405,7 +405,7 @@ function TopicStep({ onNext }: { onNext: () => void }) {
           return;
         }
         description = d.description;
-        setMatchCount((m) => ({ ...m, [clean]: { n: d.matches, quelle: "treffer" } }));
+        setMatchCount((m) => ({ ...m, [clean]: { n: d.matches, source: "treffer" } }));
         if (d.verdict === "plausibel") {
           setNote(`Über „${clean}" hat der Rat bisher nichts entschieden — Lotti meldet sich, sobald es so weit ist.`);
         }
@@ -514,7 +514,7 @@ function TopicCard({ topic, matches, onEdit, onRemove }: {
    *  `year` ist die viel gröbere Zahl aus dem Vorschlags-Chip — wie oft der
    *  Name im letzten Jahr überhaupt vorkam. Beide „Beschlüsse" zu nennen hat
    *  genau die Verwirrung erzeugt, die Tim am 16.08. gemeldet hat. */
-  matches?: { n: number; quelle: "year" | "treffer" };
+  matches?: { n: number; source: "year" | "treffer" };
   onEdit: () => void;
   onRemove: () => void;
 }) {
@@ -525,7 +525,7 @@ function TopicCard({ topic, matches, onEdit, onRemove }: {
   // Zwei Wege, dieselbe Definition, minimal andere Zahl — genau die Sorte
   // Abweichung, die hier schon einmal Verwirrung gestiftet hat.
   const zahl = topic.matched && typeof topic.decision_count === "number"
-    ? { n: topic.decision_count, quelle: "treffer" as const, gedeckelt: !!topic.decision_count_capped }
+    ? { n: topic.decision_count, source: "treffer" as const, gedeckelt: !!topic.decision_count_capped }
     : matches && { ...matches, gedeckelt: false };
   return (
     <div className="rounded-xl border border-border bg-muted/30 px-3 py-2.5">
@@ -549,7 +549,7 @@ function TopicCard({ topic, matches, onEdit, onRemove }: {
               {zahl.n === 1 && !zahl.gedeckelt ? "Beschluss" : "Beschlüsse"}
             </span>
             <span>
-              {zahl.quelle === "year"
+              {zahl.source === "year"
                 ? "im letzten Jahr"
                 : zahl.n === 1 && !zahl.gedeckelt ? "passt dazu" : "passen dazu"}
             </span>

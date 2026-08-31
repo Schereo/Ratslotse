@@ -61,7 +61,7 @@ export type AbleseWert = {
   /** Kurzer Name der Größe, z. B. „Einnahmen". */
   label: string;
   /** Fertig formatiert (de-DE) — die Leiste rechnet nichts. */
-  wert: string;
+  value: string;
   /** Farbpunkt vor dem Label; üblicherweise `var(--hh-ein-0)`. */
   farbe?: string;
   /** Signal-Orange = „hier ist die Differenz", nie eine Bewertung. */
@@ -174,7 +174,7 @@ export function Ableseleiste({ stelle, steuerung, note, className, haftet = true
                 €"), und die darf NIE von ihrer Zahl abreißen — auf 375 px
                 stand das € sonst allein auf der nächsten Zeile. */}
             <span className={cn("flex-none whitespace-nowrap font-semibold tabular-nums",
-                                w.signal && "text-signal")}>{w.wert}</span>
+                                w.signal && "text-signal")}>{w.value}</span>
           </span>
         ))}
       </div>

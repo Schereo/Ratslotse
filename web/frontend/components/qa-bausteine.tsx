@@ -58,9 +58,9 @@ export type QaGrafik = {
   titel: string;
   unit: string;
   nachkomma: number;
-  series: { year: number; wert: number }[];
+  series: { year: number; value: number }[];
   note?: string | null;
-  quelle?: string | null;
+  source?: string | null;
   /** Anschlussstelle in den Haushalts-Bereich — der Link erscheint nur
    *  hinter dem Umgebungs-Gate (auf Prod ist /haushalt ein 404). */
   mehr?: { href: string; label: string } | null;
@@ -574,7 +574,7 @@ export function AntwortText({ text: rohtext, idToNum, onJump, quelleHref,
                   {nummer}
                 </button>
               ) : (
-                <a key={id} href={quelleHref ? quelleHref(nummer) : `#quelle-${nummer}`}
+                <a key={id} href={quelleHref ? quelleHref(nummer) : `#source-${nummer}`}
                   title="Zur zitierten Quelle springen" aria-label={`Quelle ${nummer} anzeigen`}
                   className={chipClass}>
                   {nummer}
@@ -1101,9 +1101,9 @@ export function GrafikKarte({ grafik }: { grafik: QaGrafik }) {
         // zweite klebende Ebene schob sich darüber (Tims Befund 18.08.).
         leisteHaftet={false}
       />
-      {grafik.quelle && (
+      {grafik.source && (
         <p className="mt-2 border-t border-dashed border-border pt-2 text-[10.5px] leading-relaxed text-muted-foreground">
-          {grafik.quelle} — die Reihe kommt aus unserer Datenbank, nicht aus der
+          {grafik.source} — die Reihe kommt aus unserer Datenbank, nicht aus der
           KI-Antwort.
         </p>
       )}

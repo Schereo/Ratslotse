@@ -129,7 +129,7 @@ export const LISTEN_NAME: Record<string, string> = {
 const REIHENFOLGE = ["verwaltung_1", "verwaltung_2", "verwaltung_3", "afb_beschlossen"];
 
 export type ListeImJahr = {
-  schluessel: string;
+  key: string;
   name: string;
   /** Die Positionen des Haushaltsjahrgangs selbst. */
   zeilen: AenderungsZeile[];
@@ -150,12 +150,12 @@ export function listenFuerJahr(
 ): ListeImJahr[] {
   if (!daten || year == null) return [];
   const aus: ListeImJahr[] = [];
-  for (const schluessel of REIHENFOLGE) {
+  for (const key of REIHENFOLGE) {
     const zeilen = daten.zeilen.filter(
-      (z) => z.budget_year === year && z.liste === schluessel);
+      (z) => z.budget_year === year && z.liste === key);
     if (!zeilen.length) continue;
     const summen = daten.summen.filter(
-      (s) => s.budget_year === year && s.liste === schluessel);
+      (s) => s.budget_year === year && s.liste === key);
     const imJahr = summen.filter((s) => s.year === year);
     const eigene = imJahr.find((s) => s.own === 1);
     const entwurf = imJahr.find((s) => s.typ === "entwurf");
@@ -171,8 +171,8 @@ export function listenFuerJahr(
         : null;
     const bis = Math.max(...summen.map((s) => s.year));
     aus.push({
-      schluessel,
-      name: LISTEN_NAME[schluessel] ?? schluessel,
+      key,
+      name: LISTEN_NAME[key] ?? key,
       zeilen,
       balance,
       bisPlanjahr: bis > year ? bis : null,
@@ -304,7 +304,7 @@ export function verfahrensWeg(
  *  ohne dass sich eine Zahl ändert. Sie in einer Liste „was am Bauen geändert
  *  wurde" zu zeigen, hieße eine Änderung zu behaupten, die es nicht gibt. */
 export type FhhListeImJahr = {
-  schluessel: string;
+  key: string;
   name: string;
   zeilen: FhhZeile[];
   /** Was die Liste im Jahrgang bewegt — die „eigene" Zeile der
@@ -318,17 +318,17 @@ export function fhhListenFuerJahr(
 ): FhhListeImJahr[] {
   if (!daten || year == null) return [];
   const aus: FhhListeImJahr[] = [];
-  for (const schluessel of REIHENFOLGE) {
+  for (const key of REIHENFOLGE) {
     const zeilen = (daten.fhh_zeilen ?? []).filter(
-      (z) => z.budget_year === year && z.liste === schluessel
+      (z) => z.budget_year === year && z.liste === key
         && (z.inflow != null || z.outflow != null));
     if (!zeilen.length) continue;
     const eigene = (daten.fhh_summen ?? []).find(
-      (s) => s.budget_year === year && s.year === year && s.liste === schluessel
+      (s) => s.budget_year === year && s.year === year && s.liste === key
         && s.own === 1);
     aus.push({
-      schluessel,
-      name: LISTEN_NAME[schluessel] ?? schluessel,
+      key,
+      name: LISTEN_NAME[key] ?? key,
       zeilen,
       balance: eigene
         ? { inflows: eigene.inflows, outflows: eigene.outflows,

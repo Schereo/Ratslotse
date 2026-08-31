@@ -21,7 +21,7 @@
 
 import { Scale, ExternalLink } from "lucide-react";
 import { GESETZE, herausgeber, type GesetzSchluessel } from "@/lib/gesetze";
-import { useFaehnchen } from "@/components/haushalt/quelle";
+import { useFaehnchen } from "@/components/haushalt/source";
 import { cn } from "@/lib/utils";
 
 export function Gesetz({ g, className }: {

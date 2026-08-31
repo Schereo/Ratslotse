@@ -595,7 +595,7 @@ def test_job_laesst_bestand_stehen_wenn_der_parser_nichts_mehr_liefert(balance, 
     assert any("keine Summenzeilen" in z for z in p2.warnungen)
 
 
-def test_leerer_prueferbericht_loescht_die_feststellungen_nicht(tmp_path, quelle):
+def test_leerer_prueferbericht_loescht_die_feststellungen_nicht(tmp_path, source):
     """Dieselbe Regel für die Prüfungsfeststellungen — die Tabelle, an der der
     Beinahe-Unfall hing. ``save_pruefbericht`` leert den Jahrgang, bevor es
     schreibt; gegen ein leeres Ergebnis darf es dazu gar nicht erst kommen."""
@@ -603,7 +603,7 @@ def test_leerer_prueferbericht_loescht_die_feststellungen_nicht(tmp_path, quelle
     store.save_pruefbericht(2023, [
         {"seq": i, "mark": "H", "mark_name": "Hinweis", "text_number": "1.1",
          "section": "Prüfungsauftrag", "text": f"Feststellung {i}"}
-        for i in range(1, 21)], quelle("Schlussbericht 2023",
+        for i in range(1, 21)], source("Schlussbericht 2023",
                                        "https://example.org/sb2023.pdf",
                                        probe="legende_und_verzeichnis"))
     assert len(store.get_pruefberichte(2023)) == 20
@@ -682,9 +682,9 @@ def test_ingest_skript_reicht_auch_schrumpfen_durch():
     spec = iu.spec_from_file_location("ingest_fb", ROOT / "scripts" / "ingest_finanzberichte.py")
     modul = iu.module_from_spec(spec)
     spec.loader.exec_module(modul)
-    quelle = Path(modul.__file__).read_text()
-    assert "--auch-schrumpfen" in quelle
-    assert "schuetzen=schuetzen" in quelle
+    source = Path(modul.__file__).read_text()
+    assert "--auch-schrumpfen" in source
+    assert "schuetzen=schuetzen" in source
 
 
 def test_teilweise_gelesener_jahrgang_gibt_sich_zu_erkennen(thh_bestand):
@@ -902,8 +902,8 @@ def staedtevergleich(store: CouncilStore, series: str, years: list[int]) -> None
 
     for year in years:
         store.save_staedtevergleich(series, [
-            {"year": year, "schluessel": "403000", "city": "Oldenburg (Oldb), Stadt",
-             "indicator": "steuerkraftmesszahl", "wert": 1.0, "unit": "teur"},
+            {"year": year, "key": "403000", "city": "Oldenburg (Oldb), Stadt",
+             "indicator": "steuerkraftmesszahl", "value": 1.0, "unit": "teur"},
         ], h.Herkunft(art="lsn", probe=h.UNGEPRUEFT,
                       url="https://www.statistik.niedersachsen.de/download/227086"))
 
@@ -936,7 +936,7 @@ def test_staedtevergleich_steht_im_datenstand(lsn_bestand):
     # Kein Cron holt das — und die Fußzeile sagt, wo es stattdessen herkommt.
     for z in (sk, rs):
         assert z["automatisch"] is False
-        assert z["quelle"] == "Landesamt für Statistik Niedersachsen"
+        assert z["source"] == "Landesamt für Statistik Niedersachsen"
     lsn_bestand.close()
 
 
@@ -1092,7 +1092,7 @@ def test_jede_erkennung_findet_ein_dokument_das_zu_ihr_passt(tmp_path):
 
     Gemerkt hat es niemand, weil damals nur `finanz_muster()` diese Muster las
     und sich sein ODER selbst baut. Der erste Aufruf über den normalen Weg
-    (`quelle.dokumente()`) bekam eine leere Liste — ohne Fehler, ohne Warnung.
+    (`source.dokumente()`) bekam eine leere Liste — ohne Fehler, ohne Warnung.
 
     Dieser Test geht den normalen Weg für JEDE Quelle mit Erkennung.
     """

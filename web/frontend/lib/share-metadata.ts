@@ -28,9 +28,9 @@ export type VorschauArt = "decision" | "person" | "thema" | "sitzung" | "ort";
  *  die auch next.config.mjs für die /api-Weiterleitung benutzt. */
 const BACKEND = process.env.BACKEND_URL || "http://localhost:8000";
 
-async function holeVorschau(art: VorschauArt, schluessel: string) {
+async function holeVorschau(art: VorschauArt, key: string) {
   try {
-    const res = await fetch(`${BACKEND}/api/council/preview/${art}/${encodeURIComponent(schluessel)}`, {
+    const res = await fetch(`${BACKEND}/api/council/preview/${art}/${encodeURIComponent(key)}`, {
       // Geteilte Links werden von Messengern oft im Schwarm abgerufen — eine
       // Viertelstunde Cache reicht völlig und hält die Last vom Backend fern.
       next: { revalidate: 900 },
@@ -48,11 +48,11 @@ async function holeVorschau(art: VorschauArt, schluessel: string) {
  *  den Vorgaben aus dem Wurzel-Layout. */
 export async function vorschauMetadata(
   art: VorschauArt,
-  schluessel: string | undefined,
+  key: string | undefined,
   pfad: string,
 ): Promise<Metadata> {
-  if (istExport() || !schluessel) return {};
-  const v = await holeVorschau(art, schluessel);
+  if (istExport() || !key) return {};
+  const v = await holeVorschau(art, key);
   if (!v) return {};
   return {
     title: v.title,

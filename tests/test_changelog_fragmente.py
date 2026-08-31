@@ -75,7 +75,7 @@ def test_umlaut_schreibweise_wird_gelesen(tmp_path):
     ("Kein Frontmatter, nur Text.\n", "Frontmatter"),
     ("---\nkategorie: repariert\n---\n\nText.\n", "unbekannt"),
     ("---\nkategorie: behoben\n---\n\n   \n", "kein Text"),
-    ("---\nkategorie\n---\n\nText.\n", "schluessel"),
+    ("---\nkategorie\n---\n\nText.\n", "key"),
 ])
 def test_kaputte_fragmente_werfen(tmp_path, inhalt, part):
     pfad = _fragment(tmp_path, inhalt)

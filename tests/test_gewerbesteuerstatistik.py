@@ -257,7 +257,7 @@ def test_oldenburg_wird_vollstaendig_gelesen(bericht2021):
     jg = gs.lies_bericht(bericht2021)
     zeilen, verworfen = gs.zeilen(jg)
     assert not verworfen
-    ol = next(z for z in zeilen if z["schluessel"] == gs.OLDENBURG)
+    ol = next(z for z in zeilen if z["key"] == gs.OLDENBURG)
     assert ol["cases"] == 8421
     assert ol["cases_positive"] == 3642
     assert ol["tax_base_eur"] == 30015356
@@ -278,7 +278,7 @@ def test_landkreise_und_summenzeilen_kommen_nicht_herein(bericht2021):
     „451000" im Bestand."""
     jg = gs.lies_bericht(bericht2021)
     zeilen, _ = gs.zeilen(jg)
-    assert {z["schluessel"] for z in zeilen} == {"101000", "102000", "403000"}
+    assert {z["key"] for z in zeilen} == {"101000", "102000", "403000"}
 
 
 def test_der_gespeicherte_name_ist_unserer_nicht_der_der_datei(bericht2017, bericht2021):
@@ -286,7 +286,7 @@ def test_der_gespeicherte_name_ist_unserer_nicht_der_der_datei(bericht2017, beri
     eigenen Namen wechselt, sieht in jeder Anzeige nach zwei Städten aus."""
     alt, _ = gs.zeilen(gs.lies_bericht(bericht2017))
     neu, _ = gs.zeilen(gs.lies_bericht(bericht2021))
-    beide = [z for z in alt + neu if z["schluessel"] == gs.OLDENBURG]
+    beide = [z for z in alt + neu if z["key"] == gs.OLDENBURG]
     assert len(beide) == 2
     assert {z["city"] for z in beide} == {"Oldenburg"}
 
@@ -310,7 +310,7 @@ def test_gesperrter_betrag_wird_nicht_zu_null(bericht2021):
     werden. Ein Parser, der „g" zu 0 macht, behauptet das Gegenteil."""
     jg = gs.lies_bericht(bericht2021)
     zeilen, _ = gs.zeilen(jg)
-    sz = next(z for z in zeilen if z["schluessel"] == "102000")
+    sz = next(z for z in zeilen if z["key"] == "102000")
     assert sz["tax_base_eur"] is None
     assert sz["confidential"] is True
     # Die Anzahlen stehen trotzdem da und sind die eigentliche Auskunft.
@@ -331,7 +331,7 @@ def test_vollstaendig_gesperrte_stadt_ist_kein_probenfehler(tmp_path):
                   _IMPRESSUM_2021)
     zeilen, verworfen = gs.zeilen(gs.lies_bericht(pfad))
     assert [v["reason"] for v in verworfen] == ["Geheimhaltung"]
-    assert "102000" not in {z["schluessel"] for z in zeilen}
+    assert "102000" not in {z["key"] for z in zeilen}
 
 
 # --- Die Proben -------------------------------------------------------------
@@ -347,7 +347,7 @@ def test_summenprobe_faengt_eine_verrutschte_spalte(tmp_path):
     pfad = _mappe(tmp_path, "schief.xlsx", blatt, _BLATT_62_2021, _TITEL_2021,
                   _IMPRESSUM_2021)
     zeilen, verworfen = gs.zeilen(gs.lies_bericht(pfad))
-    assert gs.OLDENBURG not in {z["schluessel"] for z in zeilen}
+    assert gs.OLDENBURG not in {z["key"] for z in zeilen}
     assert verworfen[0]["reason"] == "Summenprobe"
     assert "gesamt_amount" in verworfen[0]["result"]
 
@@ -439,7 +439,7 @@ def test_speichern_und_lesen(tmp_path, bericht2021):
         assert len(h["probes"]) == 3
         # Der gesperrte Betrag bleibt NULL — und ist von „null Euro" zu
         # unterscheiden, weil die Zeile es sagt.
-        sz = [z for z in store.get_gewerbesteuerstatistik() if z["schluessel"] == "102000"]
+        sz = [z for z in store.get_gewerbesteuerstatistik() if z["key"] == "102000"]
         assert sz[0]["tax_base_eur"] is None and sz[0]["confidential"] == 1
     finally:
         store.close()

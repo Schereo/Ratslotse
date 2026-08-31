@@ -1264,7 +1264,7 @@ def haushalt_uebersicht(
     # dort auf „irgendeines davon", und im Verzeichnis stand eine einzige
     # Quelle für 33 Dokumente (Tim, 21.08.2026). Deshalb fordert diese Seite
     # seit dem 21.08. `herkunft` an und belegt jede Karte mit der Zeile, aus
-    # der sie stammt (`components/haushalt/quelle.tsx: Dokumentbeleg`).
+    # der sie stammt (`components/haushalt/source.tsx: Dokumentbeleg`).
     #
     # Die Karte reist dabei nicht als Ganzes: Es gehen nur die Einträge mit,
     # auf die eine gesendete Zeile zeigt — bei `felder=business_plans`
@@ -1301,10 +1301,10 @@ def _kennzahlen(store: CouncilStore) -> dict:
 
     fassungen: dict[tuple[str, int], dict] = {}
     for f in store.get_kennzahl_formeln():
-        schluessel = (f["indicator"], f["version"])
-        eintrag = fassungen.get(schluessel)
+        key = (f["indicator"], f["version"])
+        eintrag = fassungen.get(key)
         if eintrag is None:
-            fassungen[schluessel] = {
+            fassungen[key] = {
                 "indicator": f["indicator"], "version": f["version"],
                 "heading": f["heading"], "formula": f["formula"],
                 "von_bericht": f["report_year"], "bis_bericht": f["report_year"],
@@ -1321,7 +1321,7 @@ def _kennzahlen(store: CouncilStore) -> dict:
     return {
         "label": {k.key: k.label for k in kennzahlen_mod.KENNZAHLEN},
         "unit": {k.key: k.unit for k in kennzahlen_mod.KENNZAHLEN},
-        "series": [{"indicator": z["indicator"], "year": z["year"], "wert": z["wert"],
+        "series": [{"indicator": z["indicator"], "year": z["year"], "value": z["value"],
                    "stellen": z["stellen"], "version": z["version"],
                    "report_year": z["report_year"], "herkunft_id": z["herkunft_id"]}
                   for z in kennzahlen_mod.neueste(staende)],
@@ -1379,12 +1379,12 @@ def _herkunft_ids(obj: object) -> set[int]:
     auf diese Tabelle zeigt (geprüft), also findet der Lauf alles."""
     if isinstance(obj, dict):
         gefunden: set[int] = set()
-        for schluessel, wert in obj.items():
-            if schluessel == "herkunft_id":
-                if wert is not None:
-                    gefunden.add(int(wert))
+        for key, value in obj.items():
+            if key == "herkunft_id":
+                if value is not None:
+                    gefunden.add(int(value))
             else:
-                gefunden |= _herkunft_ids(wert)
+                gefunden |= _herkunft_ids(value)
         return gefunden
     if isinstance(obj, (list, tuple)):
         return set().union(*(_herkunft_ids(x) for x in obj)) if obj else set()
@@ -1920,9 +1920,9 @@ def partei_meinungen_endpoint(
         # „v3": seit dem Beschluss-Anker — die alten Einträge kennen nur den
         # Vektor-Kanal und sollen nicht 14 Tage weiterleben.
         alle_ids = sorted({wid for wid, _ in hits} | {r["id"] for r in anker})
-        schluessel = "v3:" + hashlib.sha1(
+        key = "v3:" + hashlib.sha1(
             ",".join(str(wid) for wid in alle_ids).encode()).hexdigest()
-        meinungen = store.partei_meinungen_cache_get(schluessel) if alle_ids else None
+        meinungen = store.partei_meinungen_cache_get(key) if alle_ids else None
         if meinungen is None and alle_ids:
             vektor = store.wortbeitraege_by_ids([wid for wid, _ in hits])
             schon = {r["id"] for r in vektor}
@@ -1933,7 +1933,7 @@ def partei_meinungen_endpoint(
             qa.parteien_aufloesen(store, rows)
             meinungen = qa.partei_meinungen(body.frage, rows)
             if meinungen:
-                store.partei_meinungen_cache_set(schluessel, body.frage, meinungen)
+                store.partei_meinungen_cache_set(key, body.frage, meinungen)
         # Vollständigkeits-Ehrlichkeit (Tims Direktive 10.08.): Fraktionen, die
         # im Rat aktiv sind, aber ohne passende Wortbeiträge zum Thema — der
         # Baustein sagt das, statt sie stillschweigend wegzulassen. Die
@@ -2087,7 +2087,7 @@ def _grafik_pruefen(g: dict | None) -> dict | None:
     if not isinstance(g, dict):
         return None
     try:
-        series = [{"year": int(p["year"]), "wert": float(p["wert"])}
+        series = [{"year": int(p["year"]), "value": float(p["value"])}
                  for p in (g.get("series") or [])[:60]]
     except (KeyError, TypeError, ValueError):
         return None
@@ -2108,7 +2108,7 @@ def _grafik_pruefen(g: dict | None) -> dict | None:
             "nachkomma": max(0, min(int(g.get("nachkomma") or 0), 3)),
             "series": series,
             "note": (str(g["note"])[:500] if g.get("note") else None),
-            "quelle": (str(g["quelle"])[:200] if g.get("quelle") else None),
+            "source": (str(g["source"])[:200] if g.get("source") else None),
             "mehr": mehr}
 
 
@@ -3674,7 +3674,7 @@ def haushalt_vergleich(
         liste.sort()
 
     staedte = [{
-        "schluessel": key,
+        "key": key,
         "name": name,
         "ist_oldenburg": key == sv.OLDENBURG,
         # Unter 100.000 Einwohnern rechnet das NFAG die Steuerkraftmesszahl
@@ -3784,7 +3784,7 @@ def haushalt_gebaut(
         # Wie die beiden Rechnungswesen heißen — damit die Beschriftung nicht
         # in zwei Sprachen existiert (dieselbe Entscheidung wie bei `arten`
         # in /haushalt/schulden).
-        "accounting_systems": [{"schluessel": k, "titel": t}
+        "accounting_systems": [{"key": k, "titel": t}
                        for k, t in _ii.REGELWERK.items()],
         "fehlend": fehlend,
         # DIE ANDERE HÄLFTE DER GESCHICHTE. Bis hierher zeigt die Seite, was

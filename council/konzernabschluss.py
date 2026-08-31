@@ -294,27 +294,27 @@ def parse_gesamtergebnisrechnung(text: str) -> dict | None:
         if "revenues_total" not in nach_rolle or "total_result" not in nach_rolle:
             continue  # Anlagenübersicht o. Ä. — sieht am Anfang ähnlich aus.
 
-        def wert(role: str) -> float | None:
+        def value(role: str) -> float | None:
             eintrag = nach_rolle.get(role)
             return eintrag["amount"] if eintrag else None
 
-        ord_ergebnis = wert("ordinary_result")
-        ao_ergebnis = wert("extraordinary_result")
+        ord_ergebnis = value("ordinary_result")
+        ao_ergebnis = value("extraordinary_result")
         probes = [p for p in (
             _probe("Erträge − Aufwendungen = ordentliches Ergebnis",
-                   (wert("revenues_total") or 0) - (wert("expenses_total") or 0)
-                   if wert("revenues_total") is not None
-                   and wert("expenses_total") is not None else None,
+                   (value("revenues_total") or 0) - (value("expenses_total") or 0)
+                   if value("revenues_total") is not None
+                   and value("expenses_total") is not None else None,
                    ord_ergebnis),
             _probe("a.o. Erträge − a.o. Aufwendungen = a.o. Ergebnis",
-                   (wert("extraordinary_revenues") or 0) - (wert("extraordinary_expenses") or 0)
-                   if wert("extraordinary_revenues") is not None
-                   and wert("extraordinary_expenses") is not None else None,
+                   (value("extraordinary_revenues") or 0) - (value("extraordinary_expenses") or 0)
+                   if value("extraordinary_revenues") is not None
+                   and value("extraordinary_expenses") is not None else None,
                    ao_ergebnis),
             _probe("ordentliches + a.o. Ergebnis = Gesamtjahresergebnis",
                    (ord_ergebnis or 0) + (ao_ergebnis or 0)
                    if ord_ergebnis is not None and ao_ergebnis is not None else None,
-                   wert("total_result")),
+                   value("total_result")),
         ) if p]
         return {"posten": posten, "probes": probes,
                 "bestanden": len(probes) == 3 and all(p["ok"] for p in probes)}

@@ -72,7 +72,7 @@ import {
 } from "@/lib/haushalt-pruefung";
 import { KettenMatrix, type MatrixKette } from "@/components/grafik/ketten-matrix";
 import { LueckenFeld } from "@/components/grafik/luecken-field";
-import { Beleg } from "@/components/haushalt/quelle";
+import { Beleg } from "@/components/haushalt/source";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { MarkePille } from "@/components/haushalt/mark";
 import { cn } from "@/lib/utils";
@@ -182,7 +182,7 @@ function alsMatrixKetten(ketten: Kette[], jahreAnzahl: number): MatrixKette[] {
       if (hier[0]) zellen.push({ year, mark: hier[0].mark });
     }
     return {
-      key: k.schluessel,
+      key: k.key,
       titel: k.titel,
       untertitel: `in ${k.beanstandet.length} von ${jahreAnzahl} Berichten beanstandet`
         + (k.beanstandet.length ? ` · zuletzt ${k.beanstandet.at(-1)}` : ""),
@@ -285,13 +285,13 @@ export function PruefungAbschnitt({ onBestand }: {
         </p>
         <div className="mt-2.5 grid grid-cols-3 gap-2">
           {([
-            { wert: hinweise, name: "Hinweise" },
-            { wert: beanstandungen, name: "Beanstandungen" },
-            { wert: wiederholt, name: "wiederholt" },
+            { value: hinweise, name: "Hinweise" },
+            { value: beanstandungen, name: "Beanstandungen" },
+            { value: wiederholt, name: "wiederholt" },
           ] as const).map((t) => (
             <div key={t.name} className="rounded-xl bg-muted/45 px-3 py-2.5">
               <p className="font-display text-[26px] font-bold leading-none tracking-tight tabular-nums">
-                {t.wert}
+                {t.value}
               </p>
               <p className="mt-1 text-[11.5px] leading-snug text-muted-foreground">{t.name}</p>
             </div>
@@ -370,7 +370,7 @@ export function PruefungAbschnitt({ onBestand }: {
             marken={data.legende}
             beleg={<Beleg q="pruefbericht" />}
             detail={(mk) => {
-              const k = ketten.find((x) => x.schluessel === mk.key);
+              const k = ketten.find((x) => x.key === mk.key);
               if (!k) return null;
               return (
                 <div className="flex flex-col gap-3 rounded-xl bg-muted/35 p-3">
@@ -438,11 +438,11 @@ export function PruefungAbschnitt({ onBestand }: {
                   {([
                     [false, `Alle (${imJahr.length})`],
                     [true, `Nur Beanstandungen (${schwerImJahr})`],
-                  ] as [boolean, string][]).map(([wert, text]) => (
-                    <button key={text} type="button" onClick={() => setNurSchwer(wert)}
-                      aria-pressed={nurSchwer === wert}
+                  ] as [boolean, string][]).map(([value, text]) => (
+                    <button key={text} type="button" onClick={() => setNurSchwer(value)}
+                      aria-pressed={nurSchwer === value}
                       className={cn("min-h-[32px] whitespace-nowrap rounded-full px-3 py-1 text-[12.5px]",
-                        nurSchwer === wert
+                        nurSchwer === value
                           ? "bg-card font-semibold shadow-sm"
                           : "text-foreground/70 hover:text-foreground")}>
                       {text}

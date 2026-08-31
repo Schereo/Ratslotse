@@ -409,15 +409,15 @@ def _betrag(roh: str) -> float | None:
             return None
         if len(gruppen) > 1 and any(len(g) != 3 for g in gruppen[1:]):
             return None
-        wert = float(f"{''.join(gruppen)}.{dezimal}")
+        value = float(f"{''.join(gruppen)}.{dezimal}")
     else:
         gruppen = tok.split(".")
         if not all(g.isdigit() for g in gruppen):
             return None
         if len(gruppen) > 1 and any(len(g) != 3 for g in gruppen[1:]):
             return None
-        wert = float("".join(gruppen))
-    return -wert if neg else wert
+        value = float("".join(gruppen))
+    return -value if neg else value
 
 
 def _zahlen(text: str) -> list[float]:
@@ -452,7 +452,7 @@ _SEITENKOPF = re.compile(r"Stadt Oldenburg\s*[–-]\s*Beteiligungsbericht")
 def indicators(section: str) -> tuple[dict[str, dict[int, float]], list[str]]:
     """Die Tabelle „Kennzahlen im Zeitverlauf" eines Abschnitts lesen.
 
-    Liefert ``({indicator: {year: wert}}, warnungen)``.
+    Liefert ``({indicator: {year: value}}, warnungen)``.
 
     Die Jahre kommen aus der Kopfzeile, nie aus der Reihenfolge: Der EGH führt
     2024 → 2020, der AWB 2020 → 2024 (s. Modulkopf). Und eine Zeile wird nur
@@ -957,11 +957,11 @@ _EIGNER_ZEILE = re.compile(
 TOLERANZ_PROZENT = 0.5
 
 
-def _deutsch(wert: float) -> str:
+def _deutsch(value: float) -> str:
     """``22000000.0`` → ``„22.000.000,00"`` — für den Messwert der Probe.
 
     Der steht über die API im Beleg-Chip und wird gelesen, nicht gerechnet."""
-    ganz, _, dezimal = f"{wert:,.2f}".partition(".")
+    ganz, _, dezimal = f"{value:,.2f}".partition(".")
     return f"{ganz.replace(chr(44), chr(46))},{dezimal}"
 
 
@@ -1116,21 +1116,21 @@ def ueberlappung(jahrgaenge: dict[int, list[Gesellschaft]]) -> dict:
     for bericht, liste in sorted(jahrgaenge.items()):
         for g in liste:
             for indicator, series in g.indicators.items():
-                for year, wert in series.items():
-                    gesammelt.setdefault((g.key, indicator, year), {})[bericht] = wert
+                for year, value in series.items():
+                    gesammelt.setdefault((g.key, indicator, year), {})[bericht] = value
 
     bestaetigt: dict[tuple[str, str, int], int] = {}
     widersprueche: list[dict] = []
     einzeln = 0
-    for schluessel, je_bericht in gesammelt.items():
+    for key, je_bericht in gesammelt.items():
         werte = {round(w, 2) for w in je_bericht.values()}
         if len(je_bericht) == 1:
             einzeln += 1
         elif len(werte) == 1:
-            bestaetigt[schluessel] = len(je_bericht)
+            bestaetigt[key] = len(je_bericht)
         else:
-            widersprueche.append({"company": schluessel[0],
-                                  "indicator": schluessel[1], "year": schluessel[2],
+            widersprueche.append({"company": key[0],
+                                  "indicator": key[1], "year": key[2],
                                   "werte": dict(je_bericht)})
     return {"bestaetigt": bestaetigt, "widersprueche": widersprueche,
             "einzeln": einzeln}
@@ -1154,8 +1154,8 @@ def alle_werte(jahrgaenge: dict[int, list[Gesellschaft]]
     for report_year, liste in sorted(jahrgaenge.items()):
         for g in liste:
             for indicator, series in g.indicators.items():
-                for year, wert in series.items():
-                    aus.setdefault((g.key, indicator, year), {})[report_year] = wert
+                for year, value in series.items():
+                    aus.setdefault((g.key, indicator, year), {})[report_year] = value
     return aus
 
 
@@ -1178,17 +1178,17 @@ def konzernvergleich(store, year: int) -> list[dict]:
     if not entity:
         return []
 
-    ergebnisse = {z["company"]: z["wert"]
+    ergebnisse = {z["company"]: z["value"]
                   for z in store.get_gesellschaft_kennzahlen()
                   if z["indicator"] == "jahresergebnis" and z["year"] == year}
     aus: list[dict] = []
     for g in store.get_gesellschaften():
-        schluessel = g.get("consolidated_key")
-        if not schluessel or schluessel not in entity:
+        key = g.get("consolidated_key")
+        if not key or key not in entity:
             continue
         if g["company"] not in ergebnisse:
             continue
-        v = entity[schluessel]
+        v = entity[key]
         if "revenues" not in v or "expenses" not in v:
             continue
         beitrag = (v["revenues"] - v["expenses"]) * 1000.0
@@ -1369,15 +1369,15 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
 
     kennzahlen_zeilen: list[dict] = []
     verworfen = 0
-    for schluessel, je_bericht in sorted(alle_werte(nach_jahrgang).items()):
-        key, indicator, year = schluessel
-        if schluessel in strittig:
+    for ref, je_bericht in sorted(alle_werte(nach_jahrgang).items()):
+        key, indicator, year = ref
+        if ref in strittig:
             verworfen += 1
             continue
         probes: list[str] = []
         delta = None
-        if schluessel in dokumentprobe:
-            name, delta = dokumentprobe[schluessel]
+        if ref in dokumentprobe:
+            name, delta = dokumentprobe[ref]
             probes.append(name)
         if len(je_bericht) > 1:
             probes.append("beteiligung_ueberlappung")
@@ -1389,7 +1389,7 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
         g = next(x for x in e["gesellschaften"] if x.key == key)
         kennzahlen_zeilen.append({
             "company": key, "indicator": indicator, "year": year,
-            "wert": je_bericht[juengster], "unit": EINHEITEN[indicator],
+            "value": je_bericht[juengster], "unit": EINHEITEN[indicator],
             "report_year": juengster, "n_reports": len(je_bericht),
             "herkunft": _h.Herkunft(
                 probe=probes,

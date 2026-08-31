@@ -162,7 +162,7 @@ def test_komponentenprobe_faellt_auf_wenn_ein_teil_fehlt(kfa2026):
     budget_year.staedte["403000"][sk.UEBERTRAGEN] = 0     # die Lücke, um die es geht
     probe = sk.probe_komponenten(budget_year)
     assert not probe["ok"]
-    assert probe["abweichungen"][0]["schluessel"] == "403000"
+    assert probe["abweichungen"][0]["key"] == "403000"
     assert "69210 statt 79785" in probe["abweichungen"][0]["reason"]
 
 
@@ -197,12 +197,12 @@ def test_zeilen_tragen_tausend_euro_und_keine_pro_kopf_spalte(kfa2026):
     zeilen = sk.zeilen_finanzausgleich(sk.lies_zuweisungen(kfa2026)[0])
     assert {z["unit"] for z in zeilen} == {"teur"}
     assert not [z for z in zeilen if z["indicator"] == "nettobetrag_je_ew"]
-    ol = {z["indicator"]: z["wert"] for z in zeilen if z["schluessel"] == "403000"}
+    ol = {z["indicator"]: z["value"] for z in zeilen if z["key"] == "403000"}
     assert ol == {"zuweisungen_gemeindeaufgaben": 51653.0,
                   "zuweisungen_kreisaufgaben": 17557.0,
                   "zuweisungen_uebertragener_wirkungskreis": 10575.0,
                   "finanzausgleichsumlage": 0.0, "nettobetrag": 79785.0}
-    assert {z["city"] for z in zeilen if z["schluessel"] == "403000"} == {"Oldenburg"}
+    assert {z["city"] for z in zeilen if z["key"] == "403000"} == {"Oldenburg"}
 
 
 def test_gespeichert_kommt_je_ausgleichsjahr_eine_zeile_zurueck(tmp_path, kfa2026):

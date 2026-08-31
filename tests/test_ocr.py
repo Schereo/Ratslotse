@@ -66,8 +66,8 @@ def test_die_finanz_parser_sehen_den_text_ohnehin(tmp_path):
 
     store = _store_mit_anlage(tmp_path, "ok")
     try:
-        quelle = fq.QUELLEN["wirtschaftsplan"]
-        sql, werte = quelle.erkennung.abfrage("document_id, label")
+        source = fq.QUELLEN["wirtschaftsplan"]
+        sql, werte = source.erkennung.abfrage("document_id, label")
         gefunden = [r["document_id"] for r in store._conn.execute(sql, werte).fetchall()]
         assert 4711 in gefunden
         assert "status" not in sql.lower()

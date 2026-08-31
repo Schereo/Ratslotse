@@ -28,7 +28,7 @@ function Leiste({
   page, zeilen, skala, onHover, onPin, aktiv,
 }: {
   page: Seite;
-  zeilen: { z: HaushaltZeile; wert: number }[];
+  zeilen: { z: HaushaltZeile; value: number }[];
   skala: number;
   onHover: (name: string) => void;
   onPin: (name: string) => void;
@@ -36,8 +36,8 @@ function Leiste({
 }) {
   return (
     <div className="flex h-8 gap-[1.5px] overflow-hidden rounded-md" role="list">
-      {zeilen.map(({ z, wert }, i) => {
-        const breite = (wert / skala) * 100;
+      {zeilen.map(({ z, value }, i) => {
+        const breite = (value / skala) * 100;
         const gewaehlt = aktiv === z.area;
         // Kurzname aus dem Wörterbuch (`lib/haushalt-bereiche.ts`), nicht am
         // Trennzeichen abgeschnitten: „Klima/Umwelt/Mobilität/Bau/Grün/Friedh."
@@ -50,7 +50,7 @@ function Leiste({
             key={z.area}
             type="button"
             role="listitem"
-            aria-label={`${kanon.name}: ${deMio(wert)} Mio. Euro`}
+            aria-label={`${kanon.name}: ${deMio(value)} Mio. Euro`}
             onClick={() => onPin(z.area)}
             onMouseEnter={() => onHover(z.area)}
             onFocus={() => onHover(z.area)}
@@ -68,9 +68,9 @@ function Leiste({
             style={{ width: `${breite}%`, background: `var(--hh-${page}-${Math.min(i, page === "ein" ? 6 : 9)})`, color: "var(--hh-seg-text)" }}
           >
             <SegmentText stufen={[
-              `${kanon.name} · ${deMio(wert)} Mio. €`,
-              `${kanon.name} · ${deMio(wert)}`,
-              `${kanon.kurz} · ${deMio(wert)}`,
+              `${kanon.name} · ${deMio(value)} Mio. €`,
+              `${kanon.name} · ${deMio(value)}`,
+              `${kanon.kurz} · ${deMio(value)}`,
               kanon.kurz,
             ]} />
           </button>
@@ -143,9 +143,9 @@ export function Gegenbalken({ zeilen, year }: { zeilen: HaushaltZeile[]; year: n
 
   const sortiert = (key: "revenues" | "expenses") =>
     [...parts]
-      .map((z) => ({ z, wert: mio(z[key]) ?? 0 }))
-      .filter((x) => x.wert > 0)
-      .sort((a, b) => b.wert - a.wert);
+      .map((z) => ({ z, value: mio(z[key]) ?? 0 }))
+      .filter((x) => x.value > 0)
+      .sort((a, b) => b.value - a.value);
 
   const ein = sortiert("revenues");
   const aus = sortiert("expenses");
@@ -153,11 +153,11 @@ export function Gegenbalken({ zeilen, year }: { zeilen: HaushaltZeile[]; year: n
   const oeffnen = (area: string) => router.push(`/haushalt/bereich?name=${bereichSlug(area)}`);
 
   // Legende: alles, was in der Leiste kein Label mehr trägt, steht hier als Text.
-  const legende = (rows: { z: HaushaltZeile; wert: number }[]) => {
-    const klein = rows.filter(({ wert }) => (wert / skala) * 100 <= 7);
+  const legende = (rows: { z: HaushaltZeile; value: number }[]) => {
+    const klein = rows.filter(({ value }) => (value / skala) * 100 <= 7);
     const gezeigt = klein.slice(0, 4);
     const rest = klein.slice(4);
-    return { gezeigt, rest, restSumme: rest.reduce((s, r) => s + r.wert, 0) };
+    return { gezeigt, rest, restSumme: rest.reduce((s, r) => s + r.value, 0) };
   };
   const einLeg = legende(ein);
   const ausLeg = legende(aus);
@@ -195,10 +195,10 @@ export function Gegenbalken({ zeilen, year }: { zeilen: HaushaltZeile[]; year: n
           onPin={(b) => pinnen({ page: "ein", area: b })} />
       </div>
       <div className="mt-1.5 flex flex-wrap gap-x-3.5 gap-y-1">
-        {einLeg.gezeigt.map(({ z, wert }, i) => (
+        {einLeg.gezeigt.map(({ z, value }, i) => (
           <span key={z.area} className="inline-flex items-center gap-1.5 text-[11px] text-foreground/80">
             <span className="h-2 w-2 rounded-[2px]" style={{ background: `var(--hh-ein-${Math.min(ein.findIndex((e) => e.z === z), 6)})` }} />
-            {bereichKanon(z.area).name} {deMio(wert)}&#8239;Mio.&nbsp;€
+            {bereichKanon(z.area).name} {deMio(value)}&#8239;Mio.&nbsp;€
           </span>
         ))}
         {einLeg.rest.length > 0 && (
@@ -265,10 +265,10 @@ export function Gegenbalken({ zeilen, year }: { zeilen: HaushaltZeile[]; year: n
           onPin={(b) => pinnen({ page: "aus", area: b })} />
       </div>
       <div className="mt-1.5 flex flex-wrap gap-x-3.5 gap-y-1">
-        {ausLeg.gezeigt.map(({ z, wert }) => (
+        {ausLeg.gezeigt.map(({ z, value }) => (
           <span key={z.area} className="inline-flex items-center gap-1.5 text-[11px] text-foreground/80">
             <span className="h-2 w-2 rounded-[2px]" style={{ background: `var(--hh-aus-${Math.min(aus.findIndex((a) => a.z === z), 9)})` }} />
-            {bereichKanon(z.area).name} {deMio(wert)}&#8239;Mio.&nbsp;€
+            {bereichKanon(z.area).name} {deMio(value)}&#8239;Mio.&nbsp;€
           </span>
         ))}
         {ausLeg.rest.length > 0 && (

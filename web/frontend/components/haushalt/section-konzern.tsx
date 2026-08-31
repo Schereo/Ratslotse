@@ -49,7 +49,7 @@ import {
 } from "@/lib/haushalt-konzern";
 import { KonzernLuecke, LueckeArt } from "@/components/haushalt/konzern-luecke";
 import { KonzernTraegerListe } from "@/components/haushalt/konzern-traeger";
-import { Beleg } from "@/components/haushalt/quelle";
+import { Beleg } from "@/components/haushalt/source";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { GlossaryText } from "@/components/glossary-text";
 import { cn } from "@/lib/utils";
