@@ -30,7 +30,7 @@ einschließlich Nachtragshaushalt, sonst der nackte Ansatz. Bei 2020 sind das
 27 Mio. € Unterschied, also der Unterschied zwischen „21,5 Mio. weniger
 ausgegeben als geplant" und „5,7 Mio. mehr". Deshalb speichert der Parser
 beides — ``ansatz`` (der ursprüngliche Haushaltsansatz) und ``plan`` (die
-Bezugsgröße der Abweichung) — und dazu in ``plan_art``, welche der beiden
+Bezugsgröße der Abweichung) — und dazu in ``plan_kind``, welche der beiden
 gemeint ist. Eine Kurve, die 2018 die Gesamtermächtigung und 2021 den nackten
 Ansatz gegen das Ist stellt, ohne das zu sagen, wäre still falsch.
 
@@ -89,9 +89,9 @@ _TOLERANZ_VORZEICHEN = 0.01
 #: Bezugsgrößen der Abweichung, menschenlesbar — für die Oberfläche.
 #: Ohne diese Angabe ist eine Mehrjahres-Kurve nicht ehrlich lesbar.
 PLAN_ARTEN = {
-    "ansatz": "Haushaltsansatz",
-    "ansatz_nachtrag": "Ansatz einschließlich Nachtragshaushalt",
-    "gesamtermaechtigung": "Gesamtermächtigung (Ansatz, Nachtrag, Übertragungen)",
+    "budget": "Haushaltsansatz",
+    "supplementary_budget": "Ansatz einschließlich Nachtragshaushalt",
+    "total_authorization": "Gesamtermächtigung (Ansatz, Nachtrag, Übertragungen)",
 }
 
 
@@ -130,10 +130,10 @@ def _tabellenkopf(kopf: str, year: int) -> dict | None:
     # Achtung: „Ermächtigungen des Haushaltsjahres" darf nicht als Ergebnis
     # durchgehen — deshalb steht „Ergebnis" in den Mustern immer mit dabei.
     finde("prior_year", r"Ergebnis des Vorjahres", rf"Ergebnis {year - 1}")
-    finde("ansatz", r"Ansätze des Haushaltsjahres", r"Ansätze des Haushaltsplanes",
+    finde("budget", r"Ansätze des Haushaltsjahres", r"Ansätze des Haushaltsplanes",
           rf"Ansätze? {year}", r"Ansätze des", r"\bAnsatz\b")
     finde("supplement", r"Veränderung durch\s*Nachtrag", r"\bNachtrag\b")
-    finde("gesamtermaechtigung", r"Gesamtermächtigung")
+    finde("total_authorization", r"Gesamtermächtigung")
     finde("result", r"Ergebnis des Haushaltsjahres", rf"Ergebnis {year}")
     # Der Zwischenraum vor der Klammer ist nicht verlässlich: Die
     # Finanzrechnung 2017 schreibt „mehr(+), weniger(-)" ohne Leerzeichen, und
@@ -148,12 +148,12 @@ def _tabellenkopf(kopf: str, year: int) -> dict | None:
     varianten: list[str] = []
     # Die Gesamtermächtigung ist der spezifischste Bezug: Wo der Kopf sie
     # führt (2018), ist sie die Spalte direkt vor dem Ergebnis.
-    if "gesamtermaechtigung" in positionen:
-        varianten.append("gesamtermaechtigung")
-    if "ansatz" in positionen and "supplement" in positionen:
-        varianten.append("ansatz_nachtrag")
-    if "ansatz" in positionen:
-        varianten.append("ansatz")
+    if "total_authorization" in positionen:
+        varianten.append("total_authorization")
+    if "budget" in positionen and "supplement" in positionen:
+        varianten.append("supplementary_budget")
+    if "budget" in positionen:
+        varianten.append("budget")
     if not varianten:
         return None
     return {"positionen": positionen, "varianten": tuple(varianten),
@@ -163,7 +163,7 @@ def _tabellenkopf(kopf: str, year: int) -> dict | None:
 def _plan_zuerst(kopf: dict, art: str) -> bool:
     """Steht die Plan-Spalte im Kopf vor der Ergebnis-Spalte? 2017 nicht —
     dort lautet die Reihenfolge Vorjahr, Ergebnis, Ansatz, Differenz."""
-    spalte = "gesamtermaechtigung" if art == "gesamtermaechtigung" else "ansatz"
+    spalte = "total_authorization" if art == "total_authorization" else "budget"
     return kopf["positionen"][spalte] < kopf["positionen"]["result"]
 
 
@@ -387,12 +387,12 @@ def _fenster(zahlen: list[float], kopf: dict, art: str) -> tuple | None:
     * Ein exakter Treffer schlägt immer eine Vorzeichen-Reparatur."""
     mindest = 1 if kopf["has_prior_year"] else 0
     plan_zuerst = _plan_zuerst(kopf, art)
-    breite = 4 if art == "ansatz_nachtrag" else 3
-    if art == "ansatz_nachtrag" and not plan_zuerst:
+    breite = 4 if art == "supplementary_budget" else 3
+    if art == "supplementary_budget" and not plan_zuerst:
         return None  # Nachtragsspalte gibt es nur in der Ansatz-zuerst-Form
     exakt = repariert = None
     for i in range(mindest, len(zahlen) - breite + 1):
-        if art == "ansatz_nachtrag":
+        if art == "supplementary_budget":
             ansatz, supplement, result, deviation = zahlen[i:i + 4]
             if supplement == 0:
                 continue  # leere Nachtragsspalte → das ist der einfache Fall
@@ -422,7 +422,7 @@ def _spalten_zuordnen(zahlen: list[float], kopf: dict) -> dict | None:
     als Plan nur zugelassen ist, was der Tabellenkopf auch als Spalte nennt
     (Ansatz, Ansatz + Nachtrag oder Gesamtermächtigung). Geliefert werden
     beide Größen: ``ansatz`` der ursprüngliche Haushaltsansatz, ``plan`` die
-    Bezugsgröße der Abweichung, ``plan_art`` welche davon."""
+    Bezugsgröße der Abweichung, ``plan_kind`` welche davon."""
     if len(zahlen) < 4:
         return None
     for art in kopf["varianten"]:
@@ -431,9 +431,9 @@ def _spalten_zuordnen(zahlen: list[float], kopf: dict) -> dict | None:
             continue
         plan, result, deviation, start, repariert = gefunden
         prior_year = zahlen[0] if kopf["has_prior_year"] else None
-        if art == "ansatz_nachtrag":
+        if art == "supplementary_budget":
             ansatz = zahlen[start]          # Nachtrag steht direkt dahinter
-        elif art == "gesamtermaechtigung" and kopf["has_prior_year"] and start >= 2:
+        elif art == "total_authorization" and kopf["has_prior_year"] and start >= 2:
             # Der Kopf führt als zweite Spalte den Ansatz; die Zwischenspalten
             # (Nachtrag, sonstige Ermächtigungen, Übertragungen) dürfen leer
             # sein, die beiden ersten sind es nie.
@@ -441,7 +441,7 @@ def _spalten_zuordnen(zahlen: list[float], kopf: dict) -> dict | None:
         else:
             ansatz = plan
         return {"prior_year": prior_year, "budgeted": ansatz, "plan": plan,
-                "plan_art": art, "result": result, "deviation": deviation,
+                "plan_kind": art, "result": result, "deviation": deviation,
                 "vorzeichen_repariert": repariert,
                 # Wo das gefundene Fenster in der Zahlenfolge anfängt. Die
                 # Ergebnisrechnung braucht das nicht; die Finanzrechnung liest
@@ -588,7 +588,7 @@ def _leerer_ansatz(zahlen: list[float], has_prior_year: bool) -> dict | None:
         if len(zahlen) > i + 1 and zahlen[i] and zahlen[i] == zahlen[i + 1] \
                 and not any(zahlen[i + 2:]):
             return {"prior_year": zahlen[0] if i else None,
-                    "budgeted": None, "plan": None, "plan_art": None,
+                    "budgeted": None, "plan": None, "plan_kind": None,
                     "result": zahlen[i], "deviation": zahlen[i + 1],
                     "vorzeichen_repariert": False, "_fenster_start": i}
     return None
@@ -635,7 +635,7 @@ def _ohne_vorjahr(zahlen: list[float], kopf: dict) -> dict | None:
         if not gefunden:
             continue
         plan, result, deviation, start, repariert = gefunden
-        return {"prior_year": None, "budgeted": plan, "plan": plan, "plan_art": art,
+        return {"prior_year": None, "budgeted": plan, "plan": plan, "plan_kind": art,
                 "result": result, "deviation": deviation,
                 "vorzeichen_repariert": repariert, "_fenster_start": start}
     return None
@@ -646,7 +646,7 @@ def parse_finanzrechnung(text: str, year: int) -> list[dict]:
     ausgezahlt hat.
 
     Liefert je Zeile ``{nr, role, label, prior_year, ansatz, plan,
-    plan_art, result, deviation, authorization, is_total}``. ``nr`` ist
+    plan_kind, result, deviation, authorization, is_total}``. ``nr`` ist
     die Nummer, die das Dokument vergibt (und die sich zwischen den
     Jahrgängen verschiebt), ``role`` der stabile Name aus :data:`ROLLEN` —
     Leser*innen und Frontend hängen an der Rolle, nie an der Nummer.
@@ -702,12 +702,12 @@ def parse_finanzrechnung(text: str, year: int) -> list[dict]:
         # Die Ermächtigung steht eine Spalte hinter der Abweichung. Es gibt
         # sie nur, wenn die Zeile dort auch wirklich noch eine Zahl trägt.
         stelle = werte.pop("_fenster_start") + (
-            4 if werte.get("plan_art") == "ansatz_nachtrag" else 3)
+            4 if werte.get("plan_kind") == "supplementary_budget" else 3)
         authorization = (zahlen[stelle] if hat_ermaechtigung
                          and stelle < len(zahlen) else None)
         if role in OHNE_ANSATZ_ROLLEN:
             # Kein Ansatz im Dokument, also auch keiner bei uns (s. o.).
-            werte.update(ansatz=None, plan=None, plan_art=None, deviation=None)
+            werte.update(ansatz=None, plan=None, plan_kind=None, deviation=None)
             authorization = None
         out.append({"nr": nr, "role": role, "label": label,
                     "year": year, "authorization": authorization,

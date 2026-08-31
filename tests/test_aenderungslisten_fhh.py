@@ -103,12 +103,12 @@ def summenblock(year, zeilen):
 # ------------------------------------------------------------ Label-Sortierung
 
 LABELS = [
-    ("2026 FHH Änderungsliste Verwaltung I", "verwaltung_1"),
-    ("2026 FHH Änderungsliste Verwaltung III", "verwaltung_3"),
-    ("Finanzhaushalt, Änderungsliste Verw. II", "verwaltung_2"),
-    ("2025 FHH Änderungsliste Verwaltung 1", "verwaltung_1"),
-    ("2026 FHH beschlossene Änderungen AFB", "afb_beschlossen"),
-    ("FHH beschlossene Änderungen AFB am 20.01.2021", "afb_beschlossen"),
+    ("2026 FHH Änderungsliste Verwaltung I", "administration_1"),
+    ("2026 FHH Änderungsliste Verwaltung III", "administration_3"),
+    ("Finanzhaushalt, Änderungsliste Verw. II", "administration_2"),
+    ("2025 FHH Änderungsliste Verwaltung 1", "administration_1"),
+    ("2026 FHH beschlossene Änderungen AFB", "fc_decided"),
+    ("FHH beschlossene Änderungen AFB am 20.01.2021", "fc_decided"),
     # Was draußen bleibt: andere Haushalte mit eigenen FHH-Listen …
     ("2026 FHH Änderungsliste Verwaltung I EGH", None),
     ("FHH BBO beschlossene Änderungen AFB am 20.01.2021", None),
@@ -151,7 +151,7 @@ def test_miniliste_rundlauf():
     assert z2.label == "VHS"
     assert z2.planned_new == 730_000
     # Die Zusammenstellung: Entwurf, eine Liste, die Endsumme ohne Beschriftung.
-    assert [s.typ for s in aus.summen] == ["entwurf", "liste", "endsumme"]
+    assert [s.typ for s in aus.summen] == ["draft", "list", "final_total"]
     assert aus.summen[1].commitment_authorizations == 0
 
 
@@ -278,7 +278,7 @@ def test_ohne_entwurf_und_endsumme():
         ("", "0", "195.000", "-195.000", None, "SPD/ CDU/ FDP"),
     ])
     aus = parse_fhh_seiten([tabelle, summen], [linien([100, 150, 210]), linien([], [])])
-    assert [s.typ for s in aus.summen] == ["liste", "liste"]
+    assert [s.typ for s in aus.summen] == ["list", "list"]
     assert aus.summen[1].label == "SPD/ CDU/ FDP"
     # Die Positionen treffen die Summe BEIDER Listen — das Dokument ist
     # kumuliert, keine einzelne Zeile summiert sie allein.

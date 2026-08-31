@@ -23,16 +23,16 @@ export type HaushaltZeile = {
 
 /** Bezugsgröße, gegen die der Jahresabschluss seine Abweichung rechnet.
  *  Sie wechselt über die Jahrgänge — deshalb steht sie an jeder Zeile. */
-export type PlanArt = "ansatz" | "ansatz_nachtrag" | "gesamtermaechtigung";
+export type PlanArt = "budget" | "supplementary_budget" | "total_authorization";
 
 /** Wie die Bezugsgröße auf der Seite genannt wird. Ohne diese Angabe wäre
  *  eine Mehrjahres-Kurve still falsch: 2018 vergleicht gegen die
  *  Gesamtermächtigung, 2020 gegen den Ansatz samt Nachtrag (27 Mio. €
  *  Unterschied), alle übrigen Jahrgänge gegen den nackten Ansatz. */
 export const PLAN_ART_LABEL: Record<PlanArt, string> = {
-  ansatz: "Haushaltsansatz",
-  ansatz_nachtrag: "Ansatz einschließlich Nachtragshaushalt",
-  gesamtermaechtigung: "Gesamtermächtigung (Ansatz, Nachtrag, Übertragungen)",
+  budget: "Haushaltsansatz",
+  supplementary_budget: "Ansatz einschließlich Nachtragshaushalt",
+  total_authorization: "Gesamtermächtigung (Ansatz, Nachtrag, Übertragungen)",
 };
 
 /** Ein Posten der Ergebnisrechnung aus dem Jahresabschluss (#500):
@@ -44,7 +44,7 @@ export type ErgebnisPosten = {
   /** null = Kernverwaltung gesamt, sonst der Teilhaushalt (1–13). */
   sub_budget_no: number | null; sub_budget_name: string | null;
   prior_year: number | null; budgeted: number | null;
-  plan: number | null; plan_art: PlanArt | null;
+  plan: number | null; plan_kind: PlanArt | null;
   result: number | null; deviation: number | null;
   is_total: 0 | 1;
   source_label: string | null; source_url: string | null;
@@ -115,7 +115,7 @@ export type FinanzZeile = {
   role: FinanzRolle | null;
   label: string;
   prior_year: number | null; budgeted: number | null;
-  plan: number | null; plan_art: PlanArt | null;
+  plan: number | null; plan_kind: PlanArt | null;
   result: number | null; deviation: number | null;
   authorization: number | null;
   is_total: 0 | 1;
@@ -744,7 +744,7 @@ export function planGegenIst(
         plan: Math.round(plan * 10) / 10,
         ist: Math.round(ist * 10) / 10,
         delta: Math.round((ist - plan) * 10) / 10,
-        planArt: (teile[0]!.plan_art ?? "ansatz") as PlanArt,
+        planArt: (teile[0]!.plan_kind ?? "budget") as PlanArt,
       };
     })
     .filter((x): x is NonNullable<typeof x> => x !== null);

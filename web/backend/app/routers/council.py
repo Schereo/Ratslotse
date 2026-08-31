@@ -1075,7 +1075,7 @@ def haushalt_uebersicht(
         # Aus den Jahresabschlüssen (RIS-Anlagen): Ansatz UND Ergebnis je
         # Posten — „geplant gegen tatsächlich" und die Erträge nach Arten.
         # `plan` ist die Bezugsgröße der Abweichung, `ansatz` der
-        # ursprüngliche Haushaltsansatz; `plan_art` sagt, welche gemeint ist.
+        # ursprüngliche Haushaltsansatz; `plan_kind` sagt, welche gemeint ist.
         "income_statement": lambda: _ergebnisrechnung(store, thh_posten),
         # Dieselben Dokumente, Abschnitt 4.1: was tatsächlich geflossen ist.
         # Die Ergebnisrechnung darüber weist für 2024 einen Überschuss aus,

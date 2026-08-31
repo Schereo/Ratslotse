@@ -1040,7 +1040,7 @@ def test_store_plan_ist(tmp_path, source):
     assert len(pi["bereiche"]) == 1
     # 2023 vergleicht gegen den nackten Ansatz — Plan und Ansatz fallen zusammen.
     assert pi["gesamt"]["revenues_budgeted"] == 664_574_528.42
-    assert pi["gesamt"]["plan_art"] == "ansatz"
+    assert pi["gesamt"]["plan_kind"] == "budget"
     b = pi["bereiche"][0]
     assert b["sub_budget_no"] == 1 and b["sub_budget_name"] == "Verwaltungsführung"
     assert b["revenues_planned"] == 568_542.15 and b["revenues_actual"] == 475_819.90
@@ -1177,7 +1177,7 @@ def test_ergebnisrechnung_2017_ergebnis_steht_vor_dem_ansatz():
     assert nach_nr[20]["budgeted"] == 509_265_601.41
     # Ohne Nachtrag und ohne Ermächtigungsspalte ist der Plan der Ansatz.
     assert nach_nr[12]["plan"] == nach_nr[12]["budgeted"]
-    assert nach_nr[12]["plan_art"] == "ansatz"
+    assert nach_nr[12]["plan_kind"] == "budget"
 
 
 def test_ergebnisrechnung_2018_bezug_ist_die_gesamtermaechtigung():
@@ -1186,7 +1186,7 @@ def test_ergebnisrechnung_2018_bezug_ist_die_gesamtermaechtigung():
     müssen erhalten bleiben, sonst ist die Mehrjahres-Kurve still falsch."""
     nach_nr = {p["nr"]: p for p in finanzberichte.parse_ergebnisrechnung(JA_2018, 2018)}
     revenues, expenses = nach_nr[12], nach_nr[20]
-    assert revenues["plan_art"] == "gesamtermaechtigung"
+    assert revenues["plan_kind"] == "total_authorization"
     assert revenues["plan"] == 556_836_784.71          # Bezug der Abweichung
     assert revenues["budgeted"] == 548_948_733.89        # ursprünglicher Ansatz
     assert revenues["result"] == 591_905_846.44
@@ -1205,7 +1205,7 @@ def test_ergebnisrechnung_2020_bezug_ist_ansatz_plus_nachtrag():
     allein diese Wahl — beide Zahlen stehen in derselben Zeile."""
     nach_nr = {p["nr"]: p for p in finanzberichte.parse_ergebnisrechnung(JA_2020, 2020)}
     expenses = nach_nr[20]
-    assert expenses["plan_art"] == "ansatz_nachtrag"
+    assert expenses["plan_kind"] == "supplementary_budget"
     assert expenses["budgeted"] == 582_261_479.18                 # vor Nachtrag
     assert expenses["plan"] == 609_469_629.18                   # + 27,2 Mio.
     assert expenses["result"] == 587_980_452.10
@@ -1214,7 +1214,7 @@ def test_ergebnisrechnung_2020_bezug_ist_ansatz_plus_nachtrag():
     assert round(expenses["deviation"] / 1e6, 1) == -21.5
     assert round((expenses["result"] - expenses["budgeted"]) / 1e6, 1) == 5.7
     # Zeilen ohne Nachtrag vergleichen in derselben Tabelle gegen den Ansatz.
-    assert nach_nr[3]["plan_art"] == "ansatz"
+    assert nach_nr[3]["plan_kind"] == "budget"
     assert nach_nr[3]["plan"] == nach_nr[3]["budgeted"] == 14_900_000.00
 
 
@@ -1276,8 +1276,8 @@ def test_vorzeichen_reparatur_faellt_nicht_auf_nullzeilen_herein():
     """Ohne Zusatzbedingung erfüllt jedes „X | 0,00 | X" die Vorzeichenprobe.
     Im Abschluss 2018 hätte das für THH11 ein Ist von 0,00 € eingetragen,
     richtig sind 105,0 Mio. €."""
-    kopf = {"positionen": {"prior_year": 0, "ansatz": 1, "result": 2, "deviation": 3},
-            "varianten": ("ansatz",), "has_prior_year": True}
+    kopf = {"positionen": {"prior_year": 0, "budget": 1, "result": 2, "deviation": 3},
+            "varianten": ("budget",), "has_prior_year": True}
     # Vorjahr, dann das tückische Tripel, dann die echte Spaltenfolge.
     zahlen = [102_428_787.88, 105_442_887.67, 0.0, 105_442_887.67,
               61_095.97, 105_503_983.64, 104_950_447.44, -553_536.20]

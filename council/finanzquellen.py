@@ -926,7 +926,7 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
                 neue_einheiten.add((year, "gesamt"))
                 e = next(x for x in posten if x["nr"] == 12)
                 a = next(x for x in posten if x["nr"] == 20)
-                arten = sorted({x["plan_art"] for x in posten})
+                arten = sorted({x["plan_kind"] for x in posten})
                 p.sagen(f"  {year}: {len(posten)} Posten · Erträge {e['plan']/1e6:.1f} → "
                         f"{e['result']/1e6:.1f} · Aufwendungen {a['plan']/1e6:.1f} → "
                         f"{a['result']/1e6:.1f} · Bezug {'/'.join(arten)}")

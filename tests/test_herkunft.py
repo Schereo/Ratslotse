@@ -36,7 +36,7 @@ CREATE TABLE council_anlagen (
 CREATE TABLE council_ergebnisrechnung (
   year INTEGER NOT NULL, sub_budget_no INTEGER, sub_budget_name TEXT,
   nr INTEGER NOT NULL, label TEXT NOT NULL,
-  prior_year REAL, budgeted REAL, plan REAL, plan_art TEXT,
+  prior_year REAL, budgeted REAL, plan REAL, plan_kind TEXT,
   result REAL, deviation REAL, is_total INTEGER NOT NULL DEFAULT 0,
   source_label TEXT, source_url TEXT, fetched_at TEXT NOT NULL,
   PRIMARY KEY (year, sub_budget_no, nr));
@@ -77,7 +77,7 @@ def alte_db(tmp_path):
                (JA_LABEL, JA_URL))
     cn.executemany(
         "INSERT INTO council_ergebnisrechnung (year, sub_budget_no, sub_budget_name, nr, label, "
-        " prior_year, budgeted, plan, plan_art, result, deviation, is_total, "
+        " prior_year, budgeted, plan, plan_kind, result, deviation, is_total, "
         " source_label, source_url, fetched_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         [(2023, None, None, 12, "Summe ordentliche Erträge", 696_600_000.0,
           664_574_528.42, 664_574_528.42, "ansatz", 732_987_197.61, 68_412_669.19, 1,
@@ -144,10 +144,19 @@ def test_kein_einziger_bestehender_wert_aendert_sich(alte_db):
     """Der Kern der Zusage. Verglichen wird **zeilenweise über alle alten
     Spalten**, nicht über Zeilenzahlen: Eine Migration, die die richtige
     Anzahl behält und in einer Zeile den Betrag verschiebt, zählt korrekt und
-    ist trotzdem der schlimmste denkbare Ausgang."""
+    ist trotzdem der schlimmste denkbare Ausgang.
+
+    Ausgenommen sind die Spalten, für die eine WERT-Migration angemeldet ist
+    (`_werte_umschreiben`): Dort ist das Umschreiben ja der Auftrag. Die
+    Ausnahme steht als Liste hier, nicht als Automatik — eine Spalte, die
+    sich ohne Eintrag ändert, soll weiter auffliegen."""
+    #: (Tabelle, Spalte) → hier darf sich der Wert ändern.
+    ERLAUBT = {("council_ergebnisrechnung", "plan_kind"),
+               ("council_finanzrechnung", "plan_kind")}
     snapshot = {}
     for tabelle in herkunft.HERKUNFT_TABELLEN:
-        spalten = _spalten(alte_db, tabelle)
+        spalten = [s for s in _spalten(alte_db, tabelle)
+                   if (tabelle, s) not in ERLAUBT]
         if spalten:
             snapshot[tabelle] = (spalten, _alles(alte_db, tabelle, spalten))
 
@@ -233,7 +242,7 @@ def test_geschriebene_zeile_weiss_wo_sie_steht_und_womit_sie_gedeckt_ist(tmp_pat
     store = CouncilStore(tmp_path / "c.sqlite")
     store.save_ergebnisrechnung(2024, [
         {"nr": 12, "label": "Summe ordentliche Erträge", "budgeted": 693.6e6,
-         "plan": 693.6e6, "plan_art": "ansatz", "result": 799.1e6, "is_total": 1},
+         "plan": 693.6e6, "plan_kind": "budget", "result": 799.1e6, "is_total": 1},
     ], Herkunft(
         art="ris", probe=["strukturprobe", "vorjahreskette"], document_id=280863,
         label="Jahresabschluss 2024 der Kernverwaltung",

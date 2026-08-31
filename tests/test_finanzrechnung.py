@@ -391,7 +391,7 @@ def test_der_ansatz_steht_daneben():
     r = _rollen(FR_2024, 2024)
     assert r["cash_surplus"]["plan"] == -94_165_040.17
     assert r["total_out_capital"]["plan"] == 109_052_867.00
-    assert r["total_out_capital"]["plan_art"] == "ansatz"
+    assert r["total_out_capital"]["plan_kind"] == "budget"
 
 
 # --- Die Kaskade -------------------------------------------------------------

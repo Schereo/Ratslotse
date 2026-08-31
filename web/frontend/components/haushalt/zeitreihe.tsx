@@ -29,7 +29,7 @@
 //
 // WAS „PLAN" HEISST, WECHSELT ÜBER DIE JAHRGÄNGE. Der Jahresabschluss misst
 // nicht überall gegen dieselbe Bezugsgröße (2018 Gesamtermächtigung, 2020
-// Ansatz einschließlich Nachtrag, sonst der nackte Ansatz — `plan_art`, #510).
+// Ansatz einschließlich Nachtrag, sonst der nackte Ansatz — `plan_kind`, #510).
 // Solche Jahre bekommen ein Sternchen an der Jahreszahl und eine Fußnote,
 // dieselbe Grammatik wie in `labor.tsx`.
 //
@@ -175,12 +175,12 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"income_statement"
     if (balance == null) continue;
     istNach.set(year, {
       year, ein, aus, balance,
-      planArt: (a?.plan_art ?? e?.plan_art ?? null) as PlanArt | null,
+      planArt: (a?.plan_kind ?? e?.plan_kind ?? null) as PlanArt | null,
     });
   }
   const istPunkte = [...istNach.values()];
   // Jahrgänge, deren „geplant" im Abschluss nicht der nackte Ansatz ist.
-  const andererBezug = istPunkte.filter((p) => p.planArt != null && p.planArt !== "ansatz");
+  const andererBezug = istPunkte.filter((p) => p.planArt != null && p.planArt !== "budget");
   const bezugsJahre = new Set(andererBezug.map((p) => p.year));
 
   // --- Skala --------------------------------------------------------------

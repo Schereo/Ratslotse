@@ -24,16 +24,16 @@ def linien(waagerecht, senkrecht):
 
 #: Echte Labels aus council_anlagen — jedes Muster, das der Bestand führt.
 LABELS = [
-    ("2026 EHH Änderungsliste Verwaltung I", "verwaltung_1"),
-    ("2026 EHH Änderungsliste Verwaltung III", "verwaltung_3"),
-    ("2025 EHH Änderungsliste Verwaltung II", "verwaltung_2"),
-    ("Ergebnishaushalt, Änderungsliste Verwaltung I", "verwaltung_1"),
-    ("Ergebnishaushalt, Änderungsliste Verw. I", "verwaltung_1"),      # 2019–2021
-    ("Ergebnishaushalt, Änderungsliste Verw. II", "verwaltung_2"),
-    ("2026 EHH beschlossene Änderungen AFB", "afb_beschlossen"),
-    ("EHH beschlossene Änderungen AFB am 20.01.2021", "afb_beschlossen"),
-    ("Ergebnishaushalt, beschlossene Änderungen AFB am 20.01.2021", "afb_beschlossen"),
-    ("2 EHH beschlossene Änderungen AFB am 15.01.2020", "afb_beschlossen"),
+    ("2026 EHH Änderungsliste Verwaltung I", "administration_1"),
+    ("2026 EHH Änderungsliste Verwaltung III", "administration_3"),
+    ("2025 EHH Änderungsliste Verwaltung II", "administration_2"),
+    ("Ergebnishaushalt, Änderungsliste Verwaltung I", "administration_1"),
+    ("Ergebnishaushalt, Änderungsliste Verw. I", "administration_1"),      # 2019–2021
+    ("Ergebnishaushalt, Änderungsliste Verw. II", "administration_2"),
+    ("2026 EHH beschlossene Änderungen AFB", "fc_decided"),
+    ("EHH beschlossene Änderungen AFB am 20.01.2021", "fc_decided"),
+    ("Ergebnishaushalt, beschlossene Änderungen AFB am 20.01.2021", "fc_decided"),
+    ("2 EHH beschlossene Änderungen AFB am 15.01.2020", "fc_decided"),
     # Was draußen bleibt: anderer Haushalt oder andere Bauform.
     ("2026 FHH Änderungsliste Verwaltung I", None),
     ("2026 EHH Änderungsliste Verwaltung I EGH", None),
@@ -196,7 +196,7 @@ def test_afb_uebersicht_mit_fraktionszeile():
     ], heading="2021")
     aus = parse_ehh_seiten([tabelle, summen])
     assert aus.eigene_zeile == {2021: "alle"}
-    labels = {s.label for s in aus.summen if s.typ == "liste"}
+    labels = {s.label for s in aus.summen if s.typ == "list"}
     assert "SPD/ BÜNDNIS 90/DIE GRÜNEN" in labels
 
 
