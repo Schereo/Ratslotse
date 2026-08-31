@@ -157,22 +157,24 @@ ROLLEN: tuple[tuple[str, str], ...] = (
     ("extraordinary_expenses", r"^außerordentliche\s+aufwendungen"),
     # 2019 schreibt „Außerordentlichen Ergebnis" — Tippfehler der Quelle, der
     # sich über vier Jahrgänge hält. Die Endung bleibt deshalb offen.
-    ("ao_ergebnis", r"^außerordentliche[nrs]?\s+(gesamt)?ergebnis"),
-    ("gesamtergebnis", r"^gesamtjahres(ergebnis|überschuss|fehlbetrag)"),
+    ("extraordinary_result", r"^außerordentliche[nrs]?\s+(gesamt)?ergebnis"),
+    ("total_result", r"^gesamtjahres(ergebnis|überschuss|fehlbetrag)"),
     ("revenues_total", r"^(ordentliche\s+gesamterträge|summe\s+ordentliche\s+erträge)"),
     ("expenses_total",
      r"^(ordentliche\s+gesamtaufwendungen|summe\s+ordentliche\s+aufwendungen)"),
-    ("ord_ergebnis", r"^ordentliche[ns]?\s+(gesamt)?ergebnis"),
-    ("zinsaufwand", r"^zinsen und (ähnliche|sonstige) (aufwendungen|finanzaufwendungen)"),
-    ("personalaufwand", r"^(personalaufwendungen|aufwendungen für aktives personal)"),
-    ("steuern", r"^steuern und ähnliche abgaben"),
+    ("ordinary_result", r"^ordentliche[ns]?\s+(gesamt)?ergebnis"),
+    ("interest_expenses",
+     r"^zinsen und (ähnliche|sonstige) (aufwendungen|finanzaufwendungen)"),
+    ("personnel_expenses",
+     r"^(personalaufwendungen|aufwendungen für aktives personal)"),
+    ("taxes", r"^steuern und ähnliche abgaben"),
 )
 
 #: Rollen, die Summen oder Salden sind — keine eigenständige Ertrags- oder
 #: Aufwandsart. Eine Torte aus allen Posten wäre sonst doppelt gezählt.
 SUMMEN_ROLLEN = frozenset({
-    "revenues_total", "expenses_total", "ord_ergebnis",
-    "ao_ergebnis", "gesamtergebnis"})
+    "revenues_total", "expenses_total", "ordinary_result",
+    "extraordinary_result", "total_result"})
 
 _ANKER = re.compile(r"1\.\s*Steuern und ähnliche Abgaben")
 #: Eine Postenzeile: Nummer, Punkt, Beschriftung ab einem Buchstaben. Das
@@ -260,12 +262,12 @@ def _posten_zeilen(rumpf: str, tausend: bool) -> list[dict]:
         prior_year = _zahl(rest.group(1), dezimal=not tausend) if rest else None
         if prior_year is not None and tausend:
             prior_year *= 1000.0
-        aus.append({"nr": nr, "label": text, "rolle": _rolle(text),
+        aus.append({"nr": nr, "label": text, "role": _rolle(text),
                     "amount": amount, "prior_year": prior_year})
         # Das Gesamtjahresergebnis schließt die Tabelle ab. Ohne diesen Halt
         # liest der Parser in die Anlagenübersicht weiter, die gleich darauf
         # folgt und ebenfalls mit „1." beginnt.
-        if aus[-1]["rolle"] == "gesamtergebnis":
+        if aus[-1]["role"] == "total_result":
             break
     return aus
 
@@ -288,16 +290,16 @@ def parse_gesamtergebnisrechnung(text: str) -> dict | None:
     for m in _ANKER.finditer(roh):
         kopf, rumpf = roh[max(0, m.start() - 600):m.start()], roh[m.start():m.start() + 12000]
         posten = _posten_zeilen(rumpf, _vorjahr_in_tausend(kopf))
-        nach_rolle = {p["rolle"]: p for p in posten if p["rolle"]}
-        if "revenues_total" not in nach_rolle or "gesamtergebnis" not in nach_rolle:
+        nach_rolle = {p["role"]: p for p in posten if p["role"]}
+        if "revenues_total" not in nach_rolle or "total_result" not in nach_rolle:
             continue  # Anlagenübersicht o. Ä. — sieht am Anfang ähnlich aus.
 
-        def wert(rolle: str) -> float | None:
-            eintrag = nach_rolle.get(rolle)
+        def wert(role: str) -> float | None:
+            eintrag = nach_rolle.get(role)
             return eintrag["amount"] if eintrag else None
 
-        ord_ergebnis = wert("ord_ergebnis")
-        ao_ergebnis = wert("ao_ergebnis")
+        ord_ergebnis = wert("ordinary_result")
+        ao_ergebnis = wert("extraordinary_result")
         probes = [p for p in (
             _probe("Erträge − Aufwendungen = ordentliches Ergebnis",
                    (wert("revenues_total") or 0) - (wert("expenses_total") or 0)
@@ -312,7 +314,7 @@ def parse_gesamtergebnisrechnung(text: str) -> dict | None:
             _probe("ordentliches + a.o. Ergebnis = Gesamtjahresergebnis",
                    (ord_ergebnis or 0) + (ao_ergebnis or 0)
                    if ord_ergebnis is not None and ao_ergebnis is not None else None,
-                   wert("gesamtergebnis")),
+                   wert("total_result")),
         ) if p]
         return {"posten": posten, "probes": probes,
                 "bestanden": len(probes) == 3 and all(p["ok"] for p in probes)}
@@ -440,7 +442,7 @@ def lies(text: str) -> dict:
     die einander bestätigen müssen."""
     ger = parse_gesamtergebnisrechnung(text)
     posten = ger["posten"] if ger else []
-    nach_rolle = {p["rolle"]: p for p in posten if p["rolle"]}
+    nach_rolle = {p["role"]: p for p in posten if p["role"]}
     traeger, verworfen = [], 0
     gefunden = parse_traeger(text)
     for block in gefunden:

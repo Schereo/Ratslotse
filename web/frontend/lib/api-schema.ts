@@ -1484,7 +1484,7 @@ export interface paths {
          *       Jahresabschlüssen — Grundlage für „geplant gegen tatsächlich",
          *     - ``finanzrechnung``: die Kassensicht aus demselben Jahresabschluss
          *       (Abschnitt 4.1) — nicht was gebucht, sondern was **gezahlt** wurde.
-         *       Jede Zeile trägt neben der Nummer des Dokuments eine ``rolle``
+         *       Jede Zeile trägt neben der Nummer des Dokuments eine ``role``
          *       (``balance_operating``, ``balance_capital``, ``finanzmittel``, …);
          *       **an der Rolle hängen, nicht an der Nummer**: Die Tabelle hat
          *       2017–2020 eine Zeile mehr als ab 2021, alle Nummern ab 08
@@ -1700,7 +1700,7 @@ export interface paths {
          *     Die Gegenseite zu ``/haushalt/schulden``: nicht was die Stadt schuldet,
          *     sondern was sie **hat** und was davon schon vergeben ist.
          *
-         *     ``posten`` ist eine flache Liste über alle Stichtage. **An ``rolle``
+         *     ``posten`` ist eine flache Liste über alle Stichtage. **An ``role``
          *     hängen, nicht an ``nr``**: Die Gliederungsnummer der Bilanz ist bis 2020
          *     römisch, ab 2021 arabisch, und ab 2021 gibt es jede Nummer auf beiden
          *     Seiten — „1.1" ist auf der Aktivseite etwas anderes als auf der
@@ -1725,7 +1725,7 @@ export interface paths {
          *     Schulden springen 2024 von 84,4 auf 207,1 Mio. €, und das ist kein
          *     Schuldenmachen, sondern eine Bilanzverlängerung aus dem Cash-Pooling
          *     (138,2 Mio. €, mit Gegenposten auf der Aktivseite). Der Anhang erklärt es
-         *     unter ``rolle="schulden"`` selbst. **Die Zahl darf ohne diesen Text nicht
+         *     unter ``role="schulden"`` selbst. **Die Zahl darf ohne diesen Text nicht
          *     angezeigt werden** — dieselbe Bauart wie ``abweichungsgruende`` für die
          *     Ergebnisrechnung.
          */
@@ -10902,4 +10902,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: c28a749ded611ea646216c6cbf99ebea366b0541b4dd1df4dde0bbf4a5eab015
+// vertrag-sha256: 5339717cc89d83a8c0c64cf769c65a8a464320d79580d2e30a9ae45f90400bdd

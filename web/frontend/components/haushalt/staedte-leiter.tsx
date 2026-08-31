@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 type Zeile = {
   name: string;
   wert: number;
-  rolle: "stadt" | "heute" | "dein";
+  role: "stadt" | "heute" | "dein";
 };
 
 export function StaedteLeiter({ staedte, heute, deinWert, geaendert }: {
@@ -37,10 +37,10 @@ export function StaedteLeiter({ staedte, heute, deinWert, geaendert }: {
   const zeilen: Zeile[] = staedte.map((s) => ({
     name: s.istOldenburg ? "Oldenburg · heute" : s.stadt,
     wert: s.istOldenburg ? heute : s.wert,
-    rolle: s.istOldenburg ? "heute" : "stadt",
+    role: s.istOldenburg ? "heute" : "stadt",
   }));
   if (geaendert && deinWert !== heute) {
-    zeilen.push({ name: "Oldenburg · dein Wert", wert: deinWert, rolle: "dein" });
+    zeilen.push({ name: "Oldenburg · dein Wert", wert: deinWert, role: "dein" });
   }
   zeilen.sort((a, b) => b.wert - a.wert);
 
@@ -51,9 +51,9 @@ export function StaedteLeiter({ staedte, heute, deinWert, geaendert }: {
 
   // Wer steht direkt über dem eigenen Wert? Der eine Satz, den jede*r aus
   // der Leiter mitnimmt („zöge mit Osnabrück gleich“).
-  const dein = zeilen.findIndex((z) => z.rolle === "dein");
+  const dein = zeilen.findIndex((z) => z.role === "dein");
   const gleichauf = dein >= 0
-    ? zeilen.find((z, i) => i !== dein && z.rolle === "stadt" && z.wert === zeilen[dein].wert)
+    ? zeilen.find((z, i) => i !== dein && z.role === "stadt" && z.wert === zeilen[dein].wert)
     : undefined;
 
   return (
@@ -65,24 +65,24 @@ export function StaedteLeiter({ staedte, heute, deinWert, geaendert }: {
         {zeilen.map((z) => (
           <div key={z.name}
             className={cn("flex items-center gap-2.5 py-[3px]",
-              z.rolle === "dein" && "-mx-1.5 rounded-lg bg-primary/10 px-1.5")}>
+              z.role === "dein" && "-mx-1.5 rounded-lg bg-primary/10 px-1.5")}>
             <span className={cn("w-[124px] shrink-0 truncate text-[11.5px]",
-              z.rolle === "dein" ? "font-semibold text-primary"
-                : z.rolle === "heute" ? "text-foreground" : "text-foreground/80")}>
+              z.role === "dein" ? "font-semibold text-primary"
+                : z.role === "heute" ? "text-foreground" : "text-foreground/80")}>
               {z.name}
             </span>
             <span className="relative h-2 min-w-0 flex-1 rounded-full bg-muted">
-              {z.rolle === "dein" ? (
+              {z.role === "dein" ? (
                 <span className="absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-[2.5px] border-primary bg-card"
                   style={{ left: `${pos(z.wert)}%` }} />
               ) : (
                 <span className={cn("absolute top-1/2 w-[2px] -translate-x-1/2 -translate-y-1/2 rounded-full",
-                  z.rolle === "heute" ? "h-3.5 bg-foreground/35" : "h-3 bg-[var(--hh-aus-2)]")}
+                  z.role === "heute" ? "h-3.5 bg-foreground/35" : "h-3 bg-[var(--hh-aus-2)]")}
                   style={{ left: `${pos(z.wert)}%` }} />
               )}
             </span>
             <span className={cn("w-12 shrink-0 text-right font-mono text-[11px] tabular-nums",
-              z.rolle === "dein" ? "font-medium text-primary" : "text-muted-foreground")}>
+              z.role === "dein" ? "font-medium text-primary" : "text-muted-foreground")}>
               {deZahl(z.wert)}&nbsp;%
             </span>
           </div>

@@ -764,7 +764,7 @@ struct PublicPersonProfile: Codable, Sendable {
             enum CodingKeys: String, CodingKey {
                 case kgrnr
                 case committee = "gremium"
-                case role = "rolle"
+                case role = "role"
                 case from = "von"
                 case until = "bis"
             }
@@ -836,7 +836,7 @@ struct PublicPersonProfile: Codable, Sendable {
         case speeches = "wortbeitraege"
         case speechCount = "wortbeitraege_gesamt"
         case speechCommittees = "wortbeitraege_gremien"
-        case administrationRole = "rolle"
+        case administrationRole = "role"
         case isActive = "aktiv"
         case mentionedFrom = "von"
         case mentionedUntil = "bis"

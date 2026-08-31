@@ -308,9 +308,9 @@ def _zustellen_fuer(store, owner_id: int, heute: str, jetzt_iso: str) -> int:
         **nichts** rausgegangen. Früher wurde trotzdem ``sent_at`` gesetzt — ein
         Resend-Ausfall ließ Meldungen also lautlos für immer verschwinden.
         """
-        kanaele = deliver_message(owner, html, email_subject=titel, push_url=url,
+        channels = deliver_message(owner, html, email_subject=titel, push_url=url,
                                   push_text=push_text)
-        if not kanaele:
+        if not channels:
             store.bump_notification_attempts(posten_ids)
             logger.warning("owner %s: Zustellung erfolglos, %d Meldung(en) bleiben in der "
                            "Warteschlange", owner_id, len(posten_ids))

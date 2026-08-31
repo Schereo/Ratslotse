@@ -144,10 +144,10 @@ ART_SCHWELLE = "schwelle"
 #: Rechenschaftsberichts; der Schlüssel ist unser Kürzel, der Wert das Label
 #: der Stadt.
 KANAELE: dict[str, str] = {
-    "rat": "Beschluss des Rates",
-    "oberbuergermeister": "Vom Oberbürgermeister entschieden",
-    "fachdienst200": "Gemäß Haushaltsvermerk durch den Fachdienst 200",
-    "eilentscheidung": "Eilentscheidungen",
+    "council": "Beschluss des Rates",
+    "mayor": "Vom Oberbürgermeister entschieden",
+    "department_200": "Gemäß Haushaltsvermerk durch den Fachdienst 200",
+    "urgent_decision": "Eilentscheidungen",
 }
 
 _NUM = r"(?:\d{1,3}(?:\.\d{3})+|\d+)(?:,\d+)?"
@@ -550,11 +550,11 @@ _TABELLENKOPF = re.compile(r"Anzahl\s+Konsumtive")
 #: über mehrere Zeilen um („Vom Oberbürgermeister\nentschieden\n3 42.467,80"),
 #: deshalb wird nach dem Label über Zeilengrenzen hinweg gelesen.
 _KANAL_LABEL: dict[str, str] = {
-    "rat": r"Beschluss\s+des\s+Rates",
-    "oberbuergermeister": r"Vom\s+Oberb[üu]rgermeister\s+entschieden",
-    "fachdienst200": r"Gem[äa][ßs]\s+Haushaltsvermerk\s+durch\s+den\s+"
+    "council": r"Beschluss\s+des\s+Rates",
+    "mayor": r"Vom\s+Oberb[üu]rgermeister\s+entschieden",
+    "department_200": r"Gem[äa][ßs]\s+Haushaltsvermerk\s+durch\s+den\s+"
                      r"Fachdienst\s+200",
-    "eilentscheidung": r"Eilentscheidungen",
+    "urgent_decision": r"Eilentscheidungen",
 }
 #: Eine Tabellenzelle **auf ihrer eigenen Zeile**: erst die Anzahl, dann der
 #: Betrag — und der darf fehlen („Eilentscheidungen 0" hat gar keinen).
@@ -592,7 +592,7 @@ class Kapitel3:
     """Kapitel 3 eines Rechenschaftsberichts — ein Haushaltsjahr."""
 
     year: int
-    kanaele: tuple[Kanal, ...]
+    channels: tuple[Kanal, ...]
     #: Was die Summenzeile der Tabelle selbst ausweist.
     total_operating: float
     total_capital: float
@@ -608,8 +608,8 @@ class Kapitel3:
         """Die Summe, für die das Dokument selbst geradesteht."""
         return self.total_operating + self.total_capital
 
-    def kanal(self, schluessel: str) -> Kanal | None:
-        return next((k for k in self.kanaele if k.schluessel == schluessel), None)
+    def channel(self, schluessel: str) -> Kanal | None:
+        return next((k for k in self.channels if k.schluessel == schluessel), None)
 
     @property
     def rats_anteil(self) -> float | None:
@@ -621,7 +621,7 @@ class Kapitel3:
         nicht die Gesamtzahl aus seinem Fließtext. Für 2022 unterscheiden sich
         beide um 288.000 €; die Summenzeile ist die, die das Dokument selbst
         nachrechnet, und nur mit ihr ergeben die vier Wege zusammen 100 %."""
-        rat = self.kanal("rat")
+        rat = self.channel("council")
         return (rat.amount / self.gesamt * 100) if rat and self.gesamt else None
 
 
@@ -685,13 +685,13 @@ def kapitel3(volltext: str, year: int) -> Kapitel3 | None:
         return None
     kopf = _TABELLENKOPF.search(text)
     tabelle = text[kopf.end():summe.end()] if kopf else text[:summe.end()]
-    kanaele = tuple(k for k in (_kanal(tabelle, s, m)
+    channels = tuple(k for k in (_kanal(tabelle, s, m)
                                 for s, m in _KANAL_LABEL.items()) if k)
     gesamt = _GESAMT.search(text)
     auft = _AUFTEILUNG.search(text)
     ve = _VE_TEXT.search(text)
     return Kapitel3(
-        year=year, kanaele=kanaele,
+        year=year, channels=channels,
         total_operating=_zahl(summe.group(1), None),
         total_capital=_zahl(summe.group(2), None),
         total_per_text=_zahl(gesamt.group(1), None) if gesamt else None,
@@ -764,8 +764,8 @@ def probe_tabelle(kap: Kapitel3, toleranz: float = 0.005) -> Tabellenprobe:
     In beiden Fällen wird der Widerspruch **gemeldet, nicht geglättet**: Was
     hier zurückkommt, landet als ``probe_result`` an der Herkunft und von
     dort auf der Seite."""
-    ak = sum(k.amount_operating for k in kap.kanaele) - kap.total_operating
-    ai = sum(k.amount_capital for k in kap.kanaele) - kap.total_capital
+    ak = sum(k.amount_operating for k in kap.channels) - kap.total_operating
+    ai = sum(k.amount_capital for k in kap.channels) - kap.total_capital
     if kap.total_per_text is None:
         gesamt_ok, ag = True, 0.0
     else:
@@ -921,7 +921,7 @@ def probe_ratsabgleich(bewilligungen: list[Bewilligung], kap: Kapitel3,
     Die dahinterliegende Grenze gehört auf die Seite: **Wir zählen Vorlagen,
     der Bericht zählt Haushaltspositionen** — eine Vorlage kann mehrere
     Positionen tragen (2024: 21 Vorlagen, 21 Positionen; 2022: 12 gegen 11)."""
-    rat = kap.kanal("rat")
+    rat = kap.channel("council")
     passend = [b for b in bewilligungen
                if b.year == kap.year and b.zaehlt_in_summe]
     unsere = {b.template_number for b in passend}

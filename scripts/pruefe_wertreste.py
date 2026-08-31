@@ -4,8 +4,8 @@
 **Das Problem.** Beim Umbau auf englische Bezeichner benennt ein Schnitt
 Spalten um und trägt dafür ein Migrationspaar ein. Manche dieser Begriffe
 stehen aber zusätzlich als **Wert** in einer Zeile:
-``council_finanzrechnung.rolle`` führt ``'saldo_verwaltung'``,
-``council_konzern_posten.rolle`` führt ``'ao_ertraege'``,
+``council_finanzrechnung.role`` führt ``'saldo_verwaltung'``,
+``council_konzern_posten.role`` führt ``'ao_ertraege'``,
 ``council_herkunft.probe`` führt ``'anlagen_buchwert'``. Wird nur die Spalte
 migriert, schreibt der Code danach ``'balance_operating'``, in der Datenbank
 steht weiter der deutsche Wert — und **jede Abfrage danach findet nichts**.

@@ -229,7 +229,7 @@ class Wortbeitrag:
     text: str                       # Wortlaut des Protokolls, geglättet
     fraktion: str | None = None
     fraktion_unklar: bool = False
-    rolle: str = "rat"              # rat | verwaltung | leitung
+    role: str = "rat"              # rat | verwaltung | leitung
 
     def als_dict(self) -> dict:
         return {
@@ -238,7 +238,7 @@ class Wortbeitrag:
             "text": self.text,
             "fraktion": self.fraktion,
             "fraktion_unklar": self.fraktion_unklar,
-            "rolle": self.rolle,
+            "role": self.role,
             "zeichen": len(self.text),
         }
 
@@ -340,7 +340,7 @@ def debatte(section: str, anwesende: list[dict]) -> list[Wortbeitrag]:
 
         anrede = m.group(1)
         niedrig = anrede.lower()
-        rolle = "leitung" if niedrig in _LEITUNG else "verwaltung" if niedrig in _VERWALTUNG else "rat"
+        role = "leitung" if niedrig in _LEITUNG else "verwaltung" if niedrig in _VERWALTUNG else "rat"
 
         kandidaten, geschrieben = _finde_person(section[m.end():ende], index)
         if kandidaten:
@@ -349,8 +349,8 @@ def debatte(section: str, anwesende: list[dict]) -> list[Wortbeitrag]:
             notfall = _NOTNAME.match(_glatt(section[m.end():ende]))
             name = notfall.group(1) if notfall else geschrieben or "unbekannt"
 
-        beitrag = Wortbeitrag(anrede=anrede, name=name, text=text, rolle=rolle)
-        if rolle == "rat":
+        beitrag = Wortbeitrag(anrede=anrede, name=name, text=text, role=role)
+        if role == "rat":
             if len(kandidaten) == 1:
                 beitrag.fraktion = _fraktion_von(kandidaten[0])
             elif len(kandidaten) > 1:

@@ -38,9 +38,9 @@ def vorlage(store, kvonr, nr, titel):
     store.save_vorlage({"kvonr": kvonr, "template_number": nr, "title": titel})
 
 
-def beratung(store, kvonr, datum, gremium, rolle, ksinr, top):
+def beratung(store, kvonr, datum, gremium, role, ksinr, top):
     store.save_beratungen(kvonr, [{"datum": datum, "gremium": gremium, "top": top,
-                                   "is_public": True, "result": rolle, "ksinr": ksinr}])
+                                   "is_public": True, "result": role, "ksinr": ksinr}])
 
 
 def runde_2026(store):

@@ -162,10 +162,10 @@ def _berichte(store: CouncilStore, serie: list[nb.Bewilligung],
         probe = nb.probe_tabelle(kap)
         abgleich = nb.probe_ratsabgleich(
             serie, kap, nb.vorlagen_im_kapitel(text))
-        rat = kap.kanal("rat")
+        rat = kap.channel("rat")
         print(f"  {year}: {kap.gesamt:>15,.2f} € gesamt · Rat "
               f"{rat.amount:>15,.2f} € ({kap.rats_anteil:.1f} %) · "
-              f"{len(kap.kanaele)} Wege")
+              f"{len(kap.channels)} Wege")
         print(f"        Tabellenprobe: {probe.als_text()}")
         print(f"        Ratsabgleich:  {abgleich.als_text()}")
         if not probe.bestanden:
@@ -182,11 +182,11 @@ def _berichte(store: CouncilStore, serie: list[nb.Bewilligung],
              "commitments_amount": kap.commitments_amount,
              "probe_ok": probe.bestanden,
              "probe_text": probe.als_text()},
-            [{"kanal": k.schluessel, "label": k.label,
+            [{"channel": k.schluessel, "label": k.label,
               "count_operating": k.count_operating,
               "amount_operating": k.amount_operating,
               "count_capital": k.count_capital,
-              "amount_capital": k.amount_capital} for k in kap.kanaele],
+              "amount_capital": k.amount_capital} for k in kap.channels],
             h.Herkunft(
                 art="ris", document_id=dokument,
                 label=BERICHT_LABEL.format(year=year),

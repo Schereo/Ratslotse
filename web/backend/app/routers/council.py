@@ -599,8 +599,8 @@ def haushalt_konzern(
     for p in posten:
         eintrag = je_jahr.setdefault(
             p["year"], {"year": p["year"], "herkunft_id": p["herkunft_id"]})
-        if p["rolle"]:
-            eintrag[p["rolle"]] = p["amount"]
+        if p["role"]:
+            eintrag[p["role"]] = p["amount"]
 
     # Gegenprobe: Trägerzeile „Stadt Oldenburg" (TEUR) gegen unseren
     # Jahresabschluss (Euro). Abgeglichen wird auf Tausend genau — feiner
@@ -971,7 +971,7 @@ def haushalt_uebersicht(
       Jahresabschlüssen — Grundlage für „geplant gegen tatsächlich",
     - ``finanzrechnung``: die Kassensicht aus demselben Jahresabschluss
       (Abschnitt 4.1) — nicht was gebucht, sondern was **gezahlt** wurde.
-      Jede Zeile trägt neben der Nummer des Dokuments eine ``rolle``
+      Jede Zeile trägt neben der Nummer des Dokuments eine ``role``
       (``balance_operating``, ``balance_capital``, ``finanzmittel``, …);
       **an der Rolle hängen, nicht an der Nummer**: Die Tabelle hat
       2017–2020 eine Zeile mehr als ab 2021, alle Nummern ab 08
@@ -1175,7 +1175,7 @@ def haushalt_uebersicht(
         "nachbewilligungen": lambda: {
             "serie": store.get_nachbewilligungen(),
             "jahre": store.get_nachbewilligung_jahre(),
-            "kanaele": nachbewilligungen_mod.KANAELE,
+            "channels": nachbewilligungen_mod.KANAELE,
         },
         # Zuwendungen an die Stadt. `ohne_beleg` reist mit den Zahlen mit,
         # damit die Seite die Lücke anschreiben kann, statt sie stillschweigend
@@ -1372,7 +1372,7 @@ def _herkunft_ids(obj: object) -> set[int]:
     """Jede ``herkunft_id``, die irgendwo in einer Antwort steckt.
 
     Rekursiv und nicht als Aufzählung der bekannten Blöcke: Die Übersicht führt
-    19 davon, teils zwei Ebenen tief (``nachbewilligungen.jahre[].kanaele[]``).
+    19 davon, teils zwei Ebenen tief (``nachbewilligungen.jahre[].channels[]``).
     Eine Liste zum Nachpflegen wäre die Sorte Code, die beim nächsten Block
     vergessen wird — und der Fehler fiele erst auf, wenn irgendwo ein
     Beleg-Chip fehlt. ``herkunft_id`` ist repo-weit der einzige Feldname, der
@@ -3818,7 +3818,7 @@ def haushalt_bilanz(
     Die Gegenseite zu ``/haushalt/schulden``: nicht was die Stadt schuldet,
     sondern was sie **hat** und was davon schon vergeben ist.
 
-    ``posten`` ist eine flache Liste über alle Stichtage. **An ``rolle``
+    ``posten`` ist eine flache Liste über alle Stichtage. **An ``role``
     hängen, nicht an ``nr``**: Die Gliederungsnummer der Bilanz ist bis 2020
     römisch, ab 2021 arabisch, und ab 2021 gibt es jede Nummer auf beiden
     Seiten — „1.1" ist auf der Aktivseite etwas anderes als auf der
@@ -3843,7 +3843,7 @@ def haushalt_bilanz(
     Schulden springen 2024 von 84,4 auf 207,1 Mio. €, und das ist kein
     Schuldenmachen, sondern eine Bilanzverlängerung aus dem Cash-Pooling
     (138,2 Mio. €, mit Gegenposten auf der Aktivseite). Der Anhang erklärt es
-    unter ``rolle="schulden"`` selbst. **Die Zahl darf ohne diesen Text nicht
+    unter ``role="schulden"`` selbst. **Die Zahl darf ohne diesen Text nicht
     angezeigt werden** — dieselbe Bauart wie ``abweichungsgruende`` für die
     Ergebnisrechnung.
     """

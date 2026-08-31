@@ -38,7 +38,7 @@ export type StreitWortbeitrag = {
   fraktion: string | null;
   /** Namensvettern im Rat: Fraktion nicht eindeutig bestimmbar. */
   fraktion_unklar: boolean;
-  rolle: StreitRolle;
+  role: StreitRolle;
   zeichen: number;
 };
 
@@ -136,7 +136,7 @@ export function schlussbeschluss(r: StreitRunde | null): StreitStation | null {
 export function redenJeFraktion(station: StreitStation | null): { label: string; n: number }[] {
   const zaehler = new Map<string, number>();
   for (const b of station?.debatte ?? []) {
-    if (b.rolle !== "rat") continue;
+    if (b.role !== "rat") continue;
     const label = b.fraktion ?? "ohne eindeutige Fraktion";
     zaehler.set(label, (zaehler.get(label) ?? 0) + 1);
   }
@@ -193,7 +193,7 @@ export function ohneZuordnung(daten: StreitDaten | null): { ohne: number; gesamt
     for (const s of r.stationen) {
       for (const b of s.debatte) {
         gesamt += 1;
-        if (b.rolle === "rat" && b.fraktion_unklar) ohne += 1;
+        if (b.role === "rat" && b.fraktion_unklar) ohne += 1;
       }
     }
   }

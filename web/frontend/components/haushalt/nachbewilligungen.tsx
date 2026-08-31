@@ -81,17 +81,17 @@ function euro(wert: number): string {
  *  Der Bericht führt Rat, Oberbürgermeister, Fachdienst 200, Eilentscheidung
  *  — und `<RanglisteSchiene>` sortiert nicht selbst, sie zeigt, was sie
  *  bekommt. Die Reihenfolge ist eine Angabe der Quelle wie die Zahlen. */
-function KanalRangliste({ kanaele, beleg }: {
-  kanaele: NachbewilligungsKanal[]; beleg: ReactNode;
+function KanalRangliste({ channels, beleg }: {
+  channels: NachbewilligungsKanal[]; beleg: ReactNode;
 }) {
-  const zeilen: RanglisteZeile[] = kanaele.map((k) => {
+  const zeilen: RanglisteZeile[] = channels.map((k) => {
     const count = kanalAnzahl(k);
     return {
       label: k.label,
       wert: kanalBetrag(k) / 1e6,
       // Der Rat ist die Zeile, um die es geht — hervorgehoben heißt „hier
       // schauen", nicht „das ist die gute".
-      hervorgehoben: k.kanal === "rat",
+      hervorgehoben: k.channel === "council",
       zusatz: count === 1 ? "1 Fall" : `${count} Fälle`,
     };
   });
@@ -165,7 +165,7 @@ export function NachbewilligungsBlock({ daten, year }: {
 
   const gesamt = bericht ? nachbewilligungGesamt(bericht) : null;
   const anteil = bericht ? ratsAnteil(bericht) : null;
-  const ratsKanal = bericht?.kanaele.find((k) => k.kanal === "rat");
+  const ratsKanal = bericht?.channels.find((k) => k.channel === "council");
   const ratsZeile = ratsKanal ? kanalBetrag(ratsKanal) : null;
   // Der Vergleichswert für den Satz über die Entwicklung: das früheste Jahr,
   // für das ein Bericht vorliegt.
@@ -230,7 +230,7 @@ export function NachbewilligungsBlock({ daten, year }: {
             Wer über die Bewilligung entscheidet
           </p>
           <div className="mt-2.5">
-            <KanalRangliste kanaele={bericht.kanaele}
+            <KanalRangliste channels={bericht.channels}
               beleg={<Beleg q="jahresabschluss" />} />
           </div>
           <p className="mt-3 max-w-[74ch] text-[11.5px] leading-relaxed text-muted-foreground">
@@ -299,7 +299,7 @@ export function NachbewilligungsBlock({ daten, year }: {
             && Math.abs(unseres.summe - ratsZeile) > 1 && (
             <p className="mt-2 max-w-[74ch] text-[11.5px] leading-relaxed text-muted-foreground">
               Diese Liste ergibt {mio(unseres.summe)}&#8239;Mio.&nbsp;€, die
-              Zeile „{bericht.kanaele.find((k) => k.kanal === "rat")?.label}"
+              Zeile „{bericht.channels.find((k) => k.channel === "council")?.label}"
               oben {mio(ratsZeile)}&#8239;Mio.&nbsp;€. Der Unterschied ist
               keine Unsicherheit, sondern eine andere Frage:{" "}
               <strong className="font-semibold">Wir nennen den Betrag, den die

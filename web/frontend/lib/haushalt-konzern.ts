@@ -24,10 +24,10 @@ export type KonzernJahr = {
   year: number;
   revenues_total?: number;
   expenses_total?: number;
-  ord_ergebnis?: number;
-  gesamtergebnis?: number;
-  zinsaufwand?: number;
-  personalaufwand?: number;
+  ordinary_result?: number;
+  total_result?: number;
+  interest_expenses?: number;
+  personnel_expenses?: number;
   steuern?: number;
   herkunft_id: number | null;
 };
@@ -47,7 +47,7 @@ export type KonzernPosten = {
   year: number;
   nr: number;
   label: string;
-  rolle: string | null;
+  role: string | null;
   amount: number;
   prior_year: number | null;
   herkunft_id: number | null;

@@ -279,7 +279,7 @@ def test_vermoegensprobe_multipliziert_zwei_zeilen_gegen_die_bilanz():
         {"indicator": "einwohner", "year": 2024, "report_year": 2024,
          "wert": 176_068.0, "stellen": 0},
     ]
-    bilanz = [{"year": 2024, "rolle": r, "wert": w} for r, w in (
+    bilanz = [{"year": 2024, "role": r, "wert": w} for r, w in (
         ("immaterielles_vermoegen", 91_394_171.68), ("sachvermoegen", 605_573_107.06),
         ("finanzvermoegen", 645_348_451.45), ("liquide_mittel", 118_001_891.26),
         ("aktive_rap", 19_671_338.55))]
@@ -303,7 +303,7 @@ def test_vermoegensprobe_mischt_keine_berichte():
         {"indicator": "einwohner", "year": 2024, "report_year": 2023,
          "wert": 176_068.0, "stellen": 0},
     ]
-    bilanz = [{"year": 2024, "rolle": "sachvermoegen", "wert": 1.0}]
+    bilanz = [{"year": 2024, "role": "sachvermoegen", "wert": 1.0}]
     assert kz.vermoegensprobe(zeilen, bilanz) == (0, [])
 
 
@@ -319,7 +319,7 @@ def test_bilanz_gegenprobe_kennt_nur_die_drei_quoten():
 
     zeilen = [{"indicator": "anlagenintensitaet", "year": 2024, "report_year": 2024,
                "wert": 40.92, "stellen": 2}]
-    bilanz = [{"year": 2024, "rolle": r, "wert": w} for r, w in (
+    bilanz = [{"year": 2024, "role": r, "wert": w} for r, w in (
         ("immaterielles_vermoegen", 91_394_171.68), ("sachvermoegen", 605_573_107.06),
         ("finanzvermoegen", 645_348_451.45), ("liquide_mittel", 118_001_891.26),
         ("aktive_rap", 19_671_338.55))]

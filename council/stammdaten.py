@@ -150,7 +150,7 @@ def fetch_mandatstraeger(scraper: CouncilScraper, wpnr: int | None = None) -> li
 
 def fetch_person_mitarbeit(scraper: CouncilScraper, kpenr: int) -> list[dict]:
     """Alle Gremien-Mitgliedschaften einer Person über alle Wahlperioden:
-    ``[{kgrnr, gremium, rolle, von, bis}]``.
+    ``[{kgrnr, gremium, role, von, bis}]``.
 
     Die Tabellenzeilen tragen am Ende einen Volltext „von DD.MM.YYYY
     [bis DD.MM.YYYY]" — die zuverlässigste Quelle für den Zeitraum. Die
@@ -184,16 +184,16 @@ def fetch_person_mitarbeit(scraper: CouncilScraper, kpenr: int) -> list[dict]:
 
         # Rolle („Art der Mitarbeit"): letzte Zelle ohne Ziffern, die nicht das
         # Gremium ist — robust gegen die responsiven Kombi-Zellen der Tabelle.
-        rolle = None
+        role = None
         for td in tds[1:]:
             t = " ".join(td.get_text(" ", strip=True).split())
             if t and not any(ch.isdigit() for ch in t) and t != gremium:
-                rolle = t
-        if rolle and len(rolle) > 60:  # Kombi-Zelle erwischt → letztes Wortpaar
-            rolle = rolle.split()[-1]
+                role = t
+        if role and len(role) > 60:  # Kombi-Zelle erwischt → letztes Wortpaar
+            role = role.split()[-1]
 
         if von or kgrnr:
-            out.append({"kgrnr": kgrnr, "gremium": gremium, "rolle": rolle,
+            out.append({"kgrnr": kgrnr, "gremium": gremium, "role": role,
                         "von": von, "bis": bis})
     return out
 

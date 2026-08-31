@@ -167,7 +167,7 @@ def _lies(text: str, year: int) -> dict:
 
 
 def _werte(budget_year: dict) -> dict[str, float]:
-    return {p["rolle"]: p["wert"] for p in budget_year["posten"]}
+    return {p["role"]: p["wert"] for p in budget_year["posten"]}
 
 
 # --- Beide Layouts ----------------------------------------------------------
@@ -188,13 +188,13 @@ def test_beide_layouts_gehen_auf(text, year):
 
 @pytest.mark.parametrize("text, year", [(B_2019, 2019), (B_2024, 2024)])
 def test_alle_pflichtposten_stehen_auf_ihrer_seite(text, year):
-    posten = {p["rolle"]: p for p in _lies(text, year)["posten"]}
+    posten = {p["role"]: p for p in _lies(text, year)["posten"]}
     assert set(bilanz.PFLICHT_ROLLEN) <= set(posten)
-    for rolle in bilanz.HAUPTPOSTEN[bilanz.AKTIVA]:
-        assert posten[rolle]["page"] == bilanz.AKTIVA
-        assert posten[rolle]["level"] == 1
-    for rolle in bilanz.HAUPTPOSTEN[bilanz.PASSIVA]:
-        assert posten[rolle]["page"] == bilanz.PASSIVA
+    for role in bilanz.HAUPTPOSTEN[bilanz.AKTIVA]:
+        assert posten[role]["page"] == bilanz.AKTIVA
+        assert posten[role]["level"] == 1
+    for role in bilanz.HAUPTPOSTEN[bilanz.PASSIVA]:
+        assert posten[role]["page"] == bilanz.PASSIVA
 
 
 def test_verschraenktes_layout_verliert_keinen_hauptposten():
@@ -222,8 +222,8 @@ def test_verfuegbare_ruecklage_bleibt_von_zweckbindungen_getrennt():
 def test_roemische_und_arabische_nummern_stehen_daneben():
     """Die Gliederungsnummer wird mitgeschrieben, aber nichts hängt an ihr —
     sonst brauchte jedes Layout seinen eigenen Zweig."""
-    n2019 = {p["rolle"]: p["nr"] for p in _lies(B_2019, 2019)["posten"]}
-    n2024 = {p["rolle"]: p["nr"] for p in _lies(B_2024, 2024)["posten"]}
+    n2019 = {p["role"]: p["nr"] for p in _lies(B_2019, 2019)["posten"]}
+    n2024 = {p["role"]: p["nr"] for p in _lies(B_2024, 2024)["posten"]}
     assert n2019["sachvermoegen"] == "II" and n2024["sachvermoegen"] == "2"
     # Dieselbe Nummer, zwei verschiedene Posten: „1." ist ab 2021 auf der
     # Aktivseite das immaterielle Vermögen und auf der Passivseite die
@@ -235,8 +235,8 @@ def test_der_wortlaut_des_dokuments_bleibt_stehen():
     """Die Bezeichnung ist der Wortlaut, nicht unser Kurzname — 2019 kürzt die
     Stadt ab, 2024 schreibt sie aus. Beide Schreibweisen müssen ankommen, und
     die Fußnotenmarke darf nicht mit hineinrutschen."""
-    b19 = {p["rolle"]: p["label"] for p in _lies(B_2019, 2019)["posten"]}
-    b24 = {p["rolle"]: p["label"] for p in _lies(B_2024, 2024)["posten"]}
+    b19 = {p["role"]: p["label"] for p in _lies(B_2019, 2019)["posten"]}
+    b24 = {p["role"]: p["label"] for p in _lies(B_2024, 2024)["posten"]}
     assert b19["pensionen_gesamt"] == "Pensionsrückst. und ähnliche Verpflichtungen"
     assert b24["pensionen_gesamt"] == "Pensionsrückstellungen und ähnliche Verpflichtungen"
     assert b24["immaterielles_vermoegen"] == "Immaterielles Vermögen"   # ohne „1)"
@@ -331,7 +331,7 @@ def test_pension_plus_beihilfe_ergibt_die_oberposition(text, year):
         w["pensionen_gesamt"], abs=0.01)
     assert "rueckstellungs_gliederung" in budget_year["probes"]
     # Und die Ebenen sagen, welche Zahl über welcher steht.
-    ebenen = {p["rolle"]: p["level"] for p in budget_year["posten"]}
+    ebenen = {p["role"]: p["level"] for p in budget_year["posten"]}
     assert ebenen["rueckstellungen"] == 1
     assert ebenen["pensionen_gesamt"] == 2
     assert ebenen["pensionsrueckstellungen"] == ebenen["beihilferueckstellungen"] == 3
@@ -391,7 +391,7 @@ def test_vorjahreskette_findet_einen_riss():
     eine ab, hat sich einer der beiden verlesen."""
     kette = _kette()
     for p in kette[2023]["posten"]:
-        if p["rolle"] == "sachvermoegen":
+        if p["role"] == "sachvermoegen":
             p["wert"] += 1000.0
     risse = bilanz.vorjahreskette(kette)
     assert len(risse) == 1
@@ -551,7 +551,7 @@ Die Stadt haftet aus Bürgschaften in Höhe von 12,3 Millionen Euro.
 
 def test_der_anhang_erlaeutert_die_neun_hauptposten_in_bilanzreihenfolge():
     abschnitte = bilanz.parse_erlaeuterungen(ANHANG_2024, 2024)
-    assert [a["rolle"] for a in abschnitte] == list(bilanz.PFLICHT_ROLLEN)
+    assert [a["role"] for a in abschnitte] == list(bilanz.PFLICHT_ROLLEN)
     ok, warum = bilanz.erlaeuterungsprobe(abschnitte)
     assert ok, warum
 
@@ -568,7 +568,7 @@ def test_der_cash_pooling_text_kommt_vollstaendig_mit():
     """Die Auflage aus ``council/bilanz.py``: **Ohne diesen Text darf die Zahl
     207,1 Mio. € nicht angezeigt werden.** Er muss also ankommen — mit
     aufgelöster Silbentrennung, ohne Seitenfüße, in Absätzen."""
-    nach_rolle = {a["rolle"]: a for a in bilanz.parse_erlaeuterungen(ANHANG_2024, 2024)}
+    nach_rolle = {a["role"]: a for a in bilanz.parse_erlaeuterungen(ANHANG_2024, 2024)}
     schulden = nach_rolle["schulden"]
     assert schulden["nr"] == 7
     assert schulden["heading"] == "Schulden"
@@ -585,7 +585,7 @@ def test_der_cash_pooling_text_kommt_vollstaendig_mit():
 
 def test_seitenfuss_zerreisst_keinen_erlaeuterungssatz():
     liquide = next(a for a in bilanz.parse_erlaeuterungen(ANHANG_2024, 2024)
-                   if a["rolle"] == "liquide_mittel")
+                   if a["role"] == "liquide_mittel")
     assert "JA 38" not in liquide["text"]
 
 
@@ -610,7 +610,7 @@ def test_ein_verschobener_abschnitt_faellt_auf():
 
 def test_ein_leerer_abschnitt_zaehlt_nicht_als_erlaeuterung():
     ok, warum = bilanz.erlaeuterungsprobe(
-        [{"rolle": r, "nr": i + 1, "heading": b, "text": "" if r == "schulden" else "x"}
+        [{"role": r, "nr": i + 1, "heading": b, "text": "" if r == "schulden" else "x"}
          for i, (r, b) in enumerate(zip(
              bilanz.PFLICHT_ROLLEN,
              ("Immaterielles Vermögen", "Sachvermögen", "Finanzvermögen",
@@ -639,7 +639,7 @@ def test_store_bilanz_roundtrip(tmp_path, quelle):
         assert store.save_bilanz(2024, budget_year["posten"], quelle) == len(budget_year["posten"])
         assert store.bilanz_jahre() == [2024]
         rows = store.get_bilanz(2024)
-        werte = {r["rolle"]: r["wert"] for r in rows}
+        werte = {r["role"]: r["wert"] for r in rows}
         assert werte["pensionen_gesamt"] == 311_789_660.00
         assert store.get_ruecklagen() == [{
             "year": 2024,
@@ -669,7 +669,7 @@ def test_store_erlaeuterungen_roundtrip(tmp_path, quelle):
         assert store.save_bilanz_erlaeuterungen(2024, abschnitte, quelle) == 9
         raus = store.get_bilanz_erlaeuterungen(2024)
         assert [r["nr"] for r in raus] == list(range(1, 10))
-        schulden = next(r for r in raus if r["rolle"] == "schulden")
+        schulden = next(r for r in raus if r["role"] == "schulden")
         assert "Cash-Pooling" in schulden["text"]
     finally:
         store.close()

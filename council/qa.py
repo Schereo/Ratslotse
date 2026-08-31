@@ -2356,8 +2356,8 @@ def _bilanz_block(b: dict | None) -> str:
         "schulden": "Schulden und ähnliche Verbindlichkeiten",
     }
     zeilen = [f"- Bilanzsumme zum 31.12.{b['year']}: {_eur(b['bilanzsumme'])}"]
-    for rolle, wert in b.get("posten") or []:
-        zeilen.append(f"  - {namen.get(rolle, rolle)}: {_eur(wert)}")
+    for role, wert in b.get("posten") or []:
+        zeilen.append(f"  - {namen.get(role, role)}: {_eur(wert)}")
     return ("\nBILANZ (Jahresabschluss, Abschnitt 2.1). Das ist ein STICHTAG "
             f"(31.12.{b['year']}),\nkein Haushaltsjahr: Diese Beträge NIE mit "
             "Erträgen, Aufwendungen oder dem\nDefizit eines Jahres verrechnen. Nie "
@@ -2385,16 +2385,16 @@ def _nachbewilligungen_block(n: dict | None) -> str:
     if not n or not n.get("gesamt"):
         return ""
     namen = {"rat": "vom Rat selbst beschlossen",
-             "oberbuergermeister": "vom Oberbürgermeister",
-             "fachdienst200": "vom Fachdienst Finanzen",
-             "eilentscheidung": "als Eilentscheidung"}
+             "mayor": "vom Oberbürgermeister",
+             "department_200": "vom Fachdienst Finanzen",
+             "urgent_decision": "als Eilentscheidung"}
     zeilen = [f"- Nachbewilligt {n['year']} insgesamt: {_eur(n['gesamt'])} "
               f"(konsumtiv {_eur(n['konsumtiv'])}, investiv {_eur(n['investiv'])})"]
-    for kanal, kons, inv in n.get("kanaele") or []:
+    for channel, kons, inv in n.get("channels") or []:
         summe = (kons or 0) + (inv or 0)
         if summe:
             anteil = f" — {summe / n['gesamt'] * 100:.0f} %" if n["gesamt"] else ""
-            zeilen.append(f"  - {namen.get(kanal, kanal)}: {_eur(summe)}{anteil}")
+            zeilen.append(f"  - {namen.get(channel, channel)}: {_eur(summe)}{anteil}")
     if n.get("verpflichtungen"):
         zeilen.append(f"- Verpflichtungsermächtigungen (binden KÜNFTIGE Jahre, "
                       f"gehören in KEINE Summe mit den Beträgen darüber): "
