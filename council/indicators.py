@@ -234,7 +234,7 @@ def parse_kennzahlen(text: str, report_year: int) -> tuple[list[dict], list[str]
                     break
                 zeilen.append({"report_year": report_year, "indicator": treffer.key,
                                "label": treffer.label, "year": year, "value": value,
-                               "unit": treffer.unit, "stellen": stellen})
+                               "unit": treffer.unit, "decimals": stellen})
         beschriftung.clear()
         werte.clear()
 
@@ -404,7 +404,7 @@ def ueberlappungsprobe(zeilen: list[dict]) -> tuple[int, list[dict]]:
         gruppe = sorted(gruppe, key=lambda z: z["report_year"])
         for aelter, juenger in zip(gruppe, gruppe[1:]):
             diff = juenger["value"] - aelter["value"]
-            gleich = abs(diff) <= toleranz(aelter["stellen"], juenger["stellen"])
+            gleich = abs(diff) <= toleranz(aelter["decimals"], juenger["decimals"])
             umgestellt = (aelter.get("version") and juenger.get("version")
                           and aelter["version"] != juenger["version"])
             if gleich and not umgestellt:
@@ -444,7 +444,7 @@ def gegen_bilanz(zeilen: list[dict], bilanz: list[dict]) -> tuple[int, list[dict
         if zaehler is None or not summe.get(z["year"]):
             continue
         eigen = zaehler * 100 / summe[z["year"]]
-        if abs(eigen - z["value"]) <= toleranz(z["stellen"], z["stellen"]):
+        if abs(eigen - z["value"]) <= toleranz(z["decimals"], z["decimals"]):
             geprueft += 1
         else:
             risse.append({"indicator": z["indicator"], "year": z["year"],
@@ -493,7 +493,7 @@ def vermoegensprobe(zeilen: list[dict], bilanz: list[dict]) -> tuple[int, list[d
             continue
         soll = aktiva[year] - rap.get(year, 0.0)
         ist = kopf["value"] * leute["value"]
-        if abs(ist - soll) <= 0.5 * 10 ** -kopf["stellen"] * leute["value"]:
+        if abs(ist - soll) <= 0.5 * 10 ** -kopf["decimals"] * leute["value"]:
             geprueft += 1
         else:
             risse.append({"report_year": report_year, "year": year,

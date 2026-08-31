@@ -543,7 +543,7 @@ def test_ris_stammdaten_zaehlen_als_mandat(tmp_path):
                 "INSERT INTO council_persons (kpenr, name, current_faction, fetched_at) "
                 "VALUES (99, 'Sabine Görg', 'SPD', datetime('now'))")
             store._conn.execute(
-                "INSERT INTO council_memberships (kpenr, kgrnr, committee, role, von, bis, fetched_at) "
+                "INSERT INTO council_memberships (kpenr, kgrnr, committee, role, valid_from, valid_until, fetched_at) "
                 "VALUES (99, 1, 'Rat', 'Ratsmitglied', '2026-01-01', NULL, datetime('now'))")
         m = {x["slug"]: x for x in store.list_members()}
         assert m["sabine-goerg"]["art"] == "rat"

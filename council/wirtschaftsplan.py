@@ -122,7 +122,7 @@ ABGRENZUNG = (
 #: Cent-genau. Die Quelle führt volle Euro; die kleinste mögliche Abweichung
 #: wäre damit 1 €, und eine Toleranz von 1 € ließe genau den einen Fehler
 #: durch, den die Probe sehen könnte — dieselbe Überlegung wie bei
-#: `investitionen.TOLERANZ_EUR`.
+#: `investments.TOLERANZ_EUR`.
 TOLERANZ_EUR = 0.005
 
 #: Ein Betrag im Beschlusstext: „82.815.150", „-  5.401.285", „+ 349.700",
@@ -210,7 +210,7 @@ class Wirtschaftsplan:
     #:
     #: Vorgabe ``None``, damit die drei Lesewege (Beschlusstext, Erfolgsplan
     #: der Anlage, Kernzahl) nur setzen, was ihre Quelle wirklich nennt.
-    investitionen: float | None = None
+    investments: float | None = None
 
     @property
     def probe_result(self) -> str:

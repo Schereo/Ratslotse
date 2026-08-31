@@ -200,7 +200,7 @@ function PlanIstInner() {
     // Weicht der fortgeschriebene Plan vom ursprünglichen Ansatz ab, gehört
     // beides auf die Seite — 2020 sind das bei den Ausgaben 27 Mio. €.
     const weicht = (p?: ErgebnisPosten) =>
-      p?.plan != null && p?.ansatz != null && Math.abs(p.plan - p.ansatz) > 1;
+      p?.plan != null && p?.budgeted != null && Math.abs(p.plan - p.budgeted) > 1;
 
     return {
       gesamt: {
@@ -210,7 +210,7 @@ function PlanIstInner() {
       bereiche, arten,
       planArt: (a?.plan_art ?? e?.plan_art ?? "ansatz") as PlanArt,
       ansatzAbweichend: weicht(e) || weicht(a)
-        ? { ertr: mio(e?.ansatz), aufw: mio(a?.ansatz) }
+        ? { ertr: mio(e?.budgeted), aufw: mio(a?.budgeted) }
         : null,
     };
   }, [data, year, massstab]);

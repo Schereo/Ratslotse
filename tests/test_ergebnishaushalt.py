@@ -602,10 +602,10 @@ def test_plan_faellt_auf_ansatz_zurueck(tmp_path):
                           label="Jahresabschluss 2023", url="https://example.org/ja.pdf")
     # So sieht eine Zeile aus, die vor #510 geschrieben wurde: ansatz ja,
     # plan und plan_art nein.
-    alt = [{"nr": 12, "label": "Summe ordentliche Erträge", "ansatz": 664_574_528.42,
+    alt = [{"nr": 12, "label": "Summe ordentliche Erträge", "budgeted": 664_574_528.42,
             "plan": None, "result": 732_987_197.61, "is_total": 1},
            {"nr": 20, "label": "Summe ordentliche Aufwendungen",
-            "ansatz": 674_305_462.42, "plan": None, "result": 683_032_270.32,
+            "budgeted": 674_305_462.42, "plan": None, "result": 683_032_270.32,
             "is_total": 1}]
     store.save_ergebnisrechnung(2023, alt, q)
     store.save_ergebnisrechnung(2023, alt, q, sub_budget_no=7, sub_budget_name="Stadtplanung")

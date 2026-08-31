@@ -132,9 +132,9 @@ def test_planfaelle_parser(monkeypatch):
     cases = beteiligung.fetch_planfaelle()
     assert len(cases) == 2
     assert cases[0]["plan_nrs"] == ["bp-831", "fnp-82"]
-    assert cases[0]["bis"] is None  # Abwägungsschritt ohne Zeitraum
+    assert cases[0]["valid_until"] is None  # Abwägungsschritt ohne Zeitraum
     assert cases[1]["plan_nrs"] == ["bp-81"]
-    assert cases[1]["von"] == "2026-07-06" and cases[1]["bis"] == "2026-08-17"
+    assert cases[1]["valid_from"] == "2026-07-06" and cases[1]["valid_until"] == "2026-08-17"
     assert cases[1]["url"].startswith("https://oldenburg.planungsbeteiligung.de/FRONTEND/")
 
 
@@ -151,7 +151,7 @@ def test_plan_nummern_matching_ohne_fehlgriffe():
 def test_beteiligung_store_roundtrip(tmp_path):
     store = CouncilStore(tmp_path / "c.sqlite")
     stat = store.save_beteiligungen([{"title": "Bebauungsplan 831", "ort": "Stadion",
-                                      "schritt": "Abwägung", "von": None, "bis": None,
+                                      "schritt": "Abwägung", "valid_from": None, "valid_until": None,
                                       "url": "https://x", "plan_nrs": ["bp-831"]}])
     assert stat["neu"] == 1 and stat["laufend"] == 1
     rows = store.list_beteiligungen()

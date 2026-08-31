@@ -457,8 +457,8 @@ export interface DecisionDetail {
   follow?: { kvonr: number; following: boolean };
   /** Stufe 3b: Läuft zu diesem Bauleitplan gerade eine Bürgerbeteiligung?
    *  Kommt von oldenburg.planungsbeteiligung.de, gematcht über die Plan-Nummer. */
-  beteiligung?: { title: string; schritt: string; von: string | null;
-                  bis: string | null; url: string;
+  beteiligung?: { title: string; schritt: string; valid_from: string | null;
+                  valid_until: string | null; url: string;
                   /** "laufend" oder "beendet": Abgeschlossene Verfahren
                    *  loescht das Portal der Stadt spurlos — bei uns bleiben
                    *  sie als Beleg stehen (Historie seit 13.08.). */

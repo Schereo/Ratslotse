@@ -36,7 +36,7 @@ CREATE TABLE council_anlagen (
 CREATE TABLE council_ergebnisrechnung (
   year INTEGER NOT NULL, sub_budget_no INTEGER, sub_budget_name TEXT,
   nr INTEGER NOT NULL, label TEXT NOT NULL,
-  prior_year REAL, ansatz REAL, plan REAL, plan_art TEXT,
+  prior_year REAL, budgeted REAL, plan REAL, plan_art TEXT,
   result REAL, deviation REAL, is_total INTEGER NOT NULL DEFAULT 0,
   source_label TEXT, source_url TEXT, fetched_at TEXT NOT NULL,
   PRIMARY KEY (year, sub_budget_no, nr));
@@ -77,7 +77,7 @@ def alte_db(tmp_path):
                (JA_LABEL, JA_URL))
     cn.executemany(
         "INSERT INTO council_ergebnisrechnung (year, sub_budget_no, sub_budget_name, nr, label, "
-        " prior_year, ansatz, plan, plan_art, result, deviation, is_total, "
+        " prior_year, budgeted, plan, plan_art, result, deviation, is_total, "
         " source_label, source_url, fetched_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         [(2023, None, None, 12, "Summe ordentliche Erträge", 696_600_000.0,
           664_574_528.42, 664_574_528.42, "ansatz", 732_987_197.61, 68_412_669.19, 1,
@@ -232,7 +232,7 @@ def test_geschriebene_zeile_weiss_wo_sie_steht_und_womit_sie_gedeckt_ist(tmp_pat
     """Die eigentliche Zusage: Fundstelle **und** Probe stehen an der Zahl."""
     store = CouncilStore(tmp_path / "c.sqlite")
     store.save_ergebnisrechnung(2024, [
-        {"nr": 12, "label": "Summe ordentliche Erträge", "ansatz": 693.6e6,
+        {"nr": 12, "label": "Summe ordentliche Erträge", "budgeted": 693.6e6,
          "plan": 693.6e6, "plan_art": "ansatz", "result": 799.1e6, "is_total": 1},
     ], Herkunft(
         art="ris", probe=["strukturprobe", "vorjahreskette"], document_id=280863,
@@ -285,7 +285,7 @@ def test_zwei_ebenen_desselben_dokuments_bekommen_zwei_herkuenfte(tmp_path):
     store = CouncilStore(tmp_path / "c.sqlite")
     gemeinsam = dict(art="ris", document_id=99, label="JA 2023",
                      url="https://example.org/ja.pdf")
-    posten = [{"nr": 12, "label": "Summe ordentliche Erträge", "ansatz": 1.0,
+    posten = [{"nr": 12, "label": "Summe ordentliche Erträge", "budgeted": 1.0,
                "result": 2.0, "is_total": 1}]
     store.save_ergebnisrechnung(2023, posten, Herkunft(
         probe="strukturprobe", citation="Ergebnisrechnung der Kernverwaltung",
@@ -376,7 +376,7 @@ def test_verwaiste_herkunft_wird_aufgeraeumt(tmp_path):
     bliebe sonst liegen. Aufgeräumt wird auf Ansage aus den Ingest-Skripten,
     nicht beim Öffnen der Datenbank."""
     store = CouncilStore(tmp_path / "c.sqlite")
-    posten = [{"nr": 12, "label": "Summe", "ansatz": 1.0, "result": 2.0}]
+    posten = [{"nr": 12, "label": "Summe", "budgeted": 1.0, "result": 2.0}]
     store.save_ergebnisrechnung(2023, posten, Herkunft(
         art="ris", probe=herkunft.UNBEKANNT, url=JA_URL))
     store.save_ergebnisrechnung(2023, posten, Herkunft(
@@ -405,7 +405,7 @@ def test_dokumente_je_quelle_und_jahrgang(tmp_path):
     genau das war der Fehler: Ein Beleg an einer Zahl von 2023 zeigte auf
     dieselbe Startseite wie einer von 2017."""
     store = CouncilStore(tmp_path / "c.sqlite")
-    posten = [{"nr": 12, "label": "Summe", "ansatz": 1.0, "result": 2.0}]
+    posten = [{"nr": 12, "label": "Summe", "budgeted": 1.0, "result": 2.0}]
     for year, doc in ((2023, 280861), (2024, 295294)):
         store.save_ergebnisrechnung(year, posten, Herkunft(
             art="ris", probe="strukturprobe", document_id=doc,
@@ -428,7 +428,7 @@ def test_dokumente_trennen_die_zwei_ebenen_eines_jahresabschlusses(tmp_path):
     genau die Stelle ist der Gewinn gegenüber einem nackten Link."""
     store = CouncilStore(tmp_path / "c.sqlite")
     gemeinsam = dict(art="ris", document_id=99, label="JA 2023", url=JA_URL)
-    posten = [{"nr": 12, "label": "Summe", "ansatz": 1.0, "result": 2.0}]
+    posten = [{"nr": 12, "label": "Summe", "budgeted": 1.0, "result": 2.0}]
     store.save_ergebnisrechnung(2023, posten, Herkunft(
         probe="strukturprobe", citation="Ergebnisrechnung der Kernverwaltung",
         **gemeinsam))
@@ -495,7 +495,7 @@ def test_vergessene_zieltabelle_verliert_ihre_herkunft_nicht(tmp_path):
     Beides wird jetzt am Schema entschieden, nicht an der Liste."""
     store = CouncilStore(tmp_path / "c.sqlite")
     store.save_ergebnisrechnung(2023, [
-        {"nr": 12, "label": "Summe", "ansatz": 1.0, "result": 2.0}],
+        {"nr": 12, "label": "Summe", "budgeted": 1.0, "result": 2.0}],
         Herkunft(art="ris", probe="strukturprobe", url=JA_URL,
                  citation="Ergebnisrechnung der Kernverwaltung"))
 

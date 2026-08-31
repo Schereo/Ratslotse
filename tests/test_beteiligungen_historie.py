@@ -9,8 +9,8 @@ from council.store import CouncilStore
 
 
 def _row(title, url, schritt="Auslegung", bis="2026-08-17"):
-    return {"title": title, "ort": "Ort", "schritt": schritt, "von": "2026-07-06",
-            "bis": bis, "url": url, "plan_nrs": ["bp-81"]}
+    return {"title": title, "ort": "Ort", "schritt": schritt, "valid_from": "2026-07-06",
+            "valid_until": bis, "url": url, "plan_nrs": ["bp-81"]}
 
 
 def test_verschwundene_beteiligung_wird_beendet_statt_geloescht(tmp_path):
@@ -46,7 +46,7 @@ def test_wiederauftauchen_setzt_status_zurueck(tmp_path):
         s = store.save_beteiligungen([_row("B-Plan 81", "https://x/81", bis="2026-09-30")])
         assert (s["neu"], s["aktualisiert"]) == (0, 1)     # kein zweiter Eintrag
         laufend = store.list_beteiligungen()
-        assert len(laufend) == 1 and laufend[0]["bis"] == "2026-09-30"
+        assert len(laufend) == 1 and laufend[0]["valid_until"] == "2026-09-30"
         assert len(store.list_beteiligungen(nur_laufende=False)) == 1
     finally:
         store.close()

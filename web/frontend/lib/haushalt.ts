@@ -36,14 +36,14 @@ export const PLAN_ART_LABEL: Record<PlanArt, string> = {
 };
 
 /** Ein Posten der Ergebnisrechnung aus dem Jahresabschluss (#500):
- *  `plan` = die Bezugsgröße der Abweichung, `ansatz` = der ursprüngliche
+ *  `plan` = die Bezugsgröße der Abweichung, `budgeted` = der ursprüngliche
  *  Haushaltsansatz, `result` = was es tatsächlich wurde. In den meisten
- *  Jahrgängen sind `plan` und `ansatz` derselbe Wert. */
+ *  Jahrgängen sind `plan` und `budgeted` derselbe Wert. */
 export type ErgebnisPosten = {
   year: number; nr: number; label: string;
   /** null = Kernverwaltung gesamt, sonst der Teilhaushalt (1–13). */
   sub_budget_no: number | null; sub_budget_name: string | null;
-  prior_year: number | null; ansatz: number | null;
+  prior_year: number | null; budgeted: number | null;
   plan: number | null; plan_art: PlanArt | null;
   result: number | null; deviation: number | null;
   is_total: 0 | 1;
@@ -114,7 +114,7 @@ export type FinanzZeile = {
   nr: number;
   role: FinanzRolle | null;
   label: string;
-  prior_year: number | null; ansatz: number | null;
+  prior_year: number | null; budgeted: number | null;
   plan: number | null; plan_art: PlanArt | null;
   result: number | null; deviation: number | null;
   authorization: number | null;
@@ -223,7 +223,7 @@ export type FinanzausgleichJahr = {
 /** Ein Punkt einer Kennzahl-Reihe: der Wert aus dem jüngsten Bericht, der
  *  dieses Jahr druckt.
  *
- *  `stellen` sind die **gedruckten** Nachkommastellen — 2019 stand „48%", ab
+ *  `decimals` sind die **gedruckten** Nachkommastellen — 2019 stand „48%", ab
  *  2021 „53,15%". Wer eine Reihe über diesen Wechsel zeichnet, muss ihn
  *  anschreiben können, statt aus der glatteren Zahl eine genauere zu machen.
  *
@@ -234,7 +234,7 @@ export type KennzahlPunkt = {
   indicator: string;
   year: number;
   value: number;
-  stellen: number;
+  decimals: number;
   version: number | null;
   /** Aus welchem Rechenschaftsbericht dieser Stand stammt. */
   report_year: number;
@@ -929,7 +929,7 @@ export function flussbild(
   daten: HaushaltAuswahl<"income_statement">, year: number, as_of: "plan" | "ist",
 ): FlussDaten | null {
   const zahl = (p: ErgebnisPosten | undefined) =>
-    p ? (as_of === "ist" ? p.result : p.ansatz) : null;
+    p ? (as_of === "ist" ? p.result : p.budgeted) : null;
   const rows = (daten.income_statement ?? []).filter((p) => p.year === year);
   const gesamt = rows.filter((p) => p.sub_budget_no == null);
 

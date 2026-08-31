@@ -508,7 +508,7 @@ def test_zeile_ohne_ansatz_erfindet_keinen():
     Ansatz von 6,00 € risse die Summenprobe des Ansatzes."""
     z = next(z for z in finanzberichte.parse_finanzrechnung(FR_2019, 2019)
              if z["nr"] == 12)
-    assert z["result"] == 6.0 and z["plan"] is None and z["ansatz"] is None
+    assert z["result"] == 6.0 and z["plan"] is None and z["budgeted"] is None
 
 
 def test_bestandszeilen_tragen_keinen_ansatz():

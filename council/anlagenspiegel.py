@@ -220,7 +220,7 @@ def parse_anlagenspiegel(text: str, year: int) -> list[dict]:
             w = w[:9] + [0.0] + w[9:]
         label = _label(roh)
         zeilen.append({
-            "year": year, "nr": nr, "label": label, "spalten": spalten,
+            "year": year, "nr": nr, "label": label, "n_columns": spalten,
             "cost_opening": w[0], "additions": w[1], "disposals": w[2],
             "transfers": w[3], "cost_closing": w[4],
             "depreciation_opening": w[5], "depreciation": w[6], "depreciation_releases": w[7],
@@ -256,7 +256,7 @@ def probe(row: dict) -> tuple[list[str], list[str]]:
     # anzuhängen, den es nicht hat; sie stillschweigend glattzurechnen wäre
     # schlimmer. Stattdessen wird der Rest als `umbuchung_abgeleitet`
     # ausgewiesen und über den Jahrgang geprüft (`umbuchungsprobe`).
-    if row.get("spalten") == 13:
+    if row.get("n_columns") == 13:
         pruefe(PROBE_ABSCHREIBUNG,
                (row["depreciation_opening"] + row["depreciation"] + row["depreciation_releases"]
                 + row["write_ups"] + row["depreciation_transfers"]),
@@ -331,7 +331,7 @@ def parse_sachvermoegen_gruppen(text: str, year: int) -> list[dict]:
         if len(label) < 4:
             continue
         gruppen.append({
-            "year": year, "gruppe": label,
+            "year": year, "group_name": label,
             "book_value_prior_year": _eur(g.group(2)),
             "book_value": _eur(g.group(3)),
         })

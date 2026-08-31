@@ -109,7 +109,7 @@ def main() -> int:
                 url=v.get("dokument_url") or "https://buergerinfo.oldenburg.de/vo040.asp",
                 label=f"{LABEL} — Vorlage {v['template_number']}",
                 citation=donations.FUNDSTELLE,
-                as_of=f"Sitzung vom {v['sitzung']}",
+                as_of=f"Sitzung vom {v['session_date']}",
                 probe=v["probes"],
                 probe_result=(
                     f"Beschlossen {donations.euro(v['amount'])} Euro; derselbe "

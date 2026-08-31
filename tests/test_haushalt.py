@@ -650,16 +650,16 @@ def test_parse_ergebnisrechnung_plan_und_ist():
     posten = finanzberichte.parse_ergebnisrechnung(JA_2023, 2023)
     nach_nr = {p["nr"]: p for p in posten}
     taxes = nach_nr[1]
-    assert taxes["ansatz"] == 287_275_000.0      # geplant
+    assert taxes["budgeted"] == 287_275_000.0      # geplant
     assert taxes["result"] == 341_608_473.52   # tatsächlich
     assert taxes["prior_year"] == 305_411_797.55
     # Mehrzeilige Bezeichnung („Zuwendungen und allgemeine\nUmlagen 1)")
     assert nach_nr[2]["result"] == 168_262_169.22
     # Summenzeilen als solche markiert
     assert nach_nr[12]["is_total"] == 1 and nach_nr[20]["is_total"] == 1
-    assert nach_nr[12]["ansatz"] == 664_574_528.42
+    assert nach_nr[12]["budgeted"] == 664_574_528.42
     # Die Gesamtergebnisrechnung (anderer Umfang!) darf NICHT mitgelesen werden.
-    assert taxes["ansatz"] != 888_888_888.88
+    assert taxes["budgeted"] != 888_888_888.88
 
 
 def test_ergebnisrechnung_verwirft_unplausible_zeilen():
@@ -838,7 +838,7 @@ def test_store_finanzberichte_roundtrip(tmp_path, source):
     assert store.save_ergebnisrechnung(2023, posten, q) == len(posten)  # idempotent
     assert store.ergebnisrechnung_jahre() == [2023]
     geladen = {p["nr"]: p for p in store.get_ergebnisrechnung(2023)}
-    assert geladen[1]["ansatz"] == 287_275_000.0
+    assert geladen[1]["budgeted"] == 287_275_000.0
 
     produkte = finanzberichte.parse_teilergebnishaushalt(THH_PLAN)
     assert store.save_produkte(2019, produkte, source(
@@ -985,9 +985,9 @@ def test_parse_teilergebnisrechnungen():
     nach_nr = {p["nr"]: p for p in t["posten"]}
     # Die Werte stammen aus der Teil-ERGEBNISrechnung, nicht aus der
     # Teil-Finanzrechnung, die direkt darunter dieselben Postennummern trägt.
-    assert nach_nr[12]["ansatz"] == 568_542.15
+    assert nach_nr[12]["budgeted"] == 568_542.15
     assert nach_nr[12]["result"] == 475_819.90
-    assert nach_nr[12]["ansatz"] != 222_222.22
+    assert nach_nr[12]["budgeted"] != 222_222.22
 
 
 def _summenzeilen(revenues_planned, revenues_actual, aufw_plan, aufw_ist):
@@ -1168,15 +1168,15 @@ def test_ergebnisrechnung_2017_ergebnis_steht_vor_dem_ansatz():
     """2017 dreht die Reihenfolge um: Vorjahr, Ergebnis, Ansatz, Differenz.
     Eine feste Reihenfolgeannahme vertauschte hier Plan und Ist."""
     nach_nr = {p["nr"]: p for p in finanzberichte.parse_ergebnisrechnung(JA_2017, 2017)}
-    assert nach_nr[1]["ansatz"] == 231_033_600.00        # geplant
+    assert nach_nr[1]["budgeted"] == 231_033_600.00        # geplant
     assert nach_nr[1]["result"] == 239_004_300.84      # tatsächlich
     assert nach_nr[1]["prior_year"] == 230_255_777.11
     # Die Summenzeilen heißen „12.= Summe" ohne Leerzeichen vor dem Gleich.
-    assert nach_nr[12]["ansatz"] == 509_437_536.75
+    assert nach_nr[12]["budgeted"] == 509_437_536.75
     assert nach_nr[12]["result"] == 539_271_147.21
-    assert nach_nr[20]["ansatz"] == 509_265_601.41
+    assert nach_nr[20]["budgeted"] == 509_265_601.41
     # Ohne Nachtrag und ohne Ermächtigungsspalte ist der Plan der Ansatz.
-    assert nach_nr[12]["plan"] == nach_nr[12]["ansatz"]
+    assert nach_nr[12]["plan"] == nach_nr[12]["budgeted"]
     assert nach_nr[12]["plan_art"] == "ansatz"
 
 
@@ -1188,10 +1188,10 @@ def test_ergebnisrechnung_2018_bezug_ist_die_gesamtermaechtigung():
     revenues, expenses = nach_nr[12], nach_nr[20]
     assert revenues["plan_art"] == "gesamtermaechtigung"
     assert revenues["plan"] == 556_836_784.71          # Bezug der Abweichung
-    assert revenues["ansatz"] == 548_948_733.89        # ursprünglicher Ansatz
+    assert revenues["budgeted"] == 548_948_733.89        # ursprünglicher Ansatz
     assert revenues["result"] == 591_905_846.44
     assert expenses["plan"] == 551_114_889.77
-    assert expenses["ansatz"] == 540_007_674.03
+    assert expenses["budgeted"] == 540_007_674.03
     assert expenses["result"] == 537_517_730.88
     # Die Abweichung bezieht sich auf den Plan, nicht auf den Ansatz.
     assert abs((expenses["result"] - expenses["plan"])
@@ -1206,16 +1206,16 @@ def test_ergebnisrechnung_2020_bezug_ist_ansatz_plus_nachtrag():
     nach_nr = {p["nr"]: p for p in finanzberichte.parse_ergebnisrechnung(JA_2020, 2020)}
     expenses = nach_nr[20]
     assert expenses["plan_art"] == "ansatz_nachtrag"
-    assert expenses["ansatz"] == 582_261_479.18                 # vor Nachtrag
+    assert expenses["budgeted"] == 582_261_479.18                 # vor Nachtrag
     assert expenses["plan"] == 609_469_629.18                   # + 27,2 Mio.
     assert expenses["result"] == 587_980_452.10
-    assert round(expenses["plan"] - expenses["ansatz"], 2) == 27_208_150.00
+    assert round(expenses["plan"] - expenses["budgeted"], 2) == 27_208_150.00
     # Gegen den Plan: 21,5 Mio. weniger. Gegen den Ansatz: 5,7 Mio. mehr.
     assert round(expenses["deviation"] / 1e6, 1) == -21.5
-    assert round((expenses["result"] - expenses["ansatz"]) / 1e6, 1) == 5.7
+    assert round((expenses["result"] - expenses["budgeted"]) / 1e6, 1) == 5.7
     # Zeilen ohne Nachtrag vergleichen in derselben Tabelle gegen den Ansatz.
     assert nach_nr[3]["plan_art"] == "ansatz"
-    assert nach_nr[3]["plan"] == nach_nr[3]["ansatz"] == 14_900_000.00
+    assert nach_nr[3]["plan"] == nach_nr[3]["budgeted"] == 14_900_000.00
 
 
 def test_strukturprobe_12_minus_20_ist_21():

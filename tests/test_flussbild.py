@@ -89,17 +89,17 @@ def _befuellen(store: CouncilStore, ohne_posten: int | None = None) -> None:
     wie sie entsteht, wenn eine Zeile im PDF nicht lesbar war."""
     anteil_e = ERTRAEGE_PLAN / ERTRAEGE_IST
     gesamt = [
-        {"nr": nr, "label": bez, "ansatz": round(value * anteil_e, 2),
+        {"nr": nr, "label": bez, "budgeted": round(value * anteil_e, 2),
          "result": value, "deviation": round(value - value * anteil_e, 2), "is_total": 0}
         for nr, bez, value in ERTRAGSARTEN if nr != ohne_posten
     ]
     gesamt += [
-        {"nr": 12, "label": "Summe ordentliche Erträge", "ansatz": ERTRAEGE_PLAN,
+        {"nr": 12, "label": "Summe ordentliche Erträge", "budgeted": ERTRAEGE_PLAN,
          "result": ERTRAEGE_IST, "is_total": 1},
-        {"nr": 20, "label": "Summe ordentliche Aufwendungen", "ansatz": AUFWENDUNGEN_PLAN,
+        {"nr": 20, "label": "Summe ordentliche Aufwendungen", "budgeted": AUFWENDUNGEN_PLAN,
          "result": AUFWENDUNGEN_IST, "is_total": 1},
         {"nr": 21, "label": "ordentliches Ergebnis",
-         "ansatz": ERTRAEGE_PLAN - AUFWENDUNGEN_PLAN,
+         "budgeted": ERTRAEGE_PLAN - AUFWENDUNGEN_PLAN,
          "result": ERTRAEGE_IST - AUFWENDUNGEN_IST, "is_total": 1},
     ]
     store.save_ergebnisrechnung(JAHR, gesamt, _quelle(JAHR))
@@ -108,7 +108,7 @@ def _befuellen(store: CouncilStore, ohne_posten: int | None = None) -> None:
     for nr, name, value in TEILHAUSHALTE:
         store.save_ergebnisrechnung(JAHR, [
             {"nr": 20, "label": "Summe ordentliche Aufwendungen",
-             "ansatz": round(value * anteil_a, 2), "result": value, "is_total": 1},
+             "budgeted": round(value * anteil_a, 2), "result": value, "is_total": 1},
         ], _quelle(JAHR, "summenprobe"), sub_budget_no=nr, sub_budget_name=name)
 
 
@@ -243,7 +243,7 @@ def test_ueberschuss_landet_auf_der_anderen_seite(tmp_path):
     # Plan-Stand umdrehen: Erträge über Aufwendungen.
     for p in daten["income_statement"]:
         if p["sub_budget_no"] is None and p["nr"] == 12:
-            p["ansatz"] = AUFWENDUNGEN_PLAN + 30_000_000.0
+            p["budgeted"] = AUFWENDUNGEN_PLAN + 30_000_000.0
 
     r = _fluss(tmp_path, daten, as_of="plan")
     ausgleich = [b for b in r["verwendung"]["baender"] if b["art"] == "ausgleich"]
@@ -296,11 +296,11 @@ def test_nur_jahre_mit_beiden_seiten(tmp_path):
     _befuellen(store)
     store.save_ergebnisrechnung(2019, [
         {"nr": 1, "label": "Steuern und ähnliche Abgaben",
-         "ansatz": 1.0, "result": 300_000_000.0, "is_total": 0},
+         "budgeted": 1.0, "result": 300_000_000.0, "is_total": 0},
         {"nr": 12, "label": "Summe ordentliche Erträge",
-         "ansatz": 1.0, "result": 300_000_000.0, "is_total": 1},
+         "budgeted": 1.0, "result": 300_000_000.0, "is_total": 1},
         {"nr": 20, "label": "Summe ordentliche Aufwendungen",
-         "ansatz": 1.0, "result": 310_000_000.0, "is_total": 1},
+         "budgeted": 1.0, "result": 310_000_000.0, "is_total": 1},
     ], _quelle(2019))
     r = _fluss(tmp_path, _daten(store))
     store.close()
@@ -318,7 +318,7 @@ def test_store_liefert_genau_die_felder_die_das_bild_liest(tmp_path):
     zeilen = store.get_ergebnisrechnung(JAHR)
     store.close()
 
-    for field in ("year", "nr", "label", "sub_budget_no", "sub_budget_name", "ansatz", "result"):
+    for field in ("year", "nr", "label", "sub_budget_no", "sub_budget_name", "budgeted", "result"):
         assert all(field in z for z in zeilen), field
     arten = [z for z in zeilen if z["sub_budget_no"] is None and 1 <= z["nr"] <= 11]
     bereiche = [z for z in zeilen if z["sub_budget_no"] is not None and z["nr"] == 20]

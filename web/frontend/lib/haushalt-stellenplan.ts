@@ -31,7 +31,7 @@ export type StellenZeile = {
   budget_year: number;
   part: StellenTeil;
   art: "posten" | "gruppe" | "gesamt";
-  gruppe: string | null;
+  pay_group: string | null;
   seq_no: number | null;
   label: string;
   pay_grade: string | null;
