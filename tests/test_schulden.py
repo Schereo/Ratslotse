@@ -285,7 +285,7 @@ def test_speichern_und_lesen(tmp_path, gelesen):
         assert [z["year"] for z in zeilen] == sorted(z["year"] for z in zeilen)
         assert all(z["herkunft_id"] for z in zeilen)
         # Der Vertrag des Bereichs: keine Zeile ohne Herkunft.
-        assert store.herkunft_luecken().get("council_schulden") is None
+        assert store.herkunft_luecken().get("council_debt") is None
         assert store.schulden_jahre()[-1] == 2025
 
         h = store.get_herkunft([zeilen[0]["herkunft_id"]])[0]
@@ -344,7 +344,7 @@ def test_verschiedene_probenlagen_bekommen_verschiedene_herkuenfte(tmp_path, gel
         h2025 = store.get_herkunft([zeilen[2025]["herkunft_id"]])[0]
         assert h2022["probe"] == "debt_per_capita"
         assert "debt_total_row" in h2025["probe"]
-        assert store.herkunft_luecken().get("council_schulden") is None
+        assert store.herkunft_luecken().get("council_debt") is None
     finally:
         store.close()
 

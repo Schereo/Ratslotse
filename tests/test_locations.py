@@ -281,7 +281,7 @@ def test_incremental_process_picks_up_only_new_decisions(tmp_path):
     # Beschluss wieder zum Kandidaten (im echten Lauf wertet sie das LLM aus).
     store = CouncilStore(db)
     store._conn.execute(
-        "INSERT INTO council_vorlagen "
+        "INSERT INTO council_templates "
         "(kvonr,template_number,title,raw_text,fetched_at,status) "
         "VALUES (1,'26/0001','Jahresbericht','Ort im späteren Volltext',"
         "'9999-01-01T00:00:00','ok')")

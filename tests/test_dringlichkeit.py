@@ -179,7 +179,7 @@ def test_das_pdf_wandert_in_die_bewertung(tmp_path, monkeypatch):
             location="PFL", agenda_items=[_formalie([anlage]), *zusatz]))
 
         gespeichert = store._conn.execute(
-            "SELECT raw_text FROM council_agenda_anlagen WHERE item_number = 'DZT 1'"
+            "SELECT raw_text FROM council_agenda_attachments WHERE item_number = 'DZT 1'"
         ).fetchone()[0]
         assert "Flugplatzbäke" in gespeichert
 

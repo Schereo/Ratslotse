@@ -34,7 +34,7 @@ def test_gespraech_lebenslauf(tmp_path):
     gid = store.qa_gespraech_start(uid, "Wie ist der Stand bei der Cäcilienbrücke?")
     assert store.qa_turn_speichern(gid, uid, "Wie ist der Stand?", "Gut [1].", '{"cited": [1]}')
     assert store.qa_turn_speichern(gid, uid, "Und was kostet das?", "Viel.", None)
-    liste = store.qa_gespraeche(uid)
+    liste = store.qa_conversations(uid)
     assert len(liste) == 1 and liste[0]["n_turns"] == 2
     assert liste[0]["title"].startswith("Wie ist der Stand")
     g = store.qa_gespraech(gid, uid)
@@ -62,9 +62,9 @@ def test_loeschen_raeumt_turns_mit_ab(tmp_path):
     store.qa_turn_speichern(g1, uid, "f1", "a1", None)
     store.qa_turn_speichern(g2, uid, "f2", "a2", None)
     assert store.qa_gespraech_loeschen(g1, uid)
-    assert store._conn.execute("SELECT COUNT(*) FROM qa_gespraech_turns").fetchone()[0] == 1
+    assert store._conn.execute("SELECT COUNT(*) FROM qa_conversation_turns").fetchone()[0] == 1
     assert store.qa_gespraeche_loeschen(uid) == 1   # räumt g2
-    assert store._conn.execute("SELECT COUNT(*) FROM qa_gespraech_turns").fetchone()[0] == 0
+    assert store._conn.execute("SELECT COUNT(*) FROM qa_conversation_turns").fetchone()[0] == 0
     store.close()
 
 
@@ -74,8 +74,8 @@ def test_konto_loeschung_nimmt_gespraeche_mit(tmp_path):
     gid = store.qa_gespraech_start(uid, "Bleibt nicht")
     store.qa_turn_speichern(gid, uid, "f", "a", None)
     store.delete_web_user(uid)
-    assert store._conn.execute("SELECT COUNT(*) FROM qa_gespraeche").fetchone()[0] == 0
-    assert store._conn.execute("SELECT COUNT(*) FROM qa_gespraech_turns").fetchone()[0] == 0
+    assert store._conn.execute("SELECT COUNT(*) FROM qa_conversations").fetchone()[0] == 0
+    assert store._conn.execute("SELECT COUNT(*) FROM qa_conversation_turns").fetchone()[0] == 0
     store.close()
 
 
@@ -193,13 +193,13 @@ def test_liste_blaettert_statt_bei_50_zu_enden(tmp_path):
     ids = [store.qa_gespraech_start(uid, f"Gespräch {i:03d}") for i in range(120)]
 
     assert store.qa_gespraeche_anzahl(uid) == 120
-    erste = store.qa_gespraeche(uid, limit=30)
+    erste = store.qa_conversations(uid, limit=30)
     assert len(erste) == 30
     assert erste[0]["title"] == "Gespräch 119"      # neueste zuerst
 
     gesammelt, offset = [], 0
     while True:
-        page = store.qa_gespraeche(uid, limit=30, offset=offset)
+        page = store.qa_conversations(uid, limit=30, offset=offset)
         if not page:
             break
         gesammelt += page
@@ -207,7 +207,7 @@ def test_liste_blaettert_statt_bei_50_zu_enden(tmp_path):
     assert [g["id"] for g in gesammelt] == list(reversed(ids))   # lückenlos
 
     # Die Konto-Karte will nur die Zahl — limit=0 liefert keine Zeilen.
-    assert store.qa_gespraeche(uid, limit=0) == []
+    assert store.qa_conversations(uid, limit=0) == []
     store.close()
 
 
@@ -219,7 +219,7 @@ def test_gleiche_sekunde_blaettert_ohne_dubletten(tmp_path):
     uid = _user(store)
     ids = {store.qa_gespraech_start(uid, f"Gleichzeitig {i}") for i in range(20)}
     gesehen = [g["id"] for off in (0, 5, 10, 15)
-               for g in store.qa_gespraeche(uid, limit=5, offset=off)]
+               for g in store.qa_conversations(uid, limit=5, offset=off)]
     assert len(gesehen) == len(set(gesehen)) == 20 and set(gesehen) == ids
     store.close()
 
@@ -233,7 +233,7 @@ def test_suche_findet_auch_ausserhalb_der_ersten_seite(tmp_path):
     for i in range(60):
         store.qa_gespraech_start(uid, f"Anderes Thema {i}")
 
-    treffer = store.qa_gespraeche(uid, suche="cäcilien")
+    treffer = store.qa_conversations(uid, suche="cäcilien")
     assert [g["title"] for g in treffer] == ["Cäcilienbrücke: Stand der Sanierung"]
     assert store.qa_gespraeche_anzahl(uid, suche="cäcilien") == 1
     # Groß/klein egal — auch am Umlaut, den SQLites lower() nicht kennt.

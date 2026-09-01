@@ -84,7 +84,7 @@ Dokument und lassen sich gegen nichts rechnen. Sie tragen deshalb
 Der Abgleich mit dem Gesamtabschluss — nachgerechnet
 ------------------------------------------------------
 Dieselben Gesellschaften stehen auch im konsolidierten Gesamtabschluss
-(``council_konzern_traeger``), dort mit ihren *ordentlichen Erträgen* und
+(``council_group_entities``), dort mit ihren *ordentlichen Erträgen* und
 *Aufwendungen* in Tausend Euro. Deren Differenz ist der Beitrag der
 Gesellschaft zum Konzernergebnis — und damit die einzige Zahl beider
 Dokumente, die sich überhaupt vergleichen lässt.

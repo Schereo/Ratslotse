@@ -46,7 +46,7 @@ def _punkt(store, ksinr, nummer, title, kvonr=None):
         "VALUES (?, ?, ?, 1, ?)", (ksinr, nummer, title, kvonr))
     if kvonr:
         store._conn.execute(
-            "INSERT OR REPLACE INTO council_vorlagen (kvonr, template_number, title, raw_text, "
+            "INSERT OR REPLACE INTO council_templates (kvonr, template_number, title, raw_text, "
             "fetched_at) VALUES (?, '26/0592', ?, 'Sachverhalt: 8,6 Hektar.', 'x')",
             (kvonr, title))
     store._conn.commit()

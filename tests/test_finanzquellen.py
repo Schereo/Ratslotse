@@ -167,7 +167,7 @@ def anlage(store: CouncilStore, document_id: int, label: str,
            text: str, n_pages: int = 300) -> None:
     with store._conn:  # noqa: SLF001
         store._conn.execute(  # noqa: SLF001
-            "INSERT OR REPLACE INTO council_anlagen "
+            "INSERT OR REPLACE INTO council_attachments "
             "(document_id, kvonr, label, url, raw_text, n_pages, fetched_at, status) "
             "VALUES (?,?,?,?,?,?,?,?)",
             (document_id, 1, label, f"https://example.org/{document_id}.pdf",
@@ -198,7 +198,7 @@ def thh_bestand(tmp_path):
                teilhaushalt_plan(nr, name, produkte, 2027))
     with store._conn:  # noqa: SLF001
         store._conn.execute(  # noqa: SLF001
-            "UPDATE council_anlagen SET raw_text = '', n_pages = 0, status = 'listed' "
+            "UPDATE council_attachments SET raw_text = '', n_pages = 0, status = 'listed' "
             "WHERE document_id IN (502, 503)")
     return store
 
@@ -206,7 +206,7 @@ def thh_bestand(tmp_path):
 def produkt_einheiten(store: CouncilStore) -> list[tuple]:
     """(Jahr, Teilhaushalt) — die Einheiten, in denen die Produkte hereinkommen."""
     return sorted(tuple(r) for r in store._conn.execute(  # noqa: SLF001
-        "SELECT DISTINCT year, sub_budget_no FROM council_produkte"))
+        "SELECT DISTINCT year, sub_budget_no FROM council_products"))
 
 
 def inhalt(store: CouncilStore) -> dict:
@@ -215,9 +215,9 @@ def inhalt(store: CouncilStore) -> dict:
     nicht: Ein Lauf, der jede Zeile identisch neu schreibt, sähe daran gleich
     aus."""
     aus = {}
-    for tabelle in ("council_ergebnisrechnung", "council_abweichungsgruende",
-                    "council_produkte", "council_pruefberichte",
-                    "council_pruefbericht_quellen"):
+    for tabelle in ("council_income_statement", "council_variance_reasons",
+                    "council_products", "council_audit_reports",
+                    "council_audit_report_sources"):
         rows = store._conn.execute(f"SELECT * FROM {tabelle}").fetchall()  # noqa: SLF001
         aus[tabelle] = sorted(
             repr({k: r[k] for k in r.keys() if k != "fetched_at"}) for r in rows)
@@ -302,7 +302,7 @@ def test_nachgereichter_volltext_wird_beim_naechsten_lauf_gelesen(thh_bestand):
         name, produkte = THH_PLAENE[nr]
         with thh_bestand._conn:  # noqa: SLF001
             thh_bestand._conn.execute(  # noqa: SLF001
-                "UPDATE council_anlagen SET raw_text = ?, n_pages = 300, status = 'ok' "
+                "UPDATE council_attachments SET raw_text = ?, n_pages = 300, status = 'ok' "
                 "WHERE document_id = ?", (teilhaushalt_plan(nr, name, produkte, 2027),
                                           document_id))
 
@@ -333,7 +333,7 @@ def test_cron_zieht_den_nachgereichten_teilhaushalt_nach(thh_bestand, tmp_path):
         name, produkte = THH_PLAENE[nr]
         with thh_bestand._conn:  # noqa: SLF001
             thh_bestand._conn.execute(  # noqa: SLF001
-                "UPDATE council_anlagen SET raw_text = ?, n_pages = 300, status = 'ok' "
+                "UPDATE council_attachments SET raw_text = ?, n_pages = 300, status = 'ok' "
                 "WHERE document_id = ?", (teilhaushalt_plan(nr, name, produkte, 2027),
                                           document_id))
     thh_bestand.close()
@@ -361,9 +361,9 @@ def test_fehlende_teilhaushalts_ebene_wird_nachgezogen(balance, tmp_path):
     # Der Zustand nach einem Lauf, in dem nur die Teilhaushalte scheiterten.
     with balance._conn:  # noqa: SLF001
         balance._conn.execute(  # noqa: SLF001
-            "DELETE FROM council_ergebnisrechnung WHERE year = 2024 AND sub_budget_no IS NOT NULL")
+            "DELETE FROM council_income_statement WHERE year = 2024 AND sub_budget_no IS NOT NULL")
         balance._conn.execute(  # noqa: SLF001
-            "DELETE FROM council_abweichungsgruende WHERE year = 2024")
+            "DELETE FROM council_variance_reasons WHERE year = 2024")
     assert 2024 in balance.ergebnisrechnung_jahre(), "die Gesamtrechnung steht noch"
     assert 2024 not in balance.plan_actual_years()
     balance.close()
@@ -419,11 +419,11 @@ def test_zweites_dokument_zum_selben_teilhaushalt_wird_uebersprungen(tmp_path):
         # Es gilt das ERSTE Dokument — die Anlage der Haushaltsvorlage selbst,
         # nicht die Zweitveröffentlichung unter einem Tagesordnungspunkt.
         quellen = {r[0] for r in store._conn.execute(  # noqa: SLF001
-            "SELECT DISTINCT source_label FROM council_produkte")}
+            "SELECT DISTINCT source_label FROM council_products")}
         assert quellen == {"007 THH01"}
         dokumente = {r[0] for r in store._conn.execute(  # noqa: SLF001
-            "SELECT DISTINCT h.document_id FROM council_produkte p "
-            "JOIN council_herkunft h ON h.id = p.herkunft_id")}
+            "SELECT DISTINCT h.document_id FROM council_products p "
+            "JOIN council_provenance h ON h.id = p.herkunft_id")}
         assert dokumente == {600}
 
         # Und keine Herkunft, auf die niemand zeigt: Genau daran ist der
@@ -456,7 +456,7 @@ def test_abweichende_zahlen_im_zweiten_dokument_werden_gemeldet(tmp_path):
 
         # Gemeldet, nicht überschrieben: Es gilt weiter das erste Dokument.
         revenues = sorted(r[0] for r in store._conn.execute(  # noqa: SLF001
-            "SELECT revenues FROM council_produkte"))
+            "SELECT revenues FROM council_products"))
         assert revenues == [1_000.0, 4_000.0]
     finally:
         store.close()
@@ -484,7 +484,7 @@ def test_holt_den_fehlenden_jahrgang_nach(balance, tmp_path):
 
     with balance._conn:  # noqa: SLF001
         balance._conn.execute(  # noqa: SLF001
-            "DELETE FROM council_ergebnisrechnung WHERE year = 2024")
+            "DELETE FROM council_income_statement WHERE year = 2024")
     assert balance.ergebnisrechnung_jahre() == [2023, 2025]
     balance.close()
 
@@ -583,7 +583,7 @@ def test_job_laesst_bestand_stehen_wenn_der_parser_nichts_mehr_liefert(balance, 
     # Alle drei Dokumente unleserlich machen — der Bestand bleibt.
     with balance._conn:  # noqa: SLF001
         balance._conn.execute(  # noqa: SLF001
-            "UPDATE council_anlagen SET raw_text = 'Layout geändert'")
+            "UPDATE council_attachments SET raw_text = 'Layout geändert'")
 
     p2 = finanzquellen.Protokoll(still=True)
     finanzquellen.lies_jahresabschluesse(balance, p2)
@@ -725,7 +725,7 @@ def test_hinweis_meldet_liegengebliebene_einheiten(thh_bestand, tmp_path, monkey
     # THH03 bekommt Text, aber sein Inhalt ist unlesbar geworden.
     with thh_bestand._conn:  # noqa: SLF001
         thh_bestand._conn.execute(  # noqa: SLF001
-            "UPDATE council_anlagen SET raw_text = ?, n_pages = 300, status = 'ok' "
+            "UPDATE council_attachments SET raw_text = ?, n_pages = 300, status = 'ok' "
             "WHERE document_id = 502",
             ("Teilergebnishaushalt THH03: Jugend\nLayout geändert\nAnsatz 2027\n",))
     thh_bestand.close()
@@ -753,7 +753,7 @@ def test_zeilen_ohne_herkunft_loesen_eine_mail_aus(thh_bestand, tmp_path, monkey
     fehlt. Auf einer Seite, deren Anspruch „jede Zahl sagt, woher sie stammt"
     ist, fällt das erst auf, wenn jemand auf den Chip tippt.
 
-    Geprüft wird an `council_steuern`, und zwar mit Absicht: Bei den neun
+    Geprüft wird an `council_taxes`, und zwar mit Absicht: Bei den neun
     Schichten, die der Job selbst einliest, **heilt** er eine solche Lücke
     beim nächsten Lauf (die Einheit gilt als offen und wird neu geschrieben,
     mitsamt frischer Herkunft). Liegen bleibt sie genau dort, wo niemand
@@ -770,7 +770,7 @@ def test_zeilen_ohne_herkunft_loesen_eine_mail_aus(thh_bestand, tmp_path, monkey
     # nicht trägt — so sieht ein Schreibweg aus, der `herkunft_id` vergisst.
     with thh_bestand._conn:  # noqa: SLF001
         thh_bestand._conn.execute(  # noqa: SLF001
-            "INSERT INTO council_steuern (year, kind, amount, fetched_at, herkunft_id) "
+            "INSERT INTO council_taxes (year, kind, amount, fetched_at, herkunft_id) "
             "VALUES (2025, 'Gewerbesteuer (-umlage)', 222117000.0, '2026-08-20', NULL)")
     thh_bestand.close()
 
@@ -783,10 +783,10 @@ def test_zeilen_ohne_herkunft_loesen_eine_mail_aus(thh_bestand, tmp_path, monkey
     # Die ZAHL gehört in den Wiederholungs-Schlüssel, nicht nur der Name:
     # Sonst hieße „schon gemeldet" auch dann Schweigen, wenn aus einer Zeile
     # ohne Beleg dreihundert geworden sind.
-    assert "herkunft:council_steuern:1" in bericht["ausbleibend"]
+    assert "herkunft:council_taxes:1" in bericht["ausbleibend"]
     assert len(gemeldet) == 1, "der Befund muss eine Mail auslösen, nicht nur das Log"
     assert "nicht sagen, woher sie kommen" in gemeldet[0]
-    assert "council_steuern" in gemeldet[0]
+    assert "council_taxes" in gemeldet[0]
 
 
 def test_hinweis_ohne_herkunftsluecke_schweigt_darueber(balance):
@@ -795,7 +795,7 @@ def test_hinweis_ohne_herkunftsluecke_schweigt_darueber(balance):
     as_of = finanzquellen.datenstand(balance, date(2027, 11, 1))
     ohne = check_finanzdaten._hinweis_text(as_of, {}, {}, date(2027, 11, 1))
     mit = check_finanzdaten._hinweis_text(as_of, {}, {}, date(2027, 11, 1),
-                                          {"council_steuern": 7})
+                                          {"council_taxes": 7})
     balance.close()
     assert "woher sie kommen" not in ohne
     assert "woher sie kommen" in mit and "7 Zeile(n)" in mit
@@ -841,7 +841,7 @@ def test_luecken_im_bestand_bleiben_sichtbar(balance):
     finanzquellen.lies_jahresabschluesse(balance, p)
     with balance._conn:  # noqa: SLF001
         balance._conn.execute(  # noqa: SLF001
-            "DELETE FROM council_ergebnisrechnung WHERE year = 2024")
+            "DELETE FROM council_income_statement WHERE year = 2024")
 
     as_of = {z["key"]: z for z in finanzquellen.datenstand(balance, date(2026, 8, 16))}
     assert as_of["jahresabschluss"]["luecken"] == [2024]
@@ -947,7 +947,7 @@ def test_die_beiden_reihen_bleiben_zwei_zeilen(lsn_bestand):
     hinkt ihm nach. Genau diese Verwechslung ist der Grund, warum der
     Städtevergleich überhaupt eine eigene Tabelle hat."""
     as_of = finanzquellen.datenstand(lsn_bestand, date(2026, 8, 16))
-    zeilen = [z for z in as_of if z["tabelle"] == "council_staedtevergleich"]
+    zeilen = [z for z in as_of if z["tabelle"] == "council_city_comparison"]
     assert [z["key"] for z in zeilen] == ["lsn_steuerkraft", "lsn_realsteuern"]
     # Keine der beiden Zeilen behauptet eine Lücke, die es nicht gibt.
     assert all(z["luecken"] == [] for z in zeilen)
@@ -1107,12 +1107,12 @@ def test_jede_erkennung_findet_ein_dokument_das_zu_ihr_passt(tmp_path):
             if not muster:
                 continue          # Quellen, die am Text erkennen, prüft dieser Test nicht
             with store._conn:
-                store._conn.execute("DELETE FROM council_anlagen")
+                store._conn.execute("DELETE FROM council_attachments")
                 for i, m in enumerate(muster):
                     # Aus dem LIKE-Muster ein Label bauen, das genau IHM genügt.
                     label = m.replace("%", "")
                     store._conn.execute(
-                        "INSERT INTO council_anlagen (document_id, kvonr, label, url, "
+                        "INSERT INTO council_attachments (document_id, kvonr, label, url, "
                         "raw_text, n_pages, fetched_at, status) "
                         "VALUES (?, 1, ?, 'https://x', 'x', 999, datetime('now'), 'ok')",
                         (1000 + i, label))

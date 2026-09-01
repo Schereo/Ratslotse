@@ -693,5 +693,5 @@ def test_jede_probe_der_bilanz_ist_erklaert():
     vergeben = {"balance_sheet_equality", "balance_sheet_total_printed", "provisions_breakdown",
                 "balance_sheet_prior_year_chain", "balance_sheet_cash_check", "balance_sheet_notes"}
     assert vergeben <= set(herkunft.PROBEN)
-    for tabelle in ("council_bilanz", "council_bilanz_erlaeuterungen"):
+    for tabelle in ("council_balance_sheet", "council_balance_sheet_notes"):
         assert tabelle in herkunft.HERKUNFT_TABELLEN

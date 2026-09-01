@@ -26,9 +26,9 @@ from council.locations import (  # noqa: E402
 
 def _vorlage_text(conn: sqlite3.Connection, row: sqlite3.Row) -> str:
     lookups = [
-        ("SELECT raw_text FROM council_vorlagen WHERE kvonr=? AND status='ok' LIMIT 1",
+        ("SELECT raw_text FROM council_templates WHERE kvonr=? AND status='ok' LIMIT 1",
          (row["kvonr"],)),
-        ("SELECT raw_text FROM council_vorlagen WHERE template_number=? AND status='ok' "
+        ("SELECT raw_text FROM council_templates WHERE template_number=? AND status='ok' "
          "ORDER BY kvonr DESC LIMIT 1", (row["template_number"],)),
     ]
     for sql, args in lookups:
@@ -39,7 +39,7 @@ def _vorlage_text(conn: sqlite3.Connection, row: sqlite3.Row) -> str:
             return str(hit[0])
     if row["template_number"]:
         hit = conn.execute(
-            "SELECT raw_text FROM council_vorlagen WHERE status='ok' "
+            "SELECT raw_text FROM council_templates WHERE status='ok' "
             "AND ? LIKE template_number || '/%' ORDER BY kvonr DESC LIMIT 1",
             (row["template_number"],),
         ).fetchone()

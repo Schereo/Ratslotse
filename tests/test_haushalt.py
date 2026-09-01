@@ -898,13 +898,13 @@ def test_produkt_steckbrief_migration(tmp_path):
     pfad = tmp_path / "alt.sqlite"
     conn = sqlite3.connect(pfad)
     conn.execute(
-        "CREATE TABLE council_produkte ("
+        "CREATE TABLE council_products ("
         "year INTEGER NOT NULL, product_no TEXT NOT NULL, product_name TEXT NOT NULL, "
         "sub_budget_no INTEGER, sub_budget_name TEXT, office TEXT, "
         "revenues REAL, expenses REAL, result REAL, "
         "source_label TEXT, source_url TEXT, fetched_at TEXT NOT NULL, "
         "PRIMARY KEY (year, product_no))")
-    conn.execute("INSERT INTO council_produkte VALUES "
+    conn.execute("INSERT INTO council_products VALUES "
                  "(2019,'P10.111023','Archivierung',6,'Kultur',NULL,1,2,-1,NULL,NULL,'x')")
     conn.commit()
     conn.close()
@@ -1485,9 +1485,9 @@ def test_abschlussfragen_tragen_stabile_schluessel_ohne_jahr(tmp_path):
 
     store = CouncilStore(str(tmp_path / "c.sqlite"))
     c = store._conn                                       # noqa: SLF001
-    c.execute("INSERT INTO council_schulden (year, total, per_capita, fetched_at) "
+    c.execute("INSERT INTO council_debt (year, total, per_capita, fetched_at) "
               "VALUES (2024, 294851000, 1673, '2026-08-18')")
-    c.execute("INSERT INTO council_bilanz (year, role, page, level, label, value, "
+    c.execute("INSERT INTO council_balance_sheet (year, role, page, level, label, value, "
               " fetched_at) VALUES (2024, 'financial_liabilities', 'passiva', 2, 'Geldschulden', "
               " 43690972, '2026-08-18')")
     c.execute("INSERT INTO council_buergschaften (year, balance, exact, out_next_year, "
@@ -1500,7 +1500,7 @@ def test_abschlussfragen_tragen_stabile_schluessel_ohne_jahr(tmp_path):
     assert not any("Wie hoch sind die Schulden" in q["question"] for q in fragen)
     assert any("gerade" in q["question"] for q in fragen)
 
-    c.execute("INSERT INTO council_integrierte_schulden (year, ars, total, probes, "
+    c.execute("INSERT INTO council_integrated_debt (year, ars, total, probes, "
               " fetched_at) VALUES (2024, '03403000', 740300000, '', '2026-08-18')")
     c.commit()
     fragen = haushalt.build_abschluss_questions(store)
@@ -1558,7 +1558,7 @@ def test_buergschafts_vorlagen_je_vorlage_eine_zeile(tmp_path):
             (2, "25/0826", "Verlängerung Ausfallbürgschaft der Stadt Oldenburg über "
                            "300.000 Euro für die Volkshochschule"),
             (3, "24/0999", "Neubau einer Schule")):
-        c.execute("INSERT INTO council_vorlagen (kvonr, template_number, title, fetched_at) "
+        c.execute("INSERT INTO council_templates (kvonr, template_number, title, fetched_at) "
                   "VALUES (?, ?, ?, '2026-08-18')", (kvonr, nr, title))
     for ksinr, date in ((10, "2023-06-01"), (11, "2025-12-03"), (12, "2025-12-15")):
         c.execute("INSERT INTO council_sessions (ksinr, session_date, session_time, "
@@ -1589,19 +1589,19 @@ def test_haushalts_anschluss_nur_wo_er_belegt_ist(tmp_path):
     Der pauschale Verweis „wie sich das im Gesamthaushalt ausnimmt" steht an
     jedem Beschluss mit Finanz-Feld und ist deshalb für keinen eine Auskunft.
     Diese Karte hängt an einer echten Verknüpfung: entweder zeigt
-    ``council_nachbewilligungen.decision_id`` auf genau diesen Beschluss,
+    ``council_supplementary_approvals.decision_id`` auf genau diesen Beschluss,
     oder seine Vorlage steht im Bürgschafts-Zeitstrahl.
     """
     from council.store import CouncilStore
 
     store = CouncilStore(str(tmp_path / "c.sqlite"))
     c = store._conn                                       # noqa: SLF001
-    c.execute("INSERT INTO council_vorlagen (kvonr, template_number, title, fetched_at) "
+    c.execute("INSERT INTO council_templates (kvonr, template_number, title, fetched_at) "
               "VALUES (1, '25/0826', 'Verlängerung Ausfallbürgschaft der Stadt "
               "Oldenburg für die Volkshochschule', '2026-08-18')")
-    c.execute("INSERT INTO council_vorlagen (kvonr, template_number, title, fetched_at) "
+    c.execute("INSERT INTO council_templates (kvonr, template_number, title, fetched_at) "
               "VALUES (2, '24/0999', 'Neubau einer Schule', '2026-08-18')")
-    c.execute("INSERT INTO council_nachbewilligungen (template_number, title, kind, category, "
+    c.execute("INSERT INTO council_supplementary_approvals (template_number, title, kind, category, "
               " decided, in_plenary, council_decision, fulltext_probe, amount, year, "
               " decision_id, committees, fetched_at) "
               "VALUES ('18/0187', 'Außerplanmäßige Bewilligung', 'ausserplanmaessig', "

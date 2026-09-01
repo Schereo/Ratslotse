@@ -421,7 +421,7 @@ def test_die_proben_sind_bekannte_namen():
     und der Erklärsatz landet über die API im Beleg-Chip."""
     for name in ("trade_tax_sum_check", "trade_tax_sheet_check", "trade_tax_assessment_rate_check"):
         assert name in herkunft.PROBEN
-    assert "council_gewerbesteuerstatistik" in herkunft.HERKUNFT_TABELLEN
+    assert "council_trade_tax_statistics" in herkunft.HERKUNFT_TABELLEN
 
 
 def test_speichern_und_lesen(tmp_path, bericht2021):
@@ -433,7 +433,7 @@ def test_speichern_und_lesen(tmp_path, bericht2021):
         assert [z["year"] for z in gelesen] == [2021]
         assert gelesen[0]["cases_positive"] == 3642
         assert all(z["herkunft_id"] for z in gelesen)
-        assert store.herkunft_luecken().get("council_gewerbesteuerstatistik") is None
+        assert store.herkunft_luecken().get("council_trade_tax_statistics") is None
         h = store.get_herkunft([gelesen[0]["herkunft_id"]])[0]
         assert h["kind"] == "lsn"
         assert len(h["probes"]) == 3

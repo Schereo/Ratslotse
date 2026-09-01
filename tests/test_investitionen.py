@@ -297,7 +297,7 @@ def test_probe_ist_mit_erklaersatz_registriert():
     """Ohne Eintrag in ``herkunft.PROBEN`` ließe sich die Herkunft gar nicht
     bauen — und im Beleg-Chip stünde nichts."""
     assert "investments_total_row" in herkunft.PROBEN
-    assert "council_investitionen" in herkunft.HERKUNFT_TABELLEN
+    assert "council_investments" in herkunft.HERKUNFT_TABELLEN
     with pytest.raises(ValueError):
         herkunft.Herkunft(kind="opendata", probe="gibtsnicht",
                           url="https://example.org/x.csv")
@@ -311,7 +311,7 @@ def test_quelle_steht_im_datenstand(tmp_path):
 
     assert "investitionen" in finanzquellen.REIHENFOLGE
     q = finanzquellen.QUELLEN["investitionen"]
-    assert q.tabelle == "council_investitionen"
+    assert q.tabelle == "council_investments"
     assert q.balance(store) == {(2025,)}
     # Kein Selbstlauf: Der Cron lädt nichts herunter, er meldet nur.
     assert q.automatisch is False

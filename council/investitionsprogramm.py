@@ -9,7 +9,7 @@ die **einzelne Maßnahme**, mit Bezeichnung und Gesamtinvestitionssumme.
 Die Quelle
 ----------
 **Anlage 004 des Haushaltsplans**, seit acht Jahrgängen (2019–2026) im
-Anlagenbestand (``council_anlagen``, mit Volltext). Ein PDF von 76–84 Seiten je
+Anlagenbestand (``council_attachments``, mit Volltext). Ein PDF von 76–84 Seiten je
 Jahrgang, aufgebaut wie folgt::
 
     Gesamtinvestitionsprogramm
@@ -46,7 +46,7 @@ und je Planjahr einen Ansatz samt Verpflichtungsermächtigung. Übernommen wird
 Grund ist der Textextrakt: Leere Zellen fallen darin ersatzlos weg. Eine Zeile
 mit sechs Zahlen kann die Spalten 1, 2, 3, 4, 6, 8 meinen oder 1, 2, 5, 7, 8, 9
 — welche, steht nirgends. Die Spalten wären nur über die x-Koordinaten des PDFs
-zu retten, und die trägt ``council_anlagen.raw_text`` nicht. Die erste Zahl
+zu retten, und die trägt ``council_attachments.raw_text`` nicht. Die erste Zahl
 einer Zeile ist dagegen immer die Gesamtinvestitionssumme, weil sie die linke
 Spalte ist und links nichts wegfallen kann. Eine Spalte, die trägt, ist mehr
 wert als fünf, die an kollabierten Leerzellen hängen — die Jahresaufteilung
@@ -85,7 +85,7 @@ Was diese Zahlen **nicht** hergeben
    selbst: Ihre Gesamtsumme weicht von der Zeile 31 „Saldo aus
    Investitionstätigkeit" des Gesamtfinanzhaushaltes ab, weil zu aktivierende
    Eigenleistungen zwar ins Investitionsprogramm gehören, aber nicht
-   zahlungswirksam sind. Ein Abgleich mit ``council_investitionen``
+   zahlungswirksam sind. Ein Abgleich mit ``council_investments``
    (Datensatz 1101, Finanzhaushalt) ist deshalb **keine** Probe, sondern ein
    Unterschied, den beide Seiten korrekt so ausweisen.
 """

@@ -4,11 +4,11 @@
 Zwei CSVs von opendata.oldenburg.de (Lizenz dl-de/by-2-0), beide jährlich
 fortgeschrieben — Grundlage des Haushalts-Bereichs:
 
-- **Steuereinnahmen seit 1998** (Ist, je Steuerart) → ``council_steuern``.
+- **Steuereinnahmen seit 1998** (Ist, je Steuerart) → ``council_taxes``.
   Für Steuer-Steckbriefe und Zeitreihen: Grundsteuer A+B, Gewerbesteuer
   (nach Umlage), Einkommensteuer-/Umsatzsteueranteil, Vergnügungssteuer …
 - **Steuerkraftmesszahlen + Schlüsselzuweisungen seit 1993** →
-  ``council_steuerkraft``. Zeigt die NFAG-Mechanik (mehr eigene Steuerkraft
+  ``council_tax_capacity``. Zeigt die NFAG-Mechanik (mehr eigene Steuerkraft
   → weniger Landeszuweisungen) — Pflichtkontext für jede Hebesatz-Simulation.
   Einzige Stelle im Bereich, an der wir eine Quelle **korrigieren** statt sie
   nur zu übernehmen: Der Datensatz beschriftet seine Jahrgänge um ein Jahr zu
@@ -19,7 +19,7 @@ fortgeschrieben — Grundlage des Haushalts-Bereichs:
   eigener Lauf (``scripts/ingest_ausgabenreihe.py``): Sie braucht das
   Jahrbuch-PDF und die ältere CSV desselben Datensatzes dazu, weil erst die
   zweite Quelle die Proben liefert, an denen der Wert hängt.
-- **Investitionen des Finanzhaushalts 2022–2025** → ``council_investitionen``.
+- **Investitionen des Finanzhaushalts 2022–2025** → ``council_investments``.
   Was die Stadt bauen und kaufen will, je Teilhaushalt. Die einzige dieser
   Dateien mit einer **Rechenprobe im Dokument selbst**: Die Teilhaushalte
   ergeben die Summenzeile, die dieselbe Datei ausweist. Was sie reißt, wird
@@ -107,7 +107,7 @@ def main() -> int:
                 citation="Datensatz 1102, Einwohner-Spalte (Stichtag 31.12. "
                            "des Vorjahres) — die Aufwendungs-Spalte derselben "
                            "Datei ist eine eigene Schicht mit eigenen Proben "
-                           "(council_ausgabenreihe)",
+                           "(council_expense_series)",
                 as_of=_spanne(ew)))
             print(f"Einwohnerzahlen: {n} Jahre ({_spanne(ew)}).")
         else:
