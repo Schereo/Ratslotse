@@ -913,7 +913,7 @@ struct PublicPersonProfile: Codable, Sendable {
 
     var roleLabel: String {
         if type == "administration" { return administrationRole ?? "Stadtverwaltung" }
-        return switch art {
+        return switch kind {
         case "council": "Ratsmitglied"
         case "advisory": "Beratendes Mitglied"
         case "administration": "Stadtverwaltung"
