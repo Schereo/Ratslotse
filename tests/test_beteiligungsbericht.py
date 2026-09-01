@@ -353,10 +353,10 @@ def test_komplementaer_gmbh_wird_nicht_mit_der_kg_verwechselt():
 
 def test_abschnitte_werden_der_reihe_nach_getrennt():
     a = bb.abschnitte(ABSCHNITTE_EGH + ABSCHLUSS_EGH)
-    assert set(a) == {"gegenstand", "beteiligungsverhaeltnisse", "aufsichtsorgane",
-                      "beteiligungen", "haushalt"}
-    assert "gebäudewirtschaftlichen" in a["gegenstand"]
-    assert "Eigenkapitalverzinsung" in a["haushalt"]
+    assert set(a) == {"business_purpose", "ownership_structure", "supervisory_bodies",
+                      "own_shareholdings", "budget_impact"}
+    assert "gebäudewirtschaftlichen" in a["business_purpose"]
+    assert "Eigenkapitalverzinsung" in a["budget_impact"]
     # Abschnitt 5 wird nicht gespeichert (der Lagebericht der Gesellschaft).
     assert "Vorbemerkungen" not in a.get("beteiligungen", "")
 
@@ -368,7 +368,7 @@ def test_kontaktangaben_werden_nicht_gespeichert():
     Das Repo hält fremde Adressen ausdrücklich draußen
     (``scripts/lint_adressen.py``); die Fixture trägt deshalb example.org."""
     a = bb.abschnitte(ABSCHNITTE_EGH)
-    organe = a["aufsichtsorgane"]
+    organe = a["supervisory_bodies"]
     assert "Drügemöller" in organe
     assert "@" not in organe
     assert "Telefon" not in organe
@@ -383,7 +383,7 @@ def test_lies_ganzer_bericht_mit_proben():
     assert [g.key for g in e["gesellschaften"]] == ["egh", "gsg"]
     egh = e["gesellschaften"][0]
     assert egh.indicators["bilanzsumme"][2024] == 580193968.91
-    assert egh.abschnitte["gegenstand"]
+    assert egh.abschnitte["business_purpose"]
     # Bilanzprobe und Ergebnisprobe für die drei Bilanzjahre.
     probes = {(x["indicator"], x["year"]): x for x in e["dokumentproben"]}
     assert probes[("bilanzsumme", 2024)]["ok"]

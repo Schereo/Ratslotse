@@ -469,11 +469,11 @@ export function Steckbrief({ daten, g, zurueck }: {
   const eigentuemer = useMemo(() => eigentuemerVon(daten, g.company),
     [daten, g.company]);
   const text = (key: string) => textVon(daten, g.company, key);
-  const gegenstand = text("gegenstand");
-  const besitz = text("beteiligungsverhaeltnisse");
-  const organe = text("aufsichtsorgane");
-  const beteiligungen = text("beteiligungen");
-  const haushalt = text("haushalt");
+  const gegenstand = text("business_purpose");
+  const besitz = text("ownership_structure");
+  const organe = text("supervisory_bodies");
+  const beteiligungen = text("own_shareholdings");
+  const haushalt = text("budget_impact");
 
   return (
     <div className="flex flex-col gap-3">

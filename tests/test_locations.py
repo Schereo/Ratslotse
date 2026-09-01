@@ -503,7 +503,7 @@ def test_reviewed_place_joins_catalog_extraction_search_and_map(tmp_path):
 
     with pytest.raises(ValueError, match="gültigen Ortstyp"):
         store.review_location_candidate(
-            "testquartier", status="concrete", kind="quartier")
+            "testquartier", status="concrete", kind="neighborhood")
     concrete = store.review_location_candidate(
         "testquartier", status="concrete", kind="building", updated_by="admin@test.de")
     assert concrete["status"] == "concrete" and concrete["review_kind"] == "building"
@@ -516,7 +516,7 @@ def test_reviewed_place_joins_catalog_extraction_search_and_map(tmp_path):
 
     store.review_location_candidate(
         "testquartier", status="approved", place_id="testquartier",
-        name="Testquartier", kind="quartier", parent_id="nadorst",
+        name="Testquartier", kind="neighborhood", parent_id="nadorst",
         aliases=["Test-Quartier"], description="Ein Testgebiet.",
         source_url="https://example.test/ort", updated_by="admin@test.de",
     )

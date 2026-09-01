@@ -35,7 +35,7 @@ class Place:
 
     @property
     def is_primary(self) -> bool:
-        return self.kind == "ortsbereich"
+        return self.kind == "local_area"
 
 
 def _lookup_key(value: str | None) -> str:
@@ -52,7 +52,7 @@ def catalog() -> dict:
     rows = data.get("places") or []
     ids = [row.get("id") for row in rows]
     names = [row.get("name") for row in rows]
-    primary = [row for row in rows if row.get("kind") == "ortsbereich"]
+    primary = [row for row in rows if row.get("kind") == "local_area"]
     if len(set(ids)) != len(ids) or len(set(names)) != len(names):
         raise ValueError("Ortskatalog muss eindeutige IDs und Namen enthalten")
     if len(primary) != 31 or any(not row.get("wahlbereiche") for row in primary):
@@ -80,8 +80,8 @@ def all_places() -> tuple[Place, ...]:
         parent_ids=tuple(row.get("parent_ids") or ()),
         description=row.get("description"),
         source_ids=tuple(row.get("source_ids") or ()),
-        filterable=bool(row.get("filterable", row.get("kind") == "ortsbereich")),
-        quiz_enabled=bool(row.get("quiz_enabled", row.get("kind") == "ortsbereich")),
+        filterable=bool(row.get("filterable", row.get("kind") == "local_area")),
+        quiz_enabled=bool(row.get("quiz_enabled", row.get("kind") == "local_area")),
         lat=float(row["lat"]) if row.get("lat") is not None else None,
         lon=float(row["lon"]) if row.get("lon") is not None else None,
     ) for row in catalog()["places"])

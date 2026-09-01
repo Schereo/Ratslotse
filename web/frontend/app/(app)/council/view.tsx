@@ -652,8 +652,8 @@ function DecisionsTab({ committees }: { committees: string[] }) {
   const totalLabel = `${total}${topicCapped ? "+" : ""}`;
   const districtCount = (item: typeof districts[number]) =>
     mode === "vote" ? item.vote_count : mode === "report" ? item.report_count : item.count;
-  const primaryPlaces = districts.filter((item) => item.kind === "ortsbereich");
-  const secondaryPlaces = districts.filter((item) => item.kind !== "ortsbereich");
+  const primaryPlaces = districts.filter((item) => item.kind === "local_area");
+  const secondaryPlaces = districts.filter((item) => item.kind !== "local_area");
   const districtValue = districts.find((item) => item.place_id === district || item.name === district)?.place_id ?? district;
 
   // Zeitraum zählt als EIN Filter; Sortierung ist eine Einstellung, kein Filter.
@@ -783,7 +783,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
             value={districtValue}
             options={districts.map((item) => ({
               value: item.place_id, label: `${item.name} (${districtCount(item)})`,
-              sub: item.kind === "ortsbereich" ? undefined : item.kind_label,
+              sub: item.kind === "local_area" ? undefined : item.kind_label,
             }))}
             onChange={(value) => setUrlParam("district", value)}
           />
