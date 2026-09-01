@@ -637,7 +637,6 @@ export function StreitAbschnitt({ onBestand }: {
 
         <LottiErklaert
           title="Was eine Änderungsliste ist"
-          pose="point"
           text={
             "Die Verwaltung legt einen Entwurf vor. Wer daran etwas ändern will, sammelt seine " +
             "Wünsche in einer Liste — mehr Geld hier, weniger dort. Über jede Liste stimmt der " +

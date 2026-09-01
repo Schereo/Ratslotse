@@ -21,7 +21,8 @@ import { getMascotTheme, type MascotTheme } from "@/lib/mascot-theme";
  * Attribute durchreichen, Größe über `className` (h-24/w-24 usw.) wie bisher beim
  * SVG. Gespielt wird deklarativ über das `regung`-Attribut — der Abspieler
  * spielt sie beim Erscheinen und bei jeder Änderung; danach übernimmt seine
- * Regie (Blinzeln, gelegentlich eine kleine Geste).
+ * Regie (Blinzeln, selten ein Nicken — mehr NICHT: Gesten mit Bedeutung
+ * spielt nur, wer sie ausdrücklich setzt, s. DESIGNSPRACHE.md § 1).
  */
 
 declare global {
@@ -54,7 +55,8 @@ export type LottiRegung =
   | "zeigt-links" | "zeigt-rechts" | "zeigt-hoch" | "zeigt-runter"
   | "hebt-hand" | "erklaert" | "ist-traurig"
   | "denkt" | "sucht" | "wartet" | "schlaeft" | "jongliert"
-  | "hat-idee" | "fragt" | "mag-das";
+  | "hat-idee" | "fragt" | "mag-das"
+  | "liest" | "schreibt" | "hebt-pokal";
 
 /* Einmal je Seite: Der Abspieler liegt als fertiges ES-Modul im Bündel und
  * definiert beim Import das Custom Element. `webpackIgnore`, weil die Datei

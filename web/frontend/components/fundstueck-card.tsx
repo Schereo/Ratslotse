@@ -8,6 +8,7 @@ import { Button, Card } from "@/components/ui";
 import { OutcomeDot, voteLabel } from "@/components/decision-ui";
 import { ShareButton } from "@/components/share-button";
 import { decisionHref } from "@/lib/routes";
+import { Mascot } from "@/components/mascot";
 import type { DecisionOutcome } from "@/lib/types";
 
 type Fundstueck =
@@ -42,12 +43,18 @@ export function FundstueckCard() {
 
   return (
     <Card className="mt-6 border-primary/20 bg-gradient-to-br from-primary/[0.05] to-transparent p-5">
-      <p className="font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-primary">
-        Fundstück · {data.kicker}
-      </p>
-      <p className="mt-2 max-w-3xl text-balance font-display text-lg font-bold leading-snug text-foreground">
-        {data.story}
-      </p>
+      <div className="flex items-start gap-3.5">
+        {/* `hat-idee` (Glühbirne): Lotti hat das Fundstück ja ausgegraben. */}
+        <Mascot decorative regung="hat-idee" className="hidden h-14 w-14 shrink-0 sm:block" />
+        <div className="min-w-0">
+          <p className="font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-primary">
+            Fundstück · {data.kicker}
+          </p>
+          <p className="mt-2 max-w-3xl text-balance font-display text-lg font-bold leading-snug text-foreground">
+            {data.story}
+          </p>
+        </div>
+      </div>
       <div className="mt-2.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-muted-foreground">
         <OutcomeDot outcome={data.outcome} />
         <span>
