@@ -1037,8 +1037,8 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
                     werte = {x["role"]: x["value"] for x in bil["posten"]}
                     p.sagen(f"    + Bilanz: {len(bil['posten'])} Posten · Bilanzsumme "
                             f"{bil['bilanzsumme']/1e6:.1f} Mio. € · Pensionsrückstellungen "
-                            f"{werte.get('pensionen_gesamt', 0)/1e6:.1f} Mio. € "
-                            f"(davon Beihilfe {werte.get('beihilferueckstellungen', 0)/1e6:.1f})")
+                            f"{werte.get('pension_and_similar_provisions', 0)/1e6:.1f} Mio. € "
+                            f"(davon Beihilfe {werte.get('healthcare_allowance_provisions', 0)/1e6:.1f})")
 
                     # Der älteste Stichtag hat kein eigenes Dokument: 2016
                     # steht nur in der Vorjahresspalte des Abschlusses 2017.

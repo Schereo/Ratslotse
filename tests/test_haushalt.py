@@ -1488,7 +1488,7 @@ def test_abschlussfragen_tragen_stabile_schluessel_ohne_jahr(tmp_path):
     c.execute("INSERT INTO council_schulden (year, total, per_capita, fetched_at) "
               "VALUES (2024, 294851000, 1673, '2026-08-18')")
     c.execute("INSERT INTO council_bilanz (year, role, page, level, label, value, "
-              " fetched_at) VALUES (2024, 'geldschulden', 'passiva', 2, 'Geldschulden', "
+              " fetched_at) VALUES (2024, 'financial_liabilities', 'passiva', 2, 'Geldschulden', "
               " 43690972, '2026-08-18')")
     c.execute("INSERT INTO council_buergschaften (year, balance, exact, out_next_year, "
               " source, probes, fetched_at) VALUES (2024, 220300000, 1, 0, "

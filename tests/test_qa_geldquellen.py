@@ -1324,7 +1324,7 @@ def test_schuldenblock_nennt_alle_drei_abgrenzungen(tmp_path):
     c.execute("INSERT INTO council_schulden (year, total, per_capita, fetched_at) "
               "VALUES (2024, 294851000, 1673, '2026-08-18')")
     c.execute("INSERT INTO council_bilanz (year, role, page, level, label, value, "
-              " fetched_at) VALUES (2024, 'geldschulden', 'passiva', 2, 'Geldschulden', "
+              " fetched_at) VALUES (2024, 'financial_liabilities', 'passiva', 2, 'Geldschulden', "
               " 43690972, '2026-08-18')")
     c.execute("INSERT INTO council_integrierte_schulden (year, ars, total, probes, "
               " fetched_at) VALUES (2024, '03403000', 740300000, '', '2026-08-18')")

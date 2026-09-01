@@ -5494,19 +5494,19 @@ def test_haushalt_bilanz_liefert_posten_erlaeuterungen_und_herkunft(client):
             as_of="31.12.2024", document_id=295294, label="Jahresabschluss 2024",
             url="https://example.org/ja.pdf")
         cs.save_bilanz(2024, [
-            {"role": "geldschulden", "page": bilanz.PASSIVA, "level": 2,
+            {"role": "financial_liabilities", "page": bilanz.PASSIVA, "level": 2,
              "nr": "2.1", "label": "Geldschulden", "value": 43_690_971.71},
-            {"role": "schulden", "page": bilanz.PASSIVA, "level": 1,
+            {"role": "liabilities", "page": bilanz.PASSIVA, "level": 1,
              "nr": "2", "label": "Schulden", "value": 207_116_175.19},
-            {"role": "pensionen_gesamt", "page": bilanz.PASSIVA, "level": 2,
+            {"role": "pension_and_similar_provisions", "page": bilanz.PASSIVA, "level": 2,
              "nr": "3.1",
              "label": "Pensionsrückstellungen und ähnliche Verpflichtungen",
              "value": 311_789_660.00},
-            {"role": "liquide_mittel", "page": bilanz.AKTIVA, "level": 1,
+            {"role": "cash_and_equivalents", "page": bilanz.AKTIVA, "level": 1,
              "nr": "4", "label": "Liquide Mittel", "value": 118_001_891.26},
         ], q)
         cs.save_bilanz_erlaeuterungen(2024, [
-            {"role": "schulden", "nr": 7, "heading": "Schulden",
+            {"role": "liabilities", "nr": 7, "heading": "Schulden",
              "text": "… ergibt sich eine Bilanzverlängerung … 138,2 Millionen Euro."},
         ], herkunft.Herkunft(
             kind="ris", probe="bilanz_erlaeuterung",
@@ -5519,19 +5519,19 @@ def test_haushalt_bilanz_liefert_posten_erlaeuterungen_und_herkunft(client):
 
         nach_rolle = {p["role"]: p for p in daten["posten"]}
         # Die beiden Zahlen, die beide „Schulden" heißen — getrennt geführt.
-        assert nach_rolle["geldschulden"]["value"] == 43_690_971.71
-        assert nach_rolle["schulden"]["value"] == 207_116_175.19
-        assert nach_rolle["liquide_mittel"]["page"] == "aktiva"
-        assert nach_rolle["schulden"]["level"] == 1
+        assert nach_rolle["financial_liabilities"]["value"] == 43_690_971.71
+        assert nach_rolle["liabilities"]["value"] == 207_116_175.19
+        assert nach_rolle["cash_and_equivalents"]["page"] == "aktiva"
+        assert nach_rolle["liabilities"]["level"] == 1
 
         # Ohne diesen Text darf die Seite die 207,1 Mio. € nicht zeigen.
         erl = {e["role"]: e for e in daten["erlaeuterungen"]}
-        assert "Bilanzverlängerung" in erl["schulden"]["text"]
+        assert "Bilanzverlängerung" in erl["liabilities"]["text"]
 
         # Jede Zahl und jeder Text tragen ihren Beleg.
         for eintrag in daten["posten"] + daten["erlaeuterungen"]:
             assert str(eintrag["herkunft_id"]) in daten["herkunft"]
-        h = daten["herkunft"][str(nach_rolle["schulden"]["herkunft_id"])]
+        h = daten["herkunft"][str(nach_rolle["liabilities"]["herkunft_id"])]
         assert "bilanz_kassenprobe" in h["probe"]
     finally:
         cs.close()

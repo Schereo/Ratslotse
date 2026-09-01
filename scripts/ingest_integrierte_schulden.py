@@ -103,7 +103,7 @@ def main() -> int:
 
     store = CouncilStore(Path(args.db))
     try:
-        posten = [p for p in store.get_bilanz_posten("geldschulden")
+        posten = [p for p in store.get_bilanz_posten("financial_liabilities")
                   if p["year"] == gefunden["year"]]
         ok, warum = isch.kernprobe(gefunden, posten[0]["value"] if posten else None)
         print(f"  Kernhaushalts-Probe: {'bestanden' if ok else 'GERISSEN'} — {warum}")

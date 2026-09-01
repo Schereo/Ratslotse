@@ -1674,7 +1674,7 @@ export interface paths {
          *     Schulden springen 2024 von 84,4 auf 207,1 Mio. €, und das ist kein
          *     Schuldenmachen, sondern eine Bilanzverlängerung aus dem Cash-Pooling
          *     (138,2 Mio. €, mit Gegenposten auf der Aktivseite). Der Anhang erklärt es
-         *     unter ``role="schulden"`` selbst. **Die Zahl darf ohne diesen Text nicht
+         *     unter ``role="liabilities"`` selbst. **Die Zahl darf ohne diesen Text nicht
          *     angezeigt werden** — dieselbe Bauart wie ``variance_reasons`` für die
          *     Ergebnisrechnung.
          */
@@ -10766,4 +10766,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: a6b32b06e377c9e27348624b997bcdb649c557d022ca6fbe5f4bd49784ed69ba
+// vertrag-sha256: 80b43de3d3bf70ffd32dd70797ddd0c94f0f511558bb157c3edc8cc2d5aa3164
