@@ -379,7 +379,7 @@ import Testing
       "entities": [{"slug":"haushalt-2026","name":"Haushalt 2026"}],
       "present_parties": [],
       "similar": [],
-      "plan_bild": 44
+      "plan_image": 44
     }
     """#.utf8)
     let detail = try JSONDecoder().decode(DecisionDetail.self, from: data)
@@ -638,7 +638,7 @@ private final class FeedbackURLProtocol: URLProtocol {
             "kind": "party",
             "parties": ["Grüne"]
           },
-          "art": "council",
+          "kind": "council",
           "organisation": null,
           "n_sessions": 136,
           "active_from": "2021-11-22",
@@ -653,9 +653,9 @@ private final class FeedbackURLProtocol: URLProtocol {
           },
           "committees": [{"committee": "Rat", "n": 39, "chair": true}],
           "recent": [{"ksinr": 4599, "committee": "Kulturausschuss", "session_date": "2026-06-16"}],
-          "wortbeitraege": [{"kind": "speech", "top": "TOP 5", "text": "Beitrag", "committee": "Rat", "session_date": "2026-06-16"}],
-          "wortbeitraege_gesamt": 18,
-          "wortbeitraege_gremien": [{"committee": "Rat", "n": 18}]
+          "speeches": [{"kind": "speech", "agenda_item": "TOP 5", "text": "Beitrag", "committee": "Rat", "session_date": "2026-06-16"}],
+          "speeches_total": 18,
+          "speeches_committees": [{"committee": "Rat", "n": 18}]
         }
         """.data(using: .utf8)
     )
@@ -676,16 +676,16 @@ private final class FeedbackURLProtocol: URLProtocol {
     let data = try #require(
         """
         {
-          "typ": "administration",
+          "type": "administration",
           "name": "Jürgen Krogmann",
           "slug": "juergen-krogmann",
           "role": "Oberbürgermeister",
           "aktiv": true,
           "von": "2014",
           "bis": "2026",
-          "wortbeitraege": [],
-          "wortbeitraege_gesamt": 0,
-          "wortbeitraege_gremien": []
+          "speeches": [],
+          "speeches_total": 0,
+          "speeches_committees": []
         }
         """.data(using: .utf8)
     )
@@ -726,7 +726,7 @@ private final class FeedbackURLProtocol: URLProtocol {
           "name": "Anne Beispiel",
           "party": null,
           "current_affiliation": "SPD-Fraktion",
-          "art": "council",
+          "kind": "council",
           "organisation": null,
           "n_sessions": 1,
           "active_from": null,
@@ -854,7 +854,7 @@ private final class FeedbackURLProtocol: URLProtocol {
           "decisions": [],
           "has_protocol": false,
           "url": "https://buergerinfo.oldenburg.de/si0057.php?__ksinr=42",
-          "aenderungen": [{
+          "agenda_changes": [{
             "changed_at": "2026-08-30T12:15:00+02:00",
             "satz": "Ein TOP wurde ergänzt und eine Anlage aktualisiert.",
             "zeilen": [{

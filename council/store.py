@@ -9512,7 +9512,7 @@ class CouncilStore:
                 name=row["name"] or observed,
                 kind=row["kind"] or "neighborhood",
                 aliases=aliases,
-                wahlbereiche=parent.wahlbereiche if parent else (),
+                electoral_districts=parent.electoral_districts if parent else (),
                 parent_ids=(parent.id,) if parent else (),
                 description=row["description"] or None,
                 source_ids=(),
@@ -11053,7 +11053,7 @@ class CouncilStore:
         (Vielredner kommen auf ~800 Beiträge), um ihn einmal zu holen.
 
         Rückgabe: ``items`` (die angeforderte Seite), ``total`` (nach
-        Gremien-Filter), ``gesamt`` (ohne Filter) und ``committees`` als Facetten
+        Gremien-Filter), ``overall`` (ohne Filter) und ``committees`` als Facetten
         mit Anzahl — damit die Oberfläche gleich sagen kann, wo etwas zu holen
         ist.
 
@@ -11070,7 +11070,7 @@ class CouncilStore:
 
         eigen = zerlegen(name)
         if not eigen:
-            return {"items": [], "total": 0, "gesamt": 0, "committees": []}
+            return {"items": [], "total": 0, "overall": 0, "committees": []}
         formen: list[tuple[str, str]] = [eigen]
         bekannte_teile: set[str] = set()
         for weitere in self.personen_namensformen(self._person_slug(name)):
@@ -11096,11 +11096,11 @@ class CouncilStore:
         gefiltert = [w for w in meine if not committee or w.get("committee") == committee]
         page = gefiltert[max(0, offset): max(0, offset) + max(1, min(limit, 100))]
         return {
-            "items": [{"kind": w["kind"], "top": w["top"], "text": w["text"],
+            "items": [{"kind": w["kind"], "agenda_item": w["top"], "text": w["text"],
                        "committee": w["committee"], "session_date": w["session_date"]}
                       for w in page],
             "total": len(gefiltert),
-            "gesamt": len(meine),
+            "overall": len(meine),
             "committees": [{"committee": k, "n": n} for k, n in zaehler.most_common()],
         }
 
@@ -11542,7 +11542,7 @@ class CouncilStore:
             # („FDP/Volt" → FDP). Die Zeitreihe darunter bleibt quellentreu —
             # sie erzählt, was die Protokolle DAMALS schrieben.
             "current_affiliation": aktuell,
-            "art": art,
+            "kind": art,
             "organisation": organisation,
             "n_sessions": span["n"], "active_from": span["first"], "active_to": span["last"],
             "faction_timeline": timeline,
@@ -11551,9 +11551,9 @@ class CouncilStore:
                            for r in committees],
             "recent": [{"ksinr": r["ksinr"], "committee": r["committee"], "session_date": r["session_date"]}
                        for r in recent],
-            "wortbeitraege": wb["items"],
-            "wortbeitraege_gesamt": wb["gesamt"],
-            "wortbeitraege_gremien": wb["committees"],
+            "speeches": wb["items"],
+            "speeches_total": wb["overall"],
+            "speeches_committees": wb["committees"],
         }
 
     def verwaltung_name(self, slug: str) -> str | None:
@@ -11596,12 +11596,12 @@ class CouncilStore:
             return None
         wb = self.wortbeitraege_person(eintrag["name"], limit=10)
         return {
-            "typ": "administration", "name": eintrag["name"], "slug": slug,
+            "type": "administration", "name": eintrag["name"], "slug": slug,
             "role": eintrag["role"], "aktiv": eintrag["aktiv"],
             "von": eintrag["von"], "bis": eintrag["bis"],
-            "wortbeitraege": wb["items"],
-            "wortbeitraege_gesamt": wb["gesamt"],
-            "wortbeitraege_gremien": wb["committees"],
+            "speeches": wb["items"],
+            "speeches_total": wb["overall"],
+            "speeches_committees": wb["committees"],
         }
 
     def decisions_for_amount(self, only_missing: bool = False) -> list[dict]:

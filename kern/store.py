@@ -2400,7 +2400,7 @@ class Store:
             # `record_activity`-Aufrufe dazu nie. `quiz` kommt nicht aus
             # `user_activity`, sondern zählt beantwortete Fragen.
             "features": {"ki_frage": feats.get("ai_question", 0),
-                         "recherche": feats.get("research", 0),
+                         "research": feats.get("research", 0),
                          "suche": feats.get("search", 0),
                          "quiz": n_quiz,
                          "analyse": feats.get("analysis", 0),

@@ -262,17 +262,16 @@ public struct DecisionDetail: Codable, Sendable {
     public let planImageID: Int?
 
     enum CodingKeys: String, CodingKey {
-        case decision, attendance, entities, similar, participation = "beteiligung", follow
+        case decision, attendance, entities, similar, participation, follow, template
         case subVotes = "sub_votes"
-        case templateJourney = "vorlage_journey"
-        case consultations = "beratungsfolge"
-        case templateURL = "vorlage_url"
-        case template = "vorlage"
+        case templateJourney = "template_journey"
+        case consultations = "deliberation_path"
+        case templateURL = "template_url"
         case attachments = "attachments"
         case importance = "importance_breakdown"
         case presentParties = "present_parties"
         case ratsinfoURL = "ratsinfo_url"
-        case planImageID = "plan_bild"
+        case planImageID = "plan_image"
     }
 
     public init(
@@ -775,7 +774,7 @@ public struct SessionDetail: Codable, Sendable {
         case sessionTime = "session_time"
         case agendaItems = "agenda_items"
         case hasProtocol = "has_protocol"
-        case agendaChanges = "aenderungen"
+        case agendaChanges = "agenda_changes"
     }
 }
 

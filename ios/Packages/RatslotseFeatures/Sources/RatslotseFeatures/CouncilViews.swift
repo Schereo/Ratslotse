@@ -1417,8 +1417,8 @@ struct DecisionDetailView: View {
           "entities": [{"slug":"haushalt-2026","name":"Haushalt 2026"}],
           "present_parties": ["SPD", "CDU", "Grüne", "FDP"],
           "ratsinfo_url": "https://ratslotse.de",
-          "vorlage_url": "https://ratslotse.de",
-          "vorlage": {
+          "template_url": "https://ratslotse.de",
+          "template": {
             "template_number":"26/0456",
             "title":"Haushaltssatzung und Haushaltsplan 2026",
             "kind":"Beschlussvorlage",
@@ -1433,7 +1433,7 @@ struct DecisionDetailView: View {
             {"document_id":78,"label":"Änderungsantrag zum Investitionsprogramm","url":"https://ratslotse.de","is_antrag":1,"antragsteller":["SPD","Grüne"],"status":"ok"}
           ],
           "importance_breakdown": {"score":82,"impact_reason":"Der Beschluss betrifft nahezu alle Aufgaben der Stadt und legt den finanziellen Rahmen für das ganze Jahr fest."},
-          "beratungsfolge": [
+          "deliberation_path": [
             {"date":"2026-01-21","committee":"Finanzen und Beteiligungen","top":"4","result":"empfohlen","ksinr":87,"future":false},
             {"date":"2026-02-09","committee":"Rat der Stadt","top":"6.5","result":"angenommen","ksinr":88,"future":false}
           ],
@@ -3026,7 +3026,7 @@ private struct SessionDetailView: View {
           "decisions": [],
           "has_protocol": false,
           "url": "https://ratslotse.de",
-          "aenderungen": [{
+          "agenda_changes": [{
             "changed_at": "2026-08-30T12:15:00+02:00",
             "satz": "Ein TOP wurde ergänzt und eine Anlage aktualisiert.",
             "zeilen": [

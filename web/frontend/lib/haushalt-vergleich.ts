@@ -54,12 +54,12 @@ export type VergleichDaten = {
   values: VergleichWert[];
   years: { tax_capacity?: number[]; real_taxes?: number[] };
   citation: VergleichBeleg;
-  herkunft: Record<string, Herkunft>;
+  provenance: Record<string, Herkunft>;
 };
 
 export function herkunftVon(daten: VergleichDaten,
                             id: number | null | undefined): Herkunft | null {
-  return id == null ? null : daten.herkunft[String(id)] ?? null;
+  return id == null ? null : daten.provenance[String(id)] ?? null;
 }
 
 /** Eine Kennzahl eines Jahres, je Stadt — `null`, wo sie fehlt.

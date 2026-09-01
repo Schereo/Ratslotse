@@ -640,7 +640,7 @@ AdminEntityAlias = dict[str, Any]
 class AdminUserFeatures(TypedDict):
     """Feature-Nutzung eines Kontos. Die Schlüssel sind API-Namen und nicht die
     gespeicherten Werte — ``ki_frage`` zählt ``user_activity.feature =
-    'ai_question'``, ``recherche`` zählt ``research`` (s.
+    'ai_question'``, ``research`` zählt ``research`` (s.
     ``Store.admin_user_detail``).
 
     Wer dort einen Zähler ergänzt, ergänzt ihn HIER mit: Ein nicht deklariertes
@@ -648,7 +648,7 @@ class AdminUserFeatures(TypedDict):
     eine Spalte weniger, ohne dass irgendwo etwas rot würde.
     """
     ki_frage: int
-    recherche: int
+    research: int
     suche: int
     quiz: int
     analyse: int
@@ -916,9 +916,9 @@ class PlaceEntry(TypedDict):
     name: str
     kind: str
     aliases: list[str]
-    # Deutscher Feldname aus dem Ortskatalog (``data/orte.json``) — unverändert
-    # übernommen, damit der Vertrag zu Web und App hält.
-    wahlbereiche: list[int]
+    # Im Katalog (``council/oldenburg_places.json``) heißt der Schlüssel noch
+    # ``wahlbereiche``; ``council.places.all_places`` übersetzt beim Laden.
+    electoral_districts: list[int]
     parent_ids: list[str]
     description: str | None
     source_ids: list[str]
@@ -1043,8 +1043,8 @@ class BudgetOverview(TypedDict):
     tax_rates: NotRequired[Any]
     trade_tax_statistics: NotRequired[Any]
     # Je `herkunft_id` das Dokument samt Fundstelle, Rechenprobe und Stichtag.
-    # Deutscher Schlüssel aus dem Bestand — hier unverändert übernommen.
-    herkunft: NotRequired[dict[str, Any]]
+    # Die Register-Schlüssel darin (``plan``, ``jahresabschluss`` …) bleiben deutsch.
+    provenance: NotRequired[dict[str, Any]]
 
 
 class AgendaChange(TypedDict):
@@ -1071,7 +1071,7 @@ class SessionDetail(SessionRow):
     # Protokoll kommt.
     video_results: list[dict[str, Any]]
     url: str | None
-    aenderungen: list[AgendaChange]
+    agenda_changes: list[AgendaChange]
 
 
 class ImportanceBreakdown(TypedDict):
@@ -1125,8 +1125,8 @@ class DecisionDetail(TypedDict):
     """Ein Beschluss mit allem Drum und Dran — die geteilte Detailseite.
 
     Die ersten zehn Felder setzt der Handler unbedingt. Alles darunter hängt
-    an der Vorlage: Ohne ``template_number`` gibt es weder ``vorlage`` noch
-    ``attachments``, ``beratungsfolge`` oder ``plan_bild``; ``follow`` kommt
+    an der Vorlage: Ohne ``template_number`` gibt es weder ``template`` noch
+    ``attachments``, ``deliberation_path`` oder ``plan_image``; ``follow`` kommt
     nur dazu, wenn wirklich jemand angemeldet ist. Deshalb ``NotRequired`` —
     ein Beschluss ohne Vorlage wäre sonst ein 500 (gemessen: rund die Hälfte
     des Bestands).
@@ -1136,19 +1136,19 @@ class DecisionDetail(TypedDict):
     present_parties: list[str]
     ratsinfo_url: str | None
     sub_votes: list[DecisionRow]
-    vorlage_journey: list[Any]
+    template_journey: list[Any]
     similar: list[dict[str, Any]]
     entities: list[dict[str, Any]]
-    beteiligung: DecisionParticipation | None
+    participation: DecisionParticipation | None
     importance_breakdown: ImportanceBreakdown
-    vorlage: NotRequired[DecisionTemplate]
-    vorlage_url: NotRequired[str | None]
+    template: NotRequired[DecisionTemplate]
+    template_url: NotRequired[str | None]
     attachments: NotRequired[list[dict[str, Any]]]
     # Zwei Formen (Nachbewilligung bzw. Bürgschaft) mit verschiedenen
     # Schlüsseln — deshalb offen statt geraten.
-    haushalts_anschluss: NotRequired[dict[str, Any] | None]
-    plan_bild: NotRequired[int | None]
-    beratungsfolge: NotRequired[list[dict[str, Any]]]
+    budget_link: NotRequired[dict[str, Any] | None]
+    plan_image: NotRequired[int | None]
+    deliberation_path: NotRequired[list[dict[str, Any]]]
     follow: NotRequired[DecisionFollow]
 
 
@@ -1280,7 +1280,7 @@ class Speech(TypedDict):
     """Ein Wortbeitrag aus einem Protokoll."""
     committee: str | None
     session_date: str | None
-    top: str | None
+    agenda_item: str | None
     kind: str | None
     text: str
 
@@ -1294,13 +1294,12 @@ class Speeches(TypedDict):
     """Wortbeiträge einer Person (``CouncilStore.wortbeitraege_person``).
 
     Zwei Zahlen, weil es zwei Dinge sind: ``total`` gilt zum gesetzten
-    Gremien-Filter, ``gesamt`` ist der Bestand der Person über alle Gremien —
-    daran hängt die Zeile „N Wortbeiträge" auf der Personen-Seite. Der
-    deutsche Schlüssel steht so im Bestand und bleibt unangetastet.
+    Gremien-Filter, ``overall`` ist der Bestand der Person über alle Gremien —
+    daran hängt die Zeile „N Wortbeiträge" auf der Personen-Seite.
     """
     items: list[Speech]
     total: int
-    gesamt: int
+    overall: int
     committees: list[SpeechCommittee]
 
 
@@ -1330,19 +1329,19 @@ class FactionPhase(TypedDict):
 
 class PersonCouncil(TypedDict):
     """Das Profil eines Mandats- oder beratenden Mitglieds
-    (``CouncilStore.member_detail``, ``typ`` legt der Router dazu).
+    (``CouncilStore.member_detail``, ``type`` legt der Router dazu).
 
-    ``art`` unterscheidet innerhalb dieses Zweigs noch einmal: ``council`` ist
+    ``kind`` unterscheidet innerhalb dieses Zweigs noch einmal: ``council`` ist
     ein Ratsmandat, ``advisory`` eine beratende Mitwirkung — für die ist die
     Fraktions-Zeitreihe gegenstandslos, ``party``/``current_affiliation``
     bleiben dann leer und ``organisation`` nennt die entsendende Stelle.
     """
-    typ: Literal["council"]
+    type: Literal["council"]
     name: str
     slug: str
     party: str | None
     current_affiliation: dict[str, Any] | None
-    art: Literal["council", "advisory"]
+    kind: Literal["council", "advisory"]
     organisation: str | None
     n_sessions: int
     active_from: str | None
@@ -1351,30 +1350,30 @@ class PersonCouncil(TypedDict):
     ris: Any
     committees: list[PersonCommittee]
     recent: list[PersonSession]
-    wortbeitraege: list[Speech]
-    wortbeitraege_gesamt: int
-    wortbeitraege_gremien: list[SpeechCommittee]
+    speeches: list[Speech]
+    speeches_total: int
+    speeches_committees: list[SpeechCommittee]
 
 
 class PersonAdministration(TypedDict):
     """Der schmale Steckbrief einer Verwaltungsperson mit erkanntem Amt
     (``CouncilStore.verwaltung_detail``). ``von``/``bis`` sind die Jahres-Spanne
     der Protokoll-Erwähnungen, KEINE amtliche Amtszeit."""
-    typ: Literal["administration"]
+    type: Literal["administration"]
     name: str
     slug: str
     role: str
     aktiv: bool
     von: str | None
     bis: str | None
-    wortbeitraege: list[Speech]
-    wortbeitraege_gesamt: int
-    wortbeitraege_gremien: list[SpeechCommittee]
+    speeches: list[Speech]
+    speeches_total: int
+    speeches_committees: list[SpeechCommittee]
 
 
-# Zwei Zustände, unterscheidbar an `typ` — als echte Union statt einer Form mit
+# Zwei Zustände, unterscheidbar an `type` — als echte Union statt einer Form mit
 # lauter NotRequired: Das Frontend rendert zwei verschiedene Ansichten, und
-# beide Clients sollen erst nach der Prüfung auf `typ` an die Felder kommen.
+# beide Clients sollen erst nach der Prüfung auf `type` an die Felder kommen.
 PersonDetail = PersonCouncil | PersonAdministration
 
 
@@ -1487,7 +1486,7 @@ class BudgetProducts(TypedDict):
 class BudgetStaffPlan(TypedDict):
     missing: Any
     groups: Any
-    herkunft: dict[str, Any]
+    provenance: dict[str, Any]
     editions: Any
     totals: Any
     part_names: Any
@@ -1503,7 +1502,7 @@ class BudgetAuditReports(TypedDict):
 
 class BudgetGroup(TypedDict):
     cross_check: Any
-    herkunft: dict[str, Any]
+    provenance: dict[str, Any]
     years: Any
     consolidated: list[Any]
     items: Any
@@ -1514,7 +1513,7 @@ class BudgetHoldings(TypedDict):
     report_years: Any
     owners: Any
     companies: list[Any]
-    herkunft: dict[str, Any]
+    provenance: dict[str, Any]
     years: list[Any]
     indicators: Any
     group_comparison: Any
@@ -1525,14 +1524,14 @@ class BudgetHoldings(TypedDict):
 class BudgetInvestments(TypedDict):
     financial_budget: list[Any]
     investments: list[Any]
-    herkunft: dict[str, Any]
+    provenance: dict[str, Any]
     years: Any
     sub_budgets: list[Any]
 
 
 class BudgetInvestmentProgram(TypedDict):
     totals: list[Any]
-    herkunft: dict[str, Any]
+    provenance: dict[str, Any]
     years: Any
     measures: list[Any]
     sub_budgets: list[Any]
@@ -1557,7 +1556,7 @@ class BudgetDispute(TypedDict):
 
 
 class BudgetAmendmentLists(TypedDict):
-    herkunft: dict[str, Any]
+    provenance: dict[str, Any]
     totals: Any
     rows: Any
     # Der FINANZhaushalt, seit 08/2026. Eigene Schlüssel statt einer
@@ -1683,7 +1682,7 @@ class GoalDetail(TypedDict):
 
 class BudgetComparison(TypedDict):
     citation: Any
-    herkunft: dict[str, Any]
+    provenance: dict[str, Any]
     years: Any
     cities: Any
     values: Any
@@ -1693,7 +1692,7 @@ class BudgetFixedAssets(TypedDict):
     scope_note: Any
     fixed_assets: dict[str, Any]
     missing: Any
-    herkunft: dict[str, Any]
+    provenance: dict[str, Any]
     years: list[Any]
     accounting_systems: list[Any]
     series: Any
@@ -1701,7 +1700,7 @@ class BudgetFixedAssets(TypedDict):
 
 class BudgetBalanceSheet(TypedDict):
     explanations: Any
-    herkunft: dict[str, Any]
+    provenance: dict[str, Any]
     years: Any
     items: Any
 
@@ -1710,7 +1709,7 @@ class BudgetDebt(TypedDict):
     scope_note: Any
     column_kinds: list[Any]
     guarantees: dict[str, Any]
-    herkunft: dict[str, Any]
+    provenance: dict[str, Any]
     integrated_debt: Any
     years: list[Any]
     series: Any

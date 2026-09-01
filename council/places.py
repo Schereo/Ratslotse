@@ -24,7 +24,7 @@ class Place:
     name: str
     kind: str
     aliases: tuple[str, ...]
-    wahlbereiche: tuple[int, ...]
+    electoral_districts: tuple[int, ...]
     parent_ids: tuple[str, ...]
     description: str | None
     source_ids: tuple[str, ...]
@@ -76,7 +76,7 @@ def all_places() -> tuple[Place, ...]:
         name=row["name"],
         kind=row["kind"],
         aliases=tuple(row.get("aliases") or ()),
-        wahlbereiche=tuple(row.get("wahlbereiche") or ()),
+        electoral_districts=tuple(row.get("wahlbereiche") or ()),
         parent_ids=tuple(row.get("parent_ids") or ()),
         description=row.get("description"),
         source_ids=tuple(row.get("source_ids") or ()),
