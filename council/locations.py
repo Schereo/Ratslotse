@@ -284,7 +284,7 @@ def extract_batch(rows: list[dict], model: str = MODEL) -> tuple[dict[int, list[
     items = "\n".join(f'<vorgang id="{rid}">{ctx}</vorgang>' for rid, ctx in contexts.items())
     resp = llm.chat_complete(
         model=model,
-        _feature="beschluss_orte",
+        _feature="decision_places",
         temperature=0,
         max_tokens=5000,
         response_format={"type": "json_object"},

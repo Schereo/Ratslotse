@@ -2294,7 +2294,7 @@ def deep_research_start(body: DeepResearchBody, user: dict = Depends(require_act
     if deepresearch.laufende_jobs() >= deepresearch.MAX_PARALLEL:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE,
                             "Gerade laufen viele Recherchen — bitte versuche es gleich nochmal.")
-    ratslotse.record_activity(user["id"], "recherche")
+    ratslotse.record_activity(user["id"], "research")
     question = body.question.strip()
     job_id = ratslotse.deep_job_anlegen(user["id"], question)
     settings = get_settings()
@@ -3038,7 +3038,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
         # Adresse. Das Konto ist hier bereits sicher authentifiziert und damit
         # der faire, stabile Schlüssel für das Kosten-Limit.
         qa_limiter.check(request, subject=user["id"])
-    ratslotse.record_activity(user["id"], "ki_frage")  # Admin-Statistik (20a)
+    ratslotse.record_activity(user["id"], "ai_question")  # Admin-Statistik (20a)
     q = body.question.strip()
     if len(q) < 4:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Bitte eine etwas längere Frage stellen.")

@@ -71,7 +71,7 @@ def _ein_fenster(text: str, model: str) -> list[dict]:
     last_err: Exception = ValueError("no response")
     for versuch in range(2):
         resp = llm.chat_complete(
-            model=model, _feature="wortbeitraege", temperature=0,
+            model=model, _feature="speeches", temperature=0,
             max_tokens=16000, messages=messages, **extra,
         )
         # choices kann bei Provider-Fehlern/Content-Filter null sein — der

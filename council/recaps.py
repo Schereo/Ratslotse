@@ -41,7 +41,7 @@ def generate_recap(field_label: str, decisions: list[dict], model: str = MODEL) 
     if "deepseek" in model:
         extra = {"extra_body": {"reasoning": {"enabled": False}}}
     resp = llm.chat_complete(
-        model=model, _feature="themenfeld_rueckblick", temperature=0.3,
+        model=model, _feature="field_recap", temperature=0.3,
         max_tokens=600, messages=[{"role": "user", "content": prompt}], **extra,
     )
     text = (resp.choices[0].message.content or "").strip()

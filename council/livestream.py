@@ -141,7 +141,7 @@ def transcribe_chunk(path: Path, attempt: int = 0) -> str:
     """Ein Audio-Stück → Transkript mit [mm:ss]-Marken ('' bei Ausfall)."""
     audio = base64.b64encode(path.read_bytes()).decode()
     resp = llm.chat_complete(
-        model=STT_MODEL, _feature="livestream_transkript",
+        model=STT_MODEL, _feature="livestream_transcript",
         messages=[{"role": "user", "content": [
             {"type": "text", "text": TRANSCRIBE_PROMPT},
             {"type": "input_audio",

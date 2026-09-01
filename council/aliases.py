@@ -204,7 +204,7 @@ def decide(pairs: list[dict], entities: list[dict], titles: dict[int, list[str]]
                 ],
                 temperature=0.1,
                 response_format={"type": "json_object"},
-                _feature="entity_dubletten",
+                _feature="entity_duplicates",
             )
             data = json.loads(_strip_fences(resp.choices[0].message.content))
         except Exception as exc:  # noqa: BLE001 — ein Batch darf den Lauf nicht kippen

@@ -108,6 +108,15 @@ ERLAUBT = {
     "teilhaushalt": "Schlüssel des Beleg-Apparats (council_produkte)",
     "geldschulden": ("Blockname der Schulden-Antwort (council.py: \"geldschulden\": …) — "
                      "die API-Blocknamen sind ein eigener Schnitt, noch offen"),
+    # Drei Wörter, die als WERT umgezogen sind, als API-FELDname aber bleiben.
+    # Die Feldnamen sind ein eigener Schnitt; bis dahin stehen beide Formen
+    # nebeneinander, und der Prüfer darf sie nicht verwechseln.
+    "wortbeitraege": ("API-Feldname der Personen- und Sitzungsantwort — der WERT "
+                      "`llm_usage.feature` heißt seit 01.09.2026 `speeches`"),
+    "recherche": ("API-Schlüssel und Modus der Gründlichen Recherche — der WERT "
+                  "`user_activity.feature` heißt seit 01.09.2026 `research`"),
+    "ki_frage": ("Blockname der Admin-Antwort (`features.ki_frage`) — der WERT "
+                 "`user_activity.feature` heißt seit 01.09.2026 `ai_question`"),
     "investitionen": "Schlüssel des Beleg-Apparats (council_investitionen)",
     "schulden": "Schlüssel des Beleg-Apparats und QA-Facette — beide bleiben deutsch",
 }
@@ -247,14 +256,20 @@ _PAAR = re.compile(r"""\(\s*["']([a-z][a-z0-9_+]*)["']\s*,\s*["']([a-z][a-z0-9_+
 
 
 def migrationspaare() -> set[tuple[str, str]]:
-    """Alle ``("alt", "neu")`` aus den Werte-Migrationen von ``store.py``."""
-    text = (WURZEL / "council" / "store.py").read_text()
+    """Alle ``("alt", "neu")`` aus den Werte-Migrationen BEIDER Stores.
+
+    `kern/store.py` gehört dazu, seit dort die Quiz-Werte (#891) und die
+    Feature-Namen des Kosten-Trackings umziehen: Die Konten-Datenbank hat
+    eigene Werte-Vokabulare, und die Oberfläche liest sie genauso.
+    """
     paare = set()
-    for block in re.finditer(r"_werte_umschreiben\((.*?)\]\)", text, re.S):
-        paare.update(_PAAR.findall(block.group(1)))
-    # Listen-Konstanten, die mehrere Aufrufe teilen (ORTSARTEN).
-    for block in re.finditer(r"^\s+[A-Z_]{4,} = \[\n(.*?)\n\s+\]$", text, re.S | re.M):
-        paare.update(_PAAR.findall(block.group(1)))
+    for laden in ("council", "kern"):
+        text = (WURZEL / laden / "store.py").read_text()
+        for block in re.finditer(r"_werte_umschreiben\((.*?)\]\)", text, re.S):
+            paare.update(_PAAR.findall(block.group(1)))
+        # Listen-Konstanten, die mehrere Aufrufe teilen (ORTSARTEN).
+        for block in re.finditer(r"^\s+[A-Z_]{4,} = \[\n(.*?)\n\s+\]$", text, re.S | re.M):
+            paare.update(_PAAR.findall(block.group(1)))
     return {(a, b) for a, b in paare | ZUSATZ_PAARE if a != b}
 
 
