@@ -77,6 +77,45 @@ def test_backfill_nutzt_geometrie_vor_punkt(tmp_path):
         store.close()
 
 
+def test_fremde_wegstuecke_werden_abgeschnitten():
+    """Der Fehler, den erst der Prod-Durchlauf zeigte.
+
+    Overpass sucht Straßen in einem RECHTECK um Oldenburg, und das ist größer
+    als die Stadt. Bei häufigen Namen kommt der gleichnamige Weg der
+    Nachbargemeinde mit, alle Segmente werden verschmolzen, und der Mittelpunkt
+    liegt dazwischen — in keinem Ortsbereich. „Alter Postweg" war so für den
+    Stadtteil-Filter verloren, obwohl sein Oldenburger Teil in Kreyenbrück liegt.
+    """
+    drin = geo.ortsbereich_center("Kreyenbrück")
+    gemischt = {"type": "MultiLineString", "coordinates": [
+        [[drin[1], drin[0]], [drin[1] + 0.002, drin[0] + 0.002]],   # Oldenburg
+        [[8.2077, 53.0400], [8.2080, 53.0405]],                      # weit südlich, außerhalb
+    ]}
+    beschnitten = geo.auf_stadtgebiet_beschneiden(gemischt)
+    assert beschnitten and len(beschnitten["coordinates"]) == 1
+    assert geo.ortsbereich_der_geometrie(beschnitten) == "Kreyenbrück"
+    # Die Mischung liefert hier zufällig dasselbe — entscheidend ist, dass das
+    # fremde Stück draußen bleibt und den Mittelpunkt nicht mehr verzieht.
+    assert len(gemischt["coordinates"]) == 2
+
+
+def test_komplett_fremde_geometrie_ist_kein_treffer():
+    """Liegt nichts davon in Oldenburg, ist der Treffer keiner — „Postweg"
+    und „Wallring" waren auf Prod durchweg Fremdtreffer."""
+    fremd = {"type": "MultiLineString",
+             "coordinates": [[[8.2077, 53.0400], [8.2080, 53.0405]]]}
+    assert geo.auf_stadtgebiet_beschneiden(fremd) is None
+
+
+def test_beschneiden_laesst_flaechen_und_unsinn_in_ruhe():
+    """Polygone kommen aus Nominatim, das schon begrenzt sucht — und kaputte
+    Eingaben dürfen keinen Lauf töten."""
+    flaeche = {"type": "Polygon", "coordinates": [[[8.2, 53.14], [8.21, 53.14], [8.2, 53.15]]]}
+    assert geo.auf_stadtgebiet_beschneiden(flaeche) == flaeche
+    for wert in (None, "", "kein json", 42):
+        assert geo.auf_stadtgebiet_beschneiden(wert) is None
+
+
 # ------------------------------------------------- 2) Stadtteil aus dem Namen ---
 
 def test_stadtteil_aus_dem_namen(tmp_path):

@@ -90,15 +90,43 @@ def nominatim(name: str) -> tuple | None:
 
 def geocode(name: str) -> tuple | None:
     """Route by name: a street → its full geometry from Overpass (fall back to Nominatim
-    if Overpass fails); anything else → Nominatim point/polygon."""
+    if Overpass fails); anything else → Nominatim point/polygon.
+
+    Die Straßen-Geometrie wird auf das Stadtgebiet beschnitten. Overpass sucht
+    in einem RECHTECK um Oldenburg, und das ist größer als die Stadt: Bei
+    häufigen Namen kam der gleichnamige Weg der Nachbargemeinde mit ins
+    Ergebnis, alle Segmente wurden verschmolzen, und der Mittelpunkt lag
+    irgendwo dazwischen — „Alter Postweg" war so für den Stadtteil-Filter
+    verloren, obwohl sein Oldenburger Teil sauber in Kreyenbrück liegt.
+    """
     if _is_street(name):
         try:
             res = overpass_street(name)
             if res:
-                return res
+                return _auf_stadtgebiet(res)
         except Exception:  # noqa: BLE001 — Overpass hiccup → fall back to Nominatim
             pass
     return nominatim(name)
+
+
+def _auf_stadtgebiet(res: tuple) -> tuple | None:
+    """(lat, lon, geojson) auf den Oldenburger Teil eindampfen."""
+    from council import geo
+
+    lat, lon, gj = res
+    if not gj:
+        return res
+    beschnitten = geo.auf_stadtgebiet_beschneiden(gj)
+    if not beschnitten:
+        return None                      # nichts davon liegt in Oldenburg
+    punkte = geo._geometrie_punkte(beschnitten)
+    if not punkte:
+        return None
+    # Mittelpunkt NEU aus dem beschnittenen Teil — der alte gehörte zur
+    # Mischgeometrie und lag oft in keinem Ortsbereich.
+    mitte_lat = (min(p[0] for p in punkte) + max(p[0] for p in punkte)) / 2
+    mitte_lon = (min(p[1] for p in punkte) + max(p[1] for p in punkte)) / 2
+    return mitte_lat, mitte_lon, json.dumps(beschnitten, separators=(",", ":"))
 
 
 def process(council_db: Path, sleep: float = 1.1, limit: int | None = None, reset: bool = False) -> dict:

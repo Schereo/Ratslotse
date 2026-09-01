@@ -14,6 +14,7 @@ Oldenburg besitzt keine amtlich festgelegten Stadtteile.
 from __future__ import annotations
 
 import json
+import logging
 from functools import lru_cache
 from pathlib import Path
 
@@ -83,10 +84,19 @@ def wahlbereiche_of(stadtteil: str) -> list[int]:
 def _features() -> list[dict]:
     """Geladene Ortsbereichs-Polygone; leer, wenn die Datei fehlt (Backend läuft
     dann ohne Geo-Zuordnung weiter — die Quizfragen stützen sich primär auf
-    Wikipedia je Gebietsname)."""
+    Wikipedia je Gebietsname).
+
+    Das Fehlen wird ausdrücklich **geloggt**. Ohne Polygone liefert jede
+    Ortsbereichs-Ableitung still ``None``, und ein Lauf sieht dann erfolgreich
+    aus, während er nichts zuordnet — genau so lief ein Prüflauf am 01.09.2026
+    ins Leere, weil das Verzeichnis der Datei nicht mitkopiert worden war.
+    """
     try:
         return json.loads(_GEOJSON.read_text(encoding="utf-8")).get("features", [])
-    except (OSError, ValueError):
+    except (OSError, ValueError) as fehler:
+        logging.getLogger(__name__).warning(
+            "Ortsbereichs-Polygone nicht lesbar (%s: %s) — jede Geo-Zuordnung "
+            "liefert jetzt None, ohne dass ein Lauf scheitert.", _GEOJSON, fehler)
         return []
 
 
@@ -199,6 +209,52 @@ def ortsbereiche_der_geometrie(geometrie: dict | str | None) -> dict[str, int]:
         if name:
             stimmen[name] = stimmen.get(name, 0) + 1
     return stimmen
+
+
+def auf_stadtgebiet_beschneiden(geometrie: dict | str | None) -> dict | None:
+    """Nur die Teile einer Geometrie behalten, die in Oldenburg liegen.
+
+    **Warum das nötig ist.** Der Straßen-Geocoder fragt Overpass nach allen
+    Wegen eines Namens in einem RECHTECK um Oldenburg — und das Rechteck ist
+    größer als die Stadt. Bei häufigen Namen kommt damit der gleichnamige Weg
+    der Nachbargemeinde mit ins Ergebnis, alle Segmente werden zu einer
+    Geometrie verschmolzen, und deren Mittelpunkt liegt irgendwo dazwischen.
+    Auf dem Prod-Snapshot (01.09.2026) lieferte „Alter Postweg" so eine
+    Geometrie, die bei 53.0999 südlich der Stadt beginnt; der gespeicherte
+    Punkt (53.173) lag in keinem Ortsbereich und die Straße war für den
+    Stadtteil-Filter verloren — obwohl der Oldenburger Teil sauber in
+    Kreyenbrück liegt.
+
+    Die Polygone gehören uns und sind verlässlich; das Rechteck ist nur eine
+    Vorauswahl. Deshalb wird hier nachgeschnitten. ``None``, wenn nichts von
+    der Geometrie in der Stadt liegt — dann ist der Treffer keiner.
+    """
+    if isinstance(geometrie, str):
+        import json
+        try:
+            geometrie = json.loads(geometrie)
+        except (ValueError, TypeError):
+            return None
+    if not isinstance(geometrie, dict):
+        return None
+    art = geometrie.get("type")
+    koord = geometrie.get("coordinates") or []
+
+    def drin(linie) -> bool:
+        # Ein Segment gehört zur Stadt, wenn IRGENDEIN Punkt darin liegt —
+        # eine Straße darf am Rand aus dem Polygon herauslaufen.
+        return any(ortsbereich_for(p[1], p[0]) for p in linie if len(p) >= 2)
+
+    if art == "MultiLineString":
+        behalten = [linie for linie in koord if drin(linie)]
+        if not behalten:
+            return None
+        return {"type": "MultiLineString", "coordinates": behalten}
+    if art == "LineString":
+        return geometrie if drin(koord) else None
+    # Flächen und Punkte bleiben unangetastet: Sie stammen aus Nominatim, das
+    # seinerseits schon auf den Ausschnitt begrenzt ist.
+    return geometrie
 
 
 def ortsbereich_der_geometrie(geometrie: dict | str | None) -> str | None:
