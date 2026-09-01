@@ -125,7 +125,7 @@ def process(db_path: Path, limit: int | None, workers: int, retry_failed: bool,
                          f"AND LENGTH(raw_text) IN ({laengen})))")
             print(f"Auch früher gekappte Anlagen (Textlänge exakt {laengen})", flush=True)
         rows = store._conn.execute(
-            f"SELECT document_id, url FROM council_anlagen "
+            f"SELECT document_id, url FROM council_attachments "
             f"WHERE {bedingung} AND url IS NOT NULL{wo} "
             f"ORDER BY document_id DESC" + (f" LIMIT {int(limit)}" if limit else ""),
             werte,
@@ -147,7 +147,7 @@ def process(db_path: Path, limit: int | None, workers: int, retry_failed: bool,
                     fehler += 1
                     with store._conn:
                         store._conn.execute(
-                            "UPDATE council_anlagen SET status='failed', fetched_at=datetime('now') "
+                            "UPDATE council_attachments SET status='failed', fetched_at=datetime('now') "
                             "WHERE document_id = ?", (did,))
                     print(f"  [{did}] FEHLER {exc}", flush=True)
                     continue
@@ -162,13 +162,13 @@ def process(db_path: Path, limit: int | None, workers: int, retry_failed: bool,
                 with store._conn:
                     if len(text) >= MIN_TEXT:
                         store._conn.execute(
-                            "UPDATE council_anlagen SET raw_text=?, n_pages=?, status='ok', "
+                            "UPDATE council_attachments SET raw_text=?, n_pages=?, status='ok', "
                             "fetched_at=datetime('now') WHERE document_id = ?",
                             (text, n_pages, did))
                         ok += 1
                     else:
                         store._conn.execute(
-                            "UPDATE council_anlagen SET raw_text='', n_pages=?, status='empty', "
+                            "UPDATE council_attachments SET raw_text='', n_pages=?, status='empty', "
                             "fetched_at=datetime('now') WHERE document_id = ?", (n_pages, did))
                         leer += 1
                 if (ok + leer + fehler) % 100 == 0:

@@ -77,7 +77,7 @@ def main() -> dict:
     store = CouncilStore(Path(args.db))
     try:
         anlagen = [dict(r) for r in store._conn.execute(  # noqa: SLF001
-            "SELECT document_id, label, url FROM council_anlagen "
+            "SELECT document_id, label, url FROM council_attachments "
             "ORDER BY document_id")]
         kandidaten = [(r, liste_aus_label(r["label"])) for r in anlagen]
         kandidaten = [(r, key) for r, key in kandidaten if key]

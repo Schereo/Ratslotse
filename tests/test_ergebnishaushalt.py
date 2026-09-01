@@ -190,7 +190,7 @@ def _anlage(store: CouncilStore, text: str, document_id: int = 297441) -> None:
     """Ein Gesamtergebnishaushalt als Anlage im Bestand — so, wie ihn der
     Protokoll-Scraper ablegt."""
     store._conn.execute(
-        "INSERT OR REPLACE INTO council_anlagen (document_id, kvonr, label, url, "
+        "INSERT OR REPLACE INTO council_attachments (document_id, kvonr, label, url, "
         " raw_text, n_pages, fetched_at) VALUES (?,?,?,?,?,?,?)",
         (document_id, 1, "2026 005 Vw Gesamtergebnishaushalt",
          "https://example.org/geh2026.pdf", text, 18, "2026-08-16"))
@@ -231,7 +231,7 @@ def test_ansatz_und_finanzplanung_landen_getrennt():
                         "financial_plan": {2027, 2028, 2029}}
 
     # Die beiden vorderen Spalten werden gar nicht erst gespeichert: Die erste
-    # ist ein Ist (dafür gibt es council_ergebnisrechnung), die zweite ein
+    # ist ein Ist (dafür gibt es council_income_statement), die zweite ein
     # fortgeschriebener Vorjahresansatz, der dem beschlossenen widerspräche.
     assert 2024 not in {z["year"] for z in r["zeilen"]}
     assert 2025 not in {z["year"] for z in r["zeilen"]}
@@ -453,8 +453,8 @@ def test_jede_zeile_weiss_woher_sie_kommt(tmp_path):
     assert store.herkunft_luecken() == {}
     row = store._conn.execute(
         "SELECT p.amount, h.probe, h.document_id, h.citation "
-        "FROM council_ergebnishaushalt p "
-        "JOIN council_herkunft h ON h.id = p.herkunft_id LIMIT 1").fetchone()
+        "FROM council_income_budget p "
+        "JOIN council_provenance h ON h.id = p.herkunft_id LIMIT 1").fetchone()
     assert row["document_id"] == 297441
     assert row["probe"] == ("income_budget_total_rows,"
                               "income_budget_plan_column")
@@ -559,7 +559,7 @@ def test_zweites_dokument_zum_selben_jahrgang_wird_gemeldet(tmp_path):
 
 def test_gegenprobe_misst_und_verwirft_nicht():
     """Die Ist-Spalte ist die **Gesamt**ebene (mit den nicht rechtsfähigen
-    Stiftungen), `council_ergebnisrechnung` die Kernverwaltung. Beide Zahlen
+    Stiftungen), `council_income_statement` die Kernverwaltung. Beide Zahlen
     sind richtig und beide heißen „Ergebnis 2024".
 
     Gemessen an acht Jahrgängen: 6 bis 8 von 23 Posten stimmen exakt überein,
@@ -615,7 +615,7 @@ def test_plan_faellt_auf_ansatz_zurueck(tmp_path):
 
     # … und der Lesepfad hält auch stand, wenn in der Tabelle wirklich NULL
     # steht (Altbestand, den kein Schreibweg mehr anfasst).
-    store._conn.execute("UPDATE council_ergebnisrechnung SET plan = NULL")
+    store._conn.execute("UPDATE council_income_statement SET plan = NULL")
     store._conn.commit()
     d = store.get_plan_ist(2023)
     assert d["gesamt"]["revenues_planned"] == 664_574_528.42

@@ -239,6 +239,6 @@ def test_jede_zeile_traegt_ihre_herkunft(tmp_path):
                                 ("18/0880", TITEL_2019, TEXT_2019)):
             p = parse_wirtschaftsplan(nr, title, text)
             store.save_wirtschaftsplan(p, herkunft_fuer(p, url="https://example.org/x"))
-        assert "council_wirtschaftsplaene" not in store.herkunft_luecken()
+        assert "council_business_plans" not in store.herkunft_luecken()
     finally:
         store.close()

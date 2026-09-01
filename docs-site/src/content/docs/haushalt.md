@@ -52,7 +52,7 @@ genau dieser Reihenfolge.
 | `/haushalt/vergleich` | Schritt 9 — Steuerkraft, Hebesätze und Steuereinnahmekraft der acht kreisfreien Städte aus der amtlichen Statistik — und die Erklärung, warum Ausgaben und Personal **nicht** verglichen werden |
 | `/haushalt/schulden` | Schritt 10 — dreißig Jahre Schuldenstand aus Tabelle 1108 des Statistischen Jahrbuchs, mit der Angabe, was mitgezählt ist |
 | **Mitreden** | |
-| `/haushalt/mitreden[?jahr=<jahr>]` | Schritt 11 — „Mitreden", zwei Abschnitte auf einer Seite: `#termine` wann der Haushalt entschieden wird (jede Station im Rat, aus acht Jahrgängen, mit Link auf die Sitzung), `#streit` je Jahrgang die Änderungslisten mit Abstimmungsergebnis, ihr Inhalt Position für Position („Was in den Listen stand", aus `council_haushalt_aenderungen`), die Wortbeiträge im Protokollwortlaut und die Schlussabstimmung |
+| `/haushalt/mitreden[?jahr=<jahr>]` | Schritt 11 — „Mitreden", zwei Abschnitte auf einer Seite: `#termine` wann der Haushalt entschieden wird (jede Station im Rat, aus acht Jahrgängen, mit Link auf die Sitzung), `#streit` je Jahrgang die Änderungslisten mit Abstimmungsergebnis, ihr Inhalt Position für Position („Was in den Listen stand", aus `council_budget_amendments`), die Wortbeiträge im Protokollwortlaut und die Schlussabstimmung |
 | `/haushalt/labor` | Schritt 12 — das Haushalts-Labor, drei Werkbänke mit je eigener Zielgröße: **Einnahmen** (Gewerbesteuer-Hebesatz mit mitlaufender Städte-Leiter und eigener Treppe seit 1980, Grundsteuer B mit belegter LSN-Aufteilung, Hundesteuer, Gebühren als absichtlich gesperrte Schraube), **Ausgaben** (freiwillige Teilhaushalte), **Investitionen & Finanzierung** (Vorhaben-Schalter aus Anlage 004, Kredit-Schalter mit gezahlter Zins-Spanne). Ergebnis-Spalte mit Lücken-Balken, Rücklagen-Pfad über die Finanzplanungsjahre samt Kipp-Jahr und Finanzausgleichs-Spanne aus den echten Ausgleichsjahren |
 | **Steckbriefe (ohne Schritt)** | |
 | `/haushalt/bereich?name=<slug>` | Dossier je Teilhaushalt: Wasserfall Brutto → eigene Erträge → Zuschussbedarf, Entwicklung seit 2020, Produkte des Bereichs |
@@ -116,43 +116,43 @@ die es nicht zeigen:
 
 | Tabelle | Inhalt | Quelle | Ingest |
 |---|---|---|---|
-| `council_haushalt` | Ergebnishaushalt je Teilhaushalt, 2020–2026 (**Plan**) | Beschlossene Haushaltsplan-PDFs; 2024 aus dem Open-Data-CSV | `scripts/ingest_haushalt.py` |
-| `council_steuern` | Steuereinnahmen je Art seit 1998 (**Ist**) | Open-Data-Portal, Datensatz 1104 | `scripts/ingest_finanzen_opendata.py` |
-| `council_steuerkraft` | Steuerkraftmesszahl + Schlüsselzuweisungen je Ausgleichsjahr seit 1993 (Jahreszahl beim Einlesen korrigiert, s. u.) | Open-Data-Portal, Datensatz 1106 | dito |
+| `council_budget` | Ergebnishaushalt je Teilhaushalt, 2020–2026 (**Plan**) | Beschlossene Haushaltsplan-PDFs; 2024 aus dem Open-Data-CSV | `scripts/ingest_haushalt.py` |
+| `council_taxes` | Steuereinnahmen je Art seit 1998 (**Ist**) | Open-Data-Portal, Datensatz 1104 | `scripts/ingest_finanzen_opendata.py` |
+| `council_tax_capacity` | Steuerkraftmesszahl + Schlüsselzuweisungen je Ausgleichsjahr seit 1993 (Jahreszahl beim Einlesen korrigiert, s. u.) | Open-Data-Portal, Datensatz 1106 | dito |
 | `council_einwohner` | Einwohnerzahl je Jahr seit 2010 | Open-Data-Portal, Datensatz 1102 | dito |
-| `council_investitionen` | Investitionen des **Finanz**haushalts je Teilhaushalt, 2022–2025 (**Plan**) — Ein- und Auszahlungen, dazu die Summenzeile und der Gesamtbetrag des Finanzhaushalts als Bezugsgröße | Open-Data-Portal, Datensatz 1101, Tabellenblatt „Finanzhaushalt" | dito |
-| `council_investitionsmassnahmen` | **Einzelne Vorhaben** je Teilhaushalt, 2019–2026 (**Plan**) — IPSP-Element, Bezeichnung und Gesamtinvestitionssumme; `ebene` (`massnahme` / `teilhaushalt` / `gesamt`). Ohne Jahresraten, s. u. | Investitionsprogramm (Anlage 004 des Haushaltsplans) — **Anlagen im RIS** | `scripts/ingest_finanzberichte.py` |
-| `council_ergebnisrechnung` | Ansatz, Plan **und** Ergebnis je Posten — gesamt und je Teilhaushalt, 2017–2024 | Jahresabschlüsse — **Anlagen im RIS** | `scripts/ingest_finanzberichte.py` |
-| `council_ergebnishaushalt` | Dieselben Posten für Jahre **ohne** Abschluss, 2019–2026 — je Zeile `art` (`ansatz` / `finanzplanung`) und `plan_jahrgang` | Gesamtergebnishaushalt (Anlage 005 des Haushaltsplans) — **Anlagen im RIS** | dito |
-| `council_abweichungsgruende` | Warum ein Posten vom Plan abwich (Abschnitt 6.3.1), 45 Einträge | dito | dito |
-| `council_pruefbericht_quellen` | **Fundstelle** des RPA-Schlussberichts je Jahrgang (eine Zeile je Jahr) | dito | dito |
-| `council_produkte` | Produktebene: was einzelne Aufgaben kosten — plus Steckbrief (Kurzbeschreibung, Auftragsgrundlage, Beeinflussbarkeit, Wirkungskreis, Zielgruppe) | Teilhaushalts-Pläne — **Anlagen im RIS** | dito |
-| `council_stellenplan` | Stellen je Amtsbezeichnung, 2023–2026 — `teil` A (Beamt\*innen) / B (Tarifbeschäftigte), `art` (`posten` / `gruppe` / `gesamt`), dazu Besetzung und unbesetzte Stellen zum Stichtag | Stellenplan (Anlage 21/22 des Haushaltsplans) — **Anlagen im RIS** | dito |
-| `council_pruefberichte` | Prüfungsfeststellungen 2017–2023, eine Zeile je Randmarke | Schlussberichte des Rechnungsprüfungsamts — **Anlagen im RIS** | `scripts/ingest_pruefberichte.py` |
-| `council_konzern_posten` | Gesamtergebnisrechnung des **Konzerns** je Posten, 2014–2024 | Konsolidierte Gesamtabschlüsse — **Anlagen im RIS** | `scripts/ingest_konzernabschluss.py` |
-| `council_konzern_traeger` | Dieselben Summen je Aufgabenträger (Kernverwaltung, Klinikum, Eigenbetriebe …), 2017–2024, in **TEUR** | dito | dito |
-| `council_staedtevergleich` | Steuerkraft, Hebesätze und Steuereinnahmekraft der acht kreisfreien Städte je Jahrgang — Reihen `steuerkraft`, `realsteuern` und `finanzausgleich` (die drei Komponenten der Landeszuweisung, in TEUR) | Landesamt für Statistik Niedersachsen (Kommunaler Finanzausgleich, Realsteuervergleich) | `scripts/ingest_staedtevergleich.py` |
-| `council_investitionen_ist` | Tatsächliche Investitions-Auszahlungen je Jahr seit 2003 (**Ist**) — Summe und `regelwerk` (`kameral` bis 2009, `doppik` ab 2010) | Statistisches Jahrbuch der Stadt, Tabellen 1107 und 1107-1 (PDF von oldenburg.de) | `scripts/ingest_investitionen_ist.py` |
-| `council_investitionen_ist_arten` | Dieselben Jahrgänge nach Auszahlungsart, mit der Überschrift der Quelle — vier Arten je kameralem, sechs je doppischem Jahrgang | dito | dito |
-| `council_investitionen_ist_verworfen` | Die Jahrgänge, die die Zeilensumme **nicht** bestanden haben: Grund und gemessene `differenz` in Euro. Damit die Seite ihre Lücke beziffern kann, statt sie nur zu behaupten | dito | dito |
-| `council_schulden` | Schuldenstand je Jahr seit 1995 — vier Schuldenarten, Summe und Betrag je Einwohner\*in | Statistisches Jahrbuch der Stadt, Tabelle 1108 (PDF von oldenburg.de) | `scripts/ingest_schulden.py` |
-| `council_ausgabenreihe` | Ausgaben je Jahr seit **1972** (**Ist**) — `regelwerk` (`kameral` bis 2009, `doppik` ab 2010), die bestandenen `proben` je Zeile und, wo die beiden Quellen sich widersprechen, der `konflikt_betrag` der unterlegenen. **Ohne Einwohnerzahl**, s. u. | Datensatz 1102 — Statistisches Jahrbuch, Tabelle 1102 (PDF) **und** Open-Data-Portal (zwei CSV) | `scripts/ingest_ausgabenreihe.py` |
-| `council_steuerplan` | Je Steuerart und Jahr der **Ansatz des Haushaltsplans** neben dem **Rechnungsergebnis**; `vorlaeufig` ist die Angabe der Quelle über sich selbst. `art` trägt dieselbe Schreibweise wie `council_steuern` — daran hängt die Prüfung der Jahresbeschriftung | Statistisches Jahrbuch, Tabelle 1103 (PDF von oldenburg.de), **alle im Archiv gesicherten Ausgaben** | `scripts/ingest_steuertabellen.py` |
-| `council_wirtschaftsplaene` | Eckwerte der **Wirtschaftspläne** je Eigenbetrieb und Haushaltsjahr — Erfolgsplan (Erträge, Aufwendungen, steuerliche Aufwendungen, Ergebnis), Vermögensplan und Verpflichtungsermächtigungen, dazu der Stand des Verwaltungsentwurfs. Bisher nur der Eigenbetrieb Gebäudewirtschaft und Hochbau, 2019–2026 — als einziger nennt er sie im Beschlusstext | **Die Ratsvorlage selbst** (Beschlussvorschlag), nicht eine Anlage | `scripts/ingest_wirtschaftsplaene.py` |
-| `council_hebesaetze` | Die Realsteuer-Hebesätze je **Änderungsjahr** seit 1980 — Grundsteuer A, Grundsteuer B, Gewerbesteuer, dazu der `vorheriger` Satz. Neun Änderungsjahre (27 Zeilen) decken 45 Jahre — zuletzt 2025, als die Grundsteuerreform A auf 500 und B auf 539 Punkte hob | Statistisches Jahrbuch, Tabelle 1105 (auf demselben Blatt wie 1104) | dito |
+| `council_investments` | Investitionen des **Finanz**haushalts je Teilhaushalt, 2022–2025 (**Plan**) — Ein- und Auszahlungen, dazu die Summenzeile und der Gesamtbetrag des Finanzhaushalts als Bezugsgröße | Open-Data-Portal, Datensatz 1101, Tabellenblatt „Finanzhaushalt" | dito |
+| `council_investment_measures` | **Einzelne Vorhaben** je Teilhaushalt, 2019–2026 (**Plan**) — IPSP-Element, Bezeichnung und Gesamtinvestitionssumme; `ebene` (`massnahme` / `teilhaushalt` / `gesamt`). Ohne Jahresraten, s. u. | Investitionsprogramm (Anlage 004 des Haushaltsplans) — **Anlagen im RIS** | `scripts/ingest_finanzberichte.py` |
+| `council_income_statement` | Ansatz, Plan **und** Ergebnis je Posten — gesamt und je Teilhaushalt, 2017–2024 | Jahresabschlüsse — **Anlagen im RIS** | `scripts/ingest_finanzberichte.py` |
+| `council_income_budget` | Dieselben Posten für Jahre **ohne** Abschluss, 2019–2026 — je Zeile `art` (`ansatz` / `finanzplanung`) und `plan_jahrgang` | Gesamtergebnishaushalt (Anlage 005 des Haushaltsplans) — **Anlagen im RIS** | dito |
+| `council_variance_reasons` | Warum ein Posten vom Plan abwich (Abschnitt 6.3.1), 45 Einträge | dito | dito |
+| `council_audit_report_sources` | **Fundstelle** des RPA-Schlussberichts je Jahrgang (eine Zeile je Jahr) | dito | dito |
+| `council_products` | Produktebene: was einzelne Aufgaben kosten — plus Steckbrief (Kurzbeschreibung, Auftragsgrundlage, Beeinflussbarkeit, Wirkungskreis, Zielgruppe) | Teilhaushalts-Pläne — **Anlagen im RIS** | dito |
+| `council_staff_plan` | Stellen je Amtsbezeichnung, 2023–2026 — `teil` A (Beamt\*innen) / B (Tarifbeschäftigte), `art` (`posten` / `gruppe` / `gesamt`), dazu Besetzung und unbesetzte Stellen zum Stichtag | Stellenplan (Anlage 21/22 des Haushaltsplans) — **Anlagen im RIS** | dito |
+| `council_audit_reports` | Prüfungsfeststellungen 2017–2023, eine Zeile je Randmarke | Schlussberichte des Rechnungsprüfungsamts — **Anlagen im RIS** | `scripts/ingest_pruefberichte.py` |
+| `council_group_items` | Gesamtergebnisrechnung des **Konzerns** je Posten, 2014–2024 | Konsolidierte Gesamtabschlüsse — **Anlagen im RIS** | `scripts/ingest_konzernabschluss.py` |
+| `council_group_entities` | Dieselben Summen je Aufgabenträger (Kernverwaltung, Klinikum, Eigenbetriebe …), 2017–2024, in **TEUR** | dito | dito |
+| `council_city_comparison` | Steuerkraft, Hebesätze und Steuereinnahmekraft der acht kreisfreien Städte je Jahrgang — Reihen `steuerkraft`, `realsteuern` und `finanzausgleich` (die drei Komponenten der Landeszuweisung, in TEUR) | Landesamt für Statistik Niedersachsen (Kommunaler Finanzausgleich, Realsteuervergleich) | `scripts/ingest_staedtevergleich.py` |
+| `council_investments_actual` | Tatsächliche Investitions-Auszahlungen je Jahr seit 2003 (**Ist**) — Summe und `regelwerk` (`kameral` bis 2009, `doppik` ab 2010) | Statistisches Jahrbuch der Stadt, Tabellen 1107 und 1107-1 (PDF von oldenburg.de) | `scripts/ingest_investitionen_ist.py` |
+| `council_investments_actual_kinds` | Dieselben Jahrgänge nach Auszahlungsart, mit der Überschrift der Quelle — vier Arten je kameralem, sechs je doppischem Jahrgang | dito | dito |
+| `council_investments_actual_rejected` | Die Jahrgänge, die die Zeilensumme **nicht** bestanden haben: Grund und gemessene `differenz` in Euro. Damit die Seite ihre Lücke beziffern kann, statt sie nur zu behaupten | dito | dito |
+| `council_debt` | Schuldenstand je Jahr seit 1995 — vier Schuldenarten, Summe und Betrag je Einwohner\*in | Statistisches Jahrbuch der Stadt, Tabelle 1108 (PDF von oldenburg.de) | `scripts/ingest_schulden.py` |
+| `council_expense_series` | Ausgaben je Jahr seit **1972** (**Ist**) — `regelwerk` (`kameral` bis 2009, `doppik` ab 2010), die bestandenen `proben` je Zeile und, wo die beiden Quellen sich widersprechen, der `konflikt_betrag` der unterlegenen. **Ohne Einwohnerzahl**, s. u. | Datensatz 1102 — Statistisches Jahrbuch, Tabelle 1102 (PDF) **und** Open-Data-Portal (zwei CSV) | `scripts/ingest_ausgabenreihe.py` |
+| `council_tax_plan` | Je Steuerart und Jahr der **Ansatz des Haushaltsplans** neben dem **Rechnungsergebnis**; `vorlaeufig` ist die Angabe der Quelle über sich selbst. `art` trägt dieselbe Schreibweise wie `council_taxes` — daran hängt die Prüfung der Jahresbeschriftung | Statistisches Jahrbuch, Tabelle 1103 (PDF von oldenburg.de), **alle im Archiv gesicherten Ausgaben** | `scripts/ingest_steuertabellen.py` |
+| `council_business_plans` | Eckwerte der **Wirtschaftspläne** je Eigenbetrieb und Haushaltsjahr — Erfolgsplan (Erträge, Aufwendungen, steuerliche Aufwendungen, Ergebnis), Vermögensplan und Verpflichtungsermächtigungen, dazu der Stand des Verwaltungsentwurfs. Bisher nur der Eigenbetrieb Gebäudewirtschaft und Hochbau, 2019–2026 — als einziger nennt er sie im Beschlusstext | **Die Ratsvorlage selbst** (Beschlussvorschlag), nicht eine Anlage | `scripts/ingest_wirtschaftsplaene.py` |
+| `council_tax_rates` | Die Realsteuer-Hebesätze je **Änderungsjahr** seit 1980 — Grundsteuer A, Grundsteuer B, Gewerbesteuer, dazu der `vorheriger` Satz. Neun Änderungsjahre (27 Zeilen) decken 45 Jahre — zuletzt 2025, als die Grundsteuerreform A auf 500 und B auf 539 Punkte hob | Statistisches Jahrbuch, Tabelle 1105 (auf demselben Blatt wie 1104) | dito |
 
 :::note[Zwei Tabellen zu denselben Berichten]
-`council_pruefbericht_quellen` hält die **Fundstelle** des Schlussberichts
+`council_audit_report_sources` hält die **Fundstelle** des Schlussberichts
 (eine Zeile je Jahrgang, für den Verweis „geprüft → Schlussbericht"),
-`council_pruefberichte` die **einzelnen Feststellungen** daraus (eine Zeile je
+`council_audit_reports` die **einzelnen Feststellungen** daraus (eine Zeile je
 Randmarke). Zwei Ebenen, zwei Tabellen — die Namen halten sie auseinander.
 :::
 
 Alle Ingests sind idempotent. Die neun Schichten, die der Cron aus dem **Ratsinformations-
 system** von allein nachzieht, tut er seit 08/2026 (siehe unten); die
 Ingest-Skripte bleiben der Weg von Hand, wenn ein verbesserter Parser über den
-**Bestand** laufen soll. Die Plan- und Open-Data-Schichten (`council_haushalt`,
-`council_steuern`, `council_steuerkraft`, `council_einwohner`) kommen per
+**Bestand** laufen soll. Die Plan- und Open-Data-Schichten (`council_budget`,
+`council_taxes`, `council_tax_capacity`, `council_einwohner`) kommen per
 Download von oldenburg.de und bleiben Handarbeit, ebenso der Städtevergleich
 (LSN, einmal jährlich — siehe [unten](#kein-neues-paket-kein-cron)) und die
 Schuldenzeitreihe, die Ist-Investitionen und die lange Ausgabenreihe (alle drei
@@ -182,7 +182,7 @@ seiner Zeile (`proben`):
 
 **Warum der Abgleich eine Toleranz hat und keine Gleichheit.** Die Statistik
 liegt in jedem geprüften Jahrgang zwischen 0,03 und 0,05 % über
-`council_ergebnisrechnung` — 2017 um 166.253 €, 2024 um 328.936 €. Das ist
+`council_income_statement` — 2017 um 166.253 €, 2024 um 328.936 €. Das ist
 kein Rundungsrest, sondern eine Abgrenzung: Der Jahresabschluss führt die
 Tabelle zweimal, als *Ergebnisrechnung der Kernverwaltung* (Abschnitt 3.1, das
 ist, was wir parsen) und als *Gesamtergebnisrechnung* (3.2 — im
@@ -230,8 +230,8 @@ Zwei Tabellen desselben Jahrbuch-Kapitels, beide für den Steuer-Steckbrief
 
 - **1103** stellt je Steuerart den **Haushaltsplan neben das
   Rechnungsergebnis**. Das ist die einzige Stelle, an der wir die Plan-Seite je
-  Steuerart bekommen: Weder `council_ergebnishaushalt` noch
-  `council_ergebnisrechnung` schlüsseln Steuern auf, beide führen nur „Steuern
+  Steuerart bekommen: Weder `council_income_budget` noch
+  `council_income_statement` schlüsseln Steuern auf, beide führen nur „Steuern
   und ähnliche Abgaben" als eine Summe. Der Befund: Die Gewerbesteuer wurde
   drei Jahre in Folge um über 40 % unterschätzt (2023 +42,3 %, 2024 +52,1 %,
   2025 +42,8 %).
@@ -268,7 +268,7 @@ Tabellen hier werden deshalb gegen eine zweite Quelle gehalten, **bevor** etwas
 gespeichert wird:
 
 - **1103** — jedes Rechnungsergebnis steht ein zweites Mal in Tabelle 1104, die
-  ihre Jahre einzeln beschriftet (`council_steuern`, 1998–2025). Für 2023, 2024
+  ihre Jahre einzeln beschriftet (`council_taxes`, 1998–2025). Für 2023, 2024
   und 2025 nennen beide in **allen sechs** Steuerarten denselben Betrag. Das ist
   zugleich das Aufnahmekriterium: **Ein Jahrgang ohne diese Zweitquelle kommt
   nicht herein** (`istabgleich`).
@@ -308,12 +308,12 @@ sondern in derselben Zeile. Wo es keines gibt (vor 1998), steht das da.
 ## Herkunft: woher jede einzelne Zahl stammt
 
 Jede Zeile der Tabellen oben trägt eine `herkunft_id`. Sie zeigt auf
-**`council_herkunft`** — einen Datensatz je Dokument-und-Abschnitt mit:
+**`council_provenance`** — einen Datensatz je Dokument-und-Abschnitt mit:
 
 | Feld | Was drinsteht | Beispiel |
 |---|---|---|
 | `art` | `ris` · `opendata` · `stadt` · `lsn` | `ris` |
-| `dokument_id` | `council_anlagen.document_id` — der **stabile Anker** | `280863` |
+| `dokument_id` | `council_attachments.document_id` — der **stabile Anker** | `280863` |
 | `label` / `url` | wie das Dokument heißt und wo es liegt | „Jahresabschluss 2024 …" |
 | `fundstelle` | wo **im** Dokument gelesen wurde | „Abschnitt 6.3.1 — Erläuterungen …" |
 | `seite` | Seitenzahl, wo das Dokument eine trägt | `161` |
@@ -401,7 +401,7 @@ sie, der Beleg-Chip verweist auf die Langfassung.
 
 :::note[Was der Altbestand mitbringt — und was nicht]
 Das Nachrüsten übernimmt aus den alten Feldern Label und URL und löst über die
-URL zusätzlich die `document_id` in `council_anlagen` auf. **Fundstelle und
+URL zusätzlich die `document_id` in `council_attachments` auf. **Fundstelle und
 Probe bleiben leer bzw. tragen `unbekannt`:** Der Altbestand hält nicht fest,
 an welchem Abschnitt er gelesen wurde und welche Probe er bestanden hat. Das
 zu erfinden — „steht schon meistens in Abschnitt 6.3.1" — wäre genau die Sorte
@@ -519,12 +519,12 @@ nicht für einen unbeaufsichtigten Lauf.
 :::
 
 :::caution[Plan ist nicht Ist]
-`council_haushalt` enthält **Planwerte** (was der Rat beschlossen hat),
-`council_steuern` **Ist-Werte** (was tatsächlich geflossen ist). Die beiden
+`council_budget` enthält **Planwerte** (was der Rat beschlossen hat),
+`council_taxes` **Ist-Werte** (was tatsächlich geflossen ist). Die beiden
 dürfen nie in einem Satz vermischt werden — im Frontend stehen sie in
 getrennten Bausteinen, und die Prompt-Bausteine der KI-Frage
 (`_haushalt_block`, `_steuern_block`) sagen dem Modell ausdrücklich, was sie
-sind. Seit `council_ergebnisrechnung` dazukam, gilt dasselbe für den
+sind. Seit `council_income_statement` dazukam, gilt dasselbe für den
 Jahresabschluss (`_ist_block`): Er ist die einzige Quelle, die **beides**
 führt, und benennt deshalb je Zahl, ob sie geplant oder abgerechnet ist.
 :::
@@ -638,7 +638,7 @@ die **Zahl** mit (`herkunft:<tabelle>:<n>`): Wächst die Lücke von einer Zeile
 auf dreihundert, ist das eine neue Nachricht und keine Wiederholung.
 
 :::note[Woher der Jahrgang kommt]
-`council_anlagen.fetched_at` trägt bei **allen** Finanzdokumenten den
+`council_attachments.fetched_at` trägt bei **allen** Finanzdokumenten den
 10.08.2026 — den Tag des Volltext-Backfills. Als Veröffentlichungsdatum ist das
 Feld wertlos. Der Jahrgang kommt deshalb aus dem Dokument selbst: aus dem Label
 (Jahresabschluss), dem Textanfang (Prüfberichte) oder der ersten Ansatzspalte
@@ -654,9 +654,9 @@ Jahrgang, den die Tabelle nie zurückgibt.
 ### Drei Regeln, die ihn unbeaufsichtigt tragen
 
 1. **Er lädt nichts herunter.** Die Anlagen kommen über `check_protocols.py`
-   ins System; der Job liest nur aus, was schon in `council_anlagen` liegt.
+   ins System; der Job liest nur aus, was schon in `council_attachments` liegt.
    Zwei Wege zu denselben Daten wären einer zu viel. Deshalb deckt er
-   `council_haushalt` und die Open-Data-Schichten **nicht** ab — ihr Ausbleiben
+   `council_budget` und die Open-Data-Schichten **nicht** ab — ihr Ausbleiben
    meldet er trotzdem, damit `ingest_haushalt.py` nicht vergessen wird.
 2. **Er senkt keine Prüfschwelle.** Summenprobe, Strukturprobe, Vorjahres-Kette
    und die Rechenprobe der Erläuterungen gelten unverändert. Was sie reißt,
@@ -711,16 +711,16 @@ Antworten, und eine davon veraltet still.
 
 | Datenart | Erkennung | Zieltabelle | Erwartet |
 |---|---|---|---|
-| Jahresabschluss | Label `%Jahresabschluss%`, > 100 Seiten, **ohne** `%Rechenschaft%` / `%Schlussbericht%` | `council_ergebnisrechnung` (+ `council_abweichungsgruende`) | September, Jahrgang + 1 |
-| Schlussbericht des RPA (Fundstelle) | Label `%chlussbericht%` **oder** Text beginnt mit `Schlussbericht`; entschieden am Textanfang | `council_pruefbericht_quellen` | September, Jahrgang + 1 |
-| Prüfungsfeststellungen | Text `%Rechnungsprüfungsamtes%`, > 30 Seiten; entschieden am Textanfang | `council_pruefberichte` | September, Jahrgang + 1 |
-| Teilhaushalts-Pläne | Label `%THH%`, > 40 Seiten | `council_produkte` | Oktober, Jahrgang + 0 |
-| Gesamtergebnishaushalt | Label `%Gesamtergebnishaushalt%`, > 10 Seiten; Jahrgang aus dem **Tabellenkopf** (vier der acht Dokumente tragen keine Jahreszahl im Label) | `council_ergebnishaushalt` | Oktober, Jahrgang − 1 |
-| Stellenplan | Label `%Stellenplan%`, > 10 Seiten, **ohne** `%eändert%`; Jahrgang aus dem **Tabellenkopf** (drei Schreibweisen im Label, eine mit zwei Jahreszahlen) | `council_stellenplan` | Oktober, Jahrgang − 1 |
-| Konsolidierter Gesamtabschluss | **nur** Text (`konzernabschluss.TEXT_MUSTER`), > 40 Seiten — die Labels dieser Reihe sind wertlos | `council_konzern_posten` (+ `council_konzern_traeger`) | Februar, Jahrgang + 2 |
-| Haushaltsplan | *(kein Anlagen-Muster — Download)* | `council_haushalt` | Oktober, Jahrgang − 1 |
-| Steuerkraft im Städtevergleich | *(kein Anlagen-Muster — Download beim LSN)* | `council_staedtevergleich`, Reihe `steuerkraft` | April, Jahrgang + 0 |
-| Realsteuervergleich (Hebesätze, Steuereinnahmekraft) | *(kein Anlagen-Muster — Download beim LSN)* | `council_staedtevergleich`, Reihe `realsteuern` | November, Jahrgang + 1 |
+| Jahresabschluss | Label `%Jahresabschluss%`, > 100 Seiten, **ohne** `%Rechenschaft%` / `%Schlussbericht%` | `council_income_statement` (+ `council_variance_reasons`) | September, Jahrgang + 1 |
+| Schlussbericht des RPA (Fundstelle) | Label `%chlussbericht%` **oder** Text beginnt mit `Schlussbericht`; entschieden am Textanfang | `council_audit_report_sources` | September, Jahrgang + 1 |
+| Prüfungsfeststellungen | Text `%Rechnungsprüfungsamtes%`, > 30 Seiten; entschieden am Textanfang | `council_audit_reports` | September, Jahrgang + 1 |
+| Teilhaushalts-Pläne | Label `%THH%`, > 40 Seiten | `council_products` | Oktober, Jahrgang + 0 |
+| Gesamtergebnishaushalt | Label `%Gesamtergebnishaushalt%`, > 10 Seiten; Jahrgang aus dem **Tabellenkopf** (vier der acht Dokumente tragen keine Jahreszahl im Label) | `council_income_budget` | Oktober, Jahrgang − 1 |
+| Stellenplan | Label `%Stellenplan%`, > 10 Seiten, **ohne** `%eändert%`; Jahrgang aus dem **Tabellenkopf** (drei Schreibweisen im Label, eine mit zwei Jahreszahlen) | `council_staff_plan` | Oktober, Jahrgang − 1 |
+| Konsolidierter Gesamtabschluss | **nur** Text (`konzernabschluss.TEXT_MUSTER`), > 40 Seiten — die Labels dieser Reihe sind wertlos | `council_group_items` (+ `council_group_entities`) | Februar, Jahrgang + 2 |
+| Haushaltsplan | *(kein Anlagen-Muster — Download)* | `council_budget` | Oktober, Jahrgang − 1 |
+| Steuerkraft im Städtevergleich | *(kein Anlagen-Muster — Download beim LSN)* | `council_city_comparison`, Reihe `steuerkraft` | April, Jahrgang + 0 |
+| Realsteuervergleich (Hebesätze, Steuereinnahmekraft) | *(kein Anlagen-Muster — Download beim LSN)* | `council_city_comparison`, Reihe `realsteuern` | November, Jahrgang + 1 |
 
 :::note[Warum der Städtevergleich zwei Zeilen bekommt]
 Beide Reihen liegen in derselben Tabelle, aber ihre Jahresangaben bedeuten
@@ -741,7 +741,7 @@ vorläufige erscheint schon im November davor, enthält aber gar kein Blatt
 `ST_KR_MESS_VGL` und kann die Schicht deshalb nicht füllen.
 :::
 
-Der Städtevergleich (`council_staedtevergleich`) steht **nicht** in dieser
+Der Städtevergleich (`council_city_comparison`) steht **nicht** in dieser
 Tabelle: Seine Quellen sind Tabellenmappen des Landesamts, keine Anlagen im
 Ratsinformationssystem, und sie erscheinen einmal jährlich. Er hat deshalb
 weder Erkennung noch Cron — und taucht folgerichtig auch im Datenstand-Block
@@ -811,8 +811,8 @@ Frontend, damit sie überprüfbar bleiben:
 
 - **`lib/haushalt-bereiche.ts`** — das Bereichs-Wörterbuch: je Teilhaushalt ein
   kanonischer Schlüssel, die Alias-Liste **jeder im Bestand vorkommenden**
-  Schreibweise (gegen `council_haushalt`, `council_ergebnisrechnung` und
-  `council_produkte` geprüft), ein Kurzname fürs Balkensegment und die eine
+  Schreibweise (gegen `council_budget`, `council_income_statement` und
+  `council_products` geprüft), ein Kurzname fürs Balkensegment und die eine
   Zeile Klartext, die `/haushalt/bereiche` trägt.
   Der Grund ist eine Wartungsfalle: Die Stadt benennt Teilhaushalte um,
   ohne den Zuschnitt zu ändern — Teilhaushalt 9 hat vier Schreibweisen in
@@ -851,13 +851,13 @@ Pro-Kopf-Angaben, Ein-Punkt-Überschlag), sind an Ort und Stelle als
 
 `lib/haushalt-quellen.ts` fasst die Quelle einer ganzen **Seite** in einem
 Absatz zusammen. Je einzelner Datenzeile weiß es die Datenbank genauer:
-`council_herkunft` (siehe [oben](#herkunft-woher-jede-einzelne-zahl-stammt))
+`council_provenance` (siehe [oben](#herkunft-woher-jede-einzelne-zahl-stammt))
 führt Fundstelle, Probe und Anker je Dokument-und-Abschnitt.
 
 ## Jahresabschlüsse und Produktebene aus dem eigenen Bestand
 
 Beide Dokumenttypen mussten nirgends beschafft werden: Sie hängen als Anlagen
-an Ratsvorlagen und liegen mit Volltext in `council_anlagen`.
+an Ratsvorlagen und liegen mit Volltext in `council_attachments`.
 
 **Jahresabschluss** (300+ Seiten je Jahrgang) → die Ergebnisrechnung der
 Kernverwaltung führt **Ansatz und Ergebnis nebeneinander**. Damit gibt es
@@ -948,7 +948,7 @@ Beides stimmt. Abschreibungen mindern das Ergebnis, ohne dass jemand etwas
 Jahre. Wer nur die erste Zahl sieht, bekommt einen falschen Eindruck — und für
 einen Bereich, dessen Anspruch Ehrlichkeit ist, war das die unangenehmste
 Lücke. Eingelesen sind alle acht Jahrgänge **2017–2024**
-(`council_finanzrechnung`, Parser `parse_finanzrechnung`).
+(`council_cash_flow_statement`, Parser `parse_finanzrechnung`).
 
 Die Tabelle hat dieselbe Grammatik wie die Ergebnisrechnung, also liest sie
 derselbe Spaltenapparat (`_tabellenkopf`, `_fenster`, `_spalten_zuordnen`).
@@ -1031,7 +1031,7 @@ die Antwort auf die naheliegendste Anschlussfrage der Schuldenseite —
 „Oldenburg hat kaum Kredite, also keine Schulden?". Zum 31.12.2024 stehen
 **43,69 Mio. €** Kredite bei Banken neben **311,79 Mio. €** Zusagen für
 Pensionen und Beihilfe. Eingelesen sind neun Stichtage **2016–2024**
-(`council_bilanz`, Parser `parse_bilanz` in `council/bilanz.py`); der älteste
+(`council_balance_sheet`, Parser `parse_bilanz` in `council/bilanz.py`); der älteste
 hat kein eigenes Dokument, er stammt aus der Vorjahresspalte des Abschlusses
 2017 und wird nur übernommen, wenn diese Spalte für sich ausgeglichen ist.
 
@@ -1129,9 +1129,9 @@ Gegenposten im Finanzvermögen (Position 3.8 Privatrechtliche Forderungen).
 Ohne den Sondereffekt sind die Schulden um 15,5 Mio. € **gesunken**.
 
 Der Jahresabschluss erklärt das in Abschnitt 6.2.7 selbst. Genau deshalb ist
-`council_bilanz_erlaeuterungen` keine Zugabe, sondern eine Auflage: Die
+`council_balance_sheet_notes` keine Zugabe, sondern eine Auflage: Die
 Oberfläche zeigt den Schuldenwert nur, wenn sie den Wortlaut dazu hat — kein
-Text, keine Zahl. Dieselbe Bauart wie `council_abweichungsgruende` für die
+Text, keine Zahl. Dieselbe Bauart wie `council_variance_reasons` für die
 Ergebnisrechnung.
 :::
 
@@ -1248,7 +1248,7 @@ Note, und „kaum Spielraum" kein Missstand.
 
 ## Planjahre: „Ansatz" heißt fünfmal etwas anderes
 
-`council_ergebnisrechnung` kann die Einnahmearten nur für **abgeschlossene**
+`council_income_statement` kann die Einnahmearten nur für **abgeschlossene**
 Jahre zeigen — 2025 und 2026 haben keinen Jahresabschluss. Die Zahlen stehen
 aber längst im Haushaltsplan selbst: Anlage 005, der *Gesamtergebnishaushalt*,
 führt dieselben Posten 01–24 auf 16 bis 18 Seiten. Acht Dokumente decken die
@@ -1301,8 +1301,8 @@ Eine Aufteilung nach Teilhaushalten. Der Jahresabschluss führt sie in
 Abschnitt 5 („Teil-Ergebnisrechnung THH01…"), der Gesamtergebnishaushalt
 nicht: In allen acht Dokumenten kommt „THH" kein einziges Mal vor. Für ein
 Bild, das Herkunft und Verwendung gegenüberstellt, liefert sie also nur die
-Herkunftsseite. `council_produkte` deckt nur 8 bis 10 der 13 Teilhaushalte ab
-(17–36 % unter der Summenzeile), `council_haushalt` ist vollständig, aber eine
+Herkunftsseite. `council_products` deckt nur 8 bis 10 der 13 Teilhaushalte ab
+(17–36 % unter der Summenzeile), `council_budget` ist vollständig, aber eine
 andere Gliederung (2026: 812,9 statt 788,6 Mio. € Erträge). Beides ist
 brauchbar — aber nur, wenn die Seite den Unterschied benennt.
 :::
@@ -1396,7 +1396,7 @@ gekennzeichnete Zeilen. Die Jahrgänge 2019–2022 gibt es nicht — dort endet 
 Anlagenverzeichnis des Haushaltsplans bei „021 Wirtschaftsplan EGH".
 
 **Gegenprobe, keine Probe:** Die Ist-Spalte des Vorvorjahres lässt sich gegen
-`council_ergebnisrechnung` halten — aber sie ist die *Gesamt*ebene (mit den
+`council_income_statement` halten — aber sie ist die *Gesamt*ebene (mit den
 nicht rechtsfähigen Stiftungen), der gespeicherte Abschluss die
 Kernverwaltung. Deckungsgleich sind 6 bis 8 von 23 Posten, der größte Abstand
 liegt bei 0,075 % der Ertragssumme. Gegen die *Gesamt*ergebnisrechnung
@@ -1406,7 +1406,7 @@ verwerfen darf er deswegen nichts, sonst flöge irgendwann ein richtiger
 Jahrgang wegen einer anderen Konsolidierungsstufe raus.
 
 **Welche Probe eine gespeicherte Zeile bestanden hat, steht seit 08/2026 an
-der Zeile** — über ihre `herkunft_id` in `council_herkunft.probe`, mitsamt dem
+der Zeile** — über ihre `herkunft_id` in `council_provenance.probe`, mitsamt dem
 Messwert (`probe_ergebnis`, etwa „0.00 % Abweichung zur Gesamtrechnung"). Bis
 dahin lief die Probe zwar, aber nur das Lauf-Protokoll wusste davon, und das
 ist nach dem Lauf weg. Jede Probe hier braucht deshalb einen Eintrag in
@@ -1436,7 +1436,7 @@ derzeit **null**-mal auf.
 :::
 
 Ein Nebenertrag: Die Ansätze aus den Jahresabschlüssen bestätigen die Werte,
-die wir aus den Plan-PDFs lesen. `council_haushalt` minus der Zeile „nicht
+die wir aus den Plan-PDFs lesen. `council_budget` minus der Zeile „nicht
 rechtsfähige Stiftungen" trifft den **ursprünglichen** Ansatz auf den Cent —
 2020 also 588.539.108,34 € (vor Nachtrag), nicht die 591,3 Mio. € des
 fortgeschriebenen Plans. Genau dafür gibt es die beiden Felder.
@@ -1525,7 +1525,7 @@ Feststellungen haben einen, 23 davon mit Bezug auf die Verwaltung.
 
 Eine **regelmäßige** Rückmeldung der Verwaltung gibt es nicht: Im ganzen
 Bestand liegen dazu drei Dokumente — die „Nacharbeiten-Übersicht" zum
-Prüfbericht 2020 (`council_anlagen` 243109, Vorlage 21/0944) und je eine
+Prüfbericht 2020 (`council_attachments` 243109, Vorlage 21/0944) und je eine
 Stellungnahme des Oberbürgermeisters zu den Berichten 2019 und 2021. Die
 Nacharbeiten-Übersicht war beim Bau die beste Gegenprobe: Sie nennt zu jeder
 Feststellung Ziffer **und** Seite, und beide stimmen mit dem Geparsten
@@ -1607,7 +1607,7 @@ und tauchen im Haushalt bestenfalls als Zuschusszeile auf. 2024 stehen
 Bereich zeigte bis dahin rund **64 %** dessen, was die Stadt bewegt.
 
 Die Quelle ist der **konsolidierte Gesamtabschluss** nach § 128 NKomVG, genauer
-der Prüfbericht, den das Rechnungsprüfungsamt dazu vorlegt (`council_anlagen`,
+der Prüfbericht, den das Rechnungsprüfungsamt dazu vorlegt (`council_attachments`,
 zwölf Jahrgänge 2013–2024). Parser: `council/konzernabschluss.py`.
 
 **Die Labels dieser Reihe sind wertlos.** Der Gesamtabschluss 2016 heißt im
@@ -1621,8 +1621,8 @@ konsolidierten Gesamtabschlusses zum 31.12.2016%'` fände **nichts**.
 
 | Abschnitt | Tabelle | Proben |
 |---|---|---|
-| 3.2 Gesamtergebnisrechnung | `council_konzern_posten` | `Erträge − Aufwendungen = ordentliches Ergebnis`; dasselbe für die außerordentlichen Posten; beide zusammen = Gesamtjahresergebnis |
-| 4.1.1 Trägeraufstellung | `council_konzern_traeger` | je Zeile `Jahr − Vorjahr = Veränderung`; Träger + Konsolidierung = ausgewiesene Summe; diese Summe = Summenposten aus 3.2 |
+| 3.2 Gesamtergebnisrechnung | `council_group_items` | `Erträge − Aufwendungen = ordentliches Ergebnis`; dasselbe für die außerordentlichen Posten; beide zusammen = Gesamtjahresergebnis |
+| 4.1.1 Trägeraufstellung | `council_group_entities` | je Zeile `Jahr − Vorjahr = Veränderung`; Träger + Konsolidierung = ausgewiesene Summe; diese Summe = Summenposten aus 3.2 |
 
 Dazu die **Vorjahres-Kette** über Dokumentgrenzen: 39 von 39 Gliedern schließen.
 Sie ist bewusst **kein** Ausschlussgrund, sondern eine Meldung — sie prüft zwei
@@ -1660,7 +1660,7 @@ Zeile zerschossen.
 ### Die Gegenprobe — die stärkste Bestätigung im ganzen Bereich
 
 Der Gesamtabschluss führt die Kernverwaltung als eigene Trägerzeile. Diese
-Zeile muss den Ist-Wert wiedergeben, den `council_ergebnisrechnung` aus einem
+Zeile muss den Ist-Wert wiedergeben, den `council_income_statement` aus einem
 **anderen** Dokument eines **anderen** Jahres trägt. Sie tut es in **10 von 10**
 vergleichbaren Fällen (5 Jahrgänge × Erträge und Aufwendungen), jeweils auf
 die Rundung eines Tausend genau — 2024 etwa 799.057 TEUR gegen
@@ -1823,8 +1823,8 @@ mit Dokument, Abschnitt und Seite da — „keine Probe" ist etwas anderes als
 
 „Beteiligungsverhältnisse" und „Besetzung der Aufsichtsorgane" sehen im
 Extrakt aus wie Prosa und sind Tabellen. Sie stehen deshalb zusätzlich
-zerlegt im Bestand — `council_gesellschaft_eigentuemer` und
-`council_gesellschaft_personen` —, während der Rohtext daneben stehen bleibt.
+zerlegt im Bestand — `council_company_owners` und
+`council_company_people` —, während der Rohtext daneben stehen bleibt.
 
 **Die Aufsichtsorgane sind zweispaltig, und pypdf liest spaltenweise:** erst
 alle fünfzehn Namen untereinander, dann alle fünfzehn Ämter. Was auf der
@@ -1878,7 +1878,7 @@ Mitgesellschafter.
 
 ### Der Abgleich mit dem Gesamtabschluss — nachgerechnet, aber keine Probe
 
-Dieselben Gesellschaften stehen auch in `council_konzern_traeger`, dort mit
+Dieselben Gesellschaften stehen auch in `council_group_entities`, dort mit
 ihren ordentlichen Erträgen und Aufwendungen. Deren Differenz ist die einzige
 Größe, die sich mit dem Jahresergebnis vergleichen lässt. Nachgerechnet für
 2024 (in TEUR):
@@ -2078,7 +2078,7 @@ dass sie größer ist. Die Pro-Kopf-Spalte des Blattes bleibt draußen: Für das
 Ausgleichsjahr 2025 nennt die Ausgabe 2025 „452,46 € je Ew.", die Ausgabe 2026
 „452,27 €" — derselbe Nettobetrag, revidierte Einwohnerzahl.
 
-:::danger[Nicht mit `council_steuerkraft` mischen]
+:::danger[Nicht mit `council_tax_capacity` mischen]
 Beide Tabellen führen Steuerkraftmesszahlen. **Der Jahresversatz ist seit
 #516 entschieden** — nicht an einer Definition, sondern an den Büchern der
 Stadt: Der Open-Data-Datensatz 1106 beschriftete seine Zeilen ein Jahr zu früh,
@@ -2091,7 +2091,7 @@ gilt nicht mehr.
 anderer, aber es bleibt einer: Es sind zwei Veröffentlichungen — die CSV der
 Stadt und der Bericht des Landesamts —, und die können sich durch Nachträge und
 Revisionen um kleine Beträge unterscheiden. Die LSN-Werte liegen deshalb in
-einer **eigenen Tabelle** (`council_staedtevergleich`), kein Lesepfad legt die
+einer **eigenen Tabelle** (`council_city_comparison`), kein Lesepfad legt die
 Reihen zusammen, und `/haushalt/vergleich` sagt das in seinem Grenzen-Block.
 
 Offen ist nur noch die Meldung an die Quelle: Ansprechpartner laut Katalog ist
@@ -2108,7 +2108,7 @@ in der **Gewerbesteuerstatistik** (EVAS 735 11) des Landesamts für Statistik
 Niedersachsen, Statistischer Bericht L IV 13.
 
 Gelesen wird sie von `council/gewerbesteuerstatistik.py` in die Tabelle
-`council_gewerbesteuerstatistik`; eingelesen wird von Hand
+`council_trade_tax_statistics`; eingelesen wird von Hand
 (`scripts/ingest_gewerbesteuerstatistik.py`), weil die Statistik einmal
 jährlich erscheint.
 
@@ -2138,7 +2138,7 @@ Schleifendurchlauf und dieselbe Probe ist.
    Zwei verschieden gebaute Tabellen desselben Berichts, getrennt gelesen.
 3. **Hebesatzprobe** — der Hebesatz, den das Landesamt seiner Gemeindetabelle
    nachrichtlich beilegt, steht auch in Tabelle 1105 des Statistischen
-   Jahrbuchs der Stadt (`council_hebesaetze`). Zwei Häuser, dieselbe Zahl.
+   Jahrbuchs der Stadt (`council_tax_rates`). Zwei Häuser, dieselbe Zahl.
    Sie liest die **Treppe**, nicht das Jahr: Für 2021 gibt es keine Zeile in
    1105, es gilt der Satz der letzten Änderung davor (2015 → 439 %).
 
@@ -2198,7 +2198,7 @@ beschreiben konnte.
 
 :::danger[Messbetrag ist nicht Aufkommen]
 Der Steuermessbetrag ist die **Veranlagung** eines Erhebungsjahres
-(Gewerbeertrag × 3,5 %). Das Aufkommen in `council_steuern` ist etwas
+(Gewerbeertrag × 3,5 %). Das Aufkommen in `council_taxes` ist etwas
 anderes, und der Hebesatz schließt die Lücke nicht. Messbetrag × 439 % gegen
 das kassenmäßige Ist-Aufkommen brutto des Realsteuervergleichs:
 
@@ -2330,11 +2330,11 @@ solche gekennzeichnet; die beiden Beträge darin stehen so in der Quelle.
 
 ## Investitionsprogramm: die einzelne Maßnahme
 
-Die Ebene unter `council_investitionen`, auf derselben Seite: nicht „Schule und
+Die Ebene unter `council_investments`, auf derselben Seite: nicht „Schule und
 Bildung: 8,3 Mio. €", sondern „BBS Haarentor: Ausstattung". Quelle ist **Anlage
 004 des Haushaltsplans**, seit acht Jahrgängen (2019–2026) im Anlagenbestand —
 kein Download nötig, der Cron liest sie wie den Gesamtergebnishaushalt und den
-Stellenplan aus `council_anlagen` (`council/investitionsprogramm.py`).
+Stellenplan aus `council_attachments` (`council/investitionsprogramm.py`).
 
 Gemessen über alle acht Jahrgänge: **4.459 Vorhaben**, 102 Teilhaushalts-Summen,
 kein verworfener Jahrgang.
@@ -2367,7 +2367,7 @@ erste**.
 Grund ist der Textextrakt: Leere Zellen fallen darin ersatzlos weg. Eine Zeile
 mit sechs Zahlen kann die Spalten 1, 2, 3, 4, 6, 8 meinen oder 1, 2, 5, 7, 8, 9
 — welche, steht nirgends. Zu retten wären sie nur über die x-Koordinaten des
-PDFs, und die trägt `council_anlagen.raw_text` nicht. Die **erste** Zahl einer
+PDFs, und die trägt `council_attachments.raw_text` nicht. Die **erste** Zahl einer
 Zeile ist dagegen immer die Gesamtinvestitionssumme: Sie ist die linke Spalte,
 und links kann nichts wegfallen. Eine Spalte, die trägt, ist mehr wert als fünf
 geratene — die Seite sagt, dass die Jahresaufteilung fehlt.
@@ -2409,7 +2409,7 @@ Beträge unter 1.000 ab, die es gibt („6.100 4.000 700 700 700").
   Summe −121,4 Mio. €. Sie bekommen kein Rot (keine Bewertungsfarben) und dürfen
   nicht weggelassen werden — ohne sie ginge keine Probe auf.
 
-### Kein Abgleich mit `council_investitionen` — und warum das keine Lücke ist
+### Kein Abgleich mit `council_investments` — und warum das keine Lücke ist
 
 Naheliegend wäre, die Teilhaushalts-Summen des Programms gegen die
 Investitionen aus Datensatz 1101 zu halten. Das wäre **keine Probe, sondern ein
@@ -2481,7 +2481,7 @@ Platzhalter mit gestricheltem Rahmen und benennt die Lücke im Text; der
 Endpunkt liefert sie als `fehlend`.
 
 **Mit ihrer Weite.** Der Ingest-Lauf schreibt die verworfenen Jahrgänge nach
-`council_investitionen_ist_verworfen` — Grund als Satz, `differenz` als Zahl
+`council_investments_actual_rejected` — Grund als Satz, `differenz` als Zahl
 (Arten minus ausgewiesene Summe, in Euro). `fehlend` trägt sie je Lücke mit,
 und die Seite macht daraus „verworfen: 1,3 Mio. € Differenz im Dokument".
 Dieselbe Rolle wie `aufteilung_verworfen` bei den Schulden, nur eine Tabelle
@@ -2497,9 +2497,9 @@ Die naheliegende Zahl wäre `Ist ÷ Plan`. Gerechnet ergäbe sie für 2022–202
 Werte zwischen 41 % und 75 %. Sie steht auf keiner Seite, und das ist kein
 Übersehen:
 
-- Der **Plan** (`council_investitionen`, Datensatz 1101) ist nach
+- Der **Plan** (`council_investments`, Datensatz 1101) ist nach
   **Teilhaushalten** gegliedert — nach Organisation.
-- Das **Ist** (`council_investitionen_ist`) stammt aus der Finanzrechnung der
+- Das **Ist** (`council_investments_actual`) stammt aus der Finanzrechnung der
   **Kernverwaltung** und ist nach **Auszahlungsarten** gegliedert.
 
 Keine der beiden Quellen nennt die andere, keine weist eine Differenz aus, und
@@ -2531,7 +2531,7 @@ trotzdem mit, weil sie nichts kostet.
   des städtischen Hochbaus —, steht nicht darin.
 - **Kein einzelnes Vorhaben.** „Baumaßnahmen: 16,2 Mio. €" sagt nicht, welche
   Straße. Die Vorhaben-Ebene gibt es nur auf der **Plan**-Seite
-  (`council_investitionsmassnahmen`, Abschnitt darüber) — und auch dort ohne
+  (`council_investment_measures`, Abschnitt darüber) — und auch dort ohne
   die Schulgebäude, die beim Eigenbetrieb liegen. Ein Ist je Vorhaben führt
   keine der beiden Quellen.
 - **„Sonstige Investitionstätigkeit" bleibt unaufgeschlüsselt** und ist in den
@@ -2640,8 +2640,8 @@ Reihe zu zeigen läse Bevölkerungswachstum als Schuldenaufbau.
 
 ## Nachbewilligungen: was am Plan vorbei beschlossen wurde
 
-`council/nachbewilligungen.py` · Tabellen `council_nachbewilligungen`,
-`council_nachbewilligung_jahre`, `council_nachbewilligung_kanaele` · Ingest
+`council/nachbewilligungen.py` · Tabellen `council_supplementary_approvals`,
+`council_supplementary_years`, `council_supplementary_channels` · Ingest
 `scripts/ingest_nachbewilligungen.py` · Seite `/haushalt/plan-ist`
 
 Nach § 117 NKomVG braucht jede Ausgabe, die im beschlossenen Haushalt nicht
@@ -2677,9 +2677,9 @@ Eurozeichen, „insgesamt 500.000 Euro", und die umgedrehte Wortstellung
 Zwei Dinge, die im Bestand anders liegen, als man erwartet:
 
 - **`council_decisions.kvonr` ist durchgehend `NULL`** (8.369 von 8.369). Der
-  Join auf `council_vorlagen` läuft ausschließlich über den Text
+  Join auf `council_templates` läuft ausschließlich über den Text
   `vorlage_nr`; ein Join über `kvonr` liefert schweigend null Treffer.
-- **`council_vorlagen.beschlussvorschlag` ist fast leer** (7 von 5.019
+- **`council_templates.beschlussvorschlag` ist fast leer** (7 von 5.019
   Zeilen). Die zweite Stufe erntet den Vorschlag deshalb aus `raw_text` — mit
   derselben Funktion, die auch die Spalte füllt (`council/ernte.py`).
 
@@ -2790,7 +2790,7 @@ Am Ende jedes Rechenschaftsberichts steht die Anlage „Kennzahlenübersicht und
 Berechnungsmethoden": dreizehn Zahlen, auf die die Stadt ihren ganzen
 Jahresabschluss eindampft — Eigenkapitalquote, Anlagenintensität, Steuerquote,
 Verschuldung je Kopf. Parser: `council/kennzahlen.py`, Tabellen
-`council_kennzahlen` und `council_kennzahl_formeln`, Seite
+`council_indicators` und `council_indicator_formulas`, Seite
 `/haushalt/kennzahlen`.
 
 Der Grund, diese Schicht überhaupt zu bauen, steht **unter** der Tabelle: die
@@ -2839,7 +2839,7 @@ zerschnitten, wo eine es verdient.
 ### Drei Proben, und die dritte ist die schärfste
 
 1. **`kennzahlen_gegen_bilanz`** — Anlagenintensität, Infrastrukturquote und
-   Eigenkapitalquote II lassen sich aus `council_bilanz` nachrechnen. 87
+   Eigenkapitalquote II lassen sich aus `council_balance_sheet` nachrechnen. 87
    Nachrechnungen über 2016–2024, keine Abweichung über der gedruckten
    Genauigkeit.
 2. **`kennzahlen_ueberlappung`** — die 240 doppelten Zellen (s. o.).
@@ -2912,7 +2912,7 @@ und Verpflichtungsermächtigungen von 104.980.000 Euro
 ```
 
 Das ist der Text, über den abgestimmt wird — keine Zusammenfassung und keine
-Anlage, die später ausgetauscht werden könnte. `council_vorlagen` führt ihn
+Anlage, die später ausgetauscht werden könnte. `council_templates` führt ihn
 längst als Volltext; es brauchte nur niemand.
 
 ### Zwei Proben, und die erste steht im Text
@@ -2972,7 +2972,7 @@ aber nicht ausgewertet.
 
 Damit im nächsten Oktober niemand bei null anfängt: Das hier ist der Befund je
 Betrieb, mit Stand 20.08.2026. Die Spalte „Anlage" nennt die
-`council_anlagen.document_id` — der Anker, der Label- und URL-Wechsel
+`council_attachments.document_id` — der Anker, der Label- und URL-Wechsel
 überlebt.
 
 | Betrieb | Vorlagen | Eckwerte im Beschlusstext | Anlage lesbar? |
@@ -3008,7 +3008,7 @@ Eine Toleranz von 2 € ist hier Pflicht, cent-genau wie beim EGH geht nicht.
 
 :::note[Scans werden nicht vergessen — sie tragen eine Marke]
 Ein PDF ohne Textebene ist im Bestand **nicht** dasselbe wie ein ungelesenes:
-`backfill_anlagen_texte.py` setzt `council_anlagen.status = 'empty'`, sobald
+`backfill_anlagen_texte.py` setzt `council_attachments.status = 'empty'`, sobald
 ein Dokument weniger als 200 Zeichen hergibt (`MIN_TEXT`). 231 Anlagen tragen
 diese Marke bereits.
 
@@ -3156,7 +3156,7 @@ Abfall- und Straßenreinigungsgebühr. Wie sie zustande kommt, legt der
 Abfallwirtschaftsbetrieb jedes Jahr als Anlage zur Ratsvorlage vor — und diese
 Anlage ist das **am besten prüfbare Dokument des ganzen Bestands**
 (`council/gebuehren.py`, `scripts/ingest_gebuehren.py`,
-`council_gebuehren`, `council_gebuehrensaetze`).
+`council_fees`, `council_fee_rates`).
 
 Drei Bereiche je Jahrgang, jeder mit eigener Bezugsgröße:
 
@@ -3217,7 +3217,7 @@ Rundungs-Signatur wie beim Erfolgsplan, `TOLERANZ_EUR = 2.0`).
    leer, und `proben` sagt, dass nur eine der beiden Proben lief.
 
 **Anlage 4: die konkreten Tarife.** Neben den drei Kalkulationsblöcken stehen
-jetzt zwölf einzeln benannte Vorschläge in `council_gebuehrensaetze`:
+jetzt zwölf einzeln benannte Vorschläge in `council_fee_rates`:
 Grundgebühr, allgemeine Litergebühr, Biogrundmenge 60 L, Sperr- und
 Grüngutkarten, fünf Anlieferungsmengen sowie die Gebühren je Mg und je Meter
 Quadratwurzel. Eine Matrix aus Behältergröße und Abfuhrrhythmus enthält die
@@ -3238,12 +3238,12 @@ beginnen deshalb derzeit 2023.
 
 Der Haushaltsplan sagt, wofür das Geld ausgegeben werden soll. Die
 **Haushaltssatzung** sagt, in welchem Rahmen — auf drei Seiten, je Jahrgang,
-und bis zum 20.08.2026 las sie niemand. Sie füllt `council_haushaltssatzung`
+und bis zum 20.08.2026 las sie niemand. Sie füllt `council_budget_bylaw`
 (`council/haushaltssatzung.py`, `scripts/ingest_haushaltssatzung.py`).
 
 | § | Was dort steht | Warum es fehlte |
 |---|---|---|
-| **§ 1.1** | Ergebnishaushalt: ordentliche und außerordentliche Erträge/Aufwendungen | teilweise über `council_ergebnishaushalt` da |
+| **§ 1.1** | Ergebnishaushalt: ordentliche und außerordentliche Erträge/Aufwendungen | teilweise über `council_income_budget` da |
 | **§ 1.2** | Finanzhaushalt: sechs Beträge plus zwei Summen | der Bereich las daraus **nur die Investitionen** |
 | **§ 2** | Kredite für Investitionen | **stand nirgends** |
 | **§ 3** | Verpflichtungsermächtigungen | **stand nirgends** |
@@ -3450,7 +3450,7 @@ die andere nie:
 
 **Nur das Ergebnis.** Diese Route liefert kein Erträge/Aufwendungen-Paar; die
 einzige zweifach belegte Zahl dieser Dokumente ist das Jahresergebnis. Darum
-sind `ertraege` und `aufwendungen` in `council_wirtschaftsplaene` seit dem
+sind `ertraege` und `aufwendungen` in `council_business_plans` seit dem
 20.08.2026 **nullbar** — ein `NULL` sagt „diese Quelle nennt es nicht", eine 0
 wäre eine Behauptung. Der Umbau erkennt Altbestände am Schema selbst
 (`PRAGMA table_info`), kopiert spaltenweise um und bricht ab, wenn die
@@ -3476,7 +3476,7 @@ nennt die Cron-Mail die Schicht samt Skript.
 
 ### Kein Cron — noch nicht
 
-`check_finanzdaten` ist auf `council_anlagen` gebaut: `Finanzquelle.erkennung`
+`check_finanzdaten` ist auf `council_attachments` gebaut: `Finanzquelle.erkennung`
 sucht ein Anlagen-Label. Diese Schicht wäre die erste, deren Einheit eine
 **Vorlage** ist — ein eigener Umbau. Bis dahin ist
 `scripts/ingest_wirtschaftsplaene.py` der Weg, und weil die Quelle im Haus
@@ -3485,7 +3485,7 @@ liegt (kein Download), ist er auch der richtige, wenn ein verbesserter Parser
 
 Von Hand über SSH muss er dafür nicht mehr laufen: Der Ops-Workflow
 *„Finanzdaten einlesen (dev)"* ruft ihn mit auf, und sein Bestandsbericht zählt
-`council_wirtschaftsplaene` mit. Sein Exit-Code wird dort bis ans Ende
+`council_business_plans` mit. Sein Exit-Code wird dort bis ans Ende
 aufgehoben — eine gerissene Rechenprobe färbt den Lauf rot, reißt aber nicht
 den Bericht und die Archiv-Sicherung mit sich, die nach ihm kommen.
 
@@ -3505,7 +3505,7 @@ Der Bereich zeigt lieber eine Lücke als eine Schätzung:
   trotzdem — Verwaltungslisten und die „beschlossenen Änderungen" des
   Finanzausschusses, Position für Position, jede Liste beim Einlesen gegen
   ihre eigene „Zusammenstellung der Veränderungen" bewiesen (Tabellen
-  `council_haushalt_aenderungen`/`…_summen`, Ingest
+  `council_budget_amendments`/`…_summen`, Ingest
   `scripts/ingest_aenderungslisten.py`, Anzeige auf
   `/haushalt/mitreden#streit` als „Was in den Listen stand").
 
@@ -3575,7 +3575,7 @@ Der Bereich zeigt lieber eine Lücke als eine Schätzung:
   **Finanzhaushalt** liest seit dem 30.08.2026 ein eigener Parser
   (`council/aenderungslisten_fhh.py`, Ingest
   `scripts/ingest_aenderungslisten_fhh.py`, Tabellen
-  `council_haushalt_aenderungen_fhh`/`…_summen`). Er ist das Gegenstück zum
+  `council_budget_amendments_cash`/`…_summen`). Er ist das Gegenstück zum
   Ergebnishaushalt: Dort steht, was die Stadt erwirtschaftet und verbraucht,
   hier, was tatsächlich fließt — und vor allem, was **investiert** wird.
 
@@ -3592,7 +3592,7 @@ Der Bereich zeigt lieber eine Lücke als eine Schätzung:
 
   **Gelesen werden 15 der 18 Listen des Kernhaushalts**, 250 Positionen, 132
   davon mit ihrem **Investitionscode** (`I10.089904.500`) — dem Anschluss an
-  `council_investitionsmassnahmen` und damit an die 4.459 Vorhaben auf
+  `council_investment_measures` und damit an die 4.459 Vorhaben auf
   `/haushalt/investitionen`. Sieben der acht Jahrgänge sind vollständig; es
   fehlt **2019**, dessen einzige Liste ihre Positionsprobe um 200.000 €
   verfehlt. Zwei weitere Dokumente fallen durch (212802 in seinen späteren
@@ -3705,23 +3705,23 @@ Der Bereich zeigt lieber eine Lücke als eine Schätzung:
   Dokumente: Im Bestand stehen 9 der 13 Teilhaushalte (2025: 10). Gemessen an
   den Aufwendungen, die der Endpunkt als `coverage_percent` ausweist, deckt
   die Produktebene je Jahrgang **71 % bis 87 %** (2020–2025; für 2018/2019
-  fehlt die Bezugsgröße in `council_haushalt`, für 2026 die Produktebene).
+  fehlt die Bezugsgröße in `council_budget`, für 2026 die Produktebene).
   Deshalb trägt jedes Produkt ein Abdeckungs-Badge — eine Reihe, die nur die
   vorhandenen Jahre zeigt, sähe sonst durchgehend aus.
 - Der Open-Data-Datensatz 1102 enthält abweichende Aufwendungen (2024: 764,7
   statt 728,2 Mio. €), ist aber weder als Ist noch als Nachtrag
   gekennzeichnet; genutzt wird daraus nur die Einwohnerspalte.
 - **Grundsteuer-*Aufkommen* für A und B getrennt** — die **Hebesätze** liegen
-  seit 08/2026 getrennt vor (`council_hebesaetze` führt „Grundsteuer A" und
+  seit 08/2026 getrennt vor (`council_tax_rates` führt „Grundsteuer A" und
   „Grundsteuer B" als eigene Zeilen, 1980–2025). Das **Aufkommen** nicht: Der
-  Open-Data-Datensatz führt es als eine Spalte, und `council_steuern` wie
-  `council_steuerplan` tragen die Art deshalb als `Grundsteuer A+B`. Daran
+  Open-Data-Datensatz führt es als eine Spalte, und `council_taxes` wie
+  `council_tax_plan` tragen die Art deshalb als `Grundsteuer A+B`. Daran
   hängt, dass es im Labor keinen Grundsteuer-Regler gibt: Ein Regler braucht
   beides, sonst rechnet er einen Satz gegen ein Aufkommen, das zur Hälfte
   einer anderen Steuer gehört.
 - **Gebühren und Beiträge nach Art** — als *Summe* stehen sie längst da: Posten
   05 „öffentlich-rechtliche Entgelte" (2026 im Ansatz 26,6 Mio. €) trägt sie in
-  `council_ergebnishaushalt` wie in `council_ergebnisrechnung`, und im
+  `council_income_budget` wie in `council_income_statement`, und im
   Flussbild heißt das Band „Gebühren und Beiträge". Was fehlt, ist die
   Aufschlüsselung **je Gebührenart** — welcher Betrag aus Kita-Beiträgen kommt
   und welcher aus Abfallgebühren, sagt keiner der Datensätze. Darum führt
@@ -3743,35 +3743,35 @@ Der Bereich zeigt lieber eine Lücke als eine Schätzung:
   nicht „mit Vorsicht". Tabelle 1108 deckt dieselbe Frage ab und bringt ihre
   Proben mit.
 - **Ist je Vorhaben — keine der drei Investitions-Schichten führt es.** Das
-  Investitionsprogramm (`council_investitionsmassnahmen`, Anlage 004,
+  Investitionsprogramm (`council_investment_measures`, Anlage 004,
   Abschnitt „Investitionsprogramm: die einzelne Maßnahme" weiter oben) führt
   seit 08/2026 4.459 einzelne **geplante** Vorhaben namentlich, durchsuchbar
   auf `/haushalt/investitionen` — „welche Straße, welche Schule" ist damit
   zur Hälfte beantwortet. Was am Jahresende wirklich abfloss, kennt seither
-  der Anlagenspiegel (`council_investitionen_ist`, Abschnitt „Gebaut: das Ist
+  der Anlagenspiegel (`council_investments_actual`, Abschnitt „Gebaut: das Ist
   zum Investitionsplan" weiter oben) — aber nur nach Auszahlungsart summiert,
   nicht nach Vorhaben. Keine der beiden Quellen führt die Gliederung der
   anderen mit; ein Ist je Vorhaben bräuchte eine dritte Quelle, die bisher
   nicht bekannt ist.
 - **Schulgebäude fehlen in allen drei Investitions-Schichten** — im
-  Finanzhaushalt (`council_investitionen`) so wenig wie im
+  Finanzhaushalt (`council_investments`) so wenig wie im
   Investitionsprogramm oder im Anlagenspiegel. Sanierung und Neubau liegen
   beim Eigenbetrieb Gebäudewirtschaft und Hochbau mit eigenem Wirtschaftsplan,
   den keine der drei Quellen enthält.
 - **Erträge je Teilhaushalt nach Herkunft — für Planjahre.** Die
   Ertragsarten der Planjahre sind seit #530 eingelesen
-  (`council_ergebnishaushalt`, 2019–2026); was fehlt, ist ihre Aufteilung
+  (`council_income_budget`, 2019–2026); was fehlt, ist ihre Aufteilung
   **je Teilhaushalt**, und die ist auch nicht nachrüstbar:
 
-  `council_haushalt` kennt je Bereich nur **eine** Ertragssumme. Wer sie in
-  Bund, Land und Gebühren aufteilen will, braucht `council_ergebnisrechnung` —
+  `council_budget` kennt je Bereich nur **eine** Ertragssumme. Wer sie in
+  Bund, Land und Gebühren aufteilen will, braucht `council_income_statement` —
   die löst die Posten 01–11 je Teilhaushalt auf, endet aber mit dem letzten
   Jahresabschluss (2024). Der Gesamtergebnishaushalt reicht bis 2026, führt
   aber **keine** Teilhaushalte: In allen acht Dokumenten kommt „THH" kein
   einziges Mal vor.
 
   Beide zu mischen scheitert an den Ständen. Für 2026 weist
-  `council_haushalt` 812,9 Mio. € Erträge aus, `council_ergebnishaushalt`
+  `council_budget` 812,9 Mio. € Erträge aus, `council_income_budget`
   788,6 Mio. € — **24,3 Mio. € Abstand**, weil das eine der beschlossene Plan
   ist und das andere Anlage 005 der Einbringungs-Vorlage, also der Entwurf.
   Das Flussbild rechnet mit einer Toleranz von 0,05 Mio. €; eine Grafik, die
@@ -3850,7 +3850,7 @@ Jahr zu früh. Geprüft am 16.08.2026, an drei unabhängigen Strängen:
    Haushaltsjahr". Der Widerspruch ist im Portal nicht aufgelöst.
 
 **Was wir daraus machen:** `haushalt.parse_steuerkraft` rückt jede Jahreszahl
-um eins nach vorn; `council_steuerkraft.jahr` ist damit das Ausgleichsjahr,
+um eins nach vorn; `council_tax_capacity.jahr` ist damit das Ausgleichsjahr,
 wie es die Tabelle ohnehin immer behauptet hat. Die beiden Pro-Kopf-Spalten
 des Datensatzes bleiben liegen — die Stadt rechnet sie gegen die
 Einwohnerzahl ihrer eigenen, verschobenen Jahresangabe (16 von 16 Mal von

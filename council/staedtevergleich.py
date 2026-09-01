@@ -59,7 +59,7 @@ Extra-Paket nur für einen Ingest, der einmal im Jahr von Hand läuft, käme in
 
 Der Jahresversatz, der hier NICHT auftaucht
 --------------------------------------------
-Unser Open-Data-Datensatz 1106 (``council_steuerkraft``) trägt dieselben
+Unser Open-Data-Datensatz 1106 (``council_tax_capacity``) trägt dieselben
 Beträge wie das LSN, aber unter einer um **ein Jahr verschobenen**
 Jahresangabe: Was das LSN „KFA 2026" nennt, heißt dort „Ausgleichsjahr 2025"
 (drei Wertepaare geprüft, zwei unabhängige Wege). Welche Beschriftung stimmt,
@@ -67,7 +67,7 @@ ist offen und wird bei der Statistikstelle geklärt.
 
 Bis dahin gilt die Regel, an der sich diese Schicht ausrichtet: **Zahlen aus
 dieser Tabelle stehen nie unkommentiert neben Zahlen aus
-``council_steuerkraft``.** Sie liegen in einer eigenen Tabelle, tragen die
+``council_tax_capacity``.** Sie liegen in einer eigenen Tabelle, tragen die
 Jahresangabe des LSN und sagen das auf der Seite auch. Beides
 zusammenzuwerfen hieße, zwei Jahre gegeneinander zu plotten, die nicht
 dasselbe meinen.

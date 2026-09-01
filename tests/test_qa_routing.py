@@ -542,10 +542,10 @@ def test_haushalt_block_und_matching(tmp_path):
     store = CouncilStore(tmp_path / "c.sqlite")
     with store._conn:
         store._conn.execute(
-            "INSERT INTO council_haushalt (year, area, revenues, expenses, result, is_total, fetched_at) "
+            "INSERT INTO council_budget (year, area, revenues, expenses, result, is_total, fetched_at) "
             "VALUES (2026, 'Verkehr und Straßenbau', 1, 2, -1, 0, '')")
         store._conn.execute(
-            "INSERT INTO council_haushalt (year, area, revenues, expenses, result, is_total, fetched_at) "
+            "INSERT INTO council_budget (year, area, revenues, expenses, result, is_total, fetched_at) "
             "VALUES (2026, 'Summe', 10, 20, -10, 1, '')")
     assert [r["area"] for r in store.haushalt_fuer_begriffe(["Verkehr", "Radweg"])] == ["Verkehr und Straßenbau"]
     # Summenzeile nur bei ausdrücklicher Haushaltsfrage.
@@ -608,7 +608,7 @@ def test_steuern_fuer_begriffe_matcht_kuratierte_synonyme(tmp_path):
             (2025, "total", 387208000.0),
         ]:
             store._conn.execute(
-                "INSERT INTO council_steuern (year, kind, amount, fetched_at) VALUES (?,?,?,'')",
+                "INSERT INTO council_taxes (year, kind, amount, fetched_at) VALUES (?,?,?,'')",
                 (year, art, amount))
 
     treffer = store.steuern_fuer_begriffe(["Wie", "hoch", "ist", "die", "Gewerbesteuer"])
@@ -628,12 +628,12 @@ def test_steuerkraft_kontext_braucht_zwei_jahre(tmp_path):
     store = CouncilStore(tmp_path / "c.sqlite")
     with store._conn:
         store._conn.execute(
-            "INSERT INTO council_steuerkraft (year, tax_index, allocations, fetched_at) "
+            "INSERT INTO council_tax_capacity (year, tax_index, allocations, fetched_at) "
             "VALUES (2023, 279815776, 99569120, '')")
     assert store.steuerkraft_kontext() is None  # ein Jahr reicht nicht
     with store._conn:
         store._conn.execute(
-            "INSERT INTO council_steuerkraft (year, tax_index, allocations, fetched_at) "
+            "INSERT INTO council_tax_capacity (year, tax_index, allocations, fetched_at) "
             "VALUES (2024, 325716249, 69209992, '')")
     k = store.steuerkraft_kontext()
     assert k["year"] == 2024 and k["year_before"] == 2023
@@ -646,12 +646,12 @@ def test_haushalt_fuer_begriffe_traegt_entwicklung(tmp_path):
     with store._conn:
         for year, aufw in [(2020, 30000000.0), (2026, 46194645.0)]:
             store._conn.execute(
-                "INSERT INTO council_haushalt (year, area, revenues, expenses, result, "
+                "INSERT INTO council_budget (year, area, revenues, expenses, result, "
                 "is_total, fetched_at) VALUES (?, 'Verkehr und Straßenbau', 1, ?, -1, 0, '')",
                 (year, aufw))
         # Bereich mit geändertem Zuschnitt: NUR im neuesten Jahr vorhanden.
         store._conn.execute(
-            "INSERT INTO council_haushalt (year, area, revenues, expenses, result, "
+            "INSERT INTO council_budget (year, area, revenues, expenses, result, "
             "is_total, fetched_at) VALUES (2026, 'Klima/Umwelt/Mobilität', 1, 2, -1, 0, '')")
 
     r = store.haushalt_fuer_begriffe(["Verkehr"])[0]

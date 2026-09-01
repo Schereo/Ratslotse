@@ -591,7 +591,7 @@ def test_store_finanzrechnung_roundtrip(tmp_path, source):
     assert geladen["closing_balance"]["plan"] is None
     # Jede Zeile weiß, woher sie kommt.
     assert all(z["herkunft_id"] for z in store.get_finanzrechnung(2024))
-    assert store.herkunft_luecken().get("council_finanzrechnung") is None
+    assert store.herkunft_luecken().get("council_cash_flow_statement") is None
     store.close()
 
 

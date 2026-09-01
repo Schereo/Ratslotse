@@ -3,7 +3,7 @@
 
 Ein LLM-Pass je Protokoll über den vorhandenen ``raw_text`` (kein Re-Download):
 Redebeiträge, „Anfragen und Anregungen" samt Verwaltungsantwort, Einwohner-
-fragen und Zusagen landen in ``council_wortbeitraege`` (+ FTS + Embeddings)
+fragen und Zusagen landen in ``council_speeches`` (+ FTS + Embeddings)
 und speisen den „Aus den Ratsdebatten"-Block der KI-Frage.
 
 Idempotent: Nur Protokolle ohne vorhandene Beiträge werden angefasst; ein

@@ -28,7 +28,7 @@ def _store_mit_anlage(tmp_path: Path, status: str) -> CouncilStore:
     store = CouncilStore(tmp_path / f"c_{status}.sqlite")
     with store._conn:
         store._conn.execute(
-            "INSERT INTO council_anlagen (document_id, kvonr, label, url, raw_text, "
+            "INSERT INTO council_attachments (document_id, kvonr, label, url, raw_text, "
             "n_pages, fetched_at, status, ocr_model) "
             "VALUES (4711, 99, ?, 'https://x/4711', ?, 36, datetime('now'), ?, ?)",
             (LABEL_FINANZ, TEXT, status, "modell/x" if status == "ocr" else None))
@@ -53,7 +53,7 @@ def test_gelesener_scan_ist_durchsuchbar(tmp_path):
         offen = store.anlagen_missing_embeddings()
         assert [z["document_id"] for z in offen] == [4711]
         row = store._conn.execute(
-            "SELECT ocr_model FROM council_anlagen WHERE document_id=4711").fetchone()
+            "SELECT ocr_model FROM council_attachments WHERE document_id=4711").fetchone()
         assert row["ocr_model"] is None or isinstance(row["ocr_model"], str)
     finally:
         store.close()
@@ -84,7 +84,7 @@ def test_ein_zweiter_lauf_bezahlt_nichts_doppelt(tmp_path):
         assert kandidaten(store, False, None, None) == []
         with store._conn:
             store._conn.execute(
-                "UPDATE council_anlagen SET status='empty' WHERE document_id=4711")
+                "UPDATE council_attachments SET status='empty' WHERE document_id=4711")
         assert [k["document_id"] for k in kandidaten(store, False, None, None)] == [4711]
     finally:
         store.close()
@@ -107,7 +107,7 @@ def test_altstaende_mit_ocr_status_werden_gehoben(tmp_path):
     store = CouncilStore(tmp_path / "c_ocr.sqlite")
     try:
         status = store._conn.execute(
-            "SELECT status FROM council_anlagen WHERE document_id=4711").fetchone()[0]
+            "SELECT status FROM council_attachments WHERE document_id=4711").fetchone()[0]
         assert status == "ok", "der Altstand wird gehoben, nicht neu gelesen"
         assert kandidaten(store, False, None, None) == []
         # Und er ist damit durchsuchbar — genau darum ging es.
@@ -414,7 +414,7 @@ def test_null_gelesene_seiten_werden_nicht_gespeichert(monkeypatch, tmp_path):
     nach = CouncilStore(tmp_path / "c_empty.sqlite")
     try:
         row = nach._conn.execute(
-            "SELECT status, raw_text FROM council_anlagen WHERE document_id=4711"
+            "SELECT status, raw_text FROM council_attachments WHERE document_id=4711"
         ).fetchone()
         assert row["status"] == "empty", (
             "ein Dokument ohne gelesene Seite bleibt auf der Arbeitsliste")
@@ -435,7 +435,7 @@ def test_platzhalter_anlagen_kommen_zurueck_auf_die_arbeitsliste(tmp_path):
 
         with store._conn:
             store._conn.execute(
-                "UPDATE council_anlagen SET raw_text = ? WHERE document_id = 4711",
+                "UPDATE council_attachments SET raw_text = ? WHERE document_id = 4711",
                 ("\n".join(ocr.PLATZHALTER.format(nr=n) for n in range(1, 23)),))
         zurueck = kandidaten(store, False, None, None)
         assert [k["document_id"] for k in zurueck] == [4711], (

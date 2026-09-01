@@ -166,7 +166,7 @@ def main() -> int:
 
         store.herkunft_aufraeumen()
         luecken = {t: n for t, n in store.herkunft_luecken().items()
-                   if t == "council_gewerbesteuerstatistik"}
+                   if t == "council_trade_tax_statistics"}
         if luecken:
             print(f"WARNUNG: Zeilen ohne Herkunft: {luecken}")
     finally:

@@ -1,7 +1,7 @@
 """Jahresabschlüsse und Teilhaushalte aus dem Ratsinformationssystem lesen.
 
 Beide Dokumenttypen liegen längst als Anlagen zu Ratsvorlagen in
-``council_anlagen`` — mit Volltext, den der Protokoll-Scraper ohnehin zieht.
+``council_attachments`` — mit Volltext, den der Protokoll-Scraper ohnehin zieht.
 Kein neuer Download, keine neue Quelle:
 
 - **Jahresabschluss** (300+ Seiten, jährlich): enthält die Ergebnisrechnung

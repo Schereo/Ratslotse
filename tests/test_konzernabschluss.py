@@ -1,7 +1,7 @@
 """Der Konzern Stadt Oldenburg aus dem konsolidierten Gesamtabschluss.
 
 Alle Fixtures sind verkürzte, aber **wörtliche** Ausschnitte aus echten
-pypdf-Extrakten der Prüfberichte in ``council_anlagen`` — jeder mit genau der
+pypdf-Extrakten der Prüfberichte in ``council_attachments`` — jeder mit genau der
 Eigenheit, an der ein naiver Parser scheitert:
 
 - **2016** (``document_id`` 213675) trägt als Label schlicht „Anlage", und der
@@ -403,8 +403,8 @@ def test_speichern_und_lesen(tmp_path):
 
         # Keine Zeile ohne Herkunft — das ist der Sollzustand.
         luecken = {t: n for t, n in store.herkunft_luecken().items() if n}
-        assert "council_konzern_posten" not in luecken
-        assert "council_konzern_traeger" not in luecken
+        assert "council_group_items" not in luecken
+        assert "council_group_entities" not in luecken
 
         # Zweimal speichern ersetzt, statt zu verdoppeln — und legt keine
         # zweite Herkunft an (idempotent über den Fingerabdruck).

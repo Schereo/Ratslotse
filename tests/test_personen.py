@@ -55,7 +55,7 @@ def test_wortbeitraege_von_sprecher_umlaut_varianten(tmp_path):
                 "INSERT INTO council_sessions (ksinr, committee, session_date, session_time, "
                 "location, fetched_at) VALUES (1, 'Rat', '2026-06-01', '', '', datetime('now'))")
             store._conn.executemany(
-                "INSERT INTO council_wortbeitraege (ksinr, position, speaker, party, kind, "
+                "INSERT INTO council_speeches (ksinr, position, speaker, party, kind, "
                 "top, text, extracted_at) VALUES (1, ?, ?, 'FDP/Volt', 'rede', 'Ö 1', ?, "
                 "datetime('now'))",
                 [(1, "Jens Lükermann", "Beitrag mit Umlaut"),
@@ -118,7 +118,7 @@ def _wb_store(tmp_path):
             [(1, "Tim Harms", "SPD", "member"), (1, "Dr. Ingo Harms", "CDU", "member"),
              (2, "Tim Harms", "SPD", "member")])
         store._conn.executemany(
-            "INSERT INTO council_wortbeitraege (ksinr, position, speaker, party, kind, top, "
+            "INSERT INTO council_speeches (ksinr, position, speaker, party, kind, top, "
             "text, extracted_at) VALUES (?, ?, ?, 'SPD', 'rede', 'Ö 1', ?, datetime('now'))",
             [(1, 1, "Tim Harms", "Voller Name im Rat"),
              (1, 2, "Harms", "Nur Nachname"),
@@ -262,7 +262,7 @@ def _bericht_personen(store, zeilen):
     """Aufsichtsorgan-Zeilen einsetzen: (bericht_jahr, name, funktion)."""
     with store._conn:
         store._conn.executemany(
-            "INSERT INTO council_gesellschaft_personen (report_year, company, "
+            "INSERT INTO council_company_people (report_year, company, "
             "sort_order, committee, name, position, chair_role, note, "
             "roles_assignable, fetched_at) "
             "VALUES (?, 'gsg', ?, 'Aufsichtsrat', ?, ?, NULL, NULL, 1, datetime('now'))",
@@ -621,7 +621,7 @@ def test_verwaltung_detail_nur_mit_erkanntem_amt(tmp_path):
                 [("Jürgen Krogmann", "Verwaltung", "administration", "Oberbürgermeister"),
                  ("Dagmar Sachse", "Verwaltung", "administration", "Für Oberbürgermeister Krogmann")])
             store._conn.executemany(
-                "INSERT INTO council_wortbeitraege (ksinr, position, speaker, party, kind, top, "
+                "INSERT INTO council_speeches (ksinr, position, speaker, party, kind, top, "
                 "text, extracted_at) VALUES (1, ?, ?, NULL, 'zusage', 'Ö 1', ?, datetime('now'))",
                 [(1, "Krogmann", "Wird geprüft.")])
 

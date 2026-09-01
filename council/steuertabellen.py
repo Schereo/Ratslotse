@@ -3,14 +3,14 @@
 Zwei Tabellen, ein Ziel: der Steuer-Steckbrief (``/haushalt/steuer?art=…``).
 Sie stehen zusammen in einem Modul, weil sie sich gegenseitig prüfen und beide
 an derselben dritten Tabelle hängen — **1104**, der Ist-Reihe, die wir seit
-Monaten als ``council_steuern`` führen.
+Monaten als ``council_taxes`` führen.
 
 Tabelle 1103 — was geplant war, neben dem, was kam
 ---------------------------------------------------
 Sie stellt je Steuerart den **Haushaltsplan** neben das **Rechnungsergebnis**,
 für drei Jahrgänge. Das ist die einzige Stelle, an der wir die Plan-Seite je
-Steuerart überhaupt bekommen: Weder ``council_ergebnishaushalt`` noch
-``council_ergebnisrechnung`` schlüsseln Steuern auf — beide führen nur
+Steuerart überhaupt bekommen: Weder ``council_income_budget`` noch
+``council_income_statement`` schlüsseln Steuern auf — beide führen nur
 „Steuern und ähnliche Abgaben" als eine Summe.
 
 Der Befund, den sie sichtbar macht (Ausgabe 2025):
@@ -164,7 +164,7 @@ def _norm(text: str) -> str:
 SUMME = "\x00insgesamt"
 #: Die Finanzzuweisungen. Sie stehen in derselben Tabelle und in derselben
 #: Summe, sind aber **keine Steuer** — und vor allem haben sie in
-#: ``council_steuern`` keine Entsprechung, gegen die sich ihre
+#: ``council_taxes`` keine Entsprechung, gegen die sich ihre
 #: Jahresbeschriftung prüfen ließe. Sie tragen deshalb die Summenprobe mit und
 #: werden nicht gespeichert. (Der Abgleich der Zuweisungen gehört zu
 #: ``council/tax_capacity.py``, wo die Abgrenzung des Landes danebensteht;
@@ -172,7 +172,7 @@ SUMME = "\x00insgesamt"
 #: dort.)
 ZUWEISUNGEN = "\x00finanzzuweisungen"
 
-#: Zeilenname in 1103 → ``council_steuern.art`` (Spaltenname in 1104).
+#: Zeilenname in 1103 → ``council_taxes.art`` (Spaltenname in 1104).
 #:
 #: Die Reihenfolge entscheidet: Geprüft wird auf **enthaltene** Bruchstücke,
 #: und „gewerbesteuer" enthält „steuer". Spezifisches steht deshalb vorn.
@@ -380,7 +380,7 @@ def anteilsprobe(gelesen: dict) -> list[dict]:
 def istabgleich(gelesen: dict, ist_reihe: dict[int, dict[str, float]]) -> dict:
     """Das Rechnungsergebnis gegen Tabelle 1104 — **das Aufnahmekriterium**.
 
-    ``ist_reihe`` ist ``{year: {art: amount_in_euro}}`` aus ``council_steuern``.
+    ``ist_reihe`` ist ``{year: {art: amount_in_euro}}`` aus ``council_taxes``.
     Verglichen wird in Tausend Euro, weil 1103 so druckt.
 
     Ein Jahrgang wird nur übernommen, wenn **jede** seiner Steuerarten dort

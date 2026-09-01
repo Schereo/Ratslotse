@@ -68,7 +68,7 @@ genommen, nicht der größte.
 
 Woher der Beschlussvorschlag kommt
 -----------------------------------
-``council_vorlagen.proposed_decision`` ist die richtige Spalte dafür — aber
+``council_templates.proposed_decision`` ist die richtige Spalte dafür — aber
 im Bestand ist sie fast leer (7 von 5019 Zeilen, alle Jahrgang 2026): Gefüllt
 wird sie erst seit ``council/ernte.py`` und nur beim Neu-Einlesen einer
 Vorlage. Deshalb nimmt :func:`amount` sie, **wenn** sie steht, und erntet
@@ -401,7 +401,7 @@ def amount(title: str, vorschlag: str | None = None,
     ``proposed_decision`` | ``None``. **Die Reihenfolge des Tupels ist
     (Wert, Herkunft)** — nicht umgekehrt.
 
-    ``vorschlag`` ist ``council_vorlagen.proposed_decision``, falls gefüllt;
+    ``vorschlag`` ist ``council_templates.proposed_decision``, falls gefüllt;
     ``volltext`` der ``raw_text`` derselben Vorlage. Steht der Vorschlag nicht
     in der Spalte, wird er aus dem Volltext geerntet — mit derselben Funktion,
     die auch die Spalte füllt (``council.ernte.proposed_decision``), damit
@@ -424,7 +424,7 @@ def aus_vorlagen(vorlagen: list[dict],
                  ) -> list[Bewilligung]:
     """Die Rats-Serie aus dem RIS — je **Vorlage** eine :class:`Bewilligung`.
 
-    ``vorlagen`` sind Zeilen aus ``council_vorlagen`` (``template_number``,
+    ``vorlagen`` sind Zeilen aus ``council_templates`` (``template_number``,
     ``title``, optional ``proposed_decision`` und ``raw_text``);
     ``beschluesse`` bildet ``template_number`` auf die zugehörigen Zeilen aus
     ``council_decisions`` ab (mit ``committee``, ``session_date``,

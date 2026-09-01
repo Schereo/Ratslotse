@@ -47,7 +47,7 @@ COUNCIL_DB = Path(os.environ.get("COUNCIL_DB") or ROOT / "data" / "council.sqlit
 #: Wo überall Volltext liegt. Beide Tabellen tragen Kontaktdaten — die
 #: Vorlagen deutlich weniger (6 Dokumente), aber „deutlich weniger" ist kein
 #: Grund, sie stehen zu lassen.
-TABELLEN = (("council_anlagen", "document_id"), ("council_vorlagen", "kvonr"))
+TABELLEN = (("council_attachments", "document_id"), ("council_templates", "kvonr"))
 
 
 def main() -> dict:
@@ -98,7 +98,7 @@ def main() -> dict:
                   f"{zeichen_vorher - zeichen_nachher:>7,} Zeichen entfernt"
                   + ("  (Trockenlauf)" if args.trocken else ""), flush=True)
 
-        # DIE CHUNKS SIND EINE ZWEITE KOPIE. Was `council_anlagen.raw_text`
+        # DIE CHUNKS SIND EINE ZWEITE KOPIE. Was `council_attachments.raw_text`
         # verlässt, steht in `council_anlage_embeddings.chunk_text` weiter —
         # dort landete es, bevor es die Maskierung gab, und es bliebe dort,
         # bis jemand zufällig die Embeddings neu rechnet.

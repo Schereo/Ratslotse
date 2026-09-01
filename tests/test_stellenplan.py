@@ -176,7 +176,7 @@ def _anlage(store: CouncilStore, text: str, document_id: int = 297432,
     """Ein Stellenplan als Anlage im Bestand — so, wie ihn der
     Protokoll-Scraper ablegt."""
     store._conn.execute(
-        "INSERT OR REPLACE INTO council_anlagen (document_id, kvonr, label, url, "
+        "INSERT OR REPLACE INTO council_attachments (document_id, kvonr, label, url, "
         " raw_text, n_pages, fetched_at) VALUES (?,?,?,?,?,?,?)",
         (document_id, 1, label, f"https://example.org/{document_id}.pdf",
          text, 20, "2026-08-16"))

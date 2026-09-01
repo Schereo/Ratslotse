@@ -146,7 +146,7 @@ def _vorschau_store(tmp_path):
             "VALUES (1, 'fliegerhorst', 'Fliegerhorst', 'ort', 166)")
         # Behandlungsart je Punkt aus der Beratungsfolge
         store._conn.executemany(
-            "INSERT INTO council_beratungen (kvonr, date, committee, result, fetched_at) "
+            "INSERT INTO council_deliberations (kvonr, date, committee, result, fetched_at) "
             "VALUES (?, date('now','+2 day'), 'Umweltausschuss', ?, datetime('now'))",
             [(200, "Kenntnisnahme"), (300, "Entscheidung"), (400, "Entscheidung")])
     return store
@@ -374,12 +374,12 @@ def _gruppen_store(tmp_path):
             "INSERT INTO council_agenda_items (ksinr, item_number, title, template_number, kvonr, is_public) "
             "VALUES (7, ?, ?, ?, ?, 1)", punkte)
         store._conn.executemany(
-            "INSERT INTO council_vorlagen (kvonr, template_number, title, kind, fetched_at) "
+            "INSERT INTO council_templates (kvonr, template_number, title, kind, fetched_at) "
             "VALUES (?, ?, '', ?, datetime('now'))",
             [(101, "26/1", "Beschlussvorlage"), (102, "26/2", "Berichtsvorlage"),
              (103, "26/3", "Beschlussvorlage"), (104, "26/4", "Beschlussvorlage")])
         store._conn.executemany(
-            "INSERT INTO council_beratungen (kvonr, date, committee, result, fetched_at) "
+            "INSERT INTO council_deliberations (kvonr, date, committee, result, fetched_at) "
             "VALUES (?, date('now','+2 day'), 'Bauausschuss', ?, datetime('now'))",
             [(101, "Vorberatung"), (102, "Kenntnisnahme"),
              (103, "Vorberatung"), (104, "Vorberatung")])

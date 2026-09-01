@@ -310,7 +310,7 @@ def test_vermoegensprobe_mischt_keine_berichte():
 def test_bilanz_gegenprobe_kennt_nur_die_drei_quoten():
     """Bei den je-Kopf-Zahlen rechnet die Stadt mit anderer Abgrenzung.
 
-    „Verschuldung je Einwohner" heißt hier 1.226 €, in ``council_schulden``
+    „Verschuldung je Einwohner" heißt hier 1.226 €, in ``council_debt``
     1.673 € — verschiedene Abgrenzung, eigenes Label, niemals in eine Reihe.
     Ein Abgleich meldete dort verlässlich eine Differenz, die keine ist.
     """

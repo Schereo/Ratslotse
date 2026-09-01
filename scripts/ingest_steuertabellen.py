@@ -96,7 +96,7 @@ def link_suchen(muster) -> str | None:
 
 
 def ist_reihe(store: CouncilStore) -> tuple[dict, dict]:
-    """``council_steuern`` in die beiden Formen bringen, die die Proben brauchen.
+    """``council_taxes`` in die beiden Formen bringen, die die Proben brauchen.
 
     ``({year: {art: euro}}, {year: grundsteuer_euro})`` — die erste für den
     Ist-Abgleich von 1103, die zweite für die Sprungjahr-Probe von 1105."""
@@ -182,7 +182,7 @@ def main() -> int:
     try:
         alle_ist, grundsteuer = ist_reihe(store)
         if not alle_ist:
-            print("ABBRUCH: `council_steuern` ist leer. Beide Tabellen hängen "
+            print("ABBRUCH: `council_taxes` ist leer. Beide Tabellen hängen "
                   "für die Prüfung ihrer Jahresbeschriftung an dieser Reihe — "
                   "ohne sie käme nichts Geprüftes herein. Erst "
                   "scripts/ingest_finanzen_opendata.py laufen lassen.",
@@ -377,7 +377,7 @@ def main() -> int:
 
         store.herkunft_aufraeumen()
         luecken = {t: n for t, n in store.herkunft_luecken().items()
-                   if t in ("council_steuerplan", "council_hebesaetze")}
+                   if t in ("council_tax_plan", "council_tax_rates")}
         if luecken:
             print(f"WARNUNG: Zeilen ohne Herkunft: {luecken}", file=sys.stderr)
     finally:

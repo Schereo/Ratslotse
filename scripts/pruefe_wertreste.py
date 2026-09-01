@@ -4,9 +4,9 @@
 **Das Problem.** Beim Umbau auf englische Bezeichner benennt ein Schnitt
 Spalten um und trägt dafür ein Migrationspaar ein. Manche dieser Begriffe
 stehen aber zusätzlich als **Wert** in einer Zeile:
-``council_finanzrechnung.role`` führt ``'saldo_verwaltung'``,
-``council_konzern_posten.role`` führt ``'ao_ertraege'``,
-``council_herkunft.probe`` führt ``'anlagen_buchwert'``. Wird nur die Spalte
+``council_cash_flow_statement.role`` führt ``'saldo_verwaltung'``,
+``council_group_items.role`` führt ``'ao_ertraege'``,
+``council_provenance.probe`` führt ``'anlagen_buchwert'``. Wird nur die Spalte
 migriert, schreibt der Code danach ``'balance_operating'``, in der Datenbank
 steht weiter der deutsche Wert — und **jede Abfrage danach findet nichts**.
 
@@ -91,7 +91,7 @@ def funde(db: Path, code: str):
     #: keine Domänen-Schlüssel. Ihre Werte stehen als Argument im Code —
     #: aber in Klammern neben dem Tabellennamen, und genau diese Form
     #: schneidet `_PAAR` als Migrationspaar heraus.
-    OHNE = {"council_migrationsmarken", "migrationsmarken"}
+    OHNE = {"council_migration_marks", "migration_marks"}
     tabellen = [t for (t,) in c.execute(
         "SELECT name FROM sqlite_master WHERE type='table' "
         "AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '%_fts_%'") if t not in OHNE]

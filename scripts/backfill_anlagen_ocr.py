@@ -105,7 +105,7 @@ def kandidaten(store: CouncilStore, nur_finanz: bool, document_id: int | None,
             muster = finanz_muster()
             wo += " AND (" + " OR ".join("label LIKE ?" for _ in muster) + ")"
             werte += muster
-    sql = (f"SELECT document_id, label, url, n_pages FROM council_anlagen "
+    sql = (f"SELECT document_id, label, url, n_pages FROM council_attachments "
            f"WHERE {wo} ORDER BY document_id DESC")
     if limit:
         sql += f" LIMIT {int(limit)}"
@@ -212,7 +212,7 @@ def process(db_path: Path, *, nur_finanz: bool, document_id: int | None,
                 text = entfernen(lesung.text)
                 with store._conn:
                     store._conn.execute(
-                        "UPDATE council_anlagen SET raw_text = ?, n_pages = ?, "
+                        "UPDATE council_attachments SET raw_text = ?, n_pages = ?, "
                         "status = 'ok', ocr_model = ?, fetched_at = datetime('now') "
                         "WHERE document_id = ?",
                         (text, lesung.seiten, lesung.modell, did))
