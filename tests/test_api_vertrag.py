@@ -8,13 +8,11 @@ ableiten, und kein PR-Diff zeigt, dass sich ein Feld geändert hat. Ohne Gate
 schleicht sich das mit jedem neuen Endpunkt zurück; die Formen stehen deshalb
 in ``web/backend/app/antworten.py`` und dieser Test hält sie dort fest.
 
-Die Ausnahmeliste unten ist keine Schlupflücke, sondern die sichtbare
-Restschuld: Diese Nutzlasten reicht der Handler unverändert aus dem Store
-durch (breite ``SELECT``-Zeilen). Sie sind absichtlich offen, weil eine
-unvollständige Aufzählung Felder STILL aus der Antwort entfernen würde — ein
-TypedDict filtert, was es nicht kennt. Wer eine davon sauber typisiert,
-streicht ihren Eintrag hier. Wer einen NEUEN Endpunkt ohne Form baut, wird
-rot.
+Seit 09/2026 ist die Restschuld abgetragen: ``OFFEN`` ist leer, jede
+JSON-Antwort trägt ihre Form. Die Liste bleibt trotzdem stehen — sie ist der
+Ort, an dem eine bewusste Ausnahme sichtbar würde, und der Test darunter
+meldet einen Eintrag, der nicht mehr nötig ist. Wer einen NEUEN Endpunkt ohne
+Form baut, wird rot.
 """
 import os
 import sys
@@ -26,30 +24,26 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "web" / "backend"))
 os.environ.setdefault("WEB_JWT_SECRET", "test-secret")
 
 
-# Nutzlasten, die direkt aus einer breiten Store-Abfrage kommen. Sie tragen in
-# `antworten.py` einen sprechenden Namen, aber (noch) keine Felder.
-OFFEN = {
-    ("get", "/api/council/places"),
-    ("get", "/api/council/week-preview"),
-    ("get", "/api/council/budget"),
-    ("get", "/api/council/session/{ksinr}"),
-    ("get", "/api/council/decision/{decision_id}"),
-    ("get", "/api/council/qa-share/{token}"),
-    ("get", "/api/council/deep-research/{job_id}"),
-    ("get", "/api/council/public-stats"),
-    ("get", "/api/council/entity/{slug}"),
-    ("get", "/api/council/person/{slug}"),
-    ("get", "/api/council/person/{slug}/speeches"),
-    ("get", "/api/admin/llm-usage"),
-    ("get", "/api/admin/users/{user_id}"),
-    ("put", "/api/admin/place-candidates/{location_slug}"),
-}
+# Nutzlasten, die direkt aus einer breiten Store-Abfrage kommen und in
+# `antworten.py` zwar einen sprechenden Namen tragen, aber keine Felder.
+# Leer seit 09/2026 — ein neuer Eintrag hier ist eine Entscheidung, kein Rest.
+OFFEN: set[tuple[str, str]] = set()
 
-# Kein JSON-Body: zwei SSE-Ströme und eine Bilddatei.
+# Kein JSON-Body: zwei SSE-Ströme und eine Bilddatei. Ihre Medientypen und
+# Ereignis-Arten stehen als `responses=` am Dekorator (s. `antworten.py`,
+# Abschnitt „Antworten, die kein JSON sind"); der Test unten prüft, dass sie
+# dort auch wirklich ankommen.
 KEIN_JSON = {
     ("post", "/api/council/ask"),
     ("get", "/api/council/deep-research/{job_id}/events"),
     ("get", "/api/council/plan-bild/{document_id}"),
+}
+
+#: Welchen Medientyp diese drei Endpunkte liefern MÜSSEN.
+KEIN_JSON_MEDIENTYP = {
+    ("post", "/api/council/ask"): "text/event-stream",
+    ("get", "/api/council/deep-research/{job_id}/events"): "text/event-stream",
+    ("get", "/api/council/plan-bild/{document_id}"): "image/jpeg",
 }
 
 
@@ -112,6 +106,32 @@ def test_ausnahmeliste_ist_nicht_veraltet(endpunkte):
     assert not ueberfluessig, (
         "Diese Endpunkte stehen in OFFEN, sind aber inzwischen typisiert — "
         "bitte aus der Liste streichen:\n  " + "\n  ".join(ueberfluessig)
+    )
+
+
+def test_stroeme_und_bilder_nennen_ihren_medientyp():
+    """Die drei Nicht-JSON-Endpunkte müssen sagen, WAS sie liefern.
+
+    Ohne `responses=` erzeugt FastAPI für sie ein leeres
+    `application/json`-Schema — die Doku behauptete damit ein JSON-Objekt, wo
+    ein SSE-Strom bzw. ein JPEG kommt, und beide Generatoren bauten daraus
+    einen Typ, den nie jemand bekommt. Ein falsches Schema ist schlechter als
+    keins, deshalb ein Test und keine Konvention.
+    """
+    from app.main import app
+
+    spec = app.openapi()
+    fehlend = []
+    for (methode, pfad), medientyp in sorted(KEIN_JSON_MEDIENTYP.items()):
+        inhalt = (spec["paths"][pfad][methode].get("responses", {})
+                  .get("200", {}).get("content", {}))
+        if medientyp not in inhalt:
+            fehlend.append(f"{methode.upper()} {pfad} → erwartet {medientyp}, "
+                           f"da steht {sorted(inhalt) or 'nichts'}")
+    assert not fehlend, (
+        "Diese Endpunkte nennen ihren Medientyp nicht. Die passende "
+        "`responses=`-Angabe steht in web/backend/app/antworten.py:\n  "
+        + "\n  ".join(fehlend)
     )
 
 
@@ -205,35 +225,41 @@ def test_nullable_felder_sind_swift_lesbar():
 
 
 def test_zeilen_typen_kennen_alle_spalten_ihrer_tabelle():
-    """``DecisionRow``/``SessionRow`` zählen Spalten auf — das ist nur
-    sicher, solange die Aufzählung vollständig bleibt.
+    """``DecisionRow``/``SessionRow``/``AdminPlaceCandidate`` zählen Spalten
+    auf — das ist nur sicher, solange die Aufzählung vollständig bleibt.
 
     Ein TypedDict ENTFERNT, was es nicht kennt. Bekäme ``council_decisions``
     eine neue Spalte, verschwände sie stillschweigend aus der API — kein
     Fehler, nur fehlende Daten in Web und App. Dieser Test macht daraus einen
     roten Lauf.
+
+    ``AdminPlaceCandidate`` steht hier, weil ``location_candidates`` mit
+    ``SELECT l.*`` arbeitet: Jede neue Spalte von ``council_locations`` ist
+    sofort Teil der Antwort — und fiele ohne Eintrag im TypedDict genauso
+    still wieder heraus.
     """
     import tempfile
     from typing import get_type_hints
 
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-    from app.antworten import DecisionRow, SessionRow
+    from app.antworten import AdminPlaceCandidate, DecisionRow, SessionRow
     from council.store import CouncilStore
 
     with tempfile.TemporaryDirectory() as d:
         store = CouncilStore(Path(d) / "council.sqlite")
         try:
             spalten = {
-                "council_decisions": {r[1] for r in store._conn.execute(
-                    "PRAGMA table_info(council_decisions)")},
-                "council_sessions": {r[1] for r in store._conn.execute(
-                    "PRAGMA table_info(council_sessions)")},
+                tabelle: {r[1] for r in store._conn.execute(
+                    f"PRAGMA table_info({tabelle})")}
+                for tabelle in ("council_decisions", "council_sessions",
+                                "council_locations")
             }
         finally:
             store.close()
 
     for typ, tabelle in ((DecisionRow, "council_decisions"),
-                         (SessionRow, "council_sessions")):
+                         (SessionRow, "council_sessions"),
+                         (AdminPlaceCandidate, "council_locations")):
         deklariert = set(get_type_hints(typ, include_extras=True))
         fehlend = spalten[tabelle] - deklariert
         assert not fehlend, (
@@ -241,6 +267,30 @@ def test_zeilen_typen_kennen_alle_spalten_ihrer_tabelle():
             f"damit still aus der API:\n  " + "\n  ".join(sorted(fehlend)) +
             "\nIn web/backend/app/antworten.py ergänzen (als NotRequired)."
         )
+
+
+def test_ortseintrag_kennt_alle_felder_des_dataclass():
+    """``PlaceEntry`` zählt die Felder von ``council.places.Place`` auf.
+
+    ``public_place`` reicht das Dataclass per ``asdict`` durch — ein neues
+    Feld dort wäre sofort Teil der Antwort und fiele ohne Eintrag hier genauso
+    still wieder heraus. Derselbe Grund wie beim Spalten-Test darüber, nur
+    dass die Quelle kein ``PRAGMA`` hat.
+    """
+    from dataclasses import fields
+    from typing import get_type_hints
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from app.antworten import PlaceEntry
+    from council.places import Place
+
+    deklariert = set(get_type_hints(PlaceEntry, include_extras=True))
+    fehlend = {f.name for f in fields(Place)} - deklariert
+    assert not fehlend, (
+        "PlaceEntry kennt diese Felder von council.places.Place nicht — sie "
+        "fallen damit still aus /api/council/places:\n  "
+        + "\n  ".join(sorted(fehlend))
+    )
 
 
 def test_keine_wirkungslosen_migrationspaare():

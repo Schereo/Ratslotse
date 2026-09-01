@@ -3748,12 +3748,170 @@ export interface components {
             /** Limits Unlocked */
             limits_unlocked: boolean;
         };
+        /**
+         * AdminLlmUsage
+         * @description ``kern.usage.dashboard`` — festes Literal aus ``summary()`` plus der
+         *     Hochrechnung. Auch der Fehlerzweig von ``summary()`` liefert die ersten
+         *     drei Felder, hier fehlt also nie eines.
+         */
+        AdminLlmUsage: {
+            /** Avg Cost Per Call */
+            avg_cost_per_call: number;
+            /**
+             * Budget Level
+             * @enum {string}
+             */
+            budget_level: "ok" | "warn" | "over";
+            /** Budget Monthly */
+            budget_monthly: number;
+            /** Budget Pct */
+            budget_pct: number;
+            /** Calls 30D */
+            calls_30d: number;
+            /** Cost Month */
+            cost_month: number;
+            /** Features */
+            features: components["schemas"]["AdminLlmUsageFeature"][];
+            /** Projected Month */
+            projected_month: number;
+            /** Series */
+            series: components["schemas"]["AdminLlmUsageDay"][];
+            /** Total Calls */
+            total_calls: number;
+            /** Total Cost */
+            total_cost: number;
+        };
+        /**
+         * AdminLlmUsageDay
+         * @description Ein Tag der 30-Tage-Reihe (``kern.usage.cost_timeseries``) — lückenlos,
+         *     fehlende Tage stehen mit 0 drin.
+         */
+        AdminLlmUsageDay: {
+            /** Calls */
+            calls: number;
+            /** Cost */
+            cost: number;
+            /** Date */
+            date: string;
+        };
+        /**
+         * AdminLlmUsageFeature
+         * @description Kosten und Verbrauch eines Features (``kern.usage.summary``).
+         */
+        AdminLlmUsageFeature: {
+            /** Calls */
+            calls: number;
+            /** Completion Tokens */
+            completion_tokens: number;
+            /** Cost */
+            cost: number;
+            /** Feature */
+            feature: string;
+            /** First */
+            first: string | null;
+            /** Last */
+            last: string | null;
+            /** Models */
+            models: string[];
+            /** Prompt Tokens */
+            prompt_tokens: number;
+        };
+        /**
+         * AdminPlaceCandidate
+         * @description Ein Ortskandidat aus ``CouncilStore.location_candidates`` — dieselbe
+         *     Zeile liefert auch das PUT auf ``/place-candidates/{location_slug}``.
+         *
+         *     Die ersten elf Felder sind die Spalten von ``council_locations``
+         *     (``SELECT l.*``); ein Wächter-Test (``test_api_vertrag``) schlägt an, wenn
+         *     die Tabelle wächst, damit hier nichts still abgeschnitten wird. Darunter
+         *     stehen die Spalten der Prüf-Tabelle (mit ``review_``-Präfix, wo der Name
+         *     sonst kollidierte) und das, was die Abfrage ausrechnet.
+         *
+         *     ``status`` ist der aufgelöste Prüfstand (``review_status`` oder
+         *     ``"pending"``), ``aliases`` die geparste JSON-Spalte.
+         */
+        AdminPlaceCandidate: {
+            /** Aliases */
+            aliases: string[];
+            /** Avg Confidence */
+            avg_confidence: number | null;
+            /** Canonical Place Id */
+            canonical_place_id: string | null;
+            /** Decision Count */
+            decision_count: number;
+            /** Description */
+            description: string | null;
+            /** District */
+            district: string | null;
+            /** Evidence */
+            evidence: components["schemas"]["AdminPlaceCandidateEvidence"][];
+            /** Geo Tried */
+            geo_tried: number;
+            /** Geojson */
+            geojson: string | null;
+            /** Kind */
+            kind: string;
+            /** Last Date */
+            last_date: string | null;
+            /** Lat */
+            lat: number | null;
+            /** Lon */
+            lon: number | null;
+            /** Name */
+            name: string;
+            /** Note */
+            note: string | null;
+            /** Ortsbereich Id */
+            ortsbereich_id: string | null;
+            /** Parent Id */
+            parent_id: string | null;
+            /** Place Id */
+            place_id: string | null;
+            /** Quiz Enabled */
+            quiz_enabled: number | null;
+            /** Review Kind */
+            review_kind: string | null;
+            /** Review Name */
+            review_name: string | null;
+            /** Review Place Id */
+            review_place_id: string | null;
+            /** Review Status */
+            review_status: string | null;
+            /** Reviewed At */
+            reviewed_at: string | null;
+            /** Slug */
+            slug: string;
+            /** Source Url */
+            source_url: string | null;
+            /** Status */
+            status: string;
+            /** Updated At */
+            updated_at: string | null;
+            /** Updated By */
+            updated_by: string | null;
+        };
+        /**
+         * AdminPlaceCandidateEvidence
+         * @description Bis zu drei Belegbeschlüsse je Ortskandidat (fester SELECT).
+         */
+        AdminPlaceCandidateEvidence: {
+            /** Confidence */
+            confidence: number | null;
+            /** Evidence */
+            evidence: string | null;
+            /** Id */
+            id: number;
+            /** Method */
+            method: string | null;
+            /** Session Date */
+            session_date: string | null;
+            /** Title */
+            title: string | null;
+        };
         /** AdminPlaceCandidates */
         AdminPlaceCandidates: {
             /** Candidates */
-            candidates: {
-                [key: string]: unknown;
-            }[];
+            candidates: components["schemas"]["AdminPlaceCandidate"][];
             /** Status */
             status: string;
         };
@@ -3793,6 +3951,78 @@ export interface components {
             /** Total */
             total: number;
         };
+        /**
+         * AdminUserDetail
+         * @description ``Store.admin_user_detail`` — ein festes Literal, deshalb vollständig
+         *     aufgeschrieben und ohne ``NotRequired``. ``history`` ist die 30-Tage-Reihe
+         *     der Aktivität, ``history_days`` nennt die zugehörigen Tage.
+         */
+        AdminUserDetail: {
+            /** Apple Linked */
+            apple_linked: boolean;
+            /** Clients */
+            clients: {
+                [key: string]: number;
+            };
+            /** Created At */
+            created_at: string | null;
+            /** Deep Limit */
+            deep_limit: number | null;
+            /** Delivery Channel */
+            delivery_channel: string;
+            /** Email */
+            email: string;
+            features: components["schemas"]["AdminUserFeatures"];
+            /** Has Password */
+            has_password: boolean;
+            /** History */
+            history: number[];
+            /** History Days */
+            history_days: string[];
+            /** Id */
+            id: number;
+            /** Last Seen */
+            last_seen: string | null;
+            /** Limits Unlocked */
+            limits_unlocked: boolean;
+            /** Role */
+            role: string;
+            /** Saves Conversations */
+            saves_conversations: number | null;
+            /** Signup Client */
+            signup_client: string | null;
+            /** Status */
+            status: string;
+            /** Subscriptions */
+            subscriptions: string[];
+            /** Topics */
+            topics: string[];
+        };
+        /**
+         * AdminUserFeatures
+         * @description Feature-Nutzung eines Kontos. Die Schlüssel sind API-Namen und nicht die
+         *     gespeicherten Werte — ``ki_frage`` zählt ``user_activity.feature =
+         *     'ai_question'``, ``recherche`` zählt ``research`` (s.
+         *     ``Store.admin_user_detail``).
+         *
+         *     Wer dort einen Zähler ergänzt, ergänzt ihn HIER mit: Ein nicht deklariertes
+         *     Feld verschwindet still aus der Antwort, und das Admin-Panel zeigte dann
+         *     eine Spalte weniger, ohne dass irgendwo etwas rot würde.
+         */
+        AdminUserFeatures: {
+            /** Analyse */
+            analyse: number;
+            /** Karte */
+            karte: number;
+            /** Ki Frage */
+            ki_frage: number;
+            /** Quiz */
+            quiz: number;
+            /** Recherche */
+            recherche: number;
+            /** Suche */
+            suche: number;
+        };
         /** AdminUserRow */
         AdminUserRow: {
             /** Apple Linked */
@@ -3823,6 +4053,19 @@ export interface components {
             signup_client: string | null;
             /** Status */
             status: string;
+        };
+        /**
+         * AgendaChange
+         * @description Eine Änderung an der Tagesordnung aus der Chronik (``agenda_changes``).
+         *     ``satz`` ist der Satz für die Meldung, ``zeilen`` die Einzelheiten.
+         */
+        AgendaChange: {
+            /** Changed At */
+            changed_at: string;
+            /** Satz */
+            satz: string;
+            /** Zeilen */
+            zeilen: unknown[];
         };
         /** AnalysisCoverage */
         AnalysisCoverage: {
@@ -4403,6 +4646,78 @@ export interface components {
             /** Years */
             years: unknown;
         };
+        /**
+         * BudgetOverview
+         * @description ``/api/council/budget`` — das Datenfundament des Haushalts-Bereichs.
+         *
+         *     **Jedes Feld ist ``NotRequired``, und zwar zwingend.** Der Endpunkt baut
+         *     seine Antwort aus einer Bausteinliste und liefert mit ``?felder=…`` nur
+         *     die angeforderten Blöcke (``?felder=years,population`` sind zwei Schlüssel,
+         *     nicht sechsundzwanzig). Ein Pflichtfeld wäre hier an jedem
+         *     zugeschnittenen Aufruf ein 500.
+         *
+         *     Die Werte bleiben ``Any``: Was in ihnen steht, kommt aus breiten
+         *     Store-Abfragen, und eine geratene Verengung ließe Pydantic Werte
+         *     KONVERTIEREN (siehe Kopf dieses Abschnitts). Was die einzelnen Blöcke
+         *     bedeuten — und welche Angabe ohne welche nicht gezeigt werden darf —
+         *     steht im Docstring des Handlers (``routers/council.py::haushalt_uebersicht``).
+         */
+        BudgetOverview: {
+            /** Audit Report Sources */
+            audit_report_sources?: unknown;
+            /** Budget Bylaw */
+            budget_bylaw?: unknown;
+            /** Budgeted Years */
+            budgeted_years?: unknown;
+            /** Business Plans */
+            business_plans?: unknown;
+            /** Cash Flow Statement */
+            cash_flow_statement?: unknown;
+            /** Donations */
+            donations?: unknown;
+            /** Expense Series */
+            expense_series?: unknown;
+            /** Fee Rates */
+            fee_rates?: unknown;
+            /** Fees */
+            fees?: unknown;
+            /** Fiscal Equalization */
+            fiscal_equalization?: unknown;
+            /** Herkunft */
+            herkunft?: {
+                [key: string]: unknown;
+            };
+            /** Income Budget */
+            income_budget?: unknown;
+            /** Income Statement */
+            income_statement?: unknown;
+            /** Indicators */
+            indicators?: unknown;
+            /** Plan Actual Years */
+            plan_actual_years?: unknown;
+            /** Population */
+            population?: unknown;
+            /** Product Years */
+            product_years?: unknown;
+            /** Reserves */
+            reserves?: unknown;
+            /** Supplementary Approvals */
+            supplementary_approvals?: unknown;
+            /** Tax Capacity */
+            tax_capacity?: unknown;
+            /** Tax Plan */
+            tax_plan?: unknown;
+            /** Tax Rates */
+            tax_rates?: unknown;
+            /** Taxes */
+            taxes?: unknown;
+            /** Trade Tax Statistics */
+            trade_tax_statistics?: unknown;
+            /** Variance Reasons */
+            variance_reasons?: unknown;
+            /** Years */
+            years?: unknown;
+        };
         /** BudgetPath */
         BudgetPath: {
             /** Rounds */
@@ -4563,12 +4878,150 @@ export interface components {
             /** Until */
             until: string | null;
         };
+        /**
+         * CouncilWeekPreview
+         * @description ``CouncilStore.wochenvorschau`` hat ZWEI Rückgabeformen: ohne Treffer
+         *     nur fünf Schlüssel, mit Treffern elf. Die sechs Kennzahlen sind deshalb
+         *     ``NotRequired`` — ein Pflichtfeld wäre hier ein 500 an einer ruhigen Woche.
+         *
+         *     Das ist die Fassung, die ``/api/council/week-preview`` liefert; die
+         *     Social-Schnittstelle hängt zusätzlich ``upcoming`` an (s. ``WeekPreview``).
+         */
+        CouncilWeekPreview: {
+            /** Found */
+            found: boolean;
+            /** From Date */
+            from_date: string;
+            /** Further Per Session */
+            further_per_session?: unknown;
+            /** Items */
+            items: {
+                [key: string]: unknown;
+            }[];
+            /** Matches Per Session */
+            matches_per_session?: unknown;
+            /** Matches Total */
+            matches_total?: unknown;
+            /** Relevant Per Session */
+            relevant_per_session?: unknown;
+            /** Sessions */
+            sessions: components["schemas"]["SessionRow"][];
+            /** Substantive Per Session */
+            substantive_per_session?: unknown;
+            /** Substantive Total */
+            substantive_total?: unknown;
+            /** To Date */
+            to_date: string;
+        };
+        /**
+         * DecisionDetail
+         * @description Ein Beschluss mit allem Drum und Dran — die geteilte Detailseite.
+         *
+         *     Die ersten zehn Felder setzt der Handler unbedingt. Alles darunter hängt
+         *     an der Vorlage: Ohne ``template_number`` gibt es weder ``vorlage`` noch
+         *     ``attachments``, ``beratungsfolge`` oder ``plan_bild``; ``follow`` kommt
+         *     nur dazu, wenn wirklich jemand angemeldet ist. Deshalb ``NotRequired`` —
+         *     ein Beschluss ohne Vorlage wäre sonst ein 500 (gemessen: rund die Hälfte
+         *     des Bestands).
+         */
+        DecisionDetail: {
+            /** Attachments */
+            attachments?: {
+                [key: string]: unknown;
+            }[];
+            /** Attendance */
+            attendance: {
+                [key: string]: unknown;
+            }[];
+            /** Beratungsfolge */
+            beratungsfolge?: {
+                [key: string]: unknown;
+            }[];
+            /**
+             * DecisionParticipation
+             * @description Eine laufende oder beendete Bauleitplan-Beteiligung zum Beschluss.
+             */
+            beteiligung: {
+                /** Beendet Am */
+                beendet_am: string | null;
+                /** Schritt */
+                schritt: string | null;
+                /** Status */
+                status: string;
+                /** Title */
+                title: string | null;
+                /** Url */
+                url: string | null;
+                /** Valid From */
+                valid_from: string | null;
+                /** Valid Until */
+                valid_until: string | null;
+            } | null;
+            decision: components["schemas"]["DecisionRow"];
+            /** Entities */
+            entities: {
+                [key: string]: unknown;
+            }[];
+            follow?: components["schemas"]["DecisionFollow"];
+            /** Haushalts Anschluss */
+            haushalts_anschluss?: {
+                [key: string]: unknown;
+            } | null;
+            importance_breakdown: components["schemas"]["ImportanceBreakdown"];
+            /** Plan Bild */
+            plan_bild?: number | null;
+            /** Present Parties */
+            present_parties: string[];
+            /** Ratsinfo Url */
+            ratsinfo_url: string | null;
+            /** Similar */
+            similar: {
+                [key: string]: unknown;
+            }[];
+            /** Sub Votes */
+            sub_votes: components["schemas"]["DecisionRow"][];
+            vorlage?: components["schemas"]["DecisionTemplate"];
+            /** Vorlage Journey */
+            vorlage_journey: unknown[];
+            /** Vorlage Url */
+            vorlage_url?: string | null;
+        };
+        /**
+         * DecisionFollow
+         * @description Folgt DIESES Konto dem Vorgang schon? Fehlt ohne Anmeldung ganz.
+         */
+        DecisionFollow: {
+            /** Following */
+            following: boolean;
+            /** Kvonr */
+            kvonr: number;
+        };
         /** DecisionList */
         DecisionList: {
             /** Decisions */
             decisions: components["schemas"]["DecisionRow"][];
             /** Total */
             total: number;
+        };
+        /**
+         * DecisionParticipation
+         * @description Eine laufende oder beendete Bauleitplan-Beteiligung zum Beschluss.
+         */
+        DecisionParticipation: {
+            /** Beendet Am */
+            beendet_am: string | null;
+            /** Schritt */
+            schritt: string | null;
+            /** Status */
+            status: string;
+            /** Title */
+            title: string | null;
+            /** Url */
+            url: string | null;
+            /** Valid From */
+            valid_from: string | null;
+            /** Valid Until */
+            valid_until: string | null;
         };
         /**
          * DecisionRow
@@ -4652,6 +5105,33 @@ export interface components {
             title?: string | null;
             /** Vote */
             vote?: string | null;
+        };
+        /**
+         * DecisionTemplate
+         * @description Die Vorlage hinter dem Beschluss — Sachverhalt/Begründung als Auszug,
+         *     dazu die Regex-Ernte (federführendes Amt, Klima-Check, Kostenfolge).
+         */
+        DecisionTemplate: {
+            /** Climate Impact */
+            climate_impact: string | null;
+            /** Document Url */
+            document_url: string | null;
+            /** Excerpt */
+            excerpt: string | null;
+            /** Financial Impact */
+            financial_impact: string | null;
+            /** Kind */
+            kind: string | null;
+            /** Klima Relevant */
+            klima_relevant: unknown;
+            /** N Pages */
+            n_pages: number | null;
+            /** Office */
+            office: string | null;
+            /** Template Number */
+            template_number: string | null;
+            /** Title */
+            title: string | null;
         };
         /** DeepResearchBody */
         DeepResearchBody: {
@@ -4795,6 +5275,109 @@ export interface components {
             /** Source */
             source: string;
         };
+        /**
+         * EntityDetail
+         * @description Eine Themen-Seite mit allen ihren Beschlüssen und den Aggregaten.
+         *
+         *     Festes Literal aus ``CouncilStore.entity_detail``, um ``field_labels`` und
+         *     ``related`` vom Router ergänzt — deshalb vollständig und ohne
+         *     ``NotRequired``. ``merged_from`` trägt den alten Slug, wenn die Seite über
+         *     ein zusammengeführtes Alias erreicht wurde (das Frontend leitet dann um).
+         */
+        EntityDetail: {
+            /** Decisions */
+            decisions: components["schemas"]["DecisionRow"][];
+            /** Description */
+            description: string | null;
+            entity: components["schemas"]["EntityHead"];
+            /** Field Labels */
+            field_labels: {
+                [key: string]: string;
+            };
+            /** Fields */
+            fields: components["schemas"]["EntityFieldCount"][];
+            /**
+             * EntityGeo
+             * @description Verortung eines Themas — ``None``, wo keine Koordinaten vorliegen.
+             *     ``geojson`` ist der geparste Umriss, wo einer hinterlegt ist.
+             */
+            geo: {
+                /** Geojson */
+                geojson: {
+                    [key: string]: unknown;
+                } | null;
+                /** Lat */
+                lat: number;
+                /** Lon */
+                lon: number;
+            } | null;
+            /** Merged From */
+            merged_from: string | null;
+            /** Money */
+            money: number;
+            /** Parties */
+            parties: string[];
+            /** Related */
+            related: {
+                [key: string]: unknown;
+            }[];
+        };
+        /** EntityFieldCount */
+        EntityFieldCount: {
+            /** Field */
+            field: string;
+            /** N */
+            n: number;
+        };
+        /**
+         * EntityGeo
+         * @description Verortung eines Themas — ``None``, wo keine Koordinaten vorliegen.
+         *     ``geojson`` ist der geparste Umriss, wo einer hinterlegt ist.
+         */
+        EntityGeo: {
+            /** Geojson */
+            geojson: {
+                [key: string]: unknown;
+            } | null;
+            /** Lat */
+            lat: number;
+            /** Lon */
+            lon: number;
+        };
+        /**
+         * EntityHead
+         * @description Der Kopf einer Themen-Seite: Slug, Name, Art und Beschlusszahl.
+         */
+        EntityHead: {
+            /** Kind */
+            kind: string | null;
+            /** N */
+            n: number;
+            /** Name */
+            name: string;
+            /** Slug */
+            slug: string;
+        };
+        /**
+         * FactionPhase
+         * @description Eine Phase der Fraktions-/Gruppenzugehörigkeit aus den
+         *     Anwesenheitslisten — die einzige echte Zeitreihe, denn das
+         *     Ratsinformationssystem überschreibt Fraktionen rückwirkend.
+         */
+        FactionPhase: {
+            /** First */
+            first: string;
+            /** Kind */
+            kind: string;
+            /** Label */
+            label: string;
+            /** Last */
+            last: string;
+            /** N */
+            n: number;
+            /** Parties */
+            parties: string[];
+        };
         /** FeedbackIn */
         FeedbackIn: {
             /** Kind */
@@ -4885,6 +5468,30 @@ export interface components {
         HighestDecisionId: {
             /** Highest Id */
             highest_id: number;
+        };
+        /**
+         * ImportanceBreakdown
+         * @description Warum ein Beschluss als wichtig gilt (``council.importance``).
+         *
+         *     ``base_score`` ist die reine Heuristik, ``score`` der angezeigte Wert.
+         *     Liegt eine LLM-Tragweite vor, mischt der Router beide 50/50 und legt
+         *     ``impact`` dazu — sonst fehlen die letzten beiden Felder.
+         */
+        ImportanceBreakdown: {
+            /** Base Score */
+            base_score: number;
+            /** Contributions */
+            contributions: unknown;
+            /** Impact */
+            impact?: number;
+            /** Impact Reason */
+            impact_reason?: string;
+            /** Score */
+            score: number;
+            /** Signals */
+            signals: {
+                [key: string]: number | null;
+            };
         };
         /**
          * LimitsUpdate
@@ -5058,6 +5665,139 @@ export interface components {
             /** People */
             people: unknown;
         };
+        /**
+         * PersonAdministration
+         * @description Der schmale Steckbrief einer Verwaltungsperson mit erkanntem Amt
+         *     (``CouncilStore.verwaltung_detail``). ``von``/``bis`` sind die Jahres-Spanne
+         *     der Protokoll-Erwähnungen, KEINE amtliche Amtszeit.
+         */
+        PersonAdministration: {
+            /** Aktiv */
+            aktiv: boolean;
+            /** Bis */
+            bis: string | null;
+            /** Name */
+            name: string;
+            /** Role */
+            role: string;
+            /** Slug */
+            slug: string;
+            /**
+             * Typ
+             * @constant
+             */
+            typ: "administration";
+            /** Von */
+            von: string | null;
+            /** Wortbeitraege */
+            wortbeitraege: components["schemas"]["Speech"][];
+            /** Wortbeitraege Gesamt */
+            wortbeitraege_gesamt: number;
+            /** Wortbeitraege Gremien */
+            wortbeitraege_gremien: components["schemas"]["SpeechCommittee"][];
+        };
+        /** PersonCommittee */
+        PersonCommittee: {
+            /** Chair */
+            chair: boolean;
+            /** Committee */
+            committee: string;
+            /** N */
+            n: number;
+        };
+        /**
+         * PersonCouncil
+         * @description Das Profil eines Mandats- oder beratenden Mitglieds
+         *     (``CouncilStore.member_detail``, ``typ`` legt der Router dazu).
+         *
+         *     ``art`` unterscheidet innerhalb dieses Zweigs noch einmal: ``council`` ist
+         *     ein Ratsmandat, ``advisory`` eine beratende Mitwirkung — für die ist die
+         *     Fraktions-Zeitreihe gegenstandslos, ``party``/``current_affiliation``
+         *     bleiben dann leer und ``organisation`` nennt die entsendende Stelle.
+         */
+        PersonCouncil: {
+            /** Active From */
+            active_from: string | null;
+            /** Active To */
+            active_to: string | null;
+            /**
+             * Art
+             * @enum {string}
+             */
+            art: "council" | "advisory";
+            /** Committees */
+            committees: components["schemas"]["PersonCommittee"][];
+            /** Current Affiliation */
+            current_affiliation: {
+                [key: string]: unknown;
+            } | null;
+            /** Faction Timeline */
+            faction_timeline: components["schemas"]["FactionPhase"][];
+            /** N Sessions */
+            n_sessions: number;
+            /** Name */
+            name: string;
+            /** Organisation */
+            organisation: string | null;
+            /** Party */
+            party: string | null;
+            /** Recent */
+            recent: components["schemas"]["PersonSession"][];
+            /** Ris */
+            ris: unknown;
+            /** Slug */
+            slug: string;
+            /**
+             * Typ
+             * @constant
+             */
+            typ: "council";
+            /** Wortbeitraege */
+            wortbeitraege: components["schemas"]["Speech"][];
+            /** Wortbeitraege Gesamt */
+            wortbeitraege_gesamt: number;
+            /** Wortbeitraege Gremien */
+            wortbeitraege_gremien: components["schemas"]["SpeechCommittee"][];
+        };
+        /** PersonSession */
+        PersonSession: {
+            /** Committee */
+            committee: string;
+            /** Ksinr */
+            ksinr: number;
+            /** Session Date */
+            session_date: string;
+        };
+        /**
+         * PlaceCatalog
+         * @description ``CouncilStore.public_place_catalog`` — der gemeinsame Ortskatalog für
+         *     Suche, Karten, Quiz und die KI-Funktionen. ``kinds`` bildet den Ortstyp auf
+         *     seine deutsche Beschriftung ab, ``sources`` sind die Katalog-Quellen.
+         */
+        PlaceCatalog: {
+            /** Definition */
+            definition: string;
+            /** Id */
+            id: string;
+            /** Kinds */
+            kinds: {
+                [key: string]: string;
+            };
+            /** Label */
+            label: string;
+            /** Places */
+            places: components["schemas"]["PlaceEntry"][];
+            /** Plural */
+            plural: string;
+            /** Schema Version */
+            schema_version: number;
+            /** Singular */
+            singular: string;
+            /** Sources */
+            sources: {
+                [key: string]: unknown;
+            }[];
+        };
         /** PlaceDetail */
         PlaceDetail: {
             /** Children */
@@ -5068,6 +5808,63 @@ export interface components {
             decisions: unknown;
             /** Place */
             place: unknown;
+        };
+        /**
+         * PlaceEntry
+         * @description Ein Ort des Katalogs (``council.places.public_place``).
+         *
+         *     Die ersten zwölf Felder sind die des ``Place``-Dataclass, die drei letzten
+         *     legt die API dazu. Ein Wächter-Test (``test_api_vertrag``) schlägt an, wenn
+         *     das Dataclass wächst — ein hier fehlendes Feld verschwände sonst still.
+         *
+         *     ``sources`` bleibt offen: Der Katalog-Eintrag trägt ``note``/``license``,
+         *     die redaktionell geprüfte Quelle nicht.
+         */
+        PlaceEntry: {
+            /** Aliases */
+            aliases: string[];
+            /** Description */
+            description: string | null;
+            /** Filterable */
+            filterable: boolean;
+            /** Id */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** Kind Label */
+            kind_label: string;
+            /** Lat */
+            lat: number | null;
+            /** Lon */
+            lon: number | null;
+            /** Name */
+            name: string;
+            /** Parent Ids */
+            parent_ids: string[];
+            /** Parents */
+            parents: components["schemas"]["PlaceParent"][];
+            /** Quiz Enabled */
+            quiz_enabled: boolean;
+            /** Source Ids */
+            source_ids: string[];
+            /** Sources */
+            sources: {
+                [key: string]: unknown;
+            }[];
+            /** Wahlbereiche */
+            wahlbereiche: number[];
+        };
+        /**
+         * PlaceParent
+         * @description Ein Elternort in der Ortsangabe — nur Kennung, Name und Art.
+         */
+        PlaceParent: {
+            /** Id */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** Name */
+            name: string;
         };
         /**
          * PlaceReviewIn
@@ -5119,6 +5916,19 @@ export interface components {
             /** Fields */
             fields: components["schemas"]["PolicyField"][];
         };
+        /**
+         * PublicNumbers
+         * @description Die drei Kennzahlen der öffentlichen Startseite — ohne Anmeldung,
+         *     ohne Inhalte (``CouncilStore.public_stats``).
+         */
+        PublicNumbers: {
+            /** Decisions */
+            decisions: number;
+            /** Entities */
+            entities: number;
+            /** Sessions */
+            sessions: number;
+        };
         /** PushRegisterRequest */
         PushRegisterRequest: {
             /** Platform */
@@ -5146,6 +5956,46 @@ export interface components {
             rating: string;
             /** Reason */
             reason?: string | null;
+        };
+        /**
+         * QaShare
+         * @description Ein geteilter Antwort-Schnappschuss (``Store.qa_share_get``).
+         *
+         *     Festes Literal, deshalb vollständig und ohne ``NotRequired``: Vor dem
+         *     Bausteine-Nachtrag geteilte Antworten haben keine ``extras``, der Store
+         *     setzt die vier Listen dann auf leer und ``chart`` auf ``None``.
+         */
+        QaShare: {
+            /** Answer */
+            answer: string;
+            /** Attachments */
+            attachments: {
+                [key: string]: unknown;
+            }[];
+            /** Chart */
+            chart: {
+                [key: string]: unknown;
+            } | null;
+            /** Created */
+            created: string;
+            /** Debates */
+            debates: {
+                [key: string]: unknown;
+            }[];
+            /** Parties */
+            parties: {
+                [key: string]: unknown;
+            }[];
+            /** Press Releases */
+            press_releases: {
+                [key: string]: unknown;
+            }[];
+            /** Question */
+            question: string;
+            /** Sources */
+            sources: {
+                [key: string]: unknown;
+            }[];
         };
         /** QaShareAttachment */
         QaShareAttachment: {
@@ -5622,6 +6472,46 @@ export interface components {
             /** Remaining */
             remaining: number | null;
         };
+        /**
+         * ResearchSnapshot
+         * @description Persistierter Stand eines Deep-Research-Jobs (``Store.deep_job_get``,
+         *     fester SELECT über acht Spalten). ``report`` und ``sources`` sind ``None``,
+         *     solange der Job läuft; der Router parst ``sources`` aus der JSON-Spalte.
+         *
+         *     ``user_id`` steht bewusst NICHT hier — der Store wählt es gar nicht erst
+         *     aus, die Zeile gehört ohnehin dem anfragenden Konto.
+         *
+         *     **``sources`` ist ein OBJEKT, keine Liste.** Es ist der ganze Quellen-Block
+         *     (``deepresearch._quellen_payload``): unter ``sources`` die Beschlüsse,
+         *     daneben ``press_releases``, ``debates``, ``planning_procedures``,
+         *     ``attachments``, ``facets``, ``documents_read``, ``period``, ``cited`` und
+         *     ``context`` — deckungsgleich mit dem ``sources``-Ereignis des Stroms, damit
+         *     der Client einen fertigen Job identisch rendern kann. Der Block bleibt hier
+         *     offen, weil er ein gewachsener JSON-Blob in der Datenbank ist: Ältere
+         *     Zeilen tragen weniger Schlüssel, und eine Aufzählung schnitte die
+         *     zusätzlichen still weg (dieselbe Erwägung wie bei ``ConversationTurn``).
+         *     Als ``list`` deklariert war das ein 500 an jedem fertigen Job.
+         */
+        ResearchSnapshot: {
+            /** Created */
+            created: string;
+            /** Id */
+            id: string;
+            /** Question */
+            question: string;
+            /** Report */
+            report: string | null;
+            /** Seen */
+            seen: number;
+            /** Sources */
+            sources: {
+                [key: string]: unknown;
+            } | null;
+            /** Status */
+            status: string;
+            /** Updated */
+            updated: string;
+        };
         /** ResearchStarted */
         ResearchStarted: {
             /** Job Id */
@@ -5649,6 +6539,57 @@ export interface components {
         RoleUpdate: {
             /** Role */
             role: string;
+        };
+        /**
+         * SessionDetail
+         * @description Eine Sitzung mit allem, was die Sitzungs-Seite braucht.
+         *
+         *     Erbt die Spalten von ``SessionRow`` (das ist die Zeile aus
+         *     ``CouncilStore.get_session``); alles darunter hängt der Router an. Die
+         *     sieben Zusätze stehen an JEDER Antwort — der Handler setzt sie
+         *     unbedingt, auch wenn die Listen leer bleiben.
+         */
+        SessionDetail: {
+            /** Aenderungen */
+            aenderungen: components["schemas"]["AgendaChange"][];
+            /** Agenda Items */
+            agenda_items: {
+                [key: string]: unknown;
+            }[];
+            /** Attendance */
+            attendance: {
+                [key: string]: unknown;
+            }[];
+            /** Committee */
+            committee: string;
+            /** Decisions */
+            decisions: components["schemas"]["DecisionRow"][];
+            /** Fetched At */
+            fetched_at?: string | null;
+            /** Has Protocol */
+            has_protocol: boolean;
+            /** Ksinr */
+            ksinr: number | null;
+            /** Live Until */
+            live_until?: string | null;
+            /** Location */
+            location?: string | null;
+            /** My Topic Items */
+            my_topic_items?: {
+                [key: string]: unknown;
+            }[];
+            /** N Items */
+            n_items?: number;
+            /** Session Date */
+            session_date: string;
+            /** Session Time */
+            session_time?: string | null;
+            /** Url */
+            url: string | null;
+            /** Video Results */
+            video_results: {
+                [key: string]: unknown;
+            }[];
         };
         /** SessionList */
         SessionList: {
@@ -5758,6 +6699,48 @@ export interface components {
             checked_seconds_ago: number;
             /** Status */
             status: string;
+        };
+        /**
+         * Speech
+         * @description Ein Wortbeitrag aus einem Protokoll.
+         */
+        Speech: {
+            /** Committee */
+            committee: string | null;
+            /** Kind */
+            kind: string | null;
+            /** Session Date */
+            session_date: string | null;
+            /** Text */
+            text: string;
+            /** Top */
+            top: string | null;
+        };
+        /** SpeechCommittee */
+        SpeechCommittee: {
+            /** Committee */
+            committee: string;
+            /** N */
+            n: number;
+        };
+        /**
+         * Speeches
+         * @description Wortbeiträge einer Person (``CouncilStore.wortbeitraege_person``).
+         *
+         *     Zwei Zahlen, weil es zwei Dinge sind: ``total`` gilt zum gesetzten
+         *     Gremien-Filter, ``gesamt`` ist der Bestand der Person über alle Gremien —
+         *     daran hängt die Zeile „N Wortbeiträge" auf der Personen-Seite. Der
+         *     deutsche Schlüssel steht so im Bestand und bleibt unangetastet.
+         */
+        Speeches: {
+            /** Committees */
+            committees: components["schemas"]["SpeechCommittee"][];
+            /** Gesamt */
+            gesamt: number;
+            /** Items */
+            items: components["schemas"]["Speech"][];
+            /** Total */
+            total: number;
         };
         /** StatusUpdate */
         StatusUpdate: {
@@ -6211,10 +7194,8 @@ export interface components {
         };
         /**
          * WeekPreview
-         * @description ``CouncilStore.wochenvorschau`` hat ZWEI Rückgabeformen: ohne Treffer
-         *     nur fünf Schlüssel, mit Treffern elf. Die sechs Kennzahlen sind deshalb
-         *     ``NotRequired`` — ein Pflichtfeld wäre hier ein 500 an einer ruhigen
-         *     Woche. ``upcoming`` hängt der Router an.
+         * @description Die Fassung für den Instagram-Bot: ``upcoming`` hängt der Router an —
+         *     die terminierten Sitzungen ohne veröffentlichte Tagesordnung.
          */
         WeekPreview: {
             /** Found */
@@ -6660,9 +7641,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["AdminLlmUsage"];
                 };
             };
         };
@@ -6721,9 +7700,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["AdminPlaceCandidate"];
                 };
             };
             /** @description Validation Error */
@@ -6936,9 +7913,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["AdminUserDetail"];
                 };
             };
             /** @description Validation Error */
@@ -7538,13 +8513,26 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Successful Response */
+            /**
+             * @description Server-Sent Events (`text/event-stream`). Jeder Rahmen ist eine `data:`-Zeile mit einem JSON-Objekt, das ein Feld `type` trägt:
+             *
+             *     - `step` — Fortschritt, `step` ist `expand`, `search` oder `answer`
+             *     - `sources` — die gefundenen Beschlüsse samt `mode` und `qtype`, sobald Retrieval und Rerank fertig sind
+             *     - `token` — ein Stück Antworttext (`text`)
+             *     - `replace` — ersetzt den bisher gesendeten Text vollständig
+             *     - `suggestions` — Anschlussfragen (`questions`)
+             *     - `abbruch` — die Antwort wurde abgebrochen
+             *     - `done` — Schluss-Ereignis mit `cited`, `timings` und `conversation_id`
+             *     - `error` — die Frage ist fehlgeschlagen (`message`)
+             *
+             *     Ein Verbindungsabriss ist folgenlos: Der Client kann die Frage neu stellen.
+             */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "text/event-stream": string;
                 };
             };
             /** @description Validation Error */
@@ -7576,9 +8564,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["BudgetOverview"];
                 };
             };
             /** @description Validation Error */
@@ -8212,9 +9198,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["DecisionDetail"];
                 };
             };
             /** @description Validation Error */
@@ -8345,9 +9329,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["ResearchSnapshot"];
                 };
             };
             /** @description Validation Error */
@@ -8374,14 +9356,35 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Successful Response */
+            /**
+             * @description Server-Sent Events (`text/event-stream`). Erst ein Replay aller Ereignisse ab `ab`, dann live weiter. Jeder Rahmen ist eine `data:`-Zeile mit einem JSON-Objekt und einem Feld `type`:
+             *
+             *     - `phase` — `zerlegen`, `lesen` (mit `dokumente`) oder `schreiben`
+             *     - `facets` — die Namen der Facetten, in die die Frage zerfällt
+             *     - `facette` — eine Facette ist fertig (`name`, `treffer`)
+             *     - `sources` — die Quellen der Recherche
+             *     - `token` — ein Stück Berichtstext (`text`)
+             *     - `replace` — ersetzt den bisher gesendeten Text vollständig
+             *     - `done` — Schluss-Ereignis mit `cited` und `documents_read`
+             *     - `gestoppt` — auf Wunsch abgebrochen (`facets_done`)
+             *     - `fehler` — die Recherche ist fehlgeschlagen
+             *
+             *     Ein Verbindungsabriss ist folgenlos — der Job läuft im Backend weiter, der Client verbindet sich einfach neu.
+             */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "text/event-stream": string;
                 };
+            };
+            /** @description Die Recherche ist nicht mehr aktiv — den Snapshot über `GET /api/council/deep-research/{job_id}` laden. */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -8595,9 +9598,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["EntityDetail"];
                 };
             };
             /** @description Validation Error */
@@ -8872,9 +9873,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["PersonCouncil"] | components["schemas"]["PersonAdministration"];
                 };
             };
             /** @description Validation Error */
@@ -8909,9 +9908,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["Speeches"];
                 };
             };
             /** @description Validation Error */
@@ -8971,9 +9968,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["PlaceCatalog"];
                 };
             };
         };
@@ -8991,14 +9986,21 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Successful Response */
+            /** @description Die gerenderte Planzeichnung als JPEG. `?thumb=true` liefert die Vorschaugröße. Ein gerendertes Blatt ändert sich nie, die Antwort ist deshalb `immutable` und dreißig Tage cachebar. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "image/jpeg": string;
                 };
+            };
+            /** @description Zu dieser Anlage gibt es kein gerendertes Bild. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -9058,9 +10060,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["PublicNumbers"];
                 };
             };
         };
@@ -9168,9 +10168,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["QaShare"];
                 };
             };
             /** @description Validation Error */
@@ -9256,9 +10254,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["SessionDetail"];
                 };
             };
             /** @description Validation Error */
@@ -9406,9 +10402,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["CouncilWeekPreview"];
                 };
             };
         };
@@ -10787,4 +11781,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 6d790dde698e9e6bf6397cbf62f19a7b1accd99278b09c60978df423391edeec
+// vertrag-sha256: 0bdb11d646be0a8644a402c01c921ab9789fc5f27400b953cd184a1088cebaa7
