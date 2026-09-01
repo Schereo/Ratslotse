@@ -268,7 +268,7 @@ public struct DecisionDetail: Codable, Sendable {
         case consultations = "beratungsfolge"
         case templateURL = "vorlage_url"
         case template = "vorlage"
-        case attachments = "anlagen"
+        case attachments = "attachments"
         case importance = "importance_breakdown"
         case presentParties = "present_parties"
         case ratsinfoURL = "ratsinfo_url"
@@ -696,7 +696,7 @@ public struct AgendaItem: Codable, Sendable, Hashable, Identifiable {
         case itemNumber = "item_number"
         case templateNumber = "template_number"
         case isPublic = "is_public"
-        case attachments = "anlagen"
+        case attachments = "attachments"
     }
 
     public init(from decoder: Decoder) throws {

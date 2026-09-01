@@ -1046,8 +1046,8 @@ class BeschlussListe(TypedDict):
 
 
 class ParteiMeinungen(TypedDict):
-    ohne_beitraege: Any
-    parteien: Any
+    without_speeches: Any
+    parties: Any
 
 
 class QaShareToken(TypedDict):
@@ -1066,8 +1066,8 @@ class RechercheAktuell(TypedDict):
 
 
 class RechercheGestoppt(TypedDict):
-    facetten_fertig: int
-    facetten_gesamt: int
+    facets_done: int
+    facets_total: int
     partial_report_possible: bool
 
 

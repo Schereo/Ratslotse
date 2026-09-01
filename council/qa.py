@@ -1988,7 +1988,7 @@ def geld_kontext(store, question: str, begriffe: str = "", typ: str = "topic") -
     facetten = geld_facetten(question, typ)
     # Die Begriffe kommen aus der Expansion; ohne sie tut es die Frage selbst.
     woerter = [w for w in (begriffe or question or "").split() if w]
-    aus: dict = {"facetten": sorted(facetten)}
+    aus: dict = {"facets": sorted(facetten)}
     if "fees" in facetten:
         aus["fees"] = _sicher(store.gebuehren_fuer_begriffe, woerter)
     if "plan" in facetten:

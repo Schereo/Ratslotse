@@ -31,7 +31,7 @@ import Testing
         "document_url": "https://example.test/vorlage.pdf", "n_pages": 3,
         "excerpt": "Sachverhalt: Die Stadt plant einen Radweg.", "office": "Amt für Verkehr"
       },
-      "anlagen": [{
+      "attachments": [{
         "document_id": 77, "label": "Antrag der SPD", "url": "https://example.test/77.pdf",
         "is_motion": 1, "applicants": ["SPD"], "status": "ok"
       }],
