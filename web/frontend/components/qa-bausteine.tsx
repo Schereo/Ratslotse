@@ -87,11 +87,11 @@ export type PersonEintrag = {
    *  Oltmanns-Befund 12.08.).
    *  "beratend": beratendes Mitglied eines Ausschusses (Verband, Beirat,
    *  Fachperson) — dem Rat gehört es nicht an.
-   *  "beteiligung": nur aus dem Beteiligungsbericht bekannt — Aufsichtsorgane
+   *  "participation": nur aus dem Beteiligungsbericht bekannt — Aufsichtsorgane
    *  der städtischen Gesellschaften (Landkreis, Belegschaft,
    *  Mitgesellschafter). `von`/`bis` sind hier BERICHTSJAHRGÄNGE, nicht
    *  Sitzungsjahre, und `aktiv` heißt „steht im jüngsten Bericht". */
-  art: "rat" | "beratend" | "stadt" | "beteiligung" | "blocker";
+  art: "council" | "advisory" | "city" | "participation" | "blocker";
   party: string | null; role: string | null;
   /** Fraktions-Phasen mit Zeitraum — NUR bei Wechslern gesetzt (13 Personen im
    *  Bestand). `party` ist die heutige; hier steht, was vorher war. */
@@ -260,12 +260,12 @@ function jahrAus(date?: string | null): number | null {
  *  die Fraktion daneben noch etwas hinzufügt oder nur dasselbe wiederholt. */
 function personBadgeLabel(p: PersonEintrag): string {
   return !p.aktiv ? "ehem."
-    : p.art === "stadt" ? "Stadt"
-    : p.art === "beteiligung" ? "Aufsicht"
+    : p.art === "city" ? "Stadt"
+    : p.art === "participation" ? "Aufsicht"
     // Beratende Ausschuss-Mitglieder sind keine Ratsleute: „Rat" (das Ergebnis
     // von parteiKuerzel(null)) behauptete bei ihnen ein Mandat, das sie nicht
     // haben (Tims Skiba-Befund 21.08.2026).
-    : p.art === "beratend" ? "beratend"
+    : p.art === "advisory" ? "advisory"
     : parteiKuerzel(p.party);
 }
 
@@ -284,7 +284,7 @@ export function SprecherName({ name, party, date, zeigePartei = false }: {
   // Das Badge zeigt die Zugehörigkeit ZUR ZEIT DES BEITRAGS, nicht die von
   // heute: So wurde der Beitrag gehalten, und so steht er in der Quelle. Dass
   // sie heute eine andere ist, sagt das Badge daneben (s. PersonBadge).
-  const zeilenPartei = p && p.art === "rat" && parteiKuerzel(party ?? null) !== "Rat"
+  const zeilenPartei = p && p.art === "council" && parteiKuerzel(party ?? null) !== "Rat"
     ? party ?? null : null;
   const label = p ? (zeilenPartei ? parteiKuerzel(zeilenPartei) : personBadgeLabel(p)) : null;
   const doppelt = !!label && label !== "Rat" && label === parteiKuerzel(party ?? null);
@@ -354,20 +354,20 @@ export function PersonBadge({ p, zeilenPartei = null }: {
   // `parteiKuerzel(null)` — und das antwortet „Rat".
   const dot = zeilenPartei ? parteiDot(zeilenPartei)
     : !p.aktiv ? { bg: "hsl(209 10% 62%)", ring: false }
-    : p.art === "stadt" ? { bg: "#0764a6", ring: false }
-    : p.art === "beteiligung" ? { bg: "hsl(209 10% 62%)", ring: true }
-    : p.art === "beratend" ? { bg: "hsl(209 18% 65%)", ring: true }
+    : p.art === "city" ? { bg: "#0764a6", ring: false }
+    : p.art === "participation" ? { bg: "hsl(209 10% 62%)", ring: true }
+    : p.art === "advisory" ? { bg: "hsl(209 18% 65%)", ring: true }
     : parteiDot(p.party || "");
   const label = zeilenPartei ? parteiKuerzel(zeilenPartei) : personBadgeLabel(p);
   const role = p.role
-    || (p.art === "rat" ? `Ratsmitglied${p.party ? ` · ${p.party}` : ""}`
-      : p.art === "beteiligung" ? "Aufsichtsorgan einer städtischen Gesellschaft"
-      : p.art === "beratend" ? "Beratendes Mitglied"
+    || (p.art === "council" ? `Ratsmitglied${p.party ? ` · ${p.party}` : ""}`
+      : p.art === "participation" ? "Aufsichtsorgan einer städtischen Gesellschaft"
+      : p.art === "advisory" ? "Beratendes Mitglied"
       : "Stadtverwaltung");
   // Der Zeitraum sagt, WORAUS wir die Person kennen. Bei den Aufsichtsorganen
   // sind das Berichtsjahrgänge, nicht Sitzungen — „In den Sitzungen seit
   // 2022" wäre für eine Betriebsratsvorsitzende schlicht falsch.
-  const zeitraum = p.art === "beteiligung"
+  const zeitraum = p.art === "participation"
     ? (p.von && p.bis
       ? (p.von === p.bis ? `Im Beteiligungsbericht ${p.von}`
         : `In den Beteiligungsberichten ${p.von}–${p.bis}`)
@@ -413,7 +413,7 @@ export function PersonBadge({ p, zeilenPartei = null }: {
           {/* Verwaltung verlinkt nur mit ERKANNTEM Amt (Tims Wunsch 19.08.) —
               ohne rolle liefert /person/{slug} 404 (verwaltung_detail() im
               Backend), und ein toter Link ist schlimmer als kein Link (#588). */}
-          {(p.art === "rat" || (p.art === "stadt" && p.role)) && (
+          {(p.art === "council" || (p.art === "city" && p.role)) && (
             /* Next-Link statt <a>: Der harte Reload warf beim Zurückkommen
                den Gesprächs-State weg (Tims Befund 12.08.) — client-seitig
                bleibt die History intakt und der Restore greift. */

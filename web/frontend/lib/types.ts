@@ -345,7 +345,7 @@ export interface Member {
   /** „rat" = Ratsmandat (im Plenum geführt oder im RIS als Ratsmitglied),
    *  „beratend" = beratendes Mitglied eines Ausschusses (Verband, Beirat,
    *  Fachperson) — dem Rat gehört es nicht an. */
-  art: "rat" | "beratend";
+  art: "council" | "advisory";
   /** Entsendende Organisation der beratenden Mitglieder („Behindertenbeirat"). */
   organisation: string | null;
   /** Werte, unter denen die Person im Fraktions-Filter erscheint. Meist die
@@ -362,14 +362,14 @@ export interface Member {
 
 export interface MemberDetail {
   /** Fehlt bei älteren gecachten Antworten — dann als "rat" behandeln. */
-  typ?: "rat";
+  typ?: "council";
   name: string; slug: string; party: string | null;
   /** Zugehörigkeit für den Seitenkopf — wie im Verzeichnis aufgelöst
    *  („FDP/Volt" → FDP, wo es belegt ist). Die Zeitreihe darunter bleibt
    *  quellentreu. */
   current_affiliation: { label: string; kind: "party" | "group" | "independent"; parties: string[] } | null;
   /** s. `Member.art` — bei „beratend" bleibt `faction_timeline` leer. */
-  art: "rat" | "beratend";
+  art: "council" | "advisory";
   organisation: string | null;
   n_sessions: number; active_from: string | null; active_to: string | null;
   /** Fraktions-/Gruppen-Verlauf aus der Anwesenheit: Phasen je Zugehörigkeit,
@@ -408,7 +408,7 @@ export interface MemberDetail {
  *  Fraktions-Zeitleiste, kein Vorsitz-Zähler, keine Gremien-Präsenz. `von`/
  *  `bis` sind Jahre der Protokoll-Erwähnung, keine amtliche Amtszeit. */
 export interface VerwaltungDetail {
-  typ: "verwaltung";
+  typ: "administration";
   name: string; slug: string; role: string | null;
   aktiv: boolean; von: string | null; bis: string | null;
   wortbeitraege?: MemberDetail["wortbeitraege"];

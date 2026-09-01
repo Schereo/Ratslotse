@@ -78,14 +78,14 @@ export function PersonenView() {
     (m.formen ?? []).some((f) => f.toLowerCase().includes(needle));
   const filtered = all.filter((m) => (!needle || passt(m))
     && (!party || (m.filter_parteien ?? []).includes(party)));
-  const rat = filtered.filter((m) => m.art !== "beratend");
-  const beratend = filtered.filter((m) => m.art === "beratend");
+  const rat = filtered.filter((m) => m.art !== "advisory");
+  const beratend = filtered.filter((m) => m.art === "advisory");
   // Nur Verwaltungsleute mit ERKANNTEM Amt haben einen Steckbrief
   // (verwaltung_detail() im Backend) — ohne Amt gäbe es nur einen toten Link.
   // Der Parteifilter blendet den Block aus: Verwaltung ist parteilos, unter
   // einer gewählten Fraktion wäre er nur verwirrend.
   const verwaltung = party ? [] : (lexikon?.personen ?? [])
-    .filter((p) => p.art === "stadt" && p.role && (!needle || (p.name ?? "").toLowerCase().includes(needle)));
+    .filter((p) => p.art === "city" && p.role && (!needle || (p.name ?? "").toLowerCase().includes(needle)));
 
   return (
     <div className="space-y-4">

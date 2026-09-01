@@ -399,7 +399,7 @@ import Testing
         name: "Ulf Prange",
         vorname: "ulf",
         nachname: "prange",
-        art: "rat",
+        art: "council",
         party: "SPD",
         aktiv: true
     )
@@ -408,7 +408,7 @@ import Testing
         name: "Ulf Prange",
         vorname: "ulf",
         nachname: "prange-alt",
-        art: "rat",
+        art: "council",
         party: "SPD",
         aktiv: false
     )
@@ -417,7 +417,7 @@ import Testing
         name: "Anna Oltmanns",
         vorname: "anna",
         nachname: "oltmanns",
-        art: "rat",
+        art: "council",
         party: "Bündnis 90/Die Grünen",
         aktiv: true
     )
@@ -638,7 +638,7 @@ private final class FeedbackURLProtocol: URLProtocol {
             "kind": "party",
             "parties": ["Grüne"]
           },
-          "art": "rat",
+          "art": "council",
           "organisation": null,
           "n_sessions": 136,
           "active_from": "2021-11-22",
@@ -676,7 +676,7 @@ private final class FeedbackURLProtocol: URLProtocol {
     let data = try #require(
         """
         {
-          "typ": "verwaltung",
+          "typ": "administration",
           "name": "Jürgen Krogmann",
           "slug": "juergen-krogmann",
           "role": "Oberbürgermeister",
@@ -691,7 +691,7 @@ private final class FeedbackURLProtocol: URLProtocol {
     )
 
     let profile = try JSONDecoder().decode(PublicPersonProfile.self, from: data)
-    #expect(profile.type == "verwaltung")
+    #expect(profile.type == "administration")
     #expect(profile.roleLabel == "Oberbürgermeister")
     #expect(profile.nSessions == 0)
     #expect(profile.committees.isEmpty)
@@ -726,7 +726,7 @@ private final class FeedbackURLProtocol: URLProtocol {
           "name": "Anne Beispiel",
           "party": null,
           "current_affiliation": "SPD-Fraktion",
-          "art": "rat",
+          "art": "council",
           "organisation": null,
           "n_sessions": 1,
           "active_from": null,

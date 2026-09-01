@@ -143,7 +143,7 @@ private struct CouncilMember: Decodable, Sendable, Identifiable {
         slug = try values.decode(String.self, forKey: .slug)
         name = try values.decode(String.self, forKey: .name)
         party = try values.decodeIfPresent(String.self, forKey: .party)
-        art = try values.decodeIfPresent(String.self, forKey: .art) ?? "rat"
+        art = try values.decodeIfPresent(String.self, forKey: .art) ?? "council"
         organisation = try values.decodeIfPresent(String.self, forKey: .organisation)
         filterParties = try values.decodeIfPresent([String].self, forKey: .filterParties) ?? party.map { [$0] } ?? []
         forms = try values.decodeIfPresent([String].self, forKey: .forms) ?? []
@@ -561,8 +561,8 @@ struct CouncilInsightsView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 12))
             }
 
-            let councilMembers = filteredMembers.filter { $0.art != "beratend" }
-            let advisors = filteredMembers.filter { $0.art == "beratend" }
+            let councilMembers = filteredMembers.filter { $0.art != "advisory" }
+            let advisors = filteredMembers.filter { $0.art == "advisory" }
             MonoKicker("Ratsmitglieder", trailing: "\(councilMembers.count)")
             peopleGrid(councilMembers)
             if !advisors.isEmpty {
@@ -785,7 +785,7 @@ struct CouncilInsightsView: View {
                             .overlay(Text(initials(member.name)).font(RatsFont.body(11, weight: .bold)).foregroundStyle(partyColor(member.party ?? "Stadt")))
                         VStack(alignment: .leading, spacing: 3) {
                             Text(member.name).font(RatsFont.body(13.5, weight: .semibold)).lineLimit(1)
-                            Text(member.art == "beratend"
+                            Text(member.art == "advisory"
                                  ? [member.organisation, "\(member.n) Sitzungen"].compactMap { $0 }.joined(separator: " · ")
                                  : "\(member.n) Sitzungen · \(member.committees) Gremien")
                                 .font(RatsFont.body(10.5)).foregroundStyle(RatsColor.secondary).lineLimit(2)
@@ -884,11 +884,11 @@ struct CouncilInsightsView: View {
                 fieldLabels: ["verkehr": "Verkehr", "soziales": "Soziales"]
             )
             members = [
-                CouncilMember(slug: "anne-beispiel", name: "Anne Beispiel", party: "SPD", art: "rat", organisation: nil, filterParties: ["SPD"], n: 18, committees: 3),
-                CouncilMember(slug: "bernd-muster", name: "Bernd Muster", party: "CDU", art: "rat", organisation: nil, filterParties: ["CDU"], n: 16, committees: 2),
-                CouncilMember(slug: "cem-kaya", name: "Cem Kaya", party: "GRÜNE", art: "rat", organisation: nil, filterParties: ["GRÜNE"], n: 15, committees: 4),
+                CouncilMember(slug: "anne-beispiel", name: "Anne Beispiel", party: "SPD", art: "council", organisation: nil, filterParties: ["SPD"], n: 18, committees: 3),
+                CouncilMember(slug: "bernd-muster", name: "Bernd Muster", party: "CDU", art: "council", organisation: nil, filterParties: ["CDU"], n: 16, committees: 2),
+                CouncilMember(slug: "cem-kaya", name: "Cem Kaya", party: "GRÜNE", art: "council", organisation: nil, filterParties: ["GRÜNE"], n: 15, committees: 4),
             ]
-            administrationPeople = [AdministrationPerson(slug: "stadtbaurat-beispiel", name: "Dr. Lena Beispiel", art: "stadt", role: "Stadtbaurätin")]
+            administrationPeople = [AdministrationPerson(slug: "stadtbaurat-beispiel", name: "Dr. Lena Beispiel", art: "city", role: "Stadtbaurätin")]
             fieldRecaps = [
                 FieldRecap(policyField: "verkehr", fieldLabel: "Verkehr", summary: "Der Rat hat sichere Querungen und den Ausbau des Busverkehrs beraten. Mehrere Vorhaben gehen nun in die konkrete Planung.", decisionCount: 11, periodFrom: "2026-05-01", periodTo: "2026-08-28"),
                 FieldRecap(policyField: "soziales", fieldLabel: "Soziales", summary: "Im Mittelpunkt standen zusätzliche Betreuungsplätze und barrierefreie Angebote in den Stadtteilen.", decisionCount: 8, periodFrom: "2026-05-01", periodTo: "2026-08-28"),
@@ -925,7 +925,7 @@ struct CouncilInsightsView: View {
             finance = responses.3
             goals = responses.4.goals
             fieldRecaps = responses.5.recaps
-            administrationPeople = responses.6.personen.filter { $0.art == "stadt" && $0.role != nil }
+            administrationPeople = responses.6.personen.filter { $0.art == "city" && $0.role != nil }
             error = nil
         } catch { self.error = error.localizedDescription }
     }

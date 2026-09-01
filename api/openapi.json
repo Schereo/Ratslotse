@@ -10001,7 +10001,7 @@
     },
     "/api/council/person/{slug}": {
       "get": {
-        "description": "Das Profil einer Person — Ratsmitglied oder Verwaltung mit erkanntem\nAmt (Tims Wunsch 19.08.): party/sessions/committees/Gantt bei einem\nMandat, ein schmaler Steckbrief (Amt + Erwähnungszeitraum) bei einem Amt.\n`typ` im Ergebnis unterscheidet (\"rat\" | \"verwaltung\") — das Frontend\nrendert danach zwei verschiedene Ansichten.\n\nOhne Anmeldung lesbar (s. `decision_detail`). Es geht ausschließlich um\nMandatsträger:innen bzw. Amtsträger:innen in ihrer öffentlichen Funktion,\nund die Angaben stammen aus den Anwesenheitslisten der amtlichen\nProtokolle — keine Privatperson wird hier auffindbar, die es nicht\nohnehin schon ist.",
+        "description": "Das Profil einer Person — Ratsmitglied oder Verwaltung mit erkanntem\nAmt (Tims Wunsch 19.08.): party/sessions/committees/Gantt bei einem\nMandat, ein schmaler Steckbrief (Amt + Erwähnungszeitraum) bei einem Amt.\n`typ` im Ergebnis unterscheidet (\"council\" | \"administration\") — das Frontend\nrendert danach zwei verschiedene Ansichten.\n\nOhne Anmeldung lesbar (s. `decision_detail`). Es geht ausschließlich um\nMandatsträger:innen bzw. Amtsträger:innen in ihrer öffentlichen Funktion,\nund die Angaben stammen aus den Anwesenheitslisten der amtlichen\nProtokolle — keine Privatperson wird hier auffindbar, die es nicht\nohnehin schon ist.",
         "operationId": "person_api_council_person__slug__get",
         "parameters": [
           {

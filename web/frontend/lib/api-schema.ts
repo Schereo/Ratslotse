@@ -2347,7 +2347,7 @@ export interface paths {
          * @description Das Profil einer Person — Ratsmitglied oder Verwaltung mit erkanntem
          *     Amt (Tims Wunsch 19.08.): party/sessions/committees/Gantt bei einem
          *     Mandat, ein schmaler Steckbrief (Amt + Erwähnungszeitraum) bei einem Amt.
-         *     `typ` im Ergebnis unterscheidet ("rat" | "verwaltung") — das Frontend
+         *     `typ` im Ergebnis unterscheidet ("council" | "administration") — das Frontend
          *     rendert danach zwei verschiedene Ansichten.
          *
          *     Ohne Anmeldung lesbar (s. `decision_detail`). Es geht ausschließlich um
@@ -10766,4 +10766,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 8220e5f2b2782da676346c5f0d76419db2cda6221a5171e2fee1dd578098740c
+// vertrag-sha256: 67468f4ccff46e05ca9552c78ee809012603bd6cb5a8f10b15e2dadab4a10df0

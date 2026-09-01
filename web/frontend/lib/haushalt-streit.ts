@@ -25,7 +25,7 @@
 // Ergebnis je Abstimmung. Ein Balken „12 dafür, 8 dagegen" wäre erfunden.
 // Deshalb steht das Ergebnis als Wort und Badge da, sonst nichts.
 
-export type StreitRolle = "rat" | "verwaltung" | "leitung";
+export type StreitRolle = "council" | "administration" | "leadership";
 
 export type StreitWortbeitrag = {
   /** Anrede aus dem Protokoll — „Ratsherr", „Stadtkämmerin" … */
@@ -136,7 +136,7 @@ export function schlussbeschluss(r: StreitRunde | null): StreitStation | null {
 export function redenJeFraktion(station: StreitStation | null): { label: string; n: number }[] {
   const zaehler = new Map<string, number>();
   for (const b of station?.debatte ?? []) {
-    if (b.role !== "rat") continue;
+    if (b.role !== "council") continue;
     const label = b.fraktion ?? "ohne eindeutige Fraktion";
     zaehler.set(label, (zaehler.get(label) ?? 0) + 1);
   }
@@ -193,7 +193,7 @@ export function ohneZuordnung(daten: StreitDaten | null): { ohne: number; gesamt
     for (const s of r.stationen) {
       for (const b of s.debatte) {
         gesamt += 1;
-        if (b.role === "rat" && b.fraktion_unklar) ohne += 1;
+        if (b.role === "council" && b.fraktion_unklar) ohne += 1;
       }
     }
   }

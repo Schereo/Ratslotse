@@ -693,7 +693,7 @@ def _lexikon_zuordnung(store: CouncilStore,
     Entsendungsrechte („Vertreter/in der Landessparkasse").
 
     **Verlinkt wird nur, wer eine Seite hat** — und das sind allein die
-    Ratsmitglieder (``art == "rat"``). Das Lexikon führt daneben
+    Ratsmitglieder (``art == "council"``). Das Lexikon führt daneben
     Verwaltungsleute und, seit Tims Auftrag vom 17.08., die Aufsichtsorgane
     selbst; ``/council/person/{slug}`` kennt beide nicht und antwortet mit
     404. Bis hierher zeigte der Steckbrief sechs solcher Links ins Leere,
@@ -746,7 +746,7 @@ def _lexikon_zuordnung(store: CouncilStore,
             fn = funktionen[name].most_common(1)
             eintrag = CouncilStore.tippfehler_ratsmitglied(
                 vor, nach, fn[0][0] if fn else None, nach_paar)
-        verlinkbar = bool(eintrag) and eintrag.get("art") == "rat"
+        verlinkbar = bool(eintrag) and eintrag.get("art") == "council"
         aus[name] = {"slug": eintrag["slug"] if verlinkbar else None,
                      "party": eintrag["party"] if eintrag else None}
     return aus
@@ -2730,7 +2730,7 @@ def person(slug: str, store: CouncilStore = Depends(get_council_store)) -> Perso
     """Das Profil einer Person — Ratsmitglied oder Verwaltung mit erkanntem
     Amt (Tims Wunsch 19.08.): party/sessions/committees/Gantt bei einem
     Mandat, ein schmaler Steckbrief (Amt + Erwähnungszeitraum) bei einem Amt.
-    `typ` im Ergebnis unterscheidet ("rat" | "verwaltung") — das Frontend
+    `typ` im Ergebnis unterscheidet ("council" | "administration") — das Frontend
     rendert danach zwei verschiedene Ansichten.
 
     Ohne Anmeldung lesbar (s. `decision_detail`). Es geht ausschließlich um
@@ -2741,7 +2741,7 @@ def person(slug: str, store: CouncilStore = Depends(get_council_store)) -> Perso
     """
     data = store.member_detail(slug)
     if data:
-        data["typ"] = "rat"
+        data["typ"] = "council"
         return data
     data = store.verwaltung_detail(slug)
     if data:
