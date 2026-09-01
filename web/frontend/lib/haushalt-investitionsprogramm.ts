@@ -52,9 +52,9 @@ export type ProgrammZeile = {
 
 export type ProgrammDaten = {
   years: number[];
-  massnahmen: ProgrammZeile[];
-  teilhaushalte: ProgrammZeile[];
-  gesamt: ProgrammZeile[];
+  measures: ProgrammZeile[];
+  sub_budgets: ProgrammZeile[];
+  totals: ProgrammZeile[];
   herkunft: Record<string, Herkunft>;
 };
 
@@ -76,7 +76,7 @@ export function teilhaushalte(
   year: number,
 ): ProgrammZeile[] {
   if (!daten) return [];
-  return daten.teilhaushalte
+  return daten.sub_budgets
     .filter((z) => z.year === year)
     .sort((a, b) => b.grand_total - a.grand_total);
 }
@@ -85,7 +85,7 @@ export function gesamtJahr(
   daten: ProgrammDaten | null,
   year: number,
 ): ProgrammZeile | null {
-  return daten?.gesamt.find((z) => z.year === year) ?? null;
+  return daten?.totals.find((z) => z.year === year) ?? null;
 }
 
 /** Die Vorhaben eines Teilhaushalts, nach Gesamtsumme absteigend.
@@ -99,7 +99,7 @@ export function vorhaben(
   thhNr: number,
 ): ProgrammZeile[] {
   if (!daten) return [];
-  return daten.massnahmen
+  return daten.measures
     .filter((z) => z.year === year && z.sub_budget_no === thhNr)
     .sort((a, b) => b.grand_total - a.grand_total);
 }
@@ -110,7 +110,7 @@ export function teilhaushaltSumme(
   year: number,
   thhNr: number,
 ): ProgrammZeile | null {
-  return daten?.teilhaushalte.find(
+  return daten?.sub_budgets.find(
     (z) => z.year === year && z.sub_budget_no === thhNr) ?? null;
 }
 
@@ -132,7 +132,7 @@ export function suche(
 ): ProgrammZeile[] {
   const w = wort.trim().toLowerCase();
   if (!daten || w.length < 2) return [];
-  return daten.massnahmen
+  return daten.measures
     .filter((z) => z.year === year
       && (z.label.toLowerCase().includes(w)
           || (z.code ?? "").toLowerCase().includes(w)))
@@ -146,7 +146,7 @@ export function count(
   thhNr: number,
 ): number {
   if (!daten) return 0;
-  return daten.massnahmen.filter(
+  return daten.measures.filter(
     (z) => z.year === year && z.sub_budget_no === thhNr).length;
 }
 

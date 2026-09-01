@@ -28,7 +28,7 @@ import { KonzernDaten, kernAnteil } from "@/lib/haushalt-konzern";
 export type LueckeArt = "revenues" | "expenses";
 
 export function KonzernLuecke({ daten, art }: { daten: KonzernDaten; art: LueckeArt }) {
-  const zeilen = daten.konzern
+  const zeilen = daten.consolidated
     .map((k) => {
       const konzern = art === "revenues" ? k.revenues_total : k.expenses_total;
       if (konzern == null) return null;

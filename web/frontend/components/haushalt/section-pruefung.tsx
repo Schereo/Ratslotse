@@ -207,14 +207,14 @@ export function PruefungAbschnitt({ onBestand }: {
 
   useEffect(() => {
     if (!onBestand || loading) return;
-    if (!data?.feststellungen.length) { onBestand(null); return; }
+    if (!data?.findings.length) { onBestand(null); return; }
     onBestand({
-      gesamt: data.feststellungen.length,
+      gesamt: data.findings.length,
       jeJahr: data.years.map((j) => ({
         year: j,
-        count: data.feststellungen.filter((f) => f.year === j).length,
+        count: data.findings.filter((f) => f.year === j).length,
       })),
-      ohneBericht: data.ohne_bericht,
+      ohneBericht: data.without_report,
     });
   }, [onBestand, data]);
   // Der Filter des Jahresberichts. Zustand statt URL-Parameter: Ein geteilter
@@ -223,7 +223,7 @@ export function PruefungAbschnitt({ onBestand }: {
 
   const years = data?.years ?? [];
   const year = gewaehltesJahr && years.includes(gewaehltesJahr) ? gewaehltesJahr : years.at(-1) ?? null;
-  const alle = useMemo(() => data?.feststellungen ?? [], [data]);
+  const alle = useMemo(() => data?.findings ?? [], [data]);
   const ketten = useMemo(() => wiederholungsketten(alle), [alle]);
   const matrixKetten = useMemo(
     () => alsMatrixKetten(ketten, years.length), [ketten, years.length]);
@@ -252,7 +252,7 @@ export function PruefungAbschnitt({ onBestand }: {
     );
   }
 
-  const marken = Object.keys(data.legende).sort((a, b) => markeRang(a) - markeRang(b));
+  const marken = Object.keys(data.legend).sort((a, b) => markeRang(a) - markeRang(b));
   const hinweise = zahl["H"] ?? 0;
   const beanstandungen = zahl["B"] ?? 0;
   const wiederholt = zahl["WB"] ?? 0;
@@ -307,7 +307,7 @@ export function PruefungAbschnitt({ onBestand }: {
         <div className="mt-3 flex flex-wrap gap-1.5 border-t border-border/60 pt-3">
           {marken.map((m) => (
             <span key={m} className="inline-flex items-baseline gap-1.5">
-              <MarkePille mark={m} name={data.legende[m].name} />
+              <MarkePille mark={m} name={data.legend[m].name} />
               <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
                 {zahl[m] ?? 0}
               </span>
@@ -324,9 +324,9 @@ export function PruefungAbschnitt({ onBestand }: {
         <dl className="mt-2.5 flex flex-col gap-2">
           {marken.map((m) => (
             <div key={m} className="flex flex-col gap-1 border-t border-border/60 pt-2 first:border-t-0 first:pt-0 sm:flex-row sm:items-baseline sm:gap-3">
-              <dt className="flex-none"><MarkePille mark={m} name={data.legende[m].name} klein /></dt>
+              <dt className="flex-none"><MarkePille mark={m} name={data.legend[m].name} klein /></dt>
               <dd className="text-[12.5px] leading-relaxed text-muted-foreground">
-                {data.legende[m].explanation ?? "—"}
+                {data.legend[m].explanation ?? "—"}
               </dd>
             </div>
           ))}
@@ -366,8 +366,8 @@ export function PruefungAbschnitt({ onBestand }: {
           <KettenMatrix
             ketten={matrixKetten}
             years={years}
-            lueckenJahre={data.ohne_bericht.map((j) => ({ year: j, reason: LUECKEN_GRUND }))}
-            marken={data.legende}
+            lueckenJahre={data.without_report.map((j) => ({ year: j, reason: LUECKEN_GRUND }))}
+            marken={data.legend}
             beleg={<Beleg q="pruefbericht" />}
             detail={(mk) => {
               const k = ketten.find((x) => x.key === mk.key);
@@ -385,9 +385,9 @@ export function PruefungAbschnitt({ onBestand }: {
       ) : (
         /* Ohne Ketten gäbe es keine Matrix — der Lücken-Satz bleibt trotzdem
            Pflicht auf der Seite (H4-09: auf jedem Gerät). */
-        data.ohne_bericht.length > 0 && (
+        data.without_report.length > 0 && (
           <div className="flex flex-col gap-1.5">
-            {data.ohne_bericht.map((j) => (
+            {data.without_report.map((j) => (
               <LueckenFeld key={j} label={String(j)} reason={LUECKEN_GRUND} />
             ))}
           </div>

@@ -34,7 +34,7 @@ export type KonzernJahr = {
 
 export type KonzernTraeger = {
   year: number;
-  art: "revenues" | "expenses";
+  kind: "revenues" | "expenses";
   entity_key: string;
   entity: string;
   /** Euro — aus TEUR hochgerechnet, deshalb auf Tausend glatt. */
@@ -55,18 +55,18 @@ export type KonzernPosten = {
 
 export type Gegenprobe = {
   year: number;
-  art: "revenues" | "expenses";
-  konzern: number;
-  jahresabschluss: number;
+  kind: "revenues" | "expenses";
+  consolidated: number;
+  annual_accounts: number;
   ok: boolean;
 };
 
 export type KonzernDaten = {
   years: number[];
-  konzern: KonzernJahr[];
+  consolidated: KonzernJahr[];
   entity: KonzernTraeger[];
-  posten: KonzernPosten[];
-  gegenprobe: Gegenprobe[];
+  items: KonzernPosten[];
+  cross_check: Gegenprobe[];
   /** Nach `herkunft_id`. Die beiden Ebenen eines Jahrgangs tragen
    *  verschiedene IDs — verschiedene Abschnitte, verschiedene Proben. */
   herkunft: Record<string, Herkunft>;
@@ -108,7 +108,7 @@ export const ART: Record<string, string> = {
 };
 
 export function jahrDaten(daten: KonzernDaten, year: number): KonzernJahr | null {
-  return daten.konzern.find((k) => k.year === year) ?? null;
+  return daten.consolidated.find((k) => k.year === year) ?? null;
 }
 
 /** Träger eines Jahres und einer Aufstellung, größter zuerst — ohne die
@@ -117,7 +117,7 @@ export function traegerListe(
   daten: KonzernDaten, year: number, art: "revenues" | "expenses",
 ): KonzernTraeger[] {
   return daten.entity
-    .filter((t) => t.year === year && t.art === art && t.entity_key !== KONSOLIDIERUNG)
+    .filter((t) => t.year === year && t.kind === art && t.entity_key !== KONSOLIDIERUNG)
     .sort((a, b) => b.amount - a.amount);
 }
 
@@ -125,7 +125,7 @@ export function konsolidierung(
   daten: KonzernDaten, year: number, art: "revenues" | "expenses",
 ): KonzernTraeger | null {
   return daten.entity.find(
-    (t) => t.year === year && t.art === art && t.entity_key === KONSOLIDIERUNG) ?? null;
+    (t) => t.year === year && t.kind === art && t.entity_key === KONSOLIDIERUNG) ?? null;
 }
 
 /** Jahre, für die die Trägeraufstellung vorliegt — nicht dieselben wie
@@ -134,7 +134,7 @@ export function konsolidierung(
 export function traegerJahre(daten: KonzernDaten,
                              art?: "revenues" | "expenses"): number[] {
   const years = daten.entity
-    .filter((t) => !art || t.art === art)
+    .filter((t) => !art || t.kind === art)
     .map((t) => t.year);
   return [...new Set(years)].sort((a, b) => a - b);
 }
@@ -149,7 +149,7 @@ export function kernAnteil(
   const jd = jahrDaten(daten, year);
   const konzern = art === "revenues" ? jd?.revenues_total : jd?.expenses_total;
   const kern = daten.entity.find(
-    (t) => t.year === year && t.art === art && t.entity_key === "stadt");
+    (t) => t.year === year && t.kind === art && t.entity_key === "stadt");
   if (!konzern || !kern) return null;
   return { kern: kern.amount, konzern, anteil: kern.amount / konzern };
 }

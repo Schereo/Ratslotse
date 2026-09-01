@@ -585,21 +585,21 @@ def test_endpunkt_liefert_werte_und_den_beleg(tmp_path, kfa2026):
             "tax_capacity", sv.zeilen_steuerkraft(sv.lies_kfa(kfa2026)), _herkunft())
         answer = haushalt_vergleich(_user=None, store=store)
 
-        assert len(answer["staedte"]) == 8
-        oldenburg = next(s for s in answer["staedte"] if s["ist_oldenburg"])
+        assert len(answer["cities"]) == 8
+        oldenburg = next(s for s in answer["cities"] if s["is_oldenburg"])
         assert oldenburg["name"] == "Oldenburg"
-        assert oldenburg["unter_100k"] is False
-        assert next(s for s in answer["staedte"]
-                    if s["name"] == "Delmenhorst")["unter_100k"] is True
+        assert oldenburg["below_100k"] is False
+        assert next(s for s in answer["cities"]
+                    if s["name"] == "Delmenhorst")["below_100k"] is True
 
         assert answer["years"]["tax_capacity"] == [2026]
-        assert len(answer["werte"]) == 16
+        assert len(answer["values"]) == 16
         assert answer["herkunft"]
 
         # Ohne Vorlagen-Bestand bleibt der Beleg leer — aber er ist da, und
         # die Vorlagennummer steht drin.
-        assert answer["beleg"]["template_number"] == VERGLEICH_BELEG_VORLAGE
-        assert "17170" in answer["beleg"]["vorlage_url"]
-        assert answer["beleg"]["decision_id"] is None
+        assert answer["citation"]["template_number"] == VERGLEICH_BELEG_VORLAGE
+        assert "17170" in answer["citation"]["template_url"]
+        assert answer["citation"]["decision_id"] is None
     finally:
         store.close()

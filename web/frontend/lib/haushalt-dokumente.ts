@@ -47,11 +47,11 @@ export type HaushaltDokument = {
 export type HaushaltDokumente = Partial<Record<QuellenSchluessel, HaushaltDokument[]>>;
 
 export type DokumenteAntwort = {
-  dokumente: HaushaltDokumente;
+  documents: HaushaltDokumente;
   /** Je Quelle die Jahrgänge, die wirklich im Bestand stehen — die Grundlage
    *  des Datenstands im Quellenverzeichnis (s. `standText`). Kommt aus
    *  derselben Antwort, weil es an derselben Stelle gebraucht wird. */
-  jahrgaenge: Jahrgaenge;
+  editions: Jahrgaenge;
 };
 
 /** Das Dokument, auf das ein Beleg zeigt — samt allem, was danebengeschrieben

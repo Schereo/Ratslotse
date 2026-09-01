@@ -164,18 +164,18 @@ export type Produkt = {
   target_group?: string | null;
   source_label: string | null; source_url: string | null;
   /** Jahrgänge, in denen dieses Produkt im Bestand steht — gegen
-   *  `alle_jahre` gehalten wird daraus das Abdeckungs-Badge (H4-04). */
+   *  `all_years` gehalten wird daraus das Abdeckungs-Badge (H4-04). */
   years?: number[];
 };
 
 export type ProdukteAntwort = {
-  year: number; produkte: Produkt[]; treffer?: number;
-  abdeckung_prozent: number | null; plan_expenses: number | null;
+  year: number; products: Produkt[]; matches?: number;
+  coverage_percent: number | null; plan_expenses: number | null;
   /** Alle Jahrgänge mit Produktebene — die Bezugsreihe der `years` je
    *  Produkt. */
-  alle_jahre?: number[];
+  all_years?: number[];
   /** Filterwerte mit Anzahl + wie viele Produkte welches Feld tragen. */
-  facetten?: {
+  facets?: {
     aemter: { office: string; count: number }[];
     spielraum: Partial<Record<Spielraum, number>>;
     mit_feld: Record<string, number>;
@@ -249,8 +249,8 @@ export type KennzahlFormel = {
   /** Wie die Überschrift im Bericht lautet — nicht unser Label. */
   heading: string;
   formula: string;
-  von_bericht: number;
-  bis_bericht: number;
+  from_report_year: number;
+  to_report_year: number;
   herkunft_id?: number | null;
 };
 
@@ -277,8 +277,8 @@ export type Kennzahlen = {
   /** Schlüssel → „prozent" | „eur" | „anzahl". */
   unit: Record<string, string>;
   series: KennzahlPunkt[];
-  formeln: KennzahlFormel[];
-  funde: KennzahlFund[];
+  formulas: KennzahlFormel[];
+  finds: KennzahlFund[];
 };
 
 export type HaushaltDaten = {

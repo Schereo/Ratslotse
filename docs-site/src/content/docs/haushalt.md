@@ -934,7 +934,7 @@ kosten, mit Produktnummer und zuständigem Amt (2023 etwa
 „Kindertagesbetreuung" mit 71,1 Mio. € Aufwand und 58,6 Mio. €
 Zuschussbedarf). Die Abdeckung ist unvollständig — für 2023 erklären die
 gefundenen Produkte rund 82 % der geplanten Aufwendungen. Der Endpunkt
-liefert diese Quote als `abdeckung_prozent` mit, damit die Oberfläche die
+liefert diese Quote als `coverage_percent` mit, damit die Oberfläche die
 Liste nicht als Vollbild ausgeben kann.
 
 ### Die Kassensicht: Abschnitt 4.1 desselben Dokuments
@@ -1237,7 +1237,7 @@ weil jede Wahl eine Behauptung wäre; die Seite zeigt dann den Rohwert.
 Gesucht und gefiltert wird **serverseitig** (`q`, `amt`, `spielraum` am
 Endpunkt): Mit dem Steckbrief trägt jede Zeile mehrere hundert Zeichen
 Fließtext. `nr` holt zusätzlich ein einzelnes Produkt, damit der Steckbrief
-auch dann lädt, wenn ein Filter es aus der Liste nähme. `facetten` liefert
+auch dann lädt, wenn ein Filter es aus der Liste nähme. `facets` liefert
 Ämter und Spielraum-Stufen mit Anzahl sowie die Abdeckung je Feld.
 
 Verwaltungsdeutsch wird nicht ungefiltert durchgereicht: „übertragender
@@ -1666,7 +1666,7 @@ vergleichbaren Fällen (5 Jahrgänge × Erträge und Aufwendungen), jeweils auf
 die Rundung eines Tausend genau — 2024 etwa 799.057 TEUR gegen
 799.057.202,86 €. Zwei getrennt eingelesene Quellen, dieselbe Zahl.
 
-Die API rechnet den Abgleich weiter (`gegenprobe` in
+Die API rechnet den Abgleich weiter (`cross_check` in
 `web/backend/app/routers/council.py`), festgehalten ist er in
 `tests/test_konzernabschluss.py::test_gegenprobe_gegen_die_kernverwaltung` und
 `tests/test_backend_api.py::test_haushalt_konzern_liefert_luecke_und_gegenprobe`.
@@ -3703,7 +3703,7 @@ Der Bereich zeigt lieber eine Lücke als eine Schätzung:
   im Bestand; bis dahin sagt die Seite es weiter, statt es zu überspielen.
 - **Vollständige Produktebene** — für einige Teilhaushalte fehlen auslesbare
   Dokumente: Im Bestand stehen 9 der 13 Teilhaushalte (2025: 10). Gemessen an
-  den Aufwendungen, die der Endpunkt als `abdeckung_prozent` ausweist, deckt
+  den Aufwendungen, die der Endpunkt als `coverage_percent` ausweist, deckt
   die Produktebene je Jahrgang **71 % bis 87 %** (2020–2025; für 2018/2019
   fehlt die Bezugsgröße in `council_haushalt`, für 2026 die Produktebene).
   Deshalb trägt jedes Produkt ein Abdeckungs-Badge — eine Reihe, die nur die

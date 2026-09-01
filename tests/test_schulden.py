@@ -412,8 +412,8 @@ def test_endpunkt_liefert_reihe_abgrenzung_und_belege(tmp_path, gelesen):
         assert answer["years"][-1] == 2025
         assert answer["series"][-1]["total"] == 336_994_000
         # Die Abgrenzung kommt aus dem Parser-Modul, nicht aus dem Frontend.
-        assert answer["abgrenzung"] == schulden.ABGRENZUNG
-        assert [a["field"] for a in answer["arten"]] == list(schulden.ARTEN)
+        assert answer["scope_note"] == schulden.ABGRENZUNG
+        assert [a["field"] for a in answer["column_kinds"]] == list(schulden.ARTEN)
 
         # Jede Zeile findet ihren Beleg, und der trägt Erklärsätze.
         for row in answer["series"]:
@@ -439,7 +439,7 @@ def test_endpunkt_bleibt_ohne_bestand_ruhig(tmp_path):
     try:
         answer = haushalt_schulden(_user=None, store=store)
         assert answer["series"] == [] and answer["years"] == []
-        assert answer["abgrenzung"]
+        assert answer["scope_note"]
     finally:
         store.close()
 
