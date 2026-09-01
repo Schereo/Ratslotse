@@ -742,6 +742,10 @@ class Store:
         "nr": "number", "haltung": "stance", "einig": "unanimous",
     }
 
+    #: Vierter Blob-Lauf (01.09.2026): der Ortsbereich in `location_matches`.
+    #: Eigene Karte, eigene Marke — die drei früheren sind auf dev gesetzt.
+    _QA_ORTE_SCHLUESSEL = {"ortsbereich_id": "local_area_id"}
+
     def _json_schluessel_umbenennen(self, tabelle: str, spalte: str, marke: str,
                                     karte: dict[str, str] | None = None) -> None:
         """Die Schlüssel INNERHALB eines JSON-Blobs nachziehen — einmalig.
@@ -859,6 +863,9 @@ class Store:
             self._json_schluessel_umbenennen(
                 tabelle, spalte, f"json_zeilen_{tabelle}_{spalte}",
                 self._QA_ZEILEN_SCHLUESSEL)
+            self._json_schluessel_umbenennen(
+                tabelle, spalte, f"json_ortsbereich_{tabelle}_{spalte}",
+                self._QA_ORTE_SCHLUESSEL)
         # 08/2026: Reste der NWZ-Abo-Prüfung. Seit der Ausgliederung des
         # Zeitungs-Scrapers liest sie kein Code mehr; auf Tims Anweisung
         # (30.08.2026) verschwinden sie samt Inhalt. Backup lag vor.

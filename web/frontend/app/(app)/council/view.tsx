@@ -169,7 +169,7 @@ function DecisionCard({ d, query }: { d: CouncilDecision; query: string }) {
   const sub = d.subvote_summary;
   const locationMatches = d.location_matches ?? [];
   const primaryLocation = locationMatches[0];
-  const locationProfileId = primaryLocation?.place_id ?? primaryLocation?.ortsbereich_id;
+  const locationProfileId = primaryLocation?.place_id ?? primaryLocation?.local_area_id;
   const router = useRouter();
   const sp = useSearchParams();
   // 5a/I-08: aus der Trefferkarte direkt ins Ratsgespräch — die Frage steht

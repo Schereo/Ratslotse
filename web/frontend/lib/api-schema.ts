@@ -3855,14 +3855,14 @@ export interface components {
             last_date: string | null;
             /** Lat */
             lat: number | null;
+            /** Local Area Id */
+            local_area_id: string | null;
             /** Lon */
             lon: number | null;
             /** Name */
             name: string;
             /** Note */
             note: string | null;
-            /** Ortsbereich Id */
-            ortsbereich_id: string | null;
             /** Parent Id */
             parent_id: string | null;
             /** Place Id */
@@ -11780,4 +11780,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: f3056abfe2980691b0cfa4bb119b9381a866bc4c5588fe3070d8de0b9c8765fa
+// vertrag-sha256: 87b7237f567717e52ee0037256789f83aeeb1e661b5e04df0381a7cd3cc8dd80
