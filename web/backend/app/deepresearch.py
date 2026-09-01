@@ -577,7 +577,7 @@ def _schreiben_und_abschliessen(job: DeepJob, ratslotse_db: str, council_db: str
 
 def _gespraech_anhaengen(ratslotse: Store, job: DeepJob, bericht: str,
                          m: dict, cited: list[int]) -> int | None:
-    """„Bericht erscheint hier im Gespräch": mit Einwilligung (qa_speichern)
+    """„Bericht erscheint hier im Gespräch": mit Einwilligung (saves_conversations)
     den Bericht als Turn ins laufende Gespräch hängen — best-effort."""
     try:
         if ratslotse.get_qa_speichern(job.user_id) != 1:
@@ -628,7 +628,7 @@ def _gestoppt(job: DeepJob, ratslotse_db: str) -> None:
     hat_material = bool(job.material and job.material.get("candidates"))
     _emit(job, {"type": "gestoppt", "facetten_fertig": job.facetten_fertig,
                 "facetten_gesamt": job.facetten_gesamt,
-                "teilbericht_moeglich": hat_material})
+                "partial_report_possible": hat_material})
     try:
         _db_update(ratslotse_db, job.id, "gestoppt")
     except Exception:  # noqa: BLE001

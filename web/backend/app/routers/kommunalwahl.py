@@ -63,7 +63,7 @@ class _Ergebnis:
     def als_json(self) -> dict:
         return {
             "status": self.status,
-            "geprueft_vor_sekunden": max(0, int(time.time() - self.geprueft_um)),
+            "checked_seconds_ago": max(0, int(time.time() - self.geprueft_um)),
         }
 
 

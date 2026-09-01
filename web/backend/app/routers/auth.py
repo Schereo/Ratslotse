@@ -162,7 +162,7 @@ def _to_out(user: dict, access_token: str | None = None) -> UserOut:
         apple_linked=bool(user.get("apple_sub")),
         has_password=bool(user.get("password_set", 1)),
         display_name=user.get("display_name"),
-        qa_speichern=user.get("qa_speichern"),
+        saves_conversations=user.get("saves_conversations"),
         access_token=access_token,
     )
 

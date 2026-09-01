@@ -308,14 +308,14 @@
               "null"
             ]
           },
-          "limits_frei": {
-            "title": "Limits Frei",
+          "limits_unlocked": {
+            "title": "Limits Unlocked",
             "type": "boolean"
           }
         },
         "required": [
           "deep_limit",
-          "limits_frei"
+          "limits_unlocked"
         ],
         "title": "AdminGrenzen",
         "type": "object"
@@ -534,27 +534,27 @@
               "null"
             ]
           },
-          "fragen_aktiv": {
-            "title": "Fragen Aktiv",
+          "questions_active": {
+            "title": "Questions Active",
             "type": "integer"
           },
-          "gebiete_niedrig": {
+          "reported": {
+            "title": "Reported",
+            "type": "integer"
+          },
+          "weak_categories": {
             "items": {
               "$ref": "#/components/schemas/AdminQuizGebiet"
             },
-            "title": "Gebiete Niedrig",
+            "title": "Weak Categories",
             "type": "array"
-          },
-          "gemeldet": {
-            "title": "Gemeldet",
-            "type": "integer"
           }
         },
         "required": [
-          "fragen_aktiv",
+          "questions_active",
           "avg_accuracy",
-          "gemeldet",
-          "gebiete_niedrig"
+          "reported",
+          "weak_categories"
         ],
         "title": "AdminQuizStatistik",
         "type": "object"
@@ -2518,8 +2518,8 @@
             "title": "N Sessions Today",
             "type": "integer"
           },
-          "rest": {
-            "title": "Rest",
+          "remaining": {
+            "title": "Remaining",
             "type": "integer"
           },
           "session_time": {
@@ -2552,7 +2552,7 @@
           "session_time",
           "live_until",
           "tops",
-          "rest",
+          "remaining",
           "n_sessions_today",
           "sessions"
         ],
@@ -2573,8 +2573,8 @@
               "null"
             ]
           },
-          "rest": {
-            "title": "Rest",
+          "remaining": {
+            "title": "Remaining",
             "type": "integer"
           },
           "session_time": {
@@ -2594,20 +2594,20 @@
           "session_time",
           "live_until",
           "tops",
-          "rest"
+          "remaining"
         ],
         "title": "HeuteTagesSitzung",
         "type": "object"
       },
       "HoechsteBeschlussId": {
         "properties": {
-          "hoechste_id": {
-            "title": "Hoechste Id",
+          "highest_id": {
+            "title": "Highest Id",
             "type": "integer"
           }
         },
         "required": [
-          "hoechste_id"
+          "highest_id"
         ],
         "title": "HoechsteBeschlussId",
         "type": "object"
@@ -2624,9 +2624,9 @@
               "null"
             ]
           },
-          "limits_frei": {
+          "limits_unlocked": {
             "default": false,
-            "title": "Limits Frei",
+            "title": "Limits Unlocked",
             "type": "boolean"
           }
         },
@@ -3381,12 +3381,12 @@
       },
       "PersonenLexikon": {
         "properties": {
-          "personen": {
-            "title": "Personen"
+          "people": {
+            "title": "People"
           }
         },
         "required": [
-          "personen"
+          "people"
         ],
         "title": "PersonenLexikon",
         "type": "object"
@@ -3511,12 +3511,12 @@
       },
       "QaBeispiele": {
         "properties": {
-          "sitzungen": {
-            "title": "Sitzungen"
+          "sessions": {
+            "title": "Sessions"
           }
         },
         "required": [
-          "sitzungen"
+          "sessions"
         ],
         "title": "QaBeispiele",
         "type": "object"
@@ -3960,8 +3960,8 @@
       },
       "QuellenPruefung": {
         "properties": {
-          "geprueft_vor_sekunden": {
-            "title": "Geprueft Vor Sekunden",
+          "checked_seconds_ago": {
+            "title": "Checked Seconds Ago",
             "type": "integer"
           },
           "status": {
@@ -3971,7 +3971,7 @@
         },
         "required": [
           "status",
-          "geprueft_vor_sekunden"
+          "checked_seconds_ago"
         ],
         "title": "QuellenPruefung",
         "type": "object"
@@ -4795,13 +4795,6 @@
       },
       "RechercheAktuell": {
         "properties": {
-          "frei": {
-            "title": "Frei",
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
           "job": {
             "additionalProperties": true,
             "title": "Job",
@@ -4809,10 +4802,17 @@
               "object",
               "null"
             ]
+          },
+          "remaining": {
+            "title": "Remaining",
+            "type": [
+              "integer",
+              "null"
+            ]
           }
         },
         "required": [
-          "frei",
+          "remaining",
           "job"
         ],
         "title": "RechercheAktuell",
@@ -4820,20 +4820,20 @@
       },
       "RechercheGestartet": {
         "properties": {
-          "frei": {
-            "title": "Frei",
+          "job_id": {
+            "title": "Job Id",
+            "type": "string"
+          },
+          "remaining": {
+            "title": "Remaining",
             "type": [
               "integer",
               "null"
             ]
-          },
-          "job_id": {
-            "title": "Job Id",
-            "type": "string"
           }
         },
         "required": [
-          "frei",
+          "remaining",
           "job_id"
         ],
         "title": "RechercheGestartet",
@@ -4849,15 +4849,15 @@
             "title": "Facetten Gesamt",
             "type": "integer"
           },
-          "teilbericht_moeglich": {
-            "title": "Teilbericht Moeglich",
+          "partial_report_possible": {
+            "title": "Partial Report Possible",
             "type": "boolean"
           }
         },
         "required": [
           "facetten_fertig",
           "facetten_gesamt",
-          "teilbericht_moeglich"
+          "partial_report_possible"
         ],
         "title": "RechercheGestoppt",
         "type": "object"
@@ -5865,16 +5865,16 @@
             "title": "Id",
             "type": "integer"
           },
-          "qa_speichern": {
-            "title": "Qa Speichern",
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "saves_conversations": {
+            "title": "Saves Conversations",
             "type": [
               "integer",
               "null"
             ]
-          },
-          "role": {
-            "title": "Role",
-            "type": "string"
           },
           "status": {
             "default": "pending",
@@ -6160,68 +6160,68 @@
         "type": "object"
       },
       "Wochenvorschau": {
-        "description": "``CouncilStore.wochenvorschau`` hat ZWEI Rückgabeformen: ohne Treffer\nnur fünf Schlüssel, mit Treffern elf. Die sechs Kennzahlen sind deshalb\n``NotRequired`` — ein Pflichtfeld wäre hier ein 500 an einer ruhigen\nWoche. ``kommende`` hängt der Router an.",
+        "description": "``CouncilStore.wochenvorschau`` hat ZWEI Rückgabeformen: ohne Treffer\nnur fünf Schlüssel, mit Treffern elf. Die sechs Kennzahlen sind deshalb\n``NotRequired`` — ein Pflichtfeld wäre hier ein 500 an einer ruhigen\nWoche. ``upcoming`` hängt der Router an.",
         "properties": {
-          "bis": {
-            "title": "Bis",
-            "type": "string"
-          },
           "found": {
             "title": "Found",
             "type": "boolean"
           },
-          "inhaltlich_gesamt": {
-            "title": "Inhaltlich Gesamt"
+          "from_date": {
+            "title": "From Date",
+            "type": "string"
           },
-          "inhaltlich_je_sitzung": {
-            "title": "Inhaltlich Je Sitzung"
+          "further_per_session": {
+            "title": "Further Per Session"
           },
-          "kommende": {
-            "items": {
-              "$ref": "#/components/schemas/Sitzungszeile"
-            },
-            "title": "Kommende",
-            "type": "array"
-          },
-          "punkte": {
+          "items": {
             "items": {
               "additionalProperties": true,
               "type": "object"
             },
-            "title": "Punkte",
+            "title": "Items",
             "type": "array"
           },
-          "relevant_je_sitzung": {
-            "title": "Relevant Je Sitzung"
+          "matches_per_session": {
+            "title": "Matches Per Session"
           },
-          "sitzungen": {
+          "matches_total": {
+            "title": "Matches Total"
+          },
+          "relevant_per_session": {
+            "title": "Relevant Per Session"
+          },
+          "sessions": {
             "items": {
               "$ref": "#/components/schemas/Sitzungszeile"
             },
-            "title": "Sitzungen",
+            "title": "Sessions",
             "type": "array"
           },
-          "treffer_gesamt": {
-            "title": "Treffer Gesamt"
+          "substantive_per_session": {
+            "title": "Substantive Per Session"
           },
-          "treffer_je_sitzung": {
-            "title": "Treffer Je Sitzung"
+          "substantive_total": {
+            "title": "Substantive Total"
           },
-          "von": {
-            "title": "Von",
+          "to_date": {
+            "title": "To Date",
             "type": "string"
           },
-          "weitere_je_sitzung": {
-            "title": "Weitere Je Sitzung"
+          "upcoming": {
+            "items": {
+              "$ref": "#/components/schemas/Sitzungszeile"
+            },
+            "title": "Upcoming",
+            "type": "array"
           }
         },
         "required": [
           "found",
-          "von",
-          "bis",
-          "sitzungen",
-          "punkte",
-          "kommende"
+          "from_date",
+          "to_date",
+          "sessions",
+          "items",
+          "upcoming"
         ],
         "title": "Wochenvorschau",
         "type": "object"
@@ -12146,7 +12146,7 @@
     },
     "/api/social/wochenvorschau": {
       "get": {
-        "description": "Die Wochenvorschau, wie sie auf der Startseite steht — aber neutral.\n\n``meine=None`` ist Absicht: Die Fassung im Dashboard hebt Punkte hervor,\ndie zu den Themen des angemeldeten Kontos passen. Ein Instagram-Beitrag\nhat kein Konto und zeigt die Sicht für die ganze Stadt.\n\n``kommende`` trägt zusätzlich die terminierten Sitzungen ohne\nveröffentlichte Tagesordnung (``ksinr`` ist dann NULL). Das kommt aus\n``upcoming_sessions`` statt aus eigenem SQL: Dort steht die kanonische\nDefinition, welche Sitzung als „kommend\" gilt, samt Entdopplung gegen\ngleichnamige Termine — für eine Vorschau ist gerade die Ratssitzung\ninteressant, deren Tagesordnung noch aussteht.",
+        "description": "Die Wochenvorschau, wie sie auf der Startseite steht — aber neutral.\n\n``meine=None`` ist Absicht: Die Fassung im Dashboard hebt Punkte hervor,\ndie zu den Themen des angemeldeten Kontos passen. Ein Instagram-Beitrag\nhat kein Konto und zeigt die Sicht für die ganze Stadt.\n\n``upcoming`` trägt zusätzlich die terminierten Sitzungen ohne\nveröffentlichte Tagesordnung (``ksinr`` ist dann NULL). Das kommt aus\n``upcoming_sessions`` statt aus eigenem SQL: Dort steht die kanonische\nDefinition, welche Sitzung als „kommend\" gilt, samt Entdopplung gegen\ngleichnamige Termine — für eine Vorschau ist gerade die Ratssitzung\ninteressant, deren Tagesordnung noch aussteht.",
         "operationId": "wochenvorschau_api_social_wochenvorschau_get",
         "parameters": [
           {

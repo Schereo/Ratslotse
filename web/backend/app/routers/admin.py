@@ -97,10 +97,10 @@ def quiz_stats(
         key=lambda g: g["n"],
     )
     return {
-        "fragen_aktiv": total["fragen"],
+        "questions_active": total["fragen"],
         "avg_accuracy": k["avg_accuracy"],
-        "gemeldet": k["gemeldet"],
-        "gebiete_niedrig": gebiete,
+        "reported": k["gemeldet"],
+        "weak_categories": gebiete,
     }
 
 
@@ -279,9 +279,9 @@ def set_limits(
     Rate-Limitern der Frage-Endpoints — z. B. für Power-Nutzer oder Tests."""
     if not store.get_web_user_by_id(user_id):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Nutzer*in nicht gefunden.")
-    store.set_web_user_limits(user_id, body.deep_limit, body.limits_frei)
+    store.set_web_user_limits(user_id, body.deep_limit, body.limits_unlocked)
     u = store.get_web_user_by_id(user_id)
-    return {"deep_limit": u.get("deep_limit"), "limits_frei": bool(u.get("limits_frei"))}
+    return {"deep_limit": u.get("deep_limit"), "limits_unlocked": bool(u.get("limits_unlocked"))}
 
 
 # ---- Themen-Dubletten (council.aliases) ----

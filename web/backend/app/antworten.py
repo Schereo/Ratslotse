@@ -387,7 +387,7 @@ class Gesundheit(TypedDict):
 
 class QuellenPruefung(TypedDict):
     status: str
-    geprueft_vor_sekunden: int
+    checked_seconds_ago: int
 
 
 # --------------------------------------------------------------------------
@@ -399,19 +399,19 @@ class Wochenvorschau(TypedDict):
     """``CouncilStore.wochenvorschau`` hat ZWEI Rückgabeformen: ohne Treffer
     nur fünf Schlüssel, mit Treffern elf. Die sechs Kennzahlen sind deshalb
     ``NotRequired`` — ein Pflichtfeld wäre hier ein 500 an einer ruhigen
-    Woche. ``kommende`` hängt der Router an."""
+    Woche. ``upcoming`` hängt der Router an."""
     found: bool
-    von: str
-    bis: str
-    sitzungen: list[Sitzungszeile]
-    punkte: list[dict[str, Any]]
-    kommende: list[Sitzungszeile]
-    inhaltlich_gesamt: NotRequired[Any]
-    inhaltlich_je_sitzung: NotRequired[Any]
-    relevant_je_sitzung: NotRequired[Any]
-    treffer_gesamt: NotRequired[Any]
-    treffer_je_sitzung: NotRequired[Any]
-    weitere_je_sitzung: NotRequired[Any]
+    from_date: str
+    to_date: str
+    sessions: list[Sitzungszeile]
+    items: list[dict[str, Any]]
+    upcoming: list[Sitzungszeile]
+    substantive_total: NotRequired[Any]
+    substantive_per_session: NotRequired[Any]
+    relevant_per_session: NotRequired[Any]
+    matches_total: NotRequired[Any]
+    matches_per_session: NotRequired[Any]
+    further_per_session: NotRequired[Any]
 
 
 class Fundstueck(TypedDict):
@@ -442,7 +442,7 @@ class SocialBeschluss(TypedDict):
 
 
 class HoechsteBeschlussId(TypedDict):
-    hoechste_id: int
+    highest_id: int
 
 
 class MedienAblage(TypedDict):
@@ -666,10 +666,10 @@ class AdminQuizGebiet(TypedDict):
 
 
 class AdminQuizStatistik(TypedDict):
-    fragen_aktiv: int
+    questions_active: int
     avg_accuracy: float | None
-    gemeldet: int
-    gebiete_niedrig: list[AdminQuizGebiet]
+    reported: int
+    weak_categories: list[AdminQuizGebiet]
 
 
 class AdminJobLauf(TypedDict):
@@ -723,7 +723,7 @@ class AdminNutzerZeile(TypedDict):
 
 class AdminGrenzen(TypedDict):
     deep_limit: int | None
-    limits_frei: bool
+    limits_unlocked: bool
 
 
 class AdminAliasListe(TypedDict):
@@ -772,7 +772,7 @@ class HeuteTagesSitzung(TypedDict):
     # nächsten Sitzung desselben Tages, sonst ein Deckel ab Beginn.
     live_until: str | None
     tops: list[str]
-    rest: int
+    remaining: int
 
 
 class HeuteSitzung(TypedDict):
@@ -783,7 +783,7 @@ class HeuteSitzung(TypedDict):
     session_time: str
     live_until: str | None
     tops: list[str]
-    rest: int
+    remaining: int
     n_sessions_today: int
     # Alle Sitzungen des Tages: An Ratstagen tagen drei Gremien nacheinander,
     # und erst mit der ganzen Liste kann die Leiste auf die laufende
@@ -1056,23 +1056,23 @@ class QaShareToken(TypedDict):
 
 class RechercheGestartet(TypedDict):
     # None heißt: unbegrenzt, der Client zeigt dann keinen Zähler.
-    frei: int | None
+    remaining: int | None
     job_id: str
 
 
 class RechercheAktuell(TypedDict):
-    frei: int | None
+    remaining: int | None
     job: dict[str, Any] | None
 
 
 class RechercheGestoppt(TypedDict):
     facetten_fertig: int
     facetten_gesamt: int
-    teilbericht_moeglich: bool
+    partial_report_possible: bool
 
 
 class QaBeispiele(TypedDict):
-    sitzungen: Any
+    sessions: Any
 
 
 class VorlagenFolgen(TypedDict):
@@ -1108,7 +1108,7 @@ class EntitaetenKarte(TypedDict):
 
 
 class PersonenLexikon(TypedDict):
-    personen: Any
+    people: Any
 
 
 class Vorschau(TypedDict):

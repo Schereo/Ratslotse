@@ -3363,7 +3363,7 @@ export interface paths {
          *     die zu den Themen des angemeldeten Kontos passen. Ein Instagram-Beitrag
          *     hat kein Konto und zeigt die Sicht für die ganze Stadt.
          *
-         *     ``kommende`` trägt zusätzlich die terminierten Sitzungen ohne
+         *     ``upcoming`` trägt zusätzlich die terminierten Sitzungen ohne
          *     veröffentlichte Tagesordnung (``ksinr`` ist dann NULL). Das kommt aus
          *     ``upcoming_sessions`` statt aus eigenem SQL: Dort steht die kanonische
          *     Definition, welche Sitzung als „kommend" gilt, samt Entdopplung gegen
@@ -3739,8 +3739,8 @@ export interface components {
         AdminGrenzen: {
             /** Deep Limit */
             deep_limit: number | null;
-            /** Limits Frei */
-            limits_frei: boolean;
+            /** Limits Unlocked */
+            limits_unlocked: boolean;
         };
         /**
          * AdminJob
@@ -3828,12 +3828,12 @@ export interface components {
         AdminQuizStatistik: {
             /** Avg Accuracy */
             avg_accuracy: number | null;
-            /** Fragen Aktiv */
-            fragen_aktiv: number;
-            /** Gebiete Niedrig */
-            gebiete_niedrig: components["schemas"]["AdminQuizGebiet"][];
-            /** Gemeldet */
-            gemeldet: number;
+            /** Questions Active */
+            questions_active: number;
+            /** Reported */
+            reported: number;
+            /** Weak Categories */
+            weak_categories: components["schemas"]["AdminQuizGebiet"][];
         };
         /** AdminRatsStatistik */
         AdminRatsStatistik: {
@@ -4651,8 +4651,8 @@ export interface components {
             live_until: string | null;
             /** N Sessions Today */
             n_sessions_today: number;
-            /** Rest */
-            rest: number;
+            /** Remaining */
+            remaining: number;
             /** Session Time */
             session_time: string;
             /** Sessions */
@@ -4674,8 +4674,8 @@ export interface components {
             committee: string;
             /** Live Until */
             live_until: string | null;
-            /** Rest */
-            rest: number;
+            /** Remaining */
+            remaining: number;
             /** Session Time */
             session_time: string;
             /** Tops */
@@ -4683,8 +4683,8 @@ export interface components {
         };
         /** HoechsteBeschlussId */
         HoechsteBeschlussId: {
-            /** Hoechste Id */
-            hoechste_id: number;
+            /** Highest Id */
+            highest_id: number;
         };
         /**
          * LimitsUpdate
@@ -4695,10 +4695,10 @@ export interface components {
             /** Deep Limit */
             deep_limit?: number | null;
             /**
-             * Limits Frei
+             * Limits Unlocked
              * @default false
              */
-            limits_frei: boolean;
+            limits_unlocked: boolean;
         };
         /** LoginRequest */
         LoginRequest: {
@@ -4997,8 +4997,8 @@ export interface components {
         };
         /** PersonenLexikon */
         PersonenLexikon: {
-            /** Personen */
-            personen: unknown;
+            /** People */
+            people: unknown;
         };
         /**
          * PlaceReviewIn
@@ -5045,8 +5045,8 @@ export interface components {
         };
         /** QaBeispiele */
         QaBeispiele: {
-            /** Sitzungen */
-            sitzungen: unknown;
+            /** Sessions */
+            sessions: unknown;
         };
         /** QaFeedbackBody */
         QaFeedbackBody: {
@@ -5210,8 +5210,8 @@ export interface components {
         };
         /** QuellenPruefung */
         QuellenPruefung: {
-            /** Geprueft Vor Sekunden */
-            geprueft_vor_sekunden: number;
+            /** Checked Seconds Ago */
+            checked_seconds_ago: number;
             /** Status */
             status: string;
         };
@@ -5527,19 +5527,19 @@ export interface components {
         };
         /** RechercheAktuell */
         RechercheAktuell: {
-            /** Frei */
-            frei: number | null;
             /** Job */
             job: {
                 [key: string]: unknown;
             } | null;
+            /** Remaining */
+            remaining: number | null;
         };
         /** RechercheGestartet */
         RechercheGestartet: {
-            /** Frei */
-            frei: number | null;
             /** Job Id */
             job_id: string;
+            /** Remaining */
+            remaining: number | null;
         };
         /** RechercheGestoppt */
         RechercheGestoppt: {
@@ -5547,8 +5547,8 @@ export interface components {
             facetten_fertig: number;
             /** Facetten Gesamt */
             facetten_gesamt: number;
-            /** Teilbericht Moeglich */
-            teilbericht_moeglich: boolean;
+            /** Partial Report Possible */
+            partial_report_possible: boolean;
         };
         /** RegisterRequest */
         RegisterRequest: {
@@ -5993,10 +5993,10 @@ export interface components {
             has_password: boolean;
             /** Id */
             id: number;
-            /** Qa Speichern */
-            qa_speichern?: number | null;
             /** Role */
             role: string;
+            /** Saves Conversations */
+            saves_conversations?: number | null;
             /**
              * Status
              * @default pending
@@ -6113,35 +6113,35 @@ export interface components {
          * @description ``CouncilStore.wochenvorschau`` hat ZWEI Rückgabeformen: ohne Treffer
          *     nur fünf Schlüssel, mit Treffern elf. Die sechs Kennzahlen sind deshalb
          *     ``NotRequired`` — ein Pflichtfeld wäre hier ein 500 an einer ruhigen
-         *     Woche. ``kommende`` hängt der Router an.
+         *     Woche. ``upcoming`` hängt der Router an.
          */
         Wochenvorschau: {
-            /** Bis */
-            bis: string;
             /** Found */
             found: boolean;
-            /** Inhaltlich Gesamt */
-            inhaltlich_gesamt?: unknown;
-            /** Inhaltlich Je Sitzung */
-            inhaltlich_je_sitzung?: unknown;
-            /** Kommende */
-            kommende: components["schemas"]["Sitzungszeile"][];
-            /** Punkte */
-            punkte: {
+            /** From Date */
+            from_date: string;
+            /** Further Per Session */
+            further_per_session?: unknown;
+            /** Items */
+            items: {
                 [key: string]: unknown;
             }[];
-            /** Relevant Je Sitzung */
-            relevant_je_sitzung?: unknown;
-            /** Sitzungen */
-            sitzungen: components["schemas"]["Sitzungszeile"][];
-            /** Treffer Gesamt */
-            treffer_gesamt?: unknown;
-            /** Treffer Je Sitzung */
-            treffer_je_sitzung?: unknown;
-            /** Von */
-            von: string;
-            /** Weitere Je Sitzung */
-            weitere_je_sitzung?: unknown;
+            /** Matches Per Session */
+            matches_per_session?: unknown;
+            /** Matches Total */
+            matches_total?: unknown;
+            /** Relevant Per Session */
+            relevant_per_session?: unknown;
+            /** Sessions */
+            sessions: components["schemas"]["Sitzungszeile"][];
+            /** Substantive Per Session */
+            substantive_per_session?: unknown;
+            /** Substantive Total */
+            substantive_total?: unknown;
+            /** To Date */
+            to_date: string;
+            /** Upcoming */
+            upcoming: components["schemas"]["Sitzungszeile"][];
         };
         /** ZahlDerWocheAnzahl */
         ZahlDerWocheAnzahl: {
@@ -10766,4 +10766,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: ee844fa2c254e11fac2914f740eaa1b09fafb54d5aad75bc14887c9d5d532c9c
+// vertrag-sha256: f1e7cacbd6ff477ee40a21e68987f35a115dd9f94d5ab1d66445ea43ea9f704a

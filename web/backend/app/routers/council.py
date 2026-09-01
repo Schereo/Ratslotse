@@ -313,7 +313,7 @@ def heute(store: CouncilStore = Depends(get_council_store)) -> HeuteBriefing:
                 "session_time": zeit,
                 "live_until": live_mod.window_end(s["committee"], zeit, windows.get(zeit)),
                 "tops": [str(i.get("title") or "")[:90] for i in items[:2]],
-                "rest": max(len(items) - 2, 0),
+                "remaining": max(len(items) - 2, 0),
             }
 
         # An Ratstagen sind es drei nacheinander (Ausschuss für Allgemeine
@@ -1931,7 +1931,7 @@ def partei_meinungen_endpoint(
     geprüft) und die Aussprache zu den belegten Beschlüssen — und verdichtet
     das per LLM je Fraktion. Leer ({parteien: []}), wenn die Datenlage zu dünn
     ist — der Baustein erscheint dann nicht."""
-    if not user.get("limits_frei"):
+    if not user.get("limits_unlocked"):
         partei_meinungen_limiter.check(request)
     try:
         import hashlib
@@ -2170,7 +2170,7 @@ def qa_share_anlegen(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Dieser Inhalt kann nicht als öffentlicher Link geteilt werden.",
         )
-    if not user.get("limits_frei"):
+    if not user.get("limits_unlocked"):
         qa_share_limiter.check(request)
     extras = {
         "debatten": [d.model_dump() for d in body.debatten],
@@ -2304,7 +2304,7 @@ def deep_research_start(body: DeepResearchBody, user: dict = Depends(require_act
                                gespraech_id=body.conversation_id,
                                verlauf=[r.model_dump() for r in body.history])
     deepresearch.start_job(job, settings.ratslotse_db, settings.council_db)
-    return {"job_id": job_id, "frei": _deep_frei(ratslotse, user)}
+    return {"job_id": job_id, "remaining": _deep_frei(ratslotse, user)}
 
 
 @router.get("/deep-research/aktuell")
@@ -2314,7 +2314,7 @@ def deep_research_aktuell(user: dict = Depends(require_active),
     Navigation/App-Neustart einen laufenden Job oder ungesehenen Bericht
     wiederfindet, ohne sich die ID gemerkt zu haben."""
     return {"job": ratslotse.deep_job_aktuell(user["id"]),
-            "frei": _deep_frei(ratslotse, user)}
+            "remaining": _deep_frei(ratslotse, user)}
 
 
 @router.get("/deep-research/{job_id}")
@@ -2375,7 +2375,7 @@ def deep_research_stop(job_id: str, user: dict = Depends(require_active),
         job.cond.notify_all()
     return {"facetten_fertig": job.facetten_fertig,
             "facetten_gesamt": job.facetten_gesamt,
-            "teilbericht_moeglich": bool(job.material and job.material.get("candidates"))}
+            "partial_report_possible": bool(job.material and job.material.get("candidates"))}
 
 
 @router.post("/deep-research/{job_id}/teilbericht")
@@ -2414,7 +2414,7 @@ def qa_beispiele(store: CouncilStore = Depends(get_council_store)) -> QaBeispiel
     """Frische Beispiel-Anlässe für den Empty State der KI-Frage (5a/I-07):
     die jüngsten Sitzungen mit Beschlüssen — das Frontend formuliert daraus
     „Was hat der <Ausschuss> am <Datum> beschlossen?"."""
-    return {"sitzungen": store.juengste_sitzungen_mit_beschluessen(limit=2)}
+    return {"sessions": store.juengste_sitzungen_mit_beschluessen(limit=2)}
 
 
 @router.get("/plan-bild/{document_id}")
@@ -2578,7 +2578,7 @@ def personen_lexikon(response: Response,
         _PERSONEN_LEXIKON_CACHE["daten"] = store.personen_lexikon()
         _PERSONEN_LEXIKON_CACHE["as_of"] = _time.time()
     response.headers["Cache-Control"] = "public, max-age=21600"
-    return {"personen": _PERSONEN_LEXIKON_CACHE["daten"]}
+    return {"people": _PERSONEN_LEXIKON_CACHE["daten"]}
 
 
 # ---- Link-Vorschau (Design 29a, P1) ----
@@ -2805,7 +2805,7 @@ class AskBody(BaseModel):
     # Suchfrage. Ohne Verlauf verhält sich /ask exakt wie bisher.
     history: list[AskRunde] = Field(default_factory=list, max_length=4)
     # „Meine Gespräche" (6a): laufendes Gespräch, an das der Turn gehängt wird —
-    # nur wirksam, wenn das Konto qa_speichern = 1 gesetzt hat.
+    # nur wirksam, wenn das Konto saves_conversations = 1 gesetzt hat.
     conversation_id: int | None = Field(default=None, ge=1)
     # „Einfacher erklären": die zuletzt angezeigte Antwort im VOLLTEXT — genau
     # die soll umgeschrieben werden. Der `verlauf` taugt dafür nicht, dort ist
@@ -3035,7 +3035,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
     → the answer token-by-token → a final event with the cited ids. Streaming makes
     the wait feel far shorter (sources show in ~2 s) and degrades gracefully if a
     proxy buffers it (the client then renders the same final state at once)."""
-    if not user.get("limits_frei"):  # Admin kann Konten befreien (web_users.limits_frei)
+    if not user.get("limits_unlocked"):  # Admin kann Konten befreien (web_users.limits_unlocked)
         # Mobilfunkanbieter bündeln viele Geräte hinter derselben öffentlichen
         # Adresse. Das Konto ist hier bereits sicher authentifiziert und damit
         # der faire, stabile Schlüssel für das Kosten-Limit.

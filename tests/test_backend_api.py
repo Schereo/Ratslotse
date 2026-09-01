@@ -94,13 +94,13 @@ def test_native_api_top_level_contracts(client):
         ("/api/account/notifications", {"kinds", "limits"}),
         ("/api/bookmarks", {"bookmarks"}),
         ("/api/council/gespraeche", {"saves_conversations", "conversations"}),
-        ("/api/council/deep-research/aktuell", {"job", "frei"}),
+        ("/api/council/deep-research/aktuell", {"job", "remaining"}),
         ("/api/council/decisions?limit=5", {"total", "decisions"}),
         ("/api/council/parties", {"parties"}),
         ("/api/council/sessions?limit=5", {"count", "total", "sessions"}),
         ("/api/council/heute", {"state"}),
         ("/api/council/diese-woche", {"found"}),
-        ("/api/council/wochenvorschau", {"found", "von", "bis", "sitzungen", "punkte"}),
+        ("/api/council/wochenvorschau", {"found", "from_date", "to_date", "sessions", "items"}),
         ("/api/council/fundstueck", {"found"}),
         ("/api/quiz/areas", {"electoral_districts", "districts", "topics", "categories"}),
         ("/api/quiz/stats", {"total", "by_area", "wrong", "streak", "badges", "daily_done"}),
@@ -454,8 +454,8 @@ def test_admin_quiz_stats(client):
     r = client.get("/api/admin/quiz/stats")
     assert r.status_code == 200
     body = r.json()
-    assert set(body) >= {"fragen_aktiv", "avg_accuracy", "gemeldet", "gebiete_niedrig"}
-    assert body["fragen_aktiv"] == 0 and body["gebiete_niedrig"] == []
+    assert set(body) >= {"questions_active", "avg_accuracy", "reported", "weak_categories"}
+    assert body["questions_active"] == 0 and body["weak_categories"] == []
 
 
 def test_admin_stats_growth(client):
@@ -564,11 +564,11 @@ def test_admin_user_rows_and_detail(client):
     detail = client.get(f"/api/admin/users/{admin['id']}").json()
     assert detail["email"] == admin["email"]
     assert set(detail["features"]) == {"ki_frage", "suche", "quiz", "analyse", "karte"}
-    assert isinstance(detail["verlauf"], list) and len(detail["verlauf"]) == 30
+    assert isinstance(detail["history"], list) and len(detail["history"]) == 30
     # 30-Tage-Achse passt zu den Balken und endet heute.
     from datetime import date
-    assert len(detail["verlauf_days"]) == 30
-    assert detail["verlauf_days"][-1] == date.today().isoformat()
+    assert len(detail["history_days"]) == 30
+    assert detail["history_days"][-1] == date.today().isoformat()
     assert client.get("/api/admin/users/999999").status_code == 404
 
 
@@ -3178,7 +3178,7 @@ def test_ask_ersetzt_abgerissenen_stream(client, monkeypatch):
 
 def test_ask_speichert_nur_mit_einwilligung(client, monkeypatch):
     """Die Einwilligungs-Schranke der Gesprächs-Speicherung (Review-Befund B6):
-    ohne qa_speichern=1 schreibt /ask NICHTS, mit Einwilligung trägt das
+    ohne saves_conversations=1 schreibt /ask NICHTS, mit Einwilligung trägt das
     done-Event die Gesprächs-id und der Turn liegt in der Datenbank. Clients
     ohne gespraech_id-Feld (alte App) lösen nie eine Speicherung aus."""
     from app.routers import council as council_router
@@ -5001,7 +5001,7 @@ def test_deep_research_roundtrip_und_replay(client, monkeypatch):
     r = client.post("/api/council/deep-research", json={"question": "Wie ist der Stand beim Stadionneubau?"})
     assert r.status_code == 201
     job_id = r.json()["job_id"]
-    assert r.json()["frei"] == 4  # 1 von 5 läuft
+    assert r.json()["remaining"] == 4  # 1 von 5 läuft
 
     events = _deep_events(client, job_id)  # blockiert bis der Job fertig ist
     typen = [e["type"] for e in events]
@@ -5033,7 +5033,7 @@ def test_deep_research_roundtrip_und_replay(client, monkeypatch):
     assert snap["sources"]["anlagen"][0]["template_number"] == "26/0100"
     akt = client.get("/api/council/deep-research/aktuell").json()
     assert akt["job"]["id"] == job_id and akt["job"]["seen"] == 0
-    assert akt["frei"] == 4  # fertig zählt weiter gegen das Tageskontingent
+    assert akt["remaining"] == 4  # fertig zählt weiter gegen das Tageskontingent
     client.post(f"/api/council/deep-research/{job_id}/gesehen")
     assert client.get("/api/council/deep-research/aktuell").json()["job"]["seen"] == 1
 
@@ -5253,7 +5253,7 @@ def test_admin_limits_steuern_recherche_kontingent(client, monkeypatch):
         uid = store._conn.execute("SELECT id FROM web_users").fetchone()[0]
         # Eigenes Limit 2: nach zwei zählenden Jobs ist Schluss.
         r = client.put(f"/api/admin/users/{uid}/limits",
-                       json={"deep_limit": 2, "limits_frei": False})
+                       json={"deep_limit": 2, "limits_unlocked": False})
         assert r.status_code == 200 and r.json()["deep_limit"] == 2
         for i in range(2):
             store.deep_job_update(store.deep_job_anlegen(uid, f"F{i}"), "fertig")
@@ -5261,22 +5261,22 @@ def test_admin_limits_steuern_recherche_kontingent(client, monkeypatch):
                            json={"question": "Noch eine Recherche?"}).status_code == 429
         # Unbegrenzt (0): derselbe Stand startet wieder, frei wird null.
         client.put(f"/api/admin/users/{uid}/limits",
-                   json={"deep_limit": 0, "limits_frei": False})
+                   json={"deep_limit": 0, "limits_unlocked": False})
         r = client.post("/api/council/deep-research", json={"question": "Und jetzt unbegrenzt?"})
-        assert r.status_code == 201 and r.json()["frei"] is None
+        assert r.status_code == 201 and r.json()["remaining"] is None
         deepresearch._registry.clear()
         akt = client.get("/api/council/deep-research/aktuell").json()
-        assert akt["frei"] is None
+        assert akt["remaining"] is None
         # Detail fürs Admin-Formular trägt beide Felder.
         detail = client.get(f"/api/admin/users/{uid}").json()
-        assert detail["deep_limit"] == 0 and detail["limits_frei"] is False
+        assert detail["deep_limit"] == 0 and detail["limits_unlocked"] is False
     finally:
         deepresearch._registry.clear()
         store.close()
 
 
 def test_limits_frei_ueberspringt_rate_limiter(client, monkeypatch):
-    """limits_frei=1 lässt die Frage-Endpoints am Rate-Limiter VORBEI —
+    """limits_unlocked=1 lässt die Frage-Endpoints am Rate-Limiter VORBEI —
     gemessen am check()-Aufruf selbst (DISABLE_RATE_LIMIT macht check nur
     wirkungslos, aufgerufen würde er trotzdem)."""
     from app.routers import council as council_router
@@ -5304,7 +5304,7 @@ def test_limits_frei_ueberspringt_rate_limiter(client, monkeypatch):
     store = Store(RATSLOTSE_DB)
     try:
         uid = store._conn.execute("SELECT id FROM web_users").fetchone()[0]
-        client.put(f"/api/admin/users/{uid}/limits", json={"deep_limit": None, "limits_frei": True})
+        client.put(f"/api/admin/users/{uid}/limits", json={"deep_limit": None, "limits_unlocked": True})
     finally:
         store.close()
     frag()

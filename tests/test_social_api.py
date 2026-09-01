@@ -77,7 +77,7 @@ def test_richtiger_token_liefert_die_vorschau(client, monkeypatch):
                        headers={"X-Social-Token": token})
         assert r.status_code == 200
         daten = r.json()
-        assert "sitzungen" in daten and "punkte" in daten and "kommende" in daten
+        assert "sessions" in daten and "items" in daten and "upcoming" in daten
     finally:
         get_settings.cache_clear()
 
@@ -180,7 +180,7 @@ def test_hoechste_beschluss_id_ohne_bestand_ist_null(client, monkeypatch, counci
     try:
         r = client.get("/api/social/hoechste-beschluss-id",
                        headers={"X-Social-Token": token})
-        assert r.status_code == 200 and r.json() == {"hoechste_id": 0}
+        assert r.status_code == 200 and r.json() == {"highest_id": 0}
     finally:
         get_settings.cache_clear()
 

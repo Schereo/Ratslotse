@@ -179,7 +179,7 @@ def test_wochenvorschau_reicht_den_kartentext_durch(store):
     store.save_social_text(1, "Ö 10", "Zur Abstimmung steht eine Bürgschaft über "
                                       "13,5 Millionen Euro.", "vorlage+anlagen")
 
-    punkte = store.wochenvorschau(tage=10, max_punkte=40)["punkte"]
+    punkte = store.wochenvorschau(tage=10, max_punkte=40)["items"]
     unserer = [p for p in punkte if p["item_number"] == "Ö 10"]
     assert unserer, "Punkt fehlt ganz in der Wochenvorschau"
     assert unserer[0]["social_text"].startswith("Zur Abstimmung steht")
@@ -220,7 +220,7 @@ def test_der_text_wird_auf_kartenlaenge_gekappt(monkeypatch):
 
 
 def test_auch_die_restliste_traegt_den_kartentext(store):
-    """Die zweite Karte einer Sitzung wird aus ``weitere_je_sitzung`` gebaut.
+    """Die zweite Karte einer Sitzung wird aus ``further_per_session`` gebaut.
 
     Diese Liste entsteht Feld für Feld — und genau dort fehlte der neue
     Kartentext: Der Dringlichkeitsantrag zur PAK-Belastung stand auf der
@@ -236,8 +236,8 @@ def test_auch_die_restliste_traegt_den_kartentext(store):
         store.save_social_text(1, nr, f"Kartentext zu Punkt {i}.", "vorlage")
 
     daten = store.wochenvorschau(tage=10, max_punkte=40)
-    assert all(p["social_text"] for p in daten["punkte"])
-    rest = daten["weitere_je_sitzung"][1]
+    assert all(p["social_text"] for p in daten["items"])
+    rest = daten["further_per_session"][1]
     assert rest, "kein Punkt in der Restliste — Test prüft nichts"
     assert all(p["social_text"] for p in rest)
 
