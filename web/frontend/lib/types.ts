@@ -646,7 +646,14 @@ export interface AdminUserDetail {
   delivery_channel: string;
   /** Einwilligung „Gespräche speichern": null = nie gefragt, 1 = an, 0 = bewusst aus. */
   saves_conversations: number | null;
-  features: { ki_frage: number; suche: number; quiz: number; analyse: number; karte: number };
+  /** Funktionsnutzung fürs Admin-Panel. Die Feldnamen dieses Blocks sind als
+   * einzige noch deutsch, die gespeicherten Werte englisch — siehe
+   * `admin_user_detail`. `quiz` zählt beantwortete Fragen, alles andere
+   * Aufrufe. */
+  features: {
+    ki_frage: number; recherche: number; suche: number;
+    quiz: number; analyse: number; karte: number;
+  };
   topics: string[];
   subscriptions: string[];
   history: number[];

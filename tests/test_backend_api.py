@@ -563,13 +563,65 @@ def test_admin_user_rows_and_detail(client):
     assert me["last_seen"] is not None  # via record_activity beim Login
     detail = client.get(f"/api/admin/users/{admin['id']}").json()
     assert detail["email"] == admin["email"]
-    assert set(detail["features"]) == {"ki_frage", "suche", "quiz", "analyse", "karte"}
+    assert set(detail["features"]) == {"ki_frage", "recherche", "suche", "quiz",
+                                       "analyse", "karte"}
     assert isinstance(detail["history"], list) and len(detail["history"]) == 30
     # 30-Tage-Achse passt zu den Balken und endet heute.
     from datetime import date
     assert len(detail["history_days"]) == 30
     assert detail["history_days"][-1] == date.today().isoformat()
     assert client.get("/api/admin/users/999999").status_code == 404
+
+
+def test_feature_zaehler_zaehlen_wirklich(client):
+    """Die Chips des Nutzer-Details zeigen echte Nutzung.
+
+    Bis zum 01.09.2026 versprach das Panel fünf Zähler, aber ``suche``,
+    ``analyse`` und ``karte`` schrieb niemand: Die Zähler gab es seit
+    Design 20a, die ``record_activity``-Aufrufe dazu nie. Für jedes Konto
+    stand dort „nie", auch für das aktivste — und nichts schlug an, weil eine
+    0 aussieht wie eine Messung.
+    """
+    _register(client)
+    admin = client.get("/api/auth/me").json()
+
+    def chips() -> dict:
+        return client.get(f"/api/admin/users/{admin['id']}").json()["features"]
+
+    assert all(chips()[k] == 0 for k in ("suche", "analyse", "karte"))
+
+    # Blättern ist keine Suche: dieselbe Liste lädt auch, wer den Tab nur
+    # öffnet. Ohne Suchbegriff darf der Zähler deshalb nicht ticken.
+    assert client.get("/api/council/decisions?limit=5").status_code == 200
+    assert chips()["suche"] == 0
+
+    assert client.get("/api/council/decisions?q=Stadion&limit=5").status_code == 200
+    assert client.get("/api/council/analysis").status_code == 200
+    assert client.get("/api/council/entities-map").status_code == 200
+    nachher = chips()
+    assert (nachher["suche"], nachher["analyse"], nachher["karte"]) == (1, 1, 1)
+
+
+def test_feature_block_uebersetzt_gespeicherte_werte(client):
+    """Der Block bildet gespeicherte WERTE auf API-FELDnamen ab — und die
+    beiden heißen verschieden: Die Werte sind englisch, die Feldnamen dieses
+    Blocks als einzige noch deutsch. Wer einen Wert umbenennt und die Zuordnung
+    nicht nachzieht, bekommt keinen Fehler, sondern eine stille 0."""
+    _register(client)
+    admin = client.get("/api/auth/me").json()
+    store = Store(RATSLOTSE_DB)
+    for wert, mal in (("search", 3), ("analysis", 2), ("map", 1), ("research", 4)):
+        for _ in range(mal):
+            store.record_activity(admin["id"], wert)
+    store.record_activity(admin["id"], "ai_question")
+    f = client.get(f"/api/admin/users/{admin['id']}").json()["features"]
+    assert (f["suche"], f["analyse"], f["karte"], f["recherche"]) == (3, 2, 1, 4)
+    assert f["ki_frage"] == 1
+    # Dieselbe Zuordnung noch einmal in der LISTE: Die zählt die KI-Fragen in
+    # eigenem SQL, das den Wert hart nennt — ein umbenannter Wert lässt hier
+    # eine 0 stehen, ohne dass irgendwo ein Fehler auftaucht.
+    zeile = next(z for z in client.get("/api/admin/users").json() if z["id"] == admin["id"])
+    assert zeile["n_ki"] == 1
 
 
 def test_activation_emails_user_on_approve(client):
