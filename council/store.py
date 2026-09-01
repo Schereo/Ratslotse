@@ -10090,6 +10090,88 @@ class CouncilStore:
     ORTSBEREICH_ANTEIL = 0.10
     ORTSBEREICH_MINDESTPUNKTE = 2
 
+    def merge_location_variants(self) -> int:
+        """Schreibvarianten desselben Ortes zu einem Eintrag zusammenführen.
+
+        „Alte Fleiwa" und „AlteFleiwa", „Marschwegstadion" und
+        „Marschweg-Stadion", „GS Röwekamp" und „Grundschule Röwekamp" standen
+        als getrennte Orte in den Daten — mit getrennten Beschlusslisten, damit
+        halbierten Zählern und zweimal derselben Sache in einer
+        Vorschlagsliste. Am Prod-Bestand (01.09.2026): 66 Gruppen mit 132
+        Einträgen.
+
+        **Welche Schreibweise überlebt**, entscheidet in dieser Reihenfolge:
+        die meisten Beschluss-Verweise (so schreibt es die Ratsverwaltung
+        überwiegend); dann keine einzelnen Buchstaben-Fragmente (die stammen
+        aus der PDF-Extraktion — „Kasin o- platz"); dann die meisten
+        Buchstaben; zuletzt alphabetisch, damit der Lauf reproduzierbar ist.
+
+        Geodaten und Stadtteil werden zusammengezogen: Hat der Gewinner keine,
+        erbt er sie von einer Variante. Genau davon lebt der Fall „Kennedy
+        straße" (stand auf Eversten) neben „Kennedystraße" (Bloherfelde) —
+        nach dem Zusammenführen gibt es nur noch eine Antwort.
+        """
+        from council.locations import variant_key
+
+        gruppen: dict[str, list] = {}
+        for row in self._conn.execute(
+            "SELECT slug,name,district,place_id,ortsbereich_id,lat,lon,geojson,geo_tried,kind "
+            "FROM council_locations"
+        ).fetchall():
+            gruppen.setdefault(variant_key(row["name"]), []).append(dict(row))
+
+        zaehler = {r["location_slug"]: r["n"] for r in self._conn.execute(
+            "SELECT location_slug, COUNT(*) AS n FROM council_decision_locations "
+            "GROUP BY location_slug")}
+
+        def rang(zeile):
+            name = zeile["name"] or ""
+            fragmente = sum(1 for w in re.findall(r"[^\W\d_]+", name) if len(w) == 1)
+            return (-zaehler.get(zeile["slug"], 0), fragmente,
+                    -sum(c.isalpha() for c in name), name)
+
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        zusammengefuehrt = 0
+        for _, zeilen in gruppen.items():
+            if len(zeilen) < 2:
+                continue
+            zeilen.sort(key=rang)
+            sieger, verlierer = zeilen[0], zeilen[1:]
+            geerbt = {}
+            for feld in ("district", "place_id", "ortsbereich_id", "lat", "lon", "geojson"):
+                if sieger[feld] is None:
+                    for v in verlierer:
+                        if v[feld] is not None:
+                            geerbt[feld] = v[feld]
+                            break
+            with self._conn:
+                for v in verlierer:
+                    self._conn.execute(
+                        "UPDATE OR IGNORE council_decision_locations SET location_slug=? "
+                        "WHERE location_slug=?", (sieger["slug"], v["slug"]))
+                    # Was beim Umhängen auf eine schon vorhandene Zeile stieß,
+                    # ist eine Dublette und darf jetzt weg.
+                    self._conn.execute(
+                        "DELETE FROM council_decision_locations WHERE location_slug=?",
+                        (v["slug"],))
+                    self._conn.execute(
+                        "UPDATE OR IGNORE council_place_reviews SET location_slug=? "
+                        "WHERE location_slug=?", (sieger["slug"], v["slug"]))
+                    self._conn.execute(
+                        "DELETE FROM council_place_reviews WHERE location_slug=?", (v["slug"],))
+                    self._conn.execute(
+                        "DELETE FROM council_location_districts WHERE location_slug=?",
+                        (v["slug"],))
+                    self._conn.execute(
+                        "DELETE FROM council_locations WHERE slug=?", (v["slug"],))
+                if geerbt:
+                    felder = ",".join(f"{k}=?" for k in geerbt)
+                    self._conn.execute(
+                        f"UPDATE council_locations SET {felder},updated_at=? WHERE slug=?",
+                        (*geerbt.values(), now, sieger["slug"]))
+            zusammengefuehrt += len(verlierer)
+        return zusammengefuehrt
+
     def rebuild_location_districts(self) -> int:
         """Die Ortsbereichs-Zugehörigkeit neu aufbauen — mehrere je Ort erlaubt.
 

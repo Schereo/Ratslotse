@@ -18,6 +18,7 @@ from council.locations import (  # noqa: E402
     location_slug,
     location_is_incidental,
     valid_llm_location,
+    variant_key,
 )
 from council.store import CouncilStore  # noqa: E402
 
@@ -73,6 +74,14 @@ def deterministic_changes(
     ).fetchall()
     expected: dict[int, dict[str, dict]] = {}
     place_catalog = store.all_places()
+    # Schreibvarianten auf den überlebenden Eintrag abbilden. Ohne das erwartet
+    # dieser Lauf für den Text „Maastrichter Str" den Schlüssel
+    # ``maastrichter-str`` — den ``merge_location_variants`` gerade auf
+    # „Maastrichter Straße" zusammengeführt hat. Ergebnis wäre ein
+    # Dauerkonflikt: Der eine Schritt legt an, der andere führt zusammen.
+    kanonisch = {}
+    for row in store._conn.execute("SELECT slug, name FROM council_locations"):
+        kanonisch[variant_key(row["name"])] = (row["slug"], row["name"])
     for decision in decisions:
         rows = extract_explicit_locations(
             decision["title"] or "", source="title", catalog_places=place_catalog)
@@ -88,7 +97,9 @@ def deterministic_changes(
                 if not location_is_incidental(decision["title"], row,
                                               catalog_places=place_catalog)]
         for row in rows:
-            slug = location_slug(row["name"])
+            slug, name = kanonisch.get(
+                variant_key(row["name"]), (location_slug(row["name"]), row["name"]))
+            row = {**row, "name": name}
             old = expected.setdefault(decision["id"], {}).get(slug)
             if old is None or row["confidence"] > old["confidence"]:
                 expected[decision["id"]][slug] = row
@@ -115,6 +126,12 @@ def deterministic_changes(
 
 def process(council_db: Path, *, apply: bool = False) -> dict:
     store = CouncilStore(council_db)
+    # ZUERST die Schreibvarianten einsammeln, dann prüfen. Andersherum urteilt
+    # die Prüfung über Namen, die es gleich nicht mehr gibt: „A293" wandert
+    # beim Zusammenführen auf „A 293", und dass DAS eine bloße Kennung ist,
+    # fiele erst im nächsten Lauf auf. Der Lauf käme so nie zur Ruhe.
+    if apply:
+        store.merge_location_variants()
     llm_rows = invalid_llm_links(store)
     beiwerk_rows = beiwerk_links(store)
     # Ein ungültiger LLM-Link kann denselben Ortsschlüssel wie ein gültiger
@@ -162,6 +179,9 @@ def process(council_db: Path, *, apply: bool = False) -> dict:
         # Die Ableitungen laufen NACH dem Aufräumen: Ein Ort, dem gerade sein
         # letzter Beschluss genommen wurde, braucht keinen Stadtteil mehr — und
         # ein neu angelegter hat noch keinen.
+        # Erst die Dubletten einsammeln, dann ableiten: Sonst bekäme ein
+        # Eintrag seinen Stadtteil, der gleich darauf gelöscht wird.
+        store.merge_location_variants()
         store.backfill_location_place_ids()
         store.backfill_location_districts()
         store.backfill_location_districts_from_name()

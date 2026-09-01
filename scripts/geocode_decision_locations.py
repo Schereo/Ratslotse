@@ -74,6 +74,7 @@ def process(council_db: Path, *, limit: int | None = None, sleep: float = 1.1,
     # Nach dem Geocoden noch einmal ableiten: Was gerade Koordinaten bekommen
     # hat, hat noch keinen Stadtteil — und ohne diesen zweiten Durchgang wären
     # die frisch geocodierten Straßen sofort wieder Waisen.
+    store.merge_location_variants()
     districts += store.backfill_location_districts()
     korrigiert = (store.fix_contradicting_districts()
                   + store.fix_eponymous_districts()

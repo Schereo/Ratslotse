@@ -648,3 +648,69 @@ def test_eine_angeschnittene_ecke_zaehlt_nicht(tmp_path):
         assert bereiche == {"Ohmstede"}, bereiche
     finally:
         store.close()
+
+
+# --------------------------------------- 6) Schreibvarianten zusammenführen ---
+
+def test_schreibvarianten_werden_ein_ort(tmp_path):
+    """„Alte Fleiwa" und „AlteFleiwa" waren zwei Orte mit getrennten
+    Beschlusslisten — halbierte Zähler, und in einer Vorschlagsliste stand
+    dieselbe Sache zweimal. Am Prod-Bestand: 66 solcher Gruppen.
+    """
+    store = CouncilStore(tmp_path / "c.sqlite")
+    try:
+        with store._conn:
+            store._conn.executemany(
+                "INSERT INTO council_locations (slug,name,kind,district,updated_at) VALUES (?,?,?,?,?)",
+                [("a", "Alte Fleiwa", "area", "Ziegelhof", "2026-09-01"),
+                 ("b", "AlteFleiwa", "area", None, "2026-09-01"),
+                 ("c", "Maastrichter Str", "street", None, "2026-09-01"),
+                 ("d", "Maastrichter Straße", "street", "Donnerschwee", "2026-09-01")])
+            store._conn.executemany(
+                "INSERT INTO council_decision_locations "
+                "(decision_id,location_slug,source,evidence,method,confidence,updated_at) "
+                "VALUES (?,?,'title','x','regex',0.9,'2026-09-01')",
+                [(1, "a"), (2, "a"), (3, "b"), (4, "d"), (5, "d"), (6, "c")])
+        assert store.merge_location_variants() == 2
+        namen = {r["name"]: r["district"] for r in store._conn.execute(
+            "SELECT name, district FROM council_locations")}
+        # Die häufiger belegte Schreibweise überlebt und erbt, was ihr fehlt.
+        assert namen == {"Alte Fleiwa": "Ziegelhof", "Maastrichter Straße": "Donnerschwee"}
+        # Und KEIN Beschluss geht dabei verloren.
+        assert store._conn.execute(
+            "SELECT COUNT(*) FROM council_decision_locations").fetchone()[0] == 6
+    finally:
+        store.close()
+
+
+def test_hausnummer_ist_keine_schreibvariante(tmp_path):
+    """Die Alexanderstraße läuft durch vier Ortsbereiche, „Alexanderstraße 488"
+    liegt in einem. Fielen Ziffern beim Vergleich weg, wären die beiden ein
+    Ort — und die genauere Angabe verschwände."""
+    store = CouncilStore(tmp_path / "c.sqlite")
+    try:
+        with store._conn:
+            store._conn.executemany(
+                "INSERT INTO council_locations (slug,name,kind,updated_at) VALUES (?,?,'street','2026-09-01')",
+                [("x", "Alexanderstraße"), ("y", "Alexanderstraße 488"),
+                 ("v4", "Veloroute 4"), ("v2", "Veloroute 2")])
+        assert store.merge_location_variants() == 0
+    finally:
+        store.close()
+
+
+def test_bruchstuecke_aus_der_pdf_extraktion_verlieren(tmp_path):
+    """Bei Gleichstand entscheidet, welche Schreibweise keine einzelnen
+    Buchstaben-Fragmente trägt: „Kasin o- platz" kommt aus einem Zeilenumbruch
+    im PDF, „Kasinoplatz" ist der Ort."""
+    store = CouncilStore(tmp_path / "c.sqlite")
+    try:
+        with store._conn:
+            store._conn.executemany(
+                "INSERT INTO council_locations (slug,name,kind,updated_at) VALUES (?,?,'square','2026-09-01')",
+                [("k1", "Kasin o- platz"), ("k2", "Kasinoplatz")])
+        store.merge_location_variants()
+        assert store._conn.execute(
+            "SELECT name FROM council_locations").fetchone()["name"] == "Kasinoplatz"
+    finally:
+        store.close()

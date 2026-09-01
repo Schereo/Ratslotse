@@ -149,6 +149,40 @@ VORGÄNGE:
 Antworte nur als JSON-Objekt."""
 
 
+#: Abkürzungen, die im Ratsbestand neben ihrer Langform stehen. Sie sind der
+#: Grund, warum „GS Röwekamp" und „Grundschule Röwekamp" als zwei Orte in den
+#: Daten standen — und die Beschlüsse dazu auf beide verteilt waren.
+_VARIANTEN_ABKUERZUNGEN = (
+    (r"\bstr\.?\b", "strasse"),
+    (r"\bgs\b", "grundschule"),
+    (r"\bobs\b", "oberschule"),
+    (r"\bigs\b", "integrierte gesamtschule"),
+    (r"\bkita\b", "kindertagesstaette"),
+    (r"\bpl\.?\b", "platz"),
+)
+
+
+def variant_key(name: str) -> str:
+    """Schlüssel, unter dem Schreibvarianten desselben Ortes zusammenfallen.
+
+    Im Ratsbestand steht dieselbe Sache mehrfach, nur anders geschrieben:
+    „Alte Fleiwa"/„AlteFleiwa", „Marschwegstadion"/„Marschweg-Stadion",
+    „Maastrichter Straße"/„Maastrichter Str", „GS Röwekamp"/„Grundschule
+    Röwekamp". Am Prod-Bestand (01.09.2026) waren das 66 Gruppen mit 731
+    Beschluss-Zuordnungen, verteilt auf doppelte Einträge.
+
+    **Ziffern bleiben stehen.** Ohne sie fiele „Alexanderstraße 488" mit
+    „Alexanderstraße" zusammen — und das sind zwei verschiedene Dinge: Die
+    Straße läuft durch vier Ortsbereiche, die Hausnummer liegt in einem.
+    """
+    n = (name or "").strip().lower()
+    for muster, ersatz in _VARIANTEN_ABKUERZUNGEN:
+        n = re.sub(muster, ersatz, n)
+    n = (n.replace("ß", "ss").replace("ä", "ae")
+          .replace("ö", "oe").replace("ü", "ue"))
+    return re.sub(r"[^a-z0-9]", "", n)
+
+
 def location_slug(name: str) -> str:
     """Stabiler Schlüssel ohne die Themen-Entitäten-spezifischen Stoppwörter."""
     s = (name or "").strip().lower()
