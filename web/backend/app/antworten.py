@@ -651,12 +651,29 @@ class AdminRatsStatistik(TypedDict):
     next_session: str | None
 
 
+class AdminClientAnteil(TypedDict):
+    client: str
+    n: int
+    #: Nur bei der Nutzung gefüllt (verschiedene Konten); bei der Registrierung
+    #: wäre die Zahl mit ``n`` identisch und steht deshalb auf 0.
+    users: int
+
+
 class AdminWachstum(TypedDict):
     users: AdminVerlauf
     topics: AdminVerlauf
     wau: list[int]
     wau_days: list[str]
     council: AdminRatsStatistik
+    #: Zugriffe je Client, letzte 30 Tage — „App oder Web?". ``users`` zählt
+    #: jedes Konto genau einmal, unter seinem meistgenutzten Client.
+    clients: list[AdminClientAnteil]
+    #: Wie viele Konten in dem Zeitraum MEHRERE Clients benutzt haben. Die Zahl
+    #: gehört dazu: Ohne sie liest sich die Aufteilung so, als benutzte jede:r
+    #: genau eins.
+    clients_beides: int
+    #: Womit die vorhandenen Konten angelegt wurden (gesamter Bestand).
+    signup_clients: list[AdminClientAnteil]
 
 
 class AdminQuizGebiet(TypedDict):
@@ -719,6 +736,12 @@ class AdminNutzerZeile(TypedDict):
     n_quiz: int
     n_ki: int
     last_seen: str | None
+    #: Womit das Konto angelegt wurde: web | ios | android | app. ``None`` =
+    #: vor Einführung der Messung registriert.
+    signup_client: str | None
+    #: Zugriffe je Client — {"web": 42, "ios": 7}. Leer, solange nichts gemessen
+    #: wurde; ``unknown`` steht für die Zeilen aus der Zeit davor.
+    clients: dict[str, int]
 
 
 class AdminGrenzen(TypedDict):

@@ -259,6 +259,29 @@
         "title": "AdminAliasListe",
         "type": "object"
       },
+      "AdminClientAnteil": {
+        "properties": {
+          "client": {
+            "title": "Client",
+            "type": "string"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "users": {
+            "title": "Users",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "client",
+          "n",
+          "users"
+        ],
+        "title": "AdminClientAnteil",
+        "type": "object"
+      },
       "AdminFeedbackGelesen": {
         "properties": {
           "ok": {
@@ -417,6 +440,13 @@
             "title": "Apple Linked",
             "type": "boolean"
           },
+          "clients": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Clients",
+            "type": "object"
+          },
           "created_at": {
             "title": "Created At",
             "type": [
@@ -459,6 +489,13 @@
             "title": "Role",
             "type": "string"
           },
+          "signup_client": {
+            "title": "Signup Client",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "status": {
             "title": "Status",
             "type": "string"
@@ -475,7 +512,9 @@
           "n_abos",
           "n_quiz",
           "n_ki",
-          "last_seen"
+          "last_seen",
+          "signup_client",
+          "clients"
         ],
         "title": "AdminNutzerZeile",
         "type": "object"
@@ -683,8 +722,26 @@
       },
       "AdminWachstum": {
         "properties": {
+          "clients": {
+            "items": {
+              "$ref": "#/components/schemas/AdminClientAnteil"
+            },
+            "title": "Clients",
+            "type": "array"
+          },
+          "clients_beides": {
+            "title": "Clients Beides",
+            "type": "integer"
+          },
           "council": {
             "$ref": "#/components/schemas/AdminRatsStatistik"
+          },
+          "signup_clients": {
+            "items": {
+              "$ref": "#/components/schemas/AdminClientAnteil"
+            },
+            "title": "Signup Clients",
+            "type": "array"
           },
           "topics": {
             "$ref": "#/components/schemas/AdminVerlauf"
@@ -712,7 +769,10 @@
           "topics",
           "wau",
           "wau_days",
-          "council"
+          "council",
+          "clients",
+          "clients_beides",
+          "signup_clients"
         ],
         "title": "AdminWachstum",
         "type": "object"

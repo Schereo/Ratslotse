@@ -142,7 +142,13 @@ Passwörter werden mit **scrypt** gehasht, Sitzungs-Token sind
 Laufzeit `ACCESS_TOKEN_EXPIRE_MINUTES` (Default 90 Tage). Page-JS sieht das
 Token nie.
 
-**App:** Der Client schickt den Header `X-Client: app`. Erkennt das Backend ihn,
+**App:** Der Client schickt den Header `X-Client` und nennt darin seine
+Plattform — `ios` aus der nativen App, `android` aus der Capacitor-Hülle;
+Browser schicken den Header gar nicht. `app` bleibt als Altwert gültig, weil im
+Feld Stände laufen, die ihn noch senden. Die Zuordnung macht
+`web/backend/app/clients.py`; Fremdwerte werden dort **nicht** durchgereicht,
+sondern zu `web`, damit über den Header nichts Beliebiges in die
+Statistiktabelle wandert. Erkennt das Backend einen der nativen Werte,
 liefert es zusätzlich ein **langlebiges Token im Antwort-Body**
 (`app_access_token_expire_minutes`, Default 90 Tage), das die SwiftUI-App im
 Keychain ablegt und als `Authorization: Bearer …` mitschickt.
@@ -166,7 +172,7 @@ Login.
   Passwortwechsel — sonst überschriebe die Verlängerung das Abmelden), sowie
   `401`-Antworten.
 - *App:* Cookies helfen dort nicht. Stattdessen liefert `GET /api/auth/me` an
-  `X-Client: app` ein frisch datiertes Token, das der native `APIClient` im
+  native Clients ein frisch datiertes Token, das der native `APIClient` im
   Keychain ersetzt — die App fragt den Endpunkt bei jedem Start.
 
 Der Widerruf bleibt davon unberührt: Das erneuerte Token trägt dieselbe
@@ -536,7 +542,8 @@ selbst entstehen:
 | gesehene Treffer, Onboarding-Fortschritt, Abzeichen-Stand | `topic_hits_seen`, `web_users.onboarding`, `web_users.badges` |
 | Quiz-Antworten (Punkte je Gebiet) | `quiz_answers` |
 | Push-Geräte-Token | `push_tokens` |
-| Aktivität für die Admin-Statistik: eine Zeile je Konto/Tag/Feature mit Zähler | `user_activity` |
+| Aktivität für die Admin-Statistik: eine Zeile je Konto/Tag/Feature/Client mit Zähler | `user_activity` |
+| Womit das Konto angelegt wurde (Browser oder App) | `web_users.signup_client` |
 
 Verarbeiter sind **Resend** (E-Mail-Versand), **Apple/APNs** bzw.
 **Google/FCM** (Push-Zustellung) und **Apple** beim „Sign in with Apple" — jeweils

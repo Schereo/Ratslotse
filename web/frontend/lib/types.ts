@@ -656,6 +656,12 @@ export interface AdminUserDetail {
   deep_limit: number | null;
   /** true = Rate-Limits der Frage-Endpoints für dieses Konto aus. */
   limits_frei: boolean;
+  /** Womit das Konto angelegt wurde (web | ios | android | app). null = vor
+   *  Einführung der Messung registriert. */
+  signup_client: string | null;
+  /** Zugriffe je Client — {"web": 42, "ios": 7}. `unknown` steht für die
+   *  Zeilen aus der Zeit vor der Messung und zählt nirgends als Plattform. */
+  clients: Record<string, number>;
 }
 
 export interface AdminGrowth {
@@ -672,6 +678,13 @@ export interface AdminGrowth {
     last_fetch: string | null; hours_since_fetch: number | null;
     last_session_import: string | null; next_session: string | null;
   };
+  /** Zugriffe je Client, letzte 30 Tage. `users` = Konten, für die dieser
+   *  Client der meistgenutzte ist — jedes Konto zählt genau einmal. */
+  clients: { client: string; n: number; users: number }[];
+  /** Konten, die im Zeitraum mehrere Clients benutzt haben. */
+  clients_beides: number;
+  /** Womit die vorhandenen Konten angelegt wurden (`users` bleibt hier 0). */
+  signup_clients: { client: string; n: number; users: number }[];
 }
 
 // ---- Quiz ----

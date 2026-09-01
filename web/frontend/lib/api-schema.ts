@@ -3719,6 +3719,15 @@ export interface components {
                 [key: string]: unknown;
             }[];
         };
+        /** AdminClientAnteil */
+        AdminClientAnteil: {
+            /** Client */
+            client: string;
+            /** N */
+            n: number;
+            /** Users */
+            users: number;
+        };
         /** AdminFeedbackGelesen */
         AdminFeedbackGelesen: {
             /** Ok */
@@ -3785,6 +3794,10 @@ export interface components {
         AdminNutzerZeile: {
             /** Apple Linked */
             apple_linked: boolean;
+            /** Clients */
+            clients: {
+                [key: string]: number;
+            };
             /** Created At */
             created_at: string | null;
             /** Email */
@@ -3803,6 +3816,8 @@ export interface components {
             n_topics: number;
             /** Role */
             role: string;
+            /** Signup Client */
+            signup_client: string | null;
             /** Status */
             status: string;
         };
@@ -3878,7 +3893,13 @@ export interface components {
         };
         /** AdminWachstum */
         AdminWachstum: {
+            /** Clients */
+            clients: components["schemas"]["AdminClientAnteil"][];
+            /** Clients Beides */
+            clients_beides: number;
             council: components["schemas"]["AdminRatsStatistik"];
+            /** Signup Clients */
+            signup_clients: components["schemas"]["AdminClientAnteil"][];
             topics: components["schemas"]["AdminVerlauf"];
             users: components["schemas"]["AdminVerlauf"];
             /** Wau */
@@ -10766,4 +10787,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: a6b32b06e377c9e27348624b997bcdb649c557d022ca6fbe5f4bd49784ed69ba
+// vertrag-sha256: 167e3d1de9b34d4276398ed47b99060cae8a7adf4ebb94cec6d537d81ee67eed

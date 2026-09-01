@@ -26,6 +26,7 @@ import { Badge, Button, Card, ChartSkeleton, ConfirmDialog, ErrorState, Input, P
 import { AreaSparkline, MiniBars, StatKicker } from "@/components/admin-charts";
 import { cn } from "@/lib/utils";
 import type { OrtsbereichCatalog } from "@/lib/districts";
+import { clientFarbe, clientKurz, clientLabel, hauptClient } from "@/lib/clients";
 
 type Tab = "stats" | "feedback" | "llm" | "users" | "quiz" | "orte" | "themen";
 
@@ -88,6 +89,98 @@ function TrendChip({ delta }: { delta: number }) {
       <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M7 17 17 7" /><path d="M7 7h10v10" /></svg>
       +{delta}
     </span>
+  );
+}
+
+/** „App oder Web?" — zwei Balken nebeneinander.
+ *
+ *  Links die NUTZUNG der letzten 30 Tage, rechts der ANMELDEWEG des gesamten
+ *  Bestands. Die beiden zu trennen ist der Punkt: Wer sich im Browser
+ *  registriert und danach nur noch die App öffnet, taucht links als App und
+ *  rechts als Web auf — genau die Differenz, die man sehen will.
+ *
+ *  Bei der Nutzung zählen KONTEN, nicht Zugriffe: Ein einzelnes vielbenutztes
+ *  Gerät soll nicht wie eine Plattform mit vielen Leuten aussehen.
+ */
+function ClientCard({ clients, beides, signup }: {
+  clients: AdminGrowth["clients"];
+  beides: number;
+  signup: AdminGrowth["signup_clients"];
+}) {
+  // `unknown` fliegt raus: ungemessen ist keine Plattform. Es steht statt-
+  // dessen als Fußnote unter dem Anmeldeweg, damit die Summe erklärbar bleibt.
+  const nutzung = clients.filter((c) => c.users > 0);
+  const wege = signup.filter((c) => c.client !== "unknown" && c.n > 0);
+  const ungemessen = signup.find((c) => c.client === "unknown")?.n ?? 0;
+
+  return (
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <Card className="p-4">
+        <div className="flex items-baseline justify-between">
+          <StatKicker>Womit genutzt</StatKicker>
+          <span className="text-[11.5px] text-muted-foreground">30 Tage · Konten</span>
+        </div>
+        <ClientBalken werte={nutzung.map((c) => ({ client: c.client, n: c.users }))}
+          leer="Noch nichts gemessen." />
+        {/* Ohne diese Zeile liest sich der Balken so, als benutzte jede:r genau
+            eins. Jedes Konto steht dort unter seinem meistgenutzten Client —
+            wie viele überhaupt wechseln, sagt erst die Zahl hier. */}
+        {beides > 0 && (
+          <p className="mt-2.5 text-[11.5px] text-muted-foreground">
+            Jedes Konto zählt einmal, unter dem Weg, den es am häufigsten
+            nimmt. {beides === 1 ? "Ein Konto nutzt" : `${beides} Konten nutzen`} beides.
+          </p>
+        )}
+      </Card>
+      <Card className="p-4">
+        <div className="flex items-baseline justify-between">
+          <StatKicker>Womit registriert</StatKicker>
+          <span className="text-[11.5px] text-muted-foreground">gesamter Bestand</span>
+        </div>
+        <ClientBalken werte={wege} leer="Noch kein Konto seit Einführung der Messung." />
+        {ungemessen > 0 && (
+          <p className="mt-2.5 text-[11.5px] text-muted-foreground">
+            Dazu {ungemessen.toLocaleString("de-DE")} {ungemessen === 1 ? "Konto" : "Konten"} von vor
+            der Messung (09/2026) — deren Anmeldeweg wurde nie festgehalten.
+          </p>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+/** Ein waagerechter Anteilsbalken plus Legende. Web trägt das Primär-, alles
+ *  Native das Signalblau — dieselbe Zuordnung wie im Nutzer-Detail. */
+function ClientBalken({ werte, leer }: { werte: { client: string; n: number }[]; leer: string }) {
+  const gesamt = werte.reduce((s, w) => s + w.n, 0);
+  if (!gesamt) return <p className="mt-3 text-[13px] text-muted-foreground">{leer}</p>;
+  const sortiert = werte.slice().sort((a, b) => b.n - a.n);
+  return (
+    <>
+      <div className="mt-3 flex h-2.5 overflow-hidden rounded-full bg-muted">
+        {sortiert.map((w) => (
+          <span key={w.client} title={`${clientLabel(w.client)}: ${w.n}`}
+            className={cn("h-full", clientFarbe(w.client))}
+            style={{ width: `${(w.n / gesamt) * 100}%` }} />
+        ))}
+      </div>
+      <div className="mt-3 flex flex-col gap-1.5">
+        {sortiert.map((w) => (
+          <div key={w.client} className="flex items-baseline justify-between gap-2">
+            <span className="inline-flex items-center gap-2 text-[13px] text-foreground">
+              <span className={cn("h-2 w-2 shrink-0 rounded-full", clientFarbe(w.client))} />
+              {clientLabel(w.client)}
+            </span>
+            <span className="text-[13px] text-muted-foreground">
+              <span className="font-display text-base font-bold tabular-nums text-foreground">
+                {Math.round((w.n / gesamt) * 100)} %
+              </span>{" "}
+              <span className="tabular-nums">({w.n.toLocaleString("de-DE")})</span>
+            </span>
+          </div>
+        ))}
+      </div>
+    </>
   );
 }
 
@@ -157,6 +250,10 @@ function StatsTab() {
         <GrowthCard kicker="Registrierte Nutzer*innen" total={data.users.total} delta={data.users.delta} series={data.users.series} days={data.users.days} color="hsl(var(--primary))" />
         <GrowthCard kicker="Angelegte Themen" total={data.topics.total} delta={data.topics.delta} series={data.topics.series} days={data.topics.days} color="hsl(var(--signal))" />
       </div>
+
+      {/* App oder Web? Zwei getrennte Fragen nebeneinander: womit die Leute
+          GERADE arbeiten (30 Tage) und womit sie überhaupt hergekommen sind. */}
+      <ClientCard clients={data.clients} beides={data.clients_beides} signup={data.signup_clients} />
 
       {/* WAU + Ratsinfo-Import. */}
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.4fr_1fr]">
@@ -603,6 +700,9 @@ function UsersTab({ currentUserId }: { currentUserId: number }) {
               u.n_abos > 0 && `${u.n_abos} Abos`,
               u.n_quiz > 0 && "Quiz",
             ].filter(Boolean) as string[];
+            // Womit gearbeitet wird — steht getrennt von den Inhalts-Chips, weil
+            // es eine andere Art Auskunft ist (Kanal, nicht Menge).
+            const womit = clientKurz(u.clients);
             return (
               <button key={u.id} onClick={() => setSelected(u.id)}
                 className={cn("grid w-full grid-cols-[1fr_auto_auto] items-center gap-2.5 px-4 py-2.5 text-left transition-colors hover:bg-accent",
@@ -614,6 +714,9 @@ function UsersTab({ currentUserId }: { currentUserId: number }) {
                     {u.status !== "active" && <span className="shrink-0 rounded bg-amber-500/15 px-1.5 text-[10px] font-semibold text-amber-700 dark:text-amber-500">wartet</span>}
                   </div>
                   <div className="mt-1 flex flex-wrap gap-1">
+                    {womit && (
+                      <span className="rounded bg-primary/10 px-1.5 py-px text-[10px] font-medium text-primary">{womit}</span>
+                    )}
                     {chips.length ? chips.map((c) => (
                       <span key={c} className="rounded bg-muted px-1.5 py-px text-[10px] text-muted-foreground">{c}</span>
                     )) : <span className="rounded bg-muted px-1.5 py-px text-[10px] text-muted-foreground">noch nichts angelegt</span>}
@@ -667,18 +770,66 @@ function UserDetailPanel({ userId, isSelf, onClose }: { userId: number; isSelf: 
 
   const sig = activitySignal(data.last_seen);
   const login = data.apple_linked ? "Apple-Login" : data.has_password ? "Passwort" : "Apple-Login";
+  // „Wie angemeldet" heißt hier zweierlei: mit welchem Verfahren (Apple oder
+  // Passwort) und von welchem Client aus. Beides gehört in die Kopfzeile.
+  const woher = data.signup_client ? clientLabel(data.signup_client) : null;
+  // Nur Gemessenes zeigen. `unknown` sind Zeilen von vor der Messung — sie als
+  // eigenen Balken zu führen behauptete eine Plattform, die niemand kennt.
+  const nutzung = Object.entries((data.clients ?? {}) as Record<string, number>)
+    .filter(([id, n]) => id !== "unknown" && n > 0)
+    .sort((a, b) => b[1] - a[1]);
+  const nutzungGesamt = nutzung.reduce((s, [, n]) => s + n, 0);
+  const fuehrend = hauptClient((data.clients ?? {}) as Record<string, number>);
   return (
     <Card className="bg-muted/20 p-5">
       <div className="flex items-center gap-3">
         <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 font-display text-base font-bold text-primary">{data.email[0].toUpperCase()}</span>
         <div className="min-w-0 flex-1">
           <p className="truncate text-[15px] font-bold text-foreground">{data.email}</p>
-          <p className="text-xs text-muted-foreground">seit {formatDate(data.created_at.slice(0, 10))} · {sig.label} · {login}</p>
+          <p className="text-xs text-muted-foreground">
+            seit {formatDate(data.created_at.slice(0, 10))} · {sig.label} · {login}
+            {woher && <> · über {woher} registriert</>}
+          </p>
         </div>
         <button onClick={onClose} className="text-muted-foreground hover:text-foreground lg:hidden" aria-label="Schließen">
           <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
         </button>
       </div>
+
+      {/* Womit gearbeitet wird (Zugriffe je Client). Anteile statt roher
+          Zahlen: Die Frage ist „App oder Web?", nicht „wie viele Requests". */}
+      <StatKickerSpaced>Womit genutzt</StatKickerSpaced>
+      {nutzung.length ? (
+        <div className="mt-2 flex flex-col gap-1.5">
+          <div className="flex h-2 overflow-hidden rounded-full bg-muted">
+            {nutzung.map(([id, n]) => (
+              <span key={id} title={`${clientLabel(id)}: ${n}`}
+                className={cn("h-full", clientFarbe(id))}
+                style={{ width: `${(n / nutzungGesamt) * 100}%` }} />
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {nutzung.map(([id, n]) => (
+              <span key={id} className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
+                <span className={cn("h-2 w-2 rounded-full", clientFarbe(id))} />
+                {clientLabel(id)}
+                <span className="font-semibold tabular-nums text-foreground">
+                  {Math.round((n / nutzungGesamt) * 100)} %
+                </span>
+              </span>
+            ))}
+            {nutzung.length > 1 && fuehrend && (
+              <span className="inline-flex items-center rounded-full border border-dashed border-border px-2.5 py-1 text-xs text-muted-foreground">
+                überwiegend {clientLabel(fuehrend)}
+              </span>
+            )}
+          </div>
+        </div>
+      ) : (
+        <p className="mt-2 text-xs text-muted-foreground">
+          Noch nichts gemessen — die Zuordnung läuft erst seit 09/2026 mit.
+        </p>
+      )}
 
       <StatKickerSpaced>Genutzte Features</StatKickerSpaced>
       <div className="mt-2 flex flex-wrap gap-1.5">
