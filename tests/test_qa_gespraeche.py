@@ -103,18 +103,18 @@ def test_share_extras_und_alte_zeilen(tmp_path):
     uid = _user(store)
     token = store.qa_share_anlegen(
         uid, "Frage?", "Antwort [5].", [{"id": 5, "title": "T"}],
-        {"debatten": [{"speaker": "Wenzel", "auszug": "Warnte."}],
-         "presse": [], "anlagen": [], "parteien": [{"party": "SPD"}]})
+        {"debates": [{"speaker": "Wenzel", "auszug": "Warnte."}],
+         "press_releases": [], "attachments": [], "parties": [{"party": "SPD"}]})
     share = store.qa_share_get(token)
-    assert share["debatten"][0]["speaker"] == "Wenzel"
-    assert share["parteien"][0]["party"] == "SPD"
-    assert share["presse"] == [] and share["anlagen"] == []
+    assert share["debates"][0]["speaker"] == "Wenzel"
+    assert share["parties"][0]["party"] == "SPD"
+    assert share["press_releases"] == [] and share["attachments"] == []
 
     # Zeile aus der Zeit vor dem Nachtrag: extras ist NULL.
     with store._conn:
         store._conn.execute("UPDATE qa_shares SET extras = NULL WHERE token = ?", (token,))
     alt = store.qa_share_get(token)
-    assert alt["answer"] == "Antwort [5]." and alt["debatten"] == []
+    assert alt["answer"] == "Antwort [5]." and alt["debates"] == []
     store.close()
 
     # Alte Datei mit den ALTEN (deutschen) Spalten und ohne `extras`:
@@ -132,7 +132,7 @@ def test_share_extras_und_alte_zeilen(tmp_path):
     conn.close()
     store = Store(pfad)
     assert "extras" in {r[1] for r in store._conn.execute("PRAGMA table_info(qa_shares)")}
-    assert store.qa_share_get(token)["debatten"] == []
+    assert store.qa_share_get(token)["debates"] == []
     store.close()
 
 
@@ -174,7 +174,7 @@ def test_snapshot_traegt_die_kondensierte_frage(tmp_path):
         assert turn["question"] == "Und was kostet das?"
         # … die Suchfassung liegt daneben, damit der wiederhergestellte Turn
         # denselben Schlüssel trägt wie der live erzeugte.
-        assert json.loads(turn["sources"])["kontext"] == \
+        assert json.loads(turn["sources"])["context"] == \
             "Was kostet die Sanierung der Cäcilienbrücke?"
     finally:
         store.close()

@@ -420,7 +420,7 @@ struct QuestionsView: View {
             let sources = evidence["sources"]?.array?.compactMap {
                 try? $0.decoded(DecisionSummary.self)
             } ?? []
-            let research = evidence["recherche"]?.bool == true
+            let research = evidence["research"]?.bool == true
                 ? ResearchState(status: "fertig")
                 : nil
             return QuestionTurn(
@@ -631,8 +631,8 @@ struct QuestionsView: View {
         switch event.type {
         case "phase":
             turns[index].research?.phase = event.fields["phase"]?.string ?? turns[index].research?.phase ?? "zerlegen"
-        case "facetten":
-            turns[index].research?.facets = event.fields["facetten"]?.array?.compactMap(\.string).map {
+        case "facets":
+            turns[index].research?.facets = event.fields["facets"]?.array?.compactMap(\.string).map {
                 ResearchFacet(name: $0)
             } ?? []
             turns[index].research?.phase = "suchen"
@@ -841,38 +841,38 @@ struct QuestionsView: View {
               "slug": "verkehrswende",
               "beschreibung": "Beschlüsse zu Bus, Radverkehr und klimafreundlicher Mobilität."
             }],
-            "sitzungen": [{
+            "sessions": [{
               "ksinr": 8001,
               "committee": "Rat der Stadt",
               "session_date": "2026-08-26",
               "session_time": "18:00",
               "agenda": [{"item_number": "Ö 10", "title": "Neue Busspuren für Oldenburg"}]
             }],
-            "anlagen": [{
+            "attachments": [{
               "nr": 1,
               "label": "Übersichtskarte der Busspuren",
               "template_number": "26/0801",
               "auszug": "Geplante Abschnitte am Innenstadtring.",
               "url": "https://example.org/karte.pdf"
             }],
-            "presse": [{
+            "press_releases": [{
               "title": "Stadt stellt Maßnahmen für einen schnelleren Busverkehr vor",
               "date": "2026-08-27",
               "url": "https://example.org/presse"
             }],
-            "debatten": [{
+            "debates": [{
               "speaker": "Mara Beispiel",
               "party": "GRÜNE",
               "art": "Wortbeitrag",
               "date": "2026-08-26",
               "auszug": "Die Busspuren sollen Anschlüsse stabilisieren und den Umweltverbund stärken."
             }],
-            "planungen": [{
+            "planning_procedures": [{
               "vorlage_titel": "Umsetzung der Busspuren",
               "committee": "Verkehrsausschuss",
               "date": "2026-11-12"
             }],
-            "grafik": {
+            "chart": {
               "title": "Vorgesehene Investitionen",
               "unit": "Mio. €",
               "note": "Planwerte aus der Beschlussvorlage.",
@@ -1472,8 +1472,8 @@ struct QuestionEvidenceAvailability {
 
     init(fields: [String: JSONValue] = [:]) {
         let type = fields["qtype"]?.string?.lowercased() ?? ""
-        let debates = fields["debatten"]?.array ?? []
-        let parties = fields["parteien"]?.array ?? []
+        let debates = fields["debates"]?.array ?? []
+        let parties = fields["parties"]?.array ?? []
 
         // Dieselbe Zuständigkeit wie im Web: Der validierte Rechercheplan im
         // Backend schaltet diese Kanäle einzeln frei. Die Oberfläche zeigt nur
@@ -1481,12 +1481,12 @@ struct QuestionEvidenceAvailability {
         // abweichende Stichwort-Heuristik.
         showsDebates = !debates.isEmpty
         showsPartyOpinions = type != "person" && (parties.count >= 2 || showsDebates)
-        showsPress = !(fields["presse"]?.array ?? []).isEmpty
-        showsAttachments = !(fields["anlagen"]?.array ?? []).isEmpty
-        showsPlanning = !(fields["planungen"]?.array ?? []).isEmpty
+        showsPress = !(fields["press_releases"]?.array ?? []).isEmpty
+        showsAttachments = !(fields["attachments"]?.array ?? []).isEmpty
+        showsPlanning = !(fields["planning_procedures"]?.array ?? []).isEmpty
         showsBriefs = !(fields["steckbriefe"]?.array ?? []).isEmpty
-        showsChart = fields["grafik"] != nil
-        showsSessions = !(fields["sitzungen"]?.array ?? []).isEmpty
+        showsChart = fields["chart"] != nil
+        showsSessions = !(fields["sessions"]?.array ?? []).isEmpty
     }
 }
 
@@ -1911,7 +1911,7 @@ private struct QuestionEvidenceSidebar: View {
     }
 
     private func hasSourceEvidence(_ fields: [String: JSONValue]) -> Bool {
-        ["anlagen", "presse", "debatten"].contains {
+        ["attachments", "press_releases", "debates"].contains {
             !(fields[$0]?.array ?? []).isEmpty
         }
     }
@@ -1975,8 +1975,8 @@ private struct PartyOpinionsResponse: Codable, Sendable {
     let withoutContributions: [String]
 
     enum CodingKeys: String, CodingKey {
-        case parties = "parteien"
-        case withoutContributions = "ohne_beitraege"
+        case parties = "parties"
+        case withoutContributions = "without_speeches"
     }
 }
 
@@ -1994,11 +1994,11 @@ struct SharedAnswerSnapshot: Decodable, Sendable {
     enum CodingKeys: String, CodingKey {
         case question, answer, sources
         case created
-        case debates = "debatten"
-        case press = "presse"
-        case attachments = "anlagen"
-        case parties = "parteien"
-        case chart = "grafik"
+        case debates = "debates"
+        case press = "press_releases"
+        case attachments = "attachments"
+        case parties = "parties"
+        case chart = "chart"
     }
 
     init(from decoder: Decoder) throws {
@@ -2016,11 +2016,11 @@ struct SharedAnswerSnapshot: Decodable, Sendable {
 
     var evidenceFields: [String: JSONValue] {
         var fields: [String: JSONValue] = [:]
-        if !debates.isEmpty { fields["debatten"] = .array(debates) }
-        if !press.isEmpty { fields["presse"] = .array(press) }
-        if !attachments.isEmpty { fields["anlagen"] = .array(attachments) }
-        if !parties.isEmpty { fields["parteien"] = .array(parties.map(\.jsonValue)) }
-        if let chart { fields["grafik"] = chart }
+        if !debates.isEmpty { fields["debates"] = .array(debates) }
+        if !press.isEmpty { fields["press_releases"] = .array(press) }
+        if !attachments.isEmpty { fields["attachments"] = .array(attachments) }
+        if !parties.isEmpty { fields["parties"] = .array(parties.map(\.jsonValue)) }
+        if let chart { fields["chart"] = chart }
         return fields
     }
 }
@@ -2100,7 +2100,7 @@ private struct PartyOpinionsView: View {
     }
 
     private var snapshotParties: [PartyOpinion] {
-        (turn.evidence["parteien"]?.array ?? []).compactMap { try? $0.decoded(PartyOpinion.self) }
+        (turn.evidence["parties"]?.array ?? []).compactMap { try? $0.decoded(PartyOpinion.self) }
     }
 
     private var renderedResponse: PartyOpinionsResponse? {
@@ -2504,11 +2504,11 @@ private struct QuestionAnswerActions: View {
                             outcome: $0.outcome
                         )
                     },
-                    debatten: turn.evidence["debatten"]?.array ?? [],
-                    presse: turn.evidence["presse"]?.array ?? [],
-                    anlagen: turn.evidence["anlagen"]?.array ?? [],
+                    debatten: turn.evidence["debates"]?.array ?? [],
+                    presse: turn.evidence["press_releases"]?.array ?? [],
+                    anlagen: turn.evidence["attachments"]?.array ?? [],
                     parteien: parties,
-                    grafik: turn.evidence["grafik"]
+                    grafik: turn.evidence["chart"]
                 )
             )
             guard let url = URL(string: "https://ratslotse.de/g?t=\(response.token)") else { return }
@@ -2519,11 +2519,11 @@ private struct QuestionAnswerActions: View {
     }
 
     private func partyOpinionsForShare() async -> [PartyOpinion] {
-        let embedded = (turn.evidence["parteien"]?.array ?? []).compactMap {
+        let embedded = (turn.evidence["parties"]?.array ?? []).compactMap {
             try? $0.decoded(PartyOpinion.self)
         }
         if embedded.count >= 2 { return embedded }
-        guard !(turn.evidence["debatten"]?.array ?? []).isEmpty else { return [] }
+        guard !(turn.evidence["debates"]?.array ?? []).isEmpty else { return [] }
 
         struct Body: Codable, Sendable { let question: String; let beschluss_ids: [Int] }
         let citationIndex = QuestionCitationIndex(text: turn.answer, sources: turn.sources)
@@ -2606,20 +2606,20 @@ struct CouncilEvidenceBlocks: View {
         QuestionEvidenceAvailability(fields: fields)
     }
     private var attachments: [[String: JSONValue]] {
-        visibility.showsAttachments ? objects("anlagen") : []
+        visibility.showsAttachments ? objects("attachments") : []
     }
     private var press: [[String: JSONValue]] {
-        visibility.showsPress ? objects("presse") : []
+        visibility.showsPress ? objects("press_releases") : []
     }
     private var debates: [[String: JSONValue]] {
-        visibility.showsDebates ? objects("debatten") : []
+        visibility.showsDebates ? objects("debates") : []
     }
     private var sessions: [[String: JSONValue]] {
-        let rows = objects("sitzungen")
+        let rows = objects("sessions")
         return visibility.showsSessions ? rows : []
     }
     private var planning: [[String: JSONValue]] {
-        visibility.showsPlanning ? objects("planungen") : []
+        visibility.showsPlanning ? objects("planning_procedures") : []
     }
     private var briefs: [[String: JSONValue]] {
         visibility.showsBriefs ? objects("steckbriefe") : []
@@ -2629,7 +2629,7 @@ struct CouncilEvidenceBlocks: View {
 
     @ViewBuilder
     var body: some View {
-        if includesAnswerInsights, fields["beleglage"]?.string == "duenn" {
+        if includesAnswerInsights, fields["evidence_level"]?.string == "duenn" {
             Label(
                 "Dünne Beschlusslage – die Antwort stützt sich nur auf wenige passende Ratsunterlagen.",
                 systemImage: "exclamationmark.magnifyingglass"
@@ -2803,7 +2803,7 @@ struct CouncilEvidenceBlocks: View {
 
         if includesAnswerInsights,
            visibility.showsChart,
-           let chart = EvidenceChartData(fields["grafik"]) {
+           let chart = EvidenceChartData(fields["chart"]) {
             EvidenceInteractiveChart(chart: chart)
         }
     }
@@ -3196,7 +3196,7 @@ struct CitedAnswerText: View {
 
     private var citationMarkdown: String {
         let attachmentNumbers = Set(
-            (evidence["anlagen"]?.array ?? []).enumerated().map { offset, value in
+            (evidence["attachments"]?.array ?? []).enumerated().map { offset, value in
                 value.object?["nr"]?.int ?? offset + 1
             }
         )
@@ -3208,7 +3208,7 @@ struct CitedAnswerText: View {
     }
 
     private func attachmentURL(number: Int) -> URL? {
-        let rows = evidence["anlagen"]?.array?.compactMap(\.object) ?? []
+        let rows = evidence["attachments"]?.array?.compactMap(\.object) ?? []
         guard let raw = rows.first(where: { $0["nr"]?.int == number })?["url"]?.string else { return nil }
         return URL(string: raw)
     }

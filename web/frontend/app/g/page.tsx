@@ -29,8 +29,8 @@ type Share = {
   question: string; answer: string; sources: ShareQuelle[]; created: string;
   /** Bausteine neben den Beschlüssen — vor dem Nachtrag geteilte Antworten
    *  haben sie nicht, dann bleiben die Listen leer. */
-  debatten?: DebattenHinweis[]; presse?: PresseHinweis[];
-  anlagen?: AnlagenHinweis[]; parteien?: ParteiMeinung[];
+  debates?: DebattenHinweis[]; press_releases?: PresseHinweis[];
+  attachments?: AnlagenHinweis[]; parties?: ParteiMeinung[];
 };
 
 // Server-seitig direkt ans Backend (gleiche env wie der /api-Rewrite).
@@ -115,13 +115,13 @@ export default async function GeteiltPage({ searchParams }: PageProps) {
           </div>
           <div className="mt-4 whitespace-pre-wrap text-[14.5px] leading-[1.7] text-foreground sm:leading-[1.75]">
             <GeteilterAntwortText text={share.answer} quellenIds={share.sources.map((q) => q.id)}
-              anlagen={share.anlagen} />
+              attachments={share.attachments} />
           </div>
           {/* RG-09: Die verdichteten Fraktions-Positionen gehören zur Antwort —
               im Gespräch stehen sie direkt unter dem Text, hier genauso. */}
-          {(share.parteien?.length ?? 0) >= 2 && (
+          {(share.parties?.length ?? 0) >= 2 && (
             <div className="mt-4">
-              <ParteienListe parteien={share.parteien ?? []} />
+              <ParteienListe parties={share.parties ?? []} />
             </div>
           )}
           {share.sources.length > 0 && (
@@ -146,15 +146,15 @@ export default async function GeteiltPage({ searchParams }: PageProps) {
           )}
           {/* Dieselben Belege-Bausteine wie im Gespräch (Reihenfolge dort:
               Debatten, Anlagen, Presse) — Externes gestrichelt gerahmt. */}
-          {((share.debatten?.length ?? 0) > 0 || (share.anlagen?.length ?? 0) > 0
-            || (share.presse?.length ?? 0) > 0) && (
+          {((share.debates?.length ?? 0) > 0 || (share.attachments?.length ?? 0) > 0
+            || (share.press_releases?.length ?? 0) > 0) && (
             <div className="mt-3.5 flex flex-col gap-3.5">
-              {(share.debatten?.length ?? 0) > 0 && <DebattenBlock debatten={share.debatten ?? []} />}
-              {(share.anlagen?.length ?? 0) > 0 && (
-                <AnlagenBlock anlagen={share.anlagen ?? []} ankerPrefix="anlage"
-                  buchstaben={anlagenBuchstaben(share.answer, share.anlagen)} />
+              {(share.debates?.length ?? 0) > 0 && <DebattenBlock debates={share.debates ?? []} />}
+              {(share.attachments?.length ?? 0) > 0 && (
+                <AnlagenBlock attachments={share.attachments ?? []} ankerPrefix="anlage"
+                  buchstaben={anlagenBuchstaben(share.answer, share.attachments)} />
               )}
-              {(share.presse?.length ?? 0) > 0 && <PresseBlock presse={share.presse ?? []} />}
+              {(share.press_releases?.length ?? 0) > 0 && <PresseBlock press_releases={share.press_releases ?? []} />}
             </div>
           )}
           <ShareAktionen token={t ?? ""} />

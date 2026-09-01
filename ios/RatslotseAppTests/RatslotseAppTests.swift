@@ -150,14 +150,14 @@ import Testing
       "answer": "Der Rat hat zugestimmt [42].",
       "created": "2026-08-29T08:15:00",
       "sources": [{"id":42,"title":"Sichere Querung","session_date":"2026-08-28","committee":"Rat","outcome":"accepted"}],
-      "debatten": [{"speaker":"Anna Beispiel","party":"SPD","auszug":"Wir stimmen zu."}],
-      "presse": [{"title":"Mitteilung","url":"https://www.oldenburg.de/presse"}],
-      "anlagen": [{"nr":1,"label":"Lageplan","url":"https://buergerinfo.oldenburg.de/getfile.php?id=42"}],
-      "parteien": [
+      "debates": [{"speaker":"Anna Beispiel","party":"SPD","auszug":"Wir stimmen zu."}],
+      "press_releases": [{"title":"Mitteilung","url":"https://www.oldenburg.de/presse"}],
+      "attachments": [{"nr":1,"label":"Lageplan","url":"https://buergerinfo.oldenburg.de/getfile.php?id=42"}],
+      "parties": [
         {"party":"SPD","haltung":"dafür","position":"Zustimmung","einig":true},
         {"party":"CDU","haltung":"dagegen","position":"Ablehnung","einig":false}
       ],
-      "grafik": {"art":"linie","title":"Kosten","unit":"Mio. €","series":[{"year":2026,"value":2.5}]}
+      "chart": {"art":"linie","title":"Kosten","unit":"Mio. €","series":[{"year":2026,"value":2.5}]}
     }
     """#.utf8)
 
@@ -168,8 +168,8 @@ import Testing
     #expect(snapshot.press.count == 1)
     #expect(snapshot.attachments.count == 1)
     #expect(snapshot.parties.count == 2)
-    #expect(snapshot.evidenceFields["grafik"] != nil)
-    #expect(snapshot.evidenceFields["parteien"]?.array?.count == 2)
+    #expect(snapshot.evidenceFields["chart"] != nil)
+    #expect(snapshot.evidenceFields["parties"]?.array?.count == 2)
 
     let legacy = try JSONDecoder().decode(
         SharedAnswerSnapshot.self,
@@ -460,32 +460,32 @@ import Testing
 
     let party = QuestionEvidenceAvailability(fields: [
         "qtype": .string("party"),
-        "debatten": .array([.object(["speaker": .string("Muster")])]),
+        "debates": .array([.object(["speaker": .string("Muster")])]),
     ])
     #expect(party.showsPartyOpinions)
     #expect(party.showsDebates)
     #expect(!party.showsPress)
 
     let documents = QuestionEvidenceAvailability(fields: [
-        "anlagen": .array([.object(["nr": .number(1)])]),
+        "attachments": .array([.object(["nr": .number(1)])]),
     ])
     #expect(documents.showsAttachments)
 
     let status = QuestionEvidenceAvailability(fields: [
-        "planungen": .array([.object(["date": .string("2026-09-01")])]),
+        "planning_procedures": .array([.object(["date": .string("2026-09-01")])]),
     ])
     #expect(status.showsPlanning)
 
-    let budget = QuestionEvidenceAvailability(fields: ["grafik": .object([:])])
+    let budget = QuestionEvidenceAvailability(fields: ["chart": .object([:])])
     #expect(budget.showsChart)
 
     let current = QuestionEvidenceAvailability(fields: [
-        "presse": .array([.object(["title": .string("Mitteilung")])]),
+        "press_releases": .array([.object(["title": .string("Mitteilung")])]),
     ])
     #expect(current.showsPress)
 
     let session = QuestionEvidenceAvailability(fields: [
-        "sitzungen": .array([.object(["committee": .string("Rat")])]),
+        "sessions": .array([.object(["committee": .string("Rat")])]),
     ])
     #expect(session.showsSessions)
 }
@@ -819,7 +819,7 @@ private final class FeedbackURLProtocol: URLProtocol {
           "template_number": "26/0412",
           "is_public": 1,
           "summary": "Der Ausschuss berät zwei Varianten.",
-          "anlagen": [
+          "attachments": [
             {"label": "Lageplan Querungsstelle", "url": "https://buergerinfo.oldenburg.de/getfile.php?id=310001"},
             {"label": "Verkehrsgutachten", "url": "https://buergerinfo.oldenburg.de/getfile.php?id=310002"}
           ]
@@ -864,7 +864,7 @@ private final class FeedbackURLProtocol: URLProtocol {
               "nichtoeffentlich": false,
               "detail": "Neu auf die Tagesordnung gesetzt"
             }, {
-              "art": "anlagen",
+              "art": "attachments",
               "label": "Ö 4",
               "title": "Radverkehrskonzept",
               "nichtoeffentlich": 1,
