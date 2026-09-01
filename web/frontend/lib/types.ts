@@ -72,7 +72,7 @@ export interface DecisionLocationMatch {
   name: string;
   district: string;
   place_id?: string | null;
-  ortsbereich_id?: string | null;
+  local_area_id?: string | null;
   source: "title" | "official_text" | "template";
   evidence: string;
   method: string;
@@ -306,7 +306,7 @@ export interface EntityMapPoint {
   target?: "thema" | "ort" | "location";
   place_id?: string | null;
   location_slug?: string | null;
-  ortsbereich_id?: string | null;
+  local_area_id?: string | null;
 }
 
 export interface PlaceCandidateEvidence {
@@ -316,7 +316,7 @@ export interface PlaceCandidateEvidence {
 
 export interface PlaceCandidate {
   slug: string; name: string; kind: string; lat: number | null; lon: number | null;
-  district: string | null; ortsbereich_id: string | null;
+  district: string | null; local_area_id: string | null;
   status: "pending" | "concrete" | "approved" | "alias" | "rejected";
   decision_count: number; last_date: string; avg_confidence: number;
   review_place_id?: string | null; review_name?: string | null;

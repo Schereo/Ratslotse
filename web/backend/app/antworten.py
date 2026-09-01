@@ -712,7 +712,7 @@ class AdminPlaceCandidate(TypedDict):
     place_id: str | None
     # Deutscher Spaltenname aus `council_locations` — der Bestand trägt ihn
     # noch, deshalb steht er hier unverändert (kein stiller Umbenennen-Beifang).
-    ortsbereich_id: str | None
+    local_area_id: str | None
     geo_tried: int
     updated_at: str | None
     review_status: str | None

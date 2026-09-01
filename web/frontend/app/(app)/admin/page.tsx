@@ -920,7 +920,7 @@ function PlaceCandidateCard({ candidate, catalog, busy, onReview, onReopen }: {
   const [placeId, setPlaceId] = useState(candidate.review_place_id ?? candidate.slug);
   const [kind, setKind] = useState(
     candidate.status === "approved" ? candidate.review_kind ?? "neighborhood" : "neighborhood");
-  const [parentId, setParentId] = useState(candidate.parent_id ?? candidate.ortsbereich_id ?? "");
+  const [parentId, setParentId] = useState(candidate.parent_id ?? candidate.local_area_id ?? "");
   const [aliases, setAliases] = useState((candidate.aliases ?? []).join(", "));
   const [description, setDescription] = useState(candidate.description ?? "");
   const [sourceUrl, setSourceUrl] = useState(candidate.source_url ?? "");
