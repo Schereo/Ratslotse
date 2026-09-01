@@ -9967,17 +9967,42 @@ class CouncilStore:
 
     def set_location_geo(self, slug: str, lat: float | None, lon: float | None,
                          geojson: str | None) -> None:
+        """Koordinaten eines Ortes setzen — und den Stadtteil daraus ableiten.
+
+        Zwei Fälle, die vorher eine Zeile waren — und genau darin lag der Fehler:
+
+        * **Kein Ergebnis** (``lat is None``): Das Geocoding ist misslungen und
+          wird nur als „versucht" vermerkt. Ein Fehlschlag weiß nichts, also
+          darf er nichts wegnehmen. Vorher schrieb die Methode auch hier
+          ``district = NULL`` — auf dem Prod-Snapshot löschte der
+          Wiederholungslauf damit genau die Stadtteile wieder, die die
+          Namensregel zuvor gesetzt hatte („Oberschule Ofenerdiek").
+        * **Ergebnis außerhalb Oldenburgs**: Ein Treffer, der in keinem
+          Ortsbereich liegt, ist ein Beleg — der Ort gehört nicht hierher, und
+          ein alter Stadtteil an ihm wäre falsch. Der wird gelöscht.
+
+        Und der Stadtteil kommt aus der GEOMETRIE, wenn es eine gibt: Bei einer
+        Straße liegt der Bounding-Box-Mittelpunkt oft neben ihr.
+        """
         from council import geo, places
 
-        district = geo.ortsbereich_for(lat, lon) if lat is not None and lon is not None else None
-        primary = places.resolve(district)
+        hat_ergebnis = lat is not None and lon is not None
+        district = geo.ortsbereich_der_geometrie(geojson)
+        if not district and hat_ergebnis:
+            district = geo.ortsbereich_for(lat, lon)
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
         with self._conn:
-            self._conn.execute(
-                "UPDATE council_locations SET lat=?, lon=?, geojson=?, district=?, ortsbereich_id=?, "
-                "geo_tried=1, updated_at=? WHERE slug=?",
-                (lat, lon, geojson, district, primary.id if primary else None,
-                 datetime.now(timezone.utc).isoformat(timespec="seconds"), slug),
-            )
+            if district or hat_ergebnis:
+                primary = places.resolve(district) if district else None
+                self._conn.execute(
+                    "UPDATE council_locations SET lat=?, lon=?, geojson=?, district=?, "
+                    "ortsbereich_id=?, geo_tried=1, updated_at=? WHERE slug=?",
+                    (lat, lon, geojson, district, primary.id if primary else None, now, slug))
+            else:
+                # Fehlschlag: nur als versucht vermerken, Stadtteil unangetastet.
+                self._conn.execute(
+                    "UPDATE council_locations SET lat=NULL, lon=NULL, geojson=NULL, "
+                    "geo_tried=1, updated_at=? WHERE slug=?", (now, slug))
 
     def list_entities(self, limit: int = 300, kind: str = "") -> list[dict]:
         """Entities for the directory, most-referenced first — angereichert um

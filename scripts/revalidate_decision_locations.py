@@ -172,12 +172,14 @@ def main() -> int:
     args = ap.parse_args()
     stats = process(args.db, apply=args.apply)
     print("Ortslinks: " + ", ".join(f"{key}={stats[key]}" for key in
-          ("invalid_llm", "invalid_deterministic", "additions", "removed")))
+          ("invalid_llm", "invalid_deterministic", "beiwerk", "additions", "removed")))
     for row in stats["examples"]:
         print(f"  {row['decision_id']} | {row['name']} | {row['title']}")
     for row in stats["deterministic_examples"]:
         print(f"  deterministic | {row['decision_id']} | "
               f"{row['location_slug']} | {row['method']}")
+    for row in stats["beiwerk_examples"]:
+        print(f"  beiwerk | {row['decision_id']} | {row['name']} | {(row['title'] or '')[:70]}")
     return 0
 
 

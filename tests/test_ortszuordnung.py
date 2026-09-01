@@ -209,6 +209,76 @@ def test_gattungsbegriff_auch_ueber_das_modell_gesperrt():
         "Gemeindestraße", "street", "Ausbau der Gemeindestraße")
 
 
+def test_gescheitertes_geocoding_loescht_keinen_stadtteil(tmp_path):
+    """Der Fehler, den erst der Prod-Test zeigte.
+
+    ``set_location_geo(slug, None, None, None)`` vermerkt nur „versucht" — und
+    schrieb dabei bedingungslos ``district = NULL``. Der Wiederholungslauf
+    löschte damit genau die Stadtteile wieder, die die Namensregel kurz zuvor
+    gesetzt hatte: „Oberschule Ofenerdiek" stand danach wieder ohne.
+    """
+    store = CouncilStore(tmp_path / "c.sqlite")
+    try:
+        with store._conn:
+            store._conn.execute(
+                "INSERT INTO council_locations (slug,name,kind,updated_at) "
+                "VALUES ('s','Oberschule Ofenerdiek','building','2026-09-01')")
+        assert store.backfill_location_districts_from_name() == 1
+        store.set_location_geo("s", None, None, None)      # Geocoding misslingt
+        row = store._conn.execute(
+            "SELECT district, ortsbereich_id, geo_tried FROM council_locations "
+            "WHERE slug='s'").fetchone()
+        assert row["district"] == "Ofenerdiek", "der Fehlschlag hat den Stadtteil gelöscht"
+        assert row["ortsbereich_id"] == "ofenerdiek"
+        assert row["geo_tried"] == 1        # als versucht vermerkt ist er trotzdem
+    finally:
+        store.close()
+
+
+def test_treffer_ausserhalb_oldenburgs_loescht_den_stadtteil(tmp_path):
+    """Die Gegenprobe — und die Grenze der Regel darüber.
+
+    Ein Fehlschlag weiß nichts und darf nichts wegnehmen. Ein Treffer, der in
+    keinem Ortsbereich liegt, weiß dagegen etwas: Der Ort gehört nicht hierher.
+    Beides in einer Zeile zu behandeln war der Fehler; ein Bestandstest
+    (``test_location_storage_replaces_per_decision…``) hat ihn gefangen.
+    """
+    store = CouncilStore(tmp_path / "c.sqlite")
+    try:
+        with store._conn:
+            store._conn.execute(
+                "INSERT INTO council_locations (slug,name,kind,updated_at) "
+                "VALUES ('j','Junkerstraße','street','2026-09-01')")
+        store.set_location_geo("j", 53.14, 8.21, None)          # in Oldenburg
+        assert store._conn.execute(
+            "SELECT district FROM council_locations WHERE slug='j'").fetchone()["district"]
+        store.set_location_geo("j", 52.3759, 9.7320, None)      # Hannover
+        assert store._conn.execute(
+            "SELECT district FROM council_locations WHERE slug='j'").fetchone()["district"] is None
+    finally:
+        store.close()
+
+
+def test_set_location_geo_nimmt_den_verlauf_der_strasse(tmp_path):
+    """Auch beim Setzen gilt: Geometrie schlägt Bounding-Box-Mittelpunkt."""
+    store = CouncilStore(tmp_path / "c.sqlite")
+    try:
+        with store._conn:
+            store._conn.execute(
+                "INSERT INTO council_locations (slug,name,kind,updated_at) "
+                "VALUES ('w','Testweg','street','2026-09-01')")
+        mitte = geo.ortsbereich_center("Ohmstede")
+        linie = json.dumps({"type": "LineString", "coordinates": [
+            [mitte[1], mitte[0]], [mitte[1] + 0.003, mitte[0] + 0.003]]})
+        # lat/lon absichtlich in der Nordsee — nur die Geometrie kann tragen.
+        store.set_location_geo("w", 53.9, 8.0, linie)
+        row = store._conn.execute(
+            "SELECT district FROM council_locations WHERE slug='w'").fetchone()
+        assert row["district"] == "Ohmstede"
+    finally:
+        store.close()
+
+
 def test_gescheiterte_geocodings_lassen_sich_wiederholen(tmp_path):
     """Ohne diesen Weg blieben 706 Orte für immer liegen — ``locations_to_geocode``
     nahm nur ``geo_tried = 0``, und Overpass antwortet nicht jeden Tag gleich."""
