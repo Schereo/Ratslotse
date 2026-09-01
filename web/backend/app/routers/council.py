@@ -43,15 +43,18 @@ from ..antworten import (AnalysisData, BudgetAmendmentLists, BudgetAuditReports,
                          BudgetHoldings, BudgetInvestmentProgram, BudgetInvestments,
                          BudgetOverview, BudgetPath, BudgetProducts, BudgetStaffPlan, Committees,
                          ConversationDetail, ConversationList, ConversationSetting,
-                         ConversationsDeleted, CouncilMembers, CouncilRecess, DecisionDetail,
-                         DecisionList, DiscoveryOfTheDay, Districts, Entities, EntitiesMap,
-                         EntityDetail, Finances, GoalDetail, Goals, NumberOfTheWeek, Ok,
+                         ConversationsDeleted, CouncilMembers, CouncilRecess, CouncilWeekPreview,
+                         DecisionDetail, DecisionList, DiscoveryOfTheDay, Districts, Entities,
+                         EntitiesMap, EntityDetail, EventStreamResponse, Finances, GoalDetail,
+                         Goals, JpegResponse, NumberOfTheWeek, Ok,
                          PartyFilter, PartyOpinions, PeopleDirectory, PersonDetail, PlaceCatalog,
-                         PlaceDetail, PolicyFieldRecaps, PolicyFields, PublicNumbers, QaExamples,
+                         PlaceDetail, PLANZEICHNUNG_JPEG, PolicyFieldRecaps, PolicyFields,
+                         PublicNumbers, QaExamples,
                          QaShare, QaShareToken, ResearchCurrent, ResearchSnapshot, ResearchStarted,
                          ResearchStopped, SessionDetail, SessionList, SharePreview, Speeches,
+                         SSE_FRAGE, SSE_RECHERCHE,
                          TemplateFollowed, TemplateFollows, TemplateUnfollowed, ThisWeek,
-                         TodayBriefing, TrendData, WeekPreviewInternal)
+                         TodayBriefing, TrendData)
 from ..deps import get_council_store, get_store, optional_user, require_active
 from ..ratelimit import (
     partei_meinungen_limiter,
@@ -367,7 +370,7 @@ def wochenvorschau(
     user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
     ratslotse: Store = Depends(get_store),
-) -> WeekPreviewInternal:
+) -> CouncilWeekPreview:
     """„Die Woche im Rat" (Design 14, davor 11d/12) — als VORSCHAU auf die
     kommenden Sitzungen, nicht als Rückblick auf Beschlüsse.
 
@@ -2334,7 +2337,8 @@ def deep_research_snapshot(job_id: str, user: dict = Depends(require_active),
     return row
 
 
-@router.get("/deep-research/{job_id}/events")
+@router.get("/deep-research/{job_id}/events", response_class=EventStreamResponse,
+            responses=SSE_RECHERCHE)
 def deep_research_events(job_id: str, ab: int = Query(default=0, ge=0),
                          user: dict = Depends(require_active),
                          ratslotse: Store = Depends(get_store)) -> StreamingResponse:
@@ -2413,7 +2417,8 @@ def qa_beispiele(store: CouncilStore = Depends(get_council_store)) -> QaExamples
     return {"sessions": store.juengste_sitzungen_mit_beschluessen(limit=2)}
 
 
-@router.get("/plan-bild/{document_id}")
+@router.get("/plan-bild/{document_id}", response_class=JpegResponse,
+            responses=PLANZEICHNUNG_JPEG)
 def plan_bild(document_id: int, thumb: bool = False) -> FileResponse:
     """Gerenderte Planzeichnung einer Anlage (P1) — öffentlich wie die
     Beschluss-Seite selbst; das PDF dahinter ist ohnehin frei abrufbar.
@@ -3022,7 +3027,7 @@ def _turn_speichern(ratslotse: Store, user: dict, body: AskBody, q_suche: str,
         return None
 
 
-@router.post("/ask")
+@router.post("/ask", response_class=EventStreamResponse, responses=SSE_FRAGE)
 def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
         store: CouncilStore = Depends(get_council_store),
         ratslotse: Store = Depends(get_store)) -> StreamingResponse:
