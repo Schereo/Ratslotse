@@ -282,7 +282,7 @@ def test_die_beschriftung_wird_gegen_tabelle_1104_geprueft():
     result = stt.lies_1103(PDF_1103, IST_REIHE)
     assert result["years"] == [2023, 2024, 2025]
     assert result["verworfen"] == []
-    assert "steuerplan_istabgleich" in result["probes"]
+    assert "tax_budget_actuals_match" in result["probes"]
 
 
 def test_ein_jahresversatz_wuerde_auffallen():
@@ -530,7 +530,7 @@ def test_ein_zweiter_lauf_wirft_aeltere_jahrgaenge_nicht_weg(tmp_path):
     store = CouncilStore(tmp_path / "council.sqlite")
     try:
         h = herkunft.Herkunft(kind="city", url=stt.TABELLE_1103_URL,
-                              probe=["steuerplan_summenzeile"])
+                              probe=["tax_budget_total_row"])
         store.save_steuerplan(
             stt.lies_1103(PDF_1103_AUSGABE_2024, IST_REIHE)["zeilen"], h)
         store.save_steuerplan(stt.lies_1103(PDF_1103, IST_REIHE)["zeilen"], h)

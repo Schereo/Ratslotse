@@ -410,14 +410,47 @@ type LlmUsage = {
   budget_monthly: number; budget_pct: number; budget_level: "ok" | "warn" | "over";
 };
 
+/** Die Namen der LLM-Aufrufe, wie `llm_usage.feature` sie zählt — hier auf
+ *  Deutsch für die Kostentabelle. Der Schlüssel ist der gespeicherte Wert.
+ *
+ *  Die Liste war lange unvollständig, und ein fehlender Eintrag fiel nicht
+ *  auf, solange der Rückfall den deutschen Schlüssel zeigte. Seit die Werte
+ *  englisch sind, stünde dort `attachment_ocr` — deshalb jetzt vollständig.
+ *  Wer ein neues `_feature=` einführt, trägt es hier ein. */
 const FEATURE_LABELS: Record<string, string> = {
-  protokoll_extraktion: "Protokoll-Extraktion",
-  themen_klassifikation: "Themenfeld-Klassifikation",
-  ziel_bewertung: "Ziel-Bewertung",
-  entitaeten_ner: "Entitäten-Erkennung",
-  entitaeten_beschreibung: "Themen-Beschreibungen",
+  attachment_ocr: "Anlagen-Texterkennung",
+  committee_summary: "Ausschuss-Zusammenfassung",
+  daily_find_story: "Fundstück des Tages",
+  decision_places: "Orte eines Beschlusses",
+  deep_decomposition: "Gründliche Recherche — Zerlegung",
+  deep_report: "Gründliche Recherche — Bericht",
+  entity_description: "Themen-Beschreibungen",
+  entity_duplicates: "Entitäten-Dubletten",
+  entity_ner: "Entitäten-Erkennung",
+  exp_session_classification: "Experiment: Sitzungs-Klassifikation",
+  field_recap: "Themenfeld-Rückblick",
+  goal_rating: "Ziel-Bewertung",
+  impact_rating: "Tragweite eines Beschlusses",
+  impact_rating_agenda: "Tragweite eines Tagesordnungspunkts",
+  interest_rating: "Gesprächswert",
+  livestream_transcript: "Livestream-Transkript",
+  minutes_extraction: "Protokoll-Extraktion",
+  party_opinions: "Haltungen der Fraktionen",
+  qa_analysis: "Frag den Rat — Analyse",
+  qa_answer: "Frag den Rat — Antwort",
   qa_query_expansion: "Frag den Rat — Suchbegriffe",
-  qa_antwort: "Frag den Rat — Antwort",
+  qa_simple: "Frag den Rat — einfach erklärt",
+  quality_judge: "Eval: Qualitätsurteil",
+  quiz_generation: "Quiz-Fragen erzeugen",
+  quiz_verify: "Quiz-Fragen prüfen",
+  simple_summary: "Lotti erklärt's einfach",
+  social_card_text: "Social-Kartentext",
+  social_critic: "Social-Kritiker",
+  speeches: "Wortbeiträge",
+  topic_auto_description: "Themen-Beschreibung (automatisch)",
+  topic_classification: "Themenfeld-Klassifikation",
+  vagueness_check: "Themen-Vagheitsprüfung",
+  video_results: "Abstimmungsergebnisse aus dem Video",
 };
 
 const BUDGET_TONE: Record<LlmUsage["budget_level"], { dot: string; text: string; bar: string; ring: string }> = {
@@ -760,7 +793,7 @@ function UserDetailPanel({ userId, isSelf, onClose }: { userId: number; isSelf: 
     onError: () => toast.error("Status konnte nicht geändert werden."),
   });
   const limitsMutation = useMutation({
-    mutationFn: (limits: { deep_limit: number | null; limits_frei: boolean }) =>
+    mutationFn: (limits: { deep_limit: number | null; limits_unlocked: boolean }) =>
       api.put(`/admin/users/${userId}/limits`, limits),
     onSuccess: () => { toast.success("Limits aktualisiert."); invalidate(); },
     onError: () => toast.error("Limits konnten nicht gespeichert werden."),
@@ -845,13 +878,13 @@ function UserDetailPanel({ userId, isSelf, onClose }: { userId: number; isSelf: 
       <StatKickerSpaced>Angelegt</StatKickerSpaced>
       <div className="mt-2 flex flex-col gap-1.5">
         <DetailRow label={`${data.topics.length} ${data.topics.length === 1 ? "Thema" : "Themen"}`} value={data.topics.slice(0, 4).join(", ") || "—"} />
-        <DetailRow label={`${data.abos.length} Ausschuss-${data.abos.length === 1 ? "Abo" : "Abos"}`} value={data.abos.slice(0, 4).join(", ") || "—"} />
+        <DetailRow label={`${data.subscriptions.length} Ausschuss-${data.subscriptions.length === 1 ? "Abo" : "Abos"}`} value={data.subscriptions.slice(0, 4).join(", ") || "—"} />
         <DetailRow label="Zustellung" value={data.delivery_channel === "both" ? "Push + E-Mail" : data.delivery_channel === "push" ? "Push" : data.delivery_channel === "off" ? "Aus" : "E-Mail"} />
-        <DetailRow label="Gespräche speichern" value={data.qa_speichern === 1 ? "An" : data.qa_speichern === 0 ? "Bewusst aus" : "Nie gefragt"} />
+        <DetailRow label="Gespräche speichern" value={data.saves_conversations === 1 ? "An" : data.saves_conversations === 0 ? "Bewusst aus" : "Nie gefragt"} />
       </div>
 
       <StatKickerSpaced>Aktivität (30 Tage)</StatKickerSpaced>
-      <MiniBars values={data.verlauf} days={data.verlauf_days} height={38} highlightLast={false} className="mt-2" />
+      <MiniBars values={data.history} days={data.history_days} height={38} highlightLast={false} className="mt-2" />
 
       {!isSelf && (
         <div className="mt-4 flex gap-2 border-t border-border pt-4">
@@ -887,20 +920,20 @@ function UserDetailPanel({ userId, isSelf, onClose }: { userId: number; isSelf: 
             const roh = (el?.value ?? "").trim();
             const value = roh === "" ? null : Math.max(0, Math.min(999, Number(roh)));
             if (value !== null && Number.isNaN(value)) return;
-            limitsMutation.mutate({ deep_limit: value, limits_frei: data.limits_frei });
+            limitsMutation.mutate({ deep_limit: value, limits_unlocked: data.limits_unlocked });
           }}>
           Speichern
         </Button>
         <Button variant="secondary" size="sm"
-          onClick={() => limitsMutation.mutate({ deep_limit: data.deep_limit, limits_frei: !data.limits_frei })}>
-          {data.limits_frei ? "Rate-Limits wieder an" : "Rate-Limits aus"}
+          onClick={() => limitsMutation.mutate({ deep_limit: data.deep_limit, limits_unlocked: !data.limits_unlocked })}>
+          {data.limits_unlocked ? "Rate-Limits wieder an" : "Rate-Limits aus"}
         </Button>
       </div>
       <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground/70">
         {data.deep_limit === 0 ? "Recherche: unbegrenzt." : data.deep_limit != null
           ? `Recherche: ${data.deep_limit}/Tag.` : "Recherche: Standard (5/Tag)."}
         {" "}0 = unbegrenzt, leer = Standard.
-        {data.limits_frei && " · Rate-Limits (schnelle Frage, Parteien, Teilen) sind für dieses Konto AUS."}
+        {data.limits_unlocked && " · Rate-Limits (schnelle Frage, Parteien, Teilen) sind für dieses Konto AUS."}
       </p>
       <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground/70">
         Alles server-aggregiert & nur für Admins; nur eigene App-Aktivität, keine Dritt-Analytics.
@@ -952,16 +985,16 @@ function QuizModerationTab() {
   if (isError) return <ErrorState title="Die Bewertungen kamen nicht durch" onRetry={() => void refetch()} busy={isFetching} />;
   const flagged = data?.flagged ?? [];
   const stats = statsQuery.data;
-  const low = stats?.gebiete_niedrig ?? [];
+  const low = stats?.weak_categories ?? [];
 
   return (
     <div className="space-y-5">
       {/* Kennzahlen (21a). */}
       {stats && (
         <div className="grid grid-cols-3 gap-3">
-          <Card className="p-3.5"><p className="font-display text-xl font-extrabold leading-none tabular-nums">{stats.fragen_aktiv.toLocaleString("de-DE")}</p><p className="mt-1 text-[11px] text-muted-foreground">Fragen aktiv</p></Card>
+          <Card className="p-3.5"><p className="font-display text-xl font-extrabold leading-none tabular-nums">{stats.questions_active.toLocaleString("de-DE")}</p><p className="mt-1 text-[11px] text-muted-foreground">Fragen aktiv</p></Card>
           <Card className="p-3.5"><p className="font-display text-xl font-extrabold leading-none tabular-nums">{stats.avg_accuracy} %</p><p className="mt-1 text-[11px] text-muted-foreground">⌀ Trefferquote</p></Card>
-          <Card className="p-3.5"><p className="font-display text-xl font-extrabold leading-none tabular-nums">{stats.gemeldet}</p><p className="mt-1 text-[11px] text-muted-foreground">gemeldet 👎</p></Card>
+          <Card className="p-3.5"><p className="font-display text-xl font-extrabold leading-none tabular-nums">{stats.reported}</p><p className="mt-1 text-[11px] text-muted-foreground">gemeldet 👎</p></Card>
         </div>
       )}
 
@@ -1036,7 +1069,7 @@ function PlaceCandidateCard({ candidate, catalog, busy, onReview, onReopen }: {
   const [name, setName] = useState(candidate.review_name ?? candidate.name);
   const [placeId, setPlaceId] = useState(candidate.review_place_id ?? candidate.slug);
   const [kind, setKind] = useState(
-    candidate.status === "approved" ? candidate.review_kind ?? "quartier" : "quartier");
+    candidate.status === "approved" ? candidate.review_kind ?? "neighborhood" : "neighborhood");
   const [parentId, setParentId] = useState(candidate.parent_id ?? candidate.ortsbereich_id ?? "");
   const [aliases, setAliases] = useState((candidate.aliases ?? []).join(", "));
   const [description, setDescription] = useState(candidate.description ?? "");
@@ -1049,9 +1082,9 @@ function PlaceCandidateCard({ candidate, catalog, busy, onReview, onReopen }: {
       ? candidate.kind as typeof concretePlaceKinds[number][0]
       : "street";
   const [concreteKind, setConcreteKind] = useState(initialConcreteKind);
-  const primaries = catalog.places.filter((p) => p.kind === "ortsbereich");
+  const primaries = catalog.places.filter((p) => p.kind === "local_area");
   const targets = catalog.places.filter((p) => p.id !== placeId);
-  const kinds = Object.entries(catalog.kinds).filter(([key]) => key !== "ortsbereich");
+  const kinds = Object.entries(catalog.kinds).filter(([key]) => key !== "local_area");
   const payload = {
     place_id: placeId, name, kind, parent_id: parentId || null,
     aliases: aliases.split(",").map((value) => value.trim()).filter(Boolean),

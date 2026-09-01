@@ -40,7 +40,7 @@ function RelatedThemes({ related }: { related: RelatedEntity[] }) {
         </h2>
         <div className="mt-2 flex flex-wrap gap-1.5">
           {items.map((r) => {
-            const k = ENTITY_KIND[r.kind] ?? ENTITY_KIND.projekt;
+            const k = ENTITY_KIND[r.kind] ?? ENTITY_KIND.project;
             return (
               <Link
                 key={r.slug}
@@ -83,7 +83,7 @@ function EntityInner() {
 
   if (loading) return <DetailSkeleton />;
   if (!data) notFound();
-  const k = ENTITY_KIND[data.entity.kind] ?? ENTITY_KIND.projekt;
+  const k = ENTITY_KIND[data.entity.kind] ?? ENTITY_KIND.project;
   return (
     <div className="mx-auto max-w-3xl">
       <div className="print-hidden flex items-center justify-between gap-3">

@@ -503,7 +503,7 @@ def test_jeder_jahreswert_traegt_sein_eigenes_jahr(realsteuer):
 
 # --- Speichern --------------------------------------------------------------
 
-def _herkunft(probe="lsn_zweijahresueberlappung") -> herkunft.Herkunft:
+def _herkunft(probe="lsn_two_year_overlap") -> herkunft.Herkunft:
     return herkunft.Herkunft(
         kind="lsn", probe=probe, label="Kommunaler Finanzausgleich 2026",
         url="https://example.org/kfa2026.xlsx",
@@ -514,8 +514,8 @@ def _herkunft(probe="lsn_zweijahresueberlappung") -> herkunft.Herkunft:
 def test_lsn_ist_eine_bekannte_quellenart():
     """Ohne den Eintrag ließe sich die Herkunft gar nicht bauen."""
     assert "lsn" in herkunft.ARTEN
-    for name in ("lsn_zweijahresueberlappung", "lsn_hebesatzprobe",
-                 "lsn_dreijahresmittel"):
+    for name in ("lsn_two_year_overlap", "lsn_assessment_rate_check",
+                 "lsn_three_year_average"):
         assert name in herkunft.PROBEN
         assert herkunft.PROBEN[name].endswith(".")
 
@@ -547,16 +547,16 @@ def test_erneutes_speichern_ersetzt_nur_die_eigene_reihe(tmp_path, kfa2026, real
         store.save_staedtevergleich(
             "tax_capacity", sv.zeilen_steuerkraft(sv.lies_kfa(kfa2026)), _herkunft())
         zeilen, _ = sv.zeilen_realsteuern(sv.lies_realsteuervergleich(realsteuer))
-        store.save_staedtevergleich("realsteuern", zeilen,
-                                    _herkunft(probe="lsn_hebesatzprobe"))
+        store.save_staedtevergleich("real_taxes", zeilen,
+                                    _herkunft(probe="lsn_assessment_rate_check"))
         assert len(store.get_staedtevergleich("tax_capacity")) == 16
 
         # Steuerkraft erneut — die Realsteuern bleiben unangetastet.
-        vorher = len(store.get_staedtevergleich("realsteuern"))
+        vorher = len(store.get_staedtevergleich("real_taxes"))
         store.save_staedtevergleich(
             "tax_capacity", sv.zeilen_steuerkraft(sv.lies_kfa(kfa2026)), _herkunft())
         assert len(store.get_staedtevergleich("tax_capacity")) == 16
-        assert len(store.get_staedtevergleich("realsteuern")) == vorher
+        assert len(store.get_staedtevergleich("real_taxes")) == vorher
         assert len(store.get_staedtevergleich()) == 16 + vorher
     finally:
         store.close()
@@ -585,21 +585,21 @@ def test_endpunkt_liefert_werte_und_den_beleg(tmp_path, kfa2026):
             "tax_capacity", sv.zeilen_steuerkraft(sv.lies_kfa(kfa2026)), _herkunft())
         answer = haushalt_vergleich(_user=None, store=store)
 
-        assert len(answer["staedte"]) == 8
-        oldenburg = next(s for s in answer["staedte"] if s["ist_oldenburg"])
+        assert len(answer["cities"]) == 8
+        oldenburg = next(s for s in answer["cities"] if s["is_oldenburg"])
         assert oldenburg["name"] == "Oldenburg"
-        assert oldenburg["unter_100k"] is False
-        assert next(s for s in answer["staedte"]
-                    if s["name"] == "Delmenhorst")["unter_100k"] is True
+        assert oldenburg["below_100k"] is False
+        assert next(s for s in answer["cities"]
+                    if s["name"] == "Delmenhorst")["below_100k"] is True
 
         assert answer["years"]["tax_capacity"] == [2026]
-        assert len(answer["werte"]) == 16
+        assert len(answer["values"]) == 16
         assert answer["herkunft"]
 
         # Ohne Vorlagen-Bestand bleibt der Beleg leer — aber er ist da, und
         # die Vorlagennummer steht drin.
-        assert answer["beleg"]["template_number"] == VERGLEICH_BELEG_VORLAGE
-        assert "17170" in answer["beleg"]["vorlage_url"]
-        assert answer["beleg"]["decision_id"] is None
+        assert answer["citation"]["template_number"] == VERGLEICH_BELEG_VORLAGE
+        assert "17170" in answer["citation"]["template_url"]
+        assert answer["citation"]["decision_id"] is None
     finally:
         store.close()

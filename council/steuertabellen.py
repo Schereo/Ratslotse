@@ -452,18 +452,18 @@ def lies_1103(text: str, ist_reihe: dict[int, dict[str, float]]) -> dict:
                     "gebaut als bisher."
                     + (f" Nicht zugeordnet: {gelesen['unbekannt']}."
                        if gelesen["unbekannt"] else ""))}
-    probes.append("steuerplan_summenzeile")
+    probes.append("tax_budget_total_row")
 
     if anteilsprobe(gelesen):
         return {"zeilen": [], "years": [], "verworfen": [], "probes": probes,
                 "spanne": gelesen["spanne"], "unbekannt": gelesen["unbekannt"],
                 "abbruch": "Die Anteilsprobe reißt: Ein Betrag steht neben "
                            "einem Prozentsatz, der nicht zu ihm gehört."}
-    probes.append("steuerplan_anteilsprobe")
+    probes.append("tax_budget_share_check")
 
     abgleich = istabgleich(gelesen, ist_reihe)
     if abgleich["bestanden"]:
-        probes.append("steuerplan_istabgleich")
+        probes.append("tax_budget_actuals_match")
 
     zeilen: list[dict] = []
     for art, je_jahr in gelesen["zeilen"].items():
@@ -656,7 +656,7 @@ def lies_1105(text: str, grundsteuer_ist: dict[int, float]) -> dict:
         return {"zeilen": [], "probes": probes, "sprungjahre": {"bestanden": [], "gerissen": [], "nicht_pruefbar": []},
                 "abbruch": f"Der Titel nennt „seit {start}“, die erste Zeile "
                            f"ist aber {roh[0]['year']}."}
-    probes.append("hebesatz_spaltenkopf")
+    probes.append("assessment_rate_column_header")
 
     doppelt = treppenprobe(roh)
     if doppelt:
@@ -664,7 +664,7 @@ def lies_1105(text: str, grundsteuer_ist: dict[int, float]) -> dict:
                 "abbruch": "Die Tabelle führt nach eigener Fußnote nur "
                            "Änderungsjahre, aber diese ändern nichts: "
                            f"{doppelt}."}
-    probes.append("hebesatz_treppe")
+    probes.append("assessment_rate_change_years")
 
     sprung = sprungjahrprobe(roh, grundsteuer_ist)
     if sprung["gerissen"]:
@@ -676,7 +676,7 @@ def lies_1105(text: str, grundsteuer_ist: dict[int, float]) -> dict:
                     "Das ist genau das Muster eines Jahresversatzes (vgl. "
                     "Datensatz 1106) — es wird nichts übernommen.")}
     if sprung["bestanden"]:
-        probes.append("hebesatz_sprungjahr")
+        probes.append("assessment_rate_step_year")
 
     zeilen: list[dict] = []
     for i, eintrag in enumerate(roh):
@@ -695,12 +695,12 @@ def lies_1105(text: str, grundsteuer_ist: dict[int, float]) -> dict:
 
 #: Kurznamen der Proben — für den Herkunftsnachweis, der neben der Zahl steht.
 PROBEN_KURZ: dict[str, str] = {
-    "steuerplan_summenzeile": "Summenzeile",
-    "steuerplan_anteilsprobe": "Anteilsspalten",
-    "steuerplan_istabgleich": "Abgleich mit Tabelle 1104",
-    "hebesatz_spaltenkopf": "Spaltenkopf",
-    "hebesatz_treppe": "nur Änderungsjahre",
-    "hebesatz_sprungjahr": "Sprungjahr gegen das Aufkommen",
+    "tax_budget_total_row": "Summenzeile",
+    "tax_budget_share_check": "Anteilsspalten",
+    "tax_budget_actuals_match": "Abgleich mit Tabelle 1104",
+    "assessment_rate_column_header": "Spaltenkopf",
+    "assessment_rate_change_years": "nur Änderungsjahre",
+    "assessment_rate_step_year": "Sprungjahr gegen das Aufkommen",
 }
 
 

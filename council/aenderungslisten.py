@@ -997,8 +997,8 @@ def lies_ehh_liste(pdf_bytes: bytes) -> Ergebnis:
 def herkunft_fuer(label: str, url: str | None, document_id: int) -> Herkunft:
     return Herkunft(
         kind="ris",
-        probe=("aenderungsliste_summen", "aenderungsliste_positionen",
-               "aenderungsliste_erlaeuterungen", "aenderungsliste_urheber"),
+        probe=("amendment_list_totals", "amendment_list_items",
+               "amendment_list_explanations", "amendment_list_proposers"),
         label=label,
         url=url or f"https://buergerinfo.oldenburg.de/getfile.php?id={document_id}&type=do",
         document_id=document_id,

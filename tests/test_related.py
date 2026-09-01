@@ -10,7 +10,7 @@ from council.store import CouncilStore
 
 
 def _entities(*names) -> list[dict]:
-    return [{"id": i, "slug": n.lower().replace(" ", "-"), "name": n, "kind": "ort", "n": 0}
+    return [{"id": i, "slug": n.lower().replace(" ", "-"), "name": n, "kind": "place", "n": 0}
             for i, n in enumerate(names, start=1)]
 
 
@@ -119,9 +119,9 @@ def test_store_roundtrip(tmp_path):
     store = CouncilStore(tmp_path / "council.sqlite")
     store._conn.executemany(
         "INSERT INTO council_entities(id, slug, name, kind, n) VALUES (?,?,?,?,?)",
-        [(1, "fliegerhorst", "Fliegerhorst", "ort", 158),
-         (2, "entlastungsstrasse", "Entlastungsstraße", "ort", 40),
-         (3, "brookweg", "Brookweg", "ort", 5)])
+        [(1, "fliegerhorst", "Fliegerhorst", "place", 158),
+         (2, "entlastungsstrasse", "Entlastungsstraße", "place", 40),
+         (3, "brookweg", "Brookweg", "place", 5)])
     store._conn.commit()
     store.save_entity_relations([
         ("fliegerhorst", "entlastungsstrasse", "documented", 0, 0.31, 15),
@@ -143,16 +143,16 @@ def test_related_ueberlebt_entity_rebuild(tmp_path):
     store = CouncilStore(tmp_path / "council.sqlite")
     store._conn.executemany(
         "INSERT INTO council_entities(id, slug, name, kind, n) VALUES (?,?,?,?,?)",
-        [(1, "fliegerhorst", "Fliegerhorst", "ort", 158),
-         (2, "entlastungsstrasse", "Entlastungsstraße", "ort", 40)])
+        [(1, "fliegerhorst", "Fliegerhorst", "place", 158),
+         (2, "entlastungsstrasse", "Entlastungsstraße", "place", 40)])
     store._conn.commit()
     store.save_entity_relations([("fliegerhorst", "entlastungsstrasse", "documented", 0, 0.31, 15)])
     # extract_entities.py leert und füllt die Tabelle neu — mit anderen IDs.
     store._conn.execute("DELETE FROM council_entities")
     store._conn.executemany(
         "INSERT INTO council_entities(id, slug, name, kind, n) VALUES (?,?,?,?,?)",
-        [(77, "fliegerhorst", "Fliegerhorst", "ort", 160),
-         (88, "entlastungsstrasse", "Entlastungsstraße", "ort", 41)])
+        [(77, "fliegerhorst", "Fliegerhorst", "place", 160),
+         (88, "entlastungsstrasse", "Entlastungsstraße", "place", 41)])
     store._conn.commit()
     assert [r["name"] for r in store.related_entities("fliegerhorst")] == ["Entlastungsstraße"]
     store.close()

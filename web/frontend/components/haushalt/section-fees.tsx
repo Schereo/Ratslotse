@@ -58,12 +58,12 @@ export type GebuehrenDaten = HaushaltAuswahl<
 
 /** Was der Bereich macht — eine Zeile, damit die Zahl einen Gegenstand hat. */
 const WAS_ES_IST: Record<string, string> = {
-  abfallbehandlung:
+  waste_treatment:
     "Was mit Rest- und Bioabfall passiert, nachdem er abgeholt wurde: "
     + "Behandlung, Verwertung, Deponienachsorge.",
-  abfallsammlung:
+  waste_collection:
     "Das Abholen selbst — Tonnen, Sperrmüll, Grüngut, Wertstoffberatung.",
-  strassenreinigung:
+  street_cleaning:
     "Kehren, Winterdienst und Reinigung der öffentlichen Straßen.",
 };
 
@@ -262,7 +262,7 @@ export function GebuehrenAbschnitt({ data, loading }: {
     }
     // Feste Reihenfolge: erst das Abholen, dann die Behandlung, dann die
     // Straße — so, wie der Abfall den Weg nimmt.
-    const ordnung = ["abfallsammlung", "abfallbehandlung", "strassenreinigung"];
+    const ordnung = ["waste_collection", "waste_treatment", "street_cleaning"];
     return [...gruppen.entries()]
       .sort((a, b) => ordnung.indexOf(a[0]) - ordnung.indexOf(b[0]))
       .map(([, v]) => v);

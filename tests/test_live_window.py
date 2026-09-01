@@ -174,7 +174,7 @@ def test_heute_briefing_kennt_den_ganzen_tag(store):
     ]
     # Die TOPs gehören jeweils zur eigenen Sitzung, nicht pauschal zur ersten.
     assert daten["sessions"][2]["tops"] == ["Haushaltssatzung 2027", "Neubau der Kita Bloherfelde"]
-    assert daten["sessions"][2]["rest"] == 1
+    assert daten["sessions"][2]["remaining"] == 1
     assert daten["sessions"][1]["tops"] == []          # nur ein Kalendertermin
     # Die Kopf-Felder bleiben bei der ersten Sitzung — ältere App-Installationen
     # lesen sie unverändert weiter.

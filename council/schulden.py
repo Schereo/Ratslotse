@@ -292,8 +292,8 @@ def lies(text: str, population: dict[int, int] | None = None) -> dict:
             kopf_ok += bool(k_ok)
             kopf_gerissen += not k_ok
 
-        bestanden = [n for n, ok in (("schulden_summenzeile", s_ok),
-                                     ("schulden_prokopf", k_ok)) if ok]
+        bestanden = [n for n, ok in (("debt_total_row", s_ok),
+                                     ("debt_per_capita", k_ok)) if ok]
         if not bestanden:
             reason = (f"Summenprobe um {deviation:+,.0f} € gerissen"
                      if not s_ok else "Summenprobe gerissen")

@@ -184,9 +184,9 @@ import Testing
     let json = #"""
     {
       "found": true,
-      "von": "2026-08-28",
-      "bis": "2026-09-04",
-      "sitzungen": [{
+      "from_date": "2026-08-28",
+      "to_date": "2026-09-04",
+      "sessions": [{
         "ksinr": 88,
         "committee": "Ausschuss für Stadtplanung und Bauen",
         "session_date": "2026-08-31",
@@ -194,7 +194,7 @@ import Testing
         "location": "Altes Rathaus",
         "n_items": 14
       }],
-      "punkte": [{
+      "items": [{
         "ksinr": 88,
         "item_number": "Ö 6",
         "title": "Bebauungsplan 851 – Satzungsbeschluss",
@@ -207,8 +207,8 @@ import Testing
         "wichtig_grund": "Legt langfristig fest, was gebaut werden darf.",
         "top": true
       }],
-      "relevant_je_sitzung": {"88": 3},
-      "weitere_je_sitzung": {"88": [{
+      "relevant_per_session": {"88": 3},
+      "further_per_session": {"88": [{
         "ksinr": 88,
         "item_number": "Ö 7",
         "title": "Quartier am Krusenbusch",
@@ -220,10 +220,10 @@ import Testing
         "topic_name": null,
         "wichtig_grund": null
       }]},
-      "treffer_je_sitzung": {"88": 1},
-      "treffer_gesamt": 1,
-      "inhaltlich_gesamt": 11,
-      "inhaltlich_je_sitzung": {"88": 8}
+      "matches_per_session": {"88": 1},
+      "matches_total": 1,
+      "substantive_total": 11,
+      "substantive_per_session": {"88": 8}
     }
     """#
 

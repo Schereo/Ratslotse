@@ -677,10 +677,10 @@ def zeilen_realsteuern(budget_year: Realsteuerjahrgang) -> tuple[list[dict], lis
         probe = probe_hebesatz(eintrag)
         if not probe["ok"]:
             verworfen.append({"key": key, "city": KREISFREIE_STAEDTE[key],
-                              "series": "realsteuern", "reason": "Hebesatzprobe",
+                              "series": "real_taxes", "reason": "Hebesatzprobe",
                               "result": probe["result"]})
             continue
-        gemeinsam = {"series": "realsteuern", "year": budget_year.year,
+        gemeinsam = {"series": "real_taxes", "year": budget_year.year,
                      "key": key, "city": KREISFREIE_STAEDTE[key]}
         for suffix in _REALSTEUERN.values():
             if (value := eintrag.get(f"rate_{suffix}")) is not None:
@@ -694,14 +694,14 @@ def zeilen_realsteuern(budget_year: Realsteuerjahrgang) -> tuple[list[dict], lis
         probe = probe_dreijahresmittel(eintrag)
         if not probe["ok"]:
             verworfen.append({"key": key, "city": KREISFREIE_STAEDTE[key],
-                              "series": "realsteuern", "reason": "Dreijahresmittel",
+                              "series": "real_taxes", "reason": "Dreijahresmittel",
                               "result": probe["result"]})
             continue
         # Jeder Jahreswert trägt SEIN Jahr, nicht das Berichtsjahr der Datei.
         # Der Realsteuervergleich 2025 führt auch 2023 und 2024 — eine Zeile,
         # die alles unter 2025 ablegte, machte aus drei Jahren eines.
         for year, werte in sorted(eintrag["je_jahr"].items()):
-            zeilen.append({"series": "realsteuern", "year": year,
+            zeilen.append({"series": "real_taxes", "year": year,
                            "key": key, "city": KREISFREIE_STAEDTE[key],
                            "indicator": "steuereinnahmekraft_je_ew",
                            "value": werte["je_ew"], "unit": "eur_je_ew"})

@@ -221,7 +221,7 @@ def test_speichern_und_lesen(tmp_path):
         assert len(zeilen) == 1
         assert zeilen[0]["result"] == -15_621.0
         assert zeilen[0]["enterprise_name"].startswith("Eigenbetrieb Gebäudewirtschaft")
-        assert "wirtschaftsplan_erfolgsplan" in zeilen[0]["probes"]
+        assert "business_plan_profit_loss" in zeilen[0]["probes"]
         assert store.wirtschaftsplan_jahre("egh") == [2026]
         assert store.wirtschaftsplan_jahre("bbo") == []
     finally:

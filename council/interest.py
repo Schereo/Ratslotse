@@ -41,8 +41,8 @@ def rate_batch(decisions: list[dict]) -> list[tuple[int, int, str]]:
     if not decisions:
         return []
     valid_ids = {d["id"] for d in decisions}
-    system = prompts.get("interest_bewertung_system")
-    user = prompts.render("interest_bewertung_user", batch=_batch_text(decisions))
+    system = prompts.get("interest_rating_system")
+    user = prompts.render("interest_rating_user", batch=_batch_text(decisions))
     try:
         resp = llm.chat_complete(
             model=MODEL,

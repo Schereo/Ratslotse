@@ -109,9 +109,9 @@ export function TermineAbschnitt({ onBestand }: {
 
   useEffect(() => {
     if (!onBestand || loading) return;
-    if (!data?.runden.length) { onBestand({ naechster: null, phasen: [], year: 0 }); return; }
+    if (!data?.rounds.length) { onBestand({ naechster: null, phasen: [], year: 0 }); return; }
     const tag = `${heute.getFullYear()}-${String(heute.getMonth() + 1).padStart(2, "0")}-${String(heute.getDate()).padStart(2, "0")}`;
-    const kommend = data.runden
+    const kommend = data.rounds
       .flatMap((r) => r.stationen)
       .filter((st) => st.date >= tag)
       .sort((a, b) => a.date.localeCompare(b.date));
@@ -120,7 +120,7 @@ export function TermineAbschnitt({ onBestand }: {
     // Zeitstrahl unten ausführlich zeichnet. „erledigt" heißt: liegt hinter
     // uns; „aktuell" ist die erste, die es nicht ist. Das Haushaltsjahr gilt
     // als erreicht, sobald der Rat beschlossen hat.
-    const r = data.runden[data.runden.length - 1];
+    const r = data.rounds[data.rounds.length - 1];
     const ratsbeschluss = [...r.stationen]
       .filter((st) => st.role === "Entscheidung" && st.result
         && !/zurückgestellt|abgesetzt|vertagt/i.test(st.result))
@@ -153,7 +153,7 @@ export function TermineAbschnitt({ onBestand }: {
   if (loading) {
     return <div className="py-16 text-center text-sm text-muted-foreground">Wird geladen …</div>;
   }
-  const runden = data?.runden ?? [];
+  const runden = data?.rounds ?? [];
   if (!runden.length) {
     return (
       <div className="py-16 text-center text-sm text-muted-foreground">
@@ -167,7 +167,7 @@ export function TermineAbschnitt({ onBestand }: {
   const runde = runden.find((r) => r.year === year)!;
   const rh = rhythmus(runden);
   const haeufigster = rh.entwurfMonate[0];
-  const abschluss = jahresabschlussMass(dokumente?.dokumente?.jahresabschluss);
+  const abschluss = jahresabschlussMass(dokumente?.documents?.jahresabschluss);
 
   // ---- Die Stationen des Strahls: Lagen aus der laufenden Runde, --------
   // ---- Zählangaben aus allen Jahrgängen. --------------------------------

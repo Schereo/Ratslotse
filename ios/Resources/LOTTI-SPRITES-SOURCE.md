@@ -1,6 +1,6 @@
 # Lotti-Spriteanimationen
 
-Die vier Sprite-Sheets in `Assets.xcassets/LottiSprite*.imageset` stammen aus
+Die Sprite-Sheets in `Assets.xcassets/LottiSprite*.imageset` stammen aus
 dem Ratslotse-Social-Repository:
 
 - Quelle: `ratslotse-social/assets/lotti/`
@@ -8,7 +8,9 @@ dem Ratslotse-Social-Repository:
 - Modell-Fingerabdruck: `2026-08-28 (1ra2kqk)`
 - Kachelgröße der iOS-Fassung: 384 × 384 Pixel
 
-Die Regungen werden mit `studio/sprites.mjs --px 384 --png` neu gerendert und
+Die Regungen werden mit `studio/sprites.mjs --png` neu gerendert (384 px je
+Kachel ist seit 01.09.2026 die Vorgabe; die Gruppen heißen seitdem kern /
+zustaende / haltung / gesten / zeigen / symbole) und
 anschließend durch `ios/scripts/make_lotti_ios_sprites.swift` in ein kleines
 Sheet pro Animation zerlegt. Dadurch bleibt eine groß dargestellte Lotti
 scharf, ohne dass iOS für eine einzelne Regung den gesamten Atlas dekodieren
@@ -19,7 +21,7 @@ Regeneration aus einem lokalen Checkout beider Repositories:
 
 ```sh
 cd /pfad/zu/ratslotse-social
-node studio/sprites.mjs --px 384 --png
+node studio/sprites.mjs --png
 
 cd /pfad/zu/kommunalwahl-scraper
 swift ios/scripts/make_lotti_ios_sprites.swift \

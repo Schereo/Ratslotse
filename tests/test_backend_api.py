@@ -94,13 +94,13 @@ def test_native_api_top_level_contracts(client):
         ("/api/account/notifications", {"kinds", "limits"}),
         ("/api/bookmarks", {"bookmarks"}),
         ("/api/council/gespraeche", {"saves_conversations", "conversations"}),
-        ("/api/council/deep-research/aktuell", {"job", "frei"}),
+        ("/api/council/deep-research/aktuell", {"job", "remaining"}),
         ("/api/council/decisions?limit=5", {"total", "decisions"}),
         ("/api/council/parties", {"parties"}),
         ("/api/council/sessions?limit=5", {"count", "total", "sessions"}),
         ("/api/council/heute", {"state"}),
         ("/api/council/diese-woche", {"found"}),
-        ("/api/council/wochenvorschau", {"found", "von", "bis", "sitzungen", "punkte"}),
+        ("/api/council/wochenvorschau", {"found", "from_date", "to_date", "sessions", "items"}),
         ("/api/council/fundstueck", {"found"}),
         ("/api/quiz/areas", {"electoral_districts", "districts", "topics", "categories"}),
         ("/api/quiz/stats", {"total", "by_area", "wrong", "streak", "badges", "daily_done"}),
@@ -454,8 +454,8 @@ def test_admin_quiz_stats(client):
     r = client.get("/api/admin/quiz/stats")
     assert r.status_code == 200
     body = r.json()
-    assert set(body) >= {"fragen_aktiv", "avg_accuracy", "gemeldet", "gebiete_niedrig"}
-    assert body["fragen_aktiv"] == 0 and body["gebiete_niedrig"] == []
+    assert set(body) >= {"questions_active", "avg_accuracy", "reported", "weak_categories"}
+    assert body["questions_active"] == 0 and body["weak_categories"] == []
 
 
 def test_admin_stats_growth(client):
@@ -564,11 +564,11 @@ def test_admin_user_rows_and_detail(client):
     detail = client.get(f"/api/admin/users/{admin['id']}").json()
     assert detail["email"] == admin["email"]
     assert set(detail["features"]) == {"ki_frage", "suche", "quiz", "analyse", "karte"}
-    assert isinstance(detail["verlauf"], list) and len(detail["verlauf"]) == 30
+    assert isinstance(detail["history"], list) and len(detail["history"]) == 30
     # 30-Tage-Achse passt zu den Balken und endet heute.
     from datetime import date
-    assert len(detail["verlauf_days"]) == 30
-    assert detail["verlauf_days"][-1] == date.today().isoformat()
+    assert len(detail["history_days"]) == 30
+    assert detail["history_days"][-1] == date.today().isoformat()
     assert client.get("/api/admin/users/999999").status_code == 404
 
 
@@ -707,7 +707,7 @@ def test_haushalt_datenstand_nennt_alle_schichten(client):
     die, die der Cron nicht selbst nachzieht."""
     _register(client)
     b = client.get("/api/council/haushalt/datenstand").json()
-    schichten = {s["key"]: s for s in b["schichten"]}
+    schichten = {s["key"]: s for s in b["layers"]}
     assert set(schichten) == {"haushaltsplan", "income_budget", "investitionen",
                               "investitionsprogramm",
                               "jahresabschluss", "teilhaushalt", "stellenplan",
@@ -724,36 +724,36 @@ def test_haushalt_datenstand_nennt_alle_schichten(client):
     # nicht selbst lesen und beobachtet sie nur. Ihr Takt ist der einzige mit
     # negativem Versatz: Der Plan FÜR 2027 wird im Herbst 2026 eingebracht.
     assert schichten["wirtschaftsplan"]["automatisch"] is False
-    assert schichten["wirtschaftsplan"]["monat"] == "November"
+    assert schichten["wirtschaftsplan"]["month_name"] == "November"
 
     # Vier verschiedene Takte — das ist der Grund, warum der Block existiert.
-    assert schichten["jahresabschluss"]["monat"] == "September"
-    assert schichten["haushaltsplan"]["monat"] == "Oktober"
+    assert schichten["jahresabschluss"]["month_name"] == "September"
+    assert schichten["haushaltsplan"]["month_name"] == "Oktober"
     # Die Investitionen hängen nicht am Rat, sondern am Open-Data-Portal: Der
     # Jahrgang erscheint dort erst im Folgejahr (gemessen Juni/Juli).
-    assert schichten["investitionen"]["monat"] == "Juli"
+    assert schichten["investitionen"]["month_name"] == "Juli"
     assert schichten["investitionen"]["automatisch"] is False
     # Der Gesamtergebnishaushalt ist eine Anlage des Haushaltsplans und kommt
     # deshalb mit ihm — anders als der Plan zieht der Cron ihn aber selbst
     # nach, weil er im Anlagenbestand liegt statt auf oldenburg.de.
-    assert schichten["income_budget"]["monat"] == "Oktober"
+    assert schichten["income_budget"]["month_name"] == "Oktober"
     assert schichten["income_budget"]["automatisch"] is True
     # Das Investitionsprogramm ist Anlage 004 desselben Plans: gleicher Takt,
     # und der Cron zieht es selbst nach — anders als die Investitionen, die vom
     # Open-Data-Portal kommen und deren Ebene darüber es ist.
-    assert schichten["investitionsprogramm"]["monat"] == "Oktober"
+    assert schichten["investitionsprogramm"]["month_name"] == "Oktober"
     assert schichten["investitionsprogramm"]["automatisch"] is True
     # Der Stellenplan hängt am selben Plan und wird ebenso selbst nachgezogen.
     # Seine Einheit ist der TEIL, nicht der Jahrgang: Teil A und Teil B kommen
     # einzeln durch ihre Proben (2026 ist Teil B im PDF unlesbar).
-    assert schichten["stellenplan"]["monat"] == "Oktober"
+    assert schichten["stellenplan"]["month_name"] == "Oktober"
     assert schichten["stellenplan"]["unit"] == "Teile"
     # Der Gesamtabschluss hinkt am weitesten hinterher: Er kann erst entstehen,
     # wenn alle einbezogenen Betriebe geprüft sind.
-    assert schichten["konzernabschluss"]["monat"] == "Februar"
+    assert schichten["konzernabschluss"]["month_name"] == "Februar"
     # Der Städtevergleich kommt gar nicht von der Stadt — das muss die
     # Fußzeile des Blocks aus den Daten lesen können.
-    assert schichten["lsn_realsteuern"]["monat"] == "November"
+    assert schichten["lsn_realsteuern"]["month_name"] == "November"
     assert (schichten["lsn_steuerkraft"]["source"]
             == "Landesamt für Statistik Niedersachsen")
     assert schichten["haushaltsplan"]["source"] == "Portal der Stadt"
@@ -784,14 +784,14 @@ def test_haushalt_dokumente_nennt_je_jahrgang_das_richtige_pdf(client):
                 {"nr": 12, "label": "Summe ordentliche Erträge",
                  "result": 1.0, "is_total": 1}],
                 herkunft.Herkunft(
-                    kind="ris", probe="strukturprobe", document_id=doc,
+                    kind="ris", probe="structure_check", document_id=doc,
                     label=f"Jahresabschluss {year}",
                     url=f"https://buergerinfo.oldenburg.de/getfile.php?id={doc}&type=do",
                     citation="Ergebnisrechnung der Kernverwaltung", page=161))
     finally:
         cs.close()
 
-    doks = client.get("/api/council/haushalt/dokumente").json()["dokumente"]
+    doks = client.get("/api/council/haushalt/dokumente").json()["documents"]
     nach_jahr = {d["year"]: d for d in doks["jahresabschluss"]}
     # Der Jahrgangswechsel führt auf ein ANDERES Dokument — genau das war die
     # Zusage, und genau die konnte die statische Adresse nicht halten.
@@ -843,24 +843,24 @@ def test_haushalt_aenderungslisten_liefert_nur_den_jahrgang(client):
         cs.close()
 
     b = client.get("/api/council/haushalt/aenderungslisten").json()
-    assert [z["year"] for z in b["zeilen"]] == [2026]
-    assert b["zeilen"][0]["explanation"] == "Mehrbedarf laut Schulentwicklungsplan."
+    assert [z["year"] for z in b["rows"]] == [2026]
+    assert b["rows"][0]["explanation"] == "Mehrbedarf laut Schulentwicklungsplan."
     # Wer die Position vorschlug, reist mit — die Streit-Seite setzt daran
     # ihre Urheber-Marke und ihren „nur die Summe"-Satz.
-    assert b["zeilen"][0]["author"] == "Verw. I"
-    assert {s["year"] for s in b["summen"]} == {2026, 2027}
-    eigene = {s["label"]: s["own"] for s in b["summen"] if s["year"] == 2026}
+    assert b["rows"][0]["author"] == "Verw. I"
+    assert {s["year"] for s in b["totals"]} == {2026, 2027}
+    eigene = {s["label"]: s["own"] for s in b["totals"] if s["year"] == 2026}
     assert eigene["Änderungsliste Verw. I"] == 1
     assert eigene["SPD/ CDU/ FDP"] == 0
     # Jede Zeile findet ihr Papier: Die Herkunft-Karte deckt alle Verweise.
-    assert str(b["zeilen"][0]["herkunft_id"]) in b["herkunft"]
+    assert str(b["rows"][0]["herkunft_id"]) in b["herkunft"]
 
     # Der FINANZhaushalt reist in eigenen Schlüsseln mit. Sie stehen hier auch
     # dann in der Antwort, wenn sein Ingest noch nicht lief — leer, aber
     # vorhanden: Die Antwortform ist zugleich das Response-Model, und was
     # dort fehlt, schneidet FastAPI lautlos weg (genau so verschwanden die
     # beiden beim ersten Anlauf aus einer sonst korrekten Antwort).
-    assert b["fhh_zeilen"] == [] and b["fhh_summen"] == []
+    assert b["cash_budget_rows"] == [] and b["cash_budget_totals"] == []
 
     from council.aenderungslisten_fhh import (
         FhhErgebnis, FhhSumme, FhhZeile, herkunft_fuer as fhh_herkunft)
@@ -884,8 +884,8 @@ def test_haushalt_aenderungslisten_liefert_nur_den_jahrgang(client):
         cs.close()
 
     b = client.get("/api/council/haushalt/aenderungslisten").json()
-    assert len(b["fhh_zeilen"]) == 1
-    z = b["fhh_zeilen"][0]
+    assert len(b["cash_budget_rows"]) == 1
+    z = b["cash_budget_rows"][0]
     # Der Investitionscode ist der Anschluss an council_investitionsmassnahmen —
     # ohne ihn bliebe die Zeile ein Name ohne Vorhaben.
     assert z["product"] == "I10.180224.525"
@@ -923,7 +923,7 @@ def test_haushalt_investitionen_trennt_geprueft_von_bezugsgroesse(client):
                      url="https://example.org/1101_2025_Finanzhaushalt.csv")
         cs.save_investitionen(
             2025, gelesen["zeilen"], gelesen["gesamt"],
-            herkunft.Herkunft(probe="investitionen_summenzeile",
+            herkunft.Herkunft(probe="investments_total_row",
                               citation="Datensatz 1101, Tabellenblatt Finanzhaushalt",
                               probe_result=gelesen["nachweis"], **anker),
             finanzhaushalt=gelesen["finanzhaushalt"],
@@ -935,25 +935,25 @@ def test_haushalt_investitionen_trennt_geprueft_von_bezugsgroesse(client):
 
     b = client.get("/api/council/haushalt/investitionen").json()
     assert b["years"] == [2025]
-    assert len(b["teilhaushalte"]) == 5
-    assert {z["sub_budget_no"] for z in b["teilhaushalte"]} == {1, 3, 4, 8, 12}
-    assert b["gesamt"][0]["outflows"] == 63352260
-    assert b["finanzhaushalt"][0]["outflows"] == 850520503
+    assert len(b["sub_budgets"]) == 5
+    assert {z["sub_budget_no"] for z in b["sub_budgets"]} == {1, 3, 4, 8, 12}
+    assert b["investments"][0]["outflows"] == 63352260
+    assert b["financial_budget"][0]["outflows"] == 850520503
 
     # Zwei Ebenen, zwei Herkünfte — und nur eine davon trägt eine Probe.
-    h_gepr = b["herkunft"][str(b["gesamt"][0]["herkunft_id"])]
-    h_bezug = b["herkunft"][str(b["finanzhaushalt"][0]["herkunft_id"])]
+    h_gepr = b["herkunft"][str(b["investments"][0]["herkunft_id"])]
+    h_bezug = b["herkunft"][str(b["financial_budget"][0]["herkunft_id"])]
     assert h_gepr["id"] != h_bezug["id"]
-    assert h_gepr["probe"] == "investitionen_summenzeile"
-    assert h_bezug["probe"] == "ungeprueft"
+    assert h_gepr["probe"] == "investments_total_row"
+    assert h_bezug["probe"] == "unverified"
     # Der Erklärsatz für Leser*innen fährt mit, samt Messwert.
     assert h_gepr["probes"] and "Summenzeile" in h_gepr["probes"][0]
     assert "Restbetrag 0,00 €" in h_gepr["probe_result"]
     # Die Teilhaushalte hängen an der geprüften Herkunft, nicht an der anderen.
-    assert {z["herkunft_id"] for z in b["teilhaushalte"]} == {h_gepr["id"]}
+    assert {z["herkunft_id"] for z in b["sub_budgets"]} == {h_gepr["id"]}
 
     # Und der Beleg findet das Dokument des Jahrgangs — einmal, nicht zweimal.
-    doks = client.get("/api/council/haushalt/dokumente").json()["dokumente"]
+    doks = client.get("/api/council/haushalt/dokumente").json()["documents"]
     assert [d["year"] for d in doks["investitionen"]] == [2025]
 
 
@@ -980,10 +980,10 @@ def test_haushalt_beteiligungen_liefert_texte_kennzahlen_und_herkunft(client):
         cs.close()
 
     b = client.get("/api/council/haushalt/beteiligungen").json()
-    assert b["berichtsjahre"] == [2024]
-    keys = {g["company"] for g in b["gesellschaften"]}
+    assert b["report_years"] == [2024]
+    keys = {g["company"] for g in b["companies"]}
     assert keys == {"egh", "gsg"}
-    egh = next(g for g in b["gesellschaften"] if g["company"] == "egh")
+    egh = next(g for g in b["companies"] if g["company"] == "egh")
     # Der Verweis auf den Gesamtabschluss steht am Stammdatensatz — er macht
     # aus zwei Seiten über dieselbe Gesellschaft einen Zusammenhang.
     assert egh["consolidated_key"] == "egh"
@@ -998,13 +998,13 @@ def test_haushalt_beteiligungen_liefert_texte_kennzahlen_und_herkunft(client):
     # trotzdem gedeckt, nämlich durch die Bilanz im Dokument selbst.
     assert bilanz["n_reports"] == 1
     h_zahl = b["herkunft"][str(bilanz["herkunft_id"])]
-    assert h_zahl["probe"] == "beteiligung_bilanzprobe"
+    assert h_zahl["probe"] == "shareholding_balance_sheet_check"
     assert "Abschnitt 2.2.1" in h_zahl["citation"]
     assert h_zahl["page"] == 2
     assert h_zahl["probes"]
 
-    gegenstand = next(t for t in b["texte"]
-                      if t["company"] == "egh" and t["section"] == "gegenstand")
+    gegenstand = next(t for t in b["texts"]
+                      if t["company"] == "egh" and t["section"] == "business_purpose")
     assert "gebäudewirtschaftlichen" in gegenstand["text"]
     h_text = b["herkunft"][str(gegenstand["herkunft_id"])]
     assert h_text["probe"] == herkunft.UNGEPRUEFT
@@ -1013,7 +1013,7 @@ def test_haushalt_beteiligungen_liefert_texte_kennzahlen_und_herkunft(client):
 
     # Zwei der fünf Abschnitte sind Tabellen und kommen zerlegt heraus —
     # sonst müsste die Seite den zweispaltigen PDF-Extrakt am Stück zeigen.
-    personen = [p for p in b["personen"] if p["company"] == "egh"]
+    personen = [p for p in b["people"] if p["company"] == "egh"]
     assert [p["name"] for p in personen] == ["Ruth Regina Drügemöller",
                                              "Ingrid Kruse"]
     assert personen[0]["committee"] == "Betriebsausschuss"
@@ -1025,13 +1025,13 @@ def test_haushalt_beteiligungen_liefert_texte_kennzahlen_und_herkunft(client):
     assert all(p["slug"] is None and p["party"] is None for p in personen)
     assert egh["roles_assignable"] is True
 
-    eigner = [e for e in b["eigentuemer"] if e["company"] == "egh"]
+    eigner = [e for e in b["owners"] if e["company"] == "egh"]
     assert [e["name"] for e in eigner] == ["Stadt Oldenburg"]
     assert eigner[0]["share_pct"] == 100.0
     # Die Summenzeile ist die Probe und kein Gesellschafter.
-    assert not any(e["name"].startswith("Stammkapital") for e in b["eigentuemer"])
+    assert not any(e["name"].startswith("Stammkapital") for e in b["owners"])
     h_eigner = b["herkunft"][str(eigner[0]["herkunft_id"])]
-    assert h_eigner["probe"] == "beteiligung_anteilsprobe"
+    assert h_eigner["probe"] == "shareholding_share_check"
 
 
 def test_beteiligungen_namensvetter_bekommt_keinen_slug():
@@ -1138,7 +1138,7 @@ def test_haushalt_konzern_liefert_luecke_und_gegenprobe(client):
         cs.save_ergebnisrechnung(2024, [
             {"nr": 12, "label": "Summe ordentliche Erträge",
              "result": 799057202.86, "is_total": 1},
-        ], herkunft.Herkunft(kind="ris", probe="strukturprobe", document_id=295294,
+        ], herkunft.Herkunft(kind="ris", probe="structure_check", document_id=295294,
                              label="Jahresabschluss 2024",
                              url="https://example.org/ja.pdf"))
         anker = dict(kind="ris", document_id=302709, label="Prüfbericht GA 2024",
@@ -1154,24 +1154,24 @@ def test_haushalt_konzern_liefert_luecke_und_gegenprobe(client):
              {"kind": "revenues", "entity_key": "klinikum",
               "entity": "Klinikum Oldenburg AöR",
               "amount_keur": 368100.0, "prior_year_keur": 336858.0}],
-            herkunft.Herkunft(probe=["konzern_ergebnisprobe", "konzern_ausserordentlich",
-                                     "konzern_gesamtergebnis"],
+            herkunft.Herkunft(probe=["group_ordinary_result", "group_extraordinary_result",
+                                     "group_total_result"],
                               citation="Abschnitt 3.2", **anker),
-            herkunft.Herkunft(probe=["konzern_zeilenprobe", "konzern_traegersumme",
-                                     "konzern_querprobe"],
+            herkunft.Herkunft(probe=["group_row_change", "group_entity_total",
+                                     "group_cross_check"],
                               citation="Abschnitt 4.1.1", **anker))
     finally:
         cs.close()
 
     b = client.get("/api/council/haushalt/konzern").json()
     assert b["years"] == [2024]
-    assert b["konzern"][0]["revenues_total"] == 1241548906.55
+    assert b["consolidated"][0]["revenues_total"] == 1241548906.55
     # Träger kommen in Euro heraus, gespeichert sind sie in TEUR.
     stadt = next(t for t in b["entity"] if t["entity_key"] == "stadt")
     assert stadt["amount"] == 799057000.0
     # Die beiden Ebenen tragen verschiedene Herkünfte — verschiedene
     # Abschnitte desselben Berichts, verschiedene Proben.
-    h_posten = b["herkunft"][str(b["konzern"][0]["herkunft_id"])]
+    h_posten = b["herkunft"][str(b["consolidated"][0]["herkunft_id"])]
     h_traeger = b["herkunft"][str(stadt["herkunft_id"])]
     assert h_posten["citation"] == "Abschnitt 3.2"
     assert h_traeger["citation"] == "Abschnitt 4.1.1"
@@ -1179,9 +1179,9 @@ def test_haushalt_konzern_liefert_luecke_und_gegenprobe(client):
     # Die Erklärsätze für die Leserin kommen mit.
     assert len(h_posten["probes"]) == 3
     # Gegenprobe: 799.057 TEUR gegen 799.057.202,86 € — auf Tausend genau.
-    assert b["gegenprobe"] == [{"year": 2024, "art": "revenues",
-                                "konzern": 799057000.0,
-                                "jahresabschluss": 799057202.86, "ok": True}]
+    assert b["cross_check"] == [{"year": 2024, "kind": "revenues",
+                                 "consolidated": 799057000.0,
+                                 "annual_accounts": 799057202.86, "ok": True}]
 
 
 def test_haushalt_gebaut_beziffert_seine_luecken(client):
@@ -1208,14 +1208,14 @@ def test_haushalt_gebaut_beziffert_seine_luecken(client):
                       "reason": "Zeilensumme um -1.304.000 € gerissen"}]
         cs.save_investitionen_ist(gut, herkunft.Herkunft(
             kind="city", url="https://example.org/1107.pdf",
-            probe="investitionen_ist_zeilensumme",
+            probe="investments_actual_row_total",
             citation="Kapitel 11, Tabelle 1107-1"), verworfen=verworfen)
     finally:
         cs.close()
 
     b = client.get("/api/council/haushalt/gebaut").json()
     assert [z["year"] for z in b["series"]] == [2018, 2020]
-    assert b["fehlend"] == {"doppik": [{"year": 2019, "difference": -1_304_000.0}]}
+    assert b["missing"] == {"doppik": [{"year": 2019, "difference": -1_304_000.0}]}
 
 
 def test_haushalt_gebaut_erfindet_keine_differenz(client):
@@ -1235,12 +1235,12 @@ def test_haushalt_gebaut_erfindet_keine_differenz(client):
             "2020 9.165 1.753 16.462 8.340 495 34.266 70.481\n", "doppik")
         cs.save_investitionen_ist(zeilen, herkunft.Herkunft(
             kind="city", url="https://example.org/1107.pdf",
-            probe="investitionen_ist_zeilensumme"))
+            probe="investments_actual_row_total"))
     finally:
         cs.close()
 
     b = client.get("/api/council/haushalt/gebaut").json()
-    assert b["fehlend"] == {"doppik": [{"year": 2019, "difference": None}]}
+    assert b["missing"] == {"doppik": [{"year": 2019, "difference": None}]}
 
 
 def test_sessions_carry_my_topic_items(client):
@@ -2220,7 +2220,7 @@ def test_quiz_theme_stadtteil_binding(client):
     _seed_quiz("fliegerhorst", area_type="thema", n=1)
     _seed_quiz("haushalt", area_type="thema", n=1, category="council_politics")
     store = CouncilStore(COUNCIL_DB)
-    store.save_entities([("fliegerhorst", "Fliegerhorst", "projekt", 5)], [])
+    store.save_entities([("fliegerhorst", "Fliegerhorst", "project", 5)], [])
     store.set_entity_geo("fliegerhorst", 53.1720, 8.1850, None)  # liegt im Stadtteil Fliegerhorst
     store.close()
     themen = {t["key"]: t for t in client.get("/api/quiz/areas").json()["topics"]}
@@ -2891,7 +2891,7 @@ def test_topic_suggestions_dedupe_similar(client):
                                      "accepted", None, None, None, [], None, None, None)
         ids = [r[0] for r in council._conn.execute(
             "SELECT id FROM council_decisions ORDER BY id").fetchall()]
-        ents = [(1, "stadion-maastrichter", "Stadion Maastrichter Straße", "ort"),
+        ents = [(1, "stadion-maastrichter", "Stadion Maastrichter Straße", "place"),
                 (2, "stadionneubau", "Stadionneubau Maastrichter Straße", "projekt"),
                 (3, "maastrichter-strasse", "Maastrichter Straße", "ort"),
                 (4, "stadtmuseum", "Stadtmuseum", "ort")]
@@ -3178,7 +3178,7 @@ def test_ask_ersetzt_abgerissenen_stream(client, monkeypatch):
 
 def test_ask_speichert_nur_mit_einwilligung(client, monkeypatch):
     """Die Einwilligungs-Schranke der Gesprächs-Speicherung (Review-Befund B6):
-    ohne qa_speichern=1 schreibt /ask NICHTS, mit Einwilligung trägt das
+    ohne saves_conversations=1 schreibt /ask NICHTS, mit Einwilligung trägt das
     done-Event die Gesprächs-id und der Turn liegt in der Datenbank. Clients
     ohne gespraech_id-Feld (alte App) lösen nie eine Speicherung aus."""
     from app.routers import council as council_router
@@ -4017,9 +4017,9 @@ def test_entity_detail_liefert_verwandte_themen(client):
     store = CouncilStore(COUNCIL_DB)
     store._conn.executemany(
         "INSERT INTO council_entities(id, slug, name, kind, n) VALUES (?,?,?,?,?)",
-        [(1, "fliegerhorst", "Fliegerhorst", "ort", 158),
-         (2, "entlastungsstrasse", "Entlastungsstraße", "ort", 40),
-         (3, "brookweg", "Brookweg", "ort", 5)])
+        [(1, "fliegerhorst", "Fliegerhorst", "place", 158),
+         (2, "entlastungsstrasse", "Entlastungsstraße", "place", 40),
+         (3, "brookweg", "Brookweg", "place", 5)])
     store._conn.commit()
     store.save_entity_relations([
         ("fliegerhorst", "entlastungsstrasse", "belegt", 0, 0.13, 22),
@@ -4040,7 +4040,7 @@ def test_entity_ohne_verwandte_liefert_leere_liste(client):
     _register(client)
     store = CouncilStore(COUNCIL_DB)
     store._conn.execute(
-        "INSERT INTO council_entities(id, slug, name, kind, n) VALUES (1,'solo','Solo','ort',3)")
+        "INSERT INTO council_entities(id, slug, name, kind, n) VALUES (1,'solo','Solo','place',3)")
     store._conn.commit()
     store.close()
     r = client.get("/api/council/entity/solo")
@@ -4141,7 +4141,7 @@ def test_suggestions_lassen_vages_nie_durch(client, monkeypatch):
         ids = [r[0] for r in council._conn.execute("SELECT id FROM council_decisions ORDER BY id")]
         for eid, slug, name in [(1, "cae-bruecke", "Cäcilienbrücke"), (2, "buergerbeteiligung", "Bürgerbeteiligung")]:
             council._conn.execute(
-                "INSERT INTO council_entities (id, slug, name, kind, n) VALUES (?,?,?,'ort',3)",
+                "INSERT INTO council_entities (id, slug, name, kind, n) VALUES (?,?,?,'place',3)",
                 (eid, slug, name))
             for did in ids[:2]:
                 council._conn.execute("INSERT INTO council_entity_links VALUES (?, ?)", (eid, did))
@@ -4185,7 +4185,7 @@ def test_suggestions_filtern_gattungswoerter_ohne_llm(client, monkeypatch):
         ids = [r[0] for r in council._conn.execute("SELECT id FROM council_decisions ORDER BY id")]
         for eid, slug, name in [(1, "klima", "Klima"), (2, "fliegerhorst", "Fliegerhorst")]:
             council._conn.execute(
-                "INSERT INTO council_entities (id, slug, name, kind, n) VALUES (?,?,?,'ort',3)",
+                "INSERT INTO council_entities (id, slug, name, kind, n) VALUES (?,?,?,'place',3)",
                 (eid, slug, name))
             for did in ids[:2]:
                 council._conn.execute("INSERT INTO council_entity_links VALUES (?, ?)", (eid, did))
@@ -4451,7 +4451,7 @@ def test_admin_reviews_place_candidate_and_map_links_exact_decisions(client):
 
     reviewed = client.put("/api/admin/place-candidates/testanger", json={
         "status": "approved", "place_id": "testanger", "name": "Testanger",
-        "kind": "quartier", "parent_id": "nadorst", "aliases": ["Test-Anger"],
+        "kind": "neighborhood", "parent_id": "nadorst", "aliases": ["Test-Anger"],
         "description": "Ein überprüftes Testgebiet.", "source_url": "https://example.test/ort",
     })
     assert reviewed.status_code == 200
@@ -5001,7 +5001,7 @@ def test_deep_research_roundtrip_und_replay(client, monkeypatch):
     r = client.post("/api/council/deep-research", json={"question": "Wie ist der Stand beim Stadionneubau?"})
     assert r.status_code == 201
     job_id = r.json()["job_id"]
-    assert r.json()["frei"] == 4  # 1 von 5 läuft
+    assert r.json()["remaining"] == 4  # 1 von 5 läuft
 
     events = _deep_events(client, job_id)  # blockiert bis der Job fertig ist
     typen = [e["type"] for e in events]
@@ -5033,7 +5033,7 @@ def test_deep_research_roundtrip_und_replay(client, monkeypatch):
     assert snap["sources"]["anlagen"][0]["template_number"] == "26/0100"
     akt = client.get("/api/council/deep-research/aktuell").json()
     assert akt["job"]["id"] == job_id and akt["job"]["seen"] == 0
-    assert akt["frei"] == 4  # fertig zählt weiter gegen das Tageskontingent
+    assert akt["remaining"] == 4  # fertig zählt weiter gegen das Tageskontingent
     client.post(f"/api/council/deep-research/{job_id}/gesehen")
     assert client.get("/api/council/deep-research/aktuell").json()["job"]["seen"] == 1
 
@@ -5253,7 +5253,7 @@ def test_admin_limits_steuern_recherche_kontingent(client, monkeypatch):
         uid = store._conn.execute("SELECT id FROM web_users").fetchone()[0]
         # Eigenes Limit 2: nach zwei zählenden Jobs ist Schluss.
         r = client.put(f"/api/admin/users/{uid}/limits",
-                       json={"deep_limit": 2, "limits_frei": False})
+                       json={"deep_limit": 2, "limits_unlocked": False})
         assert r.status_code == 200 and r.json()["deep_limit"] == 2
         for i in range(2):
             store.deep_job_update(store.deep_job_anlegen(uid, f"F{i}"), "fertig")
@@ -5261,22 +5261,22 @@ def test_admin_limits_steuern_recherche_kontingent(client, monkeypatch):
                            json={"question": "Noch eine Recherche?"}).status_code == 429
         # Unbegrenzt (0): derselbe Stand startet wieder, frei wird null.
         client.put(f"/api/admin/users/{uid}/limits",
-                   json={"deep_limit": 0, "limits_frei": False})
+                   json={"deep_limit": 0, "limits_unlocked": False})
         r = client.post("/api/council/deep-research", json={"question": "Und jetzt unbegrenzt?"})
-        assert r.status_code == 201 and r.json()["frei"] is None
+        assert r.status_code == 201 and r.json()["remaining"] is None
         deepresearch._registry.clear()
         akt = client.get("/api/council/deep-research/aktuell").json()
-        assert akt["frei"] is None
+        assert akt["remaining"] is None
         # Detail fürs Admin-Formular trägt beide Felder.
         detail = client.get(f"/api/admin/users/{uid}").json()
-        assert detail["deep_limit"] == 0 and detail["limits_frei"] is False
+        assert detail["deep_limit"] == 0 and detail["limits_unlocked"] is False
     finally:
         deepresearch._registry.clear()
         store.close()
 
 
 def test_limits_frei_ueberspringt_rate_limiter(client, monkeypatch):
-    """limits_frei=1 lässt die Frage-Endpoints am Rate-Limiter VORBEI —
+    """limits_unlocked=1 lässt die Frage-Endpoints am Rate-Limiter VORBEI —
     gemessen am check()-Aufruf selbst (DISABLE_RATE_LIMIT macht check nur
     wirkungslos, aufgerufen würde er trotzdem)."""
     from app.routers import council as council_router
@@ -5304,7 +5304,7 @@ def test_limits_frei_ueberspringt_rate_limiter(client, monkeypatch):
     store = Store(RATSLOTSE_DB)
     try:
         uid = store._conn.execute("SELECT id FROM web_users").fetchone()[0]
-        client.put(f"/api/admin/users/{uid}/limits", json={"deep_limit": None, "limits_frei": True})
+        client.put(f"/api/admin/users/{uid}/limits", json={"deep_limit": None, "limits_unlocked": True})
     finally:
         store.close()
     frag()
@@ -5423,7 +5423,7 @@ def test_haushalt_schulden_traegt_die_zinslast_aus_dem_jahresabschluss(client):
              "result": 7_250_000.0, "is_total": 0},
             {"nr": 12, "label": "Summe ordentliche Erträge",
              "result": 799_057_202.86, "is_total": 1},
-        ], herkunft.Herkunft(kind="ris", probe="strukturprobe", document_id=295294,
+        ], herkunft.Herkunft(kind="ris", probe="structure_check", document_id=295294,
                              label="Jahresabschluss 2024",
                              url="https://example.org/ja.pdf"))
 
@@ -5435,7 +5435,7 @@ def test_haushalt_schulden_traegt_die_zinslast_aus_dem_jahresabschluss(client):
             {"nr": schulden.POSTEN_ZINSAUFWAND,
              "label": "Zinsen und ähnliche Aufwendungen",
              "result": 4_084_574.90, "is_total": 0},
-        ], herkunft.Herkunft(kind="ris", probe="strukturprobe", document_id=295294,
+        ], herkunft.Herkunft(kind="ris", probe="structure_check", document_id=295294,
                              label="Jahresabschluss 2024",
                              citation="Teil-Ergebnisrechnung THH04",
                              url="https://example.org/ja.pdf"),
@@ -5445,7 +5445,7 @@ def test_haushalt_schulden_traegt_die_zinslast_aus_dem_jahresabschluss(client):
         assert answer.status_code == 200
         daten = answer.json()
 
-        zins = daten["zinslast"]
+        zins = daten["interest_expense"]
         assert [z["year"] for z in zins] == [2024], "je Jahr genau eine Zinslast"
         assert zins[0]["expense"] == 7_250_000.0
         # Die Herkunft muss mitkommen — sonst steht die Zahl ohne Beleg da.
@@ -5464,7 +5464,7 @@ def test_haushalt_schulden_ohne_jahresabschluss_bleibt_die_zinslast_leer(client)
     _register(client)
     answer = client.get("/api/council/haushalt/schulden")
     assert answer.status_code == 200
-    assert answer.json()["zinslast"] == []
+    assert answer.json()["interest_expense"] == []
 
 
 def test_haushalt_bilanz_liefert_posten_erlaeuterungen_und_herkunft(client):
@@ -5488,28 +5488,28 @@ def test_haushalt_bilanz_liefert_posten_erlaeuterungen_und_herkunft(client):
     cs = CouncilStore(COUNCIL_DB)
     try:
         q = herkunft.Herkunft(
-            kind="ris", probe=["bilanz_ausgleich", "bilanz_kassenprobe"],
+            kind="ris", probe=["balance_sheet_equality", "balance_sheet_cash_check"],
             citation="Abschnitt 2.1 — Bilanz der Stadt Oldenburg zum 31.12.2024",
             probe_result="Aktiva und Passiva stimmen auf den Cent überein",
             as_of="31.12.2024", document_id=295294, label="Jahresabschluss 2024",
             url="https://example.org/ja.pdf")
         cs.save_bilanz(2024, [
-            {"role": "geldschulden", "page": bilanz.PASSIVA, "level": 2,
+            {"role": "financial_liabilities", "page": bilanz.PASSIVA, "level": 2,
              "nr": "2.1", "label": "Geldschulden", "value": 43_690_971.71},
-            {"role": "schulden", "page": bilanz.PASSIVA, "level": 1,
+            {"role": "liabilities", "page": bilanz.PASSIVA, "level": 1,
              "nr": "2", "label": "Schulden", "value": 207_116_175.19},
-            {"role": "pensionen_gesamt", "page": bilanz.PASSIVA, "level": 2,
+            {"role": "pension_and_similar_provisions", "page": bilanz.PASSIVA, "level": 2,
              "nr": "3.1",
              "label": "Pensionsrückstellungen und ähnliche Verpflichtungen",
              "value": 311_789_660.00},
-            {"role": "liquide_mittel", "page": bilanz.AKTIVA, "level": 1,
+            {"role": "cash_and_equivalents", "page": bilanz.AKTIVA, "level": 1,
              "nr": "4", "label": "Liquide Mittel", "value": 118_001_891.26},
         ], q)
         cs.save_bilanz_erlaeuterungen(2024, [
-            {"role": "schulden", "nr": 7, "heading": "Schulden",
+            {"role": "liabilities", "nr": 7, "heading": "Schulden",
              "text": "… ergibt sich eine Bilanzverlängerung … 138,2 Millionen Euro."},
         ], herkunft.Herkunft(
-            kind="ris", probe="bilanz_erlaeuterung",
+            kind="ris", probe="balance_sheet_notes",
             citation="Abschnitt 6.2 — Erläuterung der wesentlichen Bilanzpositionen",
             as_of="Jahresabschluss 2024", document_id=295294,
             label="Jahresabschluss 2024", url="https://example.org/ja.pdf"))
@@ -5517,22 +5517,22 @@ def test_haushalt_bilanz_liefert_posten_erlaeuterungen_und_herkunft(client):
         daten = client.get("/api/council/haushalt/bilanz").json()
         assert daten["years"] == [2024]
 
-        nach_rolle = {p["role"]: p for p in daten["posten"]}
+        nach_rolle = {p["role"]: p for p in daten["items"]}
         # Die beiden Zahlen, die beide „Schulden" heißen — getrennt geführt.
-        assert nach_rolle["geldschulden"]["value"] == 43_690_971.71
-        assert nach_rolle["schulden"]["value"] == 207_116_175.19
-        assert nach_rolle["liquide_mittel"]["page"] == "aktiva"
-        assert nach_rolle["schulden"]["level"] == 1
+        assert nach_rolle["financial_liabilities"]["value"] == 43_690_971.71
+        assert nach_rolle["liabilities"]["value"] == 207_116_175.19
+        assert nach_rolle["cash_and_equivalents"]["page"] == "aktiva"
+        assert nach_rolle["liabilities"]["level"] == 1
 
         # Ohne diesen Text darf die Seite die 207,1 Mio. € nicht zeigen.
-        erl = {e["role"]: e for e in daten["erlaeuterungen"]}
-        assert "Bilanzverlängerung" in erl["schulden"]["text"]
+        erl = {e["role"]: e for e in daten["explanations"]}
+        assert "Bilanzverlängerung" in erl["liabilities"]["text"]
 
         # Jede Zahl und jeder Text tragen ihren Beleg.
-        for eintrag in daten["posten"] + daten["erlaeuterungen"]:
+        for eintrag in daten["items"] + daten["explanations"]:
             assert str(eintrag["herkunft_id"]) in daten["herkunft"]
-        h = daten["herkunft"][str(nach_rolle["schulden"]["herkunft_id"])]
-        assert "bilanz_kassenprobe" in h["probe"]
+        h = daten["herkunft"][str(nach_rolle["liabilities"]["herkunft_id"])]
+        assert "balance_sheet_cash_check" in h["probe"]
     finally:
         cs.close()
 
@@ -5544,7 +5544,7 @@ def test_haushalt_bilanz_ohne_bestand_bleibt_leer(client):
     _register(client)
     answer = client.get("/api/council/haushalt/bilanz")
     assert answer.status_code == 200
-    assert answer.json() == {"years": [], "posten": [], "erlaeuterungen": [],
+    assert answer.json() == {"years": [], "items": [], "explanations": [],
                               "herkunft": {}}
 
 
@@ -5673,7 +5673,7 @@ def test_haushalt_thh_posten_schneidet_die_ergebnisrechnung_zu(client):
     _register(client)
     cs = CouncilStore(COUNCIL_DB)
     try:
-        h = h_mod.Herkunft(kind="ris", probe="strukturprobe", document_id=295294,
+        h = h_mod.Herkunft(kind="ris", probe="structure_check", document_id=295294,
                            label="Jahresabschluss 2024",
                            url="https://example.org/ja.pdf")
         cs.save_ergebnisrechnung(2024, [
@@ -5775,7 +5775,7 @@ def test_haushalt_schickt_nur_belegte_herkunft(client):
         cs.save_ergebnisrechnung(2024, [
             {"nr": 12, "label": "Summe ordentliche Erträge",
              "result": 799_057_202.86, "is_total": 1},
-        ], h_mod.Herkunft(kind="ris", probe="strukturprobe", document_id=295294,
+        ], h_mod.Herkunft(kind="ris", probe="structure_check", document_id=295294,
                           label="Jahresabschluss 2024",
                           url="https://example.org/ja.pdf"))
     finally:
@@ -5820,22 +5820,22 @@ def test_haushalt_schulden_stellt_buergschaften_neben_die_eigenen_schulden(clien
     finally:
         cs.close()
 
-    b = client.get("/api/council/haushalt/schulden").json()["buergschaften"]
+    b = client.get("/api/council/haushalt/schulden").json()["guarantees"]
     assert [z["year"] for z in b["series"]] == [2024]
     z = b["series"][0]
     assert z["balance"] == 220_300_000.0
     # Die Quelle rundet selbst — das muss an der Zahl stehen bleiben.
     assert z["exact"] is False and z["out_next_year"] is False
     # Was eine Bürgschaft ist, reist mit den Zahlen statt im Frontend zu stehen.
-    assert "keine Schuld" in b["abgrenzung"]
+    assert "keine Schuld" in b["scope_note"]
 
 
 def test_haushalt_schulden_ohne_buergschaften_bleibt_leer(client):
     """Auf Produktion sind die Haushalts-Tabellen leer (Umgebungs-Gate) — dann
     zeigt die Seite den Block gar nicht, statt eine Null zu behaupten."""
     _register(client)
-    b = client.get("/api/council/haushalt/schulden").json()["buergschaften"]
-    assert b["series"] == [] and b["rueckstellung"] == [] and b["geldschulden"] == []
+    b = client.get("/api/council/haushalt/schulden").json()["guarantees"]
+    assert b["series"] == [] and b["provision"] == [] and b["financial_debt"] == []
 
 
 def test_haushalt_schulden_liefert_die_dritte_zahl_mit_ihren_warnsaetzen(client):
@@ -5867,14 +5867,14 @@ def test_haushalt_schulden_liefert_die_dritte_zahl_mit_ihren_warnsaetzen(client)
     finally:
         cs.close()
 
-    i = client.get("/api/council/haushalt/schulden").json()["integrierte_schulden"]
+    i = client.get("/api/council/haushalt/schulden").json()["integrated_debt"]
     assert i["as_of_date"]["year"] == 2024
     assert i["as_of_date"]["total"] == 740_330_163.0
     # Der Anteil wird gerechnet, nicht abgeschrieben — er entscheidet, wie die
     # Zahl gelesen werden darf, und ändert sich mit jeder Ausgabe.
-    assert 0.58 < i["anteil_unter_50"] < 0.59
-    assert "haftet sie nicht" in i["abgrenzung"]
-    assert "keine Zeitreihe" in i["keine_reihe"]
+    assert 0.58 < i["share_below_50"] < 0.59
+    assert "haftet sie nicht" in i["scope_note"]
+    assert "keine Zeitreihe" in i["no_series_note"]
 
 
 def test_integrierte_schulden_kommen_nur_mit_bestandener_kernprobe():

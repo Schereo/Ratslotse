@@ -19,7 +19,7 @@ export interface User {
   /** Einwilligung „Gespräche merken": 1 = ja, 0 = nein, null = nie gefragt.
    *  Kommt mit dem Konto, damit die Frage-Seite die Erstnutzungs-Karte sofort
    *  richtig setzt statt sie nachzuschieben. */
-  qa_speichern?: number | null;
+  saves_conversations?: number | null;
 }
 
 export interface CouncilSession {
@@ -645,17 +645,17 @@ export interface AdminUserDetail {
   has_password: boolean;
   delivery_channel: string;
   /** Einwilligung „Gespräche speichern": null = nie gefragt, 1 = an, 0 = bewusst aus. */
-  qa_speichern: number | null;
+  saves_conversations: number | null;
   features: { ki_frage: number; suche: number; quiz: number; analyse: number; karte: number };
   topics: string[];
-  abos: string[];
-  verlauf: number[];
+  subscriptions: string[];
+  history: number[];
   /** ISO-Datum je Verlaufs-Balken (x-Achse, 30 Tage). */
-  verlauf_days: string[];
+  history_days: string[];
   /** Recherchen/Tag: null = Standard (5), 0 = unbegrenzt, sonst eigenes Limit. */
   deep_limit: number | null;
   /** true = Rate-Limits der Frage-Endpoints für dieses Konto aus. */
-  limits_frei: boolean;
+  limits_unlocked: boolean;
   /** Womit das Konto angelegt wurde (web | ios | android | app). null = vor
    *  Einführung der Messung registriert. */
   signup_client: string | null;

@@ -254,7 +254,7 @@ CREATE TABLE IF NOT EXISTS council_agenda_classified (
 );
 
 -- „Meine Gespräche" (5a/I-04 + Design 6a): KI-Verläufe am Konto, nur mit
--- ausdrücklicher Einwilligung (web_users.qa_speichern = 1). user_id steht
+-- ausdrücklicher Einwilligung (web_users.saves_conversations = 1). user_id steht
 -- denormalisiert auch an den Turns, damit die Konto-Löschung über
 -- USER_OWNED_TABLES beide Tabellen ohne Waisen abräumt.
 CREATE TABLE IF NOT EXISTS qa_gespraeche (
@@ -492,9 +492,32 @@ def _umzug_von_nwz(ziel: Path) -> None:
     Vorher wird der WAL eingecheckt: Nur so ist die Hauptdatei vollständig und
     die Begleitdateien (``-wal``/``-shm``) sind entbehrlich.
     """
-    if ziel.exists() or ziel.name == "nwz.sqlite":
+    if ziel.name == "nwz.sqlite":
         return
     alt = ziel.with_name("nwz.sqlite")
+    if ziel.exists():
+        # Eine LEERE Zieldatei ist kein Umzug, sondern ein Stolperstein: Sie
+        # entsteht, sobald irgendetwas den neuen Pfad einmal öffnet, ohne zu
+        # schreiben — und blockiert danach den Umzug für immer. Der Start
+        # fände dann eine Datenbank ohne Tabellen vor, legte das Schema neu an
+        # und die App käme mit LEEREN Konten hoch, während die echten Daten
+        # unberührt unter dem alten Namen liegen. Genau davor warnt CLAUDE.md.
+        #
+        # Auf Prod stand am 01.09.2026 eine solche 0-Byte-Datei neben einer
+        # 37-MB-`nwz.sqlite` mit 22 Konten. Deshalb: 0 Byte heißt „nicht da".
+        if ziel.stat().st_size or not alt.exists() or not alt.stat().st_size:
+            if ziel.stat().st_size and alt.exists() and alt.stat().st_size:
+                # Beide gefüllt — das kann keine Maschine entscheiden.
+                logging.getLogger("kern.store").warning(
+                    "Zwei gefüllte Datenbanken nebeneinander: %s (%d Bytes) und %s "
+                    "(%d Bytes). Es wird %s benutzt; die andere bitte von Hand "
+                    "prüfen und wegräumen.",
+                    ziel.name, ziel.stat().st_size, alt.name, alt.stat().st_size, ziel.name)
+            return
+        ziel.unlink()
+        logging.getLogger("kern.store").warning(
+            "Leere %s entfernt — sie hätte den Umzug von %s blockiert.",
+            ziel.name, alt.name)
     if not alt.exists():
         return
     try:
@@ -705,6 +728,37 @@ class Store:
         ]
         self._werte_umschreiben("quiz_answers", "category", QUIZ_KATEGORIEN)
         self._werte_umschreiben("user_quiz_questions", "category", QUIZ_KATEGORIEN)
+
+        # Die Namen der LLM-Aufrufe, wie sie das Kosten-Tracking je Feature
+        # zählt (`llm_usage.feature`, gesetzt über `_feature=` in `kern/llm.py`).
+        #
+        # ACHTUNG, zwei Namensräume mit denselben Wörtern: `qa_antwort`,
+        # `deep_bericht`, `partei_meinungen` und vier weitere sind AUCH
+        # Schlüssel in `kern/prompts.py::DEFAULTS`. Die bleiben stehen — ein
+        # Suchen-und-Ersetzen über den blossen String hätte `prompts.get(…)`
+        # ins Leere laufen lassen, ohne dass ein Test rot wird.
+        self._werte_umschreiben("llm_usage", "feature", [
+            ("anlagen_ocr", "attachment_ocr"), ("beschluss_orte", "decision_places"),
+            ("deep_bericht", "deep_report"), ("deep_zerlegung", "deep_decomposition"),
+            ("entitaeten_beschreibung", "entity_description"), ("entitaeten_ner", "entity_ner"),
+            ("entity_dubletten", "entity_duplicates"), ("fundstueck_story", "daily_find_story"),
+            ("livestream_transkript", "livestream_transcript"), ("partei_meinungen", "party_opinions"),
+            ("protokoll_extraktion", "minutes_extraction"), ("qa_analyse", "qa_analysis"),
+            ("qa_antwort", "qa_answer"), ("qa_einfach", "qa_simple"),
+            ("social_kartentext", "social_card_text"), ("social_kritiker", "social_critic"),
+            ("themen_klassifikation", "topic_classification"), ("themenfeld_rueckblick", "field_recap"),
+            ("topic_auto_beschreibung", "topic_auto_description"), ("video_ergebnisse", "video_results"),
+            ("wortbeitraege", "speeches"), ("ziel_bewertung", "goal_rating"),
+            # Ein Experiment, das es im Code nicht mehr gibt — die 259 Zeilen
+            # auf dev stehen aber weiter in der Kostenstatistik.
+            ("exp_sitzungsklassifikation", "exp_session_classification"),
+        ])
+        # Dasselbe für die Nutzungszählung. `session` ist schon englisch; der
+        # BLOCKNAME der Admin-Antwort heisst weiter `ki_frage` (API-Feldnamen
+        # sind ein eigener Schnitt), s. `get_web_user_detail`.
+        self._werte_umschreiben("user_activity", "feature", [
+            ("recherche", "research"), ("ki_frage", "ai_question"),
+        ])
         cols = {r[1] for r in self._conn.execute("PRAGMA table_info(topics)").fetchall()}
         if "chat_id" not in cols:
             admin = int(os.environ.get("TELEGRAM_CHAT_ID", 0))
@@ -772,18 +826,18 @@ class Store:
                 if "notify_prefs" not in wu_cols:
                     # Design 30a: die sechs Anlass-Schalter als JSON.
                     self._conn.execute("ALTER TABLE web_users ADD COLUMN notify_prefs TEXT")
-                if "qa_speichern" not in wu_cols:
+                if "saves_conversations" not in wu_cols:
                     # 6a①②: NULL = noch nie gefragt (Erstnutzungs-Karte),
                     # 1 = Gespräche speichern, 0 = bewusst aus.
-                    self._conn.execute("ALTER TABLE web_users ADD COLUMN qa_speichern INTEGER")
+                    self._conn.execute("ALTER TABLE web_users ADD COLUMN saves_conversations INTEGER")
                 if "deep_limit" not in wu_cols:
                     # Admin-steuerbare Frage-Limits je Konto (10.08.26):
                     # deep_limit = Recherchen/Tag (NULL = Standard,
-                    # 0 = unbegrenzt, N = eigenes Limit); limits_frei = 1
+                    # 0 = unbegrenzt, N = eigenes Limit); limits_unlocked = 1
                     # überspringt die Rate-Limiter der Frage-Endpoints.
                     self._conn.execute("ALTER TABLE web_users ADD COLUMN deep_limit INTEGER")
                     self._conn.execute(
-                        "ALTER TABLE web_users ADD COLUMN limits_frei INTEGER NOT NULL DEFAULT 0")
+                        "ALTER TABLE web_users ADD COLUMN limits_unlocked INTEGER NOT NULL DEFAULT 0")
                 # Einrichtungs-Assistent (Design 26a): welcher Schritt zuletzt
                 # erreicht wurde. Eigene Spalten statt der onboarding-JSON —
                 # die gehört der „Erste Schritte"-Tour, und der Erinnerungs-Cron
@@ -1676,13 +1730,13 @@ class Store:
         return dict(row) if row else None
 
     def set_web_user_limits(self, user_id: int, deep_limit: int | None,
-                            limits_frei: bool) -> None:
+                            limits_unlocked: bool) -> None:
         """Admin-steuerbare Frage-Limits je Konto: Recherche-Tageslimit
         (None = Standard, 0 = unbegrenzt) + Rate-Limit-Befreiung."""
         with self._conn:
             self._conn.execute(
-                "UPDATE web_users SET deep_limit = ?, limits_frei = ? WHERE id = ?",
-                (deep_limit, 1 if limits_frei else 0, user_id))
+                "UPDATE web_users SET deep_limit = ?, limits_unlocked = ? WHERE id = ?",
+                (deep_limit, 1 if limits_unlocked else 0, user_id))
 
     def list_web_users(self) -> list[dict]:
         rows = self._conn.execute(
@@ -1785,14 +1839,14 @@ class Store:
     def get_qa_speichern(self, user_id: int) -> int | None:
         """Einwilligung: None = nie gefragt, 1 = speichern, 0 = bewusst aus."""
         row = self._conn.execute(
-            "SELECT qa_speichern FROM web_users WHERE id = ?", (user_id,)).fetchone()
+            "SELECT saves_conversations FROM web_users WHERE id = ?", (user_id,)).fetchone()
         return None if row is None or row[0] is None else int(row[0])
 
     def set_qa_speichern(self, user_id: int, an: bool) -> None:
         """Schalter umlegen. Löscht bewusst NICHTS — was mit bestehenden
         Gesprächen passiert, entscheidet der Ausschalt-Dialog getrennt."""
         with self._conn:
-            self._conn.execute("UPDATE web_users SET qa_speichern = ? WHERE id = ?",
+            self._conn.execute("UPDATE web_users SET saves_conversations = ? WHERE id = ?",
                                (1 if an else 0, user_id))
 
     def qa_share_anlegen(self, user_id: int, question: str, answer: str,
@@ -2328,8 +2382,8 @@ class Store:
         by_day = {r["day"]: r["c"] for r in self._conn.execute(
             "SELECT day, SUM(count) c FROM user_activity WHERE owner_id = ? AND day >= ? GROUP BY day",
             (uid, since)).fetchall()}
-        verlauf_days = [(date.today() - timedelta(days=29 - i)).isoformat() for i in range(30)]
-        verlauf = [by_day.get(d, 0) for d in verlauf_days]
+        history_days = [(date.today() - timedelta(days=29 - i)).isoformat() for i in range(30)]
+        verlauf = [by_day.get(d, 0) for d in history_days]
         return {
             "id": u["id"], "email": u["email"], "role": u["role"], "status": u["status"],
             "created_at": u["created_at"],
@@ -2341,12 +2395,18 @@ class Store:
             "signup_client": u.get("signup_client"),
             "clients": self.client_usage(uid),
             # Einwilligung „Gespräche speichern": None = nie gefragt, 1 = an, 0 = aus.
-            "qa_speichern": u.get("qa_speichern"),
+            "saves_conversations": u.get("saves_conversations"),
             # Admin-steuerbare Frage-Limits (10.08.26) — fürs Formular im Detail.
-            "deep_limit": u.get("deep_limit"), "limits_frei": bool(u.get("limits_frei")),
-            "features": {"ki_frage": feats.get("ki_frage", 0), "suche": feats.get("suche", 0),
+            "deep_limit": u.get("deep_limit"), "limits_unlocked": bool(u.get("limits_unlocked")),
+            # Links der API-Feldname, rechts der GESPEICHERTE Wert — die beiden
+            # sind seit dem Werte-Umbau verschieden: `user_activity.feature`
+            # heißt jetzt `ai_question`, der Block der Antwort weiter
+            # `ki_frage`. Die API-Feldnamen sind ein eigener Schnitt.
+            # `suche`, `analyse` und `karte` schreibt niemand — sie stehen
+            # dauerhaft auf 0, s. `record_activity`-Aufrufer.
+            "features": {"ki_frage": feats.get("ai_question", 0), "suche": feats.get("suche", 0),
                          "quiz": n_quiz, "analyse": feats.get("analyse", 0), "karte": feats.get("karte", 0)},
-            "topics": topics, "abos": abos, "verlauf": verlauf, "verlauf_days": verlauf_days,
+            "topics": topics, "subscriptions": abos, "history": verlauf, "history_days": history_days,
         }
 
     # ---- topics ----

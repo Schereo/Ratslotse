@@ -277,8 +277,8 @@ def test_list_entities_recency_and_trending_tags(store):
         store._conn.execute("UPDATE council_decisions SET policy_tags='[\"Radverkehr\"]' WHERE ksinr=2")
         ids = [r[0] for r in store._conn.execute("SELECT id FROM council_decisions ORDER BY id").fetchall()]
         # Entity „aktiv": Beschluss von vor 30 Tagen; „ruhend": nur 2019.
-        store._conn.execute("INSERT INTO council_entities (id, slug, name, kind, n) VALUES (1,'aktiv','Aktiv','ort',1)")
-        store._conn.execute("INSERT INTO council_entities (id, slug, name, kind, n) VALUES (2,'ruhend','Ruhend','ort',5)")
+        store._conn.execute("INSERT INTO council_entities (id, slug, name, kind, n) VALUES (1,'aktiv','Aktiv','place',1)")
+        store._conn.execute("INSERT INTO council_entities (id, slug, name, kind, n) VALUES (2,'ruhend','Ruhend','place',5)")
         store._conn.execute("INSERT INTO council_entity_links VALUES (1, ?)", (ids[0],))
         store._conn.execute("INSERT INTO council_entity_links VALUES (2, ?)", (ids[1],))
     ents = {e["slug"]: e for e in store.list_entities()}
@@ -327,11 +327,11 @@ def test_suggested_entity_topics_prefers_concrete_active(store):
                                "accepted", None, None, None, [], None, None, None)
         ids = [r[0] for r in store._conn.execute(
             "SELECT id FROM council_decisions ORDER BY id").fetchall()]
-        ents = [(1, "veloroute-4", "Veloroute 4", "projekt", 3),
-                (2, "haarenufer", "Haarenufer", "ort", 2),
+        ents = [(1, "veloroute-4", "Veloroute 4", "project", 3),
+                (2, "haarenufer", "Haarenufer", "place", 2),
                 (3, "spd-fraktion", "SPD-Fraktion", "organisation", 4),
-                (4, "einmal-ort", "Einmal-Ort", "ort", 1),
-                (5, "alt-projekt", "Alt-Projekt", "projekt", 5)]
+                (4, "einmal-ort", "Einmal-Ort", "place", 1),
+                (5, "alt-projekt", "Alt-Projekt", "project", 5)]
         for eid, slug, name, kind, n in ents:
             store._conn.execute(
                 "INSERT INTO council_entities (id, slug, name, kind, n) VALUES (?,?,?,?,?)",

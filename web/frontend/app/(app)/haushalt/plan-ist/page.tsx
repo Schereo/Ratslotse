@@ -76,8 +76,8 @@ function PruefungsHinweis() {
   // Prosa und wird auf dieser Seite nirgends angezeigt.
   const { data } = useFetch<PruefberichtDaten>("/council/haushalt/pruefberichte?mark=WB");
   const chain = useMemo(() => {
-    if (!data?.feststellungen?.length) return null;
-    return wiederholungsketten(data.feststellungen)
+    if (!data?.findings?.length) return null;
+    return wiederholungsketten(data.findings)
       .find((k) => k.key.includes("planistvergleich")) ?? null;
   }, [data]);
   if (!chain) return null;

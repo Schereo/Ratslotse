@@ -105,17 +105,17 @@ export type Konzernzeile = {
 };
 
 export type BeteiligungsDaten = {
-  berichtsjahre: number[];
+  report_years: number[];
   years: number[];
-  gesellschaften: Gesellschaft[];
-  texte: Textabschnitt[];
+  companies: Gesellschaft[];
+  texts: Textabschnitt[];
   indicators: Kennzahl[];
-  konzernvergleich: Konzernzeile[];
+  group_comparison: Konzernzeile[];
   /** Optional, und das ist die ganze Fallback-Logik der Seite: Wo die Liste
    *  fehlt (ältere API) oder für eine Gesellschaft leer bleibt (Probe nicht
    *  bestanden), steht der Rohtext des Abschnitts — nie ein leerer Block. */
-  personen?: Aufsichtsperson[];
-  eigentuemer?: Eigentuemer[];
+  people?: Aufsichtsperson[];
+  owners?: Eigentuemer[];
   herkunft: Record<string, Herkunft>;
 };
 
@@ -124,11 +124,11 @@ export type BeteiligungsDaten = {
  *  die Wortwahl hier ist die für Leserinnen, nicht die amtliche
  *  („Besetzung der Aufsichtsorgane" → „Wer sie beaufsichtigt"). */
 export const ABSCHNITTE: { key: string; title: string }[] = [
-  { key: "gegenstand", title: "Was die Gesellschaft tut" },
-  { key: "beteiligungsverhaeltnisse", title: "Wem sie gehört" },
-  { key: "aufsichtsorgane", title: "Wer sie beaufsichtigt" },
-  { key: "beteiligungen", title: "Woran sie selbst beteiligt ist" },
-  { key: "haushalt", title: "Was sie für den städtischen Haushalt bedeutet" },
+  { key: "business_purpose", title: "Was die Gesellschaft tut" },
+  { key: "ownership_structure", title: "Wem sie gehört" },
+  { key: "supervisory_bodies", title: "Wer sie beaufsichtigt" },
+  { key: "own_shareholdings", title: "Woran sie selbst beteiligt ist" },
+  { key: "budget_impact", title: "Was sie für den städtischen Haushalt bedeutet" },
 ];
 
 export const KENNZAHL_TITEL: Record<Kennzahl["indicator"], string> = {
@@ -174,14 +174,14 @@ export function juengster(daten: BeteiligungsDaten | null, company: string,
 
 export function textVon(daten: BeteiligungsDaten | null, company: string,
                         section: string): Textabschnitt | null {
-  return (daten?.texte ?? []).find(
+  return (daten?.texts ?? []).find(
     (t) => t.company === company && t.section === section) ?? null;
 }
 
 /** Der erste Satz des Unternehmensgegenstands — für die Karte in der Liste.
  *  Abgeschnitten wird am Satzende, nicht nach n Zeichen. */
 export function auftragSatz(daten: BeteiligungsDaten, g: Gesellschaft): string | null {
-  const gegenstand = textVon(daten, g.company, "gegenstand");
+  const gegenstand = textVon(daten, g.company, "business_purpose");
   if (!gegenstand) return null;
   const glatt = gegenstand.text.replace(/\s+/g, " ");
   return glatt.match(/^.{20,200}?\.(?=\s|$)/)?.[0] ?? glatt.slice(0, 160);
@@ -228,7 +228,7 @@ export function einordnungFuer(daten: BeteiligungsDaten, g: Gesellschaft,
       + "Ergebnis an die Stadt ab oder bekommt es ausgeglichen.";
   }
   const juengstes = ergebnisse[ergebnisse.length - 1];
-  const vergleich = daten.konzernvergleich.find((z) => z.company === g.company);
+  const vergleich = daten.group_comparison.find((z) => z.company === g.company);
   if (juengstes && vergleich && vergleich.year === juengstes.year
       && Math.abs(vergleich.difference) <= 1000) {
     return "Der Betrag ist deckungsgleich mit dem Gesamtabschluss — zwei Quellen, "
@@ -243,7 +243,7 @@ export function einordnungFuer(daten: BeteiligungsDaten, g: Gesellschaft,
 /** Die Mitglieder des Aufsichtsorgans, in der Reihenfolge des Berichts. */
 export function aufsichtspersonen(daten: BeteiligungsDaten | null,
                                   company: string): Aufsichtsperson[] {
-  return (daten?.personen ?? [])
+  return (daten?.people ?? [])
     .filter((p) => p.company === company)
     .sort((a, b) => a.sort_order - b.sort_order);
 }
@@ -306,7 +306,7 @@ export function aufsichtsgruppen(personen: Aufsichtsperson[],
 /** Die Eigentümer, in der Reihenfolge des Berichts. */
 export function eigentuemerVon(daten: BeteiligungsDaten | null,
                                company: string): Eigentuemer[] {
-  return (daten?.eigentuemer ?? [])
+  return (daten?.owners ?? [])
     .filter((e) => e.company === company)
     .sort((a, b) => a.sort_order - b.sort_order);
 }
@@ -379,7 +379,7 @@ export function wertText(k: Kennzahl): string {
 /** Die Gesellschaften, sortiert wie im Bericht (Eigenbetriebe, Anstalten,
  *  privatrechtliche) — die Gliederungsnummer trägt diese Ordnung schon. */
 export function sortiert(daten: BeteiligungsDaten | null): Gesellschaft[] {
-  return [...(daten?.gesellschaften ?? [])].sort((a, b) =>
+  return [...(daten?.companies ?? [])].sort((a, b) =>
     a.classification.localeCompare(b.classification, "de", { numeric: true }));
 }
 

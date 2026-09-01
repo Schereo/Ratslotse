@@ -250,7 +250,7 @@ def test_geschriebene_zeile_weiss_wo_sie_steht_und_womit_sie_gedeckt_ist(tmp_pat
         {"nr": 12, "label": "Summe ordentliche Erträge", "budgeted": 693.6e6,
          "plan": 693.6e6, "plan_kind": "budget", "result": 799.1e6, "is_total": 1},
     ], Herkunft(
-        kind="ris", probe=["strukturprobe", "vorjahreskette"], document_id=280863,
+        kind="ris", probe=["structure_check", "prior_year_chain"], document_id=280863,
         label="Jahresabschluss 2024 der Kernverwaltung",
         url="https://buergerinfo.oldenburg.de/getfile.php?id=280863&type=do",
         citation="Ergebnisrechnung der Kernverwaltung, Posten 1–24",
@@ -263,7 +263,7 @@ def test_geschriebene_zeile_weiss_wo_sie_steht_und_womit_sie_gedeckt_ist(tmp_pat
     assert row["result"] == 799.1e6
     assert row["citation"] == "Ergebnisrechnung der Kernverwaltung, Posten 1–24"
     assert row["page"] == 161
-    assert row["probe"] == "strukturprobe,vorjahreskette"
+    assert row["probe"] == "structure_check,prior_year_chain"
     assert row["document_id"] == 280863
     assert row["as_of"] == "Jahresabschluss 2024"
 
@@ -279,7 +279,7 @@ def test_die_alten_spalten_tragen_weiter_dieselben_werte(tmp_path):
     """`source_label`/`source_url` verschwinden nicht — sie werden aus
     derselben Angabe gefüllt. Kein Lesepfad muss sich ändern."""
     store = CouncilStore(tmp_path / "c.sqlite")
-    q = Herkunft(kind="ris", probe="produktzeile", document_id=7,
+    q = Herkunft(kind="ris", probe="product_row", document_id=7,
                  label="007 THH01", url="https://example.org/thh01.pdf",
                  citation="Teilergebnishaushalt THH01, Produktebene")
     store.save_produkte(2023, [{"product_no": "P10.111023", "product_name": "Archivierung",
@@ -303,10 +303,10 @@ def test_zwei_ebenen_desselben_dokuments_bekommen_zwei_herkuenfte(tmp_path):
     posten = [{"nr": 12, "label": "Summe ordentliche Erträge", "budgeted": 1.0,
                "result": 2.0, "is_total": 1}]
     store.save_ergebnisrechnung(2023, posten, Herkunft(
-        probe="strukturprobe", citation="Ergebnisrechnung der Kernverwaltung",
+        probe="structure_check", citation="Ergebnisrechnung der Kernverwaltung",
         **gemeinsam))
     store.save_ergebnisrechnung(2023, posten, Herkunft(
-        probe="summenprobe", citation="Teil-Ergebnisrechnung THH07",
+        probe="sub_budget_sum_check", citation="Teil-Ergebnisrechnung THH07",
         probe_result="0.00 % Abweichung zur Gesamtrechnung", **gemeinsam),
         sub_budget_no=7, sub_budget_name="Stadtplanung")
 
@@ -361,11 +361,11 @@ def test_ohne_probe_gibt_es_keine_herkunft():
     with pytest.raises(ValueError, match="Unbekannte Probe"):
         Herkunft(kind="ris", probe="augenmass", url="https://example.org/x")
     with pytest.raises(ValueError, match="Unbekannte Quellenart"):
-        Herkunft(kind="irgendwoher", probe="summenzeile", url="https://example.org/x")
+        Herkunft(kind="irgendwoher", probe="total_row", url="https://example.org/x")
     with pytest.raises(ValueError, match="ohne Verweis"):
-        Herkunft(kind="ris", probe="summenzeile")
+        Herkunft(kind="ris", probe="total_row")
     with pytest.raises(ValueError, match="Widerspruch"):
-        Herkunft(kind="ris", probe=[herkunft.UNGEPRUEFT, "summenzeile"],
+        Herkunft(kind="ris", probe=[herkunft.UNGEPRUEFT, "total_row"],
                  url="https://example.org/x")
     # Der ausdrückliche Verzicht geht — und ist als solcher erkennbar.
     ohne = Herkunft(kind="opendata", probe=herkunft.UNGEPRUEFT, url=CSV_URL)
@@ -395,13 +395,13 @@ def test_verwaiste_herkunft_wird_aufgeraeumt(tmp_path):
     store.save_ergebnisrechnung(2023, posten, Herkunft(
         kind="ris", probe=herkunft.UNBEKANNT, url=JA_URL))
     store.save_ergebnisrechnung(2023, posten, Herkunft(
-        kind="ris", probe="strukturprobe", url=JA_URL,
+        kind="ris", probe="structure_check", url=JA_URL,
         citation="Ergebnisrechnung der Kernverwaltung"))
     assert len(store.get_herkunft()) == 2      # die alte hängt noch herum
 
     assert store.herkunft_aufraeumen() == 1
     (uebrig,) = store.get_herkunft()
-    assert uebrig["probe"] == "strukturprobe"
+    assert uebrig["probe"] == "structure_check"
     assert store.herkunft_luecken() == {}
     assert store.herkunft_aufraeumen() == 0    # zweimal aufräumen tut nichts
     store.close()
@@ -423,7 +423,7 @@ def test_dokumente_je_quelle_und_jahrgang(tmp_path):
     posten = [{"nr": 12, "label": "Summe", "budgeted": 1.0, "result": 2.0}]
     for year, doc in ((2023, 280861), (2024, 295294)):
         store.save_ergebnisrechnung(year, posten, Herkunft(
-            kind="ris", probe="strukturprobe", document_id=doc,
+            kind="ris", probe="structure_check", document_id=doc,
             label=f"Jahresabschluss {year}",
             url=f"https://buergerinfo.oldenburg.de/getfile.php?id={doc}&type=do",
             citation="Ergebnisrechnung der Kernverwaltung", page=161))
@@ -445,10 +445,10 @@ def test_dokumente_trennen_die_zwei_ebenen_eines_jahresabschlusses(tmp_path):
     gemeinsam = dict(kind="ris", document_id=99, label="JA 2023", url=JA_URL)
     posten = [{"nr": 12, "label": "Summe", "budgeted": 1.0, "result": 2.0}]
     store.save_ergebnisrechnung(2023, posten, Herkunft(
-        probe="strukturprobe", citation="Ergebnisrechnung der Kernverwaltung",
+        probe="structure_check", citation="Ergebnisrechnung der Kernverwaltung",
         **gemeinsam))
     store.save_ergebnisrechnung(2023, posten, Herkunft(
-        probe="summenprobe", citation="Teil-Ergebnisrechnung THH07",
+        probe="sub_budget_sum_check", citation="Teil-Ergebnisrechnung THH07",
         **gemeinsam), sub_budget_no=7, sub_budget_name="Stadtplanung")
 
     doks = store.haushalt_dokumente()
@@ -466,7 +466,7 @@ def test_ein_jahrgang_darf_mehrere_dokumente_tragen(tmp_path):
         store.save_produkte(2023, [
             {"product_no": f"P{sub_budget}", "product_name": "Aufgabe", "sub_budget_no": sub_budget,
              "revenues": 1.0, "expenses": 2.0, "result": -1.0}],
-            Herkunft(kind="ris", probe="produktzeile", document_id=sub_budget,
+            Herkunft(kind="ris", probe="product_row", document_id=sub_budget,
                      label=f"007 THH0{sub_budget}",
                      url=f"https://buergerinfo.oldenburg.de/getfile.php?id={sub_budget}&type=do"))
 
@@ -511,7 +511,7 @@ def test_vergessene_zieltabelle_verliert_ihre_herkunft_nicht(tmp_path):
     store = CouncilStore(tmp_path / "c.sqlite")
     store.save_ergebnisrechnung(2023, [
         {"nr": 12, "label": "Summe", "budgeted": 1.0, "result": 2.0}],
-        Herkunft(kind="ris", probe="strukturprobe", url=JA_URL,
+        Herkunft(kind="ris", probe="structure_check", url=JA_URL,
                  citation="Ergebnisrechnung der Kernverwaltung"))
 
     # Eine Schicht, die es in `HERKUNFT_TABELLEN` nie geschafft hat.
@@ -520,7 +520,7 @@ def test_vergessene_zieltabelle_verliert_ihre_herkunft_nicht(tmp_path):
             "CREATE TABLE council_beteiligungen_kennzahlen ("
             "year INTEGER, value REAL, herkunft_id INTEGER)")
         hid = store.merke_herkunft(Herkunft(
-            kind="ris", probe="summenzeile", url=JA_URL,
+            kind="ris", probe="total_row", url=JA_URL,
             citation="Abschnitt 4.1.1, Aufstellung nach Aufgabenträgern"))
         store._conn.execute(
             "INSERT INTO council_beteiligungen_kennzahlen VALUES (2023, 1.0, ?)", (hid,))
@@ -575,7 +575,7 @@ def _vorgang(store, *, kvonr=900, document_id=7001, stationen=()):
 def _herkunft_mit_dokument(store, document_id=7001):
     with store.transaktion():
         return store.merke_herkunft(Herkunft(
-            kind="ris", probe="summenzeile", document_id=document_id,
+            kind="ris", probe="total_row", document_id=document_id,
             label="Jahresabschluss 2024", url="https://example.org/ja2024.pdf",
             citation="Ergebnisrechnung der Kernverwaltung"))
 
@@ -690,7 +690,7 @@ def test_herkunft_ohne_dokument_bleibt_unberuehrt(tmp_path):
     store = CouncilStore(tmp_path / "c.sqlite")
     with store.transaktion():
         hid = store.merke_herkunft(Herkunft(
-            kind="city", probe="summenzeile",
+            kind="city", probe="total_row",
             url="https://oldenburg.de/haushalt.pdf",
             citation="Gesamtergebnisplan"))
 

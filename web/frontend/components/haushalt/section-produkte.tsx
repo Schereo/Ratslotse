@@ -701,8 +701,8 @@ export function ProdukteAbschnitt({ onBestand }: {
     // Seite, nicht die gerade getippte Suche — beim Filtern bleibt der
     // zuletzt gemeldete Bestand stehen.
     if (entprellt.trim() || office || spielraum) return;
-    const count = (data.facetten?.aemter ?? []).reduce((s, a) => s + a.count, 0);
-    const beispiele = [...data.produkte]
+    const count = (data.facets?.aemter ?? []).reduce((s, a) => s + a.count, 0);
+    const beispiele = [...data.products]
       .sort((a, b) => Math.abs(netto(b)) - Math.abs(netto(a)))
       .slice(0, 3)
       .map((pr) => ({ name: pr.product_name, value: Math.abs(netto(pr)) }));
@@ -713,14 +713,14 @@ export function ProdukteAbschnitt({ onBestand }: {
   // Suche wirklich leer ist, wird einmal die ungefilterte Liste geholt und
   // nach Zeichenähnlichkeit durchsucht. `useFetch(null)` überspringt — der
   // Hook läuft immer, die Anfrage nur im Leerfall.
-  const leer = !loading && data != null && data.produkte.length === 0
+  const leer = !loading && data != null && data.products.length === 0
     && entprellt.trim().length >= 2 && !office && !spielraum;
   const { data: alleDaten } = useFetch<ProdukteAntwort>(
     leer && year ? `/council/haushalt/produkte?year=${year}` : null);
   const vorschlaege = useMemo(() => {
     if (!leer || !alleDaten) return [];
     const q = bigramme(entprellt);
-    return alleDaten.produkte
+    return alleDaten.products
       .map((p) => ({ p, value: aehnlichkeit(q, bigramme(p.product_name)) }))
       .filter((x) => x.value >= 0.25)
       .sort((a, b) => b.value - a.value)
@@ -740,14 +740,14 @@ export function ProdukteAbschnitt({ onBestand }: {
     );
   }
 
-  const produkte = data?.produkte ?? [];
-  const alleJahre = data?.alle_jahre ?? uebersicht.data?.product_years ?? [];
+  const produkte = data?.products ?? [];
+  const alleJahre = data?.all_years ?? uebersicht.data?.product_years ?? [];
   const maxWert = Math.max(...produkte.map((p) => Math.abs(netto(p))), 1);
   const gefiltert = Boolean(entprellt.trim() || office || spielraum);
-  const aemter = data?.facetten?.aemter ?? [];
-  const stufen = data?.facetten?.spielraum ?? {};
+  const aemter = data?.facets?.aemter ?? [];
+  const stufen = data?.facets?.spielraum ?? {};
   const gesamt = aemter.reduce((s, a) => s + a.count, 0);
-  const mitBeschreibung = data?.facetten?.mit_feld?.short_description ?? 0;
+  const mitBeschreibung = data?.facets?.mit_feld?.short_description ?? 0;
   const aktiv = data?.product ?? null;
 
   return (
@@ -926,9 +926,9 @@ export function ProdukteAbschnitt({ onBestand }: {
               {/* toLocaleString, nicht die nackte Zahl: Der Wert kam als 81.7
                   mit englischem Punkt auf die Seite — mitten in einem Text, der
                   sonst durchgehend Komma schreibt. */}
-              {data?.abdeckung_prozent != null ? (
+              {data?.coverage_percent != null ? (
                 <>Die {gesamt} Produkte erklären{" "}
-                  <strong>{data.abdeckung_prozent.toLocaleString("de-DE", { maximumFractionDigits: 1 })}&nbsp;%</strong> der
+                  <strong>{data.coverage_percent.toLocaleString("de-DE", { maximumFractionDigits: 1 })}&nbsp;%</strong> der
                   für {year} geplanten Ausgaben.<Beleg q="plan" /> Nicht jeder Teilhaushalt liegt für
                   jedes Jahr als auslesbares Dokument vor — dies ist also ein Ausschnitt, kein
                   Vollbild.</>

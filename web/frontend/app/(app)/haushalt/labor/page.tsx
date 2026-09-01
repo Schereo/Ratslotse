@@ -113,7 +113,7 @@ export default function LaborPage() {
 
       <Labor
         daten={data}
-        produkte={produkte?.produkte ?? []} produktJahr={produktJahr}
+        produkte={produkte?.products ?? []} produktJahr={produktJahr}
         vergleich={vergleich ?? null}
         programm={programm ?? null}
         schulden={schulden ?? null}

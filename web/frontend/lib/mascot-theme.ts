@@ -18,12 +18,22 @@ export interface MascotTheme {
   holiday: Holiday | null;
 }
 
-/** Meteorologische Jahreszeit nach Monat (0 = Januar … 11 = Dezember). */
-export function seasonForMonth(month: number): Season {
-  if (month <= 1 || month === 11) return "winter"; // Dez, Jan, Feb
-  if (month <= 4) return "spring"; // Mär, Apr, Mai
-  if (month <= 7) return "summer"; // Jun, Jul, Aug
-  return "autumn"; // Sep, Okt, Nov
+/**
+ * KALENDARISCHE Jahreszeit (0 = Januar … 11 = Dezember).
+ *
+ * Bis 01.09.2026 lief das meteorologisch (Herbst ab 1. September) — und
+ * Lotti trug am ersten Spätsommertag einen Schal (Tims Befund: „es ist
+ * doch noch kein Winter"). Die Kleidung folgt jetzt den üblichen
+ * Kalender-Stichtagen: Frühling 20.03., Sommer 21.06., Herbst 22.09.,
+ * Winter 21.12. (feste Näherung; die echten Sonnenstände schwanken um
+ * einen Tag — für ein Outfit egal).
+ */
+export function seasonForDate(month: number, day: number): Season {
+  const ts = (month + 1) * 100 + day; // MDD, vergleichbar
+  if (ts < 320 || ts >= 1221) return "winter";
+  if (ts < 621) return "spring";
+  if (ts < 922) return "summer";
+  return "autumn";
 }
 
 /**
@@ -55,7 +65,7 @@ export function getMascotTheme(date: Date = new Date()): MascotTheme {
   const year = date.getFullYear();
   const month = date.getMonth(); // 0–11
   const day = date.getDate();
-  const season = seasonForMonth(month);
+  const season = seasonForDate(month, day);
 
   // Pride-Monat: ganzer Juni.
   if (month === 5) return { season, holiday: "pride" };

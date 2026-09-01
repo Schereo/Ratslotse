@@ -13,8 +13,12 @@ Bei jedem neuen Screen gegen diese Datei bauen; die Artboards zeigen die Anwendu
   nicht aufdringlich); Paraphrasen kursiv ohne Anführungszeichen; keine erfundenen
   Grafiken (kein Stimmverhalten — das RIS kennt keins); Externes klar markiert.
 - **Lotti (Maskottchen):** Beobachterin, nie Chat-Autorin. Erlaubt: Empty States,
-  Ladezustände, „nichts gefunden", Consent-Momente. Posen via mascot.jsx:
-  wave / search / confused / point. Antworten kommen „aus den Beschlüssen", nicht „von Lotti".
+  Ladezustände, „nichts gefunden", Consent-Momente. Posen via mascot.tsx:
+  wave / search / confused / point — feiner über `regung` aus dem Sprite-Katalog
+  (/lotti/katalog.html). **Jede Regung ist an einen Zustand gebunden:** Was etwas
+  bedeutet (jongliert = Recherche läuft, erklärt = Erklär-Kasten, klatscht =
+  geschafft), darf nie zufällig passieren — von selbst blinzelt und nickt die
+  Figur nur. Antworten kommen „aus den Beschlüssen", nicht „von Lotti".
 
 ## 2. Farben
 

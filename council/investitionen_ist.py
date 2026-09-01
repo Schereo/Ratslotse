@@ -163,19 +163,19 @@ REGELWERK: dict[str, str] = {
 #: zu verbinden — genau das, was die Fußnote des Dokuments untersagt.
 SPALTEN: dict[str, tuple[tuple[str, str], ...]] = {
     "kameral": (
-        ("darlehen", "Gewährung von Darlehen"),
-        ("grundvermoegen", "Erwerb von Grundvermögen"),
-        ("baumassnahmen_k", "Baumaßnahmen"),
-        ("bewegliches_k", "Neuanschaffungen von beweglichen Vermögen"),
+        ("loans_granted", "Gewährung von Darlehen"),
+        ("real_property", "Erwerb von Grundvermögen"),
+        ("construction_cameral", "Baumaßnahmen"),
+        ("movable_assets_cameral", "Neuanschaffungen von beweglichen Vermögen"),
         ("total", "insgesamt"),
     ),
     "doppik": (
-        ("zuwendungen", "Aktivierbare Zuwendungen"),
-        ("grundstuecke", "Erwerb von Grundstücken und Gebäuden"),
-        ("baumassnahmen", "Baumaßnahmen"),
-        ("bewegliches", "Erwerb von beweglichem Sachvermögen"),
-        ("finanzanlagen", "Erwerb von Finanzanlagevermögen"),
-        ("sonstige", "Sonstige Investitionstätigkeit"),
+        ("capitalizable_grants", "Aktivierbare Zuwendungen"),
+        ("land_and_buildings", "Erwerb von Grundstücken und Gebäuden"),
+        ("construction", "Baumaßnahmen"),
+        ("movable_assets", "Erwerb von beweglichem Sachvermögen"),
+        ("financial_assets_acquired", "Erwerb von Finanzanlagevermögen"),
+        ("other_investing", "Sonstige Investitionstätigkeit"),
         ("total", "insgesamt"),
     ),
 }
@@ -385,7 +385,7 @@ def lies(text: str) -> dict:
                 continue
             uebernommen = dict(row)
             uebernommen.pop("unlesbar", None)
-            uebernommen["probe"] = "investitionen_ist_zeilensumme"
+            uebernommen["probe"] = "investments_actual_row_total"
             zeilen.append(uebernommen)
 
     zeilen.sort(key=lambda z: z["year"])

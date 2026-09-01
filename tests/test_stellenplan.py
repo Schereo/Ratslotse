@@ -277,8 +277,8 @@ def test_alle_vier_proben_gehen_auf():
     part = _teil(STELLENPLAN_2026_A)
     assert part["bestanden"] is True
     assert [p["probe"] for p in part["probes"]] == [
-        "stellenplan_spaltenprobe", "stellenplan_gruppensummen",
-        "stellenplan_besetzung", "stellenplan_gesamtsumme"]
+        "staffing_plan_columns", "staffing_plan_group_totals",
+        "staffing_plan_occupancy", "staffing_plan_grand_total"]
     assert all(p["probe"] in herkunft.PROBEN for p in part["probes"])
 
 
@@ -288,8 +288,8 @@ def test_teil_b_traegt_drei_proben_statt_vier():
     part = _teil(TEIL_B_KLEIN, "B")
     assert part["bestanden"] is True
     assert [p["probe"] for p in part["probes"]] == [
-        "stellenplan_spaltenprobe", "stellenplan_gruppensummen",
-        "stellenplan_besetzung"]
+        "staffing_plan_columns", "staffing_plan_group_totals",
+        "staffing_plan_occupancy"]
     g = _gesamt(part)
     assert g["positions_planned"] == 23.00
     # Teil B kennt die Aufteilung der Besetzung nicht.
@@ -427,7 +427,7 @@ def test_jede_zeile_weiss_woher_sie_kommt(tmp_path):
     # hat einen Stichtag. Beides muss der Beleg sagen können.
     assert "Stand der Einbringung" in source["as_of"]
     assert "2025-06-30" in source["as_of"]
-    assert source["probe"].startswith("stellenplan_spaltenprobe")
+    assert source["probe"].startswith("staffing_plan_columns")
     store.close()
 
 

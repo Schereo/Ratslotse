@@ -578,7 +578,7 @@ def _befuellter_store(tmp_path) -> CouncilStore:
             "INSERT INTO council_herkunft (id, key, kind, label, url, citation, "
             " page, probe, as_of, fetched_at) VALUES "
             "(1, 'k1', 'ris', 'Jahresabschluss 2024', 'https://example.org/ja2024', "
-            " 'Abschnitt 6.2 Ergebnisrechnung', 41, 'summenprobe', '31.12.2024', '2026-08-16')")
+            " 'Abschnitt 6.2 Ergebnisrechnung', 41, 'sub_budget_sum_check', '31.12.2024', '2026-08-16')")
         store._conn.execute(
             "INSERT INTO council_herkunft (id, key, kind, label, url, citation, "
             " probe, as_of, fetched_at) VALUES "
@@ -734,7 +734,7 @@ def _befuellter_store(tmp_path) -> CouncilStore:
             [(3, "k3", "Statistisches Jahrbuch, Tabelle 1108",
               "https://example.org/1108", "Tabelle 1108", "prokopfprobe", "2025"),
              (4, "k4", "Haushaltsplan 2026, Finanzhaushalt",
-              "https://example.org/hh2026", "Gesamtfinanzhaushalt", "summenprobe", "2026"),
+              "https://example.org/hh2026", "Gesamtfinanzhaushalt", "sub_budget_sum_check", "2026"),
              (5, "k5", "Haushaltsplan 2026, Stellenplan Teil A",
               "https://example.org/sp-a", "Anlage 21", "besetzungsprobe", "30.06.2025"),
              (6, "k6", "Haushaltsplan 2026, Stellenplan Teil B",
@@ -747,15 +747,15 @@ def _befuellter_store(tmp_path) -> CouncilStore:
             "cost_calculation, deductions, costs_to_cover, reference_quantity, "
             "reference_unit, fee, fee_proposed, template_number, probes, "
             "herkunft_id, fetched_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,7,'')",
-            [(2025, "abfallbehandlung", "Abfallbehandlungsanlagen", 18_000_000.0,
+            [(2025, "waste_treatment", "Abfallbehandlungsanlagen", 18_000_000.0,
               -2_000_000.0, 16_000_000.0, 114_475.0, "Mg", 139.772, 139.70,
               "24/0999", "gebuehren_kaskade,gebuehren_division"),
-             (2026, "abfallbehandlung", "Abfallbehandlungsanlagen", 19_000_000.0,
+             (2026, "waste_treatment", "Abfallbehandlungsanlagen", 19_000_000.0,
               -1_500_000.0, 17_500_000.0, 115_733.0, "Mg", 151.214, 151.21,
               "25/0999", "gebuehren_kaskade,gebuehren_division"),
-             (2026, "abfallsammlung", "Abfallsammlung", 12_000_000.0,
+             (2026, "waste_collection", "Abfallsammlung", 12_000_000.0,
               -1_000_000.0, 11_000_000.0, None, None, None, None,
-              "25/0999", "gebuehren_kaskade")])
+              "25/0999", "fee_cascade")])
     return store
 
 
@@ -763,7 +763,7 @@ def test_gebuehrenquelle_filtert_bereiche_und_traegt_belege(tmp_path):
     store = _befuellter_store(tmp_path)
     g = store.gebuehren_fuer_begriffe(["Müllgebühren"])
     assert [x["area"] for x in g["bereiche"]] == [
-        "abfallbehandlung", "abfallsammlung"]
+        "waste_treatment", "waste_collection"]
     assert [r["year"] for r in g["bereiche"][0]["werte"]] == [2026, 2025]
     text = qa._gebuehren_block(g)
     assert "151,214 € je Mg" in text and "Gebührenvorschlag 151,21 €" in text
@@ -1324,7 +1324,7 @@ def test_schuldenblock_nennt_alle_drei_abgrenzungen(tmp_path):
     c.execute("INSERT INTO council_schulden (year, total, per_capita, fetched_at) "
               "VALUES (2024, 294851000, 1673, '2026-08-18')")
     c.execute("INSERT INTO council_bilanz (year, role, page, level, label, value, "
-              " fetched_at) VALUES (2024, 'geldschulden', 'passiva', 2, 'Geldschulden', "
+              " fetched_at) VALUES (2024, 'financial_liabilities', 'passiva', 2, 'Geldschulden', "
               " 43690972, '2026-08-18')")
     c.execute("INSERT INTO council_integrierte_schulden (year, ars, total, probes, "
               " fetched_at) VALUES (2024, '03403000', 740300000, '', '2026-08-18')")

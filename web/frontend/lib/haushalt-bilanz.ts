@@ -20,12 +20,12 @@ export type { Herkunft };
  *  Layouts der Bilanz hinweg — anders als die Gliederungsnummer, die bis
  *  2020 römisch ist und ab 2021 auf beiden Seiten dieselbe. */
 export type BilanzRolle =
-  | "immaterielles_vermoegen" | "sachvermoegen" | "infrastrukturvermoegen"
-  | "finanzvermoegen" | "liquide_mittel" | "aktive_rap"
-  | "nettoposition" | "ruecklagen_gesamt" | "ueberschussruecklage_ordentlich"
-  | "jahresergebnis_bilanz" | "sonderposten" | "schulden" | "geldschulden"
-  | "rueckstellungen" | "pensionen_gesamt" | "pensionsrueckstellungen"
-  | "beihilferueckstellungen" | "passive_rap";
+  | "intangible_assets" | "tangible_assets" | "infrastructure_assets"
+  | "financial_assets" | "cash_and_equivalents" | "prepaid_expenses"
+  | "net_position" | "reserves_total" | "ordinary_surplus_reserve"
+  | "annual_result_balance_sheet" | "special_items" | "liabilities" | "financial_liabilities"
+  | "provisions" | "pension_and_similar_provisions" | "pension_provisions"
+  | "healthcare_allowance_provisions" | "deferred_income";
 
 export type BilanzPosten = {
   year: number;
@@ -56,8 +56,8 @@ export type BilanzErlaeuterung = {
 
 export type BilanzDaten = {
   years: number[];
-  posten: BilanzPosten[];
-  erlaeuterungen: BilanzErlaeuterung[];
+  items: BilanzPosten[];
+  explanations: BilanzErlaeuterung[];
   herkunft: Record<string, Herkunft>;
 };
 
@@ -74,11 +74,11 @@ export type Stichtag = {
  *  wem es zusteht. Dieselbe Reihenfolge wie `bilanz.PFLICHT_ROLLEN` im
  *  Backend — und dieselbe, in der der Anhang sie erläutert. */
 export const AKTIVA_HAUPT: BilanzRolle[] = [
-  "immaterielles_vermoegen", "sachvermoegen", "finanzvermoegen",
-  "liquide_mittel", "aktive_rap",
+  "intangible_assets", "tangible_assets", "financial_assets",
+  "cash_and_equivalents", "prepaid_expenses",
 ];
 export const PASSIVA_HAUPT: BilanzRolle[] = [
-  "nettoposition", "schulden", "rueckstellungen", "passive_rap",
+  "net_position", "liabilities", "provisions", "deferred_income",
 ];
 
 /** Kurznamen für die Legende. Der Wortlaut des Dokuments („Aktive
@@ -86,15 +86,15 @@ export const PASSIVA_HAUPT: BilanzRolle[] = [
  *  er steht deshalb weiter in `label` und wird in der Tabelle
  *  darunter gezeigt. */
 export const KURZ: Partial<Record<BilanzRolle, string>> = {
-  immaterielles_vermoegen: "Immaterielles",
-  sachvermoegen: "Gebäude, Straßen, Grundstücke",
-  finanzvermoegen: "Beteiligungen und Forderungen",
-  liquide_mittel: "Kasse",
-  aktive_rap: "Abgrenzung",
-  nettoposition: "Eigenkapital",
-  schulden: "Schulden",
-  rueckstellungen: "Rückstellungen",
-  passive_rap: "Abgrenzung",
+  intangible_assets: "Immaterielles",
+  tangible_assets: "Gebäude, Straßen, Grundstücke",
+  financial_assets: "Beteiligungen und Forderungen",
+  cash_and_equivalents: "Kasse",
+  prepaid_expenses: "Abgrenzung",
+  net_position: "Eigenkapital",
+  liabilities: "Schulden",
+  provisions: "Rückstellungen",
+  deferred_income: "Abgrenzung",
 };
 
 /** Den jüngsten Stichtag herausziehen — oder `null`, wenn keiner vollständig
@@ -109,7 +109,7 @@ export function juengsterStichtag(daten: BilanzDaten | null): Stichtag | null {
 export function as_of_date(daten: BilanzDaten | null, year: number): Stichtag | null {
   if (!daten) return null;
   const posten: Partial<Record<BilanzRolle, BilanzPosten>> = {};
-  for (const p of daten.posten) {
+  for (const p of daten.items) {
     if (p.year === year) posten[p.role] = p;
   }
   const haupt = [...AKTIVA_HAUPT, ...PASSIVA_HAUPT];
@@ -117,7 +117,7 @@ export function as_of_date(daten: BilanzDaten | null, year: number): Stichtag | 
   const bilanzsumme = AKTIVA_HAUPT.reduce((n, r) => n + (posten[r]?.value ?? 0), 0);
   return {
     year, posten, bilanzsumme,
-    herkunft_id: posten.sachvermoegen?.herkunft_id ?? null,
+    herkunft_id: posten.tangible_assets?.herkunft_id ?? null,
   };
 }
 
@@ -146,8 +146,8 @@ export function segmente(s: Stichtag, page: "aktiva" | "passiva") {
  *  Jahrgang still falsch. Gibt `null`, wenn eine der beiden Zahlen fehlt
  *  oder die Geldschulden null sind. */
 export function vielfaches(s: Stichtag): number | null {
-  const pension = s.posten.pensionen_gesamt?.value;
-  const kredite = s.posten.geldschulden?.value;
+  const pension = s.posten.pension_and_similar_provisions?.value;
+  const kredite = s.posten.financial_liabilities?.value;
   if (!pension || !kredite) return null;
   return pension / kredite;
 }
@@ -157,7 +157,7 @@ export function explanation(
   daten: BilanzDaten | null, year: number, role: BilanzRolle,
 ): BilanzErlaeuterung | null {
   if (!daten) return null;
-  return daten.erlaeuterungen.find((e) => e.year === year && e.role === role) ?? null;
+  return daten.explanations.find((e) => e.year === year && e.role === role) ?? null;
 }
 
 /** Ist der Schuldensprung dieses Jahrgangs ein Buchungsartefakt?
@@ -175,7 +175,7 @@ export function explanation(
 export function cashPoolingHinweis(
   daten: BilanzDaten | null, year: number,
 ): BilanzErlaeuterung | null {
-  return explanation(daten, year, "schulden");
+  return explanation(daten, year, "liabilities");
 }
 
 export function herkunftVon(daten: BilanzDaten | null, id: number | null): Herkunft | null {

@@ -5,54 +5,93 @@
     "kern": {
       "blatt": "lotti-kern.webp",
       "bild": [
-        192,
-        192
+        384,
+        384
       ],
       "raster": [
         5,
         4
       ],
       "anzahl": 20,
-      "kilobyte": 75
+      "kilobyte": 165
     },
     "zustaende": {
       "blatt": "lotti-zustaende.webp",
       "bild": [
-        192,
-        192
+        384,
+        384
       ],
       "raster": [
-        14,
-        13
+        10,
+        10
       ],
-      "anzahl": 171,
-      "kilobyte": 694
+      "anzahl": 97,
+      "kilobyte": 906
+    },
+    "haltung": {
+      "blatt": "lotti-haltung.webp",
+      "bild": [
+        384,
+        384
+      ],
+      "raster": [
+        10,
+        10
+      ],
+      "anzahl": 99,
+      "kilobyte": 883
     },
     "gesten": {
       "blatt": "lotti-gesten.webp",
       "bild": [
-        192,
-        192
+        384,
+        384
       ],
       "raster": [
-        13,
-        13
+        10,
+        10
       ],
-      "anzahl": 165,
-      "kilobyte": 635
+      "anzahl": 92,
+      "kilobyte": 853
+    },
+    "zeigen": {
+      "blatt": "lotti-zeigen.webp",
+      "bild": [
+        384,
+        384
+      ],
+      "raster": [
+        7,
+        7
+      ],
+      "anzahl": 48,
+      "kilobyte": 377
     },
     "symbole": {
       "blatt": "lotti-symbole.webp",
       "bild": [
-        192,
-        192
+        384,
+        384
       ],
       "raster": [
         6,
         5
       ],
       "anzahl": 30,
-      "kilobyte": 123
+      "kilobyte": 282
+    },
+    "werkzeug": {
+      "blatt": "lotti-werkzeug.webp",
+      "bild": [
+        384,
+        384
+      ],
+      "raster": [
+        8,
+        7
+      ],
+      "anzahl": 56,
+      "kilobyte": 540
     }
   },
   "regungen": {
@@ -137,8 +176,8 @@
       "was": "schläft (Schleife) — für leere Zustände"
     },
     "schuettelt-kopf": {
-      "gruppe": "zustaende",
-      "von": 41,
+      "gruppe": "haltung",
+      "von": 0,
       "bilder": 17,
       "takt": 12,
       "wiederholt": false,
@@ -148,7 +187,7 @@
     },
     "sucht": {
       "gruppe": "zustaende",
-      "von": 58,
+      "von": 41,
       "bilder": 26,
       "takt": 8,
       "wiederholt": true,
@@ -157,8 +196,8 @@
       "was": "sucht (Schleife) — für 404 und leere Trefferlisten"
     },
     "verbeugt-sich": {
-      "gruppe": "zustaende",
-      "von": 84,
+      "gruppe": "haltung",
+      "von": 17,
       "bilder": 19,
       "takt": 12,
       "wiederholt": false,
@@ -168,7 +207,7 @@
     },
     "jongliert": {
       "gruppe": "zustaende",
-      "von": 103,
+      "von": 67,
       "bilder": 12,
       "takt": 12,
       "wiederholt": true,
@@ -177,8 +216,8 @@
       "was": "jongliert mit drei Bällen (Schleife) — die schöne Ladeanzeige"
     },
     "zeigt-rechts": {
-      "gruppe": "gesten",
-      "von": 58,
+      "gruppe": "zeigen",
+      "von": 0,
       "bilder": 10,
       "takt": 12,
       "wiederholt": false,
@@ -187,8 +226,8 @@
       "was": "zeigt nach rechts (aus Sicht des Betrachters)"
     },
     "zeigt-links": {
-      "gruppe": "gesten",
-      "von": 68,
+      "gruppe": "zeigen",
+      "von": 10,
       "bilder": 10,
       "takt": 12,
       "wiederholt": false,
@@ -197,8 +236,8 @@
       "was": "zeigt nach links (aus Sicht des Betrachters)"
     },
     "zeigt-hoch": {
-      "gruppe": "gesten",
-      "von": 78,
+      "gruppe": "zeigen",
+      "von": 20,
       "bilder": 10,
       "takt": 12,
       "wiederholt": false,
@@ -207,8 +246,8 @@
       "was": "zeigt nach hoch (aus Sicht des Betrachters)"
     },
     "zeigt-runter": {
-      "gruppe": "gesten",
-      "von": 88,
+      "gruppe": "zeigen",
+      "von": 30,
       "bilder": 10,
       "takt": 12,
       "wiederholt": false,
@@ -218,7 +257,7 @@
     },
     "lacht": {
       "gruppe": "gesten",
-      "von": 98,
+      "von": 58,
       "bilder": 16,
       "takt": 12,
       "wiederholt": false,
@@ -227,8 +266,8 @@
       "was": "lacht, wirft den Kopf zurück"
     },
     "seufzt": {
-      "gruppe": "gesten",
-      "von": 114,
+      "gruppe": "haltung",
+      "von": 36,
       "bilder": 12,
       "takt": 6,
       "wiederholt": false,
@@ -238,7 +277,7 @@
     },
     "klatscht": {
       "gruppe": "gesten",
-      "von": 126,
+      "von": 74,
       "bilder": 18,
       "takt": 12,
       "wiederholt": false,
@@ -247,8 +286,8 @@
       "was": "klatscht dreimal Beifall"
     },
     "zeigt-auf-sich": {
-      "gruppe": "gesten",
-      "von": 144,
+      "gruppe": "zeigen",
+      "von": 40,
       "bilder": 8,
       "takt": 12,
       "wiederholt": false,
@@ -257,8 +296,8 @@
       "was": "zeigt auf sich selbst"
     },
     "hebt-hand": {
-      "gruppe": "zustaende",
-      "von": 115,
+      "gruppe": "haltung",
+      "von": 48,
       "bilder": 8,
       "takt": 12,
       "wiederholt": false,
@@ -267,8 +306,8 @@
       "was": "hebt eine Hand und hält"
     },
     "erklaert": {
-      "gruppe": "zustaende",
-      "von": 123,
+      "gruppe": "haltung",
+      "von": 56,
       "bilder": 22,
       "takt": 12,
       "wiederholt": false,
@@ -278,7 +317,7 @@
     },
     "wartet": {
       "gruppe": "zustaende",
-      "von": 145,
+      "von": 79,
       "bilder": 18,
       "takt": 6,
       "wiederholt": true,
@@ -287,8 +326,8 @@
       "was": "wartet — verlagert das Gewicht und sieht sich um (Schleife)"
     },
     "ist-traurig": {
-      "gruppe": "zustaende",
-      "von": 163,
+      "gruppe": "haltung",
+      "von": 78,
       "bilder": 8,
       "takt": 8,
       "wiederholt": false,
@@ -297,8 +336,8 @@
       "was": "wird traurig und bleibt es"
     },
     "schreckt-auf": {
-      "gruppe": "gesten",
-      "von": 152,
+      "gruppe": "haltung",
+      "von": 86,
       "bilder": 13,
       "takt": 12,
       "wiederholt": false,
@@ -335,6 +374,36 @@
       "rueckwaerts": true,
       "halt": 9,
       "was": "mag das, ein Herz steigt auf"
+    },
+    "liest": {
+      "gruppe": "werkzeug",
+      "von": 0,
+      "bilder": 26,
+      "takt": 8,
+      "wiederholt": true,
+      "rueckwaerts": false,
+      "halt": null,
+      "was": "liest am Pult (Schleife) — für Ladephasen, die lesen"
+    },
+    "schreibt": {
+      "gruppe": "werkzeug",
+      "von": 26,
+      "bilder": 19,
+      "takt": 8,
+      "wiederholt": true,
+      "rueckwaerts": false,
+      "halt": null,
+      "was": "schreibt am Pult (Schleife)"
+    },
+    "hebt-pokal": {
+      "gruppe": "werkzeug",
+      "von": 45,
+      "bilder": 11,
+      "takt": 12,
+      "wiederholt": false,
+      "rueckwaerts": true,
+      "halt": 10,
+      "was": "hebt den Pokal — für volle Punktzahl"
     }
   }
 }

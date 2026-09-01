@@ -23,9 +23,9 @@ const TILES = { light: VOYAGER, dark: VOYAGER };
 
 // Marker colour by entity kind (the legend in the Themen tab mirrors this).
 export const KIND_COLOR: Record<string, string> = {
-  ort: "#0764a6",
+  place: "#0764a6",
   organisation: "#7c3aed",
-  projekt: "#059669",
+  project: "#059669",
   beschlussort: "#dc6b19",
 };
 

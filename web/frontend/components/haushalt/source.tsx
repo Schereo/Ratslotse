@@ -128,11 +128,11 @@ export function Quellenkontext({ keys, jeDokument = LEER, year = null, children 
   // und die eine, die es vergisst, zeigt wieder auf die Startseite.
   const { data } = useFetch<DokumenteAntwort>("/council/haushalt/dokumente");
   const eintraege = useMemo(
-    () => nummerierung(keys, jeDokument, data?.dokumente, year),
-    [keys, jeDokument, data?.dokumente, year]);
+    () => nummerierung(keys, jeDokument, data?.documents, year),
+    [keys, jeDokument, data?.documents, year]);
   return (
     <SeitenQuellen.Provider value={{
-      keys, dokumente: data?.dokumente, jahrgaenge: data?.jahrgaenge, year,
+      keys, dokumente: data?.documents, jahrgaenge: data?.editions, year,
       eintraege,
     }}>
       {children}

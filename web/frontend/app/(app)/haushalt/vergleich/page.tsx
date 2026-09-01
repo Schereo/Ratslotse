@@ -114,10 +114,10 @@ export default function VergleichSeite() {
   }
 
   const skJahr = juengstesJahr(data, "tax_capacity");
-  const rsJahr = juengstesJahr(data, "realsteuern");
+  const rsJahr = juengstesJahr(data, "real_taxes");
   const tax_capacity = skJahr ? steuerkraftJeEinwohner(data, skJahr) : [];
-  const grundsteuer = rsJahr ? balken(data, "realsteuern", "hebesatz_grundsteuer_b", rsJahr) : [];
-  const einnahmekraft = rsJahr ? balken(data, "realsteuern", "steuereinnahmekraft_je_ew", rsJahr) : [];
+  const grundsteuer = rsJahr ? balken(data, "real_taxes", "hebesatz_grundsteuer_b", rsJahr) : [];
+  const einnahmekraft = rsJahr ? balken(data, "real_taxes", "steuereinnahmekraft_je_ew", rsJahr) : [];
 
   // Der Grundsteuer-Sprung (H3-07): Hebesatz vor und nach der Reform 2025 —
   // als Slope-Paar MIT Bruch-Marker, denn über die Reform hinweg sind die
@@ -135,9 +135,9 @@ export default function VergleichSeite() {
   // einen Vergleich, den die Seite gar nicht zeigte. Jetzt entscheidet, ob
   // die Werte wirklich dastehen.
   const rsVorjahrKandidat = rsJahr != null
-    && (data.years.realsteuern ?? []).includes(rsJahr - 1) ? rsJahr - 1 : null;
+    && (data.years.real_taxes ?? []).includes(rsJahr - 1) ? rsJahr - 1 : null;
   const grundsteuerVorher = rsVorjahrKandidat != null
-    ? balken(data, "realsteuern", "hebesatz_grundsteuer_b", rsVorjahrKandidat) : [];
+    ? balken(data, "real_taxes", "hebesatz_grundsteuer_b", rsVorjahrKandidat) : [];
   const rsVorjahr = grundsteuerVorher.length > 0 ? rsVorjahrKandidat : null;
   const sprungPaare: SlopePaarZeile[] = grundsteuer
     .flatMap((z): SlopePaarZeile[] => {
@@ -155,15 +155,15 @@ export default function VergleichSeite() {
   // Die Herkunft hängt an der Zeile, nicht an der Seite — beide Reihen haben
   // eine eigene (verschiedene Dateien, verschiedene Proben).
   const hSteuerkraft = herkunftVon(data,
-    data.werte.find((w) => w.series === "tax_capacity")?.herkunft_id);
+    data.values.find((w) => w.series === "tax_capacity")?.herkunft_id);
   const hRealsteuern = herkunftVon(data,
-    data.werte.find((w) => w.series === "realsteuern")?.herkunft_id);
+    data.values.find((w) => w.series === "real_taxes")?.herkunft_id);
 
   const olReihe = series(data, "steuereinnahmekraft_je_ew", "403000");
   const wobReihe = series(data, "steuereinnahmekraft_je_ew", WOLFSBURG);
 
-  const answer = antwortAnlage(data.beleg);
-  const antrag = antragAnlage(data.beleg);
+  const answer = antwortAnlage(data.citation);
+  const antrag = antragAnlage(data.citation);
   const hatZahlen = tax_capacity.length > 0 || grundsteuer.length > 0;
 
   return (
@@ -408,7 +408,7 @@ export default function VergleichSeite() {
             {/* Der Beleg aus dem eigenen Bestand. */}
             <div className="rounded-xl border border-border bg-muted/30 p-3.5">
               <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-                Aus dem Ratsinformationssystem · {data.beleg.template_number} · 2018
+                Aus dem Ratsinformationssystem · {data.citation.template_number} · 2018
               </p>
               <p className="mt-1.5 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
                 Die FDP-Fraktion fragte im November 2018, wie sich die Personalquote
@@ -442,11 +442,11 @@ export default function VergleichSeite() {
 
               {/* Die Verweise: erst der Vorgang bei uns, dann die Originale. */}
               <div className="mt-3 flex flex-col gap-1.5 border-t border-dashed border-border pt-2.5">
-                {data.beleg.decision_id != null && (
-                  <Link href={decisionHref(data.beleg.decision_id)}
+                {data.citation.decision_id != null && (
+                  <Link href={decisionHref(data.citation.decision_id)}
                     className="group inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-primary">
                     <FileText className="h-3.5 w-3.5 flex-none" />
-                    Der Vorgang bei uns: {data.beleg.title ?? data.beleg.template_number}
+                    Der Vorgang bei uns: {data.citation.title ?? data.citation.template_number}
                     <ArrowRight size={13} strokeWidth={2}
                       className="transition-transform group-hover:translate-x-0.5" />
                   </Link>
@@ -465,11 +465,11 @@ export default function VergleichSeite() {
                     Antrag der FDP-Fraktion im Original (PDF)
                   </a>
                 )}
-                {!data.beleg.anlagen.length && (
-                  <a href={data.beleg.vorlage_url} target="_blank" rel="noopener noreferrer"
+                {!data.citation.attachments.length && (
+                  <a href={data.citation.template_url} target="_blank" rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-primary">
                     <ExternalLink className="h-3.5 w-3.5 flex-none" />
-                    Vorlage {data.beleg.template_number} im Bürgerinformationssystem
+                    Vorlage {data.citation.template_number} im Bürgerinformationssystem
                   </a>
                 )}
               </div>
@@ -510,7 +510,7 @@ export default function VergleichSeite() {
               (Designsprache §4). */}
           <ul className="mt-3 grid gap-x-6 gap-y-2.5 @5xl/section:grid-cols-3">
             {Object.entries(ROLLEN).map(([key, r]) => {
-              const stadt = data.staedte.find((s) => s.key === key);
+              const stadt = data.cities.find((s) => s.key === key);
               if (!stadt) return null;
               return (
                 <li key={key} className="border-l-2 border-border pl-3">

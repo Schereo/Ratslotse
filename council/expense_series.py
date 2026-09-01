@@ -229,9 +229,9 @@ GEGENPROBE_UNTERGRENZE = -TAUSEND / 2
 #: braucht es die Kurzform, weil der Messwert alle bestandenen Proben einer
 #: Gruppe hintereinander nennt.
 PROBEN_KURZ: dict[str, str] = {
-    "ausgabenreihe_prokopf": "Pro-Kopf-Rechnung der Quelle",
-    "ausgabenreihe_zweitquelle": "Jahrbuch gegen Open-Data-Portal",
-    "ausgabenreihe_jahresabschluss": "Abgleich mit dem Jahresabschluss",
+    "expense_series_per_capita": "Pro-Kopf-Rechnung der Quelle",
+    "expense_series_second_source": "Jahrbuch gegen Open-Data-Portal",
+    "expense_series_annual_accounts": "Abgleich mit dem Jahresabschluss",
 }
 
 #: Eine Datenzeile beginnt mit der Jahreszahl.
@@ -526,12 +526,12 @@ def lies(csv_kameral: str, csv_doppik: str, pdf_text: str | None = None,
             verworfen.append({"year": year, "reason": reason})
             continue
 
-        probes = ["ausgabenreihe_prokopf"]
+        probes = ["expense_series_per_capita"]
         if len(kand) == 2:
             ok, _ = zweitquellenprobe(kand[0], kand[1])
             zaehler["zweitquelle_bestanden" if ok else "zweitquelle_gerissen"] += 1
             if ok:
-                probes.append("ausgabenreihe_zweitquelle")
+                probes.append("expense_series_second_source")
 
         g_ok, anteil = gegenprobe(gewaehlt["amount"], income_statement.get(year))
         if g_ok is None:
@@ -550,7 +550,7 @@ def lies(csv_kameral: str, csv_doppik: str, pdf_text: str | None = None,
                              f"{de_zahl(GEGENPROBE_TOLERANZ * 100, 1)} % für die "
                              f"nicht rechtsfähigen Stiftungen)"})
                 continue
-            probes.append("ausgabenreihe_jahresabschluss")
+            probes.append("expense_series_annual_accounts")
 
         row = {
             "year": year, "accounting_system": regelwerk_von(year),
