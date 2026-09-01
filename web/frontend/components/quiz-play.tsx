@@ -27,7 +27,7 @@ export const CATEGORY_LABEL: Record<string, string> = {
 };
 const SOURCE_LABEL: Record<string, string> = {
   wikipedia: "Wikipedia",
-  stadt: "Stadt Oldenburg",
+  city: "Stadt Oldenburg",
   ratsinfo: "Ratsinformationssystem",
 };
 const DIFF_LABEL: Record<string, string> = { easy: "leicht", medium: "mittel", hard: "schwer" };

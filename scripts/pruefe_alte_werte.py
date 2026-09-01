@@ -75,14 +75,24 @@ ERLAUBT = {
     "gruppe": "Suchwort der Beschluss-Seite, kein gespeicherter Wert",
     "anlage": "Anker-Präfix der Anlagen-Blöcke",
     "liste": "Absatzart des Antwort-Renderers (kopf|unterkopf|liste|text)",
-    "posten": "Bandart des Flussbilds (posten|rest|ausgleich), rein im Frontend",
-    "gesamt": "Sortierung der Bereichstabelle, rein im Frontend",
     "leicht": "Quiz-Schwierigkeit — im Backend noch deutsch",
     "unveraendert": "Quellen-Check der Kommunalwahl mit eigenem Vokabular",
     "entwurf": "nur noch in einem Doku-Kommentar in haushalt.ts",
     "schwelle": "nur noch in einem Doku-Kommentar in haushalt.ts",
     "stadtteil": "Pfad-Teil und Feldname der Ortsangabe im E2E-Fixture",
     "unbekannt": "Ersatztext für einen fehlenden Bildnachweis",
+    "abgesetzt": "Wortlaut des RIS in `ergebnisArt` — dort steht der Satz, nicht der Wert",
+    # Diese sechs sind im Frontend GEWOEHNLICHE Bezeichner — Variablen,
+    # Eigenschaften, ein HTML-Attribut. Der Schluessel-Zweig des Musters
+    # trifft sie, das Vokabular meint sie nicht.
+    "alt": "das `alt`-Attribut eines Bildes",
+    "sonstiges": "Themenfeld `policy_field` — bleibt deutsch (das Ortsart-`sonstiges` heisst other)",
+    "wahlbereich": "Wortbestandteil in Prosa; als Wert heisst er electoral_district",
+    "geaendert": "zugleich die Changelog-Kategorie (hinzugefuegt|geaendert|behoben)",
+    "beides": "gewoehnliches Wort im Fliesstext",
+    "entfernt": "gewoehnliches Wort im Fliesstext",
+    "gesamt": "Eigenschaftsname vieler Antwort-Typen und Sortierung der Bereichstabelle",
+    "posten": "Variablen-/Parametername und Bandart des Flussbilds (rein im Frontend)",
     "dagegen": "zugleich die Partei-Haltung der KI-Antwort (dafür|dagegen|offen)",
     "belegt": "zugleich das Urteil der Themen-Prüfung (belegt|plausibel|ungeeignet)",
     "bremst": "Beschriftung des Ziel-Balkens",
@@ -111,7 +121,7 @@ _KOMMENTAR = re.compile(r'^\s*(//|\*|/\*)')
 
 ERLAUBT_ZEILE = {
     "neu": re.compile(r'aria-label|sp\.get|key: "neu"|"art"|art:|kind ==|'
-                      r'page_draft|case "neu"'),
+                      r'page_draft|case "neu"|treffer'),
     # Der Beleg-Apparat: `Beleg q="…"` und die Verzeichnis-Listen. Letztere
     # erkennt man an einem Nachbarschlüssel oder am `as const` der Liste.
     "teilhaushalt": _BELEG,
@@ -124,17 +134,15 @@ ERLAUBT_ZEILE = {
     "unveraendert": re.compile(r'kommunalwahl|Status'),
     "stadtteil": re.compile(r'stadtteil:|/preview|"stadtteil"\s*[,:]'),
     "liste": re.compile(r'kopf|unterkopf|art ===|as const'),
-    "posten": re.compile(r'\bart\b|farbe\('),
-    "gesamt": re.compile(r'Sortierung|value: "gesamt"'),
     "anlage": re.compile(r'ankerPrefix'),
-    "gruppe": re.compile(r'factionWords|term'),
+    "gruppe": re.compile(r'factionWords|term|gruppe:\s*string'),
     "unbekannt": re.compile(r'\|\|'),
     # `dagegen` ist daneben die Haltung einer Partei aus der KI-Antwort
     # (dafür|dagegen|offen|gewandelt) — ein eigenes Vokabular, eigener Schnitt.
     "dagegen": re.compile(r'haltung|dafür|label: "dagegen"'),
     # `belegt` ist daneben das Urteil der Themen-Prüfung
     # (belegt|plausibel|ungeeignet) und die Beleglage einer Kernzahl.
-    "belegt": re.compile(r'verdict|plausibel|beleglage'),
+    "belegt": re.compile(r'verdict|plausibel|beleglage|belegt:\s*Kasten'),
     "bremst": re.compile(r'label: "bremst"'),
     "voran": re.compile(r'label: "bringt voran"'),
     # `rat`, `thema` und `verwaltung` sind im Backend noch deutsch — aber je
@@ -146,9 +154,25 @@ ERLAUBT_ZEILE = {
     "rat": re.compile(r'\bart\b|StreitRolle|typ\?:|\brole\b|"rat" \| "verwaltung"|'
                       r'^\s*(//|\*)|committee ==='),
     "thema": re.compile(r'case topic|"kind":|VorschauArt|target\?:|'
-                        r'vorschauMetadata|/preview|kind: "thema"'),
+                        r'vorschauMetadata|/preview|kind: "thema"|^\s*(//|\*)'),
     "verwaltung": re.compile(r'\btyp\b|type ==|StreitRolle|\bart\b'),
     "beratend": re.compile(r'\bart\b|^\s*(//|\*)'),
+    "abgesetzt": re.compile(r'e\.includes|\.test\(|contains\('),
+    # `alt` ist im Frontend fast immer das Bild-Attribut.
+    "alt": re.compile(r'alt:\s*(hover|"|\{|`)|alt='),
+    "sonstiges": re.compile(r'sonstiges:\s*(Tag|")'),
+    "wahlbereich": re.compile(r'^\s*\*|//'),
+    # `gesamt`, `posten`, `beides`, `stadt`, `entfernt`, `geaendert`, `neu`
+    # und `thema` sind daneben ganz gewoehnliche Woerter. Erlaubt sind sie
+    # nur als Variable, Eigenschaft oder in Fliesstext — nicht als
+    # Schluessel einer Zuordnungstabelle, denn genau dort sterben sie still.
+    "gesamt": re.compile(r'gesamt:\s*(number|null|\{|\w+\.)|\bgesamt\b\s*[,;)]|'
+                         r'const |function |Sortierung|value: "gesamt"'),
+    "posten": re.compile(r'const posten|\(posten:|posten:\s*(number|\{|BonZeile)|'
+                         r'\bart\b|farbe\('),
+    "beides": re.compile(r'^\s*(//|\*)'),
+    "entfernt": re.compile(r'^\s*(//|\*)'),
+    "geaendert": re.compile(r'^\s*(//|\*)|geaendert: "Ge'),
     # `beteiligung` ist daneben ein FELDname der Beschluss-Antwort — Felder
     # sind ein eigener Schnitt, die Werte darin sind schon englisch.
     "beteiligung": re.compile(r'"beteiligung":|= "beteiligung"'),
@@ -157,7 +181,7 @@ ERLAUBT_ZEILE = {
     "schwer": re.compile(r'DIFF_LABEL'),
     "leitung": re.compile(r'StreitRolle|\brole\b'),
     "stadt": re.compile(r'entity_key|\bart\b|Sortierung|sortierung|value: "stadt"|'
-                        r'\brole\b'),
+                        r'\brole\b|\{ stadt,|stadt:\s*string'),
     # Daneben ist `vorlage` ein FELDname der Beschluss-Antwort — der ist
     # ein eigener Schnitt und nicht Teil der Werte-Reihe.
     "vorlage": re.compile(r'Zielart|art ===|\bart\b|source:|^\s*\| "|'
@@ -181,6 +205,9 @@ ERLAUBT_STELLE = {
     ("ProfileAndQuizViews.swift", "rat"): "`art` des Personen-Profils, im Backend deutsch",
     ("ProfileAndQuizViews.swift", "beratend"): "`art` des Personen-Profils, im Backend deutsch",
     ("RatslotseAppTests.swift", "thema"): "`qtype` der Beleg-Prüfung, im Backend deutsch",
+    ("haushalt-vergleich.ts", "stadt"): "Feldname der Vergleichsstädte-Zeilen (`{stadt, was}`), kein Wert",
+    ("haushalt-konzern.ts", "stadt"): "Beschriftung zum `entity_key` des Konzerns — der bleibt deutsch",
+    ("haushalt-dokumente.ts", "vorlage"): "Beschriftung zur Zielart des Beleg-Apparats — die bleibt deutsch",
 }
 
 #: Werte, die nur im Code umbenannt wurden — sie stehen nirgends gespeichert,
@@ -227,13 +254,32 @@ def dateien() -> list[Path]:
 def main() -> int:
     paare = migrationspaare()
     alte = {a: b for a, b in paare}
-    muster = re.compile(r'"(' + "|".join(re.escape(a) for a in sorted(alte)) + r')"')
+    W = "|".join(re.escape(a) for a in sorted(alte))
+    # Zwei Formen, in denen ein Wert in TS/Swift steht. Die zweite ist die
+    # gefaehrlichere: Farb- und Beschriftungs-Tabellen (`OUTCOME_META`,
+    # `DOT_CLS`, `LABEL`) schreiben ihre Schluessel OHNE Anfuehrungszeichen —
+    # genau die Form, die in #890 acht Mal tot dastand und die dieser Pruefer
+    # bis zum 01.09.2026 nicht sah.
+    # Zweiter Zweig: der Schluessel einer Zuordnungstabelle, OHNE
+    # Anfuehrungszeichen — `angenommen: "Angenommen"`, `neu: "border-..."`.
+    # Genau diese Form stand in #890 acht Mal tot da, und genau sie sah der
+    # Pruefer bis zum 01.09.2026 nicht.
+    #
+    # Zwei Einschraenkungen halten das Rauschen draussen, ohne die gefaehrliche
+    # Form zu verlieren: Der Schluessel muss am Zeilenanfang oder hinter `{`/`,`
+    # stehen (sonst traefe der Ternaer `x ? alt : y`), und rechts muss eine
+    # nicht-leere ZEICHENKETTE stehen. Eine Typ-Eigenschaft (`stadt: number`),
+    # eine Destrukturierung (`{ posten }`) oder ein Verweis (`rat: z.rat`) ist
+    # nie eine Wertetabelle — eine Beschriftung oder Farbe immer.
+    muster = re.compile(
+        rf'"(?P<zitiert>{W})"'
+        rf'|(?:^|[{{,])\s*(?P<schluessel>{W})\s*:\s*"[^"]')
     funde: list[str] = []
     for pfad in dateien():
         rel = pfad.relative_to(WURZEL)
         for nr, zeile in enumerate(pfad.read_text().splitlines(), start=1):
             for treffer in muster.finditer(zeile):
-                alt = treffer.group(1)
+                alt = treffer.group("zitiert") or treffer.group("schluessel")
                 if (pfad.name, alt) in ERLAUBT_STELLE:
                     continue
                 if alt in ERLAUBT:

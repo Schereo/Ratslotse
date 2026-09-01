@@ -774,7 +774,7 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 /** Schlecht bewertete Quizfragen (👎) sichten und ausmustern. Ausgemusterte
  *  Fragen fliegen aus künftigen Runden; der nächste Generierungslauf füllt das
  *  Gebiet wieder auf. Datenquelle: GET /admin/quiz/flagged. */
-const AREA_TYPE_LABEL: Record<string, string> = { district: "", wahlbereich: "Wahlbereich ", thema: "" };
+const AREA_TYPE_LABEL: Record<string, string> = { district: "", electoral_district: "Wahlbereich ", topic: "" };
 
 function QuizModerationTab() {
   const qc = useQueryClient();

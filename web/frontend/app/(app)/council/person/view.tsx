@@ -408,7 +408,7 @@ function VerwaltungProfil({ data }: { data: VerwaltungDetail }) {
 }
 
 const WB_ART: Record<string, string> = {
-  rede: "Rede", anfrage: "Anfrage", einwohnerfrage: "Einwohnerfrage", zusage: "Zusage",
+  speech: "Rede", inquiry: "Anfrage", citizen_question: "Einwohnerfrage", pledge: "Zusage",
 };
 
 function WortbeitragZeile({ w, erste }: {

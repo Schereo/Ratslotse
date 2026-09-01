@@ -92,13 +92,13 @@ Transkript sein (mindestens 40 Zeichen), das die Ergebnisworte enthaelt.
 Formuliere nichts um.
 
 Antworte AUSSCHLIESSLICH mit einem JSON-Objekt:
-{"ergebnisse": [{"nr": "7.1", "art": "haupt", "outcome": "angenommen",
-  "vote": "einstimmig", "gegenstimmen": null, "enthaltungen": 1,
+{"ergebnisse": [{"nr": "7.1", "art": "haupt", "outcome": "accepted",
+  "vote": "unanimous", "no_votes": null, "abstentions": 1,
   "beleg": "woertliches Zitat"}]}
 
-outcome: angenommen, abgelehnt, vertagt, zur_kenntnis oder abgesetzt.
-vote: "einstimmig", "mehrheitlich" oder null.
-gegenstimmen/enthaltungen: Zahl oder null (null = nicht ausgesprochen)."""
+outcome: accepted, rejected, postponed, noted oder removed.
+vote: "unanimous", "majority" oder null.
+no_votes/abstentions: Zahl oder null (null = nicht ausgesprochen)."""
 
 
 # ---------------------------------------------------------------- yt-dlp
@@ -294,10 +294,10 @@ def resolve_vote(result: dict) -> str | None:
     gezählte Gegenstimme → mehrheitlich; das Wort „einstimmig" im Beleg →
     einstimmig; alles andere — insbesondere ein bloßes „mehrheitlich" der
     Leitung — bleibt offen."""
-    if result.get("gegenstimmen"):
-        return "mehrheitlich"
+    if result.get("no_votes"):
+        return "majority"
     if re.search(r"einstimmig|einm[uü]tig", (result.get("beleg") or ""), re.I):
-        return "einstimmig"
+        return "unanimous"
     return None
 
 
@@ -413,11 +413,11 @@ def extract_results(segments: list[tuple[float, str]],
             continue  # uneinig → „Protokoll abwarten"
         # Der ausführlichere Befund gewinnt (Zahlen sind selten — wer eine
         # hat, hat genauer hingehört).
-        r = a if (a.get("gegenstimmen") is not None
-                  or a.get("enthaltungen") is not None) else b
+        r = a if (a.get("no_votes") is not None
+                  or a.get("abstentions") is not None) else b
         outcome = r.get("outcome")
-        if outcome not in ("angenommen", "abgelehnt", "vertagt",
-                           "zur_kenntnis", "abgesetzt"):
+        if outcome not in ("accepted", "rejected", "postponed",
+                           "noted", "removed"):
             continue
         quote = (r.get("beleg") or "").strip()
         pos = _anchor_position(folded, nr, a.get("beleg") or "", b.get("beleg") or "")
@@ -426,8 +426,8 @@ def extract_results(segments: list[tuple[float, str]],
             "item_number": nr,
             "outcome": outcome,
             "vote": resolve_vote(r),
-            "gegenstimmen": r.get("gegenstimmen"),
-            "enthaltungen": r.get("enthaltungen"),
+            "no_votes": r.get("no_votes"),
+            "abstentions": r.get("abstentions"),
             "quote": quote,
             "video_seconds": int(seconds) if seconds is not None else None,
         })

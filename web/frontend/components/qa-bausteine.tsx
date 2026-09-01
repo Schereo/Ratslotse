@@ -833,7 +833,7 @@ export function TagesordnungBlock({ sitzungen }: { sitzungen: SitzungsInfo[] }) 
  *  im Unterschied zu dem, was beschlossen wurde. */
 export function DebattenBlock({ debatten }: { debatten: DebattenHinweis[] }) {
   const artLabel: Record<string, string> = {
-    rede: "Rede", anfrage: "Anfrage", einwohnerfrage: "Einwohnerfrage", zusage: "Zusage",
+    speech: "Rede", inquiry: "Anfrage", citizen_question: "Einwohnerfrage", pledge: "Zusage",
   };
   return (
     <div className="rounded-xl border border-dashed border-border p-3">

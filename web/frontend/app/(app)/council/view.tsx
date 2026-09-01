@@ -1100,10 +1100,10 @@ function AgendaRow({ it, query, outcome, decisionId, myTopic, domId, flash, ksin
  *  Push nennt nur den Satz, hier stehen die Einzelheiten. Farbgrammatik wie
  *  in der Mail: Neues grün, Geändertes gelb, Entferntes rot. */
 const AENDERUNG_FARBE: Record<string, string> = {
-  neu: "border-emerald-500",
-  geaendert: "border-amber-500", verschoben: "border-amber-500",
-  vorlage: "border-amber-500", anlagen: "border-amber-500",
-  entfernt: "border-rose-400",
+  new: "border-emerald-500",
+  changed: "border-amber-500", moved: "border-amber-500",
+  template: "border-amber-500", attachments: "border-amber-500",
+  removed: "border-rose-400",
 };
 
 function fmtAenderungsDatum(iso: string): string {

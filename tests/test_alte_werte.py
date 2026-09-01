@@ -17,6 +17,7 @@ deshalb prüft sie ein Skript über den Quelltext.
 """
 from __future__ import annotations
 
+import ast
 import sys
 from pathlib import Path
 
@@ -69,3 +70,23 @@ def test_jede_erlaubnis_traegt_eine_begruendung():
     # Ein Zeilen-Filter ohne Eintrag in ERLAUBT wirkt nie — das wäre ein
     # stiller Tippfehler.
     assert set(ERLAUBT_ZEILE) <= set(ERLAUBT)
+
+
+def test_keine_erlaubnis_steht_zweimal_in_der_liste():
+    """Ein doppelter Schlüssel im dict-Literal überschreibt den ersten still —
+    der frühere Filter wirkt dann nicht mehr, und der Wächter meldet
+    plötzlich Stellen, die längst begründet waren. Genau das ist am
+    01.09.2026 mit `posten` und `gesamt` passiert."""
+    quelle = (Path(__file__).resolve().parents[1] / "scripts" / "pruefe_alte_werte.py").read_text()
+    baum = ast.parse(quelle)
+    for knoten in ast.walk(baum):
+        if not (isinstance(knoten, ast.Assign)
+                and isinstance(knoten.targets[0], ast.Name)
+                and isinstance(knoten.value, ast.Dict)):
+            continue
+        name = knoten.targets[0].id
+        if name not in ("ERLAUBT", "ERLAUBT_ZEILE", "ERLAUBT_STELLE"):
+            continue
+        schluessel = [k.value for k in knoten.value.keys if isinstance(k, ast.Constant)]
+        doppelt = {w for w in schluessel if schluessel.count(w) > 1}
+        assert not doppelt, f"{name} führt doppelt: {sorted(doppelt)}"
