@@ -2802,7 +2802,7 @@ class CouncilStore:
             "ars TEXT NOT NULL, "              # Regionalschlüssel, nie der Name
             "population REAL, "
             "total REAL NOT NULL, per_capita REAL, "
-            "core_budget REAL, extra_budgets REAL, sonstige REAL, "
+            "core_budget REAL, extra_budgets REAL, other REAL, "
             # Die Aufteilung nach Beteiligungshöhe — daraus rechnet sich der
             # Anteil, der KEINE Haftung begründet (2024: 58 %).
             "extra_under_50 REAL, other_below_50 REAL, "
@@ -8099,7 +8099,7 @@ class CouncilStore:
             self._conn.execute(
                 "INSERT OR REPLACE INTO council_integrierte_schulden "
                 "(year, ars, population, total, per_capita, core_budget, "
-                " extra_budgets, sonstige, extra_under_50, other_below_50, "
+                " extra_budgets, other, extra_under_50, other_below_50, "
                 " change, probes, herkunft_id, fetched_at) "
                 "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (row["year"], row["ars"], row.get("population"),

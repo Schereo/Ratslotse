@@ -85,7 +85,7 @@ export type SchuldenDaten = {
     as_of_date: {
       year: number; total: number; per_capita: number | null;
       core_budget: number | null; extra_budgets: number | null;
-      sonstige: number | null; population: number | null;
+      other: number | null; population: number | null;
       change: number | null; herkunft_id: number | null;
     };
     anteil_unter_50: number | null;
