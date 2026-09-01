@@ -141,7 +141,7 @@ def write_story(decision: dict) -> str | None:
             ],
             max_tokens=300,
             temperature=0.4,
-            _feature="fundstueck_story",
+            _feature="daily_find_story",
         )
         data = json.loads(resp.choices[0].message.content or "{}")
     except Exception:  # noqa: BLE001 — nächster Lauf füllt den Tag erneut

@@ -76,7 +76,7 @@ AUFWENDUNGEN_PLAN = 776_500_000.0
 JAHR = 2024
 
 
-def _quelle(year: int, probe: str = "strukturprobe") -> Herkunft:
+def _quelle(year: int, probe: str = "structure_check") -> Herkunft:
     """Die Herkunft, die `save_ergebnisrechnung` verlangt — hier nur Beiwerk:
     Das Flussbild liest Zahlen, nicht Belege."""
     return Herkunft(kind="ris", probe=probe, label=f"Jahresabschluss {year}",
@@ -109,7 +109,7 @@ def _befuellen(store: CouncilStore, ohne_posten: int | None = None) -> None:
         store.save_ergebnisrechnung(JAHR, [
             {"nr": 20, "label": "Summe ordentliche Aufwendungen",
              "budgeted": round(value * anteil_a, 2), "result": value, "is_total": 1},
-        ], _quelle(JAHR, "summenprobe"), sub_budget_no=nr, sub_budget_name=name)
+        ], _quelle(JAHR, "sub_budget_sum_check"), sub_budget_no=nr, sub_budget_name=name)
 
 
 def _daten(store: CouncilStore) -> dict:

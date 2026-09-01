@@ -106,7 +106,7 @@ def test_chart_json_shape():
 def test_store_haushalt_roundtrip_and_quiz(tmp_path, source):
     store = CouncilStore(tmp_path / "c.sqlite")
     rows = haushalt.parse_ergebnishaushalt(PAGE_2026)
-    q = source("Haushaltsplan 2026", "http://pdf", probe="summenzeile")
+    q = source("Haushaltsplan 2026", "http://pdf", probe="total_row")
     assert store.save_haushalt(2026, rows, q) == 14
     assert store.save_haushalt(2026, rows, q) == 14  # Re-Ingest idempotent
     got = store.get_haushalt(2026)
@@ -842,7 +842,7 @@ def test_store_finanzberichte_roundtrip(tmp_path, source):
 
     produkte = finanzberichte.parse_teilergebnishaushalt(THH_PLAN)
     assert store.save_produkte(2019, produkte, source(
-        "THH06", "http://thh06", probe="produktzeile")) == 1
+        "THH06", "http://thh06", probe="product_row")) == 1
     assert store.produkte_jahre() == [2019]
     assert store.get_produkte(2019, sub_budget_no=6)[0]["product_name"] == "Archivierung"
     assert store.get_produkte(2019, sub_budget_no=99) == []
@@ -860,9 +860,9 @@ def test_produkt_suche_und_filter(tmp_path, source):
     Zeile mehrere hundert Zeichen Fließtext."""
     store = CouncilStore(tmp_path / "c.sqlite")
     store.save_produkte(2019, finanzberichte.parse_teilergebnishaushalt(THH_PLAN),
-                        source("THH06", "http://thh06", probe="produktzeile"))
+                        source("THH06", "http://thh06", probe="product_row"))
     store.save_produkte(2019, finanzberichte.parse_teilergebnishaushalt(THH_MIT_GRUNDDATEN),
-                        source("THH10", "http://thh10", probe="produktzeile"))
+                        source("THH10", "http://thh10", probe="product_row"))
     assert len(store.get_produkte(2019)) == 2
 
     # Name, Nummer, Amt und Kurzbeschreibung sind durchsuchbar …
@@ -1030,7 +1030,7 @@ def test_store_plan_ist(tmp_path, source):
     for t in finanzberichte.parse_teilergebnisrechnungen(JA_THH, 2023):
         store.save_ergebnisrechnung(
             2023, t["posten"],
-            source("JA 2023", "http://ja2023", probe="summenprobe"),
+            source("JA 2023", "http://ja2023", probe="sub_budget_sum_check"),
             sub_budget_no=t["sub_budget_no"], sub_budget_name=t["sub_budget_name"])
 
     assert store.plan_actual_years() == [2023]
@@ -1420,7 +1420,7 @@ def test_abweichungsgruende_brauchen_die_rechenprobe():
 def test_store_abweichungsgruende_roundtrip(tmp_path, source):
     store = CouncilStore(tmp_path / "c.sqlite")
     gruende = finanzberichte.parse_abweichungsgruende(JA_WARUM, 2024)
-    q = source("JA 2024", "http://x", probe="abweichungstext")
+    q = source("JA 2024", "http://x", probe="variance_text")
     assert store.save_abweichungsgruende(2024, gruende, q) == 2
     assert store.save_abweichungsgruende(2024, gruende, q) == 2
     geladen = store.get_abweichungsgruende(2024)
@@ -1458,9 +1458,9 @@ def test_pruefbericht_erkennung():
 def test_store_pruefberichte_roundtrip(tmp_path, source):
     store = CouncilStore(tmp_path / "c.sqlite")
     store.save_pruefbericht_quelle(
-        2023, source("Schlussbericht 2023", "http://x", probe="eingangsformel"), 61, True)
+        2023, source("Schlussbericht 2023", "http://x", probe="preamble_scope"), 61, True)
     store.save_pruefbericht_quelle(
-        2024, source("Schlussbericht 2024", "http://y", probe="eingangsformel"), 64, False)
+        2024, source("Schlussbericht 2024", "http://y", probe="preamble_scope"), 64, False)
     n_reports = store.get_pruefbericht_quellen()
     assert [b["year"] for b in n_reports] == [2023, 2024]
     assert n_reports[0]["readable"] == 1 and n_reports[1]["readable"] == 0

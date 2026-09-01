@@ -581,7 +581,7 @@ def test_store_finanzrechnung_roundtrip(tmp_path, source):
     zeilen, _, _ = finanzberichte.finanzprobe(
         finanzberichte.parse_finanzrechnung(FR_2024, 2024))
     q = source("Jahresabschluss 2024", "https://example.org/ja2024.pdf",
-               probe="finanzkaskade")
+               probe="cash_flow_cascade")
     assert store.save_finanzrechnung(2024, zeilen, q) == len(zeilen)
     assert store.save_finanzrechnung(2024, zeilen, q) == len(zeilen)  # idempotent
     assert store.finanzrechnung_jahre() == [2024]

@@ -944,9 +944,9 @@ def probe_ratsabgleich(bewilligungen: list[Bewilligung], kap: Kapitel3,
 
 
 #: Die Proben dieser Schicht, wie sie in ``council/herkunft.PROBEN`` stehen.
-PROBE_VOLLTEXT = "nachbewilligung_volltext"
-PROBE_TABELLE = "nachbewilligung_tabellenprobe"
-PROBE_RAT = "nachbewilligung_ratsabgleich"
+PROBE_VOLLTEXT = "supplementary_approval_fulltext"
+PROBE_TABELLE = "supplementary_approval_table_check"
+PROBE_RAT = "supplementary_approval_council_match"
 
 assert PROBE_VOLLTEXT in herkunft.PROBEN
 assert PROBE_TABELLE in herkunft.PROBEN

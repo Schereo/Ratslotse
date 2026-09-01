@@ -716,6 +716,37 @@ class Store:
         ]
         self._werte_umschreiben("quiz_answers", "category", QUIZ_KATEGORIEN)
         self._werte_umschreiben("user_quiz_questions", "category", QUIZ_KATEGORIEN)
+
+        # Die Namen der LLM-Aufrufe, wie sie das Kosten-Tracking je Feature
+        # zählt (`llm_usage.feature`, gesetzt über `_feature=` in `kern/llm.py`).
+        #
+        # ACHTUNG, zwei Namensräume mit denselben Wörtern: `qa_antwort`,
+        # `deep_bericht`, `partei_meinungen` und vier weitere sind AUCH
+        # Schlüssel in `kern/prompts.py::DEFAULTS`. Die bleiben stehen — ein
+        # Suchen-und-Ersetzen über den blossen String hätte `prompts.get(…)`
+        # ins Leere laufen lassen, ohne dass ein Test rot wird.
+        self._werte_umschreiben("llm_usage", "feature", [
+            ("anlagen_ocr", "attachment_ocr"), ("beschluss_orte", "decision_places"),
+            ("deep_bericht", "deep_report"), ("deep_zerlegung", "deep_decomposition"),
+            ("entitaeten_beschreibung", "entity_description"), ("entitaeten_ner", "entity_ner"),
+            ("entity_dubletten", "entity_duplicates"), ("fundstueck_story", "daily_find_story"),
+            ("livestream_transkript", "livestream_transcript"), ("partei_meinungen", "party_opinions"),
+            ("protokoll_extraktion", "minutes_extraction"), ("qa_analyse", "qa_analysis"),
+            ("qa_antwort", "qa_answer"), ("qa_einfach", "qa_simple"),
+            ("social_kartentext", "social_card_text"), ("social_kritiker", "social_critic"),
+            ("themen_klassifikation", "topic_classification"), ("themenfeld_rueckblick", "field_recap"),
+            ("topic_auto_beschreibung", "topic_auto_description"), ("video_ergebnisse", "video_results"),
+            ("wortbeitraege", "speeches"), ("ziel_bewertung", "goal_rating"),
+            # Ein Experiment, das es im Code nicht mehr gibt — die 259 Zeilen
+            # auf dev stehen aber weiter in der Kostenstatistik.
+            ("exp_sitzungsklassifikation", "exp_session_classification"),
+        ])
+        # Dasselbe für die Nutzungszählung. `session` ist schon englisch; der
+        # BLOCKNAME der Admin-Antwort heisst weiter `ki_frage` (API-Feldnamen
+        # sind ein eigener Schnitt), s. `get_web_user_detail`.
+        self._werte_umschreiben("user_activity", "feature", [
+            ("recherche", "research"), ("ki_frage", "ai_question"),
+        ])
         cols = {r[1] for r in self._conn.execute("PRAGMA table_info(topics)").fetchall()}
         if "chat_id" not in cols:
             admin = int(os.environ.get("TELEGRAM_CHAT_ID", 0))
@@ -2229,7 +2260,13 @@ class Store:
             "qa_speichern": u.get("qa_speichern"),
             # Admin-steuerbare Frage-Limits (10.08.26) — fürs Formular im Detail.
             "deep_limit": u.get("deep_limit"), "limits_frei": bool(u.get("limits_frei")),
-            "features": {"ki_frage": feats.get("ki_frage", 0), "suche": feats.get("suche", 0),
+            # Links der API-Feldname, rechts der GESPEICHERTE Wert — die beiden
+            # sind seit dem Werte-Umbau verschieden: `user_activity.feature`
+            # heißt jetzt `ai_question`, der Block der Antwort weiter
+            # `ki_frage`. Die API-Feldnamen sind ein eigener Schnitt.
+            # `suche`, `analyse` und `karte` schreibt niemand — sie stehen
+            # dauerhaft auf 0, s. `record_activity`-Aufrufer.
+            "features": {"ki_frage": feats.get("ai_question", 0), "suche": feats.get("suche", 0),
                          "quiz": n_quiz, "analyse": feats.get("analyse", 0), "karte": feats.get("karte", 0)},
             "topics": topics, "abos": abos, "verlauf": verlauf, "verlauf_days": verlauf_days,
         }

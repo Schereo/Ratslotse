@@ -238,7 +238,7 @@ def test_ohne_bestandene_probe_kommt_kein_wert_herein(gelesen):
 def test_die_pro_kopf_probe_traegt_jede_zeile(gelesen):
     """Die einzige Probe, die alle 54 Jahrgänge haben — auch die ältesten."""
     for z in gelesen["zeilen"]:
-        assert "ausgabenreihe_prokopf" in z["probes"], z
+        assert "expense_series_per_capita" in z["probes"], z
 
 
 def test_eine_zeile_ohne_pro_kopf_wert_kommt_nicht_herein():
@@ -260,9 +260,9 @@ def test_die_gegenprobe_erklaert_ihren_versatz(gelesen):
         z = next(z for z in gelesen["zeilen"] if z["year"] == year)
         anteil = (z["amount"] - kern) / kern
         assert 0 < anteil < 0.0005, f"{year}: {anteil:.5%}"
-        assert "ausgabenreihe_jahresabschluss" in z["probes"]
+        assert "expense_series_annual_accounts" in z["probes"]
     # Und der Erklärsatz benennt die Ursache statt sie offenzulassen.
-    assert "Stiftungen" in herkunft.PROBEN["ausgabenreihe_jahresabschluss"]
+    assert "Stiftungen" in herkunft.PROBEN["expense_series_annual_accounts"]
 
 
 def test_ein_jahrgang_gegen_seinen_abschluss_faellt_wenn_er_zu_weit_liegt():
@@ -281,7 +281,7 @@ def test_jahre_ohne_abschluss_tragen_die_probe_nicht(gelesen):
     Jahres steht hier Monate vor dem Abschluss. Sie darf deshalb nicht so
     aussehen, als sei sie gegen ihn geprüft."""
     z = next(z for z in gelesen["zeilen"] if z["year"] == 2025)
-    assert "ausgabenreihe_jahresabschluss" not in z["probes"]
+    assert "expense_series_annual_accounts" not in z["probes"]
     assert z["year"] > max(ABSCHLUESSE)
 
 
@@ -306,7 +306,7 @@ def test_2021_der_widerspruch_wird_festgehalten(gelesen):
     assert z["conflict_source"] == "csv"
     # Die Zweitquellenprobe hat für dieses Jahr NICHT bestanden und steht
     # deshalb auch nicht an der Zeile — der Beleg zeigt, was wirklich trug.
-    assert z["probes"] == ["ausgabenreihe_prokopf", "ausgabenreihe_jahresabschluss"]
+    assert z["probes"] == ["expense_series_per_capita", "expense_series_annual_accounts"]
 
 
 def test_der_widerspruch_steht_auch_als_eigener_befund(gelesen):
@@ -368,7 +368,7 @@ def test_speichern_und_lesen(tmp_path, gelesen):
     store = CouncilStore(tmp_path / "council.sqlite")
     try:
         n = store.save_ausgabenreihe(gelesen["zeilen"], herkunft.Herkunft(
-            kind="city", url=ar.TABELLE_URL, probe="ausgabenreihe_prokopf",
+            kind="city", url=ar.TABELLE_URL, probe="expense_series_per_capita",
             label="Tabelle 1102", citation="Kapitel 11"))
         assert n == len(gelesen["zeilen"])
         zurueck = store.get_ausgabenreihe()
@@ -376,8 +376,8 @@ def test_speichern_und_lesen(tmp_path, gelesen):
             z["year"] for z in gelesen["zeilen"])
         # Die Proben kommen als LISTE zurück, nicht als Trennzeichen-String.
         z2021 = next(z for z in zurueck if z["year"] == 2021)
-        assert z2021["probes"] == ["ausgabenreihe_prokopf",
-                                   "ausgabenreihe_jahresabschluss"]
+        assert z2021["probes"] == ["expense_series_per_capita",
+                                   "expense_series_annual_accounts"]
         assert z2021["conflict_amount"] == 613_572_000
         assert all(z["herkunft_id"] for z in zurueck)
         assert "council_ausgabenreihe" not in store.herkunft_luecken()
@@ -397,7 +397,7 @@ def test_die_tabelle_fuehrt_keine_einwohnerzahl(tmp_path, gelesen):
     store = CouncilStore(tmp_path / "council.sqlite")
     try:
         store.save_ausgabenreihe(gelesen["zeilen"][:1], herkunft.Herkunft(
-            kind="city", url=ar.TABELLE_URL, probe="ausgabenreihe_prokopf"))
+            kind="city", url=ar.TABELLE_URL, probe="expense_series_per_capita"))
         spalten = {r[1] for r in store._conn.execute(
             "PRAGMA table_info(council_ausgabenreihe)")}
         assert not spalten & {"einwohner", "per_capita", "pro_kopf"}

@@ -318,7 +318,7 @@ def lies_seite(bild: Seitenbild, model: str = MODEL) -> str:
             {"type": "text", "text": PROMPT},
             {"type": "image_url", "image_url": {"url": bild.als_data_url()}},
         ]}],
-        _feature="anlagen_ocr",
+        _feature="attachment_ocr",
     )
     text = (answer.choices[0].message.content or "").strip()
     return text[:MAX_SEITE]

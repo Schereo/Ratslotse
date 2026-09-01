@@ -316,7 +316,7 @@ def analyse_query(question: str, model: str = EXPAND_MODEL,
         block = f"\nBisheriges Gespräch (für Rückbezüge):\n{vtext}\n" if vtext else ""
         prompt = prompts.render("qa_analysis", question=question.strip()[:300], verlauf=block)
         resp = llm.chat_complete(
-            model=model, _feature="qa_analyse", temperature=0, max_tokens=480,
+            model=model, _feature="qa_analysis", temperature=0, max_tokens=480,
             timeout=8.0, response_format={"type": "json_object"},
             messages=[{"role": "user", "content": prompt}], **extra,
         )
@@ -1234,7 +1234,7 @@ def deep_zerlege(question: str, model: str = EXPAND_MODEL) -> list[dict]:
     extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in model else {}
     try:
         resp = llm.chat_complete(
-            model=model, _feature="deep_zerlegung", temperature=0, max_tokens=500,
+            model=model, _feature="deep_decomposition", temperature=0, max_tokens=500,
             timeout=12.0, response_format={"type": "json_object"},
             messages=[{"role": "user", "content": prompts.render("deep_decomposition",
                                                                  question=question.strip()[:300])}],
@@ -1350,7 +1350,7 @@ def deep_bericht_stream(question: str, candidates: list[dict],
                             zusatz=zusatz,
                             planungen=_planungen_block(planungen))
     extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in model else {}
-    yield from llm.chat_stream(model=model, _feature="deep_bericht", temperature=0.2,
+    yield from llm.chat_stream(model=model, _feature="deep_report", temperature=0.2,
                                max_tokens=4000,
                                messages=[{"role": "user", "content": prompt}], **extra)
 
@@ -1475,7 +1475,7 @@ def partei_meinungen(question: str, rows: list[dict], model: str = MODEL) -> lis
     # Position ins Limit („finish_reason: length", an der Baumschutz-Frage
     # gemessen) — und ein abgeschnittenes Array ließ den Baustein KOMPLETT
     # verschwinden. Erst Platz schaffen, dann trotzdem retten, was da ist.
-    resp = llm.chat_complete(model=model, _feature="partei_meinungen", temperature=0,
+    resp = llm.chat_complete(model=model, _feature="party_opinions", temperature=0,
                              max_tokens=6000, messages=[{"role": "user", "content": prompt}],
                              **extra)
     content = _strip_fences(resp.choices[0].message.content or "") if resp.choices else ""
@@ -2958,7 +2958,7 @@ def vereinfachen_stream(question: str, bisher: str | None, candidates: list[dict
                         model: str = MODEL):
     """Die einfache Fassung als Token-Stream (wie answer_stream)."""
     messages, extra = vereinfachen_messages(question, bisher, candidates, model)
-    yield from llm.chat_stream(model=model, _feature="qa_einfach", temperature=0.2,
+    yield from llm.chat_stream(model=model, _feature="qa_simple", temperature=0.2,
                                max_tokens=VEREINFACHEN_TOKENS, messages=messages, **extra)
 
 
@@ -2967,7 +2967,7 @@ def vereinfachen_question(question: str, bisher: str | None, candidates: list[di
     """One-shot-Variante für den Ersatzweg, wenn der Stream abreißt.
     Liefert ``(answer, cited_ids)`` wie answer_question."""
     messages, extra = vereinfachen_messages(question, bisher, candidates, model)
-    resp = llm.chat_complete(model=model, _feature="qa_einfach", temperature=0.2,
+    resp = llm.chat_complete(model=model, _feature="qa_simple", temperature=0.2,
                              max_tokens=VEREINFACHEN_TOKENS, messages=messages, **extra)
     answer = (resp.choices[0].message.content or "").strip()
     return resolve_citations(answer, {c["id"] for c in candidates})
@@ -3001,7 +3001,7 @@ def answer_question(question: str, candidates: list[dict], model: str = MODEL, t
     messages, extra = _answer_messages(question, candidates, typ, model, presse, verlauf,
                                        haushalt, debatten, anlagen, gross, steckbriefe, duenn, eng,
                                        taxes, tax_capacity, geld, sitzungen, ort)
-    resp = llm.chat_complete(model=model, _feature="qa_antwort", temperature=0.2,
+    resp = llm.chat_complete(model=model, _feature="qa_answer", temperature=0.2,
                              max_tokens=_answer_tokens(typ, gross, eng), messages=messages, **extra)
     answer = (resp.choices[0].message.content or "").strip()
     return resolve_citations(answer, {c["id"] for c in candidates})
@@ -3022,7 +3022,7 @@ def answer_stream(question: str, candidates: list[dict], model: str = MODEL, typ
     messages, extra = _answer_messages(question, candidates, typ, model, presse, verlauf,
                                        haushalt, debatten, anlagen, gross, steckbriefe, duenn, eng,
                                        taxes, tax_capacity, geld, sitzungen, ort)
-    yield from llm.chat_stream(model=model, _feature="qa_antwort", temperature=0.2,
+    yield from llm.chat_stream(model=model, _feature="qa_answer", temperature=0.2,
                                max_tokens=_answer_tokens(typ, gross, eng), messages=messages, **extra)
 
 

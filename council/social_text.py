@@ -173,7 +173,7 @@ def text_fuer(punkt: dict, anlagen: list[dict]) -> tuple[str, str] | None:
             messages=[{"role": "system", "content": system},
                       {"role": "user", "content": user}],
             max_tokens=400,
-            _feature="social_kartentext",
+            _feature="social_card_text",
         )
         roh = (resp.choices[0].message.content or "").strip()
         if roh.startswith("```"):

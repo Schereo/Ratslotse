@@ -105,8 +105,8 @@ from council.herkunft import Herkunft
 from council.wirtschaftsplan import (BETRIEBE, Wirtschaftsplan,
                                      WirtschaftsplanFehler, dokument_name)
 
-PROBE_SPALTEN = "wirtschaftsplan_spalten"
-PROBE_PROSA = "wirtschaftsplan_prosa"
+PROBE_SPALTEN = "business_plan_columns"
+PROBE_PROSA = "business_plan_prose"
 PROBE_BEREICHE = "wirtschaftsplan_bereiche"
 
 PROBEN: dict[str, str] = {

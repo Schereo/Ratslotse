@@ -247,7 +247,7 @@ def pruefe_llm(text: str, source: str) -> tuple[bool, str]:
             model=MODEL, response_format={"type": "json_object"},
             messages=[{"role": "system", "content": system},
                       {"role": "user", "content": user}],
-            max_tokens=600, _feature="social_kritiker")
+            max_tokens=600, _feature="social_critic")
         roh = (resp.choices[0].message.content or "").strip()
         if roh.startswith("```"):
             roh = roh.strip("`")
