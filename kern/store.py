@@ -480,9 +480,32 @@ def _umzug_von_nwz(ziel: Path) -> None:
     Vorher wird der WAL eingecheckt: Nur so ist die Hauptdatei vollständig und
     die Begleitdateien (``-wal``/``-shm``) sind entbehrlich.
     """
-    if ziel.exists() or ziel.name == "nwz.sqlite":
+    if ziel.name == "nwz.sqlite":
         return
     alt = ziel.with_name("nwz.sqlite")
+    if ziel.exists():
+        # Eine LEERE Zieldatei ist kein Umzug, sondern ein Stolperstein: Sie
+        # entsteht, sobald irgendetwas den neuen Pfad einmal öffnet, ohne zu
+        # schreiben — und blockiert danach den Umzug für immer. Der Start
+        # fände dann eine Datenbank ohne Tabellen vor, legte das Schema neu an
+        # und die App käme mit LEEREN Konten hoch, während die echten Daten
+        # unberührt unter dem alten Namen liegen. Genau davor warnt CLAUDE.md.
+        #
+        # Auf Prod stand am 01.09.2026 eine solche 0-Byte-Datei neben einer
+        # 37-MB-`nwz.sqlite` mit 22 Konten. Deshalb: 0 Byte heißt „nicht da".
+        if ziel.stat().st_size or not alt.exists() or not alt.stat().st_size:
+            if ziel.stat().st_size and alt.exists() and alt.stat().st_size:
+                # Beide gefüllt — das kann keine Maschine entscheiden.
+                logging.getLogger("kern.store").warning(
+                    "Zwei gefüllte Datenbanken nebeneinander: %s (%d Bytes) und %s "
+                    "(%d Bytes). Es wird %s benutzt; die andere bitte von Hand "
+                    "prüfen und wegräumen.",
+                    ziel.name, ziel.stat().st_size, alt.name, alt.stat().st_size, ziel.name)
+            return
+        ziel.unlink()
+        logging.getLogger("kern.store").warning(
+            "Leere %s entfernt — sie hätte den Umzug von %s blockiert.",
+            ziel.name, alt.name)
     if not alt.exists():
         return
     try:
