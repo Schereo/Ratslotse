@@ -106,6 +106,8 @@ ERLAUBT = {
     "neu": "Tagesordnungs-Diff, Query-Parameter, Vorlese-Text und die "
            "Seitenangabe „neu“ aus dem Änderungslisten-PDF",
     "teilhaushalt": "Schlüssel des Beleg-Apparats (council_produkte)",
+    "geldschulden": ("Blockname der Schulden-Antwort (council.py: \"geldschulden\": …) — "
+                     "die API-Blocknamen sind ein eigener Schnitt, noch offen"),
     "investitionen": "Schlüssel des Beleg-Apparats (council_investitionen)",
     "schulden": "Schlüssel des Beleg-Apparats und QA-Facette — beide bleiben deutsch",
 }
@@ -115,7 +117,11 @@ ERLAUBT = {
 #: überall.
 _BELEG = re.compile(r'Beleg q=|QUELLEN|QuellenSchluessel|as const|^\s*\| "|'
                     r'"(plan|investitionsprogramm|budget_bylaw|jahresabschluss|'
-                    r'stellenplan|pruefbericht|schulden)"')
+                    r'stellenplan|pruefbericht|schulden)"|'
+                    # Seit der Pruefer auch objektwertige Schluessel sieht,
+                    # faellt das Verzeichnis selbst auf: `investitionen: {`,
+                    # eine Zeile ueber `title:` und `citation:`.
+                    r'^\s*\w+: \{\s*$')
 
 #: Ein Kommentar — dort darf jedes Wort stehen.
 _KOMMENTAR = re.compile(r'^\s*(//|\*|/\*)')
@@ -127,7 +133,9 @@ ERLAUBT_ZEILE = {
     # erkennt man an einem Nachbarschlüssel oder am `as const` der Liste.
     "teilhaushalt": _BELEG,
     "investitionen": _BELEG,
-    "schulden": _BELEG,
+    # Dazu der Parametername der Zinsspannen-Rechnung in `haushalt-labor.ts`:
+    # `schulden: { year: number; total: number }[]` ist eine TYP-Angabe.
+    "schulden": re.compile(_BELEG.pattern + r'|: \{ year: number'),
     # Diese beiden dürfen nur noch in Fließtext-Kommentaren stehen. Stünde
     # eines wieder in einem Vergleich, wäre genau das der Fehler von #890.
     "entwurf": _KOMMENTAR,
@@ -154,7 +162,9 @@ ERLAUBT_ZEILE = {
     # `role` mit dem Wert `rat` ist die Haushaltsdebatte; die Anwesenheits-
     # Rollen kennen kein `rat`, der Vergleich ist also eindeutig.
     "rat": re.compile(r'\bart\b|StreitRolle|typ\?:|\brole\b|"rat" \| "verwaltung"|'
-                      r'^\s*(//|\*)|committee ==='),
+                      # `fa` und `rat` sind die zwei Spalten der Antrags-Bilanz
+                      # (`haushalt-streit.ts`) — Felder einer Zeile, kein Wert.
+                      r'^\s*(//|\*)|committee ===|fa: \{ ein'),
     "thema": re.compile(r'case topic|"kind":|VorschauArt|target\?:|'
                         r'vorschauMetadata|/preview|kind: "thema"|^\s*(//|\*)'),
     "verwaltung": re.compile(r'\btyp\b|type ==|StreitRolle|\bart\b'),
@@ -280,9 +290,15 @@ def main() -> int:
     # nicht-leere ZEICHENKETTE stehen. Eine Typ-Eigenschaft (`stadt: number`),
     # eine Destrukturierung (`{ posten }`) oder ein Verweis (`rat: z.rat`) ist
     # nie eine Wertetabelle — eine Beschriftung oder Farbe immer.
+    #
+    # Rechts steht ausserdem manchmal ein OBJEKT statt einer Zeichenkette:
+    # `BELEGLAGE` in `section-betriebe.tsx` haengt an jeden Probennamen ein
+    # `{ kurz, lang }`. Dieselbe tote Zuordnung, nur eine Ebene tiefer — der
+    # Pruefer sah sie bis zum 01.09.2026 nicht, weil er eine Zeichenkette
+    # verlangte.
     muster = re.compile(
         rf'"(?P<zitiert>{W})"'
-        rf'|(?:^|[{{,])\s*(?P<schluessel>{W})\s*:\s*"[^"]')
+        rf'|(?:^|[{{,])\s*(?P<schluessel>{W})\s*:\s*(?:"[^"]|{{)')
     funde: list[str] = []
     for pfad in dateien():
         rel = pfad.relative_to(WURZEL)

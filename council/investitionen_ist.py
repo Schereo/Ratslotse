@@ -385,7 +385,7 @@ def lies(text: str) -> dict:
                 continue
             uebernommen = dict(row)
             uebernommen.pop("unlesbar", None)
-            uebernommen["probe"] = "investitionen_ist_zeilensumme"
+            uebernommen["probe"] = "investments_actual_row_total"
             zeilen.append(uebernommen)
 
     zeilen.sort(key=lambda z: z["year"])

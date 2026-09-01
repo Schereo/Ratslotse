@@ -503,7 +503,7 @@ def test_jeder_jahreswert_traegt_sein_eigenes_jahr(realsteuer):
 
 # --- Speichern --------------------------------------------------------------
 
-def _herkunft(probe="lsn_zweijahresueberlappung") -> herkunft.Herkunft:
+def _herkunft(probe="lsn_two_year_overlap") -> herkunft.Herkunft:
     return herkunft.Herkunft(
         kind="lsn", probe=probe, label="Kommunaler Finanzausgleich 2026",
         url="https://example.org/kfa2026.xlsx",
@@ -514,8 +514,8 @@ def _herkunft(probe="lsn_zweijahresueberlappung") -> herkunft.Herkunft:
 def test_lsn_ist_eine_bekannte_quellenart():
     """Ohne den Eintrag ließe sich die Herkunft gar nicht bauen."""
     assert "lsn" in herkunft.ARTEN
-    for name in ("lsn_zweijahresueberlappung", "lsn_hebesatzprobe",
-                 "lsn_dreijahresmittel"):
+    for name in ("lsn_two_year_overlap", "lsn_assessment_rate_check",
+                 "lsn_three_year_average"):
         assert name in herkunft.PROBEN
         assert herkunft.PROBEN[name].endswith(".")
 
@@ -548,7 +548,7 @@ def test_erneutes_speichern_ersetzt_nur_die_eigene_reihe(tmp_path, kfa2026, real
             "tax_capacity", sv.zeilen_steuerkraft(sv.lies_kfa(kfa2026)), _herkunft())
         zeilen, _ = sv.zeilen_realsteuern(sv.lies_realsteuervergleich(realsteuer))
         store.save_staedtevergleich("real_taxes", zeilen,
-                                    _herkunft(probe="lsn_hebesatzprobe"))
+                                    _herkunft(probe="lsn_assessment_rate_check"))
         assert len(store.get_staedtevergleich("tax_capacity")) == 16
 
         # Steuerkraft erneut — die Realsteuern bleiben unangetastet.

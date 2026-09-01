@@ -207,7 +207,7 @@ def test_2022_verliert_seine_aufteilung_aber_nicht_seine_summe(gelesen):
     assert z["per_capita"] == 1652
     assert all(z[art] is None for art in schulden.ARTEN)
     assert z["breakdown_rejected"] == 1_078_000
-    assert z["probes"] == ["schulden_prokopf"]
+    assert z["probes"] == ["debt_per_capita"]
     # Und die Nachbarjahre behalten ihre Aufteilung — es fällt nur der eine.
     assert _zeile(gelesen, 2021)["credit_market"] == 53_074_000
     assert _zeile(gelesen, 2023)["credit_market"] == 46_577_000
@@ -269,7 +269,7 @@ def test_kein_jahrgang_der_angekuendigten_spanne_geht_verloren():
 # --- Store: Herkunft je Zeile ----------------------------------------------
 
 
-def _herkunft(probe="schulden_summenzeile"):
+def _herkunft(probe="debt_total_row"):
     return herkunft.Herkunft(
         kind="city", probe=probe, url=schulden.TABELLE_URL,
         label="Statistisches Jahrbuch, Tabelle 1108",
@@ -342,8 +342,8 @@ def test_verschiedene_probenlagen_bekommen_verschiedene_herkuenfte(tmp_path, gel
         zeilen = {z["year"]: z for z in store.get_schulden()}
         h2022 = store.get_herkunft([zeilen[2022]["herkunft_id"]])[0]
         h2025 = store.get_herkunft([zeilen[2025]["herkunft_id"]])[0]
-        assert h2022["probe"] == "schulden_prokopf"
-        assert "schulden_summenzeile" in h2025["probe"]
+        assert h2022["probe"] == "debt_per_capita"
+        assert "debt_total_row" in h2025["probe"]
         assert store.herkunft_luecken().get("council_schulden") is None
     finally:
         store.close()

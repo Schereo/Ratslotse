@@ -578,7 +578,7 @@ def _befuellter_store(tmp_path) -> CouncilStore:
             "INSERT INTO council_herkunft (id, key, kind, label, url, citation, "
             " page, probe, as_of, fetched_at) VALUES "
             "(1, 'k1', 'ris', 'Jahresabschluss 2024', 'https://example.org/ja2024', "
-            " 'Abschnitt 6.2 Ergebnisrechnung', 41, 'summenprobe', '31.12.2024', '2026-08-16')")
+            " 'Abschnitt 6.2 Ergebnisrechnung', 41, 'sub_budget_sum_check', '31.12.2024', '2026-08-16')")
         store._conn.execute(
             "INSERT INTO council_herkunft (id, key, kind, label, url, citation, "
             " probe, as_of, fetched_at) VALUES "
@@ -734,7 +734,7 @@ def _befuellter_store(tmp_path) -> CouncilStore:
             [(3, "k3", "Statistisches Jahrbuch, Tabelle 1108",
               "https://example.org/1108", "Tabelle 1108", "prokopfprobe", "2025"),
              (4, "k4", "Haushaltsplan 2026, Finanzhaushalt",
-              "https://example.org/hh2026", "Gesamtfinanzhaushalt", "summenprobe", "2026"),
+              "https://example.org/hh2026", "Gesamtfinanzhaushalt", "sub_budget_sum_check", "2026"),
              (5, "k5", "Haushaltsplan 2026, Stellenplan Teil A",
               "https://example.org/sp-a", "Anlage 21", "besetzungsprobe", "30.06.2025"),
              (6, "k6", "Haushaltsplan 2026, Stellenplan Teil B",
@@ -755,7 +755,7 @@ def _befuellter_store(tmp_path) -> CouncilStore:
               "25/0999", "gebuehren_kaskade,gebuehren_division"),
              (2026, "waste_collection", "Abfallsammlung", 12_000_000.0,
               -1_000_000.0, 11_000_000.0, None, None, None, None,
-              "25/0999", "gebuehren_kaskade")])
+              "25/0999", "fee_cascade")])
     return store
 
 

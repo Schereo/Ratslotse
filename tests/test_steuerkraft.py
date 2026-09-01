@@ -214,7 +214,7 @@ def test_gespeichert_kommt_je_ausgleichsjahr_eine_zeile_zurueck(tmp_path, kfa202
         for budget_year in sk.lies_zuweisungen(kfa2026):
             zeilen += sk.zeilen_finanzausgleich(budget_year)
         store.save_staedtevergleich("fiscal_equalization", zeilen, Herkunft(
-            kind="lsn", probe=["kfa_komponentenprobe", "kfa_jahrbuchabgleich"],
+            kind="lsn", probe=["fiscal_equalisation_components", "fiscal_equalisation_yearbook_match"],
             label="KFA 2026", url="https://example.org/kfa.xlsx",
             probe_result="3 von 3 Städten"))
 
@@ -241,5 +241,5 @@ def test_die_proben_stehen_im_verzeichnis():
     der Text landet im Beleg-Chip und beantwortet „warum soll ich das glauben?"."""
     from council.herkunft import PROBEN
 
-    assert "kfa_komponentenprobe" in PROBEN
-    assert "kfa_jahrbuchabgleich" in PROBEN
+    assert "fiscal_equalisation_components" in PROBEN
+    assert "fiscal_equalisation_yearbook_match" in PROBEN

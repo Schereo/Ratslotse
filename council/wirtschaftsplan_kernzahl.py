@@ -75,8 +75,8 @@ from council.herkunft import Herkunft
 from council.wirtschaftsplan import (BETRIEBE, Wirtschaftsplan,
                                     WirtschaftsplanFehler, dokument_name)
 
-PROBE_KERNZAHL = "wirtschaftsplan_kernzahl"
-PROBE_INVESTITIONEN = "wirtschaftsplan_investitionen"
+PROBE_KERNZAHL = "business_plan_key_figure"
+PROBE_INVESTITIONEN = "business_plan_investments"
 
 PROBEN: dict[str, str] = {
     PROBE_KERNZAHL:

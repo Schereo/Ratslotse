@@ -199,8 +199,8 @@ def _anlage(store: CouncilStore, text: str, document_id: int = 297441) -> None:
 
 def _quelle(document_id: int = 297441) -> herkunft.Herkunft:
     return herkunft.Herkunft(
-        kind="ris", probe=["ergebnishaushalt_summenzeilen",
-                          "ergebnishaushalt_planspalte"],
+        kind="ris", probe=["income_budget_total_rows",
+                          "income_budget_plan_column"],
         document_id=document_id, label="2026 005 Vw Gesamtergebnishaushalt",
         url="https://example.org/geh2026.pdf",
         citation="Gesamtergebnishaushalt, Posten 1–24")
@@ -283,7 +283,7 @@ def test_summenprobe_wirft_einen_verrutschten_jahrgang_weg():
     assert r["bestanden"] is False
     assert r["zeilen"] == []
     assert r["budget_year"] == 2026          # erkannt, aber nicht übernommen
-    (summen,) = [p for p in r["probes"] if p["probe"] == "ergebnishaushalt_summenzeilen"]
+    (summen,) = [p for p in r["probes"] if p["probe"] == "income_budget_total_rows"]
     assert summen["ok"] is False
     assert "Posten 1–11" in summen["warum"] and "Spalte 3" in summen["warum"]
     assert summen["warum"] in r["nachweis"]
@@ -304,7 +304,7 @@ def test_summenprobe_prueft_auch_die_finanzplanungsspalten():
     kaputt = GEH_2026.replace("372.762.700 378.699.900", "372.772.700 378.699.900", 1)
     r = eh.lies(kaputt)
     assert r["bestanden"] is False
-    (summen,) = [p for p in r["probes"] if p["probe"] == "ergebnishaushalt_summenzeilen"]
+    (summen,) = [p for p in r["probes"] if p["probe"] == "income_budget_total_rows"]
     assert "Spalte 5" in summen["warum"]
 
 
@@ -319,8 +319,8 @@ def test_planspaltenprobe_haelt_die_trennlinie():
     r = eh.lies(ohne_echo)
     assert r["bestanden"] is False
     assert r["zeilen"] == []
-    (summen,) = [p for p in r["probes"] if p["probe"] == "ergebnishaushalt_summenzeilen"]
-    (spalte,) = [p for p in r["probes"] if p["probe"] == "ergebnishaushalt_planspalte"]
+    (summen,) = [p for p in r["probes"] if p["probe"] == "income_budget_total_rows"]
+    (spalte,) = [p for p in r["probes"] if p["probe"] == "income_budget_plan_column"]
     assert summen["ok"] is True           # die Tabelle selbst ist in Ordnung …
     assert spalte["ok"] is False          # … aber die Trennlinie ist unbelegt
     assert "Posten 1" in spalte["warum"]
@@ -334,7 +334,7 @@ def test_planspaltenprobe_merkt_wenn_die_wiederholung_woanders_hinzeigt():
     r = eh.lies(verschoben)
     assert r["bestanden"] is False
     assert r["zeilen"] == []
-    (spalte,) = [p for p in r["probes"] if p["probe"] == "ergebnishaushalt_planspalte"]
+    (spalte,) = [p for p in r["probes"] if p["probe"] == "income_budget_plan_column"]
     assert "nicht auf das Planjahr" in spalte["warum"]
     assert "366,584,100" in spalte["warum"]     # die Zahl, auf die sie zeigte
 
@@ -456,8 +456,8 @@ def test_jede_zeile_weiss_woher_sie_kommt(tmp_path):
         "FROM council_ergebnishaushalt p "
         "JOIN council_herkunft h ON h.id = p.herkunft_id LIMIT 1").fetchone()
     assert row["document_id"] == 297441
-    assert row["probe"] == ("ergebnishaushalt_summenzeilen,"
-                              "ergebnishaushalt_planspalte")
+    assert row["probe"] == ("income_budget_total_rows,"
+                              "income_budget_plan_column")
     # Beide Proben tragen einen Satz für Leserinnen — sonst ließe sich die
     # Herkunft gar nicht erst bauen.
     (h,) = store.get_herkunft()

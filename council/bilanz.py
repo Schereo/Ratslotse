@@ -408,13 +408,13 @@ def bilanzprobe(gelesen: dict) -> tuple[dict | None, list[str], list[str]]:
                       f"Passiva {passiva:,.2f} €, Differenz {difference:,.2f} €"], []
 
     budget_year = {"year": gelesen["year"], "posten": posten,
-                "bilanzsumme": aktiva, "probes": ["bilanz_ausgleich"],
+                "bilanzsumme": aktiva, "probes": ["balance_sheet_equality"],
                 "balancing_difference": difference}
 
     gedruckt = gelesen.get("gedruckte_summe")
     if gedruckt is not None:
         if abs(gedruckt[1] - aktiva) <= TOLERANZ:
-            budget_year["probes"].append("bilanzsumme_gedruckt")
+            budget_year["probes"].append("balance_sheet_total_printed")
             budget_year["gedruckte_summe"] = gedruckt[1]
         else:
             hinweise.append(
@@ -424,7 +424,7 @@ def bilanzprobe(gelesen: dict) -> tuple[dict | None, list[str], list[str]]:
     pension, beihilfe, gesamt = (_wert(posten, r) for r in PROBE_GLIEDERUNG)
     if None not in (pension, beihilfe, gesamt):
         if abs(pension + beihilfe - gesamt) <= TOLERANZ:
-            budget_year["probes"].append("rueckstellungs_gliederung")
+            budget_year["probes"].append("provisions_breakdown")
         else:
             hinweise.append(
                 f"Rückstellungs-Gliederung geht nicht auf: {pension:,.2f} + "

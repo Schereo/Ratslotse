@@ -46,11 +46,11 @@ from dataclasses import dataclass
 
 from council.herkunft import Herkunft
 
-PROBE_KASKADE = "gebuehren_kaskade"
-PROBE_DIVISION = "gebuehren_division"
-PROBE_SATZANZAHL = "gebuehrensaetze_anzahl"
-PROBE_ECKWERTE = "gebuehrensaetze_eckwerte"
-PROBE_VORJAHRESVERGLEICH = "gebuehrensaetze_vorjahresvergleich"
+PROBE_KASKADE = "fee_cascade"
+PROBE_DIVISION = "fee_division"
+PROBE_SATZANZAHL = "fee_rate_count"
+PROBE_ECKWERTE = "fee_rate_benchmarks"
+PROBE_VORJAHRESVERGLEICH = "fee_rate_prior_year_comparison"
 
 PROBEN: dict[str, str] = {
     PROBE_KASKADE:
