@@ -942,92 +942,92 @@ ZahlDerWoche = ZahlDerWocheBetrag | ZahlDerWocheAnzahl
 
 
 class HaushaltProdukte(TypedDict):
-    abdeckung_prozent: Any
-    alle_jahre: Any
-    facetten: Any
+    coverage_percent: Any
+    all_years: Any
+    facets: Any
     year: Any
     plan_expenses: Any
     product: Any
-    produkte: Any
-    treffer: int
+    products: Any
+    matches: int
 
 
 class HaushaltStellenplan(TypedDict):
-    fehlend: Any
-    gruppen: Any
+    missing: Any
+    groups: Any
     herkunft: dict[str, Any]
-    jahrgaenge: Any
-    summen: Any
-    teile: Any
-    zeilen: Any
+    editions: Any
+    totals: Any
+    part_names: Any
+    rows: Any
 
 
 class HaushaltPruefberichte(TypedDict):
-    feststellungen: list[Any]
+    findings: list[Any]
     years: Any
-    legende: Any
-    ohne_bericht: list[Any]
+    legend: Any
+    without_report: list[Any]
 
 
 class HaushaltKonzern(TypedDict):
-    gegenprobe: Any
+    cross_check: Any
     herkunft: dict[str, Any]
     years: Any
-    konzern: list[Any]
-    posten: Any
+    consolidated: list[Any]
+    items: Any
     entity: list[Any]
 
 
 class HaushaltBeteiligungen(TypedDict):
-    berichtsjahre: Any
-    eigentuemer: Any
-    gesellschaften: list[Any]
+    report_years: Any
+    owners: Any
+    companies: list[Any]
     herkunft: dict[str, Any]
     years: list[Any]
     indicators: Any
-    konzernvergleich: Any
-    personen: list[Any]
-    texte: Any
+    group_comparison: Any
+    people: list[Any]
+    texts: Any
 
 
 class HaushaltInvestitionen(TypedDict):
-    finanzhaushalt: list[Any]
-    gesamt: list[Any]
+    financial_budget: list[Any]
+    investments: list[Any]
     herkunft: dict[str, Any]
     years: Any
-    teilhaushalte: list[Any]
+    sub_budgets: list[Any]
 
 
 class HaushaltInvestitionsprogramm(TypedDict):
-    gesamt: list[Any]
+    totals: list[Any]
     herkunft: dict[str, Any]
     years: Any
-    massnahmen: list[Any]
-    teilhaushalte: list[Any]
+    measures: list[Any]
+    sub_budgets: list[Any]
 
 
 class HaushaltDatenstand(TypedDict):
-    heute: str
-    schichten: list[dict[str, Any]]
+    today: str
+    layers: list[dict[str, Any]]
 
 
 class HaushaltDokumente(TypedDict):
-    dokumente: Any
-    jahrgaenge: Any
+    documents: Any
+    editions: Any
 
 
 class HaushaltWeg(TypedDict):
-    runden: Any
+    rounds: Any
 
 
 class HaushaltStreit(TypedDict):
-    runden: Any
+    rounds: Any
 
 
 class HaushaltAenderungslisten(TypedDict):
     herkunft: dict[str, Any]
-    summen: Any
-    zeilen: Any
+    totals: Any
+    rows: Any
     # Der FINANZhaushalt, seit 08/2026. Eigene Schlüssel statt einer
     # gemeinsamen Liste mit Marke: Die Zeilen haben eine andere Form (fünf
     # Betragsspalten statt zwei, dazu der Investitionscode).
@@ -1036,8 +1036,8 @@ class HaushaltAenderungslisten(TypedDict):
     # LEEREN Feld: Die Antwortform ist zugleich das Response-Model, und
     # FastAPI schneidet weg, was nicht darinsteht. Genau so verschwanden diese
     # beiden beim ersten Anlauf lautlos aus einer sonst korrekten Antwort.
-    fhh_summen: Any
-    fhh_zeilen: Any
+    cash_budget_totals: Any
+    cash_budget_rows: Any
 
 
 class BeschlussListe(TypedDict):
@@ -1150,17 +1150,17 @@ class ZielDetail(TypedDict):
 
 
 class HaushaltVergleich(TypedDict):
-    beleg: Any
+    citation: Any
     herkunft: dict[str, Any]
     years: Any
-    staedte: Any
-    werte: Any
+    cities: Any
+    values: Any
 
 
 class HaushaltGebaut(TypedDict):
-    abgrenzung: Any
-    anlagen: dict[str, Any]
-    fehlend: Any
+    scope_note: Any
+    fixed_assets: dict[str, Any]
+    missing: Any
     herkunft: dict[str, Any]
     years: list[Any]
     accounting_systems: list[Any]
@@ -1168,18 +1168,18 @@ class HaushaltGebaut(TypedDict):
 
 
 class HaushaltBilanz(TypedDict):
-    erlaeuterungen: Any
+    explanations: Any
     herkunft: dict[str, Any]
     years: Any
-    posten: Any
+    items: Any
 
 
 class HaushaltSchulden(TypedDict):
-    abgrenzung: Any
-    arten: list[Any]
-    buergschaften: dict[str, Any]
+    scope_note: Any
+    column_kinds: list[Any]
+    guarantees: dict[str, Any]
     herkunft: dict[str, Any]
-    integrierte_schulden: Any
+    integrated_debt: Any
     years: list[Any]
     series: Any
-    zinslast: Any
+    interest_expense: Any

@@ -94,8 +94,8 @@ ABGRENZUNG = (
     "wird. Deshalb steht der Bestand nicht in der Bilanz, sondern als "
     "„Eventualverbindlichkeit“ im Anhang.")
 
-PROBE_KETTE = "buergschaft_kette"
-PROBE_TABELLE = "buergschaft_tabelle"
+PROBE_KETTE = "guarantee_chain"
+PROBE_TABELLE = "guarantee_table"
 
 PROBEN: dict[str, str] = {
     PROBE_KETTE: ("Der Anfangsbestand dieses Jahrgangs stimmt mit dem "

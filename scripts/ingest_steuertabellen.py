@@ -328,7 +328,7 @@ def main() -> int:
                 nach_ausgabe.setdefault(row["ausgabe"], []).append(row)
             for name, part in sorted(nach_ausgabe.items()):
                 years = sorted({z["year"] for z in part})
-                probes = proben_je_ausgabe.get(name) or ["steuerplan_summenzeile"]
+                probes = proben_je_ausgabe.get(name) or ["tax_budget_total_row"]
                 nachweis = (
                     f"{len(years)} Jahrgänge ({years[0]}–{years[-1]}), "
                     f"bestanden: "

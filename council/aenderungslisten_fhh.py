@@ -934,8 +934,8 @@ def lies_fhh_liste(pdf_bytes: bytes) -> FhhErgebnis:
 def herkunft_fuer(label: str, url: str | None, document_id: int) -> Herkunft:
     return Herkunft(
         kind="ris",
-        probe=("aenderungsliste_fhh_zeilen", "aenderungsliste_summen",
-               "aenderungsliste_positionen"),
+        probe=("amendment_list_cash_budget_rows", "amendment_list_totals",
+               "amendment_list_items"),
         label=label,
         url=url or f"https://buergerinfo.oldenburg.de/getfile.php?id={document_id}&type=do",
         document_id=document_id,

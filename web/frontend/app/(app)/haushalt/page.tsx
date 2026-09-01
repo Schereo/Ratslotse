@@ -406,7 +406,7 @@ export default function HaushaltPage() {
                     auf den Abschluss steht an der Zeile als bestandene Probe.
                     Ohne ihn trägt der Wert allein die Rechnung, die in der
                     Tabelle selbst steht. */}
-                {k.probes.includes("ausgabenreihe_jahresabschluss") ? (
+                {k.probes.includes("expense_series_annual_accounts") ? (
                   <>Er stimmt mit der Gesamtergebnisrechnung im Jahresabschluss {k.year}
                   überein<Beleg q="jahresabschluss" />.</>
                 ) : (

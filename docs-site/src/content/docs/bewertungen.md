@@ -124,7 +124,7 @@ die aufklappbare Wichtigkeits-Karte auf der Beschluss-Seite.
 ## 2. Tragweite — LLM nach fester Rubrik
 
 `council/impact.py` lässt ein LLM bewerten, **wie folgenreich** ein Beschluss
-für die Stadt ist. Der Prompt (`impact_bewertung_system` in `kern/prompts.py`,
+für die Stadt ist. Der Prompt (`impact_rating_system` in `kern/prompts.py`,
 in `kern/prompts.py`) gibt vier Rubriken zu je 0–25 Punkten vor, die
 addiert werden:
 
@@ -157,7 +157,7 @@ LLM-Aufrufe über OpenRouter ([ADR 0001](/docs/adr/0001-openrouter/)).
 
 `council/interest.py` misst etwas ganz anderes: Wie **erzählenswert** ist ein
 Beschluss für normale Stadtbewohner*innen? Der Prompt
-(`interest_bewertung_system`) fragt nach Gesprächswert („Würde man es beim
+(`interest_rating_system`) fragt nach Gesprächswert („Würde man es beim
 Abendessen erzählen?"), Alltagsnähe, Kuriosität/Überraschung und Konkretheit
 (ein Ort, ein Ding, ein Datum) und staffelt die Skala:
 

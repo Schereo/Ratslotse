@@ -166,9 +166,9 @@ AKTIVA = ("intangible_assets", "tangible_assets", "financial_assets",
 #: „Gesamtschulden" gegen „Schulden" wird hier **nicht** derselbe.
 SCHREIBWEISEN = ((r"\binkl\.", "inklusive"), (r"\s+", " "), (r"[*]", " * "))
 
-PROBE_UEBERLAPPUNG = "kennzahlen_ueberlappung"
-PROBE_BILANZ = "kennzahlen_gegen_bilanz"
-PROBE_VERMOEGEN = "kennzahlen_vermoegensprobe"
+PROBE_UEBERLAPPUNG = "indicators_overlap"
+PROBE_BILANZ = "indicators_vs_balance_sheet"
+PROBE_VERMOEGEN = "indicators_assets_check"
 
 
 def _flach(text: str) -> str:

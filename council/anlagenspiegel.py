@@ -62,11 +62,11 @@ ABSCHNITT = "8.1 Anlagenübersicht"
 #: Wo die Erläuterung zum Sachvermögen ihre Untergruppen auflistet.
 ABSCHNITT_GRUPPEN = "Erläuterungen zum Sachvermögen"
 
-PROBE_AHK = "anlagen_ahk_kette"
-PROBE_ABSCHREIBUNG = "anlagen_abschreibungskette"
+PROBE_AHK = "assets_cost_chain"
+PROBE_ABSCHREIBUNG = "assets_depreciation_chain"
 PROBE_BUCHWERT = "assets_book_value"
-PROBE_BILANZ = "anlagen_gegen_bilanz"
-PROBE_UMBUCHUNG = "anlagen_umbuchungssaldo"
+PROBE_BILANZ = "assets_vs_balance_sheet"
+PROBE_UMBUCHUNG = "assets_transfer_balance"
 
 PROBEN: dict[str, str] = {
     PROBE_AHK: ("Anfangsstand, Zugänge, Abgänge und Umbuchungen ergeben "

@@ -20,6 +20,11 @@ android/app/src/main/assets/public/
 android/app/src/main/assets/capacitor.config.json
 android/app/src/main/res/xml/config.xml
 android/capacitor-cordova-android-plugins/
+# Ein `npx cap sync` legt hier trotzdem ein iOS-Gerüst samt Bauordner an.
+# Der gehört nicht ins Repo — und ein `git add -A` nimmt ihn sonst mit
+# (samt eingebettetem capacitor-swift-pm-Klon). Gilt nur unterhalb von
+# web/frontend; die native App unter /ios ist davon nicht betroffen.
+ios/
 **/xcuserdata/
 
 # Technik-Doku: baut docs-site/, kopiert der Deploy nach public/docs (nie committen)

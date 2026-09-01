@@ -409,7 +409,7 @@ def test_hebesatzprobe_gegen_das_jahrbuch(bericht2021):
 def _herkunft() -> herkunft.Herkunft:
     return herkunft.Herkunft(
         kind="lsn",
-        probe=["gewst_summenprobe", "gewst_blattprobe", "gewst_hebesatzprobe"],
+        probe=["trade_tax_sum_check", "trade_tax_sheet_check", "trade_tax_assessment_rate_check"],
         label="Gewerbesteuerstatistik 2021 (Statistischer Bericht L IV 13)",
         url="https://example.org/gewst2021.xlsx",
         citation="Blatt 6.1 und 6.2", probe_result="3 Städte nachgerechnet",
@@ -419,7 +419,7 @@ def _herkunft() -> herkunft.Herkunft:
 def test_die_proben_sind_bekannte_namen():
     """Eine Herkunft mit unbekannter Probe ließe sich gar nicht erst bauen —
     und der Erklärsatz landet über die API im Beleg-Chip."""
-    for name in ("gewst_summenprobe", "gewst_blattprobe", "gewst_hebesatzprobe"):
+    for name in ("trade_tax_sum_check", "trade_tax_sheet_check", "trade_tax_assessment_rate_check"):
         assert name in herkunft.PROBEN
     assert "council_gewerbesteuerstatistik" in herkunft.HERKUNFT_TABELLEN
 

@@ -844,6 +844,36 @@ class CouncilStore:
             logging.getLogger("ratslotse.council.store").warning(
                 "Tagesordnungs-Diffs umgeschrieben: %d Zeilen", len(geaendert))
 
+    def _listenwerte_umschreiben(self, tabelle: str, spalte: str,
+                                 paare: list[tuple[str, str]]) -> None:
+        """Wie :meth:`_werte_umschreiben`, aber für KOMMAGETRENNTE Listen.
+
+        Die Probennamen stehen nicht einzeln in der Zeile: Eine Zahl besteht
+        oft zwei Proben, und beide zu nennen ist ehrlicher, als sich für eine
+        zu entscheiden (``spenden_zweitstelle,spenden_protokollabgleich``).
+        Ein Gleichheits-UPDATE träfe genau die 693 einwertigen Zellen und
+        ließe die 413 mehrwertigen stehen — halb umgezogen ist schlimmer als
+        gar nicht.
+        """
+        vorhanden = {r[1] for r in self._conn.execute(f"PRAGMA table_info({tabelle})")}
+        if spalte not in vorhanden:
+            return
+        karte = dict(paare)
+        geaendert = []
+        for rid, roh in self._conn.execute(
+                f"SELECT rowid, {spalte} FROM {tabelle} WHERE {spalte} IS NOT NULL"):
+            teile = [t.strip() for t in str(roh).split(",")]
+            neu = ",".join(karte.get(t, t) for t in teile)
+            if neu != roh:
+                geaendert.append((neu, rid))
+        if not geaendert:
+            return
+        with self._conn:
+            self._conn.executemany(
+                f"UPDATE {tabelle} SET {spalte} = ? WHERE rowid = ?", geaendert)
+        logging.getLogger("ratslotse.council.store").warning(
+            "Listenwerte umgeschrieben: %s.%s (%d Zeilen)", tabelle, spalte, len(geaendert))
+
     def _doppelte_bildspalte_aufloesen(self) -> None:
         """`council_anlagen` trug eine Zeit lang `bild` UND `is_image`.
 
@@ -863,7 +893,7 @@ class CouncilStore:
         logging.getLogger("ratslotse.council.store").warning(
             "Doppelte Bildspalte aufgelöst: %d Werte übernommen, `bild` entfernt", n)
 
-    def _herkunft_schluessel_neu(self) -> None:
+    def _herkunft_schluessel_neu(self, marke: str) -> None:
         """Die Fingerabdrücke in `council_herkunft` einmalig neu rechnen.
 
         `Herkunft.key()` hasht `json.dumps(felder(), sort_keys=True)` — und
@@ -871,6 +901,14 @@ class CouncilStore:
         derselbe Inhalt einen anderen Hash: Der nächste Ingest fände seine
         Zeile nicht wieder und legte sie ein zweites Mal an. Einmalig neu
         rechnen hält `id` stabil — und damit jeden `herkunft_id`-Verweis.
+
+        `marke` benennt den Umzug, der das nötig macht, und steht deshalb beim
+        AUFRUF, nicht hier: Die Umbenennung passierte in Schnitten, und jeder
+        Schnitt braucht seinen eigenen Lauf. Stünde die Marke als Konstante in
+        dieser Funktion, würde der erste Aufruf sie setzen und jeder spätere
+        still zurückkehren — die Fingerabdrücke wären dann auf dem Stand VOR
+        dem letzten Umzug, und der nächste Ingest legte jede Quelle ein zweites
+        Mal an. Genau das soll die Marke verhindern.
         """
         import hashlib as _hl
         import json as _js
@@ -878,7 +916,6 @@ class CouncilStore:
             self._conn.execute(
                 "CREATE TABLE IF NOT EXISTS council_migrationsmarken ("
                 "marke TEXT PRIMARY KEY, gesetzt_am TEXT NOT NULL)")
-        marke = "herkunft_key_city"   # zuvor "…_as_of" (#880) und "…_kind" (#886)
         if self._conn.execute(
                 "SELECT 1 FROM council_migrationsmarken WHERE marke = ?", (marke,)).fetchone():
             return
@@ -1067,8 +1104,6 @@ class CouncilStore:
             ("oberbuergermeister", "mayor"), ("rat", "council")])
         self._werte_umschreiben("council_spenden", "second_mention", [
             ("identisch", "identical"), ("zerlegung", "split")])
-        self._werte_umschreiben("council_herkunft", "probe", [
-            ("anlagen_buchwert", "assets_book_value")])
         # Die Herkunft eines Ortsbezugs steht als WERT in der Zeile und trug
         # denselben Begriff wie die Spalte `beschluss`, die zu `official_text`
         # wurde. `council/locations.py` lässt nur noch {title, official_text,
@@ -1129,7 +1164,8 @@ class CouncilStore:
             ("ansatz", "budget"), ("finanzplanung", "financial_plan")])
         # `ris`, `opendata` und `lsn` sind Kürzel und bleiben.
         self._werte_umschreiben("council_herkunft", "kind", [("stadt", "city")])
-        self._herkunft_schluessel_neu()
+        # Marken zuvor: …_as_of (#880) und …_kind (#886).
+        self._herkunft_schluessel_neu("herkunft_key_city")
         self._doppelte_bildspalte_aufloesen()
         self._agenda_diff_schluessel_neu()
         # Der Parteien-Cache hält die ROHE Modellantwort als JSON; sie trug
@@ -1181,6 +1217,74 @@ class CouncilStore:
             ("aufsichtsorgane", "supervisory_bodies"),
             ("beteiligungen", "own_shareholdings"), ("haushalt", "budget_impact")])
         # Die Art einer Entität. `organisation` ist schon englisch.
+        # Die Probennamen (council/herkunft.py::PROBEN). Sie stehen KOMMA-
+        # GETRENNT — eine Zahl besteht oft zwei Proben —, deshalb der
+        # Listen-Helfer statt `_werte_umschreiben`.
+        PROBEN_NAMEN = [
+            # `anlagen_buchwert` stand zuvor als Gleichheits-UPDATE daneben.
+            # Das traf nur `council_herkunft` und nur EINWERTIGE Zellen — auf
+            # dev blieb er in `council_anlagenspiegel.probes` und in den
+            # mehrwertigen Zellen stehen. Als Probenname gehört er hierher.
+            ("anlagen_buchwert", "assets_book_value"),
+            ("abweichungstext", "variance_text"), ("aenderungsliste_erlaeuterungen", "amendment_list_explanations"),
+            ("aenderungsliste_fhh_zeilen", "amendment_list_cash_budget_rows"), ("aenderungsliste_positionen", "amendment_list_items"),
+            ("aenderungsliste_summen", "amendment_list_totals"), ("aenderungsliste_urheber", "amendment_list_proposers"),
+            ("anlagen_abschreibungskette", "assets_depreciation_chain"), ("anlagen_ahk_kette", "assets_cost_chain"),
+            ("anlagen_gegen_bilanz", "assets_vs_balance_sheet"), ("anlagen_umbuchungssaldo", "assets_transfer_balance"),
+            ("ausgabenreihe_jahresabschluss", "expense_series_annual_accounts"), ("ausgabenreihe_prokopf", "expense_series_per_capita"),
+            ("ausgabenreihe_zweitquelle", "expense_series_second_source"), ("beteiligung_anteilsprobe", "shareholding_share_check"),
+            ("beteiligung_bilanzprobe", "shareholding_balance_sheet_check"), ("beteiligung_ergebnisprobe", "shareholding_result_check"),
+            ("beteiligung_seitenprobe", "shareholding_page_check"), ("beteiligung_spaltenprobe", "shareholding_column_check"),
+            ("beteiligung_ueberlappung", "shareholding_overlap"), ("bilanz_ausgleich", "balance_sheet_equality"),
+            ("bilanz_erlaeuterung", "balance_sheet_notes"), ("bilanz_kassenprobe", "balance_sheet_cash_check"),
+            ("bilanz_vorjahreskette", "balance_sheet_prior_year_chain"), ("bilanzsumme_gedruckt", "balance_sheet_total_printed"),
+            ("buergschaft_kette", "guarantee_chain"), ("buergschaft_tabelle", "guarantee_table"),
+            ("eingangsformel", "preamble_scope"), ("ergebnishaushalt_planspalte", "income_budget_plan_column"),
+            ("ergebnishaushalt_summenzeilen", "income_budget_total_rows"), ("finanz_bestandskette", "cash_balance_chain"),
+            ("finanz_ermaechtigungen", "cash_flow_authorizations"), ("finanzkaskade", "cash_flow_cascade"),
+            ("gebuehren_division", "fee_division"), ("gebuehren_kaskade", "fee_cascade"),
+            ("gebuehrensaetze_anzahl", "fee_rate_count"), ("gebuehrensaetze_eckwerte", "fee_rate_benchmarks"),
+            ("gebuehrensaetze_vorjahresvergleich", "fee_rate_prior_year_comparison"), ("gewst_blattprobe", "trade_tax_sheet_check"),
+            ("gewst_hebesatzprobe", "trade_tax_assessment_rate_check"), ("gewst_summenprobe", "trade_tax_sum_check"),
+            ("hebesatz_spaltenkopf", "assessment_rate_column_header"), ("hebesatz_sprungjahr", "assessment_rate_step_year"),
+            ("hebesatz_treppe", "assessment_rate_change_years"), ("integrierte_schulden_kernhaushalt", "integrated_debt_core_budget"),
+            ("investitionen_ist_zeilensumme", "investments_actual_row_total"), ("investitionen_summenzeile", "investments_total_row"),
+            ("investitionsprogramm_abschnitt", "capital_programme_section_total"), ("investitionsprogramm_kopftabelle", "capital_programme_summary_table"),
+            ("investitionsprogramm_wiederholung", "capital_programme_repeated_total"), ("kassenkette", "cash_carryover_chain"),
+            ("kennzahlen_gegen_bilanz", "indicators_vs_balance_sheet"), ("kennzahlen_ueberlappung", "indicators_overlap"),
+            ("kennzahlen_vermoegensprobe", "indicators_assets_check"), ("kfa_jahrbuchabgleich", "fiscal_equalisation_yearbook_match"),
+            ("kfa_komponentenprobe", "fiscal_equalisation_components"), ("konzern_ausserordentlich", "group_extraordinary_result"),
+            ("konzern_ergebnisprobe", "group_ordinary_result"), ("konzern_gesamtergebnis", "group_total_result"),
+            ("konzern_querprobe", "group_cross_check"), ("konzern_traegersumme", "group_entity_total"),
+            ("konzern_zeilenprobe", "group_row_change"), ("legende_und_verzeichnis", "legend_and_index"),
+            ("lsn_dreijahresmittel", "lsn_three_year_average"), ("lsn_hebesatzprobe", "lsn_assessment_rate_check"),
+            ("lsn_zweijahresueberlappung", "lsn_two_year_overlap"), ("nachbewilligung_ratsabgleich", "supplementary_approval_council_match"),
+            ("nachbewilligung_tabellenprobe", "supplementary_approval_table_check"), ("nachbewilligung_volltext", "supplementary_approval_fulltext"),
+            ("produktzeile", "product_row"), ("rueckstellungs_gliederung", "provisions_breakdown"),
+            ("satzung_finanzhaushalt", "bylaw_cash_budget"), ("satzung_hebesatz", "bylaw_assessment_rate"),
+            ("schulden_prokopf", "debt_per_capita"), ("schulden_summenzeile", "debt_total_row"),
+            ("spenden_protokollabgleich", "donation_minutes_match"), ("spenden_zweitstelle", "donation_second_mention"),
+            ("stellenplan_besetzung", "staffing_plan_occupancy"), ("stellenplan_gesamtsumme", "staffing_plan_grand_total"),
+            ("stellenplan_gruppensummen", "staffing_plan_group_totals"), ("stellenplan_spaltenprobe", "staffing_plan_columns"),
+            ("steuerplan_anteilsprobe", "tax_budget_share_check"), ("steuerplan_istabgleich", "tax_budget_actuals_match"),
+            ("steuerplan_summenzeile", "tax_budget_total_row"), ("strukturprobe", "structure_check"),
+            ("summenprobe", "sub_budget_sum_check"), ("summenzeile", "total_row"),
+            ("textextrakt", "text_layer"), ("unbekannt", "unknown"),
+            ("ungeprueft", "unverified"), ("vorjahreskette", "prior_year_chain"),
+            ("wirtschaftsplan_erfolgsplan", "business_plan_profit_loss"), ("wirtschaftsplan_investitionen", "business_plan_investments"),
+            ("wirtschaftsplan_jahr", "business_plan_year"), ("wirtschaftsplan_kernzahl", "business_plan_key_figure"),
+            ("wirtschaftsplan_prosa", "business_plan_prose"), ("wirtschaftsplan_spalten", "business_plan_columns"),
+        ]
+        self._listenwerte_umschreiben("council_herkunft", "probe", PROBEN_NAMEN)
+        for tabelle in ("council_ausgabenreihe", "council_spenden", "council_buergschaften",
+                        "council_integrierte_schulden", "council_anlagenspiegel",
+                        "council_wirtschaftsplaene", "council_haushaltssatzung",
+                        "council_gebuehren", "council_gebuehrensaetze"):
+            self._listenwerte_umschreiben(tabelle, "probes", PROBEN_NAMEN)
+        # `Herkunft.key()` hasht die Probe mit — nach dem Umzug stimmt kein
+        # Fingerabdruck mehr, und der nächste Ingest legte jede Quelle ein
+        # zweites Mal an. Neu rechnen, unter einer eigenen Marke.
+        self._herkunft_schluessel_neu("herkunft_key_probes")
         # Die neunzehn Bilanz-Positionen (council/bilanz.py::ROLLEN). `liabilities`
         # und `provisions` sind Geschwister auf Ebene 1 der Passivseite, keine
         # Verschachtelung — die `level`-Spalte trägt das.

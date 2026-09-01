@@ -47,7 +47,7 @@ def extract_keywords(question: str) -> list[str]:
     return out[:8]
 
 
-# Die Prompt-Templates leben in kern/prompts.py („qa_antwort" / „qa_suchbegriffe")
+# Die Prompt-Templates leben in kern/prompts.py („qa_answer" / „qa_search_terms")
 # und sind — wie alle anderen — über das Admin-UI live editierbar.
 
 
@@ -314,9 +314,9 @@ def analyse_query(question: str, model: str = EXPAND_MODEL,
     extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in model else {}
     try:
         block = f"\nBisheriges Gespräch (für Rückbezüge):\n{vtext}\n" if vtext else ""
-        prompt = prompts.render("qa_analyse", question=question.strip()[:300], verlauf=block)
+        prompt = prompts.render("qa_analysis", question=question.strip()[:300], verlauf=block)
         resp = llm.chat_complete(
-            model=model, _feature="qa_analyse", temperature=0, max_tokens=480,
+            model=model, _feature="qa_analysis", temperature=0, max_tokens=480,
             timeout=8.0, response_format={"type": "json_object"},
             messages=[{"role": "user", "content": prompt}], **extra,
         )
@@ -360,7 +360,7 @@ def sort_verlauf(candidates: list[dict]) -> list[dict]:
     return sorted(candidates, key=lambda c: (c.get("session_date") or "", c.get("id") or 0))
 
 
-# Typ-spezifische Zusatzregeln für das Antwort-Prompt (qa_antwort hat dafür
+# Typ-spezifische Zusatzregeln für das Antwort-Prompt (qa_answer hat dafür
 # den {extra_regeln}-Slot; alte Admin-Overrides ohne den Slot ignorieren den
 # Parameter einfach — format() stört sich nicht an überzähligen kwargs).
 # Punktfragen („Wann wurde X beschlossen?") bekommen eine knappe Antwort:
@@ -458,7 +458,7 @@ def expand_query(question: str, model: str = EXPAND_MODEL) -> str:
         return hit
     extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in model else {}
     try:
-        prompt = prompts.render("qa_suchbegriffe", question=question.strip()[:300])
+        prompt = prompts.render("qa_search_terms", question=question.strip()[:300])
         # timeout: Die Expansion steht auf dem kritischen Pfad VOR den Quellen —
         # ein hängender Provider darf nicht den SDK-Default (600 s!) ausreizen;
         # nach 8 s je Versuch ist die rohe Frage als Query der bessere Deal.
@@ -1234,9 +1234,9 @@ def deep_zerlege(question: str, model: str = EXPAND_MODEL) -> list[dict]:
     extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in model else {}
     try:
         resp = llm.chat_complete(
-            model=model, _feature="deep_zerlegung", temperature=0, max_tokens=500,
+            model=model, _feature="deep_decomposition", temperature=0, max_tokens=500,
             timeout=12.0, response_format={"type": "json_object"},
-            messages=[{"role": "user", "content": prompts.render("deep_zerlegung",
+            messages=[{"role": "user", "content": prompts.render("deep_decomposition",
                                                                  question=question.strip()[:300])}],
             **extra)
         data = json.loads(_strip_fences(resp.choices[0].message.content or ""))
@@ -1345,12 +1345,12 @@ def deep_bericht_stream(question: str, candidates: list[dict],
     geld = _geld_vereinheitlichen(geld, haushalt, taxes, tax_capacity)
     zusatz = (_debatten_block(debatten) + _presse_block(presse)
               + geld_regeln(geld) + geld_block(geld) + _anlagen_block(anlagen))
-    prompt = prompts.render("deep_bericht", question=question.strip()[:300],
+    prompt = prompts.render("deep_report", question=question.strip()[:300],
                             context=_build_context(candidates),
                             zusatz=zusatz,
                             planungen=_planungen_block(planungen))
     extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in model else {}
-    yield from llm.chat_stream(model=model, _feature="deep_bericht", temperature=0.2,
+    yield from llm.chat_stream(model=model, _feature="deep_report", temperature=0.2,
                                max_tokens=4000,
                                messages=[{"role": "user", "content": prompt}], **extra)
 
@@ -1467,7 +1467,7 @@ def partei_meinungen(question: str, rows: list[dict], model: str = MODEL) -> lis
             f"{(b.get('text') or '').strip()[:300]}"
             for b in gruppen[label])
         teile.append(f"{label} ({len(gruppen[label])} Beiträge):\n{zeilen}")
-    prompt = prompts.render("partei_meinungen", question=question.strip()[:300],
+    prompt = prompts.render("party_opinions", question=question.strip()[:300],
                             beitraege="\n".join(teile))
     extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in model else {}
     # 2000 Token reichten nicht mehr: Mit dem Beschluss-Anker stehen bis zu 15
@@ -1475,7 +1475,7 @@ def partei_meinungen(question: str, rows: list[dict], model: str = MODEL) -> lis
     # Position ins Limit („finish_reason: length", an der Baumschutz-Frage
     # gemessen) — und ein abgeschnittenes Array ließ den Baustein KOMPLETT
     # verschwinden. Erst Platz schaffen, dann trotzdem retten, was da ist.
-    resp = llm.chat_complete(model=model, _feature="partei_meinungen", temperature=0,
+    resp = llm.chat_complete(model=model, _feature="party_opinions", temperature=0,
                              max_tokens=6000, messages=[{"role": "user", "content": prompt}],
                              **extra)
     content = _strip_fences(resp.choices[0].message.content or "") if resp.choices else ""
@@ -2861,7 +2861,7 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "topic",
             "angenommene/abgelehnte Beschlüsse klar von bloßen Berichten oder "
             f"Kenntnisnahmen.{anker}"
         )
-    prompt = prompts.render("qa_antwort", question=question.strip()[:300],
+    prompt = prompts.render("qa_answer", question=question.strip()[:300],
                             context=_build_context(candidates),
                             # Die Haushalts-Regeln hängen am KONTEXT, nicht am
                             # Fragetyp: „Was hat das Rechnungsprüfungsamt
@@ -2892,7 +2892,7 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "topic",
 # Ergebnis: dieselbe Antwort, nur anders sortiert, mit „Ausfallbürgschaften",
 # „Teilfortschreibung des Nahverkehrsplans" und „VBN-Tarifgebiet 3" darin.
 # Jetzt erkennt das Backend den Wunsch und nimmt einen EIGENEN Prompt
-# („qa_einfach"), der die vorliegende Antwort umschreibt statt neu zu antworten.
+# („qa_simple"), der die vorliegende Antwort umschreibt statt neu zu antworten.
 _VEREINFACHEN_RE = re.compile(
     r"ohne\s+(fachbegriffe|fachw[oö]rter|fachchinesisch|fachsprache|amtsdeutsch|"
     r"beh[oö]rdendeutsch|fremdw[oö]rter)"
@@ -2943,7 +2943,7 @@ def vereinfachen_messages(question: str, bisher: str | None, candidates: list[di
     Haushalts-Block: Deren Kontext-Anweisungen („ergänze IMMER einen Absatz zum
     Meinungsbild") arbeiten gegen die Kürze — genau daran ist die beiläufige
     Bitte im normalen Prompt schon gescheitert."""
-    prompt = prompts.render("qa_einfach", question=question.strip()[:300],
+    prompt = prompts.render("qa_simple", question=question.strip()[:300],
                             bisher=_bisher_block(bisher),
                             context=_build_context(candidates))
     extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in model else {}
@@ -2958,7 +2958,7 @@ def vereinfachen_stream(question: str, bisher: str | None, candidates: list[dict
                         model: str = MODEL):
     """Die einfache Fassung als Token-Stream (wie answer_stream)."""
     messages, extra = vereinfachen_messages(question, bisher, candidates, model)
-    yield from llm.chat_stream(model=model, _feature="qa_einfach", temperature=0.2,
+    yield from llm.chat_stream(model=model, _feature="qa_simple", temperature=0.2,
                                max_tokens=VEREINFACHEN_TOKENS, messages=messages, **extra)
 
 
@@ -2967,7 +2967,7 @@ def vereinfachen_question(question: str, bisher: str | None, candidates: list[di
     """One-shot-Variante für den Ersatzweg, wenn der Stream abreißt.
     Liefert ``(answer, cited_ids)`` wie answer_question."""
     messages, extra = vereinfachen_messages(question, bisher, candidates, model)
-    resp = llm.chat_complete(model=model, _feature="qa_einfach", temperature=0.2,
+    resp = llm.chat_complete(model=model, _feature="qa_simple", temperature=0.2,
                              max_tokens=VEREINFACHEN_TOKENS, messages=messages, **extra)
     answer = (resp.choices[0].message.content or "").strip()
     return resolve_citations(answer, {c["id"] for c in candidates})
@@ -3001,7 +3001,7 @@ def answer_question(question: str, candidates: list[dict], model: str = MODEL, t
     messages, extra = _answer_messages(question, candidates, typ, model, presse, verlauf,
                                        haushalt, debatten, anlagen, gross, steckbriefe, duenn, eng,
                                        taxes, tax_capacity, geld, sitzungen, ort)
-    resp = llm.chat_complete(model=model, _feature="qa_antwort", temperature=0.2,
+    resp = llm.chat_complete(model=model, _feature="qa_answer", temperature=0.2,
                              max_tokens=_answer_tokens(typ, gross, eng), messages=messages, **extra)
     answer = (resp.choices[0].message.content or "").strip()
     return resolve_citations(answer, {c["id"] for c in candidates})
@@ -3022,13 +3022,13 @@ def answer_stream(question: str, candidates: list[dict], model: str = MODEL, typ
     messages, extra = _answer_messages(question, candidates, typ, model, presse, verlauf,
                                        haushalt, debatten, anlagen, gross, steckbriefe, duenn, eng,
                                        taxes, tax_capacity, geld, sitzungen, ort)
-    yield from llm.chat_stream(model=model, _feature="qa_antwort", temperature=0.2,
+    yield from llm.chat_stream(model=model, _feature="qa_answer", temperature=0.2,
                                max_tokens=_answer_tokens(typ, gross, eng), messages=messages, **extra)
 
 
 # --- Folgefragen (Design 24a / RL-U06) --------------------------------------
 # Das Antwort-LLM hängt seine Vorschläge als letzte Zeile an (siehe Prompt
-# „qa_antwort"). Der Marker trennt sie vom Antworttext — der Router streamt
+# „qa_answer"). Der Marker trennt sie vom Antworttext — der Router streamt
 # alles davor als Token und schneidet ab hier ab.
 FOLLOWUP_MARKER = "FOLGEFRAGEN:"
 _MAX_FOLLOWUPS = 3

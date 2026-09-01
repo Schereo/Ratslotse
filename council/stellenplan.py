@@ -614,15 +614,15 @@ def lies(text: str) -> dict:
         # die Aussage trägt, dass die Spalten bedeuten, was wir ihnen
         # zuschreiben. Eine bestandene Probe zu verschweigen, weil sie ein
         # Vorfilter ist, hieße den Beleg um sein Fundament zu kürzen.
-        probes.append({"probe": "stellenplan_spaltenprobe", "ok": True,
+        probes.append({"probe": "staffing_plan_columns", "ok": True,
                        "warum": ""})
         for name_probe, result_probe in (
-            ("stellenplan_gruppensummen", gruppenprobe(gruppen)),
-            ("stellenplan_besetzung", besetzungsprobe(alle_summen)),
+            ("staffing_plan_group_totals", gruppenprobe(gruppen)),
+            ("staffing_plan_occupancy", besetzungsprobe(alle_summen)),
             # Die dritte Stufe nur, wo das Dokument eine eigene Gesamtzeile
             # führt (Teil A). Teil B hat eine Gruppe, deren Summe zugleich die
             # Gesamtsumme ist — dort wiederholte sie bloß die zweite Stufe.
-            *((("stellenplan_gesamtsumme", gesamtprobe(gruppen, gesamt)),)
+            *((("staffing_plan_grand_total", gesamtprobe(gruppen, gesamt)),)
               if gesamt else ()),
         ):
             probes.append({"probe": name_probe, "ok": result_probe[0],

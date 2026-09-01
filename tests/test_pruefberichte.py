@@ -209,7 +209,7 @@ def test_speichern_und_lesen(tmp_path, source):
         n = store.save_pruefbericht(2023, gefunden, source(
             "Schlussbericht 2023",
             "https://buergerinfo.oldenburg.de/getfile.php?id=280863&type=do",
-            probe="legende_und_verzeichnis"))
+            probe="legend_and_index"))
         assert n == 2
         assert store.pruefbericht_jahre() == [2023]
         zeilen = store.get_pruefberichte()
@@ -221,7 +221,7 @@ def test_speichern_und_lesen(tmp_path, source):
         # Erneuter Ingest ersetzt den Jahrgang, statt ihn zu verdoppeln.
         store.save_pruefbericht(2023, gefunden, source(
             "Schlussbericht 2023", "https://example.org/sb2023.pdf",
-            probe="legende_und_verzeichnis"))
+            probe="legend_and_index"))
         assert len(store.get_pruefberichte(2023)) == 2
     finally:
         store.close()

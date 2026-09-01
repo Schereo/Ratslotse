@@ -121,9 +121,9 @@ def pick_candidate(store: CouncilStore, day: date) -> tuple[dict, int] | None:
 
 def write_story(decision: dict) -> str | None:
     """Der eine Satz der Karte. None = Antwort unbrauchbar (Tag bleibt leer)."""
-    system = prompts.get("fundstueck_story_system")
+    system = prompts.get("daily_find_story_system")
     user = prompts.render(
-        "fundstueck_story_user",
+        "daily_find_story_user",
         session_date=str(decision.get("session_date") or ""),
         committee=decision.get("committee") or "",
         outcome=decision.get("outcome") or "unbekannt",
@@ -141,7 +141,7 @@ def write_story(decision: dict) -> str | None:
             ],
             max_tokens=300,
             temperature=0.4,
-            _feature="fundstueck_story",
+            _feature="daily_find_story",
         )
         data = json.loads(resp.choices[0].message.content or "{}")
     except Exception:  # noqa: BLE001 — nächster Lauf füllt den Tag erneut

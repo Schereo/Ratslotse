@@ -453,7 +453,7 @@ def haushalt_produkte(
 
     Aus den Teilhaushalts-Plänen des Ratsinformationssystems. Die Abdeckung
     ist unvollständig (nicht jeder Teilhaushalt liegt für jedes Jahr als
-    auslesbares Dokument vor); ``abdeckung_prozent`` sagt, wie viel der
+    auslesbares Dokument vor); ``coverage_percent`` sagt, wie viel der
     geplanten Aufwendungen die gefundenen Produkte erklären — damit die
     Oberfläche das nicht als Vollbild ausgeben kann.
 
@@ -463,12 +463,12 @@ def haushalt_produkte(
     Produkt — die Steckbrief-Ansicht braucht es auch dann, wenn der gerade
     gesetzte Filter es aus der Liste nähme.
 
-    ``facetten`` liefert die Filterwerte mit Anzahl und dazu, wie viele
+    ``facets`` liefert die Filterwerte mit Anzahl und dazu, wie viele
     Produkte überhaupt welches Steckbrief-Feld tragen: Die Seite weist die
     Lücke aus, statt sie zu verschweigen.
 
     Jedes Produkt trägt zusätzlich ``years`` — die Jahrgänge, in denen es im
-    Bestand steht. Gegen ``alle_jahre`` gehalten wird daraus das
+    Bestand steht. Gegen ``all_years`` gehalten wird daraus das
     Abdeckungs-Badge der Trefferliste (H4-04): Ein Produkt, das erst ab 2021
     vorliegt, soll das sagen, statt wie eine durchgehende Reihe auszusehen."""
     produkte = store.get_produkte(year, sub_budget, suche=q, office=office,
@@ -482,11 +482,11 @@ def haushalt_produkte(
     summe = sum(p["expenses"] or 0 for p in store.get_produkte(year))
     plan = next((z for z in store.get_haushalt(year) if z["is_total"]), None)
     quote = round(summe / plan["expenses"] * 100, 1) if plan and plan["expenses"] else None
-    return {"year": year, "produkte": produkte, "abdeckung_prozent": quote,
+    return {"year": year, "products": produkte, "coverage_percent": quote,
             "plan_expenses": plan["expenses"] if plan else None,
-            "treffer": len(produkte),
-            "alle_jahre": store.produkte_jahre(),
-            "facetten": store.produkt_facetten(year),
+            "matches": len(produkte),
+            "all_years": store.produkte_jahre(),
+            "facets": store.produkt_facetten(year),
             "product": einzeln}
 
 
@@ -503,14 +503,14 @@ def haushalt_stellenplan(
     Personal ist der größte Ausgabenblock; hier stehen die Menschen dahinter —
     und die Lücke zwischen geplanten und tatsächlich besetzten Stellen.
 
-    - ``jahrgaenge``: Haushaltsjahre mit eingelesenem Plan,
-    - ``summen``: je Jahrgang und Teil die Gesamtzeile des Dokuments (Stellen
+    - ``editions``: Haushaltsjahre mit eingelesenem Plan,
+    - ``totals``: je Jahrgang und Teil die Gesamtzeile des Dokuments (Stellen
       im Haushaltsjahr, Stellen im Vorjahr, besetzt, nicht besetzt) samt
       Stichtag der Besetzung,
-    - ``gruppen``: dieselben Zahlen je Laufbahn- bzw. Beschäftigtengruppe,
-    - ``zeilen``: die Einzelposten — nur mit ``budget_year``, weil das rund 190
+    - ``groups``: dieselben Zahlen je Laufbahn- bzw. Beschäftigtengruppe,
+    - ``rows``: die Einzelposten — nur mit ``budget_year``, weil das rund 190
       Zeilen je Jahrgang sind,
-    - ``fehlend``: welche ``(Jahrgang, Teil)`` **nicht** vorliegen, obwohl der
+    - ``missing``: welche ``(Jahrgang, Teil)`` **nicht** vorliegen, obwohl der
       Jahrgang eingelesen ist. Ohne diese Liste sähe ein Jahrgang mit nur
       einem Teil aus wie ein vollständiger,
     - ``herkunft``: je ``herkunft_id`` Dokument, Fundstelle, bestandene Probe
@@ -545,12 +545,12 @@ def haushalt_stellenplan(
     ids = sorted({z["herkunft_id"] for z in (*summen, *gruppen, *zeilen)
                   if z["herkunft_id"] is not None})
     return {
-        "jahrgaenge": jahrgaenge,
-        "teile": _sp.TEIL_NAMEN,
-        "summen": summen,
-        "gruppen": gruppen,
-        "zeilen": zeilen,
-        "fehlend": fehlend,
+        "editions": jahrgaenge,
+        "part_names": _sp.TEIL_NAMEN,
+        "totals": summen,
+        "groups": gruppen,
+        "rows": zeilen,
+        "missing": fehlend,
         "herkunft": {str(h["id"]): h for h in store.get_herkunft(ids)},
     }
 
@@ -568,18 +568,18 @@ def haushalt_pruefberichte(
     „Wiederholte Beanstandung" ist erst dann etwas wert, wenn daneben steht,
     seit wann sie dort steht. Dafür braucht die Seite alle Jahre gleichzeitig.
 
-    - ``feststellungen``: eine Zeile je Randmarke, mit Textziffer, Seite und
+    - ``findings``: eine Zeile je Randmarke, mit Textziffer, Seite und
       Deeplink auf das Quelldokument,
-    - ``legende``: die Bedeutung der Marken, wie der Bericht sie selbst
+    - ``legend``: die Bedeutung der Marken, wie der Bericht sie selbst
       erklärt (jüngster Jahrgang, der die Marke noch führt),
-    - ``ohne_bericht``: Jahre, für die ein Jahresabschluss ausgelesen ist, ein
+    - ``without_report``: Jahre, für die ein Jahresabschluss ausgelesen ist, ein
       Schlussbericht aber nicht — die Lücke gehört sichtbar, nicht kaschiert.
 
     ``mark`` grenzt auf eine Randmarke ein. Gedacht für den Hinweis auf
     ``/haushalt/plan-ist``, der nur die Kette der wiederholten Beanstandungen
     braucht: Der volle Bestand ist eine Viertel-Megabyte Prosa und hat auf
     einer Seite nichts zu suchen, die ihn gar nicht anzeigt. ``years`` und
-    ``legende`` bleiben dabei die des Gesamtbestands — sonst stünde in der
+    ``legend`` bleiben dabei die des Gesamtbestands — sonst stünde in der
     Fußzeile eine Jahresliste, die vom Filter abhängt.
     """
     zeilen = store.get_pruefberichte()
@@ -590,9 +590,9 @@ def haushalt_pruefberichte(
                                "explanation": z["mark_explanation"]}
     return {
         "years": years,
-        "legende": legende,
-        "feststellungen": [z for z in zeilen if mark is None or z["mark"] == mark],
-        "ohne_bericht": [j for j in store.ergebnisrechnung_jahre() if j not in years],
+        "legend": legende,
+        "findings": [z for z in zeilen if mark is None or z["mark"] == mark],
+        "without_report": [j for j in store.ergebnisrechnung_jahre() if j not in years],
     }
 
 
@@ -608,14 +608,14 @@ def haushalt_konzern(
     Kernverwaltung im selben Jahr.
 
     - ``years``: Jahrgänge mit eingelesenem Gesamtabschluss,
-    - ``konzern``: je Jahrgang die Summen des Konzerns (Erträge,
+    - ``consolidated``: je Jahrgang die Summen des Konzerns (Erträge,
       Aufwendungen, ordentliches Ergebnis, Gesamtjahresergebnis, Zins- und
       Personalaufwand) samt bestandener Rechenprobe und Fundstelle,
     - ``entity``: wer den Konzern ausmacht — je Jahrgang und Aufstellung eine
       Zeile pro Aufgabenträger, Beträge in **Euro** (der Bericht rundet sie
       auf Tausend, daher die glatten Endziffern),
-    - ``posten``: die vollständige Gesamtergebnisrechnung je Jahrgang,
-    - ``gegenprobe``: dieselbe Kernverwaltungs-Zahl aus zwei unabhängigen
+    - ``items``: die vollständige Gesamtergebnisrechnung je Jahrgang,
+    - ``cross_check``: dieselbe Kernverwaltungs-Zahl aus zwei unabhängigen
       Dokumenten — der Trägerzeile des Gesamtabschlusses und dem
       Jahresabschluss, den wir getrennt eingelesen haben,
     - ``herkunft``: je ``herkunft_id`` Dokument, Fundstelle, bestandene Probe
@@ -649,8 +649,8 @@ def haushalt_konzern(
         if ist is None:
             continue
         gegenprobe.append({
-            "year": t["year"], "art": t["kind"],
-            "konzern": t["amount_keur"] * 1000.0, "jahresabschluss": ist,
+            "year": t["year"], "kind": t["kind"],
+            "consolidated": t["amount_keur"] * 1000.0, "annual_accounts": ist,
             "ok": abs(t["amount_keur"] - ist / 1000.0) <= 1.0,
         })
 
@@ -658,13 +658,13 @@ def haushalt_konzern(
                   if z["herkunft_id"] is not None})
     return {
         "years": store.konzern_jahre(),
-        "konzern": [je_jahr[j] for j in sorted(je_jahr)],
+        "consolidated": [je_jahr[j] for j in sorted(je_jahr)],
         "entity": [{**t, "amount": t["amount_keur"] * 1000.0,
                      "prior_year": (t["prior_year_keur"] * 1000.0
                                  if t["prior_year_keur"] is not None else None)}
                     for t in entity],
-        "posten": posten,
-        "gegenprobe": gegenprobe,
+        "items": posten,
+        "cross_check": gegenprobe,
         "herkunft": {str(h["id"]): h for h in store.get_herkunft(ids)},
     }
 
@@ -762,35 +762,35 @@ def haushalt_beteiligungen(
     Die Ergänzung zum Gesamtabschluss (``/haushalt/konzern``): Der sagt, wie
     viel die Betriebe bewegen, diese Seite, was sie damit machen.
 
-    - ``gesellschaften``: je Gesellschaft Name, Gliederungsnummer und Seite im
+    - ``companies``: je Gesellschaft Name, Gliederungsnummer und Seite im
       jüngsten Bericht, dazu ``consolidated_key``, wo der Gesamtabschluss sie als
       eigenen Träger führt,
-    - ``texte``: die beschreibenden Abschnitte (Gegenstand, Eigentümer,
+    - ``texts``: die beschreibenden Abschnitte (Gegenstand, Eigentümer,
       Aufsichtsorgane, eigene Beteiligungen, Auswirkungen auf den Haushalt) —
       alle ausdrücklich **ungeprüft**, denn Fließtext lässt sich gegen nichts
       rechnen,
-    - ``personen``: die Aufsichtsorgane, Person für Person, mit Gremium,
+    - ``people``: die Aufsichtsorgane, Person für Person, mit Gremium,
       Vorsitz, Amtszeit-Hinweis und — wo das Verzeichnis die Person
       eindeutig kennt — ``slug`` und ``party`` für die Personen-Seite.
       ``position`` steht nur da, wo die Spaltenprobe gehalten hat; siehe
       ``roles_assignable`` an der Gesellschaft. Zwei der fünf Abschnitte
       sind nämlich keine Prosa, sondern Tabellen, die der PDF-Extrakt
       spaltenweise ausgibt (``council/beteiligungsbericht.py``),
-    - ``eigentuemer``: wem die Gesellschaft gehört, mit Betrag und Anteil.
+    - ``owners``: wem die Gesellschaft gehört, mit Betrag und Anteil.
       **Ohne** die Stammkapital-Zeile — die ist die Summe und kein
       Gesellschafter. Gesellschaften, deren Anteile sich nicht auf das
       ausgewiesene Stammkapital summieren, erscheinen hier gar nicht; ihr
-      Rohtext steht weiter in ``texte``,
+      Rohtext steht weiter in ``texts``,
     - ``indicators``: die Zeitreihe je Gesellschaft (Jahresergebnis,
       Bilanzsumme, Eigenkapitalquote). ``n_reports`` sagt, wie viele Berichte
       denselben Wert nennen — 1 heißt „durch eine Probe im Dokument gedeckt",
       mehr heißt zusätzlich „von einer zweiten Veröffentlichung bestätigt",
-    - ``konzernvergleich``: für die Gesellschaften, die auch im
+    - ``group_comparison``: für die Gesellschaften, die auch im
       Gesamtabschluss stehen, beide Zahlen desselben Jahres nebeneinander.
       **Keine Probe** — die beiden Rechnungen unterscheiden sich systematisch,
       und zwei Betriebe weisen wegen Ergebnisabführung 0 € aus, obwohl sie
       etwas erwirtschaftet haben. Eine Einordnung, kein Urteil,
-    - ``berichtsjahre`` / ``years``: welche Berichte gelesen sind und welche
+    - ``report_years`` / ``years``: welche Berichte gelesen sind und welche
       Bezugsjahre die Kennzahlen abdecken (sie reichen weiter zurück als die
       Berichte — jeder führt vier bis fünf Jahre mit),
     - ``herkunft``: je ``herkunft_id`` Dokument, Fundstelle, Seite und Probe.
@@ -819,18 +819,18 @@ def haushalt_beteiligungen(
                             *eigentuemer)
                   if z["herkunft_id"] is not None})
     return {
-        "berichtsjahre": berichtsjahre,
+        "report_years": berichtsjahre,
         "years": sorted({z["year"] for z in indicators}),
-        "gesellschaften": [{**g, "roles_assignable":
-                            g["company"] not in gerissen}
-                           for g in gesellschaften],
-        "texte": texte,
-        "personen": [{**p, "roles_assignable":
-                      bool(p["roles_assignable"]),
-                      **verzeichnis[p["name"]]} for p in personen],
-        "eigentuemer": eigentuemer,
+        "companies": [{**g, "roles_assignable":
+                       g["company"] not in gerissen}
+                      for g in gesellschaften],
+        "texts": texte,
+        "people": [{**p, "roles_assignable":
+                    bool(p["roles_assignable"]),
+                    **verzeichnis[p["name"]]} for p in personen],
+        "owners": eigentuemer,
         "indicators": indicators,
-        "konzernvergleich": vergleich,
+        "group_comparison": vergleich,
         "herkunft": {str(h["id"]): h for h in store.get_herkunft(ids)},
     }
 
@@ -848,11 +848,11 @@ def haushalt_investitionen(
     nur als Abschreibung auf, verteilt über Jahrzehnte).
 
     - ``years``: Haushaltsjahre, für die Investitionen vorliegen,
-    - ``teilhaushalte``: je Jahr und Teilhaushalt Ein- und Auszahlungen aus
+    - ``sub_budgets``: je Jahr und Teilhaushalt Ein- und Auszahlungen aus
       Investitionstätigkeit,
-    - ``gesamt``: je Jahr die Summenzeile der Datei — das **Ziel der
+    - ``investments``: je Jahr die Summenzeile der Datei — das **Ziel der
       Rechenprobe**, nicht unsere Addition,
-    - ``finanzhaushalt``: je Jahr der Gesamtbetrag aller Ein- und Auszahlungen,
+    - ``financial_budget``: je Jahr der Gesamtbetrag aller Ein- und Auszahlungen,
       also samt laufender Verwaltungstätigkeit. Die Bezugsgröße, die aus
       „80,8 Mio. €" erst eine Aussage macht — und die einzige Zahl hier ohne
       Rechenprobe (eigene ``herkunft_id`` mit ``ungeprueft``, s. u.),
@@ -869,9 +869,9 @@ def haushalt_investitionen(
     ids = sorted({z["herkunft_id"] for z in zeilen if z["herkunft_id"] is not None})
     return {
         "years": store.investitionen_jahre(),
-        "teilhaushalte": [z for z in zeilen if z["level"] == "sub_budget"],
-        "gesamt": [z for z in zeilen if z["level"] == "investments"],
-        "finanzhaushalt": [z for z in zeilen if z["level"] == "financial_budget"],
+        "sub_budgets": [z for z in zeilen if z["level"] == "sub_budget"],
+        "investments": [z for z in zeilen if z["level"] == "investments"],
+        "financial_budget": [z for z in zeilen if z["level"] == "financial_budget"],
         "herkunft": {str(h["id"]): h for h in store.get_herkunft(ids)},
     }
 
@@ -887,12 +887,12 @@ def haushalt_investitionsprogramm(
     sondern „BBS Haarentor: Ausstattung". Acht Jahrgänge, rund 4.500 Vorhaben.
 
     - ``years``: Jahrgänge, für die ein Programm vorliegt,
-    - ``massnahmen``: je Vorhaben Teilhaushalt, IPSP-Element, Bezeichnung und
+    - ``measures``: je Vorhaben Teilhaushalt, IPSP-Element, Bezeichnung und
       **Gesamtinvestitionssumme**,
-    - ``teilhaushalte``: je Teilhaushalt die Gesamtsumme, die das Dokument am
+    - ``sub_budgets``: je Teilhaushalt die Gesamtsumme, die das Dokument am
       Ende seines Abschnitts ausweist — das **Ziel der Rechenprobe**, nicht
       unsere Addition,
-    - ``gesamt``: je Jahrgang die Gesamtsumme des Investitionsprogramms,
+    - ``totals``: je Jahrgang die Gesamtsumme des Investitionsprogramms,
     - ``herkunft``: Dokument, Fundstelle und die drei bestandenen Proben.
 
     Drei Grenzen, die die Seite nennt und die API deshalb nicht verwischt:
@@ -911,9 +911,9 @@ def haushalt_investitionsprogramm(
     ids = sorted({z["herkunft_id"] for z in zeilen if z["herkunft_id"] is not None})
     return {
         "years": store.investitionsprogramm_jahre(),
-        "massnahmen": [z for z in zeilen if z["level"] == "measure"],
-        "teilhaushalte": [z for z in zeilen if z["level"] == "sub_budget"],
-        "gesamt": [z for z in zeilen if z["level"] == "total"],
+        "measures": [z for z in zeilen if z["level"] == "measure"],
+        "sub_budgets": [z for z in zeilen if z["level"] == "sub_budget"],
+        "totals": [z for z in zeilen if z["level"] == "total"],
         "herkunft": {str(h["id"]): h for h in store.get_herkunft(ids)},
     }
 
@@ -946,8 +946,8 @@ def haushalt_datenstand(
 
     zeilen = finanzquellen.datenstand(store)
     for z in zeilen:
-        z["monat"] = finanzquellen.MONATE[z["erwarteter_monat"]]
-    return {"heute": date.today().isoformat(), "schichten": zeilen}
+        z["month_name"] = finanzquellen.MONATE[z["erwarteter_monat"]]
+    return {"today": date.today().isoformat(), "layers": zeilen}
 
 
 @router.get("/haushalt/dokumente")
@@ -964,7 +964,7 @@ def haushalt_dokumente(
     man wieder selbst suchen darf. Hier steht, welches PDF zu welchem Jahr
     gehört, damit der Link das Dokument des **gezeigten** Jahres öffnet.
 
-    ``{"dokumente": {"<quellenschluessel>": [{year, url, label, citation,
+    ``{"documents": {"<quellenschluessel>": [{year, url, label, citation,
     page}, …]}}`` — aufsteigend nach Jahr. Ein Schlüssel fehlt, wo wir kein
     Dokument haben; die Oberfläche fällt dann auf die statische Adresse
     zurück und sagt dazu, wohin sie führt.
@@ -977,13 +977,13 @@ def haushalt_dokumente(
     Gewinn: „Abschnitt 3.2" macht aus einem 300-Seiten-PDF eine nachschlagbare
     Stelle.
 
-    ``jahrgaenge`` kommt aus derselben Antwort statt aus einem eigenen Aufruf:
+    ``editions`` kommt aus derselben Antwort statt aus einem eigenen Aufruf:
     Es beantwortet die Nachbarfrage („welche Jahrgänge deckt diese Quelle
     ab?"), wird an derselben Stelle gebraucht — im Quellenverzeichnis — und
     ist eine Abfrage je Quelle, keine je Zeile. Zwei Endpunkte dafür hießen
     zwei Rundreisen für einen Seitenfuß."""
-    return {"dokumente": store.haushalt_dokumente(),
-            "jahrgaenge": store.haushalt_jahrgaenge()}
+    return {"documents": store.haushalt_dokumente(),
+            "editions": store.haushalt_jahrgaenge()}
 
 
 @router.get("/haushalt")
@@ -1182,11 +1182,11 @@ def haushalt_uebersicht(
         # zweite Liste könnte niemand nachvollziehen, dass die Steuerquote
         # 2021 einmal 49,05 % hieß.
         #
-        # `formeln` sind die von der Stadt GEDRUCKTEN Rechenwege, im Wortlaut.
+        # `formulas` sind die von der Stadt GEDRUCKTEN Rechenwege, im Wortlaut.
         # Sie tragen `version`: Wechselt die Nummer zwischen zwei Berichten,
         # darf über die Stelle keine Linie laufen.
         #
-        # `funde` sind die Unterschiede zwischen zwei Berichten, eingeteilt in
+        # `finds` sind die Unterschiede zwischen zwei Berichten, eingeteilt in
         # Korrektur, Definitionswechsel und bloße Umbenennung — gemessen, nicht
         # angenommen (council/kennzahlen.py).
         "indicators": lambda: _kennzahlen(store),
@@ -1328,7 +1328,7 @@ def _kennzahlen(store: CouncilStore) -> dict:
       Berichte drucken denselben Satz sechsmal. Eine Fassung mit „gilt vom
       Bericht X bis Y" sagt mehr als sechs gleiche Zeilen.
     * Die älteren **Stände** entfallen. Was sie beweisen, steht vollständig
-      in ``funde``: jeder Unterschied zwischen zwei Berichten, mit beiden
+      in ``finds``: jeder Unterschied zwischen zwei Berichten, mit beiden
       Werten und beiden Berichtsjahren. Wer alle Stände braucht, liest
       ``council_kennzahlen`` — die Tabelle behält sie.
     """
@@ -1343,16 +1343,18 @@ def _kennzahlen(store: CouncilStore) -> dict:
             fassungen[key] = {
                 "indicator": f["indicator"], "version": f["version"],
                 "heading": f["heading"], "formula": f["formula"],
-                "von_bericht": f["report_year"], "bis_bericht": f["report_year"],
+                "from_report_year": f["report_year"],
+                "to_report_year": f["report_year"],
                 "herkunft_id": f["herkunft_id"]}
-        elif f["report_year"] > eintrag["bis_bericht"]:
+        elif f["report_year"] > eintrag["to_report_year"]:
             # Der jüngste Bericht gibt Wortlaut und Beleg — er ist der, den
             # jemand aufschlägt, wenn er nachsehen will.
-            eintrag.update(bis_bericht=f["report_year"], formula=f["formula"],
+            eintrag.update(to_report_year=f["report_year"], formula=f["formula"],
                            heading=f["heading"],
                            herkunft_id=f["herkunft_id"])
         else:
-            eintrag["von_bericht"] = min(eintrag["von_bericht"], f["report_year"])
+            eintrag["from_report_year"] = min(eintrag["from_report_year"],
+                                              f["report_year"])
 
     return {
         "label": {k.key: k.label for k in kennzahlen_mod.KENNZAHLEN},
@@ -1361,9 +1363,9 @@ def _kennzahlen(store: CouncilStore) -> dict:
                    "decimals": z["decimals"], "version": z["version"],
                    "report_year": z["report_year"], "herkunft_id": z["herkunft_id"]}
                   for z in kennzahlen_mod.neueste(staende)],
-        "formeln": sorted(fassungen.values(),
-                          key=lambda f: (f["indicator"], f["version"])),
-        "funde": funde,
+        "formulas": sorted(fassungen.values(),
+                           key=lambda f: (f["indicator"], f["version"])),
+        "finds": funde,
     }
 
 
@@ -1458,7 +1460,7 @@ def haushalt_weg(
 
     Anders als der Rest des Haushalts-Bereichs kommt hier nichts aus einem
     Finanzdokument, sondern alles aus den Ratsdaten: Beratungsfolge,
-    Tagesordnung und Protokoll-Beschluss. Je Haushaltsjahr eine ``runde`` mit
+    Tagesordnung und Protokoll-Beschluss. Je Haushaltsjahr eine ``round`` mit
     ``einbringung``, ``fachausschuesse`` (Zeitraum und Gremien) und
     ``stationen`` bis zur Entscheidung im Rat; jede Station trägt ``ksinr``
     und ``top``, ist also auf ihre Sitzung verlinkbar.
@@ -1475,7 +1477,7 @@ def haushalt_weg(
     ``council_scheduled_sessions`` kennt keine Tagesordnung — wir können nicht
     sagen, welche der kommenden Sitzungen die Haushaltssitzung wird, und raten
     es auch nicht."""
-    return {"runden": store.haushalt_weg(year)}
+    return {"rounds": store.haushalt_weg(year)}
 
 
 @router.get("/haushalt/streit")
@@ -1486,7 +1488,7 @@ def haushalt_streit(
 ) -> HaushaltStreit:
     """Der Streit ums Geld — die Auseinandersetzung um jeden Haushaltsjahrgang.
 
-    Je Haushaltsjahr eine ``runde`` mit ihren Stationen (Finanzausschuss und
+    Je Haushaltsjahr eine ``round`` mit ihren Stationen (Finanzausschuss und
     Rat), und je Station die Änderungslisten, die Debatte und die
     Schlussabstimmung. Alles kommt aus den Ratsdaten: Beschlusszeilen,
     Anwesenheitsliste und Protokoll-Volltext derselben Sitzung.
@@ -1501,7 +1503,7 @@ def haushalt_streit(
     seit 08/2026 ``/haushalt/aenderungslisten`` (direkt darunter), Position
     für Position aus den gelesenen EHH-Dokumenten. Hier bleibt die
     Verfahrens-Ebene: **wer** was einbrachte und **ob** es durchkam."""
-    return {"runden": store.haushalt_streit(year)}
+    return {"rounds": store.haushalt_streit(year)}
 
 
 @router.get("/haushalt/aenderungslisten")
@@ -1517,18 +1519,18 @@ def haushalt_aenderungslisten(
     Veränderungen", gegen die jede Positionsliste beim Einlesen bewiesen
     wurde (``council/aenderungslisten.py``).
 
-    - ``zeilen``: NUR die Positionen des Haushaltsjahrgangs selbst
+    - ``rows``: NUR die Positionen des Haushaltsjahrgangs selbst
       (``year == budget_year``). Dieselbe Maßnahme steht im Dokument je
       Finanzplanungsjahr noch einmal — für die Streit-Erzählung zählt das
       Jahr, um das gestritten wurde; die Folgejahre stecken kompakt in den
       Summen. ``author`` trägt, WER die Position vorschlug — gefüllt nur
       beim Jahrgang 2021, dessen Beschluss-Datei als einzige eine Spalte
       „Vorschlag von“ führt; sonst ``null``.
-    - ``summen``: die Zusammenstellungen ALLER Planjahre, inklusive der
+    - ``totals``: die Zusammenstellungen ALLER Planjahre, inklusive der
       Zeilen, die es nur dort gibt: die politisch beschlossene Änderung mit
       Urheber-Label („SPD/CDU/FDP …“) aus den AFB-Dateien — der einzige
       digitale Beleg der Fraktionslisten, die selbst Tischvorlagen blieben.
-    - ``fhh_zeilen``/``fhh_summen``: dasselbe für den FINANZhaushalt
+    - ``cash_budget_rows``/``cash_budget_totals``: dasselbe für den FINANZhaushalt
       (``council/aenderungslisten_fhh.py``) — also für das, was tatsächlich
       fließt und vor allem investiert wird. Getrennte Schlüssel statt einer
       gemeinsamen Liste mit Marke: Die Zeilen haben eine andere Form (fünf
@@ -1545,8 +1547,8 @@ def haushalt_aenderungslisten(
                   if z["herkunft_id"] is not None}
                  | {s["herkunft_id"] for s in d["summen"] + f["summen"]
                     if s["herkunft_id"] is not None})
-    return {"zeilen": zeilen, "summen": d["summen"],
-            "fhh_zeilen": fhh_zeilen, "fhh_summen": f["summen"],
+    return {"rows": zeilen, "totals": d["summen"],
+            "cash_budget_rows": fhh_zeilen, "cash_budget_totals": f["summen"],
             "herkunft": {str(h["id"]): h for h in store.get_herkunft(ids)}}
 
 
@@ -2294,7 +2296,7 @@ def deep_research_start(body: DeepResearchBody, user: dict = Depends(require_act
     if deepresearch.laufende_jobs() >= deepresearch.MAX_PARALLEL:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE,
                             "Gerade laufen viele Recherchen — bitte versuche es gleich nochmal.")
-    ratslotse.record_activity(user["id"], "recherche")
+    ratslotse.record_activity(user["id"], "research")
     question = body.question.strip()
     job_id = ratslotse.deep_job_anlegen(user["id"], question)
     settings = get_settings()
@@ -3038,7 +3040,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
         # Adresse. Das Konto ist hier bereits sicher authentifiziert und damit
         # der faire, stabile Schlüssel für das Kosten-Limit.
         qa_limiter.check(request, subject=user["id"])
-    ratslotse.record_activity(user["id"], "ki_frage")  # Admin-Statistik (20a)
+    ratslotse.record_activity(user["id"], "ai_question")  # Admin-Statistik (20a)
     q = body.question.strip()
     if len(q) < 4:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Bitte eine etwas längere Frage stellen.")
@@ -3680,17 +3682,17 @@ def haushalt_vergleich(
 
     Zwei Teile, und der zweite ist der wichtigere:
 
-    - ``werte``/``staedte``/``years``: Steuerkraft und Hebesätze der acht
+    - ``values``/``cities``/``years``: Steuerkraft und Hebesätze der acht
       kreisfreien Städte Niedersachsens aus den beiden Tabellen des
       Landesamts für Statistik. Dieselbe Kennzahl, dieselbe Stelle, dieselbe
       Abgrenzung für alle — der Auslagerungsgrad einer Stadt greift hier
       nicht, weil Steuern nie ein Eigenbetrieb erhebt.
-    - ``beleg``: die Ratsvorlage 18/0911, in der die Stadt Oldenburg 2018 auf
+    - ``citation``: die Ratsvorlage 18/0911, in der die Stadt Oldenburg 2018 auf
       Antrag der FDP-Fraktion sieben Städte verglichen und im selben Dokument
       festgestellt hat, dass dieser Vergleich nichts aussagt. Aufgelöst wird
       sie über die Vorlagennummer; ``decision_id`` zeigt auf den Eintrag in
       unserem eigenen Bestand (der Ausschuss hat den Bericht zur Kenntnis
-      genommen), ``anlagen`` auf Antrag und Antwort im Original.
+      genommen), ``attachments`` auf Antrag und Antwort im Original.
 
     **Was diese Antwort bewusst nicht tut:** Sie mischt die LSN-Steuerkraft
     nicht mit ``council_steuerkraft`` (Datensatz 1106). Beide führen dieselben
@@ -3717,24 +3719,24 @@ def haushalt_vergleich(
     staedte = [{
         "key": key,
         "name": name,
-        "ist_oldenburg": key == sv.OLDENBURG,
+        "is_oldenburg": key == sv.OLDENBURG,
         # Unter 100.000 Einwohnern rechnet das NFAG die Steuerkraftmesszahl
         # mit anderen Nivellierungshebesätzen. Das gehört an den Wert, sonst
         # vergleicht die Seite still zwei Rechenvorschriften.
-        "unter_100k": key in sv.UNTER_100K,
+        "below_100k": key in sv.UNTER_100K,
     } for key, name in sv.KREISFREIE_STAEDTE.items()]
 
     beleg: dict = {"template_number": VERGLEICH_BELEG_VORLAGE,
                    "kvonr": VERGLEICH_BELEG_KVONR,
-                   "vorlage_url": _vorlage_url(VERGLEICH_BELEG_KVONR),
-                   "decision_id": None, "title": None, "anlagen": []}
+                   "template_url": _vorlage_url(VERGLEICH_BELEG_KVONR),
+                   "decision_id": None, "title": None, "attachments": []}
     try:
         ids = store.find_decision_ids(template_number=VERGLEICH_BELEG_VORLAGE)
         beleg["decision_id"] = ids[0] if ids else None
         vorlage = store.get_vorlage_by_nr(VERGLEICH_BELEG_VORLAGE)
         if vorlage:
             beleg["title"] = vorlage.get("title")
-        beleg["anlagen"] = [
+        beleg["attachments"] = [
             {"document_id": a["document_id"], "label": a["label"],
              "url": a["url"], "is_motion": a.get("is_motion", 0)}
             for a in store.anlagen_for_vorlage_nr(VERGLEICH_BELEG_VORLAGE)]
@@ -3745,10 +3747,10 @@ def haushalt_vergleich(
 
     ids = sorted({w["herkunft_id"] for w in werte if w["herkunft_id"] is not None})
     return {
-        "staedte": staedte,
-        "werte": werte,
+        "cities": staedte,
+        "values": werte,
         "years": years,
-        "beleg": beleg,
+        "citation": beleg,
         "herkunft": {str(h["id"]): h for h in store.get_herkunft(ids)},
     }
 
@@ -3775,7 +3777,7 @@ def haushalt_gebaut(
     begründet es in einer Fußnote. Wer über diesen Schnitt hinweg eine Linie
     zieht, behauptet eine Vergleichbarkeit, die die Quelle bestreitet.
 
-    ``fehlend`` nennt die Jahre, die **innerhalb** einer Reihe fehlen, weil
+    ``missing`` nennt die Jahre, die **innerhalb** einer Reihe fehlen, weil
     ihre Zeilensumme im Dokument selbst nicht aufgeht. Anders als bei den
     Schulden gibt es hier keine zweite, unabhängige Probe, die wenigstens die
     Summe trüge — also fällt der ganze Jahrgang, und die Oberfläche kann die
@@ -3821,28 +3823,28 @@ def haushalt_gebaut(
     return {
         "series": series,
         "years": [z["year"] for z in series],
-        "abgrenzung": _ii.ABGRENZUNG,
+        "scope_note": _ii.ABGRENZUNG,
         # Wie die beiden Rechnungswesen heißen — damit die Beschriftung nicht
-        # in zwei Sprachen existiert (dieselbe Entscheidung wie bei `arten`
-        # in /haushalt/schulden).
+        # in zwei Sprachen existiert (dieselbe Entscheidung wie bei
+        # `column_kinds` in /haushalt/schulden).
         "accounting_systems": [{"key": k, "title": t}
                        for k, t in _ii.REGELWERK.items()],
-        "fehlend": fehlend,
+        "missing": fehlend,
         # DIE ANDERE HÄLFTE DER GESCHICHTE. Bis hierher zeigt die Seite, was
         # die Stadt gebaut hat. Der Anlagenspiegel zeigt, was daraus wurde —
         # und dass es trotzdem schrumpft: Was im Jahr zugeht, steht neben dem,
         # was im selben Jahr abgeschrieben wird.
         #
-        # `gruppen` ist die Untergliederung des Infrastrukturvermögens
+        # `groups` ist die Untergliederung des Infrastrukturvermögens
         # (Straßen, Brücken, Gleisanlagen). Sie steht in einer ANDEREN Tabelle
         # desselben Dokuments und gibt es erst ab 2022 — deshalb ein eigener
         # Block und keine Spalte: Wer sie als Teil der Reihe ausgäbe, machte
         # aus einer Quellenlücke eine Datenlücke.
-        "anlagen": {
+        "fixed_assets": {
             "series": anlagen,
             "years": sorted({z["year"] for z in anlagen}),
-            "gruppen": gruppen,
-            "gruppen_jahre": sorted({g["year"] for g in gruppen}),
+            "groups": gruppen,
+            "group_years": sorted({g["year"] for g in gruppen}),
             "probes": anlagenspiegel_mod.PROBEN,
         },
         "herkunft": {str(h["id"]): h for h in store.get_herkunft(ids)},
@@ -3859,7 +3861,7 @@ def haushalt_bilanz(
     Die Gegenseite zu ``/haushalt/schulden``: nicht was die Stadt schuldet,
     sondern was sie **hat** und was davon schon vergeben ist.
 
-    ``posten`` ist eine flache Liste über alle Stichtage. **An ``role``
+    ``items`` ist eine flache Liste über alle Stichtage. **An ``role``
     hängen, nicht an ``nr``**: Die Gliederungsnummer der Bilanz ist bis 2020
     römisch, ab 2021 arabisch, und ab 2021 gibt es jede Nummer auf beiden
     Seiten — „1.1" ist auf der Aktivseite etwas anderes als auf der
@@ -3880,7 +3882,7 @@ def haushalt_bilanz(
     Bilanz wies damals nur den Sammelposten aus. Sie fehlen dort schlicht;
     eine Anzeige zeigt die Lücke, statt sie zu füllen.
 
-    ``erlaeuterungen`` ist **keine Zugabe, sondern eine Auflage.** Die
+    ``explanations`` ist **keine Zugabe, sondern eine Auflage.** Die
     Schulden springen 2024 von 84,4 auf 207,1 Mio. €, und das ist kein
     Schuldenmachen, sondern eine Bilanzverlängerung aus dem Cash-Pooling
     (138,2 Mio. €, mit Gegenposten auf der Aktivseite). Der Anhang erklärt es
@@ -3894,8 +3896,8 @@ def haushalt_bilanz(
                   if z["herkunft_id"] is not None})
     return {
         "years": store.bilanz_jahre(),
-        "posten": posten,
-        "erlaeuterungen": erlaeuterungen,
+        "items": posten,
+        "explanations": erlaeuterungen,
         "herkunft": {str(h["id"]): h for h in store.get_herkunft(ids)},
     }
 
@@ -3908,7 +3910,7 @@ def haushalt_schulden(
     """Der Schuldenstand der Stadt seit 1995 — Tabelle 1108 des Statistischen
     Jahrbuchs.
 
-    ``abgrenzung`` ist kein Beiwerk, sondern die Bedingung dafür, dass die
+    ``scope_note`` ist kein Beiwerk, sondern die Bedingung dafür, dass die
     Zahlen etwas bedeuten: Bei Kommunalschulden gibt es zwei Werte, die beide
     „die Schulden der Stadt" heißen und sich um ein Vielfaches unterscheiden.
     Diese Reihe zählt die Stadt als **Rechtsträger** — Kernhaushalt und
@@ -3988,39 +3990,39 @@ def haushalt_schulden(
     return {
         "series": zeilen,
         "years": [z["year"] for z in zeilen],
-        "abgrenzung": _s.ABGRENZUNG,
+        "scope_note": _s.ABGRENZUNG,
         # `exact` und `out_next_year` sind Angaben über den BELEG, nicht über
         # die Zahl: 2019/2020 stehen auf den Cent im Dokument, ab 2022 rundet
         # die Quelle selbst auf Zehntel-Millionen, und 2021 steht überhaupt
         # nur im Abschluss des Folgejahres. Wer alle sechs gleich formatiert,
         # behauptet eine Genauigkeit, die es für vier davon nicht gibt.
-        "buergschaften": {
+        "guarantees": {
             "series": buerg,
-            "rueckstellung": rueckstellung,
-            "geldschulden": geldschulden,
-            "abgrenzung": _b.ABGRENZUNG,
+            "provision": rueckstellung,
+            "financial_debt": geldschulden,
+            "scope_note": _b.ABGRENZUNG,
             # Die Ratsbeschlüsse dahinter — als GESCHICHTE, nicht als Summe.
             # Unter den Vorlagen sind Verlängerungen und Anpassungen derselben
             # Bürgschaft; addiert zählte man dieselbe Zusage mehrfach. Was der
             # Bestand ist, sagt allein der Jahresabschluss (`series`).
-            "vorlagen": store.buergschafts_vorlagen(),
+            "templates": store.buergschafts_vorlagen(),
         },
         # Die dritte Zahl — nur der jüngste Stichtag, und ausdrücklich ohne
-        # Reihe. `anteil_unter_50` wird hier gerechnet und nicht im Frontend:
+        # Reihe. `share_below_50` wird hier gerechnet und nicht im Frontend:
         # Er entscheidet, wie die Zahl gelesen werden darf, und er ändert sich
         # mit jeder Ausgabe.
-        "integrierte_schulden": {
+        "integrated_debt": {
             "as_of_date": juengste,
-            "anteil_unter_50": _i.anteil_unter_50(juengste) if juengste else None,
-            "abgrenzung": _i.ABGRENZUNG,
-            "keine_reihe": _i.KEINE_REIHE,
+            "share_below_50": _i.anteil_unter_50(juengste) if juengste else None,
+            "scope_note": _i.ABGRENZUNG,
+            "no_series_note": _i.KEINE_REIHE,
         } if juengste else None,
         # Leer, solange kein Jahresabschluss eingelesen ist — die Seite lässt
         # den Block dann weg, statt eine Null zu zeigen.
-        "zinslast": zins,
+        "interest_expense": zins,
         # Die Spaltenüberschriften der Quelle, in ihrer Reihenfolge — damit die
         # Legende nicht in zwei Sprachen existiert.
-        "arten": [{"field": field, "title": title}
-                  for field, title in _s.SPALTEN[:4]],
+        "column_kinds": [{"field": field, "title": title}
+                         for field, title in _s.SPALTEN[:4]],
         "herkunft": {str(h["id"]): h for h in store.get_herkunft(ids)},
     }

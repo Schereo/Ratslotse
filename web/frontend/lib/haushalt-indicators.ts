@@ -113,7 +113,7 @@ export function reiheVon(daten: Kennzahlen, key: string): {
   anmerkung: { year: number; kurz: string; text: string } | null;
 } {
   const punkte = punkteVon(daten, key);
-  const wechsel = daten.funde.find(
+  const wechsel = daten.finds.find(
     (f) => f.indicator === key && f.art === "definition");
   if (!wechsel || !punkte.length) {
     return { series: punkte.map((p) => ({ year: p.year, value: p.value })), anmerkung: null };
@@ -141,9 +141,9 @@ export function reiheVon(daten: Kennzahlen, key: string): {
 
 /** Der Rechenweg, den die Stadt zuletzt gedruckt hat. */
 export function formelVon(daten: Kennzahlen, key: string): KennzahlFormel | null {
-  const alle = daten.formeln.filter((f) => f.indicator === key);
+  const alle = daten.formulas.filter((f) => f.indicator === key);
   return alle.length
-    ? alle.reduce((a, b) => (b.bis_bericht > a.bis_bericht ? b : a))
+    ? alle.reduce((a, b) => (b.to_report_year > a.to_report_year ? b : a))
     : null;
 }
 
@@ -152,7 +152,7 @@ export function formelVon(daten: Kennzahlen, key: string): KennzahlFormel | null
  *  Nur `revision` — ein Definitionswechsel steht am Bruch der Reihe, eine
  *  bloße Umbenennung ist keine Nachricht. */
 export function korrekturenVon(daten: Kennzahlen, key?: string): KennzahlFund[] {
-  return daten.funde
+  return daten.finds
     .filter((f) => f.art === "revision" && (!key || f.indicator === key))
     .sort((a, b) => b.neu_bericht - a.neu_bericht || b.year - a.year);
 }

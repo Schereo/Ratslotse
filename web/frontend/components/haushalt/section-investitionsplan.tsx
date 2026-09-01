@@ -179,9 +179,9 @@ export function InvestitionsplanAbschnitt({ onBestand }: {
 
   useEffect(() => {
     if (!onBestand || programmLaedt) return;
-    if (!programm?.massnahmen.length || !programm.years.length) { onBestand(null); return; }
+    if (!programm?.measures.length || !programm.years.length) { onBestand(null); return; }
     onBestand({
-      vorhaben: programm.massnahmen.length,
+      vorhaben: programm.measures.length,
       von: Math.min(...programm.years),
       bis: Math.max(...programm.years),
     });

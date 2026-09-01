@@ -313,14 +313,47 @@ type LlmUsage = {
   budget_monthly: number; budget_pct: number; budget_level: "ok" | "warn" | "over";
 };
 
+/** Die Namen der LLM-Aufrufe, wie `llm_usage.feature` sie zählt — hier auf
+ *  Deutsch für die Kostentabelle. Der Schlüssel ist der gespeicherte Wert.
+ *
+ *  Die Liste war lange unvollständig, und ein fehlender Eintrag fiel nicht
+ *  auf, solange der Rückfall den deutschen Schlüssel zeigte. Seit die Werte
+ *  englisch sind, stünde dort `attachment_ocr` — deshalb jetzt vollständig.
+ *  Wer ein neues `_feature=` einführt, trägt es hier ein. */
 const FEATURE_LABELS: Record<string, string> = {
-  protokoll_extraktion: "Protokoll-Extraktion",
-  themen_klassifikation: "Themenfeld-Klassifikation",
-  ziel_bewertung: "Ziel-Bewertung",
-  entitaeten_ner: "Entitäten-Erkennung",
-  entitaeten_beschreibung: "Themen-Beschreibungen",
+  attachment_ocr: "Anlagen-Texterkennung",
+  committee_summary: "Ausschuss-Zusammenfassung",
+  daily_find_story: "Fundstück des Tages",
+  decision_places: "Orte eines Beschlusses",
+  deep_decomposition: "Gründliche Recherche — Zerlegung",
+  deep_report: "Gründliche Recherche — Bericht",
+  entity_description: "Themen-Beschreibungen",
+  entity_duplicates: "Entitäten-Dubletten",
+  entity_ner: "Entitäten-Erkennung",
+  exp_session_classification: "Experiment: Sitzungs-Klassifikation",
+  field_recap: "Themenfeld-Rückblick",
+  goal_rating: "Ziel-Bewertung",
+  impact_rating: "Tragweite eines Beschlusses",
+  impact_rating_agenda: "Tragweite eines Tagesordnungspunkts",
+  interest_rating: "Gesprächswert",
+  livestream_transcript: "Livestream-Transkript",
+  minutes_extraction: "Protokoll-Extraktion",
+  party_opinions: "Haltungen der Fraktionen",
+  qa_analysis: "Frag den Rat — Analyse",
+  qa_answer: "Frag den Rat — Antwort",
   qa_query_expansion: "Frag den Rat — Suchbegriffe",
-  qa_antwort: "Frag den Rat — Antwort",
+  qa_simple: "Frag den Rat — einfach erklärt",
+  quality_judge: "Eval: Qualitätsurteil",
+  quiz_generation: "Quiz-Fragen erzeugen",
+  quiz_verify: "Quiz-Fragen prüfen",
+  simple_summary: "Lotti erklärt's einfach",
+  social_card_text: "Social-Kartentext",
+  social_critic: "Social-Kritiker",
+  speeches: "Wortbeiträge",
+  topic_auto_description: "Themen-Beschreibung (automatisch)",
+  topic_classification: "Themenfeld-Klassifikation",
+  vagueness_check: "Themen-Vagheitsprüfung",
+  video_results: "Abstimmungsergebnisse aus dem Video",
 };
 
 const BUDGET_TONE: Record<LlmUsage["budget_level"], { dot: string; text: string; bar: string; ring: string }> = {

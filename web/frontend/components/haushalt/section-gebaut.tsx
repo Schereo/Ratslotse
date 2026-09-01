@@ -125,7 +125,7 @@ function Fundstelle({ h }: { h: Herkunft | null }) {
  *
  *  Rendert nichts, solange kein Anlagenspiegel eingelesen ist. */
 function AnlagenBlock({ daten }: { daten: GebautDaten | null }) {
-  const a = daten?.anlagen;
+  const a = daten?.fixed_assets;
   const years = a?.years ?? [];
   const year = years[years.length - 1];
   const infra = infrastruktur(a, year);
@@ -395,7 +395,7 @@ export function GebautAbschnitt({ onBestand }: {
           </div>
           {/* Der Wortlaut kommt aus dem Backend — s. Kopfkommentar. */}
           <p className="max-w-[76ch] rounded-xl bg-muted/60 px-3 py-2.5 text-[13px] leading-relaxed text-foreground/90">
-            <strong>Gezählt wird:</strong> {data.abgrenzung}
+            <strong>Gezählt wird:</strong> {data.scope_note}
           </p>
           <Fundstelle h={hLetzter} />
         </section>

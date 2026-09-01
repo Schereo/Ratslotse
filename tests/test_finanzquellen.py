@@ -605,7 +605,7 @@ def test_leerer_prueferbericht_loescht_die_feststellungen_nicht(tmp_path, source
          "section": "Prüfungsauftrag", "text": f"Feststellung {i}"}
         for i in range(1, 21)], source("Schlussbericht 2023",
                                        "https://example.org/sb2023.pdf",
-                                       probe="legende_und_verzeichnis"))
+                                       probe="legend_and_index"))
     assert len(store.get_pruefberichte(2023)) == 20
 
     # Ein Bericht, der als Dokument erkannt wird, aus dem aber nichts zu holen

@@ -319,8 +319,8 @@ export function Flussbild({ daten, year, onJahrWechsel }: {
   // Satz, den der Datenstand am Seitenfuß baut, statt einer zweiten Fassung.
   const { data: stand_ } = useFetch<DatenstandAntwort>("/council/haushalt/datenstand");
   const ausblickText = useMemo(() => {
-    const schicht = stand_?.schichten.find((x) => x.key === "jahresabschluss");
-    return schicht && stand_ ? ausblick(schicht, stand_.heute).text : null;
+    const schicht = stand_?.layers.find((x) => x.key === "jahresabschluss");
+    return schicht && stand_ ? ausblick(schicht, stand_.today).text : null;
   }, [stand_]);
 
   // NOTLÖSUNG, solange `onJahrWechsel` nicht verdrahtet ist: Das Jahr hält

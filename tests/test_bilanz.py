@@ -303,10 +303,10 @@ def test_ein_jahrgang_ohne_gedruckte_bilanzsumme_geht_trotzdem_durch():
     ist kein Mangel: Der Ausgleich beider Seiten belegt sie ohnehin."""
     budget_year = _lies(B_2024, 2024)
     assert "gedruckte_summe" not in budget_year
-    assert budget_year["probes"] == ["bilanz_ausgleich", "rueckstellungs_gliederung"]
+    assert budget_year["probes"] == ["balance_sheet_equality", "provisions_breakdown"]
     # 2019 hat sie — dort ist sie die dritte Bestätigung.
     alt = _lies(B_2019, 2019)
-    assert "bilanzsumme_gedruckt" in alt["probes"]
+    assert "balance_sheet_total_printed" in alt["probes"]
     assert alt["gedruckte_summe"] == pytest.approx(SUMME[2019], abs=0.01)
 
 
@@ -315,7 +315,7 @@ def test_eine_falsche_gedruckte_summe_kostet_nur_ihre_probe():
                             "1.156.033.798,05 1.193.569.000,00")
     budget_year, fehler, hinweise = bilanz.bilanzprobe(bilanz.parse_bilanz(falsch, 2019))
     assert budget_year is not None and not fehler
-    assert "bilanzsumme_gedruckt" not in budget_year["probes"]
+    assert "balance_sheet_total_printed" not in budget_year["probes"]
     assert hinweise and "gedruckte Bilanzsumme" in hinweise[0]
 
 
@@ -329,7 +329,7 @@ def test_pension_plus_beihilfe_ergibt_die_oberposition(text, year):
     w = _werte(budget_year)
     assert w["pension_provisions"] + w["healthcare_allowance_provisions"] == pytest.approx(
         w["pension_and_similar_provisions"], abs=0.01)
-    assert "rueckstellungs_gliederung" in budget_year["probes"]
+    assert "provisions_breakdown" in budget_year["probes"]
     # Und die Ebenen sagen, welche Zahl über welcher steht.
     ebenen = {p["role"]: p["level"] for p in budget_year["posten"]}
     assert ebenen["provisions"] == 1
@@ -357,7 +357,7 @@ def test_eine_gerissene_gliederung_ist_ein_hinweis_kein_ausfall():
     budget_year, fehler, hinweise = bilanz.bilanzprobe(bilanz.parse_bilanz(kaputt, 2024))
     assert budget_year is not None and not fehler
     assert budget_year["bilanzsumme"] == pytest.approx(SUMME[2024], abs=0.01)
-    assert "rueckstellungs_gliederung" not in budget_year["probes"]
+    assert "provisions_breakdown" not in budget_year["probes"]
     assert hinweise and "Rückstellungs-Gliederung" in hinweise[0]
 
 
@@ -367,7 +367,7 @@ def test_ein_jahrgang_ohne_aufschluesselung_verliert_nur_die_probe():
     ohne = re.sub(r"3\.1\.[12].*\n", "", B_2024)
     budget_year, fehler, hinweise = bilanz.bilanzprobe(bilanz.parse_bilanz(ohne, 2024))
     assert budget_year is not None and not fehler and not hinweise
-    assert budget_year["probes"] == ["bilanz_ausgleich"]
+    assert budget_year["probes"] == ["balance_sheet_equality"]
 
 
 # --- Über Dokumentgrenzen: die Vorjahreskette -------------------------------
@@ -625,7 +625,7 @@ def test_ein_leerer_abschnitt_zaehlt_nicht_als_erlaeuterung():
 def source():
     from council import herkunft
     return herkunft.Herkunft(
-        probe=["bilanz_ausgleich", "bilanz_kassenprobe"],
+        probe=["balance_sheet_equality", "balance_sheet_cash_check"],
         citation="Abschnitt 2.1 — Bilanz der Stadt Oldenburg zum 31.12.2024",
         probe_result="Aktiva und Passiva stimmen auf den Cent überein",
         as_of="31.12.2024", kind="ris", document_id=4711,
@@ -654,7 +654,7 @@ def test_store_bilanz_roundtrip(tmp_path, source):
         assert rows[0]["page"] == "aktiva" and rows[-1]["page"] == "passiva"
         # Die Herkunft hängt an jeder Zeile und trägt beide Proben.
         h = store.get_herkunft([rows[0]["herkunft_id"]])[0]
-        assert "bilanz_kassenprobe" in h["probe"]
+        assert "balance_sheet_cash_check" in h["probe"]
         # Ein zweiter Lauf ersetzt den Stichtag, statt ihn zu verdoppeln.
         store.save_bilanz(2024, budget_year["posten"], source)
         assert len(store.get_bilanz(2024)) == len(budget_year["posten"])
@@ -690,8 +690,8 @@ def test_jede_probe_der_bilanz_ist_erklaert():
     """Was in ``herkunft.PROBEN`` fehlt, steht auf der Seite ohne Erklärung —
     und eine Probe, die niemand versteht, ist keine."""
     from council import herkunft
-    vergeben = {"bilanz_ausgleich", "bilanzsumme_gedruckt", "rueckstellungs_gliederung",
-                "bilanz_vorjahreskette", "bilanz_kassenprobe", "bilanz_erlaeuterung"}
+    vergeben = {"balance_sheet_equality", "balance_sheet_total_printed", "provisions_breakdown",
+                "balance_sheet_prior_year_chain", "balance_sheet_cash_check", "balance_sheet_notes"}
     assert vergeben <= set(herkunft.PROBEN)
     for tabelle in ("council_bilanz", "council_bilanz_erlaeuterungen"):
         assert tabelle in herkunft.HERKUNFT_TABELLEN

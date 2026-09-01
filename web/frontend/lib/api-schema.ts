@@ -1547,18 +1547,18 @@ export interface paths {
          *     Veränderungen", gegen die jede Positionsliste beim Einlesen bewiesen
          *     wurde (``council/aenderungslisten.py``).
          *
-         *     - ``zeilen``: NUR die Positionen des Haushaltsjahrgangs selbst
+         *     - ``rows``: NUR die Positionen des Haushaltsjahrgangs selbst
          *       (``year == budget_year``). Dieselbe Maßnahme steht im Dokument je
          *       Finanzplanungsjahr noch einmal — für die Streit-Erzählung zählt das
          *       Jahr, um das gestritten wurde; die Folgejahre stecken kompakt in den
          *       Summen. ``author`` trägt, WER die Position vorschlug — gefüllt nur
          *       beim Jahrgang 2021, dessen Beschluss-Datei als einzige eine Spalte
          *       „Vorschlag von“ führt; sonst ``null``.
-         *     - ``summen``: die Zusammenstellungen ALLER Planjahre, inklusive der
+         *     - ``totals``: die Zusammenstellungen ALLER Planjahre, inklusive der
          *       Zeilen, die es nur dort gibt: die politisch beschlossene Änderung mit
          *       Urheber-Label („SPD/CDU/FDP …“) aus den AFB-Dateien — der einzige
          *       digitale Beleg der Fraktionslisten, die selbst Tischvorlagen blieben.
-         *     - ``fhh_zeilen``/``fhh_summen``: dasselbe für den FINANZhaushalt
+         *     - ``cash_budget_rows``/``cash_budget_totals``: dasselbe für den FINANZhaushalt
          *       (``council/aenderungslisten_fhh.py``) — also für das, was tatsächlich
          *       fließt und vor allem investiert wird. Getrennte Schlüssel statt einer
          *       gemeinsamen Liste mit Marke: Die Zeilen haben eine andere Form (fünf
@@ -1590,35 +1590,35 @@ export interface paths {
          *     Die Ergänzung zum Gesamtabschluss (``/haushalt/konzern``): Der sagt, wie
          *     viel die Betriebe bewegen, diese Seite, was sie damit machen.
          *
-         *     - ``gesellschaften``: je Gesellschaft Name, Gliederungsnummer und Seite im
+         *     - ``companies``: je Gesellschaft Name, Gliederungsnummer und Seite im
          *       jüngsten Bericht, dazu ``consolidated_key``, wo der Gesamtabschluss sie als
          *       eigenen Träger führt,
-         *     - ``texte``: die beschreibenden Abschnitte (Gegenstand, Eigentümer,
+         *     - ``texts``: die beschreibenden Abschnitte (Gegenstand, Eigentümer,
          *       Aufsichtsorgane, eigene Beteiligungen, Auswirkungen auf den Haushalt) —
          *       alle ausdrücklich **ungeprüft**, denn Fließtext lässt sich gegen nichts
          *       rechnen,
-         *     - ``personen``: die Aufsichtsorgane, Person für Person, mit Gremium,
+         *     - ``people``: die Aufsichtsorgane, Person für Person, mit Gremium,
          *       Vorsitz, Amtszeit-Hinweis und — wo das Verzeichnis die Person
          *       eindeutig kennt — ``slug`` und ``party`` für die Personen-Seite.
          *       ``position`` steht nur da, wo die Spaltenprobe gehalten hat; siehe
          *       ``roles_assignable`` an der Gesellschaft. Zwei der fünf Abschnitte
          *       sind nämlich keine Prosa, sondern Tabellen, die der PDF-Extrakt
          *       spaltenweise ausgibt (``council/beteiligungsbericht.py``),
-         *     - ``eigentuemer``: wem die Gesellschaft gehört, mit Betrag und Anteil.
+         *     - ``owners``: wem die Gesellschaft gehört, mit Betrag und Anteil.
          *       **Ohne** die Stammkapital-Zeile — die ist die Summe und kein
          *       Gesellschafter. Gesellschaften, deren Anteile sich nicht auf das
          *       ausgewiesene Stammkapital summieren, erscheinen hier gar nicht; ihr
-         *       Rohtext steht weiter in ``texte``,
+         *       Rohtext steht weiter in ``texts``,
          *     - ``indicators``: die Zeitreihe je Gesellschaft (Jahresergebnis,
          *       Bilanzsumme, Eigenkapitalquote). ``n_reports`` sagt, wie viele Berichte
          *       denselben Wert nennen — 1 heißt „durch eine Probe im Dokument gedeckt",
          *       mehr heißt zusätzlich „von einer zweiten Veröffentlichung bestätigt",
-         *     - ``konzernvergleich``: für die Gesellschaften, die auch im
+         *     - ``group_comparison``: für die Gesellschaften, die auch im
          *       Gesamtabschluss stehen, beide Zahlen desselben Jahres nebeneinander.
          *       **Keine Probe** — die beiden Rechnungen unterscheiden sich systematisch,
          *       und zwei Betriebe weisen wegen Ergebnisabführung 0 € aus, obwohl sie
          *       etwas erwirtschaftet haben. Eine Einordnung, kein Urteil,
-         *     - ``berichtsjahre`` / ``years``: welche Berichte gelesen sind und welche
+         *     - ``report_years`` / ``years``: welche Berichte gelesen sind und welche
          *       Bezugsjahre die Kennzahlen abdecken (sie reichen weiter zurück als die
          *       Berichte — jeder führt vier bis fünf Jahre mit),
          *     - ``herkunft``: je ``herkunft_id`` Dokument, Fundstelle, Seite und Probe.
@@ -1649,7 +1649,7 @@ export interface paths {
          *     Die Gegenseite zu ``/haushalt/schulden``: nicht was die Stadt schuldet,
          *     sondern was sie **hat** und was davon schon vergeben ist.
          *
-         *     ``posten`` ist eine flache Liste über alle Stichtage. **An ``role``
+         *     ``items`` ist eine flache Liste über alle Stichtage. **An ``role``
          *     hängen, nicht an ``nr``**: Die Gliederungsnummer der Bilanz ist bis 2020
          *     römisch, ab 2021 arabisch, und ab 2021 gibt es jede Nummer auf beiden
          *     Seiten — „1.1" ist auf der Aktivseite etwas anderes als auf der
@@ -1670,7 +1670,7 @@ export interface paths {
          *     Bilanz wies damals nur den Sammelposten aus. Sie fehlen dort schlicht;
          *     eine Anzeige zeigt die Lücke, statt sie zu füllen.
          *
-         *     ``erlaeuterungen`` ist **keine Zugabe, sondern eine Auflage.** Die
+         *     ``explanations`` ist **keine Zugabe, sondern eine Auflage.** Die
          *     Schulden springen 2024 von 84,4 auf 207,1 Mio. €, und das ist kein
          *     Schuldenmachen, sondern eine Bilanzverlängerung aus dem Cash-Pooling
          *     (138,2 Mio. €, mit Gegenposten auf der Aktivseite). Der Anhang erklärt es
@@ -1743,7 +1743,7 @@ export interface paths {
          *     man wieder selbst suchen darf. Hier steht, welches PDF zu welchem Jahr
          *     gehört, damit der Link das Dokument des **gezeigten** Jahres öffnet.
          *
-         *     ``{"dokumente": {"<quellenschluessel>": [{year, url, label, citation,
+         *     ``{"documents": {"<quellenschluessel>": [{year, url, label, citation,
          *     page}, …]}}`` — aufsteigend nach Jahr. Ein Schlüssel fehlt, wo wir kein
          *     Dokument haben; die Oberfläche fällt dann auf die statische Adresse
          *     zurück und sagt dazu, wohin sie führt.
@@ -1756,7 +1756,7 @@ export interface paths {
          *     Gewinn: „Abschnitt 3.2" macht aus einem 300-Seiten-PDF eine nachschlagbare
          *     Stelle.
          *
-         *     ``jahrgaenge`` kommt aus derselben Antwort statt aus einem eigenen Aufruf:
+         *     ``editions`` kommt aus derselben Antwort statt aus einem eigenen Aufruf:
          *     Es beantwortet die Nachbarfrage („welche Jahrgänge deckt diese Quelle
          *     ab?"), wird an derselben Stelle gebraucht — im Quellenverzeichnis — und
          *     ist eine Abfrage je Quelle, keine je Zeile. Zwei Endpunkte dafür hießen
@@ -1797,7 +1797,7 @@ export interface paths {
          *     begründet es in einer Fußnote. Wer über diesen Schnitt hinweg eine Linie
          *     zieht, behauptet eine Vergleichbarkeit, die die Quelle bestreitet.
          *
-         *     ``fehlend`` nennt die Jahre, die **innerhalb** einer Reihe fehlen, weil
+         *     ``missing`` nennt die Jahre, die **innerhalb** einer Reihe fehlen, weil
          *     ihre Zeilensumme im Dokument selbst nicht aufgeht. Anders als bei den
          *     Schulden gibt es hier keine zweite, unabhängige Probe, die wenigstens die
          *     Summe trüge — also fällt der ganze Jahrgang, und die Oberfläche kann die
@@ -1840,11 +1840,11 @@ export interface paths {
          *     nur als Abschreibung auf, verteilt über Jahrzehnte).
          *
          *     - ``years``: Haushaltsjahre, für die Investitionen vorliegen,
-         *     - ``teilhaushalte``: je Jahr und Teilhaushalt Ein- und Auszahlungen aus
+         *     - ``sub_budgets``: je Jahr und Teilhaushalt Ein- und Auszahlungen aus
          *       Investitionstätigkeit,
-         *     - ``gesamt``: je Jahr die Summenzeile der Datei — das **Ziel der
+         *     - ``investments``: je Jahr die Summenzeile der Datei — das **Ziel der
          *       Rechenprobe**, nicht unsere Addition,
-         *     - ``finanzhaushalt``: je Jahr der Gesamtbetrag aller Ein- und Auszahlungen,
+         *     - ``financial_budget``: je Jahr der Gesamtbetrag aller Ein- und Auszahlungen,
          *       also samt laufender Verwaltungstätigkeit. Die Bezugsgröße, die aus
          *       „80,8 Mio. €" erst eine Aussage macht — und die einzige Zahl hier ohne
          *       Rechenprobe (eigene ``herkunft_id`` mit ``ungeprueft``, s. u.),
@@ -1882,12 +1882,12 @@ export interface paths {
          *     sondern „BBS Haarentor: Ausstattung". Acht Jahrgänge, rund 4.500 Vorhaben.
          *
          *     - ``years``: Jahrgänge, für die ein Programm vorliegt,
-         *     - ``massnahmen``: je Vorhaben Teilhaushalt, IPSP-Element, Bezeichnung und
+         *     - ``measures``: je Vorhaben Teilhaushalt, IPSP-Element, Bezeichnung und
          *       **Gesamtinvestitionssumme**,
-         *     - ``teilhaushalte``: je Teilhaushalt die Gesamtsumme, die das Dokument am
+         *     - ``sub_budgets``: je Teilhaushalt die Gesamtsumme, die das Dokument am
          *       Ende seines Abschnitts ausweist — das **Ziel der Rechenprobe**, nicht
          *       unsere Addition,
-         *     - ``gesamt``: je Jahrgang die Gesamtsumme des Investitionsprogramms,
+         *     - ``totals``: je Jahrgang die Gesamtsumme des Investitionsprogramms,
          *     - ``herkunft``: Dokument, Fundstelle und die drei bestandenen Proben.
          *
          *     Drei Grenzen, die die Seite nennt und die API deshalb nicht verwischt:
@@ -1927,14 +1927,14 @@ export interface paths {
          *     Kernverwaltung im selben Jahr.
          *
          *     - ``years``: Jahrgänge mit eingelesenem Gesamtabschluss,
-         *     - ``konzern``: je Jahrgang die Summen des Konzerns (Erträge,
+         *     - ``consolidated``: je Jahrgang die Summen des Konzerns (Erträge,
          *       Aufwendungen, ordentliches Ergebnis, Gesamtjahresergebnis, Zins- und
          *       Personalaufwand) samt bestandener Rechenprobe und Fundstelle,
          *     - ``entity``: wer den Konzern ausmacht — je Jahrgang und Aufstellung eine
          *       Zeile pro Aufgabenträger, Beträge in **Euro** (der Bericht rundet sie
          *       auf Tausend, daher die glatten Endziffern),
-         *     - ``posten``: die vollständige Gesamtergebnisrechnung je Jahrgang,
-         *     - ``gegenprobe``: dieselbe Kernverwaltungs-Zahl aus zwei unabhängigen
+         *     - ``items``: die vollständige Gesamtergebnisrechnung je Jahrgang,
+         *     - ``cross_check``: dieselbe Kernverwaltungs-Zahl aus zwei unabhängigen
          *       Dokumenten — der Trägerzeile des Gesamtabschlusses und dem
          *       Jahresabschluss, den wir getrennt eingelesen haben,
          *     - ``herkunft``: je ``herkunft_id`` Dokument, Fundstelle, bestandene Probe
@@ -1971,7 +1971,7 @@ export interface paths {
          *
          *     Aus den Teilhaushalts-Plänen des Ratsinformationssystems. Die Abdeckung
          *     ist unvollständig (nicht jeder Teilhaushalt liegt für jedes Jahr als
-         *     auslesbares Dokument vor); ``abdeckung_prozent`` sagt, wie viel der
+         *     auslesbares Dokument vor); ``coverage_percent`` sagt, wie viel der
          *     geplanten Aufwendungen die gefundenen Produkte erklären — damit die
          *     Oberfläche das nicht als Vollbild ausgeben kann.
          *
@@ -1981,12 +1981,12 @@ export interface paths {
          *     Produkt — die Steckbrief-Ansicht braucht es auch dann, wenn der gerade
          *     gesetzte Filter es aus der Liste nähme.
          *
-         *     ``facetten`` liefert die Filterwerte mit Anzahl und dazu, wie viele
+         *     ``facets`` liefert die Filterwerte mit Anzahl und dazu, wie viele
          *     Produkte überhaupt welches Steckbrief-Feld tragen: Die Seite weist die
          *     Lücke aus, statt sie zu verschweigen.
          *
          *     Jedes Produkt trägt zusätzlich ``years`` — die Jahrgänge, in denen es im
-         *     Bestand steht. Gegen ``alle_jahre`` gehalten wird daraus das
+         *     Bestand steht. Gegen ``all_years`` gehalten wird daraus das
          *     Abdeckungs-Badge der Trefferliste (H4-04): Ein Produkt, das erst ab 2021
          *     vorliegt, soll das sagen, statt wie eine durchgehende Reihe auszusehen.
          */
@@ -2015,18 +2015,18 @@ export interface paths {
          *     „Wiederholte Beanstandung" ist erst dann etwas wert, wenn daneben steht,
          *     seit wann sie dort steht. Dafür braucht die Seite alle Jahre gleichzeitig.
          *
-         *     - ``feststellungen``: eine Zeile je Randmarke, mit Textziffer, Seite und
+         *     - ``findings``: eine Zeile je Randmarke, mit Textziffer, Seite und
          *       Deeplink auf das Quelldokument,
-         *     - ``legende``: die Bedeutung der Marken, wie der Bericht sie selbst
+         *     - ``legend``: die Bedeutung der Marken, wie der Bericht sie selbst
          *       erklärt (jüngster Jahrgang, der die Marke noch führt),
-         *     - ``ohne_bericht``: Jahre, für die ein Jahresabschluss ausgelesen ist, ein
+         *     - ``without_report``: Jahre, für die ein Jahresabschluss ausgelesen ist, ein
          *       Schlussbericht aber nicht — die Lücke gehört sichtbar, nicht kaschiert.
          *
          *     ``mark`` grenzt auf eine Randmarke ein. Gedacht für den Hinweis auf
          *     ``/haushalt/plan-ist``, der nur die Kette der wiederholten Beanstandungen
          *     braucht: Der volle Bestand ist eine Viertel-Megabyte Prosa und hat auf
          *     einer Seite nichts zu suchen, die ihn gar nicht anzeigt. ``years`` und
-         *     ``legende`` bleiben dabei die des Gesamtbestands — sonst stünde in der
+         *     ``legend`` bleiben dabei die des Gesamtbestands — sonst stünde in der
          *     Fußzeile eine Jahresliste, die vom Filter abhängt.
          */
         get: operations["haushalt_pruefberichte_api_council_haushalt_pruefberichte_get"];
@@ -2050,7 +2050,7 @@ export interface paths {
          * @description Der Schuldenstand der Stadt seit 1995 — Tabelle 1108 des Statistischen
          *     Jahrbuchs.
          *
-         *     ``abgrenzung`` ist kein Beiwerk, sondern die Bedingung dafür, dass die
+         *     ``scope_note`` ist kein Beiwerk, sondern die Bedingung dafür, dass die
          *     Zahlen etwas bedeuten: Bei Kommunalschulden gibt es zwei Werte, die beide
          *     „die Schulden der Stadt" heißen und sich um ein Vielfaches unterscheiden.
          *     Diese Reihe zählt die Stadt als **Rechtsträger** — Kernhaushalt und
@@ -2094,14 +2094,14 @@ export interface paths {
          *     Personal ist der größte Ausgabenblock; hier stehen die Menschen dahinter —
          *     und die Lücke zwischen geplanten und tatsächlich besetzten Stellen.
          *
-         *     - ``jahrgaenge``: Haushaltsjahre mit eingelesenem Plan,
-         *     - ``summen``: je Jahrgang und Teil die Gesamtzeile des Dokuments (Stellen
+         *     - ``editions``: Haushaltsjahre mit eingelesenem Plan,
+         *     - ``totals``: je Jahrgang und Teil die Gesamtzeile des Dokuments (Stellen
          *       im Haushaltsjahr, Stellen im Vorjahr, besetzt, nicht besetzt) samt
          *       Stichtag der Besetzung,
-         *     - ``gruppen``: dieselben Zahlen je Laufbahn- bzw. Beschäftigtengruppe,
-         *     - ``zeilen``: die Einzelposten — nur mit ``budget_year``, weil das rund 190
+         *     - ``groups``: dieselben Zahlen je Laufbahn- bzw. Beschäftigtengruppe,
+         *     - ``rows``: die Einzelposten — nur mit ``budget_year``, weil das rund 190
          *       Zeilen je Jahrgang sind,
-         *     - ``fehlend``: welche ``(Jahrgang, Teil)`` **nicht** vorliegen, obwohl der
+         *     - ``missing``: welche ``(Jahrgang, Teil)`` **nicht** vorliegen, obwohl der
          *       Jahrgang eingelesen ist. Ohne diese Liste sähe ein Jahrgang mit nur
          *       einem Teil aus wie ein vollständiger,
          *     - ``herkunft``: je ``herkunft_id`` Dokument, Fundstelle, bestandene Probe
@@ -2137,7 +2137,7 @@ export interface paths {
          * Haushalt Streit
          * @description Der Streit ums Geld — die Auseinandersetzung um jeden Haushaltsjahrgang.
          *
-         *     Je Haushaltsjahr eine ``runde`` mit ihren Stationen (Finanzausschuss und
+         *     Je Haushaltsjahr eine ``round`` mit ihren Stationen (Finanzausschuss und
          *     Rat), und je Station die Änderungslisten, die Debatte und die
          *     Schlussabstimmung. Alles kommt aus den Ratsdaten: Beschlusszeilen,
          *     Anwesenheitsliste und Protokoll-Volltext derselben Sitzung.
@@ -2176,17 +2176,17 @@ export interface paths {
          *
          *     Zwei Teile, und der zweite ist der wichtigere:
          *
-         *     - ``werte``/``staedte``/``years``: Steuerkraft und Hebesätze der acht
+         *     - ``values``/``cities``/``years``: Steuerkraft und Hebesätze der acht
          *       kreisfreien Städte Niedersachsens aus den beiden Tabellen des
          *       Landesamts für Statistik. Dieselbe Kennzahl, dieselbe Stelle, dieselbe
          *       Abgrenzung für alle — der Auslagerungsgrad einer Stadt greift hier
          *       nicht, weil Steuern nie ein Eigenbetrieb erhebt.
-         *     - ``beleg``: die Ratsvorlage 18/0911, in der die Stadt Oldenburg 2018 auf
+         *     - ``citation``: die Ratsvorlage 18/0911, in der die Stadt Oldenburg 2018 auf
          *       Antrag der FDP-Fraktion sieben Städte verglichen und im selben Dokument
          *       festgestellt hat, dass dieser Vergleich nichts aussagt. Aufgelöst wird
          *       sie über die Vorlagennummer; ``decision_id`` zeigt auf den Eintrag in
          *       unserem eigenen Bestand (der Ausschuss hat den Bericht zur Kenntnis
-         *       genommen), ``anlagen`` auf Antrag und Antwort im Original.
+         *       genommen), ``attachments`` auf Antrag und Antwort im Original.
          *
          *     **Was diese Antwort bewusst nicht tut:** Sie mischt die LSN-Steuerkraft
          *     nicht mit ``council_steuerkraft`` (Datensatz 1106). Beide führen dieselben
@@ -2216,7 +2216,7 @@ export interface paths {
          *
          *     Anders als der Rest des Haushalts-Bereichs kommt hier nichts aus einem
          *     Finanzdokument, sondern alles aus den Ratsdaten: Beratungsfolge,
-         *     Tagesordnung und Protokoll-Beschluss. Je Haushaltsjahr eine ``runde`` mit
+         *     Tagesordnung und Protokoll-Beschluss. Je Haushaltsjahr eine ``round`` mit
          *     ``einbringung``, ``fachausschuesse`` (Zeitraum und Gremien) und
          *     ``stationen`` bis zur Entscheidung im Rat; jede Station trägt ``ksinr``
          *     und ``top``, ist also auf ihre Sitzung verlinkbar.
@@ -4387,87 +4387,87 @@ export interface components {
         };
         /** HaushaltAenderungslisten */
         HaushaltAenderungslisten: {
-            /** Fhh Summen */
-            fhh_summen: unknown;
-            /** Fhh Zeilen */
-            fhh_zeilen: unknown;
+            /** Cash Budget Rows */
+            cash_budget_rows: unknown;
+            /** Cash Budget Totals */
+            cash_budget_totals: unknown;
             /** Herkunft */
             herkunft: {
                 [key: string]: unknown;
             };
-            /** Summen */
-            summen: unknown;
-            /** Zeilen */
-            zeilen: unknown;
+            /** Rows */
+            rows: unknown;
+            /** Totals */
+            totals: unknown;
         };
         /** HaushaltBeteiligungen */
         HaushaltBeteiligungen: {
-            /** Berichtsjahre */
-            berichtsjahre: unknown;
-            /** Eigentuemer */
-            eigentuemer: unknown;
-            /** Gesellschaften */
-            gesellschaften: unknown[];
+            /** Companies */
+            companies: unknown[];
+            /** Group Comparison */
+            group_comparison: unknown;
             /** Herkunft */
             herkunft: {
                 [key: string]: unknown;
             };
             /** Indicators */
             indicators: unknown;
-            /** Konzernvergleich */
-            konzernvergleich: unknown;
-            /** Personen */
-            personen: unknown[];
-            /** Texte */
-            texte: unknown;
+            /** Owners */
+            owners: unknown;
+            /** People */
+            people: unknown[];
+            /** Report Years */
+            report_years: unknown;
+            /** Texts */
+            texts: unknown;
             /** Years */
             years: unknown[];
         };
         /** HaushaltBilanz */
         HaushaltBilanz: {
-            /** Erlaeuterungen */
-            erlaeuterungen: unknown;
+            /** Explanations */
+            explanations: unknown;
             /** Herkunft */
             herkunft: {
                 [key: string]: unknown;
             };
-            /** Posten */
-            posten: unknown;
+            /** Items */
+            items: unknown;
             /** Years */
             years: unknown;
         };
         /** HaushaltDatenstand */
         HaushaltDatenstand: {
-            /** Heute */
-            heute: string;
-            /** Schichten */
-            schichten: {
+            /** Layers */
+            layers: {
                 [key: string]: unknown;
             }[];
+            /** Today */
+            today: string;
         };
         /** HaushaltDokumente */
         HaushaltDokumente: {
-            /** Dokumente */
-            dokumente: unknown;
-            /** Jahrgaenge */
-            jahrgaenge: unknown;
+            /** Documents */
+            documents: unknown;
+            /** Editions */
+            editions: unknown;
         };
         /** HaushaltGebaut */
         HaushaltGebaut: {
-            /** Abgrenzung */
-            abgrenzung: unknown;
             /** Accounting Systems */
             accounting_systems: unknown[];
-            /** Anlagen */
-            anlagen: {
+            /** Fixed Assets */
+            fixed_assets: {
                 [key: string]: unknown;
             };
-            /** Fehlend */
-            fehlend: unknown;
             /** Herkunft */
             herkunft: {
                 [key: string]: unknown;
             };
+            /** Missing */
+            missing: unknown;
+            /** Scope Note */
+            scope_note: unknown;
             /** Series */
             series: unknown;
             /** Years */
@@ -4475,147 +4475,147 @@ export interface components {
         };
         /** HaushaltInvestitionen */
         HaushaltInvestitionen: {
-            /** Finanzhaushalt */
-            finanzhaushalt: unknown[];
-            /** Gesamt */
-            gesamt: unknown[];
+            /** Financial Budget */
+            financial_budget: unknown[];
             /** Herkunft */
             herkunft: {
                 [key: string]: unknown;
             };
-            /** Teilhaushalte */
-            teilhaushalte: unknown[];
+            /** Investments */
+            investments: unknown[];
+            /** Sub Budgets */
+            sub_budgets: unknown[];
             /** Years */
             years: unknown;
         };
         /** HaushaltInvestitionsprogramm */
         HaushaltInvestitionsprogramm: {
-            /** Gesamt */
-            gesamt: unknown[];
             /** Herkunft */
             herkunft: {
                 [key: string]: unknown;
             };
-            /** Massnahmen */
-            massnahmen: unknown[];
-            /** Teilhaushalte */
-            teilhaushalte: unknown[];
+            /** Measures */
+            measures: unknown[];
+            /** Sub Budgets */
+            sub_budgets: unknown[];
+            /** Totals */
+            totals: unknown[];
             /** Years */
             years: unknown;
         };
         /** HaushaltKonzern */
         HaushaltKonzern: {
+            /** Consolidated */
+            consolidated: unknown[];
+            /** Cross Check */
+            cross_check: unknown;
             /** Entity */
             entity: unknown[];
-            /** Gegenprobe */
-            gegenprobe: unknown;
             /** Herkunft */
             herkunft: {
                 [key: string]: unknown;
             };
-            /** Konzern */
-            konzern: unknown[];
-            /** Posten */
-            posten: unknown;
+            /** Items */
+            items: unknown;
             /** Years */
             years: unknown;
         };
         /** HaushaltProdukte */
         HaushaltProdukte: {
-            /** Abdeckung Prozent */
-            abdeckung_prozent: unknown;
-            /** Alle Jahre */
-            alle_jahre: unknown;
-            /** Facetten */
-            facetten: unknown;
+            /** All Years */
+            all_years: unknown;
+            /** Coverage Percent */
+            coverage_percent: unknown;
+            /** Facets */
+            facets: unknown;
+            /** Matches */
+            matches: number;
             /** Plan Expenses */
             plan_expenses: unknown;
             /** Product */
             product: unknown;
-            /** Produkte */
-            produkte: unknown;
-            /** Treffer */
-            treffer: number;
+            /** Products */
+            products: unknown;
             /** Year */
             year: unknown;
         };
         /** HaushaltPruefberichte */
         HaushaltPruefberichte: {
-            /** Feststellungen */
-            feststellungen: unknown[];
-            /** Legende */
-            legende: unknown;
-            /** Ohne Bericht */
-            ohne_bericht: unknown[];
+            /** Findings */
+            findings: unknown[];
+            /** Legend */
+            legend: unknown;
+            /** Without Report */
+            without_report: unknown[];
             /** Years */
             years: unknown;
         };
         /** HaushaltSchulden */
         HaushaltSchulden: {
-            /** Abgrenzung */
-            abgrenzung: unknown;
-            /** Arten */
-            arten: unknown[];
-            /** Buergschaften */
-            buergschaften: {
+            /** Column Kinds */
+            column_kinds: unknown[];
+            /** Guarantees */
+            guarantees: {
                 [key: string]: unknown;
             };
             /** Herkunft */
             herkunft: {
                 [key: string]: unknown;
             };
-            /** Integrierte Schulden */
-            integrierte_schulden: unknown;
+            /** Integrated Debt */
+            integrated_debt: unknown;
+            /** Interest Expense */
+            interest_expense: unknown;
+            /** Scope Note */
+            scope_note: unknown;
             /** Series */
             series: unknown;
             /** Years */
             years: unknown[];
-            /** Zinslast */
-            zinslast: unknown;
         };
         /** HaushaltStellenplan */
         HaushaltStellenplan: {
-            /** Fehlend */
-            fehlend: unknown;
-            /** Gruppen */
-            gruppen: unknown;
+            /** Editions */
+            editions: unknown;
+            /** Groups */
+            groups: unknown;
             /** Herkunft */
             herkunft: {
                 [key: string]: unknown;
             };
-            /** Jahrgaenge */
-            jahrgaenge: unknown;
-            /** Summen */
-            summen: unknown;
-            /** Teile */
-            teile: unknown;
-            /** Zeilen */
-            zeilen: unknown;
+            /** Missing */
+            missing: unknown;
+            /** Part Names */
+            part_names: unknown;
+            /** Rows */
+            rows: unknown;
+            /** Totals */
+            totals: unknown;
         };
         /** HaushaltStreit */
         HaushaltStreit: {
-            /** Runden */
-            runden: unknown;
+            /** Rounds */
+            rounds: unknown;
         };
         /** HaushaltVergleich */
         HaushaltVergleich: {
-            /** Beleg */
-            beleg: unknown;
+            /** Citation */
+            citation: unknown;
+            /** Cities */
+            cities: unknown;
             /** Herkunft */
             herkunft: {
                 [key: string]: unknown;
             };
-            /** Staedte */
-            staedte: unknown;
-            /** Werte */
-            werte: unknown;
+            /** Values */
+            values: unknown;
             /** Years */
             years: unknown;
         };
         /** HaushaltWeg */
         HaushaltWeg: {
-            /** Runden */
-            runden: unknown;
+            /** Rounds */
+            rounds: unknown;
         };
         /** HeuteNaechste */
         HeuteNaechste: {
@@ -10766,4 +10766,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 46ee52065f353255915ead72a7f47c62ed66aaff2a29b4644cd172feea286a8b
+// vertrag-sha256: f1e7cacbd6ff477ee40a21e68987f35a115dd9f94d5ab1d66445ea43ea9f704a

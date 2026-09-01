@@ -286,10 +286,10 @@ def _call_model(name: str, matches: list[dict]) -> dict | None:
     steht mit im Satz, damit ein wiederkehrender Ausreißer auffällt.
     """
     try:
-        prompt = prompts.render("topic_auto_beschreibung", name=name[:120], context=_context(matches))
+        prompt = prompts.render("topic_auto_description", name=name[:120], context=_context(matches))
         extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in MODEL else {}
         resp = llm.chat_complete(
-            model=MODEL, _feature="topic_auto_beschreibung", temperature=0.2, max_tokens=300,
+            model=MODEL, _feature="topic_auto_description", temperature=0.2, max_tokens=300,
             messages=[{"role": "user", "content": prompt}], **extra,
         )
         obj = _parse(resp.choices[0].message.content or "")
