@@ -138,7 +138,23 @@ sind jetzt Code, keine davon fällt in einer frischen Testdatenbank auf:
    „Monitoring" — der Gattungsfilter hing bis dahin nur am Regex-Kanal, über
    das Modell kamen sie ungehindert durch. Nur die bloße Form ist gesperrt.
 
-Ein fünfter Fund gehört nicht in die Qualität, sondern in den Datenschutz:
+5. **Fremde Straßen werden abgeschnitten.** `overpass_street` sucht Wege eines
+   Namens in einem RECHTECK um Oldenburg, und das ist größer als die Stadt: Bei
+   häufigen Namen kam der gleichnamige Weg der Nachbargemeinde mit, alle
+   Segmente wurden verschmolzen, und der Mittelpunkt lag dazwischen — in keinem
+   Ortsbereich. `geo.auf_stadtgebiet_beschneiden` wirft die fremden Segmente
+   weg und rechnet den Mittelpunkt neu; liegt gar nichts in der Stadt, ist der
+   Treffer keiner. Die Polygone gehören uns, das Rechteck war nur eine
+   Vorauswahl.
+
+Zwei Fallen, die beim Prüflauf selbst zuschlugen und deshalb Code geworden sind:
+Ein **misslungenes** Geocoding darf keinen Stadtteil löschen (ein Fehlschlag
+weiß nichts) — ein Treffer **außerhalb** Oldenburgs dagegen schon (der weiß
+etwas). Und fehlen die Ortsbereichs-Polygone, liefert jede Geo-Ableitung still
+`None`; der Lauf sieht erfolgreich aus und ordnet nichts zu. `geo._features()`
+schreibt das jetzt als Warnung ins Log.
+
+Ein weiterer Fund gehört nicht in die Qualität, sondern in den Datenschutz:
 Fundstellen, die wie eine Wohnanschrift aussehen (`… 49, 26127 Oldenburg`),
 werden abgewiesen. Sie stammten aus Vorlagen zu Ausschussbesetzungen und
 verorteten Personalbeschlüsse nach der Privatadresse eines Mitglieds.

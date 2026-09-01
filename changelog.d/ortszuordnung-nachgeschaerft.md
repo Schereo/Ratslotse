@@ -33,7 +33,16 @@ es war: „Masterplan Fliegerhorst" ist und bleibt am Fliegerhorst.
 den Daten, ohne je zu einem Stadtteil zu führen. Sie fallen jetzt weg — die
 konkrete „Entlastungsstraße Fliegerhorst" bleibt selbstverständlich.
 
+**Straßen der Nachbargemeinden verfälschten den Verlauf.** Die Straßensuche
+fragt in einem Rechteck um Oldenburg — und das ist größer als die Stadt. Bei
+häufigen Namen kam der gleichnamige Weg von nebenan mit ins Ergebnis, beide
+wurden zu einem Verlauf verschmolzen, und der lag dann teils außerhalb. Der
+„Alter Postweg" verlor so seinen Stadtteil, obwohl sein Oldenburger Teil ganz
+in Kreyenbrück liegt. Fremde Abschnitte werden jetzt abgeschnitten; bleibt
+nichts übrig, gilt die Straße als nicht gefunden.
+
 Unterm Strich finden Stadtteil-Fragen mehr vom Richtigen und weniger vom
-Falschen: In der Innenstadt kamen gut 30 Beschlüsse dazu, in Ofenerdiek 17 —
-und in jedem Stadtteil verschwanden die Satzungen und Wirtschaftspläne, die
-dort nie hingehörten.
+Falschen: In der Innenstadt kamen rund 20 Beschlüsse dazu, in Ofenerdiek 13,
+in Bloherfelde 9 — und in jedem Stadtteil verschwanden die Satzungen,
+Wirtschaftspläne und Jahresabschlüsse, die dort nie hingehörten. In Nadorst
+allein waren es fünf Wirtschaftspläne des Bäderbetriebs.
