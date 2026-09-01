@@ -82,6 +82,9 @@ ERLAUBT = {
     "schwelle": "nur noch in einem Doku-Kommentar in haushalt.ts",
     "stadtteil": "Pfad-Teil und Feldname der Ortsangabe im E2E-Fixture",
     "unbekannt": "Ersatztext für einen fehlenden Bildnachweis",
+    "orte": "Reiter des Admin-Panels und Query-Parameter der Entitäten-Liste",
+    "mittel": "Beschriftung der Quiz-Schwierigkeit",
+    "schwer": "Beschriftung der Quiz-Schwierigkeit",
     "vorsitz": "`council_memberships.role` trägt den Wortlaut aus dem RIS",
     # Diese drei stehen nur in einer bestimmten Umgebung zu Recht — daneben
     # wäre jedes Vorkommen ein toter Vergleich, deshalb der Zeilen-Filter.
@@ -133,6 +136,9 @@ ERLAUBT_ZEILE = {
                         r'vorschauMetadata|/preview|kind: "thema"'),
     "verwaltung": re.compile(r'\btyp\b|type ==|StreitRolle|\bart\b'),
     "beratend": re.compile(r'\bart\b|^\s*(//|\*)'),
+    "orte": re.compile(r'Tab\b|tab ===|sp\.get|p\.delete|Ortskandidaten'),
+    "mittel": re.compile(r'DIFF_LABEL'),
+    "schwer": re.compile(r'DIFF_LABEL'),
     "leitung": re.compile(r'StreitRolle|\brole\b'),
     "stadt": re.compile(r'entity_key|\bart\b|Sortierung|sortierung|value: "stadt"|'
                         r'\brole\b'),

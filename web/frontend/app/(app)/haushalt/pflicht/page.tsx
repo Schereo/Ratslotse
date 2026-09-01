@@ -82,9 +82,9 @@ const TON_STUFE: Record<PflichtStufe, string> = {
   freiwillig: "var(--hh-aus-5)",
 };
 const TON_SPIELRAUM: Record<Spielraum, string> = {
-  niedrig: "var(--hh-aus-0)",
-  mittel: "var(--hh-aus-3)",
-  hoch: "var(--hh-aus-5)",
+  low: "var(--hh-aus-0)",
+  medium: "var(--hh-aus-3)",
+  high: "var(--hh-aus-5)",
 };
 /** Fehlende Angabe: bewusst NICHT aus der Rampe, sonst liest sie sich als
  *  vierte Stufe. Schraffiert nach der Lücken-Konvention. */
@@ -645,14 +645,14 @@ function Selbstauskunft({ befund, year }: { befund: SpielraumBefund; year: numbe
   const dominant = befund.dominant!;
   const anteil = Math.round(befund.anteil[dominant] * 100);
   const groesste = befund.groesste;
-  const gemischt = (["niedrig", "mittel", "hoch", "ohne"] as const)
+  const gemischt = (["low", "medium", "high", "ohne"] as const)
     .filter((s) => befund.anteil[s] >= MISCHUNG_AB).length >= 2;
   // Beträge statt nackter Prozente in der Legende: `anteil` ist normiert,
   // multipliziert mit dem Aufwand des Bereichs wird daraus wieder Geld —
   // der Anteilsbalken rechnet die Prozente selbst und schreibt beides an.
   const aufwandMio = befund.expense / 1e6;
   const segmente: Anteil[] = [
-    ...(["niedrig", "mittel", "hoch"] as Spielraum[]).map((s) => ({
+    ...(["low", "medium", "high"] as Spielraum[]).map((s) => ({
       label: SPIELRAUM_TEXT[s].kurz, value: befund.anteil[s] * aufwandMio, farbe: TON_SPIELRAUM[s],
     })),
     { label: "ohne Angabe", value: befund.anteil.ohne * aufwandMio, farbe: TON_OFFEN, offen: true },

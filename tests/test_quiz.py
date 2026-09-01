@@ -83,7 +83,7 @@ def test_parse_handles_code_fence():
 
 def test_valid_rejects_bad_questions():
     good = {"question": "In welchem Jahr wurde X eingemeindet?",
-            "options": ["1922", "1913", "1891", "1945"], "correct_index": 0, "category": "geschichte"}
+            "options": ["1922", "1913", "1891", "1945"], "correct_index": 0, "category": "history"}
     assert quiz._valid(good)
     assert not quiz._valid({**good, "options": ["1922", "1913", "1891"]})       # nur 3
     assert not quiz._valid({**good, "options": ["1922", "1922", "1891", "1945"]})  # Dublette
@@ -109,9 +109,9 @@ def _fake_llm(questions: list[dict]):
 
 def test_generate_for_area_parses_and_tags(monkeypatch):
     qs = [
-        {"category": "geschichte", "difficulty": "leicht", "question": "Wann wurde X eingemeindet?",
+        {"category": "history", "difficulty": "easy", "question": "Wann wurde X eingemeindet?",
          "options": ["1922", "1913", "1891", "1945"], "correct_index": 0, "explanation": "1922."},
-        {"category": "orte", "difficulty": "mittel", "question": "Welches Wahrzeichen steht in X?",
+        {"category": "places", "difficulty": "medium", "question": "Welches Wahrzeichen steht in X?",
          "options": ["Kirche", "Turm", "Brücke", "Mühle"], "correct_index": 0, "explanation": "…"},
         {"category": "quatsch", "question": "ungültig", "options": ["a", "b", "c", "d"], "correct_index": 0},
     ]
@@ -128,7 +128,7 @@ def test_generate_for_area_parses_and_tags(monkeypatch):
 
 def test_generate_does_not_cut_explanation_mid_sentence(monkeypatch):
     explanation = "Ein vollständiger erster Satz. " + ("Weitere Erklärung " * 50)
-    qs = [{"category": "geschichte", "difficulty": "leicht",
+    qs = [{"category": "history", "difficulty": "easy",
            "question": "Wann wurde der Beispielort gegründet?",
            "options": ["1922", "1913", "1891", "1945"], "correct_index": 0,
            "explanation": explanation}]
@@ -167,9 +167,9 @@ def test_generate_skips_thin_sources(monkeypatch):
 
 # ---- Store-Roundtrip --------------------------------------------------------
 
-def _row(area_key: str, question: str, cat: str = "geschichte") -> dict:
+def _row(area_key: str, question: str, cat: str = "history") -> dict:
     return {"area_type": "district", "area_key": area_key, "category": cat,
-            "difficulty": "leicht", "question": question,
+            "difficulty": "easy", "question": question,
             "options": ["A", "B", "C", "D"], "correct_index": 1,
             "explanation": "weil B", "source_type": "wikipedia", "source_ref": "http://w",
             "content_hash": quiz._content_hash("district", area_key, question)}
@@ -210,17 +210,17 @@ def test_store_quiz_retire_and_exclude(tmp_path):
 def test_store_pick_category_filter(tmp_path):
     store = CouncilStore(tmp_path / "c.sqlite")
     store.save_quiz_questions([
-        _row("Nadorst", "Geschichte?", "geschichte"),
-        _row("Nadorst", "Ort?", "orte"),
+        _row("Nadorst", "Geschichte?", "history"),
+        _row("Nadorst", "Ort?", "places"),
     ])
-    only_orte = store.pick_quiz_questions([("district", "Nadorst")], ["orte"], [], 10)
-    assert len(only_orte) == 1 and only_orte[0]["category"] == "orte"
+    only_orte = store.pick_quiz_questions([("district", "Nadorst")], ["places"], [], 10)
+    assert len(only_orte) == 1 and only_orte[0]["category"] == "places"
 
 
 # ---- Schätzfrage-Slider (estimate) ------------------------------------------
 
 def test_valid_estimate():
-    good = {"qtype": "estimate", "category": "schaetzen",
+    good = {"qtype": "estimate", "category": "estimation",
             "question": "Wie viele Einwohner hat X etwa?",
             "answer_value": 12000, "unit": "Einwohner", "range_min": 2000, "range_max": 30000}
     assert quiz._valid(good)
@@ -232,7 +232,7 @@ def test_valid_estimate():
 
 
 def test_generate_estimate_question(monkeypatch):
-    qs = [{"category": "schaetzen", "difficulty": "mittel", "qtype": "estimate",
+    qs = [{"category": "estimation", "difficulty": "medium", "qtype": "estimate",
            "question": "Wie viele Einwohner hat X etwa?",
            "answer_value": 12000, "unit": "Einwohner", "range_min": 2000, "range_max": 30000,
            "explanation": "rund 12.000"}]
@@ -247,8 +247,8 @@ def test_generate_estimate_question(monkeypatch):
 
 
 def _estimate_row(area_key: str, question: str) -> dict:
-    return {"area_type": "district", "area_key": area_key, "category": "schaetzen",
-            "difficulty": "mittel", "question": question, "qtype": "estimate",
+    return {"area_type": "district", "area_key": area_key, "category": "estimation",
+            "difficulty": "medium", "question": question, "qtype": "estimate",
             "options": [], "correct_index": 0,
             "answer_value": 12000.0, "answer_unit": "Einwohner",
             "range_min": 2000.0, "range_max": 30000.0,
@@ -327,7 +327,7 @@ def test_street_line_extent_guard(monkeypatch):
 
 
 def test_generate_attaches_detail_and_media(monkeypatch):
-    qs = [{"category": "orte", "difficulty": "leicht", "question": "Was ist das Schloss?",
+    qs = [{"category": "places", "difficulty": "easy", "question": "Was ist das Schloss?",
            "options": ["A", "B", "C", "D"], "correct_index": 0, "explanation": "kurz",
            "detail": "Das Schloss war die Residenz der Großherzöge.", "subject": "Schloss Oldenburg"}]
     monkeypatch.setattr(quiz.llm, "chat_complete", _fake_llm(qs))
@@ -408,7 +408,7 @@ def test_hint_roundtrip(tmp_path):
 
 
 def test_generate_attaches_hint(monkeypatch):
-    qs = [{"category": "menschen", "difficulty": "schwer", "question": "Wer war X?",
+    qs = [{"category": "people", "difficulty": "hard", "question": "Wer war X?",
            "options": ["A", "B", "C", "D"], "correct_index": 0, "explanation": "kurz",
            "hint": "Ein Politiker des 19. Jahrhunderts."}]
     monkeypatch.setattr(quiz.llm, "chat_complete", _fake_llm(qs))
@@ -422,7 +422,7 @@ def test_generate_attaches_hint(monkeypatch):
 def test_topic_roundtrip(tmp_path):
     # „Beschlüsse dazu": topic gehört zur Auflösung, NICHT in die Runde.
     store = CouncilStore(tmp_path / "c.sqlite")
-    row = _row("Bloherfelde", "Was beschloss der Rat?", "ratspolitik")
+    row = _row("Bloherfelde", "Was beschloss der Rat?", "council_politics")
     row["topic"] = "Lebensquartier"
     store.save_quiz_questions([row])
     q = store.pick_quiz_questions([("district", "Bloherfelde")], None, [], 5)[0]
@@ -431,7 +431,7 @@ def test_topic_roundtrip(tmp_path):
 
 
 def test_generate_attaches_topic(monkeypatch):
-    qs = [{"category": "ratspolitik", "difficulty": "mittel", "question": "Was wurde beschlossen?",
+    qs = [{"category": "council_politics", "difficulty": "medium", "question": "Was wurde beschlossen?",
            "options": ["A", "B", "C", "D"], "correct_index": 0, "explanation": "kurz",
            "topic": "Fliegerhorst"}]
     monkeypatch.setattr(quiz.llm, "chat_complete", _fake_llm(qs))

@@ -24,8 +24,8 @@ from ..schemas import (QuizAnswerIn, QuizDailyIn, QuizMapIn, QuizRateIn,
 
 router = APIRouter(prefix="/api/quiz", tags=["quiz"])
 
-CATEGORIES = ["geschichte", "orte", "menschen", "ratspolitik", "schaetzen"]
-_POINTS = {"leicht": 1, "mittel": 2, "schwer": 3}
+CATEGORIES = ["history", "places", "people", "council_politics", "estimation"]
+_POINTS = {"easy": 1, "medium": 2, "hard": 3}
 DAILY_N = 5
 MAP_POINTS = 2  # feste Punkte je richtig verorteten Stadtteil
 
@@ -246,7 +246,7 @@ def map_answer(payload: QuizMapIn,
     pts = MAP_POINTS if correct else 0
     # question_id=0 = Karten-Frage (keine DB-Frage); fliegt aus dem „Meine
     # Fehler"-Stapel (quiz_wrong_question_ids filtert question_id > 0).
-    store.record_quiz_answer(user["id"], 0, "district", target.name, "orte", correct, pts)
+    store.record_quiz_answer(user["id"], 0, "district", target.name, "places", correct, pts)
     return {"correct": correct, "target": target.name, "points": pts}
 
 
@@ -292,7 +292,7 @@ def _validate_own(payload: UserQuizQuestionIn, council: CouncilStore) -> dict:
     base = {"question": payload.question.strip(), "district": st,
             "category": payload.category,
             "explanation": (payload.explanation or "").strip() or None}
-    if payload.category == "schaetzen":
+    if payload.category == "estimation":
         if payload.answer_value is None:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "Bitte die richtige Zahl angeben.")
         lo, hi = payload.range_min, payload.range_max
@@ -360,7 +360,7 @@ def own_round(n: int = Query(10, ge=1, le=30),
     for q in store.user_quiz_round(user["id"], n):
         item = {"id": q["id"], "area_type": "eigene",
                 "area_key": q["district"] or "Stadtweit",
-                "category": q["category"], "difficulty": "mittel",
+                "category": q["category"], "difficulty": "medium",
                 "question": q["question"], "options": q["options"], "qtype": q["qtype"]}
         if q["qtype"] == "estimate":  # ohne answer_value — die Lösung kommt erst beim Auswerten
             item["unit"] = q["unit"]

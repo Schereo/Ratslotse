@@ -2065,8 +2065,8 @@ def test_native_setup_progress_can_resume_after_reinstall(client):
 
 
 # ---- quiz ----
-def _seed_quiz(area_key="Osternburg", area_type="district", n=3, category="geschichte",
-               difficulty="mittel"):
+def _seed_quiz(area_key="Osternburg", area_type="district", n=3, category="history",
+               difficulty="medium"):
     """Seed n Quizfragen für ein Gebiet in die (throwaway) council.sqlite."""
     from council import quiz as quizmod
     store = CouncilStore(COUNCIL_DB)
@@ -2085,13 +2085,13 @@ def _seed_quiz(area_key="Osternburg", area_type="district", n=3, category="gesch
 
 
 def _seed_estimate(area_key="Osternburg", value=12000.0, unit="Einwohner",
-                   lo=2000.0, hi=30000.0, difficulty="mittel"):
+                   lo=2000.0, hi=30000.0, difficulty="medium"):
     """Seed eine Schätzfrage (qtype=estimate) in die throwaway council.sqlite."""
     from council import quiz as quizmod
     store = CouncilStore(COUNCIL_DB)
     text = f"Schätzfrage {area_key} {value}?"
     store.save_quiz_questions([{
-        "area_type": "district", "area_key": area_key, "category": "schaetzen",
+        "area_type": "district", "area_key": area_key, "category": "estimation",
         "difficulty": difficulty, "question": text, "qtype": "estimate",
         "options": [], "correct_index": 0,
         "answer_value": value, "answer_unit": unit, "range_min": lo, "range_max": hi,
@@ -2123,7 +2123,7 @@ def test_own_quiz_crud_round_and_practice(client):
     _register(client)
     body = {"question": "Wie viele Wahlbereiche hat Oldenburg?",
             "options": ["Vier", "Sechs", "Acht"], "correct_index": 1,
-            "district": None, "category": "ratspolitik", "explanation": "Es sind sechs."}
+            "district": None, "category": "council_politics", "explanation": "Es sind sechs."}
     qid = client.post("/api/quiz/own", json=body).json()["id"]
     # Runde: geformt wie normale Fragen, ohne Lösung
     r = client.get("/api/quiz/own/round?n=5").json()["questions"]
@@ -2150,19 +2150,19 @@ def test_own_quiz_is_per_account_and_validated(client):
     _register(client)
     qid = client.post("/api/quiz/own", json={
         "question": "Nur meine Frage?", "options": ["Ja", "Nein"], "correct_index": 0,
-        "category": "geschichte"}).json()["id"]
+        "category": "history"}).json()["id"]
     other = TestClient(app)
     _register(other, email="other@test.de")
     assert other.get("/api/quiz/own").json()["questions"] == []
     assert other.put(f"/api/quiz/own/{qid}", json={
         "question": "Gekapert?", "options": ["A", "B"], "correct_index": 0,
-        "category": "geschichte"}).status_code == 404
+        "category": "history"}).status_code == 404
     assert other.delete(f"/api/quiz/own/{qid}").status_code == 404
     assert other.post("/api/quiz/own/answer",
                       json={"question_id": qid, "selected_index": 0}).status_code == 404
     # Validierung: richtige Antwort muss existieren, Kategorie/Stadtteil bekannt sein
     bad = {"question": "Kaputt genug?", "options": ["A", "B"], "correct_index": 3,
-           "category": "geschichte"}
+           "category": "history"}
     assert client.post("/api/quiz/own", json=bad).status_code == 400
     assert client.post("/api/quiz/own", json={**bad, "correct_index": 0,
                                               "category": "quatsch"}).status_code == 400
@@ -2175,7 +2175,7 @@ def test_own_quiz_estimate(client):
     Optionen, Auto-Slider-Bereich, Nähe-Wertung ohne Punkte."""
     _register(client)
     r = client.post("/api/quiz/own", json={
-        "question": "Wie viele Einwohner hat Oldenburg?", "category": "schaetzen",
+        "question": "Wie viele Einwohner hat Oldenburg?", "category": "estimation",
         "answer_value": 172000, "unit": "Einwohner"})
     assert r.status_code == 200
     qid = r.json()["id"]
@@ -2193,19 +2193,19 @@ def test_own_quiz_estimate(client):
                        json={"question_id": qid, "value": 50000}).json()["correct"] is False
     # Zahl fehlt → 400; manueller Bereich, der die Zahl nicht umschließt → 400
     assert client.post("/api/quiz/own", json={
-        "question": "Ohne Zahl?", "category": "schaetzen"}).status_code == 400
+        "question": "Ohne Zahl?", "category": "estimation"}).status_code == 400
     assert client.post("/api/quiz/own", json={
-        "question": "Bereich zu klein?", "category": "schaetzen", "answer_value": 100,
+        "question": "Bereich zu klein?", "category": "estimation", "answer_value": 100,
         "range_min": 0, "range_max": 50}).status_code == 400
     # Jahreszahl (Einheit Jahr) → enges, zentriertes ±50-Fenster statt 0..2×
     yid = client.post("/api/quiz/own", json={
-        "question": "Wann wurde die Cäcilienbrücke gebaut?", "category": "schaetzen",
+        "question": "Wann wurde die Cäcilienbrücke gebaut?", "category": "estimation",
         "answer_value": 1927, "unit": "Jahr"}).json()["id"]
     yq = next(q for q in client.get("/api/quiz/own").json()["questions"] if q["id"] == yid)
     assert yq["range_min"] == 1877 and yq["range_max"] == 1977
     # Kleine „Jahre"-Dauer bleibt beim Standard-Bereich (0..2×)
     did = client.post("/api/quiz/own", json={
-        "question": "Seit wie vielen Jahren confidential?", "category": "schaetzen",
+        "question": "Seit wie vielen Jahren confidential?", "category": "estimation",
         "answer_value": 6, "unit": "Jahre"}).json()["id"]
     dq = next(q for q in client.get("/api/quiz/own").json()["questions"] if q["id"] == did)
     assert dq["range_min"] == 0 and dq["range_max"] == 12
@@ -2216,7 +2216,7 @@ def test_quiz_theme_stadtteil_binding(client):
     (Punkt-in-Polygon); Themen ohne Geo gelten als stadtweit (null)."""
     _register(client)
     _seed_quiz("fliegerhorst", area_type="thema", n=1)
-    _seed_quiz("haushalt", area_type="thema", n=1, category="ratspolitik")
+    _seed_quiz("haushalt", area_type="thema", n=1, category="council_politics")
     store = CouncilStore(COUNCIL_DB)
     store.save_entities([("fliegerhorst", "Fliegerhorst", "projekt", 5)], [])
     store.set_entity_geo("fliegerhorst", 53.1720, 8.1850, None)  # liegt im Stadtteil Fliegerhorst
@@ -2245,13 +2245,13 @@ def test_quiz_wahlbereich_expands(client):
 
 def test_quiz_answer_scores_and_reveals(client):
     _register(client)
-    _seed_quiz("Osternburg", n=1, difficulty="schwer")
+    _seed_quiz("Osternburg", n=1, difficulty="hard")
     qid = client.get("/api/quiz/round?areas=district:Osternburg").json()["questions"][0]["id"]
     r = client.post("/api/quiz/answer", json={"question_id": qid, "selected_index": 1}).json()
     assert r["correct"] is True and r["points"] == 3 and r["correct_index"] == 1
     assert r["explanation"] == "weil B" and r["source_ref"] == "http://w"
     # zweite Frage falsch → 0 Punkte
-    _seed_quiz("Osternburg", n=1, category="orte")
+    _seed_quiz("Osternburg", n=1, category="places")
     qid2 = [x["id"] for x in client.get("/api/quiz/round?areas=district:Osternburg&n=10").json()["questions"]
             if x["id"] != qid][0]
     r2 = client.post("/api/quiz/answer", json={"question_id": qid2, "selected_index": 0}).json()
@@ -2338,7 +2338,7 @@ def test_quiz_stats_streak_wrong_and_badges(client):
 
 def test_quiz_estimate_slider_scores_by_proximity(client):
     _register(client)
-    _seed_estimate("Osternburg", value=12000.0, difficulty="schwer")  # schwer = 3 Punkte
+    _seed_estimate("Osternburg", value=12000.0, difficulty="hard")  # schwer = 3 Punkte
     q = client.get("/api/quiz/round?areas=district:Osternburg&n=5").json()["questions"][0]
     assert q["qtype"] == "estimate" and q["unit"] == "Einwohner"
     assert "answer_value" not in q and q["range_min"] == 2000 and q["range_max"] == 30000

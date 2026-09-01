@@ -161,15 +161,15 @@ def test_gewichtet_nach_aufwand_nicht_nach_kopfzahl(tmp_path):
     """Drei kleine Angebote mit „viel Spielraum" schlagen keinen
     Rechtsanspruch von 54 Mio. €."""
     r = _lauf(tmp_path, year=2023, produkte=[
-        _p("A", "Soziales und Gesundheit", 54_000_000, "niedrig"),
-        _p("B", "Soziales und Gesundheit", 300_000, "hoch"),
-        _p("C", "Soziales und Gesundheit", 200_000, "hoch"),
-        _p("D", "Soziales und Gesundheit", 100_000, "hoch"),
+        _p("A", "Soziales und Gesundheit", 54_000_000, "low"),
+        _p("B", "Soziales und Gesundheit", 300_000, "high"),
+        _p("C", "Soziales und Gesundheit", 200_000, "high"),
+        _p("D", "Soziales und Gesundheit", 100_000, "high"),
     ])
     b = r["befunde"]["soziales"]
     assert b["produkte"] == 4
-    assert b["dominant"] == "niedrig"
-    assert b["anteil"]["niedrig"] == pytest.approx(0.9891, abs=1e-3)
+    assert b["dominant"] == "low"
+    assert b["anteil"]["low"] == pytest.approx(0.9891, abs=1e-3)
     # Der Beleg zeigt auf die teuerste Aufgabe, nicht auf die erste Zeile.
     assert b["groesste"] == "A"
 
@@ -179,19 +179,19 @@ def test_alte_schreibweise_landet_im_selben_befund(tmp_path):
     """Produktzeilen aus zwei Jahrgängen desselben Teilhaushalts werden
     zusammengeführt — über das Wörterbuch, nicht über den Namen."""
     r = _lauf(tmp_path, year=2023, produkte=[
-        _p("A", "Klima/Umwelt/Mobilität/Bau/Grün/Friedh.", 1_000_000, "niedrig"),
-        _p("B", "Umwelt, Bauordnung, Grün  u. Friedhöfe", 3_000_000, "mittel"),
+        _p("A", "Klima/Umwelt/Mobilität/Bau/Grün/Friedh.", 1_000_000, "low"),
+        _p("B", "Umwelt, Bauordnung, Grün  u. Friedhöfe", 3_000_000, "medium"),
     ])
     assert list(r["befunde"]) == ["umwelt"]
     assert r["befunde"]["umwelt"]["produkte"] == 2
-    assert r["befunde"]["umwelt"]["dominant"] == "mittel"
+    assert r["befunde"]["umwelt"]["dominant"] == "medium"
 
 
 @braucht_node
 def test_gleichstand_hat_keine_dominante_stufe(tmp_path):
     r = _lauf(tmp_path, year=2023, produkte=[
-        _p("A", "Stadtplanung", 1_000_000, "niedrig"),
-        _p("B", "Stadtplanung", 1_000_000, "hoch"),
+        _p("A", "Stadtplanung", 1_000_000, "low"),
+        _p("B", "Stadtplanung", 1_000_000, "high"),
     ])
     assert r["befunde"]["stadtplanung"]["dominant"] is None
 
@@ -203,7 +203,7 @@ def test_ohne_angabe_wird_ausgewiesen_nicht_verteilt(tmp_path):
     gesagt, und wir erfinden es nicht."""
     r = _lauf(tmp_path, year=2023, produkte=[
         _p("A", "Verkehr und Straßenbau", 6_000_000, None),
-        _p("B", "Verkehr und Straßenbau", 4_000_000, "mittel"),
+        _p("B", "Verkehr und Straßenbau", 4_000_000, "medium"),
     ])
     b = r["befunde"]["verkehr"]
     assert b["anteil"]["ohne"] == pytest.approx(0.6)
@@ -213,11 +213,11 @@ def test_ohne_angabe_wird_ausgewiesen_nicht_verteilt(tmp_path):
 @braucht_node
 def test_fremdes_jahr_zaehlt_nicht_mit(tmp_path):
     r = _lauf(tmp_path, year=2023, produkte=[
-        _p("A", "Kultur, Museen, Sport", 1_000_000, "hoch", year=2023),
-        _p("B", "Kultur, Museen, Sport", 9_000_000, "niedrig", year=2022),
+        _p("A", "Kultur, Museen, Sport", 1_000_000, "high", year=2023),
+        _p("B", "Kultur, Museen, Sport", 9_000_000, "low", year=2022),
     ])
     assert r["befunde"]["kultur"]["produkte"] == 1
-    assert r["befunde"]["kultur"]["dominant"] == "hoch"
+    assert r["befunde"]["kultur"]["dominant"] == "high"
 
 
 @braucht_node
@@ -226,7 +226,7 @@ def test_ohne_produktebene_ist_offen_keine_uebereinstimmung(tmp_path):
     Bereiche enthalten, für die es überhaupt eine Angabe gibt."""
     r = _lauf(
         tmp_path, year=2023,
-        produkte=[_p("A", "Kultur, Museen, Sport", 1_000_000, "hoch")],
+        produkte=[_p("A", "Kultur, Museen, Sport", 1_000_000, "high")],
         key={"Kultur, Museen, Sport": "kultur", "Schule und Bildung": "schule"},
         urteile={"Kultur, Museen, Sport": "freiwillig", "Schule und Bildung": "spielraum"},
     )
@@ -241,14 +241,14 @@ def test_abweichung_wird_gemeldet_nicht_geglaettet(tmp_path):
     r = _lauf(
         tmp_path, year=2023,
         produkte=[
-            _p("A", "Jugend und Familie", 71_100_000, "niedrig"),
-            _p("B", "Jugend und Familie", 6_200_000, "mittel"),
+            _p("A", "Jugend und Familie", 71_100_000, "low"),
+            _p("B", "Jugend und Familie", 6_200_000, "medium"),
         ],
         key={"Jugend und Familie": "jugend"},
         urteile={"Jugend und Familie": "spielraum"},
     )
     assert r["stufen"]["jugend"] == "spielraum"
-    assert r["befunde"]["jugend"]["dominant"] == "niedrig"
+    assert r["befunde"]["jugend"]["dominant"] == "low"
     assert r["urteile"]["Jugend und Familie"] == "weicht"
 
 
@@ -256,4 +256,4 @@ def test_abweichung_wird_gemeldet_nicht_geglaettet(tmp_path):
 def test_erwartungsabbildung_ist_offengelegt(tmp_path):
     r = _lauf(tmp_path)
     assert r["erwartet"] == {
-        "pflicht": "niedrig", "spielraum": "mittel", "freiwillig": "hoch"}
+        "pflicht": "low", "spielraum": "medium", "freiwillig": "high"}

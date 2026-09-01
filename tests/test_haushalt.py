@@ -187,7 +187,7 @@ def test_eigene_einnahmen_absolut_und_ohne_zentralen_finanzhaushalt():
     qs = haushalt.build_questions(rows, 2026, "http://pdf")
     q = next(x for x in qs
              if x["content_hash"] == quiz._content_hash("topic", "haushalt", "deckung-2026"))
-    assert q["qtype"] == "mc" and q["difficulty"] == "schwer"
+    assert q["qtype"] == "mc" and q["difficulty"] == "hard"
     assert "Prozent" not in q["question"] and "deckt" not in q["question"]
     assert q["options"][q["correct_index"]] == "Soziales und Gesundheit"
 
@@ -768,7 +768,7 @@ def test_steckbrief_inline_felder():
     """Kurze Werte passen im PDF neben ihr Label und stehen deshalb DAHINTER."""
     p = finanzberichte.parse_teilergebnishaushalt(THH_PLAN)[0]
     assert p["controllability_raw"] == "niedrig"
-    assert p["controllability"] == "niedrig"
+    assert p["controllability"] == "low"
     assert p["scope"] == "übertragender und eigener Wirkungskreis"
     assert p["target_group"].startswith("gesamte Stadtverwaltung, alle Oldenburger")
     # „Verantwortlich: …" steht auf derselben Zeile wie sein Label und darf
@@ -783,7 +783,7 @@ def test_steckbrief_ignoriert_leistungen():
     Ungefiltert bekäme das Produkt den Text einer Unterposition."""
     p = finanzberichte.parse_teilergebnishaushalt(THH_PLAN)[0]
     assert "Vorgänge aus den verschiedensten Bereichen" not in p["short_description"]
-    assert p["controllability"] == "niedrig"      # nicht das „hoch" der Leistung
+    assert p["controllability"] == "low"      # nicht das „hoch" der Leistung
     assert p["scope"] != "eigener Wirkungskreis"
 
 
@@ -803,16 +803,16 @@ def test_beeinflussbarkeit_normalisiert():
     """Die Pläne schreiben denselben Spielraum mal „niedrig", mal „gering",
     mal groß. Der Rohwert bleibt daneben stehen."""
     norm = finanzberichte.normalisiere_beeinflussbarkeit
-    assert norm("gering") == "niedrig"
-    assert norm("Niedrig") == norm("niedrig") == "niedrig"
-    assert norm("Mittel") == "mittel" and norm("hoch") == "hoch"
+    assert norm("gering") == "low"
+    assert norm("Niedrig") == norm("niedrig") == "low"
+    assert norm("Mittel") == "medium" and norm("hoch") == "high"
     # Mischformen bekommen keine Stufe — jede Wahl wäre eine Behauptung.
     assert norm("niedrig/mittel bei Prävention") is None
     assert norm("") is None and norm(None) is None
 
     p = finanzberichte.parse_teilergebnishaushalt(THH_MIT_GRUNDDATEN)[0]
     assert p["controllability_raw"] == "Niedrig"   # Wortlaut des Plans
-    assert p["controllability"] == "niedrig"       # normalisiert
+    assert p["controllability"] == "low"       # normalisiert
 
 
 def test_steckbrief_erfindet_nichts():
@@ -827,7 +827,7 @@ def test_steckbrief_erfindet_nichts():
     assert p["short_description"] is None
     # Die übrigen Felder bleiben lesbar.
     assert p["legal_basis"].startswith("Bundesarchivgesetz")
-    assert p["controllability"] == "niedrig"
+    assert p["controllability"] == "low"
 
 
 def test_store_finanzberichte_roundtrip(tmp_path, source):
@@ -848,7 +848,7 @@ def test_store_finanzberichte_roundtrip(tmp_path, source):
     assert store.get_produkte(2019, sub_budget_no=99) == []
     # Der Steckbrief überlebt die Runde durch die Datenbank.
     gespeichert = store.get_produkte(2019, sub_budget_no=6)[0]
-    assert gespeichert["controllability"] == "niedrig"
+    assert gespeichert["controllability"] == "low"
     assert gespeichert["controllability_raw"] == "niedrig"
     assert gespeichert["scope"] == "übertragender und eigener Wirkungskreis"
     assert "Archivwürdigkeit" in gespeichert["short_description"]
@@ -874,8 +874,8 @@ def test_produkt_suche_und_filter(tmp_path, source):
     assert store.get_produkte(2019, suche="Archiv Sozialhilfe") == []
     assert store.get_produkte(2019, suche="Klärwerk") == []
 
-    assert len(store.get_produkte(2019, controllability="niedrig")) == 2
-    assert store.get_produkte(2019, controllability="hoch") == []
+    assert len(store.get_produkte(2019, controllability="low")) == 2
+    assert store.get_produkte(2019, controllability="high") == []
     assert [p["product_no"] for p in
             store.get_produkte(2019, office="Amt für Teilhabe und Soziales")] == ["P10.311101"]
 
@@ -886,7 +886,7 @@ def test_produkt_suche_und_filter(tmp_path, source):
     f = store.produkt_facetten(2019)
     assert {a["office"] for a in f["aemter"]} == {"Amt für Kultur, Museen und Sport",
                                               "Amt für Teilhabe und Soziales"}
-    assert f["spielraum"] == {"niedrig": 2}
+    assert f["spielraum"] == {"low": 2}
     assert f["mit_feld"]["short_description"] == 2
     store.close()
 

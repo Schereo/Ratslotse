@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
  *  Privat je Konto; Üben läuft über die normale Spiel-Ansicht, gibt aber
  *  bewusst keine Punkte und zählt nicht für Abzeichen. */
 
-const CATEGORIES = ["geschichte", "orte", "menschen", "ratspolitik", "schaetzen"];
+const CATEGORIES = ["history", "places", "people", "council_politics", "estimation"];
 
 const nf = new Intl.NumberFormat("de-DE");
 
@@ -52,7 +52,7 @@ type Draft = {
   district: string;   // "" = stadtweit
   category: string;
   explanation: string;
-  // Schätzfrage (category === "schaetzen"): Zahl statt Optionen.
+  // Schätzfrage (category === "estimation"): Zahl statt Optionen.
   answerValue: string;
   unit: string;
   rangeManual: boolean;
@@ -61,7 +61,7 @@ type Draft = {
 };
 
 const EMPTY_DRAFT: Draft = {
-  question: "", options: ["", ""], correct_index: 0, district: "", category: "geschichte",
+  question: "", options: ["", ""], correct_index: 0, district: "", category: "history",
   explanation: "", answerValue: "", unit: "", rangeManual: false, rangeMin: "", rangeMax: "",
 };
 
@@ -110,7 +110,7 @@ function QuestionEditor({ open, initial, editId, onClose, onSaved }: {
       correct_index: draft.correct_index === i ? 0 : draft.correct_index - (draft.correct_index > i ? 1 : 0) });
   };
 
-  const isEstimate = draft.category === "schaetzen";
+  const isEstimate = draft.category === "estimation";
   const av = Number(draft.answerValue.replace(",", "."));
   const hasAv = draft.answerValue.trim() !== "" && Number.isFinite(av);
   const yearRange = hasAv && isYear(draft.unit, av);

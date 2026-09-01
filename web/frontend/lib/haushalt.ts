@@ -146,7 +146,7 @@ export type Pruefbericht = {
  *  umfasst, worauf sie beruht, wie viel Spielraum die Stadt bei ihr hat. Alle
  *  Steckbrief-Felder sind optional — nicht jedes Produkt trägt jedes Feld, und
  *  eine Lücke wird gezeigt, nicht gefüllt. */
-export type Spielraum = "niedrig" | "mittel" | "hoch";
+export type Spielraum = "low" | "medium" | "high";
 
 export type Produkt = {
   year: number; product_no: string; product_name: string;
@@ -189,17 +189,17 @@ export type ProdukteAntwort = {
  *  „Grad der Beeinflussbarkeit: niedrig" heißt: Die Stadt kann hier kaum etwas
  *  ändern — nicht, dass die Aufgabe unwichtig wäre. */
 export const SPIELRAUM_TEXT: Record<Spielraum, { kurz: string; lang: string }> = {
-  niedrig: {
+  low: {
     kurz: "kaum Spielraum",
     lang: "Die Stadt sieht bei dieser Aufgabe kaum Spielraum: Was sie kostet, "
       + "bestimmen im Wesentlichen Gesetze und Fallzahlen, nicht der Rat.",
   },
-  mittel: {
+  medium: {
     kurz: "etwas Spielraum",
     lang: "Die Stadt sieht hier einen mittleren Spielraum — über das Wie lässt "
       + "sich entscheiden, über das Ob meist nicht.",
   },
-  hoch: {
+  high: {
     kurz: "viel Spielraum",
     lang: "Die Stadt sieht hier viel Spielraum: Umfang und Zuschnitt dieser "
       + "Aufgabe kann der Rat weitgehend selbst bestimmen.",

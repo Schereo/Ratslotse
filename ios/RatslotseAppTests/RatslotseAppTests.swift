@@ -765,7 +765,7 @@ private final class FeedbackURLProtocol: URLProtocol {
             "questions": 9,
             "points": 2
           }],
-          "categories": ["geschichte", "orte", "menschen", "ratspolitik", "schaetzen"]
+          "categories": ["history", "places", "people", "council_politics", "estimation"]
         }
         """.data(using: .utf8)
     )
@@ -787,7 +787,7 @@ private final class FeedbackURLProtocol: URLProtocol {
           "options": [],
           "correct_index": 0,
           "district": null,
-          "category": "schaetzen",
+          "category": "estimation",
           "explanation": "Die Zahl verändert sich laufend.",
           "qtype": "estimate",
           "answer_value": 176000,
@@ -807,7 +807,7 @@ private final class FeedbackURLProtocol: URLProtocol {
     #expect(card.qtype == "estimate")
     #expect(card.answerValue == 176_000)
     #expect(card.rangeMax == 350_000)
-    #expect(card.category == "schaetzen")
+    #expect(card.category == "estimation")
 }
 
 @Test func nativeAgendaItemsDecodeTopAttachmentsAndLegacyPayloads() throws {
