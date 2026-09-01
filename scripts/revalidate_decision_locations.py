@@ -16,7 +16,7 @@ sys.path.insert(0, str(ROOT))
 from council.locations import (  # noqa: E402
     extract_explicit_locations,
     location_slug,
-    ortsbezug_ist_beiwerk,
+    location_is_incidental,
     valid_llm_location,
 )
 from council.store import CouncilStore  # noqa: E402
@@ -58,7 +58,7 @@ def beiwerk_links(store: CouncilStore) -> list[dict]:
             ORDER BY dl.decision_id DESC, l.name"""
     ).fetchall()
     return [dict(row) for row in rows
-            if ortsbezug_ist_beiwerk(row["title"],
+            if location_is_incidental(row["title"],
                                      {"name": row["name"], "source": row["source"]},
                                      catalog_places=place_catalog)]
 
@@ -158,8 +158,8 @@ def process(council_db: Path, *, apply: bool = False) -> dict:
         store.backfill_location_districts_from_name()
         # Zum Schluss das Falsche geraderücken — Füllen allein reicht nicht,
         # ein einmal falsch eingetragener Bereich bliebe sonst für immer stehen.
-        store.korrigiere_widerspruechliche_stadtteile()
-        store.korrigiere_gleichnamige_stadtteile()
+        store.fix_contradicting_districts()
+        store.fix_eponymous_districts()
     store.close()
     removed = len(llm_rows) + len(deterministic_rows) + len(beiwerk_rows) if apply else 0
     return {"invalid_llm": len(llm_rows), "invalid_deterministic": len(deterministic_rows),

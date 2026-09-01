@@ -10070,7 +10070,7 @@ class CouncilStore:
                 )
         return len(updates)
 
-    def korrigiere_widerspruechliche_stadtteile(self) -> int:
+    def fix_contradicting_districts(self) -> int:
         """Eingetragene Stadtteile korrigieren, die der Geometrie widersprechen.
 
         ``backfill_location_districts`` füllt nur LEERE Felder. Was einmal falsch
@@ -10110,7 +10110,7 @@ class CouncilStore:
                     "WHERE slug=?", updates)
         return len(updates)
 
-    def korrigiere_gleichnamige_stadtteile(self) -> int:
+    def fix_eponymous_districts(self) -> int:
         """Ein Ort, der EXAKT wie ein Stadtteil heißt, IST dieser Stadtteil.
 
         Auf Prod stand ein Ort namens „Drielake" (18 Zuordnungen) auf
@@ -10373,13 +10373,13 @@ class CouncilStore:
         kandidaten = [dict(r) for r in rows]
         if not place_id:
             return kandidaten
-        return self._ortsvorschlaege_ordnen(kandidaten, place, cutoff)[:limit]
+        return self._rank_local_suggestions(kandidaten, place, cutoff)[:limit]
 
     #: Ab wie vielen Ortsbereichen eine Entität als stadtweit gilt. Auf dem
     #: Prod-Bestand (01.09.2026) trennt 4 sauber: „Startchancen-Programm" (8),
     #: „Lärmaktionsplan" (7), „Mobilitätsplan Oldenburg 2030" (6) und „Housing
     #: First" (5) fallen raus, alles Ortsgebundene bleibt.
-    STADTWEIT_AB_ORTSBEREICHEN = 4
+    CITYWIDE_FROM_DISTRICTS = 4
 
     #: Was nach Adresse klingt statt nach Vorhaben. Solche Namen werden NICHT
     #: verworfen — sie rutschen nur hinter alles andere.
@@ -10389,11 +10389,11 @@ class CouncilStore:
                                 re.IGNORECASE)
 
     @classmethod
-    def _klingt_nach_strasse(cls, name: str) -> bool:
+    def _looks_like_street(cls, name: str) -> bool:
         kern = name.split("/")[0].strip()
         return bool(cls._STRASSE.search(kern)) or bool(cls._STRASSE_VORNE.match(kern))
 
-    def _ortsvorschlaege_ordnen(self, kandidaten: list[dict], place, cutoff: str) -> list[dict]:
+    def _rank_local_suggestions(self, kandidaten: list[dict], place, cutoff: str) -> list[dict]:
         """Aussieben und ordnen, was für EINEN Ortsbereich vorgeschlagen wird.
 
         Die rohe Abfrage liefert alles, was in einem Beschluss mit Ortsbezug
@@ -10448,7 +10448,7 @@ class CouncilStore:
         behalten = []
         for k in kandidaten:
             slug = k.get("slug") or ""
-            if breite.get(slug, 1) >= self.STADTWEIT_AB_ORTSBEREICHEN:
+            if breite.get(slug, 1) >= self.CITYWIDE_FROM_DISTRICTS:
                 continue
             punkt = punkte.get(slug)
             if punkt:
@@ -10458,7 +10458,7 @@ class CouncilStore:
             behalten.append(k)
 
         behalten.sort(key=lambda k: (
-            self._klingt_nach_strasse(k.get("name") or ""),
+            self._looks_like_street(k.get("name") or ""),
             -(k.get("avg_interest") or 50),
             -(k.get("n_recent") or 0),
             k.get("name") or "",

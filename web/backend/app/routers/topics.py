@@ -251,7 +251,7 @@ def _suggestion_context(name: str, candidate: dict) -> str | None:
     return None
 
 
-def _vorschlaege_bauen(council: CouncilStore, candidates: list[dict],
+def _build_suggestions(council: CouncilStore, candidates: list[dict],
                        existing_tokens: list, chosen_tokens: list, limit: int = 6) -> list[dict]:
     """Aus Roh-Entitäten anzeigbare Vorschläge machen.
 
@@ -323,14 +323,14 @@ def _vorschlaege_bauen(council: CouncilStore, candidates: list[dict],
 #: dort wohnt, sah einen leeren Block. Mit dem gleitenden Fenster steht überall
 #: etwas. Erst die Zeit lockern und nicht die Qualitätsregeln: Ein zwei Jahre
 #: alter echter Vorgang ist ein besserer Vorschlag als eine Adresse von gestern.
-ORTS_FENSTER_TAGE = (365, 730, 1095)
+LOCAL_WINDOW_DAYS = (365, 730, 1095)
 
 #: Wie viele Nachbar-Ortsbereiche einen dünnen Stadtteil auffüllen dürfen. Drei
 #: reichen: Damit kommen auf dem Prod-Bestand alle 31 auf sechs Vorschläge.
-NACHBARN = 3
+NEIGHBOURS = 3
 
 
-def _lokale_vorschlaege(council: CouncilStore, place, existing_tokens: list,
+def _local_suggestions(council: CouncilStore, place, existing_tokens: list,
                         chosen_tokens: list) -> tuple[list[dict], list[dict], int]:
     """Vorschläge für einen Ortsbereich: eigene, nebenan, und wie weit zurück.
 
@@ -352,12 +352,12 @@ def _lokale_vorschlaege(council: CouncilStore, place, existing_tokens: list,
     eine Behauptung.
     """
     letzte: list[dict] = []
-    for tage in ORTS_FENSTER_TAGE:
+    for tage in LOCAL_WINDOW_DAYS:
         # `chosen_tokens` NICHT je Runde mitschreiben lassen: Ein Vorschlag, den
         # das enge Fenster schon verworfen hat, würde sich sonst im weiten selbst
         # blockieren. Erst das Ergebnis der gewählten Runde zählt.
         probe = list(chosen_tokens)
-        gefunden = _vorschlaege_bauen(
+        gefunden = _build_suggestions(
             council, council.suggested_entity_topics(days_back=tage, limit=16, place_id=place.id),
             existing_tokens, probe, limit=6)
         letzte = gefunden
@@ -370,7 +370,7 @@ def _lokale_vorschlaege(council: CouncilStore, place, existing_tokens: list,
     if len(letzte) < 6:
         from council import geo
 
-        for nachbar in geo.nachbar_ortsbereiche(place.name, NACHBARN):
+        for nachbar in geo.nachbar_ortsbereiche(place.name, NEIGHBOURS):
             if len(letzte) + len(nebenan) >= 6:
                 break
             nb = council.resolve_place(nachbar)
@@ -378,9 +378,9 @@ def _lokale_vorschlaege(council: CouncilStore, place, existing_tokens: list,
                 continue
             # Immer das weiteste Fenster: Nebenan ist ohnehin der Notnagel, da
             # zählt „gibt es überhaupt etwas" mehr als „ist es taufrisch".
-            for eintrag in _vorschlaege_bauen(
+            for eintrag in _build_suggestions(
                 council,
-                council.suggested_entity_topics(days_back=ORTS_FENSTER_TAGE[-1], limit=16,
+                council.suggested_entity_topics(days_back=LOCAL_WINDOW_DAYS[-1], limit=16,
                                                 place_id=nb.id),
                 existing_tokens, chosen_tokens, limit=6 - len(letzte) - len(nebenan),
             ):
@@ -418,7 +418,7 @@ def topic_suggestions(
         place = council.resolve_place(wunsch)
         if not place:
             continue                              # geraten oder veraltet — still übergehen
-        lokal, nebenan, fenster = _lokale_vorschlaege(
+        lokal, nebenan, fenster = _local_suggestions(
             council, place, existing_tokens, chosen_tokens)
         # Auch mit leerer Liste antworten: „In diesem Stadtteil war zuletzt
         # nichts" ist eine Auskunft. Ein weggelassener Block sähe aus wie ein
@@ -426,7 +426,7 @@ def topic_suggestions(
         gruppen.append({"place_id": place.id, "name": place.name,
                         "suggestions": lokal, "nearby": nebenan, "months": fenster})
 
-    stadtweit = _vorschlaege_bauen(
+    stadtweit = _build_suggestions(
         council, council.suggested_entity_topics(days_back=365, limit=16),
         existing_tokens, chosen_tokens, limit=6)
     return {"suggestions": stadtweit, "districts": gruppen}

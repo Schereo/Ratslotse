@@ -168,7 +168,7 @@ def _name_occurs_in_evidence(name: str, evidence: str) -> bool:
 #: sind. Ein Personalbeschluss wurde dadurch nach der Privatadresse eines
 #: Mitglieds verortet. Doppelt falsch: sachlich (der Vorgang betrifft keinen
 #: Ort) und weil eine Wohnanschrift nichts in unserer Datenbank zu suchen hat.
-_WOHNANSCHRIFT_RE = re.compile(r"\d{1,3}\s*[a-z]?\s*,\s*\d{5}\s", re.IGNORECASE)
+_HOME_ADDRESS_RE = re.compile(r"\d{1,3}\s*[a-z]?\s*,\s*\d{5}\s", re.IGNORECASE)
 
 #: Vorgänge, die die ganze Stadt betreffen. Ein Ort im VORLAGENTEXT ist dort
 #: fast immer ein Beispiel („die Grundschule Harlingerstraße nimmt teil"), kein
@@ -184,7 +184,7 @@ _WOHNANSCHRIFT_RE = re.compile(r"\d{1,3}\s*[a-z]?\s*,\s*\d{5}\s", re.IGNORECASE)
 #: Die Wortgrenze HINTEN bleibt und trägt die Sicherheit: „Satzungsbeschluss"
 #: (das Ende jedes Bebauungsplan-Verfahrens) endet nicht auf „satzung" und
 #: bleibt damit unangetastet.
-_STADTWEIT_HINTERGLIED = (
+_CITYWIDE_COMPOUND_TAIL = (
     "programm", "konzept", "satzung", "richtlinie", "verordnung", "strategie",
     "haushalt", "jahresabschluss", "wirtschaftsplan", "stellenplan",
 )
@@ -192,7 +192,7 @@ _STADTWEIT_HINTERGLIED = (
 #: Wörter, die nur ALLEIN zählen. „pass" braucht die Grenze („Oldenburg Pass",
 #: aber nicht „Kompass"), und Planarten dürfen sich nicht öffnen — sonst zöge
 #: „…plan" den Bebauungsplan mit herein, den ortsbezogensten Vorgang überhaupt.
-_STADTWEIT_ALLEIN = (
+_CITYWIDE_STANDALONE = (
     r"beteiligungsbericht|gebührenordnung|entgeltordnung|"
     r"besetzung|umbesetzung|nachbesetzung|bestellung|entsendung|berufung|"
     r"wahl\s+(?:des|der|von)|leitlinie|leitfaden|leitantrag|"
@@ -200,22 +200,22 @@ _STADTWEIT_ALLEIN = (
     r"pass|zuwendung|förderrichtlinie|sachstandsbericht|evaluation"
 )
 
-_STADTWEIT_RE = re.compile(
-    r"(?:\w*(?:" + "|".join(_STADTWEIT_HINTERGLIED) + r")|"
-    r"\b(?:" + _STADTWEIT_ALLEIN + r"))\b",
+_CITYWIDE_RE = re.compile(
+    r"(?:\w*(?:" + "|".join(_CITYWIDE_COMPOUND_TAIL) + r")|"
+    r"\b(?:" + _CITYWIDE_STANDALONE + r"))\b",
     re.IGNORECASE)
 
 
-def betrifft_ganze_stadt(title: str | None) -> bool:
+def affects_whole_city(title: str | None) -> bool:
     """Ist der Vorgang seinem Titel nach eine stadtweite Angelegenheit?
 
     Nur eine Vorprüfung — sie entscheidet nichts allein, sondern nur zusammen
-    mit „und im Titel steht kein Ort" (siehe ``ortsbezug_ist_beiwerk``).
+    mit „und im Titel steht kein Ort" (siehe ``location_is_incidental``).
     """
-    return bool(_STADTWEIT_RE.search(" ".join((title or "").split())))
+    return bool(_CITYWIDE_RE.search(" ".join((title or "").split())))
 
 
-def ortsbezug_ist_beiwerk(title: str | None, kandidat: dict,
+def location_is_incidental(title: str | None, candidate: dict,
                           catalog_places=None) -> bool:
     """Ist dieser Ortsfund bloßes Beiwerk eines stadtweiten Vorgangs?
 
@@ -234,9 +234,9 @@ def ortsbezug_ist_beiwerk(title: str | None, kandidat: dict,
     2. Im Titel selbst steht kein Ort — „Masterplan Fliegerhorst" bleibt.
     3. Der Fund stammt aus dem Vorlagentext, nicht aus Titel oder Beschluss.
     """
-    if not betrifft_ganze_stadt(title):
+    if not affects_whole_city(title):
         return False
-    if kandidat.get("source") != "template":
+    if candidate.get("source") != "template":
         return False
     # Nennt der Titel selbst irgendeinen Ort, ist der Vorgang trotz stadtweiter
     # Vokabel verortet — dann gilt die Regel nicht.
@@ -248,7 +248,7 @@ def ortsbezug_ist_beiwerk(title: str | None, kandidat: dict,
     # zu einem konkreten Gebiet; der Genitiv „Heidbrooks" rutscht aber durch
     # die Muster oben hindurch. Ohne diese zweite Prüfung verlor der Beschluss
     # auf dem Prod-Bestand alle fünf Ortsbezüge, auch den richtigen.
-    if _name_occurs_in_evidence(kandidat.get("name") or "", title or ""):
+    if _name_occurs_in_evidence(candidate.get("name") or "", title or ""):
         return False
     return True
 
@@ -269,7 +269,7 @@ def valid_llm_location(name: str, kind: str, evidence: str) -> bool:
         return False
     if _WEB_ADDRESS_RE.search(clean_name):
         return False
-    if _WOHNANSCHRIFT_RE.search(clean_evidence):
+    if _HOME_ADDRESS_RE.search(clean_evidence):
         return False
     # Gattungsbegriffe wurden bisher nur im Regex-Kanal gefiltert; über das
     # Modell kamen sie ungehindert durch — „Gemeindestraße" und „Radweg"

@@ -169,7 +169,7 @@ def test_derselbe_stadtteil_zweimal_zaehlt_einmal(client):
 
 
 def test_die_listen_ueberschneiden_sich_nicht(client):
-    """Der Grund für das gemeinsame Gedächtnis in ``_vorschlaege_bauen``:
+    """Der Grund für das gemeinsame Gedächtnis in ``_build_suggestions``:
     Ohne es stünde dieselbe Baustelle zweimal untereinander — einmal unter
     einem Stadtteil, einmal unter „stadtweit"."""
     _register(client)

@@ -183,7 +183,7 @@ def test_stadtweit_erkennt_das_hinterglied_im_kompositum():
                   "Oldenburger Leitfaden für die Einrichtung von Fahrradstraßen",
                   "Berufung eines Lehrervertreters in den Schulausschuss",
                   "Leitantrag Fridays for Future - Workshop Verkehr"):
-        assert locations.betrifft_ganze_stadt(titel), titel
+        assert locations.affects_whole_city(titel), titel
 
 
 def test_satzungsbeschluss_ist_kein_stadtweiter_vorgang():
@@ -200,7 +200,7 @@ def test_satzungsbeschluss_ist_kein_stadtweiter_vorgang():
                   "Ausbau Ziegelhofstraße von Auguststraße bis Würzburger Straße",
                   "Erneuerung Brücke Tweelbäker See - Beschlussantrag",
                   "Neugestaltung des Außengeländes an der IGS Kreyenbrück"):
-        assert not locations.betrifft_ganze_stadt(titel), titel
+        assert not locations.affects_whole_city(titel), titel
 
 
 def test_falscher_stadtteil_wird_von_der_geometrie_korrigiert(tmp_path):
@@ -220,7 +220,7 @@ def test_falscher_stadtteil_wird_von_der_geometrie_korrigiert(tmp_path):
             store._conn.execute(
                 "INSERT INTO council_locations (slug,name,kind,district,geojson,updated_at) "
                 "VALUES ('a','Testweg','street','Eversten',?,'2026-09-01')", (linie,))
-        assert store.korrigiere_widerspruechliche_stadtteile() == 1
+        assert store.fix_contradicting_districts() == 1
         assert store._conn.execute(
             "SELECT district FROM council_locations WHERE slug='a'").fetchone()["district"] == "Ohmstede"
     finally:
@@ -242,7 +242,7 @@ def test_mehrbereichs_strasse_bleibt_wie_eingetragen(tmp_path):
             store._conn.execute(
                 "INSERT INTO council_locations (slug,name,kind,district,geojson,updated_at) "
                 "VALUES ('b','Langstraße','street',?,?,'2026-09-01')", (eingetragen, linie))
-        assert store.korrigiere_widerspruechliche_stadtteile() == 0
+        assert store.fix_contradicting_districts() == 0
     finally:
         store.close()
 
@@ -262,7 +262,7 @@ def test_gleichnamiger_ort_ist_der_stadtteil(tmp_path):
             store._conn.execute(
                 "INSERT INTO council_locations (slug,name,kind,district,updated_at) "
                 "VALUES ('g','Grundschule Drielake','building','Osternburg','2026-09-01')")
-        assert store.korrigiere_gleichnamige_stadtteile() == 1
+        assert store.fix_eponymous_districts() == 1
         namen = {r["slug"]: r["district"] for r in store._conn.execute(
             "SELECT slug, district FROM council_locations")}
         assert namen == {"d": "Drielake", "g": "Osternburg"}
@@ -297,19 +297,19 @@ def test_gattungsfilter_trifft_keine_eigennamen():
     ("Neubau der Cäcilienbrücke", False),
 ])
 def test_erkennt_stadtweite_vorgaenge(titel, erwartet):
-    assert locations.betrifft_ganze_stadt(titel) is erwartet
+    assert locations.affects_whole_city(titel) is erwartet
 
 
 def test_ortsbezug_nur_aus_der_vorlage_faellt_bei_stadtweitem_weg():
     """Der zweite Fehler: „Oldenburg Pass" hing an der Adresse der VWG."""
     kandidat = {"name": "VWG", "source": "template"}
-    assert locations.ortsbezug_ist_beiwerk("Oldenburg Pass – Bericht 2021", kandidat)
+    assert locations.location_is_incidental("Oldenburg Pass – Bericht 2021", kandidat)
 
 
 def test_ort_im_titel_schuetzt_den_vorgang():
     """„Masterplan Fliegerhorst" ist stadtweit formuliert und trotzdem verortet."""
     kandidat = {"name": "Fliegerhorst", "source": "template"}
-    assert not locations.ortsbezug_ist_beiwerk(
+    assert not locations.location_is_incidental(
         "Masterplan Fliegerhorst - Energiekonzept", kandidat)
 
 
@@ -321,10 +321,10 @@ def test_genitiv_im_titel_schuetzt_ebenfalls():
     Ortsmustern nicht als Nennung erkannt.
     """
     kandidat = {"name": "Heidbrook", "source": "template"}
-    assert not locations.ortsbezug_ist_beiwerk(
+    assert not locations.location_is_incidental(
         "Unterschutzstellung des Heidbrooks - Sachstandsbericht", kandidat)
     # Eine Straße, die nur nebenbei in der Vorlage steht, fällt sehr wohl weg.
-    assert locations.ortsbezug_ist_beiwerk(
+    assert locations.location_is_incidental(
         "Unterschutzstellung des Heidbrooks - Sachstandsbericht",
         {"name": "Ammerländer Heerstraße", "source": "template"})
 
@@ -332,7 +332,7 @@ def test_genitiv_im_titel_schuetzt_ebenfalls():
 def test_fund_aus_titel_oder_beschluss_bleibt_immer():
     """Die Regel greift nur auf Funde aus dem Vorlagentext."""
     for quelle in ("title", "official_text"):
-        assert not locations.ortsbezug_ist_beiwerk(
+        assert not locations.location_is_incidental(
             "Änderung der Marktgebührensatzung", {"name": "Rathausmarkt", "source": quelle})
 
 

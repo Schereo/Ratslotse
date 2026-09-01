@@ -69,7 +69,7 @@ def process(council_db: Path, *, full: bool = False, limit: int | None = None,
             # Titel selbst einen Ort, greift die Regel nicht.
             vorher = len(merged)
             merged = [k for k in merged
-                      if not locations.ortsbezug_ist_beiwerk(
+                      if not locations.location_is_incidental(
                           row.get("title"), k, catalog_places=place_catalog)]
             beiwerk += vorher - len(merged)
             # Nur ein vollständiger LLM-Lauf (oder bewusst --no-llm) setzt den
