@@ -5,7 +5,7 @@ recap — one lead line plus 3–4 bullet points (the frontend renders them as a
 scannable digest card; old prose recaps fall back to a paragraph). Owner-agnostic
 like ``topics.py``; the offline cron (``scripts/generate_field_recaps.py``) stores
 the result and the web service only ever reads it. The prompt template lives in
-``kern/prompts.py`` („recap_themenfeld").
+``kern/prompts.py`` („recap_policy_field").
 """
 from __future__ import annotations
 
@@ -36,7 +36,7 @@ def _render_items(decisions: list[dict]) -> str:
 def generate_recap(field_label: str, decisions: list[dict], model: str = MODEL) -> str:
     """Return a recap for one field (lead line + "- "-bullets). Raises on an
     empty LLM reply."""
-    prompt = prompts.render("recap_themenfeld", field=field_label, items=_render_items(decisions))
+    prompt = prompts.render("recap_policy_field", field=field_label, items=_render_items(decisions))
     extra: dict = {}
     if "deepseek" in model:
         extra = {"extra_body": {"reasoning": {"enabled": False}}}
