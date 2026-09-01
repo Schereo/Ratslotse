@@ -141,6 +141,11 @@ export function StadtteilKarte({ gewaehlt, auswaehlbar, onWaehlen, className }: 
             const hell = schwebt === f.name && offen;
             return (
               <path key={f.name} d={f.d}
+                role="button" tabIndex={offen ? 0 : -1}
+                aria-pressed={aktiv} aria-label={f.name}
+                onKeyDown={(e) => {
+                  if (offen && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onWaehlen(f.name); }
+                }}
                 className={cn(
                   "transition-[fill,stroke] duration-150",
                   offen ? "cursor-pointer" : "cursor-default",
@@ -155,7 +160,12 @@ export function StadtteilKarte({ gewaehlt, auswaehlbar, onWaehlen, className }: 
                 onMouseEnter={() => setSchwebt(f.name)}
                 onMouseLeave={() => setSchwebt((n) => (n === f.name ? null : n))}
                 onClick={() => offen && onWaehlen(f.name)}
-              />
+              >
+                {/* Nativer Tooltip: Der eingeblendete Name folgt erst dem
+                    Hover-Zustand von React, `<title>` steht sofort — und ist
+                    zugleich der zugängliche Name der Fläche. */}
+                <title>{f.name}</title>
+              </path>
             );
           })}
           {/* Nur der gewählte trägt seinen Namen. 31 Beschriftungen auf 460 px

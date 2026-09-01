@@ -311,11 +311,25 @@ class ThemenVorschlag(TypedDict):
     n: int
 
 
+class NachbarVorschlag(ThemenVorschlag):
+    #: Aus welchem Ortsbereich dieser Vorschlag stammt. Muss mit — ihn unter der
+    #: Überschrift des Nachbarn zu zeigen wäre schlicht falsch.
+    place: str
+
+
 class StadtteilVorschlaege(TypedDict):
     """Vorschläge aus EINEM Ortsbereich, mitsamt dem Ort, für den sie gelten."""
     place_id: str
     name: str
     suggestions: list[ThemenVorschlag]
+    #: Aus den nächstgelegenen Ortsbereichen, nur wenn der eigene keine sechs
+    #: hergibt (15 von 31 tun das nicht). Getrennt, damit die Oberfläche es
+    #: getrennt beschriften kann.
+    nearby: list[NachbarVorschlag]
+    #: Wie weit zurück gesucht wurde (Monate). In lebhaften Stadtteilen reicht
+    #: ein Jahr, in ruhigen braucht es zwei oder drei — die Oberfläche schreibt
+    #: den Zeitraum dazu, statt stillschweigend Aktualität zu behaupten.
+    months: int
 
 
 class ThemenVorschlaege(TypedDict):

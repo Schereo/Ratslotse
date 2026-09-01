@@ -71,21 +71,32 @@ IM_ORT = {
     "Weser-Ems-Hallen": "ziegelhof",
 }
 
+#: Genug für die vollen sechs in Osternburg (für ``_saat(viele=True)``).
+IM_ORT_VIELE = {
+    **IM_ORT,
+    "Hafenbahn": "osternburg", "Bürgerbusch": "osternburg",
+    "Klingenbergplatz": "osternburg", "Sportpark Osternburg": "osternburg",
+}
 
-def _saat() -> None:
+
+def _saat(viele: bool = False) -> None:
     """Drei Entitäten, zwei davon in Osternburg — je zwei Beschlüsse (das
-    Minimum, das ``suggested_entity_topics`` verlangt)."""
+    Minimum, das ``suggested_entity_topics`` verlangt).
+
+    ``viele=True`` legt in Osternburg genug an, dass der Stadtteil die sechs
+    aus eigener Kraft schafft und keine Nachbarschaft braucht."""
+    orte = IM_ORT_VIELE if viele else IM_ORT
     council = CouncilStore(Path(_pfade()[1]))
     jung = (date.today() - timedelta(days=20)).isoformat()
     jetzt = datetime.now(timezone.utc).isoformat(timespec="seconds")
     council.save_session(CouncilSession(1, "Rat", jung, "17:00", "Ratssaal"))
     with council._conn:
-        for i in range(6):
+        for i in range(2 * len(orte)):
             council._insert_decision(1, i, "decision", None, f"Ö {i}", f"Beschluss {i}", "B",
                                      "accepted", None, None, None, [], None, None, None)
         ids = [r[0] for r in council._conn.execute(
             "SELECT id FROM council_decisions ORDER BY id").fetchall()]
-        for eid, (name, ort) in enumerate(IM_ORT.items(), start=1):
+        for eid, (name, ort) in enumerate(orte.items(), start=1):
             slug = name.lower().replace(" ", "-")
             council._conn.execute(
                 "INSERT INTO council_entities (id, slug, name, kind, n) VALUES (?,?,?,'ort',3)",
@@ -112,7 +123,7 @@ def _saat() -> None:
     # und genau daran hingen diese Tests: einzeln grün, in der vollen Suite mit
     # LEERER Vorschlagsliste rot. Geprüft wird hier die Ortsaufteilung, nicht
     # die Vagheitsprüfung — die hat ihre eigenen Tests.
-    for name in IM_ORT:
+    for name in orte:
         council.save_topic_vagueness(name.lower().replace(" ", "-"), name,
                                      {"vague": False, "hint": "", "suggestion": ""})
     council.close()
@@ -180,6 +191,47 @@ def test_leerer_stadtteil_antwortet_trotzdem(client):
     assert antwort["districts"][0]["suggestions"] == []
     # Und die stadtweite Liste bleibt vollständig.
     assert {s["name"] for s in antwort["suggestions"]} == set(IM_ORT)
+
+
+def test_duenner_stadtteil_wird_von_nebenan_aufgefuellt(client):
+    """Der Grund, warum es „nebenan" überhaupt gibt.
+
+    Am Prod-Bestand nachgemessen (01.09.2026): 15 der 31 Ortsbereiche kommen
+    selbst über drei Jahre nicht auf sechs Vorschläge, zwei auf gar keinen. Ein
+    dauerhaft leerer Block wäre dort das Ergebnis. Hier hat Drielake nichts
+    Eigenes; seine drei nächsten Ortsbereiche sind Drielaker-Moor, Osternburg
+    und Gerichtsviertel — aus Osternburg muss es also auffüllen.
+    """
+    _register(client)
+    _saat()
+    antwort = client.get("/api/topics/suggestions?district=drielake").json()
+    gruppe = antwort["districts"][0]
+    assert gruppe["name"] == "Drielake"
+    assert gruppe["suggestions"] == []             # in Eversten selbst nichts
+    assert gruppe["nearby"], "dünner Stadtteil bekam keine Nachbarschaft"
+    # Jeder Nachbar-Vorschlag sagt, WOHER er kommt — ohne das wäre er unter der
+    # Überschrift des eigenen Stadtteils eine Falschauskunft.
+    assert all(v.get("place") for v in gruppe["nearby"])
+    assert {v["place"] for v in gruppe["nearby"]} == {"Osternburg"}
+
+
+def test_voller_stadtteil_braucht_kein_nebenan(client):
+    """Wer selbst genug hat, bekommt keine fremden Vorschläge untergemischt."""
+    _register(client)
+    _saat(viele=True)
+    antwort = client.get("/api/topics/suggestions?district=osternburg").json()
+    gruppe = antwort["districts"][0]
+    assert len(gruppe["suggestions"]) >= 6
+    assert gruppe["nearby"] == []
+
+
+def test_zeitfenster_wird_mitgeliefert(client):
+    """Die Oberfläche schreibt den Zeitraum dazu, sobald er über ein Jahr geht —
+    stumm zu weiten hieße, Aktualität zu behaupten."""
+    _register(client)
+    _saat()
+    gruppe = client.get("/api/topics/suggestions?district=osternburg").json()["districts"][0]
+    assert gruppe["months"] in (12, 24, 36)
 
 
 def test_unbekannter_ortsbereich_faellt_still_zurueck(client):

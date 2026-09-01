@@ -311,6 +311,77 @@ def _vorschlaege_bauen(council: CouncilStore, candidates: list[dict],
     return out
 
 
+#: Zeitfenster für die Stadtteil-Vorschläge, von eng nach weit. Ein FESTES Jahr
+#: reichte nicht: Am Prod-Bestand (01.09.2026 nachgemessen) lieferten 6 der 31
+#: Ortsbereiche darin gar nichts und 4 weitere ein bis zwei Vorschläge — wer
+#: dort wohnt, sah einen leeren Block. Mit dem gleitenden Fenster steht überall
+#: etwas. Erst die Zeit lockern und nicht die Qualitätsregeln: Ein zwei Jahre
+#: alter echter Vorgang ist ein besserer Vorschlag als eine Adresse von gestern.
+ORTS_FENSTER_TAGE = (365, 730, 1095)
+
+#: Wie viele Nachbar-Ortsbereiche einen dünnen Stadtteil auffüllen dürfen. Drei
+#: reichen: Damit kommen auf dem Prod-Bestand alle 31 auf sechs Vorschläge.
+NACHBARN = 3
+
+
+def _lokale_vorschlaege(council: CouncilStore, place, existing_tokens: list,
+                        chosen_tokens: list) -> tuple[list[dict], list[dict], int]:
+    """Vorschläge für einen Ortsbereich: eigene, nebenan, und wie weit zurück.
+
+    Gibt zurück, WIE WEIT gesucht wurde (in Monaten): Die Oberfläche schreibt das
+    dazu. „Aus Bornhorst" über einen drei Jahre alten Vorgang wäre sonst eine
+    stille Behauptung von Aktualität — und die Designsprache verlangt bei Mengen
+    ohnehin Zahl **und** Zeitraum.
+
+    **Warum es „nebenan" gibt.** Am Prod-Bestand nachgemessen (01.09.2026):
+    Selbst über drei Jahre kommen 15 der 31 Ortsbereiche nicht auf sechs
+    Vorschläge, zwei auf gar keinen — im Dobbenviertel oder in Nordmoslesfehn
+    hat der Rat schlicht kaum etwas verhandelt. Ein leerer Block wäre dort das
+    Ergebnis, und zwar dauerhaft. Mit den drei nächstgelegenen Ortsbereichen
+    füllen sich **alle 31** auf sechs.
+
+    Getrennt zurückgegeben und in der Oberfläche getrennt beschriftet: Ein
+    Vorgang aus Haarenesch unter der Überschrift „Aus Dobbenviertel" wäre
+    schlicht falsch. Nebenan ist eine ehrliche Auskunft, verkleidet wäre es
+    eine Behauptung.
+    """
+    letzte: list[dict] = []
+    for tage in ORTS_FENSTER_TAGE:
+        # `chosen_tokens` NICHT je Runde mitschreiben lassen: Ein Vorschlag, den
+        # das enge Fenster schon verworfen hat, würde sich sonst im weiten selbst
+        # blockieren. Erst das Ergebnis der gewählten Runde zählt.
+        probe = list(chosen_tokens)
+        gefunden = _vorschlaege_bauen(
+            council, council.suggested_entity_topics(days_back=tage, limit=16, place_id=place.id),
+            existing_tokens, probe, limit=6)
+        letzte = gefunden
+        if len(gefunden) >= 6:
+            break
+    for eintrag in letzte:
+        chosen_tokens.append(_name_tokens(eintrag["name"]))
+
+    nebenan: list[dict] = []
+    if len(letzte) < 6:
+        from council import geo
+
+        for nachbar in geo.nachbar_ortsbereiche(place.name, NACHBARN):
+            if len(letzte) + len(nebenan) >= 6:
+                break
+            nb = council.resolve_place(nachbar)
+            if not nb:
+                continue
+            # Immer das weiteste Fenster: Nebenan ist ohnehin der Notnagel, da
+            # zählt „gibt es überhaupt etwas" mehr als „ist es taufrisch".
+            for eintrag in _vorschlaege_bauen(
+                council,
+                council.suggested_entity_topics(days_back=ORTS_FENSTER_TAGE[-1], limit=16,
+                                                place_id=nb.id),
+                existing_tokens, chosen_tokens, limit=6 - len(letzte) - len(nebenan),
+            ):
+                nebenan.append({**eintrag, "place": nb.name})
+    return letzte, nebenan, round(tage / 30.4)
+
+
 @router.get("/suggestions")
 def topic_suggestions(
     district: Annotated[list[str], Query()] = [],  # noqa: B006 — FastAPI liest die Vorgabe nur
@@ -341,13 +412,13 @@ def topic_suggestions(
         place = council.resolve_place(wunsch)
         if not place:
             continue                              # geraten oder veraltet — still übergehen
-        lokal = _vorschlaege_bauen(
-            council, council.suggested_entity_topics(days_back=365, limit=16, place_id=place.id),
-            existing_tokens, chosen_tokens, limit=6)
+        lokal, nebenan, fenster = _lokale_vorschlaege(
+            council, place, existing_tokens, chosen_tokens)
         # Auch mit leerer Liste antworten: „In diesem Stadtteil war zuletzt
         # nichts" ist eine Auskunft. Ein weggelassener Block sähe aus wie ein
         # Fehler.
-        gruppen.append({"place_id": place.id, "name": place.name, "suggestions": lokal})
+        gruppen.append({"place_id": place.id, "name": place.name,
+                        "suggestions": lokal, "nearby": nebenan, "months": fenster})
 
     stadtweit = _vorschlaege_bauen(
         council, council.suggested_entity_topics(days_back=365, limit=16),

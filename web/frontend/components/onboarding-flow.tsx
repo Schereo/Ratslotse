@@ -477,15 +477,27 @@ function CommitteeStep({ onNext }: { onNext: () => void }) {
 
 /* -------------------------------------------------- Schritt 2: Stadtteil --- */
 
-type Ortsbereich = { place_id: string; name: string; description?: string | null; count?: number };
+type Ortsbereich = {
+  place_id: string; name: string; kind?: string;
+  description?: string | null; count?: number;
+};
 
-/** Die Ortsbereiche, zu denen es überhaupt Beschlüsse gibt. Zwei Schritte
- *  brauchen sie (Auswahl und Vorschläge), deshalb ein gemeinsamer Query-Key. */
+/** Die Stadtteile, zu denen es überhaupt Beschlüsse gibt. Zwei Schritte
+ *  brauchen sie (Auswahl und Vorschläge), deshalb ein gemeinsamer Query-Key.
+ *
+ *  **Nur `kind === "ortsbereich"`.** `/council/districts` liefert für den
+ *  Beschlussfilter auch die kuratierten Teilorte mit — „Alte Fleiwa",
+ *  „Technologiepark Oldenburg", „Eversten Holz". Im Beschlussfilter ist das
+ *  richtig, hier nicht: Auf dem Prod-Bestand standen dadurch 40 Pillen unter
+ *  einer Karte mit 31 Flächen, und „Alte Fleiwa" als Stadtteil anzubieten ist
+ *  schlicht falsch. Die 31 flächendeckenden Ortsbereiche sind die Auswahl. */
 function useOrtsbereiche() {
   return useQuery({
     queryKey: ["council-districts"],
     queryFn: () => api.get<{ districts: Ortsbereich[] }>("/council/districts")
-      .then((d) => d.districts.slice().sort((a, b) => a.name.localeCompare(b.name, "de"))),
+      .then((d) => d.districts
+        .filter((o) => o.kind === "ortsbereich")
+        .sort((a, b) => a.name.localeCompare(b.name, "de"))),
     staleTime: 10 * 60_000,
   });
 }
@@ -660,7 +672,12 @@ function TopicStep({ onNext }: { onNext: () => void }) {
     queryKey: ["topic-suggestions", ortsIds.join(",")],
     queryFn: () => api.get<{
       suggestions: Vorschlag[];
-      districts: { place_id: string; name: string; suggestions: Vorschlag[] }[];
+      districts: {
+        place_id: string; name: string; months: number;
+        suggestions: Vorschlag[];
+        /** Aus den nächsten Ortsbereichen — jeder trägt seinen Herkunftsort. */
+        nearby: (Vorschlag & { place: string })[];
+      }[];
     }>(`/topics/suggestions${ortsIds.length
       ? `?${ortsIds.map((id) => `district=${encodeURIComponent(id)}`).join("&")}` : ""}`),
     // Erst fragen, wenn die Auswahl feststeht — sonst liefe ein erster Aufruf
@@ -759,20 +776,41 @@ function TopicStep({ onNext }: { onNext: () => void }) {
           einmal auf. */}
       {gruppen.map((g) => (
         <div key={g.place_id} className="mt-4">
-          <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.06em] text-primary">
+          <p className="flex flex-wrap items-center gap-x-1.5 text-[11px] font-bold uppercase tracking-[0.06em] text-primary">
             <MapPin className="h-3 w-3" />
             Aus {g.name}
+            {/* Zeitraum dazuschreiben, sobald es mehr als ein Jahr war. In
+                ruhigen Stadtteilen reicht ein Jahr nicht für sechs Vorschläge;
+                das stumm zu weiten hieße, Aktualität zu behaupten. */}
+            {g.months > 12 && (
+              <span className="font-medium normal-case tracking-normal text-muted-foreground">
+                · letzte {Math.round(g.months / 12)} Jahre
+              </span>
+            )}
           </p>
           {g.suggestions.length > 0 ? (
             <VorschlagsChips vorschlaege={g.suggestions} vorhanden={mine} busy={busy} betont
               onWaehlen={(v) => void add(v.name, v.description, v.n)} />
           ) : (
-            // Leere Liste ausdrücklich benennen. Ein weggelassener Block sähe
-            // aus, als hätte der Schritt etwas verschluckt.
+            // Leere Liste ausdrücklich benennen statt den Block wegzulassen —
+            // sonst sähe es aus, als hätte der Schritt etwas verschluckt.
             <p className="mt-2 text-xs text-muted-foreground">
-              In {g.name} hat der Rat im letzten Jahr nichts Größeres verhandelt.
-              {" "}Der Stadtteil bleibt trotzdem beobachtet — Lotti meldet sich, sobald etwas kommt.
+              Im Rat war {g.name} zuletzt kaum ein Thema. Der Stadtteil bleibt trotzdem
+              beobachtet — Lotti meldet sich, sobald etwas kommt.
             </p>
+          )}
+
+          {/* Nebenan: nur wenn der Stadtteil selbst keine sechs hergibt. Eigene
+              Beschriftung, weil es eben NICHT aus diesem Stadtteil ist — unter
+              „Aus Dobbenviertel" wäre das Kulturzentrum PFL schlicht falsch. */}
+          {g.nearby.length > 0 && (
+            <>
+              <p className="mt-3 text-[11px] font-bold uppercase tracking-[0.06em] text-muted-foreground">
+                Direkt nebenan
+              </p>
+              <VorschlagsChips vorschlaege={g.nearby} vorhanden={mine} busy={busy}
+                onWaehlen={(v) => void add(v.name, v.description, v.n)} />
+            </>
           )}
         </div>
       ))}
@@ -810,7 +848,11 @@ function TopicStep({ onNext }: { onNext: () => void }) {
   );
 }
 
-type Vorschlag = { name: string; description: string; n: number; context?: string | null };
+type Vorschlag = {
+  name: string; description: string; n: number; context?: string | null;
+  /** Nur bei „nebenan": aus welchem Ortsbereich der Vorschlag stammt. */
+  place?: string;
+};
 
 /** Eine Reihe anklickbarer Vorschläge. Eigene Komponente, seit es zwei Gruppen
  *  gibt (Stadtteil und stadtweit) — sie müssen gleich aussehen und sich gleich
@@ -841,6 +883,9 @@ function VorschlagsChips({ vorschlaege, vorhanden, busy, betont, onWaehlen }: {
             )}>
             {have ? <Check className="h-3 w-3" /> : <Plus className="h-3 w-3 text-muted-foreground" />}
             {v.name}
+            {/* Ohne den Ortsnamen wäre „Kulturzentrum PFL" unter dem eigenen
+                Stadtteil eine Falschauskunft. */}
+            {v.place && <span className="text-[11px] text-muted-foreground">{v.place}</span>}
           </button>
         );
       })}

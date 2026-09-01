@@ -3212,6 +3212,34 @@
         "title": "Merkliste",
         "type": "object"
       },
+      "NachbarVorschlag": {
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "place": {
+            "title": "Place",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "description",
+          "n",
+          "place"
+        ],
+        "title": "NachbarVorschlag",
+        "type": "object"
+      },
       "NotifyPrefsIn": {
         "description": "Die sechs Anlass-Schalter aus Design 30a/E. Unbekannte Schlüssel wirft\nder Store weg — hier bleibt es bewusst offen, damit ein neu dazugekommener\nAnlass keinen 422 auslöst.",
         "properties": {
@@ -5217,9 +5245,20 @@
       "StadtteilVorschlaege": {
         "description": "Vorschläge aus EINEM Ortsbereich, mitsamt dem Ort, für den sie gelten.",
         "properties": {
+          "months": {
+            "title": "Months",
+            "type": "integer"
+          },
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "nearby": {
+            "items": {
+              "$ref": "#/components/schemas/NachbarVorschlag"
+            },
+            "title": "Nearby",
+            "type": "array"
           },
           "place_id": {
             "title": "Place Id",
@@ -5236,7 +5275,9 @@
         "required": [
           "place_id",
           "name",
-          "suggestions"
+          "suggestions",
+          "nearby",
+          "months"
         ],
         "title": "StadtteilVorschlaege",
         "type": "object"

@@ -144,6 +144,38 @@ def ortsbereich_center(name: str) -> tuple[float, float] | None:
     return ((min(lats) + max(lats)) / 2, (min(lons) + max(lons)) / 2)
 
 
+def nachbar_ortsbereiche(name: str, anzahl: int = 3) -> list[str]:
+    """Die ``anzahl`` nächstgelegenen Ortsbereiche — „direkt nebenan".
+
+    Über den Abstand der Mittelpunkte statt über gemeinsame Grenzpunkte: Die
+    Polygone sind per Douglas-Peucker auf ~25 m vereinfacht, gemeinsame Ecken
+    überleben das nicht zuverlässig. Für „welche liegen nah?" reicht der
+    Abstand, und er kann nicht ins Leere laufen.
+
+    Der ``cos(φ)``-Faktor muss sein: Auf 53° Nord ist ein Längengrad nur gut
+    0,6 Breitengrade breit, ohne ihn würde die Nachbarschaft in Ost-West-
+    Richtung systematisch zu weit gerechnet.
+    """
+    import math
+
+    hier = ortsbereich_center(name)
+    if not hier:
+        return []
+    kos = math.cos(math.radians(hier[0]))
+    entfernt = []
+    for place in places.primary_places():
+        if place.name == name:
+            continue
+        dort = ortsbereich_center(place.name)
+        if not dort:
+            continue
+        dlat = dort[0] - hier[0]
+        dlon = (dort[1] - hier[1]) * kos
+        entfernt.append((math.hypot(dlat, dlon), place.name))
+    entfernt.sort()
+    return [n for _, n in entfernt[:anzahl]]
+
+
 def _in_ring(lon: float, lat: float, ring: list[list[float]]) -> bool:
     inside = False
     j = len(ring) - 1

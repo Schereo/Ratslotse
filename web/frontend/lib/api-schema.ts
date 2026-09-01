@@ -4928,6 +4928,17 @@ export interface components {
             /** Bookmarks */
             bookmarks: components["schemas"]["Merkeintrag"][];
         };
+        /** NachbarVorschlag */
+        NachbarVorschlag: {
+            /** Description */
+            description: string;
+            /** N */
+            n: number;
+            /** Name */
+            name: string;
+            /** Place */
+            place: string;
+        };
         /**
          * NotifyPrefsIn
          * @description Die sechs Anlass-Schalter aus Design 30a/E. Unbekannte Schlüssel wirft
@@ -5696,8 +5707,12 @@ export interface components {
          * @description Vorschläge aus EINEM Ortsbereich, mitsamt dem Ort, für den sie gelten.
          */
         StadtteilVorschlaege: {
+            /** Months */
+            months: number;
             /** Name */
             name: string;
+            /** Nearby */
+            nearby: components["schemas"]["NachbarVorschlag"][];
             /** Place Id */
             place_id: string;
             /** Suggestions */
@@ -10801,4 +10816,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 7ad3a49ddd90661a83b7a6d60e0330f5d1e3993a3a0def6cf04b0295bd1a6240
+// vertrag-sha256: 21a023aee1f9f458843afe349d07fa422e0b61e727dcead3f1376b627b689ea0

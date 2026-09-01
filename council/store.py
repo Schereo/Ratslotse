@@ -10020,9 +10020,108 @@ class CouncilStore:
                HAVING n_recent >= 2
                ORDER BY n_recent DESC, avg_interest DESC, e.name
                LIMIT ?""",
-            (cutoff, cutoff, *ort_params, limit),
+            # Mit Ortsfilter großzügig holen und ERST DANACH sieben. Das Limit
+            # greift auf der rohen Reihenfolge (Häufigkeit), und die führen im
+            # Stadtteil die Adressen aus Bebauungsplänen an: Bei ``LIMIT 16``
+            # füllten sie die Liste, und nach dem Sieben blieb fast nichts übrig
+            # — auf dem Prod-Auszug lieferte Osternburg so EINEN Vorschlag statt
+            # sechs. Die Obergrenze bleibt als Riegel gegen einen Ausreißer.
+            (cutoff, cutoff, *ort_params, 400 if place_id else limit),
         ).fetchall()
-        return [dict(r) for r in rows]
+        kandidaten = [dict(r) for r in rows]
+        if not place_id:
+            return kandidaten
+        return self._ortsvorschlaege_ordnen(kandidaten, place, cutoff)[:limit]
+
+    #: Ab wie vielen Ortsbereichen eine Entität als stadtweit gilt. Auf dem
+    #: Prod-Bestand (01.09.2026) trennt 4 sauber: „Startchancen-Programm" (8),
+    #: „Lärmaktionsplan" (7), „Mobilitätsplan Oldenburg 2030" (6) und „Housing
+    #: First" (5) fallen raus, alles Ortsgebundene bleibt.
+    STADTWEIT_AB_ORTSBEREICHEN = 4
+
+    #: Was nach Adresse klingt statt nach Vorhaben. Solche Namen werden NICHT
+    #: verworfen — sie rutschen nur hinter alles andere.
+    _STRASSE = re.compile(r"(stra(ß|ss)e|str\.|weg|allee|ring|damm|chaussee|gasse|pfad|steig)$",
+                          re.IGNORECASE)
+    _STRASSE_VORNE = re.compile(r"^(am|an der|an den|auf dem|auf der|zum|zur|im|in der)\s",
+                                re.IGNORECASE)
+
+    @classmethod
+    def _klingt_nach_strasse(cls, name: str) -> bool:
+        kern = name.split("/")[0].strip()
+        return bool(cls._STRASSE.search(kern)) or bool(cls._STRASSE_VORNE.match(kern))
+
+    def _ortsvorschlaege_ordnen(self, kandidaten: list[dict], place, cutoff: str) -> list[dict]:
+        """Aussieben und ordnen, was für EINEN Ortsbereich vorgeschlagen wird.
+
+        Die rohe Abfrage liefert alles, was in einem Beschluss mit Ortsbezug
+        vorkam — und das ist zu grob. Am Prod-Bestand nachgemessen (01.09.2026)
+        standen unter „Osternburg" ganz oben „Sandweg, Ostweg, Danziger Straße",
+        die Cäcilienbrücke gar nicht; unter „Eversten" stand „Fliegerhorst".
+        Drei Ursachen, drei Regeln:
+
+        1. **Ein anderer Ortsbereich** ist kein Vorschlag für diesen. „Kreyenbrück-
+           Nord" unter Osternburg entsteht, weil ein Beschluss beide berührt.
+        2. **Stadtweite Programme** streuen über die halbe Stadt („Startchancen-
+           Programm" in 8 Ortsbereichen). Sie gehören in die stadtweite Liste,
+           nicht unter einen Stadtteil — dort sind sie das Gegenteil von
+           „ach, das betrifft mich".
+        3. **Koordinaten schlagen Nennung.** Wo eine Entität geocodiert ist
+           (gut die Hälfte), entscheidet ihr Punkt, nicht der Beschluss, in dem
+           sie erwähnt wurde. Ohne Koordinaten bleibt es bei der Nennung — die
+           Regel korrigiert nur nachweislich Falsches.
+
+        Und die Reihenfolge: Straßennamen nach hinten. Adressen aus Bebauungs-
+        plänen sind zwar Orte, aber nichts, dem man folgen möchte; sie bleiben
+        drin (manche Straße IST ein Vorhaben), stehen aber hinter allem anderen.
+        """
+        from council import geo, places
+
+        eigener = place.name.casefold()
+        fremde = {p.name.casefold() for p in places.primary_places()} - {eigener}
+        kandidaten = [k for k in kandidaten if (k.get("name") or "").casefold() not in fremde]
+        if not kandidaten:
+            return []
+
+        # Breite NUR für die Kandidaten bestimmen — über alle Entitäten wäre es
+        # ein Full-Scan im Web-Request.
+        slugs = [k.get("slug") or "" for k in kandidaten]
+        platz = ",".join("?" * len(slugs))
+        breite = {r["slug"]: r["orte"] for r in self._conn.execute(
+            f"""SELECT e.slug, COUNT(DISTINCT COALESCE(l.ortsbereich_id, l.district)) AS orte
+                  FROM council_entities e
+                  JOIN council_entity_links el ON el.entity_id = e.id
+                  JOIN council_decisions d ON d.id = el.decision_id
+                  JOIN council_sessions cs ON cs.ksinr = d.ksinr
+                  JOIN council_decision_locations dl ON dl.decision_id = d.id
+                  JOIN council_locations l ON l.slug = dl.location_slug
+                 WHERE e.slug IN ({platz}) AND cs.session_date >= ?
+                 GROUP BY e.slug""", (*slugs, cutoff)).fetchall()}
+
+        punkte = {r["slug"]: (r["lat"], r["lon"]) for r in self._conn.execute(
+            f"SELECT slug, lat, lon FROM council_entity_meta "
+            f"WHERE slug IN ({platz}) AND lat IS NOT NULL AND lon IS NOT NULL",
+            slugs).fetchall()}
+
+        behalten = []
+        for k in kandidaten:
+            slug = k.get("slug") or ""
+            if breite.get(slug, 1) >= self.STADTWEIT_AB_ORTSBEREICHEN:
+                continue
+            punkt = punkte.get(slug)
+            if punkt:
+                liegt_in = geo.ortsbereich_for(punkt[0], punkt[1])
+                if liegt_in and liegt_in.casefold() != eigener:
+                    continue
+            behalten.append(k)
+
+        behalten.sort(key=lambda k: (
+            self._klingt_nach_strasse(k.get("name") or ""),
+            -(k.get("avg_interest") or 50),
+            -(k.get("n_recent") or 0),
+            k.get("name") or "",
+        ))
+        return behalten
 
     def list_entities_geo(self) -> list[dict]:
         """Geocoded entities (points) for the city-wide map — slug, name, kind, n, lat, lon."""

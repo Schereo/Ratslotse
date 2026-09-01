@@ -20,10 +20,21 @@ Projekt liegen. Gefragt wird nach **Interesse, nicht nach der Wohnadresse**:
 nicht, und **mehrere sind möglich**.
 
 **Der Themen-Schritt trennt danach „bei dir" von „in der Stadt".** Je gewähltem
-Stadtteil steht zuerst, was der Rat dort im letzten Jahr verhandelt hat,
-darunter die stadtweiten Vorschläge — dieselbe Baustelle steht nie in zwei
-Listen. Hat der Rat in einem gewählten Stadtteil nichts verhandelt, steht genau
-das da, statt dass der Block verschwindet.
+Stadtteil steht zuerst, was der Rat dort verhandelt hat, darunter die
+stadtweiten Vorschläge — dieselbe Sache steht nie in zwei Listen. Was dort
+vorgeschlagen wird, ist am echten Ratsbestand geprüft und nachgeschärft: Unter
+„Osternburg" standen vorher „Sandweg, Ostweg, Danziger Straße" — Adressen aus
+Bebauungsplänen —, die Cäcilienbrücke dagegen gar nicht. Jetzt entscheiden drei
+Regeln, was oben steht: Ein anderer Stadtteil ist kein Vorschlag für diesen;
+stadtweite Programme gehören in die stadtweite Liste; und wo eine Sache
+geocodiert ist, entscheidet ihr Standort und nicht die bloße Erwähnung.
+Straßennamen bleiben drin, stehen aber hinter allem anderen.
+
+Und es steht überall etwas: In ruhigen Stadtteilen reicht ein Jahr nicht — der
+Zeitraum weitet sich dann auf zwei oder drei Jahre und wird dazugeschrieben.
+Wo auch das nicht trägt (im Dobbenviertel hat der Rat in drei Jahren praktisch
+nichts verhandelt), füllen die nächstgelegenen Stadtteile auf, sichtbar
+getrennt unter „Direkt nebenan" und jeder Vorschlag mit seiner Herkunft.
 
 Zwei Dinge sind bewusst anders als in der App. Der letzte Schritt fragt im
 Browser nach der **E-Mail** statt nach der Push-Erlaubnis — die gibt es dort
