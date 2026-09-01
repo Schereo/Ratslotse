@@ -99,7 +99,7 @@ def _saat(viele: bool = False) -> None:
         for eid, (name, ort) in enumerate(orte.items(), start=1):
             slug = name.lower().replace(" ", "-")
             council._conn.execute(
-                "INSERT INTO council_entities (id, slug, name, kind, n) VALUES (?,?,?,'ort',3)",
+                "INSERT INTO council_entities (id, slug, name, kind, n) VALUES (?,?,?,'place',3)",
                 (eid, slug, name))
             meine = ids[(eid - 1) * 2:(eid - 1) * 2 + 2]
             for did in meine:

@@ -120,7 +120,7 @@ def test_der_punkt_ueberlebt_die_wochenvorschau(tmp_path):
                 "created_at) VALUES (1, ?, ?, 'Grund', 'x')", (nr, value))
         store._conn.commit()
 
-        punkte = store.wochenvorschau(tage=10, max_punkte=40)["punkte"]
+        punkte = store.wochenvorschau(tage=10, max_punkte=40)["items"]
         nummern = [p["item_number"] for p in punkte]
         assert "DZT 1" in nummern
         assert "Ö 2" not in nummern            # die Formalie bleibt draußen
@@ -146,7 +146,7 @@ def test_der_punkt_ueberlebt_die_wochenvorschau(tmp_path):
                 "VALUES (1, ?, ?, 1)", (nr, title))
         store2._conn.commit()
         nummern = [p["item_number"]
-                   for p in store2.wochenvorschau(tage=10, max_punkte=40)["punkte"]]
+                   for p in store2.wochenvorschau(tage=10, max_punkte=40)["items"]]
         assert nummern == ["DZT 1"]
     finally:
         store2.close()
@@ -234,7 +234,7 @@ def test_der_boden_wirkt_in_der_wochenvorschau(tmp_path):
         store._conn.commit()
 
         nach_nr = {p["item_number"]: p
-                   for p in store.wochenvorschau(tage=10, max_punkte=40)["punkte"]}
+                   for p in store.wochenvorschau(tage=10, max_punkte=40)["items"]}
         assert nach_nr["DZT 1"]["wichtig"] == DRINGLICHKEIT_MIN     # 55 → 65
         assert nach_nr["DZT 2"]["wichtig"] == 80                    # bleibt oben
         assert nach_nr["Ö 9.1"]["wichtig"] == 85                    # unberührt

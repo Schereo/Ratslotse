@@ -106,7 +106,19 @@ ERLAUBT = {
     "neu": "Tagesordnungs-Diff, Query-Parameter, Vorlese-Text und die "
            "Seitenangabe „neu“ aus dem Änderungslisten-PDF",
     "teilhaushalt": "Schlüssel des Beleg-Apparats (council_produkte)",
+    "geldschulden": ("Blockname der Schulden-Antwort (council.py: \"geldschulden\": …) — "
+                     "die API-Blocknamen sind ein eigener Schnitt, noch offen"),
+    # Drei Wörter, die als WERT umgezogen sind, als API-FELDname aber bleiben.
+    # Die Feldnamen sind ein eigener Schnitt; bis dahin stehen beide Formen
+    # nebeneinander, und der Prüfer darf sie nicht verwechseln.
+    "wortbeitraege": ("API-Feldname der Personen- und Sitzungsantwort — der WERT "
+                      "`llm_usage.feature` heißt seit 01.09.2026 `speeches`"),
+    "recherche": ("API-Schlüssel und Modus der Gründlichen Recherche — der WERT "
+                  "`user_activity.feature` heißt seit 01.09.2026 `research`"),
+    "ki_frage": ("Blockname der Admin-Antwort (`features.ki_frage`) — der WERT "
+                 "`user_activity.feature` heißt seit 01.09.2026 `ai_question`"),
     "investitionen": "Schlüssel des Beleg-Apparats (council_investitionen)",
+    "schulden": "Schlüssel des Beleg-Apparats und QA-Facette — beide bleiben deutsch",
 }
 
 #: Zusätzliche Bedingung für einen ERLAUBT-Eintrag: Nur wenn die Zeile dazu
@@ -114,7 +126,11 @@ ERLAUBT = {
 #: überall.
 _BELEG = re.compile(r'Beleg q=|QUELLEN|QuellenSchluessel|as const|^\s*\| "|'
                     r'"(plan|investitionsprogramm|budget_bylaw|jahresabschluss|'
-                    r'stellenplan|pruefbericht|schulden)"')
+                    r'stellenplan|pruefbericht|schulden)"|'
+                    # Seit der Pruefer auch objektwertige Schluessel sieht,
+                    # faellt das Verzeichnis selbst auf: `investitionen: {`,
+                    # eine Zeile ueber `title:` und `citation:`.
+                    r'^\s*\w+: \{\s*$')
 
 #: Ein Kommentar — dort darf jedes Wort stehen.
 _KOMMENTAR = re.compile(r'^\s*(//|\*|/\*)')
@@ -126,6 +142,9 @@ ERLAUBT_ZEILE = {
     # erkennt man an einem Nachbarschlüssel oder am `as const` der Liste.
     "teilhaushalt": _BELEG,
     "investitionen": _BELEG,
+    # Dazu der Parametername der Zinsspannen-Rechnung in `haushalt-labor.ts`:
+    # `schulden: { year: number; total: number }[]` ist eine TYP-Angabe.
+    "schulden": re.compile(_BELEG.pattern + r'|: \{ year: number'),
     # Diese beiden dürfen nur noch in Fließtext-Kommentaren stehen. Stünde
     # eines wieder in einem Vergleich, wäre genau das der Fehler von #890.
     "entwurf": _KOMMENTAR,
@@ -152,7 +171,9 @@ ERLAUBT_ZEILE = {
     # `role` mit dem Wert `rat` ist die Haushaltsdebatte; die Anwesenheits-
     # Rollen kennen kein `rat`, der Vergleich ist also eindeutig.
     "rat": re.compile(r'\bart\b|StreitRolle|typ\?:|\brole\b|"rat" \| "verwaltung"|'
-                      r'^\s*(//|\*)|committee ==='),
+                      # `fa` und `rat` sind die zwei Spalten der Antrags-Bilanz
+                      # (`haushalt-streit.ts`) — Felder einer Zeile, kein Wert.
+                      r'^\s*(//|\*)|committee ===|fa: \{ ein'),
     "thema": re.compile(r'case topic|"kind":|VorschauArt|target\?:|'
                         r'vorschauMetadata|/preview|kind: "thema"|^\s*(//|\*)'),
     "verwaltung": re.compile(r'\btyp\b|type ==|StreitRolle|\bart\b'),
@@ -208,6 +229,13 @@ ERLAUBT_STELLE = {
     ("haushalt-vergleich.ts", "stadt"): "Feldname der Vergleichsstädte-Zeilen (`{stadt, was}`), kein Wert",
     ("haushalt-konzern.ts", "stadt"): "Beschriftung zum `entity_key` des Konzerns — der bleibt deutsch",
     ("haushalt-dokumente.ts", "vorlage"): "Beschriftung zur Zielart des Beleg-Apparats — die bleibt deutsch",
+    ("page.tsx", "ort"): "Pfad-Teil der Link-Vorschau (/preview/ort/…) — eigener Schnitt",
+    ("council-map.tsx", "ort"): "`target` der Kartenpunkte (ort|location) — eigenes Vokabular",
+    ("share-metadata.ts", "ort"): "Pfad-Teil der Link-Vorschau — eigener Schnitt",
+    ("types.ts", "ort"): "`target` der Kartenpunkte (thema|ort|location) — eigenes Vokabular",
+    ("CouncilMapView.swift", "ort"): "`target` der Kartenpunkte — eigenes Vokabular",
+    ("CouncilViews.swift", "ort"): "`target` der Kartenpunkte — eigenes Vokabular",
+    ("ProfileAndQuizViews.swift", "ort"): "Pfad-Teil der Link-Vorschau — eigener Schnitt",
 }
 
 #: Werte, die nur im Code umbenannt wurden — sie stehen nirgends gespeichert,
@@ -228,14 +256,20 @@ _PAAR = re.compile(r"""\(\s*["']([a-z][a-z0-9_+]*)["']\s*,\s*["']([a-z][a-z0-9_+
 
 
 def migrationspaare() -> set[tuple[str, str]]:
-    """Alle ``("alt", "neu")`` aus den Werte-Migrationen von ``store.py``."""
-    text = (WURZEL / "council" / "store.py").read_text()
+    """Alle ``("alt", "neu")`` aus den Werte-Migrationen BEIDER Stores.
+
+    `kern/store.py` gehört dazu, seit dort die Quiz-Werte (#891) und die
+    Feature-Namen des Kosten-Trackings umziehen: Die Konten-Datenbank hat
+    eigene Werte-Vokabulare, und die Oberfläche liest sie genauso.
+    """
     paare = set()
-    for block in re.finditer(r"_werte_umschreiben\((.*?)\]\)", text, re.S):
-        paare.update(_PAAR.findall(block.group(1)))
-    # Listen-Konstanten, die mehrere Aufrufe teilen (ORTSARTEN).
-    for block in re.finditer(r"^\s+[A-Z_]{4,} = \[\n(.*?)\n\s+\]$", text, re.S | re.M):
-        paare.update(_PAAR.findall(block.group(1)))
+    for laden in ("council", "kern"):
+        text = (WURZEL / laden / "store.py").read_text()
+        for block in re.finditer(r"_werte_umschreiben\((.*?)\]\)", text, re.S):
+            paare.update(_PAAR.findall(block.group(1)))
+        # Listen-Konstanten, die mehrere Aufrufe teilen (ORTSARTEN).
+        for block in re.finditer(r"^\s+[A-Z_]{4,} = \[\n(.*?)\n\s+\]$", text, re.S | re.M):
+            paare.update(_PAAR.findall(block.group(1)))
     return {(a, b) for a, b in paare | ZUSATZ_PAARE if a != b}
 
 
@@ -271,9 +305,15 @@ def main() -> int:
     # nicht-leere ZEICHENKETTE stehen. Eine Typ-Eigenschaft (`stadt: number`),
     # eine Destrukturierung (`{ posten }`) oder ein Verweis (`rat: z.rat`) ist
     # nie eine Wertetabelle — eine Beschriftung oder Farbe immer.
+    #
+    # Rechts steht ausserdem manchmal ein OBJEKT statt einer Zeichenkette:
+    # `BELEGLAGE` in `section-betriebe.tsx` haengt an jeden Probennamen ein
+    # `{ kurz, lang }`. Dieselbe tote Zuordnung, nur eine Ebene tiefer — der
+    # Pruefer sah sie bis zum 01.09.2026 nicht, weil er eine Zeichenkette
+    # verlangte.
     muster = re.compile(
         rf'"(?P<zitiert>{W})"'
-        rf'|(?:^|[{{,])\s*(?P<schluessel>{W})\s*:\s*"[^"]')
+        rf'|(?:^|[{{,])\s*(?P<schluessel>{W})\s*:\s*(?:"[^"]|{{)')
     funde: list[str] = []
     for pfad in dateien():
         rel = pfad.relative_to(WURZEL)

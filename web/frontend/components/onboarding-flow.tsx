@@ -485,7 +485,7 @@ type Ortsbereich = {
 /** Die Stadtteile, zu denen es überhaupt Beschlüsse gibt. Zwei Schritte
  *  brauchen sie (Auswahl und Vorschläge), deshalb ein gemeinsamer Query-Key.
  *
- *  **Nur `kind === "ortsbereich"`.** `/council/districts` liefert für den
+ *  **Nur `kind === "local_area"`.** `/council/districts` liefert für den
  *  Beschlussfilter auch die kuratierten Teilorte mit — „Alte Fleiwa",
  *  „Technologiepark Oldenburg", „Eversten Holz". Im Beschlussfilter ist das
  *  richtig, hier nicht: Auf dem Prod-Bestand standen dadurch 40 Pillen unter
@@ -496,7 +496,7 @@ function useOrtsbereiche() {
     queryKey: ["council-districts"],
     queryFn: () => api.get<{ districts: Ortsbereich[] }>("/council/districts")
       .then((d) => d.districts
-        .filter((o) => o.kind === "ortsbereich")
+        .filter((o) => o.kind === "local_area")
         .sort((a, b) => a.name.localeCompare(b.name, "de"))),
     staleTime: 10 * 60_000,
   });

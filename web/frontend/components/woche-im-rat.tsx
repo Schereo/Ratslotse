@@ -30,16 +30,16 @@ export type WochenPunkt = {
   top?: boolean;
 };
 export type Wochenvorschau = {
-  found: boolean; von: string; bis: string;
-  sitzungen: WochenSitzung[]; punkte: WochenPunkt[];
-  relevant_je_sitzung?: Record<string, number>;
+  found: boolean; from_date: string; to_date: string;
+  sessions: WochenSitzung[]; items: WochenPunkt[];
+  relevant_per_session?: Record<string, number>;
   /** Die übrigen relevanten Punkte je Sitzung — sie klappen in der Karte auf
    *  statt zur Tagesordnung zu verlinken (Tims Wunsch 18.08.). Ältere
    *  API-Stände kennen das Feld nicht, dann bleibt nur die gezeigte Auswahl. */
-  weitere_je_sitzung?: Record<string, WochenPunkt[]>;
+  further_per_session?: Record<string, WochenPunkt[]>;
   /** Davon die, die zu einem EIGENEN Thema passen — nur die heißen „für dich". */
-  treffer_je_sitzung?: Record<string, number>;
-  treffer_gesamt?: number; inhaltlich_gesamt?: number;
+  matches_per_session?: Record<string, number>;
+  matches_total?: number; substantive_total?: number;
 };
 
 /** Die drei Dichtestufen aus Design 14d. */
@@ -199,12 +199,12 @@ export function WocheImRat({ vorschau, heuteIso }: {
   const dichte = useDichte(ref);
 
   const maxPunkte = dichte === "desktop" ? 3 : 2;
-  const relevant = vorschau.relevant_je_sitzung ?? {};
-  const treffer_je = vorschau.treffer_je_sitzung ?? {};
-  const weitereJe = vorschau.weitere_je_sitzung ?? {};
+  const relevant = vorschau.relevant_per_session ?? {};
+  const treffer_je = vorschau.matches_per_session ?? {};
+  const weitereJe = vorschau.further_per_session ?? {};
 
   const punkteVon = (ksinr: number | null) =>
-    ksinr == null ? [] : vorschau.punkte.filter((p) => p.ksinr === ksinr);
+    ksinr == null ? [] : vorschau.items.filter((p) => p.ksinr === ksinr);
   // Alles, was die Karte über den Anzeige-Deckel hinaus kennt: erst die
   // display-gekappten der Auswahl, dann die restlichen relevanten aus der
   // API — zusammen der Stoff für „x weitere Punkte" zum Aufklappen.
@@ -213,10 +213,10 @@ export function WocheImRat({ vorschau, heuteIso }: {
 
   // „Wichtigster Punkt der Woche" darf es nur einmal geben; hebt die Woche
   // zwei Punkte hervor, heißen beide „Schwerpunkt".
-  const mehrereTop = vorschau.punkte.filter((p) => p.top).length > 1;
+  const mehrereTop = vorschau.items.filter((p) => p.top).length > 1;
 
-  const sitzungen = vorschau.sitzungen;
-  const treffer = vorschau.treffer_gesamt ?? 0;
+  const sitzungen = vorschau.sessions;
+  const treffer = vorschau.matches_total ?? 0;
 
   // Jede Sitzung steht in der Rail — auch mobil. Vorher waren die ohne
   // interessante Punkte hinter „N Sitzungen ohne deine Themen" gebündelt;
@@ -233,7 +233,7 @@ export function WocheImRat({ vorschau, heuteIso }: {
   }
 
   const kicker = [
-    dichte !== "mobil" && zeitraum(vorschau.von, vorschau.bis, dichte === "ipad"),
+    dichte !== "mobil" && zeitraum(vorschau.from_date, vorschau.to_date, dichte === "ipad"),
     // Prinzip ②: Die Sitzungszahl steht auf JEDER Stufe.
     `${sitzungen.length} ${sitzungen.length === 1 ? "SITZUNG" : "SITZUNGEN"}`,
     dichte === "desktop" && treffer > 0 &&

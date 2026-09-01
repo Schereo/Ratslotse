@@ -142,7 +142,7 @@ def main() -> int:
             n = store.save_investitionen(
                 year, gelesen["zeilen"], gelesen["gesamt"],
                 herkunft.Herkunft(
-                    probe="investitionen_summenzeile",
+                    probe="investments_total_row",
                     citation="Datensatz 1101, Tabellenblatt „Finanzhaushalt“ — "
                                "je Teilhaushalt eine Zeile mit Ein- und "
                                "Auszahlungen aus Investitionstätigkeit, darunter "

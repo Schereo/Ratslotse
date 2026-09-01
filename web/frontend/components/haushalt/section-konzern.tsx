@@ -163,7 +163,7 @@ export function KonzernAbschnitt({ onBestand }: {
   }
   // Ohne eingelesene Gesamtabschlüsse gibt es diese Seite nicht — lieber ein
   // ehrlicher Hinweis als eine Seite voller Striche.
-  if (!data || !data.konzern.length || !kopfJahr) {
+  if (!data || !data.consolidated.length || !kopfJahr) {
     return (
       <div className="rounded-2xl border border-border bg-card p-5 text-sm leading-relaxed text-muted-foreground">
         Für diese Seite sind noch keine Gesamtabschlüsse eingelesen.{" "}

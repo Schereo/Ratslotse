@@ -844,6 +844,36 @@ class CouncilStore:
             logging.getLogger("ratslotse.council.store").warning(
                 "Tagesordnungs-Diffs umgeschrieben: %d Zeilen", len(geaendert))
 
+    def _listenwerte_umschreiben(self, tabelle: str, spalte: str,
+                                 paare: list[tuple[str, str]]) -> None:
+        """Wie :meth:`_werte_umschreiben`, aber für KOMMAGETRENNTE Listen.
+
+        Die Probennamen stehen nicht einzeln in der Zeile: Eine Zahl besteht
+        oft zwei Proben, und beide zu nennen ist ehrlicher, als sich für eine
+        zu entscheiden (``spenden_zweitstelle,spenden_protokollabgleich``).
+        Ein Gleichheits-UPDATE träfe genau die 693 einwertigen Zellen und
+        ließe die 413 mehrwertigen stehen — halb umgezogen ist schlimmer als
+        gar nicht.
+        """
+        vorhanden = {r[1] for r in self._conn.execute(f"PRAGMA table_info({tabelle})")}
+        if spalte not in vorhanden:
+            return
+        karte = dict(paare)
+        geaendert = []
+        for rid, roh in self._conn.execute(
+                f"SELECT rowid, {spalte} FROM {tabelle} WHERE {spalte} IS NOT NULL"):
+            teile = [t.strip() for t in str(roh).split(",")]
+            neu = ",".join(karte.get(t, t) for t in teile)
+            if neu != roh:
+                geaendert.append((neu, rid))
+        if not geaendert:
+            return
+        with self._conn:
+            self._conn.executemany(
+                f"UPDATE {tabelle} SET {spalte} = ? WHERE rowid = ?", geaendert)
+        logging.getLogger("ratslotse.council.store").warning(
+            "Listenwerte umgeschrieben: %s.%s (%d Zeilen)", tabelle, spalte, len(geaendert))
+
     def _doppelte_bildspalte_aufloesen(self) -> None:
         """`council_anlagen` trug eine Zeit lang `bild` UND `is_image`.
 
@@ -863,7 +893,7 @@ class CouncilStore:
         logging.getLogger("ratslotse.council.store").warning(
             "Doppelte Bildspalte aufgelöst: %d Werte übernommen, `bild` entfernt", n)
 
-    def _herkunft_schluessel_neu(self) -> None:
+    def _herkunft_schluessel_neu(self, marke: str) -> None:
         """Die Fingerabdrücke in `council_herkunft` einmalig neu rechnen.
 
         `Herkunft.key()` hasht `json.dumps(felder(), sort_keys=True)` — und
@@ -871,6 +901,14 @@ class CouncilStore:
         derselbe Inhalt einen anderen Hash: Der nächste Ingest fände seine
         Zeile nicht wieder und legte sie ein zweites Mal an. Einmalig neu
         rechnen hält `id` stabil — und damit jeden `herkunft_id`-Verweis.
+
+        `marke` benennt den Umzug, der das nötig macht, und steht deshalb beim
+        AUFRUF, nicht hier: Die Umbenennung passierte in Schnitten, und jeder
+        Schnitt braucht seinen eigenen Lauf. Stünde die Marke als Konstante in
+        dieser Funktion, würde der erste Aufruf sie setzen und jeder spätere
+        still zurückkehren — die Fingerabdrücke wären dann auf dem Stand VOR
+        dem letzten Umzug, und der nächste Ingest legte jede Quelle ein zweites
+        Mal an. Genau das soll die Marke verhindern.
         """
         import hashlib as _hl
         import json as _js
@@ -878,7 +916,6 @@ class CouncilStore:
             self._conn.execute(
                 "CREATE TABLE IF NOT EXISTS council_migrationsmarken ("
                 "marke TEXT PRIMARY KEY, gesetzt_am TEXT NOT NULL)")
-        marke = "herkunft_key_city"   # zuvor "…_as_of" (#880) und "…_kind" (#886)
         if self._conn.execute(
                 "SELECT 1 FROM council_migrationsmarken WHERE marke = ?", (marke,)).fetchone():
             return
@@ -1067,8 +1104,6 @@ class CouncilStore:
             ("oberbuergermeister", "mayor"), ("rat", "council")])
         self._werte_umschreiben("council_spenden", "second_mention", [
             ("identisch", "identical"), ("zerlegung", "split")])
-        self._werte_umschreiben("council_herkunft", "probe", [
-            ("anlagen_buchwert", "assets_book_value")])
         # Die Herkunft eines Ortsbezugs steht als WERT in der Zeile und trug
         # denselben Begriff wie die Spalte `beschluss`, die zu `official_text`
         # wurde. `council/locations.py` lässt nur noch {title, official_text,
@@ -1129,7 +1164,8 @@ class CouncilStore:
             ("ansatz", "budget"), ("finanzplanung", "financial_plan")])
         # `ris`, `opendata` und `lsn` sind Kürzel und bleiben.
         self._werte_umschreiben("council_herkunft", "kind", [("stadt", "city")])
-        self._herkunft_schluessel_neu()
+        # Marken zuvor: …_as_of (#880) und …_kind (#886).
+        self._herkunft_schluessel_neu("herkunft_key_city")
         self._doppelte_bildspalte_aufloesen()
         self._agenda_diff_schluessel_neu()
         # Der Parteien-Cache hält die ROHE Modellantwort als JSON; sie trug
@@ -1164,6 +1200,150 @@ class CouncilStore:
         ]
         self._werte_umschreiben("council_locations", "kind", ORTSARTEN)
         self._werte_umschreiben("council_place_reviews", "kind", ORTSARTEN)
+        # Die GEBIETSARTEN des Ortskatalogs. Sie stehen in derselben Spalte wie
+        # die Ortsarten darüber, aber nur an `status='approved'`-Zeilen — die
+        # beiden Wertemengen sind disjunkt, ein Aufruf je Liste reicht also.
+        GEBIETSARTEN = [
+            ("ortsbereich", "local_area"), ("quartier", "neighborhood"),
+            ("wohngebiet", "residential_area"), ("sanierungsgebiet", "redevelopment_area"),
+            ("entwicklungsgebiet", "development_area"), ("schutzgebiet", "protected_area"),
+            ("sportgebiet", "sports_area"),
+        ]
+        self._werte_umschreiben("council_place_reviews", "kind", GEBIETSARTEN)
+        # Die Abschnitte des Beteiligungsberichts (§ 151 NKomVG).
+        self._werte_umschreiben("council_gesellschaft_texte", "section", [
+            ("gegenstand", "business_purpose"),
+            ("beteiligungsverhaeltnisse", "ownership_structure"),
+            ("aufsichtsorgane", "supervisory_bodies"),
+            ("beteiligungen", "own_shareholdings"), ("haushalt", "budget_impact")])
+        # Die Art einer Entität. `organisation` ist schon englisch.
+        # Die Probennamen (council/herkunft.py::PROBEN). Sie stehen KOMMA-
+        # GETRENNT — eine Zahl besteht oft zwei Proben —, deshalb der
+        # Listen-Helfer statt `_werte_umschreiben`.
+        PROBEN_NAMEN = [
+            # `anlagen_buchwert` stand zuvor als Gleichheits-UPDATE daneben.
+            # Das traf nur `council_herkunft` und nur EINWERTIGE Zellen — auf
+            # dev blieb er in `council_anlagenspiegel.probes` und in den
+            # mehrwertigen Zellen stehen. Als Probenname gehört er hierher.
+            ("anlagen_buchwert", "assets_book_value"),
+            ("abweichungstext", "variance_text"), ("aenderungsliste_erlaeuterungen", "amendment_list_explanations"),
+            ("aenderungsliste_fhh_zeilen", "amendment_list_cash_budget_rows"), ("aenderungsliste_positionen", "amendment_list_items"),
+            ("aenderungsliste_summen", "amendment_list_totals"), ("aenderungsliste_urheber", "amendment_list_proposers"),
+            ("anlagen_abschreibungskette", "assets_depreciation_chain"), ("anlagen_ahk_kette", "assets_cost_chain"),
+            ("anlagen_gegen_bilanz", "assets_vs_balance_sheet"), ("anlagen_umbuchungssaldo", "assets_transfer_balance"),
+            ("ausgabenreihe_jahresabschluss", "expense_series_annual_accounts"), ("ausgabenreihe_prokopf", "expense_series_per_capita"),
+            ("ausgabenreihe_zweitquelle", "expense_series_second_source"), ("beteiligung_anteilsprobe", "shareholding_share_check"),
+            ("beteiligung_bilanzprobe", "shareholding_balance_sheet_check"), ("beteiligung_ergebnisprobe", "shareholding_result_check"),
+            ("beteiligung_seitenprobe", "shareholding_page_check"), ("beteiligung_spaltenprobe", "shareholding_column_check"),
+            ("beteiligung_ueberlappung", "shareholding_overlap"), ("bilanz_ausgleich", "balance_sheet_equality"),
+            ("bilanz_erlaeuterung", "balance_sheet_notes"), ("bilanz_kassenprobe", "balance_sheet_cash_check"),
+            ("bilanz_vorjahreskette", "balance_sheet_prior_year_chain"), ("bilanzsumme_gedruckt", "balance_sheet_total_printed"),
+            ("buergschaft_kette", "guarantee_chain"), ("buergschaft_tabelle", "guarantee_table"),
+            ("eingangsformel", "preamble_scope"), ("ergebnishaushalt_planspalte", "income_budget_plan_column"),
+            ("ergebnishaushalt_summenzeilen", "income_budget_total_rows"), ("finanz_bestandskette", "cash_balance_chain"),
+            ("finanz_ermaechtigungen", "cash_flow_authorizations"), ("finanzkaskade", "cash_flow_cascade"),
+            ("gebuehren_division", "fee_division"), ("gebuehren_kaskade", "fee_cascade"),
+            ("gebuehrensaetze_anzahl", "fee_rate_count"), ("gebuehrensaetze_eckwerte", "fee_rate_benchmarks"),
+            ("gebuehrensaetze_vorjahresvergleich", "fee_rate_prior_year_comparison"), ("gewst_blattprobe", "trade_tax_sheet_check"),
+            ("gewst_hebesatzprobe", "trade_tax_assessment_rate_check"), ("gewst_summenprobe", "trade_tax_sum_check"),
+            ("hebesatz_spaltenkopf", "assessment_rate_column_header"), ("hebesatz_sprungjahr", "assessment_rate_step_year"),
+            ("hebesatz_treppe", "assessment_rate_change_years"), ("integrierte_schulden_kernhaushalt", "integrated_debt_core_budget"),
+            ("investitionen_ist_zeilensumme", "investments_actual_row_total"), ("investitionen_summenzeile", "investments_total_row"),
+            ("investitionsprogramm_abschnitt", "capital_programme_section_total"), ("investitionsprogramm_kopftabelle", "capital_programme_summary_table"),
+            ("investitionsprogramm_wiederholung", "capital_programme_repeated_total"), ("kassenkette", "cash_carryover_chain"),
+            ("kennzahlen_gegen_bilanz", "indicators_vs_balance_sheet"), ("kennzahlen_ueberlappung", "indicators_overlap"),
+            ("kennzahlen_vermoegensprobe", "indicators_assets_check"), ("kfa_jahrbuchabgleich", "fiscal_equalisation_yearbook_match"),
+            ("kfa_komponentenprobe", "fiscal_equalisation_components"), ("konzern_ausserordentlich", "group_extraordinary_result"),
+            ("konzern_ergebnisprobe", "group_ordinary_result"), ("konzern_gesamtergebnis", "group_total_result"),
+            ("konzern_querprobe", "group_cross_check"), ("konzern_traegersumme", "group_entity_total"),
+            ("konzern_zeilenprobe", "group_row_change"), ("legende_und_verzeichnis", "legend_and_index"),
+            ("lsn_dreijahresmittel", "lsn_three_year_average"), ("lsn_hebesatzprobe", "lsn_assessment_rate_check"),
+            ("lsn_zweijahresueberlappung", "lsn_two_year_overlap"), ("nachbewilligung_ratsabgleich", "supplementary_approval_council_match"),
+            ("nachbewilligung_tabellenprobe", "supplementary_approval_table_check"), ("nachbewilligung_volltext", "supplementary_approval_fulltext"),
+            ("produktzeile", "product_row"), ("rueckstellungs_gliederung", "provisions_breakdown"),
+            ("satzung_finanzhaushalt", "bylaw_cash_budget"), ("satzung_hebesatz", "bylaw_assessment_rate"),
+            ("schulden_prokopf", "debt_per_capita"), ("schulden_summenzeile", "debt_total_row"),
+            ("spenden_protokollabgleich", "donation_minutes_match"), ("spenden_zweitstelle", "donation_second_mention"),
+            ("stellenplan_besetzung", "staffing_plan_occupancy"), ("stellenplan_gesamtsumme", "staffing_plan_grand_total"),
+            ("stellenplan_gruppensummen", "staffing_plan_group_totals"), ("stellenplan_spaltenprobe", "staffing_plan_columns"),
+            ("steuerplan_anteilsprobe", "tax_budget_share_check"), ("steuerplan_istabgleich", "tax_budget_actuals_match"),
+            ("steuerplan_summenzeile", "tax_budget_total_row"), ("strukturprobe", "structure_check"),
+            ("summenprobe", "sub_budget_sum_check"), ("summenzeile", "total_row"),
+            ("textextrakt", "text_layer"), ("unbekannt", "unknown"),
+            ("ungeprueft", "unverified"), ("vorjahreskette", "prior_year_chain"),
+            ("wirtschaftsplan_erfolgsplan", "business_plan_profit_loss"), ("wirtschaftsplan_investitionen", "business_plan_investments"),
+            ("wirtschaftsplan_jahr", "business_plan_year"), ("wirtschaftsplan_kernzahl", "business_plan_key_figure"),
+            ("wirtschaftsplan_prosa", "business_plan_prose"), ("wirtschaftsplan_spalten", "business_plan_columns"),
+        ]
+        self._listenwerte_umschreiben("council_herkunft", "probe", PROBEN_NAMEN)
+        for tabelle in ("council_ausgabenreihe", "council_spenden", "council_buergschaften",
+                        "council_integrierte_schulden", "council_anlagenspiegel",
+                        "council_wirtschaftsplaene", "council_haushaltssatzung",
+                        "council_gebuehren", "council_gebuehrensaetze"):
+            self._listenwerte_umschreiben(tabelle, "probes", PROBEN_NAMEN)
+        # `Herkunft.key()` hasht die Probe mit — nach dem Umzug stimmt kein
+        # Fingerabdruck mehr, und der nächste Ingest legte jede Quelle ein
+        # zweites Mal an. Neu rechnen, unter einer eigenen Marke.
+        self._herkunft_schluessel_neu("herkunft_key_probes")
+        # Die neunzehn Bilanz-Positionen (council/bilanz.py::ROLLEN). `liabilities`
+        # und `provisions` sind Geschwister auf Ebene 1 der Passivseite, keine
+        # Verschachtelung — die `level`-Spalte trägt das.
+        BILANZ_ROLLEN = [
+            ("immaterielles_vermoegen", "intangible_assets"),
+            ("sachvermoegen", "tangible_assets"),
+            ("infrastrukturvermoegen", "infrastructure_assets"),
+            ("finanzvermoegen", "financial_assets"),
+            ("liquide_mittel", "cash_and_equivalents"),
+            ("aktive_rap", "prepaid_expenses"), ("nettoposition", "net_position"),
+            ("ruecklagen_gesamt", "reserves_total"),
+            ("ueberschussruecklage_ordentlich", "ordinary_surplus_reserve"),
+            ("jahresergebnis_bilanz", "annual_result_balance_sheet"),
+            ("sonderposten", "special_items"), ("schulden", "liabilities"),
+            ("geldschulden", "financial_liabilities"), ("rueckstellungen", "provisions"),
+            ("pensionen_gesamt", "pension_and_similar_provisions"),
+            ("pensionsrueckstellungen", "pension_provisions"),
+            ("beihilferueckstellungen", "healthcare_allowance_provisions"),
+            ("buergschaftsrueckstellung", "guarantee_provisions"),
+            ("passive_rap", "deferred_income"),
+        ]
+        for tabelle in ("council_bilanz", "council_bilanz_erlaeuterungen"):
+            self._werte_umschreiben(tabelle, "role", BILANZ_ROLLEN)
+        # Die Gebührenbereiche. Die Migration MUSS nach `_STRUKTUR_SPALTEN`
+        # stehen — dort heißt `bereich` erst `area`, und vorher fände
+        # `_werte_umschreiben` die Spalte nicht und kehrte still zurück.
+        self._werte_umschreiben("council_gebuehren", "area", [
+            ("abfallbehandlung", "waste_treatment"), ("abfallsammlung", "waste_collection"),
+            ("strassenreinigung", "street_cleaning")])
+        self._werte_umschreiben("council_gebuehrensaetze", "area", [
+            ("abfallbehandlung", "waste_treatment"), ("abfallsammlung", "waste_collection"),
+            ("strassenreinigung", "street_cleaning")])
+        self._werte_umschreiben("council_gebuehrensaetze", "key", [
+            ("abfallbehandlung_mg", "waste_treatment_per_mg"), ("grundgebuehr", "base_fee"),
+            ("litergebuehr", "per_litre_fee"), ("biogrundmenge_60l", "organic_base_volume_60l"),
+            ("sperrmuellkarte", "bulky_waste_card"), ("gruengutkarte", "green_waste_card"),
+            ("sperrmuell_1m3", "bulky_waste_1m3"), ("sperrmuell_2m3", "bulky_waste_2m3"),
+            ("gruengut_05m3", "green_waste_05m3"), ("gruengut_1m3", "green_waste_1m3"),
+            ("gruengut_2m3", "green_waste_2m3"),
+            ("strassenreinigung_qw", "street_cleaning_per_metre")])
+        # Der Städtevergleich. `steuerkraft` und `finanzausgleich` hat der Code
+        # schon seit #876 englisch gelesen — die Zeilen standen seither still
+        # daneben, `staedtevergleich_kontext()` lieferte None.
+        self._werte_umschreiben("council_staedtevergleich", "series", [
+            ("steuerkraft", "tax_capacity"), ("finanzausgleich", "fiscal_equalization"),
+            ("realsteuern", "real_taxes")])
+        # Die Auszahlungsarten der Ist-Investitionen, je Regelwerk eigene.
+        self._werte_umschreiben("council_investitionen_ist_arten", "field", [
+            ("darlehen", "loans_granted"), ("grundvermoegen", "real_property"),
+            ("baumassnahmen_k", "construction_cameral"),
+            ("bewegliches_k", "movable_assets_cameral"),
+            ("zuwendungen", "capitalizable_grants"),
+            ("grundstuecke", "land_and_buildings"), ("baumassnahmen", "construction"),
+            ("bewegliches", "movable_assets"),
+            ("finanzanlagen", "financial_assets_acquired"),
+            ("sonstige", "other_investing")])
+        for tabelle in ("council_entities", "council_entity_obs"):
+            self._werte_umschreiben(tabelle, "kind", [
+                ("projekt", "project"), ("ort", "place")])
         # Woher der Ort stammt und wie er gefunden wurde.
         self._werte_umschreiben("council_decision_locations", "source",
                                 [("vorlage", "template")])
@@ -2088,7 +2268,7 @@ class CouncilStore:
             "CREATE TABLE IF NOT EXISTS council_gesellschaft_texte ("
             "report_year INTEGER NOT NULL, "
             "company TEXT NOT NULL, "
-            "section TEXT NOT NULL, "            # gegenstand, aufsichtsorgane, …
+            "section TEXT NOT NULL, "            # business_purpose, supervisory_bodies, …
             "text TEXT NOT NULL, "
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
             "PRIMARY KEY (report_year, company, section))"
@@ -3957,8 +4137,8 @@ class CouncilStore:
         bis = (heute + timedelta(days=tage)).isoformat()
         sitzungen = self.sitzungen_im_fenster(tage)
         if not sitzungen:
-            return {"found": False, "von": heute.isoformat(), "bis": bis,
-                    "sitzungen": [], "punkte": []}
+            return {"found": False, "from_date": heute.isoformat(), "to_date": bis,
+                    "sessions": [], "items": []}
 
         ph = ",".join("?" * len(sitzungen))
         # ``v.kind`` unterscheidet Beschluss- von Berichtsvorlage — das stärkste
@@ -4183,7 +4363,7 @@ class CouncilStore:
         # deinem Thema" und „ist allgemein wichtig". Die Karte trug beides als
         # „N für dich" — bei jemandem ohne passendes Thema war das schlicht
         # falsch (Tims Befund 15.08.).
-        treffer_je_sitzung: dict[int, int] = {}
+        matches_per_session: dict[int, int] = {}
         # Und wie viele inhaltliche Themen hat die Sitzung ÜBERHAUPT — ohne
         # Formalien, ohne Überschriften-Zeilen, Stationen eines Vorhabens als
         # eines gezählt. Das ist die Zahl für „+ N weitere Tagesordnungs-
@@ -4193,7 +4373,7 @@ class CouncilStore:
         themen_je_sitzung: dict[int, set] = {}
         for k in kandidaten:
             if k["topic_name"]:
-                treffer_je_sitzung[k["ksinr"]] = treffer_je_sitzung.get(k["ksinr"], 0) + 1
+                matches_per_session[k["ksinr"]] = matches_per_session.get(k["ksinr"], 0) + 1
             if k["topic_name"] or k["wichtig"] >= self.WICHTIG_MINDEST:
                 relevant[k["ksinr"]] = relevant.get(k["ksinr"], 0) + 1
             themen_je_sitzung.setdefault(k["ksinr"], set()).add(k["gruppe_nr"])
@@ -4202,13 +4382,13 @@ class CouncilStore:
         # Tagesordnung wegzunavigieren — dafür braucht die Karte die Titel.
         # kandidaten sind bereits nach Rang sortiert, die Reihenfolge bleibt.
         gezeigt = {(p["ksinr"], p["item_number"]) for p in punkte}
-        weitere_je_sitzung: dict[int, list[dict]] = {}
+        further_per_session: dict[int, list[dict]] = {}
         for k in kandidaten:
             if (k["ksinr"], k["item_number"]) in gezeigt:
                 continue
             if not (k["topic_name"] or k["wichtig"] >= self.WICHTIG_MINDEST):
                 continue
-            weitere_je_sitzung.setdefault(k["ksinr"], []).append({
+            further_per_session.setdefault(k["ksinr"], []).append({
                 "ksinr": k["ksinr"], "item_number": k["item_number"],
                 "title": k["title"], "titel_kurz": k["titel_kurz"],
                 "applicants": k["applicants"], "topic_name": k["topic_name"],
@@ -4238,15 +4418,15 @@ class CouncilStore:
             # sobald überhaupt eine Sitzung ansteht — vorher hing das an den
             # Punkten, und eine Woche ohne Highlight ließ die Karte verschwinden.
             "found": bool(sitzungen),
-            "von": heute.isoformat(), "bis": bis,
-            "sitzungen": sitzungen,
-            "punkte": punkte,
-            "relevant_je_sitzung": relevant,
-            "weitere_je_sitzung": weitere_je_sitzung,
-            "treffer_je_sitzung": treffer_je_sitzung,
-            "treffer_gesamt": sum(1 for k in kandidaten if k["topic_name"]),
-            "inhaltlich_gesamt": len(kandidaten),
-            "inhaltlich_je_sitzung": {k: len(v) for k, v in themen_je_sitzung.items()},
+            "from_date": heute.isoformat(), "to_date": bis,
+            "sessions": sitzungen,
+            "items": punkte,
+            "relevant_per_session": relevant,
+            "further_per_session": further_per_session,
+            "matches_per_session": matches_per_session,
+            "matches_total": sum(1 for k in kandidaten if k["topic_name"]),
+            "substantive_total": len(kandidaten),
+            "substantive_per_session": {k: len(v) for k, v in themen_je_sitzung.items()},
         }
 
     def count_upcoming_sessions(self) -> int:
@@ -6892,8 +7072,8 @@ class CouncilStore:
         try:
             rows = self._conn.execute(
                 "SELECT year, role, value, herkunft_id FROM council_bilanz "
-                "WHERE role IN ('ueberschussruecklage_ordentlich', "
-                "'jahresergebnis_bilanz') ORDER BY year, role").fetchall()
+                "WHERE role IN ('ordinary_surplus_reserve', "
+                "'annual_result_balance_sheet') ORDER BY year, role").fetchall()
         except sqlite3.OperationalError:
             return []
         years: dict[int, dict] = {}
@@ -6903,7 +7083,7 @@ class CouncilStore:
                 "jahresergebnis": None, "state_after_result": None,
                 "herkunft_id": row["herkunft_id"],
             })
-            if row["role"] == "ueberschussruecklage_ordentlich":
+            if row["role"] == "ordinary_surplus_reserve":
                 z["reserves"] = row["value"]
             else:
                 z["jahresergebnis"] = row["value"]
@@ -9287,7 +9467,7 @@ class CouncilStore:
         ph = ",".join("?" * len(ids))
         rows = self._conn.execute(
             f"SELECT decision_id, name FROM council_entity_obs "
-            f"WHERE kind = 'ort' AND decision_id IN ({ph})", ids).fetchall()
+            f"WHERE kind = 'place' AND decision_id IN ({ph})", ids).fetchall()
         out: dict[int, list[dict]] = {}
         for r in rows:
             out.setdefault(r["decision_id"], []).append({
@@ -9325,7 +9505,7 @@ class CouncilStore:
             out.append(places.Place(
                 id=row["place_id"] or row["location_slug"],
                 name=row["name"] or observed,
-                kind=row["kind"] or "quartier",
+                kind=row["kind"] or "neighborhood",
                 aliases=aliases,
                 wahlbereiche=parent.wahlbereiche if parent else (),
                 parent_ids=(parent.id,) if parent else (),
@@ -9520,11 +9700,11 @@ class CouncilStore:
             "SELECT * FROM council_locations WHERE slug=?", (location_slug,)).fetchone()
         if not observed:
             raise KeyError(location_slug)
-        allowed_kinds = {key for key in places.catalog()["kinds"] if key != "ortsbereich"}
+        allowed_kinds = {key for key in places.catalog()["kinds"] if key != "local_area"}
         if status == "approved":
             place_id = slugify(place_id or name or observed["name"])
             name = (name or observed["name"]).strip()
-            kind = kind or "quartier"
+            kind = kind or "neighborhood"
             if not place_id or not name or kind not in allowed_kinds:
                 raise ValueError("Freigegebener Ort braucht Name, gültige ID und Ortstyp")
             if not (source_url or "").startswith(("https://", "http://")):
@@ -10177,7 +10357,7 @@ class CouncilStore:
                JOIN council_decisions d ON d.id = el.decision_id
                JOIN council_sessions cs ON cs.ksinr = d.ksinr
                LEFT JOIN council_entity_meta m ON m.slug = e.slug
-               WHERE e.kind IN ('ort', 'projekt') AND cs.session_date >= ?{ort_bedingung}
+               WHERE e.kind IN ('place', 'project') AND cs.session_date >= ?{ort_bedingung}
                GROUP BY e.id
                HAVING n_recent >= 2
                ORDER BY n_recent DESC, avg_interest DESC, e.name
@@ -10701,7 +10881,7 @@ class CouncilStore:
         rows = self._conn.execute(
             "SELECT e.slug, e.name, e.kind FROM council_entities e "
             "LEFT JOIN council_entity_meta m ON m.slug = e.slug "
-            "WHERE e.kind = 'ort' AND (m.geo_tried IS NULL OR m.geo_tried = 0) ORDER BY e.n DESC"
+            "WHERE e.kind = 'place' AND (m.geo_tried IS NULL OR m.geo_tried = 0) ORDER BY e.n DESC"
         ).fetchall()
         return [dict(r) for r in rows]
 
@@ -12625,11 +12805,11 @@ class CouncilStore:
         bereiche: list[str] = []
         if any(w in text for w in ("abfall", "muell", "tonne", "behaelter",
                                    "restmuell", "biomuell")):
-            bereiche.extend(("abfallbehandlung", "abfallsammlung"))
+            bereiche.extend(("waste_treatment", "waste_collection"))
         if any(w in text for w in ("strassenreinig", "kehrgeb", "kehrdienst")):
-            bereiche.append("strassenreinigung")
+            bereiche.append("street_cleaning")
         if not bereiche and any(w in text for w in ("gebuehr", "gebuehrenbedarf")):
-            bereiche = ["abfallbehandlung", "abfallsammlung", "strassenreinigung"]
+            bereiche = ["waste_treatment", "waste_collection", "street_cleaning"]
         bereiche = list(dict.fromkeys(bereiche))
         if not bereiche:
             return None
@@ -13076,7 +13256,7 @@ class CouncilStore:
         aus: list[dict] = []
         try:
             r = self._conn.execute(
-                "SELECT year, value FROM council_bilanz WHERE role = 'geldschulden' "
+                "SELECT year, value FROM council_bilanz WHERE role = 'financial_liabilities' "
                 "ORDER BY year DESC LIMIT 1").fetchone()
             if r:
                 aus.append({"art": "Kernhaushalt (nur Geldschulden)", "year": r["year"],
@@ -13116,8 +13296,8 @@ class CouncilStore:
         posten = {r["role"]: r["value"] for r in self._conn.execute(
             "SELECT role, value FROM council_bilanz WHERE year = ? AND role IS NOT NULL",
             (year,))}
-        aktiva = ("immaterielles_vermoegen", "sachvermoegen", "finanzvermoegen",
-                  "liquide_mittel", "aktive_rap")
+        aktiva = ("intangible_assets", "tangible_assets", "financial_assets",
+                  "cash_and_equivalents", "prepaid_expenses")
         summe = sum(posten[r] for r in aktiva if r in posten) or None
         beleg = self._conn.execute(
             "SELECT herkunft_id FROM council_bilanz WHERE year = ? LIMIT 1",
@@ -13126,9 +13306,9 @@ class CouncilStore:
             "year": year,
             "bilanzsumme": summe,
             "posten": [(r, posten[r]) for r in
-                       ("sachvermoegen", "infrastrukturvermoegen", "finanzvermoegen",
-                        "liquide_mittel", "nettoposition", "sonderposten",
-                        "rueckstellungen", "pensionsrueckstellungen", "schulden")
+                       ("tangible_assets", "infrastructure_assets", "financial_assets",
+                        "cash_and_equivalents", "net_position", "special_items",
+                        "provisions", "pension_provisions", "liabilities")
                        if r in posten],
             "beleg": self._beleg(beleg["herkunft_id"] if beleg else None),
         }
@@ -13260,7 +13440,7 @@ class CouncilStore:
         rueck = None
         try:
             z = self._conn.execute(
-                "SELECT value FROM council_bilanz WHERE role = 'buergschaftsrueckstellung' "
+                "SELECT value FROM council_bilanz WHERE role = 'guarantee_provisions' "
                 "AND year = ?", (r["year"],)).fetchone()
             rueck = z["value"] if z else None
         except sqlite3.OperationalError:
@@ -13674,7 +13854,7 @@ class CouncilStore:
                 JOIN council_entities e ON e.id = l.entity_id
                 JOIN council_entity_meta m ON m.slug = e.slug
                 WHERE l.decision_id IN ({ph}) AND m.lat IS NOT NULL
-                  AND e.kind = 'ort'
+                  AND e.kind = 'place'
                 ORDER BY e.n DESC""",
             ids,
         ).fetchall()

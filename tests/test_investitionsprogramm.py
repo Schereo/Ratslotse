@@ -418,9 +418,9 @@ def test_speichern_legt_drei_ebenen_an(tmp_path):
     try:
         g = ip.lies(IP_2026, 2026)
         store.save_investitionsprogramm(2026, g, herkunft.Herkunft(
-            kind="ris", probe=["investitionsprogramm_abschnitt",
-                              "investitionsprogramm_wiederholung",
-                              "investitionsprogramm_kopftabelle"],
+            kind="ris", probe=["capital_programme_section_total",
+                              "capital_programme_repeated_total",
+                              "capital_programme_summary_table"],
             document_id=297440, label="2026 004 Vw Investitionsprogramm",
             probe_result=g["nachweis"]))
 
@@ -441,7 +441,7 @@ def test_zweiter_lauf_ersetzt_statt_zu_verdoppeln(tmp_path):
     store = CouncilStore(tmp_path / "council.sqlite")
     try:
         g = ip.lies(IP_2026, 2026)
-        h = herkunft.Herkunft(kind="ris", probe="investitionsprogramm_abschnitt",
+        h = herkunft.Herkunft(kind="ris", probe="capital_programme_section_total",
                               document_id=297440)
         store.save_investitionsprogramm(2026, g, h)
         store.save_investitionsprogramm(2026, g, h)
@@ -472,8 +472,8 @@ def test_quelle_steht_im_verzeichnis_und_in_der_reihenfolge():
 def test_alle_proben_sind_erklaert():
     """Ein Probenname ohne Satz für Leser*innen fliegt beim Bauen der Herkunft
     auf — hier fällt er schon vorher auf."""
-    for name in ("investitionsprogramm_abschnitt",
-                 "investitionsprogramm_wiederholung",
-                 "investitionsprogramm_kopftabelle"):
+    for name in ("capital_programme_section_total",
+                 "capital_programme_repeated_total",
+                 "capital_programme_summary_table"):
         assert name in herkunft.PROBEN
         assert len(herkunft.PROBEN[name]) > 40

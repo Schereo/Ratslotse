@@ -159,7 +159,7 @@ export function Vorhaben({
   const bereiche = useMemo(() => teilhaushalte(daten, effJahr), [daten, effJahr]);
   const treffer = useMemo(() => suche(daten, effJahr, wort), [daten, effJahr, wort]);
   const gesamt = gesamtJahr(daten, effJahr);
-  const alleAnzahl = daten?.massnahmen.length ?? 0;
+  const alleAnzahl = daten?.measures.length ?? 0;
 
   const nameVon = useMemo(() => {
     const zu = new Map<number, string>();
@@ -184,9 +184,9 @@ export function Vorhaben({
   const knoten: TreemapKnoten[] = useMemo(() => {
     const source = aktiv != null
       ? vorhaben(daten, effJahr, aktiv)
-      : (daten?.massnahmen ?? []).filter((z) => z.year === effJahr);
+      : (daten?.measures ?? []).filter((z) => z.year === effJahr);
     const zuName = (nr: number) => {
-      const b = (daten?.teilhaushalte ?? []).find(
+      const b = (daten?.sub_budgets ?? []).find(
         (t) => t.year === effJahr && t.sub_budget_no === nr);
       return b?.label ?? `Teilhaushalt ${nr}`;
     };

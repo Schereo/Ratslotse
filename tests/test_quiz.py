@@ -42,7 +42,7 @@ def test_shared_place_catalog_has_stable_ids_aliases_and_sources():
     }
     neu = places.resolve("Donnerschwee-Kaserne")
     assert neu.id == "neu-donnerschwee" and neu.parent_ids == ("donnerschwee",)
-    assert neu.kind == "quartier" and neu.description
+    assert neu.kind == "neighborhood" and neu.description
 
 
 def test_place_mentions_prefer_specific_child_over_parent():

@@ -209,7 +209,7 @@ import Testing
       "has_password": true,
       "access_token": "must-stay-in-keychain",
       "display_name": "Offline Test",
-      "qa_speichern": 1
+      "saves_conversations": 1
     }
     """#.utf8))
 
@@ -240,7 +240,7 @@ import Testing
           "has_password": true,
           "access_token": null,
           "display_name": "Test",
-          "qa_speichern": 0
+          "saves_conversations": 0
         }
         """.data(using: .utf8)
     )
@@ -278,7 +278,7 @@ import Testing
     let defaults = try #require(UserDefaults(suiteName: suiteName))
     defer { defaults.removePersistentDomain(forName: suiteName) }
     let userData = try #require(
-        #"{"id":17,"email":"chat@example.org","role":"user","status":"pending","delivery_channel":"email","email_verified":false,"apple_linked":false,"has_password":true,"access_token":null,"display_name":"Chat Test","qa_speichern":1}"#.data(using: .utf8)
+        #"{"id":17,"email":"chat@example.org","role":"user","status":"pending","delivery_channel":"email","email_verified":false,"apple_linked":false,"has_password":true,"access_token":null,"display_name":"Chat Test","saves_conversations":1}"#.data(using: .utf8)
     )
     let user = try JSONDecoder().decode(User.self, from: userData)
 
@@ -291,7 +291,7 @@ import Testing
     #expect(relaunched.activeConversationID == 812)
 
     let disabledData = try #require(
-        #"{"id":17,"email":"chat@example.org","role":"user","status":"pending","delivery_channel":"email","email_verified":false,"apple_linked":false,"has_password":true,"access_token":null,"display_name":"Chat Test","qa_speichern":0}"#.data(using: .utf8)
+        #"{"id":17,"email":"chat@example.org","role":"user","status":"pending","delivery_channel":"email","email_verified":false,"apple_linked":false,"has_password":true,"access_token":null,"display_name":"Chat Test","saves_conversations":0}"#.data(using: .utf8)
     )
     let disabledUser = try JSONDecoder().decode(User.self, from: disabledData)
     try await relaunched.adopt(user: disabledUser)

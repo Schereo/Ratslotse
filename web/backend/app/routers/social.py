@@ -85,7 +85,7 @@ def wochenvorschau(
     die zu den Themen des angemeldeten Kontos passen. Ein Instagram-Beitrag
     hat kein Konto und zeigt die Sicht für die ganze Stadt.
 
-    ``kommende`` trägt zusätzlich die terminierten Sitzungen ohne
+    ``upcoming`` trägt zusätzlich die terminierten Sitzungen ohne
     veröffentlichte Tagesordnung (``ksinr`` ist dann NULL). Das kommt aus
     ``upcoming_sessions`` statt aus eigenem SQL: Dort steht die kanonische
     Definition, welche Sitzung als „kommend" gilt, samt Entdopplung gegen
@@ -95,7 +95,7 @@ def wochenvorschau(
     tage = max(1, min(int(tage), 31))
     daten = store.wochenvorschau(tage=tage, max_punkte=40)
     bis = (date.today() + timedelta(days=tage)).isoformat()
-    daten["kommende"] = [s for s in store.upcoming_sessions(limit=100)
+    daten["upcoming"] = [s for s in store.upcoming_sessions(limit=100)
                          if s["session_date"] <= bis]
     return daten
 
@@ -159,7 +159,7 @@ def hoechste_beschluss_id(store: CouncilStore = Depends(get_council_store)) -> H
     """Aktueller Zählerstand — der Startpunkt fürs erste Merken beim Bot,
     damit sein Ereignis-Cron nicht den gesamten Bestand als „neu" meldet."""
     value = store._conn.execute("SELECT MAX(id) FROM council_decisions").fetchone()[0]
-    return {"hoechste_id": int(value or 0)}
+    return {"highest_id": int(value or 0)}
 
 
 def _zielverzeichnis(tag: str) -> Path:

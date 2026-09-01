@@ -598,11 +598,11 @@ def guv_ergebnisse(section: str) -> dict[int, float]:
 #: Zahlen in den Kennzahlen) und 7) „Vorliegen der Voraussetzungen des § 136"
 #: (in allen 45 Abschnitten derselbe Satz: die Voraussetzungen sind erfüllt).
 TEXTABSCHNITTE: tuple[tuple[str, int, str], ...] = (
-    ("gegenstand", 1, "Was die Gesellschaft tut"),
-    ("beteiligungsverhaeltnisse", 2, "Wem sie gehört"),
-    ("aufsichtsorgane", 3, "Wer sie beaufsichtigt"),
-    ("beteiligungen", 4, "Woran sie selbst beteiligt ist"),
-    ("haushalt", 8, "Was sie für den städtischen Haushalt bedeutet"),
+    ("business_purpose", 1, "Was die Gesellschaft tut"),
+    ("ownership_structure", 2, "Wem sie gehört"),
+    ("supervisory_bodies", 3, "Wer sie beaufsichtigt"),
+    ("own_shareholdings", 4, "Woran sie selbst beteiligt ist"),
+    ("budget_impact", 8, "Was sie für den städtischen Haushalt bedeutet"),
 )
 
 _ABSCHNITTSKOPF = re.compile(r"^[ \t]*([1-8])\)[ \t]+(\S[^\n]{2,150})$", re.M)
@@ -1267,8 +1267,8 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
         for x in e["dokumentproben"]:
             if not x["ok"]:
                 continue
-            name = ("beteiligung_bilanzprobe" if x["indicator"] == "bilanzsumme"
-                    else "beteiligung_ergebnisprobe")
+            name = ("shareholding_balance_sheet_check" if x["indicator"] == "bilanzsumme"
+                    else "shareholding_result_check")
             s = (x["company"], x["indicator"], x["year"])
             # Die **größte** gemessene Abweichung gewinnt: Belegen mehrere
             # Berichte dieselbe Zahl, ist der schlechteste Messwert die
@@ -1302,7 +1302,7 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
                 "classification": g.classification, "page": g.seite_gedruckt,
                 "consolidated_key": g.consolidated_key,
                 "herkunft": _h.Herkunft(
-                    probe="beteiligung_seitenprobe",
+                    probe="shareholding_page_check",
                     citation=f"Abschnitt {g.classification} — {g.name}",
                     probe_result=f"Inhaltsverzeichnis und Trennseite nennen "
                                    f"beide Seite {g.seite_gedruckt}",
@@ -1323,7 +1323,7 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
             # Zwei der fünf Abschnitte sind in Wahrheit Tabellen. Sie bleiben
             # als Text stehen (die Seite zeigt sie, wo die Struktur nicht
             # trägt) und kommen zusätzlich zerlegt herein.
-            liste, zuordenbar = aufsichtsorgane(g.abschnitte.get("aufsichtsorgane", ""))
+            liste, zuordenbar = aufsichtsorgane(g.abschnitte.get("supervisory_bodies", ""))
             if not zuordenbar and liste:
                 ohne_zuordnung.append(f"{year}/{g.key}")
             for person in liste:
@@ -1338,7 +1338,7 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
                     # gerissen ist, steht auch kein Amt da, und die Zeile sagt
                     # ausdrücklich „ungeprüft" statt eine Probe zu behaupten.
                     "herkunft": _h.Herkunft(
-                        probe=("beteiligung_spaltenprobe" if person.position
+                        probe=("shareholding_column_check" if person.position
                                else _h.UNGEPRUEFT),
                         citation=f"Abschnitt {g.classification} — "
                                    f"{person.committee}",
@@ -1348,7 +1348,7 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
                         **gemeinsam)})
 
             eigner, anteilsprobe = beteiligungsverhaeltnisse(
-                g.abschnitte.get("beteiligungsverhaeltnisse", ""))
+                g.abschnitte.get("ownership_structure", ""))
             for e_ in eigner:
                 eigentuemer.append({
                     "report_year": year, "company": g.key,
@@ -1356,7 +1356,7 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
                     "amount_eur": e_.amount_eur,
                     "share_pct": e_.share_pct,
                     "herkunft": _h.Herkunft(
-                        probe="beteiligung_anteilsprobe",
+                        probe="shareholding_share_check",
                         citation=f"Abschnitt {g.classification} — "
                                    f"Beteiligungsverhältnisse",
                         probe_result=anteilsprobe,
@@ -1380,7 +1380,7 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
             name, delta = dokumentprobe[ref]
             probes.append(name)
         if len(je_bericht) > 1:
-            probes.append("beteiligung_ueberlappung")
+            probes.append("shareholding_overlap")
         if not probes:
             verworfen += 1
             continue

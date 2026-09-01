@@ -278,7 +278,7 @@ def main() -> int:
                     probe=list(probes),
                     citation=_fundstelle(
                         accounting_system, source,
-                        "ausgabenreihe_jahresabschluss" in probes),
+                        "expense_series_annual_accounts" in probes),
                     probe_result=nachweis))
                 print(f"  {ar.REGELWERK[accounting_system]}, {spanne} "
                       f"({source.upper()}): {count}")

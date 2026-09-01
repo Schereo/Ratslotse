@@ -314,8 +314,8 @@ def lies(text: str) -> dict:
 
     gelesen = _zeilen_lesen(text)
     probes = []
-    for name, fn in (("ergebnishaushalt_summenzeilen", summenprobe),
-                     ("ergebnishaushalt_planspalte", planspaltenprobe)):
+    for name, fn in (("income_budget_total_rows", summenprobe),
+                     ("income_budget_plan_column", planspaltenprobe)):
         ok, warum = fn(gelesen)
         probes.append({"probe": name, "ok": ok, "warum": warum})
     bestanden = all(p["ok"] for p in probes)

@@ -48,7 +48,7 @@ def source():
     from council.herkunft import Herkunft
 
     def bauen(label: str = "Testdokument", url: str | None = "https://example.org/d.pdf",
-              probe: str = "strukturprobe", **rest):
+              probe: str = "structure_check", **rest):
         return Herkunft(kind="ris", probe=probe, label=label, url=url, **rest)
 
     return bauen

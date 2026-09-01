@@ -23,7 +23,7 @@
 //
 // Wo die Spanne aus dem Bestand fällt, steht sie deshalb nicht mehr hier:
 // `standWort` trägt nur noch das Wort davor („Jahresabschlüsse"), die Zahlen
-// kommen aus `GET /api/council/haushalt/dokumente` (`jahrgaenge`, gerechnet
+// kommen aus `GET /api/council/haushalt/dokumente` (`editions`, gerechnet
 // in `CouncilStore.haushalt_jahrgaenge`). Zusammengesetzt wird in
 // `standText()`.
 //

@@ -98,3 +98,27 @@ def test_das_register_selbst_ist_englisch():
     assert "stadt" not in ARTEN and "city" in ARTEN
     with pytest.raises(ValueError):
         Herkunft(kind="stadt", probe="unbekannt", url="https://www.oldenburg.de/x")
+
+
+def test_jeder_neuberechnungslauf_traegt_seine_eigene_marke():
+    """`_herkunft_schluessel_neu` läuft je Marke genau einmal — und der Umbau
+    passierte in Schnitten, jeder mit eigenem Aufruf.
+
+    Stünde die Marke als Konstante in der Funktion, setzte sie der erste
+    Aufruf und jeder spätere kehrte still zurück. Die Fingerabdrücke stünden
+    dann auf dem Stand vor dem letzten Umzug, `Herkunft.key()` fände seine
+    Zeile nicht wieder — und der nächste Ingest legte jede Quelle ein zweites
+    Mal an, ohne dass irgendetwas rot wird.
+    """
+    baum = ast.parse((WURZEL / "council" / "store.py").read_text())
+    marken = []
+    for knoten in ast.walk(baum):
+        if not (isinstance(knoten, ast.Call) and isinstance(knoten.func, ast.Attribute)
+                and knoten.func.attr == "_herkunft_schluessel_neu"):
+            continue
+        assert len(knoten.args) == 1 and isinstance(knoten.args[0], ast.Constant), (
+            f"store.py:{knoten.lineno}: Marke muss beim Aufruf stehen")
+        marken.append(knoten.args[0].value)
+    assert marken, "kein Aufruf gefunden — die Prüfung wäre wertlos grün"
+    doppelt = {m for m in marken if marken.count(m) > 1}
+    assert not doppelt, f"Marke doppelt vergeben, der zweite Lauf fällt aus: {sorted(doppelt)}"

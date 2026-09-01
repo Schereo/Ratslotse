@@ -319,7 +319,7 @@ def test_abfallsammlung_hat_keine_division():
     Eine Division „Kosten ÷ Menge" gibt es dort nicht, und eine erfundene
     wäre schlimmer als keine. Die Kaskade ist trotzdem geprüft."""
     b = parse_anlage(teile_anlagen(ANLAGE_2_2026)[0])
-    assert b.area == "abfallsammlung"
+    assert b.area == "waste_collection"
     assert b.costs_to_cover == 13_762_012.0
     assert b.fee is None and b.reference_quantity is None
 
@@ -342,7 +342,7 @@ def test_die_herkunft_nennt_nur_die_gelaufenen_proben():
 def test_ein_gerissener_bereich_nimmt_die_anderen_nicht_mit():
     kaputt = ANLAGE_1_2025.replace("-240.000 €", "-250.000 €")
     gelesen, risse = lies(kaputt + ANLAGE_2_2026)
-    assert [b.area for b in gelesen] == ["abfallsammlung"]
+    assert [b.area for b in gelesen] == ["waste_collection"]
     assert len(risse) == 1
 
 
@@ -350,7 +350,7 @@ def test_die_drei_bereiche_werden_getrennt():
     gelesen, risse = lies(ANLAGE_1_2026 + ANLAGE_2_2026 + ANLAGE_3_2026)
     assert not risse
     assert [b.area for b in gelesen] == [
-        "abfallbehandlung", "abfallsammlung", "strassenreinigung"]
+        "waste_treatment", "waste_collection", "street_cleaning"]
     assert {b.year for b in gelesen} == {2026}
 
 
@@ -363,16 +363,16 @@ def test_altes_layout_liefert_zwoelf_benannte_tarife():
         ANLAGE_1_2025 + ANLAGE_3_2025 + ANLAGE_4_2025, "24/0999")
     assert len(saetze) == 12
     assert {s.year for s in saetze} == {2025}
-    assert next(s for s in saetze if s.key == "grundgebuehr").amount == 50
-    assert next(s for s in saetze if s.key == "litergebuehr").amount == 1.34
-    assert next(s for s in saetze if s.key == "sperrmuell_2m3").amount == 16
-    assert next(s for s in saetze if s.key == "gruengut_05m3").amount == 3
+    assert next(s for s in saetze if s.key == "base_fee").amount == 50
+    assert next(s for s in saetze if s.key == "per_litre_fee").amount == 1.34
+    assert next(s for s in saetze if s.key == "bulky_waste_2m3").amount == 16
+    assert next(s for s in saetze if s.key == "green_waste_05m3").amount == 3
 
 
 def test_neues_layout_prueft_jede_aenderung_gegen_das_vorjahr():
     saetze = lies_gebuehrensaetze(
         ANLAGE_1_2026 + ANLAGE_3_2026 + ANLAGE_4_2026, "25/0999")
-    reason = next(s for s in saetze if s.key == "grundgebuehr")
+    reason = next(s for s in saetze if s.key == "base_fee")
     assert len(saetze) == 12
     assert (reason.amount, reason.prior_year, reason.change_pct) == (62, 50, 24)
 

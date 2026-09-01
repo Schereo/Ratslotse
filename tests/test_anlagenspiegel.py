@@ -150,11 +150,11 @@ def test_die_bilanz_gegenprobe_kennt_nur_das_immaterielle_vermoegen():
     assert set(asp.BILANZ_ROLLE) == {"1"}
 
     zeilen = asp.parse_anlagenspiegel(KOPF_13 + ZEILE_2024, 2024)
-    bilanz = [{"role": "immaterielles_vermoegen", "value": 91_394_171.68},
-              {"role": "finanzvermoegen", "value": 645_348_451.45}]
+    bilanz = [{"role": "intangible_assets", "value": 91_394_171.68},
+              {"role": "financial_assets", "value": 645_348_451.45}]
     assert asp.gegen_bilanz(zeilen, bilanz) == []
 
-    falsch = [{"role": "immaterielles_vermoegen", "value": 91_000_000.0}]
+    falsch = [{"role": "intangible_assets", "value": 91_000_000.0}]
     assert len(asp.gegen_bilanz(zeilen, falsch)) == 1
 
 

@@ -457,10 +457,10 @@ def test_orte_fuer_decisions(tmp_path):
     with store._conn:
         store._conn.executemany(
             "INSERT INTO council_entities (id, slug, name, kind, n) VALUES (?,?,?,?,?)",
-            [(1, "caeci", "Cäcilienbrücke", "ort", 30),
-             (2, "huntebad", "Huntebad", "ort", 5),
+            [(1, "caeci", "Cäcilienbrücke", "place", 30),
+             (2, "huntebad", "Huntebad", "place", 5),
              (3, "vhs", "VHS Oldenburg", "organisation", 9),
-             (4, "hannover", "Hannover", "ort", 20)])
+             (4, "hannover", "Hannover", "place", 20)])
         store._conn.executemany(
             "INSERT INTO council_entity_meta (slug, lat, lon) VALUES (?,?,?)",
             [("caeci", 53.135, 8.215), ("vhs", 53.14, 8.21),

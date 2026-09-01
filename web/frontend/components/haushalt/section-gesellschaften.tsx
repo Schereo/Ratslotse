@@ -249,7 +249,7 @@ export function GesellschaftenAbschnitt({ onBestand }: {
   }, [onBestand, data, liste]);
 
   const aktiv = liste.find((g) => g.company === gewaehlt) ?? null;
-  const bericht = data?.berichtsjahre?.[data.berichtsjahre.length - 1] ?? null;
+  const bericht = data?.report_years?.[data.report_years.length - 1] ?? null;
   const years = data?.years ?? [];
   const quelleUrl = herkunftVon(data, liste[0]?.herkunft_id)?.url ?? null;
 

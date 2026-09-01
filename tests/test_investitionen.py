@@ -227,7 +227,7 @@ def _speichern(store: CouncilStore, text: str, year: int) -> dict:
                  label=f"Finanzhaushalt der Stadt Oldenburg {year}")
     store.save_investitionen(
         year, r["zeilen"], r["gesamt"],
-        herkunft.Herkunft(probe="investitionen_summenzeile",
+        herkunft.Herkunft(probe="investments_total_row",
                           citation="Datensatz 1101, Tabellenblatt Finanzhaushalt",
                           probe_result=r["nachweis"], **anker),
         finanzhaushalt=r["finanzhaushalt"],
@@ -264,7 +264,7 @@ def test_bezugsgroesse_traegt_ungeprueft_die_investitionen_nicht(tmp_path):
     geprueft = herkuenfte[je_ebene["investments"]["herkunft_id"]]
     bezug = herkuenfte[je_ebene["financial_budget"]["herkunft_id"]]
 
-    assert geprueft["probe"] == "investitionen_summenzeile"
+    assert geprueft["probe"] == "investments_total_row"
     assert bezug["probe"] == herkunft.UNGEPRUEFT
     # Zwei verschiedene Aussagen, zwei verschiedene Datensätze.
     assert geprueft["id"] != bezug["id"]
@@ -296,7 +296,7 @@ def test_jahrgaenge_stehen_nebeneinander(tmp_path):
 def test_probe_ist_mit_erklaersatz_registriert():
     """Ohne Eintrag in ``herkunft.PROBEN`` ließe sich die Herkunft gar nicht
     bauen — und im Beleg-Chip stünde nichts."""
-    assert "investitionen_summenzeile" in herkunft.PROBEN
+    assert "investments_total_row" in herkunft.PROBEN
     assert "council_investitionen" in herkunft.HERKUNFT_TABELLEN
     with pytest.raises(ValueError):
         herkunft.Herkunft(kind="opendata", probe="gibtsnicht",

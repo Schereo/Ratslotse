@@ -280,9 +280,9 @@ def test_vermoegensprobe_multipliziert_zwei_zeilen_gegen_die_bilanz():
          "value": 176_068.0, "decimals": 0},
     ]
     bilanz = [{"year": 2024, "role": r, "value": w} for r, w in (
-        ("immaterielles_vermoegen", 91_394_171.68), ("sachvermoegen", 605_573_107.06),
-        ("finanzvermoegen", 645_348_451.45), ("liquide_mittel", 118_001_891.26),
-        ("aktive_rap", 19_671_338.55))]
+        ("intangible_assets", 91_394_171.68), ("tangible_assets", 605_573_107.06),
+        ("financial_assets", 645_348_451.45), ("cash_and_equivalents", 118_001_891.26),
+        ("prepaid_expenses", 19_671_338.55))]
     # 8.294,05 € × 176.068 = 1.460.316.795,40 €; Aktiva ohne aktive
     # Rechnungsabgrenzung = 1.460.317.621,45 €. Die Differenz von 826,05 € auf
     # 1,46 Mrd. € ist genau das, was die gedruckte Cent-Stelle offenlässt —
@@ -303,7 +303,7 @@ def test_vermoegensprobe_mischt_keine_berichte():
         {"indicator": "population", "year": 2024, "report_year": 2023,
          "value": 176_068.0, "decimals": 0},
     ]
-    bilanz = [{"year": 2024, "role": "sachvermoegen", "value": 1.0}]
+    bilanz = [{"year": 2024, "role": "tangible_assets", "value": 1.0}]
     assert kz.vermoegensprobe(zeilen, bilanz) == (0, [])
 
 
@@ -320,9 +320,9 @@ def test_bilanz_gegenprobe_kennt_nur_die_drei_quoten():
     zeilen = [{"indicator": "anlagenintensitaet", "year": 2024, "report_year": 2024,
                "value": 40.92, "decimals": 2}]
     bilanz = [{"year": 2024, "role": r, "value": w} for r, w in (
-        ("immaterielles_vermoegen", 91_394_171.68), ("sachvermoegen", 605_573_107.06),
-        ("finanzvermoegen", 645_348_451.45), ("liquide_mittel", 118_001_891.26),
-        ("aktive_rap", 19_671_338.55))]
+        ("intangible_assets", 91_394_171.68), ("tangible_assets", 605_573_107.06),
+        ("financial_assets", 645_348_451.45), ("cash_and_equivalents", 118_001_891.26),
+        ("prepaid_expenses", 19_671_338.55))]
     assert kz.gegen_bilanz(zeilen, bilanz) == (1, [])
 
     zeilen[0]["value"] = 44.0

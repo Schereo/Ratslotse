@@ -207,7 +207,7 @@ def main() -> int:
                     label=f"Statistisches Jahrbuch der Stadt Oldenburg, Tabelle "
                           f"{nummer} — Investitionen {von} bis {bis}",
                     as_of=f"Rechnungsergebnisse {von}–{bis}",
-                    probe="investitionen_ist_zeilensumme",
+                    probe="investments_actual_row_total",
                     citation=citation, probe_result=nachweis),
                     verworfen=verw)
             print(f"  gespeichert: {geschrieben} Jahrgänge")

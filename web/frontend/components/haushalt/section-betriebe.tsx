@@ -93,17 +93,17 @@ const ENDE: Record<string, string> = {
  *  (`council/wirtschaftsplan_kernzahl.BELEGLAGE`) — hier nur die Fassung für
  *  Leserinnen. */
 const BELEGLAGE: Record<string, { kurz: string; lang: string }> = {
-  wirtschaftsplan_kernzahl: {
+  business_plan_key_figure: {
     kurz: "Beschluss + Anlage",
     lang: "Die Zahl steht im Beschlusstext der Ratsvorlage und noch einmal in "
       + "der beigefügten Anlage — zwei getrennte Dokumente.",
   },
-  wirtschaftsplan_erfolgsplan: {
+  business_plan_profit_loss: {
     kurz: "Beschlusstext, nachgerechnet",
     lang: "Der Beschlusstext nennt Erträge, Aufwendungen und Ergebnis; die "
       + "Rechnung geht auf den Cent auf.",
   },
-  wirtschaftsplan_spalten: {
+  business_plan_columns: {
     kurz: "Erfolgsplan, spaltenweise geprüft",
     lang: "Aus dem Erfolgsplan der Anlage. Erträge minus Aufwendungen ergibt "
       + "das Ergebnis — geprüft in jeder Spalte der Tabelle, nicht nur in der "
@@ -216,7 +216,7 @@ function BetriebsKarte({ zeilen, juengstesJahr, herkunftFuer }: {
           Die Bedingung hängt an der PROBE und nicht am Betriebskürzel: Wer
           künftig ebenfalls ausgeglichen plant, bekommt denselben Satz, ohne dass
           ihn jemand hier einträgt. */}
-      {letzte.result === 0 && letzte.probes.includes("kernzahl") && (
+      {letzte.result === 0 && letzte.probes.includes("business_plan_key_figure") && (
         <p className="mt-2 max-w-[62ch] text-[12px] leading-relaxed text-muted-foreground">
           <span className="font-semibold text-foreground">Ein ausgeglichener
           Plan.</span> Die Null ist keine fehlende Zahl, sondern die Absicht:

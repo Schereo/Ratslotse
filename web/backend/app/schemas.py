@@ -52,7 +52,7 @@ class UserOut(BaseModel):
     # Erstnutzungs-Karte steht — sonst erscheint sie erst nach der Antwort von
     # /council/gespraeche und schiebt den halben Bildschirm nach unten
     # (gemessen: ein Sprung mit CLS 0,196 bei 600 ms Antwortzeit).
-    qa_speichern: int | None = None
+    saves_conversations: int | None = None
 
 
 class AppConfigOut(BaseModel):
@@ -201,7 +201,7 @@ class LimitsUpdate(BaseModel):
     """Admin-steuerbare Frage-Limits je Konto: Recherchen/Tag (None = Standard,
     0 = unbegrenzt, sonst eigenes Tageslimit) + Rate-Limit-Befreiung."""
     deep_limit: int | None = Field(default=None, ge=0, le=999)
-    limits_frei: bool = False
+    limits_unlocked: bool = False
 
 
 class ChangePasswordRequest(BaseModel):

@@ -36,9 +36,9 @@ export type InvestitionsZeile = {
 
 export type InvestitionenDaten = {
   years: number[];
-  teilhaushalte: InvestitionsZeile[];
-  gesamt: InvestitionsZeile[];
-  finanzhaushalt: InvestitionsZeile[];
+  sub_budgets: InvestitionsZeile[];
+  investments: InvestitionsZeile[];
+  financial_budget: InvestitionsZeile[];
   herkunft: Record<string, Herkunft>;
 };
 
@@ -60,7 +60,7 @@ export function teilhaushalte(
   year: number,
 ): InvestitionsZeile[] {
   if (!daten) return [];
-  return daten.teilhaushalte
+  return daten.sub_budgets
     .filter((z) => z.year === year)
     .sort((a, b) => b.outflows - a.outflows);
 }
@@ -69,14 +69,14 @@ export function gesamtJahr(
   daten: InvestitionenDaten | null,
   year: number,
 ): InvestitionsZeile | null {
-  return daten?.gesamt.find((z) => z.year === year) ?? null;
+  return daten?.investments.find((z) => z.year === year) ?? null;
 }
 
 export function finanzhaushaltJahr(
   daten: InvestitionenDaten | null,
   year: number,
 ): InvestitionsZeile | null {
-  return daten?.finanzhaushalt.find((z) => z.year === year) ?? null;
+  return daten?.financial_budget.find((z) => z.year === year) ?? null;
 }
 
 /** Wie viel Prozent aller geplanten Auszahlungen Investitionen sind.
@@ -107,5 +107,5 @@ export function netto(row: InvestitionsZeile | null): number | null {
 /** Die Zeitreihe der Gesamtinvestitionen, aufsteigend nach Jahr. */
 export function series(daten: InvestitionenDaten | null): InvestitionsZeile[] {
   if (!daten) return [];
-  return [...daten.gesamt].sort((a, b) => a.year - b.year);
+  return [...daten.investments].sort((a, b) => a.year - b.year);
 }

@@ -93,9 +93,9 @@ from dataclasses import dataclass
 from council.herkunft import Herkunft
 
 #: Name der Rechenprobe, die im Dokument selbst steht.
-PROBE_ERFOLGSPLAN = "wirtschaftsplan_erfolgsplan"
+PROBE_ERFOLGSPLAN = "business_plan_profit_loss"
 #: Die zweite: Fließtext-Jahr gegen Titel-Jahr.
-PROBE_JAHR = "wirtschaftsplan_jahr"
+PROBE_JAHR = "business_plan_year"
 
 PROBEN: dict[str, str] = {
     PROBE_ERFOLGSPLAN:

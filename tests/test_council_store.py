@@ -198,7 +198,7 @@ def test_entities(tmp_path):
             "INSERT INTO council_decisions(id,ksinr,position,kind,item_number,title,official_text,outcome,policy_field,amount_eur) "
             "VALUES (?,1,0,'decision','1',?,'b','accepted','bauen_wohnen',1000000.0)", (i, t))
     store._conn.commit()
-    store.save_entities([("fliegerhorst", "Fliegerhorst", "ort", 2)],
+    store.save_entities([("fliegerhorst", "Fliegerhorst", "place", 2)],
                         [("fliegerhorst", 60), ("fliegerhorst", 61)])
     assert [e["slug"] for e in store.list_entities()] == ["fliegerhorst"]
     assert [e["slug"] for e in store.entities_for_decision(60)] == ["fliegerhorst"]
@@ -244,7 +244,7 @@ def test_entity_meta_description_and_geo(tmp_path):
         "INSERT INTO council_decisions(id,ksinr,position,kind,item_number,title,official_text,outcome,policy_field) "
         "VALUES (80,1,0,'decision','1','Fliegerhorst Bebauungsplan','Beschluss','accepted','bauen_wohnen')")
     store._conn.commit()
-    store.save_entities([("fliegerhorst", "Fliegerhorst", "ort", 1)], [("fliegerhorst", 80)])
+    store.save_entities([("fliegerhorst", "Fliegerhorst", "place", 1)], [("fliegerhorst", 80)])
 
     # description: missing → set → read back via entity_detail; idempotent backfill list
     assert [e["slug"] for e in store.entities_without_description()] == ["fliegerhorst"]
@@ -278,7 +278,7 @@ def test_entity_money_dedup(tmp_path):
             "outcome,amount_eur,template_number) VALUES (?,1,0,'decision','1',?,'b','accepted',?,?)",
             (i, title, office, vnr))
     store._conn.commit()
-    store.save_entities([("halle", "Halle", "ort", 4)], [("halle", i) for i in (70, 71, 72, 73)])
+    store.save_entities([("halle", "Halle", "place", 4)], [("halle", i) for i in (70, 71, 72, 73)])
     # 600k (Zwilling einmal) + 200k = 800k; der 99-Mio-Jahresabschluss ist ausgeschlossen.
     assert store.entity_detail("halle")["money"] == 800000
 
@@ -307,7 +307,7 @@ def test_entity_obs_incremental(tmp_path):
 
     # Incremental pass: decision 3 also mentions Rathaus → it now crosses min_n,
     # because the earlier observation (decision 1) was retained.
-    store.add_entity_observations([(3, "rathaus", "Rathaus", "ort")], [3])
+    store.add_entity_observations([(3, "rathaus", "Rathaus", "place")], [3])
     store.rebuild_entities_from_obs(min_n=2)
     assert store.scanned_entity_decision_ids() == {1, 2, 3}
     assert {e["slug"]: e["n"] for e in store.list_entities()}.get("rathaus") == 2

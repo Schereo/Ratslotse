@@ -1004,7 +1004,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
       } else if (msg.type === "gestoppt") {
         patchTurn(turnKey, { deepStatus: "gestoppt",
           deepFacettenFertig: (msg.facetten_fertig as number) ?? 0,
-          deepTeilberichtMoeglich: Boolean(msg.teilbericht_moeglich) });
+          deepTeilberichtMoeglich: Boolean(msg.partial_report_possible) });
         return true;
       } else if (msg.type === "fehler") {
         patchTurn(turnKey, { deepStatus: "fehler" });
@@ -1112,7 +1112,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
       const b = await r.json();
       patchTurn(t.key, { deepStatus: "gestoppt",
         deepFacettenFertig: b.facetten_fertig ?? 0,
-        deepTeilberichtMoeglich: Boolean(b.teilbericht_moeglich) });
+        deepTeilberichtMoeglich: Boolean(b.partial_report_possible) });
     } catch {
       toast.error("Abbrechen hat nicht geklappt — die Recherche läuft weiter.");
     }
@@ -1223,7 +1223,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   // ein Sprung mit CLS 0,196). Der Wert steht im Konto, das ohnehin geladen
   // ist; die Liste der Gespräche darf weiter nachkommen.
   const [einstellung, setEinstellung] = useState<number | null | undefined>(
-    () => (konto ? konto.qa_speichern ?? null : undefined),
+    () => (konto ? konto.saves_conversations ?? null : undefined),
   );
   const [gespraechId, setGespraechId] = useState<number | null>(null);
   const [gespraeche, setGespraeche] = useState<GespraechEintrag[]>([]);

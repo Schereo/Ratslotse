@@ -353,10 +353,10 @@ def test_komplementaer_gmbh_wird_nicht_mit_der_kg_verwechselt():
 
 def test_abschnitte_werden_der_reihe_nach_getrennt():
     a = bb.abschnitte(ABSCHNITTE_EGH + ABSCHLUSS_EGH)
-    assert set(a) == {"gegenstand", "beteiligungsverhaeltnisse", "aufsichtsorgane",
-                      "beteiligungen", "haushalt"}
-    assert "gebäudewirtschaftlichen" in a["gegenstand"]
-    assert "Eigenkapitalverzinsung" in a["haushalt"]
+    assert set(a) == {"business_purpose", "ownership_structure", "supervisory_bodies",
+                      "own_shareholdings", "budget_impact"}
+    assert "gebäudewirtschaftlichen" in a["business_purpose"]
+    assert "Eigenkapitalverzinsung" in a["budget_impact"]
     # Abschnitt 5 wird nicht gespeichert (der Lagebericht der Gesellschaft).
     assert "Vorbemerkungen" not in a.get("beteiligungen", "")
 
@@ -368,7 +368,7 @@ def test_kontaktangaben_werden_nicht_gespeichert():
     Das Repo hält fremde Adressen ausdrücklich draußen
     (``scripts/lint_adressen.py``); die Fixture trägt deshalb example.org."""
     a = bb.abschnitte(ABSCHNITTE_EGH)
-    organe = a["aufsichtsorgane"]
+    organe = a["supervisory_bodies"]
     assert "Drügemöller" in organe
     assert "@" not in organe
     assert "Telefon" not in organe
@@ -383,7 +383,7 @@ def test_lies_ganzer_bericht_mit_proben():
     assert [g.key for g in e["gesellschaften"]] == ["egh", "gsg"]
     egh = e["gesellschaften"][0]
     assert egh.indicators["bilanzsumme"][2024] == 580193968.91
-    assert egh.abschnitte["gegenstand"]
+    assert egh.abschnitte["business_purpose"]
     # Bilanzprobe und Ergebnisprobe für die drei Bilanzjahre.
     probes = {(x["indicator"], x["year"]): x for x in e["dokumentproben"]}
     assert probes[("bilanzsumme", 2024)]["ok"]
@@ -442,7 +442,7 @@ def test_gespeicherte_kennzahl_traegt_probe_und_messwert(tmp_path):
     assert len(zeilen) == 1
     h = store.get_herkunft([zeilen[0]["herkunft_id"]])[0]
     assert h["kind"] == "city"
-    assert h["probe"] == "beteiligung_bilanzprobe"
+    assert h["probe"] == "shareholding_balance_sheet_check"
     assert "Abschnitt 2.2.1" in h["citation"]
     assert h["page"] == 2
     assert "0.00" in h["probe_result"]
@@ -504,7 +504,7 @@ def test_konzernvergleich_ist_einordnung_und_verwirft_nichts(tmp_path):
     source = herkunft.Herkunft(kind="ris", document_id=302709,
                                label="Gesamtabschluss 2024",
                                url="https://example.org/ga2024.pdf",
-                               probe="konzern_traegersumme")
+                               probe="group_entity_total")
     store.save_konzern_jahrgang(2024, [], [
         {"kind": "revenues", "entity_key": "egh", "entity": "EGH",
          "amount_keur": 69889.0, "prior_year_keur": None},
@@ -775,14 +775,14 @@ def test_personen_und_eigentuemer_landen_mit_herkunft_im_bestand(tmp_path):
     assert all(p["position"] == "Ratsmitglied" for p in personen)
     assert all(p["roles_assignable"] == 1 for p in personen)
     h = store.get_herkunft([personen[0]["herkunft_id"]])[0]
-    assert h["probe"] == "beteiligung_spaltenprobe"
+    assert h["probe"] == "shareholding_column_check"
     assert "Betriebsausschuss" in h["citation"]
 
     eigner = store.get_gesellschaft_eigentuemer()
     assert [e["name"] for e in eigner] == ["Stadt Oldenburg"]
     assert eigner[0]["amount_eur"] == 22000000.0
     he = store.get_herkunft([eigner[0]["herkunft_id"]])[0]
-    assert he["probe"] == "beteiligung_anteilsprobe"
+    assert he["probe"] == "shareholding_share_check"
     assert "22.000.000,00" in he["probe_result"]
 
     # Keine Zeile ohne Herkunft — auch die beiden neuen Tabellen nicht.
