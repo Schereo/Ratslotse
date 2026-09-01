@@ -369,12 +369,12 @@ function FinanceView() {
   );
 }
 
-type AnalysisSub = "parteien" | "finanzen" | "trends" | "ziele" | "personen";
+type AnalysisSub = "parties" | "finanzen" | "trends" | "ziele" | "personen";
 // Trends zuerst und als Default: Rückblicke + Quartals-Trends sind der
 // zugänglichste Einstieg in die Analyse — Parteien/Personen sind die Vertiefung.
 const SUB_TABS: [AnalysisSub, string, typeof Users][] = [
   ["trends", "Trends", TrendingUp],
-  ["parteien", "Parteien", Users],
+  ["parties", "Parteien", Users],
   ["personen", "Personen", User],
   ["finanzen", "Finanzen", Euro],
   ["ziele", "Ziele", Target],
@@ -384,7 +384,7 @@ export function AnalysisTab() {
   const sp = useSearchParams();
   const router = useRouter();
   const raw = sp.get("sub");
-  const sub: AnalysisSub = raw === "finanzen" || raw === "parteien" || raw === "ziele" || raw === "personen" ? raw : "trends";
+  const sub: AnalysisSub = raw === "finanzen" || raw === "parties" || raw === "ziele" || raw === "personen" ? raw : "trends";
   const setSub = (s: AnalysisSub) => {
     const params = new URLSearchParams(sp.toString());
     params.set("tab", "analysis");
@@ -400,7 +400,7 @@ export function AnalysisTab() {
         onChange={setSub}
         options={SUB_TABS.map(([s, lbl, Icon]) => ({ value: s, label: lbl, icon: Icon }))}
       />
-      {sub === "parteien" ? <PartiesView /> : sub === "personen" ? <PersonenView />
+      {sub === "parties" ? <PartiesView /> : sub === "personen" ? <PersonenView />
         : sub === "finanzen" ? <FinanceView /> : sub === "trends" ? <TrendsView /> : <GoalsView />}
     </div>
   );

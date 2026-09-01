@@ -415,7 +415,7 @@ def test_die_facette_zieht_plan_und_ist_gemeinsam():
     """„Was wird gebaut?" hat beides, und die Frage sagt selten, welches."""
     from council import qa
 
-    facetten = qa.geld_facetten("Wie viel investiert Oldenburg?", "geld")
+    facetten = qa.geld_facetten("Wie viel investiert Oldenburg?", "money")
     assert {"investitionen", "gebaut"} <= facetten
     # Und sie stehen im Budget nebeneinander, damit nicht eines allein
     # durchkommt und die Warnung an einer fehlenden Zahl hängt.
@@ -428,6 +428,6 @@ def test_geld_kontext_ueberlebt_eine_frische_datenbank(store):
     Antwort, sobald eine Tabelle fehlt (``tests/test_haushalt_gate.py``)."""
     from council import qa
 
-    aus = qa.geld_kontext(store, "Wie viel wurde gebaut?", typ="geld")
-    assert "gebaut" in aus["facetten"]
+    aus = qa.geld_kontext(store, "Wie viel wurde gebaut?", typ="money")
+    assert "gebaut" in aus["facets"]
     assert aus.get("gebaut") is None

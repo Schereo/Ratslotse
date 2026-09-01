@@ -3358,16 +3358,16 @@
       },
       "ParteiMeinungen": {
         "properties": {
-          "ohne_beitraege": {
-            "title": "Ohne Beitraege"
+          "parties": {
+            "title": "Parties"
           },
-          "parteien": {
-            "title": "Parteien"
+          "without_speeches": {
+            "title": "Without Speeches"
           }
         },
         "required": [
-          "ohne_beitraege",
-          "parteien"
+          "without_speeches",
+          "parties"
         ],
         "title": "ParteiMeinungen",
         "type": "object"
@@ -3641,50 +3641,50 @@
       },
       "QaShareBody": {
         "properties": {
-          "anlagen": {
-            "items": {
-              "$ref": "#/components/schemas/QaShareAnlage"
-            },
-            "maxItems": 10,
-            "title": "Anlagen",
-            "type": "array"
-          },
           "answer": {
             "maxLength": 8000,
             "minLength": 1,
             "title": "Answer",
             "type": "string"
           },
-          "debatten": {
+          "attachments": {
             "items": {
-              "$ref": "#/components/schemas/QaShareDebatte"
+              "$ref": "#/components/schemas/QaShareAnlage"
             },
-            "maxItems": 20,
-            "title": "Debatten",
+            "maxItems": 10,
+            "title": "Attachments",
             "type": "array"
           },
-          "grafik": {
+          "chart": {
             "additionalProperties": true,
-            "title": "Grafik",
+            "title": "Chart",
             "type": [
               "object",
               "null"
             ]
           },
-          "parteien": {
+          "debates": {
+            "items": {
+              "$ref": "#/components/schemas/QaShareDebatte"
+            },
+            "maxItems": 20,
+            "title": "Debates",
+            "type": "array"
+          },
+          "parties": {
             "items": {
               "$ref": "#/components/schemas/QaSharePartei"
             },
             "maxItems": 12,
-            "title": "Parteien",
+            "title": "Parties",
             "type": "array"
           },
-          "presse": {
+          "press_releases": {
             "items": {
               "$ref": "#/components/schemas/QaSharePresse"
             },
             "maxItems": 10,
-            "title": "Presse",
+            "title": "Press Releases",
             "type": "array"
           },
           "question": {
@@ -4869,12 +4869,12 @@
       },
       "RechercheGestoppt": {
         "properties": {
-          "facetten_fertig": {
-            "title": "Facetten Fertig",
+          "facets_done": {
+            "title": "Facets Done",
             "type": "integer"
           },
-          "facetten_gesamt": {
-            "title": "Facetten Gesamt",
+          "facets_total": {
+            "title": "Facets Total",
             "type": "integer"
           },
           "partial_report_possible": {
@@ -4883,8 +4883,8 @@
           }
         },
         "required": [
-          "facetten_fertig",
-          "facetten_gesamt",
+          "facets_done",
+          "facets_total",
           "partial_report_possible"
         ],
         "title": "RechercheGestoppt",

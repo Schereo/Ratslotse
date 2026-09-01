@@ -1764,7 +1764,7 @@ def decision_detail(
             }
             if not out["vorlage_url"] and v.get("kvonr"):
                 out["vorlage_url"] = _vorlage_url(v["kvonr"])
-        out["anlagen"] = store.anlagen_for_vorlage_nr(d["template_number"])
+        out["attachments"] = store.anlagen_for_vorlage_nr(d["template_number"])
         # Wo dieser Beschluss im Haushalts-Bereich wieder auftaucht — belegt
         # über eine echte Verknüpfung, nicht über eine Textsuche. `None` heißt
         # „nirgends nachweisbar", und die Seite lässt die Karte dann weg.
@@ -1779,7 +1779,7 @@ def decision_detail(
             label = (a.get("label") or "").lower()
             return 0 if ("planzeichnung" in label or "plandarstellung" in label) else 1
 
-        bilder = sorted((a for a in out["anlagen"] if a.get("is_image") == 1), key=_plan_rang)
+        bilder = sorted((a for a in out["attachments"] if a.get("is_image") == 1), key=_plan_rang)
         out["plan_bild"] = bilder[0]["document_id"] if bilder else None
         # Offizielle Beratungsfolge aus dem Ratsinfo — reicher als die aus
         # unseren Tagesordnungen abgeleitete Journey (Ergebnis je Station,
@@ -2010,7 +2010,7 @@ def partei_meinungen_endpoint(
         _log.exception("partei_meinungen fehlgeschlagen")
         meinungen = None
         ohne = []
-    return {"parteien": meinungen or [], "ohne_beitraege": ohne}
+    return {"parties": meinungen or [], "without_speeches": ohne}
 
 
 class QaShareQuelle(BaseModel):
@@ -2082,15 +2082,15 @@ class QaShareBody(BaseModel):
     sources: list[QaShareQuelle] = Field(default_factory=list, max_length=40)
     # Bausteine neben den Beschlüssen: ohne sie zeigte die geteilte Seite
     # weniger als das Gespräch, aus dem sie stammt (Tims Befund 10.08.).
-    debatten: list[QaShareDebatte] = Field(default_factory=list, max_length=20)
-    presse: list[QaSharePresse] = Field(default_factory=list, max_length=10)
-    anlagen: list[QaShareAnlage] = Field(default_factory=list, max_length=10)
-    parteien: list[QaSharePartei] = Field(default_factory=list, max_length=12)
+    debates: list[QaShareDebatte] = Field(default_factory=list, max_length=20)
+    press_releases: list[QaSharePresse] = Field(default_factory=list, max_length=10)
+    attachments: list[QaShareAnlage] = Field(default_factory=list, max_length=10)
+    parties: list[QaSharePartei] = Field(default_factory=list, max_length=12)
     # Die Grafik zur Antwort (council/qa.py, geld_grafik) — als loses dict,
     # weil der Client sie unverändert zurückreicht: Sie stammt aus DIESEM
     # Backend, und ein zweites Schema hier wäre eine Kopie, die driftet.
     # Begrenzt wird trotzdem: höchstens 60 Punkte, nur bekannte Felder.
-    grafik: dict | None = None
+    chart: dict | None = None
 
 
 _SHARE_BLOCKED_PHRASES = (
@@ -2173,11 +2173,11 @@ def qa_share_anlegen(
     if not user.get("limits_unlocked"):
         qa_share_limiter.check(request)
     extras = {
-        "debatten": [d.model_dump() for d in body.debatten],
-        "presse": [p.model_dump() for p in body.presse],
-        "anlagen": [a.model_dump() for a in body.anlagen],
-        "parteien": [p.model_dump() for p in body.parteien],
-        "grafik": _grafik_pruefen(body.grafik),
+        "debates": [d.model_dump() for d in body.debates],
+        "press_releases": [p.model_dump() for p in body.press_releases],
+        "attachments": [a.model_dump() for a in body.attachments],
+        "parties": [p.model_dump() for p in body.parties],
+        "chart": _grafik_pruefen(body.chart),
     }
     token = ratslotse.qa_share_anlegen(user["id"], body.question, body.answer,
                                  [q.model_dump() for q in body.sources],
@@ -2373,8 +2373,8 @@ def deep_research_stop(job_id: str, user: dict = Depends(require_active),
     job.stop.set()
     with job.cond:
         job.cond.notify_all()
-    return {"facetten_fertig": job.facetten_fertig,
-            "facetten_gesamt": job.facetten_gesamt,
+    return {"facets_done": job.facetten_fertig,
+            "facets_total": job.facetten_gesamt,
             "partial_report_possible": bool(job.material and job.material.get("candidates"))}
 
 
@@ -3004,18 +3004,18 @@ def _turn_speichern(ratslotse: Store, user: dict, body: AskBody, q_suche: str,
              # — anderer Schlüssel, also lud der Baustein beim Zurückwechseln
              # auf den Fragen-Tab komplett neu und fragte dabei mit der
              # kontextlosen Frage (Tims Befund 21.08.2026).
-             "kontext": q_suche,
-             "presse": _presse_kompakt(presse_rows or []),
-             "debatten": _debatten_kompakt(debatten_rows or []),
-             "anlagen": _anlagen_kompakt(anlagen_rows or []),
+             "context": q_suche,
+             "press_releases": _presse_kompakt(presse_rows or []),
+             "debates": _debatten_kompakt(debatten_rows or []),
+             "attachments": _anlagen_kompakt(anlagen_rows or []),
              # Der Ausblick gehört wie Presse und Debatten in den Snapshot,
              # sonst öffnet ein gespeichertes Gespräch ohne „Wie es weitergeht".
-             "planungen": planungen or [],
+             "planning_procedures": planungen or [],
              # Und die Grafik aus demselben Grund: Ein gespeichertes Gespräch
              # soll aussehen wie das Gespräch, aus dem es stammt.
-             "grafik": grafik,
+             "chart": grafik,
              # Der Tagesordnungs-Baustein ebenso (Sitzungs-Fragetyp).
-             "sitzungen": _sitzungen_kompakt(sitzungen or [])}, ensure_ascii=False)
+             "sessions": _sitzungen_kompakt(sitzungen or [])}, ensure_ascii=False)
         if not ratslotse.qa_turn_speichern(gespraech_id, user["id"],
                                      body.question, answer_text, quellen_json):
             if neu:
@@ -3424,20 +3424,20 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             yield _sse({"type": "sources", "mode": mode, "qtype": typ,
                         "question": q_suche,
                         "sources": [_qa_source(c) for c in candidates],
-                        "presse": _presse_kompakt(presse_rows),
-                        "debatten": _debatten_kompakt(debatten_rows),
-                        "anlagen": _anlagen_kompakt(anlagen_rows),
-                        "planungen": planungen,
+                        "press_releases": _presse_kompakt(presse_rows),
+                        "debates": _debatten_kompakt(debatten_rows),
+                        "attachments": _anlagen_kompakt(anlagen_rows),
+                        "planning_procedures": planungen,
                         # Tagesordnungs-Baustein: die aufgelösten Sitzungen des
                         # Sitzungs-Fragetyps — deterministisch, nie vom Modell.
-                        "sitzungen": _sitzungen_kompakt(sitzungen),
-                        "beleglage": lage,
+                        "sessions": _sitzungen_kompakt(sitzungen),
+                        "evidence_level": lage,
                         # Welche Haushalts-Quellen diese Frage gezogen hat.
                         # Steht im Ereignis, damit im Log ohne Rätselraten zu
                         # sehen ist, warum eine Antwort eine Zahl kannte —
                         # oder eben nicht.
-                        "geldquellen": geld.get("facetten") or [],
-                        "grafik": grafik,
+                        "geldquellen": geld.get("facets") or [],
+                        "chart": grafik,
                         # Der Hintergrund geht IMMER in die Antwort; als eigene
                         # Karte erscheint er nur, wenn die Antwort ihn nicht
                         # ohnehin wiederholt (Definitionsfragen, Tims Befund).
@@ -3548,7 +3548,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     "decisions": len(candidates),
                     "debates": len(debatten_rows),
                     "budget": sum(len(value) if isinstance(value, list) else int(bool(value))
-                                  for key, value in geld.items() if key != "facetten"),
+                                  for key, value in geld.items() if key != "facets"),
                     "press": len(presse_rows),
                     "sessions": len(sitzungen),
                     "future_agenda": len(planungen),

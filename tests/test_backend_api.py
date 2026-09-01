@@ -1291,7 +1291,7 @@ def test_decision_detail_includes_vorlage(client):
     assert data["vorlage"]["kind"] == "Beschlussvorlage"
     assert "Radweg entlang der Haaren" in data["vorlage"]["excerpt"]
     assert "kvonr=901" in data["vorlage_url"]
-    assert data["anlagen"] == []  # keine Anlagen geseedet → leere Liste, kein Fehlen
+    assert data["attachments"] == []  # keine Anlagen geseedet → leere Liste, kein Fehlen
 
 
 def test_decision_detail_lists_anlagen_and_analysis_has_antrag_stats(client):
@@ -1312,8 +1312,8 @@ def test_decision_detail_lists_anlagen_and_analysis_has_antrag_stats(client):
     ])
     cs.close()
     data = client.get(f"/api/council/decision/{did}").json()
-    assert [a["document_id"] for a in data["anlagen"]] == [77, 78]  # Antrag zuerst
-    assert data["anlagen"][0]["applicants"] == ["SPD"]
+    assert [a["document_id"] for a in data["attachments"]] == [77, 78]  # Antrag zuerst
+    assert data["attachments"][0]["applicants"] == ["SPD"]
     stats = client.get("/api/council/analysis").json()["antrag_stats"]
     assert {"party": "SPD", "n": 1, "accepted": 1, "rejected": 0} in stats["parties"]
 
@@ -2953,8 +2953,8 @@ def test_qa_share_roundtrip(client):
     assert "user_id" not in body
 
     # Alte Snapshots (ohne Bausteine) liefern leere Listen statt zu fehlen.
-    assert body["debatten"] == [] and body["presse"] == []
-    assert body["anlagen"] == [] and body["parteien"] == []
+    assert body["debates"] == [] and body["press_releases"] == []
+    assert body["attachments"] == [] and body["parties"] == []
 
     assert client.get("/api/council/qa-share/gibtsnicht").status_code == 404
     # Ohne Login kein Anlegen.
@@ -2972,7 +2972,7 @@ def test_qa_share_traegt_bausteine(client):
         "answer": "Der Rat stimmte zu [5].",
         "sources": [{"id": 5, "title": "Stadionneubau", "session_date": "2026-06-01",
                      "committee": "Rat", "outcome": "accepted"}],
-        "debatten": [{"speaker": "Ratsherr Wenzel", "party": "SPD", "art": "rede",
+        "debates": [{"speaker": "Ratsherr Wenzel", "party": "SPD", "art": "rede",
                       "top": "6.1 Stadionneubau", "auszug": "Warnte vor einem Millionengrab.",
                       "committee": "Rat", "date": "2026-06-01",
                       "protokoll_url": "https://buergerinfo.oldenburg.de/getfile.php?id=4711&type=do",
@@ -2984,12 +2984,12 @@ def test_qa_share_traegt_bausteine(client):
                       "top": "6.1 Stadionneubau", "auszug": "Begrüßte den Plan.",
                       "committee": "Rat", "date": "2026-06-01",
                       "protokoll_url": "https://boese.example.org/phishing.pdf"}],
-        "presse": [{"title": "Stadion: Stadt informiert",
+        "press_releases": [{"title": "Stadion: Stadt informiert",
                     "url": "https://www.oldenburg.de/x", "date": "2026-06-02"}],
-        "anlagen": [{"label": "Machbarkeitsstudie", "url": "https://ris/anlage.pdf",
+        "attachments": [{"label": "Machbarkeitsstudie", "url": "https://ris/anlage.pdf",
                      "template_number": "26/0123", "vorlage_titel": "Stadionneubau",
                      "auszug": "Kapazität 15.000."}],
-        "parteien": [{"party": "SPD", "haltung": "dagegen", "position": "Skeptisch.",
+        "parties": [{"party": "SPD", "haltung": "dagegen", "position": "Skeptisch.",
                       "einig": True, "note": None, "beitraege": 3,
                       "kernaussage": {"text": "Kein zweites Millionengrab.",
                                       "speaker": "Wenzel", "date": "01.06.2026"}}],
@@ -2999,15 +2999,15 @@ def test_qa_share_traegt_bausteine(client):
 
     client.cookies.clear()  # öffentlich lesbar
     body = client.get(f"/api/council/qa-share/{token}").json()
-    assert body["debatten"][0]["speaker"] == "Ratsherr Wenzel"
-    assert body["debatten"][0]["protokoll_url"] == (
+    assert body["debates"][0]["speaker"] == "Ratsherr Wenzel"
+    assert body["debates"][0]["protokoll_url"] == (
         "https://buergerinfo.oldenburg.de/getfile.php?id=4711&type=do")
-    assert body["debatten"][0]["protokoll_seite"] == 6
-    assert body["debatten"][1]["protokoll_url"] is None
-    assert body["debatten"][1]["protokoll_seite"] is None
-    assert body["presse"][0]["url"] == "https://www.oldenburg.de/x"
-    assert body["anlagen"][0]["template_number"] == "26/0123"
-    assert body["parteien"][0]["haltung"] == "dagegen"
+    assert body["debates"][0]["protokoll_seite"] == 6
+    assert body["debates"][1]["protokoll_url"] is None
+    assert body["debates"][1]["protokoll_seite"] is None
+    assert body["press_releases"][0]["url"] == "https://www.oldenburg.de/x"
+    assert body["attachments"][0]["template_number"] == "26/0123"
+    assert body["parties"][0]["haltung"] == "dagegen"
     assert "user_id" not in body
 
 
@@ -3084,23 +3084,23 @@ def test_partei_meinungen_endpoint(client, monkeypatch):
                 "note": None, "kernaussage": None, "beitraege": 3}]
     monkeypatch.setattr(qa_mod, "partei_meinungen", lambda *a, **k: meinung)
     r = client.post("/api/council/party-meinungen", json={"question": "Stadionneubau?"})
-    assert r.status_code == 200 and r.json()["parteien"] == meinung
+    assert r.status_code == 200 and r.json()["parties"] == meinung
 
     monkeypatch.setattr(qa_mod, "partei_meinungen", lambda *a, **k: None)
     assert client.post("/api/council/party-meinungen",
-                       json={"question": "Stadionneubau?"}).json()["parteien"] == []
+                       json={"question": "Stadionneubau?"}).json()["parties"] == []
 
     def kaputt(*a, **k):
         raise RuntimeError("llm down")
     monkeypatch.setattr(qa_mod, "partei_meinungen", kaputt)
     r = client.post("/api/council/party-meinungen", json={"question": "Stadionneubau?"})
-    assert r.status_code == 200 and r.json()["parteien"] == []
+    assert r.status_code == 200 and r.json()["parties"] == []
 
     # Cache-Hit: gleiche Treffer-IDs wie Fall 1 → Ergebnis kommt ohne LLM
     # (partei_meinungen ist noch der kaputt-Mock — er darf nicht laufen).
     zaehler["n"] = 0
     r = client.post("/api/council/party-meinungen", json={"question": "Anders formuliert?"})
-    assert r.status_code == 200 and r.json()["parteien"] == meinung
+    assert r.status_code == 200 and r.json()["parties"] == meinung
 
 
 def test_partei_meinungen_nimmt_beschluss_anker_dazu(client, monkeypatch):
@@ -3126,7 +3126,7 @@ def test_partei_meinungen_nimmt_beschluss_anker_dazu(client, monkeypatch):
                         lambda question, rows, **k: (gesehen.update(rows=rows) or meinung))
     r = client.post("/api/council/party-meinungen",
                     json={"question": "Baumschutzsatzung?", "beschluss_ids": [20032, 20431]})
-    assert r.status_code == 200 and r.json()["parteien"] == meinung
+    assert r.status_code == 200 and r.json()["parties"] == meinung
     assert [d["id"] for d in gesehen["dec"]] == [20032, 20431]
     assert [row["id"] for row in gesehen["rows"]] == [4711]
 
@@ -3377,7 +3377,7 @@ def test_ask_kombiniert_person_mit_ort_ueber_beschlussanker(client, monkeypatch)
                             AssertionError("freie Personensuche darf nicht laufen")))
 
     def fake_stream(question, ctx, **kwargs):
-        gesehen["debatten"] = kwargs.get("debatten")
+        gesehen["debates"] = kwargs.get("debatten")
         gesehen["typ"] = kwargs.get("typ")
         yield "Ellberg nannte die Sanierung dringend [5]."
 
@@ -3390,11 +3390,11 @@ def test_ask_kombiniert_person_mit_ort_ueber_beschlussanker(client, monkeypatch)
     events = [json.loads(line[6:]) for line in body.splitlines() if line.startswith("data: ")]
     sources = next(event for event in events if event["type"] == "sources")
     assert gesehen["typ"] == "person"
-    assert [row["speaker"] for row in gesehen["debatten"]] == ["Bernhard Ellberg"]
-    assert gesehen["debatten"][0]["zu_beschluss"] == 5
-    assert [row["speaker"] for row in sources["debatten"]] == ["Bernhard Ellberg"]
+    assert [row["speaker"] for row in gesehen["debates"]] == ["Bernhard Ellberg"]
+    assert gesehen["debates"][0]["zu_beschluss"] == 5
+    assert [row["speaker"] for row in sources["debates"]] == ["Bernhard Ellberg"]
     assert [row["id"] for row in sources["sources"]] == [5]
-    assert sources["beleglage"] == "solide"
+    assert sources["evidence_level"] == "solide"
 
 
 def test_ask_neueste_ortsfrage_sortiert_strikt_chronologisch(client, monkeypatch):
@@ -3453,8 +3453,8 @@ def test_ask_neueste_ortsfrage_sortiert_strikt_chronologisch(client, monkeypatch
     sources = next(event for event in events if event["type"] == "sources")
     assert sources["mode"] == "chronologisch"
     assert sources["qtype"] == "place"
-    assert sources["beleglage"] == "solide"
-    assert sources["debatten"] == []
+    assert sources["evidence_level"] == "solide"
+    assert sources["debates"] == []
     assert [row["id"] for row in sources["sources"]] == [103, 102, 101]
     tokens = "".join(event["text"] for event in events if event["type"] == "token")
     # Quellenband streng nach Datum, Faktenantwort deterministisch aus der
@@ -3507,7 +3507,7 @@ def test_ask_gueltiger_plan_ohne_debatten_ueberspringt_den_kanal(client, monkeyp
         events = [json.loads(line[6:]) for line in "".join(response.iter_text()).splitlines()
                   if line.startswith("data: ")]
     sources = next(event for event in events if event["type"] == "sources")
-    assert sources["debatten"] == []
+    assert sources["debates"] == []
 
 
 def test_ask_gueltiger_faktenplan_ueberspringt_presse_und_zukunft(client, monkeypatch):
@@ -3552,7 +3552,7 @@ def test_ask_gueltiger_faktenplan_ueberspringt_presse_und_zukunft(client, monkey
         events = [json.loads(line[6:]) for line in "".join(response.iter_text()).splitlines()
                   if line.startswith("data: ")]
     sources = next(event for event in events if event["type"] == "sources")
-    assert sources["presse"] == [] and sources["planungen"] == []
+    assert sources["press_releases"] == [] and sources["planning_procedures"] == []
 
 
 def test_ask_dokumentenplan_sucht_anlagen_und_gibt_sie_ins_prompt(client, monkeypatch):
@@ -3593,7 +3593,7 @@ def test_ask_dokumentenplan_sucht_anlagen_und_gibt_sie_ins_prompt(client, monkey
     gesehen = {}
 
     def answer(*args, **kwargs):
-        gesehen["anlagen"] = kwargs.get("anlagen")
+        gesehen["attachments"] = kwargs.get("anlagen")
         return iter(["Das Gutachten sieht die Grenzwerte eingehalten [A1]."])
 
     monkeypatch.setattr(qa_mod, "answer_stream", answer)
@@ -3603,13 +3603,13 @@ def test_ask_dokumentenplan_sucht_anlagen_und_gibt_sie_ins_prompt(client, monkey
                   if line.startswith("data: ")]
 
     sources = next(event for event in events if event["type"] == "sources")
-    assert sources["anlagen"] == [{
+    assert sources["attachments"] == [{
         "nr": 1, "label": "Schalltechnisches Gutachten",
         "url": "https://ris.test/gutachten.pdf", "template_number": "26/0100",
         "vorlage_titel": "Grundsatzbeschluss Stadionneubau",
         "auszug": "Lärmpegel unter dem Grenzwert",
     }]
-    assert gesehen["anlagen"][0]["citation"] == "Lärmpegel unter dem Grenzwert"
+    assert gesehen["attachments"][0]["citation"] == "Lärmpegel unter dem Grenzwert"
     assert "[A1]" in "".join(e.get("text", "") for e in events)
 
 
@@ -3648,7 +3648,7 @@ def test_ask_ohne_dokumentenbedarf_ueberspringt_anlagen_und_vorlagen(client, mon
         events = [json.loads(line[6:]) for line in "".join(response.iter_text()).splitlines()
                   if line.startswith("data: ")]
     sources = next(event for event in events if event["type"] == "sources")
-    assert sources["anlagen"] == []
+    assert sources["attachments"] == []
 
 
 def test_ask_sitzungsfrage_holt_die_ganze_sitzung(client, monkeypatch):
@@ -3691,7 +3691,7 @@ def test_ask_sitzungsfrage_holt_die_ganze_sitzung(client, monkeypatch):
     def fake_stream(question, ctx, **kw):
         gesehen["ids"] = [c["id"] for c in ctx]
         gesehen["typ"] = kw.get("typ")
-        gesehen["sitzungen"] = kw.get("sitzungen")
+        gesehen["sessions"] = kw.get("sitzungen")
         yield "Alle Punkte der Sitzung [1][2][3]."
 
     monkeypatch.setattr(qa_mod, "answer_stream", fake_stream)
@@ -3702,18 +3702,18 @@ def test_ask_sitzungsfrage_holt_die_ganze_sitzung(client, monkeypatch):
     events = [json.loads(line[6:]) for line in body.splitlines() if line.startswith("data: ")]
     src = next(e for e in events if e["type"] == "sources")
     assert src["qtype"] == "session"
-    assert src["beleglage"] == "solide"  # deterministisch aufgelöst, nie „dünn"
+    assert src["evidence_level"] == "solide"  # deterministisch aufgelöst, nie „dünn"
     # Die Sitzung steht vollständig und in Tagesordnungs-Reihenfolge vorn.
     assert [s["id"] for s in src["sources"]] == [1, 2, 3, 50]
     # Der Antwort-Kontext trägt die GANZE Sitzung — ohne Subvote und ohne den
     # Fremd-Treffer, der sonst als Sitzungsergebnis durchginge.
     assert gesehen["typ"] == "session"
     assert gesehen["ids"] == [1, 2, 3]
-    assert gesehen["sitzungen"][0]["committee"] == "Jugendhilfeausschuss"
+    assert gesehen["sessions"][0]["committee"] == "Jugendhilfeausschuss"
     # Sitzung MIT Beschlüssen: das sources-Event nennt sie, aber ohne
     # Tagesordnungs-Anriss — die Inhalte stehen ja schon in den Quellen,
     # die Chat-Karte (agenda-basiert) bleibt hier bewusst aus.
-    (s,) = src["sitzungen"]
+    (s,) = src["sessions"]
     assert s["n_beschluesse"] == 3 and s["n_agenda"] == 0 and s["agenda"] == []
 
 
@@ -3798,12 +3798,12 @@ def test_ask_keine_debatten_vor_der_sitzung(client, monkeypatch):
 
     # Zukunfts-Sitzung: KEINE Debatten, trotz „Treffer" der Semantik.
     src = frag("Um was geht es im Bauausschuss morgen?")
-    assert src["qtype"] == "session" and src["debatten"] == []
+    assert src["qtype"] == "session" and src["debates"] == []
     # Vergangene Sitzung mit Beschlüssen: Debatten bleiben (Positivprobe —
     # dieselben Mocks liefern hier sichtbar den Beitrag).
     src = frag("Was hat der Jugendhilfeausschuss am 17.06.2026 beschlossen?")
     assert src["qtype"] == "session"
-    assert [d["speaker"] for d in src["debatten"]] == ["Alt Redner"]
+    assert [d["speaker"] for d in src["debates"]] == ["Alt Redner"]
 
 
 def test_ask_sitzungsfrage_ohne_protokoll_antwortet_ehrlich(client, monkeypatch):
@@ -3841,8 +3841,8 @@ def test_ask_sitzungsfrage_ohne_protokoll_antwortet_ehrlich(client, monkeypatch)
     src = next(e for e in events if e["type"] == "sources")
     # Kein „mit Vorsicht"-Hinweis neben der Kalender-Antwort: Die Sitzung ist
     # deterministisch aufgelöst, auch wenn es (noch) keine Beschlüsse gibt.
-    assert src["beleglage"] == "solide"
-    (s,) = src["sitzungen"]
+    assert src["evidence_level"] == "solide"
+    (s,) = src["sessions"]
     assert s["committee"] == "Sportausschuss" and s["kuenftig"] is True
     # Formalien (Beschlussfähigkeit) zählen mit, füllen aber nicht den Anriss —
     # der zeigt Inhalte (Wochenvorschau-Filter, dev-Probe 26.08.).
@@ -5007,17 +5007,17 @@ def test_deep_research_roundtrip_und_replay(client, monkeypatch):
     events = _deep_events(client, job_id)  # blockiert bis der Job fertig ist
     typen = [e["type"] for e in events]
     assert typen[0] == "phase" and events[0]["phase"] == "zerlegen"
-    assert next(e for e in events if e["type"] == "facetten")["facetten"] == ["Beschlusslage", "Kosten"]
+    assert next(e for e in events if e["type"] == "facets")["facets"] == ["Beschlusslage", "Kosten"]
     assert sum(1 for t in typen if t == "facette") == 2
     src = next(e for e in events if e["type"] == "sources")
     assert [s["id"] for s in src["sources"]] == [5, 7]  # Union beider Facetten, bester Score zuerst
-    assert src["planungen"][0]["committee"] == "Ausschuss für Finanzen"
+    assert src["planning_procedures"][0]["committee"] == "Ausschuss für Finanzen"
     # Task 33: Anlagen-Treffer mit Fundstelle im sources-Event, gelesen zählt sie mit.
-    assert src["anlagen"][0]["label"] == "Schalltechnisches Gutachten"
-    assert src["anlagen"][0]["auszug"].startswith("Lärmpegel")
+    assert src["attachments"][0]["label"] == "Schalltechnisches Gutachten"
+    assert src["attachments"][0]["auszug"].startswith("Lärmpegel")
     # Beleg-Nummer: das Frontend macht daraus die Buchstaben-Fußnote zu „[A1]".
-    assert src["anlagen"][0]["nr"] == 1
-    assert src["gelesen"] == 3 and src["zeitraum"] == "2024–2026"
+    assert src["attachments"][0]["nr"] == 1
+    assert src["documents_read"] == 3 and src["period"] == "2024–2026"
     assert "lesen" in [e.get("phase") for e in events if e["type"] == "phase"]
     done = next(e for e in events if e["type"] == "done")
     assert done["cited"] == [5] and done["teilbericht"] is False
@@ -5030,8 +5030,8 @@ def test_deep_research_roundtrip_und_replay(client, monkeypatch):
     snap = client.get(f"/api/council/deep-research/{job_id}").json()
     assert snap["status"] == "fertig" and "[5]" in snap["report"]
     assert snap["sources"]["cited"] == [5]
-    assert snap["sources"]["planungen"][0]["vorlage_titel"].startswith("Finanzierungsbeschluss")
-    assert snap["sources"]["anlagen"][0]["template_number"] == "26/0100"
+    assert snap["sources"]["planning_procedures"][0]["vorlage_titel"].startswith("Finanzierungsbeschluss")
+    assert snap["sources"]["attachments"][0]["template_number"] == "26/0100"
     akt = client.get("/api/council/deep-research/aktuell").json()
     assert akt["job"]["id"] == job_id and akt["job"]["seen"] == 0
     assert akt["remaining"] == 4  # fertig zählt weiter gegen das Tageskontingent
@@ -5101,7 +5101,7 @@ def test_deep_research_loest_anschlussfrage_auf(client, monkeypatch):
     # Anzeige und DB behalten die getippte Frage, der Kontext die aufgelöste.
     snap = client.get(f"/api/council/deep-research/{job_id}").json()
     assert snap["question"] == "Nochmal bitte ausführlich"
-    assert snap["sources"]["kontext"] == "Wichtigste Themen in Krusenbusch in den letzten Jahren"
+    assert snap["sources"]["context"] == "Wichtigste Themen in Krusenbusch in den letzten Jahren"
 
     # Erste Frage eines Gesprächs (kein Verlauf): keine Auflösung, kein Call.
     gesehen.clear()
@@ -5195,9 +5195,9 @@ def test_deep_research_stop_teilbericht_und_verwaiste(client, monkeypatch):
             "candidates": [{"id": 5, "title": "Grundsatzbeschluss", "summary": "Neubau",
                             "session_date": "2026-06-01", "committee": "Rat",
                             "template_number": None, "outcome": "accepted"}],
-            "presse": [], "debatten": [], "haushalt": [], "planungen": [],
-            "facetten_namen": ["Beschlusslage", "Kosten", "B-Plan", "Debatte", "Weiter"],
-            "facetten_fertig": 2, "gelesen": 1, "zeitraum": "2026",
+            "press_releases": [], "debates": [], "haushalt": [], "planning_procedures": [],
+            "facet_names": ["Beschlusslage", "Kosten", "B-Plan", "Debatte", "Weiter"],
+            "facets_done": 2, "documents_read": 1, "period": "2026",
             "sources": [{"id": 5, "title": "Grundsatzbeschluss"}],
             "presse_kompakt": [], "debatten_kompakt": [],
         }
@@ -5346,17 +5346,17 @@ def test_gespraech_snapshot_traegt_presse_und_debatten(client, monkeypatch):
         gid = next(e for e in events if e["type"] == "done")["conversation_id"]
         turns = store.qa_gespraech(gid, uid)["turns"]
         quellen = json.loads(turns[0]["sources"]) if isinstance(turns[0]["sources"], str) else turns[0]["sources"]
-        assert quellen["presse"][0]["title"] == "Stadt informiert zum Stadion"
-        assert quellen["debatten"][0]["speaker"] == "Höpken"
-        assert quellen["debatten"][0]["auszug"].startswith("Endlich")
+        assert quellen["press_releases"][0]["title"] == "Stadt informiert zum Stadion"
+        assert quellen["debates"][0]["speaker"] == "Höpken"
+        assert quellen["debates"][0]["auszug"].startswith("Endlich")
         # Der Lese-Endpoint reicht den Snapshot durch (Frontend stellt daraus her).
         g = client.get(f"/api/council/gespraeche/{gid}").json()
         q0 = g["turns"][0]["sources"]
-        assert q0["presse"] and q0["debatten"]
+        assert q0["press_releases"] and q0["debates"]
         # … samt der Suchfassung der Frage: Nachladende Bausteine schlüsseln
         # darauf, und ohne sie baute die Wiederherstellung einen anderen
         # Schlüssel als der Live-Lauf (Tims Fragen-Tab-Befund 21.08.2026).
-        assert q0["kontext"] == "Was ist mit dem Stadion?"
+        assert q0["context"] == "Was ist mit dem Stadion?"
         # Design 9a②: Umbenennen über die API — fremde ids bleiben 404.
         r = client.patch(f"/api/council/gespraeche/{gid}", json={"title": "Stadion"})
         assert r.status_code == 200

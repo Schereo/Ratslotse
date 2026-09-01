@@ -4997,10 +4997,10 @@ export interface components {
         };
         /** ParteiMeinungen */
         ParteiMeinungen: {
-            /** Ohne Beitraege */
-            ohne_beitraege: unknown;
-            /** Parteien */
-            parteien: unknown;
+            /** Parties */
+            parties: unknown;
+            /** Without Speeches */
+            without_speeches: unknown;
         };
         /** ParteiMeinungenBody */
         ParteiMeinungenBody: {
@@ -5098,20 +5098,20 @@ export interface components {
         };
         /** QaShareBody */
         QaShareBody: {
-            /** Anlagen */
-            anlagen?: components["schemas"]["QaShareAnlage"][];
             /** Answer */
             answer: string;
-            /** Debatten */
-            debatten?: components["schemas"]["QaShareDebatte"][];
-            /** Grafik */
-            grafik?: {
+            /** Attachments */
+            attachments?: components["schemas"]["QaShareAnlage"][];
+            /** Chart */
+            chart?: {
                 [key: string]: unknown;
             } | null;
-            /** Parteien */
-            parteien?: components["schemas"]["QaSharePartei"][];
-            /** Presse */
-            presse?: components["schemas"]["QaSharePresse"][];
+            /** Debates */
+            debates?: components["schemas"]["QaShareDebatte"][];
+            /** Parties */
+            parties?: components["schemas"]["QaSharePartei"][];
+            /** Press Releases */
+            press_releases?: components["schemas"]["QaSharePresse"][];
             /** Question */
             question: string;
             /** Sources */
@@ -5562,10 +5562,10 @@ export interface components {
         };
         /** RechercheGestoppt */
         RechercheGestoppt: {
-            /** Facetten Fertig */
-            facetten_fertig: number;
-            /** Facetten Gesamt */
-            facetten_gesamt: number;
+            /** Facets Done */
+            facets_done: number;
+            /** Facets Total */
+            facets_total: number;
             /** Partial Report Possible */
             partial_report_possible: boolean;
         };
@@ -10816,4 +10816,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 700514d86b14bc8747731631b09a11dd5350eddbc7cdd71638a0fbc6ebd02fd3
+// vertrag-sha256: e15e13923635c59e5f5c063be870109ca99b64305f1969db124df091a0f5995c

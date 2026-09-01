@@ -282,7 +282,7 @@ CREATE TABLE IF NOT EXISTS qa_shares (
     answer   TEXT NOT NULL,
     sources  TEXT,                  -- JSON [{id, title, session_date, committee, outcome}]
     created  TEXT NOT NULL,
-    extras   TEXT                   -- JSON {debatten, presse, anlagen, parteien}
+    extras   TEXT                   -- JSON {debates, press_releases, attachments, parties}
 );
 
 -- „Gründliche Recherche" (RG-10): server-seitige Recherche-Jobs. Der Job
@@ -626,7 +626,34 @@ class Store:
         "gremium": "committee", "fassung": "version", "schluessel": "key",
     }
 
-    def _json_schluessel_umbenennen(self, tabelle: str, spalte: str, marke: str) -> None:
+    #: Die BLOCKNAMEN derselben Nutzlast — der zweite Schnitt (01.09.2026).
+    #:
+    #: Der erste Lauf hat sie bewusst stehen lassen. Sie stehen nicht nur auf
+    #: der Leitung, sondern als JSON-Blob in `qa_gespraech_turns.sources`:
+    #: Ohne diesen Umzug fänden gespeicherte Gespräche ihre Presse-, Debatten-
+    #: und Anlagen-Blöcke nicht wieder und zeigten sie leer.
+    #:
+    #: Bewusst NICHT drin: `art`, `nr`, `top` und `auszug` — sie sitzen eine
+    #: Ebene tiefer und sind zu allgemein, um sie über den ganzen Baum zu
+    #: ersetzen. `kvonr` und `ksinr` sind RIS-Kürzel wie `ris` oder `lsn`.
+    _QA_QUELLEN_SCHLUESSEL = {
+        "presse": "press_releases", "debatten": "debates",
+        "anlagen": "attachments", "planungen": "planning_procedures",
+        "parteien": "parties", "sitzungen": "sessions", "grafik": "chart",
+        "gelesen": "documents_read", "zeitraum": "period", "kontext": "context",
+        "recherche": "research", "geld": "money", "beleglage": "evidence_level",
+        "facetten": "facets", "facetten_fertig": "facets_done",
+        "facetten_namen": "facet_names", "facetten_gesamt": "facets_total",
+        "ohne_beitraege": "without_speeches",
+        # `nachkomma` und `mehr` stehen BEWUSST nicht hier: Sie sind keine
+        # Namen dieser Nutzlast, sondern Props der ganzen Grafik-Familie
+        # (`components/grafik/*`), die sich der Haushalt mit der KI-Antwort
+        # teilt. Sie umzubenennen hieße, zwanzig Dateien quer durch den
+        # Haushalt anzufassen — ein eigener Schnitt, nicht dieser.
+    }
+
+    def _json_schluessel_umbenennen(self, tabelle: str, spalte: str, marke: str,
+                                    karte: dict[str, str] | None = None) -> None:
         """Die Schlüssel INNERHALB eines JSON-Blobs nachziehen — einmalig.
 
         Die Spalten sind längst englisch, ihr INHALT nicht: Ein gespeicherter
@@ -634,6 +661,14 @@ class Store:
         `datum`. Die Oberfläche liest sie neuerdings englisch und zeigte
         deshalb leere Namen. Eine Marke sorgt dafür, dass der Umbau genau
         einmal läuft und frisch geschriebene Zeilen nicht noch einmal trifft.
+
+        `karte` sagt, WELCHE Schlüssel umziehen; ohne Angabe die alte
+        Feld-Karte. Sie gehört zum Aufruf und nicht in die Methode, weil der
+        Umbau in Schnitten passiert: Der erste Lauf ließ die Blocknamen
+        (`presse`, `debatten`, `anlagen`, `parteien`) bewusst stehen, der
+        zweite zieht genau die nach. Eine gemeinsame Karte hätte beim zweiten
+        Lauf auch Schlüssel getroffen, die der erste absichtlich verschont
+        hat — und die Marke des ersten Laufs hätte den zweiten verschluckt.
         """
         import json as _js
         with self._conn:
@@ -647,9 +682,11 @@ class Store:
         if spalte not in spalten:
             return
 
+        paare = self._JSON_SCHLUESSEL if karte is None else karte
+
         def um(x):
             if isinstance(x, dict):
-                return {self._JSON_SCHLUESSEL.get(k, k): um(v) for k, v in x.items()}
+                return {paare.get(k, k): um(v) for k, v in x.items()}
             if isinstance(x, list):
                 return [um(v) for v in x]
             return x
@@ -687,6 +724,11 @@ class Store:
                                 ("qa_shares", "extras"),
                                 ("deep_research_jobs", "sources")):
             self._json_schluessel_umbenennen(tabelle, spalte, f"json_englisch_{tabelle}_{spalte}")
+            # Zweiter Schnitt: die Blocknamen, die der erste stehen ließ.
+            # EIGENE Marke — sonst verschluckt die des ersten Laufs diesen.
+            self._json_schluessel_umbenennen(
+                tabelle, spalte, f"json_bloecke_{tabelle}_{spalte}",
+                self._QA_QUELLEN_SCHLUESSEL)
         # 08/2026: Reste der NWZ-Abo-Prüfung. Seit der Ausgliederung des
         # Zeitungs-Scrapers liest sie kein Code mehr; auf Tims Anweisung
         # (30.08.2026) verschwinden sie samt Inhalt. Backup lag vor.
@@ -1878,13 +1920,13 @@ class Store:
             extras = {}
         return {"question": row["question"], "answer": row["answer"],
                 "sources": quellen, "created": row["created"],
-                "debatten": extras.get("debatten") or [],
-                "presse": extras.get("presse") or [],
-                "anlagen": extras.get("anlagen") or [],
-                "parteien": extras.get("parteien") or [],
+                "debates": extras.get("debates") or [],
+                "press_releases": extras.get("press_releases") or [],
+                "attachments": extras.get("attachments") or [],
+                "parties": extras.get("parties") or [],
                 # Die Grafik zur Antwort — vor diesem Nachtrag geteilte
                 # Antworten haben keine; die Seite zeigt dann keine.
-                "grafik": extras.get("grafik")}
+                "chart": extras.get("chart")}
 
     def qa_share_owner_id(self, token: str) -> int | None:
         """Interne Zuordnung für Moderation; nie Teil der öffentlichen API."""
