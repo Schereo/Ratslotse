@@ -166,6 +166,126 @@ def test_namensregel_fasst_verortetes_nicht_an(tmp_path):
         store.close()
 
 
+def test_stadtweit_erkennt_das_hinterglied_im_kompositum():
+    """Der Fehler, den erst die Stichprobe am echten Bestand zeigte.
+
+    Die Regel begann mit ``\bprogramm\b`` — und traf damit „Programm", aber
+    kein einziges Kompositum. Im Deutschen ist das Kompositum die Regel: Genau
+    „Rad- und Fußverkehrsprogramm" und „Wohnungsbauförderungsprogramm", die
+    Musterfälle der Regel, fielen durch. Der Kasinoplatz hing dadurch am
+    Fußverkehrsprogramm, die Hannah-Arendt-Straße an einer Förderrichtlinie.
+    """
+    for titel in ("Rad- und Fußverkehrsprogramm 2019",
+                  "Richtlinie - Wohnungsbauförderungsprogramm für Oldenburg",
+                  "Änderung der Satzung über die Erhebung von Marktgebühren",
+                  "Klimaschutzkonzept der Stadt Oldenburg",
+                  "Verordnung zur Änderung der Verordnung über das Maß der Nutzung",
+                  "Oldenburger Leitfaden für die Einrichtung von Fahrradstraßen",
+                  "Berufung eines Lehrervertreters in den Schulausschuss",
+                  "Leitantrag Fridays for Future - Workshop Verkehr"):
+        assert locations.betrifft_ganze_stadt(titel), titel
+
+
+def test_satzungsbeschluss_ist_kein_stadtweiter_vorgang():
+    """Die Wortgrenze HINTEN ist die Sicherung der geöffneten Regel.
+
+    Jedes Bebauungsplan-Verfahren endet auf „- Satzungsbeschluss" — der
+    ortsbezogenste Vorgang, den es gibt. Er endet nicht auf „satzung" und
+    bleibt deshalb unangetastet. Genauso darf sich „…plan" nicht öffnen, sonst
+    zöge es den Bebauungsplan selbst herein.
+    """
+    for titel in ("Bebauungsplan 831 (Stadion Maastrichter Straße) - Satzungsbeschluss",
+                  "Bebauungsplan 869 (Gewerbegebiet Brokhausen) - Aufstellungsbeschluss",
+                  "Änderung 84 des Flächennutzungsplanes (nördlich Eßkamp)",
+                  "Ausbau Ziegelhofstraße von Auguststraße bis Würzburger Straße",
+                  "Erneuerung Brücke Tweelbäker See - Beschlussantrag",
+                  "Neugestaltung des Außengeländes an der IGS Kreyenbrück"):
+        assert not locations.betrifft_ganze_stadt(titel), titel
+
+
+def test_falscher_stadtteil_wird_von_der_geometrie_korrigiert(tmp_path):
+    """Füllen allein reicht nicht — Falsches muss auch geradegerückt werden.
+
+    ``backfill_location_districts`` fasst nur leere Felder an. Auf Prod standen
+    deshalb 20 Orte mit 205 Zuordnungen dauerhaft falsch: „Am Bahndamm" (65)
+    auf Drielake, obwohl die Straße in Drielaker-Moor verläuft.
+    """
+    store = CouncilStore(tmp_path / "c.sqlite")
+    try:
+        mitte = geo.ortsbereich_center("Ohmstede")
+        linie = json.dumps({"type": "LineString", "coordinates": [
+            [mitte[1], mitte[0]], [mitte[1] + 0.001, mitte[0] + 0.001],
+            [mitte[1] + 0.002, mitte[0] + 0.002]]})
+        with store._conn:
+            store._conn.execute(
+                "INSERT INTO council_locations (slug,name,kind,district,geojson,updated_at) "
+                "VALUES ('a','Testweg','street','Eversten',?,'2026-09-01')", (linie,))
+        assert store.korrigiere_widerspruechliche_stadtteile() == 1
+        assert store._conn.execute(
+            "SELECT district FROM council_locations WHERE slug='a'").fetchone()["district"] == "Ohmstede"
+    finally:
+        store.close()
+
+
+def test_mehrbereichs_strasse_bleibt_wie_eingetragen(tmp_path):
+    """Eine Straße durch drei Bereiche, eingetragen mit einem davon, ist nicht
+    falsch — nur unvollständig. Die Korrektur darf sie nicht anfassen."""
+    store = CouncilStore(tmp_path / "c.sqlite")
+    try:
+        a = geo.ortsbereich_center("Innenstadt")
+        b = geo.ortsbereich_center("Osternburg")
+        linie = json.dumps({"type": "LineString",
+                            "coordinates": [[a[1], a[0]], [b[1], b[0]]]})
+        beruehrt = geo.ortsbereiche_der_geometrie(json.loads(linie))
+        eingetragen = sorted(beruehrt)[0]
+        with store._conn:
+            store._conn.execute(
+                "INSERT INTO council_locations (slug,name,kind,district,geojson,updated_at) "
+                "VALUES ('b','Langstraße','street',?,?,'2026-09-01')", (eingetragen, linie))
+        assert store.korrigiere_widerspruechliche_stadtteile() == 0
+    finally:
+        store.close()
+
+
+def test_gleichnamiger_ort_ist_der_stadtteil(tmp_path):
+    """Ein Ort namens „Drielake" IST Drielake — auf Prod stand er auf
+    „Drielaker-Moor", weil der Geocoder eine Fläche nebenan fand. Bei exakter
+    Namensgleichheit ist der Katalog stärker als jede Geokodierung."""
+    store = CouncilStore(tmp_path / "c.sqlite")
+    try:
+        with store._conn:
+            store._conn.execute(
+                "INSERT INTO council_locations (slug,name,kind,district,updated_at) "
+                "VALUES ('d','Drielake','area','Drielaker-Moor','2026-09-01')")
+            # Ein Teiltreffer bleibt unangetastet: Eine Schule kann im
+            # Nachbarbereich stehen.
+            store._conn.execute(
+                "INSERT INTO council_locations (slug,name,kind,district,updated_at) "
+                "VALUES ('g','Grundschule Drielake','building','Osternburg','2026-09-01')")
+        assert store.korrigiere_gleichnamige_stadtteile() == 1
+        namen = {r["slug"]: r["district"] for r in store._conn.execute(
+            "SELECT slug, district FROM council_locations")}
+        assert namen == {"d": "Drielake", "g": "Osternburg"}
+    finally:
+        store.close()
+
+
+def test_gattungsfilter_trifft_keine_eigennamen():
+    """Der Fehler, den erst die große Prüfung zeigte.
+
+    Die Präfixliste („schul", „fahrrad", „spiel") ist für den Regex-Kanal
+    gedacht, wo sie auf bloße Straßenmuster trifft. Auf den LLM-Kanal
+    ausgeweitet schlug sie bei ganzen Eigennamen falsch an — „Schule an der
+    Kleiststraße" und „Fahrradstation Nord" sind genau die konkreten Orte,
+    um die es geht.
+    """
+    for name in ("Schule an der Kleiststraße", "Fahrradstation Nord",
+                 "Spielplatz Friedrich-August-Platz", "Fahrradsammelgarage Wechloy"):
+        assert locations.valid_llm_location(name, "building", name), name
+    for name in ("Gemeindestraße", "Radweg", "Monitoring", "Kunstrasenplatz"):
+        assert not locations.valid_llm_location(name, "street", name), name
+
+
 # --------------------------------------- 3) Ortsbezug bei stadtweiten Sachen ---
 
 @pytest.mark.parametrize("titel,erwartet", [

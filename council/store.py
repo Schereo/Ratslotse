@@ -9890,6 +9890,79 @@ class CouncilStore:
                 )
         return len(updates)
 
+    def korrigiere_widerspruechliche_stadtteile(self) -> int:
+        """Eingetragene Stadtteile korrigieren, die der Geometrie widersprechen.
+
+        ``backfill_location_districts`` füllt nur LEERE Felder. Was einmal falsch
+        drinsteht, bleibt — und auf dem Prod-Bestand (01.09.2026 geprüft) waren
+        das 20 Orte mit zusammen 205 Beschluss-Zuordnungen: „Am Bahndamm" (65)
+        stand auf Drielake, verläuft aber in Drielaker-Moor; „Sandweg" (49) auf
+        Osternburg, liegt aber in Drielaker-Moor; „Bremer Straße" (28) umgekehrt.
+
+        Korrigiert wird **nur der klare Widerspruch**: Der eingetragene Bereich
+        wird von der Geometrie überhaupt nicht berührt. Eine Straße, die durch
+        drei Bereiche läuft und mit einem davon eingetragen ist, bleibt
+        unangetastet — sie ist nicht falsch, nur unvollständig.
+
+        Und der neue Bereich braucht mindestens zwei Stützpunkte, damit nicht
+        ein einzelner Ausreißer einer sonst fremden Geometrie entscheidet.
+        """
+        from council import geo, places
+
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        updates = []
+        for row in self._conn.execute(
+            "SELECT slug, district, geojson FROM council_locations "
+            "WHERE district IS NOT NULL AND geojson IS NOT NULL"
+        ).fetchall():
+            stimmen = geo.ortsbereiche_der_geometrie(row["geojson"])
+            if not stimmen or row["district"] in stimmen:
+                continue
+            name, gewicht = sorted(stimmen.items(), key=lambda t: (-t[1], t[0]))[0]
+            if gewicht < 2:
+                continue
+            place = places.resolve(name)
+            updates.append((name, place.id if place else None, now, row["slug"]))
+        if updates:
+            with self._conn:
+                self._conn.executemany(
+                    "UPDATE council_locations SET district=?,ortsbereich_id=?,updated_at=? "
+                    "WHERE slug=?", updates)
+        return len(updates)
+
+    def korrigiere_gleichnamige_stadtteile(self) -> int:
+        """Ein Ort, der EXAKT wie ein Stadtteil heißt, IST dieser Stadtteil.
+
+        Auf Prod stand ein Ort namens „Drielake" (18 Zuordnungen) auf
+        „Drielaker-Moor" — der Geocoder hatte für den Namen eine Fläche im
+        Nachbarbereich gefunden. Bei exakter Namensgleichheit ist der Katalog
+        stärker als jede Geokodierung; er ist die Definition des Bereichs.
+
+        Bewusst nur EXAKTE Gleichheit (inkl. Aliasen), kein Teiltreffer:
+        „Grundschule Drielake" bleibt der Geokodierung überlassen, denn eine
+        Schule kann sehr wohl im Nachbarbereich stehen.
+        """
+        from council import places
+
+        nach_name = {}
+        for place in places.primary_places():
+            for variante in (place.name, *place.aliases):
+                nach_name[variante.casefold()] = place
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        updates = []
+        for row in self._conn.execute(
+            "SELECT slug, name, district FROM council_locations"
+        ).fetchall():
+            place = nach_name.get((row["name"] or "").strip().casefold())
+            if place and row["district"] != place.name:
+                updates.append((place.name, place.id, now, row["slug"]))
+        if updates:
+            with self._conn:
+                self._conn.executemany(
+                    "UPDATE council_locations SET district=?,ortsbereich_id=?,updated_at=? "
+                    "WHERE slug=?", updates)
+        return len(updates)
+
     def backfill_location_districts_from_name(self) -> int:
         """Stadtteil aus dem NAMEN des Ortes ableiten — der billige Rest.
 

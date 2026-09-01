@@ -156,6 +156,10 @@ def process(council_db: Path, *, apply: bool = False) -> dict:
         store.backfill_location_place_ids()
         store.backfill_location_districts()
         store.backfill_location_districts_from_name()
+        # Zum Schluss das Falsche geraderücken — Füllen allein reicht nicht,
+        # ein einmal falsch eingetragener Bereich bliebe sonst für immer stehen.
+        store.korrigiere_widerspruechliche_stadtteile()
+        store.korrigiere_gleichnamige_stadtteile()
     store.close()
     removed = len(llm_rows) + len(deterministic_rows) + len(beiwerk_rows) if apply else 0
     return {"invalid_llm": len(llm_rows), "invalid_deterministic": len(deterministic_rows),

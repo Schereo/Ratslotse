@@ -174,12 +174,35 @@ _WOHNANSCHRIFT_RE = re.compile(r"\d{1,3}\s*[a-z]?\s*,\s*\d{5}\s", re.IGNORECASE)
 #: fast immer ein Beispiel („die Grundschule Harlingerstraße nimmt teil"), kein
 #: Gegenstand. Steht der Ort dagegen schon im TITEL, ist er gemeint —
 #: „Masterplan Fliegerhorst" bleibt deshalb unangetastet.
+#: Wörter, die als HINTERGLIED eines Kompositums zählen — im Deutschen die
+#: Regel, nicht die Ausnahme. Deshalb steht hier vorne KEINE Wortgrenze:
+#: „Fußverkehrsprogramm", „Wohnungsbauförderungsprogramm",
+#: „Marktgebührensatzung" und „Klimaschutzkonzept" sind genau die stadtweiten
+#: Vorgänge, um die es geht — mit ``\bprogramm\b`` fiel jedes einzelne von
+#: ihnen durch die Regel, weil vor „programm" ein „s" steht statt einer Fuge.
+#:
+#: Die Wortgrenze HINTEN bleibt und trägt die Sicherheit: „Satzungsbeschluss"
+#: (das Ende jedes Bebauungsplan-Verfahrens) endet nicht auf „satzung" und
+#: bleibt damit unangetastet.
+_STADTWEIT_HINTERGLIED = (
+    "programm", "konzept", "satzung", "richtlinie", "verordnung", "strategie",
+    "haushalt", "jahresabschluss", "wirtschaftsplan", "stellenplan",
+)
+
+#: Wörter, die nur ALLEIN zählen. „pass" braucht die Grenze („Oldenburg Pass",
+#: aber nicht „Kompass"), und Planarten dürfen sich nicht öffnen — sonst zöge
+#: „…plan" den Bebauungsplan mit herein, den ortsbezogensten Vorgang überhaupt.
+_STADTWEIT_ALLEIN = (
+    r"beteiligungsbericht|gebührenordnung|entgeltordnung|"
+    r"besetzung|umbesetzung|nachbesetzung|bestellung|entsendung|berufung|"
+    r"wahl\s+(?:des|der|von)|leitlinie|leitfaden|leitantrag|"
+    r"masterplan|aktionsplan|rahmenkonzept|"
+    r"pass|zuwendung|förderrichtlinie|sachstandsbericht|evaluation"
+)
+
 _STADTWEIT_RE = re.compile(
-    r"\b(programm|konzept|satzung|richtlinie|gebührenordnung|entgeltordnung|haushalt|"
-    r"jahresabschluss|wirtschaftsplan|stellenplan|beteiligungsbericht|"
-    r"besetzung|umbesetzung|nachbesetzung|bestellung|entsendung|wahl\s+(des|der|von)|"
-    r"leitlinie|masterplan|aktionsplan|rahmenkonzept|strategie|"
-    r"pass|zuwendung|förderrichtlinie|sachstandsbericht|evaluation)\b",
+    r"(?:\w*(?:" + "|".join(_STADTWEIT_HINTERGLIED) + r")|"
+    r"\b(?:" + _STADTWEIT_ALLEIN + r"))\b",
     re.IGNORECASE)
 
 
@@ -251,7 +274,14 @@ def valid_llm_location(name: str, kind: str, evidence: str) -> bool:
     # Gattungsbegriffe wurden bisher nur im Regex-Kanal gefiltert; über das
     # Modell kamen sie ungehindert durch — „Gemeindestraße" und „Radweg"
     # standen so mit 51 bzw. 13 Zuordnungen in der Datenbank.
-    if _generic_street(clean_name):
+    #
+    # Aber NUR die exakte Liste, nicht die Präfixe. Die Präfixe („schul",
+    # „fahrrad", „spiel") sind für den Regex-Kanal gedacht, wo sie auf bloße
+    # Straßenmuster treffen („Schulstraße"). Das Modell liefert dagegen ganze
+    # Eigennamen, und dort schlagen sie falsch an: „Schule an der
+    # Kleiststraße", „Fahrradstation Nord" und „Spielplatz
+    # Friedrich-August-Platz" sind genau die konkreten Orte, um die es geht.
+    if location_slug(clean_name).replace("-", "") in _GENERIC_STREET_EXACT:
         return False
     if not _name_occurs_in_evidence(clean_name, clean_evidence):
         return False

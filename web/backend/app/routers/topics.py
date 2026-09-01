@@ -209,6 +209,12 @@ def _name_tokens(name: str) -> frozenset[str]:
     """Wort-Stämme eines Themen-/Entitätsnamens: Kleinbuchstaben, Wörter auf
     6 Zeichen gekürzt (fängt „Stadion"/„Stadionneubau"), Ziffern bleiben ganz
     (unterscheidet „Veloroute 4" von „Veloroute 2")."""
+    # Zusammengeschriebenes vorher trennen: Im Ratsbestand steht „AlteFleiwa"
+    # neben „Alte Fleiwa" — zwei Entitäten für dieselbe Sache, die im selben
+    # Vorschlagsblock landeten, weil {altefl} und {alte, fleiwa} keine
+    # Teilmenge voneinander sind. Getrennt wird nur an klein→GROSS, damit
+    # „OLantis", „IQON" und „EWE ARENA" unangetastet bleiben.
+    name = re.sub(r"(?<=[a-zäöüß])(?=[A-ZÄÖÜ])", " ", name)
     words = re.findall(r"\d+|[a-zäöüß]+", name.lower())
     return frozenset(w if w.isdigit() else w[:6] for w in words if w.isdigit() or len(w) >= 3)
 

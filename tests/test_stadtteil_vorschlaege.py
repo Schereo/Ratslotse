@@ -242,3 +242,17 @@ def test_unbekannter_ortsbereich_faellt_still_zurueck(client):
     antwort = client.get("/api/topics/suggestions?district=gibtesnicht")
     assert antwort.status_code == 200
     assert antwort.json()["districts"] == []
+
+
+def test_zusammengeschriebene_dublette_erscheint_nur_einmal():
+    """Am Prod-Bestand gefunden: „Alte Fleiwa" und „AlteFleiwa" standen als
+    zwei Entitäten nebeneinander im Vorschlagsblock für Ziegelhof — die
+    einzige Dublette unter 186 Vorschlägen, aber im Onboarding sieht man sie
+    sofort. Namen, die sich nur in der Zusammenschreibung unterscheiden, sind
+    dieselbe Sache; Großschreibung ohne Fuge („OLantis", „IQON") nicht.
+    """
+    from app.routers.topics import _name_tokens, _similar_names
+
+    assert _similar_names(_name_tokens("AlteFleiwa"), _name_tokens("Alte Fleiwa"))
+    assert not _similar_names(_name_tokens("OLantis Huntebad"), _name_tokens("IQON"))
+    assert not _similar_names(_name_tokens("Veloroute 4"), _name_tokens("Veloroute 2"))
