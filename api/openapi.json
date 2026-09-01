@@ -976,7 +976,7 @@
         "type": "object"
       },
       "AdminUserFeatures": {
-        "description": "Feature-Nutzung eines Kontos. Die Schlüssel sind API-Namen und nicht die\ngespeicherten Werte — ``ki_frage`` zählt ``user_activity.feature =\n'ai_question'`` (s. ``Store.admin_user_detail``). ``suche``, ``analyse``\nund ``karte`` schreibt derzeit niemand und stehen dauerhaft auf 0.",
+        "description": "Feature-Nutzung eines Kontos. Die Schlüssel sind API-Namen und nicht die\ngespeicherten Werte — ``ki_frage`` zählt ``user_activity.feature =\n'ai_question'``, ``recherche`` zählt ``research`` (s.\n``Store.admin_user_detail``).\n\nWer dort einen Zähler ergänzt, ergänzt ihn HIER mit: Ein nicht deklariertes\nFeld verschwindet still aus der Antwort, und das Admin-Panel zeigte dann\neine Spalte weniger, ohne dass irgendwo etwas rot würde.",
         "properties": {
           "analyse": {
             "title": "Analyse",
@@ -994,6 +994,10 @@
             "title": "Quiz",
             "type": "integer"
           },
+          "recherche": {
+            "title": "Recherche",
+            "type": "integer"
+          },
           "suche": {
             "title": "Suche",
             "type": "integer"
@@ -1001,6 +1005,7 @@
         },
         "required": [
           "ki_frage",
+          "recherche",
           "suche",
           "quiz",
           "analyse",

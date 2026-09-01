@@ -3981,8 +3981,12 @@ export interface components {
          * AdminUserFeatures
          * @description Feature-Nutzung eines Kontos. Die Schlüssel sind API-Namen und nicht die
          *     gespeicherten Werte — ``ki_frage`` zählt ``user_activity.feature =
-         *     'ai_question'`` (s. ``Store.admin_user_detail``). ``suche``, ``analyse``
-         *     und ``karte`` schreibt derzeit niemand und stehen dauerhaft auf 0.
+         *     'ai_question'``, ``recherche`` zählt ``research`` (s.
+         *     ``Store.admin_user_detail``).
+         *
+         *     Wer dort einen Zähler ergänzt, ergänzt ihn HIER mit: Ein nicht deklariertes
+         *     Feld verschwindet still aus der Antwort, und das Admin-Panel zeigte dann
+         *     eine Spalte weniger, ohne dass irgendwo etwas rot würde.
          */
         AdminUserFeatures: {
             /** Analyse */
@@ -3993,6 +3997,8 @@ export interface components {
             ki_frage: number;
             /** Quiz */
             quiz: number;
+            /** Recherche */
+            recherche: number;
             /** Suche */
             suche: number;
         };
@@ -11748,4 +11754,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 47365b237555cce06050a099b292aed13552fdd895e6c32e2b45160f50281b4c
+// vertrag-sha256: f30976d7e4ae1fdbc1fb1d997560c5ca1c71a389fe8c2fa44766d3d4e9784fe1

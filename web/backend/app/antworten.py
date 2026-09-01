@@ -640,9 +640,15 @@ AdminEntityAlias = dict[str, Any]
 class AdminUserFeatures(TypedDict):
     """Feature-Nutzung eines Kontos. Die Schlüssel sind API-Namen und nicht die
     gespeicherten Werte — ``ki_frage`` zählt ``user_activity.feature =
-    'ai_question'`` (s. ``Store.admin_user_detail``). ``suche``, ``analyse``
-    und ``karte`` schreibt derzeit niemand und stehen dauerhaft auf 0."""
+    'ai_question'``, ``recherche`` zählt ``research`` (s.
+    ``Store.admin_user_detail``).
+
+    Wer dort einen Zähler ergänzt, ergänzt ihn HIER mit: Ein nicht deklariertes
+    Feld verschwindet still aus der Antwort, und das Admin-Panel zeigte dann
+    eine Spalte weniger, ohne dass irgendwo etwas rot würde.
+    """
     ki_frage: int
+    recherche: int
     suche: int
     quiz: int
     analyse: int
