@@ -38,7 +38,7 @@ def process(db_path: Path, limit: int | None, workers: int) -> dict:
     store = CouncilStore(db_path)
     try:
         todo = store.ksinr_ohne_wortbeitraege(limit or 0)
-        ok = fehler = beitraege = 0
+        ok = fehler = contributions = 0
 
         # Nur LLM-Calls in den Workern; DB-Zugriffe (Lesen wie Schreiben)
         # bleiben im Main-Thread — die eine Store-Connection ist nicht für
@@ -64,9 +64,9 @@ def process(db_path: Path, limit: int | None, workers: int) -> dict:
                 # Altbestand ohne Seiten-Offsets überspringt sich selbst).
                 seiten_aufloesen(store, ksinr)
                 ok += 1
-                beitraege += n
+                contributions += n
                 if ok % 25 == 0:
-                    print(f"  {ok}/{len(todo)} Protokolle, {beitraege} Beiträge, "
+                    print(f"  {ok}/{len(todo)} Protokolle, {contributions} Beiträge, "
                           f"~${llm.session_cost()['usd']:.2f}", flush=True)
 
         try:  # Embeddings direkt mitschreiben (fastembed nötig — best-effort)
@@ -75,7 +75,7 @@ def process(db_path: Path, limit: int | None, workers: int) -> dict:
         except Exception as exc:  # noqa: BLE001
             print(f"  Embeddings übersprungen: {exc}", flush=True)
             n_vec = 0
-        return {"protokolle": ok, "fehler": fehler, "beitraege": beitraege,
+        return {"protokolle": ok, "fehler": fehler, "contributions": contributions,
                 "embeddings": n_vec, "kosten_usd": round(llm.session_cost()["usd"], 2)}
     finally:
         store.close()
@@ -89,7 +89,7 @@ def main() -> dict:
     args = ap.parse_args()
 
     stats = process(Path(args.db), args.limit, args.workers)
-    print(f"Wortbeiträge: {stats['beitraege']} aus {stats['protokolle']} Protokollen "
+    print(f"Wortbeiträge: {stats['contributions']} aus {stats['protokolle']} Protokollen "
           f"({stats['fehler']} Fehler, {stats['embeddings']} Vektoren, "
           f"~${stats['kosten_usd']})", flush=True)
     return stats

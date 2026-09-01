@@ -71,7 +71,7 @@ function MitredenInner() {
     phasen: { title: string; date: string | null; erledigt: boolean; aktuell: boolean }[];
     year: number;
   } | null | undefined>(undefined);
-  const [streit, setStreit] = useState<{ beitraege: number; von: number; bis: number } | null | undefined>(undefined);
+  const [streit, setStreit] = useState<{ contributions: number; von: number; bis: number } | null | undefined>(undefined);
   const heute = useMemo(() => new Date(), []);
   return (
     <Quellenkontext keys={QUELLEN}>
@@ -168,7 +168,7 @@ function MitredenInner() {
             return (
               <Seitenbuehne
                 kicker={`Haushaltsberatungen ${streit.von}–${streit.bis}`}
-                zahl={<><ZaehlZahl value={streit.beitraege} /> Wortbeiträge in den
+                zahl={<><ZaehlZahl value={streit.contributions} /> Wortbeiträge in den
                   Ratsdebatten zum Haushalt</>}
                 sub="ein nächster Termin steht noch nicht im Ratskalender"
                 minibild={minibild}

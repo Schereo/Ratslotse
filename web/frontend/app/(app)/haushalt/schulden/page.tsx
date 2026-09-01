@@ -546,7 +546,7 @@ function RahmenBlock({ row, herkunft }: {
 
 
 export default function SchuldenPage() {
-  const { data, loading } = useFetch<SchuldenDaten>("/council/haushalt/schulden");
+  const { data, loading } = useFetch<SchuldenDaten>("/council/budget/debt");
   const { data: satzungDaten } = useFetch<
     HaushaltAuswahl<typeof SATZUNG_FELDER[number]>>(haushaltUrl(SATZUNG_FELDER));
   const [ansicht, setAnsicht] = useState<Ansicht>("total");

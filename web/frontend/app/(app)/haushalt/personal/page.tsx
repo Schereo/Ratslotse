@@ -91,14 +91,14 @@ export default function PersonalPage() {
   // Detailtabelle mobil hinter „alle Gruppen zeigen" (H4-05); ab Tablet
   // immer offen — die Klassen dazu stehen in globals.css (gb-nur-mobil).
   const [gruppenOffen, setGruppenOffen] = useState(false);
-  const jahrgaenge = useFetch<StellenplanDaten>("/council/haushalt/stellenplan");
+  const jahrgaenge = useFetch<StellenplanDaten>("/council/budget/staff-plan");
   const alle = jahrgaenge.data?.editions ?? [];
   const aktJahr = year && alle.includes(year) ? year : alle.at(-1) ?? null;
 
   // Die Einzelposten kommen nur für das gewählte Jahr — rund 190 Zeilen je
   // Jahrgang, und die Seite zeigt davon acht.
   const detail = useFetch<StellenplanDaten>(
-    aktJahr ? `/council/haushalt/stellenplan?budget_year=${aktJahr}` : null);
+    aktJahr ? `/council/budget/staff-plan?budget_year=${aktJahr}` : null);
   const daten = detail.data ?? jahrgaenge.data;
 
   // Eine Skala je Teil (H3-01): A und B stehen nie gleichzeitig im Bild,

@@ -74,7 +74,7 @@ def bot_token(request: Request) -> str:
     return geliefert
 
 
-@router.get("/wochenvorschau", dependencies=[Depends(bot_token)])
+@router.get("/week-preview", dependencies=[Depends(bot_token)])
 def wochenvorschau(
     tage: int = 14,
     store: CouncilStore = Depends(get_council_store),
@@ -100,25 +100,25 @@ def wochenvorschau(
     return daten
 
 
-@router.get("/sitzungen/{tag}", dependencies=[Depends(bot_token)])
-def sitzungen(tag: str, store: CouncilStore = Depends(get_council_store)) -> list[Sitzungszeile]:
+@router.get("/sessions/{day}", dependencies=[Depends(bot_token)])
+def sitzungen(day: str, store: CouncilStore = Depends(get_council_store)) -> list[Sitzungszeile]:
     """Alle Sitzungen eines Kalendertags — Grundlage der Sitzungstag-Story."""
-    if not _TAG_RE.match(tag):
+    if not _TAG_RE.match(day):
         raise HTTPException(status.HTTP_400_BAD_REQUEST,
                             "Tag muss ein ISO-Datum sein (JJJJ-MM-TT).")
-    return store.sessions_on(tag)
+    return store.sessions_on(day)
 
 
-@router.get("/fundstueck/{tag}", dependencies=[Depends(bot_token)])
-def fundstueck(tag: str, store: CouncilStore = Depends(get_council_store)) -> Fundstueck | None:
+@router.get("/daily-find/{day}", dependencies=[Depends(bot_token)])
+def fundstueck(day: str, store: CouncilStore = Depends(get_council_store)) -> Fundstueck | None:
     """Das vorgenerierte Fundstück des Tages, falls vorhanden."""
-    if not _TAG_RE.match(tag):
+    if not _TAG_RE.match(day):
         raise HTTPException(status.HTTP_400_BAD_REQUEST,
                             "Tag muss ein ISO-Datum sein (JJJJ-MM-TT).")
-    return store.get_fundstueck(tag)
+    return store.get_fundstueck(day)
 
 
-@router.get("/neue-beschluesse", dependencies=[Depends(bot_token)])
+@router.get("/new-decisions", dependencies=[Depends(bot_token)])
 def neue_beschluesse(
     seit_id: int,
     mindest_wichtig: int = 55,
@@ -154,7 +154,7 @@ def neue_beschluesse(
 # einem ANDEREN Repo (ratslotse-social) über HTTP auf. Eine URL ist eine
 # öffentliche Schnittstelle, kein Bezeichner — sie wandert bei einer
 # Umbenennung nicht mit. `tests/test_api_vertrag.py` hält das fest.
-@router.get("/hoechste-beschluss-id", dependencies=[Depends(bot_token)])
+@router.get("/highest-decision-id", dependencies=[Depends(bot_token)])
 def hoechste_beschluss_id(store: CouncilStore = Depends(get_council_store)) -> HoechsteBeschlussId:
     """Aktueller Zählerstand — der Startpunkt fürs erste Merken beim Bot,
     damit sein Ereignis-Cron nicht den gesamten Bestand als „neu" meldet."""
@@ -162,26 +162,26 @@ def hoechste_beschluss_id(store: CouncilStore = Depends(get_council_store)) -> H
     return {"highest_id": int(value or 0)}
 
 
-def _zielverzeichnis(tag: str) -> Path:
+def _zielverzeichnis(day: str) -> Path:
     settings = get_settings()
     wurzel = Path(settings.social_media_dir).resolve()
-    ziel = (wurzel / tag).resolve()
-    # Gürtel und Hosenträger: ``tag`` ist schon gegen ``_KENNUNG_RE``
+    ziel = (wurzel / day).resolve()
+    # Gürtel und Hosenträger: ``day`` ist schon gegen ``_KENNUNG_RE``
     # geprüft, aber der Pfad wird trotzdem gegen die Wurzel aufgelöst.
     if wurzel not in ziel.parents and ziel != wurzel:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Unzulässiger Pfad.")
     return ziel
 
 
-@router.post("/medien/{tag}", dependencies=[Depends(bot_token)])
-async def medien_ablegen(tag: str, dateien: list[UploadFile]) -> MedienAblage:
+@router.post("/media/{day}", dependencies=[Depends(bot_token)])
+async def medien_ablegen(day: str, dateien: list[UploadFile]) -> MedienAblage:
     """Gerenderte Karten entgegennehmen und öffentlich ablegen.
 
     Gibt die URLs zurück, unter denen Instagram sie abholen kann. Ein
     zweiter Aufruf für denselben Tag ersetzt den Satz vollständig — der Bot
     rendert neu, wenn sich die Tagesordnung noch geändert hat.
     """
-    if not _KENNUNG_RE.match(tag):
+    if not _KENNUNG_RE.match(day):
         raise HTTPException(status.HTTP_400_BAD_REQUEST,
                             "Kennung: Kleinbuchstaben, Ziffern und Bindestriche.")
     if not dateien:
@@ -201,7 +201,7 @@ async def medien_ablegen(tag: str, dateien: list[UploadFile]) -> MedienAblage:
                                 "Nur JPEG — Instagram nimmt nichts anderes.")
         inhalte.append(roh)
 
-    ziel = _zielverzeichnis(tag)
+    ziel = _zielverzeichnis(day)
     ziel.mkdir(parents=True, exist_ok=True)
     # Alte Fassung desselben Tages wegräumen, damit kein Bild aus einem
     # früheren Lauf im Karussell landet.
@@ -212,9 +212,9 @@ async def medien_ablegen(tag: str, dateien: list[UploadFile]) -> MedienAblage:
     urls = []
     for i, roh in enumerate(inhalte, start=1):
         # Den Namen vergibt der Server. Der Aufrufer bestimmt nur den Inhalt.
-        name = f"{tag}-{i:02d}.jpg"
+        name = f"{day}-{i:02d}.jpg"
         (ziel / name).write_bytes(roh)
-        urls.append(f"{settings.social_media_base_url.rstrip('/')}/{tag}/{name}")
+        urls.append(f"{settings.social_media_base_url.rstrip('/')}/{day}/{name}")
 
-    _log.info("Social-Medien abgelegt: %s (%d Bilder)", tag, len(urls))
-    return {"tag": tag, "count": len(urls), "urls": urls}
+    _log.info("Social-Medien abgelegt: %s (%d Bilder)", day, len(urls))
+    return {"day": day, "count": len(urls), "urls": urls}

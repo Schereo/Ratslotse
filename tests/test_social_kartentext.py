@@ -167,7 +167,7 @@ def test_vergangene_sitzungen_bleiben_draussen(store):
 
 
 def test_wochenvorschau_reicht_den_kartentext_durch(store):
-    """Der Bot liest ihn über /api/social/wochenvorschau — er muss also im
+    """Der Bot liest ihn über /api/social/week-preview — er muss also im
     Punkt-Dict ankommen, neben der Kurzfassung, nicht statt ihrer."""
     _sitzung(store)
     _punkt(store, nummer="Ö 10", impact=75)

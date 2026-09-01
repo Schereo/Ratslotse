@@ -58,7 +58,7 @@ export function TopicsView() {
   /* Ein Blick auf die Übersicht lässt die Bubble verstummen (Tims Wunsch
      18.08.). Fire-and-forget: Ein Fehler darf die Seite nicht stören. */
   useEffect(() => {
-    api.post("/topics/uebersicht-gesehen", {})
+    api.post("/topics/overview-seen", {})
       .then(() => qc.invalidateQueries({ queryKey: ["topics-unread"] }))
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps

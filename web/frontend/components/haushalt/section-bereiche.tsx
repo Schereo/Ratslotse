@@ -22,7 +22,7 @@
 // Klartext, und der schwierigste Fall vorangestellt.
 //
 // Alle Texte kommen aus `lib/haushalt-bereiche.ts`, alle Zahlen aus
-// `/api/council/haushalt`. Hier steht keine Zahl fest im Code.
+// `/api/council/budget`. Hier steht keine Zahl fest im Code.
 
 import Link from "next/link";
 import { ChevronRight, ArrowRight } from "lucide-react";

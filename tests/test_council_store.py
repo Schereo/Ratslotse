@@ -529,7 +529,7 @@ def test_anlagen_embedding_roundtrip(tmp_path):
         # Nur die beiden ok-Anlagen, neueste (höchste id) zuerst; empty fehlt.
         assert [t["document_id"] for t in todo] == [903, 901]
         assert todo[1]["template_number"] == "26/0100"
-        assert todo[1]["vorlage_titel"] == "Grundsatzbeschluss Stadionneubau"
+        assert todo[1]["template_title"] == "Grundsatzbeschluss Stadionneubau"
 
         for t in todo:
             store.replace_anlage_embeddings(
@@ -541,7 +541,7 @@ def test_anlagen_embedding_roundtrip(tmp_path):
         # Anzeige-Zeilen behalten die Treffer-Reihenfolge + tragen die Vorlage.
         rows = store.anlagen_by_ids([903, 901])
         assert [r["document_id"] for r in rows] == [903, 901]
-        assert rows[1]["vorlage_titel"] == "Grundsatzbeschluss Stadionneubau"
+        assert rows[1]["template_title"] == "Grundsatzbeschluss Stadionneubau"
 
         # Geänderter Text → anderer Hash → wieder in der Fehlt-Liste.
         with store._conn:

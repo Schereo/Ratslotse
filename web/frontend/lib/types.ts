@@ -410,7 +410,7 @@ export interface MemberDetail {
   committees: { committee: string; n: number; chair: boolean }[];
   recent: { ksinr: number; committee: string; session_date: string }[];
   /** Erste Seite der Wortbeiträge (volle Paraphrase); weitere holt
-   *  /council/person/{slug}/wortbeitraege. */
+   *  /council/person/{slug}/speeches. */
   wortbeitraege?: { kind: string; top: string | null; text: string;
     committee: string | null; session_date: string }[];
   /** Wie viele Beiträge die Person insgesamt hat — die erste Seite ist ein

@@ -776,7 +776,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         credentials: "include",
         headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify({ question: text, history: verlauf, conversation_id: gespraechId,
-                               vorherige_antwort: vorherigeAntwort }),
+                               previous_answer: vorherigeAntwort }),
         signal: ctrl.signal,
       });
       if (!res.ok || !res.body) {
@@ -927,7 +927,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     // während die App im Hintergrund liegt, bliebe er sonst als „gesehen"
     // markiert und der nächste Besuch fände ein leeres Gespräch vor.
     if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
-    void fetch(apiUrl(`/council/deep-research/${jobId}/gesehen`), {
+    void fetch(apiUrl(`/council/deep-research/${jobId}/seen`), {
       method: "POST", credentials: "include", headers: authHeaders(),
     }).catch(() => {});
   };
@@ -1122,7 +1122,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     if (!t.deepJobId) return;
     patchTurn(t.key, { deepStatus: "laeuft", deepPhase: "schreiben" });
     try {
-      const r = await fetch(apiUrl(`/council/deep-research/${t.deepJobId}/teilbericht`), {
+      const r = await fetch(apiUrl(`/council/deep-research/${t.deepJobId}/partial-report`), {
         method: "POST", credentials: "include", headers: authHeaders() });
       if (!r.ok) throw new Error();
       // Weiter am bestehenden Event-Zähler — der Teilbericht hängt seine
@@ -1146,7 +1146,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   // ein ungesehener Bericht), holt der leere Tab sie zurück ins Gespräch —
   // „der Bericht erscheint hier im Gespräch" gilt damit wirklich (8d).
   useEffect(() => {
-    fetch(apiUrl("/council/deep-research/aktuell"), { credentials: "include", headers: authHeaders() })
+    fetch(apiUrl("/council/deep-research/current"), { credentials: "include", headers: authHeaders() })
       .then((r) => (r.ok ? r.json() : null))
       .then((b) => {
         if (!b) return;
@@ -1250,7 +1250,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   const holeGespraeche = async (q: string, offset: number) => {
     const p = new URLSearchParams({ limit: String(GESPRAECHE_SEITE), offset: String(offset) });
     if (q.trim()) p.set("q", q.trim());
-    const r = await fetch(apiUrl(`/council/gespraeche?${p.toString()}`),
+    const r = await fetch(apiUrl(`/council/conversations?${p.toString()}`),
       { credentials: "include", headers: authHeaders() });
     if (!r.ok) throw new Error("gespraeche");
     return r.json();
@@ -1327,7 +1327,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   const einwilligen = async (an: boolean) => {
     setEinstellung(an ? 1 : 0);
     try {
-      const r = await fetch(apiUrl("/council/gespraeche/einstellung"), {
+      const r = await fetch(apiUrl("/council/conversations/setting"), {
         method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify({ an }),
@@ -1349,7 +1349,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     setLoading(false);
     setStep(null);
     try {
-      const r = await fetch(apiUrl(`/council/gespraeche/${id}`), { credentials: "include", headers: authHeaders() });
+      const r = await fetch(apiUrl(`/council/conversations/${id}`), { credentials: "include", headers: authHeaders() });
       if (!r.ok) throw new Error();
       const g = await r.json();
       // Presse/Debatten/Anlagen/Planungen stecken seit dem 10.08. mit im
@@ -1423,7 +1423,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     if (gespraechId === id) setGespraechId(null);
     try { sessionStorage.removeItem("ratslotse:qa-gespraech"); } catch { /* egal */ }
     try {
-      await fetch(apiUrl(`/council/gespraeche/${id}`), { method: "DELETE", credentials: "include", headers: authHeaders() });
+      await fetch(apiUrl(`/council/conversations/${id}`), { method: "DELETE", credentials: "include", headers: authHeaders() });
     } catch { /* Liste wird beim nächsten Öffnen neu geladen */ }
   };
   const gespraechUmbenennen = async (id: number, title: string) => {
@@ -1431,7 +1431,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     if (!sauber) return;
     setGespraeche((gs) => gs.map((g) => (g.id === id ? { ...g, title: sauber } : g)));
     try {
-      const r = await fetch(apiUrl(`/council/gespraeche/${id}`), {
+      const r = await fetch(apiUrl(`/council/conversations/${id}`), {
         method: "PATCH", credentials: "include",
         headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify({ title: sauber }),
@@ -2900,10 +2900,10 @@ function TeilenKnopf({ turn, zitierte }: { turn: Turn; zitierte: QaSource[] }) {
             debates: (turn.debates ?? []).slice(0, 20).map((d) => ({
               speaker: d.speaker, party: d.party, art: d.art,
               top: (d.top ?? "")?.slice(0, 300) || null,
-              auszug: (d.auszug ?? "").slice(0, 2000),
+              excerpt: (d.excerpt ?? "").slice(0, 2000),
               committee: d.committee, date: d.date,
-              protokoll_url: d.protokoll_url?.slice(0, 500) ?? null,
-              protokoll_seite: d.protokoll_seite ?? null,
+              minutes_url: d.minutes_url?.slice(0, 500) ?? null,
+              minutes_page: d.minutes_page ?? null,
             })),
             press_releases: (turn.press_releases ?? []).slice(0, 10).map((p) => ({
               title: p.title.slice(0, 300), url: p.url.slice(0, 500), date: p.date,
@@ -2913,14 +2913,14 @@ function TeilenKnopf({ turn, zitierte }: { turn: Turn; zitierte: QaSource[] }) {
             attachments: (turn.attachments ?? []).slice(0, 10).map((a, i) => ({
               nr: a.nr ?? i + 1,
               label: a.label, url: a.url, template_number: a.template_number,
-              vorlage_titel: a.vorlage_titel, auszug: (a.auszug ?? "").slice(0, 600),
+              template_title: a.template_title, excerpt: (a.excerpt ?? "").slice(0, 600),
             })),
             // Ohne beitraege_liste: die Aufklapp-Beiträge blähen den Snapshot,
             // die geteilte Seite zeigt Position und Kernaussage.
             parties: parties.slice(0, 12).map((p) => ({
-              party: p.party, haltung: p.haltung ?? null,
-              position: (p.position ?? "").slice(0, 800), einig: p.einig,
-              note: p.note, kernaussage: p.kernaussage, beitraege: p.beitraege,
+              party: p.party, stance: p.stance ?? null,
+              position: (p.position ?? "").slice(0, 800), unanimous: p.unanimous,
+              note: p.note, kernaussage: p.kernaussage, contributions: p.contributions,
             })),
             // Die Grafik gehört in den Snapshot wie Debatten und Presse:
             // Wer dem Link folgt, soll sehen, was geteilt wurde.
@@ -3175,13 +3175,13 @@ function ParteienBaustein({ question, beschlussIds, onFrageStellen }: {
       // Die belegten Beschlüsse mitgeben: Über sie holt der Endpoint die
       // Aussprache, die ZU diesen Stationen gehört — die Ähnlichkeitssuche
       // allein fand je Fraktion oft nur einen Beitrag (Tims Befund 21.08.).
-      body: JSON.stringify({ question, beschluss_ids: idsKey ? idsKey.split(",").map(Number) : [] }),
+      body: JSON.stringify({ question, decision_ids: idsKey ? idsKey.split(",").map(Number) : [] }),
     })
       .then((r) => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
       .then((b) => {
         // RG-09: Reihenfolge nach Redeanteil, nicht alphabetisch.
         const sortiert = ((b.parties as ParteiMeinung[]) ?? [])
-          .slice().sort((a, z) => z.beitraege - a.beitraege);
+          .slice().sort((a, z) => z.contributions - a.contributions);
         const ohne = (b.without_speeches as string[]) ?? [];
         parteiMeinungenCache.set(question, { parties: sortiert, ohneBeitraege: ohne });
         if (aktiv) {

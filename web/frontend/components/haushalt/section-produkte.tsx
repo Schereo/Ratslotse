@@ -684,9 +684,9 @@ export function ProdukteAbschnitt({ onBestand }: {
     const p = new URLSearchParams({ year: String(year) });
     if (entprellt.trim()) p.set("q", entprellt.trim());
     if (office) p.set("office", office);
-    if (spielraum) p.set("spielraum", spielraum);
-    if (nr) p.set("nr", nr);
-    return `/council/haushalt/produkte?${p}`;
+    if (spielraum) p.set("controllability", spielraum);
+    if (nr) p.set("number", nr);
+    return `/council/budget/products?${p}`;
   }, [year, entprellt, office, spielraum, nr]);
 
   const { data, loading } = useFetch<ProdukteAntwort>(abfrage);
@@ -716,7 +716,7 @@ export function ProdukteAbschnitt({ onBestand }: {
   const leer = !loading && data != null && data.products.length === 0
     && entprellt.trim().length >= 2 && !office && !spielraum;
   const { data: alleDaten } = useFetch<ProdukteAntwort>(
-    leer && year ? `/council/haushalt/produkte?year=${year}` : null);
+    leer && year ? `/council/budget/products?year=${year}` : null);
   const vorschlaege = useMemo(() => {
     if (!leer || !alleDaten) return [];
     const q = bigramme(entprellt);

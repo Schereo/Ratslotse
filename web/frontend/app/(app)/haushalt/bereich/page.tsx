@@ -192,7 +192,7 @@ function BereichInner() {
   }, [data]);
   const { data: produkte } = useFetch<ProdukteAntwort>(
     produktJahr != null && kanon?.sub_budget != null
-      ? `/council/haushalt/produkte?year=${produktJahr}&sub_budget=${kanon.sub_budget}`
+      ? `/council/budget/products?year=${produktJahr}&sub_budget=${kanon.sub_budget}`
       : null);
 
   if (loading || !data) {

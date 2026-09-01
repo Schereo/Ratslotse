@@ -229,7 +229,7 @@ export function GebautAbschnitt({ onBestand }: {
    *  (H5-02). `luecken` sind die Jahre, die als Lücke im Bild stehen. */
   onBestand?: (b: { jahrgaenge: number; luecken: number[] } | null) => void;
 } = {}) {
-  const { data, loading } = useFetch<GebautDaten>("/council/haushalt/gebaut");
+  const { data, loading } = useFetch<GebautDaten>("/council/budget/assets");
 
   const alle = useMemo(() => reihen(data ?? null), [data]);
   const juengste = useMemo(() => juengsteReihe(data ?? null), [data]);
