@@ -5578,6 +5578,8 @@ export interface components {
         SetupStand: {
             /** Done At */
             done_at: string | null;
+            /** Pending */
+            pending: boolean;
             /** Started At */
             started_at: string | null;
             /** Step */
@@ -10766,4 +10768,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: a6b32b06e377c9e27348624b997bcdb649c557d022ca6fbe5f4bd49784ed69ba
+// vertrag-sha256: 11f5f062bcaf77cbf7f7638399c5b4f75494afc16e8470196774ef6cfb7c3e70

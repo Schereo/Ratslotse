@@ -149,6 +149,9 @@ class SetupStand(TypedDict):
     step: int
     started_at: str | None
     done_at: str | None
+    #: Soll der Assistent gezeigt werden? Serverseitig entschieden, damit Web
+    #: und App dieselbe Regel benutzen — siehe ``Store.get_setup``.
+    pending: bool
 
 
 # --------------------------------------------------------------------------

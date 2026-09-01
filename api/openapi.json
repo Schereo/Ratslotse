@@ -4934,6 +4934,10 @@
               "null"
             ]
           },
+          "pending": {
+            "title": "Pending",
+            "type": "boolean"
+          },
           "started_at": {
             "title": "Started At",
             "type": [
@@ -4949,7 +4953,8 @@
         "required": [
           "step",
           "started_at",
-          "done_at"
+          "done_at",
+          "pending"
         ],
         "title": "SetupStand",
         "type": "object"

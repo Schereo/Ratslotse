@@ -494,8 +494,35 @@ denselben Stand hat und nach Abschluss überall verschwindet.
   zuwuchert. Schritte gelten schon beim **Besuch** der jeweiligen Seite als
   erledigt (`components/onboarding.tsx`).
 - Davon getrennt speichert `GET/POST /api/onboarding/setup` den Schritt 0–3 des
-  nativen Ersteinrichtungsflows sowie Start und Abschluss. Dieser Stand dient
-  der Wiederaufnahme nach Neuinstallation und dem Einrichtungs-Reminder.
+  Ersteinrichtungs-Assistenten sowie Start und Abschluss. Dieser Stand dient der
+  Wiederaufnahme (nach Neuinstallation, auf einem anderen Gerät) und dem
+  Einrichtungs-Reminder (`scripts/remind_setup.py`).
+
+#### Wer den Assistenten zu sehen bekommt
+
+Der Assistent lief bis 09/2026 nur in der App; im Browser existierte er im Code,
+war aber hinter `isNativeApp()` unsichtbar. Seither läuft er auf beiden
+Plattformen — und **die Entscheidung, ob er dran ist, fällt im Backend**
+(`Store.get_setup`, Feld `pending` in der Antwort). Nicht im Frontend, aus zwei
+Gründen: Beide Clients sollen dieselbe Regel benutzen, und sie hängt an Daten
+(Themen, Abos), die ein Frontend erst in zwei zusätzlichen Requests holen
+müsste, bevor es überhaupt weiß, ob es etwas anzeigen soll.
+
+| Zustand | `pending` |
+|---|---|
+| `setup_done_at` gesetzt | **nein** — auch wenn nur „Überspringen" geklickt wurde. Ein weggeklickter Assistent, der wiederkommt, wäre keiner. |
+| `setup_step ≥ 1`, nicht abgeschlossen | **ja**, und zwar bei genau diesem Schritt weiter |
+| nie angefangen, Konto hat weder Thema noch Abo | **ja** |
+| nie angefangen, Konto hat Themen oder Abos | **nein** — hier hat sich jemand erkennbar selbst eingerichtet |
+
+Im Browser kommt eine Ortsprüfung dazu: Der Assistent hängt global in
+`app/providers.tsx` (in der App muss er das, dort liegt er über dem Login),
+darf im Web aber nur innerhalb von `app/(app)/` erscheinen — sonst deckte er
+Landingpage, Changelog oder Impressum zu.
+
+Der letzte Schritt unterscheidet sich zwischen den Plattformen: Die App holt die
+Push-Erlaubnis, der Browser fragt nach der E-Mail-Zustellung. Web-Push (VAPID)
+gibt es nicht — `kern/push.py` spricht nur APNs und FCM.
 
 ### Anzeigename und Konto löschen
 

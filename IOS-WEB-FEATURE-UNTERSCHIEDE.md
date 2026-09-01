@@ -1,6 +1,6 @@
 # Feature-Unterschiede: native iOS-App und Website
 
-Stand: 28.08.2026 nach der nativen Paritäts- und Oberflächenrunde.
+Stand: 01.09.2026 — Onboarding jetzt auf beiden Plattformen (vorher nur nativ).
 
 ## Bewusst nur auf der Website
 
@@ -33,6 +33,7 @@ Stand: 28.08.2026 nach der nativen Paritäts- und Oberflächenrunde.
 | Browser-Share und Druck | iOS Share Sheet; öffentliche Antwort bleibt als Web-Snapshot teilbar. |
 | Desktop-Navigation | Hovernde Glasnavigation auf dem iPhone, vollständige Seitenleiste auf dem iPad. |
 | Desktop-Spalten für Chatquellen | Quellen-/Belegspalte neben dem Chat im iPad-Querformat, kompakte Darstellung auf dem iPhone. |
+| Letzter Onboarding-Schritt fragt nach der E-Mail-Zustellung und wirbt dafür | Derselbe Schritt holt die Push-Erlaubnis. Web-Push (VAPID) gibt es nicht — das Backend kennt nur APNs und FCM. |
 
 Dashboard, Ratsgespräch inklusive gründlicher Recherche, Beschlüsse,
 Sitzungen und Anlagen, Stadtkarte, Themen, Profile, Merkliste, Abos, alle vier
