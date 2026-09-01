@@ -451,7 +451,7 @@ def unread_count(user: dict = Depends(require_active), store: Store = Depends(ge
     return {"total": store.neue_treffer_seit_uebersicht(user["id"])}
 
 
-@router.post("/uebersicht-gesehen")
+@router.post("/overview-seen")
 def uebersicht_gesehen(user: dict = Depends(require_active),
                        store: Store = Depends(get_store)) -> Ok:
     """Die Themen-Übersicht wurde geöffnet — ab jetzt zählt für die Bubble

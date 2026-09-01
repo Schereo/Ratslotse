@@ -170,12 +170,12 @@ export function InvestitionsplanAbschnitt({ onBestand }: {
    *  damit die Zahl nicht am Jahr-Umschalter hängt. */
   onBestand?: (b: { vorhaben: number; von: number; bis: number } | null) => void;
 } = {}) {
-  const { data, loading } = useFetch<InvestitionenDaten>("/council/haushalt/investitionen");
+  const { data, loading } = useFetch<InvestitionenDaten>("/council/budget/investments");
   // Die Vorhaben kommen aus einer anderen Quelle (Haushaltsplan statt
   // Open-Data-Portal) und reichen weiter zurück. Eigener Abruf, eigene
   // Jahresliste — zusammengelegt wäre einer von beiden immer beschnitten.
   const { data: programm, loading: programmLaedt } = useFetch<ProgrammDaten>(
-    "/council/haushalt/investitionsprogramm");
+    "/council/budget/investment-programme");
 
   useEffect(() => {
     if (!onBestand || programmLaedt) return;

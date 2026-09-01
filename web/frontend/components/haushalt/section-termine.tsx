@@ -63,7 +63,7 @@
 //
 // Der Jahresabschluss steht auf dem Strahl mit „≈": Seine Lage ist aus den
 // festgestellten Abschlüssen früherer Jahrgänge gemessen (Ratsvorgänge aus
-// `/council/haushalt/dokumente`), kein Termin. Ohne diese Messgrundlage
+// `/council/budget/documents`), kein Termin. Ohne diese Messgrundlage
 // entfällt die Station — geraten wird nicht.
 
 import { useEffect, useMemo, useState } from "react";
@@ -101,8 +101,8 @@ export function TermineAbschnitt({ onBestand }: {
     year: number;
   }) => void;
 } = {}) {
-  const { data, loading } = useFetch<WegDaten>("/council/haushalt/weg");
-  const { data: dokumente } = useFetch<DokumenteAntwort>("/council/haushalt/dokumente");
+  const { data, loading } = useFetch<WegDaten>("/council/budget/journey");
+  const { data: dokumente } = useFetch<DokumenteAntwort>("/council/budget/documents");
   const [gewaehlt, setGewaehlt] = useState<number | null>(null);
   // Einmal gemerkt statt je Render neu: `heute` ist Anker des Strahls.
   const heute = useMemo(() => new Date(), []);

@@ -113,7 +113,7 @@ def test_extract_dict_wrapper_und_dedupe(monkeypatch):
                "text": "Der Fliegerhorst braucht endlich eine Altlastensanierung."}
     # Modell wickelt das Array in ein Objekt; zwei Fenster liefern denselben
     # Beitrag → Dedupe über (sprecher, text-Anfang).
-    _llm_liefert(monkeypatch, [json.dumps({"beitraege": [eintrag]})] * 2)
+    _llm_liefert(monkeypatch, [json.dumps({"contributions": [eintrag]})] * 2)
     lang = "y" * (wb.FENSTER + 100)
     out = wb.extract_wortbeitraege(lang)
     assert len(out) == 1
@@ -218,10 +218,10 @@ def test_protokolle_verlinken_haengt_pdf_url_an(store):
     contribution_id = store.search_wortbeitraege_fts("Fliegerhorst")[0][0]
     rows = store.wortbeitraege_by_ids([contribution_id])
     qa.protokolle_verlinken(store, rows)
-    assert rows[0]["protokoll_url"].endswith("getfile.php?id=4711&type=do")
+    assert rows[0]["minutes_url"].endswith("getfile.php?id=4711&type=do")
     rows_p = store.wortbeitraege_von_sprecher("Petersen")
     qa.protokolle_verlinken(store, rows_p)
-    assert rows_p and rows_p[0]["protokoll_url"] is not None
+    assert rows_p and rows_p[0]["minutes_url"] is not None
 
 
 def test_protokoll_urls_fuer_ohne_url_bleibt_leer(store):
@@ -232,7 +232,7 @@ def test_protokoll_urls_fuer_ohne_url_bleibt_leer(store):
     store.save_wortbeitraege(100, [BEITRAG])
     rows = store.wortbeitraege_by_ids([store.search_wortbeitraege_fts("Fliegerhorst")[0][0]])
     qa.protokolle_verlinken(store, rows)
-    assert rows[0]["protokoll_url"] is None
+    assert rows[0]["minutes_url"] is None
 
 
 def test_page_offsets_rechnen_mit_dem_join():
@@ -423,12 +423,12 @@ def test_partei_meinungen_deckel_und_einzelstimmen(monkeypatch):
 
     def fake(**kwargs):
         gesehen["prompt"] = kwargs["messages"][0]["content"]
-        answer = json.dumps([{"party": "SPD", "haltung": "dafür", "position": "Dafür.",
-                               "einig": True},
-                              {"party": "AfD", "haltung": "dagegen", "position": "Dagegen.",
-                               "einig": True},
-                              {"party": "Jägerschaft", "haltung": "offen", "position": "Egal.",
-                               "einig": True}])
+        answer = json.dumps([{"party": "SPD", "stance": "dafür", "position": "Dafür.",
+                               "unanimous": True},
+                              {"party": "AfD", "stance": "dagegen", "position": "Dagegen.",
+                               "unanimous": True},
+                              {"party": "Jägerschaft", "stance": "offen", "position": "Egal.",
+                               "unanimous": True}])
         return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=answer))],
                                usage=None)
 
@@ -441,7 +441,7 @@ def test_partei_meinungen_deckel_und_einzelstimmen(monkeypatch):
                  "session_date": "2026-02-02"})
     out = qa.partei_meinungen("Frage?", rows)
     assert [e["party"] for e in out] == ["SPD", "AfD"]  # Jägerschaft: nur eine Stimme
-    assert out[0]["beitraege"] == qa.MAX_BEITRAEGE_JE_PARTEI == 12
+    assert out[0]["contributions"] == qa.MAX_BEITRAEGE_JE_PARTEI == 12
     assert len(out[0]["beitraege_liste"]) == 12
     # Gekappt wird vorne: der älteste fällt raus, der jüngste bleibt.
     assert "SPD-Beitrag 0 " not in gesehen["prompt"]
@@ -457,10 +457,10 @@ def test_partei_meinungen_fasst_schreibvarianten_zusammen(monkeypatch):
     def fake(**kwargs):
         gesehen["prompt"] = kwargs["messages"][0]["content"]
         return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(
-            content=json.dumps([{"party": "SPD", "haltung": "dafür", "position": "Dafür.",
-                                 "einig": True},
-                                {"party": "Bündnis 90/Die Grünen", "haltung": "dafür",
-                                 "position": "Auch dafür.", "einig": True}])))], usage=None)
+            content=json.dumps([{"party": "SPD", "stance": "dafür", "position": "Dafür.",
+                                 "unanimous": True},
+                                {"party": "Bündnis 90/Die Grünen", "stance": "dafür",
+                                 "position": "Auch dafür.", "unanimous": True}])))], usage=None)
 
     monkeypatch.setattr(qa.llm, "chat_complete", fake)
     rows = [{"party": p, "speaker": "R", "text": f"Beitrag der {p} zur Sache.",
@@ -468,15 +468,15 @@ def test_partei_meinungen_fasst_schreibvarianten_zusammen(monkeypatch):
             for p in ("SPD", "SPD-Fraktion", "Die Grünen", "Bündnis 90/ Die Grünen")]
     out = qa.partei_meinungen("Frage?", rows)
     assert [e["party"] for e in out] == ["SPD", "Bündnis 90/Die Grünen"]
-    assert [e["beitraege"] for e in out] == [2, 2]
+    assert [e["contributions"] for e in out] == [2, 2]
     assert "SPD-Fraktion (" not in gesehen["prompt"]
 
 
 def test_partei_meinungen_rettet_abgeschnittene_antwort(monkeypatch):
     """Läuft die Verdichtung ins Token-Limit, ist ein halber Baustein besser
     als gar keiner — der Rest des Arrays wird geborgen (Befund 21.08.)."""
-    torso = ('[{"party": "SPD", "haltung": "dafür", "position": "Dafür.", "einig": true},'
-             ' {"party": "CDU", "haltung": "dagegen", "position": "Dage')
+    torso = ('[{"party": "SPD", "stance": "dafür", "position": "Dafür.", "unanimous": true},'
+             ' {"party": "CDU", "stance": "dagegen", "position": "Dage')
     monkeypatch.setattr(qa.llm, "chat_complete", lambda **k: SimpleNamespace(
         choices=[SimpleNamespace(message=SimpleNamespace(content=torso))], usage=None))
     rows = [{"party": p, "speaker": "R", "text": f"Beitrag der {p} zur Sache.",
@@ -502,14 +502,14 @@ def test_partei_meinungen_schwellen(monkeypatch):
 def test_partei_meinungen_aggregation(monkeypatch):
     """Label-Bereinigung, Halluzinations-Guard, uneinig-Flag, Zähler."""
     answer = json.dumps([
-        {"party": "DIE LINKE", "haltung": "dagegen", "position": "Lehnt die Trasse ab.",
-         "einig": True,
+        {"party": "DIE LINKE", "stance": "dagegen", "position": "Lehnt die Trasse ab.",
+         "unanimous": True,
          "kernaussage": {"text": "Kein Bedarf für die Straße.", "speaker": "Höpken",
                          "date": "01.06.2026"}},
-        {"party": "AfD", "haltung": "quatsch",
+        {"party": "AfD", "stance": "quatsch",
          "position": "Uneinheitlich zwischen Investition und Haushalt.",
-         "einig": False, "note": "Paul dafür, Beitrag vom Februar dagegen"},
-        {"party": "Die Grauen", "position": "erfunden", "einig": True},
+         "unanimous": False, "note": "Paul dafür, Beitrag vom Februar dagegen"},
+        {"party": "Die Grauen", "position": "erfunden", "unanimous": True},
     ])
     monkeypatch.setattr(qa.llm, "chat_complete", lambda **k: SimpleNamespace(
         choices=[SimpleNamespace(message=SimpleNamespace(content=answer))], usage=None))
@@ -520,17 +520,17 @@ def test_partei_meinungen_aggregation(monkeypatch):
     out = qa.partei_meinungen("Was ist mit der Trasse?", rows)
     assert [e["party"] for e in out] == ["DIE LINKE", "AfD"]  # „Die Grauen" gefiltert
     assert out[0]["kernaussage"]["speaker"] == "Höpken"
-    assert out[0]["beitraege"] == 3
-    assert out[0]["haltung"] == "dagegen"
-    assert out[1]["haltung"] == "offen"  # unbekannter Wert → offen
-    assert out[1]["einig"] is False and "Paul" in out[1]["note"]
+    assert out[0]["contributions"] == 3
+    assert out[0]["stance"] == "dagegen"
+    assert out[1]["stance"] == "offen"  # unbekannter Wert → offen
+    assert out[1]["unanimous"] is False and "Paul" in out[1]["note"]
 
 
 def test_partei_meinungen_cache(store):
     """Server-Cache über den ID-Hash: Treffer innerhalb der TTL, Fremd-
     Schlüssel leer, kaputtes JSON leer statt Crash."""
-    daten = [{"party": "SPD", "haltung": "dafür", "position": "Dafür.", "einig": True,
-              "note": None, "kernaussage": None, "beitraege": 4}]
+    daten = [{"party": "SPD", "stance": "dafür", "position": "Dafür.", "unanimous": True,
+              "note": None, "kernaussage": None, "contributions": 4}]
     store.partei_meinungen_cache_set("abc123", "Stadionfrage?", daten)
     assert store.partei_meinungen_cache_get("abc123") == daten
     assert store.partei_meinungen_cache_get("anderer") is None

@@ -12,7 +12,7 @@
 // Nachprüfbarkeit gebaut ist.
 //
 // Hier steht deshalb die andere Hälfte: je Quelle und Jahrgang das konkrete
-// PDF, aus `GET /api/council/haushalt/dokumente` (Zuordnung und Begründung in
+// PDF, aus `GET /api/council/budget/documents` (Zuordnung und Begründung in
 // `CouncilStore._DOKUMENT_QUELLEN`). Die statische Adresse bleibt die
 // Rückfallebene — aber wo sie greift, heißt der Link auch nicht mehr
 // „Dokument öffnen".

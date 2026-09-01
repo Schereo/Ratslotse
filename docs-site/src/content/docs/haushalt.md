@@ -94,7 +94,7 @@ Slugs zur Bauzeit nicht kennt — dieselbe Konvention wie `/council/decision?id=
 
 ## Woher die Daten kommen
 
-Das Fundament liefert **ein** Endpunkt: `GET /api/council/haushalt` gibt
+Das Fundament liefert **ein** Endpunkt: `GET /api/council/budget` gibt
 Planjahre, Ergebnisrechnung, Ist-Steuern, Steuerkraft und die Einwohnerzahl in
 einem Aufruf — er trägt den Einstieg und die meisten Vertiefungsseiten. Einen
 **eigenen** Endpunkt bekommt nur, was groß genug ist, um Seiten zu belasten,
@@ -346,7 +346,7 @@ Städtevergleich) sind erst mit der Herkunft entstanden und tragen gar keine
 Altspalten; im Nachrüst-Weg stehen sie trotzdem, weil ein Eintrag „nichts
 nachzutragen" billiger ist als eine Ausnahme (`_HERKUNFT_ALTFELDER`).
 
-`GET /api/council/haushalt` liefert die Datensätze als `herkunft`, nach ID
+`GET /api/council/budget` liefert die Datensätze als `herkunft`, nach ID
 nachschlagbar, samt eines Erklärsatzes je Probe für die Oberfläche.
 
 :::note[Was die Seite davon zeigt — und was seit 16.08. nicht mehr]
@@ -376,7 +376,7 @@ einer Zeile fällt. Genau daran scheiterte aber sein Link: Eine Adresse, die
 für acht Jahrgänge zugleich stimmt, ist bei sechs Quellen die **Startseite**
 des Ratsinformationssystems gewesen. Wer dort landete, durfte selbst suchen.
 
-`GET /api/council/haushalt/dokumente` liefert die fehlende Ebene: je
+`GET /api/council/budget/documents` liefert die fehlende Ebene: je
 Quellenschlüssel eine Liste `{jahr, url, label, fundstelle, seite}`. Die
 Zuordnung Quelle → Tabelle steht in `CouncilStore._DOKUMENT_QUELLEN`; sie ist
 die einzige Stelle, an der Backend-Code die Schlüssel des Frontend-
@@ -749,7 +749,7 @@ nicht auf.
 
 ### Der Datenstand ist sichtbar
 
-`GET /api/council/haushalt/datenstand` liefert diese Matrix live aus dem
+`GET /api/council/budget/data-status` liefert diese Matrix live aus dem
 Bestand; der Block **„Bis wann die Zahlen reichen"** am Fuß von `/haushalt`
 (`components/haushalt/datenstand.tsx`) zeigt sie.
 
@@ -3663,7 +3663,7 @@ Der Bereich zeigt lieber eine Lücke als eine Schätzung:
   der Fälle leer ankommt, wäre eine Zusage, die die Daten nicht decken.
 
   Eine Falle beim Anschluss ans Frontend, die zweimal Zeit gekostet hat: Der
-  Endpunkt `/council/haushalt/aenderungslisten` hat seit 08/2026 eine
+  Endpunkt `/council/budget/amendment-lists` hat seit 08/2026 eine
   **typisierte Antwortform** (`web/backend/app/antworten.py`), und die ist
   zugleich das Response-Model. Was dort nicht steht, schneidet FastAPI
   lautlos weg — die neuen Schlüssel `fhh_zeilen`/`fhh_summen` fehlten

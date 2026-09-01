@@ -917,7 +917,7 @@ struct CouncilInsightsView: View {
             async let financeRequest: FinanceResponse = model.api.get("/api/council/finance")
             async let goalRequest: GoalsResponse = model.api.get("/api/council/goals")
             async let recapRequest: FieldRecapsResponse = model.api.get("/api/council/field-recaps")
-            async let peopleRequest: PeopleLexiconResponse = model.api.get("/api/council/personen-lexikon")
+            async let peopleRequest: PeopleLexiconResponse = model.api.get("/api/council/people-directory")
             let responses = try await (trendRequest, partyRequest, memberRequest, financeRequest, goalRequest, recapRequest, peopleRequest)
             trends = responses.0
             parties = responses.1

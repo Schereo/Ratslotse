@@ -18,7 +18,7 @@ Datengrundlage und der beiden baulichen Regeln laufen trotzdem.
 Der Aufbau spiegelt den echten Weg: Die Zahlen gehen durch
 ``CouncilStore.save_ergebnisrechnung`` und kommen über
 ``get_ergebnisrechnung`` wieder heraus — dieselbe Form, die
-``GET /api/council/haushalt`` ausliefert und die die Komponente liest.
+``GET /api/council/budget`` ausliefert und die die Komponente liest.
 """
 from __future__ import annotations
 
@@ -113,7 +113,7 @@ def _befuellen(store: CouncilStore, ohne_posten: int | None = None) -> None:
 
 
 def _daten(store: CouncilStore) -> dict:
-    """Die Nutzlast, wie ``GET /api/council/haushalt`` sie liefert (Ausschnitt)."""
+    """Die Nutzlast, wie ``GET /api/council/budget`` sie liefert (Ausschnitt)."""
     return {"years": {}, "taxes": [], "tax_capacity": [], "population": None,
             "income_statement": store.get_ergebnisrechnung(),
             "plan_actual_years": store.plan_actual_years()}

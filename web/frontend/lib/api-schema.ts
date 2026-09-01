@@ -865,6 +865,839 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/council/budget": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Haushalt Uebersicht
+         * @description Datenfundament des Haushalts-Bereichs, in einem Aufruf:
+         *
+         *     - ``years``: Ergebnishaushalt je Planjahr (Teilhaushalte + Summenzeile,
+         *       Quelle je Zeile — Haushaltsplan-PDF bzw. Open-Data-CSV der Stadt),
+         *     - ``taxes``: Ist-Steuereinnahmen je Steuerart seit 1998 (Langformat),
+         *     - ``tax_capacity``: Steuerkraftmesszahl + Schlüsselzuweisungen je
+         *       Ausgleichsjahr seit 1993 (die Jahreszahl der Quelle ist beim Einlesen
+         *       um ein Jahr korrigiert, s. ``council/haushalt._STEUERKRAFT_VERSATZ``;
+         *       die ``*_je_ew``-Felder sind deshalb leer),
+         *     - ``population``: jüngste Einwohnerzahl (Bezugsgröße für Pro-Kopf-Angaben),
+         *     - ``income_statement``: Ansatz, Plan und Ergebnis je Posten aus den
+         *       Jahresabschlüssen — Grundlage für „geplant gegen tatsächlich",
+         *     - ``cash_flow_statement``: die Kassensicht aus demselben Jahresabschluss
+         *       (Abschnitt 4.1) — nicht was gebucht, sondern was **gezahlt** wurde.
+         *       Jede Zeile trägt neben der Nummer des Dokuments eine ``role``
+         *       (``balance_operating``, ``balance_capital``, ``finanzmittel``, …);
+         *       **an der Rolle hängen, nicht an der Nummer**: Die Tabelle hat
+         *       2017–2020 eine Zeile mehr als ab 2021, alle Nummern ab 08
+         *       verschieben sich dadurch. ``authorization`` ist das aus Vorjahren
+         *       übertragene Geld und ``NULL``, wo der Jahrgang die Spalte nicht führt,
+         *     - ``income_budget``: dieselben Posten für Jahre **ohne**
+         *       Jahresabschluss, aus dem Gesamtergebnishaushalt der Haushaltspläne.
+         *       Jede Zeile trägt ``art`` (``ansatz`` = das Jahr, für das dieser Plan
+         *       der Haushalt ist; ``finanzplanung`` = mittelfristige Vorausschau nach
+         *       § 8 NKomVG) und ``plan_budget_year`` (aus welchem Haushalt sie stammt).
+         *       **Beides gehört an jede Anzeige**: Der Plan nennt alle fünf Spalten
+         *       „Ansatz", der Haushalt ist aber nur eines der Jahre, und die
+         *       Finanzplanung schreibt jeder neue Haushalt neu. Die Zahlen stammen aus
+         *       der Einbringungs-Vorlage, sind also der **Entwurf** der Verwaltung —
+         *       der Beleg (``herkunft.as_of``) sagt das, die Anzeige sollte es
+         *       anschreiben,
+         *     - ``budgeted_years``: die Jahre mit einem Haushaltsansatz — die Liste, aus
+         *       der ein Jahr-Umschalter bestehen darf (ohne die Finanzplanungsjahre),
+         *     - ``business_plans``: die Wirtschaftspläne der Eigenbetriebe und
+         *       städtischen Gesellschaften, je ``enterprise`` und ``year``. **Nicht mit dem
+         *       Kernhaushalt addierbar** — der Eigenbetrieb Gebäudewirtschaft vermietet
+         *       der Stadt ihre eigenen Gebäude, seine Erträge sind zu großen Teilen
+         *       Aufwand des Kernhaushalts; herausgerechnet wird das erst im
+         *       Gesamtabschluss. ``revenues``/``expenses`` sind ``null``, wo die
+         *       Quelle nur das Ergebnis nennt, und ``probes`` sagt, welche Rechenprobe
+         *       für die Zeile gelaufen ist,
+         *     - ``variance_reasons``: warum ein Posten vom Plan abwich, in den Worten
+         *       der Verwaltung (Abschnitt 6.3.1 des Jahresabschlusses),
+         *     - ``pruefberichte``: Fundstelle des RPA-Schlussberichts je Jahrgang,
+         *     - ``herkunft``: je ``herkunft_id`` das Dokument, die Fundstelle darin, die
+         *       bestandene Rechenprobe samt Messwert und der Stichtag — nachschlagbar
+         *       über die ``herkunft_id`` der einzelnen Datenzeilen,
+         *     - ``product_years``: Jahre, für die die Produktebene vorliegt,
+         *     - ``plan_actual_years``: Jahre mit „geplant gegen tatsächlich" je Teilhaushalt,
+         *     - ``expense_series``: die lange Reihe aus Datensatz 1102 — ein Betrag je
+         *       Jahr seit 1972. ``zeilen`` trägt je Jahrgang ``accounting_system`` (die Naht
+         *       2009/2010), die bestandenen ``probes`` und, wo die beiden Quellen sich
+         *       widersprechen, den Betrag der unterlegenen (``conflict_amount``).
+         *       ``accounting_systems`` nennt zu jedem Regelwerk den Titel der Quelle und ihre
+         *       Abgrenzung — **beide gehören an jede Anzeige**: Links der Naht steht das
+         *       Anordnungssoll des Verwaltungshaushalts, rechts die ordentlichen
+         *       Aufwendungen der Gesamtergebnisrechnung, und über den Schnitt darf keine
+         *       Linie laufen. Eine Einwohnerzahl liefert dieser Block bewusst nicht
+         *       (Begründung an der Tabelle in ``council/store.py``).
+         *     - ``donations``: was die Stadt an Zuwendungen annimmt, aus den
+         *       Ratsbeschlüssen. ``years`` ist die Reihe (Betrag, Zahl der Vorlagen,
+         *       Aufteilung Rat/Verwaltungsausschuss), ``vorlagen`` die einzelnen
+         *       Beschlüsse mit ihrer Vorlagen-Nummer, ``ohne_beleg`` die Zeilen, die
+         *       ihre Zweitstelle **nicht** tragen — samt dem Satz, warum. Die
+         *       ``schwellen`` sagen, wer über welche Zuwendung entscheidet.
+         *       **Die Namen der Gebenden liefert dieser Block nicht**, und das ist
+         *       keine Lücke, die sich schließt: Sie stehen nur in der Anlage
+         *       „Zuwendungsliste", die nicht im Bestand ist (``council/donations.py``).
+         *     - ``tax_plan``: je Steuerart und Jahr der Ansatz des Haushaltsplans neben
+         *       dem Rechnungsergebnis (Jahrbuch-Tabelle 1103). ``provisional`` ist die
+         *       Angabe der Quelle über sich selbst — die jüngste Spalte heißt dort
+         *       „vorläufiges Rechnungsergebnis". Die ``art``-Werte sind **dieselben** wie
+         *       in ``taxes``; daran hängt die Prüfung der Jahresbeschriftung.
+         *     - ``tax_rates``: die Realsteuer-Hebesätze je **Änderungsjahr** seit 1980
+         *       (Tabelle 1105). Die Jahre dazwischen fehlen nicht, sie ändern nichts —
+         *       ein Satz gilt bis zur nächsten Änderung. Wer die Reihe zeichnet, zeichnet
+         *       eine Treppe und interpoliert nicht. ``bemessung_neu`` nennt die Jahre, in
+         *       denen sich die Bemessungsgrundlage mitänderte; **ohne diese Angabe darf
+         *       kein Hebesatz-Sprung angezeigt werden**, denn 2025 stieg der Satz um
+         *       21 %, während das Aufkommen um 4,6 % sank.
+         *     - ``trade_tax_statistics``: wie viele Betriebe und Betriebsstätten in
+         *       Oldenburg erfasst sind, wie viele davon überhaupt einen Steuermessbetrag
+         *       haben, und wie sich dieser auf reine Festsetzungen und Zerlegungen
+         *       verteilt (Landesamt für Statistik, Bericht L IV 13). **Das ist die
+         *       Veranlagung, nicht das Aufkommen**: Messbetrag mal Hebesatz ergibt nicht
+         *       die Zahl aus ``taxes`` — in den drei prüfbaren Jahren lagen beide
+         *       zwischen 13 % darunter und 27 % darüber. ``abgrenzung`` sagt das im
+         *       Klartext und reist deshalb mit den Zahlen mit.
+         *
+         *     Fehlende Jahre (Datenlücken) fehlen schlicht in ``years`` — das Frontend
+         *     zeigt Lücken ehrlich, statt zu interpolieren.
+         *
+         *     ``felder`` schneidet die Antwort auf das zu, was die aufrufende Seite
+         *     wirklich rendert (kommagetrennt, z. B. ``?felder=years,product_years``).
+         *     ``sub_budget_item`` schneidet zusätzlich INNERHALB der Ergebnisrechnung — sie
+         *     ist der größte Block, und ihre Teilhaushalts-Ebene braucht fast niemand
+         *     vollständig (s. :func:`_ergebnisrechnung`).
+         *     Ohne den Parameter kommt alles — der Vertrag von vorher gilt unverändert
+         *     weiter. Die Werte sind hier bewusst **Bauanweisungen** und keine fertigen
+         *     Listen: Ein nicht angefordertes Feld soll nicht nur ungesendet bleiben,
+         *     sondern gar nicht erst aus der Datenbank gelesen werden.
+         */
+        get: operations["haushalt_uebersicht_api_council_budget_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/council/budget/amendment-lists": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Haushalt Aenderungslisten
+         * @description Der Inhalt der Änderungslisten — die Ebene unter ``/haushalt/streit``.
+         *
+         *     Dort steht, WER eine Liste einbrachte und ob sie durchkam; hier steht,
+         *     was drinstand: je Dokument (Verw. I–III und die Beschluss-Datei des
+         *     Finanzausschusses) die Einzelpositionen samt der „Zusammenstellung der
+         *     Veränderungen", gegen die jede Positionsliste beim Einlesen bewiesen
+         *     wurde (``council/aenderungslisten.py``).
+         *
+         *     - ``rows``: NUR die Positionen des Haushaltsjahrgangs selbst
+         *       (``year == budget_year``). Dieselbe Maßnahme steht im Dokument je
+         *       Finanzplanungsjahr noch einmal — für die Streit-Erzählung zählt das
+         *       Jahr, um das gestritten wurde; die Folgejahre stecken kompakt in den
+         *       Summen. ``author`` trägt, WER die Position vorschlug — gefüllt nur
+         *       beim Jahrgang 2021, dessen Beschluss-Datei als einzige eine Spalte
+         *       „Vorschlag von“ führt; sonst ``null``.
+         *     - ``totals``: die Zusammenstellungen ALLER Planjahre, inklusive der
+         *       Zeilen, die es nur dort gibt: die politisch beschlossene Änderung mit
+         *       Urheber-Label („SPD/CDU/FDP …“) aus den AFB-Dateien — der einzige
+         *       digitale Beleg der Fraktionslisten, die selbst Tischvorlagen blieben.
+         *     - ``cash_budget_rows``/``cash_budget_totals``: dasselbe für den FINANZhaushalt
+         *       (``council/aenderungslisten_fhh.py``) — also für das, was tatsächlich
+         *       fließt und vor allem investiert wird. Getrennte Schlüssel statt einer
+         *       gemeinsamen Liste mit Marke: Die Zeilen haben eine andere Form (fünf
+         *       Betragsspalten statt zwei, dazu ``product`` mit dem Investitionscode),
+         *       und eine gemeinsame Liste wäre auf jeder Seite zur Hälfte leer.
+         *     - ``herkunft``: je ``herkunft_id`` das Papier, aus dem eine Zeile stammt —
+         *       für beide Haushalte gemeinsam.
+         */
+        get: operations["haushalt_aenderungslisten_api_council_budget_amendment_lists_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/council/budget/assets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Haushalt Gebaut
+         * @description Was die Stadt wirklich investiert hat — Tabellen 1107/1107-1 des
+         *     Statistischen Jahrbuchs.
+         *
+         *     Das **Ist** zu den Planzahlen von ``/haushalt/investitionen``. Beide
+         *     Endpunkte bleiben getrennt, und zwar nicht aus Bequemlichkeit: Der Plan ist
+         *     nach Teilhaushalten gegliedert, das Ist nach Auszahlungsarten und
+         *     ausdrücklich auf die Kernverwaltung begrenzt. Kein Dokument stellt die
+         *     beiden Summen nebeneinander; eine gemeinsame Antwort lüde dazu ein, sie
+         *     voneinander abzuziehen und das Ergebnis „Umsetzungsquote" zu nennen — eine
+         *     Zahl, die in keiner Quelle steht (``council/investitionen_ist.py``).
+         *
+         *     ``accounting_system`` trennt die beiden Tabellen, und das ist die tragende Angabe
+         *     dieser Antwort: Zum 01.01.2010 stellte die Stadt von kameraler auf
+         *     doppische Buchführung um. Das Dokument trennt seine Reihen genau dort und
+         *     begründet es in einer Fußnote. Wer über diesen Schnitt hinweg eine Linie
+         *     zieht, behauptet eine Vergleichbarkeit, die die Quelle bestreitet.
+         *
+         *     ``missing`` nennt die Jahre, die **innerhalb** einer Reihe fehlen, weil
+         *     ihre Zeilensumme im Dokument selbst nicht aufgeht. Anders als bei den
+         *     Schulden gibt es hier keine zweite, unabhängige Probe, die wenigstens die
+         *     Summe trüge — also fällt der ganze Jahrgang, und die Oberfläche kann die
+         *     Lücke **benennen**, statt sie als Null zu zeichnen oder still zu
+         *     überspringen.
+         *
+         *     Je Lücke steht dort neben dem Jahr die gemessene ``difference`` in Euro
+         *     (Auszahlungsarten minus ausgewiesene Summe, vorzeichenbehaftet) — die
+         *     Zahl, die der Ingest-Lauf beim Verwerfen gemessen hat
+         *     (``council_investitionen_ist_verworfen``). Sie ist der Unterschied
+         *     zwischen „2019 fehlt" und „2019 fehlt, weil 1,3 Mio. € auseinanderlagen".
+         *     ``null``, wo der Bestand keine Messung führt: ein Jahrgang, der vor dem
+         *     Ausbau dieser Schicht verworfen wurde, oder eine Zeile, die sich gar
+         *     nicht erst zerlegen ließ. Dann bleibt der Betrag auf der Seite weg — er
+         *     wird nirgends geschätzt.
+         */
+        get: operations["haushalt_gebaut_api_council_budget_assets_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/council/budget/audit-reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Haushalt Pruefberichte
+         * @description Prüfungsfeststellungen des Rechnungsprüfungsamts, alle Jahrgänge.
+         *
+         *     Bewusst alles auf einmal statt je Jahr: Die Aussage dieses Bestands liegt
+         *     nicht im einzelnen Jahrgang, sondern in der Wiederholung — eine
+         *     „Wiederholte Beanstandung" ist erst dann etwas wert, wenn daneben steht,
+         *     seit wann sie dort steht. Dafür braucht die Seite alle Jahre gleichzeitig.
+         *
+         *     - ``findings``: eine Zeile je Randmarke, mit Textziffer, Seite und
+         *       Deeplink auf das Quelldokument,
+         *     - ``legend``: die Bedeutung der Marken, wie der Bericht sie selbst
+         *       erklärt (jüngster Jahrgang, der die Marke noch führt),
+         *     - ``without_report``: Jahre, für die ein Jahresabschluss ausgelesen ist, ein
+         *       Schlussbericht aber nicht — die Lücke gehört sichtbar, nicht kaschiert.
+         *
+         *     ``mark`` grenzt auf eine Randmarke ein. Gedacht für den Hinweis auf
+         *     ``/haushalt/plan-ist``, der nur die Kette der wiederholten Beanstandungen
+         *     braucht: Der volle Bestand ist eine Viertel-Megabyte Prosa und hat auf
+         *     einer Seite nichts zu suchen, die ihn gar nicht anzeigt. ``years`` und
+         *     ``legend`` bleiben dabei die des Gesamtbestands — sonst stünde in der
+         *     Fußzeile eine Jahresliste, die vom Filter abhängt.
+         */
+        get: operations["haushalt_pruefberichte_api_council_budget_audit_reports_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/council/budget/balance-sheet": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Haushalt Bilanz
+         * @description Die Bilanz der Stadt — Abschnitt 2.1 der Jahresabschlüsse.
+         *
+         *     Die Gegenseite zu ``/haushalt/schulden``: nicht was die Stadt schuldet,
+         *     sondern was sie **hat** und was davon schon vergeben ist.
+         *
+         *     ``items`` ist eine flache Liste über alle Stichtage. **An ``role``
+         *     hängen, nicht an ``nr``**: Die Gliederungsnummer der Bilanz ist bis 2020
+         *     römisch, ab 2021 arabisch, und ab 2021 gibt es jede Nummer auf beiden
+         *     Seiten — „1.1" ist auf der Aktivseite etwas anderes als auf der
+         *     Passivseite. ``page`` (``aktiva``/``passiva``) und ``level`` (1 = die
+         *     neun Hauptposten, aus denen die Bilanzsumme besteht) sind die stabilen
+         *     Achsen.
+         *
+         *     Zwei Rollen heißen fast gleich und meinen Verschiedenes — wer sie
+         *     verwechselt, schreibt eine falsche Schlagzeile:
+         *
+         *     * ``pensionen_gesamt`` — Bilanzposition 3.1 „Pensionsrückstellungen und
+         *       ähnliche Verpflichtungen", **einschließlich Beihilfe** (31.12.2024:
+         *       311,79 Mio. €),
+         *     * ``pensionsrueckstellungen`` — Position 3.1.1, die Pensionen **allein**
+         *       (266,26 Mio. €); der Rest ist ``beihilferueckstellungen`` (45,53).
+         *
+         *     Die beiden ältesten Stichtage führen die Aufschlüsselung nicht — die
+         *     Bilanz wies damals nur den Sammelposten aus. Sie fehlen dort schlicht;
+         *     eine Anzeige zeigt die Lücke, statt sie zu füllen.
+         *
+         *     ``explanations`` ist **keine Zugabe, sondern eine Auflage.** Die
+         *     Schulden springen 2024 von 84,4 auf 207,1 Mio. €, und das ist kein
+         *     Schuldenmachen, sondern eine Bilanzverlängerung aus dem Cash-Pooling
+         *     (138,2 Mio. €, mit Gegenposten auf der Aktivseite). Der Anhang erklärt es
+         *     unter ``role="liabilities"`` selbst. **Die Zahl darf ohne diesen Text nicht
+         *     angezeigt werden** — dieselbe Bauart wie ``variance_reasons`` für die
+         *     Ergebnisrechnung.
+         */
+        get: operations["haushalt_bilanz_api_council_budget_balance_sheet_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/council/budget/comparison": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Haushalt Vergleich
+         * @description Was sich zwischen Städten vergleichen lässt — und der Beleg, warum das
+         *     meiste sich **nicht** vergleichen lässt.
+         *
+         *     Zwei Teile, und der zweite ist der wichtigere:
+         *
+         *     - ``values``/``cities``/``years``: Steuerkraft und Hebesätze der acht
+         *       kreisfreien Städte Niedersachsens aus den beiden Tabellen des
+         *       Landesamts für Statistik. Dieselbe Kennzahl, dieselbe Stelle, dieselbe
+         *       Abgrenzung für alle — der Auslagerungsgrad einer Stadt greift hier
+         *       nicht, weil Steuern nie ein Eigenbetrieb erhebt.
+         *     - ``citation``: die Ratsvorlage 18/0911, in der die Stadt Oldenburg 2018 auf
+         *       Antrag der FDP-Fraktion sieben Städte verglichen und im selben Dokument
+         *       festgestellt hat, dass dieser Vergleich nichts aussagt. Aufgelöst wird
+         *       sie über die Vorlagennummer; ``decision_id`` zeigt auf den Eintrag in
+         *       unserem eigenen Bestand (der Ausschuss hat den Bericht zur Kenntnis
+         *       genommen), ``attachments`` auf Antrag und Antwort im Original.
+         *
+         *     **Was diese Antwort bewusst nicht tut:** Sie mischt die LSN-Steuerkraft
+         *     nicht mit ``council_steuerkraft`` (Datensatz 1106). Beide führen dieselben
+         *     Beträge, aber unter einer um ein Jahr verschobenen Jahresangabe; welche
+         *     stimmt, ist ungeklärt. Zusammengelegt ergäbe das eine Reihe, in der zwei
+         *     verschiedene Jahre dasselbe zu meinen scheinen.
+         */
+        get: operations["haushalt_vergleich_api_council_budget_comparison_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/council/budget/data-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Haushalt Datenstand
+         * @description Bis wann die Zahlen reichen — je Datenschicht ein Jahrgangs-Stand.
+         *
+         *     Beantwortet die Frage, die sonst auf jeder Unterseite von ``/haushalt``
+         *     einzeln erklärt werden müsste: „Warum steht hier 2024 und nicht 2025?"
+         *     Der Bereich trägt die Schichten aus ``finanzquellen.REIHENFOLGE``, und
+         *     die haben **verschiedene** Takte: Der Plan liegt im Oktober vor seinem
+         *     Haushaltsjahr, die Abrechnung samt Prüfberichten im September danach,
+         *     der Gesamtabschluss (Konzern Stadt) rund zwei Jahre danach — er entsteht
+         *     erst, wenn alle einbezogenen Jahresabschlüsse geprüft sind. Die beiden
+         *     Reihen des Städtevergleichs hängen an einem ganz anderen Haus: Sie kommen
+         *     vom Landesamt für Statistik, einmal im Jahr. Für einen Jahrgang liegt
+         *     deshalb fast nie alles gleichzeitig vor; das ist der Normalfall, nicht
+         *     die Störung.
+         *
+         *     Je Schicht: die vorhandenen Jahrgänge, Lücken darin, der nächste
+         *     erwartete Jahrgang samt Datum, und ob er schon überfällig ist. Die Werte
+         *     kommen aus dem Bestand, nicht aus einer gepflegten Liste — eine Angabe,
+         *     die jemand von Hand nachziehen müsste, wäre genau die, die veraltet.
+         *     Gefüllt wird der Bestand vom Cron ``scripts/check_finanzdaten.py``.
+         */
+        get: operations["haushalt_datenstand_api_council_budget_data_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/council/budget/debate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Haushalt Streit
+         * @description Der Streit ums Geld — die Auseinandersetzung um jeden Haushaltsjahrgang.
+         *
+         *     Je Haushaltsjahr eine ``round`` mit ihren Stationen (Finanzausschuss und
+         *     Rat), und je Station die Änderungslisten, die Debatte und die
+         *     Schlussabstimmung. Alles kommt aus den Ratsdaten: Beschlusszeilen,
+         *     Anwesenheitsliste und Protokoll-Volltext derselben Sitzung.
+         *
+         *     **Ohne ``year`` kommen alle Jahrgänge** — wie bei ``/haushalt/weg``, und
+         *     aus demselben Grund: Dass sich die Mehrheiten verschieben, sieht man erst
+         *     über die Jahre. Die Antwort ist entsprechend groß (rund ein halbes MB);
+         *     die Seite lädt sie einmal und schaltet danach ohne Netz zwischen den
+         *     Jahrgängen um.
+         *
+         *     Was hier **nicht** steht: der Inhalt der Änderungslisten — den liefert
+         *     seit 08/2026 ``/haushalt/aenderungslisten`` (direkt darunter), Position
+         *     für Position aus den gelesenen EHH-Dokumenten. Hier bleibt die
+         *     Verfahrens-Ebene: **wer** was einbrachte und **ob** es durchkam.
+         */
+        get: operations["haushalt_streit_api_council_budget_debate_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/council/budget/debt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Haushalt Schulden
+         * @description Der Schuldenstand der Stadt seit 1995 — Tabelle 1108 des Statistischen
+         *     Jahrbuchs.
+         *
+         *     ``scope_note`` ist kein Beiwerk, sondern die Bedingung dafür, dass die
+         *     Zahlen etwas bedeuten: Bei Kommunalschulden gibt es zwei Werte, die beide
+         *     „die Schulden der Stadt" heißen und sich um ein Vielfaches unterscheiden.
+         *     Diese Reihe zählt die Stadt als **Rechtsträger** — Kernhaushalt und
+         *     Eigenbetriebe, ohne die rechtlich selbstständigen Beteiligungen. Der Wert
+         *     kommt aus ``council/schulden.py`` und nicht aus dem Frontend, damit beide
+         *     Seiten dieselbe Auskunft geben.
+         *
+         *     ``per_capita`` ist die Angabe **der Quelle**, nicht unsere Rechnung. Sie
+         *     kommt so aus der Tabelle; dass sie zur Einwohnerzahl aus dem Open-Data-
+         *     Datensatz passt, ist die Probe, die den Wert überhaupt hereingelassen hat
+         *     (``herkunft[…].probes``).
+         *
+         *     Wo ``breakdown_rejected`` gesetzt ist, fehlen die vier Artenspalten:
+         *     Dort ergeben sie im Dokument selbst nicht die ausgewiesene Summe. Die
+         *     Summe steht trotzdem — sie hängt an der unabhängigen Pro-Kopf-Probe. Die
+         *     Oberfläche kann den fehlenden Balken damit **erklären**, statt ihn als
+         *     Null zu zeichnen oder still zu überspringen.
+         */
+        get: operations["haushalt_schulden_api_council_budget_debt_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/council/budget/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Haushalt Dokumente
+         * @description Je Quelle des Haushalts-Bereichs das **Dokument** — Jahrgang für Jahrgang.
+         *
+         *     Das Quellenverzeichnis am Fuß jeder Haushalts-Seite beschreibt eine Quelle
+         *     als Ganzes („Die Jahresabschlüsse der Stadt Oldenburg, 2017–2024"). Diese
+         *     Beschreibung ist redaktionell und kennt keine Jahrgänge — ihr „Dokument
+         *     öffnen" führte deshalb auf die Startseite des Ratsinformationssystems, wo
+         *     man wieder selbst suchen darf. Hier steht, welches PDF zu welchem Jahr
+         *     gehört, damit der Link das Dokument des **gezeigten** Jahres öffnet.
+         *
+         *     ``{"documents": {"<quellenschluessel>": [{year, url, label, citation,
+         *     page}, …]}}`` — aufsteigend nach Jahr. Ein Schlüssel fehlt, wo wir kein
+         *     Dokument haben; die Oberfläche fällt dann auf die statische Adresse
+         *     zurück und sagt dazu, wohin sie führt.
+         *
+         *     Ein Jahrgang kann mehrere Dokumente tragen: Die Produktebene verteilt sich
+         *     auf rund neun Teilhaushalts-Anlagen. Die Liste nennt sie alle statt eine
+         *     auszuwählen — welche gemeint ist, entscheidet die Seite, nicht die API.
+         *
+         *     Die Fundstelle kommt aus ``council_herkunft`` und ist der eigentliche
+         *     Gewinn: „Abschnitt 3.2" macht aus einem 300-Seiten-PDF eine nachschlagbare
+         *     Stelle.
+         *
+         *     ``editions`` kommt aus derselben Antwort statt aus einem eigenen Aufruf:
+         *     Es beantwortet die Nachbarfrage („welche Jahrgänge deckt diese Quelle
+         *     ab?"), wird an derselben Stelle gebraucht — im Quellenverzeichnis — und
+         *     ist eine Abfrage je Quelle, keine je Zeile. Zwei Endpunkte dafür hießen
+         *     zwei Rundreisen für einen Seitenfuß.
+         */
+        get: operations["haushalt_dokumente_api_council_budget_documents_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/council/budget/group": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Haushalt Konzern
+         * @description Der Konzern Stadt Oldenburg — was der Kernhaushalt **nicht** zeigt.
+         *
+         *     Alles auf einmal, weil die Aussage dieser Seite eine Differenz ist: Eine
+         *     Konzernzahl allein sagt nichts, sie sagt erst etwas neben der
+         *     Kernverwaltung im selben Jahr.
+         *
+         *     - ``years``: Jahrgänge mit eingelesenem Gesamtabschluss,
+         *     - ``consolidated``: je Jahrgang die Summen des Konzerns (Erträge,
+         *       Aufwendungen, ordentliches Ergebnis, Gesamtjahresergebnis, Zins- und
+         *       Personalaufwand) samt bestandener Rechenprobe und Fundstelle,
+         *     - ``entity``: wer den Konzern ausmacht — je Jahrgang und Aufstellung eine
+         *       Zeile pro Aufgabenträger, Beträge in **Euro** (der Bericht rundet sie
+         *       auf Tausend, daher die glatten Endziffern),
+         *     - ``items``: die vollständige Gesamtergebnisrechnung je Jahrgang,
+         *     - ``cross_check``: dieselbe Kernverwaltungs-Zahl aus zwei unabhängigen
+         *       Dokumenten — der Trägerzeile des Gesamtabschlusses und dem
+         *       Jahresabschluss, den wir getrennt eingelesen haben,
+         *     - ``herkunft``: je ``herkunft_id`` Dokument, Fundstelle, bestandene Probe
+         *       samt Messwert und Stichtag. Die beiden Ebenen eines Jahrgangs tragen
+         *       **verschiedene** IDs: Sie stehen in verschiedenen Abschnitten des
+         *       Berichts und sind durch verschiedene Proben gedeckt.
+         *
+         *     Der Gesamtabschluss ist **kein Haushalt**: Er wird rund zwei Jahre später
+         *     aufgestellt, folgt handelsrechtlichen Regeln und ist mit den Planzahlen
+         *     auf ``/haushalt`` nicht verrechenbar. Die Seite sagt das; die API liefert
+         *     deshalb auch keine gemischten Summen, sondern beide Reihen getrennt.
+         */
+        get: operations["haushalt_konzern_api_council_budget_group_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/council/budget/investment-programme": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Haushalt Investitionsprogramm
+         * @description Die einzelnen Vorhaben — die Ebene unter ``/haushalt/investitionen``.
+         *
+         *     Aus Anlage 004 des Haushaltsplans: nicht „Schule und Bildung: 8,3 Mio. €",
+         *     sondern „BBS Haarentor: Ausstattung". Acht Jahrgänge, rund 4.500 Vorhaben.
+         *
+         *     - ``years``: Jahrgänge, für die ein Programm vorliegt,
+         *     - ``measures``: je Vorhaben Teilhaushalt, IPSP-Element, Bezeichnung und
+         *       **Gesamtinvestitionssumme**,
+         *     - ``sub_budgets``: je Teilhaushalt die Gesamtsumme, die das Dokument am
+         *       Ende seines Abschnitts ausweist — das **Ziel der Rechenprobe**, nicht
+         *       unsere Addition,
+         *     - ``totals``: je Jahrgang die Gesamtsumme des Investitionsprogramms,
+         *     - ``herkunft``: Dokument, Fundstelle und die drei bestandenen Proben.
+         *
+         *     Drei Grenzen, die die Seite nennt und die API deshalb nicht verwischt:
+         *
+         *     1. **Nur die Gesamtinvestitionssumme**, keine Jahresraten — im Textextrakt
+         *        fallen leere Zellen ersatzlos weg, die Spaltenzuordnung wäre geraten.
+         *     2. **Plan, nicht Ist.** Was am Jahresende wirklich gebaut wurde, steht
+         *        nicht darin.
+         *     3. **Nicht deckungsgleich mit** ``/haushalt/investitionen``. Beide Zahlen
+         *        stimmen und zählen Verschiedenes: Das Investitionsprogramm führt die
+         *        Gesamtkosten eines Vorhabens über alle Jahre, der Finanzhaushalt die
+         *        Zahlungen eines Jahres — und die zu aktivierenden Eigenleistungen
+         *        gehören nur ins Programm. Das Dokument sagt das in einer Fußnote selbst.
+         */
+        get: operations["haushalt_investitionsprogramm_api_council_budget_investment_programme_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/council/budget/investments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Haushalt Investitionen
+         * @description Was die Stadt bauen und kaufen will — die Investitionen des
+         *     Finanzhaushalts, je Teilhaushalt.
+         *
+         *     Die andere Hälfte des Haushaltsplans: Im Ergebnishaushalt, den der Rest des
+         *     Bereichs zeigt, steht keine einzige Investition (ein Schulneubau taucht dort
+         *     nur als Abschreibung auf, verteilt über Jahrzehnte).
+         *
+         *     - ``years``: Haushaltsjahre, für die Investitionen vorliegen,
+         *     - ``sub_budgets``: je Jahr und Teilhaushalt Ein- und Auszahlungen aus
+         *       Investitionstätigkeit,
+         *     - ``investments``: je Jahr die Summenzeile der Datei — das **Ziel der
+         *       Rechenprobe**, nicht unsere Addition,
+         *     - ``financial_budget``: je Jahr der Gesamtbetrag aller Ein- und Auszahlungen,
+         *       also samt laufender Verwaltungstätigkeit. Die Bezugsgröße, die aus
+         *       „80,8 Mio. €" erst eine Aussage macht — und die einzige Zahl hier ohne
+         *       Rechenprobe (eigene ``herkunft_id`` mit ``ungeprueft``, s. u.),
+         *     - ``herkunft``: je ``herkunft_id`` Dokument, Fundstelle, bestandene Probe
+         *       samt Messwert. Die geprüften Zeilen und die Bezugsgröße tragen
+         *       **verschiedene** IDs; sie stehen in derselben Datei, aber nur die einen
+         *       sind durch deren Summenzeile gedeckt.
+         *
+         *     Zwei Grenzen, die die Seite nennt und die API deshalb nicht verwischt:
+         *     Diese Zahlen sind **Plan**, nicht Ist, und sie nennen **kein einzelnes
+         *     Vorhaben** — „Verkehr und Straßenbau: 10,5 Mio. €" sagt nicht, welche
+         *     Straße.
+         */
+        get: operations["haushalt_investitionen_api_council_budget_investments_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/council/budget/journey": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Haushalt Weg
+         * @description Der Weg eines Haushalts durch den Rat — wann welche Station war.
+         *
+         *     Anders als der Rest des Haushalts-Bereichs kommt hier nichts aus einem
+         *     Finanzdokument, sondern alles aus den Ratsdaten: Beratungsfolge,
+         *     Tagesordnung und Protokoll-Beschluss. Je Haushaltsjahr eine ``round`` mit
+         *     ``einbringung``, ``fachausschuesse`` (Zeitraum und Gremien) und
+         *     ``stationen`` bis zur Entscheidung im Rat; jede Station trägt ``ksinr``
+         *     und ``top``, ist also auf ihre Sitzung verlinkbar.
+         *
+         *     **Ohne ``year`` kommen alle Jahrgänge.** Das ist Absicht: Die Aussage
+         *     dieser Seite liegt nicht im einzelnen Jahr, sondern in der Streuung — dass
+         *     der Entwurf verlässlich im Oktober kommt, die Entscheidung aber zwischen
+         *     Dezember und Februar wandert, sieht man erst über acht Jahrgänge. Eine
+         *     Seite, die das behaupten will, braucht sie alle gleichzeitig; ein
+         *     Jahres-Umschalter, der je Klick nachlädt, wäre acht Anfragen für 30 Zeilen.
+         *     ``year`` grenzt trotzdem ein, wenn jemand nur eine Runde braucht.
+         *
+         *     Was hier **nicht** steht: die Termine der laufenden Runde.
+         *     ``council_scheduled_sessions`` kennt keine Tagesordnung — wir können nicht
+         *     sagen, welche der kommenden Sitzungen die Haushaltssitzung wird, und raten
+         *     es auch nicht.
+         */
+        get: operations["haushalt_weg_api_council_budget_journey_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/council/budget/products": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Haushalt Produkte
+         * @description Produktebene eines Haushaltsjahres — was einzelne Aufgaben kosten,
+         *     samt Steckbrief (Kurzbeschreibung, Rechtsgrundlage, Spielraum,
+         *     Wirkungskreis, Zielgruppe) aus den Teilhaushalts-Plänen.
+         *
+         *     Aus den Teilhaushalts-Plänen des Ratsinformationssystems. Die Abdeckung
+         *     ist unvollständig (nicht jeder Teilhaushalt liegt für jedes Jahr als
+         *     auslesbares Dokument vor); ``coverage_percent`` sagt, wie viel der
+         *     geplanten Aufwendungen die gefundenen Produkte erklären — damit die
+         *     Oberfläche das nicht als Vollbild ausgeben kann.
+         *
+         *     ``q``/``office``/``controllability`` filtern **serverseitig**: Mit dem Steckbrief
+         *     trägt jede der knapp 400 Zeilen mehrere hundert Zeichen Fließtext, die
+         *     niemand im Browser sortieren muss. ``number`` holt zusätzlich ein einzelnes
+         *     Produkt — die Steckbrief-Ansicht braucht es auch dann, wenn der gerade
+         *     gesetzte Filter es aus der Liste nähme.
+         *
+         *     ``facets`` liefert die Filterwerte mit Anzahl und dazu, wie viele
+         *     Produkte überhaupt welches Steckbrief-Feld tragen: Die Seite weist die
+         *     Lücke aus, statt sie zu verschweigen.
+         *
+         *     Jedes Produkt trägt zusätzlich ``years`` — die Jahrgänge, in denen es im
+         *     Bestand steht. Gegen ``all_years`` gehalten wird daraus das
+         *     Abdeckungs-Badge der Trefferliste (H4-04): Ein Produkt, das erst ab 2021
+         *     vorliegt, soll das sagen, statt wie eine durchgehende Reihe auszusehen.
+         */
+        get: operations["haushalt_produkte_api_council_budget_products_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/council/budget/shareholdings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Haushalt Beteiligungen
+         * @description Die städtischen Gesellschaften — was sie tun, wer sie beaufsichtigt.
+         *
+         *     Die Ergänzung zum Gesamtabschluss (``/haushalt/konzern``): Der sagt, wie
+         *     viel die Betriebe bewegen, diese Seite, was sie damit machen.
+         *
+         *     - ``companies``: je Gesellschaft Name, Gliederungsnummer und Seite im
+         *       jüngsten Bericht, dazu ``consolidated_key``, wo der Gesamtabschluss sie als
+         *       eigenen Träger führt,
+         *     - ``texts``: die beschreibenden Abschnitte (Gegenstand, Eigentümer,
+         *       Aufsichtsorgane, eigene Beteiligungen, Auswirkungen auf den Haushalt) —
+         *       alle ausdrücklich **ungeprüft**, denn Fließtext lässt sich gegen nichts
+         *       rechnen,
+         *     - ``people``: die Aufsichtsorgane, Person für Person, mit Gremium,
+         *       Vorsitz, Amtszeit-Hinweis und — wo das Verzeichnis die Person
+         *       eindeutig kennt — ``slug`` und ``party`` für die Personen-Seite.
+         *       ``position`` steht nur da, wo die Spaltenprobe gehalten hat; siehe
+         *       ``roles_assignable`` an der Gesellschaft. Zwei der fünf Abschnitte
+         *       sind nämlich keine Prosa, sondern Tabellen, die der PDF-Extrakt
+         *       spaltenweise ausgibt (``council/beteiligungsbericht.py``),
+         *     - ``owners``: wem die Gesellschaft gehört, mit Betrag und Anteil.
+         *       **Ohne** die Stammkapital-Zeile — die ist die Summe und kein
+         *       Gesellschafter. Gesellschaften, deren Anteile sich nicht auf das
+         *       ausgewiesene Stammkapital summieren, erscheinen hier gar nicht; ihr
+         *       Rohtext steht weiter in ``texts``,
+         *     - ``indicators``: die Zeitreihe je Gesellschaft (Jahresergebnis,
+         *       Bilanzsumme, Eigenkapitalquote). ``n_reports`` sagt, wie viele Berichte
+         *       denselben Wert nennen — 1 heißt „durch eine Probe im Dokument gedeckt",
+         *       mehr heißt zusätzlich „von einer zweiten Veröffentlichung bestätigt",
+         *     - ``group_comparison``: für die Gesellschaften, die auch im
+         *       Gesamtabschluss stehen, beide Zahlen desselben Jahres nebeneinander.
+         *       **Keine Probe** — die beiden Rechnungen unterscheiden sich systematisch,
+         *       und zwei Betriebe weisen wegen Ergebnisabführung 0 € aus, obwohl sie
+         *       etwas erwirtschaftet haben. Eine Einordnung, kein Urteil,
+         *     - ``report_years`` / ``years``: welche Berichte gelesen sind und welche
+         *       Bezugsjahre die Kennzahlen abdecken (sie reichen weiter zurück als die
+         *       Berichte — jeder führt vier bis fünf Jahre mit),
+         *     - ``herkunft``: je ``herkunft_id`` Dokument, Fundstelle, Seite und Probe.
+         *
+         *     Gelesen werden die Berichte ab 2022; davor ist das Dokument anders
+         *     aufgebaut und nicht maschinenlesbar (``council/beteiligungsbericht.py``).
+         */
+        get: operations["haushalt_beteiligungen_api_council_budget_shareholdings_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/council/budget/staff-plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Haushalt Stellenplan
+         * @description Der Stellenplan: wie viele Stellen die Stadt vorhält und wie viele
+         *     davon nicht besetzt sind.
+         *
+         *     Die einzige Schicht des Haushalts-Bereichs, die nicht in Euro rechnet.
+         *     Personal ist der größte Ausgabenblock; hier stehen die Menschen dahinter —
+         *     und die Lücke zwischen geplanten und tatsächlich besetzten Stellen.
+         *
+         *     - ``editions``: Haushaltsjahre mit eingelesenem Plan,
+         *     - ``totals``: je Jahrgang und Teil die Gesamtzeile des Dokuments (Stellen
+         *       im Haushaltsjahr, Stellen im Vorjahr, besetzt, nicht besetzt) samt
+         *       Stichtag der Besetzung,
+         *     - ``groups``: dieselben Zahlen je Laufbahn- bzw. Beschäftigtengruppe,
+         *     - ``rows``: die Einzelposten — nur mit ``budget_year``, weil das rund 190
+         *       Zeilen je Jahrgang sind,
+         *     - ``missing``: welche ``(Jahrgang, Teil)`` **nicht** vorliegen, obwohl der
+         *       Jahrgang eingelesen ist. Ohne diese Liste sähe ein Jahrgang mit nur
+         *       einem Teil aus wie ein vollständiger,
+         *     - ``herkunft``: je ``herkunft_id`` Dokument, Fundstelle, bestandene Probe
+         *       samt Messwert und Stichtag. Teil A und Teil B eines Jahrgangs tragen
+         *       **verschiedene** IDs: verschiedene Tabellen, verschiedene Proben.
+         *
+         *     Zwei Dinge, die die Zahlen nicht hergeben und die eine Seite dazusagen
+         *     muss: Der Plan zählt **Stellen**, keine Köpfe (Teilzeit steht als
+         *     Bruchteil), und er zählt nur die **Kernverwaltung** — Klinikum, Bäder,
+         *     Bus und Gebäudewirtschaft haben eigene Wirtschaftspläne.
+         *
+         *     Und die Besetzungszahlen gehören zur **Vorjahresspalte**, nicht zum
+         *     Haushaltsjahr: Geplant wird vorwärts, gezählt werden kann nur rückwärts.
+         *     ``as_of_date`` sagt, auf welchen Tag sie sich beziehen.
+         */
+        get: operations["haushalt_stellenplan_api_council_budget_staff_plan_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/council/committees": {
         parameters: {
             query?: never;
@@ -885,6 +1718,101 @@ export interface paths {
          *     Gremium) — die Seite lädt das bei jedem Aufruf.
          */
         get: operations["committees_api_council_committees_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/council/conversations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Gespraeche Liste
+         * @description Einwilligungs-Stand + eine Seite der gespeicherten Gespräche.
+         *     `einstellung` ist null, solange die Erstnutzungs-Frage (6a①) nie
+         *     beantwortet wurde.
+         *
+         *     Drei Zahlen, weil sie drei Dinge bedeuten: `gesamt` ist der Bestand des
+         *     Kontos (die Anzeige „n gespeichert" und der Zähler am Kopf-Knopf hängen
+         *     daran, nicht an der Seitenlänge), `treffer` gilt zur aktuellen Suche, und
+         *     `weitere` sagt, ob „Ältere anzeigen" noch etwas nachliefert. `limit=0`
+         *     holt nur die Zahlen — so fragt die Konto-Einstellung.
+         */
+        get: operations["gespraeche_liste_api_council_conversations_get"];
+        put?: never;
+        post?: never;
+        /** Gespraeche Alle Loeschen */
+        delete: operations["gespraeche_alle_loeschen_api_council_conversations_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/council/conversations/setting": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Gespraeche Einstellung
+         * @description 6a②: Schalter setzen. Löscht nichts — das entscheidet der Dialog
+         *     über DELETE /gespraeche getrennt.
+         */
+        post: operations["gespraeche_einstellung_api_council_conversations_setting_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/council/conversations/{conversation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Gespraech Detail */
+        get: operations["gespraech_detail_api_council_conversations__conversation_id__get"];
+        put?: never;
+        post?: never;
+        /** Gespraech Loeschen */
+        delete: operations["gespraech_loeschen_api_council_conversations__conversation_id__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Gespraech Umbenennen
+         * @description Design 9a②: Umbenennen aus dem Gespräche-Sheet (Wisch nach links).
+         */
+        patch: operations["gespraech_umbenennen_api_council_conversations__conversation_id__patch"];
+        trace?: never;
+    };
+    "/api/council/daily-find": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fundstueck
+         * @description RL-U11: Fundstück des Tages — kuratierter Archiv-Fund für die Übersicht
+         *     (Pipeline: scripts/rate_interest.py + scripts/generate_fundstuecke.py).
+         *     {"found": false} statt 404: ohne Karte des Tages lässt das Frontend die
+         *     Kachel schlicht weg.
+         */
+        get: operations["fundstueck_api_council_daily_find_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -964,7 +1892,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/council/deep-research/aktuell": {
+    "/api/council/deep-research/current": {
         parameters: {
             query?: never;
             header?: never;
@@ -977,7 +1905,7 @@ export interface paths {
          *     Navigation/App-Neustart einen laufenden Job oder ungesehenen Bericht
          *     wiederfindet, ohne sich die ID gemerkt zu haben.
          */
-        get: operations["deep_research_aktuell_api_council_deep_research_aktuell_get"];
+        get: operations["deep_research_aktuell_api_council_deep_research_current_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1028,7 +1956,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/council/deep-research/{job_id}/gesehen": {
+    "/api/council/deep-research/{job_id}/partial-report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Deep Research Teilbericht
+         * @description Nach einem Stopp: aus den fertigen Facetten doch noch einen Bericht
+         *     schreiben („Teilbericht zeigen"). Zählt nicht gegen das Kontingent.
+         */
+        post: operations["deep_research_teilbericht_api_council_deep_research__job_id__partial_report_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/council/deep-research/{job_id}/seen": {
         parameters: {
             query?: never;
             header?: never;
@@ -1041,7 +1990,7 @@ export interface paths {
          * Deep Research Gesehen
          * @description Client hat den fertigen Bericht gerendert — nicht erneut einblenden.
          */
-        post: operations["deep_research_gesehen_api_council_deep_research__job_id__gesehen_post"];
+        post: operations["deep_research_gesehen_api_council_deep_research__job_id__seen_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1064,27 +2013,6 @@ export interface paths {
          *     Teilbericht lohnt. Kostet kein Kontingent.
          */
         post: operations["deep_research_stop_api_council_deep_research__job_id__stop_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/council/deep-research/{job_id}/teilbericht": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Deep Research Teilbericht
-         * @description Nach einem Stopp: aus den fertigen Facetten doch noch einen Bericht
-         *     schreiben („Teilbericht zeigen"). Zählt nicht gegen das Kontingent.
-         */
-        post: operations["deep_research_teilbericht_api_council_deep_research__job_id__teilbericht_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1278,101 +2206,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/council/fundstueck": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Fundstueck
-         * @description RL-U11: Fundstück des Tages — kuratierter Archiv-Fund für die Übersicht
-         *     (Pipeline: scripts/rate_interest.py + scripts/generate_fundstuecke.py).
-         *     {"found": false} statt 404: ohne Karte des Tages lässt das Frontend die
-         *     Kachel schlicht weg.
-         */
-        get: operations["fundstueck_api_council_fundstueck_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/council/gespraeche": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Gespraeche Liste
-         * @description Einwilligungs-Stand + eine Seite der gespeicherten Gespräche.
-         *     `einstellung` ist null, solange die Erstnutzungs-Frage (6a①) nie
-         *     beantwortet wurde.
-         *
-         *     Drei Zahlen, weil sie drei Dinge bedeuten: `gesamt` ist der Bestand des
-         *     Kontos (die Anzeige „n gespeichert" und der Zähler am Kopf-Knopf hängen
-         *     daran, nicht an der Seitenlänge), `treffer` gilt zur aktuellen Suche, und
-         *     `weitere` sagt, ob „Ältere anzeigen" noch etwas nachliefert. `limit=0`
-         *     holt nur die Zahlen — so fragt die Konto-Einstellung.
-         */
-        get: operations["gespraeche_liste_api_council_gespraeche_get"];
-        put?: never;
-        post?: never;
-        /** Gespraeche Alle Loeschen */
-        delete: operations["gespraeche_alle_loeschen_api_council_gespraeche_delete"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/council/gespraeche/einstellung": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Gespraeche Einstellung
-         * @description 6a②: Schalter setzen. Löscht nichts — das entscheidet der Dialog
-         *     über DELETE /gespraeche getrennt.
-         */
-        post: operations["gespraeche_einstellung_api_council_gespraeche_einstellung_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/council/gespraeche/{gespraech_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Gespraech Detail */
-        get: operations["gespraech_detail_api_council_gespraeche__gespraech_id__get"];
-        put?: never;
-        post?: never;
-        /** Gespraech Loeschen */
-        delete: operations["gespraech_loeschen_api_council_gespraeche__gespraech_id__delete"];
-        options?: never;
-        head?: never;
-        /**
-         * Gespraech Umbenennen
-         * @description Design 9a②: Umbenennen aus dem Gespräche-Sheet (Wisch nach links).
-         */
-        patch: operations["gespraech_umbenennen_api_council_gespraeche__gespraech_id__patch"];
-        trace?: never;
-    };
     "/api/council/goal/{key}": {
         parameters: {
             query?: never;
@@ -1402,839 +2235,6 @@ export interface paths {
          * @description City goals with how many decisions advance / hinder / are neutral toward them.
          */
         get: operations["goals_api_council_goals_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/council/haushalt": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Haushalt Uebersicht
-         * @description Datenfundament des Haushalts-Bereichs, in einem Aufruf:
-         *
-         *     - ``years``: Ergebnishaushalt je Planjahr (Teilhaushalte + Summenzeile,
-         *       Quelle je Zeile — Haushaltsplan-PDF bzw. Open-Data-CSV der Stadt),
-         *     - ``taxes``: Ist-Steuereinnahmen je Steuerart seit 1998 (Langformat),
-         *     - ``tax_capacity``: Steuerkraftmesszahl + Schlüsselzuweisungen je
-         *       Ausgleichsjahr seit 1993 (die Jahreszahl der Quelle ist beim Einlesen
-         *       um ein Jahr korrigiert, s. ``council/haushalt._STEUERKRAFT_VERSATZ``;
-         *       die ``*_je_ew``-Felder sind deshalb leer),
-         *     - ``population``: jüngste Einwohnerzahl (Bezugsgröße für Pro-Kopf-Angaben),
-         *     - ``income_statement``: Ansatz, Plan und Ergebnis je Posten aus den
-         *       Jahresabschlüssen — Grundlage für „geplant gegen tatsächlich",
-         *     - ``cash_flow_statement``: die Kassensicht aus demselben Jahresabschluss
-         *       (Abschnitt 4.1) — nicht was gebucht, sondern was **gezahlt** wurde.
-         *       Jede Zeile trägt neben der Nummer des Dokuments eine ``role``
-         *       (``balance_operating``, ``balance_capital``, ``finanzmittel``, …);
-         *       **an der Rolle hängen, nicht an der Nummer**: Die Tabelle hat
-         *       2017–2020 eine Zeile mehr als ab 2021, alle Nummern ab 08
-         *       verschieben sich dadurch. ``authorization`` ist das aus Vorjahren
-         *       übertragene Geld und ``NULL``, wo der Jahrgang die Spalte nicht führt,
-         *     - ``income_budget``: dieselben Posten für Jahre **ohne**
-         *       Jahresabschluss, aus dem Gesamtergebnishaushalt der Haushaltspläne.
-         *       Jede Zeile trägt ``art`` (``ansatz`` = das Jahr, für das dieser Plan
-         *       der Haushalt ist; ``finanzplanung`` = mittelfristige Vorausschau nach
-         *       § 8 NKomVG) und ``plan_budget_year`` (aus welchem Haushalt sie stammt).
-         *       **Beides gehört an jede Anzeige**: Der Plan nennt alle fünf Spalten
-         *       „Ansatz", der Haushalt ist aber nur eines der Jahre, und die
-         *       Finanzplanung schreibt jeder neue Haushalt neu. Die Zahlen stammen aus
-         *       der Einbringungs-Vorlage, sind also der **Entwurf** der Verwaltung —
-         *       der Beleg (``herkunft.as_of``) sagt das, die Anzeige sollte es
-         *       anschreiben,
-         *     - ``budgeted_years``: die Jahre mit einem Haushaltsansatz — die Liste, aus
-         *       der ein Jahr-Umschalter bestehen darf (ohne die Finanzplanungsjahre),
-         *     - ``business_plans``: die Wirtschaftspläne der Eigenbetriebe und
-         *       städtischen Gesellschaften, je ``enterprise`` und ``year``. **Nicht mit dem
-         *       Kernhaushalt addierbar** — der Eigenbetrieb Gebäudewirtschaft vermietet
-         *       der Stadt ihre eigenen Gebäude, seine Erträge sind zu großen Teilen
-         *       Aufwand des Kernhaushalts; herausgerechnet wird das erst im
-         *       Gesamtabschluss. ``revenues``/``expenses`` sind ``null``, wo die
-         *       Quelle nur das Ergebnis nennt, und ``probes`` sagt, welche Rechenprobe
-         *       für die Zeile gelaufen ist,
-         *     - ``variance_reasons``: warum ein Posten vom Plan abwich, in den Worten
-         *       der Verwaltung (Abschnitt 6.3.1 des Jahresabschlusses),
-         *     - ``pruefberichte``: Fundstelle des RPA-Schlussberichts je Jahrgang,
-         *     - ``herkunft``: je ``herkunft_id`` das Dokument, die Fundstelle darin, die
-         *       bestandene Rechenprobe samt Messwert und der Stichtag — nachschlagbar
-         *       über die ``herkunft_id`` der einzelnen Datenzeilen,
-         *     - ``product_years``: Jahre, für die die Produktebene vorliegt,
-         *     - ``plan_actual_years``: Jahre mit „geplant gegen tatsächlich" je Teilhaushalt,
-         *     - ``expense_series``: die lange Reihe aus Datensatz 1102 — ein Betrag je
-         *       Jahr seit 1972. ``zeilen`` trägt je Jahrgang ``accounting_system`` (die Naht
-         *       2009/2010), die bestandenen ``probes`` und, wo die beiden Quellen sich
-         *       widersprechen, den Betrag der unterlegenen (``conflict_amount``).
-         *       ``accounting_systems`` nennt zu jedem Regelwerk den Titel der Quelle und ihre
-         *       Abgrenzung — **beide gehören an jede Anzeige**: Links der Naht steht das
-         *       Anordnungssoll des Verwaltungshaushalts, rechts die ordentlichen
-         *       Aufwendungen der Gesamtergebnisrechnung, und über den Schnitt darf keine
-         *       Linie laufen. Eine Einwohnerzahl liefert dieser Block bewusst nicht
-         *       (Begründung an der Tabelle in ``council/store.py``).
-         *     - ``donations``: was die Stadt an Zuwendungen annimmt, aus den
-         *       Ratsbeschlüssen. ``years`` ist die Reihe (Betrag, Zahl der Vorlagen,
-         *       Aufteilung Rat/Verwaltungsausschuss), ``vorlagen`` die einzelnen
-         *       Beschlüsse mit ihrer Vorlagen-Nummer, ``ohne_beleg`` die Zeilen, die
-         *       ihre Zweitstelle **nicht** tragen — samt dem Satz, warum. Die
-         *       ``schwellen`` sagen, wer über welche Zuwendung entscheidet.
-         *       **Die Namen der Gebenden liefert dieser Block nicht**, und das ist
-         *       keine Lücke, die sich schließt: Sie stehen nur in der Anlage
-         *       „Zuwendungsliste", die nicht im Bestand ist (``council/donations.py``).
-         *     - ``tax_plan``: je Steuerart und Jahr der Ansatz des Haushaltsplans neben
-         *       dem Rechnungsergebnis (Jahrbuch-Tabelle 1103). ``provisional`` ist die
-         *       Angabe der Quelle über sich selbst — die jüngste Spalte heißt dort
-         *       „vorläufiges Rechnungsergebnis". Die ``art``-Werte sind **dieselben** wie
-         *       in ``taxes``; daran hängt die Prüfung der Jahresbeschriftung.
-         *     - ``tax_rates``: die Realsteuer-Hebesätze je **Änderungsjahr** seit 1980
-         *       (Tabelle 1105). Die Jahre dazwischen fehlen nicht, sie ändern nichts —
-         *       ein Satz gilt bis zur nächsten Änderung. Wer die Reihe zeichnet, zeichnet
-         *       eine Treppe und interpoliert nicht. ``bemessung_neu`` nennt die Jahre, in
-         *       denen sich die Bemessungsgrundlage mitänderte; **ohne diese Angabe darf
-         *       kein Hebesatz-Sprung angezeigt werden**, denn 2025 stieg der Satz um
-         *       21 %, während das Aufkommen um 4,6 % sank.
-         *     - ``trade_tax_statistics``: wie viele Betriebe und Betriebsstätten in
-         *       Oldenburg erfasst sind, wie viele davon überhaupt einen Steuermessbetrag
-         *       haben, und wie sich dieser auf reine Festsetzungen und Zerlegungen
-         *       verteilt (Landesamt für Statistik, Bericht L IV 13). **Das ist die
-         *       Veranlagung, nicht das Aufkommen**: Messbetrag mal Hebesatz ergibt nicht
-         *       die Zahl aus ``taxes`` — in den drei prüfbaren Jahren lagen beide
-         *       zwischen 13 % darunter und 27 % darüber. ``abgrenzung`` sagt das im
-         *       Klartext und reist deshalb mit den Zahlen mit.
-         *
-         *     Fehlende Jahre (Datenlücken) fehlen schlicht in ``years`` — das Frontend
-         *     zeigt Lücken ehrlich, statt zu interpolieren.
-         *
-         *     ``felder`` schneidet die Antwort auf das zu, was die aufrufende Seite
-         *     wirklich rendert (kommagetrennt, z. B. ``?felder=years,product_years``).
-         *     ``thh_posten`` schneidet zusätzlich INNERHALB der Ergebnisrechnung — sie
-         *     ist der größte Block, und ihre Teilhaushalts-Ebene braucht fast niemand
-         *     vollständig (s. :func:`_ergebnisrechnung`).
-         *     Ohne den Parameter kommt alles — der Vertrag von vorher gilt unverändert
-         *     weiter. Die Werte sind hier bewusst **Bauanweisungen** und keine fertigen
-         *     Listen: Ein nicht angefordertes Feld soll nicht nur ungesendet bleiben,
-         *     sondern gar nicht erst aus der Datenbank gelesen werden.
-         */
-        get: operations["haushalt_uebersicht_api_council_haushalt_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/council/haushalt/aenderungslisten": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Haushalt Aenderungslisten
-         * @description Der Inhalt der Änderungslisten — die Ebene unter ``/haushalt/streit``.
-         *
-         *     Dort steht, WER eine Liste einbrachte und ob sie durchkam; hier steht,
-         *     was drinstand: je Dokument (Verw. I–III und die Beschluss-Datei des
-         *     Finanzausschusses) die Einzelpositionen samt der „Zusammenstellung der
-         *     Veränderungen", gegen die jede Positionsliste beim Einlesen bewiesen
-         *     wurde (``council/aenderungslisten.py``).
-         *
-         *     - ``rows``: NUR die Positionen des Haushaltsjahrgangs selbst
-         *       (``year == budget_year``). Dieselbe Maßnahme steht im Dokument je
-         *       Finanzplanungsjahr noch einmal — für die Streit-Erzählung zählt das
-         *       Jahr, um das gestritten wurde; die Folgejahre stecken kompakt in den
-         *       Summen. ``author`` trägt, WER die Position vorschlug — gefüllt nur
-         *       beim Jahrgang 2021, dessen Beschluss-Datei als einzige eine Spalte
-         *       „Vorschlag von“ führt; sonst ``null``.
-         *     - ``totals``: die Zusammenstellungen ALLER Planjahre, inklusive der
-         *       Zeilen, die es nur dort gibt: die politisch beschlossene Änderung mit
-         *       Urheber-Label („SPD/CDU/FDP …“) aus den AFB-Dateien — der einzige
-         *       digitale Beleg der Fraktionslisten, die selbst Tischvorlagen blieben.
-         *     - ``cash_budget_rows``/``cash_budget_totals``: dasselbe für den FINANZhaushalt
-         *       (``council/aenderungslisten_fhh.py``) — also für das, was tatsächlich
-         *       fließt und vor allem investiert wird. Getrennte Schlüssel statt einer
-         *       gemeinsamen Liste mit Marke: Die Zeilen haben eine andere Form (fünf
-         *       Betragsspalten statt zwei, dazu ``product`` mit dem Investitionscode),
-         *       und eine gemeinsame Liste wäre auf jeder Seite zur Hälfte leer.
-         *     - ``herkunft``: je ``herkunft_id`` das Papier, aus dem eine Zeile stammt —
-         *       für beide Haushalte gemeinsam.
-         */
-        get: operations["haushalt_aenderungslisten_api_council_haushalt_aenderungslisten_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/council/haushalt/beteiligungen": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Haushalt Beteiligungen
-         * @description Die städtischen Gesellschaften — was sie tun, wer sie beaufsichtigt.
-         *
-         *     Die Ergänzung zum Gesamtabschluss (``/haushalt/konzern``): Der sagt, wie
-         *     viel die Betriebe bewegen, diese Seite, was sie damit machen.
-         *
-         *     - ``companies``: je Gesellschaft Name, Gliederungsnummer und Seite im
-         *       jüngsten Bericht, dazu ``consolidated_key``, wo der Gesamtabschluss sie als
-         *       eigenen Träger führt,
-         *     - ``texts``: die beschreibenden Abschnitte (Gegenstand, Eigentümer,
-         *       Aufsichtsorgane, eigene Beteiligungen, Auswirkungen auf den Haushalt) —
-         *       alle ausdrücklich **ungeprüft**, denn Fließtext lässt sich gegen nichts
-         *       rechnen,
-         *     - ``people``: die Aufsichtsorgane, Person für Person, mit Gremium,
-         *       Vorsitz, Amtszeit-Hinweis und — wo das Verzeichnis die Person
-         *       eindeutig kennt — ``slug`` und ``party`` für die Personen-Seite.
-         *       ``position`` steht nur da, wo die Spaltenprobe gehalten hat; siehe
-         *       ``roles_assignable`` an der Gesellschaft. Zwei der fünf Abschnitte
-         *       sind nämlich keine Prosa, sondern Tabellen, die der PDF-Extrakt
-         *       spaltenweise ausgibt (``council/beteiligungsbericht.py``),
-         *     - ``owners``: wem die Gesellschaft gehört, mit Betrag und Anteil.
-         *       **Ohne** die Stammkapital-Zeile — die ist die Summe und kein
-         *       Gesellschafter. Gesellschaften, deren Anteile sich nicht auf das
-         *       ausgewiesene Stammkapital summieren, erscheinen hier gar nicht; ihr
-         *       Rohtext steht weiter in ``texts``,
-         *     - ``indicators``: die Zeitreihe je Gesellschaft (Jahresergebnis,
-         *       Bilanzsumme, Eigenkapitalquote). ``n_reports`` sagt, wie viele Berichte
-         *       denselben Wert nennen — 1 heißt „durch eine Probe im Dokument gedeckt",
-         *       mehr heißt zusätzlich „von einer zweiten Veröffentlichung bestätigt",
-         *     - ``group_comparison``: für die Gesellschaften, die auch im
-         *       Gesamtabschluss stehen, beide Zahlen desselben Jahres nebeneinander.
-         *       **Keine Probe** — die beiden Rechnungen unterscheiden sich systematisch,
-         *       und zwei Betriebe weisen wegen Ergebnisabführung 0 € aus, obwohl sie
-         *       etwas erwirtschaftet haben. Eine Einordnung, kein Urteil,
-         *     - ``report_years`` / ``years``: welche Berichte gelesen sind und welche
-         *       Bezugsjahre die Kennzahlen abdecken (sie reichen weiter zurück als die
-         *       Berichte — jeder führt vier bis fünf Jahre mit),
-         *     - ``herkunft``: je ``herkunft_id`` Dokument, Fundstelle, Seite und Probe.
-         *
-         *     Gelesen werden die Berichte ab 2022; davor ist das Dokument anders
-         *     aufgebaut und nicht maschinenlesbar (``council/beteiligungsbericht.py``).
-         */
-        get: operations["haushalt_beteiligungen_api_council_haushalt_beteiligungen_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/council/haushalt/bilanz": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Haushalt Bilanz
-         * @description Die Bilanz der Stadt — Abschnitt 2.1 der Jahresabschlüsse.
-         *
-         *     Die Gegenseite zu ``/haushalt/schulden``: nicht was die Stadt schuldet,
-         *     sondern was sie **hat** und was davon schon vergeben ist.
-         *
-         *     ``items`` ist eine flache Liste über alle Stichtage. **An ``role``
-         *     hängen, nicht an ``nr``**: Die Gliederungsnummer der Bilanz ist bis 2020
-         *     römisch, ab 2021 arabisch, und ab 2021 gibt es jede Nummer auf beiden
-         *     Seiten — „1.1" ist auf der Aktivseite etwas anderes als auf der
-         *     Passivseite. ``page`` (``aktiva``/``passiva``) und ``level`` (1 = die
-         *     neun Hauptposten, aus denen die Bilanzsumme besteht) sind die stabilen
-         *     Achsen.
-         *
-         *     Zwei Rollen heißen fast gleich und meinen Verschiedenes — wer sie
-         *     verwechselt, schreibt eine falsche Schlagzeile:
-         *
-         *     * ``pensionen_gesamt`` — Bilanzposition 3.1 „Pensionsrückstellungen und
-         *       ähnliche Verpflichtungen", **einschließlich Beihilfe** (31.12.2024:
-         *       311,79 Mio. €),
-         *     * ``pensionsrueckstellungen`` — Position 3.1.1, die Pensionen **allein**
-         *       (266,26 Mio. €); der Rest ist ``beihilferueckstellungen`` (45,53).
-         *
-         *     Die beiden ältesten Stichtage führen die Aufschlüsselung nicht — die
-         *     Bilanz wies damals nur den Sammelposten aus. Sie fehlen dort schlicht;
-         *     eine Anzeige zeigt die Lücke, statt sie zu füllen.
-         *
-         *     ``explanations`` ist **keine Zugabe, sondern eine Auflage.** Die
-         *     Schulden springen 2024 von 84,4 auf 207,1 Mio. €, und das ist kein
-         *     Schuldenmachen, sondern eine Bilanzverlängerung aus dem Cash-Pooling
-         *     (138,2 Mio. €, mit Gegenposten auf der Aktivseite). Der Anhang erklärt es
-         *     unter ``role="liabilities"`` selbst. **Die Zahl darf ohne diesen Text nicht
-         *     angezeigt werden** — dieselbe Bauart wie ``variance_reasons`` für die
-         *     Ergebnisrechnung.
-         */
-        get: operations["haushalt_bilanz_api_council_haushalt_bilanz_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/council/haushalt/datenstand": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Haushalt Datenstand
-         * @description Bis wann die Zahlen reichen — je Datenschicht ein Jahrgangs-Stand.
-         *
-         *     Beantwortet die Frage, die sonst auf jeder Unterseite von ``/haushalt``
-         *     einzeln erklärt werden müsste: „Warum steht hier 2024 und nicht 2025?"
-         *     Der Bereich trägt die Schichten aus ``finanzquellen.REIHENFOLGE``, und
-         *     die haben **verschiedene** Takte: Der Plan liegt im Oktober vor seinem
-         *     Haushaltsjahr, die Abrechnung samt Prüfberichten im September danach,
-         *     der Gesamtabschluss (Konzern Stadt) rund zwei Jahre danach — er entsteht
-         *     erst, wenn alle einbezogenen Jahresabschlüsse geprüft sind. Die beiden
-         *     Reihen des Städtevergleichs hängen an einem ganz anderen Haus: Sie kommen
-         *     vom Landesamt für Statistik, einmal im Jahr. Für einen Jahrgang liegt
-         *     deshalb fast nie alles gleichzeitig vor; das ist der Normalfall, nicht
-         *     die Störung.
-         *
-         *     Je Schicht: die vorhandenen Jahrgänge, Lücken darin, der nächste
-         *     erwartete Jahrgang samt Datum, und ob er schon überfällig ist. Die Werte
-         *     kommen aus dem Bestand, nicht aus einer gepflegten Liste — eine Angabe,
-         *     die jemand von Hand nachziehen müsste, wäre genau die, die veraltet.
-         *     Gefüllt wird der Bestand vom Cron ``scripts/check_finanzdaten.py``.
-         */
-        get: operations["haushalt_datenstand_api_council_haushalt_datenstand_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/council/haushalt/dokumente": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Haushalt Dokumente
-         * @description Je Quelle des Haushalts-Bereichs das **Dokument** — Jahrgang für Jahrgang.
-         *
-         *     Das Quellenverzeichnis am Fuß jeder Haushalts-Seite beschreibt eine Quelle
-         *     als Ganzes („Die Jahresabschlüsse der Stadt Oldenburg, 2017–2024"). Diese
-         *     Beschreibung ist redaktionell und kennt keine Jahrgänge — ihr „Dokument
-         *     öffnen" führte deshalb auf die Startseite des Ratsinformationssystems, wo
-         *     man wieder selbst suchen darf. Hier steht, welches PDF zu welchem Jahr
-         *     gehört, damit der Link das Dokument des **gezeigten** Jahres öffnet.
-         *
-         *     ``{"documents": {"<quellenschluessel>": [{year, url, label, citation,
-         *     page}, …]}}`` — aufsteigend nach Jahr. Ein Schlüssel fehlt, wo wir kein
-         *     Dokument haben; die Oberfläche fällt dann auf die statische Adresse
-         *     zurück und sagt dazu, wohin sie führt.
-         *
-         *     Ein Jahrgang kann mehrere Dokumente tragen: Die Produktebene verteilt sich
-         *     auf rund neun Teilhaushalts-Anlagen. Die Liste nennt sie alle statt eine
-         *     auszuwählen — welche gemeint ist, entscheidet die Seite, nicht die API.
-         *
-         *     Die Fundstelle kommt aus ``council_herkunft`` und ist der eigentliche
-         *     Gewinn: „Abschnitt 3.2" macht aus einem 300-Seiten-PDF eine nachschlagbare
-         *     Stelle.
-         *
-         *     ``editions`` kommt aus derselben Antwort statt aus einem eigenen Aufruf:
-         *     Es beantwortet die Nachbarfrage („welche Jahrgänge deckt diese Quelle
-         *     ab?"), wird an derselben Stelle gebraucht — im Quellenverzeichnis — und
-         *     ist eine Abfrage je Quelle, keine je Zeile. Zwei Endpunkte dafür hießen
-         *     zwei Rundreisen für einen Seitenfuß.
-         */
-        get: operations["haushalt_dokumente_api_council_haushalt_dokumente_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/council/haushalt/gebaut": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Haushalt Gebaut
-         * @description Was die Stadt wirklich investiert hat — Tabellen 1107/1107-1 des
-         *     Statistischen Jahrbuchs.
-         *
-         *     Das **Ist** zu den Planzahlen von ``/haushalt/investitionen``. Beide
-         *     Endpunkte bleiben getrennt, und zwar nicht aus Bequemlichkeit: Der Plan ist
-         *     nach Teilhaushalten gegliedert, das Ist nach Auszahlungsarten und
-         *     ausdrücklich auf die Kernverwaltung begrenzt. Kein Dokument stellt die
-         *     beiden Summen nebeneinander; eine gemeinsame Antwort lüde dazu ein, sie
-         *     voneinander abzuziehen und das Ergebnis „Umsetzungsquote" zu nennen — eine
-         *     Zahl, die in keiner Quelle steht (``council/investitionen_ist.py``).
-         *
-         *     ``accounting_system`` trennt die beiden Tabellen, und das ist die tragende Angabe
-         *     dieser Antwort: Zum 01.01.2010 stellte die Stadt von kameraler auf
-         *     doppische Buchführung um. Das Dokument trennt seine Reihen genau dort und
-         *     begründet es in einer Fußnote. Wer über diesen Schnitt hinweg eine Linie
-         *     zieht, behauptet eine Vergleichbarkeit, die die Quelle bestreitet.
-         *
-         *     ``missing`` nennt die Jahre, die **innerhalb** einer Reihe fehlen, weil
-         *     ihre Zeilensumme im Dokument selbst nicht aufgeht. Anders als bei den
-         *     Schulden gibt es hier keine zweite, unabhängige Probe, die wenigstens die
-         *     Summe trüge — also fällt der ganze Jahrgang, und die Oberfläche kann die
-         *     Lücke **benennen**, statt sie als Null zu zeichnen oder still zu
-         *     überspringen.
-         *
-         *     Je Lücke steht dort neben dem Jahr die gemessene ``difference`` in Euro
-         *     (Auszahlungsarten minus ausgewiesene Summe, vorzeichenbehaftet) — die
-         *     Zahl, die der Ingest-Lauf beim Verwerfen gemessen hat
-         *     (``council_investitionen_ist_verworfen``). Sie ist der Unterschied
-         *     zwischen „2019 fehlt" und „2019 fehlt, weil 1,3 Mio. € auseinanderlagen".
-         *     ``null``, wo der Bestand keine Messung führt: ein Jahrgang, der vor dem
-         *     Ausbau dieser Schicht verworfen wurde, oder eine Zeile, die sich gar
-         *     nicht erst zerlegen ließ. Dann bleibt der Betrag auf der Seite weg — er
-         *     wird nirgends geschätzt.
-         */
-        get: operations["haushalt_gebaut_api_council_haushalt_gebaut_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/council/haushalt/investitionen": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Haushalt Investitionen
-         * @description Was die Stadt bauen und kaufen will — die Investitionen des
-         *     Finanzhaushalts, je Teilhaushalt.
-         *
-         *     Die andere Hälfte des Haushaltsplans: Im Ergebnishaushalt, den der Rest des
-         *     Bereichs zeigt, steht keine einzige Investition (ein Schulneubau taucht dort
-         *     nur als Abschreibung auf, verteilt über Jahrzehnte).
-         *
-         *     - ``years``: Haushaltsjahre, für die Investitionen vorliegen,
-         *     - ``sub_budgets``: je Jahr und Teilhaushalt Ein- und Auszahlungen aus
-         *       Investitionstätigkeit,
-         *     - ``investments``: je Jahr die Summenzeile der Datei — das **Ziel der
-         *       Rechenprobe**, nicht unsere Addition,
-         *     - ``financial_budget``: je Jahr der Gesamtbetrag aller Ein- und Auszahlungen,
-         *       also samt laufender Verwaltungstätigkeit. Die Bezugsgröße, die aus
-         *       „80,8 Mio. €" erst eine Aussage macht — und die einzige Zahl hier ohne
-         *       Rechenprobe (eigene ``herkunft_id`` mit ``ungeprueft``, s. u.),
-         *     - ``herkunft``: je ``herkunft_id`` Dokument, Fundstelle, bestandene Probe
-         *       samt Messwert. Die geprüften Zeilen und die Bezugsgröße tragen
-         *       **verschiedene** IDs; sie stehen in derselben Datei, aber nur die einen
-         *       sind durch deren Summenzeile gedeckt.
-         *
-         *     Zwei Grenzen, die die Seite nennt und die API deshalb nicht verwischt:
-         *     Diese Zahlen sind **Plan**, nicht Ist, und sie nennen **kein einzelnes
-         *     Vorhaben** — „Verkehr und Straßenbau: 10,5 Mio. €" sagt nicht, welche
-         *     Straße.
-         */
-        get: operations["haushalt_investitionen_api_council_haushalt_investitionen_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/council/haushalt/investitionsprogramm": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Haushalt Investitionsprogramm
-         * @description Die einzelnen Vorhaben — die Ebene unter ``/haushalt/investitionen``.
-         *
-         *     Aus Anlage 004 des Haushaltsplans: nicht „Schule und Bildung: 8,3 Mio. €",
-         *     sondern „BBS Haarentor: Ausstattung". Acht Jahrgänge, rund 4.500 Vorhaben.
-         *
-         *     - ``years``: Jahrgänge, für die ein Programm vorliegt,
-         *     - ``measures``: je Vorhaben Teilhaushalt, IPSP-Element, Bezeichnung und
-         *       **Gesamtinvestitionssumme**,
-         *     - ``sub_budgets``: je Teilhaushalt die Gesamtsumme, die das Dokument am
-         *       Ende seines Abschnitts ausweist — das **Ziel der Rechenprobe**, nicht
-         *       unsere Addition,
-         *     - ``totals``: je Jahrgang die Gesamtsumme des Investitionsprogramms,
-         *     - ``herkunft``: Dokument, Fundstelle und die drei bestandenen Proben.
-         *
-         *     Drei Grenzen, die die Seite nennt und die API deshalb nicht verwischt:
-         *
-         *     1. **Nur die Gesamtinvestitionssumme**, keine Jahresraten — im Textextrakt
-         *        fallen leere Zellen ersatzlos weg, die Spaltenzuordnung wäre geraten.
-         *     2. **Plan, nicht Ist.** Was am Jahresende wirklich gebaut wurde, steht
-         *        nicht darin.
-         *     3. **Nicht deckungsgleich mit** ``/haushalt/investitionen``. Beide Zahlen
-         *        stimmen und zählen Verschiedenes: Das Investitionsprogramm führt die
-         *        Gesamtkosten eines Vorhabens über alle Jahre, der Finanzhaushalt die
-         *        Zahlungen eines Jahres — und die zu aktivierenden Eigenleistungen
-         *        gehören nur ins Programm. Das Dokument sagt das in einer Fußnote selbst.
-         */
-        get: operations["haushalt_investitionsprogramm_api_council_haushalt_investitionsprogramm_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/council/haushalt/konzern": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Haushalt Konzern
-         * @description Der Konzern Stadt Oldenburg — was der Kernhaushalt **nicht** zeigt.
-         *
-         *     Alles auf einmal, weil die Aussage dieser Seite eine Differenz ist: Eine
-         *     Konzernzahl allein sagt nichts, sie sagt erst etwas neben der
-         *     Kernverwaltung im selben Jahr.
-         *
-         *     - ``years``: Jahrgänge mit eingelesenem Gesamtabschluss,
-         *     - ``consolidated``: je Jahrgang die Summen des Konzerns (Erträge,
-         *       Aufwendungen, ordentliches Ergebnis, Gesamtjahresergebnis, Zins- und
-         *       Personalaufwand) samt bestandener Rechenprobe und Fundstelle,
-         *     - ``entity``: wer den Konzern ausmacht — je Jahrgang und Aufstellung eine
-         *       Zeile pro Aufgabenträger, Beträge in **Euro** (der Bericht rundet sie
-         *       auf Tausend, daher die glatten Endziffern),
-         *     - ``items``: die vollständige Gesamtergebnisrechnung je Jahrgang,
-         *     - ``cross_check``: dieselbe Kernverwaltungs-Zahl aus zwei unabhängigen
-         *       Dokumenten — der Trägerzeile des Gesamtabschlusses und dem
-         *       Jahresabschluss, den wir getrennt eingelesen haben,
-         *     - ``herkunft``: je ``herkunft_id`` Dokument, Fundstelle, bestandene Probe
-         *       samt Messwert und Stichtag. Die beiden Ebenen eines Jahrgangs tragen
-         *       **verschiedene** IDs: Sie stehen in verschiedenen Abschnitten des
-         *       Berichts und sind durch verschiedene Proben gedeckt.
-         *
-         *     Der Gesamtabschluss ist **kein Haushalt**: Er wird rund zwei Jahre später
-         *     aufgestellt, folgt handelsrechtlichen Regeln und ist mit den Planzahlen
-         *     auf ``/haushalt`` nicht verrechenbar. Die Seite sagt das; die API liefert
-         *     deshalb auch keine gemischten Summen, sondern beide Reihen getrennt.
-         */
-        get: operations["haushalt_konzern_api_council_haushalt_konzern_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/council/haushalt/produkte": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Haushalt Produkte
-         * @description Produktebene eines Haushaltsjahres — was einzelne Aufgaben kosten,
-         *     samt Steckbrief (Kurzbeschreibung, Rechtsgrundlage, Spielraum,
-         *     Wirkungskreis, Zielgruppe) aus den Teilhaushalts-Plänen.
-         *
-         *     Aus den Teilhaushalts-Plänen des Ratsinformationssystems. Die Abdeckung
-         *     ist unvollständig (nicht jeder Teilhaushalt liegt für jedes Jahr als
-         *     auslesbares Dokument vor); ``coverage_percent`` sagt, wie viel der
-         *     geplanten Aufwendungen die gefundenen Produkte erklären — damit die
-         *     Oberfläche das nicht als Vollbild ausgeben kann.
-         *
-         *     ``q``/``office``/``spielraum`` filtern **serverseitig**: Mit dem Steckbrief
-         *     trägt jede der knapp 400 Zeilen mehrere hundert Zeichen Fließtext, die
-         *     niemand im Browser sortieren muss. ``nr`` holt zusätzlich ein einzelnes
-         *     Produkt — die Steckbrief-Ansicht braucht es auch dann, wenn der gerade
-         *     gesetzte Filter es aus der Liste nähme.
-         *
-         *     ``facets`` liefert die Filterwerte mit Anzahl und dazu, wie viele
-         *     Produkte überhaupt welches Steckbrief-Feld tragen: Die Seite weist die
-         *     Lücke aus, statt sie zu verschweigen.
-         *
-         *     Jedes Produkt trägt zusätzlich ``years`` — die Jahrgänge, in denen es im
-         *     Bestand steht. Gegen ``all_years`` gehalten wird daraus das
-         *     Abdeckungs-Badge der Trefferliste (H4-04): Ein Produkt, das erst ab 2021
-         *     vorliegt, soll das sagen, statt wie eine durchgehende Reihe auszusehen.
-         */
-        get: operations["haushalt_produkte_api_council_haushalt_produkte_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/council/haushalt/pruefberichte": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Haushalt Pruefberichte
-         * @description Prüfungsfeststellungen des Rechnungsprüfungsamts, alle Jahrgänge.
-         *
-         *     Bewusst alles auf einmal statt je Jahr: Die Aussage dieses Bestands liegt
-         *     nicht im einzelnen Jahrgang, sondern in der Wiederholung — eine
-         *     „Wiederholte Beanstandung" ist erst dann etwas wert, wenn daneben steht,
-         *     seit wann sie dort steht. Dafür braucht die Seite alle Jahre gleichzeitig.
-         *
-         *     - ``findings``: eine Zeile je Randmarke, mit Textziffer, Seite und
-         *       Deeplink auf das Quelldokument,
-         *     - ``legend``: die Bedeutung der Marken, wie der Bericht sie selbst
-         *       erklärt (jüngster Jahrgang, der die Marke noch führt),
-         *     - ``without_report``: Jahre, für die ein Jahresabschluss ausgelesen ist, ein
-         *       Schlussbericht aber nicht — die Lücke gehört sichtbar, nicht kaschiert.
-         *
-         *     ``mark`` grenzt auf eine Randmarke ein. Gedacht für den Hinweis auf
-         *     ``/haushalt/plan-ist``, der nur die Kette der wiederholten Beanstandungen
-         *     braucht: Der volle Bestand ist eine Viertel-Megabyte Prosa und hat auf
-         *     einer Seite nichts zu suchen, die ihn gar nicht anzeigt. ``years`` und
-         *     ``legend`` bleiben dabei die des Gesamtbestands — sonst stünde in der
-         *     Fußzeile eine Jahresliste, die vom Filter abhängt.
-         */
-        get: operations["haushalt_pruefberichte_api_council_haushalt_pruefberichte_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/council/haushalt/schulden": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Haushalt Schulden
-         * @description Der Schuldenstand der Stadt seit 1995 — Tabelle 1108 des Statistischen
-         *     Jahrbuchs.
-         *
-         *     ``scope_note`` ist kein Beiwerk, sondern die Bedingung dafür, dass die
-         *     Zahlen etwas bedeuten: Bei Kommunalschulden gibt es zwei Werte, die beide
-         *     „die Schulden der Stadt" heißen und sich um ein Vielfaches unterscheiden.
-         *     Diese Reihe zählt die Stadt als **Rechtsträger** — Kernhaushalt und
-         *     Eigenbetriebe, ohne die rechtlich selbstständigen Beteiligungen. Der Wert
-         *     kommt aus ``council/schulden.py`` und nicht aus dem Frontend, damit beide
-         *     Seiten dieselbe Auskunft geben.
-         *
-         *     ``per_capita`` ist die Angabe **der Quelle**, nicht unsere Rechnung. Sie
-         *     kommt so aus der Tabelle; dass sie zur Einwohnerzahl aus dem Open-Data-
-         *     Datensatz passt, ist die Probe, die den Wert überhaupt hereingelassen hat
-         *     (``herkunft[…].probes``).
-         *
-         *     Wo ``breakdown_rejected`` gesetzt ist, fehlen die vier Artenspalten:
-         *     Dort ergeben sie im Dokument selbst nicht die ausgewiesene Summe. Die
-         *     Summe steht trotzdem — sie hängt an der unabhängigen Pro-Kopf-Probe. Die
-         *     Oberfläche kann den fehlenden Balken damit **erklären**, statt ihn als
-         *     Null zu zeichnen oder still zu überspringen.
-         */
-        get: operations["haushalt_schulden_api_council_haushalt_schulden_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/council/haushalt/stellenplan": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Haushalt Stellenplan
-         * @description Der Stellenplan: wie viele Stellen die Stadt vorhält und wie viele
-         *     davon nicht besetzt sind.
-         *
-         *     Die einzige Schicht des Haushalts-Bereichs, die nicht in Euro rechnet.
-         *     Personal ist der größte Ausgabenblock; hier stehen die Menschen dahinter —
-         *     und die Lücke zwischen geplanten und tatsächlich besetzten Stellen.
-         *
-         *     - ``editions``: Haushaltsjahre mit eingelesenem Plan,
-         *     - ``totals``: je Jahrgang und Teil die Gesamtzeile des Dokuments (Stellen
-         *       im Haushaltsjahr, Stellen im Vorjahr, besetzt, nicht besetzt) samt
-         *       Stichtag der Besetzung,
-         *     - ``groups``: dieselben Zahlen je Laufbahn- bzw. Beschäftigtengruppe,
-         *     - ``rows``: die Einzelposten — nur mit ``budget_year``, weil das rund 190
-         *       Zeilen je Jahrgang sind,
-         *     - ``missing``: welche ``(Jahrgang, Teil)`` **nicht** vorliegen, obwohl der
-         *       Jahrgang eingelesen ist. Ohne diese Liste sähe ein Jahrgang mit nur
-         *       einem Teil aus wie ein vollständiger,
-         *     - ``herkunft``: je ``herkunft_id`` Dokument, Fundstelle, bestandene Probe
-         *       samt Messwert und Stichtag. Teil A und Teil B eines Jahrgangs tragen
-         *       **verschiedene** IDs: verschiedene Tabellen, verschiedene Proben.
-         *
-         *     Zwei Dinge, die die Zahlen nicht hergeben und die eine Seite dazusagen
-         *     muss: Der Plan zählt **Stellen**, keine Köpfe (Teilzeit steht als
-         *     Bruchteil), und er zählt nur die **Kernverwaltung** — Klinikum, Bäder,
-         *     Bus und Gebäudewirtschaft haben eigene Wirtschaftspläne.
-         *
-         *     Und die Besetzungszahlen gehören zur **Vorjahresspalte**, nicht zum
-         *     Haushaltsjahr: Geplant wird vorwärts, gezählt werden kann nur rückwärts.
-         *     ``as_of_date`` sagt, auf welchen Tag sie sich beziehen.
-         */
-        get: operations["haushalt_stellenplan_api_council_haushalt_stellenplan_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/council/haushalt/streit": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Haushalt Streit
-         * @description Der Streit ums Geld — die Auseinandersetzung um jeden Haushaltsjahrgang.
-         *
-         *     Je Haushaltsjahr eine ``round`` mit ihren Stationen (Finanzausschuss und
-         *     Rat), und je Station die Änderungslisten, die Debatte und die
-         *     Schlussabstimmung. Alles kommt aus den Ratsdaten: Beschlusszeilen,
-         *     Anwesenheitsliste und Protokoll-Volltext derselben Sitzung.
-         *
-         *     **Ohne ``year`` kommen alle Jahrgänge** — wie bei ``/haushalt/weg``, und
-         *     aus demselben Grund: Dass sich die Mehrheiten verschieben, sieht man erst
-         *     über die Jahre. Die Antwort ist entsprechend groß (rund ein halbes MB);
-         *     die Seite lädt sie einmal und schaltet danach ohne Netz zwischen den
-         *     Jahrgängen um.
-         *
-         *     Was hier **nicht** steht: der Inhalt der Änderungslisten — den liefert
-         *     seit 08/2026 ``/haushalt/aenderungslisten`` (direkt darunter), Position
-         *     für Position aus den gelesenen EHH-Dokumenten. Hier bleibt die
-         *     Verfahrens-Ebene: **wer** was einbrachte und **ob** es durchkam.
-         */
-        get: operations["haushalt_streit_api_council_haushalt_streit_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/council/haushalt/vergleich": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Haushalt Vergleich
-         * @description Was sich zwischen Städten vergleichen lässt — und der Beleg, warum das
-         *     meiste sich **nicht** vergleichen lässt.
-         *
-         *     Zwei Teile, und der zweite ist der wichtigere:
-         *
-         *     - ``values``/``cities``/``years``: Steuerkraft und Hebesätze der acht
-         *       kreisfreien Städte Niedersachsens aus den beiden Tabellen des
-         *       Landesamts für Statistik. Dieselbe Kennzahl, dieselbe Stelle, dieselbe
-         *       Abgrenzung für alle — der Auslagerungsgrad einer Stadt greift hier
-         *       nicht, weil Steuern nie ein Eigenbetrieb erhebt.
-         *     - ``citation``: die Ratsvorlage 18/0911, in der die Stadt Oldenburg 2018 auf
-         *       Antrag der FDP-Fraktion sieben Städte verglichen und im selben Dokument
-         *       festgestellt hat, dass dieser Vergleich nichts aussagt. Aufgelöst wird
-         *       sie über die Vorlagennummer; ``decision_id`` zeigt auf den Eintrag in
-         *       unserem eigenen Bestand (der Ausschuss hat den Bericht zur Kenntnis
-         *       genommen), ``attachments`` auf Antrag und Antwort im Original.
-         *
-         *     **Was diese Antwort bewusst nicht tut:** Sie mischt die LSN-Steuerkraft
-         *     nicht mit ``council_steuerkraft`` (Datensatz 1106). Beide führen dieselben
-         *     Beträge, aber unter einer um ein Jahr verschobenen Jahresangabe; welche
-         *     stimmt, ist ungeklärt. Zusammengelegt ergäbe das eine Reihe, in der zwei
-         *     verschiedene Jahre dasselbe zu meinen scheinen.
-         */
-        get: operations["haushalt_vergleich_api_council_haushalt_vergleich_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/council/haushalt/weg": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Haushalt Weg
-         * @description Der Weg eines Haushalts durch den Rat — wann welche Station war.
-         *
-         *     Anders als der Rest des Haushalts-Bereichs kommt hier nichts aus einem
-         *     Finanzdokument, sondern alles aus den Ratsdaten: Beratungsfolge,
-         *     Tagesordnung und Protokoll-Beschluss. Je Haushaltsjahr eine ``round`` mit
-         *     ``einbringung``, ``fachausschuesse`` (Zeitraum und Gremien) und
-         *     ``stationen`` bis zur Entscheidung im Rat; jede Station trägt ``ksinr``
-         *     und ``top``, ist also auf ihre Sitzung verlinkbar.
-         *
-         *     **Ohne ``year`` kommen alle Jahrgänge.** Das ist Absicht: Die Aussage
-         *     dieser Seite liegt nicht im einzelnen Jahr, sondern in der Streuung — dass
-         *     der Entwurf verlässlich im Oktober kommt, die Entscheidung aber zwischen
-         *     Dezember und Februar wandert, sieht man erst über acht Jahrgänge. Eine
-         *     Seite, die das behaupten will, braucht sie alle gleichzeitig; ein
-         *     Jahres-Umschalter, der je Klick nachlädt, wäre acht Anfragen für 30 Zeilen.
-         *     ``year`` grenzt trotzdem ein, wenn jemand nur eine Runde braucht.
-         *
-         *     Was hier **nicht** steht: die Termine der laufenden Runde.
-         *     ``council_scheduled_sessions`` kennt keine Tagesordnung — wir können nicht
-         *     sagen, welche der kommenden Sitzungen die Haushaltssitzung wird, und raten
-         *     es auch nicht.
-         */
-        get: operations["haushalt_weg_api_council_haushalt_weg_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2335,6 +2335,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/council/people-directory": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Personen Lexikon */
+        get: operations["personen_lexikon_api_council_people_directory_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/council/person/{slug}": {
         parameters: {
             query?: never;
@@ -2365,7 +2382,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/council/person/{slug}/wortbeitraege": {
+    "/api/council/person/{slug}/speeches": {
         parameters: {
             query?: never;
             header?: never;
@@ -2380,24 +2397,7 @@ export interface paths {
          *     vollständig statt auf die jüngsten zehn gekürzt. Gilt für Ratsmitglieder
          *     UND Verwaltung mit Steckbrief.
          */
-        get: operations["person_wortbeitraege_api_council_person__slug__wortbeitraege_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/council/personen-lexikon": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Personen Lexikon */
-        get: operations["personen_lexikon_api_council_personen_lexikon_get"];
+        get: operations["person_wortbeitraege_api_council_person__slug__speeches_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2632,6 +2632,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/council/session-break": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Sitzungspause
+         * @description Läuft gerade eine Sitzungspause (Schulferien / Wahl-Übergang)?
+         *
+         *     Der Rat pausiert laut Stadt in den Schulferien; die Übersicht zeigt dann
+         *     ein Banner, damit sich niemand über ausbleibende neue Sitzungen wundert.
+         */
+        get: operations["sitzungspause_api_council_session_break_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/council/session/{ksinr}": {
         parameters: {
             query?: never;
@@ -2666,24 +2689,19 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/council/sitzungspause": {
+    "/api/council/template/{kvonr}/follow": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /**
-         * Sitzungspause
-         * @description Läuft gerade eine Sitzungspause (Schulferien / Wahl-Übergang)?
-         *
-         *     Der Rat pausiert laut Stadt in den Schulferien; die Übersicht zeigt dann
-         *     ein Banner, damit sich niemand über ausbleibende neue Sitzungen wundert.
-         */
-        get: operations["sitzungspause_api_council_sitzungspause_get"];
+        get?: never;
         put?: never;
-        post?: never;
-        delete?: never;
+        /** Follow Vorlage */
+        post: operations["follow_vorlage_api_council_template__kvonr__follow_post"];
+        /** Unfollow Vorlage */
+        delete: operations["unfollow_vorlage_api_council_template__kvonr__follow_delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2709,25 +2727,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/council/vorlage/{kvonr}/follow": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Follow Vorlage */
-        post: operations["follow_vorlage_api_council_vorlage__kvonr__follow_post"];
-        /** Unfollow Vorlage */
-        delete: operations["unfollow_vorlage_api_council_vorlage__kvonr__follow_delete"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/council/wochenvorschau": {
+    "/api/council/week-preview": {
         parameters: {
             query?: never;
             header?: never;
@@ -2749,7 +2749,7 @@ export interface paths {
          *     Sitzungen". Die Themen-Treffer liegen in der anderen Datenbank (Konten und
          *     Themen), deshalb werden sie hier geholt und hineingereicht.
          */
-        get: operations["wochenvorschau_api_council_wochenvorschau_get"];
+        get: operations["wochenvorschau_api_council_week_preview_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2801,7 +2801,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/feedback/kontakt": {
+    "/api/feedback/contact": {
         parameters: {
             query?: never;
             header?: never;
@@ -2821,7 +2821,7 @@ export interface paths {
          *     Der Preis der Öffentlichkeit sind Bots, dagegen stehen drei Dinge:
          *     IP-Limit, Honigtopf und die 4000-Zeichen-Grenze aus dem Schema.
          */
-        post: operations["submit_support_api_feedback_kontakt_post"];
+        post: operations["submit_support_api_feedback_contact_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3240,7 +3240,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/social/fundstueck/{tag}": {
+    "/api/social/daily-find/{day}": {
         parameters: {
             query?: never;
             header?: never;
@@ -3251,7 +3251,7 @@ export interface paths {
          * Fundstueck
          * @description Das vorgenerierte Fundstück des Tages, falls vorhanden.
          */
-        get: operations["fundstueck_api_social_fundstueck__tag__get"];
+        get: operations["fundstueck_api_social_daily_find__day__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3260,7 +3260,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/social/hoechste-beschluss-id": {
+    "/api/social/highest-decision-id": {
         parameters: {
             query?: never;
             header?: never;
@@ -3272,7 +3272,7 @@ export interface paths {
          * @description Aktueller Zählerstand — der Startpunkt fürs erste Merken beim Bot,
          *     damit sein Ereignis-Cron nicht den gesamten Bestand als „neu" meldet.
          */
-        get: operations["hoechste_beschluss_id_api_social_hoechste_beschluss_id_get"];
+        get: operations["hoechste_beschluss_id_api_social_highest_decision_id_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3281,7 +3281,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/social/medien/{tag}": {
+    "/api/social/media/{day}": {
         parameters: {
             query?: never;
             header?: never;
@@ -3298,14 +3298,14 @@ export interface paths {
          *     zweiter Aufruf für denselben Tag ersetzt den Satz vollständig — der Bot
          *     rendert neu, wenn sich die Tagesordnung noch geändert hat.
          */
-        post: operations["medien_ablegen_api_social_medien__tag__post"];
+        post: operations["medien_ablegen_api_social_media__day__post"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/social/neue-beschluesse": {
+    "/api/social/new-decisions": {
         parameters: {
             query?: never;
             header?: never;
@@ -3319,7 +3319,7 @@ export interface paths {
          *     Datenbank lief (``ratslotse_social.quellen.neue_beschluesse``), nur
          *     jetzt hinter dem Token statt hinter einem lokalen DB-Pfad.
          */
-        get: operations["neue_beschluesse_api_social_neue_beschluesse_get"];
+        get: operations["neue_beschluesse_api_social_new_decisions_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3328,7 +3328,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/social/sitzungen/{tag}": {
+    "/api/social/sessions/{day}": {
         parameters: {
             query?: never;
             header?: never;
@@ -3339,7 +3339,7 @@ export interface paths {
          * Sitzungen
          * @description Alle Sitzungen eines Kalendertags — Grundlage der Sitzungstag-Story.
          */
-        get: operations["sitzungen_api_social_sitzungen__tag__get"];
+        get: operations["sitzungen_api_social_sessions__day__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3348,7 +3348,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/social/wochenvorschau": {
+    "/api/social/week-preview": {
         parameters: {
             query?: never;
             header?: never;
@@ -3370,7 +3370,7 @@ export interface paths {
          *     gleichnamige Termine — für eine Vorschau ist gerade die Ratssitzung
          *     interessant, deren Tagesordnung noch aussteht.
          */
-        get: operations["wochenvorschau_api_social_wochenvorschau_get"];
+        get: operations["wochenvorschau_api_social_week_preview_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3476,6 +3476,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/topics/overview-seen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Uebersicht Gesehen
+         * @description Die Themen-Übersicht wurde geöffnet — ab jetzt zählt für die Bubble
+         *     nur noch, was danach dazukommt. Ältere App-Versionen rufen das nie auf;
+         *     für sie bleibt es beim bisherigen Verhalten.
+         */
+        post: operations["uebersicht_gesehen_api_topics_overview_seen_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/topics/suggestions": {
         parameters: {
             query?: never;
@@ -3495,28 +3517,6 @@ export interface paths {
         get: operations["topic_suggestions_api_topics_suggestions_get"];
         put?: never;
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/topics/uebersicht-gesehen": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Uebersicht Gesehen
-         * @description Die Themen-Übersicht wurde geöffnet — ab jetzt zählt für die Bubble
-         *     nur noch, was danach dazukommt. Ältere App-Versionen rufen das nie auf;
-         *     für sie bleibt es beim bisherigen Verhalten.
-         */
-        post: operations["uebersicht_gesehen_api_topics_uebersicht_gesehen_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3790,12 +3790,12 @@ export interface components {
             id: number;
             /** Last Seen */
             last_seen: string | null;
-            /** N Abos */
-            n_abos: number;
             /** N Ki */
             n_ki: number;
             /** N Quiz */
             n_quiz: number;
+            /** N Subscriptions */
+            n_subscriptions: number;
             /** N Topics */
             n_topics: number;
             /** Role */
@@ -3868,13 +3868,13 @@ export interface components {
             conversation_id?: number | null;
             /** History */
             history?: components["schemas"]["AskTurn"][];
-            /** Question */
-            question: string;
             /**
-             * Vorherige Antwort
+             * Previous Answer
              * @default
              */
-            vorherige_antwort: string;
+            previous_answer: string;
+            /** Question */
+            question: string;
         };
         /**
          * AskTurn
@@ -3960,8 +3960,8 @@ export interface components {
             /** Total */
             total: number;
         };
-        /** Body_medien_ablegen_api_social_medien__tag__post */
-        Body_medien_ablegen_api_social_medien__tag__post: {
+        /** Body_medien_ablegen_api_social_media__day__post */
+        Body_medien_ablegen_api_social_media__day__post: {
             /** Dateien */
             dateien: string[];
         };
@@ -4898,8 +4898,8 @@ export interface components {
         MediaUpload: {
             /** Count */
             count: number;
-            /** Tag */
-            tag: string;
+            /** Day */
+            day: string;
             /** Urls */
             urls: string[];
         };
@@ -5027,8 +5027,8 @@ export interface components {
         };
         /** PartyOpinionsBody */
         PartyOpinionsBody: {
-            /** Beschluss Ids */
-            beschluss_ids?: number[];
+            /** Decision Ids */
+            decision_ids?: number[];
             /** Question */
             question: string;
         };
@@ -5129,20 +5129,20 @@ export interface components {
         /** QaShareAttachment */
         QaShareAttachment: {
             /**
-             * Auszug
+             * Excerpt
              * @default
              */
-            auszug: string;
+            excerpt: string;
             /** Label */
             label?: string | null;
-            /** Nr */
-            nr?: number | null;
+            /** Number */
+            number?: number | null;
             /** Template Number */
             template_number?: string | null;
+            /** Template Title */
+            template_title?: string | null;
             /** Url */
             url?: string | null;
-            /** Vorlage Titel */
-            vorlage_titel?: string | null;
         };
         /** QaShareBody */
         QaShareBody: {
@@ -5167,30 +5167,30 @@ export interface components {
         };
         /** QaShareDebate */
         QaShareDebate: {
-            /**
-             * Art
-             * @default speech
-             */
-            art: string;
-            /**
-             * Auszug
-             * @default
-             */
-            auszug: string;
+            /** Agenda Item */
+            agenda_item?: string | null;
             /** Committee */
             committee?: string | null;
             /** Date */
             date?: string | null;
+            /**
+             * Excerpt
+             * @default
+             */
+            excerpt: string;
+            /**
+             * Kind
+             * @default speech
+             */
+            kind: string;
+            /** Minutes Page */
+            minutes_page?: number | null;
+            /** Minutes Url */
+            minutes_url?: string | null;
             /** Party */
             party?: string | null;
-            /** Protokoll Seite */
-            protokoll_seite?: number | null;
-            /** Protokoll Url */
-            protokoll_url?: string | null;
             /** Speaker */
             speaker?: string | null;
-            /** Top */
-            top?: string | null;
         };
         /** QaShareKeyQuote */
         QaShareKeyQuote: {
@@ -5207,17 +5207,10 @@ export interface components {
         /** QaShareParty */
         QaShareParty: {
             /**
-             * Beitraege
+             * Contributions
              * @default 0
              */
-            beitraege: number;
-            /**
-             * Einig
-             * @default true
-             */
-            einig: boolean;
-            /** Haltung */
-            haltung?: string | null;
+            contributions: number;
             /** QaShareKeyQuote */
             kernaussage?: {
                 /** Date */
@@ -5239,6 +5232,13 @@ export interface components {
              * @default
              */
             position: string;
+            /** Stance */
+            stance?: string | null;
+            /**
+             * Unanimous
+             * @default true
+             */
+            unanimous: boolean;
         };
         /** QaSharePress */
         QaSharePress: {
@@ -7537,6 +7537,420 @@ export interface operations {
             };
         };
     };
+    haushalt_uebersicht_api_council_budget_get: {
+        parameters: {
+            query?: {
+                felder?: string | null;
+                sub_budget_item?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    haushalt_aenderungslisten_api_council_budget_amendment_lists_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetAmendmentLists"];
+                };
+            };
+        };
+    };
+    haushalt_gebaut_api_council_budget_assets_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetFixedAssets"];
+                };
+            };
+        };
+    };
+    haushalt_pruefberichte_api_council_budget_audit_reports_get: {
+        parameters: {
+            query?: {
+                mark?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetAuditReports"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    haushalt_bilanz_api_council_budget_balance_sheet_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetBalanceSheet"];
+                };
+            };
+        };
+    };
+    haushalt_vergleich_api_council_budget_comparison_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetComparison"];
+                };
+            };
+        };
+    };
+    haushalt_datenstand_api_council_budget_data_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetDataState"];
+                };
+            };
+        };
+    };
+    haushalt_streit_api_council_budget_debate_get: {
+        parameters: {
+            query?: {
+                year?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetDispute"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    haushalt_schulden_api_council_budget_debt_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetDebt"];
+                };
+            };
+        };
+    };
+    haushalt_dokumente_api_council_budget_documents_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetDocuments"];
+                };
+            };
+        };
+    };
+    haushalt_konzern_api_council_budget_group_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetGroup"];
+                };
+            };
+        };
+    };
+    haushalt_investitionsprogramm_api_council_budget_investment_programme_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetInvestmentProgram"];
+                };
+            };
+        };
+    };
+    haushalt_investitionen_api_council_budget_investments_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetInvestments"];
+                };
+            };
+        };
+    };
+    haushalt_weg_api_council_budget_journey_get: {
+        parameters: {
+            query?: {
+                year?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetPath"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    haushalt_produkte_api_council_budget_products_get: {
+        parameters: {
+            query: {
+                year: number;
+                sub_budget?: number | null;
+                q?: string | null;
+                office?: string | null;
+                controllability?: string | null;
+                number?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetProducts"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    haushalt_beteiligungen_api_council_budget_shareholdings_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetHoldings"];
+                };
+            };
+        };
+    };
+    haushalt_stellenplan_api_council_budget_staff_plan_get: {
+        parameters: {
+            query?: {
+                budget_year?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetStaffPlan"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     committees_api_council_committees_get: {
         parameters: {
             query?: never;
@@ -7553,6 +7967,209 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Committees"];
+                };
+            };
+        };
+    };
+    gespraeche_liste_api_council_conversations_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+                q?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    gespraeche_alle_loeschen_api_council_conversations_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationsDeleted"];
+                };
+            };
+        };
+    };
+    gespraeche_einstellung_api_council_conversations_setting_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConversationSettingBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationSetting"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    gespraech_detail_api_council_conversations__conversation_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversation_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    gespraech_loeschen_api_council_conversations__conversation_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversation_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ok"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    gespraech_umbenennen_api_council_conversations__conversation_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversation_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConversationRenameBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ok"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    fundstueck_api_council_daily_find_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiscoveryOfTheDay"];
                 };
             };
         };
@@ -7670,7 +8287,7 @@ export interface operations {
             };
         };
     };
-    deep_research_aktuell_api_council_deep_research_aktuell_get: {
+    deep_research_aktuell_api_council_deep_research_current_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -7756,7 +8373,38 @@ export interface operations {
             };
         };
     };
-    deep_research_gesehen_api_council_deep_research__job_id__gesehen_post: {
+    deep_research_teilbericht_api_council_deep_research__job_id__partial_report_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ok"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    deep_research_gesehen_api_council_deep_research__job_id__seen_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -7805,37 +8453,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ResearchStopped"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    deep_research_teilbericht_api_council_deep_research__job_id__teilbericht_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                job_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Ok"];
                 };
             };
             /** @description Validation Error */
@@ -8053,209 +8670,6 @@ export interface operations {
             };
         };
     };
-    fundstueck_api_council_fundstueck_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DiscoveryOfTheDay"];
-                };
-            };
-        };
-    };
-    gespraeche_liste_api_council_gespraeche_get: {
-        parameters: {
-            query?: {
-                limit?: number;
-                offset?: number;
-                q?: string | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ConversationList"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    gespraeche_alle_loeschen_api_council_gespraeche_delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ConversationsDeleted"];
-                };
-            };
-        };
-    };
-    gespraeche_einstellung_api_council_gespraeche_einstellung_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ConversationSettingBody"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ConversationSetting"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    gespraech_detail_api_council_gespraeche__gespraech_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                gespraech_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ConversationDetail"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    gespraech_loeschen_api_council_gespraeche__gespraech_id__delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                gespraech_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Ok"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    gespraech_umbenennen_api_council_gespraeche__gespraech_id__patch: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                gespraech_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ConversationRenameBody"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Ok"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     goal_detail_api_council_goal__key__get: {
         parameters: {
             query?: never;
@@ -8303,420 +8717,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Goals"];
-                };
-            };
-        };
-    };
-    haushalt_uebersicht_api_council_haushalt_get: {
-        parameters: {
-            query?: {
-                felder?: string | null;
-                thh_posten?: string | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    haushalt_aenderungslisten_api_council_haushalt_aenderungslisten_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BudgetAmendmentLists"];
-                };
-            };
-        };
-    };
-    haushalt_beteiligungen_api_council_haushalt_beteiligungen_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BudgetHoldings"];
-                };
-            };
-        };
-    };
-    haushalt_bilanz_api_council_haushalt_bilanz_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BudgetBalanceSheet"];
-                };
-            };
-        };
-    };
-    haushalt_datenstand_api_council_haushalt_datenstand_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BudgetDataState"];
-                };
-            };
-        };
-    };
-    haushalt_dokumente_api_council_haushalt_dokumente_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BudgetDocuments"];
-                };
-            };
-        };
-    };
-    haushalt_gebaut_api_council_haushalt_gebaut_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BudgetFixedAssets"];
-                };
-            };
-        };
-    };
-    haushalt_investitionen_api_council_haushalt_investitionen_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BudgetInvestments"];
-                };
-            };
-        };
-    };
-    haushalt_investitionsprogramm_api_council_haushalt_investitionsprogramm_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BudgetInvestmentProgram"];
-                };
-            };
-        };
-    };
-    haushalt_konzern_api_council_haushalt_konzern_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BudgetGroup"];
-                };
-            };
-        };
-    };
-    haushalt_produkte_api_council_haushalt_produkte_get: {
-        parameters: {
-            query: {
-                year: number;
-                sub_budget?: number | null;
-                q?: string | null;
-                office?: string | null;
-                spielraum?: string | null;
-                nr?: string | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BudgetProducts"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    haushalt_pruefberichte_api_council_haushalt_pruefberichte_get: {
-        parameters: {
-            query?: {
-                mark?: string | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BudgetAuditReports"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    haushalt_schulden_api_council_haushalt_schulden_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BudgetDebt"];
-                };
-            };
-        };
-    };
-    haushalt_stellenplan_api_council_haushalt_stellenplan_get: {
-        parameters: {
-            query?: {
-                budget_year?: number | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BudgetStaffPlan"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    haushalt_streit_api_council_haushalt_streit_get: {
-        parameters: {
-            query?: {
-                year?: number | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BudgetDispute"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    haushalt_vergleich_api_council_haushalt_vergleich_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BudgetComparison"];
-                };
-            };
-        };
-    };
-    haushalt_weg_api_council_haushalt_weg_get: {
-        parameters: {
-            query?: {
-                year?: number | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BudgetPath"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -8814,6 +8814,26 @@ export interface operations {
             };
         };
     };
+    personen_lexikon_api_council_people_directory_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PeopleDirectory"];
+                };
+            };
+        };
+    };
     person_api_council_person__slug__get: {
         parameters: {
             query?: never;
@@ -8847,7 +8867,7 @@ export interface operations {
             };
         };
     };
-    person_wortbeitraege_api_council_person__slug__wortbeitraege_get: {
+    person_wortbeitraege_api_council_person__slug__speeches_get: {
         parameters: {
             query?: {
                 committee?: string | null;
@@ -8880,26 +8900,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    personen_lexikon_api_council_personen_lexikon_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PeopleDirectory"];
                 };
             };
         };
@@ -9198,6 +9198,26 @@ export interface operations {
             };
         };
     };
+    sitzungspause_api_council_session_break_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CouncilRecess"];
+                };
+            };
+        };
+    };
     session_detail_api_council_session__ksinr__get: {
         parameters: {
             query?: never;
@@ -9268,47 +9288,7 @@ export interface operations {
             };
         };
     };
-    sitzungspause_api_council_sitzungspause_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CouncilRecess"];
-                };
-            };
-        };
-    };
-    trends_api_council_trends_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TrendData"];
-                };
-            };
-        };
-    };
-    follow_vorlage_api_council_vorlage__kvonr__follow_post: {
+    follow_vorlage_api_council_template__kvonr__follow_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -9339,7 +9319,7 @@ export interface operations {
             };
         };
     };
-    unfollow_vorlage_api_council_vorlage__kvonr__follow_delete: {
+    unfollow_vorlage_api_council_template__kvonr__follow_delete: {
         parameters: {
             query?: never;
             header?: never;
@@ -9370,7 +9350,27 @@ export interface operations {
             };
         };
     };
-    wochenvorschau_api_council_wochenvorschau_get: {
+    trends_api_council_trends_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrendData"];
+                };
+            };
+        };
+    };
+    wochenvorschau_api_council_week_preview_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -9445,7 +9445,7 @@ export interface operations {
             };
         };
     };
-    submit_support_api_feedback_kontakt_post: {
+    submit_support_api_feedback_contact_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -10168,12 +10168,12 @@ export interface operations {
             };
         };
     };
-    fundstueck_api_social_fundstueck__tag__get: {
+    fundstueck_api_social_daily_find__day__get: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                tag: string;
+                day: string;
             };
             cookie?: never;
         };
@@ -10218,7 +10218,7 @@ export interface operations {
             };
         };
     };
-    hoechste_beschluss_id_api_social_hoechste_beschluss_id_get: {
+    hoechste_beschluss_id_api_social_highest_decision_id_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -10238,18 +10238,18 @@ export interface operations {
             };
         };
     };
-    medien_ablegen_api_social_medien__tag__post: {
+    medien_ablegen_api_social_media__day__post: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                tag: string;
+                day: string;
             };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "multipart/form-data": components["schemas"]["Body_medien_ablegen_api_social_medien__tag__post"];
+                "multipart/form-data": components["schemas"]["Body_medien_ablegen_api_social_media__day__post"];
             };
         };
         responses: {
@@ -10273,7 +10273,7 @@ export interface operations {
             };
         };
     };
-    neue_beschluesse_api_social_neue_beschluesse_get: {
+    neue_beschluesse_api_social_new_decisions_get: {
         parameters: {
             query: {
                 seit_id: number;
@@ -10306,12 +10306,12 @@ export interface operations {
             };
         };
     };
-    sitzungen_api_social_sitzungen__tag__get: {
+    sitzungen_api_social_sessions__day__get: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                tag: string;
+                day: string;
             };
             cookie?: never;
         };
@@ -10337,7 +10337,7 @@ export interface operations {
             };
         };
     };
-    wochenvorschau_api_social_wochenvorschau_get: {
+    wochenvorschau_api_social_week_preview_get: {
         parameters: {
             query?: {
                 tage?: number;
@@ -10571,6 +10571,26 @@ export interface operations {
             };
         };
     };
+    uebersicht_gesehen_api_topics_overview_seen_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ok"];
+                };
+            };
+        };
+    };
     topic_suggestions_api_topics_suggestions_get: {
         parameters: {
             query?: never;
@@ -10587,26 +10607,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TopicSuggestions"];
-                };
-            };
-        };
-    };
-    uebersicht_gesehen_api_topics_uebersicht_gesehen_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Ok"];
                 };
             };
         };
@@ -10766,4 +10766,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 15ed08d6cb7bd323a6291a330f659006ff5d7ee1ceed8cf622d8cfe0f2694159
+// vertrag-sha256: 7bd758e3775eb5ac2af26866a98d37f287517f4399e12eb318b7db89ea0fde0e

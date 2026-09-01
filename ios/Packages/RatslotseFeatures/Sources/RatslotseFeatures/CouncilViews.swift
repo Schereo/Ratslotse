@@ -1473,7 +1473,7 @@ struct DecisionDetailView: View {
             defer { isWorking = false }
             do {
                 let updated: FollowStatus = try await model.api.sendWithoutBody(
-                    "/api/council/vorlage/\(follow.templateID)/follow",
+                    "/api/council/template/\(follow.templateID)/follow",
                     method: follow.following ? .delete : .post
                 )
                 guard let current = detail else { return }
@@ -2814,7 +2814,7 @@ struct SavedCouncilView: View {
         Task {
             do {
                 let _: FollowStatus = try await model.api.sendWithoutBody(
-                    "/api/council/vorlage/\(follow.templateID)/follow", method: .delete
+                    "/api/council/template/\(follow.templateID)/follow", method: .delete
                 )
                 follows.removeAll { $0.id == follow.id }
             } catch { self.error = error.localizedDescription }

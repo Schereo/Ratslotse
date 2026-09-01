@@ -661,7 +661,7 @@ def protokolle_verlinken(store, rows: list[dict]) -> None:
     except Exception:  # noqa: BLE001 — Verlinkung ist Zusatz, nie Blocker
         return
     for r in rows:
-        r["protokoll_url"] = urls.get(r.get("ksinr"))
+        r["minutes_url"] = urls.get(r.get("ksinr"))
 
 
 def finde_person(store, question: str) -> dict | None:
@@ -895,7 +895,7 @@ _SITZUNGEN_MAX = 3
 def finde_sitzungen(store, question: str) -> list[dict]:
     """Sitzungs-Fragetyp: Nennt die Frage ein konkretes Sitzungsdatum („am
     17.06.2026", „17. Juni") oder die letzte/nächste Sitzung eines Gremiums?
-    Liefert die gemeinten Sitzungen, jede mit ``beschluss_ids`` in
+    Liefert die gemeinten Sitzungen, jede mit ``decision_ids`` in
     Tagesordnungs-Reihenfolge und — solange es keine Beschlüsse gibt — der
     Tagesordnung. Deterministisch wie finde_person; leer bei Fehlern, der
     Sitzungs-Anker ist Zusatz, nie Blocker."""
@@ -950,9 +950,9 @@ def _finde_sitzungen(store, question: str) -> list[dict]:
              "session_time": r.get("session_time"), "location": r.get("location"),
              "kuenftig": str(r.get("session_date") or "") > heute}
         # Terminierte Kalender-Einträge (upcoming) haben noch kein ksinr.
-        s["beschluss_ids"] = (store.decision_ids_der_sitzung(s["ksinr"])
+        s["decision_ids"] = (store.decision_ids_der_sitzung(s["ksinr"])
                               if s["ksinr"] else [])
-        if not s["beschluss_ids"]:
+        if not s["decision_ids"]:
             agenda = store.agenda_items(s["ksinr"]) if s["ksinr"] else []
             # Der Kartentext zuerst: Er entsteht aus Vorlage UND Anlagen und
             # sagt deshalb, WAS beantragt ist („110 Wohneinheiten auf 8,6
@@ -985,7 +985,7 @@ def _sitzungen_block(sitzungen: list[dict] | None) -> str:
             kopf += f" um {s['session_time']} Uhr"
         if s.get("location"):
             kopf += f" ({s['location']})"
-        n = len(s.get("beschluss_ids") or [])
+        n = len(s.get("decision_ids") or [])
         if n:
             kopf += (f": Alle {n} Tagesordnungspunkte samt Ergebnis stehen oben "
                      "im Kontext, in der Reihenfolge der Sitzung.")
@@ -1297,7 +1297,7 @@ def _anlagen_block(anlagen: list[dict] | None) -> str:
     zeilen = "\n".join(
         f"[A{a.get('nr') or i + 1}] {a.get('label') or 'Anlage'} "
         f"(zur Vorlage {a.get('template_number') or '?'}"
-        f"{' — ' + a['vorlage_titel'][:80] if a.get('vorlage_titel') else ''}): "
+        f"{' — ' + a['template_title'][:80] if a.get('template_title') else ''}): "
         f"{(a.get('citation') or '').strip()[:ANLAGEN_ZEICHEN]}"
         for i, a in enumerate(frisch))
     return ("\nAUS DEN ANLAGEN (Gutachten, Konzepte, Stellungnahmen zu den Vorlagen —\n"
@@ -1314,7 +1314,7 @@ def _planungen_block(planungen: list[dict] | None) -> str:
     if not planungen:
         return ""
     zeilen = "\n".join(
-        f"- {p.get('vorlage_titel') or p.get('template_number')}: {p.get('committee')} am "
+        f"- {p.get('template_title') or p.get('template_number')}: {p.get('committee')} am "
         f"{_datum_de(p.get('date'))}" for p in planungen[:8])
     return ("\nGEPLANTE NÄCHSTE STATIONEN (aus den Beratungsfolgen — für den Abschnitt "
             "„Wie es weitergeht“; als Termin nennen, NIE mit [id]):\n" + zeilen + "\n")
@@ -1468,7 +1468,7 @@ def partei_meinungen(question: str, rows: list[dict], model: str = MODEL) -> lis
             for b in gruppen[label])
         teile.append(f"{label} ({len(gruppen[label])} Beiträge):\n{zeilen}")
     prompt = prompts.render("party_opinions", question=question.strip()[:300],
-                            beitraege="\n".join(teile))
+                            contributions="\n".join(teile))
     extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in model else {}
     # 2000 Token reichten nicht mehr: Mit dem Beschluss-Anker stehen bis zu 15
     # Fraktionen und Verbände im Prompt, die Antwort lief mitten in der AfD-
@@ -1487,19 +1487,19 @@ def partei_meinungen(question: str, rows: list[dict], model: str = MODEL) -> lis
         if not isinstance(e, dict) or e.get("party") not in gruppen:
             continue  # Halluzinations-Guard: nur Fraktionen aus dem Input
         kern = e.get("kernaussage") if isinstance(e.get("kernaussage"), dict) else None
-        haltung = str(e.get("haltung") or "").strip().lower()
+        haltung = str(e.get("stance") or "").strip().lower()
         out.append({
             "party": e["party"],
-            "haltung": haltung if haltung in ("dafür", "dagegen", "offen", "gewandelt") else "offen",
+            "stance": haltung if haltung in ("dafür", "dagegen", "offen", "gewandelt") else "offen",
             "position": str(e.get("position") or "").strip()[:400],
-            "einig": bool(e.get("einig", True)),
+            "unanimous": bool(e.get("unanimous", True)),
             "note": (str(e.get("note")) or "").strip()[:200] or None if e.get("note") else None,
             "kernaussage": {
                 "text": str(kern.get("text") or "").strip()[:300],
                 "speaker": str(kern.get("speaker") or "").strip()[:80] or None,
                 "date": str(kern.get("date") or "").strip()[:10] or None,
             } if kern and kern.get("text") else None,
-            "beitraege": len(gruppen[e["party"]]),
+            "contributions": len(gruppen[e["party"]]),
             # Aufklappbare Zeile (Tims Wunsch): die verdichteten Beiträge im
             # Wortlaut — dieselben, die auch das LLM gesehen hat.
             "beitraege_liste": [{
@@ -2095,7 +2095,7 @@ def geld_grafik(store, geld: dict) -> dict | None:
         if len(series) >= 2:
             s = geld["schulden"]
             return {
-                "art": "schulden",
+                "kind": "schulden",
                 "title": "Schuldenstand der Stadt",
                 "unit": "Mio. €",
                 "nachkomma": 1,
@@ -2125,7 +2125,7 @@ def geld_grafik(store, geld: dict) -> dict | None:
             title = ("Steuereinnahmen insgesamt" if art == "total"
                      else f"{art} — Ist-Einnahmen")
             return {
-                "art": "taxes",
+                "kind": "taxes",
                 "title": title,
                 "unit": "Mio. €",
                 "nachkomma": 1,

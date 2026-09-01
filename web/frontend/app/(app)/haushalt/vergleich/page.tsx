@@ -93,7 +93,7 @@ function Abschnitt({ kicker, zusatz, id, children }: {
 }
 
 export default function VergleichSeite() {
-  const { data, loading } = useFetch<VergleichDaten>("/council/haushalt/vergleich");
+  const { data, loading } = useFetch<VergleichDaten>("/council/budget/comparison");
 
   if (loading) {
     return (

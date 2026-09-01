@@ -158,7 +158,10 @@ ERLAUBT_ZEILE = {
     "unbekannt": re.compile(r'\|\|'),
     # `dagegen` ist daneben die Haltung einer Partei aus der KI-Antwort
     # (dafür|dagegen|offen|gewandelt) — ein eigenes Vokabular, eigener Schnitt.
-    "dagegen": re.compile(r'haltung|dafür|label: "dagegen"'),
+    # Das Feld hieß bis 01.09.2026 `haltung`; seit dem OpenAPI-Schnitt heißt es
+    # `stance`. Der WERT bleibt deutsch — er ist die Partei-Haltung der
+    # KI-Antwort und steht so im Prompt.
+    "dagegen": re.compile(r'haltung|stance|dafür|label: "dagegen"'),
     # `belegt` ist daneben das Urteil der Themen-Prüfung
     # (belegt|plausibel|ungeeignet) und die Beleglage einer Kernzahl.
     "belegt": re.compile(r'verdict|plausibel|beleglage|belegt:\s*Kasten'),

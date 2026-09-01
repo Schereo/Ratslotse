@@ -171,7 +171,7 @@ export function Fussnote({ schichten }: { schichten: Datenschicht[] }) {
 }
 
 export function Datenstand() {
-  const { data } = useFetch<Antwort>("/council/haushalt/datenstand");
+  const { data } = useFetch<Antwort>("/council/budget/data-status");
   // Still bleiben, solange nichts da ist: Ein Skelett für einen Nachtrag am
   // Seitenende wäre mehr Unruhe als Information.
   if (!data || data.layers.length === 0) return null;
