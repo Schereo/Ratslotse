@@ -9971,7 +9971,8 @@ class CouncilStore:
         ).fetchone()
         return dict(row) if row else None
 
-    def suggested_entity_topics(self, days_back: int = 365, limit: int = 12) -> list[dict]:
+    def suggested_entity_topics(self, days_back: int = 365, limit: int = 12,
+                                place_id: str | None = None) -> list[dict]:
         """Konkrete Orte/Projekte mit jüngster Ratsaktivität — Futter für die
         Themen-Vorschläge. Ersetzt die reine Schlagwort-Häufigkeit, die
         Verwaltungsvokabeln belohnte („Bericht", „Annahme"): Menschen
@@ -9980,8 +9981,26 @@ class CouncilStore:
         gewinnt der interessantere Stoff (Interest-Score, neutral 50)."""
         from datetime import date, timedelta
         cutoff = (date.today() - timedelta(days=days_back)).isoformat()
+        # Auf einen Ortsbereich eingeschränkt: „was ist gerade in MEINEM
+        # Stadtteil los?". Die Bedingung sitzt auf dem Beschluss, nicht auf der
+        # Entität — eine Entität hat selbst keinen Ort, sie erbt ihn von den
+        # Beschlüssen, in denen sie vorkommt. Dieselbe Bedingung wie im
+        # Beschlussfilter (``_place_location_condition``), damit „Beschlüsse in
+        # Osternburg" und „Themen aus Osternburg" nicht verschieden rechnen.
+        ort_bedingung, ort_params = "", []
+        if place_id:
+            place = self.resolve_place(place_id)
+            if not place:
+                return []
+            bedingung, params = self._place_location_condition(place)
+            ort_bedingung = (
+                " AND EXISTS (SELECT 1 FROM council_decision_locations dl "
+                "JOIN council_locations l ON l.slug = dl.location_slug "
+                f"WHERE dl.decision_id = d.id AND {bedingung})"
+            )
+            ort_params = params
         rows = self._conn.execute(
-            """SELECT e.slug, e.name, e.kind, m.description,
+            f"""SELECT e.slug, e.name, e.kind, m.description,
                       COUNT(DISTINCT el.decision_id) AS n_recent,
                       AVG(COALESCE(d.interest, 50)) AS avg_interest,
                       (SELECT d2.title
@@ -9996,12 +10015,12 @@ class CouncilStore:
                JOIN council_decisions d ON d.id = el.decision_id
                JOIN council_sessions cs ON cs.ksinr = d.ksinr
                LEFT JOIN council_entity_meta m ON m.slug = e.slug
-               WHERE e.kind IN ('ort', 'projekt') AND cs.session_date >= ?
+               WHERE e.kind IN ('ort', 'projekt') AND cs.session_date >= ?{ort_bedingung}
                GROUP BY e.id
                HAVING n_recent >= 2
                ORDER BY n_recent DESC, avg_interest DESC, e.name
                LIMIT ?""",
-            (cutoff, cutoff, limit),
+            (cutoff, cutoff, *ort_params, limit),
         ).fetchall()
         return [dict(r) for r in rows]
 

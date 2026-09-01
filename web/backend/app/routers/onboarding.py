@@ -62,5 +62,9 @@ def set_setup(
     auf jedem Gerät — und erst dadurch kann der Erinnerungs-Cron überhaupt
     erkennen, wer angefangen und nicht zu Ende gebracht hat.
     """
-    store.set_setup_step(user["id"], max(0, min(3, payload.step)), done=payload.done)
+    # Obergrenze 4, seit der Browser einen eigenen Stadtteil-Schritt hat: 1
+    # Gremien, 2 Stadtteil, 3 Themen, 4 Mitteilungen. Die App kennt weiter drei
+    # (ohne den Stadtteil-Schritt) und schickt deshalb nie mehr als 3 — die
+    # Grenze schneidet ihr nichts ab.
+    store.set_setup_step(user["id"], max(0, min(4, payload.step)), done=payload.done)
     return store.get_setup(user["id"])

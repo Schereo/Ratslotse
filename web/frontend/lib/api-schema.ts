@@ -3491,6 +3491,14 @@ export interface paths {
          *     Die KI-Beschreibung der Entität wird zur Themen-Beschreibung und macht
          *     den Themen-Wächter treffsicherer als ein generischer Satz. Ohne Themen,
          *     die der Account schon angelegt hat; ein Klick legt direkt an.
+         *
+         *     ``?district=<place_id>`` (mehrfach erlaubt) hängt je Ortsbereich eine
+         *     **eigene** Liste davor: dieselbe Auswahl, auf diesen Ortsbereich
+         *     eingeschränkt. Die Trennung ist der Punkt — „was ist in Osternburg los?"
+         *     ist eine andere Frage als „was läuft gerade in der Stadt?", und wer beides
+         *     getrennt sieht, kann wählen. Die Ortsbereiche stehen zuerst und in der
+         *     Reihenfolge, in der sie gefragt wurden; was dort schon vorkommt,
+         *     wiederholen weder die anderen Ortsbereiche noch die stadtweite Liste.
          */
         get: operations["topic_suggestions_api_topics_suggestions_get"];
         put?: never;
@@ -5683,6 +5691,18 @@ export interface components {
                 [key: string]: unknown;
             }[];
         };
+        /**
+         * StadtteilVorschlaege
+         * @description Vorschläge aus EINEM Ortsbereich, mitsamt dem Ort, für den sie gelten.
+         */
+        StadtteilVorschlaege: {
+            /** Name */
+            name: string;
+            /** Place Id */
+            place_id: string;
+            /** Suggestions */
+            suggestions: components["schemas"]["ThemenVorschlag"][];
+        };
         /** Stadtteile */
         Stadtteile: {
             /** Catalog */
@@ -5804,6 +5824,8 @@ export interface components {
         };
         /** ThemenVorschlaege */
         ThemenVorschlaege: {
+            /** Districts */
+            districts: components["schemas"]["StadtteilVorschlaege"][];
             /** Suggestions */
             suggestions: components["schemas"]["ThemenVorschlag"][];
         };
@@ -10575,7 +10597,9 @@ export interface operations {
     };
     topic_suggestions_api_topics_suggestions_get: {
         parameters: {
-            query?: never;
+            query?: {
+                district?: string[];
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -10589,6 +10613,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ThemenVorschlaege"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -10768,4 +10801,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 11f5f062bcaf77cbf7f7638399c5b4f75494afc16e8470196774ef6cfb7c3e70
+// vertrag-sha256: 7ad3a49ddd90661a83b7a6d60e0330f5d1e3993a3a0def6cf04b0295bd1a6240

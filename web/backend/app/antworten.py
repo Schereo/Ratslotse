@@ -311,8 +311,20 @@ class ThemenVorschlag(TypedDict):
     n: int
 
 
-class ThemenVorschlaege(TypedDict):
+class StadtteilVorschlaege(TypedDict):
+    """Vorschläge aus EINEM Ortsbereich, mitsamt dem Ort, für den sie gelten."""
+    place_id: str
+    name: str
     suggestions: list[ThemenVorschlag]
+
+
+class ThemenVorschlaege(TypedDict):
+    #: Stadtweit — was gerade überhaupt im Rat läuft.
+    suggestions: list[ThemenVorschlag]
+    #: Je mitgegebenem ``?district=`` eine Gruppe, in derselben Reihenfolge.
+    #: Keine der Listen überschneidet sich mit einer anderen oder mit
+    #: ``suggestions`` — jeder Vorschlag steht genau einmal.
+    districts: list[StadtteilVorschlaege]
 
 
 class ThemenBeschreibung(TypedDict):

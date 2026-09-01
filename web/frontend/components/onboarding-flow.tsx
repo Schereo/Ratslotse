@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bell, Check, Landmark, Loader2, Mail, MapPin, Plus, Sparkles, X } from "lucide-react";
@@ -12,6 +12,7 @@ import { Mascot, type MascotPose } from "@/components/mascot";
 import { committeeExplains, committeeRank, shortCommittee } from "@/lib/committees";
 import { useAuth } from "@/lib/auth";
 import { TopicSheet, type Described } from "@/components/topic-sheet";
+import { StadtteilKarte } from "@/components/stadtteil-karte";
 
 /** Design 26a — geführtes Onboarding: einrichten statt nur vorstellen.
  *
@@ -53,13 +54,17 @@ const PUSH_SNOOZE_DAYS = 7;
  *  kein Erstnutzer mehr und wird nicht nachträglich durchs Onboarding geschickt. */
 const LEGACY_INTRO_KEY = "ratslotse.intro.done";
 
-type Step = 0 | 1 | 2 | 3;
+type Step = 0 | 1 | 2 | 3 | 4;
 
 /** Die Spalte, in der der Assistent steht. Am Telefon füllt sie den Schirm, am
  *  Desktop steht sie zentriert — 980 px, dieselbe Breite wie die iPad-Fassung
  *  der App. Fortschrittsleiste, Inhalt und Fußzeile MÜSSEN dieselbe Klasse
  *  benutzen, sonst steht die Leiste neben ihrem eigenen Schritt. */
 const SPALTE = "mx-auto w-full max-w-[980px]";
+/** Vier Schritte: Gremien, Stadtteil, Themen, Mitteilungen. Die App kennt den
+ *  Stadtteil-Schritt (noch) nicht und läuft mit drei — deshalb steht die Zahl
+ *  hier und nicht als `3` an fünf Stellen im Markup. */
+const SCHRITTE = 4;
 /** Am Desktop zweispaltig wie auf dem iPad: links Lotti mit der Frage, rechts
  *  die Antwortfläche. Darunter (`lg` = 1024 px) bleibt es einspaltig. */
 const ZWEISPALTIG = "lg:grid lg:grid-cols-[320px_minmax(0,1fr)] lg:gap-12";
@@ -92,8 +97,17 @@ function imAppBereich(pathname: string | null): boolean {
  *  Willkommens-Gruß, bevor man überhaupt etwas getan hatte. Modul-State statt
  *  Context, damit der Celebrator nicht am Flow hängen muss. */
 let flowVisible = false;
+/** Der Flow WEISS noch nicht, ob er sich zeigt — er wartet auf `/onboarding/setup`.
+ *
+ *  Diese zweite Marke war nötig, seit die Entscheidung serverseitig fällt: In
+ *  der Lücke zwischen Seitenaufbau und Antwort war `flowVisible` noch `false`,
+ *  und der Abzeichen-Toast fuhr genau dort hinein — quer über den Willkommens-
+ *  Gruß, also exakt der Fall, den der Riegel verhindern soll. Vorher las der
+ *  Flow den localStorage synchron und war sofort „sichtbar"; es gab keine Lücke.
+ */
+let flowEntscheidet = false;
 export function isOnboardingVisible(): boolean {
-  return flowVisible;
+  return flowVisible || flowEntscheidet;
 }
 /** Wird beim Abschluss/Abbruch gefeuert, damit aufgeschobene Abzeichen-Meldungen
  *  nachgeholt werden können. */
@@ -257,6 +271,20 @@ export function OnboardingFlow() {
     return () => { flowVisible = false; };
   }, [step]);
 
+  // Und solange er noch überlegt, ebenfalls. Steht das Ergebnis fest und lautet
+  // es „nicht zeigen", muss das Signal kommen, das die geparkten Abzeichen
+  // freigibt — sonst warteten sie bis zum nächsten neuen Abzeichen.
+  useEffect(() => {
+    const wartet = !loading && isUsable(user) && !setupData && step === null
+      && (native || imAppBereich(pathname));
+    const vorher = flowEntscheidet;
+    flowEntscheidet = wartet;
+    if (vorher && !wartet && step === null) {
+      window.dispatchEvent(new Event(ONBOARDING_DONE_EVENT));
+    }
+    return () => { flowEntscheidet = false; };
+  }, [loading, user, setupData, step, native, pathname]);
+
   if (step === null) return null;
 
   return (
@@ -274,14 +302,14 @@ export function OnboardingFlow() {
             {/* Drei Segmente statt eines Laufbalkens: Man sieht, wie viele
                 Schritte es überhaupt sind — und dass es nur drei sind. */}
             <div className="flex flex-1 gap-1.5" role="progressbar"
-              aria-valuenow={step} aria-valuemin={1} aria-valuemax={3}
-              aria-label={`Schritt ${step} von 3`}>
-              {[1, 2, 3].map((n) => (
+              aria-valuenow={step} aria-valuemin={1} aria-valuemax={SCHRITTE}
+              aria-label={`Schritt ${step} von ${SCHRITTE}`}>
+              {[1, 2, 3, 4].slice(0, SCHRITTE).map((n) => (
                 <span key={n} className={cn("h-1 flex-1 rounded-full transition-colors duration-300",
                   n <= step ? "bg-primary" : "bg-muted")} />
               ))}
             </div>
-            <button type="button" onClick={() => go(step === 3 ? "done" : ((step + 1) as Step))}
+            <button type="button" onClick={() => go(step >= SCHRITTE ? "done" : ((step + 1) as Step))}
               className="shrink-0 py-1 text-[13px] text-muted-foreground transition-colors hover:text-foreground">
               Überspringen
             </button>
@@ -291,11 +319,17 @@ export function OnboardingFlow() {
 
       {step === 0 && <Welcome onNext={() => go(1)} />}
       {step === 1 && <CommitteeStep onNext={() => go(2)} />}
-      {step === 2 && <TopicStep onNext={() => go(3)} />}
+      {/* Der Stadtteil steht VOR den Themen und ist ein eigener Schritt: Er ist
+          die eine Angabe, die fast alle machen wollen und die den Themen-
+          Schritt danach überhaupt erst persönlich macht — dort stehen dann
+          Vorschläge „aus deinem Stadtteil" neben den stadtweiten. Als Beiwerk
+          im Themen-Schritt (bis 09/2026) ging beides unter. */}
+      {step === 2 && <StadtteilStep onNext={() => go(3)} />}
+      {step === 3 && <TopicStep onNext={() => go(4)} />}
       {/* Schritt 3 fragt auf beiden Plattformen dasselbe („Soll Lotti sich
           melden?") — aber der Browser kann keine Push-Erlaubnis geben, dort
           geht es um die E-Mail. */}
-      {step === 3 && (native
+      {step === 4 && (native
         ? <PushStep onDone={() => go("done")} />
         : <MailStep onDone={() => go("done")} />)}
     </div>
@@ -441,7 +475,149 @@ function CommitteeStep({ onNext }: { onNext: () => void }) {
   );
 }
 
-/* ----------------------------------------------------- Schritt 2: Themen --- */
+/* -------------------------------------------------- Schritt 2: Stadtteil --- */
+
+type Ortsbereich = { place_id: string; name: string; description?: string | null; count?: number };
+
+/** Die Ortsbereiche, zu denen es überhaupt Beschlüsse gibt. Zwei Schritte
+ *  brauchen sie (Auswahl und Vorschläge), deshalb ein gemeinsamer Query-Key. */
+function useOrtsbereiche() {
+  return useQuery({
+    queryKey: ["council-districts"],
+    queryFn: () => api.get<{ districts: Ortsbereich[] }>("/council/districts")
+      .then((d) => d.districts.slice().sort((a, b) => a.name.localeCompare(b.name, "de"))),
+    staleTime: 10 * 60_000,
+  });
+}
+
+/** Welche Stadtteile hat dieses Konto gewählt?
+ *
+ *  Abgeleitet statt gemerkt: Ein gewählter Stadtteil IST ein Thema (nur so löst
+ *  er Hinweise aus), und die Themen stehen ohnehin auf dem Server. Damit
+ *  überlebt die Auswahl einen Neuladen mitten im Ablauf — ein Zustand in React
+ *  täte das nicht, und der Assistent nimmt seinen Stand sonst überall vom
+ *  Server. */
+function gewaehlteOrtsbereiche(topics: { name: string }[], orte: Ortsbereich[]): Ortsbereich[] {
+  return orte.filter((o) => topics.some((t) => t.name.toLowerCase() === o.name.toLowerCase()));
+}
+
+/** Die Beschreibung, an der der Wächter später misst. Dieselbe Formulierung
+ *  wie in der App — sie darf nicht generisch sein, sonst trifft das Thema
+ *  entweder alles oder nichts. */
+function ortsBeschreibung(ort: Ortsbereich): string {
+  const detail = (ort.description ?? "").trim();
+  return detail
+    ? `${detail} Neue Beschlüsse, Planungen und Maßnahmen mit Bezug zu ${ort.name}.`
+    : `Neue Beschlüsse, Planungen und Maßnahmen des Oldenburger Stadtrats mit Bezug zu ${ort.name}.`;
+}
+
+/** Schritt 2 — die Stadtteile, die jemanden interessieren.
+ *
+ *  **Die Frage lautet bewusst nicht „wo wohnst du?".** Das wäre eine Frage nach
+ *  der Wohnadresse, und die braucht Ratslotse nicht: Es geht um Interesse, nicht
+ *  um Meldedaten. Wer im Dobbenviertel wohnt und die Baustelle in Osternburg
+ *  verfolgt, soll beides angeben können — deshalb ist die Auswahl mehrfach.
+ */
+function StadtteilStep({ onNext }: { onNext: () => void }) {
+  const qc = useQueryClient();
+  const [busy, setBusy] = useState<string | null>(null);
+  const [fehler, setFehler] = useState<string | null>(null);
+
+  const orte = useOrtsbereiche();
+  const topics = useQuery({ queryKey: ["topics"], queryFn: () => api.get<TopicRow[]>("/topics") });
+
+  const liste = orte.data ?? [];
+  const meine = topics.data ?? [];
+  const gewaehlt = gewaehlteOrtsbereiche(meine, liste);
+  const namen = useMemo(() => new Set(gewaehlt.map((o) => o.name)), [gewaehlt]);
+  const auswaehlbar = useMemo(() => new Set(liste.map((o) => o.name)), [liste]);
+
+  /** An/aus je Stadtteil. `busy` merkt sich den EINEN, der gerade schaltet —
+   *  ein globales Sperren ließe die ganze Karte tot wirken, während nur ein
+   *  Klick unterwegs ist. */
+  const umschalten = async (name: string) => {
+    if (busy) return;
+    const ort = liste.find((o) => o.name === name);
+    if (!ort) return;
+    setBusy(name);
+    setFehler(null);
+    try {
+      const vorhanden = meine.find((t) => t.name.toLowerCase() === name.toLowerCase());
+      if (vorhanden) await api.del(`/topics/${vorhanden.id}`);
+      else await api.post("/topics", { name: ort.name, description: ortsBeschreibung(ort) });
+      await qc.invalidateQueries({ queryKey: ["topics"] });
+      qc.invalidateQueries({ queryKey: ["topic-suggestions"] });
+    } catch {
+      setFehler("Das ließ sich gerade nicht speichern. Versuch es gleich noch einmal.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <StepShell
+      title="Welche Stadtteile interessieren dich?"
+      lead="Zum Beispiel der, in dem du wohnst — aber genauso jeder andere, in dem gerade etwas passiert. Lotti meldet neue Beschlüsse und Planungen von dort. Mehrere sind möglich, alles jederzeit änderbar."
+      pose="point"
+      footer={
+        <Button className="w-full lg:w-auto lg:min-w-44" onClick={onNext} disabled={!!busy}>
+          {gewaehlt.length === 0 ? "Überspringen"
+            : gewaehlt.length === 1 ? `${gewaehlt[0].name} · Weiter`
+              : `${gewaehlt.length} Stadtteile · Weiter`}
+        </Button>
+      }
+    >
+      {/* Die Karte am Desktop, wo Platz ist. Die Liste steht auf JEDER Breite
+          da — sie ist nicht bloß der Ersatz fürs kleine Fenster, sondern auch
+          der Weg für Tastatur und Screenreader. */}
+      <div className="hidden lg:block">
+        <StadtteilKarte gewaehlt={namen} auswaehlbar={auswaehlbar}
+          onWaehlen={(n) => void umschalten(n)} />
+      </div>
+
+      <div className={cn("flex flex-wrap gap-1.5", liste.length && "lg:mt-4")}>
+        {liste.map((o) => {
+          const an = namen.has(o.name);
+          return (
+            <button key={o.place_id} type="button" aria-pressed={an} disabled={!!busy}
+              onClick={() => void umschalten(o.name)}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full border px-3 py-[6px] text-[12.5px] transition-colors disabled:opacity-60",
+                an ? "border-primary bg-primary font-semibold text-primary-foreground"
+                   : "border-border bg-card text-foreground hover:bg-muted",
+              )}>
+              {busy === o.name
+                ? <Loader2 className="h-3 w-3 animate-spin" />
+                : an && <Check className="h-3 w-3" />}
+              {o.name}
+            </button>
+          );
+        })}
+      </div>
+
+      {fehler && (
+        <p role="status" className="mt-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
+          {fehler}
+        </p>
+      )}
+      {gewaehlt.length > 0 ? (
+        <p className="mt-3 flex items-start gap-1.5 text-xs text-primary">
+          <Check className="mt-px h-3.5 w-3.5 shrink-0" />
+          <span>
+            {gewaehlt.map((o) => o.name).join(", ")} {gewaehlt.length === 1 ? "steht" : "stehen"} ab
+            jetzt unter „Deine Themen". Im nächsten Schritt siehst du, was dort gerade läuft.
+          </span>
+        </p>
+      ) : (
+        <p className="mt-3 text-xs text-muted-foreground">
+          Ohne Angabe geht es auch — dann zeigt der nächste Schritt nur stadtweite Themen.
+        </p>
+      )}
+    </StepShell>
+  );
+}
+
+/* ----------------------------------------------------- Schritt 3: Themen --- */
 
 type TopicRow = {
   id: number; name: string; description: string;
@@ -473,10 +649,23 @@ function TopicStep({ onNext }: { onNext: () => void }) {
     queryKey: ["topics"],
     queryFn: () => api.get<TopicRow[]>("/topics"),
   });
+  const orte = useOrtsbereiche();
+  // Welche Stadtteile in Schritt 2 gewählt wurden, steht in den Themen — nicht
+  // in einem React-Zustand, der beim Neuladen weg wäre.
+  const stadtteile = gewaehlteOrtsbereiche(topics.data ?? [], orte.data ?? []);
+  const ortsIds = stadtteile.map((o) => o.place_id);
   const suggestions = useQuery({
-    queryKey: ["topic-suggestions"],
-    queryFn: () => api.get<{ suggestions: { name: string; description: string; n: number }[] }>("/topics/suggestions")
-      .then((d) => d.suggestions),
+    // Die Stadtteile gehören in den Schlüssel: Wer in Schritt 2 zurückgeht und
+    // umwählt, bekäme sonst die Vorschläge der alten Auswahl aus dem Cache.
+    queryKey: ["topic-suggestions", ortsIds.join(",")],
+    queryFn: () => api.get<{
+      suggestions: Vorschlag[];
+      districts: { place_id: string; name: string; suggestions: Vorschlag[] }[];
+    }>(`/topics/suggestions${ortsIds.length
+      ? `?${ortsIds.map((id) => `district=${encodeURIComponent(id)}`).join("&")}` : ""}`),
+    // Erst fragen, wenn die Auswahl feststeht — sonst liefe ein erster Aufruf
+    // ohne sie und die lokalen Listen erschienen mit Verzögerung.
+    enabled: !topics.isPending && !orte.isPending,
   });
 
   /** RL-U17: Der Nutzer tippt nur den Namen — die Beschreibung entsteht aus den
@@ -531,6 +720,8 @@ function TopicStep({ onNext }: { onNext: () => void }) {
   };
 
   const mine = topics.data ?? [];
+  const gruppen = suggestions.data?.districts ?? [];
+  const stadtweite = suggestions.data?.suggestions ?? [];
   return (
     <StepShell
       title="Worüber willst du Bescheid wissen?"
@@ -549,11 +740,6 @@ function TopicStep({ onNext }: { onNext: () => void }) {
         Beschreibung nicht nötig — Lotti formuliert sie automatisch aus passenden Beschlüssen.
       </p>
 
-      <StadtteilWahl
-        vorhanden={mine.map((t) => t.name)}
-        busy={busy}
-        onWaehlen={(name, beschreibung) => void add(name, beschreibung)}
-      />
       {warn && (
         <p role="status" className="mt-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
           {warn}
@@ -565,26 +751,39 @@ function TopicStep({ onNext }: { onNext: () => void }) {
         </p>
       )}
 
-      {(suggestions.data?.length ?? 0) > 0 && (
+      {/* Zwei Gruppen statt einer Liste: „bei mir um die Ecke" und „in der
+          Stadt" sind zwei verschiedene Interessen, und wer beides gemischt
+          untereinander sieht, kann nicht wählen. Der Stadtteil steht zuerst —
+          er ist der Grund, warum in Schritt 2 danach gefragt wurde. Was das
+          Backend hier einsortiert, taucht in der stadtweiten Liste nicht noch
+          einmal auf. */}
+      {gruppen.map((g) => (
+        <div key={g.place_id} className="mt-4">
+          <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.06em] text-primary">
+            <MapPin className="h-3 w-3" />
+            Aus {g.name}
+          </p>
+          {g.suggestions.length > 0 ? (
+            <VorschlagsChips vorschlaege={g.suggestions} vorhanden={mine} busy={busy} betont
+              onWaehlen={(v) => void add(v.name, v.description, v.n)} />
+          ) : (
+            // Leere Liste ausdrücklich benennen. Ein weggelassener Block sähe
+            // aus, als hätte der Schritt etwas verschluckt.
+            <p className="mt-2 text-xs text-muted-foreground">
+              In {g.name} hat der Rat im letzten Jahr nichts Größeres verhandelt.
+              {" "}Der Stadtteil bleibt trotzdem beobachtet — Lotti meldet sich, sobald etwas kommt.
+            </p>
+          )}
+        </div>
+      ))}
+
+      {stadtweite.length > 0 && (
         <div className="mt-4">
-          <p className="text-[11px] font-bold uppercase tracking-[0.06em] text-muted-foreground">Gerade aktuell im Rat</p>
-          <div className="mt-2.5 flex flex-wrap gap-2">
-            {suggestions.data!.slice(0, 7).map((s) => {
-              const have = mine.some((t) => t.name === s.name);
-              return (
-                <button key={s.name} type="button" disabled={busy || have}
-                  onClick={() => void add(s.name, s.description, s.n)}
-                  className={cn(
-                    "inline-flex items-center gap-1.5 rounded-full border px-3.5 py-[7px] text-[13px] transition-colors",
-                    have ? "border-primary/30 bg-primary/5 text-primary"
-                         : "border-border bg-card text-foreground hover:bg-muted disabled:opacity-50",
-                  )}>
-                  {have ? <Check className="h-3 w-3" /> : <Plus className="h-3 w-3 text-muted-foreground" />}
-                  {s.name}
-                </button>
-              );
-            })}
-          </div>
+          <p className="text-[11px] font-bold uppercase tracking-[0.06em] text-muted-foreground">
+            {gruppen.length ? "Stadtweit" : "Gerade aktuell im Rat"}
+          </p>
+          <VorschlagsChips vorschlaege={stadtweite} vorhanden={mine} busy={busy}
+            onWaehlen={(v) => void add(v.name, v.description, v.n)} />
         </div>
       )}
 
@@ -596,6 +795,7 @@ function TopicStep({ onNext }: { onNext: () => void }) {
           <div className="mt-2.5 flex flex-col gap-2">
             {mine.map((t) => (
               <TopicCard key={t.id} topic={t} matches={matchCount[t.name]}
+                istStadtteil={stadtteile.some((o) => o.name.toLowerCase() === t.name.toLowerCase())}
                 onEdit={() => setEditing(t)} onRemove={() => void remove(t.id)} />
             ))}
           </div>
@@ -610,83 +810,40 @@ function TopicStep({ onNext }: { onNext: () => void }) {
   );
 }
 
-/** „Dein Stadtteil" — der eine Schritt, den die App schon hatte und das Web nicht.
- *
- *  Er ist ein Thema wie jedes andere, nur eins, das fast alle wollen und das
- *  kaum jemand von sich aus tippt: Ein Stadtteil hat einen amtlichen Namen, den
- *  man raten müsste, und er taucht in Beschlüssen unter vielen Schreibweisen
- *  auf. Als Auswahlliste kostet er einen Klick statt eines Versuchs.
- *
- *  Die Liste kommt aus `/council/districts` — also nur Ortsbereiche, zu denen
- *  es überhaupt Beschlüsse gibt. Ein leerer Stadtteil in der Auswahl wäre ein
- *  Versprechen, das der Datenbestand nicht hält.
- */
-function StadtteilWahl({ vorhanden, busy, onWaehlen }: {
-  vorhanden: string[];
+type Vorschlag = { name: string; description: string; n: number; context?: string | null };
+
+/** Eine Reihe anklickbarer Vorschläge. Eigene Komponente, seit es zwei Gruppen
+ *  gibt (Stadtteil und stadtweit) — sie müssen gleich aussehen und sich gleich
+ *  verhalten, sonst liest man einen Unterschied hinein, den es nicht gibt.
+ *  `betont` färbt nur den Rahmen: Die lokale Gruppe soll auffallen, aber nicht
+ *  wie eine andere Art Knopf wirken. */
+function VorschlagsChips({ vorschlaege, vorhanden, busy, betont, onWaehlen }: {
+  vorschlaege: Vorschlag[];
+  vorhanden: { name: string }[];
   busy: boolean;
-  onWaehlen: (name: string, beschreibung: string) => void;
+  betont?: boolean;
+  onWaehlen: (v: Vorschlag) => void;
 }) {
-  const districts = useQuery({
-    queryKey: ["council-districts"],
-    queryFn: () => api.get<{ districts: { place_id: string; name: string; description?: string | null }[] }>(
-      "/council/districts").then((d) => d.districts),
-    staleTime: 10 * 60_000,
-  });
-
-  const liste = (districts.data ?? []).slice()
-    .sort((a, b) => a.name.localeCompare(b.name, "de"));
-  if (!liste.length) return null;
-
-  // Schon als Thema angelegt? Dann ist er gewählt — dieselbe Prüfung wie in
-  // der App: Der Stadtteil IST das Thema, es gibt keinen zweiten Zustand.
-  const gewaehlt = liste.find((d) =>
-    vorhanden.some((n) => n.toLowerCase() === d.name.toLowerCase()));
-
   return (
-    <div className="mt-3 rounded-2xl border border-border bg-muted/30 p-3.5">
-      <div className="flex items-start gap-3">
-        <span className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-primary/10">
-          <MapPin className="h-4 w-4 text-primary" />
-        </span>
-        <div className="min-w-0">
-          <p className="flex items-center gap-1.5 text-[13.5px] font-semibold text-foreground">
-            Dein Stadtteil
-            <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-muted-foreground">optional</span>
-          </p>
-          <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-            Lotti beobachtet dort neue Beschlüsse und Planungen für dich.
-          </p>
-        </div>
-      </div>
-
-      <label className="sr-only" htmlFor="onb-stadtteil">Stadtteil auswählen</label>
-      <select
-        id="onb-stadtteil"
-        className="mt-3 h-11 w-full rounded-[11px] border border-border bg-card px-3 text-sm font-medium text-foreground disabled:opacity-60"
-        value={gewaehlt?.place_id ?? ""}
-        disabled={busy}
-        onChange={(e) => {
-          const d = liste.find((x) => x.place_id === e.target.value);
-          if (!d) return;
-          // Dieselbe Beschreibung wie in der App — sie ist es, an der der
-          // Wächter später misst, also darf sie nicht generisch sein.
-          const detail = (d.description ?? "").trim();
-          onWaehlen(d.name, detail
-            ? `${detail} Neue Beschlüsse, Planungen und Maßnahmen mit Bezug zu ${d.name}.`
-            : `Neue Beschlüsse, Planungen und Maßnahmen des Oldenburger Stadtrats mit Bezug zu ${d.name}.`);
-        }}
-      >
-        <option value="">Stadtteil auswählen …</option>
-        {liste.map((d) => (
-          <option key={d.place_id} value={d.place_id}>{d.name}</option>
-        ))}
-      </select>
-      {gewaehlt && (
-        <p className="mt-2 flex items-center gap-1.5 text-xs text-primary">
-          <Check className="h-3.5 w-3.5 shrink-0" />
-          {gewaehlt.name} steht unter „Deine Themen" und löst passende Hinweise aus.
-        </p>
-      )}
+    <div className="mt-2.5 flex flex-wrap gap-2">
+      {vorschlaege.slice(0, 7).map((v) => {
+        const have = vorhanden.some((t) => t.name === v.name);
+        return (
+          <button key={v.name} type="button" disabled={busy || have}
+            onClick={() => onWaehlen(v)}
+            title={v.context || undefined}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-full border px-3.5 py-[7px] text-[13px] transition-colors",
+              have ? "border-primary/30 bg-primary/5 text-primary"
+                   : betont
+                     ? "border-primary/40 bg-primary/[0.04] text-foreground hover:bg-primary/10 disabled:opacity-50"
+                     : "border-border bg-card text-foreground hover:bg-muted disabled:opacity-50",
+            )}>
+            {have ? <Check className="h-3 w-3" /> : <Plus className="h-3 w-3 text-muted-foreground" />}
+            {v.name}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -694,7 +851,7 @@ function StadtteilWahl({ vorhanden, busy, onWaehlen }: {
 /** Ein angelegtes Thema: Name, Herkunft der Beschreibung, wie viele Beschlüsse
  *  darauf passen — und der Weg, es anzupassen. Die Trefferzahl ist der Beleg
  *  dafür, dass die Beschreibung etwas taugt; ohne sie bliebe sie eine Behauptung. */
-function TopicCard({ topic, matches, onEdit, onRemove }: {
+function TopicCard({ topic, matches, istStadtteil, onEdit, onRemove }: {
   topic: TopicRow;
   /** Zahl samt Herkunft — undefined, solange nichts ermittelt ist. Dann bleibt
    *  die Zeile leer statt „0" zu behaupten. `treffer` sind Beschlüsse, die auf
@@ -703,6 +860,11 @@ function TopicCard({ topic, matches, onEdit, onRemove }: {
    *  Name im letzten Jahr überhaupt vorkam. Beide „Beschlüsse" zu nennen hat
    *  genau die Verwirrung erzeugt, die Tim am 16.08. gemeldet hat. */
   matches?: { n: number; source: "year" | "treffer" };
+  /** Dieses Thema ist einer der in Schritt 2 gewählten Stadtteile. Es steht mit in der
+   *  Liste — es IST ein Thema, nur so löst es Hinweise aus —, sagt das aber
+   *  auch: Sonst wirkte die Trennung der beiden Schritte hinterher hinfällig,
+   *  weil der Stadtteil unbeschriftet zwischen den anderen Themen auftauchte. */
+  istStadtteil?: boolean;
   onEdit: () => void;
   onRemove: () => void;
 }) {
@@ -724,9 +886,11 @@ function TopicCard({ topic, matches, onEdit, onRemove }: {
           <X className="h-3.5 w-3.5" />
         </button>
       </div>
-      <p className="mt-1.5 flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.04em] text-signal">
-        <Sparkles className="h-[11px] w-[11px]" />
-        AUTOMATISCH BESCHRIEBEN
+      <p className={cn("mt-1.5 flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.04em]",
+        istStadtteil ? "text-primary" : "text-signal")}>
+        {istStadtteil
+          ? <><MapPin className="h-[11px] w-[11px]" />DEIN STADTTEIL</>
+          : <><Sparkles className="h-[11px] w-[11px]" />AUTOMATISCH BESCHRIEBEN</>}
       </p>
       <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{topic.description}</p>
       <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">

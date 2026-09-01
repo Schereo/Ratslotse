@@ -34,6 +34,7 @@ Stand: 01.09.2026 — Onboarding jetzt auf beiden Plattformen (vorher nur nativ)
 | Desktop-Navigation | Hovernde Glasnavigation auf dem iPhone, vollständige Seitenleiste auf dem iPad. |
 | Desktop-Spalten für Chatquellen | Quellen-/Belegspalte neben dem Chat im iPad-Querformat, kompakte Darstellung auf dem iPhone. |
 | Letzter Onboarding-Schritt fragt nach der E-Mail-Zustellung und wirbt dafür | Derselbe Schritt holt die Push-Erlaubnis. Web-Push (VAPID) gibt es nicht — das Backend kennt nur APNs und FCM. |
+| Eigener Stadtteil-Schritt im Onboarding, mit Karte und Mehrfachauswahl; die Themen danach getrennt je Stadtteil und „stadtweit" | Ein einzelner Stadtteil steckt als Auswahlliste im Themen-Schritt. Nachziehen lohnt — die Backend-Hälfte (`?district=`) ist plattformneutral. |
 
 Dashboard, Ratsgespräch inklusive gründlicher Recherche, Beschlüsse,
 Sitzungen und Anlagen, Stadtkarte, Themen, Profile, Merkliste, Abos, alle vier

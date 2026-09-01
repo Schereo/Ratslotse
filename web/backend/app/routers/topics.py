@@ -36,6 +36,7 @@ from __future__ import annotations
 import re
 import logging
 from datetime import date
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
@@ -244,24 +245,19 @@ def _suggestion_context(name: str, candidate: dict) -> str | None:
     return None
 
 
-@router.get("/suggestions")
-def topic_suggestions(
-    user: dict = Depends(require_active),
-    store: Store = Depends(get_store),
-    council: CouncilStore = Depends(get_council_store),
-) -> ThemenVorschlaege:
-    """Anklickbare Themen-Vorschläge aus den echten Daten: konkrete Orte und
-    Projekte mit jüngster Ratsaktivität (Entitäten) statt der häufigsten
-    Schlagworte — die belohnten Verwaltungsvokabeln („Bericht", „Annahme").
-    Die KI-Beschreibung der Entität wird zur Themen-Beschreibung und macht
-    den Themen-Wächter treffsicherer als ein generischer Satz. Ohne Themen,
-    die der Account schon angelegt hat; ein Klick legt direkt an."""
+def _vorschlaege_bauen(council: CouncilStore, candidates: list[dict],
+                       existing_tokens: list, chosen_tokens: list, limit: int = 6) -> list[dict]:
+    """Aus Roh-Entitäten anzeigbare Vorschläge machen.
+
+    Eigene Funktion, seit es ZWEI Listen gibt (Stadtteil und stadtweit):
+    ``chosen_tokens`` wird von beiden Aufrufen geteilt und dabei fortgeschrieben
+    — deshalb taucht ein Vorschlag, der schon im Stadtteil steht, in der
+    stadtweiten Liste nicht noch einmal auf. Ohne das gemeinsame Gedächtnis
+    stünde dieselbe Baustelle zweimal untereinander.
+    """
     from council import topic_intel
 
-    existing_tokens = [_name_tokens(t.name) for t in store.get_topics(user["id"])]
-    chosen_tokens: list[frozenset[str]] = []
-    out = []
-    candidates = council.suggested_entity_topics(days_back=365, limit=16)
+    out: list[dict] = []
     # 26a-Zusage: Was hier vorgeschlagen wird, hat die Vagheits-Prüfung bestanden.
     # Zwei Stufen, damit das bezahlbar bleibt: erst der kostenlose Gattungswort-
     # Filter, dann das gecachte LLM-Urteil (je Slug genau einmal).
@@ -310,9 +306,53 @@ def topic_suggestions(
             "context": _suggestion_context(name, e),
             "n": e["n_recent"],
         })
-        if len(out) >= 6:
+        if len(out) >= limit:
             break
-    return {"suggestions": out}
+    return out
+
+
+@router.get("/suggestions")
+def topic_suggestions(
+    district: Annotated[list[str], Query()] = [],  # noqa: B006 — FastAPI liest die Vorgabe nur
+    user: dict = Depends(require_active),
+    store: Store = Depends(get_store),
+    council: CouncilStore = Depends(get_council_store),
+) -> ThemenVorschlaege:
+    """Anklickbare Themen-Vorschläge aus den echten Daten: konkrete Orte und
+    Projekte mit jüngster Ratsaktivität (Entitäten) statt der häufigsten
+    Schlagworte — die belohnten Verwaltungsvokabeln („Bericht", „Annahme").
+    Die KI-Beschreibung der Entität wird zur Themen-Beschreibung und macht
+    den Themen-Wächter treffsicherer als ein generischer Satz. Ohne Themen,
+    die der Account schon angelegt hat; ein Klick legt direkt an.
+
+    ``?district=<place_id>`` (mehrfach erlaubt) hängt je Ortsbereich eine
+    **eigene** Liste davor: dieselbe Auswahl, auf diesen Ortsbereich
+    eingeschränkt. Die Trennung ist der Punkt — „was ist in Osternburg los?"
+    ist eine andere Frage als „was läuft gerade in der Stadt?", und wer beides
+    getrennt sieht, kann wählen. Die Ortsbereiche stehen zuerst und in der
+    Reihenfolge, in der sie gefragt wurden; was dort schon vorkommt,
+    wiederholen weder die anderen Ortsbereiche noch die stadtweite Liste.
+    """
+    existing_tokens = [_name_tokens(t.name) for t in store.get_topics(user["id"])]
+    chosen_tokens: list[frozenset[str]] = []
+
+    gruppen = []
+    for wunsch in dict.fromkeys(district):        # doppelt Gefragtes einmal
+        place = council.resolve_place(wunsch)
+        if not place:
+            continue                              # geraten oder veraltet — still übergehen
+        lokal = _vorschlaege_bauen(
+            council, council.suggested_entity_topics(days_back=365, limit=16, place_id=place.id),
+            existing_tokens, chosen_tokens, limit=6)
+        # Auch mit leerer Liste antworten: „In diesem Stadtteil war zuletzt
+        # nichts" ist eine Auskunft. Ein weggelassener Block sähe aus wie ein
+        # Fehler.
+        gruppen.append({"place_id": place.id, "name": place.name, "suggestions": lokal})
+
+    stadtweit = _vorschlaege_bauen(
+        council, council.suggested_entity_topics(days_back=365, limit=16),
+        existing_tokens, chosen_tokens, limit=6)
+    return {"suggestions": stadtweit, "districts": gruppen}
 
 
 @router.post("/describe")

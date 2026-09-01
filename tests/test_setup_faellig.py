@@ -17,8 +17,33 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "web" / "backend"))
 
-# `fresh_dbs` muss mit — die autouse-Fixture wirkt nur in ihrem eigenen Modul.
-from tests.test_backend_api import _register, app, fresh_dbs  # noqa: E402,F401
+from tests.test_backend_api import _register, app  # noqa: E402
+from app.config import get_settings  # noqa: E402
+
+
+def _pfade() -> tuple[str, str]:
+    """Die Datenbanken, die der Endpunkt liest — siehe die ausführliche
+    Begründung in ``test_stadtteil_vorschlaege``: Die Konstanten aus
+    ``test_backend_api`` können in der vollen Suite an der App vorbeizeigen."""
+    s = get_settings()
+    return str(s.ratslotse_db), str(s.council_db)
+
+
+@pytest.fixture(autouse=True)
+def frische_dbs():
+    """Vor jedem Test leere Datenbanken.
+
+    Bewusst hier definiert und NICHT aus ``test_backend_api`` importiert: Eine
+    ``autouse``-Fixture wirkt zuverlässig nur in dem Modul, in dem sie steht.
+    Importiert man sie, hängt es an der Sammelreihenfolge, ob sie greift —
+    paarweise lief alles grün, in der vollen Suite kamen die Konten des
+    Vorgänger-Tests durch (Registrierung → 409 → kein Cookie → 401) und die
+    Entitäts-IDs kollidierten, was den ganzen Seed zurückrollte.
+    """
+    for basis in _pfade():
+        for endung in ("", "-wal", "-shm"):
+            Path(basis + endung).unlink(missing_ok=True)
+    yield
 
 
 @pytest.fixture

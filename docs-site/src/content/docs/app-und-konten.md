@@ -493,8 +493,8 @@ denselben Stand hat und nach Abschluss überall verschwindet.
   `karten` — alles andere wird verworfen, damit die Spalte nicht
   zuwuchert. Schritte gelten schon beim **Besuch** der jeweiligen Seite als
   erledigt (`components/onboarding.tsx`).
-- Davon getrennt speichert `GET/POST /api/onboarding/setup` den Schritt 0–3 des
-  Ersteinrichtungs-Assistenten sowie Start und Abschluss. Dieser Stand dient der
+- Davon getrennt speichert `GET/POST /api/onboarding/setup` den erreichten
+  Schritt des Ersteinrichtungs-Assistenten sowie Start und Abschluss. Dieser Stand dient der
   Wiederaufnahme (nach Neuinstallation, auf einem anderen Gerät) und dem
   Einrichtungs-Reminder (`scripts/remind_setup.py`).
 
@@ -520,9 +520,48 @@ Im Browser kommt eine Ortsprüfung dazu: Der Assistent hängt global in
 darf im Web aber nur innerhalb von `app/(app)/` erscheinen — sonst deckte er
 Landingpage, Changelog oder Impressum zu.
 
-Der letzte Schritt unterscheidet sich zwischen den Plattformen: Die App holt die
-Push-Erlaubnis, der Browser fragt nach der E-Mail-Zustellung. Web-Push (VAPID)
-gibt es nicht — `kern/push.py` spricht nur APNs und FCM.
+#### Die Schritte
+
+| # | Browser | App |
+|---|---|---|
+| 1 | Gremien | Gremien |
+| 2 | **Stadtteile** (Karte + Liste, mehrfach) | — |
+| 3 | Themen (je Stadtteil + stadtweit) | Themen |
+| 4 | E-Mail-Zustellung | Push-Erlaubnis |
+
+Zwei Unterschiede, beide plattformbedingt:
+
+**Der letzte Schritt.** Die App holt die Push-Erlaubnis, der Browser fragt nach
+der E-Mail. Web-Push (VAPID) gibt es nicht — `kern/push.py` spricht nur APNs und
+FCM. Weil die Zustellung der Punkt ist, an dem die ganze Idee steht oder fällt
+(ohne Mitteilung erfährt niemand, dass sein Thema auf einer Tagesordnung steht),
+wirbt der Schritt dafür statt bloß zu fragen — mit dem, was konkret käme, und
+mit den echten Mengen aus `kern/notify.py`.
+
+**Die Stadtteile.** Sie sind im Browser ein eigener Schritt VOR den Themen, weil
+Schritt 3 danach lokale Vorschläge zeigen kann:
+`GET /api/topics/suggestions?district=<place_id>` (mehrfach erlaubt) liefert
+dann `districts` — je gefragtem Ortsbereich eine Gruppe, in der gefragten
+Reihenfolge — plus `suggestions` (stadtweit). Keine Liste wiederholt, was in
+einer anderen schon steht.
+
+Gefragt wird nach **Interesse, nicht nach der Wohnadresse** („Welche Stadtteile
+interessieren dich?"). Das ist keine Kosmetik: Ratslotse braucht keine
+Meldedaten, und wer im Dobbenviertel wohnt und die Baustelle in Osternburg
+verfolgt, soll beides angeben können — deshalb ist die Auswahl mehrfach. Der Ortsbezug hängt am **Beschluss**, nicht an
+der Entität: Ein Thema erbt seinen Ort von den Beschlüssen, in denen es
+vorkommt (`suggested_entity_topics(place_id=…)`, dieselbe Bedingung wie im
+Beschlussfilter). Gewählt wird auf einer Inline-SVG-Karte aus
+`public/geo/stadtteile-oldenburg.json`; sie braucht keinen Kachel-Dienst und
+keinen CARTO-Key. Die Namensliste daneben ist nicht bloß der Ersatz fürs kleine
+Fenster, sondern der Weg für Tastatur und Screenreader.
+
+Der gewählte Stadtteil wird als **Thema** angelegt — nur so löst er Hinweise
+aus. In „Deine Themen" trägt er dafür eine eigene Beschriftung, sonst wirkte die
+Trennung der beiden Schritte hinterher hinfällig.
+
+Die App kennt den Stadtteil-Schritt (noch) nicht und läuft mit drei Schritten;
+`set_setup_step` deckelt bei 4, was ihr nichts abschneidet.
 
 ### Anzeigename und Konto löschen
 
