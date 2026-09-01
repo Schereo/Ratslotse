@@ -768,6 +768,57 @@ class CouncilStore:
                     "Werte umgeschrieben: %s.%s %r → %r (%d Zeilen)",
                     tabelle, spalte, alt, neu, cur.rowcount)
 
+    #: Die Eimer eines Tagesordnungs-Diffs. NUR die oberste Ebene — `anlagen`
+    #: ist dort ein Eimer, INNERHALB eines Punktes aber dessen Anlagenliste,
+    #: und die heißt weiter so.
+    _DIFF_EIMER = {
+        "neu": "new", "entfernt": "removed", "verschoben": "moved",
+        "umformuliert": "reworded", "vorlage": "template", "anlagen": "attachments",
+    }
+
+    def _agenda_diff_schluessel_neu(self) -> None:
+        """Die Eimer-Namen in `agenda_changes.diff_json` nachziehen — einmalig.
+
+        Der Diff liegt als JSON in der Zeile; seine obersten Schlüssel sind
+        das Vokabular, das die Chronik einer Sitzung liest. Zieht der Code auf
+        Englisch um und der Bestand nicht, zeigt die Chronik zu jeder alten
+        Änderung „nichts geändert" — ohne Fehler.
+        """
+        import json as _js
+        with self._conn:
+            self._conn.execute(
+                "CREATE TABLE IF NOT EXISTS council_migrationsmarken ("
+                "marke TEXT PRIMARY KEY, gesetzt_am TEXT NOT NULL)")
+        marke = "agenda_diff_eimer_englisch"
+        if self._conn.execute(
+                "SELECT 1 FROM council_migrationsmarken WHERE marke = ?", (marke,)).fetchone():
+            return
+        spalten = {r[1] for r in self._conn.execute("PRAGMA table_info(agenda_changes)")}
+        if "diff_json" not in spalten:
+            return
+        geaendert = []
+        for rid, roh in self._conn.execute(
+                "SELECT rowid, diff_json FROM agenda_changes WHERE diff_json IS NOT NULL"):
+            try:
+                daten = _js.loads(roh)
+            except (ValueError, TypeError):
+                continue
+            if not isinstance(daten, dict):
+                continue
+            neu = {self._DIFF_EIMER.get(k, k): v for k, v in daten.items()}
+            if neu != daten:
+                geaendert.append((_js.dumps(neu, ensure_ascii=False), rid))
+        with self._conn:
+            if geaendert:
+                self._conn.executemany(
+                    "UPDATE agenda_changes SET diff_json = ? WHERE rowid = ?", geaendert)
+            self._conn.execute(
+                "INSERT OR REPLACE INTO council_migrationsmarken(marke, gesetzt_am) "
+                "VALUES (?, datetime('now'))", (marke,))
+        if geaendert:
+            logging.getLogger("ratslotse.council.store").warning(
+                "Tagesordnungs-Diffs umgeschrieben: %d Zeilen", len(geaendert))
+
     def _doppelte_bildspalte_aufloesen(self) -> None:
         """`council_anlagen` trug eine Zeit lang `bild` UND `is_image`.
 
@@ -1055,6 +1106,7 @@ class CouncilStore:
         self._werte_umschreiben("council_herkunft", "kind", [("stadt", "city")])
         self._herkunft_schluessel_neu()
         self._doppelte_bildspalte_aufloesen()
+        self._agenda_diff_schluessel_neu()
         # Der Parteien-Cache hält die ROHE Modellantwort als JSON; sie trug
         # bis zum Umbau den Schlüssel `partei`. Ein Cache darf man wegwerfen —
         # die nächste Frage baut ihn neu, und zwar mit `party`.

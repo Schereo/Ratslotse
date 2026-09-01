@@ -250,7 +250,7 @@ export interface BookmarkEntry {
 }
 
 export interface AgendaAenderungZeile {
-  art: "neu" | "geaendert" | "verschoben" | "vorlage" | "anlagen" | "entfernt";
+  art: "new" | "changed" | "moved" | "template" | "attachments" | "removed";
   label: string;
   title: string;
   nichtoeffentlich: boolean;

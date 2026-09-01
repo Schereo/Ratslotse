@@ -1115,10 +1115,10 @@ function AenderungenSection({ aenderungen }: { aenderungen: AgendaAenderung[] })
             {a.zeilen.map((z, j) => (
               <li key={j} className={cn("border-l-2 pl-2 text-sm leading-snug",
                 AENDERUNG_FARBE[z.art] ?? "border-border")}>
-                <span className={cn("font-medium", z.art === "entfernt" && "line-through decoration-muted-foreground/50")}>
+                <span className={cn("font-medium", z.art === "removed" && "line-through decoration-muted-foreground/50")}>
                   {z.label}
                 </span>
-                <span className={cn("text-muted-foreground", z.art === "entfernt" && "line-through decoration-muted-foreground/50")}>
+                <span className={cn("text-muted-foreground", z.art === "removed" && "line-through decoration-muted-foreground/50")}>
                   {" — "}{z.title}
                 </span>
                 {z.nichtoeffentlich && (

@@ -858,7 +858,7 @@ private final class FeedbackURLProtocol: URLProtocol {
             "changed_at": "2026-08-30T12:15:00+02:00",
             "satz": "Ein TOP wurde ergänzt und eine Anlage aktualisiert.",
             "zeilen": [{
-              "art": "neu",
+              "art": "new",
               "label": "Ö 7",
               "title": "Sichere Querung an der Cloppenburger Straße",
               "nichtoeffentlich": false,
@@ -892,7 +892,7 @@ private final class FeedbackURLProtocol: URLProtocol {
 
     #expect(current.agendaChanges?.count == 1)
     #expect(current.agendaChanges?.first?.lines.count == 2)
-    #expect(current.agendaChanges?.first?.lines.first?.kind == "neu")
+    #expect(current.agendaChanges?.first?.lines.first?.kind == "new")
     #expect(current.agendaChanges?.first?.lines.first?.title == "Sichere Querung an der Cloppenburger Straße")
     #expect(current.agendaChanges?.first?.lines.last?.isNonPublic == true)
     #expect(legacy.agendaChanges == nil)
