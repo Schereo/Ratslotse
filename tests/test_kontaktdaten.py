@@ -108,7 +108,7 @@ def _store_mit_text(tmp_path: Path, text: str) -> CouncilStore:
     store = CouncilStore(tmp_path / "c.sqlite")
     with store._conn:
         store._conn.execute(
-            "INSERT INTO council_anlagen (document_id, kvonr, label, url, raw_text, "
+            "INSERT INTO council_attachments (document_id, kvonr, label, url, raw_text, "
             "n_pages, fetched_at, status, is_motion) "
             "VALUES (4711, 99, 'Antrag auf Förderung', 'https://x/1', ?, 11, "
             "datetime('now'), 'ok', 1)", (text,))
@@ -121,7 +121,7 @@ def test_der_bestand_behaelt_alles(tmp_path):
     store = _store_mit_text(tmp_path, BRIEFKOPF)
     try:
         gespeichert = store._conn.execute(
-            "SELECT raw_text FROM council_anlagen WHERE document_id=4711").fetchone()[0]
+            "SELECT raw_text FROM council_attachments WHERE document_id=4711").fetchone()[0]
         assert gespeichert == BRIEFKOPF
         assert "SLZODE22" in gespeichert
     finally:
@@ -152,7 +152,7 @@ def test_der_volltextindex_bekommt_maskierten_text(tmp_path):
     store = _store_mit_text(tmp_path, BRIEFKOPF)
     try:
         aus = store._conn.execute(
-            "SELECT ohne_kontaktdaten(raw_text) FROM council_anlagen "
+            "SELECT ohne_kontaktdaten(raw_text) FROM council_attachments "
             "WHERE document_id = 4711").fetchone()[0]
         assert PLATZHALTER in aus and "SLZODE22" not in aus
     finally:

@@ -40,7 +40,7 @@ im Jahresabschluss. Damit ist die Spalte das Ist, und zwar ein benanntes.
 
 Was der gemessene Versatz von 0,03–0,05 % ist
 ----------------------------------------------
-Gegen ``council_ergebnisrechnung`` (Posten 20, „Summe ordentliche
+Gegen ``council_income_statement`` (Posten 20, „Summe ordentliche
 Aufwendungen") liegt die Statistik in jedem Jahrgang **etwas höher**, und zwar
 erstaunlich gleichmäßig: 2017 +166.253 €, 2018 +236.269 €, 2019 +260.407 €,
 2020 +186.548 €, 2021 +214.651 €, 2022 +267.171 €, 2023 +286.730 €, 2024
@@ -210,7 +210,7 @@ TAUSEND = 1000
 #: Toleranz wie in ``council/schulden.prokopfprobe``.
 PROKOPF_TOLERANZ = 1.0
 
-#: Toleranz der Gegenprobe gegen ``council_ergebnisrechnung``, als Anteil.
+#: Toleranz der Gegenprobe gegen ``council_income_statement``, als Anteil.
 #: Gemessen sind 0,032–0,046 % — die Aufwendungen der nicht rechtsfähigen
 #: Stiftungen, die die Statistik mitzählt und die Ergebnisrechnung der
 #: Kernverwaltung nicht (s. Modulkopf). 0,1 % lässt Raum, ohne einen
@@ -402,7 +402,7 @@ def gegenprobe(amount: float, kernverwaltung: float | None) -> tuple[bool | None
     """Passt der Betrag zur Ergebnisrechnung desselben Jahres?
 
     ``kernverwaltung`` ist Posten 20 („Summe ordentliche Aufwendungen") der
-    Gesamtrechnung aus ``council_ergebnisrechnung`` — also die **Kernverwaltung
+    Gesamtrechnung aus ``council_income_statement`` — also die **Kernverwaltung
     ohne** die nicht rechtsfähigen Stiftungen. Die Statistik zählt sie mit;
     deshalb liegt sie systematisch etwas höher, und deshalb hat diese Probe
     eine Toleranz statt eines Gleichheitszeichens (Begründung im Modulkopf).
@@ -447,7 +447,7 @@ def lies(csv_kameral: str, csv_doppik: str, pdf_text: str | None = None,
     """Die ganze Reihe einlesen und jeden Jahrgang durch seine Proben schicken.
 
     ``income_statement`` ist ``{year: Posten 20 der Gesamtrechnung in Euro}``
-    aus ``council_ergebnisrechnung`` — ohne diese Abbildung läuft alles
+    aus ``council_income_statement`` — ohne diese Abbildung läuft alles
     andere, nur ohne die dritte Probe.
 
     Rückgabe:

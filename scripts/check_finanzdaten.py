@@ -12,7 +12,7 @@ Ratsinformationssystem, werden aber von eigenen Skripten eingelesen
 ``ingest_gebuehren.py``); dieser Job beobachtet sie nur und meldet, wenn ein Jahrgang überfällig wird. Ohne diesen Job veraltet er still, sobald niemand mehr
 daran denkt: Die Stadt legt jeden September einen Jahresabschluss und jeden
 Oktober einen Haushaltsplan vor, und beides landet ohne Zutun als PDF-Anlage
-in ``council_anlagen`` — gelesen hat es bloß niemand.
+in ``council_attachments`` — gelesen hat es bloß niemand.
 
 **Der Job ist bestandsgesteuert, nicht kalendergesteuert.** Er fragt nicht
 „ist es September?", sondern „welche **Einheit** fehlt mir, und liegt
@@ -63,9 +63,9 @@ ein Erkennungsmuster nicht mehr? Das zweite ist der eigentliche Zweck. Gemeldet
 wird nur, wenn sich gegenüber dem letzten Lauf etwas geändert hat; alle
 vierzehn Tage dieselbe Mail wäre eine, die niemand mehr liest.
 
-Was der Job **nicht** abdeckt: ``council_haushalt`` (die Planwerte), die
+Was der Job **nicht** abdeckt: ``council_budget`` (die Planwerte), die
 Open-Data-Schichten (Steuern, Steuerkraft, Einwohner) und den Städtevergleich
-(``council_staedtevergleich``). Sie kommen nicht aus dem
+(``council_city_comparison``). Sie kommen nicht aus dem
 Ratsinformationssystem, sondern per Download von oldenburg.de bzw. vom
 Landesamt für Statistik — und Herunterladen ist Regel 1. Ihr Ausbleiben meldet
 der Job trotzdem; welches Skript dann dran ist, steht bei der Schicht
@@ -174,7 +174,7 @@ def _hinweis_text(zeilen: list[dict], gesehen: dict[str, set[int]],
             reason = ("<b>Dokument liegt vor, wird aber nicht übernommen</b> — "
                      "Erkennung oder Parser prüfen")
         elif q.herkunft == "ris":
-            reason = "kein passendes Dokument in council_anlagen"
+            reason = "kein passendes Dokument in council_attachments"
         else:
             # Was zu tun ist, weiß die Schicht selbst — hier stand bis 08/2026
             # ein fester Satz über oldenburg.de, und der schickte den Leser

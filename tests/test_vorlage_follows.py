@@ -38,7 +38,7 @@ def _seed(ratslotse_db: Path, council_db: Path, stations: list[tuple], *, snapsh
     council = CouncilStore(council_db)
     with council._conn:  # noqa: SLF001 — Testfixture darf ans Innenleben
         council._conn.execute(  # noqa: SLF001
-            "INSERT OR REPLACE INTO council_vorlagen(kvonr, template_number, title, fetched_at) "
+            "INSERT OR REPLACE INTO council_templates(kvonr, template_number, title, fetched_at) "
             "VALUES (700, '26/0001', 'Radweg Haarenufer', '2026-01-01')")
     council.close()
 

@@ -27,7 +27,7 @@ def main(db: str | None = None) -> dict:
     zaehler = {"vorlagen": 0, "office": 0, "klima": 0, "finanzen": 0, "vorschlag": 0,
                "orte": 0, "kvonr": 0, "deviation": 0}
 
-    rows = conn.execute("SELECT kvonr, raw_text FROM council_vorlagen "
+    rows = conn.execute("SELECT kvonr, raw_text FROM council_templates "
                         "WHERE status = 'ok' AND raw_text IS NOT NULL").fetchall()
     # Erst extrahieren, dann EIN kurzes executemany: Die Regex-Arbeit über
     # ~5000 Volltexte in einer offenen Schreibtransaktion hielt den Write-Lock
@@ -46,7 +46,7 @@ def main(db: str | None = None) -> dict:
         zaehler["vorschlag"] += bool(vorschlag)
     with conn:
         conn.executemany(
-            "UPDATE council_vorlagen SET office = ?, climate_impact = ?, "
+            "UPDATE council_templates SET office = ?, climate_impact = ?, "
             "financial_impact = ?, proposed_decision = ? WHERE kvonr = ?", updates)
 
     prot = conn.execute("SELECT ksinr, raw_text FROM council_protocols "
@@ -63,12 +63,12 @@ def main(db: str | None = None) -> dict:
     with conn:
         cur = conn.execute(
             "UPDATE council_decisions SET kvonr = COALESCE("
-            "(SELECT MAX(v.kvonr) FROM council_vorlagen v "
+            "(SELECT MAX(v.kvonr) FROM council_templates v "
             " WHERE v.template_number = council_decisions.template_number), "
-            "(SELECT MAX(v.kvonr) FROM council_vorlagen v "
+            "(SELECT MAX(v.kvonr) FROM council_templates v "
             " WHERE instr(council_decisions.template_number, v.template_number || '/') = 1)) "
             "WHERE kvonr IS NULL AND template_number IS NOT NULL AND EXISTS "
-            "(SELECT 1 FROM council_vorlagen v WHERE v.template_number = council_decisions.template_number "
+            "(SELECT 1 FROM council_templates v WHERE v.template_number = council_decisions.template_number "
             " OR instr(council_decisions.template_number, v.template_number || '/') = 1)")
         zaehler["kvonr"] = cur.rowcount
 

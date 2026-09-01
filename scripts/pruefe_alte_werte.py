@@ -4,7 +4,7 @@
 **Das Problem.** ``scripts/pruefe_wertreste.py`` fragt von der Datenbank aus:
 Kommt jeder gespeicherte Wert im Code noch vor? Die umgekehrte Lücke sieht es
 nicht — und die ist die teurere. Benennt ein Schnitt einen Wert um
-(``council_haushalt_aenderungen_summen.kind`` von ``entwurf`` auf ``draft``)
+(``council_budget_amendments_totals.kind`` von ``entwurf`` auf ``draft``)
 und zieht das Web-Frontend nicht nach, dann sucht dort weiter jemand
 ``s.kind === "entwurf"``. Der Vergleich wird nie wahr, die Karte verliert ihre
 Zeile, **und nichts schlägt an**: Der Typ ist ``string``, TypeScript ist
@@ -105,7 +105,7 @@ ERLAUBT = {
     # wäre jedes Vorkommen ein toter Vergleich, deshalb der Zeilen-Filter.
     "neu": "Tagesordnungs-Diff, Query-Parameter, Vorlese-Text und die "
            "Seitenangabe „neu“ aus dem Änderungslisten-PDF",
-    "teilhaushalt": "Schlüssel des Beleg-Apparats (council_produkte)",
+    "teilhaushalt": "Schlüssel des Beleg-Apparats (council_products)",
     "geldschulden": ("Blockname der Schulden-Antwort (council.py: \"geldschulden\": …) — "
                      "die API-Blocknamen sind ein eigener Schnitt, noch offen"),
     # Drei Wörter, die als WERT umgezogen sind, im Frontend aber Bezeichner
@@ -117,7 +117,7 @@ ERLAUBT = {
                   "`user_activity.feature` heißt seit 01.09.2026 `research`"),
     "ki_frage": ("Blockname der Admin-Antwort (`features.ki_frage`) — der WERT "
                  "`user_activity.feature` heißt seit 01.09.2026 `ai_question`"),
-    "investitionen": "Schlüssel des Beleg-Apparats (council_investitionen)",
+    "investitionen": "Schlüssel des Beleg-Apparats (council_investments)",
     "schulden": "Schlüssel des Beleg-Apparats und QA-Facette — beide bleiben deutsch",
 }
 

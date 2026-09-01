@@ -431,7 +431,7 @@ def test_speichern_legt_drei_ebenen_an(tmp_path):
         assert gesamt[0]["grand_total"] == GESAMT_2026
         # Keine Zeile ohne Herkunft — sonst meldet sie `herkunft_luecken`.
         assert all(m["herkunft_id"] for m in massnahmen)
-        assert not store.herkunft_luecken().get("council_investitionsmassnahmen")
+        assert not store.herkunft_luecken().get("council_investment_measures")
     finally:
         store.close()
 
@@ -457,7 +457,7 @@ def test_quelle_steht_im_verzeichnis_und_in_der_reihenfolge():
     """Ohne beides fehlte die Schicht im Datenstand — und der Cron wüsste
     nicht, wann er sie erwarten soll."""
     q = finanzquellen.QUELLEN["investitionsprogramm"]
-    assert q.tabelle == "council_investitionsmassnahmen"
+    assert q.tabelle == "council_investment_measures"
     assert q.automatisch is True
     assert q.herkunft == "ris"
     # Anlage 004 kommt mit dem Haushaltsplan im Oktober des Vorjahres.

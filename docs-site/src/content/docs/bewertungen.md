@@ -88,7 +88,7 @@ n Stationen der Beratungsfolge ≤ 1 → Signal fehlt
 sonst min(1, (n - 1) / 5)          → 6+ Stationen = Vollausschlag
 ```
 
-Gezählt werden die Zeilen in `council_beratungen` zum `kvonr` des Beschlusses.
+Gezählt werden die Zeilen in `council_deliberations` zum `kvonr` des Beschlusses.
 
 ### Fehlende Signale fallen aus der Gewichtung
 
@@ -177,7 +177,7 @@ Tragweite mit ihrer festen Rubrik.
 ### Fundstück des Tages
 
 `council/fundstueck.py` kuratiert daraus je Kalendertag **einen** Archiv-Fund
-(Tabelle `council_fundstuecke`, ein Datensatz je Tag mit Kicker und
+(Tabelle `council_daily_finds`, ein Datensatz je Tag mit Kicker und
 1-Satz-Story):
 
 - **Jahrestage gewinnen**: gleicher Kalendertag, früheres Jahr, `interest ≥ 45`

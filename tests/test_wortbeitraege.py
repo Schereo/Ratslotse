@@ -185,10 +185,10 @@ def test_paralleler_save_hinterlaesst_keine_fts_waisen(store):
     store.save_wortbeitraege(100, [BEITRAG])
     # Fremde Zeile im selben ksinr simuliert den nebenläufigen Save.
     cur = store._conn.execute(
-        "INSERT INTO council_wortbeitraege (ksinr, position, kind, text, extracted_at) "
+        "INSERT INTO council_speeches (ksinr, position, kind, text, extracted_at) "
         "VALUES (100, 99, 'rede', 'Nebenläufig eingefügter Beitrag über Wechloy.', 'x')")
     store._conn.execute(
-        "INSERT INTO council_wortbeitraege_fts(rowid, content) VALUES (?, ?)",
+        "INSERT INTO council_speeches_fts(rowid, content) VALUES (?, ?)",
         (cur.lastrowid, "Nebenläufig eingefügter Beitrag über Wechloy."))
     store.replace_wortbeitrag_embedding(cur.lastrowid, "h", b"\x00" * 4)
     store.save_wortbeitraege(100, [dict(BEITRAG, text="Ganz neuer Stand nach dem zweiten Lauf.")])
@@ -375,7 +375,7 @@ def test_search_je_fraktion_filtert_und_deckelt(store, monkeypatch):
                for i in range(7)]
             + [dict(BEITRAG, party="CDU", speaker="C1", text="CDU-Beitrag zur Sache im Rat.")])
     store.save_wortbeitraege(100, rows)
-    alle = [r[0] for r in store._conn.execute("SELECT id FROM council_wortbeitraege ORDER BY id")]
+    alle = [r[0] for r in store._conn.execute("SELECT id FROM council_speeches ORDER BY id")]
     mat = np.ones((len(alle), 2), dtype="float32") / np.sqrt(2)  # alle gleich relevant
     monkeypatch.setattr(emb, "_wb_matrix", lambda s: (alle, mat))
     monkeypatch.setattr(emb, "embed", lambda texts: np.array([[1.0, 1.0]], dtype="float32") / np.sqrt(2))
@@ -403,7 +403,7 @@ def test_search_je_fraktion_sammelt_aus_ganzem_feld(store, monkeypatch):
             + [dict(BEITRAG, party="SPD", speaker="S1", text="SPD-Rede zur Satzung."),
                dict(BEITRAG, party="CDU", speaker="C1", text="CDU-Rede zur Satzung.")])
     store.save_wortbeitraege(100, rows)
-    alle = [r[0] for r in store._conn.execute("SELECT id FROM council_wortbeitraege ORDER BY id")]
+    alle = [r[0] for r in store._conn.execute("SELECT id FROM council_speeches ORDER BY id")]
     # Score = erste Komponente: absteigend, die Fraktions-Beiträge am Ende.
     cos = np.array([0.9 - 0.002 * i for i in range(len(alle))], dtype="float32")
     mat = np.stack([cos, np.sqrt(1 - cos ** 2)], axis=1)

@@ -73,7 +73,7 @@ gerundet wird nichts, und die Seite sagt, dass das Jahr fehlt und warum.
 
 Warum Plan und Ist hier **nicht** gegeneinander stehen
 -------------------------------------------------------
-Die naheliegende Seite wäre „geplant gegen gebaut": ``council_investitionen``
+Die naheliegende Seite wäre „geplant gegen gebaut": ``council_investments``
 führt für 2022–2025 die geplanten Auszahlungen, diese Schicht die
 tatsächlichen. Gerechnet ergäbe das Quoten zwischen 41 % und 75 %.
 

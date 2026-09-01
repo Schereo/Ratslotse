@@ -258,8 +258,8 @@ def test_die_probe_ist_dem_herkunfts_register_bekannt():
 
 
 def test_beide_tabellen_stehen_im_herkunfts_register():
-    for tabelle in ("council_investitionen_ist", "council_investitionen_ist_arten",
-                    "council_investitionen_ist_verworfen"):
+    for tabelle in ("council_investments_actual", "council_investments_actual_kinds",
+                    "council_investments_actual_rejected"):
         assert tabelle in herkunft.HERKUNFT_TABELLEN
 
 
@@ -303,7 +303,7 @@ def test_jede_zeile_traegt_eine_herkunft(store, gelesen):
     _speichern(store, gelesen)
     assert all(z["herkunft_id"] is not None for z in store.get_investitionen_ist())
     luecken = {t: n for t, n in store.herkunft_luecken().items()
-               if t.startswith("council_investitionen_ist")}
+               if t.startswith("council_investments_actual")}
     assert not luecken, luecken
 
 

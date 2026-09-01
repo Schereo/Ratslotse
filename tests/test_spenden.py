@@ -361,7 +361,7 @@ def test_speichern_und_lesen(tmp_path):
         assert zurueck[0]["probes"] == [donations.ZWEITSTELLE, donations.PROTOKOLLABGLEICH]
         assert all(z["herkunft_id"] for z in zurueck)
         assert store.spenden_jahre() == [2024]
-        assert "council_spenden" not in store.herkunft_luecken()
+        assert "council_donations" not in store.herkunft_luecken()
     finally:
         store.close()
 
@@ -418,7 +418,7 @@ def test_die_tabelle_fuehrt_keine_gebenden(tmp_path):
     store = CouncilStore(tmp_path / "council.sqlite")
     try:
         spalten = {r[1].lower() for r in
-                   store._conn.execute("PRAGMA table_info(council_spenden)")}
+                   store._conn.execute("PRAGMA table_info(council_donations)")}
     finally:
         store.close()
     for verboten in ("spender", "spenderin", "geber", "name", "zuwendungsgeber",
@@ -427,8 +427,8 @@ def test_die_tabelle_fuehrt_keine_gebenden(tmp_path):
 
 
 def test_die_tabellen_sind_als_herkunftstraeger_angemeldet():
-    assert "council_spenden" in herkunft.HERKUNFT_TABELLEN
-    assert "council_spenden_verworfen" in herkunft.HERKUNFT_TABELLEN
+    assert "council_donations" in herkunft.HERKUNFT_TABELLEN
+    assert "council_donations_rejected" in herkunft.HERKUNFT_TABELLEN
 
 
 def test_die_proben_sind_fuer_leserinnen_erklaert():

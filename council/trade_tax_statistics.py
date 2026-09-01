@@ -67,7 +67,7 @@ Der Abstand wechselt das Vorzeichen, weil drei verschiedene Dinge gemessen
 werden: die **Veranlagung** des Erhebungsjahres (hier), die **Kasse** eines
 Kalenderjahres mit Vorauszahlungen, Abschlusszahlungen und Berichtigungen
 (Realsteuervergleich) und das **doppische Rechnungsergebnis nach Abzug der
-Umlage** (``council_steuern``, Tabelle 1104). Auch die beiden letzten weichen
+Umlage** (``council_taxes``, Tabelle 1104). Auch die beiden letzten weichen
 voneinander ab, 2021 um 16,4 %.
 
 Deshalb: Diese Zahlen kommen in **keine** Kurve mit der Ist-Reihe, und aus
@@ -469,7 +469,7 @@ def hebesatz_im_jahr(zeilen: list[dict], year: int,
                      art: str = "Gewerbesteuer") -> float | None:
     """Den Hebesatz eines Jahres aus der Treppe von Tabelle 1105 lesen.
 
-    ``council_hebesaetze`` führt **nur die Änderungsjahre** — ein Satz gilt,
+    ``council_tax_rates`` führt **nur die Änderungsjahre** — ein Satz gilt,
     bis der Rat ihn ändert. Für ein beliebiges Jahr ist der gesuchte Wert
     deshalb der der letzten Änderung davor, nicht der einer Zeile mit diesem
     Jahr: Für 2021 gibt es keine Zeile, es gilt der Satz von 2015 (439 %).
@@ -492,7 +492,7 @@ def probe_hebesatz(budget_year: Gewerbesteuerjahrgang, key: str,
     Landesamt schreibt den Hebesatz, den es der Veranlagung zugrunde legt,
     nachrichtlich in seine Gemeindetabelle; die Stadt veröffentlicht denselben
     Satz in ihrem Statistischen Jahrbuch, wo wir ihn seit 08/2026 führen
-    (``council_hebesaetze``). Zwei Häuser, zwei Veröffentlichungen, dieselbe
+    (``council_tax_rates``). Zwei Häuser, zwei Veröffentlichungen, dieselbe
     Zahl — und wenn nicht, ist entweder das Jahr falsch zugeordnet oder die
     Zeile die einer anderen Stadt.
 
@@ -522,7 +522,7 @@ def zeilen(budget_year: Gewerbesteuerjahrgang) -> tuple[list[dict], list[dict]]:
     Zahl, die falsch sein könnte. Dieselbe Regel wie beim Städtevergleich.
 
     Der Hebesatz kommt aus Blatt 6.2 und wird mitgespeichert, obwohl er auch
-    in ``council_hebesaetze`` steht. Nicht aus Bequemlichkeit: Er ist die
+    in ``council_tax_rates`` steht. Nicht aus Bequemlichkeit: Er ist die
     Angabe des **Landesamts** zu diesem Erhebungsjahr und damit Teil der
     gelesenen Zeile. Wer später prüfen will, ob beide Häuser dasselbe sagen,
     braucht beide Zahlen — nicht eine und einen Verweis.

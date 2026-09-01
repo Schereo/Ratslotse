@@ -1,7 +1,7 @@
 """Prüfungsfeststellungen aus den Schlussberichten des Rechnungsprüfungsamts.
 
 Das Fixture ist ein verkürzter, aber **wörtlicher** Ausschnitt aus dem echten
-pypdf-Extrakt des Schlussberichts zum Jahresabschluss 2023 (``council_anlagen``
+pypdf-Extrakt des Schlussberichts zum Jahresabschluss 2023 (``council_attachments``
 document_id 280863): Titelblock, Inhaltsverzeichnis, Randmarken-Legende und
 zwei Abschnitte mit ihren Feststellungen — inklusive der Eigenheiten, an denen
 ein naiver Parser scheitert:

@@ -938,7 +938,7 @@ def test_haushalt_aenderungslisten_liefert_nur_den_jahrgang(client):
     b = client.get("/api/council/budget/amendment-lists").json()
     assert len(b["cash_budget_rows"]) == 1
     z = b["cash_budget_rows"][0]
-    # Der Investitionscode ist der Anschluss an council_investitionsmassnahmen —
+    # Der Investitionscode ist der Anschluss an council_investment_measures —
     # ohne ihn bliebe die Zeile ein Name ohne Vorhaben.
     assert z["product"] == "I10.180224.525"
     assert (z["planned_draft"], z["outflow"], z["planned_new"]) == (0, 100_000, 100_000)
@@ -3256,14 +3256,14 @@ def test_ask_speichert_nur_mit_einwilligung(client, monkeypatch):
         # Nie gefragt (NULL) → kein Save, obwohl der Client das Feld kennt.
         done = frag({"question": "Was ist mit Radwegen?", "conversation_id": None})
         assert done["conversation_id"] is None
-        assert store._conn.execute("SELECT COUNT(*) FROM qa_gespraeche").fetchone()[0] == 0
+        assert store._conn.execute("SELECT COUNT(*) FROM qa_conversations").fetchone()[0] == 0
 
         uid = store._conn.execute("SELECT id FROM web_users").fetchone()[0]
         store.set_qa_speichern(uid, True)
         # Alte App: Feld fehlt im Body → weiterhin kein Save (Befund B5).
         done = frag({"question": "Was ist mit Radwegen?"})
         assert done.get("conversation_id") is None
-        assert store._conn.execute("SELECT COUNT(*) FROM qa_gespraeche").fetchone()[0] == 0
+        assert store._conn.execute("SELECT COUNT(*) FROM qa_conversations").fetchone()[0] == 0
 
         # Einwilligung + Feld → Gespräch samt Turn, id im done-Event.
         done = frag({"question": "Was ist mit Radwegen?", "conversation_id": None})
@@ -4534,11 +4534,11 @@ def _seed_vorlage(kvonr: int = 4711, template_number: str = "26/0396",
     council = CouncilStore(COUNCIL_DB)
     with council._conn:
         council._conn.execute(
-            "INSERT OR REPLACE INTO council_vorlagen(kvonr, template_number, title, fetched_at) "
+            "INSERT OR REPLACE INTO council_templates(kvonr, template_number, title, fetched_at) "
             "VALUES (?,?,?,'2026-01-01')", (kvonr, template_number, "Stadionneubau Maastrichter Straße"))
         for date, committee, result in (stations or []):
             council._conn.execute(
-                "INSERT INTO council_beratungen(kvonr, date, committee, result, fetched_at) "
+                "INSERT INTO council_deliberations(kvonr, date, committee, result, fetched_at) "
                 "VALUES (?,?,?,?,'2026-01-01')", (kvonr, date, committee, result))
     council.close()
 

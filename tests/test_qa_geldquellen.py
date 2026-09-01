@@ -575,12 +575,12 @@ def _befuellter_store(tmp_path) -> CouncilStore:
     store = CouncilStore(tmp_path / "c.sqlite")
     with store._conn:
         store._conn.execute(
-            "INSERT INTO council_herkunft (id, key, kind, label, url, citation, "
+            "INSERT INTO council_provenance (id, key, kind, label, url, citation, "
             " page, probe, as_of, fetched_at) VALUES "
             "(1, 'k1', 'ris', 'Jahresabschluss 2024', 'https://example.org/ja2024', "
             " 'Abschnitt 6.2 Ergebnisrechnung', 41, 'sub_budget_sum_check', '31.12.2024', '2026-08-16')")
         store._conn.execute(
-            "INSERT INTO council_herkunft (id, key, kind, label, url, citation, "
+            "INSERT INTO council_provenance (id, key, kind, label, url, citation, "
             " probe, as_of, fetched_at) VALUES "
             "(2, 'k2', 'ris', 'Schlussbericht RPA 2023', 'https://example.org/rpa', "
             " 'Randmarken des Berichts', 'randmarkenprobe', '2023', '2026-08-16')")
@@ -590,63 +590,63 @@ def _befuellter_store(tmp_path) -> CouncilStore:
                 (5, "Soziales und Jugend", 90_000_000.0, 93_100_000.0,
                  240_000_000.0, 251_900_000.0)]:
             store._conn.execute(
-                "INSERT INTO council_ergebnisrechnung (year, sub_budget_no, sub_budget_name, nr, label, "
+                "INSERT INTO council_income_statement (year, sub_budget_no, sub_budget_name, nr, label, "
                 " budgeted, plan, plan_kind, result, deviation, is_total, fetched_at, herkunft_id) "
                 "VALUES (2024,?,?,12,'Summe ordentliche Erträge',?,?,'ansatz',?,0,1,'',1)",
                 (sub_budget, name, e_plan, e_plan, e_ist))
             store._conn.execute(
-                "INSERT INTO council_ergebnisrechnung (year, sub_budget_no, sub_budget_name, nr, label, "
+                "INSERT INTO council_income_statement (year, sub_budget_no, sub_budget_name, nr, label, "
                 " budgeted, plan, plan_kind, result, deviation, is_total, fetched_at, herkunft_id) "
                 "VALUES (2024,?,?,20,'Summe ordentliche Aufwendungen',?,?,'ansatz',?,0,1,'',1)",
                 (sub_budget, name, a_plan, a_plan, a_ist))
         store._conn.execute(
-            "INSERT INTO council_abweichungsgruende (year, nr, label, delta_meur, "
+            "INSERT INTO council_variance_reasons (year, nr, label, delta_meur, "
             " percent, text, fetched_at, herkunft_id) VALUES "
             "(2024, 1, 'Steuern und ähnliche Abgaben', 21.4, 5.2, "
             " 'Die Mehrerträge beruhen im Wesentlichen auf Nachveranlagungen bei der "
             "Gewerbesteuer aus Vorjahren.', '', 1)")
         store._conn.execute(
-            "INSERT INTO council_pruefberichte (year, seq, mark, mark_name, text_number, "
+            "INSERT INTO council_audit_reports (year, seq, mark, mark_name, text_number, "
             " section, chain, page, text, fetched_at, herkunft_id) VALUES "
             "(2023, 1, 'WB', 'Wiederholte Beanstandung', '4.5.2', 'Vergabewesen', 'verg', 87, "
             " 'Die Dokumentation der Vergabeentscheidungen ist erneut unvollständig.', '', 2)")
         store._conn.execute(
-            "INSERT INTO council_pruefberichte (year, seq, mark, mark_name, text_number, "
+            "INSERT INTO council_audit_reports (year, seq, mark, mark_name, text_number, "
             " section, page, text, fetched_at, herkunft_id) VALUES "
             "(2023, 2, 'H', 'Hinweis', '5.1', 'Anlagenbuchhaltung', 91, "
             " 'Es wird angeregt, die Nutzungsdauern zu überprüfen.', '', 2)")
         store._conn.execute(
-            "INSERT INTO council_produkte (year, product_no, product_name, office, revenues, "
+            "INSERT INTO council_products (year, product_no, product_name, office, revenues, "
             " expenses, result, short_description, legal_basis, controllability, "
             " fetched_at, herkunft_id) VALUES "
             "(2023, 'P12.126001', 'Brandschutz und Feuerwehr', 'Amt für Brandschutz', "
             " 1200000, 23400000, -22200000, 'Abwehrender Brandschutz und Hilfeleistung.', "
             " '§ 2 NBrandSchG', 'niedrig', '', 1)")
         store._conn.execute(
-            "INSERT INTO council_produkte (year, product_no, product_name, office, revenues, "
+            "INSERT INTO council_products (year, product_no, product_name, office, revenues, "
             " expenses, result, legal_basis, controllability, fetched_at, "
             " herkunft_id) VALUES "
             "(2023, 'P26.262001', 'Theater und Konzerte', 'Kulturamt', 300000, 9800000, "
             " -9500000, 'Freiwillige Leistung der Stadt', 'hoch', '', 1)")
         store._conn.executemany(
-            "INSERT INTO council_konzern_posten (year, nr, label, role, amount, "
+            "INSERT INTO council_group_items (year, nr, label, role, amount, "
             " is_total, fetched_at, herkunft_id) VALUES (2024,?,?,?,?,1,'',1)",
             [(13, 'Summe ordentliche Erträge', 'revenues_total', 1_238_000_000.0),
              (21, 'Summe ordentliche Aufwendungen', 'expenses_total', 1_242_000_000.0)])
         store._conn.executemany(
-            "INSERT INTO council_konzern_traeger (year, kind, entity_key, entity, "
+            "INSERT INTO council_group_entities (year, kind, entity_key, entity, "
             " amount_keur, fetched_at, herkunft_id) VALUES (2024,'expenses',?,?,?,'',1)",
             [("stadt", "Stadt Oldenburg (Kernverwaltung)", 812_300.0),
              ("klinikum", "Klinikum Oldenburg AöR", 390_000.0),
              ("konsolidierung", "Konsolidierung", -120_000.0)])
         store._conn.executemany(
-            "INSERT INTO council_staedtevergleich (series, year, key, city, indicator, "
+            "INSERT INTO council_city_comparison (series, year, key, city, indicator, "
             " value, unit, herkunft_id, fetched_at) VALUES "
             "('tax_capacity',2024,?,?,'Steuerkraftmesszahl je Einwohner',?,'EUR',1,'')",
             [("03403", "Oldenburg", 1834.0), ("03404", "Osnabrück", 1712.0),
              ("03401", "Delmenhorst", 1104.0)])
         store._conn.executemany(
-            "INSERT INTO council_ergebnishaushalt (plan_budget_year, year, kind, nr, label, "
+            "INSERT INTO council_income_budget (plan_budget_year, year, kind, nr, label, "
             " amount, is_total, fetched_at, herkunft_id) VALUES (2026,2026,'budget',?,?,?,?,'',1)",
             [(1, "Steuern und ähnliche Abgaben", 430_000_000.0, 0),
              (12, "Summe ordentliche Erträge", 812_000_000.0, 1),
@@ -657,19 +657,19 @@ def _befuellter_store(tmp_path) -> CouncilStore:
         # SQLite-Versionen schlucken sie klaglos, die der CI nicht — lokal
         # grün, in der CI 17 Fehler (16.08.).
         store._conn.execute(
-            "INSERT INTO council_ergebnishaushalt (plan_budget_year, year, kind, nr, label, "
+            "INSERT INTO council_income_budget (plan_budget_year, year, kind, nr, label, "
             " amount, is_total, fetched_at, herkunft_id) "
             "VALUES (2026, 2029, 'financial_plan', 12, 'Summe ordentliche Erträge', "
             " ?, 1, '', 1)", (999_000_000.0,))
         store._conn.execute(
-            "INSERT INTO council_haushalt (year, area, revenues, expenses, result, "
+            "INSERT INTO council_budget (year, area, revenues, expenses, result, "
             " is_total, fetched_at) VALUES "
             "(2026, 'Brandschutz und Rettungsdienst', 2000000, 31000000, -29000000, 0, '')")
         # --- Die vier Schichten der 17.08.-Runde ---------------------------
         # Schulden: Reihenanfang, Höchststand, Vorjahr, jüngstes Jahr. Vier
         # Zeilen reichen — der Baustein zeigt genau diese vier Bezugspunkte.
         store._conn.executemany(
-            "INSERT INTO council_schulden (year, credit_market, special_funds, "
+            "INSERT INTO council_debt (year, credit_market, special_funds, "
             " public_authorities, municipal_enterprises, total, per_capita, "
             " revised, herkunft_id, fetched_at) VALUES (?,?,?,?,?,?,?,0,3,'')",
             [(1995, None, None, None, None, 198_000_000.0, 1_420.0),
@@ -681,7 +681,7 @@ def _befuellter_store(tmp_path) -> CouncilStore:
         # Investitionen: Summenzeile, drei Teilhaushalte und die Bezugsgröße
         # `finanzhaushalt` — die darf NICHT im Kontext landen (ungeprüft).
         store._conn.executemany(
-            "INSERT INTO council_investitionen (year, level, sub_budget_no, label, "
+            "INSERT INTO council_investments (year, level, sub_budget_no, label, "
             " inflows, outflows, herkunft_id, fetched_at) VALUES (2026,?,?,?,?,?,4,'')",
             [("investments", 0, "Summe Investitionstätigkeit", 22_300_000.0, 80_800_000.0),
              ("sub_budget", 4, "Schule und Sport", 6_100_000.0, 24_600_000.0),
@@ -692,7 +692,7 @@ def _befuellter_store(tmp_path) -> CouncilStore:
         # Stellenplan: beide Teile, nur die Gesamtzeilen. besetzt +
         # nicht_besetzt = stellen_vorjahr (die Besetzungsprobe des Plans).
         store._conn.executemany(
-            "INSERT INTO council_stellenplan (budget_year, part, row_no, kind, label, "
+            "INSERT INTO council_staff_plan (budget_year, part, row_no, kind, label, "
             " positions_planned, positions_prior_year, filled, vacant, as_of_date, "
             " herkunft_id, fetched_at) VALUES (2026,?,0,'total',?,?,?,?,?,'30.06.2025',?,'')",
             [("A", "Gesamt Teil A", 815.50, 802.00, 761.25, 40.75, 5),
@@ -729,7 +729,7 @@ def _befuellter_store(tmp_path) -> CouncilStore:
             "INSERT INTO council_decisions (ksinr, position, kind, item_number, title, "
             " outcome, vote) VALUES (?,?,?,?,?,?,?)", eintraege)
         store._conn.executemany(
-            "INSERT INTO council_herkunft (id, key, kind, label, url, citation, "
+            "INSERT INTO council_provenance (id, key, kind, label, url, citation, "
             " probe, as_of, fetched_at) VALUES (?,?,'ris',?,?,?,?,?,'2026-08-17')",
             [(3, "k3", "Statistisches Jahrbuch, Tabelle 1108",
               "https://example.org/1108", "Tabelle 1108", "prokopfprobe", "2025"),
@@ -743,7 +743,7 @@ def _befuellter_store(tmp_path) -> CouncilStore:
               "https://example.org/fees", "Anlagen 1 und 2",
               "gebuehren_kaskade,gebuehren_division", "2026")])
         store._conn.executemany(
-            "INSERT INTO council_gebuehren (year, area, area_name, "
+            "INSERT INTO council_fees (year, area, area_name, "
             "cost_calculation, deductions, costs_to_cover, reference_quantity, "
             "reference_unit, fee, fee_proposed, template_number, probes, "
             "herkunft_id, fetched_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,7,'')",
@@ -947,7 +947,7 @@ def test_stellenplan_nennt_den_fehlenden_teil(tmp_path):
     eine Antwort, die dann „815 Stellen" sagt, unterschlägt 1.700."""
     store = _befuellter_store(tmp_path)
     with store._conn:
-        store._conn.execute("DELETE FROM council_stellenplan WHERE part = 'B'")
+        store._conn.execute("DELETE FROM council_staff_plan WHERE part = 'B'")
     text = qa._stellenplan_block(store.stellenplan_kontext())
     assert "NICHT im Bestand: der Teil für Arbeitnehmerinnen und Arbeitnehmer" in text
     assert "nicht der ganze Stellenplan" in text
@@ -1321,12 +1321,12 @@ def test_schuldenblock_nennt_alle_drei_abgrenzungen(tmp_path):
 
     store = CouncilStore(str(tmp_path / "c.sqlite"))
     c = store._conn                                       # noqa: SLF001
-    c.execute("INSERT INTO council_schulden (year, total, per_capita, fetched_at) "
+    c.execute("INSERT INTO council_debt (year, total, per_capita, fetched_at) "
               "VALUES (2024, 294851000, 1673, '2026-08-18')")
-    c.execute("INSERT INTO council_bilanz (year, role, page, level, label, value, "
+    c.execute("INSERT INTO council_balance_sheet (year, role, page, level, label, value, "
               " fetched_at) VALUES (2024, 'financial_liabilities', 'passiva', 2, 'Geldschulden', "
               " 43690972, '2026-08-18')")
-    c.execute("INSERT INTO council_integrierte_schulden (year, ars, total, probes, "
+    c.execute("INSERT INTO council_integrated_debt (year, ars, total, probes, "
               " fetched_at) VALUES (2024, '03403000', 740300000, '', '2026-08-18')")
     c.execute("INSERT INTO council_buergschaften (year, balance, exact, out_next_year, "
               " source, probes, fetched_at) "
@@ -1391,10 +1391,10 @@ def test_geld_grafik_liefert_rohreihen_aus_dem_store(tmp_path):
     store = CouncilStore(str(tmp_path / "c.sqlite"))
     c = store._conn                                       # noqa: SLF001
     for year, amount in ((1995, 190_000_000), (2024, 294_851_000), (2025, 336_994_000)):
-        c.execute("INSERT INTO council_schulden (year, total, fetched_at) "
+        c.execute("INSERT INTO council_debt (year, total, fetched_at) "
                   "VALUES (?, ?, '2026-08-18')", (year, amount))
     for year, amount in ((1998, 80_000_000), (2025, 222_100_000)):
-        c.execute("INSERT INTO council_steuern (year, kind, amount, fetched_at) "
+        c.execute("INSERT INTO council_taxes (year, kind, amount, fetched_at) "
                   "VALUES (?, 'Gewerbesteuer (-umlage)', ?, '2026-08-18')",
                   (year, amount))
     c.commit()

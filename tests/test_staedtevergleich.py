@@ -528,7 +528,7 @@ def test_speichern_und_lesen(tmp_path, kfa2026):
         gelesen = store.get_staedtevergleich("tax_capacity")
         assert len(gelesen) == 16
         assert all(z["herkunft_id"] for z in gelesen)
-        assert store.herkunft_luecken().get("council_staedtevergleich") is None
+        assert store.herkunft_luecken().get("council_city_comparison") is None
         # Die Erklärsätze der Probe hängen an der Herkunft und sind für die
         # Leserin geschrieben.
         h = store.get_herkunft([gelesen[0]["herkunft_id"]])[0]

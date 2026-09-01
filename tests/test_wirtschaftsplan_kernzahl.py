@@ -186,7 +186,7 @@ def test_zeile_ohne_ertraege_laesst_sich_speichern(tmp_path):
         assert len(zeilen) == 1
         assert zeilen[0]["revenues"] is None
         assert zeilen[0]["result"] == -10_128_335.0
-        assert "council_wirtschaftsplaene" not in store.herkunft_luecken()
+        assert "council_business_plans" not in store.herkunft_luecken()
     finally:
         store.close()
 

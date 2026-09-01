@@ -235,7 +235,7 @@ def test_speichern_und_wiederlesen(tmp_path):
         assert z["liquidity_loans"] == 100_000_000.0
         assert z["investment_loans"] == 0.0
         assert store.haushaltssatzung_jahre() == [2024]
-        assert "council_haushaltssatzung" not in store.herkunft_luecken()
+        assert "council_budget_bylaw" not in store.herkunft_luecken()
     finally:
         store.close()
 

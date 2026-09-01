@@ -2,7 +2,7 @@
 
 Das Rechnungsprüfungsamt (RPA) prüft jeden Jahresabschluss der Stadt und legt
 dem Rat einen Schlussbericht vor. Der Bericht hängt als PDF-Anlage an einer
-Ratsvorlage (``council_anlagen``) und wird dort nie wieder gelesen — dabei
+Ratsvorlage (``council_attachments``) und wird dort nie wieder gelesen — dabei
 steht in ihm die einzige regelmäßige, förmliche Kontrolle der Verwaltung
 durch eine eigene Stelle.
 

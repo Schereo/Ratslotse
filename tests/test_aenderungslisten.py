@@ -22,7 +22,7 @@ def linien(waagerecht, senkrecht):
 
 # ------------------------------------------------------------ Label-Sortierung
 
-#: Echte Labels aus council_anlagen — jedes Muster, das der Bestand führt.
+#: Echte Labels aus council_attachments — jedes Muster, das der Bestand führt.
 LABELS = [
     ("2026 EHH Änderungsliste Verwaltung I", "administration_1"),
     ("2026 EHH Änderungsliste Verwaltung III", "administration_3"),
