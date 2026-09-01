@@ -10400,7 +10400,7 @@ class CouncilStore:
             return None
         treffer = [e for (v, n), liste in nach_paar.items()
                    if v == vorname and cls._ein_buchstabe_abstand(n, nachname)
-                   for e in liste if e.get("art") == "rat"]
+                   for e in liste if e.get("art") == "council"]
         return treffer[0] if len(treffer) == 1 else None
 
     def personen_lexikon(self) -> list[dict]:
@@ -10448,7 +10448,7 @@ class CouncilStore:
                 "phasen": m["phasen"] if len(m["phasen"]) > 1 else None,
                 "role": ("Beratendes Mitglied"
                           + (f" · {m['organisation']}" if m["organisation"] else "")
-                          if m["art"] == "beratend" else None),
+                          if m["art"] == "advisory" else None),
                 "aktiv": bool(m["last"] and m["last"] >= as_of_date),
                 "von": (m["first"] or "")[:4] or None,
                 "bis": (m["last"] or "")[:4] or None,
@@ -10483,7 +10483,7 @@ class CouncilStore:
                 continue
             out.append({
                 "slug": sl, "name": anzeige, "vorname": vor, "nachname": nach,
-                "art": "stadt", "party": None, "organisation": None, "phasen": None,
+                "art": "city", "party": None, "organisation": None, "phasen": None,
                 "role": e["roles"].most_common(1)[0][0] if e["roles"] else None,
                 "aktiv": bool(e["last"] and e["last"] >= as_of_date),
                 "von": (e["first"] or "")[:4] or None,
@@ -10613,7 +10613,7 @@ class CouncilStore:
                 continue
             out.append({
                 "slug": sl, "name": anzeige, "vorname": vor, "nachname": nach,
-                "art": "beteiligung", "party": None, "organisation": None, "phasen": None,
+                "art": "participation", "party": None, "organisation": None, "phasen": None,
                 "role": e["roles"].most_common(1)[0][0] if e["roles"] else None,
                 "aktiv": e["last"] == jungster,
                 "von": str(e["first"]), "bis": str(e["last"]),
@@ -11054,7 +11054,7 @@ class CouncilStore:
                 # als Mitglied geführt wurde, hat eines — die Ausschüsse führen
                 # daneben Verbände, Beiräte und Fachleute (Tims Skiba-Befund
                 # 21.08.2026). Das RIS zählt als zweite Quelle für Nachrücker.
-                "art": "rat" if (e["plenum"] or sl in ris) else "beratend",
+                "art": "council" if (e["plenum"] or sl in ris) else "advisory",
                 "organisation": e["org_at"][1] if e["org_at"] else None,
                 "phasen": [{"party": lab, "von": von[:4], "bis": bis[:4]}
                            for lab, (von, bis) in sorted(e["phasen"].items(),
@@ -11063,7 +11063,7 @@ class CouncilStore:
                 "first": e["first"], "last": e["last"]}
                for sl, e in g.items()]
         for m in out:
-            if m["art"] == "rat":
+            if m["art"] == "council":
                 m["organisation"] = None   # ein Mandat entsendet niemand
             m["filter_parteien"] = self._filter_parteien(m["party"])
         out.sort(key=lambda m: -m["n"])
@@ -11177,9 +11177,9 @@ class CouncilStore:
                 WHERE a.name IN ({ph}) AND a.role IN ('member','chair')
                   AND cs.committee = ? LIMIT 1""", matched + [self.PLENUM]).fetchone()
         # `slug` ist hier schon die kanonische Namensform (s. Kopf der Methode).
-        art = "rat" if (im_plenum or slug in self._ris_ratsmitglieder()) else "beratend"
+        art = "council" if (im_plenum or slug in self._ris_ratsmitglieder()) else "advisory"
         organisation = None
-        if art == "beratend":
+        if art == "advisory":
             timeline = []
             # Jüngstes Label, das eine Organisation nennt (kein Rollenwort).
             for r in self._conn.execute(
@@ -11259,12 +11259,12 @@ class CouncilStore:
         Gruppierung für alle Verwaltungsleute an einer Stelle, nicht zwei
         Fassungen, die auseinanderlaufen können."""
         eintrag = next((p for p in self.personen_lexikon()
-                        if p["slug"] == slug and p["art"] == "stadt" and p["role"]), None)
+                        if p["slug"] == slug and p["art"] == "city" and p["role"]), None)
         if not eintrag:
             return None
         wb = self.wortbeitraege_person(eintrag["name"], limit=10)
         return {
-            "typ": "verwaltung", "name": eintrag["name"], "slug": slug,
+            "typ": "administration", "name": eintrag["name"], "slug": slug,
             "role": eintrag["role"], "aktiv": eintrag["aktiv"],
             "von": eintrag["von"], "bis": eintrag["bis"],
             "wortbeitraege": wb["items"],

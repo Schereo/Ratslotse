@@ -240,14 +240,14 @@ def test_personen_lexikon_rat_verwaltung_und_zeitlichkeit(tmp_path):
         lex = {p["slug"]: p for p in store.personen_lexikon()}
 
         lk = lex["jens-luekermann"]
-        assert lk["art"] == "rat" and lk["aktiv"] is True
+        assert lk["art"] == "council" and lk["aktiv"] is True
         assert lk["nachname"] == "luekermann" and lk["vorname"] == "jens"
 
         adler = lex["hans-henning-adler"]
         assert adler["aktiv"] is False  # zuletzt vor ~2,5 Jahren gesehen
 
         kro = lex["juergen-krogmann"]
-        assert kro["art"] == "stadt" and kro["role"] == "Oberbürgermeister"
+        assert kro["art"] == "city" and kro["role"] == "Oberbürgermeister"
 
         # Zeit-Zusätze („bis TOP 8.2") und Vertretungs-Notizen sind kein Amt.
         assert lex["dagmar-sachse"]["role"] is None
@@ -292,7 +292,7 @@ def test_personen_lexikon_beteiligung_mit_funktion(tmp_path):
         lex = {p["slug"]: p for p in store.personen_lexikon()}
 
         harms = lex["karin-harms"]
-        assert harms["art"] == "beteiligung"
+        assert harms["art"] == "participation"
         assert harms["role"] == "Landrätin"      # die Funktion aus dem Bericht
         assert harms["party"] is None            # der Bericht nennt keine
         # Zeitraum = Berichtsjahrgänge, nicht Amtszeit.
@@ -392,11 +392,11 @@ def test_personen_lexikon_beteiligung_ueberschreibt_kein_ratsmandat(tmp_path):
 
         # Das Ratsmandat bleibt — und es entsteht KEIN zweiter Eintrag unter
         # der Schreibweise des Berichts.
-        assert arten["ruth-regina-druegemoeller"] == "rat"
+        assert arten["ruth-regina-druegemoeller"] == "council"
         assert "ruth-druegemoeller" not in arten
         # Dasselbe für die Verwaltung: Amt aus den Protokollen, nicht aus dem
         # Beteiligungsbericht.
-        assert arten["juergen-krogmann"] == "stadt"
+        assert arten["juergen-krogmann"] == "city"
         krogmann = next(p for p in lex if p["slug"] == "juergen-krogmann")
         assert krogmann["role"] == "Oberbürgermeister"
     finally:
@@ -434,17 +434,17 @@ def test_list_members_trennt_mandat_von_beratung(tmp_path):
     store = _mandats_store(tmp_path)
     try:
         m = {x["slug"]: x for x in store.list_members()}
-        assert m["paul-behrens"]["art"] == "rat" and m["paul-behrens"]["party"] == "SPD"
+        assert m["paul-behrens"]["art"] == "council" and m["paul-behrens"]["party"] == "SPD"
         assert m["paul-behrens"]["organisation"] is None
         skiba = m["ben-carlsson-skiba"]
-        assert skiba["art"] == "beratend" and skiba["party"] is None
+        assert skiba["art"] == "advisory" and skiba["party"] is None
         assert skiba["organisation"] == "Fridays for Future Oldenburg"
         assert m["sabine-goerg"]["organisation"] == "Behindertenbeirat"
         # Reine Rollenwörter sind keine Organisation.
-        assert m["joerg-kowollik"]["art"] == "beratend"
+        assert m["joerg-kowollik"]["art"] == "advisory"
         assert m["joerg-kowollik"]["organisation"] is None
         # Ratsgruppe im Plenum: Mandat mit Gruppen-Label statt „parteilos".
-        assert m["franz-norrenbrock"]["art"] == "rat"
+        assert m["franz-norrenbrock"]["art"] == "council"
         assert m["franz-norrenbrock"]["party"] == "WFO-LKR"
     finally:
         store.close()
@@ -472,7 +472,7 @@ def test_personen_lexikon_beteiligung_nur_echte_personennamen(tmp_path):
         lex = {p["slug"]: p for p in store.personen_lexikon()}
 
         # Der Mensch mit vollem Namen steht drin …
-        assert lex["ralph-bruder"]["art"] == "beteiligung"
+        assert lex["ralph-bruder"]["art"] == "participation"
         assert lex["manfred-weisensee"]["role"] == "Vertreter Hochschule"
         # … die kahlen Nachnamen nicht (von einem Namensvetter nicht zu
         # unterscheiden) …
@@ -491,16 +491,16 @@ def test_beratendes_mitglied_ohne_fraktions_zeitreihe(tmp_path):
     store = _mandats_store(tmp_path)
     try:
         skiba = store.member_detail("ben-carlsson-skiba")
-        assert skiba["art"] == "beratend"
+        assert skiba["art"] == "advisory"
         assert skiba["party"] is None and skiba["faction_timeline"] == []
         assert skiba["organisation"] == "Fridays for Future Oldenburg"
         behrens = store.member_detail("paul-behrens")
-        assert behrens["art"] == "rat" and behrens["party"] == "SPD"
+        assert behrens["art"] == "council" and behrens["party"] == "SPD"
         assert behrens["faction_timeline"]
         lex = {p["slug"]: p for p in store.personen_lexikon()}
-        assert lex["ben-carlsson-skiba"]["art"] == "beratend"
+        assert lex["ben-carlsson-skiba"]["art"] == "advisory"
         assert lex["ben-carlsson-skiba"]["role"] == "Beratendes Mitglied · Fridays for Future Oldenburg"
-        assert lex["paul-behrens"]["art"] == "rat"
+        assert lex["paul-behrens"]["art"] == "council"
     finally:
         store.close()
 
@@ -546,7 +546,7 @@ def test_ris_stammdaten_zaehlen_als_mandat(tmp_path):
                 "INSERT INTO council_memberships (kpenr, kgrnr, committee, role, valid_from, valid_until, fetched_at) "
                 "VALUES (99, 1, 'Rat', 'Ratsmitglied', '2026-01-01', NULL, datetime('now'))")
         m = {x["slug"]: x for x in store.list_members()}
-        assert m["sabine-goerg"]["art"] == "rat"
+        assert m["sabine-goerg"]["art"] == "council"
     finally:
         store.close()
 
@@ -560,19 +560,19 @@ def test_tippfehler_heilung_regeln():
     lex = {
         ("claudia", "oeljeschlaeger"): [
             {"slug": "claudia-oeljeschlaeger", "name": "Claudia Oeljeschläger",
-             "art": "rat", "party": "SPD"}],
+             "art": "council", "party": "SPD"}],
         ("jens", "luekermann"): [
             {"slug": "jens-luekermann", "name": "Jens Lükermann",
-             "art": "rat", "party": "Volt"}],
+             "art": "council", "party": "Volt"}],
         ("petra", "schmidt"): [
             {"slug": "petra-schmidt", "name": "Petra Schmidt",
-             "art": "rat", "party": "CDU"}],
+             "art": "council", "party": "CDU"}],
         ("petra", "schmitz"): [
             {"slug": "petra-schmitz", "name": "Petra Schmitz",
-             "art": "rat", "party": "SPD"}],
+             "art": "council", "party": "SPD"}],
         ("heiko", "meier"): [
             {"slug": "heiko-meier", "name": "Heiko Meier",
-             "art": "stadt", "party": None}],
+             "art": "city", "party": None}],
     }
     heilung = CouncilStore.tippfehler_ratsmitglied
 
@@ -626,7 +626,7 @@ def test_verwaltung_detail_nur_mit_erkanntem_amt(tmp_path):
                 [(1, "Krogmann", "Wird geprüft.")])
 
         kro = store.verwaltung_detail("juergen-krogmann")
-        assert kro["typ"] == "verwaltung" and kro["role"] == "Oberbürgermeister"
+        assert kro["typ"] == "administration" and kro["role"] == "Oberbürgermeister"
         assert kro["aktiv"] is True
         assert kro["wortbeitraege_gesamt"] == 1
 
@@ -777,7 +777,7 @@ def test_personen_lexikon_blocker_fuer_gaeste(tmp_path):
         oltmanns = [p for p in lex if p["nachname"] == "oltmanns"]
         arten = sorted(p["art"] for p in oltmanns)
         # Rats-Eintrag + mindestens ein Blocker → kahler Nachname ist mehrdeutig.
-        assert "rat" in arten and "blocker" in arten and len(oltmanns) >= 2
+        assert "council" in arten and "blocker" in arten and len(oltmanns) >= 2
         blocker = [p for p in oltmanns if p["art"] == "blocker"]
         assert all(p["name"] is None for p in blocker)
     finally:

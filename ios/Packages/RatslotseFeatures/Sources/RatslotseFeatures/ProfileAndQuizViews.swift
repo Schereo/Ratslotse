@@ -197,14 +197,14 @@ struct PublicProfileView: View {
                 person = PublicPersonProfile(
                     name: "Anne Beispiel",
                     slug: "anne-beispiel",
-                    type: "rat",
+                    type: "council",
                     party: "SPD",
                     currentAffiliation: .init(
                         label: "SPD-Fraktion",
                         kind: "fraktion",
                         parties: ["SPD"]
                     ),
-                    art: "rat",
+                    art: "council",
                     organisation: nil,
                     nSessions: 18,
                     activeFrom: "2021-11-01",
@@ -891,7 +891,7 @@ struct PublicPersonProfile: Codable, Sendable {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         name = try values.decode(String.self, forKey: .name)
         slug = try values.decodeIfPresent(String.self, forKey: .slug) ?? ""
-        type = try values.decodeIfPresent(String.self, forKey: .type) ?? "rat"
+        type = try values.decodeIfPresent(String.self, forKey: .type) ?? "council"
         party = try values.decodeIfPresent(String.self, forKey: .party)
         currentAffiliation = try values.decodeIfPresent(Affiliation.self, forKey: .currentAffiliation)
         art = try values.decodeIfPresent(String.self, forKey: .art)
@@ -913,17 +913,17 @@ struct PublicPersonProfile: Codable, Sendable {
     }
 
     var roleLabel: String {
-        if type == "verwaltung" { return administrationRole ?? "Stadtverwaltung" }
+        if type == "administration" { return administrationRole ?? "Stadtverwaltung" }
         return switch art {
-        case "rat": "Ratsmitglied"
-        case "beratend": "Beratendes Mitglied"
-        case "verwaltung": "Stadtverwaltung"
+        case "council": "Ratsmitglied"
+        case "advisory": "Beratendes Mitglied"
+        case "administration": "Stadtverwaltung"
         default: "Person im Oldenburger Rat"
         }
     }
 
     var affiliation: String? {
-        if type == "verwaltung" { return "Stadt Oldenburg" }
+        if type == "administration" { return "Stadt Oldenburg" }
         return [currentAffiliation?.label, party, organisation]
             .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
             .first { !$0.isEmpty }
@@ -1026,7 +1026,7 @@ private struct PersonProfileOverview: View {
                     .foregroundStyle(RatsColor.secondary)
             }
 
-            if person.type != "verwaltung" {
+            if person.type != "administration" {
                 HStack(spacing: 0) {
                     metric(value: person.nSessions, label: "Sitzungen")
                     metricDivider
@@ -1229,7 +1229,7 @@ private struct PersonProfileOverview: View {
     }
 
     private var period: String? {
-        if person.type == "verwaltung" {
+        if person.type == "administration" {
             switch (person.mentionedFrom, person.mentionedUntil, person.isActive) {
             case let (start?, _, true): return "In Protokollen erwähnt seit \(start)"
             case let (start?, end?, _): return "In Protokollen erwähnt \(start)–\(end)"
@@ -1273,7 +1273,7 @@ private struct PersonProfileOverview: View {
     }
 
     private var methodologyText: String {
-        if person.type == "verwaltung" {
+        if person.type == "administration" {
             return "Amt und Zeitraum stammen aus den Anwesenheitslisten der Protokolle. Der Zeitraum beschreibt Erwähnungen – keine amtliche Amtszeit."
         }
         return "Präsenz stammt aus den Anwesenheitslisten der Protokolle ab 2018. Offizielle Gremien-Zeiträume reichen – soweit verfügbar – bis 2001 zurück. Präsenz zeigt Aktivität, nicht das Stimmverhalten."

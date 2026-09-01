@@ -3008,9 +3008,9 @@ private struct EvidenceInteractiveChart: View {
 func questionPersonBadgeLabel(_ person: QuestionPerson) -> String {
     if !person.aktiv { return "ehem." }
     switch person.art {
-    case "stadt": return "Stadt"
-    case "beteiligung": return "Aufsicht"
-    case "beratend": return "beratend"
+    case "city": return "Stadt"
+    case "participation": return "Aufsicht"
+    case "advisory": return "beratend"
     default: return questionPartyAbbreviation(person.party)
     }
 }
@@ -3128,8 +3128,8 @@ private func questionIsMatchingPartyParenthesis(_ content: String, _ party: Stri
 private func questionPersonBadgeColor(_ person: QuestionPerson) -> Color {
     if !person.aktiv { return RatsColor.muted }
     switch person.art {
-    case "stadt": return RatsColor.primary
-    case "beteiligung", "beratend": return RatsColor.secondary
+    case "city": return RatsColor.primary
+    case "participation", "advisory": return RatsColor.secondary
     default: break
     }
     let party = person.party?.lowercased() ?? ""

@@ -142,7 +142,7 @@ function PersonInner() {
 
   if (loading) return <DetailSkeleton />;
   if (!data) notFound();
-  if (data.typ === "verwaltung") return <VerwaltungProfil data={data} />;
+  if (data.typ === "administration") return <VerwaltungProfil data={data} />;
   return <RatsmitgliedProfil data={data} />;
 }
 
@@ -187,7 +187,7 @@ function RatsmitgliedProfil({ data }: { data: MemberDetail }) {
                 entsendende Organisation — „parteilos" wäre hier die falsche
                 Kategorie, nicht bloß eine unschöne Vokabel (Tims Befund
                 21.08.2026). */}
-            {data.art === "beratend"
+            {data.art === "advisory"
               ? (
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/60 px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
                   <Users className="h-3 w-3" aria-hidden />

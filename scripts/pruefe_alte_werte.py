@@ -67,6 +67,7 @@ ERLAUBT = {
     "rat": "Rollen der Haushaltsdebatte und `art` der Personen-Bausteine",
     "verwaltung": "dieselben Rollen; dazu `typ` des Personen-Profils",
     "beratend": "`art` der Personen-Bausteine",
+    "beteiligung": "zugleich FELDname der Beschluss-Antwort (`beteiligung`)",
     "leitung": "Rolle der Haushaltsdebatte",
     "thema": "Pfad-Teil der Link-Vorschau (/preview/thema/…) und `kind` der Nachbarn",
     "stadt": "`entity_key` des Konzerns und `art` der Personen-Bausteine",
@@ -136,6 +137,9 @@ ERLAUBT_ZEILE = {
                         r'vorschauMetadata|/preview|kind: "thema"'),
     "verwaltung": re.compile(r'\btyp\b|type ==|StreitRolle|\bart\b'),
     "beratend": re.compile(r'\bart\b|^\s*(//|\*)'),
+    # `beteiligung` ist daneben ein FELDname der Beschluss-Antwort — Felder
+    # sind ein eigener Schnitt, die Werte darin sind schon englisch.
+    "beteiligung": re.compile(r'"beteiligung":|= "beteiligung"'),
     "orte": re.compile(r'Tab\b|tab ===|sp\.get|p\.delete|Ortskandidaten'),
     "mittel": re.compile(r'DIFF_LABEL'),
     "schwer": re.compile(r'DIFF_LABEL'),
@@ -167,6 +171,16 @@ ERLAUBT_STELLE = {
     ("RatslotseAppTests.swift", "thema"): "`qtype` der Beleg-Prüfung, im Backend deutsch",
 }
 
+#: Werte, die nur im Code umbenannt wurden — sie stehen nirgends gespeichert,
+#: sondern werden je Anfrage gerechnet. Ohne Migrationspaar wüsste der Prüfer
+#: nichts von ihnen, und genau diese Sorte ist im Frontend am leichtesten zu
+#: vergessen.
+ZUSATZ_PAARE = {
+    # `art` und `typ` der Personen-Bausteine, `role` der Haushaltsdebatte.
+    ("rat", "council"), ("beratend", "advisory"), ("verwaltung", "administration"),
+    ("beteiligung", "participation"), ("leitung", "leadership"),
+}
+
 _PAAR = re.compile(r"""\(\s*["']([a-z][a-z0-9_+]*)["']\s*,\s*["']([a-z][a-z0-9_+]*)["']\s*\)""")
 
 
@@ -179,7 +193,7 @@ def migrationspaare() -> set[tuple[str, str]]:
     # Listen-Konstanten, die mehrere Aufrufe teilen (ORTSARTEN).
     for block in re.finditer(r"^\s+[A-Z_]{4,} = \[\n(.*?)\n\s+\]$", text, re.S | re.M):
         paare.update(_PAAR.findall(block.group(1)))
-    return {(a, b) for a, b in paare if a != b}
+    return {(a, b) for a, b in paare | ZUSATZ_PAARE if a != b}
 
 
 def dateien() -> list[Path]:

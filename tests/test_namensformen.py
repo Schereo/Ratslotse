@@ -151,7 +151,7 @@ def test_lexikon_fuehrt_verwaltung_und_rat_je_einmal(store):
     # Verwaltungszweig (steht in keinem Mitglieder-Verzeichnis).
     assert "jan-freede" not in lex
     assert lex["jan-reinder-freede"]["name"] == "Jan Reinder Freede"
-    assert lex["jan-reinder-freede"]["art"] == "stadt"
+    assert lex["jan-reinder-freede"]["art"] == "city"
     assert (lex["jan-reinder-freede"]["von"], lex["jan-reinder-freede"]["bis"]) == ("2022", "2022")
     # Ratszweig: genau ein Harms mit Vornamen Tim — sonst gäbe der Badge-Matcher
     # bei zwei gleich benannten Kandidaten absichtlich auf.
