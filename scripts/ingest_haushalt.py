@@ -60,7 +60,7 @@ def _ingest_year(store: CouncilStore, year: int, url: str | None, pdf: str | Non
     # `extract_from_pdf` gibt nur zurück, was gegen die Summenzeile aufgeht —
     # die Probe ist also bestanden, sobald wir hier stehen.
     store.save_haushalt(year, rows, herkunft.Herkunft(
-        kind="stadt", probe="summenzeile", url=url or f"file:{pdf}",
+        kind="city", probe="summenzeile", url=url or f"file:{pdf}",
         label=f"Beschlossener Haushaltsplan {year}",
         citation="Übersicht „Ergebnishaushalt“ — Teilhaushalte mit "
                    "ordentlichen Erträgen und Aufwendungen",

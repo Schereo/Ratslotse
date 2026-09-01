@@ -198,7 +198,7 @@ def main() -> int:
             # großen Zahl — zweimal im Abstand von zwei Absätzen gelesen wirkt
             # sie wie zwei verschiedene Angaben.
             anker = dict(
-                art="stadt", url=url or schulden.TABELLE_URL,
+                kind="city", url=url or schulden.TABELLE_URL,
                 label=f"Statistisches Jahrbuch der Stadt Oldenburg, Tabelle 1108 — "
                       f"Stand der Verschuldung {spanne[0]} bis {spanne[1]}",
                 as_of=f"Schuldenstand zum 31.12.{spanne[1]}")
