@@ -248,7 +248,7 @@ CREATE TABLE IF NOT EXISTS council_agenda_classified (
 );
 
 -- „Meine Gespräche" (5a/I-04 + Design 6a): KI-Verläufe am Konto, nur mit
--- ausdrücklicher Einwilligung (web_users.qa_speichern = 1). user_id steht
+-- ausdrücklicher Einwilligung (web_users.saves_conversations = 1). user_id steht
 -- denormalisiert auch an den Turns, damit die Konto-Löschung über
 -- USER_OWNED_TABLES beide Tabellen ohne Waisen abräumt.
 CREATE TABLE IF NOT EXISTS qa_gespraeche (
@@ -760,18 +760,18 @@ class Store:
                 if "notify_prefs" not in wu_cols:
                     # Design 30a: die sechs Anlass-Schalter als JSON.
                     self._conn.execute("ALTER TABLE web_users ADD COLUMN notify_prefs TEXT")
-                if "qa_speichern" not in wu_cols:
+                if "saves_conversations" not in wu_cols:
                     # 6a①②: NULL = noch nie gefragt (Erstnutzungs-Karte),
                     # 1 = Gespräche speichern, 0 = bewusst aus.
-                    self._conn.execute("ALTER TABLE web_users ADD COLUMN qa_speichern INTEGER")
+                    self._conn.execute("ALTER TABLE web_users ADD COLUMN saves_conversations INTEGER")
                 if "deep_limit" not in wu_cols:
                     # Admin-steuerbare Frage-Limits je Konto (10.08.26):
                     # deep_limit = Recherchen/Tag (NULL = Standard,
-                    # 0 = unbegrenzt, N = eigenes Limit); limits_frei = 1
+                    # 0 = unbegrenzt, N = eigenes Limit); limits_unlocked = 1
                     # überspringt die Rate-Limiter der Frage-Endpoints.
                     self._conn.execute("ALTER TABLE web_users ADD COLUMN deep_limit INTEGER")
                     self._conn.execute(
-                        "ALTER TABLE web_users ADD COLUMN limits_frei INTEGER NOT NULL DEFAULT 0")
+                        "ALTER TABLE web_users ADD COLUMN limits_unlocked INTEGER NOT NULL DEFAULT 0")
                 # Einrichtungs-Assistent (Design 26a): welcher Schritt zuletzt
                 # erreicht wurde. Eigene Spalten statt der onboarding-JSON —
                 # die gehört der „Erste Schritte"-Tour, und der Erinnerungs-Cron
@@ -1628,13 +1628,13 @@ class Store:
         return dict(row) if row else None
 
     def set_web_user_limits(self, user_id: int, deep_limit: int | None,
-                            limits_frei: bool) -> None:
+                            limits_unlocked: bool) -> None:
         """Admin-steuerbare Frage-Limits je Konto: Recherche-Tageslimit
         (None = Standard, 0 = unbegrenzt) + Rate-Limit-Befreiung."""
         with self._conn:
             self._conn.execute(
-                "UPDATE web_users SET deep_limit = ?, limits_frei = ? WHERE id = ?",
-                (deep_limit, 1 if limits_frei else 0, user_id))
+                "UPDATE web_users SET deep_limit = ?, limits_unlocked = ? WHERE id = ?",
+                (deep_limit, 1 if limits_unlocked else 0, user_id))
 
     def list_web_users(self) -> list[dict]:
         rows = self._conn.execute(
@@ -1737,14 +1737,14 @@ class Store:
     def get_qa_speichern(self, user_id: int) -> int | None:
         """Einwilligung: None = nie gefragt, 1 = speichern, 0 = bewusst aus."""
         row = self._conn.execute(
-            "SELECT qa_speichern FROM web_users WHERE id = ?", (user_id,)).fetchone()
+            "SELECT saves_conversations FROM web_users WHERE id = ?", (user_id,)).fetchone()
         return None if row is None or row[0] is None else int(row[0])
 
     def set_qa_speichern(self, user_id: int, an: bool) -> None:
         """Schalter umlegen. Löscht bewusst NICHTS — was mit bestehenden
         Gesprächen passiert, entscheidet der Ausschalt-Dialog getrennt."""
         with self._conn:
-            self._conn.execute("UPDATE web_users SET qa_speichern = ? WHERE id = ?",
+            self._conn.execute("UPDATE web_users SET saves_conversations = ? WHERE id = ?",
                                (1 if an else 0, user_id))
 
     def qa_share_anlegen(self, user_id: int, question: str, answer: str,
@@ -2193,8 +2193,8 @@ class Store:
         by_day = {r["day"]: r["c"] for r in self._conn.execute(
             "SELECT day, SUM(count) c FROM user_activity WHERE owner_id = ? AND day >= ? GROUP BY day",
             (uid, since)).fetchall()}
-        verlauf_days = [(date.today() - timedelta(days=29 - i)).isoformat() for i in range(30)]
-        verlauf = [by_day.get(d, 0) for d in verlauf_days]
+        history_days = [(date.today() - timedelta(days=29 - i)).isoformat() for i in range(30)]
+        verlauf = [by_day.get(d, 0) for d in history_days]
         return {
             "id": u["id"], "email": u["email"], "role": u["role"], "status": u["status"],
             "created_at": u["created_at"],
@@ -2203,12 +2203,12 @@ class Store:
             "apple_linked": bool(u.get("apple_sub")), "has_password": bool(u.get("password_set", 1)),
             "delivery_channel": u.get("delivery_channel", "email"),
             # Einwilligung „Gespräche speichern": None = nie gefragt, 1 = an, 0 = aus.
-            "qa_speichern": u.get("qa_speichern"),
+            "saves_conversations": u.get("saves_conversations"),
             # Admin-steuerbare Frage-Limits (10.08.26) — fürs Formular im Detail.
-            "deep_limit": u.get("deep_limit"), "limits_frei": bool(u.get("limits_frei")),
+            "deep_limit": u.get("deep_limit"), "limits_unlocked": bool(u.get("limits_unlocked")),
             "features": {"ki_frage": feats.get("ki_frage", 0), "suche": feats.get("suche", 0),
                          "quiz": n_quiz, "analyse": feats.get("analyse", 0), "karte": feats.get("karte", 0)},
-            "topics": topics, "abos": abos, "verlauf": verlauf, "verlauf_days": verlauf_days,
+            "topics": topics, "subscriptions": abos, "history": verlauf, "history_days": history_days,
         }
 
     # ---- topics ----

@@ -4033,8 +4033,8 @@ class CouncilStore:
         bis = (heute + timedelta(days=tage)).isoformat()
         sitzungen = self.sitzungen_im_fenster(tage)
         if not sitzungen:
-            return {"found": False, "von": heute.isoformat(), "bis": bis,
-                    "sitzungen": [], "punkte": []}
+            return {"found": False, "from_date": heute.isoformat(), "to_date": bis,
+                    "sessions": [], "items": []}
 
         ph = ",".join("?" * len(sitzungen))
         # ``v.kind`` unterscheidet Beschluss- von Berichtsvorlage — das stärkste
@@ -4259,7 +4259,7 @@ class CouncilStore:
         # deinem Thema" und „ist allgemein wichtig". Die Karte trug beides als
         # „N für dich" — bei jemandem ohne passendes Thema war das schlicht
         # falsch (Tims Befund 15.08.).
-        treffer_je_sitzung: dict[int, int] = {}
+        matches_per_session: dict[int, int] = {}
         # Und wie viele inhaltliche Themen hat die Sitzung ÜBERHAUPT — ohne
         # Formalien, ohne Überschriften-Zeilen, Stationen eines Vorhabens als
         # eines gezählt. Das ist die Zahl für „+ N weitere Tagesordnungs-
@@ -4269,7 +4269,7 @@ class CouncilStore:
         themen_je_sitzung: dict[int, set] = {}
         for k in kandidaten:
             if k["topic_name"]:
-                treffer_je_sitzung[k["ksinr"]] = treffer_je_sitzung.get(k["ksinr"], 0) + 1
+                matches_per_session[k["ksinr"]] = matches_per_session.get(k["ksinr"], 0) + 1
             if k["topic_name"] or k["wichtig"] >= self.WICHTIG_MINDEST:
                 relevant[k["ksinr"]] = relevant.get(k["ksinr"], 0) + 1
             themen_je_sitzung.setdefault(k["ksinr"], set()).add(k["gruppe_nr"])
@@ -4278,13 +4278,13 @@ class CouncilStore:
         # Tagesordnung wegzunavigieren — dafür braucht die Karte die Titel.
         # kandidaten sind bereits nach Rang sortiert, die Reihenfolge bleibt.
         gezeigt = {(p["ksinr"], p["item_number"]) for p in punkte}
-        weitere_je_sitzung: dict[int, list[dict]] = {}
+        further_per_session: dict[int, list[dict]] = {}
         for k in kandidaten:
             if (k["ksinr"], k["item_number"]) in gezeigt:
                 continue
             if not (k["topic_name"] or k["wichtig"] >= self.WICHTIG_MINDEST):
                 continue
-            weitere_je_sitzung.setdefault(k["ksinr"], []).append({
+            further_per_session.setdefault(k["ksinr"], []).append({
                 "ksinr": k["ksinr"], "item_number": k["item_number"],
                 "title": k["title"], "titel_kurz": k["titel_kurz"],
                 "applicants": k["applicants"], "topic_name": k["topic_name"],
@@ -4314,15 +4314,15 @@ class CouncilStore:
             # sobald überhaupt eine Sitzung ansteht — vorher hing das an den
             # Punkten, und eine Woche ohne Highlight ließ die Karte verschwinden.
             "found": bool(sitzungen),
-            "von": heute.isoformat(), "bis": bis,
-            "sitzungen": sitzungen,
-            "punkte": punkte,
-            "relevant_je_sitzung": relevant,
-            "weitere_je_sitzung": weitere_je_sitzung,
-            "treffer_je_sitzung": treffer_je_sitzung,
-            "treffer_gesamt": sum(1 for k in kandidaten if k["topic_name"]),
-            "inhaltlich_gesamt": len(kandidaten),
-            "inhaltlich_je_sitzung": {k: len(v) for k, v in themen_je_sitzung.items()},
+            "from_date": heute.isoformat(), "to_date": bis,
+            "sessions": sitzungen,
+            "items": punkte,
+            "relevant_per_session": relevant,
+            "further_per_session": further_per_session,
+            "matches_per_session": matches_per_session,
+            "matches_total": sum(1 for k in kandidaten if k["topic_name"]),
+            "substantive_total": len(kandidaten),
+            "substantive_per_session": {k: len(v) for k, v in themen_je_sitzung.items()},
         }
 
     def count_upcoming_sessions(self) -> int:

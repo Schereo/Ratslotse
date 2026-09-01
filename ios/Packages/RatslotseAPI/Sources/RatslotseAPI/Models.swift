@@ -46,7 +46,7 @@ public struct User: Codable, Sendable, Equatable, Identifiable {
         case hasPassword = "has_password"
         case accessToken = "access_token"
         case displayName = "display_name"
-        case savesConversations = "qa_speichern"
+        case savesConversations = "saves_conversations"
     }
 }
 
@@ -828,16 +828,16 @@ public struct WeekPreview: Codable, Sendable {
 
     enum CodingKeys: String, CodingKey {
         case found
-        case from = "von"
-        case through = "bis"
-        case sessions = "sitzungen"
-        case items = "punkte"
-        case relevantItemsPerSession = "relevant_je_sitzung"
-        case additionalItemsPerSession = "weitere_je_sitzung"
-        case personalMatchesPerSession = "treffer_je_sitzung"
-        case personalMatches = "treffer_gesamt"
-        case contentItemCount = "inhaltlich_gesamt"
-        case contentItemsPerSession = "inhaltlich_je_sitzung"
+        case from = "from_date"
+        case through = "to_date"
+        case sessions = "sessions"
+        case items = "items"
+        case relevantItemsPerSession = "relevant_per_session"
+        case additionalItemsPerSession = "further_per_session"
+        case personalMatchesPerSession = "matches_per_session"
+        case personalMatches = "matches_total"
+        case contentItemCount = "substantive_total"
+        case contentItemsPerSession = "substantive_per_session"
     }
 }
 

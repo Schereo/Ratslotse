@@ -655,7 +655,7 @@ struct QuestionsView: View {
             turns[index].error = nil
         case "gestoppt":
             turns[index].research?.status = "gestoppt"
-            turns[index].research?.partialPossible = event.fields["teilbericht_moeglich"]?.bool ?? false
+            turns[index].research?.partialPossible = event.fields["partial_report_possible"]?.bool ?? false
         case "fehler":
             turns[index].research?.status = "fehler"
             turns[index].error = "Die Recherche ist abgebrochen. Der Versuch zählt nicht gegen dein Kontingent."
@@ -687,7 +687,7 @@ struct QuestionsView: View {
                 )
                 guard let current = turns.firstIndex(where: { $0.id == turnID }) else { return }
                 turns[current].research?.status = "gestoppt"
-                turns[current].research?.partialPossible = response.object?["teilbericht_moeglich"]?.bool ?? false
+                turns[current].research?.partialPossible = response.object?["partial_report_possible"]?.bool ?? false
                 researchStreamTask?.cancel()
                 researchStreamTask = nil
             } catch {

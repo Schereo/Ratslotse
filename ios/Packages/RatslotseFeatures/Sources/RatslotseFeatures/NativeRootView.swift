@@ -147,7 +147,7 @@ public struct NativeRootView: View {
     private func debugActiveUser() -> User? {
         let savesConversations = ratsDebugValue("RATSLOTSE_DEBUG_CONVERSATIONS") == "1" ? 1 : 0
         let role = ratsDebugValue("RATSLOTSE_DEBUG_MAIN") == "admin" ? "admin" : "user"
-        let json = #"{"id":1,"email":"visual-qa@ratslotse.de","role":""# + role + #"","status":"active","delivery_channel":"push","email_verified":true,"apple_linked":false,"has_password":false,"access_token":null,"display_name":"Visual QA","qa_speichern":"#
+        let json = #"{"id":1,"email":"visual-qa@ratslotse.de","role":""# + role + #"","status":"active","delivery_channel":"push","email_verified":true,"apple_linked":false,"has_password":false,"access_token":null,"display_name":"Visual QA","saves_conversations":"#
             + String(savesConversations)
             + "}"
         return try? JSONDecoder().decode(User.self, from: Data(json.utf8))
