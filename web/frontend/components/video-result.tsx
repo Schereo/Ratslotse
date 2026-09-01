@@ -3,6 +3,7 @@
 import { Play } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { VideoResult } from "@/lib/types";
+import { voteLabel } from "@/components/decision-ui";
 
 /**
  * Vorläufiges Abstimmungsergebnis aus der O1-Videoaufzeichnung (RL-Video):
@@ -22,23 +23,23 @@ import type { VideoResult } from "@/lib/types";
  * sobald das Protokoll da ist, gewinnt es, und die Chips verschwinden.
  */
 
-/** Farben wie OUTCOME_DOT_CLS in decision-ui.tsx — `abgesetzt` gibt es nur
+/** Farben wie OUTCOME_DOT_CLS in decision-ui.tsx — `removed` gibt es nur
  *  hier (das Protokoll kennt den Wert nicht: abgesetzte TOPs haben dort
  *  einfach keinen Beschluss). */
 const DOT_CLS: Record<VideoResult["outcome"], string> = {
-  angenommen: "bg-[#22c55e]",
-  abgelehnt: "bg-[#ef4444]",
-  vertagt: "bg-[#f59e0b]",
-  zur_kenntnis: "bg-blue-500",
-  abgesetzt: "bg-muted-foreground/50",
+  accepted: "bg-[#22c55e]",
+  rejected: "bg-[#ef4444]",
+  postponed: "bg-[#f59e0b]",
+  noted: "bg-blue-500",
+  removed: "bg-muted-foreground/50",
 };
 
 const LABEL: Record<VideoResult["outcome"], string> = {
-  angenommen: "Angenommen",
-  abgelehnt: "Abgelehnt",
-  vertagt: "Vertagt",
-  zur_kenntnis: "Zur Kenntnis",
-  abgesetzt: "Abgesetzt",
+  accepted: "Angenommen",
+  rejected: "Abgelehnt",
+  postponed: "Vertagt",
+  noted: "Zur Kenntnis",
+  removed: "Abgesetzt",
 };
 
 /** 5025 → „1:23:45" — Stunden ohne führende Null, wie YouTube selbst. */
@@ -85,7 +86,7 @@ export function VideoResultChip({ r }: { r: VideoResult }) {
       {LABEL[r.outcome]}
       {/* vote steht nur da, wo der Wortlaut ihn trägt (council/videos.py) —
           fehlt er, bleibt der Chip beim bloßen Ergebnis statt zu raten. */}
-      {r.vote && <span className="font-normal text-muted-foreground">{r.vote}</span>}
+      {r.vote && <span className="font-normal text-muted-foreground">{voteLabel(r.vote)}</span>}
       {r.video_seconds != null && (
         <span className="inline-flex items-center gap-0.5 font-normal tabular-nums text-muted-foreground">
           <Play className="h-3 w-3" aria-hidden />

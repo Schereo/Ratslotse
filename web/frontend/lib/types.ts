@@ -218,11 +218,11 @@ export interface Attendee {
  *  an TOPs, die noch keinen Protokoll-Beschluss haben. */
 export interface VideoResult {
   item_number: string;
-  outcome: "angenommen" | "abgelehnt" | "vertagt" | "zur_kenntnis" | "abgesetzt";
+  outcome: "accepted" | "rejected" | "postponed" | "noted" | "removed";
   /** Nur gesetzt, wo der Wortlaut es trägt — sonst offen (null). */
-  vote: "einstimmig" | "mehrheitlich" | null;
-  gegenstimmen: number | null;
-  enthaltungen: number | null;
+  vote: "unanimous" | "majority" | null;
+  no_votes: number | null;
+  abstentions: number | null;
   quote: string;
   video_id: string;
   /** Fundstelle des Belegs im Video (Sekunden) — für den Sprung-Link. */

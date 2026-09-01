@@ -272,10 +272,10 @@ CREATE TABLE IF NOT EXISTS council_video_results (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
     ksinr         INTEGER NOT NULL,
     item_number   TEXT NOT NULL,               -- ohne Ö-/N-Präfix, wie council_decisions
-    outcome       TEXT NOT NULL,               -- angenommen|abgelehnt|vertagt|zur_kenntnis|abgesetzt
-    vote          TEXT,                        -- einstimmig|mehrheitlich|NULL (nicht belegt → offen)
-    gegenstimmen  INTEGER,                     -- nur wenn in der Sitzung ausgesprochen
-    enthaltungen  INTEGER,
+    outcome       TEXT NOT NULL,               -- accepted|rejected|postponed|noted|removed
+    vote          TEXT,                        -- unanimous|majority|NULL (nicht belegt → offen)
+    no_votes      INTEGER,                     -- nur wenn in der Sitzung ausgesprochen
+    abstentions   INTEGER,
     quote         TEXT NOT NULL,               -- wörtlicher Transkript-Beleg
     video_id      TEXT NOT NULL,               -- YouTube-Video-ID
     video_seconds INTEGER,                     -- Fundstelle des Belegs im Video
@@ -640,6 +640,8 @@ _REST_SPALTEN: list[tuple[str, list[tuple[str, str]]]] = [
     ("council_haushalt_aenderungen_fhh_summen", [("eigene", "own")]),
     ("council_haushalt_aenderungen_summen", [("eigene", "own")]),
     ("council_integrierte_schulden", [("insgesamt", "total"), ("sonstige", "other")]),
+    ("council_video_results", [("gegenstimmen", "no_votes"),
+                               ("enthaltungen", "abstentions")]),
     ("council_investitionen_ist", [("insgesamt", "total")]),
     ("council_investitionen_ist_arten", [("feld", "field")]),
     ("council_kennzahl_formeln", [("formel", "formula")]),
@@ -1193,6 +1195,15 @@ class CouncilStore:
             ("ratspolitik", "council_politics"), ("schaetzen", "estimation")])
         self._werte_umschreiben("council_quiz_questions", "difficulty", [
             ("leicht", "easy"), ("mittel", "medium"), ("schwer", "hard")])
+        # Das vorläufige Ergebnis aus der Videoaufzeichnung. Dasselbe Vokabular
+        # wie `council_decisions` — nur `removed` gibt es hier zusätzlich: Ein
+        # abgesetzter Punkt hinterlässt im Protokoll gar keinen Beschluss.
+        self._werte_umschreiben("council_video_results", "outcome", [
+            ("angenommen", "accepted"), ("abgelehnt", "rejected"),
+            ("vertagt", "postponed"), ("zur_kenntnis", "noted"),
+            ("abgesetzt", "removed")])
+        self._werte_umschreiben("council_video_results", "vote", [
+            ("einstimmig", "unanimous"), ("mehrheitlich", "majority")])
         # Wie eine Fraktion abgestimmt hat, und wie ein Beschluss auf ein Ziel wirkt.
         self._werte_umschreiben("council_decision_votes", "stance", [
             ("dagegen", "against"), ("enthaltung", "abstention")])
@@ -4862,11 +4873,11 @@ class CouncilStore:
             for r in results:
                 self._conn.execute(
                     """INSERT INTO council_video_results
-                       (ksinr, item_number, outcome, vote, gegenstimmen,
-                        enthaltungen, quote, video_id, video_seconds, model, created_at)
+                       (ksinr, item_number, outcome, vote, no_votes,
+                        abstentions, quote, video_id, video_seconds, model, created_at)
                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                     (ksinr, r["item_number"], r["outcome"], r.get("vote"),
-                     r.get("gegenstimmen"), r.get("enthaltungen"), r["quote"],
+                     r.get("no_votes"), r.get("abstentions"), r["quote"],
                      video_id, r.get("video_seconds"), model, now),
                 )
         return len(results)

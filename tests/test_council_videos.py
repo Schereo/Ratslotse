@@ -46,14 +46,14 @@ def test_flatten_anchors_are_folded_positions():
 
 def test_resolve_vote_only_claims_what_wording_carries():
     # Gezählte Gegenstimme → mehrheitlich.
-    assert videos.resolve_vote({"gegenstimmen": 4, "beleg": "x"}) == "mehrheitlich"
+    assert videos.resolve_vote({"no_votes": 4, "beleg": "x"}) == "majority"
     # Wort „einstimmig" im Beleg → einstimmig.
-    assert videos.resolve_vote({"gegenstimmen": None,
-                                "beleg": "dann ist das einstimmig angenommen"}) == "einstimmig"
+    assert videos.resolve_vote({"no_votes": None,
+                                "beleg": "dann ist das einstimmig angenommen"}) == "unanimous"
     # Bloßes „mehrheitlich" der Leitung ohne Zahl: offen — dieselbe Formel
     # stand im Prüfbestand einmal für Protokoll-„einstimmig" und einmal
     # für 18 ungezählte Gegenstimmen.
-    assert videos.resolve_vote({"gegenstimmen": None,
+    assert videos.resolve_vote({"no_votes": None,
                                 "beleg": "eine Enthaltung, mehrheitlich angenommen"}) is None
 
 
@@ -85,9 +85,9 @@ TRANSCRIPT = [(100.0, "Dann machen wir mit 7.1 weiter."),
               (300.0, "Weiter mit 7.2.")]
 
 
-def _finding(nr="7.1", outcome="angenommen", beleg=QUOTE, **kw):
+def _finding(nr="7.1", outcome="accepted", beleg=QUOTE, **kw):
     return {"nr": nr, "art": "haupt", "outcome": outcome, "vote": None,
-            "gegenstimmen": None, "enthaltungen": None, "beleg": beleg, **kw}
+            "no_votes": None, "abstentions": None, "beleg": beleg, **kw}
 
 
 def _extract_with(pass_a: list[dict], pass_b: list[dict]) -> list[dict]:
@@ -100,15 +100,15 @@ def test_consensus_keeps_agreeing_results_with_timestamp():
     assert len(out) == 1
     r = out[0]
     assert r["item_number"] == "7.1"
-    assert r["outcome"] == "angenommen"
-    assert r["vote"] == "einstimmig"          # Wort steht im Beleg
+    assert r["outcome"] == "accepted"
+    assert r["vote"] == "unanimous"           # Wort steht im Beleg
     # Timestamp zeigt auf das Segment des Belegs (200 s).
     assert r["video_seconds"] == 200
 
 
 def test_disagreeing_passes_are_withheld():
-    out = _extract_with([_finding(outcome="angenommen")],
-                        [_finding(outcome="abgelehnt")])
+    out = _extract_with([_finding(outcome="accepted")],
+                        [_finding(outcome="rejected")])
     assert out == []
 
 
@@ -161,8 +161,8 @@ def store(tmp_path):
 
 
 def test_video_results_roundtrip_and_replace(store):
-    rows = [{"item_number": "7.1", "outcome": "angenommen", "vote": "einstimmig",
-             "gegenstimmen": None, "enthaltungen": 1, "quote": "…",
+    rows = [{"item_number": "7.1", "outcome": "accepted", "vote": "unanimous",
+             "no_votes": None, "abstentions": 1, "quote": "…",
              "video_seconds": 200}]
     assert store.save_video_results(4702, "vid123", "test-model", rows) == 1
     got = store.get_video_results(4702)
@@ -183,7 +183,7 @@ def test_sessions_needing_video_check(store):
     assert [s["ksinr"] for s in need] == [4702]
     # Mit Video-Ergebnissen → erledigt.
     store.save_video_results(4702, "vid123", "m", [
-        {"item_number": "7.1", "outcome": "angenommen", "quote": "x"}])
+        {"item_number": "7.1", "outcome": "accepted", "quote": "x"}])
     assert store.sessions_needing_video_check("2026-08-01") == []
 
 
