@@ -54,21 +54,21 @@ _ALLERWELT = {
 MAX_BESCHLUSS_CHARS = 4000
 
 
-def _kernworte(titel: str) -> set[str]:
+def _kernworte(title: str) -> set[str]:
     """Die eigentümlichen Wörter eines Titels — daran hängt das Thema.
 
     Sechs Zeichen aufwärts, ohne die Allerweltswörter: „Stadionneubau",
     „Maastrichter", „Ausfallbürgschaft" bleiben; „Beschluss", „Stadt",
     „Oldenburg" fliegen raus.
     """
-    worte = re.findall(r"[A-Za-zÄÖÜäöüß]{6,}", (titel or "").lower())
+    worte = re.findall(r"[A-Za-zÄÖÜäöüß]{6,}", (title or "").lower())
     return {w for w in worte if w not in _ALLERWELT}
 
 
-def _thema_frei(titel: str, gesperrt: list[set[str]]) -> bool:
+def _thema_frei(title: str, confidential: list[set[str]]) -> bool:
     """Kein eigentümliches Wort mit einem der letzten Funde gemeinsam."""
-    meine = _kernworte(titel)
-    return not any(meine & andere for andere in gesperrt)
+    meine = _kernworte(title)
+    return not any(meine & andere for andere in confidential)
 
 
 def pick_candidate(store: CouncilStore, day: date) -> tuple[dict, int] | None:
@@ -82,7 +82,7 @@ def pick_candidate(store: CouncilStore, day: date) -> tuple[dict, int] | None:
     eine Straßenbenennung, während ein 79-Millionen-Beschluss wartete.
     """
     used = store.recent_fundstueck_decision_ids(REUSE_BLOCK_DAYS)
-    gesperrt = [_kernworte(t) for t in
+    confidential = [_kernworte(t) for t in
                 store.recent_fundstueck_titles(THEMA_BLOCK_DAYS)]
 
     # 1) Archiv-Feld zuerst holen: Es ist der Maßstab, an dem sich der
@@ -92,14 +92,14 @@ def pick_candidate(store: CouncilStore, day: date) -> tuple[dict, int] | None:
     # Generator ließ Tage ohne Karte (gemessen 20.08.26).
     top = [c for c in store.fundstueck_candidates(exclude_ids=used, limit=120)
            if (c.get("fundwert") or 0) >= MIN_FUNDWERT_ARCHIV
-           and _thema_frei(c.get("title") or "", gesperrt)]
+           and _thema_frei(c.get("title") or "", confidential)]
 
     # 2) Jahrestag: gleicher Kalendertag, früheres Jahr, ordentlicher Wert.
     mmdd = day.strftime("%m-%d")
     for c in store.fundstueck_candidates(mmdd=mmdd, exclude_ids=used, limit=5):
         if (c.get("fundwert") or 0) < MIN_FUNDWERT_JAHRESTAG:
             continue
-        if not _thema_frei(c.get("title") or "", gesperrt):
+        if not _thema_frei(c.get("title") or "", confidential):
             continue
         years = day.year - int(str(c["session_date"])[:4])
         if years < 1:
@@ -129,7 +129,7 @@ def write_story(decision: dict) -> str | None:
         outcome=decision.get("outcome") or "unbekannt",
         title=(decision.get("title") or "").strip(),
         interest_reason=decision.get("interest_reason") or "",
-        beschluss=(decision.get("beschluss") or decision.get("summary") or "")[:MAX_BESCHLUSS_CHARS],
+        official_text=(decision.get("official_text") or decision.get("summary") or "")[:MAX_BESCHLUSS_CHARS],
     )
     try:
         resp = llm.chat_complete(

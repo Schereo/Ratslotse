@@ -123,8 +123,8 @@ def pruefen(pfade: list[str]) -> list[tuple[str, int, str]]:
             text = Path(pfad).read_text(encoding="utf-8")
         except (UnicodeDecodeError, FileNotFoundError, IsADirectoryError):
             continue  # binär oder inzwischen weg — beides kein Fall für uns
-        for nr, zeile in enumerate(text.splitlines(), start=1):
-            for fund in ADRESSE.findall(zeile):
+        for nr, row in enumerate(text.splitlines(), start=1):
+            for fund in ADRESSE.findall(row):
                 if fund in ERLAUBTE_ADRESSEN:
                     continue
                 if fund.rsplit("@", 1)[-1].lower() in ERLAUBTE_DOMAINS:

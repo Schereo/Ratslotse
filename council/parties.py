@@ -105,31 +105,31 @@ def classify_faction(raw: str | None) -> dict:
     und hält Gruppen als Gruppen fest, statt sie auf eine Partei zu kollabieren.
 
     Rückgabe:
-    - ``kind``: ``"partei"`` | ``"gruppe"`` | ``"parteilos"`` | ``"unbekannt"``
+    - ``kind``: ``"party"`` | ``"group"`` | ``"independent"`` | ``"unknown"``
     - ``label``: Anzeigename (``"SPD"``, ``"FDP/Volt"``, ``"Für Oldenburg"``, ``"parteilos"``)
     - ``parties``: kanonische Mitglieds-Parteien (Partei → sich selbst; Gruppe →
       ihre Parteien; sonst leer)
     - ``group``: Gruppenname oder ``None``
     """
     if raw is None or not raw.strip():
-        return {"kind": "parteilos", "label": "parteilos", "parties": [], "group": None}
+        return {"kind": "independent", "label": "parteilos", "parties": [], "group": None}
     low = raw.strip().lower()
     if any(x in low for x in _NON_PARTY):
-        return {"kind": "unbekannt", "label": raw.strip(), "parties": [], "group": None}
+        return {"kind": "unknown", "label": raw.strip(), "parties": [], "group": None}
     for needles, name, members in _GROUPS:
         if all(n in low for n in needles):
-            return {"kind": "gruppe", "label": name, "parties": list(members), "group": name}
+            return {"kind": "group", "label": name, "parties": list(members), "group": name}
     p = normalize_party(raw)
     if p:
-        return {"kind": "partei", "label": p, "parties": [p], "group": None}
-    return {"kind": "unbekannt", "label": raw.strip(), "parties": [], "group": None}
+        return {"kind": "party", "label": p, "parties": [p], "group": None}
+    return {"kind": "unknown", "label": raw.strip(), "parties": [], "group": None}
 
 
 def faction_label(raw: str | None) -> str | None:
     """Gruppen-bewusstes Anzeige-Label einer Person (Gruppenname statt kollabierter
     Einzelpartei). ``None`` für Verwaltung/Unbekanntes."""
     c = classify_faction(raw)
-    return c["label"] if c["kind"] in ("partei", "gruppe", "parteilos") else None
+    return c["label"] if c["kind"] in ("party", "group", "independent") else None
 
 
 def parties_for_faction(raw: str | None) -> list[str]:

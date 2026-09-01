@@ -28,27 +28,27 @@ import { Balken, euroJeEw } from "@/lib/haushalt-vergleich";
 import { cn } from "@/lib/utils";
 
 export function Staedtevergleich({
-  zeilen, einheit = "eur_je_ew", hinweisUnter100k = false,
+  zeilen, unit = "eur_je_ew", hinweisUnter100k = false,
 }: {
   zeilen: Balken[];
-  /** `eur_je_ew` schreibt „€", `prozent` schreibt „%" — die Hebesätze sind
+  /** `eur_je_ew` schreibt „€", `percent` schreibt „%" — die Hebesätze sind
    *  keine Beträge, und ein Euro-Zeichen daran wäre schlicht falsch. */
-  einheit?: "eur_je_ew" | "prozent";
+  unit?: "eur_je_ew" | "percent";
   /** Die Fußnote zur 100.000-Einwohner-Schwelle im Finanzausgleich. Nur bei
    *  der Steuerkraft — die Steuereinnahmekraft kennt die Schwelle nicht. */
   hinweisUnter100k?: boolean;
 }) {
   if (!zeilen.length) return null;
-  const groesster = Math.max(...zeilen.map((z) => z.wert));
+  const groesster = Math.max(...zeilen.map((z) => z.value));
   const betroffen = hinweisUnter100k && zeilen.some((z) => z.unter_100k);
 
   return (
     <div>
       <ol className="flex flex-col gap-1.5">
         {zeilen.map((z) => {
-          const anteil = groesster > 0 ? (z.wert / groesster) * 100 : 0;
+          const anteil = groesster > 0 ? (z.value / groesster) * 100 : 0;
           return (
-            <li key={z.schluessel} className="grid grid-cols-[7.5rem_1fr_auto] items-center gap-2 sm:grid-cols-[9rem_1fr_auto] sm:gap-3">
+            <li key={z.key} className="grid grid-cols-[7.5rem_1fr_auto] items-center gap-2 sm:grid-cols-[9rem_1fr_auto] sm:gap-3">
               <span className={cn(
                 "truncate text-[12.5px] leading-tight",
                 z.ist_oldenburg ? "font-bold text-foreground" : "text-muted-foreground",
@@ -75,9 +75,9 @@ export function Staedtevergleich({
                 "text-right font-mono text-[12px] tabular-nums",
                 z.ist_oldenburg ? "font-bold text-foreground" : "text-muted-foreground",
               )}>
-                {einheit === "prozent"
-                  ? `${Math.round(z.wert)} %`
-                  : `${euroJeEw(z.wert)} €`}
+                {unit === "percent"
+                  ? `${Math.round(z.value)} %`
+                  : `${euroJeEw(z.value)} €`}
               </span>
             </li>
           );
@@ -100,26 +100,26 @@ export function Staedtevergleich({
  *  Bewusst kein Diagramm: Drei Punkte tragen keine Achsen. Die Zahlen
  *  nebeneinander mit dem Prozentsatz dahinter sagen dasselbe auf einer Zeile. */
 export function Zeitreihe({
-  titel, punkte, veraenderung: delta,
+  title, punkte, change: delta,
 }: {
-  titel: string;
-  punkte: { jahr: number; wert: number }[];
-  veraenderung: number | null;
+  title: string;
+  punkte: { year: number; value: number }[];
+  change: number | null;
 }) {
   if (!punkte.length) return null;
   return (
     <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-      <span className="text-[12.5px] font-semibold">{titel}</span>
+      <span className="text-[12.5px] font-semibold">{title}</span>
       {/* Selbst umbruchfähig, nicht nur die Zeile darüber: Auf 375 px passen
           drei Wertepaare nicht nebeneinander, und als EIN Flex-Element ließe
           sich die Kette nicht unter ihre Inhaltsbreite drücken — sie stand
           14 px über den Kartenrand hinaus. */}
       <span className="inline-flex flex-wrap items-baseline gap-x-0.5 font-mono text-[12px] tabular-nums text-muted-foreground">
         {punkte.map((p, i) => (
-          <span key={p.jahr} className="whitespace-nowrap">
+          <span key={p.year} className="whitespace-nowrap">
             {i > 0 && <span className="px-1 text-muted-foreground/60">→</span>}
-            {euroJeEw(p.wert)}&nbsp;€
-            <span className="ml-0.5 text-[10px]">({p.jahr})</span>
+            {euroJeEw(p.value)}&nbsp;€
+            <span className="ml-0.5 text-[10px]">({p.year})</span>
           </span>
         ))}
       </span>

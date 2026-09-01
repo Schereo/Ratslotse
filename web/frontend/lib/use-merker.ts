@@ -13,27 +13,27 @@ import { useEffect, useRef, useState } from "react";
  *  Gelesen wird erst NACH dem Mount, damit der statische Export keine
  *  Hydration-Abweichung bekommt — der erste Frame zeigt den Startwert.
  */
-export function useMerker<T>(schluessel: string, start: T): [T, (wert: T) => void] {
-  const [wert, setWert] = useState<T>(start);
+export function useMerker<T>(key: string, start: T): [T, (value: T) => void] {
+  const [value, setWert] = useState<T>(start);
   const geladen = useRef(false);
 
   useEffect(() => {
     if (geladen.current) return;
     geladen.current = true;
     try {
-      const roh = sessionStorage.getItem(`ratslotse:merker:${schluessel}`);
+      const roh = sessionStorage.getItem(`ratslotse:merker:${key}`);
       if (roh != null) setWert(JSON.parse(roh) as T);
     } catch { /* privater Modus oder kaputter Eintrag — Startwert bleibt */ }
-  }, [schluessel]);
+  }, [key]);
 
   const setzen = (neu: T) => {
     setWert(neu);
     try {
       const leer = neu === "" || neu === null || neu === undefined;
-      if (leer) sessionStorage.removeItem(`ratslotse:merker:${schluessel}`);
-      else sessionStorage.setItem(`ratslotse:merker:${schluessel}`, JSON.stringify(neu));
+      if (leer) sessionStorage.removeItem(`ratslotse:merker:${key}`);
+      else sessionStorage.setItem(`ratslotse:merker:${key}`, JSON.stringify(neu));
     } catch { /* s. o. */ }
   };
 
-  return [wert, setzen];
+  return [value, setzen];
 }

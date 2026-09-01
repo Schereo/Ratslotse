@@ -8,9 +8,15 @@ struct WelcomeView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     var body: some View {
+        GeometryReader { proxy in
         ScrollView {
             Group {
-                if horizontalSizeClass == .regular {
+                // 300 + 54 + 480 + 2×42 = 918 pt. Ein iPad Pro 11" hat im
+                // Hochformat 834 — dort blieb für die Textspalte so wenig,
+                // dass die Überschrift „Was entscheidet die Stadt?" zu „Was
+                // entscheidet die…" abgeschnitten wurde. Die gemessene Breite
+                // entscheidet deshalb mit, nicht die Größenklasse allein.
+                if horizontalSizeClass == .regular && proxy.size.width >= 918 {
                     HStack(alignment: .center, spacing: 54) {
                         Lotti3DView(scene: .wave)
                             .frame(width: 300, height: 260)
@@ -28,8 +34,10 @@ struct WelcomeView: View {
                 }
             }
             .frame(maxWidth: .infinity)
+            .frame(minHeight: proxy.size.height)
         }
         .background(RatsColor.page)
+        }
     }
 
     private var welcomeContent: some View {
@@ -45,6 +53,9 @@ struct WelcomeView: View {
                 Text("Was entscheidet die Stadt?")
                     .font(RatsFont.title(36))
                     .foregroundStyle(RatsColor.text)
+                    // Umbrechen statt abschneiden, falls die Spalte doch
+                    // einmal schmaler ausfällt als die Überschrift breit ist.
+                    .fixedSize(horizontal: false, vertical: true)
                 Text("Ratslotse macht Beschlüsse, Sitzungen und deine Themen verständlich – mit den amtlichen Quellen direkt dabei.")
                     .font(RatsFont.body(17))
                     .foregroundStyle(RatsColor.secondary)

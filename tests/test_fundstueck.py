@@ -21,11 +21,11 @@ def _store(tmp_path) -> CouncilStore:
     store.save_session(CouncilSession(2, "Kulturausschuss", "2024-03-05", "17:00", "PFL"))
     with store._conn:
         store._insert_decision(1, 0, "decision", None, "Ö 1", "Grüne Wellen fürs Rad", TEXT,
-                               "angenommen", "einstimmig", None, None, [], None, None, None)
+                               "accepted", "unanimous", None, None, [], None, None, None)
         store._insert_decision(2, 0, "decision", None, "Ö 1", "Museumskonzept", TEXT,
-                               "angenommen", None, None, None, [], None, None, None)
+                               "accepted", None, None, None, [], None, None, None)
         store._insert_decision(2, 1, "decision", None, "Ö 2", "Geschäftsordnung", TEXT,
-                               "angenommen", None, None, None, [], None, None, None)
+                               "accepted", None, None, None, [], None, None, None)
     return store
 
 
@@ -48,9 +48,9 @@ def test_interest_roundtrip_and_selection(tmp_path):
 def _bewerten(store, titel_zu_werten):
     """Interesse UND Tragweite setzen — beides ist seit 20.08.26 Pflicht."""
     ids = {d["title"]: d["id"] for d in store.decisions_needing_interest()}
-    for titel, (interesse, tragweite) in titel_zu_werten.items():
-        store.save_interest(ids[titel], interesse, "")
-        store.save_impact(ids[titel], tragweite, "")
+    for title, (interesse, tragweite) in titel_zu_werten.items():
+        store.save_interest(ids[title], interesse, "")
+        store.save_impact(ids[title], tragweite, "")
     return ids
 
 
@@ -120,9 +120,9 @@ def test_dasselbe_thema_nicht_zweimal_kurz_nacheinander(tmp_path):
     assert "stadionneubau" in _kernworte("Stadionneubau Maastrichter Straße")
     assert "oldenburg" not in _kernworte("Stadt Oldenburg: Beschluss")
 
-    gesperrt = [_kernworte("Gründung der Stadion Oldenburg GmbH & Co. KG")]
-    assert not _thema_frei("Stadion Oldenburg GmbH: Grundstücksübertragungen", gesperrt)
-    assert _thema_frei("Fortschreibung des Lärmaktionsplans", gesperrt)
+    confidential = [_kernworte("Gründung der Stadion Oldenburg GmbH & Co. KG")]
+    assert not _thema_frei("Stadion Oldenburg GmbH: Grundstücksübertragungen", confidential)
+    assert _thema_frei("Fortschreibung des Lärmaktionsplans", confidential)
 
 
 def test_fundstueck_persistence_and_lookup(tmp_path):
@@ -148,23 +148,23 @@ def _fake_resp(payload: dict):
 
 def test_rate_batch_filters_hallucinated_ids(monkeypatch):
     decisions = [
-        {"id": 1, "title": "A", "beschluss": TEXT, "committee": "Rat",
-         "session_date": "2024-01-01", "outcome": "angenommen"},
-        {"id": 2, "title": "B", "beschluss": TEXT, "committee": "Rat",
-         "session_date": "2024-01-01", "outcome": "angenommen"},
+        {"id": 1, "title": "A", "official_text": TEXT, "committee": "Rat",
+         "session_date": "2024-01-01", "outcome": "accepted"},
+        {"id": 2, "title": "B", "official_text": TEXT, "committee": "Rat",
+         "session_date": "2024-01-01", "outcome": "accepted"},
     ]
     payload = {"ratings": [
-        {"id": 1, "score": 77, "grund": "gut"},
-        {"id": 999, "score": 50, "grund": "halluziniert"},
-        {"id": 2, "score": 130, "grund": "out of range"},
+        {"id": 1, "score": 77, "reason": "gut"},
+        {"id": 999, "score": 50, "reason": "halluziniert"},
+        {"id": 2, "score": 130, "reason": "out of range"},
     ]}
     monkeypatch.setattr(interest.llm, "chat_complete", lambda **kw: _fake_resp(payload))
     assert interest.rate_batch(decisions) == [(1, 77, "gut")]
 
 
 def test_write_story_guards(monkeypatch):
-    decision = {"id": 1, "title": "Grüne Wellen", "beschluss": TEXT, "committee": "Rat",
-                "session_date": "2020-07-22", "outcome": "angenommen", "interest_reason": ""}
+    decision = {"id": 1, "title": "Grüne Wellen", "official_text": TEXT, "committee": "Rat",
+                "session_date": "2020-07-22", "outcome": "accepted", "interest_reason": ""}
     monkeypatch.setattr(fundstueck.llm, "chat_complete",
                         lambda **kw: _fake_resp({"story": "Der Rat beschloss 2020, grüne Wellen fürs Rad zu testen."}))
     assert fundstueck.write_story(decision).startswith("Der Rat beschloss 2020")

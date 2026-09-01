@@ -8,7 +8,7 @@
 // die einzelnen Produkte darin. Wer den zweiten Schritt ohne den ersten liest,
 // sucht Aufgaben in Bereichen, deren Namen ihm nichts sagen.
 //
-// DIE DRITTE EBENE BLEIBT EINE EIGENE SEITE: `/haushalt/bereich?thh=…` ist der
+// DIE DRITTE EBENE BLEIBT EINE EIGENE SEITE: `/haushalt/bereich?name=…` ist der
 // Steckbrief eines einzelnen Teilhaushalts. Er hat bewusst keinen Schritt im
 // Wegweiser — man kommt dorthin aus der Liste, nicht der Reihe nach.
 
@@ -16,25 +16,25 @@ import { Suspense, useState } from "react";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
-import { Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
+import { Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/source";
 import { Abschnitte, ANKER_KLASSE } from "@/components/haushalt/abschnitte";
 import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 import { SchrittPfad } from "@/components/haushalt/schritt-pfad";
 import { Seitenbuehne, SeitenbuehneLaedt, ZaehlZahl } from "@/components/haushalt/seitenbuehne";
-import { BereicheAbschnitt } from "@/components/haushalt/abschnitt-bereiche";
-import { ProdukteAbschnitt } from "@/components/haushalt/abschnitt-produkte";
+import { BereicheAbschnitt } from "@/components/haushalt/section-bereiche";
+import { ProdukteAbschnitt } from "@/components/haushalt/section-produkte";
 
 /** Ausgeschrieben, nicht zusammengesetzt: `tests/test_quellen_dokumente.py`
  *  liest die Literale dieser Liste. Vereinigung beider Abschnitte, in
  *  Leserichtung — die Bereichs-Übersicht belegt sich mit `plan`, die
  *  Produktebene mit `teilhaushalt`. */
 const QUELLEN: QuellenSchluessel[] = [
-  "plan", "steuern", "steuerkraft", "teilhaushalt",
+  "plan", "taxes", "tax_capacity", "teilhaushalt",
 ];
 
 const MARKEN = [
-  { id: "bereiche", titel: "Was die Namen heißen" },
-  { id: "produkte", titel: "Was einzelne Aufgaben kosten" },
+  { id: "bereiche", title: "Was die Namen heißen" },
+  { id: "produkte", title: "Was einzelne Aufgaben kosten" },
 ];
 
 function ProdukteSeiteInner() {
@@ -43,16 +43,16 @@ function ProdukteSeiteInner() {
   // davon …" trägt. Kein zweiter Abruf, keine zweite Wahrheit.
   // `undefined` = lädt (Platzhalter hält die Höhe), `null` = entschieden
   // nichts (keine Bühne), sonst die Werte.
-  const [bestand, setBestand] = useState<{
-    anzahl: number; jahr: number; beispiele: { name: string; wert: number }[];
+  const [balance, setBestand] = useState<{
+    count: number; year: number; beispiele: { name: string; value: number }[];
   } | null | undefined>(undefined);
   return (
-    // KEIN gemeinsames `jahr`: Die Bereichs-Übersicht zeigt den jüngsten
+    // KEIN gemeinsames `year`: Die Bereichs-Übersicht zeigt den jüngsten
     // Ansatz, die Produktebene den jüngsten Jahrgang MIT Produktdaten — und
     // die liegen auseinander, weil die Produktebene erst mit dem Abschluss
     // vorliegt. Ohne den Wert nimmt jeder Beleg das jüngste Dokument seiner
     // Quelle und schreibt den Jahrgang an.
-    <Quellenkontext schluessel={QUELLEN}>
+    <Quellenkontext keys={QUELLEN}>
       <div className="flex flex-col gap-4">
         <div className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
           <Link href="/haushalt" className="hover:text-foreground">Haushalt</Link>
@@ -74,10 +74,10 @@ function ProdukteSeiteInner() {
             Teilhaushalt, darunter eingerückt seine Aufgaben — klickt zur
             Suche. Bis die Antwort des Abschnitts da ist, hält der
             Platzhalter die Höhe, damit die Seite nicht springt. */}
-        {bestand ? (
+        {balance ? (
           <Seitenbuehne
-            kicker={`Produktebene · Haushaltsjahr ${bestand.jahr}`}
-            zahl={<><ZaehlZahl wert={bestand.anzahl} /> einzelne Aufgaben, vom Stadtarchiv
+            kicker={`Produktebene · Haushaltsjahr ${balance.year}`}
+            zahl={<><ZaehlZahl value={balance.count} /> einzelne Aufgaben, vom Stadtarchiv
               bis zum Schwimmbad</>}
             sub="jede mit Kosten, zuständigem Amt und Auftragsgrundlage"
             minibild={{
@@ -87,12 +87,12 @@ function ProdukteSeiteInner() {
                 // Echte Namen statt Baum-Skizze (Tim, 26.08.: „übersichtlicher
                 // umbauen") — dieselben Zeilen, die die Trefferliste oben
                 // trägt, verkleinert.
-                const max = Math.max(...bestand.beispiele.map((b) => b.wert), 1);
-                return bestand.beispiele.map((b) => (
+                const max = Math.max(...balance.beispiele.map((b) => b.value), 1);
+                return balance.beispiele.map((b) => (
                   <span key={b.name} className="flex flex-col gap-[3px]">
                     <span className="truncate text-[9.5px] leading-none text-muted-foreground">{b.name}</span>
                     <span className="block h-3 rounded-[4px]" style={{
-                      width: `${Math.max((b.wert / max) * 100, 4)}%`,
+                      width: `${Math.max((b.value / max) * 100, 4)}%`,
                       background: "var(--sb-voll)",
                     }} />
                   </span>
@@ -100,7 +100,7 @@ function ProdukteSeiteInner() {
               })(),
             }}
           />
-        ) : bestand === undefined ? (
+        ) : balance === undefined ? (
           <SeitenbuehneLaedt kicker="Produktebene" />
         ) : null}
 
@@ -120,7 +120,7 @@ function ProdukteSeiteInner() {
 
         <SchrittWeiter href="/haushalt/produkte" />
 
-        <Quellenverzeichnis schluessel={QUELLEN} />
+        <Quellenverzeichnis keys={QUELLEN} />
       </div>
     </Quellenkontext>
   );

@@ -57,7 +57,7 @@ def _run(store: CouncilStore, jobs: list[tuple[int, frozenset]], workers: int) -
             store.save_anlagen(r["kvonr"], r["rows"])
             scanned += 1
             new_docs += len(r["rows"])
-            antraege += sum(1 for x in r["rows"] if x.get("is_antrag"))
+            antraege += sum(1 for x in r["rows"] if x.get("is_motion"))
             if i % 100 == 0 or i == len(jobs):
                 print(f"  [{i}/{len(jobs)}] … {new_docs} Anlagen, davon {antraege} Anträge", flush=True)
     return {"scanned": scanned, "anlagen": new_docs, "antraege": antraege, "failed": failed}

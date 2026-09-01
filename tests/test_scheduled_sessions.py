@@ -139,14 +139,14 @@ def _vorschau_store(tmp_path):
             ("Ö 6", "Berufung Beratendes Mitglied im Ausschuss", "26/4", 400),
         ]
         store._conn.executemany(
-            "INSERT INTO council_agenda_items (ksinr, item_number, title, vorlage_nr, kvonr, is_public) "
+            "INSERT INTO council_agenda_items (ksinr, item_number, title, template_number, kvonr, is_public) "
             "VALUES (1, ?, ?, ?, ?, 1)", punkte)
         store._conn.execute(
             "INSERT INTO council_entities (id, slug, name, kind, n) "
             "VALUES (1, 'fliegerhorst', 'Fliegerhorst', 'ort', 166)")
         # Behandlungsart je Punkt aus der Beratungsfolge
         store._conn.executemany(
-            "INSERT INTO council_beratungen (kvonr, datum, gremium, ergebnis, fetched_at) "
+            "INSERT INTO council_beratungen (kvonr, date, committee, result, fetched_at) "
             "VALUES (?, date('now','+2 day'), 'Umweltausschuss', ?, datetime('now'))",
             [(200, "Kenntnisnahme"), (300, "Entscheidung"), (400, "Entscheidung")])
     return store
@@ -160,10 +160,10 @@ def test_wochenvorschau_waehlt_nach_wichtigkeit(tmp_path):
     store = _vorschau_store(tmp_path)
     try:
         d = store.wochenvorschau(max_punkte=99)
-        titel = [p["title"][:30] for p in d["punkte"]]
+        title = [p["title"][:30] for p in d["punkte"]]
         # Formalien fliegen raus.
-        assert not any("Beschlussfähigkeit" in t for t in titel)
-        assert not any("Genehmigung des Protokolls" in t for t in titel)
+        assert not any("Beschlussfähigkeit" in t for t in title)
+        assert not any("Genehmigung des Protokolls" in t for t in title)
 
         rang = {p["title"][:12]: p["rang"] for p in d["punkte"]}
         # Die Satzungsänderung (Entscheidung, bindend) schlägt den
@@ -178,20 +178,20 @@ def test_wochenvorschau_waehlt_nach_wichtigkeit(tmp_path):
         # der Weg, auf dem der Museumsbericht nach oben rutschte.
         bericht = [{"title": "Bildende Kunst im Stadtmuseum (CDU-Fraktion vom 07.07.2026)",
                     "behandlung": "Kenntnisnahme", "vorgeschichte": 1,
-                    "summary": "Ein Satz dazu.", "vorlage_nr": "26/9",
+                    "summary": "Ein Satz dazu.", "template_number": "26/9",
                     "committee": "Kulturausschuss"}]
         store._punkte_bewerten(bericht)
         assert bericht[0]["rang"] <= 2.5
         assert bericht[0]["wichtig"] <= store.WICHTIG_MINDEST
         # Unter der Schwelle bleiben draußen: der reine Kenntnisnahme-Bericht
         # und die Gremien-Personalie (formal „Entscheidung", aber Routine).
-        assert not any("Aktionswochen" in t for t in titel)
-        assert not any("Berufung" in t for t in titel)
+        assert not any("Aktionswochen" in t for t in title)
+        assert not any("Berufung" in t for t in title)
         # Ohne die Dämpfung stünde die Personalie gleichauf mit der Satzung —
         # das war der Befund, der die Dämpfung ausgelöst hat.
         roh = [{"title": "Berufung Beratendes Mitglied im Ausschuss",
                 "behandlung": "Entscheidung", "vorgeschichte": 0,
-                "summary": None, "vorlage_nr": "26/4"}]
+                "summary": None, "template_number": "26/4"}]
         store._punkte_bewerten(roh)
         assert roh[0]["wichtig"] < store.WICHTIG_MINDEST
     finally:
@@ -226,7 +226,7 @@ def test_wochenvorschau_deckelt_strassen_formalakte(tmp_path):
     try:
         with store._conn:
             store._conn.execute(
-                "INSERT INTO council_agenda_items (ksinr, item_number, title, vorlage_nr, kvonr, is_public) "
+                "INSERT INTO council_agenda_items (ksinr, item_number, title, template_number, kvonr, is_public) "
                 "VALUES (1, 'Ö 7', 'Widmung der Straße \"Im Technologiepark\"', '26/7', 700, 1)")
             # Gespeicherte LLM-Fehlbewertung: 70 von 100.
             store.save_agenda_impact(1, "Ö 7", 70, "Klingt nach Infrastruktur")
@@ -338,12 +338,12 @@ def test_bericht_der_verwaltung_ist_nur_allein_eine_formalie(tmp_path):
         assert formalie.search("Bericht der Verwaltung")
         assert formalie.search("  Berichte der Verwaltung  ")
         # … der Zusatz an einem echten Punkt nicht.
-        for titel in (
+        for title in (
             "Ermittlungen Abfallentsorgung Fliegerhorst (CDU-Fraktion vom 14.07.2026) - Bericht der Verwaltung",
             "Bekämpfung des Rattenbefalls in der Stadt Oldenburg (FDP-Fraktion) - Bericht der Verwaltung",
             "Vorhabenbezogener Bebauungsplan Nr. 81: Vorstellung - Bericht der Verwaltung",
         ):
-            assert not formalie.search(titel), titel
+            assert not formalie.search(title), title
     finally:
         store.close()
 
@@ -371,15 +371,15 @@ def _gruppen_store(tmp_path):
             ("Ö 6.2", "Ausbau der Fahrradabstellanlagen (SPD-Fraktion vom 10.06.2026)", "26/4", 104),
         ]
         store._conn.executemany(
-            "INSERT INTO council_agenda_items (ksinr, item_number, title, vorlage_nr, kvonr, is_public) "
+            "INSERT INTO council_agenda_items (ksinr, item_number, title, template_number, kvonr, is_public) "
             "VALUES (7, ?, ?, ?, ?, 1)", punkte)
         store._conn.executemany(
-            "INSERT INTO council_vorlagen (kvonr, vorlage_nr, title, art, fetched_at) "
+            "INSERT INTO council_vorlagen (kvonr, template_number, title, kind, fetched_at) "
             "VALUES (?, ?, '', ?, datetime('now'))",
             [(101, "26/1", "Beschlussvorlage"), (102, "26/2", "Berichtsvorlage"),
              (103, "26/3", "Beschlussvorlage"), (104, "26/4", "Beschlussvorlage")])
         store._conn.executemany(
-            "INSERT INTO council_beratungen (kvonr, datum, gremium, ergebnis, fetched_at) "
+            "INSERT INTO council_beratungen (kvonr, date, committee, result, fetched_at) "
             "VALUES (?, date('now','+2 day'), 'Bauausschuss', ?, datetime('now'))",
             [(101, "Vorberatung"), (102, "Kenntnisnahme"),
              (103, "Vorberatung"), (104, "Vorberatung")])
@@ -436,18 +436,18 @@ def test_beschlussvorlage_haelt_die_kenntnisnahme_schranke_auf(tmp_path):
     store = CouncilStore(tmp_path / "s.sqlite")
     try:
         gemeinsam = {"behandlung": "Kenntnisnahme", "vorgeschichte": 0,
-                     "summary": "Ein Satz dazu.", "vorlage_nr": "26/1",
+                     "summary": "Ein Satz dazu.", "template_number": "26/1",
                      "committee": "Verkehrsausschuss"}
         punkte = [
             {**gemeinsam, "title": "VBN-Tarifanpassung 2027 - Beschluss",
-             "art": "Beschlussvorlage"},
+             "kind": "Beschlussvorlage"},
             {**gemeinsam, "title": "Geplante Änderung der Verordnung über Parkgebühren - Bericht",
-             "art": "Berichtsvorlage"},
+             "kind": "Berichtsvorlage"},
         ]
         store._punkte_bewerten(punkte)
-        beschluss, bericht = punkte
-        assert beschluss["wichtig"] >= store.WICHTIG_MINDEST, "kommt jetzt auf die Karte"
-        assert beschluss["wichtig"] > bericht["wichtig"], (
+        official_text, bericht = punkte
+        assert official_text["wichtig"] >= store.WICHTIG_MINDEST, "kommt jetzt auf die Karte"
+        assert official_text["wichtig"] > bericht["wichtig"], (
             "die Entscheidung schlägt den Bericht — vorher war es umgekehrt")
         # Der Bericht bleibt gedeckelt: Die Schranke gilt weiter, wo sie stimmt.
         assert bericht["rang"] <= 2.5

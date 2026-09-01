@@ -133,7 +133,7 @@ MIN_DPI = 100
 MAX_BILD_BYTES = 20 * 1024 * 1024
 
 
-def _deckt_die_seite(seite, im) -> bool:
+def _deckt_die_seite(page, im) -> bool:
     """Ist dieses eingebettete Bild plausibel die ganze Seite?
 
     Ohne Pillow lässt sich die Pixelgröße nicht immer bestimmen; dann
@@ -141,8 +141,8 @@ def _deckt_die_seite(seite, im) -> bool:
     gescannte Seite, egal was für ein Bild darauf klebt.
     """
     try:
-        breite_pt = float(seite.mediabox.width)
-        hoehe_pt = float(seite.mediabox.height)
+        breite_pt = float(page.mediabox.width)
+        hoehe_pt = float(page.mediabox.height)
     except Exception:  # noqa: BLE001
         return False
     if not (breite_pt > 0 and hoehe_pt > 0):
@@ -152,7 +152,7 @@ def _deckt_die_seite(seite, im) -> bool:
     if groesse is None:
         # Kein Pillow: Die Textebene entscheidet. Ein echter Scan hat keine.
         try:
-            return len((seite.extract_text() or "").strip()) < MIN_SEITE
+            return len((page.extract_text() or "").strip()) < MIN_SEITE
         except Exception:  # noqa: BLE001
             return False
     breite_px, hoehe_px = groesse
@@ -160,7 +160,7 @@ def _deckt_die_seite(seite, im) -> bool:
             and hoehe_px / (hoehe_pt / 72.0) >= MIN_DPI)
 
 
-def seite_als_bild(seite, dpi: int = 200) -> Seitenbild:
+def seite_als_bild(page, dpi: int = 200) -> Seitenbild:
     """Eine PDF-Seite als Bild — ohne neue Abhängigkeit, wo es geht.
 
     Erster Weg: Trägt die Seite **genau ein** eingebettetes Bild, und deckt
@@ -173,7 +173,7 @@ def seite_als_bild(seite, dpi: int = 200) -> Seitenbild:
     ans Modell statt der Seite (s. ``MIN_DPI``).
     """
     try:
-        bilder = list(getattr(seite, "images", []))
+        bilder = list(getattr(page, "images", []))
     except Exception:  # noqa: BLE001 — eine kaputte Ressource ist kein Grund aufzugeben
         bilder = []
     if len(bilder) == 1:
@@ -181,12 +181,12 @@ def seite_als_bild(seite, dpi: int = 200) -> Seitenbild:
         endung = os.path.splitext(getattr(im, "name", "") or "")[1].lower()
         mime = _BILDTYPEN.get(endung)
         if (mime and im.data and len(im.data) <= MAX_BILD_BYTES
-                and _deckt_die_seite(seite, im)):
+                and _deckt_die_seite(page, im)):
             return Seitenbild(im.data, mime, "eingebettet")
-    return _gerendert(seite, dpi)
+    return _gerendert(page, dpi)
 
 
-def _gerendert(seite, dpi: int) -> Seitenbild:
+def _gerendert(page, dpi: int) -> Seitenbild:
     """Fallback für Vektorseiten. Braucht einen Renderer — bewusst optional.
 
     Fehlt er, bleibt die Seite **ungelesen**. Das ist die richtige Richtung:
@@ -216,7 +216,7 @@ def _gerendert(seite, dpi: int) -> Seitenbild:
             "requirements.txt, wie fastembed): pip install pypdfium2")
 
     schreiber = pypdf.PdfWriter()
-    schreiber.add_page(seite)
+    schreiber.add_page(page)
     puffer = io.BytesIO()
     schreiber.write(puffer)
     roh = puffer.getvalue()
@@ -311,7 +311,7 @@ def lies_seite(bild: Seitenbild, model: str = MODEL) -> str:
     """
     from kern.llm import chat_complete  # noqa: PLC0415 — hält den Importbaum flach
 
-    antwort = chat_complete(
+    answer = chat_complete(
         model=model,
         temperature=TEMPERATUR,
         messages=[{"role": "user", "content": [
@@ -320,7 +320,7 @@ def lies_seite(bild: Seitenbild, model: str = MODEL) -> str:
         ]}],
         _feature="anlagen_ocr",
     )
-    text = (antwort.choices[0].message.content or "").strip()
+    text = (answer.choices[0].message.content or "").strip()
     return text[:MAX_SEITE]
 
 
@@ -384,9 +384,9 @@ def lies_pdf(daten: bytes, model: str = MODEL, max_seiten: int | None = None,
     gelesen = uebersprungen = 0
     wege: set[str] = set()
 
-    for nr, seite in enumerate(seiten, start=1):
+    for nr, page in enumerate(seiten, start=1):
         try:
-            bild = seite_als_bild(seite, dpi=dpi)
+            bild = seite_als_bild(page, dpi=dpi)
         except OcrFehler:
             uebersprungen += 1
             teile.append(PLATZHALTER.format(nr=nr))

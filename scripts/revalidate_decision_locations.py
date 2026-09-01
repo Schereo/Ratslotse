@@ -23,7 +23,7 @@ from council.store import CouncilStore  # noqa: E402
 COUNCIL_DB = ROOT / "data" / "council.sqlite"
 
 
-DETERMINISTIC_METHODS = {"regex", "stadtteilliste", "ortskatalog", "gebaeudemuster"}
+DETERMINISTIC_METHODS = {"regex", "district_list", "place_catalog", "building_pattern"}
 
 
 def invalid_llm_links(store: CouncilStore) -> list[dict]:
@@ -45,7 +45,7 @@ def deterministic_changes(
     ignored_current: set[tuple[int, str]] | None = None,
 ) -> tuple[list[dict], list[dict]]:
     decisions = store._conn.execute(
-        "SELECT id,title,beschluss FROM council_decisions WHERE kind='decision'"
+        "SELECT id,title,official_text FROM council_decisions WHERE kind='decision'"
     ).fetchall()
     expected: dict[int, dict[str, dict]] = {}
     place_catalog = store.all_places()
@@ -53,7 +53,7 @@ def deterministic_changes(
         rows = extract_explicit_locations(
             decision["title"] or "", source="title", catalog_places=place_catalog)
         rows += extract_explicit_locations(
-            decision["beschluss"] or "", source="beschluss", catalog_places=place_catalog)
+            decision["official_text"] or "", source="official_text", catalog_places=place_catalog)
         for row in rows:
             slug = location_slug(row["name"])
             old = expected.setdefault(decision["id"], {}).get(slug)

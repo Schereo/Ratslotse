@@ -229,7 +229,7 @@ class Wortbeitrag:
     text: str                       # Wortlaut des Protokolls, geglättet
     fraktion: str | None = None
     fraktion_unklar: bool = False
-    rolle: str = "rat"              # rat | verwaltung | leitung
+    role: str = "council"              # council | administration | leadership
 
     def als_dict(self) -> dict:
         return {
@@ -238,7 +238,7 @@ class Wortbeitrag:
             "text": self.text,
             "fraktion": self.fraktion,
             "fraktion_unklar": self.fraktion_unklar,
-            "rolle": self.rolle,
+            "role": self.role,
             "zeichen": len(self.text),
         }
 
@@ -317,7 +317,7 @@ def _vorname(name: str) -> str:
 _NOTNAME = re.compile(r"^((?:(?:Dr|Prof)\.[ \t]+)*[A-ZÄÖÜ][\wäöüß]*(?:-[A-ZÄÖÜ][\wäöüß]*)?)")
 
 
-def debatte(abschnitt: str, anwesende: list[dict]) -> list[Wortbeitrag]:
+def debatte(section: str, anwesende: list[dict]) -> list[Wortbeitrag]:
     """Zerlegt einen Protokollabschnitt in Redebeiträge und hängt jedem die
     Fraktion aus der Anwesenheitsliste derselben Sitzung an.
 
@@ -326,11 +326,11 @@ def debatte(abschnitt: str, anwesende: list[dict]) -> list[Wortbeitrag]:
     2021 schon. Bleibt eine Person mehrdeutig (Namensvettern im Rat), bleibt
     die Fraktion leer und ``fraktion_unklar`` steht auf ``True``."""
     index = _personen_index(anwesende)
-    treffer = [m for m in _ANREDE_RE.finditer(abschnitt) if _beginnt_beitrag(abschnitt, m.start())]
-    ergebnis: list[Wortbeitrag] = []
+    treffer = [m for m in _ANREDE_RE.finditer(section) if _beginnt_beitrag(section, m.start())]
+    result: list[Wortbeitrag] = []
     for i, m in enumerate(treffer):
-        ende = treffer[i + 1].start() if i + 1 < len(treffer) else len(abschnitt)
-        roh = abschnitt[m.start():ende]
+        ende = treffer[i + 1].start() if i + 1 < len(treffer) else len(section)
+        roh = section[m.start():ende]
         stopp = _STOPP.search(roh, m.end() - m.start())
         if stopp:
             roh = roh[: stopp.start()]
@@ -340,23 +340,23 @@ def debatte(abschnitt: str, anwesende: list[dict]) -> list[Wortbeitrag]:
 
         anrede = m.group(1)
         niedrig = anrede.lower()
-        rolle = "leitung" if niedrig in _LEITUNG else "verwaltung" if niedrig in _VERWALTUNG else "rat"
+        role = "leadership" if niedrig in _LEITUNG else "administration" if niedrig in _VERWALTUNG else "council"
 
-        kandidaten, geschrieben = _finde_person(abschnitt[m.end():ende], index)
+        kandidaten, geschrieben = _finde_person(section[m.end():ende], index)
         if kandidaten:
             name = kandidaten[0]["name"] if len(kandidaten) == 1 else geschrieben
         else:
-            notfall = _NOTNAME.match(_glatt(abschnitt[m.end():ende]))
+            notfall = _NOTNAME.match(_glatt(section[m.end():ende]))
             name = notfall.group(1) if notfall else geschrieben or "unbekannt"
 
-        beitrag = Wortbeitrag(anrede=anrede, name=name, text=text, rolle=rolle)
-        if rolle == "rat":
+        beitrag = Wortbeitrag(anrede=anrede, name=name, text=text, role=role)
+        if role == "council":
             if len(kandidaten) == 1:
                 beitrag.fraktion = _fraktion_von(kandidaten[0])
             elif len(kandidaten) > 1:
                 beitrag.fraktion_unklar = True
-        ergebnis.append(beitrag)
-    return ergebnis
+        result.append(beitrag)
+    return result
 
 
 #: Wie viele zerlegte Debatten gleichzeitig im Gedächtnis bleiben. Ein Aufruf
@@ -408,16 +408,16 @@ def debatte_zu_top(text: str, top: str, anwesende: list[dict]) -> list[dict]:
     Zurück kommen **Kopien**: Die Listen gehen in eine API-Antwort, und ein
     Aufrufer, der daran herumschreibt, änderte sonst den Eintrag für alle
     folgenden."""
-    schluessel = _gedaechtnis_schluessel(text, top, anwesende)
-    gemerkt = _gedaechtnis.get(schluessel)
+    key = _gedaechtnis_schluessel(text, top, anwesende)
+    gemerkt = _gedaechtnis.get(key)
     if gemerkt is None:
-        abschnitt = top_abschnitt(saeubern(text), top, bis_unterpunkt=True)
-        gemerkt = [b.als_dict() for b in debatte(abschnitt, anwesende)]
-        _gedaechtnis[schluessel] = gemerkt
+        section = top_abschnitt(saeubern(text), top, bis_unterpunkt=True)
+        gemerkt = [b.als_dict() for b in debatte(section, anwesende)]
+        _gedaechtnis[key] = gemerkt
         while len(_gedaechtnis) > _GEDAECHTNIS_MAX:
             _gedaechtnis.popitem(last=False)
     else:
-        _gedaechtnis.move_to_end(schluessel)
+        _gedaechtnis.move_to_end(key)
     return [dict(b) for b in gemerkt]
 
 
@@ -461,20 +461,20 @@ _SAMMELABSTIMMUNG = re.compile(
 class Antrag:
     """Eine Änderungsliste, so wie das Protokoll sie benennt und abstimmt."""
 
-    titel: str
+    title: str
     outcome: str | None
     vote: str | None
-    urheber: str | None       # gruppen-bewusstes Label, None bei Verwaltung
+    author: str | None       # gruppen-bewusstes Label, None bei Verwaltung
     ist_verwaltung: bool
     top: str | None
     ksinr: int
 
     def als_dict(self) -> dict:
         return {
-            "titel": self.titel,
+            "title": self.title,
             "outcome": self.outcome,
             "vote": self.vote,
-            "urheber": self.urheber,
+            "author": self.author,
             "ist_verwaltung": self.ist_verwaltung,
             "top": self.top,
             "ksinr": self.ksinr,
@@ -500,7 +500,7 @@ _URHEBER_MUSTER: list[tuple[re.Pattern, str]] = [
 ]
 
 
-def urheber(titel: str) -> list[str]:
+def author(title: str) -> list[str]:
     """Alle Fraktionen/Gruppen, die eine Änderungsliste tragen — in der
     Reihenfolge, in der das Protokoll sie nennt.
 
@@ -512,7 +512,7 @@ def urheber(titel: str) -> list[str]:
     belegt: list[tuple[int, int]] = []
     gefunden: list[tuple[int, str]] = []
     for muster, label in _URHEBER_MUSTER:
-        for m in muster.finditer(titel):
+        for m in muster.finditer(title):
             if any(m.start() < b and a < m.end() for a, b in belegt):
                 continue
             belegt.append((m.start(), m.end()))
@@ -524,20 +524,20 @@ def urheber(titel: str) -> list[str]:
     return raus
 
 
-def antrag_aus_zeile(zeile: dict) -> Antrag | None:
+def antrag_aus_zeile(row: dict) -> Antrag | None:
     """Macht aus einer ``subvote``-Zeile einen Antrag — oder ``None``, wenn die
     Zeile die Schlussabstimmung über das Ganze ist."""
-    titel = (zeile.get("title") or "").strip()
-    if not titel or _SAMMELABSTIMMUNG.match(titel):
+    title = (row.get("title") or "").strip()
+    if not title or _SAMMELABSTIMMUNG.match(title):
         return None
-    ist_verw = bool(_VERWALTUNGSLISTE.search(titel))
-    traeger = [] if ist_verw else urheber(titel)
+    ist_verw = bool(_VERWALTUNGSLISTE.search(title))
+    entity = [] if ist_verw else author(title)
     return Antrag(
-        titel=titel,
-        outcome=zeile.get("outcome"),
-        vote=zeile.get("vote"),
-        urheber=" / ".join(traeger) if traeger else None,
+        title=title,
+        outcome=row.get("outcome"),
+        vote=row.get("vote"),
+        author=" / ".join(entity) if entity else None,
         ist_verwaltung=ist_verw,
-        top=zeile.get("item_number"),
-        ksinr=zeile.get("ksinr"),
+        top=row.get("item_number"),
+        ksinr=row.get("ksinr"),
     )

@@ -53,7 +53,7 @@
 // Bezugskreis doppelt („Geteilt wird durch alle" neben „Alle zählen mit") —
 // ein Merge-Rest, hier bereinigt.
 
-import { Beleg } from "@/components/haushalt/quelle";
+import { Beleg } from "@/components/haushalt/source";
 import {
   BonZeile, Kassenzettel as KassenzettelBon, NichtAussage,
 } from "@/components/grafik/kassenzettel";
@@ -77,12 +77,12 @@ function ruecklageLeerAb(
 ): number | null {
   if (defizitEuro <= 0) return null;
   let rest = ruecklageEuro;
-  let jahr = abJahr;
-  while (rest > 0 && jahr < abJahr + 40) {
+  let year = abJahr;
+  while (rest > 0 && year < abJahr + 40) {
     rest -= defizitEuro;
-    jahr += 1;
+    year += 1;
   }
-  return rest > 0 ? null : jahr;
+  return rest > 0 ? null : year;
 }
 
 /** Die API liefert nur belastbare Bilanzwerte. Fehlende Jahre werden hier
@@ -90,17 +90,17 @@ function ruecklageLeerAb(
  *  den Grund anschreibt, statt die beiden Nachbarjahre zu verbinden. */
 function ruecklagenReihe(zeilen: RuecklageJahr[]): JahrPunkt[] {
   const sortiert = [...zeilen]
-    .filter((z) => Number.isFinite(z.stand_nach_ergebnis))
-    .sort((a, b) => a.jahr - b.jahr);
+    .filter((z) => Number.isFinite(z.state_after_result))
+    .sort((a, b) => a.year - b.year);
   if (!sortiert.length) return [];
-  const nachJahr = new Map(sortiert.map((z) => [z.jahr, z]));
+  const nachJahr = new Map(sortiert.map((z) => [z.year, z]));
   const aus: JahrPunkt[] = [];
-  for (let jahr = sortiert[0].jahr; jahr <= sortiert[sortiert.length - 1].jahr; jahr += 1) {
-    const zeile = nachJahr.get(jahr);
-    aus.push(zeile
-      ? { jahr, wert: zeile.stand_nach_ergebnis / 1e6 }
+  for (let year = sortiert[0].year; year <= sortiert[sortiert.length - 1].year; year += 1) {
+    const row = nachJahr.get(year);
+    aus.push(row
+      ? { year, value: row.state_after_result / 1e6 }
       : {
-          jahr,
+          year,
           fehlt: "Für dieses Jahr liegt in den eingelesenen Jahresabschlüssen "
             + "kein belastbarer Rücklagenwert vor.",
         });
@@ -116,19 +116,19 @@ function ruecklagenReihe(zeilen: RuecklageJahr[]): JahrPunkt[] {
  *  weiterreicht (Gewerbesteuer- und Finanzausgleichsumlage). Der Anteil wird
  *  gerechnet und mit seinem Jahr angeschrieben, statt als feste Zahl zu
  *  veralten. */
-function transferAnteil(daten: HaushaltAuswahl<"ergebnisrechnung" | "jahre">, thhNr: number): {
-  jahr: number; prozent: number;
+function transferAnteil(daten: HaushaltAuswahl<"income_statement" | "years">, thhNr: number): {
+  year: number; percent: number;
 } | null {
-  const posten = daten.ergebnisrechnung ?? [];
-  const jahre = [...new Set(posten.filter((p) => p.thh_nr === thhNr).map((p) => p.jahr))]
+  const posten = daten.income_statement ?? [];
+  const years = [...new Set(posten.filter((p) => p.sub_budget_no === thhNr).map((p) => p.year))]
     .sort((a, b) => b - a);
-  for (const jahr of jahre) {
-    const wert = (nr: number) => posten.find(
-      (p) => p.jahr === jahr && p.thh_nr === thhNr && p.nr === nr)?.ergebnis ?? null;
-    const transfer = wert(18);
-    const gesamt = wert(20);
+  for (const year of years) {
+    const value = (nr: number) => posten.find(
+      (p) => p.year === year && p.sub_budget_no === thhNr && p.nr === nr)?.result ?? null;
+    const transfer = value(18);
+    const gesamt = value(20);
     if (transfer != null && gesamt != null && gesamt > 0) {
-      return { jahr, prozent: Math.round((transfer / gesamt) * 100) };
+      return { year, percent: Math.round((transfer / gesamt) * 100) };
     }
   }
   return null;
@@ -142,12 +142,12 @@ function transferAnteil(daten: HaushaltAuswahl<"ergebnisrechnung" | "jahre">, th
  *  nichts; meldet sie eine zu wenig an, verschluckt `Beleg` den Chip
  *  stillschweigend. Deshalb sagt der Zettel es selbst — `plan` nicht, die
  *  trägt die Seite ohnehin schon für die Anzeigetafel. */
-export function kassenzettelQuellen(daten: HaushaltAuswahl<"ergebnisrechnung" | "jahre">, jahr: number): QuellenSchluessel[] {
-  const g = summe(daten.jahre[String(jahr)] ?? []);
-  if (!g || g.aufwendungen == null) return [];
-  const q: QuellenSchluessel[] = ["einwohner"];
-  if (g.ertraege != null && g.ertraege < g.aufwendungen) q.push("ruecklage");
-  if (transferAnteil(daten, BEREICH_NACH_SCHLUESSEL.finanzen.thh)) {
+export function kassenzettelQuellen(daten: HaushaltAuswahl<"income_statement" | "years">, year: number): QuellenSchluessel[] {
+  const g = summe(daten.years[String(year)] ?? []);
+  if (!g || g.expenses == null) return [];
+  const q: QuellenSchluessel[] = ["population"];
+  if (g.revenues != null && g.revenues < g.expenses) q.push("reserves");
+  if (transferAnteil(daten, BEREICH_NACH_SCHLUESSEL.finanzen.sub_budget)) {
     q.push("ergebnisrechnung_thh");
   }
   return q;
@@ -201,74 +201,74 @@ const NICHT_AUSSAGEN: NichtAussage[] = [
   },
 ];
 
-export function Kassenzettel({ daten, jahr, einwohner, className }: {
-  daten: HaushaltAuswahl<"ergebnisrechnung" | "jahre" | "ruecklage">;
+export function Kassenzettel({ daten, year, population, className }: {
+  daten: HaushaltAuswahl<"income_statement" | "years" | "reserves">;
   /** Das jüngste Planjahr — der Zettel läuft bewusst nur dafür (s. o.). */
-  jahr: number;
+  year: number;
   /** Amtliche Bezugsgröße samt ihrem Haushaltsjahr. */
-  einwohner: { jahr: number; einwohner: number };
+  population: { year: number; population: number };
   className?: string;
 }) {
-  const zeilen = daten.jahre[String(jahr)] ?? [];
+  const zeilen = daten.years[String(year)] ?? [];
   const gesamt = summe(zeilen);
-  const kopf = einwohner.einwohner;
-  if (!gesamt || gesamt.aufwendungen == null || kopf <= 0) return null;
+  const kopf = population.population;
+  if (!gesamt || gesamt.expenses == null || kopf <= 0) return null;
 
   const jeKopf = (euro: number) => Math.round(euro / kopf);
 
   const posten = bereiche(zeilen)
-    .filter((z) => z.aufwendungen != null && z.aufwendungen > 0)
+    .filter((z) => z.expenses != null && z.expenses > 0)
     .map((z) => ({
-      roh: z.bereich,
-      kanon: bereichKanon(z.bereich),
-      euro: z.aufwendungen as number,
-      wert: jeKopf(z.aufwendungen as number),
+      roh: z.area,
+      kanon: bereichKanon(z.area),
+      euro: z.expenses as number,
+      value: jeKopf(z.expenses as number),
     }))
     .sort((a, b) => b.euro - a.euro);
 
-  const summeJeKopf = jeKopf(gesamt.aufwendungen);
-  const einJeKopf = gesamt.ertraege != null ? jeKopf(gesamt.ertraege) : null;
+  const summeJeKopf = jeKopf(gesamt.expenses);
+  const einJeKopf = gesamt.revenues != null ? jeKopf(gesamt.revenues) : null;
   // Aus Rohwerten, nicht aus den angezeigten Millionen — sonst 403 statt 402.
-  const saldoEuro = gesamt.ertraege != null ? gesamt.ertraege - gesamt.aufwendungen : null;
+  const saldoEuro = gesamt.revenues != null ? gesamt.revenues - gesamt.expenses : null;
   const fehltEuro = saldoEuro != null && saldoEuro < 0 ? -saldoEuro : null;
   const ueberEuro = saldoEuro != null && saldoEuro > 0 ? saldoEuro : null;
 
-  const ruecklage = juengsteRuecklage(daten);
-  const ruecklagenVerlauf = ruecklagenReihe(daten.ruecklage ?? []);
-  const ruecklageEuro = ruecklage?.stand_nach_ergebnis ?? null;
+  const reserves = juengsteRuecklage(daten);
+  const ruecklagenVerlauf = ruecklagenReihe(daten.reserves ?? []);
+  const ruecklageEuro = reserves?.state_after_result ?? null;
   const ruecklageJeKopf = ruecklageEuro != null ? jeKopf(ruecklageEuro) : null;
   const restJeKopf = fehltEuro != null && ruecklageEuro != null
     ? jeKopf(ruecklageEuro - fehltEuro) : null;
   const leerAb = fehltEuro != null && ruecklageEuro != null
-    ? ruecklageLeerAb(fehltEuro, ruecklageEuro, jahr) : null;
+    ? ruecklageLeerAb(fehltEuro, ruecklageEuro, year) : null;
 
-  const quelle = quellenLabel(zeilen, jahr);
+  const source = quellenLabel(zeilen, year);
   const finanzen = BEREICH_NACH_SCHLUESSEL.finanzen;
-  const finanzenZeile = posten.find((p) => p.kanon.schluessel === "finanzen");
-  const transfer = transferAnteil(daten, finanzen.thh);
+  const finanzenZeile = posten.find((p) => p.kanon.key === "finanzen");
+  const transfer = transferAnteil(daten, finanzen.sub_budget);
   const gross = posten.slice(0, 2);
 
   const bezahltMit: BonZeile[] | undefined = einJeKopf != null ? [
-    { label: `geplante Erträge ${jahr}`, wert: einJeKopf },
+    { label: `geplante Erträge ${year}`, value: einJeKopf },
     ...(fehltEuro != null
-      ? [{ label: "geplantes Minus", wert: jeKopf(fehltEuro), ton: "signal" as const }] : []),
+      ? [{ label: "geplantes Minus", value: jeKopf(fehltEuro), ton: "signal" as const }] : []),
     ...(ueberEuro != null
-      ? [{ label: "bleibt übrig", wert: jeKopf(ueberEuro) }] : []),
+      ? [{ label: "bleibt übrig", value: jeKopf(ueberEuro) }] : []),
   ] : undefined;
 
   return (
     <section
-      aria-labelledby="kassenzettel-titel"
+      aria-labelledby="kassenzettel-title"
       className={cn("rounded-2xl border border-border bg-background p-4 sm:p-5", className)}
     >
       <KassenzettelBon
-        titel="Stadt Oldenburg"
-        untertitel={`Haushaltsplan ${jahr}`}
-        stempel={<>je Einwohner*in<Beleg q="einwohner" /></>}
+        title="Stadt Oldenburg"
+        untertitel={`Haushaltsplan ${year}`}
+        stempel={<>je Einwohner*in<Beleg q="population" /></>}
         posten={posten.map((p) => ({
           label: p.kanon.kurz,
-          wert: p.wert,
-          ton: p.wert < 100 ? ("leise" as const) : undefined,
+          value: p.value,
+          ton: p.value < 100 ? ("leise" as const) : undefined,
         }))}
         summe={summeJeKopf}
         summeLabel={<>Summe<Beleg q="plan" /></>}
@@ -276,9 +276,9 @@ export function Kassenzettel({ daten, jahr, einwohner, className }: {
         bezahltMitTitel="Im Plan gedeckt durch"
         teiler={{
           zahl: kopf,
-          einheit: "Einwohner*innen",
-          stichtag: `31.12.${einwohner.jahr - 1}`,
-          quelle: <>amtliche Zahl der Stadt<Beleg q="einwohner" /></>,
+          unit: "Einwohner*innen",
+          as_of_date: `31.12.${population.year - 1}`,
+          source: <>amtliche Zahl der Stadt<Beleg q="population" /></>,
         }}
         nichtAussagen={NICHT_AUSSAGEN}
         fuss={restJeKopf != null && ruecklageJeKopf != null ? (
@@ -287,7 +287,7 @@ export function Kassenzettel({ daten, jahr, einwohner, className }: {
                 war ein Rechenfehler: Das ist der Stand VOR dem Zugriff
                 dieses Jahres. Deshalb zwei Zeilen statt einer. */}
             <div className="flex items-baseline justify-between gap-3">
-              <span>Rücklage vor dem Planjahr<Beleg q="ruecklage" /></span>
+              <span>Rücklage vor dem Planjahr<Beleg q="reserves" /></span>
               <span className="flex-none tabular-nums">{de(ruecklageJeKopf)}&nbsp;€</span>
             </div>
             <div className="flex items-baseline justify-between gap-3">
@@ -300,22 +300,22 @@ export function Kassenzettel({ daten, jahr, einwohner, className }: {
         ) : undefined}
         // Nicht „ÜBERSICHT ERGEBNISHAUSHALT · S. 1": Der Jahrgang 2024
         // stammt aus einer CSV, nicht aus einer PDF-Seite.
-        quelle={quelle.text}
+        source={source.text}
         daneben={
           <div>
-            <h2 id="kassenzettel-titel"
+            <h2 id="kassenzettel-title"
               className="font-display text-[21px] font-bold leading-tight tracking-tight sm:text-[25px]">
               Geplante Ausgaben pro Einwohner*in
             </h2>
             <p className="mt-2.5 max-w-[58ch] text-[13.5px] leading-relaxed text-foreground/90 sm:text-[14.5px]">
-              Die Stadt plant für {jahr} Aufwendungen von{" "}
-              {deMio(mio(gesamt.aufwendungen))}&#8239;Mio.&nbsp;€. Um diese Größenordnung
+              Die Stadt plant für {year} Aufwendungen von{" "}
+              {deMio(mio(gesamt.expenses))}&#8239;Mio.&nbsp;€. Um diese Größenordnung
               einzuordnen, teilen wir die Summe durch die Einwohnerzahl. Das ergibt
               rechnerisch {de(summeJeKopf)}&nbsp;€ pro Einwohner*in
               {gross.length === 2 && (
                 <>. Davon entfallen <strong className="font-semibold">
-                  {de(gross[0].wert)}&nbsp;€ auf {gross[0].kanon.name} und{" "}
-                  {de(gross[1].wert)}&nbsp;€ auf {gross[1].kanon.name}
+                  {de(gross[0].value)}&nbsp;€ auf {gross[0].kanon.name} und{" "}
+                  {de(gross[1].value)}&nbsp;€ auf {gross[1].kanon.name}
                 </strong></>
               )}.
             </p>
@@ -326,30 +326,30 @@ export function Kassenzettel({ daten, jahr, einwohner, className }: {
             <div className="grid items-start gap-3.5 @2xl/zettel:grid-cols-2">
               <Karte kicker="So wird gerechnet">
                 <p className="mt-2 text-[12.5px] leading-relaxed text-foreground/90">
-                  Geplante Aufwendungen {jahr}{" "}
-                  <span className="font-mono">{de(gesamt.aufwendungen)}&nbsp;€</span>
+                  Geplante Aufwendungen {year}{" "}
+                  <span className="font-mono">{de(gesamt.expenses)}&nbsp;€</span>
                   <Beleg q="plan" /> geteilt durch{" "}
                   <span className="font-mono">{de(kopf)}</span> Einwohner*innen
-                  <Beleg q="einwohner" /> ={" "}
+                  <Beleg q="population" /> ={" "}
                   <strong className="font-semibold">{de(summeJeKopf)}&nbsp;€</strong>.
                 </p>
                 <p className="mt-2 text-[11.5px] leading-relaxed text-muted-foreground">
-                  Die Einwohnerzahl gehört zum Haushaltsjahr {einwohner.jahr}; Stichtag ist
-                  der 31.12.{einwohner.jahr - 1}
-                  {einwohner.jahr < jahr && <>. Für {jahr} hat die Stadt noch keine amtliche
+                  Die Einwohnerzahl gehört zum Haushaltsjahr {population.year}; Stichtag ist
+                  der 31.12.{population.year - 1}
+                  {population.year < year && <>. Für {year} hat die Stadt noch keine amtliche
                     Zahl veröffentlicht. Ist die Bevölkerung seitdem gewachsen, fällt der
                     tatsächliche Pro-Kopf-Wert etwas niedriger aus</>}. Der Pro-Kopf-Betrag
                   ist unsere Rechnung und keine amtliche Kennzahl.
                 </p>
               </Karte>
 
-              {fehltEuro != null && ruecklage != null && ruecklageEuro != null
+              {fehltEuro != null && reserves != null && ruecklageEuro != null
                 && ruecklageJeKopf != null && (
                 <Karte kicker="Geplante Entnahme aus der Rücklage">
                   <p className="mt-2 text-[12.5px] leading-relaxed text-foreground/90">
                     Im Haushaltsplan soll das Minus durch die Rücklage von rund
                     {" "}{deMio(ruecklageEuro / 1e6)}&#8239;Mio.&nbsp;€ ausgeglichen werden
-                    <Beleg q="ruecklage" />. Das entspricht {de(ruecklageJeKopf)}&nbsp;€ je
+                    <Beleg q="reserves" />. Das entspricht {de(ruecklageJeKopf)}&nbsp;€ je
                     Einwohner*in; für dieses Planjahr würden rechnerisch
                     {" "}{de(jeKopf(fehltEuro))}&nbsp;€ davon benötigt.
                     {leerAb != null && <> Würde in jedem Folgejahr ein Minus derselben Größe
@@ -358,7 +358,7 @@ export function Kassenzettel({ daten, jahr, einwohner, className }: {
                   <p className="mt-2 text-[11.5px] leading-relaxed text-muted-foreground">
                     Diese Rechnung veranschaulicht nur die Größenordnung. Sie ist keine
                     Prognose, denn die tatsächlichen Jahresergebnisse können deutlich vom
-                    Plan abweichen. Stand: Jahresabschluss {ruecklage.jahr}, nach
+                    Plan abweichen. Stand: Jahresabschluss {reserves.year}, nach
                     Berücksichtigung des dort ausgewiesenen Jahresergebnisses.
                   </p>
                 </Karte>
@@ -368,11 +368,11 @@ export function Kassenzettel({ daten, jahr, einwohner, className }: {
             {/* Eine Zeile des Bons liest sich anders, als sie gemeint ist. */}
             {finanzenZeile && (
               <p className="text-[11.5px] leading-relaxed text-muted-foreground">
-                Die {de(finanzenZeile.wert)}&nbsp;€ im Bereich{" "}
+                Die {de(finanzenZeile.value)}&nbsp;€ im Bereich{" "}
                 <strong className="font-semibold text-foreground">{finanzen.kurz}</strong>{" "}
                 sind nicht die Verwaltungskosten der Kämmerei. Dort verbucht die Stadt auch
                 Transferzahlungen wie die Gewerbesteuer- und Finanzausgleichsumlage
-                {transfer && <>; im Jahresabschluss {transfer.jahr} waren {transfer.prozent}&nbsp;%
+                {transfer && <>; im Jahresabschluss {transfer.year} waren {transfer.percent}&nbsp;%
                   der Aufwendungen dieses Bereichs solche Zahlungen<Beleg q="ergebnisrechnung_thh" /></>}.
               </p>
             )}
@@ -382,17 +382,17 @@ export function Kassenzettel({ daten, jahr, einwohner, className }: {
         // Auf breiten Screens nutzt die Kurve damit auch den freien Raum
         // unter dem Papierbon; auf schmalen bleibt sie schlicht die letzte
         // volle Zeile.
-        darunter={fehltEuro != null && ruecklage != null
+        darunter={fehltEuro != null && reserves != null
           && ruecklagenVerlauf.length >= 2 ? (
           <Karte kicker="Rücklage im Zeitverlauf">
             <Zeitreihe
               className="mt-3"
-              reihe={ruecklagenVerlauf}
-              titel="Verfügbar nach Jahresergebnis"
-              einheit="Mio. €"
+              series={ruecklagenVerlauf}
+              title="Verfügbar nach Jahresergebnis"
+              unit="Mio. €"
               nachkomma={1}
               ariaTitel={`Verfügbare Überschussrücklage nach Jahresergebnis, `
-                + `${ruecklagenVerlauf[0].jahr} bis ${ruecklage.jahr}`}
+                + `${ruecklagenVerlauf[0].year} bis ${reserves.year}`}
               vorjahresdifferenz
               tabelle
               leisteHaftet={false}

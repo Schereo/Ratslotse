@@ -16,9 +16,9 @@ def _store(tmp_path) -> CouncilStore:
     store.save_session(CouncilSession(1, "Rat", "2026-06-01", "17:00", "Ratssaal"))
     with store._conn:
         store._insert_decision(1, 0, "decision", None, "Ö 1", "Haushaltssatzung 2026", TEXT,
-                               "angenommen", None, None, None, [], None, None, None)
+                               "accepted", None, None, None, [], None, None, None)
         store._insert_decision(1, 1, "decision", None, "Ö 2", "Berufung Mitglied", TEXT,
-                               "angenommen", None, None, None, [], None, None, None)
+                               "accepted", None, None, None, [], None, None, None)
     return store
 
 
@@ -56,14 +56,14 @@ def _fake_resp(payload: dict):
 
 
 def test_rate_batch_filters_and_signals(monkeypatch):
-    decisions = [{"id": 7, "title": "Haushaltssatzung", "beschluss": TEXT, "committee": "Rat",
-                  "session_date": "2026-01-01", "outcome": "angenommen", "kind": "decision",
+    decisions = [{"id": 7, "title": "Haushaltssatzung", "official_text": TEXT, "committee": "Rat",
+                  "session_date": "2026-01-01", "outcome": "accepted", "kind": "decision",
                   "amount_eur": 1_000_000.0}]
     seen = {}
     def fake(**kw):
         seen["user"] = kw["messages"][1]["content"]
-        return _fake_resp({"ratings": [{"id": 7, "score": 92, "grund": "Haushalt"},
-                                       {"id": 99, "score": 10, "grund": "halluziniert"}]})
+        return _fake_resp({"ratings": [{"id": 7, "score": 92, "reason": "Haushalt"},
+                                       {"id": 99, "score": 10, "reason": "halluziniert"}]})
     monkeypatch.setattr(impact.llm, "chat_complete", fake)
     assert impact.rate_batch(decisions) == [(7, 92, "Haushalt")]
     # Struktur-Signale stehen im Prompt (Kalibrier-Anforderung aus RL-U16).
@@ -126,21 +126,21 @@ def test_notify_new_matches_leads_with_highest_impact(tmp_path):
     council.save_impact(ids["Haushaltssatzung 2026"], 95, "")
     council.save_impact(ids["Berufung Mitglied"], 5, "")
 
-    nwz = Store(tmp_path / "nwz.sqlite")
-    owner = nwz.create_web_user(email="a@b.de", password_hash="x", role="user",
+    ratslotse = Store(tmp_path / "ratslotse.sqlite")
+    owner = ratslotse.create_web_user(email="a@b.de", password_hash="x", role="user",
                                 status="active", display_name="Tim")
 
     mod = _match_modul()
     # Reihenfolge der new_ids: Berufung zuerst — die Tragweite muss umsortieren.
-    n = mod._notify_new_matches(nwz, council, owner_id=owner, topic_name="Finanzen",
+    n = mod._notify_new_matches(ratslotse, council, owner_id=owner, topic_name="Finanzen",
                                 new_ids=[ids["Berufung Mitglied"], ids["Haushaltssatzung 2026"]],
                                 # Fest statt `heute`: Die Sitzung der Vorrichtung
                                 # ist auf 2026-06-01 genagelt, ein wandernder
                                 # Stichtag machte den Test irgendwann leer.
-                                stichtag="2026-01-01")
+                                as_of_date="2026-01-01")
     assert n == 1
 
-    offen = nwz.due_notifications(owner, "2999-01-01")
+    offen = ratslotse.due_notifications(owner, "2999-01-01")
     assert len(offen) == 1
     meldung = offen[0]
     assert meldung["title"] == "Neu zu „Finanzen“ — 2 Beschlüsse"
@@ -161,7 +161,7 @@ def test_notify_new_matches_leads_with_highest_impact(tmp_path):
     from kern.delivery import _plain
 
     assert "Haushaltssatzung 2026 Rat · 1. Juni 2026" in _plain(body)
-    nwz.close()
+    ratslotse.close()
     council.close()
 
 
@@ -171,17 +171,17 @@ def test_notify_new_matches_schweigt_wenn_abgeschaltet(tmp_path):
 
     council = _store(tmp_path)
     ids = {d["title"]: d["id"] for d in council.decisions_needing_impact()}
-    nwz = Store(tmp_path / "nwz.sqlite")
-    owner = nwz.create_web_user(email="a@b.de", password_hash="x", role="user",
+    ratslotse = Store(tmp_path / "ratslotse.sqlite")
+    owner = ratslotse.create_web_user(email="a@b.de", password_hash="x", role="user",
                                 status="active", display_name=None)
-    nwz.set_delivery_channel(owner, "off")
+    ratslotse.set_delivery_channel(owner, "off")
 
     mod = _match_modul()
-    assert mod._notify_new_matches(nwz, council, owner_id=owner, topic_name="Finanzen",
+    assert mod._notify_new_matches(ratslotse, council, owner_id=owner, topic_name="Finanzen",
                                    new_ids=[ids["Haushaltssatzung 2026"]],
-                                   stichtag="2026-01-01") == 0
-    assert nwz.due_notifications(owner, "2999-01-01") == []
-    nwz.close()
+                                   as_of_date="2026-01-01") == 0
+    assert ratslotse.due_notifications(owner, "2999-01-01") == []
+    ratslotse.close()
     council.close()
 
 
@@ -204,31 +204,31 @@ def test_notify_new_matches_schweigt_ueber_alte_beschluesse(tmp_path):
     with council._conn:                             # zweiter Beschluss, lange her
         council._insert_decision(2, 0, "decision", None, "Ö 10.1",
                                  "Zusätzliche Spätbetreuung", TEXT,
-                                 "zur_kenntnis", None, None, None, [], None, None, None)
+                                 "noted", None, None, None, [], None, None, None)
     ids = {d["title"]: d["id"] for d in council.decisions_needing_impact()}
 
-    nwz = Store(tmp_path / "nwz.sqlite")
-    owner = nwz.create_web_user(email="a@b.de", password_hash="x", role="user",
+    ratslotse = Store(tmp_path / "ratslotse.sqlite")
+    owner = ratslotse.create_web_user(email="a@b.de", password_hash="x", role="user",
                                 status="active", display_name="Tim")
     mod = _match_modul()
 
     # Nur der alte Beschluss: gar keine Meldung.
-    assert mod._notify_new_matches(nwz, council, owner_id=owner,
+    assert mod._notify_new_matches(ratslotse, council, owner_id=owner,
                                    topic_name="Grundschule Krusenbusch",
                                    new_ids=[ids["Zusätzliche Spätbetreuung"]],
-                                   stichtag="2026-01-01") == 0
-    assert nwz.due_notifications(owner, "2999-01-01") == []
+                                   as_of_date="2026-01-01") == 0
+    assert ratslotse.due_notifications(owner, "2999-01-01") == []
 
     # Gemischt: Die Mail kommt, zählt aber nur den aktuellen Beschluss — sonst
     # verspräche das „— n Beschlüsse" im Betreff etwas, das die Liste nicht hält.
-    assert mod._notify_new_matches(nwz, council, owner_id=owner,
+    assert mod._notify_new_matches(ratslotse, council, owner_id=owner,
                                    topic_name="Grundschule Krusenbusch",
                                    new_ids=[ids["Zusätzliche Spätbetreuung"],
                                             ids["Haushaltssatzung 2026"]],
-                                   stichtag="2026-01-01") == 1
-    offen = nwz.due_notifications(owner, "2999-01-01")
+                                   as_of_date="2026-01-01") == 1
+    offen = ratslotse.due_notifications(owner, "2999-01-01")
     assert len(offen) == 1
     assert offen[0]["title"] == "Neu zu „Grundschule Krusenbusch“"   # kein „— 2 Beschlüsse"
     assert "Spätbetreuung" not in offen[0]["body_html"]
-    nwz.close()
+    ratslotse.close()
     council.close()

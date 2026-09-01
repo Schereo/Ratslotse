@@ -12,12 +12,14 @@ import { clearRecentSearches, getRecentSearches, pushRecentSearch } from "@/lib/
 import { offerIcs } from "@/lib/ics";
 import {
   AgendaAenderung, CouncilSession, SessionDetail, AgendaItem, CouncilDecision, DecisionOutcome, PolicyField, Topic,
+  VideoResult,
 } from "@/lib/types";
+import { VideoResultChip, VideoResultsNotice } from "@/components/video-result";
 import {
   Badge, Button, Card, CardListSkeleton, DateField, EmptyState, Input, PageHeader, Pagination, Segmented, Select,
   Sheet, SheetContent, SheetTitle, SheetTrigger, Spinner, formatDate, toast,
 } from "@/components/ui";
-import { OutcomeBadge, OutcomeDot, ImportanceBadge, OUTCOME_META, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
+import { OutcomeBadge, OutcomeDot, ImportanceBadge, OUTCOME_META, voteLabel, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
 import { CommitteeName } from "@/components/committee-name";
 import { shortCommittee, hasShortCommittee } from "@/lib/committees";
 import { isLiveNow } from "@/lib/live";
@@ -68,7 +70,7 @@ const topDomId = (ksinr: number, itemNumber: string) =>
 function itemMatches(it: AgendaItem, query: string): boolean {
   const q = query.trim().toLowerCase();
   if (!q) return false;
-  return it.title.toLowerCase().includes(q) || (it.vorlage_nr?.toLowerCase().includes(q) ?? false);
+  return it.title.toLowerCase().includes(q) || (it.template_number?.toLowerCase().includes(q) ?? false);
 }
 
 /* Design 28a/R1: JEDES Wort der Eingabe, an JEDER Fundstelle markieren.
@@ -118,9 +120,9 @@ function CardFooter({ d }: { d: CouncilDecision }) {
   // unbesehen) — nie die ganze Seite in die Error-Boundary reißen.
   const factions = Array.isArray(d.factions) ? d.factions : [];
   const parts: string[] = [];
-  if (d.vote) parts.push(d.vote);
-  if (d.gegenstimmen) parts.push(`${d.gegenstimmen} dagegen`);
-  if (d.enthaltungen) parts.push(`${d.enthaltungen} Enth.`);
+  if (d.vote) parts.push(voteLabel(d.vote));
+  if (d.no_votes) parts.push(`${d.no_votes} dagegen`);
+  if (d.abstentions) parts.push(`${d.abstentions} Enth.`);
   const hasAmount = d.kind !== "subvote" && d.amount_eur != null;
   if (parts.length === 0 && factions.length === 0 && !hasAmount) return null;
   return (
@@ -211,9 +213,9 @@ function DecisionCard({ d, query }: { d: CouncilDecision; query: string }) {
           <h3 className="mt-2 hyphens-auto font-medium text-foreground">
             <Highlight text={d.title ?? ""} query={query} />
           </h3>
-          {d.beschluss && (
+          {d.official_text && (
             <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
-              <Highlight text={d.beschluss} query={query} />
+              <Highlight text={d.official_text} query={query} />
             </p>
           )}
           {primaryLocation && (
@@ -224,7 +226,7 @@ function DecisionCard({ d, query }: { d: CouncilDecision; query: string }) {
                   <span className="font-medium">Ortsbezug:</span>{" "}
                   {locationMatches.slice(0, 2).map((match) => match.name).join(", ")}
                   {locationMatches.length > 2 ? ` +${locationMatches.length - 2}` : ""}
-                  <span className="text-muted-foreground"> · {primaryLocation.stadtteil}</span>
+                  <span className="text-muted-foreground"> · {primaryLocation.district}</span>
                   {locationProfileId && (
                     <button type="button" onClick={(event) => {
                       event.preventDefault(); event.stopPropagation(); router.push(ortHref(locationProfileId));
@@ -271,9 +273,9 @@ const SORTS: { value: string; label: string; sub?: string; icon?: typeof Sparkle
 
 const OUTCOME_CHIPS: { value: string; label: string }[] = [
   { value: "", label: "Alle" },
-  { value: "angenommen", label: "Angenommen" },
-  { value: "abgelehnt", label: "Abgelehnt" },
-  { value: "vertagt", label: "Vertagt" },
+  { value: "accepted", label: "Angenommen" },
+  { value: "rejected", label: "Abgelehnt" },
+  { value: "postponed", label: "Vertagt" },
 ];
 
 function FilterField({ label, className, children }: { label: string; className?: string; children: React.ReactNode }) {
@@ -487,8 +489,8 @@ function FilterChip({ label, onClear }: { label: string; onClear: () => void }) 
 
 function DecisionsTab({ committees }: { committees: string[] }) {
   const [q, setQ] = useMerker("suche:q", "");
-  const [committee, setCommittee] = useMerker("suche:gremium", "");
-  const [outcome, setOutcome] = useMerker("suche:ergebnis", "");
+  const [committee, setCommittee] = useMerker("suche:committee", "");
+  const [outcome, setOutcome] = useMerker("suche:result", "");
   const [sort, setSort] = useState("date_desc");
   const [fields, setFields] = useState<PolicyField[]>([]);
   const [districts, setDistricts] = useState<{
@@ -650,8 +652,8 @@ function DecisionsTab({ committees }: { committees: string[] }) {
   const totalLabel = `${total}${topicCapped ? "+" : ""}`;
   const districtCount = (item: typeof districts[number]) =>
     mode === "vote" ? item.vote_count : mode === "report" ? item.report_count : item.count;
-  const primaryPlaces = districts.filter((item) => item.kind === "ortsbereich");
-  const secondaryPlaces = districts.filter((item) => item.kind !== "ortsbereich");
+  const primaryPlaces = districts.filter((item) => item.kind === "local_area");
+  const secondaryPlaces = districts.filter((item) => item.kind !== "local_area");
   const districtValue = districts.find((item) => item.place_id === district || item.name === district)?.place_id ?? district;
 
   // Zeitraum zählt als EIN Filter; Sortierung ist eine Einstellung, kein Filter.
@@ -713,7 +715,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
         </div>
       </FilterField>
       {/* Design 23a: Änderungsanträge hängen normal als Kontext am Ursprungs-
-          beschluss; Rechercheure können sie hier als eigene Treffer einblenden. */}
+          official_text; Rechercheure können sie hier als eigene Treffer einblenden. */}
       <FilterField label="Teilabstimmungen">
         <button
           type="button"
@@ -781,7 +783,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
             value={districtValue}
             options={districts.map((item) => ({
               value: item.place_id, label: `${item.name} (${districtCount(item)})`,
-              sub: item.kind === "ortsbereich" ? undefined : item.kind_label,
+              sub: item.kind === "local_area" ? undefined : item.kind_label,
             }))}
             onChange={(value) => setUrlParam("district", value)}
           />
@@ -937,7 +939,9 @@ function DecisionsTab({ committees }: { committees: string[] }) {
   );
 }
 
-/** RL-U10: kleiner LIVE-Chip an der laufenden Sitzung (Startzeit + 4 h). */
+/** RL-U10: kleiner LIVE-Chip an der laufenden Sitzung — von der Startzeit bis
+ *  zur nächsten Sitzung desselben Tages (s. `lib/live`). An Ratstagen trug ihn
+ *  vorher der Ausschuss noch, während längst der Rat tagte. */
 function LiveChip() {
   return (
     <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 text-[11px] font-bold text-red-600 dark:text-red-400">
@@ -970,10 +974,10 @@ function DateTile({ iso }: { iso: string }) {
  *  weit scrollte, sah irgendwann wieder Juni und konnte nicht sagen, ob das
  *  dieses Jahr ist oder 2021. Der Trenner steht am Kopf jeder Gruppe — auch
  *  ganz oben, damit die Antwort nie erst nach dem ersten Wechsel kommt. */
-function YearDivider({ jahr }: { jahr: string }) {
+function YearDivider({ year }: { year: string }) {
   return (
     <div className="flex items-center gap-3 pt-2 first:pt-0">
-      <span className="font-mono text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">{jahr}</span>
+      <span className="font-mono text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">{year}</span>
       <span className="h-px flex-1 bg-border" aria-hidden />
     </div>
   );
@@ -995,11 +999,14 @@ function kurzfassung(it: AgendaItem): string | null {
   return it.social_text || it.summary || null;
 }
 
-function AgendaRow({ it, query, outcome, decisionId, myTopic, domId, flash, ksinr, bookmarkable = true }: {
+function AgendaRow({ it, query, outcome, decisionId, myTopic, domId, flash, ksinr, bookmarkable = true, videoResult }: {
   it: AgendaItem; query: string; outcome?: DecisionOutcome | null;
   decisionId?: number; myTopic?: string;
   ksinr?: number;
   bookmarkable?: boolean;
+  /** Vorläufiges Ergebnis aus der Videoaufzeichnung — nur solange der TOP
+   *  keinen Protokoll-Beschluss hat (das Protokoll gewinnt immer). */
+  videoResult?: VideoResult;
   /* Ziel des `?top=…`-Sprungs aus einer Benachrichtigung (s. topDomId). */
   domId?: string;
   /** Kurz nach dem Sprung hervorgehoben — sonst sieht die Zielzeile aus wie
@@ -1032,7 +1039,7 @@ function AgendaRow({ it, query, outcome, decisionId, myTopic, domId, flash, ksin
             {kurzfassung(it)}
           </p>
         )}
-        {it.vorlage_nr && <p className="text-xs text-muted-foreground">Vorlage <Highlight text={it.vorlage_nr} query={query} /></p>}
+        {it.template_number && <p className="text-xs text-muted-foreground">Vorlage <Highlight text={it.template_number} query={query} /></p>}
         {/* Tims Befund 12.08.: Die TOP-Anhänge (RIS-PDFs) fehlten in der App
             komplett — gerade Fraktions-Anträge ohne Vorlage hängen NUR hier. */}
         {(it.anlagen?.length ?? 0) > 0 && (
@@ -1054,7 +1061,9 @@ function AgendaRow({ it, query, outcome, decisionId, myTopic, domId, flash, ksin
           </span>
         )}
       </div>
-      {outcome ? <OutcomeDot outcome={outcome} /> : !it.is_public ? <Badge color="amber">nichtöffentlich</Badge> : null}
+      {outcome ? <OutcomeDot outcome={outcome} />
+        : videoResult ? <VideoResultChip r={videoResult} />
+        : !it.is_public ? <Badge color="amber">nichtöffentlich</Badge> : null}
       {decisionId != null && <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground/50" aria-hidden />}
     </>
   );
@@ -1091,10 +1100,10 @@ function AgendaRow({ it, query, outcome, decisionId, myTopic, domId, flash, ksin
  *  Push nennt nur den Satz, hier stehen die Einzelheiten. Farbgrammatik wie
  *  in der Mail: Neues grün, Geändertes gelb, Entferntes rot. */
 const AENDERUNG_FARBE: Record<string, string> = {
-  neu: "border-emerald-500",
-  geaendert: "border-amber-500", verschoben: "border-amber-500",
-  vorlage: "border-amber-500", anlagen: "border-amber-500",
-  entfernt: "border-rose-400",
+  new: "border-emerald-500",
+  changed: "border-amber-500", moved: "border-amber-500",
+  template: "border-amber-500", attachments: "border-amber-500",
+  removed: "border-rose-400",
 };
 
 function fmtAenderungsDatum(iso: string): string {
@@ -1113,11 +1122,11 @@ function AenderungenSection({ aenderungen }: { aenderungen: AgendaAenderung[] })
             {a.zeilen.map((z, j) => (
               <li key={j} className={cn("border-l-2 pl-2 text-sm leading-snug",
                 AENDERUNG_FARBE[z.art] ?? "border-border")}>
-                <span className={cn("font-medium", z.art === "entfernt" && "line-through decoration-muted-foreground/50")}>
+                <span className={cn("font-medium", z.art === "removed" && "line-through decoration-muted-foreground/50")}>
                   {z.label}
                 </span>
-                <span className={cn("text-muted-foreground", z.art === "entfernt" && "line-through decoration-muted-foreground/50")}>
-                  {" — "}{z.titel}
+                <span className={cn("text-muted-foreground", z.art === "removed" && "line-through decoration-muted-foreground/50")}>
+                  {" — "}{z.title}
                 </span>
                 {z.nichtoeffentlich && (
                   <span className="ml-1 text-[11px] text-muted-foreground/70">(nichtöffentlich)</span>
@@ -1137,9 +1146,9 @@ function AenderungenSection({ aenderungen }: { aenderungen: AgendaAenderung[] })
 /** „Dringlichkeitsantrag: festgestellte PAK-Belastung" → „Festgestellte
  *  PAK-Belastung". Die Marke steht schon im Kicker darüber; bleibt nichts
  *  übrig, steht der ganze Titel da. */
-function ohneMarke(titel: string): string {
-  const rest = titel.replace(/^\s*Dringlichkeitsantrag\s*[:–-]\s*/i, "").trim();
-  if (!rest) return titel;
+function ohneMarke(title: string): string {
+  const rest = title.replace(/^\s*Dringlichkeitsantrag\s*[:–-]\s*/i, "").trim();
+  if (!rest) return title;
   return rest[0].toUpperCase() + rest.slice(1);
 }
 
@@ -1216,7 +1225,7 @@ function AttendanceSection({ detail }: { detail: SessionDetail }) {
   if (att.length === 0) return null;
   const byParty: Record<string, number> = {};
   for (const a of att) {
-    if (a.role === "verwaltung" || a.role === "protokoll" || a.role === "gast") continue;
+    if (a.role === "administration" || a.role === "minutes" || a.role === "guest") continue;
     const p = normalizeParty(a.party || "—");
     byParty[p] = (byParty[p] ?? 0) + 1;
   }
@@ -1244,7 +1253,7 @@ function SessionsTab({ committees }: { committees: string[] }) {
   // Filter überleben den Tab-Wechsel (Tims iOS-Befund 12.08.): Wer sucht und
   // kurz woanders nachsieht, will nicht neu tippen.
   const [q, setQ] = useMerker("sitzungen:q", "");
-  const [committee, setCommittee] = useMerker("sitzungen:gremium", "");
+  const [committee, setCommittee] = useMerker("sitzungen:committee", "");
   // RL-F06: ?ksinr=… (Deep-Link von „Heute") — Sitzung aufklappen, sanft
   // hinscrollen und kurz aufblitzen lassen (wie der Fußnoten-Flash der KI).
   const deepSp = useSearchParams();
@@ -1555,9 +1564,9 @@ function SessionsTab({ committees }: { committees: string[] }) {
               // dem ersten Eintrag, damit die Einordnung nicht erst nach dem
               // ersten Wechsel kommt (eine Seite kann komplett in einem Jahr
               // liegen).
-              const jahr = s.session_date.slice(0, 4);
-              const jahrWechsel = i === 0 || jahr !== sessions[i - 1].session_date.slice(0, 4);
-              const trenner = jahrWechsel ? <YearDivider jahr={jahr} /> : null;
+              const year = s.session_date.slice(0, 4);
+              const jahrWechsel = i === 0 || year !== sessions[i - 1].session_date.slice(0, 4);
+              const trenner = jahrWechsel ? <YearDivider year={year} /> : null;
 
               // Terminierte Sitzung aus dem RIS-Kalender: noch keine
               // Tagesordnung veröffentlicht → nichts zum Aufklappen/Verlinken.
@@ -1617,6 +1626,14 @@ function SessionsTab({ committees }: { committees: string[] }) {
                   decisionByItem[key] ??= dec.id;
                 }
               }
+              // Vorläufige Video-Ergebnisse — nur an TOPs OHNE Protokoll-
+              // Beschluss (das Protokoll gewinnt immer, s. AgendaRow).
+              const videoByItem: Record<string, VideoResult> = {};
+              for (const v of d?.video_results ?? []) {
+                const key = topKey(v.item_number);
+                if (!(key in outcomeByItem)) videoByItem[key] ??= v;
+              }
+              const videoCount = Object.keys(videoByItem).length;
               // RL-902: TOPs, die zu eigenen Themen passen (TOP → Themenname).
               const myByItem: Record<string, string> = {};
               for (const m of s.my_topic_items ?? []) myByItem[m.item_number] ??= m.topic_name;
@@ -1679,6 +1696,13 @@ function SessionsTab({ committees }: { committees: string[] }) {
                               && (d?.aenderungen?.length ?? 0) > 0 && (
                               <AenderungenSection aenderungen={d!.aenderungen!} />
                             )}
+                            {/* Vorbehalts-Hinweis EINMAL über der Liste — der
+                                Disclaimer hat einen festen Ort, statt an jedem
+                                Chip zu kleben (Ehrlichkeit als Designprinzip). */}
+                            {videoCount > 0 && (
+                              <VideoResultsNotice count={videoCount}
+                                videoId={Object.values(videoByItem)[0].video_id} />
+                            )}
                             {/* Der Dringlichkeitsantrag zuerst, und außerhalb
                                 der Liste: Er hat keine Ö-Nummer und steht in
                                 der amtlichen Tagesordnung nicht (s.
@@ -1693,6 +1717,7 @@ function SessionsTab({ committees }: { committees: string[] }) {
                                   bookmarkable={!hasAgendaChildren(it, d?.agenda_items ?? [])}
                                   outcome={it.is_public ? outcomeByItem[topKey(it.item_number)] : undefined}
                                   decisionId={it.is_public ? decisionByItem[topKey(it.item_number)] : undefined}
+                                  videoResult={it.is_public ? videoByItem[topKey(it.item_number)] : undefined}
                                   myTopic={myByItem[it.item_number]}
                                   domId={s.ksinr != null ? topDomId(s.ksinr, it.item_number) : undefined}
                                   flash={s.ksinr != null && flashTop === topDomId(s.ksinr, it.item_number)} />

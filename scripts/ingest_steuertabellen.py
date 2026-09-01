@@ -89,22 +89,22 @@ def link_suchen(muster) -> str | None:
 
     ``None``, wenn die Seite ihn nicht (mehr) führt — dann greift die
     hinterlegte Adresse, und der Lauf sagt, dass er das tut."""
-    antwort = requests.get(stt.JAHRBUCH_URL, headers=_UA, timeout=120)
-    antwort.raise_for_status()
-    treffer = muster.search(antwort.text)
+    answer = requests.get(stt.JAHRBUCH_URL, headers=_UA, timeout=120)
+    answer.raise_for_status()
+    treffer = muster.search(answer.text)
     return urljoin(stt.JAHRBUCH_URL, treffer.group(1)) if treffer else None
 
 
 def ist_reihe(store: CouncilStore) -> tuple[dict, dict]:
     """``council_steuern`` in die beiden Formen bringen, die die Proben brauchen.
 
-    ``({jahr: {art: euro}}, {jahr: grundsteuer_euro})`` — die erste für den
+    ``({year: {art: euro}}, {year: grundsteuer_euro})`` — die erste für den
     Ist-Abgleich von 1103, die zweite für die Sprungjahr-Probe von 1105."""
     alle: dict[int, dict[str, float]] = {}
-    for zeile in store.get_steuereinnahmen():
-        if zeile.get("betrag") is None:
+    for row in store.get_steuereinnahmen():
+        if row.get("amount") is None:
             continue
-        alle.setdefault(zeile["jahr"], {})[zeile["art"]] = float(zeile["betrag"])
+        alle.setdefault(row["year"], {})[row["art"]] = float(row["amount"])
     grundsteuer = {j: w[GRUNDSTEUER] for j, w in alle.items() if GRUNDSTEUER in w}
     return alle, grundsteuer
 
@@ -140,22 +140,22 @@ def _ausgaben(bereich_muster: str, live_url: str | None, live_text: str | None,
     return aus
 
 
-def _herkunft_1103(name: str, url: str | None, jahre: list[int],
-                   proben: list[str], nachweis: str) -> h.Herkunft:
-    spanne = (f"{jahre[0]}–{jahre[-1]}" if len(jahre) > 1 else str(jahre[0]))
+def _herkunft_1103(name: str, url: str | None, years: list[int],
+                   probes: list[str], nachweis: str) -> h.Herkunft:
+    spanne = (f"{years[0]}–{years[-1]}" if len(years) > 1 else str(years[0]))
     return h.Herkunft(
-        art="stadt",
+        kind="city",
         url=url or stt.TABELLE_1103_URL,
         label=f"Statistisches Jahrbuch der Stadt Oldenburg, Tabelle 1103 ({name})",
-        fundstelle=(
+        citation=(
             "Kapitel 11 „Verwaltung und Finanzen“, Tabelle 1103 „Steuern und "
             "steuerähnliche Erträge sowie allgemeine Finanzzuweisungen und "
             "Umlagen“ — je Steuerart und Jahr zwei Spalten: der Ansatz nach dem "
             "Haushaltsplan und das Rechnungsergebnis. Jede Ausgabe der Tabelle "
             "führt nur drei Jahrgänge"),
-        stand=f"Haushaltsjahre {spanne} · {stt.ABGRENZUNG_1103}",
-        probe=proben,
-        probe_ergebnis=nachweis)
+        as_of=f"Haushaltsjahre {spanne} · {stt.ABGRENZUNG_1103}",
+        probe=probes,
+        probe_result=nachweis)
 
 
 def main() -> int:
@@ -208,10 +208,10 @@ def main() -> int:
                         print(f"  HINWEIS: Die Übersichtsseite führt keinen "
                               f"Link auf {kennung} mehr — es gilt die "
                               f"hinterlegte Adresse: {url}")
-                    antwort = requests.get(url, headers=_UA, timeout=120)
-                    antwort.raise_for_status()
+                    answer = requests.get(url, headers=_UA, timeout=120)
+                    answer.raise_for_status()
                     pfad = Path(tmp) / f"{kennung}.pdf"
-                    pfad.write_bytes(antwort.content)
+                    pfad.write_bytes(answer.content)
                     return url, pdf_text(pfad)
                 except Exception as exc:                    # noqa: BLE001
                     print(f"  Live-Abruf für {kennung} gescheitert ({exc}) — "
@@ -234,24 +234,24 @@ def main() -> int:
             proben_je_ausgabe: dict[str, list[str]] = {}
             urls: dict[str, str | None] = {}
             for name, text in ausgaben:
-                ergebnis = stt.lies_1103(text, alle_ist)
-                if ergebnis["abbruch"]:
-                    print(f"  {name}: {ergebnis['abbruch']}", file=sys.stderr)
+                result = stt.lies_1103(text, alle_ist)
+                if result["abbruch"]:
+                    print(f"  {name}: {result['abbruch']}", file=sys.stderr)
                     continue
-                for v in ergebnis["verworfen"]:
-                    print(f"  {name}: VERWORFEN {v['jahr']} — {v['grund']}",
+                for v in result["verworfen"]:
+                    print(f"  {name}: VERWORFEN {v['year']} — {v['reason']}",
                           file=sys.stderr)
-                if not ergebnis["zeilen"]:
+                if not result["zeilen"]:
                     continue
-                gelesen.append((name, ergebnis["zeilen"]))
-                proben_je_ausgabe[name] = ergebnis["proben"]
+                gelesen.append((name, result["zeilen"]))
+                proben_je_ausgabe[name] = result["probes"]
                 urls[name] = url_1103 if text is text_1103 else None
-                print(f"  {name}: {len(ergebnis['zeilen'])} Zeilen, "
-                      f"Jahrgänge {ergebnis['jahre']}")
+                print(f"  {name}: {len(result['zeilen'])} Zeilen, "
+                      f"Jahrgänge {result['years']}")
 
             zeilen_1103 = stt.zusammenlegen(
-                gelesen, lambda z: (z["jahr"], z["art"]))
-            jahre_1103 = sorted({z["jahr"] for z in zeilen_1103})
+                gelesen, lambda z: (z["year"], z["art"]))
+            jahre_1103 = sorted({z["year"] for z in zeilen_1103})
             print(f"  zusammengelegt: {len(zeilen_1103)} Zeilen · "
                   f"Jahrgänge {jahre_1103}")
 
@@ -265,27 +265,27 @@ def main() -> int:
             proben_1105: list[str] = []
             sprung = {"bestanden": [], "gerissen": [], "nicht_pruefbar": []}
             for name, text in ausgaben5:
-                ergebnis = stt.lies_1105(text, grundsteuer)
-                if ergebnis["abbruch"]:
-                    print(f"  {name}: {ergebnis['abbruch']}", file=sys.stderr)
+                result = stt.lies_1105(text, grundsteuer)
+                if result["abbruch"]:
+                    print(f"  {name}: {result['abbruch']}", file=sys.stderr)
                     continue
-                gelesen5.append((name, ergebnis["zeilen"]))
-                proben_1105 = ergebnis["proben"]
-                sprung = ergebnis["sprungjahre"]
-                print(f"  {name}: {len(ergebnis['zeilen'])} Zeilen")
+                gelesen5.append((name, result["zeilen"]))
+                proben_1105 = result["probes"]
+                sprung = result["sprungjahre"]
+                print(f"  {name}: {len(result['zeilen'])} Zeilen")
             zeilen_1105 = stt.zusammenlegen(
-                gelesen5, lambda z: (z["jahr"], z["art"]))
-            jahre_1105 = sorted({z["jahr"] for z in zeilen_1105})
+                gelesen5, lambda z: (z["year"], z["art"]))
+            jahre_1105 = sorted({z["year"] for z in zeilen_1105})
             if zeilen_1105:
                 print(f"  zusammengelegt: {len(zeilen_1105)} Zeilen · "
                       f"{len(jahre_1105)} Änderungsjahre {jahre_1105}")
                 for e in sprung["bestanden"]:
-                    print(f"    Sprungjahr {e['jahr']}: Hebesatz "
+                    print(f"    Sprungjahr {e['year']}: Hebesatz "
                           f"{e['hebesatz_vorher']}→{e['hebesatz_nachher']}, "
                           f"Aufkommen im Jahr {e['im_jahr'] * 100:+.2f} %, "
                           f"danach {e['danach'] * 100:+.2f} %")
                 for e in sprung["nicht_pruefbar"]:
-                    print(f"    nicht prüfbar {e['jahr']}: {e['grund']}")
+                    print(f"    nicht prüfbar {e['year']}: {e['reason']}")
 
             if not zeilen_1103 and not zeilen_1105:
                 print("ABBRUCH: keine der beiden Tabellen hat eine Probe "
@@ -307,11 +307,11 @@ def main() -> int:
                 heil &= finanzquellen.bestandsschutz(
                     p, "Hebesätze (1105)", len(store.hebesatz_jahre()),
                     len(jahre_1105), schuetzen=not args.schrumpf_erlauben)
-            for zeile in p.zeilen:
-                print(zeile.strip())
+            for row in p.zeilen:
+                print(row.strip())
             if not heil:
-                for zeile in p.warnungen:
-                    print(zeile.strip(), file=sys.stderr)
+                for row in p.warnungen:
+                    print(row.strip(), file=sys.stderr)
                 print("ABBRUCH: Der vorhandene Bestand bleibt unangetastet. "
                       "Wenn das Schrumpfen Absicht ist: --schrumpf-erlauben.",
                       file=sys.stderr)
@@ -324,24 +324,24 @@ def main() -> int:
             # finden, in dem seine Zahl steht.
             geschrieben = 0
             nach_ausgabe: dict[str, list[dict]] = {}
-            for zeile in zeilen_1103:
-                nach_ausgabe.setdefault(zeile["ausgabe"], []).append(zeile)
-            for name, teil in sorted(nach_ausgabe.items()):
-                jahre = sorted({z["jahr"] for z in teil})
-                proben = proben_je_ausgabe.get(name) or ["steuerplan_summenzeile"]
+            for row in zeilen_1103:
+                nach_ausgabe.setdefault(row["ausgabe"], []).append(row)
+            for name, part in sorted(nach_ausgabe.items()):
+                years = sorted({z["year"] for z in part})
+                probes = proben_je_ausgabe.get(name) or ["steuerplan_summenzeile"]
                 nachweis = (
-                    f"{len(jahre)} Jahrgänge ({jahre[0]}–{jahre[-1]}), "
+                    f"{len(years)} Jahrgänge ({years[0]}–{years[-1]}), "
                     f"bestanden: "
-                    + ", ".join(stt.PROBEN_KURZ.get(n, n) for n in proben))
+                    + ", ".join(stt.PROBEN_KURZ.get(n, n) for n in probes))
                 geschrieben += store.save_steuerplan(
-                    teil, _herkunft_1103(name, urls.get(name), jahre,
-                                         proben, nachweis))
-                print(f"  1103 {name}: {len(teil)} Zeilen, "
-                      f"Jahrgänge {jahre[0]}–{jahre[-1]}")
+                    part, _herkunft_1103(name, urls.get(name), years,
+                                         probes, nachweis))
+                print(f"  1103 {name}: {len(part)} Zeilen, "
+                      f"Jahrgänge {years[0]}–{years[-1]}")
 
             if zeilen_1105:
                 gemessen = ", ".join(
-                    f"{e['jahr']} ({e['im_jahr'] * 100:+.1f} % im Jahr gegen "
+                    f"{e['year']} ({e['im_jahr'] * 100:+.1f} % im Jahr gegen "
                     f"{e['danach'] * 100:+.1f} % danach)"
                     for e in sprung["bestanden"])
                 nachweis5 = (
@@ -351,26 +351,26 @@ def main() -> int:
                     + (f"; Sprungjahr-Probe an der Aufkommensreihe für "
                        f"{gemessen}" if gemessen else "")
                     + ("; nicht prüfbar: "
-                       + ", ".join(str(e["jahr"])
+                       + ", ".join(str(e["year"])
                                    for e in sprung["nicht_pruefbar"])
                        if sprung["nicht_pruefbar"] else ""))
                 letzte_ausgabe = zeilen_1105[-1]["ausgabe"]
                 geschrieben += store.save_hebesaetze(zeilen_1105, h.Herkunft(
-                    art="stadt",
+                    kind="city",
                     url=url_1105 or stt.TABELLE_1105_URL,
                     label="Statistisches Jahrbuch der Stadt Oldenburg, "
                           f"Tabelle 1105 ({letzte_ausgabe})",
-                    fundstelle=(
+                    citation=(
                         "Kapitel 11 „Verwaltung und Finanzen“, Tabelle 1105 "
                         "„Realsteuer-Hebesätze in Prozent seit 1980“ — je "
                         "Änderungsjahr die Hebesätze für Grundsteuer A, "
                         "Grundsteuer B und Gewerbesteuer. Die Tabelle führt "
                         "nach eigener Fußnote nur die Jahre, in denen sich ein "
                         "Satz geändert hat"),
-                    stand=f"Änderungsjahre {jahre_1105[0]}–{jahre_1105[-1]} · "
+                    as_of=f"Änderungsjahre {jahre_1105[0]}–{jahre_1105[-1]} · "
                           f"{stt.ABGRENZUNG_1105}",
                     probe=proben_1105,
-                    probe_ergebnis=nachweis5))
+                    probe_result=nachweis5))
                 print(f"  1105: {len(zeilen_1105)} Zeilen")
 
             print(f"\ngespeichert: {geschrieben} Zeilen")

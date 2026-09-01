@@ -14,7 +14,7 @@ fastembed, damit Deploy + Web-Service unberührt bleiben):
 
 Die PDFs tragen eine AES-Hülle (Owner-Passwort gegen Bearbeiten/Drucken) —
 kein Zugriffsschutz, pymupdf öffnet sie ohne Passwort. Idempotent über die
-Spalte ``council_anlagen.bild`` (0 = offen, 1 = gerendert, -1 = fehlgeschlagen —
+Spalte ``council_anlagen.is_image`` (0 = offen, 1 = gerendert, -1 = fehlgeschlagen —
 NICHT endgültig: ``--retry-failed`` stellt alle -1 wieder auf 0 und versucht
 sie erneut; nötig z. B. nach einem SessionNet-Wartungsfenster).
 """
@@ -67,11 +67,11 @@ def main(db: str | None = None, out_dir: str = "data/plaene", limit: int = 0,
 
     if retry_failed:
         with conn:
-            conn.execute("UPDATE council_anlagen SET bild = 0 WHERE bild = -1")
+            conn.execute("UPDATE council_anlagen SET is_image = 0 WHERE is_image = -1")
 
     rows = [r for r in conn.execute(
         "SELECT document_id, label, url FROM council_anlagen "
-        "WHERE bild = 0 AND url IS NOT NULL").fetchall()
+        "WHERE is_image = 0 AND url IS NOT NULL").fetchall()
         if PLAN_LABEL_RE.search(r["label"] or "")]
     if limit:
         rows = rows[:limit]
@@ -90,7 +90,7 @@ def main(db: str | None = None, out_dir: str = "data/plaene", limit: int = 0,
             status = -1
             zaehler["fehlgeschlagen"] += 1
         with conn:
-            conn.execute("UPDATE council_anlagen SET bild = ? WHERE document_id = ?",
+            conn.execute("UPDATE council_anlagen SET is_image = ? WHERE document_id = ?",
                          (status, did))
         time.sleep(delay)
     return zaehler
@@ -105,7 +105,7 @@ if __name__ == "__main__":
     ap.add_argument("--limit", type=int, default=0, help="0 = alle")
     ap.add_argument("--delay", type=float, default=1.0)
     ap.add_argument("--retry-failed", action="store_true",
-                    help="fehlgeschlagene (bild = -1) zurücksetzen und erneut versuchen")
+                    help="fehlgeschlagene (is_image = -1) zurücksetzen und erneut versuchen")
     args = ap.parse_args()
     raise SystemExit(run_guarded(
         "render_plaene",

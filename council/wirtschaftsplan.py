@@ -77,7 +77,7 @@ Es ist der **Verwaltungsentwurf**, nicht der Beschluss: Der Text sagt das
 selbst („in der Fassung des Verwaltungsentwurfes vom 01.10.2025 — unter
 Einbeziehung der sich aus den Beschlüssen … ergebenden Änderungen"). Das Datum
 wird mitgelesen und gehört an jede Anzeige, dieselbe Vorsicht wie beim
-Gesamtergebnishaushalt (``council/ergebnishaushalt.py``).
+Gesamtergebnishaushalt (``council/income_budget.py``).
 
 Und sie sind **nicht** mit dem Kernhaushalt verrechenbar. Der EGH vermietet der
 Stadt ihre eigenen Gebäude; seine Erträge sind zu einem großen Teil Aufwand des
@@ -122,7 +122,7 @@ ABGRENZUNG = (
 #: Cent-genau. Die Quelle führt volle Euro; die kleinste mögliche Abweichung
 #: wäre damit 1 €, und eine Toleranz von 1 € ließe genau den einen Fehler
 #: durch, den die Probe sehen könnte — dieselbe Überlegung wie bei
-#: `investitionen.TOLERANZ_EUR`.
+#: `investments.TOLERANZ_EUR`.
 TOLERANZ_EUR = 0.005
 
 #: Ein Betrag im Beschlusstext: „82.815.150", „-  5.401.285", „+ 349.700",
@@ -133,12 +133,12 @@ _BETRAG = r"([+-]?\s*\d{1,3}(?:\.\d{3})*(?:,\d{2})?)"
 #: Die Zeilen des Beschlusstextes. `steuer` fehlt in den Jahrgängen 2019/2020
 #: und zählt dann als 0.
 _ZEILEN = {
-    "ertraege":   r"mit Ertr[äa]gen von\s*" + _BETRAG,
-    "aufwendungen": r"mit Aufwendungen von\s*" + _BETRAG,
-    "steuern":    r"mit steuerlichen Aufwendungen von\s*" + _BETRAG,
-    "ergebnis":   r"und einem Jahresergebnis von\s*" + _BETRAG,
-    "vermoegensplan": r"Einzahlungen und Auszahlungen von je\s*" + _BETRAG,
-    "verpflichtungen": r"Verpflichtungserm[äa]chtigungen von\s*" + _BETRAG,
+    "revenues":   r"mit Ertr[äa]gen von\s*" + _BETRAG,
+    "expenses": r"mit Aufwendungen von\s*" + _BETRAG,
+    "taxes":    r"mit steuerlichen Aufwendungen von\s*" + _BETRAG,
+    "result":   r"und einem Jahresergebnis von\s*" + _BETRAG,
+    "capital_plan": r"Einzahlungen und Auszahlungen von je\s*" + _BETRAG,
+    "commitments": r"Verpflichtungserm[äa]chtigungen von\s*" + _BETRAG,
 }
 
 #: „für das Haushaltsjahr 2026" — die Jahresangabe im Beschlusstext.
@@ -187,19 +187,19 @@ class WirtschaftsplanFehler(ValueError):
 class Wirtschaftsplan:
     """Die Eckwerte eines Wirtschaftsplans, wie der Rat sie beschließt."""
 
-    betrieb: str          # Kürzel aus BETRIEBE
-    betrieb_name: str
-    jahr: int             # Haushaltsjahr, nicht das Jahr der Vorlage
-    vorlage_nr: str
-    ertraege: float
-    aufwendungen: float
-    steuern: float
-    ergebnis: float
+    enterprise: str          # Kürzel aus BETRIEBE
+    enterprise_name: str
+    year: int             # Haushaltsjahr, nicht das Jahr der Vorlage
+    template_number: str
+    revenues: float
+    expenses: float
+    taxes: float
+    result: float
     #: Einzahlungen = Auszahlungen; das Dokument nennt nur eine Zahl.
-    vermoegensplan: float | None
-    verpflichtungen: float | None
+    capital_plan: float | None
+    commitments: float | None
     #: Datum des Verwaltungsentwurfs — der Stand, den diese Zahlen tragen.
-    entwurf_vom: str | None
+    draft_date: str | None
     #: Die Investitionen IM Vermögensplan — ein Posten, nicht die Summe.
     #:
     #: Zwei Betriebe, zwei Sprechweisen: Der EGH nennt im Beschlusstext die
@@ -210,12 +210,12 @@ class Wirtschaftsplan:
     #:
     #: Vorgabe ``None``, damit die drei Lesewege (Beschlusstext, Erfolgsplan
     #: der Anlage, Kernzahl) nur setzen, was ihre Quelle wirklich nennt.
-    investitionen: float | None = None
+    investments: float | None = None
 
     @property
-    def probe_ergebnis(self) -> str:
+    def probe_result(self) -> str:
         """Der Messwert der Probe, für die Herkunft."""
-        rest = self.ertraege - self.aufwendungen - self.steuern - self.ergebnis
+        rest = self.revenues - self.expenses - self.taxes - self.result
         return f"Erfolgsplan geht auf, Restbetrag {rest:.2f} €"
 
 
@@ -240,15 +240,15 @@ def _glaetten(text: str) -> str:
     return re.sub(r"\s+", " ", text)
 
 
-def betrieb_aus_titel(titel: str) -> tuple[str, str] | None:
+def betrieb_aus_titel(title: str) -> tuple[str, str] | None:
     """Kürzel und Klarname des Betriebs — oder ``None``, wenn unbekannt."""
     for key, (muster, name) in BETRIEBE.items():
-        if re.search(muster, titel, re.I):
+        if re.search(muster, title, re.I):
             return key, name
     return None
 
 
-def parse_wirtschaftsplan(vorlage_nr: str, titel: str, text: str) -> Wirtschaftsplan | None:
+def parse_wirtschaftsplan(template_number: str, title: str, text: str) -> Wirtschaftsplan | None:
     """Die Eckwerte aus dem Beschlusstext einer Wirtschaftsplan-Vorlage.
 
     ``None``, wenn der Beschlusstext keine Eckwerte trägt — der Normalfall
@@ -260,73 +260,73 @@ def parse_wirtschaftsplan(vorlage_nr: str, titel: str, text: str) -> Wirtschafts
     flach = _glaetten(text)
 
     werte: dict[str, float] = {}
-    for feld, muster in _ZEILEN.items():
+    for field, muster in _ZEILEN.items():
         m = re.search(muster, flach)
         if m:
-            werte[feld] = _eur(m.group(1))
+            werte[field] = _eur(m.group(1))
 
-    # Ohne diese drei ist es kein Eckwert-Block. `steuern` darf fehlen (bis
-    # 2020 gab es die Zeile nicht), `vermoegensplan` und `verpflichtungen`
+    # Ohne diese drei ist es kein Eckwert-Block. `taxes` darf fehlen (bis
+    # 2020 gab es die Zeile nicht), `capital_plan` und `commitments`
     # ebenfalls — sie stehen in einem eigenen Absatz, den ein künftiges Layout
     # anders setzen könnte, ohne die Erfolgsplan-Zeilen zu berühren.
-    if not {"ertraege", "aufwendungen", "ergebnis"} <= werte.keys():
+    if not {"revenues", "expenses", "result"} <= werte.keys():
         return None
 
-    steuern = werte.get("steuern", 0.0)
-    rest = werte["ertraege"] - werte["aufwendungen"] - steuern - werte["ergebnis"]
+    taxes = werte.get("taxes", 0.0)
+    rest = werte["revenues"] - werte["expenses"] - taxes - werte["result"]
     if abs(rest) > TOLERANZ_EUR:
         raise WirtschaftsplanFehler(
-            f"{vorlage_nr}: Erfolgsplan geht nicht auf — "
-            f"{werte['ertraege']:.2f} − {werte['aufwendungen']:.2f} − {steuern:.2f} "
-            f"≠ {werte['ergebnis']:.2f} (Restbetrag {rest:.2f} €)")
+            f"{template_number}: Erfolgsplan geht nicht auf — "
+            f"{werte['revenues']:.2f} − {werte['expenses']:.2f} − {taxes:.2f} "
+            f"≠ {werte['result']:.2f} (Restbetrag {rest:.2f} €)")
 
     m_jahr = _JAHR_TEXT.search(flach)
     if not m_jahr:
         raise WirtschaftsplanFehler(
-            f"{vorlage_nr}: Eckwerte ohne Haushaltsjahr im Text — ohne Jahr "
+            f"{template_number}: Eckwerte ohne Haushaltsjahr im Text — ohne Jahr "
             "gehören die Zahlen nirgendwohin")
-    jahr = int(m_jahr.group(1))
+    year = int(m_jahr.group(1))
 
     # Zweite Probe: Steht dasselbe Jahr im Titel? Der Titel führt oft auch die
     # Vorlagen-Jahreszahl („25/0722"), deshalb wird auf ENTHALTENSEIN geprüft
     # und nicht auf Gleichheit mit dem ersten Fund.
-    titel_jahre = {int(j) for j in _JAHR_TITEL.findall(titel)}
-    if titel_jahre and jahr not in titel_jahre:
+    titel_jahre = {int(j) for j in _JAHR_TITEL.findall(title)}
+    if titel_jahre and year not in titel_jahre:
         raise WirtschaftsplanFehler(
-            f"{vorlage_nr}: Haushaltsjahr {jahr} steht so nicht im Titel "
+            f"{template_number}: Haushaltsjahr {year} steht so nicht im Titel "
             f"(dort: {sorted(titel_jahre)}) — eines von beiden ist falsch gelesen")
 
-    erkannt = betrieb_aus_titel(titel)
+    erkannt = betrieb_aus_titel(title)
     if not erkannt:
         raise WirtschaftsplanFehler(
-            f"{vorlage_nr}: Eckwerte gefunden, aber der Betrieb ist unbekannt — "
-            f"Titel: {titel!r}. Erst in BETRIEBE eintragen.")
+            f"{template_number}: Eckwerte gefunden, aber der Betrieb ist unbekannt — "
+            f"Titel: {title!r}. Erst in BETRIEBE eintragen.")
     key, name = erkannt
 
     m_entwurf = _ENTWURF.search(flach)
     return Wirtschaftsplan(
-        betrieb=key, betrieb_name=name, jahr=jahr, vorlage_nr=vorlage_nr,
-        ertraege=werte["ertraege"], aufwendungen=werte["aufwendungen"],
-        steuern=steuern, ergebnis=werte["ergebnis"],
-        vermoegensplan=werte.get("vermoegensplan"),
-        verpflichtungen=werte.get("verpflichtungen"),
-        entwurf_vom=m_entwurf.group(1) if m_entwurf else None,
+        enterprise=key, enterprise_name=name, year=year, template_number=template_number,
+        revenues=werte["revenues"], expenses=werte["expenses"],
+        taxes=taxes, result=werte["result"],
+        capital_plan=werte.get("capital_plan"),
+        commitments=werte.get("commitments"),
+        draft_date=m_entwurf.group(1) if m_entwurf else None,
     )
 
 
-def ohne_eckwerte(vorlage_nr: str, titel: str) -> dict:
+def ohne_eckwerte(template_number: str, title: str) -> dict:
     """Eine Vorlage, die keine Eckwerte im Beschlusstext trägt — mit dem Grund.
 
     Damit die Lücke **gezählt** dasteht statt zu verschwinden: „38 von 46
     Wirtschaftsplänen nennen im Beschlusstext keine Zahl" ist eine Auskunft,
     ein stilles Überspringen wäre keine."""
-    erkannt = betrieb_aus_titel(titel)
+    erkannt = betrieb_aus_titel(title)
     return {
-        "vorlage_nr": vorlage_nr,
-        "betrieb": erkannt[0] if erkannt else None,
-        "betrieb_name": erkannt[1] if erkannt else None,
-        "titel": titel,
-        "grund": "Der Beschlusstext stimmt der anliegenden Fassung zu, ohne die "
+        "template_number": template_number,
+        "enterprise": erkannt[0] if erkannt else None,
+        "enterprise_name": erkannt[1] if erkannt else None,
+        "title": title,
+        "reason": "Der Beschlusstext stimmt der anliegenden Fassung zu, ohne die "
                  "Eckwerte zu nennen — die Zahlen stehen in der Anlage.",
     }
 
@@ -334,7 +334,7 @@ def ohne_eckwerte(vorlage_nr: str, titel: str) -> dict:
 def dokument_name(plan: Wirtschaftsplan) -> str:
     """Wie das Dokument im Quellenverzeichnis heißen soll.
 
-    Bis zum 21.08.2026 stand hier ``f"Vorlage {plan.vorlage_nr}"``, und das
+    Bis zum 21.08.2026 stand hier ``f"Vorlage {plan.template_number}"``, und das
     Verzeichnis von ``/haushalt/betriebe`` listete für den Jahrgang 2026 fünf
     Links namens „Vorlage 25/0722", „Vorlage 25/0818/1", „Vorlage 25/0819" …
     — fünf verschiedene Dokumente, aber keines sagte, WESSEN Plan es ist. Tim
@@ -346,24 +346,24 @@ def dokument_name(plan: Wirtschaftsplan) -> str:
     unter jedem Beleg („Der Rat hat das am … beschlossen · Vorlage 25/0722").
     Was dort fehlte, war der Name — und der ist es, wonach man sucht.
 
-    ACHTUNG, das ändert den Herkunfts-Fingerabdruck (``Herkunft.schluessel``
+    ACHTUNG, das ändert den Herkunfts-Fingerabdruck (``Herkunft.key``
     schließt ``label`` ein): Der nächste Einlesevorgang legt neue Zeilen in
     ``council_herkunft`` an und hängt die Daten dort ein. Die alten bleiben
     unreferenziert liegen — sichtbar wird davon nichts."""
-    return f"{plan.betrieb_name}: Wirtschaftsplan {plan.jahr}"
+    return f"{plan.enterprise_name}: Wirtschaftsplan {plan.year}"
 
 
 def herkunft_fuer(plan: Wirtschaftsplan, url: str | None,
-                  dokument_id: int | None = None) -> Herkunft:
+                  document_id: int | None = None) -> Herkunft:
     """Die Herkunft einer Zeile: die Vorlage selbst, nicht eine Anlage."""
     return Herkunft(
-        art="ris",
+        kind="ris",
         probe=[PROBE_ERFOLGSPLAN, PROBE_JAHR],
-        dokument_id=dokument_id,
+        document_id=document_id,
         label=dokument_name(plan),
         url=url,
-        fundstelle="Beschlussvorschlag der Vorlage",
-        probe_ergebnis=plan.probe_ergebnis,
-        stand=(f"Verwaltungsentwurf vom {plan.entwurf_vom}"
-               if plan.entwurf_vom else "Fassung der Einbringung"),
+        citation="Beschlussvorschlag der Vorlage",
+        probe_result=plan.probe_result,
+        as_of=(f"Verwaltungsentwurf vom {plan.draft_date}"
+               if plan.draft_date else "Fassung der Einbringung"),
     )

@@ -208,15 +208,30 @@ struct TodayView: View {
 
     private func openSessions() { model.navigation.append(.sessions(ksinr: nil, tops: [])) }
 
+    /// The one session running right now — at most one, because they wait for
+    /// each other: council days run 16:00 general committee → 16:30
+    /// administrative committee → 18:00 council in the same building, so
+    /// whichever starts next ends the previous round. The server computes the
+    /// end of every window and sends it as `live_until` (see `council/live.py`);
+    /// the cap below only catches responses that predate that field. With
+    /// several candidates the most recently started one wins.
     private var liveSession: CouncilSession? {
-        upcomingSessions.first { session in
-            guard session.sessionDate.prefix(10) == localISODate(now),
-                  let time = session.sessionTime,
-                  let start = sessionStart(time, on: now)
-            else { return false }
-            let age = now.timeIntervalSince(start)
-            return age >= 0 && age <= 4 * 60 * 60
-        }
+        upcomingSessions
+            .compactMap { session -> (CouncilSession, Date)? in
+                guard session.sessionDate.prefix(10) == localISODate(now),
+                      let time = session.sessionTime,
+                      let start = sessionStart(time, on: now),
+                      now >= start
+                else { return nil }
+                if let until = session.liveUntil, let end = sessionStart(until, on: now), end > start {
+                    guard now < end else { return nil }
+                } else {
+                    let cap = isCouncil(session.committee) ? liveCapHoursCouncil : liveCapHours
+                    guard now.timeIntervalSince(start) <= Double(cap) * 60 * 60 else { return nil }
+                }
+                return (session, start)
+            }
+            .max { $0.1 < $1.1 }?.0
     }
 
     private func load() async {
@@ -228,7 +243,10 @@ struct TodayView: View {
             async let foundRequest: FoundPiece = model.api.get("/api/council/fundstueck")
             async let sessionsRequest: SessionPage? = try? await model.api.get(
                 "/api/council/sessions",
-                query: [.init(name: "scope", value: "upcoming"), .init(name: "limit", value: "3")]
+                // Sechs statt drei: Ein Ratstag bringt drei Gremien nacheinander
+                // (siehe `liveSession`) — mit einem knappen Limit fehlte die
+                // laufende Sitzung in der Liste.
+                query: [.init(name: "scope", value: "upcoming"), .init(name: "limit", value: "6")]
             )
             async let hitsRequest: DashboardTopicHits? = try? await model.api.get(
                 "/api/topics/latest-hits", query: [.init(name: "limit", value: "2")]
@@ -289,7 +307,7 @@ struct TodayView: View {
             ),
         ]
         weekNumber = .init(
-            kind: "betrag",
+            kind: "amount",
             amountEUR: 9_512_500,
             decisionID: 99113,
             title: "Mehrbedarf für den Teilhaushalt 10",
@@ -411,9 +429,7 @@ private struct LiveCouncilCard: View {
         }
     }
 
-    private var isCouncil: Bool {
-        ["rat", "stadtrat"].contains(session.committee.trimmingCharacters(in: .whitespacesAndNewlines).lowercased())
-    }
+    private var isCouncil: Bool { RatslotseFeatures.isCouncil(session.committee) }
 
     private var topicItemCount: Int {
         Set((session.myTopicItems ?? []).compactMap { $0.object?["item_number"]?.string }).count
@@ -509,7 +525,7 @@ private struct DashboardWeekNumberCard: View {
     }
 
     private var displayValue: String {
-        guard number.kind == "betrag", let amount = number.amountEUR else { return "\(number.count ?? 0)" }
+        guard number.kind == "amount", let amount = number.amountEUR else { return "\(number.count ?? 0)" }
         if amount >= 1_000_000 {
             return "\((amount / 1_000_000).formatted(.number.precision(.fractionLength(0...1)))) Mio. €"
         }
@@ -518,10 +534,23 @@ private struct DashboardWeekNumberCard: View {
     }
 
     private var description: String {
-        if number.kind == "betrag" { return "beschlossen für: \(number.title ?? "einen aktuellen Ratsbeschluss")" }
+        if number.kind == "amount" { return "beschlossen für: \(number.title ?? "einen aktuellen Ratsbeschluss")" }
         let count = number.count ?? 0
         return "\(count == 1 ? "Beschluss" : "Beschlüsse") in den letzten \(number.windowDays) Tagen"
     }
+}
+
+/// How long a session counts as running when no other follows it that day —
+/// committees wrap up in about three hours, the council itself sits longer.
+/// Mirrors `council.live`; normally the server sends the computed end.
+let liveCapHours = 3
+let liveCapHoursCouncil = 4
+
+/// The council itself — not a district council, an advisory board or the
+/// administrative committee. Matches `council.live._COUNCIL_NAMES`.
+func isCouncil(_ committee: String) -> Bool {
+    ["rat", "stadtrat", "rat der stadt", "rat der stadt oldenburg"]
+        .contains(committee.trimmingCharacters(in: .whitespacesAndNewlines).lowercased())
 }
 
 private func localISODate(_ date: Date) -> String {
@@ -1130,32 +1159,32 @@ private struct DecisionOutcomeSignal: View {
 
     private var label: String {
         switch outcome {
-        case "angenommen": "Angenommen"
-        case "abgelehnt": "Abgelehnt"
-        case "vertagt": "Vertagt"
-        case "zur_kenntnis": "Zur Kenntnis"
-        case "kein_beschluss": "Kein Beschluss"
+        case "accepted": "Angenommen"
+        case "rejected": "Abgelehnt"
+        case "postponed": "Vertagt"
+        case "noted": "Zur Kenntnis"
+        case "no_decision": "Kein Beschluss"
         default: outcome.replacingOccurrences(of: "_", with: " ").capitalized
         }
     }
 
     private var color: Color {
         switch outcome {
-        case "angenommen": RatsColor.success
-        case "abgelehnt": RatsColor.danger
-        case "vertagt": RatsColor.warning
-        case "zur_kenntnis": RatsColor.primary
+        case "accepted": RatsColor.success
+        case "rejected": RatsColor.danger
+        case "postponed": RatsColor.warning
+        case "noted": RatsColor.primary
         default: RatsColor.muted
         }
     }
 
     private var symbol: RatsGlyph {
         switch outcome {
-        case "angenommen": .check
-        case "abgelehnt": .x
-        case "vertagt": .history
-        case "zur_kenntnis": .eye
-        case "kein_beschluss": .minus
+        case "accepted": .check
+        case "rejected": .x
+        case "postponed": .history
+        case "noted": .eye
+        case "no_decision": .minus
         default: .circle
         }
     }

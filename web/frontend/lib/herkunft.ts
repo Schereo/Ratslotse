@@ -19,11 +19,11 @@
 // Was die Trennung stattdessen gebracht hat, war Drift — nachgemessen, bevor
 // diese Datei entstand:
 //
-//   * drei der fünf kannten `dokument_id` nicht, obwohl die API es immer
+//   * drei der fünf kannten `document_id` nicht, obwohl die API es immer
 //     mitschickt. Genau die Angabe, an der der Beleg-Chip hängt;
 //   * zwei deklarierten `probe: string | null`, obwohl die Spalte NOT NULL
 //     ist — die Seiten trugen totes Null-Handling;
-//   * eine führte `proben` als optional, obwohl es nie fehlt.
+//   * eine führte `probes` als optional, obwohl es nie fehlt.
 //
 // Die Seiten waren also nicht voreinander geschützt, sondern vor der
 // Wahrheit. Ein Feld, das die API schickt und der Typ verschweigt, ist für
@@ -43,18 +43,18 @@ export type Ratsvorgang = {
   ksinr: number;
   kvonr: number | null;
   top: string | null;
-  titel: string | null;
+  title: string | null;
   outcome: string | null;
   vote: string | null;
-  vorlage_nr: string | null;
-  gremium: string | null;
-  datum: string | null;
+  template_number: string | null;
+  committee: string | null;
+  date: string | null;
 };
 
 /** Woher eine Zeile kommt — das gemeinsame Format aller Finanz-Schichten.
  *
  *  Die Feldliste folgt `council/herkunft.py` plus dem, was die Datenbank
- *  ergänzt (`id`, `fetched_at`) und was `get_herkunft` dazurechnet (`proben`,
+ *  ergänzt (`id`, `fetched_at`) und was `get_herkunft` dazurechnet (`probes`,
  *  `beschluss`). */
 export type Herkunft = {
   id: number;
@@ -63,11 +63,11 @@ export type Herkunft = {
   art: string;
   /** Die RIS-Dokumentnummer der Anlage — der stabile Anker, über den der
    *  Ratsvorgang gefunden wird. `null` bei `stadt`/`lsn`. */
-  dokument_id: number | null;
+  document_id: number | null;
   label: string | null;
   url: string | null;
-  fundstelle: string | null;
-  seite: number | null;
+  citation: string | null;
+  page: number | null;
   /** Die bestandenen Proben als Schlüssel, kommagetrennt. NOT NULL in der
    *  Datenbank und im Konstruktor erzwungen — eine Zahl ohne Probe kommt
    *  nicht in den Bestand. */
@@ -75,18 +75,18 @@ export type Herkunft = {
   /** Die Erklärsätze zu diesen Proben — kommen aus `herkunft.PROBEN` im
    *  Backend, damit sie einmal für Leser*innen geschrieben sind.
    *
-   *  ACHTUNG, Namensfalle: Das gleichnamige `Herkunft.proben` in Python
+   *  ACHTUNG, Namensfalle: Das gleichnamige `Herkunft.probes` in Python
    *  liefert die Proben-NAMEN, dieses Feld die ausformulierten Sätze. Beide
    *  heißen gleich und tragen Verschiedenes; wer im Backend nachschlägt,
    *  findet nicht, was hier ankommt. */
-  proben: string[];
-  probe_ergebnis: string | null;
-  stand: string | null;
+  probes: string[];
+  probe_result: string | null;
+  as_of: string | null;
   /** „Zuletzt bestätigt", nicht „zuerst gesehen": Der Zeitstempel wandert bei
    *  jedem Lauf vorwärts, der die Zeile wiedersieht (`merke_herkunft`). */
   fetched_at: string;
   /** Der Beschluss, der das Dokument verabschiedet hat — `null`, wo keine
    *  Vorlage im Bestand steht. Ein erfundener Vorgang wäre der schlimmere
    *  Fehler. */
-  beschluss: Ratsvorgang | null;
+  official_text: Ratsvorgang | null;
 };

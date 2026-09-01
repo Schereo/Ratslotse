@@ -48,27 +48,27 @@ export type SlopePaarZeile = {
  *  mindestens `abstand` unter seinem Vorgänger — und am Ende zurück in die
  *  Zeichenfläche geklemmt. */
 function entzerre(ys: number[], abstand: number, von: number, bis: number): number[] {
-  const reihenfolge = ys.map((y, i) => ({ y, i })).sort((a, b) => a.y - b.y);
+  const sort_order = ys.map((y, i) => ({ y, i })).sort((a, b) => a.y - b.y);
   let letzte = -Infinity;
-  for (const e of reihenfolge) {
+  for (const e of sort_order) {
     e.y = Math.max(e.y, letzte + abstand);
     letzte = e.y;
   }
   // Läuft die Kette unten heraus, alles gemeinsam hochschieben.
-  const ueberhang = Math.max(0, (reihenfolge.at(-1)?.y ?? von) - bis);
+  const ueberhang = Math.max(0, (sort_order.at(-1)?.y ?? von) - bis);
   const aus = new Array<number>(ys.length);
-  for (const e of reihenfolge) aus[e.i] = Math.max(e.y - ueberhang, von);
+  for (const e of sort_order) aus[e.i] = Math.max(e.y - ueberhang, von);
   return aus;
 }
 
 export function SlopePaar({
-  paare, bruchLabel, einheit, vonLabel, bisLabel, nachkomma = 0, beleg,
+  paare, bruchLabel, unit, vonLabel, bisLabel, nachkomma = 0, beleg,
 }: {
   paare: SlopePaarZeile[];
   /** Was die beiden Spalten trennt — Pflicht, s. Kopfkommentar. */
   bruchLabel: string;
   /** Steht hinter jedem Wert: „%", „€". */
-  einheit: string;
+  unit: string;
   /** Spaltenköpfe: „2024" und „2025 · Reform". */
   vonLabel: string;
   bisLabel: string;
@@ -80,7 +80,7 @@ export function SlopePaar({
   const beschreibungId = useId();
   if (!paare.length) return null;
 
-  const wert = (v: number) => `${deZahl(v, nachkomma)} ${einheit}`;
+  const value = (v: number) => `${deZahl(v, nachkomma)} ${unit}`;
   const unveraendert = (p: SlopePaarZeile) => p.vorher === p.nachher;
 
   // Die Delta-Liste ist zugleich die Fassung für die Vorlesehilfe — sie sagt
@@ -104,15 +104,15 @@ export function SlopePaar({
             </span>
             {unveraendert(p) ? (
               <span className="font-mono text-[12px] tabular-nums text-muted-foreground">
-                {wert(p.vorher)} · unverändert
+                {value(p.vorher)} · unverändert
               </span>
             ) : (
               <span className={cn("whitespace-nowrap font-mono text-[12px] tabular-nums",
                 p.hervorgehoben ? "font-bold text-foreground" : "text-muted-foreground")}>
-                {wert(p.vorher)}
+                {value(p.vorher)}
                 <span aria-hidden="true" className="mx-1.5">→</span>
                 <span className="sr-only">auf </span>
-                {wert(p.nachher)}
+                {value(p.nachher)}
               </span>
             )}
           </li>
@@ -211,7 +211,7 @@ export function SlopePaar({
       <div id={beschreibungId}>{deltaListe(false)}</div>
 
       <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10.5px] text-muted-foreground">
-        <span>Werte in {einheit === "%" ? "Prozent v. H." : einheit}.</span>
+        <span>Werte in {unit === "%" ? "Prozent v. H." : unit}.</span>
         {beleg}
       </p>
     </div>

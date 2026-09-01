@@ -14,7 +14,7 @@ export type WochenSitzung = {
 };
 export type WochenPunkt = {
   ksinr: number; item_number: string; title: string; titel_kurz?: string;
-  antragsteller?: string | null; summary: string | null;
+  applicants?: string | null; summary: string | null;
   /** Der aus Vorlage UND Anlagen geschriebene Satz (`agenda_item_social`) —
    *  besser als `summary`, die allein aus dem Titel entsteht. */
   social_text?: string | null;
@@ -22,7 +22,7 @@ export type WochenPunkt = {
    *  (`council/dringlichkeit.py`). Er steht auf der Karte, weil die Bewertung
    *  für ihn einen Boden hat — der Kicker sagt, warum. */
   dringlich?: boolean;
-  vorlage_nr: string | null; kvonr: number | null;
+  template_number: string | null; kvonr: number | null;
   committee: string; session_date: string; topic_name?: string | null;
   /** Warum der Punkt zählt — in Alltagssprache, kommt aus der Bewertung. */
   wichtig_grund?: string | null;
@@ -102,7 +102,7 @@ function zeitraum(von: string, bis: string, kurz: boolean) {
 
 /** Gremiumsname je Stufe (Matrix 14d): volle Bezeichnung → ohne „Ausschuss
  *  für" → Kurzform. `shortCommittee` macht genau den mittleren Schritt. */
-function gremium(name: string, dichte: Dichte) {
+function committee(name: string, dichte: Dichte) {
   return dichte === "desktop" ? name : shortCommittee(name);
 }
 
@@ -225,11 +225,11 @@ export function WocheImRat({ vorschau, heuteIso }: {
   const inRail = sitzungen;
 
   // Tagesweise gruppieren — die Rail trägt den Tag einmal, nicht je Sitzung.
-  const tage: { datum: string; sitzungen: WochenSitzung[] }[] = [];
+  const tage: { date: string; sitzungen: WochenSitzung[] }[] = [];
   for (const s of inRail) {
     const letzter = tage[tage.length - 1];
-    if (letzter && letzter.datum === s.session_date) letzter.sitzungen.push(s);
-    else tage.push({ datum: s.session_date, sitzungen: [s] });
+    if (letzter && letzter.date === s.session_date) letzter.sitzungen.push(s);
+    else tage.push({ date: s.session_date, sitzungen: [s] });
   }
 
   const kicker = [
@@ -255,13 +255,13 @@ export function WocheImRat({ vorschau, heuteIso }: {
 
       {dichte === "mobil" ? (
         <div className="mt-3 flex flex-1 flex-col gap-3">
-          {tage.map(({ datum, sitzungen: tagesSitzungen }) =>
+          {tage.map(({ date, sitzungen: tagesSitzungen }) =>
             tagesSitzungen.map((s, i) => {
               const alle = punkteVon(s.ksinr);
-              const erste = tage[0].datum === datum && i === 0;
+              const erste = tage[0].date === date && i === 0;
               return alle.length > 0 ? (
                 <MobilSitzung
-                  key={s.ksinr ?? `${s.committee}|${datum}`}
+                  key={s.ksinr ?? `${s.committee}|${date}`}
                   sitzung={s}
                   punkte={alle.slice(0, maxPunkte)}
                   rest={restVon(s.ksinr, maxPunkte)}
@@ -269,16 +269,16 @@ export function WocheImRat({ vorschau, heuteIso }: {
                     - (weitereJe[String(s.ksinr)]?.length ?? 0), 0)}
                   badge={relevant[String(s.ksinr)] ?? 0}
                   treffer={treffer_je[String(s.ksinr)] ?? 0}
-                  heute={datum === heuteIso}
+                  heute={date === heuteIso}
                   /* Trennlinie erst ab der zweiten Zeile — die erste sitzt
                      direkt unter der Kopfzeile. */
                   mitTrennlinie={!erste}
                 />
               ) : (
                 <MobilRuhig
-                  key={s.ksinr ?? `${s.committee}|${datum}`}
+                  key={s.ksinr ?? `${s.committee}|${date}`}
                   sitzung={s}
-                  heute={datum === heuteIso}
+                  heute={date === heuteIso}
                   mitTrennlinie={!erste}
                 />
               );
@@ -293,11 +293,11 @@ export function WocheImRat({ vorschau, heuteIso }: {
             columnGap: dichte === "desktop" ? 16 : 13,
           }}
         >
-          {tage.map(({ datum, sitzungen: tagesSitzungen }, ti) => (
+          {tage.map(({ date, sitzungen: tagesSitzungen }, ti) => (
             <RailTag
-              key={datum}
-              datum={datum}
-              heute={datum === heuteIso}
+              key={date}
+              date={date}
+              heute={date === heuteIso}
               letzter={ti === tage.length - 1}
               dichte={dichte}
             >
@@ -305,7 +305,7 @@ export function WocheImRat({ vorschau, heuteIso }: {
                 const p = punkteVon(s.ksinr);
                 return p.length > 0 ? (
                   <RailSitzung
-                    key={s.ksinr ?? `${s.committee}|${datum}`}
+                    key={s.ksinr ?? `${s.committee}|${date}`}
                     sitzung={s}
                     punkte={p.slice(0, maxPunkte)}
                     rest={restVon(s.ksinr, maxPunkte)}
@@ -316,7 +316,7 @@ export function WocheImRat({ vorschau, heuteIso }: {
                   />
                 ) : (
                   <RuhigeZeile
-                    key={s.ksinr ?? `${s.committee}|${datum}`}
+                    key={s.ksinr ?? `${s.committee}|${date}`}
                     sitzung={s}
                     dichte={dichte}
                   />
@@ -337,8 +337,8 @@ export function WocheImRat({ vorschau, heuteIso }: {
 
 /* ------------------------------- Rail (Desktop / iPad) ------------------------------- */
 
-function RailTag({ datum, heute, letzter, dichte, children }: {
-  datum: string; heute: boolean; letzter: boolean; dichte: Dichte; children: React.ReactNode;
+function RailTag({ date, heute, letzter, dichte, children }: {
+  date: string; heute: boolean; letzter: boolean; dichte: Dichte; children: React.ReactNode;
 }) {
   return (
     <>
@@ -349,7 +349,7 @@ function RailTag({ datum, heute, letzter, dichte, children }: {
           </span>
         ) : (
           <span className="pl-0.5 font-mono text-[9.5px] font-medium tracking-[0.08em] text-muted-foreground">
-            {fmtTag(datum)}
+            {fmtTag(date)}
           </span>
         )}
         {/* Die Linie verbindet die Tage; am letzten endet die Rail. */}
@@ -385,7 +385,7 @@ function RailSitzung({ sitzung, punkte, rest, badge, treffer, mehrere, dichte }:
     <div>
       <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
         <span className={cn("font-bold text-foreground", desktop ? "text-[13.5px]" : "text-[13px]")}>
-          {gremium(sitzung.committee, dichte)}
+          {committee(sitzung.committee, dichte)}
         </span>
         <span className={cn("text-muted-foreground", desktop ? "text-[11.5px]" : "text-[11px]")}>
           {/* Matrix 14d: Desktop zeigt Uhrzeit UND Ort, iPad nur die Uhrzeit. */}
@@ -447,7 +447,7 @@ function RailPunkt({ punkt, top, mehrere, dichte }: {
   punkt: WochenPunkt; top: boolean; mehrere?: boolean; dichte: Dichte;
 }) {
   const desktop = dichte === "desktop";
-  const wer = punkt.antragsteller;
+  const wer = punkt.applicants;
   return (
     <Link
       href={topHref(punkt.ksinr, punkt.item_number)}
@@ -535,7 +535,7 @@ function RuhigeZeile({ sitzung, dichte }: { sitzung: WochenSitzung; dichte: Dich
         "font-semibold text-foreground/90",
         desktop ? "text-[13.5px]" : "text-[13px]",
       )}>
-        {gremium(sitzung.committee, dichte)}
+        {committee(sitzung.committee, dichte)}
       </span>
       <span className={cn("text-muted-foreground", desktop ? "text-[11.5px]" : "text-[11px]")}>
         {zeit}
@@ -617,8 +617,8 @@ function MobilSitzung({ sitzung, punkte, rest, weitere, badge, treffer, heute, m
             className="flex items-start gap-1.5"
           >
             {/* Matrix 14d: mobil nur der Punkt, kein Antragsteller-Text. */}
-            {p.antragsteller
-              ? <span className="mt-[5px]"><ParteiPunkte wer={p.antragsteller} size={6} /></span>
+            {p.applicants
+              ? <span className="mt-[5px]"><ParteiPunkte wer={p.applicants} size={6} /></span>
               : <span className="mt-[5px] h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground/40" />}
             <span className="text-[12.5px] leading-snug text-foreground">
               {p.titel_kurz || p.title}

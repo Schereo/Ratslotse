@@ -1,0 +1,207 @@
+"use client";
+
+// „Was am Bauen geändert wurde" — der Finanzhaushalt im Streit-Abschnitt.
+//
+// Die Schwester-Karte zu `streit-listeninhalt.tsx`. Jene zeigt den
+// ERGEBNIShaushalt: was die Stadt erwirtschaftet und verbraucht. Diese zeigt
+// den FINANZhaushalt — was tatsächlich fließt, und vor allem, was investiert
+// wird. Beide Listen entstehen im selben Verfahren und liegen als Anlage an
+// derselben Vorlage; wer wissen will, was der Rat geändert hat, braucht
+// beide.
+//
+// WARUM EINE EIGENE KARTE und nicht ein Umschalter in der bestehenden: Die
+// beiden Haushalte beantworten verschiedene Fragen, und ein Umschalter legt
+// nahe, es seien zwei Ansichten derselben Sache. Der Investitionsteil hat
+// außerdem etwas, das der Ergebnisteil nicht hat — den Code des Vorhabens,
+// an dem geschraubt wurde.
+//
+// DREI DINGE, DIE DIE KARTE NICHT TUT:
+//
+//  * **Sie summiert Ein- und Auszahlungen nicht gegeneinander.** Im
+//    Finanzhaushalt sind das zwei Richtungen, keine zwei Vorzeichen: Eine
+//    Einzahlung ist ein Zuschuss oder ein Verkauf, eine Auszahlung die
+//    Investition selbst. Die Zusammenstellung des Dokuments bildet daraus
+//    einen Saldo — der steht am Fuß der Liste, nicht in jeder Zeile.
+//  * **Sie zeigt die Verpflichtungsermächtigungen nicht als Betrag der
+//    Zeile.** Eine VE ist die Erlaubnis, künftige Jahre zu binden, kein Geld
+//    dieses Jahres — sie zählt auch im Dokument nicht in den Saldo.
+//  * **Sie führt keine Positionen ohne Beträge.** Ein Teil der Zeilen sind
+//    reine Haushaltsvermerke: Text, den die Verwaltung in den Plan schreibt,
+//    ohne dass sich eine Zahl ändert. In einer Liste „was geändert wurde"
+//    behaupteten sie eine Änderung, die es nicht gibt (`fhhListenFuerJahr`
+//    sortiert sie aus).
+
+import Link from "next/link";
+import { ChevronDown, Search } from "lucide-react";
+import {
+  AenderungslistenDaten, FhhListeImJahr, deltaBetrag, fhhListenFuerJahr,
+} from "@/lib/haushalt-aenderungslisten";
+import { Beleg, Dokumentbeleg } from "@/components/haushalt/source";
+import { BetragZelle, TextZelle, ZahlenTabelle } from "@/components/haushalt/zahlen-tabelle";
+import { cn } from "@/lib/utils";
+
+/** Die Vorhaben-Nummer ohne ihr letztes Segment.
+ *
+ *  Die Änderungslisten führen eine Nummer je BUCHUNGSZEILE:
+ *  „I10.180800.500" ist das Vorhaben I10.180800 („SG Käthe-Kollwitz-Straße")
+ *  in der Sachkonto-Gruppe 500 (Hoch- und Tiefbau); .550 wäre die Zuweisung
+ *  des Landes zu demselben Vorhaben, .525 ein Zuschuss. Das
+ *  Investitionsprogramm (Anlage 004) führt dagegen das Vorhaben als Ganzes.
+ *
+ *  Gemessen am Bestand: Mit dem Sachkonto trifft die Nummer 7 von 56
+ *  Positionen, ohne es 32 von 56. Die übrigen haben im Programm kein
+ *  Gegenstück — nicht jede Zeile des Finanzhaushalts gehört zu einem dort
+ *  benannten Vorhaben. Deshalb führt der Link auf eine Suche und nicht auf
+ *  ein Vorhaben. */
+function vorhabenNummer(code: string): string {
+  return code.replace(/\.\d+\.?$/, "");
+}
+
+
+function ListenKarte({ liste, year }: { liste: FhhListeImJahr; year: number }) {
+  const mitCode = liste.zeilen.filter((z) => z.product).length;
+  return (
+    <details className="group border-t border-border/60 py-2.5 first:border-t-0 first:pt-0">
+      <summary className="flex cursor-pointer list-none flex-wrap items-baseline gap-x-3 gap-y-1">
+        <ChevronDown className="h-3.5 w-3.5 translate-y-0.5 text-muted-foreground transition-transform group-open:rotate-180" />
+        <span className="text-[13px] font-semibold text-foreground">{liste.name}</span>
+        <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
+          {liste.zeilen.length} Position{liste.zeilen.length === 1 ? "" : "en"} für {year}
+          {mitCode > 0 && ` · ${mitCode} mit Vorhaben-Nummer`}
+        </span>
+        {liste.balance && (
+          <span className={cn("ml-auto whitespace-nowrap font-mono text-[11.5px] font-medium tabular-nums",
+            liste.balance.balance < 0 ? "text-signal" : "text-foreground")}>
+            Saldo {deltaBetrag(liste.balance.balance)}
+          </span>
+        )}
+      </summary>
+
+      <div className="mt-2 pl-[26px]">
+        <ZahlenTabelle
+          className="mt-2"
+          spalten={[
+            { title: "Vorhaben" },
+            { title: "Einzahlung", zahl: true },
+            { title: "Auszahlung", zahl: true },
+          ]}
+          fuss={liste.balance && (
+            <tr>
+              <TextZelle className="border-t-border/60 py-2">
+                <span className="text-[11.5px] font-semibold text-foreground">Summe der Liste</span>
+                <span className={cn("ml-2 whitespace-nowrap font-mono text-[11px] font-medium tabular-nums",
+                  liste.balance.balance < 0 ? "text-signal" : "text-muted-foreground")}>
+                  Saldo {deltaBetrag(liste.balance.balance)}
+                </span>
+                <Beleg q="aenderungsliste" h={liste.herkunft} />
+              </TextZelle>
+              <BetragZelle euro={liste.balance.inflows} label="Einzahlung"
+                text={deltaBetrag(liste.balance.inflows)}
+                className="border-t-border/60 py-2 font-medium" />
+              <BetragZelle euro={liste.balance.outflows} label="Auszahlung"
+                text={deltaBetrag(liste.balance.outflows)}
+                className="border-t-border/60 py-2 font-medium" />
+            </tr>
+          )}
+        >
+          {liste.zeilen.map((z) => (
+            <tr key={z.seq}>
+              <TextZelle>
+                {z.label ? (
+                  <span className="text-foreground/90">{z.label}</span>
+                ) : (
+                  <span className="italic text-muted-foreground">
+                    Position {z.seq} (ohne lesbaren Namen)
+                  </span>
+                )}
+                {z.product && (
+                  <Link
+                    href={`/haushalt/investitionen?vorhaben=${encodeURIComponent(vorhabenNummer(z.product))}&year=${z.year}#vorhaben`}
+                    // Bewusst „suchen" und nicht „zum Vorhaben": Der Link
+                    // führt auf eine SUCHE, und die findet ihr Vorhaben in gut
+                    // der Hälfte der Fälle (gemessen 32 von 56). Ein Link, der
+                    // „zum Vorhaben" verspricht und dann leer ankommt, wäre
+                    // eine Zusage, die die Daten nicht decken; eine Suche ohne
+                    // Treffer ist dagegen ein normales Ergebnis.
+                    title={`Nummer ${vorhabenNummer(z.product)} im Investitionsprogramm suchen`}
+                    className="ml-2 inline-flex items-center gap-1 font-mono text-[10px] text-muted-foreground hover:text-primary hover:underline"
+                  >
+                    <Search className="h-2.5 w-2.5" aria-hidden />
+                    {z.product}
+                  </Link>
+                )}
+                <span className="ml-2 font-mono text-[10px] text-muted-foreground">
+                  {z.sub_budget != null ? `THH ${String(z.sub_budget).padStart(2, "0")}` : "alle THH"}
+                </span>
+                {z.page_draft === "neu" && (
+                  // „neu“ heißt: Diese Zeile stand im Entwurf noch gar nicht.
+                  <span className="ml-2 rounded-full bg-muted px-1.5 py-px font-mono text-[9.5px] uppercase tracking-[0.08em] text-muted-foreground">
+                    neu im Verfahren
+                  </span>
+                )}
+                {z.explanation && (
+                  <span className="mt-0.5 block max-w-[75ch] text-[11px] leading-relaxed text-muted-foreground">
+                    {z.explanation}
+                  </span>
+                )}
+                {z.commitment_authorizations != null && z.commitment_authorizations !== 0 && (
+                  <span className="mt-0.5 block text-[10.5px] leading-relaxed text-muted-foreground">
+                    Dazu eine Verpflichtungsermächtigung über{" "}
+                    <span className="font-mono tabular-nums">{deltaBetrag(z.commitment_authorizations)}</span> —
+                    die Erlaubnis, künftige Jahre zu binden. Sie ist kein Geld dieses
+                    Jahres und zählt auch im Dokument nicht in den Saldo.
+                  </span>
+                )}
+              </TextZelle>
+              <BetragZelle euro={z.inflow} label="Einzahlung"
+                text={deltaBetrag(z.inflow)} />
+              <BetragZelle euro={z.outflow} label="Auszahlung"
+                text={deltaBetrag(z.outflow)} />
+            </tr>
+          ))}
+        </ZahlenTabelle>
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1">
+          <Dokumentbeleg h={liste.herkunft} />
+        </div>
+      </div>
+    </details>
+  );
+}
+
+export function StreitFinanzhaushalt({ daten, year }: {
+  daten: AenderungslistenDaten | null;
+  year: number | null;
+}) {
+  const listen = fhhListenFuerJahr(daten, year);
+  if (!year || !listen.length) return null;
+
+  return (
+    <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <h2 className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+          Was am Bauen geändert wurde
+        </h2>
+        <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
+          Haushalt {year}
+        </span>
+      </div>
+      <p className="mt-1 max-w-[70ch] text-[12.5px] leading-relaxed text-muted-foreground">
+        Der Haushalt hat zwei Teile, und beide werden im Verfahren geändert. Oben
+        steht der Ergebnishaushalt — was die Stadt erwirtschaftet und verbraucht.
+        Hier steht der Finanzhaushalt: was tatsächlich fließt, und vor allem, was
+        investiert wird. Diese Listen sagen also, an welchen Vorhaben zwischen
+        Entwurf und Beschluss geschraubt wurde.
+      </p>
+      <p className="mt-1.5 max-w-[70ch] text-[11px] leading-relaxed text-muted-foreground">
+        Einzahlungen und Auszahlungen stehen nebeneinander, nicht gegeneinander:
+        Eine Einzahlung ist ein Zuschuss oder ein Verkauf, eine Auszahlung die
+        Investition selbst. Den Saldo daraus bildet das Dokument am Fuß der
+        Liste, nicht in jeder Zeile.
+      </p>
+
+      <div className="mt-3">
+        {listen.map((l) => <ListenKarte key={l.key} liste={l} year={year} />)}
+      </div>
+    </div>
+  );
+}

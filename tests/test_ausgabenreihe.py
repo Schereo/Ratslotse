@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import pytest
 
-from council import ausgabenreihe as ar
+from council import expense_series as ar
 from council import herkunft
 from council.store import CouncilStore
 
@@ -38,7 +38,7 @@ PDF = """Stadt Oldenburg (Oldb) - Statistik
 1102  Ausgaben des Verwaltungshaushalts 2002 bis 2009
              - Anordnungssoll -
 Einwohner
-Stand: 31. Dezember insgesamt je Einwohner
+Stand: 31. Dezember total je Einwohner
 des Vorjahres (Tausend Euro)  (Euro)
 S 1 S 2 S 3 S 4
 2002 155.908 338.725 2.173
@@ -46,7 +46,7 @@ S 1 S 2 S 3 S 4
  Ordentliche Aufwendungen des Ergebnishaushalts 2010 bis 20251
    - Gesamtergebnisrechnung -
 Einwohner
-Stand: 31. Dezember insgesamt je Einwohner
+Stand: 31. Dezember total je Einwohner
 des Vorjahres2,3 (Tausend Euro)  (Euro)
 S 1 S 2 S 3 S 4
 2010 161.334 358.800 2.224
@@ -120,9 +120,9 @@ def test_das_pdf_deckt_die_reihe_nicht_ab(gelesen):
     Spanne des PDFs für die Spanne der Reihe hält, verliert sie — und merkt es
     nicht, weil das PDF in sich vollständig aussieht."""
     assert gelesen["spannen"]["kameral"][0] == 2002
-    assert gelesen["zeilen"][0]["jahr"] == 1972
-    nur_csv = [z for z in gelesen["zeilen"] if z["jahr"] < 2002]
-    assert nur_csv and all(z["quelle"] == "csv" for z in nur_csv)
+    assert gelesen["zeilen"][0]["year"] == 1972
+    nur_csv = [z for z in gelesen["zeilen"] if z["year"] < 2002]
+    assert nur_csv and all(z["source"] == "csv" for z in nur_csv)
 
 
 # --- Die Einheit ------------------------------------------------------------
@@ -135,8 +135,8 @@ def test_der_falsche_spaltenkopf_der_alten_csv_wird_nicht_geglaubt(gelesen):
     durch 133.212 Einwohner*innen sind 574 € — genau der Wert, den die Datei
     daneben ausweist. In Euro gelesen wären es 0,57 €."""
     assert "in Euro" in CSV_KAMERAL.splitlines()[0], "die Fixture ist geglättet"
-    z = next(z for z in gelesen["zeilen"] if z["jahr"] == 1972)
-    assert z["betrag"] == 76_493_000
+    z = next(z for z in gelesen["zeilen"] if z["year"] == 1972)
+    assert z["amount"] == 76_493_000
 
 
 def test_eine_echte_euro_datei_faellt_komplett_durch():
@@ -148,16 +148,16 @@ def test_eine_echte_euro_datei_faellt_komplett_durch():
     dann steht dort nichts statt des Tausendfachen."""
     euro = ("Haushaltsjahr;EW;Ausgaben insgesamt in Euro;je Einwohner\n"
             "1972;133212;76493000;574\n")
-    ergebnis = ar.lies(euro, "", None, None)
-    assert ergebnis["zeilen"] == []
-    assert ergebnis["verworfen"][0]["jahr"] == 1972
+    result = ar.lies(euro, "", None, None)
+    assert result["zeilen"] == []
+    assert result["verworfen"][0]["year"] == 1972
 
 
 def test_die_marke_revidiert_zerlegt_den_pro_kopf_wert_nicht():
     """``3.917r`` sind 3.917 mit der Marke „revidiert", nicht 39.171."""
-    z = next(z for z in ar.parse_pdf(PDF) if z["jahr"] == 2023)
-    assert z["je_einwohner"] == 3917
-    assert z["revidiert"] is True
+    z = next(z for z in ar.parse_pdf(PDF) if z["year"] == 2023)
+    assert z["per_capita"] == 3917
+    assert z["revised"] is True
 
 
 # --- Die Naht ---------------------------------------------------------------
@@ -165,18 +165,18 @@ def test_die_marke_revidiert_zerlegt_den_pro_kopf_wert_nicht():
 def test_jede_zeile_traegt_ihr_regelwerk(gelesen):
     """Links der Naht kameral, rechts doppisch — an jeder einzelnen Zeile."""
     for z in gelesen["zeilen"]:
-        erwartet = "kameral" if z["jahr"] < ar.NAHT_AB else "doppik"
-        assert z["regelwerk"] == erwartet, z
+        erwartet = "kameral" if z["year"] < ar.NAHT_AB else "doppik"
+        assert z["accounting_system"] == erwartet, z
 
 
 def test_die_naht_liegt_zwischen_2009_und_2010(gelesen):
     """Das Umstellungsdatum steht in der Fußnote der Quelle: 01.01.2010."""
     assert ar.NAHT_AB == 2010
-    jahre = [z["jahr"] for z in gelesen["zeilen"]]
-    assert 2009 in jahre and 2010 in jahre
-    assert next(z for z in gelesen["zeilen"] if z["jahr"] == 2009)["regelwerk"] \
+    years = [z["year"] for z in gelesen["zeilen"]]
+    assert 2009 in years and 2010 in years
+    assert next(z for z in gelesen["zeilen"] if z["year"] == 2009)["accounting_system"] \
         == "kameral"
-    assert next(z for z in gelesen["zeilen"] if z["jahr"] == 2010)["regelwerk"] \
+    assert next(z for z in gelesen["zeilen"] if z["year"] == 2010)["accounting_system"] \
         == "doppik"
 
 
@@ -204,10 +204,10 @@ def test_eine_zeile_im_falschen_block_wird_nicht_umsortiert():
     trotzdem stimmig — die schlimmste Sorte Fehler."""
     falsch = ("Haushaltsjahr;EW;Betrag;je Einwohner\n"
               "2011;162173;371743;2292\n")
-    ergebnis = ar.lies(falsch, "", None, None)
-    assert ergebnis["zeilen"] == []
-    grund = ergebnis["verworfen"][0]["grund"]
-    assert "kameral" in grund and "doppik" in grund
+    result = ar.lies(falsch, "", None, None)
+    assert result["zeilen"] == []
+    reason = result["verworfen"][0]["reason"]
+    assert "kameral" in reason and "doppik" in reason
 
 
 def test_kein_lesepfad_rechnet_ueber_die_naht(gelesen):
@@ -217,10 +217,10 @@ def test_kein_lesepfad_rechnet_ueber_die_naht(gelesen):
     nichts bereit, womit sich „von 1972 bis 2025 um X Prozent gestiegen"
     rechnen ließe — die Antwort verrät die Naht nicht, sie zeigt sie."""
     verboten = [n for n in dir(ar)
-                if n.startswith(("summe", "wachstum", "veraenderung", "trend"))]
+                if n.startswith(("summe", "wachstum", "change", "trend"))]
     assert not verboten, f"{verboten} lädt zur Rechnung über die Naht ein"
     assert set(gelesen) == {"zeilen", "verworfen", "konflikte", "spannen",
-                            "fehlende_jahrgaenge", "proben"}
+                            "fehlende_jahrgaenge", "probes"}
 
 
 # --- Die Proben -------------------------------------------------------------
@@ -228,8 +228,8 @@ def test_kein_lesepfad_rechnet_ueber_die_naht(gelesen):
 def test_ohne_bestandene_probe_kommt_kein_wert_herein(gelesen):
     """Die Grundregel: Jede Zeile im Bestand nennt ihre Proben."""
     for z in gelesen["zeilen"]:
-        assert z["proben"], z
-        for name in z["proben"]:
+        assert z["probes"], z
+        for name in z["probes"]:
             assert name in herkunft.PROBEN, (
                 f"{name} steht in keiner Erklärung — der Beleg auf der Seite "
                 "bliebe leer")
@@ -238,7 +238,7 @@ def test_ohne_bestandene_probe_kommt_kein_wert_herein(gelesen):
 def test_die_pro_kopf_probe_traegt_jede_zeile(gelesen):
     """Die einzige Probe, die alle 54 Jahrgänge haben — auch die ältesten."""
     for z in gelesen["zeilen"]:
-        assert "ausgabenreihe_prokopf" in z["proben"], z
+        assert "ausgabenreihe_prokopf" in z["probes"], z
 
 
 def test_eine_zeile_ohne_pro_kopf_wert_kommt_nicht_herein():
@@ -256,11 +256,11 @@ def test_die_gegenprobe_erklaert_ihren_versatz(gelesen):
     (Kernhaushalt UND Stiftungen), ``council_ergebnisrechnung`` nur die
     Kernverwaltung. Die Toleranz deckt genau das ab — und nichts, was danach
     kommt."""
-    for jahr, kern in ABSCHLUESSE.items():
-        z = next(z for z in gelesen["zeilen"] if z["jahr"] == jahr)
-        anteil = (z["betrag"] - kern) / kern
-        assert 0 < anteil < 0.0005, f"{jahr}: {anteil:.5%}"
-        assert "ausgabenreihe_jahresabschluss" in z["proben"]
+    for year, kern in ABSCHLUESSE.items():
+        z = next(z for z in gelesen["zeilen"] if z["year"] == year)
+        anteil = (z["amount"] - kern) / kern
+        assert 0 < anteil < 0.0005, f"{year}: {anteil:.5%}"
+        assert "ausgabenreihe_jahresabschluss" in z["probes"]
     # Und der Erklärsatz benennt die Ursache statt sie offenzulassen.
     assert "Stiftungen" in herkunft.PROBEN["ausgabenreihe_jahresabschluss"]
 
@@ -268,10 +268,10 @@ def test_die_gegenprobe_erklaert_ihren_versatz(gelesen):
 def test_ein_jahrgang_gegen_seinen_abschluss_faellt_wenn_er_zu_weit_liegt():
     """Der Jahresabschluss gewinnt — er ist das geprüfte Dokument."""
     daneben = {**ABSCHLUESSE, 2024: 700_000_000.0}
-    ergebnis = ar.lies(CSV_KAMERAL, CSV_DOPPIK, PDF, daneben)
-    assert 2024 not in [z["jahr"] for z in ergebnis["zeilen"]]
-    grund = next(v for v in ergebnis["verworfen"] if v["jahr"] == 2024)["grund"]
-    assert "Ergebnisrechnung" in grund and "Stiftungen" in grund
+    result = ar.lies(CSV_KAMERAL, CSV_DOPPIK, PDF, daneben)
+    assert 2024 not in [z["year"] for z in result["zeilen"]]
+    reason = next(v for v in result["verworfen"] if v["year"] == 2024)["reason"]
+    assert "Ergebnisrechnung" in reason and "Stiftungen" in reason
 
 
 def test_jahre_ohne_abschluss_tragen_die_probe_nicht(gelesen):
@@ -280,9 +280,9 @@ def test_jahre_ohne_abschluss_tragen_die_probe_nicht(gelesen):
     Der eigentliche Gewinn dieser Quelle: Die Gesamtsumme des abgelaufenen
     Jahres steht hier Monate vor dem Abschluss. Sie darf deshalb nicht so
     aussehen, als sei sie gegen ihn geprüft."""
-    z = next(z for z in gelesen["zeilen"] if z["jahr"] == 2025)
-    assert "ausgabenreihe_jahresabschluss" not in z["proben"]
-    assert z["jahr"] > max(ABSCHLUESSE)
+    z = next(z for z in gelesen["zeilen"] if z["year"] == 2025)
+    assert "ausgabenreihe_jahresabschluss" not in z["probes"]
+    assert z["year"] > max(ABSCHLUESSE)
 
 
 # --- Die Ausnahme 2021 ------------------------------------------------------
@@ -296,34 +296,34 @@ def test_2021_der_widerspruch_wird_festgehalten(gelesen):
     Jahresabschluss 2021 bestätigt das PDF.
 
     Der abweichende Wert wird NICHT weggeworfen: Er steht als
-    ``konflikt_betrag`` an der Zeile, damit die Seite ihn nennen kann. Eine
+    ``conflict_amount`` an der Zeile, damit die Seite ihn nennen kann. Eine
     stille Korrektur sähe aus wie eine saubere Reihe und wäre eine Behauptung
     über eine amtliche Quelle."""
-    z = next(z for z in gelesen["zeilen"] if z["jahr"] == 2021)
-    assert z["betrag"] == 608_910_000
-    assert z["quelle"] == "pdf"
-    assert z["konflikt_betrag"] == 613_572_000
-    assert z["konflikt_quelle"] == "csv"
+    z = next(z for z in gelesen["zeilen"] if z["year"] == 2021)
+    assert z["amount"] == 608_910_000
+    assert z["source"] == "pdf"
+    assert z["conflict_amount"] == 613_572_000
+    assert z["conflict_source"] == "csv"
     # Die Zweitquellenprobe hat für dieses Jahr NICHT bestanden und steht
     # deshalb auch nicht an der Zeile — der Beleg zeigt, was wirklich trug.
-    assert z["proben"] == ["ausgabenreihe_prokopf", "ausgabenreihe_jahresabschluss"]
+    assert z["probes"] == ["ausgabenreihe_prokopf", "ausgabenreihe_jahresabschluss"]
 
 
 def test_der_widerspruch_steht_auch_als_eigener_befund(gelesen):
     """… und zwar mit gemessener Differenz, nicht als Adjektiv."""
     assert len(gelesen["konflikte"]) == 1
     k = gelesen["konflikte"][0]
-    assert k["jahr"] == 2021
-    assert k["differenz"] == 4_662_000
+    assert k["year"] == 2021
+    assert k["difference"] == 4_662_000
     assert k["gewaehlt"] == "pdf" and k["verworfen"] == "csv"
 
 
 def test_es_ist_der_einzige_widerspruch(gelesen):
     """23 der 24 gemeinsamen Jahre stimmen überein — genau eines nicht."""
-    p = gelesen["proben"]
+    p = gelesen["probes"]
     assert p["zweitquelle_gerissen"] == 1
     assert p["zweitquelle_bestanden"] == len(
-        [z for z in gelesen["zeilen"] if z["quelle"] == "pdf"]) - 1
+        [z for z in gelesen["zeilen"] if z["source"] == "pdf"]) - 1
 
 
 def test_ohne_das_pdf_faellt_2021_ganz_heraus():
@@ -333,9 +333,9 @@ def test_ohne_das_pdf_faellt_2021_ganz_heraus():
     er die einzige verfügbare Angabe ist, stünde ein um 4,66 Mio. € falscher
     Betrag im Bestand. Er fällt stattdessen an seiner eigenen
     Pro-Kopf-Rechnung."""
-    ergebnis = ar.lies(CSV_KAMERAL, CSV_DOPPIK, None, ABSCHLUESSE)
-    assert 2021 not in [z["jahr"] for z in ergebnis["zeilen"]]
-    assert [v["jahr"] for v in ergebnis["verworfen"]] == [2021]
+    result = ar.lies(CSV_KAMERAL, CSV_DOPPIK, None, ABSCHLUESSE)
+    assert 2021 not in [z["year"] for z in result["zeilen"]]
+    assert [v["year"] for v in result["verworfen"]] == [2021]
 
 
 def test_zwei_stimmige_quellen_mit_zwei_betraegen_entscheiden_nichts():
@@ -346,10 +346,10 @@ def test_zwei_stimmige_quellen_mit_zwei_betraegen_entscheiden_nichts():
     dieser Stelle gäbe es nichts, womit sich entscheiden ließe, welche der
     beiden amtlichen Angaben gilt — und „die neuere gewinnt" wäre geraten."""
     pdf = PDF.replace("2010 161.334 358.800 2.224", "2010 161.334 400.000 2.479")
-    ergebnis = ar.lies(CSV_KAMERAL, CSV_DOPPIK, pdf, None)
-    assert 2010 not in [z["jahr"] for z in ergebnis["zeilen"]]
-    grund = next(v for v in ergebnis["verworfen"] if v["jahr"] == 2010)["grund"]
-    assert "verschiedene Beträge" in grund
+    result = ar.lies(CSV_KAMERAL, CSV_DOPPIK, pdf, None)
+    assert 2010 not in [z["year"] for z in result["zeilen"]]
+    reason = next(v for v in result["verworfen"] if v["year"] == 2010)["reason"]
+    assert "verschiedene Beträge" in reason
 
 
 # --- Der Weg in den Bestand -------------------------------------------------
@@ -358,7 +358,7 @@ def test_der_probennachweis_nennt_zahlen(gelesen):
     """Der Messwert im Beleg zählt, er bewertet nicht."""
     text = ar.probennachweis(gelesen)
     assert "Pro-Kopf-Probe" in text
-    assert str(gelesen["proben"]["prokopf_bestanden"]) in text
+    assert str(gelesen["probes"]["prokopf_bestanden"]) in text
     for wort in ("gut", "zuverlässig", "korrekt", "sauber"):
         assert wort not in text.lower()
 
@@ -368,17 +368,17 @@ def test_speichern_und_lesen(tmp_path, gelesen):
     store = CouncilStore(tmp_path / "council.sqlite")
     try:
         n = store.save_ausgabenreihe(gelesen["zeilen"], herkunft.Herkunft(
-            art="stadt", url=ar.TABELLE_URL, probe="ausgabenreihe_prokopf",
-            label="Tabelle 1102", fundstelle="Kapitel 11"))
+            kind="city", url=ar.TABELLE_URL, probe="ausgabenreihe_prokopf",
+            label="Tabelle 1102", citation="Kapitel 11"))
         assert n == len(gelesen["zeilen"])
         zurueck = store.get_ausgabenreihe()
-        assert [z["jahr"] for z in zurueck] == sorted(
-            z["jahr"] for z in gelesen["zeilen"])
+        assert [z["year"] for z in zurueck] == sorted(
+            z["year"] for z in gelesen["zeilen"])
         # Die Proben kommen als LISTE zurück, nicht als Trennzeichen-String.
-        z2021 = next(z for z in zurueck if z["jahr"] == 2021)
-        assert z2021["proben"] == ["ausgabenreihe_prokopf",
+        z2021 = next(z for z in zurueck if z["year"] == 2021)
+        assert z2021["probes"] == ["ausgabenreihe_prokopf",
                                    "ausgabenreihe_jahresabschluss"]
-        assert z2021["konflikt_betrag"] == 613_572_000
+        assert z2021["conflict_amount"] == 613_572_000
         assert all(z["herkunft_id"] for z in zurueck)
         assert "council_ausgabenreihe" not in store.herkunft_luecken()
         assert store.ausgabenreihe_jahre()[0] == 1972
@@ -397,12 +397,12 @@ def test_die_tabelle_fuehrt_keine_einwohnerzahl(tmp_path, gelesen):
     store = CouncilStore(tmp_path / "council.sqlite")
     try:
         store.save_ausgabenreihe(gelesen["zeilen"][:1], herkunft.Herkunft(
-            art="stadt", url=ar.TABELLE_URL, probe="ausgabenreihe_prokopf"))
+            kind="city", url=ar.TABELLE_URL, probe="ausgabenreihe_prokopf"))
         spalten = {r[1] for r in store._conn.execute(
             "PRAGMA table_info(council_ausgabenreihe)")}
-        assert not spalten & {"einwohner", "je_einwohner", "pro_kopf"}
+        assert not spalten & {"einwohner", "per_capita", "pro_kopf"}
         assert not any(k in store.get_ausgabenreihe()[0]
-                       for k in ("einwohner", "je_einwohner"))
+                       for k in ("einwohner", "per_capita"))
     finally:
         store.close()
 

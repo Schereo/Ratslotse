@@ -197,6 +197,11 @@ jobs:
             .venv/bin/python -c "import pymupdf" 2>/dev/null \
               || .venv/bin/pip install --quiet pymupdf
             .venv/bin/python scripts/ingest_aenderungslisten.py
+            # Und dieselben Listen für den FINANZhaushalt — also das, was
+            # investiert wird. Eigenes Skript, weil die Bauform eine andere
+            # ist (fünf Betragsspalten statt zwei); dieselbe Voraussetzung,
+            # deshalb steht es direkt daneben.
+            .venv/bin/python scripts/ingest_aenderungslisten_fhh.py
 
             # Die beiden Steuertabellen des Jahrbuchs (1103 Plan neben Ist je
             # Steuerart, 1105 Hebesätze seit 1980). Sie stehen NACH
@@ -304,6 +309,11 @@ jobs:
                 # an dieser Ordnung vorbeigelaufen.
                 "council_haushalt_aenderungen",
                 "council_haushalt_aenderungen_summen",
+                # Dieselben Listen für den Finanzhaushalt. Von den 18
+                # Dokumenten lesen sich 15; die Zeilenzahl hier ist deshalb
+                # eine Aussage über den Parser, nicht nur über den Bestand.
+                "council_haushalt_aenderungen_fhh",
+                "council_haushalt_aenderungen_fhh_summen",
             ]
             # Die Jahresspalte heißt nicht überall „jahr": council_haushalt
             # führt „year", der Stellenplan „jahrgang". Der erste Lauf meldete

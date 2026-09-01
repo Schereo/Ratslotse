@@ -31,7 +31,7 @@ from ..session import clear_session_cookie, set_session_cookie
 # Email-verification links stay valid for 24h (more forgiving than the 1h reset link).
 _VERIFY_TTL_HOURS = 24
 
-logger = logging.getLogger("nwz.web.auth")
+logger = logging.getLogger("ratslotse.web.auth")
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -88,7 +88,7 @@ def _notify_admins_registration(new_email: str) -> None:
     settings = get_settings()
     if not settings.resend_api_key:
         return
-    store = Store(settings.nwz_db)
+    store = Store(settings.ratslotse_db)
     try:
         admins = [
             u["email"] for u in store.list_web_users()
@@ -110,7 +110,7 @@ def _notify_admins_registration(new_email: str) -> None:
         + knopf(admin_url, "Im Admin-Bereich ansehen"),
         held=None,
         kicker="Für dich als Admin",
-        titel="Neue Registrierung",
+        title="Neue Registrierung",
         fusszeile="Nur zur Info — es ist nichts zu tun. Du bekommst diese E-Mail, "
                   "weil dein Ratslotse-Konto Admin-Rechte hat.",
     )
@@ -274,7 +274,7 @@ def _send_reset_email(email: str, raw_token: str, display_name: str | None = Non
         greeting_name=display_name,
         held="passwort",
         kicker="Dein Konto",
-        titel="Passwort zurücksetzen",
+        title="Passwort zurücksetzen",
         fusszeile="Wenn du das nicht warst, ignoriere diese E-Mail — "
                   "dein Passwort bleibt unverändert.",
     )
@@ -350,7 +350,7 @@ def _send_verification_email(email: str, raw_token: str, display_name: str | Non
         greeting_name=display_name,
         held="willkommen",
         kicker="Willkommen an Bord",
-        titel="Schön, dass du da bist!",
+        title="Schön, dass du da bist!",
         fusszeile="Wenn du dich nicht registriert hast, ignoriere diese E-Mail — "
                   "dann passiert nichts.",
     )

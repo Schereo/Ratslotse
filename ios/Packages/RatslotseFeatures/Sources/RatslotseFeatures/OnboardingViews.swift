@@ -14,7 +14,13 @@ struct NativeOnboardingWelcomeView: View {
         GeometryReader { proxy in
             ScrollView {
                 Group {
-                    if horizontalSizeClass == .regular {
+                    // Die zweispaltige Fassung braucht 370 + 62 + 440 + 2×44 =
+                    // 960 pt. Ein iPad Pro 11" hat im HOCHFORMAT nur 834 —
+                    // dort quetschte der HStack beide Spalten auf je ~342 pt,
+                    // und die Karten brachen mitten im Satz um („… Mitteilung
+                    // bei / neuen Beschlüssen"). Deshalb entscheidet die
+                    // gemessene Breite mit, nicht die Größenklasse allein.
+                    if horizontalSizeClass == .regular && proxy.size.width >= 960 {
                         HStack(spacing: 62) {
                             VStack(spacing: 0) {
                                 mascot

@@ -49,7 +49,7 @@ from ..deps import get_council_store, get_store, require_active
 from ..ratelimit import topic_describe_limiter, topic_match_limiter
 from ..schemas import SubscriptionIn, TopicDescribeIn, TopicHitOut, TopicIn, TopicOut, TopicSeenIn
 
-logger = logging.getLogger("nwz.web.topics")
+logger = logging.getLogger("ratslotse.web.topics")
 
 router = APIRouter(prefix="/api/topics", tags=["topics"])
 
@@ -80,7 +80,7 @@ def _own_topic(store: Store, owner_id: int, topic_id: int):
 
 def _erstabgleich(store: Store, council: CouncilStore, topic, owner_id: int) -> tuple[int, bool, bool]:
     """Ein frisch angelegtes oder neu beschriebenes Thema sofort abgleichen —
-    ``(anzahl, gedeckelt, abgeglichen)``.
+    ``(count, gedeckelt, abgeglichen)``.
 
     Gerechnet wird mit ``topic_intel.treffer``, derselben Funktion wie im
     Wochenlauf: eine Definition, eine Zahl (s. Modul-Kopf). Gespeichert wird
@@ -142,7 +142,7 @@ def list_topics(
     unseen = store.unseen_hit_counts(owner_id)
     topics = store.get_topics(owner_id)
     # Gezählt wird, was die Suche auch findet. Die gespeicherten Treffer liegen
-    # in nwz.sqlite, die Beschlüsse in council.sqlite — verschwindet ein
+    # in ratslotse.sqlite, die Beschlüsse in council.sqlite — verschwindet ein
     # Beschluss (Neu-Extraktion vergibt neue IDs), bleibt die Zeile hier stehen
     # und der Zähler versprach Treffer, die „alle ansehen" nicht liefern konnte
     # (Tims Befund 15.08.: „8 Einträge" → Suche sagt „nichts gefunden").
@@ -164,7 +164,7 @@ def list_topics(
     # dem Umbau vom 28.08.2026 einen Punkt vor jede neue Zeile. Beides stammt
     # aus derselben Abfrage, damit Abzeichen und Punkte nie auseinandergehen.
     unseen_ids = store.unseen_hit_ids(owner_id)
-    stichtag = _vor_sechs_monaten().isoformat()
+    as_of_date = _vor_sechs_monaten().isoformat()
     out = []
     for t in topics:
         hits = sorted((by_id[d] for d in cand.get(t.id, []) if d in by_id),
@@ -198,7 +198,7 @@ def list_topics(
                     )
                     for d in hits[:5]
                 ],
-                hits_6m=sum(1 for d in hits if (d.get("session_date") or "") >= stichtag),
+                hits_6m=sum(1 for d in hits if (d.get("session_date") or "") >= as_of_date),
             )
         )
     return out
@@ -393,9 +393,9 @@ def add_topic(
     # hat keine Rechnung ausgelöst und soll auch kein Kontingent kosten.
     topic_match_limiter.check(request)
     t = store.add_topic(user["id"], body.name, body.description)
-    anzahl, gedeckelt, abgeglichen = _erstabgleich(store, council, t, user["id"])
+    count, gedeckelt, abgeglichen = _erstabgleich(store, council, t, user["id"])
     return TopicOut(id=t.id, name=t.name, description=t.description, created_at=t.created_at,
-                    decision_count=anzahl, decision_count_capped=gedeckelt, matched=abgeglichen)
+                    decision_count=count, decision_count_capped=gedeckelt, matched=abgeglichen)
 
 
 @router.delete("/{topic_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -421,21 +421,21 @@ def update_topic(
     # Wer die Beschreibung ändert, ändert die Trefferliste — deshalb wird auch
     # hier sofort neu abgeglichen. Sonst zeigte das Blatt beim Tippen eine
     # Vorschau, und die Karte behielt bis Sonntag die Zahl zum alten Text.
-    anzahl, gedeckelt, abgeglichen = _erstabgleich(store, council, t, owner_id)
+    count, gedeckelt, abgeglichen = _erstabgleich(store, council, t, owner_id)
     caps = store.topic_match_caps(owner_id)
     if not abgeglichen:
         # Rechnung ausgefallen: Der gespeicherte Stand steht unberührt weiter
         # und wird gezählt wie in list_topics — inklusive Existenzprüfung, damit
         # die Karte keine Treffer verspricht, die „alle ansehen" nicht liefert.
         ids = [m["decision_id"] for m in store.get_topic_decision_matches(topic_id)]
-        anzahl = len(council.get_decisions_by_ids(ids)) if ids else 0
+        count = len(council.get_decisions_by_ids(ids)) if ids else 0
         gedeckelt = caps.get(topic_id, False)
     return TopicOut(
         id=t.id,
         name=t.name,
         description=t.description,
         created_at=t.created_at,
-        decision_count=anzahl,
+        decision_count=count,
         decision_count_capped=gedeckelt,
         matched=abgeglichen or topic_id in caps,
     )

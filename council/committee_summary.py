@@ -90,9 +90,9 @@ def summarize_agenda(
 _MAX_TOPS_PRO_LAUF = 20
 
 
-def _budget(anzahl: int) -> int:
+def _budget(count: int) -> int:
     """Token-Budget nach Anzahl der Punkte — ein Satz je TOP braucht Platz."""
-    return min(4000, 400 + 130 * anzahl)
+    return min(4000, 400 + 130 * count)
 
 
 def _analyse(committee: str, session_date: str,
@@ -113,15 +113,15 @@ def _analyse(committee: str, session_date: str,
     if len(relevant) > _MAX_TOPS_PRO_LAUF:
         alle: list[dict] = []
         for start in range(0, len(relevant), _MAX_TOPS_PRO_LAUF):
-            teil = _analyse(committee, session_date, relevant[start:start + _MAX_TOPS_PRO_LAUF])
-            if teil is None:
+            part = _analyse(committee, session_date, relevant[start:start + _MAX_TOPS_PRO_LAUF])
+            if part is None:
                 return None
-            alle.extend(teil)
+            alle.extend(part)
         gesehen = set()
         return [p for p in alle if not (p["number"] in gesehen or gesehen.add(p["number"]))]
 
     items_text = "\n".join(
-        f"{i.item_number}: {i.title}" + (f" [{i.vorlage_nr}]" if i.vorlage_nr else "")
+        f"{i.item_number}: {i.title}" + (f" [{i.template_number}]" if i.template_number else "")
         for i in relevant
     )
     if not items_text.strip():
@@ -129,7 +129,7 @@ def _analyse(committee: str, session_date: str,
 
     system = prompts.get("committee_summary_system")
     prompt = prompts.render("committee_summary_user", committee=committee,
-                            datum=datum_deutsch(session_date), items_text=items_text)
+                            date=datum_deutsch(session_date), items_text=items_text)
 
     # Trotz response_format=json_object liefern Modelle vereinzelt kein valides
     # JSON (leerer Content, Markdown-Zaun, Prosa) — das crashte den ganzen

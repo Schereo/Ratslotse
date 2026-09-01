@@ -11,14 +11,14 @@
 // es in einer Treemap mit 4.459 Kacheln auffiele. Der Schlüssel ist die
 // Options-Signatur, der Cache lebt im Modul — auf dem Server wie im Browser.
 
-import { deMio, betrag } from "@/lib/haushalt";
+import { deMio, amount } from "@/lib/haushalt";
 
 // `deMio` („283,1" — eine Nachkommastelle, Werte kommen als Mio.) und
-// `betrag` (passende Einheit €/Tsd. €/Mio. €) existieren seit der ersten
+// `amount` (passende Einheit €/Tsd. €/Mio. €) existieren seit der ersten
 // Haushalts-Runde in `lib/haushalt.ts`. Sie bleiben dort die eine
 // Implementierung; der Baukasten reicht sie nur durch, damit Grafiken einen
 // einzigen Format-Import haben.
-export { deMio, betrag };
+export { deMio, amount };
 
 const cache = new Map<string, Intl.NumberFormat>();
 

@@ -34,7 +34,7 @@ import { cn } from "@/lib/utils";
 export type GegenbalkenSegment = {
   label: string;
   /** In derselben Einheit wie `basis`. */
-  wert: number;
+  value: number;
   /** Rampen-Token; ohne Angabe verteilt die Zeile ihre Rampe. */
   farbe?: string;
   /** Schraffiert statt gefüllt — „keine Angabe" (Lücken-Konvention). */
@@ -45,7 +45,7 @@ export type GegenbalkenSegment = {
 
 export type GegenbalkenZeile = {
   /** „Wo das Geld eingeht" — steht über der Leiste, mit der Zeilensumme. */
-  titel: string;
+  title: string;
   segmente: GegenbalkenSegment[];
   /** Welche Rampe die Vorgabefarben stellt. Vorgabe: `aus`. */
   rampe?: "ein" | "aus";
@@ -78,12 +78,12 @@ export function SegmentText({ stufen }: { stufen: string[] }) {
   // Zu EINEM String serialisiert, damit der Effekt eine stabile Abhängigkeit
   // hat — ein Array wäre bei jedem Render ein neues Objekt. JSON statt eines
   // Trennzeichens, weil die Kandidaten selbst Mittelpunkte und Kommata tragen.
-  const schluessel = JSON.stringify(stufen);
+  const key = JSON.stringify(stufen);
 
   useLayoutEffect(() => {
     const el = box.current, m = mess.current;
     if (!el || !m) return;
-    const kandidaten = JSON.parse(schluessel) as string[];
+    const kandidaten = JSON.parse(key) as string[];
     const entscheide = () => {
       // clientWidth SCHLIESST das Padding ein, der Zwilling misst nur den
       // Text — ohne Abzug hielten wir einen Namen für passend, obwohl die
@@ -105,7 +105,7 @@ export function SegmentText({ stufen }: { stufen: string[] }) {
     let lebt = true;
     document.fonts?.ready.then(() => { if (lebt) entscheide(); });
     return () => { lebt = false; ro.disconnect(); };
-  }, [schluessel]);
+  }, [key]);
 
   return (
     <span ref={box} className="relative block w-full overflow-hidden whitespace-nowrap px-2">
@@ -123,20 +123,20 @@ function schraffur(farbe: string): string {
   return `repeating-linear-gradient(45deg, ${farbe} 0 3px, transparent 3px 6px)`;
 }
 
-function Leiste({ zeile, basis, nachkomma, restLabel, marke }: {
-  zeile: GegenbalkenZeile; basis: number; nachkomma: number; restLabel?: string;
-  marke?: { wert: number; label: string };
+function Leiste({ row, basis, nachkomma, restLabel, mark }: {
+  row: GegenbalkenZeile; basis: number; nachkomma: number; restLabel?: string;
+  mark?: { value: number; label: string };
 }) {
-  const rampe = zeile.rampe ?? "aus";
-  const gezeigt = zeile.segmente.filter((s) => s.wert > 0);
-  const summe = gezeigt.reduce((n, s) => n + s.wert, 0);
+  const rampe = row.rampe ?? "aus";
+  const gezeigt = row.segmente.filter((s) => s.value > 0);
+  const summe = gezeigt.reduce((n, s) => n + s.value, 0);
   // Die Lücke zur Basis. Unterhalb eines halben Anzeigeschritts ist sie
   // Rundungsrauschen, kein Rest.
   const epsilon = 0.5 / 10 ** nachkomma;
   const rest = basis - summe > epsilon ? basis - summe : null;
 
   const beschreibung = [
-    ...gezeigt.map((s) => `${s.label} ${deZahl(s.wert, nachkomma)}`),
+    ...gezeigt.map((s) => `${s.label} ${deZahl(s.value, nachkomma)}`),
     ...(rest != null && restLabel ? [`${restLabel} ${deZahl(rest, nachkomma)}`] : []),
   ].join(", ");
 
@@ -149,23 +149,23 @@ function Leiste({ zeile, basis, nachkomma, restLabel, marke }: {
   return (
     <div>
       <p className="mb-1.5 text-[12.5px] font-semibold">
-        {zeile.titel}
+        {row.title}
         {zeigeSumme && (
           <span className="font-normal text-muted-foreground"> — {deZahl(summe, nachkomma)}</span>
         )}
       </p>
       <div
         role="img"
-        aria-label={`${zeile.titel}: ${beschreibung}`}
+        aria-label={`${row.title}: ${beschreibung}`}
         // `relative` trägt die Marke; sie sitzt über dem Balken und wird
         // deshalb nicht vom `overflow-hidden` des Innenkastens beschnitten.
         className="relative flex h-7 rounded-md bg-muted"
       >
-        {marke && marke.wert > 0 && (
+        {mark && mark.value > 0 && (
           <div
             aria-hidden="true"
             className="pointer-events-none absolute inset-y-0 z-10 w-0.5 -translate-x-1/2 bg-signal"
-            style={{ left: `${Math.min((marke.wert / basis) * 100, 100)}%` }}
+            style={{ left: `${Math.min((mark.value / basis) * 100, 100)}%` }}
           />
         )}
         <div className="flex h-full gap-[1.5px] overflow-hidden rounded-md" style={{ width: `${Math.min((summe / basis) * 100, 100)}%` }}>
@@ -179,15 +179,15 @@ function Leiste({ zeile, basis, nachkomma, restLabel, marke }: {
                 // schon den Anteil an der Basis trägt — so bleiben beide
                 // Maßstäbe exakt, ohne Mindestbreiten.
                 style={{
-                  width: `${(s.wert / summe) * 100}%`,
+                  width: `${(s.value / summe) * 100}%`,
                   background: s.offen ? schraffur(farbe) : farbe,
                   color: "var(--hh-seg-text)",
                 }}
               >
-                {zeile.imBalken && !s.offen && s.wert / basis >= MINDEST_ANTEIL && (
+                {row.imBalken && !s.offen && s.value / basis >= MINDEST_ANTEIL && (
                   <SegmentText stufen={[
-                    `${s.label} · ${deZahl(s.wert, nachkomma)}`,
-                    ...(s.kurz ? [`${s.kurz} · ${deZahl(s.wert, nachkomma)}`, s.kurz] : []),
+                    `${s.label} · ${deZahl(s.value, nachkomma)}`,
+                    ...(s.kurz ? [`${s.kurz} · ${deZahl(s.value, nachkomma)}`, s.kurz] : []),
                   ]} />
                 )}
               </span>
@@ -213,7 +213,7 @@ function Leiste({ zeile, basis, nachkomma, restLabel, marke }: {
                 className="h-2 w-2 rounded-[2px]"
                 style={{ background: s.offen ? schraffur(farbe) : farbe }}
               />
-              {s.label} <span className="tabular-nums">{deZahl(s.wert, nachkomma)}</span>
+              {s.label} <span className="tabular-nums">{deZahl(s.value, nachkomma)}</span>
             </span>
           );
         })}
@@ -229,7 +229,7 @@ function Leiste({ zeile, basis, nachkomma, restLabel, marke }: {
 }
 
 export function Gegenbalken({
-  zeilen, basis, einheit = "Mio. €", nachkomma = 1, restLabel, marke, beleg, className,
+  zeilen, basis, unit = "Mio. €", nachkomma = 1, restLabel, mark, beleg, className,
 }: {
   /** Eine oder zwei Leisten — mehr wären keine Gegenüberstellung mehr. */
   zeilen: GegenbalkenZeile[];
@@ -237,7 +237,7 @@ export function Gegenbalken({
    *  Summen — nie je Zeile die eigene. */
   basis: number;
   /** Steht als Mono-Zeile rechts über den Leisten. */
-  einheit?: string;
+  unit?: string;
   /** Feste Nachkommastellen aller Beträge. */
   nachkomma?: number;
   /** Name der Lücke zwischen kürzerer Zeile und Basis („aus dem
@@ -245,12 +245,12 @@ export function Gegenbalken({
   restLabel?: string;
   /** Ein beschrifteter Signal-Strich quer über der ersten Leiste — „hier
    *  ist die Differenz", nie eine Bewertung. */
-  marke?: { wert: number; label: string };
+  mark?: { value: number; label: string };
   /** Beleg-Chip-Slot (GB-00). */
   beleg?: ReactNode;
   className?: string;
 }) {
-  const gezeigt = zeilen.filter((z) => z.segmente.some((s) => s.wert > 0));
+  const gezeigt = zeilen.filter((z) => z.segmente.some((s) => s.value > 0));
   if (!gezeigt.length || !(basis > 0)) return null;
 
   return (
@@ -258,19 +258,19 @@ export function Gegenbalken({
       <div className="mb-2.5 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <span className="font-mono text-[9.5px] font-medium uppercase tracking-[0.09em] text-muted-foreground">
           {gezeigt.length > 1 ? "Eine Basis für beide Leisten: " : "Basis: "}
-          {deZahl(basis, nachkomma)} {einheit} = 100&nbsp;%{beleg}
+          {deZahl(basis, nachkomma)} {unit} = 100&nbsp;%{beleg}
         </span>
       </div>
       <div className="flex flex-col gap-3.5">
         {gezeigt.map((z, i) => (
-          <Leiste key={z.titel} zeile={z} basis={basis} nachkomma={nachkomma}
-            restLabel={restLabel} marke={i === 0 ? marke : undefined} />
+          <Leiste key={z.title} row={z} basis={basis} nachkomma={nachkomma}
+            restLabel={restLabel} mark={i === 0 ? mark : undefined} />
         ))}
       </div>
-      {marke && marke.wert > 0 && (
+      {mark && mark.value > 0 && (
         <p className="mt-2 flex items-start gap-1.5 text-[11.5px] leading-snug text-signal">
           <span aria-hidden="true" className="mt-[3px] h-3 w-0.5 flex-none bg-signal" />
-          <span>{marke.label}</span>
+          <span>{mark.label}</span>
         </p>
       )}
     </div>

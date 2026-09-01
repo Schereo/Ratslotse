@@ -66,9 +66,9 @@ def _erneuertes_cookie(scope) -> list[tuple[bytes, bytes]] | None:  # noqa: ANN0
     if decoded is None:  # nach dem Restlaufzeit-Test kaum möglich
         return None
     sub, ver = decoded
-    traeger = Response()
-    set_session_cookie(traeger, create_access_token(sub, ver))
-    return [(k, v) for k, v in traeger.raw_headers if k == b"set-cookie"]
+    entity = Response()
+    set_session_cookie(entity, create_access_token(sub, ver))
+    return [(k, v) for k, v in entity.raw_headers if k == b"set-cookie"]
 
 
 class SitzungsVerlaengerung:

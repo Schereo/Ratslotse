@@ -33,15 +33,15 @@ export type { Herkunft };
 
 /** Eine Zeile aus `council_investitionsmassnahmen`. */
 export type ProgrammZeile = {
-  jahr: number;
-  ebene: "massnahme" | "teilhaushalt" | "gesamt";
-  thh_nr: number;
+  year: number;
+  level: "measure" | "sub_budget" | "total";
+  sub_budget_no: number;
   /** IPSP-Element („I10.090126"); leer auf den beiden Summenebenen. */
   code: string;
-  bezeichnung: string;
+  label: string;
   /** Gesamtinvestitionssumme — die Kosten über alle Jahre, nicht die
    *  Jahresrate. Die Jahresaufteilung liegt nicht vor. */
-  gesamtsumme: number;
+  grand_total: number;
   /** Die Namen der Sachkonto-Detailzeilen, „ · “-getrennt — sie sagen oft,
    *  was hinter einem generischen Namen steckt („Eig.kap. Zusch.Stadion
    *  Oldb GmbH & Co KG“). `null` bei Maßnahmen ohne Detailzeilen und in
@@ -51,7 +51,7 @@ export type ProgrammZeile = {
 };
 
 export type ProgrammDaten = {
-  jahre: number[];
+  years: number[];
   massnahmen: ProgrammZeile[];
   teilhaushalte: ProgrammZeile[];
   gesamt: ProgrammZeile[];
@@ -73,19 +73,19 @@ export function herkunftVon(
  *  sie sind der Sonderfall (Tilgungen, Ausleihungen). */
 export function teilhaushalte(
   daten: ProgrammDaten | null,
-  jahr: number,
+  year: number,
 ): ProgrammZeile[] {
   if (!daten) return [];
   return daten.teilhaushalte
-    .filter((z) => z.jahr === jahr)
-    .sort((a, b) => b.gesamtsumme - a.gesamtsumme);
+    .filter((z) => z.year === year)
+    .sort((a, b) => b.grand_total - a.grand_total);
 }
 
 export function gesamtJahr(
   daten: ProgrammDaten | null,
-  jahr: number,
+  year: number,
 ): ProgrammZeile | null {
-  return daten?.gesamt.find((z) => z.jahr === jahr) ?? null;
+  return daten?.gesamt.find((z) => z.year === year) ?? null;
 }
 
 /** Die Vorhaben eines Teilhaushalts, nach Gesamtsumme absteigend.
@@ -95,51 +95,59 @@ export function gesamtJahr(
  *  Vorhaben ist, nicht welches die kleinste Kontonummer hat. */
 export function vorhaben(
   daten: ProgrammDaten | null,
-  jahr: number,
+  year: number,
   thhNr: number,
 ): ProgrammZeile[] {
   if (!daten) return [];
   return daten.massnahmen
-    .filter((z) => z.jahr === jahr && z.thh_nr === thhNr)
-    .sort((a, b) => b.gesamtsumme - a.gesamtsumme);
+    .filter((z) => z.year === year && z.sub_budget_no === thhNr)
+    .sort((a, b) => b.grand_total - a.grand_total);
 }
 
 /** Die Gesamtsumme, die das Dokument für einen Teilhaushalt ausweist. */
 export function teilhaushaltSumme(
   daten: ProgrammDaten | null,
-  jahr: number,
+  year: number,
   thhNr: number,
 ): ProgrammZeile | null {
   return daten?.teilhaushalte.find(
-    (z) => z.jahr === jahr && z.thh_nr === thhNr) ?? null;
+    (z) => z.year === year && z.sub_budget_no === thhNr) ?? null;
 }
 
-/** Vorhaben eines Jahrgangs, deren Bezeichnung zur Suche passt.
+/** Vorhaben eines Jahrgangs, deren Bezeichnung ODER Nummer zur Suche passt.
  *
  *  Über alle Teilhaushalte hinweg — genau das ist der Zweck: „Kunstrasen" oder
  *  „Feuerwehr" steht nicht in einem Bereich allein. Ohne Suchwort kommt nichts
- *  zurück, damit die Liste nicht ungefragt 565 Zeilen lang wird. */
+ *  zurück, damit die Liste nicht ungefragt 565 Zeilen lang wird.
+ *
+ *  Die NUMMER (`code`, „I10.180700.500") sucht seit 08/2026 mit. Sie steht an
+ *  den Positionen der Änderungslisten zum Finanzhaushalt
+ *  (`/haushalt/mitreden#streit`), und von dort führt jetzt ein Link hierher —
+ *  ohne diese Zeile käme er auf einer leeren Trefferliste an. Wer die Nummer
+ *  von Hand eintippt, findet sie damit ebenso. */
 export function suche(
   daten: ProgrammDaten | null,
-  jahr: number,
+  year: number,
   wort: string,
 ): ProgrammZeile[] {
   const w = wort.trim().toLowerCase();
   if (!daten || w.length < 2) return [];
   return daten.massnahmen
-    .filter((z) => z.jahr === jahr && z.bezeichnung.toLowerCase().includes(w))
-    .sort((a, b) => b.gesamtsumme - a.gesamtsumme);
+    .filter((z) => z.year === year
+      && (z.label.toLowerCase().includes(w)
+          || (z.code ?? "").toLowerCase().includes(w)))
+    .sort((a, b) => b.grand_total - a.grand_total);
 }
 
 /** Wie viele Vorhaben ein Teilhaushalt führt — 0, wenn der Jahrgang fehlt. */
-export function anzahl(
+export function count(
   daten: ProgrammDaten | null,
-  jahr: number,
+  year: number,
   thhNr: number,
 ): number {
   if (!daten) return 0;
   return daten.massnahmen.filter(
-    (z) => z.jahr === jahr && z.thh_nr === thhNr).length;
+    (z) => z.year === year && z.sub_budget_no === thhNr).length;
 }
 
 /** Der Jahrgang, den der Block zeigen soll.
@@ -150,10 +158,10 @@ export function anzahl(
  *  weit: Portal 2022–2025, Haushaltsplan 2019–2026), fällt es auf den
  *  jüngsten eigenen zurück. */
 export function passenderJahrgang(
-  jahre: number[],
+  years: number[],
   gewuenscht: number | null,
 ): number | null {
-  if (!jahre.length) return null;
-  if (gewuenscht != null && jahre.includes(gewuenscht)) return gewuenscht;
-  return [...jahre].sort((a, b) => a - b)[jahre.length - 1];
+  if (!years.length) return null;
+  if (gewuenscht != null && years.includes(gewuenscht)) return gewuenscht;
+  return [...years].sort((a, b) => a - b)[years.length - 1];
 }

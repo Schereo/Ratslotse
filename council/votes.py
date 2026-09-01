@@ -25,10 +25,10 @@ from council import parties
 # Kommas zählen nicht als Grenze, weil Fraktions-AUFZÄHLUNGEN Kommas tragen
 # („der Fraktionen SPD, CDU und Grüne").
 _MARKERS: list[tuple[re.Pattern, str, str]] = [
-    (re.compile(r"gegen\s+die\s+stimmen?\b|gegenstimmen?\b", re.IGNORECASE), "dagegen", "danach"),
-    (re.compile(r"stimm(?:t|te|ten)\s+dagegen", re.IGNORECASE), "dagegen", "davor"),
-    (re.compile(r"enthaltung(?:en)?\b", re.IGNORECASE), "enthaltung", "danach"),
-    (re.compile(r"enthielt(?:en)?\s+sich|enthält\s+sich", re.IGNORECASE), "enthaltung", "davor"),
+    (re.compile(r"gegen\s+die\s+stimmen?\b|gegenstimmen?\b", re.IGNORECASE), "against", "danach"),
+    (re.compile(r"stimm(?:t|te|ten)\s+dagegen", re.IGNORECASE), "against", "davor"),
+    (re.compile(r"enthaltung(?:en)?\b", re.IGNORECASE), "abstention", "danach"),
+    (re.compile(r"enthielt(?:en)?\s+sich|enthält\s+sich", re.IGNORECASE), "abstention", "davor"),
 ]
 
 _SENTENCE_BOUND = re.compile(r"[.;]")

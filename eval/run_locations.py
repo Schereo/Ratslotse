@@ -24,7 +24,7 @@ CASES = ROOT / "eval" / "cases_locations.json"
 
 def evaluate(cases: list[dict], *, use_llm: bool = False) -> dict:
     rows = [{"id": pos + 1, "title": case.get("title", ""),
-             "beschluss": case.get("beschluss", ""),
+             "official_text": case.get("official_text", ""),
              "vorlage_text": case.get("vorlage_text", "")}
             for pos, case in enumerate(cases)]
     llm_results: dict[int, list[dict]] = {}
@@ -38,7 +38,7 @@ def evaluate(cases: list[dict], *, use_llm: bool = False) -> dict:
     for pos, (case, row) in enumerate(zip(cases, rows), 1):
         predicted = locations.merge_candidates(
             locations.extract_explicit_locations(row["title"], source="title"),
-            locations.extract_explicit_locations(row["beschluss"], source="beschluss"),
+            locations.extract_explicit_locations(row["official_text"], source="official_text"),
             llm_results.get(pos, []),
         )
         pred = {locations.location_slug(item["name"]) for item in predicted}

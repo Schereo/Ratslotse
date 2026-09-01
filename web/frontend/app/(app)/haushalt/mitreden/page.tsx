@@ -9,7 +9,7 @@
 // Gemessen war der Befund schärfer als „neunzehn sind viele": Mehrere Seiten
 // waren entlang unserer EINLESE-Geschichte geschnitten, nicht entlang der
 // Frage, die jemand hat. Diese Abschnitte beantworten zusammen eine einzige —
-// „Wie rede ich mit?" —, und `/haushalt/jahr` war im ganzen Frontend über
+// „Wie rede ich mit?" —, und `/haushalt/year` war im ganzen Frontend über
 // nichts als den Wegweiser erreichbar. Eine Seite, die sonst niemand
 // verlinkt, trägt nicht als eigenes Ziel.
 //
@@ -23,7 +23,7 @@
 // Die Reihenfolge ist die des Mitredens: erst WANN (sonst kommt man zu spät),
 // dann WORÜBER gestritten wurde — ausprobieren geht danach im Labor.
 //
-// DER RAHMEN LIEGT HIER, der Inhalt in den `abschnitt-*.tsx`: Quellenkontext
+// DER RAHMEN LIEGT HIER, der Inhalt in den `section-*.tsx`: Quellenkontext
 // und Verzeichnis führen die VEREINIGUNG aller Quellen, und der Beleg-Chip
 // nummeriert seitenweise. Verschachtelte Quellenkontexte hätten
 // konkurrierende Nummerierungen ergeben.
@@ -32,15 +32,15 @@ import { Suspense, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, ChevronRight } from "lucide-react";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
-import { Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
+import { Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/source";
 import { Abschnitte, ANKER_KLASSE } from "@/components/haushalt/abschnitte";
 import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 import { SchrittPfad } from "@/components/haushalt/schritt-pfad";
 import { Seitenbuehne, SeitenbuehneLaedt, ZaehlZahl } from "@/components/haushalt/seitenbuehne";
 import { deDatum } from "@/lib/haushalt-jahr";
 import { cn } from "@/lib/utils";
-import { TermineAbschnitt } from "@/components/haushalt/abschnitt-termine";
-import { StreitAbschnitt } from "@/components/haushalt/abschnitt-streit";
+import { TermineAbschnitt } from "@/components/haushalt/section-termine";
+import { StreitAbschnitt } from "@/components/haushalt/section-streit";
 
 /** Termine und Streit belegen sich mit dem Ratsinformationssystem; seit die
  *  Änderungslisten gelesen werden, kommt deren Dokumentquelle dazu — der
@@ -57,8 +57,8 @@ function deTagMonatJahr(iso: string): string {
 }
 
 const MARKEN = [
-  { id: "termine", titel: "Wann entschieden wird" },
-  { id: "streit", titel: "Der Streit ums Geld" },
+  { id: "termine", title: "Wann entschieden wird" },
+  { id: "streit", title: "Der Streit ums Geld" },
 ];
 
 function MitredenInner() {
@@ -67,14 +67,14 @@ function MitredenInner() {
   // Quellenzeile. Kein zweiter Abruf, keine zweite Wahrheit.
   // `undefined` = lädt, `null`/leer = entschieden nichts.
   const [termine, setTermine] = useState<{
-    naechster: { datum: string; gremium: string } | null;
-    phasen: { titel: string; datum: string | null; erledigt: boolean; aktuell: boolean }[];
-    jahr: number;
+    naechster: { date: string; committee: string } | null;
+    phasen: { title: string; date: string | null; erledigt: boolean; aktuell: boolean }[];
+    year: number;
   } | null | undefined>(undefined);
   const [streit, setStreit] = useState<{ beitraege: number; von: number; bis: number } | null | undefined>(undefined);
   const heute = useMemo(() => new Date(), []);
   return (
-    <Quellenkontext schluessel={QUELLEN}>
+    <Quellenkontext keys={QUELLEN}>
       <div className="flex flex-col gap-4">
         <div className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
           <Link href="/haushalt" className="hover:text-foreground">Haushalt</Link>
@@ -107,17 +107,17 @@ function MitredenInner() {
           const heute0 = new Date(heute.getFullYear(), heute.getMonth(), heute.getDate()).getTime();
           const naechster = termine?.naechster ?? null;
           const tage = naechster
-            ? Math.round((new Date(naechster.datum).getTime() - heute0) / 86400000)
+            ? Math.round((new Date(naechster.date).getTime() - heute0) / 86400000)
             : null;
           const phasen = termine?.phasen ?? [];
           const minibild = phasen.length ? {
-            label: `Der Weg des Haushalts ${termine!.jahr} — der Punkt mit dem Ring ist der Stand heute`,
+            label: `Der Weg des Haushalts ${termine!.year} — der Punkt mit dem Ring ist der Stand heute`,
             skizze: phasen.map((ph, i) => (
               // Eine Zeile je Phase: Punkt, Titel, Datum rechtsbündig. Die
               // Linie läuft DURCH die Zeile (nicht als Stummel unter dem
               // Punkt, das sah aus wie Karten-Pins), und vier flache Zeilen
               // halten die Bühne so hoch wie ihren Text — kein Loch daneben.
-              <span key={ph.titel} className="relative flex items-center gap-2 py-[3px]">
+              <span key={ph.title} className="relative flex items-center gap-2 py-[3px]">
                 <span aria-hidden className="relative flex h-4 w-2.5 flex-none items-center justify-center">
                   {i > 0 && (
                     <span className="absolute bottom-1/2 left-1/2 h-[11px] w-[1.5px] -translate-x-1/2" style={{
@@ -140,13 +140,13 @@ function MitredenInner() {
                 </span>
                 <span className={cn("min-w-0 flex-1 truncate text-[10px] leading-none",
                   ph.aktuell ? "font-semibold text-foreground" : "text-muted-foreground")}>
-                  {ph.titel}
+                  {ph.title}
                 </span>
-                {ph.datum && (
+                {ph.date && (
                   <span className="flex-none font-mono text-[9px] leading-none tabular-nums text-muted-foreground">
-                    {ph.titel.startsWith("Haushaltsjahr")
+                    {ph.title.startsWith("Haushaltsjahr")
                       ? (ph.aktuell ? "läuft" : "beendet")
-                      : deTagMonatJahr(ph.datum)}
+                      : deTagMonatJahr(ph.date)}
                   </span>
                 )}
               </span>
@@ -158,8 +158,8 @@ function MitredenInner() {
                 kicker="Ratskalender · Beratungsfolge des Haushalts"
                 zahl={tage === 0 ? <>Nächster Termin: heute</>
                   : tage === 1 ? <>Nächster Termin: morgen</>
-                    : <>Nächster Termin: in <ZaehlZahl wert={tage} /> Tagen</>}
-                sub={`${naechster.gremium} am ${deDatum(naechster.datum)}`}
+                    : <>Nächster Termin: in <ZaehlZahl value={tage} /> Tagen</>}
+                sub={`${naechster.committee} am ${deDatum(naechster.date)}`}
                 minibild={minibild}
               />
             );
@@ -168,7 +168,7 @@ function MitredenInner() {
             return (
               <Seitenbuehne
                 kicker={`Haushaltsberatungen ${streit.von}–${streit.bis}`}
-                zahl={<><ZaehlZahl wert={streit.beitraege} /> Wortbeiträge in den
+                zahl={<><ZaehlZahl value={streit.beitraege} /> Wortbeiträge in den
                   Ratsdebatten zum Haushalt</>}
                 sub="ein nächster Termin steht noch nicht im Ratskalender"
                 minibild={minibild}
@@ -230,7 +230,7 @@ function MitredenInner() {
 
         <SchrittWeiter href="/haushalt/mitreden" />
 
-        <Quellenverzeichnis schluessel={QUELLEN} />
+        <Quellenverzeichnis keys={QUELLEN} />
 
         <Link
           href="/haushalt"
@@ -246,7 +246,7 @@ function MitredenInner() {
 }
 
 export default function MitredenPage() {
-  // `useSearchParams` im Streit-Abschnitt (`?jahr=`) braucht eine
+  // `useSearchParams` im Streit-Abschnitt (`?year=`) braucht eine
   // Suspense-Grenze — sie lag vorher an der Streit-Seite und zieht mit um.
   return (
     <Suspense

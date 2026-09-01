@@ -266,7 +266,7 @@ export interface paths {
          * Jobs
          * @description Cron-Übersicht: je Job der letzte Lauf (Status, Dauer, Kennzahlen) plus
          *     kurze Historie. Der Zustand vergleicht das Alter des letzten Laufs mit dem
-         *     erwarteten Takt aus der Registry (nwz/jobs.py) — so fällt ein stiller
+         *     erwarteten Takt aus der Registry (kern/jobs.py) — so fällt ein stiller
          *     Ausfall auf, auch wenn keine Fehler-Mail kam (Job lief ja gar nicht).
          */
         get: operations["jobs_api_admin_jobs_get"];
@@ -288,7 +288,7 @@ export interface paths {
         /**
          * Llm Usage
          * @description LLM-Kosten-Dashboard (Design 21a): per-Feature-Aggregat + 30-Tage-Verlauf,
-         *     Monatskosten mit Hochrechnung und Budget-Ampel (aus llm_usage in nwz.sqlite).
+         *     Monatskosten mit Hochrechnung und Budget-Ampel (aus llm_usage in ratslotse.sqlite).
          */
         get: operations["llm_usage_api_admin_llm_usage_get"];
         put?: never;
@@ -332,57 +332,6 @@ export interface paths {
         post?: never;
         /** Reopen Place Candidate */
         delete: operations["reopen_place_candidate_api_admin_place_candidates__location_slug__delete"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/admin/prompts": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Prompts */
-        get: operations["list_prompts_api_admin_prompts_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/admin/prompts/{key}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** Update Prompt */
-        put: operations["update_prompt_api_admin_prompts__key__put"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/admin/prompts/{key}/reset": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Reset Prompt */
-        post: operations["reset_prompt_api_admin_prompts__key__reset_post"];
-        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1472,98 +1421,98 @@ export interface paths {
          * Haushalt Uebersicht
          * @description Datenfundament des Haushalts-Bereichs, in einem Aufruf:
          *
-         *     - ``jahre``: Ergebnishaushalt je Planjahr (Teilhaushalte + Summenzeile,
+         *     - ``years``: Ergebnishaushalt je Planjahr (Teilhaushalte + Summenzeile,
          *       Quelle je Zeile — Haushaltsplan-PDF bzw. Open-Data-CSV der Stadt),
-         *     - ``steuern``: Ist-Steuereinnahmen je Steuerart seit 1998 (Langformat),
-         *     - ``steuerkraft``: Steuerkraftmesszahl + Schlüsselzuweisungen je
+         *     - ``taxes``: Ist-Steuereinnahmen je Steuerart seit 1998 (Langformat),
+         *     - ``tax_capacity``: Steuerkraftmesszahl + Schlüsselzuweisungen je
          *       Ausgleichsjahr seit 1993 (die Jahreszahl der Quelle ist beim Einlesen
          *       um ein Jahr korrigiert, s. ``council/haushalt._STEUERKRAFT_VERSATZ``;
          *       die ``*_je_ew``-Felder sind deshalb leer),
-         *     - ``einwohner``: jüngste Einwohnerzahl (Bezugsgröße für Pro-Kopf-Angaben),
-         *     - ``ergebnisrechnung``: Ansatz, Plan und Ergebnis je Posten aus den
+         *     - ``population``: jüngste Einwohnerzahl (Bezugsgröße für Pro-Kopf-Angaben),
+         *     - ``income_statement``: Ansatz, Plan und Ergebnis je Posten aus den
          *       Jahresabschlüssen — Grundlage für „geplant gegen tatsächlich",
-         *     - ``finanzrechnung``: die Kassensicht aus demselben Jahresabschluss
+         *     - ``cash_flow_statement``: die Kassensicht aus demselben Jahresabschluss
          *       (Abschnitt 4.1) — nicht was gebucht, sondern was **gezahlt** wurde.
-         *       Jede Zeile trägt neben der Nummer des Dokuments eine ``rolle``
-         *       (``saldo_verwaltung``, ``saldo_investition``, ``finanzmittel``, …);
+         *       Jede Zeile trägt neben der Nummer des Dokuments eine ``role``
+         *       (``balance_operating``, ``balance_capital``, ``finanzmittel``, …);
          *       **an der Rolle hängen, nicht an der Nummer**: Die Tabelle hat
          *       2017–2020 eine Zeile mehr als ab 2021, alle Nummern ab 08
-         *       verschieben sich dadurch. ``ermaechtigung`` ist das aus Vorjahren
+         *       verschieben sich dadurch. ``authorization`` ist das aus Vorjahren
          *       übertragene Geld und ``NULL``, wo der Jahrgang die Spalte nicht führt,
-         *     - ``ergebnishaushalt``: dieselben Posten für Jahre **ohne**
+         *     - ``income_budget``: dieselben Posten für Jahre **ohne**
          *       Jahresabschluss, aus dem Gesamtergebnishaushalt der Haushaltspläne.
          *       Jede Zeile trägt ``art`` (``ansatz`` = das Jahr, für das dieser Plan
          *       der Haushalt ist; ``finanzplanung`` = mittelfristige Vorausschau nach
-         *       § 8 NKomVG) und ``plan_jahrgang`` (aus welchem Haushalt sie stammt).
+         *       § 8 NKomVG) und ``plan_budget_year`` (aus welchem Haushalt sie stammt).
          *       **Beides gehört an jede Anzeige**: Der Plan nennt alle fünf Spalten
          *       „Ansatz", der Haushalt ist aber nur eines der Jahre, und die
          *       Finanzplanung schreibt jeder neue Haushalt neu. Die Zahlen stammen aus
          *       der Einbringungs-Vorlage, sind also der **Entwurf** der Verwaltung —
-         *       der Beleg (``herkunft.stand``) sagt das, die Anzeige sollte es
+         *       der Beleg (``herkunft.as_of``) sagt das, die Anzeige sollte es
          *       anschreiben,
-         *     - ``ansatz_jahre``: die Jahre mit einem Haushaltsansatz — die Liste, aus
+         *     - ``budgeted_years``: die Jahre mit einem Haushaltsansatz — die Liste, aus
          *       der ein Jahr-Umschalter bestehen darf (ohne die Finanzplanungsjahre),
-         *     - ``wirtschaftsplaene``: die Wirtschaftspläne der Eigenbetriebe und
-         *       städtischen Gesellschaften, je ``betrieb`` und ``jahr``. **Nicht mit dem
+         *     - ``business_plans``: die Wirtschaftspläne der Eigenbetriebe und
+         *       städtischen Gesellschaften, je ``enterprise`` und ``year``. **Nicht mit dem
          *       Kernhaushalt addierbar** — der Eigenbetrieb Gebäudewirtschaft vermietet
          *       der Stadt ihre eigenen Gebäude, seine Erträge sind zu großen Teilen
          *       Aufwand des Kernhaushalts; herausgerechnet wird das erst im
-         *       Gesamtabschluss. ``ertraege``/``aufwendungen`` sind ``null``, wo die
-         *       Quelle nur das Ergebnis nennt, und ``proben`` sagt, welche Rechenprobe
+         *       Gesamtabschluss. ``revenues``/``expenses`` sind ``null``, wo die
+         *       Quelle nur das Ergebnis nennt, und ``probes`` sagt, welche Rechenprobe
          *       für die Zeile gelaufen ist,
-         *     - ``abweichungsgruende``: warum ein Posten vom Plan abwich, in den Worten
+         *     - ``variance_reasons``: warum ein Posten vom Plan abwich, in den Worten
          *       der Verwaltung (Abschnitt 6.3.1 des Jahresabschlusses),
          *     - ``pruefberichte``: Fundstelle des RPA-Schlussberichts je Jahrgang,
          *     - ``herkunft``: je ``herkunft_id`` das Dokument, die Fundstelle darin, die
          *       bestandene Rechenprobe samt Messwert und der Stichtag — nachschlagbar
          *       über die ``herkunft_id`` der einzelnen Datenzeilen,
-         *     - ``produkt_jahre``: Jahre, für die die Produktebene vorliegt,
-         *     - ``plan_ist_jahre``: Jahre mit „geplant gegen tatsächlich" je Teilhaushalt,
-         *     - ``ausgabenreihe``: die lange Reihe aus Datensatz 1102 — ein Betrag je
-         *       Jahr seit 1972. ``zeilen`` trägt je Jahrgang ``regelwerk`` (die Naht
-         *       2009/2010), die bestandenen ``proben`` und, wo die beiden Quellen sich
-         *       widersprechen, den Betrag der unterlegenen (``konflikt_betrag``).
-         *       ``regelwerke`` nennt zu jedem Regelwerk den Titel der Quelle und ihre
+         *     - ``product_years``: Jahre, für die die Produktebene vorliegt,
+         *     - ``plan_actual_years``: Jahre mit „geplant gegen tatsächlich" je Teilhaushalt,
+         *     - ``expense_series``: die lange Reihe aus Datensatz 1102 — ein Betrag je
+         *       Jahr seit 1972. ``zeilen`` trägt je Jahrgang ``accounting_system`` (die Naht
+         *       2009/2010), die bestandenen ``probes`` und, wo die beiden Quellen sich
+         *       widersprechen, den Betrag der unterlegenen (``conflict_amount``).
+         *       ``accounting_systems`` nennt zu jedem Regelwerk den Titel der Quelle und ihre
          *       Abgrenzung — **beide gehören an jede Anzeige**: Links der Naht steht das
          *       Anordnungssoll des Verwaltungshaushalts, rechts die ordentlichen
          *       Aufwendungen der Gesamtergebnisrechnung, und über den Schnitt darf keine
          *       Linie laufen. Eine Einwohnerzahl liefert dieser Block bewusst nicht
          *       (Begründung an der Tabelle in ``council/store.py``).
-         *     - ``spenden``: was die Stadt an Zuwendungen annimmt, aus den
-         *       Ratsbeschlüssen. ``jahre`` ist die Reihe (Betrag, Zahl der Vorlagen,
+         *     - ``donations``: was die Stadt an Zuwendungen annimmt, aus den
+         *       Ratsbeschlüssen. ``years`` ist die Reihe (Betrag, Zahl der Vorlagen,
          *       Aufteilung Rat/Verwaltungsausschuss), ``vorlagen`` die einzelnen
          *       Beschlüsse mit ihrer Vorlagen-Nummer, ``ohne_beleg`` die Zeilen, die
          *       ihre Zweitstelle **nicht** tragen — samt dem Satz, warum. Die
          *       ``schwellen`` sagen, wer über welche Zuwendung entscheidet.
          *       **Die Namen der Gebenden liefert dieser Block nicht**, und das ist
          *       keine Lücke, die sich schließt: Sie stehen nur in der Anlage
-         *       „Zuwendungsliste", die nicht im Bestand ist (``council/spenden.py``).
-         *     - ``steuerplan``: je Steuerart und Jahr der Ansatz des Haushaltsplans neben
-         *       dem Rechnungsergebnis (Jahrbuch-Tabelle 1103). ``vorlaeufig`` ist die
+         *       „Zuwendungsliste", die nicht im Bestand ist (``council/donations.py``).
+         *     - ``tax_plan``: je Steuerart und Jahr der Ansatz des Haushaltsplans neben
+         *       dem Rechnungsergebnis (Jahrbuch-Tabelle 1103). ``provisional`` ist die
          *       Angabe der Quelle über sich selbst — die jüngste Spalte heißt dort
          *       „vorläufiges Rechnungsergebnis". Die ``art``-Werte sind **dieselben** wie
-         *       in ``steuern``; daran hängt die Prüfung der Jahresbeschriftung.
-         *     - ``hebesaetze``: die Realsteuer-Hebesätze je **Änderungsjahr** seit 1980
+         *       in ``taxes``; daran hängt die Prüfung der Jahresbeschriftung.
+         *     - ``tax_rates``: die Realsteuer-Hebesätze je **Änderungsjahr** seit 1980
          *       (Tabelle 1105). Die Jahre dazwischen fehlen nicht, sie ändern nichts —
          *       ein Satz gilt bis zur nächsten Änderung. Wer die Reihe zeichnet, zeichnet
          *       eine Treppe und interpoliert nicht. ``bemessung_neu`` nennt die Jahre, in
          *       denen sich die Bemessungsgrundlage mitänderte; **ohne diese Angabe darf
          *       kein Hebesatz-Sprung angezeigt werden**, denn 2025 stieg der Satz um
          *       21 %, während das Aufkommen um 4,6 % sank.
-         *     - ``gewerbesteuerstatistik``: wie viele Betriebe und Betriebsstätten in
+         *     - ``trade_tax_statistics``: wie viele Betriebe und Betriebsstätten in
          *       Oldenburg erfasst sind, wie viele davon überhaupt einen Steuermessbetrag
          *       haben, und wie sich dieser auf reine Festsetzungen und Zerlegungen
          *       verteilt (Landesamt für Statistik, Bericht L IV 13). **Das ist die
          *       Veranlagung, nicht das Aufkommen**: Messbetrag mal Hebesatz ergibt nicht
-         *       die Zahl aus ``steuern`` — in den drei prüfbaren Jahren lagen beide
+         *       die Zahl aus ``taxes`` — in den drei prüfbaren Jahren lagen beide
          *       zwischen 13 % darunter und 27 % darüber. ``abgrenzung`` sagt das im
          *       Klartext und reist deshalb mit den Zahlen mit.
          *
-         *     Fehlende Jahre (Datenlücken) fehlen schlicht in ``jahre`` — das Frontend
+         *     Fehlende Jahre (Datenlücken) fehlen schlicht in ``years`` — das Frontend
          *     zeigt Lücken ehrlich, statt zu interpolieren.
          *
          *     ``felder`` schneidet die Antwort auf das zu, was die aufrufende Seite
-         *     wirklich rendert (kommagetrennt, z. B. ``?felder=jahre,produkt_jahre``).
+         *     wirklich rendert (kommagetrennt, z. B. ``?felder=years,product_years``).
          *     ``thh_posten`` schneidet zusätzlich INNERHALB der Ergebnisrechnung — sie
          *     ist der größte Block, und ihre Teilhaushalts-Ebene braucht fast niemand
          *     vollständig (s. :func:`_ergebnisrechnung`).
@@ -1599,17 +1548,24 @@ export interface paths {
          *     wurde (``council/aenderungslisten.py``).
          *
          *     - ``zeilen``: NUR die Positionen des Haushaltsjahrgangs selbst
-         *       (``jahr == jahrgang``). Dieselbe Maßnahme steht im Dokument je
+         *       (``year == budget_year``). Dieselbe Maßnahme steht im Dokument je
          *       Finanzplanungsjahr noch einmal — für die Streit-Erzählung zählt das
          *       Jahr, um das gestritten wurde; die Folgejahre stecken kompakt in den
-         *       Summen. ``urheber`` trägt, WER die Position vorschlug — gefüllt nur
+         *       Summen. ``author`` trägt, WER die Position vorschlug — gefüllt nur
          *       beim Jahrgang 2021, dessen Beschluss-Datei als einzige eine Spalte
          *       „Vorschlag von“ führt; sonst ``null``.
          *     - ``summen``: die Zusammenstellungen ALLER Planjahre, inklusive der
          *       Zeilen, die es nur dort gibt: die politisch beschlossene Änderung mit
          *       Urheber-Label („SPD/CDU/FDP …“) aus den AFB-Dateien — der einzige
          *       digitale Beleg der Fraktionslisten, die selbst Tischvorlagen blieben.
-         *     - ``herkunft``: je ``herkunft_id`` das Papier, aus dem eine Zeile stammt.
+         *     - ``fhh_zeilen``/``fhh_summen``: dasselbe für den FINANZhaushalt
+         *       (``council/aenderungslisten_fhh.py``) — also für das, was tatsächlich
+         *       fließt und vor allem investiert wird. Getrennte Schlüssel statt einer
+         *       gemeinsamen Liste mit Marke: Die Zeilen haben eine andere Form (fünf
+         *       Betragsspalten statt zwei, dazu ``product`` mit dem Investitionscode),
+         *       und eine gemeinsame Liste wäre auf jeder Seite zur Hälfte leer.
+         *     - ``herkunft``: je ``herkunft_id`` das Papier, aus dem eine Zeile stammt —
+         *       für beide Haushalte gemeinsam.
          */
         get: operations["haushalt_aenderungslisten_api_council_haushalt_aenderungslisten_get"];
         put?: never;
@@ -1635,7 +1591,7 @@ export interface paths {
          *     viel die Betriebe bewegen, diese Seite, was sie damit machen.
          *
          *     - ``gesellschaften``: je Gesellschaft Name, Gliederungsnummer und Seite im
-         *       jüngsten Bericht, dazu ``konzern_key``, wo der Gesamtabschluss sie als
+         *       jüngsten Bericht, dazu ``consolidated_key``, wo der Gesamtabschluss sie als
          *       eigenen Träger führt,
          *     - ``texte``: die beschreibenden Abschnitte (Gegenstand, Eigentümer,
          *       Aufsichtsorgane, eigene Beteiligungen, Auswirkungen auf den Haushalt) —
@@ -1643,9 +1599,9 @@ export interface paths {
          *       rechnen,
          *     - ``personen``: die Aufsichtsorgane, Person für Person, mit Gremium,
          *       Vorsitz, Amtszeit-Hinweis und — wo das Verzeichnis die Person
-         *       eindeutig kennt — ``slug`` und ``partei`` für die Personen-Seite.
-         *       ``funktion`` steht nur da, wo die Spaltenprobe gehalten hat; siehe
-         *       ``funktionen_zuordenbar`` an der Gesellschaft. Zwei der fünf Abschnitte
+         *       eindeutig kennt — ``slug`` und ``party`` für die Personen-Seite.
+         *       ``position`` steht nur da, wo die Spaltenprobe gehalten hat; siehe
+         *       ``roles_assignable`` an der Gesellschaft. Zwei der fünf Abschnitte
          *       sind nämlich keine Prosa, sondern Tabellen, die der PDF-Extrakt
          *       spaltenweise ausgibt (``council/beteiligungsbericht.py``),
          *     - ``eigentuemer``: wem die Gesellschaft gehört, mit Betrag und Anteil.
@@ -1653,8 +1609,8 @@ export interface paths {
          *       Gesellschafter. Gesellschaften, deren Anteile sich nicht auf das
          *       ausgewiesene Stammkapital summieren, erscheinen hier gar nicht; ihr
          *       Rohtext steht weiter in ``texte``,
-         *     - ``kennzahlen``: die Zeitreihe je Gesellschaft (Jahresergebnis,
-         *       Bilanzsumme, Eigenkapitalquote). ``berichte`` sagt, wie viele Berichte
+         *     - ``indicators``: die Zeitreihe je Gesellschaft (Jahresergebnis,
+         *       Bilanzsumme, Eigenkapitalquote). ``n_reports`` sagt, wie viele Berichte
          *       denselben Wert nennen — 1 heißt „durch eine Probe im Dokument gedeckt",
          *       mehr heißt zusätzlich „von einer zweiten Veröffentlichung bestätigt",
          *     - ``konzernvergleich``: für die Gesellschaften, die auch im
@@ -1662,7 +1618,7 @@ export interface paths {
          *       **Keine Probe** — die beiden Rechnungen unterscheiden sich systematisch,
          *       und zwei Betriebe weisen wegen Ergebnisabführung 0 € aus, obwohl sie
          *       etwas erwirtschaftet haben. Eine Einordnung, kein Urteil,
-         *     - ``berichtsjahre`` / ``jahre``: welche Berichte gelesen sind und welche
+         *     - ``berichtsjahre`` / ``years``: welche Berichte gelesen sind und welche
          *       Bezugsjahre die Kennzahlen abdecken (sie reichen weiter zurück als die
          *       Berichte — jeder führt vier bis fünf Jahre mit),
          *     - ``herkunft``: je ``herkunft_id`` Dokument, Fundstelle, Seite und Probe.
@@ -1693,11 +1649,11 @@ export interface paths {
          *     Die Gegenseite zu ``/haushalt/schulden``: nicht was die Stadt schuldet,
          *     sondern was sie **hat** und was davon schon vergeben ist.
          *
-         *     ``posten`` ist eine flache Liste über alle Stichtage. **An ``rolle``
+         *     ``posten`` ist eine flache Liste über alle Stichtage. **An ``role``
          *     hängen, nicht an ``nr``**: Die Gliederungsnummer der Bilanz ist bis 2020
          *     römisch, ab 2021 arabisch, und ab 2021 gibt es jede Nummer auf beiden
          *     Seiten — „1.1" ist auf der Aktivseite etwas anderes als auf der
-         *     Passivseite. ``seite`` (``aktiva``/``passiva``) und ``ebene`` (1 = die
+         *     Passivseite. ``page`` (``aktiva``/``passiva``) und ``level`` (1 = die
          *     neun Hauptposten, aus denen die Bilanzsumme besteht) sind die stabilen
          *     Achsen.
          *
@@ -1718,8 +1674,8 @@ export interface paths {
          *     Schulden springen 2024 von 84,4 auf 207,1 Mio. €, und das ist kein
          *     Schuldenmachen, sondern eine Bilanzverlängerung aus dem Cash-Pooling
          *     (138,2 Mio. €, mit Gegenposten auf der Aktivseite). Der Anhang erklärt es
-         *     unter ``rolle="schulden"`` selbst. **Die Zahl darf ohne diesen Text nicht
-         *     angezeigt werden** — dieselbe Bauart wie ``abweichungsgruende`` für die
+         *     unter ``role="schulden"`` selbst. **Die Zahl darf ohne diesen Text nicht
+         *     angezeigt werden** — dieselbe Bauart wie ``variance_reasons`` für die
          *     Ergebnisrechnung.
          */
         get: operations["haushalt_bilanz_api_council_haushalt_bilanz_get"];
@@ -1787,8 +1743,8 @@ export interface paths {
          *     man wieder selbst suchen darf. Hier steht, welches PDF zu welchem Jahr
          *     gehört, damit der Link das Dokument des **gezeigten** Jahres öffnet.
          *
-         *     ``{"dokumente": {"<quellenschluessel>": [{jahr, url, label, fundstelle,
-         *     seite}, …]}}`` — aufsteigend nach Jahr. Ein Schlüssel fehlt, wo wir kein
+         *     ``{"dokumente": {"<quellenschluessel>": [{year, url, label, citation,
+         *     page}, …]}}`` — aufsteigend nach Jahr. Ein Schlüssel fehlt, wo wir kein
          *     Dokument haben; die Oberfläche fällt dann auf die statische Adresse
          *     zurück und sagt dazu, wohin sie führt.
          *
@@ -1835,7 +1791,7 @@ export interface paths {
          *     voneinander abzuziehen und das Ergebnis „Umsetzungsquote" zu nennen — eine
          *     Zahl, die in keiner Quelle steht (``council/investitionen_ist.py``).
          *
-         *     ``regelwerk`` trennt die beiden Tabellen, und das ist die tragende Angabe
+         *     ``accounting_system`` trennt die beiden Tabellen, und das ist die tragende Angabe
          *     dieser Antwort: Zum 01.01.2010 stellte die Stadt von kameraler auf
          *     doppische Buchführung um. Das Dokument trennt seine Reihen genau dort und
          *     begründet es in einer Fußnote. Wer über diesen Schnitt hinweg eine Linie
@@ -1848,7 +1804,7 @@ export interface paths {
          *     Lücke **benennen**, statt sie als Null zu zeichnen oder still zu
          *     überspringen.
          *
-         *     Je Lücke steht dort neben dem Jahr die gemessene ``differenz`` in Euro
+         *     Je Lücke steht dort neben dem Jahr die gemessene ``difference`` in Euro
          *     (Auszahlungsarten minus ausgewiesene Summe, vorzeichenbehaftet) — die
          *     Zahl, die der Ingest-Lauf beim Verwerfen gemessen hat
          *     (``council_investitionen_ist_verworfen``). Sie ist der Unterschied
@@ -1883,7 +1839,7 @@ export interface paths {
          *     Bereichs zeigt, steht keine einzige Investition (ein Schulneubau taucht dort
          *     nur als Abschreibung auf, verteilt über Jahrzehnte).
          *
-         *     - ``jahre``: Haushaltsjahre, für die Investitionen vorliegen,
+         *     - ``years``: Haushaltsjahre, für die Investitionen vorliegen,
          *     - ``teilhaushalte``: je Jahr und Teilhaushalt Ein- und Auszahlungen aus
          *       Investitionstätigkeit,
          *     - ``gesamt``: je Jahr die Summenzeile der Datei — das **Ziel der
@@ -1925,7 +1881,7 @@ export interface paths {
          *     Aus Anlage 004 des Haushaltsplans: nicht „Schule und Bildung: 8,3 Mio. €",
          *     sondern „BBS Haarentor: Ausstattung". Acht Jahrgänge, rund 4.500 Vorhaben.
          *
-         *     - ``jahre``: Jahrgänge, für die ein Programm vorliegt,
+         *     - ``years``: Jahrgänge, für die ein Programm vorliegt,
          *     - ``massnahmen``: je Vorhaben Teilhaushalt, IPSP-Element, Bezeichnung und
          *       **Gesamtinvestitionssumme**,
          *     - ``teilhaushalte``: je Teilhaushalt die Gesamtsumme, die das Dokument am
@@ -1970,11 +1926,11 @@ export interface paths {
          *     Konzernzahl allein sagt nichts, sie sagt erst etwas neben der
          *     Kernverwaltung im selben Jahr.
          *
-         *     - ``jahre``: Jahrgänge mit eingelesenem Gesamtabschluss,
+         *     - ``years``: Jahrgänge mit eingelesenem Gesamtabschluss,
          *     - ``konzern``: je Jahrgang die Summen des Konzerns (Erträge,
          *       Aufwendungen, ordentliches Ergebnis, Gesamtjahresergebnis, Zins- und
          *       Personalaufwand) samt bestandener Rechenprobe und Fundstelle,
-         *     - ``traeger``: wer den Konzern ausmacht — je Jahrgang und Aufstellung eine
+         *     - ``entity``: wer den Konzern ausmacht — je Jahrgang und Aufstellung eine
          *       Zeile pro Aufgabenträger, Beträge in **Euro** (der Bericht rundet sie
          *       auf Tausend, daher die glatten Endziffern),
          *     - ``posten``: die vollständige Gesamtergebnisrechnung je Jahrgang,
@@ -2019,7 +1975,7 @@ export interface paths {
          *     geplanten Aufwendungen die gefundenen Produkte erklären — damit die
          *     Oberfläche das nicht als Vollbild ausgeben kann.
          *
-         *     ``q``/``amt``/``spielraum`` filtern **serverseitig**: Mit dem Steckbrief
+         *     ``q``/``office``/``spielraum`` filtern **serverseitig**: Mit dem Steckbrief
          *     trägt jede der knapp 400 Zeilen mehrere hundert Zeichen Fließtext, die
          *     niemand im Browser sortieren muss. ``nr`` holt zusätzlich ein einzelnes
          *     Produkt — die Steckbrief-Ansicht braucht es auch dann, wenn der gerade
@@ -2029,7 +1985,7 @@ export interface paths {
          *     Produkte überhaupt welches Steckbrief-Feld tragen: Die Seite weist die
          *     Lücke aus, statt sie zu verschweigen.
          *
-         *     Jedes Produkt trägt zusätzlich ``jahre`` — die Jahrgänge, in denen es im
+         *     Jedes Produkt trägt zusätzlich ``years`` — die Jahrgänge, in denen es im
          *     Bestand steht. Gegen ``alle_jahre`` gehalten wird daraus das
          *     Abdeckungs-Badge der Trefferliste (H4-04): Ein Produkt, das erst ab 2021
          *     vorliegt, soll das sagen, statt wie eine durchgehende Reihe auszusehen.
@@ -2066,10 +2022,10 @@ export interface paths {
          *     - ``ohne_bericht``: Jahre, für die ein Jahresabschluss ausgelesen ist, ein
          *       Schlussbericht aber nicht — die Lücke gehört sichtbar, nicht kaschiert.
          *
-         *     ``marke`` grenzt auf eine Randmarke ein. Gedacht für den Hinweis auf
+         *     ``mark`` grenzt auf eine Randmarke ein. Gedacht für den Hinweis auf
          *     ``/haushalt/plan-ist``, der nur die Kette der wiederholten Beanstandungen
          *     braucht: Der volle Bestand ist eine Viertel-Megabyte Prosa und hat auf
-         *     einer Seite nichts zu suchen, die ihn gar nicht anzeigt. ``jahre`` und
+         *     einer Seite nichts zu suchen, die ihn gar nicht anzeigt. ``years`` und
          *     ``legende`` bleiben dabei die des Gesamtbestands — sonst stünde in der
          *     Fußzeile eine Jahresliste, die vom Filter abhängt.
          */
@@ -2102,12 +2058,12 @@ export interface paths {
          *     kommt aus ``council/schulden.py`` und nicht aus dem Frontend, damit beide
          *     Seiten dieselbe Auskunft geben.
          *
-         *     ``je_einwohner`` ist die Angabe **der Quelle**, nicht unsere Rechnung. Sie
+         *     ``per_capita`` ist die Angabe **der Quelle**, nicht unsere Rechnung. Sie
          *     kommt so aus der Tabelle; dass sie zur Einwohnerzahl aus dem Open-Data-
          *     Datensatz passt, ist die Probe, die den Wert überhaupt hereingelassen hat
-         *     (``herkunft[…].proben``).
+         *     (``herkunft[…].probes``).
          *
-         *     Wo ``aufteilung_verworfen`` gesetzt ist, fehlen die vier Artenspalten:
+         *     Wo ``breakdown_rejected`` gesetzt ist, fehlen die vier Artenspalten:
          *     Dort ergeben sie im Dokument selbst nicht die ausgewiesene Summe. Die
          *     Summe steht trotzdem — sie hängt an der unabhängigen Pro-Kopf-Probe. Die
          *     Oberfläche kann den fehlenden Balken damit **erklären**, statt ihn als
@@ -2143,7 +2099,7 @@ export interface paths {
          *       im Haushaltsjahr, Stellen im Vorjahr, besetzt, nicht besetzt) samt
          *       Stichtag der Besetzung,
          *     - ``gruppen``: dieselben Zahlen je Laufbahn- bzw. Beschäftigtengruppe,
-         *     - ``zeilen``: die Einzelposten — nur mit ``jahrgang``, weil das rund 190
+         *     - ``zeilen``: die Einzelposten — nur mit ``budget_year``, weil das rund 190
          *       Zeilen je Jahrgang sind,
          *     - ``fehlend``: welche ``(Jahrgang, Teil)`` **nicht** vorliegen, obwohl der
          *       Jahrgang eingelesen ist. Ohne diese Liste sähe ein Jahrgang mit nur
@@ -2159,7 +2115,7 @@ export interface paths {
          *
          *     Und die Besetzungszahlen gehören zur **Vorjahresspalte**, nicht zum
          *     Haushaltsjahr: Geplant wird vorwärts, gezählt werden kann nur rückwärts.
-         *     ``stichtag`` sagt, auf welchen Tag sie sich beziehen.
+         *     ``as_of_date`` sagt, auf welchen Tag sie sich beziehen.
          */
         get: operations["haushalt_stellenplan_api_council_haushalt_stellenplan_get"];
         put?: never;
@@ -2186,7 +2142,7 @@ export interface paths {
          *     Schlussabstimmung. Alles kommt aus den Ratsdaten: Beschlusszeilen,
          *     Anwesenheitsliste und Protokoll-Volltext derselben Sitzung.
          *
-         *     **Ohne ``jahr`` kommen alle Jahrgänge** — wie bei ``/haushalt/weg``, und
+         *     **Ohne ``year`` kommen alle Jahrgänge** — wie bei ``/haushalt/weg``, und
          *     aus demselben Grund: Dass sich die Mehrheiten verschieben, sieht man erst
          *     über die Jahre. Die Antwort ist entsprechend groß (rund ein halbes MB);
          *     die Seite lädt sie einmal und schaltet danach ohne Netz zwischen den
@@ -2220,7 +2176,7 @@ export interface paths {
          *
          *     Zwei Teile, und der zweite ist der wichtigere:
          *
-         *     - ``werte``/``staedte``/``jahre``: Steuerkraft und Hebesätze der acht
+         *     - ``werte``/``staedte``/``years``: Steuerkraft und Hebesätze der acht
          *       kreisfreien Städte Niedersachsens aus den beiden Tabellen des
          *       Landesamts für Statistik. Dieselbe Kennzahl, dieselbe Stelle, dieselbe
          *       Abgrenzung für alle — der Auslagerungsgrad einer Stadt greift hier
@@ -2228,7 +2184,7 @@ export interface paths {
          *     - ``beleg``: die Ratsvorlage 18/0911, in der die Stadt Oldenburg 2018 auf
          *       Antrag der FDP-Fraktion sieben Städte verglichen und im selben Dokument
          *       festgestellt hat, dass dieser Vergleich nichts aussagt. Aufgelöst wird
-         *       sie über die Vorlagennummer; ``beschluss_id`` zeigt auf den Eintrag in
+         *       sie über die Vorlagennummer; ``decision_id`` zeigt auf den Eintrag in
          *       unserem eigenen Bestand (der Ausschuss hat den Bericht zur Kenntnis
          *       genommen), ``anlagen`` auf Antrag und Antwort im Original.
          *
@@ -2265,13 +2221,13 @@ export interface paths {
          *     ``stationen`` bis zur Entscheidung im Rat; jede Station trägt ``ksinr``
          *     und ``top``, ist also auf ihre Sitzung verlinkbar.
          *
-         *     **Ohne ``jahr`` kommen alle Jahrgänge.** Das ist Absicht: Die Aussage
+         *     **Ohne ``year`` kommen alle Jahrgänge.** Das ist Absicht: Die Aussage
          *     dieser Seite liegt nicht im einzelnen Jahr, sondern in der Streuung — dass
          *     der Entwurf verlässlich im Oktober kommt, die Entscheidung aber zwischen
          *     Dezember und Februar wandert, sieht man erst über acht Jahrgänge. Eine
          *     Seite, die das behaupten will, braucht sie alle gleichzeitig; ein
          *     Jahres-Umschalter, der je Klick nachlädt, wäre acht Anfragen für 30 Zeilen.
-         *     ``jahr`` grenzt trotzdem ein, wenn jemand nur eine Runde braucht.
+         *     ``year`` grenzt trotzdem ein, wenn jemand nur eine Runde braucht.
          *
          *     Was hier **nicht** steht: die Termine der laufenden Runde.
          *     ``council_scheduled_sessions`` kennt keine Tagesordnung — wir können nicht
@@ -2297,8 +2253,9 @@ export interface paths {
         /**
          * Heute
          * @description RL-901: „Heute im Rat" für die Landing — public (wie public-stats).
-         *     Drei Zustände: Sitzung heute (mit 2 Top-TOPs + Restzähler) · nächste
-         *     Sitzung · Sitzungspause. Cache 15 min.
+         *     Drei Zustände: Sitzung heute (``sessions``: alle des Tages, je mit 2
+         *     Top-TOPs, Restzähler und ``live_until``) · nächste Sitzung ·
+         *     Sitzungspause. Cache 15 min — die Uhr liest der Client selbst.
          */
         get: operations["heute_api_council_heute_get"];
         put?: never;
@@ -2329,31 +2286,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/council/partei-meinungen": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Partei Meinungen Endpoint
-         * @description Baustein „Das sagen die Parteien" (Task 30): Wird vom Frontend NACH der
-         *     gestreamten Antwort geladen (kostet die Hauptantwort keine Latenz). Sammelt
-         *     aus ZWEI Kanälen — fraktions-bewusste Ähnlichkeitssuche (Cross-Encoder-
-         *     geprüft) und die Aussprache zu den belegten Beschlüssen — und verdichtet
-         *     das per LLM je Fraktion. Leer ({parteien: []}), wenn die Datenlage zu dünn
-         *     ist — der Baustein erscheint dann nicht.
-         */
-        post: operations["partei_meinungen_endpoint_api_council_partei_meinungen_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/council/parties": {
         parameters: {
             query?: never;
@@ -2378,6 +2310,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/council/party-meinungen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Partei Meinungen Endpoint
+         * @description Baustein „Das sagen die Parteien" (Task 30): Wird vom Frontend NACH der
+         *     gestreamten Antwort geladen (kostet die Hauptantwort keine Latenz). Sammelt
+         *     aus ZWEI Kanälen — fraktions-bewusste Ähnlichkeitssuche (Cross-Encoder-
+         *     geprüft) und die Aussprache zu den belegten Beschlüssen — und verdichtet
+         *     das per LLM je Fraktion. Leer ({parteien: []}), wenn die Datenlage zu dünn
+         *     ist — der Baustein erscheint dann nicht.
+         */
+        post: operations["partei_meinungen_endpoint_api_council_party_meinungen_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/council/person/{slug}": {
         parameters: {
             query?: never;
@@ -2390,7 +2347,7 @@ export interface paths {
          * @description Das Profil einer Person — Ratsmitglied oder Verwaltung mit erkanntem
          *     Amt (Tims Wunsch 19.08.): party/sessions/committees/Gantt bei einem
          *     Mandat, ein schmaler Steckbrief (Amt + Erwähnungszeitraum) bei einem Amt.
-         *     `typ` im Ergebnis unterscheidet ("rat" | "verwaltung") — das Frontend
+         *     `typ` im Ergebnis unterscheidet ("council" | "administration") — das Frontend
          *     rendert danach zwei verschiedene Ansichten.
          *
          *     Ohne Anmeldung lesbar (s. `decision_detail`). Es geht ausschließlich um
@@ -2888,7 +2845,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/kommunalwahl/quelle/{slug}": {
+    "/api/kommunalwahl/source/{slug}": {
         parameters: {
             query?: never;
             header?: never;
@@ -2899,7 +2856,7 @@ export interface paths {
          * Quelle Pruefen
          * @description Ist das PDF hinter dem Partei-Link noch die ausgewertete Datei?
          */
-        get: operations["quelle_pruefen_api_kommunalwahl_quelle__slug__get"];
+        get: operations["quelle_pruefen_api_kommunalwahl_source__slug__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3692,7 +3649,13 @@ export interface components {
             hint: string;
             /** Id */
             id: string;
-            progress: components["schemas"]["AbzeichenFortschritt"] | null;
+            /** AbzeichenFortschritt */
+            progress: {
+                /** Current */
+                current: number;
+                /** Target */
+                target: number;
+            } | null;
             /** Title */
             title: string;
         };
@@ -3730,7 +3693,15 @@ export interface components {
             earned_count: number;
             /** Newly Earned */
             newly_earned: components["schemas"]["AbzeichenKurz"][];
-            next: components["schemas"]["AbzeichenNaechstes"] | null;
+            /** AbzeichenNaechstes */
+            next: {
+                /** Hint */
+                hint: string;
+                /** Id */
+                id: string;
+                /** Title */
+                title: string;
+            } | null;
             /** Total */
             total: number;
         };
@@ -3915,18 +3886,49 @@ export interface components {
             /** Wau Days */
             wau_days: string[];
         };
+        /** AnalyseAbdeckung */
+        AnalyseAbdeckung: {
+            /** Total */
+            total: number;
+            /** With Factions */
+            with_factions: number;
+        };
+        /**
+         * AnalyseDaten
+         * @description ``CouncilStore.party_analysis`` — die Hülle steht, die Innereien sind
+         *     verschachtelte Auswertungen und bleiben offen.
+         */
+        AnalyseDaten: {
+            /** Alliances */
+            alliances: unknown;
+            /** Antrag Stats */
+            antrag_stats: unknown;
+            /** Contention */
+            contention: unknown;
+            coverage: components["schemas"]["AnalyseAbdeckung"];
+            /** Field Labels */
+            field_labels: {
+                [key: string]: string;
+            };
+            /** Success Rates */
+            success_rates: unknown;
+            /** Topic Matrix */
+            topic_matrix: {
+                [key: string]: unknown;
+            };
+        };
         /**
          * AppConfigOut
          * @description Compatibility contract consumed before a native app starts loading data.
          */
         AppConfigOut: {
-            /** Hinweis */
-            hinweis?: string | null;
             /**
              * Min Build
              * @default 0
              */
             min_build: number;
+            /** Note */
+            note?: string | null;
         };
         /** AppleLoginRequest */
         AppleLoginRequest: {
@@ -3945,12 +3947,12 @@ export interface components {
         };
         /** AskBody */
         AskBody: {
-            /** Gespraech Id */
-            gespraech_id?: number | null;
+            /** Conversation Id */
+            conversation_id?: number | null;
+            /** History */
+            history?: components["schemas"]["AskRunde"][];
             /** Question */
             question: string;
-            /** Verlauf */
-            verlauf?: components["schemas"]["AskRunde"][];
             /**
              * Vorherige Antwort
              * @default
@@ -3963,12 +3965,12 @@ export interface components {
          */
         AskRunde: {
             /**
-             * Antwort
+             * Answer
              * @default
              */
-            antwort: string;
-            /** Frage */
-            frage: string;
+            answer: string;
+            /** Question */
+            question: string;
         };
         /** BadgeEvent */
         BadgeEvent: {
@@ -3980,9 +3982,92 @@ export interface components {
         /** BeschlussListe */
         BeschlussListe: {
             /** Decisions */
-            decisions: unknown;
+            decisions: components["schemas"]["Beschlusszeile"][];
             /** Total */
-            total: unknown;
+            total: number;
+        };
+        /**
+         * Beschlusszeile
+         * @description Ein Beschluss aus ``CouncilStore._decision_row``.
+         *
+         *     Die Felder sind die 27 Spalten von ``council_decisions`` plus das, was die
+         *     Abfragen dazujoinen (``committee``, ``session_date``, ``protocol_url``) und
+         *     was der Router anreichert. Bis auf ``id`` ist alles ``NotRequired``: Welche
+         *     Spalten dabei sind, hängt an der jeweiligen Abfrage — ein Pflichtfeld wäre
+         *     hier ein 500, sobald ein Aufrufer schmaler selektiert.
+         *
+         *     ``factions``/``policy_tags`` kommen als JSON-Spalte und werden geparst,
+         *     ``parties`` rechnet der Store aus den Fraktionen aus.
+         */
+        Beschlusszeile: {
+            /** Abstentions */
+            abstentions?: number | null;
+            /** Amount Eur */
+            amount_eur?: number | null;
+            /** Committee */
+            committee?: string | null;
+            /** Deviation */
+            deviation?: string | null;
+            /** Factions */
+            factions?: string[];
+            /** Id */
+            id: number;
+            /** Impact */
+            impact?: number | null;
+            /** Impact Reason */
+            impact_reason?: string | null;
+            /** Importance */
+            importance?: number | null;
+            /** Interest */
+            interest?: number | null;
+            /** Interest Reason */
+            interest_reason?: string | null;
+            /** Item Number */
+            item_number?: string | null;
+            /** Kind */
+            kind?: string | null;
+            /** Ksinr */
+            ksinr?: number | null;
+            /** Kvonr */
+            kvonr?: number | null;
+            /** Location Matches */
+            location_matches?: unknown[];
+            /** N Beratungen */
+            n_beratungen?: number | null;
+            /** No Votes */
+            no_votes?: number | null;
+            /** Official Text */
+            official_text?: string | null;
+            /** Outcome */
+            outcome?: string | null;
+            /** Parent Item */
+            parent_item?: string | null;
+            /** Parties */
+            parties?: string[];
+            /** Policy Field */
+            policy_field?: string | null;
+            /** Policy Tags */
+            policy_tags?: string[];
+            /** Position */
+            position?: number | null;
+            /** Protocol Url */
+            protocol_url?: string | null;
+            /** Raw Result */
+            raw_result?: string | null;
+            /** Session Date */
+            session_date?: string | null;
+            /** Simple Summary */
+            simple_summary?: string | null;
+            /** Subvote Summary */
+            subvote_summary?: unknown;
+            /** Summary */
+            summary?: string | null;
+            /** Template Number */
+            template_number?: string | null;
+            /** Title */
+            title?: string | null;
+            /** Vote */
+            vote?: string | null;
         };
         /** Body_medien_ablegen_api_social_medien__tag__post */
         Body_medien_ablegen_api_social_medien__tag__post: {
@@ -4017,12 +4102,12 @@ export interface components {
         };
         /** DeepResearchBody */
         DeepResearchBody: {
-            /** Frage */
-            frage: string;
-            /** Gespraech Id */
-            gespraech_id?: number | null;
-            /** Verlauf */
-            verlauf?: components["schemas"]["AskRunde"][];
+            /** Conversation Id */
+            conversation_id?: number | null;
+            /** History */
+            history?: components["schemas"]["AskRunde"][];
+            /** Question */
+            question: string;
         };
         /**
          * DeleteAccountRequest
@@ -4206,8 +4291,8 @@ export interface components {
         GespraechDetail: {
             /** Id */
             id: number;
-            /** Titel */
-            titel: string;
+            /** Title */
+            title: string;
             /** Turns */
             turns: components["schemas"]["GespraechTurn"][];
             /** Updated */
@@ -4215,8 +4300,8 @@ export interface components {
         };
         /** GespraechEinstellung */
         GespraechEinstellung: {
-            /** Einstellung */
-            einstellung: number;
+            /** Saves Conversations */
+            saves_conversations: number;
         };
         /** GespraechEinstellungBody */
         GespraechEinstellungBody: {
@@ -4225,19 +4310,19 @@ export interface components {
         };
         /** GespraechTurn */
         GespraechTurn: {
-            /** Antwort */
-            antwort: string;
-            /** Frage */
-            frage: string;
-            /** Quellen */
-            quellen: {
+            /** Answer */
+            answer: string;
+            /** Question */
+            question: string;
+            /** Sources */
+            sources: {
                 [key: string]: unknown;
             } | null;
         };
         /** GespraechUmbenennenBody */
         GespraechUmbenennenBody: {
-            /** Titel */
-            titel: string;
+            /** Title */
+            title: string;
         };
         /** GespraechZeile */
         GespraechZeile: {
@@ -4245,32 +4330,32 @@ export interface components {
             id: number;
             /** N Turns */
             n_turns: number;
-            /** Titel */
-            titel: string;
+            /** Title */
+            title: string;
             /** Updated */
             updated: string;
         };
         /** GespraecheGeloescht */
         GespraecheGeloescht: {
-            /** Geloescht */
-            geloescht: number;
+            /** Deleted */
+            deleted: number;
         };
         /**
          * GespraecheListe
-         * @description `gesamt` ist der Bestand des Kontos, `treffer` gilt zur Suche, `weitere`
+         * @description `total` ist der Bestand des Kontos, `matches` gilt zur Suche, `has_more`
          *     sagt, ob „Ältere anzeigen" noch etwas nachliefert.
          */
         GespraecheListe: {
-            /** Einstellung */
-            einstellung: number | null;
-            /** Gesamt */
-            gesamt: number;
-            /** Gespraeche */
-            gespraeche: components["schemas"]["GespraechZeile"][];
-            /** Treffer */
-            treffer: number;
-            /** Weitere */
-            weitere: boolean;
+            /** Conversations */
+            conversations: components["schemas"]["GespraechZeile"][];
+            /** Has More */
+            has_more: boolean;
+            /** Matches */
+            matches: number;
+            /** Saves Conversations */
+            saves_conversations: number | null;
+            /** Total */
+            total: number;
         };
         /** Gesundheit */
         Gesundheit: {
@@ -4280,9 +4365,20 @@ export interface components {
         /** Gremien */
         Gremien: {
             /** Committees */
-            committees: unknown;
+            committees: string[];
             /** Details */
-            details: unknown;
+            details: components["schemas"]["GremiumDetail"][];
+        };
+        /** GremiumDetail */
+        GremiumDetail: {
+            /** Decisions Year */
+            decisions_year: number;
+            /** Name */
+            name: string;
+            /** Next Date */
+            next_date: string | null;
+            /** Next Time */
+            next_time: string | null;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -4291,6 +4387,10 @@ export interface components {
         };
         /** HaushaltAenderungslisten */
         HaushaltAenderungslisten: {
+            /** Fhh Summen */
+            fhh_summen: unknown;
+            /** Fhh Zeilen */
+            fhh_zeilen: unknown;
             /** Herkunft */
             herkunft: {
                 [key: string]: unknown;
@@ -4312,16 +4412,16 @@ export interface components {
             herkunft: {
                 [key: string]: unknown;
             };
-            /** Jahre */
-            jahre: unknown[];
-            /** Kennzahlen */
-            kennzahlen: unknown;
+            /** Indicators */
+            indicators: unknown;
             /** Konzernvergleich */
             konzernvergleich: unknown;
             /** Personen */
             personen: unknown[];
             /** Texte */
             texte: unknown;
+            /** Years */
+            years: unknown[];
         };
         /** HaushaltBilanz */
         HaushaltBilanz: {
@@ -4331,17 +4431,19 @@ export interface components {
             herkunft: {
                 [key: string]: unknown;
             };
-            /** Jahre */
-            jahre: unknown;
             /** Posten */
             posten: unknown;
+            /** Years */
+            years: unknown;
         };
         /** HaushaltDatenstand */
         HaushaltDatenstand: {
             /** Heute */
-            heute: unknown;
+            heute: string;
             /** Schichten */
-            schichten: unknown;
+            schichten: {
+                [key: string]: unknown;
+            }[];
         };
         /** HaushaltDokumente */
         HaushaltDokumente: {
@@ -4354,6 +4456,8 @@ export interface components {
         HaushaltGebaut: {
             /** Abgrenzung */
             abgrenzung: unknown;
+            /** Accounting Systems */
+            accounting_systems: unknown[];
             /** Anlagen */
             anlagen: {
                 [key: string]: unknown;
@@ -4364,12 +4468,10 @@ export interface components {
             herkunft: {
                 [key: string]: unknown;
             };
-            /** Jahre */
-            jahre: unknown[];
-            /** Regelwerke */
-            regelwerke: unknown[];
-            /** Reihe */
-            reihe: unknown;
+            /** Series */
+            series: unknown;
+            /** Years */
+            years: unknown[];
         };
         /** HaushaltInvestitionen */
         HaushaltInvestitionen: {
@@ -4381,10 +4483,10 @@ export interface components {
             herkunft: {
                 [key: string]: unknown;
             };
-            /** Jahre */
-            jahre: unknown;
             /** Teilhaushalte */
             teilhaushalte: unknown[];
+            /** Years */
+            years: unknown;
         };
         /** HaushaltInvestitionsprogramm */
         HaushaltInvestitionsprogramm: {
@@ -4394,29 +4496,29 @@ export interface components {
             herkunft: {
                 [key: string]: unknown;
             };
-            /** Jahre */
-            jahre: unknown;
             /** Massnahmen */
             massnahmen: unknown[];
             /** Teilhaushalte */
             teilhaushalte: unknown[];
+            /** Years */
+            years: unknown;
         };
         /** HaushaltKonzern */
         HaushaltKonzern: {
+            /** Entity */
+            entity: unknown[];
             /** Gegenprobe */
             gegenprobe: unknown;
             /** Herkunft */
             herkunft: {
                 [key: string]: unknown;
             };
-            /** Jahre */
-            jahre: unknown;
             /** Konzern */
             konzern: unknown[];
             /** Posten */
             posten: unknown;
-            /** Traeger */
-            traeger: unknown[];
+            /** Years */
+            years: unknown;
         };
         /** HaushaltProdukte */
         HaushaltProdukte: {
@@ -4426,27 +4528,27 @@ export interface components {
             alle_jahre: unknown;
             /** Facetten */
             facetten: unknown;
-            /** Jahr */
-            jahr: unknown;
-            /** Plan Aufwendungen */
-            plan_aufwendungen: unknown;
-            /** Produkt */
-            produkt: unknown;
+            /** Plan Expenses */
+            plan_expenses: unknown;
+            /** Product */
+            product: unknown;
             /** Produkte */
             produkte: unknown;
             /** Treffer */
             treffer: number;
+            /** Year */
+            year: unknown;
         };
         /** HaushaltPruefberichte */
         HaushaltPruefberichte: {
             /** Feststellungen */
             feststellungen: unknown[];
-            /** Jahre */
-            jahre: unknown;
             /** Legende */
             legende: unknown;
             /** Ohne Bericht */
             ohne_bericht: unknown[];
+            /** Years */
+            years: unknown;
         };
         /** HaushaltSchulden */
         HaushaltSchulden: {
@@ -4464,10 +4566,10 @@ export interface components {
             };
             /** Integrierte Schulden */
             integrierte_schulden: unknown;
-            /** Jahre */
-            jahre: unknown[];
-            /** Reihe */
-            reihe: unknown;
+            /** Series */
+            series: unknown;
+            /** Years */
+            years: unknown[];
             /** Zinslast */
             zinslast: unknown;
         };
@@ -4503,17 +4605,81 @@ export interface components {
             herkunft: {
                 [key: string]: unknown;
             };
-            /** Jahre */
-            jahre: unknown;
             /** Staedte */
             staedte: unknown;
             /** Werte */
             werte: unknown;
+            /** Years */
+            years: unknown;
         };
         /** HaushaltWeg */
         HaushaltWeg: {
             /** Runden */
             runden: unknown;
+        };
+        /** HeuteNaechste */
+        HeuteNaechste: {
+            /** Committee */
+            committee: string;
+            /** Session Date */
+            session_date: string;
+            /** Session Time */
+            session_time: string;
+            /**
+             * State
+             * @constant
+             */
+            state: "naechste";
+        };
+        /** HeutePause */
+        HeutePause: {
+            /** Label */
+            label: string | null;
+            /**
+             * State
+             * @constant
+             */
+            state: "pause";
+            /** Until */
+            until: string | null;
+        };
+        /** HeuteSitzung */
+        HeuteSitzung: {
+            /** Committee */
+            committee: string;
+            /** Live Until */
+            live_until: string | null;
+            /** N Sessions Today */
+            n_sessions_today: number;
+            /** Rest */
+            rest: number;
+            /** Session Time */
+            session_time: string;
+            /** Sessions */
+            sessions: components["schemas"]["HeuteTagesSitzung"][];
+            /**
+             * State
+             * @constant
+             */
+            state: "heute";
+            /** Tops */
+            tops: string[];
+        };
+        /**
+         * HeuteTagesSitzung
+         * @description Eine Sitzung des heutigen Tages im „Heute im Rat"-Briefing.
+         */
+        HeuteTagesSitzung: {
+            /** Committee */
+            committee: string;
+            /** Live Until */
+            live_until: string | null;
+            /** Rest */
+            rest: number;
+            /** Session Time */
+            session_time: string;
+            /** Tops */
+            tops: string[];
         };
         /** HoechsteBeschlussId */
         HoechsteBeschlussId: {
@@ -4551,8 +4717,8 @@ export interface components {
         };
         /** MedienAblage */
         MedienAblage: {
-            /** Anzahl */
-            anzahl: number;
+            /** Count */
+            count: number;
             /** Tag */
             tag: string;
             /** Urls */
@@ -4606,9 +4772,88 @@ export interface components {
             } | null;
             /** Created At */
             created_at: string;
-            /** Decision */
+            /**
+             * Beschlusszeile
+             * @description Ein Beschluss aus ``CouncilStore._decision_row``.
+             *
+             *     Die Felder sind die 27 Spalten von ``council_decisions`` plus das, was die
+             *     Abfragen dazujoinen (``committee``, ``session_date``, ``protocol_url``) und
+             *     was der Router anreichert. Bis auf ``id`` ist alles ``NotRequired``: Welche
+             *     Spalten dabei sind, hängt an der jeweiligen Abfrage — ein Pflichtfeld wäre
+             *     hier ein 500, sobald ein Aufrufer schmaler selektiert.
+             *
+             *     ``factions``/``policy_tags`` kommen als JSON-Spalte und werden geparst,
+             *     ``parties`` rechnet der Store aus den Fraktionen aus.
+             */
             decision: {
-                [key: string]: unknown;
+                /** Abstentions */
+                abstentions?: number | null;
+                /** Amount Eur */
+                amount_eur?: number | null;
+                /** Committee */
+                committee?: string | null;
+                /** Deviation */
+                deviation?: string | null;
+                /** Factions */
+                factions?: string[];
+                /** Id */
+                id: number;
+                /** Impact */
+                impact?: number | null;
+                /** Impact Reason */
+                impact_reason?: string | null;
+                /** Importance */
+                importance?: number | null;
+                /** Interest */
+                interest?: number | null;
+                /** Interest Reason */
+                interest_reason?: string | null;
+                /** Item Number */
+                item_number?: string | null;
+                /** Kind */
+                kind?: string | null;
+                /** Ksinr */
+                ksinr?: number | null;
+                /** Kvonr */
+                kvonr?: number | null;
+                /** Location Matches */
+                location_matches?: unknown[];
+                /** N Beratungen */
+                n_beratungen?: number | null;
+                /** No Votes */
+                no_votes?: number | null;
+                /** Official Text */
+                official_text?: string | null;
+                /** Outcome */
+                outcome?: string | null;
+                /** Parent Item */
+                parent_item?: string | null;
+                /** Parties */
+                parties?: string[];
+                /** Policy Field */
+                policy_field?: string | null;
+                /** Policy Tags */
+                policy_tags?: string[];
+                /** Position */
+                position?: number | null;
+                /** Protocol Url */
+                protocol_url?: string | null;
+                /** Raw Result */
+                raw_result?: string | null;
+                /** Session Date */
+                session_date?: string | null;
+                /** Simple Summary */
+                simple_summary?: string | null;
+                /** Subvote Summary */
+                subvote_summary?: unknown;
+                /** Summary */
+                summary?: string | null;
+                /** Template Number */
+                template_number?: string | null;
+                /** Title */
+                title?: string | null;
+                /** Vote */
+                vote?: string | null;
             } | null;
             /** Id */
             id: number;
@@ -4616,20 +4861,51 @@ export interface components {
             is_group: boolean;
             /** Item Number */
             item_number: string | null;
-            /** Kind */
-            kind: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "session" | "agenda_item" | "decision";
             /** Ksinr */
             ksinr: number | null;
             /** Notify Result */
             notify_result: boolean;
             /** Result Notified At */
             result_notified_at: string | null;
-            /** Session */
+            /**
+             * Sitzungszeile
+             * @description Eine Sitzung, wie ``CouncilStore.get_session`` sie liefert. Die sechs
+             *     Felder sind die Spalten von ``council_sessions`` — ein Wächter-Test
+             *     (``test_api_vertrag``) schlägt an, wenn die Tabelle wächst, damit hier
+             *     nichts still abgeschnitten wird.
+             */
             session: {
-                [key: string]: unknown;
+                /** Committee */
+                committee: string;
+                /** Fetched At */
+                fetched_at?: string | null;
+                /** Ksinr */
+                ksinr: number | null;
+                /** Live Until */
+                live_until?: string | null;
+                /** Location */
+                location?: string | null;
+                /** My Topic Items */
+                my_topic_items?: {
+                    [key: string]: unknown;
+                }[];
+                /** N Items */
+                n_items?: number;
+                /** Session Date */
+                session_date: string;
+                /** Session Time */
+                session_time?: string | null;
             } | null;
-            /** State */
-            state: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "upcoming" | "waiting" | "protocol" | "decided" | "saved" | "unavailable" | "group";
             /** Subtitle */
             subtitle: string;
             /** Target Key */
@@ -4711,8 +4987,8 @@ export interface components {
         ParteiMeinungenBody: {
             /** Beschluss Ids */
             beschluss_ids?: number[];
-            /** Frage */
-            frage: string;
+            /** Question */
+            question: string;
         };
         /** ParteienFilter */
         ParteienFilter: {
@@ -4755,30 +5031,6 @@ export interface components {
             /** Status */
             status: string;
         };
-        /** PromptOut */
-        PromptOut: {
-            /** Content */
-            content: string;
-            /** Default */
-            default: string;
-            /** Description */
-            description: string;
-            /** Is Overridden */
-            is_overridden: boolean;
-            /** Key */
-            key: string;
-            /** Title */
-            title: string;
-            /** Updated At */
-            updated_at?: string | null;
-            /** Updated By */
-            updated_by?: string | null;
-        };
-        /** PromptUpdate */
-        PromptUpdate: {
-            /** Content */
-            content: string;
-        };
         /** PushRegisterRequest */
         PushRegisterRequest: {
             /** Platform */
@@ -4798,14 +5050,14 @@ export interface components {
         };
         /** QaFeedbackBody */
         QaFeedbackBody: {
-            /** Antwort Auszug */
-            antwort_auszug?: string | null;
-            /** Bewertung */
-            bewertung: string;
-            /** Frage */
-            frage: string;
-            /** Grund */
-            grund?: string | null;
+            /** Answer Excerpt */
+            answer_excerpt?: string | null;
+            /** Question */
+            question: string;
+            /** Rating */
+            rating: string;
+            /** Reason */
+            reason?: string | null;
         };
         /** QaShareAnlage */
         QaShareAnlage: {
@@ -4818,10 +5070,10 @@ export interface components {
             label?: string | null;
             /** Nr */
             nr?: number | null;
+            /** Template Number */
+            template_number?: string | null;
             /** Url */
             url?: string | null;
-            /** Vorlage Nr */
-            vorlage_nr?: string | null;
             /** Vorlage Titel */
             vorlage_titel?: string | null;
         };
@@ -4829,12 +5081,10 @@ export interface components {
         QaShareBody: {
             /** Anlagen */
             anlagen?: components["schemas"]["QaShareAnlage"][];
-            /** Antwort */
-            antwort: string;
+            /** Answer */
+            answer: string;
             /** Debatten */
             debatten?: components["schemas"]["QaShareDebatte"][];
-            /** Frage */
-            frage: string;
             /** Grafik */
             grafik?: {
                 [key: string]: unknown;
@@ -4843,14 +5093,16 @@ export interface components {
             parteien?: components["schemas"]["QaSharePartei"][];
             /** Presse */
             presse?: components["schemas"]["QaSharePresse"][];
-            /** Quellen */
-            quellen?: components["schemas"]["QaShareQuelle"][];
+            /** Question */
+            question: string;
+            /** Sources */
+            sources?: components["schemas"]["QaShareQuelle"][];
         };
         /** QaShareDebatte */
         QaShareDebatte: {
             /**
              * Art
-             * @default rede
+             * @default speech
              */
             art: string;
             /**
@@ -4860,25 +5112,25 @@ export interface components {
             auszug: string;
             /** Committee */
             committee?: string | null;
-            /** Datum */
-            datum?: string | null;
-            /** Partei */
-            partei?: string | null;
+            /** Date */
+            date?: string | null;
+            /** Party */
+            party?: string | null;
             /** Protokoll Seite */
             protokoll_seite?: number | null;
             /** Protokoll Url */
             protokoll_url?: string | null;
-            /** Sprecher */
-            sprecher?: string | null;
+            /** Speaker */
+            speaker?: string | null;
             /** Top */
             top?: string | null;
         };
         /** QaShareKernaussage */
         QaShareKernaussage: {
-            /** Datum */
-            datum?: string | null;
-            /** Sprecher */
-            sprecher?: string | null;
+            /** Date */
+            date?: string | null;
+            /** Speaker */
+            speaker?: string | null;
             /**
              * Text
              * @default
@@ -4899,11 +5151,22 @@ export interface components {
             einig: boolean;
             /** Haltung */
             haltung?: string | null;
-            /** Hinweis */
-            hinweis?: string | null;
-            kernaussage?: components["schemas"]["QaShareKernaussage"] | null;
-            /** Partei */
-            partei: string;
+            /** QaShareKernaussage */
+            kernaussage?: {
+                /** Date */
+                date?: string | null;
+                /** Speaker */
+                speaker?: string | null;
+                /**
+                 * Text
+                 * @default
+                 */
+                text: string;
+            } | null;
+            /** Note */
+            note?: string | null;
+            /** Party */
+            party: string;
             /**
              * Position
              * @default
@@ -4917,10 +5180,10 @@ export interface components {
              * @default
              */
             auszug: string;
-            /** Datum */
-            datum?: string | null;
-            /** Titel */
-            titel: string;
+            /** Date */
+            date?: string | null;
+            /** Title */
+            title: string;
             /** Url */
             url: string;
         };
@@ -4948,7 +5211,7 @@ export interface components {
         /** QaShareToken */
         QaShareToken: {
             /** Token */
-            token: unknown;
+            token: string;
         };
         /** QuellenPruefung */
         QuellenPruefung: {
@@ -5031,17 +5294,20 @@ export interface components {
             /** Area Type */
             area_type: string;
             /** Category */
-            category: string | null;
+            category: string;
             /** Difficulty */
-            difficulty: string | null;
+            difficulty: string;
             /** Hint */
             hint?: string | null;
             /** Id */
             id: number;
             /** Options */
             options: string[];
-            /** Qtype */
-            qtype: string;
+            /**
+             * Qtype
+             * @enum {string}
+             */
+            qtype: "mc" | "estimate";
             /** Question */
             question: string;
             /** Range Max */
@@ -5065,6 +5331,12 @@ export interface components {
         QuizGebiet: {
             /** Aliases */
             aliases?: string[];
+            /** District */
+            district?: string | null;
+            /** Districts */
+            districts?: string[];
+            /** Electoral Districts */
+            electoral_districts?: number[];
             /** Key */
             key: string;
             /** Kind */
@@ -5081,23 +5353,17 @@ export interface components {
             points: number;
             /** Questions */
             questions: number;
-            /** Stadtteil */
-            stadtteil?: string | null;
-            /** Stadtteile */
-            stadtteile?: string[];
-            /** Wahlbereiche */
-            wahlbereiche?: number[];
         };
         /** QuizGebiete */
         QuizGebiete: {
             /** Categories */
             categories: string[];
-            /** Stadtteile */
-            stadtteile: components["schemas"]["QuizGebiet"][];
-            /** Themen */
-            themen: components["schemas"]["QuizGebiet"][];
-            /** Wahlbereiche */
-            wahlbereiche: components["schemas"]["QuizGebiet"][];
+            /** Districts */
+            districts: components["schemas"]["QuizGebiet"][];
+            /** Electoral Districts */
+            electoral_districts: components["schemas"]["QuizGebiet"][];
+            /** Topics */
+            topics: components["schemas"]["QuizGebiet"][];
         };
         /** QuizGebietsstand */
         QuizGebietsstand: {
@@ -5243,7 +5509,19 @@ export interface components {
         QuizTagesrunde: {
             /** Day */
             day: string;
-            done: components["schemas"]["QuizTagesergebnis"] | null;
+            /** QuizTagesergebnis */
+            done: {
+                /** Completed At */
+                completed_at: string | null;
+                /** Correct */
+                correct: number;
+                /** Day */
+                day: string;
+                /** Points */
+                points: number;
+                /** Total */
+                total: number;
+            } | null;
             /** Questions */
             questions: components["schemas"]["QuizFrage"][];
         };
@@ -5255,23 +5533,25 @@ export interface components {
         /** RechercheAktuell */
         RechercheAktuell: {
             /** Frei */
-            frei: unknown;
+            frei: number | null;
             /** Job */
-            job: unknown;
+            job: {
+                [key: string]: unknown;
+            } | null;
         };
         /** RechercheGestartet */
         RechercheGestartet: {
             /** Frei */
-            frei: unknown;
+            frei: number | null;
             /** Job Id */
-            job_id: unknown;
+            job_id: string;
         };
         /** RechercheGestoppt */
         RechercheGestoppt: {
             /** Facetten Fertig */
-            facetten_fertig: unknown;
+            facetten_fertig: number;
             /** Facetten Gesamt */
-            facetten_gesamt: unknown;
+            facetten_gesamt: number;
             /** Teilbericht Moeglich */
             teilbericht_moeglich: boolean;
         };
@@ -5326,17 +5606,61 @@ export interface components {
             /** Count */
             count: number;
             /** Sessions */
-            sessions: unknown;
+            sessions: components["schemas"]["Sitzungszeile"][];
             /** Total */
-            total: unknown;
+            total: number;
+        };
+        /**
+         * Sitzungspause
+         * @description Ob gerade Ratspause ist — immer dieselben fünf Felder
+         *     (``council/sitzungspause.py``).
+         */
+        Sitzungspause: {
+            /** Active */
+            active: boolean;
+            /** Label */
+            label: string | null;
+            /** Next Session Date */
+            next_session_date: string | null;
+            /** Note */
+            note: string | null;
+            /** Until */
+            until: string | null;
+        };
+        /**
+         * Sitzungszeile
+         * @description Eine Sitzung, wie ``CouncilStore.get_session`` sie liefert. Die sechs
+         *     Felder sind die Spalten von ``council_sessions`` — ein Wächter-Test
+         *     (``test_api_vertrag``) schlägt an, wenn die Tabelle wächst, damit hier
+         *     nichts still abgeschnitten wird.
+         */
+        Sitzungszeile: {
+            /** Committee */
+            committee: string;
+            /** Fetched At */
+            fetched_at?: string | null;
+            /** Ksinr */
+            ksinr: number | null;
+            /** Live Until */
+            live_until?: string | null;
+            /** Location */
+            location?: string | null;
+            /** My Topic Items */
+            my_topic_items?: {
+                [key: string]: unknown;
+            }[];
+            /** N Items */
+            n_items?: number;
+            /** Session Date */
+            session_date: string;
+            /** Session Time */
+            session_time?: string | null;
         };
         /**
          * SocialBeschluss
          * @description Fester SELECT im Router plus ``votes`` — deshalb hier vollständig.
          */
         SocialBeschluss: {
-            /** Beschluss */
-            beschluss: string | null;
             /** Committee */
             committee: string | null;
             /** Id */
@@ -5345,6 +5669,8 @@ export interface components {
             importance: number | null;
             /** Item Number */
             item_number: string | null;
+            /** Official Text */
+            official_text: string | null;
             /** Outcome */
             outcome: string | null;
             /** Session Date */
@@ -5468,7 +5794,7 @@ export interface components {
             /** Id */
             id: number;
             /** Session Date */
-            session_date: string | null;
+            session_date: string;
             /** Title */
             title: string;
             /** Topic Name */
@@ -5493,6 +5819,15 @@ export interface components {
             /** Name */
             name: string;
         };
+        /** Themenfeld */
+        Themenfeld: {
+            /** Count */
+            count: number;
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+        };
         /** ThemenfeldRueckblicke */
         ThemenfeldRueckblicke: {
             /** Recaps */
@@ -5501,7 +5836,7 @@ export interface components {
         /** Themenfelder */
         Themenfelder: {
             /** Fields */
-            fields: unknown;
+            fields: components["schemas"]["Themenfeld"][];
         };
         /**
          * TopicDescribeIn
@@ -5608,6 +5943,26 @@ export interface components {
             /** Decision Id */
             decision_id?: number | null;
         };
+        /**
+         * TrendDaten
+         * @description ``CouncilStore.activity_trends`` — Hülle beschrieben, Reihen offen.
+         */
+        TrendDaten: {
+            /** By Field */
+            by_field: {
+                [key: string]: unknown;
+            };
+            /** Emerging */
+            emerging: unknown;
+            /** Fields */
+            fields: string[];
+            /** Money */
+            money: number[];
+            /** Money Drivers */
+            money_drivers: unknown[];
+            /** Quarters */
+            quarters: string[];
+        };
         /** UngeleseneThemenTreffer */
         UngeleseneThemenTreffer: {
             /** Total */
@@ -5673,6 +6028,8 @@ export interface components {
              * @default 0
              */
             correct_index: number;
+            /** District */
+            district?: string | null;
             /** Explanation */
             explanation?: string | null;
             /** Options */
@@ -5683,8 +6040,6 @@ export interface components {
             range_max?: number | null;
             /** Range Min */
             range_min?: number | null;
-            /** Stadtteil */
-            stadtteil?: string | null;
             /** Unit */
             unit?: string | null;
         };
@@ -5711,14 +6066,14 @@ export interface components {
             /** Following */
             following: boolean;
             /** Kvonr */
-            kvonr: unknown;
+            kvonr: number;
         };
         /** VorlageGefolgt */
         VorlageGefolgt: {
             /** Following */
             following: boolean;
             /** Kvonr */
-            kvonr: unknown;
+            kvonr: number;
         };
         /** VorlagenFolgen */
         VorlagenFolgen: {
@@ -5727,13 +6082,15 @@ export interface components {
         };
         /**
          * Vorschau
-         * @description 5 Rückgabe-Zweige — was nicht in jedem steht, ist NotRequired.
+         * @description Titel und Beschreibung für die Vorschau-Karte beim Teilen — fünf
+         *     Zweige (Beschluss, Person, Ort, Entität, Sitzung), alle mit denselben
+         *     zwei Feldern.
          */
         Vorschau: {
             /** Description */
-            description: unknown;
+            description: string;
             /** Title */
-            title: unknown;
+            title: string;
         };
         /** WebUserOut */
         WebUserOut: {
@@ -5773,9 +6130,7 @@ export interface components {
             /** Inhaltlich Je Sitzung */
             inhaltlich_je_sitzung?: unknown;
             /** Kommende */
-            kommende: {
-                [key: string]: unknown;
-            }[];
+            kommende: components["schemas"]["Sitzungszeile"][];
             /** Punkte */
             punkte: {
                 [key: string]: unknown;
@@ -5783,9 +6138,7 @@ export interface components {
             /** Relevant Je Sitzung */
             relevant_je_sitzung?: unknown;
             /** Sitzungen */
-            sitzungen: {
-                [key: string]: unknown;
-            }[];
+            sitzungen: components["schemas"]["Sitzungszeile"][];
             /** Treffer Gesamt */
             treffer_gesamt?: unknown;
             /** Treffer Je Sitzung */
@@ -5803,7 +6156,7 @@ export interface components {
              * Kind
              * @constant
              */
-            kind: "anzahl";
+            kind: "count";
             /** Window Days */
             window_days: number;
         };
@@ -5817,7 +6170,7 @@ export interface components {
              * Kind
              * @constant
              */
-            kind: "betrag";
+            kind: "amount";
             /** Session Date */
             session_date: string | null;
             /** Title */
@@ -5825,23 +6178,55 @@ export interface components {
             /** Window Days */
             window_days: number;
         };
+        /** Ziel */
+        Ziel: {
+            /** Advances */
+            advances: number;
+            /** Description */
+            description: string;
+            /** Hinders */
+            hinders: number;
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Neutral */
+            neutral: number;
+            /** Total */
+            total: number;
+        };
         /** ZielDetail */
         ZielDetail: {
             /** Decisions */
-            decisions: unknown;
+            decisions: {
+                [key: string]: unknown;
+            }[];
             /** Description */
-            description: unknown;
+            description: string;
             /** Key */
-            key: unknown;
+            key: string;
             /** Label */
-            label: unknown;
-            /** Summary */
-            summary: unknown;
+            label: string;
+            summary: components["schemas"]["ZielKennzahlen"];
+        };
+        /**
+         * ZielKennzahlen
+         * @description Wie viele Beschlüsse das Ziel voranbringen, bremsen oder nicht berühren.
+         */
+        ZielKennzahlen: {
+            /** Advances */
+            advances: number;
+            /** Hinders */
+            hinders: number;
+            /** Neutral */
+            neutral: number;
+            /** Total */
+            total: number;
         };
         /** Ziele */
         Ziele: {
             /** Goals */
-            goals: unknown;
+            goals: components["schemas"]["Ziel"][];
         };
     };
     responses: never;
@@ -6354,92 +6739,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Ok"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    list_prompts_api_admin_prompts_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PromptOut"][];
-                };
-            };
-        };
-    };
-    update_prompt_api_admin_prompts__key__put: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                key: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["PromptUpdate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PromptOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    reset_prompt_api_admin_prompts__key__reset_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                key: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PromptOut"];
                 };
             };
             /** @description Validation Error */
@@ -7205,9 +7504,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["AnalyseDaten"];
                 };
             };
         };
@@ -8232,10 +8529,10 @@ export interface operations {
     haushalt_produkte_api_council_haushalt_produkte_get: {
         parameters: {
             query: {
-                jahr: number;
-                thh?: number | null;
+                year: number;
+                sub_budget?: number | null;
                 q?: string | null;
-                amt?: string | null;
+                office?: string | null;
                 spielraum?: string | null;
                 nr?: string | null;
             };
@@ -8268,7 +8565,7 @@ export interface operations {
     haushalt_pruefberichte_api_council_haushalt_pruefberichte_get: {
         parameters: {
             query?: {
-                marke?: string | null;
+                mark?: string | null;
             };
             header?: never;
             path?: never;
@@ -8319,7 +8616,7 @@ export interface operations {
     haushalt_stellenplan_api_council_haushalt_stellenplan_get: {
         parameters: {
             query?: {
-                jahrgang?: number | null;
+                budget_year?: number | null;
             };
             header?: never;
             path?: never;
@@ -8350,7 +8647,7 @@ export interface operations {
     haushalt_streit_api_council_haushalt_streit_get: {
         parameters: {
             query?: {
-                jahr?: number | null;
+                year?: number | null;
             };
             header?: never;
             path?: never;
@@ -8401,7 +8698,7 @@ export interface operations {
     haushalt_weg_api_council_haushalt_weg_get: {
         parameters: {
             query?: {
-                jahr?: number | null;
+                year?: number | null;
             };
             header?: never;
             path?: never;
@@ -8444,9 +8741,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["HeuteSitzung"] | components["schemas"]["HeuteNaechste"] | components["schemas"]["HeutePause"];
                 };
             };
         };
@@ -8471,7 +8766,27 @@ export interface operations {
             };
         };
     };
-    partei_meinungen_endpoint_api_council_partei_meinungen_post: {
+    parties_api_council_parties_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParteienFilter"];
+                };
+            };
+        };
+    };
+    partei_meinungen_endpoint_api_council_party_meinungen_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -8500,26 +8815,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    parties_api_council_parties_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ParteienFilter"];
                 };
             };
         };
@@ -8560,7 +8855,7 @@ export interface operations {
     person_wortbeitraege_api_council_person__slug__wortbeitraege_get: {
         parameters: {
             query?: {
-                gremium?: string | null;
+                committee?: string | null;
                 offset?: number;
                 limit?: number;
             };
@@ -8993,9 +9288,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["Sitzungspause"];
                 };
             };
         };
@@ -9015,9 +9308,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["TrendDaten"];
                 };
             };
         };
@@ -9212,7 +9503,7 @@ export interface operations {
             };
         };
     };
-    quelle_pruefen_api_kommunalwahl_quelle__slug__get: {
+    quelle_pruefen_api_kommunalwahl_source__slug__get: {
         parameters: {
             query?: never;
             header?: never;
@@ -9831,7 +10122,7 @@ export interface operations {
     round__api_quiz_round_get: {
         parameters: {
             query: {
-                /** @description komma-separiert, z. B. wahlbereich:3,stadtteil:Osternburg */
+                /** @description komma-separiert, z. B. electoral_district:3,district:Osternburg */
                 areas: string;
                 categories?: string;
                 n?: number;
@@ -9899,7 +10190,26 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Fundstueck"] | null;
+                    "application/json": {
+                        /** Committee */
+                        committee: string | null;
+                        /** Day */
+                        day: string;
+                        /** Decision Id */
+                        decision_id: number;
+                        /** Kicker */
+                        kicker: string;
+                        /** Outcome */
+                        outcome: string | null;
+                        /** Session Date */
+                        session_date: string | null;
+                        /** Story */
+                        story: string;
+                        /** Title */
+                        title: string | null;
+                        /** Vote */
+                        vote: string | null;
+                    } | null;
                 };
             };
             /** @description Validation Error */
@@ -10018,9 +10328,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    }[];
+                    "application/json": components["schemas"]["Sitzungszeile"][];
                 };
             };
             /** @description Validation Error */
@@ -10434,7 +10742,10 @@ export interface operations {
         };
         requestBody?: {
             content: {
-                "application/json": components["schemas"]["TopicSeenIn"] | null;
+                "application/json": {
+                    /** Decision Id */
+                    decision_id?: number | null;
+                } | null;
             };
         };
         responses: {
@@ -10460,4 +10771,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: e50805cf86bc7deeb9522c112f10f141d31fc5d18f603939808e2f24604311a9
+// vertrag-sha256: c0c482faed2b767dc4e42722e96e0855ef888927f923b6abe87f42e01644ece2

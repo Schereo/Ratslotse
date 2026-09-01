@@ -52,7 +52,7 @@ JPEG_MAGIC = b"\xff\xd8\xff"
 _TAG_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 #: Kennung eines Beitrags-Bildersatzes. Meist ein ISO-Datum („2026-08-24"),
-#: aber der Bot legt auch „2026-08-24-fundstueck", „beschluss-4711" oder
+#: aber der Bot legt auch „2026-08-24-fundstueck", „official_text-4711" oder
 #: „stories-2026-08-24" ab. Kleinbuchstaben, Ziffern, Bindestrich — kein
 #: Punkt und kein Schrägstrich, damit hier kein Pfad hineingeschmuggelt
 #: werden kann.
@@ -130,13 +130,13 @@ def neue_beschluesse(
     Datenbank lief (``ratslotse_social.quellen.neue_beschluesse``), nur
     jetzt hinter dem Token statt hinter einem lokalen DB-Pfad."""
     zeilen = [dict(r) for r in store._conn.execute(
-        """SELECT d.id, d.title, d.beschluss, d.outcome, d.vote,
+        """SELECT d.id, d.title, d.official_text, d.outcome, d.vote,
                   d.simple_summary, d.importance, d.item_number,
                   cs.committee, cs.session_date
            FROM council_decisions d
            JOIN council_sessions cs ON cs.ksinr = d.ksinr
            WHERE d.id > ? AND d.kind = 'decision'
-             AND d.outcome IN ('angenommen', 'abgelehnt')
+             AND d.outcome IN ('accepted', 'rejected')
              AND COALESCE(d.importance, 0) >= ?
            ORDER BY d.id""",
         (seit_id, mindest_wichtig))]
@@ -150,12 +150,16 @@ def neue_beschluesse(
     return zeilen[:limit] if limit else zeilen
 
 
+# Der Pfad trägt bewusst weiter „beschluss": Ihn ruft der Instagram-Bot aus
+# einem ANDEREN Repo (ratslotse-social) über HTTP auf. Eine URL ist eine
+# öffentliche Schnittstelle, kein Bezeichner — sie wandert bei einer
+# Umbenennung nicht mit. `tests/test_api_vertrag.py` hält das fest.
 @router.get("/hoechste-beschluss-id", dependencies=[Depends(bot_token)])
 def hoechste_beschluss_id(store: CouncilStore = Depends(get_council_store)) -> HoechsteBeschlussId:
     """Aktueller Zählerstand — der Startpunkt fürs erste Merken beim Bot,
     damit sein Ereignis-Cron nicht den gesamten Bestand als „neu" meldet."""
-    wert = store._conn.execute("SELECT MAX(id) FROM council_decisions").fetchone()[0]
-    return {"hoechste_id": int(wert or 0)}
+    value = store._conn.execute("SELECT MAX(id) FROM council_decisions").fetchone()[0]
+    return {"hoechste_id": int(value or 0)}
 
 
 def _zielverzeichnis(tag: str) -> Path:
@@ -213,4 +217,4 @@ async def medien_ablegen(tag: str, dateien: list[UploadFile]) -> MedienAblage:
         urls.append(f"{settings.social_media_base_url.rstrip('/')}/{tag}/{name}")
 
     _log.info("Social-Medien abgelegt: %s (%d Bilder)", tag, len(urls))
-    return {"tag": tag, "anzahl": len(urls), "urls": urls}
+    return {"tag": tag, "count": len(urls), "urls": urls}

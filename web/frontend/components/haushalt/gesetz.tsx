@@ -21,7 +21,7 @@
 
 import { Scale, ExternalLink } from "lucide-react";
 import { GESETZE, herausgeber, type GesetzSchluessel } from "@/lib/gesetze";
-import { useFaehnchen } from "@/components/haushalt/quelle";
+import { useFaehnchen } from "@/components/haushalt/source";
 import { cn } from "@/lib/utils";
 
 export function Gesetz({ g, className }: {
@@ -40,7 +40,7 @@ export function Gesetz({ g, className }: {
         ref={knopf}
         type="button"
         onClick={() => setOffen((o) => !o)}
-        aria-label={`${gesetz.kurz} — ${gesetz.titel}: kurz erklärt und zum Gesetzestext`}
+        aria-label={`${gesetz.kurz} — ${gesetz.title}: kurz erklärt und zum Gesetzestext`}
         aria-expanded={offen}
         className={cn(
           "ml-0.5 inline-flex h-4 w-4 items-center justify-center rounded bg-primary/10 align-super text-primary transition-colors hover:bg-primary/20",
@@ -64,11 +64,11 @@ export function Gesetz({ g, className }: {
             </span>
             {/* Bund oder Land — die Antwort auf „wer könnte das ändern?". */}
             <span className="font-mono text-[9.5px] uppercase tracking-[0.09em] text-muted-foreground">
-              {gesetz.ebene === "Bund" ? "Bundesrecht" : "Landesrecht"}
+              {gesetz.level === "Bund" ? "Bundesrecht" : "Landesrecht"}
             </span>
           </span>
           <span className="mt-1 block text-[12.5px] font-bold leading-snug text-foreground">
-            {gesetz.titel}
+            {gesetz.title}
           </span>
           <span className="mt-0.5 block text-[11px] leading-snug text-muted-foreground">
             {gesetz.gesetz}

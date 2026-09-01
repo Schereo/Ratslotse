@@ -94,7 +94,7 @@ def process(db: Path, top_k: int = 6, threshold: float = 0.45, batch: int = 256)
                     continue
                 rows_v = [(chunks[j], cvecs[pos + j].tobytes()) for j in range(len(chunks))]
                 pos += len(chunks)
-                store.replace_vorlage_embeddings(v["vorlage_nr"], v["text_hash"], rows_v)
+                store.replace_vorlage_embeddings(v["template_number"], v["text_hash"], rows_v)
                 n_chunks += len(chunks)
             print(f"  {min(start + batch, len(todo))}/{len(todo)}", flush=True)
 

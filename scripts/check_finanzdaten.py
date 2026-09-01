@@ -114,7 +114,7 @@ def _schon_gemeldet(ausbleibend: list[str]) -> bool:
     try:
         from kern.store import Store
 
-        db = Path(os.environ.get("NWZ_DB") or ROOT / "data" / "nwz.sqlite")
+        db = Path(os.environ.get("RATSLOTSE_DB") or ROOT / "data" / "ratslotse.sqlite")
         if not db.exists():
             return False
         store = Store(db)
@@ -166,23 +166,23 @@ def _hinweis_text(zeilen: list[dict], gesehen: dict[str, set[int]],
     if faellige:
         teile.append("Im Haushalts-Bereich fehlen Jahrgänge, die inzwischen "
                      "vorliegen müssten:")
-    for z, jahrgang in faellige:
+    for z, budget_year in faellige:
         q = finanzquellen.QUELLEN[z["key"]]
-        faellig = q.faellig_ab(jahrgang)
+        faellig = q.faellig_ab(budget_year)
         monat = finanzquellen.MONATE[q.erwarteter_monat]
-        if jahrgang in gesehen.get(z["key"], set()):
-            grund = ("<b>Dokument liegt vor, wird aber nicht übernommen</b> — "
+        if budget_year in gesehen.get(z["key"], set()):
+            reason = ("<b>Dokument liegt vor, wird aber nicht übernommen</b> — "
                      "Erkennung oder Parser prüfen")
         elif q.herkunft == "ris":
-            grund = "kein passendes Dokument in council_anlagen"
+            reason = "kein passendes Dokument in council_anlagen"
         else:
             # Was zu tun ist, weiß die Schicht selbst — hier stand bis 08/2026
             # ein fester Satz über oldenburg.de, und der schickte den Leser
             # bei der Landesstatistik zur falschen Stelle.
-            grund = q.nachschub or "wird von Hand eingelesen"
+            reason = q.nachschub or "wird von Hand eingelesen"
         teile.append(
-            f"• <b>{html.escape(q.label)} {jahrgang}</b> — üblich im {monat} "
-            f"{faellig.year}, seit {(heute - faellig).days} Tagen offen: {grund}")
+            f"• <b>{html.escape(q.label)} {budget_year}</b> — üblich im {monat} "
+            f"{faellig.year}, seit {(heute - faellig).days} Tagen offen: {reason}")
 
     if rest:
         if teile:
@@ -229,7 +229,7 @@ def main(db: str | None = None, heute: date | None = None,
     try:
         for key in finanzquellen.REIHENFOLGE:
             q = finanzquellen.QUELLEN[key]
-            vorhanden = q.bestand(store)
+            vorhanden = q.balance(store)
             if not q.automatisch:
                 # Beobachtet, nicht eingelesen: Diese Schicht kommt per
                 # Download und bleibt Sache eines Ingest-Skripts von Hand.
@@ -278,7 +278,7 @@ def main(db: str | None = None, heute: date | None = None,
             store.herkunft_aufraeumen()
         ohne_herkunft = store.herkunft_luecken()
 
-        stand = finanzquellen.datenstand(store, heute)
+        as_of = finanzquellen.datenstand(store, heute)
         # Nach dem Lauf noch offen: Einheiten, für die ein Dokument vorliegt,
         # die aber nicht in die Datenbank gekommen sind. Das ist der Teil, den
         # niemand von selbst bemerkt — ein Jahrgang, der halb dasteht, sieht
@@ -292,7 +292,7 @@ def main(db: str | None = None, heute: date | None = None,
     finally:
         store.close()
 
-    for z in stand:
+    for z in as_of:
         if z["ueberfaellig"]:
             p.warnen(f"  {z['label']}: {', '.join(map(str, z['ueberfaellig']))} überfällig")
     for key, offen in rest.items():
@@ -317,7 +317,7 @@ def main(db: str | None = None, heute: date | None = None,
     # die Lücke von 3 auf 300 Zeilen, ist das eine neue Nachricht und keine
     # Wiederholung.
     ausbleibend = sorted(
-        [f"{z['key']}:{j}" for z in stand for j in z["ueberfaellig"]]
+        [f"{z['key']}:{j}" for z in as_of for j in z["ueberfaellig"]]
         + [f"{key}:offen:{e}" for key, offen in rest.items() for e in sorted(map(str, offen))]
         + [f"herkunft:{tabelle}:{n}" for tabelle, n in ohne_herkunft.items()])
 
@@ -325,12 +325,12 @@ def main(db: str | None = None, heute: date | None = None,
     if ausbleibend and not trocken and not _schon_gemeldet(ausbleibend):
         from kern.alerts import notify_admin
 
-        notify_admin(_hinweis_text(stand, gesehen, rest, heute, ohne_herkunft),
+        notify_admin(_hinweis_text(as_of, gesehen, rest, heute, ohne_herkunft),
                      betreff="Ratslotse – Haushaltsdaten: es fehlt etwas",
                      fusszeile="Hinweis des Cron-Jobs check_finanzdaten — kein Fehler.")
         gemeldet = True
 
-    ergebnis = {
+    result = {
         "Neue Jahrgänge": sum(len(v) for v in neu_gesamt.values()),
         "Neue Einheiten": neue_einheiten,
         "Bestand geschützt": geschuetzt,
@@ -338,12 +338,12 @@ def main(db: str | None = None, heute: date | None = None,
         "Zeilen ohne Herkunft": sum(ohne_herkunft.values()),
         "ausbleibend": ausbleibend,
     }
-    for key, jahre in neu_gesamt.items():
-        ergebnis[finanzquellen.QUELLEN[key].label] = ", ".join(map(str, jahre))
-    p.sagen(f"Fertig: {ergebnis}")
+    for key, years in neu_gesamt.items():
+        result[finanzquellen.QUELLEN[key].label] = ", ".join(map(str, years))
+    p.sagen(f"Fertig: {result}")
     # Das Protokoll bleibt im Log, nicht in `job_runs`: Die Kennzahlen eines
     # Laufs stehen im Admin-Panel, und dort gehört keine Textwand hin.
-    return ergebnis
+    return result
 
 
 def _cli() -> int:
@@ -354,8 +354,8 @@ def _cli() -> int:
     ap.add_argument("--heute", default=None,
                     help="Stichtag JJJJ-MM-TT (nur zum Prüfen der Fälligkeiten)")
     args = ap.parse_args()
-    stichtag = date.fromisoformat(args.heute) if args.heute else None
-    main(db=args.db, heute=stichtag, trocken=args.trocken)
+    as_of_date = date.fromisoformat(args.heute) if args.heute else None
+    main(db=args.db, heute=as_of_date, trocken=args.trocken)
     return 0
 
 

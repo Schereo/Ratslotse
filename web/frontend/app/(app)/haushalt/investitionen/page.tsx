@@ -21,13 +21,13 @@ import { Suspense, useState } from "react";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
-import { Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
+import { Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/source";
 import { Abschnitte, ANKER_KLASSE } from "@/components/haushalt/abschnitte";
 import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 import { SchrittPfad } from "@/components/haushalt/schritt-pfad";
 import { Seitenbuehne, SeitenbuehneLaedt, ZaehlZahl } from "@/components/haushalt/seitenbuehne";
-import { InvestitionsplanAbschnitt } from "@/components/haushalt/abschnitt-investitionsplan";
-import { GebautAbschnitt } from "@/components/haushalt/abschnitt-gebaut";
+import { InvestitionsplanAbschnitt } from "@/components/haushalt/section-investitionsplan";
+import { GebautAbschnitt } from "@/components/haushalt/section-gebaut";
 
 /** Ausgeschrieben, nicht zusammengesetzt: `tests/test_quellen_dokumente.py`
  *  liest die Literale dieser Liste. Reihenfolge = Nummerierung der Chips,
@@ -37,8 +37,8 @@ const QUELLEN: QuellenSchluessel[] = [
 ];
 
 const MARKEN = [
-  { id: "plan", titel: "Was gebaut werden soll" },
-  { id: "gebaut", titel: "Was daraus wurde" },
+  { id: "plan", title: "Was gebaut werden soll" },
+  { id: "gebaut", title: "Was daraus wurde" },
 ];
 
 function InvestitionenInner() {
@@ -49,11 +49,11 @@ function InvestitionenInner() {
   const [plan, setPlan] = useState<{ vorhaben: number; von: number; bis: number } | null | undefined>(undefined);
   const [gebaut, setGebaut] = useState<{ jahrgaenge: number; luecken: number[] } | null | undefined>(undefined);
   return (
-    // KEIN gemeinsames `jahr`: Der Plan zeigt den gewählten Jahrgang (`?jahr=`),
+    // KEIN gemeinsames `year`: Der Plan zeigt den gewählten Jahrgang (`?year=`),
     // das Ist den jüngsten abgeflossenen — die liegen naturgemäß auseinander,
     // das ist ja der Gegenstand dieser Seite. Ohne den Wert nimmt jeder Beleg
     // das jüngste Dokument SEINER Quelle und schreibt den Jahrgang an.
-    <Quellenkontext schluessel={QUELLEN}>
+    <Quellenkontext keys={QUELLEN}>
       <div className="flex flex-col gap-4">
         <div className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
           <Link href="/haushalt" className="hover:text-foreground">Haushalt</Link>
@@ -76,7 +76,7 @@ function InvestitionenInner() {
         {plan ? (
           <Seitenbuehne
             kicker={`Investitionsprogramm · Pläne ${plan.von}–${plan.bis}`}
-            zahl={<><ZaehlZahl wert={plan.vorhaben} /> Vorhaben sind einzeln aufgeführt</>}
+            zahl={<><ZaehlZahl value={plan.vorhaben} /> Vorhaben sind einzeln aufgeführt</>}
             sub={gebaut
               ? `dazu ${gebaut.jahrgaenge} Jahrgänge Gebautes${gebaut.luecken.length
                 ? ` — mit sichtbarer Lücke ${gebaut.luecken.join(", ")}` : ""}`
@@ -119,7 +119,7 @@ function InvestitionenInner() {
 
         <SchrittWeiter href="/haushalt/investitionen" />
 
-        <Quellenverzeichnis schluessel={QUELLEN} />
+        <Quellenverzeichnis keys={QUELLEN} />
       </div>
     </Quellenkontext>
   );

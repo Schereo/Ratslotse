@@ -138,13 +138,13 @@ POSTEN_ZINSAUFWAND = 17
 #: Die ersten vier sind die Schuldenarten, die fünfte ihre Summe, die sechste
 #: der Pro-Kopf-Betrag.
 SPALTEN: tuple[tuple[str, str], ...] = (
-    ("kreditmarkt", "Schulden aus Kreditmarktmitteln"),
-    ("sondermittel", "Schulden aus öffentlichen Sondermitteln"),
-    ("gebietskoerperschaften", "Schulden bei Gebietskörperschaften"),
-    ("eigenbetriebe", "Schulden der Eigenbetriebe einschließlich Kliniken "
+    ("credit_market", "Schulden aus Kreditmarktmitteln"),
+    ("special_funds", "Schulden aus öffentlichen Sondermitteln"),
+    ("public_authorities", "Schulden bei Gebietskörperschaften"),
+    ("municipal_enterprises", "Schulden der Eigenbetriebe einschließlich Kliniken "
                       "und innere Darlehen"),
-    ("insgesamt", "Schulden insgesamt"),
-    ("je_einwohner", "Schulden je Einwohner*in"),
+    ("total", "Schulden insgesamt"),
+    ("per_capita", "Schulden je Einwohner*in"),
 )
 
 #: Die vier Schuldenarten, die sich zur Summe addieren müssen.
@@ -166,7 +166,7 @@ _ZELLE = re.compile(r"^(\d{1,3}(?:\.\d{3})*)([1-9]|r)?$")
 TAUSEND = 1000
 
 
-def _zelle(feld: str) -> tuple[float | None, str]:
+def _zelle(field: str) -> tuple[float | None, str]:
     """Ein Tabellenfeld → (Zahl, Marke). ``(None, "")``, wenn es keine ist.
 
     Ohne Tausenderpunkt gilt das Feld ungeteilt: ``891`` sind 891 und nicht
@@ -174,10 +174,10 @@ def _zelle(feld: str) -> tuple[float | None, str]:
     Punkt, eine Fußnote an einem punktlosen Feld gäbe es also nur, wenn sich
     das Format änderte — und dann soll die Zahl lieber unverändert durch die
     Summenprobe fallen, als still um eine Stelle zu schrumpfen."""
-    feld = feld.strip()
-    if "." not in feld:
-        return (float(feld), "") if feld.isdigit() else (None, "")
-    m = _ZELLE.match(feld)
+    field = field.strip()
+    if "." not in field:
+        return (float(field), "") if field.isdigit() else (None, "")
+    m = _ZELLE.match(field)
     if not m:
         return (None, "")
     return float(m.group(1).replace(".", "")), m.group(2) or ""
@@ -209,32 +209,32 @@ def parse(text: str) -> list[dict]:
             continue
         felder = [_zelle(f) for f in m.group(2).split()]
         if len(felder) != len(SPALTEN) or any(w is None for w, _ in felder):
-            zeilen.append({"jahr": int(m.group(1)), "unlesbar": roh.strip()})
+            zeilen.append({"year": int(m.group(1)), "unlesbar": roh.strip()})
             continue
-        zeile: dict = {"jahr": int(m.group(1)), "unlesbar": None}
-        for (feld, _), (wert, marke) in zip(SPALTEN, felder):
+        row: dict = {"year": int(m.group(1)), "unlesbar": None}
+        for (field, _), (value, mark) in zip(SPALTEN, felder):
             # Der Pro-Kopf-Betrag steht schon in Euro, die Schuldenarten nicht.
-            zeile[feld] = wert if feld == "je_einwohner" else wert * TAUSEND
-            if marke == "r":
-                zeile["revidiert"] = True
-        zeile.setdefault("revidiert", False)
-        zeilen.append(zeile)
+            row[field] = value if field == "per_capita" else value * TAUSEND
+            if mark == "r":
+                row["revised"] = True
+        row.setdefault("revised", False)
+        zeilen.append(row)
     return zeilen
 
 
-def summenprobe(zeile: dict) -> tuple[bool, float]:
+def summenprobe(row: dict) -> tuple[bool, float]:
     """Ergeben die vier Schuldenarten die ausgewiesene Summe?
 
     Rückgabe ``(bestanden, Abweichung in Euro)``. Ohne Toleranz: Die Quelle
     rundet jede Spalte auf volle Tausend und ist in 30 von 31 Jahrgängen auf
     den Euro stimmig — eine Toleranz würde hier nur den einen Jahrgang
     durchwinken, für den sie gedacht wäre."""
-    summe = sum(zeile.get(a) or 0.0 for a in ARTEN)
-    abweichung = summe - (zeile.get("insgesamt") or 0.0)
-    return abweichung == 0.0, abweichung
+    summe = sum(row.get(a) or 0.0 for a in ARTEN)
+    deviation = summe - (row.get("total") or 0.0)
+    return deviation == 0.0, deviation
 
 
-def prokopfprobe(zeile: dict, einwohner: int | None) -> tuple[bool | None, float | None]:
+def prokopfprobe(row: dict, population: int | None) -> tuple[bool | None, float | None]:
     """Gesamtschuld ÷ Einwohnerzahl = der ausgewiesene Pro-Kopf-Betrag?
 
     Die unabhängige Probe: Der Divisor kommt aus Datensatz 1102 des
@@ -246,14 +246,14 @@ def prokopfprobe(zeile: dict, einwohner: int | None) -> tuple[bool | None, float
     ist vor 2010 der Normalfall und kein Mangel dieser Zeile. Toleranz ist eine
     ganze Einheit: Die Quelle rundet den Pro-Kopf-Betrag auf volle Euro, und
     schon deshalb ist der letzte Euro nicht zu halten."""
-    ausgewiesen = zeile.get("je_einwohner")
-    if not einwohner or ausgewiesen is None or zeile.get("insgesamt") is None:
+    ausgewiesen = row.get("per_capita")
+    if not population or ausgewiesen is None or row.get("total") is None:
         return None, None
-    gerechnet = zeile["insgesamt"] / einwohner
+    gerechnet = row["total"] / population
     return abs(gerechnet - ausgewiesen) <= 1.0, gerechnet
 
 
-def lies(text: str, einwohner: dict[int, int] | None = None) -> dict:
+def lies(text: str, population: dict[int, int] | None = None) -> dict:
     """Die Tabelle einlesen und jeden Jahrgang durch beide Proben schicken.
 
     Rückgabe:
@@ -265,10 +265,10 @@ def lies(text: str, einwohner: dict[int, int] | None = None) -> dict:
     ``verworfen``
         Jahrgänge, die **gar keine** Probe bestanden haben, mit Grund. Sie
         stehen nirgends in der Datenbank.
-    ``proben``
+    ``probes``
         Was gerechnet wurde, in Zahlen — Grundlage des Beleg-Texts.
     """
-    einwohner = einwohner or {}
+    population = population or {}
     spanne = erkenne(text)
     roh = parse(text)
 
@@ -276,14 +276,14 @@ def lies(text: str, einwohner: dict[int, int] | None = None) -> dict:
     verworfen: list[dict] = []
     summe_ok = summe_gerissen = kopf_ok = kopf_gerissen = 0
     ohne_einwohner = 0
-    for zeile in roh:
-        if zeile.get("unlesbar"):
-            verworfen.append({"jahr": zeile["jahr"],
-                              "grund": f"Zeile nicht in {len(SPALTEN)} Felder "
-                                       f"zerlegbar: {zeile['unlesbar']!r}"})
+    for row in roh:
+        if row.get("unlesbar"):
+            verworfen.append({"year": row["year"],
+                              "reason": f"Zeile nicht in {len(SPALTEN)} Felder "
+                                       f"zerlegbar: {row['unlesbar']!r}"})
             continue
-        s_ok, abweichung = summenprobe(zeile)
-        k_ok, gerechnet = prokopfprobe(zeile, einwohner.get(zeile["jahr"]))
+        s_ok, deviation = summenprobe(row)
+        k_ok, gerechnet = prokopfprobe(row, population.get(row["year"]))
         summe_ok += bool(s_ok)
         summe_gerissen += not s_ok
         if k_ok is None:
@@ -295,31 +295,31 @@ def lies(text: str, einwohner: dict[int, int] | None = None) -> dict:
         bestanden = [n for n, ok in (("schulden_summenzeile", s_ok),
                                      ("schulden_prokopf", k_ok)) if ok]
         if not bestanden:
-            grund = (f"Summenprobe um {abweichung:+,.0f} € gerissen"
+            reason = (f"Summenprobe um {deviation:+,.0f} € gerissen"
                      if not s_ok else "Summenprobe gerissen")
             if k_ok is False:
-                grund += (f"; Pro-Kopf-Probe ebenfalls "
+                reason += (f"; Pro-Kopf-Probe ebenfalls "
                           f"({gerechnet:,.2f} € gerechnet gegen "
-                          f"{zeile['je_einwohner']:,.0f} € ausgewiesen)")
+                          f"{row['per_capita']:,.0f} € ausgewiesen)")
             else:
-                grund += "; keine Einwohnerzahl für die Gegenprobe"
-            verworfen.append({"jahr": zeile["jahr"], "grund": grund})
+                reason += "; keine Einwohnerzahl für die Gegenprobe"
+            verworfen.append({"year": row["year"], "reason": reason})
             continue
 
-        uebernommen = dict(zeile)
+        uebernommen = dict(row)
         uebernommen.pop("unlesbar", None)
         if not s_ok:
             # Die Summe trägt die Pro-Kopf-Probe, die Aufteilung trägt nichts.
             for art in ARTEN:
                 uebernommen[art] = None
-            uebernommen["aufteilung_verworfen"] = round(abweichung)
+            uebernommen["breakdown_rejected"] = round(deviation)
         else:
-            uebernommen["aufteilung_verworfen"] = None
-        uebernommen["proben"] = bestanden
+            uebernommen["breakdown_rejected"] = None
+        uebernommen["probes"] = bestanden
         zeilen.append(uebernommen)
 
-    jahre = sorted(z["jahr"] for z in zeilen)
-    luecken = ([j for j in range(spanne[0], spanne[1] + 1) if j not in jahre]
+    years = sorted(z["year"] for z in zeilen)
+    luecken = ([j for j in range(spanne[0], spanne[1] + 1) if j not in years]
                if spanne else [])
     return {
         "zeilen": zeilen,
@@ -328,7 +328,7 @@ def lies(text: str, einwohner: dict[int, int] | None = None) -> dict:
         # Der Titel nennt seine Spanne selbst — was daraus fehlt, ist ein
         # Befund und keine Geschmacksfrage.
         "fehlende_jahrgaenge": luecken,
-        "proben": {
+        "probes": {
             "summe_bestanden": summe_ok, "summe_gerissen": summe_gerissen,
             "prokopf_bestanden": kopf_ok, "prokopf_gerissen": kopf_gerissen,
             "prokopf_ohne_einwohnerzahl": ohne_einwohner,
@@ -336,11 +336,11 @@ def lies(text: str, einwohner: dict[int, int] | None = None) -> dict:
     }
 
 
-def probennachweis(ergebnis: dict) -> str:
+def probennachweis(result: dict) -> str:
     """Der Messwert für die Herkunft — „was ist wirklich gelaufen?".
 
     Steht später im Beleg auf der Seite; deshalb Zahlen und keine Adjektive."""
-    p = ergebnis["proben"]
+    p = result["probes"]
     teile = [f"Summenprobe {p['summe_bestanden']} von "
              f"{p['summe_bestanden'] + p['summe_gerissen']} Jahrgängen"]
     geprueft = p["prokopf_bestanden"] + p["prokopf_gerissen"]

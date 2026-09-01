@@ -93,7 +93,7 @@ def test_die_herkunft_einer_fassung_nennt_die_original_adresse(tmp_path):
         date(2026, 8, 17))
     assert neu is True
     archiv.manifest_schreiben(tmp_path, {url: {
-        "bereich": "jahrbuch", "datei": "1103-2025-AZ.pdf",
+        "area": "jahrbuch", "datei": "1103-2025-AZ.pdf",
         "pfad": str(pfad.relative_to(tmp_path)),
         "zuerst_gesehen": "2026-08-17", "zuletzt_gesehen": "2026-08-18"}})
     gefunden = archiv.herkunft_der_fassung(tmp_path, pfad)

@@ -84,8 +84,7 @@ eigene Seite: [Bewertungs-Scores](/docs/bewertungen/).
   Tagesordnung, wird erneut geprüft und benachrichtigt.
 - Das LLM bekommt die öffentlichen TOPs und die nummerierte Themenliste des
   Kontos und liefert die Treffer-Paare als JSON. Alerts werden dedupliziert.
-- Der Prompt liegt zentral in der Prompt-Verwaltung und ist über das Admin-UI
-  editierbar.
+- Der Prompt liegt zentral in `kern/prompts.py`.
 
 ## Protokolle & Beschluss-Klassifikation
 
@@ -202,7 +201,7 @@ werden ausgemustert; da der Backfill nur Gebiete **unter** der Ziel-Fragenzahl
 auffüllt, erzeugt der nächste Lauf automatisch Ersatz.
 
 Die Fragen liegen in `council.sqlite` (generierter, regenerierbarer Inhalt),
-Punkte und Bewertungen in `nwz.sqlite` (pro Konto). Der Backfill
+Punkte und Bewertungen in `ratslotse.sqlite` (pro Konto). Der Backfill
 (`scripts/generate_quiz.py`) läuft als Auffüll-Schritt der wöchentlichen
 Anreicherung und lässt sich für den Erstlauf manuell über einen Ops-Workflow
 anstoßen.
@@ -358,7 +357,7 @@ Korpus.
 | Provider | OpenRouter via `openai`-SDK, mit DSGVO-Provider-Routing (siehe [ADR 0002](/docs/adr/0002-dsgvo-provider-routing/)) |
 | Structured Output | JSON-Mode (`response_format={"type":"json_object"}`) |
 | Caching | Ausschuss-Zusammenfassungen per Agenda-Hash |
-| Prompts | zentral verwaltet, admin-editierbar (DB-Overrides über Code-Defaults) |
+| Prompts | zentral in `kern/prompts.py`, versioniert im Repo |
 | Modelle | je Aufgabe per Env-Variable wählbar, Defaults greifen |
 
 ## Evaluation

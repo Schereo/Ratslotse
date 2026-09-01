@@ -32,7 +32,7 @@ def _sitzung(store, ksinr=1, tage=3, committee="Ausschuss für Finanzen und Bete
     return tag
 
 
-def _punkt(store, ksinr=1, nummer="Ö 10", titel="Ausfallbürgschaft für das Klinikum",
+def _punkt(store, ksinr=1, nummer="Ö 10", title="Ausfallbürgschaft für das Klinikum",
            kvonr=None, impact=None, vorlage=True):
     """Ein Tagesordnungspunkt — standardmäßig MIT Vorlagentext.
 
@@ -43,12 +43,12 @@ def _punkt(store, ksinr=1, nummer="Ö 10", titel="Ausfallbürgschaft für das Kl
         kvonr = 9000 + len(nummer) * 10 + ord(nummer[-1])
     store._conn.execute(
         "INSERT INTO council_agenda_items (ksinr, item_number, title, is_public, kvonr) "
-        "VALUES (?, ?, ?, 1, ?)", (ksinr, nummer, titel, kvonr))
+        "VALUES (?, ?, ?, 1, ?)", (ksinr, nummer, title, kvonr))
     if vorlage:
         store._conn.execute(
-            "INSERT OR REPLACE INTO council_vorlagen (kvonr, vorlage_nr, title, raw_text, "
+            "INSERT OR REPLACE INTO council_vorlagen (kvonr, template_number, title, raw_text, "
             "fetched_at) VALUES (?, ?, ?, ?, '2026-08-30')",
-            (kvonr, "26/0001", titel, "Sachverhalt: Die Stadt bürgt für ein Darlehen."))
+            (kvonr, "26/0001", title, "Sachverhalt: Die Stadt bürgt für ein Darlehen."))
     if impact is not None:
         store._conn.execute(
             "INSERT OR REPLACE INTO agenda_item_impact "
@@ -61,14 +61,14 @@ def test_kontext_nimmt_vorlage_und_anlagen():
     """Der Kern der Sache: Das Modell sieht Beschlussvorschlag, Kosten,
     Vorlagentext UND Anlagen — nicht nur den Titel wie die Kurzfassung."""
     punkt = {"committee": "Rat", "session_date": "2026-08-31",
-             "title": "Bebauungsplan 837", "art": "Beschlussvorlage",
-             "amt": "Stadtplanung", "beschlussvorschlag": "Der Rat beschließt …",
-             "finanz_check": "Kosten: 1,2 Mio Euro", "klima_check": None,
+             "title": "Bebauungsplan 837", "kind": "Beschlussvorlage",
+             "office": "Stadtplanung", "proposed_decision": "Der Rat beschließt …",
+             "financial_impact": "Kosten: 1,2 Mio Euro", "climate_impact": None,
              "raw_text": "Briefkopf. Sachverhalt: 8,6 Hektar, davon 3,9 im "
                          "Landschaftsschutzgebiet."}
-    anlagen = [{"label": "Antrag der SPD", "is_antrag": 1, "antragsteller": "SPD-Fraktion",
+    anlagen = [{"label": "Antrag der SPD", "is_motion": 1, "applicants": "SPD-Fraktion",
                 "raw_text": "Wir beantragen 110 Wohneinheiten."}]
-    ktx, quelle = social_text.kontext(punkt, anlagen)
+    ktx, source = social_text.kontext(punkt, anlagen)
 
     assert "Bebauungsplan 837" in ktx
     assert "1,2 Mio Euro" in ktx
@@ -80,14 +80,14 @@ def test_kontext_nimmt_vorlage_und_anlagen():
     # Der Beschlussvorschlag ist als VORSCHLAG gekennzeichnet — sonst schreibt
     # das Modell „Der Rat beschließt" und nimmt das Ergebnis vorweg.
     assert "noch kein Beschluss" in ktx
-    assert quelle == "vorlage+anlagen"
+    assert source == "template+attachments"
 
 
 def test_kontext_meldet_ehrlich_wenn_nur_der_titel_da_ist():
-    """``quelle`` beantwortet später die Frage, warum ein Text dünn ist."""
-    ktx, quelle = social_text.kontext(
+    """``source`` beantwortet später die Frage, warum ein Text dünn ist."""
+    ktx, source = social_text.kontext(
         {"committee": "Rat", "session_date": "2026-08-31", "title": "Irgendein Punkt"}, [])
-    assert quelle == "titel"
+    assert source == "title"
     assert "Irgendein Punkt" in ktx
 
 
@@ -98,9 +98,9 @@ def test_grosse_anlagen_verdraengen_die_argumente_nicht():
     punkt = {"committee": "Rat", "session_date": "2026-08-31", "title": "Innenentwicklung",
              "raw_text": "Sachverhalt: kurz."}
     # Reihenfolge wie aus ``anlagen_fuer``: Anträge zuerst.
-    anlagen = [{"label": "Antrag", "is_antrag": 1, "antragsteller": "CDU",
+    anlagen = [{"label": "Antrag", "is_motion": 1, "applicants": "CDU",
                 "raw_text": "Kernforderung: mehr Innenentwicklung."},
-               {"label": "Materialband", "is_antrag": 0, "antragsteller": None,
+               {"label": "Materialband", "is_motion": 0, "applicants": None,
                 "raw_text": "Planwerk " * 100_000}]
     ktx, _ = social_text.kontext(punkt, anlagen)
 
@@ -115,8 +115,8 @@ def test_jeder_inhaltliche_punkt_bekommt_einen_text(store):
     Entscheidung). Die Tragweite sortiert nur noch."""
     _sitzung(store)
     _punkt(store, nummer="Ö 10", impact=75)
-    _punkt(store, nummer="Ö 11", titel="Ein Punkt mit wenig Tragweite", impact=10)
-    _punkt(store, nummer="Ö 12", titel="Noch ohne Bewertung", impact=None)
+    _punkt(store, nummer="Ö 11", title="Ein Punkt mit wenig Tragweite", impact=10)
+    _punkt(store, nummer="Ö 12", title="Noch ohne Bewertung", impact=None)
 
     offen = store.agenda_items_needing_social_text()
     assert [p["item_number"] for p in offen] == ["Ö 10", "Ö 11", "Ö 12"], \
@@ -133,11 +133,11 @@ def test_formalien_und_materiallose_punkte_kosten_nichts(store):
     Satz — und ein Punkt ohne Vorlage und ohne Anlage hat nichts, was die
     Kurzfassung nicht schon aus dem Titel hätte."""
     _sitzung(store)
-    _punkt(store, nummer="Ö 1", titel="Genehmigung der Tagesordnung", impact=5)
-    _punkt(store, nummer="Ö 2", titel="Einwohnerfragestunde", impact=5)
-    _punkt(store, nummer="Ö 3", titel="Bericht ohne jede Vorlage dazu",
+    _punkt(store, nummer="Ö 1", title="Genehmigung der Tagesordnung", impact=5)
+    _punkt(store, nummer="Ö 2", title="Einwohnerfragestunde", impact=5)
+    _punkt(store, nummer="Ö 3", title="Bericht ohne jede Vorlage dazu",
            impact=50, vorlage=False)
-    _punkt(store, nummer="Ö 4", titel="Ausfallbürgschaft für das Klinikum", impact=50)
+    _punkt(store, nummer="Ö 4", title="Ausfallbürgschaft für das Klinikum", impact=50)
 
     assert [p["item_number"] for p in store.agenda_items_needing_social_text()] == ["Ö 4"]
 
@@ -146,7 +146,7 @@ def test_dringlichkeitsantrag_kommt_ueber_seine_anlage_hinein(store):
     """Er hat keine Vorlage — sein ganzer Inhalt steht im PDF an der Zeile.
     Ohne diesen Weg fiele er durch die Material-Prüfung."""
     _sitzung(store)
-    _punkt(store, nummer="DZT 1", titel="Dringlichkeitsantrag: PAK-Belastung",
+    _punkt(store, nummer="DZT 1", title="Dringlichkeitsantrag: PAK-Belastung",
            impact=65, vorlage=False)
     store._conn.execute(
         "INSERT INTO council_agenda_anlagen (ksinr, item_number, label, url, raw_text) "
@@ -231,7 +231,7 @@ def test_auch_die_restliste_traegt_den_kartentext(store):
     # Vier Punkte: Die Wochenvorschau zeigt drei, der vierte landet in der
     # Restliste — und muss seinen Text behalten.
     for i, nr in enumerate(("Ö 1", "Ö 2", "Ö 3", "Ö 4")):
-        _punkt(store, nummer=nr, titel=f"Ein inhaltlicher Punkt Nummer {i}",
+        _punkt(store, nummer=nr, title=f"Ein inhaltlicher Punkt Nummer {i}",
                impact=90 - i)
         store.save_social_text(1, nr, f"Kartentext zu Punkt {i}.", "vorlage")
 

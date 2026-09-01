@@ -15,7 +15,7 @@ from council.scraper import AgendaItem
 
 
 def _item(title: str = "Bebauungsplan 555: Aufstellung") -> AgendaItem:
-    return AgendaItem(item_number="Ö 5", title=title, vorlage_nr="26/0123", is_public=True)
+    return AgendaItem(item_number="Ö 5", title=title, template_number="26/0123", is_public=True)
 
 
 def _llm_returning(*contents: str | None):
@@ -116,13 +116,13 @@ def test_ort_kommt_aus_dem_raum_feld_nicht_aus_der_ueberschrift():
     from bs4 import BeautifulSoup
     from council.scraper import _extract_location
 
-    seite = BeautifulSoup(
+    page = BeautifulSoup(
         "<h1>Kulturausschuss - 18.08.2026 - 17:00 Uhr</h1>"
         "<div class='smc-table-row'>"
         "<div class='smc-table-cell smc-cell-head siort_title'>Raum</div>"
         "<div class='smc-table-cell siort'>GLOBE Oldenburg, Beverbäker Wiesen 4, 26123 Oldenburg</div>"
         "</div>", "html.parser")
-    assert _extract_location(seite) == "GLOBE Oldenburg, Beverbäker Wiesen 4, 26123 Oldenburg"
+    assert _extract_location(page) == "GLOBE Oldenburg, Beverbäker Wiesen 4, 26123 Oldenburg"
 
     # Doppelte Leerzeichen und ein hängendes Komma kommen im Bestand vor.
     mehrzeilig = BeautifulSoup(
@@ -206,9 +206,9 @@ def test_grosse_tagesordnung_wird_in_tranchen_zerlegt(monkeypatch):
     def _fake(**kw):
         # Wie viele Punkte standen in DIESEM Prompt?
         text = kw["messages"][-1]["content"]
-        anzahl = sum(1 for z in text.splitlines() if z.startswith("Ö "))
-        aufrufe.append(anzahl)
-        assert kw["max_tokens"] >= 400 + 130 * anzahl - 1, "Budget wächst nicht mit"
+        count = sum(1 for z in text.splitlines() if z.startswith("Ö "))
+        aufrufe.append(count)
+        assert kw["max_tokens"] >= 400 + 130 * count - 1, "Budget wächst nicht mit"
         nummern = [z.split(":")[0].strip() for z in text.splitlines() if z.startswith("Ö ")]
         return _llm_returning(json.dumps({
             "has_content": True,

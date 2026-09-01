@@ -61,12 +61,12 @@ from kern.store import Store  # noqa: E402
 from kern import digest_email  # noqa: E402
 from council.ergebnisse import datum_lang, decision_href  # noqa: E402
 
-NWZ_DB = ROOT / "data" / "nwz.sqlite"
+RATSLOTSE_DB = ROOT / "data" / "ratslotse.sqlite"
 COUNCIL_DB = ROOT / "data" / "council.sqlite"
 
 
-def _notify_new_matches(nwz, council, owner_id: int, topic_name: str, new_ids: list[int],
-                        *, stichtag: str) -> int:
+def _notify_new_matches(ratslotse, council, owner_id: int, topic_name: str, new_ids: list[int],
+                        *, as_of_date: str) -> int:
     """13a-D: EIN Push/Mail je Thema — der Titel mit der größten Tragweite
     führt (COALESCE impact, importance — nicht der erste oder kurioseste),
     Rest als „— und n weitere". Tap öffnet die Themen-Trefferliste.
@@ -84,7 +84,7 @@ def _notify_new_matches(nwz, council, owner_id: int, topic_name: str, new_ids: l
     — für die Person ist es dieselbe Nachricht und gehört unter denselben
     Schalter.
 
-    ``stichtag`` (ISO-Datum) ist der Alters-Riegel: Gemeldet wird nur, was seit
+    ``as_of_date`` (ISO-Datum) ist der Alters-Riegel: Gemeldet wird nur, was seit
     diesem Tag getagt hat. „Neu" heißt hier nämlich bloß „stand letzte Woche
     noch nicht in der Trefferliste" — und das trifft auch uralte Beschlüsse, die
     erst jetzt über die Relevanzschwelle rutschen. Am 30.08.2026 ging so eine
@@ -102,7 +102,7 @@ def _notify_new_matches(nwz, council, owner_id: int, topic_name: str, new_ids: l
     """
     from kern import notify
 
-    if not nwz.get_web_user_by_id(owner_id):
+    if not ratslotse.get_web_user_by_id(owner_id):
         return 0                      # Konto zwischenzeitlich gelöscht
     # get_decision liefert d.* (impact/importance/amount_eur) — die schlanke
     # Batch-Query der QA-Zitate kennt diese Spalten nicht.
@@ -110,7 +110,7 @@ def _notify_new_matches(nwz, council, owner_id: int, topic_name: str, new_ids: l
     # Ohne Sitzungsdatum lieber schweigen: `get_decision` verbindet mit
     # `council_sessions`, ein leeres Feld wäre also ein kaputter Datensatz —
     # kein Grund, jemanden zu wecken.
-    decisions = [d for d in decisions if (d.get("session_date") or "") >= stichtag]
+    decisions = [d for d in decisions if (d.get("session_date") or "") >= as_of_date]
     if not decisions:
         return 0
     decisions.sort(key=lambda d: (d.get("impact") if d.get("impact") is not None
@@ -141,11 +141,11 @@ def _notify_new_matches(nwz, council, owner_id: int, topic_name: str, new_ids: l
         )
         + digest_email.knopf("/topics", "Alle Treffer ansehen" if n > 1 else "Beschluss ansehen")
     )
-    return 1 if notify.einreihen(nwz, owner_id, notify.N3_ERGEBNIS, subject, msg, "/topics") else 0
+    return 1 if notify.einreihen(ratslotse, owner_id, notify.N3_ERGEBNIS, subject, msg, "/topics") else 0
 
 
 def process(top_k: int = DECKEL, threshold: float = SCHWELLE, *, ohne_meldungen: bool = False) -> dict:
-    nwz = Store(NWZ_DB)
+    ratslotse = Store(RATSLOTSE_DB)
     council = CouncilStore(COUNCIL_DB)
     try:
         # WER schon mal hingesehen hat, muss ZUERST feststehen — vor dem
@@ -153,12 +153,12 @@ def process(top_k: int = DECKEL, threshold: float = SCHWELLE, *, ohne_meldungen:
         # nötigsten ist, zeigen ALLE Gelesen-Marken auf tote IDs; der Purge
         # räumt sie also restlos weg, und danach sähe jedes Thema aus wie eines,
         # das noch nie jemand geöffnet hat.
-        gesehen_vorher = nwz.topics_mit_gelesen_stand() if ohne_meldungen else set()
+        gesehen_vorher = ratslotse.topics_mit_gelesen_stand() if ohne_meldungen else set()
 
         # Aufräumen: Verweise auf Beschlüsse, die es nicht mehr gibt, machen
         # aus jedem Zähler ein Versprechen, das die Suche nicht hält.
         gueltige = {r["id"] for r in council._conn.execute("SELECT id FROM council_decisions")}
-        verwaist = nwz.purge_stale_topic_matches(gueltige)
+        verwaist = ratslotse.purge_stale_topic_matches(gueltige)
         if verwaist:
             print(f"  {verwaist} tote Beschluss-Verweise entfernt "
                   f"(Treffer und Gelesen-Marken)")
@@ -166,9 +166,9 @@ def process(top_k: int = DECKEL, threshold: float = SCHWELLE, *, ohne_meldungen:
         # Einmal je Lauf gerechnet, damit ein Lauf über Mitternacht nicht in der
         # Mitte die Grenze verschiebt — und mit derselben Funktion wie die
         # „n in 6 Monaten" der Themen-Karte.
-        stichtag = vor_sechs_monaten().isoformat()
+        as_of_date = vor_sechs_monaten().isoformat()
 
-        by_owner = nwz.get_all_owner_topics()  # {owner_id: [TopicRow]}
+        by_owner = ratslotse.get_all_owner_topics()  # {owner_id: [TopicRow]}
         n_topics = sum(len(v) for v in by_owner.values())
         total = 0
         notified = 0
@@ -178,7 +178,7 @@ def process(top_k: int = DECKEL, threshold: float = SCHWELLE, *, ohne_meldungen:
                 # RL-U15 (13a-D): „neu" = Diff gegen den letzten Lauf. Beim
                 # allerersten Matching eines Themas wird nicht gepusht (der
                 # „Neu"-Zähler in der App zeigt die Erst-Treffer ohnehin).
-                old_ids = {m["decision_id"] for m in nwz.get_topic_decision_matches(t.id)}
+                old_ids = {m["decision_id"] for m in ratslotse.get_topic_decision_matches(t.id)}
                 name = (t.name or "").strip()
                 text = f"{name}. {t.description}".strip()
                 # Bricht der Cross-Encoder weg, wirft `treffer` — und der Lauf
@@ -190,7 +190,7 @@ def process(top_k: int = DECKEL, threshold: float = SCHWELLE, *, ohne_meldungen:
                 # dürfen nicht als Treffer dieser Woche gelten — sonst holt der
                 # Wochenüberblick nach, was die abgeschalteten Meldungen gerade
                 # verhindert haben.
-                nwz.save_topic_decision_matches(t.id, owner_id, hits,
+                ratslotse.save_topic_decision_matches(t.id, owner_id, hits,
                                                 gedeckelt=gedeckelt, kandidaten=kandidaten,
                                                 als_neu=not ohne_meldungen)
                 total += len(hits)
@@ -202,21 +202,21 @@ def process(top_k: int = DECKEL, threshold: float = SCHWELLE, *, ohne_meldungen:
                 # zurück — sonst leuchtet bei JEDEM Thema wieder „n neu",
                 # obwohl der Rat nichts entschieden hat.
                 if ohne_meldungen and t.id in gesehen_vorher:
-                    nwz.mark_topic_hits_seen(owner_id, t.id)
+                    ratslotse.mark_topic_hits_seen(owner_id, t.id)
                 new_ids = [int(did) for did, _ in hits if int(did) not in old_ids]
                 if new_ids and old_ids and not ohne_meldungen:
-                    notified += _notify_new_matches(nwz, council, owner_id, t.name, new_ids,
-                                                    stichtag=stichtag)
+                    notified += _notify_new_matches(ratslotse, council, owner_id, t.name, new_ids,
+                                                    as_of_date=as_of_date)
         # Eingereiht ist nicht zugestellt: Ohne diesen Aufruf läge alles bis zum
         # nächsten Cron-Job (7 Uhr) still. Die Nachtruhe verschiebt ohnehin, was
         # jetzt nicht raus darf — dieser Lauf startet sonntags um 3 Uhr.
         from kern import notify
 
-        zugestellt = notify.zustellen(nwz)
+        zugestellt = notify.zustellen(ratslotse)
         return {"topics": n_topics, "matches": total, "notified": notified,
                 "gedeckelt": gedeckelte, "zugestellt": zugestellt}
     finally:
-        nwz.close()
+        ratslotse.close()
         council.close()
 
 

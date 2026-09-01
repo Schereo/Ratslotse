@@ -98,15 +98,15 @@ Der Vermögensplan weist Investitionen in Höhe von 15.902.000 Euro aus.
 def test_liest_die_eckwerte_des_aktuellen_jahrgangs():
     p = parse_wirtschaftsplan("25/0722", TITEL_2026, TEXT_2026)
     assert isinstance(p, Wirtschaftsplan)
-    assert p.betrieb == "egh"
-    assert p.jahr == 2026, "das Haushaltsjahr, nicht das Jahr der Vorlage (2025)"
-    assert p.ertraege == 82_815_150.0
-    assert p.aufwendungen == 82_824_771.0
-    assert p.steuern == 6_000.0
-    assert p.ergebnis == -15_621.0
-    assert p.vermoegensplan == 51_134_100.0
-    assert p.verpflichtungen == 104_980_000.0
-    assert p.entwurf_vom == "01.10.2025"
+    assert p.enterprise == "egh"
+    assert p.year == 2026, "das Haushaltsjahr, nicht das Jahr der Vorlage (2025)"
+    assert p.revenues == 82_815_150.0
+    assert p.expenses == 82_824_771.0
+    assert p.taxes == 6_000.0
+    assert p.result == -15_621.0
+    assert p.capital_plan == 51_134_100.0
+    assert p.commitments == 104_980_000.0
+    assert p.draft_date == "01.10.2025"
 
 
 def test_das_vorzeichen_ueberlebt_den_leerraum():
@@ -114,14 +114,14 @@ def test_das_vorzeichen_ueberlebt_den_leerraum():
     verschluckt, wird aus einem Fehlbetrag ein Überschuss — und die Probe
     fiele nicht darauf herein, weil sie dieselbe Zahl prüft."""
     p = parse_wirtschaftsplan("25/0722", TITEL_2026, TEXT_2026)
-    assert p.ergebnis < 0
+    assert p.result < 0
 
 
 def test_die_probe_des_dokuments_geht_auf():
     p = parse_wirtschaftsplan("25/0722", TITEL_2026, TEXT_2026)
-    rest = p.ertraege - p.aufwendungen - p.steuern - p.ergebnis
+    rest = p.revenues - p.expenses - p.taxes - p.result
     assert abs(rest) <= TOLERANZ_EUR
-    assert "geht auf" in p.probe_ergebnis
+    assert "geht auf" in p.probe_result
 
 
 # --------------------------------------------------------------------------
@@ -132,10 +132,10 @@ def test_liest_den_alten_aufbau_ohne_steuerzeile():
     """2019/2020: „EUR", kein steuerlicher Aufwand, „+" vor dem Ergebnis —
     und ein Wort, das über den Zeilenumbruch getrennt ist."""
     p = parse_wirtschaftsplan("18/0880", TITEL_2019, TEXT_2019)
-    assert p.jahr == 2019
-    assert p.steuern == 0.0, "keine Steuerzeile heißt 0, nicht None"
-    assert p.ergebnis == 349_700.0
-    assert abs(p.ertraege - p.aufwendungen - p.steuern - p.ergebnis) <= TOLERANZ_EUR
+    assert p.year == 2019
+    assert p.taxes == 0.0, "keine Steuerzeile heißt 0, nicht None"
+    assert p.result == 349_700.0
+    assert abs(p.revenues - p.expenses - p.taxes - p.result) <= TOLERANZ_EUR
 
 
 # --------------------------------------------------------------------------
@@ -154,8 +154,8 @@ def test_ohne_eckwerte_kommt_nichts_zurueck():
 
 def test_die_luecke_wird_benannt():
     lücke = ohne_eckwerte("25/0818", TITEL_BBO)
-    assert lücke["betrieb"] == "bbo"
-    assert "Anlage" in lücke["grund"]
+    assert lücke["enterprise"] == "bbo"
+    assert "Anlage" in lücke["reason"]
 
 
 def test_gerissene_probe_wirft():
@@ -202,10 +202,10 @@ def test_die_herkunft_zeigt_auf_die_vorlage_und_nennt_den_stand():
     Beschluss."""
     p = parse_wirtschaftsplan("25/0722", TITEL_2026, TEXT_2026)
     h = herkunft_fuer(p, url="https://buergerinfo.oldenburg.de/vo0050.php?__kvonr=28214")
-    assert h.art == "ris"
-    assert "Beschlussvorschlag" in h.fundstelle
-    assert "01.10.2025" in h.stand
-    assert "geht auf" in h.probe_ergebnis
+    assert h.kind == "ris"
+    assert "Beschlussvorschlag" in h.citation
+    assert "01.10.2025" in h.as_of
+    assert "geht auf" in h.probe_result
 
 
 def test_speichern_und_lesen(tmp_path):
@@ -219,9 +219,9 @@ def test_speichern_und_lesen(tmp_path):
         store.save_wirtschaftsplan(p, herkunft_fuer(p, url="https://example.org/x"))
         zeilen = store.get_wirtschaftsplaene("egh")
         assert len(zeilen) == 1
-        assert zeilen[0]["ergebnis"] == -15_621.0
-        assert zeilen[0]["betrieb_name"].startswith("Eigenbetrieb Gebäudewirtschaft")
-        assert "wirtschaftsplan_erfolgsplan" in zeilen[0]["proben"]
+        assert zeilen[0]["result"] == -15_621.0
+        assert zeilen[0]["enterprise_name"].startswith("Eigenbetrieb Gebäudewirtschaft")
+        assert "wirtschaftsplan_erfolgsplan" in zeilen[0]["probes"]
         assert store.wirtschaftsplan_jahre("egh") == [2026]
         assert store.wirtschaftsplan_jahre("bbo") == []
     finally:
@@ -235,9 +235,9 @@ def test_jede_zeile_traegt_ihre_herkunft(tmp_path):
 
     store = CouncilStore(tmp_path / "c.sqlite")
     try:
-        for nr, titel, text in (("25/0722", TITEL_2026, TEXT_2026),
+        for nr, title, text in (("25/0722", TITEL_2026, TEXT_2026),
                                 ("18/0880", TITEL_2019, TEXT_2019)):
-            p = parse_wirtschaftsplan(nr, titel, text)
+            p = parse_wirtschaftsplan(nr, title, text)
             store.save_wirtschaftsplan(p, herkunft_fuer(p, url="https://example.org/x"))
         assert "council_wirtschaftsplaene" not in store.herkunft_luecken()
     finally:

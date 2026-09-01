@@ -28,7 +28,7 @@ from council.committee_summary import sitzungskopf, summarize_agenda_items
 from council.dringlichkeit import ist_dringlichkeitsantrag
 from council.ergebnisse import sitzung_href
 
-NWZ_DB = ROOT / "data" / "nwz.sqlite"
+RATSLOTSE_DB = ROOT / "data" / "ratslotse.sqlite"
 COUNCIL_DB = ROOT / "data" / "council.sqlite"
 
 
@@ -41,7 +41,7 @@ def _agenda_hash(agenda_items) -> str:
     gegen den alten Snapshot findet nichts Nennbares, und genau dieser Fall
     zieht den Stand nur nach, ohne zu melden."""
     payload = "\n".join(
-        f"{i.item_number}\t{i.title}\t{i.vorlage_nr or ''}\t{int(i.is_public)}\t"
+        f"{i.item_number}\t{i.title}\t{i.template_number or ''}\t{int(i.is_public)}\t"
         f"{','.join(anlagen_schluessel(i.anlagen))}"
         for i in agenda_items
     )
@@ -127,8 +127,8 @@ def _aufzaehlung(council_store: CouncilStore, ksinr: int, punkte: list[dict]) ->
     for p in punkte:
         nummer = p["number"]
         text = kartentexte.get(nummer) or p["summary"]
-        marke = "Dringlichkeitsantrag" if ist_dringlichkeitsantrag(nummer) else nummer
-        zeilen.append(f"• <b>{marke}</b>: {text}")
+        mark = "Dringlichkeitsantrag" if ist_dringlichkeitsantrag(nummer) else nummer
+        zeilen.append(f"• <b>{mark}</b>: {text}")
     return "\n".join(zeilen)
 
 
@@ -196,9 +196,9 @@ def _aenderungs_teil(alt: list[dict] | None, jetzt: list[dict]) -> str | None:
 
 def main() -> dict:
     """Gibt die Kennzahlen des Laufs für die Cron-Übersicht zurück."""
-    nwz_store = Store(NWZ_DB)
-    all_subs = nwz_store.get_all_subscriptions()       # {owner_id: [committee_name]}
-    targets = nwz_store.get_subscription_targets()     # {owner_id: {channel, chat, email}}
+    ratslotse_store = Store(RATSLOTSE_DB)
+    all_subs = ratslotse_store.get_all_subscriptions()       # {owner_id: [committee_name]}
+    targets = ratslotse_store.get_subscription_targets()     # {owner_id: {channel, chat, email}}
 
     # Daten werden auch OHNE Abonnements aktualisiert — die Web-App zeigt
     # Sitzungen und Terminplan für alle Nutzer*innen, nicht nur Abonnenten.
@@ -244,7 +244,7 @@ def main() -> dict:
         # Titel der nichtöffentlichen TOPs stehen ohnehin im Ratsinfo und auf
         # der Sitzungsseite der App (dort mit „nichtöffentlich"-Marke).
         snapshot_items = [{"item_number": i.item_number, "title": i.title,
-                           "vorlage_nr": i.vorlage_nr or "",
+                           "template_number": i.template_number or "",
                            "is_public": bool(i.is_public),
                            # Anhänge mit Label: Der Diff nennt neue Anlagen
                            # beim Namen, nicht nur „irgendwas ist anders".
@@ -283,7 +283,7 @@ def main() -> dict:
             # „Themen-Treffer gewinnt": Wer für diese Sitzung schon weiß, welcher
             # TOP ihn betrifft (aus check_council), braucht die Gremien-Meldung
             # nicht zusätzlich.
-            if nwz_store.has_agenda_match(owner_id, ksinr):
+            if ratslotse_store.has_agenda_match(owner_id, ksinr):
                 continue
             last_hash = council_store.get_last_notified_hash(ksinr, owner_id)
             if last_hash is None:
@@ -333,7 +333,7 @@ def main() -> dict:
         # „Warum bekommst du das?" — mit Direktlink auf den Schalter, um den es
         # geht. Die Änderungs-Meldung nennt zusätzlich ihren eigenen
         # Abschalt-Weg: Abo behalten, nur die Änderungs-Meldungen loswerden.
-        grund = digest_email.gremium_abo_begruendung(session.committee)
+        reason = digest_email.gremium_abo_begruendung(session.committee)
         grund_update = digest_email.gremium_abo_begruendung(
             session.committee, mit_aenderungs_schalter=True)
         # Ein Kopf für alle drei Fälle, aus frischen Sitzungsdaten — vorher gab
@@ -359,8 +359,8 @@ def main() -> dict:
             if owner_id not in targets:
                 continue
             print(f"  {session.session_date} {session.committee} → owner {owner_id} (neu)")
-            notify.einreihen(nwz_store, owner_id, notify.N1_TAGESORDNUNG,
-                             subject, base_message + grund, sitzung_href(ksinr),
+            notify.einreihen(ratslotse_store, owner_id, notify.N1_TAGESORDNUNG,
+                             subject, base_message + reason, sitzung_href(ksinr),
                              push_text=push_neu)
             council_store.mark_notified(ksinr, owner_id, agenda_hash)
             notifications_sent += 1
@@ -424,7 +424,7 @@ def main() -> dict:
             # Eigener Anlass seit Tims Wunsch 26.08.2026: „Ich möchte zwar die
             # Tagesordnung bekommen, aber nicht über jede Änderung informiert
             # werden." Hängt in `gewuenscht` am N1-Elternteil.
-            notify.einreihen(nwz_store, owner_id, notify.N1_AENDERUNG,
+            notify.einreihen(ratslotse_store, owner_id, notify.N1_AENDERUNG,
                              update_subject, nachricht, sitzung_href(ksinr),
                              push_text=push_kurz)
             council_store.mark_notified(ksinr, owner_id, agenda_hash)
@@ -450,10 +450,10 @@ def main() -> dict:
             it["id"] = i
         nach_id = {it["id"]: it for it in offen}
         for start in range(0, len(offen), BATCH_SIZE):
-            for iid, score, grund in rate_agenda_batch(offen[start : start + BATCH_SIZE]):
+            for iid, score, reason in rate_agenda_batch(offen[start : start + BATCH_SIZE]):
                 it = nach_id.get(iid)
                 if it:
-                    council_store.save_agenda_impact(it["ksinr"], it["item_number"], score, grund)
+                    council_store.save_agenda_impact(it["ksinr"], it["item_number"], score, reason)
                     bewertet += 1
         if offen:
             print(f"  Tragweite: {bewertet}/{len(offen)} Tagesordnungspunkte bewertet")
@@ -466,11 +466,11 @@ def main() -> dict:
     # Der 7-Uhr-Lauf ist zugleich der Wecker der Warteschlange: Was über Nacht
     # anfiel (Nachtruhe 21–7), geht jetzt raus.
     stats: dict = {}
-    zugestellt = notify.zustellen(nwz_store, stats=stats)
-    nwz_store.close()
+    zugestellt = notify.zustellen(ratslotse_store, stats=stats)
+    ratslotse_store.close()
 
     print(f"Done — {notifications_sent} Meldung(en) eingereiht, {zugestellt} zugestellt.")
-    kennzahlen = {
+    indicators = {
         "Gremien": len(committees),
         "Sitzungen mit Tagesordnung": len(session_ids),
         "Termine im Kalender": len(scheduled),
@@ -485,13 +485,13 @@ def main() -> dict:
     # eine Kennzahl „0", die niemandem auffiel. Erst hier werfen, damit die
     # Meldungen oben trotzdem alle rausgegangen sind.
     if offen and not bewertet:
-        for k, v in kennzahlen.items():
+        for k, v in indicators.items():
             print(f"  {k}: {v}")
         raise RuntimeError(
             f"Tragweite-Bewertung hat 0 von {len(offen)} Punkten bewertet"
             + (f" — {tragweite_fehler}" if tragweite_fehler else
                " — das Modell lieferte für keinen Batch ein verwertbares Ergebnis"))
-    return kennzahlen
+    return indicators
 
 
 if __name__ == "__main__":

@@ -48,7 +48,7 @@ def test_split_begrenzt_auf_drei_und_dedupliziert():
 def test_fallback_leitet_aus_beschluessen_ab():
     candidates = [
         {"id": 1, "title": "Radverkehrsplan 2026 — erste Maßnahmen", "policy_field": "verkehr",
-         "gegenstimmen": 3, "amount_eur": 2_400_000, "committee": "Verkehrsausschuss"},
+         "no_votes": 3, "amount_eur": 2_400_000, "committee": "Verkehrsausschuss"},
     ]
     qs = qa.fallback_followups(candidates)
     assert len(qs) <= 3 and qs
@@ -60,7 +60,7 @@ def test_fallback_leitet_aus_beschluessen_ab():
 
 def test_fallback_ohne_gegenstimmen_und_ohne_betrag():
     candidates = [{"id": 2, "title": "Bericht", "policy_field": "kultur",
-                   "gegenstimmen": 0, "amount_eur": None, "committee": "Kulturausschuss"}]
+                   "no_votes": 0, "amount_eur": None, "committee": "Kulturausschuss"}]
     qs = qa.fallback_followups(candidates)
     assert qs and all(q.endswith("?") for q in qs)
     assert not any("stimmte gegen" in q for q in qs)

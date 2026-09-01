@@ -133,8 +133,8 @@ export function TopicSheet({ topic, nameEditable = false, onClose, onSaved }: {
     // berühren. Ist der Inhalt höher, scrollt die Mitte (s. u.).
     // Auf dem Telefon bleibt es ein Blatt an der Unterkante: Dort DECKT es die
     // Tab-Leiste bewusst ab, wie jedes iOS-Sheet.
-    <div data-topic-sheet role="dialog" aria-modal="true" aria-labelledby="thema-anpassen-titel"
-      className="fixed inset-0 z-[var(--ebene-dialog)] flex flex-col justify-end sm:items-center sm:justify-center sm:px-6 sm:pb-[calc(env(safe-area-inset-bottom)+5rem)] sm:pt-[calc(env(safe-area-inset-top)+5rem)]">
+    <div data-topic-sheet role="dialog" aria-modal="true" aria-labelledby="thema-anpassen-title"
+      className="fixed inset-0 z-[var(--level-dialog)] flex flex-col justify-end sm:items-center sm:justify-center sm:px-6 sm:pb-[calc(env(safe-area-inset-bottom)+5rem)] sm:pt-[calc(env(safe-area-inset-top)+5rem)]">
       {/* .scrim statt einer eigenen Farbe — s. app/globals.css: Der frühere Ton
           war exakt die dunkle Seitenfarbe und dunkelte im Dunkelmodus nichts ab. */}
       <button type="button" aria-label="Schließen" onClick={onClose}
@@ -148,7 +148,7 @@ export function TopicSheet({ topic, nameEditable = false, onClose, onSaved }: {
           {/* Ziehgriff nur auf dem Telefon — auf dem Desktop ist es ein Dialog. */}
           <span aria-hidden className="mx-auto mb-3.5 block h-1 w-9 rounded-full bg-border sm:hidden" />
           <div className="flex items-center gap-2.5">
-            <h3 id="thema-anpassen-titel" className="flex-1 font-display text-lg font-bold text-foreground">Thema anpassen</h3>
+            <h3 id="thema-anpassen-title" className="flex-1 font-display text-lg font-bold text-foreground">Thema anpassen</h3>
             <button type="button" onClick={onClose} aria-label="Schließen"
               className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-muted text-muted-foreground">
               <X className="h-4 w-4" />

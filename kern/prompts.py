@@ -1,35 +1,40 @@
-"""Admin-editable prompt store.
+"""Die LLM-Prompts dieses Projekts — als Code, nicht als Datenbankinhalt.
 
-All LLM prompts used by the bot and the cron jobs live here as named templates
-with sensible defaults. An admin can override any of them at runtime via the web
-frontend; overrides are persisted in the ``prompts`` table of ``nwz.sqlite`` and
-take effect on the next call (no restart needed).
+Alle Prompts des Bots und der Cron-Jobs stehen hier als benannte Vorlagen.
+Wer einen ändern will, ändert ihn HIER: im Pull Request sichtbar, mit Diff,
+mit Review, mit Historie.
 
-Templates use ``str.format()`` placeholders. Literal braces (e.g. in JSON
-examples) must be escaped as ``{{`` / ``}}``.
+Bis 08/2026 ließ sich jeder Prompt zusätzlich im Admin-Panel überschreiben
+(Tabelle ``prompts`` in ratslotse.sqlite). Das ist ausgebaut, aus zwei
+Gründen: Ein Prompt aus der Hüfte zu ändern war zu leicht und die Wirkung zu
+schwer abzuschätzen (Tims Entscheidung, 31.08.2026) — und ein Override war
+ein stiller Killer für jede Umbenennung. Die Prompts schreiben dem Modell
+JSON-Schlüssel vor, die der Parser wieder einliest; wandert der Schlüssel im
+Code, der Override in der Datenbank aber nicht, liefert das Modell weiter den
+alten Namen und die Extraktion ist leer — ohne Fehler.
+
+Vorlagen benutzen ``str.format()``-Platzhalter. Geschweifte Klammern, die
+wörtlich gemeint sind (etwa in JSON-Beispielen), gehören als ``{{`` / ``}}``
+verdoppelt.
 """
 from __future__ import annotations
 
-import sqlite3
 import textwrap
-from datetime import datetime
-from pathlib import Path
-
-_DB_PATH = Path(__file__).resolve().parent.parent / "data" / "nwz.sqlite"
 
 # --- Default prompt templates -------------------------------------------------
-# Each entry: key -> (title, description, template). Title/description are shown
-# in the admin UI. The template is what the model receives after .format().
+# Je Eintrag: key -> (title, description, template). Titel und Beschreibung sind
+# die Kurzerklärung für Menschen, die hier lesen; `template` ist das, was das
+# Modell nach .format() bekommt.
 
 DEFAULTS: dict[str, dict[str, str]] = {
     "deep_zerlegung": {
         "title": "Gründliche Recherche – Facetten-Zerlegung",
-        "description": "Zerlegt eine Frage in 3–5 Recherche-Facetten für den Deep-Research-Modus (Task 34). Platzhalter: {frage}.",
+        "description": "Zerlegt eine Frage in 3–5 Recherche-Facetten für den Deep-Research-Modus (Task 34). Platzhalter: {question}.",
         "template": (
             "Zerlege die Frage an das Ratsinformations-Archiv der Stadt Oldenburg in "
             "3-5 RECHERCHE-FACETTEN als JSON:\n"
-            '{{"facetten": [{{"name": "Kurzlabel, 2-4 Wörter", "frage": "eigenständige '
-            'Suchfrage zu dieser Facette", "begriffe": "4-8 Suchbegriffe, Substantive, '
+            '{{"facetten": [{{"name": "Kurzlabel, 2-4 Wörter", "question": "eigenständige '
+            'Suchfrage zu dieser Facette", "terms": "4-8 Suchbegriffe, Substantive, '
             'durch Leerzeichen"}}]}}\n\n'
             "Regeln:\n"
             "- Die Facetten decken VERSCHIEDENE Aspekte ab, soweit sie zur Frage passen: "
@@ -37,12 +42,12 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "Gutachten), Debatte/Positionen, aktueller Stand/nächste Schritte.\n"
             "- Bei einer engen Frage reichen 3 Facetten; keine Dubletten.\n"
             "- KEINE Floskeln in den begriffen (kein „beschlossen“, „Stadtrat“).\n"
-            "Antworte NUR mit dem JSON.\n\nFRAGE: {frage}"
+            "Antworte NUR mit dem JSON.\n\nFRAGE: {question}"
         ),
     },
     "deep_bericht": {
         "title": "Gründliche Recherche – Bericht",
-        "description": "Der lange, gegliederte Recherche-Bericht des Deep-Research-Modus (Task 34). Platzhalter: {frage}, {context}, {zusatz}, {planungen}.",
+        "description": "Der lange, gegliederte Recherche-Bericht des Deep-Research-Modus (Task 34). Platzhalter: {question}, {context}, {zusatz}, {planungen}.",
         "template": (
             "Du bist der Recherche-Assistent von ratslotse.de und schreibst einen "
             "GRÜNDLICHEN BERICHT zu einer Frage über den Oldenburger Stadtrat — nur aus "
@@ -69,7 +74,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "Ratslotse, keine Aussagen des Rates: Sie steuern deine Gewichtung, dürfen "
             "aber NIE als Feststellung in den Bericht.\n"
             "{planungen}"
-            "\nBESCHLÜSSE:\n{context}\n{zusatz}\nFRAGE: {frage}"
+            "\nBESCHLÜSSE:\n{context}\n{zusatz}\nFRAGE: {question}"
         ),
     },
     "partei_meinungen": {
@@ -79,10 +84,10 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "Du bekommst Wortbeiträge aus Sitzungsprotokollen des Oldenburger Stadtrats "
             "zu einer Frage, gruppiert nach Fraktion. Verdichte je Fraktion die Position "
             "als JSON-Array:\n"
-            '[{{"partei": "Label wie angegeben", "haltung": "dafür"|"dagegen"|"offen"|"gewandelt", '
+            '[{{"party": "Label wie angegeben", "haltung": "dafür"|"dagegen"|"offen"|"gewandelt", '
             '"position": "1-2 Sätze Haltung zur Sache mit Kernargument", "einig": true, '
-            '"hinweis": null, "kernaussage": {{"text": "prägnanteste Aussage, dicht an der '
-            'Vorlage", "sprecher": "Name", "datum": "TT.MM.JJJJ"}}}}]\n\n'
+            '"note": null, "kernaussage": {{"text": "prägnanteste Aussage, dicht an der '
+            'Vorlage", "speaker": "Name", "date": "TT.MM.JJJJ"}}}}]\n\n'
             "Regeln:\n"
             "- NUR aus den Beiträgen; nichts erfinden, keine Fraktion hinzufügen, "
             "Labels exakt übernehmen.\n"
@@ -94,11 +99,11 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "Sache; „gewandelt\" NUR, wenn sich die Haltung über die Zeit erkennbar "
             "geändert hat (dann steht die Wende auch in position); sonst „offen\".\n"
             "- einig=false NUR bei echtem inhaltlichem Widerspruch INNERHALB der "
-            "Fraktion — dann trägt hinweis einen Halbsatz, woran es liegt.\n"
+            "Fraktion — dann trägt note einen Halbsatz, woran es liegt.\n"
             "- Fraktionen ohne verwertbare inhaltliche Substanz weglassen.\n"
             "- Reihenfolge: stärkste Substanz zuerst.\n"
             "Antworte NUR mit dem JSON-Array.\n\n"
-            "FRAGE: {frage}\n\nBEITRÄGE:\n{beitraege}"
+            "FRAGE: {question}\n\nBEITRÄGE:\n{beitraege}"
         ),
     },
     "wortbeitraege_extract": {
@@ -108,19 +113,19 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "Du liest einen Ausschnitt aus einem amtlichen Sitzungsprotokoll des Oldenburger "
             "Stadtrats bzw. seiner Ausschüsse. Extrahiere daraus ALLE inhaltlichen Wortbeiträge "
             "als JSON-Array. Ein Eintrag je Beitrag:\n"
-            '{{"art": "rede"|"anfrage"|"einwohnerfrage"|"zusage", "top": "Tagesordnungspunkt-Nummer '
-            'oder -Titel, falls erkennbar", "sprecher": "Name ohne Anrede, falls genannt", '
-            '"partei": "Fraktion/Gruppe falls genannt, sonst null", '
+            '{{"kind": "speech"|"inquiry"|"citizen_question"|"pledge", "top": "Tagesordnungspunkt-Nummer '
+            'oder -Titel, falls erkennbar", "speaker": "Name ohne Anrede, falls genannt", '
+            '"party": "Fraktion/Gruppe falls genannt, sonst null", '
             '"text": "Kernaussage in 1-3 Sätzen, dicht am Wortlaut", '
-            '"antwort": "Antwort der Verwaltung, falls vorhanden, sonst null"}}\n\n'
+            '"answer": "Antwort der Verwaltung, falls vorhanden, sonst null"}}\n\n'
             "Regeln:\n"
             "- \"rede\": inhaltliche Debattenbeiträge zu Tagesordnungspunkten (Positionen, Kritik, "
             "Begründungen). KEINE Formalien (Begrüßung, Feststellung der Beschlussfähigkeit, "
             "Abstimmungsergebnisse, Genehmigung der Niederschrift).\n"
             "- \"anfrage\": Punkte aus „Anfragen und Anregungen\" — die Frage/Anregung als text, "
-            "die Verwaltungsantwort (auch nachgereichte) als antwort.\n"
+            "die Verwaltungsantwort (auch nachgereichte) als answer.\n"
             "- \"einwohnerfrage\": Beiträge aus der Einwohnerfragestunde — Fragesteller*innen nur nennen, "
-            "wenn im Protokoll ausgeschrieben; sonst sprecher null.\n"
+            "wenn im Protokoll ausgeschrieben; sonst speaker null.\n"
             "- \"zusage\": ausdrückliche Zusagen der Verwaltung (etwas zu prüfen, nachzureichen, "
             "umzusetzen) — auch wenn sie innerhalb einer Antwort fallen.\n"
             "- Namen und Parteien exakt wie im Protokoll; nichts erraten, nichts erfinden.\n"
@@ -179,10 +184,10 @@ DEFAULTS: dict[str, dict[str, str]] = {
     },
     "committee_summary_user": {
         "title": "Ausschuss-Zusammenfassung – Aufgabe",
-        "description": "Tagesordnung + JSON-Format. Platzhalter: {committee}, {datum}, {items_text}.",
+        "description": "Tagesordnung + JSON-Format. Platzhalter: {committee}, {date}, {items_text}.",
         "template": textwrap.dedent("""\
             Ausschuss: {committee}
-            Sitzungstermin: {datum} (die Sitzung findet erst noch statt)
+            Sitzungstermin: {date} (die Sitzung findet erst noch statt)
             Tagesordnungspunkte:
             {items_text}
 
@@ -267,16 +272,16 @@ DEFAULTS: dict[str, dict[str, str]] = {
             der Art der Vorlage ergeben. Ein Satz ohne harte Angaben ist gedeckt.
 
             Antworte ausschließlich als JSON:
-            {"gedeckt": true/false, "belege": ["wörtliches Zitat", …], "grund": "…"}
-            grund: nur bei false, ein Satz. Sonst leer.
+            {"covered": true/false, "evidence": ["wörtliches Zitat", …], "reason": "…"}
+            reason: nur bei false, ein Satz. Sonst leer.
         """),
     },
     "social_kritiker_user": {
         "title": "Social-Kartentext – Kritiker, Aufgabe",
-        "description": "Quelle und Satz. Platzhalter: {quelle}, {text}.",
+        "description": "Quelle und Satz. Platzhalter: {source}, {text}.",
         "template": textwrap.dedent("""\
             QUELLE:
-            {quelle}
+            {source}
 
             SATZ:
             {text}
@@ -334,7 +339,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
             - Behalte den Punkt, wenn das Thema dort wirklich verhandelt wird.
 
             Antworte als JSON:
-            {{"treffer": ["Ö 14.5"]}}
+            {{"hits": ["Ö 14.5"]}}
         """),
     },
     "council_watcher_user": {
@@ -351,11 +356,11 @@ DEFAULTS: dict[str, dict[str, str]] = {
             <<<THEMEN
             {topics_text}
             THEMEN
-            Gib für jedes Thema an, welche TOPs passen (leer wenn keiner passt).\n            Übernimm nummer und titel EXAKT aus der Liste oben — nummer und titel\n            müssen zum SELBEN Eintrag gehören.
+            Gib für jedes Thema an, welche TOPs passen (leer wenn keiner passt).\n            Übernimm number und title EXAKT aus der Liste oben — number und title\n            müssen zum SELBEN Eintrag gehören.
             Format:
             {{
               "matches": [
-                {{"topic_index": 1, "items": [{{"nummer": "Ö 6.1", "titel": "erste Worte des TOP-Titels"}}]}},
+                {{"topic_index": 1, "items": [{{"number": "Ö 6.1", "title": "erste Worte des TOP-Titels"}}]}},
                 {{"topic_index": 2, "items": []}}
               ]
             }}
@@ -377,7 +382,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
         "description": "Ein Call vor der Suche: eigenständige Frage, Suchbegriffe, Fragetyp und Rechercheplan im Shadow-Mode als JSON. Platzhalter: {question}, {verlauf}.",
         "template": (
             "Analysiere die Nutzerfrage an ein Stadtrats-Archiv (Oldenburg).{verlauf} Antworte NUR als JSON:\n"
-            '{{"frage": "die Frage als EIGENSTÄNDIGE Suchfrage — löse Rückbezüge wie „dazu“, '
+            '{{"question": "die Frage als EIGENSTÄNDIGE Suchfrage — löse Rückbezüge wie „dazu“, '
             '„das“, „dort“ mit Hilfe des Gesprächsverlaufs auf (z. B. „Und was kostet das?“ nach '
             'einer Brücken-Frage → „Was kostet der Neubau der Cäcilienbrücke?“); ohne Verlauf: die '
             'Frage unverändert", '
@@ -388,26 +393,26 @@ DEFAULTS: dict[str, dict[str, str]] = {
             'Überblick, eine Entwicklung, Meinungen oder mehrere Aspekte will '
             '(\"Was wurde zu X entschieden?\", \"Wie ist der Stand?\", \"Welche '
             'Aussagen …?\"). Im Zweifel false.\n", '
-            '"begriffe": "4-8 deutsche Suchbegriffe, Substantive und nahe Synonyme, durch Leerzeichen"'
-            ', "typ": "thema|verlauf|partei|geld", "partei": "Fraktionsname oder null", '
-            '"varianten": ["bis zu 2 UMFORMULIERUNGEN der Frage aus anderem Blickwinkel — z. B. die '
+            '"terms": "4-8 deutsche Suchbegriffe, Substantive und nahe Synonyme, durch Leerzeichen"'
+            ', "kind": "topic|history|party|money", "party": "Fraktionsname oder null", '
+            '"variants": ["bis zu 2 UMFORMULIERUNGEN der Frage aus anderem Blickwinkel — z. B. die '
             "Sachstands-Frage zusätzlich als Finanzierungs- oder Planungs-Frage, die vage Frage "
             'konkretisiert aufs wahrscheinlich gemeinte Vorhaben; jeweils ein kurzer Suchsatz"], '
             '"rechercheplan": {{"intent": "fact|overview|status|timeline|money|position|session", '
             '"channels": ["ein oder mehrere erlaubte Kanalnamen"], '
             '"sort": "relevance|newest|chronological", '
             '"needs": ["ein oder mehrere erlaubte Bedarfsnamen"]}}}}\n\n'
-            "typ-Regeln:\n"
-            '- "verlauf": Die Frage zielt auf Werdegang/Chronik/Stand eines Vorgangs '
+            "kind-Regeln:\n"
+            '- "history": Die Frage zielt auf Werdegang/Chronik/Stand eines Vorgangs '
             '("Wie lief …", "Wie ist der Stand …", "Was wurde aus …", "Chronologie").\n'
-            '- "partei": Die Frage fragt nach Position/Anträgen/Verhalten einer bestimmten '
+            '- "party": Die Frage fragt nach Position/Anträgen/Verhalten einer bestimmten '
             "Fraktion oder Gruppe (SPD, CDU, Grüne, FDP, Linke, AfD, Volt, BSW, Piraten, "
-            '"Für Oldenburg" …). Dann "partei" auf den Namen setzen.\n'
-            '- "geld": Es geht um Kosten, Beträge, Förderhöhen, Haushalt ("Wie teuer", "Wie hoch") '
+            '"Für Oldenburg" …). Dann "party" auf den Namen setzen.\n'
+            '- "money": Es geht um Kosten, Beträge, Förderhöhen, Haushalt ("Wie teuer", "Wie hoch") '
             "— auch dann, wenn die Zahl nicht in einem Beschluss steht, sondern im Haushalt der "
             'Stadt ("Wie viel gibt Oldenburg für Soziales aus?", "Hat die Stadt mehr ausgegeben '
             'als geplant?", "Was kostet die Stadt insgesamt?").\n'
-            '- sonst "thema".\n'
+            '- sonst "topic".\n'
             "Rechercheplan-Regeln (nur planen, keine Quellen erfinden):\n"
             '- "decisions" immer; "debates" für Aussagen/Positionen, "budget" für Haushaltszahlen, '
             '"press" für aktuellen Verwaltungsstand, "sessions" für konkrete Sitzungen, '
@@ -547,7 +552,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
         "description": (
             "Schreibt eine schon vorliegende Antwort in einfache Sprache um (Knopf "
             "„Einfacher erklären“). Ton wie „Lotti erklärt's einfach“. Platzhalter: "
-            "{frage}, {bisher}, {context}."
+            "{question}, {bisher}, {context}."
         ),
         "template": (
             "Du erklärst die Arbeit des Oldenburger Stadtrats in einfacher Sprache — für\n"
@@ -585,7 +590,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "- Was in der Ausgangsantwort OHNE Nummer stand, bleibt ohne Nummer: Sätze aus\n"
             "  Ratsdebatten („Laut Protokoll sagte …“), Pressemitteilungen und Hintergrund\n"
             "  sind keine Beschlüsse. Hänge ihnen nie eine Nummer an.\n\n"
-            "ES GING UM DIESE FRAGE: {frage}\n\n"
+            "ES GING UM DIESE FRAGE: {question}\n\n"
             "BESCHLÜSSE (nur zum Nachschlagen von Fakten, Zahlen und Nummern — ihre\n"
             "Formulierungen sind Amtsdeutsch und werden NICHT übernommen):\n"
             "{context}\n\n"
@@ -619,7 +624,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
         "template": (
             "Beschluss: {title}\n"
             "Gremium: {committee} · Sitzung vom {session_date}\n\n"
-            "Beschlusstext:\n{beschluss}"
+            "Beschlusstext:\n{official_text}"
         ),
     },
     "impact_bewertung_system": {
@@ -644,7 +649,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "Nutze die mitgelieferten Signale (Art, Ergebnis, Gremium, Betrag, Textlänge) — "
             "abgelehnte oder vertagte Anträge binden nichts (Bindung nahe 0, Präzedenz ggf. > 0).\n"
             "Antworte als JSON: {\"ratings\": [{\"id\": <id>, \"score\": <0-100>, "
-            "\"grund\": \"<max. 1 kurzer Satz, benennt die stärkste Rubrik>\"}]} — "
+            "\"reason\": \"<max. 1 kurzer Satz, benennt die stärkste Rubrik>\"}]} — "
             "genau ein Eintrag je vorgelegtem Beschluss."
         ),
     },
@@ -749,7 +754,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "Kenntnisnahmen. Mittel (30–55): solide Sachbeschlüsse ohne Erzählwert. Hoch (60–85): "
             "konkret, alltagsnah, erzählbar. Sehr hoch (90–100): kurios oder stadtbekannt.\n"
             "Antworte als JSON: {\"ratings\": [{\"id\": <id>, \"score\": <0-100>, "
-            "\"grund\": \"<max. 1 kurzer Satz>\"}]} — genau ein Eintrag je vorgelegtem Beschluss."
+            "\"reason\": \"<max. 1 kurzer Satz>\"}]} — genau ein Eintrag je vorgelegtem Beschluss."
         ),
     },
     "interest_bewertung_user": {
@@ -765,7 +770,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "Bürger-App: EIN Satz über einen echten Ratsbeschluss.\n"
             "Regeln:\n"
             "- Genau ein Satz, höchstens 200 Zeichen, aktiv, konkret, kein Ausrufezeichen.\n"
-            "- Beginne mit „Der Rat beschloss {jahr}, …“ oder einer ähnlich konkreten Formulierung "
+            "- Beginne mit „Der Rat beschloss {year}, …“ oder einer ähnlich konkreten Formulierung "
             "(beim zuständigen Ausschuss entsprechend).\n"
             "- Nur Fakten aus den vorgelegten Daten — nichts dazuerfinden, keine Folgen behaupten, "
             "die nicht im Text stehen.\n"
@@ -780,7 +785,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "Beschluss vom {session_date} ({committee}), Ergebnis: {outcome}.\n"
             "Titel: {title}\n"
             "Warum interessant: {interest_reason}\n\n"
-            "Beschlusstext (Auszug):\n{beschluss}"
+            "Beschlusstext (Auszug):\n{official_text}"
         ),
     },
     "entity_dubletten_system": {
@@ -813,7 +818,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "vollständigen Namen — den, den Bürger*innen suchen würden.\n\n"
             "Antworte mit NUR JSON: {{\"paare\": [{{\"id\": <id>, \"gleich\": true|false, "
             "\"kanonisch\": \"<einer der beiden Namen, nur bei gleich=true>\", "
-            "\"grund\": \"<max. 1 kurzer Satz>\"}}]}} — genau ein Eintrag je vorgelegtem Paar."
+            "\"reason\": \"<max. 1 kurzer Satz>\"}}]}} — genau ein Eintrag je vorgelegtem Paar."
         ),
     },
     "entity_dubletten_user": {
@@ -824,134 +829,13 @@ DEFAULTS: dict[str, dict[str, str]] = {
 }
 
 
-def _connect() -> sqlite3.Connection:
-    _DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(_DB_PATH)
-    conn.row_factory = sqlite3.Row
-    conn.execute(
-        """CREATE TABLE IF NOT EXISTS prompts (
-               key        TEXT PRIMARY KEY,
-               content    TEXT NOT NULL,
-               updated_at TEXT NOT NULL,
-               updated_by TEXT
-           )"""
-    )
-    # Bestandsdaten: updated_by (Admin-E-Mail) nachrüsten (Design 21a).
-    cols = {r[1] for r in conn.execute("PRAGMA table_info(prompts)").fetchall()}
-    if "updated_by" not in cols:
-        conn.execute("ALTER TABLE prompts ADD COLUMN updated_by TEXT")
-    conn.commit()
-    return conn
-
-
 def get(key: str) -> str:
-    """Return the active template for ``key`` (admin override or default)."""
+    """Die Vorlage zu ``key``."""
     if key not in DEFAULTS:
         raise KeyError(f"Unknown prompt key: {key}")
-    try:
-        conn = _connect()
-        row = conn.execute("SELECT content FROM prompts WHERE key = ?", (key,)).fetchone()
-        conn.close()
-        if row is not None:
-            return row[0]
-    except sqlite3.Error:
-        pass
     return DEFAULTS[key]["template"]
 
 
 def render(key: str, **kwargs) -> str:
-    """Return the active template formatted with the given keyword arguments."""
+    """Die Vorlage zu ``key``, mit den übergebenen Platzhaltern gefüllt."""
     return get(key).format(**kwargs)
-
-
-def is_overridden(key: str) -> bool:
-    try:
-        conn = _connect()
-        row = conn.execute("SELECT 1 FROM prompts WHERE key = ?", (key,)).fetchone()
-        conn.close()
-        return row is not None
-    except sqlite3.Error:
-        return False
-
-
-def list_all() -> list[dict]:
-    """Return every known prompt with its current and default content for the admin UI."""
-    conn = _connect()
-    overrides = {
-        r["key"]: r for r in conn.execute("SELECT key, content, updated_at, updated_by FROM prompts").fetchall()
-    }
-    conn.close()
-    result = []
-    for key, meta in DEFAULTS.items():
-        ov = overrides.get(key)
-        result.append(
-            {
-                "key": key,
-                "title": meta["title"],
-                "description": meta["description"],
-                "default": meta["template"],
-                "content": ov["content"] if ov else meta["template"],
-                "is_overridden": ov is not None,
-                "updated_at": ov["updated_at"] if ov else None,
-                "updated_by": (ov["updated_by"] if ov else None),
-            }
-        )
-    return result
-
-
-def set_content(key: str, content: str, by: str | None = None) -> None:
-    if key not in DEFAULTS:
-        raise KeyError(f"Unknown prompt key: {key}")
-    now = datetime.utcnow().isoformat(timespec="seconds")
-    conn = _connect()
-    with conn:
-        conn.execute(
-            "INSERT OR REPLACE INTO prompts (key, content, updated_at, updated_by) VALUES (?, ?, ?, ?)",
-            (key, content, now, by),
-        )
-    conn.close()
-
-
-def reset(key: str) -> None:
-    """Remove an override so the default takes effect again."""
-    conn = _connect()
-    with conn:
-        conn.execute("DELETE FROM prompts WHERE key = ?", (key,))
-    conn.close()
-
-
-def validate_template(key: str, content: str) -> str | None:
-    """Validate a prompt template. Returns an error message or None if valid.
-
-    Checks for syntax errors and for placeholder names not present in the
-    original default (those would cause a KeyError at runtime when the bot
-    calls ``render()``).
-    """
-    import string as _string
-
-    try:
-        fields = [(name, fmt) for _, name, fmt, _ in _string.Formatter().parse(content) if name is not None]
-    except ValueError as e:
-        return f"Syntaxfehler im Template: {e}"
-
-    if key in DEFAULTS:
-        default_template = DEFAULTS[key]["template"]
-        try:
-            expected = {name for _, name, _, _ in _string.Formatter().parse(default_template) if name is not None}
-        except ValueError:
-            expected = set()
-        new_fields = {name for name, _ in fields if name and name not in expected}
-        if new_fields:
-            sorted_expected = ", ".join(sorted(expected)) or "(keine)"
-            return (
-                f"Unbekannte Platzhalter: {{{', '.join(sorted(new_fields))}}}. "
-                f"Erlaubt: {sorted_expected}."
-            )
-
-    dummy = {name: "BEISPIEL" for name, _ in fields if name}
-    try:
-        content.format(**dummy)
-    except (KeyError, ValueError, IndexError) as e:
-        return f"Template-Fehler beim Ausfüllen: {e}"
-
-    return None

@@ -110,8 +110,8 @@ _ROEMISCH = {"I": 1, "II": 2, "III": 3, "1": 1, "2": 2, "3": 3}
 def liste_aus_label(label: str | None) -> str | None:
     """Anlagen-Label → Listen-Schlüssel, oder ``None`` für „gehört nicht her“.
 
-    ``verwaltung_1``/``_2``/``_3`` für die Verwaltungslisten,
-    ``afb_beschlossen`` für die kumulierte Beschluss-Datei des
+    ``administration_1``/``_2``/``_3`` für die Verwaltungslisten,
+    ``fc_decided`` für die kumulierte Beschluss-Datei des
     Finanzausschusses. Die Reihenfolge der Prüfungen ist die Sortierung:
     Erst raus, was sicher nicht gemeint ist — „2026 FHH Änderungsliste
     Verwaltung I“ enthält schließlich auch „Verwaltung I“.
@@ -120,10 +120,10 @@ def liste_aus_label(label: str | None) -> str | None:
     if _LABEL_RAUS.search(t):
         return None
     if _LABEL_AFB.search(t) and _LABEL_EHH.search(t):
-        return "afb_beschlossen"
+        return "fc_decided"
     m = _LABEL_VERW.search(t)
     if m and _LABEL_EHH.search(t) and "nderungsliste" in t:
-        return f"verwaltung_{_ROEMISCH[m.group(1).upper()]}"
+        return f"administration_{_ROEMISCH[m.group(1).upper()]}"
     return None
 
 
@@ -142,40 +142,40 @@ Wort = tuple[float, float, float, str]
 class Zeile:
     """Eine Position einer Änderungsliste — ein Planjahr, eine Zeile."""
 
-    jahr: int
-    lfd: int
+    year: int
+    seq: int
     #: ``None`` = die Position gilt pauschal „alle“ Teilhaushalte — so führt
     #: der 2019er-Jahrgang globale Minderausgaben (Zeilen 16/17, je „diverse“
     #: Produkte, zusammen −3,35 Mio. € Aufwand).
-    thh: int | None
-    seite_entwurf: int | None
-    produkt: str | None
-    bezeichnung: str
+    sub_budget: int | None
+    page_draft: int | None
+    product: str | None
+    label: str
     #: Euro, negativ = Minderung. ``None`` = Zeile ohne Betrag in dieser
     #: Spalte (auch beides ``None`` kommt vor: reine Haushaltsvermerke).
-    ertrag: int | None
-    aufwand: int | None
+    revenue: int | None
+    expense: int | None
     #: Der Text der Erläuterungs-Spalte — was diese Änderung IST („VWG: Der
     #: Entwurf des Wirtschaftsplans 2026 weist einen Zuschussbedarf …“).
     #: ``None``, wenn die Zelle leer ist oder ihre Zuordnung nicht eindeutig
     #: über die Tabellenlinien läuft (s. ``_erlaeuterungen_anbauen``).
-    erlaeuterung: str | None = None
+    explanation: str | None = None
     #: WER diese Position vorgeschlagen hat — aus der Spalte „Vorschlag von“.
     #: ``None`` überall dort, wo das Dokument die Spalte nicht führt (17 von
     #: 18 EHH-Dokumenten); s. ``_urheber_anbauen``.
-    urheber: str | None = None
+    author: str | None = None
 
 
 @dataclass
 class SummenZeile:
     """Eine Zeile der Zusammenstellung: Entwurf, eine Liste oder die Endsumme."""
 
-    jahr: int
-    typ: str  # "entwurf" | "liste" | "endsumme"
+    year: int
+    typ: str  # "draft" | "list" | "final_total"
     label: str
-    ertraege: int
-    aufwendungen: int
-    saldo: int
+    revenues: int
+    expenses: int
+    balance: int
 
 
 @dataclass
@@ -186,12 +186,12 @@ class Ergebnis:
     #: Positionen summiert — oder "alle", wenn das Dokument kumuliert.
     eigene_zeile: dict[int, str] = field(default_factory=dict)
     #: „Stand: 24.11.2025“ vom Deckblatt, wenn vorhanden.
-    stand: str | None = None
+    as_of: str | None = None
 
     @property
-    def jahrgang(self) -> int:
+    def budget_year(self) -> int:
         """Der Haushaltsjahrgang = das erste Planjahr der Liste."""
-        return min(z.jahr for z in self.zeilen)
+        return min(z.year for z in self.zeilen)
 
 
 # ----------------------------------------------------------------- PDF → Wörter
@@ -214,10 +214,10 @@ def seiten_woerter(pdf_bytes: bytes) -> list[list[Wort]]:
 
     aus: list[list[Wort]] = []
     with pymupdf.open(stream=pdf_bytes, filetype="pdf") as doc:
-        for seite in doc:
-            mat = seite.rotation_matrix
+        for page in doc:
+            mat = page.rotation_matrix
             woerter: list[Wort] = []
-            for w in seite.get_text("words"):
+            for w in page.get_text("words"):
                 r = pymupdf.Rect(w[:4]) * mat
                 woerter.append((round(r.x0, 1), round(r.x1, 1),
                                 round(r.y0, 1), w[4]))
@@ -244,11 +244,11 @@ def seiten_linien(pdf_bytes: bytes) -> list[Linien]:
 
     aus: list[Linien] = []
     with pymupdf.open(stream=pdf_bytes, filetype="pdf") as doc:
-        for seite in doc:
-            mat = seite.rotation_matrix
+        for page in doc:
+            mat = page.rotation_matrix
             waagerecht: list[float] = []
             senkrecht: list[float] = []
-            for zug in seite.get_drawings():
+            for zug in page.get_drawings():
                 for item in zug["items"]:
                     if item[0] == "l":
                         p1, p2 = item[1] * mat, item[2] * mat
@@ -295,8 +295,8 @@ def _zeilen_bilden(woerter: list[Wort]) -> list[list[Wort]]:
     return zeilen
 
 
-def _zeilentext(zeile: list[Wort]) -> str:
-    return " ".join(w[3] for w in zeile)
+def _zeilentext(row: list[Wort]) -> str:
+    return " ".join(w[3] for w in row)
 
 
 # ---------------------------------------------------------------------- Parsing
@@ -333,11 +333,11 @@ class Spalten:
     reißt die Positionsprobe — leiser Drift ist ausgeschlossen.
     """
 
-    ertrag: float   # x-Mitte des Kopfs „Ertrag“
-    aufwand: float  # x-Mitte des Kopfs „Aufwand“
+    revenue: float   # x-Mitte des Kopfs „Ertrag“
+    expense: float  # x-Mitte des Kopfs „Aufwand“
     #: Linke Kante des Kopfworts „Bezeichnung“ — für die Fragment-Nachlese
     #: mehrzeiliger Bezeichnungen. ``None``, wenn der Kopf fehlt.
-    bezeichnung: float | None = None
+    label: float | None = None
     #: Die GEZEICHNETE Bezeichnungs-Spalte (linke/rechte senkrechte Linie um
     #: den Kopf). Wo die Seite ihr Raster zeichnet, gilt es statt der aus dem
     #: Kopfwort geschätzten Zone — s. :func:`_bezeichnungsfragment`.
@@ -345,12 +345,12 @@ class Spalten:
 
     @property
     def mitte(self) -> float:
-        return (self.ertrag + self.aufwand) / 2
+        return (self.revenue + self.expense) / 2
 
     @property
     def zone(self) -> tuple[float, float]:
         """(links, rechts): Wo Beträge ENDEN dürfen."""
-        return (self.ertrag - 35, self.aufwand + 35)
+        return (self.revenue - 35, self.expense + 35)
 
 
 def _spalten(zeilen: list[list[Wort]],
@@ -363,24 +363,24 @@ def _spalten(zeilen: list[list[Wort]],
     trägt nur die Bezeichnungs-Spalte bei — das Linienpaar, das den Kopf
     „Bezeichnung“ einschließt.
     """
-    ertrag = aufwand = bezeichnung = None
-    for zeile in zeilen[:14]:
-        for x0, x1, _y, text in zeile:
-            if text == "Ertrag" and ertrag is None:
-                ertrag = (x0 + x1) / 2
-            elif text == "Aufwand" and aufwand is None:
-                aufwand = (x0 + x1) / 2
-            elif text == "Bezeichnung" and bezeichnung is None:
-                bezeichnung = x0
-    if ertrag is None or aufwand is None:
+    revenue = expense = label = None
+    for row in zeilen[:14]:
+        for x0, x1, _y, text in row:
+            if text == "Ertrag" and revenue is None:
+                revenue = (x0 + x1) / 2
+            elif text == "Aufwand" and expense is None:
+                expense = (x0 + x1) / 2
+            elif text == "Bezeichnung" and label is None:
+                label = x0
+    if revenue is None or expense is None:
         return None
     spalte = None
-    if senkrecht and bezeichnung is not None:
-        links = [x for x in senkrecht if x < bezeichnung]
-        rechts = [x for x in senkrecht if x > bezeichnung]
+    if senkrecht and label is not None:
+        links = [x for x in senkrecht if x < label]
+        rechts = [x for x in senkrecht if x > label]
         if links and rechts:
             spalte = (max(links), min(rechts))
-    return Spalten(ertrag=ertrag, aufwand=aufwand, bezeichnung=bezeichnung,
+    return Spalten(revenue=revenue, expense=expense, label=label,
                    bez_spalte=spalte)
 
 
@@ -388,58 +388,58 @@ def _zahl(text: str) -> int:
     return int(text.replace(".", ""))
 
 
-def _position_lesen(zeile: list[Wort], jahr: int, spalten: Spalten) -> Zeile:
-    lfd = int(zeile[0][3])
-    thh = int(zeile[1][3]) if zeile[1][3] != "alle" else None
+def _position_lesen(row: list[Wort], year: int, spalten: Spalten) -> Zeile:
+    seq = int(row[0][3])
+    sub_budget = int(row[1][3]) if row[1][3] != "alle" else None
 
-    seite_entwurf: int | None = None
-    produkt: str | None = None
-    bezeichnung: list[str] = []
-    ertrag: int | None = None
-    aufwand: int | None = None
+    page_draft: int | None = None
+    product: str | None = None
+    label: list[str] = []
+    revenue: int | None = None
+    expense: int | None = None
 
     zone_links, zone_rechts = spalten.zone
-    for x0, x1, _y, text in zeile[2:]:
+    for x0, x1, _y, text in row[2:]:
         if re.fullmatch(_ZAHL, text):
             if zone_links <= x1 <= zone_rechts:
                 # Ein Betrag — rechtsbündig in seiner Spalte, die Seite der
                 # Mitte entscheidet. Auch ungepunktet: „-470“ ist ein echter
                 # Aufwand aus 300528 (Beträge unter 1.000 Euro gibt es).
                 if x1 <= spalten.mitte:
-                    ertrag = _zahl(text) if ertrag is None else ertrag
-                elif aufwand is None:
-                    aufwand = _zahl(text)
+                    revenue = _zahl(text) if revenue is None else revenue
+                elif expense is None:
+                    expense = _zahl(text)
                 continue
             if x1 > zone_rechts:
                 break  # Zahl in der Erläuterung — dahinter kommt nichts mehr
             # Kleine Zahl vor der Bezeichnung: die Seite im HH-Entwurf.
-            if (text.isdigit() and seite_entwurf is None
-                    and not bezeichnung and produkt is None):
-                seite_entwurf = int(text)
+            if (text.isdigit() and page_draft is None
+                    and not label and product is None):
+                page_draft = int(text)
             continue
         if x0 > spalten.mitte:
             break  # erster Text rechts der Mitte: die Erläuterung beginnt
-        if _PRODUKT.match(text) and not bezeichnung and produkt is None:
-            produkt = text
+        if _PRODUKT.match(text) and not label and product is None:
+            product = text
             continue
-        bezeichnung.append(text)
+        label.append(text)
 
-    return Zeile(jahr=jahr, lfd=lfd, thh=thh, seite_entwurf=seite_entwurf,
-                 produkt=produkt, bezeichnung=" ".join(bezeichnung),
-                 ertrag=ertrag, aufwand=aufwand)
+    return Zeile(year=year, seq=seq, sub_budget=sub_budget, page_draft=page_draft,
+                 product=product, label=" ".join(label),
+                 revenue=revenue, expense=expense)
 
 
-def _ist_position(zeile: list[Wort], spalten: Spalten | None) -> bool:
+def _ist_position(row: list[Wort], spalten: Spalten | None) -> bool:
     """Positionszeilen beginnen mit Lfd. Nr. und zweistelligem THH — und
     zwar am linken Tabellenrand, nicht mitten in einer Erläuterung."""
-    return (spalten is not None and len(zeile) >= 3
-            and re.fullmatch(r"\d{1,3}", zeile[0][3]) is not None
-            and (re.fullmatch(r"\d{2}", zeile[1][3]) is not None
-                 or zeile[1][3] == "alle")
-            and zeile[0][0] < spalten.mitte / 2)
+    return (spalten is not None and len(row) >= 3
+            and re.fullmatch(r"\d{1,3}", row[0][3]) is not None
+            and (re.fullmatch(r"\d{2}", row[1][3]) is not None
+                 or row[1][3] == "alle")
+            and row[0][0] < spalten.mitte / 2)
 
 
-def _bezeichnungsfragment(zeile: list[Wort], spalten: Spalten) -> str | None:
+def _bezeichnungsfragment(row: list[Wort], spalten: Spalten) -> str | None:
     """Der Bezeichnungs-Anteil einer Wickelzeile — oder ``None``.
 
     Lange Bezeichnungen wickeln auf eigene Grundlinien; die Positionszeile
@@ -471,26 +471,26 @@ def _bezeichnungsfragment(zeile: list[Wort], spalten: Spalten) -> str | None:
         # auf ihrer Linie auf (gemessen 230011: „Männern“ endet bei 355,0 bei
         # einer Spaltenlinie 359,4 — die Kante ist die Linie, nicht das Wort).
         links, rechts = spalten.bez_spalte[0] - 1, spalten.bez_spalte[1] + 1
-    elif spalten.bezeichnung is not None:
-        links, rechts = spalten.bezeichnung - 25, zone_links - 2
+    elif spalten.label is not None:
+        links, rechts = spalten.label - 25, zone_links - 2
     else:
         return None
-    teil = [w for w in zeile if links <= w[0] and w[1] <= rechts]
-    if not teil:
+    part = [w for w in row if links <= w[0] and w[1] <= rechts]
+    if not part:
         return None
-    if any(w[1] < links for w in zeile):
+    if any(w[1] < links for w in row):
         return None
     if any(re.fullmatch(_ZAHL, w[3]) and zone_links <= w[1] <= zone_rechts
-           for w in zeile):
+           for w in row):
         return None
-    return " ".join(w[3] for w in teil)
+    return " ".join(w[3] for w in part)
 
 
-def _betrag_tokens(zeile: list[Wort]) -> list[Wort]:
+def _betrag_tokens(row: list[Wort]) -> list[Wort]:
     """Wörter, die als Ganzes eine Zahl sind — die Betrags-Kandidaten einer
     Summenzeile. Ein Datum wie „01.10.2025“ ist EIN Wort und besteht den
     Vollabgleich nicht (Zweiergruppen, vierstelliges Jahr)."""
-    return [w for w in zeile if re.fullmatch(_ZAHL, w[3])]
+    return [w for w in row if re.fullmatch(_ZAHL, w[3])]
 
 
 def _ist_summenzeile(kandidaten: list[Wort]) -> bool:
@@ -504,25 +504,25 @@ def _ist_summenzeile(kandidaten: list[Wort]) -> bool:
             and sum(1 for w in kandidaten if "." in w[3]) >= 2)
 
 
-def _summen_zeile(jahr: int, typ: str, zeile: list[Wort]) -> SummenZeile:
+def _summen_zeile(year: int, typ: str, row: list[Wort]) -> SummenZeile:
     """Eine Zusammenstellungs-Zeile: die ersten drei Beträge sind
     Erträge/Aufwendungen/Saldo, was davor und dahinter steht, gehört zum
     Label (die Beschluss-Dateien schreiben „Verw. I“ HINTER die Zahlen)."""
-    betraege = _betrag_tokens(zeile)
+    betraege = _betrag_tokens(row)
     if len(betraege) < 3:
         raise ListenFehler(
-            f"Zusammenstellung {jahr}: Zeile mit weniger als drei Beträgen: "
-            f"{_zeilentext(zeile)[:90]!r}")
+            f"Zusammenstellung {year}: Zeile mit weniger als drei Beträgen: "
+            f"{_zeilentext(row)[:90]!r}")
     e, a, s = (_zahl(w[3]) for w in betraege[:3])
     if abs(e - a - s) > 2:
         raise ListenFehler(
-            f"Zusammenstellung {jahr}: Erträge − Aufwendungen ≠ Saldo "
-            f"({e:,} − {a:,} ≠ {s:,}) in {_zeilentext(zeile)[:90]!r}")
+            f"Zusammenstellung {year}: Erträge − Aufwendungen ≠ Saldo "
+            f"({e:,} − {a:,} ≠ {s:,}) in {_zeilentext(row)[:90]!r}")
     x_erster, x_dritter = betraege[0][0], betraege[2][1]
-    label = " ".join(w[3] for w in zeile
+    label = " ".join(w[3] for w in row
                      if w[1] <= x_erster or w[0] >= x_dritter).strip()
-    return SummenZeile(jahr=jahr, typ=typ, label=label or typ,
-                       ertraege=e, aufwendungen=a, saldo=s)
+    return SummenZeile(year=year, typ=typ, label=label or typ,
+                       revenues=e, expenses=a, balance=s)
 
 
 def parse_ehh_seiten(seiten: list[list[Wort]],
@@ -535,12 +535,12 @@ def parse_ehh_seiten(seiten: list[list[Wort]],
     ``linien`` (je Seite die Tabellenlinien, s. :func:`seiten_linien`) ist
     optional und trägt die Textspalten bei: die Erläuterungen, die
     Bezeichnungs-Spalte und den Urheber je Position. Ohne Linien bleiben die
-    Beträge vollständig, ``erlaeuterung`` und ``urheber`` einfach ``None``
+    Beträge vollständig, ``explanation`` und ``author`` einfach ``None``
     und die Bezeichnungs-Nachlese fällt auf ihre Kopf-Schätzung zurück.
     """
     aus = Ergebnis()
     if seiten and (m := _STAND.search(_zeilentext([w for z in _zeilen_bilden(seiten[0]) for w in z]))):
-        aus.stand = m.group(1)
+        aus.as_of = m.group(1)
 
     for seiten_nr, woerter in enumerate(seiten):
         # Blocküberschriften („Ergebnishaushalt JJJJ") gelten nur auf IHRER
@@ -552,7 +552,7 @@ def parse_ehh_seiten(seiten: list[list[Wort]],
         zeilen = _zeilen_bilden(woerter)
         seitentext = " ".join(_zeilentext(z) for z in zeilen)
         marker = _JAHR_MARKER.search(seitentext)
-        jahr = int(marker.group(1)) if marker else None
+        year = int(marker.group(1)) if marker else None
         seiten_linien_ = (linien[seiten_nr]
                           if linien is not None and seiten_nr < len(linien) else None)
         senkrecht = seiten_linien_[1] if seiten_linien_ else None
@@ -562,45 +562,45 @@ def parse_ehh_seiten(seiten: list[list[Wort]],
 
         seiten_positionen: list[tuple[float, Zeile]] = []
         fragmente: list[tuple[float, str]] = []
-        for zeile in zeilen:
-            text = _zeilentext(zeile)
+        for row in zeilen:
+            text = _zeilentext(row)
             if (b := _BLOCK_JAHR.search(text)):
                 block_jahr = int(b.group(1))
             elif spalten is None and re.fullmatch(r"20\d\d", text.strip()):
                 # Die frühen AFB-Übersichten überschreiben ihre Blöcke mit der
                 # nackten Jahreszahl statt „Ergebnishaushalt JJJJ“.
                 block_jahr = int(text.strip())
-            if jahr is not None and spalten is not None:
-                if _ist_position(zeile, spalten):
-                    position = _position_lesen(zeile, jahr, spalten)
+            if year is not None and spalten is not None:
+                if _ist_position(row, spalten):
+                    position = _position_lesen(row, year, spalten)
                     aus.zeilen.append(position)
-                    seiten_positionen.append((zeile[0][2], position))
+                    seiten_positionen.append((row[0][2], position))
                     continue
-                if (fragment := _bezeichnungsfragment(zeile, spalten)):
-                    fragmente.append((zeile[0][2], fragment))
+                if (fragment := _bezeichnungsfragment(row, spalten)):
+                    fragmente.append((row[0][2], fragment))
                     continue
             # Zusammenstellungs-Zeilen erkennt man an ihren DREI Beträgen —
             # das Deckblatt („Änderungsvorschläge … zum Verwaltungsentwurf“)
             # und Fließtext-Erwähnungen tragen dieselben Wörter ohne Zahlen.
-            betraege = _betrag_tokens(zeile)
+            betraege = _betrag_tokens(row)
             if spalten is not None or not _ist_summenzeile(betraege):
                 # Auf Tabellenseiten wäre so eine Zeile eine zweispaltige
                 # Position — Zusammenstellungen stehen auf eigenen Seiten.
                 continue
             if _ENTWURF.search(text):
-                aus.summen.append(_summen_zeile(_block_jahr(block_jahr, aus, "entwurf"), "entwurf", zeile))
+                aus.summen.append(_summen_zeile(_block_jahr(block_jahr, aus, "draft"), "draft", row))
             elif _ENDSUMME.search(text):
-                aus.summen.append(_summen_zeile(_block_jahr(block_jahr, aus, "endsumme"), "endsumme", zeile))
+                aus.summen.append(_summen_zeile(_block_jahr(block_jahr, aus, "final_total"), "final_total", row))
             elif _LISTE.search(text):
-                aus.summen.append(_summen_zeile(_block_jahr(block_jahr, aus, "liste"), "liste", zeile))
+                aus.summen.append(_summen_zeile(_block_jahr(block_jahr, aus, "list"), "list", row))
             else:
                 # Die frühen AFB-Übersichten führen die POLITISCH beschlossene
                 # Liste ohne jedes Stichwort: nur drei Beträge plus Urheber in
                 # der „Vorschlag von“-Spalte („0 1.728.605 -1.728.605
                 # SPD/ BÜNDNIS 90/DIE GRÜNEN“). Das Label hinter den Zahlen
                 # ist die Bedingung — eine nackte Zahlenreihe bleibt draußen.
-                kandidat = _summen_zeile(_block_jahr(block_jahr, aus, "liste"), "liste", zeile)
-                if kandidat.label != "liste":
+                kandidat = _summen_zeile(_block_jahr(block_jahr, aus, "list"), "list", row)
+                if kandidat.label != "list":
                     aus.summen.append(kandidat)
 
         _fragmente_anbauen(seiten_positionen, fragmente)
@@ -645,8 +645,8 @@ def _fragmente_anbauen(positionen: list[tuple[float, Zeile]],
         if not teile:
             continue
         # Nach Grundlinie sortiert, die Zeile der Position an ihrem Platz.
-        alle = sorted(teile + [(py, position.bezeichnung)])
-        position.bezeichnung = " ".join(t for _, t in alle if t)
+        alle = sorted(teile + [(py, position.label)])
+        position.label = " ".join(t for _, t in alle if t)
 
 
 def _urheber_grenze(woerter: list[Wort], senkrecht: list[float],
@@ -679,7 +679,7 @@ def _urheber_grenze(woerter: list[Wort], senkrecht: list[float],
         rechts = [x for x in senkrecht if x >= x1]
         if not links or len(rechts) != 1:
             continue
-        if max(links) <= spalten.aufwand:
+        if max(links) <= spalten.expense:
             continue
         return max(links)
     return None
@@ -707,8 +707,8 @@ def _urheber_anbauen(positionen: list[tuple[float, Zeile]],
     if not positionen or len(waagerecht) < 2:
         return
     baender: dict[int, list[Wort]] = {}
-    for zeile in zeilen:
-        for w in zeile:
+    for row in zeilen:
+        for w in row:
             if w[0] < grenze - 1:
                 continue
             band = _band(waagerecht, w[2])
@@ -726,7 +726,7 @@ def _urheber_anbauen(positionen: list[tuple[float, Zeile]],
             # Ohne `_zeilen_falten`: Ein Label ist keine Prosa, seine
             # Schrägstriche sind Trennzeichen zwischen Fraktionen und keine
             # Silbentrennung („SPD/“ + „BÜNDNIS 90/“ bleibt „SPD/ BÜNDNIS 90/“).
-            position.urheber = " ".join(
+            position.author = " ".join(
                 " ".join(w[3] for w in z) for z in _zeilen_bilden(woerter))
 
 
@@ -760,15 +760,15 @@ def _erlaeuterungen_anbauen(positionen: list[tuple[float, Zeile]],
     if not positionen:
         return
     waagerecht, senkrecht = linien
-    grenzen = [x for x in senkrecht if x > spalten.aufwand]
+    grenzen = [x for x in senkrecht if x > spalten.expense]
     if not grenzen or len(waagerecht) < 2:
         return
     erl_links = grenzen[0]
     erl_rechts = urheber_grenze if urheber_grenze is not None else float("inf")
 
     baender: dict[int, list[Wort]] = {}
-    for zeile in zeilen:
-        for w in zeile:
+    for row in zeilen:
+        for w in row:
             if w[0] < erl_links - 1 or w[0] >= erl_rechts - 1:
                 continue
             band = _band(waagerecht, w[2])
@@ -783,7 +783,7 @@ def _erlaeuterungen_anbauen(positionen: list[tuple[float, Zeile]],
             continue
         woerter = sorted(baender.get(band, []), key=lambda w: (w[2], w[0]))
         if woerter:
-            position.erlaeuterung = _zeilen_falten(_zeilen_bilden(woerter))
+            position.explanation = _zeilen_falten(_zeilen_bilden(woerter))
 
 
 #: Wörter, vor denen ein Trennstrich am Zeilenende KEIN Trennstrich ist,
@@ -805,8 +805,8 @@ def _zeilen_falten(zeilen: list[list[Wort]]) -> str:
     („Bescheini-/gungen“ → „Bescheinigungen“).
     """
     aus = ""
-    for zeile in zeilen:
-        text = " ".join(w[3] for w in zeile)
+    for row in zeilen:
+        text = " ".join(w[3] for w in row)
         if not aus:
             aus = text
         elif aus.endswith("-") and len(aus) > 1 and aus[-2].isalnum():
@@ -849,25 +849,25 @@ def _block_jahr(block_jahr: int | None, aus: Ergebnis, typ: str) -> int:
     """
     if block_jahr is not None:
         return block_jahr
-    jahre = sorted({z.jahr for z in aus.zeilen})
-    entwuerfe = sum(1 for s in aus.summen if s.typ == "entwurf")
-    idx = entwuerfe if typ == "entwurf" else entwuerfe - 1
-    if 0 <= idx < len(jahre):
-        return jahre[idx]
+    years = sorted({z.year for z in aus.zeilen})
+    entwuerfe = sum(1 for s in aus.summen if s.typ == "draft")
+    idx = entwuerfe if typ == "draft" else entwuerfe - 1
+    if 0 <= idx < len(years):
+        return years[idx]
     raise ListenFehler("Zusammenstellungs-Block ohne erkennbares Planjahr.")
 
 
 def _proben(aus: Ergebnis) -> None:
     """Kettenprobe und Positionsprobe je Planjahr (die Zeilenprobe lief schon
     beim Lesen jeder Summenzeile)."""
-    jahre = sorted({z.jahr for z in aus.zeilen})
-    for jahr in jahre:
-        entwurf = [s for s in aus.summen if s.jahr == jahr and s.typ == "entwurf"]
-        listen = [s for s in aus.summen if s.jahr == jahr and s.typ == "liste"]
-        ende = [s for s in aus.summen if s.jahr == jahr and s.typ == "endsumme"]
+    years = sorted({z.year for z in aus.zeilen})
+    for year in years:
+        entwurf = [s for s in aus.summen if s.year == year and s.typ == "draft"]
+        listen = [s for s in aus.summen if s.year == year and s.typ == "list"]
+        ende = [s for s in aus.summen if s.year == year and s.typ == "final_total"]
         if len(entwurf) != 1 or len(ende) != 1 or not listen:
             raise ListenFehler(
-                f"Zusammenstellung {jahr}: erwartet 1×Entwurf, ≥1×Liste, "
+                f"Zusammenstellung {year}: erwartet 1×Entwurf, ≥1×Liste, "
                 f"1×Endsumme — gefunden {len(entwurf)}/{len(listen)}/{len(ende)}.")
 
         # Kettenprobe: Entwurf + alle Listen = Endsumme, je Spalte. Toleranz
@@ -882,41 +882,41 @@ def _proben(aus: Ergebnis) -> None:
         # summieren — alles, was das Dokument insgesamt ändert.
         toleranz = 2 * (len(listen) + 1)
         kette_ok = all(
-            abs(getattr(entwurf[0], feld)
-                + sum(getattr(s, feld) for s in listen)
-                - getattr(ende[0], feld)) <= toleranz
-            for feld in ("ertraege", "aufwendungen"))
+            abs(getattr(entwurf[0], field)
+                + sum(getattr(s, field) for s in listen)
+                - getattr(ende[0], field)) <= toleranz
+            for field in ("revenues", "expenses"))
 
         # Positionsprobe: Wessen Zeile summieren wir hier eigentlich? Die
         # Kandidaten sind jede Listen-Zeile und — für die kumulierten
         # Beschluss-Dateien — die Summe aller Zeilen bzw. (wenn die Kette
         # nicht aufgeht, s. o.) allein „Endsumme − Entwurf“.
-        pos_e = sum(z.ertrag or 0 for z in aus.zeilen if z.jahr == jahr)
-        pos_a = sum(z.aufwand or 0 for z in aus.zeilen if z.jahr == jahr)
+        pos_e = sum(z.revenue or 0 for z in aus.zeilen if z.year == year)
+        pos_a = sum(z.expense or 0 for z in aus.zeilen if z.year == year)
         if kette_ok:
-            ziele = [(s.label, s.ertraege, s.aufwendungen) for s in listen]
+            ziele = [(s.label, s.revenues, s.expenses) for s in listen]
             if len(listen) > 1:
-                ziele.append(("alle", sum(s.ertraege for s in listen),
-                              sum(s.aufwendungen for s in listen)))
+                ziele.append(("alle", sum(s.revenues for s in listen),
+                              sum(s.expenses for s in listen)))
         else:
             ziele = [("beschlossen",
-                      ende[0].ertraege - entwurf[0].ertraege,
-                      ende[0].aufwendungen - entwurf[0].aufwendungen)]
+                      ende[0].revenues - entwurf[0].revenues,
+                      ende[0].expenses - entwurf[0].expenses)]
         treffer = [label for label, e, a in ziele
                    if abs(e - pos_e) <= toleranz and abs(a - pos_a) <= toleranz]
         if len(treffer) != 1:
             raise ListenFehler(
-                f"Positionsprobe {jahr}: Die Positionen summieren auf "
+                f"Positionsprobe {year}: Die Positionen summieren auf "
                 f"{pos_e:,} / {pos_a:,} — "
                 + ("keine Zusammenstellungs-Zeile trifft das" if not treffer
                    else "mehrere Zusammenstellungs-Zeilen träfen das")
                 + ": " + "; ".join(f"{label}: {e:,}/{a:,}" for label, e, a in ziele))
-        aus.eigene_zeile[jahr] = treffer[0]
+        aus.eigene_zeile[year] = treffer[0]
 
-        _urheber_probe(aus, jahr, listen, toleranz)
+        _urheber_probe(aus, year, listen, toleranz)
 
 
-def _urheber_probe(aus: Ergebnis, jahr: int, listen: list[SummenZeile],
+def _urheber_probe(aus: Ergebnis, year: int, listen: list[SummenZeile],
                    toleranz: int) -> None:
     """Die Summe der Positionen je Urheber muss SEINE Zusammenstellungs-Zeile
     treffen — sonst gilt das Dokument als nicht gelesen.
@@ -941,40 +941,40 @@ def _urheber_probe(aus: Ergebnis, jahr: int, listen: list[SummenZeile],
     danach nur noch dazu passen (Teilzeichenkette), damit zwei betragsgleiche
     Gruppen nicht die Zeilen tauschen können.
     """
-    mit = [z for z in aus.zeilen if z.jahr == jahr and z.urheber]
+    mit = [z for z in aus.zeilen if z.year == year and z.author]
     if not mit:
         return
-    ohne = [z for z in aus.zeilen if z.jahr == jahr and not z.urheber]
+    ohne = [z for z in aus.zeilen if z.year == year and not z.author]
     if ohne:
         raise ListenFehler(
-            f"Urheberprobe {jahr}: {len(ohne)} von {len(mit) + len(ohne)} "
+            f"Urheberprobe {year}: {len(ohne)} von {len(mit) + len(ohne)} "
             f"Positionen ohne Urheber, obwohl die Seite die Spalte führt "
-            f"(erste: lfd. {ohne[0].lfd}).")
+            f"(erste: seq. {ohne[0].seq}).")
 
     gruppen: dict[str, list[int]] = {}
     for z in mit:
-        summe = gruppen.setdefault(z.urheber, [0, 0])
-        summe[0] += z.ertrag or 0
-        summe[1] += z.aufwand or 0
+        summe = gruppen.setdefault(z.author, [0, 0])
+        summe[0] += z.revenue or 0
+        summe[1] += z.expense or 0
 
     vergeben: set[str] = set()
-    for urheber, (e, a) in sorted(gruppen.items()):
+    for author, (e, a) in sorted(gruppen.items()):
         treffer = [s for s in listen
                    if s.label not in vergeben
-                   and abs(s.ertraege - e) <= toleranz
-                   and abs(s.aufwendungen - a) <= toleranz
-                   and _label_passt(urheber, s.label)]
+                   and abs(s.revenues - e) <= toleranz
+                   and abs(s.expenses - a) <= toleranz
+                   and _label_passt(author, s.label)]
         if len(treffer) != 1:
             raise ListenFehler(
-                f"Urheberprobe {jahr}: „{urheber}“ summiert auf {e:,} / {a:,} — "
+                f"Urheberprobe {year}: „{author}“ summiert auf {e:,} / {a:,} — "
                 + ("keine Zusammenstellungs-Zeile trifft das" if not treffer
                    else "mehrere Zeilen träfen das")
                 + ": " + "; ".join(
-                    f"{s.label}: {s.ertraege:,}/{s.aufwendungen:,}" for s in listen))
+                    f"{s.label}: {s.revenues:,}/{s.expenses:,}" for s in listen))
         vergeben.add(treffer[0].label)
 
 
-def _label_passt(urheber: str, summen_label: str) -> bool:
+def _label_passt(author: str, summen_label: str) -> bool:
     """Steckt der Urheber der Position im Label seiner Summenzeile?
 
     Verglichen wird ohne Leerzeichen und ohne Groß-/Kleinschreibung: Die
@@ -984,7 +984,7 @@ def _label_passt(urheber: str, summen_label: str) -> bool:
     """
     def kern(s: str) -> str:
         return re.sub(r"\s+", "", s).casefold()
-    return kern(urheber) in kern(summen_label)
+    return kern(author) in kern(summen_label)
 
 
 def lies_ehh_liste(pdf_bytes: bytes) -> Ergebnis:
@@ -994,12 +994,26 @@ def lies_ehh_liste(pdf_bytes: bytes) -> Ergebnis:
 
 # ---------------------------------------------------------------------- Herkunft
 
-def herkunft_fuer(label: str, url: str | None, dokument_id: int) -> Herkunft:
+def herkunft_fuer(label: str, url: str | None, document_id: int) -> Herkunft:
     return Herkunft(
-        art="ris",
+        kind="ris",
         probe=("aenderungsliste_summen", "aenderungsliste_positionen",
                "aenderungsliste_erlaeuterungen", "aenderungsliste_urheber"),
         label=label,
-        url=url or f"https://buergerinfo.oldenburg.de/getfile.php?id={dokument_id}&type=do",
-        dokument_id=dokument_id,
+        url=url or f"https://buergerinfo.oldenburg.de/getfile.php?id={document_id}&type=do",
+        document_id=document_id,
     )
+
+
+# ------------------------------------------------- Geteilt mit dem FHH-Parser
+
+#: Der Finanzhaushalt hat eine eigene Bauform (fünf Betragsspalten statt zwei)
+#: und deshalb ein eigenes Modul — ``council/aenderungslisten_fhh.py``. Die
+#: GEOMETRIE ist aber dieselbe: Wortzeilen aus Grundlinien, Zeilenbänder aus
+#: den gezeichneten Linien, Silbentrennung am gemessenen Umbruch. Statt sie
+#: dort noch einmal zu schreiben, stehen die drei Funktionen hier unter einem
+#: öffentlichen Namen. Der EHH-Parser bleibt dabei unangetastet: Er ruft
+#: weiter seine privaten Namen auf, und diese Zeilen sind reine Aliase.
+zeilen_bilden = _zeilen_bilden
+band = _band
+zeilen_falten = _zeilen_falten

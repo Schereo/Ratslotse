@@ -48,7 +48,7 @@ export function QuizProgress({
   );
   const total = quote(stats.total.correct, stats.total.answered);
   const label = (a: QuizStats["by_area"][number]) =>
-    a.area_type === "thema" ? themeLabels[a.area_key] ?? a.area_key : a.area_key;
+    a.area_type === "topic" ? themeLabels[a.area_key] ?? a.area_key : a.area_key;
 
   return (
     <section>
@@ -101,7 +101,7 @@ export function QuizProgress({
             </p>
             {areas.map((a) => {
               const p = quote(a.correct, a.answered);
-              const Icon = a.area_type === "thema" ? Sparkles : MapPin;
+              const Icon = a.area_type === "topic" ? Sparkles : MapPin;
               return (
                 <div key={`${a.area_type}:${a.area_key}`} className="flex items-center gap-2 sm:gap-3">
                   <span className="flex w-24 shrink-0 items-center gap-1.5 truncate text-sm text-foreground sm:w-32">

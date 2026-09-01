@@ -35,7 +35,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ChevronDown, ChevronRight, Info } from "lucide-react";
 import { Segmented } from "@/components/ui";
-import { Beleg } from "@/components/haushalt/quelle";
+import { Beleg } from "@/components/haushalt/source";
 import { bereichKanon } from "@/lib/haushalt-bereiche";
 import { HaushaltZeile, bereichSlug, bereiche, deMio, mio } from "@/lib/haushalt";
 import { cn } from "@/lib/utils";
@@ -139,48 +139,48 @@ function Reihe({ z, skala }: { z: Zeile; skala: number }) {
 
 /** Ein Grund, warum die hellen Teile so verschieden groß sind — Text, keine
  *  Zahl: Der Haushaltsplan weist die Aufteilung auf dieser Ebene nicht aus. */
-function Grund({ titel, text }: { titel: string; text: string }) {
+function Grund({ title, text }: { title: string; text: string }) {
   return (
     <div className="border-t border-border pt-2.5 first:border-t-0 first:pt-0">
-      <p className="text-[12.5px] font-semibold">{titel}</p>
+      <p className="text-[12.5px] font-semibold">{title}</p>
       <p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">{text}</p>
     </div>
   );
 }
 
-export function Bereichstabelle({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jahr: number }) {
+export function Bereichstabelle({ zeilen, year }: { zeilen: HaushaltZeile[]; year: number }) {
   const [sortierung, setSortierung] = useState<Sortierung>("stadt");
   const [alle, setAlle] = useState(false);
 
-  const { traeger, ueberschuss, bedarfSumme, topfSumme, luecke } = useMemo(() => {
+  const { entity, ueberschuss, bedarfSumme, topfSumme, luecke } = useMemo(() => {
     const teile = bereiche(zeilen);
-    const traeger: Zeile[] = [];
+    const entity: Zeile[] = [];
     const ueberschuss: (Zeile & { plus: number })[] = [];
     let bedarfRoh = 0;
     let topfRoh = 0;
     for (const z of teile) {
-      const kanon = bereichKanon(z.bereich);
-      const gesamt = mio(z.aufwendungen) ?? 0;
-      const eigenRoh = z.ertraege ?? 0;
-      const ergebnis = z.ergebnis ?? 0;
+      const kanon = bereichKanon(z.area);
+      const gesamt = mio(z.expenses) ?? 0;
+      const eigenRoh = z.revenues ?? 0;
+      const result = z.result ?? 0;
       const basis: Zeile = {
-        roh: z.bereich,
+        roh: z.area,
         name: kanon.name,
         klartext: kanon.klartext,
         gesamt,
-        stadt: mio(-ergebnis) ?? 0,
+        stadt: mio(-result) ?? 0,
         eigen: mio(eigenRoh) ?? 0,
       };
-      if (ergebnis < 0) {
-        bedarfRoh += -ergebnis;
-        traeger.push(basis);
+      if (result < 0) {
+        bedarfRoh += -result;
+        entity.push(basis);
       } else {
-        topfRoh += ergebnis;
-        ueberschuss.push({ ...basis, plus: mio(ergebnis) ?? 0 });
+        topfRoh += result;
+        ueberschuss.push({ ...basis, plus: mio(result) ?? 0 });
       }
     }
     return {
-      traeger,
+      entity,
       ueberschuss,
       bedarfSumme: mio(bedarfRoh) ?? 0,
       topfSumme: mio(topfRoh) ?? 0,
@@ -192,8 +192,8 @@ export function Bereichstabelle({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jah
   }, [zeilen]);
 
   const sortiert = useMemo(
-    () => [...traeger].sort((a, b) => (sortierung === "stadt" ? b.stadt - a.stadt : b.gesamt - a.gesamt)),
-    [traeger, sortierung],
+    () => [...entity].sort((a, b) => (sortierung === "stadt" ? b.stadt - a.stadt : b.gesamt - a.gesamt)),
+    [entity, sortierung],
   );
 
   if (!sortiert.length) return null;
@@ -207,8 +207,8 @@ export function Bereichstabelle({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jah
 
   // Der Befund der Tabelle, aus den Daten gelesen statt hineingeschrieben:
   // Trägt der größte Ausgabenposten auch die größten Kosten für die Stadt?
-  const groessteAusgabe = [...traeger].sort((a, b) => b.gesamt - a.gesamt)[0];
-  const groesstenKosten = [...traeger].sort((a, b) => b.stadt - a.stadt)[0];
+  const groessteAusgabe = [...entity].sort((a, b) => b.gesamt - a.gesamt)[0];
+  const groesstenKosten = [...entity].sort((a, b) => b.stadt - a.stadt)[0];
   const auseinander = groessteAusgabe && groesstenKosten
     && groessteAusgabe.roh !== groesstenKosten.roh;
 
@@ -219,7 +219,7 @@ export function Bereichstabelle({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jah
           <h2 className="max-w-[46ch] text-[17px] font-bold leading-snug tracking-tight sm:text-[20px]">
             {auseinander
               ? "Hohe Ausgaben bedeuten nicht automatisch einen hohen Zuschussbedarf"
-              : `Die ${traeger.length + ueberschuss.length} Bereiche im Überblick`}
+              : `Die ${entity.length + ueberschuss.length} Bereiche im Überblick`}
           </h2>
           <p className="mt-2 max-w-[74ch] text-[13px] leading-relaxed text-foreground/85">
             Die Länge jedes Balkens zeigt die geplanten Ausgaben eines Bereichs. Der{" "}
@@ -326,13 +326,13 @@ export function Bereichstabelle({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jah
                   <>
                     Deren Zuschussbedarf beträgt {deMio(bedarfSumme)}&#8239;Mio.&nbsp;€ und ist damit
                     {" "}{deMio(luecke)}&#8239;Mio.&nbsp;€ höher. Diese Differenz entspricht dem für
-                    {" "}{jahr} geplanten Minus.
+                    {" "}{year} geplanten Minus.
                   </>
                 ) : (
                   <>
                     Deren Zuschussbedarf beträgt {deMio(bedarfSumme)}&#8239;Mio.&nbsp;€ und ist damit
                     {" "}{deMio(-luecke)}&#8239;Mio.&nbsp;€ niedriger. Diese Differenz entspricht dem
-                    für {jahr} geplanten Überschuss.
+                    für {year} geplanten Überschuss.
                   </>
                 )}
               </p>
@@ -361,11 +361,11 @@ export function Bereichstabelle({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jah
           <div className="rounded-xl border border-border p-3.5">
             <p className="text-[13px] font-bold">Warum die hellen Teile so verschieden groß sind</p>
             <div className="mt-2.5 flex flex-col gap-2.5">
-              <Grund titel="Das Gesetz sieht Erstattungen vor"
+              <Grund title="Das Gesetz sieht Erstattungen vor"
                 text="Bei vielen Sozialleistungen zahlt die Stadt zunächst aus. Bund und Land erstatten anschließend einen Teil der Kosten." />
-              <Grund titel="Für manche Leistungen erhebt die Stadt Gebühren"
+              <Grund title="Für manche Leistungen erhebt die Stadt Gebühren"
                 text="Das gilt etwa für Müllentsorgung, Friedhöfe und teilweise für Kitas. Die Gebühren sind an die jeweilige Leistung gebunden und dürfen grundsätzlich nicht über deren Kosten hinausgehen." />
-              <Grund titel="Viele Aufgaben haben keine direkten Erträge"
+              <Grund title="Viele Aufgaben haben keine direkten Erträge"
                 text="Straßen, Grünflächen, Feuerwehr oder Bibliotheken werden überwiegend aus allgemeinen Einnahmen finanziert. Ihr Balken ist deshalb fast vollständig dunkel." />
             </div>
           </div>

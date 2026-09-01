@@ -125,7 +125,7 @@ die aufklappbare Wichtigkeits-Karte auf der Beschluss-Seite.
 
 `council/impact.py` lässt ein LLM bewerten, **wie folgenreich** ein Beschluss
 für die Stadt ist. Der Prompt (`impact_bewertung_system` in `kern/prompts.py`,
-über das Admin-UI editierbar) gibt vier Rubriken zu je 0–25 Punkten vor, die
+in `kern/prompts.py`) gibt vier Rubriken zu je 0–25 Punkten vor, die
 addiert werden:
 
 | Rubrik | Frage |

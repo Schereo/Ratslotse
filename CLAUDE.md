@@ -30,12 +30,17 @@ Das Paket hieß bis 08/2026 `nwz/` — ein Rest aus der Zeit, als hier ein
 Zeitungs-Scraper lief. Der Inhalt hat damit nichts zu tun, deshalb heißt es
 jetzt `kern/`.
 
-Drei Stellen tragen den alten Namen bewusst weiter, weil ein Umbenennen dort
-Daten oder Betrieb anfasst statt nur Text:
+Die Datenbank hieß bis 08/2026 ebenfalls so: `data/nwz.sqlite` mit der Variable
+`NWZ_DB`. Sie heißt jetzt **`data/ratslotse.sqlite`** (`RATSLOTSE_DB`, für das
+Kosten-Tracking `RATSLOTSE_SQLITE`). Vor dem Umstellen stand hier die Warnung,
+ein Fehler dabei hieße „App startet mit leerer Datenbank" — deshalb zieht die
+Datei sich beim Start **selbst** um (`kern/store.py::_umzug_von_nwz`): Ist die
+neue nicht da und die alte schon, wird der WAL eingecheckt und umbenannt. Der
+Schritt ist idempotent und darf stehen bleiben, bis alle Umgebungen einmal
+gestartet sind.
 
-- **`data/nwz.sqlite`** und die Umgebungsvariable **`NWZ_DB`** — der Dateiname
-  ist unsichtbar, ein Fehler beim Umstellen hieße „App startet mit leerer
-  Datenbank".
+Zwei Stellen tragen den alten Namen weiter:
+
 - **die systemd-Units** `nwz-web-api` / `nwz-web-frontend` — Umbenennen braucht
   Root auf dem Server und einen Nachzug in `deploy.yml`.
 - **`web/frontend/components/nwz-link.tsx`** — der ist kein Rest: Auf
@@ -58,7 +63,7 @@ cd docs-site && npm install && npm run dev
 .venv/bin/pip install -r requirements-dev.txt && .venv/bin/python -m pytest tests/ -q
 ```
 
-Zwei SQLite-DBs unter `data/` (gitignored): `nwz.sqlite` (Konten, Themen, Prompts)
+Zwei SQLite-DBs unter `data/` (gitignored): `ratslotse.sqlite` (Konten, Themen, Gespräche)
 und `council.sqlite` (Sitzungen, Beschlüsse). Beide werden lokal beim ersten Lauf
 angelegt.
 
@@ -155,6 +160,10 @@ COUNCIL_TOPIC_MODEL=deepseek/deepseek-v4-pro
 COUNCIL_GOAL_MODEL=deepseek/deepseek-v4-pro
 COUNCIL_EMBED_MODEL=sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
 COUNCIL_RECAP_MODEL=deepseek/deepseek-v4-pro
+COUNCIL_VIDEO_MODEL=openai/gpt-5.6-luna     # liest Abstimmungsergebnisse aus Sitzungs-Transkripten
+COUNCIL_STT_MODEL=google/gemini-2.5-flash   # transkribiert den Livestream-Mitschnitt (Audio-Input)
+COUNCIL_STREAM_URL=https://cdn.oeins.de/sd480/index.m3u8  # O1-Livestream (HLS)
+COUNCIL_RECORD_MAX_HOURS=6                  # Kappe des Sitzungs-Mitschnitts
 COUNCIL_QA_MODEL=google/gemini-2.5-flash          # Antwort-Modell der KI-Frage (schnell; Default passt)
 COUNCIL_QA_EXPAND_MODEL=google/gemini-2.5-flash-lite  # Query-Expansion der KI-Frage (schnell; Default passt)
 COUNCIL_RETRIEVAL_KLASSISCH=0        # "1" = Notausschalter: Retrieval-Stand vor dem Vorlagen-Chunk-Ausbau
@@ -237,7 +246,7 @@ NWZ_OPENROUTER_ZDR=1                 # "0" lockert die Zero-Data-Retention-Pflic
   (`generate_fundstuecke.py`, 21 Tage Vorlauf)), `check_vorlage_follows.py`
   (täglich; holt die Beratungsfolge jeder Vorlage, der jemand folgt, und meldet
   neue Stationen bzw. nachgetragene Ergebnisse — Tabelle `vorlage_follows` in
-  `nwz.sqlite`), `check_presse.py` (täglich 5:15; Stadt-Quellen: RSS-Abgleich
+  `ratslotse.sqlite`), `check_presse.py` (täglich 5:15; Stadt-Quellen: RSS-Abgleich
   der Pressemitteilungen für den „Aktuelles von der Stadt"-Block der KI-Frage
   samt Sofort-Embedding, plus laufende Bauleitplan-Beteiligungen von
   oldenburg.planungsbeteiligung.de für Frist-Banner und KI-Kontext),
@@ -259,7 +268,12 @@ NWZ_OPENROUTER_ZDR=1                 # "0" lockert die Zero-Data-Retention-Pflic
   `off` greift in `kern.notify.gewuenscht()`, also **vor** der Warteschlange —
   wer einen neuen Meldeanlass baut, muss ihn über `notify.einreihen` schicken,
   sonst umgeht er Aus-Schalter, Nachtruhe und Tagesgrenze zugleich.
-- **Prompts** liegen in `kern/prompts.py` (DB-Tabelle `prompts`) und sind über das
-  Admin-UI live editierbar — Defaults greifen, solange kein Override existiert.
+- **Prompts** liegen in `kern/prompts.py` — als Code, nicht als Datenbankinhalt.
+  Wer einen ändert, ändert ihn dort: im PR sichtbar, mit Diff und Historie. Die
+  Möglichkeit, sie im Admin-UI zu überschreiben, ist seit 08/2026 ausgebaut (Tims
+  Entscheidung) — ein Prompt aus der Hüfte war zu leicht geändert und die Wirkung
+  zu schwer abzuschätzen. Nebeneffekt: Die Prompts schreiben dem Modell
+  JSON-Schlüssel vor, die der Parser wieder einliest; ein Override hätte jede
+  Umbenennung still zerlegt.
 - **Sicherheit**: Der Reverse-Proxy setzt `X-Forwarded-For` selbst
   (verhindert Rate-Limit-Bypass via XFF-Spoofing).

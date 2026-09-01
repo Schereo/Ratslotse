@@ -58,9 +58,9 @@ KOPFZEILEN = {"User-Agent": "Ratslotse/1.0 (+https://ratslotse.de)"}
 def link_finden() -> str:
     """Die Adresse des aktuellen Tabellenbands von der Übersichtsseite."""
     anfrage = urllib.request.Request(isch.UEBERSICHT_URL, headers=KOPFZEILEN)
-    with urllib.request.urlopen(anfrage, timeout=60) as antwort:  # noqa: S310
-        seite = antwort.read().decode("utf-8", "replace")
-    treffer = isch.LINK_MUSTER.search(seite)
+    with urllib.request.urlopen(anfrage, timeout=60) as answer:  # noqa: S310
+        page = answer.read().decode("utf-8", "replace")
+    treffer = isch.LINK_MUSTER.search(page)
     if not treffer:
         raise SystemExit(
             f"Kein xlsx-Link auf {isch.UEBERSICHT_URL} gefunden. Die Seite hat "
@@ -75,15 +75,15 @@ def main() -> int:
     ap.add_argument("--trockenlauf", action="store_true")
     args = ap.parse_args()
 
-    quelle_url = None
+    source_url = None
     if args.datei:
         pfad = args.datei
     else:
-        quelle_url = link_finden()
-        print(f"Tabellenband: {quelle_url}")
-        anfrage = urllib.request.Request(quelle_url, headers=KOPFZEILEN)
-        with urllib.request.urlopen(anfrage, timeout=180) as antwort:  # noqa: S310
-            roh = antwort.read()
+        source_url = link_finden()
+        print(f"Tabellenband: {source_url}")
+        anfrage = urllib.request.Request(source_url, headers=KOPFZEILEN)
+        with urllib.request.urlopen(anfrage, timeout=180) as answer:  # noqa: S310
+            roh = answer.read()
         tmp = tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False)
         tmp.write(roh)
         tmp.close()
@@ -97,15 +97,15 @@ def main() -> int:
                          f"im Blatt {isch.BLATT}.")
 
     anteil = isch.anteil_unter_50(gefunden)
-    print(f"{gefunden['jahr']}: {gefunden['insgesamt']/1e6:.2f} Mio. € "
-          f"({gefunden['je_einwohner']:,.0f} € je Einwohner*in)")
+    print(f"{gefunden['year']}: {gefunden['total']/1e6:.2f} Mio. € "
+          f"({gefunden['per_capita']:,.0f} € je Einwohner*in)")
     print(f"  davon aus Beteiligungen unter 50 %: {anteil*100:.1f} %")
 
     store = CouncilStore(Path(args.db))
     try:
         posten = [p for p in store.get_bilanz_posten("geldschulden")
-                  if p["jahr"] == gefunden["jahr"]]
-        ok, warum = isch.kernprobe(gefunden, posten[0]["wert"] if posten else None)
+                  if p["year"] == gefunden["year"]]
+        ok, warum = isch.kernprobe(gefunden, posten[0]["value"] if posten else None)
         print(f"  Kernhaushalts-Probe: {'bestanden' if ok else 'GERISSEN'} — {warum}")
         if not ok:
             raise SystemExit("Ohne bestandene Probe wird nichts gespeichert.")
@@ -113,16 +113,16 @@ def main() -> int:
             print("  Trockenlauf — nichts geschrieben.")
             return 0
         store.save_integrierte_schulden(
-            {**gefunden, "proben": [isch.PROBE_KERNHAUSHALT]},
+            {**gefunden, "probes": [isch.PROBE_KERNHAUSHALT]},
             herkunft_mod.Herkunft(
-                art="lsn", probe=[isch.PROBE_KERNHAUSHALT],
+                kind="lsn", probe=[isch.PROBE_KERNHAUSHALT],
                 label="Integrierte Schulden der Gemeinden und Gemeindeverbände",
-                url=quelle_url or isch.UEBERSICHT_URL,
-                fundstelle=f"Tabelle 2, Blatt {isch.BLATT}, "
+                url=source_url or isch.UEBERSICHT_URL,
+                citation=f"Tabelle 2, Blatt {isch.BLATT}, "
                            f"Regionalschlüssel {isch.ARS_OLDENBURG}",
-                probe_ergebnis=warum,
-                stand=f"31.12.{gefunden['jahr']}"))
-        print(f"  gespeichert: Stichtag {gefunden['jahr']}")
+                probe_result=warum,
+                as_of=f"31.12.{gefunden['year']}"))
+        print(f"  gespeichert: Stichtag {gefunden['year']}")
     finally:
         store.close()
     return 0

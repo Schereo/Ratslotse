@@ -263,7 +263,7 @@ ist. Nur Collaborator können sie starten.
 |---|---|---|
 | `ops-vorlagen-backfill.yml` | Holt alle fehlenden Vorlagen-Volltexte und Anlagen (inkl. Antragsteller-Erkennung) nach und baut anschließend den FTS-Index neu. Timeout 120 min. | Ja — nur Fehlendes; der Rebuild ist reproduzierbar. |
 | `ops-stammdaten-backfill.yml` | Zieht Beratungsfolgen aller eingelesenen Vorlagen sowie Personen- und Gremien-Stammdaten aller Wahlperioden nach. Reines Netz-Parsing, kein LLM. Timeout 120 min. | Ja — die Mitarbeit wird je Person komplett ersetzt. |
-| `ops-recaps-regenerieren.yml` | Erzeugt alle Themenfeld-Rückblicke neu (`--force`), sinnvoll nach Änderungen am admin-editierbaren Recap-Prompt statt bis Sonntag zu warten. Kostet ein paar Cent LLM. | Nein im engeren Sinn — `--force` überschreibt bewusst alle Rückblicke. |
+| `ops-recaps-regenerieren.yml` | Erzeugt alle Themenfeld-Rückblicke neu (`--force`), sinnvoll nach einer Änderung am Recap-Prompt in `kern/prompts.py` statt bis Sonntag zu warten. Kostet ein paar Cent LLM. | Nein im engeren Sinn — `--force` überschreibt bewusst alle Rückblicke. |
 | `ops-quiz-backfill.yml` | Generiert Quizfragen für alle Gebiete (Stadtteile + große Themen) bis zur Ziel-Fragenzahl (`--target 10`), inkl. Verify-Pass. Timeout 60 min. | Ja — nur Gebiete unter Ziel werden aufgefüllt. |
 | `ops-tragweite-rollout.yml` | Schaltet den Tragweite-Score erstmals scharf: Voll-Backfill über alle Beschlüsse ohne `impact`, danach Neuberechnung des Wichtigkeits-Scores. | Ja — bewertet nur Beschlüsse ohne Score. |
 | `ops-entity-dubletten.yml` | Sucht doppelte Themen (dieselbe Sache unter mehreren Namen) und führt die vom LLM bestätigten zusammen. **Zwei Inputs:** `nur_bericht` (Default `true` → zeigt nur an, schreibt nichts) und `trocken` (mit LLM-Prüfung, ohne zu speichern). Timeout 40 min. | Ja — jede Zusammenführung ist im Admin-Panel einzeln wieder auflösbar. |
@@ -281,7 +281,7 @@ per `nohup` weiter, während der Workflow selbst schon fertig ist.
 ## Backups
 
 `scripts/backup_db.py` läuft täglich um 03:00 und sichert **beide** Datenbanken
-(`nwz.sqlite` und `council.sqlite`) mit der `sqlite3`-Backup-API — also
+(`ratslotse.sqlite` und `council.sqlite`) mit der `sqlite3`-Backup-API — also
 konsistent, ohne den laufenden Betrieb zu stoppen. Die Kopien landen unter
 `data/backups/` mit Datum im Dateinamen.
 
@@ -387,7 +387,7 @@ Jeder LLM-Aufruf kann seinen Token-Verbrauch protokollieren. `kern/llm.py`
 akzeptiert dafür ein Schlüsselwort `_feature="…"`, das vor dem eigentlichen
 API-Call herausgezogen wird; `kern/usage.py` schreibt daraus eine Zeile in die
 Tabelle `llm_usage` (`ts`, `feature`, `model`, `prompt_tokens`,
-`completion_tokens`) in `nwz.sqlite`. Die Erfassung ist **best-effort**: Sie
+`completion_tokens`) in `ratslotse.sqlite`. Die Erfassung ist **best-effort**: Sie
 fängt jede Exception ab, damit Tracking niemals einen LLM-Aufruf kaputt macht —
 unter Schreib-Konkurrenz paralleler Backfills bedeutet eine verlorene Zeile
 lediglich eine leicht zu niedrige Statistik. Auch der Streaming-Pfad
@@ -487,9 +487,9 @@ Alle optional — greift keine Variable, gilt der Default aus dem Code.
 
 | Variable | Wofür | Pflicht | Default |
 |---|---|---|---|
-| `NWZ_DB` | Pfad zur Konten-/Themen-Datenbank | nein | `data/nwz.sqlite` |
+| `RATSLOTSE_DB` | Pfad zur Konten-/Themen-Datenbank | nein | `data/ratslotse.sqlite` |
 | `COUNCIL_DB` | Pfad zur Ratsdaten-Datenbank | nein | `data/council.sqlite` |
-| `NWZ_SQLITE` | Abweichender Pfad für das Usage-Tracking (`kern/usage.py`). **Achtung:** `kern/usage.py` liest ausschließlich diese Variable, der ganze Rest des Projekts `NWZ_DB`. Wer die Datenbank per `NWZ_DB` verschiebt, nimmt das Kosten-Tracking **nicht** mit — es schreibt still am alten Ort weiter. Beide zusammen setzen. | nein | `data/nwz.sqlite` |
+| `RATSLOTSE_SQLITE` | Abweichender Pfad für das Usage-Tracking (`kern/usage.py`). **Achtung:** `kern/usage.py` liest ausschließlich diese Variable, der ganze Rest des Projekts `RATSLOTSE_DB`. Wer die Datenbank per `RATSLOTSE_DB` verschiebt, nimmt das Kosten-Tracking **nicht** mit — es schreibt still am alten Ort weiter. Beide zusammen setzen. | nein | `data/ratslotse.sqlite` |
 | `SETUP_REMIND_AFTER_HOURS` | Wartezeit, bevor `remind_setup.py` an eine offene Einrichtung erinnert | nein | `48` |
 
 ### E-Mail & Benachrichtigung

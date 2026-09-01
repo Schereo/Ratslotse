@@ -18,7 +18,7 @@ Misst drei Dinge gegen handgelabelte Fragen (``cases_qa.json``):
 
 Gold-Cases gibt es in zwei Formen: ``expected_ids`` sind an die ids der
 Prod-Datenbank gebunden; ``expected_keys`` beschreiben die Beschluesse ueber
-natuerliche Schluessel (vorlage_nr, session_date, title_like, committee) und
+natuerliche Schluessel (template_number, session_date, title_like, committee) und
 laufen damit gegen jede DB-Kopie — Prod, dev oder eine lokal gescrapte
 Teil-DB. Faelle, die sich in der aktuellen DB nicht aufloesen lassen (Teil-DB
 ohne den Zeitraum), werden sichtbar uebersprungen statt falsch gemessen.
@@ -68,7 +68,7 @@ FORMALITY_MAX = 15  # deckungsgleich mit dem "Tragweite: gering"-Marker in counc
 # Schluessel, die ein expected_keys-Eintrag tragen darf (= Filter von
 # CouncilStore.find_decision_ids). Alles andere ist ein Tippfehler im Case und
 # soll laut scheitern statt still nichts zu finden.
-KEY_FIELDS = ("vorlage_nr", "committee", "session_date", "title_like")
+KEY_FIELDS = ("template_number", "committee", "session_date", "title_like")
 
 
 # --------------------------------------------------------------------------- #
@@ -102,7 +102,7 @@ def emit_keys(store, cases: list[dict]) -> None:
 
     Auf der Datenbank laufen lassen, zu der die ids gehoeren (Prod). Druckt je
     Fall einen ``expected_keys``-Vorschlag zum Einpflegen in cases_qa.json —
-    bevorzugt (vorlage_nr, committee), sonst (session_date, title_like)."""
+    bevorzugt (template_number, committee), sonst (session_date, title_like)."""
     for case in cases:
         if case.get("expected_keys"):
             continue
@@ -110,8 +110,8 @@ def emit_keys(store, cases: list[dict]) -> None:
         missing = set(case.get("expected_ids") or []) - {r["id"] for r in rows}
         specs = []
         for r in rows:
-            if r.get("vorlage_nr"):
-                spec: dict = {"vorlage_nr": r["vorlage_nr"]}
+            if r.get("template_number"):
+                spec: dict = {"template_number": r["template_number"]}
                 if r.get("committee"):
                     spec["committee"] = r["committee"]
             else:
@@ -129,13 +129,13 @@ def emit_keys(store, cases: list[dict]) -> None:
 # Metrik-Kern — pure Funktionen, offline testbar
 # --------------------------------------------------------------------------- #
 
-DEBATTE_FIELDS = ("sprecher", "session_date", "text_like")
+DEBATTE_FIELDS = ("speaker", "session_date", "text_like")
 
 
 def debatten_treffer(specs: list[dict], rows: list[dict]) -> list[bool]:
     """Je erwartetem Wortbeitrag: liegt er in den gefundenen Debatten?
 
-    Ein Spec beschreibt den Beitrag über natürliche Merkmale (``sprecher``,
+    Ein Spec beschreibt den Beitrag über natürliche Merkmale (``speaker``,
     ``session_date``, ``text_like``) statt über eine id — dieselbe Portabilität
     wie bei ``expected_keys``. Alle angegebenen Felder müssen passen;
     ``text_like`` prüft Teilstring in Beitrag ODER Verwaltungsantwort."""
@@ -146,12 +146,12 @@ def debatten_treffer(specs: list[dict], rows: list[dict]) -> list[bool]:
             raise ValueError(f"unbekannte Debatten-Schluessel {sorted(unknown)}")
         hit = False
         for r in rows:
-            if spec.get("sprecher") and spec["sprecher"].lower() not in (r.get("sprecher") or "").lower():
+            if spec.get("speaker") and spec["speaker"].lower() not in (r.get("speaker") or "").lower():
                 continue
             if spec.get("session_date") and spec["session_date"] != (r.get("session_date") or ""):
                 continue
             if spec.get("text_like"):
-                heu = f"{r.get('text') or ''} {r.get('antwort') or ''}".lower()
+                heu = f"{r.get('text') or ''} {r.get('answer') or ''}".lower()
                 if spec["text_like"].lower() not in heu:
                     continue
             hit = True
@@ -422,21 +422,21 @@ def main() -> int:
             # Ketten-Faelle (Chat): case["verlauf"] traegt die Vorrunden — die
             # Analyse muss daraus eine eigenstaendige Suchfrage kondensieren.
             analyse = qa.analyse_query(q, verlauf=case.get("verlauf"))
-            expanded, typ = analyse["begriffe"], analyse["typ"]
+            expanded, typ = analyse["terms"], analyse["kind"]
             typen[case["id"]] = typ
             analysen[case["id"]] = analyse
             t["expand_ms"] = round((time.perf_counter() - t_exp) * 1000)
             t["analyse_ct"] = kosten_ct_seit(c_exp)
             t_ret = time.perf_counter()
-            hits = emb.hybrid_search(store, analyse["frage"], expanded, top_k=TOP_K, pool=55, timings=t,
-                                     varianten=analyse.get("varianten"),
-                                     anker_ids=qa.anker_ids_fuer(store, analyse["frage"]),
-                                     recency=qa.recency_intent(analyse["frage"]))
+            hits = emb.hybrid_search(store, analyse["question"], expanded, top_k=TOP_K, pool=55, timings=t,
+                                     varianten=analyse.get("variants"),
+                                     anker_ids=qa.anker_ids_fuer(store, analyse["question"]),
+                                     recency=qa.recency_intent(analyse["question"]))
             cands = store.get_decisions_by_ids([h[0] for h in hits])
             qa.markiere_veraltete(store, cands)
-            if typ == "partei" and analyse.get("partei"):
+            if typ == "party" and analyse.get("party"):
                 try:
-                    extra_ids = store.antrag_decision_ids(analyse["partei"], expanded)
+                    extra_ids = store.antrag_decision_ids(analyse["party"], expanded)
                     have = {c["id"] for c in cands}
                     cands += store.get_decisions_by_ids([i for i in extra_ids if i not in have])
                 except Exception:  # noqa: BLE001
@@ -445,9 +445,9 @@ def main() -> int:
             t_ctx = time.perf_counter()
             ctx = cands[:ANSWER_N]
             try:  # Vorlagen-Auszuege wie im /ask-Endpoint
-                texts = store.vorlage_texts_for([c.get("vorlage_nr") or "" for c in ctx])
+                texts = store.vorlage_texts_for([c.get("template_number") or "" for c in ctx])
                 for c in ctx:
-                    txt = texts.get((c.get("vorlage_nr") or "").strip())
+                    txt = texts.get((c.get("template_number") or "").strip())
                     if txt:
                         c["vorlage_excerpt"] = vorlagen_mod.excerpt(txt, 350)
             except Exception:  # noqa: BLE001
@@ -482,8 +482,8 @@ def main() -> int:
         if args.nur_retrieval:
             return []
         ctx = [dict(c) for c in candidates_of(case)[:ANSWER_N]]
-        typ = typen.get(case["id"], "thema")
-        if typ == "verlauf":
+        typ = typen.get(case["id"], "topic")
+        if typ == "history":
             ctx = qa.sort_verlauf(ctx)
         if not with_impact:
             for c in ctx:
@@ -513,7 +513,7 @@ def main() -> int:
             analyse = analysen[case["id"]]       # kein zweiter Analyse-Call
             rows: list[dict] = []
             try:
-                hits = emb.search_wortbeitraege(store, analyse["frage"], analyse["begriffe"])
+                hits = emb.search_wortbeitraege(store, analyse["question"], analyse["terms"])
                 rows = store.wortbeitraege_by_ids([wid for wid, _ in hits])
             except Exception:  # noqa: BLE001 — Debatten sind Zusatz, nie Blocker
                 pass

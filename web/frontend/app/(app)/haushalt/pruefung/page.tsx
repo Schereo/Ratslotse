@@ -11,45 +11,45 @@
 // hintereinander: Die Kennzahlen sagen, wie die Stadt dasteht, die
 // Feststellungen, wie verlässlich diese Auskunft ist.
 //
-// Der Rahmen liegt hier, der Inhalt in den beiden `abschnitt-*.tsx` (die
-// Begründung steht im Kopf von `abschnitt-termine.tsx`).
+// Der Rahmen liegt hier, der Inhalt in den beiden `section-*.tsx` (die
+// Begründung steht im Kopf von `section-termine.tsx`).
 
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
-import { Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
+import { Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/source";
 import { Abschnitte, ANKER_KLASSE } from "@/components/haushalt/abschnitte";
 import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 import { SchrittPfad } from "@/components/haushalt/schritt-pfad";
 import { Seitenbuehne, SeitenbuehneLaedt, ZaehlZahl } from "@/components/haushalt/seitenbuehne";
-import { PruefungAbschnitt } from "@/components/haushalt/abschnitt-pruefung";
-import { KennzahlenAbschnitt } from "@/components/haushalt/abschnitt-kennzahlen";
+import { PruefungAbschnitt } from "@/components/haushalt/section-pruefung";
+import { KennzahlenAbschnitt } from "@/components/haushalt/section-indicators";
 
 /** Ausgeschrieben, nicht zusammengesetzt: `tests/test_quellen_dokumente.py`
  *  liest die Literale dieser Liste, um stumme Beleg-Chips zu finden. */
-const QUELLEN: QuellenSchluessel[] = ["pruefbericht", "kennzahlen", "bilanz"];
+const QUELLEN: QuellenSchluessel[] = ["pruefbericht", "indicators", "bilanz"];
 
 const MARKEN = [
-  { id: "feststellungen", titel: "Was geprüft wurde" },
-  { id: "kennzahlen", titel: "Die dreizehn Zahlen" },
+  { id: "feststellungen", title: "Was geprüft wurde" },
+  { id: "indicators", title: "Die dreizehn Zahlen" },
 ];
 
 function PruefungInner() {
   // Die Zahlen der Bühne kommen aus dem Feststellungs-Abschnitt selbst
   // (`onBestand`) — dieselbe Antwort, die unten die KettenMatrix trägt.
-  const [bestand, setBestand] = useState<{
+  const [balance, setBestand] = useState<{
     gesamt: number;
-    jeJahr: { jahr: number; anzahl: number }[];
+    jeJahr: { year: number; count: number }[];
     ohneBericht: number[];
   } | null | undefined>(undefined);
   return (
-    // KEIN `jahr` am Kontext. Die beiden Abschnitte führen verschiedene
-    // Jahrgänge — der Prüfbericht den gewählten (`?jahr=`), die Kennzahlen den
+    // KEIN `year` am Kontext. Die beiden Abschnitte führen verschiedene
+    // Jahrgänge — der Prüfbericht den gewählten (`?year=`), die Kennzahlen den
     // jüngsten Rechenschaftsbericht. Ein gemeinsamer Wert wäre für einen von
     // beiden der falsche; ohne ihn nimmt jeder Beleg das jüngste Dokument
     // seiner Quelle und schreibt den Jahrgang an.
-    <Quellenkontext schluessel={QUELLEN}>
+    <Quellenkontext keys={QUELLEN}>
       <div className="flex flex-col gap-4">
         <div className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
           <Link href="/haushalt" className="hover:text-foreground">Haushalt</Link>
@@ -70,14 +70,14 @@ function PruefungInner() {
         {/* Die Bühne (H5-02/H5-09). Die fehlenden Jahrgänge stehen im Kopf,
             nicht in der Fußnote: als Signal-Zeile und als gestrichelter
             Leerplatz im Minibild (LückenFeld-Regel). */}
-        {bestand ? (
+        {balance ? (
           <Seitenbuehne
-            kicker={`Rechnungsprüfung ${Math.min(...bestand.jeJahr.map((j) => j.jahr))}–${Math.max(...bestand.jeJahr.map((j) => j.jahr))}`}
-            zahl={<><ZaehlZahl wert={bestand.gesamt} /> Feststellungen
-              aus {bestand.jeJahr.length} Jahren</>}
-            sub={bestand.ohneBericht.length > 0 ? (
+            kicker={`Rechnungsprüfung ${Math.min(...balance.jeJahr.map((j) => j.year))}–${Math.max(...balance.jeJahr.map((j) => j.year))}`}
+            zahl={<><ZaehlZahl value={balance.gesamt} /> Feststellungen
+              aus {balance.jeJahr.length} Jahren</>}
+            sub={balance.ohneBericht.length > 0 ? (
               <span className="font-semibold text-[color:hsl(var(--signal))]">
-                {bestand.ohneBericht.join(" und ")} {bestand.ohneBericht.length > 1 ? "fehlen" : "fehlt"} ersatzlos —
+                {balance.ohneBericht.join(" und ")} {balance.ohneBericht.length > 1 ? "fehlen" : "fehlt"} ersatzlos —
                 geprüft wurde, der Schlussbericht ist nicht lesbar veröffentlicht
               </span>
             ) : "erstmalige und wiederholte Beanstandungen, Hinweise und Klarstellungen"}
@@ -85,20 +85,20 @@ function PruefungInner() {
               href: "#feststellungen",
               label: "Feststellungen je Jahrgang · gestrichelt = Bericht fehlt — klickt zur Matrix",
               skizze: (() => {
-                const max = Math.max(...bestand.jeJahr.map((j) => j.anzahl), 1);
+                const max = Math.max(...balance.jeJahr.map((j) => j.count), 1);
                 const saeulen = [
-                  ...bestand.jeJahr.map((j) => ({ jahr: j.jahr, anzahl: j.anzahl as number | null })),
-                  ...bestand.ohneBericht.map((j) => ({ jahr: j, anzahl: null })),
-                ].sort((a, b) => a.jahr - b.jahr);
+                  ...balance.jeJahr.map((j) => ({ year: j.year, count: j.count as number | null })),
+                  ...balance.ohneBericht.map((j) => ({ year: j, count: null })),
+                ].sort((a, b) => a.year - b.year);
                 return (
                   <span className="flex items-end gap-1" style={{ height: 44 }}>
-                    {saeulen.map((sl) => sl.anzahl != null ? (
-                      <span key={sl.jahr} className="w-5 rounded-[3px]" style={{
-                        height: `${Math.max((sl.anzahl / max) * 100, 8)}%`,
+                    {saeulen.map((sl) => sl.count != null ? (
+                      <span key={sl.year} className="w-5 rounded-[3px]" style={{
+                        height: `${Math.max((sl.count / max) * 100, 8)}%`,
                         background: "var(--sb-voll)",
                       }} />
                     ) : (
-                      <span key={sl.jahr} className="w-5 rounded-[3px]" style={{
+                      <span key={sl.year} className="w-5 rounded-[3px]" style={{
                         height: "68%",
                         border: "1.5px dashed hsl(var(--signal))",
                       }} />
@@ -108,7 +108,7 @@ function PruefungInner() {
               })(),
             }}
           />
-        ) : bestand === undefined ? (
+        ) : balance === undefined ? (
           <SeitenbuehneLaedt kicker="Rechnungsprüfung" />
         ) : null}
 
@@ -127,20 +127,20 @@ function PruefungInner() {
           <PruefungAbschnitt onBestand={setBestand} />
         </section>
 
-        <section id="kennzahlen" className={`${ANKER_KLASSE} border-t border-border pt-4`}>
+        <section id="indicators" className={`${ANKER_KLASSE} border-t border-border pt-4`}>
           <KennzahlenAbschnitt />
         </section>
 
         <SchrittWeiter href="/haushalt/pruefung" />
 
-        <Quellenverzeichnis schluessel={QUELLEN} />
+        <Quellenverzeichnis keys={QUELLEN} />
       </div>
     </Quellenkontext>
   );
 }
 
 export default function PruefungPage() {
-  // `useSearchParams` im Prüfungs-Abschnitt (`?jahr=`) braucht eine
+  // `useSearchParams` im Prüfungs-Abschnitt (`?year=`) braucht eine
   // Suspense-Grenze — sie lag vorher an der Prüfungs-Seite und bleibt hier.
   return (
     <Suspense

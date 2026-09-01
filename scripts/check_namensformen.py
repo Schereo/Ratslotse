@@ -46,8 +46,8 @@ def _bestand(store: CouncilStore) -> dict[str, dict]:
     """Je Namensform (ungefaltet!): Sitzungen, Zeitraum, Rollen, Fraktionen."""
     aus: dict[str, dict] = defaultdict(
         lambda: {"ksinr": set(), "erste": None, "letzte": None,
-                 "rollen": Counter(), "parteien": Counter(),
-                 "gremien": set(), "namen": Counter()})
+                 "roles": Counter(), "parteien": Counter(),
+                 "committees": set(), "namen": Counter()})
     for r in store._conn.execute(
             """SELECT a.name, a.ksinr, a.role, a.party, cs.committee, cs.session_date
                FROM council_attendance a JOIN council_sessions cs ON cs.ksinr = a.ksinr
@@ -57,9 +57,9 @@ def _bestand(store: CouncilStore) -> dict[str, dict]:
             continue
         e = aus[sl]
         e["ksinr"].add(r["ksinr"])
-        e["rollen"][r["role"]] += 1
+        e["roles"][r["role"]] += 1
         e["namen"][r["name"]] += 1
-        e["gremien"].add(r["committee"])
+        e["committees"].add(r["committee"])
         if r["party"]:
             e["parteien"][r["party"]] += 1
         d = r["session_date"]
@@ -69,32 +69,32 @@ def _bestand(store: CouncilStore) -> dict[str, dict]:
 
 
 def _zeile(slug: str, e: dict) -> str:
-    partei = ", ".join(p for p, _ in e["parteien"].most_common(2)) or "—"
-    rollen = ", ".join(f"{r}×{n}" for r, n in e["rollen"].most_common())
+    party = ", ".join(p for p, _ in e["parteien"].most_common(2)) or "—"
+    roles = ", ".join(f"{r}×{n}" for r, n in e["roles"].most_common())
     return (f"    {slug:34s} {len(e['ksinr']):4d} Sitzungen  "
-            f"{e['erste']} … {e['letzte']}  [{rollen}]  {partei}")
+            f"{e['erste']} … {e['letzte']}  [{roles}]  {party}")
 
 
 def main(alle: bool = False, db: Path | None = None) -> dict:
     store = CouncilStore(str(db or COUNCIL_DB))
     try:
-        bestand = _bestand(store)
-        paare = namensformen.verdachtsfaelle({s: e["ksinr"] for s, e in bestand.items()})
+        balance = _bestand(store)
+        paare = namensformen.verdachtsfaelle({s: e["ksinr"] for s, e in balance.items()})
         offen = [p for p in paare if not p["gefuehrt"]]
-        print(f"{len(bestand)} Namensformen, {len(namensformen.GRUPPEN)} geführte Gruppen, "
+        print(f"{len(balance)} Namensformen, {len(namensformen.GRUPPEN)} geführte Gruppen, "
               f"{len(offen)} ungeprüfte Verdachtspaare\n")
         for p in (paare if alle else offen):
-            a, b = bestand[p["a"]], bestand[p["b"]]
-            marke = " (geführt)" if p["gefuehrt"] else ""
-            print(f"  {p['a']}  ↔  {p['b']}{marke}")
+            a, b = balance[p["a"]], balance[p["b"]]
+            mark = " (geführt)" if p["gefuehrt"] else ""
+            print(f"  {p['a']}  ↔  {p['b']}{mark}")
             print(_zeile(p["a"], a))
             print(_zeile(p["b"], b))
-            gemeinsam = sorted(a["gremien"] & b["gremien"])
+            gemeinsam = sorted(a["committees"] & b["committees"])
             print(f"    gemeinsame Gremien: {', '.join(gemeinsam) if gemeinsam else '—'}")
             print()
         if offen:
             print("Geprüfte Paare gehören nach council/namensformen.py → GRUPPEN.")
-        return {"formen": len(bestand), "verdacht": len(offen)}
+        return {"formen": len(balance), "verdacht": len(offen)}
     finally:
         store.close()
 

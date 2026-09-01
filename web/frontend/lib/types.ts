@@ -1,3 +1,5 @@
+import type { components } from "./api-schema";
+
 /** Wohin Benachrichtigungen gehen — „off" heißt: gar nicht. */
 export type DeliveryChannel = "email" | "both" | "push" | "off";
 
@@ -27,6 +29,10 @@ export interface CouncilSession {
   committee: string;
   session_date: string;
   session_time: string;
+  /** Nur bei heutigen Sitzungen: Startzeit der nächsten desselben Tages und
+   *  damit das Ende des LIVE-Fensters (s. `lib/live`). Fehlt bei der letzten
+   *  Sitzung des Tages. */
+  live_until?: string | null;
   location: string;
   n_items: number;
   // Present on text search: the agenda items that matched the query.
@@ -38,7 +44,7 @@ export interface CouncilSession {
 export interface AgendaItem {
   item_number: string;
   title: string;
-  vorlage_nr: string | null;
+  template_number: string | null;
   kvonr: number | null;
   is_public: number;
   /** Dokument-Anhänge des TOP (RIS-PDFs) — ältere API-Antworten kennen das
@@ -60,14 +66,14 @@ export interface AgendaItem {
 }
 
 export type DecisionOutcome =
-  | "angenommen" | "abgelehnt" | "vertagt" | "zur_kenntnis" | "kein_beschluss";
+  | "accepted" | "rejected" | "postponed" | "noted" | "no_decision";
 
 export interface DecisionLocationMatch {
   name: string;
-  stadtteil: string;
+  district: string;
   place_id?: string | null;
   ortsbereich_id?: string | null;
-  source: "title" | "beschluss" | "vorlage";
+  source: "title" | "official_text" | "template";
   evidence: string;
   method: string;
   confidence: number;
@@ -82,14 +88,14 @@ export interface CouncilDecision {
   parent_item: string | null;
   item_number: string | null;
   title: string | null;
-  beschluss: string | null;
+  official_text: string | null;
   outcome: DecisionOutcome | null;
   vote: string | null;
-  gegenstimmen: number | null;
-  enthaltungen: number | null;
+  no_votes: number | null;
+  abstentions: number | null;
   factions: string[];
   parties: string[];
-  vorlage_nr: string | null;
+  template_number: string | null;
   raw_result: string | null;
   committee: string;
   session_date: string;
@@ -106,7 +112,7 @@ export interface CouncilDecision {
    *  die zu diesem Beschluss gehören — für die Unterzeile in der Trefferliste. */
   subvote_summary?: { count: number; factions: string[]; outcomes: string[] } | null;
   /** Regex-Ernte: Wie stark weicht der Beschluss vom Verwaltungsvorschlag ab? */
-  abweichung?: "unveraendert" | "leicht" | "stark" | null;
+  deviation?: "unchanged" | "slight" | "strong" | null;
   /** Beim Ortsfilter: konkrete Treffer samt Fundstelle zur manuellen Prüfung. */
   location_matches?: DecisionLocationMatch[];
 }
@@ -125,7 +131,7 @@ export interface QaSource {
    *  deterministisch aus den Beschluss-Metadaten. */
   amount_eur?: number | null;
   /** Kostenentwicklung: gleiche Vorlagen-Familie = belegbares Delta. */
-  vorlage_nr?: string | null;
+  template_number?: string | null;
   factions?: string[];
   /** Bei Ortsfragen: konkrete, quellenbelegte Zuordnung zum gefragten Ort. */
   location_matches?: DecisionLocationMatch[];
@@ -143,7 +149,7 @@ export interface QaAnswer {
 
 export interface GoalSummary {
   key: string; label: string; description: string;
-  voran: number; bremst: number; neutral: number; total: number;
+  advances: number; hinders: number; neutral: number; total: number;
 }
 
 export interface GoalDecision {
@@ -154,7 +160,7 @@ export interface GoalDecision {
 
 export interface GoalDetail {
   key: string; label: string; description: string;
-  summary: { voran: number; bremst: number; neutral: number; total: number };
+  summary: { advances: number; hinders: number; neutral: number; total: number };
   decisions: GoalDecision[];
 }
 
@@ -187,14 +193,14 @@ export interface PartyAnalysis {
   };
   success_rates: {
     party: string; motions: number;
-    angenommen: number; abgelehnt: number; vertagt: number; rate: number | null;
+    accepted: number; rejected: number; postponed: number; rate: number | null;
   }[];
   contention: { field: string; total: number; contested: number; contested_rate: number }[];
   alliances: { a: string; b: string; count: number }[];
   field_labels: Record<string, string>;
   /** Erfolgsquoten der eingereichten Antrags-Dokumente (Anlagen-Ingestion). */
   antrag_stats?: {
-    parties: { party: string; n: number; angenommen: number; abgelehnt: number }[];
+    parties: { party: string; n: number; accepted: number; rejected: number }[];
     n_antraege: number;
     n_mit_beschluss: number;
   } | null;
@@ -207,6 +213,22 @@ export interface Attendee {
   note: string | null;
 }
 
+/** Vorläufiges Abstimmungsergebnis aus der O1-Videoaufzeichnung — LLM-gelesen
+ *  aus den YouTube-Untertiteln, ausdrücklich unter Vorbehalt. Erscheint nur
+ *  an TOPs, die noch keinen Protokoll-Beschluss haben. */
+export interface VideoResult {
+  item_number: string;
+  outcome: "accepted" | "rejected" | "postponed" | "noted" | "removed";
+  /** Nur gesetzt, wo der Wortlaut es trägt — sonst offen (null). */
+  vote: "unanimous" | "majority" | null;
+  no_votes: number | null;
+  abstentions: number | null;
+  quote: string;
+  video_id: string;
+  /** Fundstelle des Belegs im Video (Sekunden) — für den Sprung-Link. */
+  video_seconds: number | null;
+}
+
 export interface SessionDetail extends CouncilSession {
   agenda_items: AgendaItem[];
   decisions?: CouncilDecision[];
@@ -216,6 +238,7 @@ export interface SessionDetail extends CouncilSession {
   /** „Zuletzt geändert"-Chronik der Tagesordnung, neueste zuerst — Ziel der
    *  Änderungs-Push; ältere Sitzungen (vor der Chronik) haben keine. */
   aenderungen?: AgendaAenderung[];
+  video_results?: VideoResult[];
 }
 
 export type BookmarkKind = "session" | "agenda_item" | "decision";
@@ -244,9 +267,9 @@ export interface BookmarkEntry {
 }
 
 export interface AgendaAenderungZeile {
-  art: "neu" | "geaendert" | "verschoben" | "vorlage" | "anlagen" | "entfernt";
+  art: "new" | "changed" | "moved" | "template" | "attachments" | "removed";
   label: string;
-  titel: string;
+  title: string;
   nichtoeffentlich: boolean;
   detail: string | null;
 }
@@ -293,7 +316,7 @@ export interface PlaceCandidateEvidence {
 
 export interface PlaceCandidate {
   slug: string; name: string; kind: string; lat: number | null; lon: number | null;
-  stadtteil: string | null; ortsbereich_id: string | null;
+  district: string | null; ortsbereich_id: string | null;
   status: "pending" | "concrete" | "approved" | "alias" | "rejected";
   decision_count: number; last_date: string; avg_confidence: number;
   review_place_id?: string | null; review_name?: string | null;
@@ -317,7 +340,7 @@ export interface RelatedEntity {
   name: string;
   kind: string;
   n: number;
-  rel_type: "belegt" | "aehnlich" | string;
+  rel_type: "documented" | "similar" | string;
   score: number;
   evidence: number;
 }
@@ -339,7 +362,7 @@ export interface Member {
   /** „rat" = Ratsmandat (im Plenum geführt oder im RIS als Ratsmitglied),
    *  „beratend" = beratendes Mitglied eines Ausschusses (Verband, Beirat,
    *  Fachperson) — dem Rat gehört es nicht an. */
-  art: "rat" | "beratend";
+  art: "council" | "advisory";
   /** Entsendende Organisation der beratenden Mitglieder („Behindertenbeirat"). */
   organisation: string | null;
   /** Werte, unter denen die Person im Fraktions-Filter erscheint. Meist die
@@ -356,14 +379,14 @@ export interface Member {
 
 export interface MemberDetail {
   /** Fehlt bei älteren gecachten Antworten — dann als "rat" behandeln. */
-  typ?: "rat";
+  typ?: "council";
   name: string; slug: string; party: string | null;
   /** Zugehörigkeit für den Seitenkopf — wie im Verzeichnis aufgelöst
    *  („FDP/Volt" → FDP, wo es belegt ist). Die Zeitreihe darunter bleibt
    *  quellentreu. */
-  current_affiliation: { label: string; kind: "partei" | "gruppe" | "parteilos"; parties: string[] } | null;
+  current_affiliation: { label: string; kind: "party" | "group" | "independent"; parties: string[] } | null;
   /** s. `Member.art` — bei „beratend" bleibt `faction_timeline` leer. */
-  art: "rat" | "beratend";
+  art: "council" | "advisory";
   organisation: string | null;
   n_sessions: number; active_from: string | null; active_to: string | null;
   /** Fraktions-/Gruppen-Verlauf aus der Anwesenheit: Phasen je Zugehörigkeit,
@@ -371,7 +394,7 @@ export interface MemberDetail {
    *  `parties` sind bei einer Gruppe ihre Mitglieds-Parteien. */
   faction_timeline: {
     label: string;
-    kind: "partei" | "gruppe" | "parteilos";
+    kind: "party" | "group" | "independent";
     parties: string[];
     first: string;
     last: string;
@@ -381,14 +404,14 @@ export interface MemberDetail {
   ris: {
     kpenr: number;
     name: string;
-    fraktion_aktuell: string | null;
-    memberships: { kgrnr: number | null; gremium: string; rolle: string | null; von: string | null; bis: string | null }[];
+    current_faction: string | null;
+    memberships: { kgrnr: number | null; committee: string; role: string | null; von: string | null; bis: string | null }[];
   } | null;
   committees: { committee: string; n: number; chair: boolean }[];
   recent: { ksinr: number; committee: string; session_date: string }[];
   /** Erste Seite der Wortbeiträge (volle Paraphrase); weitere holt
    *  /council/person/{slug}/wortbeitraege. */
-  wortbeitraege?: { art: string; top: string | null; text: string;
+  wortbeitraege?: { kind: string; top: string | null; text: string;
     committee: string | null; session_date: string }[];
   /** Wie viele Beiträge die Person insgesamt hat — die erste Seite ist ein
    *  Ausschnitt davon. */
@@ -402,8 +425,8 @@ export interface MemberDetail {
  *  Fraktions-Zeitleiste, kein Vorsitz-Zähler, keine Gremien-Präsenz. `von`/
  *  `bis` sind Jahre der Protokoll-Erwähnung, keine amtliche Amtszeit. */
 export interface VerwaltungDetail {
-  typ: "verwaltung";
-  name: string; slug: string; rolle: string | null;
+  typ: "administration";
+  name: string; slug: string; role: string | null;
   aktiv: boolean; von: string | null; bis: string | null;
   wortbeitraege?: MemberDetail["wortbeitraege"];
   wortbeitraege_gesamt?: number;
@@ -414,11 +437,11 @@ export type PersonProfil = MemberDetail | VerwaltungDetail;
 
 /** Eine Station der offiziellen Beratungsfolge einer Vorlage. */
 export interface Beratung {
-  datum: string | null;
-  gremium: string;
+  date: string | null;
+  committee: string;
   top: string | null;
   is_public: number | null;
-  ergebnis: string | null;
+  result: string | null;
   ksinr: number | null;
   future: boolean;
 }
@@ -431,9 +454,9 @@ export interface ImportanceBreakdown {
   /** RL-U16: KI-Tragweite 0–100 (fehlt, solange der Backfill sie nicht hat). */
   impact?: number | null;
   /** 0–1 je Signal, null wenn das Signal für diesen Beschluss fehlt. */
-  signals: { geld: number | null; umstritten: number | null; verbindlich: number | null; aufwand: number | null };
+  signals: { geld: number | null; umstritten: number | null; verbindlich: number | null; expense: number | null };
   /** Gewichteter Punkte-Beitrag je Signal; Summe = `base_score`. */
-  contributions?: { geld: number | null; umstritten: number | null; verbindlich: number | null; aufwand: number | null };
+  contributions?: { geld: number | null; umstritten: number | null; verbindlich: number | null; expense: number | null };
   /** RL-U16: 1-Satz-Begründung des Tragweite-Scores (fehlt vor dem Backfill). */
   impact_reason?: string | null;
 }
@@ -455,8 +478,8 @@ export interface DecisionDetail {
   follow?: { kvonr: number; following: boolean };
   /** Stufe 3b: Läuft zu diesem Bauleitplan gerade eine Bürgerbeteiligung?
    *  Kommt von oldenburg.planungsbeteiligung.de, gematcht über die Plan-Nummer. */
-  beteiligung?: { titel: string; schritt: string; von: string | null;
-                  bis: string | null; url: string;
+  beteiligung?: { title: string; schritt: string; valid_from: string | null;
+                  valid_until: string | null; url: string;
                   /** "laufend" oder "beendet": Abgeschlossene Verfahren
                    *  loescht das Portal der Stadt spurlos — bei uns bleiben
                    *  sie als Beleg stehen (Historie seit 13.08.). */
@@ -467,19 +490,19 @@ export interface DecisionDetail {
   vorlage_url?: string | null;
   /** Eingelesener Vorlagen-Text (Sachverhalt/Begründung) zum Beschluss. */
   vorlage?: {
-    vorlage_nr: string | null;
+    template_number: string | null;
     title: string | null;
-    art: string | null;
+    kind: string | null;
     document_url: string | null;
     n_pages: number | null;
     excerpt: string | null;
     /** Regex-Ernte: federführendes Amt aus dem Vorlagen-Kopf. */
-    amt?: string | null;
+    office?: string | null;
     /** Regex-Ernte: Klima-Check der Verwaltung („Auswirkungen: b) Klima"). */
-    klima_check?: string | null;
+    climate_impact?: string | null;
     klima_relevant?: boolean | null;
     /** „Finanzielle Auswirkungen" aus der Vorlage (amtlicher Wortlaut). */
-    finanz_check?: string | null;
+    financial_impact?: string | null;
   } | null;
   /** Wo dieser Beschluss im Haushalts-Bereich wieder auftaucht — belegt über
    *  eine echte Verknüpfung, nicht über eine Textsuche.
@@ -491,10 +514,10 @@ export interface DecisionDetail {
   haushalts_anschluss?: {
     art: "nachbewilligung" | "buergschaft";
     href: string;
-    titel: string;
-    vorlage_nr: string;
-    jahr?: number | null;
-    betrag?: number | null;
+    title: string;
+    template_number: string;
+    year?: number | null;
+    amount?: number | null;
   } | null;
   /** P1: document_id der gerenderten Planzeichnung — B-Plan-Beschlüsse
    *  zeigen sie als Bild statt nur als Anlagen-Download. */
@@ -504,8 +527,8 @@ export interface DecisionDetail {
     document_id: number;
     label: string | null;
     url: string | null;
-    is_antrag: number;
-    antragsteller: string[];
+    is_motion: number;
+    applicants: string[];
     status: string;
     /** 1 = Planzeichnung gerendert (scripts/render_plaene.py). */
     bild?: number;
@@ -585,17 +608,6 @@ export interface FieldRecap {
   generated_at: string;
 }
 
-export interface Prompt {
-  key: string;
-  title: string;
-  description: string;
-  content: string;
-  default: string;
-  is_overridden: boolean;
-  updated_at?: string | null;
-  updated_by?: string | null;
-}
-
 export interface WebUser {
   id: number;
   email: string;
@@ -672,17 +684,17 @@ export interface QuizAreaEntry {
   kind_label?: string;
   parent_ids?: string[];
   aliases?: string[];
-  wahlbereiche?: number[];
-  stadtteile?: string[];
+  electoral_districts?: number[];
+  districts?: string[];
   /** Themen: Stadtteil des Themen-Orts (RL-U13); null/fehlend = stadtweit. */
-  stadtteil?: string | null;
+  district?: string | null;
   questions: number;
   points: number;
 }
 export interface QuizAreas {
-  wahlbereiche: QuizAreaEntry[];
-  stadtteile: QuizAreaEntry[];
-  themen: QuizAreaEntry[];
+  electoral_districts: QuizAreaEntry[];
+  districts: QuizAreaEntry[];
+  topics: QuizAreaEntry[];
   categories: string[];
 }
 /** Eigene Quizfrage (RL-U14) — privat je Konto, mit Übungs-Zählern.
@@ -693,7 +705,7 @@ export interface UserQuizQuestion {
   question: string;
   options: string[];
   correct_index: number;
-  stadtteil: string | null;
+  district: string | null;
   category: string;
   explanation: string | null;
   qtype?: "mc" | "estimate";
@@ -705,23 +717,12 @@ export interface UserQuizQuestion {
   correct_count: number;
   created_at: string;
 }
-export interface QuizQuestion {
-  id: number;
-  area_type: string;
-  area_key: string;
-  category: string;
-  difficulty: string;
-  question: string;
-  options: string[];
-  qtype?: "mc" | "estimate";
-  unit?: string | null;
-  range_min?: number | null;
-  range_max?: number | null;
-  /** Optionaler Tipp, der vor dem Auflösen eingeblendet werden kann. */
-  hint?: string | null;
-  source_type: string | null;
-  source_ref: string | null;
-}
+/** Eine Quizfrage OHNE Lösung — direkt aus dem API-Vertrag.
+ *
+ *  `source_type`/`source_ref` sind optional, weil die eigenen Übungsfragen
+ *  (`/quiz/own/round`) ohne Quelle gebaut werden. Der frühere Handtyp verlangte
+ *  sie und log damit über genau diesen Endpunkt. */
+export type QuizQuestion = components["schemas"]["QuizFrage"];
 export interface QuizImageCredit {
   url: string;
   author: string | null;

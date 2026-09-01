@@ -39,7 +39,7 @@ function VerwaltungChip({ p }: { p: PersonEintrag }) {
       <Card className="card-interactive flex items-center gap-3 p-3">
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium text-foreground">{p.name}</p>
-          <p className="mt-0.5 truncate text-xs text-muted-foreground">{p.rolle}</p>
+          <p className="mt-0.5 truncate text-xs text-muted-foreground">{p.role}</p>
         </div>
         <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-card px-1.5 py-px text-[10px] font-medium text-muted-foreground">
           <span aria-hidden className="h-[7px] w-[7px] shrink-0 rounded-full" style={{ backgroundColor: "#0764a6" }} />
@@ -78,14 +78,14 @@ export function PersonenView() {
     (m.formen ?? []).some((f) => f.toLowerCase().includes(needle));
   const filtered = all.filter((m) => (!needle || passt(m))
     && (!party || (m.filter_parteien ?? []).includes(party)));
-  const rat = filtered.filter((m) => m.art !== "beratend");
-  const beratend = filtered.filter((m) => m.art === "beratend");
+  const rat = filtered.filter((m) => m.art !== "advisory");
+  const beratend = filtered.filter((m) => m.art === "advisory");
   // Nur Verwaltungsleute mit ERKANNTEM Amt haben einen Steckbrief
   // (verwaltung_detail() im Backend) — ohne Amt gäbe es nur einen toten Link.
   // Der Parteifilter blendet den Block aus: Verwaltung ist parteilos, unter
   // einer gewählten Fraktion wäre er nur verwirrend.
   const verwaltung = party ? [] : (lexikon?.personen ?? [])
-    .filter((p) => p.art === "stadt" && p.rolle && (!needle || (p.name ?? "").toLowerCase().includes(needle)));
+    .filter((p) => p.art === "city" && p.role && (!needle || (p.name ?? "").toLowerCase().includes(needle)));
 
   return (
     <div className="space-y-4">

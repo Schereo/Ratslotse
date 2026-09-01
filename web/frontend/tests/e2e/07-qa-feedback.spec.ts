@@ -22,7 +22,7 @@ async function anmelden(page: import("@playwright/test").Page) {
  *  vollständige Antwort mit Aktionszeile erzeugt. */
 const SSE_ANTWORT = [
   `data: ${JSON.stringify({ type: "step", step: "answer" })}\n\n`,
-  `data: ${JSON.stringify({ type: "sources", sources: [], frage: "Was wurde zum Radverkehr beschlossen?" })}\n\n`,
+  `data: ${JSON.stringify({ type: "sources", sources: [], question: "Was wurde zum Radverkehr beschlossen?" })}\n\n`,
   `data: ${JSON.stringify({ type: "token", text: "Der Rat hat mehrere Fahrradstraßen beschlossen." })}\n\n`,
   `data: ${JSON.stringify({ type: "done" })}\n\n`,
 ].join("");
@@ -37,7 +37,7 @@ test.describe("Daumen-Feedback", () => {
     // Jede Bewertung mitschreiben, statt sie an das echte Backend zu geben.
     const gesendet: string[] = [];
     await page.route("**/api/council/qa-feedback", async (route) => {
-      gesendet.push(JSON.parse(route.request().postData() ?? "{}").bewertung);
+      gesendet.push(JSON.parse(route.request().postData() ?? "{}").rating);
       await route.fulfill({ status: 201, contentType: "application/json", body: '{"ok":true}' });
     });
 

@@ -32,14 +32,14 @@ from dotenv import load_dotenv
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
-load_dotenv(ROOT / ".env")  # NWZ_DB
+load_dotenv(ROOT / ".env")  # RATSLOTSE_DB
 
 from kern.store import Store  # noqa: E402
 
 
 def _default_db() -> str:
     """Dieselbe DB wie Bot, Cronjobs und Web-Backend."""
-    return os.environ.get("NWZ_DB") or str(ROOT / "data" / "nwz.sqlite")
+    return os.environ.get("RATSLOTSE_DB") or str(ROOT / "data" / "ratslotse.sqlite")
 
 
 def grant_admin(email: str, db_path: str | None = None) -> tuple[bool, str]:

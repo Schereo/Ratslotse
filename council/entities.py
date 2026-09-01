@@ -18,13 +18,13 @@ MODEL = os.environ.get("COUNCIL_ENTITY_MODEL", "deepseek/deepseek-v4-pro")
 
 logger = logging.getLogger("council.entities")
 
-KINDS = ("projekt", "ort", "organisation")
+KINDS = ("project", "place", "organisation")
 
 _PROMPT = """Du extrahierst aus Stadtrats-Beschlüssen die EIGENNAMEN, die als Schlagwort für eine Themen-Seite taugen — wiederkehrende Projekte, Orte/Bauwerke/Quartiere und Organisationen, mit denen sich der Rat befasst.
 
 Pro Eintrag:
 - "name": kürzeste kanonische Form (»Fliegerhorst«, nicht »ehemaliger Fliegerhorst«; »Klinikum Oldenburg«, nicht »Klinikum Oldenburg AöR«; »Weser-Ems-Halle«; »Nadorster Straße«)
-- "kind": "projekt" | "ort" | "organisation"
+- "kind": "project" | "place" | "organisation"
 
 Regeln:
 - Nur konkrete Eigennamen, die das Thema des Beschlusses sind. KEINE generischen Begriffe (Stadt, Rat, Verwaltung, Haushalt, Beschluss, Ausschuss, Bericht, Antrag, Satzung).
@@ -44,8 +44,8 @@ def _render(decisions: list[dict]) -> str:
     lines = []
     for d in decisions:
         title = (d.get("title") or "").strip()
-        beschluss = " ".join((d.get("beschluss") or "").split())[:300]
-        lines.append(f'- id {d["id"]}: {title} — {beschluss}')
+        official_text = " ".join((d.get("official_text") or "").split())[:300]
+        lines.append(f'- id {d["id"]}: {title} — {official_text}')
     return "\n".join(lines)
 
 
@@ -70,7 +70,8 @@ def slug(name: str) -> str:
     return "-".join(tokens)
 
 
-_KIND_DE = {"ort": "Ort / Straße / Gebiet", "organisation": "Organisation", "projekt": "Projekt"}
+_KIND_DE = {"place": "Ort / Straße / Gebiet", "organisation": "Organisation",
+            "project": "Projekt"}
 
 _DESCRIBE_PROMPT = """Du schreibst eine kurze, sachliche Einordnung für die Themen-Seite „{name}" ({kind}) im Oldenburger Ratsinformationssystem.
 
@@ -139,7 +140,7 @@ def extract_batch(decisions: list[dict], model: str = MODEL):
             ents = []
             for e in (r.get("entities") or [])[:4]:
                 name = (e.get("name") or "").strip()
-                kind = e.get("kind") if e.get("kind") in KINDS else "projekt"
+                kind = e.get("kind") if e.get("kind") in KINDS else "project"
                 if len(name) >= 3 and slug(name):
                     ents.append({"name": name, "kind": kind})
             out[rid] = ents

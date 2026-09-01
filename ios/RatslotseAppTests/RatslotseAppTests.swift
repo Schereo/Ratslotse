@@ -146,18 +146,18 @@ import Testing
 @Test func sharedAnswerSnapshotKeepsEveryPublishedContentBlock() throws {
     let data = Data(#"""
     {
-      "frage": "Was wurde beschlossen?",
-      "antwort": "Der Rat hat zugestimmt [42].",
+      "question": "Was wurde beschlossen?",
+      "answer": "Der Rat hat zugestimmt [42].",
       "created": "2026-08-29T08:15:00",
-      "quellen": [{"id":42,"title":"Sichere Querung","session_date":"2026-08-28","committee":"Rat","outcome":"angenommen"}],
-      "debatten": [{"sprecher":"Anna Beispiel","partei":"SPD","auszug":"Wir stimmen zu."}],
-      "presse": [{"titel":"Mitteilung","url":"https://www.oldenburg.de/presse"}],
+      "sources": [{"id":42,"title":"Sichere Querung","session_date":"2026-08-28","committee":"Rat","outcome":"accepted"}],
+      "debatten": [{"speaker":"Anna Beispiel","party":"SPD","auszug":"Wir stimmen zu."}],
+      "presse": [{"title":"Mitteilung","url":"https://www.oldenburg.de/presse"}],
       "anlagen": [{"nr":1,"label":"Lageplan","url":"https://buergerinfo.oldenburg.de/getfile.php?id=42"}],
       "parteien": [
-        {"partei":"SPD","haltung":"dafür","position":"Zustimmung","einig":true},
-        {"partei":"CDU","haltung":"dagegen","position":"Ablehnung","einig":false}
+        {"party":"SPD","haltung":"dafür","position":"Zustimmung","einig":true},
+        {"party":"CDU","haltung":"dagegen","position":"Ablehnung","einig":false}
       ],
-      "grafik": {"art":"linie","titel":"Kosten","einheit":"Mio. €","reihe":[{"jahr":2026,"wert":2.5}]}
+      "grafik": {"art":"linie","title":"Kosten","unit":"Mio. €","series":[{"year":2026,"value":2.5}]}
     }
     """#.utf8)
 
@@ -173,7 +173,7 @@ import Testing
 
     let legacy = try JSONDecoder().decode(
         SharedAnswerSnapshot.self,
-        from: Data(#"{"frage":"Alt","antwort":"Antwort","quellen":[]}"#.utf8)
+        from: Data(#"{"question":"Alt","answer":"Antwort","sources":[]}"#.utf8)
     )
     #expect(legacy.evidenceFields.isEmpty)
 }
@@ -414,13 +414,13 @@ import Testing
         "id": 17,
         "title": "Haushaltsplan 2026",
         "simple_summary": "Lotti erklärt den Beschluss.",
-        "beschluss": "Der amtliche Wortlaut.",
+        "official_text": "Der amtliche Wortlaut.",
         "parties": ["SPD"],
         "policy_tags": ["Haushalt"],
         "raw_result": "mehrheitlich",
         "protocol_url": "https://example.test/protokoll.pdf"
       },
-      "attendance": [{"name":"Erika Beispiel","party":"SPD","role":"mitglied"}],
+      "attendance": [{"name":"Erika Beispiel","party":"SPD","role":"member"}],
       "entities": [{"slug":"haushalt-2026","name":"Haushalt 2026"}],
       "present_parties": [],
       "similar": [],
@@ -444,8 +444,8 @@ import Testing
         name: "Ulf Prange",
         vorname: "ulf",
         nachname: "prange",
-        art: "rat",
-        partei: "SPD",
+        art: "council",
+        party: "SPD",
         aktiv: true
     )
     let oldUlf = QuestionPerson(
@@ -453,8 +453,8 @@ import Testing
         name: "Ulf Prange",
         vorname: "ulf",
         nachname: "prange-alt",
-        art: "rat",
-        partei: "SPD",
+        art: "council",
+        party: "SPD",
         aktiv: false
     )
     let anna = QuestionPerson(
@@ -462,8 +462,8 @@ import Testing
         name: "Anna Oltmanns",
         vorname: "anna",
         nachname: "oltmanns",
-        art: "rat",
-        partei: "Bündnis 90/Die Grünen",
+        art: "council",
+        party: "Bündnis 90/Die Grünen",
         aktiv: true
     )
     let bernd = QuestionPerson(
@@ -472,7 +472,7 @@ import Testing
         vorname: "bernd",
         nachname: "oltmanns",
         art: "blocker",
-        partei: nil,
+        party: nil,
         aktiv: false
     )
 
@@ -504,8 +504,8 @@ import Testing
     #expect(!generic.showsSessions)
 
     let party = QuestionEvidenceAvailability(fields: [
-        "qtype": .string("partei"),
-        "debatten": .array([.object(["sprecher": .string("Muster")])]),
+        "qtype": .string("party"),
+        "debatten": .array([.object(["speaker": .string("Muster")])]),
     ])
     #expect(party.showsPartyOpinions)
     #expect(party.showsDebates)
@@ -517,7 +517,7 @@ import Testing
     #expect(documents.showsAttachments)
 
     let status = QuestionEvidenceAvailability(fields: [
-        "planungen": .array([.object(["datum": .string("2026-09-01")])]),
+        "planungen": .array([.object(["date": .string("2026-09-01")])]),
     ])
     #expect(status.showsPlanning)
 
@@ -525,7 +525,7 @@ import Testing
     #expect(budget.showsChart)
 
     let current = QuestionEvidenceAvailability(fields: [
-        "presse": .array([.object(["titel": .string("Mitteilung")])]),
+        "presse": .array([.object(["title": .string("Mitteilung")])]),
     ])
     #expect(current.showsPress)
 
@@ -568,7 +568,7 @@ private final class ConversationSettingURLProtocol: URLProtocol {
             headerFields: ["Content-Type": "application/json"]
         )!
         client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-        client?.urlProtocol(self, didLoad: Data(#"{"einstellung":1}"#.utf8))
+        client?.urlProtocol(self, didLoad: Data(#"{"saves_conversations":1}"#.utf8))
         client?.urlProtocolDidFinishLoading(self)
     }
 
@@ -680,25 +680,25 @@ private final class FeedbackURLProtocol: URLProtocol {
           "party": "Grüne",
           "current_affiliation": {
             "label": "Grüne",
-            "kind": "partei",
+            "kind": "party",
             "parties": ["Grüne"]
           },
-          "art": "rat",
+          "art": "council",
           "organisation": null,
           "n_sessions": 136,
           "active_from": "2021-11-22",
           "active_to": "2026-06-16",
           "faction_timeline": [{
-            "label": "Grüne", "kind": "partei", "parties": ["Grüne"],
+            "label": "Grüne", "kind": "party", "parties": ["Grüne"],
             "first": "2021-11-22", "last": "2026-06-16", "n": 136
           }],
           "ris": {
-            "kpenr": 17, "name": "Tim Ebbeke Harms", "fraktion_aktuell": "Grüne",
-            "memberships": [{"kgrnr": 2, "gremium": "Rat", "rolle": "Mitglied", "von": "2021-11-01", "bis": null}]
+            "kpenr": 17, "name": "Tim Ebbeke Harms", "current_faction": "Grüne",
+            "memberships": [{"kgrnr": 2, "committee": "Rat", "role": "Mitglied", "von": "2021-11-01", "bis": null}]
           },
           "committees": [{"committee": "Rat", "n": 39, "chair": true}],
           "recent": [{"ksinr": 4599, "committee": "Kulturausschuss", "session_date": "2026-06-16"}],
-          "wortbeitraege": [{"art": "rede", "top": "TOP 5", "text": "Beitrag", "committee": "Rat", "session_date": "2026-06-16"}],
+          "wortbeitraege": [{"kind": "speech", "top": "TOP 5", "text": "Beitrag", "committee": "Rat", "session_date": "2026-06-16"}],
           "wortbeitraege_gesamt": 18,
           "wortbeitraege_gremien": [{"committee": "Rat", "n": 18}]
         }
@@ -707,7 +707,7 @@ private final class FeedbackURLProtocol: URLProtocol {
 
     let profile = try JSONDecoder().decode(PublicPersonProfile.self, from: data)
     #expect(profile.currentAffiliation?.label == "Grüne")
-    #expect(profile.currentAffiliation?.kind == "partei")
+    #expect(profile.currentAffiliation?.kind == "party")
     #expect(profile.nSessions == 136)
     #expect(profile.committees.count == 1)
     #expect(profile.recent.count == 1)
@@ -721,10 +721,10 @@ private final class FeedbackURLProtocol: URLProtocol {
     let data = try #require(
         """
         {
-          "typ": "verwaltung",
+          "typ": "administration",
           "name": "Jürgen Krogmann",
           "slug": "juergen-krogmann",
-          "rolle": "Oberbürgermeister",
+          "role": "Oberbürgermeister",
           "aktiv": true,
           "von": "2014",
           "bis": "2026",
@@ -736,7 +736,7 @@ private final class FeedbackURLProtocol: URLProtocol {
     )
 
     let profile = try JSONDecoder().decode(PublicPersonProfile.self, from: data)
-    #expect(profile.type == "verwaltung")
+    #expect(profile.type == "administration")
     #expect(profile.roleLabel == "Oberbürgermeister")
     #expect(profile.nSessions == 0)
     #expect(profile.committees.isEmpty)
@@ -771,7 +771,7 @@ private final class FeedbackURLProtocol: URLProtocol {
           "name": "Anne Beispiel",
           "party": null,
           "current_affiliation": "SPD-Fraktion",
-          "art": "rat",
+          "art": "council",
           "organisation": null,
           "n_sessions": 1,
           "active_from": null,
@@ -790,36 +790,36 @@ private final class FeedbackURLProtocol: URLProtocol {
     let data = try #require(
         """
         {
-          "wahlbereiche": [{
+          "electoral_districts": [{
             "key": "3",
             "label": "Wahlbereich 3",
-            "stadtteile": ["Eversten", "Bloherfelde"],
+            "districts": ["Eversten", "Bloherfelde"],
             "questions": 27,
             "points": 12
           }],
-          "stadtteile": [{
+          "districts": [{
             "key": "Eversten",
             "label": "Eversten",
             "questions": 14,
             "points": 5
           }],
-          "themen": [{
+          "topics": [{
             "key": "schulwege",
             "label": "Sichere Schulwege",
-            "stadtteil": "Kreyenbrück",
+            "district": "Kreyenbrück",
             "questions": 9,
             "points": 2
           }],
-          "categories": ["geschichte", "orte", "menschen", "ratspolitik", "schaetzen"]
+          "categories": ["history", "places", "people", "council_politics", "estimation"]
         }
         """.data(using: .utf8)
     )
 
     let catalog = try JSONDecoder().decode(QuizAreas.self, from: data)
 
-    #expect(catalog.wahlbereiche.first?.stadtteile == ["Eversten", "Bloherfelde"])
-    #expect(catalog.stadtteile.first?.points == 5)
-    #expect(catalog.themen.first?.stadtteil == "Kreyenbrück")
+    #expect(catalog.electoralDistricts.first?.districts == ["Eversten", "Bloherfelde"])
+    #expect(catalog.districts.first?.points == 5)
+    #expect(catalog.topics.first?.district == "Kreyenbrück")
     #expect(catalog.categories.count == 5)
 }
 
@@ -831,8 +831,8 @@ private final class FeedbackURLProtocol: URLProtocol {
           "question": "Wie viele Einwohner hat Oldenburg ungefähr?",
           "options": [],
           "correct_index": 0,
-          "stadtteil": null,
-          "category": "schaetzen",
+          "district": null,
+          "category": "estimation",
           "explanation": "Die Zahl verändert sich laufend.",
           "qtype": "estimate",
           "answer_value": 176000,
@@ -852,7 +852,7 @@ private final class FeedbackURLProtocol: URLProtocol {
     #expect(card.qtype == "estimate")
     #expect(card.answerValue == 176_000)
     #expect(card.rangeMax == 350_000)
-    #expect(card.category == "schaetzen")
+    #expect(card.category == "estimation")
 }
 
 @Test func nativeAgendaItemsDecodeTopAttachmentsAndLegacyPayloads() throws {
@@ -861,7 +861,7 @@ private final class FeedbackURLProtocol: URLProtocol {
         [{
           "item_number": "Ö 7",
           "title": "Sichere Querung an der Cloppenburger Straße",
-          "vorlage_nr": "26/0412",
+          "template_number": "26/0412",
           "is_public": 1,
           "summary": "Der Ausschuss berät zwei Varianten.",
           "anlagen": [
@@ -871,7 +871,7 @@ private final class FeedbackURLProtocol: URLProtocol {
         }, {
           "item_number": "Ö 8",
           "title": "Mitteilungen",
-          "vorlage_nr": null,
+          "template_number": null,
           "is_public": 1,
           "summary": null
         }]
@@ -903,15 +903,15 @@ private final class FeedbackURLProtocol: URLProtocol {
             "changed_at": "2026-08-30T12:15:00+02:00",
             "satz": "Ein TOP wurde ergänzt und eine Anlage aktualisiert.",
             "zeilen": [{
-              "art": "neu",
+              "art": "new",
               "label": "Ö 7",
-              "titel": "Sichere Querung an der Cloppenburger Straße",
+              "title": "Sichere Querung an der Cloppenburger Straße",
               "nichtoeffentlich": false,
               "detail": "Neu auf die Tagesordnung gesetzt"
             }, {
               "art": "anlagen",
               "label": "Ö 4",
-              "titel": "Radverkehrskonzept",
+              "title": "Radverkehrskonzept",
               "nichtoeffentlich": 1,
               "detail": "Eine Anlage hinzugefügt"
             }]
@@ -937,7 +937,7 @@ private final class FeedbackURLProtocol: URLProtocol {
 
     #expect(current.agendaChanges?.count == 1)
     #expect(current.agendaChanges?.first?.lines.count == 2)
-    #expect(current.agendaChanges?.first?.lines.first?.kind == "neu")
+    #expect(current.agendaChanges?.first?.lines.first?.kind == "new")
     #expect(current.agendaChanges?.first?.lines.first?.title == "Sichere Querung an der Cloppenburger Straße")
     #expect(current.agendaChanges?.first?.lines.last?.isNonPublic == true)
     #expect(legacy.agendaChanges == nil)

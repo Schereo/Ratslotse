@@ -6,7 +6,7 @@ public struct AppConfiguration: Codable, Sendable, Equatable {
 
     enum CodingKeys: String, CodingKey {
         case minBuild = "min_build"
-        case notice = "hinweis"
+        case notice = "note"
     }
 }
 
@@ -147,11 +147,11 @@ public struct DecisionSummary: Codable, Sendable, Hashable, Identifiable {
     enum CodingKeys: String, CodingKey {
         case id, title, summary, committee, outcome, kind, vote, factions, parties, importance, interest, impact
         case simpleSummary = "simple_summary"
-        case officialText = "beschluss"
+        case officialText = "official_text"
         case policyTags = "policy_tags"
         case rawResult = "raw_result"
         case protocolURL = "protocol_url"
-        case deviation = "abweichung"
+        case deviation = "deviation"
         case amountEUR = "amount_eur"
         case interestReason = "interest_reason"
         case impactReason = "impact_reason"
@@ -159,9 +159,9 @@ public struct DecisionSummary: Codable, Sendable, Hashable, Identifiable {
         case latitude = "lat"
         case longitude = "lon"
         case sessionID = "ksinr"
-        case templateNumber = "vorlage_nr"
-        case noVotes = "gegenstimmen"
-        case abstentions = "enthaltungen"
+        case templateNumber = "template_number"
+        case noVotes = "no_votes"
+        case abstentions = "abstentions"
         case sessionDate = "session_date"
         case policyField = "policy_field"
         case itemNumber = "item_number"
@@ -370,10 +370,10 @@ public struct CouncilConsultationStop: Codable, Sendable, Hashable, Identifiable
     public let future: Bool?
 
     enum CodingKeys: String, CodingKey {
-        case date = "datum"
-        case committee = "gremium"
+        case date = "date"
+        case committee = "committee"
         case itemNumber = "top"
-        case result = "ergebnis"
+        case result = "result"
         case sessionID = "ksinr"
         case future
     }
@@ -403,14 +403,13 @@ public struct CouncilTemplate: Codable, Sendable, Equatable {
     public let financialCheck: String?
 
     enum CodingKeys: String, CodingKey {
-        case title, excerpt
-        case number = "vorlage_nr"
-        case kind = "art"
+        case title, excerpt, kind
+        case number = "template_number"
         case documentURL = "document_url"
         case pageCount = "n_pages"
-        case department = "amt"
-        case climateCheck = "klima_check"
-        case financialCheck = "finanz_check"
+        case department = "office"
+        case climateCheck = "climate_impact"
+        case financialCheck = "financial_impact"
     }
 }
 
@@ -426,8 +425,8 @@ public struct CouncilAttachment: Codable, Sendable, Hashable, Identifiable {
     enum CodingKeys: String, CodingKey {
         case label, url, status
         case documentID = "document_id"
-        case isMotion = "is_antrag"
-        case applicants = "antragsteller"
+        case isMotion = "is_motion"
+        case applicants = "applicants"
     }
 
     public init(from decoder: Decoder) throws {
@@ -450,10 +449,10 @@ public struct CouncilParticipation: Codable, Sendable, Equatable {
     public let status: String?
 
     enum CodingKeys: String, CodingKey {
-        case title = "titel"
+        case title = "title"
         case step = "schritt"
-        case from = "von"
-        case until = "bis"
+        case from = "valid_from"
+        case until = "valid_until"
         case url, status
     }
 }
@@ -610,7 +609,7 @@ public struct FollowEntry: Codable, Sendable, Identifiable {
     enum CodingKeys: String, CodingKey {
         case id, title, url
         case templateID = "kvonr"
-        case templateNumber = "vorlage_nr"
+        case templateNumber = "template_number"
         case stationCount = "n_stationen"
         case next = "naechste"
         case last = "letzte"
@@ -628,6 +627,13 @@ public struct CouncilSession: Codable, Sendable, Hashable, Identifiable {
     public let committee: String
     public let sessionDate: String
     public let sessionTime: String?
+    /// End of the LIVE window, computed by the server (`council/live.py`):
+    /// the start of the next session that day, or a cap from the start —
+    /// three hours for committees, four for the council. Council days run
+    /// three bodies back to back (16:00 general committee, 16:30
+    /// administrative committee, 18:00 council); they wait for each other
+    /// instead of meeting in parallel. Only sent for today's sessions.
+    public let liveUntil: String?
     public let location: String?
     public let title: String
     public let itemCount: Int
@@ -638,6 +644,7 @@ public struct CouncilSession: Codable, Sendable, Hashable, Identifiable {
         case calendarID = "calendar_id"
         case sessionDate = "session_date"
         case sessionTime = "session_time"
+        case liveUntil = "live_until"
         case itemCount = "n_items"
         case myTopicItems = "my_topic_items"
     }
@@ -649,6 +656,7 @@ public struct CouncilSession: Codable, Sendable, Hashable, Identifiable {
         committee = try values.decodeIfPresent(String.self, forKey: .committee) ?? "Gremium"
         sessionDate = try values.decodeIfPresent(String.self, forKey: .sessionDate) ?? ""
         sessionTime = try values.decodeIfPresent(String.self, forKey: .sessionTime)
+        liveUntil = try values.decodeIfPresent(String.self, forKey: .liveUntil)
         location = try values.decodeIfPresent(String.self, forKey: .location)
         title = try values.decodeIfPresent(String.self, forKey: .title) ?? committee
         itemCount = try values.decodeIfPresent(Int.self, forKey: .itemCount) ?? 0
@@ -686,7 +694,7 @@ public struct AgendaItem: Codable, Sendable, Hashable, Identifiable {
     enum CodingKeys: String, CodingKey {
         case title, summary
         case itemNumber = "item_number"
-        case templateNumber = "vorlage_nr"
+        case templateNumber = "template_number"
         case isPublic = "is_public"
         case attachments = "anlagen"
     }
@@ -711,14 +719,14 @@ public struct AgendaChangeLine: Codable, Sendable, Hashable {
 
     enum CodingKeys: String, CodingKey {
         case label, detail
-        case title = "titel"
+        case title = "title"
         case kind = "art"
         case isNonPublic = "nichtoeffentlich"
     }
 
     public init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
-        kind = try values.decodeIfPresent(String.self, forKey: .kind) ?? "geaendert"
+        kind = try values.decodeIfPresent(String.self, forKey: .kind) ?? "changed"
         label = try values.decodeIfPresent(String.self, forKey: .label) ?? "TOP"
         title = try values.decodeIfPresent(String.self, forKey: .title) ?? "Tagesordnung geändert"
         detail = try values.decodeIfPresent(String.self, forKey: .detail)
@@ -853,7 +861,7 @@ public struct WeekPreviewItem: Codable, Sendable, Identifiable {
         case itemNumber = "item_number"
         case shortTitle = "titel_kurz"
         case sessionDate = "session_date"
-        case applicant = "antragsteller"
+        case applicant = "applicants"
         case topicName = "topic_name"
         case impactReason = "wichtig_grund"
         case featured = "top"
@@ -918,8 +926,7 @@ public struct ConversationSummary: Codable, Sendable, Identifiable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case id
-        case title = "titel"
+        case id, title
         case updatedAt = "updated"
         case turnCount = "n_turns"
     }
@@ -964,68 +971,68 @@ public struct BadgeSnapshot: Codable, Sendable, Equatable {
 }
 
 public struct AskRound: Codable, Sendable {
-    public let frage: String
-    public let antwort: String
+    public let question: String
+    public let answer: String
 
-    public init(frage: String, antwort: String) {
-        self.frage = frage
-        self.antwort = antwort
+    public init(question: String, answer: String) {
+        self.question = question
+        self.answer = answer
     }
 }
 
 public struct AskRequest: Codable, Sendable {
     public let question: String
-    public let verlauf: [AskRound]
-    public let gespraechID: Int?
+    public let history: [AskRound]
+    public let conversationID: Int?
 
     enum CodingKeys: String, CodingKey {
-        case question, verlauf
-        case gespraechID = "gespraech_id"
+        case question, history
+        case conversationID = "conversation_id"
     }
 
-    public init(question: String, verlauf: [AskRound] = [], gespraechID: Int? = nil) {
+    public init(question: String, history: [AskRound] = [], conversationID: Int? = nil) {
         self.question = question
-        self.verlauf = verlauf
-        self.gespraechID = gespraechID
+        self.history = history
+        self.conversationID = conversationID
     }
 
     public init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         question = try values.decode(String.self, forKey: .question)
-        verlauf = try values.decodeIfPresent([AskRound].self, forKey: .verlauf) ?? []
-        gespraechID = try values.decodeIfPresent(Int.self, forKey: .gespraechID)
+        history = try values.decodeIfPresent([AskRound].self, forKey: .history) ?? []
+        conversationID = try values.decodeIfPresent(Int.self, forKey: .conversationID)
     }
 
     public func encode(to encoder: Encoder) throws {
         var values = encoder.container(keyedBy: CodingKeys.self)
         try values.encode(question, forKey: .question)
-        try values.encode(verlauf, forKey: .verlauf)
+        try values.encode(history, forKey: .history)
         // Das Backend unterscheidet bewusst zwischen einem alten Client, der
-        // `gespraech_id` gar nicht kennt, und einem neuen Gespräch (`null`).
+        // `conversation_id` gar nicht kennt, und einem neuen Gespräch (`null`).
         // `encodeIfPresent` würde nil unterschlagen und damit das Speichern
         // des allerersten Turns unbemerkt deaktivieren.
-        try values.encode(gespraechID, forKey: .gespraechID)
+        try values.encode(conversationID, forKey: .conversationID)
     }
 }
 
 public struct DeepResearchRequest: Encodable, Sendable {
-    public let frage: String
-    public let gespraechID: Int?
+    public let question: String
+    public let conversationID: Int?
 
     enum CodingKeys: String, CodingKey {
-        case frage
-        case gespraechID = "gespraech_id"
+        case question
+        case conversationID = "conversation_id"
     }
 
-    public init(frage: String, gespraechID: Int?) {
-        self.frage = frage
-        self.gespraechID = gespraechID
+    public init(question: String, conversationID: Int?) {
+        self.question = question
+        self.conversationID = conversationID
     }
 
     public func encode(to encoder: Encoder) throws {
         var values = encoder.container(keyedBy: CodingKeys.self)
-        try values.encode(frage, forKey: .frage)
+        try values.encode(question, forKey: .question)
         // `null` bedeutet auch bei der Recherche: ein neues Gespräch beginnen.
-        try values.encode(gespraechID, forKey: .gespraechID)
+        try values.encode(conversationID, forKey: .conversationID)
     }
 }

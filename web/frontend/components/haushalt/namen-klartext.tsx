@@ -45,7 +45,7 @@ import { useBreite } from "@/lib/use-breite";
 import { cn } from "@/lib/utils";
 
 export type KlartextZeile = {
-  zeile: HaushaltZeile;
+  row: HaushaltZeile;
   /** Ausgaben in Mio. — die Größe, nach der beschriftet wird. */
   aus: number;
   /** Zuschussbedarf in Mio. (Ausgaben − eigene Erträge); negativ heißt
@@ -62,17 +62,17 @@ export type KlartextZeile = {
 export function klartextZeilen(zeilen: HaushaltZeile[]): KlartextZeile[] {
   return bereiche(zeilen)
     .map((z) => {
-      const k = bereichKanon(z.bereich);
+      const k = bereichKanon(z.area);
       return {
-        zeile: z,
-        aus: mio(z.aufwendungen) ?? 0,
-        stadt: z.ergebnis != null ? mio(-z.ergebnis) : null,
-        eigen: mio(z.ertraege),
+        row: z,
+        aus: mio(z.expenses) ?? 0,
+        stadt: z.result != null ? mio(-z.result) : null,
+        eigen: mio(z.revenues),
         // Der Anzeigename ist die jüngste amtliche Schreibweise; verlinkt wird
         // weiter über den Slug des DB-Namens (Regel 2 des Wörterbuchs).
         name: k.name,
         klartext: k.klartext,
-        slug: bereichSlug(z.bereich),
+        slug: bereichSlug(z.area),
       };
     })
     .sort((a, b) => b.aus - a.aus);
@@ -192,9 +192,9 @@ function Zeile({ z, skala, breit, aktiv }: {
 type Sortierung = "aus" | "stadt";
 
 /** Das Verzeichnis. `aktiv` hebt den Bereich hervor, von dem man kommt. */
-export function NamenKlartext({ zeilen, jahr, aktiv, className }: {
+export function NamenKlartext({ zeilen, year, aktiv, className }: {
   zeilen: HaushaltZeile[];
-  jahr: number;
+  year: number;
   /** Bereichsname (DB-Schreibweise) der aufrufenden Seite. */
   aktiv?: string;
   className?: string;
@@ -237,7 +237,7 @@ export function NamenKlartext({ zeilen, jahr, aktiv, className }: {
           </div>
         </div>
         <span className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-          Mio. € · {jahr} · {rows.length} Teilhaushalte
+          Mio. € · {year} · {rows.length} Teilhaushalte
         </span>
       </div>
       {/* Die Balken-Legende einmal für alle Zeilen — dieselben zwei Töne wie
@@ -255,7 +255,7 @@ export function NamenKlartext({ zeilen, jahr, aktiv, className }: {
 
       <div>
         {gezeigt.map((z) => (
-          <Zeile key={z.zeile.bereich} z={z} skala={skala} breit={breit}
+          <Zeile key={z.row.area} z={z} skala={skala} breit={breit}
             aktiv={z.slug === aktivSlug} />
         ))}
       </div>

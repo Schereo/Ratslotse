@@ -27,7 +27,7 @@ MODEL = os.environ.get("COUNCIL_WORTBEITRAG_MODEL", "google/gemini-2.5-flash")
 
 FENSTER = 48_000       # Zeichen je LLM-Fenster
 UEBERLAPP = 3_000
-ARTEN = {"rede", "anfrage", "einwohnerfrage", "zusage"}
+ARTEN = {"speech", "inquiry", "citizen_question", "pledge"}
 # Ab dieser Fensterlänge ist ein leeres Ergebnis fast sicher ein Provider-
 # Aussetzer (ein ganzes Sitzungsprotokoll ohne einen einzigen Wortbeitrag
 # gibt es praktisch nicht) → einmal neu versuchen. Kleine Restfenster am
@@ -111,42 +111,42 @@ def extract_wortbeitraege(raw_text: str, model: str = MODEL) -> list[dict]:
     auf das erwartete Schema geprüft (unbekannte Arten → 'rede')."""
     gesehen: set[tuple] = set()
     beitraege: list[dict] = []
-    for teil in _fenster(raw_text or ""):
-        for r in _ein_fenster(teil, model):
+    for part in _fenster(raw_text or ""):
+        for r in _ein_fenster(part, model):
             if not isinstance(r, dict):
                 continue
             text = str(r.get("text") or "").strip()
             if len(text) < 15:
                 continue
-            schluessel = (str(r.get("sprecher") or "").strip().lower(), text[:80].lower())
-            if schluessel in gesehen:
+            key = (str(r.get("speaker") or "").strip().lower(), text[:80].lower())
+            if key in gesehen:
                 continue
-            gesehen.add(schluessel)
-            art = str(r.get("art") or "rede").strip().lower()
+            gesehen.add(key)
+            art = str(r.get("kind") or "speech").strip().lower()
 
-            def feld(name: str, max_len: int | None = None) -> str | None:
-                wert = str(r.get(name) or "").strip()
-                if max_len and len(wert) > max_len:
+            def field(name: str, max_len: int | None = None) -> str | None:
+                value = str(r.get(name) or "").strip()
+                if max_len and len(value) > max_len:
                     # NIE mitten im Wort abschneiden: Aus „Fraktion Bündnis
                     # Vernunft und Gerechtigkeit Oldenburg" wurde bei hartem
                     # Schnitt „…und Gerechtigk" — genau so stand es in einer
                     # KI-Antwort (Befund 12.08.). Lieber am letzten Leerzeichen
                     # kappen; die Grenzen sind ohnehin nur ein Schutz gegen
                     # Ausreißer, keine inhaltliche Vorgabe.
-                    schnitt = wert[:max_len]
+                    schnitt = value[:max_len]
                     leer = schnitt.rfind(" ")
-                    wert = (schnitt[:leer] if leer > max_len * 0.6 else schnitt).rstrip(" ,;-/")
-                return wert or None
+                    value = (schnitt[:leer] if leer > max_len * 0.6 else schnitt).rstrip(" ,;-/")
+                return value or None
 
             beitraege.append({
-                "art": art if art in ARTEN else "rede",
-                "top": feld("top", 120),
-                "sprecher": feld("sprecher", 80),
+                "kind": art if art in ARTEN else "speech",
+                "top": field("top", 120),
+                "speaker": field("speaker", 80),
                 # 40 war zu knapp: „BUND für Umwelt und Naturschutz
                 # Deutschland, Kreisgruppe Stadt Oldenburg" hat 72 Zeichen.
-                "partei": feld("partei", 120),
+                "party": field("party", 120),
                 "text": text,
-                "antwort": feld("antwort"),
+                "answer": field("answer"),
             })
     return beitraege
 
@@ -170,10 +170,10 @@ def _seiten_falte(s: str) -> str:
     return re.sub(r"[^a-z0-9äöüß]", "", (s or "").lower())
 
 
-def _anker(sprecher: str | None) -> str | None:
+def _anker(speaker: str | None) -> str | None:
     """Der Nachname als Suchanker — das letzte Namenswort ohne Titel/Anrede,
     gefaltet. Zu kurze Namen (< 4 Zeichen) ankern nicht zuverlässig."""
-    toks = [t for t in re.split(r"[^0-9A-Za-zÄÖÜäöüß]+", sprecher or "")
+    toks = [t for t in re.split(r"[^0-9A-Za-zÄÖÜäöüß]+", speaker or "")
             if t and t.lower() not in {"dr", "prof", "dipl", "ing", "med",
                                        "herr", "frau", "ratsherr", "ratsfrau"}]
     if not toks:
@@ -182,9 +182,9 @@ def _anker(sprecher: str | None) -> str | None:
     return kandidat if len(kandidat) >= 4 else None
 
 
-def _beste_seite(sprecher: str | None, text: str, seiten_norm: list[str]) -> int | None:
+def _beste_seite(speaker: str | None, text: str, seiten_norm: list[str]) -> int | None:
     """1-basierte PDF-Seite des Beitrags — oder None, wenn nicht eindeutig."""
-    anker = _anker(sprecher)
+    anker = _anker(speaker)
     if not anker:
         return None
     kandidaten = [i for i, s in enumerate(seiten_norm) if anker in s]
@@ -226,8 +226,8 @@ def seiten_aufloesen(store, ksinr: int) -> int:
                    for i in range(len(offsets))]
     gesetzt = 0
     for wb in store.wortbeitraege_ohne_seite(ksinr):
-        seite = _beste_seite(wb.get("sprecher"), wb.get("text") or "", seiten_norm)
-        if seite is not None:
-            store.set_wortbeitrag_seite(wb["id"], seite)
+        page = _beste_seite(wb.get("speaker"), wb.get("text") or "", seiten_norm)
+        if page is not None:
+            store.set_wortbeitrag_seite(wb["id"], page)
             gesetzt += 1
     return gesetzt

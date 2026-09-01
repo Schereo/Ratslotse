@@ -62,31 +62,42 @@ public struct OutcomeBadge: View {
 
     private var label: String {
         switch outcome {
-        case "angenommen": "Angenommen"
-        case "abgelehnt": "Abgelehnt"
-        case "vertagt": "Vertagt"
-        case "zur_kenntnis": "Zur Kenntnis"
-        case "kein_beschluss": "Kein Beschluss"
+        case "accepted": "Angenommen"
+        case "rejected": "Abgelehnt"
+        case "postponed": "Vertagt"
+        case "noted": "Zur Kenntnis"
+        case "no_decision": "Kein Beschluss"
         default: outcome.replacingOccurrences(of: "_", with: " ").capitalized
         }
     }
 
     private var foreground: Color {
         switch outcome {
-        case "angenommen": RatsColor.success
-        case "abgelehnt": RatsColor.danger
-        case "vertagt": RatsColor.warning
+        case "accepted": RatsColor.success
+        case "rejected": RatsColor.danger
+        case "postponed": RatsColor.warning
         default: RatsColor.secondary
         }
     }
 
     private var background: Color {
         switch outcome {
-        case "angenommen": RatsColor.successTint
-        case "abgelehnt": RatsColor.dangerTint
-        case "vertagt": RatsColor.warningTint
+        case "accepted": RatsColor.successTint
+        case "rejected": RatsColor.dangerTint
+        case "postponed": RatsColor.warningTint
         default: RatsColor.separator
         }
+    }
+}
+
+/// „einstimmig" bzw. „mehrheitlich" — gespeichert wird der englische Wert.
+/// Freie Protokoll-Formulierungen („einstimmig bei einer Enthaltung") stehen
+/// so in der Quelle und kommen unverändert durch.
+public func voteLabel(_ vote: String) -> String {
+    switch vote {
+    case "unanimous": "einstimmig"
+    case "majority": "mehrheitlich"
+    default: vote
     }
 }
 

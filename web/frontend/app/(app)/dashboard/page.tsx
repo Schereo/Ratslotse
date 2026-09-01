@@ -17,7 +17,7 @@ import { LiveBanner } from "@/components/live-banner";
 import { FundstueckCard } from "@/components/fundstueck-card";
 import { RecentDecisions } from "@/components/recent-decisions";
 import { WocheImRat, type Wochenvorschau } from "@/components/woche-im-rat";
-import { HinweisSlot } from "@/components/hinweis-slot";
+import { HinweisSlot } from "@/components/note-slot";
 import { PushPrimer } from "@/components/push-primer";
 import { formatEuro, OutcomeDot } from "@/components/decision-ui";
 import { fragenHref, decisionHref } from "@/lib/routes";
@@ -79,7 +79,7 @@ export default function DashboardPage() {
 
   const hitsQuery = useQuery({
     queryKey: ["topic-latest-hits"],
-    queryFn: () => api.get<{ hits: TopicHit[] }>("/topics/latest-hits?limit=2"),
+    queryFn: () => vertrag.get("/topics/latest-hits?limit=2"),
   });
   const zahlQuery = useQuery({
     queryKey: ["zahl-der-woche"],
@@ -265,7 +265,7 @@ export default function DashboardPage() {
               wenigsten Breite. */}
           <Card className="flex flex-col border-signal/30 bg-signal/5 p-5 @3xl/raster:order-3 @6xl/raster:order-none">
             <h2 className="font-display text-base font-bold text-foreground">Zahl der Woche</h2>
-            {zahl?.kind === "betrag" && (
+            {zahl?.kind === "amount" && (
               <>
                 <p className="mt-3 font-display text-[40px] font-extrabold leading-none tracking-tight text-signal">
                   <CountUpEuro amount={zahl.amount_eur} /></p>
@@ -280,7 +280,7 @@ export default function DashboardPage() {
                 </Link>
               </>
             )}
-            {zahl?.kind === "anzahl" && (
+            {zahl?.kind === "count" && (
               <>
                 <p className="mt-3 font-display text-[40px] font-extrabold leading-none tracking-tight text-signal">
                   <CountUpNumber value={zahl.count} />

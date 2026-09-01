@@ -1553,6 +1553,43 @@ Deshalb hängt an jeder Bewegung ein Bezug, und alle drei kommen aus Daten:
   ausdrücklich dazu, dass das Minus damit nicht unecht wird — ein Plan preist
   Vorsicht ein.
 
+### Der Maßstab aus dem echten Verfahren
+
+Seit dem 30.08.2026 steht unter den Werkbänken die Größe, gegen die man jede
+Labor-Zahl halten sollte: **wie weit der Haushalt im wirklichen Verfahren
+gewandert ist**. Die „Zusammenstellung der Veränderungen" jeder Änderungsliste
+weist Verwaltungsentwurf und Endsumme nebeneinander aus — dazwischen liegt
+alles, was Verwaltung und Fraktionen geändert haben, und die Zeilen dazwischen
+sagen, wer davon wie viel bewegte.
+
+Für den Haushalt 2026: Der Entwurf stand bei −89,3 Mio. €, beschlossen wurden
+−68,7 Mio. €. Das Verfahren bewegte also **20,6 Mio. €** — davon 20,3 aus den
+drei Listen der Verwaltung und **218.299 € aus der Liste der Koalition**, also
+1,1 %.
+
+Genommen wird je Jahrgang das **vollständigste** Dokument, weil die Listen
+kumulativ sind: die Beschluss-Datei des Finanzausschusses, wo es sie gibt,
+sonst die höchste Verwaltungsliste. Gegenprobe an 2026: Verw. III endet bei
+−68.957.646 €, die Beschluss-Datei bei −68.739.348 € — die Differenz ist auf
+den Euro die politische Zeile. Wo keine Beschluss-Datei vorliegt (2019,
+2022–2025), endet der Weg beim letzten Stand der Verwaltung, und die Karte
+nennt ihn auch so; „beschlossen" steht dort nicht.
+
+:::note[Der 1-%-Satz ist kein Urteil, und die Karte sagt das]
+Dass die Verwaltungslisten ein Vielfaches der Fraktionslisten bewegen, ist
+**kein Befund über politische Durchsetzungskraft**, sondern über die Natur der
+beiden Listenarten: Die Verwaltung schreibt mit ihren Listen den eigenen
+Entwurf fort — neue Steuerschätzung, Tarifabschluss, geänderte Umlagen. Die
+Fraktionen ändern einzelne Posten, die sie politisch anders wollen. Ohne
+diesen Satz wäre die Aufteilungs-Grafik eine Wertung, die die Daten nicht
+hergeben; er steht deshalb fest auf der Karte, nicht in einer Fußnote.
+
+Und die Grafik selbst entfällt, wo sie lügen würde: Zeigen die Listen eines
+Jahrgangs in verschiedene Richtungen (2021: Verw. II +2,78 Mio. €, Verw. I
+−0,65, Politik −1,73), bliebe von einem gestapelten Balken eine Zerlegung
+übrig, die es nicht gibt. Dann stehen nur die Zahlen da.
+:::
+
 :::caution[Produktzahlen sind Vergleich, nicht Rechengrundlage]
 Die Simulation rechnet mit dem aktuellen Planjahr, die Produktebene stammt aus
 dem jüngsten auslesbaren Teilhaushaltsplan (2023). Beides zu verrechnen ergäbe
@@ -3533,6 +3570,104 @@ Der Bereich zeigt lieber eine Lücke als eine Schätzung:
   angeschnittenem Namen — „für SGB II" statt „Grundsicherung für
   Arbeitssuchende SGB II", „von und Frauen" statt „Chancengleichstellung
   von Männern und Frauen". Beide Spalten kommen jetzt aus dem Raster.
+
+- **Der Jahrgang 2019 des Finanzhaushalts.** Die Änderungslisten zum
+  **Finanzhaushalt** liest seit dem 30.08.2026 ein eigener Parser
+  (`council/aenderungslisten_fhh.py`, Ingest
+  `scripts/ingest_aenderungslisten_fhh.py`, Tabellen
+  `council_haushalt_aenderungen_fhh`/`…_summen`). Er ist das Gegenstück zum
+  Ergebnishaushalt: Dort steht, was die Stadt erwirtschaftet und verbraucht,
+  hier, was tatsächlich fließt — und vor allem, was **investiert** wird.
+
+  **Warum ein eigener Parser.** Wo der EHH zwei Betragsspalten führt, führt
+  der FHH fünf: `Soll laut Entwurf | Einzahlungen ± | Auszahlungen ± | VE ± |
+  neues Soll`. Den an 1.799 Positionen bewiesenen EHH-Leser darauf zu
+  verallgemeinern hätte ihn angefasst, um einen zweiten zu sparen. Geteilt
+  wird die Geometrie, nicht die Logik.
+
+  **Der FHH hat eine Probe, die der EHH nicht hat**, und sie ist die schärfste
+  des Ressorts: `Soll laut Entwurf + Einzahlung + Auszahlung = neues Soll`,
+  auf **jeder** Positionszeile. Landete ein Betrag eine Spalte daneben, ginge
+  sie nicht auf. Dazu kommen die drei Proben des EHH (Zeile, Kette, Position).
+
+  **Gelesen werden 15 der 18 Listen des Kernhaushalts**, 250 Positionen, 132
+  davon mit ihrem **Investitionscode** (`I10.089904.500`) — dem Anschluss an
+  `council_investitionsmassnahmen` und damit an die 4.459 Vorhaben auf
+  `/haushalt/investitionen`. Sieben der acht Jahrgänge sind vollständig; es
+  fehlt **2019**, dessen einzige Liste ihre Positionsprobe um 200.000 €
+  verfehlt. Zwei weitere Dokumente fallen durch (212802 in seinen späteren
+  Planjahren, 230016) — bei 230016 ohne Verlust: Die Beschluss-Datei 2021
+  liegt doppelt im Bestand, und die Zweitablage 230178 läuft durch. Was seine
+  Proben nicht besteht, wird nicht gespeichert; der Ingest nennt es beim
+  Namen.
+
+  **Acht Eigenheiten, jede an einem Riss gemessen:** Die Spalten kommen aus
+  dem letzten Lauf von sechs gleich breiten Linienkanten, nicht aus dem
+  Kopfwort — nur die erste Seite eines Blocks trägt einen Tabellenkopf. Das
+  Planjahr gilt über Seitengrenzen (in 256703 trug nur jede vierte Seite
+  eines). Eine Position besitzt ihre Grundlinie und alles bis zur nächsten;
+  ein Teil des Bestands setzt die Beträge 44 bis 67 pt unter die Zeile, also
+  näher an die folgende Position. Der Gedankenstrich ist ein Betrag (Null) —
+  auch das „+ / −“ im Spaltenkopf, weshalb der Kopf draußen bleiben muss. Die
+  Blocksumme steht im Rahmen, trägt aber kein „neues Soll“. Beträge stehen
+  auch in Klammern („(275.900)“), der Teilhaushalt ein- oder zweistellig
+  („8“ wie „08“), und dieselbe Position wird über zwei Zeilen gedruckt.
+  Entwurf und Endsumme sind optional: 212802 überschreibt seine Seite mit
+  „Übersicht aller Änderungen“ und nennt weder das eine noch das andere.
+
+  Die politischen Zeilen gibt es auch hier: 2020 −195.000 € und 2026
+  −45.000 € für SPD/CDU/FDP, 2021 für SPD/Bündnis 90/Die Grünen.
+
+  **Angezeigt** wird das seit dem 30.08.2026 auf `/haushalt/mitreden#streit`
+  als eigene Karte „Was am Bauen geändert wurde", unter der Karte zum
+  Ergebnishaushalt. Eigene Karte und kein Umschalter: Die beiden Haushalte
+  beantworten verschiedene Fragen, und ein Umschalter legte nahe, es seien
+  zwei Ansichten derselben Sache. Drei Regeln stecken in ihr:
+
+  - **Ein- und Auszahlungen werden nicht gegeneinander verrechnet.** Im
+    Finanzhaushalt sind das zwei Richtungen, keine zwei Vorzeichen — eine
+    Einzahlung ist ein Zuschuss oder ein Verkauf, eine Auszahlung die
+    Investition. Den Saldo bildet das Dokument am Fuß der Liste.
+  - **Die Verpflichtungsermächtigung steht als Satz, nicht als Betrag der
+    Zeile.** Sie ist die Erlaubnis, künftige Jahre zu binden, kein Geld
+    dieses Jahres — und zählt auch im Dokument nicht in den Saldo.
+  - **Positionen ohne jeden Betrag bleiben draußen.** Das sind reine
+    Haushaltsvermerke; in einer Liste „was geändert wurde" behaupteten sie
+    eine Änderung, die es nicht gibt.
+
+  Der **Investitionscode** ist seit dem 30.08.2026 ein Link auf „Was wird
+  gebaut?" — genauer: auf eine SUCHE dort, mit Nummer und Jahrgang in der
+  Adresse (`/haushalt/investitionen?vorhaben=…&jahr=…#vorhaben`). Dafür
+  waren drei Dinge nötig, und zwei davon sind eigene Befunde:
+
+  1. **Die Suche findet jetzt auch die Nummer**, nicht nur den Namen
+     (`lib/haushalt-investitionsprogramm.ts: suche`). Vorher wäre der Link
+     auf einer leeren Trefferliste angekommen; nebenbei findet nun auch, wer
+     eine Nummer von Hand eintippt.
+  2. **Der Explorer nimmt Suchwort und Jahrgang aus der Adresse** — als
+     Startwert, nicht als gebundenen Zustand: Wer nach dem Ankommen etwas
+     anderes sucht, soll nicht gegen die Adresse antippen.
+  3. **Die Nummer muss gekürzt werden.** Die Änderungslisten führen sie je
+     BUCHUNGSZEILE: „I10.180800.500" ist das Vorhaben I10.180800 („SG
+     Käthe-Kollwitz-Straße") in der Sachkonto-Gruppe 500 (Hoch- und
+     Tiefbau); .550 wäre die Zuweisung des Landes zu demselben Vorhaben,
+     .525 ein Zuschuss. Das Investitionsprogramm führt dagegen das Vorhaben
+     als Ganzes. **Gemessen: Mit dem Sachkonto trifft die Nummer 7 von 56
+     Positionen, ohne es 32 von 56.**
+
+  Die übrigen 24 haben im Programm kein Gegenstück — nicht jede Zeile des
+  Finanzhaushalts gehört zu einem dort benannten Vorhaben. Deshalb heißt der
+  Link „suchen" und nicht „zum Vorhaben": Eine Suche ohne Treffer ist ein
+  normales Ergebnis, und die Seite sagt es auch so („Kein Vorhaben 2020
+  enthält ‚I10.089905'"). Ein Link, der ein Vorhaben verspricht und in 43 %
+  der Fälle leer ankommt, wäre eine Zusage, die die Daten nicht decken.
+
+  Eine Falle beim Anschluss ans Frontend, die zweimal Zeit gekostet hat: Der
+  Endpunkt `/council/haushalt/aenderungslisten` hat seit 08/2026 eine
+  **typisierte Antwortform** (`web/backend/app/antworten.py`), und die ist
+  zugleich das Response-Model. Was dort nicht steht, schneidet FastAPI
+  lautlos weg — die neuen Schlüssel `fhh_zeilen`/`fhh_summen` fehlten
+  deshalb in einer sonst völlig korrekten Antwort, ohne jeden Fehler im Log.
 
 - **Der Schlussbericht 2024** — sein PDF bringt keine Zeichenzuordnung mit,
   der Volltext besteht aus Glyphen-Nummern (`/12 /8 /6 □ /13 …`), sein

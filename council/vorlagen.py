@@ -47,7 +47,7 @@ _NOISE_RE = re.compile(
 def parse_vorlage_page(html: str) -> dict | None:
     """Extract metadata, the main PDF link and the Anlagen list from a vo0050 page.
 
-    Returns ``{vorlage_nr, title, art, document_id, document_url, anlagen}`` —
+    Returns ``{template_number, title, art, document_id, document_url, anlagen}`` —
     ``anlagen`` is ``[{document_id, url, label}]`` for every further document
     (PDF fields ``None`` when the page has no public "Vorlage" document) — or
     ``None`` when the page is no Vorlage at all (invalid kvonr)."""
@@ -83,9 +83,9 @@ def parse_vorlage_page(html: str) -> dict | None:
             anlagen.append(entry)
 
     return {
-        "vorlage_nr": nr_cell.get_text(" ", strip=True) if nr_cell else "",
+        "template_number": nr_cell.get_text(" ", strip=True) if nr_cell else "",
         "title": title_cell.get_text(" ", strip=True) if title_cell else "",
-        "art": art_cell.get_text(" ", strip=True) if art_cell else "",
+        "kind": art_cell.get_text(" ", strip=True) if art_cell else "",
         "document_id": document_id,
         "document_url": document_url,
         "anlagen": anlagen,
@@ -115,10 +115,10 @@ def _build_anlage_rows(anlagen: list[dict], skip_document_ids: frozenset = froze
     link-only so daily re-scans don't re-download their PDFs."""
     rows: list[dict] = []
     for a in anlagen:
-        row = {**a, "is_antrag": 0, "antragsteller": [], "raw_text": "", "n_pages": 0,
+        row = {**a, "is_motion": 0, "applicants": [], "raw_text": "", "n_pages": 0,
                "status": "listed"}
         if _ANTRAG_LABEL_RE.search(a["label"] or "") and a["document_id"] not in skip_document_ids:
-            row["is_antrag"] = 1
+            row["is_motion"] = 1
             try:
                 text, n_pages = _pdf_text(a["url"])
                 row["raw_text"], row["n_pages"] = text, n_pages
@@ -127,7 +127,7 @@ def _build_anlage_rows(anlagen: list[dict], skip_document_ids: frozenset = froze
                 row["status"] = "failed"
             # 4000 statt 1500 Zeichen: bei Anträgen mit langem Briefkopf stehen
             # die Fraktionen erst nach der Anrede — 1500 ließ 37 % leer.
-            row["antragsteller"] = parties_in_text(a["label"]) or parties_in_text(row["raw_text"][:4000])
+            row["applicants"] = parties_in_text(a["label"]) or parties_in_text(row["raw_text"][:4000])
         rows.append(row)
     return rows
 

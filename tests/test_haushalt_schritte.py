@@ -38,7 +38,7 @@ UEBERSICHT = BEREICH / "page.tsx"
 
 #: Der Kicker, den die Seiten schreiben: „Stadtfinanzen Oldenburg · Schritt 9".
 #: Bewusst eng: Ein Kommentar, der beiläufig „Schritt 1" erwähnt (etwa über
-#: das Verwaltungsverfahren in ``jahr/page.tsx``), ist keine Wegweiser-Nummer
+#: das Verwaltungsverfahren in ``year/page.tsx``), ist keine Wegweiser-Nummer
 #: und darf hier nicht mitgezählt werden.
 KICKER = re.compile(r"Stadtfinanzen Oldenburg\s*·\s*Schritt (\d+)")
 
@@ -46,7 +46,7 @@ KICKER = re.compile(r"Stadtfinanzen Oldenburg\s*·\s*Schritt (\d+)")
 #:
 #:     | `/haushalt/konzern` | Schritt 11 — Kernverwaltung gegen …
 #:
-#: Der Query-Parameter-Anhang mancher Routen (``[?jahr=<jahr>]``) gehört zur
+#: Der Query-Parameter-Anhang mancher Routen (``[?year=<year>]``) gehört zur
 #: Schreibweise der Tabelle und nicht zum Seitennamen.
 DOKU_ZEILE = re.compile(
     r"^\|\s*`/haushalt/([a-z-]+)(?:\[[^\]]*\])?`\s*\|\s*Schritt (\d+)", re.MULTILINE)
@@ -58,18 +58,18 @@ def wegweiser_reihenfolge() -> list[str]:
     Gelesen wird nur der ``STUFEN``-Block: Weiter unten stehen Links, die
     keine Schritte sind (etwa die beiden Steckbriefe am Fuß).
     """
-    quelle = WEGWEISER.read_text(encoding="utf-8")
-    anfang = quelle.index("const STUFEN:")
-    ende = quelle.index("STUFEN_NUMMERIERT")
-    return re.findall(r'href: "/haushalt/([a-z-]+)"', quelle[anfang:ende])
+    source = WEGWEISER.read_text(encoding="utf-8")
+    anfang = source.index("const STUFEN:")
+    ende = source.index("STUFEN_NUMMERIERT")
+    return re.findall(r'href: "/haushalt/([a-z-]+)"', source[anfang:ende])
 
 
 def test_der_wegweiser_ist_lesbar():
     """Sicherung gegen den stillen Ausfall: Findet der Regex nichts, liefe die
     Prüfung darunter über eine leere Liste und wäre grün, ohne zu prüfen."""
-    reihenfolge = wegweiser_reihenfolge()
-    assert len(reihenfolge) >= 10, f"nur {len(reihenfolge)} Ziele gefunden — Aufbau geändert?"
-    assert len(set(reihenfolge)) == len(reihenfolge), "ein Ziel steht zweimal im Wegweiser"
+    sort_order = wegweiser_reihenfolge()
+    assert len(sort_order) >= 10, f"nur {len(sort_order)} Ziele gefunden — Aufbau geändert?"
+    assert len(set(sort_order)) == len(sort_order), "ein Ziel steht zweimal im Wegweiser"
 
 
 def test_keine_seite_schreibt_ihre_nummer_selbst():
@@ -89,10 +89,10 @@ def test_keine_seite_schreibt_ihre_nummer_selbst():
     Quelltext ist ab jetzt der Fehler, nicht die abweichende Zahl darin.
     """
     schreiber = []
-    for seite in sorted(BEREICH.rglob("page.tsx")):
-        treffer = KICKER.search(seite.read_text(encoding="utf-8"))
+    for page in sorted(BEREICH.rglob("page.tsx")):
+        treffer = KICKER.search(page.read_text(encoding="utf-8"))
         if treffer:
-            schreiber.append(f"{seite.parent.name}: „Schritt {treffer.group(1)}“")
+            schreiber.append(f"{page.parent.name}: „Schritt {treffer.group(1)}“")
 
     assert not schreiber, (
         "Diese Seiten schreiben ihre Schritt-Nummer wieder selbst:\n  "
@@ -107,8 +107,8 @@ def test_der_kicker_wird_auch_benutzt():
     """Die Gegenprobe: Der Test oben ist trivial erfüllt, wenn gar keine Seite
     mehr einen Kicker trägt. Also zählen wir, wie viele ihn RECHNEN."""
     nutzer = sum(
-        1 for seite in BEREICH.rglob("page.tsx")
-        if "<SchrittKicker" in seite.read_text(encoding="utf-8"))
+        1 for page in BEREICH.rglob("page.tsx")
+        if "<SchrittKicker" in page.read_text(encoding="utf-8"))
     assert nutzer >= 6, (
         f"nur {nutzer} Seiten benutzen <SchrittKicker> — vorher schrieben acht "
         "ihre Nummer selbst. Ist der Kicker verschwunden, prüft der Test "
@@ -135,13 +135,13 @@ def test_der_wegweiser_ist_eine_echte_route():
     kompakte Variante: einmal zeichnen, nicht über die ganze Übersicht am
     Scrollstand kleben.
     """
-    quelle = WEGWEISER.read_text(encoding="utf-8")
-    assert 'import { Schlangenpfad } from "@/components/grafik/schlangenpfad"' in quelle
-    assert '<Schlangenpfad' in quelle
-    assert 'zeichnungsart="sichtkontakt"' in quelle
-    assert 'data-punkt' in quelle
-    assert 'data-auftritt' in quelle
-    assert "Weg beginnen" in quelle
+    source = WEGWEISER.read_text(encoding="utf-8")
+    assert 'import { Schlangenpfad } from "@/components/grafik/schlangenpfad"' in source
+    assert '<Schlangenpfad' in source
+    assert 'zeichnungsart="sichtkontakt"' in source
+    assert 'data-punkt' in source
+    assert 'data-auftritt' in source
+    assert "Weg beginnen" in source
 
 
 def test_der_weg_steht_vor_den_detailgrafiken():
@@ -149,10 +149,10 @@ def test_der_weg_steht_vor_den_detailgrafiken():
     Bereichstabelle. Nach Tafel und Begriffserklärung müssen Nutzer*innen sie
     sehen, bevor Kassenzettel und Detailgrafiken weiter in die Tiefe gehen.
     """
-    quelle = UEBERSICHT.read_text(encoding="utf-8")
-    weg = quelle.index('<div id="wegweiser"')
-    kassenzettel = quelle.index("<Kassenzettel", weg)
-    bereiche = quelle.index("<Bereichstabelle", weg)
+    source = UEBERSICHT.read_text(encoding="utf-8")
+    weg = source.index('<div id="wegweiser"')
+    kassenzettel = source.index("<Kassenzettel", weg)
+    bereiche = source.index("<Bereichstabelle", weg)
     assert weg < kassenzettel < bereiche
 
 
@@ -167,8 +167,8 @@ def test_die_doku_tabelle_nennt_dieselbe_reihenfolge():
     ganz. Wer die Doku liest, liest sie statt des Codes; eine falsche Nummer
     dort ist deshalb genauso teuer wie eine im Kicker.
     """
-    reihenfolge = wegweiser_reihenfolge()
-    nummer_von = {name: i for i, name in enumerate(reihenfolge, start=1)}
+    sort_order = wegweiser_reihenfolge()
+    nummer_von = {name: i for i, name in enumerate(sort_order, start=1)}
     tabelle = DOKU_ZEILE.findall(DOKU.read_text(encoding="utf-8"))
 
     # Sicherung gegen den stillen Ausfall — dieselbe Sorge wie oben: Findet
@@ -182,7 +182,7 @@ def test_die_doku_tabelle_nennt_dieselbe_reihenfolge():
         for name, nr in ((n, int(s)) for n, s in tabelle)
         if nummer_von.get(name) != nr
     ]
-    fehlend = [name for name in reihenfolge
+    fehlend = [name for name in sort_order
                if name not in {n for n, _ in tabelle}]
     if fehlend:
         abweichungen.append(

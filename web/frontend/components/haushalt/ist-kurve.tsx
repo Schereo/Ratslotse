@@ -16,7 +16,7 @@ import {
   AbleseBeschreibung, AbleseFlaeche, AbleseStelle, Ableseleiste, useAblesen,
 } from "@/components/grafik/ablesen";
 
-type Punkt = { jahr: number; betrag: number };
+type Punkt = { year: number; amount: number };
 
 const H = 210, Y0 = 172, YTOP = 22;
 
@@ -25,45 +25,45 @@ const H = 210, Y0 = 172, YTOP = 22;
 // Ziffern (die 2000er-Linie lief genau durch das „42,7").
 const halo = { paintOrder: "stroke", strokeWidth: 3, strokeLinejoin: "round" } as const;
 
-export function IstKurve({ reihe, einheit = "Mio. Euro" }: {
-  reihe: Punkt[];
-  einheit?: string;
+export function IstKurve({ series, unit = "Mio. Euro" }: {
+  series: Punkt[];
+  unit?: string;
 }) {
   const [tabelle, setTabelle] = useState(false);
   // viewBox-Breite = Containerbreite, sonst staucht das SVG die Schrift mit:
   // Eine SVG-Einheit soll ein echtes Pixel sein. Wie gemessen wird und warum
   // nicht mit `clientWidth`, steht in `lib/use-breite.ts`.
   const { box, breite } = useBreite();
-  const ablesen = useAblesen(reihe.length, Math.max(reihe.length - 1, 0));
+  const ablesen = useAblesen(series.length, Math.max(series.length - 1, 0));
   const beschreibungId = useId();
   const schmal = breite < 520;
   const fs = schmal
-    ? { achse: 13, jahr: 13, marke: 12.5, wert: 14 }
-    : { achse: 11, jahr: 11, marke: 11, wert: 13 };
+    ? { achse: 13, year: 13, mark: 12.5, value: 14 }
+    : { achse: 11, year: 11, mark: 11, value: 13 };
   const W = breite, X0 = schmal ? 38 : 42, X1 = W - 20;
-  if (reihe.length < 2) return null;
+  if (series.length < 2) return null;
 
-  const werte = reihe.map((p) => p.betrag / 1e6);
+  const werte = series.map((p) => p.amount / 1e6);
   const hi = Math.ceil(Math.max(...werte) / 50) * 50;
-  const x = (i: number) => X0 + (i / (reihe.length - 1)) * (X1 - X0);
+  const x = (i: number) => X0 + (i / (series.length - 1)) * (X1 - X0);
   const y = (v: number) => Y0 - (v / hi) * (Y0 - YTOP);
 
-  const linie = reihe.map((p, i) => `${i ? "L" : "M"}${x(i)} ${y(p.betrag / 1e6)}`).join(" ");
-  const flaeche = `${linie} L${x(reihe.length - 1)} ${Y0} L${X0} ${Y0} Z`;
+  const linie = series.map((p, i) => `${i ? "L" : "M"}${x(i)} ${y(p.amount / 1e6)}`).join(" ");
+  const flaeche = `${linie} L${x(series.length - 1)} ${Y0} L${X0} ${Y0} Z`;
 
   // Die zwei größten Rückgänge gegenüber dem Vorjahr — aus den Daten, nicht
   // aus dem Geschichtsbuch.
-  const rueckgaenge = reihe
-    .map((p, i) => (i === 0 ? null : { i, jahr: p.jahr, delta: (p.betrag - reihe[i - 1].betrag) / 1e6 }))
-    .filter((d): d is { i: number; jahr: number; delta: number } => !!d && d.delta < 0)
+  const rueckgaenge = series
+    .map((p, i) => (i === 0 ? null : { i, year: p.year, delta: (p.amount - series[i - 1].amount) / 1e6 }))
+    .filter((d): d is { i: number; year: number; delta: number } => !!d && d.delta < 0)
     .sort((a, b) => a.delta - b.delta)
     .slice(0, 2);
 
   const gitter = [0.25, 0.5, 0.75, 1].map((f) => Math.round(hi * f));
-  const erste = reihe[0], letzte = reihe[reihe.length - 1];
-  const faktor = erste.betrag > 0 ? letzte.betrag / erste.betrag : 0;
+  const erste = series[0], letzte = series[series.length - 1];
+  const faktor = erste.amount > 0 ? letzte.amount / erste.amount : 0;
   // Jahres-Beschriftung ausdünnen, damit nichts überlappt.
-  const schritt = Math.ceil(reihe.length / (schmal ? 4 : 6));
+  const schritt = Math.ceil(series.length / (schmal ? 4 : 6));
 
   // --- Marker-Beschriftungen entzerren ------------------------------------
   // SVG-Text weicht nicht von selbst aus: Liegen die zwei größten Rückgänge
@@ -79,36 +79,36 @@ export function IstKurve({ reihe, einheit = "Mio. Euro" }: {
   const stoert = (a: Kasten, b: Kasten) =>
     a.x1 < b.x2 + 4 && b.x1 < a.x2 + 4 && a.y1 < b.y2 + 2 && b.y1 < a.y2 + 2;
 
-  const ersterText = deMio(erste.betrag / 1e6), letzterText = deMio(letzte.betrag / 1e6);
-  const ersterY = y(erste.betrag / 1e6) + 17, letzterY = y(letzte.betrag / 1e6) - 10;
-  const letzteBreite = textBreite(letzterText, fs.wert + 1);
+  const ersterText = deMio(erste.amount / 1e6), letzterText = deMio(letzte.amount / 1e6);
+  const ersterY = y(erste.amount / 1e6) + 17, letzterY = y(letzte.amount / 1e6) - 10;
+  const letzteBreite = textBreite(letzterText, fs.value + 1);
   // Die beiden Wert-Labels stehen fest — die Marker weichen ihnen aus.
   const belegt: Kasten[] = [
-    { x1: x(0), x2: x(0) + textBreite(ersterText, fs.wert), y1: ersterY - fs.wert, y2: ersterY + 3 },
-    { x1: x(reihe.length - 1) - 6 - letzteBreite, x2: x(reihe.length - 1) - 6,
-      y1: letzterY - fs.wert - 1, y2: letzterY + 3 },
+    { x1: x(0), x2: x(0) + textBreite(ersterText, fs.value), y1: ersterY - fs.value, y2: ersterY + 3 },
+    { x1: x(series.length - 1) - 6 - letzteBreite, x2: x(series.length - 1) - 6,
+      y1: letzterY - fs.value - 1, y2: letzterY + 3 },
   ];
   const marken = rueckgaenge
     .map((r) => {
-      const text = `${r.jahr}: ${deMio(r.delta)}`;
-      const w = textBreite(text, fs.marke);
+      const text = `${r.year}: ${deMio(r.delta)}`;
+      const w = textBreite(text, fs.mark);
       return {
         ...r, text, w,
         // In die Zeichenfläche klemmen: links stehen die Achsenzahlen.
         mitte: Math.min(Math.max(x(r.i), X0 + w / 2), X1 - w / 2),
-        py: y(reihe[r.i].betrag / 1e6),
+        py: y(series[r.i].amount / 1e6),
       };
     })
     .sort((a, b) => a.mitte - b.mitte)
     .map((m) => {
       const kasten = (ty: number): Kasten =>
-        ({ x1: m.mitte - m.w / 2, x2: m.mitte + m.w / 2, y1: ty - fs.marke, y2: ty + 3 });
+        ({ x1: m.mitte - m.w / 2, x2: m.mitte + m.w / 2, y1: ty - fs.mark, y2: ty + 3 });
       // Erst über dem Punkt, zeilenweise höher; wenn oben nichts frei ist
       // (Einbruch im letzten Jahr, direkt am großen Endwert), darunter.
-      const zeile = fs.marke + 4;
+      const row = fs.mark + 4;
       const kandidaten: number[] = [];
-      for (let n = 0; n < 6 && m.py - 9 - n * zeile - fs.marke > YTOP; n++) kandidaten.push(m.py - 9 - n * zeile);
-      kandidaten.push(Math.min(m.py + 9 + fs.marke, Y0 - 4));
+      for (let n = 0; n < 6 && m.py - 9 - n * row - fs.mark > YTOP; n++) kandidaten.push(m.py - 9 - n * row);
+      kandidaten.push(Math.min(m.py + 9 + fs.mark, Y0 - 4));
       const ty = kandidaten.find((k) => !belegt.some((b) => stoert(kasten(k), b))) ?? kandidaten.at(-1)!;
       belegt.push(kasten(ty));
       return { ...m, ty };
@@ -121,17 +121,17 @@ export function IstKurve({ reihe, einheit = "Mio. Euro" }: {
   // erhobenes) und beim Überfahren, Antippen oder mit den Pfeiltasten
   // wechselt. Die Tabelle bleibt: 28 Werte nebeneinander kann ein Bild nicht,
   // und wer eine einzelne Jahreszahl sucht, findet sie dort schneller.
-  const ableseStellen: AbleseStelle[] = reihe.map((p, i) => {
-    const wert = p.betrag / 1e6;
-    const vor = i > 0 ? (p.betrag - reihe[i - 1].betrag) / 1e6 : null;
+  const ableseStellen: AbleseStelle[] = series.map((p, i) => {
+    const value = p.amount / 1e6;
+    const vor = i > 0 ? (p.amount - series[i - 1].amount) / 1e6 : null;
     const deltaText = vor == null ? null : `${vor > 0 ? "+" : ""}${deMio(vor)}`;
     return {
-      titel: String(p.jahr),
+      title: String(p.year),
       werte: [
-        { label: einheit.startsWith("Mio") ? "Mio. €" : einheit, wert: deMio(wert), farbe: "var(--hh-ein-0)" },
-        ...(deltaText ? [{ label: "ggü. Vorjahr", wert: deltaText, signal: (vor as number) < 0 }] : []),
+        { label: unit.startsWith("Mio") ? "Mio. €" : unit, value: deMio(value), farbe: "var(--hh-ein-0)" },
+        ...(deltaText ? [{ label: "ggü. Vorjahr", value: deltaText, signal: (vor as number) < 0 }] : []),
       ],
-      vorlesen: `${p.jahr}: ${deMio(wert)} Millionen Euro`
+      vorlesen: `${p.year}: ${deMio(value)} Millionen Euro`
         + (vor == null ? "." : `, ${deMio(Math.abs(vor))} Millionen ${vor < 0 ? "weniger" : "mehr"} als im Vorjahr.`),
     };
   });
@@ -143,15 +143,15 @@ export function IstKurve({ reihe, einheit = "Mio. Euro" }: {
           Tatsächlich eingenommen
         </p>
         <span className="font-mono text-[10px] uppercase text-muted-foreground">
-          {erste.jahr}–{letzte.jahr} · {reihe.length} Werte · {einheit}
+          {erste.year}–{letzte.year} · {series.length} Werte · {unit}
         </span>
       </div>
       <p className="mb-3 max-w-[72ch] text-sm leading-relaxed text-foreground/90">
-        In {letzte.jahr - erste.jahr} Jahren ist der Betrag von {deMio(erste.betrag / 1e6)} auf{" "}
-        <strong>{deMio(letzte.betrag / 1e6)}&#8239;Mio.&nbsp;€</strong> gestiegen
+        In {letzte.year - erste.year} Jahren ist der Betrag von {deMio(erste.amount / 1e6)} auf{" "}
+        <strong>{deMio(letzte.amount / 1e6)}&#8239;Mio.&nbsp;€</strong> gestiegen
         {faktor >= 1.5 && <> — das {faktor.toLocaleString("de-DE", { maximumFractionDigits: 1 })}-Fache</>}.
         {rueckgaenge.length > 0 && (
-          <> Dazwischen ging es auch zurück: am stärksten {rueckgaenge[0].jahr} um{" "}
+          <> Dazwischen ging es auch zurück: am stärksten {rueckgaenge[0].year} um{" "}
           {deMio(-rueckgaenge[0].delta)}&#8239;Mio.&nbsp;€</>
         )}
       </p>
@@ -170,11 +170,11 @@ export function IstKurve({ reihe, einheit = "Mio. Euro" }: {
           einem Objekt zusammen — die Jahres-Ziele darin wären für die
           Vorlesehilfe unsichtbar. Die Gesamtbeschreibung steht daneben. */}
       <AbleseBeschreibung id={beschreibungId}>
-        {`Verlauf ${erste.jahr} bis ${letzte.jahr}: ${reihe.map((p) => `${p.jahr} ${deMio(p.betrag / 1e6)}`).join(", ")} Millionen Euro`}
+        {`Verlauf ${erste.year} bis ${letzte.year}: ${series.map((p) => `${p.year} ${deMio(p.amount / 1e6)}`).join(", ")} Millionen Euro`}
       </AbleseBeschreibung>
       <svg viewBox={`0 0 ${W} ${H}`} className="block w-full" role="group"
         aria-describedby={beschreibungId}
-        aria-label={`Tatsächlich eingenommen, ${erste.jahr} bis ${letzte.jahr}`}>
+        aria-label={`Tatsächlich eingenommen, ${erste.year} bis ${letzte.year}`}>
         {gitter.map((v) => (
           <g key={v}>
             <line x1={X0} y1={y(v)} x2={X1} y2={y(v)} className="stroke-border/60" />
@@ -190,38 +190,38 @@ export function IstKurve({ reihe, einheit = "Mio. Euro" }: {
         {/* Erst alle Linien und Punkte, dann alle Beschriftungen: Sonst zieht der
             Führungsstrich der oberen Marke durch den Text der unteren. */}
         {marken.map((m) => (
-          <g key={m.jahr}>
+          <g key={m.year}>
             <line x1={x(m.i)} y1={m.py} x2={x(m.i)} y2={Y0}
               strokeWidth={1} strokeDasharray="3 3" className="stroke-muted-foreground" />
             {/* Steht die Beschriftung versetzt, führt ein feiner Strich zurück zum Punkt. */}
             {(Math.abs(m.mitte - x(m.i)) > 2 || m.ty < m.py - 12 || m.ty > m.py) && (
               <line x1={x(m.i)} y1={m.py + (m.ty > m.py ? 6 : -6)}
                 x2={Math.min(Math.max(x(m.i), m.mitte - m.w / 2), m.mitte + m.w / 2)}
-                y2={m.ty > m.py ? m.ty - fs.marke - 2 : m.ty + 4}
+                y2={m.ty > m.py ? m.ty - fs.mark - 2 : m.ty + 4}
                 strokeWidth={1} className="stroke-signal" opacity={0.45} />
             )}
             <circle cx={x(m.i)} cy={m.py} r={4} className="fill-card stroke-signal" strokeWidth={2} />
           </g>
         ))}
         {marken.map((m) => (
-          <text key={m.jahr} x={m.mitte} y={m.ty} textAnchor="middle" fontSize={fs.marke}
+          <text key={m.year} x={m.mitte} y={m.ty} textAnchor="middle" fontSize={fs.mark}
             className="fill-signal stroke-card" {...halo}>{m.text}</text>
         ))}
 
-        <circle cx={x(0)} cy={y(erste.betrag / 1e6)} r={4} className="fill-card" strokeWidth={2}
+        <circle cx={x(0)} cy={y(erste.amount / 1e6)} r={4} className="fill-card" strokeWidth={2}
           style={{ stroke: "var(--hh-ein-0)" }} />
-        <text x={x(0)} y={ersterY} fontSize={fs.wert} fontWeight={600} className="stroke-card" {...halo}
+        <text x={x(0)} y={ersterY} fontSize={fs.value} fontWeight={600} className="stroke-card" {...halo}
           style={{ fill: "var(--hh-ein-0)" }}>{ersterText}</text>
-        <circle cx={x(reihe.length - 1)} cy={y(letzte.betrag / 1e6)} r={5} style={{ fill: "var(--hh-ein-0)" }} />
-        <text x={x(reihe.length - 1) - 6} y={letzterY} textAnchor="end" fontSize={fs.wert + 1}
+        <circle cx={x(series.length - 1)} cy={y(letzte.amount / 1e6)} r={5} style={{ fill: "var(--hh-ein-0)" }} />
+        <text x={x(series.length - 1) - 6} y={letzterY} textAnchor="end" fontSize={fs.value + 1}
           fontWeight={700} className="stroke-card" {...halo}
           style={{ fill: "var(--hh-ein-0)" }}>{letzterText}</text>
 
-        {reihe.map((p, i) => (
-          (i % schritt === 0 || i === reihe.length - 1) && (
-            <text key={p.jahr} x={x(i)} y={193} textAnchor="middle" fontSize={fs.jahr}
-              className={i === reihe.length - 1 ? "fill-foreground font-mono" : "fill-muted-foreground font-mono"}>
-              {p.jahr}
+        {series.map((p, i) => (
+          (i % schritt === 0 || i === series.length - 1) && (
+            <text key={p.year} x={x(i)} y={193} textAnchor="middle" fontSize={fs.year}
+              className={i === series.length - 1 ? "fill-foreground font-mono" : "fill-muted-foreground font-mono"}>
+              {p.year}
             </text>
           )
         ))}
@@ -234,23 +234,23 @@ export function IstKurve({ reihe, einheit = "Mio. Euro" }: {
           stellen={ableseStellen} steuerung={ablesen} gruppe="Jahre der Reihe"
           x={(i) => x(i)} xVon={X0} xBis={X1}
           yVon={YTOP} hoehe={Y0 - YTOP} fangHoehe={197 - YTOP}
-          marken={(i) => [{ y: y(reihe[i].betrag / 1e6), farbe: "var(--hh-ein-0)" }]}
+          marken={(i) => [{ y: y(series[i].amount / 1e6), farbe: "var(--hh-ein-0)" }]}
         />
       </svg>
 
       <Ableseleiste className="mt-2" stelle={ableseStellen[ablesen.aktiv]} steuerung={ablesen}
-        hinweis="Jahr überfahren, antippen oder mit den Pfeiltasten wechseln." />
+        note="Jahr überfahren, antippen oder mit den Pfeiltasten wechseln." />
 
       <button type="button" onClick={() => setTabelle((t) => !t)}
         aria-expanded={tabelle} className="mt-2 text-[12px] font-semibold text-primary">
-        {tabelle ? "Tabelle ausblenden" : `Alle ${reihe.length} Werte als Tabelle`}
+        {tabelle ? "Tabelle ausblenden" : `Alle ${series.length} Werte als Tabelle`}
       </button>
       {tabelle && (
         <div className="mt-2 grid grid-cols-[repeat(auto-fill,minmax(96px,1fr))] gap-x-3 gap-y-1 text-[11.5px] tabular-nums">
-          {reihe.map((p) => (
-            <span key={p.jahr} className="flex justify-between border-t border-border/60 py-1">
-              <span className="font-mono text-muted-foreground">{p.jahr}</span>
-              <span>{deMio(p.betrag / 1e6)}</span>
+          {series.map((p) => (
+            <span key={p.year} className="flex justify-between border-t border-border/60 py-1">
+              <span className="font-mono text-muted-foreground">{p.year}</span>
+              <span>{deMio(p.amount / 1e6)}</span>
             </span>
           ))}
         </div>

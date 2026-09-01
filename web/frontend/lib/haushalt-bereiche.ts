@@ -47,9 +47,9 @@ export type BereichSchluessel =
   | "stiftungen";
 
 export type Bereich = {
-  schluessel: BereichSchluessel;
+  key: BereichSchluessel;
   /** Nummer des Teilhaushalts im Haushaltsplan (Reihenfolge der Übersicht). */
-  thh: number;
+  sub_budget: number;
   /** Anzeigename: die jüngste amtliche Schreibweise, nicht unsere Erfindung. */
   name: string;
   /** Kurzform fürs Balkensegment und enge Spalten (höchstens 20 Zeichen). */
@@ -68,8 +68,8 @@ export type Bereich = {
  *  vor der Summe, in jedem Jahrgang 2020–2026). */
 export const BEREICHE: readonly Bereich[] = [
   {
-    schluessel: "verwaltungsfuehrung",
-    thh: 1,
+    key: "verwaltungsfuehrung",
+    sub_budget: 1,
     name: "Verwaltungsführung",
     kurz: "Verwaltungsspitze",
     // Gegen den Vorbericht gelesen (H2-13): Sitzungsdienst und Presse- und
@@ -82,8 +82,8 @@ export const BEREICHE: readonly Bereich[] = [
     aliase: ["Verwaltungsführung"],
   },
   {
-    schluessel: "personal",
-    thh: 2,
+    key: "personal",
+    sub_budget: 2,
     name: "Personal/Organisation/Digitalisierung/IT",
     kurz: "Personal & IT",
     // Der Nachsatz ist die wichtigste Auskunft der Zeile (H2-13): 47 Mio. €
@@ -99,8 +99,8 @@ export const BEREICHE: readonly Bereich[] = [
     ],
   },
   {
-    schluessel: "wirtschaft",
-    thh: 3,
+    key: "wirtschaft",
+    sub_budget: 3,
     name: "Wirtschaftsförderung, Liegenschaften",
     kurz: "Wirtschaft & Flächen",
     klartext:
@@ -109,8 +109,8 @@ export const BEREICHE: readonly Bereich[] = [
     aliase: ["Wirtschaftsförderung, Liegenschaften"],
   },
   {
-    schluessel: "finanzen",
-    thh: 4,
+    key: "finanzen",
+    sub_budget: 4,
     name: "Finanzmanagement und Recht",
     kurz: "Finanzen",
     klartext:
@@ -119,8 +119,8 @@ export const BEREICHE: readonly Bereich[] = [
     aliase: ["Finanzmanagement und Recht"],
   },
   {
-    schluessel: "sicherheit",
-    thh: 5,
+    key: "sicherheit",
+    sub_budget: 5,
     name: "Sicherheit und Ordnung",
     kurz: "Sicherheit",
     klartext:
@@ -129,8 +129,8 @@ export const BEREICHE: readonly Bereich[] = [
     aliase: ["Sicherheit und Ordnung"],
   },
   {
-    schluessel: "kultur",
-    thh: 6,
+    key: "kultur",
+    sub_budget: 6,
     name: "Kultur, Museen, Sport",
     kurz: "Kultur & Sport",
     klartext:
@@ -139,8 +139,8 @@ export const BEREICHE: readonly Bereich[] = [
     aliase: ["Kultur, Museen, Sport"],
   },
   {
-    schluessel: "stadtplanung",
-    thh: 7,
+    key: "stadtplanung",
+    sub_budget: 7,
     name: "Stadtplanung",
     kurz: "Stadtplanung",
     klartext:
@@ -149,16 +149,16 @@ export const BEREICHE: readonly Bereich[] = [
     aliase: ["Stadtplanung"],
   },
   {
-    schluessel: "verkehr",
-    thh: 8,
+    key: "verkehr",
+    sub_budget: 8,
     name: "Verkehr und Straßenbau",
     kurz: "Verkehr & Straßen",
     klartext: "Straßen, Radwege, Brücken und der Nahverkehr.",
     aliase: ["Verkehr und Straßenbau"],
   },
   {
-    schluessel: "umwelt",
-    thh: 9,
+    key: "umwelt",
+    sub_budget: 9,
     name: "Klima/Umwelt/Mobilität/Bau/Grün/Friedh.",
     kurz: "Klima & Umwelt",
     klartext:
@@ -172,8 +172,8 @@ export const BEREICHE: readonly Bereich[] = [
     ],
   },
   {
-    schluessel: "soziales",
-    thh: 10,
+    key: "soziales",
+    sub_budget: 10,
     name: "Soziales und Gesundheit",
     kurz: "Soziales",
     klartext:
@@ -183,8 +183,8 @@ export const BEREICHE: readonly Bereich[] = [
     aliase: ["Soziales und Gesundheit"],
   },
   {
-    schluessel: "jugend",
-    thh: 11,
+    key: "jugend",
+    sub_budget: 11,
     name: "Jugend und Familie",
     kurz: "Jugend & Familie",
     klartext:
@@ -192,8 +192,8 @@ export const BEREICHE: readonly Bereich[] = [
     aliase: ["Jugend und Familie"],
   },
   {
-    schluessel: "schule",
-    thh: 12,
+    key: "schule",
+    sub_budget: 12,
     name: "Schule und Bildung",
     kurz: "Schulen",
     klartext:
@@ -202,8 +202,8 @@ export const BEREICHE: readonly Bereich[] = [
     aliase: ["Schule und Bildung"],
   },
   {
-    schluessel: "stiftungen",
-    thh: 13,
+    key: "stiftungen",
+    sub_budget: 13,
     name: "nicht rechtsfähige Stiftungen",
     kurz: "Stiftungen",
     klartext:
@@ -214,7 +214,7 @@ export const BEREICHE: readonly Bereich[] = [
 ];
 
 export const BEREICH_NACH_SCHLUESSEL: Record<BereichSchluessel, Bereich> =
-  Object.fromEntries(BEREICHE.map((b) => [b.schluessel, b])) as Record<
+  Object.fromEntries(BEREICHE.map((b) => [b.key, b])) as Record<
     BereichSchluessel,
     Bereich
   >;
@@ -245,8 +245,8 @@ const NACH_ALIAS: Map<string, Bereich> = new Map(
 /** Ergebnis der Auflösung — immer gefüllt, auch für unbekannte Namen. */
 export type BereichKanon = {
   /** `null`, wenn der Name im Wörterbuch fehlt (neuer Jahrgang). */
-  schluessel: BereichSchluessel | null;
-  thh: number | null;
+  key: BereichSchluessel | null;
+  sub_budget: number | null;
   /** Anzeigename; bei unbekanntem Namen der Rohname aus der Datenbank. */
   name: string;
   kurz: string;
@@ -269,8 +269,8 @@ export function bereichKanon(name: string): BereichKanon {
   if (!b) {
     const roh = name.trim();
     return {
-      schluessel: null,
-      thh: null,
+      key: null,
+      sub_budget: null,
       name: roh,
       kurz: notKurz(roh),
       klartext: null,
@@ -278,8 +278,8 @@ export function bereichKanon(name: string): BereichKanon {
     };
   }
   return {
-    schluessel: b.schluessel,
-    thh: b.thh,
+    key: b.key,
+    sub_budget: b.sub_budget,
     name: b.name,
     kurz: b.kurz,
     klartext: b.klartext,
@@ -300,10 +300,10 @@ export function bereichKlartext(name: string): string | null {
 /** Kanonischer Schlüssel, oder `null` — der Schlüssel für eigene Maps
  *  (Pflicht/Kür, Farben, Icons). Nie den Namen als Schlüssel nehmen. */
 export function bereichSchluessel(name: string): BereichSchluessel | null {
-  return bereichKanon(name).schluessel;
+  return bereichKanon(name).key;
 }
 
-/** Die Summenzeile trägt keinen Bereichsnamen — `is_summe` der Zeile ist die
+/** Die Summenzeile trägt keinen Bereichsnamen — `is_total` der Zeile ist die
  *  belastbare Prüfung, dies hier der Notnagel für Namenslisten ohne Zeile. */
 export function istSummenzeile(name: string): boolean {
   return normalisiereBereich(name) === "summe";

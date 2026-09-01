@@ -27,8 +27,8 @@ import { cn } from "@/lib/utils";
 
 /** Ganze Euro je Bereich per größtem Rest auf exakt 100 bringen —
  *  simple Rundung ergäbe je nach Jahr 98–102 Felder. */
-function verteile100<T extends { wert: number }>(rows: T[], gesamt: number) {
-  const roh = rows.map((r) => ({ ...r, exakt: (r.wert / gesamt) * 100 }));
+function verteile100<T extends { value: number }>(rows: T[], gesamt: number) {
+  const roh = rows.map((r) => ({ ...r, exakt: (r.value / gesamt) * 100 }));
   const basis = roh.map((r) => ({ ...r, euro: Math.floor(r.exakt) }));
   let rest = 100 - basis.reduce((s, r) => s + r.euro, 0);
   const nachRest = [...basis].sort((a, b) => (b.exakt - b.euro) - (a.exakt - a.euro));
@@ -40,23 +40,23 @@ function verteile100<T extends { wert: number }>(rows: T[], gesamt: number) {
   return basis.filter((r) => r.euro > 0);
 }
 
-export function Steuereuro({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jahr: number }) {
+export function Steuereuro({ zeilen, year }: { zeilen: HaushaltZeile[]; year: number }) {
   // Welcher Bereich gerade hervorgehoben ist — null = keiner, der Ruhezustand.
   const [hervor, setHervor] = useState<number | null>(null);
-  const parts = zeilen.filter((z) => z.is_summe !== 1);
-  const gesamt = zeilen.find((z) => z.is_summe === 1);
-  if (!gesamt?.aufwendungen) return null;
+  const parts = zeilen.filter((z) => z.is_total !== 1);
+  const gesamt = zeilen.find((z) => z.is_total === 1);
+  if (!gesamt?.expenses) return null;
 
   // Namen aus dem Wörterbuch (`lib/haushalt-bereiche.ts`): Die Schreibweise
   // wechselt je Jahrgang, die Legende soll beim Jahreswechsel aber nicht
   // mitwandern. `kurz` trägt die Überschrift, `name` die Legende.
   const sortiert = [...parts]
     .map((z) => {
-      const kanon = bereichKanon(z.bereich);
-      return { name: kanon.name, kurz: kanon.kurz, wert: z.aufwendungen ?? 0 };
+      const kanon = bereichKanon(z.area);
+      return { name: kanon.name, kurz: kanon.kurz, value: z.expenses ?? 0 };
     })
-    .filter((r) => r.wert > 0)
-    .sort((a, b) => b.wert - a.wert);
+    .filter((r) => r.value > 0)
+    .sort((a, b) => b.value - a.value);
   // Ab Platz 10 bündeln — kleiner als 1 Feld wird sonst unsichtbar.
   const gross = sortiert.slice(0, 9);
   const kleine = sortiert.slice(9);
@@ -64,15 +64,15 @@ export function Steuereuro({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jahr: nu
     ? [...gross, {
         name: `${kleine.length} kleinere Bereiche`,
         kurz: `${kleine.length} kleinere`,
-        wert: kleine.reduce((s, r) => s + r.wert, 0),
+        value: kleine.reduce((s, r) => s + r.value, 0),
       }]
     : gross;
-  const felder = verteile100(rows, gesamt.aufwendungen);
+  const felder = verteile100(rows, gesamt.expenses);
 
-  const einMio = mio(gesamt.ertraege) ?? 0;
-  const ausMio = mio(gesamt.aufwendungen) ?? 0;
+  const einMio = mio(gesamt.revenues) ?? 0;
+  const ausMio = mio(gesamt.expenses) ?? 0;
   // Fehlbetrag aus Rohwerten runden (812,9/883,9 ergäbe 71,0 statt 71,1).
-  const fehltMio = mio((gesamt.aufwendungen ?? 0) - (gesamt.ertraege ?? 0)) ?? 0;
+  const fehltMio = mio((gesamt.expenses ?? 0) - (gesamt.revenues ?? 0)) ?? 0;
   const eingenommen = Math.min(100, Math.round((einMio / ausMio) * 100));
 
   // Zellen 0–99 den Bereichen der Reihe nach zuordnen (Leserichtung).
@@ -86,7 +86,7 @@ export function Steuereuro({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jahr: nu
   return (
     <div>
       <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-        Von 100 Euro geplanter Ausgaben · {jahr}
+        Von 100 Euro geplanter Ausgaben · {year}
       </p>
       {top && zweit && (
         <p className="mb-3 mt-1.5 max-w-[38ch] font-display text-[19px] font-bold leading-snug tracking-tight">
@@ -96,7 +96,7 @@ export function Steuereuro({ zeilen, jahr }: { zeilen: HaushaltZeile[]; jahr: nu
 
       <div className="flex flex-wrap items-start gap-5">
         <svg viewBox="0 0 280 280" className="w-full max-w-[280px] flex-none" role="img"
-          aria-label={`Aufteilung von 100 Euro Ausgaben ${jahr}: ${felder.map((f) => `${f.name} ${f.euro} Euro`).join(", ")}`}
+          aria-label={`Aufteilung von 100 Euro Ausgaben ${year}: ${felder.map((f) => `${f.name} ${f.euro} Euro`).join(", ")}`}
           // Zeiger raus = Ruhezustand. Beim Tippen feuert `pointerleave` erst,
           // wenn woanders hingetippt wird — die Hervorhebung bleibt also
           // stehen, statt sofort zurückzuspringen.

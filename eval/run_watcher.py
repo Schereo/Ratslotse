@@ -35,7 +35,7 @@ def _build_session(case: dict):
         AgendaItem(
             item_number=i["item_number"],
             title=i["title"],
-            vorlage_nr=i.get("vorlage_nr", ""),
+            template_number=i.get("template_number", ""),
             is_public=bool(i.get("is_public", True)),
         )
         for i in s["agenda_items"]

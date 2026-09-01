@@ -55,14 +55,14 @@ def test_delete_web_user_covers_every_user_table(tmp_path):
     Ohne diesen Test bleiben bei einer Konto-Löschung stillschweigend Daten
     zurück, sobald jemand eine neue nutzerbezogene Tabelle anlegt.
     """
-    store = Store(tmp_path / "nwz.sqlite")
+    store = Store(tmp_path / "ratslotse.sqlite")
     im_schema = _user_keyed_tables(store._conn)
     store.close()
 
     fehlend = im_schema - set(USER_OWNED_TABLES)
     assert not fehlend, (
         "Diese nutzerbezogenen Tabellen räumt delete_web_user nicht ab. "
-        f"Bitte in nwz/store.py in USER_OWNED_TABLES ergänzen: {sorted(fehlend)}"
+        f"Bitte in kern/store.py in USER_OWNED_TABLES ergänzen: {sorted(fehlend)}"
     )
     veraltet = set(USER_OWNED_TABLES) - im_schema
     assert not veraltet, f"Stehen in USER_OWNED_TABLES, aber nicht im Schema: {sorted(veraltet)}"
@@ -71,7 +71,7 @@ def test_delete_web_user_covers_every_user_table(tmp_path):
 def test_delete_web_user_really_empties_every_table(tmp_path):
     """Nicht nur die Liste, auch das Löschen selbst: eine Zeile je Tabelle rein,
     Konto löschen, alles muss weg sein — und das fremde Konto unberührt."""
-    store = Store(tmp_path / "nwz.sqlite")
+    store = Store(tmp_path / "ratslotse.sqlite")
     conn = store._conn
     with conn:
         for table, key in USER_OWNED_TABLES:
@@ -100,7 +100,7 @@ def test_delete_web_user_really_empties_every_table(tmp_path):
 def test_feedback_roundtrip_and_unread(tmp_path):
     """Feedback ablegen, zählen, abhaken — die Grundlage des Admin-Tabs und
     des Zeichens in der Navigation."""
-    store = Store(tmp_path / "nwz.sqlite")
+    store = Store(tmp_path / "ratslotse.sqlite")
     a = store.add_feedback(1, "a@test.de", "bug", "Knopf klemmt")
     b = store.add_feedback(2, "b@test.de", "feature", "Bitte Dunkelmodus")
     assert a and b and a != b
@@ -128,7 +128,7 @@ def test_feedback_roundtrip_and_unread(tmp_path):
 def test_council_db_kennt_ihre_nutzerbezogenen_tabellen(tmp_path):
     """Derselbe Wächter, aber für council.sqlite.
 
-    Der Test oben scannt nur `nwz.sqlite` und konnte deshalb nicht sehen, dass
+    Der Test oben scannt nur `ratslotse.sqlite` und konnte deshalb nicht sehen, dass
     in der zweiten Datenbank zwei Tabellen mit `owner_id` liegen. Zwischen den
     Datenbanken gibt es keine Fremdschlüssel — was hier nicht gelistet ist,
     überlebt die Konto-Löschung.

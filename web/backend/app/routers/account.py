@@ -19,7 +19,7 @@ from ..schemas import (ChangePasswordRequest, DeleteAccountRequest, DeliveryUpda
 from ..security import hash_password, verify_password
 from .auth import _app_access_token, _set_auth_cookie, _to_out
 
-logger = logging.getLogger("nwz.web.account")
+logger = logging.getLogger("ratslotse.web.account")
 
 router = APIRouter(prefix="/api/account", tags=["account"])
 
@@ -39,7 +39,7 @@ def _send_goodbye_email(email: str) -> None:
         "wieder willkommen.</p>",
         held="abschied",
         kicker="Dein Konto",
-        titel="Tschüss — und danke!",
+        title="Tschüss — und danke!",
         fusszeile="Falls du diese Löschung nicht selbst ausgelöst hast, "
                   "antworte bitte umgehend auf diese E-Mail.",
     )

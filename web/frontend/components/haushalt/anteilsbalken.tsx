@@ -12,7 +12,7 @@
 // Grund für die Komponente:
 //
 //  1. **Der Nenner steht dran.** Ein Anteil ohne Bezugsgröße ist keine Zahl,
-//     sondern ein Gefühl. `gesamt` und `einheit` gehören deshalb in die
+//     sondern ein Gefühl. `gesamt` und `unit` gehören deshalb in die
 //     Beschriftung, nicht in den Fließtext daneben.
 //  2. **Keine Bewertungsfarben.** Die Segmente kommen aus der Ausgabenrampe
 //     `--hh-aus-*` (dunkel = wenig Spielraum), nie aus Ampelfarben. Ein
@@ -32,7 +32,7 @@
 export type Anteil = {
   label: string;
   /** In derselben Einheit wie `gesamt`. */
-  wert: number;
+  value: number;
   /** CSS-Farbe, üblicherweise `var(--hh-aus-n)`. */
   farbe: string;
   /** Schraffiert statt gefüllt — für „keine Angabe". */
@@ -41,13 +41,13 @@ export type Anteil = {
 
 export type Marke = {
   /** In derselben Einheit wie `gesamt`. */
-  wert: number;
+  value: number;
   label: string;
 };
 
-function prozent(wert: number, gesamt: number): number {
+function percent(value: number, gesamt: number): number {
   if (!gesamt) return 0;
-  return Math.max(0, Math.min(100, (wert / gesamt) * 100));
+  return Math.max(0, Math.min(100, (value / gesamt) * 100));
 }
 
 function deProzent(p: number): string {
@@ -59,36 +59,36 @@ function schraffur(farbe: string): string {
 }
 
 export function Anteilsbalken({
-  segmente, gesamt, einheit = "Mio. €", marke, hoehe = 14,
-  legende = true, titel, className,
+  segmente, gesamt, unit = "Mio. €", mark, hoehe = 14,
+  legende = true, title, className,
 }: {
   segmente: Anteil[];
   gesamt: number;
   /** Steht in der Legende hinter jedem Wert. */
-  einheit?: string;
+  unit?: string;
   /** Ein beschrifteter Strich quer über den Balken. */
-  marke?: Marke;
+  mark?: Marke;
   hoehe?: number;
   legende?: boolean;
   /** Mono-Kicker über dem Balken. */
-  titel?: string;
+  title?: string;
   className?: string;
 }) {
-  const gezeigt = segmente.filter((s) => s.wert > 0);
+  const gezeigt = segmente.filter((s) => s.value > 0);
   const beschreibung = gezeigt
-    .map((s) => `${s.label} ${deProzent(prozent(s.wert, gesamt))}`)
+    .map((s) => `${s.label} ${deProzent(percent(s.value, gesamt))}`)
     .join(", ");
 
   return (
     <div className={className}>
-      {titel && (
+      {title && (
         <p className="mb-1.5 font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-          {titel}
+          {title}
         </p>
       )}
       <div
         role="img"
-        aria-label={`${titel ? `${titel}: ` : ""}${beschreibung || "keine Angaben"}`}
+        aria-label={`${title ? `${title}: ` : ""}${beschreibung || "keine Angaben"}`}
         // `relative` trägt die Marke, `overflow-hidden` schneidet die
         // Segmentkanten auf den Radius — die Marke sitzt darüber und darf
         // deshalb nicht mitgeschnitten werden.
@@ -102,7 +102,7 @@ export function Anteilsbalken({
             <div
               key={`${s.label}-${i}`}
               style={{
-                width: `${prozent(s.wert, gesamt)}%`,
+                width: `${percent(s.value, gesamt)}%`,
                 background: s.offen ? schraffur(s.farbe) : s.farbe,
                 // Ohne Mindestbreite verschwindet ein 0,05-%-Segment ganz —
                 // und mit ihm die Auskunft, dass es den Posten gibt.
@@ -111,19 +111,19 @@ export function Anteilsbalken({
             />
           ))}
         </div>
-        {marke && gesamt > 0 && (
+        {mark && gesamt > 0 && (
           <div
             className="pointer-events-none absolute top-0 z-10"
-            style={{ left: `${prozent(marke.wert, gesamt)}%`, height: hoehe }}
+            style={{ left: `${percent(mark.value, gesamt)}%`, height: hoehe }}
           >
             <div className="h-full w-0.5 -translate-x-1/2 bg-signal" />
           </div>
         )}
       </div>
-      {marke && gesamt > 0 && (
+      {mark && gesamt > 0 && (
         <p className="mt-1.5 flex items-start gap-1.5 text-[11.5px] leading-snug text-signal">
           <span aria-hidden="true" className="mt-[3px] h-3 w-0.5 flex-none bg-signal" />
-          <span>{marke.label}</span>
+          <span>{mark.label}</span>
         </p>
       )}
       {legende && gezeigt.length > 0 && (
@@ -137,10 +137,10 @@ export function Anteilsbalken({
               />
               <span className="min-w-0 flex-1 leading-snug">{s.label}</span>
               <span className="flex-none tabular-nums text-muted-foreground">
-                {s.wert.toLocaleString("de-DE", { maximumFractionDigits: 1 })}&nbsp;{einheit}
+                {s.value.toLocaleString("de-DE", { maximumFractionDigits: 1 })}&nbsp;{unit}
               </span>
               <span className="w-[52px] flex-none text-right font-semibold tabular-nums">
-                {deProzent(prozent(s.wert, gesamt))}
+                {deProzent(percent(s.value, gesamt))}
               </span>
             </li>
           ))}

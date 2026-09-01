@@ -311,7 +311,7 @@ auch hier.
 
 ## Was am Konto hängt
 
-Alle Konto-Daten liegen in `nwz.sqlite` (siehe
+Alle Konto-Daten liegen in `ratslotse.sqlite` (siehe
 [Architektur](/docs/architektur/)); Eigentum ist durchgängig über
 `owner_id = web_users.id` modelliert.
 
