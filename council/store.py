@@ -10564,12 +10564,23 @@ class CouncilStore:
                 return []
             bedingung, params = self._place_location_condition(
                 place, nur_hauptbereich=True)
+            # Zweiter Weg, eng und ohne Einschleppen: Die Entität IST ein Ort,
+            # der in diesem Bereich liegt. Das gilt auch für die
+            # Mehrfach-Zugehörigkeit — und genau dafür ist es da: Die
+            # Alexanderstraße hat als Hauptbereich Bürgerfelde, verläuft aber
+            # auch durchs Ehnernviertel, den Ziegelhof, Alexandersfeld und
+            # Dietrichsfeld. Als Vorschlag ist sie dort richtig, denn sie liegt
+            # dort. Der Unterschied zur weiten Bedingung: Vorgeschlagen wird
+            # nur, was SELBST im Bereich liegt, nicht alles, was einmal im
+            # selben Beschluss danebenstand.
             ort_bedingung = (
-                " AND EXISTS (SELECT 1 FROM council_decision_locations dl "
+                " AND (EXISTS (SELECT 1 FROM council_decision_locations dl "
                 "JOIN council_locations l ON l.slug = dl.location_slug "
                 f"WHERE dl.decision_id = d.id AND {bedingung})"
+                " OR e.slug IN (SELECT location_slug FROM council_location_districts "
+                "WHERE place_id = ? OR district = ?))"
             )
-            ort_params = params
+            ort_params = [*params, place.id, place.name]
         rows = self._conn.execute(
             f"""SELECT e.slug, e.name, e.kind, m.description,
                       COUNT(DISTINCT el.decision_id) AS n_recent,
@@ -10675,6 +10686,15 @@ class CouncilStore:
                  WHERE e.slug IN ({platz}) AND cs.session_date >= ?
                  GROUP BY e.slug""", (*slugs, cutoff)).fetchall()}
 
+        # Ist die Entität selbst ein Ort, wissen wir genau, wo sie liegt — aus
+        # dem ganzen Verlauf statt aus einem Punkt. Das ist die beste Auskunft,
+        # die es gibt, und sie schlägt beide Heuristiken darunter.
+        zugehoerig: dict[str, set] = {}
+        for r in self._conn.execute(
+            f"SELECT location_slug, district FROM council_location_districts "
+            f"WHERE location_slug IN ({platz})", slugs).fetchall():
+            zugehoerig.setdefault(r["location_slug"], set()).add(r["district"].casefold())
+
         punkte = {r["slug"]: (r["lat"], r["lon"]) for r in self._conn.execute(
             f"SELECT slug, lat, lon FROM council_entity_meta "
             f"WHERE slug IN ({platz}) AND lat IS NOT NULL AND lon IS NOT NULL",
@@ -10683,6 +10703,20 @@ class CouncilStore:
         behalten = []
         for k in kandidaten:
             slug = k.get("slug") or ""
+            bereiche = zugehoerig.get(slug)
+            if bereiche is not None:
+                # Wir wissen, wo dieses Ding liegt. Dann entscheidet das — und
+                # sonst nichts. Die Breiten-Regel darf hier NICHT greifen: Eine
+                # Straße durch fünf Ortsbereiche ist kein stadtweites Programm,
+                # sondern eine lange Straße, und in jedem dieser fünf ein
+                # richtiger Vorschlag. Und der Mittelpunkt der Entität erst
+                # recht nicht: Für den Sandweg liegt er in Osternburg, einem
+                # Bereich, den die Straße überhaupt nicht berührt — dieselbe
+                # Bounding-Box-Falle wie bei den Orten selbst.
+                if eigener not in bereiche:
+                    continue
+                behalten.append(k)
+                continue
             if breite.get(slug, 1) >= self.CITYWIDE_FROM_DISTRICTS:
                 continue
             punkt = punkte.get(slug)

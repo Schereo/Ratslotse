@@ -30,6 +30,19 @@ stadtweite Programme gehören in die stadtweite Liste; und wo eine Sache
 geocodiert ist, entscheidet ihr Standort und nicht die bloße Erwähnung.
 Straßennamen bleiben drin, stehen aber hinter allem anderen.
 
+Weil eine Straße jetzt in jeden Stadtteil gehört, durch den sie führt, steht
+sie auch dort zur Auswahl: Das Ehnernviertel bekommt die Alexanderstraße,
+Haarentor den Quellenweg und den Pophankenweg, Drielake den Sandweg. Über alle
+31 Stadtteile sind das 145 eigene Vorschläge statt 129 — und nur noch 41 statt
+57 von nebenan geliehene. **19 Stadtteile schaffen die sechs jetzt aus eigener
+Kraft** (vorher 16), und **keiner steht mehr ganz ohne Eigenes da** (vorher
+zwei: Dobbenviertel und Ehnernviertel).
+
+Dabei entscheidet nicht die Menge, sondern was auf der Liste steht: Der
+Zeitraum weitet sich, bis genug Vorschläge dabei sind, die mehr sind als eine
+Adresse. Sonst gewönne das jüngste Jahr mit einer Liste aus lauter Straßen —
+in Osternburg hätte die „Cloppenburger Straße" die Amalienbrücke verdrängt.
+
 Und es steht überall etwas: In ruhigen Stadtteilen reicht ein Jahr nicht — der
 Zeitraum weitet sich dann auf zwei oder drei Jahre und wird dazugeschrieben.
 Wo auch das nicht trägt (im Dobbenviertel hat der Rat in drei Jahren praktisch

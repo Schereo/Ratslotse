@@ -285,3 +285,24 @@ def test_lange_strasse_schleppt_keine_fremden_themen_ein(client):
     gruppe = client.get("/api/topics/suggestions?district=ziegelhof").json()["districts"][0]
     eigene = {s["name"] for s in gruppe["suggestions"]}
     assert "Alte Fleiwa" not in eigene and "Cäcilienbrücke" not in eigene, eigene
+
+
+def test_enges_fenster_gewinnt_nicht_mit_lauter_adressen(client):
+    """Das Zeitfenster hört auf, wenn genug TRAGENDE Vorschläge da sind.
+
+    Vorher reichte „sechs Einträge". Seit auch Straßen ihren Stadtteil sicher
+    kennen, füllen sie die sechs mühelos — und das enge Fenster gewann mit
+    einer Liste aus lauter Adressen: In Osternburg verdrängte die
+    „Cloppenburger Straße" die Amalienbrücke, im Ziegelhof die
+    „Industriestraße" das IQON. Ein Jahr jünger ist kein Vorteil, wenn dafür
+    das Interessante wegfällt.
+    """
+    from app.routers.topics import _tragende
+
+    assert _tragende([{"name": "Cäcilienbrücke"}, {"name": "Amalienbrücke"}]) == 2
+    # Straßennamen zählen nicht als tragend — vorne wie hinten erkannt.
+    assert _tragende([{"name": "Cloppenburger Straße"}, {"name": "Am Rundtörn"},
+                      {"name": "Pophankenweg"}, {"name": "Bahnhofsallee"}]) == 0
+    # Ein Vorhaben, das zufällig auf „-weg" endet, bleibt eine Adresse; ein
+    # benanntes Vorhaben nicht.
+    assert _tragende([{"name": "Bebauungsplan 851"}, {"name": "OLantis Huntebad"}]) == 2

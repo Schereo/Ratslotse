@@ -325,6 +325,19 @@ def _build_suggestions(council: CouncilStore, candidates: list[dict],
 #: alter echter Vorgang ist ein besserer Vorschlag als eine Adresse von gestern.
 LOCAL_WINDOW_DAYS = (365, 730, 1095)
 
+#: Wie viele Vorschläge eines Fensters keine bloße Adresse sein müssen, damit
+#: die Suche dort aufhört. Drei von sechs: Die Hälfte darf Straße sein — manche
+#: Straße IST ein Vorhaben —, aber eine Liste aus lauter Adressen ist keine
+#: Antwort auf „was ist bei mir los?".
+TRAGENDE_MINDESTENS = 3
+
+
+def _tragende(eintraege: list[dict]) -> int:
+    """Wie viele der Vorschläge mehr sind als ein Straßenname."""
+    return sum(1 for e in eintraege
+               if not CouncilStore._looks_like_street(e.get("name") or ""))
+
+
 #: Wie viele Nachbar-Ortsbereiche einen dünnen Stadtteil auffüllen dürfen. Drei
 #: reichen: Damit kommen auf dem Prod-Bestand alle 31 auf sechs Vorschläge.
 NEIGHBOURS = 3
@@ -351,7 +364,7 @@ def _local_suggestions(council: CouncilStore, place, existing_tokens: list,
     schlicht falsch. Nebenan ist eine ehrliche Auskunft, verkleidet wäre es
     eine Behauptung.
     """
-    letzte: list[dict] = []
+    runden: list[tuple[int, list[dict]]] = []
     for tage in LOCAL_WINDOW_DAYS:
         # `chosen_tokens` NICHT je Runde mitschreiben lassen: Ein Vorschlag, den
         # das enge Fenster schon verworfen hat, würde sich sonst im weiten selbst
@@ -360,9 +373,16 @@ def _local_suggestions(council: CouncilStore, place, existing_tokens: list,
         gefunden = _build_suggestions(
             council, council.suggested_entity_topics(days_back=tage, limit=16, place_id=place.id),
             existing_tokens, probe, limit=6)
-        letzte = gefunden
-        if len(gefunden) >= 6:
+        runden.append((tage, gefunden))
+        if len(gefunden) >= 6 and _tragende(gefunden) >= TRAGENDE_MINDESTENS:
             break
+    # Das engste Fenster, das genug TRAGENDE Vorschläge hat — nicht einfach das
+    # erste mit sechs Einträgen. Seit auch Straßen ihren Stadtteil sicher kennen,
+    # füllen sie die sechs mühelos, und das enge Fenster gewann mit einer Liste
+    # aus lauter Adressen: In Osternburg verdrängte die „Cloppenburger Straße"
+    # die Amalienbrücke, im Ziegelhof die „Industriestraße" das IQON. Ein Jahr
+    # jünger ist kein Vorteil, wenn dafür das Interessante wegfällt.
+    tage, letzte = max(runden, key=lambda r: (_tragende(r[1]), len(r[1]), -r[0]))
     for eintrag in letzte:
         chosen_tokens.append(_name_tokens(eintrag["name"]))
 
