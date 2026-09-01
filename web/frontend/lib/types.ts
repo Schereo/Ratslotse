@@ -213,6 +213,22 @@ export interface Attendee {
   note: string | null;
 }
 
+/** Vorläufiges Abstimmungsergebnis aus der O1-Videoaufzeichnung — LLM-gelesen
+ *  aus den YouTube-Untertiteln, ausdrücklich unter Vorbehalt. Erscheint nur
+ *  an TOPs, die noch keinen Protokoll-Beschluss haben. */
+export interface VideoResult {
+  item_number: string;
+  outcome: "angenommen" | "abgelehnt" | "vertagt" | "zur_kenntnis" | "abgesetzt";
+  /** Nur gesetzt, wo der Wortlaut es trägt — sonst offen (null). */
+  vote: "einstimmig" | "mehrheitlich" | null;
+  gegenstimmen: number | null;
+  enthaltungen: number | null;
+  quote: string;
+  video_id: string;
+  /** Fundstelle des Belegs im Video (Sekunden) — für den Sprung-Link. */
+  video_seconds: number | null;
+}
+
 export interface SessionDetail extends CouncilSession {
   agenda_items: AgendaItem[];
   decisions?: CouncilDecision[];
@@ -222,6 +238,7 @@ export interface SessionDetail extends CouncilSession {
   /** „Zuletzt geändert"-Chronik der Tagesordnung, neueste zuerst — Ziel der
    *  Änderungs-Push; ältere Sitzungen (vor der Chronik) haben keine. */
   aenderungen?: AgendaAenderung[];
+  video_results?: VideoResult[];
 }
 
 export type BookmarkKind = "session" | "agenda_item" | "decision";

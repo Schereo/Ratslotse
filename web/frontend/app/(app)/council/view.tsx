@@ -12,7 +12,9 @@ import { clearRecentSearches, getRecentSearches, pushRecentSearch } from "@/lib/
 import { offerIcs } from "@/lib/ics";
 import {
   AgendaAenderung, CouncilSession, SessionDetail, AgendaItem, CouncilDecision, DecisionOutcome, PolicyField, Topic,
+  VideoResult,
 } from "@/lib/types";
+import { VideoResultChip, VideoResultsNotice } from "@/components/video-result";
 import {
   Badge, Button, Card, CardListSkeleton, DateField, EmptyState, Input, PageHeader, Pagination, Segmented, Select,
   Sheet, SheetContent, SheetTitle, SheetTrigger, Spinner, formatDate, toast,
@@ -997,11 +999,14 @@ function kurzfassung(it: AgendaItem): string | null {
   return it.social_text || it.summary || null;
 }
 
-function AgendaRow({ it, query, outcome, decisionId, myTopic, domId, flash, ksinr, bookmarkable = true }: {
+function AgendaRow({ it, query, outcome, decisionId, myTopic, domId, flash, ksinr, bookmarkable = true, videoResult }: {
   it: AgendaItem; query: string; outcome?: DecisionOutcome | null;
   decisionId?: number; myTopic?: string;
   ksinr?: number;
   bookmarkable?: boolean;
+  /** Vorläufiges Ergebnis aus der Videoaufzeichnung — nur solange der TOP
+   *  keinen Protokoll-Beschluss hat (das Protokoll gewinnt immer). */
+  videoResult?: VideoResult;
   /* Ziel des `?top=…`-Sprungs aus einer Benachrichtigung (s. topDomId). */
   domId?: string;
   /** Kurz nach dem Sprung hervorgehoben — sonst sieht die Zielzeile aus wie
@@ -1056,7 +1061,9 @@ function AgendaRow({ it, query, outcome, decisionId, myTopic, domId, flash, ksin
           </span>
         )}
       </div>
-      {outcome ? <OutcomeDot outcome={outcome} /> : !it.is_public ? <Badge color="amber">nichtöffentlich</Badge> : null}
+      {outcome ? <OutcomeDot outcome={outcome} />
+        : videoResult ? <VideoResultChip r={videoResult} />
+        : !it.is_public ? <Badge color="amber">nichtöffentlich</Badge> : null}
       {decisionId != null && <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground/50" aria-hidden />}
     </>
   );
@@ -1619,6 +1626,14 @@ function SessionsTab({ committees }: { committees: string[] }) {
                   decisionByItem[key] ??= dec.id;
                 }
               }
+              // Vorläufige Video-Ergebnisse — nur an TOPs OHNE Protokoll-
+              // Beschluss (das Protokoll gewinnt immer, s. AgendaRow).
+              const videoByItem: Record<string, VideoResult> = {};
+              for (const v of d?.video_results ?? []) {
+                const key = topKey(v.item_number);
+                if (!(key in outcomeByItem)) videoByItem[key] ??= v;
+              }
+              const videoCount = Object.keys(videoByItem).length;
               // RL-902: TOPs, die zu eigenen Themen passen (TOP → Themenname).
               const myByItem: Record<string, string> = {};
               for (const m of s.my_topic_items ?? []) myByItem[m.item_number] ??= m.topic_name;
@@ -1681,6 +1696,13 @@ function SessionsTab({ committees }: { committees: string[] }) {
                               && (d?.aenderungen?.length ?? 0) > 0 && (
                               <AenderungenSection aenderungen={d!.aenderungen!} />
                             )}
+                            {/* Vorbehalts-Hinweis EINMAL über der Liste — der
+                                Disclaimer hat einen festen Ort, statt an jedem
+                                Chip zu kleben (Ehrlichkeit als Designprinzip). */}
+                            {videoCount > 0 && (
+                              <VideoResultsNotice count={videoCount}
+                                videoId={Object.values(videoByItem)[0].video_id} />
+                            )}
                             {/* Der Dringlichkeitsantrag zuerst, und außerhalb
                                 der Liste: Er hat keine Ö-Nummer und steht in
                                 der amtlichen Tagesordnung nicht (s.
@@ -1695,6 +1717,7 @@ function SessionsTab({ committees }: { committees: string[] }) {
                                   bookmarkable={!hasAgendaChildren(it, d?.agenda_items ?? [])}
                                   outcome={it.is_public ? outcomeByItem[topKey(it.item_number)] : undefined}
                                   decisionId={it.is_public ? decisionByItem[topKey(it.item_number)] : undefined}
+                                  videoResult={it.is_public ? videoByItem[topKey(it.item_number)] : undefined}
                                   myTopic={myByItem[it.item_number]}
                                   domId={s.ksinr != null ? topDomId(s.ksinr, it.item_number) : undefined}
                                   flash={s.ksinr != null && flashTop === topDomId(s.ksinr, it.item_number)} />

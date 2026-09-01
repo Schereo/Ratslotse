@@ -262,6 +262,29 @@ CREATE INDEX IF NOT EXISTS idx_decisions_ksinr ON council_decisions(ksinr);
 -- DB this whole SCHEMA runs (via executescript) BEFORE the migration adds the
 -- column, so indexing policy_field here would fail with "no such column".
 
+-- Vorläufige Abstimmungsergebnisse aus der O1-Videoaufzeichnung (YouTube-
+-- Untertitel, LLM-gelesen) — die Brücke über die 1–2 Monate bis zum
+-- amtlichen Protokoll. Eigene Tabelle statt council_decisions: Das Protokoll
+-- bleibt die einzige Quelle dort; diese Zeilen sind ausdrücklich „unter
+-- Vorbehalt" und werden im Frontend nur gezeigt, solange der TOP keinen
+-- Protokoll-Beschluss hat.
+CREATE TABLE IF NOT EXISTS council_video_results (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    ksinr         INTEGER NOT NULL,
+    item_number   TEXT NOT NULL,               -- ohne Ö-/N-Präfix, wie council_decisions
+    outcome       TEXT NOT NULL,               -- angenommen|abgelehnt|vertagt|zur_kenntnis|abgesetzt
+    vote          TEXT,                        -- einstimmig|mehrheitlich|NULL (nicht belegt → offen)
+    gegenstimmen  INTEGER,                     -- nur wenn in der Sitzung ausgesprochen
+    enthaltungen  INTEGER,
+    quote         TEXT NOT NULL,               -- wörtlicher Transkript-Beleg
+    video_id      TEXT NOT NULL,               -- YouTube-Video-ID
+    video_seconds INTEGER,                     -- Fundstelle des Belegs im Video
+    model         TEXT NOT NULL,               -- LLM, das gelesen hat
+    created_at    TEXT NOT NULL,
+    UNIQUE(ksinr, item_number)
+);
+CREATE INDEX IF NOT EXISTS idx_video_results_ksinr ON council_video_results(ksinr);
+
 -- Fundstück des Tages (RL-U11): je Ausspiel-Tag EIN kuratierter Archiv-Fund
 -- mit 1-Satz-Story — vorab generiert von scripts/generate_fundstuecke.py.
 CREATE TABLE IF NOT EXISTS council_fundstuecke (
@@ -4819,6 +4842,57 @@ class CouncilStore:
     def get_attendance(self, ksinr: int) -> list[dict]:
         rows = self._conn.execute(
             "SELECT name, party, role, note FROM council_attendance WHERE ksinr = ? ORDER BY id", (ksinr,)
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    # ------------------------------------------------------------------
+    # Vorläufige Ergebnisse aus der Videoaufzeichnung (council/videos.py)
+
+    def save_video_results(self, ksinr: int, video_id: str, model: str,
+                           results: list[dict]) -> int:
+        """Replace the stored video results for one session.
+
+        Ein Lauf ersetzt den Bestand der Sitzung komplett — der Extraktor
+        liefert immer das Gesamtbild eines Videos, und ein zweiter Lauf
+        (z. B. nachdem YouTube die Untertitel nachgereicht hat) soll alte
+        Teilstände nicht überleben lassen."""
+        now = datetime.now().isoformat(timespec="seconds")
+        with self.transaktion():
+            self._conn.execute("DELETE FROM council_video_results WHERE ksinr = ?", (ksinr,))
+            for r in results:
+                self._conn.execute(
+                    """INSERT INTO council_video_results
+                       (ksinr, item_number, outcome, vote, gegenstimmen,
+                        enthaltungen, quote, video_id, video_seconds, model, created_at)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    (ksinr, r["item_number"], r["outcome"], r.get("vote"),
+                     r.get("gegenstimmen"), r.get("enthaltungen"), r["quote"],
+                     video_id, r.get("video_seconds"), model, now),
+                )
+        return len(results)
+
+    def get_video_results(self, ksinr: int) -> list[dict]:
+        rows = self._conn.execute(
+            "SELECT * FROM council_video_results WHERE ksinr = ? ORDER BY id", (ksinr,)
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def sessions_needing_video_check(self, since: str) -> list[dict]:
+        """Rat-Sitzungen ohne Protokoll-Beschlüsse und ohne Video-Ergebnisse.
+
+        Nur der Stadtrat — O1 überträgt kein anderes Gremium (s. lib/live.ts
+        im Frontend). Sobald das Protokoll da ist, übernehmen dessen
+        Beschlüsse; die Sitzung fällt dann von selbst aus dieser Liste."""
+        rows = self._conn.execute(
+            """SELECT s.ksinr, s.committee, s.session_date
+               FROM council_sessions s
+               WHERE s.committee IN ('Rat', 'Stadtrat', 'Rat der Stadt Oldenburg')
+                 AND s.session_date >= ?
+                 AND s.session_date <= date('now')
+                 AND NOT EXISTS (SELECT 1 FROM council_decisions d WHERE d.ksinr = s.ksinr)
+                 AND NOT EXISTS (SELECT 1 FROM council_video_results v WHERE v.ksinr = s.ksinr)
+               ORDER BY s.session_date DESC""",
+            (since,),
         ).fetchall()
         return [dict(r) for r in rows]
 

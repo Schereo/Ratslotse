@@ -1565,6 +1565,11 @@ def session_detail(
     session["decisions"] = store.get_decisions(ksinr)
     session["attendance"] = store.get_attendance(ksinr)
     session["has_protocol"] = store.has_protocol(ksinr)
+    # Vorläufige Ergebnisse aus der O1-Videoaufzeichnung (council/videos.py) —
+    # die Brücke, bis das Protokoll kommt. Das Frontend zeigt sie nur an
+    # TOPs ohne Protokoll-Beschluss; hier kommen sie immer mit, damit der
+    # Wechsel Protokoll-vor-Video eine reine Anzeigefrage bleibt.
+    session["video_results"] = store.get_video_results(ksinr)
     session["url"] = _ratsinfo_url(ksinr)
     # „Zuletzt geändert" (Tims Wunsch 18.08.): Die Push zur Änderungsmeldung
     # sagt nur noch den Satz — die Einzelheiten stehen hier, aus der Chronik.
