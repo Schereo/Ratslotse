@@ -620,84 +620,84 @@ PROBEN: dict[str, str] = {
 #: verlöre eine hier vergessene Tabelle beim Aufräumen still ihre Herkünfte,
 #: und die Lücken-Meldung schwiege dazu. Die Begründung steht dort.
 HERKUNFT_TABELLEN: tuple[str, ...] = (
-    "council_haushalt",
-    "council_steuern",
-    "council_steuerkraft",
+    "council_budget",
+    "council_taxes",
+    "council_tax_capacity",
     "council_einwohner",
-    "council_ergebnisrechnung",
+    "council_income_statement",
     # Die Kassensicht aus demselben Jahresabschluss — neu, ohne Altbestand,
     # Herkunft ausschließlich über `herkunft_id`.
-    "council_finanzrechnung",
+    "council_cash_flow_statement",
     # Die Vermögensseite aus demselben Jahresabschluss (Abschnitt 2.1) und
     # die Erläuterungen des Anhangs dazu (6.2.1–6.2.9) — ebenso.
-    "council_bilanz",
-    "council_bilanz_erlaeuterungen",
-    "council_abweichungsgruende",
-    "council_pruefbericht_quellen",
-    "council_produkte",
-    "council_pruefberichte",
+    "council_balance_sheet",
+    "council_balance_sheet_notes",
+    "council_variance_reasons",
+    "council_audit_report_sources",
+    "council_products",
+    "council_audit_reports",
     # Beide neu mit dem Konzern-Bereich und ohne Altbestand: Sie führen ihre
     # Herkunft ausschließlich über `herkunft_id`, tragen also keine
     # `source_label`/`source_url`-Spalten mehr, aus denen etwas nachzutragen
     # wäre (s. `CouncilStore._HERKUNFT_ALTFELDER`).
-    "council_konzern_posten",
-    "council_konzern_traeger",
+    "council_group_items",
+    "council_group_entities",
     # Der Städtevergleich aus den LSN-Tabellen — ebenfalls ohne Altbestand und
     # deshalb ausschließlich über `herkunft_id` belegt.
-    "council_staedtevergleich",
+    "council_city_comparison",
     # Und die Gewerbesteuerstatistik desselben Landesamts.
-    "council_gewerbesteuerstatistik",
+    "council_trade_tax_statistics",
     # Die Planjahre aus dem Gesamtergebnishaushalt — neu, ohne Altbestand.
-    "council_ergebnishaushalt",
+    "council_income_budget",
     # Die Investitionen des Finanzhaushalts — neu, ohne Altbestand.
-    "council_investitionen",
+    "council_investments",
     # Die einzelnen Vorhaben aus Anlage 004 des Haushaltsplans — ebenso.
-    "council_investitionsmassnahmen",
+    "council_investment_measures",
     # Und das Ist dazu, die Rechnungsergebnisse aus dem Statistischen Jahrbuch.
     # Zwei Tabellen, weil die Arten je Jahrgang verschieden viele sind: die
     # Summe steht in der einen, die Aufteilung in der anderen.
-    "council_investitionen_ist",
-    "council_investitionen_ist_arten",
+    "council_investments_actual",
+    "council_investments_actual_kinds",
     # Und die Gegenprobe dazu: die verworfenen Jahrgänge mit ihrer gemessenen
     # Differenz. Auch eine Lücke ist eine Auskunft und trägt deshalb die
     # Herkunft des Laufs, der sie festgestellt hat.
-    "council_investitionen_ist_verworfen",
+    "council_investments_actual_rejected",
     # Der Stellenplan — ebenso.
-    "council_stellenplan",
+    "council_staff_plan",
     # Die Schuldenzeitreihe aus dem Statistischen Jahrbuch — ebenfalls neu und
     # ausschließlich über `herkunft_id` belegt.
-    "council_schulden",
+    "council_debt",
     # Die lange Ausgabenreihe seit 1972 (Datensatz 1102) — ebenso.
-    "council_ausgabenreihe",
+    "council_expense_series",
     # Nachbewilligungen nach § 117 NKomVG. Drei Tabellen aus zwei Quellen:
     # Die erste liest das Ratsinformationssystem, die beiden anderen Kapitel 3
     # des Rechenschaftsberichts — verschiedene Dokumente, verschiedene Proben,
     # deshalb je eigene Herkunft.
-    "council_nachbewilligungen",
-    "council_nachbewilligung_jahre",
-    "council_nachbewilligung_kanaele",
+    "council_supplementary_approvals",
+    "council_supplementary_years",
+    "council_supplementary_channels",
     # Die angenommenen Zuwendungen je Vorlage (council/spenden.py). Die einzige
     # Schicht des Bereichs, deren Quelle im eigenen Bestand liegt: Sie liest
     # Ratsbeschlüsse, nicht ein Dokument von oldenburg.de. Jede Zeile trägt
     # deshalb die Herkunft **ihrer** Vorlage, nicht die eines Jahrgangs.
-    "council_spenden",
-    "council_spenden_verworfen",
+    "council_donations",
+    "council_donations_rejected",
     # Die beiden Steuertabellen des Jahrbuchs: Plan neben Ist je Steuerart
     # (1103) und die Hebesätze seit 1980 (1105). Beide neu, ohne Altbestand.
-    "council_steuerplan",
-    "council_hebesaetze",
+    "council_tax_plan",
+    "council_tax_rates",
     # Bedarfsrechnung und die zwölf konkreten Tarife aus deren Anlage 4.
-    "council_gebuehren",
-    "council_gebuehrensaetze",
+    "council_fees",
+    "council_fee_rates",
     # Der Beteiligungsbericht (council/beteiligungsbericht.py). Die Texte
     # stehen bewusst mit dabei: Sie tragen `UNGEPRUEFT`, aber sie tragen eine
     # Herkunft — Dokument, Abschnitt und Seite. „Keine Probe" ist etwas
     # anderes als „keine Quelle".
-    "council_gesellschaften",
-    "council_gesellschaft_texte",
-    "council_gesellschaft_kennzahlen",
-    "council_gesellschaft_personen",
-    "council_gesellschaft_eigentuemer",
+    "council_companies",
+    "council_company_texts",
+    "council_company_indicators",
+    "council_company_people",
+    "council_company_owners",
 )
 
 
@@ -752,7 +752,7 @@ class Herkunft:
     kind: str
     #: Name(n) aus :data:`PROBEN`, oder :data:`UNGEPRUEFT`.
     probe: str | Sequence[str]
-    #: ``council_anlagen.document_id`` — überlebt Label- und URL-Wechsel.
+    #: ``council_attachments.document_id`` — überlebt Label- und URL-Wechsel.
     #: Der Gesamtabschluss 2016 heißt im Bürgerinfo schlicht „Anlage"; wer
     #: über das Label ankert, verliert ihn beim nächsten Umbenennen.
     document_id: int | None = None
@@ -784,7 +784,7 @@ class Herkunft:
         if self.document_id is None and not self.url:
             raise ValueError(
                 "Herkunft ohne Verweis: mindestens document_id (der stabile "
-                "Anker aus council_anlagen) oder url muss stehen.")
+                "Anker aus council_attachments) oder url muss stehen.")
 
     @property
     def probes(self) -> list[str]:
@@ -801,7 +801,7 @@ class Herkunft:
         return self.probes != [UNGEPRUEFT]
 
     def felder(self) -> dict:
-        """Die Spaltenwerte für ``council_herkunft`` (ohne ``fetched_at``)."""
+        """Die Spaltenwerte für ``council_provenance`` (ohne ``fetched_at``)."""
         return {"kind": self.kind, "document_id": self.document_id,
                 "label": self.label, "url": self.url,
                 "citation": self.citation, "page": self.page,

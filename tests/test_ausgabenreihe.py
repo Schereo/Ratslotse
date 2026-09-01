@@ -253,7 +253,7 @@ def test_die_gegenprobe_erklaert_ihren_versatz(gelesen):
 
     Der gemessene Versatz liegt in jedem Jahrgang zwischen 0,03 und 0,05 % und
     ist keine Unschärfe: Die Statistik zählt die Gesamtergebnisrechnung
-    (Kernhaushalt UND Stiftungen), ``council_ergebnisrechnung`` nur die
+    (Kernhaushalt UND Stiftungen), ``council_income_statement`` nur die
     Kernverwaltung. Die Toleranz deckt genau das ab — und nichts, was danach
     kommt."""
     for year, kern in ABSCHLUESSE.items():
@@ -380,7 +380,7 @@ def test_speichern_und_lesen(tmp_path, gelesen):
                                    "expense_series_annual_accounts"]
         assert z2021["conflict_amount"] == 613_572_000
         assert all(z["herkunft_id"] for z in zurueck)
-        assert "council_ausgabenreihe" not in store.herkunft_luecken()
+        assert "council_expense_series" not in store.herkunft_luecken()
         assert store.ausgabenreihe_jahre()[0] == 1972
     finally:
         store.close()
@@ -399,7 +399,7 @@ def test_die_tabelle_fuehrt_keine_einwohnerzahl(tmp_path, gelesen):
         store.save_ausgabenreihe(gelesen["zeilen"][:1], herkunft.Herkunft(
             kind="city", url=ar.TABELLE_URL, probe="expense_series_per_capita"))
         spalten = {r[1] for r in store._conn.execute(
-            "PRAGMA table_info(council_ausgabenreihe)")}
+            "PRAGMA table_info(council_expense_series)")}
         assert not spalten & {"einwohner", "per_capita", "pro_kopf"}
         assert not any(k in store.get_ausgabenreihe()[0]
                        for k in ("einwohner", "per_capita"))
@@ -409,4 +409,4 @@ def test_die_tabelle_fuehrt_keine_einwohnerzahl(tmp_path, gelesen):
 
 def test_die_tabelle_ist_als_herkunftstraeger_angemeldet():
     """Sonst bekäme sie keine ``herkunft_id`` und die Lücken-Meldung schwiege."""
-    assert "council_ausgabenreihe" in herkunft.HERKUNFT_TABELLEN
+    assert "council_expense_series" in herkunft.HERKUNFT_TABELLEN

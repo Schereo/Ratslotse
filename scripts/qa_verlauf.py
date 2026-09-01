@@ -60,14 +60,14 @@ def main() -> dict:
               f"({'ja' if speichern == 1 else 'nein — dann liegen hier keine Verläufe'})")
 
         gespraeche = ratslotse._conn.execute(
-            "SELECT id, title, created FROM qa_gespraeche WHERE user_id = ? ORDER BY id",
+            "SELECT id, title, created FROM qa_conversations WHERE user_id = ? ORDER BY id",
             (uid,)).fetchall()
         print(f"\n=== Gespräche: {len(gespraeche)} ===")
         n_turns = 0
         for g in gespraeche:
             print(f"\n--- Gespräch {g['id']} ({str(g['created'])[:16]}): {g['title']}")
             turns = ratslotse._conn.execute(
-                "SELECT question, answer, sources, created FROM qa_gespraech_turns "
+                "SELECT question, answer, sources, created FROM qa_conversation_turns "
                 "WHERE conversation_id = ? ORDER BY id", (g["id"],)).fetchall()
             n_turns += len(turns)
             for t in turns:

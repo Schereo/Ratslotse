@@ -34,9 +34,9 @@ liegt.
 
 ### 1. Auf Prod laufen keine Haushalts-Ingests
 
-Die neuen Tabellen (`council_kennzahlen`, `council_kennzahl_formeln`,
-`council_anlagenspiegel`, `council_vermoegensgruppen`,
-`council_buergschaften`, `council_integrierte_schulden`) werden beim ersten
+Die neuen Tabellen (`council_indicators`, `council_indicator_formulas`,
+`council_fixed_assets`, `council_vermoegensgruppen`,
+`council_buergschaften`, `council_integrated_debt`) werden beim ersten
 Start **angelegt und bleiben leer** — Prod hat weder die Ingest-Skripte im
 Cron noch `check_finanzdaten`. Das ist so gewollt und kein Fehler; die
 API-Routen antworten entsprechend leer statt falsch.
@@ -72,12 +72,12 @@ Nachgemessen gegen `v1.12.0`, nicht angenommen — die erste Fassung dieses
 Abschnitts behauptete „keine neuen Abhängigkeiten, kein ALTER, kein DROP" und
 lag bei beidem daneben.
 
-**Ein DROP, und er ist gewollt.** `council_ergebnisrechnung` bekam mit den
+**Ein DROP, und er ist gewollt.** `council_income_statement` bekam mit den
 Teil-Ergebnisrechnungen `thh_nr` in den Primärschlüssel, und SQLite kann einen
 Primärschlüssel nicht per `ALTER TABLE` erweitern. `_migrate()` prüft deshalb
 auf die fehlende Spalte und legt die Tabelle **neu an**. Das ist gefahrlos,
 aber es muss jemand wissen: Der Inhalt stammt vollständig aus
-`council_anlagen` und wird vom Ingest in Sekunden wiederhergestellt — **auf
+`council_attachments` und wird vom Ingest in Sekunden wiederhergestellt — **auf
 Prod passiert dabei nichts, weil die Tabelle dort leer ist.** Die übrigen
 Schema-Änderungen sind `ALTER TABLE … ADD COLUMN` und `CREATE TABLE IF NOT
 EXISTS`, beides ohne Datenverlust.

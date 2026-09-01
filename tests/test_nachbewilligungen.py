@@ -1,7 +1,7 @@
 """Nachbewilligungen nach § 117 NKomVG — RIS-Serie und Rechenschaftsbericht.
 
 Alle Fixtures sind **echte Auszüge** aus dem Bestand vom 18.08.2026: die
-Vorlagentitel wörtlich aus ``council_vorlagen``, die Beschlussvorschläge und
+Vorlagentitel wörtlich aus ``council_templates``, die Beschlussvorschläge und
 die Kapitel-3-Tabellen wörtlich aus dem Textextrakt der
 Rechenschaftsberichte 2022/2023/2024 (Dokumente 265441, 280862, 295295).
 Nichts hier ist nachgebaut — jede Eigenheit, die geprüft wird, steht so im

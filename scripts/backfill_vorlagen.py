@@ -2,7 +2,7 @@
 """Backfill Vorlagen full texts (Sachverhalt/Begründung) for all agenda items.
 
 Every agenda item that links a Vorlage (kvonr) gets its vo0050 metadata and the
-"Vorlage" PDF text ingested into ``council_vorlagen``. Pure network + pypdf — no
+"Vorlage" PDF text ingested into ``council_templates``. Pure network + pypdf — no
 LLM, no cost. Idempotent: already-ingested kvonrs are skipped, 'failed' rows are
 retried. Newest sessions first, so a --limit run always covers current business
 (that is also how the daily cron uses this module).

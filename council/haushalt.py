@@ -124,7 +124,7 @@ STEUERKRAFT_CSV_URL = ("https://opendata.oldenburg.de/sites/default/files/"
 # NICHT hier: `council/expense_series.py` liest sie zusammen mit dem PDF und mit
 # der älteren CSV desselben Datensatzes (Verwaltungshaushalt 1972–2009), weil
 # erst die zweite Quelle die Proben liefert, an denen der Wert hängt. Was `Ist`
-# hier heißt und wo der Versatz von 0,03–0,05 % gegen `council_ergebnisrechnung`
+# hier heißt und wo der Versatz von 0,03–0,05 % gegen `council_income_statement`
 # herkommt, steht im Kopf jenes Moduls.
 EINWOHNER_CSV_URL = ("https://opendata.oldenburg.de/sites/default/files/"
                      "1102-Ordentliche_Aufwendungen_des_Ergebnishaushaltes_seit_2010.csv")
@@ -740,7 +740,7 @@ def build_questions(rows: list[dict], year: int, source_url: str) -> list[dict]:
     # WAS DIE ÜBERSICHT NICHT HERGIBT: eine Aufteilung der Erträge nach Arten.
     # Ob ein Bereich sein Geld von Bund und Land oder aus Gebühren bekommt,
     # steht erst in der Ergebnisrechnung je Teilhaushalt
-    # (`council_ergebnisrechnung`) — und die gibt es nur für Jahre mit
+    # (`council_income_statement`) — und die gibt es nur für Jahre mit
     # Jahresabschluss. Frage und Erklärung behaupten die Aufteilung deshalb
     # nicht, sie zählen die Quellen auf und sagen im Detail, was offen bleibt.
     fach = _fachbereiche(parts)

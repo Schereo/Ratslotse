@@ -222,7 +222,7 @@ def main() -> int:
 
         store.herkunft_aufraeumen()
         luecken = {t: n for t, n in store.herkunft_luecken().items()
-                   if t == "council_staedtevergleich"}
+                   if t == "council_city_comparison"}
         if luecken:
             print(f"WARNUNG: Zeilen ohne Herkunft: {luecken}")
     finally:

@@ -9,7 +9,7 @@ Beschlüssen, über die man redet.
 Ein LLM schreibt die 1-Satz-Story; ohne brauchbare Story gibt es für den Tag
 schlicht keine Karte (das Frontend lässt sie dann ersatzlos weg).
 Karten werden Tage im Voraus generiert (``scripts/generate_fundstuecke.py``)
-und liegen prüfbar in ``council_fundstuecke``.
+und liegen prüfbar in ``council_daily_finds``.
 """
 from __future__ import annotations
 

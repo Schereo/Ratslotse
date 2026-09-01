@@ -264,20 +264,20 @@ Frage-Wortlaut** — deterministisch, ohne LLM-Call:
 
 | Facette | Quelle | Beantwortet | Bestand endet |
 |---------|--------|-------------|---------------|
-| `schulden` | `council_schulden` | „Wie viel Schulden hat Oldenburg?" (Bestand am Stichtag) | 2025 |
-| `stellenplan` | `council_stellenplan` | „Wie viele Stellen sind unbesetzt?" | Planjahr |
-| `investitionen` | `council_investitionen` | „Was wird gebaut?" (Finanzhaushalt) | Planjahr |
+| `schulden` | `council_debt` | „Wie viel Schulden hat Oldenburg?" (Bestand am Stichtag) | 2025 |
+| `stellenplan` | `council_staff_plan` | „Wie viele Stellen sind unbesetzt?" | Planjahr |
+| `investitionen` | `council_investments` | „Was wird gebaut?" (Finanzhaushalt) | Planjahr |
 | `antraege` | `council_decisions` (`subvote`) | „Wer wollte den Haushalt ändern?" | letzter Jahrgang |
-| `plan` | `council_haushalt` | „Was kostet die Feuerwehr?" (Teilhaushalt) | Planjahr |
-| `ansatz` | `council_ergebnishaushalt` | „Was nimmt die Stadt ein?" (Ertrags-/Aufwandsarten) | Planjahr |
-| `ist` | `council_ergebnisrechnung` | „Hat die Stadt mehr ausgegeben als geplant?" | 2024 |
-| `gruende` | `council_abweichungsgruende` | „Warum kam mehr Gewerbesteuer rein?" | 2024 |
-| `produkte` | `council_produkte` | „Muss die Stadt das Theater betreiben?" (Rechtsgrundlage) | 2023 |
-| `pruefung` | `council_pruefberichte` | „Was hat das Rechnungsprüfungsamt beanstandet?" | 2023 |
+| `plan` | `council_budget` | „Was kostet die Feuerwehr?" (Teilhaushalt) | Planjahr |
+| `ansatz` | `council_income_budget` | „Was nimmt die Stadt ein?" (Ertrags-/Aufwandsarten) | Planjahr |
+| `ist` | `council_income_statement` | „Hat die Stadt mehr ausgegeben als geplant?" | 2024 |
+| `gruende` | `council_variance_reasons` | „Warum kam mehr Gewerbesteuer rein?" | 2024 |
+| `produkte` | `council_products` | „Muss die Stadt das Theater betreiben?" (Rechtsgrundlage) | 2023 |
+| `pruefung` | `council_audit_reports` | „Was hat das Rechnungsprüfungsamt beanstandet?" | 2023 |
 | `konzern` | `council_konzern_*` | „Was kostet die Stadt insgesamt?" (1.242 statt 799 Mio.) | 2024 |
-| `vergleich` | `council_staedtevergleich` | „Wie steht Oldenburg da?" | LSN-Jahrgang |
-| `steuern` | `council_steuern` | „Wie hoch waren die Steuereinnahmen?" (Ist) | Open-Data-Jahrgang |
-| `ausgleich` | `council_steuerkraft` | „Was bringt eine Hebesatz-Erhöhung wirklich?" | Ausgleichsjahr |
+| `vergleich` | `council_city_comparison` | „Wie steht Oldenburg da?" | LSN-Jahrgang |
+| `steuern` | `council_taxes` | „Wie hoch waren die Steuereinnahmen?" (Ist) | Open-Data-Jahrgang |
+| `ausgleich` | `council_tax_capacity` | „Was bringt eine Hebesatz-Erhöhung wirklich?" | Ausgleichsjahr |
 
 Die vier oberen kamen am 17.08. dazu, und drei von ihnen mussten dafür einer
 Quelle **weggenommen** werden: „Schulden" und „Investitionen" standen im
@@ -338,7 +338,7 @@ Frage, die alles zog, behielt danach von den zehn älteren Quellen keine
 einzige. Seine eigene Frage zieht sonst nur `plan` und `ansatz`, und die
 stehen beide dahinter; hinter `produkte` kostet er also nichts.
 
-Jede Zeile trägt ihren **Beleg** aus `council_herkunft` (Dokument, Fundstelle,
+Jede Zeile trägt ihren **Beleg** aus `council_provenance` (Dokument, Fundstelle,
 Seite, Stichtag) und ihr **Jahr** — die Quellen enden zu verschiedenen
 Zeitpunkten, und eine Antwort, die das verschweigt, behauptet eine Aktualität,
 die die Daten nicht haben. Haushaltszahlen sind keine Beschlüsse und bekommen

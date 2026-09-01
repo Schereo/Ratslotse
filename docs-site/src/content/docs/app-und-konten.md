@@ -410,7 +410,7 @@ nach 48 Tagen noch keines, während 20.04. längst vorlag. Der Rat ist schneller
 (rund 3,5 Wochen) als die Ausschüsse.
 
 Schnellere Quellen gibt es nicht: Die Sitzungsseite enthält „angenommen",
-„abgelehnt", „einstimmig" **kein einziges Mal**, und `council_beratungen.ergebnis`
+„abgelehnt", „einstimmig" **kein einziges Mal**, und `council_deliberations.ergebnis`
 trägt nur die Beratungs*art* (`Kenntnisnahme` · `Entscheidung` · `Vorberatung`).
 Die Meldung nennt deshalb immer das **Sitzungsdatum**, statt Frische zu
 behaupten.

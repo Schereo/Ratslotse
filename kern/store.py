@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS committee_subscriptions (
 -- fürs Anzeigen, weil sie in der anderen Datenbank liegen (kein Join möglich).
 -- `stations` hält den zuletzt GEMELDETEN Stand der Beratungsfolge: Der Cron
 -- vergleicht dagegen und schickt nur, was wirklich dazugekommen ist.
-CREATE TABLE IF NOT EXISTS vorlage_follows (
+CREATE TABLE IF NOT EXISTS template_follows (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     owner_id    INTEGER NOT NULL,
     kvonr       INTEGER NOT NULL,
@@ -59,7 +59,7 @@ CREATE TABLE IF NOT EXISTS vorlage_follows (
     notified_at TEXT,
     UNIQUE(owner_id, kvonr)
 );
-CREATE INDEX IF NOT EXISTS idx_vorlage_follows_kvonr ON vorlage_follows(kvonr);
+CREATE INDEX IF NOT EXISTS idx_vorlage_follows_kvonr ON template_follows(kvonr);
 
 -- Persönliche Merkliste: eine gemeinsame Ablage für Sitzungen, einzelne TOPs
 -- und gefasste Beschlüsse. `target_key` ist die technische Identität beim
@@ -257,16 +257,16 @@ CREATE TABLE IF NOT EXISTS council_agenda_classified (
 -- ausdrücklicher Einwilligung (web_users.saves_conversations = 1). user_id steht
 -- denormalisiert auch an den Turns, damit die Konto-Löschung über
 -- USER_OWNED_TABLES beide Tabellen ohne Waisen abräumt.
-CREATE TABLE IF NOT EXISTS qa_gespraeche (
+CREATE TABLE IF NOT EXISTS qa_conversations (
     id       INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id  INTEGER NOT NULL,
     title    TEXT NOT NULL,
     created  TEXT NOT NULL,
     updated  TEXT NOT NULL
 );
-CREATE INDEX IF NOT EXISTS idx_qa_gespraeche_user ON qa_gespraeche(user_id, updated DESC);
+CREATE INDEX IF NOT EXISTS idx_qa_gespraeche_user ON qa_conversations(user_id, updated DESC);
 
-CREATE TABLE IF NOT EXISTS qa_gespraech_turns (
+CREATE TABLE IF NOT EXISTS qa_conversation_turns (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     conversation_id INTEGER NOT NULL,
     user_id         INTEGER NOT NULL,
@@ -275,7 +275,7 @@ CREATE TABLE IF NOT EXISTS qa_gespraech_turns (
     sources         TEXT,               -- JSON {sources, cited}
     created         TEXT NOT NULL
 );
-CREATE INDEX IF NOT EXISTS idx_qa_turns_gespraech ON qa_gespraech_turns(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_qa_turns_gespraech ON qa_conversation_turns(conversation_id);
 
 -- Geteilte „Frag den Rat"-Antworten (Task 31): bewusste Einzel-
 -- Veröffentlichung per Klick — unabhängig vom „Gespräche speichern"-Opt-in.
@@ -434,7 +434,7 @@ CREATE INDEX IF NOT EXISTS idx_feedback_created ON feedback(created_at DESC);
 USER_OWNED_TABLES: tuple[tuple[str, str], ...] = (
     ("topics", "owner_id"),
     ("committee_subscriptions", "owner_id"),
-    ("vorlage_follows", "owner_id"),
+    ("template_follows", "owner_id"),
     ("bookmarks", "owner_id"),
     ("notification_queue", "owner_id"),
     ("council_results_sent", "owner_id"),
@@ -444,8 +444,8 @@ USER_OWNED_TABLES: tuple[tuple[str, str], ...] = (
     ("council_agenda_matches", "owner_id"),
     ("council_agenda_classified", "owner_id"),
     ("push_tokens", "owner_id"),
-    ("qa_gespraeche", "user_id"),
-    ("qa_gespraech_turns", "user_id"),
+    ("qa_conversations", "user_id"),
+    ("qa_conversation_turns", "user_id"),
     ("qa_shares", "user_id"),
     ("deep_research_jobs", "user_id"),
     ("quiz_answers", "owner_id"),
@@ -544,6 +544,15 @@ def _umzug_von_nwz(ziel: Path) -> None:
             alt, ziel)
 
 
+#: Die vier deutschen Tabellennamen der Konten-Datenbank und ihre Nachfolger
+#: (01.09.2026). Nach Länge sortiert: `qa_conversation_turns` vor `qa_conversations`.
+TABELLEN_UMBENANNT: list[tuple[str, str]] = [
+    ("qa_gespraech_turns", "qa_conversation_turns"),
+    ("qa_gespraeche", "qa_conversations"),
+    ("migrationsmarken", "migration_marks"),
+    ("vorlage_follows", "template_follows"),
+]
+
 class Store:
     def __init__(self, path: str | Path):
         self.path = Path(path)
@@ -552,13 +561,17 @@ class Store:
         self._conn = sqlite3.connect(self.path, timeout=15, check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
         # SQLites eingebautes lower() kennt nur ASCII — „Cäcilienbrücke" bliebe
-        # damit groß-A-Ä-blind. Für Titel-Suchen (qa_gespraeche) rechnet Python.
+        # damit groß-A-Ä-blind. Für Titel-Suchen (qa_conversations) rechnet Python.
         self._conn.create_function("unicode_lower", 1,
                                    lambda t: t.lower() if isinstance(t, str) else t)
         # WAL allows concurrent readers/writer (bot + cron + web API share this
         # file); busy_timeout lets writers wait instead of failing immediately.
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.execute("PRAGMA busy_timeout=5000")
+        # VOR dem Schema — sonst legt `CREATE TABLE IF NOT EXISTS` die neue
+        # Tabelle leer an und die Umbenennung unterbleibt für immer
+        # (s. `_web_users_spalten_nachziehen`, derselbe Fehler spaltenweise).
+        self._tabellen_umbenennen()
         self._conn.executescript(SCHEMA)
         self._conn.commit()
         self._migrate()
@@ -584,6 +597,46 @@ class Store:
                 logging.getLogger("kern.store").warning(
                     "Werte umgeschrieben: %s.%s %r → %r (%d Zeilen)",
                     tabelle, spalte, alt, neu, cur.rowcount)
+
+    #: Zwei Spalten, die der Umbau auf englische Bezeichner (01.09.2026)
+    #: im CODE umbenannt hat, ohne eine Migration mitzuliefern.
+    _WEB_USERS_UMBENANNT = [("qa_speichern", "saves_conversations"),
+                            ("limits_frei", "limits_unlocked")]
+
+    def _web_users_spalten_nachziehen(self) -> None:
+        """`qa_speichern`/`limits_frei` auf ihre englischen Namen bringen.
+
+        Zwei Fälle, und der zweite ist der unangenehme:
+
+        * **Nur die alte Spalte da** — schlichtes Umbenennen.
+        * **Beide da, die neue leer.** So sah dev nach dem Deploy aus: Der
+          `ALTER TABLE`-Block prüfte auf den NEUEN Namen, fand ihn nicht und
+          legte die Spalte leer an; die Daten blieben in der alten. Dann muss
+          erst der Inhalt hinüber und die alte weg, sonst benennt sich nichts
+          mehr um (der Zielname ist ja belegt) und die Werte bleiben
+          unsichtbar.
+
+        Idempotent: Nach dem ersten Lauf sind es zwei PRAGMA-Abfragen.
+        """
+        vorhanden = {r[1] for r in self._conn.execute("PRAGMA table_info(web_users)")}
+        if not vorhanden:
+            return
+        log = logging.getLogger("kern.store")
+        for alt, neu in self._WEB_USERS_UMBENANNT:
+            if alt not in vorhanden:
+                continue
+            if neu in vorhanden:
+                # Die leer danebengelegte Spalte: Inhalt retten, dann weg.
+                with self._conn:
+                    self._conn.execute(
+                        f"UPDATE web_users SET {neu} = {alt} WHERE {neu} IS NULL")
+                    self._conn.execute(f"ALTER TABLE web_users DROP COLUMN {alt}")
+                log.warning("web_users.%s in %s übernommen und entfernt", alt, neu)
+            else:
+                with self._conn:
+                    self._conn.execute(
+                        f"ALTER TABLE web_users RENAME COLUMN {alt} TO {neu}")
+                log.warning("Spalte umbenannt: web_users.%s → %s", alt, neu)
 
     def _spalten_umbenennen(self, tabelle: str, paare: list[tuple[str, str]]) -> None:
         """Benennt Spalten um, sofern sie noch alt heißen — idempotent.
@@ -646,7 +699,7 @@ class Store:
     #: Die BLOCKNAMEN derselben Nutzlast — der zweite Schnitt (01.09.2026).
     #:
     #: Der erste Lauf hat sie bewusst stehen lassen. Sie stehen nicht nur auf
-    #: der Leitung, sondern als JSON-Blob in `qa_gespraech_turns.sources`:
+    #: der Leitung, sondern als JSON-Blob in `qa_conversation_turns.sources`:
     #: Ohne diesen Umzug fänden gespeicherte Gespräche ihre Presse-, Debatten-
     #: und Anlagen-Blöcke nicht wieder und zeigten sie leer.
     #:
@@ -710,10 +763,10 @@ class Store:
         import json as _js
         with self._conn:
             self._conn.execute(
-                "CREATE TABLE IF NOT EXISTS migrationsmarken ("
+                "CREATE TABLE IF NOT EXISTS migration_marks ("
                 "marke TEXT PRIMARY KEY, gesetzt_am TEXT NOT NULL)")
         if self._conn.execute(
-                "SELECT 1 FROM migrationsmarken WHERE marke = ?", (marke,)).fetchone():
+                "SELECT 1 FROM migration_marks WHERE marke = ?", (marke,)).fetchone():
             return
         spalten = {r[1] for r in self._conn.execute(f"PRAGMA table_info({tabelle})")}
         if spalte not in spalten:
@@ -743,11 +796,47 @@ class Store:
                 self._conn.executemany(
                     f"UPDATE {tabelle} SET {spalte} = ? WHERE rowid = ?", geaendert)
             self._conn.execute(
-                "INSERT INTO migrationsmarken (marke, gesetzt_am) VALUES (?, datetime('now'))",
+                "INSERT INTO migration_marks (marke, gesetzt_am) VALUES (?, datetime('now'))",
                 (marke,))
         if geaendert:
             logging.getLogger("kern.store").warning(
                 "JSON-Schlüssel nachgezogen: %s.%s (%d Zeilen)", tabelle, spalte, len(geaendert))
+
+    def _tabellen_umbenennen(self) -> None:
+        """Die vier deutschen Tabellennamen umziehen — einmalig, VOR dem Schema.
+
+        Drei Fälle wie in `council/store.py::_tabellen_umbenennen`: nur alt →
+        umbenennen; beide da, neue leer → leere weg, dann umbenennen; beide
+        gefüllt → nichts anfassen, beide Zeilenzahlen ins Log.
+        """
+        log = logging.getLogger("kern.store")
+        vorhanden = {r[0] for r in self._conn.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table'")}
+        if not vorhanden:
+            return
+
+        def zeilen(t: str) -> int:
+            try:
+                return self._conn.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
+            except sqlite3.OperationalError:
+                return 0
+
+        for alt, neu in TABELLEN_UMBENANNT:
+            if alt not in vorhanden:
+                continue
+            if neu in vorhanden:
+                if zeilen(neu):
+                    log.warning("Zwei gefüllte Tabellen nebeneinander: %s (%d) und %s (%d) — "
+                                "bitte von Hand prüfen, es wird nichts angefasst.",
+                                alt, zeilen(alt), neu, zeilen(neu))
+                    continue
+                with self._conn:
+                    self._conn.execute(f"DROP TABLE {neu}")
+                log.warning("Leere %s entfernt — sie hätte den Umzug blockiert.", neu)
+            with self._conn:
+                self._conn.execute(f"ALTER TABLE {alt} RENAME TO {neu}")
+            vorhanden.discard(alt); vorhanden.add(neu)
+            log.warning("Tabelle umbenannt: %s → %s", alt, neu)
 
     def _migrate(self) -> None:
         # 08/2026: Die Prompt-Overrides sind ausgebaut — die Prompt-Texte leben
@@ -757,7 +846,7 @@ class Store:
         # doch etwas darin stehen, landet es vorher im Log — ein stillschweigend
         # gelöschter, von Hand geschriebener Prompttext wäre ein schlechter Tausch.
         self._prompts_tabelle_entfernen()
-        for tabelle, spalte in (("qa_gespraech_turns", "sources"),
+        for tabelle, spalte in (("qa_conversation_turns", "sources"),
                                 ("qa_shares", "extras"),
                                 ("deep_research_jobs", "sources")):
             self._json_schluessel_umbenennen(tabelle, spalte, f"json_englisch_{tabelle}_{spalte}")
@@ -776,7 +865,7 @@ class Store:
         self._tote_spalten_entfernen("web_users", [
             "nwz_username", "nwz_verified_at", "nwz_fulltext_allowed"])
         # Die Schnittstelle spricht Englisch, die Spalten ziehen nach.
-        self._spalten_umbenennen("qa_gespraeche", [("titel", "title")])
+        self._spalten_umbenennen("qa_conversations", [("titel", "title")])
         # Der ALTE Name ist die Quelle der Migration — in #859 hatte ein
         # Suchen-und-Ersetzen ihn mitgenommen und den Schritt wirkungslos
         # gemacht. Bestehende Datenbanken wären deutsch geblieben.
@@ -786,9 +875,9 @@ class Store:
         self._spalten_umbenennen("deep_research_jobs", [
             ("frage", "question"), ("bericht", "report"),
             ("quellen", "sources"), ("gesehen", "seen")])
-        for tabelle in ("vorlage_follows", "bookmarks"):
+        for tabelle in ("template_follows", "bookmarks"):
             self._spalten_umbenennen(tabelle, [("vorlage_nr", "template_number")])
-        self._spalten_umbenennen("qa_gespraech_turns", [
+        self._spalten_umbenennen("qa_conversation_turns", [
             ("gespraech_id", "conversation_id"), ("frage", "question"),
             ("antwort", "answer"), ("quellen", "sources")])
         # Die Quiz-Kategorien stehen als Daten in den Zeilen, in der
@@ -857,6 +946,13 @@ class Store:
                         "UPDATE topics SET chat_id = ? WHERE chat_id = 0", (admin,)
                     )
         # web_users gained status / NWZ-verification columns after the first cut.
+        # Zuerst umbenennen, DANN die Spaltenliste lesen: Sonst hält der
+        # nächste Block eine gewachsene Datenbank für unvollständig und legt
+        # die neue Spalte LEER daneben, während die Daten in der alten liegen
+        # bleiben. Genau das ist am 01.09.2026 auf dev passiert — die
+        # Einwilligung „Gespräche speichern" stand danach für alle auf „nie
+        # gefragt", obwohl sie in `qa_speichern` weiter da war.
+        self._web_users_spalten_nachziehen()
         wu_cols = {r[1] for r in self._conn.execute("PRAGMA table_info(web_users)").fetchall()}
         if wu_cols:
             with self._conn:
@@ -901,26 +997,37 @@ class Store:
                     # 6a①②: NULL = noch nie gefragt (Erstnutzungs-Karte),
                     # 1 = Gespräche speichern, 0 = bewusst aus.
                     self._conn.execute("ALTER TABLE web_users ADD COLUMN saves_conversations INTEGER")
+                # Admin-steuerbare Frage-Limits je Konto (10.08.26):
+                # deep_limit = Recherchen/Tag (NULL = Standard, 0 = unbegrenzt,
+                # N = eigenes Limit); limits_unlocked = 1 überspringt die
+                # Rate-Limiter der Frage-Endpoints.
+                #
+                # JEDE Spalte prüft sich SELBST. Vorher hingen beide an
+                # `deep_limit` — als `limits_frei` zu `limits_unlocked` wurde,
+                # war `deep_limit` längst da, der Zweig lief nie, und die
+                # Spalte fehlte auf jeder gewachsenen Datenbank. Aufgefallen
+                # ist das nicht, weil `SELECT *` nicht wirft: `get()` lieferte
+                # None, der Rate-Limiter griff stillschweigend immer.
                 if "deep_limit" not in wu_cols:
-                    # Admin-steuerbare Frage-Limits je Konto (10.08.26):
-                    # deep_limit = Recherchen/Tag (NULL = Standard,
-                    # 0 = unbegrenzt, N = eigenes Limit); limits_unlocked = 1
-                    # überspringt die Rate-Limiter der Frage-Endpoints.
                     self._conn.execute("ALTER TABLE web_users ADD COLUMN deep_limit INTEGER")
+                if "limits_unlocked" not in wu_cols:
                     self._conn.execute(
                         "ALTER TABLE web_users ADD COLUMN limits_unlocked INTEGER NOT NULL DEFAULT 0")
                 # Einrichtungs-Assistent (Design 26a): welcher Schritt zuletzt
                 # erreicht wurde. Eigene Spalten statt der onboarding-JSON —
                 # die gehört der „Erste Schritte"-Tour, und der Erinnerungs-Cron
                 # will ohnehin per SQL filtern statt JSON zu parsen.
-                if "setup_step" not in wu_cols:
-                    self._conn.execute("ALTER TABLE web_users ADD COLUMN setup_step INTEGER")
-                    self._conn.execute("ALTER TABLE web_users ADD COLUMN setup_started_at TEXT")
-                    self._conn.execute("ALTER TABLE web_users ADD COLUMN setup_updated_at TEXT")
-                    self._conn.execute("ALTER TABLE web_users ADD COLUMN setup_done_at TEXT")
-                    # Wann die eine Erinnerungsmail rausging — verhindert, dass
-                    # jemand sie zweimal bekommt.
-                    self._conn.execute("ALTER TABLE web_users ADD COLUMN setup_reminded_at TEXT")
+                # Auch hier prüft jede Spalte sich selbst. Bisher hingen alle
+                # fünf an `setup_step`; das ging gut, weil sie zusammen
+                # eingeführt wurden — eine sechste hätte auf jeder gewachsenen
+                # Datenbank gefehlt. `setup_reminded_at` verhindert, dass
+                # jemand die Erinnerungsmail zweimal bekommt.
+                for spalte, typ in (("setup_step", "INTEGER"), ("setup_started_at", "TEXT"),
+                                    ("setup_updated_at", "TEXT"), ("setup_done_at", "TEXT"),
+                                    ("setup_reminded_at", "TEXT")):
+                    if spalte not in wu_cols:
+                        self._conn.execute(
+                            f"ALTER TABLE web_users ADD COLUMN {spalte} {typ}")
                 # Womit das Konto angelegt wurde (Admin: „App oder Web?").
                 # Bestandskonten bleiben NULL — sie sind vor der Messung
                 # entstanden, und ein geratenes „web" wäre eine Behauptung.
@@ -2067,7 +2174,7 @@ class Store:
             if not self._conn.execute("SELECT 1 FROM web_users WHERE id = ?", (user_id,)).fetchone():
                 return None
             cur = self._conn.execute(
-                "INSERT INTO qa_gespraeche (user_id, title, created, updated) VALUES (?, ?, ?, ?)",
+                "INSERT INTO qa_conversations (user_id, title, created, updated) VALUES (?, ?, ?, ?)",
                 (user_id, (title or "Gespräch").strip()[:120], now, now))
             return int(cur.lastrowid)
 
@@ -2077,15 +2184,15 @@ class Store:
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self._conn:
             ok = self._conn.execute(
-                "SELECT 1 FROM qa_gespraeche WHERE id = ? AND user_id = ?",
+                "SELECT 1 FROM qa_conversations WHERE id = ? AND user_id = ?",
                 (conversation_id, user_id)).fetchone()
             if not ok:
                 return False
             self._conn.execute(
-                "INSERT INTO qa_gespraech_turns (conversation_id, user_id, question, answer, sources, created) "
+                "INSERT INTO qa_conversation_turns (conversation_id, user_id, question, answer, sources, created) "
                 "VALUES (?, ?, ?, ?, ?, ?)",
                 (conversation_id, user_id, question[:600], answer[:8000], quellen_json, now))
-            self._conn.execute("UPDATE qa_gespraeche SET updated = ? WHERE id = ?",
+            self._conn.execute("UPDATE qa_conversations SET updated = ? WHERE id = ?",
                                (now, conversation_id))
             return True
 
@@ -2101,7 +2208,7 @@ class Store:
             begriff = begriff.replace(zeichen, "\\" + zeichen)
         return f"%{begriff}%"
 
-    def qa_gespraeche(self, user_id: int, limit: int = 30, offset: int = 0,
+    def qa_conversations(self, user_id: int, limit: int = 30, offset: int = 0,
                       suche: str | None = None) -> list[dict]:
         """Eine Seite der Gesprächsliste, neueste zuerst.
 
@@ -2120,8 +2227,8 @@ class Store:
         werte: list = [user_id] + ([muster] if muster else []) + [max(0, limit), max(0, offset)]
         rows = self._conn.execute(
             f"""SELECT g.id, g.title, g.updated,
-                      (SELECT COUNT(*) FROM qa_gespraech_turns t WHERE t.conversation_id = g.id) AS n_turns
-               FROM qa_gespraeche g WHERE g.user_id = ?{filt}
+                      (SELECT COUNT(*) FROM qa_conversation_turns t WHERE t.conversation_id = g.id) AS n_turns
+               FROM qa_conversations g WHERE g.user_id = ?{filt}
                ORDER BY g.updated DESC, g.id DESC LIMIT ? OFFSET ?""", werte).fetchall()
         return [dict(r) for r in rows]
 
@@ -2131,17 +2238,17 @@ class Store:
         filt = " AND unicode_lower(title) LIKE ? ESCAPE '\\'" if muster else ""
         werte: list = [user_id] + ([muster] if muster else [])
         return self._conn.execute(
-            f"SELECT COUNT(*) FROM qa_gespraeche WHERE user_id = ?{filt}",
+            f"SELECT COUNT(*) FROM qa_conversations WHERE user_id = ?{filt}",
             werte).fetchone()[0]
 
     def qa_gespraech(self, conversation_id: int, user_id: int) -> dict | None:
         g = self._conn.execute(
-            "SELECT id, title, updated FROM qa_gespraeche WHERE id = ? AND user_id = ?",
+            "SELECT id, title, updated FROM qa_conversations WHERE id = ? AND user_id = ?",
             (conversation_id, user_id)).fetchone()
         if not g:
             return None
         turns = self._conn.execute(
-            "SELECT question, answer, sources FROM qa_gespraech_turns "
+            "SELECT question, answer, sources FROM qa_conversation_turns "
             "WHERE conversation_id = ? ORDER BY id",
             (conversation_id,)).fetchall()
         return {**dict(g), "turns": [dict(t) for t in turns]}
@@ -2155,25 +2262,25 @@ class Store:
             return False
         with self._conn:
             cur = self._conn.execute(
-                "UPDATE qa_gespraeche SET title = ? WHERE id = ? AND user_id = ?",
+                "UPDATE qa_conversations SET title = ? WHERE id = ? AND user_id = ?",
                 (title, conversation_id, user_id))
             return (cur.rowcount or 0) > 0
 
     def qa_gespraech_loeschen(self, conversation_id: int, user_id: int) -> bool:
         with self._conn:
             self._conn.execute(
-                "DELETE FROM qa_gespraech_turns WHERE conversation_id = ? AND user_id = ?",
+                "DELETE FROM qa_conversation_turns WHERE conversation_id = ? AND user_id = ?",
                 (conversation_id, user_id))
             cur = self._conn.execute(
-                "DELETE FROM qa_gespraeche WHERE id = ? AND user_id = ?",
+                "DELETE FROM qa_conversations WHERE id = ? AND user_id = ?",
                 (conversation_id, user_id))
             return (cur.rowcount or 0) > 0
 
     def qa_gespraeche_loeschen(self, user_id: int) -> int:
         """Alle Gespräche eines Kontos löschen (Ausschalt-Dialog „Alle löschen")."""
         with self._conn:
-            self._conn.execute("DELETE FROM qa_gespraech_turns WHERE user_id = ?", (user_id,))
-            cur = self._conn.execute("DELETE FROM qa_gespraeche WHERE user_id = ?", (user_id,))
+            self._conn.execute("DELETE FROM qa_conversation_turns WHERE user_id = ?", (user_id,))
+            cur = self._conn.execute("DELETE FROM qa_conversations WHERE user_id = ?", (user_id,))
             return cur.rowcount or 0
 
     # ---- Feedback ----------------------------------------------------------
@@ -3108,7 +3215,7 @@ class Store:
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self._conn:
             cur = self._conn.execute(
-                "INSERT OR IGNORE INTO vorlage_follows "
+                "INSERT OR IGNORE INTO template_follows "
                 "(owner_id, kvonr, template_number, title, stations, created_at) VALUES (?,?,?,?,?,?)",
                 (owner_id, kvonr, template_number or "", title or "", stations, now),
             )
@@ -3117,21 +3224,21 @@ class Store:
     def unfollow_vorlage(self, owner_id: int, kvonr: int) -> bool:
         with self._conn:
             cur = self._conn.execute(
-                "DELETE FROM vorlage_follows WHERE owner_id = ? AND kvonr = ?", (owner_id, kvonr)
+                "DELETE FROM template_follows WHERE owner_id = ? AND kvonr = ?", (owner_id, kvonr)
             )
         return cur.rowcount > 0
 
     def get_vorlage_follows(self, owner_id: int) -> list[dict]:
         rows = self._conn.execute(
             "SELECT id, kvonr, template_number, title, created_at, notified_at "
-            "FROM vorlage_follows WHERE owner_id = ? ORDER BY created_at DESC",
+            "FROM template_follows WHERE owner_id = ? ORDER BY created_at DESC",
             (owner_id,),
         ).fetchall()
         return [dict(r) for r in rows]
 
     def is_following_vorlage(self, owner_id: int, kvonr: int) -> bool:
         return self._conn.execute(
-            "SELECT 1 FROM vorlage_follows WHERE owner_id = ? AND kvonr = ?", (owner_id, kvonr)
+            "SELECT 1 FROM template_follows WHERE owner_id = ? AND kvonr = ?", (owner_id, kvonr)
         ).fetchone() is not None
 
     def get_vorlage_follow_targets(self) -> list[dict]:
@@ -3144,7 +3251,7 @@ class Store:
         rows = self._conn.execute(
             """SELECT f.id, f.owner_id, f.kvonr, f.template_number, f.title, f.stations,
                       wu.delivery_channel, wu.email, wu.display_name
-               FROM vorlage_follows f JOIN web_users wu ON wu.id = f.owner_id
+               FROM template_follows f JOIN web_users wu ON wu.id = f.owner_id
                WHERE wu.status = 'active'
                ORDER BY f.kvonr"""
         ).fetchall()
@@ -3159,6 +3266,6 @@ class Store:
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self._conn:
             self._conn.execute(
-                "UPDATE vorlage_follows SET stations = ?, notified_at = ? WHERE id = ?",
+                "UPDATE template_follows SET stations = ?, notified_at = ? WHERE id = ?",
                 (stations, now, follow_id),
             )
