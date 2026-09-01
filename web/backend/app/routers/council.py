@@ -1627,6 +1627,14 @@ def decisions(
     location_row = store.location_by_slug(location) if location else None
     if location and not location_row:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Unbekannter Beschlussort.")
+    # Design 20a: die Beschluss-Suche zählt fürs Admin-Panel (Block
+    # `features.suche`). Gezählt wird eine ABSICHT, kein Seitenaufruf —
+    # dieselbe Liste lädt auch, wer den Tab nur öffnet und blättert, und das
+    # ist Stöbern, keine Suche. Deshalb der Suchbegriff als Bedingung: Wer
+    # ausschließlich filtert, fällt bewusst nicht in den Zähler, sonst gäbe
+    # schon der Wechsel auf „Abstimmungen“ einen Treffer.
+    if q.strip():
+        ratslotse.record_activity(user["id"], "search")
     only_ids: list[int] | None = None
     if topic is not None:
         # Nur eigene Themen — sonst ließe sich über eine fremde id deren
@@ -2501,9 +2509,12 @@ def unfollow_vorlage(
 
 
 @router.get("/analysis")
-def analysis(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> AnalysisData:
+def analysis(user: dict = Depends(require_active),
+             store: CouncilStore = Depends(get_council_store),
+             ratslotse: Store = Depends(get_store)) -> AnalysisData:
     """Party behaviour: topic heatmap, success rates, contention, alliances —
     plus Erfolgsquoten der eingereichten Fraktions-Anträge (aus den Anlagen)."""
+    ratslotse.record_activity(user["id"], "analysis")  # Admin-Statistik (20a)
     data = store.party_analysis()
     data["field_labels"] = {k: POLICY_FIELDS[k][0] for k in data["topic_matrix"]["fields"]}
     data["antrag_stats"] = store.antrag_stats()
@@ -2546,9 +2557,11 @@ def entities_list(kind: str = "", _user: dict = Depends(require_active),
 
 
 @router.get("/entities-map")
-def entities_map(_user: dict = Depends(require_active),
-                 store: CouncilStore = Depends(get_council_store)) -> EntitiesMap:
+def entities_map(user: dict = Depends(require_active),
+                 store: CouncilStore = Depends(get_council_store),
+                 ratslotse: Store = Depends(get_store)) -> EntitiesMap:
     """Geocodierte Themen und belastbare Beschlussorte für die Stadtkarte."""
+    ratslotse.record_activity(user["id"], "map")  # Admin-Statistik (20a)
     return {"entities": store.city_map_points()}
 
 
