@@ -299,12 +299,445 @@
         "title": "AdminLimits",
         "type": "object"
       },
+      "AdminLlmUsage": {
+        "description": "``kern.usage.dashboard`` — festes Literal aus ``summary()`` plus der\nHochrechnung. Auch der Fehlerzweig von ``summary()`` liefert die ersten\ndrei Felder, hier fehlt also nie eines.",
+        "properties": {
+          "avg_cost_per_call": {
+            "title": "Avg Cost Per Call",
+            "type": "number"
+          },
+          "budget_level": {
+            "enum": [
+              "ok",
+              "warn",
+              "over"
+            ],
+            "title": "Budget Level",
+            "type": "string"
+          },
+          "budget_monthly": {
+            "title": "Budget Monthly",
+            "type": "number"
+          },
+          "budget_pct": {
+            "title": "Budget Pct",
+            "type": "integer"
+          },
+          "calls_30d": {
+            "title": "Calls 30D",
+            "type": "integer"
+          },
+          "cost_month": {
+            "title": "Cost Month",
+            "type": "number"
+          },
+          "features": {
+            "items": {
+              "$ref": "#/components/schemas/AdminLlmUsageFeature"
+            },
+            "title": "Features",
+            "type": "array"
+          },
+          "projected_month": {
+            "title": "Projected Month",
+            "type": "number"
+          },
+          "series": {
+            "items": {
+              "$ref": "#/components/schemas/AdminLlmUsageDay"
+            },
+            "title": "Series",
+            "type": "array"
+          },
+          "total_calls": {
+            "title": "Total Calls",
+            "type": "integer"
+          },
+          "total_cost": {
+            "title": "Total Cost",
+            "type": "number"
+          }
+        },
+        "required": [
+          "features",
+          "total_cost",
+          "total_calls",
+          "series",
+          "cost_month",
+          "projected_month",
+          "calls_30d",
+          "avg_cost_per_call",
+          "budget_monthly",
+          "budget_pct",
+          "budget_level"
+        ],
+        "title": "AdminLlmUsage",
+        "type": "object"
+      },
+      "AdminLlmUsageDay": {
+        "description": "Ein Tag der 30-Tage-Reihe (``kern.usage.cost_timeseries``) — lückenlos,\nfehlende Tage stehen mit 0 drin.",
+        "properties": {
+          "calls": {
+            "title": "Calls",
+            "type": "integer"
+          },
+          "cost": {
+            "title": "Cost",
+            "type": "number"
+          },
+          "date": {
+            "title": "Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "cost",
+          "calls"
+        ],
+        "title": "AdminLlmUsageDay",
+        "type": "object"
+      },
+      "AdminLlmUsageFeature": {
+        "description": "Kosten und Verbrauch eines Features (``kern.usage.summary``).",
+        "properties": {
+          "calls": {
+            "title": "Calls",
+            "type": "integer"
+          },
+          "completion_tokens": {
+            "title": "Completion Tokens",
+            "type": "integer"
+          },
+          "cost": {
+            "title": "Cost",
+            "type": "number"
+          },
+          "feature": {
+            "title": "Feature",
+            "type": "string"
+          },
+          "first": {
+            "title": "First",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "last": {
+            "title": "Last",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "models": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Models",
+            "type": "array"
+          },
+          "prompt_tokens": {
+            "title": "Prompt Tokens",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "feature",
+          "calls",
+          "prompt_tokens",
+          "completion_tokens",
+          "cost",
+          "models",
+          "first",
+          "last"
+        ],
+        "title": "AdminLlmUsageFeature",
+        "type": "object"
+      },
+      "AdminPlaceCandidate": {
+        "description": "Ein Ortskandidat aus ``CouncilStore.location_candidates`` — dieselbe\nZeile liefert auch das PUT auf ``/place-candidates/{location_slug}``.\n\nDie ersten elf Felder sind die Spalten von ``council_locations``\n(``SELECT l.*``); ein Wächter-Test (``test_api_vertrag``) schlägt an, wenn\ndie Tabelle wächst, damit hier nichts still abgeschnitten wird. Darunter\nstehen die Spalten der Prüf-Tabelle (mit ``review_``-Präfix, wo der Name\nsonst kollidierte) und das, was die Abfrage ausrechnet.\n\n``status`` ist der aufgelöste Prüfstand (``review_status`` oder\n``\"pending\"``), ``aliases`` die geparste JSON-Spalte.",
+        "properties": {
+          "aliases": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Aliases",
+            "type": "array"
+          },
+          "avg_confidence": {
+            "title": "Avg Confidence",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "canonical_place_id": {
+            "title": "Canonical Place Id",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "decision_count": {
+            "title": "Decision Count",
+            "type": "integer"
+          },
+          "description": {
+            "title": "Description",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "district": {
+            "title": "District",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/AdminPlaceCandidateEvidence"
+            },
+            "title": "Evidence",
+            "type": "array"
+          },
+          "geo_tried": {
+            "title": "Geo Tried",
+            "type": "integer"
+          },
+          "geojson": {
+            "title": "Geojson",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "last_date": {
+            "title": "Last Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lat": {
+            "title": "Lat",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "lon": {
+            "title": "Lon",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "note": {
+            "title": "Note",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ortsbereich_id": {
+            "title": "Ortsbereich Id",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "parent_id": {
+            "title": "Parent Id",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "place_id": {
+            "title": "Place Id",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "quiz_enabled": {
+            "title": "Quiz Enabled",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "review_kind": {
+            "title": "Review Kind",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "review_name": {
+            "title": "Review Name",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "review_place_id": {
+            "title": "Review Place Id",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "review_status": {
+            "title": "Review Status",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reviewed_at": {
+            "title": "Reviewed At",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "source_url": {
+            "title": "Source Url",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "updated_by": {
+            "title": "Updated By",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "kind",
+          "lat",
+          "lon",
+          "geojson",
+          "district",
+          "place_id",
+          "ortsbereich_id",
+          "geo_tried",
+          "updated_at",
+          "review_status",
+          "review_place_id",
+          "review_name",
+          "review_kind",
+          "parent_id",
+          "aliases",
+          "description",
+          "source_url",
+          "quiz_enabled",
+          "canonical_place_id",
+          "note",
+          "updated_by",
+          "reviewed_at",
+          "decision_count",
+          "last_date",
+          "avg_confidence",
+          "status",
+          "evidence"
+        ],
+        "title": "AdminPlaceCandidate",
+        "type": "object"
+      },
+      "AdminPlaceCandidateEvidence": {
+        "description": "Bis zu drei Belegbeschlüsse je Ortskandidat (fester SELECT).",
+        "properties": {
+          "confidence": {
+            "title": "Confidence",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "evidence": {
+            "title": "Evidence",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "method": {
+            "title": "Method",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "session_date": {
+            "title": "Session Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "title": "Title",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "session_date",
+          "evidence",
+          "method",
+          "confidence"
+        ],
+        "title": "AdminPlaceCandidateEvidence",
+        "type": "object"
+      },
       "AdminPlaceCandidates": {
         "properties": {
           "candidates": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/AdminPlaceCandidate"
             },
             "title": "Candidates",
             "type": "array"
@@ -425,6 +858,162 @@
         "title": "AdminUnread",
         "type": "object"
       },
+      "AdminUserDetail": {
+        "description": "``Store.admin_user_detail`` — ein festes Literal, deshalb vollständig\naufgeschrieben und ohne ``NotRequired``. ``history`` ist die 30-Tage-Reihe\nder Aktivität, ``history_days`` nennt die zugehörigen Tage.",
+        "properties": {
+          "apple_linked": {
+            "title": "Apple Linked",
+            "type": "boolean"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "deep_limit": {
+            "title": "Deep Limit",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "delivery_channel": {
+            "title": "Delivery Channel",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "features": {
+            "$ref": "#/components/schemas/AdminUserFeatures"
+          },
+          "has_password": {
+            "title": "Has Password",
+            "type": "boolean"
+          },
+          "history": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "History",
+            "type": "array"
+          },
+          "history_days": {
+            "items": {
+              "type": "string"
+            },
+            "title": "History Days",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "last_seen": {
+            "title": "Last Seen",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "limits_unlocked": {
+            "title": "Limits Unlocked",
+            "type": "boolean"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "saves_conversations": {
+            "title": "Saves Conversations",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "subscriptions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Subscriptions",
+            "type": "array"
+          },
+          "topics": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Topics",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "role",
+          "status",
+          "created_at",
+          "last_seen",
+          "apple_linked",
+          "has_password",
+          "delivery_channel",
+          "saves_conversations",
+          "deep_limit",
+          "limits_unlocked",
+          "features",
+          "topics",
+          "subscriptions",
+          "history",
+          "history_days"
+        ],
+        "title": "AdminUserDetail",
+        "type": "object"
+      },
+      "AdminUserFeatures": {
+        "description": "Feature-Nutzung eines Kontos. Die Schlüssel sind API-Namen und nicht die\ngespeicherten Werte — ``ki_frage`` zählt ``user_activity.feature =\n'ai_question'``, ``recherche`` zählt ``research`` (s.\n``Store.admin_user_detail``).\n\nWer dort einen Zähler ergänzt, ergänzt ihn HIER mit: Ein nicht deklariertes\nFeld verschwindet still aus der Antwort, und das Admin-Panel zeigte dann\neine Spalte weniger, ohne dass irgendwo etwas rot würde.",
+        "properties": {
+          "analyse": {
+            "title": "Analyse",
+            "type": "integer"
+          },
+          "karte": {
+            "title": "Karte",
+            "type": "integer"
+          },
+          "ki_frage": {
+            "title": "Ki Frage",
+            "type": "integer"
+          },
+          "quiz": {
+            "title": "Quiz",
+            "type": "integer"
+          },
+          "recherche": {
+            "title": "Recherche",
+            "type": "integer"
+          },
+          "suche": {
+            "title": "Suche",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ki_frage",
+          "recherche",
+          "suche",
+          "quiz",
+          "analyse",
+          "karte"
+        ],
+        "title": "AdminUserFeatures",
+        "type": "object"
+      },
       "AdminUserRow": {
         "properties": {
           "apple_linked": {
@@ -492,6 +1081,31 @@
           "last_seen"
         ],
         "title": "AdminUserRow",
+        "type": "object"
+      },
+      "AgendaChange": {
+        "description": "Eine Änderung an der Tagesordnung aus der Chronik (``agenda_changes``).\n``satz`` ist der Satz für die Meldung, ``zeilen`` die Einzelheiten.",
+        "properties": {
+          "changed_at": {
+            "title": "Changed At",
+            "type": "string"
+          },
+          "satz": {
+            "title": "Satz",
+            "type": "string"
+          },
+          "zeilen": {
+            "items": {},
+            "title": "Zeilen",
+            "type": "array"
+          }
+        },
+        "required": [
+          "changed_at",
+          "satz",
+          "zeilen"
+        ],
+        "title": "AgendaChange",
         "type": "object"
       },
       "AnalysisCoverage": {
@@ -1887,6 +2501,93 @@
         "title": "BudgetInvestments",
         "type": "object"
       },
+      "BudgetOverview": {
+        "description": "``/api/council/budget`` — das Datenfundament des Haushalts-Bereichs.\n\n**Jedes Feld ist ``NotRequired``, und zwar zwingend.** Der Endpunkt baut\nseine Antwort aus einer Bausteinliste und liefert mit ``?felder=…`` nur\ndie angeforderten Blöcke (``?felder=years,population`` sind zwei Schlüssel,\nnicht sechsundzwanzig). Ein Pflichtfeld wäre hier an jedem\nzugeschnittenen Aufruf ein 500.\n\nDie Werte bleiben ``Any``: Was in ihnen steht, kommt aus breiten\nStore-Abfragen, und eine geratene Verengung ließe Pydantic Werte\nKONVERTIEREN (siehe Kopf dieses Abschnitts). Was die einzelnen Blöcke\nbedeuten — und welche Angabe ohne welche nicht gezeigt werden darf —\nsteht im Docstring des Handlers (``routers/council.py::haushalt_uebersicht``).",
+        "properties": {
+          "audit_report_sources": {
+            "title": "Audit Report Sources"
+          },
+          "budget_bylaw": {
+            "title": "Budget Bylaw"
+          },
+          "budgeted_years": {
+            "title": "Budgeted Years"
+          },
+          "business_plans": {
+            "title": "Business Plans"
+          },
+          "cash_flow_statement": {
+            "title": "Cash Flow Statement"
+          },
+          "donations": {
+            "title": "Donations"
+          },
+          "expense_series": {
+            "title": "Expense Series"
+          },
+          "fee_rates": {
+            "title": "Fee Rates"
+          },
+          "fees": {
+            "title": "Fees"
+          },
+          "fiscal_equalization": {
+            "title": "Fiscal Equalization"
+          },
+          "herkunft": {
+            "additionalProperties": true,
+            "title": "Herkunft",
+            "type": "object"
+          },
+          "income_budget": {
+            "title": "Income Budget"
+          },
+          "income_statement": {
+            "title": "Income Statement"
+          },
+          "indicators": {
+            "title": "Indicators"
+          },
+          "plan_actual_years": {
+            "title": "Plan Actual Years"
+          },
+          "population": {
+            "title": "Population"
+          },
+          "product_years": {
+            "title": "Product Years"
+          },
+          "reserves": {
+            "title": "Reserves"
+          },
+          "supplementary_approvals": {
+            "title": "Supplementary Approvals"
+          },
+          "tax_capacity": {
+            "title": "Tax Capacity"
+          },
+          "tax_plan": {
+            "title": "Tax Plan"
+          },
+          "tax_rates": {
+            "title": "Tax Rates"
+          },
+          "taxes": {
+            "title": "Taxes"
+          },
+          "trade_tax_statistics": {
+            "title": "Trade Tax Statistics"
+          },
+          "variance_reasons": {
+            "title": "Variance Reasons"
+          },
+          "years": {
+            "title": "Years"
+          }
+        },
+        "title": "BudgetOverview",
+        "type": "object"
+      },
       "BudgetPath": {
         "properties": {
           "rounds": {
@@ -2294,6 +2995,268 @@
         "title": "CouncilRecess",
         "type": "object"
       },
+      "CouncilWeekPreview": {
+        "description": "``CouncilStore.wochenvorschau`` hat ZWEI Rückgabeformen: ohne Treffer\nnur fünf Schlüssel, mit Treffern elf. Die sechs Kennzahlen sind deshalb\n``NotRequired`` — ein Pflichtfeld wäre hier ein 500 an einer ruhigen Woche.\n\nDas ist die Fassung, die ``/api/council/week-preview`` liefert; die\nSocial-Schnittstelle hängt zusätzlich ``upcoming`` an (s. ``WeekPreview``).",
+        "properties": {
+          "found": {
+            "title": "Found",
+            "type": "boolean"
+          },
+          "from_date": {
+            "title": "From Date",
+            "type": "string"
+          },
+          "further_per_session": {
+            "title": "Further Per Session"
+          },
+          "items": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "matches_per_session": {
+            "title": "Matches Per Session"
+          },
+          "matches_total": {
+            "title": "Matches Total"
+          },
+          "relevant_per_session": {
+            "title": "Relevant Per Session"
+          },
+          "sessions": {
+            "items": {
+              "$ref": "#/components/schemas/SessionRow"
+            },
+            "title": "Sessions",
+            "type": "array"
+          },
+          "substantive_per_session": {
+            "title": "Substantive Per Session"
+          },
+          "substantive_total": {
+            "title": "Substantive Total"
+          },
+          "to_date": {
+            "title": "To Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "found",
+          "from_date",
+          "to_date",
+          "sessions",
+          "items"
+        ],
+        "title": "CouncilWeekPreview",
+        "type": "object"
+      },
+      "DecisionDetail": {
+        "description": "Ein Beschluss mit allem Drum und Dran — die geteilte Detailseite.\n\nDie ersten zehn Felder setzt der Handler unbedingt. Alles darunter hängt\nan der Vorlage: Ohne ``template_number`` gibt es weder ``vorlage`` noch\n``attachments``, ``beratungsfolge`` oder ``plan_bild``; ``follow`` kommt\nnur dazu, wenn wirklich jemand angemeldet ist. Deshalb ``NotRequired`` —\nein Beschluss ohne Vorlage wäre sonst ein 500 (gemessen: rund die Hälfte\ndes Bestands).",
+        "properties": {
+          "attachments": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Attachments",
+            "type": "array"
+          },
+          "attendance": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Attendance",
+            "type": "array"
+          },
+          "beratungsfolge": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Beratungsfolge",
+            "type": "array"
+          },
+          "beteiligung": {
+            "description": "Eine laufende oder beendete Bauleitplan-Beteiligung zum Beschluss.",
+            "properties": {
+              "beendet_am": {
+                "title": "Beendet Am",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "schritt": {
+                "title": "Schritt",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "status": {
+                "title": "Status",
+                "type": "string"
+              },
+              "title": {
+                "title": "Title",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "url": {
+                "title": "Url",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "valid_from": {
+                "title": "Valid From",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "valid_until": {
+                "title": "Valid Until",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "title",
+              "schritt",
+              "valid_from",
+              "valid_until",
+              "url",
+              "status",
+              "beendet_am"
+            ],
+            "title": "DecisionParticipation",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "decision": {
+            "$ref": "#/components/schemas/DecisionRow"
+          },
+          "entities": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Entities",
+            "type": "array"
+          },
+          "follow": {
+            "$ref": "#/components/schemas/DecisionFollow"
+          },
+          "haushalts_anschluss": {
+            "additionalProperties": true,
+            "title": "Haushalts Anschluss",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "importance_breakdown": {
+            "$ref": "#/components/schemas/ImportanceBreakdown"
+          },
+          "plan_bild": {
+            "title": "Plan Bild",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "present_parties": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Present Parties",
+            "type": "array"
+          },
+          "ratsinfo_url": {
+            "title": "Ratsinfo Url",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "similar": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Similar",
+            "type": "array"
+          },
+          "sub_votes": {
+            "items": {
+              "$ref": "#/components/schemas/DecisionRow"
+            },
+            "title": "Sub Votes",
+            "type": "array"
+          },
+          "vorlage": {
+            "$ref": "#/components/schemas/DecisionTemplate"
+          },
+          "vorlage_journey": {
+            "items": {},
+            "title": "Vorlage Journey",
+            "type": "array"
+          },
+          "vorlage_url": {
+            "title": "Vorlage Url",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "decision",
+          "attendance",
+          "present_parties",
+          "ratsinfo_url",
+          "sub_votes",
+          "vorlage_journey",
+          "similar",
+          "entities",
+          "beteiligung",
+          "importance_breakdown"
+        ],
+        "title": "DecisionDetail",
+        "type": "object"
+      },
+      "DecisionFollow": {
+        "description": "Folgt DIESES Konto dem Vorgang schon? Fehlt ohne Anmeldung ganz.",
+        "properties": {
+          "following": {
+            "title": "Following",
+            "type": "boolean"
+          },
+          "kvonr": {
+            "title": "Kvonr",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kvonr",
+          "following"
+        ],
+        "title": "DecisionFollow",
+        "type": "object"
+      },
       "DecisionList": {
         "properties": {
           "decisions": {
@@ -2313,6 +3276,68 @@
           "total"
         ],
         "title": "DecisionList",
+        "type": "object"
+      },
+      "DecisionParticipation": {
+        "description": "Eine laufende oder beendete Bauleitplan-Beteiligung zum Beschluss.",
+        "properties": {
+          "beendet_am": {
+            "title": "Beendet Am",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schritt": {
+            "title": "Schritt",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "url": {
+            "title": "Url",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "valid_from": {
+            "title": "Valid From",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "valid_until": {
+            "title": "Valid Until",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "title",
+          "schritt",
+          "valid_from",
+          "valid_until",
+          "url",
+          "status",
+          "beendet_am"
+        ],
+        "title": "DecisionParticipation",
         "type": "object"
       },
       "DecisionRow": {
@@ -2552,6 +3577,91 @@
           "id"
         ],
         "title": "DecisionRow",
+        "type": "object"
+      },
+      "DecisionTemplate": {
+        "description": "Die Vorlage hinter dem Beschluss — Sachverhalt/Begründung als Auszug,\ndazu die Regex-Ernte (federführendes Amt, Klima-Check, Kostenfolge).",
+        "properties": {
+          "climate_impact": {
+            "title": "Climate Impact",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "document_url": {
+            "title": "Document Url",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "excerpt": {
+            "title": "Excerpt",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "financial_impact": {
+            "title": "Financial Impact",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kind": {
+            "title": "Kind",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "klima_relevant": {
+            "title": "Klima Relevant"
+          },
+          "n_pages": {
+            "title": "N Pages",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "office": {
+            "title": "Office",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "template_number": {
+            "title": "Template Number",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "title": "Title",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "template_number",
+          "title",
+          "kind",
+          "document_url",
+          "n_pages",
+          "excerpt",
+          "office",
+          "climate_impact",
+          "klima_relevant",
+          "financial_impact"
+        ],
+        "title": "DecisionTemplate",
         "type": "object"
       },
       "DeepResearchBody": {
@@ -2869,6 +3979,233 @@
         "title": "EntityAliasOut",
         "type": "object"
       },
+      "EntityDetail": {
+        "description": "Eine Themen-Seite mit allen ihren Beschlüssen und den Aggregaten.\n\nFestes Literal aus ``CouncilStore.entity_detail``, um ``field_labels`` und\n``related`` vom Router ergänzt — deshalb vollständig und ohne\n``NotRequired``. ``merged_from`` trägt den alten Slug, wenn die Seite über\nein zusammengeführtes Alias erreicht wurde (das Frontend leitet dann um).",
+        "properties": {
+          "decisions": {
+            "items": {
+              "$ref": "#/components/schemas/DecisionRow"
+            },
+            "title": "Decisions",
+            "type": "array"
+          },
+          "description": {
+            "title": "Description",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "entity": {
+            "$ref": "#/components/schemas/EntityHead"
+          },
+          "field_labels": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Field Labels",
+            "type": "object"
+          },
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/EntityFieldCount"
+            },
+            "title": "Fields",
+            "type": "array"
+          },
+          "geo": {
+            "description": "Verortung eines Themas — ``None``, wo keine Koordinaten vorliegen.\n``geojson`` ist der geparste Umriss, wo einer hinterlegt ist.",
+            "properties": {
+              "geojson": {
+                "additionalProperties": true,
+                "title": "Geojson",
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "lat": {
+                "title": "Lat",
+                "type": "number"
+              },
+              "lon": {
+                "title": "Lon",
+                "type": "number"
+              }
+            },
+            "required": [
+              "lat",
+              "lon",
+              "geojson"
+            ],
+            "title": "EntityGeo",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "merged_from": {
+            "title": "Merged From",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "money": {
+            "title": "Money",
+            "type": "integer"
+          },
+          "parties": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Parties",
+            "type": "array"
+          },
+          "related": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Related",
+            "type": "array"
+          }
+        },
+        "required": [
+          "entity",
+          "description",
+          "geo",
+          "decisions",
+          "money",
+          "parties",
+          "fields",
+          "merged_from",
+          "field_labels",
+          "related"
+        ],
+        "title": "EntityDetail",
+        "type": "object"
+      },
+      "EntityFieldCount": {
+        "properties": {
+          "field": {
+            "title": "Field",
+            "type": "string"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "field",
+          "n"
+        ],
+        "title": "EntityFieldCount",
+        "type": "object"
+      },
+      "EntityGeo": {
+        "description": "Verortung eines Themas — ``None``, wo keine Koordinaten vorliegen.\n``geojson`` ist der geparste Umriss, wo einer hinterlegt ist.",
+        "properties": {
+          "geojson": {
+            "additionalProperties": true,
+            "title": "Geojson",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "lat": {
+            "title": "Lat",
+            "type": "number"
+          },
+          "lon": {
+            "title": "Lon",
+            "type": "number"
+          }
+        },
+        "required": [
+          "lat",
+          "lon",
+          "geojson"
+        ],
+        "title": "EntityGeo",
+        "type": "object"
+      },
+      "EntityHead": {
+        "description": "Der Kopf einer Themen-Seite: Slug, Name, Art und Beschlusszahl.",
+        "properties": {
+          "kind": {
+            "title": "Kind",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "kind",
+          "n"
+        ],
+        "title": "EntityHead",
+        "type": "object"
+      },
+      "FactionPhase": {
+        "description": "Eine Phase der Fraktions-/Gruppenzugehörigkeit aus den\nAnwesenheitslisten — die einzige echte Zeitreihe, denn das\nRatsinformationssystem überschreibt Fraktionen rückwirkend.",
+        "properties": {
+          "first": {
+            "title": "First",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "last": {
+            "title": "Last",
+            "type": "string"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "parties": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Parties",
+            "type": "array"
+          }
+        },
+        "required": [
+          "label",
+          "kind",
+          "parties",
+          "first",
+          "last",
+          "n"
+        ],
+        "title": "FactionPhase",
+        "type": "object"
+      },
       "FeedbackIn": {
         "properties": {
           "kind": {
@@ -3087,6 +4424,48 @@
           "highest_id"
         ],
         "title": "HighestDecisionId",
+        "type": "object"
+      },
+      "ImportanceBreakdown": {
+        "description": "Warum ein Beschluss als wichtig gilt (``council.importance``).\n\n``base_score`` ist die reine Heuristik, ``score`` der angezeigte Wert.\nLiegt eine LLM-Tragweite vor, mischt der Router beide 50/50 und legt\n``impact`` dazu — sonst fehlen die letzten beiden Felder.",
+        "properties": {
+          "base_score": {
+            "title": "Base Score",
+            "type": "integer"
+          },
+          "contributions": {
+            "title": "Contributions"
+          },
+          "impact": {
+            "title": "Impact",
+            "type": "integer"
+          },
+          "impact_reason": {
+            "title": "Impact Reason",
+            "type": "string"
+          },
+          "score": {
+            "title": "Score",
+            "type": "integer"
+          },
+          "signals": {
+            "additionalProperties": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "title": "Signals",
+            "type": "object"
+          }
+        },
+        "required": [
+          "score",
+          "signals",
+          "contributions",
+          "base_score"
+        ],
+        "title": "ImportanceBreakdown",
         "type": "object"
       },
       "LimitsUpdate": {
@@ -3474,6 +4853,317 @@
         "title": "PeopleDirectory",
         "type": "object"
       },
+      "PersonAdministration": {
+        "description": "Der schmale Steckbrief einer Verwaltungsperson mit erkanntem Amt\n(``CouncilStore.verwaltung_detail``). ``von``/``bis`` sind die Jahres-Spanne\nder Protokoll-Erwähnungen, KEINE amtliche Amtszeit.",
+        "properties": {
+          "aktiv": {
+            "title": "Aktiv",
+            "type": "boolean"
+          },
+          "bis": {
+            "title": "Bis",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "typ": {
+            "const": "administration",
+            "title": "Typ",
+            "type": "string"
+          },
+          "von": {
+            "title": "Von",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "wortbeitraege": {
+            "items": {
+              "$ref": "#/components/schemas/Speech"
+            },
+            "title": "Wortbeitraege",
+            "type": "array"
+          },
+          "wortbeitraege_gesamt": {
+            "title": "Wortbeitraege Gesamt",
+            "type": "integer"
+          },
+          "wortbeitraege_gremien": {
+            "items": {
+              "$ref": "#/components/schemas/SpeechCommittee"
+            },
+            "title": "Wortbeitraege Gremien",
+            "type": "array"
+          }
+        },
+        "required": [
+          "typ",
+          "name",
+          "slug",
+          "role",
+          "aktiv",
+          "von",
+          "bis",
+          "wortbeitraege",
+          "wortbeitraege_gesamt",
+          "wortbeitraege_gremien"
+        ],
+        "title": "PersonAdministration",
+        "type": "object"
+      },
+      "PersonCommittee": {
+        "properties": {
+          "chair": {
+            "title": "Chair",
+            "type": "boolean"
+          },
+          "committee": {
+            "title": "Committee",
+            "type": "string"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "committee",
+          "n",
+          "chair"
+        ],
+        "title": "PersonCommittee",
+        "type": "object"
+      },
+      "PersonCouncil": {
+        "description": "Das Profil eines Mandats- oder beratenden Mitglieds\n(``CouncilStore.member_detail``, ``typ`` legt der Router dazu).\n\n``art`` unterscheidet innerhalb dieses Zweigs noch einmal: ``council`` ist\nein Ratsmandat, ``advisory`` eine beratende Mitwirkung — für die ist die\nFraktions-Zeitreihe gegenstandslos, ``party``/``current_affiliation``\nbleiben dann leer und ``organisation`` nennt die entsendende Stelle.",
+        "properties": {
+          "active_from": {
+            "title": "Active From",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "active_to": {
+            "title": "Active To",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "art": {
+            "enum": [
+              "council",
+              "advisory"
+            ],
+            "title": "Art",
+            "type": "string"
+          },
+          "committees": {
+            "items": {
+              "$ref": "#/components/schemas/PersonCommittee"
+            },
+            "title": "Committees",
+            "type": "array"
+          },
+          "current_affiliation": {
+            "additionalProperties": true,
+            "title": "Current Affiliation",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "faction_timeline": {
+            "items": {
+              "$ref": "#/components/schemas/FactionPhase"
+            },
+            "title": "Faction Timeline",
+            "type": "array"
+          },
+          "n_sessions": {
+            "title": "N Sessions",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "organisation": {
+            "title": "Organisation",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "party": {
+            "title": "Party",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "recent": {
+            "items": {
+              "$ref": "#/components/schemas/PersonSession"
+            },
+            "title": "Recent",
+            "type": "array"
+          },
+          "ris": {
+            "title": "Ris"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "typ": {
+            "const": "council",
+            "title": "Typ",
+            "type": "string"
+          },
+          "wortbeitraege": {
+            "items": {
+              "$ref": "#/components/schemas/Speech"
+            },
+            "title": "Wortbeitraege",
+            "type": "array"
+          },
+          "wortbeitraege_gesamt": {
+            "title": "Wortbeitraege Gesamt",
+            "type": "integer"
+          },
+          "wortbeitraege_gremien": {
+            "items": {
+              "$ref": "#/components/schemas/SpeechCommittee"
+            },
+            "title": "Wortbeitraege Gremien",
+            "type": "array"
+          }
+        },
+        "required": [
+          "typ",
+          "name",
+          "slug",
+          "party",
+          "current_affiliation",
+          "art",
+          "organisation",
+          "n_sessions",
+          "active_from",
+          "active_to",
+          "faction_timeline",
+          "ris",
+          "committees",
+          "recent",
+          "wortbeitraege",
+          "wortbeitraege_gesamt",
+          "wortbeitraege_gremien"
+        ],
+        "title": "PersonCouncil",
+        "type": "object"
+      },
+      "PersonSession": {
+        "properties": {
+          "committee": {
+            "title": "Committee",
+            "type": "string"
+          },
+          "ksinr": {
+            "title": "Ksinr",
+            "type": "integer"
+          },
+          "session_date": {
+            "title": "Session Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ksinr",
+          "committee",
+          "session_date"
+        ],
+        "title": "PersonSession",
+        "type": "object"
+      },
+      "PlaceCatalog": {
+        "description": "``CouncilStore.public_place_catalog`` — der gemeinsame Ortskatalog für\nSuche, Karten, Quiz und die KI-Funktionen. ``kinds`` bildet den Ortstyp auf\nseine deutsche Beschriftung ab, ``sources`` sind die Katalog-Quellen.",
+        "properties": {
+          "definition": {
+            "title": "Definition",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kinds": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Kinds",
+            "type": "object"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "places": {
+            "items": {
+              "$ref": "#/components/schemas/PlaceEntry"
+            },
+            "title": "Places",
+            "type": "array"
+          },
+          "plural": {
+            "title": "Plural",
+            "type": "string"
+          },
+          "schema_version": {
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "singular": {
+            "title": "Singular",
+            "type": "string"
+          },
+          "sources": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Sources",
+            "type": "array"
+          }
+        },
+        "required": [
+          "schema_version",
+          "id",
+          "label",
+          "singular",
+          "plural",
+          "definition",
+          "kinds",
+          "sources",
+          "places"
+        ],
+        "title": "PlaceCatalog",
+        "type": "object"
+      },
       "PlaceDetail": {
         "properties": {
           "children": {
@@ -3496,6 +5186,142 @@
           "place"
         ],
         "title": "PlaceDetail",
+        "type": "object"
+      },
+      "PlaceEntry": {
+        "description": "Ein Ort des Katalogs (``council.places.public_place``).\n\nDie ersten zwölf Felder sind die des ``Place``-Dataclass, die drei letzten\nlegt die API dazu. Ein Wächter-Test (``test_api_vertrag``) schlägt an, wenn\ndas Dataclass wächst — ein hier fehlendes Feld verschwände sonst still.\n\n``sources`` bleibt offen: Der Katalog-Eintrag trägt ``note``/``license``,\ndie redaktionell geprüfte Quelle nicht.",
+        "properties": {
+          "aliases": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Aliases",
+            "type": "array"
+          },
+          "description": {
+            "title": "Description",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "filterable": {
+            "title": "Filterable",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "kind_label": {
+            "title": "Kind Label",
+            "type": "string"
+          },
+          "lat": {
+            "title": "Lat",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "lon": {
+            "title": "Lon",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "parent_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Parent Ids",
+            "type": "array"
+          },
+          "parents": {
+            "items": {
+              "$ref": "#/components/schemas/PlaceParent"
+            },
+            "title": "Parents",
+            "type": "array"
+          },
+          "quiz_enabled": {
+            "title": "Quiz Enabled",
+            "type": "boolean"
+          },
+          "source_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Source Ids",
+            "type": "array"
+          },
+          "sources": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "wahlbereiche": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Wahlbereiche",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "aliases",
+          "wahlbereiche",
+          "parent_ids",
+          "description",
+          "source_ids",
+          "filterable",
+          "quiz_enabled",
+          "lat",
+          "lon",
+          "kind_label",
+          "parents",
+          "sources"
+        ],
+        "title": "PlaceEntry",
+        "type": "object"
+      },
+      "PlaceParent": {
+        "description": "Ein Elternort in der Ortsangabe — nur Kennung, Name und Art.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "kind"
+        ],
+        "title": "PlaceParent",
         "type": "object"
       },
       "PlaceReviewIn": {
@@ -3631,6 +5457,30 @@
         "title": "PolicyFields",
         "type": "object"
       },
+      "PublicNumbers": {
+        "description": "Die drei Kennzahlen der öffentlichen Startseite — ohne Anmeldung,\nohne Inhalte (``CouncilStore.public_stats``).",
+        "properties": {
+          "decisions": {
+            "title": "Decisions",
+            "type": "integer"
+          },
+          "entities": {
+            "title": "Entities",
+            "type": "integer"
+          },
+          "sessions": {
+            "title": "Sessions",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "decisions",
+          "sessions",
+          "entities"
+        ],
+        "title": "PublicNumbers",
+        "type": "object"
+      },
       "PushRegisterRequest": {
         "properties": {
           "platform": {
@@ -3714,6 +5564,84 @@
           "rating"
         ],
         "title": "QaFeedbackBody",
+        "type": "object"
+      },
+      "QaShare": {
+        "description": "Ein geteilter Antwort-Schnappschuss (``Store.qa_share_get``).\n\nFestes Literal, deshalb vollständig und ohne ``NotRequired``: Vor dem\nBausteine-Nachtrag geteilte Antworten haben keine ``extras``, der Store\nsetzt die vier Listen dann auf leer und ``chart`` auf ``None``.",
+        "properties": {
+          "answer": {
+            "title": "Answer",
+            "type": "string"
+          },
+          "attachments": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Attachments",
+            "type": "array"
+          },
+          "chart": {
+            "additionalProperties": true,
+            "title": "Chart",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "created": {
+            "title": "Created",
+            "type": "string"
+          },
+          "debates": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Debates",
+            "type": "array"
+          },
+          "parties": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Parties",
+            "type": "array"
+          },
+          "press_releases": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Press Releases",
+            "type": "array"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          },
+          "sources": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Sources",
+            "type": "array"
+          }
+        },
+        "required": [
+          "question",
+          "answer",
+          "sources",
+          "created",
+          "debates",
+          "press_releases",
+          "attachments",
+          "parties",
+          "chart"
+        ],
+        "title": "QaShare",
         "type": "object"
       },
       "QaShareAttachment": {
@@ -4975,6 +6903,62 @@
         "title": "ResearchCurrent",
         "type": "object"
       },
+      "ResearchSnapshot": {
+        "description": "Persistierter Stand eines Deep-Research-Jobs (``Store.deep_job_get``,\nfester SELECT über acht Spalten). ``report`` und ``sources`` sind ``None``,\nsolange der Job läuft; der Router parst ``sources`` aus der JSON-Spalte.\n\n``user_id`` steht bewusst NICHT hier — der Store wählt es gar nicht erst\naus, die Zeile gehört ohnehin dem anfragenden Konto.\n\n**``sources`` ist ein OBJEKT, keine Liste.** Es ist der ganze Quellen-Block\n(``deepresearch._quellen_payload``): unter ``sources`` die Beschlüsse,\ndaneben ``press_releases``, ``debates``, ``planning_procedures``,\n``attachments``, ``facets``, ``documents_read``, ``period``, ``cited`` und\n``context`` — deckungsgleich mit dem ``sources``-Ereignis des Stroms, damit\nder Client einen fertigen Job identisch rendern kann. Der Block bleibt hier\noffen, weil er ein gewachsener JSON-Blob in der Datenbank ist: Ältere\nZeilen tragen weniger Schlüssel, und eine Aufzählung schnitte die\nzusätzlichen still weg (dieselbe Erwägung wie bei ``ConversationTurn``).\nAls ``list`` deklariert war das ein 500 an jedem fertigen Job.",
+        "properties": {
+          "created": {
+            "title": "Created",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          },
+          "report": {
+            "title": "Report",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "seen": {
+            "title": "Seen",
+            "type": "integer"
+          },
+          "sources": {
+            "additionalProperties": true,
+            "title": "Sources",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "updated": {
+            "title": "Updated",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "question",
+          "status",
+          "report",
+          "sources",
+          "seen",
+          "created",
+          "updated"
+        ],
+        "title": "ResearchSnapshot",
+        "type": "object"
+      },
       "ResearchStarted": {
         "properties": {
           "job_id": {
@@ -5051,6 +7035,129 @@
           "role"
         ],
         "title": "RoleUpdate",
+        "type": "object"
+      },
+      "SessionDetail": {
+        "description": "Eine Sitzung mit allem, was die Sitzungs-Seite braucht.\n\nErbt die Spalten von ``SessionRow`` (das ist die Zeile aus\n``CouncilStore.get_session``); alles darunter hängt der Router an. Die\nsieben Zusätze stehen an JEDER Antwort — der Handler setzt sie\nunbedingt, auch wenn die Listen leer bleiben.",
+        "properties": {
+          "aenderungen": {
+            "items": {
+              "$ref": "#/components/schemas/AgendaChange"
+            },
+            "title": "Aenderungen",
+            "type": "array"
+          },
+          "agenda_items": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Agenda Items",
+            "type": "array"
+          },
+          "attendance": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Attendance",
+            "type": "array"
+          },
+          "committee": {
+            "title": "Committee",
+            "type": "string"
+          },
+          "decisions": {
+            "items": {
+              "$ref": "#/components/schemas/DecisionRow"
+            },
+            "title": "Decisions",
+            "type": "array"
+          },
+          "fetched_at": {
+            "title": "Fetched At",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "has_protocol": {
+            "title": "Has Protocol",
+            "type": "boolean"
+          },
+          "ksinr": {
+            "title": "Ksinr",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "live_until": {
+            "title": "Live Until",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "location": {
+            "title": "Location",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "my_topic_items": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "My Topic Items",
+            "type": "array"
+          },
+          "n_items": {
+            "title": "N Items",
+            "type": "integer"
+          },
+          "session_date": {
+            "title": "Session Date",
+            "type": "string"
+          },
+          "session_time": {
+            "title": "Session Time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "url": {
+            "title": "Url",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "video_results": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Video Results",
+            "type": "array"
+          }
+        },
+        "required": [
+          "ksinr",
+          "committee",
+          "session_date",
+          "agenda_items",
+          "decisions",
+          "attendance",
+          "has_protocol",
+          "video_results",
+          "url",
+          "aenderungen"
+        ],
+        "title": "SessionDetail",
         "type": "object"
       },
       "SessionList": {
@@ -5326,6 +7433,105 @@
           "checked_seconds_ago"
         ],
         "title": "SourceCheck",
+        "type": "object"
+      },
+      "Speech": {
+        "description": "Ein Wortbeitrag aus einem Protokoll.",
+        "properties": {
+          "committee": {
+            "title": "Committee",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kind": {
+            "title": "Kind",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "session_date": {
+            "title": "Session Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "top": {
+            "title": "Top",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "committee",
+          "session_date",
+          "top",
+          "kind",
+          "text"
+        ],
+        "title": "Speech",
+        "type": "object"
+      },
+      "SpeechCommittee": {
+        "properties": {
+          "committee": {
+            "title": "Committee",
+            "type": "string"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "committee",
+          "n"
+        ],
+        "title": "SpeechCommittee",
+        "type": "object"
+      },
+      "Speeches": {
+        "description": "Wortbeiträge einer Person (``CouncilStore.wortbeitraege_person``).\n\nZwei Zahlen, weil es zwei Dinge sind: ``total`` gilt zum gesetzten\nGremien-Filter, ``gesamt`` ist der Bestand der Person über alle Gremien —\ndaran hängt die Zeile „N Wortbeiträge\" auf der Personen-Seite. Der\ndeutsche Schlüssel steht so im Bestand und bleibt unangetastet.",
+        "properties": {
+          "committees": {
+            "items": {
+              "$ref": "#/components/schemas/SpeechCommittee"
+            },
+            "title": "Committees",
+            "type": "array"
+          },
+          "gesamt": {
+            "title": "Gesamt",
+            "type": "integer"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Speech"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "gesamt",
+          "committees"
+        ],
+        "title": "Speeches",
         "type": "object"
       },
       "StatusUpdate": {
@@ -6350,7 +8556,7 @@
         "type": "object"
       },
       "WeekPreview": {
-        "description": "``CouncilStore.wochenvorschau`` hat ZWEI Rückgabeformen: ohne Treffer\nnur fünf Schlüssel, mit Treffern elf. Die sechs Kennzahlen sind deshalb\n``NotRequired`` — ein Pflichtfeld wäre hier ein 500 an einer ruhigen\nWoche. ``upcoming`` hängt der Router an.",
+        "description": "Die Fassung für den Instagram-Bot: ``upcoming`` hängt der Router an —\ndie terminierten Sitzungen ohne veröffentlichte Tagesordnung.",
         "properties": {
           "found": {
             "title": "Found",
@@ -6939,9 +9145,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Llm Usage Api Admin Llm Usage Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/AdminLlmUsage"
                 }
               }
             },
@@ -7092,9 +9296,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Review Place Candidate Api Admin Place Candidates  Location Slug  Put",
-                  "type": "object"
+                  "$ref": "#/components/schemas/AdminPlaceCandidate"
                 }
               }
             },
@@ -7329,9 +9531,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response User Detail Api Admin Users  User Id  Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/AdminUserDetail"
                 }
               }
             },
@@ -8094,11 +10294,13 @@
         "responses": {
           "200": {
             "content": {
-              "application/json": {
-                "schema": {}
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Server-Sent Events (`text/event-stream`). Jeder Rahmen ist eine `data:`-Zeile mit einem JSON-Objekt, das ein Feld `type` trägt:\n\n- `step` — Fortschritt, `step` ist `expand`, `search` oder `answer`\n- `sources` — die gefundenen Beschlüsse samt `mode` und `qtype`, sobald Retrieval und Rerank fertig sind\n- `token` — ein Stück Antworttext (`text`)\n- `replace` — ersetzt den bisher gesendeten Text vollständig\n- `suggestions` — Anschlussfragen (`questions`)\n- `abbruch` — die Antwort wurde abgebrochen\n- `done` — Schluss-Ereignis mit `cited`, `timings` und `conversation_id`\n- `error` — die Frage ist fehlgeschlagen (`message`)\n\nEin Verbindungsabriss ist folgenlos: Der Client kann die Frage neu stellen."
           },
           "422": {
             "content": {
@@ -8152,9 +10354,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Haushalt Uebersicht Api Council Budget Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/BudgetOverview"
                 }
               }
             },
@@ -9035,9 +11235,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Decision Detail Api Council Decision  Decision Id  Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/DecisionDetail"
                 }
               }
             },
@@ -9359,9 +11557,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Deep Research Snapshot Api Council Deep Research  Job Id  Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/ResearchSnapshot"
                 }
               }
             },
@@ -9413,11 +11609,16 @@
         "responses": {
           "200": {
             "content": {
-              "application/json": {
-                "schema": {}
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Server-Sent Events (`text/event-stream`). Erst ein Replay aller Ereignisse ab `ab`, dann live weiter. Jeder Rahmen ist eine `data:`-Zeile mit einem JSON-Objekt und einem Feld `type`:\n\n- `phase` — `zerlegen`, `lesen` (mit `dokumente`) oder `schreiben`\n- `facets` — die Namen der Facetten, in die die Frage zerfällt\n- `facette` — eine Facette ist fertig (`name`, `treffer`)\n- `sources` — die Quellen der Recherche\n- `token` — ein Stück Berichtstext (`text`)\n- `replace` — ersetzt den bisher gesendeten Text vollständig\n- `done` — Schluss-Ereignis mit `cited` und `documents_read`\n- `gestoppt` — auf Wunsch abgebrochen (`facets_done`)\n- `fehler` — die Recherche ist fehlgeschlagen\n\nEin Verbindungsabriss ist folgenlos — der Job läuft im Backend weiter, der Client verbindet sich einfach neu."
+          },
+          "410": {
+            "description": "Die Recherche ist nicht mehr aktiv — den Snapshot über `GET /api/council/deep-research/{job_id}` laden."
           },
           "422": {
             "content": {
@@ -9703,9 +11904,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Entity Api Council Entity  Slug  Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/EntityDetail"
                 }
               }
             },
@@ -10040,9 +12239,15 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Person Api Council Person  Slug  Get",
-                  "type": "object"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/PersonCouncil"
+                    },
+                    {
+                      "$ref": "#/components/schemas/PersonAdministration"
+                    }
+                  ],
+                  "title": "Response Person Api Council Person  Slug  Get"
                 }
               }
             },
@@ -10120,9 +12325,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Person Wortbeitraege Api Council Person  Slug  Speeches Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/Speeches"
                 }
               }
             },
@@ -10197,9 +12400,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Place Catalog Api Council Places Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/PlaceCatalog"
                 }
               }
             },
@@ -10240,11 +12441,17 @@
         "responses": {
           "200": {
             "content": {
-              "application/json": {
-                "schema": {}
+              "image/jpeg": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Die gerenderte Planzeichnung als JPEG. `?thumb=true` liefert die Vorschaugröße. Ein gerendertes Blatt ändert sich nie, die Antwort ist deshalb `immutable` und dreißig Tage cachebar."
+          },
+          "404": {
+            "description": "Zu dieser Anlage gibt es kein gerendertes Bild."
           },
           "422": {
             "content": {
@@ -10324,9 +12531,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Public Stats Api Council Public Stats Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/PublicNumbers"
                 }
               }
             },
@@ -10465,9 +12670,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Qa Share Lesen Api Council Qa Share  Token  Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/QaShare"
                 }
               }
             },
@@ -10584,9 +12787,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Session Detail Api Council Session  Ksinr  Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/SessionDetail"
                 }
               }
             },
@@ -10829,9 +13030,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Wochenvorschau Api Council Week Preview Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/CouncilWeekPreview"
                 }
               }
             },

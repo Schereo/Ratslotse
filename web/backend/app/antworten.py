@@ -33,6 +33,8 @@ from __future__ import annotations
 
 from typing import Any, Literal, NotRequired, TypedDict
 
+from fastapi.responses import FileResponse, StreamingResponse
+
 # --------------------------------------------------------------------------
 # Bausteine, die überall vorkommen
 # --------------------------------------------------------------------------
@@ -395,23 +397,31 @@ class SourceCheck(TypedDict):
 # --------------------------------------------------------------------------
 
 
-class WeekPreview(TypedDict):
+class CouncilWeekPreview(TypedDict):
     """``CouncilStore.wochenvorschau`` hat ZWEI Rückgabeformen: ohne Treffer
     nur fünf Schlüssel, mit Treffern elf. Die sechs Kennzahlen sind deshalb
-    ``NotRequired`` — ein Pflichtfeld wäre hier ein 500 an einer ruhigen
-    Woche. ``upcoming`` hängt der Router an."""
+    ``NotRequired`` — ein Pflichtfeld wäre hier ein 500 an einer ruhigen Woche.
+
+    Das ist die Fassung, die ``/api/council/week-preview`` liefert; die
+    Social-Schnittstelle hängt zusätzlich ``upcoming`` an (s. ``WeekPreview``).
+    """
     found: bool
     from_date: str
     to_date: str
     sessions: list[SessionRow]
     items: list[dict[str, Any]]
-    upcoming: list[SessionRow]
     substantive_total: NotRequired[Any]
     substantive_per_session: NotRequired[Any]
     relevant_per_session: NotRequired[Any]
     matches_total: NotRequired[Any]
     matches_per_session: NotRequired[Any]
     further_per_session: NotRequired[Any]
+
+
+class WeekPreview(CouncilWeekPreview):
+    """Die Fassung für den Instagram-Bot: ``upcoming`` hängt der Router an —
+    die terminierten Sitzungen ohne veröffentlichte Tagesordnung."""
+    upcoming: list[SessionRow]
 
 
 class Discovery(TypedDict):
@@ -623,11 +633,144 @@ class QuizFlagged(TypedDict):
 # ``ALTER TABLE`` still Felder zu schlucken (siehe Regel 2 oben).
 # --------------------------------------------------------------------------
 
-AdminUserDetail = dict[str, Any]
 AdminFeedbackRow = dict[str, Any]
-AdminPlaceCandidate = dict[str, Any]
-AdminLlmUsage = dict[str, Any]
 AdminEntityAlias = dict[str, Any]
+
+
+class AdminUserFeatures(TypedDict):
+    """Feature-Nutzung eines Kontos. Die Schlüssel sind API-Namen und nicht die
+    gespeicherten Werte — ``ki_frage`` zählt ``user_activity.feature =
+    'ai_question'``, ``recherche`` zählt ``research`` (s.
+    ``Store.admin_user_detail``).
+
+    Wer dort einen Zähler ergänzt, ergänzt ihn HIER mit: Ein nicht deklariertes
+    Feld verschwindet still aus der Antwort, und das Admin-Panel zeigte dann
+    eine Spalte weniger, ohne dass irgendwo etwas rot würde.
+    """
+    ki_frage: int
+    recherche: int
+    suche: int
+    quiz: int
+    analyse: int
+    karte: int
+
+
+class AdminUserDetail(TypedDict):
+    """``Store.admin_user_detail`` — ein festes Literal, deshalb vollständig
+    aufgeschrieben und ohne ``NotRequired``. ``history`` ist die 30-Tage-Reihe
+    der Aktivität, ``history_days`` nennt die zugehörigen Tage."""
+    id: int
+    email: str
+    role: str
+    status: str
+    created_at: str | None
+    last_seen: str | None
+    apple_linked: bool
+    has_password: bool
+    delivery_channel: str
+    # None = die Einwilligungsfrage wurde nie beantwortet, 1 = an, 0 = aus.
+    saves_conversations: int | None
+    deep_limit: int | None
+    limits_unlocked: bool
+    features: AdminUserFeatures
+    topics: list[str]
+    subscriptions: list[str]
+    history: list[int]
+    history_days: list[str]
+
+
+class AdminPlaceCandidateEvidence(TypedDict):
+    """Bis zu drei Belegbeschlüsse je Ortskandidat (fester SELECT)."""
+    id: int
+    title: str | None
+    session_date: str | None
+    evidence: str | None
+    method: str | None
+    confidence: float | None
+
+
+class AdminPlaceCandidate(TypedDict):
+    """Ein Ortskandidat aus ``CouncilStore.location_candidates`` — dieselbe
+    Zeile liefert auch das PUT auf ``/place-candidates/{location_slug}``.
+
+    Die ersten elf Felder sind die Spalten von ``council_locations``
+    (``SELECT l.*``); ein Wächter-Test (``test_api_vertrag``) schlägt an, wenn
+    die Tabelle wächst, damit hier nichts still abgeschnitten wird. Darunter
+    stehen die Spalten der Prüf-Tabelle (mit ``review_``-Präfix, wo der Name
+    sonst kollidierte) und das, was die Abfrage ausrechnet.
+
+    ``status`` ist der aufgelöste Prüfstand (``review_status`` oder
+    ``"pending"``), ``aliases`` die geparste JSON-Spalte.
+    """
+    slug: str
+    name: str
+    kind: str
+    lat: float | None
+    lon: float | None
+    geojson: str | None
+    district: str | None
+    place_id: str | None
+    # Deutscher Spaltenname aus `council_locations` — der Bestand trägt ihn
+    # noch, deshalb steht er hier unverändert (kein stiller Umbenennen-Beifang).
+    ortsbereich_id: str | None
+    geo_tried: int
+    updated_at: str | None
+    review_status: str | None
+    review_place_id: str | None
+    review_name: str | None
+    review_kind: str | None
+    parent_id: str | None
+    aliases: list[str]
+    description: str | None
+    source_url: str | None
+    quiz_enabled: int | None
+    canonical_place_id: str | None
+    note: str | None
+    updated_by: str | None
+    reviewed_at: str | None
+    decision_count: int
+    last_date: str | None
+    avg_confidence: float | None
+    status: str
+    evidence: list[AdminPlaceCandidateEvidence]
+
+
+class AdminLlmUsageFeature(TypedDict):
+    """Kosten und Verbrauch eines Features (``kern.usage.summary``)."""
+    feature: str
+    calls: int
+    prompt_tokens: int
+    completion_tokens: int
+    cost: float
+    models: list[str]
+    first: str | None
+    last: str | None
+
+
+class AdminLlmUsageDay(TypedDict):
+    """Ein Tag der 30-Tage-Reihe (``kern.usage.cost_timeseries``) — lückenlos,
+    fehlende Tage stehen mit 0 drin."""
+    date: str
+    cost: float
+    calls: int
+
+
+class AdminLlmUsage(TypedDict):
+    """``kern.usage.dashboard`` — festes Literal aus ``summary()`` plus der
+    Hochrechnung. Auch der Fehlerzweig von ``summary()`` liefert die ersten
+    drei Felder, hier fehlt also nie eines."""
+    features: list[AdminLlmUsageFeature]
+    total_cost: float
+    total_calls: int
+    series: list[AdminLlmUsageDay]
+    cost_month: float
+    projected_month: float
+    calls_30d: int
+    avg_cost_per_call: float
+    budget_monthly: float
+    budget_pct: int
+    # „ok" < 80 % < „warn" < 100 % ≤ „over" — der Router rechnet die Ampel aus.
+    budget_level: Literal["ok", "warn", "over"]
 
 
 class AdminSeries(TypedDict):
@@ -751,9 +894,58 @@ class AdminPlaceCandidates(TypedDict):
 # änderte sich still. Enger wird hier nur, was belegt ist.
 # --------------------------------------------------------------------------
 
-# Nutzlasten, die der Handler nicht selbst zusammensetzt, sondern aus dem
-# Store durchreicht: benannt, damit im Schema steht, worum es geht, aber offen.
-PlaceCatalog = dict[str, Any]
+
+class PlaceParent(TypedDict):
+    """Ein Elternort in der Ortsangabe — nur Kennung, Name und Art."""
+    id: str
+    name: str
+    kind: str
+
+
+class PlaceEntry(TypedDict):
+    """Ein Ort des Katalogs (``council.places.public_place``).
+
+    Die ersten zwölf Felder sind die des ``Place``-Dataclass, die drei letzten
+    legt die API dazu. Ein Wächter-Test (``test_api_vertrag``) schlägt an, wenn
+    das Dataclass wächst — ein hier fehlendes Feld verschwände sonst still.
+
+    ``sources`` bleibt offen: Der Katalog-Eintrag trägt ``note``/``license``,
+    die redaktionell geprüfte Quelle nicht.
+    """
+    id: str
+    name: str
+    kind: str
+    aliases: list[str]
+    # Deutscher Feldname aus dem Ortskatalog (``data/orte.json``) — unverändert
+    # übernommen, damit der Vertrag zu Web und App hält.
+    wahlbereiche: list[int]
+    parent_ids: list[str]
+    description: str | None
+    source_ids: list[str]
+    filterable: bool
+    quiz_enabled: bool
+    lat: float | None
+    lon: float | None
+    kind_label: str
+    parents: list[PlaceParent]
+    sources: list[dict[str, Any]]
+
+
+class PlaceCatalog(TypedDict):
+    """``CouncilStore.public_place_catalog`` — der gemeinsame Ortskatalog für
+    Suche, Karten, Quiz und die KI-Funktionen. ``kinds`` bildet den Ortstyp auf
+    seine deutsche Beschriftung ab, ``sources`` sind die Katalog-Quellen."""
+    schema_version: int
+    id: str
+    label: str
+    singular: str
+    plural: str
+    definition: str
+    kinds: dict[str, str]
+    sources: list[dict[str, Any]]
+    places: list[PlaceEntry]
+
+
 class CouncilRecess(TypedDict):
     """Ob gerade Ratspause ist — immer dieselben fünf Felder
     (``council/sitzungspause.py``)."""
@@ -808,12 +1000,205 @@ class BriefingBreak(TypedDict):
 # mit lauter NotRequired, damit beide Clients erst nach der Prüfung auf die
 # jeweiligen Felder kommen.
 TodayBriefing = BriefingToday | BriefingNext | BriefingBreak
-WeekPreviewInternal = dict[str, Any]
-BudgetOverview = dict[str, Any]
-SessionDetail = dict[str, Any]
-DecisionDetail = dict[str, Any]
-QaShare = dict[str, Any]
-ResearchSnapshot = dict[str, Any]
+
+
+class BudgetOverview(TypedDict):
+    """``/api/council/budget`` — das Datenfundament des Haushalts-Bereichs.
+
+    **Jedes Feld ist ``NotRequired``, und zwar zwingend.** Der Endpunkt baut
+    seine Antwort aus einer Bausteinliste und liefert mit ``?felder=…`` nur
+    die angeforderten Blöcke (``?felder=years,population`` sind zwei Schlüssel,
+    nicht sechsundzwanzig). Ein Pflichtfeld wäre hier an jedem
+    zugeschnittenen Aufruf ein 500.
+
+    Die Werte bleiben ``Any``: Was in ihnen steht, kommt aus breiten
+    Store-Abfragen, und eine geratene Verengung ließe Pydantic Werte
+    KONVERTIEREN (siehe Kopf dieses Abschnitts). Was die einzelnen Blöcke
+    bedeuten — und welche Angabe ohne welche nicht gezeigt werden darf —
+    steht im Docstring des Handlers (``routers/council.py::haushalt_uebersicht``).
+    """
+    years: NotRequired[Any]
+    taxes: NotRequired[Any]
+    tax_capacity: NotRequired[Any]
+    fiscal_equalization: NotRequired[Any]
+    population: NotRequired[Any]
+    income_statement: NotRequired[Any]
+    cash_flow_statement: NotRequired[Any]
+    income_budget: NotRequired[Any]
+    reserves: NotRequired[Any]
+    budgeted_years: NotRequired[Any]
+    fees: NotRequired[Any]
+    fee_rates: NotRequired[Any]
+    budget_bylaw: NotRequired[Any]
+    business_plans: NotRequired[Any]
+    variance_reasons: NotRequired[Any]
+    audit_report_sources: NotRequired[Any]
+    product_years: NotRequired[Any]
+    plan_actual_years: NotRequired[Any]
+    expense_series: NotRequired[Any]
+    indicators: NotRequired[Any]
+    supplementary_approvals: NotRequired[Any]
+    donations: NotRequired[Any]
+    tax_plan: NotRequired[Any]
+    tax_rates: NotRequired[Any]
+    trade_tax_statistics: NotRequired[Any]
+    # Je `herkunft_id` das Dokument samt Fundstelle, Rechenprobe und Stichtag.
+    # Deutscher Schlüssel aus dem Bestand — hier unverändert übernommen.
+    herkunft: NotRequired[dict[str, Any]]
+
+
+class AgendaChange(TypedDict):
+    """Eine Änderung an der Tagesordnung aus der Chronik (``agenda_changes``).
+    ``satz`` ist der Satz für die Meldung, ``zeilen`` die Einzelheiten."""
+    changed_at: str
+    satz: str
+    zeilen: list[Any]
+
+
+class SessionDetail(SessionRow):
+    """Eine Sitzung mit allem, was die Sitzungs-Seite braucht.
+
+    Erbt die Spalten von ``SessionRow`` (das ist die Zeile aus
+    ``CouncilStore.get_session``); alles darunter hängt der Router an. Die
+    sieben Zusätze stehen an JEDER Antwort — der Handler setzt sie
+    unbedingt, auch wenn die Listen leer bleiben.
+    """
+    agenda_items: list[AgendaItemRow]
+    decisions: list[DecisionRow]
+    attendance: list[dict[str, Any]]
+    has_protocol: bool
+    # Vorläufige Ergebnisse aus der Videoaufzeichnung — die Brücke, bis das
+    # Protokoll kommt.
+    video_results: list[dict[str, Any]]
+    url: str | None
+    aenderungen: list[AgendaChange]
+
+
+class ImportanceBreakdown(TypedDict):
+    """Warum ein Beschluss als wichtig gilt (``council.importance``).
+
+    ``base_score`` ist die reine Heuristik, ``score`` der angezeigte Wert.
+    Liegt eine LLM-Tragweite vor, mischt der Router beide 50/50 und legt
+    ``impact`` dazu — sonst fehlen die letzten beiden Felder.
+    """
+    score: int
+    signals: dict[str, float | None]
+    contributions: Any
+    base_score: int
+    impact: NotRequired[int]
+    impact_reason: NotRequired[str]
+
+
+class DecisionParticipation(TypedDict):
+    """Eine laufende oder beendete Bauleitplan-Beteiligung zum Beschluss."""
+    title: str | None
+    schritt: str | None
+    valid_from: str | None
+    valid_until: str | None
+    url: str | None
+    status: str
+    beendet_am: str | None
+
+
+class DecisionTemplate(TypedDict):
+    """Die Vorlage hinter dem Beschluss — Sachverhalt/Begründung als Auszug,
+    dazu die Regex-Ernte (federführendes Amt, Klima-Check, Kostenfolge)."""
+    template_number: str | None
+    title: str | None
+    kind: str | None
+    document_url: str | None
+    n_pages: int | None
+    excerpt: str | None
+    office: str | None
+    climate_impact: str | None
+    klima_relevant: Any
+    financial_impact: str | None
+
+
+class DecisionFollow(TypedDict):
+    """Folgt DIESES Konto dem Vorgang schon? Fehlt ohne Anmeldung ganz."""
+    kvonr: int
+    following: bool
+
+
+class DecisionDetail(TypedDict):
+    """Ein Beschluss mit allem Drum und Dran — die geteilte Detailseite.
+
+    Die ersten zehn Felder setzt der Handler unbedingt. Alles darunter hängt
+    an der Vorlage: Ohne ``template_number`` gibt es weder ``vorlage`` noch
+    ``attachments``, ``beratungsfolge`` oder ``plan_bild``; ``follow`` kommt
+    nur dazu, wenn wirklich jemand angemeldet ist. Deshalb ``NotRequired`` —
+    ein Beschluss ohne Vorlage wäre sonst ein 500 (gemessen: rund die Hälfte
+    des Bestands).
+    """
+    decision: DecisionRow
+    attendance: list[dict[str, Any]]
+    present_parties: list[str]
+    ratsinfo_url: str | None
+    sub_votes: list[DecisionRow]
+    vorlage_journey: list[Any]
+    similar: list[dict[str, Any]]
+    entities: list[dict[str, Any]]
+    beteiligung: DecisionParticipation | None
+    importance_breakdown: ImportanceBreakdown
+    vorlage: NotRequired[DecisionTemplate]
+    vorlage_url: NotRequired[str | None]
+    attachments: NotRequired[list[dict[str, Any]]]
+    # Zwei Formen (Nachbewilligung bzw. Bürgschaft) mit verschiedenen
+    # Schlüsseln — deshalb offen statt geraten.
+    haushalts_anschluss: NotRequired[dict[str, Any] | None]
+    plan_bild: NotRequired[int | None]
+    beratungsfolge: NotRequired[list[dict[str, Any]]]
+    follow: NotRequired[DecisionFollow]
+
+
+class QaShare(TypedDict):
+    """Ein geteilter Antwort-Schnappschuss (``Store.qa_share_get``).
+
+    Festes Literal, deshalb vollständig und ohne ``NotRequired``: Vor dem
+    Bausteine-Nachtrag geteilte Antworten haben keine ``extras``, der Store
+    setzt die vier Listen dann auf leer und ``chart`` auf ``None``.
+    """
+    question: str
+    answer: str
+    sources: list[dict[str, Any]]
+    created: str
+    debates: list[dict[str, Any]]
+    press_releases: list[dict[str, Any]]
+    attachments: list[dict[str, Any]]
+    parties: list[dict[str, Any]]
+    chart: dict[str, Any] | None
+
+
+class ResearchSnapshot(TypedDict):
+    """Persistierter Stand eines Deep-Research-Jobs (``Store.deep_job_get``,
+    fester SELECT über acht Spalten). ``report`` und ``sources`` sind ``None``,
+    solange der Job läuft; der Router parst ``sources`` aus der JSON-Spalte.
+
+    ``user_id`` steht bewusst NICHT hier — der Store wählt es gar nicht erst
+    aus, die Zeile gehört ohnehin dem anfragenden Konto.
+
+    **``sources`` ist ein OBJEKT, keine Liste.** Es ist der ganze Quellen-Block
+    (``deepresearch._quellen_payload``): unter ``sources`` die Beschlüsse,
+    daneben ``press_releases``, ``debates``, ``planning_procedures``,
+    ``attachments``, ``facets``, ``documents_read``, ``period``, ``cited`` und
+    ``context`` — deckungsgleich mit dem ``sources``-Ereignis des Stroms, damit
+    der Client einen fertigen Job identisch rendern kann. Der Block bleibt hier
+    offen, weil er ein gewachsener JSON-Blob in der Datenbank ist: Ältere
+    Zeilen tragen weniger Schlüssel, und eine Aufzählung schnitte die
+    zusätzlichen still weg (dieselbe Erwägung wie bei ``ConversationTurn``).
+    Als ``list`` deklariert war das ein 500 an jedem fertigen Job.
+    """
+    id: str
+    question: str
+    status: str
+    report: str | None
+    sources: dict[str, Any] | None
+    seen: int
+    created: str
+    updated: str
+
+
 class AnalysisCoverage(TypedDict):
     with_factions: int
     total: int
@@ -840,10 +1225,157 @@ class TrendData(TypedDict):
     money: list[float]
     money_drivers: list[Any]
     emerging: Any
-PublicNumbers = dict[str, Any]
-EntityDetail = dict[str, Any]
-PersonDetail = dict[str, Any]
-Speeches = dict[str, Any]
+class PublicNumbers(TypedDict):
+    """Die drei Kennzahlen der öffentlichen Startseite — ohne Anmeldung,
+    ohne Inhalte (``CouncilStore.public_stats``)."""
+    decisions: int
+    sessions: int
+    entities: int
+
+
+class EntityHead(TypedDict):
+    """Der Kopf einer Themen-Seite: Slug, Name, Art und Beschlusszahl."""
+    slug: str
+    name: str
+    kind: str | None
+    n: int
+
+
+class EntityGeo(TypedDict):
+    """Verortung eines Themas — ``None``, wo keine Koordinaten vorliegen.
+    ``geojson`` ist der geparste Umriss, wo einer hinterlegt ist."""
+    lat: float
+    lon: float
+    geojson: dict[str, Any] | None
+
+
+class EntityFieldCount(TypedDict):
+    field: str
+    n: int
+
+
+class EntityDetail(TypedDict):
+    """Eine Themen-Seite mit allen ihren Beschlüssen und den Aggregaten.
+
+    Festes Literal aus ``CouncilStore.entity_detail``, um ``field_labels`` und
+    ``related`` vom Router ergänzt — deshalb vollständig und ohne
+    ``NotRequired``. ``merged_from`` trägt den alten Slug, wenn die Seite über
+    ein zusammengeführtes Alias erreicht wurde (das Frontend leitet dann um).
+    """
+    entity: EntityHead
+    description: str | None
+    geo: EntityGeo | None
+    decisions: list[DecisionRow]
+    # Entdoppelte Summe der erkannten Beträge, 0 wenn nichts erkannt wurde.
+    money: int
+    parties: list[str]
+    fields: list[EntityFieldCount]
+    merged_from: str | None
+    # legt der Router dazu
+    field_labels: dict[str, str]
+    related: list[dict[str, Any]]
+
+
+class Speech(TypedDict):
+    """Ein Wortbeitrag aus einem Protokoll."""
+    committee: str | None
+    session_date: str | None
+    top: str | None
+    kind: str | None
+    text: str
+
+
+class SpeechCommittee(TypedDict):
+    committee: str
+    n: int
+
+
+class Speeches(TypedDict):
+    """Wortbeiträge einer Person (``CouncilStore.wortbeitraege_person``).
+
+    Zwei Zahlen, weil es zwei Dinge sind: ``total`` gilt zum gesetzten
+    Gremien-Filter, ``gesamt`` ist der Bestand der Person über alle Gremien —
+    daran hängt die Zeile „N Wortbeiträge" auf der Personen-Seite. Der
+    deutsche Schlüssel steht so im Bestand und bleibt unangetastet.
+    """
+    items: list[Speech]
+    total: int
+    gesamt: int
+    committees: list[SpeechCommittee]
+
+
+class PersonCommittee(TypedDict):
+    committee: str
+    n: int
+    chair: bool
+
+
+class PersonSession(TypedDict):
+    ksinr: int
+    committee: str
+    session_date: str
+
+
+class FactionPhase(TypedDict):
+    """Eine Phase der Fraktions-/Gruppenzugehörigkeit aus den
+    Anwesenheitslisten — die einzige echte Zeitreihe, denn das
+    Ratsinformationssystem überschreibt Fraktionen rückwirkend."""
+    label: str
+    kind: str
+    parties: list[str]
+    first: str
+    last: str
+    n: int
+
+
+class PersonCouncil(TypedDict):
+    """Das Profil eines Mandats- oder beratenden Mitglieds
+    (``CouncilStore.member_detail``, ``typ`` legt der Router dazu).
+
+    ``art`` unterscheidet innerhalb dieses Zweigs noch einmal: ``council`` ist
+    ein Ratsmandat, ``advisory`` eine beratende Mitwirkung — für die ist die
+    Fraktions-Zeitreihe gegenstandslos, ``party``/``current_affiliation``
+    bleiben dann leer und ``organisation`` nennt die entsendende Stelle.
+    """
+    typ: Literal["council"]
+    name: str
+    slug: str
+    party: str | None
+    current_affiliation: dict[str, Any] | None
+    art: Literal["council", "advisory"]
+    organisation: str | None
+    n_sessions: int
+    active_from: str | None
+    active_to: str | None
+    faction_timeline: list[FactionPhase]
+    ris: Any
+    committees: list[PersonCommittee]
+    recent: list[PersonSession]
+    wortbeitraege: list[Speech]
+    wortbeitraege_gesamt: int
+    wortbeitraege_gremien: list[SpeechCommittee]
+
+
+class PersonAdministration(TypedDict):
+    """Der schmale Steckbrief einer Verwaltungsperson mit erkanntem Amt
+    (``CouncilStore.verwaltung_detail``). ``von``/``bis`` sind die Jahres-Spanne
+    der Protokoll-Erwähnungen, KEINE amtliche Amtszeit."""
+    typ: Literal["administration"]
+    name: str
+    slug: str
+    role: str
+    aktiv: bool
+    von: str | None
+    bis: str | None
+    wortbeitraege: list[Speech]
+    wortbeitraege_gesamt: int
+    wortbeitraege_gremien: list[SpeechCommittee]
+
+
+# Zwei Zustände, unterscheidbar an `typ` — als echte Union statt einer Form mit
+# lauter NotRequired: Das Frontend rendert zwei verschiedene Ansichten, und
+# beide Clients sollen erst nach der Prüfung auf `typ` an die Felder kommen.
+PersonDetail = PersonCouncil | PersonAdministration
 
 
 class CommitteeDetail(TypedDict):
@@ -1183,3 +1715,97 @@ class BudgetDebt(TypedDict):
     years: list[Any]
     series: Any
     interest_expense: Any
+
+
+# --------------------------------------------------------------------------
+# Antworten, die kein JSON sind
+#
+# Drei Endpunkte liefern keinen JSON-Körper: zwei Server-Sent-Event-Ströme und
+# eine Bilddatei. Ein ``TypedDict`` wäre dort schlicht falsch — es behauptete
+# ein Objekt, wo ein Strom bzw. ein JPEG kommt, und beide Generatoren bauten
+# daraus einen Typ, den nie jemand bekommt. Stattdessen steht hier je eine
+# ``responses=``-Angabe für den Dekorator: richtiger Medientyp, und in der
+# Beschreibung, was tatsächlich über die Leitung geht.
+#
+# Die Ereignis-Arten sind aufgezählt, weil sie der eigentliche Vertrag sind:
+# Wer einen Client gegen diese Ströme baut, muss wissen, welche ``type``-Werte
+# vorkommen können. Sie stehen als Text und nicht als Schema, weil ein
+# SSE-Rahmen Text IST — die JSON-Nutzlast steckt in seiner ``data:``-Zeile.
+#
+# **Die ``response_class`` gehört dazu und ist nicht optional.** FastAPI leitet
+# den Medientyp der 200er-Antwort aus ihr ab; ohne sie steht neben unserer
+# ``responses=``-Angabe weiterhin ein leeres ``application/json``-Schema, und
+# die Doku behauptete wieder ein JSON-Objekt. Zur Laufzeit ändert sich nichts:
+# Die Handler bauen ihre Antwort weiter selbst.
+# --------------------------------------------------------------------------
+
+
+class EventStreamResponse(StreamingResponse):
+    """``StreamingResponse`` mit festem SSE-Medientyp — nur fürs Schema."""
+    media_type = "text/event-stream"
+
+
+class JpegResponse(FileResponse):
+    """``FileResponse`` mit festem JPEG-Medientyp — nur fürs Schema."""
+    media_type = "image/jpeg"
+
+#: ``POST /api/council/ask`` — die KI-Frage, Token für Token.
+SSE_FRAGE: dict[int | str, dict[str, Any]] = {
+    200: {
+        "description": (
+            "Server-Sent Events (`text/event-stream`). Jeder Rahmen ist eine "
+            "`data:`-Zeile mit einem JSON-Objekt, das ein Feld `type` trägt:\n\n"
+            "- `step` — Fortschritt, `step` ist `expand`, `search` oder `answer`\n"
+            "- `sources` — die gefundenen Beschlüsse samt `mode` und `qtype`, "
+            "sobald Retrieval und Rerank fertig sind\n"
+            "- `token` — ein Stück Antworttext (`text`)\n"
+            "- `replace` — ersetzt den bisher gesendeten Text vollständig\n"
+            "- `suggestions` — Anschlussfragen (`questions`)\n"
+            "- `abbruch` — die Antwort wurde abgebrochen\n"
+            "- `done` — Schluss-Ereignis mit `cited`, `timings` und "
+            "`conversation_id`\n"
+            "- `error` — die Frage ist fehlgeschlagen (`message`)\n\n"
+            "Ein Verbindungsabriss ist folgenlos: Der Client kann die Frage "
+            "neu stellen."
+        ),
+        "content": {"text/event-stream": {"schema": {"type": "string"}}},
+    },
+}
+
+#: ``GET /api/council/deep-research/{job_id}/events`` — die tiefe Recherche.
+SSE_RECHERCHE: dict[int | str, dict[str, Any]] = {
+    200: {
+        "description": (
+            "Server-Sent Events (`text/event-stream`). Erst ein Replay aller "
+            "Ereignisse ab `ab`, dann live weiter. Jeder Rahmen ist eine "
+            "`data:`-Zeile mit einem JSON-Objekt und einem Feld `type`:\n\n"
+            "- `phase` — `zerlegen`, `lesen` (mit `dokumente`) oder `schreiben`\n"
+            "- `facets` — die Namen der Facetten, in die die Frage zerfällt\n"
+            "- `facette` — eine Facette ist fertig (`name`, `treffer`)\n"
+            "- `sources` — die Quellen der Recherche\n"
+            "- `token` — ein Stück Berichtstext (`text`)\n"
+            "- `replace` — ersetzt den bisher gesendeten Text vollständig\n"
+            "- `done` — Schluss-Ereignis mit `cited` und `documents_read`\n"
+            "- `gestoppt` — auf Wunsch abgebrochen (`facets_done`)\n"
+            "- `fehler` — die Recherche ist fehlgeschlagen\n\n"
+            "Ein Verbindungsabriss ist folgenlos — der Job läuft im Backend "
+            "weiter, der Client verbindet sich einfach neu."
+        ),
+        "content": {"text/event-stream": {"schema": {"type": "string"}}},
+    },
+    410: {"description": "Die Recherche ist nicht mehr aktiv — den Snapshot "
+                         "über `GET /api/council/deep-research/{job_id}` laden."},
+}
+
+#: ``GET /api/council/plan-bild/{document_id}`` — die gerenderte Planzeichnung.
+PLANZEICHNUNG_JPEG: dict[int | str, dict[str, Any]] = {
+    200: {
+        "description": (
+            "Die gerenderte Planzeichnung als JPEG. `?thumb=true` liefert die "
+            "Vorschaugröße. Ein gerendertes Blatt ändert sich nie, die Antwort "
+            "ist deshalb `immutable` und dreißig Tage cachebar."
+        ),
+        "content": {"image/jpeg": {"schema": {"type": "string", "format": "binary"}}},
+    },
+    404: {"description": "Zu dieser Anlage gibt es kein gerendertes Bild."},
+}
