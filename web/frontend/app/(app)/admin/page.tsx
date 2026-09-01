@@ -599,7 +599,8 @@ function activitySignal(lastSeen: string | null): { dot: string; label: string }
 }
 
 const USER_FEATURE_LABEL: [keyof AdminUserDetail["features"], string][] = [
-  ["ki_frage", "KI-Frage"], ["suche", "Beschluss-Suche"], ["quiz", "Quiz"], ["analyse", "Analyse"], ["karte", "Stadtkarte"],
+  ["ki_frage", "KI-Frage"], ["recherche", "Gründliche Recherche"], ["suche", "Beschluss-Suche"],
+  ["quiz", "Quiz"], ["analyse", "Analyse"], ["karte", "Stadtkarte"],
 ];
 
 function UsersTab({ currentUserId }: { currentUserId: number }) {

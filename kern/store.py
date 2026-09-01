@@ -369,7 +369,12 @@ CREATE INDEX IF NOT EXISTS idx_user_quiz_owner ON user_quiz_questions(owner_id);
 CREATE TABLE IF NOT EXISTS user_activity (
     owner_id INTEGER NOT NULL,
     day      TEXT NOT NULL,           -- YYYY-MM-DD
-    feature  TEXT NOT NULL,           -- session | ki_frage | suche | quiz | thema | analyse | karte
+    -- Was gezählt wird. `session` schreibt jede angemeldete Anfrage
+    -- (deps.py) und trägt `last_seen` und die WAU; die übrigen sind die
+    -- Funktionen, die das Admin-Panel je Konto zeigt. Neue Werte
+    -- englisch. `quiz` steht nicht dabei: Das zählt beantwortete Fragen
+    -- aus `quiz_answers`, nicht Aufrufe.
+    feature  TEXT NOT NULL,           -- session | ai_question | research | search | analysis | map
     count    INTEGER NOT NULL DEFAULT 1,
     PRIMARY KEY (owner_id, day, feature)
 );
@@ -2284,8 +2289,10 @@ class Store:
                       (SELECT COUNT(*) FROM topics t WHERE t.owner_id = u.id) n_topics,
                       (SELECT COUNT(*) FROM committee_subscriptions s WHERE s.owner_id = u.id) n_subscriptions,
                       (SELECT COUNT(DISTINCT question_id) FROM quiz_answers q WHERE q.owner_id = u.id) n_quiz,
+                      -- Der gespeicherte Wert heißt seit dem Werte-Umbau
+                      -- `ai_question`; die Spalte der Antwort weiter `n_ki`.
                       (SELECT COALESCE(SUM(count), 0) FROM user_activity a
-                         WHERE a.owner_id = u.id AND a.feature = 'ki_frage') n_ki,
+                         WHERE a.owner_id = u.id AND a.feature = 'ai_question') n_ki,
                       (SELECT MAX(day) FROM user_activity a WHERE a.owner_id = u.id) last_seen
                FROM web_users u ORDER BY u.created_at DESC"""
         ).fetchall()
@@ -2326,14 +2333,20 @@ class Store:
             "saves_conversations": u.get("saves_conversations"),
             # Admin-steuerbare Frage-Limits (10.08.26) — fürs Formular im Detail.
             "deep_limit": u.get("deep_limit"), "limits_unlocked": bool(u.get("limits_unlocked")),
-            # Links der API-Feldname, rechts der GESPEICHERTE Wert — die beiden
-            # sind seit dem Werte-Umbau verschieden: `user_activity.feature`
-            # heißt jetzt `ai_question`, der Block der Antwort weiter
-            # `ki_frage`. Die API-Feldnamen sind ein eigener Schnitt.
-            # `suche`, `analyse` und `karte` schreibt niemand — sie stehen
-            # dauerhaft auf 0, s. `record_activity`-Aufrufer.
-            "features": {"ki_frage": feats.get("ai_question", 0), "suche": feats.get("suche", 0),
-                         "quiz": n_quiz, "analyse": feats.get("analyse", 0), "karte": feats.get("karte", 0)},
+            # Links der API-Feldname, rechts der GESPEICHERTE Wert. Die beiden
+            # fallen auseinander, seit die Werte englisch heißen und die
+            # Feldnamen dieses Blocks als einzige noch deutsch sind (s. die
+            # Begründung zu `ki_frage` in `scripts/pruefe_alte_werte.py`).
+            # `suche`, `analyse` und `karte` standen bis zum 01.09.2026
+            # dauerhaft auf 0: Die Zähler gab es seit Design 20a, die
+            # `record_activity`-Aufrufe dazu nie. `quiz` kommt nicht aus
+            # `user_activity`, sondern zählt beantwortete Fragen.
+            "features": {"ki_frage": feats.get("ai_question", 0),
+                         "recherche": feats.get("research", 0),
+                         "suche": feats.get("search", 0),
+                         "quiz": n_quiz,
+                         "analyse": feats.get("analysis", 0),
+                         "karte": feats.get("map", 0)},
             "topics": topics, "subscriptions": abos, "history": verlauf, "history_days": history_days,
         }
 
