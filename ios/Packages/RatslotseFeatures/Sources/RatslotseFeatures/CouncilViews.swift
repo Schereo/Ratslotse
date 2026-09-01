@@ -1428,7 +1428,7 @@ struct DecisionDetailView: View {
             "climate_impact":"Mehrere Investitionen betreffen energetische Sanierungen und klimafreundliche Mobilität.",
             "financial_impact":"Die vorgesehenen Investitionen sind in der mittelfristigen Finanzplanung berücksichtigt."
           },
-          "anlagen": [
+          "attachments": [
             {"document_id":77,"label":"Haushaltsplan 2026 – Gesamtfassung","url":"https://ratslotse.de","is_antrag":0,"antragsteller":[],"status":"ok"},
             {"document_id":78,"label":"Änderungsantrag zum Investitionsprogramm","url":"https://ratslotse.de","is_antrag":1,"antragsteller":["SPD","Grüne"],"status":"ok"}
           ],
@@ -3020,8 +3020,8 @@ private struct SessionDetailView: View {
           "session_time": "17:00",
           "location": "Alte Fleiwa, Industriestraße 1d, Sitzungssaal 1/2",
           "agenda_items": [
-            {"item_number":"Ö 4","title":"Radverkehrskonzept für Oldenburg","is_public":1,"summary":"Der Ausschuss berät die nächsten Schritte für sichere Radverbindungen.","anlagen":[]},
-            {"item_number":"Ö 7","title":"Sichere Querung an der Cloppenburger Straße","is_public":1,"summary":null,"anlagen":[]}
+            {"item_number":"Ö 4","title":"Radverkehrskonzept für Oldenburg","is_public":1,"summary":"Der Ausschuss berät die nächsten Schritte für sichere Radverbindungen.","attachments":[]},
+            {"item_number":"Ö 7","title":"Sichere Querung an der Cloppenburger Straße","is_public":1,"summary":null,"attachments":[]}
           ],
           "decisions": [],
           "has_protocol": false,
@@ -3031,7 +3031,7 @@ private struct SessionDetailView: View {
             "satz": "Ein TOP wurde ergänzt und eine Anlage aktualisiert.",
             "zeilen": [
               {"art":"new","label":"Ö 7","title":"Sichere Querung an der Cloppenburger Straße","nichtoeffentlich":false,"detail":"Neu auf die Tagesordnung gesetzt"},
-              {"art":"anlagen","label":"Ö 4","title":"Radverkehrskonzept für Oldenburg","nichtoeffentlich":false,"detail":"Eine Anlage hinzugefügt"}
+              {"art":"attachments","label":"Ö 4","title":"Radverkehrskonzept für Oldenburg","nichtoeffentlich":false,"detail":"Eine Anlage hinzugefügt"}
             ]
           }, {
             "changed_at": "2026-08-28T09:30:00+02:00",

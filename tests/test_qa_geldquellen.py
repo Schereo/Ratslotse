@@ -303,7 +303,7 @@ def test_korpus_ruft_die_richtigen_store_methoden(question, typ, erwartet):
     ``geld_facetten`` allein völlig gesund aus."""
     store = _MessStore()
     kontext = qa.geld_kontext(store, question, "Suchbegriffe der Expansion", typ)
-    assert set(kontext["facetten"]) == erwartet
+    assert set(kontext["facets"]) == erwartet
     erwartete_calls = {ERWARTETE_METHODEN[f] for f in erwartet}
     # `steuerkraft_kontext` läuft nur bei echtem Steuer-Treffer oder bei
     # ausdrücklicher NFAG-Frage — der Attrappen-Store liefert keinen Treffer.
@@ -368,7 +368,7 @@ def test_stadion_regression(question, tmp_path):
     ZURÜCKKOMMT."""
     store = _befuellter_store(tmp_path)
     kontext = qa.geld_kontext(store, question, "Stadion Neubau Finanzierung Kosten", "topic")
-    assert qa.geld_block(kontext) == "", sorted(kontext["facetten"])
+    assert qa.geld_block(kontext) == "", sorted(kontext["facets"])
     messages, _ = qa._answer_messages(
         question, [{"id": 5, "title": "Stadion Marschweg", "official_text": "Zugestimmt.",
                  "amount_eur": 4_200_000}], typ="topic", geld=kontext)
@@ -1029,9 +1029,9 @@ def test_voller_geld_kontext_bleibt_im_budget(tmp_path):
         store, "Warum kostet die Stadt total mehr als geplant, was hat das "
                "Rechnungsprüfungsamt dazu beanstandet, wie sehen die Erträge im "
                "Haushalt aus und wie ist das im Vergleich zu Osnabrück?",
-        "Haushalt Soziales Theater Feuerwehr Steuern", "geld")
+        "Haushalt Soziales Theater Feuerwehr Steuern", "money")
     text = qa.geld_block(kontext)
-    assert len(kontext["facetten"]) >= 8, sorted(kontext["facetten"])
+    assert len(kontext["facets"]) >= 8, sorted(kontext["facets"])
     assert len(text) <= qa.GELD_MAX_CHARS, f"{len(text)} Zeichen"
     # Und er ist auch nicht leer — sonst misst der Deckel nichts.
     assert len(text) > 1500, f"nur {len(text)} Zeichen"
@@ -1109,9 +1109,9 @@ def test_die_neuen_facetten_verdraengen_die_alten_nicht_komplett(tmp_path):
                "Schulden hat sie, was wird gebaut, wie viele Stellen sind "
                "unbesetzt, was hat das Rechnungsprüfungsamt beanstandet und wie "
                "ist das im Vergleich zu Osnabrück?",
-        "Haushalt Soziales Theater Feuerwehr Steuern Schule", "geld")
+        "Haushalt Soziales Theater Feuerwehr Steuern Schule", "money")
     text = qa.geld_block(kontext)
-    assert len(kontext["facetten"]) >= 10, sorted(kontext["facetten"])
+    assert len(kontext["facets"]) >= 10, sorted(kontext["facets"])
     assert len(text) <= qa.GELD_MAX_CHARS
     # Die drei neuen Bestands-Quellen sind drin …
     for kopf in ("SCHULDENSTAND", "STELLENPLAN", "INVESTITIONEN"):
@@ -1130,7 +1130,7 @@ def test_budget_kappt_ganze_bausteine_statt_saetze(tmp_path):
     store = _befuellter_store(tmp_path)
     kontext = qa.geld_kontext(store, "Warum gibt die Stadt total mehr aus als "
                                      "geplant und was wurde beanstandet?",
-                              "Haushalt Steuern Soziales", "geld")
+                              "Haushalt Steuern Soziales", "money")
     voll = qa.geld_block(kontext)
     alt = qa.GELD_MAX_CHARS
     try:
@@ -1237,7 +1237,7 @@ def test_deepresearch_ruft_geld_kontext_statt_einzelquellen():
 def test_facetten_stehen_im_kontext_zum_mitloggen():
     store = _MessStore()
     kontext = qa.geld_kontext(store, "Was kostet die Feuerwehr?", "Feuerwehr", "money")
-    assert kontext["facetten"] == sorted({"plan", "produkte"})
+    assert kontext["facets"] == sorted({"plan", "produkte"})
 
 
 def test_alle_facetten_haben_baustein_und_methode():
