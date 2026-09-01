@@ -30,8 +30,8 @@ os.environ.setdefault("WEB_JWT_SECRET", "test-secret")
 # `antworten.py` einen sprechenden Namen, aber (noch) keine Felder.
 OFFEN = {
     ("get", "/api/council/places"),
-    ("get", "/api/council/wochenvorschau"),
-    ("get", "/api/council/haushalt"),
+    ("get", "/api/council/week-preview"),
+    ("get", "/api/council/budget"),
     ("get", "/api/council/session/{ksinr}"),
     ("get", "/api/council/decision/{decision_id}"),
     ("get", "/api/council/qa-share/{token}"),
@@ -39,7 +39,7 @@ OFFEN = {
     ("get", "/api/council/public-stats"),
     ("get", "/api/council/entity/{slug}"),
     ("get", "/api/council/person/{slug}"),
-    ("get", "/api/council/person/{slug}/wortbeitraege"),
+    ("get", "/api/council/person/{slug}/speeches"),
     ("get", "/api/admin/llm-usage"),
     ("get", "/api/admin/users/{user_id}"),
     ("put", "/api/admin/place-candidates/{location_slug}"),
@@ -170,12 +170,12 @@ def test_nullable_felder_sind_swift_lesbar():
     Pydantic schreibt sie als ``anyOf`` mit einem ``null``-Zweig — gültiges
     OpenAPI 3.1, aber ``swift-openapi-generator`` lässt solche Eigenschaften
     STILL weg (gemessen 30.08.2026: 139 Felder in 55 Schemata, u. a.
-    ``GespraecheListe.einstellung``). ``scripts/openapi_schnitt.py`` zieht sie
+    ``ConversationList.saves_conversations``). ``scripts/openapi_schnitt.py`` zieht sie
     deshalb zusammen; dieser Test hält fest, dass das auch weiter passiert.
 
     Auch ``$ref`` neben ``null`` fällt darunter — der Schnitt schreibt solche
     Objekte aus, statt sie zu verweisen, weil der Generator sie sonst ebenfalls
-    weglässt (``Merkeintrag.session`` war genau dieser Fall).
+    weglässt (``BookmarkEntry.session`` war genau dieser Fall).
     """
     import json
 
@@ -205,7 +205,7 @@ def test_nullable_felder_sind_swift_lesbar():
 
 
 def test_zeilen_typen_kennen_alle_spalten_ihrer_tabelle():
-    """``Beschlusszeile``/``Sitzungszeile`` zählen Spalten auf — das ist nur
+    """``DecisionRow``/``SessionRow`` zählen Spalten auf — das ist nur
     sicher, solange die Aufzählung vollständig bleibt.
 
     Ein TypedDict ENTFERNT, was es nicht kennt. Bekäme ``council_decisions``
@@ -217,7 +217,7 @@ def test_zeilen_typen_kennen_alle_spalten_ihrer_tabelle():
     from typing import get_type_hints
 
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-    from app.antworten import Beschlusszeile, Sitzungszeile
+    from app.antworten import DecisionRow, SessionRow
     from council.store import CouncilStore
 
     with tempfile.TemporaryDirectory() as d:
@@ -232,8 +232,8 @@ def test_zeilen_typen_kennen_alle_spalten_ihrer_tabelle():
         finally:
             store.close()
 
-    for typ, tabelle in ((Beschlusszeile, "council_decisions"),
-                         (Sitzungszeile, "council_sessions")):
+    for typ, tabelle in ((DecisionRow, "council_decisions"),
+                         (SessionRow, "council_sessions")):
         deklariert = set(get_type_hints(typ, include_extras=True))
         fehlend = spalten[tabelle] - deklariert
         assert not fehlend, (
@@ -288,9 +288,9 @@ def test_keine_wirkungslosen_migrationspaare():
 #: Bot fällt dort auf seinen direkten Datenbankweg zurück. Das ist ein Befund
 #: für das andere Repo, kein Ziel für einen Wächter hier.
 OEFFENTLICHE_PFADE = (
-    "/api/social/hoechste-beschluss-id",
-    "/api/social/neue-beschluesse",
-    "/api/social/wochenvorschau",
+    "/api/social/highest-decision-id",
+    "/api/social/new-decisions",
+    "/api/social/week-preview",
 )
 
 

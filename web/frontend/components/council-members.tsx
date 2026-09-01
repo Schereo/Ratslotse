@@ -54,7 +54,7 @@ export function PersonenView() {
   const { data, loading } = useFetch<{ members: Member[] }>("/council/members");
   // Öffentlich, sechs Stunden gecacht (dieselbe Quelle wie die Badges im
   // KI-Antworttext) — kein eigener Verwaltungs-Endpunkt nötig.
-  const { data: lexikon } = useFetch<{ personen: PersonEintrag[] }>("/council/personen-lexikon");
+  const { data: lexikon } = useFetch<{ personen: PersonEintrag[] }>("/council/people-directory");
   const [q, setQ] = useState("");
   const [party, setParty] = useState("");
 

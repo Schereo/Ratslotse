@@ -90,7 +90,7 @@ def test_store_upsert_und_fts(tmp_path):
 def test_presse_block_im_antwortprompt():
     messages, _ = qa._answer_messages(
         "Was wurde aus dem Radweg?", [],
-        presse=[{"title": "Radweg eröffnet", "date": "2026-08-01", "auszug": "Die Stadt eröffnet…"}])
+        presse=[{"title": "Radweg eröffnet", "date": "2026-08-01", "excerpt": "Die Stadt eröffnet…"}])
     inhalt = messages[0]["content"]
     assert "AKTUELLES VON DER STADT" in inhalt
     assert "Radweg eröffnet" in inhalt

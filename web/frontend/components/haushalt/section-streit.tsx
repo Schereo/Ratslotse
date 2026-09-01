@@ -317,20 +317,20 @@ export function StreitAbschnitt({ onBestand }: {
   /** Meldet den Bestand der Streit-Quelle nach oben — die Subline der
    *  Seitenbühne zählt dieselben Wortbeiträge wie die Quellenzeile dieses
    *  Abschnitts, aus derselben Antwort (H5-02). */
-  onBestand?: (b: { beitraege: number; von: number; bis: number } | null) => void;
+  onBestand?: (b: { contributions: number; von: number; bis: number } | null) => void;
 } = {}) {
   const gewaehltesJahr = Number(useSearchParams().get("year")) || null;
-  const { data, loading } = useFetch<StreitDaten>("/council/haushalt/streit");
+  const { data, loading } = useFetch<StreitDaten>("/council/budget/debate");
 
   useEffect(() => {
     if (!onBestand || loading) return;
     const q = data ? balance(data) : null;
-    onBestand(q && q.beitraege > 0
-      ? { beitraege: q.beitraege, von: q.von, bis: q.bis } : null);
+    onBestand(q && q.contributions > 0
+      ? { contributions: q.contributions, von: q.von, bis: q.bis } : null);
   }, [onBestand, loading, data]);
   // Die Inhalts-Ebene lädt getrennt: Die Streit-Antwort ist schon ein halbes
   // MB Protokolle, und die Listen braucht erst, wer bis zu ihrem Block liest.
-  const { data: listen } = useFetch<AenderungslistenDaten>("/council/haushalt/aenderungslisten");
+  const { data: listen } = useFetch<AenderungslistenDaten>("/council/budget/amendment-lists");
 
   const years = useMemo(() => jahrgaenge(data ?? null), [data]);
   const year = gewaehltesJahr && years.includes(gewaehltesJahr) ? gewaehltesJahr : years[0] ?? null;
@@ -454,7 +454,7 @@ export function StreitAbschnitt({ onBestand }: {
               <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
                 Ratsinformationssystem, Änderungslisten und Protokolle {source.von}–{source.bis}{" "}
                 · {source.listen.toLocaleString("de-DE")} Listen ·{" "}
-                {source.beitraege.toLocaleString("de-DE")} Wortbeiträge
+                {source.contributions.toLocaleString("de-DE")} Wortbeiträge
               </p>
             )}
           </div>
@@ -494,9 +494,9 @@ export function StreitAbschnitt({ onBestand }: {
               >
                 Sitzung im Ratsinformationssystem
               </Link>
-              {schluss.protokoll_url && (
+              {schluss.minutes_url && (
                 <a
-                  href={schluss.protokoll_url}
+                  href={schluss.minutes_url}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold text-primary"

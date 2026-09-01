@@ -35,7 +35,7 @@ export function SupportForm() {
     setSending(true);
     setError(null);
     try {
-      await api.post("/feedback/kontakt", { kind, email, message, website });
+      await api.post("/feedback/contact", { kind, email, message, website });
       setSent(true);
     } catch (err) {
       // 429 ist kein Fehler des Absenders — der Ton bleibt entsprechend ruhig.

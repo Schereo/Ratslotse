@@ -207,7 +207,7 @@ private struct AdminLLMView: View {
     private func load() async { do { data = try await model.api.get("/api/admin/llm-usage"); error = nil } catch { self.error = error.localizedDescription } }
 }
 
-private struct AdminUserRow: Decodable, Sendable, Identifiable { let id: Int; let email: String; let role: String; let status: String; let lastSeen: String?; let nTopics: Int; let nAbos: Int; let nQuiz: Int; let nKi: Int; enum CodingKeys: String, CodingKey { case id,email,role,status; case lastSeen = "last_seen"; case nTopics = "n_topics"; case nAbos = "n_abos"; case nQuiz = "n_quiz"; case nKi = "n_ki" } }
+private struct AdminUserRow: Decodable, Sendable, Identifiable { let id: Int; let email: String; let role: String; let status: String; let lastSeen: String?; let nTopics: Int; let nAbos: Int; let nQuiz: Int; let nKi: Int; enum CodingKeys: String, CodingKey { case id,email,role,status; case lastSeen = "last_seen"; case nTopics = "n_topics"; case nAbos = "n_subscriptions"; case nQuiz = "n_quiz"; case nKi = "n_ki" } }
 private struct AdminUsersView: View {
     let model: AppModel; @State private var users: [AdminUserRow] = []; @State private var query = ""; @State private var error: String?
     var filtered: [AdminUserRow] { query.isEmpty ? users : users.filter { $0.email.localizedCaseInsensitiveContains(query) } }

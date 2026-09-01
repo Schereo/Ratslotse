@@ -1280,7 +1280,7 @@ function SessionsTab({ committees }: { committees: string[] }) {
   // Query wie im Banner (React Query dedupliziert, staleTime 1 h).
   const { data: pause } = useQuery({
     queryKey: ["sitzungspause"],
-    queryFn: () => api.get<{ active: boolean }>("/council/sitzungspause"),
+    queryFn: () => api.get<{ active: boolean }>("/council/session-break"),
     staleTime: 60 * 60 * 1000,
   });
 

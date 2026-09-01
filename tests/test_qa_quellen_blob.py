@@ -24,17 +24,21 @@ from kern.store import Store  # noqa: E402
 
 #: Nachgebaut aus den 113 echten Blobs auf Prod (01.09.2026) — dieselben
 #: Pfade, erfundene Inhalte.
+#: ACHTUNG: Diese Schlüssel sind der ALTE Stand. Ein Suchen-und-Ersetzen darf
+#: sie NIE mitübersetzen — sonst prüft der Test einen Umzug, den es im Fixture
+#: schon gar nicht mehr zu machen gibt, und bleibt grün, ohne etwas zu zeigen.
 BLOB = {
     "sources": [{"id": 1, "title": "Stadionneubau", "ort_name": "Marschweg",
                  "location_matches": [{"name": "Marschwegstadion", "stadtteil": "Innenstadt"}]}],
     "cited": [1],
     "presse": [{"titel": "Rat beschließt", "datum": "2026-08-01", "url": "https://example.org/a"}],
     "debatten": [{"sprecher": "A. Beispiel", "partei": "SPD", "top": "Ö 5",
-                  "auszug": "…", "art": "wortbeitrag"}],
-    "anlagen": [{"label": "Anlage 1", "vorlage_nr": "25/0001", "auszug": "…"}],
+                  "auszug": "…", "art": "wortbeitrag",
+                  "protokoll_url": "https://example.org/p.pdf", "protokoll_seite": 7}],
+    "anlagen": [{"nr": 1, "label": "Anlage 1", "vorlage_nr": "25/0001", "auszug": "…"}],
     "planungen": [{"vorlage_titel": "B-Plan 851", "gremium": "Rat"}],
     "sitzungen": [{"committee": "Rat", "n_beschluesse": 3}],
-    "parteien": [{"partei": "SPD", "haltung": "dafuer"}],
+    "parteien": [{"partei": "SPD", "haltung": "dafuer", "einig": True}],
     "grafik": {"art": "schulden", "series": []},
     "geld": {"facetten": ["plan"]},
     "gelesen": 14, "zeitraum": "2024–2026", "kontext": "Wie teuer ist das Stadion?",
@@ -118,15 +122,26 @@ def test_zweimal_oeffnen_aendert_nichts(tmp_path):
     assert _gelesen(pfad) == erst
 
 
-def test_was_bewusst_stehen_bleibt(tmp_path):
-    """`art`, `top` und `auszug` sitzen eine Ebene tiefer und sind zu
-    allgemein für einen Lauf über den ganzen Baum. Bleiben sie unbemerkt
-    stehen, ist das ein Fund; bleiben sie ABSICHTLICH stehen, gehört es
-    festgehalten."""
+def test_auch_die_felder_der_zeilen_ziehen_um(tmp_path):
+    """Zweiter Lauf, eine Ebene tiefer.
+
+    In #913 blieben `art`, `top` und `auszug` stehen — zu allgemein, hieß es,
+    für einen Lauf über den ganzen Baum. Sie standen damit aber als letzte
+    deutsche FELDER in der OpenAPI-Doku. Die Auszählung aller Schlüsselpfade
+    der 113 echten Prod-Blöcke zeigt, dass jeder dieser Namen dort genau eine
+    Bedeutung hat; deshalb zieht jetzt auch diese Ebene um — unter EIGENER
+    Marke, denn die des Block-Laufs ist auf dev längst gesetzt und hätte
+    diesen Lauf verschluckt."""
     pfad = tmp_path / "ratslotse.sqlite"
     _mit_blob(pfad)
     Store(str(pfad))._conn.close()
     d = _gelesen(pfad)
-    assert d["debates"][0]["top"] == "Ö 5"
-    assert d["debates"][0]["auszug"] == "…"
-    assert d["debates"][0]["art"] == "wortbeitrag"
+    z = d["debates"][0]
+    assert z["agenda_item"] == "Ö 5" and "top" not in z
+    assert z["excerpt"] == "…" and "auszug" not in z
+    assert z["kind"] == "wortbeitrag" and "art" not in z
+    assert d["attachments"][0]["excerpt"] == "…"
+    assert d["parties"][0]["stance"] == "dafuer"
+    assert d["parties"][0]["unanimous"] is True
+    assert z["minutes_page"] == 7 and z["minutes_url"].endswith("p.pdf")
+    assert d["attachments"][0]["number"] == 1

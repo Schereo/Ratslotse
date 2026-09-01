@@ -44,8 +44,8 @@ def _nullbar_zusammenziehen(knoten):
     ``anyOf`` mit einem ``null``-Zweig. Das ist gültiges OpenAPI 3.1 — aber
     ``swift-openapi-generator`` (1.x) lässt solche Eigenschaften einfach WEG,
     still, samt CodingKeys. Gemessen am 30.08.2026: **139 Felder in 55
-    Schemata** fehlten im erzeugten Swift-Code, darunter ``GespraecheListe
-    .einstellung`` und ``AdminJob.age_h``. Eine iOS-App daraus hätte Felder
+    Schemata** fehlten im erzeugten Swift-Code, darunter ``ConversationList
+    .saves_conversations`` und ``AdminJob.age_h``. Eine iOS-App daraus hätte Felder
     verloren, ohne dass irgendwo etwas rot geworden wäre.
 
     Die andere 3.1-Schreibweise — ein ``type``-Array — versteht der Generator.
@@ -78,7 +78,7 @@ def _nullbare_refs_inlinen(spec: dict) -> dict:
 
     Der Swift-Generator lässt auch diese Form weg — und hier wiegt das
     schwerer als bei einem Skalar: Es sind ganze Objekte (etwa
-    ``Merkeintrag.session``). Solange der Nachbar ein offener ``dict`` war,
+    ``BookmarkEntry.session``). Solange der Nachbar ein offener ``dict`` war,
     kam wenigstens ein Container an; sobald er einen NAMEN bekam, verschwand
     das Feld ganz. Ausschreiben löst beides: Das Feld ist da und trägt seine
     Felder. Preis ist eine Kopie im Schema statt eines Verweises.

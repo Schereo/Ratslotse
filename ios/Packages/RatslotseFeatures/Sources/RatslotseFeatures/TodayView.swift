@@ -234,8 +234,8 @@ struct TodayView: View {
         do {
             async let todayRequest: TodayCard = model.api.get("/api/council/heute")
             async let weekRequest: WeekDecision = model.api.get("/api/council/diese-woche")
-            async let previewRequest: WeekPreview = model.api.get("/api/council/wochenvorschau")
-            async let foundRequest: FoundPiece = model.api.get("/api/council/fundstueck")
+            async let previewRequest: WeekPreview = model.api.get("/api/council/week-preview")
+            async let foundRequest: FoundPiece = model.api.get("/api/council/daily-find")
             async let sessionsRequest: SessionPage? = try? await model.api.get(
                 "/api/council/sessions",
                 // Sechs statt drei: Ein Ratstag bringt drei Gremien nacheinander
@@ -247,7 +247,7 @@ struct TodayView: View {
                 "/api/topics/latest-hits", query: [.init(name: "limit", value: "2")]
             )
             async let numberRequest: DashboardWeekNumber? = try? await model.api.get("/api/council/zahl-der-woche")
-            async let pauseRequest: CouncilPause? = try? await model.api.get("/api/council/sitzungspause")
+            async let pauseRequest: CouncilPause? = try? await model.api.get("/api/council/session-break")
             let (newToday, newWeek, newPreview, newFound) = try await (
                 todayRequest, weekRequest, previewRequest, foundRequest
             )

@@ -150,12 +150,12 @@ import Testing
       "answer": "Der Rat hat zugestimmt [42].",
       "created": "2026-08-29T08:15:00",
       "sources": [{"id":42,"title":"Sichere Querung","session_date":"2026-08-28","committee":"Rat","outcome":"accepted"}],
-      "debates": [{"speaker":"Anna Beispiel","party":"SPD","auszug":"Wir stimmen zu."}],
+      "debates": [{"speaker":"Anna Beispiel","party":"SPD","excerpt":"Wir stimmen zu."}],
       "press_releases": [{"title":"Mitteilung","url":"https://www.oldenburg.de/presse"}],
       "attachments": [{"nr":1,"label":"Lageplan","url":"https://buergerinfo.oldenburg.de/getfile.php?id=42"}],
       "parties": [
-        {"party":"SPD","haltung":"dafür","position":"Zustimmung","einig":true},
-        {"party":"CDU","haltung":"dagegen","position":"Ablehnung","einig":false}
+        {"party":"SPD","stance":"dafür","position":"Zustimmung","unanimous":true},
+        {"party":"CDU","stance":"dagegen","position":"Ablehnung","unanimous":false}
       ],
       "chart": {"art":"linie","title":"Kosten","unit":"Mio. €","series":[{"year":2026,"value":2.5}]}
     }
@@ -266,7 +266,7 @@ import Testing
     try await model.setConversationSaving(true)
 
     #expect(model.conversationSavingPreference == 1)
-    #expect(ConversationSettingURLProtocol.lastRequest?.url?.path == "/api/council/gespraeche/einstellung")
+    #expect(ConversationSettingURLProtocol.lastRequest?.url?.path == "/api/council/conversations/setting")
     #expect(ConversationSettingURLProtocol.lastRequest?.httpMethod == "POST")
     let body = try #require(ConversationSettingURLProtocol.lastRequestBody)
     #expect(try JSONDecoder().decode(ConversationSettingRequest.self, from: body).an)

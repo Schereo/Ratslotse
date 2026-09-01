@@ -42,7 +42,7 @@ export type AnlagenHinweis = {
    *  Karte einfach ohne Buchstabe (in diesen Texten steht auch kein Marker). */
   nr?: number | null;
   label: string | null; url: string | null;
-  template_number: string | null; vorlage_titel: string | null; auszug: string;
+  template_number: string | null; template_title: string | null; excerpt: string;
 };
 
 /** Task 16: Wortbeitrag aus einem Sitzungsprotokoll (Rede, Anfrage,
@@ -54,7 +54,7 @@ export type AnlagenHinweis = {
  *  weiß nicht einmal, dass es die Grafik gibt — sie hängt am
  *  Quellen-Ereignis, nicht an der Antwort. */
 export type QaGrafik = {
-  art: string;
+  kind: string;
   title: string;
   unit: string;
   nachkomma: number;
@@ -68,16 +68,16 @@ export type QaGrafik = {
 
 export type DebattenHinweis = {
   speaker: string | null; party: string | null; art: string;
-  top: string | null; auszug: string; committee: string | null; date: string | null;
+  top: string | null; excerpt: string; committee: string | null; date: string | null;
   /** getfile-URL des Protokoll-PDFs — ältere gespeicherte Gespräche kennen
    *  das Feld nicht, dann fehlt schlicht das Icon. */
-  protokoll_url?: string | null;
+  minutes_url?: string | null;
   /** PDF-Seite der Fundstelle (über den Sprecher-Namen verankert) —
    *  null/fehlend = Link aufs ganze PDF, nie eine geratene Seite. */
-  protokoll_seite?: number | null;
+  minutes_page?: number | null;
 };
 
-/** Personen-Badge-Eintrag aus /council/personen-lexikon (Tims Wunsch 12.08.):
+/** Personen-Badge-Eintrag aus /council/people-directory (Tims Wunsch 12.08.):
  *  Ratsmitglieder mit Partei, Verwaltung mit geerntetem Amt; `aktiv` heißt in
  *  den letzten zwölf Monaten in einer Anwesenheitsliste gesehen. */
 export type PersonEintrag = {
@@ -107,7 +107,7 @@ let _lexikonPromise: Promise<PersonEintrag[]> | null = null;
 function usePersonenLexikon(): PersonEintrag[] {
   const [lex, setLex] = useState<PersonEintrag[]>([]);
   useEffect(() => {
-    _lexikonPromise ||= fetch(apiUrl("/council/personen-lexikon"),
+    _lexikonPromise ||= fetch(apiUrl("/council/people-directory"),
       { credentials: "include", headers: authHeaders() })
       .then((r) => (r.ok ? r.json() : { personen: [] }))
       .then((b) => (b?.personen ?? []) as PersonEintrag[])
@@ -429,10 +429,10 @@ export function PersonBadge({ p, zeilenPartei = null }: {
 }
 
 export type ParteiMeinung = {
-  party: string; haltung?: "dafür" | "dagegen" | "offen" | "gewandelt";
-  position: string; einig: boolean; note: string | null;
+  party: string; stance?: "dafür" | "dagegen" | "offen" | "gewandelt";
+  position: string; unanimous: boolean; note: string | null;
   kernaussage: { text: string; speaker: string | null; date: string | null } | null;
-  beitraege: number;
+  contributions: number;
   beitraege_liste?: { speaker: string | null; date: string; art: string | null;
     committee: string | null; text: string }[];
 };
@@ -709,11 +709,11 @@ export function AnlagenBlock({ attachments, ankerPrefix, buchstaben }: {
               )}
               <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />
             </a>
-            {a.vorlage_titel && (
-              <p className="mt-0.5 truncate text-[11px] text-muted-foreground/80">zu: {a.vorlage_titel}</p>
+            {a.template_title && (
+              <p className="mt-0.5 truncate text-[11px] text-muted-foreground/80">zu: {a.template_title}</p>
             )}
-            {a.auszug && (
-              <p className="mt-0.5 text-muted-foreground">{a.auszug}{a.auszug.length >= 220 ? "…" : ""}</p>
+            {a.excerpt && (
+              <p className="mt-0.5 text-muted-foreground">{a.excerpt}{a.excerpt.length >= 220 ? "…" : ""}</p>
             )}
           </li>
           );
@@ -861,7 +861,7 @@ export function DebattenBlock({ debates }: { debates: DebattenHinweis[] }) {
 function DebattenZeile({ d, artLabel }: { d: DebattenHinweis; artLabel: Record<string, string> }) {
   const [offen, setOffen] = useState(false);
   // Ab dieser Länge lohnt der Toggle; kürzere Beiträge stehen einfach ganz da.
-  const lang = d.auszug.length > 260;
+  const lang = d.excerpt.length > 260;
   return (
     <li className="text-[12.5px] leading-snug">
       <p className="flex items-baseline gap-2">
@@ -886,14 +886,14 @@ function DebattenZeile({ d, artLabel }: { d: DebattenHinweis; artLabel: Record<s
             Margins vergrößern nur die Tippfläche, nicht die Optik. Mit
             bekannter Fundstelle springt #page direkt zur Seite (Chrome/
             Firefox/Edge; Safari öffnet dann schlicht das PDF). */}
-        {d.protokoll_url && (
+        {d.minutes_url && (
           <a target="_blank" rel="noopener noreferrer"
-            href={d.protokoll_seite ? `${d.protokoll_url}#page=${d.protokoll_seite}` : d.protokoll_url}
-            title={d.protokoll_seite
-              ? `Sitzungsprotokoll öffnen (PDF, Seite ${d.protokoll_seite})`
+            href={d.minutes_page ? `${d.minutes_url}#page=${d.minutes_page}` : d.minutes_url}
+            title={d.minutes_page
+              ? `Sitzungsprotokoll öffnen (PDF, Seite ${d.minutes_page})`
               : "Sitzungsprotokoll öffnen (PDF)"}
-            aria-label={d.protokoll_seite
-              ? `Sitzungsprotokoll öffnen (PDF, Seite ${d.protokoll_seite})`
+            aria-label={d.minutes_page
+              ? `Sitzungsprotokoll öffnen (PDF, Seite ${d.minutes_page})`
               : "Sitzungsprotokoll öffnen (PDF)"}
             className="-m-1.5 shrink-0 p-1.5 text-muted-foreground/60 transition-colors hover:text-primary">
             <FileDown className="h-3 w-3" aria-hidden />
@@ -902,7 +902,7 @@ function DebattenZeile({ d, artLabel }: { d: DebattenHinweis; artLabel: Record<s
       </p>
       <p className={cn("mt-0.5 whitespace-pre-wrap text-muted-foreground",
         !offen && lang && "line-clamp-4")}>
-        {d.auszug}
+        {d.excerpt}
       </p>
       {lang && (
         <button type="button" onClick={() => setOffen((v) => !v)} aria-expanded={offen}
@@ -1003,24 +1003,24 @@ export function ParteienListe({ parties, ohneBeitraege = [], onFrageStellen }: {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <p className="text-[12.5px] font-bold">{p.party}</p>
-                      {p.haltung && HALTUNG_BADGE[p.haltung] && (
+                      {p.stance && HALTUNG_BADGE[p.stance] && (
                         <span className={cn("rounded-full px-2 py-px text-[10px] font-semibold",
-                          HALTUNG_BADGE[p.haltung].cls)}>
-                          {HALTUNG_BADGE[p.haltung].label}
+                          HALTUNG_BADGE[p.stance].cls)}>
+                          {HALTUNG_BADGE[p.stance].label}
                         </span>
                       )}
                       {/* Ehrlichkeit zur Datenbasis: aus wie vielen Wortbeiträgen
                           die Position verdichtet ist (Tims Befund 10.08.). */}
-                      {p.beitraege > 0 && (
+                      {p.contributions > 0 && (
                         <span className="inline-flex items-center gap-0.5 font-mono text-[10px] text-muted-foreground/70">
-                          {p.beitraege === 1 ? "1 Beitrag" : `${p.beitraege} Beiträge`}
+                          {p.contributions === 1 ? "1 Beitrag" : `${p.contributions} Beiträge`}
                           {aufklappbar && (
                             <ChevronDown aria-hidden
                               className={cn("h-3 w-3 transition-transform", istOffen && "rotate-180")} />
                           )}
                         </span>
                       )}
-                      {!p.einig && (
+                      {!p.unanimous && (
                         <span className="rounded-full bg-amber-100 px-2 py-px text-[10px] font-semibold text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
                           uneinheitlich
                         </span>
@@ -1035,7 +1035,7 @@ export function ParteienListe({ parties, ohneBeitraege = [], onFrageStellen }: {
                       )}
                     </div>
                     <p className="mt-0.5 text-[12.5px] leading-relaxed text-foreground/90">
-                      {p.position}{!p.einig && p.note ? ` — ${p.note}` : ""}
+                      {p.position}{!p.unanimous && p.note ? ` — ${p.note}` : ""}
                     </p>
                     {p.kernaussage && (
                       <p className="mt-1 text-[12px] italic leading-snug text-muted-foreground">

@@ -328,7 +328,7 @@ nachschärfen statt einhängen. Das restliche Eval-Harness beschreibt
   Suchkriterium war er wenig sinnvoll; er wirkt weiter über das Fundstück, die
   Wochenkarte und Tie-Breaks. Der API-Wert `sort=interest` bleibt bestehen,
   damit ältere geteilte Links nicht brechen.
-- **Fundstück des Tages** auf der Übersicht (`GET /council/fundstueck`) sowie
+- **Fundstück des Tages** auf der Übersicht (`GET /council/daily-find`) sowie
   die Karte „Diese Woche im Rat" (`GET /council/diese-woche`), die den
   interessantesten Beschluss der letzten 7 Tage samt `interest_reason`-Satz
   zeigt, wenn es keine persönlichen Treffer gibt.

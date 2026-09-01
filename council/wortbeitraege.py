@@ -110,7 +110,7 @@ def extract_wortbeitraege(raw_text: str, model: str = MODEL) -> list[dict]:
     """Alle Beiträge eines Protokolls, Fenster-übergreifend dedupliziert und
     auf das erwartete Schema geprüft (unbekannte Arten → 'rede')."""
     gesehen: set[tuple] = set()
-    beitraege: list[dict] = []
+    contributions: list[dict] = []
     for part in _fenster(raw_text or ""):
         for r in _ein_fenster(part, model):
             if not isinstance(r, dict):
@@ -138,7 +138,7 @@ def extract_wortbeitraege(raw_text: str, model: str = MODEL) -> list[dict]:
                     value = (schnitt[:leer] if leer > max_len * 0.6 else schnitt).rstrip(" ,;-/")
                 return value or None
 
-            beitraege.append({
+            contributions.append({
                 "kind": art if art in ARTEN else "speech",
                 "top": field("top", 120),
                 "speaker": field("speaker", 80),
@@ -148,7 +148,7 @@ def extract_wortbeitraege(raw_text: str, model: str = MODEL) -> list[dict]:
                 "text": text,
                 "answer": field("answer"),
             })
-    return beitraege
+    return contributions
 
 
 # ---- Seitengenaue Fundstellen (Tims Wunsch 18.08.) -------------------------

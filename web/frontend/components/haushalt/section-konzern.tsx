@@ -141,7 +141,7 @@ export function KonzernAbschnitt({ onBestand }: {
    *  Antwort (H5-02). Erträge, wie im Vergleichsbalken unten. */
   onBestand?: (b: { anteil: number; year: number } | null) => void;
 } = {}) {
-  const { data, loading } = useFetch<KonzernDaten>("/council/haushalt/konzern");
+  const { data, loading } = useFetch<KonzernDaten>("/council/budget/group");
 
   useEffect(() => {
     if (!onBestand || loading) return;

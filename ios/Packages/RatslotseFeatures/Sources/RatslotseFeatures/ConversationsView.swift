@@ -231,7 +231,7 @@ struct ConversationsView: View {
         isLoading = true
         defer { isLoading = false }
         do {
-            let response: JSONValue = try await model.api.get("/api/council/gespraeche")
+            let response: JSONValue = try await model.api.get("/api/council/conversations")
             conversations = response.object?["conversations"]?.array?.compactMap {
                 try? $0.decoded(ConversationSummary.self)
             } ?? []
@@ -243,7 +243,7 @@ struct ConversationsView: View {
         openingID = id
         defer { openingID = nil }
         do {
-            let payload: JSONValue = try await model.api.get("/api/council/gespraeche/\(id)")
+            let payload: JSONValue = try await model.api.get("/api/council/conversations/\(id)")
             onOpen(id, payload)
             dismiss()
         } catch { self.error = error.localizedDescription }
@@ -252,7 +252,7 @@ struct ConversationsView: View {
     private func remove(_ id: Int) {
         Task {
             do {
-                try await model.api.sendVoid("/api/council/gespraeche/\(id)", method: .delete)
+                try await model.api.sendVoid("/api/council/conversations/\(id)", method: .delete)
                 conversations.removeAll { $0.id == id }
                 if id == activeConversationID {
                     onDeletedActive()
@@ -268,7 +268,7 @@ struct ConversationsView: View {
         guard !clean.isEmpty else { return }
         do {
             try await model.api.sendVoid(
-                "/api/council/gespraeche/\(conversation.id)",
+                "/api/council/conversations/\(conversation.id)",
                 method: .patch,
                 body: Body(title: clean)
             )

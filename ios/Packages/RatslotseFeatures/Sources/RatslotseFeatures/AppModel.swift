@@ -272,7 +272,7 @@ public final class AppModel {
         }
 
         let response: Response = try await api.send(
-            "/api/council/gespraeche/einstellung",
+            "/api/council/conversations/setting",
             body: Body(an: enabled)
         )
         conversationSavingPreferenceOverride = response.setting
@@ -472,7 +472,7 @@ public final class AppModel {
                 UIApplication.shared.registerForRemoteNotifications()
             }
             if let pendingPushToken { await registerPushToken(pendingPushToken) }
-            if let current: JSONValue = try? await api.get("/api/council/deep-research/aktuell") {
+            if let current: JSONValue = try? await api.get("/api/council/deep-research/current") {
                 hasRecoverableResearch = current.object?["job"] != .null && current.object?["job"] != nil
             }
             await refreshBadges()
