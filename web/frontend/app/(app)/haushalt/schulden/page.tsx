@@ -208,12 +208,12 @@ function BeschlussStrahl({ vorlagen }: { vorlagen: BuergschaftsVorlage[] }) {
 }
 
 function BuergschaftsBlock({ daten }: { daten: SchuldenDaten | null }) {
-  const b = daten?.buergschaften;
+  const b = daten?.guarantees;
   const series = b?.series ?? [];
   if (!series.length) return null;
 
-  const geld = new Map((b?.geldschulden ?? []).map((z) => [z.year, z.value]));
-  const rueck = new Map((b?.rueckstellung ?? []).map((z) => [z.year, z.value]));
+  const geld = new Map((b?.financial_debt ?? []).map((z) => [z.year, z.value]));
+  const rueck = new Map((b?.provision ?? []).map((z) => [z.year, z.value]));
   const letzter = series[series.length - 1];
   const erster = series[0];
   const gsErst = geld.get(erster.year) ?? null;
@@ -299,7 +299,7 @@ function BuergschaftsBlock({ daten }: { daten: SchuldenDaten | null }) {
           </p>
         ) : null}
         <p className="mt-2 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
-          {b?.abgrenzung}
+          {b?.scope_note}
         </p>
       </div>
 
@@ -352,7 +352,7 @@ function BuergschaftsBlock({ daten }: { daten: SchuldenDaten | null }) {
         {erster.year === letzter.year ? " ein Stichtag." : ` ${series.length} Stichtage.`}
       </p>
 
-      <BeschlussStrahl vorlagen={b?.vorlagen ?? []} />
+      <BeschlussStrahl vorlagen={b?.templates ?? []} />
 
       <Fundstelle h={herkunftVon(daten, letzter.herkunft_id)} />
     </section>
@@ -372,7 +372,7 @@ function BuergschaftsBlock({ daten }: { daten: SchuldenDaten | null }) {
  *
  *  Rendert nichts ohne eingelesenen Tabellenband. */
 function DritteZahlBlock({ daten }: { daten: SchuldenDaten | null }) {
-  const i = daten?.integrierte_schulden;
+  const i = daten?.integrated_debt;
   if (!i?.as_of_date) return null;
   const s = i.as_of_date;
   const series = daten?.series ?? [];
@@ -425,12 +425,12 @@ function DritteZahlBlock({ daten }: { daten: SchuldenDaten | null }) {
       {/* Der Satz, ohne den die 740 Millionen falsch gelesen werden. Er steht
           im Fließtext und nicht im Kleingedruckten — er ist die Aussage. */}
       <p className="max-w-[76ch] text-[12.5px] leading-relaxed text-foreground/90">
-        {i.abgrenzung}
-        {i.anteil_unter_50 != null ? (
+        {i.scope_note}
+        {i.share_below_50 != null ? (
           <>
             {" "}Konkret sind das{" "}
             <strong className="text-foreground">
-              {(i.anteil_unter_50 * 100).toFixed(0)}&nbsp;%
+              {(i.share_below_50 * 100).toFixed(0)}&nbsp;%
             </strong>{" "}
             der Summe.
           </>
@@ -440,7 +440,7 @@ function DritteZahlBlock({ daten }: { daten: SchuldenDaten | null }) {
       <p className="max-w-[76ch] text-[12px] leading-relaxed text-muted-foreground">
         {/* Ohne eigenen Vorspann: Der Satz aus dem Backend beginnt selbst mit
             „Nur ein Stichtag" — ein Label davor sagte dasselbe zweimal. */}
-        {i.keine_reihe}
+        {i.no_series_note}
       </p>
 
       <Fundstelle h={herkunftVon(daten, s.herkunft_id)} />
@@ -569,7 +569,7 @@ export default function SchuldenPage() {
   // Quelle weist keinen Pro-Kopf-Zins aus, und wir dividieren nicht selbst.
   const zinsreihe = useMemo(
     () => (ansicht === "total"
-      ? (data?.zinslast ?? []).map((z) => ({ year: z.year, value: z.expense / 1e6 }))
+      ? (data?.interest_expense ?? []).map((z) => ({ year: z.year, value: z.expense / 1e6 }))
       : undefined),
     [data, ansicht]);
 
@@ -637,7 +637,7 @@ export default function SchuldenPage() {
             die Treppe, maßstäblich zu den Zahlen, und klickt zum Block
             „Warum man drei Zahlen hört". Ohne Tabellenband keine Bühne. */}
         {(() => {
-          const st = data?.integrierte_schulden?.as_of_date;
+          const st = data?.integrated_debt?.as_of_date;
           if (!st) return null;
           const entity = (data?.series ?? []).find((z) => z.year === st.year)?.total ?? null;
           const stufen = [
@@ -719,7 +719,7 @@ export default function SchuldenPage() {
           </div>
           {/* Der Wortlaut kommt aus dem Backend — s. Kopfkommentar. */}
           <p className="max-w-[76ch] rounded-xl bg-muted/60 px-3 py-2.5 text-[13px] leading-relaxed text-foreground/90">
-            <strong>Gezählt wird:</strong> {data.abgrenzung}
+            <strong>Gezählt wird:</strong> {data.scope_note}
           </p>
           {letzter.revised === 1 && (
             <p className="text-[11.5px] leading-relaxed text-muted-foreground">

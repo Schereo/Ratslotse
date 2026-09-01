@@ -33,10 +33,10 @@ export type Feststellung = {
 
 export type PruefberichtDaten = {
   years: number[];
-  legende: Record<string, { name: string; explanation: string | null }>;
-  feststellungen: Feststellung[];
+  legend: Record<string, { name: string; explanation: string | null }>;
+  findings: Feststellung[];
   /** Jahre mit ausgelesenem Jahresabschluss, aber ohne Schlussbericht. */
-  ohne_bericht: number[];
+  without_report: number[];
 };
 
 /** Reihenfolge der Marken auf der Seite: schwerste zuerst.

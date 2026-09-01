@@ -271,7 +271,7 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
   const investGestrichenMio = useMemo(() => {
     const jahrInv = programm?.years.at(-1) ?? null;
     if (jahrInv == null) return 0;
-    const summe = (programm?.massnahmen ?? [])
+    const summe = (programm?.measures ?? [])
       .filter((z) => z.year === jahrInv && vorhabenAus[z.code || z.label])
       .reduce((s, z) => s + z.grand_total, 0);
     return Math.round((summe / 1e6) * 10) / 10;

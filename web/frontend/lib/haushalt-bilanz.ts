@@ -56,8 +56,8 @@ export type BilanzErlaeuterung = {
 
 export type BilanzDaten = {
   years: number[];
-  posten: BilanzPosten[];
-  erlaeuterungen: BilanzErlaeuterung[];
+  items: BilanzPosten[];
+  explanations: BilanzErlaeuterung[];
   herkunft: Record<string, Herkunft>;
 };
 
@@ -109,7 +109,7 @@ export function juengsterStichtag(daten: BilanzDaten | null): Stichtag | null {
 export function as_of_date(daten: BilanzDaten | null, year: number): Stichtag | null {
   if (!daten) return null;
   const posten: Partial<Record<BilanzRolle, BilanzPosten>> = {};
-  for (const p of daten.posten) {
+  for (const p of daten.items) {
     if (p.year === year) posten[p.role] = p;
   }
   const haupt = [...AKTIVA_HAUPT, ...PASSIVA_HAUPT];
@@ -157,7 +157,7 @@ export function explanation(
   daten: BilanzDaten | null, year: number, role: BilanzRolle,
 ): BilanzErlaeuterung | null {
   if (!daten) return null;
-  return daten.erlaeuterungen.find((e) => e.year === year && e.role === role) ?? null;
+  return daten.explanations.find((e) => e.year === year && e.role === role) ?? null;
 }
 
 /** Ist der Schuldensprung dieses Jahrgangs ein Buchungsartefakt?

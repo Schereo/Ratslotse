@@ -192,10 +192,10 @@ function Verlauf({
             {formula.formula}“<Beleg q="indicators" />
           </p>
           <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">
-            {formula.von_bericht === formula.bis_bericht
-              ? `So gedruckt im Rechenschaftsbericht ${formula.von_bericht}.`
-              : `So gedruckt in den Rechenschaftsberichten ${formula.von_bericht} `
-                + `bis ${formula.bis_bericht}.`}
+            {formula.from_report_year === formula.to_report_year
+              ? `So gedruckt im Rechenschaftsbericht ${formula.from_report_year}.`
+              : `So gedruckt in den Rechenschaftsberichten ${formula.from_report_year} `
+                + `bis ${formula.to_report_year}.`}
           </p>
         </div>
       )}

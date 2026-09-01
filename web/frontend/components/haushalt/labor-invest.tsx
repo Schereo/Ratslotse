@@ -66,7 +66,7 @@ export function InvestWerkbank({
 }) {
   const year = programm?.years.at(-1) ?? null;
   const vorhaben = year != null
-    ? (programm?.massnahmen ?? [])
+    ? (programm?.measures ?? [])
         .filter((z) => z.year === year && z.grand_total > 0)
         .sort((a, b) => b.grand_total - a.grand_total)
         .slice(0, ANZAHL)
@@ -91,9 +91,9 @@ export function InvestWerkbank({
 
   const schuldenLetzte = schulden?.series.length
     ? schulden.series[schulden.series.length - 1] : null;
-  const zinsLetzte = schulden?.zinslast.length
-    ? schulden.zinslast[schulden.zinslast.length - 1] : null;
-  const spanne = gezahlteZinsspanne(schulden?.zinslast, schulden?.series ?? undefined);
+  const zinsLetzte = schulden?.interest_expense.length
+    ? schulden.interest_expense[schulden.interest_expense.length - 1] : null;
+  const spanne = gezahlteZinsspanne(schulden?.interest_expense, schulden?.series ?? undefined);
 
   // § 2 der Satzung, aus den Daten statt behauptet: In wie vielen Jahrgängen
   // stand „nicht veranschlagt“ (= 0)?

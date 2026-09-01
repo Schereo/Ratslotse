@@ -48,7 +48,7 @@ export type WegRunde = {
   stationen: WegStation[];
 };
 
-export type WegDaten = { runden: WegRunde[] };
+export type WegDaten = { rounds: WegRunde[] };
 
 export const MONATE = [
   "Januar", "Februar", "März", "April", "Mai", "Juni",

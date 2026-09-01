@@ -278,7 +278,7 @@ function BereichInner() {
     .filter((r) => r.plan != null && r.ist != null);
   const hatPlanIst = planIstZeilen.length > 0;
 
-  const produktZeilen = (produkte?.produkte ?? [])
+  const produktZeilen = (produkte?.products ?? [])
     .filter((p) => p.result != null && p.result < 0)
     .sort((a, b) => (a.result as number) - (b.result as number))
     .slice(0, 6);

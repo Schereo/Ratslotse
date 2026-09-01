@@ -92,7 +92,7 @@ export default function PersonalPage() {
   // immer offen — die Klassen dazu stehen in globals.css (gb-nur-mobil).
   const [gruppenOffen, setGruppenOffen] = useState(false);
   const jahrgaenge = useFetch<StellenplanDaten>("/council/haushalt/stellenplan");
-  const alle = jahrgaenge.data?.jahrgaenge ?? [];
+  const alle = jahrgaenge.data?.editions ?? [];
   const aktJahr = year && alle.includes(year) ? year : alle.at(-1) ?? null;
 
   // Die Einzelposten kommen nur für das gewählte Jahr — rund 190 Zeilen je
@@ -105,7 +105,7 @@ export default function PersonalPage() {
   // und innerhalb eines Teils soll die Schere über die Jahrgänge lesbar
   // sein. Obergrenze ist der größte Wert, den ein Balken zeigen kann.
   const skala = useMemo(() => Math.max(
-    1, ...(daten?.summen ?? [])
+    1, ...(daten?.totals ?? [])
       .filter((z) => z.part === part)
       .flatMap((z) => [z.positions_planned, z.filled])), [daten, part]);
 
@@ -114,7 +114,7 @@ export default function PersonalPage() {
       Der Stellenplan wird geladen …
     </div>;
   }
-  if (!daten || !daten.summen.length || !aktJahr) {
+  if (!daten || !daten.totals.length || !aktJahr) {
     return (
       <div className="rounded-2xl border border-border bg-card p-5 text-sm leading-relaxed text-muted-foreground">
         Für diese Seite ist noch kein Stellenplan eingelesen.{" "}
@@ -131,7 +131,7 @@ export default function PersonalPage() {
   const kern = teilNeu ? gesamt(daten, teilNeu, part) : null;
   const kernLuecke = luecke(kern);
 
-  const detailZeilen = detail.data?.zeilen ?? [];
+  const detailZeilen = detail.data?.rows ?? [];
   const luecken = groessteLuecken(detailZeilen, part);
   const teilGesamt = gesamt(daten, aktJahr, part);
   const teilFehlt = fehlt(daten, aktJahr, part);
