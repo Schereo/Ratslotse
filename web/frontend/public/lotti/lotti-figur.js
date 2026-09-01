@@ -257,7 +257,14 @@ class LottiFigur extends HTMLElement {
    * dagegen am meisten.
    */
   _lebenAnwenden() {
-    const an = !this._regung && !this._ruhig && !this.hasAttribute('ohne-leben');
+    /* Beim BLINZELN läuft die Grundregung weiter: Der Lidschlag bewegt
+       nur die Augen und beißt sich nicht mit Atmen und Wiegen — sie
+       abzuschalten hieße, dass die Figur bei jedem Blinzeln aus der
+       Atemphase auf Neutral springt (der zweite Teil des Flackerns,
+       Tims Befund 01.09.26). Für alles andere gilt weiter: eine
+       Bewegung zur Zeit. */
+    const an = (!this._regung || this._regung.name === 'blinzelt')
+      && !this._ruhig && !this.hasAttribute('ohne-leben');
     this._buehne.classList.toggle('lebt', an);
   }
 
@@ -331,7 +338,15 @@ class LottiFigur extends HTMLElement {
     if (!eintrag) return false;
 
     const starten = () => {
-      this._ueberblenden();
+      /* Die Blende NUR, wenn wirklich etwas springt: mitten aus einer
+         laufenden Regung heraus, oder hinein in eine Schleife (die
+         startet nicht in der Ruhehaltung). Vom Ruhebild in eine einmalige
+         Regung ist der Sprung per Bauregel null — ihr Anfang IST die
+         Ruhehaltung. Und die Blende ist nicht gratis: 140 ms liegen altes
+         und neues Bild übereinander; die deckenden Pixel ändert das
+         nicht, den HALBTRANSPARENTEN Bodenschatten verdoppelt es — er
+         pulsierte bei jedem Blinzeln auf (Tims Befund 01.09.26). */
+      if (this._regung || eintrag.wiederholt) this._ueberblenden();
       this._regung = { name, ...eintrag };
       this._imBild = 0;
       this._richtung = 1;
@@ -419,6 +434,8 @@ class LottiFigur extends HTMLElement {
       this._takten();
       return;
     }
+    // Hier bleibt die Blende: `ruhe()` reißt mitten aus einer Schleife
+    // oder Folge — der Sprung zur Ruhehaltung ist echt.
     this._ueberblenden();
     this._regung = null;
     this._richtung = 1;
@@ -489,7 +506,10 @@ class LottiFigur extends HTMLElement {
 
   _beenden(jetzt) {
     const name = this._regung?.name;
-    this._ueberblenden();
+    /* KEINE Blende: Jede Regung, die hier ankommt, endet per Bauregel in
+       der Ruhehaltung (Rückwärts-Regungen bei Bild 0 sowieso) — der
+       Wechsel aufs Ruhebild ist deckungsgleich, die Blende ließe nur den
+       Schatten aufpulsen. */
     this._regung = null;
     this._richtung = 1;
     this._imBild = 0;
