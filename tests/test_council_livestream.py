@@ -2,8 +2,6 @@
 Schlussformel, Parallel-Transkription (ffmpeg und LLM gemockt)."""
 from __future__ import annotations
 
-import subprocess
-from pathlib import Path
 from unittest import mock
 
 from council import livestream

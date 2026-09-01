@@ -22,7 +22,7 @@ import logging
 import sys
 import tempfile
 import time
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
