@@ -154,9 +154,9 @@ struct CouncilBrowserView: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 7) {
                         FilterChip(label: "Alle", selected: outcome.isEmpty) { outcome = "" }
-                        FilterChip(label: "Angenommen", selected: outcome == "angenommen") { outcome = "angenommen" }
-                        FilterChip(label: "Abgelehnt", selected: outcome == "abgelehnt") { outcome = "abgelehnt" }
-                        FilterChip(label: "Vertagt", selected: outcome == "vertagt") { outcome = "vertagt" }
+                        FilterChip(label: "Angenommen", selected: outcome == "accepted") { outcome = "accepted" }
+                        FilterChip(label: "Abgelehnt", selected: outcome == "rejected") { outcome = "rejected" }
+                        FilterChip(label: "Vertagt", selected: outcome == "postponed") { outcome = "postponed" }
                         if !location.isEmpty {
                             FilterChip(label: "Ort: \(locationName.isEmpty ? location : locationName)", selected: true) {
                                 location = ""
@@ -681,9 +681,9 @@ struct CouncilBrowserView: View {
               "committee": "Rat der Stadt",
               "session_date": "2026-02-09",
               "item_number": "6.5",
-              "outcome": "angenommen",
-              "vote": "mehrheitlich",
-              "gegenstimmen": 20,
+              "outcome": "accepted",
+              "vote": "majority",
+              "no_votes": 20,
               "amount_eur": 12400000,
               "importance": 82,
               "factions": []
@@ -695,8 +695,8 @@ struct CouncilBrowserView: View {
               "committee": "Verkehrsausschuss",
               "session_date": "2026-09-03",
               "item_number": "7",
-              "outcome": "angenommen",
-              "vote": "einstimmig",
+              "outcome": "accepted",
+              "vote": "unanimous",
               "importance": 58,
               "factions": ["Grüne", "SPD"]
             },
@@ -707,7 +707,7 @@ struct CouncilBrowserView: View {
               "committee": "Ausschuss für Stadtplanung und Bauen",
               "session_date": "2026-08-31",
               "item_number": "4",
-              "outcome": "vertagt",
+              "outcome": "postponed",
               "importance": 41,
               "factions": []
             }
@@ -1390,43 +1390,43 @@ struct DecisionDetailView: View {
             "title": "Haushaltssatzung und Haushaltsplan 2026 mit der mittelfristigen Ergebnis- und Finanzplanung",
             "summary": "Der Rat hat den Haushalt für 2026 beschlossen und damit festgelegt, wofür Oldenburg im kommenden Jahr Geld ausgeben darf.",
             "simple_summary": "Der Rat hat den Haushalt für 2026 beschlossen. Darin steht, welche Projekte Oldenburg bezahlen kann und wo die Stadt im kommenden Jahr Schwerpunkte setzt.",
-            "beschluss": "Die Haushaltssatzung und der Haushaltsplan 2026 werden einschließlich der mittelfristigen Ergebnis- und Finanzplanung sowie des Investitionsprogramms beschlossen.",
+            "official_text": "Die Haushaltssatzung und der Haushaltsplan 2026 werden einschließlich der mittelfristigen Ergebnis- und Finanzplanung sowie des Investitionsprogramms beschlossen.",
             "committee": "Rat der Stadt",
             "session_date": "2026-02-09",
-            "outcome": "angenommen",
-            "vote": "mehrheitlich",
-            "gegenstimmen": 20,
-            "enthaltungen": 2,
+            "outcome": "accepted",
+            "vote": "majority",
+            "no_votes": 20,
+            "abstentions": 2,
             "factions": ["SPD", "Grüne"],
             "parties": ["SPD", "Grüne"],
-            "vorlage_nr": "26/0456",
+            "template_number": "26/0456",
             "raw_result": "mehrheitlich bei 20 Gegenstimmen und 2 Enthaltungen",
             "protocol_url": "https://ratslotse.de",
             "policy_field": "finanzen",
             "policy_tags": ["Haushalt", "Investitionen"],
             "amount_eur": 12400000,
             "importance": 82,
-            "abweichung": "stark"
+            "deviation": "strong"
           },
           "attendance": [
-            {"name":"A","party":"SPD","role":"mitglied"},
-            {"name":"B","party":"SPD","role":"mitglied"},
-            {"name":"C","party":"CDU","role":"mitglied"},
-            {"name":"D","party":"Grüne","role":"mitglied"}
+            {"name":"A","party":"SPD","role":"member"},
+            {"name":"B","party":"SPD","role":"member"},
+            {"name":"C","party":"CDU","role":"member"},
+            {"name":"D","party":"Grüne","role":"member"}
           ],
           "entities": [{"slug":"haushalt-2026","name":"Haushalt 2026"}],
           "present_parties": ["SPD", "CDU", "Grüne", "FDP"],
           "ratsinfo_url": "https://ratslotse.de",
           "vorlage_url": "https://ratslotse.de",
           "vorlage": {
-            "vorlage_nr":"26/0456",
+            "template_number":"26/0456",
             "title":"Haushaltssatzung und Haushaltsplan 2026",
-            "art":"Beschlussvorlage",
+            "kind":"Beschlussvorlage",
             "document_url":"https://ratslotse.de",
             "excerpt":"Die Verwaltung legt den Entwurf des Haushaltsplans vor. Er bündelt laufende Aufgaben und geplante Investitionen der Stadt.",
-            "amt":"Amt für Finanzen",
-            "klima_check":"Mehrere Investitionen betreffen energetische Sanierungen und klimafreundliche Mobilität.",
-            "finanz_check":"Die vorgesehenen Investitionen sind in der mittelfristigen Finanzplanung berücksichtigt."
+            "office":"Amt für Finanzen",
+            "climate_impact":"Mehrere Investitionen betreffen energetische Sanierungen und klimafreundliche Mobilität.",
+            "financial_impact":"Die vorgesehenen Investitionen sind in der mittelfristigen Finanzplanung berücksichtigt."
           },
           "anlagen": [
             {"document_id":77,"label":"Haushaltsplan 2026 – Gesamtfassung","url":"https://ratslotse.de","is_antrag":0,"antragsteller":[],"status":"ok"},
@@ -1434,8 +1434,8 @@ struct DecisionDetailView: View {
           ],
           "importance_breakdown": {"score":82,"impact_reason":"Der Beschluss betrifft nahezu alle Aufgaben der Stadt und legt den finanziellen Rahmen für das ganze Jahr fest."},
           "beratungsfolge": [
-            {"datum":"2026-01-21","gremium":"Finanzen und Beteiligungen","top":"4","ergebnis":"empfohlen","ksinr":87,"future":false},
-            {"datum":"2026-02-09","gremium":"Rat der Stadt","top":"6.5","ergebnis":"angenommen","ksinr":88,"future":false}
+            {"date":"2026-01-21","committee":"Finanzen und Beteiligungen","top":"4","result":"empfohlen","ksinr":87,"future":false},
+            {"date":"2026-02-09","committee":"Rat der Stadt","top":"6.5","result":"angenommen","ksinr":88,"future":false}
           ],
           "follow":{"kvonr":901,"following":false},
           "similar": [],
@@ -1833,19 +1833,19 @@ private struct DecisionDetailOutcome: View {
 
     private var label: String {
         switch outcome {
-        case "angenommen": "Angenommen"
-        case "abgelehnt": "Abgelehnt"
-        case "vertagt": "Vertagt"
-        case "zur_kenntnis": "Zur Kenntnis"
+        case "accepted": "Angenommen"
+        case "rejected": "Abgelehnt"
+        case "postponed": "Vertagt"
+        case "noted": "Zur Kenntnis"
         default: outcome.replacingOccurrences(of: "_", with: " ").capitalized
         }
     }
 
     private var color: Color {
         switch outcome {
-        case "angenommen": RatsColor.success
-        case "abgelehnt": RatsColor.danger
-        case "vertagt": RatsColor.warning
+        case "accepted": RatsColor.success
+        case "rejected": RatsColor.danger
+        case "postponed": RatsColor.warning
         default: RatsColor.primary
         }
     }
@@ -1942,7 +1942,7 @@ private struct DecisionGlanceCard: View {
                 DecisionGlanceDivider()
                 Text("ABSTIMMUNG").font(RatsFont.mono(9.5)).foregroundStyle(RatsColor.muted)
                 if let vote = decision.vote {
-                    Text(vote.capitalized)
+                    Text(voteLabel(vote).capitalized)
                         .font(RatsFont.body(16, weight: .bold))
                         .foregroundStyle(RatsColor.text)
                         .padding(.top, 3)
@@ -1967,7 +1967,7 @@ private struct DecisionGlanceCard: View {
                     .padding(.top, 5)
             }
 
-            if decision.deviation == "stark" {
+            if decision.deviation == "strong" {
                 DecisionGlanceDivider()
                 Label("Vom Vorschlag deutlich abgewichen", systemImage: "arrow.triangle.branch")
                     .font(RatsFont.body(12, weight: .semibold))
@@ -2156,7 +2156,7 @@ private struct DecisionAttendanceCard: View {
     }
 
     private var partyCounts: [(party: String, count: Int)] {
-        let excluded = Set(["verwaltung", "protokoll", "gast"])
+        let excluded = Set(["administration", "minutes", "guest"])
         let counts = attendance.reduce(into: [String: Int]()) { result, attendee in
             guard !excluded.contains(attendee.role?.lowercased() ?? ""),
                   let party = attendee.party, !party.isEmpty else { return }
@@ -2768,7 +2768,7 @@ struct SavedCouncilView: View {
                 "simple_summary": "Der Rat schafft die Grundlage für schnellere und verlässlichere Busverbindungen.",
                 "committee": "Rat",
                 "session_date": "2026-08-26",
-                "outcome": "angenommen",
+                "outcome": "accepted",
                 "item_number": "Ö 10"
               }
             },
@@ -3030,14 +3030,14 @@ private struct SessionDetailView: View {
             "changed_at": "2026-08-30T12:15:00+02:00",
             "satz": "Ein TOP wurde ergänzt und eine Anlage aktualisiert.",
             "zeilen": [
-              {"art":"neu","label":"Ö 7","titel":"Sichere Querung an der Cloppenburger Straße","nichtoeffentlich":false,"detail":"Neu auf die Tagesordnung gesetzt"},
-              {"art":"anlagen","label":"Ö 4","titel":"Radverkehrskonzept für Oldenburg","nichtoeffentlich":false,"detail":"Eine Anlage hinzugefügt"}
+              {"art":"new","label":"Ö 7","title":"Sichere Querung an der Cloppenburger Straße","nichtoeffentlich":false,"detail":"Neu auf die Tagesordnung gesetzt"},
+              {"art":"anlagen","label":"Ö 4","title":"Radverkehrskonzept für Oldenburg","nichtoeffentlich":false,"detail":"Eine Anlage hinzugefügt"}
             ]
           }, {
             "changed_at": "2026-08-28T09:30:00+02:00",
             "satz": "Ein Punkt wurde entfernt.",
             "zeilen": [
-              {"art":"entfernt","label":"Ö 3","titel":"Bericht der Verwaltung","nichtoeffentlich":false,"detail":null}
+              {"art":"removed","label":"Ö 3","title":"Bericht der Verwaltung","nichtoeffentlich":false,"detail":null}
             ]
           }]
         }
@@ -3184,13 +3184,13 @@ private struct AgendaChangeLineRow: View {
         .accessibilityElement(children: .combine)
     }
 
-    private var isRemoved: Bool { line.kind == "entfernt" }
+    private var isRemoved: Bool { line.kind == "removed" }
 
     private var accent: Color {
         switch line.kind {
-        case "neu": RatsColor.success
-        case "entfernt": RatsColor.danger
-        case "geaendert", "verschoben", "vorlage", "anlagen": RatsColor.warning
+        case "new": RatsColor.success
+        case "removed": RatsColor.danger
+        case "changed", "moved", "template", "attachments": RatsColor.warning
         default: RatsColor.border
         }
     }

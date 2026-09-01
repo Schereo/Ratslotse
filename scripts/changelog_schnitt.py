@@ -81,12 +81,12 @@ class FragmentFehler(ValueError):
 @dataclass(frozen=True)
 class Fragment:
     pfad: Path
-    kategorie: str  # Kürzel, immer ASCII (siehe KATEGORIEN)
+    category: str  # Kürzel, immer ASCII (siehe KATEGORIEN)
     text: str       # einzeiliger Fließtext, ohne PR-Nummer
 
     @property
-    def ueberschrift(self) -> str:
-        return KATEGORIEN[self.kategorie]
+    def heading(self) -> str:
+        return KATEGORIEN[self.category]
 
 
 @dataclass
@@ -119,17 +119,17 @@ def lies_fragment(pfad: Path) -> Fragment:
     kopf, rumpf = treffer.group(1), treffer.group(2)
 
     werte = {}
-    for zeile in kopf.splitlines():
-        if not zeile.strip():
+    for row in kopf.splitlines():
+        if not row.strip():
             continue
-        paar = SCHLUESSEL.match(zeile)
+        paar = SCHLUESSEL.match(row)
         if not paar:
-            raise FragmentFehler(f"{pfad.name}: '{zeile.strip()}' ist kein 'schluessel: wert'")
+            raise FragmentFehler(f"{pfad.name}: '{row.strip()}' ist kein 'key: value'")
         werte[paar.group(1).lower()] = paar.group(2)
 
     roh_kategorie = werte.get("kategorie", "").strip().lower()
-    kategorie = ALIASE.get(roh_kategorie, roh_kategorie)
-    if kategorie not in KATEGORIEN:
+    category = ALIASE.get(roh_kategorie, roh_kategorie)
+    if category not in KATEGORIEN:
         erlaubt = ", ".join(KATEGORIEN)
         raise FragmentFehler(
             f"{pfad.name}: kategorie '{werte.get('kategorie', '')}' unbekannt (erlaubt: {erlaubt})"
@@ -139,7 +139,7 @@ def lies_fragment(pfad: Path) -> Fragment:
     if not text:
         raise FragmentFehler(f"{pfad.name}: kein Text unter dem Frontmatter")
 
-    return Fragment(pfad=pfad, kategorie=kategorie, text=text)
+    return Fragment(pfad=pfad, category=category, text=text)
 
 
 def sammle_fragmente(verzeichnis: Path) -> list[Fragment]:
@@ -162,13 +162,13 @@ def _git_betreffe(pfad: Path, wurzel: Path) -> list[str]:
     Fragment noch ungetrackt ist), fallen wir auf alle Commits der Datei zurück.
     """
     def lauf(zusatz: list[str]) -> list[str]:
-        ergebnis = subprocess.run(
+        result = subprocess.run(
             ["git", "log", "--reverse", "--format=%s", *zusatz, "--", str(pfad)],
             cwd=wurzel, capture_output=True, text=True,
         )
-        if ergebnis.returncode != 0:
+        if result.returncode != 0:
             return []
-        return [z for z in ergebnis.stdout.splitlines() if z.strip()]
+        return [z for z in result.stdout.splitlines() if z.strip()]
 
     return lauf(["--diff-filter=A"]) or lauf([])
 
@@ -191,19 +191,19 @@ def eintrag(fragment: Fragment, nummer: int | None) -> list[str]:
     )
 
 
-def _abschnitt_einfuegen(block: list[str], ueberschrift: str, eintraege: list[str]) -> list[str]:
+def _abschnitt_einfuegen(block: list[str], heading: str, eintraege: list[str]) -> list[str]:
     """Einträge ans Ende des passenden ``### …``-Abschnitts hängen.
 
     Fehlt der Abschnitt, entsteht er am Blockende. Alles Vorhandene bleibt
     wortgetreu stehen — auch auskommentierte Entwürfe, die eine Neuformatierung
     zerlegen würde.
     """
-    start = next((i for i, z in enumerate(block) if z.strip() == f"### {ueberschrift}"), None)
+    start = next((i for i, z in enumerate(block) if z.strip() == f"### {heading}"), None)
     if start is None:
         neu = list(block)
         while neu and not neu[-1].strip():
             neu.pop()
-        return neu + ["", f"### {ueberschrift}"] + eintraege
+        return neu + ["", f"### {heading}"] + eintraege
 
     ende = next(
         (i for i in range(start + 1, len(block)) if block[i].startswith("### ")),
@@ -224,8 +224,8 @@ def _vergleichslinks(zeilen: list[str], version: str) -> list[str]:
     Warnung — der Schnitt selbst darf daran nicht scheitern.
     """
     muster = re.compile(r"^\[Unreleased\]:\s*(\S*/compare/)v(\S+?)\.\.\.(\S+)\s*$")
-    for i, zeile in enumerate(zeilen):
-        treffer = muster.match(zeile)
+    for i, row in enumerate(zeilen):
+        treffer = muster.match(row)
         if not treffer:
             continue
         basis, vorher, ziel = treffer.groups()
@@ -243,7 +243,7 @@ def _vergleichslinks(zeilen: list[str], version: str) -> list[str]:
 
 
 def einsetzen(changelog: str, eintraege_je_ueberschrift: dict[str, list[str]],
-              version: str, datum: str) -> str:
+              version: str, date: str) -> str:
     """Den ``[Unreleased]``-Block zur Version machen und Fragmente einsortieren."""
     zeilen = changelog.split("\n")
     start = next((i for i, z in enumerate(zeilen) if z.startswith("## [Unreleased]")), None)
@@ -258,9 +258,9 @@ def einsetzen(changelog: str, eintraege_je_ueberschrift: dict[str, list[str]],
     # Zeile landete jedes Fragment so oft im Changelog, wie seine Überschrift
     # dort vorkommt. Einsortiert wird in den **ersten** passenden Abschnitt.
     vorhandene = list(dict.fromkeys(z.strip()[4:] for z in block if z.startswith("### ")))
-    for ueberschrift in vorhandene + [u for u in REIHENFOLGE if u not in vorhandene]:
-        if eintraege_je_ueberschrift.get(ueberschrift):
-            block = _abschnitt_einfuegen(block, ueberschrift, eintraege_je_ueberschrift[ueberschrift])
+    for heading in vorhandene + [u for u in REIHENFOLGE if u not in vorhandene]:
+        if eintraege_je_ueberschrift.get(heading):
+            block = _abschnitt_einfuegen(block, heading, eintraege_je_ueberschrift[heading])
 
     while block and not block[-1].strip():
         block.pop()
@@ -269,7 +269,7 @@ def einsetzen(changelog: str, eintraege_je_ueberschrift: dict[str, list[str]],
 
     neu = (
         zeilen[:start]
-        + ["## [Unreleased]", "", f"## [{version}] – {datum}"]
+        + ["## [Unreleased]", "", f"## [{version}] – {date}"]
         + block
         + [""]
         + zeilen[ende:]
@@ -277,14 +277,14 @@ def einsetzen(changelog: str, eintraege_je_ueberschrift: dict[str, list[str]],
     return "\n".join(_vergleichslinks(neu, version))
 
 
-def schnitt(version: str, datum: str | None = None, wurzel: Path = WURZEL,
+def schnitt(version: str, tag_iso: str | None = None, wurzel: Path = WURZEL,
             trocken: bool = False, nummern=None) -> Ergebnis:
     """Den Versionsschnitt ausführen (bzw. bei ``trocken`` nur berechnen).
 
     ``nummern`` ist die Auflösung Fragment → PR-Nummer; per Default die
     Git-Historie. Die Tests reichen hier eine Attrappe herein.
     """
-    datum = datum or date.today().isoformat()
+    tag_iso = tag_iso or date.today().isoformat()
     finder = nummern or (lambda pfad: pr_nummer(pfad, wurzel))
 
     fragmente = sammle_fragmente(wurzel / "changelog.d")
@@ -296,10 +296,10 @@ def schnitt(version: str, datum: str | None = None, wurzel: Path = WURZEL,
             ohne_nummer.append(fragment.pfad)
             print(f"  ! {fragment.pfad.name}: keine PR-Nummer gefunden — Eintrag ohne Nummer.",
                   file=sys.stderr)
-        eintraege.setdefault(fragment.ueberschrift, []).extend(eintrag(fragment, nummer))
+        eintraege.setdefault(fragment.heading, []).extend(eintrag(fragment, nummer))
 
     pfad = wurzel / "CHANGELOG.md"
-    text = einsetzen(pfad.read_text(encoding="utf-8"), eintraege, version, datum)
+    text = einsetzen(pfad.read_text(encoding="utf-8"), eintraege, version, tag_iso)
 
     if trocken:
         return Ergebnis(text=text, fragmente=fragmente, ohne_nummer=ohne_nummer)
@@ -313,7 +313,7 @@ def schnitt(version: str, datum: str | None = None, wurzel: Path = WURZEL,
 def main() -> int:
     p = argparse.ArgumentParser(description="Changelog-Fragmente zur Version zusammenfassen")
     p.add_argument("version", nargs="?", help="neue Version, z. B. 1.13.0")
-    p.add_argument("--datum", help="Datum des Schnitts (Default: heute)")
+    p.add_argument("--date", help="Datum des Schnitts (Default: heute)")
     p.add_argument("--trocken", action="store_true", help="Ergebnis zeigen, nichts schreiben")
     p.add_argument("--pruefen", action="store_true",
                    help="nur prüfen, ob alle Fragmente wohlgeformt sind")
@@ -334,7 +334,7 @@ def main() -> int:
         p.error(f"'{args.version}' sieht nicht wie eine Version aus (x.y.z)")
 
     try:
-        ergebnis = schnitt(args.version, args.datum, trocken=args.trocken)
+        result = schnitt(args.version, args.date, trocken=args.trocken)
     except (FragmentFehler, ValueError) as fehler:
         print(f"FEHLER: {fehler}", file=sys.stderr)
         return 1
@@ -342,12 +342,12 @@ def main() -> int:
     if args.trocken:
         # Vorspann, das leere [Unreleased] und der frisch geschnittene Block —
         # die 900 Zeilen Historie darunter interessieren beim Probelauf nicht.
-        teile = ergebnis.text.split("\n## [")
+        teile = result.text.split("\n## [")
         print("\n## [".join(teile[:3]))
-        print(f"\n— Probelauf: {len(ergebnis.fragmente)} Fragment(e), nichts geschrieben.",
+        print(f"\n— Probelauf: {len(result.fragmente)} Fragment(e), nichts geschrieben.",
               file=sys.stderr)
     else:
-        print(f"{len(ergebnis.fragmente)} Fragment(e) in Version {args.version} übernommen "
+        print(f"{len(result.fragmente)} Fragment(e) in Version {args.version} übernommen "
               f"und gelöscht. Jetzt: Tag v{args.version} setzen und pushen.")
     return 0
 

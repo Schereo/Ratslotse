@@ -139,12 +139,12 @@ def test_der_sammelbericht_traegt_seine_meldeschwelle_nicht_als_betrag():
     Die ältere Fassung schrieb „unter 50.000 EUR", die neuere „bis zu
     50.000 Euro" — nur die erste fiel unter die Fundort-Regel."""
     for grenzwort in ("unter", "bis zu"):
-        titel = (f"Über- und außerplanmäßige Auszahlungen, Aufwendungen und "
+        title = (f"Über- und außerplanmäßige Auszahlungen, Aufwendungen und "
                  f"Verpflichtungsermächtigungen {grenzwort} 50.000 Euro in der "
                  f"Zeit vom 01.01.2025 bis 30.06.2025")
-        assert ist_sammelbericht(titel), grenzwort
-        assert largest_amount(f"{titel}. Der Bericht wird zur Kenntnis genommen.",
-                              titel) is None, grenzwort
+        assert ist_sammelbericht(title), grenzwort
+        assert largest_amount(f"{title}. Der Bericht wird zur Kenntnis genommen.",
+                              title) is None, grenzwort
 
 
 def test_bis_zu_allein_macht_noch_keine_schwelle():
@@ -218,10 +218,10 @@ def test_die_zuwendungsannahme_behaelt_ihren_betrag():
     Kleine Beträge sind nicht automatisch Stückpreise."""
     assert largest_amount(
         "Die Stadt Oldenburg nimmt die angebotenen Zuwendungen in Höhe von "
-        "insgesamt 60,00 EUR laut anliegender Liste an.") == 60
+        "total 60,00 EUR laut anliegender Liste an.") == 60
     assert largest_amount(
         "Die Stadt Oldenburg nimmt die angebotenen Zuwendungen in Höhe von "
-        "insgesamt 140.664,24 EUR laut anliegender Liste an.") == 140_664.24
+        "total 140.664,24 EUR laut anliegender Liste an.") == 140_664.24
 
 
 def test_ein_stueckpreis_neben_einem_volumen_kostet_das_volumen_nicht():

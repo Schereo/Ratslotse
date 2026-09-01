@@ -96,13 +96,13 @@ def dringlichkeits_boden(item_number: str | None) -> int | None:
 def _batch_text(decisions: list[dict]) -> str:
     lines: list[str] = []
     for d in decisions:
-        text = (d.get("beschluss") or d.get("summary") or "").strip().replace("\n", " ")
+        text = (d.get("official_text") or d.get("summary") or "").strip().replace("\n", " ")
         amount = d.get("amount_eur")
         signals = (
             f"Art {d.get('kind') or 'decision'} · Ergebnis {d.get('outcome') or '?'} · "
             f"Gremium {d.get('committee') or '?'} · "
             f"Betrag {f'{amount:,.0f} €'.replace(',', '.') if amount else 'keiner genannt'} · "
-            f"Beschlusstext {len(d.get('beschluss') or '')} Zeichen"
+            f"Beschlusstext {len(d.get('official_text') or '')} Zeichen"
         )
         lines.append(
             f"id {d['id']}: {(d.get('title') or '').strip()}\n"
@@ -147,20 +147,20 @@ def _agenda_batch_text(items: list[dict]) -> str:
         # Modell komplett, obwohl sie in der Vorlage steht.
         if it.get("art"):
             signals.append(f"Vorlagenart {it['art']}")
-        if it.get("antragsteller"):
-            signals.append(f"Antrag von {it['antragsteller']}")
+        if it.get("applicants"):
+            signals.append(f"Antrag von {it['applicants']}")
         if it.get("stationen"):
             signals.append(f"{it['stationen']} Stationen in der Beratungsfolge")
-        if it.get("amt"):
-            signals.append(f"Federführung {it['amt']}")
+        if it.get("office"):
+            signals.append(f"Federführung {it['office']}")
         teile = [f"id {it['id']}: {(it.get('title') or '').strip()}",
                  "  Signale: " + " · ".join(signals)]
-        if it.get("beschlussvorschlag"):
+        if it.get("proposed_decision"):
             teile.append("  Soll beschlossen werden: "
-                         + " ".join(str(it["beschlussvorschlag"]).split())[:500])
-        if it.get("finanz_check"):
+                         + " ".join(str(it["proposed_decision"]).split())[:500])
+        if it.get("financial_impact"):
             teile.append("  Kosten laut Vorlage: "
-                         + " ".join(str(it["finanz_check"]).split())[:280])
+                         + " ".join(str(it["financial_impact"]).split())[:280])
         # Der Sachverhalt aus der Vorlage schlägt die Kurzfassung — nicht
         # umgekehrt. Die Kurzfassung entsteht allein aus dem TITEL („Du kennst
         # nur den Titel des Punktes" steht wörtlich in ihrem Prompt), das
@@ -244,7 +244,7 @@ def rate_agenda_batch(items: list[dict], _tiefe: int = 0) -> list[tuple[int, int
         except (TypeError, ValueError):
             continue
         if iid in valid_ids and 0 <= score <= 100:
-            warum = str(r.get("warum") or r.get("grund") or "").strip()
+            warum = str(r.get("warum") or r.get("reason") or "").strip()
             deckel = _deckel_je_id.get(iid)
             if deckel is not None and score > deckel:
                 score = deckel
@@ -294,13 +294,13 @@ def rate_batch(decisions: list[dict], _tiefe: int = 0) -> list[tuple[int, int, s
         except (TypeError, ValueError):
             continue
         if did in valid_ids and 0 <= score <= 100:
-            grund = str(r.get("grund") or "").strip()
+            reason = str(r.get("reason") or "").strip()
             deckel = deckel_je_id.get(did)
             if deckel is not None and score > deckel:
                 score = deckel
-                grund = ("Formsache: Die Straße wird nur amtlich gewidmet oder "
+                reason = ("Formsache: Die Straße wird nur amtlich gewidmet oder "
                          "eingezogen — für den Alltag ändert sich nichts.")
-            out.append((did, score, grund[:300]))
+            out.append((did, score, reason[:300]))
     fehlend = valid_ids - {did for did, _s, _g in out}
     if fehlend:
         out += _nachgefasst(rate_batch,

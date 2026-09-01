@@ -4,7 +4,7 @@
 //
 // Vier Diagramme des Haushalts-Bereichs trugen dieselbe Messung wörtlich im
 // Bauch (`gebaut-balken`, `schulden-kurve`, `ist-kurve` byte-gleich,
-// `finanzausgleich-daempfer` bis auf die Mindestbreite). Sie erklärten sich
+// `fiscal-equalization-daempfer` bis auf die Mindestbreite). Sie erklärten sich
 // dabei gegenseitig in Kommentaren — „dieselbe Messfalle wie in
 // schulden-kurve.tsx", „siehe Zeitreihe" —, was der beste Beleg dafür ist,
 // dass es eine Sache war und keine vier.

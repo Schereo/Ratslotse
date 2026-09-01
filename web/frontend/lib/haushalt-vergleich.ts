@@ -18,7 +18,7 @@ import type { Herkunft } from "@/lib/herkunft";
 export type { Herkunft };
 
 export type VergleichStadt = {
-  schluessel: string;
+  key: string;
   name: string;
   ist_oldenburg: boolean;
   /** Unter 100.000 Einwohnern rechnet das NFAG die Steuerkraftmesszahl mit
@@ -27,32 +27,32 @@ export type VergleichStadt = {
 };
 
 export type VergleichWert = {
-  reihe: "steuerkraft" | "realsteuern";
-  jahr: number;
-  schluessel: string;
-  stadt: string;
-  kennzahl: string;
-  wert: number;
-  einheit: string;
+  series: "tax_capacity" | "real_taxes";
+  year: number;
+  key: string;
+  city: string;
+  indicator: string;
+  value: number;
+  unit: string;
   herkunft_id: number | null;
 };
 
 /** Die Ratsvorlage, mit der die Stadt den Vergleich selbst entwertet hat. */
 export type VergleichBeleg = {
-  vorlage_nr: string;
+  template_number: string;
   kvonr: number;
   vorlage_url: string;
   /** Der Eintrag in unserem eigenen Bestand — der Ausschuss hat den Bericht
    *  zur Kenntnis genommen. `null`, wenn der Bestand ihn (noch) nicht kennt. */
-  beschluss_id: number | null;
-  titel: string | null;
-  anlagen: { document_id: number; label: string | null; url: string | null; is_antrag: number }[];
+  decision_id: number | null;
+  title: string | null;
+  anlagen: { document_id: number; label: string | null; url: string | null; is_motion: number }[];
 };
 
 export type VergleichDaten = {
   staedte: VergleichStadt[];
   werte: VergleichWert[];
-  jahre: { steuerkraft?: number[]; realsteuern?: number[] };
+  years: { tax_capacity?: number[]; real_taxes?: number[] };
   beleg: VergleichBeleg;
   herkunft: Record<string, Herkunft>;
 };
@@ -67,14 +67,14 @@ export function herkunftVon(daten: VergleichDaten,
  *  Fehlen ist der Normalfall und kein Fehler: Eine Stadt, deren Rechenprobe
  *  nicht aufging, steht gar nicht im Bestand (`council/staedtevergleich.py`).
  *  Die Oberfläche zeigt dann eine Lücke, keine geschätzte Zahl. */
-export function kennzahl(
-  daten: VergleichDaten, reihe: "steuerkraft" | "realsteuern",
-  name: string, jahr: number,
+export function indicator(
+  daten: VergleichDaten, series: "tax_capacity" | "real_taxes",
+  name: string, year: number,
 ): Map<string, VergleichWert> {
   const aus = new Map<string, VergleichWert>();
   for (const w of daten.werte) {
-    if (w.reihe === reihe && w.kennzahl === name && w.jahr === jahr) {
-      aus.set(w.schluessel, w);
+    if (w.series === series && w.indicator === name && w.year === year) {
+      aus.set(w.key, w);
     }
   }
   return aus;
@@ -82,15 +82,15 @@ export function kennzahl(
 
 /** Das jüngste Jahr einer Reihe, für das überhaupt etwas vorliegt. */
 export function juengstesJahr(daten: VergleichDaten,
-                              reihe: "steuerkraft" | "realsteuern"): number | null {
-  const jahre = daten.jahre[reihe] ?? [];
-  return jahre.length ? jahre[jahre.length - 1] : null;
+                              series: "tax_capacity" | "real_taxes"): number | null {
+  const years = daten.years[series] ?? [];
+  return years.length ? years[years.length - 1] : null;
 }
 
 export type Balken = {
-  schluessel: string;
+  key: string;
   name: string;
-  wert: number;
+  value: number;
   ist_oldenburg: boolean;
   unter_100k: boolean;
 };
@@ -102,37 +102,37 @@ export type Balken = {
  *  auf der Seite dazugeschrieben, dass geteilt wurde — dieselbe Regel wie bei
  *  `LottiVergleich`. Gespeichert wird der Wert bewusst nicht, sonst ließe
  *  sich später nicht mehr unterscheiden, was amtlich ist und was gerechnet. */
-export function steuerkraftJeEinwohner(daten: VergleichDaten, jahr: number): Balken[] {
-  const messzahl = kennzahl(daten, "steuerkraft", "steuerkraftmesszahl", jahr);
-  const einwohner = kennzahl(daten, "steuerkraft", "einwohner", jahr);
+export function steuerkraftJeEinwohner(daten: VergleichDaten, year: number): Balken[] {
+  const tax_index = indicator(daten, "tax_capacity", "steuerkraftmesszahl", year);
+  const population = indicator(daten, "tax_capacity", "population", year);
   const aus: Balken[] = [];
   for (const s of daten.staedte) {
-    const m = messzahl.get(s.schluessel);
-    const e = einwohner.get(s.schluessel);
-    if (!m || !e || !e.wert) continue;
+    const m = tax_index.get(s.key);
+    const e = population.get(s.key);
+    if (!m || !e || !e.value) continue;
     aus.push({
-      schluessel: s.schluessel, name: s.name,
-      wert: (m.wert * 1000) / e.wert,
+      key: s.key, name: s.name,
+      value: (m.value * 1000) / e.value,
       ist_oldenburg: s.ist_oldenburg, unter_100k: s.unter_100k,
     });
   }
-  return aus.sort((a, b) => b.wert - a.wert);
+  return aus.sort((a, b) => b.value - a.value);
 }
 
 /** Eine gespeicherte Pro-Kopf- oder Prozent-Kennzahl als Balkenliste. */
-export function balken(daten: VergleichDaten, reihe: "steuerkraft" | "realsteuern",
-                       name: string, jahr: number): Balken[] {
-  const werte = kennzahl(daten, reihe, name, jahr);
+export function balken(daten: VergleichDaten, series: "tax_capacity" | "real_taxes",
+                       name: string, year: number): Balken[] {
+  const werte = indicator(daten, series, name, year);
   const aus: Balken[] = [];
   for (const s of daten.staedte) {
-    const w = werte.get(s.schluessel);
+    const w = werte.get(s.key);
     if (!w) continue;
     aus.push({
-      schluessel: s.schluessel, name: s.name, wert: w.wert,
+      key: s.key, name: s.name, value: w.value,
       ist_oldenburg: s.ist_oldenburg, unter_100k: s.unter_100k,
     });
   }
-  return aus.sort((a, b) => b.wert - a.wert);
+  return aus.sort((a, b) => b.value - a.value);
 }
 
 /** Oldenburgs Platz in einer Balkenliste, 1-basiert. */
@@ -142,21 +142,21 @@ export function platzVonOldenburg(zeilen: Balken[]): number | null {
 }
 
 /** Eine Zeitreihe je Stadt — für die Steuereinnahmekraft über drei Jahre. */
-export function reihe(daten: VergleichDaten, name: string,
-                      schluessel: string): { jahr: number; wert: number }[] {
+export function series(daten: VergleichDaten, name: string,
+                      key: string): { year: number; value: number }[] {
   return daten.werte
-    .filter((w) => w.kennzahl === name && w.schluessel === schluessel)
-    .map((w) => ({ jahr: w.jahr, wert: w.wert }))
-    .sort((a, b) => a.jahr - b.jahr);
+    .filter((w) => w.indicator === name && w.key === key)
+    .map((w) => ({ year: w.year, value: w.value }))
+    .sort((a, b) => a.year - b.year);
 }
 
 /** Wie sich ein Wert über die Reihe verändert hat — in Prozent, gerundet.
  *  `null`, wenn Anfang oder Ende fehlen; eine halbe Reihe ergibt keine
  *  Veränderung, sondern eine Lücke. */
-export function veraenderung(punkte: { jahr: number; wert: number }[]): number | null {
+export function change(punkte: { year: number; value: number }[]): number | null {
   if (punkte.length < 2) return null;
-  const erst = punkte[0].wert;
-  const letzt = punkte[punkte.length - 1].wert;
+  const erst = punkte[0].value;
+  const letzt = punkte[punkte.length - 1].value;
   if (!erst) return null;
   return Math.round(((letzt - erst) / erst) * 100);
 }
@@ -167,9 +167,9 @@ export function veraenderung(punkte: { jahr: number; wert: number }[]): number |
  *  entscheidet ihr Aufgabenzuschnitt und ihre Struktur, nicht ihre Zahlenhöhe.
  *  Alle acht kreisfreien Städte stehen trotzdem in den Listen — eine Aussage
  *  wie „der höchste Wert von allen" ist nur mit allen prüfbar. */
-export const ROLLEN: Record<string, { rolle: string; text: string }> = {
+export const ROLLEN: Record<string, { role: string; text: string }> = {
   "404000": {
-    rolle: "Der Zwilling",
+    role: "Der Zwilling",
     text: "94 Prozent unserer Einwohnerzahl, dieselbe Rechtsstellung, dieselbe "
       + "Aufteilung in Eigenbetriebe: Gebäudewirtschaft und Abfall laufen auch dort "
       + "getrennt vom Haushalt, das Krankenhaus gehört auch dort der Stadt. Wo die "
@@ -177,14 +177,14 @@ export const ROLLEN: Record<string, { rolle: string; text: string }> = {
       + "und nicht die Politik.",
   },
   "101000": {
-    rolle: "Das Gegenmodell",
+    role: "Das Gegenmodell",
     text: "Anderthalbmal so groß — und bei der Auslagerung das genaue Gegenteil: "
       + "Gebäudewirtschaft, Abfall und Entwässerung stehen dort im Haushalt selbst. "
       + "Deshalb weist Braunschweig weit höhere Ausgaben aus, ohne mehr zu leisten. "
       + "Bei der Grundsteuer B verlangt die Stadt 750 Prozent.",
   },
   "401000": {
-    rolle: "Der Maßstab nach unten",
+    role: "Der Maßstab nach unten",
     text: "Direkt nebenan, derselbe Aufgabenzuschnitt — und die mit Abstand "
       + "schwächste Steuerkraft der acht. Delmenhorst beantwortet die Frage, wie gut "
       + "Oldenburg eigentlich dasteht, ehrlicher als jeder Durchschnitt.",

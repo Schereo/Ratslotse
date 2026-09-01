@@ -22,8 +22,8 @@ const yearOf = (d: string | null | undefined): number | null => {
   const y = d ? parseInt(d.slice(0, 4), 10) : NaN;
   return Number.isFinite(y) ? y : null;
 };
-const isChair = (rolle: string | null) => !!rolle && /vorsitz/i.test(rolle);
-const isDeputy = (rolle: string | null) => !!rolle && /(stellv|stv\.)/i.test(rolle);
+const isChair = (role: string | null) => !!role && /vorsitz/i.test(role);
+const isDeputy = (role: string | null) => !!role && /(stellv|stv\.)/i.test(role);
 const initials = (name: string) =>
   name.trim().split(/\s+/).filter(Boolean).map((w) => w[0]).slice(0, 2).join("").toUpperCase() || "?";
 
@@ -48,14 +48,14 @@ function OfficesGantt({ current }: { current: Membership[] }) {
   const span = Math.max(1, thisYear - minYear);
   const midYear = minYear + Math.round(span / 2);
   const rows = [...current].sort((a, b) => {
-    const ca = isChair(a.rolle) ? 0 : 1, cb = isChair(b.rolle) ? 0 : 1;
+    const ca = isChair(a.role) ? 0 : 1, cb = isChair(b.role) ? 0 : 1;
     return ca !== cb ? ca - cb : (yearOf(a.von) ?? minYear) - (yearOf(b.von) ?? minYear);
   });
   return (
     <div className="rounded-xl border border-border bg-card p-4">
       <div className="flex flex-col gap-2.5">
         {rows.map((m, i) => {
-          const chair = isChair(m.rolle);
+          const chair = isChair(m.role);
           const vy = yearOf(m.von) ?? minYear;
           const leftPct = Math.min(90, Math.max(0, ((vy - minYear) / span) * 100));
           const showLabel = 100 - leftPct >= 26 && m.von;
@@ -64,18 +64,18 @@ function OfficesGantt({ current }: { current: Membership[] }) {
             // rechts daneben. Zweispaltig fraß die Namensspalte auf dem Handy
             // die halbe Breite — Ämter wurden abgeschnitten („Wirtschaft & Dig…")
             // und junge Ämter schrumpften zum Punkt. Ab sm bleibt der Gantt.
-            <div key={`${m.gremium}-${i}`}
+            <div key={`${m.committee}-${i}`}
               className="flex flex-wrap items-center gap-x-1.5 gap-y-1 sm:grid sm:grid-cols-[14rem_1fr] sm:gap-3">
               <span className="flex w-full min-w-0 items-center gap-1.5 sm:w-auto">
                 {chair
                   ? <Gavel className="h-3.5 w-3.5 shrink-0 text-signal" />
                   : <span className="w-3.5 shrink-0" aria-hidden />}
-                <span className={cnEllipsis(chair)} title={m.gremium}>
-                  {shortCommittee(m.gremium)}
+                <span className={cnEllipsis(chair)} title={m.committee}>
+                  {shortCommittee(m.committee)}
                   {/* nowrap nur schmal, wo der Name umbrechen darf: sonst landet
                       der Trenner allein am Zeilenende und „Stellv." rutscht in
                       die nächste. Ab sm wird ohnehin gekürzt statt umgebrochen. */}
-                  {isDeputy(m.rolle) && <span className="ml-1 text-[11px] font-normal text-muted-foreground max-sm:whitespace-nowrap">· Stellv.</span>}
+                  {isDeputy(m.role) && <span className="ml-1 text-[11px] font-normal text-muted-foreground max-sm:whitespace-nowrap">· Stellv.</span>}
                 </span>
                 {/* Das Jahr steht schmal IMMER in der Namenszeile — im Balken
                     wäre es bei kurzer Amtszeit unlesbar oder ganz weg. */}
@@ -142,7 +142,7 @@ function PersonInner() {
 
   if (loading) return <DetailSkeleton />;
   if (!data) notFound();
-  if (data.typ === "verwaltung") return <VerwaltungProfil data={data} />;
+  if (data.typ === "administration") return <VerwaltungProfil data={data} />;
   return <RatsmitgliedProfil data={data} />;
 }
 
@@ -187,7 +187,7 @@ function RatsmitgliedProfil({ data }: { data: MemberDetail }) {
                 entsendende Organisation — „parteilos" wäre hier die falsche
                 Kategorie, nicht bloß eine unschöne Vokabel (Tims Befund
                 21.08.2026). */}
-            {data.art === "beratend"
+            {data.art === "advisory"
               ? (
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/60 px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
                   <Users className="h-3 w-3" aria-hidden />
@@ -251,10 +251,10 @@ function RatsmitgliedProfil({ data }: { data: MemberDetail }) {
             <div className="border-t border-border px-4 py-3">
               <div className="space-y-1.5">
                 {past.map((m, i) => (
-                  <div key={`${m.gremium}-${i}`} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-                    <span className="min-w-0 text-[13px] text-foreground" title={m.gremium}>
-                      {shortCommittee(m.gremium)}
-                      {isChair(m.rolle) && <span className="ml-1.5 text-[11px] font-medium text-signal">{isDeputy(m.rolle) ? "stellv. Vorsitz" : "Vorsitz"}</span>}
+                  <div key={`${m.committee}-${i}`} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+                    <span className="min-w-0 text-[13px] text-foreground" title={m.committee}>
+                      {shortCommittee(m.committee)}
+                      {isChair(m.role) && <span className="ml-1.5 text-[11px] font-medium text-signal">{isDeputy(m.role) ? "stellv. Vorsitz" : "Vorsitz"}</span>}
                     </span>
                     <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
                       {m.von ? yearOf(m.von) : "?"} – {m.bis ? yearOf(m.bis) : "heute"}
@@ -322,7 +322,7 @@ function RatsmitgliedProfil({ data }: { data: MemberDetail }) {
       {(data.wortbeitraege?.length ?? 0) > 0 && (
         <Wortbeitraege slug={data.slug} erste={data.wortbeitraege ?? []}
           gesamt={data.wortbeitraege_gesamt ?? (data.wortbeitraege?.length ?? 0)}
-          gremien={data.wortbeitraege_gremien ?? []} />
+          committees={data.wortbeitraege_gremien ?? []} />
       )}
 
       {/* Zuletzt anwesend */}
@@ -380,7 +380,7 @@ function VerwaltungProfil({ data }: { data: VerwaltungDetail }) {
             </span>
           </div>
           <p className="mt-1 text-[13px] text-muted-foreground">
-            {data.rolle}{zeitraum && <> · {zeitraum}</>}
+            {data.role}{zeitraum && <> · {zeitraum}</>}
           </p>
         </div>
         <Popover>
@@ -401,14 +401,14 @@ function VerwaltungProfil({ data }: { data: VerwaltungDetail }) {
       {(data.wortbeitraege?.length ?? 0) > 0 && (
         <Wortbeitraege slug={data.slug} erste={data.wortbeitraege ?? []}
           gesamt={data.wortbeitraege_gesamt ?? (data.wortbeitraege?.length ?? 0)}
-          gremien={data.wortbeitraege_gremien ?? []} />
+          committees={data.wortbeitraege_gremien ?? []} />
       )}
     </Card>
   );
 }
 
 const WB_ART: Record<string, string> = {
-  rede: "Rede", anfrage: "Anfrage", einwohnerfrage: "Einwohnerfrage", zusage: "Zusage",
+  speech: "Rede", inquiry: "Anfrage", citizen_question: "Einwohnerfrage", pledge: "Zusage",
 };
 
 function WortbeitragZeile({ w, erste }: {
@@ -420,7 +420,7 @@ function WortbeitragZeile({ w, erste }: {
     <div className={cn("py-2.5 text-[13px] leading-relaxed", !erste && "border-t border-border")}>
       <p className="flex items-baseline justify-between gap-3 text-xs text-muted-foreground">
         <span className="min-w-0 truncate">
-          {WB_ART[w.art] ?? w.art}{w.top ? ` · ${w.top}` : ""} · {shortCommittee(w.committee ?? "")}
+          {WB_ART[w.kind] ?? w.kind}{w.top ? ` · ${w.top}` : ""} · {shortCommittee(w.committee ?? "")}
         </span>
         <span className="shrink-0">{formatDate(w.session_date)}</span>
       </p>
@@ -446,12 +446,12 @@ type WB = NonNullable<MemberDetail["wortbeitraege"]>[number];
  *  zeigen); erst „Mehr anzeigen" oder ein Gremien-Wechsel fragt nach. Der
  *  Filter zeigt die Anzahl je Gremium — bei vierzehn Ausschüssen ist das der
  *  Unterschied zwischen Suchen und Finden. */
-function Wortbeitraege({ slug, erste, gesamt, gremien }: {
+function Wortbeitraege({ slug, erste, gesamt, committees }: {
   slug: string; erste: WB[]; gesamt: number;
-  gremien: { committee: string; n: number }[];
+  committees: { committee: string; n: number }[];
 }) {
   const [items, setItems] = useState<WB[]>(erste);
-  const [gremium, setGremium] = useState<string>("");
+  const [committee, setGremium] = useState<string>("");
   const [total, setTotal] = useState(gesamt);
   const [laedt, setLaedt] = useState(false);
   const [fehler, setFehler] = useState(false);
@@ -461,7 +461,7 @@ function Wortbeitraege({ slug, erste, gesamt, gremien }: {
     setFehler(false);
     try {
       const p = new URLSearchParams({ offset: String(ab), limit: "20" });
-      if (naechstesGremium) p.set("gremium", naechstesGremium);
+      if (naechstesGremium) p.set("committee", naechstesGremium);
       const r = await fetch(apiUrl(`/council/person/${encodeURIComponent(slug)}/wortbeitraege?${p}`),
         { credentials: "include", headers: authHeaders() });
       if (!r.ok) throw new Error();
@@ -485,14 +485,14 @@ function Wortbeitraege({ slug, erste, gesamt, gremien }: {
   return (
     <Section title="Aus den Protokollen"
       aside={`${items.length} von ${total} · Paraphrasen`}>
-      {gremien.length > 1 && (
+      {committees.length > 1 && (
         <div className="mb-2.5">
-          <label className="sr-only" htmlFor="wb-gremium">Nach Gremium filtern</label>
-          <select id="wb-gremium" value={gremium}
+          <label className="sr-only" htmlFor="wb-committee">Nach Gremium filtern</label>
+          <select id="wb-committee" value={committee}
             onChange={(e) => filtern(e.target.value)}
             className="h-8 w-full max-w-[22rem] rounded-[10px] border border-border bg-card px-2 text-[13px] outline-none focus:border-primary">
             <option value="">Alle Gremien ({gesamt})</option>
-            {gremien.map((g) => (
+            {committees.map((g) => (
               <option key={g.committee} value={g.committee}>
                 {shortCommittee(g.committee)} ({g.n})
               </option>
@@ -512,7 +512,7 @@ function Wortbeitraege({ slug, erste, gesamt, gremien }: {
       )}
       {items.length < total && (
         <button type="button" disabled={laedt}
-          onClick={() => void laden(gremium, items.length)}
+          onClick={() => void laden(committee, items.length)}
           className="mt-2 w-full rounded-[11px] border border-border bg-card py-2 text-[13px] font-medium transition-colors hover:bg-muted disabled:opacity-60">
           {laedt ? "Wird geladen …" : `Mehr anzeigen (noch ${total - items.length})`}
         </button>
@@ -520,7 +520,7 @@ function Wortbeitraege({ slug, erste, gesamt, gremien }: {
       {fehler && (
         <p className="mt-2 text-[12px] text-signal">
           Konnte nicht geladen werden.{" "}
-          <button type="button" onClick={() => void laden(gremium, items.length)}
+          <button type="button" onClick={() => void laden(committee, items.length)}
             className="font-medium underline">Nochmal versuchen</button>
         </p>
       )}

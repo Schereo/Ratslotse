@@ -76,12 +76,12 @@ AUFWENDUNGEN_PLAN = 776_500_000.0
 JAHR = 2024
 
 
-def _quelle(jahr: int, probe: str = "strukturprobe") -> Herkunft:
+def _quelle(year: int, probe: str = "strukturprobe") -> Herkunft:
     """Die Herkunft, die `save_ergebnisrechnung` verlangt — hier nur Beiwerk:
     Das Flussbild liest Zahlen, nicht Belege."""
-    return Herkunft(art="ris", probe=probe, label=f"Jahresabschluss {jahr}",
-                    url=f"https://example.org/ja-{jahr}.pdf",
-                    fundstelle="Ergebnisrechnung der Kernverwaltung")
+    return Herkunft(kind="ris", probe=probe, label=f"Jahresabschluss {year}",
+                    url=f"https://example.org/ja-{year}.pdf",
+                    citation="Ergebnisrechnung der Kernverwaltung")
 
 
 def _befuellen(store: CouncilStore, ohne_posten: int | None = None) -> None:
@@ -89,34 +89,34 @@ def _befuellen(store: CouncilStore, ohne_posten: int | None = None) -> None:
     wie sie entsteht, wenn eine Zeile im PDF nicht lesbar war."""
     anteil_e = ERTRAEGE_PLAN / ERTRAEGE_IST
     gesamt = [
-        {"nr": nr, "bezeichnung": bez, "ansatz": round(wert * anteil_e, 2),
-         "ergebnis": wert, "abweichung": round(wert - wert * anteil_e, 2), "ist_summe": 0}
-        for nr, bez, wert in ERTRAGSARTEN if nr != ohne_posten
+        {"nr": nr, "label": bez, "budgeted": round(value * anteil_e, 2),
+         "result": value, "deviation": round(value - value * anteil_e, 2), "is_total": 0}
+        for nr, bez, value in ERTRAGSARTEN if nr != ohne_posten
     ]
     gesamt += [
-        {"nr": 12, "bezeichnung": "Summe ordentliche Erträge", "ansatz": ERTRAEGE_PLAN,
-         "ergebnis": ERTRAEGE_IST, "ist_summe": 1},
-        {"nr": 20, "bezeichnung": "Summe ordentliche Aufwendungen", "ansatz": AUFWENDUNGEN_PLAN,
-         "ergebnis": AUFWENDUNGEN_IST, "ist_summe": 1},
-        {"nr": 21, "bezeichnung": "ordentliches Ergebnis",
-         "ansatz": ERTRAEGE_PLAN - AUFWENDUNGEN_PLAN,
-         "ergebnis": ERTRAEGE_IST - AUFWENDUNGEN_IST, "ist_summe": 1},
+        {"nr": 12, "label": "Summe ordentliche Erträge", "budgeted": ERTRAEGE_PLAN,
+         "result": ERTRAEGE_IST, "is_total": 1},
+        {"nr": 20, "label": "Summe ordentliche Aufwendungen", "budgeted": AUFWENDUNGEN_PLAN,
+         "result": AUFWENDUNGEN_IST, "is_total": 1},
+        {"nr": 21, "label": "ordentliches Ergebnis",
+         "budgeted": ERTRAEGE_PLAN - AUFWENDUNGEN_PLAN,
+         "result": ERTRAEGE_IST - AUFWENDUNGEN_IST, "is_total": 1},
     ]
     store.save_ergebnisrechnung(JAHR, gesamt, _quelle(JAHR))
 
     anteil_a = AUFWENDUNGEN_PLAN / AUFWENDUNGEN_IST
-    for nr, name, wert in TEILHAUSHALTE:
+    for nr, name, value in TEILHAUSHALTE:
         store.save_ergebnisrechnung(JAHR, [
-            {"nr": 20, "bezeichnung": "Summe ordentliche Aufwendungen",
-             "ansatz": round(wert * anteil_a, 2), "ergebnis": wert, "ist_summe": 1},
-        ], _quelle(JAHR, "summenprobe"), thh_nr=nr, thh_name=name)
+            {"nr": 20, "label": "Summe ordentliche Aufwendungen",
+             "budgeted": round(value * anteil_a, 2), "result": value, "is_total": 1},
+        ], _quelle(JAHR, "summenprobe"), sub_budget_no=nr, sub_budget_name=name)
 
 
 def _daten(store: CouncilStore) -> dict:
     """Die Nutzlast, wie ``GET /api/council/haushalt`` sie liefert (Ausschnitt)."""
-    return {"jahre": {}, "steuern": [], "steuerkraft": [], "einwohner": None,
-            "ergebnisrechnung": store.get_ergebnisrechnung(),
-            "plan_ist_jahre": store.plan_ist_jahre()}
+    return {"years": {}, "taxes": [], "tax_capacity": [], "population": None,
+            "income_statement": store.get_ergebnisrechnung(),
+            "plan_actual_years": store.plan_actual_years()}
 
 
 # --- Die echte Funktion über Node laufen lassen ------------------------------
@@ -124,30 +124,30 @@ def _daten(store: CouncilStore) -> dict:
 SKRIPT = r"""
 import { flussbild, flussJahre, fasseKleineZusammen } from "%(lib)s";
 const eingabe = JSON.parse(process.argv[2]);
-const { daten, jahr, stand } = eingabe;
-const bild = flussbild(daten, jahr, stand);
+const { daten, year, as_of } = eingabe;
+const bild = flussbild(daten, year, as_of);
 if (!bild) { console.log(JSON.stringify({ bild: null })); process.exit(0); }
-const seite = (s) => ({
+const page = (s) => ({
   gesamt: s.gesamt,
   teile: s.teile,
-  summe: s.baender.reduce((a, b) => a + b.wert, 0),
-  baender: s.baender.map((b) => ({ id: b.id, label: b.label, wert: b.wert, art: b.art })),
+  summe: s.baender.reduce((a, b) => a + b.value, 0),
+  baender: s.baender.map((b) => ({ id: b.id, label: b.label, value: b.value, art: b.art })),
 });
 // Auch die Bündelung muss die Summe erhalten — ein Sammelposten darf nichts
 // verschlucken, sonst stimmten die Bandbreiten nicht mehr mit der Tabelle.
 const geb = fasseKleineZusammen(bild.herkunft.baender, bild.skala, 0.05);
 console.log(JSON.stringify({
-  jahre: flussJahre(daten),
-  stand: bild.stand,
+  years: flussJahre(daten),
+  as_of: bild.as_of,
   skala: bild.skala,
-  saldo: bild.saldo,
+  balance: bild.balance,
   summeLinks: bild.summeLinks,
   summeRechts: bild.summeRechts,
   stimmt: bild.stimmt,
   aufgeschluesselt: bild.aufgeschluesselt,
-  herkunft: seite(bild.herkunft),
-  verwendung: seite(bild.verwendung),
-  gebuendeltSumme: geb.gezeigt.reduce((a, b) => a + b.wert, 0),
+  herkunft: page(bild.herkunft),
+  verwendung: page(bild.verwendung),
+  gebuendeltSumme: geb.gezeigt.reduce((a, b) => a + b.value, 0),
   gebuendeltAnzahl: geb.gebuendelt.length,
 }));
 """
@@ -166,20 +166,20 @@ def _lib_fuer_node(tmp_path: Path) -> Path:
     ziel = tmp_path / "lib"
     ziel.mkdir(exist_ok=True)
     for name in ("haushalt.ts", "haushalt-bereiche.ts"):
-        quelle = (FRONTEND / "lib" / name).read_text(encoding="utf-8")
+        source = (FRONTEND / "lib" / name).read_text(encoding="utf-8")
         (ziel / name).write_text(
-            re.sub(r'from "@/lib/([\w-]+)"', r'from "./\1.ts"', quelle),
+            re.sub(r'from "@/lib/([\w-]+)"', r'from "./\1.ts"', source),
             encoding="utf-8")
     return ziel / "haushalt.ts"
 
 
-def _fluss(tmp_path: Path, daten: dict, jahr: int = JAHR, stand: str = "ist") -> dict:
+def _fluss(tmp_path: Path, daten: dict, year: int = JAHR, as_of: str = "ist") -> dict:
     skript = tmp_path / "fluss.mjs"
     skript.write_text(SKRIPT % {"lib": _lib_fuer_node(tmp_path).as_posix()},
                       encoding="utf-8")
     fertig = subprocess.run(
         [_NODE, "--no-warnings", str(skript),
-         json.dumps({"daten": daten, "jahr": jahr, "stand": stand})],
+         json.dumps({"daten": daten, "year": year, "as_of": as_of})],
         capture_output=True, text=True, timeout=90)
     if fertig.returncode != 0:
         pytest.skip(f"Node kann das TypeScript-Modul nicht laden: {fertig.stderr[:400]}")
@@ -222,7 +222,7 @@ def test_das_minus_wird_zum_ausgleichsband_und_nicht_weggerechnet(tmp_path):
     assert minus > 0
     ausgleich = [b for b in r["herkunft"]["baender"] if b["art"] == "ausgleich"]
     assert len(ausgleich) == 1
-    assert ausgleich[0]["wert"] == pytest.approx(minus, abs=0.01)
+    assert ausgleich[0]["value"] == pytest.approx(minus, abs=0.01)
     assert ausgleich[0]["label"] == "aus dem Ersparten"
     # Auf der Ausgabenseite gibt es nichts auszugleichen.
     assert not [b for b in r["verwendung"]["baender"] if b["art"] == "ausgleich"]
@@ -241,11 +241,11 @@ def test_ueberschuss_landet_auf_der_anderen_seite(tmp_path):
     daten = _daten(store)
     store.close()
     # Plan-Stand umdrehen: Erträge über Aufwendungen.
-    for p in daten["ergebnisrechnung"]:
-        if p["thh_nr"] is None and p["nr"] == 12:
-            p["ansatz"] = AUFWENDUNGEN_PLAN + 30_000_000.0
+    for p in daten["income_statement"]:
+        if p["sub_budget_no"] is None and p["nr"] == 12:
+            p["budgeted"] = AUFWENDUNGEN_PLAN + 30_000_000.0
 
-    r = _fluss(tmp_path, daten, stand="plan")
+    r = _fluss(tmp_path, daten, as_of="plan")
     ausgleich = [b for b in r["verwendung"]["baender"] if b["art"] == "ausgleich"]
     assert len(ausgleich) == 1
     assert ausgleich[0]["label"] == "bleibt übrig"
@@ -270,7 +270,7 @@ def test_fehlende_zeile_wird_gezeigt_statt_gestreckt(tmp_path):
     # Die Lücke steht als eigenes Band da, nicht auf die anderen verteilt.
     fehlt = [b for b in r["herkunft"]["baender"] if b["art"] == "rest"]
     assert len(fehlt) == 1
-    assert fehlt[0]["wert"] == pytest.approx(
+    assert fehlt[0]["value"] == pytest.approx(
         ERTRAGSARTEN[0][2], abs=0.01)
 
 
@@ -295,17 +295,17 @@ def test_nur_jahre_mit_beiden_seiten(tmp_path):
     store = CouncilStore(tmp_path / "c.sqlite")
     _befuellen(store)
     store.save_ergebnisrechnung(2019, [
-        {"nr": 1, "bezeichnung": "Steuern und ähnliche Abgaben",
-         "ansatz": 1.0, "ergebnis": 300_000_000.0, "ist_summe": 0},
-        {"nr": 12, "bezeichnung": "Summe ordentliche Erträge",
-         "ansatz": 1.0, "ergebnis": 300_000_000.0, "ist_summe": 1},
-        {"nr": 20, "bezeichnung": "Summe ordentliche Aufwendungen",
-         "ansatz": 1.0, "ergebnis": 310_000_000.0, "ist_summe": 1},
+        {"nr": 1, "label": "Steuern und ähnliche Abgaben",
+         "budgeted": 1.0, "result": 300_000_000.0, "is_total": 0},
+        {"nr": 12, "label": "Summe ordentliche Erträge",
+         "budgeted": 1.0, "result": 300_000_000.0, "is_total": 1},
+        {"nr": 20, "label": "Summe ordentliche Aufwendungen",
+         "budgeted": 1.0, "result": 310_000_000.0, "is_total": 1},
     ], _quelle(2019))
     r = _fluss(tmp_path, _daten(store))
     store.close()
 
-    assert r["jahre"] == [JAHR]
+    assert r["years"] == [JAHR]
 
 
 # --- Datengrundlage: läuft auch ohne Node -----------------------------------
@@ -318,14 +318,14 @@ def test_store_liefert_genau_die_felder_die_das_bild_liest(tmp_path):
     zeilen = store.get_ergebnisrechnung(JAHR)
     store.close()
 
-    for feld in ("jahr", "nr", "bezeichnung", "thh_nr", "thh_name", "ansatz", "ergebnis"):
-        assert all(feld in z for z in zeilen), feld
-    arten = [z for z in zeilen if z["thh_nr"] is None and 1 <= z["nr"] <= 11]
-    bereiche = [z for z in zeilen if z["thh_nr"] is not None and z["nr"] == 20]
+    for field in ("year", "nr", "label", "sub_budget_no", "sub_budget_name", "budgeted", "result"):
+        assert all(field in z for z in zeilen), field
+    arten = [z for z in zeilen if z["sub_budget_no"] is None and 1 <= z["nr"] <= 11]
+    bereiche = [z for z in zeilen if z["sub_budget_no"] is not None and z["nr"] == 20]
     assert len(arten) == 11 and len(bereiche) == 12
     # Und die Probe auf der Datengrundlage selbst.
-    assert sum(z["ergebnis"] for z in arten) == pytest.approx(ERTRAEGE_IST, abs=0.01)
-    assert sum(z["ergebnis"] for z in bereiche) == pytest.approx(AUFWENDUNGEN_IST, abs=0.01)
+    assert sum(z["result"] for z in arten) == pytest.approx(ERTRAEGE_IST, abs=0.01)
+    assert sum(z["result"] for z in bereiche) == pytest.approx(AUFWENDUNGEN_IST, abs=0.01)
 
 
 def _lies(rel: str) -> str:
@@ -340,28 +340,28 @@ def test_viewbox_haengt_an_der_gemessenen_breite():
     Seit dem Grafik-Baukasten (GB-07) zeichnet
     ``components/grafik/flussbild.tsx`` — die Eigenschaft wohnt dort, die
     Haushalts-Datei ist nur noch der Adapter."""
-    quelle = _lies("components/grafik/flussbild.tsx")
-    assert "const W = breite;" in quelle
-    assert "viewBox={`0 0 ${W} ${H}`}" in quelle
-    assert "new ResizeObserver" in quelle
+    source = _lies("components/grafik/flussbild.tsx")
+    assert "const W = breite;" in source
+    assert "viewBox={`0 0 ${W} ${H}`}" in source
+    assert "new ResizeObserver" in source
 
 
 def test_schmal_wird_umgebaut_nicht_geschrumpft():
     """Unter der Schwelle gibt es gestapelte Listen statt gestauchter
     Bänder — ein zusammengeschobenes Flussbild war schon zweimal der Befund.
     Auch diese Regel zeichnet seit GB-07 der Baukasten."""
-    quelle = _lies("components/grafik/flussbild.tsx")
-    assert "SCHWELLE_BREIT" in quelle
-    assert "breite < SCHWELLE_BREIT" in quelle
-    assert "<Listen seiten={seiten}" in quelle
+    source = _lies("components/grafik/flussbild.tsx")
+    assert "SCHWELLE_BREIT" in source
+    assert "breite < SCHWELLE_BREIT" in source
+    assert "<Listen seiten={seiten}" in source
 
 
 def test_ohne_vollstaendige_aufschluesselung_kein_bild():
     """Die Weigerung ist Absicht und muss im Code stehen bleiben: Lieber keine
     Grafik als eine, die eine Lücke glattzieht."""
-    quelle = _lies("components/haushalt/flussbild.tsx")
+    source = _lies("components/haushalt/flussbild.tsx")
     # Seit 16.08. heißt die Variable `zeigBild`: Fehlt das gewählte Jahr,
     # zeigt die Komponente das jüngste vollständige — die Weigerung, eine
     # LÜCKE glattzuziehen, gilt unverändert und ist genau das hier Geprüfte.
-    assert "!zeigBild.aufgeschluesselt ?" in quelle
-    assert "gestreckt" in quelle
+    assert "!zeigBild.aufgeschluesselt ?" in source
+    assert "gestreckt" in source

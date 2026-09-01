@@ -19,18 +19,18 @@ const LocatorMap = dynamic(() => import("@/components/quiz-locator-map").then((m
 });
 
 export const CATEGORY_LABEL: Record<string, string> = {
-  geschichte: "Geschichte",
-  orte: "Orte & Wahrzeichen",
-  menschen: "Menschen",
-  ratspolitik: "Ratspolitik",
-  schaetzen: "Schätzfrage",
+  history: "Geschichte",
+  places: "Orte & Wahrzeichen",
+  people: "Menschen",
+  council_politics: "Ratspolitik",
+  estimation: "Schätzfrage",
 };
 const SOURCE_LABEL: Record<string, string> = {
   wikipedia: "Wikipedia",
-  stadt: "Stadt Oldenburg",
+  city: "Stadt Oldenburg",
   ratsinfo: "Ratsinformationssystem",
 };
-const DIFF_LABEL: Record<string, string> = { leicht: "leicht", mittel: "mittel", schwer: "schwer" };
+const DIFF_LABEL: Record<string, string> = { easy: "leicht", medium: "mittel", hard: "schwer" };
 
 const nf = new Intl.NumberFormat("de-DE");
 const fmt = (n: number | null | undefined) => (n == null ? "?" : nf.format(Math.round(n)));

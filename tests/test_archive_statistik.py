@@ -63,14 +63,14 @@ class Netz:
         self.etags: dict[str, str] = {}
         self.abrufe: list[str] = []
 
-    def antwort(self, url, etag=None, last_modified=None, session=None):
+    def answer(self, url, etag=None, last_modified=None, session=None):
         self.abrufe.append(url)
         if url not in self.inhalte:
             raise a.AbrufFehler(f"{url}: HTTP 404")
-        marke = self.etags.get(url, f'"{hash(self.inhalte[url]) & 0xffff:x}"')
-        if etag and etag == marke:
+        mark = self.etags.get(url, f'"{hash(self.inhalte[url]) & 0xffff:x}"')
+        if etag and etag == mark:
             return a.Antwort(inhalt=None, etag=etag, last_modified=last_modified)
-        return a.Antwort(inhalt=self.inhalte[url], etag=marke,
+        return a.Antwort(inhalt=self.inhalte[url], etag=mark,
                          last_modified="Mon, 17 Aug 2026 05:00:00 GMT")
 
 
@@ -91,7 +91,7 @@ def netz(monkeypatch):
         "https://www.statistik.niedersachsen.de/download/227086":
             b"PK\x03\x04 KFA 2026",
     })
-    monkeypatch.setattr(a, "hole", n.antwort)
+    monkeypatch.setattr(a, "hole", n.answer)
     monkeypatch.setattr(a, "PAUSE", 0)
     # Kein Mail-Versand und keine job_runs-Historie in Tests.
     monkeypatch.setattr(a, "_melden", lambda *args, **kwargs: None)
@@ -138,8 +138,8 @@ def test_neuer_etag_ohne_neuen_inhalt_legt_nichts_ab(tmp_path, netz):
            "40_Stadtplanungsamt/402_Geo_und_Daten/Statistik/1103-2025-AZ.pdf")
     netz.etags[url] = '"ganz-neu"'
 
-    ergebnis = lauf(ziel, heute=MORGEN)
-    assert ergebnis["Neue Fassungen"] == 0
+    result = lauf(ziel, heute=MORGEN)
+    assert result["Neue Fassungen"] == 0
     ordner = ziel / "jahrbuch" / "1103-2025-AZ.pdf"
     assert len(list(ordner.iterdir())) == 1
 
@@ -186,9 +186,9 @@ def test_neue_lsn_nummer_wird_geholt(tmp_path, netz):
     netz.inhalte[neu] = b"PK\x03\x04 KFA 2027"
     kfa_neu = KFA + (f'<a href="{neu}" class="download">KFA 2027 endg&uuml;ltig '
                      f'Ergebnis und Vergleichstabellen KSV (xlsx)</a>')
-    ergebnis = a.main(archiv=ziel, heute=MORGEN, still=True, katalog_text=KATALOG,
+    result = a.main(archiv=ziel, heute=MORGEN, still=True, katalog_text=KATALOG,
                       jahrbuch_html=JAHRBUCH, kfa_html=kfa_neu)
-    assert ergebnis["Neue Fassungen"] == 1
+    assert result["Neue Fassungen"] == 1
     assert (ziel / "kfa" /
             "kfa-2027-endgültig-ergebnis-und-vergleichstabellen-ksv-239001.xlsx").is_dir()
 
@@ -198,10 +198,10 @@ def test_ohne_vorpruefung_klopft_ueberall_an(tmp_path, netz):
     ziel = tmp_path / "archiv"
     lauf(ziel)
     netz.abrufe.clear()
-    ergebnis = lauf(ziel, heute=MORGEN, ohne_vorpruefung=True)
-    assert ergebnis["Ohne Abruf übersprungen"] == 0
+    result = lauf(ziel, heute=MORGEN, ohne_vorpruefung=True)
+    assert result["Ohne Abruf übersprungen"] == 0
     assert [u for u in netz.abrufe if "statistik.niedersachsen.de" in u]
-    assert ergebnis["Neue Fassungen"] == 0     # geholt, aber nichts doppelt
+    assert result["Neue Fassungen"] == 0     # geholt, aber nichts doppelt
 
 
 def test_geaendertes_modified_fuehrt_zum_abruf(tmp_path, netz):
@@ -226,8 +226,8 @@ def test_geaenderter_inhalt_wird_neue_fassung_und_die_alte_bleibt(tmp_path, netz
     netz.inhalte[url] = b"%PDF-1.4 Steuern 2024 bis 2026, neue Ausgabe"
     netz.etags[url] = '"zweite-ausgabe"'
 
-    ergebnis = lauf(ziel, heute=MORGEN)
-    assert ergebnis["Neue Fassungen"] == 1
+    result = lauf(ziel, heute=MORGEN)
+    assert result["Neue Fassungen"] == 1
 
     ordner = ziel / "jahrbuch" / "1103-2025-AZ.pdf"
     fassungen = sorted(p.name for p in ordner.iterdir())
@@ -253,9 +253,9 @@ def test_neue_ausgabe_unter_neuem_namen_wird_gefunden(tmp_path, netz):
     netz.inhalte[neu] = b"%PDF-1.4 Steuern 2024 bis 2026"
     jahrbuch_neu = JAHRBUCH.replace("1103-2025-AZ", "1103-2026-AZ")
 
-    ergebnis = a.main(archiv=ziel, heute=MORGEN, still=True, katalog_text=KATALOG,
+    result = a.main(archiv=ziel, heute=MORGEN, still=True, katalog_text=KATALOG,
                       jahrbuch_html=jahrbuch_neu, kfa_html=KFA)
-    assert ergebnis["Neue Fassungen"] == 1
+    assert result["Neue Fassungen"] == 1
     assert (ziel / "jahrbuch" / "1103-2026-AZ.pdf").is_dir()
     # Und der Jahrgang 2025, den es nirgends mehr gibt, liegt weiter da.
     assert list((ziel / "jahrbuch" / "1103-2025-AZ.pdf").iterdir())
@@ -269,11 +269,11 @@ def test_404_wird_gemeldet_und_der_lauf_laeuft_weiter(tmp_path, netz):
            "40_Stadtplanungsamt/402_Geo_und_Daten/Statistik/0803-2024.pdf")
     del netz.inhalte[weg]
 
-    ergebnis = lauf(ziel)
-    assert ergebnis["Fehler"] == 1
-    assert any("HTTP 404" in b and "0803-2024" in b for b in ergebnis["befund"])
+    result = lauf(ziel)
+    assert result["Fehler"] == 1
+    assert any("HTTP 404" in b and "0803-2024" in b for b in result["befund"])
     # Alles andere ist trotzdem gesichert.
-    assert ergebnis["Neue Fassungen"] == 5
+    assert result["Neue Fassungen"] == 5
     assert (ziel / "jahrbuch" / "1103-2025-AZ.pdf").is_dir()
     assert (ziel / "kfa").is_dir()
 
@@ -297,16 +297,16 @@ def test_404_verliert_den_alten_stand_nicht(tmp_path, netz):
 def test_uebersichtsseite_ohne_tabellen_ist_ein_befund(tmp_path, netz):
     """Kein Absturz, aber auch kein Schweigen: Wenn die Seite plötzlich keine
     PDFs mehr trägt, hat sich ihr Aufbau geändert."""
-    ergebnis = a.main(archiv=tmp_path / "archiv", heute=HEUTE, still=True,
+    result = a.main(archiv=tmp_path / "archiv", heute=HEUTE, still=True,
                       katalog_text=KATALOG, jahrbuch_html="<html>nichts</html>",
                       kfa_html=KFA)
-    assert any("keine Tabellen-PDFs" in b for b in ergebnis["befund"])
+    assert any("keine Tabellen-PDFs" in b for b in result["befund"])
 
 
 def test_kaputter_katalog_beendet_den_lauf_nicht(tmp_path, netz):
-    ergebnis = a.main(archiv=tmp_path / "archiv", heute=HEUTE, still=True,
+    result = a.main(archiv=tmp_path / "archiv", heute=HEUTE, still=True,
                       katalog_text="{kein json", jahrbuch_html=JAHRBUCH, kfa_html=KFA)
-    assert any("kein gültiges JSON" in b for b in ergebnis["befund"])
+    assert any("kein gültiges JSON" in b for b in result["befund"])
     assert (tmp_path / "archiv" / "jahrbuch").is_dir()   # der Rest lief
 
 
@@ -321,7 +321,7 @@ def test_unveraenderter_katalog_faellt_auf_die_gesicherte_fassung_zurueck(tmp_pa
 
     netz.abrufe.clear()
     # Zweiter Lauf, ohne katalog_text: Der Server antwortet 304.
-    ergebnis = a.main(archiv=ziel, heute=MORGEN, still=True,
+    result = a.main(archiv=ziel, heute=MORGEN, still=True,
                       jahrbuch_html=JAHRBUCH, kfa_html=KFA)
     # Die beiden Portal-Dateien sind trotzdem geprüft worden (hier über die
     # modified-Vorprüfung, also ohne Abruf) — nicht stillschweigend ausgelassen.
@@ -329,16 +329,16 @@ def test_unveraenderter_katalog_faellt_auf_die_gesicherte_fassung_zurueck(tmp_pa
     portal = [u for u in manifest if "opendata.oldenburg.de/sites" in u]
     assert len(portal) == 2
     assert all(manifest[u]["zuletzt_gesehen"] == "2026-08-17" for u in portal)
-    assert ergebnis["Ohne Abruf übersprungen"] >= 2
-    assert ergebnis["Fehler"] == 0
+    assert result["Ohne Abruf übersprungen"] >= 2
+    assert result["Fehler"] == 0
 
 
 def test_kaputtes_manifest_beendet_den_lauf_nicht(tmp_path, netz):
     ziel = tmp_path / "archiv"
     lauf(ziel)
     (ziel / "manifest.json").write_text("{ kaputt")
-    ergebnis = lauf(ziel, heute=MORGEN)
-    assert ergebnis["Neue Fassungen"] == 0     # der Hash rettet vor Dubletten
+    result = lauf(ziel, heute=MORGEN)
+    assert result["Neue Fassungen"] == 0     # der Hash rettet vor Dubletten
     assert a.manifest_lesen(ziel)              # und es wird neu geschrieben
 
 
@@ -383,8 +383,8 @@ def test_katalog_dateien_zaehlt_jede_adresse_einmal():
 
 def test_trockenlauf_schreibt_nichts(tmp_path, netz):
     ziel = tmp_path / "archiv"
-    ergebnis = lauf(ziel, trocken=True)
-    assert ergebnis["Neue Fassungen"] == 0
+    result = lauf(ziel, trocken=True)
+    assert result["Neue Fassungen"] == 0
     assert not ziel.exists() or not list(ziel.rglob("*"))
 
 

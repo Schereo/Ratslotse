@@ -27,18 +27,18 @@ Aufruf::
 
     # Dateien vorher laden (Nummern von der LSN-Übersichtsseite)
     python scripts/ingest_staedtevergleich.py \\
-        --kfa kfa2026.xlsx --kfa-vorjahr kfa2025.xlsx \\
+        --kfa kfa2026.xlsx --kfa-prior_year kfa2025.xlsx \\
         --realsteuer realsteuer2025.xlsx
 
     # oder direkt von der Adresse holen
     python scripts/ingest_staedtevergleich.py \\
         --kfa https://www.statistik.niedersachsen.de/download/227086 \\
-        --kfa-vorjahr https://www.statistik.niedersachsen.de/download/216492 \\
+        --kfa-prior_year https://www.statistik.niedersachsen.de/download/216492 \\
         --realsteuer https://www.statistik.niedersachsen.de/download/230730
 
 Die Übersichtsseiten, auf denen die jeweils neuen Nummern stehen:
 
-- ``statistik.niedersachsen.de/kommunaler-finanzausgleich/…-tabellen-214575.html``
+- ``statistik.niedersachsen.de/kommunaler-fiscal_equalization/…-tabellen-214575.html``
 - ``statistik.niedersachsen.de/…/realsteuervergleich_in_niedersachsen/…-197957.html``
 """
 from __future__ import annotations
@@ -54,7 +54,7 @@ sys.path.insert(0, str(ROOT))
 
 from council import herkunft as h  # noqa: E402
 from council import staedtevergleich as sv  # noqa: E402
-from council import steuerkraft as sk  # noqa: E402
+from council import tax_capacity as sk  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
 
 COUNCIL_DB = Path(os.environ.get("COUNCIL_DB") or ROOT / "data" / "council.sqlite")
@@ -81,11 +81,11 @@ def _holen(ort: str, ablage: Path) -> tuple[Path, str | None]:
         return Path(ort), None
     import requests
 
-    antwort = requests.get(ort, timeout=120)
-    antwort.raise_for_status()
+    answer = requests.get(ort, timeout=120)
+    answer.raise_for_status()
     ziel = ablage / (ort.rstrip("/").rsplit("/", 1)[-1] + ".xlsx")
-    ziel.write_bytes(antwort.content)
-    print(f"  geladen: {ort} ({len(antwort.content):,} Bytes)".replace(",", "."))
+    ziel.write_bytes(answer.content)
+    print(f"  geladen: {ort} ({len(answer.content):,} Bytes)".replace(",", "."))
     return ziel, ort
 
 
@@ -95,7 +95,7 @@ def main() -> int:
     ap.add_argument("--db", default=str(COUNCIL_DB))
     ap.add_argument("--kfa", required=True,
                     help="Kommunaler Finanzausgleich, JÜNGERER Jahrgang (Datei oder Adresse)")
-    ap.add_argument("--kfa-vorjahr", required=True,
+    ap.add_argument("--kfa-prior_year", required=True,
                     help="derselbe Bericht ein Jahr früher — die Gegenprobe")
     ap.add_argument("--realsteuer", required=True,
                     help="Realsteuervergleich (Datei oder Adresse)")
@@ -107,7 +107,7 @@ def main() -> int:
     args = ap.parse_args()
 
     store = CouncilStore(Path(args.db))
-    geschrieben = {"steuerkraft": 0, "realsteuern": 0, "finanzausgleich": 0}
+    geschrieben = {"tax_capacity": 0, "real_taxes": 0, "fiscal_equalization": 0}
     try:
         with tempfile.TemporaryDirectory() as tmp:
             ablage = Path(tmp)
@@ -115,35 +115,35 @@ def main() -> int:
             # --- Steuerkraft: zwei Jahrgänge, weil die Probe zwei braucht ---
             print("Kommunaler Finanzausgleich:")
             pfad_neu, url_neu = _holen(args.kfa, ablage)
-            pfad_alt, _ = _holen(args.kfa_vorjahr, ablage)
+            pfad_alt, _ = _holen(args.kfa_prior_year, ablage)
             neu = sv.lies_kfa(str(pfad_neu))
             alt = sv.lies_kfa(str(pfad_alt))
-            print(f"  Ausgleichsjahr {neu.jahr} (Vorjahresspalte {neu.vorjahr}), "
-                  f"{len(neu.staedte)} Gemeinden, Stand {neu.stand}")
+            print(f"  Ausgleichsjahr {neu.year} (Vorjahresspalte {neu.prior_year}), "
+                  f"{len(neu.staedte)} Gemeinden, Stand {neu.as_of}")
 
             probe = sv.probe_ueberlappung(alt, neu)
-            print(f"  Zwei-Jahres-Überlappung: {probe['ergebnis']}")
+            print(f"  Zwei-Jahres-Überlappung: {probe['result']}")
             if not probe["ok"]:
                 for a in probe["abweichungen"][:10]:
-                    print(f"    ABWEICHUNG {a['schluessel']} {a['stadt']}: "
+                    print(f"    ABWEICHUNG {a['key']} {a['stadt']}: "
                           f"{a['alt']} gegen {a['neu']}")
                 print("  ABBRUCH: Die beiden Jahrgänge widersprechen sich. Es wird "
                       "nichts geschrieben — lieber keine Zahlen als falsche.")
                 return 1
 
             zeilen = sv.zeilen_steuerkraft(neu)
-            geschrieben["steuerkraft"] = store.save_staedtevergleich(
-                "steuerkraft", zeilen,
+            geschrieben["tax_capacity"] = store.save_staedtevergleich(
+                "tax_capacity", zeilen,
                 h.Herkunft(
-                    art="lsn", probe="lsn_zweijahresueberlappung",
-                    label=f"Kommunaler Finanzausgleich {neu.jahr}, endgültig — "
+                    kind="lsn", probe="lsn_zweijahresueberlappung",
+                    label=f"Kommunaler Finanzausgleich {neu.year}, endgültig — "
                           f"Ergebnis- und Vergleichstabellen",
-                    url=url_neu or QUELLEN_STAND.get(f"kfa{neu.jahr}"),
-                    fundstelle="Blatt „ST_KR_MESS_VGL“ — Steuerkraftmesszahlen "
+                    url=url_neu or QUELLEN_STAND.get(f"kfa{neu.year}"),
+                    citation="Blatt „ST_KR_MESS_VGL“ — Steuerkraftmesszahlen "
                                "je Gemeinde, zwei Ausgleichsjahre nebeneinander",
-                    probe_ergebnis=probe["ergebnis"],
-                    stand=neu.stand))
-            print(f"  gespeichert: {geschrieben['steuerkraft']} Werte "
+                    probe_result=probe["result"],
+                    as_of=neu.as_of))
+            print(f"  gespeichert: {geschrieben['tax_capacity']} Werte "
                   f"({len(sv.KREISFREIE_STAEDTE)} kreisfreie Städte)")
 
             # --- Die drei Komponenten der Zuweisung (Blatt 9a) --------------
@@ -152,71 +152,71 @@ def main() -> int:
             # übertragenen Wirkungskreises" (s. council/steuerkraft.py).
             print("Finanzausgleich, Komponenten (Blatt 9a):")
             zeilen_fa: list[dict] = []
-            proben: list[str] = []
-            for jahrgang in sk.lies_zuweisungen(str(pfad_neu)):
-                probe_k = sk.probe_komponenten(jahrgang)
-                print(f"  {probe_k['ergebnis']}")
+            probes: list[str] = []
+            for budget_year in sk.lies_zuweisungen(str(pfad_neu)):
+                probe_k = sk.probe_komponenten(budget_year)
+                print(f"  {probe_k['result']}")
                 if not probe_k["ok"]:
                     for abw in probe_k["abweichungen"][:8]:
-                        print(f"    ABWEICHUNG {abw['stadt']}: {abw['grund']}")
+                        print(f"    ABWEICHUNG {abw['stadt']}: {abw['reason']}")
                     print("  ÜBERSPRUNGEN: Was seine Probe reißt, kommt nicht "
                           "in die Datenbank.")
                     continue
-                zeilen_fa += sk.zeilen_finanzausgleich(jahrgang)
-                proben.append(probe_k["ergebnis"])
+                zeilen_fa += sk.zeilen_finanzausgleich(budget_year)
+                probes.append(probe_k["result"])
                 if args.jahrbuch_1103:
                     jahr_s, _, wert_s = args.jahrbuch_1103.partition(":")
-                    if jahr_s.strip().isdigit() and int(jahr_s) == jahrgang.jahr:
-                        probe_j = sk.probe_gegen_jahrbuch(jahrgang, float(wert_s))
-                        print(f"  {probe_j['ergebnis']} "
+                    if jahr_s.strip().isdigit() and int(jahr_s) == budget_year.year:
+                        probe_j = sk.probe_gegen_jahrbuch(budget_year, float(wert_s))
+                        print(f"  {probe_j['result']} "
                               f"— {'geht auf' if probe_j['ok'] else 'REISST'}")
                         if not probe_j["ok"]:
                             print("  ABBRUCH: Land und Stadt widersprechen sich.")
                             return 1
-                        proben.append(probe_j["ergebnis"])
+                        probes.append(probe_j["result"])
             if zeilen_fa:
-                geschrieben["finanzausgleich"] = store.save_staedtevergleich(
-                    "finanzausgleich", zeilen_fa,
+                geschrieben["fiscal_equalization"] = store.save_staedtevergleich(
+                    "fiscal_equalization", zeilen_fa,
                     h.Herkunft(
-                        art="lsn",
+                        kind="lsn",
                         probe=["kfa_komponentenprobe", "kfa_jahrbuchabgleich"],
-                        label=f"Kommunaler Finanzausgleich {neu.jahr}, endgültig — "
+                        label=f"Kommunaler Finanzausgleich {neu.year}, endgültig — "
                               f"Ergebnis- und Vergleichstabellen",
-                        url=url_neu or QUELLEN_STAND.get(f"kfa{neu.jahr}"),
-                        fundstelle="Blatt „9a“ — Schlüsselzuweisungen für "
+                        url=url_neu or QUELLEN_STAND.get(f"kfa{neu.year}"),
+                        citation="Blatt „9a“ — Schlüsselzuweisungen für "
                                    "Gemeinde- und Kreisaufgaben, Zuweisungen für "
                                    "Aufgaben des übertragenen Wirkungskreises und "
                                    "Finanzausgleichsumlage je kreisfreier Stadt",
-                        probe_ergebnis=" · ".join(proben),
-                        stand=neu.stand))
-                print(f"  gespeichert: {geschrieben['finanzausgleich']} Werte")
+                        probe_result=" · ".join(probes),
+                        as_of=neu.as_of))
+                print(f"  gespeichert: {geschrieben['fiscal_equalization']} Werte")
 
             # --- Realsteuervergleich ---
             print("Realsteuervergleich:")
             pfad_rs, url_rs = _holen(args.realsteuer, ablage)
             rs = sv.lies_realsteuervergleich(str(pfad_rs))
-            print(f"  Berichtsjahr {rs.jahr}, Stand {rs.stand or 'Erstausgabe'}")
+            print(f"  Berichtsjahr {rs.year}, Stand {rs.as_of or 'Erstausgabe'}")
 
             zeilen, verworfen = sv.zeilen_realsteuern(rs)
             for v in verworfen:
-                print(f"    VERWORFEN {v['stadt']}: {v['grund']} — {v['ergebnis']}")
+                print(f"    VERWORFEN {v['stadt']}: {v['reason']} — {v['result']}")
             if not zeilen:
                 print("  ABBRUCH: keine einzige Stadt hat ihre Probe bestanden.")
                 return 1
-            geschrieben["realsteuern"] = store.save_staedtevergleich(
+            geschrieben["real_taxes"] = store.save_staedtevergleich(
                 "realsteuern", zeilen,
                 h.Herkunft(
-                    art="lsn", probe=["lsn_hebesatzprobe", "lsn_dreijahresmittel"],
-                    label=f"Realsteuervergleich {rs.jahr} (Statistischer Bericht "
+                    kind="lsn", probe=["lsn_hebesatzprobe", "lsn_dreijahresmittel"],
+                    label=f"Realsteuervergleich {rs.year} (Statistischer Bericht "
                           f"L II 7 / L II 9)",
-                    url=url_rs or QUELLEN_STAND.get(f"realsteuer{rs.jahr}"),
-                    fundstelle="Blatt 2.1 — Grundbeträge, Hebesätze und "
+                    url=url_rs or QUELLEN_STAND.get(f"realsteuer{rs.year}"),
+                    citation="Blatt 2.1 — Grundbeträge, Hebesätze und "
                                "Ist-Aufkommen je kreisfreier Stadt; Blatt 5.1 — "
                                "durchschnittliche Steuereinnahmekraft, drei Jahre",
-                    probe_ergebnis=(f"{len(sv.KREISFREIE_STAEDTE) - len(verworfen)} "
+                    probe_result=(f"{len(sv.KREISFREIE_STAEDTE) - len(verworfen)} "
                                     f"von {len(sv.KREISFREIE_STAEDTE)} Städten "
                                     f"vollständig geprüft"),
-                    stand=rs.stand))
+                    as_of=rs.as_of))
             print(f"  gespeichert: {geschrieben['realsteuern']} Werte, "
                   f"{len(verworfen)} verworfen")
 

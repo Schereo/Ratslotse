@@ -28,16 +28,16 @@ export type BilanzRolle =
   | "beihilferueckstellungen" | "passive_rap";
 
 export type BilanzPosten = {
-  jahr: number;
-  rolle: BilanzRolle;
-  seite: "aktiva" | "passiva";
+  year: number;
+  role: BilanzRolle;
+  page: "aktiva" | "passiva";
   /** 1 = Hauptposten; nur diese ergeben zusammen die Bilanzsumme. */
-  ebene: number;
+  level: number;
   /** Gliederungsnummer des Dokuments — für die Anzeige, nicht als Schlüssel. */
   nr: string | null;
   /** Wortlaut des Dokuments. */
-  bezeichnung: string;
-  wert: number;
+  label: string;
+  value: number;
   herkunft_id: number | null;
 };
 
@@ -46,16 +46,16 @@ export type BilanzPosten = {
  *  Für `schulden` ist das keine Zugabe, sondern die Bedingung, unter der die
  *  Zahl überhaupt gezeigt werden darf — s. `cashPoolingHinweis`. */
 export type BilanzErlaeuterung = {
-  jahr: number;
-  rolle: BilanzRolle;
+  year: number;
+  role: BilanzRolle;
   nr: number;
-  ueberschrift: string;
+  heading: string;
   text: string;
   herkunft_id: number | null;
 };
 
 export type BilanzDaten = {
-  jahre: number[];
+  years: number[];
   posten: BilanzPosten[];
   erlaeuterungen: BilanzErlaeuterung[];
   herkunft: Record<string, Herkunft>;
@@ -63,7 +63,7 @@ export type BilanzDaten = {
 
 /** Ein Bilanzstichtag, nach Rolle nachschlagbar. */
 export type Stichtag = {
-  jahr: number;
+  year: number;
   posten: Partial<Record<BilanzRolle, BilanzPosten>>;
   /** Summe der Hauptposten — beide Seiten ergeben sie, das ist die Probe. */
   bilanzsumme: number;
@@ -83,7 +83,7 @@ export const PASSIVA_HAUPT: BilanzRolle[] = [
 
 /** Kurznamen für die Legende. Der Wortlaut des Dokuments („Aktive
  *  Rechnungsabgrenzung") ist korrekt, aber in einer Balkenlegende unlesbar;
- *  er steht deshalb weiter in `bezeichnung` und wird in der Tabelle
+ *  er steht deshalb weiter in `label` und wird in der Tabelle
  *  darunter gezeigt. */
 export const KURZ: Partial<Record<BilanzRolle, string>> = {
   immaterielles_vermoegen: "Immaterielles",
@@ -101,22 +101,22 @@ export const KURZ: Partial<Record<BilanzRolle, string>> = {
  *  ist. Unvollständig heißt hier: Ein Hauptposten fehlt, dann geht die
  *  Bilanzsumme nicht auf und es gibt nichts zu zeigen. */
 export function juengsterStichtag(daten: BilanzDaten | null): Stichtag | null {
-  if (!daten?.jahre?.length) return null;
-  const jahr = daten.jahre[daten.jahre.length - 1];
-  return stichtag(daten, jahr);
+  if (!daten?.years?.length) return null;
+  const year = daten.years[daten.years.length - 1];
+  return as_of_date(daten, year);
 }
 
-export function stichtag(daten: BilanzDaten | null, jahr: number): Stichtag | null {
+export function as_of_date(daten: BilanzDaten | null, year: number): Stichtag | null {
   if (!daten) return null;
   const posten: Partial<Record<BilanzRolle, BilanzPosten>> = {};
   for (const p of daten.posten) {
-    if (p.jahr === jahr) posten[p.rolle] = p;
+    if (p.year === year) posten[p.role] = p;
   }
   const haupt = [...AKTIVA_HAUPT, ...PASSIVA_HAUPT];
   if (haupt.some((r) => posten[r] === undefined)) return null;
-  const bilanzsumme = AKTIVA_HAUPT.reduce((n, r) => n + (posten[r]?.wert ?? 0), 0);
+  const bilanzsumme = AKTIVA_HAUPT.reduce((n, r) => n + (posten[r]?.value ?? 0), 0);
   return {
-    jahr, posten, bilanzsumme,
+    year, posten, bilanzsumme,
     herkunft_id: posten.sachvermoegen?.herkunft_id ?? null,
   };
 }
@@ -127,17 +127,17 @@ export function stichtag(daten: BilanzDaten | null, jahr: number): Stichtag | nu
  *  seine Rampe dunkel nach hell in der übergebenen Reihenfolge, und ein
  *  0,6-%-Posten als dunkelstes Segment ganz links wäre eine Betonung, die
  *  der Betrag nicht trägt. */
-export function segmente(s: Stichtag, seite: "aktiva" | "passiva") {
-  const rollen = seite === "aktiva" ? AKTIVA_HAUPT : PASSIVA_HAUPT;
-  return rollen
+export function segmente(s: Stichtag, page: "aktiva" | "passiva") {
+  const roles = page === "aktiva" ? AKTIVA_HAUPT : PASSIVA_HAUPT;
+  return roles
     .map((r) => ({
-      label: KURZ[r] ?? s.posten[r]?.bezeichnung ?? r,
+      label: KURZ[r] ?? s.posten[r]?.label ?? r,
       kurz: KURZ[r],
-      wert: (s.posten[r]?.wert ?? 0) / 1e6,
-      rolle: r,
+      value: (s.posten[r]?.value ?? 0) / 1e6,
+      role: r,
     }))
-    .filter((x) => x.wert > 0)
-    .sort((a, b) => b.wert - a.wert);
+    .filter((x) => x.value > 0)
+    .sort((a, b) => b.value - a.value);
 }
 
 /** Wie oft die Pensionsrückstellungen in die Kreditschulden passen.
@@ -146,18 +146,18 @@ export function segmente(s: Stichtag, seite: "aktiva" | "passiva") {
  *  Jahrgang still falsch. Gibt `null`, wenn eine der beiden Zahlen fehlt
  *  oder die Geldschulden null sind. */
 export function vielfaches(s: Stichtag): number | null {
-  const pension = s.posten.pensionen_gesamt?.wert;
-  const kredite = s.posten.geldschulden?.wert;
+  const pension = s.posten.pensionen_gesamt?.value;
+  const kredite = s.posten.geldschulden?.value;
   if (!pension || !kredite) return null;
   return pension / kredite;
 }
 
 /** Die Erläuterung des Anhangs zu einem Hauptposten. */
-export function erlaeuterung(
-  daten: BilanzDaten | null, jahr: number, rolle: BilanzRolle,
+export function explanation(
+  daten: BilanzDaten | null, year: number, role: BilanzRolle,
 ): BilanzErlaeuterung | null {
   if (!daten) return null;
-  return daten.erlaeuterungen.find((e) => e.jahr === jahr && e.rolle === rolle) ?? null;
+  return daten.erlaeuterungen.find((e) => e.year === year && e.role === role) ?? null;
 }
 
 /** Ist der Schuldensprung dieses Jahrgangs ein Buchungsartefakt?
@@ -173,9 +173,9 @@ export function erlaeuterung(
  *  liefert den Erläuterungstext — und die Seite zeigt den Schuldenwert nur,
  *  wenn sie ihn hat. Kein Text, keine Zahl. */
 export function cashPoolingHinweis(
-  daten: BilanzDaten | null, jahr: number,
+  daten: BilanzDaten | null, year: number,
 ): BilanzErlaeuterung | null {
-  return erlaeuterung(daten, jahr, "schulden");
+  return explanation(daten, year, "schulden");
 }
 
 export function herkunftVon(daten: BilanzDaten | null, id: number | null): Herkunft | null {

@@ -17,7 +17,7 @@ from kern import notify
 from kern.store import Store
 from council.watcher import run_watcher
 
-DB = ROOT / "data" / "nwz.sqlite"
+DB = ROOT / "data" / "ratslotse.sqlite"
 COUNCIL_DB = ROOT / "data" / "council.sqlite"
 
 
@@ -39,10 +39,10 @@ def main() -> dict:
     # Ein Kalender-Durchlauf für alle Nutzer*innen; Klassifikation läuft je
     # Nutzer*in nur bei geänderter Tagesordnung (council_agenda_classified).
     stats: dict = {"Konten mit Themen": len(owner_digests)}
-    alerts = run_watcher(COUNCIL_DB, owner_digests, months_ahead=3, nwz_store=store, stats=stats)
+    alerts = run_watcher(COUNCIL_DB, owner_digests, months_ahead=3, ratslotse_store=store, stats=stats)
 
     # Design 30a: Der Lauf REIHT nur ein — zugestellt wird hier, unter den
-    # Grenzen aus nwz/notify.py (zwei am Tag, Nachtruhe 21–7). Deshalb braucht
+    # Grenzen aus kern/notify.py (zwei am Tag, Nachtruhe 21–7). Deshalb braucht
     # es keinen eigenen Cron-Eintrag; was nachts anfällt, holt der 7-Uhr-Lauf
     # von check_committees ab.
     zugestellt = notify.zustellen(store, stats=stats)

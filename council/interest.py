@@ -5,8 +5,8 @@ Tragweite (Geld, Umstrittenheit, Ebene) als billige Heuristik — hier bewertet
 ein LLM den GESPRÄCHSWERT für normale Stadtbewohner*innen (Kuriosität,
 Alltagsnähe, Konkretheit). Der Score speist das „Fundstück des Tages"
 (``council/fundstueck.py``) und ist per Backfill über den ganzen Bestand
-berechenbar (``scripts/rate_interest.py``). Prompts in ``nwz/prompts.py``,
-über das Admin-UI editierbar.
+berechenbar (``scripts/rate_interest.py``). Prompts in ``kern/prompts.py``,
+als Code versioniert.
 """
 from __future__ import annotations
 
@@ -25,7 +25,7 @@ MAX_EXCERPT_CHARS = 500
 def _batch_text(decisions: list[dict]) -> str:
     lines: list[str] = []
     for d in decisions:
-        excerpt = (d.get("beschluss") or d.get("summary") or "").strip().replace("\n", " ")
+        excerpt = (d.get("official_text") or d.get("summary") or "").strip().replace("\n", " ")
         lines.append(
             f"id {d['id']}: [{d.get('session_date', '?')}, {d.get('committee', '?')}, "
             f"Ergebnis {d.get('outcome') or '?'}] {(d.get('title') or '').strip()}\n"
@@ -66,5 +66,5 @@ def rate_batch(decisions: list[dict]) -> list[tuple[int, int, str]]:
         except (TypeError, ValueError):
             continue
         if did in valid_ids and 0 <= score <= 100:
-            out.append((did, score, str(r.get("grund") or "").strip()[:300]))
+            out.append((did, score, str(r.get("reason") or "").strip()[:300]))
     return out

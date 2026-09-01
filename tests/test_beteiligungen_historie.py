@@ -8,9 +8,9 @@ Lauf löscht, verliert sie für immer — deshalb hier: markieren, nicht lösche
 from council.store import CouncilStore
 
 
-def _row(titel, url, schritt="Auslegung", bis="2026-08-17"):
-    return {"titel": titel, "ort": "Ort", "schritt": schritt, "von": "2026-07-06",
-            "bis": bis, "url": url, "plan_nrs": ["bp-81"]}
+def _row(title, url, schritt="Auslegung", bis="2026-08-17"):
+    return {"title": title, "ort": "Ort", "schritt": schritt, "valid_from": "2026-07-06",
+            "valid_until": bis, "url": url, "plan_nrs": ["bp-81"]}
 
 
 def test_verschwundene_beteiligung_wird_beendet_statt_geloescht(tmp_path):
@@ -26,11 +26,11 @@ def test_verschwundene_beteiligung_wird_beendet_statt_geloescht(tmp_path):
         assert (s2["neu"], s2["aktualisiert"], s2["beendet"]) == (0, 1, 1)
 
         laufend = store.list_beteiligungen()
-        assert [b["titel"] for b in laufend] == ["B-Plan 81"]
+        assert [b["title"] for b in laufend] == ["B-Plan 81"]
         alle = store.list_beteiligungen(nur_laufende=False)
         assert len(alle) == 2                      # nichts verloren
         beendet = [b for b in alle if b["status"] == "beendet"]
-        assert beendet[0]["titel"] == "B-Plan 831" and beendet[0]["beendet_am"]
+        assert beendet[0]["title"] == "B-Plan 831" and beendet[0]["beendet_am"]
     finally:
         store.close()
 
@@ -46,7 +46,7 @@ def test_wiederauftauchen_setzt_status_zurueck(tmp_path):
         s = store.save_beteiligungen([_row("B-Plan 81", "https://x/81", bis="2026-09-30")])
         assert (s["neu"], s["aktualisiert"]) == (0, 1)     # kein zweiter Eintrag
         laufend = store.list_beteiligungen()
-        assert len(laufend) == 1 and laufend[0]["bis"] == "2026-09-30"
+        assert len(laufend) == 1 and laufend[0]["valid_until"] == "2026-09-30"
         assert len(store.list_beteiligungen(nur_laufende=False)) == 1
     finally:
         store.close()

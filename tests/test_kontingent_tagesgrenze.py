@@ -25,7 +25,7 @@ def test_tagesgrenze_folgt_oldenburger_mitternacht():
 
 
 def test_kontingent_zaehlt_nur_ab_lokaler_mitternacht(tmp_path):
-    store = Store(tmp_path / "nwz.sqlite")
+    store = Store(tmp_path / "ratslotse.sqlite")
     try:
         vor = (datetime.fromisoformat(_tagesbeginn_utc()) - timedelta(minutes=5)) \
             .isoformat(timespec="seconds")
@@ -33,7 +33,7 @@ def test_kontingent_zaehlt_nur_ab_lokaler_mitternacht(tmp_path):
             .isoformat(timespec="seconds")
         with store._conn:
             store._conn.executemany(
-                "INSERT INTO deep_research_jobs (id, user_id, frage, status, created, updated) "
+                "INSERT INTO deep_research_jobs (id, user_id, question, status, created, updated) "
                 "VALUES (?, 7, 'x', 'fertig', ?, ?)",
                 [("alt", vor, vor), ("neu", nach, nach)])
         assert store.deep_jobs_heute(7) == 1     # nur der Job von heute zählt

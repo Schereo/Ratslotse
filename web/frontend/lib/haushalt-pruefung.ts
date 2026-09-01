@@ -9,31 +9,31 @@
 // selbst und nicht diese Datei.
 
 /** Eine Prüfungsfeststellung, wie der Bericht sie mit einer Randmarke
- *  auszeichnet. `marke` ist B/WB/H/K, `marke_name` und `marke_erlaeuterung`
+ *  auszeichnet. `mark` ist B/WB/H/K, `mark_name` und `mark_explanation`
  *  sind die Legende **dieses** Jahrgangs — nicht unsere Formulierung. */
 export type Feststellung = {
-  jahr: number;
-  lfd: number;
-  marke: string;
-  marke_name: string;
-  marke_erlaeuterung: string | null;
-  textziffer: string;
-  abschnitt: string;
+  year: number;
+  seq: number;
+  mark: string;
+  mark_name: string;
+  mark_explanation: string | null;
+  text_number: string;
+  section: string;
   /** Schlüssel, unter dem dieselbe Sache über Jahrgänge zusammenfindet. */
-  kette: string | null;
-  seite: number | null;
+  chain: string | null;
+  page: number | null;
   text: string;
   /** Der Absatz, der im Bericht direkt darauf folgt — dort steht oft die
    *  Antwort der Verwaltung. Getrennt geführt, damit nicht als Beanstandung
    *  gilt, was der Bericht gar nicht so gemeint hat. */
-  folgeabsatz: string | null;
-  quelle_label: string | null;
-  quelle_url: string | null;
+  follow_paragraph: string | null;
+  source_label: string | null;
+  source_url: string | null;
 };
 
 export type PruefberichtDaten = {
-  jahre: number[];
-  legende: Record<string, { name: string; erlaeuterung: string | null }>;
+  years: number[];
+  legende: Record<string, { name: string; explanation: string | null }>;
   feststellungen: Feststellung[];
   /** Jahre mit ausgelesenem Jahresabschluss, aber ohne Schlussbericht. */
   ohne_bericht: number[];
@@ -47,17 +47,17 @@ export type PruefberichtDaten = {
  *  im Wortlaut des Berichts wiedergegeben, nur eben in dieser Ordnung. */
 export const MARKEN_REIHE = ["WB", "B", "K", "H"] as const;
 
-export function markeRang(marke: string): number {
-  const i = (MARKEN_REIHE as readonly string[]).indexOf(marke);
+export function markeRang(mark: string): number {
+  const i = (MARKEN_REIHE as readonly string[]).indexOf(mark);
   return i < 0 ? MARKEN_REIHE.length : i;
 }
 
 /** Eine über Jahre laufende Sache: derselbe Abschnitt, mehrere Jahrgänge. */
 export type Kette = {
-  schluessel: string;
+  key: string;
   /** Titel aus dem jüngsten Jahrgang — Abschnitte werden umbenannt. */
-  titel: string;
-  jahre: number[];
+  title: string;
+  years: number[];
   eintraege: Feststellung[];
   /** Jahre, in denen der Abschnitt eine Beanstandung trug (B oder WB). */
   beanstandet: number[];
@@ -78,40 +78,40 @@ export type Kette = {
 export function wiederholungsketten(feststellungen: Feststellung[]): Kette[] {
   const nach = new Map<string, Feststellung[]>();
   for (const f of feststellungen) {
-    if (!f.kette) continue;
-    const liste = nach.get(f.kette);
+    if (!f.chain) continue;
+    const liste = nach.get(f.chain);
     if (liste) liste.push(f);
-    else nach.set(f.kette, [f]);
+    else nach.set(f.chain, [f]);
   }
   const ketten: Kette[] = [];
-  for (const [schluessel, eintraege] of nach) {
-    if (!eintraege.some((f) => f.marke === "WB")) continue;
-    const sortiert = [...eintraege].sort((a, b) => a.jahr - b.jahr || a.lfd - b.lfd);
-    const jahre = [...new Set(sortiert.map((f) => f.jahr))];
+  for (const [key, eintraege] of nach) {
+    if (!eintraege.some((f) => f.mark === "WB")) continue;
+    const sortiert = [...eintraege].sort((a, b) => a.year - b.year || a.seq - b.seq);
+    const years = [...new Set(sortiert.map((f) => f.year))];
     const beanstandet = [...new Set(
-      sortiert.filter((f) => f.marke === "B" || f.marke === "WB").map((f) => f.jahr))];
+      sortiert.filter((f) => f.mark === "B" || f.mark === "WB").map((f) => f.year))];
     ketten.push({
-      schluessel,
-      titel: sortiert[sortiert.length - 1].abschnitt,
-      jahre, eintraege: sortiert, beanstandet,
+      key,
+      title: sortiert[sortiert.length - 1].section,
+      years, eintraege: sortiert, beanstandet,
     });
   }
   return ketten.sort((a, b) =>
     b.beanstandet.length - a.beanstandet.length
     || (b.beanstandet.at(-1) ?? 0) - (a.beanstandet.at(-1) ?? 0)
-    || a.titel.localeCompare(b.titel, "de"));
+    || a.title.localeCompare(b.title, "de"));
 }
 
 /** Feststellungen eines Jahrgangs, nach Textziffer gebündelt — so steht auf
  *  der Seite dieselbe Gliederung wie im Bericht. */
 export function nachAbschnitt(
-  feststellungen: Feststellung[], jahr: number,
-): { textziffer: string; abschnitt: string; eintraege: Feststellung[] }[] {
-  const gruppen: { textziffer: string; abschnitt: string; eintraege: Feststellung[] }[] = [];
-  for (const f of feststellungen.filter((x) => x.jahr === jahr).sort((a, b) => a.lfd - b.lfd)) {
+  feststellungen: Feststellung[], year: number,
+): { text_number: string; section: string; eintraege: Feststellung[] }[] {
+  const gruppen: { text_number: string; section: string; eintraege: Feststellung[] }[] = [];
+  for (const f of feststellungen.filter((x) => x.year === year).sort((a, b) => a.seq - b.seq)) {
     const letzte = gruppen[gruppen.length - 1];
-    if (letzte && letzte.textziffer === f.textziffer) letzte.eintraege.push(f);
-    else gruppen.push({ textziffer: f.textziffer, abschnitt: f.abschnitt, eintraege: [f] });
+    if (letzte && letzte.text_number === f.text_number) letzte.eintraege.push(f);
+    else gruppen.push({ text_number: f.text_number, section: f.section, eintraege: [f] });
   }
   return gruppen;
 }
@@ -119,7 +119,7 @@ export function nachAbschnitt(
 /** Wie oft welche Marke vorkommt — für „die meisten sind Hinweise". */
 export function markenZaehlen(feststellungen: Feststellung[]): Record<string, number> {
   const zahl: Record<string, number> = {};
-  for (const f of feststellungen) zahl[f.marke] = (zahl[f.marke] ?? 0) + 1;
+  for (const f of feststellungen) zahl[f.mark] = (zahl[f.mark] ?? 0) + 1;
   return zahl;
 }
 
@@ -130,6 +130,6 @@ export function markenZaehlen(feststellungen: Feststellung[]): Record<string, nu
  *  Leere läuft, landet man auf Seite 1 desselben Dokuments — die Seitenzahl
  *  steht zusätzlich im Klartext daneben. */
 export function belegLink(f: Feststellung): string | null {
-  if (!f.quelle_url) return null;
-  return f.seite ? `${f.quelle_url}#page=${f.seite}` : f.quelle_url;
+  if (!f.source_url) return null;
+  return f.page ? `${f.source_url}#page=${f.page}` : f.source_url;
 }

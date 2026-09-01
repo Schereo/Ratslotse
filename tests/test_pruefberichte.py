@@ -79,9 +79,9 @@ def test_legende_kommt_aus_dem_dokument():
     legende = pruefberichte.parse_legende(BERICHT)
     assert sorted(legende) == ["B", "H", "WB"]  # 2023 kennt kein K mehr
     assert legende["WB"]["name"] == "Wiederholte Beanstandung"
-    assert legende["WB"]["erlaeuterung"].startswith("ein bereits in Vorjahren")
+    assert legende["WB"]["explanation"].startswith("ein bereits in Vorjahren")
     # Die Erläuterung darf nicht in den Bericht hineinlaufen.
-    assert "Grundlagen der Prüfung" not in legende["H"]["erlaeuterung"]
+    assert "Grundlagen der Prüfung" not in legende["H"]["explanation"]
 
 
 def test_inhaltsverzeichnis_liefert_textziffern():
@@ -93,20 +93,20 @@ def test_inhaltsverzeichnis_liefert_textziffern():
 # --- Feststellungen ---------------------------------------------------------
 
 def test_feststellungen_mit_marke_textziffer_und_seite():
-    ergebnis = pruefberichte.parse_feststellungen(BERICHT)
-    assert ergebnis["jahr"] == 2023
-    assert ergebnis["verworfen"] == []
-    gefunden = ergebnis["feststellungen"]
-    assert [f["marke"] for f in gefunden] == ["H", "WB"]
+    result = pruefberichte.parse_feststellungen(BERICHT)
+    assert result["year"] == 2023
+    assert result["verworfen"] == []
+    gefunden = result["feststellungen"]
+    assert [f["mark"] for f in gefunden] == ["H", "WB"]
 
-    hinweis, beanstandung = gefunden
-    assert hinweis["textziffer"] == "1.1.2"
-    assert hinweis["abschnitt"] == "Vorlage"
-    assert hinweis["marke_name"] == "Hinweis"
-    assert hinweis["seite"] == 6  # letzte Kopfzeile vor der Marke
-    assert beanstandung["textziffer"] == "4.2.4"
-    assert beanstandung["seite"] == 36
-    assert beanstandung["marke_name"] == "Wiederholte Beanstandung"
+    note, beanstandung = gefunden
+    assert note["text_number"] == "1.1.2"
+    assert note["section"] == "Vorlage"
+    assert note["mark_name"] == "Hinweis"
+    assert note["page"] == 6  # letzte Kopfzeile vor der Marke
+    assert beanstandung["text_number"] == "4.2.4"
+    assert beanstandung["page"] == 36
+    assert beanstandung["mark_name"] == "Wiederholte Beanstandung"
 
 
 def test_legende_wird_nicht_mitgezaehlt():
@@ -129,13 +129,13 @@ def test_seitenkopf_faellt_aus_dem_text():
     for f in pruefberichte.parse_feststellungen(BERICHT)["feststellungen"]:
         assert "Seite 3" not in f["text"]
         assert "2 3 . 0 7 . 2 0 2 4" not in f["text"]
-        assert "Seite 3" not in (f["folgeabsatz"] or "")
+        assert "Seite 3" not in (f["follow_paragraph"] or "")
 
 
 def test_silbentrennung_wird_zusammengezogen():
-    hinweis = pruefberichte.parse_feststellungen(BERICHT)["feststellungen"][0]
-    assert "Haushaltsjahres" in hinweis["text"]
-    assert "Haus-" not in hinweis["text"]
+    note = pruefberichte.parse_feststellungen(BERICHT)["feststellungen"][0]
+    assert "Haushaltsjahres" in note["text"]
+    assert "Haus-" not in note["text"]
 
 
 def test_ergaenzungsstrich_bleibt_stehen():
@@ -148,7 +148,7 @@ def test_ergaenzungsstrich_bleibt_stehen():
 def test_antwort_der_verwaltung_steht_getrennt():
     """Was direkt darauf folgt, gehört dazu — aber nicht in die Beanstandung."""
     beanstandung = pruefberichte.parse_feststellungen(BERICHT)["feststellungen"][1]
-    assert beanstandung["folgeabsatz"].startswith("Die Verwaltung hat hierzu erklärt")
+    assert beanstandung["follow_paragraph"].startswith("Die Verwaltung hat hierzu erklärt")
     assert "Die Verwaltung hat hierzu erklärt" not in beanstandung["text"]
 
 
@@ -161,19 +161,19 @@ def test_marke_ohne_legendeneintrag_wird_verworfen():
     manipuliert = BERICHT.replace(
         "\n WB  Das Rechnungsprüfungsamt beanstandet, dass Akontozahlungen",
         "\n K  Das Rechnungsprüfungsamt beanstandet, dass Akontozahlungen")
-    ergebnis = pruefberichte.parse_feststellungen(manipuliert)
-    assert [f["marke"] for f in ergebnis["feststellungen"]] == ["H"]
-    assert ergebnis["verworfen"] == [
-        {"marke": "K", "grund": "nicht in der Legende erklärt"}]
+    result = pruefberichte.parse_feststellungen(manipuliert)
+    assert [f["mark"] for f in result["feststellungen"]] == ["H"]
+    assert result["verworfen"] == [
+        {"mark": "K", "reason": "nicht in der Legende erklärt"}]
 
 
 def test_marke_ohne_textziffer_wird_verworfen():
     """Ohne Inhaltsverzeichnis gibt es keine Fundstelle — und ohne Fundstelle
     keine Feststellung, auch wenn die Marken im Text stehen."""
     ohne_ivz = BERICHT.replace(INHALT, "Inhaltsverzeichnis \n \n")
-    ergebnis = pruefberichte.parse_feststellungen(ohne_ivz)
-    assert ergebnis["jahr"] == 2023
-    assert ergebnis["feststellungen"] == []
+    result = pruefberichte.parse_feststellungen(ohne_ivz)
+    assert result["year"] == 2023
+    assert result["feststellungen"] == []
 
 
 def test_bericht_ohne_legende_liefert_nichts():
@@ -185,8 +185,8 @@ def test_unterschrift_der_amtsleitung_ist_keine_marke():
     """Am Berichtsende steht der Name in gesperrter Schrift („K R U P K E").
     Mit nur einem Leerzeichen hinter der Marke ginge er als K-Marke durch."""
     mit_unterschrift = BERICHT + "\nK R U P K E \nLeiterin des Rechnungsprüfungsamtes \n"
-    ergebnis = pruefberichte.parse_feststellungen(mit_unterschrift)
-    assert [f["marke"] for f in ergebnis["feststellungen"]] == ["H", "WB"]
+    result = pruefberichte.parse_feststellungen(mit_unterschrift)
+    assert [f["mark"] for f in result["feststellungen"]] == ["H", "WB"]
 
 
 # --- Ketten über Jahrgänge --------------------------------------------------
@@ -202,24 +202,24 @@ def test_kettenschluessel_ueberbrueckt_umbenennungen():
 
 # --- Speicherung ------------------------------------------------------------
 
-def test_speichern_und_lesen(tmp_path, quelle):
+def test_speichern_und_lesen(tmp_path, source):
     store = CouncilStore(tmp_path / "council.sqlite")
     try:
         gefunden = pruefberichte.parse_feststellungen(BERICHT)["feststellungen"]
-        n = store.save_pruefbericht(2023, gefunden, quelle(
+        n = store.save_pruefbericht(2023, gefunden, source(
             "Schlussbericht 2023",
             "https://buergerinfo.oldenburg.de/getfile.php?id=280863&type=do",
             probe="legende_und_verzeichnis"))
         assert n == 2
         assert store.pruefbericht_jahre() == [2023]
         zeilen = store.get_pruefberichte()
-        assert [z["marke"] for z in zeilen] == ["H", "WB"]
-        assert zeilen[1]["textziffer"] == "4.2.4"
-        assert zeilen[1]["kette"] == pruefberichte.kettenschluessel("Bilanzposition: Schulden")
-        assert zeilen[1]["quelle_url"].endswith("id=280863&type=do")
+        assert [z["mark"] for z in zeilen] == ["H", "WB"]
+        assert zeilen[1]["text_number"] == "4.2.4"
+        assert zeilen[1]["chain"] == pruefberichte.kettenschluessel("Bilanzposition: Schulden")
+        assert zeilen[1]["source_url"].endswith("id=280863&type=do")
 
         # Erneuter Ingest ersetzt den Jahrgang, statt ihn zu verdoppeln.
-        store.save_pruefbericht(2023, gefunden, quelle(
+        store.save_pruefbericht(2023, gefunden, source(
             "Schlussbericht 2023", "https://example.org/sb2023.pdf",
             probe="legende_und_verzeichnis"))
         assert len(store.get_pruefberichte(2023)) == 2

@@ -106,7 +106,7 @@ _JAHR_IN_URL = re.compile(r"(20\d\d)_Finanzhaushalt", re.IGNORECASE)
 #: Verwandt mit ``haushalt._CSV_NAMEN`` (dieselbe Portal-Eigenheit im
 #: Ergebnishaushalt-Blatt), aber bewusst eigenständig: Dort sind es
 #: Bereichsnamen einer anderen Tabelle, hier Teilhaushalte mit Nummer. Der
-#: Schlüssel dieser Zeilen ist ohnehin ``thh_nr`` — der Name ist Beschriftung,
+#: Schlüssel dieser Zeilen ist ohnehin ``sub_budget_no`` — der Name ist Beschriftung,
 #: nicht Identität.
 NAMEN: dict[str, str] = {
     "Verwaltungsfuehrung": "Verwaltungsführung",
@@ -134,17 +134,17 @@ def _eur(s: str) -> float | None:
         return None
 
 
-def _de(betrag: float, vorzeichen: bool = False) -> str:
+def _de(amount: float, vorzeichen: bool = False) -> str:
     """Betrag in deutscher Schreibweise — „80.781.520,00".
 
     Nicht bloß Kosmetik: Der Rückgabewert von :func:`nachweis` landet als
-    ``probe_ergebnis`` in der Herkunft und steht damit im Beleg neben der Zahl
+    ``probe_result`` in der Herkunft und steht damit im Beleg neben der Zahl
     auf der Seite. Pythons ``{:,.2f}`` liefert dort englische Trennzeichen —
     „80,781,520.00" liest sich für Leser*innen wie ein anderer Betrag."""
-    s = f"{abs(betrag):,.2f}".replace(",", "\x00").replace(".", ",").replace("\x00", ".")
+    s = f"{abs(amount):,.2f}".replace(",", "\x00").replace(".", ",").replace("\x00", ".")
     if vorzeichen:
-        return ("+" if betrag >= 0 else "−") + s
-    return ("−" if betrag < 0 else "") + s
+        return ("+" if amount >= 0 else "−") + s
+    return ("−" if amount < 0 else "") + s
 
 
 def name(roh: str) -> str:
@@ -195,14 +195,14 @@ def summenprobe(zeilen: list[dict], gesamt: dict | None,
     if len(zeilen) < MINDEST_TEILHAUSHALTE:
         return False, (f"nur {len(zeilen)} Teilhaushalts-Zeilen gelesen "
                        f"(mindestens {MINDEST_TEILHAUSHALTE} erwartet)")
-    for feld, spalte in (("einzahlungen", "Einzahlungen"),
-                         ("auszahlungen", "Auszahlungen")):
-        gerechnet = sum(z[feld] for z in zeilen)
-        rest = gerechnet - gesamt[feld]
+    for field, spalte in (("inflows", "Einzahlungen"),
+                         ("outflows", "Auszahlungen")):
+        gerechnet = sum(z[field] for z in zeilen)
+        rest = gerechnet - gesamt[field]
         if abs(rest) > toleranz:
             return False, (f"{spalte}: die {len(zeilen)} Teilhaushalte ergeben "
                            f"{_de(gerechnet)} €, die Summenzeile nennt "
-                           f"{_de(gesamt[feld])} € ({_de(rest, vorzeichen=True)} €)")
+                           f"{_de(gesamt[field])} € ({_de(rest, vorzeichen=True)} €)")
     return True, ""
 
 
@@ -214,18 +214,18 @@ def nachweis(zeilen: list[dict], gesamt: dict | None, ok: bool, warum: str) -> s
     if not ok:
         return f"Summenprobe gerissen — {warum}"
     reste = [abs(sum(z[f] for z in zeilen) - gesamt[f])
-             for f in ("einzahlungen", "auszahlungen")]
+             for f in ("inflows", "outflows")]
     return (f"{len(zeilen)} Teilhaushalte ergeben die Summenzeile der Datei in "
             f"beiden Spalten (größter Restbetrag {_de(max(reste))} €)")
 
 
-def lies(csv_text: str, jahr: int) -> dict:
+def lies(csv_text: str, year: int) -> dict:
     """Eine Finanzhaushalts-Datei des Portals auswerten.
 
-    Liefert ``{jahr, zeilen, gesamt, finanzhaushalt, bestanden, nachweis}``:
+    Liefert ``{year, zeilen, gesamt, finanzhaushalt, bestanden, nachweis}``:
 
-    * ``zeilen`` — je Teilhaushalt ein dict mit ``thh_nr``, ``bezeichnung``,
-      ``einzahlungen``, ``auszahlungen``.
+    * ``zeilen`` — je Teilhaushalt ein dict mit ``sub_budget_no``, ``label``,
+      ``inflows``, ``outflows``.
     * ``gesamt`` — die Summenzeile *Finanzhaushalt Gesamtinvestitionen*, also
       das Ziel der Rechenprobe.
     * ``finanzhaushalt`` — die Zeile *Gesamtbetrag des Finanzhaushaltes*
@@ -236,7 +236,7 @@ def lies(csv_text: str, jahr: int) -> dict:
       aufgeht, gibt keine halben Zahlen her.
     """
     roh = [ln for ln in (csv_text or "").splitlines() if ln.strip()]
-    leer = {"jahr": jahr, "zeilen": [], "gesamt": None, "finanzhaushalt": None,
+    leer = {"year": year, "zeilen": [], "gesamt": None, "finanzhaushalt": None,
             "bestanden": False}
     if not roh:
         return {**leer, "nachweis": "Datei ist leer"}
@@ -250,19 +250,19 @@ def lies(csv_text: str, jahr: int) -> dict:
         teile = line.split(";")
         if len(teile) < 4:
             continue
-        schluessel = " ".join(teile[0].split())
+        key = " ".join(teile[0].split())
         ein, aus = _eur(teile[2]), _eur(teile[3])
         if ein is None or aus is None:
             continue
-        werte = {"einzahlungen": ein, "auszahlungen": aus}
-        m = _THH.match(schluessel)
+        werte = {"inflows": ein, "outflows": aus}
+        m = _THH.match(key)
         if m:
-            zeilen.append({"thh_nr": int(m.group(1)),
-                           "bezeichnung": name(teile[1]), **werte})
-        elif schluessel.startswith(_GESAMT):
-            gesamt = {"bezeichnung": _GESAMT, **werte}
-        elif schluessel.startswith(_FINANZHAUSHALT):
-            finanzhaushalt = {"bezeichnung": _FINANZHAUSHALT, **werte}
+            zeilen.append({"sub_budget_no": int(m.group(1)),
+                           "label": name(teile[1]), **werte})
+        elif key.startswith(_GESAMT):
+            gesamt = {"label": _GESAMT, **werte}
+        elif key.startswith(_FINANZHAUSHALT):
+            finanzhaushalt = {"label": _FINANZHAUSHALT, **werte}
 
     ok, warum = summenprobe(zeilen, gesamt)
     text = nachweis(zeilen, gesamt, ok, warum)
@@ -270,6 +270,6 @@ def lies(csv_text: str, jahr: int) -> dict:
         # Die Bezugsgröße fällt mit: Ohne geprüfte Investitionssumme daneben
         # wäre sie eine große Zahl ohne Aussage.
         return {**leer, "nachweis": text}
-    return {"jahr": jahr, "zeilen": sorted(zeilen, key=lambda z: z["thh_nr"]),
+    return {"year": year, "zeilen": sorted(zeilen, key=lambda z: z["sub_budget_no"]),
             "gesamt": gesamt, "finanzhaushalt": finanzhaushalt,
             "bestanden": True, "nachweis": text}

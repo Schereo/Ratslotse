@@ -40,7 +40,7 @@ THEME_MIN_DECISIONS = 8
 
 def _areas(store: CouncilStore) -> list[dict]:
     """Alle freigegebenen Katalogorte + Top-Themen (Entitäten)."""
-    areas = [{"area_type": "stadtteil", "area_key": place.name,
+    areas = [{"area_type": "district", "area_key": place.name,
               "label": f"{places.kind_label(place.kind)} {place.name}",
               "place_name": place.name, "place_id": place.id, "slug": None}
              for place in store.all_places() if place.quiz_enabled]
@@ -48,8 +48,8 @@ def _areas(store: CouncilStore) -> list[dict]:
     for e in store.list_entities(limit=400):
         if themes >= N_THEMES:
             break
-        if e["kind"] in ("projekt", "ort", "organisation") and (e.get("n") or 0) >= THEME_MIN_DECISIONS:
-            areas.append({"area_type": "thema", "area_key": e["slug"], "label": e["name"], "slug": e["slug"]})
+        if e["kind"] in ("project", "place", "organisation") and (e.get("n") or 0) >= THEME_MIN_DECISIONS:
+            areas.append({"area_type": "topic", "area_key": e["slug"], "label": e["name"], "slug": e["slug"]})
             themes += 1
     return areas
 
@@ -68,7 +68,7 @@ def _sources(area: dict, facts: str) -> tuple[str, str, str]:
     if stadt:
         parts.append(f"Stadt Oldenburg (oldenburg.de):\n{stadt[0]}")
         if not wiki:
-            src_type, src_ref = "stadt", stadt[1]
+            src_type, src_ref = "city", stadt[1]
     if facts:
         parts.append(f"Aktuelle Beschlüsse des Stadtrats:\n{facts}")
     return "\n\n".join(parts), src_type, src_ref

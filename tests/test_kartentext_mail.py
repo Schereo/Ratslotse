@@ -40,15 +40,15 @@ def _sitzung(store, ksinr=1, tage=3):
     store._conn.commit()
 
 
-def _punkt(store, ksinr, nummer, titel, kvonr=None):
+def _punkt(store, ksinr, nummer, title, kvonr=None):
     store._conn.execute(
         "INSERT INTO council_agenda_items (ksinr, item_number, title, is_public, kvonr) "
-        "VALUES (?, ?, ?, 1, ?)", (ksinr, nummer, titel, kvonr))
+        "VALUES (?, ?, ?, 1, ?)", (ksinr, nummer, title, kvonr))
     if kvonr:
         store._conn.execute(
-            "INSERT OR REPLACE INTO council_vorlagen (kvonr, vorlage_nr, title, raw_text, "
+            "INSERT OR REPLACE INTO council_vorlagen (kvonr, template_number, title, raw_text, "
             "fetched_at) VALUES (?, '26/0592', ?, 'Sachverhalt: 8,6 Hektar.', 'x')",
-            (kvonr, titel))
+            (kvonr, title))
     store._conn.commit()
 
 

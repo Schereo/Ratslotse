@@ -74,7 +74,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import {
   beschriftet as traegtText, kachelHoehe, kacheln, namenszeilen, schmal,
 } from "@/components/grafik/kachelflaeche";
-import { betrag, deMio, deZahl } from "@/components/grafik/format";
+import { amount, deMio, deZahl } from "@/components/grafik/format";
 import { RanglisteSchiene } from "@/components/grafik/rangliste-schiene";
 import { useBreite } from "@/lib/use-breite";
 import { cn } from "@/lib/utils";
@@ -84,7 +84,7 @@ export type TreemapKnoten = {
   key: string;
   name: string;
   /** In Euro, > 0 — s. Kopfkommentar. */
-  wert: number;
+  value: number;
   gruppe: string;
   /** Eine Zusatzzeile für Detail und Rangliste („Stadtentwicklung"). */
   zusatz?: string;
@@ -127,7 +127,7 @@ export function Treemap({
   flaecheLabel?: string;
   /** Der Satz über nicht-positive Knoten — die Vorgabe ist der
    *  Investitionen-Fall (Tilgungen, Zuschüsse, Verkäufe). */
-  verworfenSatz?: (anzahl: number) => string;
+  verworfenSatz?: (count: number) => string;
   /** Die Ablesezeile nennt zusätzlich den Anteil an der Gesamtfläche. Nur
    *  sinnvoll, wo die Kacheln ein GANZES zerlegen — im Investitionen-Fall
    *  zeigt die Fläche einen Ausschnitt, dort wäre der Anteil eine
@@ -138,14 +138,14 @@ export function Treemap({
   const [aktiv, setAktiv] = useState<string | null>(null);
 
   const positive = useMemo(
-    () => knoten.filter((k) => k.wert > 0).sort((a, b) => b.wert - a.wert),
+    () => knoten.filter((k) => k.value > 0).sort((a, b) => b.value - a.value),
     [knoten]);
   const verworfen = knoten.length - positive.length;
 
   const top = positive.slice(0, buendelnAb);
   const rest = positive.slice(buendelnAb);
-  const restSumme = rest.reduce((s, k) => s + k.wert, 0);
-  const gesamt = positive.reduce((s, k) => s + k.wert, 0);
+  const restSumme = rest.reduce((s, k) => s + k.value, 0);
+  const gesamt = positive.reduce((s, k) => s + k.value, 0);
   const textVon = textFarbe ?? (() => "var(--hh-seg-text)");
   const verworfenText = verworfenSatz ?? ((n: number) =>
     `${n.toLocaleString("de-DE")} ${nomen} stehen mit null oder minus im `
@@ -160,7 +160,7 @@ export function Treemap({
     const kinder: Blatt[] = [...top];
     if (rest.length) {
       kinder.push({
-        key: "__rest__", rest: true, wert: restSumme, gruppe: "",
+        key: "__rest__", rest: true, value: restSumme, gruppe: "",
         name: `+ ${rest.length.toLocaleString("de-DE")} weitere ${nomen}`,
       });
     }
@@ -171,8 +171,8 @@ export function Treemap({
   if (!positive.length) return null;
 
   const geld = (euro: number) => {
-    const b = betrag(euro);
-    return `${b.wert} ${b.einheit}`;
+    const b = amount(euro);
+    return `${b.value} ${b.unit}`;
   };
 
   // Mobil: dieselben Daten, dieselbe Sortierung — als Rangliste mit Schiene.
@@ -180,10 +180,10 @@ export function Treemap({
     return (
       <div ref={box} className="flex flex-col gap-2.5">
         <RanglisteSchiene
-          einheit="Mio. €" nachkomma={1}
+          unit="Mio. €" nachkomma={1}
           zeilen={top.map((k) => ({
             label: k.name,
-            wert: k.wert / 1e6,
+            value: k.value / 1e6,
             hervorgehoben: treffer?.has(k.key),
             zusatz: k.zusatz,
           }))}
@@ -208,7 +208,7 @@ export function Treemap({
   const aktiverKnoten = aktiv === "__rest__"
     ? (rest.length ? {
         name: `+ ${rest.length.toLocaleString("de-DE")} weitere ${nomen}`,
-        wert: restSumme, zusatz: restZusatz,
+        value: restSumme, zusatz: restZusatz,
       } : null)
     : positive.find((k) => k.key === aktiv) ?? null;
   const gruppen = [...new Set(top.map((k) => k.gruppe))];
@@ -232,8 +232,8 @@ export function Treemap({
               onFocus={() => setAktiv(d.key)}
               onMouseEnter={() => setAktiv(d.key)}
               aria-label={d.rest
-                ? `${d.name}, zusammen ${geld(d.wert)}. ${restZusatz ?? restHinweis ?? "Ab hier übernimmt die Suche."}`
-                : `${d.name}${d.zusatz ? `, ${d.zusatz}` : ""}: ${geld(d.wert)}`}
+                ? `${d.name}, zusammen ${geld(d.value)}. ${restZusatz ?? restHinweis ?? "Ab hier übernimmt die Suche."}`
+                : `${d.name}${d.zusatz ? `, ${d.zusatz}` : ""}: ${geld(d.value)}`}
               className={cn(
                 "absolute overflow-hidden rounded-[4px] text-left transition-shadow",
                 "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring",
@@ -262,7 +262,7 @@ export function Treemap({
                         Bild — die Zahl ist die Auskunft, das Wort Beiwerk. */}
                     {w >= 150 && <>zusammen{" "}</>}
                     <span className="whitespace-nowrap font-semibold tabular-nums text-foreground/85">
-                      {geld(d.wert)}
+                      {geld(d.value)}
                     </span>
                     {w >= 150 && h >= 76 && (
                       <> · {restHinweis ?? "Ab hier übernimmt die Suche."}</>
@@ -301,7 +301,7 @@ export function Treemap({
                       stiller Maßstabswechsel. Die Einheit steht in der
                       Legende, einmal für alle. */}
                   <span className="flex-none text-[11px] font-bold tabular-nums">
-                    {deMio(d.wert / 1e6)}
+                    {deMio(d.value / 1e6)}
                   </span>
                 </span>
               ) : null}
@@ -318,10 +318,10 @@ export function Treemap({
             <span className="font-semibold text-foreground">{aktiverKnoten.name}</span>
             {aktiverKnoten.zusatz ? ` · ${aktiverKnoten.zusatz}` : ""} ·{" "}
             <span className="font-semibold tabular-nums text-foreground">
-              {geld(aktiverKnoten.wert)}
+              {geld(aktiverKnoten.value)}
             </span>
             {anteil && gesamt > 0 && (
-              <> · {deZahl((aktiverKnoten.wert / gesamt) * 100, 1)}&nbsp;% der Fläche</>
+              <> · {deZahl((aktiverKnoten.value / gesamt) * 100, 1)}&nbsp;% der Fläche</>
             )}
           </>
         ) : (

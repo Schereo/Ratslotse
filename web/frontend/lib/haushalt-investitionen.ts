@@ -24,18 +24,18 @@ export type { Herkunft };
 
 /** Eine Zeile aus `council_investitionen`. */
 export type InvestitionsZeile = {
-  jahr: number;
-  ebene: "teilhaushalt" | "investitionen" | "finanzhaushalt";
+  year: number;
+  level: "sub_budget" | "investments" | "financial_budget";
   /** 0 auf den beiden Summenzeilen — sie tragen keine Teilhaushaltsnummer. */
-  thh_nr: number;
-  bezeichnung: string;
-  einzahlungen: number;
-  auszahlungen: number;
+  sub_budget_no: number;
+  label: string;
+  inflows: number;
+  outflows: number;
   herkunft_id: number | null;
 };
 
 export type InvestitionenDaten = {
-  jahre: number[];
+  years: number[];
   teilhaushalte: InvestitionsZeile[];
   gesamt: InvestitionsZeile[];
   finanzhaushalt: InvestitionsZeile[];
@@ -57,26 +57,26 @@ export function herkunftVon(
  *  Bereich nach vorn sortieren, der viel ausgibt UND viel zurückbekommt). */
 export function teilhaushalte(
   daten: InvestitionenDaten | null,
-  jahr: number,
+  year: number,
 ): InvestitionsZeile[] {
   if (!daten) return [];
   return daten.teilhaushalte
-    .filter((z) => z.jahr === jahr)
-    .sort((a, b) => b.auszahlungen - a.auszahlungen);
+    .filter((z) => z.year === year)
+    .sort((a, b) => b.outflows - a.outflows);
 }
 
 export function gesamtJahr(
   daten: InvestitionenDaten | null,
-  jahr: number,
+  year: number,
 ): InvestitionsZeile | null {
-  return daten?.gesamt.find((z) => z.jahr === jahr) ?? null;
+  return daten?.gesamt.find((z) => z.year === year) ?? null;
 }
 
 export function finanzhaushaltJahr(
   daten: InvestitionenDaten | null,
-  jahr: number,
+  year: number,
 ): InvestitionsZeile | null {
-  return daten?.finanzhaushalt.find((z) => z.jahr === jahr) ?? null;
+  return daten?.finanzhaushalt.find((z) => z.year === year) ?? null;
 }
 
 /** Wie viel Prozent aller geplanten Auszahlungen Investitionen sind.
@@ -86,12 +86,12 @@ export function finanzhaushaltJahr(
  *  erfundene Zahl. */
 export function investitionsAnteil(
   daten: InvestitionenDaten | null,
-  jahr: number,
+  year: number,
 ): number | null {
-  const g = gesamtJahr(daten, jahr);
-  const f = finanzhaushaltJahr(daten, jahr);
-  if (!g || !f || !f.auszahlungen) return null;
-  return (g.auszahlungen / f.auszahlungen) * 100;
+  const g = gesamtJahr(daten, year);
+  const f = finanzhaushaltJahr(daten, year);
+  if (!g || !f || !f.outflows) return null;
+  return (g.outflows / f.outflows) * 100;
 }
 
 /** Was nach Abzug der Einzahlungen übrig bleibt — die Nettobelastung.
@@ -99,13 +99,13 @@ export function investitionsAnteil(
  *  Investitionen sind nicht nur Ausgaben: Zuschüsse von Bund und Land,
  *  Grundstücksverkäufe und Beiträge stehen als Einzahlungen dagegen. Die
  *  Differenz ist der Betrag, den die Stadt selbst aufbringen muss. */
-export function netto(zeile: InvestitionsZeile | null): number | null {
-  if (!zeile) return null;
-  return zeile.auszahlungen - zeile.einzahlungen;
+export function netto(row: InvestitionsZeile | null): number | null {
+  if (!row) return null;
+  return row.outflows - row.inflows;
 }
 
 /** Die Zeitreihe der Gesamtinvestitionen, aufsteigend nach Jahr. */
-export function reihe(daten: InvestitionenDaten | null): InvestitionsZeile[] {
+export function series(daten: InvestitionenDaten | null): InvestitionsZeile[] {
   if (!daten) return [];
-  return [...daten.gesamt].sort((a, b) => a.jahr - b.jahr);
+  return [...daten.gesamt].sort((a, b) => a.year - b.year);
 }

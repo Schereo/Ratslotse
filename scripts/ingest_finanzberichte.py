@@ -75,7 +75,7 @@ _EIGEN = ("neue_jahrgaenge", "bestand_geschuetzt")
 def main() -> int:
     ap = argparse.ArgumentParser(description="Jahresabschlüsse und Teilhaushalte einlesen")
     ap.add_argument("--nur", choices=["jahresabschluss", "teilhaushalte",
-                                      "ergebnishaushalt", "stellenplan",
+                                      "income_budget", "stellenplan",
                                       "investitionsprogramm"],
                     default=None)
     ap.add_argument("--db", default=str(COUNCIL_DB))
@@ -89,11 +89,11 @@ def main() -> int:
     store = CouncilStore(Path(args.db))
     p = finanzquellen.Protokoll()
     schuetzen = not args.auch_schrumpfen
-    ergebnis: dict = {}
+    result: dict = {}
 
-    def uebernehmen(name: str, teil: dict) -> None:
-        for schluessel, wert in teil.items():
-            ergebnis[f"{name}_{schluessel}" if schluessel in _EIGEN else schluessel] = wert
+    def uebernehmen(name: str, part: dict) -> None:
+        for key, value in part.items():
+            result[f"{name}_{key}" if key in _EIGEN else key] = value
 
     try:
         if args.nur in (None, "jahresabschluss"):
@@ -120,14 +120,14 @@ def main() -> int:
             # Leser kommt zuletzt, weil zwei seiner drei Proben gegen die
             # Bilanz rechnen — die muss vorher stehen.
             print("Kennzahlen des Rechenschaftsberichts:")
-            uebernehmen("kennzahlen", finanzquellen.lies_kennzahlen(store, p))
+            uebernehmen("indicators", finanzquellen.lies_kennzahlen(store, p))
         if args.nur in (None, "teilhaushalte"):
             print("Teilhaushalte (Produktebene):")
             uebernehmen("teilhaushalt",
                         finanzquellen.lies_teilhaushalte(store, p, schuetzen=schuetzen))
-        if args.nur in (None, "ergebnishaushalt"):
+        if args.nur in (None, "income_budget"):
             print("Gesamtergebnishaushalt (Planjahre):")
-            uebernehmen("ergebnishaushalt",
+            uebernehmen("income_budget",
                         finanzquellen.lies_ergebnishaushalte(store, p, schuetzen=schuetzen))
         if args.nur in (None, "stellenplan"):
             print("Stellenplan (Stellen und Besetzung):")
@@ -141,11 +141,11 @@ def main() -> int:
         # Zeilen, die nicht sagen, woher sie kommen. Leer ist der Sollzustand;
         # steht hier etwas, hat eine Zieltabelle ihre `herkunft_id` nicht
         # gefüllt (siehe council/herkunft.py).
-        ergebnis["herkunft_verwaist"] = store.herkunft_aufraeumen()
-        ergebnis["ohne_herkunft"] = store.herkunft_luecken()
+        result["herkunft_verwaist"] = store.herkunft_aufraeumen()
+        result["ohne_herkunft"] = store.herkunft_luecken()
     finally:
         store.close()
-    print(f"Fertig: {ergebnis}")
+    print(f"Fertig: {result}")
     return 0
 
 

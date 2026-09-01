@@ -14,7 +14,7 @@ from council.store import CouncilStore
 
 def get_store() -> Iterator[Store]:
     settings = get_settings()
-    store = Store(settings.nwz_db)
+    store = Store(settings.ratslotse_db)
     try:
         yield store
     finally:

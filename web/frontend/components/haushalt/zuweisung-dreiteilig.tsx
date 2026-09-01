@@ -21,33 +21,33 @@
 // nicht. Sie sagt, wie hoch sie ist.
 
 import { FinanzausgleichJahr, deMio } from "@/lib/haushalt";
-import { Beleg } from "@/components/haushalt/quelle";
+import { Beleg } from "@/components/haushalt/source";
 import { GlossaryText } from "@/components/glossary-text";
 
 /** Die drei Komponenten in der Reihenfolge, in der das Blatt sie führt. */
 const TEILE: {
-  feld: keyof FinanzausgleichJahr;
-  titel: string;
+  field: keyof FinanzausgleichJahr;
+  title: string;
   erklaerung: string;
   imDatensatz: boolean;
 }[] = [
   {
-    feld: "zuweisungen_gemeindeaufgaben",
-    titel: "Für Gemeindeaufgaben",
+    field: "zuweisungen_gemeindeaufgaben",
+    title: "Für Gemeindeaufgaben",
     erklaerung: "Der große Teil des Ausgleichs: Geld für das, was jede Gemeinde tut.",
     imDatensatz: true,
   },
   {
-    feld: "zuweisungen_kreisaufgaben",
-    titel: "Für Kreisaufgaben",
+    field: "zuweisungen_kreisaufgaben",
+    title: "Für Kreisaufgaben",
     erklaerung:
       "Oldenburg ist kreisfrei und erledigt zusätzlich die Aufgaben eines Landkreises — "
       + "Sozialhilfe, Jugendhilfe, Kfz-Zulassung.",
     imDatensatz: true,
   },
   {
-    feld: "zuweisungen_uebertragener_wirkungskreis",
-    titel: "Für übertragene staatliche Aufgaben",
+    field: "zuweisungen_uebertragener_wirkungskreis",
+    title: "Für übertragene staatliche Aufgaben",
     erklaerung:
       "Geld dafür, dass die Stadt Aufgaben des Landes miterledigt: Standesamt, "
       + "Melde- und Ausländerwesen, Bauaufsicht. Es ist an diese Aufgaben gebunden.",
@@ -55,10 +55,10 @@ const TEILE: {
   },
 ];
 
-export function ZuweisungDreiteilig({ reihe }: { reihe?: FinanzausgleichJahr[] }) {
-  const jahre = (reihe ?? []).filter((j) => j.nettobetrag != null);
-  if (!jahre.length) return null;
-  const j = jahre[jahre.length - 1];
+export function ZuweisungDreiteilig({ series }: { series?: FinanzausgleichJahr[] }) {
+  const years = (series ?? []).filter((j) => j.nettobetrag != null);
+  if (!years.length) return null;
+  const j = years[years.length - 1];
 
   // Was der Open-Data-Datensatz führt — nicht aus ihm gelesen, sondern aus
   // denselben Zeilen gerechnet, damit die beiden Zahlen im Block garantiert
@@ -72,7 +72,7 @@ export function ZuweisungDreiteilig({ reihe }: { reihe?: FinanzausgleichJahr[] }
   return (
     <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
       <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-        Ausgleichsjahr {j.jahr}
+        Ausgleichsjahr {j.year}
       </p>
       <h3 className="mt-1 font-display text-[16px] font-bold leading-tight tracking-tight">
         Die Zuweisung hat drei Teile — die Kurve oben zeigt zwei
@@ -87,11 +87,11 @@ export function ZuweisungDreiteilig({ reihe }: { reihe?: FinanzausgleichJahr[] }
 
       <dl className="mt-3 divide-y divide-dashed divide-border border-y border-dashed border-border">
         {TEILE.map((t) => {
-          const wert = j[t.feld];
+          const value = j[t.field];
           return (
-            <div key={t.feld} className="grid grid-cols-[1fr_auto] items-baseline gap-x-4 py-2.5">
+            <div key={t.field} className="grid grid-cols-[1fr_auto] items-baseline gap-x-4 py-2.5">
               <dt className="min-w-0">
-                <span className="text-[13px] font-semibold leading-snug">{t.titel}</span>
+                <span className="text-[13px] font-semibold leading-snug">{t.title}</span>
                 {!t.imDatensatz && (
                   <span className="ml-1.5 whitespace-nowrap rounded-full border border-dashed border-border px-1.5 py-0.5 align-middle font-mono text-[9px] uppercase tracking-[0.08em] text-muted-foreground">
                     fehlte bisher
@@ -102,7 +102,7 @@ export function ZuweisungDreiteilig({ reihe }: { reihe?: FinanzausgleichJahr[] }
                 </span>
               </dt>
               <dd className="whitespace-nowrap font-display text-[15px] font-bold tabular-nums">
-                {typeof wert === "number" ? deMio(wert / 1000) : "—"}
+                {typeof value === "number" ? deMio(value / 1000) : "—"}
                 <span className="ml-1 font-sans text-[10px] font-normal text-muted-foreground">
                   Mio.&nbsp;€
                 </span>

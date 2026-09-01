@@ -92,14 +92,14 @@ KERN_TOLERANZ = 1.0
 #: Die Spalten des Blatts, in ihrer Reihenfolge. Namen sind die der Quelle,
 #: gekürzt. Die Nummern sind Spaltenindizes, keine Tabellennummern.
 SPALTEN: dict[str, int] = {
-    "ars": 0, "name": 1, "verwaltungsform": 2, "bevoelkerung": 3,
-    "insgesamt": 4, "insgesamt_veraenderung": 5, "je_einwohner": 6,
-    "gesamthaushalt": 7, "gesamthaushalt_veraenderung": 8,
-    "kernhaushalt": 9, "kernhaushalt_veraenderung": 10,
-    "extrahaushalte": 11, "extrahaushalte_veraenderung": 12,
-    "extra_100": 13, "extra_50_100": 14, "extra_unter_50": 15,
-    "sonstige": 16, "sonstige_veraenderung": 17,
-    "sonstige_100": 18, "sonstige_50_100": 19, "sonstige_unter_50": 20,
+    "ars": 0, "name": 1, "verwaltungsform": 2, "population": 3,
+    "total": 4, "insgesamt_change": 5, "per_capita": 6,
+    "gesamthaushalt": 7, "gesamthaushalt_change": 8,
+    "core_budget": 9, "kernhaushalt_change": 10,
+    "extra_budgets": 11, "extrahaushalte_change": 12,
+    "extra_100": 13, "extra_50_100": 14, "extra_under_50": 15,
+    "other": 16, "sonstige_change": 17,
+    "sonstige_100": 18, "sonstige_50_100": 19, "other_below_50": 20,
 }
 
 #: Der Satz, den die Quelle selbst über ihre Grenzen schreibt — reist mit den
@@ -121,25 +121,25 @@ KEINE_REIHE = (
 _STICHTAG = re.compile(r"am\s+31\.12\.(\d{4})")
 
 
-def _zahl(wert: object) -> float | None:
-    if wert is None:
+def _zahl(value: object) -> float | None:
+    if value is None:
         return None
     try:
-        return float(str(wert).replace(".", "").replace(",", ".")
-                     if isinstance(wert, str) and "," in str(wert) else wert)
+        return float(str(value).replace(".", "").replace(",", ".")
+                     if isinstance(value, str) and "," in str(value) else value)
     except (TypeError, ValueError):
         return None
 
 
-def stichtag(zeilen: list[list[object]]) -> int | None:
+def as_of_date(zeilen: list[list[object]]) -> int | None:
     """Das Jahr aus der Tabellenüberschrift („… am 31.12.2024 …").
 
     Aus dem Blatt gelesen und nicht aus dem Dateinamen: Der Dateiname trägt
     mal „2024_Tabellenband", mal ein angehängtes „_0", und ein Ordner
     „2025-12" nennt das Jahr der Veröffentlichung, nicht das der Zahlen."""
-    for zeile in zeilen[:12]:
-        for wert in zeile:
-            treffer = _STICHTAG.search(str(wert or ""))
+    for row in zeilen[:12]:
+        for value in row:
+            treffer = _STICHTAG.search(str(value or ""))
             if treffer:
                 return int(treffer.group(1))
     return None
@@ -147,17 +147,17 @@ def stichtag(zeilen: list[list[object]]) -> int | None:
 
 def lies_gemeinde(zeilen: list[list[object]], ars: str = ARS_OLDENBURG) -> dict | None:
     """Die Zeile einer Gemeinde, über ihren Regionalschlüssel gefunden."""
-    for zeile in zeilen:
-        if zeile and str(zeile[0]).strip() == ars:
+    for row in zeilen:
+        if row and str(row[0]).strip() == ars:
             gefunden = {}
             for name, index in SPALTEN.items():
-                roh = zeile[index] if index < len(zeile) else None
+                roh = row[index] if index < len(row) else None
                 gefunden[name] = roh if name in ("ars", "name", "verwaltungsform") \
                     else _zahl(roh)
-            jahr = stichtag(zeilen)
-            if jahr is None:
+            year = as_of_date(zeilen)
+            if year is None:
                 return None
-            gefunden["jahr"] = jahr
+            gefunden["year"] = year
             gefunden["ars"] = ars
             return gefunden
     return None
@@ -168,10 +168,10 @@ def anteil_unter_50(gefunden: dict) -> float | None:
 
     Gerechnet statt abgeschrieben: Der Wert entscheidet, wie die Zahl gelesen
     werden darf, und er ändert sich mit jeder Ausgabe. 2024 sind es 58 %."""
-    gesamt = gefunden.get("insgesamt")
+    gesamt = gefunden.get("total")
     if not gesamt:
         return None
-    unter = (gefunden.get("extra_unter_50") or 0.0) + (gefunden.get("sonstige_unter_50") or 0.0)
+    unter = (gefunden.get("extra_under_50") or 0.0) + (gefunden.get("other_below_50") or 0.0)
     return unter / gesamt
 
 
@@ -182,7 +182,7 @@ def kernprobe(gefunden: dict, bilanz_geldschulden: float | None) -> tuple[bool, 
     herein. Sie prüft nicht die 740 Millionen (die kann niemand gegenrechnen),
     sondern dass die Tabelle **von dieser Stadt** handelt und ihre Systematik
     zu unserer passt."""
-    kern = gefunden.get("kernhaushalt")
+    kern = gefunden.get("core_budget")
     if kern is None:
         return False, "der Tabellenband nennt keinen Kernhaushalt"
     if bilanz_geldschulden is None:

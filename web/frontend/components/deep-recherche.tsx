@@ -17,8 +17,8 @@ import { cn } from "@/lib/utils";
 
 /** Künftige Beratungsstation einer zitierten Vorlage (Sitzungskalender). */
 export type Planung = {
-  kvonr: number; datum: string | null; gremium: string | null;
-  vorlage_nr: string | null; vorlage_titel: string | null;
+  kvonr: number; date: string | null; committee: string | null;
+  template_number: string | null; vorlage_titel: string | null;
 };
 
 export type DeepPhase = "zerlegen" | "suchen" | "lesen" | "schreiben";
@@ -120,7 +120,7 @@ export function RechercheFortschritt({ phase, facetten, facettenFertig, dokument
   // hydriert.
   const [nativ, setNativ] = useState(false);
   useEffect(() => { setNativ(isNativeApp()); }, []);
-  const prozent =
+  const percent =
     phase === "zerlegen" ? 8
     : phase === "suchen" ? 10 + (facetten.length ? (facettenFertig / facetten.length) * 45 : 20)
     : phase === "lesen" ? 62
@@ -140,8 +140,8 @@ export function RechercheFortschritt({ phase, facetten, facettenFertig, dokument
       {text}
     </span>
   );
-  const reihenfolge: DeepPhase[] = ["zerlegen", "suchen", "lesen", "schreiben"];
-  const stufe = reihenfolge.indexOf(phase);
+  const sort_order: DeepPhase[] = ["zerlegen", "suchen", "lesen", "schreiben"];
+  const stufe = sort_order.indexOf(phase);
   const zustand = (i: number) => (i < stufe ? "fertig" : i === stufe ? "aktiv" : "offen") as
     "fertig" | "aktiv" | "offen";
 
@@ -181,7 +181,7 @@ export function RechercheFortschritt({ phase, facetten, facettenFertig, dokument
       <div className="mt-3 flex items-center gap-2.5">
         <span className="h-[5px] flex-1 overflow-hidden rounded-full bg-primary/10">
           <span className="block h-full rounded-full bg-primary transition-[width] duration-700"
-            style={{ width: `${prozent}%` }} />
+            style={{ width: `${percent}%` }} />
         </span>
         <span className="whitespace-nowrap font-mono text-[10px] text-muted-foreground">{restzeit}</span>
         <button type="button" onClick={onStop}
@@ -335,14 +335,14 @@ export function WieEsWeitergeht({ planungen }: { planungen: Planung[] }) {
       </p>
       <div className="mt-2 flex flex-col gap-2">
         {planungen.slice(0, 5).map((p, i) => (
-          <div key={`${p.kvonr}-${p.datum}-${i}`} className="flex items-start gap-2.5">
+          <div key={`${p.kvonr}-${p.date}-${i}`} className="flex items-start gap-2.5">
             <CalendarDays className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
             <div className="min-w-0 flex-1">
               <p className="text-[12.5px] leading-snug text-foreground">
-                {p.vorlage_titel || p.vorlage_nr || "Vorlage"}
+                {p.vorlage_titel || p.template_number || "Vorlage"}
               </p>
               <p className="mt-0.5 font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
-                {p.gremium}{p.datum ? ` · ${fmtDatum(p.datum)}` : ""}
+                {p.committee}{p.date ? ` · ${fmtDatum(p.date)}` : ""}
               </p>
             </div>
           </div>

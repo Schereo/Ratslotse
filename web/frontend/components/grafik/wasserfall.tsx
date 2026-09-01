@@ -1,6 +1,6 @@
 // <Wasserfall> — Brutto, Abzüge, Ergebnis als eine Rechnung (GB-14).
 //
-// Der Vertrag: `schritte: {label, wert, art: "start" | "abzug" | "ergebnis"}[]`
+// Der Vertrag: `schritte: {label, value, art: "start" | "deduction" | "result"}[]`
 // auf einer gemeinsamen Achse. Die Abzüge hängen an der LAUFSUMME — gerechnet
 // mit `cumsum` aus d3-array, nicht als „schwebender Balken" von Hand: Wer
 // einen zweiten Abzug einfügt, bekommt seine Position geschenkt statt sie
@@ -45,10 +45,10 @@ import { cn } from "@/lib/utils";
 export type WasserfallSchritt = {
   label: string;
   /** Immer positiv — die Richtung sagt `art`. */
-  wert: number;
-  art: "start" | "abzug" | "ergebnis";
+  value: number;
+  art: "start" | "deduction" | "result";
   /** Der Halbsatz hinter dem Label („Gebühren, Entgelte, Erstattungen …"). */
-  hinweis?: string;
+  note?: string;
   /** Rampen-Token (`var(--hh-…)`). Ohne Angabe: start `--hh-aus-0`,
    *  abzug `--hh-ein-0`; das Ergebnis ist immer die Schraffur. */
   farbe?: string;
@@ -61,9 +61,9 @@ export type WasserfallSchritt = {
  *  Rundungsrauschen mehr, sondern ein Rechenfehler der Seite. */
 const TOLERANZ = 0.16;
 
-const VORGABE: Record<"start" | "abzug", string> = {
+const VORGABE: Record<"start" | "deduction", string> = {
   start: "var(--hh-aus-0)",
-  abzug: "var(--hh-ein-0)",
+  deduction: "var(--hh-ein-0)",
 };
 
 function Zeile({ s, von, bis, skala, nachkomma }: {
@@ -76,32 +76,32 @@ function Zeile({ s, von, bis, skala, nachkomma }: {
 }) {
   const links = (Math.max(von, 0) / skala) * 100;
   const breite = (Math.max(bis - von, 0) / skala) * 100;
-  const ergebnis = s.art === "ergebnis";
+  const result = s.art === "result";
   return (
     <div>
       <div className="flex items-baseline gap-2.5">
         <p className="min-w-0 flex-1 text-[12.5px] leading-relaxed text-foreground/85">
-          {s.art === "abzug" && <span aria-hidden="true">−&#8239;</span>}
+          {s.art === "deduction" && <span aria-hidden="true">−&#8239;</span>}
           {s.label}
-          {s.hinweis && <span className="text-muted-foreground"> — {s.hinweis}</span>}
+          {s.note && <span className="text-muted-foreground"> — {s.note}</span>}
         </p>
         <span className={cn(
           "flex-none font-display text-[15px] font-bold tabular-nums",
-          ergebnis && "text-signal",
+          result && "text-signal",
         )}>
-          {deZahl(s.wert, nachkomma)}
+          {deZahl(s.value, nachkomma)}
         </span>
       </div>
       <div aria-hidden="true" className="mt-1 h-6">
         <div
           className={cn(
             "h-full rounded",
-            ergebnis && "hh-schraffur border border-dashed border-signal",
+            result && "hh-schraffur border border-dashed border-signal",
           )}
           style={{
             marginLeft: `${links}%`,
             width: `${breite}%`,
-            background: ergebnis ? undefined : s.farbe ?? VORGABE[s.art as "start" | "abzug"],
+            background: result ? undefined : s.farbe ?? VORGABE[s.art as "start" | "deduction"],
           }}
         />
       </div>
@@ -109,12 +109,12 @@ function Zeile({ s, von, bis, skala, nachkomma }: {
   );
 }
 
-export function Wasserfall({ schritte, einheit, kicker, beleg, nachkomma = 1, className }: {
+export function Wasserfall({ schritte, unit, kicker, beleg, nachkomma = 1, className }: {
   /** Die Rechnung von oben nach unten: erst `start`, dann Abzüge, zuletzt
    *  das Ergebnis („aus Steuermitteln", „trägt die Stadt"). */
   schritte: WasserfallSchritt[];
   /** Achsen-Einheit, steht rechts oben: „Mio. € 2026". */
-  einheit: string;
+  unit: string;
   /** Mono-Kicker links oben; ohne ihn beginnt die Karte mit der Rechnung. */
   kicker?: string;
   /** Beleg-Chip-Slot (GB-00) — die Seite kennt ihren Quellenkontext. */
@@ -123,30 +123,30 @@ export function Wasserfall({ schritte, einheit, kicker, beleg, nachkomma = 1, cl
   nachkomma?: number;
   className?: string;
 }) {
-  const werte = schritte.filter((s) => s.wert > 0 || s.art === "ergebnis");
+  const werte = schritte.filter((s) => s.value > 0 || s.art === "result");
   if (!werte.some((s) => s.art === "start")) return null;
 
   // Die Laufsumme: Start zählt hinzu, Abzüge ziehen ab, das Ergebnis ist
   // eine Probe und bewegt sie nicht. `cumsum` liefert die Summe NACH jedem
   // Schritt — die rechte Kante eines Abzugs ist also die Laufsumme davor.
   const lauf = Array.from(cumsum(werte.map((s) =>
-    s.art === "start" ? s.wert : s.art === "abzug" ? -s.wert : 0)));
-  const skala = Math.max(...lauf, ...werte.map((s) => s.wert), 1);
+    s.art === "start" ? s.value : s.art === "deduction" ? -s.value : 0)));
+  const skala = Math.max(...lauf, ...werte.map((s) => s.value), 1);
 
   const letzterStand = lauf[lauf.length - 1] ?? 0;
-  const ergebnis = werte.find((s) => s.art === "ergebnis");
-  const probeDaneben = ergebnis != null
-    && Math.abs(ergebnis.wert - Math.max(letzterStand, 0)) > TOLERANZ;
+  const result = werte.find((s) => s.art === "result");
+  const probeDaneben = result != null
+    && Math.abs(result.value - Math.max(letzterStand, 0)) > TOLERANZ;
 
   return (
     <div className={className}>
-      {(kicker || einheit) && (
+      {(kicker || unit) && (
         <div className="mb-3 flex items-baseline justify-between gap-3">
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
             {kicker}{beleg}
           </p>
           <span className="flex-none font-mono text-[9.5px] uppercase tracking-[0.09em] text-muted-foreground">
-            {einheit}
+            {unit}
           </span>
         </div>
       )}
@@ -155,19 +155,19 @@ export function Wasserfall({ schritte, einheit, kicker, beleg, nachkomma = 1, cl
         {werte.map((s, i) => {
           const vorher = i > 0 ? lauf[i - 1] : 0;
           const [von, bis] = s.art === "start"
-            ? [0, s.wert]
-            : s.art === "abzug"
+            ? [0, s.value]
+            : s.art === "deduction"
               ? [lauf[i], vorher]
-              : [0, s.wert];
+              : [0, s.value];
           return <Zeile key={`${s.art}-${s.label}`} s={s} von={von} bis={bis}
             skala={skala} nachkomma={nachkomma} />;
         })}
       </div>
 
-      {probeDaneben && ergebnis && (
+      {probeDaneben && result && (
         <p className="mt-2.5 text-[11px] leading-relaxed text-signal">
           Summenprobe: Die Schritte ergeben {deZahl(Math.max(letzterStand, 0), nachkomma)},
-          als Ergebnis übergeben sind {deZahl(ergebnis.wert, nachkomma)} — die Grafik zeigt
+          als Ergebnis übergeben sind {deZahl(result.value, nachkomma)} — die Grafik zeigt
           das, statt zu strecken.
         </p>
       )}

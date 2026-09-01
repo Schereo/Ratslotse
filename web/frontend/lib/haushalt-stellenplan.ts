@@ -28,27 +28,27 @@ export type StellenTeil = "A" | "B";
  *  Die Summen stehen als eigene Zeilen da, weil sie im Dokument stehen: Auf
  *  der Seite soll die Zahl der Stadt stehen, nicht unsere Addition. */
 export type StellenZeile = {
-  jahrgang: number;
-  teil: StellenTeil;
-  art: "posten" | "gruppe" | "gesamt";
-  gruppe: string | null;
-  lfd_nr: number | null;
-  bezeichnung: string;
-  besoldung: string | null;
+  budget_year: number;
+  part: StellenTeil;
+  kind: "item" | "group" | "total";
+  pay_group: string | null;
+  seq_no: number | null;
+  label: string;
+  pay_grade: string | null;
   /** Stellen im Haushaltsjahr — die Planspalte. */
-  stellen_plan: number;
+  positions_planned: number;
   /** Stellen im Vorjahr. Auf DIESE Zahl beziehen sich alle Besetzungswerte. */
-  stellen_vorjahr: number;
-  besetzt: number;
+  positions_prior_year: number;
+  filled: number;
   /** Nur Teil A: Eine Beamtenstelle darf mit Tarifbeschäftigten besetzt werden. */
-  besetzt_beamte: number | null;
-  besetzt_arbeitnehmer: number | null;
-  nicht_besetzt: number;
+  filled_by_officials: number | null;
+  filled_by_employees: number | null;
+  vacant: number;
   /** Tag, auf den sich die Besetzung bezieht (ISO). */
-  stichtag: string | null;
+  as_of_date: string | null;
   /** 0 = In dieser Zeile ergeben besetzt + unbesetzt nicht die Stellen des
    *  Vorjahres. So steht es im Plan; zwei Zeilen im Bestand sind das. */
-  stimmig: number;
+  consistent: number;
   herkunft_id: number | null;
 };
 
@@ -59,7 +59,7 @@ export type StellenplanDaten = {
   gruppen: StellenZeile[];
   /** Nur für den angefragten Jahrgang — je Jahrgang rund 190 Zeilen. */
   zeilen: StellenZeile[];
-  fehlend: { jahrgang: number; teil: StellenTeil; name: string }[];
+  fehlend: { budget_year: number; part: StellenTeil; name: string }[];
   herkunft: Record<string, Herkunft>;
 };
 
@@ -75,59 +75,59 @@ export const TEIL_LABEL: Record<StellenTeil, string> = {
 export const TEILE: StellenTeil[] = ["A", "B"];
 
 /** Die Gesamtzeile eines Jahrgangs und Teils — oder `null`, wo sie fehlt. */
-export function gesamt(daten: StellenplanDaten, jahrgang: number,
-                       teil: StellenTeil): StellenZeile | null {
-  return daten.summen.find((z) => z.jahrgang === jahrgang && z.teil === teil) ?? null;
+export function gesamt(daten: StellenplanDaten, budget_year: number,
+                       part: StellenTeil): StellenZeile | null {
+  return daten.summen.find((z) => z.budget_year === budget_year && z.part === part) ?? null;
 }
 
 /** Fehlt dieser Teil im Jahrgang? Dann gibt es ihn nicht als Null, sondern
  *  als Lücke mit Begründung. */
-export function fehlt(daten: StellenplanDaten, jahrgang: number,
-                      teil: StellenTeil): boolean {
-  return daten.fehlend.some((f) => f.jahrgang === jahrgang && f.teil === teil);
+export function fehlt(daten: StellenplanDaten, budget_year: number,
+                      part: StellenTeil): boolean {
+  return daten.fehlend.some((f) => f.budget_year === budget_year && f.part === part);
 }
 
 /** Die Besetzungslücke eines Teils — ausschließlich aus der Vorjahresspalte.
  *
  *  `anteil` ist unsere einzige Division auf dieser Seite und steht auf der
- *  Seite als solche gekennzeichnet. Sie teilt durch `stellen_vorjahr`, nicht
- *  durch `stellen_plan`: Beides sind Stellen, aber zu verschiedenen
+ *  Seite als solche gekennzeichnet. Sie teilt durch `positions_prior_year`, nicht
+ *  durch `positions_planned`: Beides sind Stellen, aber zu verschiedenen
  *  Zeitpunkten (s. Kopf dieser Datei). */
 export function luecke(z: StellenZeile | null): {
-  stellen: number; besetzt: number; nicht_besetzt: number;
-  anteil: number; stichtag: string | null;
+  stellen: number; filled: number; vacant: number;
+  anteil: number; as_of_date: string | null;
 } | null {
-  if (!z || !z.stellen_vorjahr) return null;
+  if (!z || !z.positions_prior_year) return null;
   return {
-    stellen: z.stellen_vorjahr,
-    besetzt: z.besetzt,
-    nicht_besetzt: z.nicht_besetzt,
-    anteil: z.nicht_besetzt / z.stellen_vorjahr,
-    stichtag: z.stichtag,
+    stellen: z.positions_prior_year,
+    filled: z.filled,
+    vacant: z.vacant,
+    anteil: z.vacant / z.positions_prior_year,
+    as_of_date: z.as_of_date,
   };
 }
 
 /** Jahrgänge, für die dieser Teil vorliegt — aufsteigend. */
 export function jahrgaengeMitTeil(daten: StellenplanDaten,
-                                  teil: StellenTeil): number[] {
-  return daten.summen.filter((z) => z.teil === teil)
-    .map((z) => z.jahrgang).sort((a, b) => a - b);
+                                  part: StellenTeil): number[] {
+  return daten.summen.filter((z) => z.part === part)
+    .map((z) => z.budget_year).sort((a, b) => a - b);
 }
 
 /** Die Einzelposten mit den größten Besetzungslücken.
  *
  *  Bewusst nach absoluten Stellen sortiert und nicht nach Anteil: Eine Zeile
  *  mit einer von einer Stelle unbesetzt hat 100 %, bewegt aber nichts. Zeilen,
- *  in denen der Plan sich selbst widerspricht (`stimmig === 0`), bleiben
+ *  in denen der Plan sich selbst widerspricht (`consistent === 0`), bleiben
  *  draußen — ihre Lücke ist keine Aussage über den Dienst, sondern über einen
  *  Übertrag. */
-export function groessteLuecken(zeilen: StellenZeile[], teil: StellenTeil,
-                                anzahl = 8): StellenZeile[] {
+export function groessteLuecken(zeilen: StellenZeile[], part: StellenTeil,
+                                count = 8): StellenZeile[] {
   return zeilen
-    .filter((z) => z.art === "posten" && z.teil === teil && z.stimmig === 1)
-    .filter((z) => z.nicht_besetzt > 0)
-    .sort((a, b) => b.nicht_besetzt - a.nicht_besetzt)
-    .slice(0, anzahl);
+    .filter((z) => z.kind === "item" && z.part === part && z.consistent === 1)
+    .filter((z) => z.vacant > 0)
+    .sort((a, b) => b.vacant - a.vacant)
+    .slice(0, count);
 }
 
 /** Stellen mit deutschem Komma und ohne unnötige Nachkommastellen.

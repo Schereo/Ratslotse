@@ -5,7 +5,7 @@ gespiegelt.
 Gesichert wird ALLES, was der Server nicht aus dem Repo wiederherstellen kann:
 
 * **jede** Datenbank unter ``data/`` — nicht mehr eine feste Liste. Die zählte
-  ``nwz.sqlite`` und ``council.sqlite`` auf; eine dritte Datenbank wäre still
+  ``ratslotse.sqlite`` und ``council.sqlite`` auf; eine dritte Datenbank wäre still
   übersprungen worden, ohne dass jemand es gemerkt hätte.
 * die **gerenderten Planzeichnungen** (``data/plaene/``). Sie ließen sich aus
   den PDFs neu erzeugen, aber das ist ein Stapellauf über 600 Anlagen.
@@ -93,11 +93,11 @@ def backup_env() -> bool:
     """
     if os.environ.get("BACKUP_ENV", "1") == "0":
         return False
-    quelle = ROOT / ".env"
-    if not quelle.is_file():
+    source = ROOT / ".env"
+    if not source.is_file():
         return False
     ziel = BACKUP_DIR / "env.backup"
-    ziel.write_bytes(quelle.read_bytes())
+    ziel.write_bytes(source.read_bytes())
     ziel.chmod(0o600)
     print(f"✓  .env → {ziel.name}")
     return True
@@ -130,13 +130,13 @@ def dateien_spiegeln() -> dict[str, int]:
     """
     aus: dict[str, int] = {}
     for ordner, label in GESPIEGELTE_ORDNER.items():
-        quelle = DATA / ordner
-        if not quelle.is_dir():
+        source = DATA / ordner
+        if not source.is_dir():
             aus[label] = 0
             continue
         ziel = BACKUP_DIR / ordner
         ziel.mkdir(parents=True, exist_ok=True)
-        subprocess.run(["rsync", "-a", "--delete", f"{quelle}/", f"{ziel}/"],
+        subprocess.run(["rsync", "-a", "--delete", f"{source}/", f"{ziel}/"],
                        check=True, timeout=30 * 60)
         n = sum(1 for p in ziel.rglob("*") if p.is_file())
         aus[label] = n

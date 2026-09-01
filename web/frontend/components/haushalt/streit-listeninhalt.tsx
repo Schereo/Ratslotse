@@ -19,7 +19,7 @@
 // Die Beschluss-Datei zum Haushalt 2021 führt eine Spalte „Vorschlag von"
 // je POSITION. Für diesen einen Jahrgang steht deshalb Zeile für Zeile da,
 // was die Koalition ändern wollte — und der Kasten oben sagt das statt des
-// „nur die Summe"-Satzes. Entschieden wird das an den Daten (`urheber` ist
+// „nur die Summe"-Satzes. Entschieden wird das an den Daten (`author` ist
 // gefüllt), nicht an der Jahreszahl: Führt ein künftiges Dokument die Spalte
 // wieder, stimmt der Text von selbst.
 //
@@ -33,7 +33,7 @@ import {
   AenderungslistenDaten, ListeImJahr, deltaBetrag, listenFuerJahr,
   politikZeilen, positionenVon,
 } from "@/lib/haushalt-aenderungslisten";
-import { Beleg, Dokumentbeleg } from "@/components/haushalt/quelle";
+import { Beleg, Dokumentbeleg } from "@/components/haushalt/source";
 import { BetragZelle, TextZelle, ZahlenTabelle } from "@/components/haushalt/zahlen-tabelle";
 import { parteiDot } from "@/components/qa-bausteine";
 import { cn } from "@/lib/utils";
@@ -71,26 +71,26 @@ function SummenWerte({ e, a, s }: { e: number; a: number; s: number }) {
   );
 }
 
-function ListenKarte({ liste, jahr }: { liste: ListeImJahr; jahr: number }) {
+function ListenKarte({ liste, year }: { liste: ListeImJahr; year: number }) {
   // Der Urheber steht nur an der Zeile, wo er dort auch etwas unterscheidet:
   // Führt eine Liste durchgehend denselben, wiederholte die Marke nur den
   // Namen der Karte darüber. Genau eine Datei im Bestand führt mehrere
   // (der Beschluss 2021 mit Verw. I, Verw. II und der Koalitionsliste).
-  const urheber = new Set(liste.zeilen.map((z) => z.urheber).filter(Boolean));
-  const zeigeUrheber = urheber.size > 1;
+  const author = new Set(liste.zeilen.map((z) => z.author).filter(Boolean));
+  const zeigeUrheber = author.size > 1;
   return (
     <details className="group border-t border-border/60 py-2.5 first:border-t-0 first:pt-0">
       <summary className="flex cursor-pointer list-none flex-wrap items-baseline gap-x-3 gap-y-1">
         <ChevronDown className="h-3.5 w-3.5 translate-y-0.5 text-muted-foreground transition-transform group-open:rotate-180" />
         <span className="text-[13px] font-semibold text-foreground">{liste.name}</span>
         <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
-          {liste.zeilen.length} Position{liste.zeilen.length === 1 ? "" : "en"} für {jahr}
-          {zeigeUrheber && ` · von ${urheber.size} Vorschlagenden`}
+          {liste.zeilen.length} Position{liste.zeilen.length === 1 ? "" : "en"} für {year}
+          {zeigeUrheber && ` · von ${author.size} Vorschlagenden`}
         </span>
-        {liste.saldo && (
+        {liste.balance && (
           <span className={cn("ml-auto whitespace-nowrap font-mono text-[11.5px] font-medium tabular-nums",
-            liste.saldo.saldo < 0 ? "text-signal" : "text-foreground")}>
-            Saldo {deltaBetrag(liste.saldo.saldo)}
+            liste.balance.balance < 0 ? "text-signal" : "text-foreground")}>
+            Saldo {deltaBetrag(liste.balance.balance)}
           </span>
         )}
       </summary>
@@ -102,54 +102,54 @@ function ListenKarte({ liste, jahr }: { liste: ListeImJahr; jahr: number }) {
         <ZahlenTabelle
           className="mt-2"
           spalten={[
-            { titel: "Position" },
-            { titel: "Ertrag", zahl: true },
-            { titel: "Aufwand", zahl: true },
+            { title: "Position" },
+            { title: "Ertrag", zahl: true },
+            { title: "Aufwand", zahl: true },
           ]}
-          fuss={liste.saldo && (
+          fuss={liste.balance && (
             <tr>
               <TextZelle className="border-t-border/60 py-2">
                 <span className="text-[11.5px] font-semibold text-foreground">Summe der Liste</span>
                 <span className={cn("ml-2 whitespace-nowrap font-mono text-[11px] font-medium tabular-nums",
-                  liste.saldo.saldo < 0 ? "text-signal" : "text-muted-foreground")}>
-                  Saldo {deltaBetrag(liste.saldo.saldo)}
+                  liste.balance.balance < 0 ? "text-signal" : "text-muted-foreground")}>
+                  Saldo {deltaBetrag(liste.balance.balance)}
                 </span>
                 <Beleg q="aenderungsliste" h={liste.herkunft} />
               </TextZelle>
-              <BetragZelle euro={liste.saldo.ertraege} text={deltaBetrag(liste.saldo.ertraege)}
+              <BetragZelle euro={liste.balance.revenues} text={deltaBetrag(liste.balance.revenues)}
                 label="Ertrag" className="border-t-border/60 py-2 font-medium" />
-              <BetragZelle euro={liste.saldo.aufwendungen} text={deltaBetrag(liste.saldo.aufwendungen)}
+              <BetragZelle euro={liste.balance.expenses} text={deltaBetrag(liste.balance.expenses)}
                 label="Aufwand" className="border-t-border/60 py-2 font-medium" />
             </tr>
           )}
         >
           {liste.zeilen.map((z) => (
-            <tr key={z.lfd}>
+            <tr key={z.seq}>
               <TextZelle>
-                {z.bezeichnung ? (
-                  <span className="text-foreground/90">{z.bezeichnung}</span>
+                {z.label ? (
+                  <span className="text-foreground/90">{z.label}</span>
                 ) : (
                   // Rund 1 % der Zeilen: Die Bezeichnung wickelt im PDF so
                   // uneindeutig, dass die Nachlese sie liegen lässt — lieber
                   // eine benannte Lücke als ein Name von der falschen Zeile.
-                  <span className="italic text-muted-foreground">Position {z.lfd} (ohne lesbaren Namen)</span>
+                  <span className="italic text-muted-foreground">Position {z.seq} (ohne lesbaren Namen)</span>
                 )}
                 <span className="ml-2 font-mono text-[10px] text-muted-foreground">
-                  {z.thh != null ? `THH ${String(z.thh).padStart(2, "0")}` : "alle THH"}
+                  {z.sub_budget != null ? `THH ${String(z.sub_budget).padStart(2, "0")}` : "alle THH"}
                 </span>
-                {zeigeUrheber && z.urheber && (
+                {zeigeUrheber && z.author && (
                   <span className="ml-2 align-baseline">
-                    <UrheberMarke label={z.urheber} klein />
+                    <UrheberMarke label={z.author} klein />
                   </span>
                 )}
-                {z.erlaeuterung && (
+                {z.explanation && (
                   <span className="mt-0.5 block max-w-[75ch] text-[11px] leading-relaxed text-muted-foreground">
-                    {z.erlaeuterung}
+                    {z.explanation}
                   </span>
                 )}
               </TextZelle>
-              <BetragZelle euro={z.ertrag} text={deltaBetrag(z.ertrag)} label="Ertrag" />
-              <BetragZelle euro={z.aufwand} text={deltaBetrag(z.aufwand)} label="Aufwand" />
+              <BetragZelle euro={z.revenue} text={deltaBetrag(z.revenue)} label="Ertrag" />
+              <BetragZelle euro={z.expense} text={deltaBetrag(z.expense)} label="Aufwand" />
             </tr>
           ))}
         </ZahlenTabelle>
@@ -167,19 +167,19 @@ function ListenKarte({ liste, jahr }: { liste: ListeImJahr; jahr: number }) {
   );
 }
 
-export function StreitListenInhalt({ daten, jahr }: {
+export function StreitListenInhalt({ daten, year }: {
   daten: AenderungslistenDaten | null;
-  jahr: number | null;
+  year: number | null;
 }) {
-  const listen = listenFuerJahr(daten, jahr);
-  const politik = politikZeilen(daten, jahr);
+  const listen = listenFuerJahr(daten, year);
+  const politik = politikZeilen(daten, year);
   // Gilt der Satz „nur die Summe ist belegt" für diesen Jahrgang noch? Für
   // 2021 nicht: Dessen Beschluss-Datei nennt zu jeder Position, wer sie
   // vorschlug. Die Frage wird an den Daten entschieden, nicht am Jahr —
   // taucht die Spalte in einem künftigen Dokument wieder auf, stimmt der
   // Text von selbst.
   const mitPositionen = politik.some((s) => positionenVon(daten, s).length > 0);
-  if (!jahr || (!listen.length && !politik.length)) return null;
+  if (!year || (!listen.length && !politik.length)) return null;
 
   return (
     <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
@@ -188,7 +188,7 @@ export function StreitListenInhalt({ daten, jahr }: {
           Was in den Listen stand
         </h2>
         <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
-          Haushalt {jahr}
+          Haushalt {year}
         </span>
       </div>
       <p className="mt-1 max-w-[70ch] text-[12.5px] leading-relaxed text-muted-foreground">
@@ -212,7 +212,7 @@ export function StreitListenInhalt({ daten, jahr }: {
               return (
                 <p key={s.label} className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
                   <UrheberMarke label={s.label} />
-                  <SummenWerte e={s.ertraege} a={s.aufwendungen} s={s.saldo} />
+                  <SummenWerte e={s.revenues} a={s.expenses} s={s.balance} />
                   {eigene.length > 0 && (
                     <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
                       aus {eigene.length} Position{eigene.length === 1 ? "" : "en"}
@@ -229,7 +229,7 @@ export function StreitListenInhalt({ daten, jahr }: {
             Beschluss-Datei des Finanzausschusses, mit dem Urheber daneben.{" "}
             {mitPositionen ? (
               <>
-                Für {jahr} geht diese Datei weiter als alle anderen: Sie führt an
+                Für {year} geht diese Datei weiter als alle anderen: Sie führt an
                 <em> jeder</em> Position eine Spalte „Vorschlag von“ — was die Fraktionen
                 wollten, steht deshalb unten in der Liste Zeile für Zeile, nicht nur als
                 Summe. Dass die Zuordnung stimmt, rechnet sich nach: Die Positionen jedes
@@ -246,7 +246,7 @@ export function StreitListenInhalt({ daten, jahr }: {
 
       {listen.length > 0 && (
         <div className="mt-3">
-          {listen.map((l) => <ListenKarte key={l.schluessel} liste={l} jahr={jahr} />)}
+          {listen.map((l) => <ListenKarte key={l.key} liste={l} year={year} />)}
         </div>
       )}
     </div>

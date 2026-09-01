@@ -67,8 +67,8 @@ export type HantelZeile = {
   einordnung: ReactNode | null;
 };
 
-export type HantelMassstab = "prozent" | "betrag";
-export type HantelSortierung = "abweichung" | "alpha";
+export type HantelMassstab = "percent" | "amount";
+export type HantelSortierung = "deviation" | "alpha";
 
 /** Der Satz, der die Nicht-Wertung ausschreibt, wenn die Zeilen AUSGABEN sind.
  *
@@ -83,13 +83,13 @@ const AUSGABEN_KEINE_WERTUNG =
   + "oder eine Stelle nicht besetzt wurde.";
 
 export function Hantel({
-  zeilen, einheit = "Mio. €", massstab = "prozent",
-  sortierung = "abweichung", schwelle, beleg,
+  zeilen, unit = "Mio. €", massstab = "percent",
+  sortierung = "deviation", schwelle, beleg,
   wovon = "der Bereich", keineWertung = AUSGABEN_KEINE_WERTUNG,
 }: {
   zeilen: HantelZeile[];
   /** Einheit der Beträge — steht an den Skalenenden und in der Legende. */
-  einheit?: string;
+  unit?: string;
   /** Woran die Streckenlänge hängt — siehe Kommentar oben. */
   massstab?: HantelMassstab;
   /** |Abweichung| absteigend (Default, H4-07) oder nach Label. */
@@ -125,7 +125,7 @@ export function Hantel({
   // spreizen sich die Zeilen deutlich besser — bei den Ausgaben 2024 ist die
   // mittlere Strecke fünfmal so lang, und statt fünf sind nur zwei von zwölf
   // Zeilen kürzer als zwei Prozent der Breite.
-  const skala = (z: HantelZeile) => (massstab === "prozent" ? anteil(z) ?? 0 : diff(z));
+  const skala = (z: HantelZeile) => (massstab === "percent" ? anteil(z) ?? 0 : diff(z));
 
   const sortiert = [...gueltig].sort((a, b) =>
     sortierung === "alpha"
@@ -147,9 +147,9 @@ export function Hantel({
   // Die Achse trägt ihre Einheit selbst — „−6,2 Mio. €" statt einer nackten
   // Zahl, deren Einheit man in der Legende suchen muss (Review H4-07).
   const skalenEnde = (v: number) =>
-    massstab === "prozent"
+    massstab === "percent"
       ? `${v > 0 ? "+" : ""}${Math.round(v)} %`
-      : `${v > 0 ? "+" : ""}${deMio(v)} ${einheit}`;
+      : `${v > 0 ? "+" : ""}${deMio(v)} ${unit}`;
 
   const gitter = "grid-cols-[minmax(96px,150px)_1fr_auto]";
 
@@ -300,11 +300,11 @@ export function Hantel({
         </span>
         <span className="inline-flex items-center gap-1.5">
           <span className="h-[3px] w-4 rounded-full bg-signal/70" />
-          {massstab === "prozent" ? "Abweichung in Prozent des Plans" : `Abweichung in ${einheit}`}
+          {massstab === "percent" ? "Abweichung in Prozent des Plans" : `Abweichung in ${unit}`}
         </span>
         {beleg && <span>{beleg}</span>}
         <span className="basis-full text-[11px] leading-relaxed">
-          {massstab === "prozent"
+          {massstab === "percent"
             ? `Die Strecke misst, um wie viel Prozent ${wovon} vom Plan abwich — so ist eine Zeile von 231 Mio. € mit einer von 6 Mio. € vergleichbar. Der Betrag steht rechts daneben.`
             : `Die Strecke misst den Betrag der Abweichung. Große Zeilen dominieren dabei; wie genau ${wovon} beim Plan lag, zeigt die Prozent-Ansicht besser.`}{" "}
           {keineWertung}

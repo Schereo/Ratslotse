@@ -14,7 +14,7 @@ import pytest
 _BACKEND = Path(__file__).resolve().parents[1] / "web" / "backend"
 sys.path.insert(0, str(_BACKEND))
 _TMP = tempfile.mkdtemp()
-os.environ["NWZ_DB"] = str(Path(_TMP) / "nwz.sqlite")
+os.environ["RATSLOTSE_DB"] = str(Path(_TMP) / "ratslotse.sqlite")
 os.environ["COUNCIL_DB"] = str(Path(_TMP) / "council.sqlite")
 os.environ["WEB_JWT_SECRET"] = "test-secret"
 os.environ["COOKIE_SECURE"] = "false"
@@ -114,7 +114,7 @@ def test_tag_muss_ein_datum_sein(client, monkeypatch, tmp_path):
 def test_sitzungen_tag_muss_datum_sein(client, monkeypatch):
     token = _mit_token(monkeypatch)
     try:
-        r = client.get("/api/social/sitzungen/nicht-datum",
+        r = client.get("/api/social/sitzungen/nicht-date",
                        headers={"X-Social-Token": token})
         assert r.status_code == 400
     finally:
@@ -158,10 +158,10 @@ def test_neue_beschluesse_filtert_wichtigkeit_und_id(client, monkeypatch, counci
         c.execute(
             "INSERT INTO council_decisions (id, ksinr, position, kind, title, "
             "outcome, vote, importance) VALUES (?, 1, 1, 'decision', "
-            "'Beschluss ' || ?, 'angenommen', 'mehrheitlich', ?)",
+            "'Beschluss ' || ?, 'accepted', 'majority', ?)",
             (bid, bid, wichtig))
     c.execute("INSERT INTO council_decision_votes (decision_id, faction, stance) "
-              "VALUES (10, 'CDU', 'dagegen')")
+              "VALUES (10, 'CDU', 'against')")
     c.commit()
     try:
         r = client.get("/api/social/neue-beschluesse",
@@ -170,7 +170,7 @@ def test_neue_beschluesse_filtert_wichtigkeit_und_id(client, monkeypatch, counci
         assert r.status_code == 200
         daten = r.json()
         assert [d["id"] for d in daten] == [10]          # 11 fällt durch die Schwelle
-        assert daten[0]["votes"] == [{"faction": "CDU", "stance": "dagegen"}]
+        assert daten[0]["votes"] == [{"faction": "CDU", "stance": "against"}]
     finally:
         get_settings.cache_clear()
 
@@ -200,7 +200,7 @@ def test_hochladen_vergibt_die_namen_selbst(client, monkeypatch, tmp_path):
         )
         assert r.status_code == 200, r.text
         daten = r.json()
-        assert daten["anzahl"] == 2
+        assert daten["count"] == 2
         assert daten["urls"] == [
             "https://example.org/social/2026-08-24/2026-08-24-01.jpg",
             "https://example.org/social/2026-08-24/2026-08-24-02.jpg",
@@ -213,7 +213,7 @@ def test_hochladen_vergibt_die_namen_selbst(client, monkeypatch, tmp_path):
 
 def test_kennung_darf_mehr_als_ein_datum_sein(client, monkeypatch, tmp_path):
     """Der Bot legt nicht nur Wochen-Karussells ab, sondern auch
-    „2026-08-24-fundstueck", „beschluss-4711" und „stories-2026-08-24".
+    „2026-08-24-fundstueck", „official_text-4711" und „stories-2026-08-24".
     Das Datumsmuster wies die alle ab."""
     token = _mit_token(monkeypatch)
     monkeypatch.setenv("SOCIAL_MEDIA_DIR", str(tmp_path))

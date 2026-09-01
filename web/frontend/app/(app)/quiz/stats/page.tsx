@@ -14,7 +14,7 @@ function StatsInner() {
   const { data: stats, loading } = useFetch<QuizStats>("/quiz/stats");
   const { data: areas } = useFetch<QuizAreas>("/quiz/areas");
   const themeLabels = useMemo(
-    () => Object.fromEntries((areas?.themen ?? []).map((t) => [t.key, t.label ?? t.key])),
+    () => Object.fromEntries((areas?.topics ?? []).map((t) => [t.key, t.label ?? t.key])),
     [areas],
   );
 

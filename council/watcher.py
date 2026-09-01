@@ -32,8 +32,8 @@ _VORLAGE_START = re.compile(
 
 
 def _vorlagen_auszuege(store, session: CouncilSession) -> dict[str, str]:
-    """vorlage_nr → aussagekräftiger Auszug aus dem Vorlagentext."""
-    nrs = [i.vorlage_nr for i in session.agenda_items if i.is_public and i.vorlage_nr]
+    """template_number → aussagekräftiger Auszug aus dem Vorlagentext."""
+    nrs = [i.template_number for i in session.agenda_items if i.is_public and i.template_number]
     if not nrs or store is None:
         return {}
     try:
@@ -71,7 +71,7 @@ def _classify_agenda(session: CouncilSession, topics: list[dict],
         return {}
 
     items_text = "\n".join(
-        f"{i.item_number}: {i.title}" + (f" [{i.vorlage_nr}]" if i.vorlage_nr else "")
+        f"{i.item_number}: {i.title}" + (f" [{i.template_number}]" if i.template_number else "")
         for i in session.agenda_items
         if i.is_public
     )
@@ -131,17 +131,18 @@ def _classify_agenda(session: CouncilSession, topics: list[dict],
     vorschlaege: list[tuple[int, list[str]]] = []
     for m in data.get("matches", []):
         idx = m.get("topic_index", 0) - 1
-        # Neues Format: [{"nummer", "titel"}]; Altformat (auch für Admin-
-        # Prompt-Overrides): ["Ö 6.1", …] ohne Titel-Anker.
+        # Neues Format: [{"number", "title"}]. Der Rückfall auf ["Ö 6.1", …]
+        # ohne Titel-Anker bleibt: Modelle antworten gelegentlich in der
+        # älteren Form, und ein Treffer ohne Anker ist besser als keiner.
         roh = m.get("items")
         if roh is None:
-            roh = [{"nummer": n} for n in m.get("item_numbers", [])]
+            roh = [{"number": n} for n in m.get("item_numbers", [])]
         nums = _verifiziere_items(session, roh)
         if 0 <= idx < len(topics) and nums:
             vorschlaege.append((idx, nums))
 
     ohne_vorlage = any(
-        not auszuege.get((per_nr[n].vorlage_nr or "") if n in per_nr else "")
+        not auszuege.get((per_nr[n].template_number or "") if n in per_nr else "")
         for _idx, nums in vorschlaege for n in nums)
     kurzfassungen = _kurzfassungen(store, session) if ohne_vorlage else {}
 
@@ -206,7 +207,7 @@ def _pruefe_am_text(session: CouncilSession, topic: dict, nums: list[str],
     def beleg(n: str) -> tuple[str, str]:
         """(Etikett, Text) — Vorlage schlägt Kurzfassung, sie ist die Quelle."""
         item = per_nr.get(n)
-        text = auszuege.get((item.vorlage_nr or "") if item else "")
+        text = auszuege.get((item.template_number or "") if item else "")
         if text:
             return "Vorlage", text
         kurz = kurzfassungen.get(n) or ""
@@ -221,18 +222,18 @@ def _pruefe_am_text(session: CouncilSession, topic: dict, nums: list[str],
         label, text = belege[n]
         zeilen.append(f"{n}: {item.title if item else n}\n    {label or 'Vorlage'}: {text or '—'}")
     try:
-        antwort = llm.chat_complete(
+        answer = llm.chat_complete(
             model=MODEL, response_format={"type": "json_object"}, temperature=0,
             max_tokens=400,
             messages=[{"role": "user", "content": prompts.render(
                 "council_watcher_pruefung", thema=topic.get("name", ""),
                 beschreibung=topic.get("description", ""), kandidaten="\n".join(zeilen))}],
         )
-        roh = (antwort.choices[0].message.content or "").strip()
+        roh = (answer.choices[0].message.content or "").strip()
         if roh.startswith("```"):
             roh = roh.strip("`")
             roh = roh[roh.find("{"):]
-        behalten = json.loads(roh).get("treffer", [])
+        behalten = json.loads(roh).get("hits", [])
     except Exception:  # noqa: BLE001 — Prüfung ist Schärfung, kein Blocker
         return nums
     erlaubt = {" ".join(str(x).split()).upper() for x in behalten}
@@ -264,17 +265,17 @@ def _verifiziere_items(session: CouncilSession, roh: list) -> list[str]:
     out: list[str] = []
     for eintrag in roh:
         if isinstance(eintrag, str):
-            eintrag = {"nummer": eintrag}
-        nummer = " ".join(str(eintrag.get("nummer") or "").split()).upper()
-        titel = _falte_titel(eintrag.get("titel") or "")
+            eintrag = {"number": eintrag}
+        nummer = " ".join(str(eintrag.get("number") or "").split()).upper()
+        title = _falte_titel(eintrag.get("title") or "")
         item = per_nummer.get(nummer)
         if item is None and nummer:
             # „14.7" ohne Ö/N-Präfix: nur übernehmen, wenn eindeutig.
             kandidaten = [i for i in items
                           if " ".join(str(i.item_number).split()).upper().split(" ", 1)[-1] == nummer]
             item = kandidaten[0] if len(kandidaten) == 1 else None
-        if titel:
-            anker = titel[:32]
+        if title:
+            anker = title[:32]
             passt = item is not None and anker[:20] and anker[:20] in _falte_titel(item.title)
             if not passt:
                 treffer = [i for i in items if anker and anker in _falte_titel(i.title)]
@@ -332,8 +333,8 @@ def _format_alert(session: CouncilSession, topic_matches: dict[int, list[str]], 
     for topic_idx, item_numbers in topic_matches.items():
         for num in item_numbers:
             item = item_map.get(num)
-            titel = _esc(item.title) if item else _esc(num)
-            zeilen.append(f"<b>TOP {_esc(num)}</b> — {titel}")
+            title = _esc(item.title) if item else _esc(num)
+            zeilen.append(f"<b>TOP {_esc(num)}</b> — {title}")
 
     wann = _datum(session.session_date)
     if session.session_time:
@@ -354,19 +355,19 @@ def _esc(text: str) -> str:
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
-def _melden(nwz_store, owner: dict, art: str, titel: str, html: str, url: str,
+def _melden(ratslotse_store, owner: dict, art: str, title: str, html: str, url: str,
             deliver_message) -> None:
     """Eine Meldung abgeben — über die Warteschlange, wenn es sie gibt.
 
     Design 30a: Alle Anlässe laufen durch ``kern.notify``, sonst greifen die
-    Grenzen (zwei am Tag, Nachtruhe) nicht. Ohne ``nwz_store`` — in Tests und
+    Grenzen (zwei am Tag, Nachtruhe) nicht. Ohne ``ratslotse_store`` — in Tests und
     bei Direktaufrufen — bleibt der bisherige Sofortversand, damit dieser Pfad
     weiter ohne Datenbank prüfbar ist.
     """
-    if nwz_store is None:
-        deliver_message(owner, html, email_subject=titel, push_url=url)
+    if ratslotse_store is None:
+        deliver_message(owner, html, email_subject=title, push_url=url)
         return
-    notify.einreihen(nwz_store, owner["owner_id"], art, titel, html, url)
+    notify.einreihen(ratslotse_store, owner["owner_id"], art, title, html, url)
 
 
 def _agenda_hash(agenda_items) -> str:
@@ -375,7 +376,7 @@ def _agenda_hash(agenda_items) -> str:
     import hashlib
 
     payload = "\n".join(
-        f"{i.item_number}\t{i.title}\t{i.vorlage_nr or ''}\t{int(i.is_public)}"
+        f"{i.item_number}\t{i.title}\t{i.template_number or ''}\t{int(i.is_public)}"
         for i in agenda_items
     )
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
@@ -385,7 +386,7 @@ def run_watcher(
     db_path: str | Path,
     owners: list[dict],
     months_ahead: int = 3,
-    nwz_store=None,
+    ratslotse_store=None,
     stats: dict | None = None,
 ) -> list[str]:
     """
@@ -394,7 +395,7 @@ def run_watcher(
 
     owners: get_all_owner_digests()-Zeilen — je {owner_id, topics: [TopicRow],
             delivery_channel, email, push_tokens}.
-    nwz_store: offener kern.store.Store für die Treffer-Persistenz; ohne ihn
+    ratslotse_store: offener kern.store.Store für die Treffer-Persistenz; ohne ihn
             (Tests) wird klassifiziert und alarmiert, aber nichts gemerkt —
             dann läuft die Klassifikation beim nächsten Mal erneut.
     stats: optionales dict, in das der Lauf seine Kennzahlen schreibt (für die
@@ -433,8 +434,8 @@ def run_watcher(
         for owner in owners:
             # Je Nutzer*in klassifizieren — aber nur, wenn sich die
             # Tagesordnung seit ihrer letzten Klassifikation geändert hat.
-            if nwz_store is not None:
-                known = nwz_store.agenda_classified_hash(owner["owner_id"], ksinr)
+            if ratslotse_store is not None:
+                known = ratslotse_store.agenda_classified_hash(owner["owner_id"], ksinr)
                 if known == agenda_hash:
                     continue
 
@@ -473,8 +474,8 @@ def run_watcher(
                     # Lauf es neu, statt die Nutzer*in dauerhaft leer auszugehen.
                     continue
 
-                if nwz_store is not None:
-                    nwz_store.replace_agenda_matches(
+                if ratslotse_store is not None:
+                    ratslotse_store.replace_agenda_matches(
                         owner["owner_id"], ksinr, agenda_hash,
                         {topics[idx]["id"]: nums for idx, nums in matches.items()},
                     )
@@ -491,7 +492,7 @@ def run_watcher(
                 # Ziel: Die App klappt die Sitzung nicht nur auf, sondern
                 # springt zu genau diesen Zeilen. Ohne das landete man am
                 # Sitzungskopf und musste die Tagesordnung selbst suchen.
-                _melden(nwz_store, owner, notify.N2_THEMA,
+                _melden(ratslotse_store, owner, notify.N2_THEMA,
                         _titel_thema(session, topics[topic_idx]["name"]), msg,
                         sitzung_href(ksinr, item_numbers), deliver_message)
                 alerts_sent.append(msg)

@@ -65,7 +65,7 @@ def notify_admin(text: str, betreff: str = "Ratslotse – Cron-Alarm",
                 kicker="Betrieb",
                 # „Ratslotse – Cron-Alarm" → „Cron-Alarm": Die Marke steht schon
                 # in der Kopfzeile der Hülle, doppelt wäre sie Rauschen.
-                titel=re.sub(r"^Ratslotse\s*[–-]\s*", "", betreff),
+                title=re.sub(r"^Ratslotse\s*[–-]\s*", "", betreff),
                 fusszeile=fusszeile,
             ),
             text=re.sub(r"<[^>]+>", "", text),
@@ -78,7 +78,7 @@ def _record_run(name: str, started: datetime, status: str,
                 stats: dict | None, error: str | None) -> None:
     """Den Lauf in ``job_runs`` schreiben — best effort, nie den Job stören.
 
-    Der Pfad entspricht dem der Cron-Skripte (``<repo>/data/nwz.sqlite``); ein
+    Der Pfad entspricht dem der Cron-Skripte (``<repo>/data/ratslotse.sqlite``); ein
     eigener Store wird nur kurz für die eine Zeile geöffnet, damit run_guarded
     ohne Zutun der Skripte funktioniert.
     """
@@ -89,7 +89,7 @@ def _record_run(name: str, started: datetime, status: str,
         from .store import Store
 
         finished = datetime.utcnow()
-        db = Path(os.environ.get("NWZ_DB") or Path(__file__).resolve().parent.parent / "data" / "nwz.sqlite")
+        db = Path(os.environ.get("RATSLOTSE_DB") or Path(__file__).resolve().parent.parent / "data" / "ratslotse.sqlite")
         store = Store(db)
         try:
             store.record_job_run(

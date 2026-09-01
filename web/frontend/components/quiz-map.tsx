@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import type { Map as LeafletMap, GeoJSON as LGeoJSON, Path } from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { loadOrtsbereiche } from "@/lib/stadtteile";
+import { loadOrtsbereiche } from "@/lib/districts";
 import { cn } from "@/lib/utils";
 import { basemapUrl } from "@/lib/basemap";
 

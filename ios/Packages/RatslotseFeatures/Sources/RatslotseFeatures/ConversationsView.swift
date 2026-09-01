@@ -232,7 +232,7 @@ struct ConversationsView: View {
         defer { isLoading = false }
         do {
             let response: JSONValue = try await model.api.get("/api/council/gespraeche")
-            conversations = response.object?["gespraeche"]?.array?.compactMap {
+            conversations = response.object?["conversations"]?.array?.compactMap {
                 try? $0.decoded(ConversationSummary.self)
             } ?? []
             error = nil
@@ -263,14 +263,14 @@ struct ConversationsView: View {
     }
 
     private func rename(_ conversation: ConversationSummary) async {
-        struct Body: Codable, Sendable { let titel: String }
+        struct Body: Codable, Sendable { let title: String }
         let clean = renameTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !clean.isEmpty else { return }
         do {
             try await model.api.sendVoid(
                 "/api/council/gespraeche/\(conversation.id)",
                 method: .patch,
-                body: Body(titel: clean)
+                body: Body(title: clean)
             )
             if let index = conversations.firstIndex(where: { $0.id == conversation.id }) {
                 conversations[index] = ConversationSummary(

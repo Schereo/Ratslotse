@@ -30,14 +30,14 @@ _FNP_RE = re.compile(
     r"|(\d+)\.\s*Änderung\s+des\s+Flächennutzungsplan)", re.IGNORECASE)
 
 
-def plan_nummern(titel: str) -> list[str]:
+def plan_nummern(title: str) -> list[str]:
     """Kanonische Plan-Schlüssel aus einem Titel — leer, wenn keiner erkennbar."""
     out: list[str] = []
-    for m in _BP_RE.finditer(titel or ""):
+    for m in _BP_RE.finditer(title or ""):
         key = f"bp-{m.group(1).lower()}"
         if key not in out:
             out.append(key)
-    for m in _FNP_RE.finditer(titel or ""):
+    for m in _FNP_RE.finditer(title or ""):
         nr = m.group(1) or m.group(2)
         key = f"fnp-{nr}"
         if key not in out:
@@ -72,7 +72,7 @@ def fetch_planfaelle() -> list[dict]:
         h3 = art.find("h3")
         if h3 is None:
             continue
-        titel = h3.get_text(" ", strip=True)
+        title = h3.get_text(" ", strip=True)
         ps = art.find_all("p")
         ort = ps[0].get_text(" ", strip=True) if ps else ""
         strong = art.find("strong")
@@ -90,7 +90,7 @@ def fetch_planfaelle() -> list[dict]:
             if m:
                 von = f"{m.group(3)}-{m.group(2)}-{m.group(1)}"
                 bis = f"{m.group(6)}-{m.group(5)}-{m.group(4)}"
-        out.append({"titel": titel, "ort": ort, "schritt": schritt,
-                    "von": von, "bis": bis, "url": url or LIST_URL,
-                    "plan_nrs": plan_nummern(titel)})
+        out.append({"title": title, "ort": ort, "schritt": schritt,
+                    "valid_from": von, "valid_until": bis, "url": url or LIST_URL,
+                    "plan_nrs": plan_nummern(title)})
     return out

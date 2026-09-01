@@ -1,6 +1,6 @@
 """FastAPI backend for the NWZ-Bot web frontend.
 
-Ensures the repo root is importable so we can reuse the existing `nwz` and
+Ensures the repo root is importable so we can reuse the existing `kern` and
 `council` packages (scrapers, stores, classification, prompts).
 """
 import sys

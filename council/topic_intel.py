@@ -108,9 +108,9 @@ def vor_sechs_monaten(heute: date | None = None) -> date:
     """
     heute = heute or date.today()
     monat = heute.month - AKTUELL_MONATE
-    jahr = heute.year + (monat - 1) // 12
+    year = heute.year + (monat - 1) // 12
     monat = (monat - 1) % 12 + 1
-    return date(jahr, monat, min(heute.day, calendar.monthrange(jahr, monat)[1]))
+    return date(year, monat, min(heute.day, calendar.monthrange(year, monat)[1]))
 
 
 def treffer(store, name: str, text: str, *, deckel: int = DECKEL,
@@ -147,7 +147,7 @@ def treffer(store, name: str, text: str, *, deckel: int = DECKEL,
 
 
 def zaehle_treffer(store, name: str, text: str) -> tuple[int, bool] | None:
-    """``(anzahl, gedeckelt)`` nach derselben Definition — oder ``None``.
+    """``(count, gedeckelt)`` nach derselben Definition — oder ``None``.
 
     Die ausfallsichere Fassung für den Web-Request: ``None`` heißt „lässt sich
     hier gerade nicht nach der einen Definition bestimmen" (kein fastembed,
@@ -235,7 +235,7 @@ def _context(matches: list[dict]) -> str:
     lines = []
     for m in matches:
         meta = " · ".join(p for p in (m.get("committee"), m.get("session_date")) if p)
-        body = (m.get("summary") or m.get("beschluss") or "").strip()[:220]
+        body = (m.get("summary") or m.get("official_text") or "").strip()[:220]
         lines.append(f"- {(m.get('title') or '').strip()} ({meta}): {body}")
     return "\n".join(lines)
 
@@ -353,7 +353,7 @@ def analyse(store, name: str, description: str = "") -> dict:
     # die Belege — dann ist die Zahl grob, aber wenigstens nicht aus einer
     # zweiten, dauerhaft danebenliegenden Quelle.
     gezaehlt = zaehle_treffer(store, clean, f"{clean}. {(description or '').strip()}".strip())
-    anzahl, gedeckelt = gezaehlt if gezaehlt is not None else (len(belege), False)
+    count, gedeckelt = gezaehlt if gezaehlt is not None else (len(belege), False)
 
     obj = _call_model(clean, belege)
 
@@ -361,21 +361,21 @@ def analyse(store, name: str, description: str = "") -> dict:
         # Modell weg: Wir dürfen weder fälschlich anlegen noch grundlos ablehnen.
         # Belege entscheiden — mit genug Treffern gilt es als belegt, sonst als
         # plausibel. „Ungeeignet" behaupten wir ohne Urteil nie.
-        belegt = anzahl >= MIN_MATCHES
+        belegt = count >= MIN_MATCHES
         return {"verdict": "belegt" if belegt else "plausibel", "is_council_topic": True,
                 "description": _fallback_description(clean, belege),
-                "matches": anzahl if belegt else 0,
+                "matches": count if belegt else 0,
                 "matches_capped": gedeckelt if belegt else False,
                 "examples": examples if belegt else [], "reason": ""}
 
     desc = str(obj.get("beschreibung") or "").strip()[:_MAX_DESC]
     verdict = str(obj.get("einordnung") or "").strip().lower()
     if verdict not in VERDICTS:
-        verdict = "belegt" if anzahl >= MIN_MATCHES else "plausibel"
+        verdict = "belegt" if count >= MIN_MATCHES else "plausibel"
     # Das Modell darf nur nach unten korrigieren: Es sieht die Beschlüsse und
     # erkennt, dass „Grundschule Krusenbusch" von der Wunderburg-Schule handelt —
     # eine Trefferzahl allein kann das nicht.
-    if verdict == "belegt" and anzahl < MIN_MATCHES:
+    if verdict == "belegt" and count < MIN_MATCHES:
         verdict = "plausibel"
     belegt = verdict == "belegt"
     return {
@@ -384,7 +384,7 @@ def analyse(store, name: str, description: str = "") -> dict:
         "description": "" if verdict == "ungeeignet" else (desc or _fallback_description(clean, belege)),
         # Nur belegte Treffer zählen: Sonst stünde „12 Beschlüsse passen dazu"
         # unter einem Thema, zu dem das Modell gerade das Gegenteil gesagt hat.
-        "matches": anzahl if belegt else 0,
+        "matches": count if belegt else 0,
         "matches_capped": gedeckelt if belegt else False,
         "examples": examples if belegt else [],
         "reason": str(obj.get("begruendung") or "").strip()[:200] if verdict == "ungeeignet" else "",
@@ -393,7 +393,7 @@ def analyse(store, name: str, description: str = "") -> dict:
 
 def check_vagueness(name: str, description: str) -> dict:
     """Die bestehende Vagheits-Prüfung — bis 26a lag sie brach: Der Prompt war
-    seit jeher admin-editierbar hinterlegt, aber es gab keinen einzigen Aufruf.
+    seit jeher als Vorlage hinterlegt, aber es gab keinen einzigen Aufruf.
 
     Rückgabe ``{vague, hint, suggestion}``. Bei jedem Fehler „nicht vage": Eine
     kaputte Prüfung darf niemanden am Anlegen hindern.

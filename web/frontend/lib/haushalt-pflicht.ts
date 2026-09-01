@@ -6,12 +6,12 @@
 // in jedem Teilhaushalt beides steckt. Der Rest stimmt nicht mehr. Die
 // Produktebene trägt zu jeder einzelnen Aufgabe zwei Angaben der Stadt selbst:
 //
-//   `auftragsgrundlage`   — die Gesetze, Satzungen und Ratsbeschlüsse, auf
+//   `legal_basis`   — die Gesetze, Satzungen und Ratsbeschlüsse, auf
 //                           denen die Aufgabe beruht, im Wortlaut des
 //                           Teilhaushaltsplans. 377 von 377 Zeilen (2018–2023).
-//   `beeinflussbarkeit`   — wie viel Spielraum die STADT bei der Aufgabe
+//   `controllability`   — wie viel Spielraum die STADT bei der Aufgabe
 //                           sieht (niedrig/mittel/hoch), 371 von 377. Dazu
-//                           `beeinflussbarkeit_roh` mit dem Originalwortlaut,
+//                           `controllability_raw` mit dem Originalwortlaut,
 //                           damit Mischformen nicht verschwinden.
 //
 // Damit bleibt unsere Einordnung redaktionell — sie wird aber prüfbar. Diese
@@ -23,7 +23,7 @@
 //
 // ZWEI JAHRE, NICHT EINS. Der Plan reicht bis ins Kopfjahr der Seite, die
 // Produktebene endet 2023. Jede Aussage aus ihr trägt deshalb ihren eigenen
-// Jahresstempel — `SpielraumBefund.jahr`. Vermischen wäre die stillste Art,
+// Jahresstempel — `SpielraumBefund.year`. Vermischen wäre die stillste Art,
 // hier falsch zu liegen.
 
 import {
@@ -126,7 +126,7 @@ export const PFLICHT_NACH_SCHLUESSEL: Record<BereichSchluessel, PflichtEintrag> 
  *  Der bevorzugte Zugriff: er läuft über `bereichKanon()` und übersteht damit
  *  auch Schreibweisen, die nur in Groß-/Kleinschreibung abweichen. */
 export function pflichtFuer(name: string): PflichtEintrag | undefined {
-  const s = bereichKanon(name).schluessel;
+  const s = bereichKanon(name).key;
   return s ? PFLICHT_NACH_SCHLUESSEL[s] : undefined;
 }
 
@@ -137,7 +137,7 @@ export function pflichtFuer(name: string): PflichtEintrag | undefined {
  *  Schreibweise jedes Jahrgangs ab. Wer neu schreibt, nimmt `pflichtFuer()`. */
 export const PFLICHT_ZUORDNUNG: Record<string, PflichtEintrag> = Object.fromEntries(
   BEREICHE.flatMap((b) =>
-    b.aliase.map((a) => [a, PFLICHT_NACH_SCHLUESSEL[b.schluessel]] as const),
+    b.aliase.map((a) => [a, PFLICHT_NACH_SCHLUESSEL[b.key]] as const),
   ),
 );
 
@@ -148,15 +148,15 @@ export const PFLICHT_ZUORDNUNG: Record<string, PflichtEintrag> = Object.fromEntr
  *  Die Zuordnung ist die naheliegende und wird deshalb offengelegt: „Pflicht"
  *  müsste sich als „kaum Spielraum" wiederfinden, „überwiegend freiwillig"
  *  als „viel Spielraum". Sie ist eine Erwartung, kein Beweis — die Stadt
- *  beantwortet mit `beeinflussbarkeit` eine leicht andere Frage (wie stark
+ *  beantwortet mit `controllability` eine leicht andere Frage (wie stark
  *  lassen sich die KOSTEN beeinflussen, nicht: muss es die Aufgabe geben). */
 export const STUFE_ERWARTET: Record<PflichtStufe, Spielraum> = {
-  pflicht: "niedrig",
-  spielraum: "mittel",
-  freiwillig: "hoch",
+  pflicht: "low",
+  spielraum: "medium",
+  freiwillig: "high",
 };
 
-export const SPIELRAUM_STUFEN: Spielraum[] = ["niedrig", "mittel", "hoch"];
+export const SPIELRAUM_STUFEN: Spielraum[] = ["low", "medium", "high"];
 
 /** Was die Stadt zu einem Teilhaushalt selbst angibt, über seine Produkte
  *  hinweg zusammengefasst.
@@ -167,11 +167,11 @@ export const SPIELRAUM_STUFEN: Spielraum[] = ["niedrig", "mittel", "hoch"];
  *  („viel Spielraum") schwerer wiegen als 54 Mio. € Rechtsanspruch. */
 export type SpielraumBefund = {
   /** Jahr der Produktebene — nicht das Planjahr der Seite. */
-  jahr: number;
-  schluessel: BereichSchluessel;
+  year: number;
+  key: BereichSchluessel;
   produkte: number;
   /** Summe der Aufwendungen aller Produkte dieses Teilhaushalts, in Euro. */
-  aufwand: number;
+  expense: number;
   /** Anteil am Aufwand je Stufe, 0–1. `ohne` = Produkte ohne Angabe. */
   anteil: Record<Spielraum | "ohne", number>;
   /** Die Stufe mit dem größten Aufwandsanteil, oder `null` bei Gleichstand
@@ -182,42 +182,42 @@ export type SpielraumBefund = {
 };
 
 function leerZaehler(): Record<Spielraum | "ohne", number> {
-  return { niedrig: 0, mittel: 0, hoch: 0, ohne: 0 };
+  return { low: 0, medium: 0, high: 0, ohne: 0 };
 }
 
 /** Produktzeilen eines Jahres zu Befunden je Teilhaushalt verdichten.
  *
- *  Der Teilhaushalt wird über `bereichKanon(thh_name)` bestimmt, nicht über
- *  `thh_nr`: Die Nummer ist im Plan eine Positionsangabe und wurde zwischen
+ *  Der Teilhaushalt wird über `bereichKanon(sub_budget_name)` bestimmt, nicht über
+ *  `sub_budget_no`: Die Nummer ist im Plan eine Positionsangabe und wurde zwischen
  *  Jahrgängen schon neu vergeben, der Name läuft durchs Wörterbuch. Zeilen
  *  ohne auflösbaren Namen fallen heraus — sie einem Bereich zuzuschlagen wäre
  *  geraten. */
 export function spielraumBefunde(
-  produkte: Produkt[], jahr: number,
+  produkte: Produkt[], year: number,
 ): Map<BereichSchluessel, SpielraumBefund> {
   const aus = new Map<BereichSchluessel, SpielraumBefund>();
   for (const p of produkte) {
-    if (p.jahr !== jahr) continue;
-    const s = p.thh_name ? bereichKanon(p.thh_name).schluessel : null;
+    if (p.year !== year) continue;
+    const s = p.sub_budget_name ? bereichKanon(p.sub_budget_name).key : null;
     if (!s) continue;
     let b = aus.get(s);
     if (!b) {
       b = {
-        jahr, schluessel: s, produkte: 0, aufwand: 0,
+        year, key: s, produkte: 0, expense: 0,
         anteil: leerZaehler(), dominant: null, groesste: null,
       };
       aus.set(s, b);
     }
-    const a = p.aufwendungen ?? 0;
+    const a = p.expenses ?? 0;
     b.produkte += 1;
-    b.aufwand += a;
-    b.anteil[p.beeinflussbarkeit ?? "ohne"] += a;
-    if (!b.groesste || a > (b.groesste.aufwendungen ?? 0)) b.groesste = p;
+    b.expense += a;
+    b.anteil[p.controllability ?? "ohne"] += a;
+    if (!b.groesste || a > (b.groesste.expenses ?? 0)) b.groesste = p;
   }
   for (const b of aus.values()) {
     const roh = { ...b.anteil };
-    const summe = b.aufwand;
-    for (const k of ["niedrig", "mittel", "hoch", "ohne"] as const) {
+    const summe = b.expense;
+    for (const k of ["low", "medium", "high", "ohne"] as const) {
       b.anteil[k] = summe > 0 ? roh[k] / summe : 0;
     }
     // Strikt größer als jede andere Stufe UND als der Anteil ohne Angabe.

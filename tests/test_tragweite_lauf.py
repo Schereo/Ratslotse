@@ -20,7 +20,7 @@ import pytest
 def _modul(tmp_path: Path):
     """`check_committees` frisch laden und auf Wegwerf-Datenbanken zeigen.
 
-    ``NWZ_DB``/``COUNCIL_DB`` sind dort feste Modul-Konstanten (aus ``ROOT``),
+    ``RATSLOTSE_DB``/``COUNCIL_DB`` sind dort feste Modul-Konstanten (aus ``ROOT``),
     KEINE Umgebungsvariablen — sie müssen nach dem Import gesetzt werden, sonst
     liefe der Test gegen die echte Datenbank des Entwicklungsrechners.
     """
@@ -29,7 +29,7 @@ def _modul(tmp_path: Path):
     modul = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = modul
     spec.loader.exec_module(modul)
-    modul.NWZ_DB = tmp_path / "nwz.sqlite"
+    modul.RATSLOTSE_DB = tmp_path / "ratslotse.sqlite"
     modul.COUNCIL_DB = tmp_path / "council.sqlite"
     return modul
 
@@ -54,7 +54,7 @@ def _seede_punkt(db: Path) -> None:
         " location, fetched_at) VALUES (1, 'Verkehrsausschuss', ?, '17:00', 'Saal', '')",
         (tag,))
     conn.execute(
-        "INSERT INTO council_agenda_items (ksinr, item_number, title, vorlage_nr,"
+        "INSERT INTO council_agenda_items (ksinr, item_number, title, template_number,"
         " kvonr, is_public) VALUES (1, 'Ö 5', 'VBN-Tarifanpassung 2027 - Beschluss',"
         " '26/0622', 30078, 1)")
     conn.commit()
@@ -85,10 +85,10 @@ def test_der_store_ist_beim_bewerten_noch_offen(tmp_path, monkeypatch):
 
     monkeypatch.setattr(impact, "rate_agenda_batch", _bewerten)
 
-    kennzahlen = modul.main()
+    indicators = modul.main()
     assert gesehen == [1], "der Block hat den Punkt gar nicht erst gesehen"
-    assert kennzahlen["Tragweite bewertet"] == 1
-    assert kennzahlen["Tragweite offen"] == 1
+    assert indicators["Tragweite bewertet"] == 1
+    assert indicators["Tragweite offen"] == 1
 
     # Und der Wert ist wirklich in der Datenbank gelandet.
     conn = sqlite3.connect(tmp_path / "council.sqlite")
@@ -117,6 +117,6 @@ def test_ohne_offene_punkte_bleibt_der_lauf_still(tmp_path, monkeypatch):
 
     monkeypatch.setattr(impact, "rate_agenda_batch", lambda items: [])
 
-    kennzahlen = modul.main()
-    assert kennzahlen["Tragweite offen"] == 0
-    assert kennzahlen["Tragweite bewertet"] == 0
+    indicators = modul.main()
+    assert indicators["Tragweite offen"] == 0
+    assert indicators["Tragweite bewertet"] == 0

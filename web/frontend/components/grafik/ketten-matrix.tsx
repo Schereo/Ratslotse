@@ -28,22 +28,22 @@
 import { useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { useBreite } from "@/lib/use-breite";
 import { cn } from "@/lib/utils";
-import { LueckenFeld } from "./luecken-feld";
+import { LueckenFeld } from "./luecken-field";
 
 /** Ein belegtes Jahr einer Kette: die Marke, die der Bericht dort setzt. */
-export type KettenZelle = { jahr: number; marke: string };
+export type KettenZelle = { year: number; mark: string };
 
 export type MatrixKette = {
   /** Stabiler Schlüssel (Kettenschlüssel des Backends). */
   key: string;
-  titel: string;
+  title: string;
   /** Ehrliche Zählangabe unter dem Titel („in 6 von 7 Berichten beanstandet"). */
   untertitel?: string;
   /** Nur belegte Jahre; je Jahr höchstens eine (die schwerste) Marke. */
   zellen: KettenZelle[];
 };
 
-export type MatrixLegende = Record<string, { name: string; erlaeuterung?: string | null }>;
+export type MatrixLegende = Record<string, { name: string; explanation?: string | null }>;
 
 /** Unter dieser Containerbreite wird aus der Matrix die Karten-Liste:
  *  Zeilen-Label (min. 180 px) + 8 Zellen à ~40 px + Zähler brauchen mehr —
@@ -53,9 +53,9 @@ const SCHWELLE_KARTEN = 620;
 /** B und WB sind die Abweichungs-Kategorie des Berichts (GB-10). */
 const ABWEICHUNG = new Set(["B", "WB"]);
 
-function markenFarbe(marke: string): { klasse: string; stil?: React.CSSProperties } {
-  if (ABWEICHUNG.has(marke)) return { klasse: "font-bold text-signal" };
-  if (marke === "H") return { klasse: "font-semibold", stil: { color: "var(--hh-ein-1)" } };
+function markenFarbe(mark: string): { klasse: string; stil?: React.CSSProperties } {
+  if (ABWEICHUNG.has(mark)) return { klasse: "font-bold text-signal" };
+  if (mark === "H") return { klasse: "font-semibold", stil: { color: "var(--hh-ein-1)" } };
   return { klasse: "text-muted-foreground" };
 }
 
@@ -64,10 +64,10 @@ function markenFarbe(marke: string): { klasse: string; stil?: React.CSSPropertie
  *  `mitJahr` nur in der Karten-Liste: Dort gibt es keine Kopfzeile, der Chip
  *  muss sein Jahr selbst tragen. In der Matrix stünde es doppelt — die
  *  Spaltenköpfe sagen es bereits. */
-function Zelle({ jahr, marke, luecke, mitJahr }: {
-  jahr: number; marke?: string; luecke?: boolean; mitJahr?: boolean;
+function Zelle({ year, mark, luecke, mitJahr }: {
+  year: number; mark?: string; luecke?: boolean; mitJahr?: boolean;
 }) {
-  const farbe = marke ? markenFarbe(marke) : null;
+  const farbe = mark ? markenFarbe(mark) : null;
   return (
     <div
       aria-hidden="true"
@@ -76,39 +76,39 @@ function Zelle({ jahr, marke, luecke, mitJahr }: {
         mitJahr ? "h-[42px] w-[34px]" : "h-[36px] w-[36px]",
         luecke
           ? "hh-schraffur border-dashed border-signal/70"
-          : marke
-            ? ABWEICHUNG.has(marke) ? "border-signal/45 bg-card" : "border-border bg-card"
+          : mark
+            ? ABWEICHUNG.has(mark) ? "border-signal/45 bg-card" : "border-border bg-card"
             : "border-dashed border-border/70",
       )}
     >
       <span className={cn("font-mono leading-none", mitJahr ? "text-[10.5px]" : "text-[11.5px]", farbe?.klasse)}
         style={farbe?.stil}>
-        {luecke ? "" : marke ?? "·"}
+        {luecke ? "" : mark ?? "·"}
       </span>
       {mitJahr && (
         <span className={cn(
           "mt-1 font-mono text-[8.5px] leading-none",
           luecke ? "font-semibold text-signal" : "text-muted-foreground",
         )}>
-          {String(jahr).slice(-2)}
+          {String(year).slice(-2)}
         </span>
       )}
     </div>
   );
 }
 
-export function KettenMatrix({ ketten, jahre, lueckenJahre, marken, detail, beleg, className }: {
+export function KettenMatrix({ ketten, years, lueckenJahre, marken, detail, beleg, className }: {
   ketten: MatrixKette[];
   /** Jahrgänge MIT Bericht, aufsteigend. */
-  jahre: number[];
+  years: number[];
   /** Jahrgänge OHNE Bericht — rendern in jeder Zeile als Lücken-Zelle und
    *  über der Matrix als <LueckenFeld> mit Grund. */
-  lueckenJahre: { jahr: number; grund: string; datum?: string }[];
+  lueckenJahre: { year: number; reason: string; date?: string }[];
   /** Die Legende der Quelle: Buchstabe → Name (+ Erläuterung). Pflicht —
    *  eine Matrix, die ihre Marken selbst erklärt, würde raten. */
   marken: MatrixLegende;
   /** Aufklappbarer Zeilen-Inhalt (der Wortlaut der Feststellungen). */
-  detail?: (kette: MatrixKette) => ReactNode;
+  detail?: (chain: MatrixKette) => ReactNode;
   /** Beleg-Chip-Slot (GB-00). */
   beleg?: ReactNode;
   className?: string;
@@ -118,20 +118,20 @@ export function KettenMatrix({ ketten, jahre, lueckenJahre, marken, detail, bele
   const zeilenKnoepfe = useRef<(HTMLButtonElement | null)[]>([]);
   const karten = breite < SCHWELLE_KARTEN;
 
-  if (!ketten.length || jahre.length + lueckenJahre.length === 0) return null;
+  if (!ketten.length || years.length + lueckenJahre.length === 0) return null;
 
-  const spalten: { jahr: number; luecke: boolean }[] = [
-    ...jahre.map((jahr) => ({ jahr, luecke: false })),
-    ...lueckenJahre.map((l) => ({ jahr: l.jahr, luecke: true })),
-  ].sort((a, b) => a.jahr - b.jahr);
+  const spalten: { year: number; luecke: boolean }[] = [
+    ...years.map((year) => ({ year, luecke: false })),
+    ...lueckenJahre.map((l) => ({ year: l.year, luecke: true })),
+  ].sort((a, b) => a.year - b.year);
 
   const vorlesen = (k: MatrixKette): string => {
     const teile = spalten.map((s) => {
-      if (s.luecke) return `${s.jahr}: Bericht fehlt`;
-      const marke = k.zellen.find((z) => z.jahr === s.jahr)?.marke;
-      return marke ? `${s.jahr}: ${marken[marke]?.name ?? marke}` : null;
+      if (s.luecke) return `${s.year}: Bericht fehlt`;
+      const mark = k.zellen.find((z) => z.year === s.year)?.mark;
+      return mark ? `${s.year}: ${marken[mark]?.name ?? mark}` : null;
     }).filter(Boolean);
-    return `${k.titel}. ${teile.join(", ")}.`;
+    return `${k.title}. ${teile.join(", ")}.`;
   };
 
   const tasten = (e: KeyboardEvent<HTMLButtonElement>, i: number) => {
@@ -157,7 +157,7 @@ export function KettenMatrix({ ketten, jahre, lueckenJahre, marken, detail, bele
       className="min-w-0 rounded-md text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
     >
       <span className="line-clamp-2 font-display text-[14px] font-bold leading-snug tracking-tight">
-        {k.titel}
+        {k.title}
       </span>
       {k.untertitel && (
         <span className="mt-0.5 block text-[11.5px] leading-snug text-muted-foreground">
@@ -180,7 +180,7 @@ export function KettenMatrix({ ketten, jahre, lueckenJahre, marken, detail, bele
       {lueckenJahre.length > 0 && (
         <div className="mb-3 flex flex-col gap-1.5">
           {lueckenJahre.map((l) => (
-            <LueckenFeld key={l.jahr} label={String(l.jahr)} grund={l.grund} datum={l.datum} />
+            <LueckenFeld key={l.year} label={String(l.year)} reason={l.reason} date={l.date} />
           ))}
         </div>
       )}
@@ -196,8 +196,8 @@ export function KettenMatrix({ ketten, jahre, lueckenJahre, marken, detail, bele
               </div>
               <div className="mt-2 flex flex-wrap gap-1">
                 {spalten.map((s) => (
-                  <Zelle key={s.jahr} jahr={s.jahr} luecke={s.luecke}
-                    marke={k.zellen.find((z) => z.jahr === s.jahr)?.marke} mitJahr />
+                  <Zelle key={s.year} year={s.year} luecke={s.luecke}
+                    mark={k.zellen.find((z) => z.year === s.year)?.mark} mitJahr />
                 ))}
               </div>
               {offen === k.key && detail && <div className="mt-3">{detail(k)}</div>}
@@ -217,12 +217,12 @@ export function KettenMatrix({ ketten, jahre, lueckenJahre, marken, detail, bele
             Kette
           </span>
           {spalten.map((s) => (
-            <span key={s.jahr} aria-hidden="true"
+            <span key={s.year} aria-hidden="true"
               className={cn(
                 "pb-1.5 text-center font-mono text-[10px]",
                 s.luecke ? "font-semibold text-signal" : "text-muted-foreground",
               )}>
-              {String(s.jahr).slice(-2)}
+              {String(s.year).slice(-2)}
             </span>
           ))}
           <span className="pb-1.5 text-right font-mono text-[9.5px] uppercase text-muted-foreground">
@@ -233,9 +233,9 @@ export function KettenMatrix({ ketten, jahre, lueckenJahre, marken, detail, bele
             <div key={k.key} className="contents">
               <div className="border-t border-border/60 py-2 pr-2">{zeilenKopf(k, i)}</div>
               {spalten.map((s) => (
-                <div key={s.jahr} className="flex justify-center border-t border-border/60 py-2">
-                  <Zelle jahr={s.jahr} luecke={s.luecke}
-                    marke={k.zellen.find((z) => z.jahr === s.jahr)?.marke} />
+                <div key={s.year} className="flex justify-center border-t border-border/60 py-2">
+                  <Zelle year={s.year} luecke={s.luecke}
+                    mark={k.zellen.find((z) => z.year === s.year)?.mark} />
                 </div>
               ))}
               <div className="border-t border-border/60 py-2 text-right">{zaehler(k)}</div>
@@ -250,12 +250,12 @@ export function KettenMatrix({ ketten, jahre, lueckenJahre, marken, detail, bele
       {/* Legende: Buchstaben mit dem Klartext der Quelle — die Erläuterung im
           Wortlaut gehört auf die Seite, hier steht die Zuordnung. */}
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-border/60 pt-2.5">
-        {Object.entries(marken).map(([marke, m]) => {
-          const farbe = markenFarbe(marke);
+        {Object.entries(marken).map(([mark, m]) => {
+          const farbe = markenFarbe(mark);
           return (
-            <span key={marke} className="inline-flex items-baseline gap-1.5 text-[11.5px] text-foreground/80">
+            <span key={mark} className="inline-flex items-baseline gap-1.5 text-[11.5px] text-foreground/80">
               <span className={cn("font-mono text-[11px]", farbe.klasse)} style={farbe.stil}>
-                {marke}
+                {mark}
               </span>
               {m.name}
             </span>

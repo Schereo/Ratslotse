@@ -10,7 +10,7 @@ from council.store import CouncilStore
 
 
 def _entities(*names) -> list[dict]:
-    return [{"id": i, "slug": n.lower().replace(" ", "-"), "name": n, "kind": "ort", "n": 0}
+    return [{"id": i, "slug": n.lower().replace(" ", "-"), "name": n, "kind": "place", "n": 0}
             for i, n in enumerate(names, start=1)]
 
 
@@ -75,7 +75,7 @@ def test_belegte_kanten_brauchen_mindestevidenz():
              (1, 11), (2, 11),           # A+B ein zweites Mal
              (1, 12), (3, 12)]           # A+C nur einmal
     rows, stats = related.build(ents, links, [], {}, use_text_match=False)
-    pairs = {(s, n) for s, n, t, *_ in rows if t == "belegt"}
+    pairs = {(s, n) for s, n, t, *_ in rows if t == "documented"}
     assert ("a-straße", "b-straße") in pairs
     assert ("a-straße", "c-straße") not in pairs   # nur 1 gemeinsamer Beschluss
     assert stats["pairs_proven"] == 1
@@ -85,8 +85,8 @@ def test_kanten_sind_beidseitig():
     ents = _entities("A-Straße", "B-Straße")
     links = [(1, 10), (2, 10), (1, 11), (2, 11)]
     rows, _ = related.build(ents, links, [], {}, use_text_match=False)
-    assert ("a-straße", "b-straße", "belegt") in {(s, n, t) for s, n, t, *_ in rows}
-    assert ("b-straße", "a-straße", "belegt") in {(s, n, t) for s, n, t, *_ in rows}
+    assert ("a-straße", "b-straße", "documented") in {(s, n, t) for s, n, t, *_ in rows}
+    assert ("b-straße", "a-straße", "documented") in {(s, n, t) for s, n, t, *_ in rows}
 
 
 def test_alias_kante_wird_unterdrueckt():
@@ -119,20 +119,20 @@ def test_store_roundtrip(tmp_path):
     store = CouncilStore(tmp_path / "council.sqlite")
     store._conn.executemany(
         "INSERT INTO council_entities(id, slug, name, kind, n) VALUES (?,?,?,?,?)",
-        [(1, "fliegerhorst", "Fliegerhorst", "ort", 158),
-         (2, "entlastungsstrasse", "Entlastungsstraße", "ort", 40),
-         (3, "brookweg", "Brookweg", "ort", 5)])
+        [(1, "fliegerhorst", "Fliegerhorst", "place", 158),
+         (2, "entlastungsstrasse", "Entlastungsstraße", "place", 40),
+         (3, "brookweg", "Brookweg", "place", 5)])
     store._conn.commit()
     store.save_entity_relations([
-        ("fliegerhorst", "entlastungsstrasse", "belegt", 0, 0.31, 15),
-        ("fliegerhorst", "brookweg", "aehnlich", 1, 0.74, 0),
+        ("fliegerhorst", "entlastungsstrasse", "documented", 0, 0.31, 15),
+        ("fliegerhorst", "brookweg", "similar", 1, 0.74, 0),
     ])
     got = store.related_entities("fliegerhorst")
     assert [r["name"] for r in got] == ["Entlastungsstraße", "Brookweg"]
-    assert got[0]["rel_type"] == "belegt" and got[0]["evidence"] == 15
-    assert got[1]["rel_type"] == "aehnlich" and got[1]["evidence"] == 0
+    assert got[0]["rel_type"] == "documented" and got[0]["evidence"] == 15
+    assert got[1]["rel_type"] == "similar" and got[1]["evidence"] == 0
     # Neuberechnung ersetzt den alten Stand vollständig.
-    store.save_entity_relations([("fliegerhorst", "brookweg", "belegt", 0, 0.5, 2)])
+    store.save_entity_relations([("fliegerhorst", "brookweg", "documented", 0, 0.5, 2)])
     assert [r["name"] for r in store.related_entities("fliegerhorst")] == ["Brookweg"]
     store.close()
 
@@ -143,16 +143,16 @@ def test_related_ueberlebt_entity_rebuild(tmp_path):
     store = CouncilStore(tmp_path / "council.sqlite")
     store._conn.executemany(
         "INSERT INTO council_entities(id, slug, name, kind, n) VALUES (?,?,?,?,?)",
-        [(1, "fliegerhorst", "Fliegerhorst", "ort", 158),
-         (2, "entlastungsstrasse", "Entlastungsstraße", "ort", 40)])
+        [(1, "fliegerhorst", "Fliegerhorst", "place", 158),
+         (2, "entlastungsstrasse", "Entlastungsstraße", "place", 40)])
     store._conn.commit()
-    store.save_entity_relations([("fliegerhorst", "entlastungsstrasse", "belegt", 0, 0.31, 15)])
+    store.save_entity_relations([("fliegerhorst", "entlastungsstrasse", "documented", 0, 0.31, 15)])
     # extract_entities.py leert und füllt die Tabelle neu — mit anderen IDs.
     store._conn.execute("DELETE FROM council_entities")
     store._conn.executemany(
         "INSERT INTO council_entities(id, slug, name, kind, n) VALUES (?,?,?,?,?)",
-        [(77, "fliegerhorst", "Fliegerhorst", "ort", 160),
-         (88, "entlastungsstrasse", "Entlastungsstraße", "ort", 41)])
+        [(77, "fliegerhorst", "Fliegerhorst", "place", 160),
+         (88, "entlastungsstrasse", "Entlastungsstraße", "place", 41)])
     store._conn.commit()
     assert [r["name"] for r in store.related_entities("fliegerhorst")] == ["Entlastungsstraße"]
     store.close()

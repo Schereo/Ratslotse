@@ -65,8 +65,8 @@ def main() -> dict:
     # Store verlangt einen Pfad — `Store()` warf hier bei JEDEM Lauf sofort einen
     # TypeError, noch vor der Mail-Prüfung. Der Job hat also nie eine Erinnerung
     # verschickt, sondern ist immer abgestürzt. Pfad wie in den übrigen
-    # Cron-Skripten: NWZ_DB, sonst data/nwz.sqlite im Repo.
-    store = Store(os.environ.get("NWZ_DB") or ROOT / "data" / "nwz.sqlite")
+    # Cron-Skripten: RATSLOTSE_DB, sonst data/ratslotse.sqlite im Repo.
+    store = Store(os.environ.get("RATSLOTSE_DB") or ROOT / "data" / "ratslotse.sqlite")
     pending = store.setups_to_remind(older_than_hours=REMIND_AFTER_HOURS)
     if not pending:
         return {"kandidaten": 0, "gesendet": 0}
@@ -74,7 +74,7 @@ def main() -> dict:
         # Kein Schlüssel → nichts verschicken UND nichts als erinnert markieren,
         # sonst verlöre man die Kandidaten stillschweigend.
         print(f"{len(pending)} offene Einrichtungen, aber kein RESEND_API_KEY — übersprungen.")
-        return {"kandidaten": len(pending), "gesendet": 0, "grund": "kein_mailversand"}
+        return {"kandidaten": len(pending), "gesendet": 0, "reason": "kein_mailversand"}
 
     sent = 0
     for u in pending:
@@ -89,8 +89,8 @@ def main() -> dict:
                     greeting_name=u.get("display_name"),
                     held="erinnerung",
                     kicker="Deine Einrichtung",
-                    titel="Fast fertig eingerichtet",
-                    fusszeile="Diese Erinnerung schicken wir genau einmal — "
+                    title="Fast fertig eingerichtet",
+                    fusszeile="Diese Erinnerung schicken wir exact einmal — "
                               "du bekommst sie nicht noch einmal.",
                 ),
             )

@@ -22,8 +22,8 @@ from kern.store import Store  # noqa: E402
 
 @pytest.fixture
 def store():
-    path = Path(tempfile.mkdtemp()) / "nwz.sqlite"
-    os.environ["NWZ_DB"] = str(path)
+    path = Path(tempfile.mkdtemp()) / "ratslotse.sqlite"
+    os.environ["RATSLOTSE_DB"] = str(path)
     return Store(str(path))
 
 

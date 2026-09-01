@@ -20,29 +20,29 @@ class _PersonenStore:
 
 def test_parteien_aufloesen_trennt_fdp_volt():
     rows = [
-        {"sprecher": "Jens Lükermann", "partei": "FDP/Volt", "text": "…"},
-        {"sprecher": "Pfeiffer", "partei": "Fraktion FDP/Volt", "text": "…"},
-        {"sprecher": "Ratsherr Unbekannt", "partei": "FDP/Volt", "text": "…"},
-        {"sprecher": "Finke", "partei": "Für Oldenburg", "text": "…"},
-        {"sprecher": "Oeljeschläger", "partei": "SPD", "text": "…"},
+        {"speaker": "Jens Lükermann", "party": "FDP/Volt", "text": "…"},
+        {"speaker": "Pfeiffer", "party": "Fraktion FDP/Volt", "text": "…"},
+        {"speaker": "Ratsherr Unbekannt", "party": "FDP/Volt", "text": "…"},
+        {"speaker": "Finke", "party": "Für Oldenburg", "text": "…"},
+        {"speaker": "Oeljeschläger", "party": "SPD", "text": "…"},
     ]
     qa.parteien_aufloesen(_PersonenStore(), rows)
-    assert rows[0]["partei"] == "Volt"
-    assert rows[1]["partei"] == "FDP"
+    assert rows[0]["party"] == "Volt"
+    assert rows[1]["party"] == "FDP"
     # Ohne Stammdaten-Treffer bleibt das quellentreue Gruppen-Label stehen.
-    assert rows[2]["partei"] == "FDP/Volt"
+    assert rows[2]["party"] == "FDP/Volt"
     # „Für Oldenburg" ist NICHT auflösbar (das RIS führt selbst nur die Gruppe).
-    assert rows[3]["partei"] == "Für Oldenburg"
-    assert rows[4]["partei"] == "SPD"
+    assert rows[3]["party"] == "Für Oldenburg"
+    assert rows[4]["party"] == "SPD"
 
 
 def test_finde_person_namen_titel_und_faltung():
     store = _PersonenStore()
-    assert qa.finde_person(store, "Was sagt Lükermann zum Stadion?")["partei"] == "Volt"
+    assert qa.finde_person(store, "Was sagt Lükermann zum Stadion?")["party"] == "Volt"
     assert qa.finde_person(store, "Wie steht Jens Lükermann zur Brücke?")["name"] == "Jens Lükermann"
     # ASCII-Schreibweise trifft den Umlaut-Namen; Doppelname als Ganzes.
-    assert qa.finde_person(store, "Was meint Luekermann dazu?")["partei"] == "Volt"
-    assert qa.finde_person(store, "Position von Niewerth-Baumann zum Haushalt?")["partei"] == "CDU"
+    assert qa.finde_person(store, "Was meint Luekermann dazu?")["party"] == "Volt"
+    assert qa.finde_person(store, "Position von Niewerth-Baumann zum Haushalt?")["party"] == "CDU"
     # Keine Person genannt → None (kein Fehlmatch über kurze Wortteile).
     assert qa.finde_person(store, "Was kostet das neue Stadion?") is None
 
@@ -55,7 +55,7 @@ def test_wortbeitraege_von_sprecher_umlaut_varianten(tmp_path):
                 "INSERT INTO council_sessions (ksinr, committee, session_date, session_time, "
                 "location, fetched_at) VALUES (1, 'Rat', '2026-06-01', '', '', datetime('now'))")
             store._conn.executemany(
-                "INSERT INTO council_wortbeitraege (ksinr, position, sprecher, partei, art, "
+                "INSERT INTO council_wortbeitraege (ksinr, position, speaker, party, kind, "
                 "top, text, extracted_at) VALUES (1, ?, ?, 'FDP/Volt', 'rede', 'Ö 1', ?, "
                 "datetime('now'))",
                 [(1, "Jens Lükermann", "Beitrag mit Umlaut"),
@@ -72,7 +72,7 @@ def test_search_wortbeitraege_von_person_fallback(monkeypatch):
     kommen die neuesten Beiträge — die Person wurde ausdrücklich gefragt."""
     class _S:
         def wortbeitraege_von_sprecher(self, nachname, limit=120):
-            return [{"id": i, "sprecher": "Lükermann", "partei": "FDP/Volt",
+            return [{"id": i, "speaker": "Lükermann", "party": "FDP/Volt",
                      "art": "rede", "top": None, "text": f"Beitrag {i}",
                      "committee": "Rat", "session_date": f"2026-0{7 - i}-01"}
                     for i in (1, 2, 3)]
@@ -115,10 +115,10 @@ def _wb_store(tmp_path):
             [(1, "Rat", "2026-06-01"), (2, "Verkehrsausschuss", "2026-05-01")])
         store._conn.executemany(
             "INSERT INTO council_attendance (ksinr, name, party, role) VALUES (?, ?, ?, ?)",
-            [(1, "Tim Harms", "SPD", "mitglied"), (1, "Dr. Ingo Harms", "CDU", "mitglied"),
-             (2, "Tim Harms", "SPD", "mitglied")])
+            [(1, "Tim Harms", "SPD", "member"), (1, "Dr. Ingo Harms", "CDU", "member"),
+             (2, "Tim Harms", "SPD", "member")])
         store._conn.executemany(
-            "INSERT INTO council_wortbeitraege (ksinr, position, sprecher, partei, art, top, "
+            "INSERT INTO council_wortbeitraege (ksinr, position, speaker, party, kind, top, "
             "text, extracted_at) VALUES (?, ?, ?, 'SPD', 'rede', 'Ö 1', ?, datetime('now'))",
             [(1, 1, "Tim Harms", "Voller Name im Rat"),
              (1, 2, "Harms", "Nur Nachname"),
@@ -155,9 +155,9 @@ def test_wortbeitraege_person_seiten_und_gremienfilter(tmp_path):
     store = _wb_store(tmp_path)
     try:
         d = store.wortbeitraege_person("Tim Harms", limit=20)
-        assert {g["committee"]: g["n"] for g in d["gremien"]} == {"Rat": 3, "Verkehrsausschuss": 1}
+        assert {g["committee"]: g["n"] for g in d["committees"]} == {"Rat": 3, "Verkehrsausschuss": 1}
 
-        nur_verkehr = store.wortbeitraege_person("Tim Harms", gremium="Verkehrsausschuss")
+        nur_verkehr = store.wortbeitraege_person("Tim Harms", committee="Verkehrsausschuss")
         assert nur_verkehr["total"] == 1 and nur_verkehr["gesamt"] == 4
         assert nur_verkehr["items"][0]["text"] == "Im Verkehrsausschuss"
 
@@ -169,7 +169,7 @@ def test_wortbeitraege_person_seiten_und_gremienfilter(tmp_path):
         assert s1["total"] == 4
 
         # Unbekanntes Gremium → leere Seite, aber ehrliche Gesamtzahl.
-        leer = store.wortbeitraege_person("Tim Harms", gremium="Sportausschuss")
+        leer = store.wortbeitraege_person("Tim Harms", committee="Sportausschuss")
         assert leer["items"] == [] and leer["total"] == 0 and leer["gesamt"] == 4
     finally:
         store.close()
@@ -231,29 +231,29 @@ def test_personen_lexikon_rat_verwaltung_und_zeitlichkeit(tmp_path):
             store._conn.executemany(
                 "INSERT INTO council_attendance (ksinr, name, party, role, note) "
                 "VALUES (?, ?, ?, ?, ?)",
-                [(2, "Jens Lükermann", "FDP/Volt", "mitglied", None),
-                 (1, "Hans-Henning Adler", "DIE LINKE.", "mitglied", None),
-                 (2, "Jürgen Krogmann", "Verwaltung", "verwaltung", "Oberbürgermeister"),
-                 (2, "Jürgen Krogmann", "Verwaltung", "verwaltung", "Oberbürgermeister, bis TOP 8.2"),
-                 (1, "Gabriele Nießen", "Verwaltung", "verwaltung", "Stadtbaurätin"),
-                 (2, "Dagmar Sachse", "Verwaltung", "verwaltung", "Für Oberbürgermeister Krogmann")])
+                [(2, "Jens Lükermann", "FDP/Volt", "member", None),
+                 (1, "Hans-Henning Adler", "DIE LINKE.", "member", None),
+                 (2, "Jürgen Krogmann", "Verwaltung", "administration", "Oberbürgermeister"),
+                 (2, "Jürgen Krogmann", "Verwaltung", "administration", "Oberbürgermeister, bis TOP 8.2"),
+                 (1, "Gabriele Nießen", "Verwaltung", "administration", "Stadtbaurätin"),
+                 (2, "Dagmar Sachse", "Verwaltung", "administration", "Für Oberbürgermeister Krogmann")])
         lex = {p["slug"]: p for p in store.personen_lexikon()}
 
         lk = lex["jens-luekermann"]
-        assert lk["art"] == "rat" and lk["aktiv"] is True
+        assert lk["art"] == "council" and lk["aktiv"] is True
         assert lk["nachname"] == "luekermann" and lk["vorname"] == "jens"
 
         adler = lex["hans-henning-adler"]
         assert adler["aktiv"] is False  # zuletzt vor ~2,5 Jahren gesehen
 
         kro = lex["juergen-krogmann"]
-        assert kro["art"] == "stadt" and kro["rolle"] == "Oberbürgermeister"
+        assert kro["art"] == "city" and kro["role"] == "Oberbürgermeister"
 
         # Zeit-Zusätze („bis TOP 8.2") und Vertretungs-Notizen sind kein Amt.
-        assert lex["dagmar-sachse"]["rolle"] is None
+        assert lex["dagmar-sachse"]["role"] is None
         # Amt bleibt erhalten, aktiv aber nicht mehr (Nießen lange raus).
         niessen = lex["gabriele-niessen"]
-        assert niessen["rolle"] == "Stadtbaurätin" and niessen["aktiv"] is False
+        assert niessen["role"] == "Stadtbaurätin" and niessen["aktiv"] is False
     finally:
         store.close()
 
@@ -262,9 +262,9 @@ def _bericht_personen(store, zeilen):
     """Aufsichtsorgan-Zeilen einsetzen: (bericht_jahr, name, funktion)."""
     with store._conn:
         store._conn.executemany(
-            "INSERT INTO council_gesellschaft_personen (bericht_jahr, gesellschaft, "
-            "reihenfolge, gremium, name, funktion, vorsitz, hinweis, "
-            "funktionen_zuordenbar, fetched_at) "
+            "INSERT INTO council_gesellschaft_personen (report_year, company, "
+            "sort_order, committee, name, position, chair_role, note, "
+            "roles_assignable, fetched_at) "
             "VALUES (?, 'gsg', ?, 'Aufsichtsrat', ?, ?, NULL, NULL, 1, datetime('now'))",
             [(j, i, n, f) for i, (j, n, f) in enumerate(zeilen)])
 
@@ -292,16 +292,16 @@ def test_personen_lexikon_beteiligung_mit_funktion(tmp_path):
         lex = {p["slug"]: p for p in store.personen_lexikon()}
 
         harms = lex["karin-harms"]
-        assert harms["art"] == "beteiligung"
-        assert harms["rolle"] == "Landrätin"      # die Funktion aus dem Bericht
-        assert harms["partei"] is None            # der Bericht nennt keine
+        assert harms["art"] == "participation"
+        assert harms["role"] == "Landrätin"      # die Funktion aus dem Bericht
+        assert harms["party"] is None            # der Bericht nennt keine
         # Zeitraum = Berichtsjahrgänge, nicht Amtszeit.
         assert (harms["von"], harms["bis"]) == ("2022", "2024")
         assert harms["aktiv"] is True             # steht im jüngsten Bericht
 
         # Wer nur in einem alten Bericht steht, gilt nicht mehr als aktuell.
         bartels = lex["inga-bartels"]
-        assert bartels["rolle"] == "Beschäftigtenvertreterin"
+        assert bartels["role"] == "Beschäftigtenvertreterin"
         assert (bartels["von"], bartels["bis"], bartels["aktiv"]) == ("2022", "2022", False)
     finally:
         store.close()
@@ -322,18 +322,18 @@ def _varianten_store(tmp_path):
         zeilen = []
         # Thomas Klein: dreimal voll, einmal nur als „Klein" — eine Person.
         for ks in (1, 2, 3):
-            zeilen.append((ks, "Thomas Klein", "SPD", "mitglied"))
-        zeilen.append((2, "Klein", "SPD", "mitglied"))
+            zeilen.append((ks, "Thomas Klein", "SPD", "member"))
+        zeilen.append((2, "Klein", "SPD", "member"))
         # Britta Klein sitzt in der Verwaltung — anderer Namensraum, bleibt.
-        zeilen.append((3, "Britta Klein", "Verwaltung", "verwaltung"))
+        zeilen.append((3, "Britta Klein", "Verwaltung", "administration"))
         # Namensänderung: „Tim Harms" heißt zuletzt „Tim Ebbeke Harms".
-        zeilen += [(1, "Tim Harms", "Bündnis 90/Die Grünen", "mitglied"),
-                   (2, "Tim Harms", "Bündnis 90/Die Grünen", "mitglied"),
-                   (3, "Tim Ebbeke Harms", "Bündnis 90/Die Grünen", "mitglied")]
+        zeilen += [(1, "Tim Harms", "Bündnis 90/Die Grünen", "member"),
+                   (2, "Tim Harms", "Bündnis 90/Die Grünen", "member"),
+                   (3, "Tim Ebbeke Harms", "Bündnis 90/Die Grünen", "member")]
         # Zwei echte Namensvetterinnen derselben Fraktion: NICHT zusammenlegen.
-        zeilen += [(3, "Meike Bruns", "CDU", "mitglied"), (3, "Sarah Bruns", "CDU", "mitglied")]
+        zeilen += [(3, "Meike Bruns", "CDU", "member"), (3, "Sarah Bruns", "CDU", "member")]
         # Gleicher Nachname, verschiedene Fraktion: erst recht nicht.
-        zeilen += [(3, "Meyer", "SPD", "mitglied"), (3, "Jan-Martin Meyer", "DIE LINKE.", "mitglied")]
+        zeilen += [(3, "Meyer", "SPD", "member"), (3, "Jan-Martin Meyer", "DIE LINKE.", "member")]
         store._conn.executemany(
             "INSERT INTO council_attendance (ksinr, name, party, role, note) "
             "VALUES (?, ?, ?, ?, NULL)", zeilen)
@@ -381,8 +381,8 @@ def test_personen_lexikon_beteiligung_ueberschreibt_kein_ratsmandat(tmp_path):
             store._conn.executemany(
                 "INSERT INTO council_attendance (ksinr, name, party, role, note) "
                 "VALUES (1, ?, ?, ?, ?)",
-                [("Dr. Ruth Regina Drügemöller", "SPD", "mitglied", None),
-                 ("Jürgen Krogmann", "Verwaltung", "verwaltung", "Oberbürgermeister")])
+                [("Dr. Ruth Regina Drügemöller", "SPD", "member", None),
+                 ("Jürgen Krogmann", "Verwaltung", "administration", "Oberbürgermeister")])
         _bericht_personen(store, [
             (2024, "Ruth Drügemöller", "Ratsmitglied"),
             (2024, "Jürgen Krogmann", "Oberbürgermeister"),
@@ -392,13 +392,13 @@ def test_personen_lexikon_beteiligung_ueberschreibt_kein_ratsmandat(tmp_path):
 
         # Das Ratsmandat bleibt — und es entsteht KEIN zweiter Eintrag unter
         # der Schreibweise des Berichts.
-        assert arten["ruth-regina-druegemoeller"] == "rat"
+        assert arten["ruth-regina-druegemoeller"] == "council"
         assert "ruth-druegemoeller" not in arten
         # Dasselbe für die Verwaltung: Amt aus den Protokollen, nicht aus dem
         # Beteiligungsbericht.
-        assert arten["juergen-krogmann"] == "stadt"
+        assert arten["juergen-krogmann"] == "city"
         krogmann = next(p for p in lex if p["slug"] == "juergen-krogmann")
-        assert krogmann["rolle"] == "Oberbürgermeister"
+        assert krogmann["role"] == "Oberbürgermeister"
     finally:
         store.close()
 
@@ -417,14 +417,14 @@ def _mandats_store(tmp_path):
              (3, "Ausschuss für Stadtgrün, Umwelt und Klima", frisch)])
         store._conn.executemany(
             "INSERT INTO council_attendance (ksinr, name, party, role, note) VALUES (?, ?, ?, ?, ?)",
-            [(1, "Paul Behrens", "SPD", "mitglied", None),          # Plenum → Mandat
-             (2, "Paul Behrens", "SPD", "mitglied", None),
-             (2, "Ben Carlsson Skiba", "Fridays for Future Oldenburg", "mitglied",
+            [(1, "Paul Behrens", "SPD", "member", None),          # Plenum → Mandat
+             (2, "Paul Behrens", "SPD", "member", None),
+             (2, "Ben Carlsson Skiba", "Fridays for Future Oldenburg", "member",
               "Beratendes Mitglied"),                               # nur Ausschuss
-             (3, "Ben Carlsson Skiba", None, "mitglied", "beratend"),
-             (2, "Sabine Görg", "Behindertenbeirat", "mitglied", None),
-             (2, "Jörg Kowollik", "beratend", "mitglied", None),     # nur ein Rollenwort
-             (1, "Franz Norrenbrock", "WFO-LKR", "mitglied", None)])  # Gruppe im Plenum
+             (3, "Ben Carlsson Skiba", None, "member", "beratend"),
+             (2, "Sabine Görg", "Behindertenbeirat", "member", None),
+             (2, "Jörg Kowollik", "beratend", "member", None),     # nur ein Rollenwort
+             (1, "Franz Norrenbrock", "WFO-LKR", "member", None)])  # Gruppe im Plenum
     return store
 
 
@@ -434,17 +434,17 @@ def test_list_members_trennt_mandat_von_beratung(tmp_path):
     store = _mandats_store(tmp_path)
     try:
         m = {x["slug"]: x for x in store.list_members()}
-        assert m["paul-behrens"]["art"] == "rat" and m["paul-behrens"]["party"] == "SPD"
+        assert m["paul-behrens"]["art"] == "council" and m["paul-behrens"]["party"] == "SPD"
         assert m["paul-behrens"]["organisation"] is None
         skiba = m["ben-carlsson-skiba"]
-        assert skiba["art"] == "beratend" and skiba["party"] is None
+        assert skiba["art"] == "advisory" and skiba["party"] is None
         assert skiba["organisation"] == "Fridays for Future Oldenburg"
         assert m["sabine-goerg"]["organisation"] == "Behindertenbeirat"
         # Reine Rollenwörter sind keine Organisation.
-        assert m["joerg-kowollik"]["art"] == "beratend"
+        assert m["joerg-kowollik"]["art"] == "advisory"
         assert m["joerg-kowollik"]["organisation"] is None
         # Ratsgruppe im Plenum: Mandat mit Gruppen-Label statt „parteilos".
-        assert m["franz-norrenbrock"]["art"] == "rat"
+        assert m["franz-norrenbrock"]["art"] == "council"
         assert m["franz-norrenbrock"]["party"] == "WFO-LKR"
     finally:
         store.close()
@@ -472,8 +472,8 @@ def test_personen_lexikon_beteiligung_nur_echte_personennamen(tmp_path):
         lex = {p["slug"]: p for p in store.personen_lexikon()}
 
         # Der Mensch mit vollem Namen steht drin …
-        assert lex["ralph-bruder"]["art"] == "beteiligung"
-        assert lex["manfred-weisensee"]["rolle"] == "Vertreter Hochschule"
+        assert lex["ralph-bruder"]["art"] == "participation"
+        assert lex["manfred-weisensee"]["role"] == "Vertreter Hochschule"
         # … die kahlen Nachnamen nicht (von einem Namensvetter nicht zu
         # unterscheiden) …
         assert "bruder" not in lex and "weisensee" not in lex
@@ -491,16 +491,16 @@ def test_beratendes_mitglied_ohne_fraktions_zeitreihe(tmp_path):
     store = _mandats_store(tmp_path)
     try:
         skiba = store.member_detail("ben-carlsson-skiba")
-        assert skiba["art"] == "beratend"
+        assert skiba["art"] == "advisory"
         assert skiba["party"] is None and skiba["faction_timeline"] == []
         assert skiba["organisation"] == "Fridays for Future Oldenburg"
         behrens = store.member_detail("paul-behrens")
-        assert behrens["art"] == "rat" and behrens["party"] == "SPD"
+        assert behrens["art"] == "council" and behrens["party"] == "SPD"
         assert behrens["faction_timeline"]
         lex = {p["slug"]: p for p in store.personen_lexikon()}
-        assert lex["ben-carlsson-skiba"]["art"] == "beratend"
-        assert lex["ben-carlsson-skiba"]["rolle"] == "Beratendes Mitglied · Fridays for Future Oldenburg"
-        assert lex["paul-behrens"]["art"] == "rat"
+        assert lex["ben-carlsson-skiba"]["art"] == "advisory"
+        assert lex["ben-carlsson-skiba"]["role"] == "Beratendes Mitglied · Fridays for Future Oldenburg"
+        assert lex["paul-behrens"]["art"] == "council"
     finally:
         store.close()
 
@@ -522,7 +522,7 @@ def test_personen_lexikon_beteiligung_heilt_druckfehler_nicht_zu_neuer_person(tm
                 "VALUES (1, 'Rat', ?, '', '', datetime('now'))", (frisch,))
             store._conn.execute(
                 "INSERT INTO council_attendance (ksinr, name, party, role, note) "
-                "VALUES (1, 'Claudia Oeljeschläger', 'SPD', 'mitglied', NULL)")
+                "VALUES (1, 'Claudia Oeljeschläger', 'SPD', 'member', NULL)")
         _bericht_personen(store, [(2024, "Claudia Oeljeschleger", "Ratsmitglied")])
 
         slugs = {p["slug"] for p in store.personen_lexikon()}
@@ -540,13 +540,13 @@ def test_ris_stammdaten_zaehlen_als_mandat(tmp_path):
         assert store.list_members()  # Cache der Varianten füllen
         with store._conn:
             store._conn.execute(
-                "INSERT INTO council_persons (kpenr, name, fraktion_aktuell, fetched_at) "
+                "INSERT INTO council_persons (kpenr, name, current_faction, fetched_at) "
                 "VALUES (99, 'Sabine Görg', 'SPD', datetime('now'))")
             store._conn.execute(
-                "INSERT INTO council_memberships (kpenr, kgrnr, gremium, rolle, von, bis, fetched_at) "
+                "INSERT INTO council_memberships (kpenr, kgrnr, committee, role, valid_from, valid_until, fetched_at) "
                 "VALUES (99, 1, 'Rat', 'Ratsmitglied', '2026-01-01', NULL, datetime('now'))")
         m = {x["slug"]: x for x in store.list_members()}
-        assert m["sabine-goerg"]["art"] == "rat"
+        assert m["sabine-goerg"]["art"] == "council"
     finally:
         store.close()
 
@@ -560,19 +560,19 @@ def test_tippfehler_heilung_regeln():
     lex = {
         ("claudia", "oeljeschlaeger"): [
             {"slug": "claudia-oeljeschlaeger", "name": "Claudia Oeljeschläger",
-             "art": "rat", "partei": "SPD"}],
+             "art": "council", "party": "SPD"}],
         ("jens", "luekermann"): [
             {"slug": "jens-luekermann", "name": "Jens Lükermann",
-             "art": "rat", "partei": "Volt"}],
+             "art": "council", "party": "Volt"}],
         ("petra", "schmidt"): [
             {"slug": "petra-schmidt", "name": "Petra Schmidt",
-             "art": "rat", "partei": "CDU"}],
+             "art": "council", "party": "CDU"}],
         ("petra", "schmitz"): [
             {"slug": "petra-schmitz", "name": "Petra Schmitz",
-             "art": "rat", "partei": "SPD"}],
+             "art": "council", "party": "SPD"}],
         ("heiko", "meier"): [
             {"slug": "heiko-meier", "name": "Heiko Meier",
-             "art": "stadt", "partei": None}],
+             "art": "city", "party": None}],
     }
     heilung = CouncilStore.tippfehler_ratsmitglied
 
@@ -618,15 +618,15 @@ def test_verwaltung_detail_nur_mit_erkanntem_amt(tmp_path):
                 "location, fetched_at) VALUES (1, 'Rat', ?, '', '', datetime('now'))", (frisch,))
             store._conn.executemany(
                 "INSERT INTO council_attendance (ksinr, name, party, role, note) VALUES (1, ?, ?, ?, ?)",
-                [("Jürgen Krogmann", "Verwaltung", "verwaltung", "Oberbürgermeister"),
-                 ("Dagmar Sachse", "Verwaltung", "verwaltung", "Für Oberbürgermeister Krogmann")])
+                [("Jürgen Krogmann", "Verwaltung", "administration", "Oberbürgermeister"),
+                 ("Dagmar Sachse", "Verwaltung", "administration", "Für Oberbürgermeister Krogmann")])
             store._conn.executemany(
-                "INSERT INTO council_wortbeitraege (ksinr, position, sprecher, partei, art, top, "
+                "INSERT INTO council_wortbeitraege (ksinr, position, speaker, party, kind, top, "
                 "text, extracted_at) VALUES (1, ?, ?, NULL, 'zusage', 'Ö 1', ?, datetime('now'))",
                 [(1, "Krogmann", "Wird geprüft.")])
 
         kro = store.verwaltung_detail("juergen-krogmann")
-        assert kro["typ"] == "verwaltung" and kro["rolle"] == "Oberbürgermeister"
+        assert kro["typ"] == "administration" and kro["role"] == "Oberbürgermeister"
         assert kro["aktiv"] is True
         assert kro["wortbeitraege_gesamt"] == 1
 
@@ -656,17 +656,17 @@ def test_lexikon_fuehrt_fraktions_phasen_nur_bei_wechslern(tmp_path):
                 [(1, frueher), (2, frisch)])
             store._conn.executemany(
                 "INSERT INTO council_attendance (ksinr, name, party, role, note) "
-                "VALUES (?, ?, ?, 'mitglied', NULL)",
+                "VALUES (?, ?, ?, 'member', NULL)",
                 [(1, "Vally Finke", "SPD"), (2, "Vally Finke", "Für Oldenburg"),
                  (1, "Paul Behrens", "SPD"), (2, "Paul Behrens", "SPD")])
         lex = {p["slug"]: p for p in store.personen_lexikon()}
         finke = lex["vally-finke"]
-        assert finke["partei"] == "Für Oldenburg"      # heute
-        assert [ph["partei"] for ph in finke["phasen"]] == ["SPD", "Für Oldenburg"]
+        assert finke["party"] == "Für Oldenburg"      # heute
+        assert [ph["party"] for ph in finke["phasen"]] == ["SPD", "Für Oldenburg"]
         assert finke["phasen"][0]["von"] == frueher[:4] and finke["phasen"][0]["bis"] == frueher[:4]
         # Ohne Wechsel keine Phasen-Liste — das Lexikon lädt jede Seite mit.
         assert lex["paul-behrens"]["phasen"] is None
-        assert lex["paul-behrens"]["partei"] == "SPD"
+        assert lex["paul-behrens"]["party"] == "SPD"
     finally:
         store.close()
 
@@ -687,14 +687,14 @@ def test_gruppen_label_wird_zur_partei_aufgeloest(tmp_path):
                 [(1, frueher), (2, frisch)])
             store._conn.executemany(
                 "INSERT INTO council_attendance (ksinr, name, party, role, note) "
-                "VALUES (?, ?, ?, 'mitglied', NULL)",
+                "VALUES (?, ?, ?, 'member', NULL)",
                 [(1, "Benno Schulz", "FDP"), (2, "Benno Schulz", "FDP/Volt"),
                  (2, "Dr. Gunnar Meister", "FDP/Volt"),         # nie einzeln geführt
                  (2, "Jens Lükermann", "FDP/Volt"),             # löst über die Stammdaten auf
                  (2, "Vally Finke", "Für Oldenburg"),           # eigenständige Gruppe
                  (2, "Manfred Klöpper", "Gruppe DIE LINKE./Piratenpartei")])
             store._conn.execute(
-                "INSERT INTO council_persons (kpenr, name, fraktion_aktuell, fetched_at) "
+                "INSERT INTO council_persons (kpenr, name, current_faction, fetched_at) "
                 "VALUES (7, 'Jens Lükermann', 'Volt', datetime('now'))")
         m = {x["slug"]: x for x in store.list_members()}
         assert m["benno-schulz"]["party"] == "FDP"          # aus der eigenen Historie
@@ -732,7 +732,7 @@ def test_personen_seite_kopf_loest_gruppe_auf_zeitreihe_bleibt(tmp_path):
                 [(1, frueher), (2, frisch)])
             store._conn.executemany(
                 "INSERT INTO council_attendance (ksinr, name, party, role, note) "
-                "VALUES (?, ?, ?, 'mitglied', NULL)",
+                "VALUES (?, ?, ?, 'member', NULL)",
                 [(1, "Benno Schulz", "FDP"), (2, "Benno Schulz", "FDP/Volt"),
                  (1, "Paul Behrens", "SPD"), (2, "Paul Behrens", "SPD")])
         d = store.member_detail("benno-schulz")
@@ -741,7 +741,7 @@ def test_personen_seite_kopf_loest_gruppe_auf_zeitreihe_bleibt(tmp_path):
         assert [t["label"] for t in d["faction_timeline"]] == ["FDP", "FDP/Volt"]  # roh
         # Ohne Zusammenschluss bleibt alles, wie es war.
         b = store.member_detail("paul-behrens")
-        assert b["current_affiliation"] == {"label": "SPD", "kind": "partei", "parties": ["SPD"]}
+        assert b["current_affiliation"] == {"label": "SPD", "kind": "party", "parties": ["SPD"]}
     finally:
         store.close()
 
@@ -750,9 +750,9 @@ def test_verein_ist_keine_ratsgruppe(tmp_path):
     """„Gemeinsam für Oldenburg e.V." las als Ratsgruppe „Für Oldenburg" —
     ein Verbandsvertreter wurde so zum Gruppenmitglied (21.08.2026)."""
     from council.parties import classify_faction
-    assert classify_faction("Gemeinsam für Oldenburg e.V.")["kind"] == "unbekannt"
-    assert classify_faction("City-Management Oldenburg GmbH")["kind"] == "unbekannt"
-    assert classify_faction("Für Oldenburg")["kind"] == "gruppe"
+    assert classify_faction("Gemeinsam für Oldenburg e.V.")["kind"] == "unknown"
+    assert classify_faction("City-Management Oldenburg GmbH")["kind"] == "unknown"
+    assert classify_faction("Für Oldenburg")["kind"] == "group"
 
 
 def test_personen_lexikon_blocker_fuer_gaeste(tmp_path):
@@ -770,14 +770,14 @@ def test_personen_lexikon_blocker_fuer_gaeste(tmp_path):
             store._conn.executemany(
                 "INSERT INTO council_attendance (ksinr, name, party, role, note) "
                 "VALUES (1, ?, ?, ?, NULL)",
-                [("Mara-Marciel Oltmanns", "NABU", "mitglied"),
-                 ("Rüdiger Oltmanns", "Wasserstraßen- und Schifffahrtsamt", "gast"),
-                 ("Herr Oltmanns", None, "gast")])
+                [("Mara-Marciel Oltmanns", "NABU", "member"),
+                 ("Rüdiger Oltmanns", "Wasserstraßen- und Schifffahrtsamt", "guest"),
+                 ("Herr Oltmanns", None, "guest")])
         lex = store.personen_lexikon()
         oltmanns = [p for p in lex if p["nachname"] == "oltmanns"]
         arten = sorted(p["art"] for p in oltmanns)
         # Rats-Eintrag + mindestens ein Blocker → kahler Nachname ist mehrdeutig.
-        assert "rat" in arten and "blocker" in arten and len(oltmanns) >= 2
+        assert "council" in arten and "blocker" in arten and len(oltmanns) >= 2
         blocker = [p for p in oltmanns if p["art"] == "blocker"]
         assert all(p["name"] is None for p in blocker)
     finally:

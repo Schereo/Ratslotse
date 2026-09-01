@@ -84,14 +84,14 @@ def _buehne() -> Image.Image:
         farbe = tuple(round(o + (u - o) * t) for o, u in zip(HIMMEL_OBEN, HIMMEL_UNTEN))
         bild.paste(farbe, (0, y, BREITE, y + 1))
 
-    ebene = Image.new("RGBA", (BREITE, HOEHE), (0, 0, 0, 0))
-    zeichner = ImageDraw.Draw(ebene)
+    level = Image.new("RGBA", (BREITE, HOEHE), (0, 0, 0, 0))
+    zeichner = ImageDraw.Draw(level)
     # (Grundlinie von unten, Amplitude, Wellenlänge, Phase, Deckkraft)
-    for grund, amp, laenge, phase, alpha in ((96, 14, 560, 0.0, 22), (52, 18, 430, 2.1, 34)):
-        punkte = [(x, HOEHE - grund + amp * math.sin(2 * math.pi * x / laenge + phase))
+    for reason, amp, laenge, phase, alpha in ((96, 14, 560, 0.0, 22), (52, 18, 430, 2.1, 34)):
+        punkte = [(x, HOEHE - reason + amp * math.sin(2 * math.pi * x / laenge + phase))
                   for x in range(0, BREITE + 8, 8)]
         zeichner.polygon(punkte + [(BREITE, HOEHE), (0, HOEHE)], fill=(*HAFENBLAU, alpha))
-    bild = Image.alpha_composite(bild.convert("RGBA"), ebene)
+    bild = Image.alpha_composite(bild.convert("RGBA"), level)
     return bild
 
 

@@ -20,9 +20,9 @@ import { GlossaryText } from "@/components/glossary-text";
 import { cn } from "@/lib/utils";
 
 export function LottiErklaert({
-  titel, text, pose, className,
+  title, text, pose, className,
 }: {
-  titel: string;
+  title: string;
   text: string;
   /** Ohne Angabe ERKLÄRT Lotti (beide Flügel öffnen, zwei Betonungen) —
    *  die Regung gehört zur Rolle der Karte. `pose` bleibt für die Stellen,
@@ -66,7 +66,7 @@ export function LottiErklaert({
       <Mascot pose={pose} regung={pose ? undefined : "erklaert"} decorative className="h-11 w-11 flex-none sm:h-12 sm:w-12" />
       <div className="min-w-0">
         <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-primary">
-          {titel}
+          {title}
         </p>
         <p className="mt-1.5 text-[13px] leading-relaxed text-foreground/90">
           <GlossaryText text={text} />
@@ -79,16 +79,16 @@ export function LottiErklaert({
 /** Große Zahl → Alltagsgröße. `pro_kopf` rechnet mit der Einwohnerzahl, die
  *  als Quelle mitgegeben wird; ohne sie erscheint der Baustein nicht. */
 export function LottiVergleich({
-  betragMio, einwohner, was, className,
+  betragMio, population, was, className,
 }: {
   betragMio: number;
-  einwohner: number;
+  population: number;
   /** Wofür das Geld ist — steht im Satz („für Kitas und Jugendhilfe"). */
   was: string;
   className?: string;
 }) {
-  if (!einwohner) return null;
-  const proKopf = Math.round((betragMio * 1_000_000) / einwohner);
+  if (!population) return null;
+  const proKopf = Math.round((betragMio * 1_000_000) / population);
   const proKopfMonat = Math.round(proKopf / 12);
   return (
     // Dieselbe Bauform wie `LottiErklaert` — Deckel an der Karte, s. dort.
@@ -109,7 +109,7 @@ export function LottiVergleich({
           {proKopfMonat >= 1 && <> — rund {proKopfMonat.toLocaleString("de-DE")}&nbsp;€ im Monat</>}.
         </p>
         <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-          Unsere Rechnung: Betrag geteilt durch {einwohner.toLocaleString("de-DE")} Einwohner*innen.
+          Unsere Rechnung: Betrag geteilt durch {population.toLocaleString("de-DE")} Einwohner*innen.
           Keine amtliche Kennzahl — die Stadt weist sie so nicht aus.
         </p>
       </div>

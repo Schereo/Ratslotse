@@ -76,7 +76,7 @@ export function FormZeichen({ form, ton: tonProp, minderheit = false, className 
         <path d="M7 1.6 L12.4 7 L7 12.4 L1.6 7 Z" fill="none" strokeWidth="2"
           strokeLinejoin="round" style={{ stroke: ton }} />
       )}
-      {form === "gesellschaft" && (
+      {form === "company" && (
         <circle cx="7" cy="7" r="4.8" fill="none" strokeWidth="2" style={{ stroke: ton }} />
       )}
     </svg>
@@ -84,7 +84,7 @@ export function FormZeichen({ form, ton: tonProp, minderheit = false, className 
 }
 
 /** Reihenfolge der Gruppen = Reihenfolge des Berichts. */
-const GRUPPEN: Rechtsform[] = ["eigenbetrieb", "aoer", "gesellschaft"];
+const GRUPPEN: Rechtsform[] = ["eigenbetrieb", "aoer", "company"];
 
 export function Konzernkarte({ gesellschaften, aufGesellschaft, anteil, className }: {
   gesellschaften: Gesellschaft[];
@@ -92,7 +92,7 @@ export function Konzernkarte({ gesellschaften, aufGesellschaft, anteil, classNam
   /** Anteil der Stadt je Gesellschaft in Prozent, `null` wo der Bericht
    *  keinen nennt. Optional, damit die Karte auch ohne Eigentümerdaten
    *  rendert (alte API, Gesellschaft ohne bestandene Probe). */
-  anteil?: (gesellschaft: string) => number | null;
+  anteil?: (company: string) => number | null;
   className?: string;
 }) {
   const je = new Map<Rechtsform, Gesellschaft[]>();
@@ -130,10 +130,10 @@ export function Konzernkarte({ gesellschaften, aufGesellschaft, anteil, classNam
                 </p>
                 <div className="mt-1.5 flex flex-wrap gap-1.5">
                   {liste.map((g) => {
-                    const quote = anteil?.(g.gesellschaft) ?? null;
+                    const quote = anteil?.(g.company) ?? null;
                     return (
-                      <button key={g.gesellschaft} type="button"
-                        onClick={() => aufGesellschaft(g.gesellschaft)}
+                      <button key={g.company} type="button"
+                        onClick={() => aufGesellschaft(g.company)}
                         className="inline-flex min-h-[36px] max-w-full items-center gap-2 rounded-lg border border-border bg-card px-2.5 py-1.5 text-left text-[12px] leading-snug transition-colors hover:border-primary/40 mobil:w-full">
                         <FormZeichen form={form} minderheit={istMinderheit(quote)} />
                         <span className="min-w-0">{g.name}</span>

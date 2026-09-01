@@ -129,7 +129,7 @@ _ANGEMELDET = re.compile(
 
 
 def _datei(spezifizierer: str) -> Path | None:
-    """`@/components/haushalt/quelle` → die Datei, wenn es sie gibt."""
+    """`@/components/haushalt/source` → die Datei, wenn es sie gibt."""
     if not spezifizierer.startswith("@/"):
         return None                      # Paket aus node_modules
     for endung in (".tsx", ".ts"):

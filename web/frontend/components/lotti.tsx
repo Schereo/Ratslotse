@@ -32,6 +32,10 @@ declare global {
       "lotti-figur": React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> & {
         /** React 18 lässt `className` auf Custom Elements fallen — `class` nehmen. */
         class?: string;
+        /** ATTRIBUT DES CUSTOM ELEMENTS — heißt im Abspieler
+         *  `public/lotti/lotti-figur.js` so und bleibt deshalb deutsch.
+         *  Umbenannt fiele es beim Andocken auf den Vorgabe-Pfad zurück
+         *  und die Figur lüde `/lotti.json` ins Leere (404). */
         quelle?: string;
         regung?: string;
         regie?: "ruhig" | "lebhaft" | "aus";
@@ -74,7 +78,7 @@ function varianteFuer(theme: MascotTheme): string {
 }
 
 function useJahreszeitQuelle(): string {
-  const [quelle, setQuelle] = useState("/lotti/");
+  const [source, setQuelle] = useState("/lotti/");
   useEffect(() => {
     const setzen = () => setQuelle(`/lotti/${varianteFuer(getMascotTheme())}/`);
     setzen();
@@ -82,7 +86,7 @@ function useJahreszeitQuelle(): string {
     const id = setInterval(setzen, 60 * 60 * 1000);
     return () => clearInterval(id);
   }, []);
-  return quelle;
+  return source;
 }
 
 let geladen = false;
@@ -119,13 +123,13 @@ export function Lotti({
   className?: string;
 }) {
   useEffect(elementLaden, []);
-  const quelle = useJahreszeitQuelle();
+  const source = useJahreszeitQuelle();
   return (
-    /* `quelle` liest der Abspieler nur beim Andocken — der `key` baut das
+    /* `source` liest der Abspieler nur beim Andocken — der `key` baut das
        Element beim Jahreszeitenwechsel neu auf, statt ins Leere zu schreiben. */
     <lotti-figur
-      key={quelle}
-      quelle={quelle}
+      key={source}
+      quelle={source}
       regung={regung}
       regie={regie}
       spiegel={spiegel ? "" : undefined}

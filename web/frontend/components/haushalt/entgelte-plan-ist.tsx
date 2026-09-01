@@ -12,9 +12,9 @@
 // DIE BEZUGSGRÖSSE WECHSELT ÜBER DIE JAHRGÄNGE. Wogegen ein Abschluss seine
 // Abweichung rechnet, ist nicht in allen Jahren dasselbe: 2018 gegen die
 // Gesamtermächtigung, 2020 gegen den Ansatz samt Nachtrag, sonst gegen den
-// nackten Ansatz. Das steht als `plan_art` an jeder Zeile, und es gehört an
+// nackten Ansatz. Das steht als `plan_kind` an jeder Zeile, und es gehört an
 // jede Hantel: Ohne diese Angabe vergliche die Reihe stillschweigend
-// Verschiedenes. Deshalb ist `plan_art` hier die Einordnung — nicht `null`,
+// Verschiedenes. Deshalb ist `plan_kind` hier die Einordnung — nicht `null`,
 // wie bei Tabelle 1103, die über sich selbst nichts sagt.
 //
 // KEINE BEWERTUNG (Regel des ganzen Bereichs). Weniger Gebühren als geplant
@@ -34,19 +34,19 @@ export function EntgeltePlanIst({ zeilen, beleg }: {
   // Beide Werte müssen da sein: Eine Hantel mit einem Ende ist keine Hantel,
   // sondern ein Punkt, der so tut, als wäre er ein Vergleich.
   const sortiert = zeilen
-    .filter((z) => z.plan != null && z.plan > 0 && z.ergebnis != null)
-    .sort((a, b) => a.jahr - b.jahr);
+    .filter((z) => z.plan != null && z.plan > 0 && z.result != null)
+    .sort((a, b) => a.year - b.year);
   if (sortiert.length < 2) return null;
 
   const hantelZeilen: HantelZeile[] = sortiert.map((z) => ({
-    label: String(z.jahr),
+    label: String(z.year),
     plan: (z.plan as number) / 1e6,
-    ist: (z.ergebnis as number) / 1e6,
+    ist: (z.result as number) / 1e6,
     // Die Bezugsgröße dieses Jahrgangs, im Klartext des Dokuments. Wo sie
     // fehlt, wird sie nicht durch „Ansatz" ersetzt — dann steht sie eben nicht
     // da, statt geraten zu werden.
-    einordnung: z.plan_art
-      ? `Verglichen wird gegen: ${PLAN_ART_LABEL[z.plan_art]}.`
+    einordnung: z.plan_kind
+      ? `Verglichen wird gegen: ${PLAN_ART_LABEL[z.plan_kind]}.`
       : null,
   }));
 
@@ -57,7 +57,7 @@ export function EntgeltePlanIst({ zeilen, beleg }: {
           Geplant und geworden
         </p>
         <span className="font-mono text-[10px] uppercase text-muted-foreground">
-          {sortiert[0].jahr}–{sortiert[sortiert.length - 1].jahr}
+          {sortiert[0].year}–{sortiert[sortiert.length - 1].year}
           {" · "}{sortiert.length} Jahre
         </span>
       </div>
@@ -69,7 +69,7 @@ export function EntgeltePlanIst({ zeilen, beleg }: {
       <div className="mt-3">
         <Hantel
           zeilen={hantelZeilen}
-          einheit="Mio. €"
+          unit="Mio. €"
           /* Chronologie schlägt Rangfolge: Dass 2024 auf 2023 folgt, muss die
              Reihenfolge tragen — wie weit es danebenlag, zeigt die Länge. */
           sortierung="alpha"

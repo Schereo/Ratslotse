@@ -34,7 +34,7 @@ import {
 } from "@/lib/haushalt";
 import { buendelGrenze, rampenText } from "@/components/grafik/kachelflaeche";
 import { Treemap, type TreemapKnoten } from "@/components/grafik/treemap";
-import { Beleg } from "@/components/haushalt/quelle";
+import { Beleg } from "@/components/haushalt/source";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import { ausblick, type Antwort as DatenstandAntwort } from "@/components/haushalt/datenstand";
 import { useFetch } from "@/lib/use-fetch";
@@ -54,8 +54,8 @@ const EIN_STUFEN = 6;
  *  `ausgleich` sind beide Differenz-Bänder (Schraffur + Signal-Kante). */
 function alsPosten(b: FlussBand): FlussPosten {
   return {
-    id: b.id, label: b.label, lang: b.lang, wert: b.wert,
-    art: b.art === "posten" ? "posten" : "differenz",
+    id: b.id, label: b.label, lang: b.lang, value: b.value,
+    art: b.art === "posten" ? "posten" : "difference",
   };
 }
 
@@ -68,7 +68,7 @@ function alsPosten(b: FlussBand): FlussPosten {
  *  der der Tausch stand, war eine Zeile über ihr. Wo Daten für das gewählte
  *  Jahr fehlen, sagt die Seite jetzt genau das (Entscheidung Tim, 16.08.).
  *
- *  Bis 19.08. stand hier „Für {jahr} liegen uns die Einnahmearten noch nicht
+ *  Bis 19.08. stand hier „Für {year} liegen uns die Einnahmearten noch nicht
  *  vor" — seit #530 unwahr, sie SIND eingelesen. Seit 20.08. steht deshalb
  *  nicht mehr eine Fehlanzeige da, sondern die Herkunftsseite selbst.
  *
@@ -133,7 +133,7 @@ export function Herkunftskacheln({ arten }: { arten: EinnahmeartenPlan }) {
     () => arten.arten.map((a) => ({
       key: String(a.nr),
       name: a.label,
-      wert: a.betrag,
+      value: a.amount,
       gruppe: a.label,
       zusatz: a.label === a.lang ? undefined : a.lang,
     })),
@@ -149,10 +149,10 @@ export function Herkunftskacheln({ arten }: { arten: EinnahmeartenPlan }) {
   // Der gemessene Schnitt (s. Kopfkommentar) und die Aufzählung dessen, was
   // er bündelt — einmal „Mio. €" am Ende, die Legende nennt die Einheit ohnehin.
   const grenze = useMemo(
-    () => buendelGrenze(arten.arten.map((a) => a.betrag)), [arten]);
+    () => buendelGrenze(arten.arten.map((a) => a.amount)), [arten]);
   const gebuendelt = arten.arten.slice(grenze);
   const restZusatz = gebuendelt.length
-    ? gebuendelt.map((a) => `${a.label} ${deMio(a.betrag / 1e6)}`).join(" · ")
+    ? gebuendelt.map((a) => `${a.label} ${deMio(a.amount / 1e6)}`).join(" · ")
       + "\u00a0Mio.\u00a0€"
     : undefined;
 
@@ -167,7 +167,7 @@ export function Herkunftskacheln({ arten }: { arten: EinnahmeartenPlan }) {
       anteil
       restZusatz={restZusatz}
       restHinweis="Antippen zeigt die einzelnen Posten."
-      beleg={<Beleg q="ergebnishaushalt" />}
+      beleg={<Beleg q="income_budget" />}
     />
   );
 }
@@ -188,7 +188,7 @@ function NurHerkunft({ arten, letztes, aufJahr }: {
 
       <div className="mt-3 rounded-lg border border-dashed border-border bg-muted/40 px-3.5 py-3">
         <p className="text-[13px] font-semibold leading-relaxed">
-          Für {arten.jahr} können wir bisher nur die Einnahmeseite zeigen.
+          Für {arten.year} können wir bisher nur die Einnahmeseite zeigen.
         </p>
         <p className="mt-1 max-w-[68ch] text-[12.5px] leading-relaxed text-foreground/85">
           Die Einnahmearten stammen aus Anlage 005 des von der Verwaltung eingebrachten
@@ -203,7 +203,7 @@ function NurHerkunft({ arten, letztes, aufJahr }: {
           <p className="mt-1.5 max-w-[68ch] text-[12.5px] leading-relaxed text-foreground/85">
             Die Einnahmeposten des Entwurfs ergeben zusammen
             {" "}{deMio(arten.gesamt / 1e6)}&#8239;Mio.&nbsp;€. In der Anzeigetafel oben stehen
-            {" "}{deMio(arten.tafel.ertraege / 1e6)}&#8239;Mio.&nbsp;€ aus dem beschlossenen
+            {" "}{deMio(arten.tafel.revenues / 1e6)}&#8239;Mio.&nbsp;€ aus dem beschlossenen
             Plan. Der Unterschied von {deMio(Math.abs(arten.tafel.abstand) / 1e6)}&#8239;Mio.&nbsp;€
             entsteht, weil beide Zahlen aus verschiedenen Fassungen stammen.
           </p>
@@ -228,8 +228,8 @@ function NurHerkunft({ arten, letztes, aufJahr }: {
 
 /** Der Rückfall, wenn es auch die Herkunftsseite nicht gibt — etwa auf einem
  *  Bestand, in dem der Gesamtergebnishaushalt noch nicht eingelesen ist. */
-function Luecke({ jahr, letztes, aufJahr }: {
-  jahr: number; letztes: number | null; aufJahr: (() => void) | null;
+function Luecke({ year, letztes, aufJahr }: {
+  year: number; letztes: number | null; aufJahr: (() => void) | null;
 }) {
   return (
     <div>
@@ -238,7 +238,7 @@ function Luecke({ jahr, letztes, aufJahr }: {
       </p>
       <div className="rounded-lg border border-dashed border-border bg-muted/40 px-3.5 py-3">
         <p className="text-[13px] font-semibold leading-relaxed">
-          Für {jahr} können wir den Geldfluss nicht zeichnen.
+          Für {year} können wir den Geldfluss nicht zeichnen.
         </p>
         <p className="mt-1 max-w-[68ch] text-[12.5px] leading-relaxed text-foreground/85">
           Für dieses Jahr fehlen die Einnahmearten. Wir zeigen deshalb keine Grafik mit
@@ -269,7 +269,7 @@ function Luecke({ jahr, letztes, aufJahr }: {
  *  Nummerierung im Verzeichnis läuft über genau diese Liste. Meldet sie eine
  *  Quelle an, die hier gar nicht zitiert wird, steht im Verzeichnis ein Beleg
  *  für nichts; meldet sie eine zu wenig an, verschluckt `<Beleg>` den Chip
- *  stillschweigend (`quelle.tsx`: „lieber keinen Chip als eine falsche
+ *  stillschweigend (`source.tsx`: „lieber keinen Chip als eine falsche
  *  Nummer") — die Zahl stünde dann ohne Beleg da, auf einer Seite, deren
  *  ganzer Anspruch das Gegenteil ist.
  *
@@ -277,35 +277,35 @@ function Luecke({ jahr, letztes, aufJahr }: {
  *  bleiben: Wo ein Flussbild steht, zitiert es den Jahresabschluss; wo für ein
  *  Planjahr die Herkunftsseite steht, den Gesamtergebnishaushalt. */
 export function flussbildQuellen(
-  daten: HaushaltAuswahl<"ergebnisrechnung" | "ergebnishaushalt" | "jahre">,
-  jahr: number,
+  daten: HaushaltAuswahl<"income_statement" | "income_budget" | "years">,
+  year: number,
 ): QuellenSchluessel[] {
   if (!flussJahre(daten).length) return [];
-  const bild = flussbild(daten, jahr, "ist") ?? flussbild(daten, jahr, "plan");
-  if (!bild && einnahmearten(daten, jahr)) return ["ergebnishaushalt"];
+  const bild = flussbild(daten, year, "ist") ?? flussbild(daten, year, "plan");
+  if (!bild && einnahmearten(daten, year)) return ["income_budget"];
   return ["jahresabschluss"];
 }
 
-export function Flussbild({ daten, jahr, onJahrWechsel }: {
-  daten: HaushaltAuswahl<"ergebnisrechnung" | "ergebnishaushalt" | "jahre">;
-  jahr: number;
+export function Flussbild({ daten, year, onJahrWechsel }: {
+  daten: HaushaltAuswahl<"income_statement" | "income_budget" | "years">;
+  year: number;
   /** Der saubere Weg, das Angebot einzulösen — die Seite hält das Jahr.
    *  Optional, damit die Einbindung unverändert weiterläuft; ohne ihn greift
    *  die Pillen-Notlösung unten. */
-  onJahrWechsel?: (jahr: number) => void;
+  onJahrWechsel?: (year: number) => void;
 }) {
-  const [stand, setStand] = useState<"plan" | "ist">("ist");
+  const [as_of, setStand] = useState<"plan" | "ist">("ist");
   const [tabelle, setTabelle] = useState(false);
 
-  const jahre = useMemo(() => flussJahre(daten), [daten]);
+  const years = useMemo(() => flussJahre(daten), [daten]);
   // KEIN stiller Jahreswechsel: Das Bild zeigt das Jahr der Seite oder gar
   // keines. Fehlt es, tritt `Luecke` an seine Stelle (Begründung dort).
-  const istBild = useMemo(() => flussbild(daten, jahr, "ist"), [daten, jahr]);
-  const planBild = useMemo(() => flussbild(daten, jahr, "plan"), [daten, jahr]);
-  const bild = stand === "ist" ? istBild ?? planBild : planBild ?? istBild;
+  const istBild = useMemo(() => flussbild(daten, year, "ist"), [daten, year]);
+  const planBild = useMemo(() => flussbild(daten, year, "plan"), [daten, year]);
+  const bild = as_of === "ist" ? istBild ?? planBild : planBild ?? istBild;
 
   // `flussJahre` ist aufsteigend — das jüngste vollständige Jahr steht hinten.
-  const letztes = jahre.length ? jahre[jahre.length - 1] : null;
+  const letztes = years.length ? years[years.length - 1] : null;
   // Für den Ersatzfall: dasselbe noch einmal für das jüngste Jahr. Muss ein
   // Hook sein und vor jedem `return` stehen.
   const letztesIst = useMemo(
@@ -314,7 +314,7 @@ export function Flussbild({ daten, jahr, onJahrWechsel }: {
     () => (letztes == null ? null : flussbild(daten, letztes, "plan")), [daten, letztes]);
   // Die Herkunftsseite des GEWÄHLTEN Jahres — für Planjahre die einzige, die
   // es gibt. Muss ein Hook sein und vor jedem `return` stehen.
-  const nurHerkunft = useMemo(() => einnahmearten(daten, jahr), [daten, jahr]);
+  const nurHerkunft = useMemo(() => einnahmearten(daten, year), [daten, year]);
   // Wann die Stadt den fehlenden Jahrgang üblicherweise vorlegt — derselbe
   // Satz, den der Datenstand am Seitenfuß baut, statt einer zweiten Fassung.
   const { data: stand_ } = useFetch<DatenstandAntwort>("/council/haushalt/datenstand");
@@ -325,18 +325,18 @@ export function Flussbild({ daten, jahr, onJahrWechsel }: {
 
   // NOTLÖSUNG, solange `onJahrWechsel` nicht verdrahtet ist: Das Jahr hält
   // `app/(app)/haushalt/page.tsx`, und die Jahres-Pillen dort tragen bereits
-  // ein `data-jahr` (die Seite scrollt sich damit selbst zurecht). Wir tippen
+  // ein `data-year` (die Seite scrollt sich damit selbst zurecht). Wir tippen
   // also die Pille an, statt einen zweiten Jahres-Zustand aufzumachen.
   // Geprüft wird VOR dem Zeichnen: Lieber kein Knopf als ein toter Knopf.
   const [pilleDa, setPilleDa] = useState(false);
   useEffect(() => {
     if (onJahrWechsel || letztes == null) { setPilleDa(false); return; }
-    setPilleDa(!!document.querySelector(`[data-jahr="${letztes}"]`));
-  }, [onJahrWechsel, letztes, jahr]);
+    setPilleDa(!!document.querySelector(`[data-year="${letztes}"]`));
+  }, [onJahrWechsel, letztes, year]);
 
   const aufLetztes = letztes == null || (!onJahrWechsel && !pilleDa) ? null : () => {
     if (onJahrWechsel) { onJahrWechsel(letztes); return; }
-    document.querySelector<HTMLElement>(`[data-jahr="${letztes}"]`)?.click();
+    document.querySelector<HTMLElement>(`[data-year="${letztes}"]`)?.click();
   };
 
   // Ohne ein einziges Jahr mit Abschluss gibt es nichts zu sagen und nichts
@@ -360,41 +360,41 @@ export function Flussbild({ daten, jahr, onJahrWechsel }: {
   }
 
   const ersatz = !bild;
-  const zeigJahr = ersatz ? letztes : jahr;
-  const zeigBild = bild ?? (stand === "ist" ? letztesIst ?? letztesPlan : letztesPlan ?? letztesIst);
-  if (!zeigBild) return <Luecke jahr={jahr} letztes={letztes} aufJahr={aufLetztes} />;
+  const zeigJahr = ersatz ? letztes : year;
+  const zeigBild = bild ?? (as_of === "ist" ? letztesIst ?? letztesPlan : letztesPlan ?? letztesIst);
+  if (!zeigBild) return <Luecke year={year} letztes={letztes} aufJahr={aufLetztes} />;
 
-  const echterStand: "plan" | "ist" = zeigBild.stand;
+  const echterStand: "plan" | "ist" = zeigBild.as_of;
   const beideStaende = !!istBild && !!planBild;
 
-  const saldoMio = mio(zeigBild.saldo) ?? 0;
+  const saldoMio = mio(zeigBild.balance) ?? 0;
   // Nur die Seite benennen, die WIRKLICH klemmt: „792,6 statt 792,6 bei den
   // Ausgaben" ist keine Auskunft, sondern Rauschen.
   const luecken = ([
-    { seite: "Einnahmen", s: zeigBild.herkunft },
-    { seite: "Ausgaben", s: zeigBild.verwendung },
+    { page: "Einnahmen", s: zeigBild.herkunft },
+    { page: "Ausgaben", s: zeigBild.verwendung },
   ] as const)
     .filter(({ s }) => Math.abs(s.gesamt - s.teile) > 0.02 * s.gesamt)
-    .map(({ seite, s }) => ({
-      seite, teile: deMio(mio(s.teile)), gesamt: deMio(mio(s.gesamt)),
+    .map(({ page, s }) => ({
+      page, teile: deMio(mio(s.teile)), gesamt: deMio(mio(s.gesamt)),
     }));
 
   const format = (w: number) => deMio(mio(w));
   const links: FlussSeiteDaten = {
-    titel: "Woher das Geld kommt", kurz: "Woher", hint: "Einnahmearten",
+    title: "Woher das Geld kommt", kurz: "Woher", hint: "Einnahmearten",
     sammelTitel: "Die kleineren Einnahmearten",
     baender: zeigBild.herkunft.baender.map(alsPosten),
     gesamt: zeigBild.herkunft.gesamt,
   };
   const rechts: FlussSeiteDaten = {
-    titel: "Wofür es ausgegeben wird", kurz: "Wohin", hint: "Bereiche",
+    title: "Wofür es ausgegeben wird", kurz: "Wohin", hint: "Bereiche",
     sammelTitel: "Die kleineren Bereiche",
     baender: zeigBild.verwendung.baender.map(alsPosten),
     gesamt: zeigBild.verwendung.gesamt,
   };
   const beschreibe = (s: FlussSeiteDaten) =>
     fasseKleineZusammen(s.baender, zeigBild.skala, MINDEST_ANTEIL)
-      .gezeigt.map((b) => `${b.lang} ${format(b.wert)}`).join(", ");
+      .gezeigt.map((b) => `${b.lang} ${format(b.value)}`).join(", ");
 
   return (
     <div>
@@ -405,7 +405,7 @@ export function Flussbild({ daten, jahr, onJahrWechsel }: {
       {ersatz && (
         <div className="mb-2.5 rounded-lg border border-dashed border-border bg-muted/40 px-3.5 py-2.5">
           <p className="text-[13px] font-semibold leading-relaxed">
-            Für {jahr} fehlen die Einnahmearten. Die Grafik zeigt deshalb {zeigJahr}.
+            Für {year} fehlen die Einnahmearten. Die Grafik zeigt deshalb {zeigJahr}.
           </p>
           <p className="mt-1 max-w-[74ch] text-[12.5px] leading-relaxed text-foreground/85">
             Die vollständige Aufschlüsselung steht erst im Jahresabschluss.{" "}
@@ -420,7 +420,7 @@ export function Flussbild({ daten, jahr, onJahrWechsel }: {
           Woher das Geld kommt und wofür es eingeplant ist
         </p>
         <span className="font-mono text-[10px] uppercase text-muted-foreground">
-          {echterStand === "ist" ? `Jahresabschluss ${zeigBild.jahr}` : `Haushaltsplan ${zeigBild.jahr}`} · Mio. Euro
+          {echterStand === "ist" ? `Jahresabschluss ${zeigBild.year}` : `Haushaltsplan ${zeigBild.year}`} · Mio. Euro
         </span>
       </div>
 
@@ -446,7 +446,7 @@ export function Flussbild({ daten, jahr, onJahrWechsel }: {
         // Summe nicht tragen, wird nichts hochgerechnet und nichts gedehnt.
         <p className="rounded-lg border border-dashed border-signal/60 bg-card px-3 py-2.5 text-[12px] leading-relaxed text-foreground/85">
           Die ausgelesenen Einzelposten ergeben nicht die ausgewiesene Gesamtsumme:{" "}
-          {luecken.map((l) => `bei den ${l.seite} ${l.teile} statt ${l.gesamt}`).join(", ")}
+          {luecken.map((l) => `bei den ${l.page} ${l.teile} statt ${l.gesamt}`).join(", ")}
           &#8239;Mio.&nbsp;€. Damit fehlen Teile der Datengrundlage. Eine proportionale Grafik wäre
           irreführend; die verfügbaren Zahlen stehen deshalb nur in der Tabelle.
         </p>
@@ -457,16 +457,16 @@ export function Flussbild({ daten, jahr, onJahrWechsel }: {
           topf={{
             kurz: "Gesamthaushalt",
             lang: "Alle Einnahmen im Gesamthaushalt",
-            wert: zeigBild.skala,
+            value: zeigBild.skala,
             satz: "Gemeinsamer Finanzierungsrahmen",
-            hinweis: "Einzelne Einnahmearten sind nicht direkt bestimmten Ausgabenbereichen "
+            note: "Einzelne Einnahmearten sind nicht direkt bestimmten Ausgabenbereichen "
               + "zugeordnet.",
           }}
           skala={zeigBild.skala}
           format={format}
           mindestAnteil={MINDEST_ANTEIL}
           beschreibung={
-            `Woher das Geld der Stadt kommt und wofür es ausgegeben wird, ${zeigBild.jahr}, in Mio. Euro. ` +
+            `Woher das Geld der Stadt kommt und wofür es ausgegeben wird, ${zeigBild.year}, in Mio. Euro. ` +
             `Alle Einnahmen laufen in eine gemeinsame Kasse von ${format(zeigBild.skala)} Mio. Euro und werden von dort verteilt; ` +
             `es gibt keine Zuordnung einzelner Einnahmen zu einzelnen Ausgaben. ` +
             `Herkunft: ${beschreibe(links)}. ` +
@@ -531,12 +531,12 @@ export function Flussbild({ daten, jahr, onJahrWechsel }: {
  *  Summenprobe als eigene Zeile, nicht als Behauptung im Fließtext. */
 function Tabelle({ bild }: { bild: FlussDaten }) {
   const zeilen = (baender: FlussBand[]) =>
-    [...baender].sort((a, b) => b.wert - a.wert).map((b) => (
+    [...baender].sort((a, b) => b.value - a.value).map((b) => (
       <tr key={b.id} className="border-t border-border/60">
         <td className="py-1 pr-2">{b.lang}</td>
-        <td className="py-1 pr-2 text-right">{deMio(mio(b.wert))}</td>
+        <td className="py-1 pr-2 text-right">{deMio(mio(b.value))}</td>
         <td className="py-1 text-right text-muted-foreground">
-          {((b.wert / bild.skala) * 100).toLocaleString("de-DE", { maximumFractionDigits: 1 })}&nbsp;%
+          {((b.value / bild.skala) * 100).toLocaleString("de-DE", { maximumFractionDigits: 1 })}&nbsp;%
         </td>
       </tr>
     ));
@@ -552,7 +552,7 @@ function Tabelle({ bild }: { bild: FlussDaten }) {
         </thead>
         <tbody>
           <tr><td colSpan={3} className="pt-2 font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
-            Woher — {bild.stand === "ist" ? "tatsächlich" : "geplant"} {bild.jahr}
+            Woher — {bild.as_of === "ist" ? "tatsächlich" : "geplant"} {bild.year}
           </td></tr>
           {zeilen(bild.herkunft.baender)}
           <tr className="border-t-2 border-border font-semibold">
@@ -561,7 +561,7 @@ function Tabelle({ bild }: { bild: FlussDaten }) {
             <td className="py-1 text-right">100&nbsp;%</td>
           </tr>
           <tr><td colSpan={3} className="pt-3 font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
-            Wohin — {bild.stand === "ist" ? "tatsächlich" : "geplant"} {bild.jahr}
+            Wohin — {bild.as_of === "ist" ? "tatsächlich" : "geplant"} {bild.year}
           </td></tr>
           {zeilen(bild.verwendung.baender)}
           <tr className="border-t-2 border-border font-semibold">

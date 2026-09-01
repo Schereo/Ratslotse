@@ -23,9 +23,9 @@ def _tag(offset: int) -> str:
     return (date.today() + timedelta(days=offset)).isoformat()
 
 
-def _sitzung(store: CouncilStore, ksinr: int, gremium: str, tag: str, zeit: str = "17:00"):
+def _sitzung(store: CouncilStore, ksinr: int, committee: str, tag: str, zeit: str = "17:00"):
     store.save_session(CouncilSession(
-        ksinr=ksinr, committee=gremium, session_date=tag, session_time=zeit,
+        ksinr=ksinr, committee=committee, session_date=tag, session_time=zeit,
         location="Alte Fleiwa",
         agenda_items=[AgendaItem("Ö 1", "Irgendein Punkt")],
     ))
@@ -35,7 +35,7 @@ def _beschluss(store: CouncilStore, ksinr: int, position: int, kind: str = "deci
     with store._conn:
         store._conn.execute(
             "INSERT INTO council_decisions (ksinr, position, kind, item_number, title, outcome) "
-            "VALUES (?, ?, ?, ?, ?, 'angenommen')",
+            "VALUES (?, ?, ?, ?, ?, 'accepted')",
             (ksinr, position, kind, str(position), f"Beschluss {position}"),
         )
 

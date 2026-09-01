@@ -32,7 +32,7 @@ def test_feed_parst_items(monkeypatch):
     items = presse.fetch_feed()
     assert len(items) == 2
     assert items[0]["news_id"] == 34614
-    assert items[0]["datum"] == "2026-08-07"
+    assert items[0]["date"] == "2026-08-07"
     assert items[1]["url"].startswith("https://www.oldenburg.de/")
 
 
@@ -54,8 +54,8 @@ def test_detail_nimmt_ogtitle_und_jsonld_datum(monkeypatch):
     monkeypatch.setattr(presse, "_DELAY", 0)
     monkeypatch.setattr(presse._session, "get", lambda *a, **k: R())
     d = presse.fetch_detail("https://example.invalid/pm.html")
-    assert d["titel"] == "Mehr Grün für den Bahnhofsvorplatz"
-    assert d["datum"] == "2026-08-05"
+    assert d["title"] == "Mehr Grün für den Bahnhofsvorplatz"
+    assert d["date"] == "2026-08-05"
     assert "Wanderbäume" in d["text"]
 
 
@@ -79,7 +79,7 @@ def test_store_upsert_und_fts(tmp_path):
     hits = store.search_presse_fts("Radweg Alexanderstrasse")
     assert hits and hits[0][0] == pid
     rows = store.presse_by_ids([pid])
-    assert rows[0]["titel"].endswith("(aktualisiert)")
+    assert rows[0]["title"].endswith("(aktualisiert)")
     missing = store.presse_missing_embeddings()
     assert [m["id"] for m in missing] == [pid]
     store.replace_presse_embeddings(pid, missing[0]["text_hash"], [("chunk", b"\x00\x00\x80?")])
@@ -90,7 +90,7 @@ def test_store_upsert_und_fts(tmp_path):
 def test_presse_block_im_antwortprompt():
     messages, _ = qa._answer_messages(
         "Was wurde aus dem Radweg?", [],
-        presse=[{"titel": "Radweg eröffnet", "datum": "2026-08-01", "auszug": "Die Stadt eröffnet…"}])
+        presse=[{"title": "Radweg eröffnet", "date": "2026-08-01", "auszug": "Die Stadt eröffnet…"}])
     inhalt = messages[0]["content"]
     assert "AKTUELLES VON DER STADT" in inhalt
     assert "Radweg eröffnet" in inhalt
@@ -129,13 +129,13 @@ def test_planfaelle_parser(monkeypatch):
         text = _PLANFAELLE
         def raise_for_status(self): pass
     monkeypatch.setattr(beteiligung._session, "get", lambda *a, **k: R())
-    faelle = beteiligung.fetch_planfaelle()
-    assert len(faelle) == 2
-    assert faelle[0]["plan_nrs"] == ["bp-831", "fnp-82"]
-    assert faelle[0]["bis"] is None  # Abwägungsschritt ohne Zeitraum
-    assert faelle[1]["plan_nrs"] == ["bp-81"]
-    assert faelle[1]["von"] == "2026-07-06" and faelle[1]["bis"] == "2026-08-17"
-    assert faelle[1]["url"].startswith("https://oldenburg.planungsbeteiligung.de/FRONTEND/")
+    cases = beteiligung.fetch_planfaelle()
+    assert len(cases) == 2
+    assert cases[0]["plan_nrs"] == ["bp-831", "fnp-82"]
+    assert cases[0]["valid_until"] is None  # Abwägungsschritt ohne Zeitraum
+    assert cases[1]["plan_nrs"] == ["bp-81"]
+    assert cases[1]["valid_from"] == "2026-07-06" and cases[1]["valid_until"] == "2026-08-17"
+    assert cases[1]["url"].startswith("https://oldenburg.planungsbeteiligung.de/FRONTEND/")
 
 
 def test_plan_nummern_matching_ohne_fehlgriffe():
@@ -150,8 +150,8 @@ def test_plan_nummern_matching_ohne_fehlgriffe():
 
 def test_beteiligung_store_roundtrip(tmp_path):
     store = CouncilStore(tmp_path / "c.sqlite")
-    stat = store.save_beteiligungen([{"titel": "Bebauungsplan 831", "ort": "Stadion",
-                                      "schritt": "Abwägung", "von": None, "bis": None,
+    stat = store.save_beteiligungen([{"title": "Bebauungsplan 831", "ort": "Stadion",
+                                      "schritt": "Abwägung", "valid_from": None, "valid_until": None,
                                       "url": "https://x", "plan_nrs": ["bp-831"]}])
     assert stat["neu"] == 1 and stat["laufend"] == 1
     rows = store.list_beteiligungen()

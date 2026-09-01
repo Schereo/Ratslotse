@@ -86,11 +86,11 @@ def _render_items(decisions: list[dict]) -> str:
     lines = []
     for d in decisions:
         title = (d.get("title") or "").strip()
-        beschluss = " ".join((d.get("beschluss") or "").split())
-        if len(beschluss) > 400:
-            beschluss = beschluss[:400] + "…"
+        official_text = " ".join((d.get("official_text") or "").split())
+        if len(official_text) > 400:
+            official_text = official_text[:400] + "…"
         committee = d.get("committee") or ""
-        lines.append(f'- id {d["id"]}: [{committee}] {title}\n  Beschluss: {beschluss}')
+        lines.append(f'- id {d["id"]}: [{committee}] {title}\n  Beschluss: {official_text}')
     return "\n".join(lines)
 
 

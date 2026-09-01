@@ -27,14 +27,14 @@
 // als Zeile stehen — mit <LueckenFeld> statt Balken. Die Lücke rendert die
 // Komponente, nie die Seite (GB-00); sie bleibt auch mobil sichtbar (H4-05).
 
-import { LueckenFeld } from "@/components/grafik/luecken-feld";
+import { LueckenFeld } from "@/components/grafik/luecken-field";
 import { deStellen } from "@/lib/haushalt-stellenplan";
 import type { StellenZeile } from "@/lib/haushalt-stellenplan";
 import { cn } from "@/lib/utils";
 
 export type VerlaufZeile = {
-  jahrgang: number;
-  zeile: StellenZeile | null;
+  budget_year: number;
+  row: StellenZeile | null;
   /** Warum diese Zeile leer ist — nur gesetzt, wo ein Teil fehlt. */
   fehlt?: string;
 };
@@ -48,48 +48,48 @@ export function StellenPaare({ zeilen, skala, aktJahr }: {
 }) {
   return (
     <ol className="flex flex-col gap-3">
-      {zeilen.map(({ jahrgang, zeile, fehlt }) => {
-        const akt = jahrgang === aktJahr;
+      {zeilen.map(({ budget_year, row, fehlt }) => {
+        const akt = budget_year === aktJahr;
         return (
-          <li key={jahrgang} className="grid grid-cols-[3rem_minmax(0,1fr)_auto] items-center gap-x-3">
+          <li key={budget_year} className="grid grid-cols-[3rem_minmax(0,1fr)_auto] items-center gap-x-3">
             <span className={cn(
               "font-mono text-[12px] font-medium tabular-nums",
               akt ? "text-primary" : "text-muted-foreground",
             )}>
-              {jahrgang}
+              {budget_year}
             </span>
 
-            {zeile ? (
+            {row ? (
               <>
                 <div className="flex min-w-0 flex-col gap-[3px]" aria-hidden="true">
                   <div className="h-2.5 rounded-[3px]"
                     style={{
-                      width: `${Math.min(zeile.stellen_plan / skala, 1) * 100}%`,
+                      width: `${Math.min(row.positions_planned / skala, 1) * 100}%`,
                       background: "var(--hh-ein-0)",
                     }} />
                   <div className="h-2.5 rounded-[3px]"
                     style={{
-                      width: `${Math.min(zeile.besetzt / skala, 1) * 100}%`,
+                      width: `${Math.min(row.filled / skala, 1) * 100}%`,
                       background: "var(--hh-ein-4)",
                     }} />
                 </div>
                 {/* Die beiden Zahlen der Zeile — Plan und Besetzung, nie ihre
                     Differenz. Vorgelesen wird der ganze Satz. */}
                 <span
-                  aria-label={`${jahrgang}: ${deStellen(zeile.stellen_plan)} Stellen `
-                    + `vorgehalten, ${deStellen(zeile.besetzt)} besetzt am Stichtag `
+                  aria-label={`${budget_year}: ${deStellen(row.positions_planned)} Stellen `
+                    + `vorgehalten, ${deStellen(row.filled)} besetzt am Stichtag `
                     + `des Vorjahres`}
                   className={cn(
                     "text-right font-mono text-[12.5px] tabular-nums",
                     akt ? "font-semibold text-foreground" : "text-muted-foreground",
                   )}>
-                  {deStellen(zeile.stellen_plan)} · {deStellen(zeile.besetzt)}
+                  {deStellen(row.positions_planned)} · {deStellen(row.filled)}
                 </span>
               </>
             ) : (
               <>
-                <LueckenFeld label={String(jahrgang)}
-                  grund={fehlt ?? "liegt nicht vor"} className="min-w-0" />
+                <LueckenFeld label={String(budget_year)}
+                  reason={fehlt ?? "liegt nicht vor"} className="min-w-0" />
                 <span className="text-right font-mono text-[12.5px] tabular-nums text-muted-foreground">
                   — · —
                 </span>

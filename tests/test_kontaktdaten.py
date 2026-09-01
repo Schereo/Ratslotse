@@ -109,7 +109,7 @@ def _store_mit_text(tmp_path: Path, text: str) -> CouncilStore:
     with store._conn:
         store._conn.execute(
             "INSERT INTO council_anlagen (document_id, kvonr, label, url, raw_text, "
-            "n_pages, fetched_at, status, is_antrag) "
+            "n_pages, fetched_at, status, is_motion) "
             "VALUES (4711, 99, 'Antrag auf Förderung', 'https://x/1', ?, 11, "
             "datetime('now'), 'ok', 1)", (text,))
     return store

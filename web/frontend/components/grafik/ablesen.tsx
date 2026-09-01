@@ -61,7 +61,7 @@ export type AbleseWert = {
   /** Kurzer Name der Größe, z. B. „Einnahmen". */
   label: string;
   /** Fertig formatiert (de-DE) — die Leiste rechnet nichts. */
-  wert: string;
+  value: string;
   /** Farbpunkt vor dem Label; üblicherweise `var(--hh-ein-0)`. */
   farbe?: string;
   /** Signal-Orange = „hier ist die Differenz", nie eine Bewertung. */
@@ -70,7 +70,7 @@ export type AbleseWert = {
 
 export type AbleseStelle = {
   /** Steht links in der Leiste, üblicherweise die Jahreszahl. */
-  titel: string;
+  title: string;
   werte: AbleseWert[];
   /** Der ganze Satz für die Vorlesehilfe. */
   vorlesen: string;
@@ -100,10 +100,10 @@ export type AbleseSteuerung = {
 
 /** Zustand einer Ablese-Grafik. `standard` ist die Stelle im Ruhezustand —
  *  üblicherweise die jüngste, damit die Leiste nie leer dasteht. */
-export function useAblesen(anzahl: number, standard: number): AbleseSteuerung {
+export function useAblesen(count: number, standard: number): AbleseSteuerung {
   const [gewaehlt, setGewaehlt] = useState<number | null>(null);
   const [tastatur, setTastatur] = useState(false);
-  const grenze = Math.max(anzahl - 1, 0);
+  const grenze = Math.max(count - 1, 0);
   const klemme = (i: number) => Math.min(Math.max(i, 0), grenze);
   // Geklemmt statt roh: Wechselt der Datensatz unter einer offenen Auswahl
   // (Jahres-Umschalter), zeigte die Leiste sonst auf eine Stelle, die es nicht
@@ -111,8 +111,8 @@ export function useAblesen(anzahl: number, standard: number): AbleseSteuerung {
   const aktiv = klemme(gewaehlt ?? standard);
 
   const waehle = useCallback((i: number) => {
-    setGewaehlt(Math.min(Math.max(i, 0), Math.max(anzahl - 1, 0)));
-  }, [anzahl]);
+    setGewaehlt(Math.min(Math.max(i, 0), Math.max(count - 1, 0)));
+  }, [count]);
   const zuruecksetzen = useCallback(() => setGewaehlt(null), []);
 
   return { aktiv, gewaehlt: gewaehlt != null, waehle, zuruecksetzen, tastatur, setTastatur };
@@ -126,11 +126,11 @@ export function useAblesen(anzahl: number, standard: number): AbleseSteuerung {
  *  scrollen. Der Abstand nach unten ist die Andockkante der Tab-Leiste
  *  (`TABLEISTE_HOEHE` aus `components/nav.tsx`) plus etwas Luft; das
  *  Verhalten selbst steht in `.gb-ablese-leiste` (app/globals.css). */
-export function Ableseleiste({ stelle, steuerung, hinweis, className, haftet = true }: {
+export function Ableseleiste({ stelle, steuerung, note, className, haftet = true }: {
   stelle: AbleseStelle;
   steuerung: AbleseSteuerung;
   /** Womit man die Stelle wechselt; ohne Angabe steht der Standardsatz da. */
-  hinweis?: string;
+  note?: string;
   className?: string;
   /** Mobil am unteren Rand anheften (Vorgabe) — oder eben nicht.
    *
@@ -157,7 +157,7 @@ export function Ableseleiste({ stelle, steuerung, hinweis, className, haftet = t
       <div className="flex flex-col gap-y-1 ab-lesezeile:flex-row ab-lesezeile:flex-wrap
                       ab-lesezeile:items-baseline ab-lesezeile:gap-x-3.5">
         <span className="font-mono text-[12.5px] font-semibold uppercase tracking-[0.08em] tabular-nums">
-          {stelle.titel}
+          {stelle.title}
         </span>
         {stelle.werte.map((w) => (
           <span key={w.label}
@@ -174,7 +174,7 @@ export function Ableseleiste({ stelle, steuerung, hinweis, className, haftet = t
                 €"), und die darf NIE von ihrer Zahl abreißen — auf 375 px
                 stand das € sonst allein auf der nächsten Zeile. */}
             <span className={cn("flex-none whitespace-nowrap font-semibold tabular-nums",
-                                w.signal && "text-signal")}>{w.wert}</span>
+                                w.signal && "text-signal")}>{w.value}</span>
           </span>
         ))}
       </div>
@@ -185,7 +185,7 @@ export function Ableseleiste({ stelle, steuerung, hinweis, className, haftet = t
         </p>
       )}
       <p className="mt-1 text-[10.5px] leading-snug text-muted-foreground">
-        {hinweis ?? "Überfahren, tippen oder mit den Pfeiltasten wechseln."}
+        {note ?? "Überfahren, tippen oder mit den Pfeiltasten wechseln."}
         {steuerung.gewaehlt && <> · <button type="button" onClick={steuerung.zuruecksetzen}
           className="font-semibold text-primary">zurücksetzen</button></>}
       </p>

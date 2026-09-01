@@ -40,7 +40,7 @@ export type Abschnitt = {
   /** Die `id` des `<section>`-Elements, auf das gesprungen wird. */
   id: string;
   /** Was im Streifen steht — kurz, es müssen mehrere nebeneinander passen. */
-  titel: string;
+  title: string;
 };
 
 /** Scroll-Versatz für die Ziel-`<section>`s des Streifens: der Klebe-Stapel
@@ -152,7 +152,7 @@ export function Abschnitte({ marken, className }: {
                   : "border-border text-muted-foreground hover:text-foreground",
               )}
             >
-              {m.titel}
+              {m.title}
             </a>
           </li>
         ))}

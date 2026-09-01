@@ -69,7 +69,7 @@ class Settings(BaseSettings):
     llm_budget_monthly: float = 40.0
 
     # Databases (shared with the bot)
-    nwz_db: str = str(ROOT / "data" / "nwz.sqlite")
+    ratslotse_db: str = str(ROOT / "data" / "ratslotse.sqlite")
     council_db: str = str(ROOT / "data" / "council.sqlite")
 
     # Telegram bot username, used to render link instructions in the UI

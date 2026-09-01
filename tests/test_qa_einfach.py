@@ -76,7 +76,7 @@ def test_zitierte_ids_liest_auch_unbekannte_nummern():
 
 def test_budget_ist_kleiner_als_das_der_normalen_antwort():
     """Zweite Bremse neben der Prompt-Regel: kurz ist das Ziel."""
-    assert qa.VEREINFACHEN_TOKENS < qa._answer_tokens("thema")
+    assert qa.VEREINFACHEN_TOKENS < qa._answer_tokens("topic")
 
 
 def test_prompt_verbietet_nachkomma_millionen():
@@ -88,6 +88,5 @@ def test_prompt_verbietet_nachkomma_millionen():
         assert "Millionen Euro" in prompts.DEFAULTS[key]["template"]
 
 
-def test_qa_einfach_rendert_mit_seinen_platzhaltern(tmp_path, monkeypatch):
-    monkeypatch.setattr(prompts, "_DB_PATH", tmp_path / "nwz.sqlite")
-    prompts.render("qa_einfach", frage="F", bisher="B", context="C")
+def test_qa_einfach_rendert_mit_seinen_platzhaltern():
+    prompts.render("qa_einfach", question="F", bisher="B", context="C")

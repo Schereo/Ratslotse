@@ -68,7 +68,7 @@ def test_recency_intent_wortliste():
     assert qa.recency_intent("Was wurde zuletzt zum Radverkehr beschlossen?")
     assert qa.recency_intent("Was gilt aktuell beim Bebauungsplan 831?")
     assert not qa.recency_intent("Was wurde 2019 zum Stadion beschlossen?")
-    assert not qa.recency_intent("Warum wurde die Brücke gesperrt?")
+    assert not qa.recency_intent("Warum wurde die Brücke confidential?")
 
 
 def test_recency_boost_kippt_nur_nahe_scores():
@@ -86,10 +86,10 @@ def test_recency_boost_kippt_nur_nahe_scores():
 
 # ---- „Ältere Station"-Marker ------------------------------------------------
 
-def _decision(id_, kvonr, vorlage_nr, datum, committee="Rat", titel="Stadionneubau"):
-    return {"id": id_, "kvonr": kvonr, "vorlage_nr": vorlage_nr,
-            "session_date": datum, "committee": committee, "title": titel,
-            "summary": "", "outcome": "angenommen"}
+def _decision(id_, kvonr, template_number, date, committee="Rat", title="Stadionneubau"):
+    return {"id": id_, "kvonr": kvonr, "template_number": template_number,
+            "session_date": date, "committee": committee, "title": title,
+            "summary": "", "outcome": "accepted"}
 
 
 def test_markiere_veraltete_ueber_kvonr_und_revisionen(tmp_path):
@@ -102,8 +102,8 @@ def test_markiere_veraltete_ueber_kvonr_und_revisionen(tmp_path):
                 [(10, "Bauausschuss", "2024-03-01"), (11, "Rat", "2026-06-01"),
                  (12, "Finanzausschuss", "2025-01-15")])
             store._conn.executemany(
-                "INSERT INTO council_decisions (id, ksinr, position, kind, title, kvonr, vorlage_nr) "
-                "VALUES (?, ?, 1, 'beschluss', ?, ?, ?)",
+                "INSERT INTO council_decisions (id, ksinr, position, kind, title, kvonr, template_number) "
+                "VALUES (?, ?, 1, 'official_text', ?, ?, ?)",
                 [(101, 10, "Stadion (Ausschuss)", 500, "24/0100"),
                  (102, 11, "Stadion (Rat)", 500, "24/0100"),      # gleiche Vorlage, jünger
                  (103, 12, "Stadion Revision", 501, "24/0100-1"),  # Revisions-Familie
@@ -117,7 +117,7 @@ def test_markiere_veraltete_ueber_kvonr_und_revisionen(tmp_path):
         # markiert wird die JÜNGSTE (102, Rat, 01.06.2026), ohne [id]-Verweis,
         # weil 102 nicht im Kandidatenset liegt.
         marker = kandidaten[0].get("neuere_station")
-        assert marker and marker["datum"] == "2026-06-01" and marker["committee"] == "Rat"
+        assert marker and marker["date"] == "2026-06-01" and marker["committee"] == "Rat"
         assert marker.get("id") is None
         # Der unbeteiligte Kandidat bleibt sauber.
         assert "neuere_station" not in kandidaten[1]
@@ -137,7 +137,7 @@ def test_markiere_veraltete_ueber_kvonr_und_revisionen(tmp_path):
 
 def test_build_context_rendert_stations_hinweis():
     c = _decision(101, 500, "24/0100", "2024-03-01", "Bauausschuss")
-    c["neuere_station"] = {"id": 102, "datum": "2026-06-01", "committee": "Rat"}
+    c["neuere_station"] = {"id": 102, "date": "2026-06-01", "committee": "Rat"}
     ctx = qa._build_context([c])
     assert "NEUERE Station" in ctx or "neuere Station" in ctx.lower()
     assert "01.06.2026" in ctx and "[102]" in ctx
@@ -179,9 +179,9 @@ def test_latest_intent_ist_enger_als_allgemeine_aktualitaet():
     assert not qa.latest_intent("Was wurde 2019 zuletzt in Kreyenbrück beschlossen?")
     messages, _ = qa._answer_messages(
         "Was wurde in Kreyenbrück zuletzt beschlossen?",
-        [{"id": 1, "title": "Sachstandsbericht", "outcome": "zur_kenntnis",
+        [{"id": 1, "title": "Sachstandsbericht", "outcome": "noted",
           "session_date": "2026-04-28"},
-         {"id": 2, "title": "Jüngster echter Beschluss", "outcome": "angenommen",
+         {"id": 2, "title": "Jüngster echter Beschluss", "outcome": "accepted",
           "session_date": "2026-04-21"}],
         typ="ort",
     )
@@ -189,20 +189,20 @@ def test_latest_intent_ist_enger_als_allgemeine_aktualitaet():
     assert "echte Entscheidung" in messages[0]["content"]
     assert "[2] vom 2026-04-21" in messages[0]["content"]
     assert qa.latest_real_decision([
-        {"id": 1, "outcome": "zur_kenntnis"},
-        {"id": 2, "outcome": "vertagt"},
-        {"id": 3, "outcome": "abgelehnt"},
-        {"id": 4, "outcome": "angenommen"},
+        {"id": 1, "outcome": "noted"},
+        {"id": 2, "outcome": "postponed"},
+        {"id": 3, "outcome": "rejected"},
+        {"id": 4, "outcome": "accepted"},
     ])["id"] == 3
 
 
 def test_latest_place_answer_ist_deterministisch_und_unterscheidet_berichte():
     answer = qa.latest_place_answer([
-        {"id": 1, "title": "Neuer Sachstandsbericht", "outcome": "zur_kenntnis",
+        {"id": 1, "title": "Neuer Sachstandsbericht", "outcome": "noted",
          "session_date": "2026-04-28", "committee": "Rat"},
-        {"id": 2, "title": "Jüngster echter Beschluss", "outcome": "angenommen",
+        {"id": 2, "title": "Jüngster echter Beschluss", "outcome": "accepted",
          "session_date": "2026-04-21", "committee": "Rat"},
-        {"id": 3, "title": "Alter Beschluss", "outcome": "angenommen",
+        {"id": 3, "title": "Alter Beschluss", "outcome": "accepted",
          "session_date": "2025-12-11", "committee": "Rat"},
     ])
     assert answer.startswith("Am 21.04.2026")
@@ -211,14 +211,14 @@ def test_latest_place_answer_ist_deterministisch_und_unterscheidet_berichte():
     assert "Alter Beschluss" not in answer
 
     rejected = qa.latest_place_answer([
-        {"id": 4, "title": "Antrag auf Umbau", "outcome": "abgelehnt",
+        {"id": 4, "title": "Antrag auf Umbau", "outcome": "rejected",
          "session_date": "2026-05-02", "committee": "Bauausschuss"},
     ])
     assert "jüngste Abstimmungsentscheidung" in rejected
     assert "abgelehnt" in rejected and "nicht beschlossen [4]" in rejected
 
     report_only = qa.latest_place_answer([
-        {"id": 5, "title": "Bericht", "outcome": "zur_kenntnis",
+        {"id": 5, "title": "Bericht", "outcome": "noted",
          "session_date": "2026-05-03"},
     ])
     assert report_only.startswith("Einen angenommenen oder abgelehnten Beschluss")
@@ -285,13 +285,13 @@ def _ausblick_store(tmp_path):
     store = CouncilStore(tmp_path / "a.sqlite")
     with store._conn:
         store._conn.executemany(
-            "INSERT INTO council_vorlagen (kvonr, vorlage_nr, title, fetched_at) "
+            "INSERT INTO council_vorlagen (kvonr, template_number, title, fetched_at) "
             "VALUES (?, ?, ?, datetime('now'))",
             [(1, "26/1", "Kompensation bei städtischen Baumfällungen"),
              (2, "26/2", "Bürgerbeteiligung an einem Windkraftwerk"),
              (3, "26/3", "Sachstandsbericht EU-Wiederherstellungsverordnung")])
         store._conn.executemany(
-            "INSERT INTO council_beratungen (kvonr, datum, gremium, ergebnis, fetched_at) "
+            "INSERT INTO council_beratungen (kvonr, date, committee, result, fetched_at) "
             "VALUES (?, ?, ?, ?, datetime('now'))",
             [(1, "2099-01-05", "Umweltausschuss", "Vorberatung"),
              (2, "2099-02-01", "Umweltausschuss", "Kenntnisnahme"),
@@ -301,15 +301,15 @@ def _ausblick_store(tmp_path):
 
 
 def test_geplante_beratungen_ignoriert_das_ergebnis_feld(tmp_path):
-    """Bei KÜNFTIGEN Stationen trägt ``ergebnis`` die geplante Behandlung
+    """Bei KÜNFTIGEN Stationen trägt ``result`` die geplante Behandlung
     („Vorberatung"), kein Resultat. Die erste Fassung verlangte ein leeres
     Feld — und lieferte damit auf Prod dauerhaft nichts (0 von 22 Terminen)."""
     store = _ausblick_store(tmp_path)
     try:
         plan = store.geplante_beratungen_fuer([1, 2])
-        assert [p["datum"] for p in plan] == ["2099-01-05", "2099-02-01"]  # nach Datum
-        assert plan[0]["art"] == "Vorberatung"        # Behandlungsart kommt mit
-        assert all(p["datum"] >= "2099" for p in plan)  # Vergangenes bleibt draußen
+        assert [p["date"] for p in plan] == ["2099-01-05", "2099-02-01"]  # nach Datum
+        assert plan[0]["kind"] == "Vorberatung"        # Behandlungsart kommt mit
+        assert all(p["date"] >= "2099" for p in plan)  # Vergangenes bleibt draußen
         assert store.geplante_beratungen_fuer([]) == []
     finally:
         store.close()
@@ -323,8 +323,8 @@ def test_kommende_beratungen_matcht_auf_wortgrenzen(tmp_path):
     try:
         # Kompositum: „Baumfällungen" trifft, Wortanfang genügt.
         treffer = store.kommende_beratungen(["baumfällungen"])
-        assert [t["vorlage_nr"] for t in treffer] == ["26/1"]
-        assert store.kommende_beratungen(["windkraft"])[0]["vorlage_nr"] == "26/2"
+        assert [t["template_number"] for t in treffer] == ["26/1"]
+        assert store.kommende_beratungen(["windkraft"])[0]["template_number"] == "26/2"
         # Generisches „Stand" trifft NICHTS mehr (weder Stoppliste noch Wortmitte).
         assert store.kommende_beratungen(["stand"]) == []
         assert store.kommende_beratungen(["sachstand", "beschluss"]) == []
@@ -346,12 +346,12 @@ def test_kommende_beratungen_ignoriert_strasse(tmp_path):
     try:
         with store._conn:
             store._conn.executemany(
-                "INSERT INTO council_vorlagen (kvonr, vorlage_nr, title, fetched_at) "
+                "INSERT INTO council_vorlagen (kvonr, template_number, title, fetched_at) "
                 "VALUES (?, ?, ?, datetime('now'))",
                 [(1, "26/1", "Widmung der Straße \"Sylter Ring\" - Beschluss"),
                  (2, "26/2", "Sachstand Hannah-Arendt-Straße (B-Plan S-745 A)")])
             store._conn.executemany(
-                "INSERT INTO council_beratungen (kvonr, datum, gremium, ergebnis, fetched_at) "
+                "INSERT INTO council_beratungen (kvonr, date, committee, result, fetched_at) "
                 "VALUES (?, ?, ?, ?, datetime('now'))",
                 [(1, "2099-01-05", "Verkehrsausschuss", "Vorberatung"),
                  (2, "2099-01-05", "Verkehrsausschuss", "Kenntnisnahme")])

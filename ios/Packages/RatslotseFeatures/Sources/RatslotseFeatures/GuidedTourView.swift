@@ -30,7 +30,7 @@ struct GuidedTourView: View {
     private let steps: [GuidedTourStep] = [
         .init(id: "willkommen", kicker: "Lotti-Tour", title: "Moin, ich bin Lotti!", text: "Ich lotse dich einmal durch Ratslotse. Das dauert keine Minute – und du kannst jeden Bereich direkt ausprobieren.", scene: .wave, glyph: .home, target: nil),
         .init(id: "fragen", kicker: "Frag den Rat", title: "Frag, wie du sprechen würdest.", text: "Ich lese Beschlüsse, Vorlagen und Debatten. Die Quellen stehen direkt an der Antwort und führen zum amtlichen Original.", scene: .questions, glyph: .ask, target: .questions),
-        .init(id: "antwort", kicker: "Beispielantwort", title: "Antworten, die sich prüfen lassen.", text: "Wichtige Zahlen werden als Grafiken gezeigt. Fußnoten öffnen die passende Quelle; Nachfragen bleiben im selben Gespräch.", scene: .explain, glyph: .ask, target: .questions),
+        .init(id: "answer", kicker: "Beispielantwort", title: "Antworten, die sich prüfen lassen.", text: "Wichtige Zahlen werden als Grafiken gezeigt. Fußnoten öffnen die passende Quelle; Nachfragen bleiben im selben Gespräch.", scene: .explain, glyph: .ask, target: .questions),
         .init(id: "suche", kicker: "Beschlüsse", title: "Finde den Vorgang dahinter.", text: "Die Volltextsuche lässt sich nach Ergebnis, Themenfeld, Ausschuss, Partei, Ort und Zeitraum eingrenzen.", scene: .reading, glyph: .decisions, target: .decisions),
         .init(id: "analyse", kicker: "Ratsanalyse", title: "Den Rat besser verstehen.", text: "Entdecke thematische Rückblicke, Parteien, Personen, Finanzen und Ziele. Dahinter liegen immer die öffentlichen Unterlagen des Rats.", scene: .explain, glyph: .analysis, target: .analysis),
         .init(id: "karte", kicker: "Stadtkarte", title: "Sieh, wo etwas passiert.", text: "Orte erscheinen nur, wenn sie zur Auswahl passen. Ein Pin führt zu den zitierten Beschlüssen am jeweiligen Ort.", scene: .children, glyph: .map, target: .map),
@@ -106,7 +106,7 @@ struct GuidedTourView: View {
                         .foregroundStyle(RatsColor.bodyText)
                         .lineSpacing(5)
 
-                    if step.id == "antwort" { answerDemo }
+                    if step.id == "answer" { answerDemo }
 
                     if let target = step.target, number != steps.count - 1 {
                         Button {

@@ -54,8 +54,8 @@ def test_faengt_den_echten_fall(tmp_path):
     )
     treffer = pruefen([pfad])
     assert len(treffer) == 1
-    _, zeile, fund = treffer[0]
-    assert zeile == 3 and fund == adresse
+    _, row, fund = treffer[0]
+    assert row == 3 and fund == adresse
 
 
 @pytest.mark.parametrize("adresse", [
@@ -90,7 +90,7 @@ def test_ausgabe_verraet_die_adresse_nicht():
 
 def test_binaerdateien_stuerzen_nicht_ab(tmp_path):
     pfad = tmp_path / "bild.bin"
-    pfad.write_bytes(b"\xff\xd8\xff\x00 " + _fremd("nicht", "lesbar.invalid").encode() + b" \x00\xfe")
+    pfad.write_bytes(b"\xff\xd8\xff\x00 " + _fremd("nicht", "readable.invalid").encode() + b" \x00\xfe")
     assert pruefen([str(pfad)]) == []
 
 

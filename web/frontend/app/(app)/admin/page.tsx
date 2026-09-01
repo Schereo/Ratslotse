@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { Prompt, AdminUserDetail, AdminGrowth, QuizFlagged, EntityAlias, AdminFeedback, PlaceCandidate } from "@/lib/types";
+import { AdminUserDetail, AdminGrowth, QuizFlagged, EntityAlias, AdminFeedback, PlaceCandidate } from "@/lib/types";
 // Aus dem API-Vertrag statt von Hand: Diese drei Formen stehen im Backend
 // vollständig, ein umbenanntes Feld bricht damit hier den Build.
 import { vertrag, type ApiAntwort } from "@/lib/vertrag";
@@ -25,9 +25,9 @@ type AdminQuizStats = ApiAntwort<"/admin/quiz/stats">;
 import { Badge, Button, Card, ChartSkeleton, ConfirmDialog, ErrorState, Input, PageHeader, Select, Spinner, TableSkeleton, Textarea, formatDate, formatDateTime, toast } from "@/components/ui";
 import { AreaSparkline, MiniBars, StatKicker } from "@/components/admin-charts";
 import { cn } from "@/lib/utils";
-import type { OrtsbereichCatalog } from "@/lib/stadtteile";
+import type { OrtsbereichCatalog } from "@/lib/districts";
 
-type Tab = "stats" | "feedback" | "llm" | "prompts" | "users" | "quiz" | "orte" | "themen";
+type Tab = "stats" | "feedback" | "llm" | "users" | "quiz" | "orte" | "themen";
 
 export default function AdminPage() {
   const { user, loading } = useAuth();
@@ -42,7 +42,7 @@ export default function AdminPage() {
 
   return (
     <div>
-      <PageHeader title="Admin" description="Prompts und Web-Nutzer*innen verwalten." />
+      <PageHeader title="Admin" description="Web-Nutzer*innen, Moderation und Kennzahlen verwalten." />
       {/* Mobil sind sieben Tabs breiter als der Schirm — die Leiste scrollt
           seitlich (ohne Scrollbalken), statt über den Rand zu laufen. */}
       <div className="scrollbar-none mt-4 flex gap-1 overflow-x-auto border-b border-border [-webkit-overflow-scrolling:touch]">
@@ -50,7 +50,6 @@ export default function AdminPage() {
           ["stats", "Statistik"],
           ["feedback", "Feedback"],
           ["llm", "LLM-Kosten"],
-          ["prompts", "Prompts"],
           ["users", "Web-Nutzer*innen"],
           ["quiz", "Quiz"],
           ["orte", "Ortskandidaten"],
@@ -71,7 +70,6 @@ export default function AdminPage() {
         {tab === "stats" && <StatsTab />}
         {tab === "feedback" && <FeedbackTab />}
         {tab === "llm" && <LlmUsageTab />}
-        {tab === "prompts" && <PromptsTab />}
         {tab === "users" && <UsersTab currentUserId={user.id} />}
         {tab === "quiz" && <QuizModerationTab />}
         {tab === "orte" && <PlaceCandidatesTab />}
@@ -557,168 +555,6 @@ function LlmUsageTab() {
   );
 }
 
-/** Prompt-key → Feature-Gruppe (Design 21a: nach Feature gruppiert). Reihenfolge
- *  = Anzeigereihenfolge; unbekannte Präfixe landen unter „Weitere“. */
-const PROMPT_GROUPS: { label: string; match: (k: string) => boolean }[] = [
-  { label: "Frag den Rat", match: (k) => k.startsWith("qa_") },
-  { label: "Stadtrat", match: (k) => k.startsWith("council_") || k.startsWith("protokoll") || k.startsWith("committee_summary") || k.startsWith("ziel") },
-  { label: "Anreicherung", match: (k) => k.startsWith("interest") || k.startsWith("impact") || k.startsWith("entitaeten") || k.startsWith("recap") || k.startsWith("simple_summary") },
-  { label: "Quiz", match: (k) => k.startsWith("quiz") },
-  { label: "Themen", match: (k) => k.startsWith("vagueness") || k.startsWith("topic") },
-];
-function promptGroup(key: string): string {
-  return PROMPT_GROUPS.find((g) => g.match(key))?.label ?? "Weitere";
-}
-
-/** Einfacher Zeilen-Diff content↔default (Design 21a Diff-Vorschau): gleiche
- *  Zeilen als Kontext, Rest als −/+ (grobe, aber ausreichende Vorschau). */
-function lineDiff(oldText: string, newText: string): { type: "ctx" | "del" | "add"; text: string }[] {
-  const a = oldText.split("\n");
-  const b = newText.split("\n");
-  const bSet = new Set(b);
-  const aSet = new Set(a);
-  const out: { type: "ctx" | "del" | "add"; text: string }[] = [];
-  for (const line of a) if (!bSet.has(line)) out.push({ type: "del", text: line });
-  for (const line of b) out.push({ type: aSet.has(line) ? "ctx" : "add", text: line });
-  return out;
-}
-
-function PromptsTab() {
-  const [q, setQ] = useState("");
-  const { data: prompts = [], isPending, isError, refetch, isFetching } = useQuery({
-    queryKey: ["admin", "prompts"],
-    queryFn: () => api.get<Prompt[]>("/admin/prompts"),
-  });
-
-  if (isPending) return <Spinner />;
-  if (isError) return <ErrorState title="Die Prompts kamen nicht durch" onRetry={() => void refetch()} busy={isFetching} />;
-
-  const needle = q.trim().toLowerCase();
-  const filtered = needle
-    ? prompts.filter((p) => (p.title + p.key + p.description).toLowerCase().includes(needle))
-    : prompts;
-  const groups = PROMPT_GROUPS.map((g) => g.label).concat("Weitere");
-
-  return (
-    <div className="space-y-5">
-      <div className="relative max-w-md">
-        <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Prompt suchen…"
-          className="h-9 w-full rounded-[10px] border border-input bg-card pl-9 pr-3 text-base maus:text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        />
-      </div>
-      {groups.map((label) => {
-        const items = filtered.filter((p) => promptGroup(p.key) === label);
-        if (!items.length) return null;
-        return (
-          <div key={label} className="space-y-3">
-            <StatKicker>{label}</StatKicker>
-            {items.map((p) => <PromptEditor key={p.key} prompt={p} />)}
-          </div>
-        );
-      })}
-      {filtered.length === 0 && <p className="text-sm text-muted-foreground">Kein Prompt passt zu „{q}".</p>}
-    </div>
-  );
-}
-
-function metaLine(prompt: Prompt): string | null {
-  if (!prompt.is_overridden) return null;
-  const who = prompt.updated_by ? `von ${prompt.updated_by.split("@")[0]}@` : null;
-  let when: string | null = null;
-  if (prompt.updated_at) {
-    const days = Math.round((Date.now() - new Date(prompt.updated_at + "Z").getTime()) / 86400000);
-    when = days <= 0 ? "heute" : days === 1 ? "gestern" : `vor ${days} Tagen`;
-  }
-  return ["geändert", who, when].filter(Boolean).join(" · ");
-}
-
-function PromptEditor({ prompt }: { prompt: Prompt }) {
-  const qc = useQueryClient();
-  const [content, setContent] = useState(prompt.content);
-  const [showDiff, setShowDiff] = useState(false);
-  const dirty = content !== prompt.content;
-  const diff = lineDiff(prompt.default, content);
-  const changed = content !== prompt.default;
-
-  const saveMutation = useMutation({
-    mutationFn: (c: string) => api.put(`/admin/prompts/${prompt.key}`, { content: c }),
-    onSuccess: () => {
-      toast.success("Gespeichert.");
-      qc.invalidateQueries({ queryKey: ["admin", "prompts"] });
-    },
-    onError: (err: Error) => toast.error(err.message || "Fehler beim Speichern."),
-  });
-
-  const resetMutation = useMutation({
-    mutationFn: () => api.post(`/admin/prompts/${prompt.key}/reset`),
-    onSuccess: () => {
-      setContent(prompt.default);
-      qc.invalidateQueries({ queryKey: ["admin", "prompts"] });
-    },
-    onError: () => toast.error("Zurücksetzen fehlgeschlagen."),
-  });
-
-  const busy = saveMutation.isPending || resetMutation.isPending;
-
-  return (
-    <Card className="p-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <h3 className="font-semibold text-foreground">{prompt.title}</h3>
-            {prompt.is_overridden ? <Badge color="amber">angepasst</Badge> : <Badge color="green">Standard</Badge>}
-          </div>
-          <p className="mt-0.5 text-xs text-muted-foreground">{prompt.description}</p>
-          {metaLine(prompt) && <p className="mt-0.5 text-xs text-muted-foreground/80">{metaLine(prompt)}</p>}
-        </div>
-        <code className="text-xs text-muted-foreground">{prompt.key}</code>
-      </div>
-      {/* Prompt-Templates sind „Code" — hier ist Mono gewollt (Platzhalter, Einrückung). */}
-      <Textarea className="mt-3 font-mono" rows={Math.min(16, content.split("\n").length + 1)} value={content} onChange={(e) => setContent(e.target.value)} />
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <Button size="sm" onClick={() => saveMutation.mutate(content)} disabled={busy || !dirty}>
-          {saveMutation.isPending ? "Speichern…" : "Speichern"}
-        </Button>
-        {changed && (
-          <Button variant="secondary" size="sm" onClick={() => setShowDiff((s) => !s)}>
-            {showDiff ? "Diff ausblenden" : "Diff zu Standard"}
-          </Button>
-        )}
-        {prompt.is_overridden && (
-          <Button variant="secondary" size="sm" onClick={() => resetMutation.mutate()} disabled={busy}>
-            Auf Standard zurücksetzen
-          </Button>
-        )}
-        {dirty && <span className="text-xs text-amber-600">Ungespeicherte Änderungen</span>}
-      </div>
-      {showDiff && changed && (
-        <div className="mt-3 overflow-hidden rounded-xl border border-border">
-          <p className="border-b border-border px-3 py-2 text-xs font-medium text-muted-foreground">Diff-Vorschau · {prompt.key}</p>
-          <div className="max-h-72 overflow-auto font-mono text-[11px] leading-relaxed">
-            {diff.map((d, i) => (
-              <div
-                key={i}
-                className={cn(
-                  "whitespace-pre-wrap px-3 py-0.5",
-                  d.type === "del" && "bg-destructive/10 text-destructive",
-                  d.type === "add" && "bg-green-500/10 text-green-700 dark:text-green-400",
-                  d.type === "ctx" && "text-muted-foreground",
-                )}
-              >
-                {d.type === "del" ? "− " : d.type === "add" ? "+ " : "  "}{d.text || " "}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </Card>
-  );
-}
-
 /** Aktivitäts-Ampel aus dem letzten Aktivitätstag (Design 20a). */
 function activitySignal(lastSeen: string | null): { dot: string; label: string } {
   if (!lastSeen) return { dot: "bg-muted-foreground/40", label: "nie aktiv" };
@@ -898,9 +734,9 @@ function UserDetailPanel({ userId, isSelf, onClose }: { userId: number; isSelf: 
           onClick={() => {
             const el = document.getElementById(`deep-limit-${data.id}`) as HTMLInputElement | null;
             const roh = (el?.value ?? "").trim();
-            const wert = roh === "" ? null : Math.max(0, Math.min(999, Number(roh)));
-            if (wert !== null && Number.isNaN(wert)) return;
-            limitsMutation.mutate({ deep_limit: wert, limits_frei: data.limits_frei });
+            const value = roh === "" ? null : Math.max(0, Math.min(999, Number(roh)));
+            if (value !== null && Number.isNaN(value)) return;
+            limitsMutation.mutate({ deep_limit: value, limits_frei: data.limits_frei });
           }}>
           Speichern
         </Button>
@@ -938,7 +774,7 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 /** Schlecht bewertete Quizfragen (👎) sichten und ausmustern. Ausgemusterte
  *  Fragen fliegen aus künftigen Runden; der nächste Generierungslauf füllt das
  *  Gebiet wieder auf. Datenquelle: GET /admin/quiz/flagged. */
-const AREA_TYPE_LABEL: Record<string, string> = { stadtteil: "", wahlbereich: "Wahlbereich ", thema: "" };
+const AREA_TYPE_LABEL: Record<string, string> = { district: "", electoral_district: "Wahlbereich ", topic: "" };
 
 function QuizModerationTab() {
   const qc = useQueryClient();
@@ -948,7 +784,7 @@ function QuizModerationTab() {
   });
   const { data, isPending, isError, refetch, isFetching } = useQuery({
     queryKey: ["admin", "quiz", "flagged"],
-    queryFn: () => api.get<{ flagged: QuizFlagged[] }>("/admin/quiz/flagged"),
+    queryFn: () => vertrag.get("/admin/quiz/flagged"),
   });
 
   const retire = useMutation({
@@ -1033,10 +869,10 @@ function QuizModerationTab() {
 type PlaceReviewStatus = "pending" | "concrete" | "approved" | "alias" | "rejected";
 
 const concretePlaceKinds = [
-  ["strasse", "Straße"], ["platz", "Platz"],
-  ["gebaeude", "Gebäude"], ["gewaesser", "Gewässer"],
-  ["anlage", "Anlage oder Gelände"], ["bauwerk", "Bauwerk"],
-  ["verkehrsweg", "Verkehrsweg"],
+  ["street", "Straße"], ["square", "Platz"],
+  ["building", "Gebäude"], ["water", "Gewässer"],
+  ["facility", "Anlage oder Gelände"], ["structure", "Bauwerk"],
+  ["route", "Verkehrsweg"],
 ] as const;
 
 function PlaceCandidateCard({ candidate, catalog, busy, onReview, onReopen }: {
@@ -1049,7 +885,7 @@ function PlaceCandidateCard({ candidate, catalog, busy, onReview, onReopen }: {
   const [name, setName] = useState(candidate.review_name ?? candidate.name);
   const [placeId, setPlaceId] = useState(candidate.review_place_id ?? candidate.slug);
   const [kind, setKind] = useState(
-    candidate.status === "approved" ? candidate.review_kind ?? "quartier" : "quartier");
+    candidate.status === "approved" ? candidate.review_kind ?? "neighborhood" : "neighborhood");
   const [parentId, setParentId] = useState(candidate.parent_id ?? candidate.ortsbereich_id ?? "");
   const [aliases, setAliases] = useState((candidate.aliases ?? []).join(", "));
   const [description, setDescription] = useState(candidate.description ?? "");
@@ -1060,11 +896,11 @@ function PlaceCandidateCard({ candidate, catalog, busy, onReview, onReopen }: {
     ? candidate.review_kind as typeof concretePlaceKinds[number][0]
     : concretePlaceKinds.some(([key]) => key === candidate.kind)
       ? candidate.kind as typeof concretePlaceKinds[number][0]
-      : "strasse";
+      : "street";
   const [concreteKind, setConcreteKind] = useState(initialConcreteKind);
-  const primaries = catalog.places.filter((p) => p.kind === "ortsbereich");
+  const primaries = catalog.places.filter((p) => p.kind === "local_area");
   const targets = catalog.places.filter((p) => p.id !== placeId);
-  const kinds = Object.entries(catalog.kinds).filter(([key]) => key !== "ortsbereich");
+  const kinds = Object.entries(catalog.kinds).filter(([key]) => key !== "local_area");
   const payload = {
     place_id: placeId, name, kind, parent_id: parentId || null,
     aliases: aliases.split(",").map((value) => value.trim()).filter(Boolean),
@@ -1080,7 +916,7 @@ function PlaceCandidateCard({ candidate, catalog, busy, onReview, onReopen }: {
             <p className="font-semibold">{candidate.name}</p>
             <Badge color="slate">{candidate.kind}</Badge>
             <Badge color={candidate.lat != null ? "green" : "amber"}>
-              {candidate.lat != null ? `verortet · ${candidate.stadtteil ?? "Oldenburg"}` : "ohne Koordinate"}
+              {candidate.lat != null ? `verortet · ${candidate.district ?? "Oldenburg"}` : "ohne Koordinate"}
             </Badge>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">

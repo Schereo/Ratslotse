@@ -18,7 +18,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from council.gebuehren import (  # noqa: E402
+from council.fees import (  # noqa: E402
     PROBE_DIVISION,
     PROBE_KASKADE,
     PROBE_SATZANZAHL,
@@ -188,9 +188,9 @@ def test_die_kaskade_geht_auf():
     Sie sind positiv, die Abzüge negativ. Ihre Namen wechseln zwischen den
     drei Bereichen — an ihnen zu hängen hieße, drei Vokabulare zu pflegen."""
     b = parse_anlage(teile_anlagen(ANLAGE_1_2025)[0])
-    assert b.kostenkalkulation == 11_661_361.0
-    assert b.abzuege == -(3_668_314 + 5_000 + 240_000 + 361_777)
-    assert b.zu_deckende_kosten == 7_386_270.0
+    assert b.cost_calculation == 11_661_361.0
+    assert b.deductions == -(3_668_314 + 5_000 + 240_000 + 361_777)
+    assert b.costs_to_cover == 7_386_270.0
 
 
 def test_eine_verstellte_zahl_faellt_durch():
@@ -205,7 +205,7 @@ def test_ein_euro_rundung_reisst_nicht():
     Dokument rundet seine Abzüge. Dieselbe Signatur wie beim Erfolgsplan."""
     knapp = ANLAGE_1_2025.replace("7.386.270 €", "7.386.271 €")
     b = parse_anlage(teile_anlagen(knapp)[0])
-    assert b.zu_deckende_kosten == 7_386_271.0
+    assert b.costs_to_cover == 7_386_271.0
 
 
 def test_positive_ueberdeckung_wird_nur_bei_exakter_kaskade_abgezogen():
@@ -229,10 +229,10 @@ def test_positive_ueberdeckung_wird_nur_bei_exakter_kaskade_abgezogen():
     Gebührenvorschlag 121,95 €
     """
     b = parse_anlage(text)
-    assert b.jahr == 2020
-    assert b.abzuege == -(2_881_800 + 3_000 + 168_200 + 280_500)
-    assert b.zu_deckende_kosten == 6_428_050
-    assert b.gebuehr == 121.974 and b.bezugsmenge == 52_700
+    assert b.year == 2020
+    assert b.deductions == -(2_881_800 + 3_000 + 168_200 + 280_500)
+    assert b.costs_to_cover == 6_428_050
+    assert b.fee == 121.974 and b.reference_quantity == 52_700
 
     kaputt = text.replace("280.500 €", "280.400 €")
     with pytest.raises(GebuehrenFehler, match="Rest"):
@@ -245,19 +245,19 @@ def test_positive_ueberdeckung_wird_nur_bei_exakter_kaskade_abgezogen():
 
 def test_die_division_geht_auf():
     b = parse_anlage(teile_anlagen(ANLAGE_1_2025)[0])
-    assert b.bezugsmenge == 52_845
-    assert b.bezugseinheit == "Mg"
-    assert b.gebuehr == 139.772
-    assert abs(b.zu_deckende_kosten / b.bezugsmenge - b.gebuehr) < 0.001
-    assert b.gebuehrenvorschlag == 139.70
+    assert b.reference_quantity == 52_845
+    assert b.reference_unit == "Mg"
+    assert b.fee == 139.772
+    assert abs(b.costs_to_cover / b.reference_quantity - b.fee) < 0.001
+    assert b.fee_proposed == 139.70
 
 
 def test_zerrissene_zahl_mit_leerzeichen_nach_dem_punkt():
     """„-295. 000 €" — hier IST entscheidbar, dass die Zahl weitergeht:
     vor dem Punkt eine Ziffer, dahinter genau drei."""
     b = parse_anlage(teile_anlagen(ANLAGE_1_2026)[0])
-    assert b.abzuege == -(3_731_300 + 6_500 + 295_000 + 359_470)
-    assert b.zu_deckende_kosten == 8_163_280.0
+    assert b.deductions == -(3_731_300 + 6_500 + 295_000 + 359_470)
+    assert b.costs_to_cover == 8_163_280.0
 
 
 def test_zerrissene_menge_wird_an_der_gebuehr_erkannt():
@@ -265,9 +265,9 @@ def test_zerrissene_menge_wird_an_der_gebuehr_erkannt():
     anfängt. Erkannt wird sie daran, dass sie die gedruckte Gebühr ergibt:
     3.114.327 ÷ 771.000 = 4,039."""
     b = parse_anlage(teile_anlagen(ANLAGE_3_2026)[0])
-    assert b.bezugsmenge == 771_000
-    assert b.bezugseinheit == "Meter Quadratwurzel"
-    assert b.gebuehr == 4.039
+    assert b.reference_quantity == 771_000
+    assert b.reference_unit == "Meter Quadratwurzel"
+    assert b.fee == 4.039
 
 
 def test_ohne_passende_menge_wird_nichts_gespeichert():
@@ -287,10 +287,10 @@ def test_beschriftungen_und_betraege_getrennt():
     Beschriftung sucht, findet dort nichts — die Zuordnung kommt aus der
     Reihenfolge und gilt nur, weil sie die Kaskade erfüllt."""
     b = parse_anlage(teile_anlagen(ANLAGE_1_2024)[0])
-    assert b.kostenkalkulation == 10_901_750.0
-    assert b.zu_deckende_kosten == 6_897_117.0
-    assert b.bezugsmenge == 51_200
-    assert b.gebuehr == 134.709
+    assert b.cost_calculation == 10_901_750.0
+    assert b.costs_to_cover == 6_897_117.0
+    assert b.reference_quantity == 51_200
+    assert b.fee == 134.709
 
 
 def test_nicht_der_gerundete_vorschlag():
@@ -298,8 +298,8 @@ def test_nicht_der_gerundete_vorschlag():
     Vorschlag zwei (134,70). Wer den Vorschlag nimmt, speichert eine Zahl,
     die die Division nicht erfüllt."""
     b = parse_anlage(teile_anlagen(ANLAGE_1_2024)[0])
-    assert b.gebuehr == 134.709
-    assert b.gebuehrenvorschlag == 134.70
+    assert b.fee == 134.709
+    assert b.fee_proposed == 134.70
 
 
 def test_die_einheit_wird_nicht_erfunden():
@@ -307,7 +307,7 @@ def test_die_einheit_wird_nicht_erfunden():
     „Gebührenvorschlag" — ein freier Text als Einheit stünde so in der
     Datenbank."""
     b = parse_anlage(teile_anlagen(ANLAGE_1_2024)[0])
-    assert b.bezugseinheit == "Mg"
+    assert b.reference_unit == "Mg"
 
 
 # --------------------------------------------------------------------------
@@ -319,20 +319,20 @@ def test_abfallsammlung_hat_keine_division():
     Eine Division „Kosten ÷ Menge" gibt es dort nicht, und eine erfundene
     wäre schlimmer als keine. Die Kaskade ist trotzdem geprüft."""
     b = parse_anlage(teile_anlagen(ANLAGE_2_2026)[0])
-    assert b.bereich == "abfallsammlung"
-    assert b.zu_deckende_kosten == 13_762_012.0
-    assert b.gebuehr is None and b.bezugsmenge is None
+    assert b.area == "waste_collection"
+    assert b.costs_to_cover == 13_762_012.0
+    assert b.fee is None and b.reference_quantity is None
 
 
 def test_die_herkunft_nennt_nur_die_gelaufenen_proben():
     ohne_division = parse_anlage(teile_anlagen(ANLAGE_2_2026)[0])
-    h = herkunft_fuer(ohne_division, url=None, dokument_id=299051, label="x")
+    h = herkunft_fuer(ohne_division, url=None, document_id=299051, label="x")
     assert PROBE_KASKADE in h.probe and PROBE_DIVISION not in h.probe
 
     mit = parse_anlage(teile_anlagen(ANLAGE_1_2025)[0])
-    h2 = herkunft_fuer(mit, url=None, dokument_id=283467, label="x")
+    h2 = herkunft_fuer(mit, url=None, document_id=283467, label="x")
     assert PROBE_KASKADE in h2.probe and PROBE_DIVISION in h2.probe
-    assert "÷" in h2.probe_ergebnis
+    assert "÷" in h2.probe_result
 
 
 # --------------------------------------------------------------------------
@@ -342,16 +342,16 @@ def test_die_herkunft_nennt_nur_die_gelaufenen_proben():
 def test_ein_gerissener_bereich_nimmt_die_anderen_nicht_mit():
     kaputt = ANLAGE_1_2025.replace("-240.000 €", "-250.000 €")
     gelesen, risse = lies(kaputt + ANLAGE_2_2026)
-    assert [b.bereich for b in gelesen] == ["abfallsammlung"]
+    assert [b.area for b in gelesen] == ["waste_collection"]
     assert len(risse) == 1
 
 
 def test_die_drei_bereiche_werden_getrennt():
     gelesen, risse = lies(ANLAGE_1_2026 + ANLAGE_2_2026 + ANLAGE_3_2026)
     assert not risse
-    assert [b.bereich for b in gelesen] == [
-        "abfallbehandlung", "abfallsammlung", "strassenreinigung"]
-    assert {b.jahr for b in gelesen} == {2026}
+    assert [b.area for b in gelesen] == [
+        "waste_treatment", "waste_collection", "street_cleaning"]
+    assert {b.year for b in gelesen} == {2026}
 
 
 # --------------------------------------------------------------------------
@@ -362,19 +362,19 @@ def test_altes_layout_liefert_zwoelf_benannte_tarife():
     saetze = lies_gebuehrensaetze(
         ANLAGE_1_2025 + ANLAGE_3_2025 + ANLAGE_4_2025, "24/0999")
     assert len(saetze) == 12
-    assert {s.jahr for s in saetze} == {2025}
-    assert next(s for s in saetze if s.schluessel == "grundgebuehr").betrag == 50
-    assert next(s for s in saetze if s.schluessel == "litergebuehr").betrag == 1.34
-    assert next(s for s in saetze if s.schluessel == "sperrmuell_2m3").betrag == 16
-    assert next(s for s in saetze if s.schluessel == "gruengut_05m3").betrag == 3
+    assert {s.year for s in saetze} == {2025}
+    assert next(s for s in saetze if s.key == "base_fee").amount == 50
+    assert next(s for s in saetze if s.key == "per_litre_fee").amount == 1.34
+    assert next(s for s in saetze if s.key == "bulky_waste_2m3").amount == 16
+    assert next(s for s in saetze if s.key == "green_waste_05m3").amount == 3
 
 
 def test_neues_layout_prueft_jede_aenderung_gegen_das_vorjahr():
     saetze = lies_gebuehrensaetze(
         ANLAGE_1_2026 + ANLAGE_3_2026 + ANLAGE_4_2026, "25/0999")
-    grund = next(s for s in saetze if s.schluessel == "grundgebuehr")
+    reason = next(s for s in saetze if s.key == "base_fee")
     assert len(saetze) == 12
-    assert (grund.betrag, grund.vorjahr, grund.veraenderung_prozent) == (62, 50, 24)
+    assert (reason.amount, reason.prior_year, reason.change_pct) == (62, 50, 24)
 
     kaputt = ANLAGE_4_2026.replace("24,00%", "23,00%")
     with pytest.raises(GebuehrenFehler, match="ergeben 24.00 %"):
@@ -396,7 +396,7 @@ def test_tarife_werden_mit_eigener_fundstelle_gespeichert(tmp_path):
     saetze = lies_gebuehrensaetze(
         ANLAGE_1_2026 + ANLAGE_3_2026 + ANLAGE_4_2026, "25/0999")
     herkuenfte = [herkunft_fuer_satz(
-        s, url="https://example.org/299051", dokument_id=299051,
+        s, url="https://example.org/299051", document_id=299051,
         label="Gebührenbedarfsberechnung 2026") for s in saetze]
     assert PROBE_SATZANZAHL in herkuenfte[0].probe
     assert PROBE_VORJAHRESVERGLEICH in herkuenfte[0].probe

@@ -19,7 +19,7 @@ export const fragenHref = (opts?: { q?: string; share?: string }) => {
 export const personHref = (slug: string) => `/council/person?slug=${encodeURIComponent(slug)}`;
 export const themaHref = (slug: string) => `/council/thema?slug=${encodeURIComponent(slug)}`;
 export const ortHref = (id: string) => `/council/ort?id=${encodeURIComponent(id)}`;
-/** Quiz-Start, optional mit vorgewähltem Gebiet (z. B. "wahlbereich:3"). */
+/** Quiz-Start, optional mit vorgewähltem Gebiet (z. B. "electoral_district:3"). */
 export const quizHref = (area?: string) => (area ? `/quiz?area=${encodeURIComponent(area)}` : "/quiz");
 /** Sitzungsliste, aufgeklappt bei einer bestimmten Sitzung (Design 28a/S2:
  *  Ziel des Zurück-Knopfs, wenn es keine History gibt — etwa aus Push oder

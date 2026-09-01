@@ -160,11 +160,11 @@ def _varianten(zahl: str) -> set[str]:
     roh = zahl.replace(".", "").replace(",", ".")
     raus = {zahl, roh, zahl.replace(".", ""), zahl.replace(",", ".")}
     try:
-        wert = float(roh)
+        value = float(roh)
     except ValueError:
         return raus
-    if wert.is_integer():
-        ganz = int(wert)
+    if value.is_integer():
+        ganz = int(value)
         raus |= {f"{ganz:,}".replace(",", "."), str(ganz)}
         if wort := _ZAHLWORT.get(str(ganz)):
             raus.add(wort)
@@ -178,10 +178,10 @@ def _varianten(zahl: str) -> set[str]:
     return {v for v in raus if v}
 
 
-def pruefe(text: str, quelle: str) -> list[str]:
+def pruefe(text: str, source: str) -> list[str]:
     """Beanstandungen — leere Liste heißt: durchgelassen.
 
-    ``quelle`` ist der Kontext, den das Modell gesehen hat (Vorlage, Anlagen,
+    ``source`` ist der Kontext, den das Modell gesehen hat (Vorlage, Anlagen,
     Titel). Jede Zahl im Text muss dort vorkommen; erfunden wird hier nichts.
     """
     maengel: list[str] = []
@@ -196,14 +196,14 @@ def pruefe(text: str, quelle: str) -> list[str]:
     if m := _AKTENZEICHEN_RE.search(text):
         maengel.append(f"Aktenzeichen: {m.group(0)}")
 
-    quelle_kompakt = quelle.replace(".", "").replace(",", ".")
+    quelle_kompakt = source.replace(".", "").replace(",", ".")
     for zahl in _zahlen(text):
-        if not any(v in quelle or v in quelle_kompakt for v in _varianten(zahl)):
+        if not any(v in source or v in quelle_kompakt for v in _varianten(zahl)):
             maengel.append(f"Zahl steht nicht in der Quelle: {zahl}")
     return maengel
 
 
-def _steht_da(zitat: str, quelle: str) -> bool:
+def _steht_da(zitat: str, source: str) -> bool:
     """Trägt dieses Zitat wirklich eine Stelle der Quelle?
 
     Nicht Buchstabe für Buchstabe: Modelle stellen beim Zitieren um („Die
@@ -216,7 +216,7 @@ def _steht_da(zitat: str, quelle: str) -> bool:
     daran zuverlässig — seine Eigennamen und Zahlen gibt es dort nicht.
     """
     z = " ".join((zitat or "").split())
-    quelle_klein = " ".join(quelle.split()).casefold()
+    quelle_klein = " ".join(source.split()).casefold()
     tragend = [w.strip(".,;:()„“\"'") for w in z.split()]
     tragend = [w for w in tragend if len(w) >= 6 or any(c.isdigit() for c in w)]
     if len(tragend) < 2:
@@ -224,7 +224,7 @@ def _steht_da(zitat: str, quelle: str) -> bool:
     return all(w.casefold() in quelle_klein for w in tragend)
 
 
-def pruefe_llm(text: str, quelle: str) -> tuple[bool, str]:
+def pruefe_llm(text: str, source: str) -> tuple[bool, str]:
     """Zweiter Blick für alles, was keine Zahl ist: Ist jede harte Angabe belegt?
 
     Das Modell liefert wörtliche Zitate; ob es die Stellen wirklich gibt,
@@ -241,7 +241,7 @@ def pruefe_llm(text: str, quelle: str) -> tuple[bool, str]:
     alles verwirft, leert nur die Karten (gemessen 30.08.26).
     """
     system = prompts.get("social_kritiker_system")
-    user = prompts.render("social_kritiker_user", quelle=quelle[:60_000], text=text)
+    user = prompts.render("social_kritiker_user", source=source[:60_000], text=text)
     try:
         resp = llm.chat_complete(
             model=MODEL, response_format={"type": "json_object"},
@@ -252,16 +252,16 @@ def pruefe_llm(text: str, quelle: str) -> tuple[bool, str]:
         if roh.startswith("```"):
             roh = roh.strip("`")
             roh = roh[roh.find("{"):]
-        antwort = json.loads(roh)
+        answer = json.loads(roh)
     except Exception:  # noqa: BLE001 — siehe Docstring
         return True, ""
 
-    if antwort.get("gedeckt") is False:
-        return False, " ".join(str(antwort.get("grund") or "ohne Grund").split())[:200]
+    if answer.get("covered") is False:
+        return False, " ".join(str(answer.get("reason") or "ohne Grund").split())[:200]
 
     # „Gedeckt" gilt nur mit Beleg: Jedes genannte Zitat muss in der Quelle
     # stehen. Erfundene Belege sind das eine Schlupfloch dieser Bauart.
-    for zitat in (antwort.get("belege") or []):
-        if not _steht_da(str(zitat), quelle):
+    for zitat in (answer.get("evidence") or []):
+        if not _steht_da(str(zitat), source):
             return False, f"Beleg steht nicht in der Quelle: „{str(zitat)[:80]}“"
     return True, ""

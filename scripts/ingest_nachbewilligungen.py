@@ -49,7 +49,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from council import herkunft as h  # noqa: E402
-from council import nachbewilligungen as nb  # noqa: E402
+from council import supplementary_approvals as nb  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
 
 #: Die Rechenschaftsberichte mit Kapitel 3 im Bestand. Der Schlüssel ist das
@@ -78,14 +78,14 @@ BERICHTE: dict[int, int] = {
 }
 
 #: Wie das Dokument im Beleg heißen soll.
-BERICHT_LABEL = ("Rechenschaftsbericht zum Jahresabschluss {jahr} der "
+BERICHT_LABEL = ("Rechenschaftsbericht zum Jahresabschluss {year} der "
                  "Kernverwaltung und ihrer nicht rechtsfähigen Stiftungen")
 
 
 def _serie(store: CouncilStore, trocken: bool) -> dict:
     """Die RIS-Serie lesen, prüfen, schreiben."""
     vorlagen, beschluesse = store.nachbewilligungs_vorlagen()
-    volltexte = {v["vorlage_nr"]: v.get("raw_text") or "" for v in vorlagen}
+    volltexte = {v["template_number"]: v.get("raw_text") or "" for v in vorlagen}
     serie = nb.aus_vorlagen(vorlagen, beschluesse)
     if not serie:
         print("  keine Nachbewilligungs-Vorlagen im Bestand")
@@ -96,24 +96,24 @@ def _serie(store: CouncilStore, trocken: bool) -> dict:
         # Der maßgebliche Beschluss ist der erste — `nachbewilligungs_vorlagen`
         # liefert sie bereits in der Ordnung „Rat zuerst, dann die jüngste
         # Sitzung" (`CouncilStore._BESCHLUSS_ORDNUNG`).
-        stationen = beschluesse.get(b.vorlage_nr, [])
-        fuehrend = next((d for d in stationen if d.get("outcome") == "angenommen"),
+        stationen = beschluesse.get(b.template_number, [])
+        fuehrend = next((d for d in stationen if d.get("outcome") == "accepted"),
                         stationen[0] if stationen else None)
         zeilen.append({
-            "vorlage_nr": b.vorlage_nr, "jahr": b.jahr, "titel": b.titel,
-            "art": b.art, "kategorie": b.kategorie, "betrag": b.betrag,
-            "betrag_quelle": b.betrag_quelle, "beschlossen": b.beschlossen,
-            "im_rat": b.im_rat, "ratsentscheidung": b.ratsentscheidung,
-            "beschluss_id": (fuehrend or {}).get("id"),
-            "gremien": sorted({str(d.get("committee") or "") for d in stationen}),
-            "volltextprobe": nb.probe_volltext(b, volltexte.get(b.vorlage_nr)),
+            "template_number": b.template_number, "year": b.year, "title": b.title,
+            "kind": b.kind, "category": b.category, "amount": b.amount,
+            "amount_source": b.amount_source, "decided": b.decided,
+            "in_plenary": b.in_plenary, "council_decision": b.council_decision,
+            "decision_id": (fuehrend or {}).get("id"),
+            "committees": sorted({str(d.get("committee") or "") for d in stationen}),
+            "fulltext_probe": nb.probe_volltext(b, volltexte.get(b.template_number)),
         })
 
     einzel = [z for z in zeilen if z["art"] != nb.ART_SCHWELLE]
-    aus_titel = sum(1 for z in einzel if z["betrag_quelle"] == "titel")
-    aus_text = sum(1 for z in einzel if z["betrag_quelle"] == "beschlussvorschlag")
-    ohne = [z["vorlage_nr"] for z in einzel if z["betrag_quelle"] is None]
-    geprueft = sum(1 for z in zeilen if z["volltextprobe"])
+    aus_titel = sum(1 for z in einzel if z["amount_source"] == "title")
+    aus_text = sum(1 for z in einzel if z["amount_source"] == "proposed_decision")
+    ohne = [z["template_number"] for z in einzel if z["amount_source"] is None]
+    geprueft = sum(1 for z in zeilen if z["fulltext_probe"])
     quote = (aus_titel + aus_text) / len(einzel) * 100 if einzel else 0.0
 
     print(f"  {len(zeilen)} Vorlagen · Betrag aus dem Titel {aus_titel}, "
@@ -124,7 +124,7 @@ def _serie(store: CouncilStore, trocken: bool) -> dict:
 
     if trocken:
         for j, e in nb.jahressummen(serie).items():
-            print(f"    {j}: {e['summe']:>15,.2f} € ({e['faelle']} Fälle)")
+            print(f"    {j}: {e['summe']:>15,.2f} € ({e['cases']} Fälle)")
         return {"vorlagen": len(zeilen), "trocken": True}
 
     nachweis = (f"{aus_titel} von {len(einzel)} Beträgen stehen im Titel, "
@@ -132,16 +132,16 @@ def _serie(store: CouncilStore, trocken: bool) -> dict:
                 f"ist in {geprueft} von {aus_titel} Fällen im Volltext "
                 f"wiedergefunden worden")
     store.save_nachbewilligungen(zeilen, h.Herkunft(
-        art="ris",
+        kind="ris",
         url="https://www.oldenburg-kreis.de/bi/",
         label="Vorlagen im Ratsinformationssystem der Stadt Oldenburg",
-        fundstelle="Titel und Beschlussvorschlag der Vorlage",
+        citation="Titel und Beschlussvorschlag der Vorlage",
         probe=nb.PROBE_VOLLTEXT,
-        stand=f"Haushaltsjahre {min(z['jahr'] for z in zeilen if z['jahr'])}"
-              f"–{max(z['jahr'] for z in zeilen if z['jahr'])}",
-        probe_ergebnis=nachweis))
-    return {"vorlagen": len(zeilen), "mit_betrag": aus_titel + aus_text,
-            "ohne_betrag": len(ohne)}
+        as_of=f"Haushaltsjahre {min(z['year'] for z in zeilen if z['year'])}"
+              f"–{max(z['year'] for z in zeilen if z['year'])}",
+        probe_result=nachweis))
+    return {"vorlagen": len(zeilen), "with_amount": aus_titel + aus_text,
+            "without_amount": len(ohne)}
 
 
 def _berichte(store: CouncilStore, serie: list[nb.Bewilligung],
@@ -149,54 +149,54 @@ def _berichte(store: CouncilStore, serie: list[nb.Bewilligung],
     """Kapitel 3 der Rechenschaftsberichte lesen, prüfen, schreiben."""
     gelesen = 0
     widersprueche: list[str] = []
-    for jahr, dokument in sorted(BERICHTE.items()):
+    for year, dokument in sorted(BERICHTE.items()):
         text = store.anlage_text(dokument)
         if not text:
-            print(f"  {jahr}: kein Volltext zu Dokument {dokument} — "
+            print(f"  {year}: kein Volltext zu Dokument {dokument} — "
                   f"backfill_anlagen_texte.py --nur-finanz")
             continue
-        kap = nb.kapitel3(text, jahr)
+        kap = nb.kapitel3(text, year)
         if not kap:
-            print(f"  {jahr}: Kapitel 3 nicht lesbar (Dokument {dokument})")
+            print(f"  {year}: Kapitel 3 nicht lesbar (Dokument {dokument})")
             continue
         probe = nb.probe_tabelle(kap)
         abgleich = nb.probe_ratsabgleich(
             serie, kap, nb.vorlagen_im_kapitel(text))
-        rat = kap.kanal("rat")
-        print(f"  {jahr}: {kap.gesamt:>15,.2f} € gesamt · Rat "
-              f"{rat.betrag:>15,.2f} € ({kap.rats_anteil:.1f} %) · "
-              f"{len(kap.kanaele)} Wege")
+        rat = kap.channel("rat")
+        print(f"  {year}: {kap.gesamt:>15,.2f} € gesamt · Rat "
+              f"{rat.amount:>15,.2f} € ({kap.rats_anteil:.1f} %) · "
+              f"{len(kap.channels)} Wege")
         print(f"        Tabellenprobe: {probe.als_text()}")
         print(f"        Ratsabgleich:  {abgleich.als_text()}")
         if not probe.bestanden:
-            widersprueche.append(f"{jahr}: {probe.als_text()}")
+            widersprueche.append(f"{year}: {probe.als_text()}")
         if trocken:
             continue
         # Beide Proben stehen an der Herkunft — auch die gerissene. Eine
         # Zeile, deren Probe nicht aufging, ist keine Zeile ohne Probe.
         store.save_nachbewilligung_jahr(
-            {"jahr": jahr,
-             "summe_konsumtiv": kap.summe_konsumtiv,
-             "summe_investiv": kap.summe_investiv,
-             "text_gesamt": kap.text_gesamt,
-             "verpflichtungen_betrag": kap.verpflichtungen_betrag,
+            {"year": year,
+             "total_operating": kap.total_operating,
+             "total_capital": kap.total_capital,
+             "total_per_text": kap.total_per_text,
+             "commitments_amount": kap.commitments_amount,
              "probe_ok": probe.bestanden,
              "probe_text": probe.als_text()},
-            [{"kanal": k.schluessel, "label": k.label,
-              "anzahl_konsumtiv": k.anzahl_konsumtiv,
-              "betrag_konsumtiv": k.betrag_konsumtiv,
-              "anzahl_investiv": k.anzahl_investiv,
-              "betrag_investiv": k.betrag_investiv} for k in kap.kanaele],
+            [{"channel": k.key, "label": k.label,
+              "count_operating": k.count_operating,
+              "amount_operating": k.amount_operating,
+              "count_capital": k.count_capital,
+              "amount_capital": k.amount_capital} for k in kap.channels],
             h.Herkunft(
-                art="ris", dokument_id=dokument,
-                label=BERICHT_LABEL.format(jahr=jahr),
-                fundstelle="Kapitel 3 — Über- und außerplanmäßige "
+                kind="ris", document_id=dokument,
+                label=BERICHT_LABEL.format(year=year),
+                citation="Kapitel 3 — Über- und außerplanmäßige "
                            "Aufwendungen und Auszahlungen",
                 probe=[nb.PROBE_TABELLE, nb.PROBE_RAT],
-                stand=f"Haushaltsjahr {jahr}",
-                probe_ergebnis=f"{probe.als_text()} {abgleich.als_text()}"))
+                as_of=f"Haushaltsjahr {year}",
+                probe_result=f"{probe.als_text()} {abgleich.als_text()}"))
         gelesen += 1
-    return {"berichte": gelesen, "widersprueche": len(widersprueche)}
+    return {"n_reports": gelesen, "widersprueche": len(widersprueche)}
 
 
 def main() -> dict:
@@ -209,7 +209,7 @@ def main() -> dict:
     store = CouncilStore(args.db)
     try:
         print("Nachbewilligungen aus dem Ratsinformationssystem:")
-        ergebnis = _serie(store, args.trockenlauf)
+        result = _serie(store, args.trockenlauf)
 
         # Für den Abgleich wird die Serie noch einmal als Objekte gebraucht —
         # aus derselben Lesung, damit Probe und Bestand dasselbe meinen.
@@ -217,7 +217,7 @@ def main() -> dict:
         serie = nb.aus_vorlagen(vorlagen, beschluesse)
 
         print("Rechenschaftsberichte, Kapitel 3:")
-        ergebnis |= _berichte(store, serie, args.trockenlauf)
+        result |= _berichte(store, serie, args.trockenlauf)
 
         if not args.trockenlauf:
             store.herkunft_aufraeumen()
@@ -226,10 +226,10 @@ def main() -> dict:
             if luecken:
                 print(f"WARNUNG: Zeilen ohne Herkunft: {luecken}",
                       file=sys.stderr)
-                ergebnis["herkunft_luecken"] = sum(luecken.values())
+                result["herkunft_luecken"] = sum(luecken.values())
     finally:
         store.close()
-    return ergebnis
+    return result
 
 
 if __name__ == "__main__":

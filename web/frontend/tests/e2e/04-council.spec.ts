@@ -134,7 +134,7 @@ test.describe("Ratsinformationssystem", () => {
       const decision = {
         id: 11, ksinr: 42, kind: "decision", parent_item: null, item_number: "5",
         title: "Widmung Klingenbergplatz", beschluss: "Die Erweiterungsfläche wird gewidmet.",
-        outcome: "angenommen", vote: null, gegenstimmen: null, enthaltungen: null,
+        outcome: "accepted", vote: null, gegenstimmen: null, enthaltungen: null,
         factions: [], parties: [], vorlage_nr: null, raw_result: null,
         committee: "Bauausschuss", session_date: "2026-07-15", protocol_url: null,
         policy_field: null, policy_tags: [], summary: null, amount_eur: null,

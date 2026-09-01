@@ -53,7 +53,7 @@ N1_TAGESORDNUNG = "n1_tagesordnung"
 #: Greift nur, solange N1 selbst an ist — siehe ``gewuenscht``.
 N1_AENDERUNG = "n1_aenderung"
 N2_THEMA = "n2_thema"
-N3_ERGEBNIS = "n3_ergebnis"
+N3_ERGEBNIS = "n3_result"
 N4_VORGANG = "n4_vorgang"
 N5_VORABEND = "n5_vorabend"
 N6_WOCHE = "n6_woche"
@@ -198,7 +198,7 @@ def ist_app_pfad(url: str) -> bool:
     return bool(url) and url.startswith("/") and not url.startswith("//")
 
 
-def einreihen(store, owner_id: int, kind: str, titel: str, html: str, url: str,
+def einreihen(store, owner_id: int, kind: str, title: str, html: str, url: str,
               jetzt: datetime | None = None, push_text: str | None = None) -> int:
     """Eine Benachrichtigung in die Warteschlange legen. Gibt ihre id zurück.
 
@@ -222,7 +222,7 @@ def einreihen(store, owner_id: int, kind: str, titel: str, html: str, url: str,
         return 0
     n = _jetzt(jetzt)
     return store.enqueue_notification(
-        owner_id=owner_id, kind=kind, title=titel, body_html=html, url=url,
+        owner_id=owner_id, kind=kind, title=title, body_html=html, url=url,
         created_at=n.isoformat(timespec="seconds"),
         deliver_after=naechstes_fenster(n).isoformat(timespec="seconds"),
         push_text=push_text,
@@ -241,11 +241,11 @@ def _buendel(posten: list[dict]) -> tuple[str, str, str, str]:
     """
     from kern import digest_email
 
-    titel = f"{len(posten)} Neuigkeiten aus dem Rat"
+    title = f"{len(posten)} Neuigkeiten aus dem Rat"
     push_text = " · ".join(p["title"] for p in posten)
     if len(push_text) > 180:
         push_text = push_text[:179] + "…"
-    return titel, digest_email.buendel(posten), "/dashboard", push_text
+    return title, digest_email.buendel(posten), "/dashboard", push_text
 
 
 def zustellen(store, jetzt: datetime | None = None, stats: dict | None = None) -> int:
@@ -299,7 +299,7 @@ def _zustellen_fuer(store, owner_id: int, heute: str, jetzt_iso: str) -> int:
     if not offen:
         return 0
 
-    def _abschicken(posten_ids: list[int], html: str, titel: str, url: str, gebuendelt: bool,
+    def _abschicken(posten_ids: list[int], html: str, title: str, url: str, gebuendelt: bool,
                     push_text: str | None = None) -> bool:
         """Einmal zustellen und das Ergebnis verbuchen.
 
@@ -308,9 +308,9 @@ def _zustellen_fuer(store, owner_id: int, heute: str, jetzt_iso: str) -> int:
         **nichts** rausgegangen. Früher wurde trotzdem ``sent_at`` gesetzt — ein
         Resend-Ausfall ließ Meldungen also lautlos für immer verschwinden.
         """
-        kanaele = deliver_message(owner, html, email_subject=titel, push_url=url,
+        channels = deliver_message(owner, html, email_subject=title, push_url=url,
                                   push_text=push_text)
-        if not kanaele:
+        if not channels:
             store.bump_notification_attempts(posten_ids)
             logger.warning("owner %s: Zustellung erfolglos, %d Meldung(en) bleiben in der "
                            "Warteschlange", owner_id, len(posten_ids))
@@ -339,8 +339,8 @@ def _zustellen_fuer(store, owner_id: int, heute: str, jetzt_iso: str) -> int:
                            push_text=p.get("push_text")):
                 n += 1
         if rest:
-            titel, html, url, push_text = _buendel(rest)
-            if _abschicken([p["id"] for p in rest], html, titel, url, True,
+            title, html, url, push_text = _buendel(rest)
+            if _abschicken([p["id"] for p in rest], html, title, url, True,
                            push_text=push_text):
                 n += 1
         return n

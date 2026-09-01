@@ -6,7 +6,7 @@ import Link from "next/link";
 import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, ExternalLink, FileText, FileDown, GitCompareArrows, Leaf, Newspaper, Tag, Euro } from "lucide-react";
 import { DecisionDetail, CouncilDecision, SessionDetail } from "@/lib/types";
 import { Card, DetailSkeleton, formatDate } from "@/components/ui";
-import { OutcomeDot, OUTCOME_META, VoteBar, FieldBadge, PartyBadge, DecisionLinkCard, ImportanceMeter, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
+import { OutcomeDot, OUTCOME_META, voteLabel, VoteBar, FieldBadge, PartyBadge, DecisionLinkCard, ImportanceMeter, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
 import { decisionHref, themaHref, sessionHref } from "@/lib/routes";
 import { apiUrl } from "@/lib/api";
 import { shortCommittee } from "@/lib/committees";
@@ -148,7 +148,7 @@ function GlanceCard({
   unanimous: boolean;
   className?: string;
 }) {
-  const hasVote = d.outcome === "angenommen" || d.outcome === "abgelehnt" || !!d.vote;
+  const hasVote = d.outcome === "accepted" || d.outcome === "rejected" || !!d.vote;
   return (
     <Card className={cn("p-4", className)}>
       <h2 className="font-display text-sm font-bold text-foreground">Auf einen Blick</h2>
@@ -202,7 +202,7 @@ function GlanceCard({
       {/* Regex-Ernte, minimiert (Feedback-Runde 3): beide nur als Zeile mit
           Symbol — die Erklärung öffnet sich erst auf Klick, die Erzählspalte
           links bleibt clean. */}
-      {d.abweichung === "stark" && d.beschluss && (
+      {d.deviation === "strong" && d.official_text && (
         <GlanceDisclosure
           icon={<GitCompareArrows className="h-3.5 w-3.5 text-signal" />}
           label="Vom Vorschlag abgewichen"
@@ -212,20 +212,20 @@ function GlanceCard({
           angenommenen Beschlüsse vor.
         </GlanceDisclosure>
       )}
-      {data.vorlage?.klima_check && (
+      {data.vorlage?.climate_impact && (
         <GlanceDisclosure
           icon={<Leaf className={cn("h-3.5 w-3.5", data.vorlage.klima_relevant ? "text-primary" : "text-muted-foreground")} />}
           label="Klima-Check"
           badge={data.vorlage.klima_relevant == null ? undefined : data.vorlage.klima_relevant ? "relevant" : "nicht relevant"}
         >
-          {data.vorlage.klima_check}
+          {data.vorlage.climate_impact}
         </GlanceDisclosure>
       )}
       {/* „Was kostet das?" (Design H-21): Die Verwaltung schreibt in jede
           Vorlage, welche finanziellen Folgen sie sieht. Amtlicher Wortlaut,
           deshalb unverändert und ausdrücklich als Verwaltungsangabe
           gekennzeichnet — nicht unsere Einschätzung. */}
-      {data.vorlage?.finanz_check && (
+      {data.vorlage?.financial_impact && (
         <GlanceDisclosure
           icon={<Euro className="h-3.5 w-3.5 text-primary" />}
           label="Was kostet das?"
@@ -234,7 +234,7 @@ function GlanceCard({
           {/* Wörtliches Zitat: Zitatkante links, Anführungszeichen, kein
               Fettdruck — es ist der amtliche Wortlaut, nicht unsere Zahl. */}
           <span className="block border-l-2 border-border pl-2.5 text-foreground/85">
-            „{data.vorlage.finanz_check.trim()}“
+            „{data.vorlage.financial_impact.trim()}“
           </span>
           {/* Die Quellenangabe steht immer, der Weiterverweis nur dort, wo es
               den Haushalts-Bereich gibt — auf Prod ist /haushalt ein 404
@@ -255,7 +255,7 @@ function GlanceCard({
       {/* Die Anschlussstelle, die etwas SAGT. Der Satz oben steht an jedem
           Beschluss mit Finanz-Feld und ist deshalb für keinen eine Auskunft;
           diese Karte gibt es nur, wo eine echte Verknüpfung sie deckt —
-          entweder zeigt `council_nachbewilligungen.beschluss_id` auf genau
+          entweder zeigt `council_nachbewilligungen.decision_id` auf genau
           diesen Beschluss, oder seine Vorlage steht im Bürgschafts-Zeitstrahl.
           Sonst kommt sie gar nicht (`haushalts_anschluss === null`). */}
       {HAUSHALT_FREI && data.haushalts_anschluss && (
@@ -269,7 +269,7 @@ function GlanceCard({
               {data.haushalts_anschluss.art === "nachbewilligung" ? (
                 <>
                   Diese Entscheidung zählt zu den Nachbewilligungen
-                  {data.haushalts_anschluss.jahr ? ` ${data.haushalts_anschluss.jahr}` : ""} —
+                  {data.haushalts_anschluss.year ? ` ${data.haushalts_anschluss.year}` : ""} —
                   Geld, das außerhalb des beschlossenen Haushalts bewilligt wurde.
                 </>
               ) : (
@@ -305,13 +305,13 @@ function GlanceCard({
   );
 }
 
-/** Kurze Ergebnis-Zeile aus vote/gegenstimmen/enthaltungen (z. B.
+/** Kurze Ergebnis-Zeile aus vote/no_votes/abstentions (z. B.
  *  „mehrheitlich · 18 dagegen · 2 Enth."). */
 function voteSummary(d: CouncilDecision): string {
   const parts: string[] = [];
-  if (d.vote) parts.push(d.vote);
-  if (d.gegenstimmen) parts.push(`${d.gegenstimmen} dagegen`);
-  if (d.enthaltungen) parts.push(`${d.enthaltungen} Enth.`);
+  if (d.vote) parts.push(voteLabel(d.vote));
+  if (d.no_votes) parts.push(`${d.no_votes} dagegen`);
+  if (d.abstentions) parts.push(`${d.abstentions} Enth.`);
   return parts.join(" · ");
 }
 
@@ -404,7 +404,7 @@ function SubvoteTimeline({ d, subVotes }: { d: CouncilDecision; subVotes: Counci
       {subVotes.map((s, i) => {
         const factions = Array.isArray(s.factions) ? s.factions : [];
         const kind = subvoteKind(s.title);
-        const body = s.beschluss || (hasOwnContent(s.title, kind, factions) ? s.title : null);
+        const body = s.official_text || (hasOwnContent(s.title, kind, factions) ? s.title : null);
         return (
           <li
             key={s.id}
@@ -458,7 +458,7 @@ function SubvoteTimeline({ d, subVotes }: { d: CouncilDecision; subVotes: Counci
         />
         <p className="text-[11px] font-semibold uppercase tracking-wider text-green-700 dark:text-green-400">Endgültiger Beschluss</p>
         <p className="mt-1 text-sm leading-relaxed text-foreground">
-          {(OUTCOME_META[d.outcome ?? "kein_beschluss"]?.label ?? "Beschlossen")}
+          {(OUTCOME_META[d.outcome ?? "no_decision"]?.label ?? "Beschlossen")}
           {voteSummary(d) ? ` — ${voteSummary(d)}` : ""}
         </p>
         {d.summary && <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{d.summary}</p>}
@@ -468,7 +468,7 @@ function SubvoteTimeline({ d, subVotes }: { d: CouncilDecision; subVotes: Counci
 }
 
 function presentMembers(att: DecisionDetail["attendance"]): number {
-  return att.filter((a) => a.role === "vorsitz" || a.role === "mitglied" || !a.role).length;
+  return att.filter((a) => a.role === "chair" || a.role === "member" || !a.role).length;
 }
 
 /** Design 25a: Nachbarbeschlüsse sind Kontext, keine Hauptsache — standardmäßig
@@ -567,12 +567,12 @@ function DecisionDetailInner() {
   if (!data) notFound();
 
   const d = data.decision;
-  const unanimous = d.outcome === "angenommen"
-    && (d.vote === "einstimmig" || ((d.gegenstimmen ?? 0) === 0 && (d.enthaltungen ?? 0) === 0));
+  const unanimous = d.outcome === "accepted"
+    && (d.vote === "unanimous" || ((d.no_votes ?? 0) === 0 && (d.abstentions ?? 0) === 0));
   const present = presentMembers(data.attendance);
   const byParty: Record<string, number> = {};
   for (const a of data.attendance) {
-    if (a.role === "verwaltung" || a.role === "protokoll" || a.role === "gast") continue;
+    if (a.role === "administration" || a.role === "minutes" || a.role === "guest") continue;
     const p = normalizeParty(a.party || "—");
     byParty[p] = (byParty[p] ?? 0) + 1;
   }
@@ -628,7 +628,7 @@ function DecisionDetailInner() {
           <span className="min-w-0">
             <span className="font-medium text-foreground">Bürgerbeteiligung läuft: </span>
             {data.beteiligung.schritt}
-            {data.beteiligung.bis ? ` — Stellungnahme bis ${formatDate(data.beteiligung.bis)}` : ""}
+            {data.beteiligung.valid_until ? ` — Stellungnahme bis ${formatDate(data.beteiligung.valid_until)}` : ""}
             <span className="text-muted-foreground"> (oldenburg.planungsbeteiligung.de)</span>
           </span>
         </a>
@@ -670,7 +670,7 @@ function DecisionDetailInner() {
             {shortCommittee(d.committee)} · {formatDate(d.session_date)}
             {d.item_number ? ` · TOP ${d.item_number}` : ""}
           </span>
-          {d.vorlage_nr && <span className="font-mono text-[11px]">{d.vorlage_nr}</span>}
+          {d.template_number && <span className="font-mono text-[11px]">{d.template_number}</span>}
           {d.kind !== "subvote" && (data.importance_breakdown?.score ?? 0) >= 55 && (
             <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:text-amber-400">
               Wichtig · {data.importance_breakdown!.score}/100
@@ -709,7 +709,7 @@ function DecisionDetailInner() {
         <div className="min-w-0 space-y-3">
           {d.simple_summary && <SimpleSummaryHero text={d.simple_summary} />}
 
-          {d.beschluss && <OfficialTextCard text={d.beschluss} />}
+          {d.official_text && <OfficialTextCard text={d.official_text} />}
 
           {/* P1: Die Planzeichnung aus der Vorlage — ein B-Plan-Beschluss lebt
               vom Bild. Thumb inline, Klick öffnet das volle Blatt. */}
@@ -750,8 +750,8 @@ function DecisionDetailInner() {
                   <div>
                     <p className="text-sm font-semibold text-foreground">Warum es dazu kam</p>
                     <p className="mb-2 text-xs text-muted-foreground/70">
-                      Sachverhalt und Begründung aus der {vorlageArt(data.vorlage.art)} der Verwaltung
-                      {data.vorlage.amt ? ` — federführend: ${data.vorlage.amt}` : ""}
+                      Sachverhalt und Begründung aus der {vorlageArt(data.vorlage.kind)} der Verwaltung
+                      {data.vorlage.office ? ` — federführend: ${data.vorlage.office}` : ""}
                     </p>
                     <VorlageExcerpt text={data.vorlage.excerpt} />
                   </div>
@@ -778,7 +778,7 @@ function DecisionDetailInner() {
             <div className="flex flex-col gap-1">
               {data.vorlage_url && (
                 <a href={data.vorlage_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline">
-                  <FileText className="h-3.5 w-3.5" /> Vorlage {d.vorlage_nr}
+                  <FileText className="h-3.5 w-3.5" /> Vorlage {d.template_number}
                 </a>
               )}
               {data.vorlage?.document_url && (
@@ -810,9 +810,9 @@ function DecisionDetailInner() {
                         <FileDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                         <span className="truncate text-foreground">{an.label || "Dokument"}</span>
                       </span>
-                      {an.is_antrag === 1 && an.antragsteller.length > 0 && (
+                      {an.is_motion === 1 && an.applicants.length > 0 && (
                         <span className="flex shrink-0 items-center gap-1">
-                          {an.antragsteller.map((p) => <PartyBadge key={p} party={p} />)}
+                          {an.applicants.map((p) => <PartyBadge key={p} party={p} />)}
                         </span>
                       )}
                     </a>
@@ -833,7 +833,7 @@ function DecisionDetailInner() {
           )}
 
           {(data.beratungsfolge && data.beratungsfolge.length > 0) || data.vorlage_journey.length > 1 ? (
-            <MetaCard title={`Weg der Vorlage ${d.vorlage_nr ?? ""}`.trim()}>
+            <MetaCard title={`Weg der Vorlage ${d.template_number ?? ""}`.trim()}>
               {/* Offizielle Beratungsfolge aus dem Ratsinfo: Ergebnis je Station,
                   geplante künftige Beratungen inklusive; sonst der aus unseren
                   eigenen Sitzungen rekonstruierte Weg. */}
@@ -842,25 +842,25 @@ function DecisionDetailInner() {
                   ? data.beratungsfolge.map((b, i) => {
                       const current = b.ksinr != null && b.ksinr === d.ksinr;
                       return (
-                        <div key={`${b.ksinr ?? "x"}-${b.datum ?? i}-${b.gremium}`} className="relative">
+                        <div key={`${b.ksinr ?? "x"}-${b.date ?? i}-${b.committee}`} className="relative">
                           <span className={cn(
                             "absolute -left-[19px] top-1.5 h-2 w-2 rounded-full",
                             current ? "bg-primary" : b.future ? "border border-primary/60 bg-background" : "bg-border",
                           )} />
                           <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
                             <span className={cn("text-[13px]", current ? "font-medium text-foreground" : "text-foreground")}
-                              title={b.gremium}>
-                              {shortCommittee(b.gremium)}
+                              title={b.committee}>
+                              {shortCommittee(b.committee)}
                             </span>
                             <span className="text-[11px] text-muted-foreground">
-                              {b.datum ? formatDate(b.datum) : "Termin offen"}
+                              {b.date ? formatDate(b.date) : "Termin offen"}
                               {b.is_public === 0 && " · nichtöffentlich"}
                               {current && " · hier"}
                             </span>
                             {b.future ? (
                               <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">geplant</span>
-                            ) : b.ergebnis ? (
-                              <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">{b.ergebnis}</span>
+                            ) : b.result ? (
+                              <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">{b.result}</span>
                             ) : null}
                           </div>
                         </div>

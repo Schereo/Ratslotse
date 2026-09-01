@@ -30,16 +30,12 @@ os.environ.setdefault("WEB_JWT_SECRET", "test-secret")
 # `antworten.py` einen sprechenden Namen, aber (noch) keine Felder.
 OFFEN = {
     ("get", "/api/council/places"),
-    ("get", "/api/council/sitzungspause"),
-    ("get", "/api/council/heute"),
     ("get", "/api/council/wochenvorschau"),
     ("get", "/api/council/haushalt"),
     ("get", "/api/council/session/{ksinr}"),
     ("get", "/api/council/decision/{decision_id}"),
     ("get", "/api/council/qa-share/{token}"),
     ("get", "/api/council/deep-research/{job_id}"),
-    ("get", "/api/council/analysis"),
-    ("get", "/api/council/trends"),
     ("get", "/api/council/public-stats"),
     ("get", "/api/council/entity/{slug}"),
     ("get", "/api/council/person/{slug}"),
@@ -47,7 +43,6 @@ OFFEN = {
     ("get", "/api/admin/llm-usage"),
     ("get", "/api/admin/users/{user_id}"),
     ("put", "/api/admin/place-candidates/{location_slug}"),
-    ("get", "/api/social/sitzungen/{tag}"),
 }
 
 # Kein JSON-Body: zwei SSE-Ströme und eine Bilddatei.
@@ -166,4 +161,191 @@ def test_generierte_frontend_typen_passen_zum_vertrag():
     assert letzte == f"// vertrag-sha256: {summe}", (
         "Die generierten Frontend-Typen passen nicht zu api/openapi.json.\n"
         "  cd web/frontend && npm run api:typen   # neu erzeugen und mitcommitten"
+    )
+
+
+def test_nullable_felder_sind_swift_lesbar():
+    """Optionale Felder müssen als ``type: [T, "null"]`` im Vertrag stehen.
+
+    Pydantic schreibt sie als ``anyOf`` mit einem ``null``-Zweig — gültiges
+    OpenAPI 3.1, aber ``swift-openapi-generator`` lässt solche Eigenschaften
+    STILL weg (gemessen 30.08.2026: 139 Felder in 55 Schemata, u. a.
+    ``GespraecheListe.einstellung``). ``scripts/openapi_schnitt.py`` zieht sie
+    deshalb zusammen; dieser Test hält fest, dass das auch weiter passiert.
+
+    Auch ``$ref`` neben ``null`` fällt darunter — der Schnitt schreibt solche
+    Objekte aus, statt sie zu verweisen, weil der Generator sie sonst ebenfalls
+    weglässt (``Merkeintrag.session`` war genau dieser Fall).
+    """
+    import json
+
+    # Leer, seit der Schnitt auch `anyOf: [{$ref}, null]` ausschreibt. Wächst
+    # die Menge wieder, ist das eine bewusste Entscheidung — kein Versehen.
+    bekannt: set[str] = set()
+    spec = json.loads((Path(__file__).resolve().parents[1] / "api" / "openapi.json").read_text())
+    offen = set()
+    for name, s in spec["components"]["schemas"].items():
+        for field, p in (s.get("properties") or {}).items():
+            zweige = p.get("anyOf")
+            if isinstance(zweige, list) and {"type": "null"} in zweige:
+                offen.add(f"{name}.{field}")
+
+    neu = offen - bekannt
+    assert not neu, (
+        "Diese nullable Felder stehen als `anyOf` im Vertrag und fehlen damit im "
+        "Swift-Generat:\n  " + "\n  ".join(sorted(neu)) +
+        "\nEntweder zusammenziehbar machen (scripts/openapi_schnitt.py) oder "
+        "bewusst in `bekannt` aufnehmen."
+    )
+    verschwunden = bekannt - offen
+    assert not verschwunden, (
+        "Diese Einträge stehen in `bekannt`, sind aber nicht mehr offen — bitte "
+        "streichen:\n  " + "\n  ".join(sorted(verschwunden))
+    )
+
+
+def test_zeilen_typen_kennen_alle_spalten_ihrer_tabelle():
+    """``Beschlusszeile``/``Sitzungszeile`` zählen Spalten auf — das ist nur
+    sicher, solange die Aufzählung vollständig bleibt.
+
+    Ein TypedDict ENTFERNT, was es nicht kennt. Bekäme ``council_decisions``
+    eine neue Spalte, verschwände sie stillschweigend aus der API — kein
+    Fehler, nur fehlende Daten in Web und App. Dieser Test macht daraus einen
+    roten Lauf.
+    """
+    import tempfile
+    from typing import get_type_hints
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from app.antworten import Beschlusszeile, Sitzungszeile
+    from council.store import CouncilStore
+
+    with tempfile.TemporaryDirectory() as d:
+        store = CouncilStore(Path(d) / "council.sqlite")
+        try:
+            spalten = {
+                "council_decisions": {r[1] for r in store._conn.execute(
+                    "PRAGMA table_info(council_decisions)")},
+                "council_sessions": {r[1] for r in store._conn.execute(
+                    "PRAGMA table_info(council_sessions)")},
+            }
+        finally:
+            store.close()
+
+    for typ, tabelle in ((Beschlusszeile, "council_decisions"),
+                         (Sitzungszeile, "council_sessions")):
+        deklariert = set(get_type_hints(typ, include_extras=True))
+        fehlend = spalten[tabelle] - deklariert
+        assert not fehlend, (
+            f"{typ.__name__} kennt diese Spalten von {tabelle} nicht — sie fallen "
+            f"damit still aus der API:\n  " + "\n  ".join(sorted(fehlend)) +
+            "\nIn web/backend/app/antworten.py ergänzen (als NotRequired)."
+        )
+
+
+def test_keine_wirkungslosen_migrationspaare():
+    """Ein Umbenennungspaar ``("x", "x")`` tut nichts — und fällt sonst nie auf.
+
+    Beim Umbau auf englische Namen ist mir das DREIMAL passiert: Ein
+    Suchen-und-Ersetzen über die Datei nimmt den ALTEN Namen in der
+    Migrationsliste mit, und aus ``("stadtteil", "district")`` wird
+    ``("district", "district")``. Frische Datenbanken legen ohnehin das neue
+    Schema an, also bleibt alles grün — nur BESTEHENDE Datenbanken werden nie
+    migriert und behalten still die deutschen Spalten. Einmal ist es so schon
+    in einen Merge gerutscht (#859, behoben).
+
+    Deshalb dieser Test: Er liest die Quelltexte und meldet jedes Paar, dessen
+    beide Seiten gleich sind.
+    """
+    import re
+
+    wurzel = Path(__file__).resolve().parents[1]
+    muster = re.compile(r'\(\s*"([a-z_]+)"\s*,\s*"\1"\s*\)')
+    treffer = []
+    for datei in (wurzel / "kern" / "store.py", wurzel / "council" / "store.py"):
+        for nr, row in enumerate(datei.read_text().splitlines(), 1):
+            if muster.search(row):
+                treffer.append(f"{datei.relative_to(wurzel)}:{nr}: {row.strip()}")
+
+    assert not treffer, (
+        "Diese Umbenennungspaare sind wirkungslos — vermutlich hat ein "
+        "Suchen-und-Ersetzen den alten Namen mitgenommen:\n  " + "\n  ".join(treffer)
+    )
+
+
+#: Pfade, die von AUSSERHALB dieses Repos aufgerufen werden. Eine URL ist eine
+#: öffentliche Schnittstelle, kein Bezeichner — sie wandert bei einer
+#: Umbenennung nicht mit.
+#:
+#: Die vier ``/social/``-Pfade ruft der Instagram-Bot (Repo ratslotse-social,
+#: ``ratslotse_social/quellen.py``) über HTTP auf. Genau das ist beim
+#: Beschluss-Schnitt schiefgegangen: Aus ``/hoechste-beschluss-id`` wurde
+#: ``/hoechste-official_text-id``, der Bot rief ins Leere, und weil er in
+#: einem anderen Repo lebt, wurde dort nichts rot.
+#:
+#: Nicht in der Liste: ``/api/social/orte``. Den Pfad ruft der Bot zwar auf,
+#: aber dieses Repo hat ihn NIE angeboten (keine Spur in der Historie) — der
+#: Bot fällt dort auf seinen direkten Datenbankweg zurück. Das ist ein Befund
+#: für das andere Repo, kein Ziel für einen Wächter hier.
+OEFFENTLICHE_PFADE = (
+    "/api/social/hoechste-beschluss-id",
+    "/api/social/neue-beschluesse",
+    "/api/social/wochenvorschau",
+)
+
+
+def test_oeffentliche_pfade_bleiben_stehen(endpunkte):
+    """Pfade mit Aufrufern ausserhalb dieses Repos dürfen sich nicht ändern.
+
+    Wer einen davon wirklich umbenennen will, zieht den Aufrufer mit nach —
+    und ändert diese Liste bewusst, nicht als Beifang eines Ersetzens.
+    """
+    vorhanden = {p for _, p, _, _ in endpunkte}
+    fehlend = [p for p in OEFFENTLICHE_PFADE if p not in vorhanden]
+    assert not fehlend, (
+        "Diese Pfade werden von ausserhalb aufgerufen und gibt es nicht mehr:\n  "
+        + "\n  ".join(fehlend)
+        + "\nEine URL ist eine öffentliche Schnittstelle. Entweder den Pfad "
+          "zurückbenennen oder den Aufrufer (ratslotse-social) mitziehen."
+    )
+
+
+#: Wörter, die in den deutschen Sperrlisten stehen MÜSSEN. Sie filtern
+#: Nutzerfragen und Dokumenttexte — ein englischer Name darin ist wirkungslos
+#: und lässt zugleich das deutsche Wort durch.
+_SPERRLISTEN = (
+    ("council/qa.py", "_STOP", "beschluss"),
+    ("council/embeddings.py", "_ANLAGE_META_STOPP", "beschluss"),
+    ("council/fundstueck.py", "_ALLERWELT", "beschluss"),
+    ("council/store.py", "_AUSBLICK_STOPP", "beschluss"),
+    ("council/store.py", "_RUBRIK_WORTE", "beschluss"),
+)
+
+
+def test_deutsche_sperrlisten_bleiben_deutsch():
+    """Die Sperrlisten filtern DEUTSCHEN Text — sie dürfen nicht mitumbenannt werden.
+
+    Beim Beschluss-Schnitt ist genau das passiert: Aus ``"beschluss"`` wurde in
+    fünf Listen ``"official_text"``. Das Wort kommt in keiner deutschen Frage
+    vor, also filterte die Liste nichts mehr — und ließ dafür „Beschluss"
+    durch, das in fast jedem Ratsdokument steht. Gemessen an der Stadion-Frage
+    hängte das vier fremde Vorlagen an die Antwort.
+
+    Kein anderer Test schlägt an: Die Listen sind Heuristiken, ihr Schaden ist
+    schlechtere Treffer, kein Fehler.
+    """
+    wurzel = Path(__file__).resolve().parents[1]
+    fehlend = []
+    for datei, liste, wort in _SPERRLISTEN:
+        text = (wurzel / datei).read_text()
+        start = text.find(liste)
+        assert start > 0, f"{liste} gibt es in {datei} nicht mehr"
+        block = text[start:start + 900]
+        block = block[:block.find("}") + 1]
+        if f'"{wort}"' not in block:
+            fehlend.append(f"{datei}::{liste} führt {wort!r} nicht mehr")
+
+    assert not fehlend, (
+        "Diese deutschen Sperrlisten haben ihr Stichwort verloren — vermutlich "
+        "hat ein Umbenennen es mitgenommen:\n  " + "\n  ".join(fehlend)
     )

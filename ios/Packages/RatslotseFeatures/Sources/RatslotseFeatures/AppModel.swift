@@ -267,7 +267,7 @@ public final class AppModel {
             let setting: Int
 
             enum CodingKeys: String, CodingKey {
-                case setting = "einstellung"
+                case setting = "saves_conversations"
             }
         }
 

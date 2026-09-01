@@ -1,7 +1,7 @@
 """Woher eine gespeicherte Zahl stammt — ein Format für alle Finanz-Schichten.
 
 Der Haushalts-Bereich trug seine Herkunft bis 08/2026 in drei verschiedenen
-Schreibweisen: ``quelle_label``/``quelle_url`` in den einen Tabellen,
+Schreibweisen: ``source_label``/``source_url`` in den einen Tabellen,
 ``label``/``url`` in der nächsten, ``source_url`` in den vier ältesten. Und
 überall fehlte dasselbe: die Fundstelle **im** Dokument, die bestandene
 Rechenprobe und ein Anker, der einen Dokumentwechsel überlebt.
@@ -30,8 +30,8 @@ Der Preis ist ein Join. Er fällt auf einer Tabelle mit einigen hundert Zeilen
 nicht ins Gewicht, und die Lesewege des Bereichs holen ohnehin ganze
 Jahrgänge auf einmal.
 
-Was die alten Spalten angeht: Sie **bleiben**. ``quelle_label``,
-``quelle_url`` und ``source_url`` stehen weiter dort, wo sie standen, und
+Was die alten Spalten angeht: Sie **bleiben**. ``source_label``,
+``source_url`` und ``source_url`` stehen weiter dort, wo sie standen, und
 werden weiter aus derselben Angabe gefüllt. Sie zu entfernen hieße, neun
 Tabellen neu zu schreiben — darunter vier, deren Inhalt nur über einen
 Download von oldenburg.de wiederzubeschaffen wäre. Der Gewinn wäre kosmetisch,
@@ -50,7 +50,7 @@ Für einen neuen Parser
 -----------------------
 Drei Dinge, mehr nicht (ausführlich in ``docs-site/.../haushalt.md``):
 
-1. Eine :class:`Herkunft` bauen — ``art`` und ``probe`` sind Pflicht, alles
+1. Eine :class:`Herkunft` bauen — ``kind`` und ``probe`` sind Pflicht, alles
    andere so vollständig, wie das Dokument es hergibt.
 2. Sie an die ``save_*``-Methode des Stores geben. Die trägt sie ein und
    verknüpft die Zeilen (``store.merke_herkunft``).
@@ -76,7 +76,7 @@ from typing import Sequence
 ARTEN: dict[str, str] = {
     "ris": "Anlage zu einer Ratsvorlage im Bürgerinformationssystem",
     "opendata": "Datensatz des Open-Data-Portals der Stadt Oldenburg",
-    "stadt": "Veröffentlichung auf oldenburg.de",
+    "city": "Veröffentlichung auf oldenburg.de",
     # Der dritte Fall, und der einzige, der nicht von der Stadt kommt: eine
     # Landesbehörde. Er ist der Grund, warum ein Städtevergleich überhaupt
     # tragfähig ist — dieselbe Kennzahl für alle Gemeinden, nach demselben
@@ -123,6 +123,11 @@ PROBEN: dict[str, str] = {
         "Absatz steht in dem Zeilenband, in dem auch seine Position steht — "
         "zugeordnet wird über die Geometrie des Dokuments, nicht über "
         "Abstands-Schätzung; ohne eindeutiges Band bleibt das Feld leer.",
+    "aenderungsliste_fhh_zeilen":
+        "Jede Zeile des Finanzhaushalts rechnet sich selbst vor: Soll laut "
+        "Entwurf plus Einzahlung plus Auszahlung ergibt das neue Soll. Diese "
+        "Probe läuft an JEDER Position, nicht nur an der Schlusssumme — "
+        "stünde ein Betrag eine Spalte daneben, ginge sie nicht auf.",
     "aenderungsliste_urheber":
         "Wo das Dokument je Position einen Vorschlagenden nennt, wird die "
         "Zuordnung gerechnet: Die Summe der Positionen jedes Urhebers muss "
@@ -316,7 +321,7 @@ PROBEN: dict[str, str] = {
         "außerordentliche Aufwendungen = außerordentliches Ergebnis.",
     "konzern_gesamtergebnis":
         "Beide Teile zusammen ergeben das ausgewiesene Gesamtjahresergebnis — "
-        "die Tabelle ist also von oben bis unten in sich stimmig.",
+        "die Tabelle ist also von oben bis unten in sich consistent.",
     "konzern_traegersumme":
         "Die einbezogenen Betriebe und Gesellschaften ergeben zusammen mit der "
         "Verrechnung untereinander genau die Summe, die der Bericht ausweist.",
@@ -459,7 +464,7 @@ PROBEN: dict[str, str] = {
         "Dieselbe Rechnung für die Abschreibungen: aufgelaufener Stand, "
         "Abschreibung des Jahres, Auflösungen für Abgänge und Zuschreibungen "
         "ergeben den ausgewiesenen Endstand.",
-    "anlagen_buchwert":
+    "assets_book_value":
         "Anschaffungswert minus aufgelaufener Abschreibung ist der Buchwert, "
         "den die Tabelle in ihrer letzten Spalte selbst ausweist.",
     "anlagen_gegen_bilanz":
@@ -633,7 +638,7 @@ HERKUNFT_TABELLEN: tuple[str, ...] = (
     "council_pruefberichte",
     # Beide neu mit dem Konzern-Bereich und ohne Altbestand: Sie führen ihre
     # Herkunft ausschließlich über `herkunft_id`, tragen also keine
-    # `quelle_label`/`quelle_url`-Spalten mehr, aus denen etwas nachzutragen
+    # `source_label`/`source_url`-Spalten mehr, aus denen etwas nachzutragen
     # wäre (s. `CouncilStore._HERKUNFT_ALTFELDER`).
     "council_konzern_posten",
     "council_konzern_traeger",
@@ -736,53 +741,53 @@ class Herkunft:
 
     Pflicht sind ``art`` und ``probe`` — ohne sie lässt sich der Datensatz
     nicht bauen. Dazu muss mindestens einer der beiden Verweise stehen:
-    ``dokument_id`` (der stabile Anker) oder ``url``. Eine Herkunft, die auf
+    ``document_id`` (der stabile Anker) oder ``url``. Eine Herkunft, die auf
     nichts zeigt, wäre eine Behauptung.
 
-    ``fundstelle`` bleibt leer, solange ein Parser sie nicht kennt — leer ist
+    ``citation`` bleibt leer, solange ein Parser sie nicht kennt — leer ist
     hier ehrlicher als geraten. Sie wird nachgerüstet, wo sie bekannt ist.
     """
 
     #: Schlüssel aus :data:`ARTEN`.
-    art: str
+    kind: str
     #: Name(n) aus :data:`PROBEN`, oder :data:`UNGEPRUEFT`.
     probe: str | Sequence[str]
     #: ``council_anlagen.document_id`` — überlebt Label- und URL-Wechsel.
     #: Der Gesamtabschluss 2016 heißt im Bürgerinfo schlicht „Anlage"; wer
     #: über das Label ankert, verliert ihn beim nächsten Umbenennen.
-    dokument_id: int | None = None
+    document_id: int | None = None
     #: Wie das Dokument heißt — für Menschen, nicht als Schlüssel.
     label: str | None = None
     url: str | None = None
     #: Wo im Dokument: „Abschnitt 6.3.1", „Übersicht Ergebnishaushalt",
     #: „Datensatz 1104". Bei 300 Seiten ist die URL allein zu wenig.
-    fundstelle: str | None = None
+    citation: str | None = None
     #: Seitenzahl, falls das Dokument eine trägt — macht aus dem Link einen
     #: Sprung (``…pdf#page=161``).
-    seite: int | None = None
+    page: int | None = None
     #: Der Messwert der Probe, wo sie einen liefert: „0,02 % Abweichung".
     #: Belegt, dass sie wirklich lief und nicht nur behauptet wird.
-    probe_ergebnis: str | None = None
+    probe_result: str | None = None
     #: Stichtag/Datenstand des Inhalts — nicht der Abrufzeitpunkt. Bei den
     #: Beteiligungen der Punkt, an dem sich Konzern- und Einzelabschluss
     #: unterscheiden.
-    stand: str | None = None
+    as_of: str | None = None
 
     def __post_init__(self) -> None:
-        if self.art not in ARTEN:
+        if self.kind not in ARTEN:
             raise ValueError(
-                f"Unbekannte Quellenart {self.art!r}. Bekannt sind: "
+                f"Unbekannte Quellenart {self.kind!r}. Bekannt sind: "
                 f"{', '.join(sorted(ARTEN))}.")
         # Der Aufrufer darf einen Namen oder eine Liste übergeben; gespeichert
         # wird immer die kanonische, geprüfte Fassung.
         object.__setattr__(self, "probe", _proben_normalisieren(self.probe))
-        if self.dokument_id is None and not self.url:
+        if self.document_id is None and not self.url:
             raise ValueError(
-                "Herkunft ohne Verweis: mindestens dokument_id (der stabile "
+                "Herkunft ohne Verweis: mindestens document_id (der stabile "
                 "Anker aus council_anlagen) oder url muss stehen.")
 
     @property
-    def proben(self) -> list[str]:
+    def probes(self) -> list[str]:
         """Die Probennamen einzeln."""
         return [n for n in str(self.probe).split(",") if n]
 
@@ -793,17 +798,17 @@ class Herkunft:
         ``UNBEKANNT`` gilt als geprüft: Diese Zeilen **haben** eine Probe
         bestanden, nur ist nicht festgehalten, welche. Nur ``UNGEPRUEFT``
         heißt, dass es keine gab."""
-        return self.proben != [UNGEPRUEFT]
+        return self.probes != [UNGEPRUEFT]
 
     def felder(self) -> dict:
         """Die Spaltenwerte für ``council_herkunft`` (ohne ``fetched_at``)."""
-        return {"art": self.art, "dokument_id": self.dokument_id,
+        return {"kind": self.kind, "document_id": self.document_id,
                 "label": self.label, "url": self.url,
-                "fundstelle": self.fundstelle, "seite": self.seite,
-                "probe": str(self.probe), "probe_ergebnis": self.probe_ergebnis,
-                "stand": self.stand}
+                "citation": self.citation, "page": self.page,
+                "probe": str(self.probe), "probe_result": self.probe_result,
+                "as_of": self.as_of}
 
-    def schluessel(self) -> str:
+    def key(self) -> str:
         """Inhaltlicher Fingerabdruck — macht das Eintragen idempotent.
 
         Bewusst **ohne** ``fetched_at``: Wann wir zuletzt nachgesehen haben,

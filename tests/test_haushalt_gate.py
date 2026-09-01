@@ -32,18 +32,18 @@ GATE_KONSTANTE = "HAUSHALT_FREI"
 
 def test_gate_konstante_prueft_die_umgebungsvariable():
     """Die Konstante ist die einzige Stelle, die die Variable liest."""
-    quelle = (FRONTEND / "lib" / "haushalt-frei.ts").read_text(encoding="utf-8")
-    assert 'process.env.NEXT_PUBLIC_RATSLOTSE_ENV === "dev"' in quelle
-    assert f"export const {GATE_KONSTANTE}" in quelle
+    source = (FRONTEND / "lib" / "haushalt-frei.ts").read_text(encoding="utf-8")
+    assert 'process.env.NEXT_PUBLIC_RATSLOTSE_ENV === "dev"' in source
+    assert f"export const {GATE_KONSTANTE}" in source
 
 
 def test_layout_gated_den_ganzen_bereich():
     """Ein Layout statt dreizehn Einzelgates — sonst fehlt beim vierzehnten eins."""
     layout = BEREICH / "layout.tsx"
     assert layout.exists(), "app/(app)/haushalt/layout.tsx fehlt — der Bereich ist offen"
-    quelle = layout.read_text(encoding="utf-8")
-    assert GATE_KONSTANTE in quelle
-    assert "notFound()" in quelle
+    source = layout.read_text(encoding="utf-8")
+    assert GATE_KONSTANTE in source
+    assert "notFound()" in source
 
 
 def test_jede_seite_liegt_unter_dem_layout():
@@ -55,9 +55,9 @@ def test_jede_seite_liegt_unter_dem_layout():
     """
     seiten = sorted(BEREICH.rglob("page.tsx"))
     assert len(seiten) >= 13, f"nur {len(seiten)} Seiten gefunden — Fund verschoben?"
-    for seite in seiten:
+    for page in seiten:
         assert (BEREICH / "layout.tsx").exists()
-        assert BEREICH in seite.parents, f"{seite} liegt nicht unter dem Gate"
+        assert BEREICH in page.parents, f"{page} liegt nicht unter dem Gate"
 
     # Keine zweite Haushalts-Route außerhalb des gegateten Verzeichnisses.
     app = FRONTEND / "app"
@@ -103,8 +103,8 @@ def _alle_bausteine():
     """
     from council import qa
 
-    quelle = Path(qa.__file__).read_text(encoding="utf-8")
-    gefunden = set(re.findall(r"^def (_\w+_block)\(", quelle, re.M))
+    source = Path(qa.__file__).read_text(encoding="utf-8")
+    gefunden = set(re.findall(r"^def (_\w+_block)\(", source, re.M))
     return sorted(gefunden - AUSNAHMEN)
 
 
@@ -153,14 +153,14 @@ def test_jede_geld_quelle_wird_abgesichert_abgefragt():
     """
     from council import qa
 
-    quelle = (Path(__file__).resolve().parents[1] / "council" / "qa.py").read_text(encoding="utf-8")
-    körper = quelle[quelle.index("def geld_kontext("):]
+    source = (Path(__file__).resolve().parents[1] / "council" / "qa.py").read_text(encoding="utf-8")
+    körper = source[source.index("def geld_kontext("):]
     körper = körper[:körper.index("\ndef ", 1)]
 
     ungeschützt = [
-        zeile.strip()
-        for zeile in körper.splitlines()
-        if "store." in zeile and "_sicher(" not in zeile and not zeile.strip().startswith("#")
+        row.strip()
+        for row in körper.splitlines()
+        if "store." in row and "_sicher(" not in row and not row.strip().startswith("#")
     ]
     assert not ungeschützt, (
         "Store-Abfrage in geld_kontext() ohne _sicher() — bei fehlender Tabelle "

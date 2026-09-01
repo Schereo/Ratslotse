@@ -65,7 +65,7 @@ function stoff(THREE: TH, farbe: string, rau = 0.85): THREE_NS.MeshStandardMater
   return new THREE.MeshStandardMaterial({ color: farbe, roughness: rau, metalness: 0.02 });
 }
 
-function teil(
+function part(
   THREE: TH, ziel: THREE_NS.Object3D, name: string,
   geo: THREE_NS.BufferGeometry, material: THREE_NS.Material,
 ): THREE_NS.Mesh {
@@ -106,7 +106,7 @@ export function lottiAnziehen(THREE: TH, lotti: THREE_NS.Group, theme: MascotThe
     ring.rotateX(Math.PI / 2);
     ring.scale(1, 1, 1.02);
     ring.translate(0, 0.118, 0);
-    teil(THREE, lotti, "schal", ring, wolle);
+    part(THREE, lotti, "schal", ring, wolle);
     /* Das hängende Ende liegt AUF der Brust: Die Körperfront steht bei
        y ≈ 0,082 auf z ≈ 0,088 — die Kapsel sitzt mit ihrer Innenfläche
        knapp darin und ragt nach vorn heraus. Bei z = 0,079 hing sie
@@ -116,7 +116,7 @@ export function lottiAnziehen(THREE: TH, lotti: THREE_NS.Group, theme: MascotThe
     ende.rotateZ(0.16);
     ende.rotateX(-0.10);
     ende.translate(0.036, 0.080, 0.0915);
-    teil(THREE, lotti, "schal-ende", ende, wolle);
+    part(THREE, lotti, "schal-ende", ende, wolle);
   }
 
   if (theme.season === "winter") {
@@ -127,17 +127,17 @@ export function lottiAnziehen(THREE: TH, lotti: THREE_NS.Group, theme: MascotThe
     const polsterM = stoff(THREE, FARBE.scarfCool, 0.95);
     (
       [["links", 1], ["rechts", -1]] as [string, number][]
-    ).forEach(([seite, v]) => {
+    ).forEach(([page, v]) => {
       const p = new THREE.SphereGeometry(0.0145, 22, 16);
       p.scale(0.62, 1, 1);
       p.translate(v * 0.0625, 0.152 - KD, 0.008);
-      teil(THREE, kopf, "ohrpolster-" + seite, p, polsterM);
+      part(THREE, kopf, "ohrpolster-" + page, p, polsterM);
     });
     const buegel = new THREE.TorusGeometry(0.0630, 0.0032, 10, 40, Math.PI);
     buegel.rotateZ(Math.PI);          // offene Seite nach oben …
     buegel.rotateX(-1.22);            // … und der Bogen kippt in den Nacken
     buegel.translate(0, 0.150 - KD, 0.006);
-    teil(THREE, kopf, "ohrbuegel", buegel, polsterM);
+    part(THREE, kopf, "ohrbuegel", buegel, polsterM);
   }
 
   if (theme.season === "summer" && !theme.holiday) {
@@ -151,7 +151,7 @@ export function lottiAnziehen(THREE: TH, lotti: THREE_NS.Group, theme: MascotThe
       const glas = new THREE.CylinderGeometry(0.0198, 0.0198, 0.0042, 28);
       glas.rotateX(Math.PI / 2);
       glas.translate(v * 0.0332, 0.1478 - KD, 0.0790);
-      teil(THREE, kopf, "brille-glas-" + (v === 1 ? "links" : "rechts"), glas, glasM);
+      part(THREE, kopf, "brille-glas-" + (v === 1 ? "links" : "rechts"), glas, glasM);
       /* Der Bügel VERBINDET Glasrand und Schläfe — als Strecke zwischen den
          beiden Punkten gebaut, nicht als frei gedrehter Stab: Das alte
          `rotateY(±0.18)` kippte die Vorderkante nach AUSSEN, und der Stab
@@ -163,12 +163,12 @@ export function lottiAnziehen(THREE: TH, lotti: THREE_NS.Group, theme: MascotThe
         new THREE.Vector3(0, 1, 0), hinten.clone().sub(vorn).normalize()));
       const mitte = vorn.clone().add(hinten).multiplyScalar(0.5);
       buegel.translate(mitte.x, mitte.y, mitte.z);
-      teil(THREE, kopf, "brille-buegel-" + (v === 1 ? "links" : "rechts"), buegel, glasM);
+      part(THREE, kopf, "brille-buegel-" + (v === 1 ? "links" : "rechts"), buegel, glasM);
     });
     const steg = new THREE.CylinderGeometry(0.0026, 0.0026, 0.0270, 10);
     steg.rotateZ(Math.PI / 2);
     steg.translate(0, 0.1508 - KD, 0.0788);
-    teil(THREE, kopf, "brille-steg", steg, glasM);
+    part(THREE, kopf, "brille-steg", steg, glasM);
   }
 
   if (theme.season === "spring" && !theme.holiday) {
@@ -184,12 +184,12 @@ export function lottiAnziehen(THREE: TH, lotti: THREE_NS.Group, theme: MascotThe
       const b = new THREE.SphereGeometry(0.0062, 14, 10);
       b.scale(1, 1, 0.45);
       b.translate(Math.cos(a) * 0.0082, Math.sin(a) * 0.0082, 0);
-      teil(THREE, bluete, "bluetenblatt-" + i, b, blattM);
+      part(THREE, bluete, "bluetenblatt-" + i, b, blattM);
     }
     const kern = new THREE.SphereGeometry(0.0046, 14, 10);
     kern.scale(1, 1, 0.6);
     kern.translate(0, 0, 0.0018);
-    teil(THREE, bluete, "bluetenkern", kern, stoff(THREE, FARBE.flowerCore, 0.6));
+    part(THREE, bluete, "bluetenkern", kern, stoff(THREE, FARBE.flowerCore, 0.6));
     bluete.position.set(0.0560, 0.2065, 0.0400);
     /* Blüte schaut vom Krone-Mittelpunkt radial nach außen. */
     bluete.lookAt(0.14, 0.225, 0.10);
@@ -205,7 +205,7 @@ export function kuekenAnziehen(THREE: TH, kueken: THREE_NS.Group, theme: MascotT
   const ring = new THREE.TorusGeometry(0.0375, 0.0072, 12, 36);
   ring.rotateX(Math.PI / 2);
   ring.translate(0, 0.0335, 0);
-  teil(THREE, kueken, "kueken-schal", ring,
+  part(THREE, kueken, "kueken-schal", ring,
        stoff(THREE, theme.holiday === "christmas" ? FARBE.santa : FARBE.scarfCool));
 }
 
@@ -227,8 +227,8 @@ interface Flocke {
   wind: number; dreh: number;
 }
 
-function streuen(anzahl: number, tempo: [number, number], wind: number): Flocke[] {
-  return Array.from({ length: anzahl }, () => ({
+function streuen(count: number, tempo: [number, number], wind: number): Flocke[] {
+  return Array.from({ length: count }, () => ({
     x: -0.36 + Math.random() * 0.80,
     z: -0.32 + Math.random() * 0.26,
     y0: -0.05 + Math.random() * 0.55,

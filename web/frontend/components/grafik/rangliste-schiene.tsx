@@ -25,7 +25,7 @@ import { cn } from "@/lib/utils";
 
 export type RanglisteZeile = {
   label: string;
-  wert: number;
+  value: number;
   /** Dunkler zeichnen, damit man die Zeile findet — keine Bewertung. */
   hervorgehoben?: boolean;
   /** Eine Zusatzzeile unter dem Balken („Stadtentwicklung · 8 Jahrgänge"). */
@@ -33,17 +33,17 @@ export type RanglisteZeile = {
 };
 
 export function RanglisteSchiene({
-  zeilen, schiene = "null-bis-max", einheit, nachkomma = 0, mittelmarke, beleg,
+  zeilen, schiene = "null-bis-max", unit, nachkomma = 0, mittelmarke, beleg,
 }: {
   zeilen: RanglisteZeile[];
   /** `"null-bis-max"` (Default) oder ein festes Paar `[min, max]` — die
    *  Null-Basis ist die Voreinstellung, kein Sonderfall. */
   schiene?: "null-bis-max" | [number, number];
   /** Steht hinter jedem Wert: „%", „€", „Mio. €". */
-  einheit: string;
+  unit: string;
   nachkomma?: number;
   /** Eine beschriftete Marke auf der Schiene, z. B. der Mittelwert. */
-  mittelmarke?: { wert: number; label: string };
+  mittelmarke?: { value: number; label: string };
   /** Beleg-Chip-Slot (GB-00) — die Seite wählt die Quelle. */
   beleg?: ReactNode;
 }) {
@@ -52,7 +52,7 @@ export function RanglisteSchiene({
   if (!zeilen.length) return null;
 
   const [von, bis] = schiene === "null-bis-max"
-    ? [0, Math.max(...zeilen.map((z) => z.wert), 0)]
+    ? [0, Math.max(...zeilen.map((z) => z.value), 0)]
     : schiene;
   const spanne = bis - von || 1;
   const anteil = (w: number) => Math.min(Math.max(((w - von) / spanne) * 100, 0), 100);
@@ -66,14 +66,14 @@ export function RanglisteSchiene({
       <span
         className="block h-full rounded-full"
         style={{
-          width: `${Math.max(anteil(z.wert), 1.5)}%`,
+          width: `${Math.max(anteil(z.value), 1.5)}%`,
           background: z.hervorgehoben ? "var(--hh-ein-0)" : "var(--hh-ein-3)",
         }}
       />
       {mittelmarke && (
         <span
           className="absolute inset-y-0 w-px bg-foreground/50"
-          style={{ left: `${anteil(mittelmarke.wert)}%` }}
+          style={{ left: `${anteil(mittelmarke.value)}%` }}
         />
       )}
     </span>
@@ -84,7 +84,7 @@ export function RanglisteSchiene({
       "whitespace-nowrap text-right font-mono text-[12px] tabular-nums",
       z.hervorgehoben ? "font-bold text-foreground" : "text-muted-foreground",
     )}>
-      {deZahl(z.wert, nachkomma)}&nbsp;{einheit}
+      {deZahl(z.value, nachkomma)}&nbsp;{unit}
     </span>
   );
 
@@ -132,7 +132,7 @@ export function RanglisteSchiene({
           {mittelmarke && (
             <span className="inline-flex items-center gap-1.5">
               <span aria-hidden="true" className="h-2.5 w-px bg-foreground/50" />
-              {mittelmarke.label}: {deZahl(mittelmarke.wert, nachkomma)}&nbsp;{einheit}
+              {mittelmarke.label}: {deZahl(mittelmarke.value, nachkomma)}&nbsp;{unit}
             </span>
           )}
           {beleg}

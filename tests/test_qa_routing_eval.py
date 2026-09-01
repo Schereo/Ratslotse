@@ -22,8 +22,8 @@ def _gold_analysis(case):
         if channel in channels:
             needs.append(need)
     return {
-        "frage": case["question"],
-        "typ": case["allowed_types"][0],
+        "question": case["question"],
+        "kind": case["allowed_types"][0],
         "rechercheplan": qa._research_plan({"rechercheplan": {
             "intent": "fact", "channels": channels, "sort": "relevance",
             "needs": needs,
@@ -66,7 +66,7 @@ def test_routing_eval_meldet_zu_viele_und_fehlende_kanaele():
         "forbidden_channels": ["debates"],
     }
     analysis = {
-        "frage": case["question"], "typ": "verlauf",
+        "question": case["question"], "typ": "history",
         "rechercheplan": qa._research_plan({"rechercheplan": {
             "intent": "timeline", "channels": ["decisions", "debates"],
             "needs": ["statements"],

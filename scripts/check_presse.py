@@ -43,8 +43,8 @@ def main() -> dict:
             continue
         store.save_presse(
             eintrag["url"], eintrag["news_id"],
-            detail["titel"] or eintrag["titel"],
-            detail["datum"] or eintrag["datum"], detail["text"])
+            detail["title"] or eintrag["title"],
+            detail["date"] or eintrag["date"], detail["text"])
         neu += 1
     chunks = 0
     if neu:

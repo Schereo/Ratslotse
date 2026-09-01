@@ -43,7 +43,7 @@ def _existing_agenda_bookmark(rows: list[dict], ksinr: int, item: dict) -> dict 
             continue
         if item.get("kvonr") and row.get("kvonr") == item["kvonr"]:
             return row
-        if item.get("vorlage_nr") and row.get("vorlage_nr") == item["vorlage_nr"]:
+        if item.get("template_number") and row.get("template_number") == item["template_number"]:
             return row
         if bookmark_logic.normalized_title(row.get("title")) == bookmark_logic.normalized_title(item.get("title")):
             return row
@@ -54,27 +54,27 @@ def _existing_agenda_bookmark(rows: list[dict], ksinr: int, item: dict) -> dict 
 
 @router.get("")
 def list_bookmarks(user: dict = Depends(require_active),
-                   nwz: Store = Depends(get_store),
+                   ratslotse: Store = Depends(get_store),
                    council: CouncilStore = Depends(get_council_store)) -> Merkliste:
     out = []
-    for row in nwz.get_bookmarks(user["id"]):
+    for row in ratslotse.get_bookmarks(user["id"]):
         entry = bookmark_logic.enrich_bookmark(row, council)
         # Alte Oberpunkt-Merker bleiben sichtbar, lösen aber keine irreführende
         # Ergebnis-Meldung mehr aus. Gelöscht wird nichts ohne Zutun des Kontos.
         if entry.get("is_group") and row.get("notify_result"):
-            nwz.set_bookmark_result_notification(user["id"], row["id"], False)
+            ratslotse.set_bookmark_result_notification(user["id"], row["id"], False)
             entry["notify_result"] = False
         out.append(entry)
         item, decision = entry.get("agenda_item"), entry.get("decision")
         # Erkannte Nummernverschiebungen und nachträglich entstandene
         # Beschluss-IDs gleich in den Snapshot übernehmen.
         if item or decision:
-            nwz.update_bookmark_snapshot(
+            ratslotse.update_bookmark_snapshot(
                 row["id"],
                 item_number=(item or decision or {}).get("item_number"),
                 decision_id=(decision or {}).get("id"),
                 kvonr=(item or decision or {}).get("kvonr"),
-                vorlage_nr=(item or decision or {}).get("vorlage_nr") or row.get("vorlage_nr") or "",
+                template_number=(item or decision or {}).get("template_number") or row.get("template_number") or "",
                 title=(item or decision or {}).get("title") or row.get("title") or "",
                 subtitle=_subtitle(entry.get("session"), (item or decision or {}).get("item_number")),
             )
@@ -84,7 +84,7 @@ def list_bookmarks(user: dict = Depends(require_active),
 @router.post("", status_code=status.HTTP_201_CREATED)
 def create_bookmark(payload: BookmarkIn,
                     user: dict = Depends(require_active),
-                    nwz: Store = Depends(get_store),
+                    ratslotse: Store = Depends(get_store),
                     council: CouncilStore = Depends(get_council_store)) -> Merkeintrag:
     owner_id = user["id"]
 
@@ -94,7 +94,7 @@ def create_bookmark(payload: BookmarkIn,
         session = council.get_session(payload.ksinr)
         if not session:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Sitzung nicht gefunden.")
-        row = nwz.add_bookmark(
+        row = ratslotse.add_bookmark(
             owner_id, kind="session", target_key=f"session:{payload.ksinr}",
             ksinr=payload.ksinr, title=session["committee"], subtitle=_subtitle(session),
         )
@@ -117,15 +117,15 @@ def create_bookmark(payload: BookmarkIn,
                 "Dieser Oberpunkt fasst mehrere Unterpunkte zusammen. "
                 "Bitte merke einen konkreten Unterpunkt.",
             )
-        existing = _existing_agenda_bookmark(nwz.get_bookmarks(owner_id), payload.ksinr, item)
+        existing = _existing_agenda_bookmark(ratslotse.get_bookmarks(owner_id), payload.ksinr, item)
         if existing:
             return bookmark_logic.enrich_bookmark(existing, council)
         identity = item.get("kvonr") or item["item_number"]
-        row = nwz.add_bookmark(
+        row = ratslotse.add_bookmark(
             owner_id, kind="agenda_item",
             target_key=f"agenda_item:{payload.ksinr}:{identity}",
             ksinr=payload.ksinr, item_number=item["item_number"], kvonr=item.get("kvonr"),
-            vorlage_nr=item.get("vorlage_nr") or "", title=item["title"],
+            template_number=item.get("template_number") or "", title=item["title"],
             subtitle=_subtitle(session, item["item_number"]),
         )
 
@@ -137,18 +137,18 @@ def create_bookmark(payload: BookmarkIn,
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Beschluss nicht gefunden.")
         # Ein früher gemerkter TOP ist inzwischen genau dieser Beschluss: kein
         # zweiter Eintrag, sondern denselben weiterverwenden.
-        for existing in nwz.get_bookmarks(owner_id):
+        for existing in ratslotse.get_bookmarks(owner_id):
             resolved = bookmark_logic.resolve_bookmark(existing, council).get("decision")
             if resolved and resolved.get("id") == decision.get("id"):
                 return bookmark_logic.enrich_bookmark(existing, council)
         session = council.get_session(decision["ksinr"])
         stable = bookmark_logic.top_number(decision.get("item_number")) or str(decision["id"])
-        row = nwz.add_bookmark(
+        row = ratslotse.add_bookmark(
             owner_id, kind="decision",
             target_key=f"decision:{decision['ksinr']}:{stable}",
             ksinr=decision["ksinr"], item_number=decision.get("item_number"),
             decision_id=decision["id"], kvonr=decision.get("kvonr"),
-            vorlage_nr=decision.get("vorlage_nr") or "",
+            template_number=decision.get("template_number") or "",
             title=decision.get("title") or "Beschluss",
             subtitle=_subtitle(session, decision.get("item_number")),
         )
@@ -159,9 +159,9 @@ def create_bookmark(payload: BookmarkIn,
 @router.put("/{bookmark_id}/notification")
 def set_notification(bookmark_id: int, payload: BookmarkNotificationIn,
                      user: dict = Depends(require_active),
-                     nwz: Store = Depends(get_store),
+                     ratslotse: Store = Depends(get_store),
                      council: CouncilStore = Depends(get_council_store)) -> Merkeintrag:
-    row = nwz.get_bookmark_for_owner(user["id"], bookmark_id)
+    row = ratslotse.get_bookmark_for_owner(user["id"], bookmark_id)
     if not row:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Merkeintrag nicht gefunden.")
     if row["kind"] != "agenda_item":
@@ -175,13 +175,13 @@ def set_notification(bookmark_id: int, payload: BookmarkNotificationIn,
         )
     if payload.notify_result and entry.get("decision"):
         raise HTTPException(status.HTTP_409_CONFLICT, "Das Ergebnis liegt bereits vor.")
-    updated = nwz.set_bookmark_result_notification(user["id"], bookmark_id,
+    updated = ratslotse.set_bookmark_result_notification(user["id"], bookmark_id,
                                                    payload.notify_result)
     return bookmark_logic.enrich_bookmark(updated, council)
 
 
 @router.delete("/{bookmark_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_bookmark(bookmark_id: int, user: dict = Depends(require_active),
-                    nwz: Store = Depends(get_store)) -> None:
-    if not nwz.delete_bookmark(user["id"], bookmark_id):
+                    ratslotse: Store = Depends(get_store)) -> None:
+    if not ratslotse.delete_bookmark(user["id"], bookmark_id):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Merkeintrag nicht gefunden.")
