@@ -491,6 +491,7 @@ def test_admin_jobs_listet_registry_auch_ohne_laeufe(client):
     assert {j["key"] for j in b} == {
         "check_council", "check_committees", "check_protocols", "weekly_enrich",
         "check_council_videos",  # vorläufige Ergebnisse aus der O1-Aufzeichnung, täglich
+        "record_council_livestream",  # Live-Mitschnitt des O1-Streams an Sitzungstagen
         "check_vorlage_follows", "remind_setup", "backup_db", "abendmeldungen",
         "check_presse",  # Stufe 3a: Stadt-Pressemitteilungen, täglich
         "render_plaene",  # P1: Planzeichnungen als Bilder, sonntags

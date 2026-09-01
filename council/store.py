@@ -4895,7 +4895,7 @@ class CouncilStore:
         im Frontend). Sobald das Protokoll da ist, übernehmen dessen
         Beschlüsse; die Sitzung fällt dann von selbst aus dieser Liste."""
         rows = self._conn.execute(
-            """SELECT s.ksinr, s.committee, s.session_date
+            """SELECT s.ksinr, s.committee, s.session_date, s.session_time
                FROM council_sessions s
                WHERE s.committee IN ('Rat', 'Stadtrat', 'Rat der Stadt Oldenburg')
                  AND s.session_date >= ?
