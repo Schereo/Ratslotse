@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bell, Check, Landmark, Loader2, Mail, MapPin, Plus, Sparkles, X } from "lucide-react";
@@ -9,7 +9,7 @@ import { isNativeApp } from "@/lib/platform";
 import { cn, pfad } from "@/lib/utils";
 import { Button, Input } from "@/components/ui";
 import { Mascot, type MascotPose } from "@/components/mascot";
-import { committeeExplains, committeeRank, shortCommittee } from "@/lib/committees";
+import { committeeExplains, committeeIcon, committeeRank, shortCommittee } from "@/lib/committees";
 import { useAuth } from "@/lib/auth";
 import { TopicSheet, type Described } from "@/components/topic-sheet";
 import { StadtteilKarte } from "@/components/stadtteil-karte";
@@ -56,18 +56,27 @@ const LEGACY_INTRO_KEY = "ratslotse.intro.done";
 
 type Step = 0 | 1 | 2 | 3 | 4;
 
-/** Die Spalte, in der der Assistent steht. Am Telefon füllt sie den Schirm, am
- *  Desktop steht sie zentriert — 980 px, dieselbe Breite wie die iPad-Fassung
- *  der App. Fortschrittsleiste, Inhalt und Fußzeile MÜSSEN dieselbe Klasse
- *  benutzen, sonst steht die Leiste neben ihrem eigenen Schritt. */
-const SPALTE = "mx-auto w-full max-w-[980px]";
+/** Der laufende Schritt, für das Gerüst. Als Kontext statt als Prop, weil ihn
+ *  nur `StepShell` braucht — vier Schritt-Komponenten, die ihn bloß
+ *  durchreichen, wären genau die Sorte Verdrahtung, die beim fünften Schritt
+ *  jemand vergisst. */
+const SchrittKontext = createContext<Step>(1);
+
+/** Die Spalte, in der der Assistent steht. Am Telefon füllt sie den Schirm; am
+ *  Desktop ist sie die Breite des Blatts (s. u.), auf dem der Schritt liegt.
+ *  Kopfzeile, Inhalt und Fußleiste MÜSSEN dieselbe Klasse benutzen, sonst
+ *  steht die Leiste neben ihrem eigenen Schritt. 1040 statt 980, damit die
+ *  Antwortspalte rechts 650 px behält — genug für zwei Gremien nebeneinander. */
+const SPALTE = "mx-auto w-full max-w-[1040px]";
 /** Vier Schritte: Gremien, Stadtteil, Themen, Mitteilungen. Die App kennt den
  *  Stadtteil-Schritt (noch) nicht und läuft mit drei — deshalb steht die Zahl
  *  hier und nicht als `3` an fünf Stellen im Markup. */
 const SCHRITTE = 4;
-/** Am Desktop zweispaltig wie auf dem iPad: links Lotti mit der Frage, rechts
- *  die Antwortfläche. Darunter (`lg` = 1024 px) bleibt es einspaltig. */
-const ZWEISPALTIG = "lg:grid lg:grid-cols-[320px_minmax(0,1fr)] lg:gap-12";
+/** Am Desktop zweispaltig: links Lotti, die Frage und der Schritt-Pfad, rechts
+ *  die Antwortfläche. Darunter (`lg` = 1024 px) bleibt es einspaltig. 280 statt
+ *  320 für die Frage-Spalte: Vier Wörter Überschrift brauchen keine 320 px,
+ *  und jeder Pixel davon fehlt rechts, wo die Arbeit passiert. */
+const ZWEISPALTIG = "lg:grid lg:grid-cols-[280px_minmax(0,1fr)] lg:gap-10";
 
 /** Im Browser darf der Assistent nur INNERHALB der App auftauchen.
  *
@@ -288,51 +297,74 @@ export function OnboardingFlow() {
   if (step === null) return null;
 
   return (
-    /* Ebene „flaeche": Der Auftakt ERSETZT die App-Hülle (deckend, inset-0),
-       das Blatt „Thema anpassen" liegt eine Stufe darüber. Die Leiter steht in
-       app/globals.css. */
-    <div ref={rootRef} className="fixed inset-0 z-[var(--level-flaeche)] flex flex-col bg-background pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-[calc(0.75rem+env(safe-area-inset-top))]">
-      {step > 0 && (
-        /* Am Desktop läuft die Fortschrittsleiste nicht über die volle Breite:
-           Sie gehört über den Inhalt, und der ist auf Lesebreite begrenzt.
-           Dieselbe `mx-auto max-w-*`-Fassung wie in StepShell — beide MÜSSEN
-           gleich sein, sonst steht die Leiste neben ihrem eigenen Schritt. */
-        <div className={cn(SPALTE, "px-[18px] lg:px-8")}>
-          <div className="flex items-center gap-3">
-            {/* Drei Segmente statt eines Laufbalkens: Man sieht, wie viele
-                Schritte es überhaupt sind — und dass es nur drei sind. */}
-            <div className="flex flex-1 gap-1.5" role="progressbar"
-              aria-valuenow={step} aria-valuemin={1} aria-valuemax={SCHRITTE}
-              aria-label={`Schritt ${step} von ${SCHRITTE}`}>
-              {[1, 2, 3, 4].slice(0, SCHRITTE).map((n) => (
-                <span key={n} className={cn("h-1 flex-1 rounded-full transition-colors duration-300",
-                  n <= step ? "bg-primary" : "bg-muted")} />
-              ))}
-            </div>
-            <button type="button" onClick={() => go(step >= SCHRITTE ? "done" : ((step + 1) as Step))}
-              className="shrink-0 py-1 text-[13px] text-muted-foreground transition-colors hover:text-foreground">
-              Überspringen
-            </button>
-          </div>
-        </div>
-      )}
+    <SchrittKontext.Provider value={step}>
+    {/* Ebene „flaeche": Der Auftakt ERSETZT die App-Hülle (deckend, inset-0),
+        das Blatt „Thema anpassen" liegt eine Stufe darüber. Die Leiter steht in
+        app/globals.css.
 
-      {step === 0 && <Welcome onNext={() => go(1)} />}
-      {step === 1 && <CommitteeStep onNext={() => go(2)} />}
-      {/* Der Stadtteil steht VOR den Themen und ist ein eigener Schritt: Er ist
-          die eine Angabe, die fast alle machen wollen und die den Themen-
-          Schritt danach überhaupt erst persönlich macht — dort stehen dann
-          Vorschläge „aus deinem Stadtteil" neben den stadtweiten. Als Beiwerk
-          im Themen-Schritt (bis 09/2026) ging beides unter. */}
-      {step === 2 && <StadtteilStep onNext={() => go(3)} />}
-      {step === 3 && <TopicStep onNext={() => go(4)} />}
-      {/* Schritt 3 fragt auf beiden Plattformen dasselbe („Soll Lotti sich
-          melden?") — aber der Browser kann keine Push-Erlaubnis geben, dort
-          geht es um die E-Mail. */}
-      {step === 4 && (native
-        ? <PushStep onDone={() => go("done")} />
-        : <MailStep onDone={() => go("done")} />)}
+        Am Desktop liegt der Schritt als BLATT in der Fenstermitte — Radius 18,
+        Rahmen, eigene Fußleiste —, nicht als Inhalt, der im Viewport schwebt
+        (die „Bühne" aus DESIGNSPRACHE §4). Vorher war das Gerüst auf allen
+        Breiten dasselbe: Inhalt oben, Knopf an der Unterkante des Fensters —
+        und bei einem kurzen Schritt wie der Zustellung blieb dazwischen ein
+        leeres Drittel des Bildschirms (Tims Befund, 01.09.2026). Ein Blatt ist
+        so hoch wie sein Inhalt und steht mittig; ist der Inhalt länger als das
+        Fenster, scrollt er im Blatt, die Fußleiste bleibt. Der Auftakt bekommt
+        kein Blatt — er ist ein Moment, keine Seite. */}
+    <div ref={rootRef} className={cn(
+      "fixed inset-0 z-[var(--level-flaeche)] flex flex-col bg-background",
+      "pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-[calc(0.75rem+env(safe-area-inset-top))]",
+      step > 0 && "lg:flex-row lg:items-center lg:justify-center lg:p-6 xl:p-10",
+    )}>
+      {step === 0 ? <Welcome onNext={() => go(1)} /> : (
+        <section aria-label={`Einrichtung, Schritt ${step} von ${SCHRITTE}`}
+          className={cn(
+            "flex min-h-0 flex-1 flex-col",
+            "lg:max-h-full lg:w-full lg:max-w-[1040px] lg:flex-none lg:overflow-hidden",
+            "lg:rounded-[18px] lg:border lg:border-border lg:bg-card lg:shadow-[0_1px_2px_rgba(0,0,0,0.04)]",
+          )}>
+          {/* Kopfzeile: am Telefon die Fortschrittssegmente, am Desktop nur ein
+              stiller Mono-Kicker — dort trägt der Schritt-Pfad in der linken
+              Spalte den Fortschritt, und zwei Anzeigen für dieselbe Sache
+              übereinander wären eine zu viel. */}
+          <div className={cn(SPALTE, "px-[18px] lg:px-8 lg:pt-5")}>
+            <div className="flex items-center gap-3">
+              {/* Segmente statt eines Laufbalkens: Man sieht, wie viele
+                  Schritte es überhaupt sind. */}
+              <div className="flex flex-1 gap-1.5 lg:hidden" role="progressbar"
+                aria-valuenow={step} aria-valuemin={1} aria-valuemax={SCHRITTE}
+                aria-label={`Schritt ${step} von ${SCHRITTE}`}>
+                {[1, 2, 3, 4].slice(0, SCHRITTE).map((n) => (
+                  <span key={n} className={cn("h-1 flex-1 rounded-full transition-colors duration-300",
+                    n <= step ? "bg-primary" : "bg-muted")} />
+                ))}
+              </div>
+              <Kicker className="hidden flex-1 lg:flex">Schritt {step} von {SCHRITTE}</Kicker>
+              <button type="button" onClick={() => go(step >= SCHRITTE ? "done" : ((step + 1) as Step))}
+                className="shrink-0 py-1 text-[13px] text-muted-foreground transition-colors hover:text-foreground">
+                Überspringen
+              </button>
+            </div>
+          </div>
+
+          {step === 1 && <CommitteeStep onNext={() => go(2)} />}
+          {/* Der Stadtteil steht VOR den Themen und ist ein eigener Schritt: Er ist
+              die eine Angabe, die fast alle machen wollen und die den Themen-
+              Schritt danach überhaupt erst persönlich macht — dort stehen dann
+              Vorschläge „aus deinem Stadtteil" neben den stadtweiten. Als Beiwerk
+              im Themen-Schritt (bis 09/2026) ging beides unter. */}
+          {step === 2 && <StadtteilStep onNext={() => go(3)} />}
+          {step === 3 && <TopicStep onNext={() => go(4)} />}
+          {/* Schritt 4 fragt auf beiden Plattformen dasselbe („Soll Lotti sich
+              melden?") — aber der Browser kann keine Push-Erlaubnis geben, dort
+              geht es um die E-Mail. */}
+          {step === 4 && (native
+            ? <PushStep onDone={() => go("done")} />
+            : <MailStep onDone={() => go("done")} />)}
+        </section>
+      )}
     </div>
+    </SchrittKontext.Provider>
   );
 }
 
@@ -445,33 +477,65 @@ function CommitteeStep({ onNext }: { onNext: () => void }) {
       }
     >
       {committees.isLoading && <p className="text-sm text-muted-foreground">Gremien werden geladen …</p>}
-      <div className="flex flex-col gap-2">
-        {shown.map((c) => {
-          const on = active.includes(c);
-          const explain = committeeExplains(c);
-          return (
-            <button key={c} type="button" aria-pressed={on}
-              onClick={() => toggle.mutate({ committee: c, on: !on })}
-              className={cn(
-                "flex items-start gap-3 rounded-xl border p-3 text-left transition-colors",
-                on ? "border-primary bg-primary/5" : "border-border bg-card hover:bg-muted/50",
-              )}>
-              <span className={cn(
-                "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border",
-                on ? "border-primary bg-primary text-primary-foreground" : "border-border",
-              )}>
-                {on && <Check className="h-3.5 w-3.5" />}
-              </span>
-              <span className="min-w-0">
-                <span className="block text-sm font-semibold text-foreground">{shortCommittee(c)}</span>
-                {/* Ohne den Satz ist das eine Liste von Amtsbezeichnungen. */}
-                {explain && <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">{explain}</span>}
-              </span>
-            </button>
-          );
-        })}
+      {/* Zwei Spalten, sobald die Antwortfläche 576 px hergibt (Container-
+          Query, nicht Fensterbreite — DESIGNSPRACHE §4). Zwölf Gremien
+          untereinander waren zwölf Kacheln à 125 px: Man scrollte durch eine
+          Liste, für die der Platz daneben leer stand. Nebeneinander passen alle
+          auf einen Schirm, und die Wahl wird ein Überblick statt einer Reise. */}
+      <div className="@container">
+        <div className="grid gap-2 @xl:grid-cols-2">
+          {shown.map((c) => {
+            const on = active.includes(c);
+            const explain = committeeExplains(c);
+            return (
+              <button key={c} type="button" aria-pressed={on}
+                onClick={() => toggle.mutate({ committee: c, on: !on })}
+                className={cn(
+                  "relative flex items-start gap-3 rounded-xl border p-3 pr-9 text-left transition-colors",
+                  // Auf dem Blatt (Desktop) eine Stufe leiser als das Blatt
+                  // selbst — Container im Container; am Telefon, wo kein Blatt
+                  // ist, bleibt die Kachel weiß auf der Seite.
+                  on ? "border-primary bg-primary/5"
+                     : "border-border bg-card hover:bg-muted/60 lg:bg-background lg:hover:bg-muted/50",
+                )}>
+                <GremiumZeichen committee={c} aktiv={on} />
+                <span className="min-w-0">
+                  <span className="block text-[13.5px] font-semibold leading-snug text-foreground">{shortCommittee(c)}</span>
+                  {/* Ohne den Satz ist das eine Liste von Amtsbezeichnungen. */}
+                  {explain && <span className="mt-0.5 block text-[12px] leading-snug text-muted-foreground">{explain}</span>}
+                </span>
+                {/* Das Häkchen sitzt an der Kante, nicht in der Zeile: Das
+                    Zeichen links trägt schon den Zustand (gefüllt = gewählt),
+                    das Häkchen bestätigt ihn nur — für alle, denen eine
+                    Farbfläche allein zu wenig sagt. */}
+                {on && (
+                  <span className="absolute right-3 top-3 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                    <Check className="h-2.5 w-2.5" strokeWidth={3} />
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
       </div>
     </StepShell>
+  );
+}
+
+/** Das Zeichen des Gremiums auf getönter Scheibe (Primär-Tint /8, DESIGNSPRACHE
+ *  §2); gewählt = gefüllt. Eine eigene Komponente, obwohl sie klein ist: Genau
+ *  hier soll später Lottis Gremien-Variante stehen, sobald es die Sprites gibt
+ *  (s. `committeeIcon` in lib/committees.ts) — dann ändert sich diese Funktion
+ *  und keine Kachel. */
+function GremiumZeichen({ committee, aktiv }: { committee: string; aktiv: boolean }) {
+  const Icon = committeeIcon(committee);
+  return (
+    <span aria-hidden className={cn(
+      "flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] transition-colors",
+      aktiv ? "bg-primary text-primary-foreground" : "bg-primary/[0.08] text-primary",
+    )}>
+      <Icon className="h-[18px] w-[18px]" strokeWidth={2} />
+    </span>
   );
 }
 
@@ -582,7 +646,7 @@ function StadtteilStep({ onNext }: { onNext: () => void }) {
       {/* Die Karte am Desktop, wo Platz ist. Die Liste steht auf JEDER Breite
           da — sie ist nicht bloß der Ersatz fürs kleine Fenster, sondern auch
           der Weg für Tastatur und Screenreader. */}
-      <div className="hidden lg:block">
+      <div className="hidden rounded-2xl border border-border bg-background p-3 lg:block">
         <StadtteilKarte gewaehlt={namen} auswaehlbar={auswaehlbar}
           onWaehlen={(n) => void umschalten(n)} />
       </div>
@@ -776,18 +840,18 @@ function TopicStep({ onNext }: { onNext: () => void }) {
           einmal auf. */}
       {gruppen.map((g) => (
         <div key={g.place_id} className="mt-4">
-          <p className="flex flex-wrap items-center gap-x-1.5 text-[11px] font-bold uppercase tracking-[0.06em] text-primary">
+          <Kicker className="text-primary">
             <MapPin className="h-3 w-3" />
             Aus {g.name}
             {/* Zeitraum dazuschreiben, sobald es mehr als ein Jahr war. In
                 ruhigen Stadtteilen reicht ein Jahr nicht für sechs Vorschläge;
                 das stumm zu weiten hieße, Aktualität zu behaupten. */}
             {g.months > 12 && (
-              <span className="font-medium normal-case tracking-normal text-muted-foreground">
+              <span className="font-sans text-[11px] font-medium normal-case tracking-normal text-muted-foreground">
                 · letzte {Math.round(g.months / 12)} Jahre
               </span>
             )}
-          </p>
+          </Kicker>
           {g.suggestions.length > 0 ? (
             <VorschlagsChips vorschlaege={g.suggestions} vorhanden={mine} busy={busy} betont
               onWaehlen={(v) => void add(v.name, v.description, v.n)} />
@@ -805,9 +869,7 @@ function TopicStep({ onNext }: { onNext: () => void }) {
               „Aus Dobbenviertel" wäre das Kulturzentrum PFL schlicht falsch. */}
           {g.nearby.length > 0 && (
             <>
-              <p className="mt-3 text-[11px] font-bold uppercase tracking-[0.06em] text-muted-foreground">
-                Direkt nebenan
-              </p>
+              <Kicker className="mt-3">Direkt nebenan</Kicker>
               <VorschlagsChips vorschlaege={g.nearby} vorhanden={mine} busy={busy}
                 onWaehlen={(v) => void add(v.name, v.description, v.n)} />
             </>
@@ -817,19 +879,15 @@ function TopicStep({ onNext }: { onNext: () => void }) {
 
       {stadtweite.length > 0 && (
         <div className="mt-4">
-          <p className="text-[11px] font-bold uppercase tracking-[0.06em] text-muted-foreground">
-            {gruppen.length ? "Stadtweit" : "Gerade aktuell im Rat"}
-          </p>
+          <Kicker>{gruppen.length ? "Stadtweit" : "Gerade aktuell im Rat"}</Kicker>
           <VorschlagsChips vorschlaege={stadtweite} vorhanden={mine} busy={busy}
             onWaehlen={(v) => void add(v.name, v.description, v.n)} />
         </div>
       )}
 
       {mine.length > 0 && (
-        <div className="mt-4 rounded-2xl border border-border bg-card p-3.5">
-          <p className="text-[11px] font-bold uppercase tracking-[0.06em] text-muted-foreground">
-            Deine Themen ({mine.length})
-          </p>
+        <div className="mt-4 rounded-2xl border border-border bg-card p-3.5 lg:bg-background">
+          <Kicker>Deine Themen ({mine.length})</Kicker>
           <div className="mt-2.5 flex flex-col gap-2">
             {mine.map((t) => (
               <TopicCard key={t.id} topic={t} matches={matchCount[t.name]}
@@ -1007,19 +1065,26 @@ function MailStep({ onDone }: { onDone: () => void }) {
   return (
     <StepShell
       title="Soll Lotti sich melden?"
-      lead="Ohne Mitteilung merkst du nicht, wenn dein Thema auf einer Tagesordnung landet — und genau darum geht es hier."
+      lead="Ohne Benachrichtigung merkst du nicht, wenn dein Thema auf einer Tagesordnung landet — und genau darum geht es hier."
       pose="wave"
+      // Am Desktop nebeneinander in der Fußleiste, der Knopf rechts außen; am
+      // Telefon untereinander, der Knopf oben. `flex-row-reverse`, damit der
+      // Knopf in beiden Fällen als Erstes im DOM steht — die Tab-Reihenfolge
+      // folgt der Wichtigkeit, nicht der Bildschirmposition.
       footer={
-        <div className="flex w-full flex-col gap-2 lg:w-auto lg:items-end">
+        <div className="flex w-full flex-col gap-2 lg:w-auto lg:flex-row-reverse lg:items-center lg:gap-5">
+          {/* Der Knopf sagt, WOZU man ja sagt. „Ja, so ist es richtig"
+              bestätigte nur, dass irgendein Schalter steht (Tim, 01.09.2026). */}
           <Button className="w-full lg:w-auto lg:min-w-56" onClick={einschalten} disabled={busy}>
             {busy ? <Loader2 className="h-4 w-4 animate-spin" />
-                  : an ? "Ja, so ist es richtig" : "E-Mail-Mitteilungen einschalten"}
+                  : an ? "Ja, ich möchte Benachrichtigungen erhalten"
+                       : "E-Mail-Benachrichtigungen einschalten"}
           </Button>
           {/* Ein Nein muss möglich bleiben — aber es steht als stiller Text da,
               nicht als gleichwertiger zweiter Knopf. */}
           <button type="button" onClick={onDone}
             className="py-1 text-sm text-muted-foreground transition-colors hover:text-foreground">
-            {an ? "Später entscheiden" : "Ohne Mitteilungen weiter"}
+            {an ? "Später entscheiden" : "Ohne Benachrichtigungen weiter"}
           </button>
         </div>
       }
@@ -1070,7 +1135,7 @@ function MailStep({ onDone }: { onDone: () => void }) {
 
       {/* Die Gegenfrage, die jede:r stellt — mit Zahlen beantwortet. */}
       <p className="mt-3 rounded-lg border border-border bg-muted/30 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">
-        <strong className="font-semibold text-foreground">Höchstens zwei Mitteilungen am Tag</strong>, zwischen
+        <strong className="font-semibold text-foreground">Höchstens zwei Benachrichtigungen am Tag</strong>, zwischen
         21 und 7 Uhr gar keine — mehr wird gebündelt. Welche Anlässe du bekommst, stellst du
         jederzeit im Konto ein; abbestellen geht mit einem Klick in jeder Mail.
       </p>
@@ -1078,7 +1143,7 @@ function MailStep({ onDone }: { onDone: () => void }) {
       {an && (
         <p className="mt-2.5 flex items-center gap-1.5 text-xs text-primary">
           <Check className="h-3.5 w-3.5 shrink-0" />
-          E-Mail-Mitteilungen sind für {user?.email} bereits eingeschaltet.
+          E-Mail-Benachrichtigungen sind für {user?.email} bereits eingeschaltet.
         </p>
       )}
       {fehler && (
@@ -1144,6 +1209,58 @@ function PushStep({ onDone }: { onDone: () => void }) {
 
 /* ------------------------------------------------------------- Gerüst ---- */
 
+/** Mono-Kicker über einem Block (DESIGNSPRACHE §3/§5): IBM Plex Mono, Versalien,
+ *  0,1 em Laufweite. Vorher standen die Gruppen-Überschriften des Themen-
+ *  Schritts in fetten Inter-Versalien — die gibt es sonst nirgends in der App. */
+function Kicker({ children, className }: { children: React.ReactNode; className?: string }) {
+  return (
+    <p className={cn(
+      "flex flex-wrap items-center gap-x-1.5 font-mono text-[10.5px] uppercase tracking-[0.1em] text-muted-foreground",
+      className,
+    )}>
+      {children}
+    </p>
+  );
+}
+
+const SCHRITT_NAMEN = ["Gremien", "Stadtteile", "Themen"] as const;
+
+/** Der Schritt-Pfad in der Frage-Spalte (nur `lg`). Vorher stand dort unter der
+ *  Frage nichts — 400 px Luft auf jedem Schritt. Jetzt trägt die Spalte, wo man
+ *  ist und was noch kommt, in der Form aus DESIGNSPRACHE §5 (Schritt-Pfad):
+ *  erledigt = gefüllter Punkt, aktuell = Ring mit Halo, offen = Rand-Punkt.
+ *  Am Telefon übernehmen die Segmente in der Kopfzeile; zweimal dasselbe
+ *  bräuchte niemand. */
+function SchrittPfad({ aktuell, native }: { aktuell: Step; native: boolean }) {
+  const namen = [...SCHRITT_NAMEN, native ? "Mitteilungen" : "Benachrichtigungen"];
+  return (
+    <ol aria-label="Schritte der Einrichtung" className="relative mt-8 hidden flex-col gap-3.5 lg:flex">
+      {/* Der Faden hinter den Punkten — die Punkte decken ihn mit ihrer Fläche. */}
+      <span aria-hidden className="absolute bottom-2 left-[7px] top-2 w-px bg-border" />
+      {namen.map((name, i) => {
+        const n = i + 1;
+        const erledigt = n < aktuell;
+        const dran = n === aktuell;
+        return (
+          <li key={name} aria-current={dran ? "step" : undefined}
+            className={cn("relative flex items-center gap-3 text-[13px]",
+              dran ? "font-semibold text-foreground" : "text-muted-foreground")}>
+            <span className={cn(
+              "flex h-[15px] w-[15px] shrink-0 items-center justify-center rounded-full",
+              erledigt ? "bg-primary text-primary-foreground"
+                : dran ? "border-2 border-primary bg-card shadow-[0_0_0_4px_hsl(var(--primary)/0.14)]"
+                  : "border border-border bg-card",
+            )}>
+              {erledigt && <Check className="h-2.5 w-2.5" strokeWidth={3} />}
+            </span>
+            {name}
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
 function StepShell({ title, lead, pose, children, footer }: {
   title: string;
   lead: string;
@@ -1151,41 +1268,42 @@ function StepShell({ title, lead, pose, children, footer }: {
   children: React.ReactNode;
   footer: React.ReactNode;
 }) {
+  const step = useContext(SchrittKontext);
+  const native = isNativeApp();
   return (
     <>
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className={cn(SPALTE, "px-[18px] pt-5 lg:px-8 lg:pt-10")}>
+        <div className={cn(SPALTE, "px-[18px] pt-5 lg:px-8 lg:pt-6")}>
           <div className={ZWEISPALTIG}>
             {/* Lotti steht neben der Frage, nicht darüber: Sie fragt, man
                 antwortet — das trägt den Ton des ganzen Flows. Am Desktop
-                rutscht sie über den Titel und wird größer (Platz ist da), und
-                die Frage bleibt beim Scrollen stehen: Auf einem langen Schritt
-                wie den Gremien verliert man sonst aus dem Blick, was gefragt war. */}
-            <div className="lg:sticky lg:top-10 lg:self-start">
+                rutscht sie über den Titel und wird größer, und die Frage bleibt
+                beim Scrollen stehen: Auf einem langen Schritt wie den Themen
+                verliert man sonst aus dem Blick, was gefragt war. */}
+            <div className="lg:sticky lg:top-6 lg:self-start">
               <div className="flex items-center gap-3 lg:block">
-                <Mascot pose={pose} decorative className="h-11 w-11 shrink-0 lg:mb-5 lg:h-28 lg:w-28" />
-                {/* `hyphens-none`: In der 320-px-Spalte trennte der Browser die
+                <Mascot pose={pose} decorative className="h-11 w-11 shrink-0 lg:mb-5 lg:h-24 lg:w-24" />
+                {/* `hyphens-none`: In der schmalen Spalte trennte der Browser die
                     Frage mitten im Wort („Worüber willst du Be-scheid wissen?").
                     Silbentrennung taugt für Fließtext, nicht für eine Überschrift
                     aus vier Wörtern — die soll am Wort umbrechen. */}
-                <h1 className="font-display text-xl font-extrabold leading-tight tracking-tight text-foreground [hyphens:none] lg:text-[28px]">{title}</h1>
+                <h1 className="font-display text-xl font-extrabold leading-tight tracking-tight text-foreground [hyphens:none] lg:text-[26px]">{title}</h1>
               </div>
-              <p className="mt-2.5 text-[13.5px] leading-relaxed text-muted-foreground lg:text-[14.5px]">{lead}</p>
+              <p className="mt-2.5 text-[13.5px] leading-relaxed text-muted-foreground lg:text-[14px]">{lead}</p>
+              <SchrittPfad aktuell={step} native={native} />
             </div>
             {/* Reichlich Luft unten: Die Fußzeile liegt fest, der Inhalt
                 scrollt darunter durch — mit knappem Abstand endete die letzte
                 Zeile am Telefon mittendrin und sah kaputt aus statt scrollbar. */}
-            <div className="mt-4 pb-8 lg:mt-0 lg:pb-4">{children}</div>
+            <div className="mt-4 pb-8 lg:mt-0 lg:pb-6">{children}</div>
           </div>
         </div>
       </div>
-      <div className={cn(SPALTE, "px-[18px] pt-3 lg:px-8")}>
-        <div className={ZWEISPALTIG}>
-          <div className="hidden lg:block" />
-          {/* Am Desktop steht die Aktion rechts unter ihrer eigenen Spalte —
-              ein Knopf über 680 px wäre keine Schaltfläche mehr, sondern ein Balken. */}
-          <div className="lg:flex lg:justify-end">{footer}</div>
-        </div>
+      {/* Die Fußleiste des Blatts: am Desktop mit Hairline nach oben, die
+          Aktion rechts außen — ein Knopf über 650 px wäre keine Schaltfläche
+          mehr, sondern ein Balken. Am Telefon wie gehabt unter dem Inhalt. */}
+      <div className={cn(SPALTE, "px-[18px] pt-3 lg:border-t lg:border-border lg:px-8 lg:py-4")}>
+        <div className="lg:flex lg:items-center lg:justify-end">{footer}</div>
       </div>
     </>
   );

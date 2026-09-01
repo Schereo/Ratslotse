@@ -49,6 +49,17 @@ Wo auch das nicht trägt (im Dobbenviertel hat der Rat in drei Jahren praktisch
 nichts verhandelt), füllen die nächstgelegenen Stadtteile auf, sichtbar
 getrennt unter „Direkt nebenan" und jeder Vorschlag mit seiner Herkunft.
 
+**Am Rechner liegt jeder Schritt als Blatt in der Fenstermitte** — Radius,
+Rahmen, eigene Fußleiste —, nicht mehr als Inhalt, der im Fenster schwebt und
+dessen Knopf ganz unten klebt: Bei einem kurzen Schritt blieb so ein leeres
+Drittel des Bildschirms. Ein Blatt ist so hoch wie sein Inhalt; ist der länger
+als das Fenster, scrollt er im Blatt, und die Fußleiste bleibt. Links neben der
+Frage steht ein Schritt-Pfad (erledigt · gerade · offen), die Gremien stehen
+zweispaltig und jedes trägt ein Zeichen für seinen Sachbereich — Kelle für den
+Bau, Blatt fürs Grün, Bus für den Verkehr —, damit man die Liste nicht lesen
+muss, um sie zu unterscheiden. Und der letzte Knopf sagt, wozu man ja sagt:
+„Ja, ich möchte Benachrichtigungen erhalten" statt „Ja, so ist es richtig".
+
 Zwei Dinge sind bewusst anders als in der App. Der letzte Schritt fragt im
 Browser nach der **E-Mail** statt nach der Push-Erlaubnis — die gibt es dort
 nicht — und er wirbt dafür, statt bloß zu fragen: Ohne Mitteilung erfährt man
