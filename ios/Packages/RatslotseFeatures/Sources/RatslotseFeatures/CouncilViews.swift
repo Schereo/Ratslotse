@@ -3030,14 +3030,14 @@ private struct SessionDetailView: View {
             "changed_at": "2026-08-30T12:15:00+02:00",
             "satz": "Ein TOP wurde ergänzt und eine Anlage aktualisiert.",
             "zeilen": [
-              {"art":"neu","label":"Ö 7","title":"Sichere Querung an der Cloppenburger Straße","nichtoeffentlich":false,"detail":"Neu auf die Tagesordnung gesetzt"},
+              {"art":"new","label":"Ö 7","title":"Sichere Querung an der Cloppenburger Straße","nichtoeffentlich":false,"detail":"Neu auf die Tagesordnung gesetzt"},
               {"art":"anlagen","label":"Ö 4","title":"Radverkehrskonzept für Oldenburg","nichtoeffentlich":false,"detail":"Eine Anlage hinzugefügt"}
             ]
           }, {
             "changed_at": "2026-08-28T09:30:00+02:00",
             "satz": "Ein Punkt wurde entfernt.",
             "zeilen": [
-              {"art":"entfernt","label":"Ö 3","title":"Bericht der Verwaltung","nichtoeffentlich":false,"detail":null}
+              {"art":"removed","label":"Ö 3","title":"Bericht der Verwaltung","nichtoeffentlich":false,"detail":null}
             ]
           }]
         }
@@ -3184,13 +3184,13 @@ private struct AgendaChangeLineRow: View {
         .accessibilityElement(children: .combine)
     }
 
-    private var isRemoved: Bool { line.kind == "entfernt" }
+    private var isRemoved: Bool { line.kind == "removed" }
 
     private var accent: Color {
         switch line.kind {
-        case "neu": RatsColor.success
-        case "entfernt": RatsColor.danger
-        case "geaendert", "verschoben", "vorlage", "anlagen": RatsColor.warning
+        case "new": RatsColor.success
+        case "removed": RatsColor.danger
+        case "changed", "moved", "template", "attachments": RatsColor.warning
         default: RatsColor.border
         }
     }

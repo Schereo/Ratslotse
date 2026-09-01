@@ -726,7 +726,7 @@ public struct AgendaChangeLine: Codable, Sendable, Hashable {
 
     public init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
-        kind = try values.decodeIfPresent(String.self, forKey: .kind) ?? "geaendert"
+        kind = try values.decodeIfPresent(String.self, forKey: .kind) ?? "changed"
         label = try values.decodeIfPresent(String.self, forKey: .label) ?? "TOP"
         title = try values.decodeIfPresent(String.self, forKey: .title) ?? "Tagesordnung geändert"
         detail = try values.decodeIfPresent(String.self, forKey: .detail)

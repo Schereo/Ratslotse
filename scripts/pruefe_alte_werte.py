@@ -179,6 +179,10 @@ ZUSATZ_PAARE = {
     # `art` und `typ` der Personen-Bausteine, `role` der Haushaltsdebatte.
     ("rat", "council"), ("beratend", "advisory"), ("verwaltung", "administration"),
     ("beteiligung", "participation"), ("leitung", "leadership"),
+    # Die Eimer und `art`-Werte des Tagesordnungs-Diffs. Der Bestand zieht per
+    # `_agenda_diff_schluessel_neu` nach, der Wert selbst wird gerechnet.
+    ("umformuliert", "reworded"), ("geaendert", "changed"), ("verschoben", "moved"),
+    ("entfernt", "removed"),
 }
 
 _PAAR = re.compile(r"""\(\s*["']([a-z][a-z0-9_+]*)["']\s*,\s*["']([a-z][a-z0-9_+]*)["']\s*\)""")

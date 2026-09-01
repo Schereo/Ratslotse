@@ -25,8 +25,8 @@ def test_nachgereichte_vorlage_ist_eine_aenderung():
     alt = [_i("Ö 5", "Beratung nichtöffentlicher TOPs - Bericht")]
     neu = [_i("Ö 5", "Beratung nichtöffentlicher TOPs - Bericht", "26/0019/9")]
     d = diff_tagesordnung(alt, neu)
-    assert [(a["template_number"], n["template_number"]) for a, n in d["vorlage"]] == [("", "26/0019/9")]
-    assert d["neu"] == [] and d["entfernt"] == [] and d["verschoben"] == []
+    assert [(a["template_number"], n["template_number"]) for a, n in d["template"]] == [("", "26/0019/9")]
+    assert d["new"] == [] and d["removed"] == [] and d["moved"] == []
     assert hat_aenderungen(d)
     html = diff_html(d)
     assert "Vorlage nachgereicht · TOP Ö 5" in html and "26/0019/9" in html
@@ -45,7 +45,7 @@ def test_verschoben_schlaegt_vorlage():
     """Ein Punkt, der wandert UND eine Vorlage bekommt, steht einmal in der
     Liste — als Verschiebung, nicht zweimal."""
     d = diff_tagesordnung([_i("Ö 5", "Radweg")], [_i("Ö 7", "Radweg", "26/0100")])
-    assert len(d["verschoben"]) == 1 and d["vorlage"] == []
+    assert len(d["moved"]) == 1 and d["template"] == []
 
 
 def test_nichtoeffentliche_punkte_sind_markiert():
@@ -59,18 +59,18 @@ def test_einschub_verschiebt_nur_nummern():
     alt = [_i("Ö 5", "Baumschutzsatzung"), _i("Ö 6", "Regentonnen")]
     neu = [_i("Ö 5", "Baumschutzsatzung"), _i("Ö 6", "Rattenbefall"), _i("Ö 7", "Regentonnen")]
     d = diff_tagesordnung(alt, neu)
-    assert [i["title"] for i in d["neu"]] == ["Rattenbefall"]
-    assert [(a["item_number"], n["item_number"]) for a, n in d["verschoben"]] == [("Ö 6", "Ö 7")]
-    assert d["entfernt"] == [] and d["umformuliert"] == []
+    assert [i["title"] for i in d["new"]] == ["Rattenbefall"]
+    assert [(a["item_number"], n["item_number"]) for a, n in d["moved"]] == [("Ö 6", "Ö 7")]
+    assert d["removed"] == [] and d["reworded"] == []
 
 
 def test_umformulierung_und_entfernung():
     alt = [_i("Ö 5", "Sachstand EU-Verordnung"), _i("Ö 6", "Aktionswochen")]
     neu = [_i("Ö 5", "Sachstandsbericht zur EU-Wiederherstellungsverordnung")]
     d = diff_tagesordnung(alt, neu)
-    assert [(a["title"], n["title"]) for a, n in d["umformuliert"]] == [
+    assert [(a["title"], n["title"]) for a, n in d["reworded"]] == [
         ("Sachstand EU-Verordnung", "Sachstandsbericht zur EU-Wiederherstellungsverordnung")]
-    assert [i["title"] for i in d["entfernt"]] == ["Aktionswochen"]
+    assert [i["title"] for i in d["removed"]] == ["Aktionswochen"]
     assert hat_aenderungen(d)
 
 
@@ -81,8 +81,8 @@ def test_neue_anlage_ist_eine_aenderung():
     alt = [dict(_i("Ö 5", "Radweg"), anlagen=[])]
     neu = [dict(_i("Ö 5", "Radweg"), anlagen=_a(("111", "Änderungsliste der CDU-Fraktion")))]
     d = diff_tagesordnung(alt, neu)
-    assert len(d["anlagen"]) == 1 and hat_aenderungen(d)
-    assert d["neu"] == [] and d["vorlage"] == []
+    assert len(d["attachments"]) == 1 and hat_aenderungen(d)
+    assert d["new"] == [] and d["template"] == []
     html = diff_html(d)
     assert "Neue Anlage · TOP Ö 5" in html and "Änderungsliste der CDU-Fraktion" in html
 
@@ -114,7 +114,7 @@ def test_vorlage_schlaegt_anlagen():
     alt = [dict(_i("Ö 5", "Radweg"), anlagen=[])]
     neu = [dict(_i("Ö 5", "Radweg", "26/0100"), anlagen=_a(("111", "Vorlage")))]
     d = diff_tagesordnung(alt, neu)
-    assert len(d["vorlage"]) == 1 and d["anlagen"] == []
+    assert len(d["template"]) == 1 and d["attachments"] == []
 
 
 def test_diff_satz_nennt_die_aenderungsarten():
@@ -157,14 +157,14 @@ def test_gleichnamige_tops_erzeugen_keine_phantom_verschiebungen():
     # Ein NEUER Namensvetter ist neu — nicht „verschoben".
     mehr = items + [_i("N 14", "gesperrte Information")]
     d2 = diff_tagesordnung(items, mehr)
-    assert [i["item_number"] for i in d2["neu"]] == ["N 14"]
-    assert d2["verschoben"] == []
+    assert [i["item_number"] for i in d2["new"]] == ["N 14"]
+    assert d2["moved"] == []
 
     # Ein weggefallener Namensvetter ist entfernt — früher unsichtbar,
     # weil der Titel ja „noch da" war.
     d3 = diff_tagesordnung(mehr, items)
-    assert [i["item_number"] for i in d3["entfernt"]] == ["N 14"]
-    assert d3["verschoben"] == [] and d3["neu"] == []
+    assert [i["item_number"] for i in d3["removed"]] == ["N 14"]
+    assert d3["moved"] == [] and d3["new"] == []
 
 
 def test_identisch_ist_leer_und_html_faerbt():
@@ -286,7 +286,7 @@ def test_aenderungs_chronik_roundtrip(tmp_path):
         chronik = store.agenda_changes(4666)
         assert len(chronik) == 1
         zeilen = diff_zeilen(chronik[0]["diff"])
-        assert {z["art"] for z in zeilen} == {"neu", "vorlage"}
+        assert {z["art"] for z in zeilen} == {"new", "template"}
         assert diff_satz(chronik[0]["diff"]) == (
             "Ein Punkt ist neu und eine Vorlage wurde nachgereicht.")
         assert store.agenda_changes(999) == []
@@ -314,8 +314,8 @@ def test_kaskade_wird_zu_einer_zeile_gebuendelt():
     gehört mit in die Kaskade, sein Anhängsel bleibt ja gleich."""
     from council.agenda_diff import diff_zeilen
     d = diff_tagesordnung(_kaskaden_stand(22), _kaskaden_stand(21))
-    assert len(d["verschoben"]) == 14
-    zeilen = [z for z in diff_zeilen(d) if z["art"] == "verschoben"]
+    assert len(d["moved"]) == 14
+    zeilen = [z for z in diff_zeilen(d) if z["art"] == "moved"]
     assert len(zeilen) == 1
     assert zeilen[0]["label"] == "Verschoben · TOP Ö 22 bis Ö 34"
     assert zeilen[0]["title"] == (
@@ -330,7 +330,7 @@ def test_kaskade_nach_hinten_nennt_die_richtung():
     """Der Gegenfall (Einschub oben): dieselbe Bündelung, andere Richtung."""
     from council.agenda_diff import diff_zeilen
     d = diff_tagesordnung(_kaskaden_stand(21), _kaskaden_stand(23))
-    zeilen = [z for z in diff_zeilen(d) if z["art"] == "verschoben"]
+    zeilen = [z for z in diff_zeilen(d) if z["art"] == "moved"]
     assert len(zeilen) == 1
     assert zeilen[0]["title"] == (
         "14 Punkte rücken 2 Nummern nach hinten — jetzt TOP Ö 23 bis Ö 35")
@@ -344,7 +344,7 @@ def test_kaskade_laesst_echte_umsortierung_stehen():
     alt = _kaskaden_stand(22) + [_i("Ö 40", "Sondertagesordnungspunkt")]
     neu = _kaskaden_stand(21) + [_i("Ö 2", "Sondertagesordnungspunkt")]
     d = diff_tagesordnung(alt, neu)
-    zeilen = [z for z in diff_zeilen(d) if z["art"] == "verschoben"]
+    zeilen = [z for z in diff_zeilen(d) if z["art"] == "moved"]
     assert [z["label"] for z in zeilen] == [
         "Verschoben · TOP Ö 40 → Ö 2", "Verschoben · TOP Ö 22 bis Ö 34"]
     assert diff_satz(d) == "14 Punkte haben eine neue Nummer und ein Punkt wurde verschoben."
@@ -356,7 +356,7 @@ def test_wenige_verschiebungen_bleiben_einzeln():
     from council.agenda_diff import diff_zeilen
     d = diff_tagesordnung([_i("Ö 5", "Alpha"), _i("Ö 6", "Beta")],
                           [_i("Ö 6", "Alpha"), _i("Ö 7", "Beta")])
-    zeilen = [z for z in diff_zeilen(d) if z["art"] == "verschoben"]
+    zeilen = [z for z in diff_zeilen(d) if z["art"] == "moved"]
     assert [z["label"] for z in zeilen] == [
         "Verschoben · TOP Ö 5 → Ö 6", "Verschoben · TOP Ö 6 → Ö 7"]
 
@@ -368,7 +368,7 @@ def test_verstreute_verschiebungen_sind_keine_kaskade():
     from council.agenda_diff import diff_zeilen
     alt = [_i("Ö 5", "Alpha"), _i("Ö 9", "Beta"), _i("Ö 20", "Gamma")]
     neu = [_i("Ö 6", "Alpha"), _i("Ö 10", "Beta"), _i("Ö 21", "Gamma")]
-    zeilen = [z for z in diff_zeilen(diff_tagesordnung(alt, neu)) if z["art"] == "verschoben"]
+    zeilen = [z for z in diff_zeilen(diff_tagesordnung(alt, neu)) if z["art"] == "moved"]
     assert len(zeilen) == 3
 
 
@@ -378,7 +378,7 @@ def test_kaskade_trennt_oeffentlich_und_nichtoeffentlich():
     from council.agenda_diff import diff_zeilen
     alt = _kaskaden_stand(22) + [_i("N 40", "gesperrte Information")]
     neu = _kaskaden_stand(21) + [_i("N 39", "gesperrte Information")]
-    zeilen = [z for z in diff_zeilen(diff_tagesordnung(alt, neu)) if z["art"] == "verschoben"]
+    zeilen = [z for z in diff_zeilen(diff_tagesordnung(alt, neu)) if z["art"] == "moved"]
     assert [z["label"] for z in zeilen] == [
         "Verschoben · TOP N 40 → N 39", "Verschoben · TOP Ö 22 bis Ö 34"]
 
@@ -432,7 +432,7 @@ def test_nachgereichte_vorlage_am_mitgerutschten_punkt_bricht_die_stille():
     neu = _kaskaden_stand(21)
     neu[3] = dict(neu[3], template_number="26/0100")
     d = diff_tagesordnung(alt, neu)
-    assert d["vorlage"] == []          # die Kette hat sie geschluckt …
+    assert d["template"] == []          # die Kette hat sie geschluckt …
     assert not nur_nummern_versatz(d)  # … die Stille-Regel sieht trotzdem nach
 
     # Dasselbe für einen Anhang, der am mitgerutschten Punkt dazukommt.
