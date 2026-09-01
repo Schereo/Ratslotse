@@ -94,7 +94,7 @@ def areas(user: dict = Depends(require_active),
                 "kind_label": places.kind_label(place.kind),
                 "aliases": list(place.aliases),
                 "parent_ids": list(place.parent_ids),
-                "electoral_districts": list(place.wahlbereiche),
+                "electoral_districts": list(place.electoral_districts),
                 "questions": n,
                 "points": points.get(("district", place.name), 0),
             })

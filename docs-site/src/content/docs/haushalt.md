@@ -346,7 +346,7 @@ Städtevergleich) sind erst mit der Herkunft entstanden und tragen gar keine
 Altspalten; im Nachrüst-Weg stehen sie trotzdem, weil ein Eintrag „nichts
 nachzutragen" billiger ist als eine Ausnahme (`_HERKUNFT_ALTFELDER`).
 
-`GET /api/council/budget` liefert die Datensätze als `herkunft`, nach ID
+`GET /api/council/budget` liefert die Datensätze als `provenance`, nach ID
 nachschlagbar, samt eines Erklärsatzes je Probe für die Oberfläche.
 
 :::note[Was die Seite davon zeigt — und was seit 16.08. nicht mehr]

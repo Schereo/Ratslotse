@@ -46,14 +46,14 @@ import { Zeitreihe } from "@/components/grafik/zeitreihe";
 import type { JahrPunkt } from "@/components/grafik/daten";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 
-// `herkunft` mit: Jeder Bereich hat seine eigene Fundstelle in derselben
+// `provenance` mit: Jeder Bereich hat seine eigene Fundstelle in derselben
 // Datei („Gebührenbedarfsberechnung 2026, Straßenreinigung"), und die ist
 // der Unterschied zwischen einem 40-Seiten-PDF und einer Stelle darin.
 /** Was dieser Abschnitt braucht. Die SEITE holt es zusammen mit den
- *  Wirtschaftsplänen in EINEM Aufruf — beide Abschnitte brauchen `herkunft`,
+ *  Wirtschaftsplänen in EINEM Aufruf — beide Abschnitte brauchen `provenance`,
  *  und `useFetch` hat keinen Zwischenspeicher. */
 export type GebuehrenDaten = HaushaltAuswahl<
-  "fees" | "fee_rates" | "herkunft"
+  "fees" | "fee_rates" | "provenance"
 >;
 
 /** Was der Bereich macht — eine Zeile, damit die Zahl einen Gegenstand hat. */

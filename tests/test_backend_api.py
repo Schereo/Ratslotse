@@ -563,7 +563,7 @@ def test_admin_user_rows_and_detail(client):
     assert me["last_seen"] is not None  # via record_activity beim Login
     detail = client.get(f"/api/admin/users/{admin['id']}").json()
     assert detail["email"] == admin["email"]
-    assert set(detail["features"]) == {"ki_frage", "recherche", "suche", "quiz",
+    assert set(detail["features"]) == {"ki_frage", "research", "suche", "quiz",
                                        "analyse", "karte"}
     assert isinstance(detail["history"], list) and len(detail["history"]) == 30
     # 30-Tage-Achse passt zu den Balken und endet heute.
@@ -615,7 +615,7 @@ def test_feature_block_uebersetzt_gespeicherte_werte(client):
             store.record_activity(admin["id"], wert)
     store.record_activity(admin["id"], "ai_question")
     f = client.get(f"/api/admin/users/{admin['id']}").json()["features"]
-    assert (f["suche"], f["analyse"], f["karte"], f["recherche"]) == (3, 2, 1, 4)
+    assert (f["suche"], f["analyse"], f["karte"], f["research"]) == (3, 2, 1, 4)
     assert f["ki_frage"] == 1
     # Dieselbe Zuordnung noch einmal in der LISTE: Die zählt die KI-Fragen in
     # eigenem SQL, das den Wert hart nennt — ein umbenannter Wert lässt hier
@@ -905,7 +905,7 @@ def test_haushalt_aenderungslisten_liefert_nur_den_jahrgang(client):
     assert eigene["Änderungsliste Verw. I"] == 1
     assert eigene["SPD/ CDU/ FDP"] == 0
     # Jede Zeile findet ihr Papier: Die Herkunft-Karte deckt alle Verweise.
-    assert str(b["rows"][0]["herkunft_id"]) in b["herkunft"]
+    assert str(b["rows"][0]["herkunft_id"]) in b["provenance"]
 
     # Der FINANZhaushalt reist in eigenen Schlüsseln mit. Sie stehen hier auch
     # dann in der Antwort, wenn sein Ingest noch nicht lief — leer, aber
@@ -944,7 +944,7 @@ def test_haushalt_aenderungslisten_liefert_nur_den_jahrgang(client):
     assert (z["planned_draft"], z["outflow"], z["planned_new"]) == (0, 100_000, 100_000)
     # „neu" heißt: Die Position stand im Entwurf noch gar nicht.
     assert z["page_draft"] == "neu"
-    assert str(z["herkunft_id"]) in b["herkunft"]
+    assert str(z["herkunft_id"]) in b["provenance"]
 
 
 def test_haushalt_investitionen_trennt_geprueft_von_bezugsgroesse(client):
@@ -993,8 +993,8 @@ def test_haushalt_investitionen_trennt_geprueft_von_bezugsgroesse(client):
     assert b["financial_budget"][0]["outflows"] == 850520503
 
     # Zwei Ebenen, zwei Herkünfte — und nur eine davon trägt eine Probe.
-    h_gepr = b["herkunft"][str(b["investments"][0]["herkunft_id"])]
-    h_bezug = b["herkunft"][str(b["financial_budget"][0]["herkunft_id"])]
+    h_gepr = b["provenance"][str(b["investments"][0]["herkunft_id"])]
+    h_bezug = b["provenance"][str(b["financial_budget"][0]["herkunft_id"])]
     assert h_gepr["id"] != h_bezug["id"]
     assert h_gepr["probe"] == "investments_total_row"
     assert h_bezug["probe"] == "unverified"
@@ -1049,7 +1049,7 @@ def test_haushalt_beteiligungen_liefert_texte_kennzahlen_und_herkunft(client):
     # Ein einzelner Bericht kann die Überlappung nicht bieten — die Zahl ist
     # trotzdem gedeckt, nämlich durch die Bilanz im Dokument selbst.
     assert bilanz["n_reports"] == 1
-    h_zahl = b["herkunft"][str(bilanz["herkunft_id"])]
+    h_zahl = b["provenance"][str(bilanz["herkunft_id"])]
     assert h_zahl["probe"] == "shareholding_balance_sheet_check"
     assert "Abschnitt 2.2.1" in h_zahl["citation"]
     assert h_zahl["page"] == 2
@@ -1058,7 +1058,7 @@ def test_haushalt_beteiligungen_liefert_texte_kennzahlen_und_herkunft(client):
     gegenstand = next(t for t in b["texts"]
                       if t["company"] == "egh" and t["section"] == "business_purpose")
     assert "gebäudewirtschaftlichen" in gegenstand["text"]
-    h_text = b["herkunft"][str(gegenstand["herkunft_id"])]
+    h_text = b["provenance"][str(gegenstand["herkunft_id"])]
     assert h_text["probe"] == herkunft.UNGEPRUEFT
     # Ungeprüft heißt nicht quellenlos: Dokument und Fundstelle stehen da.
     assert h_text["url"] and h_text["citation"]
@@ -1082,7 +1082,7 @@ def test_haushalt_beteiligungen_liefert_texte_kennzahlen_und_herkunft(client):
     assert eigner[0]["share_pct"] == 100.0
     # Die Summenzeile ist die Probe und kein Gesellschafter.
     assert not any(e["name"].startswith("Stammkapital") for e in b["owners"])
-    h_eigner = b["herkunft"][str(eigner[0]["herkunft_id"])]
+    h_eigner = b["provenance"][str(eigner[0]["herkunft_id"])]
     assert h_eigner["probe"] == "shareholding_share_check"
 
 
@@ -1223,8 +1223,8 @@ def test_haushalt_konzern_liefert_luecke_und_gegenprobe(client):
     assert stadt["amount"] == 799057000.0
     # Die beiden Ebenen tragen verschiedene Herkünfte — verschiedene
     # Abschnitte desselben Berichts, verschiedene Proben.
-    h_posten = b["herkunft"][str(b["consolidated"][0]["herkunft_id"])]
-    h_traeger = b["herkunft"][str(stadt["herkunft_id"])]
+    h_posten = b["provenance"][str(b["consolidated"][0]["herkunft_id"])]
+    h_traeger = b["provenance"][str(stadt["herkunft_id"])]
     assert h_posten["citation"] == "Abschnitt 3.2"
     assert h_traeger["citation"] == "Abschnitt 4.1.1"
     assert h_posten["document_id"] == 302709
@@ -1340,9 +1340,9 @@ def test_decision_detail_includes_vorlage(client):
                      "n_pages": 3, "status": "ok"})
     cs.close()
     data = client.get(f"/api/council/decision/{did}").json()
-    assert data["vorlage"]["kind"] == "Beschlussvorlage"
-    assert "Radweg entlang der Haaren" in data["vorlage"]["excerpt"]
-    assert "kvonr=901" in data["vorlage_url"]
+    assert data["template"]["kind"] == "Beschlussvorlage"
+    assert "Radweg entlang der Haaren" in data["template"]["excerpt"]
+    assert "kvonr=901" in data["template_url"]
     assert data["attachments"] == []  # keine Anlagen geseedet → leere Liste, kein Fehlen
 
 
@@ -4795,7 +4795,7 @@ def test_thema_und_person_sind_ohne_anmeldung_lesbar(client):
     wb = client.get("/api/council/person/anke-luedtke/speeches?limit=5")
     assert wb.status_code == 200
     b = wb.json()
-    assert set(b) >= {"items", "total", "gesamt", "committees"}
+    assert set(b) >= {"items", "total", "overall", "committees"}
     assert client.get("/api/council/person/gibtsnicht/speeches").status_code == 404
     # Grenzen greifen: limit über 100 und negatives offset werden abgewiesen.
     assert client.get("/api/council/person/anke-luedtke/speeches?limit=500").status_code == 422
@@ -4818,17 +4818,17 @@ def test_verwaltung_mit_erkanntem_amt_hat_eigenen_steckbrief(client):
     r = client.get("/api/council/person/juergen-krogmann")
     assert r.status_code == 200
     body = r.json()
-    assert body["typ"] == "administration" and body["role"] == "Oberbürgermeister"
+    assert body["type"] == "administration" and body["role"] == "Oberbürgermeister"
 
     # Nur eine Vertretungs-Notiz, kein erkanntes Amt → weiterhin 404.
     assert client.get("/api/council/person/dagmar-sachse").status_code == 404
 
     wb = client.get("/api/council/person/juergen-krogmann/speeches")
     assert wb.status_code == 200
-    assert set(wb.json()) >= {"items", "total", "gesamt", "committees"}
+    assert set(wb.json()) >= {"items", "total", "overall", "committees"}
 
     # Ratsmitglieder-Antwort trägt jetzt ebenfalls den typ-Diskriminator.
-    assert client.get("/api/council/person/anke-luedtke").json()["typ"] == "council"
+    assert client.get("/api/council/person/anke-luedtke").json()["type"] == "council"
 
 
 def test_stoebern_und_persoenliches_bleiben_hinter_der_anmeldung(client):
@@ -5502,7 +5502,7 @@ def test_haushalt_schulden_traegt_die_zinslast_aus_dem_jahresabschluss(client):
         assert [z["year"] for z in zins] == [2024], "je Jahr genau eine Zinslast"
         assert zins[0]["expense"] == 7_250_000.0
         # Die Herkunft muss mitkommen — sonst steht die Zahl ohne Beleg da.
-        assert str(zins[0]["herkunft_id"]) in daten["herkunft"]
+        assert str(zins[0]["herkunft_id"]) in daten["provenance"]
     finally:
         cs.close()
 
@@ -5583,8 +5583,8 @@ def test_haushalt_bilanz_liefert_posten_erlaeuterungen_und_herkunft(client):
 
         # Jede Zahl und jeder Text tragen ihren Beleg.
         for eintrag in daten["items"] + daten["explanations"]:
-            assert str(eintrag["herkunft_id"]) in daten["herkunft"]
-        h = daten["herkunft"][str(nach_rolle["liabilities"]["herkunft_id"])]
+            assert str(eintrag["herkunft_id"]) in daten["provenance"]
+        h = daten["provenance"][str(nach_rolle["liabilities"]["herkunft_id"])]
         assert "balance_sheet_cash_check" in h["probe"]
     finally:
         cs.close()
@@ -5598,7 +5598,7 @@ def test_haushalt_bilanz_ohne_bestand_bleibt_leer(client):
     answer = client.get("/api/council/budget/balance-sheet")
     assert answer.status_code == 200
     assert answer.json() == {"years": [], "items": [], "explanations": [],
-                              "herkunft": {}}
+                              "provenance": {}}
 
 
 def test_haushalt_indicators_kommen_mit_ihrer_genauigkeit(client):
@@ -5685,7 +5685,7 @@ def test_haushalt_liefert_die_spenden_mit_luecke_und_beleg(client):
             "Oberbürgermeister", "Verwaltungsausschuss", "Rat"}
         # Ohne aufgelöste Herkunft stünde die Zahl ohne Beleg da.
         for v in s["vorlagen"]:
-            assert str(v["herkunft_id"]) in daten["herkunft"]
+            assert str(v["herkunft_id"]) in daten["provenance"]
     finally:
         cs.close()
 
@@ -5791,7 +5791,7 @@ def test_haushalt_felder_schneidet_zu_und_meldet_tippfehler(client):
 
     alles = client.get("/api/council/budget").json()
     for pflicht in ("years", "taxes", "income_statement", "donations",
-                    "supplementary_approvals", "herkunft", "product_years"):
+                    "supplementary_approvals", "provenance", "product_years"):
         assert pflicht in alles, pflicht
 
     schmal = client.get("/api/council/budget?felder=years,product_years").json()
@@ -5835,14 +5835,14 @@ def test_haushalt_schickt_nur_belegte_herkunft(client):
         cs.close()
 
     voll = client.get("/api/council/budget").json()
-    gebraucht = _herkunft_ids({k: v for k, v in voll.items() if k != "herkunft"})
+    gebraucht = _herkunft_ids({k: v for k, v in voll.items() if k != "provenance"})
     assert gebraucht, "Fixture zeigt auf keine Herkunft — die Probe wäre wertlos"
-    assert set(voll["herkunft"]) == {str(i) for i in gebraucht}
+    assert set(voll["provenance"]) == {str(i) for i in gebraucht}
 
     # Und andersherum: Wird die Ergebnisrechnung nicht angefordert, zeigt keine
     # gesendete Zeile mehr auf ihren Beleg — dann reist er auch nicht mit.
-    schmal = client.get("/api/council/budget?felder=taxes,herkunft").json()
-    assert schmal["herkunft"] == {}
+    schmal = client.get("/api/council/budget?felder=taxes,provenance").json()
+    assert schmal["provenance"] == {}
 
 
 def test_haushalt_schulden_stellt_buergschaften_neben_die_eigenen_schulden(client):

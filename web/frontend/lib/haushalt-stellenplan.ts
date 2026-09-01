@@ -60,7 +60,7 @@ export type StellenplanDaten = {
   /** Nur für den angefragten Jahrgang — je Jahrgang rund 190 Zeilen. */
   rows: StellenZeile[];
   missing: { budget_year: number; part: StellenTeil; name: string }[];
-  herkunft: Record<string, Herkunft>;
+  provenance: Record<string, Herkunft>;
 };
 
 /** Wie die Teile auf der Seite heißen. Der Plan schreibt „Arbeitnehmerinnen
@@ -158,5 +158,5 @@ export function deDatum(iso: string | null): string {
 export function herkunftVon(daten: StellenplanDaten,
                             id: number | null | undefined): Herkunft | null {
   if (id == null) return null;
-  return daten.herkunft[String(id)] ?? null;
+  return daten.provenance[String(id)] ?? null;
 }

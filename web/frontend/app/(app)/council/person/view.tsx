@@ -142,7 +142,7 @@ function PersonInner() {
 
   if (loading) return <DetailSkeleton />;
   if (!data) notFound();
-  if (data.typ === "administration") return <VerwaltungProfil data={data} />;
+  if (data.type === "administration") return <VerwaltungProfil data={data} />;
   return <RatsmitgliedProfil data={data} />;
 }
 
@@ -187,7 +187,7 @@ function RatsmitgliedProfil({ data }: { data: MemberDetail }) {
                 entsendende Organisation — „parteilos" wäre hier die falsche
                 Kategorie, nicht bloß eine unschöne Vokabel (Tims Befund
                 21.08.2026). */}
-            {data.art === "advisory"
+            {data.kind === "advisory"
               ? (
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/60 px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
                   <Users className="h-3 w-3" aria-hidden />
@@ -319,10 +319,10 @@ function RatsmitgliedProfil({ data }: { data: MemberDetail }) {
           voller Länge — dasselbe Beleg-Versprechen wie im Ratsgespräch.
           Vielredner kommen auf über tausend Beiträge, deshalb seitenweise und
           nach Gremium filterbar (Tims Wunsch 10.08.). */}
-      {(data.wortbeitraege?.length ?? 0) > 0 && (
-        <Wortbeitraege slug={data.slug} erste={data.wortbeitraege ?? []}
-          gesamt={data.wortbeitraege_gesamt ?? (data.wortbeitraege?.length ?? 0)}
-          committees={data.wortbeitraege_gremien ?? []} />
+      {(data.speeches?.length ?? 0) > 0 && (
+        <Wortbeitraege slug={data.slug} erste={data.speeches ?? []}
+          gesamt={data.speeches_total ?? (data.speeches?.length ?? 0)}
+          committees={data.speeches_committees ?? []} />
       )}
 
       {/* Zuletzt anwesend */}
@@ -398,10 +398,10 @@ function VerwaltungProfil({ data }: { data: VerwaltungDetail }) {
         </Popover>
       </div>
 
-      {(data.wortbeitraege?.length ?? 0) > 0 && (
-        <Wortbeitraege slug={data.slug} erste={data.wortbeitraege ?? []}
-          gesamt={data.wortbeitraege_gesamt ?? (data.wortbeitraege?.length ?? 0)}
-          committees={data.wortbeitraege_gremien ?? []} />
+      {(data.speeches?.length ?? 0) > 0 && (
+        <Wortbeitraege slug={data.slug} erste={data.speeches ?? []}
+          gesamt={data.speeches_total ?? (data.speeches?.length ?? 0)}
+          committees={data.speeches_committees ?? []} />
       )}
     </Card>
   );
@@ -412,7 +412,7 @@ const WB_ART: Record<string, string> = {
 };
 
 function WortbeitragZeile({ w, erste }: {
-  w: NonNullable<MemberDetail["wortbeitraege"]>[number]; erste: boolean;
+  w: NonNullable<MemberDetail["speeches"]>[number]; erste: boolean;
 }) {
   const [offen, setOffen] = useState(false);
   const lang = w.text.length > 300;
@@ -420,7 +420,7 @@ function WortbeitragZeile({ w, erste }: {
     <div className={cn("py-2.5 text-[13px] leading-relaxed", !erste && "border-t border-border")}>
       <p className="flex items-baseline justify-between gap-3 text-xs text-muted-foreground">
         <span className="min-w-0 truncate">
-          {WB_ART[w.kind] ?? w.kind}{w.top ? ` · ${w.top}` : ""} · {shortCommittee(w.committee ?? "")}
+          {WB_ART[w.kind] ?? w.kind}{w.agenda_item ? ` · ${w.agenda_item}` : ""} · {shortCommittee(w.committee ?? "")}
         </span>
         <span className="shrink-0">{formatDate(w.session_date)}</span>
       </p>
@@ -437,7 +437,7 @@ function WortbeitragZeile({ w, erste }: {
   );
 }
 
-type WB = NonNullable<MemberDetail["wortbeitraege"]>[number];
+type WB = NonNullable<MemberDetail["speeches"]>[number];
 
 /** „Aus den Protokollen": alle Beiträge, seitenweise nachladbar und nach
  *  Gremium filterbar.
@@ -502,7 +502,7 @@ function Wortbeitraege({ slug, erste, gesamt, committees }: {
       )}
       <div className="flex flex-col">
         {items.map((w, i) => (
-          <WortbeitragZeile key={`${w.session_date}-${w.top}-${i}`} w={w} erste={i === 0} />
+          <WortbeitragZeile key={`${w.session_date}-${w.agenda_item}-${i}`} w={w} erste={i === 0} />
         ))}
       </div>
       {items.length === 0 && !laedt && (

@@ -58,7 +58,7 @@ export type BilanzDaten = {
   years: number[];
   items: BilanzPosten[];
   explanations: BilanzErlaeuterung[];
-  herkunft: Record<string, Herkunft>;
+  provenance: Record<string, Herkunft>;
 };
 
 /** Ein Bilanzstichtag, nach Rolle nachschlagbar. */
@@ -180,5 +180,5 @@ export function cashPoolingHinweis(
 
 export function herkunftVon(daten: BilanzDaten | null, id: number | null): Herkunft | null {
   if (!daten || id == null) return null;
-  return daten.herkunft[String(id)] ?? null;
+  return daten.provenance[String(id)] ?? null;
 }

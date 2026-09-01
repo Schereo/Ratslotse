@@ -51,7 +51,7 @@ export type GebautDaten = {
   /** Was aus den Investitionen wurde — der Anlagenspiegel des
    *  Jahresabschlusses (Abschnitt 8.1). */
   fixed_assets?: Anlagen;
-  herkunft: Record<string, Herkunft>;
+  provenance: Record<string, Herkunft>;
 };
 
 /** Eine Zeile des Anlagenspiegels: eine Vermögensposition in einem Jahr.
@@ -137,7 +137,7 @@ export function strassen(anlagen: Anlagen | undefined, year: number): Vermoegens
 
 export function herkunftVon(daten: GebautDaten | null, id: number | null): Herkunft | null {
   if (!daten || id == null) return null;
-  return daten.herkunft[String(id)] ?? null;
+  return daten.provenance[String(id)] ?? null;
 }
 
 export type Reihe = {

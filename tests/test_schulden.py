@@ -417,7 +417,7 @@ def test_endpunkt_liefert_reihe_abgrenzung_und_belege(tmp_path, gelesen):
 
         # Jede Zeile findet ihren Beleg, und der trägt Erklärsätze.
         for row in answer["series"]:
-            h = answer["herkunft"][str(row["herkunft_id"])]
+            h = answer["provenance"][str(row["herkunft_id"])]
             assert h["probes"], "Beleg ohne Erklärsatz"
             assert h["url"]
     finally:

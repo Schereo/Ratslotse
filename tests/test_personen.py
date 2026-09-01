@@ -140,7 +140,7 @@ def test_wortbeitraege_person_trennt_namensvettern(tmp_path):
         assert texte == {"Voller Name im Rat", "Nur Nachname", "Mit Anrede",
                          "Im Verkehrsausschuss"}
         assert "Der Namensvetter" not in texte
-        assert d["gesamt"] == 4
+        assert d["overall"] == 4
         # Der Namensvetter behält seine eigenen Beiträge …
         ingo = store.wortbeitraege_person("Dr. Ingo Harms", limit=20)
         assert "Der Namensvetter" in {w["text"] for w in ingo["items"]}
@@ -158,7 +158,7 @@ def test_wortbeitraege_person_seiten_und_gremienfilter(tmp_path):
         assert {g["committee"]: g["n"] for g in d["committees"]} == {"Rat": 3, "Verkehrsausschuss": 1}
 
         nur_verkehr = store.wortbeitraege_person("Tim Harms", committee="Verkehrsausschuss")
-        assert nur_verkehr["total"] == 1 and nur_verkehr["gesamt"] == 4
+        assert nur_verkehr["total"] == 1 and nur_verkehr["overall"] == 4
         assert nur_verkehr["items"][0]["text"] == "Im Verkehrsausschuss"
 
         # Seiten überlappen nicht und decken zusammen alles ab.
@@ -170,7 +170,7 @@ def test_wortbeitraege_person_seiten_und_gremienfilter(tmp_path):
 
         # Unbekanntes Gremium → leere Seite, aber ehrliche Gesamtzahl.
         leer = store.wortbeitraege_person("Tim Harms", committee="Sportausschuss")
-        assert leer["items"] == [] and leer["total"] == 0 and leer["gesamt"] == 4
+        assert leer["items"] == [] and leer["total"] == 0 and leer["overall"] == 4
     finally:
         store.close()
 
@@ -181,9 +181,9 @@ def test_member_name_und_erste_seite(tmp_path):
         assert store.member_name("tim-harms") == "Tim Harms"
         assert store.member_name("gibt-es-nicht") is None
         d = store.member_detail("tim-harms")
-        assert d["wortbeitraege_gesamt"] == 4
-        assert len(d["wortbeitraege"]) == 4          # weniger als eine volle Seite
-        assert {g["committee"] for g in d["wortbeitraege_gremien"]} == {"Rat", "Verkehrsausschuss"}
+        assert d["speeches_total"] == 4
+        assert len(d["speeches"]) == 4          # weniger als eine volle Seite
+        assert {g["committee"] for g in d["speeches_committees"]} == {"Rat", "Verkehrsausschuss"}
     finally:
         store.close()
 
@@ -491,11 +491,11 @@ def test_beratendes_mitglied_ohne_fraktions_zeitreihe(tmp_path):
     store = _mandats_store(tmp_path)
     try:
         skiba = store.member_detail("ben-carlsson-skiba")
-        assert skiba["art"] == "advisory"
+        assert skiba["kind"] == "advisory"
         assert skiba["party"] is None and skiba["faction_timeline"] == []
         assert skiba["organisation"] == "Fridays for Future Oldenburg"
         behrens = store.member_detail("paul-behrens")
-        assert behrens["art"] == "council" and behrens["party"] == "SPD"
+        assert behrens["kind"] == "council" and behrens["party"] == "SPD"
         assert behrens["faction_timeline"]
         lex = {p["slug"]: p for p in store.personen_lexikon()}
         assert lex["ben-carlsson-skiba"]["art"] == "advisory"
@@ -626,9 +626,9 @@ def test_verwaltung_detail_nur_mit_erkanntem_amt(tmp_path):
                 [(1, "Krogmann", "Wird geprüft.")])
 
         kro = store.verwaltung_detail("juergen-krogmann")
-        assert kro["typ"] == "administration" and kro["role"] == "Oberbürgermeister"
+        assert kro["type"] == "administration" and kro["role"] == "Oberbürgermeister"
         assert kro["aktiv"] is True
-        assert kro["wortbeitraege_gesamt"] == 1
+        assert kro["speeches_total"] == 1
 
         # Nur eine Vertretungs-Notiz, kein erkanntes Amt → kein Steckbrief.
         assert store.verwaltung_detail("dagmar-sachse") is None
