@@ -21,7 +21,8 @@ import { getMascotTheme, type MascotTheme } from "@/lib/mascot-theme";
  * Attribute durchreichen, Größe über `className` (h-24/w-24 usw.) wie bisher beim
  * SVG. Gespielt wird deklarativ über das `regung`-Attribut — der Abspieler
  * spielt sie beim Erscheinen und bei jeder Änderung; danach übernimmt seine
- * Regie (Blinzeln, gelegentlich eine kleine Geste).
+ * Regie (Blinzeln, selten ein Nicken — mehr NICHT: Gesten mit Bedeutung
+ * spielt nur, wer sie ausdrücklich setzt, s. DESIGNSPRACHE.md § 1).
  */
 
 declare global {

@@ -22,7 +22,7 @@
  * `background-position`, und der Browser schiebt dafür nur eine bereits
  * dekodierte Textur. Das läuft auch auf einem alten Telefon.
  *
- * DREI BLÄTTER, EINZELN GEHOLT. Ein Blatt mit allem wäre bequem und
+ * MEHRERE BLÄTTER, EINZELN GEHOLT. Ein Blatt mit allem wäre bequem und
  * falsch: Eine Seite, die nur ein ruhendes Maskottchen zeigt, lädt sonst
  * auch das Winken, das Suchen und vier Zeigerichtungen mit. Der Kern
  * (ruhen, blinzeln, nicken) ist ein Fünftel des Ganzen; alles andere holt
@@ -516,13 +516,16 @@ class LottiFigur extends HTMLElement {
      dazu, weil der Vorrat mitwächst.
 
      Die GEWICHTE sind der Rest: Blinzeln ist immer richtig, Nicken
-     gelegentlich, alles andere selten. Ein Maskottchen, das ständig winkt,
-     ist kein lebendiges, sondern ein aufdringliches. */
+     gelegentlich. MEHR IST ES SEIT DEM 01.09.26 BEWUSST NICHT: Die erste
+     Fassung würfelte auch Winken, Lachen und Staunen — sobald eine Seite
+     ein Blatt für ihre eigene Regung geladen hatte, winkte die Figur
+     daneben ohne Anlass. Eine Geste, die etwas BEDEUTEN soll („gefunden!",
+     „hör her"), darf nicht auch zufällig passieren; alles außer Blinzeln
+     und Nicken spielt deshalb nur, wer es ausdrücklich verlangt. */
 
   /** Was die Regie überhaupt spielen darf, nach Häufigkeit gewichtet. */
   static REGIE = {
-    blinzelt: 10, nickt: 2, wartet: 2, 'schaut-umher': 2,
-    denkt: 1, staunt: 1, 'freut-sich': 1, seufzt: 1, lacht: 1, winkt: 1,
+    blinzelt: 10, nickt: 1,
   };
 
   /** Wie lange die Regie zwischen zwei Einfällen wartet. */
@@ -541,8 +544,10 @@ class LottiFigur extends HTMLElement {
     for (const [name, gewicht] of Object.entries(LottiFigur.REGIE)) {
       const eintrag = this._verzeichnis?.regungen?.[name];
       if (!eintrag || !this._blatt(eintrag.gruppe)?.bereit) continue;
-      // Nichts, was hängen bleibt: Eine gehaltene Geste löste sich nie auf.
-      if (eintrag.halt != null) continue;
+      // Nichts, was hängen bleibt: Eine gehaltene Geste löste sich nie
+      // auf, und eine Schleife (wiederholt) liefe bis zum Seitenwechsel —
+      // die erste Fassung blieb so nach Minuten im „denkt" stehen.
+      if (eintrag.halt != null || eintrag.wiederholt) continue;
       for (let i = 0; i < gewicht; i++) vorrat.push(name);
     }
     if (!vorrat.length) return 'blinzelt';

@@ -97,7 +97,9 @@ export function RechercheLimitKarte({ onSchnelleFrage }: { onSchnelleFrage: () =
 }
 
 /** Fortschritts-Karte (8a②): Phasen-Checkliste, Facetten-Chips, Balken mit
- *  grober Restzeit, Abbrechen. Lotti sucht. Erscheint anstelle der Antwort,
+ *  grober Restzeit, Abbrechen. Lotti jongliert — „das dauert eine halbe
+ *  Minute, ich unterhalte dich solange" (Tims Wahl 01.09.26; die Schleife
+ *  läuft durch, bis der Bericht kommt). Erscheint anstelle der Antwort,
  *  solange der Job läuft. */
 export function RechercheFortschritt({ phase, facetten, facettenFertig, dokumente, onStop }: {
   phase: DeepPhase; facetten: DeepFacette[]; facettenFertig: number;
@@ -145,7 +147,7 @@ export function RechercheFortschritt({ phase, facetten, facettenFertig, dokument
   return (
     <div role="status" className="rounded-[14px] border-2 border-dashed border-border bg-card/60 p-3.5">
       <div className="flex gap-3">
-        <Mascot pose="search" className="h-[52px] w-[52px] shrink-0" />
+        <Mascot regung="jongliert" className="h-[52px] w-[52px] shrink-0" />
         <div className="flex min-w-0 flex-1 flex-col gap-1.5 pt-0.5">
           {schritt(zustand(0), stufe > 0 && facetten.length > 0
             ? `Frage in ${facetten.length} Facetten zerlegt` : "Frage zerlegen …")}
