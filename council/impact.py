@@ -205,7 +205,7 @@ def _nachgefasst(rest_von, ausgefallen: list[dict], tiefe: int,
 def rate_agenda_batch(items: list[dict], _tiefe: int = 0) -> list[tuple[int, int, str]]:
     """Bewertet Tagesordnungspunkte VOR der Sitzung → (id, score, warum).
 
-    Eigener Prompt statt des Beschluss-Prompts (``top_wichtigkeit_*``): Vor der
+    Eigener Prompt statt des Beschluss-Prompts (``agenda_item_importance_*``): Vor der
     Sitzung gibt es keinen Beschlusstext, dafür Beschlussvorschlag, Kostenteil
     und — entscheidend — die Wiederkehr. „Annahme von Zuwendungen" stand 101×
     auf einer Tagesordnung; ohne dieses Signal hält jedes Modell den Punkt für
@@ -216,8 +216,8 @@ def rate_agenda_batch(items: list[dict], _tiefe: int = 0) -> list[tuple[int, int
         return []
     valid_ids = {it["id"] for it in items}
     _deckel_je_id = {it["id"]: formalakt_deckel(it.get("title")) for it in items}
-    system = prompts.get("top_wichtigkeit_system")
-    user = prompts.render("top_wichtigkeit_user", batch=_agenda_batch_text(items))
+    system = prompts.get("agenda_item_importance_system")
+    user = prompts.render("agenda_item_importance_user", batch=_agenda_batch_text(items))
     try:
         resp = llm.chat_complete(
             model=MODEL,
@@ -266,8 +266,8 @@ def rate_batch(decisions: list[dict], _tiefe: int = 0) -> list[tuple[int, int, s
         return []
     valid_ids = {d["id"] for d in decisions}
     deckel_je_id = {d["id"]: formalakt_deckel(d.get("title")) for d in decisions}
-    system = prompts.get("impact_bewertung_system")
-    user = prompts.render("impact_bewertung_user", batch=_batch_text(decisions))
+    system = prompts.get("impact_rating_system")
+    user = prompts.render("impact_rating_user", batch=_batch_text(decisions))
     try:
         resp = llm.chat_complete(
             model=MODEL,

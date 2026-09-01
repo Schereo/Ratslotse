@@ -157,8 +157,8 @@ def text_fuer(punkt: dict, anlagen: list[dict]) -> tuple[str, str] | None:
     auf die Kurzfassung zurück. Lieber keine Zeile als eine erfundene.
     """
     ktx, source = kontext(punkt, anlagen)
-    system = prompts.get("social_kartentext_system")
-    user = prompts.render("social_kartentext_user", kontext=ktx)
+    system = prompts.get("social_card_text_system")
+    user = prompts.render("social_card_text_user", kontext=ktx)
 
     # Zwei Versuche, und beide müssen am Kritiker vorbei. Ein zweiter Anlauf
     # lohnt, weil dasselbe Modell denselben Punkt beim nächsten Mal oft
