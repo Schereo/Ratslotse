@@ -317,7 +317,7 @@ export function Flussbild({ daten, year, onJahrWechsel }: {
   const nurHerkunft = useMemo(() => einnahmearten(daten, year), [daten, year]);
   // Wann die Stadt den fehlenden Jahrgang üblicherweise vorlegt — derselbe
   // Satz, den der Datenstand am Seitenfuß baut, statt einer zweiten Fassung.
-  const { data: stand_ } = useFetch<DatenstandAntwort>("/council/haushalt/datenstand");
+  const { data: stand_ } = useFetch<DatenstandAntwort>("/council/budget/data-status");
   const ausblickText = useMemo(() => {
     const schicht = stand_?.layers.find((x) => x.key === "jahresabschluss");
     return schicht && stand_ ? ausblick(schicht, stand_.today).text : null;

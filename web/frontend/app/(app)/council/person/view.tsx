@@ -462,7 +462,7 @@ function Wortbeitraege({ slug, erste, gesamt, committees }: {
     try {
       const p = new URLSearchParams({ offset: String(ab), limit: "20" });
       if (naechstesGremium) p.set("committee", naechstesGremium);
-      const r = await fetch(apiUrl(`/council/person/${encodeURIComponent(slug)}/wortbeitraege?${p}`),
+      const r = await fetch(apiUrl(`/council/person/${encodeURIComponent(slug)}/speeches?${p}`),
         { credentials: "include", headers: authHeaders() });
       if (!r.ok) throw new Error();
       const b = await r.json();

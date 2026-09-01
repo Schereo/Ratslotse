@@ -1418,7 +1418,7 @@ private struct PersonProfileOverview: View {
                 query.append(URLQueryItem(name: "committee", value: selectedCommittee))
             }
             let page: SpeechPage = try await model.api.get(
-                "/api/council/person/\(person.slug)/wortbeitraege",
+                "/api/council/person/\(person.slug)/speeches",
                 query: query
             )
             speeches = reset ? page.items : speeches + page.items

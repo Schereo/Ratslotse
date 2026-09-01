@@ -79,7 +79,7 @@ import { cn } from "@/lib/utils";
 
 // NUR der Prüfbericht. `jahresabschluss` stand bis zum 21.08.2026 daneben und
 // bekam im Verzeichnis eine eigene Nummer — nur zeigte keine Zahl der Seite
-// darauf: Sie holt ausschließlich /council/haushalt/pruefberichte. Eine
+// darauf: Sie holt ausschließlich /council/budget/pruefberichte. Eine
 // Quelle, die nichts belegt, ist Schmuck, und Schmuck im Beleg-Apparat ist
 // genau das, was das Vertrauen kostet, das er herstellen soll.
 
@@ -203,7 +203,7 @@ export function PruefungAbschnitt({ onBestand }: {
   } | null) => void;
 } = {}) {
   const gewaehltesJahr = Number(useSearchParams().get("year")) || null;
-  const { data, loading } = useFetch<PruefberichtDaten>("/council/haushalt/pruefberichte");
+  const { data, loading } = useFetch<PruefberichtDaten>("/council/budget/audit-reports");
 
   useEffect(() => {
     if (!onBestand || loading) return;

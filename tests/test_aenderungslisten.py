@@ -74,7 +74,7 @@ def kopf(year):
     ]
 
 
-def position(y, seq, sub_budget, beitraege, product="P10.111011.003",
+def position(y, seq, sub_budget, contributions, product="P10.111011.003",
              label=("Kommunikation",), page="300"):
     """Eine Positionszeile: Nummern links, Beträge rechtsbündig in den
     Spalten (Ertrag endet um 407, Aufwand um 470)."""
@@ -87,7 +87,7 @@ def position(y, seq, sub_budget, beitraege, product="P10.111011.003",
     for part in label:
         aus.append(w(x, x + 5 * len(part), y, part))
         x += 5 * len(part) + 5
-    for text, spalte in beitraege:
+    for text, spalte in contributions:
         aus.append(amount(text, 407 if spalte == "e" else 470, y))
     return aus
 

@@ -18,7 +18,7 @@ export function GespraecheCard() {
     // `limit=0` holt nur die Zahlen: Hier zählt der Bestand, die Zeilen selbst
     // zeigt diese Karte nie. Vorher zählte sie die gelieferte Liste — und die
     // war auf 50 gedeckelt, „Alle löschen (50)" log also bei größeren Konten.
-    fetch(apiUrl("/council/gespraeche?limit=0"), { credentials: "include", headers: authHeaders() })
+    fetch(apiUrl("/council/conversations?limit=0"), { credentials: "include", headers: authHeaders() })
       .then((r) => (r.ok ? r.json() : null))
       .then((b) => {
         if (!b) return;
@@ -33,7 +33,7 @@ export function GespraecheCard() {
     setEinstellung(an ? 1 : 0);
     setFrageLoeschen(!an && count > 0);
     try {
-      const r = await fetch(apiUrl("/council/gespraeche/einstellung"), {
+      const r = await fetch(apiUrl("/council/conversations/setting"), {
         method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify({ an }),
@@ -50,7 +50,7 @@ export function GespraecheCard() {
 
   const alleLoeschen = async () => {
     try {
-      const r = await fetch(apiUrl("/council/gespraeche"), {
+      const r = await fetch(apiUrl("/council/conversations"), {
         method: "DELETE", credentials: "include", headers: authHeaders(),
       });
       if (!r.ok) throw new Error();

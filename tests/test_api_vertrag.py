@@ -30,8 +30,8 @@ os.environ.setdefault("WEB_JWT_SECRET", "test-secret")
 # `antworten.py` einen sprechenden Namen, aber (noch) keine Felder.
 OFFEN = {
     ("get", "/api/council/places"),
-    ("get", "/api/council/wochenvorschau"),
-    ("get", "/api/council/haushalt"),
+    ("get", "/api/council/week-preview"),
+    ("get", "/api/council/budget"),
     ("get", "/api/council/session/{ksinr}"),
     ("get", "/api/council/decision/{decision_id}"),
     ("get", "/api/council/qa-share/{token}"),
@@ -39,7 +39,7 @@ OFFEN = {
     ("get", "/api/council/public-stats"),
     ("get", "/api/council/entity/{slug}"),
     ("get", "/api/council/person/{slug}"),
-    ("get", "/api/council/person/{slug}/wortbeitraege"),
+    ("get", "/api/council/person/{slug}/speeches"),
     ("get", "/api/admin/llm-usage"),
     ("get", "/api/admin/users/{user_id}"),
     ("put", "/api/admin/place-candidates/{location_slug}"),
@@ -288,9 +288,9 @@ def test_keine_wirkungslosen_migrationspaare():
 #: Bot fällt dort auf seinen direkten Datenbankweg zurück. Das ist ein Befund
 #: für das andere Repo, kein Ziel für einen Wächter hier.
 OEFFENTLICHE_PFADE = (
-    "/api/social/hoechste-beschluss-id",
-    "/api/social/neue-beschluesse",
-    "/api/social/wochenvorschau",
+    "/api/social/highest-decision-id",
+    "/api/social/new-decisions",
+    "/api/social/week-preview",
 )
 
 

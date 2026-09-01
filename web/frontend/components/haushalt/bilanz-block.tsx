@@ -71,7 +71,7 @@ function vielfachesText(v: number): string {
 }
 
 export function BilanzBlock() {
-  const { data } = useFetch<BilanzDaten>("/council/haushalt/bilanz");
+  const { data } = useFetch<BilanzDaten>("/council/budget/balance-sheet");
   const s = juengsterStichtag(data);
   // Ohne vollständige Bilanz gibt es diesen Block nicht. Kein Platzhalter,
   // keine halbe Bilanz: Eine Vermögensseite, bei der ein Hauptposten fehlt,

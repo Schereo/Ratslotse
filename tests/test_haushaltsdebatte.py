@@ -128,11 +128,11 @@ def test_unbekannter_top_bleibt_leer():
 # ----------------------------------------------------------------- Wortbeiträge
 
 def test_debatte_zerlegt_und_ordnet_zu():
-    beitraege = hd.debatte(hd.top_abschnitt(PROTOKOLL, "6", bis_unterpunkt=True), ANWESEND)
+    contributions = hd.debatte(hd.top_abschnitt(PROTOKOLL, "6", bis_unterpunkt=True), ANWESEND)
     # „Krogmann" steht nicht in der Anwesenheitsliste dieses Fixtures und
     # bleibt deshalb so stehen, wie das Protokoll ihn schreibt.
-    assert [b.name for b in beitraege] == ["Krogmann", "Nicole Piechotta", "Bernhardt"]
-    ob, spd, gruen = beitraege
+    assert [b.name for b in contributions] == ["Krogmann", "Nicole Piechotta", "Bernhardt"]
+    ob, spd, gruen = contributions
     assert ob.role == "administration" and ob.fraktion is None
     assert spd.role == "council" and spd.fraktion == "SPD"
     # Namensvettern: ohne Vornamen im Protokoll KEINE Fraktion behaupten.
@@ -214,9 +214,9 @@ def test_rednerliste_in_einer_rede_wird_nicht_zerschnitten():
             "Redezeit auf zehn Minuten je Fraktion zu begrenzen. Somit ergebe sich die "
             "Reihenfolge SPD, CDU, Ratsfrau Finke,\nRatsherr Prange und dann Ratsherr "
             "Lükermann. Dem vorgeschaltet werde die Verwaltung mit ihrer Einführung.")
-    beitraege = hd.debatte(text, ANWESEND)
-    assert len(beitraege) == 1
-    assert beitraege[0].role == "leadership"
+    contributions = hd.debatte(text, ANWESEND)
+    assert len(contributions) == 1
+    assert contributions[0].role == "leadership"
 
 
 def test_kurzes_verfahren_ist_keine_rede():
@@ -244,8 +244,8 @@ def test_layout_ohne_leerzeilen():
         "die Rücklagen dadurch stärker beansprucht würden als dargestellt. Er "
         "fordert eine belastbare mittelfristige Planung ein."
     )
-    beitraege = hd.debatte(text, ANWESEND)
-    assert [b.fraktion for b in beitraege] == ["SPD", "FDP/Volt"]
+    contributions = hd.debatte(text, ANWESEND)
+    assert [b.fraktion for b in contributions] == ["SPD", "FDP/Volt"]
 
 
 # ---------------------------------------------------------------------- Anträge
@@ -342,7 +342,7 @@ def test_haushalt_streit_baut_jahrgang(store):
     assert rat["top"] == "6", "der Sammelpunkt trägt die Debatte"
     assert rat["official_text"]["outcome"] == "accepted"
     assert rat["official_text"]["no_votes"] == 20
-    assert rat["protokoll_url"] == "https://example.org/p11.pdf"
+    assert rat["minutes_url"] == "https://example.org/p11.pdf"
 
 
 def test_nur_antraege_des_sammelpunkts(store):

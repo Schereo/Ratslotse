@@ -84,8 +84,8 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "Du bekommst Wortbeiträge aus Sitzungsprotokollen des Oldenburger Stadtrats "
             "zu einer Frage, gruppiert nach Fraktion. Verdichte je Fraktion die Position "
             "als JSON-Array:\n"
-            '[{{"party": "Label wie angegeben", "haltung": "dafür"|"dagegen"|"offen"|"gewandelt", '
-            '"position": "1-2 Sätze Haltung zur Sache mit Kernargument", "einig": true, '
+            '[{{"party": "Label wie angegeben", "stance": "dafür"|"dagegen"|"offen"|"gewandelt", '
+            '"position": "1-2 Sätze Haltung zur Sache mit Kernargument", "unanimous": true, '
             '"note": null, "kernaussage": {{"text": "prägnanteste Aussage, dicht an der '
             'Vorlage", "speaker": "Name", "date": "TT.MM.JJJJ"}}}}]\n\n'
             "Regeln:\n"
@@ -95,7 +95,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "— nicht die Nacherzählung des stärksten Einzelbeitrags. Hat sich die "
             "Haltung über die Zeit entwickelt oder gibt es mehrere Facetten, benenne "
             "das (die Beiträge stehen chronologisch).\n"
-            "- haltung: „dafür\"/„dagegen\" nur bei klar belegter Linie zur gefragten "
+            "- stance: „dafür\"/„dagegen\" nur bei klar belegter Linie zur gefragten "
             "Sache; „gewandelt\" NUR, wenn sich die Haltung über die Zeit erkennbar "
             "geändert hat (dann steht die Wende auch in position); sonst „offen\".\n"
             "- einig=false NUR bei echtem inhaltlichem Widerspruch INNERHALB der "
@@ -103,7 +103,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "- Fraktionen ohne verwertbare inhaltliche Substanz weglassen.\n"
             "- Reihenfolge: stärkste Substanz zuerst.\n"
             "Antworte NUR mit dem JSON-Array.\n\n"
-            "FRAGE: {question}\n\nBEITRÄGE:\n{beitraege}"
+            "FRAGE: {question}\n\nBEITRÄGE:\n{contributions}"
         ),
     },
     "speeches_extract": {

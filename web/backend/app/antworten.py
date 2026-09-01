@@ -446,7 +446,7 @@ class HoechsteBeschlussId(TypedDict):
 
 
 class MedienAblage(TypedDict):
-    tag: str
+    day: str
     count: int
     urls: list[str]
 
@@ -715,7 +715,7 @@ class AdminNutzerZeile(TypedDict):
     created_at: str | None
     apple_linked: bool
     n_topics: int
-    n_abos: int
+    n_subscriptions: int
     n_quiz: int
     n_ki: int
     last_seen: str | None

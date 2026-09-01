@@ -100,7 +100,7 @@ export default function DashboardPage() {
   // ein Ersatz für einen Leerzustand.
   const vorschauQuery = useQuery({
     queryKey: ["wochenvorschau"],
-    queryFn: () => api.get<Wochenvorschau>("/council/wochenvorschau"),
+    queryFn: () => api.get<Wochenvorschau>("/council/week-preview"),
     staleTime: 60 * 60 * 1000,
   });
   const vorschau = vorschauQuery.data?.found ? vorschauQuery.data : null;

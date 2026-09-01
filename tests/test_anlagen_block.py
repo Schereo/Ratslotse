@@ -4,7 +4,7 @@ from council.qa import ANLAGEN_ZEICHEN, _anlagen_block
 
 def _anlage(nr, label, citation):
     return {"nr": nr, "label": label, "template_number": "23/0211",
-            "vorlage_titel": "Mobilitätsplan Oldenburg 2030",
+            "template_title": "Mobilitätsplan Oldenburg 2030",
             "citation": citation}
 
 

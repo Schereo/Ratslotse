@@ -229,7 +229,7 @@ export function GesellschaftenAbschnitt({ onBestand }: {
   const params = useSearchParams();
   const router = useRouter();
   const gewaehlt = params.get("g");
-  const { data, loading } = useFetch<BeteiligungsDaten>("/council/haushalt/beteiligungen");
+  const { data, loading } = useFetch<BeteiligungsDaten>("/council/budget/shareholdings");
   const [form, setForm] = useState<Rechtsform | null>(null);
   const [suche, setSuche] = useState("");
   // Mobil steht die Konzernkarte hinter dem Auslöser „Wer gehört zu wem?" —

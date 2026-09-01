@@ -126,7 +126,7 @@ export function Quellenkontext({ keys, jeDokument = LEER, year = null, children 
   // Ein Aufruf je Seite, wenige Dutzend Zeilen. Bewusst hier und nicht in
   // jeder Seite: Sonst müsste jede von ihnen dieselbe Verkabelung tragen,
   // und die eine, die es vergisst, zeigt wieder auf die Startseite.
-  const { data } = useFetch<DokumenteAntwort>("/council/haushalt/dokumente");
+  const { data } = useFetch<DokumenteAntwort>("/council/budget/documents");
   const eintraege = useMemo(
     () => nummerierung(keys, jeDokument, data?.documents, year),
     [keys, jeDokument, data?.documents, year]);

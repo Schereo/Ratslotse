@@ -36,7 +36,7 @@ const fmtDate = (iso: string) => new Date(iso + "T12:00:00").toLocaleDateString(
 export function FundstueckCard() {
   const { data } = useQuery({
     queryKey: ["fundstueck"],
-    queryFn: () => api.get<Fundstueck>("/council/fundstueck"),
+    queryFn: () => api.get<Fundstueck>("/council/daily-find"),
     staleTime: 60 * 60 * 1000, // wechselt einmal täglich
   });
   if (!data?.found) return null;

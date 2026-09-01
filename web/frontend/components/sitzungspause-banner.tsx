@@ -24,12 +24,12 @@ const fmtShort = (iso: string) =>
  *  Sitzungen-Seite. Die große Variante (Übersicht) startet eingeklappt —
  *  eine Zeile; die lange Erklärung klappt erst auf Wunsch aus (der Hinweis
  *  füllte sonst wochenlang jeden Morgen den halben Bildschirm). Erscheint
- *  nur bei aktiver Pause; API und Felder unverändert (/council/sitzungspause). */
+ *  nur bei aktiver Pause; API und Felder unverändert (/council/session-break). */
 export function SitzungspauseBanner({ className, compact = false }: { className?: string; compact?: boolean }) {
   const [open, setOpen] = useState(false);
   const { data } = useQuery({
     queryKey: ["sitzungspause"],
-    queryFn: () => api.get<Pause>("/council/sitzungspause"),
+    queryFn: () => api.get<Pause>("/council/session-break"),
     staleTime: 60 * 60 * 1000, // ändert sich höchstens täglich
   });
 
