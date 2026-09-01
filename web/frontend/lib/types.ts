@@ -149,7 +149,7 @@ export interface QaAnswer {
 
 export interface GoalSummary {
   key: string; label: string; description: string;
-  voran: number; bremst: number; neutral: number; total: number;
+  advances: number; hinders: number; neutral: number; total: number;
 }
 
 export interface GoalDecision {
@@ -160,7 +160,7 @@ export interface GoalDecision {
 
 export interface GoalDetail {
   key: string; label: string; description: string;
-  summary: { voran: number; bremst: number; neutral: number; total: number };
+  summary: { advances: number; hinders: number; neutral: number; total: number };
   decisions: GoalDecision[];
 }
 
@@ -323,7 +323,7 @@ export interface RelatedEntity {
   name: string;
   kind: string;
   n: number;
-  rel_type: "belegt" | "aehnlich" | string;
+  rel_type: "documented" | "similar" | string;
   score: number;
   evidence: number;
 }

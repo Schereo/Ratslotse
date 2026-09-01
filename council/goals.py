@@ -73,7 +73,7 @@ GOALS: dict[str, dict] = {
     },
 }
 
-STANCES = ("voran", "bremst", "neutral")
+STANCES = ("advances", "hinders", "neutral")
 
 _PROMPT = """Du bewertest, ob Beschlüsse des Oldenburger Stadtrats ein übergeordnetes Ziel betreffen und ob sie es voranbringen.
 
@@ -82,17 +82,17 @@ ZIEL: {label}
 
 Für JEDEN Beschluss liefere:
 - "relevant": true NUR wenn der Beschluss das Ziel konkret betrifft, sonst false
-- "stance": wenn relevant — "voran" (bringt das Ziel voran), "bremst" (wirkt entgegen) oder "neutral" (betrifft es, aber neutral/gemischt); sonst "neutral"
+- "stance": wenn relevant — "advances" (bringt das Ziel voran), "hinders" (wirkt entgegen) oder "neutral" (betrifft es, aber neutral/gemischt); sonst "neutral"
 - "reason": max. ein kurzer Satz (deutsch)
 
-Antworte mit NUR JSON: {{"results": [{{"id": <id>, "relevant": <true|false>, "stance": "<voran|bremst|neutral>", "reason": "..."}}]}}
+Antworte mit NUR JSON: {{"results": [{{"id": <id>, "relevant": <true|false>, "stance": "<advances|hinders|neutral>", "reason": "..."}}]}}
 Regeln:
 - jede vorgelegte id genau einmal mit exakt dieser id; im Zweifel relevant=false.
 - Der Ausgang steht in [eckigen Klammern]. Beschlüsse, die nur ZUR KENNTNIS genommen
   wurden (Berichte, [noted]) oder VERTAGT sind ([postponed]), bringen das Ziel
   NICHT voran → "neutral" — AUSSER der Text dokumentiert konkret bereits umgesetzten
   oder beschlossenen Fortschritt. Reine Sachstands-/Prüfberichte, Absichts­erklärungen
-  und Resolutionen sind "neutral". "voran" nur bei einem tatsächlich gefassten,
+  und Resolutionen sind "neutral". "advances" nur bei einem tatsächlich gefassten,
   zielfördernden Beschluss ([accepted]).
 
 BESCHLÜSSE:

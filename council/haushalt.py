@@ -368,7 +368,7 @@ def _estimate(question: str, answer_mio: int, lo: int, hi: int, *, year: int,
         "range_min": float(lo), "range_max": float(hi),
         "explanation": f"Laut beschlossenem Haushaltsplan {year} sind es rund {answer_mio} {unit}.",
         "detail": detail, "hint": hint, "topic": "Haushalt",
-        "source_type": "stadt", "source_ref": source_url,
+        "source_type": "city", "source_ref": source_url,
         "chart": chart_json,
         "content_hash": quiz._content_hash("topic", "haushalt", question),
     }
@@ -604,7 +604,7 @@ def build_questions(rows: list[dict], year: int, source_url: str) -> list[dict]:
                         f"„{top['area']}“ der größte Ausgabenblock — dahinter stehen "
                         f"{top_info}."),
         "detail": _PFLICHT_SATZ, "topic": "Haushalt",
-        "source_type": "stadt", "source_ref": source_url,
+        "source_type": "city", "source_ref": source_url,
         "chart": _chart(parts, year, highlight=top["area"]),
         "content_hash": key("top-expense"),
     })
@@ -627,7 +627,7 @@ def build_questions(rows: list[dict], year: int, source_url: str) -> list[dict]:
                    f"„{e_top['area']}“ auf. Die Fachbereiche decken ihre Ausgaben nur zum "
                    "Teil selbst — den Rest verteilt die Stadt aus diesem Topf."),
         "topic": "Haushalt",
-        "source_type": "stadt", "source_ref": source_url,
+        "source_type": "city", "source_ref": source_url,
         "chart": _chart(parts, year, highlight=e_top["area"], col="revenues"),
         "content_hash": key("top-revenue"),
     })
@@ -684,7 +684,7 @@ def build_questions(rows: list[dict], year: int, source_url: str) -> list[dict]:
                             "der kleinste der vier — das Diagramm zeigt die Größenordnungen."),
             "detail": (f"„{kleinster['area']}“ umfasst {k_info}." if k_info else None),
             "topic": "Haushalt",
-            "source_type": "stadt", "source_ref": source_url,
+            "source_type": "city", "source_ref": source_url,
             "chart": _chart(parts, year, highlight=kleinster["area"]),
             "content_hash": key("kleinster"),
         })
@@ -712,7 +712,7 @@ def build_questions(rows: list[dict], year: int, source_url: str) -> list[dict]:
                            f"aber auch hohe eigene Einnahmen (z. B. Erstattungen) gegenüber. Unterm "
                            f"Strich kostet „{n_top['area']}“ am meisten."),
                 "topic": "Haushalt",
-                "source_type": "stadt", "source_ref": source_url,
+                "source_type": "city", "source_ref": source_url,
                 "chart": _netto_chart(parts, year, n_top["area"]),
                 "content_hash": key("netto"),
             })
@@ -771,7 +771,7 @@ def build_questions(rows: list[dict], year: int, source_url: str) -> list[dict]:
                        "viel aus Gebühren, schlüsselt die Übersicht des Haushaltsplans nicht "
                        "auf; sie nennt je Teilhaushalt eine Ertragssumme."),
             "topic": "Haushalt",
-            "source_type": "stadt", "source_ref": source_url,
+            "source_type": "city", "source_ref": source_url,
             "chart": _eigen_chart(fach, year, e_top["area"]),
             "content_hash": key("deckung"),
         })
@@ -853,7 +853,7 @@ def build_abschluss_questions(store) -> list[dict]:
             "detail": ("Wer eine Schuldenzahl nennt, muss die Abgrenzung dazusagen. "
                        "Addieren darf man sie nie: Die größere enthält die kleinere."),
             "hint": "Es kommt darauf an, wen man mitzählt.",
-            "topic": "Haushalt", "source_type": "stadt", "source_ref": ris,
+            "topic": "Haushalt", "source_type": "city", "source_ref": ris,
             "content_hash": key("drei-schuldenzahlen"),
         })
 
@@ -922,7 +922,7 @@ def build_abschluss_questions(store) -> list[dict]:
                            "gut noch schlecht, sondern eine Frage, wie lange es so "
                            "weitergehen soll."),
                 "hint": "Mehr als einer.",
-                "topic": "Haushalt", "source_type": "stadt", "source_ref": ris,
+                "topic": "Haushalt", "source_type": "city", "source_ref": ris,
                 "content_hash": key("substanzverlust"),
             })
     return qs
@@ -969,7 +969,7 @@ def build_trend_questions(by_year: dict[int, list[dict]], source_url: str) -> li
                        "und wachsende Pflichtaufgaben (etwa Sozialleistungen und Kinderbetreuung) treiben "
                        "die Ausgaben Jahr für Jahr — das Diagramm zeigt den Verlauf."),
             "hint": "Die Ausgaben sind kräftig gestiegen — mehr als ein Viertel.",
-            "topic": "Haushalt", "source_type": "stadt", "source_ref": source_url,
+            "topic": "Haushalt", "source_type": "city", "source_ref": source_url,
             "chart": trend_json,
             "content_hash": quiz._content_hash("topic", "haushalt", f"trend-{y0}-{y1}"),
         })
@@ -997,7 +997,7 @@ def build_trend_questions(by_year: dict[int, list[dict]], source_url: str) -> li
                                 f"(von {_mio(p0[top_g]['expenses'])} auf {_mio(p1[top_g]['expenses'])} Mio.)."),
                 "detail": ("Wachsende Pflichtaufgaben schlagen vor allem in den großen Sozial- und "
                            "Bildungsbereichen zu Buche — das Diagramm zeigt den Verlauf der Gesamtausgaben."),
-                "topic": "Haushalt", "source_type": "stadt", "source_ref": source_url,
+                "topic": "Haushalt", "source_type": "city", "source_ref": source_url,
                 "chart": trend_json,
                 "content_hash": quiz._content_hash("topic", "haushalt", f"trend-area-{y0}-{y1}"),
             })

@@ -6175,10 +6175,12 @@ export interface components {
         };
         /** Ziel */
         Ziel: {
-            /** Bremst */
-            bremst: number;
+            /** Advances */
+            advances: number;
             /** Description */
             description: string;
+            /** Hinders */
+            hinders: number;
             /** Key */
             key: string;
             /** Label */
@@ -6187,8 +6189,6 @@ export interface components {
             neutral: number;
             /** Total */
             total: number;
-            /** Voran */
-            voran: number;
         };
         /** ZielDetail */
         ZielDetail: {
@@ -6209,14 +6209,14 @@ export interface components {
          * @description Wie viele Beschlüsse das Ziel voranbringen, bremsen oder nicht berühren.
          */
         ZielKennzahlen: {
-            /** Bremst */
-            bremst: number;
+            /** Advances */
+            advances: number;
+            /** Hinders */
+            hinders: number;
             /** Neutral */
             neutral: number;
             /** Total */
             total: number;
-            /** Voran */
-            voran: number;
         };
         /** Ziele */
         Ziele: {
@@ -10766,4 +10766,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 67468f4ccff46e05ca9552c78ee809012603bd6cb5a8f10b15e2dadab4a10df0
+// vertrag-sha256: a6b32b06e377c9e27348624b997bcdb649c557d022ca6fbe5f4bd49784ed69ba

@@ -259,9 +259,9 @@ struct PublicProfileView: View {
                     "stadtplanung": "Stadtplanung"
                   },
                   "related": [
-                    {"slug": "radverkehr", "name": "Radverkehr", "kind": "thema", "rel_type": "belegt", "evidence": 12},
-                    {"slug": "grundschulen", "name": "Grundschulen", "kind": "thema", "rel_type": "belegt", "evidence": 7},
-                    {"slug": "verkehrssicherheit", "name": "Verkehrssicherheit", "kind": "thema", "rel_type": "aehnlich", "evidence": 0}
+                    {"slug": "radverkehr", "name": "Radverkehr", "kind": "thema", "rel_type": "documented", "evidence": 12},
+                    {"slug": "grundschulen", "name": "Grundschulen", "kind": "thema", "rel_type": "documented", "evidence": 7},
+                    {"slug": "verkehrssicherheit", "name": "Verkehrssicherheit", "kind": "thema", "rel_type": "similar", "evidence": 0}
                   ]
                 }
                 """#.utf8))
@@ -447,8 +447,8 @@ private struct TopicProfileMetadata: View {
                 .ratsCard()
             }
 
-            let proven = detail.related.filter { $0.relType == "belegt" }
-            let similar = detail.related.filter { $0.relType != "belegt" }
+            let proven = detail.related.filter { $0.relType == "documented" }
+            let similar = detail.related.filter { $0.relType != "documented" }
             if !proven.isEmpty || !similar.isEmpty {
                 VStack(alignment: .leading, spacing: 13) {
                     relatedRow("Hängt zusammen mit", detail: "gemeinsam behandelt", entries: proven, showsEvidence: true)

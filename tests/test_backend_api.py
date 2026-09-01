@@ -4029,8 +4029,8 @@ def test_entity_detail_liefert_verwandte_themen(client):
     related = r.json()["related"]
     assert [x["name"] for x in related] == ["Entlastungsstraße", "Brookweg"]
     # Belegte zuerst, mit Belegzahl — die UI trennt danach die beiden Zeilen.
-    assert related[0]["rel_type"] == "belegt" and related[0]["evidence"] == 22
-    assert related[1]["rel_type"] == "aehnlich" and related[1]["evidence"] == 0
+    assert related[0]["rel_type"] == "documented" and related[0]["evidence"] == 22
+    assert related[1]["rel_type"] == "similar" and related[1]["evidence"] == 0
 
 
 def test_entity_ohne_verwandte_liefert_leere_liste(client):

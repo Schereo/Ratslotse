@@ -1125,8 +1125,8 @@ class Ratsmitglieder(TypedDict):
 
 class ZielKennzahlen(TypedDict):
     """Wie viele Beschlüsse das Ziel voranbringen, bremsen oder nicht berühren."""
-    voran: int
-    bremst: int
+    advances: int
+    hinders: int
     neutral: int
     total: int
 

@@ -83,6 +83,10 @@ ERLAUBT = {
     "schwelle": "nur noch in einem Doku-Kommentar in haushalt.ts",
     "stadtteil": "Pfad-Teil und Feldname der Ortsangabe im E2E-Fixture",
     "unbekannt": "Ersatztext für einen fehlenden Bildnachweis",
+    "dagegen": "zugleich die Partei-Haltung der KI-Antwort (dafür|dagegen|offen)",
+    "belegt": "zugleich das Urteil der Themen-Prüfung (belegt|plausibel|ungeeignet)",
+    "bremst": "Beschriftung des Ziel-Balkens",
+    "voran": "Beschriftung des Ziel-Balkens",
     "orte": "Reiter des Admin-Panels und Query-Parameter der Entitäten-Liste",
     "mittel": "Beschriftung der Quiz-Schwierigkeit",
     "schwer": "Beschriftung der Quiz-Schwierigkeit",
@@ -125,6 +129,14 @@ ERLAUBT_ZEILE = {
     "anlage": re.compile(r'ankerPrefix'),
     "gruppe": re.compile(r'factionWords|term'),
     "unbekannt": re.compile(r'\|\|'),
+    # `dagegen` ist daneben die Haltung einer Partei aus der KI-Antwort
+    # (dafür|dagegen|offen|gewandelt) — ein eigenes Vokabular, eigener Schnitt.
+    "dagegen": re.compile(r'haltung|dafür|label: "dagegen"'),
+    # `belegt` ist daneben das Urteil der Themen-Prüfung
+    # (belegt|plausibel|ungeeignet) und die Beleglage einer Kernzahl.
+    "belegt": re.compile(r'verdict|plausibel|beleglage'),
+    "bremst": re.compile(r'label: "bremst"'),
+    "voran": re.compile(r'label: "bringt voran"'),
     # `rat`, `thema` und `verwaltung` sind im Backend noch deutsch — aber je
     # in EINEM Vokabular. Der Filter nennt dessen Felder, damit ein Vergleich
     # gegen ein anderes Feld (`channel === "rat"`, `area_type === "thema"`,

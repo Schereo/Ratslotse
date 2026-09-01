@@ -161,7 +161,7 @@ def test_neue_beschluesse_filtert_wichtigkeit_und_id(client, monkeypatch, counci
             "'Beschluss ' || ?, 'accepted', 'majority', ?)",
             (bid, bid, wichtig))
     c.execute("INSERT INTO council_decision_votes (decision_id, faction, stance) "
-              "VALUES (10, 'CDU', 'dagegen')")
+              "VALUES (10, 'CDU', 'against')")
     c.commit()
     try:
         r = client.get("/api/social/neue-beschluesse",
@@ -170,7 +170,7 @@ def test_neue_beschluesse_filtert_wichtigkeit_und_id(client, monkeypatch, counci
         assert r.status_code == 200
         daten = r.json()
         assert [d["id"] for d in daten] == [10]          # 11 fällt durch die Schwelle
-        assert daten[0]["votes"] == [{"faction": "CDU", "stance": "dagegen"}]
+        assert daten[0]["votes"] == [{"faction": "CDU", "stance": "against"}]
     finally:
         get_settings.cache_clear()
 

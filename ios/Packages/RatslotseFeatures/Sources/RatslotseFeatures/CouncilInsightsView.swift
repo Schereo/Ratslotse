@@ -819,11 +819,11 @@ struct CouncilInsightsView: View {
     }
 
     private func stanceLabel(_ stance: String) -> String {
-        switch stance { case "voran": "BRINGT VORAN"; case "bremst": "BREMST"; default: "BERÜHRT DAS ZIEL" }
+        switch stance { case "advances": "BRINGT VORAN"; case "hinders": "BREMST"; default: "BERÜHRT DAS ZIEL" }
     }
 
     private func stanceColor(_ stance: String) -> Color {
-        switch stance { case "voran": RatsColor.success; case "bremst": RatsColor.danger; default: RatsColor.muted }
+        switch stance { case "advances": RatsColor.success; case "hinders": RatsColor.danger; default: RatsColor.muted }
     }
 
     private func partyColor(_ party: String) -> Color {
@@ -906,7 +906,7 @@ struct CouncilInsightsView: View {
                 CouncilGoal(key: "klima", label: "Klimaneutrale Stadt", description: "Emissionen senken und Oldenburg an den Klimawandel anpassen.", voran: 18, bremst: 3, neutral: 7, total: 28),
                 CouncilGoal(key: "teilhabe", label: "Soziale Teilhabe", description: "Gute Zugänge zu Wohnen, Bildung und öffentlichem Leben schaffen.", voran: 14, bremst: 2, neutral: 5, total: 21),
             ]
-            goalDetails["klima"] = [GoalDecision(id: 1, title: "Neue Busspuren für Oldenburg", summary: "Busverkehr beschleunigen.", policyField: "verkehr", outcome: "accepted", sessionDate: "2026-08-26", committee: "Rat", stance: "voran", rationale: "Stärkt den öffentlichen Verkehr.")]
+            goalDetails["klima"] = [GoalDecision(id: 1, title: "Neue Busspuren für Oldenburg", summary: "Busverkehr beschleunigen.", policyField: "verkehr", outcome: "accepted", sessionDate: "2026-08-26", committee: "Rat", stance: "advances", rationale: "Stärkt den öffentlichen Verkehr.")]
             return
         }
 #endif

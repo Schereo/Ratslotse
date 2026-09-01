@@ -68,7 +68,7 @@ def _sources(area: dict, facts: str) -> tuple[str, str, str]:
     if stadt:
         parts.append(f"Stadt Oldenburg (oldenburg.de):\n{stadt[0]}")
         if not wiki:
-            src_type, src_ref = "stadt", stadt[1]
+            src_type, src_ref = "city", stadt[1]
     if facts:
         parts.append(f"Aktuelle Beschlüsse des Stadtrats:\n{facts}")
     return "\n\n".join(parts), src_type, src_ref
