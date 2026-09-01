@@ -144,6 +144,76 @@ def ortsbereich_center(name: str) -> tuple[float, float] | None:
     return ((min(lats) + max(lats)) / 2, (min(lons) + max(lons)) / 2)
 
 
+def _geometrie_punkte(geometrie: dict) -> list[tuple[float, float]]:
+    """(lat, lon) aus beliebiger GeoJSON-Geometrie — ohne Fremdbibliothek."""
+    art = geometrie.get("type")
+    koord = geometrie.get("coordinates") or []
+    if art == "Point":
+        return [(koord[1], koord[0])] if len(koord) >= 2 else []
+    if art in ("LineString", "MultiPoint"):
+        return [(p[1], p[0]) for p in koord if len(p) >= 2]
+    if art in ("MultiLineString", "Polygon"):
+        return [(p[1], p[0]) for teil in koord for p in teil if len(p) >= 2]
+    if art == "MultiPolygon":
+        return [(p[1], p[0]) for poly in koord for ring in poly for p in ring if len(p) >= 2]
+    return []
+
+
+#: So viele Stützpunkte werden je Geometrie geprüft. Eine lange Straße hat
+#: tausende; alle zu testen kostet Zeit und ändert am Mehrheitsverhältnis nichts.
+GEOMETRIE_STUETZPUNKTE = 60
+
+
+def ortsbereiche_der_geometrie(geometrie: dict | str | None) -> dict[str, int]:
+    """Welche Ortsbereiche eine Geometrie berührt → ``{Name: Stützpunkte}``.
+
+    **Warum das nötig ist.** Bis 09/2026 wurde der Ortsbereich eines Ortes aus
+    einem einzigen Punkt abgeleitet — dem Mittelpunkt seiner Bounding-Box. Bei
+    Flächen geht das; bei Straßen nicht: Eine Straße, die um eine Ecke geht, hat
+    ihren Bounding-Box-Mittelpunkt NEBEN sich. Auf dem Prod-Bestand
+    (01.09.2026 gemessen) lag „Alter Postweg" damit in keinem Ortsbereich,
+    obwohl die Straße vollständig in Kreyenbrück verläuft; dasselbe bei
+    Ziegelweg, Haaren und Tweelbäker See.
+
+    Zurückgegeben werden ALLE berührten Bereiche mit ihrem Gewicht — eine
+    Straße kann durch mehrere laufen, und das ist keine Ungenauigkeit, sondern
+    die Wahrheit (die Haaren fließt durch sechs).
+    """
+    if not geometrie:
+        return {}
+    if isinstance(geometrie, str):
+        import json
+        try:
+            geometrie = json.loads(geometrie)
+        except (ValueError, TypeError):
+            return {}
+    if not isinstance(geometrie, dict):
+        return {}
+    punkte = _geometrie_punkte(geometrie)
+    if not punkte:
+        return {}
+    schritt = max(1, len(punkte) // GEOMETRIE_STUETZPUNKTE)
+    stimmen: dict[str, int] = {}
+    for lat, lon in punkte[::schritt]:
+        name = ortsbereich_for(lat, lon)
+        if name:
+            stimmen[name] = stimmen.get(name, 0) + 1
+    return stimmen
+
+
+def ortsbereich_der_geometrie(geometrie: dict | str | None) -> str | None:
+    """Der Ortsbereich, in dem eine Geometrie überwiegend liegt — oder None.
+
+    Bei Gleichstand entscheidet der Name, damit zwei Läufe dasselbe Ergebnis
+    liefern; ein zufällig wechselnder Stadtteil wäre schlimmer als ein
+    willkürlich, aber stabil gewählter.
+    """
+    stimmen = ortsbereiche_der_geometrie(geometrie)
+    if not stimmen:
+        return None
+    return sorted(stimmen.items(), key=lambda t: (-t[1], t[0]))[0][0]
+
+
 def nachbar_ortsbereiche(name: str, anzahl: int = 3) -> list[str]:
     """Die ``anzahl`` nächstgelegenen Ortsbereiche — „direkt nebenan".
 

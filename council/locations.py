@@ -82,7 +82,18 @@ _GENERIC_STREET_PREFIXES = {
     "fahrrad", "schul", "spiel", "wohn", "hauptverkehr", "anlieger", "einbahn",
     "verkehrs", "straßen", "strassen", "weihnachts", "wochen", "floh",
 }
-_GENERIC_STREET_EXACT = {"sportplatz", "parkplatz"}
+#: Gattungsbegriffe, die als Ortsname durchrutschten und nirgends hinführen.
+#: Auf dem Prod-Bestand (01.09.2026) waren das die vier meistgenutzten
+#: „Orte" ohne Stadtteil überhaupt: „Gemeindestraße" (51 Zuordnungen),
+#: „Entlastungsstraße" (38), „Kunstrasenplatz" (19), „Radweg" (13). Kein
+#: Geocoder findet sie, und gemeint ist ohnehin die Gattung. Nur die BLOSSE
+#: Form ist gesperrt — „Entlastungsstraße Fliegerhorst" bleibt ein Ort.
+_GENERIC_STREET_EXACT = {
+    "sportplatz", "parkplatz", "gemeindestrasse", "entlastungsstrasse",
+    "kunstrasenplatz", "radweg", "fussweg", "gehweg", "sackgasse",
+    "bundesstrasse", "landesstrasse", "kreisstrasse",
+    "bahnuebergang", "monitoring",
+}
 _ORGANIZATION_RE = re.compile(
     r"(?:\bgmbh\b|\baktiengesellschaft\b|\beigenbetrieb\b|\bstiftung\b|"
     r"\bfraktion\b|\bgesellschaft\b|\bverband\b|\be\.?\s*v\.?\b)",
@@ -151,12 +162,80 @@ def _name_occurs_in_evidence(name: str, evidence: str) -> bool:
     ) for word in name_words)
 
 
+#: Eine Fundstelle, die wie eine Wohnanschrift aussieht: „… 49, 26127 Oldenburg".
+#: Auf Prod (01.09.2026) standen so 27 Belege in der Datenbank — allesamt aus
+#: Vorlagen zu Ausschussbesetzungen, wo die Anschriften der Mitglieder gelistet
+#: sind. Ein Personalbeschluss wurde dadurch nach der Privatadresse eines
+#: Mitglieds verortet. Doppelt falsch: sachlich (der Vorgang betrifft keinen
+#: Ort) und weil eine Wohnanschrift nichts in unserer Datenbank zu suchen hat.
+_WOHNANSCHRIFT_RE = re.compile(r"\d{1,3}\s*[a-z]?\s*,\s*\d{5}\s", re.IGNORECASE)
+
+#: Vorgänge, die die ganze Stadt betreffen. Ein Ort im VORLAGENTEXT ist dort
+#: fast immer ein Beispiel („die Grundschule Harlingerstraße nimmt teil"), kein
+#: Gegenstand. Steht der Ort dagegen schon im TITEL, ist er gemeint —
+#: „Masterplan Fliegerhorst" bleibt deshalb unangetastet.
+_STADTWEIT_RE = re.compile(
+    r"\b(programm|konzept|satzung|richtlinie|gebührenordnung|entgeltordnung|haushalt|"
+    r"jahresabschluss|wirtschaftsplan|stellenplan|beteiligungsbericht|"
+    r"besetzung|umbesetzung|nachbesetzung|bestellung|entsendung|wahl\s+(des|der|von)|"
+    r"leitlinie|masterplan|aktionsplan|rahmenkonzept|strategie|"
+    r"pass|zuwendung|förderrichtlinie|sachstandsbericht|evaluation)\b",
+    re.IGNORECASE)
+
+
+def betrifft_ganze_stadt(title: str | None) -> bool:
+    """Ist der Vorgang seinem Titel nach eine stadtweite Angelegenheit?
+
+    Nur eine Vorprüfung — sie entscheidet nichts allein, sondern nur zusammen
+    mit „und im Titel steht kein Ort" (siehe ``ortsbezug_ist_beiwerk``).
+    """
+    return bool(_STADTWEIT_RE.search(" ".join((title or "").split())))
+
+
+def ortsbezug_ist_beiwerk(title: str | None, kandidat: dict,
+                          catalog_places=None) -> bool:
+    """Ist dieser Ortsfund bloßes Beiwerk eines stadtweiten Vorgangs?
+
+    Auf dem Prod-Bestand (01.09.2026) trugen 110 klar stadtweite Beschlüsse
+    einen Stadtteil, den sie nicht verdienen: „Oldenburg Pass – Bericht 2021"
+    → Ofenerdiek über den Ort „VWG"; „Rad- und Fußverkehrsprogramm 2022" →
+    Bloherfelde über „Uhlhornsweg"; „Umbesetzung von Ausschüssen" → Innenstadt.
+    Der Vorgang gilt der ganzen Stadt, der Ort ist eine Nebenerwähnung im
+    Vorlagentext.
+
+    Drei Bedingungen müssen ZUSAMMEN erfüllt sein, damit die Regel nichts
+    Richtiges wegnimmt:
+
+    1. Der Titel weist den Vorgang als stadtweit aus (Programm, Satzung,
+       Besetzung, Jahresabschluss …).
+    2. Im Titel selbst steht kein Ort — „Masterplan Fliegerhorst" bleibt.
+    3. Der Fund stammt aus dem Vorlagentext, nicht aus Titel oder Beschluss.
+    """
+    if not betrifft_ganze_stadt(title):
+        return False
+    if kandidat.get("source") != "template":
+        return False
+    # Nennt der Titel selbst irgendeinen Ort, ist der Vorgang trotz stadtweiter
+    # Vokabel verortet — dann gilt die Regel nicht.
+    if extract_explicit_locations(title or "", source="title",
+                                  catalog_places=catalog_places):
+        return False
+    # Und nennt der Titel GENAU DIESEN Ort — auch flektiert —, erst recht.
+    # „Unterschutzstellung des Heidbrooks – Sachstandsbericht" ist ein Vorgang
+    # zu einem konkreten Gebiet; der Genitiv „Heidbrooks" rutscht aber durch
+    # die Muster oben hindurch. Ohne diese zweite Prüfung verlor der Beschluss
+    # auf dem Prod-Bestand alle fünf Ortsbezüge, auch den richtigen.
+    if _name_occurs_in_evidence(kandidat.get("name") or "", title or ""):
+        return False
+    return True
+
+
 def valid_llm_location(name: str, kind: str, evidence: str) -> bool:
     """Deterministische Präzisionsschranke nach der Modellantwort.
 
-    Sie verhindert drei produktiv beobachtete Fehlerklassen: Organisationen als
-    Gebäude, auswärtige Städte als Oldenburger Stadtteile und Fundstellen, die
-    den behaupteten Ortsnamen selbst gar nicht enthalten.
+    Sie verhindert vier produktiv beobachtete Fehlerklassen: Organisationen als
+    Gebäude, auswärtige Städte als Oldenburger Stadtteile, Fundstellen, die den
+    behaupteten Ortsnamen selbst gar nicht enthalten — und Wohnanschriften.
     """
     clean_name = " ".join((name or "").split()).strip(" ,.;:()[]")
     clean_evidence = " ".join((evidence or "").split())
@@ -166,6 +245,13 @@ def valid_llm_location(name: str, kind: str, evidence: str) -> bool:
     if _ORGANIZATION_RE.search(clean_name):
         return False
     if _WEB_ADDRESS_RE.search(clean_name):
+        return False
+    if _WOHNANSCHRIFT_RE.search(clean_evidence):
+        return False
+    # Gattungsbegriffe wurden bisher nur im Regex-Kanal gefiltert; über das
+    # Modell kamen sie ungehindert durch — „Gemeindestraße" und „Radweg"
+    # standen so mit 51 bzw. 13 Zuordnungen in der Datenbank.
+    if _generic_street(clean_name):
         return False
     if not _name_occurs_in_evidence(clean_name, clean_evidence):
         return False

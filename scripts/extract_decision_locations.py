@@ -36,7 +36,7 @@ def process(council_db: Path, *, full: bool = False, limit: int | None = None,
     if full:
         store.reset_decision_location_scans()
 
-    saved_links = assigned = scanned = failed_batches = candidates = 0
+    saved_links = assigned = scanned = failed_batches = candidates = beiwerk = 0
     batches = store.decision_location_batches(
         batch_size=batch_size, pending_only=not full, limit=limit)
     for batch_number, batch in enumerate(batches, start=1):
@@ -63,6 +63,15 @@ def process(council_db: Path, *, full: bool = False, limit: int | None = None,
                 row.get("official_text") or "", source="official_text", catalog_places=place_catalog)
             merged = locations.merge_candidates(
                 explicit_title, explicit_decision, old_places.get(rid, []), llm_places.get(rid, []))
+            # Stadtweite Vorgänge behalten keinen Ortsbezug, den nur der
+            # Vorlagentext hergibt: „Oldenburg Pass – Bericht" hing so an
+            # „VWG", „Rad- und Fußverkehrsprogramm" an „Uhlhornsweg". Nennt der
+            # Titel selbst einen Ort, greift die Regel nicht.
+            vorher = len(merged)
+            merged = [k for k in merged
+                      if not locations.ortsbezug_ist_beiwerk(
+                          row.get("title"), k, catalog_places=place_catalog)]
+            beiwerk += vorher - len(merged)
             # Nur ein vollständiger LLM-Lauf (oder bewusst --no-llm) setzt den
             # Hash. Fehlende Ergebnis-IDs werden beim nächsten Lauf erneut versucht.
             done_hash = row["source_hash"] if rid in llm_ok else None
@@ -83,6 +92,9 @@ def process(council_db: Path, *, full: bool = False, limit: int | None = None,
         "scanned": scanned,
         "assigned": assigned,
         "links": saved_links,
+        # Wie viele Ortsbezüge als Beiwerk eines stadtweiten Vorgangs verworfen
+        # wurden — steht im Lauf-Protokoll, damit eine zu scharfe Regel auffällt.
+        "beiwerk_verworfen": beiwerk,
         "failed_batches": failed_batches,
     }
 

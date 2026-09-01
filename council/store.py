@@ -9781,11 +9781,23 @@ class CouncilStore:
             params.append(max(1, int(limit)))
         return [row[0] for row in self._conn.execute(sql, params).fetchall()]
 
-    def locations_to_geocode(self, limit: int | None = None) -> list[dict]:
+    def locations_to_geocode(self, limit: int | None = None,
+                             retry_failed: bool = False) -> list[dict]:
+        """Orte, die noch geokodiert werden müssen.
+
+        ``retry_failed`` nimmt auch die mit, bei denen es schon einmal
+        misslungen ist (``geo_tried = 1``, aber keine Koordinaten). Ohne diesen
+        Weg blieben sie für immer liegen: Auf Prod standen so 706 Orte, obwohl
+        ein erneuter Versuch für „Postweg", „Stubbenweg", „Ziegelweg" und
+        „Haaren" auf Anhieb Treffer lieferte — Overpass und Nominatim antworten
+        nicht jeden Tag gleich.
+        """
+        bedingung = ("(l.geo_tried = 0 OR l.lat IS NULL)" if retry_failed
+                     else "l.geo_tried = 0")
         sql = (
             "SELECT l.slug, l.name, l.kind, COUNT(dl.decision_id) AS n "
             "FROM council_locations l JOIN council_decision_locations dl "
-            "ON dl.location_slug = l.slug WHERE l.geo_tried = 0 "
+            f"ON dl.location_slug = l.slug WHERE {bedingung} "
             "GROUP BY l.slug ORDER BY n DESC, l.name"
         )
         args: tuple = ()
@@ -9845,22 +9857,74 @@ class CouncilStore:
         return cur.rowcount
 
     def backfill_location_districts(self) -> int:
-        """Stadtteil für ältere oder übernommene Ortskoordinaten lokal ableiten."""
-        from council import geo
+        """Stadtteil für ältere oder übernommene Ortskoordinaten lokal ableiten.
+
+        **Die Geometrie schlägt den Punkt.** Vorher entschied allein
+        ``ortsbereich_for(lat, lon)`` — also der Mittelpunkt der Bounding-Box.
+        Bei Flächen geht das; bei Straßen liegt dieser Punkt oft NEBEN der
+        Straße, und der Ort blieb ohne Stadtteil. Auf dem Prod-Bestand
+        (01.09.2026 gemessen) traf das u. a. „Alter Postweg" (verläuft
+        vollständig in Kreyenbrück), „Ziegelweg", „Haaren" und „Tweelbäker See".
+        Der Punkt bleibt der Rückfall für Orte ohne Geometrie.
+        """
+        from council import geo, places
 
         rows = self._conn.execute(
-            "SELECT slug,lat,lon FROM council_locations "
+            "SELECT slug,lat,lon,geojson FROM council_locations "
             "WHERE lat IS NOT NULL AND lon IS NOT NULL "
             "AND (district IS NULL OR district = '')"
         ).fetchall()
         updates = []
         now = datetime.now(timezone.utc).isoformat(timespec="seconds")
         for row in rows:
-            district = geo.ortsbereich_for(row["lat"], row["lon"])
+            district = (geo.ortsbereich_der_geometrie(row["geojson"])
+                        or geo.ortsbereich_for(row["lat"], row["lon"]))
             if district:
-                from council import places
                 place = places.resolve(district)
                 updates.append((district, place.id if place else None, now, row["slug"]))
+        if updates:
+            with self._conn:
+                self._conn.executemany(
+                    "UPDATE council_locations SET district=?,ortsbereich_id=?,updated_at=? WHERE slug=?",
+                    updates,
+                )
+        return len(updates)
+
+    def backfill_location_districts_from_name(self) -> int:
+        """Stadtteil aus dem NAMEN des Ortes ableiten — der billige Rest.
+
+        Viele Orte tragen ihren Stadtteil im eigenen Namen und werden trotzdem
+        nie geocodiert: „Oberschule Ofenerdiek", „GS Drielake", „OBS Eversten",
+        „Bürgerhaus Ofenerdiek", „Fliegerhorst-Innenstadt". Auf dem Prod-Bestand
+        (01.09.2026) waren das 71 Orte mit 176 Beschluss-Zuordnungen, die ohne
+        diese Regel unsichtbar blieben — kein Geocoder wird je „GS Drielake"
+        finden.
+
+        **Nur bei EINDEUTIGEM Treffer.** Nennt ein Name zwei Ortsbereiche
+        („Entlastungsstraße Fliegerhorst-Wechloy"), bleibt der Ort lieber ohne
+        Zuordnung als mit einer geratenen. Und nur, wo keine Koordinaten
+        vorliegen: Wo es Geometrie gibt, ist die verlässlicher als ein Wortlaut.
+        """
+        import re
+
+        from council import places
+
+        muster = []
+        for place in places.primary_places():
+            namen = sorted({place.name, *place.aliases}, key=len, reverse=True)
+            muster.append((place, re.compile(
+                r"\b(" + "|".join(re.escape(n) for n in namen) + r")\b", re.IGNORECASE)))
+
+        rows = self._conn.execute(
+            "SELECT slug,name FROM council_locations "
+            "WHERE lat IS NULL AND (district IS NULL OR district = '')"
+        ).fetchall()
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        updates = []
+        for row in rows:
+            treffer = [place for place, regex in muster if regex.search(row["name"] or "")]
+            if len(treffer) == 1:
+                updates.append((treffer[0].name, treffer[0].id, now, row["slug"]))
         if updates:
             with self._conn:
                 self._conn.executemany(
