@@ -3840,14 +3840,14 @@ export interface components {
             last_date: string | null;
             /** Lat */
             lat: number | null;
+            /** Local Area Id */
+            local_area_id: string | null;
             /** Lon */
             lon: number | null;
             /** Name */
             name: string;
             /** Note */
             note: string | null;
-            /** Ortsbereich Id */
-            ortsbereich_id: string | null;
             /** Parent Id */
             parent_id: string | null;
             /** Place Id */
@@ -11753,4 +11753,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: ac420925eea8f7baec94c3d66c50fb6b9311156927dcd46a3baea7d4fc1aa4ef
+// vertrag-sha256: 4d7e17efce031bb07711d86fbb2426bcc7a7c027b4d0b84db443c8082b39ce88
