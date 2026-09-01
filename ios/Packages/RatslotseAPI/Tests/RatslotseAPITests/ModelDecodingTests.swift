@@ -18,15 +18,15 @@ import Testing
         "id": 43, "title": "Änderungsantrag", "committee": "Verkehrsausschuss",
         "session_date": "2026-02-01", "outcome": "rejected", "factions": ["CDU"]
       }],
-      "vorlage_journey": [{
+      "template_journey": [{
         "ksinr": 87, "committee": "Ausschuss", "session_date": "2026-01-20", "item_number": "Ö 3"
       }],
-      "beratungsfolge": [{
+      "deliberation_path": [{
         "date": "2026-02-01", "committee": "Rat", "top": "Ö 2", "result": "angenommen",
         "ksinr": 88, "future": false
       }],
-      "vorlage_url": "https://buergerinfo.oldenburg.de/vo0050.php?__kvonr=901",
-      "vorlage": {
+      "template_url": "https://buergerinfo.oldenburg.de/vo0050.php?__kvonr=901",
+      "template": {
         "template_number": "26/0400", "title": "Radweg", "kind": "Beschlussvorlage",
         "document_url": "https://example.test/vorlage.pdf", "n_pages": 3,
         "excerpt": "Sachverhalt: Die Stadt plant einen Radweg.", "office": "Amt für Verkehr"
@@ -35,7 +35,7 @@ import Testing
         "document_id": 77, "label": "Antrag der SPD", "url": "https://example.test/77.pdf",
         "is_motion": 1, "applicants": ["SPD"], "status": "ok"
       }],
-      "beteiligung": {
+      "participation": {
         "title": "Beteiligung zum Plan", "schritt": "Entwurf", "valid_from": "2026-01-01",
         "valid_until": "2026-02-15", "url": "https://example.test/beteiligung", "status": "laufend"
       },

@@ -39,7 +39,7 @@ export type InvestitionenDaten = {
   sub_budgets: InvestitionsZeile[];
   investments: InvestitionsZeile[];
   financial_budget: InvestitionsZeile[];
-  herkunft: Record<string, Herkunft>;
+  provenance: Record<string, Herkunft>;
 };
 
 export function herkunftVon(
@@ -47,7 +47,7 @@ export function herkunftVon(
   id: number | null | undefined,
 ): Herkunft | null {
   if (!daten || id == null) return null;
-  return daten.herkunft[String(id)] ?? null;
+  return daten.provenance[String(id)] ?? null;
 }
 
 /** Die Teilhaushalte eines Jahres, nach Auszahlungen absteigend.

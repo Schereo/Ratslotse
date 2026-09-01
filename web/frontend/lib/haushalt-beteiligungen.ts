@@ -116,7 +116,7 @@ export type BeteiligungsDaten = {
    *  bestanden), steht der Rohtext des Abschnitts — nie ein leerer Block. */
   people?: Aufsichtsperson[];
   owners?: Eigentuemer[];
-  herkunft: Record<string, Herkunft>;
+  provenance: Record<string, Herkunft>;
 };
 
 /** Überschriften der beschreibenden Abschnitte, in der Reihenfolge des
@@ -139,7 +139,7 @@ export const KENNZAHL_TITEL: Record<Kennzahl["indicator"], string> = {
 
 export function herkunftVon(daten: BeteiligungsDaten | null, id: number | null | undefined) {
   if (!daten || id == null) return null;
-  return daten.herkunft[String(id)] ?? null;
+  return daten.provenance[String(id)] ?? null;
 }
 
 /** Die Kennzahlen einer Gesellschaft, nach Kennzahl gebündelt und je Reihe

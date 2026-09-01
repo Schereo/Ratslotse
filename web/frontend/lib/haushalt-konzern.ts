@@ -69,12 +69,12 @@ export type KonzernDaten = {
   cross_check: Gegenprobe[];
   /** Nach `herkunft_id`. Die beiden Ebenen eines Jahrgangs tragen
    *  verschiedene IDs — verschiedene Abschnitte, verschiedene Proben. */
-  herkunft: Record<string, Herkunft>;
+  provenance: Record<string, Herkunft>;
 };
 
 export function herkunftVon(daten: KonzernDaten,
                             id: number | null | undefined): Herkunft | null {
-  return id == null ? null : daten.herkunft[String(id)] ?? null;
+  return id == null ? null : daten.provenance[String(id)] ?? null;
 }
 
 /** Die Zeile „Konsolidierung" ist kein Aufgabenträger, sondern der Abzug.

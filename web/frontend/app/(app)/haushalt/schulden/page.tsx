@@ -80,10 +80,10 @@ const QUELLEN = ["schulden", "bilanz", "budget_bylaw",
  *  leihen DARF, neben dem, was sie schuldet), ist aber eine eigene Schicht mit
  *  eigener Herkunft. Ein zweiter Abruf ist ehrlicher als ein Endpunkt, der
  *  zwei Quellen zu einer Antwort verrührt. */
-// `herkunft` mit — der Rahmen-Block zeigte seine drei Zahlen bis zum
+// `provenance` mit — der Rahmen-Block zeigte seine drei Zahlen bis zum
 // 21.08.2026 ganz ohne Beleg: Die Quelle stand im Verzeichnis am Seitenfuß,
 // an den Zahlen selbst stand nichts.
-const SATZUNG_FELDER = ["budget_bylaw", "herkunft"] as const;
+const SATZUNG_FELDER = ["budget_bylaw", "provenance"] as const;
 
 /** Wo eine Angabe im Dokument steht: welcher Abschnitt, welcher Stand. Das
  *  Quellenverzeichnis am Seitenende beschreibt die Quelle der ganzen Seite;

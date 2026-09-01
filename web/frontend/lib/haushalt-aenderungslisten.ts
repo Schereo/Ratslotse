@@ -105,13 +105,13 @@ export type AenderungslistenDaten = {
   /** Der Finanzhaushalt — leer, solange sein Ingest nicht gelaufen ist. */
   cash_budget_rows?: FhhZeile[];
   cash_budget_totals?: FhhSumme[];
-  herkunft: Record<string, Herkunft>;
+  provenance: Record<string, Herkunft>;
 };
 
 export function herkunftVon(
   daten: AenderungslistenDaten | null, id: number | null | undefined,
 ): Herkunft | null {
-  return daten && id != null ? daten.herkunft[String(id)] ?? null : null;
+  return daten && id != null ? daten.provenance[String(id)] ?? null : null;
 }
 
 /** Anzeige-Namen der Dokumente. Die Schlüssel kommen aus
