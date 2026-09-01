@@ -1181,6 +1181,29 @@ class CouncilStore:
             ("aufsichtsorgane", "supervisory_bodies"),
             ("beteiligungen", "own_shareholdings"), ("haushalt", "budget_impact")])
         # Die Art einer Entität. `organisation` ist schon englisch.
+        # Die neunzehn Bilanz-Positionen (council/bilanz.py::ROLLEN). `liabilities`
+        # und `provisions` sind Geschwister auf Ebene 1 der Passivseite, keine
+        # Verschachtelung — die `level`-Spalte trägt das.
+        BILANZ_ROLLEN = [
+            ("immaterielles_vermoegen", "intangible_assets"),
+            ("sachvermoegen", "tangible_assets"),
+            ("infrastrukturvermoegen", "infrastructure_assets"),
+            ("finanzvermoegen", "financial_assets"),
+            ("liquide_mittel", "cash_and_equivalents"),
+            ("aktive_rap", "prepaid_expenses"), ("nettoposition", "net_position"),
+            ("ruecklagen_gesamt", "reserves_total"),
+            ("ueberschussruecklage_ordentlich", "ordinary_surplus_reserve"),
+            ("jahresergebnis_bilanz", "annual_result_balance_sheet"),
+            ("sonderposten", "special_items"), ("schulden", "liabilities"),
+            ("geldschulden", "financial_liabilities"), ("rueckstellungen", "provisions"),
+            ("pensionen_gesamt", "pension_and_similar_provisions"),
+            ("pensionsrueckstellungen", "pension_provisions"),
+            ("beihilferueckstellungen", "healthcare_allowance_provisions"),
+            ("buergschaftsrueckstellung", "guarantee_provisions"),
+            ("passive_rap", "deferred_income"),
+        ]
+        for tabelle in ("council_bilanz", "council_bilanz_erlaeuterungen"):
+            self._werte_umschreiben(tabelle, "role", BILANZ_ROLLEN)
         # Die Gebührenbereiche. Die Migration MUSS nach `_STRUKTUR_SPALTEN`
         # stehen — dort heißt `bereich` erst `area`, und vorher fände
         # `_werte_umschreiben` die Spalte nicht und kehrte still zurück.
@@ -6945,8 +6968,8 @@ class CouncilStore:
         try:
             rows = self._conn.execute(
                 "SELECT year, role, value, herkunft_id FROM council_bilanz "
-                "WHERE role IN ('ueberschussruecklage_ordentlich', "
-                "'jahresergebnis_bilanz') ORDER BY year, role").fetchall()
+                "WHERE role IN ('ordinary_surplus_reserve', "
+                "'annual_result_balance_sheet') ORDER BY year, role").fetchall()
         except sqlite3.OperationalError:
             return []
         years: dict[int, dict] = {}
@@ -6956,7 +6979,7 @@ class CouncilStore:
                 "jahresergebnis": None, "state_after_result": None,
                 "herkunft_id": row["herkunft_id"],
             })
-            if row["role"] == "ueberschussruecklage_ordentlich":
+            if row["role"] == "ordinary_surplus_reserve":
                 z["reserves"] = row["value"]
             else:
                 z["jahresergebnis"] = row["value"]
@@ -12849,7 +12872,7 @@ class CouncilStore:
         aus: list[dict] = []
         try:
             r = self._conn.execute(
-                "SELECT year, value FROM council_bilanz WHERE role = 'geldschulden' "
+                "SELECT year, value FROM council_bilanz WHERE role = 'financial_liabilities' "
                 "ORDER BY year DESC LIMIT 1").fetchone()
             if r:
                 aus.append({"art": "Kernhaushalt (nur Geldschulden)", "year": r["year"],
@@ -12889,8 +12912,8 @@ class CouncilStore:
         posten = {r["role"]: r["value"] for r in self._conn.execute(
             "SELECT role, value FROM council_bilanz WHERE year = ? AND role IS NOT NULL",
             (year,))}
-        aktiva = ("immaterielles_vermoegen", "sachvermoegen", "finanzvermoegen",
-                  "liquide_mittel", "aktive_rap")
+        aktiva = ("intangible_assets", "tangible_assets", "financial_assets",
+                  "cash_and_equivalents", "prepaid_expenses")
         summe = sum(posten[r] for r in aktiva if r in posten) or None
         beleg = self._conn.execute(
             "SELECT herkunft_id FROM council_bilanz WHERE year = ? LIMIT 1",
@@ -12899,9 +12922,9 @@ class CouncilStore:
             "year": year,
             "bilanzsumme": summe,
             "posten": [(r, posten[r]) for r in
-                       ("sachvermoegen", "infrastrukturvermoegen", "finanzvermoegen",
-                        "liquide_mittel", "nettoposition", "sonderposten",
-                        "rueckstellungen", "pensionsrueckstellungen", "schulden")
+                       ("tangible_assets", "infrastructure_assets", "financial_assets",
+                        "cash_and_equivalents", "net_position", "special_items",
+                        "provisions", "pension_provisions", "liabilities")
                        if r in posten],
             "beleg": self._beleg(beleg["herkunft_id"] if beleg else None),
         }
@@ -13033,7 +13056,7 @@ class CouncilStore:
         rueck = None
         try:
             z = self._conn.execute(
-                "SELECT value FROM council_bilanz WHERE role = 'buergschaftsrueckstellung' "
+                "SELECT value FROM council_bilanz WHERE role = 'guarantee_provisions' "
                 "AND year = ?", (r["year"],)).fetchone()
             rueck = z["value"] if z else None
         except sqlite3.OperationalError:

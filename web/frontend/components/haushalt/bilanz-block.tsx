@@ -79,10 +79,10 @@ export function BilanzBlock() {
   if (!data || !s) return null;
 
   const p = s.posten;
-  const pension = p.pensionen_gesamt?.value ?? null;
-  const nurPension = p.pensionsrueckstellungen?.value ?? null;
-  const beihilfe = p.beihilferueckstellungen?.value ?? null;
-  const kredite = p.geldschulden?.value ?? null;
+  const pension = p.pension_and_similar_provisions?.value ?? null;
+  const nurPension = p.pension_provisions?.value ?? null;
+  const beihilfe = p.healthcare_allowance_provisions?.value ?? null;
+  const kredite = p.financial_liabilities?.value ?? null;
   const v = vielfaches(s);
   const cash = cashPoolingHinweis(data, s.year);
 
@@ -187,10 +187,10 @@ export function BilanzBlock() {
       )}
 
       {/* DER SPRUNG, DER KEINER IST. Nur mit dem Erläuterungstext — s. Kopf. */}
-      {cash && p.schulden && (
+      {cash && p.liabilities && (
         <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-            Warum die Bilanz {s.year} plötzlich {deMio(p.schulden.value / 1e6)}&#8239;Mio.&nbsp;€
+            Warum die Bilanz {s.year} plötzlich {deMio(p.liabilities.value / 1e6)}&#8239;Mio.&nbsp;€
             Schulden ausweist
           </p>
           <p className="mt-2 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">

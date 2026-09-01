@@ -3884,7 +3884,7 @@ def haushalt_bilanz(
     Schulden springen 2024 von 84,4 auf 207,1 Mio. €, und das ist kein
     Schuldenmachen, sondern eine Bilanzverlängerung aus dem Cash-Pooling
     (138,2 Mio. €, mit Gegenposten auf der Aktivseite). Der Anhang erklärt es
-    unter ``role="schulden"`` selbst. **Die Zahl darf ohne diesen Text nicht
+    unter ``role="liabilities"`` selbst. **Die Zahl darf ohne diesen Text nicht
     angezeigt werden** — dieselbe Bauart wie ``variance_reasons`` für die
     Ergebnisrechnung.
     """

@@ -103,7 +103,7 @@ TOLERANZ = 0.05
 #: korrekt. Nur das Immaterielle Vermögen kennt keine Ausnahme; dort stimmt
 #: es auf den Cent (2024: 91.394.171,68 € hier wie dort).
 BILANZ_ROLLE: dict[str, str] = {
-    "1": "immaterielles_vermoegen",
+    "1": "intangible_assets",
 }
 
 _BETRAG = re.compile(r"-?\d{1,3}(?:\.\d{3})*,\d{2}")

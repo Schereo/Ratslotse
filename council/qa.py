@@ -2348,15 +2348,15 @@ def _bilanz_block(b: dict | None) -> str:
     if not b or not b.get("bilanzsumme"):
         return ""
     namen = {
-        "sachvermoegen": "Sachvermögen (Grundstücke, Gebäude, Straßen, Fahrzeuge)",
-        "infrastrukturvermoegen": "davon Infrastruktur (Straßen, Wege, Brücken, Kanäle)",
-        "finanzvermoegen": "Finanzvermögen (Beteiligungen, Ausleihungen, Forderungen)",
-        "liquide_mittel": "liquide Mittel",
-        "nettoposition": "Nettoposition (das Eigenkapital der Stadt)",
-        "sonderposten": "Sonderposten (erhaltene Zuschüsse, noch nicht aufgelöst)",
-        "rueckstellungen": "Rückstellungen",
-        "pensionsrueckstellungen": "davon Pensionsrückstellungen",
-        "schulden": "Schulden und ähnliche Verbindlichkeiten",
+        "tangible_assets": "Sachvermögen (Grundstücke, Gebäude, Straßen, Fahrzeuge)",
+        "infrastructure_assets": "davon Infrastruktur (Straßen, Wege, Brücken, Kanäle)",
+        "financial_assets": "Finanzvermögen (Beteiligungen, Ausleihungen, Forderungen)",
+        "cash_and_equivalents": "liquide Mittel",
+        "net_position": "Nettoposition (das Eigenkapital der Stadt)",
+        "special_items": "Sonderposten (erhaltene Zuschüsse, noch nicht aufgelöst)",
+        "provisions": "Rückstellungen",
+        "pension_provisions": "davon Pensionsrückstellungen",
+        "liabilities": "Schulden und ähnliche Verbindlichkeiten",
     }
     zeilen = [f"- Bilanzsumme zum 31.12.{b['year']}: {_eur(b['bilanzsumme'])}"]
     for role, value in b.get("posten") or []:

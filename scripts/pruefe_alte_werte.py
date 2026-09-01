@@ -107,6 +107,7 @@ ERLAUBT = {
            "Seitenangabe „neu“ aus dem Änderungslisten-PDF",
     "teilhaushalt": "Schlüssel des Beleg-Apparats (council_produkte)",
     "investitionen": "Schlüssel des Beleg-Apparats (council_investitionen)",
+    "schulden": "Schlüssel des Beleg-Apparats und QA-Facette — beide bleiben deutsch",
 }
 
 #: Zusätzliche Bedingung für einen ERLAUBT-Eintrag: Nur wenn die Zeile dazu
@@ -126,6 +127,7 @@ ERLAUBT_ZEILE = {
     # erkennt man an einem Nachbarschlüssel oder am `as const` der Liste.
     "teilhaushalt": _BELEG,
     "investitionen": _BELEG,
+    "schulden": _BELEG,
     # Diese beiden dürfen nur noch in Fließtext-Kommentaren stehen. Stünde
     # eines wieder in einem Vergleich, wäre genau das der Fehler von #890.
     "entwurf": _KOMMENTAR,
