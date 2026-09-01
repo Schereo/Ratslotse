@@ -224,7 +224,7 @@ def test_die_quellenart_kommt_aus_der_url_nicht_aus_der_tabelle(alte_db):
         "SELECT h.kind FROM council_steuern s "
         "JOIN council_herkunft h ON h.id = s.herkunft_id").fetchone()[0]
     store.close()
-    assert art == {PLAN_URL: "stadt"}
+    assert art == {PLAN_URL: "city"}
     assert steuer_art == "opendata"
 
 
@@ -690,7 +690,7 @@ def test_herkunft_ohne_dokument_bleibt_unberuehrt(tmp_path):
     store = CouncilStore(tmp_path / "c.sqlite")
     with store.transaktion():
         hid = store.merke_herkunft(Herkunft(
-            kind="stadt", probe="summenzeile",
+            kind="city", probe="summenzeile",
             url="https://oldenburg.de/haushalt.pdf",
             citation="Gesamtergebnisplan"))
 

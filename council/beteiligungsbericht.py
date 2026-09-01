@@ -1285,7 +1285,7 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
                  f"widersprechen sich ({w['werte']}) — Wert verworfen")
 
     def anker(e: dict, g: Gesellschaft) -> dict:
-        return {"kind": "stadt", "url": e["url"], "label": e["label"],
+        return {"kind": "city", "url": e["url"], "label": e["label"],
                 "page": g.seite_gedruckt,
                 "as_of": f"Beteiligungsbericht {e['report_year']}"}
 

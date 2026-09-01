@@ -2741,7 +2741,7 @@ class CouncilStore:
             "title TEXT NOT NULL, "
             "kind TEXT NOT NULL, "             # approval|commitment_auth…|threshold
             "category TEXT NOT NULL, "        # excess|unbudgeted|both
-            "amount REAL, "                    # NULL bei art='schwelle'
+            "amount REAL, "                    # NULL bei kind='threshold'
             "amount_source TEXT, "             # title | proposed_decision
             "decided INTEGER NOT NULL DEFAULT 0, "
             # Zwei Spalten, weil es zwei verschiedene Fragen sind:
@@ -3113,13 +3113,13 @@ class CouncilStore:
         # Das Ist-Gegenstück aus dem Statistischen Jahrbuch — anders als Plan
         # und Programm kommt es weder vom Portal noch aus dem RIS, sondern von
         # oldenburg.de.
-        "council_investitionen_ist":       (None, "source_url", "stadt"),
-        "council_investitionen_ist_arten": (None, "source_url", "stadt"),
-        "council_investitionen_ist_verworfen": (None, "source_url", "stadt"),
+        "council_investitionen_ist":       (None, "source_url", "city"),
+        "council_investitionen_ist_arten": (None, "source_url", "city"),
+        "council_investitionen_ist_verworfen": (None, "source_url", "city"),
         # Der Stellenplan — ebenfalls neu und ohne Altbestand.
         "council_stellenplan":          (None, "source_url", "ris"),
         # Und die Schuldenzeitreihe aus dem Statistischen Jahrbuch.
-        "council_schulden":             (None, "source_url", "stadt"),
+        "council_schulden":             (None, "source_url", "city"),
         # Die lange Ausgabenreihe: zwei Quellen — das Jahrbuch der Stadt und
         # das Open-Data-Portal —, deshalb keine feste Art. Nachzutragen ist
         # ohnehin nichts, die Tabelle ist neu.
@@ -3148,19 +3148,19 @@ class CouncilStore:
         "council_spenden":              (None, "source_url", "ris"),
         "council_spenden_verworfen":    (None, "source_url", "ris"),
         # Die beiden Steuertabellen des Jahrbuchs — neu, ohne Altbestand.
-        "council_steuerplan":           (None, "source_url", "stadt"),
-        "council_hebesaetze":           (None, "source_url", "stadt"),
+        "council_steuerplan":           (None, "source_url", "city"),
+        "council_hebesaetze":           (None, "source_url", "city"),
         # Gebührenbedarf und Anlage-4-Tarife sind neu mit Herkunft entstanden;
         # sie haben keine doppelten Altspalten, die nachzutragen wären.
         "council_gebuehren":            (None, "source_url", "ris"),
         "council_gebuehrensaetze":      (None, "source_url", "ris"),
         # Der Beteiligungsbericht: ebenfalls erst mit der Herkunft entstanden.
         # Seine Dokumente kommen von oldenburg.de, nicht aus dem Bürgerinfo.
-        "council_gesellschaften":            (None, "source_url", "stadt"),
-        "council_gesellschaft_texte":        (None, "source_url", "stadt"),
-        "council_gesellschaft_kennzahlen":   (None, "source_url", "stadt"),
-        "council_gesellschaft_personen":     (None, "source_url", "stadt"),
-        "council_gesellschaft_eigentuemer":  (None, "source_url", "stadt"),
+        "council_gesellschaften":            (None, "source_url", "city"),
+        "council_gesellschaft_texte":        (None, "source_url", "city"),
+        "council_gesellschaft_kennzahlen":   (None, "source_url", "city"),
+        "council_gesellschaft_personen":     (None, "source_url", "city"),
+        "council_gesellschaft_eigentuemer":  (None, "source_url", "city"),
     }
 
     @staticmethod
@@ -3176,7 +3176,7 @@ class CouncilStore:
         if "opendata.oldenburg.de" in url:
             return "opendata"
         if "oldenburg.de" in url:
-            return "stadt"
+            return "city"
         if "buergerinfo" in url or "/getfile" in url:
             return "ris"
         return None

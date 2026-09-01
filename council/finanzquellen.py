@@ -2394,7 +2394,7 @@ for _q in (
         # Kommt NICHT aus council_anlagen, sondern als PDF/CSV von oldenburg.de
         # (scripts/ingest_haushalt.py). Der Cron lädt nichts herunter — er
         # beobachtet diese Schicht nur und meldet, wenn ein Jahrgang ausbleibt.
-        herkunft="stadt",
+        herkunft="city",
         nachschub="Download von oldenburg.de, scripts/ingest_haushalt.py",
         balance=_bestand_haushaltsplan,
     ),
@@ -2506,7 +2506,7 @@ for _q in (
         versatz=1,
         # Kommt NICHT aus council_anlagen, sondern als PDF von oldenburg.de.
         # Der Cron beobachtet diese Schicht nur und meldet, wenn sie ausbleibt.
-        herkunft="stadt",
+        herkunft="city",
         nachschub="Download von oldenburg.de, scripts/ingest_schulden.py",
         balance=_bestand_schulden,
     ),
@@ -2529,7 +2529,7 @@ for _q in (
         # hier trotzdem als `automatisch=False`: `check_finanzdaten` lädt nichts
         # herunter (seine Regel 1), beobachtet diese Schicht aber mit und meldet,
         # wenn ein Jahrgang ausbleibt.
-        herkunft="stadt",
+        herkunft="city",
         nachschub="eigener Cron scripts/check_beteiligungsbericht.py "
                   "(lädt von oldenburg.de)",
         balance=_bestand_beteiligungsbericht,
@@ -2651,7 +2651,7 @@ REIHENFOLGE = ("haushaltsplan", "income_budget", "investitionen",
 #: Stadt" und wurde mit der ersten Schicht einer Landesbehörde falsch.
 STELLEN = {
     "ris": "Ratsinformationssystem",
-    "stadt": "Portal der Stadt",
+    "city": "Portal der Stadt",
     "opendata": "Open-Data-Portal der Stadt",
     "lsn": "Landesamt für Statistik Niedersachsen",
 }

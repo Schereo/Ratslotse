@@ -76,7 +76,7 @@ from typing import Sequence
 ARTEN: dict[str, str] = {
     "ris": "Anlage zu einer Ratsvorlage im Bürgerinformationssystem",
     "opendata": "Datensatz des Open-Data-Portals der Stadt Oldenburg",
-    "stadt": "Veröffentlichung auf oldenburg.de",
+    "city": "Veröffentlichung auf oldenburg.de",
     # Der dritte Fall, und der einzige, der nicht von der Stadt kommt: eine
     # Landesbehörde. Er ist der Grund, warum ein Städtevergleich überhaupt
     # tragfähig ist — dieselbe Kennzahl für alle Gemeinden, nach demselben

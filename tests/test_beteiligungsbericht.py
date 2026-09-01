@@ -441,7 +441,7 @@ def test_gespeicherte_kennzahl_traegt_probe_und_messwert(tmp_path):
               if z["indicator"] == "bilanzsumme" and z["year"] == 2024]
     assert len(zeilen) == 1
     h = store.get_herkunft([zeilen[0]["herkunft_id"]])[0]
-    assert h["kind"] == "stadt"
+    assert h["kind"] == "city"
     assert h["probe"] == "beteiligung_bilanzprobe"
     assert "Abschnitt 2.2.1" in h["citation"]
     assert h["page"] == 2

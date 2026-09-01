@@ -368,7 +368,7 @@ def test_speichern_und_lesen(tmp_path, gelesen):
     store = CouncilStore(tmp_path / "council.sqlite")
     try:
         n = store.save_ausgabenreihe(gelesen["zeilen"], herkunft.Herkunft(
-            kind="stadt", url=ar.TABELLE_URL, probe="ausgabenreihe_prokopf",
+            kind="city", url=ar.TABELLE_URL, probe="ausgabenreihe_prokopf",
             label="Tabelle 1102", citation="Kapitel 11"))
         assert n == len(gelesen["zeilen"])
         zurueck = store.get_ausgabenreihe()
@@ -397,7 +397,7 @@ def test_die_tabelle_fuehrt_keine_einwohnerzahl(tmp_path, gelesen):
     store = CouncilStore(tmp_path / "council.sqlite")
     try:
         store.save_ausgabenreihe(gelesen["zeilen"][:1], herkunft.Herkunft(
-            kind="stadt", url=ar.TABELLE_URL, probe="ausgabenreihe_prokopf"))
+            kind="city", url=ar.TABELLE_URL, probe="ausgabenreihe_prokopf"))
         spalten = {r[1] for r in store._conn.execute(
             "PRAGMA table_info(council_ausgabenreihe)")}
         assert not spalten & {"einwohner", "per_capita", "pro_kopf"}

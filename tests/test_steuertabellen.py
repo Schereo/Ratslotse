@@ -501,12 +501,12 @@ def test_gespeichert_wird_mit_herkunft_und_kommt_gleich_wieder_heraus(tmp_path):
     try:
         result = stt.lies_1103(PDF_1103, IST_REIHE)
         store.save_steuerplan(result["zeilen"], herkunft.Herkunft(
-            kind="stadt", url=stt.TABELLE_1103_URL,
+            kind="city", url=stt.TABELLE_1103_URL,
             label="Statistisches Jahrbuch, Tabelle 1103",
             probe=result["probes"]))
         hebe = stt.lies_1105(PDF_1105, GRUNDSTEUER_IST)
         store.save_hebesaetze(hebe["zeilen"], herkunft.Herkunft(
-            kind="stadt", url=stt.TABELLE_1105_URL,
+            kind="city", url=stt.TABELLE_1105_URL,
             label="Statistisches Jahrbuch, Tabelle 1105",
             probe=hebe["probes"]))
 
@@ -529,7 +529,7 @@ def test_ein_zweiter_lauf_wirft_aeltere_jahrgaenge_nicht_weg(tmp_path):
     Jahrgänge der ersten nicht mit wegräumen — sonst wäre das Archiv umsonst."""
     store = CouncilStore(tmp_path / "council.sqlite")
     try:
-        h = herkunft.Herkunft(kind="stadt", url=stt.TABELLE_1103_URL,
+        h = herkunft.Herkunft(kind="city", url=stt.TABELLE_1103_URL,
                               probe=["steuerplan_summenzeile"])
         store.save_steuerplan(
             stt.lies_1103(PDF_1103_AUSGABE_2024, IST_REIHE)["zeilen"], h)

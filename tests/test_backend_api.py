@@ -1205,7 +1205,7 @@ def test_haushalt_gebaut_beziffert_seine_luecken(client):
         verworfen = [{"year": 2019, "accounting_system": "doppik", "difference": -1_304_000.0,
                       "reason": "Zeilensumme um -1.304.000 € gerissen"}]
         cs.save_investitionen_ist(gut, herkunft.Herkunft(
-            kind="stadt", url="https://example.org/1107.pdf",
+            kind="city", url="https://example.org/1107.pdf",
             probe="investitionen_ist_zeilensumme",
             citation="Kapitel 11, Tabelle 1107-1"), verworfen=verworfen)
     finally:
@@ -1232,7 +1232,7 @@ def test_haushalt_gebaut_erfindet_keine_differenz(client):
             "2018 6.377 1.977 15.885 4.536 478 19.000 48.253\n"
             "2020 9.165 1.753 16.462 8.340 495 34.266 70.481\n", "doppik")
         cs.save_investitionen_ist(zeilen, herkunft.Herkunft(
-            kind="stadt", url="https://example.org/1107.pdf",
+            kind="city", url="https://example.org/1107.pdf",
             probe="investitionen_ist_zeilensumme"))
     finally:
         cs.close()
@@ -5567,7 +5567,7 @@ def test_haushalt_indicators_kommen_mit_ihrer_genauigkeit(client):
               "decimals": 1, "version": None}],
             [{"indicator": "eigenkapitalquote_1", "heading": "Eigenkapitalquote I",
               "formula": "100 * Nettoposition / Bilanzsumme", "version": None}],
-            herkunft.Herkunft(kind="stadt", url="https://example.org/rechenschaft.pdf",
+            herkunft.Herkunft(kind="city", url="https://example.org/rechenschaft.pdf",
                               label="Rechenschaftsbericht 2024", probe=[herkunft.UNGEPRUEFT]))
     finally:
         cs.close()
