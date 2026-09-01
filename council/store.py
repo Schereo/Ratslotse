@@ -289,7 +289,7 @@ CREATE TABLE IF NOT EXISTS council_goal_links (
     goal        TEXT NOT NULL,
     decision_id INTEGER NOT NULL,
     relevant    INTEGER NOT NULL DEFAULT 0,
-    stance      TEXT,                              -- voran|bremst|neutral
+    stance      TEXT,                              -- advances|hinders|neutral
     rationale   TEXT,
     PRIMARY KEY (goal, decision_id)
 );
@@ -1170,6 +1170,16 @@ class CouncilStore:
             ("ratspolitik", "council_politics"), ("schaetzen", "estimation")])
         self._werte_umschreiben("council_quiz_questions", "difficulty", [
             ("leicht", "easy"), ("mittel", "medium"), ("schwer", "hard")])
+        # Wie eine Fraktion abgestimmt hat, und wie ein Beschluss auf ein Ziel wirkt.
+        self._werte_umschreiben("council_decision_votes", "stance", [
+            ("dagegen", "against"), ("enthaltung", "abstention")])
+        self._werte_umschreiben("council_goal_links", "stance", [
+            ("voran", "advances"), ("bremst", "hinders")])
+        # Wie zwei Entitäten zusammenhängen: gemeinsam belegt oder nur ähnlich.
+        self._werte_umschreiben("council_entity_related", "rel_type", [
+            ("belegt", "documented"), ("aehnlich", "similar")])
+        # Woher eine Quizfrage stammt. `ratsinfo` und `wikipedia` sind Namen.
+        self._werte_umschreiben("council_quiz_questions", "source_type", [("stadt", "city")])
         # Der Spielraum, den die Stadt sich bei einem Produkt selbst zuschreibt.
         # Der Wortlaut des Plans steht daneben in `controllability_raw`.
         self._werte_umschreiben("council_produkte", "controllability", [
@@ -3056,7 +3066,7 @@ class CouncilStore:
             "CREATE TABLE IF NOT EXISTS council_decision_votes ("
             "decision_id INTEGER NOT NULL, "
             "faction TEXT NOT NULL, "
-            "stance TEXT NOT NULL, "                    # dagegen | enthaltung
+            "stance TEXT NOT NULL, "                    # against | abstention
             "PRIMARY KEY (decision_id, faction, stance))"
         )
         self._migrate_quiz_estimate()
@@ -11630,7 +11640,7 @@ class CouncilStore:
         for goal, stance, c in self._conn.execute(
             "SELECT goal, stance, COUNT(*) FROM council_goal_links WHERE relevant = 1 GROUP BY goal, stance"
         ):
-            g = agg.setdefault(goal, {"voran": 0, "bremst": 0, "neutral": 0, "total": 0})
+            g = agg.setdefault(goal, {"advances": 0, "hinders": 0, "neutral": 0, "total": 0})
             g[stance] = c
             g["total"] += c
         return agg

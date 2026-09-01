@@ -61,7 +61,7 @@ def report(store: CouncilStore, rows: list[tuple], stats: dict, sample: int) -> 
         print(f"\n▸ {e['name']}  ({e['kind']}, {e['n']} Beschlüsse)")
         for rank, neighbor, rel_type, score, evidence in sorted(by_slug[e["slug"]]):
             nb = ents.get(neighbor, {}).get("name", neighbor)
-            tag = f"belegt  {evidence:>2} gemeinsame" if rel_type == "belegt" else "ähnlich  —         "
+            tag = f"belegt  {evidence:>2} gemeinsame" if rel_type == "documented" else "ähnlich  —         "
             print(f"    {tag}  {score:.2f}  {nb}")
 
     print("\n" + "-" * 78)

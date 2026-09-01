@@ -8,23 +8,23 @@ from council.votes import parse_raw_result
 def test_gegenstimmen_mehrerer_fraktionen():
     votes = parse_raw_result(
         "Der Rat beschließt mehrheitlich bei Gegenstimmen der Fraktionen SPD und Bündnis 90/Die Grünen.")
-    assert ("SPD", "dagegen") in votes
-    assert ("Grüne", "dagegen") in votes
-    assert all(s == "dagegen" for _, s in votes)
+    assert ("SPD", "against") in votes
+    assert ("Grüne", "against") in votes
+    assert all(s == "against" for _, s in votes)
 
 
 def test_enthaltung_und_gegenstimmen_getrennt():
     votes = parse_raw_result(
         "Mehrheitlich angenommen bei Gegenstimmen der AfD-Fraktion und Enthaltung der FDP-Fraktion.")
-    assert ("AfD", "dagegen") in votes
-    assert ("FDP", "enthaltung") in votes
+    assert ("AfD", "against") in votes
+    assert ("FDP", "abstention") in votes
     # Die FDP darf NICHT als Gegenstimme zählen (Segment endet am nächsten Marker).
-    assert ("FDP", "dagegen") not in votes
+    assert ("FDP", "against") not in votes
 
 
 def test_gegen_die_stimmen_von():
     votes = parse_raw_result("Angenommen gegen die Stimmen von CDU und Volt.")
-    assert set(votes) == {("CDU", "dagegen"), ("Volt", "dagegen")}
+    assert set(votes) == {("CDU", "against"), ("Volt", "against")}
 
 
 def test_zahlen_ohne_fraktion_liefern_nichts():
@@ -42,12 +42,12 @@ def test_gruppe_bleibt_gruppe():
     # „Für Oldenburg" = Finke (parteilos) + Sander (Piraten) — ein Gruppen-Nein
     # ist kein belegtes Piraten-Nein.
     votes = parse_raw_result("Mehrheitlich bei Gegenstimmen der Gruppe Für Oldenburg.")
-    assert votes == [("Für Oldenburg", "dagegen")]
+    assert votes == [("Für Oldenburg", "against")]
 
 
 def test_gruppe_fdp_volt_nicht_doppelt():
     votes = parse_raw_result("Bei Enthaltung der Gruppe FDP/Volt angenommen.")
-    assert votes == [("FDP/Volt", "enthaltung")]
+    assert votes == [("FDP/Volt", "abstention")]
 
 
 def test_begruenung_ist_keine_partei():
@@ -59,4 +59,4 @@ def test_keine_zustimmung_ableiten():
     # „mehrheitlich angenommen" sagt nicht, WER zustimmte — es gibt keine dafür-Zeilen.
     votes = parse_raw_result(
         "Der Rat stimmt mehrheitlich zu, die SPD-Fraktion stimmte dagegen.")
-    assert votes == [("SPD", "dagegen")]
+    assert votes == [("SPD", "against")]

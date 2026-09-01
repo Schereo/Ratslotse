@@ -2766,7 +2766,7 @@ def person_wortbeitraege(slug: str, committee: str | None = None,
     return store.wortbeitraege_person(name, committee=committee, offset=offset, limit=limit)
 
 
-_EMPTY_GOAL = {"voran": 0, "bremst": 0, "neutral": 0, "total": 0}
+_EMPTY_GOAL = {"advances": 0, "hinders": 0, "neutral": 0, "total": 0}
 
 
 @router.get("/goals")

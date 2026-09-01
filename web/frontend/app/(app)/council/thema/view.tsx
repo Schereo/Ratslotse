@@ -28,8 +28,8 @@ const EntityMap = dynamic(() => import("@/components/entity-map").then((m) => m.
  *  aussehen zu lassen, würde die schwächeren Treffer als gleichwertig ausgeben.
  *  Deshalb eigene Überschrift, und die Belegzahl steht dabei. */
 function RelatedThemes({ related }: { related: RelatedEntity[] }) {
-  const proven = related.filter((r) => r.rel_type === "belegt");
-  const similar = related.filter((r) => r.rel_type !== "belegt");
+  const proven = related.filter((r) => r.rel_type === "documented");
+  const similar = related.filter((r) => r.rel_type !== "documented");
   if (proven.length === 0 && similar.length === 0) return null;
 
   const row = (items: RelatedEntity[], heading: string, hint: string, showEvidence: boolean) =>

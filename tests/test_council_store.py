@@ -105,10 +105,10 @@ def test_goal_links(tmp_path):
     cands = store.get_goal_candidates(["photovoltaik", "solar"])
     assert any(c["id"] == 20 for c in cands)
 
-    store.save_goal_links("klima_2035", {20: {"relevant": True, "stance": "voran", "reason": "Solar."}})
-    assert store.goal_summary()["klima_2035"] == {"voran": 1, "bremst": 0, "neutral": 0, "total": 1}
+    store.save_goal_links("klima_2035", {20: {"relevant": True, "stance": "advances", "reason": "Solar."}})
+    assert store.goal_summary()["klima_2035"] == {"advances": 1, "hinders": 0, "neutral": 0, "total": 1}
     det = store.goal_detail("klima_2035")
-    assert len(det) == 1 and det[0]["stance"] == "voran" and det[0]["title"].startswith("Photovoltaik")
+    assert len(det) == 1 and det[0]["stance"] == "advances" and det[0]["title"].startswith("Photovoltaik")
 
     # Incremental cron: a decision already linked to the goal is excluded.
     assert all(c["id"] != 20 for c in store.get_goal_candidates(["photovoltaik"], exclude_goal="klima_2035"))

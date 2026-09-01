@@ -6294,13 +6294,17 @@
       },
       "Ziel": {
         "properties": {
-          "bremst": {
-            "title": "Bremst",
+          "advances": {
+            "title": "Advances",
             "type": "integer"
           },
           "description": {
             "title": "Description",
             "type": "string"
+          },
+          "hinders": {
+            "title": "Hinders",
+            "type": "integer"
           },
           "key": {
             "title": "Key",
@@ -6317,15 +6321,11 @@
           "total": {
             "title": "Total",
             "type": "integer"
-          },
-          "voran": {
-            "title": "Voran",
-            "type": "integer"
           }
         },
         "required": [
-          "voran",
-          "bremst",
+          "advances",
+          "hinders",
           "neutral",
           "total",
           "key",
@@ -6374,8 +6374,12 @@
       "ZielKennzahlen": {
         "description": "Wie viele Beschlüsse das Ziel voranbringen, bremsen oder nicht berühren.",
         "properties": {
-          "bremst": {
-            "title": "Bremst",
+          "advances": {
+            "title": "Advances",
+            "type": "integer"
+          },
+          "hinders": {
+            "title": "Hinders",
             "type": "integer"
           },
           "neutral": {
@@ -6385,15 +6389,11 @@
           "total": {
             "title": "Total",
             "type": "integer"
-          },
-          "voran": {
-            "title": "Voran",
-            "type": "integer"
           }
         },
         "required": [
-          "voran",
-          "bremst",
+          "advances",
+          "hinders",
           "neutral",
           "total"
         ],

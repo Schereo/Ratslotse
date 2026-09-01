@@ -10,8 +10,8 @@ import { DecisionLinkCard } from "@/components/decision-ui";
 import { AnalysisIntro } from "@/components/analysis-intro";
 
 const STANCE = {
-  voran: { label: "bringt voran", bar: "bg-green-500/80", chip: "bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-300" },
-  bremst: { label: "bremst", bar: "bg-red-500/80", chip: "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300" },
+  advances: { label: "bringt voran", bar: "bg-green-500/80", chip: "bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-300" },
+  hinders: { label: "bremst", bar: "bg-red-500/80", chip: "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300" },
   neutral: { label: "neutral", bar: "bg-muted-foreground/40", chip: "bg-muted text-muted-foreground" },
 } as const;
 
@@ -29,9 +29,9 @@ const GOAL_ICON: Record<string, LucideIcon> = {
 
 // Netto-Verdikt eines Ziels + zugehörige Farbtöne (Chip + Icon-Kachel).
 const TONE = {
-  voran: { chip: "bg-green-500/15 text-green-700 dark:bg-green-500/20 dark:text-green-300", tile: "bg-green-500/10 text-green-600 dark:text-green-400" },
-  bremst: { chip: "bg-red-500/15 text-red-700 dark:bg-red-500/20 dark:text-red-300", tile: "bg-red-500/10 text-red-600 dark:text-red-400" },
-  umkaempft: { chip: "bg-amber-500/15 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300", tile: "bg-amber-500/10 text-amber-600 dark:text-amber-400" },
+  advances: { chip: "bg-green-500/15 text-green-700 dark:bg-green-500/20 dark:text-green-300", tile: "bg-green-500/10 text-green-600 dark:text-green-400" },
+  hinders: { chip: "bg-red-500/15 text-red-700 dark:bg-red-500/20 dark:text-red-300", tile: "bg-red-500/10 text-red-600 dark:text-red-400" },
+  contested: { chip: "bg-amber-500/15 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300", tile: "bg-amber-500/10 text-amber-600 dark:text-amber-400" },
   neutral: { chip: "bg-muted text-muted-foreground", tile: "bg-muted text-muted-foreground" },
 } as const;
 type Tone = keyof typeof TONE;
@@ -39,13 +39,13 @@ type Tone = keyof typeof TONE;
 /** Richtung eines Ziels aus voran/bremst ableiten: „umkämpft“, wenn beide
  *  Seiten stark sind, sonst überwiegend/leicht voran bzw. gebremst (Design 18a). */
 function verdict(g: GoalSummary): { tone: Tone; label: string } {
-  const d = g.voran + g.bremst;
+  const d = g.advances + g.hinders;
   if (d === 0) return { tone: "neutral", label: "kaum Bewegung" };
-  if (Math.min(g.voran, g.bremst) / d >= 0.35) return { tone: "umkaempft", label: "umkämpft" };
-  const strong = Math.abs(g.voran - g.bremst) / d >= 0.5;
-  return g.voran >= g.bremst
-    ? { tone: "voran", label: strong ? "überwiegend vorangebracht" : "leicht vorangebracht" }
-    : { tone: "bremst", label: strong ? "überwiegend gebremst" : "leicht gebremst" };
+  if (Math.min(g.advances, g.hinders) / d >= 0.35) return { tone: "contested", label: "umkämpft" };
+  const strong = Math.abs(g.advances - g.hinders) / d >= 0.5;
+  return g.advances >= g.hinders
+    ? { tone: "advances", label: strong ? "überwiegend vorangebracht" : "leicht vorangebracht" }
+    : { tone: "hinders", label: strong ? "überwiegend gebremst" : "leicht gebremst" };
 }
 
 /** Diverging-Balken (Design 18a): bremst wächst rot nach links, voran grün
@@ -56,11 +56,11 @@ function DivergingBar({ g }: { g: GoalSummary }) {
   return (
     <div className="grid h-3.5 items-center" style={{ gridTemplateColumns: "1fr 2px 1fr" }}>
       <span className="flex justify-end">
-        <span className="block h-3.5 rounded-l-full bg-red-500/80" style={{ width: `${(g.bremst / t) * 100}%` }} />
+        <span className="block h-3.5 rounded-l-full bg-red-500/80" style={{ width: `${(g.hinders / t) * 100}%` }} />
       </span>
       <span className="h-3.5 bg-muted-foreground/25" />
       <span className="flex justify-start">
-        <span className="block h-3.5 rounded-r-full bg-green-500/80" style={{ width: `${(g.voran / t) * 100}%` }} />
+        <span className="block h-3.5 rounded-r-full bg-green-500/80" style={{ width: `${(g.advances / t) * 100}%` }} />
       </span>
     </div>
   );
@@ -77,7 +77,7 @@ function GoalDetailView({ goalKey }: { goalKey: string }) {
   return (
     <div className="mt-3">
       <div className="mb-3 flex flex-wrap gap-1">
-        {([["", "Alle"], ["voran", "Bringt voran"], ["bremst", "Bremst"], ["neutral", "Neutral"]] as [Stance | "", string][]).map(([v, l]) => (
+        {([["", "Alle"], ["advances", "Bringt voran"], ["hinders", "Bremst"], ["neutral", "Neutral"]] as [Stance | "", string][]).map(([v, l]) => (
           <button key={v} type="button" onClick={() => setFilter(v)}
             className={cn("rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
               filter === v ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground")}>
@@ -141,9 +141,9 @@ export function GoalsView() {
               <div className="mt-3">
                 <DivergingBar g={g} />
                 <div className="mt-1.5 flex items-center justify-between text-[11.5px]">
-                  <span className="font-medium text-red-600 dark:text-red-400">{g.bremst} bremsen</span>
+                  <span className="font-medium text-red-600 dark:text-red-400">{g.hinders} bremsen</span>
                   <span className="text-muted-foreground">{g.neutral} neutral · {g.total} gesamt</span>
-                  <span className="font-medium text-green-600 dark:text-green-400">{g.voran} bringen voran</span>
+                  <span className="font-medium text-green-600 dark:text-green-400">{g.advances} bringen voran</span>
                 </div>
               </div>
             </button>
