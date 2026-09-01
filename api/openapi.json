@@ -534,6 +534,13 @@
               "null"
             ]
           },
+          "local_area_id": {
+            "title": "Local Area Id",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "lon": {
             "title": "Lon",
             "type": [
@@ -547,13 +554,6 @@
           },
           "note": {
             "title": "Note",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "ortsbereich_id": {
-            "title": "Ortsbereich Id",
             "type": [
               "string",
               "null"
@@ -654,7 +654,7 @@
           "geojson",
           "district",
           "place_id",
-          "ortsbereich_id",
+          "local_area_id",
           "geo_tried",
           "updated_at",
           "review_status",

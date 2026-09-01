@@ -405,7 +405,7 @@ def snapshot(db_path: str) -> str:
         "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "reviews": [dict(row) for row in conn.execute("SELECT * FROM council_place_reviews")],
         "locations": [dict(row) for row in conn.execute(
-            "SELECT slug,place_id,ortsbereich_id,stadtteil,lat,lon,geojson,geo_tried,updated_at "
+            "SELECT slug,place_id,local_area_id,stadtteil,lat,lon,geojson,geo_tried,updated_at "
             "FROM council_locations")],
     }
     conn.close()

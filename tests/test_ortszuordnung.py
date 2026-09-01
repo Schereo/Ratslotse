@@ -392,10 +392,10 @@ def test_gescheitertes_geocoding_loescht_keinen_stadtteil(tmp_path):
         assert store.backfill_location_districts_from_name() == 1
         store.set_location_geo("s", None, None, None)      # Geocoding misslingt
         row = store._conn.execute(
-            "SELECT district, ortsbereich_id, geo_tried FROM council_locations "
+            "SELECT district, local_area_id, geo_tried FROM council_locations "
             "WHERE slug='s'").fetchone()
         assert row["district"] == "Ofenerdiek", "der Fehlschlag hat den Stadtteil gelöscht"
-        assert row["ortsbereich_id"] == "ofenerdiek"
+        assert row["local_area_id"] == "ofenerdiek"
         assert row["geo_tried"] == 1        # als versucht vermerkt ist er trotzdem
     finally:
         store.close()

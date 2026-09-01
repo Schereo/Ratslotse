@@ -45,7 +45,7 @@ def test_curated_location_geocodes_are_complete_valid_and_idempotent(tmp_path):
     store._conn.commit()
     assert store.apply_curated_location_geocodes() == 1
     row = store.location_by_slug("skateanlage-eversten")
-    assert (row["lat"], row["lon"], row["ortsbereich_id"]) == (
+    assert (row["lat"], row["lon"], row["local_area_id"]) == (
         53.1379232, 8.1719987, "eversten")
     assert store.apply_curated_location_geocodes() == 0
     store.close()
@@ -492,7 +492,7 @@ def test_reviewed_place_joins_catalog_extraction_search_and_map(tmp_path):
         }], f"hash-{decision_id}")
     store._conn.execute(
         "UPDATE council_locations SET lat=53.16,lon=8.22,geo_tried=1,"
-        "district='Nadorst',ortsbereich_id='nadorst' WHERE slug='testquartier'"
+        "district='Nadorst',local_area_id='nadorst' WHERE slug='testquartier'"
     )
     store._conn.commit()
 

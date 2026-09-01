@@ -111,7 +111,7 @@ def _saat(viele: bool = False) -> None:
             ortslug = f"ort-{place.id}"
             council._conn.execute(
                 "INSERT OR REPLACE INTO council_locations "
-                "(slug, name, kind, place_id, ortsbereich_id, updated_at) VALUES (?,?,?,?,?,?)",
+                "(slug, name, kind, place_id, local_area_id, updated_at) VALUES (?,?,?,?,?,?)",
                 (ortslug, place.name, "stadtteil", place.id, place.id, jetzt))
             for did in meine:
                 council._conn.execute(

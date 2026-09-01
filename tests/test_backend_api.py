@@ -4436,12 +4436,12 @@ def test_curated_place_alias_filters_by_stable_id_and_has_profile(client):
         "confidence": 0.99,
     }], "hash-1")
     row = council._conn.execute(
-        "SELECT name, place_id, ortsbereich_id, district FROM council_locations"
+        "SELECT name, place_id, local_area_id, district FROM council_locations"
     ).fetchone()
     assert dict(row) == {
         "name": "Neu-Donnerschwee",
         "place_id": "neu-donnerschwee",
-        "ortsbereich_id": "donnerschwee",
+        "local_area_id": "donnerschwee",
         "district": "Donnerschwee",
     }
     council.close()
@@ -4483,7 +4483,7 @@ def test_admin_reviews_place_candidate_and_map_links_exact_decisions(client):
     with council._conn:
         council._conn.execute(
             "UPDATE council_locations SET lat=53.16,lon=8.22,district='Nadorst',"
-            "ortsbereich_id='nadorst',geo_tried=1 WHERE slug='testanger'"
+            "local_area_id='nadorst',geo_tried=1 WHERE slug='testanger'"
         )
     council.close()
 
