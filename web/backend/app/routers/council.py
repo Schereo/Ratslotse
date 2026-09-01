@@ -37,25 +37,21 @@ from kern.store import Store
 
 from .. import deepresearch
 from ..config import get_settings
-from ..antworten import (AnalyseDaten, BeschlussDetail, BeschlussListe, DieseWoche,
-                        EntitaetenKarte, Entitaeten, EntitaetsDetail, Finanzen,
-                        FundstueckDesTages, GespraechDetail, GespraecheGeloescht,
-                        GespraechEinstellung, GespraecheListe, Gremien,
-                        HaushaltAenderungslisten, HaushaltBeteiligungen, HaushaltBilanz,
-                        HaushaltDatenstand, HaushaltDokumente, HaushaltGebaut,
-                        HaushaltInvestitionen, HaushaltInvestitionsprogramm,
-                        HaushaltKonzern, HaushaltProdukte, HaushaltPruefberichte,
-                        HaushaltSchulden, HaushaltStellenplan, HaushaltStreit,
-                        HaushaltUebersicht, HaushaltVergleich, HaushaltWeg, HeuteBriefing,
-                        Ok, OeffentlicheZahlen, OrtsDetail, OrtsKatalog, ParteienFilter,
-                        ParteiMeinungen,
-                        PersonenDetail, PersonenLexikon, QaBeispiele, QaShare,
-                        QaShareToken, Ratsmitglieder, RechercheAktuell, RechercheGestartet,
-                        RechercheGestoppt, RechercheSnapshot, SitzungsDetail,
-                        SitzungsListe, Sitzungspause, Stadtteile, Themenfelder,
-                        ThemenfeldRueckblicke, TrendDaten, VorlageEntfolgt, VorlageGefolgt,
-                        VorlagenFolgen, Vorschau, WochenvorschauIntern, Wortbeitraege,
-                        ZahlDerWoche, ZielDetail, Ziele)
+from ..antworten import (AnalysisData, BudgetAmendmentLists, BudgetAuditReports,
+                         BudgetBalanceSheet, BudgetComparison, BudgetDataState, BudgetDebt,
+                         BudgetDispute, BudgetDocuments, BudgetFixedAssets, BudgetGroup,
+                         BudgetHoldings, BudgetInvestmentProgram, BudgetInvestments,
+                         BudgetOverview, BudgetPath, BudgetProducts, BudgetStaffPlan, Committees,
+                         ConversationDetail, ConversationList, ConversationSetting,
+                         ConversationsDeleted, CouncilMembers, CouncilRecess, DecisionDetail,
+                         DecisionList, DiscoveryOfTheDay, Districts, Entities, EntitiesMap,
+                         EntityDetail, Finances, GoalDetail, Goals, NumberOfTheWeek, Ok,
+                         PartyFilter, PartyOpinions, PeopleDirectory, PersonDetail, PlaceCatalog,
+                         PlaceDetail, PolicyFieldRecaps, PolicyFields, PublicNumbers, QaExamples,
+                         QaShare, QaShareToken, ResearchCurrent, ResearchSnapshot, ResearchStarted,
+                         ResearchStopped, SessionDetail, SessionList, SharePreview, Speeches,
+                         TemplateFollowed, TemplateFollows, TemplateUnfollowed, ThisWeek,
+                         TodayBriefing, TrendData, WeekPreviewInternal)
 from ..deps import get_council_store, get_store, optional_user, require_active
 from ..ratelimit import (
     partei_meinungen_limiter,
@@ -81,7 +77,7 @@ def _vorlage_url(kvonr: int) -> str:
 
 
 @router.get("/committees")
-def committees(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> Gremien:
+def committees(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> Committees:
     """Gremienliste — plus ``details`` für die Ausschuss-Abos.
 
     ``committees`` bleibt die reine Namensliste: Themen-Seite und
@@ -109,7 +105,7 @@ def committees(_user: dict = Depends(require_active), store: CouncilStore = Depe
 
 
 @router.get("/fields")
-def fields(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> Themenfelder:
+def fields(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> PolicyFields:
     """Policy fields that have at least one classified decision, with label + count."""
     counts = {r["field"]: r["count"] for r in store.policy_field_stats()}
     out = [
@@ -124,7 +120,7 @@ def fields(_user: dict = Depends(require_active), store: CouncilStore = Depends(
 def parties(
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> ParteienFilter:
+) -> PartyFilter:
     """Kanonische Antragsteller-Parteien für den Beschlussfilter.
 
     Die Werte kommen aus derselben normalisierten Auswertung wie der
@@ -144,7 +140,7 @@ def parties(
 def districts(
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> Stadtteile:
+) -> Districts:
     """Belegte Ratslotse-Ortsbereiche für den Beschlussfilter."""
     rows = []
     for row in store.decision_location_place_stats():
@@ -173,7 +169,7 @@ def districts(
 
 @router.get("/places")
 def place_catalog(_user: dict = Depends(require_active),
-                  store: CouncilStore = Depends(get_council_store)) -> OrtsKatalog:
+                  store: CouncilStore = Depends(get_council_store)) -> PlaceCatalog:
     """Gemeinsamer Ortskatalog für Suche, Karten, Quiz und KI-Funktionen."""
     return store.public_place_catalog()
 
@@ -182,7 +178,7 @@ def place_catalog(_user: dict = Depends(require_active),
 def place_detail(
     place_id: str,
     store: CouncilStore = Depends(get_council_store),
-) -> OrtsDetail:
+) -> PlaceDetail:
     """Öffentliches Ortsprofil aus Katalogstammdaten und belegten Beschlüssen."""
     place = store.resolve_place(place_id)
     if not place:
@@ -234,7 +230,7 @@ def sessions(
     user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
     ratslotse: Store = Depends(get_store),
-) -> SitzungsListe:
+) -> SessionList:
     # `total` ist die GESAMTZAHL der passenden Sitzungen, `count` nur die dieser
     # Seite. Vorher gab es nur count — die Liste endete deshalb still bei der
     # Obergrenze, ohne dass irgendwo stand, dass es weitergeht (der Bestand
@@ -265,7 +261,7 @@ def sessions(
 def sitzungspause(
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> Sitzungspause:
+) -> CouncilRecess:
     """Läuft gerade eine Sitzungspause (Schulferien / Wahl-Übergang)?
 
     Der Rat pausiert laut Stadt in den Schulferien; die Übersicht zeigt dann
@@ -288,7 +284,7 @@ _HEUTE_CACHE: dict = {"at": 0.0, "data": None}
 
 
 @router.get("/heute")
-def heute(store: CouncilStore = Depends(get_council_store)) -> HeuteBriefing:
+def heute(store: CouncilStore = Depends(get_council_store)) -> TodayBriefing:
     """RL-901: „Heute im Rat" für die Landing — public (wie public-stats).
     Drei Zustände: Sitzung heute (``sessions``: alle des Tages, je mit 2
     Top-TOPs, Restzähler und ``live_until``) · nächste Sitzung ·
@@ -348,7 +344,7 @@ def heute(store: CouncilStore = Depends(get_council_store)) -> HeuteBriefing:
 def diese_woche(
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> DieseWoche:
+) -> ThisWeek:
     """RL-U15 (13a-A): interessantester Beschluss der letzten 7 Tage — die
     „Diese Woche im Rat"-Karte, wenn es keine persönlichen Treffer gibt.
     Der interest_reason-Satz ist die „Warum spannend"-Zeile."""
@@ -371,7 +367,7 @@ def wochenvorschau(
     user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
     ratslotse: Store = Depends(get_store),
-) -> WochenvorschauIntern:
+) -> WeekPreviewInternal:
     """„Die Woche im Rat" (Design 14, davor 11d/12) — als VORSCHAU auf die
     kommenden Sitzungen, nicht als Rückblick auf Beschlüsse.
 
@@ -394,7 +390,7 @@ def wochenvorschau(
 def fundstueck(
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> FundstueckDesTages:
+) -> DiscoveryOfTheDay:
     """RL-U11: Fundstück des Tages — kuratierter Archiv-Fund für die Übersicht
     (Pipeline: scripts/rate_interest.py + scripts/generate_fundstuecke.py).
     {"found": false} statt 404: ohne Karte des Tages lässt das Frontend die
@@ -419,7 +415,7 @@ def fundstueck(
 def zahl_der_woche(
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> ZahlDerWoche:
+) -> NumberOfTheWeek:
     """RL-905: größter Beschluss-Betrag der letzten 7 Tage (Fallback 30);
     ganz ohne Treffer zählt die Karte die Beschlüsse der Woche. Die Satz-
     Formulierung übernimmt das Frontend — hier nur Rohdaten."""
@@ -446,7 +442,7 @@ def haushalt_produkte(
     number: str | None = None,
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> HaushaltProdukte:
+) -> BudgetProducts:
     """Produktebene eines Haushaltsjahres — was einzelne Aufgaben kosten,
     samt Steckbrief (Kurzbeschreibung, Rechtsgrundlage, Spielraum,
     Wirkungskreis, Zielgruppe) aus den Teilhaushalts-Plänen.
@@ -495,7 +491,7 @@ def haushalt_stellenplan(
     budget_year: int | None = None,
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> HaushaltStellenplan:
+) -> BudgetStaffPlan:
     """Der Stellenplan: wie viele Stellen die Stadt vorhält und wie viele
     davon nicht besetzt sind.
 
@@ -560,7 +556,7 @@ def haushalt_pruefberichte(
     mark: str | None = Query(None, pattern="^(B|WB|H|K)$"),
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> HaushaltPruefberichte:
+) -> BudgetAuditReports:
     """Prüfungsfeststellungen des Rechnungsprüfungsamts, alle Jahrgänge.
 
     Bewusst alles auf einmal statt je Jahr: Die Aussage dieses Bestands liegt
@@ -600,7 +596,7 @@ def haushalt_pruefberichte(
 def haushalt_konzern(
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> HaushaltKonzern:
+) -> BudgetGroup:
     """Der Konzern Stadt Oldenburg — was der Kernhaushalt **nicht** zeigt.
 
     Alles auf einmal, weil die Aussage dieser Seite eine Differenz ist: Eine
@@ -756,7 +752,7 @@ def _lexikon_zuordnung(store: CouncilStore,
 def haushalt_beteiligungen(
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> HaushaltBeteiligungen:
+) -> BudgetHoldings:
     """Die städtischen Gesellschaften — was sie tun, wer sie beaufsichtigt.
 
     Die Ergänzung zum Gesamtabschluss (``/haushalt/konzern``): Der sagt, wie
@@ -839,7 +835,7 @@ def haushalt_beteiligungen(
 def haushalt_investitionen(
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> HaushaltInvestitionen:
+) -> BudgetInvestments:
     """Was die Stadt bauen und kaufen will — die Investitionen des
     Finanzhaushalts, je Teilhaushalt.
 
@@ -880,7 +876,7 @@ def haushalt_investitionen(
 def haushalt_investitionsprogramm(
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> HaushaltInvestitionsprogramm:
+) -> BudgetInvestmentProgram:
     """Die einzelnen Vorhaben — die Ebene unter ``/haushalt/investitionen``.
 
     Aus Anlage 004 des Haushaltsplans: nicht „Schule und Bildung: 8,3 Mio. €",
@@ -922,7 +918,7 @@ def haushalt_investitionsprogramm(
 def haushalt_datenstand(
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> HaushaltDatenstand:
+) -> BudgetDataState:
     """Bis wann die Zahlen reichen — je Datenschicht ein Jahrgangs-Stand.
 
     Beantwortet die Frage, die sonst auf jeder Unterseite von ``/haushalt``
@@ -954,7 +950,7 @@ def haushalt_datenstand(
 def haushalt_dokumente(
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> HaushaltDokumente:
+) -> BudgetDocuments:
     """Je Quelle des Haushalts-Bereichs das **Dokument** — Jahrgang für Jahrgang.
 
     Das Quellenverzeichnis am Fuß jeder Haushalts-Seite beschreibt eine Quelle
@@ -992,7 +988,7 @@ def haushalt_uebersicht(
     sub_budget_item: str | None = None,
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> HaushaltUebersicht:
+) -> BudgetOverview:
     """Datenfundament des Haushalts-Bereichs, in einem Aufruf:
 
     - ``years``: Ergebnishaushalt je Planjahr (Teilhaushalte + Summenzeile,
@@ -1455,7 +1451,7 @@ def haushalt_weg(
     year: int | None = None,
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> HaushaltWeg:
+) -> BudgetPath:
     """Der Weg eines Haushalts durch den Rat — wann welche Station war.
 
     Anders als der Rest des Haushalts-Bereichs kommt hier nichts aus einem
@@ -1485,7 +1481,7 @@ def haushalt_streit(
     year: int | None = None,
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> HaushaltStreit:
+) -> BudgetDispute:
     """Der Streit ums Geld — die Auseinandersetzung um jeden Haushaltsjahrgang.
 
     Je Haushaltsjahr eine ``round`` mit ihren Stationen (Finanzausschuss und
@@ -1510,7 +1506,7 @@ def haushalt_streit(
 def haushalt_aenderungslisten(
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> HaushaltAenderungslisten:
+) -> BudgetAmendmentLists:
     """Der Inhalt der Änderungslisten — die Ebene unter ``/haushalt/streit``.
 
     Dort steht, WER eine Liste einbrachte und ob sie durchkam; hier steht,
@@ -1558,7 +1554,7 @@ def haushalt_aenderungslisten(
 def session_detail(
     ksinr: int,
     store: CouncilStore = Depends(get_council_store),
-) -> SitzungsDetail:
+) -> SessionDetail:
     session = store.get_session(ksinr)
     if not session:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Sitzung nicht gefunden.")
@@ -1622,7 +1618,7 @@ def decisions(
     user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
     ratslotse: Store = Depends(get_store),
-) -> BeschlussListe:
+) -> DecisionList:
     if district:
         place = store.resolve_place(district)
         if not place:
@@ -1670,7 +1666,7 @@ def decision_detail(
     user: dict | None = Depends(optional_user),
     store: CouncilStore = Depends(get_council_store),
     ratslotse: Store = Depends(get_store),
-) -> BeschlussDetail:
+) -> DecisionDetail:
     """Ein Beschluss mit allem Drum und Dran — **ohne Anmeldung lesbar**.
 
     Teilen ist die Kernhandlung der App, aber wer einen weitergereichten Link
@@ -1804,7 +1800,7 @@ def decision_detail(
 # ---- „Meine Gespräche" (5a/I-04 + Design 6a) --------------------------------
 
 
-class GespraechEinstellungBody(BaseModel):
+class ConversationSettingBody(BaseModel):
     an: bool
 
 
@@ -1813,7 +1809,7 @@ def gespraeche_liste(limit: int = Query(30, ge=0, le=100),
                      offset: int = Query(0, ge=0),
                      q: str | None = Query(None, max_length=120),
                      user: dict = Depends(require_active),
-                     ratslotse: Store = Depends(get_store)) -> GespraecheListe:
+                     ratslotse: Store = Depends(get_store)) -> ConversationList:
     """Einwilligungs-Stand + eine Seite der gespeicherten Gespräche.
     `einstellung` ist null, solange die Erstnutzungs-Frage (6a①) nie
     beantwortet wurde.
@@ -1835,9 +1831,9 @@ def gespraeche_liste(limit: int = Query(30, ge=0, le=100),
 
 
 @router.post("/conversations/setting")
-def gespraeche_einstellung(body: GespraechEinstellungBody,
+def gespraeche_einstellung(body: ConversationSettingBody,
                            user: dict = Depends(require_active),
-                           ratslotse: Store = Depends(get_store)) -> GespraechEinstellung:
+                           ratslotse: Store = Depends(get_store)) -> ConversationSetting:
     """6a②: Schalter setzen. Löscht nichts — das entscheidet der Dialog
     über DELETE /gespraeche getrennt."""
     ratslotse.set_qa_speichern(user["id"], body.an)
@@ -1846,7 +1842,7 @@ def gespraeche_einstellung(body: GespraechEinstellungBody,
 
 @router.get("/conversations/{conversation_id}")
 def gespraech_detail(conversation_id: int, user: dict = Depends(require_active),
-                     ratslotse: Store = Depends(get_store)) -> GespraechDetail:
+                     ratslotse: Store = Depends(get_store)) -> ConversationDetail:
     g = ratslotse.qa_gespraech(conversation_id, user["id"])
     if not g:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Gespräch nicht gefunden.")
@@ -1858,12 +1854,12 @@ def gespraech_detail(conversation_id: int, user: dict = Depends(require_active),
     return g
 
 
-class GespraechUmbenennenBody(BaseModel):
+class ConversationRenameBody(BaseModel):
     title: str = Field(min_length=1, max_length=120)
 
 
 @router.patch("/conversations/{conversation_id}")
-def gespraech_umbenennen(conversation_id: int, body: GespraechUmbenennenBody,
+def gespraech_umbenennen(conversation_id: int, body: ConversationRenameBody,
                          user: dict = Depends(require_active),
                          ratslotse: Store = Depends(get_store)) -> Ok:
     """Design 9a②: Umbenennen aus dem Gespräche-Sheet (Wisch nach links)."""
@@ -1882,7 +1878,7 @@ def gespraech_loeschen(conversation_id: int, user: dict = Depends(require_active
 
 @router.delete("/conversations")
 def gespraeche_alle_loeschen(user: dict = Depends(require_active),
-                             ratslotse: Store = Depends(get_store)) -> GespraecheGeloescht:
+                             ratslotse: Store = Depends(get_store)) -> ConversationsDeleted:
     return {"deleted": ratslotse.qa_gespraeche_loeschen(user["id"])}
 
 
@@ -1910,7 +1906,7 @@ def qa_feedback(
     return {"ok": True}
 
 
-class ParteiMeinungenBody(BaseModel):
+class PartyOpinionsBody(BaseModel):
     question: str = Field(min_length=3, max_length=300)
     #: Die Beschlüsse, auf denen die Antwort steht (Reihenfolge = Relevanz).
     #: Über sie kommt die Aussprache dazu, die ZU diesen Stationen gehört —
@@ -1920,11 +1916,11 @@ class ParteiMeinungenBody(BaseModel):
 
 @router.post("/party-meinungen")
 def partei_meinungen_endpoint(
-    body: ParteiMeinungenBody,
+    body: PartyOpinionsBody,
     request: Request,
     user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> ParteiMeinungen:
+) -> PartyOpinions:
     """Baustein „Das sagen die Parteien" (Task 30): Wird vom Frontend NACH der
     gestreamten Antwort geladen (kostet die Hauptantwort keine Latenz). Sammelt
     aus ZWEI Kanälen — fraktions-bewusste Ähnlichkeitssuche (Cross-Encoder-
@@ -2013,7 +2009,7 @@ def partei_meinungen_endpoint(
     return {"parties": meinungen or [], "without_speeches": ohne}
 
 
-class QaShareQuelle(BaseModel):
+class QaShareSource(BaseModel):
     id: int
     title: str = Field(max_length=300)
     session_date: str | None = Field(default=None, max_length=10)
@@ -2021,7 +2017,7 @@ class QaShareQuelle(BaseModel):
     outcome: str | None = Field(default=None, max_length=40)
 
 
-class QaShareDebatte(BaseModel):
+class QaShareDebate(BaseModel):
     speaker: str | None = Field(default=None, max_length=120)
     party: str | None = Field(default=None, max_length=60)
     kind: str = Field(default="speech", max_length=30)
@@ -2043,13 +2039,13 @@ class QaShareDebatte(BaseModel):
         return v
 
 
-class QaSharePresse(BaseModel):
+class QaSharePress(BaseModel):
     title: str = Field(max_length=300)
     url: str = Field(max_length=500)
     date: str | None = Field(default=None, max_length=10)
 
 
-class QaShareAnlage(BaseModel):
+class QaShareAttachment(BaseModel):
     # Beleg-Nummer des Recherche-Berichts („[A1]") — ohne sie findet der
     # Marker im geteilten Text seine Anlage nicht.
     number: int | None = Field(default=None, ge=1, le=99)
@@ -2060,32 +2056,32 @@ class QaShareAnlage(BaseModel):
     excerpt: str = Field(default="", max_length=600)
 
 
-class QaShareKernaussage(BaseModel):
+class QaShareKeyQuote(BaseModel):
     text: str = Field(default="", max_length=600)
     speaker: str | None = Field(default=None, max_length=120)
     date: str | None = Field(default=None, max_length=10)
 
 
-class QaSharePartei(BaseModel):
+class QaShareParty(BaseModel):
     party: str = Field(max_length=60)
     stance: str | None = Field(default=None, max_length=20)
     position: str = Field(default="", max_length=800)
     unanimous: bool = True
     note: str | None = Field(default=None, max_length=300)
-    kernaussage: QaShareKernaussage | None = None
+    kernaussage: QaShareKeyQuote | None = None
     contributions: int = Field(default=0, ge=0)
 
 
 class QaShareBody(BaseModel):
     question: str = Field(min_length=1, max_length=300)
     answer: str = Field(min_length=1, max_length=8000)
-    sources: list[QaShareQuelle] = Field(default_factory=list, max_length=40)
+    sources: list[QaShareSource] = Field(default_factory=list, max_length=40)
     # Bausteine neben den Beschlüssen: ohne sie zeigte die geteilte Seite
     # weniger als das Gespräch, aus dem sie stammt (Tims Befund 10.08.).
-    debates: list[QaShareDebatte] = Field(default_factory=list, max_length=20)
-    press_releases: list[QaSharePresse] = Field(default_factory=list, max_length=10)
-    attachments: list[QaShareAnlage] = Field(default_factory=list, max_length=10)
-    parties: list[QaSharePartei] = Field(default_factory=list, max_length=12)
+    debates: list[QaShareDebate] = Field(default_factory=list, max_length=20)
+    press_releases: list[QaSharePress] = Field(default_factory=list, max_length=10)
+    attachments: list[QaShareAttachment] = Field(default_factory=list, max_length=10)
+    parties: list[QaShareParty] = Field(default_factory=list, max_length=12)
     # Die Grafik zur Antwort (council/qa.py, geld_grafik) — als loses dict,
     # weil der Client sie unverändert zurückreicht: Sie stammt aus DIESEM
     # Backend, und ein zweites Schema hier wäre eine Kopie, die driftet.
@@ -2239,7 +2235,7 @@ def qa_share_melden(
     return {"ok": True}
 
 
-class AskRunde(BaseModel):
+class AskTurn(BaseModel):
     """Eine frühere Gesprächsrunde (Chat): Frage + gekürzte Antwort."""
     question: str = Field(max_length=300)
     answer: str = Field(default="", max_length=600)
@@ -2257,7 +2253,7 @@ class DeepResearchBody(BaseModel):
     # Wie bei /ask: die letzten Runden lösen Rückbezüge auf. Ohne sie
     # zerlegte der Job eine Anschlussfrage wörtlich („Nochmal bitte
     # ausführlich") — und recherchierte am Thema vorbei.
-    history: list[AskRunde] = Field(default_factory=list, max_length=4)
+    history: list[AskTurn] = Field(default_factory=list, max_length=4)
     # „Meine Gespräche": läuft ein Gespräch, wird der fertige Bericht dort
     # angehängt — auch wenn die App längst zu ist.
     conversation_id: int | None = Field(default=None, ge=1)
@@ -2281,7 +2277,7 @@ def _deep_frei(ratslotse: Store, user: dict) -> int | None:
 
 @router.post("/deep-research", status_code=status.HTTP_201_CREATED)
 def deep_research_start(body: DeepResearchBody, user: dict = Depends(require_active),
-                        ratslotse: Store = Depends(get_store)) -> RechercheGestartet:
+                        ratslotse: Store = Depends(get_store)) -> ResearchStarted:
     """Recherche-Job starten. Kontingent: 5/Tag je KONTO aus der DB (nicht
     IP — übersteht Neustarts, und Abbruch/Fehler kosten laut Design nichts,
     was ein Fenster-Zähler nicht abbilden kann). Admins können das Limit je
@@ -2309,7 +2305,7 @@ def deep_research_start(body: DeepResearchBody, user: dict = Depends(require_act
 
 @router.get("/deep-research/current")
 def deep_research_aktuell(user: dict = Depends(require_active),
-                          ratslotse: Store = Depends(get_store)) -> RechercheAktuell:
+                          ratslotse: Store = Depends(get_store)) -> ResearchCurrent:
     """Der jüngste Job des Kontos + Rest-Kontingent — damit der Client nach
     Navigation/App-Neustart einen laufenden Job oder ungesehenen Bericht
     wiederfindet, ohne sich die ID gemerkt zu haben."""
@@ -2319,7 +2315,7 @@ def deep_research_aktuell(user: dict = Depends(require_active),
 
 @router.get("/deep-research/{job_id}")
 def deep_research_snapshot(job_id: str, user: dict = Depends(require_active),
-                           ratslotse: Store = Depends(get_store)) -> RechercheSnapshot:
+                           ratslotse: Store = Depends(get_store)) -> ResearchSnapshot:
     """Persistierter Stand des Jobs (Bericht + Quellen bei fertig/teilbericht)."""
     if len(job_id) > 64:
         raise HTTPException(status_code=404, detail="Nicht gefunden.")
@@ -2361,7 +2357,7 @@ def deep_research_events(job_id: str, ab: int = Query(default=0, ge=0),
 
 @router.post("/deep-research/{job_id}/stop")
 def deep_research_stop(job_id: str, user: dict = Depends(require_active),
-                       ratslotse: Store = Depends(get_store)) -> RechercheGestoppt:
+                       ratslotse: Store = Depends(get_store)) -> ResearchStopped:
     """Abbrechen (Design 8c⑥): stoppt vor dem nächsten Such-/LLM-Schritt.
     Fertige Facetten bleiben als Material — die Antwort sagt, ob sich ein
     Teilbericht lohnt. Kostet kein Kontingent."""
@@ -2410,7 +2406,7 @@ def deep_research_gesehen(job_id: str, user: dict = Depends(require_active),
 
 
 @router.get("/qa-beispiele")
-def qa_beispiele(store: CouncilStore = Depends(get_council_store)) -> QaBeispiele:
+def qa_beispiele(store: CouncilStore = Depends(get_council_store)) -> QaExamples:
     """Frische Beispiel-Anlässe für den Empty State der KI-Frage (5a/I-07):
     die jüngsten Sitzungen mit Beschlüssen — das Frontend formuliert daraus
     „Was hat der <Ausschuss> am <Datum> beschlossen?"."""
@@ -2455,7 +2451,7 @@ def list_follows(
     user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
     ratslotse: Store = Depends(get_store),
-) -> VorlagenFolgen:
+) -> TemplateFollows:
     """Verfolgte Vorgänge mit ihrem aktuellen Stand — die Beratungsfolge liegt
     in der anderen Datenbank, deshalb hier je Follow eine Abfrage (die Zahl
     ist nutzergemacht und klein)."""
@@ -2481,7 +2477,7 @@ def follow_vorlage(
     user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
     ratslotse: Store = Depends(get_store),
-) -> VorlageGefolgt:
+) -> TemplateFollowed:
     v = store.get_vorlage(kvonr)
     if not v:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Vorlage nicht gefunden.")
@@ -2499,13 +2495,13 @@ def unfollow_vorlage(
     kvonr: int,
     user: dict = Depends(require_active),
     ratslotse: Store = Depends(get_store),
-) -> VorlageEntfolgt:
+) -> TemplateUnfollowed:
     ratslotse.unfollow_vorlage(user["id"], kvonr)
     return {"kvonr": kvonr, "following": False}
 
 
 @router.get("/analysis")
-def analysis(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> AnalyseDaten:
+def analysis(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> AnalysisData:
     """Party behaviour: topic heatmap, success rates, contention, alliances —
     plus Erfolgsquoten der eingereichten Fraktions-Anträge (aus den Anlagen)."""
     data = store.party_analysis()
@@ -2515,7 +2511,7 @@ def analysis(_user: dict = Depends(require_active), store: CouncilStore = Depend
 
 
 @router.get("/finance")
-def finance(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> Finanzen:
+def finance(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> Finances:
     """Largest € decisions + recognised volume per policy field (excl. accounting reports)."""
     by_field = store.money_by_field()
     return {
@@ -2526,7 +2522,7 @@ def finance(_user: dict = Depends(require_active), store: CouncilStore = Depends
 
 
 @router.get("/trends")
-def trends(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> TrendDaten:
+def trends(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> TrendData:
     """Council activity over time: decisions + € volume per quarter by field, emerging tags."""
     data = store.activity_trends()
     data["field_labels"] = {k: POLICY_FIELDS[k][0] for k in data["fields"]}
@@ -2534,7 +2530,7 @@ def trends(_user: dict = Depends(require_active), store: CouncilStore = Depends(
 
 
 @router.get("/field-recaps")
-def field_recaps(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> ThemenfeldRueckblicke:
+def field_recaps(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> PolicyFieldRecaps:
     """Auto-generated plain-language recaps per policy field ("Was bewegte den Rat im Bereich X?")."""
     recaps = store.get_field_recaps()
     for r in recaps:
@@ -2544,20 +2540,20 @@ def field_recaps(_user: dict = Depends(require_active), store: CouncilStore = De
 
 @router.get("/entities")
 def entities_list(kind: str = "", _user: dict = Depends(require_active),
-                  store: CouncilStore = Depends(get_council_store)) -> Entitaeten:
+                  store: CouncilStore = Depends(get_council_store)) -> Entities:
     """Directory of named entities (projects/places/organizations), most-referenced first."""
     return {"entities": store.list_entities(limit=400, kind=kind)}
 
 
 @router.get("/entities-map")
 def entities_map(_user: dict = Depends(require_active),
-                 store: CouncilStore = Depends(get_council_store)) -> EntitaetenKarte:
+                 store: CouncilStore = Depends(get_council_store)) -> EntitiesMap:
     """Geocodierte Themen und belastbare Beschlussorte für die Stadtkarte."""
     return {"entities": store.city_map_points()}
 
 
 @router.get("/public-stats")
-def public_stats(store: CouncilStore = Depends(get_council_store)) -> OeffentlicheZahlen:
+def public_stats(store: CouncilStore = Depends(get_council_store)) -> PublicNumbers:
     """Aggregate headline counts for the public landing page — no auth, no content."""
     return store.public_stats()
 
@@ -2571,7 +2567,7 @@ _PERSONEN_LEXIKON_CACHE: dict = {"as_of": 0.0, "daten": None}
 
 @router.get("/people-directory")
 def personen_lexikon(response: Response,
-                     store: CouncilStore = Depends(get_council_store)) -> PersonenLexikon:
+                     store: CouncilStore = Depends(get_council_store)) -> PeopleDirectory:
     import time as _time
     if _PERSONEN_LEXIKON_CACHE["daten"] is None or \
             _time.time() - _PERSONEN_LEXIKON_CACHE["as_of"] > 6 * 3600:
@@ -2614,7 +2610,7 @@ def _kuerzen(text: str, grenze: int) -> str:
 
 
 @router.get("/preview/{kind}/{key:path}")
-def preview(kind: str, key: str, store: CouncilStore = Depends(get_council_store)) -> Vorschau:
+def preview(kind: str, key: str, store: CouncilStore = Depends(get_council_store)) -> SharePreview:
     """Titel + Kurzfassung für die Link-Vorschau — **ohne Anmeldung**.
 
     Teilen ist die Kernhandlung der App, aber bislang zeigte jeder geteilte Link
@@ -2708,7 +2704,7 @@ def preview(kind: str, key: str, store: CouncilStore = Depends(get_council_store
 
 
 @router.get("/entity/{slug}")
-def entity(slug: str, store: CouncilStore = Depends(get_council_store)) -> EntitaetsDetail:
+def entity(slug: str, store: CouncilStore = Depends(get_council_store)) -> EntityDetail:
     """An entity ('Themen-') page: all its decisions plus money/parties/field aggregates.
 
     Ohne Anmeldung lesbar — es ist eine der geteilten Detailseiten, und alles
@@ -2727,13 +2723,13 @@ def entity(slug: str, store: CouncilStore = Depends(get_council_store)) -> Entit
 
 @router.get("/members")
 def members(_user: dict = Depends(require_active),
-            store: CouncilStore = Depends(get_council_store)) -> Ratsmitglieder:
+            store: CouncilStore = Depends(get_council_store)) -> CouncilMembers:
     """Directory of council members (from attendance): party, sessions, committees."""
     return {"members": store.list_members()}
 
 
 @router.get("/person/{slug}")
-def person(slug: str, store: CouncilStore = Depends(get_council_store)) -> PersonenDetail:
+def person(slug: str, store: CouncilStore = Depends(get_council_store)) -> PersonDetail:
     """Das Profil einer Person — Ratsmitglied oder Verwaltung mit erkanntem
     Amt (Tims Wunsch 19.08.): party/sessions/committees/Gantt bei einem
     Mandat, ein schmaler Steckbrief (Amt + Erwähnungszeitraum) bei einem Amt.
@@ -2760,7 +2756,7 @@ def person(slug: str, store: CouncilStore = Depends(get_council_store)) -> Perso
 def person_wortbeitraege(slug: str, committee: str | None = None,
                          offset: int = Query(default=0, ge=0),
                          limit: int = Query(default=20, ge=1, le=100),
-                         store: CouncilStore = Depends(get_council_store)) -> Wortbeitraege:
+                         store: CouncilStore = Depends(get_council_store)) -> Speeches:
     """Wortbeiträge einer Person, seitenweise und nach Gremium filterbar.
 
     Öffentlich wie die Personen-Seite selbst — es ist derselbe Bestand, nur
@@ -2777,7 +2773,7 @@ _EMPTY_GOAL = {"advances": 0, "hinders": 0, "neutral": 0, "total": 0}
 
 
 @router.get("/goals")
-def goals(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> Ziele:
+def goals(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> Goals:
     """City goals with how many decisions advance / hinder / are neutral toward them."""
     summary = store.goal_summary()
     out = [{"key": key, "label": g["label"], "description": g["description"],
@@ -2787,7 +2783,7 @@ def goals(_user: dict = Depends(require_active), store: CouncilStore = Depends(g
 
 @router.get("/goal/{key}")
 def goal_detail(key: str, _user: dict = Depends(require_active),
-                store: CouncilStore = Depends(get_council_store)) -> ZielDetail:
+                store: CouncilStore = Depends(get_council_store)) -> GoalDetail:
     g = GOALS.get(key)
     if not g:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Ziel nicht gefunden.")
@@ -2803,7 +2799,7 @@ class AskBody(BaseModel):
     # Chat-Modus (Paket A): die letzten Runden erlauben Anschlussfragen wie
     # „Und was kostet das?" — die Analyse kondensiert daraus eine eigenständige
     # Suchfrage. Ohne Verlauf verhält sich /ask exakt wie bisher.
-    history: list[AskRunde] = Field(default_factory=list, max_length=4)
+    history: list[AskTurn] = Field(default_factory=list, max_length=4)
     # „Meine Gespräche" (6a): laufendes Gespräch, an das der Turn gehängt wird —
     # nur wirksam, wenn das Konto saves_conversations = 1 gesetzt hat.
     conversation_id: int | None = Field(default=None, ge=1)
@@ -3676,7 +3672,7 @@ VERGLEICH_BELEG_KVONR = 17170
 def haushalt_vergleich(
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> HaushaltVergleich:
+) -> BudgetComparison:
     """Was sich zwischen Städten vergleichen lässt — und der Beleg, warum das
     meiste sich **nicht** vergleichen lässt.
 
@@ -3759,7 +3755,7 @@ def haushalt_vergleich(
 def haushalt_gebaut(
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> HaushaltGebaut:
+) -> BudgetFixedAssets:
     """Was die Stadt wirklich investiert hat — Tabellen 1107/1107-1 des
     Statistischen Jahrbuchs.
 
@@ -3855,7 +3851,7 @@ def haushalt_gebaut(
 def haushalt_bilanz(
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> HaushaltBilanz:
+) -> BudgetBalanceSheet:
     """Die Bilanz der Stadt — Abschnitt 2.1 der Jahresabschlüsse.
 
     Die Gegenseite zu ``/haushalt/schulden``: nicht was die Stadt schuldet,
@@ -3906,7 +3902,7 @@ def haushalt_bilanz(
 def haushalt_schulden(
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> HaushaltSchulden:
+) -> BudgetDebt:
     """Der Schuldenstand der Stadt seit 1995 — Tabelle 1108 des Statistischen
     Jahrbuchs.
 

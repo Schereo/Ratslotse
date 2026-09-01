@@ -3622,221 +3622,22 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        /** AboGeloescht */
-        AboGeloescht: {
-            /** Committee Name */
-            committee_name: string;
-            /** Unsubscribed */
-            unsubscribed: boolean;
-        };
-        /** AboGesetzt */
-        AboGesetzt: {
-            /** Committee Name */
-            committee_name: string;
-            /** Subscribed */
-            subscribed: boolean;
-        };
-        /** Abonnements */
-        Abonnements: {
-            /** Subscriptions */
-            subscriptions: string[];
-        };
-        /** Abzeichen */
-        Abzeichen: {
-            /** Earned */
-            earned: boolean;
-            /** Hint */
-            hint: string;
-            /** Id */
-            id: string;
-            /** AbzeichenFortschritt */
-            progress: {
-                /** Current */
-                current: number;
-                /** Target */
-                target: number;
-            } | null;
-            /** Title */
-            title: string;
-        };
-        /** AbzeichenFortschritt */
-        AbzeichenFortschritt: {
-            /** Current */
-            current: number;
-            /** Target */
-            target: number;
-        };
-        /**
-         * AbzeichenKurz
-         * @description Für ``newly_earned`` — der Konfetti-Moment braucht nur Name und Id.
-         */
-        AbzeichenKurz: {
-            /** Id */
-            id: string;
-            /** Title */
-            title: string;
-        };
-        /** AbzeichenNaechstes */
-        AbzeichenNaechstes: {
-            /** Hint */
-            hint: string;
-            /** Id */
-            id: string;
-            /** Title */
-            title: string;
-        };
-        /** AbzeichenStand */
-        AbzeichenStand: {
-            /** Badges */
-            badges: components["schemas"]["Abzeichen"][];
-            /** Earned Count */
-            earned_count: number;
-            /** Newly Earned */
-            newly_earned: components["schemas"]["AbzeichenKurz"][];
-            /** AbzeichenNaechstes */
-            next: {
-                /** Hint */
-                hint: string;
-                /** Id */
-                id: string;
-                /** Title */
-                title: string;
-            } | null;
-            /** Total */
-            total: number;
-        };
-        /** AdminAliasGeloescht */
-        AdminAliasGeloescht: {
+        /** AdminAliasDeleted */
+        AdminAliasDeleted: {
             /** Entities */
             entities: number;
             /** Ok */
             ok: boolean;
         };
-        /** AdminAliasListe */
-        AdminAliasListe: {
+        /** AdminAliasList */
+        AdminAliasList: {
             /** Aliases */
             aliases: {
                 [key: string]: unknown;
             }[];
         };
-        /** AdminFeedbackGelesen */
-        AdminFeedbackGelesen: {
-            /** Ok */
-            ok: boolean;
-            /** Unread */
-            unread: number;
-        };
-        /** AdminFeedbackListe */
-        AdminFeedbackListe: {
-            /** Items */
-            items: {
-                [key: string]: unknown;
-            }[];
-            /** Unread */
-            unread: number;
-        };
-        /** AdminGrenzen */
-        AdminGrenzen: {
-            /** Deep Limit */
-            deep_limit: number | null;
-            /** Limits Unlocked */
-            limits_unlocked: boolean;
-        };
-        /**
-         * AdminJob
-         * @description ``state`` ist eine geschlossene Menge — der Router rechnet sie aus, sie
-         *     kommt nicht aus der Datenbank, deshalb ist die Verengung hier sicher.
-         *     ``last`` dagegen ist eine ``SELECT *``-Zeile aus ``job_runs`` und bleibt
-         *     offen; das Frontend darf sie enger sehen als der Vertrag.
-         */
-        AdminJob: {
-            /** Age H */
-            age_h: number | null;
-            /** Description */
-            description: string;
-            /** History */
-            history: components["schemas"]["AdminJobLauf"][];
-            /** Key */
-            key: string;
-            /** Label */
-            label: string;
-            /** Last */
-            last: {
-                [key: string]: unknown;
-            } | null;
-            /** Schedule */
-            schedule: string;
-            /**
-             * State
-             * @enum {string}
-             */
-            state: "ok" | "stale" | "error" | "unknown";
-        };
-        /** AdminJobLauf */
-        AdminJobLauf: {
-            /** Duration S */
-            duration_s: number | null;
-            /** Started At */
-            started_at: string;
-            /** Status */
-            status: string;
-        };
-        /** AdminNutzerZeile */
-        AdminNutzerZeile: {
-            /** Apple Linked */
-            apple_linked: boolean;
-            /** Created At */
-            created_at: string | null;
-            /** Email */
-            email: string;
-            /** Id */
-            id: number;
-            /** Last Seen */
-            last_seen: string | null;
-            /** N Ki */
-            n_ki: number;
-            /** N Quiz */
-            n_quiz: number;
-            /** N Subscriptions */
-            n_subscriptions: number;
-            /** N Topics */
-            n_topics: number;
-            /** Role */
-            role: string;
-            /** Status */
-            status: string;
-        };
-        /** AdminOrtsKandidaten */
-        AdminOrtsKandidaten: {
-            /** Candidates */
-            candidates: {
-                [key: string]: unknown;
-            }[];
-            /** Status */
-            status: string;
-        };
-        /** AdminQuizGebiet */
-        AdminQuizGebiet: {
-            /** Area Key */
-            area_key: string;
-            /** Area Type */
-            area_type: string;
-            /** N */
-            n: number;
-        };
-        /** AdminQuizStatistik */
-        AdminQuizStatistik: {
-            /** Avg Accuracy */
-            avg_accuracy: number | null;
-            /** Questions Active */
-            questions_active: number;
-            /** Reported */
-            reported: number;
-            /** Weak Categories */
-            weak_categories: components["schemas"]["AdminQuizGebiet"][];
-        };
-        /** AdminRatsStatistik */
-        AdminRatsStatistik: {
+        /** AdminCouncilStats */
+        AdminCouncilStats: {
             /** Agenda Items */
             agenda_items: number;
             /** Committees */
@@ -3860,13 +3661,109 @@ export interface components {
             /** Upcoming */
             upcoming: number;
         };
-        /** AdminUngelesen */
-        AdminUngelesen: {
-            /** Total */
-            total: number;
+        /** AdminFeedbackList */
+        AdminFeedbackList: {
+            /** Items */
+            items: {
+                [key: string]: unknown;
+            }[];
+            /** Unread */
+            unread: number;
         };
-        /** AdminVerlauf */
-        AdminVerlauf: {
+        /** AdminFeedbackRead */
+        AdminFeedbackRead: {
+            /** Ok */
+            ok: boolean;
+            /** Unread */
+            unread: number;
+        };
+        /** AdminGrowth */
+        AdminGrowth: {
+            council: components["schemas"]["AdminCouncilStats"];
+            topics: components["schemas"]["AdminSeries"];
+            users: components["schemas"]["AdminSeries"];
+            /** Wau */
+            wau: number[];
+            /** Wau Days */
+            wau_days: string[];
+        };
+        /**
+         * AdminJob
+         * @description ``state`` ist eine geschlossene Menge — der Router rechnet sie aus, sie
+         *     kommt nicht aus der Datenbank, deshalb ist die Verengung hier sicher.
+         *     ``last`` dagegen ist eine ``SELECT *``-Zeile aus ``job_runs`` und bleibt
+         *     offen; das Frontend darf sie enger sehen als der Vertrag.
+         */
+        AdminJob: {
+            /** Age H */
+            age_h: number | null;
+            /** Description */
+            description: string;
+            /** History */
+            history: components["schemas"]["AdminJobRun"][];
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Last */
+            last: {
+                [key: string]: unknown;
+            } | null;
+            /** Schedule */
+            schedule: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "ok" | "stale" | "error" | "unknown";
+        };
+        /** AdminJobRun */
+        AdminJobRun: {
+            /** Duration S */
+            duration_s: number | null;
+            /** Started At */
+            started_at: string;
+            /** Status */
+            status: string;
+        };
+        /** AdminLimits */
+        AdminLimits: {
+            /** Deep Limit */
+            deep_limit: number | null;
+            /** Limits Unlocked */
+            limits_unlocked: boolean;
+        };
+        /** AdminPlaceCandidates */
+        AdminPlaceCandidates: {
+            /** Candidates */
+            candidates: {
+                [key: string]: unknown;
+            }[];
+            /** Status */
+            status: string;
+        };
+        /** AdminQuizArea */
+        AdminQuizArea: {
+            /** Area Key */
+            area_key: string;
+            /** Area Type */
+            area_type: string;
+            /** N */
+            n: number;
+        };
+        /** AdminQuizStats */
+        AdminQuizStats: {
+            /** Avg Accuracy */
+            avg_accuracy: number | null;
+            /** Questions Active */
+            questions_active: number;
+            /** Reported */
+            reported: number;
+            /** Weak Categories */
+            weak_categories: components["schemas"]["AdminQuizArea"][];
+        };
+        /** AdminSeries */
+        AdminSeries: {
             /** Days */
             days: string[];
             /** Delta */
@@ -3876,36 +3773,56 @@ export interface components {
             /** Total */
             total: number;
         };
-        /** AdminWachstum */
-        AdminWachstum: {
-            council: components["schemas"]["AdminRatsStatistik"];
-            topics: components["schemas"]["AdminVerlauf"];
-            users: components["schemas"]["AdminVerlauf"];
-            /** Wau */
-            wau: number[];
-            /** Wau Days */
-            wau_days: string[];
+        /** AdminUnread */
+        AdminUnread: {
+            /** Total */
+            total: number;
         };
-        /** AnalyseAbdeckung */
-        AnalyseAbdeckung: {
+        /** AdminUserRow */
+        AdminUserRow: {
+            /** Apple Linked */
+            apple_linked: boolean;
+            /** Created At */
+            created_at: string | null;
+            /** Email */
+            email: string;
+            /** Id */
+            id: number;
+            /** Last Seen */
+            last_seen: string | null;
+            /** N Ki */
+            n_ki: number;
+            /** N Quiz */
+            n_quiz: number;
+            /** N Subscriptions */
+            n_subscriptions: number;
+            /** N Topics */
+            n_topics: number;
+            /** Role */
+            role: string;
+            /** Status */
+            status: string;
+        };
+        /** AnalysisCoverage */
+        AnalysisCoverage: {
             /** Total */
             total: number;
             /** With Factions */
             with_factions: number;
         };
         /**
-         * AnalyseDaten
+         * AnalysisData
          * @description ``CouncilStore.party_analysis`` — die Hülle steht, die Innereien sind
          *     verschachtelte Auswertungen und bleiben offen.
          */
-        AnalyseDaten: {
+        AnalysisData: {
             /** Alliances */
             alliances: unknown;
             /** Antrag Stats */
             antrag_stats: unknown;
             /** Contention */
             contention: unknown;
-            coverage: components["schemas"]["AnalyseAbdeckung"];
+            coverage: components["schemas"]["AnalysisCoverage"];
             /** Field Labels */
             field_labels: {
                 [key: string]: string;
@@ -3950,7 +3867,7 @@ export interface components {
             /** Conversation Id */
             conversation_id?: number | null;
             /** History */
-            history?: components["schemas"]["AskRunde"][];
+            history?: components["schemas"]["AskTurn"][];
             /**
              * Previous Answer
              * @default
@@ -3960,10 +3877,10 @@ export interface components {
             question: string;
         };
         /**
-         * AskRunde
+         * AskTurn
          * @description Eine frühere Gesprächsrunde (Chat): Frage + gekürzte Antwort.
          */
-        AskRunde: {
+        AskTurn: {
             /**
              * Answer
              * @default
@@ -3972,6 +3889,24 @@ export interface components {
             /** Question */
             question: string;
         };
+        /** Badge */
+        Badge: {
+            /** Earned */
+            earned: boolean;
+            /** Hint */
+            hint: string;
+            /** Id */
+            id: string;
+            /** BadgeProgress */
+            progress: {
+                /** Current */
+                current: number;
+                /** Target */
+                target: number;
+            } | null;
+            /** Title */
+            title: string;
+        };
         /** BadgeEvent */
         BadgeEvent: {
             /** Key */
@@ -3979,793 +3914,64 @@ export interface components {
             /** Type */
             type: string;
         };
-        /** BeschlussListe */
-        BeschlussListe: {
-            /** Decisions */
-            decisions: components["schemas"]["Beschlusszeile"][];
-            /** Total */
-            total: number;
+        /** BadgeNext */
+        BadgeNext: {
+            /** Hint */
+            hint: string;
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+        };
+        /** BadgeProgress */
+        BadgeProgress: {
+            /** Current */
+            current: number;
+            /** Target */
+            target: number;
         };
         /**
-         * Beschlusszeile
-         * @description Ein Beschluss aus ``CouncilStore._decision_row``.
-         *
-         *     Die Felder sind die 27 Spalten von ``council_decisions`` plus das, was die
-         *     Abfragen dazujoinen (``committee``, ``session_date``, ``protocol_url``) und
-         *     was der Router anreichert. Bis auf ``id`` ist alles ``NotRequired``: Welche
-         *     Spalten dabei sind, hängt an der jeweiligen Abfrage — ein Pflichtfeld wäre
-         *     hier ein 500, sobald ein Aufrufer schmaler selektiert.
-         *
-         *     ``factions``/``policy_tags`` kommen als JSON-Spalte und werden geparst,
-         *     ``parties`` rechnet der Store aus den Fraktionen aus.
+         * BadgeShort
+         * @description Für ``newly_earned`` — der Konfetti-Moment braucht nur Name und Id.
          */
-        Beschlusszeile: {
-            /** Abstentions */
-            abstentions?: number | null;
-            /** Amount Eur */
-            amount_eur?: number | null;
-            /** Committee */
-            committee?: string | null;
-            /** Deviation */
-            deviation?: string | null;
-            /** Factions */
-            factions?: string[];
+        BadgeShort: {
             /** Id */
-            id: number;
-            /** Impact */
-            impact?: number | null;
-            /** Impact Reason */
-            impact_reason?: string | null;
-            /** Importance */
-            importance?: number | null;
-            /** Interest */
-            interest?: number | null;
-            /** Interest Reason */
-            interest_reason?: string | null;
-            /** Item Number */
-            item_number?: string | null;
-            /** Kind */
-            kind?: string | null;
-            /** Ksinr */
-            ksinr?: number | null;
-            /** Kvonr */
-            kvonr?: number | null;
-            /** Location Matches */
-            location_matches?: unknown[];
-            /** N Beratungen */
-            n_beratungen?: number | null;
-            /** No Votes */
-            no_votes?: number | null;
-            /** Official Text */
-            official_text?: string | null;
-            /** Outcome */
-            outcome?: string | null;
-            /** Parent Item */
-            parent_item?: string | null;
-            /** Parties */
-            parties?: string[];
-            /** Policy Field */
-            policy_field?: string | null;
-            /** Policy Tags */
-            policy_tags?: string[];
-            /** Position */
-            position?: number | null;
-            /** Protocol Url */
-            protocol_url?: string | null;
-            /** Raw Result */
-            raw_result?: string | null;
-            /** Session Date */
-            session_date?: string | null;
-            /** Simple Summary */
-            simple_summary?: string | null;
-            /** Subvote Summary */
-            subvote_summary?: unknown;
-            /** Summary */
-            summary?: string | null;
-            /** Template Number */
-            template_number?: string | null;
+            id: string;
             /** Title */
-            title?: string | null;
-            /** Vote */
-            vote?: string | null;
+            title: string;
+        };
+        /** BadgeState */
+        BadgeState: {
+            /** Badges */
+            badges: components["schemas"]["Badge"][];
+            /** Earned Count */
+            earned_count: number;
+            /** Newly Earned */
+            newly_earned: components["schemas"]["BadgeShort"][];
+            /** BadgeNext */
+            next: {
+                /** Hint */
+                hint: string;
+                /** Id */
+                id: string;
+                /** Title */
+                title: string;
+            } | null;
+            /** Total */
+            total: number;
         };
         /** Body_medien_ablegen_api_social_media__day__post */
         Body_medien_ablegen_api_social_media__day__post: {
             /** Dateien */
             dateien: string[];
         };
-        /** BookmarkIn */
-        BookmarkIn: {
-            /** Decision Id */
-            decision_id?: number | null;
-            /** Item Number */
-            item_number?: string | null;
-            /**
-             * Kind
-             * @enum {string}
-             */
-            kind: "session" | "agenda_item" | "decision";
-            /** Ksinr */
-            ksinr?: number | null;
-        };
-        /** BookmarkNotificationIn */
-        BookmarkNotificationIn: {
-            /** Notify Result */
-            notify_result: boolean;
-        };
-        /** ChangePasswordRequest */
-        ChangePasswordRequest: {
-            /** Current Password */
-            current_password: string;
-            /** New Password */
-            new_password: string;
-        };
-        /** DeepResearchBody */
-        DeepResearchBody: {
-            /** Conversation Id */
-            conversation_id?: number | null;
-            /** History */
-            history?: components["schemas"]["AskRunde"][];
-            /** Question */
-            question: string;
-        };
         /**
-         * DeleteAccountRequest
-         * @description Konto-Löschung verlangt eine frische Bestätigung — eine (evtl. offen
-         *     liegende) Session allein darf das Konto nicht zerstören können. Konten mit
-         *     Passwort bestätigen mit dem Passwort; Apple-only-Konten mit einem frischen
-         *     Apple-Identity-Token (Re-Auth in der App, RL-1002).
-         */
-        DeleteAccountRequest: {
-            /**
-             * Apple Authorization Code
-             * @default
-             */
-            apple_authorization_code: string;
-            /**
-             * Apple Identity Token
-             * @default
-             */
-            apple_identity_token: string;
-            /**
-             * Current Password
-             * @default
-             */
-            current_password: string;
-        };
-        /** DeliveryUpdate */
-        DeliveryUpdate: {
-            /** Delivery Channel */
-            delivery_channel: string;
-        };
-        /** DieseWocheMit */
-        DieseWocheMit: {
-            /** Committee */
-            committee: string | null;
-            /** Decision Id */
-            decision_id: number;
-            /**
-             * Found
-             * @constant
-             */
-            found: true;
-            /** Interest Reason */
-            interest_reason: string;
-            /** Outcome */
-            outcome: string | null;
-            /** Session Date */
-            session_date: string | null;
-            /** Title */
-            title: string;
-        };
-        /** DieseWocheOhne */
-        DieseWocheOhne: {
-            /**
-             * Found
-             * @constant
-             */
-            found: false;
-        };
-        /** DisplayNameIn */
-        DisplayNameIn: {
-            /** Display Name */
-            display_name?: string | null;
-        };
-        /** Entitaeten */
-        Entitaeten: {
-            /** Entities */
-            entities: unknown;
-        };
-        /** EntitaetenKarte */
-        EntitaetenKarte: {
-            /** Entities */
-            entities: unknown;
-        };
-        /**
-         * EntityAliasIn
-         * @description Zwei Themen von Hand zusammenführen (Admin).
-         */
-        EntityAliasIn: {
-            /** Canonical Slug */
-            canonical_slug: string;
-            /** Reason */
-            reason?: string | null;
-            /** Slug */
-            slug: string;
-        };
-        /**
-         * EntityAliasOut
-         * @description Eine Zusammenführung. ``alias_name`` stammt aus den Roh-Beobachtungen —
-         *     das Thema selbst existiert nach dem Zusammenführen nicht mehr eigenständig.
-         */
-        EntityAliasOut: {
-            /** Alias Name */
-            alias_name?: string | null;
-            /** Canonical N */
-            canonical_n?: number | null;
-            /** Canonical Name */
-            canonical_name?: string | null;
-            /** Canonical Slug */
-            canonical_slug: string;
-            /** Created At */
-            created_at: string;
-            /** Reason */
-            reason?: string | null;
-            /** Slug */
-            slug: string;
-            /** Source */
-            source: string;
-        };
-        /** FeedbackIn */
-        FeedbackIn: {
-            /** Kind */
-            kind: string;
-            /** Message */
-            message: string;
-        };
-        /** Finanzen */
-        Finanzen: {
-            /** By Field */
-            by_field: unknown;
-            /** Decisions */
-            decisions: unknown;
-            /** Field Labels */
-            field_labels: {
-                [key: string]: unknown;
-            };
-        };
-        /** ForgotPasswordRequest */
-        ForgotPasswordRequest: {
-            /**
-             * Email
-             * Format: email
-             */
-            email: string;
-        };
-        /** Fundstueck */
-        Fundstueck: {
-            /** Committee */
-            committee: string | null;
-            /** Day */
-            day: string;
-            /** Decision Id */
-            decision_id: number;
-            /** Kicker */
-            kicker: string;
-            /** Outcome */
-            outcome: string | null;
-            /** Session Date */
-            session_date: string | null;
-            /** Story */
-            story: string;
-            /** Title */
-            title: string | null;
-            /** Vote */
-            vote: string | null;
-        };
-        /**
-         * FundstueckDesTages
-         * @description 2 Rückgabe-Zweige — was nicht in jedem steht, ist NotRequired.
-         */
-        FundstueckDesTages: {
-            /** Committee */
-            committee?: unknown;
-            /** Decision Id */
-            decision_id?: unknown;
-            /** Found */
-            found: boolean;
-            /** Kicker */
-            kicker?: unknown;
-            /** Outcome */
-            outcome?: unknown;
-            /** Session Date */
-            session_date?: unknown;
-            /** Story */
-            story?: unknown;
-            /** Title */
-            title?: unknown;
-            /** Vote */
-            vote?: unknown;
-        };
-        /** GespraechDetail */
-        GespraechDetail: {
-            /** Id */
-            id: number;
-            /** Title */
-            title: string;
-            /** Turns */
-            turns: components["schemas"]["GespraechTurn"][];
-            /** Updated */
-            updated: string;
-        };
-        /** GespraechEinstellung */
-        GespraechEinstellung: {
-            /** Saves Conversations */
-            saves_conversations: number;
-        };
-        /** GespraechEinstellungBody */
-        GespraechEinstellungBody: {
-            /** An */
-            an: boolean;
-        };
-        /** GespraechTurn */
-        GespraechTurn: {
-            /** Answer */
-            answer: string;
-            /** Question */
-            question: string;
-            /** Sources */
-            sources: {
-                [key: string]: unknown;
-            } | null;
-        };
-        /** GespraechUmbenennenBody */
-        GespraechUmbenennenBody: {
-            /** Title */
-            title: string;
-        };
-        /** GespraechZeile */
-        GespraechZeile: {
-            /** Id */
-            id: number;
-            /** N Turns */
-            n_turns: number;
-            /** Title */
-            title: string;
-            /** Updated */
-            updated: string;
-        };
-        /** GespraecheGeloescht */
-        GespraecheGeloescht: {
-            /** Deleted */
-            deleted: number;
-        };
-        /**
-         * GespraecheListe
-         * @description `total` ist der Bestand des Kontos, `matches` gilt zur Suche, `has_more`
-         *     sagt, ob „Ältere anzeigen" noch etwas nachliefert.
-         */
-        GespraecheListe: {
-            /** Conversations */
-            conversations: components["schemas"]["GespraechZeile"][];
-            /** Has More */
-            has_more: boolean;
-            /** Matches */
-            matches: number;
-            /** Saves Conversations */
-            saves_conversations: number | null;
-            /** Total */
-            total: number;
-        };
-        /** Gesundheit */
-        Gesundheit: {
-            /** Status */
-            status: string;
-        };
-        /** Gremien */
-        Gremien: {
-            /** Committees */
-            committees: string[];
-            /** Details */
-            details: components["schemas"]["GremiumDetail"][];
-        };
-        /** GremiumDetail */
-        GremiumDetail: {
-            /** Decisions Year */
-            decisions_year: number;
-            /** Name */
-            name: string;
-            /** Next Date */
-            next_date: string | null;
-            /** Next Time */
-            next_time: string | null;
-        };
-        /** HTTPValidationError */
-        HTTPValidationError: {
-            /** Detail */
-            detail?: components["schemas"]["ValidationError"][];
-        };
-        /** HaushaltAenderungslisten */
-        HaushaltAenderungslisten: {
-            /** Cash Budget Rows */
-            cash_budget_rows: unknown;
-            /** Cash Budget Totals */
-            cash_budget_totals: unknown;
-            /** Herkunft */
-            herkunft: {
-                [key: string]: unknown;
-            };
-            /** Rows */
-            rows: unknown;
-            /** Totals */
-            totals: unknown;
-        };
-        /** HaushaltBeteiligungen */
-        HaushaltBeteiligungen: {
-            /** Companies */
-            companies: unknown[];
-            /** Group Comparison */
-            group_comparison: unknown;
-            /** Herkunft */
-            herkunft: {
-                [key: string]: unknown;
-            };
-            /** Indicators */
-            indicators: unknown;
-            /** Owners */
-            owners: unknown;
-            /** People */
-            people: unknown[];
-            /** Report Years */
-            report_years: unknown;
-            /** Texts */
-            texts: unknown;
-            /** Years */
-            years: unknown[];
-        };
-        /** HaushaltBilanz */
-        HaushaltBilanz: {
-            /** Explanations */
-            explanations: unknown;
-            /** Herkunft */
-            herkunft: {
-                [key: string]: unknown;
-            };
-            /** Items */
-            items: unknown;
-            /** Years */
-            years: unknown;
-        };
-        /** HaushaltDatenstand */
-        HaushaltDatenstand: {
-            /** Layers */
-            layers: {
-                [key: string]: unknown;
-            }[];
-            /** Today */
-            today: string;
-        };
-        /** HaushaltDokumente */
-        HaushaltDokumente: {
-            /** Documents */
-            documents: unknown;
-            /** Editions */
-            editions: unknown;
-        };
-        /** HaushaltGebaut */
-        HaushaltGebaut: {
-            /** Accounting Systems */
-            accounting_systems: unknown[];
-            /** Fixed Assets */
-            fixed_assets: {
-                [key: string]: unknown;
-            };
-            /** Herkunft */
-            herkunft: {
-                [key: string]: unknown;
-            };
-            /** Missing */
-            missing: unknown;
-            /** Scope Note */
-            scope_note: unknown;
-            /** Series */
-            series: unknown;
-            /** Years */
-            years: unknown[];
-        };
-        /** HaushaltInvestitionen */
-        HaushaltInvestitionen: {
-            /** Financial Budget */
-            financial_budget: unknown[];
-            /** Herkunft */
-            herkunft: {
-                [key: string]: unknown;
-            };
-            /** Investments */
-            investments: unknown[];
-            /** Sub Budgets */
-            sub_budgets: unknown[];
-            /** Years */
-            years: unknown;
-        };
-        /** HaushaltInvestitionsprogramm */
-        HaushaltInvestitionsprogramm: {
-            /** Herkunft */
-            herkunft: {
-                [key: string]: unknown;
-            };
-            /** Measures */
-            measures: unknown[];
-            /** Sub Budgets */
-            sub_budgets: unknown[];
-            /** Totals */
-            totals: unknown[];
-            /** Years */
-            years: unknown;
-        };
-        /** HaushaltKonzern */
-        HaushaltKonzern: {
-            /** Consolidated */
-            consolidated: unknown[];
-            /** Cross Check */
-            cross_check: unknown;
-            /** Entity */
-            entity: unknown[];
-            /** Herkunft */
-            herkunft: {
-                [key: string]: unknown;
-            };
-            /** Items */
-            items: unknown;
-            /** Years */
-            years: unknown;
-        };
-        /** HaushaltProdukte */
-        HaushaltProdukte: {
-            /** All Years */
-            all_years: unknown;
-            /** Coverage Percent */
-            coverage_percent: unknown;
-            /** Facets */
-            facets: unknown;
-            /** Matches */
-            matches: number;
-            /** Plan Expenses */
-            plan_expenses: unknown;
-            /** Product */
-            product: unknown;
-            /** Products */
-            products: unknown;
-            /** Year */
-            year: unknown;
-        };
-        /** HaushaltPruefberichte */
-        HaushaltPruefberichte: {
-            /** Findings */
-            findings: unknown[];
-            /** Legend */
-            legend: unknown;
-            /** Without Report */
-            without_report: unknown[];
-            /** Years */
-            years: unknown;
-        };
-        /** HaushaltSchulden */
-        HaushaltSchulden: {
-            /** Column Kinds */
-            column_kinds: unknown[];
-            /** Guarantees */
-            guarantees: {
-                [key: string]: unknown;
-            };
-            /** Herkunft */
-            herkunft: {
-                [key: string]: unknown;
-            };
-            /** Integrated Debt */
-            integrated_debt: unknown;
-            /** Interest Expense */
-            interest_expense: unknown;
-            /** Scope Note */
-            scope_note: unknown;
-            /** Series */
-            series: unknown;
-            /** Years */
-            years: unknown[];
-        };
-        /** HaushaltStellenplan */
-        HaushaltStellenplan: {
-            /** Editions */
-            editions: unknown;
-            /** Groups */
-            groups: unknown;
-            /** Herkunft */
-            herkunft: {
-                [key: string]: unknown;
-            };
-            /** Missing */
-            missing: unknown;
-            /** Part Names */
-            part_names: unknown;
-            /** Rows */
-            rows: unknown;
-            /** Totals */
-            totals: unknown;
-        };
-        /** HaushaltStreit */
-        HaushaltStreit: {
-            /** Rounds */
-            rounds: unknown;
-        };
-        /** HaushaltVergleich */
-        HaushaltVergleich: {
-            /** Citation */
-            citation: unknown;
-            /** Cities */
-            cities: unknown;
-            /** Herkunft */
-            herkunft: {
-                [key: string]: unknown;
-            };
-            /** Values */
-            values: unknown;
-            /** Years */
-            years: unknown;
-        };
-        /** HaushaltWeg */
-        HaushaltWeg: {
-            /** Rounds */
-            rounds: unknown;
-        };
-        /** HeuteNaechste */
-        HeuteNaechste: {
-            /** Committee */
-            committee: string;
-            /** Session Date */
-            session_date: string;
-            /** Session Time */
-            session_time: string;
-            /**
-             * State
-             * @constant
-             */
-            state: "naechste";
-        };
-        /** HeutePause */
-        HeutePause: {
-            /** Label */
-            label: string | null;
-            /**
-             * State
-             * @constant
-             */
-            state: "pause";
-            /** Until */
-            until: string | null;
-        };
-        /** HeuteSitzung */
-        HeuteSitzung: {
-            /** Committee */
-            committee: string;
-            /** Live Until */
-            live_until: string | null;
-            /** N Sessions Today */
-            n_sessions_today: number;
-            /** Remaining */
-            remaining: number;
-            /** Session Time */
-            session_time: string;
-            /** Sessions */
-            sessions: components["schemas"]["HeuteTagesSitzung"][];
-            /**
-             * State
-             * @constant
-             */
-            state: "heute";
-            /** Tops */
-            tops: string[];
-        };
-        /**
-         * HeuteTagesSitzung
-         * @description Eine Sitzung des heutigen Tages im „Heute im Rat"-Briefing.
-         */
-        HeuteTagesSitzung: {
-            /** Committee */
-            committee: string;
-            /** Live Until */
-            live_until: string | null;
-            /** Remaining */
-            remaining: number;
-            /** Session Time */
-            session_time: string;
-            /** Tops */
-            tops: string[];
-        };
-        /** HoechsteBeschlussId */
-        HoechsteBeschlussId: {
-            /** Highest Id */
-            highest_id: number;
-        };
-        /**
-         * LimitsUpdate
-         * @description Admin-steuerbare Frage-Limits je Konto: Recherchen/Tag (None = Standard,
-         *     0 = unbegrenzt, sonst eigenes Tageslimit) + Rate-Limit-Befreiung.
-         */
-        LimitsUpdate: {
-            /** Deep Limit */
-            deep_limit?: number | null;
-            /**
-             * Limits Unlocked
-             * @default false
-             */
-            limits_unlocked: boolean;
-        };
-        /** LoginRequest */
-        LoginRequest: {
-            /**
-             * Email
-             * Format: email
-             */
-            email: string;
-            /** Password */
-            password: string;
-        };
-        /** MarkierteTreffer */
-        MarkierteTreffer: {
-            /** Marked */
-            marked: number;
-        };
-        /** MedienAblage */
-        MedienAblage: {
-            /** Count */
-            count: number;
-            /** Day */
-            day: string;
-            /** Urls */
-            urls: string[];
-        };
-        /**
-         * MeldeArt
-         * @description Ein Anlass samt Beschriftung — die Oberfläche soll keine zweite Liste
-         *     pflegen müssen. ``parent`` ist gesetzt, wenn der Anlass eine Unter-Option
-         *     eines anderen ist.
-         */
-        MeldeArt: {
-            /** Default */
-            default: boolean;
-            /** Enabled */
-            enabled: boolean;
-            /** Hint */
-            hint: string;
-            /** Key */
-            key: string;
-            /** Label */
-            label: string;
-            /** Parent */
-            parent: string | null;
-        };
-        /** MeldeEinstellungen */
-        MeldeEinstellungen: {
-            /** Kinds */
-            kinds: components["schemas"]["MeldeArt"][];
-            limits: components["schemas"]["MeldeGrenzen"];
-        };
-        /** MeldeGrenzen */
-        MeldeGrenzen: {
-            /** Per Day */
-            per_day: number;
-            /** Quiet From */
-            quiet_from: number;
-            /** Quiet To */
-            quiet_to: number;
-        };
-        /**
-         * Merkeintrag
+         * BookmarkEntry
          * @description Gebaut in ``council.bookmarks.serialize_bookmark`` — festes Literal,
          *     deshalb hier vollständig aufgeschrieben. Die drei eingebetteten Objekte
          *     sind Roh-Zeilen und bleiben offen.
          */
-        Merkeintrag: {
+        BookmarkEntry: {
             /** Agenda Item */
             agenda_item: {
                 [key: string]: unknown;
@@ -4773,7 +3979,7 @@ export interface components {
             /** Created At */
             created_at: string;
             /**
-             * Beschlusszeile
+             * DecisionRow
              * @description Ein Beschluss aus ``CouncilStore._decision_row``.
              *
              *     Die Felder sind die 27 Spalten von ``council_decisions`` plus das, was die
@@ -4873,7 +4079,7 @@ export interface components {
             /** Result Notified At */
             result_notified_at: string | null;
             /**
-             * Sitzungszeile
+             * SessionRow
              * @description Eine Sitzung, wie ``CouncilStore.get_session`` sie liefert. Die sechs
              *     Felder sind die Spalten von ``council_sessions`` — ein Wächter-Test
              *     (``test_api_vertrag``) schlägt an, wenn die Tabelle wächst, damit hier
@@ -4915,10 +4121,816 @@ export interface components {
             /** Url */
             url: string;
         };
-        /** Merkliste */
-        Merkliste: {
+        /** BookmarkIn */
+        BookmarkIn: {
+            /** Decision Id */
+            decision_id?: number | null;
+            /** Item Number */
+            item_number?: string | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "session" | "agenda_item" | "decision";
+            /** Ksinr */
+            ksinr?: number | null;
+        };
+        /** BookmarkList */
+        BookmarkList: {
             /** Bookmarks */
-            bookmarks: components["schemas"]["Merkeintrag"][];
+            bookmarks: components["schemas"]["BookmarkEntry"][];
+        };
+        /** BookmarkNotificationIn */
+        BookmarkNotificationIn: {
+            /** Notify Result */
+            notify_result: boolean;
+        };
+        /** BriefingBreak */
+        BriefingBreak: {
+            /** Label */
+            label: string | null;
+            /**
+             * State
+             * @constant
+             */
+            state: "pause";
+            /** Until */
+            until: string | null;
+        };
+        /** BriefingNext */
+        BriefingNext: {
+            /** Committee */
+            committee: string;
+            /** Session Date */
+            session_date: string;
+            /** Session Time */
+            session_time: string;
+            /**
+             * State
+             * @constant
+             */
+            state: "naechste";
+        };
+        /** BriefingToday */
+        BriefingToday: {
+            /** Committee */
+            committee: string;
+            /** Live Until */
+            live_until: string | null;
+            /** N Sessions Today */
+            n_sessions_today: number;
+            /** Remaining */
+            remaining: number;
+            /** Session Time */
+            session_time: string;
+            /** Sessions */
+            sessions: components["schemas"]["TodaySession"][];
+            /**
+             * State
+             * @constant
+             */
+            state: "heute";
+            /** Tops */
+            tops: string[];
+        };
+        /** BudgetAmendmentLists */
+        BudgetAmendmentLists: {
+            /** Cash Budget Rows */
+            cash_budget_rows: unknown;
+            /** Cash Budget Totals */
+            cash_budget_totals: unknown;
+            /** Herkunft */
+            herkunft: {
+                [key: string]: unknown;
+            };
+            /** Rows */
+            rows: unknown;
+            /** Totals */
+            totals: unknown;
+        };
+        /** BudgetAuditReports */
+        BudgetAuditReports: {
+            /** Findings */
+            findings: unknown[];
+            /** Legend */
+            legend: unknown;
+            /** Without Report */
+            without_report: unknown[];
+            /** Years */
+            years: unknown;
+        };
+        /** BudgetBalanceSheet */
+        BudgetBalanceSheet: {
+            /** Explanations */
+            explanations: unknown;
+            /** Herkunft */
+            herkunft: {
+                [key: string]: unknown;
+            };
+            /** Items */
+            items: unknown;
+            /** Years */
+            years: unknown;
+        };
+        /** BudgetComparison */
+        BudgetComparison: {
+            /** Citation */
+            citation: unknown;
+            /** Cities */
+            cities: unknown;
+            /** Herkunft */
+            herkunft: {
+                [key: string]: unknown;
+            };
+            /** Values */
+            values: unknown;
+            /** Years */
+            years: unknown;
+        };
+        /** BudgetDataState */
+        BudgetDataState: {
+            /** Layers */
+            layers: {
+                [key: string]: unknown;
+            }[];
+            /** Today */
+            today: string;
+        };
+        /** BudgetDebt */
+        BudgetDebt: {
+            /** Column Kinds */
+            column_kinds: unknown[];
+            /** Guarantees */
+            guarantees: {
+                [key: string]: unknown;
+            };
+            /** Herkunft */
+            herkunft: {
+                [key: string]: unknown;
+            };
+            /** Integrated Debt */
+            integrated_debt: unknown;
+            /** Interest Expense */
+            interest_expense: unknown;
+            /** Scope Note */
+            scope_note: unknown;
+            /** Series */
+            series: unknown;
+            /** Years */
+            years: unknown[];
+        };
+        /** BudgetDispute */
+        BudgetDispute: {
+            /** Rounds */
+            rounds: unknown;
+        };
+        /** BudgetDocuments */
+        BudgetDocuments: {
+            /** Documents */
+            documents: unknown;
+            /** Editions */
+            editions: unknown;
+        };
+        /** BudgetFixedAssets */
+        BudgetFixedAssets: {
+            /** Accounting Systems */
+            accounting_systems: unknown[];
+            /** Fixed Assets */
+            fixed_assets: {
+                [key: string]: unknown;
+            };
+            /** Herkunft */
+            herkunft: {
+                [key: string]: unknown;
+            };
+            /** Missing */
+            missing: unknown;
+            /** Scope Note */
+            scope_note: unknown;
+            /** Series */
+            series: unknown;
+            /** Years */
+            years: unknown[];
+        };
+        /** BudgetGroup */
+        BudgetGroup: {
+            /** Consolidated */
+            consolidated: unknown[];
+            /** Cross Check */
+            cross_check: unknown;
+            /** Entity */
+            entity: unknown[];
+            /** Herkunft */
+            herkunft: {
+                [key: string]: unknown;
+            };
+            /** Items */
+            items: unknown;
+            /** Years */
+            years: unknown;
+        };
+        /** BudgetHoldings */
+        BudgetHoldings: {
+            /** Companies */
+            companies: unknown[];
+            /** Group Comparison */
+            group_comparison: unknown;
+            /** Herkunft */
+            herkunft: {
+                [key: string]: unknown;
+            };
+            /** Indicators */
+            indicators: unknown;
+            /** Owners */
+            owners: unknown;
+            /** People */
+            people: unknown[];
+            /** Report Years */
+            report_years: unknown;
+            /** Texts */
+            texts: unknown;
+            /** Years */
+            years: unknown[];
+        };
+        /** BudgetInvestmentProgram */
+        BudgetInvestmentProgram: {
+            /** Herkunft */
+            herkunft: {
+                [key: string]: unknown;
+            };
+            /** Measures */
+            measures: unknown[];
+            /** Sub Budgets */
+            sub_budgets: unknown[];
+            /** Totals */
+            totals: unknown[];
+            /** Years */
+            years: unknown;
+        };
+        /** BudgetInvestments */
+        BudgetInvestments: {
+            /** Financial Budget */
+            financial_budget: unknown[];
+            /** Herkunft */
+            herkunft: {
+                [key: string]: unknown;
+            };
+            /** Investments */
+            investments: unknown[];
+            /** Sub Budgets */
+            sub_budgets: unknown[];
+            /** Years */
+            years: unknown;
+        };
+        /** BudgetPath */
+        BudgetPath: {
+            /** Rounds */
+            rounds: unknown;
+        };
+        /** BudgetProducts */
+        BudgetProducts: {
+            /** All Years */
+            all_years: unknown;
+            /** Coverage Percent */
+            coverage_percent: unknown;
+            /** Facets */
+            facets: unknown;
+            /** Matches */
+            matches: number;
+            /** Plan Expenses */
+            plan_expenses: unknown;
+            /** Product */
+            product: unknown;
+            /** Products */
+            products: unknown;
+            /** Year */
+            year: unknown;
+        };
+        /** BudgetStaffPlan */
+        BudgetStaffPlan: {
+            /** Editions */
+            editions: unknown;
+            /** Groups */
+            groups: unknown;
+            /** Herkunft */
+            herkunft: {
+                [key: string]: unknown;
+            };
+            /** Missing */
+            missing: unknown;
+            /** Part Names */
+            part_names: unknown;
+            /** Rows */
+            rows: unknown;
+            /** Totals */
+            totals: unknown;
+        };
+        /** ChangePasswordRequest */
+        ChangePasswordRequest: {
+            /** Current Password */
+            current_password: string;
+            /** New Password */
+            new_password: string;
+        };
+        /** CommitteeDetail */
+        CommitteeDetail: {
+            /** Decisions Year */
+            decisions_year: number;
+            /** Name */
+            name: string;
+            /** Next Date */
+            next_date: string | null;
+            /** Next Time */
+            next_time: string | null;
+        };
+        /** Committees */
+        Committees: {
+            /** Committees */
+            committees: string[];
+            /** Details */
+            details: components["schemas"]["CommitteeDetail"][];
+        };
+        /** ConversationDetail */
+        ConversationDetail: {
+            /** Id */
+            id: number;
+            /** Title */
+            title: string;
+            /** Turns */
+            turns: components["schemas"]["ConversationTurn"][];
+            /** Updated */
+            updated: string;
+        };
+        /**
+         * ConversationList
+         * @description `total` ist der Bestand des Kontos, `matches` gilt zur Suche, `has_more`
+         *     sagt, ob „Ältere anzeigen" noch etwas nachliefert.
+         */
+        ConversationList: {
+            /** Conversations */
+            conversations: components["schemas"]["ConversationRow"][];
+            /** Has More */
+            has_more: boolean;
+            /** Matches */
+            matches: number;
+            /** Saves Conversations */
+            saves_conversations: number | null;
+            /** Total */
+            total: number;
+        };
+        /** ConversationRenameBody */
+        ConversationRenameBody: {
+            /** Title */
+            title: string;
+        };
+        /** ConversationRow */
+        ConversationRow: {
+            /** Id */
+            id: number;
+            /** N Turns */
+            n_turns: number;
+            /** Title */
+            title: string;
+            /** Updated */
+            updated: string;
+        };
+        /** ConversationSetting */
+        ConversationSetting: {
+            /** Saves Conversations */
+            saves_conversations: number;
+        };
+        /** ConversationSettingBody */
+        ConversationSettingBody: {
+            /** An */
+            an: boolean;
+        };
+        /** ConversationTurn */
+        ConversationTurn: {
+            /** Answer */
+            answer: string;
+            /** Question */
+            question: string;
+            /** Sources */
+            sources: {
+                [key: string]: unknown;
+            } | null;
+        };
+        /** ConversationsDeleted */
+        ConversationsDeleted: {
+            /** Deleted */
+            deleted: number;
+        };
+        /** CouncilMembers */
+        CouncilMembers: {
+            /** Members */
+            members: unknown;
+        };
+        /**
+         * CouncilRecess
+         * @description Ob gerade Ratspause ist — immer dieselben fünf Felder
+         *     (``council/sitzungspause.py``).
+         */
+        CouncilRecess: {
+            /** Active */
+            active: boolean;
+            /** Label */
+            label: string | null;
+            /** Next Session Date */
+            next_session_date: string | null;
+            /** Note */
+            note: string | null;
+            /** Until */
+            until: string | null;
+        };
+        /** DecisionList */
+        DecisionList: {
+            /** Decisions */
+            decisions: components["schemas"]["DecisionRow"][];
+            /** Total */
+            total: number;
+        };
+        /**
+         * DecisionRow
+         * @description Ein Beschluss aus ``CouncilStore._decision_row``.
+         *
+         *     Die Felder sind die 27 Spalten von ``council_decisions`` plus das, was die
+         *     Abfragen dazujoinen (``committee``, ``session_date``, ``protocol_url``) und
+         *     was der Router anreichert. Bis auf ``id`` ist alles ``NotRequired``: Welche
+         *     Spalten dabei sind, hängt an der jeweiligen Abfrage — ein Pflichtfeld wäre
+         *     hier ein 500, sobald ein Aufrufer schmaler selektiert.
+         *
+         *     ``factions``/``policy_tags`` kommen als JSON-Spalte und werden geparst,
+         *     ``parties`` rechnet der Store aus den Fraktionen aus.
+         */
+        DecisionRow: {
+            /** Abstentions */
+            abstentions?: number | null;
+            /** Amount Eur */
+            amount_eur?: number | null;
+            /** Committee */
+            committee?: string | null;
+            /** Deviation */
+            deviation?: string | null;
+            /** Factions */
+            factions?: string[];
+            /** Id */
+            id: number;
+            /** Impact */
+            impact?: number | null;
+            /** Impact Reason */
+            impact_reason?: string | null;
+            /** Importance */
+            importance?: number | null;
+            /** Interest */
+            interest?: number | null;
+            /** Interest Reason */
+            interest_reason?: string | null;
+            /** Item Number */
+            item_number?: string | null;
+            /** Kind */
+            kind?: string | null;
+            /** Ksinr */
+            ksinr?: number | null;
+            /** Kvonr */
+            kvonr?: number | null;
+            /** Location Matches */
+            location_matches?: unknown[];
+            /** N Beratungen */
+            n_beratungen?: number | null;
+            /** No Votes */
+            no_votes?: number | null;
+            /** Official Text */
+            official_text?: string | null;
+            /** Outcome */
+            outcome?: string | null;
+            /** Parent Item */
+            parent_item?: string | null;
+            /** Parties */
+            parties?: string[];
+            /** Policy Field */
+            policy_field?: string | null;
+            /** Policy Tags */
+            policy_tags?: string[];
+            /** Position */
+            position?: number | null;
+            /** Protocol Url */
+            protocol_url?: string | null;
+            /** Raw Result */
+            raw_result?: string | null;
+            /** Session Date */
+            session_date?: string | null;
+            /** Simple Summary */
+            simple_summary?: string | null;
+            /** Subvote Summary */
+            subvote_summary?: unknown;
+            /** Summary */
+            summary?: string | null;
+            /** Template Number */
+            template_number?: string | null;
+            /** Title */
+            title?: string | null;
+            /** Vote */
+            vote?: string | null;
+        };
+        /** DeepResearchBody */
+        DeepResearchBody: {
+            /** Conversation Id */
+            conversation_id?: number | null;
+            /** History */
+            history?: components["schemas"]["AskTurn"][];
+            /** Question */
+            question: string;
+        };
+        /**
+         * DeleteAccountRequest
+         * @description Konto-Löschung verlangt eine frische Bestätigung — eine (evtl. offen
+         *     liegende) Session allein darf das Konto nicht zerstören können. Konten mit
+         *     Passwort bestätigen mit dem Passwort; Apple-only-Konten mit einem frischen
+         *     Apple-Identity-Token (Re-Auth in der App, RL-1002).
+         */
+        DeleteAccountRequest: {
+            /**
+             * Apple Authorization Code
+             * @default
+             */
+            apple_authorization_code: string;
+            /**
+             * Apple Identity Token
+             * @default
+             */
+            apple_identity_token: string;
+            /**
+             * Current Password
+             * @default
+             */
+            current_password: string;
+        };
+        /** DeliveryUpdate */
+        DeliveryUpdate: {
+            /** Delivery Channel */
+            delivery_channel: string;
+        };
+        /** Discovery */
+        Discovery: {
+            /** Committee */
+            committee: string | null;
+            /** Day */
+            day: string;
+            /** Decision Id */
+            decision_id: number;
+            /** Kicker */
+            kicker: string;
+            /** Outcome */
+            outcome: string | null;
+            /** Session Date */
+            session_date: string | null;
+            /** Story */
+            story: string;
+            /** Title */
+            title: string | null;
+            /** Vote */
+            vote: string | null;
+        };
+        /**
+         * DiscoveryOfTheDay
+         * @description 2 Rückgabe-Zweige — was nicht in jedem steht, ist NotRequired.
+         */
+        DiscoveryOfTheDay: {
+            /** Committee */
+            committee?: unknown;
+            /** Decision Id */
+            decision_id?: unknown;
+            /** Found */
+            found: boolean;
+            /** Kicker */
+            kicker?: unknown;
+            /** Outcome */
+            outcome?: unknown;
+            /** Session Date */
+            session_date?: unknown;
+            /** Story */
+            story?: unknown;
+            /** Title */
+            title?: unknown;
+            /** Vote */
+            vote?: unknown;
+        };
+        /** DisplayNameIn */
+        DisplayNameIn: {
+            /** Display Name */
+            display_name?: string | null;
+        };
+        /** Districts */
+        Districts: {
+            /** Catalog */
+            catalog: {
+                [key: string]: unknown;
+            };
+            /** Districts */
+            districts: unknown;
+        };
+        /** Entities */
+        Entities: {
+            /** Entities */
+            entities: unknown;
+        };
+        /** EntitiesMap */
+        EntitiesMap: {
+            /** Entities */
+            entities: unknown;
+        };
+        /**
+         * EntityAliasIn
+         * @description Zwei Themen von Hand zusammenführen (Admin).
+         */
+        EntityAliasIn: {
+            /** Canonical Slug */
+            canonical_slug: string;
+            /** Reason */
+            reason?: string | null;
+            /** Slug */
+            slug: string;
+        };
+        /**
+         * EntityAliasOut
+         * @description Eine Zusammenführung. ``alias_name`` stammt aus den Roh-Beobachtungen —
+         *     das Thema selbst existiert nach dem Zusammenführen nicht mehr eigenständig.
+         */
+        EntityAliasOut: {
+            /** Alias Name */
+            alias_name?: string | null;
+            /** Canonical N */
+            canonical_n?: number | null;
+            /** Canonical Name */
+            canonical_name?: string | null;
+            /** Canonical Slug */
+            canonical_slug: string;
+            /** Created At */
+            created_at: string;
+            /** Reason */
+            reason?: string | null;
+            /** Slug */
+            slug: string;
+            /** Source */
+            source: string;
+        };
+        /** FeedbackIn */
+        FeedbackIn: {
+            /** Kind */
+            kind: string;
+            /** Message */
+            message: string;
+        };
+        /** Finances */
+        Finances: {
+            /** By Field */
+            by_field: unknown;
+            /** Decisions */
+            decisions: unknown;
+            /** Field Labels */
+            field_labels: {
+                [key: string]: unknown;
+            };
+        };
+        /** ForgotPasswordRequest */
+        ForgotPasswordRequest: {
+            /**
+             * Email
+             * Format: email
+             */
+            email: string;
+        };
+        /** Goal */
+        Goal: {
+            /** Advances */
+            advances: number;
+            /** Description */
+            description: string;
+            /** Hinders */
+            hinders: number;
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Neutral */
+            neutral: number;
+            /** Total */
+            total: number;
+        };
+        /** GoalDetail */
+        GoalDetail: {
+            /** Decisions */
+            decisions: {
+                [key: string]: unknown;
+            }[];
+            /** Description */
+            description: string;
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            summary: components["schemas"]["GoalMetrics"];
+        };
+        /**
+         * GoalMetrics
+         * @description Wie viele Beschlüsse das Ziel voranbringen, bremsen oder nicht berühren.
+         */
+        GoalMetrics: {
+            /** Advances */
+            advances: number;
+            /** Hinders */
+            hinders: number;
+            /** Neutral */
+            neutral: number;
+            /** Total */
+            total: number;
+        };
+        /** Goals */
+        Goals: {
+            /** Goals */
+            goals: components["schemas"]["Goal"][];
+        };
+        /** HTTPValidationError */
+        HTTPValidationError: {
+            /** Detail */
+            detail?: components["schemas"]["ValidationError"][];
+        };
+        /** Health */
+        Health: {
+            /** Status */
+            status: string;
+        };
+        /** HighestDecisionId */
+        HighestDecisionId: {
+            /** Highest Id */
+            highest_id: number;
+        };
+        /**
+         * LimitsUpdate
+         * @description Admin-steuerbare Frage-Limits je Konto: Recherchen/Tag (None = Standard,
+         *     0 = unbegrenzt, sonst eigenes Tageslimit) + Rate-Limit-Befreiung.
+         */
+        LimitsUpdate: {
+            /** Deep Limit */
+            deep_limit?: number | null;
+            /**
+             * Limits Unlocked
+             * @default false
+             */
+            limits_unlocked: boolean;
+        };
+        /** LoginRequest */
+        LoginRequest: {
+            /**
+             * Email
+             * Format: email
+             */
+            email: string;
+            /** Password */
+            password: string;
+        };
+        /** MarkedHits */
+        MarkedHits: {
+            /** Marked */
+            marked: number;
+        };
+        /** MediaUpload */
+        MediaUpload: {
+            /** Count */
+            count: number;
+            /** Day */
+            day: string;
+            /** Urls */
+            urls: string[];
+        };
+        /**
+         * NotifyKind
+         * @description Ein Anlass samt Beschriftung — die Oberfläche soll keine zweite Liste
+         *     pflegen müssen. ``parent`` ist gesetzt, wenn der Anlass eine Unter-Option
+         *     eines anderen ist.
+         */
+        NotifyKind: {
+            /** Default */
+            default: boolean;
+            /** Enabled */
+            enabled: boolean;
+            /** Hint */
+            hint: string;
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Parent */
+            parent: string | null;
+        };
+        /** NotifyLimits */
+        NotifyLimits: {
+            /** Per Day */
+            per_day: number;
+            /** Quiet From */
+            quiet_from: number;
+            /** Quiet To */
+            quiet_to: number;
         };
         /**
          * NotifyPrefsIn
@@ -4932,6 +4944,42 @@ export interface components {
                 [key: string]: boolean;
             };
         };
+        /** NotifySettings */
+        NotifySettings: {
+            /** Kinds */
+            kinds: components["schemas"]["NotifyKind"][];
+            limits: components["schemas"]["NotifyLimits"];
+        };
+        /** NumberOfTheWeekAmount */
+        NumberOfTheWeekAmount: {
+            /** Amount Eur */
+            amount_eur: number;
+            /** Decision Id */
+            decision_id: number;
+            /**
+             * Kind
+             * @constant
+             */
+            kind: "amount";
+            /** Session Date */
+            session_date: string | null;
+            /** Title */
+            title: string;
+            /** Window Days */
+            window_days: number;
+        };
+        /** NumberOfTheWeekCount */
+        NumberOfTheWeekCount: {
+            /** Count */
+            count: number;
+            /**
+             * Kind
+             * @constant
+             */
+            kind: "count";
+            /** Window Days */
+            window_days: number;
+        };
         /**
          * Ok
          * @description Die häufigste Antwort im Haus (22×): „hat geklappt".
@@ -4940,15 +4988,15 @@ export interface components {
             /** Ok */
             ok: boolean;
         };
-        /** OkMitId */
-        OkMitId: {
+        /** OkWithId */
+        OkWithId: {
             /** Id */
             id: number;
             /** Ok */
             ok: boolean;
         };
-        /** OnboardingStand */
-        OnboardingStand: {
+        /** OnboardingState */
+        OnboardingState: {
             /** Celebrated */
             celebrated: boolean;
             /** Steps */
@@ -4965,8 +5013,32 @@ export interface components {
             /** Steps */
             steps?: string[];
         };
-        /** OrtsDetail */
-        OrtsDetail: {
+        /** PartyFilter */
+        PartyFilter: {
+            /** Parties */
+            parties: unknown;
+        };
+        /** PartyOpinions */
+        PartyOpinions: {
+            /** Parties */
+            parties: unknown;
+            /** Without Speeches */
+            without_speeches: unknown;
+        };
+        /** PartyOpinionsBody */
+        PartyOpinionsBody: {
+            /** Decision Ids */
+            decision_ids?: number[];
+            /** Question */
+            question: string;
+        };
+        /** PeopleDirectory */
+        PeopleDirectory: {
+            /** People */
+            people: unknown;
+        };
+        /** PlaceDetail */
+        PlaceDetail: {
             /** Children */
             children: unknown;
             /** Decision Count */
@@ -4975,30 +5047,6 @@ export interface components {
             decisions: unknown;
             /** Place */
             place: unknown;
-        };
-        /** ParteiMeinungen */
-        ParteiMeinungen: {
-            /** Parties */
-            parties: unknown;
-            /** Without Speeches */
-            without_speeches: unknown;
-        };
-        /** ParteiMeinungenBody */
-        ParteiMeinungenBody: {
-            /** Decision Ids */
-            decision_ids?: number[];
-            /** Question */
-            question: string;
-        };
-        /** ParteienFilter */
-        ParteienFilter: {
-            /** Parties */
-            parties: unknown;
-        };
-        /** PersonenLexikon */
-        PersonenLexikon: {
-            /** People */
-            people: unknown;
         };
         /**
          * PlaceReviewIn
@@ -5031,6 +5079,25 @@ export interface components {
             /** Status */
             status: string;
         };
+        /** PolicyField */
+        PolicyField: {
+            /** Count */
+            count: number;
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+        };
+        /** PolicyFieldRecaps */
+        PolicyFieldRecaps: {
+            /** Recaps */
+            recaps: unknown;
+        };
+        /** PolicyFields */
+        PolicyFields: {
+            /** Fields */
+            fields: components["schemas"]["PolicyField"][];
+        };
         /** PushRegisterRequest */
         PushRegisterRequest: {
             /** Platform */
@@ -5043,8 +5110,8 @@ export interface components {
             /** Token */
             token: string;
         };
-        /** QaBeispiele */
-        QaBeispiele: {
+        /** QaExamples */
+        QaExamples: {
             /** Sessions */
             sessions: unknown;
         };
@@ -5059,8 +5126,8 @@ export interface components {
             /** Reason */
             reason?: string | null;
         };
-        /** QaShareAnlage */
-        QaShareAnlage: {
+        /** QaShareAttachment */
+        QaShareAttachment: {
             /**
              * Excerpt
              * @default
@@ -5082,24 +5149,24 @@ export interface components {
             /** Answer */
             answer: string;
             /** Attachments */
-            attachments?: components["schemas"]["QaShareAnlage"][];
+            attachments?: components["schemas"]["QaShareAttachment"][];
             /** Chart */
             chart?: {
                 [key: string]: unknown;
             } | null;
             /** Debates */
-            debates?: components["schemas"]["QaShareDebatte"][];
+            debates?: components["schemas"]["QaShareDebate"][];
             /** Parties */
-            parties?: components["schemas"]["QaSharePartei"][];
+            parties?: components["schemas"]["QaShareParty"][];
             /** Press Releases */
-            press_releases?: components["schemas"]["QaSharePresse"][];
+            press_releases?: components["schemas"]["QaSharePress"][];
             /** Question */
             question: string;
             /** Sources */
-            sources?: components["schemas"]["QaShareQuelle"][];
+            sources?: components["schemas"]["QaShareSource"][];
         };
-        /** QaShareDebatte */
-        QaShareDebatte: {
+        /** QaShareDebate */
+        QaShareDebate: {
             /** Agenda Item */
             agenda_item?: string | null;
             /** Committee */
@@ -5125,8 +5192,8 @@ export interface components {
             /** Speaker */
             speaker?: string | null;
         };
-        /** QaShareKernaussage */
-        QaShareKernaussage: {
+        /** QaShareKeyQuote */
+        QaShareKeyQuote: {
             /** Date */
             date?: string | null;
             /** Speaker */
@@ -5137,14 +5204,14 @@ export interface components {
              */
             text: string;
         };
-        /** QaSharePartei */
-        QaSharePartei: {
+        /** QaShareParty */
+        QaShareParty: {
             /**
              * Contributions
              * @default 0
              */
             contributions: number;
-            /** QaShareKernaussage */
+            /** QaShareKeyQuote */
             kernaussage?: {
                 /** Date */
                 date?: string | null;
@@ -5173,8 +5240,8 @@ export interface components {
              */
             unanimous: boolean;
         };
-        /** QaSharePresse */
-        QaSharePresse: {
+        /** QaSharePress */
+        QaSharePress: {
             /** Date */
             date?: string | null;
             /** Title */
@@ -5182,8 +5249,16 @@ export interface components {
             /** Url */
             url: string;
         };
-        /** QaShareQuelle */
-        QaShareQuelle: {
+        /** QaShareReportBody */
+        QaShareReportBody: {
+            /**
+             * Reason
+             * @default other
+             */
+            reason: string;
+        };
+        /** QaShareSource */
+        QaShareSource: {
             /** Committee */
             committee?: string | null;
             /** Id */
@@ -5195,25 +5270,10 @@ export interface components {
             /** Title */
             title: string;
         };
-        /** QaShareReportBody */
-        QaShareReportBody: {
-            /**
-             * Reason
-             * @default other
-             */
-            reason: string;
-        };
         /** QaShareToken */
         QaShareToken: {
             /** Token */
             token: string;
-        };
-        /** QuellenPruefung */
-        QuellenPruefung: {
-            /** Checked Seconds Ago */
-            checked_seconds_ago: number;
-            /** Status */
-            status: string;
         };
         /** QuizAnswerIn */
         QuizAnswerIn: {
@@ -5227,38 +5287,63 @@ export interface components {
             value?: number | null;
         };
         /**
-         * QuizAuswertung
-         * @description Antwort auf ``/answer`` und ``/own/answer``. Was nur ein Zweig setzt,
-         *     ist ``NotRequired``: Schätzfragen liefern ``answer_value``/``unit``, die
-         *     Übungsrunde kennt weder Detail noch Diagramm.
+         * QuizArea
+         * @description Ein Eintrag im Gebiets-Katalog. Die drei Listen (Wahlbereiche,
+         *     Ortsbereiche, Themen) teilen sich diese Form — was nur eine davon trägt,
+         *     ist ``NotRequired``. Vollständig aufgeschrieben, weil ein fehlendes Feld
+         *     hier still aus der Antwort verschwindet.
          */
-        QuizAuswertung: {
-            /** Answer Value */
-            answer_value?: number | null;
-            /** Chart */
-            chart?: unknown;
-            /** Correct */
-            correct: boolean;
-            /** Correct Index */
-            correct_index: number;
-            /** Detail */
-            detail?: unknown;
-            /** Explanation */
-            explanation: string | null;
-            /** Image */
-            image?: unknown;
-            /** Map */
-            map?: unknown;
+        QuizArea: {
+            /** Aliases */
+            aliases?: string[];
+            /** District */
+            district?: string | null;
+            /** Districts */
+            districts?: string[];
+            /** Electoral Districts */
+            electoral_districts?: number[];
+            /** Key */
+            key: string;
+            /** Kind */
+            kind?: string | null;
+            /** Kind Label */
+            kind_label?: string | null;
+            /** Label */
+            label: string;
+            /** Parent Ids */
+            parent_ids?: string[];
+            /** Place Id */
+            place_id?: string;
             /** Points */
             points: number;
-            /** Source Ref */
-            source_ref: string | null;
-            /** Source Type */
-            source_type: string | null;
-            /** Topic */
-            topic?: unknown;
-            /** Unit */
-            unit?: string | null;
+            /** Questions */
+            questions: number;
+        };
+        /** QuizAreaScore */
+        QuizAreaScore: {
+            /** Answered */
+            answered: number;
+            /** Area Key */
+            area_key: string;
+            /** Area Type */
+            area_type: string;
+            /** Correct */
+            correct: number;
+            /** Last At */
+            last_at: string | null;
+            /** Points */
+            points: number;
+        };
+        /** QuizAreas */
+        QuizAreas: {
+            /** Categories */
+            categories: string[];
+            /** Districts */
+            districts: components["schemas"]["QuizArea"][];
+            /** Electoral Districts */
+            electoral_districts: components["schemas"]["QuizArea"][];
+            /** Topics */
+            topics: components["schemas"]["QuizArea"][];
         };
         /** QuizDailyIn */
         QuizDailyIn: {
@@ -5269,21 +5354,125 @@ export interface components {
             /** Total */
             total: number;
         };
-        /** QuizEigeneFragen */
-        QuizEigeneFragen: {
+        /** QuizDailyResult */
+        QuizDailyResult: {
+            /** Completed At */
+            completed_at: string | null;
+            /** Correct */
+            correct: number;
+            /** Day */
+            day: string;
+            /** Points */
+            points: number;
+            /** Total */
+            total: number;
+        };
+        /**
+         * QuizDailyRound
+         * @description ``done`` ist KEIN Flag, sondern das Ergebnis des Tages — oder ``None``,
+         *     solange die Challenge offen ist.
+         */
+        QuizDailyRound: {
+            /** Day */
+            day: string;
+            /** QuizDailyResult */
+            done: {
+                /** Completed At */
+                completed_at: string | null;
+                /** Correct */
+                correct: number;
+                /** Day */
+                day: string;
+                /** Points */
+                points: number;
+                /** Total */
+                total: number;
+            } | null;
+            /** Questions */
+            questions: components["schemas"]["QuizQuestion"][];
+        };
+        /** QuizDayCompleted */
+        QuizDayCompleted: {
+            /** Day */
+            day: string;
+            /** Ok */
+            ok: boolean;
+            /** Streak */
+            streak: number;
+        };
+        /** QuizFlagged */
+        QuizFlagged: {
+            /** Flagged */
+            flagged: components["schemas"]["QuizFlaggedQuestion"][];
+        };
+        /**
+         * QuizFlaggedQuestion
+         * @description Bewertungs-Zeile aus ``quiz_flagged_questions`` plus Fragentext. Die
+         *     Zeile selbst ist ``SELECT``-geformt, deshalb sind ihre Felder offen.
+         */
+        QuizFlaggedQuestion: {
+            /** Area Key */
+            area_key: string;
+            /** Area Type */
+            area_type: string;
+            /** Bad */
+            bad: number;
+            /** Comments */
+            comments: string | null;
+            /** Correct Index */
+            correct_index: number;
+            /** Good */
+            good: number;
+            /** Options */
+            options: string[];
+            /** Question */
+            question: string;
+            /** Question Id */
+            question_id: number;
+        };
+        /** QuizMapIn */
+        QuizMapIn: {
+            /** Clicked */
+            clicked: string;
+            /** Target */
+            target: string;
+        };
+        /** QuizMapQuestion */
+        QuizMapQuestion: {
+            /** Question */
+            question: string;
+            /** Target */
+            target: string;
+        };
+        /** QuizMapResult */
+        QuizMapResult: {
+            /** Correct */
+            correct: boolean;
+            /** Points */
+            points: number;
+            /** Target */
+            target: string;
+        };
+        /** QuizMapRound */
+        QuizMapRound: {
+            /** Questions */
+            questions: components["schemas"]["QuizMapQuestion"][];
+        };
+        /** QuizOwnQuestions */
+        QuizOwnQuestions: {
             /** Questions */
             questions: {
                 [key: string]: unknown;
             }[];
         };
         /**
-         * QuizFrage
+         * QuizQuestion
          * @description Gebaut in ``CouncilStore._quiz_row(with_answer=False)`` — die Lösung ist
          *     bewusst NICHT dabei. ``source_*`` sind ``NotRequired``, weil die eigenen
          *     Übungsfragen (``/own/round``) ohne Quelle gebaut werden; ``unit`` und die
          *     Slider-Grenzen gibt es nur bei Schätzfragen.
          */
-        QuizFrage: {
+        QuizQuestion: {
             /** Area Key */
             area_key: string;
             /** Area Type */
@@ -5316,132 +5505,6 @@ export interface components {
             /** Unit */
             unit?: string | null;
         };
-        /**
-         * QuizGebiet
-         * @description Ein Eintrag im Gebiets-Katalog. Die drei Listen (Wahlbereiche,
-         *     Ortsbereiche, Themen) teilen sich diese Form — was nur eine davon trägt,
-         *     ist ``NotRequired``. Vollständig aufgeschrieben, weil ein fehlendes Feld
-         *     hier still aus der Antwort verschwindet.
-         */
-        QuizGebiet: {
-            /** Aliases */
-            aliases?: string[];
-            /** District */
-            district?: string | null;
-            /** Districts */
-            districts?: string[];
-            /** Electoral Districts */
-            electoral_districts?: number[];
-            /** Key */
-            key: string;
-            /** Kind */
-            kind?: string | null;
-            /** Kind Label */
-            kind_label?: string | null;
-            /** Label */
-            label: string;
-            /** Parent Ids */
-            parent_ids?: string[];
-            /** Place Id */
-            place_id?: string;
-            /** Points */
-            points: number;
-            /** Questions */
-            questions: number;
-        };
-        /** QuizGebiete */
-        QuizGebiete: {
-            /** Categories */
-            categories: string[];
-            /** Districts */
-            districts: components["schemas"]["QuizGebiet"][];
-            /** Electoral Districts */
-            electoral_districts: components["schemas"]["QuizGebiet"][];
-            /** Topics */
-            topics: components["schemas"]["QuizGebiet"][];
-        };
-        /** QuizGebietsstand */
-        QuizGebietsstand: {
-            /** Answered */
-            answered: number;
-            /** Area Key */
-            area_key: string;
-            /** Area Type */
-            area_type: string;
-            /** Correct */
-            correct: number;
-            /** Last At */
-            last_at: string | null;
-            /** Points */
-            points: number;
-        };
-        /** QuizGemeldet */
-        QuizGemeldet: {
-            /** Flagged */
-            flagged: components["schemas"]["QuizGemeldeteFrage"][];
-        };
-        /**
-         * QuizGemeldeteFrage
-         * @description Bewertungs-Zeile aus ``quiz_flagged_questions`` plus Fragentext. Die
-         *     Zeile selbst ist ``SELECT``-geformt, deshalb sind ihre Felder offen.
-         */
-        QuizGemeldeteFrage: {
-            /** Area Key */
-            area_key: string;
-            /** Area Type */
-            area_type: string;
-            /** Bad */
-            bad: number;
-            /** Comments */
-            comments: string | null;
-            /** Correct Index */
-            correct_index: number;
-            /** Good */
-            good: number;
-            /** Options */
-            options: string[];
-            /** Question */
-            question: string;
-            /** Question Id */
-            question_id: number;
-        };
-        /** QuizGesamt */
-        QuizGesamt: {
-            /** Answered */
-            answered: number;
-            /** Correct */
-            correct: number;
-            /** Points */
-            points: number;
-        };
-        /** QuizKartenAuswertung */
-        QuizKartenAuswertung: {
-            /** Correct */
-            correct: boolean;
-            /** Points */
-            points: number;
-            /** Target */
-            target: string;
-        };
-        /** QuizKartenfrage */
-        QuizKartenfrage: {
-            /** Question */
-            question: string;
-            /** Target */
-            target: string;
-        };
-        /** QuizKartenrunde */
-        QuizKartenrunde: {
-            /** Questions */
-            questions: components["schemas"]["QuizKartenfrage"][];
-        };
-        /** QuizMapIn */
-        QuizMapIn: {
-            /** Clicked */
-            clicked: string;
-            /** Target */
-            target: string;
-        };
         /** QuizRateIn */
         QuizRateIn: {
             /** Comment */
@@ -5451,104 +5514,71 @@ export interface components {
             /** Verdict */
             verdict: string;
         };
-        /** QuizRunde */
-        QuizRunde: {
+        /**
+         * QuizResult
+         * @description Antwort auf ``/answer`` und ``/own/answer``. Was nur ein Zweig setzt,
+         *     ist ``NotRequired``: Schätzfragen liefern ``answer_value``/``unit``, die
+         *     Übungsrunde kennt weder Detail noch Diagramm.
+         */
+        QuizResult: {
+            /** Answer Value */
+            answer_value?: number | null;
+            /** Chart */
+            chart?: unknown;
+            /** Correct */
+            correct: boolean;
+            /** Correct Index */
+            correct_index: number;
+            /** Detail */
+            detail?: unknown;
+            /** Explanation */
+            explanation: string | null;
+            /** Image */
+            image?: unknown;
+            /** Map */
+            map?: unknown;
+            /** Points */
+            points: number;
+            /** Source Ref */
+            source_ref: string | null;
+            /** Source Type */
+            source_type: string | null;
+            /** Topic */
+            topic?: unknown;
+            /** Unit */
+            unit?: string | null;
+        };
+        /** QuizRound */
+        QuizRound: {
             /** Questions */
-            questions: components["schemas"]["QuizFrage"][];
+            questions: components["schemas"]["QuizQuestion"][];
         };
         /**
-         * QuizStand
+         * QuizScore
          * @description ``Store.quiz_stats`` liefert ``by_area``/``total``, der Router hängt
          *     Serie, Abzeichen, Fehlerzahl und Tages-Status an.
          */
-        QuizStand: {
+        QuizScore: {
             /** Badges */
             badges: unknown[];
             /** By Area */
-            by_area: components["schemas"]["QuizGebietsstand"][];
+            by_area: components["schemas"]["QuizAreaScore"][];
             /** Daily Done */
             daily_done: boolean;
             /** Streak */
             streak: number;
-            total: components["schemas"]["QuizGesamt"];
+            total: components["schemas"]["QuizTotal"];
             /** Wrong */
             wrong: number;
         };
-        /** QuizTagAbgeschlossen */
-        QuizTagAbgeschlossen: {
-            /** Day */
-            day: string;
-            /** Ok */
-            ok: boolean;
-            /** Streak */
-            streak: number;
-        };
-        /** QuizTagesergebnis */
-        QuizTagesergebnis: {
-            /** Completed At */
-            completed_at: string | null;
+        /** QuizTotal */
+        QuizTotal: {
+            /** Answered */
+            answered: number;
             /** Correct */
             correct: number;
-            /** Day */
-            day: string;
             /** Points */
             points: number;
-            /** Total */
-            total: number;
-        };
-        /**
-         * QuizTagesrunde
-         * @description ``done`` ist KEIN Flag, sondern das Ergebnis des Tages — oder ``None``,
-         *     solange die Challenge offen ist.
-         */
-        QuizTagesrunde: {
-            /** Day */
-            day: string;
-            /** QuizTagesergebnis */
-            done: {
-                /** Completed At */
-                completed_at: string | null;
-                /** Correct */
-                correct: number;
-                /** Day */
-                day: string;
-                /** Points */
-                points: number;
-                /** Total */
-                total: number;
-            } | null;
-            /** Questions */
-            questions: components["schemas"]["QuizFrage"][];
-        };
-        /** Ratsmitglieder */
-        Ratsmitglieder: {
-            /** Members */
-            members: unknown;
-        };
-        /** RechercheAktuell */
-        RechercheAktuell: {
-            /** Job */
-            job: {
-                [key: string]: unknown;
-            } | null;
-            /** Remaining */
-            remaining: number | null;
-        };
-        /** RechercheGestartet */
-        RechercheGestartet: {
-            /** Job Id */
-            job_id: string;
-            /** Remaining */
-            remaining: number | null;
-        };
-        /** RechercheGestoppt */
-        RechercheGestoppt: {
-            /** Facets Done */
-            facets_done: number;
-            /** Facets Total */
-            facets_total: number;
-            /** Partial Report Possible */
-            partial_report_possible: boolean;
         };
         /** RegisterRequest */
         RegisterRequest: {
@@ -5562,6 +5592,31 @@ export interface components {
             /** Password */
             password: string;
         };
+        /** ResearchCurrent */
+        ResearchCurrent: {
+            /** Job */
+            job: {
+                [key: string]: unknown;
+            } | null;
+            /** Remaining */
+            remaining: number | null;
+        };
+        /** ResearchStarted */
+        ResearchStarted: {
+            /** Job Id */
+            job_id: string;
+            /** Remaining */
+            remaining: number | null;
+        };
+        /** ResearchStopped */
+        ResearchStopped: {
+            /** Facets Done */
+            facets_done: number;
+            /** Facets Total */
+            facets_total: number;
+            /** Partial Report Possible */
+            partial_report_possible: boolean;
+        };
         /** ResetPasswordRequest */
         ResetPasswordRequest: {
             /** New Password */
@@ -5574,62 +5629,23 @@ export interface components {
             /** Role */
             role: string;
         };
-        /** SetupStand */
-        SetupStand: {
-            /** Done At */
-            done_at: string | null;
-            /** Started At */
-            started_at: string | null;
-            /** Step */
-            step: number;
-        };
-        /**
-         * SetupUpdate
-         * @description Design 26a: erreichter Schritt des Einrichtungs-Assistenten (0–3).
-         */
-        SetupUpdate: {
-            /**
-             * Done
-             * @default false
-             */
-            done: boolean;
-            /** Step */
-            step: number;
-        };
-        /** SitzungsListe */
-        SitzungsListe: {
+        /** SessionList */
+        SessionList: {
             /** Count */
             count: number;
             /** Sessions */
-            sessions: components["schemas"]["Sitzungszeile"][];
+            sessions: components["schemas"]["SessionRow"][];
             /** Total */
             total: number;
         };
         /**
-         * Sitzungspause
-         * @description Ob gerade Ratspause ist — immer dieselben fünf Felder
-         *     (``council/sitzungspause.py``).
-         */
-        Sitzungspause: {
-            /** Active */
-            active: boolean;
-            /** Label */
-            label: string | null;
-            /** Next Session Date */
-            next_session_date: string | null;
-            /** Note */
-            note: string | null;
-            /** Until */
-            until: string | null;
-        };
-        /**
-         * Sitzungszeile
+         * SessionRow
          * @description Eine Sitzung, wie ``CouncilStore.get_session`` sie liefert. Die sechs
          *     Felder sind die Spalten von ``council_sessions`` — ein Wächter-Test
          *     (``test_api_vertrag``) schlägt an, wenn die Tabelle wächst, damit hier
          *     nichts still abgeschnitten wird.
          */
-        Sitzungszeile: {
+        SessionRow: {
             /** Committee */
             committee: string;
             /** Fetched At */
@@ -5651,11 +5667,45 @@ export interface components {
             /** Session Time */
             session_time?: string | null;
         };
+        /** SetupState */
+        SetupState: {
+            /** Done At */
+            done_at: string | null;
+            /** Started At */
+            started_at: string | null;
+            /** Step */
+            step: number;
+        };
         /**
-         * SocialBeschluss
+         * SetupUpdate
+         * @description Design 26a: erreichter Schritt des Einrichtungs-Assistenten (0–3).
+         */
+        SetupUpdate: {
+            /**
+             * Done
+             * @default false
+             */
+            done: boolean;
+            /** Step */
+            step: number;
+        };
+        /**
+         * SharePreview
+         * @description Titel und Beschreibung für die Vorschau-Karte beim Teilen — fünf
+         *     Zweige (Beschluss, Person, Ort, Entität, Sitzung), alle mit denselben
+         *     zwei Feldern.
+         */
+        SharePreview: {
+            /** Description */
+            description: string;
+            /** Title */
+            title: string;
+        };
+        /**
+         * SocialDecision
          * @description Fester SELECT im Router plus ``votes`` — deshalb hier vollständig.
          */
-        SocialBeschluss: {
+        SocialDecision: {
             /** Committee */
             committee: string | null;
             /** Id */
@@ -5681,14 +5731,12 @@ export interface components {
                 [key: string]: unknown;
             }[];
         };
-        /** Stadtteile */
-        Stadtteile: {
-            /** Catalog */
-            catalog: {
-                [key: string]: unknown;
-            };
-            /** Districts */
-            districts: unknown;
+        /** SourceCheck */
+        SourceCheck: {
+            /** Checked Seconds Ago */
+            checked_seconds_ago: number;
+            /** Status */
+            status: string;
         };
         /** StatusUpdate */
         StatusUpdate: {
@@ -5699,6 +5747,25 @@ export interface components {
         SubscriptionIn: {
             /** Committee Name */
             committee_name: string;
+        };
+        /** SubscriptionRemoved */
+        SubscriptionRemoved: {
+            /** Committee Name */
+            committee_name: string;
+            /** Unsubscribed */
+            unsubscribed: boolean;
+        };
+        /** SubscriptionSet */
+        SubscriptionSet: {
+            /** Committee Name */
+            committee_name: string;
+            /** Subscribed */
+            subscribed: boolean;
+        };
+        /** Subscriptions */
+        Subscriptions: {
+            /** Subscriptions */
+            subscriptions: string[];
         };
         /**
          * SupportIn
@@ -5723,21 +5790,79 @@ export interface components {
              */
             website: string;
         };
+        /** TemplateFollowed */
+        TemplateFollowed: {
+            /** Following */
+            following: boolean;
+            /** Kvonr */
+            kvonr: number;
+        };
+        /** TemplateFollows */
+        TemplateFollows: {
+            /** Follows */
+            follows: unknown;
+        };
+        /** TemplateUnfollowed */
+        TemplateUnfollowed: {
+            /** Following */
+            following: boolean;
+            /** Kvonr */
+            kvonr: number;
+        };
         /**
-         * TestZustellung
+         * TestDelivery
          * @description ``sent`` nennt die Kanäle, über die es rausging (``deliver_message``).
          */
-        TestZustellung: {
+        TestDelivery: {
             /** Sent */
             sent: string[];
         };
-        /** ThemenBeschluesse */
-        ThemenBeschluesse: {
-            /** Decisions */
-            decisions: components["schemas"]["ThemenBeschluss"][];
+        /** ThisWeekFound */
+        ThisWeekFound: {
+            /** Committee */
+            committee: string | null;
+            /** Decision Id */
+            decision_id: number;
+            /**
+             * Found
+             * @constant
+             */
+            found: true;
+            /** Interest Reason */
+            interest_reason: string;
+            /** Outcome */
+            outcome: string | null;
+            /** Session Date */
+            session_date: string | null;
+            /** Title */
+            title: string;
         };
-        /** ThemenBeschluss */
-        ThemenBeschluss: {
+        /** ThisWeekNone */
+        ThisWeekNone: {
+            /**
+             * Found
+             * @constant
+             */
+            found: false;
+        };
+        /**
+         * TodaySession
+         * @description Eine Sitzung des heutigen Tages im „Heute im Rat"-Briefing.
+         */
+        TodaySession: {
+            /** Committee */
+            committee: string;
+            /** Live Until */
+            live_until: string | null;
+            /** Remaining */
+            remaining: number;
+            /** Session Time */
+            session_time: string;
+            /** Tops */
+            tops: string[];
+        };
+        /** TopicDecision */
+        TopicDecision: {
             /** Committee */
             committee: string;
             /** Id */
@@ -5753,12 +5878,32 @@ export interface components {
             /** Title */
             title: string;
         };
+        /** TopicDecisions */
+        TopicDecisions: {
+            /** Decisions */
+            decisions: components["schemas"]["TopicDecision"][];
+        };
         /**
-         * ThemenBeschreibung
+         * TopicDescribeIn
+         * @description RL-U17: Name reicht — die Beschreibung entsteht aus den Beschlüssen.
+         *     ``description`` ist optional und nur dafür da, einen selbst getippten Text
+         *     zusätzlich auf Vagheit prüfen zu lassen.
+         */
+        TopicDescribeIn: {
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /** Name */
+            name: string;
+        };
+        /**
+         * TopicDescription
          * @description ``analyse`` liefert die ersten acht Felder, ``check_vagueness`` die drei
          *     letzten (sie werden per ``**`` daruntergemischt).
          */
-        ThemenBeschreibung: {
+        TopicDescription: {
             /** Description */
             description: string;
             /** Examples */
@@ -5782,8 +5927,8 @@ export interface components {
             /** Verdict */
             verdict: string;
         };
-        /** ThemenTreffer */
-        ThemenTreffer: {
+        /** TopicHit */
+        TopicHit: {
             /** Committee */
             committee: string;
             /** Id */
@@ -5795,58 +5940,10 @@ export interface components {
             /** Topic Name */
             topic_name: string;
         };
-        /** ThemenTrefferListe */
-        ThemenTrefferListe: {
+        /** TopicHitList */
+        TopicHitList: {
             /** Hits */
-            hits: components["schemas"]["ThemenTreffer"][];
-        };
-        /** ThemenVorschlaege */
-        ThemenVorschlaege: {
-            /** Suggestions */
-            suggestions: components["schemas"]["ThemenVorschlag"][];
-        };
-        /** ThemenVorschlag */
-        ThemenVorschlag: {
-            /** Description */
-            description: string;
-            /** N */
-            n: number;
-            /** Name */
-            name: string;
-        };
-        /** Themenfeld */
-        Themenfeld: {
-            /** Count */
-            count: number;
-            /** Key */
-            key: string;
-            /** Label */
-            label: string;
-        };
-        /** ThemenfeldRueckblicke */
-        ThemenfeldRueckblicke: {
-            /** Recaps */
-            recaps: unknown;
-        };
-        /** Themenfelder */
-        Themenfelder: {
-            /** Fields */
-            fields: components["schemas"]["Themenfeld"][];
-        };
-        /**
-         * TopicDescribeIn
-         * @description RL-U17: Name reicht — die Beschreibung entsteht aus den Beschlüssen.
-         *     ``description`` ist optional und nur dafür da, einen selbst getippten Text
-         *     zusätzlich auf Vagheit prüfen zu lassen.
-         */
-        TopicDescribeIn: {
-            /**
-             * Description
-             * @default
-             */
-            description: string;
-            /** Name */
-            name: string;
+            hits: components["schemas"]["TopicHit"][];
         };
         /**
          * TopicHitOut
@@ -5938,11 +6035,25 @@ export interface components {
             /** Decision Id */
             decision_id?: number | null;
         };
+        /** TopicSuggestion */
+        TopicSuggestion: {
+            /** Description */
+            description: string;
+            /** N */
+            n: number;
+            /** Name */
+            name: string;
+        };
+        /** TopicSuggestions */
+        TopicSuggestions: {
+            /** Suggestions */
+            suggestions: components["schemas"]["TopicSuggestion"][];
+        };
         /**
-         * TrendDaten
+         * TrendData
          * @description ``CouncilStore.activity_trends`` — Hülle beschrieben, Reihen offen.
          */
-        TrendDaten: {
+        TrendData: {
             /** By Field */
             by_field: {
                 [key: string]: unknown;
@@ -5958,8 +6069,8 @@ export interface components {
             /** Quarters */
             quarters: string[];
         };
-        /** UngeleseneThemenTreffer */
-        UngeleseneThemenTreffer: {
+        /** UnreadTopicHits */
+        UnreadTopicHits: {
             /** Total */
             total: number;
         };
@@ -6056,37 +6167,6 @@ export interface components {
             /** Token */
             token: string;
         };
-        /** VorlageEntfolgt */
-        VorlageEntfolgt: {
-            /** Following */
-            following: boolean;
-            /** Kvonr */
-            kvonr: number;
-        };
-        /** VorlageGefolgt */
-        VorlageGefolgt: {
-            /** Following */
-            following: boolean;
-            /** Kvonr */
-            kvonr: number;
-        };
-        /** VorlagenFolgen */
-        VorlagenFolgen: {
-            /** Follows */
-            follows: unknown;
-        };
-        /**
-         * Vorschau
-         * @description Titel und Beschreibung für die Vorschau-Karte beim Teilen — fünf
-         *     Zweige (Beschluss, Person, Ort, Entität, Sitzung), alle mit denselben
-         *     zwei Feldern.
-         */
-        Vorschau: {
-            /** Description */
-            description: string;
-            /** Title */
-            title: string;
-        };
         /** WebUserOut */
         WebUserOut: {
             /** Created At */
@@ -6109,13 +6189,13 @@ export interface components {
             status: string;
         };
         /**
-         * Wochenvorschau
+         * WeekPreview
          * @description ``CouncilStore.wochenvorschau`` hat ZWEI Rückgabeformen: ohne Treffer
          *     nur fünf Schlüssel, mit Treffern elf. Die sechs Kennzahlen sind deshalb
          *     ``NotRequired`` — ein Pflichtfeld wäre hier ein 500 an einer ruhigen
          *     Woche. ``upcoming`` hängt der Router an.
          */
-        Wochenvorschau: {
+        WeekPreview: {
             /** Found */
             found: boolean;
             /** From Date */
@@ -6133,7 +6213,7 @@ export interface components {
             /** Relevant Per Session */
             relevant_per_session?: unknown;
             /** Sessions */
-            sessions: components["schemas"]["Sitzungszeile"][];
+            sessions: components["schemas"]["SessionRow"][];
             /** Substantive Per Session */
             substantive_per_session?: unknown;
             /** Substantive Total */
@@ -6141,87 +6221,7 @@ export interface components {
             /** To Date */
             to_date: string;
             /** Upcoming */
-            upcoming: components["schemas"]["Sitzungszeile"][];
-        };
-        /** ZahlDerWocheAnzahl */
-        ZahlDerWocheAnzahl: {
-            /** Count */
-            count: number;
-            /**
-             * Kind
-             * @constant
-             */
-            kind: "count";
-            /** Window Days */
-            window_days: number;
-        };
-        /** ZahlDerWocheBetrag */
-        ZahlDerWocheBetrag: {
-            /** Amount Eur */
-            amount_eur: number;
-            /** Decision Id */
-            decision_id: number;
-            /**
-             * Kind
-             * @constant
-             */
-            kind: "amount";
-            /** Session Date */
-            session_date: string | null;
-            /** Title */
-            title: string;
-            /** Window Days */
-            window_days: number;
-        };
-        /** Ziel */
-        Ziel: {
-            /** Advances */
-            advances: number;
-            /** Description */
-            description: string;
-            /** Hinders */
-            hinders: number;
-            /** Key */
-            key: string;
-            /** Label */
-            label: string;
-            /** Neutral */
-            neutral: number;
-            /** Total */
-            total: number;
-        };
-        /** ZielDetail */
-        ZielDetail: {
-            /** Decisions */
-            decisions: {
-                [key: string]: unknown;
-            }[];
-            /** Description */
-            description: string;
-            /** Key */
-            key: string;
-            /** Label */
-            label: string;
-            summary: components["schemas"]["ZielKennzahlen"];
-        };
-        /**
-         * ZielKennzahlen
-         * @description Wie viele Beschlüsse das Ziel voranbringen, bremsen oder nicht berühren.
-         */
-        ZielKennzahlen: {
-            /** Advances */
-            advances: number;
-            /** Hinders */
-            hinders: number;
-            /** Neutral */
-            neutral: number;
-            /** Total */
-            total: number;
-        };
-        /** Ziele */
-        Ziele: {
-            /** Goals */
-            goals: components["schemas"]["Ziel"][];
+            upcoming: components["schemas"]["SessionRow"][];
         };
     };
     responses: never;
@@ -6377,7 +6377,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["MeldeEinstellungen"];
+                    "application/json": components["schemas"]["NotifySettings"];
                 };
             };
         };
@@ -6401,7 +6401,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["MeldeEinstellungen"];
+                    "application/json": components["schemas"]["NotifySettings"];
                 };
             };
             /** @description Validation Error */
@@ -6430,7 +6430,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TestZustellung"];
+                    "application/json": components["schemas"]["TestDelivery"];
                 };
             };
         };
@@ -6450,7 +6450,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AdminAliasListe"];
+                    "application/json": components["schemas"]["AdminAliasList"];
                 };
             };
         };
@@ -6505,7 +6505,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AdminAliasGeloescht"];
+                    "application/json": components["schemas"]["AdminAliasDeleted"];
                 };
             };
             /** @description Validation Error */
@@ -6537,7 +6537,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AdminFeedbackListe"];
+                    "application/json": components["schemas"]["AdminFeedbackList"];
                 };
             };
             /** @description Validation Error */
@@ -6566,7 +6566,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AdminUngelesen"];
+                    "application/json": components["schemas"]["AdminUnread"];
                 };
             };
         };
@@ -6590,7 +6590,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AdminFeedbackGelesen"];
+                    "application/json": components["schemas"]["AdminFeedbackRead"];
                 };
             };
             /** @description Validation Error */
@@ -6665,7 +6665,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AdminOrtsKandidaten"];
+                    "application/json": components["schemas"]["AdminPlaceCandidates"];
                 };
             };
             /** @description Validation Error */
@@ -6791,7 +6791,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["QuizGemeldet"];
+                    "application/json": components["schemas"]["QuizFlagged"];
                 };
             };
         };
@@ -6811,7 +6811,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AdminQuizStatistik"];
+                    "application/json": components["schemas"]["AdminQuizStats"];
                 };
             };
         };
@@ -6864,7 +6864,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AdminWachstum"];
+                    "application/json": components["schemas"]["AdminGrowth"];
                 };
             };
             /** @description Validation Error */
@@ -6893,7 +6893,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AdminNutzerZeile"][];
+                    "application/json": components["schemas"]["AdminUserRow"][];
                 };
             };
         };
@@ -6952,7 +6952,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AdminGrenzen"];
+                    "application/json": components["schemas"]["AdminLimits"];
                 };
             };
             /** @description Validation Error */
@@ -7329,7 +7329,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AbzeichenStand"];
+                    "application/json": components["schemas"]["BadgeState"];
                 };
             };
         };
@@ -7382,7 +7382,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Merkliste"];
+                    "application/json": components["schemas"]["BookmarkList"];
                 };
             };
         };
@@ -7406,7 +7406,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Merkeintrag"];
+                    "application/json": components["schemas"]["BookmarkEntry"];
                 };
             };
             /** @description Validation Error */
@@ -7470,7 +7470,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Merkeintrag"];
+                    "application/json": components["schemas"]["BookmarkEntry"];
                 };
             };
             /** @description Validation Error */
@@ -7499,7 +7499,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AnalyseDaten"];
+                    "application/json": components["schemas"]["AnalysisData"];
                 };
             };
         };
@@ -7586,7 +7586,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HaushaltAenderungslisten"];
+                    "application/json": components["schemas"]["BudgetAmendmentLists"];
                 };
             };
         };
@@ -7606,7 +7606,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HaushaltGebaut"];
+                    "application/json": components["schemas"]["BudgetFixedAssets"];
                 };
             };
         };
@@ -7628,7 +7628,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HaushaltPruefberichte"];
+                    "application/json": components["schemas"]["BudgetAuditReports"];
                 };
             };
             /** @description Validation Error */
@@ -7657,7 +7657,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HaushaltBilanz"];
+                    "application/json": components["schemas"]["BudgetBalanceSheet"];
                 };
             };
         };
@@ -7677,7 +7677,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HaushaltVergleich"];
+                    "application/json": components["schemas"]["BudgetComparison"];
                 };
             };
         };
@@ -7697,7 +7697,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HaushaltDatenstand"];
+                    "application/json": components["schemas"]["BudgetDataState"];
                 };
             };
         };
@@ -7719,7 +7719,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HaushaltStreit"];
+                    "application/json": components["schemas"]["BudgetDispute"];
                 };
             };
             /** @description Validation Error */
@@ -7748,7 +7748,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HaushaltSchulden"];
+                    "application/json": components["schemas"]["BudgetDebt"];
                 };
             };
         };
@@ -7768,7 +7768,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HaushaltDokumente"];
+                    "application/json": components["schemas"]["BudgetDocuments"];
                 };
             };
         };
@@ -7788,7 +7788,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HaushaltKonzern"];
+                    "application/json": components["schemas"]["BudgetGroup"];
                 };
             };
         };
@@ -7808,7 +7808,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HaushaltInvestitionsprogramm"];
+                    "application/json": components["schemas"]["BudgetInvestmentProgram"];
                 };
             };
         };
@@ -7828,7 +7828,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HaushaltInvestitionen"];
+                    "application/json": components["schemas"]["BudgetInvestments"];
                 };
             };
         };
@@ -7850,7 +7850,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HaushaltWeg"];
+                    "application/json": components["schemas"]["BudgetPath"];
                 };
             };
             /** @description Validation Error */
@@ -7886,7 +7886,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HaushaltProdukte"];
+                    "application/json": components["schemas"]["BudgetProducts"];
                 };
             };
             /** @description Validation Error */
@@ -7915,7 +7915,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HaushaltBeteiligungen"];
+                    "application/json": components["schemas"]["BudgetHoldings"];
                 };
             };
         };
@@ -7937,7 +7937,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HaushaltStellenplan"];
+                    "application/json": components["schemas"]["BudgetStaffPlan"];
                 };
             };
             /** @description Validation Error */
@@ -7966,7 +7966,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Gremien"];
+                    "application/json": components["schemas"]["Committees"];
                 };
             };
         };
@@ -7990,7 +7990,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["GespraecheListe"];
+                    "application/json": components["schemas"]["ConversationList"];
                 };
             };
             /** @description Validation Error */
@@ -8019,7 +8019,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["GespraecheGeloescht"];
+                    "application/json": components["schemas"]["ConversationsDeleted"];
                 };
             };
         };
@@ -8033,7 +8033,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["GespraechEinstellungBody"];
+                "application/json": components["schemas"]["ConversationSettingBody"];
             };
         };
         responses: {
@@ -8043,7 +8043,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["GespraechEinstellung"];
+                    "application/json": components["schemas"]["ConversationSetting"];
                 };
             };
             /** @description Validation Error */
@@ -8074,7 +8074,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["GespraechDetail"];
+                    "application/json": components["schemas"]["ConversationDetail"];
                 };
             };
             /** @description Validation Error */
@@ -8130,7 +8130,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["GespraechUmbenennenBody"];
+                "application/json": components["schemas"]["ConversationRenameBody"];
             };
         };
         responses: {
@@ -8169,7 +8169,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["FundstueckDesTages"];
+                    "application/json": components["schemas"]["DiscoveryOfTheDay"];
                 };
             };
         };
@@ -8240,7 +8240,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BeschlussListe"];
+                    "application/json": components["schemas"]["DecisionList"];
                 };
             };
             /** @description Validation Error */
@@ -8273,7 +8273,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["RechercheGestartet"];
+                    "application/json": components["schemas"]["ResearchStarted"];
                 };
             };
             /** @description Validation Error */
@@ -8302,7 +8302,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["RechercheAktuell"];
+                    "application/json": components["schemas"]["ResearchCurrent"];
                 };
             };
         };
@@ -8452,7 +8452,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["RechercheGestoppt"];
+                    "application/json": components["schemas"]["ResearchStopped"];
                 };
             };
             /** @description Validation Error */
@@ -8481,7 +8481,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DieseWocheMit"] | components["schemas"]["DieseWocheOhne"];
+                    "application/json": components["schemas"]["ThisWeekFound"] | components["schemas"]["ThisWeekNone"];
                 };
             };
         };
@@ -8501,7 +8501,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Stadtteile"];
+                    "application/json": components["schemas"]["Districts"];
                 };
             };
         };
@@ -8523,7 +8523,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Entitaeten"];
+                    "application/json": components["schemas"]["Entities"];
                 };
             };
             /** @description Validation Error */
@@ -8552,7 +8552,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["EntitaetenKarte"];
+                    "application/json": components["schemas"]["EntitiesMap"];
                 };
             };
         };
@@ -8605,7 +8605,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ThemenfeldRueckblicke"];
+                    "application/json": components["schemas"]["PolicyFieldRecaps"];
                 };
             };
         };
@@ -8625,7 +8625,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Themenfelder"];
+                    "application/json": components["schemas"]["PolicyFields"];
                 };
             };
         };
@@ -8645,7 +8645,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Finanzen"];
+                    "application/json": components["schemas"]["Finances"];
                 };
             };
         };
@@ -8665,7 +8665,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["VorlagenFolgen"];
+                    "application/json": components["schemas"]["TemplateFollows"];
                 };
             };
         };
@@ -8687,7 +8687,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ZielDetail"];
+                    "application/json": components["schemas"]["GoalDetail"];
                 };
             };
             /** @description Validation Error */
@@ -8716,7 +8716,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Ziele"];
+                    "application/json": components["schemas"]["Goals"];
                 };
             };
         };
@@ -8736,7 +8736,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HeuteSitzung"] | components["schemas"]["HeuteNaechste"] | components["schemas"]["HeutePause"];
+                    "application/json": components["schemas"]["BriefingToday"] | components["schemas"]["BriefingNext"] | components["schemas"]["BriefingBreak"];
                 };
             };
         };
@@ -8756,7 +8756,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Ratsmitglieder"];
+                    "application/json": components["schemas"]["CouncilMembers"];
                 };
             };
         };
@@ -8776,7 +8776,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ParteienFilter"];
+                    "application/json": components["schemas"]["PartyFilter"];
                 };
             };
         };
@@ -8790,7 +8790,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ParteiMeinungenBody"];
+                "application/json": components["schemas"]["PartyOpinionsBody"];
             };
         };
         responses: {
@@ -8800,7 +8800,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ParteiMeinungen"];
+                    "application/json": components["schemas"]["PartyOpinions"];
                 };
             };
             /** @description Validation Error */
@@ -8829,7 +8829,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PersonenLexikon"];
+                    "application/json": components["schemas"]["PeopleDirectory"];
                 };
             };
         };
@@ -8921,7 +8921,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["OrtsDetail"];
+                    "application/json": components["schemas"]["PlaceDetail"];
                 };
             };
             /** @description Validation Error */
@@ -9008,7 +9008,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Vorschau"];
+                    "application/json": components["schemas"]["SharePreview"];
                 };
             };
             /** @description Validation Error */
@@ -9059,7 +9059,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["QaBeispiele"];
+                    "application/json": components["schemas"]["QaExamples"];
                 };
             };
         };
@@ -9213,7 +9213,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Sitzungspause"];
+                    "application/json": components["schemas"]["CouncilRecess"];
                 };
             };
         };
@@ -9274,7 +9274,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SitzungsListe"];
+                    "application/json": components["schemas"]["SessionList"];
                 };
             };
             /** @description Validation Error */
@@ -9305,7 +9305,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["VorlageGefolgt"];
+                    "application/json": components["schemas"]["TemplateFollowed"];
                 };
             };
             /** @description Validation Error */
@@ -9336,7 +9336,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["VorlageEntfolgt"];
+                    "application/json": components["schemas"]["TemplateUnfollowed"];
                 };
             };
             /** @description Validation Error */
@@ -9365,7 +9365,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TrendDaten"];
+                    "application/json": components["schemas"]["TrendData"];
                 };
             };
         };
@@ -9407,7 +9407,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ZahlDerWocheBetrag"] | components["schemas"]["ZahlDerWocheAnzahl"];
+                    "application/json": components["schemas"]["NumberOfTheWeekAmount"] | components["schemas"]["NumberOfTheWeekCount"];
                 };
             };
         };
@@ -9493,7 +9493,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Gesundheit"];
+                    "application/json": components["schemas"]["Health"];
                 };
             };
         };
@@ -9515,7 +9515,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["QuellenPruefung"];
+                    "application/json": components["schemas"]["SourceCheck"];
                 };
             };
             /** @description Validation Error */
@@ -9544,7 +9544,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["OnboardingStand"];
+                    "application/json": components["schemas"]["OnboardingState"];
                 };
             };
         };
@@ -9568,7 +9568,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["OnboardingStand"];
+                    "application/json": components["schemas"]["OnboardingState"];
                 };
             };
             /** @description Validation Error */
@@ -9597,7 +9597,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SetupStand"];
+                    "application/json": components["schemas"]["SetupState"];
                 };
             };
         };
@@ -9621,7 +9621,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SetupStand"];
+                    "application/json": components["schemas"]["SetupState"];
                 };
             };
             /** @description Validation Error */
@@ -9716,7 +9716,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["QuizAuswertung"];
+                    "application/json": components["schemas"]["QuizResult"];
                 };
             };
             /** @description Validation Error */
@@ -9745,7 +9745,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["QuizGebiete"];
+                    "application/json": components["schemas"]["QuizAreas"];
                 };
             };
         };
@@ -9765,7 +9765,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["QuizTagesrunde"];
+                    "application/json": components["schemas"]["QuizDailyRound"];
                 };
             };
         };
@@ -9789,7 +9789,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["QuizTagAbgeschlossen"];
+                    "application/json": components["schemas"]["QuizDayCompleted"];
                 };
             };
             /** @description Validation Error */
@@ -9822,7 +9822,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["QuizKartenAuswertung"];
+                    "application/json": components["schemas"]["QuizMapResult"];
                 };
             };
             /** @description Validation Error */
@@ -9853,7 +9853,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["QuizKartenrunde"];
+                    "application/json": components["schemas"]["QuizMapRound"];
                 };
             };
             /** @description Validation Error */
@@ -9882,7 +9882,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["QuizEigeneFragen"];
+                    "application/json": components["schemas"]["QuizOwnQuestions"];
                 };
             };
         };
@@ -9906,7 +9906,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["OkMitId"];
+                    "application/json": components["schemas"]["OkWithId"];
                 };
             };
             /** @description Validation Error */
@@ -9939,7 +9939,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["QuizAuswertung"];
+                    "application/json": components["schemas"]["QuizResult"];
                 };
             };
             /** @description Validation Error */
@@ -9970,7 +9970,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["QuizRunde"];
+                    "application/json": components["schemas"]["QuizRound"];
                 };
             };
             /** @description Validation Error */
@@ -10005,7 +10005,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["OkMitId"];
+                    "application/json": components["schemas"]["OkWithId"];
                 };
             };
             /** @description Validation Error */
@@ -10100,7 +10100,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["QuizRunde"];
+                    "application/json": components["schemas"]["QuizRound"];
                 };
             };
             /** @description Validation Error */
@@ -10134,7 +10134,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["QuizRunde"];
+                    "application/json": components["schemas"]["QuizRound"];
                 };
             };
             /** @description Validation Error */
@@ -10163,7 +10163,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["QuizStand"];
+                    "application/json": components["schemas"]["QuizScore"];
                 };
             };
         };
@@ -10233,7 +10233,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HoechsteBeschlussId"];
+                    "application/json": components["schemas"]["HighestDecisionId"];
                 };
             };
         };
@@ -10259,7 +10259,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["MedienAblage"];
+                    "application/json": components["schemas"]["MediaUpload"];
                 };
             };
             /** @description Validation Error */
@@ -10292,7 +10292,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SocialBeschluss"][];
+                    "application/json": components["schemas"]["SocialDecision"][];
                 };
             };
             /** @description Validation Error */
@@ -10323,7 +10323,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Sitzungszeile"][];
+                    "application/json": components["schemas"]["SessionRow"][];
                 };
             };
             /** @description Validation Error */
@@ -10354,7 +10354,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Wochenvorschau"];
+                    "application/json": components["schemas"]["WeekPreview"];
                 };
             };
             /** @description Validation Error */
@@ -10383,7 +10383,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Abonnements"];
+                    "application/json": components["schemas"]["Subscriptions"];
                 };
             };
         };
@@ -10407,7 +10407,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AboGesetzt"];
+                    "application/json": components["schemas"]["SubscriptionSet"];
                 };
             };
             /** @description Validation Error */
@@ -10440,7 +10440,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AboGeloescht"];
+                    "application/json": components["schemas"]["SubscriptionRemoved"];
                 };
             };
             /** @description Validation Error */
@@ -10526,7 +10526,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ThemenBeschreibung"];
+                    "application/json": components["schemas"]["TopicDescription"];
                 };
             };
             /** @description Validation Error */
@@ -10557,7 +10557,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ThemenTrefferListe"];
+                    "application/json": components["schemas"]["TopicHitList"];
                 };
             };
             /** @description Validation Error */
@@ -10606,7 +10606,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ThemenVorschlaege"];
+                    "application/json": components["schemas"]["TopicSuggestions"];
                 };
             };
         };
@@ -10626,7 +10626,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UngeleseneThemenTreffer"];
+                    "application/json": components["schemas"]["UnreadTopicHits"];
                 };
             };
         };
@@ -10712,7 +10712,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ThemenBeschluesse"];
+                    "application/json": components["schemas"]["TopicDecisions"];
                 };
             };
             /** @description Validation Error */
@@ -10750,7 +10750,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["MarkierteTreffer"];
+                    "application/json": components["schemas"]["MarkedHits"];
                 };
             };
             /** @description Validation Error */
@@ -10766,4 +10766,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 5e8c2ea544b634c4df2330754770764f5c68342dc1b3d4e306e510f21f12f48a
+// vertrag-sha256: 7bd758e3775eb5ac2af26866a98d37f287517f4399e12eb318b7db89ea0fde0e
