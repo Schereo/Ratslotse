@@ -107,7 +107,7 @@ def main() -> int:
     args = ap.parse_args()
 
     store = CouncilStore(Path(args.db))
-    geschrieben = {"tax_capacity": 0, "realsteuern": 0, "fiscal_equalization": 0}
+    geschrieben = {"tax_capacity": 0, "real_taxes": 0, "fiscal_equalization": 0}
     try:
         with tempfile.TemporaryDirectory() as tmp:
             ablage = Path(tmp)
@@ -203,7 +203,7 @@ def main() -> int:
             if not zeilen:
                 print("  ABBRUCH: keine einzige Stadt hat ihre Probe bestanden.")
                 return 1
-            geschrieben["realsteuern"] = store.save_staedtevergleich(
+            geschrieben["real_taxes"] = store.save_staedtevergleich(
                 "realsteuern", zeilen,
                 h.Herkunft(
                     kind="lsn", probe=["lsn_hebesatzprobe", "lsn_dreijahresmittel"],

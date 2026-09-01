@@ -27,7 +27,7 @@ export type VergleichStadt = {
 };
 
 export type VergleichWert = {
-  series: "tax_capacity" | "realsteuern";
+  series: "tax_capacity" | "real_taxes";
   year: number;
   key: string;
   city: string;
@@ -52,7 +52,7 @@ export type VergleichBeleg = {
 export type VergleichDaten = {
   staedte: VergleichStadt[];
   werte: VergleichWert[];
-  years: { tax_capacity?: number[]; realsteuern?: number[] };
+  years: { tax_capacity?: number[]; real_taxes?: number[] };
   beleg: VergleichBeleg;
   herkunft: Record<string, Herkunft>;
 };
@@ -68,7 +68,7 @@ export function herkunftVon(daten: VergleichDaten,
  *  nicht aufging, steht gar nicht im Bestand (`council/staedtevergleich.py`).
  *  Die Oberfläche zeigt dann eine Lücke, keine geschätzte Zahl. */
 export function indicator(
-  daten: VergleichDaten, series: "tax_capacity" | "realsteuern",
+  daten: VergleichDaten, series: "tax_capacity" | "real_taxes",
   name: string, year: number,
 ): Map<string, VergleichWert> {
   const aus = new Map<string, VergleichWert>();
@@ -82,7 +82,7 @@ export function indicator(
 
 /** Das jüngste Jahr einer Reihe, für das überhaupt etwas vorliegt. */
 export function juengstesJahr(daten: VergleichDaten,
-                              series: "tax_capacity" | "realsteuern"): number | null {
+                              series: "tax_capacity" | "real_taxes"): number | null {
   const years = daten.years[series] ?? [];
   return years.length ? years[years.length - 1] : null;
 }
@@ -120,7 +120,7 @@ export function steuerkraftJeEinwohner(daten: VergleichDaten, year: number): Bal
 }
 
 /** Eine gespeicherte Pro-Kopf- oder Prozent-Kennzahl als Balkenliste. */
-export function balken(daten: VergleichDaten, series: "tax_capacity" | "realsteuern",
+export function balken(daten: VergleichDaten, series: "tax_capacity" | "real_taxes",
                        name: string, year: number): Balken[] {
   const werte = indicator(daten, series, name, year);
   const aus: Balken[] = [];

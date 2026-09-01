@@ -918,7 +918,7 @@ def lsn_bestand(tmp_path):
     (das zweite ist ihre Rechenprobe), ein Realsteuervergleich drei."""
     store = CouncilStore(tmp_path / "council.sqlite")
     staedtevergleich(store, "tax_capacity", [2026])
-    staedtevergleich(store, "realsteuern", [2023, 2024, 2025])
+    staedtevergleich(store, "real_taxes", [2023, 2024, 2025])
     return store
 
 

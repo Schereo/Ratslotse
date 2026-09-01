@@ -57,7 +57,7 @@ export function grundsteuerAnteilA(vergleich: VergleichDaten | null): number | n
   const oldenburg = vergleich.staedte.find((s) => s.ist_oldenburg)?.key;
   if (!oldenburg) return null;
   const werte = vergleich.werte.filter(
-    (w) => w.series === "realsteuern" && w.key === oldenburg
+    (w) => w.series === "real_taxes" && w.key === oldenburg
       && (w.indicator === "ist_je_ew_grundsteuer_a" || w.indicator === "ist_je_ew_grundsteuer_b"));
   const year = Math.max(...werte.map((w) => w.year), -Infinity);
   const a = werte.find((w) => w.year === year && w.indicator === "ist_je_ew_grundsteuer_a")?.value;
@@ -80,12 +80,12 @@ export function staedteHebesaetze(
   indicator: "hebesatz_gewerbesteuer" | "hebesatz_grundsteuer_b",
 ): StadtHebesatz[] {
   if (!vergleich) return [];
-  const years = vergleich.years.realsteuern ?? [];
+  const years = vergleich.years.real_taxes ?? [];
   const year = years.at(-1);
   if (year == null) return [];
   const oldenburg = vergleich.staedte.find((s) => s.ist_oldenburg)?.key;
   return vergleich.werte
-    .filter((w) => w.series === "realsteuern" && w.year === year && w.indicator === indicator)
+    .filter((w) => w.series === "real_taxes" && w.year === year && w.indicator === indicator)
     .map((w) => ({
       stadt: w.city, value: w.value, year: w.year,
       istOldenburg: w.key === oldenburg,
