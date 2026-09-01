@@ -573,6 +573,46 @@ class Store:
                     "Werte umgeschrieben: %s.%s %r → %r (%d Zeilen)",
                     tabelle, spalte, alt, neu, cur.rowcount)
 
+    #: Zwei Spalten, die der Umbau auf englische Bezeichner (01.09.2026)
+    #: im CODE umbenannt hat, ohne eine Migration mitzuliefern.
+    _WEB_USERS_UMBENANNT = [("qa_speichern", "saves_conversations"),
+                            ("limits_frei", "limits_unlocked")]
+
+    def _web_users_spalten_nachziehen(self) -> None:
+        """`qa_speichern`/`limits_frei` auf ihre englischen Namen bringen.
+
+        Zwei Fälle, und der zweite ist der unangenehme:
+
+        * **Nur die alte Spalte da** — schlichtes Umbenennen.
+        * **Beide da, die neue leer.** So sah dev nach dem Deploy aus: Der
+          `ALTER TABLE`-Block prüfte auf den NEUEN Namen, fand ihn nicht und
+          legte die Spalte leer an; die Daten blieben in der alten. Dann muss
+          erst der Inhalt hinüber und die alte weg, sonst benennt sich nichts
+          mehr um (der Zielname ist ja belegt) und die Werte bleiben
+          unsichtbar.
+
+        Idempotent: Nach dem ersten Lauf sind es zwei PRAGMA-Abfragen.
+        """
+        vorhanden = {r[1] for r in self._conn.execute("PRAGMA table_info(web_users)")}
+        if not vorhanden:
+            return
+        log = logging.getLogger("kern.store")
+        for alt, neu in self._WEB_USERS_UMBENANNT:
+            if alt not in vorhanden:
+                continue
+            if neu in vorhanden:
+                # Die leer danebengelegte Spalte: Inhalt retten, dann weg.
+                with self._conn:
+                    self._conn.execute(
+                        f"UPDATE web_users SET {neu} = {alt} WHERE {neu} IS NULL")
+                    self._conn.execute(f"ALTER TABLE web_users DROP COLUMN {alt}")
+                log.warning("web_users.%s in %s übernommen und entfernt", alt, neu)
+            else:
+                with self._conn:
+                    self._conn.execute(
+                        f"ALTER TABLE web_users RENAME COLUMN {alt} TO {neu}")
+                log.warning("Spalte umbenannt: web_users.%s → %s", alt, neu)
+
     def _spalten_umbenennen(self, tabelle: str, paare: list[tuple[str, str]]) -> None:
         """Benennt Spalten um, sofern sie noch alt heißen — idempotent.
 
@@ -845,6 +885,13 @@ class Store:
                         "UPDATE topics SET chat_id = ? WHERE chat_id = 0", (admin,)
                     )
         # web_users gained status / NWZ-verification columns after the first cut.
+        # Zuerst umbenennen, DANN die Spaltenliste lesen: Sonst hält der
+        # nächste Block eine gewachsene Datenbank für unvollständig und legt
+        # die neue Spalte LEER daneben, während die Daten in der alten liegen
+        # bleiben. Genau das ist am 01.09.2026 auf dev passiert — die
+        # Einwilligung „Gespräche speichern" stand danach für alle auf „nie
+        # gefragt", obwohl sie in `qa_speichern` weiter da war.
+        self._web_users_spalten_nachziehen()
         wu_cols = {r[1] for r in self._conn.execute("PRAGMA table_info(web_users)").fetchall()}
         if wu_cols:
             with self._conn:
@@ -889,26 +936,37 @@ class Store:
                     # 6a①②: NULL = noch nie gefragt (Erstnutzungs-Karte),
                     # 1 = Gespräche speichern, 0 = bewusst aus.
                     self._conn.execute("ALTER TABLE web_users ADD COLUMN saves_conversations INTEGER")
+                # Admin-steuerbare Frage-Limits je Konto (10.08.26):
+                # deep_limit = Recherchen/Tag (NULL = Standard, 0 = unbegrenzt,
+                # N = eigenes Limit); limits_unlocked = 1 überspringt die
+                # Rate-Limiter der Frage-Endpoints.
+                #
+                # JEDE Spalte prüft sich SELBST. Vorher hingen beide an
+                # `deep_limit` — als `limits_frei` zu `limits_unlocked` wurde,
+                # war `deep_limit` längst da, der Zweig lief nie, und die
+                # Spalte fehlte auf jeder gewachsenen Datenbank. Aufgefallen
+                # ist das nicht, weil `SELECT *` nicht wirft: `get()` lieferte
+                # None, der Rate-Limiter griff stillschweigend immer.
                 if "deep_limit" not in wu_cols:
-                    # Admin-steuerbare Frage-Limits je Konto (10.08.26):
-                    # deep_limit = Recherchen/Tag (NULL = Standard,
-                    # 0 = unbegrenzt, N = eigenes Limit); limits_unlocked = 1
-                    # überspringt die Rate-Limiter der Frage-Endpoints.
                     self._conn.execute("ALTER TABLE web_users ADD COLUMN deep_limit INTEGER")
+                if "limits_unlocked" not in wu_cols:
                     self._conn.execute(
                         "ALTER TABLE web_users ADD COLUMN limits_unlocked INTEGER NOT NULL DEFAULT 0")
                 # Einrichtungs-Assistent (Design 26a): welcher Schritt zuletzt
                 # erreicht wurde. Eigene Spalten statt der onboarding-JSON —
                 # die gehört der „Erste Schritte"-Tour, und der Erinnerungs-Cron
                 # will ohnehin per SQL filtern statt JSON zu parsen.
-                if "setup_step" not in wu_cols:
-                    self._conn.execute("ALTER TABLE web_users ADD COLUMN setup_step INTEGER")
-                    self._conn.execute("ALTER TABLE web_users ADD COLUMN setup_started_at TEXT")
-                    self._conn.execute("ALTER TABLE web_users ADD COLUMN setup_updated_at TEXT")
-                    self._conn.execute("ALTER TABLE web_users ADD COLUMN setup_done_at TEXT")
-                    # Wann die eine Erinnerungsmail rausging — verhindert, dass
-                    # jemand sie zweimal bekommt.
-                    self._conn.execute("ALTER TABLE web_users ADD COLUMN setup_reminded_at TEXT")
+                # Auch hier prüft jede Spalte sich selbst. Bisher hingen alle
+                # fünf an `setup_step`; das ging gut, weil sie zusammen
+                # eingeführt wurden — eine sechste hätte auf jeder gewachsenen
+                # Datenbank gefehlt. `setup_reminded_at` verhindert, dass
+                # jemand die Erinnerungsmail zweimal bekommt.
+                for spalte, typ in (("setup_step", "INTEGER"), ("setup_started_at", "TEXT"),
+                                    ("setup_updated_at", "TEXT"), ("setup_done_at", "TEXT"),
+                                    ("setup_reminded_at", "TEXT")):
+                    if spalte not in wu_cols:
+                        self._conn.execute(
+                            f"ALTER TABLE web_users ADD COLUMN {spalte} {typ}")
         # Schätzfrage-Slider für eigene Fragen (RL-U14-Erweiterung): Zahl-Felder
         # zur seit RL-U14 bestehenden Tabelle nachziehen.
         uq_cols = self._table_cols("user_quiz_questions")
