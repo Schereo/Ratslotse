@@ -32,7 +32,10 @@ import { HAUSHALT_FREI } from "@/lib/haushalt-frei";
 
 /* ------------------------------ Typen ------------------------------ */
 
-export type PresseHinweis = { titel: string; url: string; datum: string | null };
+export type PresseHinweis = { titel: string; url: string; datum: string | null;
+  /** Anriss der Meldung (600 Zeichen aus dem Volltext). Ältere gespeicherte
+   *  Gespräche kennen das Feld nicht — dann bleibt es die reine Titelzeile. */
+  auszug?: string };
 
 /** Task 33: Anlagen-Fundstelle (Gutachten, Konzept, Stellungnahme) aus der
  *  schnellen oder gründlichen Recherche. */
@@ -738,10 +741,20 @@ export function PresseBlock({ presse }: { presse: PresseHinweis[] }) {
         {presse.map((p) => (
           <li key={p.url}>
             <a href={p.url} target="_blank" rel="noopener noreferrer"
-              className="group flex items-baseline gap-2 rounded-lg px-1.5 py-1 text-sm transition-colors hover:bg-muted">
-              <span className="min-w-0 flex-1 truncate text-[12.5px] group-hover:underline">{p.titel}</span>
-              <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{fmtDatumKurz(p.datum)}</span>
-              <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />
+              className="group block rounded-lg px-1.5 py-1 text-sm transition-colors hover:bg-muted">
+              <span className="flex items-baseline gap-2">
+                <span className="min-w-0 flex-1 truncate text-[12.5px] group-hover:underline">{p.titel}</span>
+                <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{fmtDatumKurz(p.datum)}</span>
+                <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />
+              </span>
+              {/* Die Meldung SELBST, nicht nur ihre Überschrift: Ohne den
+                  Anriss war die Karte eine reine Weiterleitung auf die
+                  Stadt-Seite (Tims Befund 01.09.2026). */}
+              {p.auszug && (
+                <span className="mt-0.5 line-clamp-3 block text-[11.5px] leading-snug text-muted-foreground">
+                  {p.auszug}
+                </span>
+              )}
             </a>
           </li>
         ))}

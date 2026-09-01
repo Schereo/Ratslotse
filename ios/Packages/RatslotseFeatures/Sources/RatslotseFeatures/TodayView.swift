@@ -101,7 +101,12 @@ struct TodayView: View {
                 else { openSessions() }
             }
         }
-        if let today, liveSession == nil, today.state != "naechste" || preview?.found != true {
+        // Nur als Ersatz für die Wochenvorschau: Steht die Woche da, führt sie
+        // den heutigen Termin schon in ihrer ersten Zeile — die Karte darüber
+        // sagte dasselbe ein zweites Mal (Tims Befund 01.09.2026). Ohne
+        // Vorschau (Ladefehler, Sitzungspause) bleibt sie die einzige Auskunft
+        // und wird weiter gezeigt.
+        if let today, liveSession == nil, preview?.found != true {
             TodayStatusCard(today: today, openSessions: openSessions)
         }
         if let preview, preview.found {
@@ -179,7 +184,7 @@ struct TodayView: View {
         Button {
             model.navigation.append(.quiz(area: nil))
         } label: {
-            Label("Oldenburg-Quiz spielen", systemImage: "checkmark.circle")
+            RatsLabel("Oldenburg-Quiz spielen", .circleCheck)
                 .frame(maxWidth: .infinity)
         }
         .buttonStyle(SecondaryButtonStyle())
@@ -395,12 +400,12 @@ private struct LiveCouncilCard: View {
     @ViewBuilder
     private var actions: some View {
         Button(action: openAgenda) {
-            Label("Tagesordnung", systemImage: "list.bullet.rectangle")
+            RatsLabel("Tagesordnung", .list)
         }
         .buttonStyle(PrimaryButtonStyle())
         if isCouncil, let stream = URL(string: "https://oeins.de/tv-stream/") {
             Link(destination: stream) {
-                Label("O1-Livestream", systemImage: "play.rectangle")
+                RatsLabel("O1-Livestream", .monitorPlay)
             }
             .buttonStyle(SecondaryButtonStyle())
         }
@@ -441,8 +446,7 @@ private struct LatestTopicHitsCard: View {
             ForEach(Array(hits.enumerated()), id: \.element.id) { index, hit in
                 Button { open(hit.id) } label: {
                     HStack(alignment: .top, spacing: 11) {
-                        Image(systemName: "tag.fill")
-                            .font(.system(size: 12, weight: .semibold))
+                        RatsIcon(.tag, size: 12)
                             .foregroundStyle(RatsColor.signal)
                             .frame(width: 30, height: 30)
                             .background(RatsColor.signal.opacity(0.08))
@@ -461,8 +465,7 @@ private struct LatestTopicHitsCard: View {
                                 .foregroundStyle(RatsColor.secondary)
                         }
                         Spacer(minLength: 2)
-                        Image(systemName: "chevron.right")
-                            .font(.caption)
+                        RatsIcon(.chevronRight, size: 12)
                             .foregroundStyle(RatsColor.muted)
                             .padding(.top, 8)
                     }
@@ -496,8 +499,7 @@ private struct DashboardWeekNumberCard: View {
                         .multilineTextAlignment(.leading)
                 }
                 Spacer(minLength: 6)
-                Image(systemName: "arrow.right")
-                    .font(.system(size: 15, weight: .semibold))
+                RatsIcon(.arrowRight, size: 15)
                     .foregroundStyle(RatsColor.primary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -793,18 +795,36 @@ private struct WeekPreviewCard: View {
     }
 
     private func dayLabel(_ iso: String) -> String {
-        (RatsDate.weekday(iso) ?? iso).uppercased()
+        relativeDayName(iso) ?? (RatsDate.weekday(iso) ?? iso).uppercased()
     }
 
     private func daySectionLabel(_ iso: String) -> String {
         guard let value = Self.isoFormatter.date(from: iso) else { return iso.uppercased() }
-        return value.formatted(
-            .dateTime
-                .locale(Locale(identifier: "de_DE"))
-                .weekday(.wide)
-                .day()
-                .month(.wide)
-        ).uppercased()
+        let german = Locale(identifier: "de_DE")
+        let dayAndMonth = value.formatted(.dateTime.locale(german).day().month(.wide))
+        let name = relativeDayName(iso)
+            ?? value.formatted(.dateTime.locale(german).weekday(.wide)).uppercased()
+        return "\(name), \(dayAndMonth)".uppercased()
+    }
+
+    /// „HEUTE" und „MORGEN" statt des Wochentags — auf dem Dashboard ist genau
+    /// das die Auskunft, nach der man sucht; „Dienstag" muss man erst gegen
+    /// den eigenen Kalender halten (Tims Wunsch 01.09.2026). Alle anderen Tage
+    /// behalten ihren Wochentag.
+    private func relativeDayName(_ iso: String) -> String? {
+        guard let date = Self.isoFormatter.date(from: iso) else { return nil }
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = Self.isoFormatter.timeZone
+        let offset = calendar.dateComponents(
+            [.day],
+            from: calendar.startOfDay(for: .now),
+            to: calendar.startOfDay(for: date)
+        ).day
+        switch offset {
+        case 0: return "HEUTE"
+        case 1: return "MORGEN"
+        default: return nil
+        }
     }
 
     private func shortCommittee(_ raw: String) -> String {
@@ -942,7 +962,7 @@ private struct TodayStatusCard: View {
                     if let detail { Text(detail).font(RatsFont.body(13)).foregroundStyle(RatsColor.secondary) }
                 }
                 Spacer(minLength: 4)
-                Image(systemName: "chevron.right").foregroundStyle(RatsColor.muted)
+                RatsIcon(.chevronRight, size: 16).foregroundStyle(RatsColor.muted)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .ratsCard()
@@ -982,7 +1002,7 @@ struct DecisionRow: View {
                     DecisionOutcomeSignal(outcome: outcome)
                 }
                 if importanceScore >= 55, decision.kind != "subvote" {
-                    Label("Wichtig", systemImage: "flame.fill")
+                    RatsLabel("Wichtig", .flame)
                         .font(RatsFont.body(10.5, weight: .semibold))
                         .foregroundStyle(RatsColor.warning)
                         .padding(.horizontal, 7)
@@ -991,8 +1011,7 @@ struct DecisionRow: View {
                         .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                 }
                 Spacer(minLength: 0)
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.semibold))
+                RatsIcon(.chevronRight, size: 12)
                     .foregroundStyle(RatsColor.muted.opacity(0.7))
             }
 
@@ -1024,7 +1043,7 @@ struct DecisionRow: View {
                 HStack(alignment: .bottom, spacing: 12) {
                     VStack(alignment: .leading, spacing: 5) {
                         if !voteLine.isEmpty {
-                            Label(voteLine, systemImage: "checkmark.circle")
+                            RatsLabel(voteLine, .circleCheck)
                                 .font(RatsFont.body(11))
                                 .foregroundStyle(RatsColor.secondary)
                         }
@@ -1096,8 +1115,7 @@ private struct DecisionOutcomeSignal: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            Image(systemName: symbol)
-                .font(.system(size: 10.5, weight: .bold))
+            RatsIcon(symbol, size: 10.5)
                 .foregroundStyle(color)
                 .accessibilityHidden(true)
             Text(label)
@@ -1131,14 +1149,14 @@ private struct DecisionOutcomeSignal: View {
         }
     }
 
-    private var symbol: String {
+    private var symbol: RatsGlyph {
         switch outcome {
-        case "angenommen": "checkmark"
-        case "abgelehnt": "xmark"
-        case "vertagt": "clock.arrow.circlepath"
-        case "zur_kenntnis": "eye.fill"
-        case "kein_beschluss": "minus"
-        default: "circle.fill"
+        case "angenommen": .check
+        case "abgelehnt": .x
+        case "vertagt": .history
+        case "zur_kenntnis": .eye
+        case "kein_beschluss": .minus
+        default: .circle
         }
     }
 }
@@ -1185,8 +1203,7 @@ private struct CouncilPauseCard: View {
                         }
                     }
                     Spacer(minLength: 4)
-                    Image(systemName: "chevron.down")
-                        .font(.caption.bold())
+                    RatsIcon(.chevronDown, size: 12)
                         .foregroundStyle(RatsColor.secondary)
                         .rotationEffect(.degrees(isExpanded ? 180 : 0))
                 }

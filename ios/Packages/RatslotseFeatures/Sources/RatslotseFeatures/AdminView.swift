@@ -118,7 +118,7 @@ private struct AdminStatsView: View {
                     statCard("Beschlüsse mit KI-Feldern", value: data.council.decisionsWithKi)
                     VStack(alignment: .leading, spacing: 8) {
                         MonoKicker("Ratsinfo-Import")
-                        Label(importLabel(data.council.hoursSinceFetch), systemImage: "circle.fill")
+                        RatsLabel(importLabel(data.council.hoursSinceFetch), .circle)
                             .font(RatsFont.body(13, weight: .semibold))
                             .foregroundStyle(importColor(data.council.hoursSinceFetch))
                         if let next = data.council.nextSession { Text("Nächste Sitzung: \(next)").font(RatsFont.body(12)).foregroundStyle(RatsColor.secondary) }
@@ -132,7 +132,7 @@ private struct AdminStatsView: View {
     private var rangeMenu: some View {
         Menu {
             ForEach([("30d", "30 Tage"), ("90d", "90 Tage"), ("12m", "12 Monate"), ("all", "Alles")], id: \.0) { value, label in Button(label) { range = value } }
-        } label: { Label(range == "all" ? "Alles" : range.uppercased(), systemImage: "calendar").font(RatsFont.body(12, weight: .semibold)).padding(.horizontal, 11).frame(minHeight: 38).background(RatsColor.card).clipShape(Capsule()) }
+        } label: { RatsLabel(range == "all" ? "Alles" : range.uppercased(), .calendarDays).font(RatsFont.body(12, weight: .semibold)).padding(.horizontal, 11).frame(minHeight: 38).background(RatsColor.card).clipShape(Capsule()) }
     }
 
     private func growthCard(_ title: String, _ series: AdminGrowth.Series) -> some View {

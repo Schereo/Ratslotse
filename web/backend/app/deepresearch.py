@@ -427,7 +427,9 @@ def _run(job: DeepJob, nwz_db: str, council_db: str) -> None:
             "zeitraum": zeitraum, "kontext": job.suchfrage,
             "sources": [_qa_source(c) for c in candidates],
             "presse_kompakt": [{"titel": p.get("titel"), "url": p.get("url"),
-                                "datum": p.get("datum")} for p in presse_rows],
+                                "datum": p.get("datum"),
+                                "auszug": (p.get("auszug") or "")[:600]}
+                               for p in presse_rows],
             "debatten_kompakt": [{"sprecher": d.get("sprecher"), "partei": d.get("partei"),
                                   "art": d.get("art"), "top": d.get("top"),
                                   "auszug": (d.get("text") or "")[:2000],

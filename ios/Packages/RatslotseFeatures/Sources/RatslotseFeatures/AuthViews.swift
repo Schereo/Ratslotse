@@ -197,7 +197,7 @@ private struct CredentialsView: View {
                         .textContentType(mode == .login ? .password : .newPassword)
                         .textFieldStyle(.plain)
                         Button { showsPassword.toggle() } label: {
-                            Image(systemName: showsPassword ? "eye.slash" : "eye")
+                            RatsIcon(showsPassword ? .eyeOff : .eye, size: 16)
                                 .foregroundStyle(RatsColor.secondary)
                         }
                         .accessibilityLabel(showsPassword ? "Passwort ausblenden" : "Passwort anzeigen")
@@ -205,7 +205,7 @@ private struct CredentialsView: View {
                 }
 
                 if let error {
-                    Label(error, systemImage: "exclamationmark.triangle")
+                    RatsLabel(error, .triangleAlert)
                         .font(RatsFont.body(12))
                         .foregroundStyle(RatsColor.danger)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -371,7 +371,7 @@ private struct ResetPasswordView: View {
                         .textContentType(.newPassword)
                         .textFieldStyle(.plain)
                         Button { showsPassword.toggle() } label: {
-                            Image(systemName: showsPassword ? "eye.slash" : "eye")
+                            RatsIcon(showsPassword ? .eyeOff : .eye, size: 16)
                         }
                     }
                 }
@@ -411,7 +411,7 @@ struct VerificationPendingView: View {
             subtitle: "Bestätige deine E-Mail-Adresse. Sobald der Link geöffnet ist, geht es hier automatisch weiter."
         ) {
             VStack(spacing: 16) {
-                Label(user.email, systemImage: "envelope.badge")
+                RatsLabel(user.email, .mailWarning)
                     .font(RatsFont.body(14, weight: .semibold))
                     .foregroundStyle(RatsColor.primary)
                 Button {

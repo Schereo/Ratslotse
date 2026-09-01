@@ -33,14 +33,14 @@ struct ConversationsView: View {
                             kicker: "Frag den Rat",
                             title: "Meine Gespräche",
                             message: "Öffne einen früheren Chat oder beginne mit einer neuen, unabhängigen Frage.",
-                            symbol: "bubble.left.and.bubble.right.fill"
+                            symbol: .messagesSquare
                         )
 
                         Button {
                             onNew()
                             dismiss()
                         } label: {
-                            Label("Neues Gespräch", systemImage: "square.and.pencil")
+                            RatsLabel("Neues Gespräch", .squarePen)
                                 .font(RatsFont.body(15, weight: .semibold))
                                 .frame(maxWidth: .infinity)
                         }
@@ -50,8 +50,7 @@ struct ConversationsView: View {
                             MonoKicker("Gerade geöffnet")
                             Button { dismiss() } label: {
                                 HStack(spacing: 12) {
-                                    Image(systemName: "bubble.left.and.text.bubble.right.fill")
-                                        .font(.system(size: 16))
+                                    RatsIcon(.messagesSquare, size: 16)
                                         .foregroundStyle(.white)
                                         .frame(width: 38, height: 38)
                                         .background(RatsColor.primary)
@@ -68,8 +67,7 @@ struct ConversationsView: View {
                                     Spacer(minLength: 4)
                                     VStack(alignment: .trailing, spacing: 10) {
                                         Pill("Aktuell")
-                                        Image(systemName: "checkmark")
-                                            .font(.caption.weight(.bold))
+                                        RatsIcon(.check, size: 12)
                                             .foregroundStyle(RatsColor.primary)
                                     }
                                 }
@@ -87,12 +85,12 @@ struct ConversationsView: View {
                         RatsEmptyState(
                             title: "Noch keine Gespräche",
                             message: "Sobald du dem Rat eine Frage stellst, kannst du die Unterhaltung hier erneut öffnen.",
-                            symbol: "bubble.left.and.bubble.right"
+                            symbol: .messagesSquare
                         )
                     } else {
                         if historicalConversations.count >= 8 {
                             HStack(spacing: 9) {
-                                Image(systemName: "magnifyingglass")
+                                RatsIcon(.search, size: 16)
                                     .foregroundStyle(RatsColor.muted)
                                 TextField("In Gesprächen suchen …", text: $search)
                                     .textInputAutocapitalization(.never)
@@ -113,15 +111,14 @@ struct ConversationsView: View {
                             RatsEmptyState(
                                 title: "Kein Treffer",
                                 message: "Kein Gespräch passt zu „\(search.trimmingCharacters(in: .whitespacesAndNewlines))“.",
-                                symbol: "text.magnifyingglass"
+                                symbol: .textSearch
                             )
                         }
                         ForEach(filteredConversations) { conversation in
                             HStack(spacing: 10) {
                                 Button { Task { await open(conversation.id) } } label: {
                                     HStack(spacing: 12) {
-                                        Image(systemName: "bubble.left.and.text.bubble.right.fill")
-                                            .font(.system(size: 16))
+                                        RatsIcon(.messagesSquare, size: 16)
                                             .foregroundStyle(RatsColor.primary)
                                             .frame(width: 38, height: 38)
                                             .background(RatsColor.primary.opacity(0.08))
@@ -140,23 +137,22 @@ struct ConversationsView: View {
                                         if openingID == conversation.id {
                                             ProgressView().controlSize(.small).tint(RatsColor.primary)
                                         } else {
-                                            Image(systemName: "chevron.right")
-                                                .font(.caption)
+                                            RatsIcon(.chevronRight, size: 12)
                                                 .foregroundStyle(RatsColor.muted)
                                         }
                                     }
                                 }
                                 .buttonStyle(RatsPlainButtonStyle())
                                 Menu {
-                                    Button("Umbenennen", systemImage: "pencil") {
+                                    Button {
                                         renameTitle = conversation.title
                                         renameTarget = conversation
-                                    }
-                                    Button("Gespräch löschen", systemImage: "trash", role: .destructive) {
+                                    } label: { RatsLabel("Umbenennen", .pencil) }
+                                    Button(role: .destructive) {
                                         remove(conversation.id)
-                                    }
+                                    } label: { RatsLabel("Gespräch löschen", .trash2) }
                                 } label: {
-                                    Image(systemName: "ellipsis")
+                                    RatsIcon(.ellipsis, size: 16)
                                         .foregroundStyle(RatsColor.secondary)
                                         .frame(width: 30, height: 34)
                                 }

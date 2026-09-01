@@ -3341,6 +3341,12 @@
       },
       "QaSharePresse": {
         "properties": {
+          "auszug": {
+            "default": "",
+            "maxLength": 600,
+            "title": "Auszug",
+            "type": "string"
+          },
           "datum": {
             "anyOf": [
               {

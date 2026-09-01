@@ -4912,6 +4912,11 @@ export interface components {
         };
         /** QaSharePresse */
         QaSharePresse: {
+            /**
+             * Auszug
+             * @default
+             */
+            auszug: string;
             /** Datum */
             datum?: string | null;
             /** Titel */
@@ -10455,4 +10460,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: b04f531914a3bfeec68d193f5f43aa65c9aeb531038ec1e9a560a5d857dea175
+// vertrag-sha256: e50805cf86bc7deeb9522c112f10f141d31fc5d18f603939808e2f24604311a9
