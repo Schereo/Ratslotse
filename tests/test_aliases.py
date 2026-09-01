@@ -268,8 +268,8 @@ def test_abkuerzung_bekommt_immer_die_langform_als_hauptnamen(monkeypatch):
 
 
 def test_llm_ablehnung_wird_respektiert(monkeypatch):
-    ents = [{"id": 1, "slug": "fh", "name": "Fliegerhorst", "kind": "ort", "n": 158},
-            {"id": 2, "slug": "gs", "name": "Grundschule Fliegerhorst", "kind": "ort", "n": 3}]
+    ents = [{"id": 1, "slug": "fh", "name": "Fliegerhorst", "kind": "place", "n": 158},
+            {"id": 2, "slug": "gs", "name": "Grundschule Fliegerhorst", "kind": "place", "n": 3}]
     pairs = [{"a": 1, "b": 2, "art": "teilstring", "overlap": 0.02, "emb": 0.64}]
     monkeypatch.setattr(
         aliases.llm, "chat_complete",

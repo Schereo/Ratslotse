@@ -885,7 +885,7 @@ function PlaceCandidateCard({ candidate, catalog, busy, onReview, onReopen }: {
   const [name, setName] = useState(candidate.review_name ?? candidate.name);
   const [placeId, setPlaceId] = useState(candidate.review_place_id ?? candidate.slug);
   const [kind, setKind] = useState(
-    candidate.status === "approved" ? candidate.review_kind ?? "quartier" : "quartier");
+    candidate.status === "approved" ? candidate.review_kind ?? "neighborhood" : "neighborhood");
   const [parentId, setParentId] = useState(candidate.parent_id ?? candidate.ortsbereich_id ?? "");
   const [aliases, setAliases] = useState((candidate.aliases ?? []).join(", "));
   const [description, setDescription] = useState(candidate.description ?? "");
@@ -898,9 +898,9 @@ function PlaceCandidateCard({ candidate, catalog, busy, onReview, onReopen }: {
       ? candidate.kind as typeof concretePlaceKinds[number][0]
       : "street";
   const [concreteKind, setConcreteKind] = useState(initialConcreteKind);
-  const primaries = catalog.places.filter((p) => p.kind === "ortsbereich");
+  const primaries = catalog.places.filter((p) => p.kind === "local_area");
   const targets = catalog.places.filter((p) => p.id !== placeId);
-  const kinds = Object.entries(catalog.kinds).filter(([key]) => key !== "ortsbereich");
+  const kinds = Object.entries(catalog.kinds).filter(([key]) => key !== "local_area");
   const payload = {
     place_id: placeId, name, kind, parent_id: parentId || null,
     aliases: aliases.split(",").map((value) => value.trim()).filter(Boolean),

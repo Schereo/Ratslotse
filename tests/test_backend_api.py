@@ -1004,7 +1004,7 @@ def test_haushalt_beteiligungen_liefert_texte_kennzahlen_und_herkunft(client):
     assert h_zahl["probes"]
 
     gegenstand = next(t for t in b["texte"]
-                      if t["company"] == "egh" and t["section"] == "gegenstand")
+                      if t["company"] == "egh" and t["section"] == "business_purpose")
     assert "gebäudewirtschaftlichen" in gegenstand["text"]
     h_text = b["herkunft"][str(gegenstand["herkunft_id"])]
     assert h_text["probe"] == herkunft.UNGEPRUEFT
@@ -2220,7 +2220,7 @@ def test_quiz_theme_stadtteil_binding(client):
     _seed_quiz("fliegerhorst", area_type="thema", n=1)
     _seed_quiz("haushalt", area_type="thema", n=1, category="council_politics")
     store = CouncilStore(COUNCIL_DB)
-    store.save_entities([("fliegerhorst", "Fliegerhorst", "projekt", 5)], [])
+    store.save_entities([("fliegerhorst", "Fliegerhorst", "project", 5)], [])
     store.set_entity_geo("fliegerhorst", 53.1720, 8.1850, None)  # liegt im Stadtteil Fliegerhorst
     store.close()
     themen = {t["key"]: t for t in client.get("/api/quiz/areas").json()["topics"]}
@@ -2891,7 +2891,7 @@ def test_topic_suggestions_dedupe_similar(client):
                                      "accepted", None, None, None, [], None, None, None)
         ids = [r[0] for r in council._conn.execute(
             "SELECT id FROM council_decisions ORDER BY id").fetchall()]
-        ents = [(1, "stadion-maastrichter", "Stadion Maastrichter Straße", "ort"),
+        ents = [(1, "stadion-maastrichter", "Stadion Maastrichter Straße", "place"),
                 (2, "stadionneubau", "Stadionneubau Maastrichter Straße", "projekt"),
                 (3, "maastrichter-strasse", "Maastrichter Straße", "ort"),
                 (4, "stadtmuseum", "Stadtmuseum", "ort")]
@@ -4017,9 +4017,9 @@ def test_entity_detail_liefert_verwandte_themen(client):
     store = CouncilStore(COUNCIL_DB)
     store._conn.executemany(
         "INSERT INTO council_entities(id, slug, name, kind, n) VALUES (?,?,?,?,?)",
-        [(1, "fliegerhorst", "Fliegerhorst", "ort", 158),
-         (2, "entlastungsstrasse", "Entlastungsstraße", "ort", 40),
-         (3, "brookweg", "Brookweg", "ort", 5)])
+        [(1, "fliegerhorst", "Fliegerhorst", "place", 158),
+         (2, "entlastungsstrasse", "Entlastungsstraße", "place", 40),
+         (3, "brookweg", "Brookweg", "place", 5)])
     store._conn.commit()
     store.save_entity_relations([
         ("fliegerhorst", "entlastungsstrasse", "belegt", 0, 0.13, 22),
@@ -4040,7 +4040,7 @@ def test_entity_ohne_verwandte_liefert_leere_liste(client):
     _register(client)
     store = CouncilStore(COUNCIL_DB)
     store._conn.execute(
-        "INSERT INTO council_entities(id, slug, name, kind, n) VALUES (1,'solo','Solo','ort',3)")
+        "INSERT INTO council_entities(id, slug, name, kind, n) VALUES (1,'solo','Solo','place',3)")
     store._conn.commit()
     store.close()
     r = client.get("/api/council/entity/solo")
@@ -4141,7 +4141,7 @@ def test_suggestions_lassen_vages_nie_durch(client, monkeypatch):
         ids = [r[0] for r in council._conn.execute("SELECT id FROM council_decisions ORDER BY id")]
         for eid, slug, name in [(1, "cae-bruecke", "Cäcilienbrücke"), (2, "buergerbeteiligung", "Bürgerbeteiligung")]:
             council._conn.execute(
-                "INSERT INTO council_entities (id, slug, name, kind, n) VALUES (?,?,?,'ort',3)",
+                "INSERT INTO council_entities (id, slug, name, kind, n) VALUES (?,?,?,'place',3)",
                 (eid, slug, name))
             for did in ids[:2]:
                 council._conn.execute("INSERT INTO council_entity_links VALUES (?, ?)", (eid, did))
@@ -4185,7 +4185,7 @@ def test_suggestions_filtern_gattungswoerter_ohne_llm(client, monkeypatch):
         ids = [r[0] for r in council._conn.execute("SELECT id FROM council_decisions ORDER BY id")]
         for eid, slug, name in [(1, "klima", "Klima"), (2, "fliegerhorst", "Fliegerhorst")]:
             council._conn.execute(
-                "INSERT INTO council_entities (id, slug, name, kind, n) VALUES (?,?,?,'ort',3)",
+                "INSERT INTO council_entities (id, slug, name, kind, n) VALUES (?,?,?,'place',3)",
                 (eid, slug, name))
             for did in ids[:2]:
                 council._conn.execute("INSERT INTO council_entity_links VALUES (?, ?)", (eid, did))
@@ -4451,7 +4451,7 @@ def test_admin_reviews_place_candidate_and_map_links_exact_decisions(client):
 
     reviewed = client.put("/api/admin/place-candidates/testanger", json={
         "status": "approved", "place_id": "testanger", "name": "Testanger",
-        "kind": "quartier", "parent_id": "nadorst", "aliases": ["Test-Anger"],
+        "kind": "neighborhood", "parent_id": "nadorst", "aliases": ["Test-Anger"],
         "description": "Ein überprüftes Testgebiet.", "source_url": "https://example.test/ort",
     })
     assert reviewed.status_code == 200

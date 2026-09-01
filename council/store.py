@@ -1164,6 +1164,26 @@ class CouncilStore:
         ]
         self._werte_umschreiben("council_locations", "kind", ORTSARTEN)
         self._werte_umschreiben("council_place_reviews", "kind", ORTSARTEN)
+        # Die GEBIETSARTEN des Ortskatalogs. Sie stehen in derselben Spalte wie
+        # die Ortsarten darüber, aber nur an `status='approved'`-Zeilen — die
+        # beiden Wertemengen sind disjunkt, ein Aufruf je Liste reicht also.
+        GEBIETSARTEN = [
+            ("ortsbereich", "local_area"), ("quartier", "neighborhood"),
+            ("wohngebiet", "residential_area"), ("sanierungsgebiet", "redevelopment_area"),
+            ("entwicklungsgebiet", "development_area"), ("schutzgebiet", "protected_area"),
+            ("sportgebiet", "sports_area"),
+        ]
+        self._werte_umschreiben("council_place_reviews", "kind", GEBIETSARTEN)
+        # Die Abschnitte des Beteiligungsberichts (§ 151 NKomVG).
+        self._werte_umschreiben("council_gesellschaft_texte", "section", [
+            ("gegenstand", "business_purpose"),
+            ("beteiligungsverhaeltnisse", "ownership_structure"),
+            ("aufsichtsorgane", "supervisory_bodies"),
+            ("beteiligungen", "own_shareholdings"), ("haushalt", "budget_impact")])
+        # Die Art einer Entität. `organisation` ist schon englisch.
+        for tabelle in ("council_entities", "council_entity_obs"):
+            self._werte_umschreiben(tabelle, "kind", [
+                ("projekt", "project"), ("ort", "place")])
         # Woher der Ort stammt und wie er gefunden wurde.
         self._werte_umschreiben("council_decision_locations", "source",
                                 [("vorlage", "template")])
@@ -2088,7 +2108,7 @@ class CouncilStore:
             "CREATE TABLE IF NOT EXISTS council_gesellschaft_texte ("
             "report_year INTEGER NOT NULL, "
             "company TEXT NOT NULL, "
-            "section TEXT NOT NULL, "            # gegenstand, aufsichtsorgane, …
+            "section TEXT NOT NULL, "            # business_purpose, supervisory_bodies, …
             "text TEXT NOT NULL, "
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
             "PRIMARY KEY (report_year, company, section))"
@@ -9287,7 +9307,7 @@ class CouncilStore:
         ph = ",".join("?" * len(ids))
         rows = self._conn.execute(
             f"SELECT decision_id, name FROM council_entity_obs "
-            f"WHERE kind = 'ort' AND decision_id IN ({ph})", ids).fetchall()
+            f"WHERE kind = 'place' AND decision_id IN ({ph})", ids).fetchall()
         out: dict[int, list[dict]] = {}
         for r in rows:
             out.setdefault(r["decision_id"], []).append({
@@ -9325,7 +9345,7 @@ class CouncilStore:
             out.append(places.Place(
                 id=row["place_id"] or row["location_slug"],
                 name=row["name"] or observed,
-                kind=row["kind"] or "quartier",
+                kind=row["kind"] or "neighborhood",
                 aliases=aliases,
                 wahlbereiche=parent.wahlbereiche if parent else (),
                 parent_ids=(parent.id,) if parent else (),
@@ -9520,11 +9540,11 @@ class CouncilStore:
             "SELECT * FROM council_locations WHERE slug=?", (location_slug,)).fetchone()
         if not observed:
             raise KeyError(location_slug)
-        allowed_kinds = {key for key in places.catalog()["kinds"] if key != "ortsbereich"}
+        allowed_kinds = {key for key in places.catalog()["kinds"] if key != "local_area"}
         if status == "approved":
             place_id = slugify(place_id or name or observed["name"])
             name = (name or observed["name"]).strip()
-            kind = kind or "quartier"
+            kind = kind or "neighborhood"
             if not place_id or not name or kind not in allowed_kinds:
                 raise ValueError("Freigegebener Ort braucht Name, gültige ID und Ortstyp")
             if not (source_url or "").startswith(("https://", "http://")):
@@ -9996,7 +10016,7 @@ class CouncilStore:
                JOIN council_decisions d ON d.id = el.decision_id
                JOIN council_sessions cs ON cs.ksinr = d.ksinr
                LEFT JOIN council_entity_meta m ON m.slug = e.slug
-               WHERE e.kind IN ('ort', 'projekt') AND cs.session_date >= ?
+               WHERE e.kind IN ('place', 'project') AND cs.session_date >= ?
                GROUP BY e.id
                HAVING n_recent >= 2
                ORDER BY n_recent DESC, avg_interest DESC, e.name
@@ -10421,7 +10441,7 @@ class CouncilStore:
         rows = self._conn.execute(
             "SELECT e.slug, e.name, e.kind FROM council_entities e "
             "LEFT JOIN council_entity_meta m ON m.slug = e.slug "
-            "WHERE e.kind = 'ort' AND (m.geo_tried IS NULL OR m.geo_tried = 0) ORDER BY e.n DESC"
+            "WHERE e.kind = 'place' AND (m.geo_tried IS NULL OR m.geo_tried = 0) ORDER BY e.n DESC"
         ).fetchall()
         return [dict(r) for r in rows]
 
@@ -13394,7 +13414,7 @@ class CouncilStore:
                 JOIN council_entities e ON e.id = l.entity_id
                 JOIN council_entity_meta m ON m.slug = e.slug
                 WHERE l.decision_id IN ({ph}) AND m.lat IS NOT NULL
-                  AND e.kind = 'ort'
+                  AND e.kind = 'place'
                 ORDER BY e.n DESC""",
             ids,
         ).fetchall()

@@ -48,7 +48,7 @@ def _areas(store: CouncilStore) -> list[dict]:
     for e in store.list_entities(limit=400):
         if themes >= N_THEMES:
             break
-        if e["kind"] in ("projekt", "ort", "organisation") and (e.get("n") or 0) >= THEME_MIN_DECISIONS:
+        if e["kind"] in ("project", "place", "organisation") and (e.get("n") or 0) >= THEME_MIN_DECISIONS:
             areas.append({"area_type": "topic", "area_key": e["slug"], "label": e["name"], "slug": e["slug"]})
             themes += 1
     return areas

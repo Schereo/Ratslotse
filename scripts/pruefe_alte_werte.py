@@ -208,6 +208,13 @@ ERLAUBT_STELLE = {
     ("haushalt-vergleich.ts", "stadt"): "Feldname der Vergleichsstädte-Zeilen (`{stadt, was}`), kein Wert",
     ("haushalt-konzern.ts", "stadt"): "Beschriftung zum `entity_key` des Konzerns — der bleibt deutsch",
     ("haushalt-dokumente.ts", "vorlage"): "Beschriftung zur Zielart des Beleg-Apparats — die bleibt deutsch",
+    ("page.tsx", "ort"): "Pfad-Teil der Link-Vorschau (/preview/ort/…) — eigener Schnitt",
+    ("council-map.tsx", "ort"): "`target` der Kartenpunkte (ort|location) — eigenes Vokabular",
+    ("share-metadata.ts", "ort"): "Pfad-Teil der Link-Vorschau — eigener Schnitt",
+    ("types.ts", "ort"): "`target` der Kartenpunkte (thema|ort|location) — eigenes Vokabular",
+    ("CouncilMapView.swift", "ort"): "`target` der Kartenpunkte — eigenes Vokabular",
+    ("CouncilViews.swift", "ort"): "`target` der Kartenpunkte — eigenes Vokabular",
+    ("ProfileAndQuizViews.swift", "ort"): "Pfad-Teil der Link-Vorschau — eigener Schnitt",
 }
 
 #: Werte, die nur im Code umbenannt wurden — sie stehen nirgends gespeichert,

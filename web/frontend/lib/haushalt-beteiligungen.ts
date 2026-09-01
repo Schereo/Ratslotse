@@ -124,11 +124,11 @@ export type BeteiligungsDaten = {
  *  die Wortwahl hier ist die für Leserinnen, nicht die amtliche
  *  („Besetzung der Aufsichtsorgane" → „Wer sie beaufsichtigt"). */
 export const ABSCHNITTE: { key: string; title: string }[] = [
-  { key: "gegenstand", title: "Was die Gesellschaft tut" },
-  { key: "beteiligungsverhaeltnisse", title: "Wem sie gehört" },
-  { key: "aufsichtsorgane", title: "Wer sie beaufsichtigt" },
-  { key: "beteiligungen", title: "Woran sie selbst beteiligt ist" },
-  { key: "haushalt", title: "Was sie für den städtischen Haushalt bedeutet" },
+  { key: "business_purpose", title: "Was die Gesellschaft tut" },
+  { key: "ownership_structure", title: "Wem sie gehört" },
+  { key: "supervisory_bodies", title: "Wer sie beaufsichtigt" },
+  { key: "own_shareholdings", title: "Woran sie selbst beteiligt ist" },
+  { key: "budget_impact", title: "Was sie für den städtischen Haushalt bedeutet" },
 ];
 
 export const KENNZAHL_TITEL: Record<Kennzahl["indicator"], string> = {
@@ -181,7 +181,7 @@ export function textVon(daten: BeteiligungsDaten | null, company: string,
 /** Der erste Satz des Unternehmensgegenstands — für die Karte in der Liste.
  *  Abgeschnitten wird am Satzende, nicht nach n Zeichen. */
 export function auftragSatz(daten: BeteiligungsDaten, g: Gesellschaft): string | null {
-  const gegenstand = textVon(daten, g.company, "gegenstand");
+  const gegenstand = textVon(daten, g.company, "business_purpose");
   if (!gegenstand) return null;
   const glatt = gegenstand.text.replace(/\s+/g, " ");
   return glatt.match(/^.{20,200}?\.(?=\s|$)/)?.[0] ?? glatt.slice(0, 160);
