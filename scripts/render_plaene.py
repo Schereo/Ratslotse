@@ -14,7 +14,7 @@ fastembed, damit Deploy + Web-Service unberührt bleiben):
 
 Die PDFs tragen eine AES-Hülle (Owner-Passwort gegen Bearbeiten/Drucken) —
 kein Zugriffsschutz, pymupdf öffnet sie ohne Passwort. Idempotent über die
-Spalte ``council_anlagen.is_image`` (0 = offen, 1 = gerendert, -1 = fehlgeschlagen —
+Spalte ``council_attachments.is_image`` (0 = offen, 1 = gerendert, -1 = fehlgeschlagen —
 NICHT endgültig: ``--retry-failed`` stellt alle -1 wieder auf 0 und versucht
 sie erneut; nötig z. B. nach einem SessionNet-Wartungsfenster).
 """
@@ -67,10 +67,10 @@ def main(db: str | None = None, out_dir: str = "data/plaene", limit: int = 0,
 
     if retry_failed:
         with conn:
-            conn.execute("UPDATE council_anlagen SET is_image = 0 WHERE is_image = -1")
+            conn.execute("UPDATE council_attachments SET is_image = 0 WHERE is_image = -1")
 
     rows = [r for r in conn.execute(
-        "SELECT document_id, label, url FROM council_anlagen "
+        "SELECT document_id, label, url FROM council_attachments "
         "WHERE is_image = 0 AND url IS NOT NULL").fetchall()
         if PLAN_LABEL_RE.search(r["label"] or "")]
     if limit:
@@ -90,7 +90,7 @@ def main(db: str | None = None, out_dir: str = "data/plaene", limit: int = 0,
             status = -1
             zaehler["fehlgeschlagen"] += 1
         with conn:
-            conn.execute("UPDATE council_anlagen SET is_image = ? WHERE document_id = ?",
+            conn.execute("UPDATE council_attachments SET is_image = ? WHERE document_id = ?",
                          (status, did))
         time.sleep(delay)
     return zaehler

@@ -2,7 +2,7 @@
 Datenart, und das Einlesen dazu.
 
 Dreizehn Schichten tragen den Bereich. Sieben davon hängen als **Anlagen** an
-Ratsvorlagen und liegen mit Volltext in ``council_anlagen``; woran man sie
+Ratsvorlagen und liegen mit Volltext in ``council_attachments``; woran man sie
 dort erkennt (Label-Muster, Mindestseitenzahl, Ausschlüsse), stand bis 08/2026
 verstreut in zwei Ingest-Skripten. Hier steht es einmal. ``ingest_finanz-
 n_reports.py``, ``ingest_pruefberichte.py`` und der Cron ``check_finanzdaten.py``
@@ -56,7 +56,7 @@ ist und warum das der Unterschied zwischen „läuft" und „veraltet still" ist
 steht bei :class:`Finanzquelle`.
 
 .. warning::
-   ``council_anlagen.fetched_at`` taugt nicht als Veröffentlichungsdatum: Bei
+   ``council_attachments.fetched_at`` taugt nicht als Veröffentlichungsdatum: Bei
    allen Finanzdokumenten steht dort der 10.08.2026, der Tag des Volltext-
    Backfills. Der Jahrgang kommt deshalb aus dem Dokument selbst.
 """
@@ -111,7 +111,7 @@ class Protokoll:
 
 @dataclass(frozen=True)
 class Erkennung:
-    """Wie eine Datenart ihre Dokumente in ``council_anlagen`` findet.
+    """Wie eine Datenart ihre Dokumente in ``council_attachments`` findet.
 
     Bewusst grob: Der SQL-Filter soll nur verhindern, dass der Parser den
     ganzen Anlagenbestand durchkaut. Entschieden wird am Dokument selbst
@@ -154,7 +154,7 @@ class Erkennung:
 
     def abfrage(self, spalten: str) -> tuple[str, list]:
         wo, werte = self.where()
-        return (f"SELECT {spalten} FROM council_anlagen WHERE {wo} "
+        return (f"SELECT {spalten} FROM council_attachments WHERE {wo} "
                 f"ORDER BY {self.ordnung}"), werte
 
 
@@ -399,18 +399,18 @@ def _bestand_jahresabschluss(store: CouncilStore) -> set[tuple]:
     Zeile" und hielte einen Jahrgang, dessen Teilhaushalts-Ebene an der
     Summenprobe gescheitert ist, für fertig."""
     aus = {(r[0], "gesamt") for r in _jahre(
-        store, "SELECT DISTINCT year FROM council_ergebnisrechnung WHERE sub_budget_no IS NULL")}
+        store, "SELECT DISTINCT year FROM council_income_statement WHERE sub_budget_no IS NULL")}
     aus |= {(r[0], "teilhaushalte") for r in _jahre(
-        store, "SELECT DISTINCT year FROM council_ergebnisrechnung WHERE sub_budget_no IS NOT NULL")}
+        store, "SELECT DISTINCT year FROM council_income_statement WHERE sub_budget_no IS NOT NULL")}
     aus |= {(r[0], "kasse") for r in _jahre(
-        store, "SELECT DISTINCT year FROM council_finanzrechnung")}
+        store, "SELECT DISTINCT year FROM council_cash_flow_statement")}
     # Die Bilanz zählt für das Jahr **des Dokuments**, nicht für den
     # Stichtag: Der älteste Stichtag (2016) stammt aus der Vorjahresspalte des
     # Abschlusses 2017 und hat kein eigenes Dokument. Stünde er hier als
     # eigene Einheit, suchte der Cron ewig nach einem Jahresabschluss 2016.
     aus |= {(r[0], "bilanz") for r in _jahre(
-        store, "SELECT DISTINCT year FROM council_bilanz WHERE year > "
-               "(SELECT MIN(year) FROM council_bilanz)")}
+        store, "SELECT DISTINCT year FROM council_balance_sheet WHERE year > "
+               "(SELECT MIN(year) FROM council_balance_sheet)")}
     return aus
 
 
@@ -418,7 +418,7 @@ def _bestand_produkte(store: CouncilStore) -> set[tuple]:
     """Je Jahrgang eine Einheit **pro Teilhaushalt** — die Granularität, in der
     die Dokumente hereinkommen."""
     return {(r[0], r[1]) for r in _jahre(
-        store, "SELECT DISTINCT year, sub_budget_no FROM council_produkte WHERE sub_budget_no IS NOT NULL")}
+        store, "SELECT DISTINCT year, sub_budget_no FROM council_products WHERE sub_budget_no IS NOT NULL")}
 
 
 def _einheiten_kennzahlen(row: dict) -> set[tuple]:
@@ -538,7 +538,7 @@ def _bestand_gebuehren(store: CouncilStore) -> set[tuple]:
     """
     try:
         return {(int(j),) for (j,) in store._conn.execute(  # noqa: SLF001
-            "SELECT DISTINCT year FROM council_gebuehren")}
+            "SELECT DISTINCT year FROM council_fees")}
     except Exception:  # noqa: BLE001 — Tabelle kann fehlen
         return set()
 
@@ -552,7 +552,7 @@ def _bestand_haushaltssatzung(store: CouncilStore) -> set[tuple]:
     """
     try:
         return {(int(j),) for (j,) in store._conn.execute(  # noqa: SLF001
-            "SELECT DISTINCT year FROM council_haushaltssatzung WHERE supplement = 0")}
+            "SELECT DISTINCT year FROM council_budget_bylaw WHERE supplement = 0")}
     except Exception:  # noqa: BLE001 — Tabelle kann fehlen
         return set()
 
@@ -571,7 +571,7 @@ def _bestand_wirtschaftsplan(store: CouncilStore) -> set[tuple]:
     """
     try:
         return {(r[0],) for r in store._conn.execute(  # noqa: SLF001
-            "SELECT DISTINCT year FROM council_wirtschaftsplaene")}
+            "SELECT DISTINCT year FROM council_business_plans")}
     except sqlite3.OperationalError:
         return set()
 
@@ -585,7 +585,7 @@ def _bestand_schulden(store: CouncilStore) -> set[tuple]:
     ein Jahrgang fehlen kann, ohne dass die Lieferung fehlt, ist hier kein
     Sonderfall, sondern eingeplant (s. ``council/schulden.py``)."""
     return {(r[0],) for r in _jahre(
-        store, "SELECT DISTINCT year FROM council_schulden")}
+        store, "SELECT DISTINCT year FROM council_debt")}
 def _bestand_beteiligungsbericht(store: CouncilStore) -> set[tuple]:
     """Die **Berichts**jahrgänge, die eingelesen sind.
 
@@ -604,7 +604,7 @@ def _bestand_lsn_steuerkraft(store: CouncilStore) -> set[tuple]:
     nicht gespeichert. Die Einheit ist deshalb der Jahrgang, und „da" heißt
     hier tatsächlich „fertig"."""
     return {(r[0],) for r in _jahre(
-        store, "SELECT DISTINCT year FROM council_staedtevergleich "
+        store, "SELECT DISTINCT year FROM council_city_comparison "
                "WHERE series = 'tax_capacity'")}
 
 
@@ -618,7 +618,7 @@ def _bestand_lsn_realsteuern(store: CouncilStore) -> set[tuple]:
     Seite ist „bis wann reichen die Zahlen?", und darauf antwortet das Jahr an
     der Zahl, nicht das Deckblatt, auf dem sie stand."""
     return {(r[0],) for r in _jahre(
-        store, "SELECT DISTINCT year FROM council_staedtevergleich "
+        store, "SELECT DISTINCT year FROM council_city_comparison "
                "WHERE series = 'real_taxes'")}
 
 
@@ -630,7 +630,7 @@ def _bestand_lsn_gewerbesteuer(store: CouncilStore) -> set[tuple]:
     Seite ist „bis wann reichen die Zahlen?", und darauf antwortet nur das
     erste."""
     return {(r[0],) for r in _jahre(
-        store, "SELECT DISTINCT year FROM council_gewerbesteuerstatistik")}
+        store, "SELECT DISTINCT year FROM council_trade_tax_statistics")}
 
 
 # --- Einlesen ---------------------------------------------------------------
@@ -912,7 +912,7 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
             if braucht_gesamt:
                 # Ersetzen heißt löschen und neu schreiben — nur gegen ein
                 # Ergebnis, das den vorhandenen Stand trägt (s. bestandsschutz).
-                alt = _anzahl(store, "SELECT COUNT(*) FROM council_ergebnisrechnung "
+                alt = _anzahl(store, "SELECT COUNT(*) FROM council_income_statement "
                                      "WHERE year = ? AND sub_budget_no IS NULL", (year,))
                 if not bestandsschutz(p, f"{year} Ergebnisrechnung", alt,
                                       len(posten), schuetzen):
@@ -943,7 +943,7 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
             # stimmige) Tabelle gelesen, was zeilenweise nicht auffällt.
             if braucht_thh:
                 sub_budget = finanzberichte.parse_teilergebnisrechnungen(v["text"], year)
-                alt_thh = _anzahl(store, "SELECT COUNT(*) FROM council_ergebnisrechnung "
+                alt_thh = _anzahl(store, "SELECT COUNT(*) FROM council_income_statement "
                                          "WHERE year = ? AND sub_budget_no IS NOT NULL", (year,))
                 if not bestandsschutz(p, f"{year} Teilhaushalte", alt_thh,
                                       sum(len(x["posten"]) for x in sub_budget), schuetzen):
@@ -977,7 +977,7 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
             # trägt: die Ermächtigungsspalte nur, wo sie überlebt hat, die
             # Kassen-Kette nur, wo es einen Nachbarjahrgang zum Schließen gibt.
             if braucht_kasse and v["kasse"] and year not in kasse_verdaechtig:
-                alt_kasse = _anzahl(store, "SELECT COUNT(*) FROM council_finanzrechnung "
+                alt_kasse = _anzahl(store, "SELECT COUNT(*) FROM council_cash_flow_statement "
                                            "WHERE year = ?", (year,))
                 if not bestandsschutz(p, f"{year} Finanzrechnung", alt_kasse,
                                       len(v["kasse"]), schuetzen):
@@ -1011,7 +1011,7 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
             # Seite. Genannt wird jede Probe, die den Jahrgang wirklich trägt.
             if braucht_bilanz and v["bilanz"] and year not in bil_verdaechtig:
                 bil = v["bilanz"]
-                alt_bil = _anzahl(store, "SELECT COUNT(*) FROM council_bilanz "
+                alt_bil = _anzahl(store, "SELECT COUNT(*) FROM council_balance_sheet "
                                          "WHERE year = ?", (year,))
                 if not bestandsschutz(p, f"{year} Bilanz", alt_bil,
                                       len(bil["posten"]), schuetzen):
@@ -1088,7 +1088,7 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
             # Keine eigene Einheit (s. EBENEN), aber sie reiten mit: Wird ein
             # Jahrgang aus einem anderen Grund noch einmal gelesen, kommen die
             # Erläuterungen nach, falls sie fehlen.
-            alt_gruende = _anzahl(store, "SELECT COUNT(*) FROM council_abweichungsgruende "
+            alt_gruende = _anzahl(store, "SELECT COUNT(*) FROM council_variance_reasons "
                                          "WHERE year = ?", (year,))
             if braucht_gesamt or not alt_gruende:
                 roh = finanzberichte.parse_abweichungsgruende(v["text"], year)
@@ -1146,7 +1146,7 @@ def lies_ergebnishaushalte(store: CouncilStore, p: Protokoll,
     Finanzplanung. Ohne sie wäre die Trennung eine Reihenfolgeannahme.
 
     Die Ist-Spalte des Vorvorjahres wird **nicht gespeichert**, sondern gegen
-    ``council_ergebnisrechnung`` gehalten und im Protokoll ausgewiesen. Sie
+    ``council_income_statement`` gehalten und im Protokoll ausgewiesen. Sie
     trifft dort bewusst nicht auf den Cent: Der Gesamtergebnishaushalt ist die
     Gesamtebene (mit den nicht rechtsfähigen Stiftungen), der gespeicherte
     Jahresabschluss die Kernverwaltung. Der Abstand liegt über acht Jahrgänge
@@ -1189,7 +1189,7 @@ def lies_ergebnishaushalte(store: CouncilStore, p: Protokoll,
             verworfen += 1
             continue
 
-        alt = _anzahl(store, "SELECT COUNT(*) FROM council_ergebnishaushalt "
+        alt = _anzahl(store, "SELECT COUNT(*) FROM council_income_budget "
                              "WHERE plan_budget_year = ?", (budget_year,))
         if not bestandsschutz(p, f"{budget_year} Ergebnishaushalt", alt,
                               len(gelesen["zeilen"]), schuetzen):
@@ -1259,7 +1259,7 @@ def lies_investitionsprogramme(store: CouncilStore, p: Protokoll,
                                schuetzen: bool = True) -> dict:
     """Die einzelnen Vorhaben aus Anlage 004 der Haushaltspläne.
 
-    Die Ebene unter ``council_investitionen``: nicht „Schule und Bildung:
+    Die Ebene unter ``council_investments``: nicht „Schule und Bildung:
     8,3 Mio. €", sondern die Maßnahme mit Namen. Drei Pflicht-Proben
     entscheiden, alle drei im Dokument selbst (``investitionsprogramm.pruefe``);
     reißt eine, kommt der ganze Jahrgang nicht herein.
@@ -1303,7 +1303,7 @@ def lies_investitionsprogramme(store: CouncilStore, p: Protokoll,
             continue
 
         n = sum(len(a["massnahmen"]) for a in gelesen["abschnitte"].values())
-        alt = _anzahl(store, "SELECT COUNT(*) FROM council_investitionsmassnahmen "
+        alt = _anzahl(store, "SELECT COUNT(*) FROM council_investment_measures "
                              "WHERE year = ? AND level = 'massnahme'", (year,))
         if not bestandsschutz(p, f"{year} Investitionsprogramm", alt, n, schuetzen):
             geschuetzt += 1 if alt else 0
@@ -1399,7 +1399,7 @@ def lies_stellenplaene(store: CouncilStore, p: Protokoll,
                 verworfen += 1
                 continue
 
-            alt = _anzahl(store, "SELECT COUNT(*) FROM council_stellenplan "
+            alt = _anzahl(store, "SELECT COUNT(*) FROM council_staff_plan "
                                  "WHERE budget_year = ? AND part = ?", (budget_year, name))
             if not bestandsschutz(p, f"{budget_year} Stellenplan Teil {name}", alt,
                                   len(part["zeilen"]), schuetzen):
@@ -1559,7 +1559,7 @@ def lies_anlagenspiegel(store: CouncilStore, p: Protokoll) -> dict:
         risse += umb_risse
         # Die Gegenprobe an der Bilanz — eine andere Quelle im selben Heft.
         bilanz_posten = [dict(x) for x in store._conn.execute(  # noqa: SLF001
-            "SELECT role, value FROM council_bilanz WHERE year = ?", (year,))]
+            "SELECT role, value FROM council_balance_sheet WHERE year = ?", (year,))]
         bilanz_risse = anlagenspiegel.gegen_bilanz(zeilen, bilanz_posten)
         if not bilanz_risse and bilanz_posten:
             for z in zeilen:
@@ -1665,7 +1665,7 @@ def lies_kennzahlen(store: CouncilStore, p: Protokoll) -> dict:
     gesammelt: list[dict] = []
 
     bilanz_posten = [dict(x) for x in store._conn.execute(  # noqa: SLF001
-        "SELECT year, role, value FROM council_bilanz WHERE role IS NOT NULL")]
+        "SELECT year, role, value FROM council_balance_sheet WHERE role IS NOT NULL")]
 
     # ZWEITER DURCHGANG: prüfen und schreiben, Bericht für Bericht.
     for r, report_year, zeilen, formeln, unbekannt in sorted(
@@ -1862,7 +1862,7 @@ def lies_teilhaushalte(store: CouncilStore, p: Protokoll,
                                 f"Bitte prüfen, welcher Stand der richtige ist.")
                         dubletten += 1
                         continue
-                    alt = _anzahl(store, "SELECT COUNT(*) FROM council_produkte "
+                    alt = _anzahl(store, "SELECT COUNT(*) FROM council_products "
                                          "WHERE year = ? AND sub_budget_no IS ?", (year, sub_budget_no))
                     if not bestandsschutz(p, f"{year} THH{sub_budget_no}", alt,
                                           len(stueck), schuetzen):
@@ -1900,12 +1900,12 @@ def lies_teilhaushalte(store: CouncilStore, p: Protokoll,
     # aber auch die Jahrgänge früherer Läufe. Auf der Seite steht später der
     # Tabellenstand.
     gesamt = store._conn.execute(  # noqa: SLF001
-        "SELECT COUNT(*) FROM council_produkte").fetchone()[0]
+        "SELECT COUNT(*) FROM council_products").fetchone()[0]
     p.sagen(f"  Steckbrief-Abdeckung ({gesamt} Produkte in der Tabelle):")
     abdeckung: dict[str, int] = {}
     for field in STECKBRIEF:
         n = store._conn.execute(  # noqa: SLF001
-            f"SELECT COUNT(*) FROM council_produkte WHERE {field} IS NOT NULL "
+            f"SELECT COUNT(*) FROM council_products WHERE {field} IS NOT NULL "
             f"AND {field} != ''").fetchone()[0]
         abdeckung[field] = n
         anteil = f"{n / gesamt * 100:.1f} %" if gesamt else "–"
@@ -1958,7 +1958,7 @@ def lies_pruefungsfeststellungen(store: CouncilStore, p: Protokoll,
             continue
         # save_pruefbericht leert den Jahrgang, bevor es schreibt — gegen ein
         # leeres oder deutlich kleineres Ergebnis passiert das nicht.
-        alt = _anzahl(store, "SELECT COUNT(*) FROM council_pruefberichte WHERE year = ?",
+        alt = _anzahl(store, "SELECT COUNT(*) FROM council_audit_reports WHERE year = ?",
                       (year,))
         if not bestandsschutz(p, f"{year} Feststellungen", alt, len(gefunden), schuetzen):
             geschuetzt += 1 if alt else 0
@@ -2038,7 +2038,7 @@ def lies_konzernabschluesse(store: CouncilStore, p: Protokoll,
             p.warnen(f"  {year}: {reason} — Dokument {r['document_id']}, nicht gespeichert")
             verworfen_gesamt += result["verworfen"]
             continue
-        alt = _anzahl(store, "SELECT COUNT(*) FROM council_konzern_posten WHERE year = ?",
+        alt = _anzahl(store, "SELECT COUNT(*) FROM council_group_items WHERE year = ?",
                       (year,))
         if not bestandsschutz(p, f"{year} Konzern-Posten", alt,
                               len(result["posten"]), schuetzen):
@@ -2136,9 +2136,9 @@ for _q in (
         label="Jahresabschluss",
         was="Was die Stadt in einem Jahr wirklich eingenommen und ausgegeben hat — "
             "neben dem, was sie geplant hatte.",
-        tabelle="council_ergebnisrechnung",
-        nebentabellen=("council_abweichungsgruende", "council_finanzrechnung",
-                       "council_bilanz", "council_bilanz_erlaeuterungen"),
+        tabelle="council_income_statement",
+        nebentabellen=("council_variance_reasons", "council_cash_flow_statement",
+                       "council_balance_sheet", "council_balance_sheet_notes"),
         erwarteter_monat=9,
         versatz=1,
         herkunft="ris",
@@ -2159,8 +2159,8 @@ for _q in (
         label="Kennzahlen des Rechenschaftsberichts",
         was="Die dreizehn Zahlen, auf die die Stadt ihren Jahresabschluss "
             "selbst eindampft — mit den Rechenwegen, die sie danebendruckt.",
-        tabelle="council_kennzahlen",
-        nebentabellen=("council_kennzahl_formeln",),
+        tabelle="council_indicators",
+        nebentabellen=("council_indicator_formulas",),
         erwarteter_monat=9,
         versatz=1,
         herkunft="ris",
@@ -2185,7 +2185,7 @@ for _q in (
         key="rpa_fundstelle",
         label="Schlussbericht des Rechnungsprüfungsamts",
         was="Der Nachweis, dass eine unabhängige Stelle diesen Abschluss geprüft hat.",
-        tabelle="council_pruefbericht_quellen",
+        tabelle="council_audit_report_sources",
         erwarteter_monat=9,
         versatz=1,
         herkunft="ris",
@@ -2202,7 +2202,7 @@ for _q in (
         key="pruefungsfeststellungen",
         label="Prüfungsfeststellungen",
         was="Was das Rechnungsprüfungsamt an der Verwaltung beanstandet, im Wortlaut.",
-        tabelle="council_pruefberichte",
+        tabelle="council_audit_reports",
         erwarteter_monat=9,
         versatz=1,
         herkunft="ris",
@@ -2221,7 +2221,7 @@ for _q in (
         key="teilhaushalt",
         label="Teilhaushalts-Pläne (Produktebene)",
         was="Was einzelne Aufgaben kosten — von der Musikschule bis zur Straßenreinigung.",
-        tabelle="council_produkte",
+        tabelle="council_products",
         erwarteter_monat=10,
         versatz=0,
         herkunft="ris",
@@ -2246,8 +2246,8 @@ for _q in (
         label="Konsolidierter Gesamtabschluss (Konzern Stadt)",
         was="Was die Stadt mit Klinikum, Bussen, Bädern und Gebäudewirtschaft "
             "zusammen bewegt — nicht nur die Kernverwaltung.",
-        tabelle="council_konzern_posten",
-        nebentabellen=("council_konzern_traeger",),
+        tabelle="council_group_items",
+        nebentabellen=("council_group_entities",),
         # Der Rat bekam den Bericht zuletzt zwischen Juni und Februar; er
         # entsteht erst, wenn alle einbezogenen Jahresabschlüsse geprüft sind,
         # und liegt damit rund zwei Jahre hinter dem Haushaltsjahr.
@@ -2274,7 +2274,7 @@ for _q in (
         was="Woher das Geld im kommenden Jahr kommen soll und wofür es "
             "ausgegeben wird — nach Arten, für Jahre, die noch keinen "
             "Jahresabschluss haben.",
-        tabelle="council_ergebnishaushalt",
+        tabelle="council_income_budget",
         # Anlage 005 des Haushaltsplans, also derselbe Takt wie die
         # Teilhaushalte: Einbringung Anfang Oktober des Vorjahres. Über acht
         # Jahrgänge gemessen 7 von 8 im Oktober, einer im November.
@@ -2301,7 +2301,7 @@ for _q in (
         label="Stellenplan",
         was="Wie viele Stellen die Stadt vorhält — und wie viele davon nicht "
             "besetzt sind.",
-        tabelle="council_stellenplan",
+        tabelle="council_staff_plan",
         # Anlage 21/22 des Haushaltsplans, also derselbe Takt wie der
         # Gesamtergebnishaushalt: Einbringung Anfang Oktober des Vorjahres.
         erwarteter_monat=10,
@@ -2333,7 +2333,7 @@ for _q in (
         label="Investitionen (Finanzhaushalt)",
         was="Was die Stadt bauen und kaufen will — die andere Hälfte des "
             "Haushaltsplans, in der die Schulen, Straßen und Fahrzeuge stehen.",
-        tabelle="council_investitionen",
+        tabelle="council_investments",
         # Gemessen an den vier Lieferungen des Portals, nicht geschätzt: Der
         # Jahrgang erscheint im FOLGEJAHR (2022 → 24.04.2024 als Nachzügler,
         # 2023 → 19.06.2024, 2024 → 16.06.2025, 2025 → 14.07.2026). Juli ist
@@ -2342,7 +2342,7 @@ for _q in (
         # obwohl das Portal nur seinem üblichen Takt folgte.
         erwarteter_monat=7,
         versatz=1,
-        # Kommt NICHT aus council_anlagen, sondern als CSV vom Open-Data-Portal
+        # Kommt NICHT aus council_attachments, sondern als CSV vom Open-Data-Portal
         # (scripts/ingest_finanzen_opendata.py). Der Cron lädt nichts herunter
         # — er beobachtet diese Schicht nur und meldet, wenn sie ausbleibt.
         herkunft="opendata",
@@ -2356,7 +2356,7 @@ for _q in (
         was="Welche einzelnen Vorhaben hinter den Investitionssummen stehen — "
             "vom Kunstrasenplatz über den Straßenabschnitt bis zum "
             "Feuerwehrfahrzeug, jedes mit seiner Gesamtsumme.",
-        tabelle="council_investitionsmassnahmen",
+        tabelle="council_investment_measures",
         # Anlage 004 des Haushaltsplans, also derselbe Takt wie der
         # Gesamtergebnishaushalt (Anlage 005) und der Stellenplan: Einbringung
         # Anfang Oktober des Vorjahres. Über die acht Jahrgänge 2019–2026
@@ -2387,11 +2387,11 @@ for _q in (
         label="Haushaltsplan",
         was="Der Plan, den der Rat beschließt: was die Stadt im kommenden Jahr "
             "einnehmen und ausgeben will.",
-        tabelle="council_haushalt",
+        tabelle="council_budget",
         erwarteter_monat=10,
         # Der Plan für 2027 wird im Oktober 2026 beschlossen.
         versatz=-1,
-        # Kommt NICHT aus council_anlagen, sondern als PDF/CSV von oldenburg.de
+        # Kommt NICHT aus council_attachments, sondern als PDF/CSV von oldenburg.de
         # (scripts/ingest_haushalt.py). Der Cron lädt nichts herunter — er
         # beobachtet diese Schicht nur und meldet, wenn ein Jahrgang ausbleibt.
         herkunft="city",
@@ -2407,7 +2407,7 @@ for _q in (
             "durch die Abfallmenge bzw. die gebührenpflichtige Fläche. Von "
             "allen Zahlen des Haushalts landet keine so direkt im "
             "Portemonnaie.",
-        tabelle="council_gebuehren",
+        tabelle="council_fees",
         # Gemessen an den vier Jahrgängen im Bestand: Die Berechnung für das
         # kommende Jahr trägt das Datum des Vorjahres-Herbstes (01.10.2024 für
         # 2025, 10.10.2023 für 2024). Sie reist mit dem Haushaltsentwurf.
@@ -2431,7 +2431,7 @@ for _q in (
             "las. ACHTUNG: Im Ratsinformationssystem stehen ausschließlich "
             "Verwaltungsentwürfe; die beschlossene Fassung erscheint im "
             "Amtsblatt.",
-        tabelle="council_haushaltssatzung",
+        tabelle="council_budget_bylaw",
         # Gemessen an den sieben Jahrgängen im Bestand: Die Satzung für das
         # kommende Jahr liegt mit dem Haushaltsentwurf vor, also im Herbst.
         # Dieselbe Schwelle wie bei den Wirtschaftsplänen, aus demselben
@@ -2456,7 +2456,7 @@ for _q in (
             "eigene Erfolgs- und Vermögenspläne neben dem Kernhaushalt. Bisher "
             "nur der Eigenbetrieb Gebäudewirtschaft und Hochbau; die übrigen "
             "Betriebe nennen ihre Zahlen nur in einer Anlage.",
-        tabelle="council_wirtschaftsplaene",
+        tabelle="council_business_plans",
         # Gemessen an den acht Entwurfsdaten im Bestand, nicht geschätzt:
         # 04.09.2020, 17.09.2019, 01.10.2025, 02.10.2024, 04.10.2023,
         # 05.10.2018, 12.10.2022, 22.11.2021. Die Schwelle steht auf dem
@@ -2483,7 +2483,7 @@ for _q in (
                           "%Wirtschafts-und Finanzplan%"),
             oder=True,
         ),
-        nachschub="liegt schon im Bestand (council_vorlagen), "
+        nachschub="liegt schon im Bestand (council_templates), "
                   "scripts/ingest_wirtschaftsplaene.py",
         balance=_bestand_wirtschaftsplan,
     ),
@@ -2493,7 +2493,7 @@ for _q in (
         was="Wie viel die Stadt schuldet und wie sich das seit 1995 entwickelt "
             "hat — für die Stadt als Rechtsträger, also mit ihren "
             "Eigenbetrieben und ohne die eigenständigen Beteiligungen.",
-        tabelle="council_schulden",
+        tabelle="council_debt",
         # Gemessen am Dokument, nicht geschätzt: Die Tabelle für den Jahrgang
         # 2025 steht seit dem 08.07.2026 online (Last-Modified des PDF, das
         # Dokument selbst ist vom 07.07.2026). Das ist EIN Messpunkt für diese
@@ -2504,7 +2504,7 @@ for _q in (
         erwarteter_monat=9,
         # Der Schuldenstand zum 31.12. eines Jahres erscheint im Folgejahr.
         versatz=1,
-        # Kommt NICHT aus council_anlagen, sondern als PDF von oldenburg.de.
+        # Kommt NICHT aus council_attachments, sondern als PDF von oldenburg.de.
         # Der Cron beobachtet diese Schicht nur und meldet, wenn sie ausbleibt.
         herkunft="city",
         nachschub="Download von oldenburg.de, scripts/ingest_schulden.py",
@@ -2515,7 +2515,7 @@ for _q in (
         label="Beteiligungsbericht",
         was="Was die städtischen Gesellschaften tun, wer sie beaufsichtigt "
             "und was sie erwirtschaften — vom Klinikum bis zur Volkshochschule.",
-        tabelle="council_gesellschaft_kennzahlen",
+        tabelle="council_company_indicators",
         # Gemessen an den sieben Jahrgängen auf oldenburg.de (Last-Modified des
         # Servers): Der Bericht erscheint immer im **zweiten** Folgejahr,
         # zwischen Januar und Juni — 2018→Feb 2020, 2019→Jan 2021, 2020→Apr
@@ -2539,7 +2539,7 @@ for _q in (
         label="Steuerkraft im Städtevergleich",
         was="Wie viel Steuerkraft Oldenburg gegenüber den anderen sieben "
             "kreisfreien Städten Niedersachsens auf die Waage bringt.",
-        tabelle="council_staedtevergleich",
+        tabelle="council_city_comparison",
         # Die endgültigen Tabellen tragen den Stand März/April des
         # Ausgleichsjahres (vier Jahrgänge nachgesehen, s. Modul-Kopf). April
         # ist der späteste gemessene Monat — wer März nähme, meldete 2023 und
@@ -2561,7 +2561,7 @@ for _q in (
         label="Realsteuervergleich",
         was="Was die acht Städte bei Grund- und Gewerbesteuer verlangen — und "
             "was am Ende je Einwohnerin hereinkommt.",
-        tabelle="council_staedtevergleich",
+        tabelle="council_city_comparison",
         # Immer im Folgejahr, aber mit fünf Monaten Streuung (Juni bis
         # November, fünf Jahrgänge gemessen). Der November ist der späteste
         # gemessene Fall und deshalb die Schwelle: Früher ist nie ein Problem,
@@ -2578,7 +2578,7 @@ for _q in (
         label="Gewerbesteuerstatistik",
         was="Wie viele Betriebe die Gewerbesteuer aufbringen — und wie viele "
             "von ihnen überhaupt eine zahlen.",
-        tabelle="council_gewerbesteuerstatistik",
+        tabelle="council_trade_tax_statistics",
         # DIE SCHICHT MIT DEM GRÖSSTEN VERZUG DES GANZEN BEREICHS, und das ist
         # keine Nachlässigkeit des Landesamts: Eine Veranlagung ist erst nach
         # den Betriebsprüfungen endgültig. Gemessen an drei Jahrgängen —

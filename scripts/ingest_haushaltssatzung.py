@@ -48,7 +48,7 @@ def hebesatz_probe(store: CouncilStore, satzung) -> str | None:
     """
     try:
         rows = store._conn.execute(  # noqa: SLF001
-            "SELECT art, rate FROM council_hebesaetze WHERE year = ?",
+            "SELECT art, rate FROM council_tax_rates WHERE year = ?",
             (satzung.year,)).fetchall()
     except Exception:  # noqa: BLE001 — Tabelle kann fehlen
         return None
@@ -85,7 +85,7 @@ def main() -> dict:
     try:
         rows = [dict(r) for r in store._conn.execute(  # noqa: SLF001
             "SELECT document_id, label, url, raw_text, status "
-            "FROM council_anlagen WHERE label LIKE '%Haushaltssatzung%' "
+            "FROM council_attachments WHERE label LIKE '%Haushaltssatzung%' "
             "ORDER BY document_id")]
         print(f"{len(rows)} Anlage(n) mit „Haushaltssatzung“ im Label.", flush=True)
 

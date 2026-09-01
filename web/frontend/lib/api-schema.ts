@@ -1067,7 +1067,7 @@ export interface paths {
          *     Je Lücke steht dort neben dem Jahr die gemessene ``difference`` in Euro
          *     (Auszahlungsarten minus ausgewiesene Summe, vorzeichenbehaftet) — die
          *     Zahl, die der Ingest-Lauf beim Verwerfen gemessen hat
-         *     (``council_investitionen_ist_verworfen``). Sie ist der Unterschied
+         *     (``council_investments_actual_rejected``). Sie ist der Unterschied
          *     zwischen „2019 fehlt" und „2019 fehlt, weil 1,3 Mio. € auseinanderlagen".
          *     ``null``, wo der Bestand keine Messung führt: ein Jahrgang, der vor dem
          *     Ausbau dieser Schicht verworfen wurde, oder eine Zeile, die sich gar
@@ -1201,7 +1201,7 @@ export interface paths {
          *       genommen), ``attachments`` auf Antrag und Antwort im Original.
          *
          *     **Was diese Antwort bewusst nicht tut:** Sie mischt die LSN-Steuerkraft
-         *     nicht mit ``council_steuerkraft`` (Datensatz 1106). Beide führen dieselben
+         *     nicht mit ``council_tax_capacity`` (Datensatz 1106). Beide führen dieselben
          *     Beträge, aber unter einer um ein Jahr verschobenen Jahresangabe; welche
          *     stimmt, ist ungeklärt. Zusammengelegt ergäbe das eine Reihe, in der zwei
          *     verschiedene Jahre dasselbe zu meinen scheinen.
@@ -1356,7 +1356,7 @@ export interface paths {
          *     auf rund neun Teilhaushalts-Anlagen. Die Liste nennt sie alle statt eine
          *     auszuwählen — welche gemeint ist, entscheidet die Seite, nicht die API.
          *
-         *     Die Fundstelle kommt aus ``council_herkunft`` und ist der eigentliche
+         *     Die Fundstelle kommt aus ``council_provenance`` und ist der eigentliche
          *     Gewinn: „Abschnitt 3.2" macht aus einem 300-Seiten-PDF eine nachschlagbare
          *     Stelle.
          *
@@ -11754,4 +11754,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: f30976d7e4ae1fdbc1fb1d997560c5ca1c71a389fe8c2fa44766d3d4e9784fe1
+// vertrag-sha256: f92e79369c812218a8e28f47d03c307caf8ffb241282be41a4dab7f95625dc30

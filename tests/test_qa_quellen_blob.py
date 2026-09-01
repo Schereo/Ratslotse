@@ -1,7 +1,7 @@
 """Die Blocknamen der KI-Antwort ziehen auch IM gespeicherten Blob um.
 
 Die Quellen einer Antwort stehen nicht nur auf der Leitung, sondern als JSON
-in `qa_gespraech_turns.sources`, `qa_shares.extras` und
+in `qa_conversation_turns.sources`, `qa_shares.extras` und
 `deep_research_jobs.sources`. Wer nur die Leitung umbenennt, lässt jedes
 gespeicherte Gespräch mit leeren Presse-, Debatten- und Anlagen-Blöcken
 zurück — sichtbar erst, wenn jemand ein altes Gespräch öffnet, und von keinem
@@ -57,17 +57,17 @@ def _mit_blob(pfad: Path) -> None:
     Store(str(pfad))._conn.close()
     conn = sqlite3.connect(pfad)
     conn.execute(
-        "INSERT INTO qa_gespraech_turns (conversation_id, user_id, question, answer, "
+        "INSERT INTO qa_conversation_turns (conversation_id, user_id, question, answer, "
         "sources, created) VALUES (1, 1, 'Frage', 'Antwort', ?, datetime('now'))",
         (json.dumps(BLOB, ensure_ascii=False),))
-    conn.execute("DELETE FROM migrationsmarken WHERE marke LIKE 'json_%qa_gespraech_turns%'")
+    conn.execute("DELETE FROM migration_marks WHERE marke LIKE 'json_%qa_conversation_turns%'")
     conn.commit()
     conn.close()
 
 
 def _gelesen(pfad: Path) -> dict:
     with sqlite3.connect(pfad) as c:
-        return json.loads(c.execute("SELECT sources FROM qa_gespraech_turns").fetchone()[0])
+        return json.loads(c.execute("SELECT sources FROM qa_conversation_turns").fetchone()[0])
 
 
 def test_die_blocknamen_ziehen_um(tmp_path):

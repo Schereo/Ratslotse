@@ -4,7 +4,7 @@
 Füllt fehlende Kalendertage von heute bis ``--days`` in die Zukunft — je Tag
 ein kuratierter Beschluss (Jahrestage zuerst, sonst Top-Interessantheit) mit
 1-Satz-Story. Idempotent: vorhandene Tage bleiben unangetastet, die Karten
-liegen prüfbar in ``council_fundstuecke``. Wöchentlich in
+liegen prüfbar in ``council_daily_finds``. Wöchentlich in
 ``scripts/weekly_enrich.py`` (21 Tage Vorlauf); Erstlauf einzeln::
 
     python scripts/generate_fundstuecke.py --days 21

@@ -80,7 +80,7 @@ def punkte_der_woche(store: CouncilStore, von: str, bis: str) -> list[dict]:
         f"       substr(v.raw_text, 1, 1200) AS sachverhalt "
         f"FROM council_agenda_items a "
         f"LEFT JOIN agenda_item_summaries s ON s.ksinr = a.ksinr AND s.item_number = a.item_number "
-        f"LEFT JOIN council_vorlagen v ON v.kvonr = a.kvonr "
+        f"LEFT JOIN council_templates v ON v.kvonr = a.kvonr "
         f"WHERE a.ksinr IN ({ph}) AND a.is_public = 1 ORDER BY a.id",
         [s["ksinr"] for s in sitzungen]).fetchall()
 
@@ -102,7 +102,7 @@ def punkte_der_woche(store: CouncilStore, von: str, bis: str) -> list[dict]:
     if kvonrs:
         ph2 = ",".join("?" * len(kvonrs))
         for b in store._conn.execute(
-                f"SELECT kvonr, date, result FROM council_beratungen "
+                f"SELECT kvonr, date, result FROM council_deliberations "
                 f"WHERE kvonr IN ({ph2}) ORDER BY date", kvonrs):
             stationen.setdefault(b["kvonr"], []).append(dict(b))
     for p in punkte:
@@ -121,7 +121,7 @@ def punkte_der_woche(store: CouncilStore, von: str, bis: str) -> list[dict]:
     if kv:
         ph3 = ",".join("?" * len(kv))
         vor = {r["kvonr"]: dict(r) for r in store._conn.execute(
-            f"SELECT kvonr, proposed_decision, financial_impact, office FROM council_vorlagen "
+            f"SELECT kvonr, proposed_decision, financial_impact, office FROM council_templates "
             f"WHERE kvonr IN ({ph3})", kv)}
         for p in punkte:
             p.update({k: v for k, v in (vor.get(p["kvonr"]) or {}).items() if k != "kvonr"})

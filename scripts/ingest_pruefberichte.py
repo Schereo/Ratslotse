@@ -3,7 +3,7 @@
 
 Bewusst getrennt von ``ingest_finanzberichte.py``: Dort geht es um Zahlen aus
 dem Jahresabschluss, hier um Prosa aus einem anderen Dokument einer anderen
-Stelle. Beide lesen nur ``council_anlagen`` und laden nichts nach::
+Stelle. Beide lesen nur ``council_attachments`` und laden nichts nach::
 
     python scripts/ingest_pruefberichte.py
     python scripts/ingest_pruefberichte.py --trocken    # nur zählen

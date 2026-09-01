@@ -2014,7 +2014,7 @@ def geld_kontext(store, question: str, begriffe: str = "", typ: str = "topic") -
         aus["vergleich"] = _sicher(store.staedtevergleich_kontext)
     if "ansatz" in facetten and not aus.get("haushalt"):
         # Der Ergebnishaushalt ist die feinere Plan-Quelle (Einnahmearten),
-        # aber die gröbere ist die vertrautere: Solange `council_haushalt`
+        # aber die gröbere ist die vertrautere: Solange `council_budget`
         # einen Teilhaushalt zur Frage hat, reicht der. Erst wenn er nichts
         # hergibt, lohnt der Ansatz die Zeichen.
         aus["ansatz"] = _sicher(store.ansatz_fuer_begriffe, woerter)
@@ -2143,7 +2143,7 @@ def geld_grafik(store, geld: dict) -> dict | None:
 def _beleg_text(b: dict | None) -> str:
     """„ — Beleg: Jahresabschluss 2024, Abschnitt 6.2 (Stand 31.12.2024)".
 
-    Ohne Fundstelle keine Zahl: `council_herkunft` weiß zu jedem Datensatz,
+    Ohne Fundstelle keine Zahl: `council_provenance` weiß zu jedem Datensatz,
     aus welchem Dokument und welchem Abschnitt er stammt, und der Prompt kann
     nur zitieren, was im Kontext steht."""
     if not b:
@@ -2321,7 +2321,7 @@ def _vergleich_block(v: dict | None) -> str:
 
 def _ansatz_block(a: dict | None) -> str:
     """Der Gesamtergebnishaushalt eines Planjahres — Einnahme- und
-    Ausgabearten, wo `council_haushalt` nur Teilhaushalte kennt."""
+    Ausgabearten, wo `council_budget` nur Teilhaushalte kennt."""
     if not a or not a.get("posten"):
         return ""
     zeilen = [f"- {p['label']}: {_eur(p.get('amount'))}" for p in a["posten"]]

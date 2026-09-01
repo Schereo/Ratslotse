@@ -50,7 +50,7 @@ def main() -> dict:
         rows = [dict(r) for r in store._conn.execute(  # noqa: SLF001
             "SELECT a.document_id, a.label, a.url, a.raw_text, a.status, "
             "       v.template_number "
-            "FROM council_anlagen a LEFT JOIN council_vorlagen v ON v.kvonr = a.kvonr "
+            "FROM council_attachments a LEFT JOIN council_templates v ON v.kvonr = a.kvonr "
             "WHERE a.label LIKE '%Gebührenbedarf%' ORDER BY a.document_id")]
         print(f"{len(rows)} Anlage(n) mit „Gebührenbedarf“ im Label.", flush=True)
 

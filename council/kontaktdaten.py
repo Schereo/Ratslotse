@@ -9,7 +9,7 @@ zurückgibt, weil sie zufällig in einer Anlage stand.
 Deshalb wird hier NICHT beim Speichern maskiert, sondern **an der
 Index-Grenze**: `store.anlagen_missing_embeddings()` (Chunk-Vektoren) und
 `store.rebuild_fts()` (Volltextindex) schicken ihren Text durch
-:func:`maskieren`. `council_anlagen.raw_text` bleibt vollständig.
+:func:`maskieren`. `council_attachments.raw_text` bleibt vollständig.
 
 DAS IST KEIN OCR-THEMA. Gemessen am Prod-Stand vom 16.08.2026 tragen **496
 Anlagen** Kontaktdaten — 81 IBAN, 533 E-Mail-Adressen, 1.022 Telefon- und

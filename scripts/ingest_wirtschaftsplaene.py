@@ -9,13 +9,13 @@ Eigenbetrieb Gebäudewirtschaft und Hochbau liest, steht im Kopf von
 
 Warum kein Download und kein Cron
 ---------------------------------
-Die Quelle liegt schon im Haus: ``council_vorlagen`` führt den Volltext jeder
+Die Quelle liegt schon im Haus: ``council_templates`` führt den Volltext jeder
 Ratsvorlage, und der Beschlussvorschlag steht darin. Dieser Lauf lädt nichts
 nach, er liest den Bestand — deshalb ist er auch der richtige Weg, wenn ein
 verbesserter Parser über die vorhandenen Jahrgänge laufen soll.
 
 Ein Cron kommt später in Frage: ``check_finanzdaten`` ist auf
-``council_anlagen`` gebaut (``finanzquellen.Finanzquelle.erkennung`` sucht ein
+``council_attachments`` gebaut (``finanzquellen.Finanzquelle.erkennung`` sucht ein
 Anlagen-Label). Diese Schicht wäre die erste, deren Einheit eine **Vorlage**
 ist; das ist ein eigener Umbau und keine Nebensache dieses Skripts.
 
@@ -88,7 +88,7 @@ def jahr_aus_titel(title: str) -> int | None:
 
 def main() -> int:
     ap = argparse.ArgumentParser(
-        description="Wirtschaftspläne der Eigenbetriebe aus council_vorlagen lesen")
+        description="Wirtschaftspläne der Eigenbetriebe aus council_templates lesen")
     ap.add_argument("--db", default=str(COUNCIL_DB))
     ap.add_argument("--trockenlauf", action="store_true",
                     help="alles rechnen und zeigen, nichts speichern")
@@ -97,7 +97,7 @@ def main() -> int:
     store = CouncilStore(Path(args.db))
     try:
         rows = [dict(r) for r in store._conn.execute(  # noqa: SLF001
-            "SELECT template_number, kvonr, title, raw_text FROM council_vorlagen "
+            "SELECT template_number, kvonr, title, raw_text FROM council_templates "
             "WHERE title LIKE ? AND status = 'ok' AND raw_text IS NOT NULL "
             "ORDER BY template_number", (TITEL_MUSTER,))]
         print(f"{len(rows)} Vorlage(n) mit „Wirtschaftsplan“ im Titel.\n")
@@ -162,7 +162,7 @@ def main() -> int:
                 continue
             anlagen = [dict(a) for a in store._conn.execute(  # noqa: SLF001
                 "SELECT document_id, label, url, status, raw_text, ocr_model "
-                "FROM council_anlagen WHERE kvonr = ? ORDER BY document_id",
+                "FROM council_attachments WHERE kvonr = ? ORDER BY document_id",
                 (r["kvonr"],))]
             # `'ocr'` ZÄHLT MIT. Diese Anlagen tragen keine Textebene, sondern
             # den Text, den ein Sehmodell aus dem Scan gelesen hat
@@ -222,7 +222,7 @@ def main() -> int:
             if not erkannt or year is None or (erkannt[0], year) in schon:
                 continue
             texte = [a[0] for a in store._conn.execute(  # noqa: SLF001
-                "SELECT raw_text FROM council_anlagen WHERE kvonr = ? "
+                "SELECT raw_text FROM council_attachments WHERE kvonr = ? "
                 "AND status = 'ok'", (r["kvonr"],))]
             try:
                 res = parse_kernzahl(r["template_number"], r["title"], r["raw_text"],
@@ -259,7 +259,7 @@ def main() -> int:
         print(f"\n{len(gefunden)} Eckwerte, {len(aus_anlage)} Erfolgspläne, "
               f"{len(kernzahlen)} Kernzahlen gespeichert.")
 
-        luecken_ohne_beleg = store.herkunft_luecken().get("council_wirtschaftsplaene")
+        luecken_ohne_beleg = store.herkunft_luecken().get("council_business_plans")
         if luecken_ohne_beleg:
             print(f"  ! {luecken_ohne_beleg} Zeile(n) ohne Herkunft — "
                   "das sollte nicht vorkommen (siehe council/herkunft.py)")

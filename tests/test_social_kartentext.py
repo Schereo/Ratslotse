@@ -46,7 +46,7 @@ def _punkt(store, ksinr=1, nummer="Ö 10", title="Ausfallbürgschaft für das Kl
         "VALUES (?, ?, ?, 1, ?)", (ksinr, nummer, title, kvonr))
     if vorlage:
         store._conn.execute(
-            "INSERT OR REPLACE INTO council_vorlagen (kvonr, template_number, title, raw_text, "
+            "INSERT OR REPLACE INTO council_templates (kvonr, template_number, title, raw_text, "
             "fetched_at) VALUES (?, ?, ?, ?, '2026-08-30')",
             (kvonr, "26/0001", title, "Sachverhalt: Die Stadt bürgt für ein Darlehen."))
     if impact is not None:
@@ -149,7 +149,7 @@ def test_dringlichkeitsantrag_kommt_ueber_seine_anlage_hinein(store):
     _punkt(store, nummer="DZT 1", title="Dringlichkeitsantrag: PAK-Belastung",
            impact=65, vorlage=False)
     store._conn.execute(
-        "INSERT INTO council_agenda_anlagen (ksinr, item_number, label, url, raw_text) "
+        "INSERT INTO council_agenda_attachments (ksinr, item_number, label, url, raw_text) "
         "VALUES (1, 'DZT 1', 'Dringlichkeitsantrag PAK', 'https://example.org/a.pdf', ?)",
         ("Die Gruppe beantragt eine sofortige Prüfung der Flugplatzbäke.",))
     store._conn.commit()

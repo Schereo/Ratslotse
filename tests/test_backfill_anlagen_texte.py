@@ -13,7 +13,7 @@ def _anlage(store: CouncilStore, document_id: int, label: str,
             text: str, status: str = "ok") -> None:
     with store._conn:  # noqa: SLF001
         store._conn.execute(  # noqa: SLF001
-            "INSERT OR REPLACE INTO council_anlagen "
+            "INSERT OR REPLACE INTO council_attachments "
             "(document_id, kvonr, label, url, raw_text, n_pages, fetched_at, status) "
             "VALUES (?,?,?,?,?,?,?,?)",
             (document_id, 1, label, f"https://example.org/{document_id}.pdf",

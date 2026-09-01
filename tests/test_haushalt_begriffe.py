@@ -13,7 +13,7 @@ def store(tmp_path):
             ("Stadtplanung", 7.5e6, 0),
             ("Summe", 817.3e6, 1)):
         s._conn.execute(
-            "INSERT INTO council_haushalt (year, area, revenues, expenses,"
+            "INSERT INTO council_budget (year, area, revenues, expenses,"
             " result, is_total, source_url, fetched_at) "
             "VALUES (2025, ?, 0, ?, 0, ?, '', '2026-08-20')", (area, aufw, summe))
     s._conn.commit()

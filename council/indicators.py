@@ -147,7 +147,7 @@ KENNZAHLEN: tuple[Kennzahl, ...] = (
 #: Was sich aus unserer Bilanz nachrechnen lässt: Kennzahl → (Zähler-Rolle,
 #: Nenner ist immer die Bilanzsumme). Nur diese drei — bei den Kennzahlen je
 #: Einwohner rechnet die Stadt mit einer *anderen* Schuldenabgrenzung als
-#: ``council_schulden``, und ein Abgleich meldete dort verlässlich eine
+#: ``council_debt``, und ein Abgleich meldete dort verlässlich eine
 #: Differenz, die keine ist.
 BILANZ_QUOTE = {
     "eigenkapitalquote_2": "net_position",

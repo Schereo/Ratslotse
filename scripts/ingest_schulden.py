@@ -233,7 +233,7 @@ def main() -> int:
 
         store.herkunft_aufraeumen()
         luecken = {t: n for t, n in store.herkunft_luecken().items()
-                   if t == "council_schulden"}
+                   if t == "council_debt"}
         if luecken:
             print(f"WARNUNG: Zeilen ohne Herkunft: {luecken}", file=sys.stderr)
     finally:

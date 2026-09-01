@@ -92,7 +92,7 @@ gespeichert — lieber keine Zeile als eine unter dem falschen Jahr.
 
 Die Finanzplanungsjahre werden **nicht** gespeichert. Sie sind eine Vorausschau
 nach § 8 NKomVG, die jeder neue Plan neu schreibt; dieselbe Entscheidung wie
-bei ``council_ergebnishaushalt``, dort ausführlich begründet. Geprüft werden
+bei ``council_income_budget``, dort ausführlich begründet. Geprüft werden
 sie trotzdem — eine Spalte, die ihre eigene Rechnung nicht erfüllt, sagt etwas
 über den Textextrakt der ganzen Tabelle.
 """

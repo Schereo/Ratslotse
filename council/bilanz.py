@@ -7,7 +7,7 @@ naheliegende Frage „Oldenburg hat kaum Kredite, also keine Schulden?" ist das
 die Antwort.
 
 Fundstelle ist Abschnitt 2.1 „Bilanz der Stadt Oldenburg zum 31.12.JJJJ" des
-Jahresabschlusses (``council_anlagen``) — dasselbe Dokument, aus dem
+Jahresabschlusses (``council_attachments``) — dasselbe Dokument, aus dem
 ``council/finanzberichte.py`` schon Ergebnis- und Finanzrechnung liest. Kein
 neuer Download.
 

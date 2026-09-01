@@ -17,7 +17,7 @@ auf 73 %. Wer nur den ersten Bestand zeigt, zeigt eine schrumpfende Teilmenge,
 als wäre sie das Ganze.
 
 Nichts wird hier geladen — beide Quellen liegen bereits im Bestand
-(``council_vorlagen.raw_text`` und ``council_anlagen.raw_text``).
+(``council_templates.raw_text`` und ``council_attachments.raw_text``).
 
 **Reihenfolge ist Pflicht, nicht Geschmack.** Die drei Rechenschaftsberichte
 liegen im Bestand als Anlage mit ``status='listed'`` und **leerem**

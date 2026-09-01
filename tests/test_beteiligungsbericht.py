@@ -525,7 +525,7 @@ def test_konzernvergleich_ist_einordnung_und_verwirft_nichts(tmp_path):
 
 # --- Abschnitt 3: Aufsichtsorgane -------------------------------------------
 #
-# Alle Fixtures hier sind wörtliche `council_gesellschaft_texte`-Inhalte aus
+# Alle Fixtures hier sind wörtliche `council_company_texts`-Inhalte aus
 # den Berichten 2022–2024, jeder mit genau einer Eigenheit.
 
 #: AWB 2023 — der Fall, für den es die Rechenprobe gibt: **acht** Namen,
