@@ -51,7 +51,8 @@ export type LottiRegung =
   | "zeigt-links" | "zeigt-rechts" | "zeigt-hoch" | "zeigt-runter"
   | "hebt-hand" | "erklaert" | "ist-traurig"
   | "denkt" | "sucht" | "wartet" | "schlaeft" | "jongliert"
-  | "hat-idee" | "fragt" | "mag-das";
+  | "hat-idee" | "fragt" | "mag-das"
+  | "liest" | "schreibt" | "hebt-pokal";
 
 /* Einmal je Seite: Der Abspieler liegt als fertiges ES-Modul im Bündel und
  * definiert beim Import das Custom Element. `webpackIgnore`, weil die Datei

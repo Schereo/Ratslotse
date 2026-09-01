@@ -182,7 +182,7 @@ export function QuizPlay({ questions, onExit, onComplete, title, answerPath = "/
     return (
       <Card className="relative mx-auto max-w-xl overflow-hidden p-8 text-center">
         {correct > 0 && <ConfettiBurst />}
-        <Mascot pose={pose} regung={quote >= 90 ? "klatscht" : undefined} regie="lebhaft" className={cn("mx-auto h-24 w-24", quote >= 90 && "lotti-dance")} />
+        <Mascot pose={pose} regung={quote === 100 ? "hebt-pokal" : quote >= 90 ? "klatscht" : undefined} regie="lebhaft" className={cn("mx-auto h-24 w-24", quote >= 90 && "lotti-dance")} />
         <h2 className="mt-3 text-2xl font-bold text-foreground">
           {correct} von {questions.length} richtig
         </h2>

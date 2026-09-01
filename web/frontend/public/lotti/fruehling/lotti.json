@@ -79,6 +79,19 @@
       ],
       "anzahl": 30,
       "kilobyte": 257
+    },
+    "werkzeug": {
+      "blatt": "lotti-werkzeug.webp",
+      "bild": [
+        384,
+        384
+      ],
+      "raster": [
+        8,
+        7
+      ],
+      "anzahl": 56,
+      "kilobyte": 505
     }
   },
   "regungen": {
@@ -361,6 +374,36 @@
       "rueckwaerts": true,
       "halt": 9,
       "was": "mag das, ein Herz steigt auf"
+    },
+    "liest": {
+      "gruppe": "werkzeug",
+      "von": 0,
+      "bilder": 26,
+      "takt": 8,
+      "wiederholt": true,
+      "rueckwaerts": false,
+      "halt": null,
+      "was": "liest am Pult (Schleife) — für Ladephasen, die lesen"
+    },
+    "schreibt": {
+      "gruppe": "werkzeug",
+      "von": 26,
+      "bilder": 19,
+      "takt": 8,
+      "wiederholt": true,
+      "rueckwaerts": false,
+      "halt": null,
+      "was": "schreibt am Pult (Schleife)"
+    },
+    "hebt-pokal": {
+      "gruppe": "werkzeug",
+      "von": 45,
+      "bilder": 11,
+      "takt": 12,
+      "wiederholt": false,
+      "rueckwaerts": true,
+      "halt": 10,
+      "was": "hebt den Pokal — für volle Punktzahl"
     }
   }
 }
