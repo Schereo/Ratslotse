@@ -329,11 +329,18 @@ def test_genitiv_im_titel_schuetzt_ebenfalls():
         {"name": "Ammerländer Heerstraße", "source": "template"})
 
 
-def test_fund_aus_titel_oder_beschluss_bleibt_immer():
-    """Die Regel greift nur auf Funde aus dem Vorlagentext."""
-    for quelle in ("title", "official_text"):
-        assert not locations.location_is_incidental(
-            "Änderung der Marktgebührensatzung", {"name": "Rathausmarkt", "source": quelle})
+def test_fund_aus_dem_titel_bleibt_immer():
+    """Der Titel ist die Grenze — er sagt, worum es geht.
+
+    Stand hier zuerst auch ``official_text``: Der Beschlusstext galt als das
+    verlässlichere Papier. Die Stichprobe am Prod-Bestand hat das widerlegt,
+    siehe ``test_beiwerk_gilt_auch_fuer_den_beschlusstext``. Aus dem TITEL
+    bleibt ein Ort weiterhin unangetastet.
+    """
+    assert not locations.location_is_incidental(
+        "Änderung der Marktgebührensatzung", {"name": "Rathausmarkt", "source": "title"})
+    assert locations.location_is_incidental(
+        "Änderung der Marktgebührensatzung", {"name": "Rathausmarkt", "source": "official_text"})
 
 
 # ------------------------------------------------------ 4) Nebenbefunde ---
@@ -456,5 +463,110 @@ def test_gescheiterte_geocodings_lassen_sich_wiederholen(tmp_path):
                 "VALUES (1,'alt','title','Postweg','regex',0.9,'2026-09-01')")
         assert store.locations_to_geocode() == []
         assert [r["name"] for r in store.locations_to_geocode(retry_failed=True)] == ["Postweg"]
+    finally:
+        store.close()
+
+
+def test_stadtweit_erkennt_genitiv_und_plural():
+    """Deutsche Flexion — im Titel eines Ratsvorgangs die Norm.
+
+    Die Wortgrenze hinten traf den Nominativ und sonst nichts: „Änderung des
+    Rahmenkonzept*es*", „Fortschreibung des Lärmaktionsplan*s*", „Anpassung
+    der Satzung*en*". Alle drei standen so mit einem Stadtteil in den Daten.
+    """
+    for titel in ("Änderung des Rahmenkonzeptes „Kooperative Ganztagsbildung\"",
+                  "Fortschreibung des Lärmaktionsplans - Beschluss",
+                  "Anpassung der Satzungen über die Erhebung von Gebühren",
+                  "Evaluation des Konzeptes",
+                  "Rahmenplan Mobilität und Verkehr (RMV 2030)",
+                  "Gesamtstädtisches Maßnahmenpaket für Rollsportanlagen",
+                  "Armutsbericht"):
+        assert locations.affects_whole_city(titel), titel
+
+
+def test_stadtweite_planarten_einzeln_statt_pauschal():
+    """„…plan" darf sich nicht öffnen — es zöge den Bebauungsplan mit herein.
+
+    Am Prod-Bestand ausgezählt: Von 570 Planwörtern in Beschlusstiteln sind
+    530 Bebauungs- und Flächennutzungspläne. Die stadtweiten Planarten sind
+    eine kurze, zählbare Liste und stehen deshalb einzeln.
+    """
+    for titel in ("Mobilitätsplan Oldenburg 2030 - Stand der Planungen",
+                  "Erfolgsplan EGH - Instandhaltung der Schulgebäude",
+                  "Fortschreibung des Luftreinhalteplans"):
+        assert locations.affects_whole_city(titel), titel
+    for titel in ("Vorhabenbezogener Bebauungsplan Nr. 62 (Hohenmoorstraße)",
+                  "Änderung 84 des Flächennutzungsplanes (nördlich Eßkamp)",
+                  "Zeitplan für den Ausbau der Ziegelhofstraße"):
+        assert not locations.affects_whole_city(titel), titel
+
+
+def test_pass_bekommt_keine_endung():
+    """„Oldenburg Pass" ja, „passen" nein — deshalb steht `pass` als eigener,
+    strenger Zweig neben der flektierbaren Liste."""
+    assert locations.affects_whole_city("Oldenburg Pass - Bericht 2021")
+    assert not locations.affects_whole_city("Die Bordsteine passen nicht zum Radweg")
+
+
+def test_beiwerk_gilt_auch_fuer_den_beschlusstext():
+    """Die Regel nahm den Beschlusstext zuerst aus — er galt als das
+    verlässlichere Papier. Falsch: Auch dort stehen Anschriften, die dem
+    Vorgang nicht gehören (die der VWG unter „Jahresabschluss 2022").
+    Was schützt, ist der Titel-Test, nicht die Herkunft des Fundes.
+    """
+    stadtweit = "Verkehr und Wasser GmbH (VWG): Jahresabschluss 2022"
+    for quelle in ("template", "official_text"):
+        assert locations.location_is_incidental(
+            stadtweit, {"name": "Bürgerfelder Straße", "source": quelle}), quelle
+    # Aus dem TITEL bleibt es: Dort steht der Ort, weil er gemeint ist.
+    assert not locations.location_is_incidental(
+        stadtweit, {"name": "Bürgerfelder Straße", "source": "title"})
+    # Und nennt der Titel den Ort, greift die Regel für keine Quelle.
+    assert not locations.location_is_incidental(
+        "Masterplan Fliegerhorst", {"name": "Fliegerhorst", "source": "official_text"})
+
+
+def test_nackte_kennungen_sind_keine_orte():
+    """Am Prod-Bestand gefunden: Kennungen, die wie ein Ort aussehen.
+
+    „A 293" quert die halbe Stadt und stand trotzdem auf Nadorst, „FH-24" ist
+    eine Fliegerhorst-Plannummer und stand auf Bloherfelde, „26122" ist eine
+    Postleitzahl. Zusammen 15 Zuordnungen — klein, aber jede einzelne führt
+    jemanden in den falschen Stadtteil.
+    """
+    for name in ("26122", "A 293", "A293", "L865", "FH-24", "PFA 1", "M-821",
+                 "Zone 1", "B 75", "K 141"):
+        assert not locations.valid_llm_location(name, "street", name), name
+    # Die Kennung MIT ihrem Wort bleibt — sie trägt ihren Ortsbezug im
+    # Beschlusstitel, und die Vorschlagskarte schreibt ihn dazu.
+    assert locations.valid_llm_location("Bebauungsplan 831", "area", "Bebauungsplan 831")
+    # Und eine Hausnummer auf einer Straße ist die GENAUERE Angabe, nicht Müll:
+    # die Alexanderstraße läuft durch vier Ortsbereiche.
+    for name in ("Alexanderstraße 488", "Sandweg 26", "Nadorster Straße 298"):
+        assert locations.valid_llm_location(name, "street", name), name
+
+
+def test_kennung_behaelt_den_verweis_verliert_den_stadtteil(tmp_path):
+    """Die A 293 wird in Beschlüssen erwähnt — das ist richtig. Falsch ist nur
+    der Stadtteil: Eine Autobahn quert die halbe Stadt, „A 293 → Nadorst"
+    schickt jemanden in ein Viertel, mit dem der Beschluss nichts zu tun hat.
+
+    Und der Riegel muss im Nachtrag SELBST sitzen: Stünde er nur im Aufräumen,
+    füllte der nächste Lauf wieder auf, was der letzte geleert hat.
+    """
+    store = CouncilStore(tmp_path / "c.sqlite")
+    try:
+        lat, lon = geo.ortsbereich_center("Nadorst")
+        with store._conn:
+            store._conn.execute(
+                "INSERT INTO council_locations (slug,name,kind,district,lat,lon,updated_at) "
+                "VALUES ('a293','A 293','street','Nadorst',?,?,'2026-09-01')", (lat, lon))
+        assert store.clear_code_only_districts() == 1
+        assert store._conn.execute(
+            "SELECT district FROM council_locations WHERE slug='a293'").fetchone()["district"] is None
+        # Der Nachtrag darf ihn nicht wieder setzen.
+        store.backfill_location_districts()
+        assert store._conn.execute(
+            "SELECT district FROM council_locations WHERE slug='a293'").fetchone()["district"] is None
     finally:
         store.close()

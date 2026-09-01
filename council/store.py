@@ -10036,6 +10036,35 @@ class CouncilStore:
                          AND m.lat IS NOT NULL AND m.lon IS NOT NULL)""", (now,))
         return cur.rowcount
 
+    def clear_code_only_districts(self) -> int:
+        """Nackten Kennungen den Stadtteil nehmen — den Verweis aber lassen.
+
+        „A 293", „A 29", „M-821": Diese Orte kommen über den Entitäten-Kanal
+        herein, der weder durch die Ortsprüfung noch durch die Beiwerk-Regel
+        läuft. Dass sie in einem Beschluss vorkommen, stimmt ja auch — die
+        Autobahn wird erwähnt. Falsch ist nur der Stadtteil: Eine Autobahn
+        quert die halbe Stadt, und „A 293 → Nadorst" schickt jemanden in ein
+        Viertel, mit dem der Beschluss nichts zu tun hat.
+
+        Deshalb bleibt der Verweis stehen und nur die Verortung fällt weg. Auf
+        dem Prod-Bestand (01.09.2026) sind das sechs Zuordnungen.
+        """
+        from council.locations import _CODE_ONLY_RE
+
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        betroffen = [
+            (now, row["slug"])
+            for row in self._conn.execute(
+                "SELECT slug, name FROM council_locations WHERE district IS NOT NULL")
+            if _CODE_ONLY_RE.match((row["name"] or "").strip())
+        ]
+        if betroffen:
+            with self._conn:
+                self._conn.executemany(
+                    "UPDATE council_locations SET district=NULL,ortsbereich_id=NULL,"
+                    "updated_at=? WHERE slug=?", betroffen)
+        return len(betroffen)
+
     def backfill_location_districts(self) -> int:
         """Stadtteil für ältere oder übernommene Ortskoordinaten lokal ableiten.
 
@@ -10048,15 +10077,22 @@ class CouncilStore:
         Der Punkt bleibt der Rückfall für Orte ohne Geometrie.
         """
         from council import geo, places
+        from council.locations import _CODE_ONLY_RE
 
         rows = self._conn.execute(
-            "SELECT slug,lat,lon,geojson FROM council_locations "
+            "SELECT slug,name,lat,lon,geojson FROM council_locations "
             "WHERE lat IS NOT NULL AND lon IS NOT NULL "
             "AND (district IS NULL OR district = '')"
         ).fetchall()
         updates = []
         now = datetime.now(timezone.utc).isoformat(timespec="seconds")
         for row in rows:
+            # Nackte Kennungen bekommen keinen Stadtteil — siehe
+            # ``clear_code_only_districts``. Der Riegel gehört HIER hin und
+            # nicht nur ins Aufräumen: Sonst füllt der nächste Lauf wieder auf,
+            # was der letzte gerade geleert hat.
+            if _CODE_ONLY_RE.match((row["name"] or "").strip()):
+                continue
             district = (geo.ortsbereich_der_geometrie(row["geojson"])
                         or geo.ortsbereich_for(row["lat"], row["lon"]))
             if district:

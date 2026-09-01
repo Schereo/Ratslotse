@@ -76,7 +76,8 @@ def process(council_db: Path, *, limit: int | None = None, sleep: float = 1.1,
     # die frisch geocodierten Straßen sofort wieder Waisen.
     districts += store.backfill_location_districts()
     korrigiert = (store.fix_contradicting_districts()
-                  + store.fix_eponymous_districts())
+                  + store.fix_eponymous_districts()
+                  + store.clear_code_only_districts())
     store.close()
     return {"curated": curated, "reused": reused, "districts": districts,
             "districts_from_name": aus_namen, "korrigiert": korrigiert,

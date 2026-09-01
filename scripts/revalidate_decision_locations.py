@@ -78,6 +78,15 @@ def deterministic_changes(
             decision["title"] or "", source="title", catalog_places=place_catalog)
         rows += extract_explicit_locations(
             decision["official_text"] or "", source="official_text", catalog_places=place_catalog)
+        # Dieselbe Beiwerk-Schranke wie beim Extrahieren. Ohne sie legt dieser
+        # Lauf genau die Bezüge wieder an, die der Beiwerk-Schritt weiter unten
+        # gerade entfernt hat — zwei Regeln, die einander widersprechen, und
+        # ein Lauf, der nie zur Ruhe kommt. Sichtbar wurde das erst, als die
+        # Schranke auch für den Beschlusstext galt: Vorher überschnitten sich
+        # die beiden Mengen nicht.
+        rows = [row for row in rows
+                if not location_is_incidental(decision["title"], row,
+                                              catalog_places=place_catalog)]
         for row in rows:
             slug = location_slug(row["name"])
             old = expected.setdefault(decision["id"], {}).get(slug)
@@ -160,6 +169,7 @@ def process(council_db: Path, *, apply: bool = False) -> dict:
         # ein einmal falsch eingetragener Bereich bliebe sonst für immer stehen.
         store.fix_contradicting_districts()
         store.fix_eponymous_districts()
+        store.clear_code_only_districts()
     store.close()
     removed = len(llm_rows) + len(deterministic_rows) + len(beiwerk_rows) if apply else 0
     return {"invalid_llm": len(llm_rows), "invalid_deterministic": len(deterministic_rows),

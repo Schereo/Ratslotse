@@ -48,6 +48,25 @@ Ebenso Marktgebühren­satzung, Klimaschutz­konzept, Vergnügungsstätten­konz
 Das Hinterglied zählt jetzt; die Wortgrenze dahinter bleibt und schützt den
 „Satzungs­beschluss", mit dem jedes Bebauungsplan-Verfahren endet.
 
+**Die Regel las nur den Nominativ.** Sie stand am Wortende und traf damit
+„Satzung", aber nicht „der Satzungen", „Konzept", aber nicht „des Konzeptes".
+Im Titel eines Ratsvorgangs sind Genitiv und Plural die Norm — „Änderung des
+Rahmenkonzeptes", „Fortschreibung des Lärmaktionsplans" —, also ging fast
+alles daneben. Deutsche Endungen zählen jetzt mit.
+
+**Und sie sah nur in die Vorlage, nicht in den Beschluss.** Der Beschlusstext
+galt als das verlässlichere Papier. Er ist es nicht: Auch dort stehen
+Anschriften, die dem Vorgang nicht gehören — „Verkehr und Wasser GmbH:
+Jahresabschluss 2022" hing an der Bürgerfelder Straße, die „Besetzung des
+Schulausschusses" an Eversten. Was schützt, ist der Titel, nicht die Herkunft
+des Fundes: Nennt er den Ort, bleibt er.
+
+**Kennungen sahen aus wie Orte.** „A 293" stand auf Nadorst, „A 29" auf
+Neuenwege, „FH-24" — eine Plannummer vom Fliegerhorst — auf Bloherfelde,
+„26122" ist eine Postleitzahl. Dass die Autobahn in einem Beschluss vorkommt,
+stimmt ja; sie quert nur die halbe Stadt. Solche Verweise bleiben deshalb
+stehen und verlieren nur ihren Stadtteil.
+
 **Gattungsbegriffe waren als Orte erfasst.** „Gemeindestraße", „Radweg",
 „Kunstrasenplatz" und sogar „Monitoring" standen mit über hundert Verweisen in
 den Daten, ohne je zu einem Stadtteil zu führen. Sie fallen jetzt weg — die
@@ -62,9 +81,14 @@ wurden zu einem Verlauf verschmolzen, und der lag dann teils außerhalb. Fremde
 Abschnitte werden jetzt abgeschnitten; bleibt nichts übrig, gilt die Straße als
 nicht gefunden.
 
-Unterm Strich verlieren die Stadtteile 411 Zuordnungen, die dort nie hingehörten,
-und gewinnen 11 dazu. Am meisten geben Eversten (−43), Osternburg (−36) und
-Nadorst (−33) ab: die Satzungen, Wirtschaftspläne und Leitanträge, die eine
-Nebenerwähnung dorthin gezogen hatte. Am Ende ist der Bestand widerspruchsfrei —
-kein Ort mit Geometrie liegt mehr in einem anderen Stadtteil, als seine Geometrie
-sagt, und ein zweiter Durchlauf findet nichts mehr zu ändern.
+Unterm Strich verlieren die Stadtteile 1.310 Zuordnungen, die dort nie
+hingehörten. Am meisten geben die Viertel ab, in denen eine Nebenerwähnung
+besonders oft eine stadtweite Satzung, einen Wirtschaftsplan oder einen
+Leitantrag angezogen hat.
+
+Nachgemessen ist der Bestand am Ende widerspruchsfrei: kein Ort mit Geometrie
+liegt in einem anderen Stadtteil, als seine Geometrie sagt; keine
+Privatanschrift, kein Gattungsbegriff und keine nackte Kennung führt mehr in
+ein Viertel; und in einer Stichprobe von 280 Beschluss-Zuordnungen findet sich
+keine, die ohne Beleg geraten wäre. Ein zweiter und dritter Durchlauf ändern
+nichts mehr.
