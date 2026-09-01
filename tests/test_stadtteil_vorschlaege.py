@@ -256,3 +256,32 @@ def test_zusammengeschriebene_dublette_erscheint_nur_einmal():
     assert _similar_names(_name_tokens("AlteFleiwa"), _name_tokens("Alte Fleiwa"))
     assert not _similar_names(_name_tokens("OLantis Huntebad"), _name_tokens("IQON"))
     assert not _similar_names(_name_tokens("Veloroute 4"), _name_tokens("Veloroute 2"))
+
+
+def test_lange_strasse_schleppt_keine_fremden_themen_ein(client):
+    """Die Mehrfach-Zugehörigkeit gilt für BESCHLÜSSE, nicht für Vorschläge.
+
+    Die Alexanderstraße läuft durch fünf Ortsbereiche. Ein Beschluss über sie
+    gehört in alle fünf Filter — aber eine Entität, die nur zufällig im selben
+    Beschluss steht, ist deshalb kein Thema für alle fünf. Mit der weiten
+    Bedingung schlug das Ehnernviertel „Hallensichel-Ost" vor, ein
+    Fliegerhorst-Thema, und verdrängte damit die richtigen Vorschläge.
+    """
+    from council.store import CouncilStore as CS
+
+    _register(client)
+    _saat()
+    council = CS(Path(_pfade()[1]))
+    try:
+        # Der Ort in Osternburg gehört zusätzlich zu Ziegelhof — wie es eine
+        # lange Straße täte.
+        with council._conn:
+            council._conn.execute(
+                "INSERT OR REPLACE INTO council_location_districts "
+                "(location_slug,district,place_id,share) VALUES "
+                "('ort-osternburg','Ziegelhof','ziegelhof',0.2)")
+    finally:
+        council.close()
+    gruppe = client.get("/api/topics/suggestions?district=ziegelhof").json()["districts"][0]
+    eigene = {s["name"] for s in gruppe["suggestions"]}
+    assert "Alte Fleiwa" not in eigene and "Cäcilienbrücke" not in eigene, eigene

@@ -570,3 +570,81 @@ def test_kennung_behaelt_den_verweis_verliert_den_stadtteil(tmp_path):
             "SELECT district FROM council_locations WHERE slug='a293'").fetchone()["district"] is None
     finally:
         store.close()
+
+
+# ----------------------------------- 5) Zugehörigkeit zu MEHREREN Bereichen ---
+
+def test_lange_strasse_gehoert_in_alle_beruehrten_stadtteile(tmp_path):
+    """Eine Straße durch mehrere Ortsbereiche gehört in jeden Filter.
+
+    Am Prod-Bestand: Die Alexanderstraße verläuft zu 38 % in Bürgerfelde, zu
+    20 % in Alexandersfeld, zu 18 % im Ziegelhof, zu 13 % im Ehnernviertel und
+    zu 10 % in Dietrichsfeld. Mit einer Spalte sahen vier Viertel ihre eigene
+    Straße nicht.
+    """
+    store = CouncilStore(tmp_path / "c.sqlite")
+    try:
+        a = geo.ortsbereich_center("Innenstadt")
+        b = geo.ortsbereich_center("Osternburg")
+        # Eine Linie mit vielen Stützpunkten quer durch beide Bereiche.
+        punkte = [[a[1] + (b[1] - a[1]) * i / 40, a[0] + (b[0] - a[0]) * i / 40]
+                  for i in range(41)]
+        linie = json.dumps({"type": "LineString", "coordinates": punkte})
+        with store._conn:
+            store._conn.execute(
+                "INSERT INTO council_locations (slug,name,kind,district,geojson,updated_at) "
+                "VALUES ('lang','Langstraße','street','Innenstadt',?,'2026-09-01')", (linie,))
+        store.rebuild_location_districts()
+        bereiche = {r["district"] for r in store._conn.execute(
+            "SELECT district FROM council_location_districts WHERE location_slug='lang'")}
+        assert "Innenstadt" in bereiche and "Osternburg" in bereiche, bereiche
+        # Die Anzeige-Spalte bleibt bei EINEM Stadtteil.
+        assert store._conn.execute(
+            "SELECT district FROM council_locations WHERE slug='lang'").fetchone()["district"] == "Innenstadt"
+    finally:
+        store.close()
+
+
+def test_gleichnamiger_ort_faerbt_die_nachbarn_nicht_ein(tmp_path):
+    """Die Fläche, die ein Kartendienst für „Ofenerdiek" liefert, schwappt nach
+    Nadorst — aber unser Katalog-Umriss IST die Definition von Ofenerdiek.
+    25 solcher Orte gibt es im Bestand; ohne die Ausnahme färbten sie ihre
+    Nachbarn ein.
+    """
+    store = CouncilStore(tmp_path / "c.sqlite")
+    try:
+        a = geo.ortsbereich_center("Innenstadt")
+        b = geo.ortsbereich_center("Osternburg")
+        punkte = [[a[1] + (b[1] - a[1]) * i / 40, a[0] + (b[0] - a[0]) * i / 40]
+                  for i in range(41)]
+        linie = json.dumps({"type": "LineString", "coordinates": punkte})
+        with store._conn:
+            store._conn.execute(
+                "INSERT INTO council_locations (slug,name,kind,district,geojson,updated_at) "
+                "VALUES ('innen','Innenstadt','area','Innenstadt',?,'2026-09-01')", (linie,))
+        store.rebuild_location_districts()
+        bereiche = {r["district"] for r in store._conn.execute(
+            "SELECT district FROM council_location_districts WHERE location_slug='innen'")}
+        assert bereiche == {"Innenstadt"}, bereiche
+    finally:
+        store.close()
+
+
+def test_eine_angeschnittene_ecke_zaehlt_nicht(tmp_path):
+    """Nur ein spürbarer Anteil zählt — sonst gehörte jede Straße, die eine
+    Grenze streift, gleich in beide Viertel."""
+    store = CouncilStore(tmp_path / "c.sqlite")
+    try:
+        mitte = geo.ortsbereich_center("Ohmstede")
+        punkte = [[mitte[1] + i * 0.00005, mitte[0] + i * 0.00005] for i in range(41)]
+        linie = json.dumps({"type": "LineString", "coordinates": punkte})
+        with store._conn:
+            store._conn.execute(
+                "INSERT INTO council_locations (slug,name,kind,district,geojson,updated_at) "
+                "VALUES ('kurz','Kurzweg','street','Ohmstede',?,'2026-09-01')", (linie,))
+        store.rebuild_location_districts()
+        bereiche = {r["district"] for r in store._conn.execute(
+            "SELECT district FROM council_location_districts WHERE location_slug='kurz'")}
+        assert bereiche == {"Ohmstede"}, bereiche
+    finally:
+        store.close()

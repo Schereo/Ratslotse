@@ -170,6 +170,8 @@ def process(council_db: Path, *, apply: bool = False) -> dict:
         store.fix_contradicting_districts()
         store.fix_eponymous_districts()
         store.clear_code_only_districts()
+        # Ganz zuletzt: Erst jetzt stehen alle Stadtteile fest.
+        store.rebuild_location_districts()
     store.close()
     removed = len(llm_rows) + len(deterministic_rows) + len(beiwerk_rows) if apply else 0
     return {"invalid_llm": len(llm_rows), "invalid_deterministic": len(deterministic_rows),

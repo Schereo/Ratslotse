@@ -1511,6 +1511,22 @@ class CouncilStore:
             "CREATE INDEX IF NOT EXISTS idx_locations_place ON council_locations(place_id)")
         self._conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_locations_ortsbereich ON council_locations(ortsbereich_id)")
+        # Ein Ort kann in MEHREREN Ortsbereichen liegen. ``council_locations.district``
+        # trägt weiterhin genau einen — den überwiegenden, für die Anzeige. Wo ein
+        # Ort tatsächlich hingehört, steht hier: Die Alexanderstraße läuft durch
+        # fünf Ortsbereiche, und wer nach Ziegelhof filtert, will sie sehen.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_location_districts ("
+            "location_slug TEXT NOT NULL, district TEXT NOT NULL, place_id TEXT, "
+            "share REAL NOT NULL DEFAULT 1.0, "
+            "PRIMARY KEY (location_slug, district))"
+        )
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_location_districts_place "
+            "ON council_location_districts(place_id)")
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_location_districts_district "
+            "ON council_location_districts(district)")
         self._conn.execute(
             "CREATE TABLE IF NOT EXISTS council_decision_locations ("
             "decision_id INTEGER NOT NULL, location_slug TEXT NOT NULL, "
@@ -9854,12 +9870,43 @@ class CouncilStore:
         return [dict(r) for r in rows]
 
     @staticmethod
-    def _place_location_condition(place) -> tuple[str, list]:
-        """SQL-Bedingung auf Alias ``l`` für einen kanonischen Katalogort."""
+    def _place_location_condition(place, *, nur_hauptbereich: bool = False) -> tuple[str, list]:
+        """SQL-Bedingung auf Alias ``l`` für einen kanonischen Katalogort.
+
+        ``nur_hauptbereich`` schaltet die Mehrfach-Zugehörigkeit ab. Zwei
+        Fragen, die verschieden zu beantworten sind:
+
+        *„Welche Beschlüsse betreffen den Ziegelhof?"* — die Alexanderstraße
+        läuft dort durch, also gehört „Ausbauplanung Alexanderstraße" dazu.
+        Weite Bedingung.
+
+        *„Welche THEMEN schlage ich für den Ziegelhof vor?"* — hier zählt eine
+        Entität mit, sobald sie in irgendeinem Beschluss zusammen mit der
+        Alexanderstraße vorkommt. Mit der weiten Bedingung schlug das
+        Ehnernviertel plötzlich „Hallensichel-Ost" und „Entlastungsstraße
+        Fliegerhorst" vor — Fliegerhorst-Themen, die über eine Straße
+        hereingeschwappt sind und die richtigen Vorschläge verdrängten.
+        Deshalb hier der Hauptbereich.
+
+        Die Vorschläge sind damit eine Teilmenge des Beschlussfilters, nie das
+        Gegenteil: Was vorgeschlagen wird, findet sich auch im Filter wieder.
+        """
         from council.locations import location_slug
 
-        if place.is_primary:
+        if place.is_primary and nur_hauptbereich:
             return "(l.ortsbereich_id = ? OR l.district = ?)", [place.id, place.name]
+        if place.is_primary:
+            # ZUSÄTZLICH über die Zugehörigkeits-Tabelle, nicht statt der
+            # Spalte. Eine Straße durch fünf Ortsbereiche gehört in alle fünf
+            # Filter (siehe ``rebuild_location_districts``) — aber die Spalte
+            # bleibt daneben stehen: Sie ist immer gefüllt, die Tabelle wird
+            # erst von einem Lauf aufgebaut. Landete der Code vor dem ersten
+            # Lauf, fände der Stadtteil-Filter sonst gar nichts mehr. So kann
+            # er nur mehr finden als vorher, nie weniger.
+            return ("(l.ortsbereich_id = ? OR l.district = ? OR l.slug IN ("
+                    "SELECT location_slug FROM council_location_districts "
+                    "WHERE place_id = ? OR district = ?))",
+                    [place.id, place.name, place.id, place.name])
         slugs = list(dict.fromkeys(location_slug(value)
                                    for value in (place.name, *place.aliases)))
         return (f"(l.place_id = ? OR l.slug IN ({','.join('?' * len(slugs))}))",
@@ -10035,6 +10082,61 @@ class CouncilStore:
                        WHERE m.slug = council_locations.slug
                          AND m.lat IS NOT NULL AND m.lon IS NOT NULL)""", (now,))
         return cur.rowcount
+
+    #: Ab welchem Anteil der Stützpunkte ein Ortsbereich als berührt gilt.
+    #: Zehn Prozent von bis zu 60 Punkten sind ein echtes Straßenstück, keine
+    #: angeschnittene Ecke — und die zusätzliche Mindestzahl fängt sehr kurze
+    #: Geometrien ab, bei denen ein einzelner Punkt schon 10 % wäre.
+    ORTSBEREICH_ANTEIL = 0.10
+    ORTSBEREICH_MINDESTPUNKTE = 2
+
+    def rebuild_location_districts(self) -> int:
+        """Die Ortsbereichs-Zugehörigkeit neu aufbauen — mehrere je Ort erlaubt.
+
+        ``council_locations.district`` trägt genau einen Stadtteil, den
+        überwiegenden. Für die Anzeige ist das richtig; zum Filtern ist es zu
+        wenig. Die Alexanderstraße verläuft zu 38 % in Bürgerfelde, zu 20 % in
+        Alexandersfeld, zu 18 % im Ziegelhof, zu 13 % im Ehnernviertel und zu
+        10 % in Dietrichsfeld — mit einer Spalte sehen vier Viertel ihre eigene
+        Straße nicht. Am Prod-Bestand (01.09.2026) betrifft das 99 Orte mit
+        zusammen rund 1.700 Beschluss-Zuordnungen.
+
+        **Gleichnamige Orte bekommen nur ihren eigenen Bereich.** Die Fläche,
+        die ein Kartendienst für „Ofenerdiek" liefert, schwappt nach Nadorst —
+        aber unser Katalog-Umriss IST die Definition von Ofenerdiek. 25 solcher
+        Orte gibt es; sie würden sonst ihre Nachbarn einfärben.
+        """
+        from council import geo, places
+
+        eponym = set()
+        for place in places.primary_places():
+            eponym.update(v.strip().casefold() for v in (place.name, *place.aliases))
+        nach_name = {p.name: p for p in places.primary_places()}
+
+        zeilen = []
+        for row in self._conn.execute(
+            "SELECT slug,name,district,geojson FROM council_locations "
+            "WHERE district IS NOT NULL"
+        ).fetchall():
+            bereiche = {row["district"]: 1.0}
+            if (row["geojson"]
+                    and (row["name"] or "").strip().casefold() not in eponym):
+                stimmen = geo.ortsbereiche_der_geometrie(row["geojson"])
+                gesamt = sum(stimmen.values()) or 1
+                for name, punkte in stimmen.items():
+                    anteil = punkte / gesamt
+                    if (anteil >= self.ORTSBEREICH_ANTEIL
+                            and punkte >= self.ORTSBEREICH_MINDESTPUNKTE):
+                        bereiche[name] = max(bereiche.get(name, 0.0), anteil)
+            for name, anteil in bereiche.items():
+                place = nach_name.get(name)
+                zeilen.append((row["slug"], name, place.id if place else None, anteil))
+        with self._conn:
+            self._conn.execute("DELETE FROM council_location_districts")
+            self._conn.executemany(
+                "INSERT OR REPLACE INTO council_location_districts "
+                "(location_slug,district,place_id,share) VALUES (?,?,?,?)", zeilen)
+        return len(zeilen)
 
     def clear_code_only_districts(self) -> int:
         """Nackten Kennungen den Stadtteil nehmen — den Verweis aber lassen.
@@ -10362,15 +10464,19 @@ class CouncilStore:
         # Auf einen Ortsbereich eingeschränkt: „was ist gerade in MEINEM
         # Stadtteil los?". Die Bedingung sitzt auf dem Beschluss, nicht auf der
         # Entität — eine Entität hat selbst keinen Ort, sie erbt ihn von den
-        # Beschlüssen, in denen sie vorkommt. Dieselbe Bedingung wie im
-        # Beschlussfilter (``_place_location_condition``), damit „Beschlüsse in
-        # Osternburg" und „Themen aus Osternburg" nicht verschieden rechnen.
+        # Beschlüssen, in denen sie vorkommt.
+        #
+        # Und genau deshalb HIER der Hauptbereich (``nur_hauptbereich=True``):
+        # Erbt eine Entität den Ort über jeden mitgenannten Ortsbezug, dann
+        # reicht eine lange Straße, um fremde Themen einzuschleppen. Siehe
+        # ``_place_location_condition``.
         ort_bedingung, ort_params = "", []
         if place_id:
             place = self.resolve_place(place_id)
             if not place:
                 return []
-            bedingung, params = self._place_location_condition(place)
+            bedingung, params = self._place_location_condition(
+                place, nur_hauptbereich=True)
             ort_bedingung = (
                 " AND EXISTS (SELECT 1 FROM council_decision_locations dl "
                 "JOIN council_locations l ON l.slug = dl.location_slug "
@@ -10466,6 +10572,12 @@ class CouncilStore:
         slugs = [k.get("slug") or "" for k in kandidaten]
         platz = ",".join("?" * len(slugs))
         breite = {r["slug"]: r["orte"] for r in self._conn.execute(
+            # ABSICHTLICH die eine Hauptspalte und NICHT die Zugehörigkeits-
+            # Tabelle: Hier wird gemessen, wie breit ein Thema streut, um
+            # stadtweite Themen aus den Stadtteil-Listen zu halten. Zählte man
+            # jede berührte Zugehörigkeit mit, machte eine einzige lange Straße
+            # ihr Thema „stadtweit" — und die Alexanderstraße verschwände aus
+            # allen fünf Vierteln, statt in allen fünf zu stehen.
             f"""SELECT e.slug, COUNT(DISTINCT COALESCE(l.ortsbereich_id, l.district)) AS orte
                   FROM council_entities e
                   JOIN council_entity_links el ON el.entity_id = e.id
