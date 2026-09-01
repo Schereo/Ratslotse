@@ -619,7 +619,7 @@ def _bestand_lsn_realsteuern(store: CouncilStore) -> set[tuple]:
     der Zahl, nicht das Deckblatt, auf dem sie stand."""
     return {(r[0],) for r in _jahre(
         store, "SELECT DISTINCT year FROM council_staedtevergleich "
-               "WHERE series = 'realsteuern'")}
+               "WHERE series = 'real_taxes'")}
 
 
 def _bestand_lsn_gewerbesteuer(store: CouncilStore) -> set[tuple]:

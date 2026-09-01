@@ -547,16 +547,16 @@ def test_erneutes_speichern_ersetzt_nur_die_eigene_reihe(tmp_path, kfa2026, real
         store.save_staedtevergleich(
             "tax_capacity", sv.zeilen_steuerkraft(sv.lies_kfa(kfa2026)), _herkunft())
         zeilen, _ = sv.zeilen_realsteuern(sv.lies_realsteuervergleich(realsteuer))
-        store.save_staedtevergleich("realsteuern", zeilen,
+        store.save_staedtevergleich("real_taxes", zeilen,
                                     _herkunft(probe="lsn_hebesatzprobe"))
         assert len(store.get_staedtevergleich("tax_capacity")) == 16
 
         # Steuerkraft erneut — die Realsteuern bleiben unangetastet.
-        vorher = len(store.get_staedtevergleich("realsteuern"))
+        vorher = len(store.get_staedtevergleich("real_taxes"))
         store.save_staedtevergleich(
             "tax_capacity", sv.zeilen_steuerkraft(sv.lies_kfa(kfa2026)), _herkunft())
         assert len(store.get_staedtevergleich("tax_capacity")) == 16
-        assert len(store.get_staedtevergleich("realsteuern")) == vorher
+        assert len(store.get_staedtevergleich("real_taxes")) == vorher
         assert len(store.get_staedtevergleich()) == 16 + vorher
     finally:
         store.close()

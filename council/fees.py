@@ -87,9 +87,9 @@ class GebuehrenFehler(RuntimeError):
 
 BEREICHE: dict[str, tuple[str, str]] = {
     # Kürzel → (Muster im Anlagenkopf, Name für die Anzeige)
-    "abfallbehandlung": (r"Abfallbehandlungsanlagen", "Abfallbehandlungsanlagen"),
-    "abfallsammlung": (r"Abfallsammlung", "Abfallsammlung"),
-    "strassenreinigung": (r"Stra[ßs]enreinigung", "Straßenreinigung"),
+    "waste_treatment": (r"Abfallbehandlungsanlagen", "Abfallbehandlungsanlagen"),
+    "waste_collection": (r"Abfallsammlung", "Abfallsammlung"),
+    "street_cleaning": (r"Stra[ßs]enreinigung", "Straßenreinigung"),
 }
 
 #: Die Einheit, in der die Bezugsmenge gemessen wird — sie steht im Dokument
@@ -203,34 +203,34 @@ class _Satzart:
 # Bezeichnungen stehen 2026 als Zeilen. Die Einheiten sind keine Ableitung,
 # sondern stammen aus deren Kopf bzw. Bezeichnung.
 SATZARTEN: tuple[_Satzart, ...] = (
-    _Satzart("abfallbehandlung_mg", "abfallbehandlung", "AB", "Gebühr je Mg",
+    _Satzart("waste_treatment_per_mg", "waste_treatment", "AB", "Gebühr je Mg",
              "Mg", r"Geb[üu]hr je Mg"),
-    _Satzart("grundgebuehr", "abfallsammlung", "AS", "Grundgebühr",
+    _Satzart("base_fee", "waste_collection", "AS", "Grundgebühr",
              "Grundgebühr", r"Grundgeb[üu]hr"),
-    _Satzart("litergebuehr", "abfallsammlung", "AS", "Allgemeine Litergebühr",
+    _Satzart("per_litre_fee", "waste_collection", "AS", "Allgemeine Litergebühr",
              "Liter Behältervolumen", r"Allg\.\s*Litergeb[üu]hr"),
-    _Satzart("biogrundmenge_60l", "abfallsammlung", "AS", "Biogrundmenge 60 L",
+    _Satzart("organic_base_volume_60l", "waste_collection", "AS", "Biogrundmenge 60 L",
              "60 L Biogrundmenge", r"Biogrundmenge\s+60\s*L"),
-    _Satzart("sperrmuellkarte", "abfallsammlung", "AS", "Sperrmüllkarte",
+    _Satzart("bulky_waste_card", "waste_collection", "AS", "Sperrmüllkarte",
              "Karte", r"Sperrm[üu]llkarte"),
-    _Satzart("gruengutkarte", "abfallsammlung", "AS", "Grüngutkarte",
+    _Satzart("green_waste_card", "waste_collection", "AS", "Grüngutkarte",
              "Karte", r"Gr[üu]ngutkarte"),
-    _Satzart("sperrmuell_1m3", "abfallsammlung", "AS",
+    _Satzart("bulky_waste_1m3", "waste_collection", "AS",
              "Sperrmüllanlieferung 1 m³", "Anlieferung 1 m³",
              r"Sperrm[üu]llanlieferung\s+1\s*m\s*³"),
-    _Satzart("sperrmuell_2m3", "abfallsammlung", "AS",
+    _Satzart("bulky_waste_2m3", "waste_collection", "AS",
              "Sperrmüllanlieferung 2 m³", "Anlieferung 2 m³",
              r"Sperrm[üu]llanlieferung\s+2\s*m\s*³"),
-    _Satzart("gruengut_05m3", "abfallsammlung", "AS",
+    _Satzart("green_waste_05m3", "waste_collection", "AS",
              "Grüngutanlieferung bis 0,5 m³", "Anlieferung bis 0,5 m³",
              r"Gr[üu]ngutanlieferung\s+bis\s+0,5\s*m\s*³"),
-    _Satzart("gruengut_1m3", "abfallsammlung", "AS",
+    _Satzart("green_waste_1m3", "waste_collection", "AS",
              "Grüngutanlieferung bis 1 m³", "Anlieferung bis 1 m³",
              r"Gr[üu]ngutanlieferung\s+bis\s+1\s*m\s*³"),
-    _Satzart("gruengut_2m3", "abfallsammlung", "AS",
+    _Satzart("green_waste_2m3", "waste_collection", "AS",
              "Grüngutanlieferung bis 2 m³", "Anlieferung bis 2 m³",
              r"Gr[üu]ngutanlieferung\s+bis\s+2\s*m\s*³"),
-    _Satzart("strassenreinigung_qw", "strassenreinigung", "SR",
+    _Satzart("street_cleaning_per_metre", "street_cleaning", "SR",
              "Gebühr je Meter Quadratwurzel bei wöchentlicher Reinigung",
              "Meter Quadratwurzel", r"Geb[üu]hr je Meter Quadratwurzel"),
 )
@@ -587,11 +587,11 @@ def lies_gebuehrensaetze(text: str, template_number: str | None = None) -> list[
     bedarfe, risse = lies(text, template_number)
     eckwerte = {
         b.area: b.fee_proposed for b in bedarfe
-        if b.year == year and b.area in ("abfallbehandlung", "strassenreinigung")
+        if b.year == year and b.area in ("waste_treatment", "street_cleaning")
     }
     tarifwerte = {s.area: s.amount for s in saetze
-                  if s.key in ("abfallbehandlung_mg", "strassenreinigung_qw")}
-    if set(eckwerte) != {"abfallbehandlung", "strassenreinigung"}:
+                  if s.key in ("waste_treatment_per_mg", "street_cleaning_per_metre")}
+    if set(eckwerte) != {"waste_treatment", "street_cleaning"}:
         details = f"; gerissene Anlagen: {' | '.join(risse)}" if risse else ""
         raise GebuehrenFehler(
             f"Anlage 4 für {year}: Eckwerte aus Anlagen 1 und 3 fehlen{details}")

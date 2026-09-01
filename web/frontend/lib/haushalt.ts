@@ -1001,7 +1001,7 @@ export function flussbild(
  *  dort also keine einzelne Division. Eine 0 wäre eine Behauptung. */
 export type GebuehrenZeile = {
   year: number;
-  /** `abfallbehandlung` · `abfallsammlung` · `strassenreinigung`. */
+  /** `waste_treatment` · `waste_collection` · `street_cleaning`. */
   area: string;
   area_name: string;
   /** Was der Bereich im Jahr insgesamt kostet. */

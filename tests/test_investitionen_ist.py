@@ -122,16 +122,16 @@ def test_betraege_stehen_in_euro(gelesen):
     """Die Quelle rechnet in Tausend Euro, gespeichert wird in Euro."""
     z = next(z for z in gelesen["zeilen"] if z["year"] == 2025)
     assert z["total"] == 60_773_000
-    assert z["baumassnahmen"] == 16_208_000
-    assert z["sonstige"] == 20_083_000
+    assert z["construction"] == 16_208_000
+    assert z["other_investing"] == 20_083_000
 
 
 def test_die_kamerale_zeile_traegt_ihre_eigenen_felder(gelesen):
     """2003 hat „Gewährung von Darlehen", nicht „Aktivierbare Zuwendungen"."""
     z = next(z for z in gelesen["zeilen"] if z["year"] == 2003)
-    assert z["darlehen"] == 0
-    assert z["baumassnahmen_k"] == 14_792_000
-    assert "zuwendungen" not in z, "eine doppische Spalte in einer kameralen Zeile"
+    assert z["loans_granted"] == 0
+    assert z["construction_cameral"] == 14_792_000
+    assert "capitalizable_grants" not in z, "eine doppische Spalte in einer kameralen Zeile"
 
 
 def test_eine_doppische_zeile_im_kameralen_abschnitt_faellt_durch():
@@ -315,7 +315,7 @@ def test_ein_zweiter_lauf_laesst_keine_karteileichen(store, gelesen):
     Zeile, die sich selbst widerspricht, ohne dass ein Lauf etwas meldet."""
     _speichern(store, gelesen)
     schmaler = dict(next(z for z in gelesen["zeilen"] if z["year"] == 2025))
-    schmaler["sonstige"] = None
+    schmaler["other_investing"] = None
     schmaler["total"] = 40_690_000
     store.save_investitionen_ist([schmaler], herkunft.Herkunft(
         kind="city", url=ii.TABELLE_URL, probe="investitionen_ist_zeilensumme"))

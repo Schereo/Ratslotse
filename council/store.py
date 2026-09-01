@@ -1181,6 +1181,39 @@ class CouncilStore:
             ("aufsichtsorgane", "supervisory_bodies"),
             ("beteiligungen", "own_shareholdings"), ("haushalt", "budget_impact")])
         # Die Art einer Entität. `organisation` ist schon englisch.
+        # Die Gebührenbereiche. Die Migration MUSS nach `_STRUKTUR_SPALTEN`
+        # stehen — dort heißt `bereich` erst `area`, und vorher fände
+        # `_werte_umschreiben` die Spalte nicht und kehrte still zurück.
+        self._werte_umschreiben("council_gebuehren", "area", [
+            ("abfallbehandlung", "waste_treatment"), ("abfallsammlung", "waste_collection"),
+            ("strassenreinigung", "street_cleaning")])
+        self._werte_umschreiben("council_gebuehrensaetze", "area", [
+            ("abfallbehandlung", "waste_treatment"), ("abfallsammlung", "waste_collection"),
+            ("strassenreinigung", "street_cleaning")])
+        self._werte_umschreiben("council_gebuehrensaetze", "key", [
+            ("abfallbehandlung_mg", "waste_treatment_per_mg"), ("grundgebuehr", "base_fee"),
+            ("litergebuehr", "per_litre_fee"), ("biogrundmenge_60l", "organic_base_volume_60l"),
+            ("sperrmuellkarte", "bulky_waste_card"), ("gruengutkarte", "green_waste_card"),
+            ("sperrmuell_1m3", "bulky_waste_1m3"), ("sperrmuell_2m3", "bulky_waste_2m3"),
+            ("gruengut_05m3", "green_waste_05m3"), ("gruengut_1m3", "green_waste_1m3"),
+            ("gruengut_2m3", "green_waste_2m3"),
+            ("strassenreinigung_qw", "street_cleaning_per_metre")])
+        # Der Städtevergleich. `steuerkraft` und `finanzausgleich` hat der Code
+        # schon seit #876 englisch gelesen — die Zeilen standen seither still
+        # daneben, `staedtevergleich_kontext()` lieferte None.
+        self._werte_umschreiben("council_staedtevergleich", "series", [
+            ("steuerkraft", "tax_capacity"), ("finanzausgleich", "fiscal_equalization"),
+            ("realsteuern", "real_taxes")])
+        # Die Auszahlungsarten der Ist-Investitionen, je Regelwerk eigene.
+        self._werte_umschreiben("council_investitionen_ist_arten", "field", [
+            ("darlehen", "loans_granted"), ("grundvermoegen", "real_property"),
+            ("baumassnahmen_k", "construction_cameral"),
+            ("bewegliches_k", "movable_assets_cameral"),
+            ("zuwendungen", "capitalizable_grants"),
+            ("grundstuecke", "land_and_buildings"), ("baumassnahmen", "construction"),
+            ("bewegliches", "movable_assets"),
+            ("finanzanlagen", "financial_assets_acquired"),
+            ("sonstige", "other_investing")])
         for tabelle in ("council_entities", "council_entity_obs"):
             self._werte_umschreiben(tabelle, "kind", [
                 ("projekt", "project"), ("ort", "place")])
@@ -12365,11 +12398,11 @@ class CouncilStore:
         bereiche: list[str] = []
         if any(w in text for w in ("abfall", "muell", "tonne", "behaelter",
                                    "restmuell", "biomuell")):
-            bereiche.extend(("abfallbehandlung", "abfallsammlung"))
+            bereiche.extend(("waste_treatment", "waste_collection"))
         if any(w in text for w in ("strassenreinig", "kehrgeb", "kehrdienst")):
-            bereiche.append("strassenreinigung")
+            bereiche.append("street_cleaning")
         if not bereiche and any(w in text for w in ("gebuehr", "gebuehrenbedarf")):
-            bereiche = ["abfallbehandlung", "abfallsammlung", "strassenreinigung"]
+            bereiche = ["waste_treatment", "waste_collection", "street_cleaning"]
         bereiche = list(dict.fromkeys(bereiche))
         if not bereiche:
             return None

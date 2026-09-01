@@ -747,13 +747,13 @@ def _befuellter_store(tmp_path) -> CouncilStore:
             "cost_calculation, deductions, costs_to_cover, reference_quantity, "
             "reference_unit, fee, fee_proposed, template_number, probes, "
             "herkunft_id, fetched_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,7,'')",
-            [(2025, "abfallbehandlung", "Abfallbehandlungsanlagen", 18_000_000.0,
+            [(2025, "waste_treatment", "Abfallbehandlungsanlagen", 18_000_000.0,
               -2_000_000.0, 16_000_000.0, 114_475.0, "Mg", 139.772, 139.70,
               "24/0999", "gebuehren_kaskade,gebuehren_division"),
-             (2026, "abfallbehandlung", "Abfallbehandlungsanlagen", 19_000_000.0,
+             (2026, "waste_treatment", "Abfallbehandlungsanlagen", 19_000_000.0,
               -1_500_000.0, 17_500_000.0, 115_733.0, "Mg", 151.214, 151.21,
               "25/0999", "gebuehren_kaskade,gebuehren_division"),
-             (2026, "abfallsammlung", "Abfallsammlung", 12_000_000.0,
+             (2026, "waste_collection", "Abfallsammlung", 12_000_000.0,
               -1_000_000.0, 11_000_000.0, None, None, None, None,
               "25/0999", "gebuehren_kaskade")])
     return store
@@ -763,7 +763,7 @@ def test_gebuehrenquelle_filtert_bereiche_und_traegt_belege(tmp_path):
     store = _befuellter_store(tmp_path)
     g = store.gebuehren_fuer_begriffe(["Müllgebühren"])
     assert [x["area"] for x in g["bereiche"]] == [
-        "abfallbehandlung", "abfallsammlung"]
+        "waste_treatment", "waste_collection"]
     assert [r["year"] for r in g["bereiche"][0]["werte"]] == [2026, 2025]
     text = qa._gebuehren_block(g)
     assert "151,214 € je Mg" in text and "Gebührenvorschlag 151,21 €" in text

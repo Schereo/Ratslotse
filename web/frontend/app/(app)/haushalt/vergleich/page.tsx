@@ -114,10 +114,10 @@ export default function VergleichSeite() {
   }
 
   const skJahr = juengstesJahr(data, "tax_capacity");
-  const rsJahr = juengstesJahr(data, "realsteuern");
+  const rsJahr = juengstesJahr(data, "real_taxes");
   const tax_capacity = skJahr ? steuerkraftJeEinwohner(data, skJahr) : [];
-  const grundsteuer = rsJahr ? balken(data, "realsteuern", "hebesatz_grundsteuer_b", rsJahr) : [];
-  const einnahmekraft = rsJahr ? balken(data, "realsteuern", "steuereinnahmekraft_je_ew", rsJahr) : [];
+  const grundsteuer = rsJahr ? balken(data, "real_taxes", "hebesatz_grundsteuer_b", rsJahr) : [];
+  const einnahmekraft = rsJahr ? balken(data, "real_taxes", "steuereinnahmekraft_je_ew", rsJahr) : [];
 
   // Der Grundsteuer-Sprung (H3-07): Hebesatz vor und nach der Reform 2025 —
   // als Slope-Paar MIT Bruch-Marker, denn über die Reform hinweg sind die
@@ -135,9 +135,9 @@ export default function VergleichSeite() {
   // einen Vergleich, den die Seite gar nicht zeigte. Jetzt entscheidet, ob
   // die Werte wirklich dastehen.
   const rsVorjahrKandidat = rsJahr != null
-    && (data.years.realsteuern ?? []).includes(rsJahr - 1) ? rsJahr - 1 : null;
+    && (data.years.real_taxes ?? []).includes(rsJahr - 1) ? rsJahr - 1 : null;
   const grundsteuerVorher = rsVorjahrKandidat != null
-    ? balken(data, "realsteuern", "hebesatz_grundsteuer_b", rsVorjahrKandidat) : [];
+    ? balken(data, "real_taxes", "hebesatz_grundsteuer_b", rsVorjahrKandidat) : [];
   const rsVorjahr = grundsteuerVorher.length > 0 ? rsVorjahrKandidat : null;
   const sprungPaare: SlopePaarZeile[] = grundsteuer
     .flatMap((z): SlopePaarZeile[] => {
@@ -157,7 +157,7 @@ export default function VergleichSeite() {
   const hSteuerkraft = herkunftVon(data,
     data.werte.find((w) => w.series === "tax_capacity")?.herkunft_id);
   const hRealsteuern = herkunftVon(data,
-    data.werte.find((w) => w.series === "realsteuern")?.herkunft_id);
+    data.werte.find((w) => w.series === "real_taxes")?.herkunft_id);
 
   const olReihe = series(data, "steuereinnahmekraft_je_ew", "403000");
   const wobReihe = series(data, "steuereinnahmekraft_je_ew", WOLFSBURG);
