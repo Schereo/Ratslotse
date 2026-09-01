@@ -1693,8 +1693,8 @@ function SessionsTab({ committees }: { committees: string[] }) {
                             {/* Nur bei anstehenden Sitzungen: Nach der Sitzung
                                 ist die Änderungs-Historie Verwaltungsrauschen. */}
                             {heuteTag != null && s.session_date >= heuteTag
-                              && (d?.aenderungen?.length ?? 0) > 0 && (
-                              <AenderungenSection aenderungen={d!.aenderungen!} />
+                              && (d?.agenda_changes?.length ?? 0) > 0 && (
+                              <AenderungenSection aenderungen={d!.agenda_changes!} />
                             )}
                             {/* Vorbehalts-Hinweis EINMAL über der Liste — der
                                 Disclaimer hat einen festen Ort, statt an jedem

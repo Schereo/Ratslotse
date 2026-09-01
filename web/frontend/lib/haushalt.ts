@@ -320,7 +320,7 @@ export type HaushaltDaten = {
   /** Die Herkunft je `herkunft_id` — nur die Einträge, auf die eine gelieferte
    *  Zeile zeigt.
    *
-   *  ANFORDERN MUSS MAN SIE (`FELDER` um `"herkunft"` ergänzen). Die meisten
+   *  ANFORDERN MUSS MAN SIE (`FELDER` um `"provenance"` ergänzen). Die meisten
    *  Seiten dieses Bereichs brauchen sie nicht: Ihr Beleg hängt am
    *  Quellen-Schlüssel, und `/haushalt/dokumente` liefert je Jahrgang das
    *  zugehörige Papier.
@@ -330,7 +330,7 @@ export type HaushaltDaten = {
    *  Betrieben. Dann ist die `herkunft_id` der Zeile die einzige Angabe, die
    *  „diese Zahl steht in DIESEM Papier" beantwortet
    *  (`components/haushalt/source.tsx: Dokumentbeleg`). */
-  herkunft?: Record<string, Herkunft>;
+  provenance?: Record<string, Herkunft>;
   /** Die Haushaltssatzung je Jahrgang — der Rahmen um den Plan. */
   budget_bylaw?: HaushaltssatzungZeile[];
   /** Woraus die Abfall- und Straßenreinigungsgebühren entstehen. */
@@ -386,7 +386,7 @@ export type HaushaltDaten = {
  *      const { data } = useFetch<HaushaltAuswahl<typeof FELDER[number]>>(
  *        haushaltUrl(FELDER));
  *
- *  `herkunft` ist bewusst **nicht** dabei: Die Belege dieser Seiten hängen am
+ *  `provenance` ist bewusst **nicht** dabei: Die Belege dieser Seiten hängen am
  *  Quellen-Schlüssel (`lib/haushalt-quellen.ts` + `/haushalt/dokumente`), nicht
  *  an der `herkunft_id` der Zeile. Wer sie doch braucht, fordert sie an. */
 export function haushaltUrl(
@@ -417,21 +417,21 @@ export type HaushaltAuswahl<K extends keyof HaushaltDaten> = Pick<HaushaltDaten,
 
 /** Die Herkunft zu einer `herkunft_id` — oder `null`.
  *
- *  Absichtlich strukturell getypt (`{ herkunft?: … }` statt eines konkreten
+ *  Absichtlich strukturell getypt (`{ provenance?: … }` statt eines konkreten
  *  Seitentyps): Dieselbe Suche steht in neun Seitenmodulen dieses Bereichs,
  *  jedes Mal wortgleich, weil jedes seinen eigenen Antworttyp hat. Diese
- *  Fassung passt auf alle — auch auf `HaushaltAuswahl<…>`, sobald `"herkunft"`
+ *  Fassung passt auf alle — auch auf `HaushaltAuswahl<…>`, sobald `"provenance"`
  *  in `FELDER` steht.
  *
  *  Gibt `null` zurück, wenn die Karte gar nicht angefordert wurde. Das ist
  *  bewusst kein Fehler: Die Anzeige lässt den Dokumentbeleg dann weg und
  *  behält ihren Quellen-Chip — sichtbar falsch wäre schlimmer als knapp. */
 export function herkunftVon(
-  daten: { herkunft?: Record<string, Herkunft> } | null | undefined,
+  daten: { provenance?: Record<string, Herkunft> } | null | undefined,
   id: number | null | undefined,
 ): Herkunft | null {
-  if (!daten?.herkunft || id == null) return null;
-  return daten.herkunft[String(id)] ?? null;
+  if (!daten?.provenance || id == null) return null;
+  return daten.provenance[String(id)] ?? null;
 }
 
 /** Welche Sorte Nachbewilligung eine Zeile ist.

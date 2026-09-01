@@ -237,7 +237,7 @@ export interface SessionDetail extends CouncilSession {
   url: string;
   /** „Zuletzt geändert"-Chronik der Tagesordnung, neueste zuerst — Ziel der
    *  Änderungs-Push; ältere Sitzungen (vor der Chronik) haben keine. */
-  aenderungen?: AgendaAenderung[];
+  agenda_changes?: AgendaAenderung[];
   video_results?: VideoResult[];
 }
 
@@ -379,14 +379,14 @@ export interface Member {
 
 export interface MemberDetail {
   /** Fehlt bei älteren gecachten Antworten — dann als "rat" behandeln. */
-  typ?: "council";
+  type?: "council";
   name: string; slug: string; party: string | null;
   /** Zugehörigkeit für den Seitenkopf — wie im Verzeichnis aufgelöst
    *  („FDP/Volt" → FDP, wo es belegt ist). Die Zeitreihe darunter bleibt
    *  quellentreu. */
   current_affiliation: { label: string; kind: "party" | "group" | "independent"; parties: string[] } | null;
-  /** s. `Member.art` — bei „beratend" bleibt `faction_timeline` leer. */
-  art: "council" | "advisory";
+  /** Wie `Member.art` im Verzeichnis — bei „beratend" bleibt `faction_timeline` leer. */
+  kind: "council" | "advisory";
   organisation: string | null;
   n_sessions: number; active_from: string | null; active_to: string | null;
   /** Fraktions-/Gruppen-Verlauf aus der Anwesenheit: Phasen je Zugehörigkeit,
@@ -411,13 +411,13 @@ export interface MemberDetail {
   recent: { ksinr: number; committee: string; session_date: string }[];
   /** Erste Seite der Wortbeiträge (volle Paraphrase); weitere holt
    *  /council/person/{slug}/speeches. */
-  wortbeitraege?: { kind: string; top: string | null; text: string;
+  speeches?: { kind: string; agenda_item: string | null; text: string;
     committee: string | null; session_date: string }[];
   /** Wie viele Beiträge die Person insgesamt hat — die erste Seite ist ein
    *  Ausschnitt davon. */
-  wortbeitraege_gesamt?: number;
+  speeches_total?: number;
   /** Gremien mit Beitrags-Anzahl, Futter für den Filter. */
-  wortbeitraege_gremien?: { committee: string; n: number }[];
+  speeches_committees?: { committee: string; n: number }[];
 }
 
 /** Schmaler Steckbrief für Verwaltungsleute mit erkanntem Amt (Tims Wunsch
@@ -425,12 +425,12 @@ export interface MemberDetail {
  *  Fraktions-Zeitleiste, kein Vorsitz-Zähler, keine Gremien-Präsenz. `von`/
  *  `bis` sind Jahre der Protokoll-Erwähnung, keine amtliche Amtszeit. */
 export interface VerwaltungDetail {
-  typ: "administration";
+  type: "administration";
   name: string; slug: string; role: string | null;
   aktiv: boolean; von: string | null; bis: string | null;
-  wortbeitraege?: MemberDetail["wortbeitraege"];
-  wortbeitraege_gesamt?: number;
-  wortbeitraege_gremien?: { committee: string; n: number }[];
+  speeches?: MemberDetail["speeches"];
+  speeches_total?: number;
+  speeches_committees?: { committee: string; n: number }[];
 }
 
 export type PersonProfil = MemberDetail | VerwaltungDetail;
@@ -468,17 +468,17 @@ export interface DecisionDetail {
   attendance: Attendee[];
   present_parties: string[];
   sub_votes: CouncilDecision[];
-  vorlage_journey: VorlageStop[];
+  template_journey: VorlageStop[];
   /** Offizielle Beratungsfolge aus dem Ratsinfo — mit Ergebnis je Station und
    *  geplanten künftigen Beratungen. Fehlt, solange sie nicht gescrapt ist. */
-  beratungsfolge?: Beratung[];
+  deliberation_path?: Beratung[];
   /** Design 28a/W1: Verfolgt dieses Konto den Vorgang? Fehlt, wenn der
    *  Beschluss zu keiner eingelesenen Vorlage gehört — dann gibt es nichts,
    *  woran ein Abo hängen könnte. */
   follow?: { kvonr: number; following: boolean };
   /** Stufe 3b: Läuft zu diesem Bauleitplan gerade eine Bürgerbeteiligung?
    *  Kommt von oldenburg.planungsbeteiligung.de, gematcht über die Plan-Nummer. */
-  beteiligung?: { title: string; schritt: string; valid_from: string | null;
+  participation?: { title: string; schritt: string; valid_from: string | null;
                   valid_until: string | null; url: string;
                   /** "laufend" oder "beendet": Abgeschlossene Verfahren
                    *  loescht das Portal der Stadt spurlos — bei uns bleiben
@@ -487,9 +487,9 @@ export interface DecisionDetail {
   similar: SimilarDecision[];
   entities: Entity[];
   ratsinfo_url: string;
-  vorlage_url?: string | null;
+  template_url?: string | null;
   /** Eingelesener Vorlagen-Text (Sachverhalt/Begründung) zum Beschluss. */
-  vorlage?: {
+  template?: {
     template_number: string | null;
     title: string | null;
     kind: string | null;
@@ -511,7 +511,7 @@ export interface DecisionDetail {
    *  weg. Der pauschale Verweis auf `/haushalt` steht für jeden Beschluss
    *  gleich da und ist deshalb für keinen eine Auskunft; diese Karte gibt es
    *  nur, wo sie etwas sagt. */
-  haushalts_anschluss?: {
+  budget_link?: {
     art: "nachbewilligung" | "buergschaft";
     href: string;
     title: string;
@@ -521,7 +521,7 @@ export interface DecisionDetail {
   } | null;
   /** P1: document_id der gerenderten Planzeichnung — B-Plan-Beschlüsse
    *  zeigen sie als Bild statt nur als Anlagen-Download. */
-  plan_bild?: number | null;
+  plan_image?: number | null;
   /** Anlagen der Vorlage (Anträge zuerst, mit erkannten Antragstellern). */
   anlagen?: {
     document_id: number;
@@ -651,7 +651,7 @@ export interface AdminUserDetail {
    * `admin_user_detail`. `quiz` zählt beantwortete Fragen, alles andere
    * Aufrufe. */
   features: {
-    ki_frage: number; recherche: number; suche: number;
+    ki_frage: number; research: number; suche: number;
     quiz: number; analyse: number; karte: number;
   };
   topics: string[];

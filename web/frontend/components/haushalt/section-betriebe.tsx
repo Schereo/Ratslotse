@@ -47,14 +47,14 @@ import type { JahrPunkt } from "@/components/grafik/daten";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { cn } from "@/lib/utils";
 
-// `herkunft` ist hier PFLICHT und keine Zugabe: Ein Jahrgang besteht aus
+// `provenance` ist hier PFLICHT und keine Zugabe: Ein Jahrgang besteht aus
 // bis zu sieben Plänen von sieben Betrieben, und nur die `herkunft_id` der
 // Zeile sagt, welches der sieben Papiere hinter DIESER Karte steht.
 /** Was dieser Abschnitt an Daten braucht. Die SEITE holt sie — sie muss aus
  *  denselben Zeilen die Nummerierung der Wirtschaftspläne rechnen
  *  (`jeDokument`), und `useFetch` hat keinen Zwischenspeicher: Ein zweiter
  *  Aufruf wäre ein zweiter Request auf dieselbe Adresse. */
-export type BetriebeDaten = HaushaltAuswahl<"business_plans" | "herkunft">;
+export type BetriebeDaten = HaushaltAuswahl<"business_plans" | "provenance">;
 
 
 

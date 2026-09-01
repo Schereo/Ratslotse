@@ -1036,7 +1036,7 @@
         "type": "object"
       },
       "AdminUserFeatures": {
-        "description": "Feature-Nutzung eines Kontos. Die Schlüssel sind API-Namen und nicht die\ngespeicherten Werte — ``ki_frage`` zählt ``user_activity.feature =\n'ai_question'``, ``recherche`` zählt ``research`` (s.\n``Store.admin_user_detail``).\n\nWer dort einen Zähler ergänzt, ergänzt ihn HIER mit: Ein nicht deklariertes\nFeld verschwindet still aus der Antwort, und das Admin-Panel zeigte dann\neine Spalte weniger, ohne dass irgendwo etwas rot würde.",
+        "description": "Feature-Nutzung eines Kontos. Die Schlüssel sind API-Namen und nicht die\ngespeicherten Werte — ``ki_frage`` zählt ``user_activity.feature =\n'ai_question'``, ``research`` zählt ``research`` (s.\n``Store.admin_user_detail``).\n\nWer dort einen Zähler ergänzt, ergänzt ihn HIER mit: Ein nicht deklariertes\nFeld verschwindet still aus der Antwort, und das Admin-Panel zeigte dann\neine Spalte weniger, ohne dass irgendwo etwas rot würde.",
         "properties": {
           "analyse": {
             "title": "Analyse",
@@ -1054,8 +1054,8 @@
             "title": "Quiz",
             "type": "integer"
           },
-          "recherche": {
-            "title": "Recherche",
+          "research": {
+            "title": "Research",
             "type": "integer"
           },
           "suche": {
@@ -1065,7 +1065,7 @@
         },
         "required": [
           "ki_frage",
-          "recherche",
+          "research",
           "suche",
           "quiz",
           "analyse",
@@ -2167,9 +2167,9 @@
           "cash_budget_totals": {
             "title": "Cash Budget Totals"
           },
-          "herkunft": {
+          "provenance": {
             "additionalProperties": true,
-            "title": "Herkunft",
+            "title": "Provenance",
             "type": "object"
           },
           "rows": {
@@ -2180,7 +2180,7 @@
           }
         },
         "required": [
-          "herkunft",
+          "provenance",
           "totals",
           "rows",
           "cash_budget_totals",
@@ -2222,13 +2222,13 @@
           "explanations": {
             "title": "Explanations"
           },
-          "herkunft": {
-            "additionalProperties": true,
-            "title": "Herkunft",
-            "type": "object"
-          },
           "items": {
             "title": "Items"
+          },
+          "provenance": {
+            "additionalProperties": true,
+            "title": "Provenance",
+            "type": "object"
           },
           "years": {
             "title": "Years"
@@ -2236,7 +2236,7 @@
         },
         "required": [
           "explanations",
-          "herkunft",
+          "provenance",
           "years",
           "items"
         ],
@@ -2251,9 +2251,9 @@
           "cities": {
             "title": "Cities"
           },
-          "herkunft": {
+          "provenance": {
             "additionalProperties": true,
-            "title": "Herkunft",
+            "title": "Provenance",
             "type": "object"
           },
           "values": {
@@ -2265,7 +2265,7 @@
         },
         "required": [
           "citation",
-          "herkunft",
+          "provenance",
           "years",
           "cities",
           "values"
@@ -2307,16 +2307,16 @@
             "title": "Guarantees",
             "type": "object"
           },
-          "herkunft": {
-            "additionalProperties": true,
-            "title": "Herkunft",
-            "type": "object"
-          },
           "integrated_debt": {
             "title": "Integrated Debt"
           },
           "interest_expense": {
             "title": "Interest Expense"
+          },
+          "provenance": {
+            "additionalProperties": true,
+            "title": "Provenance",
+            "type": "object"
           },
           "scope_note": {
             "title": "Scope Note"
@@ -2334,7 +2334,7 @@
           "scope_note",
           "column_kinds",
           "guarantees",
-          "herkunft",
+          "provenance",
           "integrated_debt",
           "years",
           "series",
@@ -2383,13 +2383,13 @@
             "title": "Fixed Assets",
             "type": "object"
           },
-          "herkunft": {
-            "additionalProperties": true,
-            "title": "Herkunft",
-            "type": "object"
-          },
           "missing": {
             "title": "Missing"
+          },
+          "provenance": {
+            "additionalProperties": true,
+            "title": "Provenance",
+            "type": "object"
           },
           "scope_note": {
             "title": "Scope Note"
@@ -2407,7 +2407,7 @@
           "scope_note",
           "fixed_assets",
           "missing",
-          "herkunft",
+          "provenance",
           "years",
           "accounting_systems",
           "series"
@@ -2430,13 +2430,13 @@
             "title": "Entity",
             "type": "array"
           },
-          "herkunft": {
-            "additionalProperties": true,
-            "title": "Herkunft",
-            "type": "object"
-          },
           "items": {
             "title": "Items"
+          },
+          "provenance": {
+            "additionalProperties": true,
+            "title": "Provenance",
+            "type": "object"
           },
           "years": {
             "title": "Years"
@@ -2444,7 +2444,7 @@
         },
         "required": [
           "cross_check",
-          "herkunft",
+          "provenance",
           "years",
           "consolidated",
           "items",
@@ -2463,11 +2463,6 @@
           "group_comparison": {
             "title": "Group Comparison"
           },
-          "herkunft": {
-            "additionalProperties": true,
-            "title": "Herkunft",
-            "type": "object"
-          },
           "indicators": {
             "title": "Indicators"
           },
@@ -2478,6 +2473,11 @@
             "items": {},
             "title": "People",
             "type": "array"
+          },
+          "provenance": {
+            "additionalProperties": true,
+            "title": "Provenance",
+            "type": "object"
           },
           "report_years": {
             "title": "Report Years"
@@ -2495,7 +2495,7 @@
           "report_years",
           "owners",
           "companies",
-          "herkunft",
+          "provenance",
           "years",
           "indicators",
           "group_comparison",
@@ -2507,15 +2507,15 @@
       },
       "BudgetInvestmentProgram": {
         "properties": {
-          "herkunft": {
-            "additionalProperties": true,
-            "title": "Herkunft",
-            "type": "object"
-          },
           "measures": {
             "items": {},
             "title": "Measures",
             "type": "array"
+          },
+          "provenance": {
+            "additionalProperties": true,
+            "title": "Provenance",
+            "type": "object"
           },
           "sub_budgets": {
             "items": {},
@@ -2533,7 +2533,7 @@
         },
         "required": [
           "totals",
-          "herkunft",
+          "provenance",
           "years",
           "measures",
           "sub_budgets"
@@ -2548,15 +2548,15 @@
             "title": "Financial Budget",
             "type": "array"
           },
-          "herkunft": {
-            "additionalProperties": true,
-            "title": "Herkunft",
-            "type": "object"
-          },
           "investments": {
             "items": {},
             "title": "Investments",
             "type": "array"
+          },
+          "provenance": {
+            "additionalProperties": true,
+            "title": "Provenance",
+            "type": "object"
           },
           "sub_budgets": {
             "items": {},
@@ -2570,7 +2570,7 @@
         "required": [
           "financial_budget",
           "investments",
-          "herkunft",
+          "provenance",
           "years",
           "sub_budgets"
         ],
@@ -2610,11 +2610,6 @@
           "fiscal_equalization": {
             "title": "Fiscal Equalization"
           },
-          "herkunft": {
-            "additionalProperties": true,
-            "title": "Herkunft",
-            "type": "object"
-          },
           "income_budget": {
             "title": "Income Budget"
           },
@@ -2632,6 +2627,11 @@
           },
           "product_years": {
             "title": "Product Years"
+          },
+          "provenance": {
+            "additionalProperties": true,
+            "title": "Provenance",
+            "type": "object"
           },
           "reserves": {
             "title": "Reserves"
@@ -2725,16 +2725,16 @@
           "groups": {
             "title": "Groups"
           },
-          "herkunft": {
-            "additionalProperties": true,
-            "title": "Herkunft",
-            "type": "object"
-          },
           "missing": {
             "title": "Missing"
           },
           "part_names": {
             "title": "Part Names"
+          },
+          "provenance": {
+            "additionalProperties": true,
+            "title": "Provenance",
+            "type": "object"
           },
           "rows": {
             "title": "Rows"
@@ -2746,7 +2746,7 @@
         "required": [
           "missing",
           "groups",
-          "herkunft",
+          "provenance",
           "editions",
           "totals",
           "part_names",
@@ -3131,7 +3131,7 @@
         "type": "object"
       },
       "DecisionDetail": {
-        "description": "Ein Beschluss mit allem Drum und Dran — die geteilte Detailseite.\n\nDie ersten zehn Felder setzt der Handler unbedingt. Alles darunter hängt\nan der Vorlage: Ohne ``template_number`` gibt es weder ``vorlage`` noch\n``attachments``, ``beratungsfolge`` oder ``plan_bild``; ``follow`` kommt\nnur dazu, wenn wirklich jemand angemeldet ist. Deshalb ``NotRequired`` —\nein Beschluss ohne Vorlage wäre sonst ein 500 (gemessen: rund die Hälfte\ndes Bestands).",
+        "description": "Ein Beschluss mit allem Drum und Dran — die geteilte Detailseite.\n\nDie ersten zehn Felder setzt der Handler unbedingt. Alles darunter hängt\nan der Vorlage: Ohne ``template_number`` gibt es weder ``template`` noch\n``attachments``, ``deliberation_path`` oder ``plan_image``; ``follow`` kommt\nnur dazu, wenn wirklich jemand angemeldet ist. Deshalb ``NotRequired`` —\nein Beschluss ohne Vorlage wäre sonst ein 500 (gemessen: rund die Hälfte\ndes Bestands).",
         "properties": {
           "attachments": {
             "items": {
@@ -3149,15 +3149,40 @@
             "title": "Attendance",
             "type": "array"
           },
-          "beratungsfolge": {
+          "budget_link": {
+            "additionalProperties": true,
+            "title": "Budget Link",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "decision": {
+            "$ref": "#/components/schemas/DecisionRow"
+          },
+          "deliberation_path": {
             "items": {
               "additionalProperties": true,
               "type": "object"
             },
-            "title": "Beratungsfolge",
+            "title": "Deliberation Path",
             "type": "array"
           },
-          "beteiligung": {
+          "entities": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Entities",
+            "type": "array"
+          },
+          "follow": {
+            "$ref": "#/components/schemas/DecisionFollow"
+          },
+          "importance_breakdown": {
+            "$ref": "#/components/schemas/ImportanceBreakdown"
+          },
+          "participation": {
             "description": "Eine laufende oder beendete Bauleitplan-Beteiligung zum Beschluss.",
             "properties": {
               "beendet_am": {
@@ -3222,33 +3247,8 @@
               "null"
             ]
           },
-          "decision": {
-            "$ref": "#/components/schemas/DecisionRow"
-          },
-          "entities": {
-            "items": {
-              "additionalProperties": true,
-              "type": "object"
-            },
-            "title": "Entities",
-            "type": "array"
-          },
-          "follow": {
-            "$ref": "#/components/schemas/DecisionFollow"
-          },
-          "haushalts_anschluss": {
-            "additionalProperties": true,
-            "title": "Haushalts Anschluss",
-            "type": [
-              "object",
-              "null"
-            ]
-          },
-          "importance_breakdown": {
-            "$ref": "#/components/schemas/ImportanceBreakdown"
-          },
-          "plan_bild": {
-            "title": "Plan Bild",
+          "plan_image": {
+            "title": "Plan Image",
             "type": [
               "integer",
               "null"
@@ -3283,16 +3283,16 @@
             "title": "Sub Votes",
             "type": "array"
           },
-          "vorlage": {
+          "template": {
             "$ref": "#/components/schemas/DecisionTemplate"
           },
-          "vorlage_journey": {
+          "template_journey": {
             "items": {},
-            "title": "Vorlage Journey",
+            "title": "Template Journey",
             "type": "array"
           },
-          "vorlage_url": {
-            "title": "Vorlage Url",
+          "template_url": {
+            "title": "Template Url",
             "type": [
               "string",
               "null"
@@ -3305,10 +3305,10 @@
           "present_parties",
           "ratsinfo_url",
           "sub_votes",
-          "vorlage_journey",
+          "template_journey",
           "similar",
           "entities",
-          "beteiligung",
+          "participation",
           "importance_breakdown"
         ],
         "title": "DecisionDetail",
@@ -4955,9 +4955,27 @@
             "title": "Slug",
             "type": "string"
           },
-          "typ": {
+          "speeches": {
+            "items": {
+              "$ref": "#/components/schemas/Speech"
+            },
+            "title": "Speeches",
+            "type": "array"
+          },
+          "speeches_committees": {
+            "items": {
+              "$ref": "#/components/schemas/SpeechCommittee"
+            },
+            "title": "Speeches Committees",
+            "type": "array"
+          },
+          "speeches_total": {
+            "title": "Speeches Total",
+            "type": "integer"
+          },
+          "type": {
             "const": "administration",
-            "title": "Typ",
+            "title": "Type",
             "type": "string"
           },
           "von": {
@@ -4966,37 +4984,19 @@
               "string",
               "null"
             ]
-          },
-          "wortbeitraege": {
-            "items": {
-              "$ref": "#/components/schemas/Speech"
-            },
-            "title": "Wortbeitraege",
-            "type": "array"
-          },
-          "wortbeitraege_gesamt": {
-            "title": "Wortbeitraege Gesamt",
-            "type": "integer"
-          },
-          "wortbeitraege_gremien": {
-            "items": {
-              "$ref": "#/components/schemas/SpeechCommittee"
-            },
-            "title": "Wortbeitraege Gremien",
-            "type": "array"
           }
         },
         "required": [
-          "typ",
+          "type",
           "name",
           "slug",
           "role",
           "aktiv",
           "von",
           "bis",
-          "wortbeitraege",
-          "wortbeitraege_gesamt",
-          "wortbeitraege_gremien"
+          "speeches",
+          "speeches_total",
+          "speeches_committees"
         ],
         "title": "PersonAdministration",
         "type": "object"
@@ -5025,7 +5025,7 @@
         "type": "object"
       },
       "PersonCouncil": {
-        "description": "Das Profil eines Mandats- oder beratenden Mitglieds\n(``CouncilStore.member_detail``, ``typ`` legt der Router dazu).\n\n``art`` unterscheidet innerhalb dieses Zweigs noch einmal: ``council`` ist\nein Ratsmandat, ``advisory`` eine beratende Mitwirkung — für die ist die\nFraktions-Zeitreihe gegenstandslos, ``party``/``current_affiliation``\nbleiben dann leer und ``organisation`` nennt die entsendende Stelle.",
+        "description": "Das Profil eines Mandats- oder beratenden Mitglieds\n(``CouncilStore.member_detail``, ``type`` legt der Router dazu).\n\n``kind`` unterscheidet innerhalb dieses Zweigs noch einmal: ``council`` ist\nein Ratsmandat, ``advisory`` eine beratende Mitwirkung — für die ist die\nFraktions-Zeitreihe gegenstandslos, ``party``/``current_affiliation``\nbleiben dann leer und ``organisation`` nennt die entsendende Stelle.",
         "properties": {
           "active_from": {
             "title": "Active From",
@@ -5040,14 +5040,6 @@
               "string",
               "null"
             ]
-          },
-          "art": {
-            "enum": [
-              "council",
-              "advisory"
-            ],
-            "title": "Art",
-            "type": "string"
           },
           "committees": {
             "items": {
@@ -5070,6 +5062,14 @@
             },
             "title": "Faction Timeline",
             "type": "array"
+          },
+          "kind": {
+            "enum": [
+              "council",
+              "advisory"
+            ],
+            "title": "Kind",
+            "type": "string"
           },
           "n_sessions": {
             "title": "N Sessions",
@@ -5107,37 +5107,37 @@
             "title": "Slug",
             "type": "string"
           },
-          "typ": {
-            "const": "council",
-            "title": "Typ",
-            "type": "string"
-          },
-          "wortbeitraege": {
+          "speeches": {
             "items": {
               "$ref": "#/components/schemas/Speech"
             },
-            "title": "Wortbeitraege",
+            "title": "Speeches",
             "type": "array"
           },
-          "wortbeitraege_gesamt": {
-            "title": "Wortbeitraege Gesamt",
-            "type": "integer"
-          },
-          "wortbeitraege_gremien": {
+          "speeches_committees": {
             "items": {
               "$ref": "#/components/schemas/SpeechCommittee"
             },
-            "title": "Wortbeitraege Gremien",
+            "title": "Speeches Committees",
             "type": "array"
+          },
+          "speeches_total": {
+            "title": "Speeches Total",
+            "type": "integer"
+          },
+          "type": {
+            "const": "council",
+            "title": "Type",
+            "type": "string"
           }
         },
         "required": [
-          "typ",
+          "type",
           "name",
           "slug",
           "party",
           "current_affiliation",
-          "art",
+          "kind",
           "organisation",
           "n_sessions",
           "active_from",
@@ -5146,9 +5146,9 @@
           "ris",
           "committees",
           "recent",
-          "wortbeitraege",
-          "wortbeitraege_gesamt",
-          "wortbeitraege_gremien"
+          "speeches",
+          "speeches_total",
+          "speeches_committees"
         ],
         "title": "PersonCouncil",
         "type": "object"
@@ -5281,6 +5281,13 @@
               "null"
             ]
           },
+          "electoral_districts": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Electoral Districts",
+            "type": "array"
+          },
           "filterable": {
             "title": "Filterable",
             "type": "boolean"
@@ -5347,13 +5354,6 @@
             },
             "title": "Sources",
             "type": "array"
-          },
-          "wahlbereiche": {
-            "items": {
-              "type": "integer"
-            },
-            "title": "Wahlbereiche",
-            "type": "array"
           }
         },
         "required": [
@@ -5361,7 +5361,7 @@
           "name",
           "kind",
           "aliases",
-          "wahlbereiche",
+          "electoral_districts",
           "parent_ids",
           "description",
           "source_ids",
@@ -7116,11 +7116,11 @@
       "SessionDetail": {
         "description": "Eine Sitzung mit allem, was die Sitzungs-Seite braucht.\n\nErbt die Spalten von ``SessionRow`` (das ist die Zeile aus\n``CouncilStore.get_session``); alles darunter hängt der Router an. Die\nsieben Zusätze stehen an JEDER Antwort — der Handler setzt sie\nunbedingt, auch wenn die Listen leer bleiben.",
         "properties": {
-          "aenderungen": {
+          "agenda_changes": {
             "items": {
               "$ref": "#/components/schemas/AgendaChange"
             },
-            "title": "Aenderungen",
+            "title": "Agenda Changes",
             "type": "array"
           },
           "agenda_items": {
@@ -7231,7 +7231,7 @@
           "has_protocol",
           "video_results",
           "url",
-          "aenderungen"
+          "agenda_changes"
         ],
         "title": "SessionDetail",
         "type": "object"
@@ -7514,6 +7514,13 @@
       "Speech": {
         "description": "Ein Wortbeitrag aus einem Protokoll.",
         "properties": {
+          "agenda_item": {
+            "title": "Agenda Item",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "committee": {
             "title": "Committee",
             "type": [
@@ -7538,19 +7545,12 @@
           "text": {
             "title": "Text",
             "type": "string"
-          },
-          "top": {
-            "title": "Top",
-            "type": [
-              "string",
-              "null"
-            ]
           }
         },
         "required": [
           "committee",
           "session_date",
-          "top",
+          "agenda_item",
           "kind",
           "text"
         ],
@@ -7576,7 +7576,7 @@
         "type": "object"
       },
       "Speeches": {
-        "description": "Wortbeiträge einer Person (``CouncilStore.wortbeitraege_person``).\n\nZwei Zahlen, weil es zwei Dinge sind: ``total`` gilt zum gesetzten\nGremien-Filter, ``gesamt`` ist der Bestand der Person über alle Gremien —\ndaran hängt die Zeile „N Wortbeiträge\" auf der Personen-Seite. Der\ndeutsche Schlüssel steht so im Bestand und bleibt unangetastet.",
+        "description": "Wortbeiträge einer Person (``CouncilStore.wortbeitraege_person``).\n\nZwei Zahlen, weil es zwei Dinge sind: ``total`` gilt zum gesetzten\nGremien-Filter, ``overall`` ist der Bestand der Person über alle Gremien —\ndaran hängt die Zeile „N Wortbeiträge\" auf der Personen-Seite.",
         "properties": {
           "committees": {
             "items": {
@@ -7585,16 +7585,16 @@
             "title": "Committees",
             "type": "array"
           },
-          "gesamt": {
-            "title": "Gesamt",
-            "type": "integer"
-          },
           "items": {
             "items": {
               "$ref": "#/components/schemas/Speech"
             },
             "title": "Items",
             "type": "array"
+          },
+          "overall": {
+            "title": "Overall",
+            "type": "integer"
           },
           "total": {
             "title": "Total",
@@ -7604,7 +7604,7 @@
         "required": [
           "items",
           "total",
-          "gesamt",
+          "overall",
           "committees"
         ],
         "title": "Speeches",
@@ -12297,7 +12297,7 @@
     },
     "/api/council/person/{slug}": {
       "get": {
-        "description": "Das Profil einer Person — Ratsmitglied oder Verwaltung mit erkanntem\nAmt (Tims Wunsch 19.08.): party/sessions/committees/Gantt bei einem\nMandat, ein schmaler Steckbrief (Amt + Erwähnungszeitraum) bei einem Amt.\n`typ` im Ergebnis unterscheidet (\"council\" | \"administration\") — das Frontend\nrendert danach zwei verschiedene Ansichten.\n\nOhne Anmeldung lesbar (s. `decision_detail`). Es geht ausschließlich um\nMandatsträger:innen bzw. Amtsträger:innen in ihrer öffentlichen Funktion,\nund die Angaben stammen aus den Anwesenheitslisten der amtlichen\nProtokolle — keine Privatperson wird hier auffindbar, die es nicht\nohnehin schon ist.",
+        "description": "Das Profil einer Person — Ratsmitglied oder Verwaltung mit erkanntem\nAmt (Tims Wunsch 19.08.): party/sessions/committees/Gantt bei einem\nMandat, ein schmaler Steckbrief (Amt + Erwähnungszeitraum) bei einem Amt.\n`type` im Ergebnis unterscheidet (\"council\" | \"administration\") — das Frontend\nrendert danach zwei verschiedene Ansichten.\n\nOhne Anmeldung lesbar (s. `decision_detail`). Es geht ausschließlich um\nMandatsträger:innen bzw. Amtsträger:innen in ihrer öffentlichen Funktion,\nund die Angaben stammen aus den Anwesenheitslisten der amtlichen\nProtokolle — keine Privatperson wird hier auffindbar, die es nicht\nohnehin schon ist.",
         "operationId": "person_api_council_person__slug__get",
         "parameters": [
           {

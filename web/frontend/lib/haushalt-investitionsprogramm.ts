@@ -55,7 +55,7 @@ export type ProgrammDaten = {
   measures: ProgrammZeile[];
   sub_budgets: ProgrammZeile[];
   totals: ProgrammZeile[];
-  herkunft: Record<string, Herkunft>;
+  provenance: Record<string, Herkunft>;
 };
 
 export function herkunftVon(
@@ -63,7 +63,7 @@ export function herkunftVon(
   id: number | null | undefined,
 ): Herkunft | null {
   if (!daten || id == null) return null;
-  return daten.herkunft[String(id)] ?? null;
+  return daten.provenance[String(id)] ?? null;
 }
 
 /** Die Teilhaushalte eines Jahrgangs, nach Gesamtsumme absteigend.

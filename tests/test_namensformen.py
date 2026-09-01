@@ -139,11 +139,11 @@ def test_alter_slug_landet_beim_kanonischen_profil(store):
 
 def test_wortbeitraege_sind_die_summe_beider_formen(store):
     d = store.member_detail("tim-harms")
-    texte = {w["text"] for w in d["wortbeitraege"]}
+    texte = {w["text"] for w in d["speeches"]}
     assert texte == {"Unter der älteren Namensform", "Unter der jüngeren Namensform"}
-    assert d["wortbeitraege_gesamt"] == 2
+    assert d["speeches_total"] == 2
     # „Dr. Ingo Harms" trägt denselben Nachnamen und bleibt trotzdem draußen.
-    assert store.member_detail("ingo-harms")["wortbeitraege_gesamt"] == 1
+    assert store.member_detail("ingo-harms")["speeches_total"] == 1
 
 
 def test_lexikon_fuehrt_verwaltung_und_rat_je_einmal(store):

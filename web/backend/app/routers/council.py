@@ -550,7 +550,7 @@ def haushalt_stellenplan(
         "groups": gruppen,
         "rows": zeilen,
         "missing": fehlend,
-        "herkunft": {str(h["id"]): h for h in store.get_herkunft(ids)},
+        "provenance": {str(h["id"]): h for h in store.get_herkunft(ids)},
     }
 
 
@@ -664,7 +664,7 @@ def haushalt_konzern(
                     for t in entity],
         "items": posten,
         "cross_check": gegenprobe,
-        "herkunft": {str(h["id"]): h for h in store.get_herkunft(ids)},
+        "provenance": {str(h["id"]): h for h in store.get_herkunft(ids)},
     }
 
 
@@ -830,7 +830,7 @@ def haushalt_beteiligungen(
         "owners": eigentuemer,
         "indicators": indicators,
         "group_comparison": vergleich,
-        "herkunft": {str(h["id"]): h for h in store.get_herkunft(ids)},
+        "provenance": {str(h["id"]): h for h in store.get_herkunft(ids)},
     }
 
 
@@ -871,7 +871,7 @@ def haushalt_investitionen(
         "sub_budgets": [z for z in zeilen if z["level"] == "sub_budget"],
         "investments": [z for z in zeilen if z["level"] == "investments"],
         "financial_budget": [z for z in zeilen if z["level"] == "financial_budget"],
-        "herkunft": {str(h["id"]): h for h in store.get_herkunft(ids)},
+        "provenance": {str(h["id"]): h for h in store.get_herkunft(ids)},
     }
 
 
@@ -913,7 +913,7 @@ def haushalt_investitionsprogramm(
         "measures": [z for z in zeilen if z["level"] == "measure"],
         "sub_budgets": [z for z in zeilen if z["level"] == "sub_budget"],
         "totals": [z for z in zeilen if z["level"] == "total"],
-        "herkunft": {str(h["id"]): h for h in store.get_herkunft(ids)},
+        "provenance": {str(h["id"]): h for h in store.get_herkunft(ids)},
     }
 
 
@@ -1262,7 +1262,7 @@ def haushalt_uebersicht(
     }
 
     gewuenscht = {f.strip() for f in (felder or "").split(",") if f.strip()}
-    unbekannt = sorted(gewuenscht - set(bausteine) - {"herkunft"})
+    unbekannt = sorted(gewuenscht - set(bausteine) - {"provenance"})
     if unbekannt:
         # Lieber ein lauter Fehler als eine Seite, der still ein Block fehlt:
         # Ein Tippfehler im `felder`-Wert wäre sonst nicht von „dieses Feld ist
@@ -1298,14 +1298,14 @@ def haushalt_uebersicht(
     # Plänen von sieben Betrieben, jeder ein eigenes Papier. Der Chip zeigte
     # dort auf „irgendeines davon", und im Verzeichnis stand eine einzige
     # Quelle für 33 Dokumente (Tim, 21.08.2026). Deshalb fordert diese Seite
-    # seit dem 21.08. `herkunft` an und belegt jede Karte mit der Zeile, aus
+    # seit dem 21.08. `provenance` an und belegt jede Karte mit der Zeile, aus
     # der sie stammt (`components/haushalt/source.tsx: Dokumentbeleg`).
     #
     # Die Karte reist dabei nicht als Ganzes: Es gehen nur die Einträge mit,
     # auf die eine gesendete Zeile zeigt — bei `felder=business_plans`
     # sind das keine 40.
-    if not gewuenscht or "herkunft" in gewuenscht:
-        daten["herkunft"] = {str(h["id"]): h
+    if not gewuenscht or "provenance" in gewuenscht:
+        daten["provenance"] = {str(h["id"]): h
                              for h in store.get_herkunft(sorted(_herkunft_ids(daten)))}
     return daten
 
@@ -1548,7 +1548,7 @@ def haushalt_aenderungslisten(
                     if s["herkunft_id"] is not None})
     return {"rows": zeilen, "totals": d["summen"],
             "cash_budget_rows": fhh_zeilen, "cash_budget_totals": f["summen"],
-            "herkunft": {str(h["id"]): h for h in store.get_herkunft(ids)}}
+            "provenance": {str(h["id"]): h for h in store.get_herkunft(ids)}}
 
 
 # Ohne Anmeldung lesbar (s. `decision_detail`) — die Beschluss-Seite zieht die
@@ -1574,7 +1574,7 @@ def session_detail(
     session["url"] = _ratsinfo_url(ksinr)
     # „Zuletzt geändert" (Tims Wunsch 18.08.): Die Push zur Änderungsmeldung
     # sagt nur noch den Satz — die Einzelheiten stehen hier, aus der Chronik.
-    session["aenderungen"] = _agenda_aenderungen(store, ksinr)
+    session["agenda_changes"] = _agenda_aenderungen(store, ksinr)
     return session
 
 
@@ -1709,7 +1709,7 @@ def decision_detail(
         "present_parties": sorted((p for p in present if p), key=order_key),
         "ratsinfo_url": _ratsinfo_url(d["ksinr"]),
         "sub_votes": [],
-        "vorlage_journey": [],
+        "template_journey": [],
         "similar": store.get_similar(decision_id, limit=5),
         "entities": store.entities_for_decision(decision_id),
     }
@@ -1718,7 +1718,7 @@ def decision_detail(
     # Handlungen, die Bürger*innen JETZT offenstehen (Stufe 3b).
     try:
         from council import beteiligung as bet_mod
-        out["beteiligung"] = next(
+        out["participation"] = next(
             ({"title": b["title"], "schritt": b["schritt"], "valid_from": b["valid_from"],
               "valid_until": b["valid_until"], "url": b["url"], "status": b.get("status") or "laufend",
               "beendet_am": b.get("beendet_am")}
@@ -1727,7 +1727,7 @@ def decision_detail(
              for b in store.list_beteiligungen(nur_laufende=False)
              if bet_mod.passt_zu_titel(b["plan_nrs"], d.get("title") or "")), None)
     except Exception:  # noqa: BLE001 — Zusatzinfo, nie Blocker
-        out["beteiligung"] = None
+        out["participation"] = None
     # Wichtigkeits-Aufschlüsselung (welche Signale trieben den Score) — erklärt
     # transparent, warum ein Beschluss als wichtig gilt.
     n_ber = len(store.get_beratungen(d["kvonr"])) if d.get("kvonr") else None
@@ -1748,13 +1748,13 @@ def decision_detail(
     if d.get("kind") == "decision" and d.get("item_number"):
         out["sub_votes"] = store.get_subvotes(d["ksinr"], d["item_number"])
     if d.get("template_number"):
-        out["vorlage_journey"] = store.vorlage_journey(d["template_number"])
-        out["vorlage_url"] = _vorlage_url(d["kvonr"]) if d.get("kvonr") else None
+        out["template_journey"] = store.vorlage_journey(d["template_number"])
+        out["template_url"] = _vorlage_url(d["kvonr"]) if d.get("kvonr") else None
         # Ingested Vorlage text (Sachverhalt/Begründung) — the why behind the
         # decision. Also our only kvonr source: protocols never carry one.
         v = store.get_vorlage_by_nr(d["template_number"])
         if v:
-            out["vorlage"] = {
+            out["template"] = {
                 "template_number": v.get("template_number"), "title": v.get("title"),
                 "kind": v.get("kind"), "document_url": v.get("document_url"),
                 "n_pages": v.get("n_pages"),
@@ -1769,13 +1769,13 @@ def decision_detail(
                 # unverändert und als Zitat gekennzeichnet.
                 "financial_impact": v.get("financial_impact"),
             }
-            if not out["vorlage_url"] and v.get("kvonr"):
-                out["vorlage_url"] = _vorlage_url(v["kvonr"])
+            if not out["template_url"] and v.get("kvonr"):
+                out["template_url"] = _vorlage_url(v["kvonr"])
         out["attachments"] = store.anlagen_for_vorlage_nr(d["template_number"])
         # Wo dieser Beschluss im Haushalts-Bereich wieder auftaucht — belegt
         # über eine echte Verknüpfung, nicht über eine Textsuche. `None` heißt
         # „nirgends nachweisbar", und die Seite lässt die Karte dann weg.
-        out["haushalts_anschluss"] = store.haushalts_anschluss(
+        out["budget_link"] = store.haushalts_anschluss(
             d["id"], d.get("template_number"))
         # P1: gerenderte Planzeichnung (scripts/render_plaene.py) — B-Plan-
         # Beschlüsse leben vom Bild, nicht vom Anlagen-Download. Echte
@@ -1787,14 +1787,14 @@ def decision_detail(
             return 0 if ("planzeichnung" in label or "plandarstellung" in label) else 1
 
         bilder = sorted((a for a in out["attachments"] if a.get("is_image") == 1), key=_plan_rang)
-        out["plan_bild"] = bilder[0]["document_id"] if bilder else None
+        out["plan_image"] = bilder[0]["document_id"] if bilder else None
         # Offizielle Beratungsfolge aus dem Ratsinfo — reicher als die aus
         # unseren Tagesordnungen abgeleitete Journey (Ergebnis je Station,
         # geplante künftige Beratungen). Die Journey bleibt der Fallback.
         kv = d.get("kvonr") or (v.get("kvonr") if v else None)
         if kv:
             today = date.today().isoformat()
-            out["beratungsfolge"] = [
+            out["deliberation_path"] = [
                 {**b, "future": bool(b["date"] and b["date"] > today)}
                 for b in store.get_beratungen(kv)
             ]
@@ -2751,7 +2751,7 @@ def person(slug: str, store: CouncilStore = Depends(get_council_store)) -> Perso
     """Das Profil einer Person — Ratsmitglied oder Verwaltung mit erkanntem
     Amt (Tims Wunsch 19.08.): party/sessions/committees/Gantt bei einem
     Mandat, ein schmaler Steckbrief (Amt + Erwähnungszeitraum) bei einem Amt.
-    `typ` im Ergebnis unterscheidet ("council" | "administration") — das Frontend
+    `type` im Ergebnis unterscheidet ("council" | "administration") — das Frontend
     rendert danach zwei verschiedene Ansichten.
 
     Ohne Anmeldung lesbar (s. `decision_detail`). Es geht ausschließlich um
@@ -2762,7 +2762,7 @@ def person(slug: str, store: CouncilStore = Depends(get_council_store)) -> Perso
     """
     data = store.member_detail(slug)
     if data:
-        data["typ"] = "council"
+        data["type"] = "council"
         return data
     data = store.verwaltung_detail(slug)
     if data:
@@ -3765,7 +3765,7 @@ def haushalt_vergleich(
         "values": werte,
         "years": years,
         "citation": beleg,
-        "herkunft": {str(h["id"]): h for h in store.get_herkunft(ids)},
+        "provenance": {str(h["id"]): h for h in store.get_herkunft(ids)},
     }
 
 
@@ -3861,7 +3861,7 @@ def haushalt_gebaut(
             "group_years": sorted({g["year"] for g in gruppen}),
             "probes": anlagenspiegel_mod.PROBEN,
         },
-        "herkunft": {str(h["id"]): h for h in store.get_herkunft(ids)},
+        "provenance": {str(h["id"]): h for h in store.get_herkunft(ids)},
     }
 
 
@@ -3912,7 +3912,7 @@ def haushalt_bilanz(
         "years": store.bilanz_jahre(),
         "items": posten,
         "explanations": erlaeuterungen,
-        "herkunft": {str(h["id"]): h for h in store.get_herkunft(ids)},
+        "provenance": {str(h["id"]): h for h in store.get_herkunft(ids)},
     }
 
 
@@ -4038,5 +4038,5 @@ def haushalt_schulden(
         # Legende nicht in zwei Sprachen existiert.
         "column_kinds": [{"field": field, "title": title}
                          for field, title in _s.SPALTEN[:4]],
-        "herkunft": {str(h["id"]): h for h in store.get_herkunft(ids)},
+        "provenance": {str(h["id"]): h for h in store.get_herkunft(ids)},
     }

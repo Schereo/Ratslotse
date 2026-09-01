@@ -696,7 +696,7 @@ function activitySignal(lastSeen: string | null): { dot: string; label: string }
 }
 
 const USER_FEATURE_LABEL: [keyof AdminUserDetail["features"], string][] = [
-  ["ki_frage", "KI-Frage"], ["recherche", "Gründliche Recherche"], ["suche", "Beschluss-Suche"],
+  ["ki_frage", "KI-Frage"], ["research", "Gründliche Recherche"], ["suche", "Beschluss-Suche"],
   ["quiz", "Quiz"], ["analyse", "Analyse"], ["karte", "Stadtkarte"],
 ];
 

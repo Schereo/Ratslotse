@@ -594,7 +594,7 @@ def test_endpunkt_liefert_werte_und_den_beleg(tmp_path, kfa2026):
 
         assert answer["years"]["tax_capacity"] == [2026]
         assert len(answer["values"]) == 16
-        assert answer["herkunft"]
+        assert answer["provenance"]
 
         # Ohne Vorlagen-Bestand bleibt der Beleg leer — aber er ist da, und
         # die Vorlagennummer steht drin.

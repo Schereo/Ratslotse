@@ -2364,7 +2364,7 @@ export interface paths {
          * @description Das Profil einer Person — Ratsmitglied oder Verwaltung mit erkanntem
          *     Amt (Tims Wunsch 19.08.): party/sessions/committees/Gantt bei einem
          *     Mandat, ein schmaler Steckbrief (Amt + Erwähnungszeitraum) bei einem Amt.
-         *     `typ` im Ergebnis unterscheidet ("council" | "administration") — das Frontend
+         *     `type` im Ergebnis unterscheidet ("council" | "administration") — das Frontend
          *     rendert danach zwei verschiedene Ansichten.
          *
          *     Ohne Anmeldung lesbar (s. `decision_detail`). Es geht ausschließlich um
@@ -4002,7 +4002,7 @@ export interface components {
          * AdminUserFeatures
          * @description Feature-Nutzung eines Kontos. Die Schlüssel sind API-Namen und nicht die
          *     gespeicherten Werte — ``ki_frage`` zählt ``user_activity.feature =
-         *     'ai_question'``, ``recherche`` zählt ``research`` (s.
+         *     'ai_question'``, ``research`` zählt ``research`` (s.
          *     ``Store.admin_user_detail``).
          *
          *     Wer dort einen Zähler ergänzt, ergänzt ihn HIER mit: Ein nicht deklariertes
@@ -4018,8 +4018,8 @@ export interface components {
             ki_frage: number;
             /** Quiz */
             quiz: number;
-            /** Recherche */
-            recherche: number;
+            /** Research */
+            research: number;
             /** Suche */
             suche: number;
         };
@@ -4463,8 +4463,8 @@ export interface components {
             cash_budget_rows: unknown;
             /** Cash Budget Totals */
             cash_budget_totals: unknown;
-            /** Herkunft */
-            herkunft: {
+            /** Provenance */
+            provenance: {
                 [key: string]: unknown;
             };
             /** Rows */
@@ -4487,12 +4487,12 @@ export interface components {
         BudgetBalanceSheet: {
             /** Explanations */
             explanations: unknown;
-            /** Herkunft */
-            herkunft: {
-                [key: string]: unknown;
-            };
             /** Items */
             items: unknown;
+            /** Provenance */
+            provenance: {
+                [key: string]: unknown;
+            };
             /** Years */
             years: unknown;
         };
@@ -4502,8 +4502,8 @@ export interface components {
             citation: unknown;
             /** Cities */
             cities: unknown;
-            /** Herkunft */
-            herkunft: {
+            /** Provenance */
+            provenance: {
                 [key: string]: unknown;
             };
             /** Values */
@@ -4528,14 +4528,14 @@ export interface components {
             guarantees: {
                 [key: string]: unknown;
             };
-            /** Herkunft */
-            herkunft: {
-                [key: string]: unknown;
-            };
             /** Integrated Debt */
             integrated_debt: unknown;
             /** Interest Expense */
             interest_expense: unknown;
+            /** Provenance */
+            provenance: {
+                [key: string]: unknown;
+            };
             /** Scope Note */
             scope_note: unknown;
             /** Series */
@@ -4563,12 +4563,12 @@ export interface components {
             fixed_assets: {
                 [key: string]: unknown;
             };
-            /** Herkunft */
-            herkunft: {
-                [key: string]: unknown;
-            };
             /** Missing */
             missing: unknown;
+            /** Provenance */
+            provenance: {
+                [key: string]: unknown;
+            };
             /** Scope Note */
             scope_note: unknown;
             /** Series */
@@ -4584,12 +4584,12 @@ export interface components {
             cross_check: unknown;
             /** Entity */
             entity: unknown[];
-            /** Herkunft */
-            herkunft: {
-                [key: string]: unknown;
-            };
             /** Items */
             items: unknown;
+            /** Provenance */
+            provenance: {
+                [key: string]: unknown;
+            };
             /** Years */
             years: unknown;
         };
@@ -4599,16 +4599,16 @@ export interface components {
             companies: unknown[];
             /** Group Comparison */
             group_comparison: unknown;
-            /** Herkunft */
-            herkunft: {
-                [key: string]: unknown;
-            };
             /** Indicators */
             indicators: unknown;
             /** Owners */
             owners: unknown;
             /** People */
             people: unknown[];
+            /** Provenance */
+            provenance: {
+                [key: string]: unknown;
+            };
             /** Report Years */
             report_years: unknown;
             /** Texts */
@@ -4618,12 +4618,12 @@ export interface components {
         };
         /** BudgetInvestmentProgram */
         BudgetInvestmentProgram: {
-            /** Herkunft */
-            herkunft: {
-                [key: string]: unknown;
-            };
             /** Measures */
             measures: unknown[];
+            /** Provenance */
+            provenance: {
+                [key: string]: unknown;
+            };
             /** Sub Budgets */
             sub_budgets: unknown[];
             /** Totals */
@@ -4635,12 +4635,12 @@ export interface components {
         BudgetInvestments: {
             /** Financial Budget */
             financial_budget: unknown[];
-            /** Herkunft */
-            herkunft: {
-                [key: string]: unknown;
-            };
             /** Investments */
             investments: unknown[];
+            /** Provenance */
+            provenance: {
+                [key: string]: unknown;
+            };
             /** Sub Budgets */
             sub_budgets: unknown[];
             /** Years */
@@ -4683,10 +4683,6 @@ export interface components {
             fees?: unknown;
             /** Fiscal Equalization */
             fiscal_equalization?: unknown;
-            /** Herkunft */
-            herkunft?: {
-                [key: string]: unknown;
-            };
             /** Income Budget */
             income_budget?: unknown;
             /** Income Statement */
@@ -4699,6 +4695,10 @@ export interface components {
             population?: unknown;
             /** Product Years */
             product_years?: unknown;
+            /** Provenance */
+            provenance?: {
+                [key: string]: unknown;
+            };
             /** Reserves */
             reserves?: unknown;
             /** Supplementary Approvals */
@@ -4748,14 +4748,14 @@ export interface components {
             editions: unknown;
             /** Groups */
             groups: unknown;
-            /** Herkunft */
-            herkunft: {
-                [key: string]: unknown;
-            };
             /** Missing */
             missing: unknown;
             /** Part Names */
             part_names: unknown;
+            /** Provenance */
+            provenance: {
+                [key: string]: unknown;
+            };
             /** Rows */
             rows: unknown;
             /** Totals */
@@ -4918,8 +4918,8 @@ export interface components {
          * @description Ein Beschluss mit allem Drum und Dran — die geteilte Detailseite.
          *
          *     Die ersten zehn Felder setzt der Handler unbedingt. Alles darunter hängt
-         *     an der Vorlage: Ohne ``template_number`` gibt es weder ``vorlage`` noch
-         *     ``attachments``, ``beratungsfolge`` oder ``plan_bild``; ``follow`` kommt
+         *     an der Vorlage: Ohne ``template_number`` gibt es weder ``template`` noch
+         *     ``attachments``, ``deliberation_path`` oder ``plan_image``; ``follow`` kommt
          *     nur dazu, wenn wirklich jemand angemeldet ist. Deshalb ``NotRequired`` —
          *     ein Beschluss ohne Vorlage wäre sonst ein 500 (gemessen: rund die Hälfte
          *     des Bestands).
@@ -4933,15 +4933,26 @@ export interface components {
             attendance: {
                 [key: string]: unknown;
             }[];
-            /** Beratungsfolge */
-            beratungsfolge?: {
+            /** Budget Link */
+            budget_link?: {
+                [key: string]: unknown;
+            } | null;
+            decision: components["schemas"]["DecisionRow"];
+            /** Deliberation Path */
+            deliberation_path?: {
                 [key: string]: unknown;
             }[];
+            /** Entities */
+            entities: {
+                [key: string]: unknown;
+            }[];
+            follow?: components["schemas"]["DecisionFollow"];
+            importance_breakdown: components["schemas"]["ImportanceBreakdown"];
             /**
              * DecisionParticipation
              * @description Eine laufende oder beendete Bauleitplan-Beteiligung zum Beschluss.
              */
-            beteiligung: {
+            participation: {
                 /** Beendet Am */
                 beendet_am: string | null;
                 /** Schritt */
@@ -4957,19 +4968,8 @@ export interface components {
                 /** Valid Until */
                 valid_until: string | null;
             } | null;
-            decision: components["schemas"]["DecisionRow"];
-            /** Entities */
-            entities: {
-                [key: string]: unknown;
-            }[];
-            follow?: components["schemas"]["DecisionFollow"];
-            /** Haushalts Anschluss */
-            haushalts_anschluss?: {
-                [key: string]: unknown;
-            } | null;
-            importance_breakdown: components["schemas"]["ImportanceBreakdown"];
-            /** Plan Bild */
-            plan_bild?: number | null;
+            /** Plan Image */
+            plan_image?: number | null;
             /** Present Parties */
             present_parties: string[];
             /** Ratsinfo Url */
@@ -4980,11 +4980,11 @@ export interface components {
             }[];
             /** Sub Votes */
             sub_votes: components["schemas"]["DecisionRow"][];
-            vorlage?: components["schemas"]["DecisionTemplate"];
-            /** Vorlage Journey */
-            vorlage_journey: unknown[];
-            /** Vorlage Url */
-            vorlage_url?: string | null;
+            template?: components["schemas"]["DecisionTemplate"];
+            /** Template Journey */
+            template_journey: unknown[];
+            /** Template Url */
+            template_url?: string | null;
         };
         /**
          * DecisionFollow
@@ -5682,19 +5682,19 @@ export interface components {
             role: string;
             /** Slug */
             slug: string;
+            /** Speeches */
+            speeches: components["schemas"]["Speech"][];
+            /** Speeches Committees */
+            speeches_committees: components["schemas"]["SpeechCommittee"][];
+            /** Speeches Total */
+            speeches_total: number;
             /**
-             * Typ
+             * Type
              * @constant
              */
-            typ: "administration";
+            type: "administration";
             /** Von */
             von: string | null;
-            /** Wortbeitraege */
-            wortbeitraege: components["schemas"]["Speech"][];
-            /** Wortbeitraege Gesamt */
-            wortbeitraege_gesamt: number;
-            /** Wortbeitraege Gremien */
-            wortbeitraege_gremien: components["schemas"]["SpeechCommittee"][];
         };
         /** PersonCommittee */
         PersonCommittee: {
@@ -5708,9 +5708,9 @@ export interface components {
         /**
          * PersonCouncil
          * @description Das Profil eines Mandats- oder beratenden Mitglieds
-         *     (``CouncilStore.member_detail``, ``typ`` legt der Router dazu).
+         *     (``CouncilStore.member_detail``, ``type`` legt der Router dazu).
          *
-         *     ``art`` unterscheidet innerhalb dieses Zweigs noch einmal: ``council`` ist
+         *     ``kind`` unterscheidet innerhalb dieses Zweigs noch einmal: ``council`` ist
          *     ein Ratsmandat, ``advisory`` eine beratende Mitwirkung — für die ist die
          *     Fraktions-Zeitreihe gegenstandslos, ``party``/``current_affiliation``
          *     bleiben dann leer und ``organisation`` nennt die entsendende Stelle.
@@ -5720,11 +5720,6 @@ export interface components {
             active_from: string | null;
             /** Active To */
             active_to: string | null;
-            /**
-             * Art
-             * @enum {string}
-             */
-            art: "council" | "advisory";
             /** Committees */
             committees: components["schemas"]["PersonCommittee"][];
             /** Current Affiliation */
@@ -5733,6 +5728,11 @@ export interface components {
             } | null;
             /** Faction Timeline */
             faction_timeline: components["schemas"]["FactionPhase"][];
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "council" | "advisory";
             /** N Sessions */
             n_sessions: number;
             /** Name */
@@ -5747,17 +5747,17 @@ export interface components {
             ris: unknown;
             /** Slug */
             slug: string;
+            /** Speeches */
+            speeches: components["schemas"]["Speech"][];
+            /** Speeches Committees */
+            speeches_committees: components["schemas"]["SpeechCommittee"][];
+            /** Speeches Total */
+            speeches_total: number;
             /**
-             * Typ
+             * Type
              * @constant
              */
-            typ: "council";
-            /** Wortbeitraege */
-            wortbeitraege: components["schemas"]["Speech"][];
-            /** Wortbeitraege Gesamt */
-            wortbeitraege_gesamt: number;
-            /** Wortbeitraege Gremien */
-            wortbeitraege_gremien: components["schemas"]["SpeechCommittee"][];
+            type: "council";
         };
         /** PersonSession */
         PersonSession: {
@@ -5825,6 +5825,8 @@ export interface components {
             aliases: string[];
             /** Description */
             description: string | null;
+            /** Electoral Districts */
+            electoral_districts: number[];
             /** Filterable */
             filterable: boolean;
             /** Id */
@@ -5851,8 +5853,6 @@ export interface components {
             sources: {
                 [key: string]: unknown;
             }[];
-            /** Wahlbereiche */
-            wahlbereiche: number[];
         };
         /**
          * PlaceParent
@@ -6550,8 +6550,8 @@ export interface components {
          *     unbedingt, auch wenn die Listen leer bleiben.
          */
         SessionDetail: {
-            /** Aenderungen */
-            aenderungen: components["schemas"]["AgendaChange"][];
+            /** Agenda Changes */
+            agenda_changes: components["schemas"]["AgendaChange"][];
             /** Agenda Items */
             agenda_items: {
                 [key: string]: unknown;
@@ -6705,6 +6705,8 @@ export interface components {
          * @description Ein Wortbeitrag aus einem Protokoll.
          */
         Speech: {
+            /** Agenda Item */
+            agenda_item: string | null;
             /** Committee */
             committee: string | null;
             /** Kind */
@@ -6713,8 +6715,6 @@ export interface components {
             session_date: string | null;
             /** Text */
             text: string;
-            /** Top */
-            top: string | null;
         };
         /** SpeechCommittee */
         SpeechCommittee: {
@@ -6728,17 +6728,16 @@ export interface components {
          * @description Wortbeiträge einer Person (``CouncilStore.wortbeitraege_person``).
          *
          *     Zwei Zahlen, weil es zwei Dinge sind: ``total`` gilt zum gesetzten
-         *     Gremien-Filter, ``gesamt`` ist der Bestand der Person über alle Gremien —
-         *     daran hängt die Zeile „N Wortbeiträge" auf der Personen-Seite. Der
-         *     deutsche Schlüssel steht so im Bestand und bleibt unangetastet.
+         *     Gremien-Filter, ``overall`` ist der Bestand der Person über alle Gremien —
+         *     daran hängt die Zeile „N Wortbeiträge" auf der Personen-Seite.
          */
         Speeches: {
             /** Committees */
             committees: components["schemas"]["SpeechCommittee"][];
-            /** Gesamt */
-            gesamt: number;
             /** Items */
             items: components["schemas"]["Speech"][];
+            /** Overall */
+            overall: number;
             /** Total */
             total: number;
         };
@@ -11781,4 +11780,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 61e2c72f069fb144f9c263287d1220b3d907860d90bd91dd02de6bd2c4f9ae4c
+// vertrag-sha256: f3056abfe2980691b0cfa4bb119b9381a866bc4c5588fe3070d8de0b9c8765fa

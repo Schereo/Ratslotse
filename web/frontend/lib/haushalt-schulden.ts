@@ -92,7 +92,7 @@ export type SchuldenDaten = {
     scope_note: string;
     no_series_note: string;
   } | null;
-  herkunft: Record<string, Herkunft>;
+  provenance: Record<string, Herkunft>;
 };
 
 /** Ein Jahr Bürgschaftsbestand — mit zwei Angaben über seinen Beleg.

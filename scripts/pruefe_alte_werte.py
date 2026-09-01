@@ -67,7 +67,7 @@ ERLAUBT = {
     "rat": "Rollen der Haushaltsdebatte und `art` der Personen-Bausteine",
     "verwaltung": "dieselben Rollen; dazu `typ` des Personen-Profils",
     "beratend": "`art` der Personen-Bausteine",
-    "beteiligung": "zugleich FELDname der Beschluss-Antwort (`beteiligung`)",
+    "beteiligung": "Dateinamen und Prosa der Beteiligungsberichte (das Feld heißt `participation`)",
     "leitung": "Rolle der Haushaltsdebatte",
     "thema": "Pfad-Teil der Link-Vorschau (/preview/thema/…) und `kind` der Nachbarn",
     "stadt": "`entity_key` des Konzerns und `art` der Personen-Bausteine",
@@ -108,12 +108,12 @@ ERLAUBT = {
     "teilhaushalt": "Schlüssel des Beleg-Apparats (council_products)",
     "geldschulden": ("Blockname der Schulden-Antwort (council.py: \"geldschulden\": …) — "
                      "die API-Blocknamen sind ein eigener Schnitt, noch offen"),
-    # Drei Wörter, die als WERT umgezogen sind, als API-FELDname aber bleiben.
-    # Die Feldnamen sind ein eigener Schnitt; bis dahin stehen beide Formen
-    # nebeneinander, und der Prüfer darf sie nicht verwechseln.
-    "wortbeitraege": ("API-Feldname der Personen- und Sitzungsantwort — der WERT "
+    # Drei Wörter, die als WERT umgezogen sind, im Frontend aber Bezeichner
+    # bzw. Blockname geblieben sind. Die API-Feldnamen `wortbeitraege` und
+    # `recherche` heißen seit dem Feldnamen-Schnitt `speeches` und `research`.
+    "wortbeitraege": ("Komponenten- und Variablenname der Personen-Seite — der WERT "
                       "`llm_usage.feature` heißt seit 01.09.2026 `speeches`"),
-    "recherche": ("API-Schlüssel und Modus der Gründlichen Recherche — der WERT "
+    "recherche": ("Modus der Gründlichen Recherche im Frontend — der WERT "
                   "`user_activity.feature` heißt seit 01.09.2026 `research`"),
     "ki_frage": ("Blockname der Admin-Antwort (`features.ki_frage`) — der WERT "
                  "`user_activity.feature` heißt seit 01.09.2026 `ai_question`"),
@@ -197,8 +197,8 @@ ERLAUBT_ZEILE = {
     "beides": re.compile(r'^\s*(//|\*)'),
     "entfernt": re.compile(r'^\s*(//|\*)'),
     "geaendert": re.compile(r'^\s*(//|\*)|geaendert: "Ge'),
-    # `beteiligung` ist daneben ein FELDname der Beschluss-Antwort — Felder
-    # sind ein eigener Schnitt, die Werte darin sind schon englisch.
+    # `beteiligung` war bis zum Feldnamen-Schnitt auch der FELDname der
+    # Beschluss-Antwort (heute `participation`); die Werte sind englisch.
     "beteiligung": re.compile(r'"beteiligung":|= "beteiligung"'),
     "orte": re.compile(r'Tab\b|tab ===|sp\.get|p\.delete|Ortskandidaten'),
     "mittel": re.compile(r'DIFF_LABEL'),
@@ -206,8 +206,8 @@ ERLAUBT_ZEILE = {
     "leitung": re.compile(r'StreitRolle|\brole\b'),
     "stadt": re.compile(r'entity_key|\bart\b|Sortierung|sortierung|value: "stadt"|'
                         r'\brole\b|\{ stadt,|stadt:\s*string'),
-    # Daneben ist `vorlage` ein FELDname der Beschluss-Antwort — der ist
-    # ein eigener Schnitt und nicht Teil der Werte-Reihe.
+    # `vorlage` war bis zum Feldnamen-Schnitt auch der FELDname der
+    # Beschluss-Antwort (heute `template`); der Wert ist die Zielart.
     "vorlage": re.compile(r'Zielart|art ===|\bart\b|source:|^\s*\| "|'
                           r'return "vorlage"|"vorlage":|= "vorlage"'),
 }
