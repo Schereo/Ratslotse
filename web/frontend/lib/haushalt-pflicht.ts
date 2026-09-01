@@ -151,12 +151,12 @@ export const PFLICHT_ZUORDNUNG: Record<string, PflichtEintrag> = Object.fromEntr
  *  beantwortet mit `controllability` eine leicht andere Frage (wie stark
  *  lassen sich die KOSTEN beeinflussen, nicht: muss es die Aufgabe geben). */
 export const STUFE_ERWARTET: Record<PflichtStufe, Spielraum> = {
-  pflicht: "niedrig",
-  spielraum: "mittel",
-  freiwillig: "hoch",
+  pflicht: "low",
+  spielraum: "medium",
+  freiwillig: "high",
 };
 
-export const SPIELRAUM_STUFEN: Spielraum[] = ["niedrig", "mittel", "hoch"];
+export const SPIELRAUM_STUFEN: Spielraum[] = ["low", "medium", "high"];
 
 /** Was die Stadt zu einem Teilhaushalt selbst angibt, über seine Produkte
  *  hinweg zusammengefasst.
@@ -182,7 +182,7 @@ export type SpielraumBefund = {
 };
 
 function leerZaehler(): Record<Spielraum | "ohne", number> {
-  return { niedrig: 0, mittel: 0, hoch: 0, ohne: 0 };
+  return { low: 0, medium: 0, high: 0, ohne: 0 };
 }
 
 /** Produktzeilen eines Jahres zu Befunden je Teilhaushalt verdichten.
@@ -217,7 +217,7 @@ export function spielraumBefunde(
   for (const b of aus.values()) {
     const roh = { ...b.anteil };
     const summe = b.expense;
-    for (const k of ["niedrig", "mittel", "hoch", "ohne"] as const) {
+    for (const k of ["low", "medium", "high", "ohne"] as const) {
       b.anteil[k] = summe > 0 ? roh[k] / summe : 0;
     }
     // Strikt größer als jede andere Stufe UND als der Anteil ohne Angabe.

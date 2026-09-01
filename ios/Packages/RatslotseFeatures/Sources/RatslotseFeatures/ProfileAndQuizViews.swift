@@ -1480,11 +1480,11 @@ struct QuizAreas: Codable, Sendable {
 
 private func quizCategoryLabel(_ category: String) -> String {
     switch category {
-    case "geschichte": "Geschichte"
-    case "orte": "Orte"
-    case "menschen": "Menschen"
-    case "ratspolitik": "Ratspolitik"
-    case "schaetzen": "Schätzfrage"
+    case "history": "Geschichte"
+    case "places": "Orte"
+    case "people": "Menschen"
+    case "council_politics": "Ratspolitik"
+    case "estimation": "Schätzfrage"
     default: category.capitalized
     }
 }
@@ -2030,7 +2030,7 @@ struct QuizView: View {
                 areaType: "district",
                 areaKey: "Osternburg",
                 category: "Oldenburg",
-                difficulty: "mittel",
+                difficulty: "medium",
                 question: "Vorschaufrage",
                 options: ["Antwort A", "Antwort B"],
                 qtype: nil,
@@ -2073,10 +2073,10 @@ struct QuizView: View {
                 QuizArea(key: "klima", label: "Klima & Energie", questions: 14, points: 3, districts: nil, district: nil),
                 QuizArea(key: "innenstadt", label: "Lebendige Innenstadt", questions: 9, points: 2, districts: nil, district: "Zentrum"),
             ],
-            categories: ["geschichte", "orte", "menschen", "ratspolitik", "schaetzen"]
+            categories: ["history", "places", "people", "council_politics", "estimation"]
         )
         selectedAreas = ["electoral_district:3", "topic:schulwege"]
-        selectedCategories = ["ratspolitik", "orte"]
+        selectedCategories = ["council_politics", "places"]
         stats = QuizStats(
             byArea: [
                 .init(areaType: "district", areaKey: "Osternburg", points: 18, answered: 14, correct: 7, lastAt: "2026-08-28"),
@@ -2553,7 +2553,7 @@ private struct OwnQuizEditor: View {
     @State private var question = ""
     @State private var answers = ["", ""]
     @State private var correctIndex = 0
-    @State private var category = "geschichte"
+    @State private var category = "history"
     @State private var stadtteil = ""
     @State private var explanation = ""
     @State private var answerValue = ""
@@ -2565,7 +2565,7 @@ private struct OwnQuizEditor: View {
     @State private var error: String?
     @State private var pendingDelete: OwnQuizQuestion?
 
-    private let categories = ["geschichte", "orte", "menschen", "ratspolitik", "schaetzen"]
+    private let categories = ["history", "places", "people", "council_politics", "estimation"]
 
     var body: some View {
         NavigationStack {
@@ -2638,7 +2638,7 @@ private struct OwnQuizEditor: View {
     private var editorPanel: some View {
         RatsSectionPanel(
             editingID == nil ? "Neue Karte" : "Karte bearbeiten",
-            detail: category == "schaetzen"
+            detail: category == "estimation"
                 ? "Lege eine Zahl und einen sinnvollen Ratebereich fest."
                 : "Fülle zwei bis vier Antworten aus und markiere die richtige.",
             symbol: editingID == nil ? "plus.bubble" : "pencil.line"
@@ -2662,7 +2662,7 @@ private struct OwnQuizEditor: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
-                if category == "schaetzen" {
+                if category == "estimation" {
                     estimateFields
                 } else {
                     answerFields
@@ -2851,7 +2851,7 @@ private struct OwnQuizEditor: View {
 
     private var isValid: Bool {
         guard question.trimmingCharacters(in: .whitespacesAndNewlines).count >= 5 else { return false }
-        if category == "schaetzen" {
+        if category == "estimation" {
             guard let value = parsedAnswerValue else { return false }
             if rangeManual {
                 guard let lower = parsedRangeMin, let upper = parsedRangeMax else { return false }
@@ -2888,7 +2888,7 @@ private struct OwnQuizEditor: View {
         question = ""
         answers = ["", ""]
         correctIndex = 0
-        category = "geschichte"
+        category = "history"
         stadtteil = ""
         explanation = ""
         answerValue = ""
@@ -2942,7 +2942,7 @@ private struct OwnQuizEditor: View {
                     options: ["Schlossplatz", "Marktplatz", "Pferdemarkt"],
                     correctIndex: 1,
                     district: "Zentrum",
-                    category: "orte",
+                    category: "places",
                     explanation: "Der Marktplatz bildet gemeinsam mit Rathaus und Lambertikirche das historische Zentrum.",
                     qtype: "mc",
                     answerValue: nil,
@@ -2958,7 +2958,7 @@ private struct OwnQuizEditor: View {
                     options: [],
                     correctIndex: 0,
                     district: nil,
-                    category: "schaetzen",
+                    category: "estimation",
                     explanation: nil,
                     qtype: "estimate",
                     answerValue: 176_000,
@@ -3000,7 +3000,7 @@ private struct OwnQuizEditor: View {
         }
 
         guard isValid else { return }
-        let isEstimate = category == "schaetzen"
+        let isEstimate = category == "estimation"
         let options = isEstimate ? [] : validAnswers
         let mappedCorrectIndex: Int
         if isEstimate {

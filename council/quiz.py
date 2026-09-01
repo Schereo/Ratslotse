@@ -30,8 +30,8 @@ from council import geo, places
 MODEL = os.environ.get("COUNCIL_QUIZ_MODEL", "deepseek/deepseek-v4-pro")
 VERIFY_MODEL = os.environ.get("COUNCIL_QUIZ_VERIFY_MODEL", "openai/gpt-4o-mini")
 
-CATEGORIES = ["geschichte", "orte", "menschen", "ratspolitik", "schaetzen"]
-DIFFICULTIES = ("leicht", "mittel", "schwer")
+CATEGORIES = ["history", "places", "people", "council_politics", "estimation"]
+DIFFICULTIES = ("easy", "medium", "hard")
 
 _UA = {"User-Agent": "Ratslotse-Quiz/1.0 (ratslotse.de; Kommunalpolitik-Quiz)"}
 _WIKI_API = "https://de.wikipedia.org/w/api.php"
@@ -181,7 +181,7 @@ def council_facts(store, *, stadtteil: str | None = None, place_id: str | None =
         if det.get("description"):
             lines.append(f"{ent.get('name', s)}: {det['description']}")
         # RL-U15: erst erzählenswerte Beschlüsse (interest >= 60), dann nach
-        # Wichtigkeit — so drehen sich die „ratspolitik"-Fragen um bedeutsame
+        # Wichtigkeit — so drehen sich die „council_politics"-Fragen um bedeutsame
         # UND interessante Beschlüsse statt um Formalien.
         decs = sorted(det.get("decisions") or [],
                       key=lambda d: ((d.get("interest") or 0) >= 60,
@@ -449,13 +449,13 @@ Regeln:
   die Quelle als NS-belastet oder völkisch ausweist, nie als neutrale oder
   positive Quiz-Antwort verwenden.
 - Verteile über die Kategorien: {cats}.
-  · geschichte = Gründung/Eingemeindung/Namensherkunft/historische Ereignisse
-  · orte = Wahrzeichen, Bauwerke, Parks, Plätze, Straßen
-  · menschen = bekannte Personen, Ratsmitglieder
-  · ratspolitik = aktuelle Beschlüsse/Projekte des Stadtrats (nur aus Ratsdaten) —
+  · history = Gründung/Eingemeindung/Namensherkunft/historische Ereignisse
+  · places = Wahrzeichen, Bauwerke, Parks, Plätze, Straßen
+  · people = bekannte Personen, Ratsmitglieder
+  · council_politics = aktuelle Beschlüsse/Projekte des Stadtrats (nur aus Ratsdaten) —
     WAS wurde beschlossen und warum ist es bedeutsam, nicht das genaue Datum eines
     Verfahrensschritts. Das Projekt/den Ort konkret benennen.
-  · schaetzen = eine SCHÄTZFRAGE als Slider: setze "qtype":"estimate" mit
+  · estimation = eine SCHÄTZFRAGE als Slider: setze "qtype":"estimate" mit
     "answer_value" (die richtige Zahl), "unit" (z. B. Einwohner, Hektar, Euro,
     Jahr) und "range_min"/"range_max" (plausible Slider-Grenzen, der Wert liegt
     klar dazwischen — aber NICHT in der Mitte der Spanne: wähle die Grenzen
@@ -477,20 +477,20 @@ Regeln:
   · "topic" = bei Rats-/Projekt-Fragen ein kurzes Such-Stichwort, mit dem man
     verwandte Beschlüsse findet (z. B. "Lebensquartier", "Fliegerhorst",
     "Cäcilienbrücke"). Damit verlinken wir „Beschlüsse dazu". Nur setzen, wenn es
-    ein echtes Ratsthema ist (v. a. Kategorie ratspolitik).
+    ein echtes Ratsthema ist (v. a. Kategorie council_politics).
 - Wenn eine Kategorie aus den Quellen nicht seriös bedienbar ist, lass sie weg.
 - Sprache: Deutsch. difficulty ∈ leicht|mittel|schwer.
 
 Antworte mit NUR JSON (Multiple Choice ODER, für schaetzen, qtype=estimate):
 {{"questions": [
-  {{"category": "geschichte", "difficulty": "leicht",
+  {{"category": "history", "difficulty": "easy",
     "question": "…?", "options": ["A","B","C","D"], "correct_index": 0,
     "explanation": "1 einprägsamer Satz mit dem Aha-Effekt (nicht die Antwort wiederholen)",
     "hint": "kurzer Tipp, ohne die Lösung zu verraten",
     "detail": "2–3 Sätze mehr Kontext aus den Quellen",
     "subject": "Schloss Oldenburg", "topic": "Schloss Oldenburg",
     "source": "kurze Herkunft, z. B. 'Wikipedia' oder 'Ratsbeschluss 2025'"}},
-  {{"category": "schaetzen", "difficulty": "mittel", "qtype": "estimate",
+  {{"category": "estimation", "difficulty": "medium", "qtype": "estimate",
     "question": "Wie viele Einwohner*innen hat der Beispiel-Stadtteil etwa?",
     "answer_value": 12000, "unit": "Einwohner", "range_min": 2000, "range_max": 30000,
     "explanation": "Damit ist der Stadtteil für sich so groß wie eine Kleinstadt — bis zur Eingemeindung war er eine eigene Gemeinde.",
@@ -547,7 +547,7 @@ def _valid_estimate(q: dict) -> bool:
 def _valid(q: dict) -> bool:
     # Schätzfragen MÜSSEN Slider sein — als MC mit vier Zahlen-Optionen sind sie
     # weder fair noch lehrreich (Review-Finding: 3 von 5 kamen als MC).
-    if q.get("category") == "schaetzen" and q.get("qtype") != "estimate":
+    if q.get("category") == "estimation" and q.get("qtype") != "estimate":
         return False
     return _valid_estimate(q) if q.get("qtype") == "estimate" else _valid_mc(q)
 
@@ -652,7 +652,7 @@ def generate_for_area(area_type: str, area_key: str, area_label: str, sources: s
         row = {
             "area_type": area_type, "area_key": area_key,
             "category": q["category"],
-            "difficulty": q.get("difficulty") if q.get("difficulty") in DIFFICULTIES else "mittel",
+            "difficulty": q.get("difficulty") if q.get("difficulty") in DIFFICULTIES else "medium",
             "question": q["question"].strip(),
             "explanation": _clip_explanation(q.get("explanation")),
             "detail": (q.get("detail") or "").strip()[:600] or None,

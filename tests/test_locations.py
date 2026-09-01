@@ -602,8 +602,8 @@ def test_migration_schreibt_deutsche_gebietstypen_und_ortsarten_um(tmp_path):
         "INSERT INTO council_locations (slug, name, kind, stadtteil, updated_at) "
         "VALUES ('kreyenbrueck', 'Kreyenbrück', 'stadtteil', 'Kreyenbrück', '2026-01-01')")
     spalten = [r[1] for r in conn.execute("PRAGMA table_info(council_quiz_questions)")]
-    werte = {"area_type": "stadtteil", "area_key": "Kreyenbrück", "category": "orte",
-             "difficulty": "mittel", "question": "Wo liegt das?", "options": '["a","b"]',
+    werte = {"area_type": "stadtteil", "area_key": "Kreyenbrück", "category": "places",
+             "difficulty": "medium", "question": "Wo liegt das?", "options": '["a","b"]',
              "correct_index": 0, "status": "active", "content_hash": "h-alt",
              "generated_at": "2026-01-01T00:00:00"}
     nutzbar = {k: v for k, v in werte.items() if k in spalten}

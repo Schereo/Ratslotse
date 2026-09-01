@@ -1313,13 +1313,13 @@ _LEISTUNG_KOPF = re.compile(r"^[ \t]*Leistung:[^\n]*\(P[\d.]+\.\d+\)[ \t]*$", re
 #: Rohwert aber in `controllability_raw`: Was im Plan steht, bleibt
 #: nachlesbar, auch wenn wir es anders einsortieren.
 _BEEINFLUSSBARKEIT = {
-    "niedrig": "niedrig", "gering": "niedrig",
-    "mittel": "mittel", "hoch": "hoch",
+    "niedrig": "low", "gering": "low",
+    "mittel": "medium", "hoch": "high",
 }
 
 
 def normalisiere_beeinflussbarkeit(roh: str | None) -> str | None:
-    """„gering"/„Niedrig"/„niedrig" → ``"niedrig"``; Unbekanntes → ``None``.
+    """„gering"/„Niedrig"/„niedrig" → ``"low"``; Unbekanntes → ``None``.
 
     Bewusst streng: Mischformen („niedrig - mittel") bekommen keine der drei
     Stufen zugewiesen, weil jede Wahl eine Behauptung wäre. Sie bleiben über

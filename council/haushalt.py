@@ -357,11 +357,11 @@ def _trend_chart(series: list[tuple[int, float]], title: str) -> str:
 
 def _estimate(question: str, answer_mio: int, lo: int, hi: int, *, year: int,
               source_url: str, chart_json: str, detail: str, hint: str | None = None,
-              difficulty: str = "mittel", unit: str = "Mio. Euro") -> dict:
+              difficulty: str = "medium", unit: str = "Mio. Euro") -> dict:
     from council import quiz  # content_hash — zirkular-import-frei zur Laufzeit
     assert lo < answer_mio < hi
     return {
-        "area_type": "topic", "area_key": "haushalt", "category": "schaetzen",
+        "area_type": "topic", "area_key": "haushalt", "category": "estimation",
         "difficulty": difficulty, "question": question,
         "options": [], "correct_index": 0, "qtype": "estimate",
         "answer_value": float(answer_mio), "answer_unit": unit,
@@ -555,7 +555,7 @@ def build_questions(rows: list[dict], year: int, source_url: str) -> list[dict]:
             "die geplanten Einnahmen (das geplante Defizit)?",
             defizit, lo=max(1, round(defizit * 0.15)), hi=round(defizit * 4.5, -1),
             year=year, source_url=source_url, chart_json=chart_all,
-            difficulty="schwer",
+            difficulty="hard",
             detail=(f"Geplant sind Einnahmen von rund {revenues} Mio. und Ausgaben von rund "
                     f"{gesamt} Mio. Euro. Solche Fehlbeträge muss eine Stadt aus ihrer Rücklage "
                     "decken — ist die aufgebraucht, muss gekürzt werden. Im Haushalt heißen "
@@ -596,8 +596,8 @@ def build_questions(rows: list[dict], year: int, source_url: str) -> list[dict]:
     rng.shuffle(opts)
     top_info = bereich_info(top["area"]) or "zentrale Aufgaben der Stadt"
     qs.append({
-        "area_type": "topic", "area_key": "haushalt", "category": "ratspolitik",
-        "difficulty": "leicht", "qtype": "mc",
+        "area_type": "topic", "area_key": "haushalt", "category": "council_politics",
+        "difficulty": "easy", "qtype": "mc",
         "question": f"Wofür gibt die Stadt Oldenburg {year} am meisten Geld aus?",
         "options": opts, "correct_index": opts.index(top["area"]),
         "explanation": (f"Mit rund {_mio(top['expenses'])} Mio. Euro ist "
@@ -616,8 +616,8 @@ def build_questions(rows: list[dict], year: int, source_url: str) -> list[dict]:
     e_opts = [e_top["area"], *[r["area"] for r in by_revenue[1:4]]]
     rng.shuffle(e_opts)
     qs.append({
-        "area_type": "topic", "area_key": "haushalt", "category": "ratspolitik",
-        "difficulty": "mittel", "qtype": "mc",
+        "area_type": "topic", "area_key": "haushalt", "category": "council_politics",
+        "difficulty": "medium", "qtype": "mc",
         "question": f"In welchem Bereich des städtischen Haushalts landen {year} die höchsten Einnahmen?",
         "options": e_opts, "correct_index": e_opts.index(e_top["area"]),
         "explanation": (f"„{e_top['area']}“ verbucht rund {_mio(e_top['revenues'])} Mio. Euro "
@@ -676,8 +676,8 @@ def build_questions(rows: list[dict], year: int, source_url: str) -> list[dict]:
         k_opts = [r["area"] for r in pick]
         rng.shuffle(k_opts)
         qs.append({
-            "area_type": "topic", "area_key": "haushalt", "category": "ratspolitik",
-            "difficulty": "schwer", "qtype": "mc",
+            "area_type": "topic", "area_key": "haushalt", "category": "council_politics",
+            "difficulty": "hard", "qtype": "mc",
             "question": f"Welcher dieser Bereiche kostet die Stadt Oldenburg {year} am wenigsten?",
             "options": k_opts, "correct_index": k_opts.index(kleinster["area"]),
             "explanation": (f"„{kleinster['area']}“ ist mit rund {_mio(kleinster['expenses'])} Mio. Euro "
@@ -700,8 +700,8 @@ def build_questions(rows: list[dict], year: int, source_url: str) -> list[dict]:
         if len(n_opts) == 4:
             rng.shuffle(n_opts)
             qs.append({
-                "area_type": "topic", "area_key": "haushalt", "category": "ratspolitik",
-                "difficulty": "mittel", "qtype": "mc",
+                "area_type": "topic", "area_key": "haushalt", "category": "council_politics",
+                "difficulty": "medium", "qtype": "mc",
                 "question": (f"Welcher Bereich kostet die Stadt Oldenburg {year} unterm Strich "
                              "am meisten — nach Abzug eigener Einnahmen?"),
                 "options": n_opts, "correct_index": n_opts.index(n_top["area"]),
@@ -753,8 +753,8 @@ def build_questions(rows: list[dict], year: int, source_url: str) -> list[dict]:
         f_opts = [r["area"] for r in fach[:4]]
         rng.shuffle(f_opts)
         qs.append({
-            "area_type": "topic", "area_key": "haushalt", "category": "ratspolitik",
-            "difficulty": "schwer", "qtype": "mc",
+            "area_type": "topic", "area_key": "haushalt", "category": "council_politics",
+            "difficulty": "hard", "qtype": "mc",
             "question": (f"Welcher dieser Bereiche nimmt {year} selbst am meisten ein — "
                          "durch Erstattungen und Zuweisungen von Bund und Land, "
                          "Gebühren und Entgelte?"),
@@ -838,8 +838,8 @@ def build_abschluss_questions(store) -> list[dict]:
                     "erscheint zu ihrer eigenen Zeit, und die jüngste ist immer "
                     "die, die vorliegt.")
         qs.append({
-            "area_type": "topic", "area_key": "haushalt", "category": "ratspolitik",
-            "difficulty": "schwer", "qtype": "mc",
+            "area_type": "topic", "area_key": "haushalt", "category": "council_politics",
+            "difficulty": "hard", "qtype": "mc",
             "question": "Wie hoch sind die Schulden der Stadt Oldenburg?",
             "options": opts, "correct_index": opts.index(richtig),
             "explanation": (
@@ -870,7 +870,7 @@ def build_abschluss_questions(store) -> list[dict]:
             "gerade — für wie viele Millionen Euro?",
             amount, lo=max(5, round(amount * 0.15)), hi=round(amount * 3.2, -1),
             year=buerg["year"], source_url=ris, chart_json="",
-            difficulty="schwer",
+            difficulty="hard",
             detail=("Eine Bürgschaft kostet nichts, solange sie nicht gezogen wird — "
                     "deshalb taucht sie in keiner Schuldenzahl auf. Sie steht im "
                     "Anhang des Jahresabschlusses unter „Eventualverbindlichkeiten“."
@@ -905,8 +905,8 @@ def build_abschluss_questions(store) -> list[dict]:
                            _komma(faktor / 1.8) + " Euro",
                            _komma(faktor * 2) + " Euro"})
             qs.append({
-                "area_type": "topic", "area_key": "haushalt", "category": "ratspolitik",
-                "difficulty": "schwer", "qtype": "mc",
+                "area_type": "topic", "area_key": "haushalt", "category": "council_politics",
+                "difficulty": "hard", "qtype": "mc",
                 "question": (f"Auf jeden Euro, den die Stadt {z['year']} in ihr "
                              f"Sachvermögen — Gebäude, Straßen, Fahrzeuge — "
                              f"investiert hat: Wie viel Wert hat im selben Jahr "
@@ -954,8 +954,8 @@ def build_trend_questions(by_year: dict[int, list[dict]], source_url: str) -> li
     # 1) Wachstum als Schätzfrage (Prozent) mit Trendlinie.
     if 5 <= wachstum <= 300:
         qs.append({
-            "area_type": "topic", "area_key": "haushalt", "category": "schaetzen",
-            "difficulty": "schwer", "qtype": "estimate",
+            "area_type": "topic", "area_key": "haushalt", "category": "estimation",
+            "difficulty": "hard", "qtype": "estimate",
             "question": (f"Um wie viel Prozent sind Oldenburgs geplante Gesamtausgaben "
                          f"von {y0} bis {y1} gewachsen?"),
             "options": [], "correct_index": 0,
@@ -988,8 +988,8 @@ def build_trend_questions(by_year: dict[int, list[dict]], source_url: str) -> li
             rng = random.Random(y1)
             rng.shuffle(opts)
             qs.append({
-                "area_type": "topic", "area_key": "haushalt", "category": "ratspolitik",
-                "difficulty": "schwer", "qtype": "mc",
+                "area_type": "topic", "area_key": "haushalt", "category": "council_politics",
+                "difficulty": "hard", "qtype": "mc",
                 "question": (f"Welcher Bereich ist in Oldenburgs Haushaltsplanung von {y0} bis {y1} "
                              "am stärksten gewachsen (in Euro)?"),
                 "options": opts, "correct_index": opts.index(top_g),

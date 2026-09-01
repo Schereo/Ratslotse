@@ -68,7 +68,7 @@ import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { GlossaryText } from "@/components/glossary-text";
 import { cn } from "@/lib/utils";
 
-const STUFEN: Spielraum[] = ["niedrig", "mittel", "hoch"];
+const STUFEN: Spielraum[] = ["low", "medium", "high"];
 
 /** Zuschussbedarf in Euro — was das Produkt die Stadt unterm Strich kostet.
  *  `result` ist negativ, wenn es zuschussbedürftig ist. */

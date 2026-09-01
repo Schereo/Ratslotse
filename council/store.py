@@ -1111,6 +1111,17 @@ class CouncilStore:
         # Was das Modell beim Schreiben des Social-Texts vor sich hatte.
         self._werte_umschreiben("agenda_item_social", "source", [
             ("vorlage+anlagen", "template+attachments"), ("vorlage", "template")])
+        # Quiz: Kategorie und Schwierigkeit. `mittel` steht in beiden Spalten,
+        # meint aber zweierlei — deshalb je Spalte ein eigener Aufruf.
+        self._werte_umschreiben("council_quiz_questions", "category", [
+            ("geschichte", "history"), ("orte", "places"), ("menschen", "people"),
+            ("ratspolitik", "council_politics"), ("schaetzen", "estimation")])
+        self._werte_umschreiben("council_quiz_questions", "difficulty", [
+            ("leicht", "easy"), ("mittel", "medium"), ("schwer", "hard")])
+        # Der Spielraum, den die Stadt sich bei einem Produkt selbst zuschreibt.
+        # Der Wortlaut des Plans steht daneben in `controllability_raw`.
+        self._werte_umschreiben("council_produkte", "controllability", [
+            ("niedrig", "low"), ("mittel", "medium"), ("hoch", "high")])
 
         cols = {r[1] for r in self._conn.execute("PRAGMA table_info(committee_notifications)").fetchall()}
         if "agenda_hash" not in cols:
@@ -1409,7 +1420,7 @@ class CouncilStore:
             "CREATE TABLE IF NOT EXISTS council_quiz_questions ("
             "id INTEGER PRIMARY KEY AUTOINCREMENT, "
             "area_type TEXT NOT NULL, area_key TEXT NOT NULL, "  # district|electoral_district|topic
-            "category TEXT NOT NULL, "                            # geschichte|orte|menschen|ratspolitik|schaetzen
+            "category TEXT NOT NULL, "                            # history|places|people|council_politics|estimation
             "difficulty TEXT NOT NULL DEFAULT 'mittel', "         # leicht|mittel|schwer
             "question TEXT NOT NULL, options TEXT NOT NULL, "     # options = JSON-Array (4); [] bei estimate
             "correct_index INTEGER NOT NULL, explanation TEXT, "
@@ -5728,7 +5739,7 @@ class CouncilStore:
                     " detail, hint, topic, chart, lat, lon, place_label, geojson, image_url, image_author, image_license, "
                     " image_license_url, image_source_url, generated_at) "
                     "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                    (r["area_type"], r["area_key"], r["category"], r.get("difficulty", "mittel"),
+                    (r["area_type"], r["area_key"], r["category"], r.get("difficulty", "medium"),
                      r["question"], json.dumps(r.get("options", []), ensure_ascii=False),
                      int(r.get("correct_index", 0)), r.get("explanation"),
                      r.get("source_type"), r.get("source_ref"), r.get("content_hash"),

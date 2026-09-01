@@ -524,6 +524,27 @@ class Store:
         self._migrate()
         self._zeitungsreste_entfernen()
 
+    def _werte_umschreiben(self, tabelle: str, spalte: str,
+                           paare: list[tuple[str, str]]) -> None:
+        """Schreibt gespeicherte WERTE um — idempotent.
+
+        Das Gegenstück zu :meth:`_spalten_umbenennen`: Manche Begriffe stehen
+        nicht als Spaltenname, sondern als Inhalt einer Zeile
+        (``quiz_answers.category = 'geschichte'``). Wird nur die Spalte
+        migriert, findet jede Abfrage danach nichts mehr.
+        """
+        vorhanden = {r[1] for r in self._conn.execute(f"PRAGMA table_info({tabelle})")}
+        if spalte not in vorhanden:
+            return
+        for alt, neu in paare:
+            cur = self._conn.execute(
+                f"UPDATE {tabelle} SET {spalte} = ? WHERE {spalte} = ?", (neu, alt))
+            if cur.rowcount:
+                self._conn.commit()
+                logging.getLogger("kern.store").warning(
+                    "Werte umgeschrieben: %s.%s %r → %r (%d Zeilen)",
+                    tabelle, spalte, alt, neu, cur.rowcount)
+
     def _spalten_umbenennen(self, tabelle: str, paare: list[tuple[str, str]]) -> None:
         """Benennt Spalten um, sofern sie noch alt heißen — idempotent.
 
@@ -664,6 +685,14 @@ class Store:
         self._spalten_umbenennen("qa_gespraech_turns", [
             ("gespraech_id", "conversation_id"), ("frage", "question"),
             ("antwort", "answer"), ("quellen", "sources")])
+        # Die Quiz-Kategorien stehen als Daten in den Zeilen, in der
+        # Antwort-Historie wie in den selbst gestellten Fragen.
+        QUIZ_KATEGORIEN = [
+            ("geschichte", "history"), ("orte", "places"), ("menschen", "people"),
+            ("ratspolitik", "council_politics"), ("schaetzen", "estimation"),
+        ]
+        self._werte_umschreiben("quiz_answers", "category", QUIZ_KATEGORIEN)
+        self._werte_umschreiben("user_quiz_questions", "category", QUIZ_KATEGORIEN)
         cols = {r[1] for r in self._conn.execute("PRAGMA table_info(topics)").fetchall()}
         if "chat_id" not in cols:
             admin = int(os.environ.get("TELEGRAM_CHAT_ID", 0))

@@ -282,7 +282,7 @@ class QuizDailyIn(BaseModel):
 
 
 # Eigene Quizfragen (RL-U14): privat je Konto. Multiple-Choice (2–4 Antworten)
-# ODER Schätzfrage (category "schaetzen": Zahl + Slider-Bereich statt Optionen).
+# ODER Schätzfrage (category "estimation": Zahl + Slider-Bereich statt Optionen).
 class UserQuizQuestionIn(BaseModel):
     question: str = Field(min_length=5, max_length=300)
     options: list[str] = Field(default_factory=list, max_length=4)
