@@ -664,6 +664,26 @@ class Store:
         # Haushalt anzufassen — ein eigener Schnitt, nicht dieser.
     }
 
+    #: Eine Ebene TIEFER als die Blocknamen: die Felder der Zeilen.
+    #:
+    #: In #913 hatte ich sie als „zu allgemein für einen Lauf über den ganzen
+    #: Baum" liegen gelassen. Sie stehen damit aber als letzte deutsche FELDER
+    #: in der OpenAPI-Doku — und die soll durchgehend englisch sein. Die
+    #: Pfad-Auszählung der 113 echten Prod-Blöcke zeigt, dass jeder dieser
+    #: Namen dort GENAU EINE Bedeutung hat: `art` nur in `debatten[]` und
+    #: `planungen[]` (beide „Art"), `top` und `protokoll_*` nur in
+    #: `debatten[]`, `nr` nur in `anlagen[]`, `auszug` in `debatten[]` und
+    #: `anlagen[]`. Damit ist der Lauf über den Baum hier belegbar sicher.
+    #:
+    #: EIGENE Karte und EIGENE Marke, nicht `_QA_QUELLEN_SCHLUESSEL` erweitert:
+    #: Dessen Marke ist auf `dev` seit #913 gesetzt, eine Erweiterung liefe dort
+    #: nie wieder an.
+    _QA_ZEILEN_SCHLUESSEL = {
+        "art": "kind", "top": "agenda_item", "auszug": "excerpt",
+        "protokoll_url": "minutes_url", "protokoll_seite": "minutes_page",
+        "nr": "number", "haltung": "stance", "einig": "unanimous",
+    }
+
     def _json_schluessel_umbenennen(self, tabelle: str, spalte: str, marke: str,
                                     karte: dict[str, str] | None = None) -> None:
         """Die Schlüssel INNERHALB eines JSON-Blobs nachziehen — einmalig.
@@ -741,6 +761,10 @@ class Store:
             self._json_schluessel_umbenennen(
                 tabelle, spalte, f"json_bloecke_{tabelle}_{spalte}",
                 self._QA_QUELLEN_SCHLUESSEL)
+            # Dritter Schnitt: die Feldnamen IN den Zeilen der Blöcke.
+            self._json_schluessel_umbenennen(
+                tabelle, spalte, f"json_zeilen_{tabelle}_{spalte}",
+                self._QA_ZEILEN_SCHLUESSEL)
         # 08/2026: Reste der NWZ-Abo-Prüfung. Seit der Ausgliederung des
         # Zeitungs-Scrapers liest sie kein Code mehr; auf Tims Anweisung
         # (30.08.2026) verschwinden sie samt Inhalt. Backup lag vor.
@@ -2042,22 +2066,22 @@ class Store:
                 (user_id, (title or "Gespräch").strip()[:120], now, now))
             return int(cur.lastrowid)
 
-    def qa_turn_speichern(self, gespraech_id: int, user_id: int, question: str,
+    def qa_turn_speichern(self, conversation_id: int, user_id: int, question: str,
                           answer: str, quellen_json: str | None) -> bool:
         """Turn anhängen — nur ins eigene Gespräch (user_id doppelt geprüft)."""
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self._conn:
             ok = self._conn.execute(
                 "SELECT 1 FROM qa_gespraeche WHERE id = ? AND user_id = ?",
-                (gespraech_id, user_id)).fetchone()
+                (conversation_id, user_id)).fetchone()
             if not ok:
                 return False
             self._conn.execute(
                 "INSERT INTO qa_gespraech_turns (conversation_id, user_id, question, answer, sources, created) "
                 "VALUES (?, ?, ?, ?, ?, ?)",
-                (gespraech_id, user_id, question[:600], answer[:8000], quellen_json, now))
+                (conversation_id, user_id, question[:600], answer[:8000], quellen_json, now))
             self._conn.execute("UPDATE qa_gespraeche SET updated = ? WHERE id = ?",
-                               (now, gespraech_id))
+                               (now, conversation_id))
             return True
 
     @staticmethod
@@ -2105,19 +2129,19 @@ class Store:
             f"SELECT COUNT(*) FROM qa_gespraeche WHERE user_id = ?{filt}",
             werte).fetchone()[0]
 
-    def qa_gespraech(self, gespraech_id: int, user_id: int) -> dict | None:
+    def qa_gespraech(self, conversation_id: int, user_id: int) -> dict | None:
         g = self._conn.execute(
             "SELECT id, title, updated FROM qa_gespraeche WHERE id = ? AND user_id = ?",
-            (gespraech_id, user_id)).fetchone()
+            (conversation_id, user_id)).fetchone()
         if not g:
             return None
         turns = self._conn.execute(
             "SELECT question, answer, sources FROM qa_gespraech_turns "
             "WHERE conversation_id = ? ORDER BY id",
-            (gespraech_id,)).fetchall()
+            (conversation_id,)).fetchall()
         return {**dict(g), "turns": [dict(t) for t in turns]}
 
-    def qa_gespraech_umbenennen(self, gespraech_id: int, user_id: int, title: str) -> bool:
+    def qa_gespraech_umbenennen(self, conversation_id: int, user_id: int, title: str) -> bool:
         """Titel ändern — nur am eigenen Gespräch (Design 9a②: Wisch links →
         Umbenennen). ``updated`` bleibt unberührt: Umbenennen ist Pflege, kein
         Gesprächsfortschritt, und soll die Liste nicht umsortieren."""
@@ -2127,17 +2151,17 @@ class Store:
         with self._conn:
             cur = self._conn.execute(
                 "UPDATE qa_gespraeche SET title = ? WHERE id = ? AND user_id = ?",
-                (title, gespraech_id, user_id))
+                (title, conversation_id, user_id))
             return (cur.rowcount or 0) > 0
 
-    def qa_gespraech_loeschen(self, gespraech_id: int, user_id: int) -> bool:
+    def qa_gespraech_loeschen(self, conversation_id: int, user_id: int) -> bool:
         with self._conn:
             self._conn.execute(
                 "DELETE FROM qa_gespraech_turns WHERE conversation_id = ? AND user_id = ?",
-                (gespraech_id, user_id))
+                (conversation_id, user_id))
             cur = self._conn.execute(
                 "DELETE FROM qa_gespraeche WHERE id = ? AND user_id = ?",
-                (gespraech_id, user_id))
+                (conversation_id, user_id))
             return (cur.rowcount or 0) > 0
 
     def qa_gespraeche_loeschen(self, user_id: int) -> int:
@@ -2277,7 +2301,7 @@ class Store:
         Web benutzt, in beiden Zahlen — die Summe wäre größer als der Bestand,
         und ein Balken daraus behauptete eine Aufteilung, die keine ist.
         Deshalb entscheidet je Konto der Client mit den meisten Zugriffen; wie
-        viele Konten überhaupt mehrere benutzen, steht separat in ``beides``.
+        viele Konten überhaupt mehrere benutzen, steht separat in ``both``.
 
         ``unknown`` (Zeilen von vor der Messung) nimmt an der Kür des
         meistgenutzten Clients nicht teil — ungemessen ist keine Plattform.
@@ -2296,10 +2320,10 @@ class Store:
             je_konto.setdefault(r["owner_id"], []).append((r["client"], r["n"]))
 
         konten: dict[str, int] = {}
-        beides = 0
+        both = 0
         for eintraege in je_konto.values():
             if len(eintraege) > 1:
-                beides += 1
+                both += 1
             # Bei Gleichstand entscheidet der Name — irgendein Client muss
             # gewinnen, und ein stabiles Ergebnis ist besser als ein zufälliges.
             fuehrend = sorted(eintraege, key=lambda e: (-e[1], e[0]))[0][0]
@@ -2307,7 +2331,7 @@ class Store:
 
         clients = [{"client": c, "n": zugriffe[c], "users": konten.get(c, 0)}
                    for c in sorted(zugriffe, key=lambda c: -zugriffe[c])]
-        return {"clients": clients, "beides": beides}
+        return {"clients": clients, "both": both}
 
     def signup_client_split(self) -> list[dict]:
         """Womit die vorhandenen Konten angelegt wurden. NULL (vor der Messung
@@ -2371,7 +2395,7 @@ class Store:
             # nicht am Zeitraum-Umschalter: Die Frage ist „womit arbeiten die
             # Leute GERADE", nicht „womit über alle Zeit".
             **{"clients": (aufteilung := self.client_split(30))["clients"],
-               "clients_beides": aufteilung["beides"]},
+               "clients_both": aufteilung["both"]},
             "signup_clients": [{**r, "users": 0} for r in self.signup_client_split()],
         }
 
@@ -2382,7 +2406,7 @@ class Store:
         rows = self._conn.execute(
             """SELECT u.id, u.email, u.role, u.status, u.created_at, u.apple_sub, u.signup_client,
                       (SELECT COUNT(*) FROM topics t WHERE t.owner_id = u.id) n_topics,
-                      (SELECT COUNT(*) FROM committee_subscriptions s WHERE s.owner_id = u.id) n_abos,
+                      (SELECT COUNT(*) FROM committee_subscriptions s WHERE s.owner_id = u.id) n_subscriptions,
                       (SELECT COUNT(DISTINCT question_id) FROM quiz_answers q WHERE q.owner_id = u.id) n_quiz,
                       (SELECT COALESCE(SUM(count), 0) FROM user_activity a
                          WHERE a.owner_id = u.id AND a.feature = 'ki_frage') n_ki,
@@ -2400,8 +2424,8 @@ class Store:
             nutzung.setdefault(r["owner_id"], {})[r["client"]] = r["c"]
         return [{"id": r["id"], "email": r["email"], "role": r["role"], "status": r["status"],
                  "created_at": r["created_at"], "apple_linked": bool(r["apple_sub"]),
-                 "n_topics": r["n_topics"], "n_abos": r["n_abos"], "n_quiz": r["n_quiz"],
-                 "n_ki": r["n_ki"], "last_seen": r["last_seen"],
+                 "n_topics": r["n_topics"], "n_subscriptions": r["n_subscriptions"],
+                 "n_quiz": r["n_quiz"], "n_ki": r["n_ki"], "last_seen": r["last_seen"],
                  "signup_client": r["signup_client"],
                  "clients": nutzung.get(r["id"], {})} for r in rows]
 

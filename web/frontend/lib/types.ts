@@ -410,7 +410,7 @@ export interface MemberDetail {
   committees: { committee: string; n: number; chair: boolean }[];
   recent: { ksinr: number; committee: string; session_date: string }[];
   /** Erste Seite der Wortbeiträge (volle Paraphrase); weitere holt
-   *  /council/person/{slug}/wortbeitraege. */
+   *  /council/person/{slug}/speeches. */
   wortbeitraege?: { kind: string; top: string | null; text: string;
     committee: string | null; session_date: string }[];
   /** Wie viele Beiträge die Person insgesamt hat — die erste Seite ist ein
@@ -682,7 +682,7 @@ export interface AdminGrowth {
    *  Client der meistgenutzte ist — jedes Konto zählt genau einmal. */
   clients: { client: string; n: number; users: number }[];
   /** Konten, die im Zeitraum mehrere Clients benutzt haben. */
-  clients_beides: number;
+  clients_both: number;
   /** Womit die vorhandenen Konten angelegt wurden (`users` bleibt hier 0). */
   signup_clients: { client: string; n: number; users: number }[];
 }
@@ -735,7 +735,7 @@ export interface UserQuizQuestion {
  *  `source_type`/`source_ref` sind optional, weil die eigenen Übungsfragen
  *  (`/quiz/own/round`) ohne Quelle gebaut werden. Der frühere Handtyp verlangte
  *  sie und log damit über genau diesen Endpunkt. */
-export type QuizQuestion = components["schemas"]["QuizFrage"];
+export type QuizQuestion = components["schemas"]["QuizQuestion"];
 export interface QuizImageCredit {
   url: string;
   author: string | null;

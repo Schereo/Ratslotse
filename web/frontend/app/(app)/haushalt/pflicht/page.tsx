@@ -128,7 +128,7 @@ export default function PflichtPage() {
   // den Satz zu schreiben hieße, beim nächsten Nachzug still zu lügen.
   const produktVon = data?.product_years?.length ? Math.min(...data.product_years) : null;
   const { data: produktdaten } = useFetch<ProdukteAntwort>(
-    produktJahr ? `/council/haushalt/produkte?year=${produktJahr}` : null,
+    produktJahr ? `/council/budget/products?year=${produktJahr}` : null,
   );
 
   const befunde = useMemo<Map<BereichSchluessel, SpielraumBefund>>(

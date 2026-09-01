@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends
 
 from kern.store import Store
 
-from ..antworten import OnboardingStand, SetupStand
+from ..antworten import OnboardingState, SetupState
 from ..deps import get_store, require_active
 from ..schemas import OnboardingUpdate, SetupUpdate
 
@@ -27,7 +27,7 @@ KNOWN_STEPS = {"frag", "beschluesse", "analyse", "karten"}
 
 @router.get("")
 def get_onboarding(user: dict = Depends(require_active),
-                   store: Store = Depends(get_store)) -> OnboardingStand:
+                   store: Store = Depends(get_store)) -> OnboardingState:
     return store.get_onboarding(user["id"])
 
 
@@ -36,7 +36,7 @@ def update_onboarding(
     payload: OnboardingUpdate,
     user: dict = Depends(require_active),
     store: Store = Depends(get_store),
-) -> OnboardingStand:
+) -> OnboardingState:
     steps = [s for s in payload.steps if s in KNOWN_STEPS]
     return store.update_onboarding(user["id"], steps=steps, celebrated=payload.celebrated)
 
@@ -45,7 +45,7 @@ def update_onboarding(
 def get_setup(
     user: dict = Depends(require_active),
     store: Store = Depends(get_store),
-) -> SetupStand:
+) -> SetupState:
     """Resume the first-run setup on another device or after reinstalling."""
     return store.get_setup(user["id"])
 
@@ -55,7 +55,7 @@ def set_setup(
     payload: SetupUpdate,
     user: dict = Depends(require_active),
     store: Store = Depends(get_store),
-) -> SetupStand:
+) -> SetupState:
     """Erreichten Schritt festhalten.
 
     Am Konto statt nur im Gerät: Der Stand überlebt eine Neuinstallation, gilt

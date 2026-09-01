@@ -1,5 +1,5 @@
 // Datenschicht des Haushalts-Bereichs (Design-Serie „Haushalt" H-01…H-09).
-// Quelle ist GET /api/council/haushalt: Ergebnishaushalt je Planjahr
+// Quelle ist GET /api/council/budget: Ergebnishaushalt je Planjahr
 // (Teilhaushalte + Summenzeile), dazu Ist-Steuereinnahmen und Steuerkraft —
 // hier stehen nur Ableitungen, keine erfundenen Zahlen (Designprinzip:
 // fehlende Daten heißen sichtbar „[folgt]", nie interpoliert).
@@ -408,8 +408,8 @@ export function haushaltUrl(
   thhPosten?: "keine" | string,
 ): string {
   const teile = [`felder=${felder.join(",")}`];
-  if (thhPosten !== undefined) teile.push(`thh_posten=${thhPosten}`);
-  return `/council/haushalt?${teile.join("&")}`;
+  if (thhPosten !== undefined) teile.push(`sub_budget_item=${thhPosten}`);
+  return `/council/budget?${teile.join("&")}`;
 }
 
 /** Der Ausschnitt von `HaushaltDaten`, den `haushaltUrl(FELDER)` liefert. */

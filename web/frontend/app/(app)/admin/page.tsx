@@ -102,9 +102,9 @@ function TrendChip({ delta }: { delta: number }) {
  *  Bei der Nutzung zählen KONTEN, nicht Zugriffe: Ein einzelnes vielbenutztes
  *  Gerät soll nicht wie eine Plattform mit vielen Leuten aussehen.
  */
-function ClientCard({ clients, beides, signup }: {
+function ClientCard({ clients, both, signup }: {
   clients: AdminGrowth["clients"];
-  beides: number;
+  both: number;
   signup: AdminGrowth["signup_clients"];
 }) {
   // `unknown` fliegt raus: ungemessen ist keine Plattform. Es steht statt-
@@ -125,10 +125,10 @@ function ClientCard({ clients, beides, signup }: {
         {/* Ohne diese Zeile liest sich der Balken so, als benutzte jede:r genau
             eins. Jedes Konto steht dort unter seinem meistgenutzten Client —
             wie viele überhaupt wechseln, sagt erst die Zahl hier. */}
-        {beides > 0 && (
+        {both > 0 && (
           <p className="mt-2.5 text-[11.5px] text-muted-foreground">
             Jedes Konto zählt einmal, unter dem Weg, den es am häufigsten
-            nimmt. {beides === 1 ? "Ein Konto nutzt" : `${beides} Konten nutzen`} beides.
+            nimmt. {both === 1 ? "Ein Konto nutzt" : `${both} Konten nutzen`} beides.
           </p>
         )}
       </Card>
@@ -253,7 +253,7 @@ function StatsTab() {
 
       {/* App oder Web? Zwei getrennte Fragen nebeneinander: womit die Leute
           GERADE arbeiten (30 Tage) und womit sie überhaupt hergekommen sind. */}
-      <ClientCard clients={data.clients} beides={data.clients_beides} signup={data.signup_clients} />
+      <ClientCard clients={data.clients} both={data.clients_both} signup={data.signup_clients} />
 
       {/* WAU + Ratsinfo-Import. */}
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.4fr_1fr]">
@@ -730,7 +730,7 @@ function UsersTab({ currentUserId }: { currentUserId: number }) {
             const chips = [
               u.n_topics > 0 && `${u.n_topics} ${u.n_topics === 1 ? "Thema" : "Themen"}`,
               u.n_ki > 0 && `${u.n_ki} KI-Fragen`,
-              u.n_abos > 0 && `${u.n_abos} Abos`,
+              u.n_subscriptions > 0 && `${u.n_subscriptions} Abos`,
               u.n_quiz > 0 && "Quiz",
             ].filter(Boolean) as string[];
             // Womit gearbeitet wird — steht getrennt von den Inhalts-Chips, weil

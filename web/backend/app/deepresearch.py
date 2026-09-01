@@ -67,7 +67,7 @@ class DeepJob:
     id: str
     user_id: int
     question: str
-    gespraech_id: int | None = None
+    conversation_id: int | None = None
     #: Die letzten Gesprächsrunden (wie bei /ask), um Rückbezüge aufzulösen.
     verlauf: list[dict] = field(default_factory=list)
     #: Eigenständige Fassung der Frage — wird zu Beginn des Laufs aus Frage +
@@ -430,16 +430,16 @@ def _run(job: DeepJob, ratslotse_db: str, council_db: str) -> None:
                                 "date": p.get("date")} for p in presse_rows],
             "debatten_kompakt": [{"speaker": d.get("speaker"), "party": d.get("party"),
                                   "art": d.get("art"), "top": d.get("top"),
-                                  "auszug": (d.get("text") or "")[:2000],
+                                  "excerpt": (d.get("text") or "")[:2000],
                                   "committee": d.get("committee"),
                                   "date": d.get("session_date"),
-                                  "protokoll_url": d.get("protokoll_url"),
-                                  "protokoll_seite": d.get("page")} for d in debatten_rows],
+                                  "minutes_url": d.get("minutes_url"),
+                                  "minutes_page": d.get("page")} for d in debatten_rows],
             "anlagen_kompakt": [{"nr": a.get("nr"), "label": a.get("label"),
                                  "url": a.get("url"),
                                  "template_number": a.get("template_number"),
-                                 "vorlage_titel": a.get("vorlage_titel"),
-                                 "auszug": (a.get("citation") or "")[:220]}
+                                 "template_title": a.get("template_title"),
+                                 "excerpt": (a.get("citation") or "")[:220]}
                                 for a in anlagen_rows],
         }
         m = job.material
@@ -557,7 +557,7 @@ def _schreiben_und_abschliessen(job: DeepJob, ratslotse_db: str, council_db: str
 
         ratslotse = Store(ratslotse_db)
         try:
-            gespraech_id = _gespraech_anhaengen(ratslotse, job, bericht, m, cited)
+            conversation_id = _gespraech_anhaengen(ratslotse, job, bericht, m, cited)
             status = "teilbericht" if teilbericht else "fertig"
             ratslotse.deep_job_update(job.id, status, bericht=bericht,
                                 quellen_json=json.dumps(_quellen_payload(m, cited),
@@ -565,7 +565,7 @@ def _schreiben_und_abschliessen(job: DeepJob, ratslotse_db: str, council_db: str
         finally:
             ratslotse.close()
         _emit(job, {"type": "done", "cited": cited, "documents_read": m.get("documents_read", 0),
-                    "period": m.get("period", ""), "conversation_id": gespraech_id,
+                    "period": m.get("period", ""), "conversation_id": conversation_id,
                     "teilbericht": teilbericht})
         _finish(job)
         melden(job, ratslotse_db, status)
@@ -582,11 +582,11 @@ def _gespraech_anhaengen(ratslotse: Store, job: DeepJob, bericht: str,
     try:
         if ratslotse.get_qa_speichern(job.user_id) != 1:
             return None
-        gespraech_id = job.gespraech_id
-        neu = gespraech_id is None
+        conversation_id = job.conversation_id
+        neu = conversation_id is None
         if neu:
-            gespraech_id = ratslotse.qa_gespraech_start(job.user_id, job.suchfrage)
-            if gespraech_id is None:
+            conversation_id = ratslotse.qa_gespraech_start(job.user_id, job.suchfrage)
+            if conversation_id is None:
                 return None
         zitiert = set(cited)
         # Der volle Anzeige-Stoff gehört in den Gesprächs-Snapshot — ein
@@ -603,12 +603,12 @@ def _gespraech_anhaengen(ratslotse: Store, job: DeepJob, bericht: str,
              "documents_read": m.get("documents_read"), "period": m.get("period"),
              "context": m.get("context")},
             ensure_ascii=False)
-        if not ratslotse.qa_turn_speichern(gespraech_id, job.user_id, job.question,
+        if not ratslotse.qa_turn_speichern(conversation_id, job.user_id, job.question,
                                      bericht, quellen_json):
             if neu:
-                ratslotse.qa_gespraech_loeschen(gespraech_id, job.user_id)
+                ratslotse.qa_gespraech_loeschen(conversation_id, job.user_id)
             return None
-        return gespraech_id
+        return conversation_id
     except Exception:  # noqa: BLE001 — Speichern ist Zusatz, nie Blocker
         return None
 

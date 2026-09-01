@@ -7,7 +7,7 @@
 //
 // Je Datenzeile weiß es die Datenbank seit 08/2026 genauer: `council_herkunft`
 // führt Dokument, Fundstelle darin, bestandene Rechenprobe samt Messwert und
-// Stichtag, und `GET /api/council/haushalt` liefert das als `herkunft` mit
+// Stichtag, und `GET /api/council/budget` liefert das als `herkunft` mit
 // (Format und Begründung: `council/herkunft.py`). Wer einen Beleg auf die
 // einzelne Zahl genau machen will, nimmt die `herkunft_id` der Zeile — nicht
 // diese Konstante.
@@ -23,7 +23,7 @@
 //
 // Wo die Spanne aus dem Bestand fällt, steht sie deshalb nicht mehr hier:
 // `standWort` trägt nur noch das Wort davor („Jahresabschlüsse"), die Zahlen
-// kommen aus `GET /api/council/haushalt/dokumente` (`editions`, gerechnet
+// kommen aus `GET /api/council/budget/documents` (`editions`, gerechnet
 // in `CouncilStore.haushalt_jahrgaenge`). Zusammengesetzt wird in
 // `standText()`.
 //

@@ -14,7 +14,7 @@ from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from pathlib import Path
 
-from .antworten import Gesundheit
+from .antworten import Health
 from .config import get_settings
 from .schemas import AppConfigOut
 from .routers import account, admin, auth, auth_apple, bookmarks, council, feedback, kommunalwahl, onboarding, push, quiz, social, topics, badges
@@ -240,7 +240,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 
 @app.get("/api/health")
-def health() -> Gesundheit:
+def health() -> Health:
     from kern.store import Store
     from council.store import CouncilStore
 

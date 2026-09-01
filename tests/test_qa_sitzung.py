@@ -120,7 +120,7 @@ def test_finde_sitzungen_mit_datum_und_gremium(tmp_path):
     s = qa.finde_sitzungen(store, "Was hat der Jugendhilfeausschuss am 17.06.2026 beschlossen?")
     assert len(s) == 1 and s[0]["committee"] == "Jugendhilfeausschuss"
     # Beschluss-ids in Tagesordnungs-Reihenfolge, ohne den Subvote.
-    rows = store.get_decisions_by_ids(s[0]["beschluss_ids"])
+    rows = store.get_decisions_by_ids(s[0]["decision_ids"])
     assert [r["title"] for r in rows] == ["Krippengruppe", "Kita-Bericht",
                                          "Richtlinien Jugendarbeit"]
     # Datum ohne Gremium meint den TAG: beide Sitzungen des 17.06.
@@ -165,8 +165,8 @@ def test_finde_sitzungen_letzte_sitzung_mit_protokoll_verzug(tmp_path):
     # Jüngste zuerst (ehrlich: noch kein Protokoll, Tagesordnung liegt bei),
     # dazu die letzte MIT Beschlüssen.
     assert [x["session_date"] for x in s] == [juengst, aelter]
-    assert s[0]["beschluss_ids"] == [] and s[0]["agenda"][0]["title"] == "Bäderbericht"
-    assert len(s[1]["beschluss_ids"]) == 1
+    assert s[0]["decision_ids"] == [] and s[0]["agenda"][0]["title"] == "Bäderbericht"
+    assert len(s[1]["decision_ids"]) == 1
     store.close()
 
 
@@ -219,9 +219,9 @@ def test_sitzungen_block_rendert_beide_zustaende():
     block = qa._sitzungen_block([
         {"committee": "Jugendhilfeausschuss", "session_date": "2026-06-17",
          "session_time": "16:00", "location": "Rathaus",
-         "beschluss_ids": [1, 2, 3], "kuenftig": False},
+         "decision_ids": [1, 2, 3], "kuenftig": False},
         {"committee": "Sportausschuss", "session_date": "2026-09-01",
-         "kuenftig": True, "beschluss_ids": [],
+         "kuenftig": True, "decision_ids": [],
          "agenda": [{"item_number": "5", "title": "Bäderbericht",
                      "summary": "Sanierung  der   Becken."}]},
     ])
@@ -239,7 +239,7 @@ def test_sitzungen_block_kein_protokoll():
     erklären, sonst liest sich das Fehlen wie ein Fehler von Ratslotse."""
     block = qa._sitzungen_block([
         {"committee": "Rat", "session_date": "2026-08-20", "kuenftig": False,
-         "beschluss_ids": [], "agenda": []}])
+         "decision_ids": [], "agenda": []}])
     assert "noch kein ausgewertetes Protokoll" in block
     assert "Wochen" in block
     assert "normale Ablauf" in block and "kein Fehler" in block
@@ -281,7 +281,7 @@ def test_sitzung_regel_und_tokenbudget():
         "Was hat der JHA am 17.06.2026 beschlossen?",
         [{"id": 1, "title": "T", "official_text": "B"}], typ="session",
         sitzungen=[{"committee": "Jugendhilfeausschuss", "session_date": "2026-06-17",
-                    "beschluss_ids": [1], "kuenftig": False}])
+                    "decision_ids": [1], "kuenftig": False}])
     prompt = messages[0]["content"]
     assert "EINE KONKRETE SITZUNG" in prompt
     assert "ZUR GEFRAGTEN SITZUNG" in prompt

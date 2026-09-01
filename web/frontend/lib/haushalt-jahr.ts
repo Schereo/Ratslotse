@@ -1,6 +1,6 @@
 // Der Weg eines Haushalts durch den Rat — Typen und die Rechenwege dazu.
 //
-// Gegenstück zu `GET /api/council/haushalt/weg` (council/store.py:
+// Gegenstück zu `GET /api/council/budget/journey` (council/store.py:
 // `haushalt_weg`). Anders als der Rest des Haushalts-Bereichs kommen die
 // Angaben hier nicht aus einem Finanzdokument, sondern aus den Ratsdaten:
 // Beratungsfolge, Tagesordnung, Protokoll-Beschluss.
@@ -30,7 +30,7 @@ export type WegStation = {
   is_public: number | null;
   ksinr: number;
   template_number: string | null;
-  vorlage_titel: string;
+  template_title: string;
   /** TOP-Nummer mit Präfix („Ö 6") — ohne Präfix zeigt der Link daneben. */
   top: string | null;
   /** Ergebnis in den Worten der Tagesordnung („geändert beschlossen"). */
@@ -134,7 +134,7 @@ export function monateZwischen(von: string, bis: string): number {
   return (bj - vj) * 12 + (bm - vm);
 }
 
-/** Ein Jahresabschluss-Dokument, wie `/council/haushalt/dokumente` es
+/** Ein Jahresabschluss-Dokument, wie `/council/budget/documents` es
  *  liefert — gebraucht werden nur Jahr und das Datum der Sitzung, in der
  *  der Rat den Abschluss festgestellt hat. */
 export type AbschlussDok = {

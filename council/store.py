@@ -1172,6 +1172,11 @@ class CouncilStore:
         # bis zum Umbau den Schlüssel `partei`. Ein Cache darf man wegwerfen —
         # die nächste Frage baut ihn neu, und zwar mit `party`.
         self._cache_leeren_einmalig("council_partei_meinungen_cache", "partei_meinungen_englisch")
+        # Zweites Mal: Der Prompt schreibt dem Modell jetzt `stance`/`unanimous`
+        # statt `haltung`/`einig` vor, und der Parser liest es so. Ein Eintrag
+        # von vorher trüge die alten Schlüssel — die Haltung fiele still auf
+        # den Vorgabewert. Eigene Marke, sonst greift der Lauf nicht.
+        self._cache_leeren_einmalig("council_partei_meinungen_cache", "partei_meinungen_stance")
         # Die Summenzeile der Steuertabelle ist UNSERE Marke, kein Steuername
         # aus der Quelle — die deutschen Steuerarten daneben bleiben deshalb.
         self._werte_umschreiben("council_steuern", "kind", [("insgesamt", "total")])
@@ -5901,7 +5906,7 @@ class CouncilStore:
         ph = ",".join("?" * len(kvonrs))
         rows = self._conn.execute(
             f"SELECT b.kvonr, b.date, b.committee, b.result AS kind, "
-            f"       v.template_number, v.title AS vorlage_titel "
+            f"       v.template_number, v.title AS template_title "
             f"FROM council_beratungen b JOIN council_vorlagen v ON v.kvonr = b.kvonr "
             f"WHERE b.kvonr IN ({ph}) AND b.date >= date('now') ORDER BY b.date",
             kvonrs).fetchall()
@@ -5942,12 +5947,12 @@ class CouncilStore:
             return []
         rows = self._conn.execute(
             "SELECT b.kvonr, b.date, b.committee, b.result AS kind, "
-            "       v.template_number, v.title AS vorlage_titel "
+            "       v.template_number, v.title AS template_title "
             "FROM council_beratungen b JOIN council_vorlagen v ON v.kvonr = b.kvonr "
             "WHERE b.date >= date('now') ORDER BY b.date").fetchall()
         bewertet: dict[int, tuple[int, dict]] = {}
         for r in rows:
-            titel_worte = re.split(r"[^a-z0-9]+", self._falte_namen(r["vorlage_titel"] or ""))
+            titel_worte = re.split(r"[^a-z0-9]+", self._falte_namen(r["template_title"] or ""))
             n = sum(1 for w in worte if any(tw.startswith(w) for tw in titel_worte if tw))
             if not n:
                 continue
@@ -12057,7 +12062,7 @@ class CouncilStore:
         # Wirtschaftsplan ist so durchsuchbar wie ein getippter.
         rows = self._conn.execute(
             "SELECT a.document_id, a.label, a.raw_text, v.template_number, "
-            "       v.title AS vorlage_titel FROM council_anlagen a "
+            "       v.title AS template_title FROM council_anlagen a "
             "LEFT JOIN council_vorlagen v ON v.kvonr = a.kvonr "
             "WHERE a.status = 'ok' AND a.raw_text IS NOT NULL AND a.raw_text != '' "
             "ORDER BY a.document_id DESC").fetchall()
@@ -12075,13 +12080,13 @@ class CouncilStore:
             # Vektoren und Antwortfundstellen gelangen weiterhin keine
             # Kontaktdaten.
             material = "\0".join(("anlage-v2", r["label"] or "",
-                                  r["template_number"] or "", r["vorlage_titel"] or "",
+                                  r["template_number"] or "", r["template_title"] or "",
                                   text))
             h = hashlib.sha256(material.encode("utf-8")).hexdigest()[:16]
             if stored.get(r["document_id"]) != h:
                 out.append({"document_id": r["document_id"], "label": r["label"],
                             "template_number": r["template_number"],
-                            "vorlage_titel": r["vorlage_titel"],
+                            "template_title": r["template_title"],
                             "raw_text": text, "text_hash": h})
                 if limit and len(out) >= limit:
                     break
@@ -12120,7 +12125,7 @@ class CouncilStore:
         ph = ",".join("?" * len(document_ids))
         rows = self._conn.execute(
             f"SELECT a.document_id, a.label, a.url, a.kvonr, "
-            f"       v.template_number, v.title AS vorlage_titel "
+            f"       v.template_number, v.title AS template_title "
             f"FROM council_anlagen a LEFT JOIN council_vorlagen v ON v.kvonr = a.kvonr "
             f"WHERE a.document_id IN ({ph})", document_ids).fetchall()
         by_id = {r["document_id"]: dict(r) for r in rows}
@@ -12136,7 +12141,7 @@ class CouncilStore:
         """
         return [dict(r) for r in self._conn.execute(
             "SELECT a.document_id, a.label, v.template_number, "
-            "       v.title AS vorlage_titel FROM council_anlagen a "
+            "       v.title AS template_title FROM council_anlagen a "
             "LEFT JOIN council_vorlagen v ON v.kvonr = a.kvonr "
             "WHERE a.status = 'ok' AND a.raw_text IS NOT NULL AND a.raw_text != '' "
             "ORDER BY a.document_id DESC").fetchall()]
@@ -14169,7 +14174,7 @@ class CouncilStore:
         platz = ",".join("?" * len(kvonrs))
         rows = self._conn.execute(
             f"""SELECT b.kvonr, b.date, b.committee, b.result AS role, b.is_public,
-                       b.ksinr, v.template_number, v.title AS vorlage_titel,
+                       b.ksinr, v.template_number, v.title AS template_title,
                        a.item_number AS top, a.title AS top_titel
                   FROM council_beratungen b
                   JOIN council_vorlagen v ON v.kvonr = b.kvonr
@@ -14347,5 +14352,5 @@ class CouncilStore:
             **st,
             "antraege": antraege,
             "debatte": debatte,
-            "protokoll_url": prot["document_url"] if prot else None,
+            "minutes_url": prot["document_url"] if prot else None,
         }

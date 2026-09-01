@@ -98,10 +98,10 @@ def main() -> dict:
     try:
         from scripts.extract_wortbeitraege import process as extract_wb
         wstats = extract_wb(COUNCIL_DB, limit=20, workers=2)
-        print(f"Wortbeiträge: {wstats['beitraege']} aus {wstats['protokolle']} "
+        print(f"Wortbeiträge: {wstats['contributions']} aus {wstats['protokolle']} "
               f"Protokollen, {wstats['fehler']} Fehler.")
     except Exception as exc:  # noqa: BLE001 — Zusatzkanal, nie Blocker des Nachtlaufs
-        wstats = {"beitraege": 0, "protokolle": 0, "kosten_usd": 0}
+        wstats = {"contributions": 0, "protokolle": 0, "kosten_usd": 0}
         print(f"Wortbeiträge übersprungen: {exc}")
     # Ingest Vorlagen texts for new agenda items (network + pypdf only, no LLM).
     # Newest first + capped, so a normal day fetches a handful; the historic bulk
@@ -166,7 +166,7 @@ def main() -> dict:
         "Einfach erklärt": sstats["written"],
         "Interessantheit bewertet": irated,
         "Tragweite bewertet": prated,
-        "Wortbeiträge": wstats["beitraege"],
+        "Wortbeiträge": wstats["contributions"],
         "Vorlagen geladen": vstats["fetched"],
         "Beschlüsse mit Ortszuordnung": lstats["assigned"],
         "Orte geokodiert": geostats["located"],

@@ -43,7 +43,7 @@ class Ok(TypedDict):
     ok: bool
 
 
-class OkMitId(TypedDict):
+class OkWithId(TypedDict):
     ok: bool
     id: int
 
@@ -52,10 +52,10 @@ class OkMitId(TypedDict):
 # und wachsen mit ihren Tabellen — hier absichtlich durchgereicht statt
 # aufgezählt (siehe Regel 2 im Modul-Docstring). Die Aliase sind trotzdem
 # sprechend, damit im Schema steht, WAS für ein Objekt gemeint ist.
-Tagesordnungszeile = dict[str, Any]
+AgendaItemRow = dict[str, Any]
 
 
-class Sitzungszeile(TypedDict):
+class SessionRow(TypedDict):
     """Eine Sitzung, wie ``CouncilStore.get_session`` sie liefert. Die sechs
     Felder sind die Spalten von ``council_sessions`` — ein Wächter-Test
     (``test_api_vertrag``) schlägt an, wenn die Tabelle wächst, damit hier
@@ -86,7 +86,7 @@ class Sitzungszeile(TypedDict):
     live_until: NotRequired[str | None]
 
 
-class Beschlusszeile(TypedDict):
+class DecisionRow(TypedDict):
     """Ein Beschluss aus ``CouncilStore._decision_row``.
 
     Die Felder sind die 27 Spalten von ``council_decisions`` plus das, was die
@@ -140,12 +140,12 @@ class Beschlusszeile(TypedDict):
 # --------------------------------------------------------------------------
 
 
-class OnboardingStand(TypedDict):
+class OnboardingState(TypedDict):
     steps: list[str]
     celebrated: bool
 
 
-class SetupStand(TypedDict):
+class SetupState(TypedDict):
     step: int
     started_at: str | None
     done_at: str | None
@@ -156,37 +156,37 @@ class SetupStand(TypedDict):
 # --------------------------------------------------------------------------
 
 
-class AbzeichenFortschritt(TypedDict):
+class BadgeProgress(TypedDict):
     current: int
     target: int
 
 
-class Abzeichen(TypedDict):
+class Badge(TypedDict):
     id: str
     title: str
     hint: str
     earned: bool
-    progress: AbzeichenFortschritt | None
+    progress: BadgeProgress | None
 
 
-class AbzeichenKurz(TypedDict):
+class BadgeShort(TypedDict):
     """Für ``newly_earned`` — der Konfetti-Moment braucht nur Name und Id."""
     id: str
     title: str
 
 
-class AbzeichenNaechstes(TypedDict):
+class BadgeNext(TypedDict):
     id: str
     title: str
     hint: str
 
 
-class AbzeichenStand(TypedDict):
-    badges: list[Abzeichen]
+class BadgeState(TypedDict):
+    badges: list[Badge]
     earned_count: int
     total: int
-    next: AbzeichenNaechstes | None
-    newly_earned: list[AbzeichenKurz]
+    next: BadgeNext | None
+    newly_earned: list[BadgeShort]
 
 
 # --------------------------------------------------------------------------
@@ -194,7 +194,7 @@ class AbzeichenStand(TypedDict):
 # --------------------------------------------------------------------------
 
 
-class Merkeintrag(TypedDict):
+class BookmarkEntry(TypedDict):
     """Gebaut in ``council.bookmarks.serialize_bookmark`` — festes Literal,
     deshalb hier vollständig aufgeschrieben. Die drei eingebetteten Objekte
     sind Roh-Zeilen und bleiben offen."""
@@ -211,14 +211,14 @@ class Merkeintrag(TypedDict):
     url: str
     ksinr: int | None
     item_number: str | None
-    session: Sitzungszeile | None
-    agenda_item: Tagesordnungszeile | None
-    decision: Beschlusszeile | None
+    session: SessionRow | None
+    agenda_item: AgendaItemRow | None
+    decision: DecisionRow | None
     is_group: bool
 
 
-class Merkliste(TypedDict):
-    bookmarks: list[Merkeintrag]
+class BookmarkList(TypedDict):
+    bookmarks: list[BookmarkEntry]
 
 
 # --------------------------------------------------------------------------
@@ -226,41 +226,41 @@ class Merkliste(TypedDict):
 # --------------------------------------------------------------------------
 
 
-class GespraechZeile(TypedDict):
+class ConversationRow(TypedDict):
     id: int
     title: str
     updated: str
     n_turns: int
 
 
-class GespraecheListe(TypedDict):
+class ConversationList(TypedDict):
     """`total` ist der Bestand des Kontos, `matches` gilt zur Suche, `has_more`
     sagt, ob „Ältere anzeigen" noch etwas nachliefert."""
     saves_conversations: int | None
-    conversations: list[GespraechZeile]
+    conversations: list[ConversationRow]
     total: int
     matches: int
     has_more: bool
 
 
-class GespraechEinstellung(TypedDict):
+class ConversationSetting(TypedDict):
     saves_conversations: int
 
 
-class GespraechTurn(TypedDict):
+class ConversationTurn(TypedDict):
     question: str
     answer: str
     sources: dict[str, Any] | None
 
 
-class GespraechDetail(TypedDict):
+class ConversationDetail(TypedDict):
     id: int
     title: str
     updated: str
-    turns: list[GespraechTurn]
+    turns: list[ConversationTurn]
 
 
-class GespraecheGeloescht(TypedDict):
+class ConversationsDeleted(TypedDict):
     deleted: int
 
 
@@ -269,7 +269,7 @@ class GespraecheGeloescht(TypedDict):
 # --------------------------------------------------------------------------
 
 
-class MeldeArt(TypedDict):
+class NotifyKind(TypedDict):
     """Ein Anlass samt Beschriftung — die Oberfläche soll keine zweite Liste
     pflegen müssen. ``parent`` ist gesetzt, wenn der Anlass eine Unter-Option
     eines anderen ist."""
@@ -281,18 +281,18 @@ class MeldeArt(TypedDict):
     parent: str | None
 
 
-class MeldeGrenzen(TypedDict):
+class NotifyLimits(TypedDict):
     per_day: int
     quiet_from: int
     quiet_to: int
 
 
-class MeldeEinstellungen(TypedDict):
-    kinds: list[MeldeArt]
-    limits: MeldeGrenzen
+class NotifySettings(TypedDict):
+    kinds: list[NotifyKind]
+    limits: NotifyLimits
 
 
-class TestZustellung(TypedDict):
+class TestDelivery(TypedDict):
     """``sent`` nennt die Kanäle, über die es rausging (``deliver_message``)."""
     sent: list[str]
 
@@ -302,17 +302,17 @@ class TestZustellung(TypedDict):
 # --------------------------------------------------------------------------
 
 
-class ThemenVorschlag(TypedDict):
+class TopicSuggestion(TypedDict):
     name: str
     description: str
     n: int
 
 
-class ThemenVorschlaege(TypedDict):
-    suggestions: list[ThemenVorschlag]
+class TopicSuggestions(TypedDict):
+    suggestions: list[TopicSuggestion]
 
 
-class ThemenBeschreibung(TypedDict):
+class TopicDescription(TypedDict):
     """``analyse`` liefert die ersten acht Felder, ``check_vagueness`` die drei
     letzten (sie werden per ``**`` daruntergemischt)."""
     name: str
@@ -328,15 +328,15 @@ class ThemenBeschreibung(TypedDict):
     suggestion: str
 
 
-class UngeleseneThemenTreffer(TypedDict):
+class UnreadTopicHits(TypedDict):
     total: int
 
 
-class MarkierteTreffer(TypedDict):
+class MarkedHits(TypedDict):
     marked: int
 
 
-class ThemenTreffer(TypedDict):
+class TopicHit(TypedDict):
     topic_name: str
     id: int
     title: str
@@ -344,11 +344,11 @@ class ThemenTreffer(TypedDict):
     session_date: str
 
 
-class ThemenTrefferListe(TypedDict):
-    hits: list[ThemenTreffer]
+class TopicHitList(TypedDict):
+    hits: list[TopicHit]
 
 
-class ThemenBeschluss(TypedDict):
+class TopicDecision(TypedDict):
     id: int
     title: str
     committee: str
@@ -358,20 +358,20 @@ class ThemenBeschluss(TypedDict):
     score: float
 
 
-class ThemenBeschluesse(TypedDict):
-    decisions: list[ThemenBeschluss]
+class TopicDecisions(TypedDict):
+    decisions: list[TopicDecision]
 
 
-class Abonnements(TypedDict):
+class Subscriptions(TypedDict):
     subscriptions: list[str]
 
 
-class AboGesetzt(TypedDict):
+class SubscriptionSet(TypedDict):
     subscribed: bool
     committee_name: str
 
 
-class AboGeloescht(TypedDict):
+class SubscriptionRemoved(TypedDict):
     unsubscribed: bool
     committee_name: str
 
@@ -381,11 +381,11 @@ class AboGeloescht(TypedDict):
 # --------------------------------------------------------------------------
 
 
-class Gesundheit(TypedDict):
+class Health(TypedDict):
     status: str
 
 
-class QuellenPruefung(TypedDict):
+class SourceCheck(TypedDict):
     status: str
     checked_seconds_ago: int
 
@@ -395,7 +395,7 @@ class QuellenPruefung(TypedDict):
 # --------------------------------------------------------------------------
 
 
-class Wochenvorschau(TypedDict):
+class WeekPreview(TypedDict):
     """``CouncilStore.wochenvorschau`` hat ZWEI Rückgabeformen: ohne Treffer
     nur fünf Schlüssel, mit Treffern elf. Die sechs Kennzahlen sind deshalb
     ``NotRequired`` — ein Pflichtfeld wäre hier ein 500 an einer ruhigen
@@ -403,9 +403,9 @@ class Wochenvorschau(TypedDict):
     found: bool
     from_date: str
     to_date: str
-    sessions: list[Sitzungszeile]
+    sessions: list[SessionRow]
     items: list[dict[str, Any]]
-    upcoming: list[Sitzungszeile]
+    upcoming: list[SessionRow]
     substantive_total: NotRequired[Any]
     substantive_per_session: NotRequired[Any]
     relevant_per_session: NotRequired[Any]
@@ -414,7 +414,7 @@ class Wochenvorschau(TypedDict):
     further_per_session: NotRequired[Any]
 
 
-class Fundstueck(TypedDict):
+class Discovery(TypedDict):
     day: str
     kicker: str
     story: str
@@ -426,7 +426,7 @@ class Fundstueck(TypedDict):
     session_date: str | None
 
 
-class SocialBeschluss(TypedDict):
+class SocialDecision(TypedDict):
     """Fester SELECT im Router plus ``votes`` — deshalb hier vollständig."""
     id: int
     title: str | None
@@ -441,12 +441,12 @@ class SocialBeschluss(TypedDict):
     votes: list[dict[str, Any]]
 
 
-class HoechsteBeschlussId(TypedDict):
+class HighestDecisionId(TypedDict):
     highest_id: int
 
 
-class MedienAblage(TypedDict):
-    tag: str
+class MediaUpload(TypedDict):
+    day: str
     count: int
     urls: list[str]
 
@@ -456,7 +456,7 @@ class MedienAblage(TypedDict):
 # --------------------------------------------------------------------------
 
 
-class QuizFrage(TypedDict):
+class QuizQuestion(TypedDict):
     """Gebaut in ``CouncilStore._quiz_row(with_answer=False)`` — die Lösung ist
     bewusst NICHT dabei. ``source_*`` sind ``NotRequired``, weil die eigenen
     Übungsfragen (``/own/round``) ohne Quelle gebaut werden; ``unit`` und die
@@ -479,11 +479,11 @@ class QuizFrage(TypedDict):
     range_max: NotRequired[float | None]
 
 
-class QuizRunde(TypedDict):
-    questions: list[QuizFrage]
+class QuizRound(TypedDict):
+    questions: list[QuizQuestion]
 
 
-class QuizAuswertung(TypedDict):
+class QuizResult(TypedDict):
     """Antwort auf ``/answer`` und ``/own/answer``. Was nur ein Zweig setzt,
     ist ``NotRequired``: Schätzfragen liefern ``answer_value``/``unit``, die
     Übungsrunde kennt weder Detail noch Diagramm."""
@@ -502,7 +502,7 @@ class QuizAuswertung(TypedDict):
     unit: NotRequired[str | None]
 
 
-class QuizGebiet(TypedDict):
+class QuizArea(TypedDict):
     """Ein Eintrag im Gebiets-Katalog. Die drei Listen (Wahlbereiche,
     Ortsbereiche, Themen) teilen sich diese Form — was nur eine davon trägt,
     ist ``NotRequired``. Vollständig aufgeschrieben, weil ein fehlendes Feld
@@ -521,14 +521,14 @@ class QuizGebiet(TypedDict):
     districts: NotRequired[list[str]]
 
 
-class QuizGebiete(TypedDict):
-    electoral_districts: list[QuizGebiet]
-    districts: list[QuizGebiet]
-    topics: list[QuizGebiet]
+class QuizAreas(TypedDict):
+    electoral_districts: list[QuizArea]
+    districts: list[QuizArea]
+    topics: list[QuizArea]
     categories: list[str]
 
 
-class QuizTagesergebnis(TypedDict):
+class QuizDailyResult(TypedDict):
     day: str
     correct: int
     total: int
@@ -536,46 +536,46 @@ class QuizTagesergebnis(TypedDict):
     completed_at: str | None
 
 
-class QuizTagesrunde(TypedDict):
+class QuizDailyRound(TypedDict):
     """``done`` ist KEIN Flag, sondern das Ergebnis des Tages — oder ``None``,
     solange die Challenge offen ist."""
     day: str
-    done: QuizTagesergebnis | None
-    questions: list[QuizFrage]
+    done: QuizDailyResult | None
+    questions: list[QuizQuestion]
 
 
-class QuizTagAbgeschlossen(TypedDict):
+class QuizDayCompleted(TypedDict):
     ok: bool
     day: str
     streak: int
 
 
-class QuizKartenfrage(TypedDict):
+class QuizMapQuestion(TypedDict):
     target: str
     question: str
 
 
-class QuizKartenrunde(TypedDict):
-    questions: list[QuizKartenfrage]
+class QuizMapRound(TypedDict):
+    questions: list[QuizMapQuestion]
 
 
-class QuizKartenAuswertung(TypedDict):
+class QuizMapResult(TypedDict):
     correct: bool
     target: str
     points: int
 
 
-class QuizEigeneFragen(TypedDict):
+class QuizOwnQuestions(TypedDict):
     questions: list[dict[str, Any]]
 
 
-class QuizGesamt(TypedDict):
+class QuizTotal(TypedDict):
     points: int
     answered: int
     correct: int
 
 
-class QuizGebietsstand(TypedDict):
+class QuizAreaScore(TypedDict):
     area_type: str
     area_key: str
     points: int
@@ -584,18 +584,18 @@ class QuizGebietsstand(TypedDict):
     last_at: str | None
 
 
-class QuizStand(TypedDict):
+class QuizScore(TypedDict):
     """``Store.quiz_stats`` liefert ``by_area``/``total``, der Router hängt
     Serie, Abzeichen, Fehlerzahl und Tages-Status an."""
-    by_area: list[QuizGebietsstand]
-    total: QuizGesamt
+    by_area: list[QuizAreaScore]
+    total: QuizTotal
     wrong: int
     streak: int
     badges: list[Any]
     daily_done: bool
 
 
-class QuizGemeldeteFrage(TypedDict):
+class QuizFlaggedQuestion(TypedDict):
     """Bewertungs-Zeile aus ``quiz_flagged_questions`` plus Fragentext. Die
     Zeile selbst ist ``SELECT``-geformt, deshalb sind ihre Felder offen."""
     question_id: int
@@ -609,8 +609,8 @@ class QuizGemeldeteFrage(TypedDict):
     comments: str | None
 
 
-class QuizGemeldet(TypedDict):
-    flagged: list[QuizGemeldeteFrage]
+class QuizFlagged(TypedDict):
+    flagged: list[QuizFlaggedQuestion]
 
 
 # --------------------------------------------------------------------------
@@ -623,21 +623,21 @@ class QuizGemeldet(TypedDict):
 # ``ALTER TABLE`` still Felder zu schlucken (siehe Regel 2 oben).
 # --------------------------------------------------------------------------
 
-AdminNutzerDetail = dict[str, Any]
-AdminFeedbackZeile = dict[str, Any]
-AdminOrtsKandidat = dict[str, Any]
-AdminLlmVerbrauch = dict[str, Any]
-AdminEntitaetsAlias = dict[str, Any]
+AdminUserDetail = dict[str, Any]
+AdminFeedbackRow = dict[str, Any]
+AdminPlaceCandidate = dict[str, Any]
+AdminLlmUsage = dict[str, Any]
+AdminEntityAlias = dict[str, Any]
 
 
-class AdminVerlauf(TypedDict):
+class AdminSeries(TypedDict):
     total: int
     series: list[int]
     delta: int
     days: list[str]
 
 
-class AdminRatsStatistik(TypedDict):
+class AdminCouncilStats(TypedDict):
     sessions: int
     upcoming: int
     agenda_items: int
@@ -651,7 +651,7 @@ class AdminRatsStatistik(TypedDict):
     next_session: str | None
 
 
-class AdminClientAnteil(TypedDict):
+class AdminClientShare(TypedDict):
     client: str
     n: int
     #: Nur bei der Nutzung gefüllt (verschiedene Konten); bei der Registrierung
@@ -659,37 +659,37 @@ class AdminClientAnteil(TypedDict):
     users: int
 
 
-class AdminWachstum(TypedDict):
-    users: AdminVerlauf
-    topics: AdminVerlauf
+class AdminGrowth(TypedDict):
+    users: AdminSeries
+    topics: AdminSeries
     wau: list[int]
     wau_days: list[str]
-    council: AdminRatsStatistik
+    council: AdminCouncilStats
     #: Zugriffe je Client, letzte 30 Tage — „App oder Web?". ``users`` zählt
     #: jedes Konto genau einmal, unter seinem meistgenutzten Client.
-    clients: list[AdminClientAnteil]
+    clients: list[AdminClientShare]
     #: Wie viele Konten in dem Zeitraum MEHRERE Clients benutzt haben. Die Zahl
     #: gehört dazu: Ohne sie liest sich die Aufteilung so, als benutzte jede:r
     #: genau eins.
-    clients_beides: int
+    clients_both: int
     #: Womit die vorhandenen Konten angelegt wurden (gesamter Bestand).
-    signup_clients: list[AdminClientAnteil]
+    signup_clients: list[AdminClientShare]
 
 
-class AdminQuizGebiet(TypedDict):
+class AdminQuizArea(TypedDict):
     area_type: str
     area_key: str
     n: int
 
 
-class AdminQuizStatistik(TypedDict):
+class AdminQuizStats(TypedDict):
     questions_active: int
     avg_accuracy: float | None
     reported: int
-    weak_categories: list[AdminQuizGebiet]
+    weak_categories: list[AdminQuizArea]
 
 
-class AdminJobLauf(TypedDict):
+class AdminJobRun(TypedDict):
     started_at: str
     status: str
     duration_s: float | None
@@ -707,24 +707,24 @@ class AdminJob(TypedDict):
     state: Literal["ok", "stale", "error", "unknown"]
     age_h: float | None
     last: dict[str, Any] | None
-    history: list[AdminJobLauf]
+    history: list[AdminJobRun]
 
 
-class AdminFeedbackListe(TypedDict):
-    items: list[AdminFeedbackZeile]
+class AdminFeedbackList(TypedDict):
+    items: list[AdminFeedbackRow]
     unread: int
 
 
-class AdminUngelesen(TypedDict):
+class AdminUnread(TypedDict):
     total: int
 
 
-class AdminFeedbackGelesen(TypedDict):
+class AdminFeedbackRead(TypedDict):
     ok: bool
     unread: int
 
 
-class AdminNutzerZeile(TypedDict):
+class AdminUserRow(TypedDict):
     id: int
     email: str
     role: str
@@ -732,7 +732,7 @@ class AdminNutzerZeile(TypedDict):
     created_at: str | None
     apple_linked: bool
     n_topics: int
-    n_abos: int
+    n_subscriptions: int
     n_quiz: int
     n_ki: int
     last_seen: str | None
@@ -744,22 +744,22 @@ class AdminNutzerZeile(TypedDict):
     clients: dict[str, int]
 
 
-class AdminGrenzen(TypedDict):
+class AdminLimits(TypedDict):
     deep_limit: int | None
     limits_unlocked: bool
 
 
-class AdminAliasListe(TypedDict):
-    aliases: list[AdminEntitaetsAlias]
+class AdminAliasList(TypedDict):
+    aliases: list[AdminEntityAlias]
 
 
-class AdminAliasGeloescht(TypedDict):
+class AdminAliasDeleted(TypedDict):
     ok: bool
     entities: int
 
 
-class AdminOrtsKandidaten(TypedDict):
-    candidates: list[AdminOrtsKandidat]
+class AdminPlaceCandidates(TypedDict):
+    candidates: list[AdminPlaceCandidate]
     status: str
 
 
@@ -776,8 +776,8 @@ class AdminOrtsKandidaten(TypedDict):
 
 # Nutzlasten, die der Handler nicht selbst zusammensetzt, sondern aus dem
 # Store durchreicht: benannt, damit im Schema steht, worum es geht, aber offen.
-OrtsKatalog = dict[str, Any]
-class Sitzungspause(TypedDict):
+PlaceCatalog = dict[str, Any]
+class CouncilRecess(TypedDict):
     """Ob gerade Ratspause ist — immer dieselben fünf Felder
     (``council/sitzungspause.py``)."""
     active: bool
@@ -787,7 +787,7 @@ class Sitzungspause(TypedDict):
     next_session_date: str | None
 
 
-class HeuteTagesSitzung(TypedDict):
+class TodaySession(TypedDict):
     """Eine Sitzung des heutigen Tages im „Heute im Rat"-Briefing."""
     committee: str
     session_time: str
@@ -798,7 +798,7 @@ class HeuteTagesSitzung(TypedDict):
     remaining: int
 
 
-class HeuteSitzung(TypedDict):
+class BriefingToday(TypedDict):
     state: Literal["heute"]
     # Die Felder der ERSTEN Sitzung des Tages, flach — so lasen ältere
     # App-Installationen das Briefing, bevor es ``sessions`` gab.
@@ -811,17 +811,17 @@ class HeuteSitzung(TypedDict):
     # Alle Sitzungen des Tages: An Ratstagen tagen drei Gremien nacheinander,
     # und erst mit der ganzen Liste kann die Leiste auf die laufende
     # umschalten. Ohne diese Zeile schnitte die Antwort sie still ab.
-    sessions: list[HeuteTagesSitzung]
+    sessions: list[TodaySession]
 
 
-class HeuteNaechste(TypedDict):
+class BriefingNext(TypedDict):
     state: Literal["naechste"]
     committee: str
     session_date: str
     session_time: str
 
 
-class HeutePause(TypedDict):
+class BriefingBreak(TypedDict):
     state: Literal["pause"]
     label: str | None
     until: str | None
@@ -830,22 +830,22 @@ class HeutePause(TypedDict):
 # Drei Zustände, unterscheidbar an `state` — als echte Union statt einer Form
 # mit lauter NotRequired, damit beide Clients erst nach der Prüfung auf die
 # jeweiligen Felder kommen.
-HeuteBriefing = HeuteSitzung | HeuteNaechste | HeutePause
-WochenvorschauIntern = dict[str, Any]
-HaushaltUebersicht = dict[str, Any]
-SitzungsDetail = dict[str, Any]
-BeschlussDetail = dict[str, Any]
+TodayBriefing = BriefingToday | BriefingNext | BriefingBreak
+WeekPreviewInternal = dict[str, Any]
+BudgetOverview = dict[str, Any]
+SessionDetail = dict[str, Any]
+DecisionDetail = dict[str, Any]
 QaShare = dict[str, Any]
-RechercheSnapshot = dict[str, Any]
-class AnalyseAbdeckung(TypedDict):
+ResearchSnapshot = dict[str, Any]
+class AnalysisCoverage(TypedDict):
     with_factions: int
     total: int
 
 
-class AnalyseDaten(TypedDict):
+class AnalysisData(TypedDict):
     """``CouncilStore.party_analysis`` — die Hülle steht, die Innereien sind
     verschachtelte Auswertungen und bleiben offen."""
-    coverage: AnalyseAbdeckung
+    coverage: AnalysisCoverage
     topic_matrix: dict[str, Any]
     success_rates: Any
     contention: Any
@@ -855,7 +855,7 @@ class AnalyseDaten(TypedDict):
     antrag_stats: Any
 
 
-class TrendDaten(TypedDict):
+class TrendData(TypedDict):
     """``CouncilStore.activity_trends`` — Hülle beschrieben, Reihen offen."""
     quarters: list[str]
     fields: list[str]
@@ -863,61 +863,61 @@ class TrendDaten(TypedDict):
     money: list[float]
     money_drivers: list[Any]
     emerging: Any
-OeffentlicheZahlen = dict[str, Any]
-EntitaetsDetail = dict[str, Any]
-PersonenDetail = dict[str, Any]
-Wortbeitraege = dict[str, Any]
+PublicNumbers = dict[str, Any]
+EntityDetail = dict[str, Any]
+PersonDetail = dict[str, Any]
+Speeches = dict[str, Any]
 
 
-class GremiumDetail(TypedDict):
+class CommitteeDetail(TypedDict):
     name: str
     next_date: str | None
     next_time: str | None
     decisions_year: int
 
 
-class Gremien(TypedDict):
+class Committees(TypedDict):
     committees: list[str]
-    details: list[GremiumDetail]
+    details: list[CommitteeDetail]
 
 
-class Themenfeld(TypedDict):
+class PolicyField(TypedDict):
     key: str
     label: str
     count: int
 
 
-class Themenfelder(TypedDict):
-    fields: list[Themenfeld]
+class PolicyFields(TypedDict):
+    fields: list[PolicyField]
 
 
-class ParteienFilter(TypedDict):
+class PartyFilter(TypedDict):
     parties: Any
 
 
-class Stadtteile(TypedDict):
+class Districts(TypedDict):
     catalog: dict[str, Any]
     districts: Any
 
 
-class OrtsDetail(TypedDict):
+class PlaceDetail(TypedDict):
     children: Any
     decision_count: Any
     decisions: Any
     place: Any
 
 
-class SitzungsListe(TypedDict):
+class SessionList(TypedDict):
     count: int
-    sessions: list[Sitzungszeile]
+    sessions: list[SessionRow]
     total: int
 
 
-class DieseWocheOhne(TypedDict):
+class ThisWeekNone(TypedDict):
     found: Literal[False]
 
 
-class DieseWocheMit(TypedDict):
+class ThisWeekFound(TypedDict):
     found: Literal[True]
     decision_id: int
     title: str
@@ -930,10 +930,10 @@ class DieseWocheMit(TypedDict):
 # Eine echte Union statt einer Form mit lauter NotRequired: `found` unterscheidet
 # die beiden Fälle, und beide Clients bekommen daraus einen Typ, bei dem der
 # Zugriff auf `title` erst NACH der Prüfung auf `found` erlaubt ist.
-DieseWoche = DieseWocheMit | DieseWocheOhne
+ThisWeek = ThisWeekFound | ThisWeekNone
 
 
-class FundstueckDesTages(TypedDict):
+class DiscoveryOfTheDay(TypedDict):
     """2 Rückgabe-Zweige — was nicht in jedem steht, ist NotRequired."""
     committee: NotRequired[Any]
     decision_id: NotRequired[Any]
@@ -946,7 +946,7 @@ class FundstueckDesTages(TypedDict):
     vote: NotRequired[Any]
 
 
-class ZahlDerWocheBetrag(TypedDict):
+class NumberOfTheWeekAmount(TypedDict):
     kind: Literal["amount"]
     amount_eur: float
     decision_id: int
@@ -955,16 +955,16 @@ class ZahlDerWocheBetrag(TypedDict):
     window_days: int
 
 
-class ZahlDerWocheAnzahl(TypedDict):
+class NumberOfTheWeekCount(TypedDict):
     kind: Literal["count"]
     count: int
     window_days: int
 
 
-ZahlDerWoche = ZahlDerWocheBetrag | ZahlDerWocheAnzahl
+NumberOfTheWeek = NumberOfTheWeekAmount | NumberOfTheWeekCount
 
 
-class HaushaltProdukte(TypedDict):
+class BudgetProducts(TypedDict):
     coverage_percent: Any
     all_years: Any
     facets: Any
@@ -975,7 +975,7 @@ class HaushaltProdukte(TypedDict):
     matches: int
 
 
-class HaushaltStellenplan(TypedDict):
+class BudgetStaffPlan(TypedDict):
     missing: Any
     groups: Any
     herkunft: dict[str, Any]
@@ -985,14 +985,14 @@ class HaushaltStellenplan(TypedDict):
     rows: Any
 
 
-class HaushaltPruefberichte(TypedDict):
+class BudgetAuditReports(TypedDict):
     findings: list[Any]
     years: Any
     legend: Any
     without_report: list[Any]
 
 
-class HaushaltKonzern(TypedDict):
+class BudgetGroup(TypedDict):
     cross_check: Any
     herkunft: dict[str, Any]
     years: Any
@@ -1001,7 +1001,7 @@ class HaushaltKonzern(TypedDict):
     entity: list[Any]
 
 
-class HaushaltBeteiligungen(TypedDict):
+class BudgetHoldings(TypedDict):
     report_years: Any
     owners: Any
     companies: list[Any]
@@ -1013,7 +1013,7 @@ class HaushaltBeteiligungen(TypedDict):
     texts: Any
 
 
-class HaushaltInvestitionen(TypedDict):
+class BudgetInvestments(TypedDict):
     financial_budget: list[Any]
     investments: list[Any]
     herkunft: dict[str, Any]
@@ -1021,7 +1021,7 @@ class HaushaltInvestitionen(TypedDict):
     sub_budgets: list[Any]
 
 
-class HaushaltInvestitionsprogramm(TypedDict):
+class BudgetInvestmentProgram(TypedDict):
     totals: list[Any]
     herkunft: dict[str, Any]
     years: Any
@@ -1029,25 +1029,25 @@ class HaushaltInvestitionsprogramm(TypedDict):
     sub_budgets: list[Any]
 
 
-class HaushaltDatenstand(TypedDict):
+class BudgetDataState(TypedDict):
     today: str
     layers: list[dict[str, Any]]
 
 
-class HaushaltDokumente(TypedDict):
+class BudgetDocuments(TypedDict):
     documents: Any
     editions: Any
 
 
-class HaushaltWeg(TypedDict):
+class BudgetPath(TypedDict):
     rounds: Any
 
 
-class HaushaltStreit(TypedDict):
+class BudgetDispute(TypedDict):
     rounds: Any
 
 
-class HaushaltAenderungslisten(TypedDict):
+class BudgetAmendmentLists(TypedDict):
     herkunft: dict[str, Any]
     totals: Any
     rows: Any
@@ -1063,12 +1063,12 @@ class HaushaltAenderungslisten(TypedDict):
     cash_budget_rows: Any
 
 
-class BeschlussListe(TypedDict):
-    decisions: list[Beschlusszeile]
+class DecisionList(TypedDict):
+    decisions: list[DecisionRow]
     total: int
 
 
-class ParteiMeinungen(TypedDict):
+class PartyOpinions(TypedDict):
     without_speeches: Any
     parties: Any
 
@@ -1077,64 +1077,64 @@ class QaShareToken(TypedDict):
     token: str
 
 
-class RechercheGestartet(TypedDict):
+class ResearchStarted(TypedDict):
     # None heißt: unbegrenzt, der Client zeigt dann keinen Zähler.
     remaining: int | None
     job_id: str
 
 
-class RechercheAktuell(TypedDict):
+class ResearchCurrent(TypedDict):
     remaining: int | None
     job: dict[str, Any] | None
 
 
-class RechercheGestoppt(TypedDict):
+class ResearchStopped(TypedDict):
     facets_done: int
     facets_total: int
     partial_report_possible: bool
 
 
-class QaBeispiele(TypedDict):
+class QaExamples(TypedDict):
     sessions: Any
 
 
-class VorlagenFolgen(TypedDict):
+class TemplateFollows(TypedDict):
     follows: Any
 
 
-class VorlageGefolgt(TypedDict):
+class TemplateFollowed(TypedDict):
     following: bool
     kvonr: int
 
 
-class VorlageEntfolgt(TypedDict):
+class TemplateUnfollowed(TypedDict):
     following: bool
     kvonr: int
 
 
-class Finanzen(TypedDict):
+class Finances(TypedDict):
     by_field: Any
     decisions: Any
     field_labels: dict[str, Any]
 
 
-class ThemenfeldRueckblicke(TypedDict):
+class PolicyFieldRecaps(TypedDict):
     recaps: Any
 
 
-class Entitaeten(TypedDict):
+class Entities(TypedDict):
     entities: Any
 
 
-class EntitaetenKarte(TypedDict):
+class EntitiesMap(TypedDict):
     entities: Any
 
 
-class PersonenLexikon(TypedDict):
+class PeopleDirectory(TypedDict):
     people: Any
 
 
-class Vorschau(TypedDict):
+class SharePreview(TypedDict):
     """Titel und Beschreibung für die Vorschau-Karte beim Teilen — fünf
     Zweige (Beschluss, Person, Ort, Entität, Sitzung), alle mit denselben
     zwei Feldern."""
@@ -1142,11 +1142,11 @@ class Vorschau(TypedDict):
     title: str
 
 
-class Ratsmitglieder(TypedDict):
+class CouncilMembers(TypedDict):
     members: Any
 
 
-class ZielKennzahlen(TypedDict):
+class GoalMetrics(TypedDict):
     """Wie viele Beschlüsse das Ziel voranbringen, bremsen oder nicht berühren."""
     advances: int
     hinders: int
@@ -1154,25 +1154,25 @@ class ZielKennzahlen(TypedDict):
     total: int
 
 
-class Ziel(ZielKennzahlen):
+class Goal(GoalMetrics):
     key: str
     label: str
     description: str
 
 
-class Ziele(TypedDict):
-    goals: list[Ziel]
+class Goals(TypedDict):
+    goals: list[Goal]
 
 
-class ZielDetail(TypedDict):
+class GoalDetail(TypedDict):
     key: str
     label: str
     description: str
-    summary: ZielKennzahlen
+    summary: GoalMetrics
     decisions: list[dict[str, Any]]
 
 
-class HaushaltVergleich(TypedDict):
+class BudgetComparison(TypedDict):
     citation: Any
     herkunft: dict[str, Any]
     years: Any
@@ -1180,7 +1180,7 @@ class HaushaltVergleich(TypedDict):
     values: Any
 
 
-class HaushaltGebaut(TypedDict):
+class BudgetFixedAssets(TypedDict):
     scope_note: Any
     fixed_assets: dict[str, Any]
     missing: Any
@@ -1190,14 +1190,14 @@ class HaushaltGebaut(TypedDict):
     series: Any
 
 
-class HaushaltBilanz(TypedDict):
+class BudgetBalanceSheet(TypedDict):
     explanations: Any
     herkunft: dict[str, Any]
     years: Any
     items: Any
 
 
-class HaushaltSchulden(TypedDict):
+class BudgetDebt(TypedDict):
     scope_note: Any
     column_kinds: list[Any]
     guarantees: dict[str, Any]

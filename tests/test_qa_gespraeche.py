@@ -103,7 +103,7 @@ def test_share_extras_und_alte_zeilen(tmp_path):
     uid = _user(store)
     token = store.qa_share_anlegen(
         uid, "Frage?", "Antwort [5].", [{"id": 5, "title": "T"}],
-        {"debates": [{"speaker": "Wenzel", "auszug": "Warnte."}],
+        {"debates": [{"speaker": "Wenzel", "excerpt": "Warnte."}],
          "press_releases": [], "attachments": [], "parties": [{"party": "SPD"}]})
     share = store.qa_share_get(token)
     assert share["debates"][0]["speaker"] == "Wenzel"

@@ -175,7 +175,7 @@ struct TopicsView: View {
             topics = try await topicsRequest
             suggestions = await suggestionsRequest?.suggestions ?? []
             error = nil
-            try? await model.api.sendVoid("/api/topics/uebersicht-gesehen")
+            try? await model.api.sendVoid("/api/topics/overview-seen")
         } catch { self.error = error.localizedDescription }
     }
 

@@ -115,7 +115,7 @@ def test_wachstum_zeigt_beide_aufteilungen(client):
     client.get("/api/auth/me", headers={"X-Client": "ios"})
     b = client.get("/api/admin/stats/growth?range=30d").json()
 
-    assert {"clients", "clients_beides", "signup_clients"} <= set(b)
+    assert {"clients", "clients_both", "signup_clients"} <= set(b)
     nutzung = {c["client"]: c for c in b["clients"]}
     assert nutzung["ios"]["n"] >= 1
     # `users` zählt Konten, nicht Zugriffe — die ehrlichere Zahl.
@@ -149,7 +149,7 @@ def test_jedes_konto_zaehlt_in_der_aufteilung_genau_einmal(tmp_path):
         konten = {c["client"]: c["users"] for c in ergebnis["clients"]}
         assert konten == {"ios": 1, "web": 1, "android": 1}
         assert sum(konten.values()) == 3          # 3 gemessene Konten, nicht 4
-        assert ergebnis["beides"] == 1            # Konto 1 nutzt beides
+        assert ergebnis["both"] == 1            # Konto 1 nutzt beides
         assert "unknown" not in konten
 
         # Die Zugriffszahl bleibt die Zugriffszahl — sie darf sich nicht ändern.

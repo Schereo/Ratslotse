@@ -1,7 +1,7 @@
 // Typen und Rechenwege für „Was in den Listen stand" — die Inhalts-Ebene
 // unter dem Streit-Abschnitt (/haushalt/mitreden#streit).
 //
-// Die Daten kommen aus `/council/haushalt/aenderungslisten`: je Dokument
+// Die Daten kommen aus `/council/budget/amendment-lists`: je Dokument
 // (Verw. I–III, Beschluss-Datei des AFB) die Positionen des
 // Haushaltsjahrgangs und die Zusammenstellungen aller Planjahre. Jede
 // Positionsliste wurde beim Einlesen gegen ihre eigene Zusammenstellung

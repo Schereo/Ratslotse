@@ -1401,7 +1401,7 @@ def test_geld_grafik_liefert_rohreihen_aus_dem_store(tmp_path):
 
     geld = qa.geld_kontext(store, "Wie hoch sind die Schulden der Stadt?")
     g = qa.geld_grafik(store, geld)
-    assert g and g["art"] == "schulden"
+    assert g and g["kind"] == "schulden"
     assert [p["year"] for p in g["series"]] == [1995, 2024, 2025]
     assert g["series"][-1]["value"] == 337.0            # Mio, gerundet
     assert g["unit"] == "Mio. €"
@@ -1409,11 +1409,11 @@ def test_geld_grafik_liefert_rohreihen_aus_dem_store(tmp_path):
 
     geld = qa.geld_kontext(store, "Wie hoch sind Schulden und Gewerbesteuer?")
     g = qa.geld_grafik(store, geld)
-    assert g and g["art"] == "schulden", "Bei beiden gewinnt der Bestand"
+    assert g and g["kind"] == "schulden", "Bei beiden gewinnt der Bestand"
 
     geld = qa.geld_kontext(store, "Wie hat sich die Gewerbesteuer entwickelt?")
     g = qa.geld_grafik(store, geld)
-    assert g and g["art"] == "taxes"
+    assert g and g["kind"] == "taxes"
     assert g["series"][-1]["value"] == 222.1
 
     leer = CouncilStore(str(tmp_path / "leer.sqlite"))
@@ -1436,7 +1436,7 @@ def test_grafik_pruefung_am_share_snapshot():
     sys.path.insert(0, "web/backend")
     from app.routers.council import _grafik_pruefen
 
-    gut = {"art": "schulden", "title": "Schuldenstand", "unit": "Mio. €",
+    gut = {"kind": "schulden", "title": "Schuldenstand", "unit": "Mio. €",
            "nachkomma": 1, "series": [{"year": 1995, "value": 190.0},
                                      {"year": 2025, "value": 337.0}],
            "note": "Stadt als Rechtsträger", "source": "Jahrbuch 1108"}

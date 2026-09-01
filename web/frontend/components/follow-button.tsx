@@ -36,7 +36,7 @@ export function FollowButton({ kvonr, initial, className }: {
     setBusy(true);
     setFollowing(next); // optimistisch — bei Fehler unten zurückgedreht
     try {
-      if (next) await api.post(`/council/vorlage/${kvonr}/follow`, {});
+      if (next) await api.post(`/council/template/${kvonr}/follow`, {});
       else await api.del(`/council/vorlage/${kvonr}/follow`);
       qc.invalidateQueries({ queryKey: ["vorlage-follows"] });
       toast.success(

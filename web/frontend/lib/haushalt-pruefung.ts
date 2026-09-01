@@ -1,6 +1,6 @@
 // Datenschicht für „Was das Rechnungsprüfungsamt beanstandet".
 //
-// Quelle ist GET /api/council/haushalt/pruefberichte: eine Zeile je Randmarke
+// Quelle ist GET /api/council/budget/pruefberichte: eine Zeile je Randmarke
 // aus den Schlussberichten 2017–2023, mit Textziffer, Seite und Deeplink.
 //
 // Hier stehen nur Gruppierungen — kein Bewerten, kein Zusammenfassen. Der Text

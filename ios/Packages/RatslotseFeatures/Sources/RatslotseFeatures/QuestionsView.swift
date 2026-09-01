@@ -313,7 +313,7 @@ struct QuestionsView: View {
 
     private func loadPersonLexicon() async {
         guard personLexicon.isEmpty else { return }
-        guard let response: QuestionPeopleEnvelope = try? await model.api.get("/api/council/personen-lexikon") else {
+        guard let response: QuestionPeopleEnvelope = try? await model.api.get("/api/council/people-directory") else {
             return
         }
         personLexicon = response.personen
@@ -442,7 +442,7 @@ struct QuestionsView: View {
               let id = model.activeConversationID
         else { return }
         do {
-            let payload: JSONValue = try await model.api.get("/api/council/gespraeche/\(id)")
+            let payload: JSONValue = try await model.api.get("/api/council/conversations/\(id)")
             guard turns.isEmpty else { return }
             loadConversation(id, payload: payload)
         } catch let error as APIError where error.statusCode == 404 || error.isUnauthorized {
@@ -668,7 +668,7 @@ struct QuestionsView: View {
                 model.setActiveConversationID(conversationID)
             }
             if let jobID {
-                Task { try? await model.api.sendVoid("/api/council/deep-research/\(jobID)/gesehen") }
+                Task { try? await model.api.sendVoid("/api/council/deep-research/\(jobID)/seen") }
             }
         default:
             break
@@ -706,7 +706,7 @@ struct QuestionsView: View {
             else { return }
             do {
                 let _: JSONValue = try await model.api.sendWithoutBody(
-                    "/api/council/deep-research/\(jobID)/teilbericht"
+                    "/api/council/deep-research/\(jobID)/partial-report"
                 )
                 guard let current = turns.firstIndex(where: { $0.id == turnID }) else { return }
                 turns[current].research?.status = "laeuft"
@@ -739,7 +739,7 @@ struct QuestionsView: View {
 
     private func restoreCurrentResearch() async {
         do {
-            let current: ResearchCurrentResponse = try await model.api.get("/api/council/deep-research/aktuell")
+            let current: ResearchCurrentResponse = try await model.api.get("/api/council/deep-research/current")
             researchRemaining = current.frei
             guard let snapshot = current.job else { return }
 
@@ -852,7 +852,7 @@ struct QuestionsView: View {
               "nr": 1,
               "label": "Übersichtskarte der Busspuren",
               "template_number": "26/0801",
-              "auszug": "Geplante Abschnitte am Innenstadtring.",
+              "excerpt": "Geplante Abschnitte am Innenstadtring.",
               "url": "https://example.org/karte.pdf"
             }],
             "press_releases": [{
@@ -865,10 +865,10 @@ struct QuestionsView: View {
               "party": "GRÜNE",
               "art": "Wortbeitrag",
               "date": "2026-08-26",
-              "auszug": "Die Busspuren sollen Anschlüsse stabilisieren und den Umweltverbund stärken."
+              "excerpt": "Die Busspuren sollen Anschlüsse stabilisieren und den Umweltverbund stärken."
             }],
             "planning_procedures": [{
-              "vorlage_titel": "Umsetzung der Busspuren",
+              "template_title": "Umsetzung der Busspuren",
               "committee": "Verkehrsausschuss",
               "date": "2026-11-12"
             }],
@@ -1949,11 +1949,11 @@ struct PartyOpinion: Codable, Sendable, Identifiable {
     enum CodingKeys: String, CodingKey {
         case position
         case party = "party"
-        case stance = "haltung"
-        case united = "einig"
+        case stance = "stance"
+        case united = "unanimous"
         case hint = "note"
         case coreStatement = "kernaussage"
-        case contributions = "beitraege"
+        case contributions = "contributions"
     }
 
     var jsonValue: JSONValue {
@@ -1961,11 +1961,11 @@ struct PartyOpinion: Codable, Sendable, Identifiable {
             "party": .string(party),
             "position": .string(position),
         ]
-        if let stance { fields["haltung"] = .string(stance) }
-        if let united { fields["einig"] = .bool(united) }
+        if let stance { fields["stance"] = .string(stance) }
+        if let united { fields["unanimous"] = .bool(united) }
         if let hint { fields["note"] = .string(hint) }
         if let coreStatement { fields["kernaussage"] = coreStatement.jsonValue }
-        if let contributions { fields["beitraege"] = .number(Double(contributions)) }
+        if let contributions { fields["contributions"] = .number(Double(contributions)) }
         return .object(fields)
     }
 }
@@ -2080,7 +2080,7 @@ private struct PartyOpinionsView: View {
     }
 
     private func load() async {
-        struct Body: Codable, Sendable { let question: String; let beschluss_ids: [Int] }
+        struct Body: Codable, Sendable { let question: String; let decision_ids: [Int] }
         let citedIDs = QuestionCitationIndex(text: turn.answer, sources: turn.sources)
             .citedSources
             .map(\.id)
@@ -2094,7 +2094,7 @@ private struct PartyOpinionsView: View {
         do {
             response = try await model.api.send(
                 "/api/council/party-meinungen",
-                body: Body(question: String(turn.question.prefix(300)), beschluss_ids: decisionIDs)
+                body: Body(question: String(turn.question.prefix(300)), decision_ids: decisionIDs)
             )
         } catch { self.error = error.localizedDescription }
     }
@@ -2324,7 +2324,7 @@ struct SharedAnswerView: View {
         defer { isLoading = false }
         do {
             async let snapshotRequest: SharedAnswerSnapshot = model.api.get("/api/council/qa-share/\(token)")
-            async let peopleRequest: QuestionPeopleEnvelope? = try? model.api.get("/api/council/personen-lexikon")
+            async let peopleRequest: QuestionPeopleEnvelope? = try? model.api.get("/api/council/people-directory")
             let loaded = try await snapshotRequest
             snapshot = loaded
             people = await peopleRequest?.personen ?? []
@@ -2525,14 +2525,14 @@ private struct QuestionAnswerActions: View {
         if embedded.count >= 2 { return embedded }
         guard !(turn.evidence["debates"]?.array ?? []).isEmpty else { return [] }
 
-        struct Body: Codable, Sendable { let question: String; let beschluss_ids: [Int] }
+        struct Body: Codable, Sendable { let question: String; let decision_ids: [Int] }
         let citationIndex = QuestionCitationIndex(text: turn.answer, sources: turn.sources)
         let IDs = citationIndex.citedSources.isEmpty
             ? Array(turn.sources.prefix(20).map(\.id))
             : citationIndex.citedSources.map(\.id)
         guard let response: PartyOpinionsResponse = try? await model.api.send(
             "/api/council/party-meinungen",
-            body: Body(question: String(turn.question.prefix(300)), beschluss_ids: IDs)
+            body: Body(question: String(turn.question.prefix(300)), decision_ids: IDs)
         ) else { return [] }
         return response.parties.count >= 2 ? response.parties : []
     }
@@ -2718,7 +2718,7 @@ struct CouncilEvidenceBlocks: View {
                         let title = item["label"]?.string ?? "Anlage"
                         let row = EvidenceTextRow(
                             title: "[A\(number)] \(title)",
-                            detail: item["auszug"]?.string,
+                            detail: item["excerpt"]?.string,
                             meta: item["template_number"]?.string,
                             symbol: "doc.text"
                         )
@@ -2765,7 +2765,7 @@ struct CouncilEvidenceBlocks: View {
                         let kind = item["art"]?.string?.capitalized
                         let row = EvidenceTextRow(
                             title: [speaker, party].compactMap { $0 }.joined(separator: " · "),
-                            detail: item["auszug"]?.string,
+                            detail: item["excerpt"]?.string,
                             meta: [kind, item["date"]?.string].compactMap { $0 }.joined(separator: " · "),
                             symbol: "quote.bubble"
                         )
@@ -2787,7 +2787,7 @@ struct CouncilEvidenceBlocks: View {
                 VStack(alignment: .leading, spacing: 10) {
                     ForEach(Array(planning.enumerated()), id: \.offset) { _, item in
                         EvidenceTextRow(
-                            title: item["vorlage_titel"]?.string ?? item["template_number"]?.string ?? "Vorlage",
+                            title: item["template_title"]?.string ?? item["template_number"]?.string ?? "Vorlage",
                             detail: item["committee"]?.string,
                             meta: item["date"]?.string,
                             symbol: "arrow.triangle.branch"
@@ -2813,8 +2813,8 @@ struct CouncilEvidenceBlocks: View {
     }
 
     private func debateURL(_ item: [String: JSONValue]) -> URL? {
-        guard let raw = item["protokoll_url"]?.string else { return nil }
-        if let page = item["protokoll_seite"]?.int {
+        guard let raw = item["minutes_url"]?.string else { return nil }
+        if let page = item["minutes_page"]?.int {
             return URL(string: "\(raw)#page=\(page)")
         }
         return URL(string: raw)

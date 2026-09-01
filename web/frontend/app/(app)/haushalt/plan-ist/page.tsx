@@ -74,7 +74,7 @@ import { Seitenbuehne, ZaehlZahl } from "@/components/haushalt/seitenbuehne";
 function PruefungsHinweis() {
   // Nur die wiederholten Beanstandungen: Der volle Bestand ist rund 250 kB
   // Prosa und wird auf dieser Seite nirgends angezeigt.
-  const { data } = useFetch<PruefberichtDaten>("/council/haushalt/pruefberichte?mark=WB");
+  const { data } = useFetch<PruefberichtDaten>("/council/budget/audit-reports?mark=WB");
   const chain = useMemo(() => {
     if (!data?.findings?.length) return null;
     return wiederholungsketten(data.findings)

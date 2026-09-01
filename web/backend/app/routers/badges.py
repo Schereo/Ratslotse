@@ -14,7 +14,7 @@ from pydantic import BaseModel
 
 from kern.store import Store
 
-from ..antworten import Abzeichen, AbzeichenStand, Ok
+from ..antworten import Badge, BadgeState, Ok
 from ..deps import get_store, require_active
 
 router = APIRouter(prefix="/api/badges", tags=["badges"])
@@ -41,7 +41,7 @@ class BadgeEvent(BaseModel):
     key: str | None = None
 
 
-def _compute(store: Store, user_id: int, state: dict) -> list[Abzeichen]:
+def _compute(store: Store, user_id: int, state: dict) -> list[Badge]:
     """Ist-Zustand aller Abzeichen (earned + Fortschritt), Reihenfolge wie BADGES."""
     flags = set(state["flags"])
     places = len(set(state["map_places"]))
@@ -79,7 +79,7 @@ def _compute(store: Store, user_id: int, state: dict) -> list[Abzeichen]:
 
 @router.get("")
 def get_badges(user: dict = Depends(require_active),
-               store: Store = Depends(get_store)) -> AbzeichenStand:
+               store: Store = Depends(get_store)) -> BadgeState:
     state = store.get_badge_state(user["id"])
     badges = _compute(store, user["id"], state)
     newly = [

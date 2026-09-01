@@ -12,7 +12,7 @@ from kern.store import Store
 from council.store import CouncilStore
 
 from ..config import get_settings
-from ..antworten import MeldeEinstellungen, Ok, TestZustellung
+from ..antworten import NotifySettings, Ok, TestDelivery
 from ..deps import get_council_store, get_store, require_active
 from ..schemas import (ChangePasswordRequest, DeleteAccountRequest, DeliveryUpdate,
                        NotifyPrefsIn, UserOut)
@@ -101,7 +101,7 @@ def set_delivery(
 def get_notifications(
     user: dict = Depends(require_active),
     store: Store = Depends(get_store),
-) -> MeldeEinstellungen:
+) -> NotifySettings:
     """Was diese Person wovon hören will (Design 30a/E).
 
     Liefert die Anlässe mitsamt Beschriftung und Vorgabe, damit die Oberfläche
@@ -130,7 +130,7 @@ def set_notifications(
     body: NotifyPrefsIn,
     user: dict = Depends(require_active),
     store: Store = Depends(get_store),
-) -> MeldeEinstellungen:
+) -> NotifySettings:
     store.set_notify_prefs(user["id"], body.prefs)
     return get_notifications(user=user, store=store)
 
@@ -159,7 +159,7 @@ def change_password(
 def test_notification(
     user: dict = Depends(require_active),
     store: Store = Depends(get_store),
-) -> TestZustellung:
+) -> TestDelivery:
     """RL-702: Test-Benachrichtigung über die aktiven Kanäle — damit man prüfen
     kann, ob E-Mail/Push wirklich ankommen. Nutzt exakt den Cron-Versandpfad
     (deliver_message); ohne RESEND_API_KEY wird E-Mail still übersprungen."""
