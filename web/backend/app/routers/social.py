@@ -30,8 +30,8 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, status
 
 from ..config import get_settings
-from ..antworten import (Fundstueck, HoechsteBeschlussId, MedienAblage, Sitzungszeile,
-                        SocialBeschluss, Wochenvorschau)
+from ..antworten import (Discovery, HighestDecisionId, MediaUpload, SessionRow, SocialDecision,
+                         WeekPreview)
 from ..deps import get_council_store
 
 from council.store import CouncilStore
@@ -78,7 +78,7 @@ def bot_token(request: Request) -> str:
 def wochenvorschau(
     tage: int = 14,
     store: CouncilStore = Depends(get_council_store),
-) -> Wochenvorschau:
+) -> WeekPreview:
     """Die Wochenvorschau, wie sie auf der Startseite steht — aber neutral.
 
     ``meine=None`` ist Absicht: Die Fassung im Dashboard hebt Punkte hervor,
@@ -101,7 +101,7 @@ def wochenvorschau(
 
 
 @router.get("/sitzungen/{tag}", dependencies=[Depends(bot_token)])
-def sitzungen(tag: str, store: CouncilStore = Depends(get_council_store)) -> list[Sitzungszeile]:
+def sitzungen(tag: str, store: CouncilStore = Depends(get_council_store)) -> list[SessionRow]:
     """Alle Sitzungen eines Kalendertags — Grundlage der Sitzungstag-Story."""
     if not _TAG_RE.match(tag):
         raise HTTPException(status.HTTP_400_BAD_REQUEST,
@@ -110,7 +110,7 @@ def sitzungen(tag: str, store: CouncilStore = Depends(get_council_store)) -> lis
 
 
 @router.get("/fundstueck/{tag}", dependencies=[Depends(bot_token)])
-def fundstueck(tag: str, store: CouncilStore = Depends(get_council_store)) -> Fundstueck | None:
+def fundstueck(tag: str, store: CouncilStore = Depends(get_council_store)) -> Discovery | None:
     """Das vorgenerierte Fundstück des Tages, falls vorhanden."""
     if not _TAG_RE.match(tag):
         raise HTTPException(status.HTTP_400_BAD_REQUEST,
@@ -124,7 +124,7 @@ def neue_beschluesse(
     mindest_wichtig: int = 55,
     limit: int = 3,
     store: CouncilStore = Depends(get_council_store),
-) -> list[SocialBeschluss]:
+) -> list[SocialDecision]:
     """Neue, wichtige Beschlüsse seit einer ID — Kandidaten für
     „So wurde entschieden". Dieselbe Abfrage, die vorher direkt gegen die
     Datenbank lief (``ratslotse_social.quellen.neue_beschluesse``), nur
@@ -155,7 +155,7 @@ def neue_beschluesse(
 # öffentliche Schnittstelle, kein Bezeichner — sie wandert bei einer
 # Umbenennung nicht mit. `tests/test_api_vertrag.py` hält das fest.
 @router.get("/hoechste-beschluss-id", dependencies=[Depends(bot_token)])
-def hoechste_beschluss_id(store: CouncilStore = Depends(get_council_store)) -> HoechsteBeschlussId:
+def hoechste_beschluss_id(store: CouncilStore = Depends(get_council_store)) -> HighestDecisionId:
     """Aktueller Zählerstand — der Startpunkt fürs erste Merken beim Bot,
     damit sein Ereignis-Cron nicht den gesamten Bestand als „neu" meldet."""
     value = store._conn.execute("SELECT MAX(id) FROM council_decisions").fetchone()[0]
@@ -174,7 +174,7 @@ def _zielverzeichnis(tag: str) -> Path:
 
 
 @router.post("/medien/{tag}", dependencies=[Depends(bot_token)])
-async def medien_ablegen(tag: str, dateien: list[UploadFile]) -> MedienAblage:
+async def medien_ablegen(tag: str, dateien: list[UploadFile]) -> MediaUpload:
     """Gerenderte Karten entgegennehmen und öffentlich ablegen.
 
     Gibt die URLs zurück, unter denen Instagram sie abholen kann. Ein

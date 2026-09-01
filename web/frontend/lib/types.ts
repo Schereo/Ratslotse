@@ -722,7 +722,7 @@ export interface UserQuizQuestion {
  *  `source_type`/`source_ref` sind optional, weil die eigenen Übungsfragen
  *  (`/quiz/own/round`) ohne Quelle gebaut werden. Der frühere Handtyp verlangte
  *  sie und log damit über genau diesen Endpunkt. */
-export type QuizQuestion = components["schemas"]["QuizFrage"];
+export type QuizQuestion = components["schemas"]["QuizQuestion"];
 export interface QuizImageCredit {
   url: string;
   author: string | null;

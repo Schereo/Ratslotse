@@ -10,7 +10,7 @@ from council import bookmarks as bookmark_logic
 from council.store import CouncilStore
 from kern.store import Store
 
-from ..antworten import Merkeintrag, Merkliste
+from ..antworten import BookmarkEntry, BookmarkList
 from ..deps import get_council_store, get_store, require_active
 
 router = APIRouter(prefix="/api/bookmarks", tags=["bookmarks"])
@@ -55,7 +55,7 @@ def _existing_agenda_bookmark(rows: list[dict], ksinr: int, item: dict) -> dict 
 @router.get("")
 def list_bookmarks(user: dict = Depends(require_active),
                    ratslotse: Store = Depends(get_store),
-                   council: CouncilStore = Depends(get_council_store)) -> Merkliste:
+                   council: CouncilStore = Depends(get_council_store)) -> BookmarkList:
     out = []
     for row in ratslotse.get_bookmarks(user["id"]):
         entry = bookmark_logic.enrich_bookmark(row, council)
@@ -85,7 +85,7 @@ def list_bookmarks(user: dict = Depends(require_active),
 def create_bookmark(payload: BookmarkIn,
                     user: dict = Depends(require_active),
                     ratslotse: Store = Depends(get_store),
-                    council: CouncilStore = Depends(get_council_store)) -> Merkeintrag:
+                    council: CouncilStore = Depends(get_council_store)) -> BookmarkEntry:
     owner_id = user["id"]
 
     if payload.kind == "session":
@@ -160,7 +160,7 @@ def create_bookmark(payload: BookmarkIn,
 def set_notification(bookmark_id: int, payload: BookmarkNotificationIn,
                      user: dict = Depends(require_active),
                      ratslotse: Store = Depends(get_store),
-                     council: CouncilStore = Depends(get_council_store)) -> Merkeintrag:
+                     council: CouncilStore = Depends(get_council_store)) -> BookmarkEntry:
     row = ratslotse.get_bookmark_for_owner(user["id"], bookmark_id)
     if not row:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Merkeintrag nicht gefunden.")
