@@ -16,11 +16,23 @@ on:
     branches: [dev]
   workflow_dispatch:
 
-# Schnell aufeinanderfolgende Pushes: der neueste gewinnt, ältere Läufe
-# werden abgebrochen (auf Dev ist nur der letzte Stand interessant).
+# GETEILTE Gruppe mit dem Feature-Deploy (deploy-feature.yml). Seit
+# 09/2026 läuft auf derselben Dev-VM eine zweite Instanz unter
+# `~/app-feature` für feature.ratslotse.de. Die VM hat 2 Kerne und 8 GB;
+# zwei gleichzeitige `next build` passen dort nicht nebeneinander, und der
+# OOM-Killer trifft dann den LAUFENDEN Dienst der anderen Instanz — der
+# Ausfall sieht danach aus wie ein Fehler im gebauten Code. Gemeinsame
+# Gruppe heißt: sie bauen nacheinander.
+#
+# cancel-in-progress deshalb auf FALSE (vorher `true`, „der neueste
+# gewinnt"): Mit einer geteilten Gruppe würde ein Dev-Push einen laufenden
+# Feature-Build abwürgen, und feature.ratslotse.de bliebe stumm auf altem
+# Stand stehen. Der Preis ist, dass zwei kurz aufeinanderfolgende
+# Dev-Pushes beide bauen statt nur der letzte — auf einer Dev-VM ist
+# Wartezeit billiger als ein Stand, der falsch aussieht.
 concurrency:
-  group: deploy-dev
-  cancel-in-progress: true
+  group: deploy-dev-vm
+  cancel-in-progress: false
 
 # Der Lauf braucht vom Token nur eins: das eigene Repo lesen dürfen. Ohne
 # diesen Block gälte die Repo-Vorgabe, und die kann Schreibrechte enthalten.
