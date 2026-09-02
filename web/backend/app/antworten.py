@@ -1870,6 +1870,18 @@ class BudgetBalanceSheet(TypedDict):
     items: Any
 
 
+class BudgetLoans(TypedDict):
+    scope_note: Any
+    kind_names: dict[str, Any]
+    notices: list[Any]
+    items: list[Any]
+    coverage: Any
+    rates: list[Any]
+    refinancing_by_year: list[Any]
+    latest_refinancing: Any
+    provenance: Provenance
+
+
 class BudgetDebt(TypedDict):
     scope_note: Any
     column_kinds: list[Any]

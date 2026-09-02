@@ -38,7 +38,7 @@ from kern.store import Store
 from .. import deepresearch
 from ..config import get_settings
 from ..antworten import (AnalysisData, BudgetAmendmentLists, BudgetAuditReports,
-                         BudgetBalanceSheet, BudgetComparison, BudgetDataState, BudgetDebt,
+                         BudgetBalanceSheet, BudgetComparison, BudgetDataState, BudgetDebt, BudgetLoans,
                          BudgetDispute, BudgetDocuments, BudgetExecution,
                          BudgetFixedAssets, BudgetGroup,
                          BudgetHoldings, BudgetInvestmentProgram, BudgetInvestments,
@@ -3976,6 +3976,89 @@ def haushalt_bilanz(
         "years": store.bilanz_jahre(),
         "items": posten,
         "explanations": erlaeuterungen,
+        "provenance": {str(h["id"]): h for h in store.get_herkunft(ids)},
+    }
+
+
+@router.get("/budget/loans")
+def haushalt_kredite(
+    _user: dict = Depends(require_active),
+    store: CouncilStore = Depends(get_council_store),
+) -> BudgetLoans:
+    """Kredite und Zinsen — die Unterrichtungen des Rates nach der Kreditrichtlinie.
+
+    Die Schuldenseite sagt, wie hoch die Schulden sind; das hier sagt, zu
+    welchen Bedingungen die Stadt und ihre Betriebe sich Geld leihen und
+    umschulden (``council/loans.py``).
+
+    - ``notices``: je Vorlage Berichtszeitraum, Zahl der Posten, Zinsersparnis
+      der Umschuldung — auch die Berichte OHNE Vorgang (``none_reported``),
+      damit die Reihe der Monate belegt ist und nicht nur leer.
+    - ``items``: die Posten mit Art, Schuldner, Betrag, Zinssatz, Zinsbindung
+      und Datum der Kreditentscheidung. ``borrower`` ist ``null`` bei den
+      Umschuldungen der Grundgeschäfte, die Kernverwaltung UND Betriebe
+      zugleich betreffen — die Vorlage nennt dort keinen.
+    - ``rates``: die Posten mit gedrucktem Zinssatz, jüngste zuerst — die
+      Antwort auf „zu welchem Zins leiht sich die Stadt Geld?".
+    - ``refinancing_by_year``: Umschuldungsvolumen und -zahl je Jahr samt der
+      Zinsersparnis, wo die Vorlage sie beziffert. Die Ersparnis ist die
+      Angabe der Verwaltung gegenüber „herkömmlicher Kommunalkredit-
+      finanzierung", keine Rechnung von uns. ACHTUNG beim Volumen: Die
+      Kommunalkredite der Grundgeschäfte laufen in Dreimonats-Tranchen und
+      werden JEDES QUARTAL neu ausgeschrieben (zum 16.02., 16.05., 16.08.,
+      16.11.) — die Jahressumme zählt dasselbe Kapital viermal. Wer eine
+      Zahl nennt, nimmt ``latest_refinancing``, nicht die Jahressumme.
+    - ``latest_refinancing``: der jüngste Umschuldungs-Posten (Betrag, Zeitraum).
+    - ``coverage``: erster und letzter Berichtsmonat und die Lücken dazwischen
+      (2019–2021 fehlen im Bestand; die Unterrichtung in dieser Form gibt es
+      seit 2022, davor Einzelberichte).
+
+    Die Konditionen je Darlehen (Bank, Marge, Laufzeit) stehen in den Anlagen
+    der Vorlagen und sind nicht im Bestand — ``scope_note`` sagt es.
+    """
+    from council import loans as _l
+
+    notices = store.get_loan_notices()
+    items = store.get_loan_items()
+    rates = sorted((i for i in items if i.get("rate_pct") is not None),
+                   key=lambda i: (i["period_from"], i["template_number"], i["seq"]), reverse=True)
+    je_jahr: dict[int, dict] = {}
+    for i in items:
+        if i["kind"] not in ("refinancing", "prolongation"):
+            continue
+        j = je_jahr.setdefault(i["year"], {"year": i["year"], "amount": 0.0, "count": 0, "saving": 0.0,
+                                           "saving_notices": 0})
+        j["amount"] += i.get("amount") or 0
+        j["count"] += 1
+    for n in notices:
+        if n.get("interest_saving") and n["year"] in je_jahr:
+            je_jahr[n["year"]]["saving"] += n["interest_saving"]
+            je_jahr[n["year"]]["saving_notices"] += 1
+    monate = sorted({n["period_from"] for n in notices} | {n["period_to"] for n in notices})
+    luecken: list[dict] = []
+    if monate:
+        # Lücken zwischen den belegten Monaten, in ganzen Jahren gezählt —
+        # feiner wäre eine Behauptung über Monate, die die Quelle so nicht trägt.
+        jahre = sorted({int(m[:4]) for m in monate})
+        for a, b in zip(jahre, jahre[1:]):
+            if b - a > 1:
+                luecken.append({"from": a + 1, "to": b - 1})
+    ids = sorted({z["herkunft_id"] for z in (*notices, *items) if z.get("herkunft_id") is not None})
+    return {
+        "scope_note": ("Stadt Oldenburg mit ihren Eigenbetrieben, wie die Verwaltung dem Rat "
+                       "berichtet: Kreditaufnahmen, Umschuldungen und Prolongationen mit den "
+                       "Angaben aus dem Vorlagentext. Die Konditionen je Darlehen (Bank, Marge, "
+                       "Laufzeit) stehen in den Anlagen und sind nicht im Bestand."),
+        "kind_names": _l.ART_NAMEN,
+        "notices": notices,
+        "items": items,
+        "coverage": {"from": monate[0] if monate else None, "to": monate[-1] if monate else None,
+                     "gaps": luecken, "notices": len(notices),
+                     "none_reported": sum(1 for n in notices if n.get("none_reported"))},
+        "rates": rates,
+        "refinancing_by_year": [je_jahr[j] for j in sorted(je_jahr)],
+        "latest_refinancing": next((i for i in sorted(items, key=lambda i: (i["period_from"], i["seq"]), reverse=True)
+                                    if i["kind"] == "refinancing" and i.get("amount")), None),
         "provenance": {str(h["id"]): h for h in store.get_herkunft(ids)},
     }
 

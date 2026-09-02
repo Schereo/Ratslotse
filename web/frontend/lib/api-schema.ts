@@ -1600,6 +1600,55 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/council/budget/loans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Haushalt Kredite
+         * @description Kredite und Zinsen — die Unterrichtungen des Rates nach der Kreditrichtlinie.
+         *
+         *     Die Schuldenseite sagt, wie hoch die Schulden sind; das hier sagt, zu
+         *     welchen Bedingungen die Stadt und ihre Betriebe sich Geld leihen und
+         *     umschulden (``council/loans.py``).
+         *
+         *     - ``notices``: je Vorlage Berichtszeitraum, Zahl der Posten, Zinsersparnis
+         *       der Umschuldung — auch die Berichte OHNE Vorgang (``none_reported``),
+         *       damit die Reihe der Monate belegt ist und nicht nur leer.
+         *     - ``items``: die Posten mit Art, Schuldner, Betrag, Zinssatz, Zinsbindung
+         *       und Datum der Kreditentscheidung. ``borrower`` ist ``null`` bei den
+         *       Umschuldungen der Grundgeschäfte, die Kernverwaltung UND Betriebe
+         *       zugleich betreffen — die Vorlage nennt dort keinen.
+         *     - ``rates``: die Posten mit gedrucktem Zinssatz, jüngste zuerst — die
+         *       Antwort auf „zu welchem Zins leiht sich die Stadt Geld?".
+         *     - ``refinancing_by_year``: Umschuldungsvolumen und -zahl je Jahr samt der
+         *       Zinsersparnis, wo die Vorlage sie beziffert. Die Ersparnis ist die
+         *       Angabe der Verwaltung gegenüber „herkömmlicher Kommunalkredit-
+         *       finanzierung", keine Rechnung von uns. ACHTUNG beim Volumen: Die
+         *       Kommunalkredite der Grundgeschäfte laufen in Dreimonats-Tranchen und
+         *       werden JEDES QUARTAL neu ausgeschrieben (zum 16.02., 16.05., 16.08.,
+         *       16.11.) — die Jahressumme zählt dasselbe Kapital viermal. Wer eine
+         *       Zahl nennt, nimmt ``latest_refinancing``, nicht die Jahressumme.
+         *     - ``latest_refinancing``: der jüngste Umschuldungs-Posten (Betrag, Zeitraum).
+         *     - ``coverage``: erster und letzter Berichtsmonat und die Lücken dazwischen
+         *       (2019–2021 fehlen im Bestand; die Unterrichtung in dieser Form gibt es
+         *       seit 2022, davor Einzelberichte).
+         *
+         *     Die Konditionen je Darlehen (Bank, Marge, Laufzeit) stehen in den Anlagen
+         *     der Vorlagen und sind nicht im Bestand — ``scope_note`` sagt es.
+         */
+        get: operations["haushalt_kredite_api_council_budget_loans_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/council/budget/products": {
         parameters: {
             query?: never;
@@ -4734,6 +4783,31 @@ export interface components {
             sub_budgets: unknown[];
             /** Years */
             years: unknown;
+        };
+        /** BudgetLoans */
+        BudgetLoans: {
+            /** Coverage */
+            coverage: unknown;
+            /** Items */
+            items: unknown[];
+            /** Kind Names */
+            kind_names: {
+                [key: string]: unknown;
+            };
+            /** Latest Refinancing */
+            latest_refinancing: unknown;
+            /** Notices */
+            notices: unknown[];
+            /** Provenance */
+            provenance: {
+                [key: string]: components["schemas"]["Herkunft"];
+            };
+            /** Rates */
+            rates: unknown[];
+            /** Refinancing By Year */
+            refinancing_by_year: unknown[];
+            /** Scope Note */
+            scope_note: unknown;
         };
         /**
          * BudgetOverview
@@ -9131,6 +9205,26 @@ export interface operations {
             };
         };
     };
+    haushalt_kredite_api_council_budget_loans_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetLoans"];
+                };
+            };
+        };
+    };
     haushalt_produkte_api_council_budget_products_get: {
         parameters: {
             query: {
@@ -12052,4 +12146,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 098569f3bba8c3689434a6d2c670941ccd6dac495bb05d89f56ec566529b49ba
+// vertrag-sha256: f10f7cd2920cf1ce79ce771fcb3990fc32da266dd6d52421586326a3adb7807c
