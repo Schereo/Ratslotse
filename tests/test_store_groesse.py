@@ -3,9 +3,8 @@
 **Der Zustand, gegen den das steht.** ``council/store.py`` trug am 02.09.2026
 15.744 Zeilen in EINER Klasse mit 506 Methoden. Jeder Cron und jede Route
 hängt daran; wer dort etwas sucht, sucht lange, und wer etwas ändert, sieht
-nicht, wen er trifft. Zwei Ecken sind heraus: der Haushalt
-(``council/store_haushalt.py``, 81 Methoden) und die Orte
-(``council/store_orte.py``, 27).
+nicht, wen er trifft. Die Ecken ziehen nacheinander aus; jede als Mixin, das ``CouncilStore``
+miterbt (``ECKEN`` unten).
 
 **Warum eine Zahl und kein Verbot.** Verbieten kann man es nicht — manche
 Abfrage gehört wirklich in die Mitte. Aber sie soll eine Entscheidung sein und
@@ -23,10 +22,9 @@ from pathlib import Path
 WURZEL = Path(__file__).resolve().parents[1]
 STORE = WURZEL / "council" / "store.py"
 
-#: Stand nach dem zweiten Schnitt — Haushalt und Orte sind draußen
-#: (02.09.2026). Darf schrumpfen.
-HOECHSTENS_METHODEN = 398
-HOECHSTENS_ZEILEN = 13567
+#: Stand nach dem vierten Schnitt (02.09.2026). Darf schrumpfen.
+HOECHSTENS_METHODEN = 375
+HOECHSTENS_ZEILEN = 13171
 
 
 def _klasse() -> ast.ClassDef:
@@ -55,6 +53,24 @@ def test_die_datei_waechst_nicht():
     )
 
 
+def _mixins():
+    import sys
+
+    sys.path.insert(0, str(WURZEL))
+    from council.store_haushalt import HaushaltMixin
+    from council.store_orte import OrteMixin
+    from council.store_presse import PresseMixin
+    from council.store_quiz import QuizMixin
+
+    #: Ecke → (Mixin, Mindestzahl eigener Methoden).
+    return {
+        "Haushalt": (HaushaltMixin, 80),
+        "Orte": (OrteMixin, 25),
+        "Presse": (PresseMixin, 9),
+        "Quiz": (QuizMixin, 12),
+    }
+
+
 def test_die_ecken_haengen_wirklich_dran():
     """Ein Mixin, das niemand erbt, ist toter Code — und jede Seite dieser Ecke
     wäre ein 500er. Das fällt sonst erst beim ersten Aufruf auf."""
@@ -62,26 +78,32 @@ def test_die_ecken_haengen_wirklich_dran():
 
     sys.path.insert(0, str(WURZEL))
     from council.store import CouncilStore
-    from council.store_haushalt import HaushaltMixin
-    from council.store_orte import OrteMixin
 
-    for mixin, mindestens in ((HaushaltMixin, 80), (OrteMixin, 25)):
-        assert issubclass(CouncilStore, mixin), mixin.__name__
+    for name, (mixin, mindestens) in _mixins().items():
+        assert issubclass(CouncilStore, mixin), name
         eigene = [n for n in vars(mixin) if not n.startswith("__")]
-        assert len(eigene) >= mindestens, (mixin.__name__, len(eigene))
-        for name in eigene:
-            assert hasattr(CouncilStore, name), name
+        assert len(eigene) >= mindestens, (name, len(eigene))
+        for methode in eigene:
+            assert hasattr(CouncilStore, methode), (name, methode)
 
 
 def test_die_ecken_ueberschneiden_sich_nicht():
     """Zwei Mixins mit demselben Methodennamen: Die Reihenfolge der Basisklassen
     entscheidet dann still, welche gewinnt."""
-    import sys
+    import itertools
 
-    sys.path.insert(0, str(WURZEL))
-    from council.store_haushalt import HaushaltMixin
-    from council.store_orte import OrteMixin
+    namen = {k: {n for n in vars(v[0]) if not n.startswith("__")}
+             for k, v in _mixins().items()}
+    for a, b in itertools.combinations(sorted(namen), 2):
+        assert not namen[a] & namen[b], (a, b, sorted(namen[a] & namen[b]))
 
-    a = {n for n in vars(HaushaltMixin) if not n.startswith("__")}
-    b = {n for n in vars(OrteMixin) if not n.startswith("__")}
-    assert not a & b, sorted(a & b)
+
+def test_migrationen_bleiben_beim_schema():
+    """Migrationen gehören der Datenbank als Ganzem, nicht einer ihrer Ecken.
+
+    Beim Quiz-Schnitt wären drei ``_migrate_quiz_*`` fast mit umgezogen; sie
+    laufen aus ``_migrate`` heraus und gehören neben das übrige Schema.
+    """
+    for mixin, _ in _mixins().values():
+        wandernde = [n for n in vars(mixin) if n.startswith("_migrate")]
+        assert not wandernde, (mixin.__name__, wandernde)

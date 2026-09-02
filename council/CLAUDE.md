@@ -93,6 +93,8 @@ Methoden. Der Haushalt ist als erste Ecke heraus:
 | `council/store.py` | Schema, Migrationen, Sitzungen, Beschlüsse, Personen, Suche |
 | `council/store_haushalt.py` | die 81 Abfragen der Haushalts-Seiten (`HaushaltMixin`) |
 | `council/store_orte.py` | Katalog, Geocodierung, Stadtteile, Kartenpunkte (`OrteMixin`) |
+| `council/store_presse.py` | Pressemitteilungen und Beteiligungen (`PresseMixin`) |
+| `council/store_quiz.py` | die Quiz-Abfragen (`QuizMixin`) |
 | `council/geld/*.py` | je eine Facette der KI-Frage, je eine Store-Methode |
 
 Der Schnitt läuft je Ecke über den **Aufrufkegel**, nicht über ein
