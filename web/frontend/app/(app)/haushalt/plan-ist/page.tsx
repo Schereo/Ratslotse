@@ -64,7 +64,7 @@ import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weit
 import { SchrittPfad } from "@/components/haushalt/schritt-pfad";
 import { Seitenbuehne, ZaehlZahl } from "@/components/haushalt/seitenbuehne";
 import { Vollzug } from "@/components/haushalt/vollzug";
-import type { VollzugDaten } from "@/lib/haushalt-vollzug";
+import { berichteUrls, type VollzugDaten } from "@/lib/haushalt-vollzug";
 
 /** Hinweis auf die Prüfung — hier und nirgends sonst, weil das
  *  Rechnungsprüfungsamt genau diesen Vergleich seit Jahren beanstandet:
@@ -169,6 +169,14 @@ function PlanIstInner() {
   const vollzug = useFetch<VollzugDaten>(
     vollzugJahr ? `/council/budget/execution?budget_year=${vollzugJahr}` : null);
   const vollzugDaten = vollzug.data ?? vollzugKopf.data ?? null;
+  // Die Berichte des Vollzug-Jahrgangs bekommen im Verzeichnis eigene
+  // Nummern: Die Seite zeigt den Abschluss 2024 UND den Vollzug 2026 — über
+  // den Jahrgang der Seite fände das Verzeichnis für den Vollzug die
+  // falschen Papiere (die von 2024).
+  const jeDokument = useMemo(() => {
+    const urls = vollzugDaten && vollzugJahr ? berichteUrls(vollzugDaten, vollzugJahr) : [];
+    return urls.length ? { budget_execution: urls } : {};
+  }, [vollzugDaten, vollzugJahr]);
   const [massstab, setMassstab] = useState<HantelMassstab>("percent");
 
   const years = data?.plan_actual_years ?? [];
@@ -327,7 +335,7 @@ function PlanIstInner() {
     .sort((a, b) => Math.abs(b.delta_meur ?? 0) - Math.abs(a.delta_meur ?? 0));
 
   return (
-    <Quellenkontext keys={quellen} year={year}>
+    <Quellenkontext keys={quellen} jeDokument={jeDokument} year={year}>
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
         <Link href="/haushalt" className="hover:text-foreground">Haushalt</Link>
@@ -419,7 +427,7 @@ function PlanIstInner() {
           läuft — und das der Abschluss erst zwei Jahre später einholt. */}
       {vollzugDaten && vollzugJahr && vollzugDaten.reporting_dates.length > 0 && (
         <Vollzug daten={vollzugDaten} year={vollzugJahr} onYear={setVollzugWahl}
-          beleg={<Beleg q="budget_execution" />} />
+          beleg={(h) => <Beleg q="budget_execution" h={h} />} />
       )}
 
       <h2 className="mt-2 font-display text-[19px] font-bold tracking-tight">

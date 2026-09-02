@@ -18,15 +18,16 @@
 //   * Nur die Kernverwaltung, kein Ist zum Stichtag, kein erstes Quartal —
 //     die Grenzen stehen als Einordnung dabei, nicht im Kleingedruckten.
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { Segmented } from "@/components/ui";
 import { Hantel, type HantelZeile } from "@/components/grafik/hantel";
 import { Einordnung } from "@/components/grafik/einordnung";
 import { deMio } from "@/lib/haushalt";
 import {
-  bereiche, deMioSigned, deStichtag, deStichtagKurz, ergebnisWort, stichtageDesJahres,
-  summe, verlauf, type VollzugDaten, type VollzugHaushalt,
+  bereiche, deMioSigned, deStichtag, deStichtagKurz, ergebnisWort, herkunftVon,
+  stichtageDesJahres, summe, verlauf, type VollzugDaten, type VollzugHaushalt,
 } from "@/lib/haushalt-vollzug";
+import type { Herkunft } from "@/lib/herkunft";
 import { cn } from "@/lib/utils";
 
 export function Vollzug({ daten, year, onYear, beleg }: {
@@ -34,8 +35,10 @@ export function Vollzug({ daten, year, onYear, beleg }: {
   /** Der gewählte Jahrgang — die Teilhaushalts-Zeilen kommen nur für ihn. */
   year: number;
   onYear: (year: number) => void;
-  /** Beleg-Chip-Slot (GB-00) — die Seite wählt die Quelle. */
-  beleg?: React.ReactNode;
+  /** Beleg-Chip-Slot (GB-00) — die Seite wählt die Quelle, der Baustein
+   *  reicht das Papier durch, auf dem die gezeigte Zahl steht: der Bericht
+   *  des gewählten Stichtags, nicht der des Seiten-Jahrgangs. */
+  beleg?: (herkunft: Herkunft | null) => ReactNode;
 }) {
   const stichtage = useMemo(() => stichtageDesJahres(daten, year), [daten, year]);
   const [asOfWahl, setAsOf] = useState<string | null>(null);
@@ -78,12 +81,13 @@ export function Vollzug({ daten, year, onYear, beleg }: {
   // Zahlen, die im Satz um einen Zehntel danebenläge.
   const abw = kern && kern.budgeted != null && kern.forecast != null
     ? (kern.deviation ?? kern.forecast - kern.budgeted) : null;
+  const herkunft = kern ? herkunftVon(daten, kern.herkunft_id) : null;
 
   return (
     <section id="vollzug" className="scroll-mt-20 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <h2 className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-          Haushaltsvollzug · was die Verwaltung erwartet{beleg}
+          Haushaltsvollzug · was die Verwaltung erwartet{beleg?.(herkunft)}
         </h2>
         <span className="font-mono text-[10px] uppercase text-muted-foreground">
           Bericht zum {deStichtag(asOf)} · {daten.budget_names[budget]}
@@ -200,18 +204,24 @@ export function Vollzug({ daten, year, onYear, beleg }: {
 /** Die kleine Karte für die Übersicht: der jüngste Stichtag in einem Satz,
  *  mit Sprung zum Baustein. Nur die Summenzeilen — die Übersicht braucht die
  *  Teilhaushalte nicht. */
-export function VollzugKarte({ daten }: { daten: VollzugDaten }) {
+export function VollzugKarte({ daten, beleg }: {
+  daten: VollzugDaten;
+  /** Beleg-Chip-Slot wie bei `Vollzug` — bekommt das Papier des Berichts. */
+  beleg?: (herkunft: Herkunft | null) => ReactNode;
+}) {
   const s = daten.reporting_dates.at(-1);
   if (!s) return null;
   const budget: VollzugHaushalt = s.budgets.includes("result") ? "result" : s.budgets[0];
   const kern = summe(daten, s.budget_year, s.as_of, budget, "result");
   if (!kern || kern.budgeted == null || kern.forecast == null) return null;
   const abw = kern.deviation ?? kern.forecast - kern.budgeted;
+  // Die Karte ist kein Link mehr als Ganzes: Ein Beleg-Chip ist ein Knopf,
+  // und ein Knopf in einem Link ist weder gültig noch bedienbar. Der Sprung
+  // zum Block steht als eigene Zeile darunter.
   return (
-    <a href="/haushalt/plan-ist#vollzug"
-      className="group block rounded-2xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-primary/40">
+    <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
       <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-primary">
-        Zwischenstand {s.budget_year} · Bericht zum {deStichtag(s.as_of)}
+        Zwischenstand {s.budget_year} · Bericht zum {deStichtag(s.as_of)}{beleg?.(herkunftVon(daten, kern.herkunft_id))}
       </p>
       <p className="mt-1.5 max-w-[60ch] text-[13.5px] leading-relaxed text-foreground">
         Die Verwaltung erwartet ein {ergebnisWort(budget)} von{" "}
@@ -222,9 +232,10 @@ export function VollzugKarte({ daten }: { daten: VollzugDaten }) {
           <> — <span className="tabular-nums text-signal">{deMio(Math.abs(abw) / 1e6)}&nbsp;Mio.&nbsp;€ {abw > 0 ? "mehr" : "weniger"}</span></>
         )}.
       </p>
-      <p className="mt-1.5 text-[12px] font-semibold text-primary group-hover:underline">
+      <a href="/haushalt/plan-ist#vollzug"
+        className="mt-1.5 inline-block text-[12px] font-semibold text-primary hover:underline">
         Zum Haushaltsvollzug →
-      </p>
-    </a>
+      </a>
+    </div>
   );
 }
