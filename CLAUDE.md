@@ -92,6 +92,20 @@ Der Abzug liegt in `~/.cache/ratslotse` und wird von allen Worktrees geteilt;
 der erst beim Schreiben Platz kostet). `stand` sagt, wie alt er ist, und warnt
 ab zwei Wochen — gegen alte Daten zu prüfen fühlt sich an wie gegen echte.
 
+**Weil der Zwischenspeicher geteilt ist, kann deine Kopie hinterherhinken.**
+Holt eine andere Sitzung neu, fehlen dir ihre frischen Tabellen, ohne dass
+etwas darauf hindeutet. `stand` vergleicht deshalb Kopie und Abzug und nennt,
+was dir fehlt. Am 02.09.2026 stand `council_liquidity` deshalb lokal auf 0
+Zeilen, während der Abzug 137 hatte — der naheliegende Schluss („der Ingest
+ist ausgefallen") wäre falsch gewesen.
+
+**Auf dev laufen keine Cron-Jobs**, und was nur ein Cron füllt, fehlt im
+Abzug ganz. Gemessen gegen beide Server: Die Bauleitplan-Beteiligungen gibt es
+auf dev als Tabelle nicht (auf Prod drei Zeilen), sonst ist dev fast
+vollständig. Wer so eine Tabelle braucht: `hol --von prod` — dieselbe
+Abspeckung greift dort, die nutzerbezogenen Tabellen kommen also auch von dort
+nicht mit.
+
 **Die Konten werden gebaut, nicht geholt.** Die echte Konten-Datenbank trägt
 Adressen, Tokens und gespeicherte Gespräche; sie gehört auf kein Notebook. Aus
 dem Abzug fallen deshalb auch die nutzerbezogenen Tabellen der Rats-Datenbank

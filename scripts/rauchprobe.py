@@ -262,22 +262,14 @@ def token_bauen(wurzel: Path, konto: str | None) -> tuple[str | None, str]:
     datenbank = kontendatenbank(wurzel, env)
     if datenbank is None:
         return None, "keine Konten-Datenbank gefunden"
-    # `mode=ro` zuerst, weil es garantiert nichts anfasst. Es scheitert aber an
-    # einer WAL-Datenbank, neben der gerade keine `-shm` liegt: Die müsste
-    # SQLite anlegen, und genau das darf es im Nur-Lese-Modus nicht. Dann
-    # normal öffnen — die App tut nichts anderes, und hier wird ausschließlich
-    # gelesen. `immutable=1` wäre der dritte Weg und der falsche: Es verspricht
-    # SQLite, dass sich die Datei nicht ändert, und das ist bei einer laufenden
-    # Anwendung schlicht gelogen.
+    # Die Falle mit `mode=ro` und WAL steht in `kern.dbfehler.nur_lesen`
+    # erklärt — hier wird sie nur benutzt.
+    sys.path.insert(0, str(WURZEL))
+    from kern.dbfehler import nur_lesen
+
     verbindung = None
     try:
-        try:
-            verbindung = sqlite3.connect(f"file:{datenbank}?mode=ro", uri=True)
-            verbindung.execute("SELECT 1 FROM web_users LIMIT 1")
-        except sqlite3.Error:
-            if verbindung is not None:
-                verbindung.close()
-            verbindung = sqlite3.connect(str(datenbank), timeout=5)
+        verbindung = nur_lesen(datenbank)
         zeile = verbindung.execute(
             "SELECT id, token_version FROM web_users WHERE lower(email) = lower(?)",
             (adresse,),
@@ -287,6 +279,7 @@ def token_bauen(wurzel: Path, konto: str | None) -> tuple[str | None, str]:
     finally:
         if verbindung is not None:
             verbindung.close()
+
     if not zeile:
         # Ohne die Adresse: Die Meldung landet im Deploy-Log, und das Repo ist
         # öffentlich. Wer den Fehler sucht, weiß, welche er eingetragen hat.
