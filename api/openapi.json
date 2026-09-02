@@ -5351,6 +5351,25 @@
         "title": "Districts",
         "type": "object"
       },
+      "EmergingTag": {
+        "description": "Ein Schlagwort, das in den letzten beiden Quartalen auffällig oft\nvorkam (mindestens zweimal), ohne Verfahrens-Vokabular.",
+        "properties": {
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "tag": {
+            "title": "Tag",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tag",
+          "n"
+        ],
+        "title": "EmergingTag",
+        "type": "object"
+      },
       "Entities": {
         "properties": {
           "entities": {
@@ -7170,6 +7189,30 @@
           "total"
         ],
         "title": "MoneyByField",
+        "type": "object"
+      },
+      "MoneyDriver": {
+        "description": "Der größte Einzel-Euro-Beschluss eines Quartals — die Tatsache hinter\ndem Balken. Ein Quartal ohne Geldbeschluss trägt ``null``.",
+        "properties": {
+          "eur": {
+            "title": "Eur",
+            "type": "number"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "eur"
+        ],
+        "title": "MoneyDriver",
         "type": "object"
       },
       "MyTopicItem": {
@@ -11619,15 +11662,31 @@
         "type": "object"
       },
       "TrendData": {
-        "description": "``CouncilStore.activity_trends`` — Hülle beschrieben, Reihen offen.",
+        "description": "``CouncilStore.activity_trends`` plus die Klartext-Namen der Felder.\n\nDie Reihen standen hier bis 02.09.2026 als ``Any``. Das ist beim Vertrag\nnicht dasselbe wie „egal\": Das Web leitet seine Typen aus diesen Formen\nab, und was hier ``Any`` heißt, muss dort von Hand nachgetippt werden —\nmit allem, was Handarbeit an einer Schnittstelle bedeutet.",
         "properties": {
           "by_field": {
-            "additionalProperties": true,
+            "additionalProperties": {
+              "items": {
+                "type": "integer"
+              },
+              "type": "array"
+            },
             "title": "By Field",
             "type": "object"
           },
           "emerging": {
-            "title": "Emerging"
+            "items": {
+              "$ref": "#/components/schemas/EmergingTag"
+            },
+            "title": "Emerging",
+            "type": "array"
+          },
+          "field_labels": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Field Labels",
+            "type": "object"
           },
           "fields": {
             "items": {
@@ -11644,7 +11703,33 @@
             "type": "array"
           },
           "money_drivers": {
-            "items": {},
+            "items": {
+              "description": "Der größte Einzel-Euro-Beschluss eines Quartals — die Tatsache hinter\ndem Balken. Ein Quartal ohne Geldbeschluss trägt ``null``.",
+              "properties": {
+                "eur": {
+                  "title": "Eur",
+                  "type": "number"
+                },
+                "id": {
+                  "title": "Id",
+                  "type": "integer"
+                },
+                "title": {
+                  "title": "Title",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "title",
+                "eur"
+              ],
+              "title": "MoneyDriver",
+              "type": [
+                "object",
+                "null"
+              ]
+            },
             "title": "Money Drivers",
             "type": "array"
           },
@@ -11662,7 +11747,8 @@
           "by_field",
           "money",
           "money_drivers",
-          "emerging"
+          "emerging",
+          "field_labels"
         ],
         "title": "TrendData",
         "type": "object"

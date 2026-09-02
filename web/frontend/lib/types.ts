@@ -130,19 +130,14 @@ export interface GoalDetail {
   decisions: GoalDecision[];
 }
 
-export interface MoneyDriver {
-  id: number; title: string; eur: number;
-}
+export type MoneyDriver = S["MoneyDriver"];
 
-export interface Trends {
-  quarters: string[];
-  fields: string[];
-  by_field: Record<string, number[]>;
-  money: number[];
-  money_drivers: (MoneyDriver | null)[];
-  emerging: { tag: string; n: number }[];
-  field_labels: Record<string, string>;
-}
+/** `field_labels` fehlte bis 02.09.2026 in der Antwortform — FastAPI hat es
+ *  deshalb aus der Antwort ENTFERNT, obwohl die Route es berechnet. Hier stand
+ *  es trotzdem als Pflichtfeld, der Übersetzer war zufrieden, und
+ *  `d.field_labels[f]` lief im Browser auf `undefined`. Abgeleitet kann das
+ *  nicht mehr passieren. */
+export type Trends = S["TrendData"];
 
 export type FinanceData = S["Finances"];
 

@@ -8,16 +8,16 @@ import UIKit
 
 private struct ResearchCurrentResponse: Codable, Sendable {
     let job: ResearchSnapshot?
-    let frei: Int?
+    let remaining: Int?
 }
 
 private struct ResearchStartResponse: Codable, Sendable {
     let jobID: String
-    let frei: Int?
+    let remaining: Int?
 
     enum CodingKeys: String, CodingKey {
         case jobID = "job_id"
-        case frei
+        case remaining
     }
 }
 
@@ -67,7 +67,7 @@ struct QuestionPerson: Decodable, Sendable, Hashable {
 }
 
 private struct QuestionPeopleEnvelope: Decodable, Sendable {
-    let personen: [QuestionPerson]
+    let people: [QuestionPerson]
 }
 
 private struct QuestionExamplesEnvelope: Decodable, Sendable {
@@ -316,7 +316,7 @@ struct QuestionsView: View {
         guard let response: QuestionPeopleEnvelope = try? await model.api.get("/api/council/people-directory") else {
             return
         }
-        personLexicon = response.personen
+        personLexicon = response.people
     }
 
     private func loadQuestionExamples() async {
@@ -568,7 +568,7 @@ struct QuestionsView: View {
                 )
                 guard let current = turns.firstIndex(where: { $0.id == turnID }) else { return }
                 turns[current].research?.jobID = response.jobID
-                researchRemaining = response.frei
+                researchRemaining = response.remaining
                 model.hasRecoverableResearch = true
                 await streamResearch(turnID: turnID, jobID: response.jobID)
             } catch is CancellationError {
@@ -740,7 +740,7 @@ struct QuestionsView: View {
     private func restoreCurrentResearch() async {
         do {
             let current: ResearchCurrentResponse = try await model.api.get("/api/council/deep-research/current")
-            researchRemaining = current.frei
+            researchRemaining = current.remaining
             guard let snapshot = current.job else { return }
 
             let turnID: UUID
@@ -2327,7 +2327,7 @@ struct SharedAnswerView: View {
             async let peopleRequest: QuestionPeopleEnvelope? = try? model.api.get("/api/council/people-directory")
             let loaded = try await snapshotRequest
             snapshot = loaded
-            people = await peopleRequest?.personen ?? []
+            people = await peopleRequest?.people ?? []
         } catch let apiError as APIError where apiError.statusCode == 404 {
             snapshot = nil
             error = "Diese geteilte Antwort gibt es nicht mehr. Der Link ist abgelaufen oder wurde gelöscht."

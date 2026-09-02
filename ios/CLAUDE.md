@@ -5,6 +5,33 @@ erreicht — hier fällt eine Schnittstellenänderung erst im Simulator auf, ode
 gar erst im Store. Siehe auch [`README.md`](README.md) und
 [`../CLAUDE.md`](../CLAUDE.md).
 
+## Ein Feldname ändert sich hier NICHT von selbst
+
+Web und Backend teilen sich einen erzeugten Typ; die App tippt ihre `struct`s
+und `CodingKeys` von Hand. Eine Umbenennung im Backend erreicht sie deshalb auf
+keinem Weg — sie liest weiter den alten Namen, bekommt nichts und setzt ihre
+Vorgabe ein. Genau so stand nach #826 unter jedem Thema eine 0, monatelang, auf
+Prod.
+
+Vor **jeder** Änderung an einem Modell und nach jedem Merge aus `dev`:
+
+```bash
+python scripts/ios_vertrag.py
+```
+
+Das rechnet die Bindung aus der Aufrufstelle aus (Pfad und Zieltyp stehen in
+derselben Zeile) und hält jede `struct` gegen das Schema, das sie decodieren
+muss. Was dabei offen bleiben darf, steht mit Begründung in
+`tests/test_ios_vertrag.py`; die Liste darf schrumpfen und nicht wachsen.
+
+Drei Dinge, die dabei auffallen und im Simulator NICHT:
+
+- ein Feld, das der Vertrag nicht kennt — die App liest ins Leere,
+- ein nicht-optionales Feld, das der Vertrag weglassen darf — `JSONDecoder`
+  wirft, die Seite bleibt leer statt falsch,
+- ein Typ, der nicht passt (`Int` gegen einen String-Schlüssel) — ebenfalls ein
+  Abbruch.
+
 ## Neue Datei heißt: neu generieren
 
 Das Projekt entsteht aus `project.yml` per XcodeGen, **die `.xcodeproj` ist

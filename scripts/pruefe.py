@@ -150,6 +150,11 @@ PRUEFUNGEN: list[Pruefung] = [
              funktion=_generierte_typen),
     Pruefung("changelog", "changelog.d/-Fragmente sind wohlgeformt", schnell=True,
              befehl=[PY, "scripts/changelog_schnitt.py", "--pruefen"]),
+    # Die App ist die einzige Schicht ohne erzeugte Typen: Ihre `struct`s stehen
+    # von Hand da, und eine Umbenennung im Backend erreicht sie auf keinem Weg.
+    Pruefung("ios", "Swift-Modelle gegen ihr Schema halten", schnell=True,
+             befehl=[PY, "-m", "pytest", "tests/test_ios_vertrag.py", "-q"],
+             braucht=_modul_fehlt("pytest", DEV_INSTALL)),
     Pruefung("tests", "die Testsuite", befehl=[PY, "-m", "pytest", "tests/", "-q"],
              braucht=_modul_fehlt("pytest", DEV_INSTALL)),
     Pruefung("tsc", "TypeScript des Frontends übersetzen", cwd=FRONTEND,

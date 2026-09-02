@@ -5936,6 +5936,17 @@ export interface components {
             /** Districts */
             districts: unknown;
         };
+        /**
+         * EmergingTag
+         * @description Ein Schlagwort, das in den letzten beiden Quartalen auffällig oft
+         *     vorkam (mindestens zweimal), ohne Verfahrens-Vokabular.
+         */
+        EmergingTag: {
+            /** N */
+            n: number;
+            /** Tag */
+            tag: string;
+        };
         /** Entities */
         Entities: {
             /** Entities */
@@ -6665,6 +6676,19 @@ export interface components {
             n: number;
             /** Total */
             total: number;
+        };
+        /**
+         * MoneyDriver
+         * @description Der größte Einzel-Euro-Beschluss eines Quartals — die Tatsache hinter
+         *     dem Balken. Ein Quartal ohne Geldbeschluss trägt ``null``.
+         */
+        MoneyDriver: {
+            /** Eur */
+            eur: number;
+            /** Id */
+            id: number;
+            /** Title */
+            title: string;
         };
         /**
          * MyTopicItem
@@ -8513,21 +8537,37 @@ export interface components {
         };
         /**
          * TrendData
-         * @description ``CouncilStore.activity_trends`` — Hülle beschrieben, Reihen offen.
+         * @description ``CouncilStore.activity_trends`` plus die Klartext-Namen der Felder.
+         *
+         *     Die Reihen standen hier bis 02.09.2026 als ``Any``. Das ist beim Vertrag
+         *     nicht dasselbe wie „egal": Das Web leitet seine Typen aus diesen Formen
+         *     ab, und was hier ``Any`` heißt, muss dort von Hand nachgetippt werden —
+         *     mit allem, was Handarbeit an einer Schnittstelle bedeutet.
          */
         TrendData: {
             /** By Field */
             by_field: {
-                [key: string]: unknown;
+                [key: string]: number[];
             };
             /** Emerging */
-            emerging: unknown;
+            emerging: components["schemas"]["EmergingTag"][];
+            /** Field Labels */
+            field_labels: {
+                [key: string]: string;
+            };
             /** Fields */
             fields: string[];
             /** Money */
             money: number[];
             /** Money Drivers */
-            money_drivers: unknown[];
+            money_drivers: ({
+                /** Eur */
+                eur: number;
+                /** Id */
+                id: number;
+                /** Title */
+                title: string;
+            } | null)[];
             /** Quarters */
             quarters: string[];
         };
@@ -13478,4 +13518,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 7d7e79b52f98579b175829be112c6beee73c1cb841b55e4cf66796a0127ebf88
+// vertrag-sha256: 10f44375f0b9ea079664708bd54f40dd618037e705d19d560166c8342d0e999c

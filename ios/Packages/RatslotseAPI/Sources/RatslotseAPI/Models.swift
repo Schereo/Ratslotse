@@ -646,12 +646,11 @@ public struct CouncilSession: Codable, Sendable, Hashable, Identifiable {
     /// instead of meeting in parallel. Only sent for today's sessions.
     public let liveUntil: String?
     public let location: String?
-    public let title: String
     public let itemCount: Int
     public let myTopicItems: [JSONValue]?
 
     enum CodingKeys: String, CodingKey {
-        case ksinr, committee, location, title
+        case ksinr, committee, location
         case sessionDate = "session_date"
         case sessionTime = "session_time"
         case liveUntil = "live_until"
@@ -667,7 +666,6 @@ public struct CouncilSession: Codable, Sendable, Hashable, Identifiable {
         sessionTime = try values.decodeIfPresent(String.self, forKey: .sessionTime)
         liveUntil = try values.decodeIfPresent(String.self, forKey: .liveUntil)
         location = try values.decodeIfPresent(String.self, forKey: .location)
-        title = try values.decodeIfPresent(String.self, forKey: .title) ?? committee
         itemCount = try values.decodeIfPresent(Int.self, forKey: .itemCount) ?? 0
         myTopicItems = try values.decodeIfPresent([JSONValue].self, forKey: .myTopicItems)
     }
