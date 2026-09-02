@@ -14,7 +14,7 @@ dass jeder aufgerufene *Pfad* existiert. Beide sagen nichts über die
 **Warum das keine Liste ist, die man einmal leert.** Die meisten Felder, die
 hier stehen, sind völlig in Ordnung — sie existieren, das Backend liefert sie,
 nur beschreibt der Vertrag sie nicht: Sie stecken in einer der Nutzlasten, die
-irgendwo ein offenes ``additionalProperties`` tragen (Stand heute 17 von 229
+irgendwo ein offenes ``additionalProperties`` tragen (Stand heute 10 von 229
 Schemata). Solange das so ist, kann niemand maschinell zwischen „Feld, das der
 Vertrag verschweigt" und „Feld, das es nicht mehr gibt" unterscheiden.
 
@@ -144,6 +144,9 @@ BEWUSST_OFFEN = {
                         "gewachsener JSON-Blob, ältere Zeilen tragen weniger.",
     "DecisionDetail": "`budget_link` hat zwei Formen (Nachbewilligung bzw. "
                       "Bürgschaft) mit verschiedenen Schlüsseln.",
+    "EntityDetail": "Erbt die Offenheit von `geo`: Das Schema bindet EntityGeo "
+                    "nicht als Verweis ein, sondern schreibt es aus — samt "
+                    "seinem freien `geojson`.",
     "EntityGeo": "`geojson` ist ein Umriss in Freiform.",
     "QaShare": "Geteilter Antwort-Schnappschuss aus `qa_shares.extras` — "
                "gespeichert in der Form von damals.",
@@ -157,16 +160,10 @@ BEWUSST_OFFEN = {
 #: Die Arbeitsliste: Hier fehlt die Beschreibung noch, und sie soll kommen.
 #: Sie darf schrumpfen und nicht wachsen. Wer eine Nutzlast beschreibt,
 #: streicht ihre Zeile.
-NOCH_OFFEN = {
-    "BudgetDataState",
-    "BudgetDebt",
-    "BudgetFixedAssets",
-    "Districts",
-    "EntityDetail",
-    "GoalDetail",
-    "PersonCouncil",
-    "ResearchCurrent",
-}
+#: LEER seit 02.09.2026 — jede Nutzlast ist entweder beschrieben oder steht
+#: mit Grund in BEWUSST_OFFEN. Ein neuer Eintrag hier ist deshalb kein Rest,
+#: sondern eine Ansage: „das wird noch beschrieben".
+NOCH_OFFEN: set[str] = set()
 
 #: Beide zusammen — was der Vertrag heute offen lässt.
 OFFENE_SCHEMATA = set(BEWUSST_OFFEN) | NOCH_OFFEN
@@ -202,7 +199,6 @@ WEB_OHNE_VERTRAG = {
     ("QuizBadge", "tier"),
     ("QuizImageCredit", "author"),
     ("QuizImageCredit", "license_url"),
-    ("RelatedEntity", "rel_type"),
 }
 
 #: Dasselbe für die iOS-App. Zwei Einträge sind hier anders als der Rest:

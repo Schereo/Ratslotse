@@ -1271,6 +1271,33 @@
         "title": "AdminUserRow",
         "type": "object"
       },
+      "Affiliation": {
+        "description": "Die aktuelle Zugehörigkeit eines Mitglieds.\n\nGenau drei Schlüssel, nicht die sechs der Zeitreihe daneben: Der Kopf der\nSeite nennt die AUFGELÖSTE Zugehörigkeit („FDP/Volt\" → FDP), die Zeitreihe\ndarunter bleibt quellentreu und erzählt, was die Protokolle damals\nschrieben.",
+        "properties": {
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "parties": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Parties",
+            "type": "array"
+          }
+        },
+        "required": [
+          "label",
+          "kind",
+          "parties"
+        ],
+        "title": "Affiliation",
+        "type": "object"
+      },
       "AgendaAttachment": {
         "description": "Eine Anlage an einem Tagesordnungspunkt.",
         "properties": {
@@ -1546,6 +1573,157 @@
         "title": "AskTurn",
         "type": "object"
       },
+      "AssetGroup": {
+        "description": "Die Untergliederung des Infrastrukturvermögens (Straßen, Brücken,\nGleisanlagen). Sie steht in einer ANDEREN Tabelle desselben Dokuments und\ngibt es erst ab 2022 — deshalb ein eigener Block und keine Spalte.",
+        "properties": {
+          "book_value": {
+            "title": "Book Value",
+            "type": "number"
+          },
+          "book_value_prior_year": {
+            "title": "Book Value Prior Year",
+            "type": "number"
+          },
+          "fetched_at": {
+            "title": "Fetched At",
+            "type": "string"
+          },
+          "group_name": {
+            "title": "Group Name",
+            "type": "string"
+          },
+          "herkunft_id": {
+            "title": "Herkunft Id",
+            "type": "integer"
+          },
+          "year": {
+            "title": "Year",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "year",
+          "group_name",
+          "book_value",
+          "book_value_prior_year",
+          "herkunft_id",
+          "fetched_at"
+        ],
+        "title": "AssetGroup",
+        "type": "object"
+      },
+      "AssetRow": {
+        "description": "Eine Zeile des Anlagenspiegels — die Bewegung eines Anlagenpostens.\n\nAnfangsstand plus Zugänge minus Abgänge plus Umbuchungen ergibt den\nEndstand; ``probes`` nennt die Rechenproben, die diese Zeile bestanden\nhat. ``n_columns`` hält fest, wie viele Spalten das Dokument des Jahrgangs\nhatte — ältere Jahrgänge führen weniger.",
+        "properties": {
+          "additions": {
+            "title": "Additions",
+            "type": "number"
+          },
+          "book_value": {
+            "title": "Book Value",
+            "type": "number"
+          },
+          "book_value_prior_year": {
+            "title": "Book Value Prior Year",
+            "type": "number"
+          },
+          "cost_closing": {
+            "title": "Cost Closing",
+            "type": "number"
+          },
+          "cost_opening": {
+            "title": "Cost Opening",
+            "type": "number"
+          },
+          "depreciation": {
+            "title": "Depreciation",
+            "type": "number"
+          },
+          "depreciation_closing": {
+            "title": "Depreciation Closing",
+            "type": "number"
+          },
+          "depreciation_opening": {
+            "title": "Depreciation Opening",
+            "type": "number"
+          },
+          "depreciation_releases": {
+            "title": "Depreciation Releases",
+            "type": "number"
+          },
+          "depreciation_transfers": {
+            "title": "Depreciation Transfers",
+            "type": "number"
+          },
+          "disposals": {
+            "title": "Disposals",
+            "type": "number"
+          },
+          "fetched_at": {
+            "title": "Fetched At",
+            "type": "string"
+          },
+          "herkunft_id": {
+            "title": "Herkunft Id",
+            "type": "integer"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "n_columns": {
+            "title": "N Columns",
+            "type": "integer"
+          },
+          "nr": {
+            "title": "Nr",
+            "type": "string"
+          },
+          "probes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Probes",
+            "type": "array"
+          },
+          "transfers": {
+            "title": "Transfers",
+            "type": "number"
+          },
+          "write_ups": {
+            "title": "Write Ups",
+            "type": "number"
+          },
+          "year": {
+            "title": "Year",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "year",
+          "nr",
+          "label",
+          "cost_opening",
+          "additions",
+          "disposals",
+          "transfers",
+          "write_ups",
+          "cost_closing",
+          "depreciation_opening",
+          "depreciation",
+          "depreciation_releases",
+          "depreciation_transfers",
+          "depreciation_closing",
+          "book_value",
+          "book_value_prior_year",
+          "n_columns",
+          "probes",
+          "herkunft_id",
+          "fetched_at"
+        ],
+        "title": "AssetRow",
+        "type": "object"
+      },
       "Attendance": {
         "description": "Eine Zeile der Anwesenheitsliste (``CouncilStore.get_attendance``).",
         "properties": {
@@ -1776,6 +1954,60 @@
           "newly_earned"
         ],
         "title": "BadgeState",
+        "type": "object"
+      },
+      "BalanceItem": {
+        "description": "Ein Posten der Bilanz (``CouncilStore.get_bilanz_posten``).\n\n``role`` ist unsere Zuordnung („wofür steht diese Zeile\"), ``nr`` und\n``label`` stehen so im Dokument, ``level`` sagt, wie tief der Posten\neingerückt ist.",
+        "properties": {
+          "fetched_at": {
+            "title": "Fetched At",
+            "type": "string"
+          },
+          "herkunft_id": {
+            "title": "Herkunft Id",
+            "type": "integer"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "level": {
+            "title": "Level",
+            "type": "integer"
+          },
+          "nr": {
+            "title": "Nr",
+            "type": "string"
+          },
+          "page": {
+            "title": "Page",
+            "type": "string"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          },
+          "year": {
+            "title": "Year",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "year",
+          "nr",
+          "label",
+          "level",
+          "value",
+          "role",
+          "page",
+          "herkunft_id",
+          "fetched_at"
+        ],
+        "title": "BalanceItem",
         "type": "object"
       },
       "Body_medien_ablegen_api_social_media__day__post": {
@@ -2587,8 +2819,7 @@
         "properties": {
           "layers": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/DataLayer"
             },
             "title": "Layers",
             "type": "array"
@@ -2613,9 +2844,7 @@
             "type": "array"
           },
           "guarantees": {
-            "additionalProperties": true,
-            "title": "Guarantees",
-            "type": "object"
+            "$ref": "#/components/schemas/Guarantees"
           },
           "integrated_debt": {
             "title": "Integrated Debt"
@@ -2753,9 +2982,7 @@
             "type": "array"
           },
           "fixed_assets": {
-            "additionalProperties": true,
-            "title": "Fixed Assets",
-            "type": "object"
+            "$ref": "#/components/schemas/FixedAssets"
           },
           "missing": {
             "title": "Missing"
@@ -3703,6 +3930,142 @@
         "title": "CouncilWeekPreview",
         "type": "object"
       },
+      "DataLayer": {
+        "description": "Eine Datenschicht des Haushalts und ihr Stand (``finanzquellen.datenstand``).\n\nDie Werte kommen aus dem Bestand, nicht aus einer gepflegten Liste — eine\nAngabe, die jemand von Hand nachziehen müsste, wäre genau die, die\nveraltet.\n\n``unit`` und ``einheiten_voll`` sind ``None``, wo eine Schicht gar nicht in\nEinheiten zerfällt (am echten Bestand nachgemessen, nicht geraten).",
+        "properties": {
+          "automatisch": {
+            "title": "Automatisch",
+            "type": "boolean"
+          },
+          "einheiten": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Einheiten",
+            "type": "object"
+          },
+          "einheiten_voll": {
+            "title": "Einheiten Voll",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "erwarteter_monat": {
+            "title": "Erwarteter Monat",
+            "type": "integer"
+          },
+          "herkunft": {
+            "title": "Herkunft",
+            "type": "string"
+          },
+          "jahrgaenge": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Jahrgaenge",
+            "type": "array"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "luecken": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Luecken",
+            "type": "array"
+          },
+          "month_name": {
+            "title": "Month Name",
+            "type": "string"
+          },
+          "naechster_ab": {
+            "title": "Naechster Ab",
+            "type": "string"
+          },
+          "naechster_jahrgang": {
+            "title": "Naechster Jahrgang",
+            "type": "integer"
+          },
+          "neuester": {
+            "title": "Neuester",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "offen": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Offen",
+            "type": "array"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "tabelle": {
+            "title": "Tabelle",
+            "type": "string"
+          },
+          "teilweise": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Teilweise",
+            "type": "array"
+          },
+          "ueberfaellig": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Ueberfaellig",
+            "type": "array"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "was": {
+            "title": "Was",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "was",
+          "tabelle",
+          "herkunft",
+          "source",
+          "automatisch",
+          "jahrgaenge",
+          "luecken",
+          "unit",
+          "einheiten",
+          "einheiten_voll",
+          "teilweise",
+          "neuester",
+          "offen",
+          "ueberfaellig",
+          "naechster_jahrgang",
+          "naechster_ab",
+          "erwarteter_monat",
+          "month_name"
+        ],
+        "title": "DataLayer",
+        "type": "object"
+      },
       "DecisionDetail": {
         "description": "Ein Beschluss mit allem Drum und Dran — die geteilte Detailseite.\n\nDie ersten zehn Felder setzt der Handler unbedingt. Alles darunter hängt\nan der Vorlage: Ohne ``template_number`` gibt es weder ``template`` noch\n``attachments``, ``deliberation_path`` oder ``plan_image``; ``follow`` kommt\nnur dazu, wenn wirklich jemand angemeldet ist. Deshalb ``NotRequired`` —\nein Beschluss ohne Vorlage wäre sonst ein 500 (gemessen: rund die Hälfte\ndes Bestands).",
         "properties": {
@@ -4646,9 +5009,7 @@
       "Districts": {
         "properties": {
           "catalog": {
-            "additionalProperties": true,
-            "title": "Catalog",
-            "type": "object"
+            "$ref": "#/components/schemas/PlaceCatalogHead"
           },
           "districts": {
             "title": "Districts"
@@ -4853,8 +5214,7 @@
           },
           "related": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/RelatedEntity"
             },
             "title": "Related",
             "type": "array"
@@ -5040,6 +5400,55 @@
         "title": "Finances",
         "type": "object"
       },
+      "FixedAssets": {
+        "description": "Der Anlagenspiegel als Block.",
+        "properties": {
+          "group_years": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Group Years",
+            "type": "array"
+          },
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/AssetGroup"
+            },
+            "title": "Groups",
+            "type": "array"
+          },
+          "probes": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Probes",
+            "type": "object"
+          },
+          "series": {
+            "items": {
+              "$ref": "#/components/schemas/AssetRow"
+            },
+            "title": "Series",
+            "type": "array"
+          },
+          "years": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Years",
+            "type": "array"
+          }
+        },
+        "required": [
+          "series",
+          "years",
+          "groups",
+          "group_years",
+          "probes"
+        ],
+        "title": "FixedAssets",
+        "type": "object"
+      },
       "ForgotPasswordRequest": {
         "properties": {
           "email": {
@@ -5097,12 +5506,65 @@
         "title": "Goal",
         "type": "object"
       },
+      "GoalDecision": {
+        "description": "Ein Beschluss, der auf ein Nachhaltigkeitsziel einzahlt.\n\n``stance`` und ``rationale`` kommen aus der LLM-Bewertung, alles andere\naus dem Beschluss selbst. Am Bestand nachgemessen: keins der Felder ist\nje leer.",
+        "properties": {
+          "committee": {
+            "title": "Committee",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": "string"
+          },
+          "policy_field": {
+            "title": "Policy Field",
+            "type": "string"
+          },
+          "rationale": {
+            "title": "Rationale",
+            "type": "string"
+          },
+          "session_date": {
+            "title": "Session Date",
+            "type": "string"
+          },
+          "stance": {
+            "title": "Stance",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "summary",
+          "committee",
+          "session_date",
+          "outcome",
+          "policy_field",
+          "stance",
+          "rationale"
+        ],
+        "title": "GoalDecision",
+        "type": "object"
+      },
       "GoalDetail": {
         "properties": {
           "decisions": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/GoalDecision"
             },
             "title": "Decisions",
             "type": "array"
@@ -5176,6 +5638,160 @@
           "goals"
         ],
         "title": "Goals",
+        "type": "object"
+      },
+      "GuaranteeRow": {
+        "description": "Der Bürgschaftsbestand eines Jahrgangs.\n\n``exact`` und ``out_next_year`` sind Angaben über den BELEG, nicht über\ndie Zahl: Manche Jahrgänge stehen auf den Cent im Dokument, ab 2022 rundet\ndie Quelle selbst auf Zehntel-Millionen, und einer steht überhaupt nur im\nAbschluss des Folgejahres. Wer alle gleich formatiert, behauptet eine\nGenauigkeit, die es nicht für alle gibt.",
+        "properties": {
+          "balance": {
+            "title": "Balance",
+            "type": "number"
+          },
+          "exact": {
+            "title": "Exact",
+            "type": "boolean"
+          },
+          "fetched_at": {
+            "title": "Fetched At",
+            "type": "string"
+          },
+          "herkunft_id": {
+            "title": "Herkunft Id",
+            "type": "integer"
+          },
+          "out_next_year": {
+            "title": "Out Next Year",
+            "type": "boolean"
+          },
+          "probes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Probes",
+            "type": "array"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "single_amount": {
+            "title": "Single Amount",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "year": {
+            "title": "Year",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "year",
+          "balance",
+          "exact",
+          "out_next_year",
+          "single_amount",
+          "reason",
+          "source",
+          "probes",
+          "herkunft_id",
+          "fetched_at"
+        ],
+        "title": "GuaranteeRow",
+        "type": "object"
+      },
+      "GuaranteeTemplate": {
+        "description": "Eine Ratsvorlage zu einer Bürgschaft — als Geschichte, nicht als Summe.\n\nUnter den Vorlagen sind Verlängerungen und Anpassungen derselben\nBürgschaft; addiert zählte man dieselbe Zusage mehrfach. Was der Bestand\nist, sagt allein der Jahresabschluss.",
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "decision_id": {
+            "title": "Decision Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "document_url": {
+            "title": "Document Url",
+            "type": "string"
+          },
+          "template_number": {
+            "title": "Template Number",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "template_number",
+          "title",
+          "document_url",
+          "decision_id",
+          "date"
+        ],
+        "title": "GuaranteeTemplate",
+        "type": "object"
+      },
+      "Guarantees": {
+        "description": "Die Bürgschaften als Block.",
+        "properties": {
+          "financial_debt": {
+            "items": {
+              "$ref": "#/components/schemas/BalanceItem"
+            },
+            "title": "Financial Debt",
+            "type": "array"
+          },
+          "provision": {
+            "items": {
+              "$ref": "#/components/schemas/BalanceItem"
+            },
+            "title": "Provision",
+            "type": "array"
+          },
+          "scope_note": {
+            "title": "Scope Note",
+            "type": "string"
+          },
+          "series": {
+            "items": {
+              "$ref": "#/components/schemas/GuaranteeRow"
+            },
+            "title": "Series",
+            "type": "array"
+          },
+          "templates": {
+            "items": {
+              "$ref": "#/components/schemas/GuaranteeTemplate"
+            },
+            "title": "Templates",
+            "type": "array"
+          }
+        },
+        "required": [
+          "series",
+          "provision",
+          "financial_debt",
+          "scope_note",
+          "templates"
+        ],
+        "title": "Guarantees",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -6313,8 +6929,30 @@
             "type": "array"
           },
           "current_affiliation": {
-            "additionalProperties": true,
-            "title": "Current Affiliation",
+            "description": "Die aktuelle Zugehörigkeit eines Mitglieds.\n\nGenau drei Schlüssel, nicht die sechs der Zeitreihe daneben: Der Kopf der\nSeite nennt die AUFGELÖSTE Zugehörigkeit („FDP/Volt\" → FDP), die Zeitreihe\ndarunter bleibt quellentreu und erzählt, was die Protokolle damals\nschrieben.",
+            "properties": {
+              "kind": {
+                "title": "Kind",
+                "type": "string"
+              },
+              "label": {
+                "title": "Label",
+                "type": "string"
+              },
+              "parties": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Parties",
+                "type": "array"
+              }
+            },
+            "required": [
+              "label",
+              "kind",
+              "parties"
+            ],
+            "title": "Affiliation",
             "type": [
               "object",
               "null"
@@ -6441,7 +7079,7 @@
         "type": "object"
       },
       "PlaceCatalog": {
-        "description": "``CouncilStore.public_place_catalog`` — der gemeinsame Ortskatalog für\nSuche, Karten, Quiz und die KI-Funktionen. ``kinds`` bildet den Ortstyp auf\nseine deutsche Beschriftung ab, ``sources`` sind die Katalog-Quellen.",
+        "description": "``CouncilStore.public_place_catalog`` — der gemeinsame Ortskatalog für\nSuche, Karten, Quiz und die KI-Funktionen.",
         "properties": {
           "definition": {
             "title": "Definition",
@@ -6501,6 +7139,61 @@
           "places"
         ],
         "title": "PlaceCatalog",
+        "type": "object"
+      },
+      "PlaceCatalogHead": {
+        "description": "Der Ortskatalog OHNE seine Orte — Beschriftungen, Typen, Belege.\n\nDie Stadtteil-Antwort reicht genau diese acht Schlüssel durch (die Orte\nstehen dort als eigene Liste daneben), der volle Katalog erbt sie. Zwei\nAufzählungen desselben Kopfes liefen auseinander, sobald eine wächst.",
+        "properties": {
+          "definition": {
+            "title": "Definition",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kinds": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Kinds",
+            "type": "object"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "plural": {
+            "title": "Plural",
+            "type": "string"
+          },
+          "schema_version": {
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "singular": {
+            "title": "Singular",
+            "type": "string"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/PlaceSource"
+            },
+            "title": "Sources",
+            "type": "array"
+          }
+        },
+        "required": [
+          "schema_version",
+          "id",
+          "label",
+          "singular",
+          "plural",
+          "definition",
+          "kinds",
+          "sources"
+        ],
+        "title": "PlaceCatalogHead",
         "type": "object"
       },
       "PlaceDetail": {
@@ -8335,11 +9028,89 @@
         "title": "RegisterRequest",
         "type": "object"
       },
+      "RelatedEntity": {
+        "description": "Ein Nachbar-Thema (``CouncilStore.related_entities``).\n\n``evidence`` ist die Zahl der Beschlüsse, in denen beide zusammen\nvorkommen; ``score`` gewichtet das gegen ihre Häufigkeit.",
+        "properties": {
+          "evidence": {
+            "title": "Evidence",
+            "type": "integer"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "rel_type": {
+            "title": "Rel Type",
+            "type": "string"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "kind",
+          "n",
+          "rel_type",
+          "evidence",
+          "score"
+        ],
+        "title": "RelatedEntity",
+        "type": "object"
+      },
       "ResearchCurrent": {
         "properties": {
           "job": {
-            "additionalProperties": true,
-            "title": "Job",
+            "description": "Der jüngste Recherche-Job eines Kontos — sechs Spalten, fester SELECT.\n\nDamit findet der Client nach einer Navigation oder einem App-Neustart\neinen laufenden Job wieder, ohne sich die ID gemerkt zu haben. Der volle\nStand kommt danach über ``ResearchSnapshot``.\n\n``id`` ist eine ZEICHENKETTE, kein Zähler: ein unerratbares Token, weil\ndie Adresse eines Berichts sonst zu raten wäre.",
+            "properties": {
+              "created": {
+                "title": "Created",
+                "type": "string"
+              },
+              "id": {
+                "title": "Id",
+                "type": "string"
+              },
+              "question": {
+                "title": "Question",
+                "type": "string"
+              },
+              "seen": {
+                "title": "Seen",
+                "type": "integer"
+              },
+              "status": {
+                "title": "Status",
+                "type": "string"
+              },
+              "updated": {
+                "title": "Updated",
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "question",
+              "status",
+              "seen",
+              "created",
+              "updated"
+            ],
+            "title": "ResearchJobHead",
             "type": [
               "object",
               "null"
@@ -8358,6 +9129,45 @@
           "job"
         ],
         "title": "ResearchCurrent",
+        "type": "object"
+      },
+      "ResearchJobHead": {
+        "description": "Der jüngste Recherche-Job eines Kontos — sechs Spalten, fester SELECT.\n\nDamit findet der Client nach einer Navigation oder einem App-Neustart\neinen laufenden Job wieder, ohne sich die ID gemerkt zu haben. Der volle\nStand kommt danach über ``ResearchSnapshot``.\n\n``id`` ist eine ZEICHENKETTE, kein Zähler: ein unerratbares Token, weil\ndie Adresse eines Berichts sonst zu raten wäre.",
+        "properties": {
+          "created": {
+            "title": "Created",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          },
+          "seen": {
+            "title": "Seen",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "updated": {
+            "title": "Updated",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "question",
+          "status",
+          "seen",
+          "created",
+          "updated"
+        ],
+        "title": "ResearchJobHead",
         "type": "object"
       },
       "ResearchSnapshot": {

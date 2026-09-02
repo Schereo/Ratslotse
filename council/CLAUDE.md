@@ -4,6 +4,19 @@ Scraper, Parser und der große Rats-Store. Hier stehen nur die Regeln, deren
 Verletzung schon einmal Daten unsichtbar gemacht oder einen Cron zerlegt hat.
 Alles Übrige: [`../CLAUDE.md`](../CLAUDE.md).
 
+## Vorher: echte Daten holen
+
+Parser und Auswertungen an drei erfundenen Zeilen zu prüfen, sagt nichts über
+den Bestand. Ein Abzug der Ratsdaten steht in einem Befehl bereit:
+
+```bash
+python scripts/lokale_daten.py hol && python scripts/lokale_daten.py setz
+```
+
+Ohne Konten, ohne Personendaten, ohne Embeddings und Anlagen-Rohtexte — aber
+mit allem, was die Auswertungen lesen. Näheres in der
+Wurzel-[`CLAUDE.md`](../CLAUDE.md).
+
 ## Schema und Migration sind ZWEI Stellen
 
 Eine frische Datenbank entsteht aus dem `SCHEMA`-Literal, eine gewachsene

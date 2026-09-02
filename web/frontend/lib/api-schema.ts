@@ -4209,6 +4209,23 @@ export interface components {
             status: string;
         };
         /**
+         * Affiliation
+         * @description Die aktuelle Zugehörigkeit eines Mitglieds.
+         *
+         *     Genau drei Schlüssel, nicht die sechs der Zeitreihe daneben: Der Kopf der
+         *     Seite nennt die AUFGELÖSTE Zugehörigkeit („FDP/Volt" → FDP), die Zeitreihe
+         *     darunter bleibt quellentreu und erzählt, was die Protokolle damals
+         *     schrieben.
+         */
+        Affiliation: {
+            /** Kind */
+            kind: string;
+            /** Label */
+            label: string;
+            /** Parties */
+            parties: string[];
+        };
+        /**
          * AgendaAttachment
          * @description Eine Anlage an einem Tagesordnungspunkt.
          */
@@ -4352,6 +4369,77 @@ export interface components {
             question: string;
         };
         /**
+         * AssetGroup
+         * @description Die Untergliederung des Infrastrukturvermögens (Straßen, Brücken,
+         *     Gleisanlagen). Sie steht in einer ANDEREN Tabelle desselben Dokuments und
+         *     gibt es erst ab 2022 — deshalb ein eigener Block und keine Spalte.
+         */
+        AssetGroup: {
+            /** Book Value */
+            book_value: number;
+            /** Book Value Prior Year */
+            book_value_prior_year: number;
+            /** Fetched At */
+            fetched_at: string;
+            /** Group Name */
+            group_name: string;
+            /** Herkunft Id */
+            herkunft_id: number;
+            /** Year */
+            year: number;
+        };
+        /**
+         * AssetRow
+         * @description Eine Zeile des Anlagenspiegels — die Bewegung eines Anlagenpostens.
+         *
+         *     Anfangsstand plus Zugänge minus Abgänge plus Umbuchungen ergibt den
+         *     Endstand; ``probes`` nennt die Rechenproben, die diese Zeile bestanden
+         *     hat. ``n_columns`` hält fest, wie viele Spalten das Dokument des Jahrgangs
+         *     hatte — ältere Jahrgänge führen weniger.
+         */
+        AssetRow: {
+            /** Additions */
+            additions: number;
+            /** Book Value */
+            book_value: number;
+            /** Book Value Prior Year */
+            book_value_prior_year: number;
+            /** Cost Closing */
+            cost_closing: number;
+            /** Cost Opening */
+            cost_opening: number;
+            /** Depreciation */
+            depreciation: number;
+            /** Depreciation Closing */
+            depreciation_closing: number;
+            /** Depreciation Opening */
+            depreciation_opening: number;
+            /** Depreciation Releases */
+            depreciation_releases: number;
+            /** Depreciation Transfers */
+            depreciation_transfers: number;
+            /** Disposals */
+            disposals: number;
+            /** Fetched At */
+            fetched_at: string;
+            /** Herkunft Id */
+            herkunft_id: number;
+            /** Label */
+            label: string;
+            /** N Columns */
+            n_columns: number;
+            /** Nr */
+            nr: string;
+            /** Probes */
+            probes: string[];
+            /** Transfers */
+            transfers: number;
+            /** Write Ups */
+            write_ups: number;
+            /** Year */
+            year: number;
+        };
+        /**
          * Attendance
          * @description Eine Zeile der Anwesenheitsliste (``CouncilStore.get_attendance``).
          */
@@ -4435,6 +4523,34 @@ export interface components {
             } | null;
             /** Total */
             total: number;
+        };
+        /**
+         * BalanceItem
+         * @description Ein Posten der Bilanz (``CouncilStore.get_bilanz_posten``).
+         *
+         *     ``role`` ist unsere Zuordnung („wofür steht diese Zeile"), ``nr`` und
+         *     ``label`` stehen so im Dokument, ``level`` sagt, wie tief der Posten
+         *     eingerückt ist.
+         */
+        BalanceItem: {
+            /** Fetched At */
+            fetched_at: string;
+            /** Herkunft Id */
+            herkunft_id: number;
+            /** Label */
+            label: string;
+            /** Level */
+            level: number;
+            /** Nr */
+            nr: string;
+            /** Page */
+            page: string;
+            /** Role */
+            role: string;
+            /** Value */
+            value: number;
+            /** Year */
+            year: number;
         };
         /** Body_medien_ablegen_api_social_media__day__post */
         Body_medien_ablegen_api_social_media__day__post: {
@@ -4754,9 +4870,7 @@ export interface components {
         /** BudgetDataState */
         BudgetDataState: {
             /** Layers */
-            layers: {
-                [key: string]: unknown;
-            }[];
+            layers: components["schemas"]["DataLayer"][];
             /** Today */
             today: string;
         };
@@ -4764,10 +4878,7 @@ export interface components {
         BudgetDebt: {
             /** Column Kinds */
             column_kinds: unknown[];
-            /** Guarantees */
-            guarantees: {
-                [key: string]: unknown;
-            };
+            guarantees: components["schemas"]["Guarantees"];
             /** Integrated Debt */
             integrated_debt: unknown;
             /** Interest Expense */
@@ -4828,10 +4939,7 @@ export interface components {
         BudgetFixedAssets: {
             /** Accounting Systems */
             accounting_systems: unknown[];
-            /** Fixed Assets */
-            fixed_assets: {
-                [key: string]: unknown;
-            };
+            fixed_assets: components["schemas"]["FixedAssets"];
             /** Missing */
             missing: unknown;
             /** Provenance */
@@ -5244,6 +5352,61 @@ export interface components {
             to_date: string;
         };
         /**
+         * DataLayer
+         * @description Eine Datenschicht des Haushalts und ihr Stand (``finanzquellen.datenstand``).
+         *
+         *     Die Werte kommen aus dem Bestand, nicht aus einer gepflegten Liste — eine
+         *     Angabe, die jemand von Hand nachziehen müsste, wäre genau die, die
+         *     veraltet.
+         *
+         *     ``unit`` und ``einheiten_voll`` sind ``None``, wo eine Schicht gar nicht in
+         *     Einheiten zerfällt (am echten Bestand nachgemessen, nicht geraten).
+         */
+        DataLayer: {
+            /** Automatisch */
+            automatisch: boolean;
+            /** Einheiten */
+            einheiten: {
+                [key: string]: number;
+            };
+            /** Einheiten Voll */
+            einheiten_voll: number | null;
+            /** Erwarteter Monat */
+            erwarteter_monat: number;
+            /** Herkunft */
+            herkunft: string;
+            /** Jahrgaenge */
+            jahrgaenge: number[];
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Luecken */
+            luecken: number[];
+            /** Month Name */
+            month_name: string;
+            /** Naechster Ab */
+            naechster_ab: string;
+            /** Naechster Jahrgang */
+            naechster_jahrgang: number;
+            /** Neuester */
+            neuester: number | null;
+            /** Offen */
+            offen: number[];
+            /** Source */
+            source: string;
+            /** Tabelle */
+            tabelle: string;
+            /** Teilweise */
+            teilweise: number[];
+            /** Ueberfaellig */
+            ueberfaellig: number[];
+            /** Unit */
+            unit: string | null;
+            /** Was */
+            was: string;
+        };
+        /**
          * DecisionDetail
          * @description Ein Beschluss mit allem Drum und Dran — die geteilte Detailseite.
          *
@@ -5605,10 +5768,7 @@ export interface components {
         };
         /** Districts */
         Districts: {
-            /** Catalog */
-            catalog: {
-                [key: string]: unknown;
-            };
+            catalog: components["schemas"]["PlaceCatalogHead"];
             /** Districts */
             districts: unknown;
         };
@@ -5700,9 +5860,7 @@ export interface components {
             /** Parties */
             parties: string[];
             /** Related */
-            related: {
-                [key: string]: unknown;
-            }[];
+            related: components["schemas"]["RelatedEntity"][];
         };
         /** EntityFieldCount */
         EntityFieldCount: {
@@ -5778,6 +5936,24 @@ export interface components {
                 [key: string]: string;
             };
         };
+        /**
+         * FixedAssets
+         * @description Der Anlagenspiegel als Block.
+         */
+        FixedAssets: {
+            /** Group Years */
+            group_years: number[];
+            /** Groups */
+            groups: components["schemas"]["AssetGroup"][];
+            /** Probes */
+            probes: {
+                [key: string]: string;
+            };
+            /** Series */
+            series: components["schemas"]["AssetRow"][];
+            /** Years */
+            years: number[];
+        };
         /** ForgotPasswordRequest */
         ForgotPasswordRequest: {
             /**
@@ -5803,12 +5979,38 @@ export interface components {
             /** Total */
             total: number;
         };
+        /**
+         * GoalDecision
+         * @description Ein Beschluss, der auf ein Nachhaltigkeitsziel einzahlt.
+         *
+         *     ``stance`` und ``rationale`` kommen aus der LLM-Bewertung, alles andere
+         *     aus dem Beschluss selbst. Am Bestand nachgemessen: keins der Felder ist
+         *     je leer.
+         */
+        GoalDecision: {
+            /** Committee */
+            committee: string;
+            /** Id */
+            id: number;
+            /** Outcome */
+            outcome: string;
+            /** Policy Field */
+            policy_field: string;
+            /** Rationale */
+            rationale: string;
+            /** Session Date */
+            session_date: string;
+            /** Stance */
+            stance: string;
+            /** Summary */
+            summary: string;
+            /** Title */
+            title: string;
+        };
         /** GoalDetail */
         GoalDetail: {
             /** Decisions */
-            decisions: {
-                [key: string]: unknown;
-            }[];
+            decisions: components["schemas"]["GoalDecision"][];
             /** Description */
             description: string;
             /** Key */
@@ -5835,6 +6037,74 @@ export interface components {
         Goals: {
             /** Goals */
             goals: components["schemas"]["Goal"][];
+        };
+        /**
+         * GuaranteeRow
+         * @description Der Bürgschaftsbestand eines Jahrgangs.
+         *
+         *     ``exact`` und ``out_next_year`` sind Angaben über den BELEG, nicht über
+         *     die Zahl: Manche Jahrgänge stehen auf den Cent im Dokument, ab 2022 rundet
+         *     die Quelle selbst auf Zehntel-Millionen, und einer steht überhaupt nur im
+         *     Abschluss des Folgejahres. Wer alle gleich formatiert, behauptet eine
+         *     Genauigkeit, die es nicht für alle gibt.
+         */
+        GuaranteeRow: {
+            /** Balance */
+            balance: number;
+            /** Exact */
+            exact: boolean;
+            /** Fetched At */
+            fetched_at: string;
+            /** Herkunft Id */
+            herkunft_id: number;
+            /** Out Next Year */
+            out_next_year: boolean;
+            /** Probes */
+            probes: string[];
+            /** Reason */
+            reason: string | null;
+            /** Single Amount */
+            single_amount: number | null;
+            /** Source */
+            source: string;
+            /** Year */
+            year: number;
+        };
+        /**
+         * GuaranteeTemplate
+         * @description Eine Ratsvorlage zu einer Bürgschaft — als Geschichte, nicht als Summe.
+         *
+         *     Unter den Vorlagen sind Verlängerungen und Anpassungen derselben
+         *     Bürgschaft; addiert zählte man dieselbe Zusage mehrfach. Was der Bestand
+         *     ist, sagt allein der Jahresabschluss.
+         */
+        GuaranteeTemplate: {
+            /** Date */
+            date: string | null;
+            /** Decision Id */
+            decision_id: number | null;
+            /** Document Url */
+            document_url: string;
+            /** Template Number */
+            template_number: string;
+            /** Title */
+            title: string;
+        };
+        /**
+         * Guarantees
+         * @description Die Bürgschaften als Block.
+         */
+        Guarantees: {
+            /** Financial Debt */
+            financial_debt: components["schemas"]["BalanceItem"][];
+            /** Provision */
+            provision: components["schemas"]["BalanceItem"][];
+            /** Scope Note */
+            scope_note: string;
+            /** Series */
+            series: components["schemas"]["GuaranteeRow"][];
+            /** Templates */
+            templates: components["schemas"]["GuaranteeTemplate"][];
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -6306,9 +6576,22 @@ export interface components {
             active_to: string | null;
             /** Committees */
             committees: components["schemas"]["PersonCommittee"][];
-            /** Current Affiliation */
+            /**
+             * Affiliation
+             * @description Die aktuelle Zugehörigkeit eines Mitglieds.
+             *
+             *     Genau drei Schlüssel, nicht die sechs der Zeitreihe daneben: Der Kopf der
+             *     Seite nennt die AUFGELÖSTE Zugehörigkeit („FDP/Volt" → FDP), die Zeitreihe
+             *     darunter bleibt quellentreu und erzählt, was die Protokolle damals
+             *     schrieben.
+             */
             current_affiliation: {
-                [key: string]: unknown;
+                /** Kind */
+                kind: string;
+                /** Label */
+                label: string;
+                /** Parties */
+                parties: string[];
             } | null;
             /** Faction Timeline */
             faction_timeline: components["schemas"]["FactionPhase"][];
@@ -6355,8 +6638,7 @@ export interface components {
         /**
          * PlaceCatalog
          * @description ``CouncilStore.public_place_catalog`` — der gemeinsame Ortskatalog für
-         *     Suche, Karten, Quiz und die KI-Funktionen. ``kinds`` bildet den Ortstyp auf
-         *     seine deutsche Beschriftung ab, ``sources`` sind die Katalog-Quellen.
+         *     Suche, Karten, Quiz und die KI-Funktionen.
          */
         PlaceCatalog: {
             /** Definition */
@@ -6371,6 +6653,34 @@ export interface components {
             label: string;
             /** Places */
             places: components["schemas"]["PlaceEntry"][];
+            /** Plural */
+            plural: string;
+            /** Schema Version */
+            schema_version: number;
+            /** Singular */
+            singular: string;
+            /** Sources */
+            sources: components["schemas"]["PlaceSource"][];
+        };
+        /**
+         * PlaceCatalogHead
+         * @description Der Ortskatalog OHNE seine Orte — Beschriftungen, Typen, Belege.
+         *
+         *     Die Stadtteil-Antwort reicht genau diese acht Schlüssel durch (die Orte
+         *     stehen dort als eigene Liste daneben), der volle Katalog erbt sie. Zwei
+         *     Aufzählungen desselben Kopfes liefen auseinander, sobald eine wächst.
+         */
+        PlaceCatalogHead: {
+            /** Definition */
+            definition: string;
+            /** Id */
+            id: string;
+            /** Kinds */
+            kinds: {
+                [key: string]: string;
+            };
+            /** Label */
+            label: string;
             /** Plural */
             plural: string;
             /** Schema Version */
@@ -7094,14 +7404,83 @@ export interface components {
             /** Password */
             password: string;
         };
+        /**
+         * RelatedEntity
+         * @description Ein Nachbar-Thema (``CouncilStore.related_entities``).
+         *
+         *     ``evidence`` ist die Zahl der Beschlüsse, in denen beide zusammen
+         *     vorkommen; ``score`` gewichtet das gegen ihre Häufigkeit.
+         */
+        RelatedEntity: {
+            /** Evidence */
+            evidence: number;
+            /** Kind */
+            kind: string;
+            /** N */
+            n: number;
+            /** Name */
+            name: string;
+            /** Rel Type */
+            rel_type: string;
+            /** Score */
+            score: number;
+            /** Slug */
+            slug: string;
+        };
         /** ResearchCurrent */
         ResearchCurrent: {
-            /** Job */
+            /**
+             * ResearchJobHead
+             * @description Der jüngste Recherche-Job eines Kontos — sechs Spalten, fester SELECT.
+             *
+             *     Damit findet der Client nach einer Navigation oder einem App-Neustart
+             *     einen laufenden Job wieder, ohne sich die ID gemerkt zu haben. Der volle
+             *     Stand kommt danach über ``ResearchSnapshot``.
+             *
+             *     ``id`` ist eine ZEICHENKETTE, kein Zähler: ein unerratbares Token, weil
+             *     die Adresse eines Berichts sonst zu raten wäre.
+             */
             job: {
-                [key: string]: unknown;
+                /** Created */
+                created: string;
+                /** Id */
+                id: string;
+                /** Question */
+                question: string;
+                /** Seen */
+                seen: number;
+                /** Status */
+                status: string;
+                /** Updated */
+                updated: string;
             } | null;
             /** Remaining */
             remaining: number | null;
+        };
+        /**
+         * ResearchJobHead
+         * @description Der jüngste Recherche-Job eines Kontos — sechs Spalten, fester SELECT.
+         *
+         *     Damit findet der Client nach einer Navigation oder einem App-Neustart
+         *     einen laufenden Job wieder, ohne sich die ID gemerkt zu haben. Der volle
+         *     Stand kommt danach über ``ResearchSnapshot``.
+         *
+         *     ``id`` ist eine ZEICHENKETTE, kein Zähler: ein unerratbares Token, weil
+         *     die Adresse eines Berichts sonst zu raten wäre.
+         */
+        ResearchJobHead: {
+            /** Created */
+            created: string;
+            /** Id */
+            id: string;
+            /** Question */
+            question: string;
+            /** Seen */
+            seen: number;
+            /** Status */
+            status: string;
+            /** Updated */
+            updated: string;
         };
         /**
          * ResearchSnapshot
@@ -12653,4 +13032,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 9de4ded1e4972aa83f66b7be77ca36fe1de5989088d5f6add35a79ef12900ec4
+// vertrag-sha256: 7dbe3b38862965ca2d8bafd87b77cb8044894cb269fd834801f9d6a420a0677a
