@@ -220,6 +220,16 @@ class Finanzquelle:
     einlesen: Callable[..., dict] | None = None
     #: Weitere Tabellen, die derselbe Lauf mitfüllt.
     nebentabellen: tuple[str, ...] = ()
+    #: Das Ingest-Skript dieser Datenart, wenn sie keinen eigenen Leser
+    #: (``einlesen``) hat: Pfad relativ zur Repo-Wurzel plus Argumente. Der
+    #: Cron ruft es auf, sobald ein NEUES Dokument im Bestand liegt — gemessen
+    #: an :meth:`dokumentmarke`. Tims Punkt 5 (02.09.2026): „Frische
+    #: automatisieren — Wecker plus Lauf beim Auftauchen einer neuen Anlage."
+    lauf: tuple[str, ...] | None = None
+    #: Die Marke des jüngsten Dokuments, das diese Datenart lesen könnte —
+    #: für Quellen ohne ``erkennung`` (Vorlagen statt Anlagen). Ohne Angabe
+    #: gilt die höchste ``document_id`` der Kandidaten.
+    marke: Callable[[CouncilStore], int | None] | None = None
     #: Was ein Mensch tut, wenn diese Schicht ausbleibt — Quelle und Skript im
     #: Klartext. Nur bei ``automatisch is False`` gesetzt; der Cron schreibt es
     #: in seine Meldung. Dort stand es bis 08/2026 fest verdrahtet als
@@ -242,6 +252,21 @@ class Finanzquelle:
         if heute < self.faellig_ab(budget_year):
             budget_year -= 1
         return budget_year
+
+    def dokumentmarke(self, store: CouncilStore) -> int | None:
+        """Die Marke des jüngsten Dokuments dieser Datenart im Bestand.
+
+        Eine Zahl, die nur wächst, wenn etwas Neues da ist — die
+        ``document_id`` der jüngsten Anlage (bzw. was ``marke`` liefert).
+        Der Cron vergleicht sie mit der Marke seines letzten Skriptlaufs;
+        steigt sie, gibt es ein Dokument, das noch niemand gelesen hat."""
+        if self.marke is not None:
+            return self.marke(store)
+        if self.erkennung is None:
+            return None
+        ids = [r["document_id"] for r in self.kandidaten(store, kopf_zeichen=1)
+               if r.get("document_id") is not None]
+        return max(ids) if ids else None
 
     def kandidaten(self, store: CouncilStore, kopf_zeichen: int = 4000) -> list[dict]:
         """Anlagen, die ein Dokument dieser Datenart sein könnten — mit den
@@ -2491,6 +2516,7 @@ for _q in (
         ),
         nachschub="scripts/ingest_gebuehren.py",
         balance=_bestand_gebuehren,
+        lauf=("scripts/ingest_gebuehren.py",),
     ),
     Finanzquelle(
         key="budget_execution",
@@ -2531,6 +2557,7 @@ for _q in (
         # Schicht nur und meldet, wenn ein Stichtag ausbleibt.
         nachschub="scripts/ingest_haushaltsvollzug.py (lädt die PDFs selbst)",
         balance=_bestand_haushaltsvollzug,
+        lauf=("scripts/ingest_haushaltsvollzug.py",),
     ),
     Finanzquelle(
         key="budget_bylaw",
@@ -2560,6 +2587,7 @@ for _q in (
         ),
         nachschub="scripts/ingest_haushaltssatzung.py",
         balance=_bestand_haushaltssatzung,
+        lauf=("scripts/ingest_haushaltssatzung.py",),
     ),
     Finanzquelle(
         key="wirtschaftsplan",
@@ -2598,6 +2626,7 @@ for _q in (
         nachschub="liegt schon im Bestand (council_templates), "
                   "scripts/ingest_wirtschaftsplaene.py",
         balance=_bestand_wirtschaftsplan,
+        lauf=("scripts/ingest_wirtschaftsplaene.py",),
     ),
     Finanzquelle(
         key="schulden",
