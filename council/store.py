@@ -856,17 +856,44 @@ class CouncilStore:
         'district'``). Ein UPDATE je Wert, das beim zweiten Lauf nichts mehr
         findet.
         """
-        vorhanden = {r[1] for r in self._conn.execute(f"PRAGMA table_info({tabelle})")}
+        info = list(self._conn.execute(f"PRAGMA table_info({tabelle})"))
+        vorhanden = {r[1] for r in info}
         if spalte not in vorhanden:
             # Tabelle fehlt oder trägt die Spalte (noch) nicht — beides ist
             # normal, etwa in einer frisch angelegten Datenbank.
             return
+        log = logging.getLogger("ratslotse.council.store")
         for alt, neu in paare:
-            cur = self._conn.execute(
-                f"UPDATE {tabelle} SET {spalte} = ? WHERE {spalte} = ?", (neu, alt))
+            try:
+                cur = self._conn.execute(
+                    f"UPDATE {tabelle} SET {spalte} = ? WHERE {spalte} = ?", (neu, alt))
+            except sqlite3.IntegrityError:
+                # Der neue Wert steht schon da: Ein Ingest mit neuem Code hat
+                # ihn geschrieben, während die alten Zeilen liegen blieben —
+                # so lag `council_taxes` am 02.09.2026 auf dev mit `insgesamt`
+                # UND `total` für dieselben Jahre, und jeder Store-Start
+                # brach hier ab (Crons, Ingests, nach dem nächsten Neustart
+                # auch die API). Wo der Wert Teil des Primärschlüssels ist,
+                # weicht die alte Zeile der neuen: gleicher Schlüssel, und
+                # die neue trägt den jüngeren Ingest. Ohne Schlüsselwissen
+                # bleibt der Fehler ein Fehler — raten wäre schlimmer.
+                pk = [r[1] for r in sorted((r for r in info if r[5] > 0), key=lambda r: r[5])]
+                if spalte not in pk:
+                    raise
+                gleich = " AND ".join(
+                    f"t2.{c} = {tabelle}.{c}" for c in pk if c != spalte) or "1 = 1"
+                weg = self._conn.execute(
+                    f"DELETE FROM {tabelle} WHERE {spalte} = ? AND EXISTS ("
+                    f"SELECT 1 FROM {tabelle} AS t2 WHERE t2.{spalte} = ? AND {gleich})",
+                    (alt, neu)).rowcount
+                log.warning(
+                    "Werte-Konflikt aufgelöst: %s.%s %r stand neben %r — %d alte Zeilen "
+                    "gelöscht, die neuen bleiben", tabelle, spalte, alt, neu, weg)
+                cur = self._conn.execute(
+                    f"UPDATE {tabelle} SET {spalte} = ? WHERE {spalte} = ?", (neu, alt))
             if cur.rowcount:
                 self._conn.commit()
-                logging.getLogger("ratslotse.council.store").warning(
+                log.warning(
                     "Werte umgeschrieben: %s.%s %r → %r (%d Zeilen)",
                     tabelle, spalte, alt, neu, cur.rowcount)
 
