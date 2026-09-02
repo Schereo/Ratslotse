@@ -38,8 +38,10 @@ export function Grenzen({ art }: { art: SteuerArt }) {
       key: "beschluesse",
       icon: Search,
       title: "Was der Rat dazu entschieden hat",
-      text: "Die automatische Verknüpfung von Beschlüssen mit Einnahmearten "
-        + "bauen wir noch. Bis dahin findet die Suche, was dazu beschlossen wurde.",
+      // Kein „bauen wir noch": Ein Versprechen ist kein Seiteninhalt
+      // (Durchsicht 02.09.2026). Die Suche IST der Weg zu den Beschlüssen.
+      text: "Beschlüsse sind hier nicht automatisch mit der Einnahmeart verknüpft — "
+        + "die Suche findet, was der Rat dazu entschieden hat.",
       link: {
         href: `/council?q=${encodeURIComponent(art.title)}`,
         text: `Beschlüsse zu „${art.title}“ suchen`,
@@ -56,7 +58,7 @@ export function Grenzen({ art }: { art: SteuerArt }) {
   return (
     <div className="rounded-2xl border border-dashed border-border bg-card p-4">
       <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-        Was hier (noch) nicht steht
+        Was hier nicht steht
       </p>
       <div className="mt-2.5 flex flex-col divide-y divide-dashed divide-border">
         {eintraege.map((e) => (

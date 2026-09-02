@@ -12,6 +12,7 @@
 
 import { Suspense, useMemo } from "react";
 import Link from "next/link";
+import { deZahl } from "@/components/grafik/format";
 import { useSearchParams } from "next/navigation";
 import { ChevronRight } from "lucide-react";
 import { useFetch } from "@/lib/use-fetch";
@@ -642,7 +643,11 @@ function SteuerInner() {
               </p>
               {/* Das Bild dazu — ohne geltenden Satz gar nicht: Ein
                   schraffiertes Stück ohne Bezugsgröße zeigt nichts. */}
-              {geltendeStufe && (
+              {/* Nur mit Vorschlagszahl: Ohne sie war das Bild ein einzelner
+                  Vollbalken des geltenden Satzes mit viel Leere darüber
+                  (Durchsicht 02.09.2026). Der Satz darunter sagt dann, dass
+                  die Zahl fehlt. */}
+              {geltendeStufe && vorgeschlagen != null && (
                 <AbgelehnteStufe
                   year={HEBESATZ_ABGELEHNT.year}
                   geltend={geltendeStufe.rate}
@@ -652,6 +657,13 @@ function SteuerInner() {
                   beleg={<Beleg q="tax_rates" />}
                   satzungBeleg={<Beleg q="budget_bylaw" />}
                 />
+              )}
+              {geltendeStufe && vorgeschlagen == null && (
+                <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
+                  Um wie viele Punkte der Satz hätte steigen sollen, können wir für{" "}
+                  {HEBESATZ_ABGELEHNT.year} nicht belegen — die Satzung nennt keinen Vorschlag;
+                  der geltende Satz bleibt {deZahl(geltendeStufe.rate)}&nbsp;%.
+                </p>
               )}
               {/* Der Verweis auf die Treppe nur, wo eine steht: Ohne
                   eingelesene Reihe zeigt der Block darüber einen einzelnen
