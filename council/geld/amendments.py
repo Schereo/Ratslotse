@@ -30,6 +30,12 @@ from kern.dbfehler import tabelle_fehlt
 NAME = "amendments"
 
 _REIHENFOLGE = ("administration_1", "administration_2", "administration_3", "fc_decided")
+#: Wann die Listen zum FINANZHAUSHALT mitkommen: Wenn die Frage den
+#: Finanzhaushalt, Investitionen oder Zahlungen nennt. Ohne das bleibt der
+#: Baustein beim Ergebnishaushalt — zwei Rechenwerke nebeneinander ohne
+#: Anlass wären doppelt so lang und halb so klar.
+_FHH_BEGRIFFE = re.compile(
+    r"finanzhaushalt|investition|auszahlung|einzahlung|vorhaben|bau\b|baumassnahme")
 _DOKUMENT = {
     "administration_1": "Änderungsliste Verwaltung I",
     "administration_2": "Änderungsliste Verwaltung II",
@@ -129,7 +135,56 @@ class Store:
             "matched": bool(terms) and treffer is not sorted(pos, key=betrag, reverse=True)[:3],
             "authors": sorted(urheber.items(), key=lambda kv: -kv[1]),
             "beleg": self._beleg(beleg_id),
+            "cash": self._finanzhaushalt(jahr, terms),
             **({"year_asked": year} if abweicht else {}),
+        }
+
+    def _finanzhaushalt(self, jahr: int, terms: list[str]) -> dict | None:
+        """Die Listen zum FINANZHAUSHALT (Investitionen) — nur, wenn die Frage
+        danach klingt. Sie stehen in eigenen Dokumenten mit eigener Probe
+        (``council/aenderungslisten_fhh.py``); ein Ergebnishaushalts-Baustein
+        ohne sie beantwortete „Welche Änderungen am Finanzhaushalt?“ bis
+        09/2026 mit den Erträgen und Aufwendungen — live gemessen."""
+        gefragt = " ".join(geld.falte(w) for w in terms)
+        if not _FHH_BEGRIFFE.search(gefragt):
+            return None
+        try:
+            summen = [dict(r) for r in self._conn.execute(
+                "SELECT list_key, kind, label, inflows, outflows, balance, own, herkunft_id "
+                "FROM council_budget_amendments_cash_totals "
+                "WHERE budget_year = ? AND year = ?", (jahr, jahr))]
+            zeilen = [dict(r) for r in self._conn.execute(
+                "SELECT list_key, sub_budget, product, label, inflow, outflow, explanation "
+                "FROM council_budget_amendments_cash WHERE budget_year = ? AND year = ? "
+                "ORDER BY list_key, seq", (jahr, jahr))]
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
+            return None
+        if not summen and not zeilen:
+            return None
+        letztes = next((k for k in reversed(_REIHENFOLGE)
+                        if any(s["list_key"] == k for s in summen)
+                        or any(z["list_key"] == k for z in zeilen)), None)
+        pos = [z for z in zeilen if z["list_key"] == letztes] or zeilen
+
+        def betrag(z: dict) -> float:
+            return abs(z.get("inflow") or 0) + abs(z.get("outflow") or 0)
+
+        treffer = []
+        if terms:
+            bewertet = [(self._trifft(f"{z['label']} {z.get('product') or ''} "
+                                      f"{z.get('explanation') or ''}", terms), z) for z in pos]
+            treffer = [z for n, z in sorted(bewertet, key=lambda x: (-x[0], -betrag(x[1]))) if n][:3]
+        if not treffer:
+            treffer = sorted(pos, key=betrag, reverse=True)[:3]
+        return {
+            "draft": next((s for s in summen if s["kind"] == "draft"), None),
+            "final": next((s for s in summen if s["kind"] == "final_total"
+                           and s["list_key"] == letztes), None),
+            "lists": [s for s in summen if s["kind"] == "list" and s.get("own")],
+            "final_document": letztes,
+            "positions": treffer,
         }
 
 
@@ -170,6 +225,32 @@ def block(data: dict | None) -> str:
                 s += f" — vorgeschlagen von {z['author']}"
             if z.get("explanation"):
                 s += f" — Erläuterung: {' '.join(z['explanation'].split())[:110]}"
+            zeilen.append(s)
+    if data.get("cash"):
+        c = data["cash"]
+        zeilen.append("- FINANZHAUSHALT (Investitionen), eigene Listen — Ein- und Auszahlungen:")
+        if c.get("draft"):
+            zeilen.append(f"  - Verwaltungsentwurf {j}: Einzahlungen {geld.de_mio(c['draft']['inflows'])}, "
+                          f"Auszahlungen {geld.de_mio(c['draft']['outflows'])}")
+        if c.get("final"):
+            zeilen.append(f"  - Nach allen Änderungen ({_DOKUMENT.get(c['final_document'], c['final_document'])}): "
+                          f"Einzahlungen {geld.de_mio(c['final']['inflows'])}, "
+                          f"Auszahlungen {geld.de_mio(c['final']['outflows'])}")
+        for s in c.get("lists") or []:
+            zeilen.append(f"  - {s['label']}: Einzahlungen {geld.de_mio(s['inflows'])}, "
+                          f"Auszahlungen {geld.de_mio(s['outflows'])}")
+        for z in c.get("positions") or []:
+            teile = []
+            if z.get("inflow"):
+                teile.append(f"Einzahlungen {geld.de_mio(z['inflow'])}")
+            if z.get("outflow"):
+                teile.append(f"Auszahlungen {geld.de_mio(z['outflow'])}")
+            s = f"  - {z['label']}"
+            if z.get("product"):
+                s += f" ({z['product']})"
+            s += ": " + (", ".join(teile) or "kein Betrag")
+            if z.get("explanation"):
+                s += f" — {' '.join(z['explanation'].split())[:100]}"
             zeilen.append(s)
     if data.get("authors"):
         zeilen.append("- Wer die Positionen vorschlug (Spalte „Vorschlag von“): "

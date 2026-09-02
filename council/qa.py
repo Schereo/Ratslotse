@@ -2868,7 +2868,19 @@ def geld_regeln(geld: dict | None, eng: bool = False) -> str:
         "4. NICHT RECHNEN, WAS NICHT DASTEHT. Keine Summen über verschiedene "
         "Quellen, keine Prozentsätze, keine Pro-Kopf-Werte und keine "
         "Hochrechnungen auf andere Jahre — nur die Zahlen, die im Kontext "
-        "stehen, und die Vergleiche, die dort ausdrücklich angelegt sind."
+        "stehen, und die Vergleiche, die dort ausdrücklich angelegt sind.\n"
+        # Live gemessen am 02.09.2026: „Wie viel Geld hat die Stadt auf dem
+        # Konto?“ bekam „Die Ratsunterlagen geben keine direkte Auskunft …
+        # Der Liquiditätsstand betrug 136,1 Millionen Euro“ — die Zahl stand
+        # im Kontext, die Antwort verleugnete sie im ersten Satz. Die
+        # Haushaltsabschnitte SIND die Auskunft, die Beschlüsse daneben oft
+        # nur Kenntnisnahmen.
+        "5. DIE HAUSHALTSDATEN SIND DIE ANTWORT. Beantwortet ein Abschnitt "
+        "unten die Frage, beginne mit dieser Zahl und ihrer Quelle. Schreib "
+        "NICHT „die Ratsunterlagen geben keine Auskunft“, wenn die Zahl im "
+        "Kontext steht — Haushaltsdaten sind Ratsunterlagen. Beschlüsse, die "
+        "nur einen Bericht zur Kenntnis nehmen, sind dann Beiwerk und keine "
+        "Einschränkung."
     )
 
 
