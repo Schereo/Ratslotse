@@ -52,7 +52,7 @@ def test_diese_fragen_ziehen_ihn_nicht(frage):
 def test_die_alten_facetten_verschieben_sich_nicht():
     """Die Nachbarfragen behalten genau die Quellen, die sie vorher hatten."""
     assert qa.geld_facetten("Welche Änderungslisten gab es zum Haushalt 2026?",
-                            "topic") == {"plan", "ansatz", "antraege"}
+                            "topic") == {"plan", "ansatz", "antraege", "amendments"}
     assert qa.geld_facetten("Hat die Stadt 2024 mehr ausgegeben als geplant?",
                             "money") == {"plan", "ist", "kassensicht"}
     assert qa.geld_facetten("Wie ist der Stand beim Stadion?", "history") == set()

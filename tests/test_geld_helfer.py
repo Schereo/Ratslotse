@@ -12,6 +12,7 @@ def test_formatierer_schreiben_deutsch():
     assert geld.de_zahl(1702.25, 2) == "1.702,25"
     assert geld.de_prozent(42.84) == "42,8 %"
     assert geld.de_mio(-2_700_000) == "-2,7 Mio. €"
+    assert geld.de_betrag(-15_621) == "-15.621 €" and geld.de_betrag(2_700_000) == "2,7 Mio. €"
 
 
 def test_beleg_text_wie_in_qa():
@@ -51,3 +52,11 @@ def test_lesestore_liest_und_schreibt_nicht(tmp_path):
         schreibbar = False
     assert not schreibbar
     lese.close()
+
+
+def test_baeder_als_wort_zieht_betriebe_und_gesellschaften():
+    """„Zuschuss für die Bäder" zog bis 02.09. nur den Plan — der Bäderbetrieb
+    stand nur als Kompositum in den Mustern."""
+    from council import qa
+    f = qa.geld_facetten("Wie hoch ist der Zuschuss der Stadt für die Bäder?", "money")
+    assert {"business_plans", "companies"} <= f

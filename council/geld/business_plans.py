@@ -41,7 +41,7 @@ NAME = "business_plans"
 #: aus dem Beteiligungsbericht), „theater" (das Staatstheater ist Sache des
 #: Landes) und „hafen" allein (steckt in „Flughafen").
 _BETRIEBE = (
-    r"abfallwirtschaftsbetrieb|baederbetriebsgesellschaft|baederbetrieb|"
+    r"abfallwirtschaftsbetrieb|baederbetriebsgesellschaft|baederbetrieb|\bbaeder\b|"
     r"gebaeudewirtschaft|stadionplanungsgesellschaft|stadion oldenburg|"
     r"stadthafen|eigenbetrieb hafen|\bawb\b|\bbbgo\b|\bbbo\b|\begh\b"
 )
@@ -162,64 +162,34 @@ class Store:
                 "duty": _WAS_SIE_TUN.get(enterprise)}
 
 
-def _beleg_text(b: dict | None) -> str:
-    """„ — Beleg: Bäderbetrieb …: Wirtschaftsplan 2026, Beschlussvorschlag".
-
-    Wortgleich mit ``qa._beleg_text``; importieren geht nicht, weil ``qa``
-    dieses Paket lädt und nicht umgekehrt."""
-    if not b:
-        return ""
-    teile = [t for t in (b.get("label"), b.get("citation")) if t]
-    if b.get("page"):
-        teile.append(f"S. {b['page']}")
-    if not teile:
-        return ""
-    as_of = f", Stand {b['as_of']}" if b.get("as_of") else ""
-    return f" — Beleg: {', '.join(str(t) for t in teile)}{as_of}"
-
-
-def _betrag(v: float | None) -> str:
-    """Millionen, aber nicht bis zur Unkenntlichkeit.
-
-    ``geld.de_mio`` rundet auf eine Nachkommastelle — der ausgeglichene
-    Erfolgsplan des EGH für 2026 (−15.621 €) wird darin zu „-0,0 Mio. €" und
-    liest sich wie ein Rundungsfehler statt wie die Punktlandung, die er ist.
-    Unter einer Million steht deshalb der volle Betrag."""
-    if v is None:
-        return "–"
-    if abs(v) < 1_000_000:
-        return f"{v:,.0f} €".replace(",", ".")
-    return geld.de_mio(v)
-
-
 def _plan_zeilen(p: dict, detail: bool) -> list[str]:
     kopf = (f"- {p['enterprise_name']}, Wirtschaftsplan {p['year']} "
-            f"(Vorlage {p['template_number']}): Ergebnis {_betrag(p['result'])}")
+            f"(Vorlage {p['template_number']}): Ergebnis {geld.de_betrag(p['result'])}")
     if p["result"] == 0:
         kopf += " (ausgeglichener Plan — der Betrieb plant weder Gewinn noch Verlust)"
     if p.get("prior"):
         kopf += (f"; im Plan {p['prior']['year']} waren es "
-                 f"{_betrag(p['prior']['result'])}")
+                 f"{geld.de_betrag(p['prior']['result'])}")
     zeilen = [kopf]
     if not detail:
         return zeilen
     if p.get("duty"):
         zeilen.append(f"  - {p['duty']}")
     if p.get("revenues") is not None and p.get("expenses") is not None:
-        zeilen.append(f"  - Erfolgsplan: Erträge {_betrag(p['revenues'])}, "
-                      f"Aufwendungen {_betrag(p['expenses'])}")
+        zeilen.append(f"  - Erfolgsplan: Erträge {geld.de_betrag(p['revenues'])}, "
+                      f"Aufwendungen {geld.de_betrag(p['expenses'])}")
     else:
         zeilen.append("  - Erträge und Aufwendungen nennt diese Quelle nicht; "
                       "geprüft ist allein das Jahresergebnis.")
     vermoegen = []
     if p.get("capital_plan") is not None:
-        vermoegen.append(f"Vermögensplan {_betrag(p['capital_plan'])} "
+        vermoegen.append(f"Vermögensplan {geld.de_betrag(p['capital_plan'])} "
                          "(Einzahlungen = Auszahlungen)")
     if p.get("investments") is not None:
-        vermoegen.append(f"davon Investitionen {_betrag(p['investments'])}")
+        vermoegen.append(f"davon Investitionen {geld.de_betrag(p['investments'])}")
     if p.get("commitments") is not None:
         vermoegen.append("Verpflichtungsermächtigungen "
-                         f"{_betrag(p['commitments'])}")
+                         f"{geld.de_betrag(p['commitments'])}")
     if vermoegen:
         zeilen.append("  - " + ", ".join(vermoegen))
     if p.get("ended"):
@@ -253,7 +223,7 @@ def block(data: dict | None) -> str:
             # Der Beleg im Kopf NUR, wenn genau ein Plan dasteht: Jede Zeile ist
             # ein eigenes Papier, und die Herkunft des ersten wäre für die
             # anderen die falsche. Sonst trägt jede Zeile ihre Vorlagennummer.
-            + (_beleg_text(data.get("beleg")) if len(data["plans"]) == 1 else "")
+            + (geld.beleg_text(data.get("beleg"), stand=True) if len(data["plans"]) == 1 else "")
             + ":\n" + "\n".join(zeilen) + "\n")
 
 
