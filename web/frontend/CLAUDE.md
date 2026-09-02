@@ -7,6 +7,27 @@ Capacitor-Hülle gebaut — die meisten Fallen hier kommen daher.
 Grafiken zusätzlich: [`components/grafik/README.md`](components/grafik/README.md).
 Allgemeines: [`../../CLAUDE.md`](../../CLAUDE.md).
 
+## Vorher: echte Daten holen
+
+Eine Oberfläche gegen eine leere Datenbank zu bauen heißt, an den Daten vorbei
+zu bauen. Eine Liste, die nie mehr als drei Einträge sieht, bekommt keine
+Paginierung. Ein Titel, der nie lang wird, bricht erst auf dem Server um. Ein
+Feld, das lokal immer `null` ist, fällt niemandem auf.
+
+```bash
+python scripts/lokale_daten.py hol    # Ratsdaten von dev, ~220 MB, ~25 s
+python scripts/lokale_daten.py setz   # in data/ DIESES Worktrees
+python scripts/saat_konten.py         # erfundene Konten dazu
+```
+
+Danach steht der Bestand: rund 8.200 Beschlüsse, 870 Sitzungen, 42.000
+Wortbeiträge, dazu ein Konto mit Themen und Treffern. Anmelden als
+`nutzerin@example.org` (oder `chef@example.org` für den Admin-Bereich),
+Passwort `password123`. `stand` sagt, wie alt der Abzug ist.
+
+Der Abzug trägt **keine** Konten und keine Personendaten; Näheres in der
+Wurzel-[`CLAUDE.md`](../../CLAUDE.md).
+
 ## Ans Backend nur über `lib/api.ts`
 
 `api.get/post/put/del` setzt die Basis-URL, die Anmeldeform (Cookie im Web,

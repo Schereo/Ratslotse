@@ -1261,18 +1261,27 @@ class PlaceEntry(TypedDict):
     sources: list[PlaceSource]
 
 
-class PlaceCatalog(TypedDict):
-    """``CouncilStore.public_place_catalog`` — der gemeinsame Ortskatalog für
-    Suche, Karten, Quiz und die KI-Funktionen. ``kinds`` bildet den Ortstyp auf
-    seine deutsche Beschriftung ab, ``sources`` sind die Katalog-Quellen."""
+class PlaceCatalogHead(TypedDict):
+    """Der Ortskatalog OHNE seine Orte — Beschriftungen, Typen, Belege.
+
+    Die Stadtteil-Antwort reicht genau diese acht Schlüssel durch (die Orte
+    stehen dort als eigene Liste daneben), der volle Katalog erbt sie. Zwei
+    Aufzählungen desselben Kopfes liefen auseinander, sobald eine wächst.
+    """
     schema_version: int
     id: str
     label: str
     singular: str
     plural: str
     definition: str
+    #: Ortstyp → deutsche Beschriftung.
     kinds: dict[str, str]
     sources: list[PlaceSource]
+
+
+class PlaceCatalog(PlaceCatalogHead):
+    """``CouncilStore.public_place_catalog`` — der gemeinsame Ortskatalog für
+    Suche, Karten, Quiz und die KI-Funktionen."""
     places: list[PlaceEntry]
 
 
@@ -1635,6 +1644,21 @@ class EntityFieldCount(TypedDict):
     n: int
 
 
+class RelatedEntity(TypedDict):
+    """Ein Nachbar-Thema (``CouncilStore.related_entities``).
+
+    ``evidence`` ist die Zahl der Beschlüsse, in denen beide zusammen
+    vorkommen; ``score`` gewichtet das gegen ihre Häufigkeit.
+    """
+    slug: str
+    name: str
+    kind: str
+    n: int
+    rel_type: str
+    evidence: int
+    score: float
+
+
 class EntityDetail(TypedDict):
     """Eine Themen-Seite mit allen ihren Beschlüssen und den Aggregaten.
 
@@ -1654,7 +1678,7 @@ class EntityDetail(TypedDict):
     merged_from: str | None
     # legt der Router dazu
     field_labels: dict[str, str]
-    related: list[dict[str, Any]]
+    related: list[RelatedEntity]
 
 
 class Speech(TypedDict):
@@ -1708,6 +1732,19 @@ class FactionPhase(TypedDict):
     n: int
 
 
+class Affiliation(TypedDict):
+    """Die aktuelle Zugehörigkeit eines Mitglieds.
+
+    Genau drei Schlüssel, nicht die sechs der Zeitreihe daneben: Der Kopf der
+    Seite nennt die AUFGELÖSTE Zugehörigkeit („FDP/Volt" → FDP), die Zeitreihe
+    darunter bleibt quellentreu und erzählt, was die Protokolle damals
+    schrieben.
+    """
+    label: str
+    kind: str
+    parties: list[str]
+
+
 class PersonCouncil(TypedDict):
     """Das Profil eines Mandats- oder beratenden Mitglieds
     (``CouncilStore.member_detail``, ``type`` legt der Router dazu).
@@ -1721,7 +1758,7 @@ class PersonCouncil(TypedDict):
     name: str
     slug: str
     party: str | None
-    current_affiliation: dict[str, Any] | None
+    current_affiliation: Affiliation | None
     kind: Literal["council", "advisory"]
     organisation: str | None
     n_sessions: int
@@ -1785,7 +1822,7 @@ class PartyFilter(TypedDict):
 
 
 class Districts(TypedDict):
-    catalog: dict[str, Any]
+    catalog: PlaceCatalogHead
     districts: Any
 
 
@@ -1934,9 +1971,50 @@ class BudgetInvestmentProgram(TypedDict):
     sub_budgets: list[Any]
 
 
+class DataLayer(TypedDict):
+    """Eine Datenschicht des Haushalts und ihr Stand (``finanzquellen.datenstand``).
+
+    Die Werte kommen aus dem Bestand, nicht aus einer gepflegten Liste — eine
+    Angabe, die jemand von Hand nachziehen müsste, wäre genau die, die
+    veraltet.
+
+    ``unit`` und ``einheiten_voll`` sind ``None``, wo eine Schicht gar nicht in
+    Einheiten zerfällt (am echten Bestand nachgemessen, nicht geraten).
+    """
+    key: str
+    label: str
+    was: str
+    tabelle: str
+    #: Woher die Zahlen stammen (``city``, ``ris``, ``lsn``) …
+    herkunft: str
+    #: … und dasselbe als Klartext für die Seite.
+    source: str
+    #: Holt ein Cron die Schicht von selbst, oder muss jemand nachhelfen?
+    automatisch: bool
+    jahrgaenge: list[int]
+    luecken: list[int]
+    #: Wie die Einheiten heißen, in die ein Jahrgang zerfällt (Teilhaushalte,
+    #: Ebenen) — ``None``, wo es keine gibt.
+    unit: str | None
+    #: Je Jahrgang die Zahl der Einheiten. Schlüssel ist das Jahr als Text,
+    #: weil JSON keine Zahlen als Schlüssel kennt.
+    einheiten: dict[str, int]
+    einheiten_voll: int | None
+    teilweise: list[int]
+    neuester: int | None
+    #: Jahrgänge, die noch fehlen, und die davon schon überfällig sind.
+    offen: list[int]
+    ueberfaellig: list[int]
+    naechster_jahrgang: int
+    naechster_ab: str
+    erwarteter_monat: int
+    #: Der Monatsname dazu — hängt der Router an.
+    month_name: str
+
+
 class BudgetDataState(TypedDict):
     today: str
-    layers: list[dict[str, Any]]
+    layers: list[DataLayer]
 
 
 class BudgetDocuments(TypedDict):
@@ -1988,9 +2066,27 @@ class ResearchStarted(TypedDict):
     job_id: str
 
 
+class ResearchJobHead(TypedDict):
+    """Der jüngste Recherche-Job eines Kontos — sechs Spalten, fester SELECT.
+
+    Damit findet der Client nach einer Navigation oder einem App-Neustart
+    einen laufenden Job wieder, ohne sich die ID gemerkt zu haben. Der volle
+    Stand kommt danach über ``ResearchSnapshot``.
+
+    ``id`` ist eine ZEICHENKETTE, kein Zähler: ein unerratbares Token, weil
+    die Adresse eines Berichts sonst zu raten wäre.
+    """
+    id: str
+    question: str
+    status: str
+    seen: int
+    created: str
+    updated: str
+
+
 class ResearchCurrent(TypedDict):
     remaining: int | None
-    job: dict[str, Any] | None
+    job: ResearchJobHead | None
 
 
 class ResearchStopped(TypedDict):
@@ -2070,12 +2166,30 @@ class Goals(TypedDict):
     goals: list[Goal]
 
 
+class GoalDecision(TypedDict):
+    """Ein Beschluss, der auf ein Nachhaltigkeitsziel einzahlt.
+
+    ``stance`` und ``rationale`` kommen aus der LLM-Bewertung, alles andere
+    aus dem Beschluss selbst. Am Bestand nachgemessen: keins der Felder ist
+    je leer.
+    """
+    id: int
+    title: str
+    summary: str
+    committee: str
+    session_date: str
+    outcome: str
+    policy_field: str
+    stance: str
+    rationale: str
+
+
 class GoalDetail(TypedDict):
     key: str
     label: str
     description: str
     summary: GoalMetrics
-    decisions: list[dict[str, Any]]
+    decisions: list[GoalDecision]
 
 
 class BudgetComparison(TypedDict):
@@ -2086,9 +2200,79 @@ class BudgetComparison(TypedDict):
     values: Any
 
 
+class BalanceItem(TypedDict):
+    """Ein Posten der Bilanz (``CouncilStore.get_bilanz_posten``).
+
+    ``role`` ist unsere Zuordnung („wofür steht diese Zeile"), ``nr`` und
+    ``label`` stehen so im Dokument, ``level`` sagt, wie tief der Posten
+    eingerückt ist.
+    """
+    year: int
+    nr: str
+    label: str
+    level: int
+    value: float
+    role: str
+    page: str
+    herkunft_id: int
+    fetched_at: str
+
+
+class AssetRow(TypedDict):
+    """Eine Zeile des Anlagenspiegels — die Bewegung eines Anlagenpostens.
+
+    Anfangsstand plus Zugänge minus Abgänge plus Umbuchungen ergibt den
+    Endstand; ``probes`` nennt die Rechenproben, die diese Zeile bestanden
+    hat. ``n_columns`` hält fest, wie viele Spalten das Dokument des Jahrgangs
+    hatte — ältere Jahrgänge führen weniger.
+    """
+    year: int
+    nr: str
+    label: str
+    cost_opening: float
+    additions: float
+    disposals: float
+    transfers: float
+    write_ups: float
+    cost_closing: float
+    depreciation_opening: float
+    depreciation: float
+    depreciation_releases: float
+    depreciation_transfers: float
+    depreciation_closing: float
+    book_value: float
+    book_value_prior_year: float
+    n_columns: int
+    probes: list[str]
+    herkunft_id: int
+    fetched_at: str
+
+
+class AssetGroup(TypedDict):
+    """Die Untergliederung des Infrastrukturvermögens (Straßen, Brücken,
+    Gleisanlagen). Sie steht in einer ANDEREN Tabelle desselben Dokuments und
+    gibt es erst ab 2022 — deshalb ein eigener Block und keine Spalte."""
+    year: int
+    group_name: str
+    book_value: float
+    book_value_prior_year: float
+    herkunft_id: int
+    fetched_at: str
+
+
+class FixedAssets(TypedDict):
+    """Der Anlagenspiegel als Block."""
+    series: list[AssetRow]
+    years: list[int]
+    groups: list[AssetGroup]
+    group_years: list[int]
+    #: Rechenprobe → Erklärsatz für Leser*innen.
+    probes: dict[str, str]
+
+
 class BudgetFixedAssets(TypedDict):
     scope_note: Any
-    fixed_assets: dict[str, Any]
+    fixed_assets: FixedAssets
     missing: Any
     provenance: Provenance
     years: list[Any]
@@ -2205,10 +2389,55 @@ class BudgetLiquidity(TypedDict):
     provenance: Provenance
 
 
+class GuaranteeRow(TypedDict):
+    """Der Bürgschaftsbestand eines Jahrgangs.
+
+    ``exact`` und ``out_next_year`` sind Angaben über den BELEG, nicht über
+    die Zahl: Manche Jahrgänge stehen auf den Cent im Dokument, ab 2022 rundet
+    die Quelle selbst auf Zehntel-Millionen, und einer steht überhaupt nur im
+    Abschluss des Folgejahres. Wer alle gleich formatiert, behauptet eine
+    Genauigkeit, die es nicht für alle gibt.
+    """
+    year: int
+    balance: float
+    exact: bool
+    out_next_year: bool
+    single_amount: float | None
+    reason: str | None
+    source: str
+    probes: list[str]
+    herkunft_id: int
+    fetched_at: str
+
+
+class GuaranteeTemplate(TypedDict):
+    """Eine Ratsvorlage zu einer Bürgschaft — als Geschichte, nicht als Summe.
+
+    Unter den Vorlagen sind Verlängerungen und Anpassungen derselben
+    Bürgschaft; addiert zählte man dieselbe Zusage mehrfach. Was der Bestand
+    ist, sagt allein der Jahresabschluss.
+    """
+    template_number: str
+    title: str
+    document_url: str
+    decision_id: int | None
+    date: str | None
+
+
+class Guarantees(TypedDict):
+    """Die Bürgschaften als Block."""
+    series: list[GuaranteeRow]
+    provision: list[BalanceItem]
+    financial_debt: list[BalanceItem]
+    #: Der Satz, der erklärt, warum eine Bürgschaft keine Schuld ist.
+    scope_note: str
+    templates: list[GuaranteeTemplate]
+
+
 class BudgetDebt(TypedDict):
     scope_note: Any
     column_kinds: list[Any]
-    guarantees: dict[str, Any]
+    guarantees: Guarantees
     provenance: Provenance
     integrated_debt: Any
     years: list[Any]

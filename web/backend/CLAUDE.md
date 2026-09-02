@@ -4,6 +4,22 @@ FastAPI. Diese Schicht bedient **zwei** Clients, das Web-Frontend und die
 native iOS-App. Was hier still die Form ändert, macht dort eine leere Seite.
 Allgemeines: [`../../CLAUDE.md`](../../CLAUDE.md).
 
+## Vorher: echte Daten holen
+
+Ein Endpunkt gegen eine leere Datenbank sagt wenig. Ob eine Abfrage bei 8.000
+Beschlüssen noch schnell ist, ob ein Feld wirklich nie `null` wird, ob die
+Antwort in eine Seite passt — das zeigt erst der Bestand:
+
+```bash
+python scripts/lokale_daten.py hol && python scripts/lokale_daten.py setz
+python scripts/saat_konten.py
+```
+
+Nützlich auch beim Beschreiben einer Antwortform: Die Nullbarkeit eines Feldes
+lässt sich am Bestand **messen** statt raten — genau so sind die Formen in
+`antworten.py` entstanden, die zuletzt dazugekommen sind. Näheres in der
+Wurzel-[`CLAUDE.md`](../../CLAUDE.md).
+
 ## Ein neuer Endpunkt ist erst fertig, wenn der Vertrag stimmt
 
 1. Router unter `app/routers/`, und in `app/main.py` per `include_router`
