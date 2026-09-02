@@ -244,7 +244,7 @@ def _b64(roh: bytes) -> str:
 
 
 def token_bauen(wurzel: Path, konto: str | None) -> tuple[str | None, str]:
-    """``(Token, Begründung)`` — ein kurzlebiges Token für die Proben mit Konto.
+    """``(Token, Konto-Nummer oder Begründung)`` — ein kurzlebiges Token.
 
     Bewusst **kein** gespeichertes Token: Die Probe baut sich auf dem Server
     selbst eines, gültig fünf Minuten. Dazu braucht sie nur das Signier-
@@ -288,7 +288,9 @@ def token_bauen(wurzel: Path, konto: str | None) -> tuple[str | None, str]:
         if verbindung is not None:
             verbindung.close()
     if not zeile:
-        return None, f"Konto {adresse} gibt es nicht"
+        # Ohne die Adresse: Die Meldung landet im Deploy-Log, und das Repo ist
+        # öffentlich. Wer den Fehler sucht, weiß, welche er eingetragen hat.
+        return None, "das eingetragene Konto gibt es nicht"
 
     kopf = _b64(json.dumps({"alg": "HS256", "typ": "JWT"}).encode())
     nutz = _b64(json.dumps(
@@ -296,7 +298,8 @@ def token_bauen(wurzel: Path, konto: str | None) -> tuple[str | None, str]:
     ).encode())
     signiert = f"{kopf}.{nutz}".encode()
     zeichen = _b64(hmac.new(geheimnis.encode(), signiert, hashlib.sha256).digest())
-    return f"{kopf}.{nutz}.{zeichen}", adresse
+    # Zurück kommt die KONTO-NUMMER, nicht die Adresse — aus demselben Grund.
+    return f"{kopf}.{nutz}.{zeichen}", f"Konto {zeile[0]}"
 
 
 # ------------------------------------------------------------------- Abruf
