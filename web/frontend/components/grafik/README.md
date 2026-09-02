@@ -62,7 +62,7 @@ Verbindung dazwischen wäre in beiden Fällen die einzige Lüge.
 |---|---|---|
 | `<BelegChip>` | `beleg-chip.tsx` | Pflicht-Slot jeder Grafik: jede Zahl trägt ihren Beleg. Re-Export des Quellen-Systems (`components/haushalt/quelle.tsx`) — Grafiken nehmen ihn als Slot (`beleg?: ReactNode`), die SEITE wählt die Quelle (sie kennt ihren `Quellenkontext`). |
 | `<LueckenFeld>` | `luecken-feld.tsx` | Eine Lücke mit Grund und Datum. Rendert die GRAFIK, nie die Seite. **Nie einklappbar.** |
-| `<Ableseleiste>` | `ablesen.tsx` | Ersetzt Tooltips überall: Desktop Hover, mobil sticky Tap-Wertzeile, immer Pfeiltasten (`useAblesen` + `AbleseFlaeche` + `Ableseleiste`). Zeigt IMMER eine Stelle, nie leer. |
+| `<Ableseleiste>` / `<Ablesekarte>` | `ablesen.tsx` | Ersetzt Tooltips überall: Desktop Hover, mobil sticky Tap-Wertzeile, immer Pfeiltasten (`useAblesen` + `AbleseFlaeche` + `Ableseleiste`). Zeigt IMMER eine Stelle, nie leer. Seit 02.09. rendert die Leiste die **Ablesekarte**: Farbmarke, Name, Zusatz, Hauptzahl in Bricolage mit Einheit darunter, Nebenwerte klein, optional Anteilsbalken und Anmerkungszeile — EINE Karte für alle Grafiken (Kachelfläche nimmt sie direkt). Die Führung der `AbleseFlaeche` gleitet zur Stelle (`.gb-fuehrung`) und legt ein blasses Band hinter das gewählte Jahr. |
 | `<Einordnung>` | `einordnung.tsx` | Der Satz unter der Zahl: `satz`, `gemessen` („7 von 8 Jahren"), `nichtAussagen` („Was diese Zahl nicht sagt"). **Nie einklappbar, nie abgeschnitten.** |
 
 **Pflicht-Props:** Wo der Karten-Vertrag `einordnung` (Hantel,
@@ -90,6 +90,28 @@ Erklärsatz kompiliert nicht. Gerendert werden sie über `<Einordnung>`.
 | `<SlopePaar>` (GB-12) | `slope-paar.tsx` | `paare {label, vorher, nachher, hervorgehoben?}[] · bruchLabel (Pflicht) · vonLabel · bisLabel · einheit`. Ein Slope über einen Systembruch ohne Label ist nicht baubar; „unverändert" wird ausgeschrieben, nie als flache Linie versteckt. Mobil automatisch Delta-Liste, der Bruch bleibt Trennzeile. Einsatz: Vergleich (Grundsteuer-Sprung). |
 | `<Kassenzettel>` (GB-13) | `kassenzettel.tsx` | `posten` · `teiler` (Bezugsgröße + Stichtag + Quelle, sichtbar **unter** dem Zettel) · `bezahltMit` · `nichtAussagen` (**Pflicht** — der Bon reist nie ohne seinen Kasten). Rundungszeile automatisch. Einsatz: Übersicht (Pro-Kopf-Bon). |
 | `<Wasserfall>` (GB-14) | `wasserfall.tsx` | `schritte {label, wert, art: start·abzug·ergebnis}` — Abzüge hängen per `cumsum` (d3-array) an der Laufsumme, kein „schwebender Balken" von Hand. Eingebaute Summenprobe meldet Rechenfehler der Seite; das Ergebnis ist nie rot (Zuschussbedarf ist Daseinsvorsorge). Einsatz: derzeit keiner — der Bereichs-Steckbrief zeigt seine Rechnung seit 24.08.2026 als GB-04 auf der Kopf-Tafel („dass ein Abzug an der Laufsumme hängt, muss man wissen", Tims Befund; die Form bleibt für Rechnungen mit MEHREREN Abzügen, wo GB-04 nicht trägt). |
+
+## Bewegungs-Grammatik (`.gb-*` in `app/globals.css`)
+
+Drei Regeln, die jede Grafik gleich fährt (seit 02.09., aus der Kachelfläche
+verallgemeinert). Der globale `prefers-reduced-motion`-Block legt alles still.
+
+1. **Einmalige Staffel beim Aufbau** (H5-07: keine Schleife). `gb-auf`
+   (einblenden + leicht wachsen), `gb-einblenden`, `gb-zeichnen` (Linie von
+   links nach rechts, braucht `pathLength={1}` am Pfad), `gb-saeule-auf`
+   (von unten), `gb-balken-auf` (von links). Versatz je Element über
+   `animationDelay`. Immer `backwards`, nie `both` — `both` hielte
+   `transform: none` fest und schlüge jeden Hover-Übergang tot.
+2. **Spotlight unter dem Zeiger.** `gb-spot` + `data-schwebt` hebt ein
+   Element und gibt ihm einen Schimmer, `data-gedimmt` lässt die übrigen
+   zurücktreten — solange der Zeiger auf der Fläche ist. Der Zustand kommt
+   aus React, nicht aus `:hover`, sonst gilt er für die Tastatur nicht.
+3. **Übergänge statt Sprünge.** `gb-kachel` (Lage und Maß), `gb-fuehrung`
+   (Führungslinie zur gewählten Stelle).
+
+Zeitreihe (GB-01) nutzt 1 und 3; sie kann außerdem mit der Seite verbunden
+werden (`aktivesJahr` / `onAktivesJahr`, zwei getrennte Werte, damit nichts
+kreist — Hebesatz-Treppe ↔ Änderungsliste).
 
 ## Kachelfläche (`kachelflaeche.ts`)
 

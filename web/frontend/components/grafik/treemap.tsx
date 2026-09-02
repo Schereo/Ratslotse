@@ -70,7 +70,7 @@
 // gleiten — Lage und Maß sind CSS-Übergänge auf dem Knopf, der Schlüssel der
 // Kachel überlebt den Wechsel. Unter dem Zeiger hebt sich eine Kachel leicht
 // (Spotlight: die anderen treten auf 72 % zurück, solange der Zeiger auf der
-// Fläche ist). Die Regeln stehen in `app/globals.css` unter `.kf-*`; der
+// Fläche ist). Die Regeln stehen in `app/globals.css` unter `.gb-*`; der
 // globale `prefers-reduced-motion`-Block legt alles still.
 //
 // KEIN TOOLTIP, aber HOVER: Die Maus setzt dieselbe Kachel aktiv wie Tippen
@@ -106,6 +106,7 @@ import {
   textstufe, traegtEinheit, type Kachel as KachelGeometrie,
 } from "@/components/grafik/kachelflaeche";
 import { amount, deMio, deZahl } from "@/components/grafik/format";
+import { Ablesekarte } from "@/components/grafik/ablesen";
 import { RanglisteSchiene } from "@/components/grafik/rangliste-schiene";
 import { useBreite } from "@/lib/use-breite";
 import { cn } from "@/lib/utils";
@@ -319,7 +320,7 @@ export function Treemap({
                 data-schwebt={schwebt === REST && !offen}
                 data-gedimmt={spotlight && schwebt !== REST && !offen}
                 className={cn(
-                  "kf-kachel kf-auf absolute overflow-hidden rounded-[6px] text-left",
+                  "gb-kachel gb-spot gb-auf absolute overflow-hidden rounded-[6px] text-left",
                   "bg-card focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring",
                   aufRest || aufklappbar ? "cursor-pointer" : "cursor-default",
                   aktiv === REST && !offen && "ring-1 ring-inset ring-foreground/40",
@@ -410,14 +411,18 @@ export function Treemap({
           Auch für Kacheln, die zu klein für eine Beschriftung sind: Antippen
           oder Fokus zeigt sie hier. */}
       <Ablesekarte
-        farbe={aktiverKnoten && !aktiverKnoten.rest && aktiverKnoten.gruppe != null
-          ? farbe(aktiverKnoten.gruppe) : undefined}
-        schraffiert={!!aktiverKnoten?.rest}
+        live
+        marke={{
+          eckig: true,
+          farbe: aktiverKnoten && !aktiverKnoten.rest && aktiverKnoten.gruppe != null
+            ? farbe(aktiverKnoten.gruppe) : undefined,
+          schraffiert: !!aktiverKnoten?.rest,
+        }}
         name={aktiverKnoten ? aktiverKnoten.name : `Alle ${positive.length.toLocaleString("de-DE")} ${nomen}`}
         zusatz={aktiverKnoten
           ? (aktiverKnoten.zusatz ?? (aktiverKnoten.rest ? restSatz : undefined))
           : "Kachel überfahren, antippen oder mit Tab ansteuern — hier steht dann Name und Summe."}
-        summe={geld(aktiverKnoten ? aktiverKnoten.value : gesamt)}
+        wert={geld(aktiverKnoten ? aktiverKnoten.value : gesamt)}
         anteil={anteil && gesamt > 0
           ? (aktiverKnoten ? (aktiverKnoten.value / gesamt) * 100 : 100)
           : undefined}
@@ -516,7 +521,7 @@ function Kachel({
       data-schwebt={schwebt}
       data-gedimmt={gedimmt}
       className={cn(
-        "kf-kachel kf-auf absolute overflow-hidden rounded-[6px] text-left",
+        "gb-kachel gb-spot gb-auf absolute overflow-hidden rounded-[6px] text-left",
         "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring",
         // Zeigerhand nur, wo der Klick etwas tut — s. Kopfkommentar.
         "cursor-default",
@@ -685,57 +690,5 @@ function MappenKopf({ nomen, anzahl, summe, anteil }: {
         {anteil && <> · {anteil}&nbsp;% der Fläche</>}
       </span>
     </span>
-  );
-}
-
-/** Die Zeile unter dem Bild, als Karte: Farbmarke, Name, Zusatz, Summe —
- *  und, wo die Fläche ein Ganzes zerlegt, der Anteil als schmaler Balken.
- *  Feste Mindesthöhe, damit nichts springt, wenn der Zusatz fehlt. */
-function Ablesekarte({ farbe, schraffiert, name, zusatz, summe, anteil }: {
-  farbe?: string; schraffiert: boolean; name: string; zusatz?: string;
-  summe: string; anteil?: number;
-}) {
-  return (
-    <div
-      aria-live="polite"
-      className="flex min-h-[58px] items-center gap-3 rounded-xl border border-border/70 bg-muted/30 px-3.5 py-2.5"
-    >
-      <span
-        aria-hidden="true"
-        className={cn(
-          "h-3.5 w-3.5 flex-none rounded-[3px] transition-colors duration-200",
-          schraffiert && "border border-dashed border-border",
-          !farbe && !schraffiert && "ring-1 ring-inset ring-foreground/20",
-        )}
-        style={{
-          background: farbe,
-          backgroundImage: schraffiert ? NEUTRALE_SCHRAFFUR : undefined,
-        }}
-      />
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-[13px] font-semibold leading-snug text-foreground">{name}</span>
-        {zusatz && (
-          <span className="block truncate text-[11.5px] leading-snug text-muted-foreground">{zusatz}</span>
-        )}
-        {anteil != null && (
-          <span className="mt-1.5 block h-[3px] w-full max-w-[280px] overflow-hidden rounded-full bg-border/70">
-            <span
-              className="block h-full rounded-full bg-primary transition-[width] duration-300 ease-out"
-              style={{ width: `${Math.max(1, Math.min(100, anteil))}%` }}
-            />
-          </span>
-        )}
-      </span>
-      <span className="flex-none text-right">
-        <span className="block whitespace-nowrap font-display text-[20px] font-bold leading-none tracking-tight tabular-nums text-foreground">
-          {summe}
-        </span>
-        {anteil != null && (
-          <span className="mt-1 block text-[11px] leading-none tabular-nums text-muted-foreground">
-            {deZahl(anteil, 1)}&nbsp;% der Fläche
-          </span>
-        )}
-      </span>
-    </div>
   );
 }
