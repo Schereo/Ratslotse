@@ -291,6 +291,140 @@ def test_abzuege_ohne_minus_gehen_nur_ueber_die_exakte_kaskade_auf():
     assert parse_anlage(ohne_zwischensumme).deductions == b.deductions
 
 
+# Echt, Anlage 194113 (2019), ebenfalls ein Scan: Die OCR behält nur ZWEI der
+# vier Minuszeichen — und setzt sie mit Tab abgesetzt vor den Betrag.
+ANLAGE_1_2019_OCR = """Anlage 1
+- Abfallbehandlungsanlagen -
+(Entsorgung von Rest- und Bioabfällen)
+
+Anlage 1
+01.10.2018
+
+Gebührenbedarfsrechnung 2019
+
+Kostenkalkulation für 2019\t9.408.500 €\tTz. 1
+Kosten, die durch Dritte erstattet werden\t2.638.600 €\tTz. 2
+Erlöse nach § 2 Absatz 4 und 8 der Abfallgebührensatzung
+und § 2 Absatz 9 Satz 2 und Absatz 11 der "Tarifsatzung"\t6.600 €\tTz. 3
+Nachsorgekosten, die aus der Rückstellung erstattet werden\t-\t158.900 €\tTz. 3
+Gebührenwirksame Kosten\t6.604.400 €\tTz. 4
+Über-/Unterdeckung aus Vorjahren\t-\t340.462 €\tTz. 4
+Kosten, die durch Gebühren zu decken sind\t6.263.938 €\tTz. 5
+
+Gebührenermittlung:
+
+angelieferte Jahresabfallmenge in Mg
+(Prognose 2018 = 52.900 Mg)\t52.800
+Kosten, die durch Gebühren
+zu decken sind\t6.263.938 €
+angelieferte Abfallmenge in Mg\t52.800
+Ergebnis/Gebühr je Mg\t118,635 €
+Gebührenvorschlag\t118,60 €
+"""
+
+
+def test_gemischte_vorzeichen_der_ocr_gehen_ueber_dieselbe_kaskade_auf():
+    """2019 (OCR) trägt zwei Abzüge MIT und zwei OHNE Minus. Ein gedrucktes
+    Minus ist sicher ein Abzug; ein positiver Betrag ist Zwischensumme, wenn
+    er dem laufenden Stand gleicht, sonst Abzug — die Zeile „zu decken sind“
+    entscheidet, ob die Lesung gilt."""
+    b = parse_anlage(ANLAGE_1_2019_OCR)
+    assert b.year == 2019 and b.area == "waste_treatment"
+    assert b.deductions == -(2_638_600 + 6_600 + 158_900 + 340_462)
+    assert b.costs_to_cover == 6_263_938
+    assert b.reference_quantity == 52_800 and b.fee == 118.635
+    assert b.fee_proposed == 118.60
+
+    kaputt = ANLAGE_1_2019_OCR.replace("2.638.600 €", "2.638.660 €")
+    with pytest.raises(GebuehrenFehler, match="Rest"):
+        parse_anlage(kaputt)
+
+
+# Echt, Anlage 194113 (2019), Straßenreinigung: kein Titel mit Jahrgang, die
+# Kalkulationszeile heißt „Gebührenkalkulation“, der Betrag steht VOR „zu
+# decken sind“, und die Unterdeckung aus Vorjahren wird HINZUGERECHNET.
+ANLAGE_3_2019_OCR = """Anlage 3
+- Straßenreinigung -
+
+Gebührenkalkulation für 2019\t4.731.886 €
+
+Kosten, die durch Dritte erstattet werden\t-1.122.000 €\tTz. 1
+Bereinigte Kosten\t3.609.886 €
+Interessenquote\t-902.472 €\tTz. 2
+Gebührenwirksame Kosten\t2.707.414 €
+Über-/Unterdeckung aus Vorjahren\t89.938 €\tTz. 3
+
+Kosten, die durch Gebühren\t2.797.352 €
+zu decken sind
+
+Kostenträger\t747.000
+flächenbezogener Gebührenmaßstab wöchentl. Reinigung:\t
+Summe aller gebührenpflichtigen Quadratwurzeln gem.\t
+§ 6 Abs. 2 der Straßenreinigungssatzung der Stadt Oldenburg (Oldb.)\t
+
+Gebührenermittlung:\t
+
+Kosten, die durch Gebühren\t2.797.352 €
+zu decken sind\t
+
+Summe aller gebührenpflichtigen Quadratwurzeln gem.\t747.000
+§ 6 Abs. 2 der Straßenreinigungssatzung\t
+
+Gebühr rd. je Meter Quadratwurzel\t3,745 €
+
+Gebührenvorschlag je Meter Quadratwurzel\t3,74 €
+Seite 15
+"""
+
+# Echt, Anlage 194113 (2019), Anlage 4 im alten Tabellenlayout — mit dem
+# Wort „Vorschläge“ schon in der Überschrift und den Erläuterungsseiten
+# samt Beträgen dahinter.
+ANLAGE_4_2019_OCR = """Anlage 4
+Entwicklung abfallwirtschaftlicher Gebühren im langfristigen Vergleich
+2008 – 2018; Vorschläge für 2019
+
+\tAbfallentsorgungsanlagen\tA b f a l l s a m m l u n g\tStraßenreinigung
+Jahr\tGebühr je Mg\tGG\tallg. Liter-gebühr\tBio-Grundmenge 60 L\tSperrmüll-karte\tGrün-gut-karte\tSperrmüll-anlieferung 1m³/2m³\tGrüngut-anlieferung 0,5m³/ 1m³ / 2m³\tGebühr je m bei wöchentlicher Reinigung
+2017\t148,60\t50,--\t1,49\t15,--\t25,--\t20,--\t8,--/16,--\t3,-- / 6,-- / 12,--\t4,12
+\t\t\tSystem neu
+\t\t\tJe Meter Quadratwurzel
+2018\t118,60\t50,--\t1,25\t15,--\t25,--\t20,--\t8,--/16,--\t3,-- / 6,-- / 12,--\t3,74
+Vorschläge
+2019\t118,60\t50,--\t1,25\t15,--\t25,--\t20,--\t8,--/16,--\t3,-- / 6,-- / 12,--\t3,74
+Seite 17
+Erläuterungen zur Gebührenbedarfsberechnung
+Winterdienst\t794.000 €
+Sonstige Einnahmen\t22,50 €
+"""
+
+
+def test_strassenreinigung_2019_ocr_jahr_aus_der_kalkulation_und_unterdeckung_addiert():
+    """Straßenreinigung 2019: Der Jahrgang steht nur in „Gebührenkalkulation
+    für 2019“, der Betrag VOR „zu decken sind“ — und die Unterdeckung aus
+    Vorjahren wird hinzugerechnet. Ob addiert oder abgezogen, entscheidet
+    allein, welche Lesart die Zeile „zu decken sind“ trifft."""
+    b = parse_anlage(ANLAGE_3_2019_OCR)
+    assert b.year == 2019 and b.area == "street_cleaning"
+    assert b.cost_calculation == 4_731_886
+    assert b.deductions == -(1_122_000 + 902_472) + 89_938
+    assert b.costs_to_cover == 2_797_352
+    assert b.reference_quantity == 747_000 and b.reference_unit == "Meter Quadratwurzel"
+    assert b.fee == 3.745 and b.fee_proposed == 3.74
+
+
+def test_die_vorschlagszeile_endet_am_ersten_wort_und_nicht_am_dokumentende():
+    """Anlage 4 (2019) trägt „Vorschläge“ schon in der Überschrift, und hinter
+    der Tabelle folgen Erläuterungsseiten mit Beträgen: Es zählt der Treffer,
+    hinter dem die zwölf Beträge stehen — und die Zeile endet beim ersten
+    Wort, das kein Tarifbetrag ist (145 statt 12 hieß der Riss)."""
+    saetze = lies_gebuehrensaetze(
+        ANLAGE_1_2019_OCR + ANLAGE_3_2019_OCR + ANLAGE_4_2019_OCR, "18/0001")
+    assert len(saetze) == 12 and {s.year for s in saetze} == {2019}
+    assert next(s for s in saetze if s.key == "waste_treatment_per_mg").amount == 118.60
+    assert next(s for s in saetze if s.key == "street_cleaning_per_metre").amount == 3.74
+    assert next(s for s in saetze if s.key == "green_waste_2m3").amount == 12
+
+
 # --------------------------------------------------------------------------
 # (b) Die Division — und wie sie die Bezugsmenge findet
 # --------------------------------------------------------------------------
