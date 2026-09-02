@@ -78,7 +78,15 @@ _LEGENDE_ZEILE = re.compile(r"^[ \t]*(B|WB|H|K)[ \t]+([A-ZÄÖÜ][^\n]{3,60})$",
 #: Randspalte und trennen die Marke von der Unterschrift „K R U P K E"
 #: (Leiterin des Rechnungsprüfungsamtes), die am Berichtsende in gesperrter
 #: Schrift steht und mit einem Leerzeichen sonst als „K"-Marke durchginge.
-_MARKE_IM_TEXT = re.compile(r"\n[ \t]{0,4}(WB|B|H|K)[ \t]{2}(?=\S)")
+#:
+#: SEIT DER OCR (Schlussbericht 2024) kommt eine zweite Form dazu: Das
+#: Sehmodell gibt die Randspalte als **einen Tabulator** wieder („B\tDas
+#: Rechnungsprüfungsamt …"), nie als zwei Leerzeichen. Ein einzelner
+#: Tabulator ist als Trenner genauso eindeutig wie zwei Leerzeichen — die
+#: gesperrte Unterschrift steht mit Leerzeichen da, nicht mit Tabulatoren.
+#: Ein einzelnes Leerzeichen bleibt ausgeschlossen, aus demselben Grund wie
+#: zuvor.
+_MARKE_IM_TEXT = re.compile(r"\n[ \t]{0,4}(WB|B|H|K)(?:[ \t]{2}|\t)(?=\S)")
 
 #: Zeile des Inhaltsverzeichnisses: „3.1.3  Gesetzeskonformität … 20".
 _IVZ_ZEILE = re.compile(
