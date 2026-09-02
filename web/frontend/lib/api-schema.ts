@@ -4786,28 +4786,64 @@ export interface components {
         };
         /** BudgetLoans */
         BudgetLoans: {
-            /** Coverage */
-            coverage: unknown;
+            coverage: components["schemas"]["LoanCoverage"];
             /** Items */
-            items: unknown[];
+            items: components["schemas"]["LoanItem"][];
             /** Kind Names */
             kind_names: {
-                [key: string]: unknown;
+                [key: string]: string;
             };
-            /** Latest Refinancing */
-            latest_refinancing: unknown;
+            /**
+             * LoanItem
+             * @description Ein Posten einer Unterrichtung (``council_loan_items``) samt dem
+             *     Berichtszeitraum seiner Vorlage.
+             */
+            latest_refinancing: {
+                /** Amount */
+                amount: number | null;
+                /** Borrower */
+                borrower: string | null;
+                /** Decided At */
+                decided_at: string | null;
+                /** Fetched At */
+                fetched_at: string;
+                /** Fixed Until */
+                fixed_until: string | null;
+                /** Fixed Years */
+                fixed_years: number | null;
+                /** Heading */
+                heading: string;
+                /** Herkunft Id */
+                herkunft_id: number | null;
+                /** Kind */
+                kind: string;
+                /** Period From */
+                period_from: string;
+                /** Period To */
+                period_to: string;
+                /** Rate Pct */
+                rate_pct: number | null;
+                /** Seq */
+                seq: number;
+                /** Summary */
+                summary: string | null;
+                /** Template Number */
+                template_number: string;
+                /** Year */
+                year: number;
+            } | null;
             /** Notices */
-            notices: unknown[];
+            notices: components["schemas"]["LoanNotice"][];
             /** Provenance */
             provenance: {
                 [key: string]: components["schemas"]["Herkunft"];
             };
             /** Rates */
-            rates: unknown[];
+            rates: components["schemas"]["LoanItem"][];
             /** Refinancing By Year */
-            refinancing_by_year: unknown[];
+            refinancing_by_year: components["schemas"]["LoanYear"][];
             /** Scope Note */
-            scope_note: unknown;
+            scope_note: string;
         };
         /**
          * BudgetOverview
@@ -5758,6 +5794,114 @@ export interface components {
              * @default false
              */
             limits_unlocked: boolean;
+        };
+        /** LoanCoverage */
+        LoanCoverage: {
+            /** From */
+            from: string | null;
+            /** Gaps */
+            gaps: components["schemas"]["LoanGap"][];
+            /** None Reported */
+            none_reported: number;
+            /** Notices */
+            notices: number;
+            /** To */
+            to: string | null;
+        };
+        /** LoanGap */
+        LoanGap: {
+            /** From */
+            from: number;
+            /** To */
+            to: number;
+        };
+        /**
+         * LoanItem
+         * @description Ein Posten einer Unterrichtung (``council_loan_items``) samt dem
+         *     Berichtszeitraum seiner Vorlage.
+         */
+        LoanItem: {
+            /** Amount */
+            amount: number | null;
+            /** Borrower */
+            borrower: string | null;
+            /** Decided At */
+            decided_at: string | null;
+            /** Fetched At */
+            fetched_at: string;
+            /** Fixed Until */
+            fixed_until: string | null;
+            /** Fixed Years */
+            fixed_years: number | null;
+            /** Heading */
+            heading: string;
+            /** Herkunft Id */
+            herkunft_id: number | null;
+            /** Kind */
+            kind: string;
+            /** Period From */
+            period_from: string;
+            /** Period To */
+            period_to: string;
+            /** Rate Pct */
+            rate_pct: number | null;
+            /** Seq */
+            seq: number;
+            /** Summary */
+            summary: string | null;
+            /** Template Number */
+            template_number: string;
+            /** Year */
+            year: number;
+        };
+        /**
+         * LoanNotice
+         * @description Eine Unterrichtung des Rates (``council_loan_notices``).
+         */
+        LoanNotice: {
+            /** Document Date */
+            document_date: string | null;
+            /** Document Id */
+            document_id: number | null;
+            /** Document Url */
+            document_url: string | null;
+            /** Fetched At */
+            fetched_at: string;
+            /** Herkunft Id */
+            herkunft_id: number | null;
+            /** Interest Saving */
+            interest_saving: number | null;
+            /** Items */
+            items: number;
+            /** None Reported */
+            none_reported: number;
+            /** Period From */
+            period_from: string;
+            /** Period To */
+            period_to: string;
+            /** Probes */
+            probes: string[];
+            /** Saving From */
+            saving_from: string | null;
+            /** Saving To */
+            saving_to: string | null;
+            /** Template Number */
+            template_number: string;
+            /** Year */
+            year: number;
+        };
+        /** LoanYear */
+        LoanYear: {
+            /** Amount */
+            amount: number;
+            /** Count */
+            count: number;
+            /** Saving */
+            saving: number;
+            /** Saving Notices */
+            saving_notices: number;
+            /** Year */
+            year: number;
         };
         /** LoginRequest */
         LoginRequest: {
@@ -12146,4 +12290,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: f10f7cd2920cf1ce79ce771fcb3990fc32da266dd6d52421586326a3adb7807c
+// vertrag-sha256: 437f24472b22c100d5cfbdba8cf84a9f272911106a0dee5125aae37cad35644b

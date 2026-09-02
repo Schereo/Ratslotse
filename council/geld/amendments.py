@@ -25,6 +25,7 @@ import re
 import sqlite3
 
 from council import geld
+from kern.dbfehler import tabelle_fehlt
 
 NAME = "amendments"
 
@@ -76,7 +77,9 @@ class Store:
                 "SELECT list_key, sub_budget, product, label, revenue, expense, "
                 "       explanation, author FROM council_budget_amendments "
                 "WHERE budget_year = ? AND year = ? ORDER BY list_key, seq", (jahr, jahr))]
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
             return None
         if not summen and not zeilen:
             return None

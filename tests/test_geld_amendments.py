@@ -129,7 +129,8 @@ def test_fehlendes_jahr_faellt_mit_vermerk_zurueck(tmp_path):
     st.close()
 
 
-@pytest.mark.skipif(not os.environ.get("COUNCIL_DB"), reason="echte Datenbank nur per COUNCIL_DB")
+@pytest.mark.skipif(not os.environ.get("COUNCIL_DB") or not os.path.exists(os.environ["COUNCIL_DB"]),
+                    reason="echte Datenbank nur per COUNCIL_DB — und nur, wenn die Datei da ist")
 def test_groesse_an_der_echten_datenbank():
     from council import geld
     st = geld.lesestore(os.environ["COUNCIL_DB"])

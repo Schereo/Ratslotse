@@ -18,6 +18,7 @@ import re
 import sqlite3
 
 from council import geld
+from kern.dbfehler import tabelle_fehlt
 
 NAME = "loans"
 
@@ -52,7 +53,9 @@ class Store:
                 "ORDER BY n.period_from DESC, i.template_number DESC, i.seq")]
             notices = [dict(r) for r in self._conn.execute(
                 "SELECT * FROM council_loan_notices ORDER BY period_from")]
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
             return None
         if not rows:
             return None

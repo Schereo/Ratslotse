@@ -2660,23 +2660,142 @@
       "BudgetLoans": {
         "properties": {
           "coverage": {
-            "title": "Coverage"
+            "$ref": "#/components/schemas/LoanCoverage"
           },
           "items": {
-            "items": {},
+            "items": {
+              "$ref": "#/components/schemas/LoanItem"
+            },
             "title": "Items",
             "type": "array"
           },
           "kind_names": {
-            "additionalProperties": true,
+            "additionalProperties": {
+              "type": "string"
+            },
             "title": "Kind Names",
             "type": "object"
           },
           "latest_refinancing": {
-            "title": "Latest Refinancing"
+            "description": "Ein Posten einer Unterrichtung (``council_loan_items``) samt dem\nBerichtszeitraum seiner Vorlage.",
+            "properties": {
+              "amount": {
+                "title": "Amount",
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "borrower": {
+                "title": "Borrower",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "decided_at": {
+                "title": "Decided At",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "fetched_at": {
+                "title": "Fetched At",
+                "type": "string"
+              },
+              "fixed_until": {
+                "title": "Fixed Until",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "fixed_years": {
+                "title": "Fixed Years",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "heading": {
+                "title": "Heading",
+                "type": "string"
+              },
+              "herkunft_id": {
+                "title": "Herkunft Id",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "kind": {
+                "title": "Kind",
+                "type": "string"
+              },
+              "period_from": {
+                "title": "Period From",
+                "type": "string"
+              },
+              "period_to": {
+                "title": "Period To",
+                "type": "string"
+              },
+              "rate_pct": {
+                "title": "Rate Pct",
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "seq": {
+                "title": "Seq",
+                "type": "integer"
+              },
+              "summary": {
+                "title": "Summary",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "template_number": {
+                "title": "Template Number",
+                "type": "string"
+              },
+              "year": {
+                "title": "Year",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "template_number",
+              "seq",
+              "year",
+              "kind",
+              "borrower",
+              "heading",
+              "amount",
+              "rate_pct",
+              "fixed_years",
+              "fixed_until",
+              "decided_at",
+              "summary",
+              "herkunft_id",
+              "fetched_at",
+              "period_from",
+              "period_to"
+            ],
+            "title": "LoanItem",
+            "type": [
+              "object",
+              "null"
+            ]
           },
           "notices": {
-            "items": {},
+            "items": {
+              "$ref": "#/components/schemas/LoanNotice"
+            },
             "title": "Notices",
             "type": "array"
           },
@@ -2688,17 +2807,22 @@
             "type": "object"
           },
           "rates": {
-            "items": {},
+            "items": {
+              "$ref": "#/components/schemas/LoanItem"
+            },
             "title": "Rates",
             "type": "array"
           },
           "refinancing_by_year": {
-            "items": {},
+            "items": {
+              "$ref": "#/components/schemas/LoanYear"
+            },
             "title": "Refinancing By Year",
             "type": "array"
           },
           "scope_note": {
-            "title": "Scope Note"
+            "title": "Scope Note",
+            "type": "string"
           }
         },
         "required": [
@@ -4931,6 +5055,320 @@
           }
         },
         "title": "LimitsUpdate",
+        "type": "object"
+      },
+      "LoanCoverage": {
+        "properties": {
+          "from": {
+            "title": "From",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "gaps": {
+            "items": {
+              "$ref": "#/components/schemas/LoanGap"
+            },
+            "title": "Gaps",
+            "type": "array"
+          },
+          "none_reported": {
+            "title": "None Reported",
+            "type": "integer"
+          },
+          "notices": {
+            "title": "Notices",
+            "type": "integer"
+          },
+          "to": {
+            "title": "To",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "gaps",
+          "notices",
+          "none_reported"
+        ],
+        "title": "LoanCoverage",
+        "type": "object"
+      },
+      "LoanGap": {
+        "properties": {
+          "from": {
+            "title": "From",
+            "type": "integer"
+          },
+          "to": {
+            "title": "To",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "from",
+          "to"
+        ],
+        "title": "LoanGap",
+        "type": "object"
+      },
+      "LoanItem": {
+        "description": "Ein Posten einer Unterrichtung (``council_loan_items``) samt dem\nBerichtszeitraum seiner Vorlage.",
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "borrower": {
+            "title": "Borrower",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "decided_at": {
+            "title": "Decided At",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "fetched_at": {
+            "title": "Fetched At",
+            "type": "string"
+          },
+          "fixed_until": {
+            "title": "Fixed Until",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "fixed_years": {
+            "title": "Fixed Years",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "heading": {
+            "title": "Heading",
+            "type": "string"
+          },
+          "herkunft_id": {
+            "title": "Herkunft Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "period_from": {
+            "title": "Period From",
+            "type": "string"
+          },
+          "period_to": {
+            "title": "Period To",
+            "type": "string"
+          },
+          "rate_pct": {
+            "title": "Rate Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "seq": {
+            "title": "Seq",
+            "type": "integer"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "template_number": {
+            "title": "Template Number",
+            "type": "string"
+          },
+          "year": {
+            "title": "Year",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "template_number",
+          "seq",
+          "year",
+          "kind",
+          "borrower",
+          "heading",
+          "amount",
+          "rate_pct",
+          "fixed_years",
+          "fixed_until",
+          "decided_at",
+          "summary",
+          "herkunft_id",
+          "fetched_at",
+          "period_from",
+          "period_to"
+        ],
+        "title": "LoanItem",
+        "type": "object"
+      },
+      "LoanNotice": {
+        "description": "Eine Unterrichtung des Rates (``council_loan_notices``).",
+        "properties": {
+          "document_date": {
+            "title": "Document Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "document_id": {
+            "title": "Document Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "document_url": {
+            "title": "Document Url",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "fetched_at": {
+            "title": "Fetched At",
+            "type": "string"
+          },
+          "herkunft_id": {
+            "title": "Herkunft Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "interest_saving": {
+            "title": "Interest Saving",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "items": {
+            "title": "Items",
+            "type": "integer"
+          },
+          "none_reported": {
+            "title": "None Reported",
+            "type": "integer"
+          },
+          "period_from": {
+            "title": "Period From",
+            "type": "string"
+          },
+          "period_to": {
+            "title": "Period To",
+            "type": "string"
+          },
+          "probes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Probes",
+            "type": "array"
+          },
+          "saving_from": {
+            "title": "Saving From",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "saving_to": {
+            "title": "Saving To",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "template_number": {
+            "title": "Template Number",
+            "type": "string"
+          },
+          "year": {
+            "title": "Year",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "template_number",
+          "year",
+          "period_from",
+          "period_to",
+          "document_date",
+          "none_reported",
+          "items",
+          "interest_saving",
+          "saving_from",
+          "saving_to",
+          "document_id",
+          "document_url",
+          "probes",
+          "herkunft_id",
+          "fetched_at"
+        ],
+        "title": "LoanNotice",
+        "type": "object"
+      },
+      "LoanYear": {
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": "number"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "saving": {
+            "title": "Saving",
+            "type": "number"
+          },
+          "saving_notices": {
+            "title": "Saving Notices",
+            "type": "integer"
+          },
+          "year": {
+            "title": "Year",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "year",
+          "amount",
+          "count",
+          "saving",
+          "saving_notices"
+        ],
+        "title": "LoanYear",
         "type": "object"
       },
       "LoginRequest": {

@@ -35,6 +35,7 @@ import re
 import sqlite3
 
 from council import geld
+from kern.dbfehler import tabelle_fehlt
 
 NAME = "tax_rates"
 
@@ -108,7 +109,9 @@ class Store:
             zeilen = [dict(r) for r in self._conn.execute(
                 "SELECT year, kind, rate, prior_rate, herkunft_id "
                 "FROM council_tax_rates ORDER BY kind, year")]
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
             return None
         if not zeilen:
             return None
@@ -158,7 +161,9 @@ class Store:
             r = self._conn.execute(
                 "SELECT * FROM council_trade_tax_statistics "
                 "WHERE year = ? AND city = 'Oldenburg'", (jahr,)).fetchone()
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
             return None
         if not r:
             return None
