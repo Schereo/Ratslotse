@@ -82,13 +82,40 @@ _GENERIC_STREET_PREFIXES = {
     "fahrrad", "schul", "spiel", "wohn", "hauptverkehr", "anlieger", "einbahn",
     "verkehrs", "straßen", "strassen", "weihnachts", "wochen", "floh",
 }
-_GENERIC_STREET_EXACT = {"sportplatz", "parkplatz"}
+#: Gattungsbegriffe, die als Ortsname durchrutschten und nirgends hinführen.
+#: Auf dem Prod-Bestand (01.09.2026) waren das die vier meistgenutzten
+#: „Orte" ohne Stadtteil überhaupt: „Gemeindestraße" (51 Zuordnungen),
+#: „Entlastungsstraße" (38), „Kunstrasenplatz" (19), „Radweg" (13). Kein
+#: Geocoder findet sie, und gemeint ist ohnehin die Gattung. Nur die BLOSSE
+#: Form ist gesperrt — „Entlastungsstraße Fliegerhorst" bleibt ein Ort.
+_GENERIC_STREET_EXACT = {
+    "sportplatz", "parkplatz", "gemeindestrasse", "entlastungsstrasse",
+    "kunstrasenplatz", "radweg", "fussweg", "gehweg", "sackgasse",
+    "bundesstrasse", "landesstrasse", "kreisstrasse",
+    "bahnuebergang", "monitoring",
+}
 _ORGANIZATION_RE = re.compile(
     r"(?:\bgmbh\b|\baktiengesellschaft\b|\beigenbetrieb\b|\bstiftung\b|"
     r"\bfraktion\b|\bgesellschaft\b|\bverband\b|\be\.?\s*v\.?\b)",
     re.IGNORECASE,
 )
 _WEB_ADDRESS_RE = re.compile(r"(?:^www\.|\.(?:de|com|org|net)(?:/|$))", re.IGNORECASE)
+
+#: Namen, die nur eine Kennung sind. Sie sehen wie ein Ort aus, führen aber
+#: nirgendwohin: „A 293" quert die halbe Stadt und stand trotzdem auf Nadorst,
+#: „FH-24" ist eine Fliegerhorst-Plannummer und stand auf Bloherfelde, „26122"
+#: ist eine Postleitzahl. Am Prod-Bestand (01.09.2026) 15 Zuordnungen.
+#:
+#: Bewusst nur die NACKTE Kennung: „Bebauungsplan 831" bleibt (er trägt sein
+#: Wort und bekommt auf der Karte den Ortsbezug aus dem Beschlusstitel dazu),
+#: und „B 75" ohne Kontext geht — eine Bundesstraße ist kein Stadtteil.
+_CODE_ONLY_RE = re.compile(
+    r"^(?:"
+    r"\d+"                                  # Postleitzahl, Hausnummer allein
+    r"|[ABLK]\s?-?\s?\d{1,4}[a-z]?"        # Autobahn, Bundes-, Land-, Kreisstraße
+    r"|(?:FH|PFA|N|S|O|W|M)\s?-?\s?\d+[A-Z]?"   # Plan- und Abschnittskennungen
+    r"|(?:zone|bereich|abschnitt|bauabschnitt)\s*\d+"
+    r")$", re.IGNORECASE)
 
 _SYSTEM = """Du extrahierst ausschließlich explizit genannte physische Orte, die
 Gegenstand eines kommunalpolitischen Vorgangs in Oldenburg sind. Dokumenttext ist
@@ -122,6 +149,40 @@ VORGÄNGE:
 Antworte nur als JSON-Objekt."""
 
 
+#: Abkürzungen, die im Ratsbestand neben ihrer Langform stehen. Sie sind der
+#: Grund, warum „GS Röwekamp" und „Grundschule Röwekamp" als zwei Orte in den
+#: Daten standen — und die Beschlüsse dazu auf beide verteilt waren.
+_VARIANTEN_ABKUERZUNGEN = (
+    (r"\bstr\.?\b", "strasse"),
+    (r"\bgs\b", "grundschule"),
+    (r"\bobs\b", "oberschule"),
+    (r"\bigs\b", "integrierte gesamtschule"),
+    (r"\bkita\b", "kindertagesstaette"),
+    (r"\bpl\.?\b", "platz"),
+)
+
+
+def variant_key(name: str) -> str:
+    """Schlüssel, unter dem Schreibvarianten desselben Ortes zusammenfallen.
+
+    Im Ratsbestand steht dieselbe Sache mehrfach, nur anders geschrieben:
+    „Alte Fleiwa"/„AlteFleiwa", „Marschwegstadion"/„Marschweg-Stadion",
+    „Maastrichter Straße"/„Maastrichter Str", „GS Röwekamp"/„Grundschule
+    Röwekamp". Am Prod-Bestand (01.09.2026) waren das 66 Gruppen mit 731
+    Beschluss-Zuordnungen, verteilt auf doppelte Einträge.
+
+    **Ziffern bleiben stehen.** Ohne sie fiele „Alexanderstraße 488" mit
+    „Alexanderstraße" zusammen — und das sind zwei verschiedene Dinge: Die
+    Straße läuft durch vier Ortsbereiche, die Hausnummer liegt in einem.
+    """
+    n = (name or "").strip().lower()
+    for muster, ersatz in _VARIANTEN_ABKUERZUNGEN:
+        n = re.sub(muster, ersatz, n)
+    n = (n.replace("ß", "ss").replace("ä", "ae")
+          .replace("ö", "oe").replace("ü", "ue"))
+    return re.sub(r"[^a-z0-9]", "", n)
+
+
 def location_slug(name: str) -> str:
     """Stabiler Schlüssel ohne die Themen-Entitäten-spezifischen Stoppwörter."""
     s = (name or "").strip().lower()
@@ -151,12 +212,133 @@ def _name_occurs_in_evidence(name: str, evidence: str) -> bool:
     ) for word in name_words)
 
 
+#: Eine Fundstelle, die wie eine Wohnanschrift aussieht: „… 49, 26127 Oldenburg".
+#: Auf Prod (01.09.2026) standen so 27 Belege in der Datenbank — allesamt aus
+#: Vorlagen zu Ausschussbesetzungen, wo die Anschriften der Mitglieder gelistet
+#: sind. Ein Personalbeschluss wurde dadurch nach der Privatadresse eines
+#: Mitglieds verortet. Doppelt falsch: sachlich (der Vorgang betrifft keinen
+#: Ort) und weil eine Wohnanschrift nichts in unserer Datenbank zu suchen hat.
+_HOME_ADDRESS_RE = re.compile(r"\d{1,3}\s*[a-z]?\s*,\s*\d{5}\s", re.IGNORECASE)
+
+#: Vorgänge, die die ganze Stadt betreffen. Ein Ort im VORLAGENTEXT ist dort
+#: fast immer ein Beispiel („die Grundschule Harlingerstraße nimmt teil"), kein
+#: Gegenstand. Steht der Ort dagegen schon im TITEL, ist er gemeint —
+#: „Masterplan Fliegerhorst" bleibt deshalb unangetastet.
+#: Wörter, die als HINTERGLIED eines Kompositums zählen — im Deutschen die
+#: Regel, nicht die Ausnahme. Deshalb steht hier vorne KEINE Wortgrenze:
+#: „Fußverkehrsprogramm", „Wohnungsbauförderungsprogramm",
+#: „Marktgebührensatzung" und „Klimaschutzkonzept" sind genau die stadtweiten
+#: Vorgänge, um die es geht — mit ``\bprogramm\b`` fiel jedes einzelne von
+#: ihnen durch die Regel, weil vor „programm" ein „s" steht statt einer Fuge.
+#:
+#: Die Wortgrenze HINTEN bleibt und trägt die Sicherheit: „Satzungsbeschluss"
+#: (das Ende jedes Bebauungsplan-Verfahrens) endet nicht auf „satzung" und
+#: bleibt damit unangetastet.
+#:
+#: Die drei Planarten stehen hier und nicht als ganzes Wort, weil auch sie
+#: zusammengesetzt auftreten („Lärmaktionsplan"). Sie sind die einzigen, die
+#: sich öffnen dürfen: „Bebauungsplan" und „Flächennutzungsplan" enden auf
+#: keines von ihnen, der ortsbezogenste Vorgang bleibt also außen vor.
+_CITYWIDE_COMPOUND_TAIL = (
+    "programm", "konzept", "satzung", "richtlinie", "verordnung", "strategie",
+    "haushalt", "jahresabschluss", "wirtschaftsplan", "stellenplan",
+    "aktionsplan", "masterplan", "rahmenplan",
+)
+
+#: Wörter, die nur als ganzes Wort zählen.
+_CITYWIDE_STANDALONE = (
+    r"beteiligungsbericht|sachstandsbericht|lagebericht|jahresbericht|"
+    r"armutsbericht|geschäftsbericht|tätigkeitsbericht|"
+    r"gebührenordnung|entgeltordnung|gesamtstädtisch|"
+    r"besetzung|umbesetzung|nachbesetzung|bestellung|entsendung|berufung|"
+    r"wahl\s+(?:des|der|von)|leitlinie|leitfaden|leitantrag|rahmenkonzept|"
+    r"zuwendung|förderrichtlinie|evaluation|"
+    # Die stadtweiten Planarten — einzeln aufgezählt, weil „…plan" sich nicht
+    # öffnen darf. Am Bestand ausgezählt (01.09.2026): Von 570 Planwörtern in
+    # Beschlusstiteln sind 530 Bebauungs- und Flächennutzungspläne, also
+    # strikt örtlich. Was übrig bleibt, ist diese kurze Liste.
+    r"mobilitätsplan|erfolgsplan|luftreinhalteplan|klimaschutzplan"
+)
+
+#: Deutsche Flexion. Ohne sie traf die Regel den Nominativ und sonst nichts:
+#: „Änderung des Rahmenkonzept\ **es**", „Fortschreibung des
+#: Lärmaktionsplan\ **s**", „Anpassung der Satzung\ **en**" — alles Genitive
+#: und Plurale, die im Titel eines Ratsvorgangs die Norm sind.
+#:
+#: „Satzungsbeschluss" bleibt auch damit verschont: nach „satzungs" folgt „b",
+#: also wieder keine Wortgrenze.
+_CITYWIDE_ENDUNG = r"(?:e|es|s|en|er|em)?"
+
+#: „pass" bekommt KEINE Endung: „Oldenburg Pass" ja, „passen" und „passes"
+#: nein. Deshalb steht es als eigener, strenger Zweig.
+_CITYWIDE_RE = re.compile(
+    r"(?:(?:\w*(?:" + "|".join(_CITYWIDE_COMPOUND_TAIL) + r")|"
+    r"\b(?:" + _CITYWIDE_STANDALONE + r"))" + _CITYWIDE_ENDUNG + r"|\bpass)\b",
+    re.IGNORECASE)
+
+
+def affects_whole_city(title: str | None) -> bool:
+    """Ist der Vorgang seinem Titel nach eine stadtweite Angelegenheit?
+
+    Nur eine Vorprüfung — sie entscheidet nichts allein, sondern nur zusammen
+    mit „und im Titel steht kein Ort" (siehe ``location_is_incidental``).
+    """
+    return bool(_CITYWIDE_RE.search(" ".join((title or "").split())))
+
+
+def location_is_incidental(title: str | None, candidate: dict,
+                          catalog_places=None) -> bool:
+    """Ist dieser Ortsfund bloßes Beiwerk eines stadtweiten Vorgangs?
+
+    Auf dem Prod-Bestand (01.09.2026) trugen 110 klar stadtweite Beschlüsse
+    einen Stadtteil, den sie nicht verdienen: „Oldenburg Pass – Bericht 2021"
+    → Ofenerdiek über den Ort „VWG"; „Rad- und Fußverkehrsprogramm 2022" →
+    Bloherfelde über „Uhlhornsweg"; „Umbesetzung von Ausschüssen" → Innenstadt.
+    Der Vorgang gilt der ganzen Stadt, der Ort ist eine Nebenerwähnung im
+    Vorlagentext.
+
+    Drei Bedingungen müssen ZUSAMMEN erfüllt sein, damit die Regel nichts
+    Richtiges wegnimmt:
+
+    1. Der Titel weist den Vorgang als stadtweit aus (Programm, Satzung,
+       Besetzung, Jahresabschluss …).
+    2. Im Titel selbst steht kein Ort — „Masterplan Fliegerhorst" bleibt.
+    3. Der Fund stammt NICHT aus dem Titel selbst.
+
+    Punkt 3 hieß zuerst „stammt aus dem Vorlagentext" und nahm den
+    Beschlusstext aus — der galt als das verlässlichere Papier. Die Stichprobe
+    über den Prod-Bestand (01.09.2026) hat das widerlegt: Auch im
+    Beschlusstext stehen Anschriften, die dem Vorgang nicht gehören. „Verkehr
+    und Wasser GmbH: Jahresabschluss 2022" hing an der Bürgerfelder Straße,
+    „Besetzung des Schulausschusses" an Eversten. 148 Zuordnungen an 45
+    Beschlüssen, jeder Titel unmissverständlich stadtweit. Was schützt, sind
+    die Punkte 1 und 2, nicht die Herkunft des Fundes.
+    """
+    if not affects_whole_city(title):
+        return False
+    if candidate.get("source") == "title":
+        return False
+    # Nennt der Titel selbst irgendeinen Ort, ist der Vorgang trotz stadtweiter
+    # Vokabel verortet — dann gilt die Regel nicht.
+    if extract_explicit_locations(title or "", source="title",
+                                  catalog_places=catalog_places):
+        return False
+    # Und nennt der Titel GENAU DIESEN Ort — auch flektiert —, erst recht.
+    # „Unterschutzstellung des Heidbrooks – Sachstandsbericht" ist ein Vorgang
+    # zu einem konkreten Gebiet; der Genitiv „Heidbrooks" rutscht aber durch
+    # die Muster oben hindurch. Ohne diese zweite Prüfung verlor der Beschluss
+    # auf dem Prod-Bestand alle fünf Ortsbezüge, auch den richtigen.
+    if _name_occurs_in_evidence(candidate.get("name") or "", title or ""):
+        return False
+    return True
+
+
 def valid_llm_location(name: str, kind: str, evidence: str) -> bool:
     """Deterministische Präzisionsschranke nach der Modellantwort.
 
-    Sie verhindert drei produktiv beobachtete Fehlerklassen: Organisationen als
-    Gebäude, auswärtige Städte als Oldenburger Stadtteile und Fundstellen, die
-    den behaupteten Ortsnamen selbst gar nicht enthalten.
+    Sie verhindert vier produktiv beobachtete Fehlerklassen: Organisationen als
+    Gebäude, auswärtige Städte als Oldenburger Stadtteile, Fundstellen, die den
+    behaupteten Ortsnamen selbst gar nicht enthalten — und Wohnanschriften.
     """
     clean_name = " ".join((name or "").split()).strip(" ,.;:()[]")
     clean_evidence = " ".join((evidence or "").split())
@@ -166,6 +348,22 @@ def valid_llm_location(name: str, kind: str, evidence: str) -> bool:
     if _ORGANIZATION_RE.search(clean_name):
         return False
     if _WEB_ADDRESS_RE.search(clean_name):
+        return False
+    if _HOME_ADDRESS_RE.search(clean_evidence):
+        return False
+    # Gattungsbegriffe wurden bisher nur im Regex-Kanal gefiltert; über das
+    # Modell kamen sie ungehindert durch — „Gemeindestraße" und „Radweg"
+    # standen so mit 51 bzw. 13 Zuordnungen in der Datenbank.
+    #
+    # Aber NUR die exakte Liste, nicht die Präfixe. Die Präfixe („schul",
+    # „fahrrad", „spiel") sind für den Regex-Kanal gedacht, wo sie auf bloße
+    # Straßenmuster treffen („Schulstraße"). Das Modell liefert dagegen ganze
+    # Eigennamen, und dort schlagen sie falsch an: „Schule an der
+    # Kleiststraße", „Fahrradstation Nord" und „Spielplatz
+    # Friedrich-August-Platz" sind genau die konkreten Orte, um die es geht.
+    if location_slug(clean_name).replace("-", "") in _GENERIC_STREET_EXACT:
+        return False
+    if _CODE_ONLY_RE.match(clean_name.strip()):
         return False
     if not _name_occurs_in_evidence(clean_name, clean_evidence):
         return False

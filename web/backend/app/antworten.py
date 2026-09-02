@@ -151,6 +151,9 @@ class SetupState(TypedDict):
     step: int
     started_at: str | None
     done_at: str | None
+    #: Soll der Assistent gezeigt werden? Serverseitig entschieden, damit Web
+    #: und App dieselbe Regel benutzen — siehe ``Store.get_setup``.
+    pending: bool
 
 
 # --------------------------------------------------------------------------
@@ -310,8 +313,34 @@ class TopicSuggestion(TypedDict):
     n: int
 
 
-class TopicSuggestions(TypedDict):
+class NearbySuggestion(TopicSuggestion):
+    #: Aus welchem Ortsbereich dieser Vorschlag stammt. Muss mit — ihn unter der
+    #: Überschrift des Nachbarn zu zeigen wäre schlicht falsch.
+    place: str
+
+
+class DistrictSuggestions(TypedDict):
+    """Vorschläge aus EINEM Ortsbereich, mitsamt dem Ort, für den sie gelten."""
+    place_id: str
+    name: str
     suggestions: list[TopicSuggestion]
+    #: Aus den nächstgelegenen Ortsbereichen, nur wenn der eigene keine sechs
+    #: hergibt (15 von 31 tun das nicht). Getrennt, damit die Oberfläche es
+    #: getrennt beschriften kann.
+    nearby: list[NearbySuggestion]
+    #: Wie weit zurück gesucht wurde (Monate). In lebhaften Stadtteilen reicht
+    #: ein Jahr, in ruhigen braucht es zwei oder drei — die Oberfläche schreibt
+    #: den Zeitraum dazu, statt stillschweigend Aktualität zu behaupten.
+    months: int
+
+
+class TopicSuggestions(TypedDict):
+    #: Stadtweit — was gerade überhaupt im Rat läuft.
+    suggestions: list[TopicSuggestion]
+    #: Je mitgegebenem ``?district=`` eine Gruppe, in derselben Reihenfolge.
+    #: Keine der Listen überschneidet sich mit einer anderen oder mit
+    #: ``suggestions`` — jeder Vorschlag steht genau einmal.
+    districts: list[DistrictSuggestions]
 
 
 class TopicDescription(TypedDict):

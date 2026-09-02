@@ -3930,6 +3930,46 @@
         "title": "DisplayNameIn",
         "type": "object"
       },
+      "DistrictSuggestions": {
+        "description": "Vorschläge aus EINEM Ortsbereich, mitsamt dem Ort, für den sie gelten.",
+        "properties": {
+          "months": {
+            "title": "Months",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "nearby": {
+            "items": {
+              "$ref": "#/components/schemas/NearbySuggestion"
+            },
+            "title": "Nearby",
+            "type": "array"
+          },
+          "place_id": {
+            "title": "Place Id",
+            "type": "string"
+          },
+          "suggestions": {
+            "items": {
+              "$ref": "#/components/schemas/TopicSuggestion"
+            },
+            "title": "Suggestions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "place_id",
+          "name",
+          "suggestions",
+          "nearby",
+          "months"
+        ],
+        "title": "DistrictSuggestions",
+        "type": "object"
+      },
       "Districts": {
         "properties": {
           "catalog": {
@@ -4621,6 +4661,34 @@
           "urls"
         ],
         "title": "MediaUpload",
+        "type": "object"
+      },
+      "NearbySuggestion": {
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "place": {
+            "title": "Place",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "description",
+          "n",
+          "place"
+        ],
+        "title": "NearbySuggestion",
         "type": "object"
       },
       "NotifyKind": {
@@ -7338,6 +7406,10 @@
               "null"
             ]
           },
+          "pending": {
+            "title": "Pending",
+            "type": "boolean"
+          },
           "started_at": {
             "title": "Started At",
             "type": [
@@ -7353,7 +7425,8 @@
         "required": [
           "step",
           "started_at",
-          "done_at"
+          "done_at",
+          "pending"
         ],
         "title": "SetupState",
         "type": "object"
@@ -8284,6 +8357,13 @@
       },
       "TopicSuggestions": {
         "properties": {
+          "districts": {
+            "items": {
+              "$ref": "#/components/schemas/DistrictSuggestions"
+            },
+            "title": "Districts",
+            "type": "array"
+          },
           "suggestions": {
             "items": {
               "$ref": "#/components/schemas/TopicSuggestion"
@@ -8293,7 +8373,8 @@
           }
         },
         "required": [
-          "suggestions"
+          "suggestions",
+          "districts"
         ],
         "title": "TopicSuggestions",
         "type": "object"
@@ -14738,8 +14819,23 @@
     },
     "/api/topics/suggestions": {
       "get": {
-        "description": "Anklickbare Themen-Vorschläge aus den echten Daten: konkrete Orte und\nProjekte mit jüngster Ratsaktivität (Entitäten) statt der häufigsten\nSchlagworte — die belohnten Verwaltungsvokabeln („Bericht\", „Annahme\").\nDie KI-Beschreibung der Entität wird zur Themen-Beschreibung und macht\nden Themen-Wächter treffsicherer als ein generischer Satz. Ohne Themen,\ndie der Account schon angelegt hat; ein Klick legt direkt an.",
+        "description": "Anklickbare Themen-Vorschläge aus den echten Daten: konkrete Orte und\nProjekte mit jüngster Ratsaktivität (Entitäten) statt der häufigsten\nSchlagworte — die belohnten Verwaltungsvokabeln („Bericht\", „Annahme\").\nDie KI-Beschreibung der Entität wird zur Themen-Beschreibung und macht\nden Themen-Wächter treffsicherer als ein generischer Satz. Ohne Themen,\ndie der Account schon angelegt hat; ein Klick legt direkt an.\n\n``?district=<place_id>`` (mehrfach erlaubt) hängt je Ortsbereich eine\n**eigene** Liste davor: dieselbe Auswahl, auf diesen Ortsbereich\neingeschränkt. Die Trennung ist der Punkt — „was ist in Osternburg los?\"\nist eine andere Frage als „was läuft gerade in der Stadt?\", und wer beides\ngetrennt sieht, kann wählen. Die Ortsbereiche stehen zuerst und in der\nReihenfolge, in der sie gefragt wurden; was dort schon vorkommt,\nwiederholen weder die anderen Ortsbereiche noch die stadtweite Liste.",
         "operationId": "topic_suggestions_api_topics_suggestions_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "district",
+            "required": false,
+            "schema": {
+              "default": [],
+              "items": {
+                "type": "string"
+              },
+              "title": "District",
+              "type": "array"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -14750,6 +14846,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Topic Suggestions",

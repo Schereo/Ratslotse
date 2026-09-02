@@ -36,6 +36,7 @@ from __future__ import annotations
 import re
 import logging
 from datetime import date
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
@@ -208,6 +209,12 @@ def _name_tokens(name: str) -> frozenset[str]:
     """Wort-Stämme eines Themen-/Entitätsnamens: Kleinbuchstaben, Wörter auf
     6 Zeichen gekürzt (fängt „Stadion"/„Stadionneubau"), Ziffern bleiben ganz
     (unterscheidet „Veloroute 4" von „Veloroute 2")."""
+    # Zusammengeschriebenes vorher trennen: Im Ratsbestand steht „AlteFleiwa"
+    # neben „Alte Fleiwa" — zwei Entitäten für dieselbe Sache, die im selben
+    # Vorschlagsblock landeten, weil {altefl} und {alte, fleiwa} keine
+    # Teilmenge voneinander sind. Getrennt wird nur an klein→GROSS, damit
+    # „OLantis", „IQON" und „EWE ARENA" unangetastet bleiben.
+    name = re.sub(r"(?<=[a-zäöüß])(?=[A-ZÄÖÜ])", " ", name)
     words = re.findall(r"\d+|[a-zäöüß]+", name.lower())
     return frozenset(w if w.isdigit() else w[:6] for w in words if w.isdigit() or len(w) >= 3)
 
@@ -244,24 +251,19 @@ def _suggestion_context(name: str, candidate: dict) -> str | None:
     return None
 
 
-@router.get("/suggestions")
-def topic_suggestions(
-    user: dict = Depends(require_active),
-    store: Store = Depends(get_store),
-    council: CouncilStore = Depends(get_council_store),
-) -> TopicSuggestions:
-    """Anklickbare Themen-Vorschläge aus den echten Daten: konkrete Orte und
-    Projekte mit jüngster Ratsaktivität (Entitäten) statt der häufigsten
-    Schlagworte — die belohnten Verwaltungsvokabeln („Bericht", „Annahme").
-    Die KI-Beschreibung der Entität wird zur Themen-Beschreibung und macht
-    den Themen-Wächter treffsicherer als ein generischer Satz. Ohne Themen,
-    die der Account schon angelegt hat; ein Klick legt direkt an."""
+def _build_suggestions(council: CouncilStore, candidates: list[dict],
+                       existing_tokens: list, chosen_tokens: list, limit: int = 6) -> list[dict]:
+    """Aus Roh-Entitäten anzeigbare Vorschläge machen.
+
+    Eigene Funktion, seit es ZWEI Listen gibt (Stadtteil und stadtweit):
+    ``chosen_tokens`` wird von beiden Aufrufen geteilt und dabei fortgeschrieben
+    — deshalb taucht ein Vorschlag, der schon im Stadtteil steht, in der
+    stadtweiten Liste nicht noch einmal auf. Ohne das gemeinsame Gedächtnis
+    stünde dieselbe Baustelle zweimal untereinander.
+    """
     from council import topic_intel
 
-    existing_tokens = [_name_tokens(t.name) for t in store.get_topics(user["id"])]
-    chosen_tokens: list[frozenset[str]] = []
-    out = []
-    candidates = council.suggested_entity_topics(days_back=365, limit=16)
+    out: list[dict] = []
     # 26a-Zusage: Was hier vorgeschlagen wird, hat die Vagheits-Prüfung bestanden.
     # Zwei Stufen, damit das bezahlbar bleibt: erst der kostenlose Gattungswort-
     # Filter, dann das gecachte LLM-Urteil (je Slug genau einmal).
@@ -310,9 +312,144 @@ def topic_suggestions(
             "context": _suggestion_context(name, e),
             "n": e["n_recent"],
         })
-        if len(out) >= 6:
+        if len(out) >= limit:
             break
-    return {"suggestions": out}
+    return out
+
+
+#: Zeitfenster für die Stadtteil-Vorschläge, von eng nach weit. Ein FESTES Jahr
+#: reichte nicht: Am Prod-Bestand (01.09.2026 nachgemessen) lieferten 6 der 31
+#: Ortsbereiche darin gar nichts und 4 weitere ein bis zwei Vorschläge — wer
+#: dort wohnt, sah einen leeren Block. Mit dem gleitenden Fenster steht überall
+#: etwas. Erst die Zeit lockern und nicht die Qualitätsregeln: Ein zwei Jahre
+#: alter echter Vorgang ist ein besserer Vorschlag als eine Adresse von gestern.
+LOCAL_WINDOW_DAYS = (365, 730, 1095)
+
+#: Wie viele Vorschläge eines Fensters keine bloße Adresse sein müssen, damit
+#: die Suche dort aufhört. Drei von sechs: Die Hälfte darf Straße sein — manche
+#: Straße IST ein Vorhaben —, aber eine Liste aus lauter Adressen ist keine
+#: Antwort auf „was ist bei mir los?".
+TRAGENDE_MINDESTENS = 3
+
+
+def _tragende(eintraege: list[dict]) -> int:
+    """Wie viele der Vorschläge mehr sind als ein Straßenname."""
+    return sum(1 for e in eintraege
+               if not CouncilStore._looks_like_street(e.get("name") or ""))
+
+
+#: Wie viele Nachbar-Ortsbereiche einen dünnen Stadtteil auffüllen dürfen. Drei
+#: reichen: Damit kommen auf dem Prod-Bestand alle 31 auf sechs Vorschläge.
+NEIGHBOURS = 3
+
+
+def _local_suggestions(council: CouncilStore, place, existing_tokens: list,
+                        chosen_tokens: list) -> tuple[list[dict], list[dict], int]:
+    """Vorschläge für einen Ortsbereich: eigene, nebenan, und wie weit zurück.
+
+    Gibt zurück, WIE WEIT gesucht wurde (in Monaten): Die Oberfläche schreibt das
+    dazu. „Aus Bornhorst" über einen drei Jahre alten Vorgang wäre sonst eine
+    stille Behauptung von Aktualität — und die Designsprache verlangt bei Mengen
+    ohnehin Zahl **und** Zeitraum.
+
+    **Warum es „nebenan" gibt.** Am Prod-Bestand nachgemessen (01.09.2026):
+    Selbst über drei Jahre kommen 15 der 31 Ortsbereiche nicht auf sechs
+    Vorschläge, zwei auf gar keinen — im Dobbenviertel oder in Nordmoslesfehn
+    hat der Rat schlicht kaum etwas verhandelt. Ein leerer Block wäre dort das
+    Ergebnis, und zwar dauerhaft. Mit den drei nächstgelegenen Ortsbereichen
+    füllen sich **alle 31** auf sechs.
+
+    Getrennt zurückgegeben und in der Oberfläche getrennt beschriftet: Ein
+    Vorgang aus Haarenesch unter der Überschrift „Aus Dobbenviertel" wäre
+    schlicht falsch. Nebenan ist eine ehrliche Auskunft, verkleidet wäre es
+    eine Behauptung.
+    """
+    runden: list[tuple[int, list[dict]]] = []
+    for tage in LOCAL_WINDOW_DAYS:
+        # `chosen_tokens` NICHT je Runde mitschreiben lassen: Ein Vorschlag, den
+        # das enge Fenster schon verworfen hat, würde sich sonst im weiten selbst
+        # blockieren. Erst das Ergebnis der gewählten Runde zählt.
+        probe = list(chosen_tokens)
+        gefunden = _build_suggestions(
+            council, council.suggested_entity_topics(days_back=tage, limit=16, place_id=place.id),
+            existing_tokens, probe, limit=6)
+        runden.append((tage, gefunden))
+        if len(gefunden) >= 6 and _tragende(gefunden) >= TRAGENDE_MINDESTENS:
+            break
+    # Das engste Fenster, das genug TRAGENDE Vorschläge hat — nicht einfach das
+    # erste mit sechs Einträgen. Seit auch Straßen ihren Stadtteil sicher kennen,
+    # füllen sie die sechs mühelos, und das enge Fenster gewann mit einer Liste
+    # aus lauter Adressen: In Osternburg verdrängte die „Cloppenburger Straße"
+    # die Amalienbrücke, im Ziegelhof die „Industriestraße" das IQON. Ein Jahr
+    # jünger ist kein Vorteil, wenn dafür das Interessante wegfällt.
+    tage, letzte = max(runden, key=lambda r: (_tragende(r[1]), len(r[1]), -r[0]))
+    for eintrag in letzte:
+        chosen_tokens.append(_name_tokens(eintrag["name"]))
+
+    nebenan: list[dict] = []
+    if len(letzte) < 6:
+        from council import geo
+
+        for nachbar in geo.nachbar_ortsbereiche(place.name, NEIGHBOURS):
+            if len(letzte) + len(nebenan) >= 6:
+                break
+            nb = council.resolve_place(nachbar)
+            if not nb:
+                continue
+            # Immer das weiteste Fenster: Nebenan ist ohnehin der Notnagel, da
+            # zählt „gibt es überhaupt etwas" mehr als „ist es taufrisch".
+            for eintrag in _build_suggestions(
+                council,
+                council.suggested_entity_topics(days_back=LOCAL_WINDOW_DAYS[-1], limit=16,
+                                                place_id=nb.id),
+                existing_tokens, chosen_tokens, limit=6 - len(letzte) - len(nebenan),
+            ):
+                nebenan.append({**eintrag, "place": nb.name})
+    return letzte, nebenan, round(tage / 30.4)
+
+
+@router.get("/suggestions")
+def topic_suggestions(
+    district: Annotated[list[str], Query()] = [],  # noqa: B006 — FastAPI liest die Vorgabe nur
+    user: dict = Depends(require_active),
+    store: Store = Depends(get_store),
+    council: CouncilStore = Depends(get_council_store),
+) -> TopicSuggestions:
+    """Anklickbare Themen-Vorschläge aus den echten Daten: konkrete Orte und
+    Projekte mit jüngster Ratsaktivität (Entitäten) statt der häufigsten
+    Schlagworte — die belohnten Verwaltungsvokabeln („Bericht", „Annahme").
+    Die KI-Beschreibung der Entität wird zur Themen-Beschreibung und macht
+    den Themen-Wächter treffsicherer als ein generischer Satz. Ohne Themen,
+    die der Account schon angelegt hat; ein Klick legt direkt an.
+
+    ``?district=<place_id>`` (mehrfach erlaubt) hängt je Ortsbereich eine
+    **eigene** Liste davor: dieselbe Auswahl, auf diesen Ortsbereich
+    eingeschränkt. Die Trennung ist der Punkt — „was ist in Osternburg los?"
+    ist eine andere Frage als „was läuft gerade in der Stadt?", und wer beides
+    getrennt sieht, kann wählen. Die Ortsbereiche stehen zuerst und in der
+    Reihenfolge, in der sie gefragt wurden; was dort schon vorkommt,
+    wiederholen weder die anderen Ortsbereiche noch die stadtweite Liste.
+    """
+    existing_tokens = [_name_tokens(t.name) for t in store.get_topics(user["id"])]
+    chosen_tokens: list[frozenset[str]] = []
+
+    gruppen = []
+    for wunsch in dict.fromkeys(district):        # doppelt Gefragtes einmal
+        place = council.resolve_place(wunsch)
+        if not place:
+            continue                              # geraten oder veraltet — still übergehen
+        lokal, nebenan, fenster = _local_suggestions(
+            council, place, existing_tokens, chosen_tokens)
+        # Auch mit leerer Liste antworten: „In diesem Stadtteil war zuletzt
+        # nichts" ist eine Auskunft. Ein weggelassener Block sähe aus wie ein
+        # Fehler.
+        gruppen.append({"place_id": place.id, "name": place.name,
+                        "suggestions": lokal, "nearby": nebenan, "months": fenster})
+
+    stadtweit = _build_suggestions(
+        council, council.suggested_entity_topics(days_back=365, limit=16),
+        existing_tokens, chosen_tokens, limit=6)
+    return {"suggestions": stadtweit, "districts": gruppen}
 
 
 @router.post("/describe")

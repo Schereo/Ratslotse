@@ -16,7 +16,9 @@ sys.path.insert(0, str(ROOT))
 from council.locations import (  # noqa: E402
     extract_explicit_locations,
     location_slug,
+    location_is_incidental,
     valid_llm_location,
+    variant_key,
 )
 from council.store import CouncilStore  # noqa: E402
 
@@ -39,6 +41,29 @@ def invalid_llm_links(store: CouncilStore) -> list[dict]:
             if not valid_llm_location(row["name"], row["kind"], row["evidence"])]
 
 
+def beiwerk_links(store: CouncilStore) -> list[dict]:
+    """Ortsbezüge, die nur Beiwerk eines stadtweiten Vorgangs sind.
+
+    Die Regel greift beim Extrahieren; Bestandsdaten muss dieser Lauf
+    nachziehen. Auf dem Prod-Bestand (01.09.2026) waren es 202 Zuordnungen an
+    72 Beschlüssen — „Oldenburg Pass – Bericht" über die Adresse der VWG,
+    „Marktgebührensatzung" über die Weser-Ems-Halle.
+    """
+    place_catalog = store.all_places()
+    rows = store._conn.execute(
+        """SELECT dl.decision_id, dl.location_slug, dl.source, l.name, d.title
+             FROM council_decision_locations dl
+             JOIN council_locations l ON l.slug = dl.location_slug
+             JOIN council_decisions d ON d.id = dl.decision_id
+            WHERE d.kind = 'decision'
+            ORDER BY dl.decision_id DESC, l.name"""
+    ).fetchall()
+    return [dict(row) for row in rows
+            if location_is_incidental(row["title"],
+                                     {"name": row["name"], "source": row["source"]},
+                                     catalog_places=place_catalog)]
+
+
 def deterministic_changes(
     store: CouncilStore,
     *,
@@ -49,13 +74,32 @@ def deterministic_changes(
     ).fetchall()
     expected: dict[int, dict[str, dict]] = {}
     place_catalog = store.all_places()
+    # Schreibvarianten auf den überlebenden Eintrag abbilden. Ohne das erwartet
+    # dieser Lauf für den Text „Maastrichter Str" den Schlüssel
+    # ``maastrichter-str`` — den ``merge_location_variants`` gerade auf
+    # „Maastrichter Straße" zusammengeführt hat. Ergebnis wäre ein
+    # Dauerkonflikt: Der eine Schritt legt an, der andere führt zusammen.
+    kanonisch = {}
+    for row in store._conn.execute("SELECT slug, name FROM council_locations"):
+        kanonisch[variant_key(row["name"])] = (row["slug"], row["name"])
     for decision in decisions:
         rows = extract_explicit_locations(
             decision["title"] or "", source="title", catalog_places=place_catalog)
         rows += extract_explicit_locations(
             decision["official_text"] or "", source="official_text", catalog_places=place_catalog)
+        # Dieselbe Beiwerk-Schranke wie beim Extrahieren. Ohne sie legt dieser
+        # Lauf genau die Bezüge wieder an, die der Beiwerk-Schritt weiter unten
+        # gerade entfernt hat — zwei Regeln, die einander widersprechen, und
+        # ein Lauf, der nie zur Ruhe kommt. Sichtbar wurde das erst, als die
+        # Schranke auch für den Beschlusstext galt: Vorher überschnitten sich
+        # die beiden Mengen nicht.
+        rows = [row for row in rows
+                if not location_is_incidental(decision["title"], row,
+                                              catalog_places=place_catalog)]
         for row in rows:
-            slug = location_slug(row["name"])
+            slug, name = kanonisch.get(
+                variant_key(row["name"]), (location_slug(row["name"]), row["name"]))
+            row = {**row, "name": name}
             old = expected.setdefault(decision["id"], {}).get(slug)
             if old is None or row["confidence"] > old["confidence"]:
                 expected[decision["id"]][slug] = row
@@ -82,7 +126,14 @@ def deterministic_changes(
 
 def process(council_db: Path, *, apply: bool = False) -> dict:
     store = CouncilStore(council_db)
+    # ZUERST die Schreibvarianten einsammeln, dann prüfen. Andersherum urteilt
+    # die Prüfung über Namen, die es gleich nicht mehr gibt: „A293" wandert
+    # beim Zusammenführen auf „A 293", und dass DAS eine bloße Kennung ist,
+    # fiele erst im nächsten Lauf auf. Der Lauf käme so nie zur Ruhe.
+    if apply:
+        store.merge_location_variants()
     llm_rows = invalid_llm_links(store)
+    beiwerk_rows = beiwerk_links(store)
     # Ein ungültiger LLM-Link kann denselben Ortsschlüssel wie ein gültiger
     # Regex-Fund tragen. Da der LLM-Link gleich entfernt wird, darf er bei der
     # Ermittlung fehlender deterministischer Links nicht mehr als vorhanden
@@ -93,7 +144,7 @@ def process(council_db: Path, *, apply: bool = False) -> dict:
     }
     deterministic_rows, additions = deterministic_changes(
         store, ignored_current=removed_llm_keys)
-    if apply and (llm_rows or deterministic_rows or additions):
+    if apply and (llm_rows or beiwerk_rows or deterministic_rows or additions):
         now = datetime.now(timezone.utc).isoformat(timespec="seconds")
         with store._conn:
             store._conn.executemany(
@@ -105,6 +156,11 @@ def process(council_db: Path, *, apply: bool = False) -> dict:
                 "DELETE FROM council_decision_locations "
                 "WHERE decision_id=? AND location_slug=?",
                 [(row["decision_id"], row["location_slug"]) for row in deterministic_rows],
+            )
+            store._conn.executemany(
+                "DELETE FROM council_decision_locations "
+                "WHERE decision_id=? AND location_slug=?",
+                [(row["decision_id"], row["location_slug"]) for row in beiwerk_rows],
             )
             for row in additions:
                 store._conn.execute(
@@ -120,12 +176,29 @@ def process(council_db: Path, *, apply: bool = False) -> dict:
                     (row["decision_id"], row["location_slug"], row["source"],
                      row["evidence"][:500], row["method"], row["confidence"], now),
                 )
+        # Die Ableitungen laufen NACH dem Aufräumen: Ein Ort, dem gerade sein
+        # letzter Beschluss genommen wurde, braucht keinen Stadtteil mehr — und
+        # ein neu angelegter hat noch keinen.
+        # Erst die Dubletten einsammeln, dann ableiten: Sonst bekäme ein
+        # Eintrag seinen Stadtteil, der gleich darauf gelöscht wird.
+        store.merge_location_variants()
         store.backfill_location_place_ids()
+        store.backfill_location_districts()
+        store.backfill_location_districts_from_name()
+        # Zum Schluss das Falsche geraderücken — Füllen allein reicht nicht,
+        # ein einmal falsch eingetragener Bereich bliebe sonst für immer stehen.
+        store.fix_contradicting_districts()
+        store.fix_eponymous_districts()
+        store.clear_code_only_districts()
+        # Ganz zuletzt: Erst jetzt stehen alle Stadtteile fest.
+        store.rebuild_location_districts()
     store.close()
-    removed = len(llm_rows) + len(deterministic_rows) if apply else 0
+    removed = len(llm_rows) + len(deterministic_rows) + len(beiwerk_rows) if apply else 0
     return {"invalid_llm": len(llm_rows), "invalid_deterministic": len(deterministic_rows),
+            "beiwerk": len(beiwerk_rows),
             "additions": len(additions), "removed": removed,
-            "examples": llm_rows[:15], "deterministic_examples": deterministic_rows[:20]}
+            "examples": llm_rows[:15], "deterministic_examples": deterministic_rows[:20],
+            "beiwerk_examples": beiwerk_rows[:20]}
 
 
 def main() -> int:
@@ -135,12 +208,14 @@ def main() -> int:
     args = ap.parse_args()
     stats = process(args.db, apply=args.apply)
     print("Ortslinks: " + ", ".join(f"{key}={stats[key]}" for key in
-          ("invalid_llm", "invalid_deterministic", "additions", "removed")))
+          ("invalid_llm", "invalid_deterministic", "beiwerk", "additions", "removed")))
     for row in stats["examples"]:
         print(f"  {row['decision_id']} | {row['name']} | {row['title']}")
     for row in stats["deterministic_examples"]:
         print(f"  deterministic | {row['decision_id']} | "
               f"{row['location_slug']} | {row['method']}")
+    for row in stats["beiwerk_examples"]:
+        print(f"  beiwerk | {row['decision_id']} | {row['name']} | {(row['title'] or '')[:70]}")
     return 0
 
 
