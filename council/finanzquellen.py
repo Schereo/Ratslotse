@@ -402,6 +402,8 @@ def _einheiten_feststellungen(row: dict) -> set[tuple]:
 #: „TOP 5 - Anlage III - THH 08". Führende Nullen und der Zwischenraum
 #: schwanken zwischen den Jahrgängen.
 _LABEL_THH = re.compile(r"THH\s*0*(\d+)")
+#: Der Teilhaushalt 13 in seiner alten Beschriftung (s. ``teilhaushalt_nummer``).
+_LABEL_STIFTUNGEN = re.compile(r"nicht\s+rechtsf", re.IGNORECASE)
 
 
 def teilhaushalt_nummer(label: str | None) -> int | None:
@@ -413,7 +415,13 @@ def teilhaushalt_nummer(label: str | None) -> int | None:
     ``parse_teilergebnishaushalt`` am Ende vergibt (Test in
     ``tests/test_finanzquellen.py``)."""
     m = _LABEL_THH.search(label or "")
-    return int(m.group(1)) if m else None
+    if m:
+        return int(m.group(1))
+    # „019 nicht rechtsfähige Stiftungen" (2019–2023): Teilhaushalt 13 ohne
+    # das Wort THH im Label — der Textkopf sagt „THH13", das Label nicht.
+    if _LABEL_STIFTUNGEN.search(label or ""):
+        return 13
+    return None
 
 
 def teilhaushalt_jahrgang(text: str | None) -> int | None:
@@ -453,7 +461,10 @@ def teilhaushalt_label_jahr(label: str | None) -> int | None:
 
 def _einheiten_teilhaushalt(row: dict) -> set[tuple]:
     year = teilhaushalt_jahrgang(row.get("kopf"))
-    nr = teilhaushalt_nummer(row.get("label"))
+    # Die Nummer aus dem Label — und wo das Label keine nennt, aus dem
+    # Textkopf („THH13" auf dem Deckblatt der Stiftungs-Anlagen).
+    nr = teilhaushalt_nummer(row.get("label")) or teilhaushalt_nummer(
+        (row.get("kopf") or "")[:600])
     return {(year, nr)} if year and nr else set()
 
 
@@ -2393,8 +2404,13 @@ for _q in (
         # Bestands hat 26 Seiten, der größte Fremdkörper mit „THH" im Label
         # 22 (ein Auszug des Investitionsprogramms). Dazwischen liegt die
         # Schwelle mit Abstand nach beiden Seiten.
-        erkennung=Erkennung(label_muster=("%THH%",), mindest_seiten=25,
-                            ordnung="document_id"),
+        # Bis 2023 heißt die Anlage des Teilhaushalts 13 im RIS nur „019
+        # nicht rechtsfähige Stiftungen" — ohne „THH". Fünf Jahrgänge lang
+        # fehlte er deshalb, obwohl der Parser das Dokument ohne Änderung
+        # liest (28 Seiten, Kopf „THH13"). Das Gegenstück „020 Rechtsfähige
+        # Stiftungen" ist KEIN Teilhaushalt und passt nicht auf „icht rechts…".
+        erkennung=Erkennung(label_muster=("%THH%", "%icht rechtsfähige Stiftungen%"),
+                            oder=True, mindest_seiten=25, ordnung="document_id"),
         # Die Einheit ist der Teilhaushalt, nicht der Jahrgang: Ein Jahr
         # verteilt sich auf zwölf bis dreizehn Anlagen, die einzeln lesbar werden.
         unit="Teilhaushalte",

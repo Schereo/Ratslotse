@@ -302,8 +302,36 @@ def test_teilhaushalt_nummer_aus_dem_label():
     for label, erwartet in (("007 THH01", 1), ("2024 007 IVw THH01", 1),
                             ("TOP 5 - Anlage III - THH 08", 8),
                             ("2019 THH 08", 8), ("THH11", 11),
-                            ("Anlage 4 THH11", 11), ("ohne Nummer", None)):
+                            ("Anlage 4 THH11", 11), ("ohne Nummer", None),
+                            # 2019–2023: der Teilhaushalt 13 ohne das Wort THH.
+                            ("019 nicht rechtsfähige Stiftungen", 13),
+                            ("019 2023 Nicht rechtsfähige Stiftungen", 13),
+                            # … aber die rechtsfähigen Stiftungen sind keiner.
+                            ("020 Rechtsfähige Stiftungen", None)):
         assert finanzquellen.teilhaushalt_nummer(label) == erwartet
+
+
+def test_stiftungs_anlage_ist_der_teilhaushalt_13(tmp_path):
+    """194235 („019 nicht rechtsfähige Stiftungen", 28 Seiten, Kopf „THH13")
+    war fünf Jahrgänge lang unsichtbar: Das Muster „%THH%" sah das Label
+    nicht. Die rechtsfähigen Stiftungen daneben bleiben draußen."""
+    store = CouncilStore(tmp_path / "t.sqlite")
+    try:
+        with store._conn:
+            for did, label in ((194235, "019 nicht rechtsfähige Stiftungen"),
+                               (198169, "020 rechtsfähige Stiftungen"),
+                               (297429, "2026 019 Vw THH13 Haushalt 2026 Verwaltungsentwurf")):
+                store._conn.execute(
+                    "INSERT INTO council_attachments (document_id, kvonr, label, url, raw_text, "
+                    "n_pages, fetched_at, status) VALUES (?, 1, ?, 'https://x', "
+                    "'Stadt Oldenburg THH13 Nicht rechtsfähige Stiftungen', 28, datetime('now'), 'ok')",
+                    (did, label))
+        rows = finanzquellen.QUELLEN["teilhaushalt"].dokumente(store, "document_id")
+        assert sorted(r["document_id"] for r in rows) == [194235, 297429]
+        # Ohne Nummer im Label kommt sie vom Deckblatt.
+        assert finanzquellen.teilhaushalt_nummer("Stadt Oldenburg THH13 Nicht rechtsfähige Stiftungen") == 13
+    finally:
+        store.close()
 
 
 def test_einheit_eines_teilhaushalts_plans_ist_der_teilhaushalt():
