@@ -95,6 +95,13 @@ Methoden. Der Haushalt ist als erste Ecke heraus:
 | `council/store_orte.py` | Katalog, Geocodierung, Stadtteile, Kartenpunkte (`OrteMixin`) |
 | `council/store_presse.py` | Pressemitteilungen und Beteiligungen (`PresseMixin`) |
 | `council/store_quiz.py` | die Quiz-Abfragen (`QuizMixin`) |
+| `council/store_personen.py` | Ratsmitglieder, Verwaltung, Namensformen (`PersonenMixin`) |
+| `council/store_themen.py` | Entitäten, Aliasse, Steckbriefe (`ThemenMixin`) |
+| `council/store_helfer.py` | die paar Funktionen, die mehrere Ecken brauchen |
+
+`store_helfer.py` gibt es, weil ein Mixin in einer eigenen Datei nichts aus
+`store.py` importieren kann — das wäre ein Ring. Was mehrere Ecken brauchen und
+keiner gehört, wandert dorthin.
 | `council/geld/*.py` | je eine Facette der KI-Frage, je eine Store-Methode |
 
 Der Schnitt läuft je Ecke über den **Aufrufkegel**, nicht über ein
