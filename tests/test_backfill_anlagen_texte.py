@@ -91,3 +91,51 @@ def test_die_neue_grenze_laesst_die_jahresabschluesse_ganz_durch(tmp_path, monke
     """
     assert bf.MAX_TEXT > 709_076
     assert all(g < bf.MAX_TEXT for g in bf.FRUEHERE_GRENZEN)
+
+
+def _glyphen_bestand(tmp_path):
+    """Zwei Anlagen auf `ok`: eine mit echtem Text, eine mit Glyphen-Rauschen —
+    dazu ein Nicht-Finanz-Dokument mit demselben Rauschen."""
+    store = CouncilStore(tmp_path / "council.sqlite")
+    _anlage(store, 5, "Jahresabschluss 2023 der Kernverwaltung", "Ordentliche Erträge " * 500)
+    # Der Fall 295296: kaputte Zeichenzuordnung, kein einziger Buchstabe.
+    _anlage(store, 6, "Schlussbericht des Rechnungsprüfungsamtes 2024", "/12 /8 /6 □ /13 " * 2000)
+    _anlage(store, 7, "Gutachten Lärmkartierung", "/12 /8 /6 □ /13 " * 2000)
+    store.close()
+    return tmp_path / "council.sqlite"
+
+
+def _status(db) -> dict[int, tuple[str, int]]:
+    store = CouncilStore(db)
+    try:
+        return {r[0]: (r[1], len(r[2] or "")) for r in store._conn.execute(  # noqa: SLF001
+            "SELECT document_id, status, raw_text FROM council_attachments")}
+    finally:
+        store.close()
+
+
+def test_ohne_schalter_bleibt_das_glyphen_dokument_auf_ok(tmp_path, monkeypatch):
+    """Der Zustand, in dem der Schlussbericht 2024 zwei Wochen lag: `ok`, und
+    damit für jeden Lauf erledigt — obwohl niemand ihn lesen konnte."""
+    db = _glyphen_bestand(tmp_path)
+    _geholte(monkeypatch, db)
+    assert _status(db)[6][0] == "ok"
+
+
+def test_mit_schalter_geht_das_glyphen_dokument_an_die_ocr(tmp_path, monkeypatch):
+    db = _glyphen_bestand(tmp_path)
+    _geholte(monkeypatch, db, glyphen=True)
+    stand = _status(db)
+    assert stand[6] == ("empty", 0)
+    # Echter Text bleibt, wie er ist — die Schwelle trifft nur Rauschen.
+    assert stand[5][0] == "ok" and stand[5][1] > 0
+
+
+def test_der_finanz_filter_gilt_auch_fuer_die_glyphen(tmp_path, monkeypatch):
+    """`--nur-finanz` ist im Ops-Lauf die Regel; das Gutachten bleibt liegen,
+    der Schlussbericht nicht."""
+    db = _glyphen_bestand(tmp_path)
+    _geholte(monkeypatch, db, glyphen=True, nur_finanz=True)
+    stand = _status(db)
+    assert stand[6][0] == "empty"
+    assert stand[7][0] == "ok"

@@ -180,6 +180,12 @@ CREATE TABLE IF NOT EXISTS web_users (
     -- Wann die Themen-Übersicht zuletzt offen war. Der Zähler an „Meine
     -- Themen" zeigt nur, was SEITDEM dazukam; NULL = noch nie nachgesehen.
     topics_seen_at   TEXT,
+    -- Womit dieses Konto angelegt wurde: web | ios | android | app. NULL =
+    -- vor der Messung registriert. Getrennt von der laufenden Nutzung in
+    -- `user_activity`: Woher jemand KOMMT und was er DANN benutzt, sind zwei
+    -- Fragen — wer sich im Browser registriert und später nur noch die App
+    -- öffnet, wäre sonst nicht von einem reinen Web-Konto zu unterscheiden.
+    signup_client    TEXT,
     created_at       TEXT NOT NULL
 );
 
@@ -375,8 +381,14 @@ CREATE TABLE IF NOT EXISTS user_activity (
     -- englisch. `quiz` steht nicht dabei: Das zählt beantwortete Fragen
     -- aus `quiz_answers`, nicht Aufrufe.
     feature  TEXT NOT NULL,           -- session | ai_question | research | search | analysis | map
+    -- Womit zugegriffen wurde: web | ios | android | app | unknown. `app` ist
+    -- der Altwert der Capacitor-Hülle, die sich nicht genauer ausweist;
+    -- `unknown` tragen die Zeilen von vor dieser Messung. Teil des Primär-
+    -- schlüssels, weil dieselbe Person am selben Tag beides benutzt haben kann
+    -- — sonst gewänne der Client, der zufällig zuerst kam.
+    client   TEXT NOT NULL DEFAULT 'unknown',
     count    INTEGER NOT NULL DEFAULT 1,
-    PRIMARY KEY (owner_id, day, feature)
+    PRIMARY KEY (owner_id, day, feature, client)
 );
 CREATE INDEX IF NOT EXISTS idx_user_activity_day ON user_activity(day);
 CREATE INDEX IF NOT EXISTS idx_user_activity_owner ON user_activity(owner_id);
@@ -1023,6 +1035,38 @@ class Store:
                     if spalte not in wu_cols:
                         self._conn.execute(
                             f"ALTER TABLE web_users ADD COLUMN {spalte} {typ}")
+                # Womit das Konto angelegt wurde (Admin: „App oder Web?").
+                # Bestandskonten bleiben NULL — sie sind vor der Messung
+                # entstanden, und ein geratenes „web" wäre eine Behauptung.
+                if "signup_client" not in wu_cols:
+                    self._conn.execute("ALTER TABLE web_users ADD COLUMN signup_client TEXT")
+        # Aktivität trägt seit 09/2026 den Client (Admin: „App oder Web?").
+        # Die Spalte gehört in den PRIMÄRSCHLÜSSEL — dieselbe Person kann am
+        # selben Tag beides benutzen —, und den kann SQLite nicht ändern: also
+        # Tabelle neu bauen und umkopieren. Die Altzeilen bekommen `unknown`
+        # statt `web`: Sie stammen aus der Zeit vor der Messung, und ein
+        # geratenes „web" wäre in der Statistik nicht von einer echten Messung
+        # zu unterscheiden.
+        ua_cols = self._table_cols("user_activity")
+        if ua_cols and "client" not in ua_cols:
+            with self._conn:
+                self._conn.execute("""CREATE TABLE user_activity_neu (
+                    owner_id INTEGER NOT NULL,
+                    day      TEXT NOT NULL,
+                    feature  TEXT NOT NULL,
+                    client   TEXT NOT NULL DEFAULT 'unknown',
+                    count    INTEGER NOT NULL DEFAULT 1,
+                    PRIMARY KEY (owner_id, day, feature, client)
+                )""")
+                self._conn.execute(
+                    "INSERT INTO user_activity_neu (owner_id, day, feature, client, count) "
+                    "SELECT owner_id, day, feature, 'unknown', count FROM user_activity")
+                self._conn.execute("DROP TABLE user_activity")
+                self._conn.execute("ALTER TABLE user_activity_neu RENAME TO user_activity")
+                self._conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_user_activity_day ON user_activity(day)")
+                self._conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_user_activity_owner ON user_activity(owner_id)")
         # Schätzfrage-Slider für eigene Fragen (RL-U14-Erweiterung): Zahl-Felder
         # zur seit RL-U14 bestehenden Tabelle nachziehen.
         uq_cols = self._table_cols("user_quiz_questions")
@@ -1207,14 +1251,18 @@ class Store:
 
     def create_web_user(self, email: str, password_hash: str, role: str = "user",
                         status: str = "pending", email_verified: bool = False,
-                        display_name: str | None = None) -> int:
+                        display_name: str | None = None,
+                        signup_client: str | None = None) -> int:
+        """``signup_client`` hält fest, WOMIT das Konto entstanden ist (web |
+        ios | android | app). ``None`` bleibt None statt „web" zu raten — so
+        bleiben Bestandskonten in der Statistik als ungemessen erkennbar."""
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self._conn:
             cur = self._conn.execute(
-                "INSERT INTO web_users (email, password_hash, role, status, email_verified, created_at, display_name) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO web_users (email, password_hash, role, status, email_verified, created_at, "
+                "display_name, signup_client) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 (email.lower().strip(), password_hash, role, status, 1 if email_verified else 0, now,
-                 (display_name or "").strip()[:60] or None),
+                 (display_name or "").strip()[:60] or None, signup_client),
             )
         return cur.lastrowid
 
@@ -2364,20 +2412,90 @@ class Store:
         return out
 
     # ---- Aktivitäts-Tracking + Wachstum (Admin 20a) ----
-    def record_activity(self, owner_id: int, feature: str = "session") -> None:
-        """Ein Feature-Nutzungsereignis je Konto/Tag zählen (best-effort, nie
-        load-bearing). ‚session‘ wird bei jedem eingeloggten Request gesetzt
-        (throttled durch den Tages-PK)."""
+    def record_activity(self, owner_id: int, feature: str = "session",
+                        client: str = "unknown") -> None:
+        """Ein Feature-Nutzungsereignis je Konto/Tag/Client zählen (best-effort,
+        nie load-bearing). ‚session‘ wird bei jedem eingeloggten Request gesetzt
+        (throttled durch den Tages-PK).
+
+        ``client`` ist eines von web | ios | android | app | unknown und kommt
+        aus dem ``X-Client``-Header (siehe ``app.clients``). Er steht im PK, weil
+        dieselbe Person am selben Tag am Rechner und am Telefon arbeiten kann.
+        """
         from datetime import date
         try:
             with self._conn:
                 self._conn.execute(
-                    "INSERT INTO user_activity (owner_id, day, feature, count) VALUES (?, ?, ?, 1) "
-                    "ON CONFLICT(owner_id, day, feature) DO UPDATE SET count = count + 1",
-                    (owner_id, date.today().isoformat(), feature),
+                    "INSERT INTO user_activity (owner_id, day, feature, client, count) "
+                    "VALUES (?, ?, ?, ?, 1) "
+                    "ON CONFLICT(owner_id, day, feature, client) DO UPDATE SET count = count + 1",
+                    (owner_id, date.today().isoformat(), feature, client),
                 )
         except Exception:  # noqa: BLE001 — Aktivitäts-Log darf nie einen Request brechen
             pass
+
+    def client_usage(self, owner_id: int) -> dict[str, int]:
+        """Wie oft dieses Konto von welchem Client aus zugegriffen hat.
+
+        Nur ``session`` wird gezählt: Das ist der Request-Takt und damit das
+        einzige Signal, das JEDER Client gleich erzeugt. Zählte man alle
+        Features mit, hinge das Bild daran, welche Funktion wo beliebter ist.
+        """
+        return {r["client"]: r["c"] for r in self._conn.execute(
+            "SELECT client, SUM(count) c FROM user_activity "
+            "WHERE owner_id = ? AND feature = 'session' GROUP BY client", (owner_id,)).fetchall()}
+
+    def client_split(self, days: int = 30) -> dict:
+        """Womit die Leute arbeiten — für die Admin-Statistik.
+
+        Je Client zwei Zahlen: ``n`` (Zugriffe) und ``users`` (Konten, für die
+        DIESER Client der meistgenutzte ist). Die zweite ist die, die man
+        anzeigt, und sie zählt **jedes Konto genau einmal**.
+
+        Das ist der Punkt, an dem die naheliegende Fassung falsch ist: Zählte
+        man je Client die verschiedenen Konten, stünde ein Konto, das App und
+        Web benutzt, in beiden Zahlen — die Summe wäre größer als der Bestand,
+        und ein Balken daraus behauptete eine Aufteilung, die keine ist.
+        Deshalb entscheidet je Konto der Client mit den meisten Zugriffen; wie
+        viele Konten überhaupt mehrere benutzen, steht separat in ``both``.
+
+        ``unknown`` (Zeilen von vor der Messung) nimmt an der Kür des
+        meistgenutzten Clients nicht teil — ungemessen ist keine Plattform.
+        """
+        from datetime import date, timedelta
+        seit = (date.today() - timedelta(days=max(1, days) - 1)).isoformat()
+        rows = self._conn.execute(
+            "SELECT owner_id, client, SUM(count) n FROM user_activity "
+            "WHERE feature = 'session' AND day >= ? AND client <> 'unknown' "
+            "GROUP BY owner_id, client", (seit,)).fetchall()
+
+        zugriffe: dict[str, int] = {}
+        je_konto: dict[int, list[tuple[str, int]]] = {}
+        for r in rows:
+            zugriffe[r["client"]] = zugriffe.get(r["client"], 0) + r["n"]
+            je_konto.setdefault(r["owner_id"], []).append((r["client"], r["n"]))
+
+        konten: dict[str, int] = {}
+        both = 0
+        for eintraege in je_konto.values():
+            if len(eintraege) > 1:
+                both += 1
+            # Bei Gleichstand entscheidet der Name — irgendein Client muss
+            # gewinnen, und ein stabiles Ergebnis ist besser als ein zufälliges.
+            fuehrend = sorted(eintraege, key=lambda e: (-e[1], e[0]))[0][0]
+            konten[fuehrend] = konten.get(fuehrend, 0) + 1
+
+        clients = [{"client": c, "n": zugriffe[c], "users": konten.get(c, 0)}
+                   for c in sorted(zugriffe, key=lambda c: -zugriffe[c])]
+        return {"clients": clients, "both": both}
+
+    def signup_client_split(self) -> list[dict]:
+        """Womit die vorhandenen Konten angelegt wurden. NULL (vor der Messung
+        registriert) kommt als ``unknown`` heraus, damit die Summe stimmt."""
+        rows = self._conn.execute(
+            "SELECT COALESCE(signup_client, 'unknown') client, COUNT(*) n "
+            "FROM web_users GROUP BY 1 ORDER BY n DESC").fetchall()
+        return [{"client": r["client"], "n": r["n"]} for r in rows]
 
     def wau_series(self, weeks: int = 8) -> list[dict]:
         """Aktive Konten je Woche (DISTINCT owner_id), älteste zuerst — 20a-WAU.
@@ -2429,6 +2547,12 @@ class Store:
             "topics": {"total": len(t), "series": t_series, "delta": t_delta, "days": t_days},
             "wau": [w["n"] for w in wau],
             "wau_days": [w["day"] for w in wau],
+            # „App oder Web?" — die Nutzung der letzten 30 Tage bewusst fest,
+            # nicht am Zeitraum-Umschalter: Die Frage ist „womit arbeiten die
+            # Leute GERADE", nicht „womit über alle Zeit".
+            **{"clients": (aufteilung := self.client_split(30))["clients"],
+               "clients_both": aufteilung["both"]},
+            "signup_clients": [{**r, "users": 0} for r in self.signup_client_split()],
         }
 
     def admin_user_rows(self) -> list[dict]:
@@ -2436,7 +2560,7 @@ class Store:
         Abo-, Quiz- und KI-Frage-Zahl + letzter Aktivitätstag. Alles in
         ratslotse.sqlite, ein Query."""
         rows = self._conn.execute(
-            """SELECT u.id, u.email, u.role, u.status, u.created_at, u.apple_sub,
+            """SELECT u.id, u.email, u.role, u.status, u.created_at, u.apple_sub, u.signup_client,
                       (SELECT COUNT(*) FROM topics t WHERE t.owner_id = u.id) n_topics,
                       (SELECT COUNT(*) FROM committee_subscriptions s WHERE s.owner_id = u.id) n_subscriptions,
                       (SELECT COUNT(DISTINCT question_id) FROM quiz_answers q WHERE q.owner_id = u.id) n_quiz,
@@ -2447,10 +2571,21 @@ class Store:
                       (SELECT MAX(day) FROM user_activity a WHERE a.owner_id = u.id) last_seen
                FROM web_users u ORDER BY u.created_at DESC"""
         ).fetchall()
+        # Ein zweiter Query statt eines Unterausdrucks je Client: Die Liste
+        # zeigt die AUFTEILUNG, nicht eine Zahl — und welche Clients es gibt,
+        # steht in den Daten, nicht im SQL.
+        nutzung: dict[int, dict[str, int]] = {}
+        for r in self._conn.execute(
+            "SELECT owner_id, client, SUM(count) c FROM user_activity "
+            "WHERE feature = 'session' GROUP BY owner_id, client"
+        ).fetchall():
+            nutzung.setdefault(r["owner_id"], {})[r["client"]] = r["c"]
         return [{"id": r["id"], "email": r["email"], "role": r["role"], "status": r["status"],
                  "created_at": r["created_at"], "apple_linked": bool(r["apple_sub"]),
-                 "n_topics": r["n_topics"], "n_subscriptions": r["n_subscriptions"], "n_quiz": r["n_quiz"],
-                 "n_ki": r["n_ki"], "last_seen": r["last_seen"]} for r in rows]
+                 "n_topics": r["n_topics"], "n_subscriptions": r["n_subscriptions"],
+                 "n_quiz": r["n_quiz"], "n_ki": r["n_ki"], "last_seen": r["last_seen"],
+                 "signup_client": r["signup_client"],
+                 "clients": nutzung.get(r["id"], {})} for r in rows]
 
     def admin_user_detail(self, uid: int) -> dict | None:
         """Nutzer-Detail (Design 20a): Feature-Nutzung, Angelegtes, 30-Tage-
@@ -2480,6 +2615,9 @@ class Store:
                 "SELECT MAX(day) FROM user_activity WHERE owner_id = ?", (uid,)).fetchone()[0],
             "apple_linked": bool(u.get("apple_sub")), "has_password": bool(u.get("password_set", 1)),
             "delivery_channel": u.get("delivery_channel", "email"),
+            # Womit angemeldet und womit gearbeitet — zwei verschiedene Fragen.
+            "signup_client": u.get("signup_client"),
+            "clients": self.client_usage(uid),
             # Einwilligung „Gespräche speichern": None = nie gefragt, 1 = an, 0 = aus.
             "saves_conversations": u.get("saves_conversations"),
             # Admin-steuerbare Frage-Limits (10.08.26) — fürs Formular im Detail.

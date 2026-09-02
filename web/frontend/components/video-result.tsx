@@ -59,7 +59,13 @@ export function watchUrl(r: VideoResult): string {
   return `https://www.youtube.com/watch?v=${r.video_id}${t}`;
 }
 
-export function VideoResultChip({ r }: { r: VideoResult }) {
+export function VideoResultChip({ r, layout = "row" }: {
+  r: VideoResult;
+  /** "row" — in der TOP-Zeile (Flex-Nachbar von Titel und Merkzeichen);
+   *  "block" — in einem eigenen Kasten wie dem Dringlichkeits-Block, wo
+   *  die Umbruch-Regeln der Zeile nichts zu suchen haben. */
+  layout?: "row" | "block";
+}) {
   // Der äußere Span trägt das Umbruch-Verhalten: Unter 744 px (Variant `mobil:` — max-sm gibt es bei raw-Screens nicht, s. tailwind.config) quetschte der
   // Chip als Flex-Nachbar den TOP-Titel auf Ein-Wort-Zeilen — dort nimmt
   // der Wrapper die volle Zeile (basis-full) unter dem Titel, eingerückt
@@ -90,7 +96,9 @@ export function VideoResultChip({ r }: { r: VideoResult }) {
     "border border-dashed border-border px-2 py-0.5 text-xs font-medium text-foreground",
   );
   return (
-    <span className="shrink-0 mobil:order-last mobil:ml-[52px] mobil:basis-full">
+    <span className={layout === "row"
+      ? "shrink-0 mobil:order-last mobil:ml-[52px] mobil:basis-full"
+      : "mt-1.5 inline-flex"}>
     {r.video_id ? (
       <a
         href={watchUrl(r)}
