@@ -73,3 +73,38 @@ def test_die_saat_benutzt_nur_erfundene_adressen():
         + ", ".join(fremd)
     )
     assert adressen, "Die Saat legt gar keine Konten mehr an?"
+
+
+def test_nur_lesen_kommt_an_eine_wal_datenbank(tmp_path):
+    """``kern.dbfehler.nur_lesen`` liest, wo ``mode=ro`` aufgeben kann.
+
+    Der Rückfall steht dort NICHT auf Verdacht: ``file:…?mode=ro`` ist am
+    02.09.2026 zweimal an einer laufenden WAL-Datenbank gescheitert (in der
+    Rauchprobe an der Konten-Datei, hier am frisch geklonten Abzug), jedes Mal
+    mit „unable to open database file" — einer Meldung, die nach fehlender
+    Datei klingt und keine ist.
+
+    Nachstellen lässt sich das hier nur halb: Der Fehler braucht eine WAL, die
+    ein anderer Prozess offen hält. Was der Test hält, ist die Zusage, die
+    zählt — dass diese Verbindung eine WAL-Datenbank liest.
+    """
+    import sqlite3
+
+    from kern.dbfehler import nur_lesen
+
+    pfad = tmp_path / "wal.sqlite"
+    auf = sqlite3.connect(pfad)
+    auf.execute("PRAGMA journal_mode=WAL")
+    auf.execute("CREATE TABLE t (a INTEGER)")
+    auf.execute("INSERT INTO t VALUES (1)")
+    auf.commit()
+    try:
+        # Verbindung bleibt offen: So liegen `-wal` und `-shm` daneben, und
+        # die Datei ist der Fall, um den es geht.
+        verbindung = nur_lesen(pfad)
+        try:
+            assert verbindung.execute("SELECT a FROM t").fetchone()[0] == 1
+        finally:
+            verbindung.close()
+    finally:
+        auf.close()

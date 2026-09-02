@@ -55,3 +55,28 @@ def tabelle_fehlt(fehler: sqlite3.OperationalError) -> bool:
         "Abfrage passt nicht zum Schema — das ist kein leerer Bestand, "
         "sondern ein Fehler: %s", fehler)
     return False
+
+
+def nur_lesen(pfad) -> sqlite3.Connection:
+    """Eine Verbindung zum Lesen — auch neben einer laufenden Anwendung.
+
+    ``file:…?mode=ro`` ist der saubere Weg und scheitert trotzdem regelmäßig:
+    Neben einer WAL-Datenbank muss SQLite eine ``-shm`` anlegen, und genau das
+    darf es im Nur-Lese-Modus nicht. Die Meldung lautet dann „unable to open
+    database file" — sie klingt nach fehlender Datei und ist keine.
+
+    Dann wird normal geöffnet. Das legt die Begleitdateien an, ändert aber
+    nichts am Inhalt; die Anwendung tut ohnehin dasselbe. Wer diese Verbindung
+    benutzt, liest — Schreiben ist hier nicht verboten, sondern sinnlos.
+
+    ``immutable=1`` wäre der dritte Weg und der falsche: Es verspricht SQLite,
+    dass sich die Datei nicht ändert. Bei einer laufenden Anwendung ist das
+    schlicht gelogen, und die Antworten dürfen dann alles sein.
+    """
+    pfad = str(pfad)
+    try:
+        verbindung = sqlite3.connect(f"file:{pfad}?mode=ro", uri=True)
+        verbindung.execute("SELECT 1 FROM sqlite_master LIMIT 1")
+        return verbindung
+    except sqlite3.Error:
+        return sqlite3.connect(pfad, timeout=5)

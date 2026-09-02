@@ -21,6 +21,22 @@ Copy-on-write-Klon, der erst beim Schreiben Platz kostet. Eine gemeinsame
 Datei ginge nicht: Der Store migriert beim Öffnen, und zwei Worktrees auf
 verschiedenen Zweigen migrierten sie gegeneinander.
 
+**Woher, und was dabei fehlt.** Vorgabe ist ``dev``, weil dort keine echten
+Personendaten liegen. Der Preis: **auf dev laufen keine Cron-Jobs**, und was
+nur ein Cron füllt, fehlt dort ganz. Gemessen am 02.09.2026 gegen beide
+Server: Die Bauleitplan-Beteiligungen gibt es auf dev als Tabelle gar nicht
+(auf Prod drei Zeilen), sonst ist dev fast vollständig — zwei leere und zwei
+dünne Tabellen von 49 vergleichbaren. Wer genau so eine Cron-Tabelle braucht:
+``hol --von prod``. Dort greift dieselbe Abspeckung, die nutzerbezogenen
+Tabellen kommen also auch von dort nicht mit.
+
+**Der Zwischenspeicher ist geteilt.** Holt eine andere Sitzung neu, ist die
+eigene Kopie ab da veraltet, ohne dass etwas darauf hindeutet. ``stand`` sagt
+es jetzt und nennt die Tabellen, die dir dadurch fehlen — am 02.09.2026 stand
+``council_liquidity`` deshalb lokal auf 0 Zeilen, während der Abzug 137 hatte,
+und der naheliegende Schluss („der Ingest ist ausgefallen") wäre falsch
+gewesen.
+
 **Was NICHT mitkommt**
 
 * **Die Konten-Datenbank.** Sie trägt echte Adressen, Tokens und gespeicherte
@@ -43,6 +59,7 @@ import json
 import os
 import platform
 import shutil
+import sqlite3
 import subprocess
 import sys
 import time
@@ -238,8 +255,58 @@ def stand() -> int:
     hier = WURZEL / "data" / "council.sqlite"
     print(f"In diesem Worktree: "
           f"{'ja, %.0f MB' % (hier.stat().st_size / 1e6) if hier.exists() else 'nein'}")
+    _kopie_gegen_abzug(hier)
     _warnen()
     return 0
+
+
+def _kopie_gegen_abzug(kopie: Path) -> None:
+    """Ist die Kopie in diesem Worktree älter als der Abzug — und was fehlt ihr?
+
+    Der Zwischenspeicher wird von ALLEN Worktrees geteilt. Holt eine andere
+    Sitzung neue Daten, ist die eigene Kopie ab da veraltet, ohne dass etwas
+    darauf hindeutet. Am 02.09.2026 stand ``council_liquidity`` deshalb lokal
+    auf 0 Zeilen, während der Abzug 137 hatte — und der naheliegende Schluss
+    („der Ingest ist ausgefallen") wäre falsch gewesen.
+    """
+    if not kopie.exists():
+        return
+    if kopie.stat().st_mtime < ABZUG.stat().st_mtime - 60:
+        print("\n  ACHTUNG: Deine Kopie ist ÄLTER als der Abzug — eine andere")
+        print("  Sitzung hat inzwischen neu geholt. Frische Tabellen fehlen dir:")
+        print("      python scripts/lokale_daten.py setz --ueberschreiben")
+
+    sys.path.insert(0, str(WURZEL))
+    from kern.dbfehler import nur_lesen
+    try:
+        a, b = nur_lesen(ABZUG), nur_lesen(kopie)
+    except sqlite3.Error:
+        return
+    try:
+        def zaehlen(verbindung):
+            aus = {}
+            for (name,) in verbindung.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' "
+                    "AND name NOT LIKE 'sqlite_%'"):
+                try:
+                    aus[name] = verbindung.execute(
+                        f'SELECT COUNT(*) FROM "{name}"').fetchone()[0]
+                except sqlite3.Error:
+                    pass
+            return aus
+
+        im_abzug, in_kopie = zaehlen(a), zaehlen(b)
+        fehlen = sorted(n for n, z in im_abzug.items() if z > 0 and in_kopie.get(n, 0) == 0)
+        if fehlen:
+            print(f"\n  Im Abzug gefüllt, in deiner Kopie leer ({len(fehlen)}):")
+            for name in fehlen[:12]:
+                print(f"      {name:40s} {im_abzug[name]} Zeilen")
+            if len(fehlen) > 12:
+                print(f"      … und {len(fehlen) - 12} weitere")
+            print("  → python scripts/lokale_daten.py setz --ueberschreiben")
+    finally:
+        a.close()
+        b.close()
 
 
 def main() -> int:
