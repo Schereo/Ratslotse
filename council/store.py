@@ -10326,14 +10326,21 @@ class CouncilStore(HaushaltMixin, OrteMixin, PresseMixin, QuizMixin,
                    "stadtkaemmerer", "stadtkaemmerin",
                    "stadtbaurat", "stadtbaurätin", "stadtbauraetin",
                    "stadtrat", "stadträtin", "stadtraetin"}
-    _ANREDEN = {"herr", "frau", "ratsherr", "ratsfrau"}
+    #: NUR für die Anzeige: die vier Anreden, die vor einem Namen wegfallen.
+    #: Sie hieß bis 02.09.2026 ebenfalls ``_ANREDEN`` — und überschrieb damit
+    #: still die längere Liste weiter oben, die auch Rollen kennt
+    #: („Ausschussvorsitzender Behrens"). Zwei Klassenattribute mit demselben
+    #: Namen: Das zweite gewinnt, und das erste war tot. Gemessen hat das 39
+    #: Wortbeiträge in zehn Sprecher-Formen gekostet — sie waren keiner Person
+    #: zugeordnet.
+    _ANREDEN_ANZEIGE = {"herr", "frau", "ratsherr", "ratsfrau"}
 
     @staticmethod
     def _person_anzeige(name: str) -> str:
         """Anzeige-Name ohne führende Anrede („Herr Jens Freymuth" → „Jens
         Freymuth") — Titel wie „Dr." bleiben, die gehören zum Namen."""
         toks = name.split()
-        while toks and toks[0].lower().rstrip(".") in CouncilStore._ANREDEN:
+        while toks and toks[0].lower().rstrip(".") in CouncilStore._ANREDEN_ANZEIGE:
             toks.pop(0)
         return " ".join(toks) or name
 
