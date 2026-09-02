@@ -1262,7 +1262,7 @@ struct DecisionDetailView: View {
                     )
 
                     if let participation = detail.participation,
-                       let url = URL(string: participation.url) {
+                       let roh = participation.url, let url = URL(string: roh) {
                         DecisionParticipationBanner(participation: participation, url: url)
                     }
 
@@ -2017,7 +2017,7 @@ private struct DecisionParticipationBanner: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Hier kannst du dich beteiligen")
                         .font(RatsFont.body(14, weight: .bold))
-                    Text(participation.title)
+                    Text(participation.title ?? "Beteiligungsverfahren")
                         .font(RatsFont.body(13, weight: .medium))
                     Text([participation.step, participation.until.map { "bis \($0)" }].compactMap { $0 }.joined(separator: " · "))
                         .font(RatsFont.body(10.5))
@@ -2479,9 +2479,9 @@ struct SavedCouncilView: View {
                     ForEach(follows) { follow in
                         HStack(alignment: .top, spacing: 10) {
                             VStack(alignment: .leading, spacing: 7) {
-                                Text(follow.title.isEmpty ? follow.templateNumber : follow.title)
+                                Text(follow.title?.isEmpty == false ? follow.title! : (follow.templateNumber ?? "Ohne Titel"))
                                     .font(RatsFont.body(15, weight: .semibold))
-                                Text("\(follow.templateNumber) · \(follow.stationCount) Stationen")
+                                Text("\(follow.templateNumber ?? "—") · \(follow.stationCount) Stationen")
                                     .font(RatsFont.mono(10)).foregroundStyle(RatsColor.muted)
                                 if let next = follow.next {
                                     Text("Als Nächstes: \([next.committee, RatsDate.short(next.date)].compactMap { $0 }.joined(separator: " · "))")

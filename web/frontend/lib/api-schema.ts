@@ -4378,10 +4378,7 @@ export interface components {
          * @description Compatibility contract consumed before a native app starts loading data.
          */
         AppConfigOut: {
-            /**
-             * Min Build
-             * @default 0
-             */
+            /** Min Build */
             min_build: number;
             /** Note */
             note?: string | null;
@@ -8446,10 +8443,7 @@ export interface components {
             committee: string;
             /** Id */
             id: number;
-            /**
-             * Is New
-             * @default false
-             */
+            /** Is New */
             is_new: boolean;
             /**
              * Outcome
@@ -8588,14 +8582,10 @@ export interface components {
         UserOut: {
             /** Access Token */
             access_token?: string | null;
-            /**
-             * Apple Linked
-             * @default false
-             */
+            /** Apple Linked */
             apple_linked: boolean;
             /**
              * Delivery Channel
-             * @default email
              * @enum {string}
              */
             delivery_channel: "email" | "push" | "both" | "off";
@@ -8603,15 +8593,9 @@ export interface components {
             display_name?: string | null;
             /** Email */
             email: string;
-            /**
-             * Email Verified
-             * @default false
-             */
+            /** Email Verified */
             email_verified: boolean;
-            /**
-             * Has Password
-             * @default true
-             */
+            /** Has Password */
             has_password: boolean;
             /** Id */
             id: number;
@@ -8624,7 +8608,6 @@ export interface components {
             saves_conversations?: number | null;
             /**
              * Status
-             * @default pending
              * @enum {string}
              */
             status: "pending" | "active" | "blocked";
@@ -13526,4 +13509,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 63c1a037febe0bc83f76bc89e142f2f15f443c89293b5a7cdaa85274a430dadc
+// vertrag-sha256: d12ebb7a9a92765743c5de381f70d55cd7911df3e42befdb8914f441d3988bc2
