@@ -8,11 +8,14 @@
 //
 //   `legal_basis`   — die Gesetze, Satzungen und Ratsbeschlüsse, auf
 //                           denen die Aufgabe beruht, im Wortlaut des
-//                           Teilhaushaltsplans. 377 von 377 Zeilen (2018–2023).
+//                           Teilhaushaltsplans. 563 von 584 Zeilen (2019–2026).
 //   `controllability`   — wie viel Spielraum die STADT bei der Aufgabe
-//                           sieht (niedrig/mittel/hoch), 371 von 377. Dazu
+//                           sieht (niedrig/mittel/hoch), 556 von 584. Dazu
 //                           `controllability_raw` mit dem Originalwortlaut,
 //                           damit Mischformen nicht verschwinden.
+//
+// Die 21 Lücken sind die nicht rechtsfähigen Stiftungen (THH13): Der Plan
+// stellt sie nur mit ihrer Rechnung dar, ohne Steckbrief und ohne Amt.
 //
 // Damit bleibt unsere Einordnung redaktionell — sie wird aber prüfbar. Diese
 // Datei liefert beides: die Einordnung UND den Abgleich mit der Selbstauskunft.
@@ -22,9 +25,12 @@
 // „kaum Spielraum".
 //
 // ZWEI JAHRE, NICHT EINS. Der Plan reicht bis ins Kopfjahr der Seite, die
-// Produktebene endet 2023. Jede Aussage aus ihr trägt deshalb ihren eigenen
-// Jahresstempel — `SpielraumBefund.year`. Vermischen wäre die stillste Art,
-// hier falsch zu liegen.
+// Produktebene bis in den zuletzt eingebrachten Entwurf. Seit 09/2026 ist das
+// dasselbe Jahr — davor lag die Produktebene eines dahinter, weil der Parser
+// die falsche Ansatzspalte las. Jede Aussage aus ihr trägt trotzdem ihren
+// eigenen Jahresstempel — `SpielraumBefund.year`. Vermischen wäre die
+// stillste Art, hier falsch zu liegen, und der Gleichstand ist kein
+// Naturgesetz.
 
 import {
   BEREICHE, bereichKanon, type BereichSchluessel,

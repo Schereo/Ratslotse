@@ -230,6 +230,7 @@ ERLAUBT_STELLE = {
     ("ProfileAndQuizViews.swift", "beratend"): "`art` des Personen-Profils, im Backend deutsch",
     ("RatslotseAppTests.swift", "thema"): "`qtype` der Beleg-Prüfung, im Backend deutsch",
     ("haushalt-vergleich.ts", "stadt"): "Feldname der Vergleichsstädte-Zeilen (`{stadt, was}`), kein Wert",
+    ("haushalt-indicators.ts", "einwohner"): "Kennzahl-Schlüssel der Stadt (`council_indicators`) bleiben deutsch wie `steuerquote`; umbenannt wurde nur der Einwohner-Indikator des Städtevergleichs",
     ("haushalt-konzern.ts", "stadt"): "Beschriftung zum `entity_key` des Konzerns — der bleibt deutsch",
     ("haushalt-dokumente.ts", "vorlage"): "Beschriftung zur Zielart des Beleg-Apparats — die bleibt deutsch",
     ("page.tsx", "ort"): "Pfad-Teil der Link-Vorschau (/preview/ort/…) — eigener Schnitt",

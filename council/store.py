@@ -1499,6 +1499,12 @@ class CouncilStore:
         self._werte_umschreiben("council_city_comparison", "series", [
             ("steuerkraft", "tax_capacity"), ("finanzausgleich", "fiscal_equalization"),
             ("realsteuern", "real_taxes")])
+        # Der Einwohner-Indikator derselben Tabelle: Der Parser schreibt seit
+        # dem Umbau `population` (tests/test_staedtevergleich.py), der Bestand
+        # trug noch `einwohner` — das Frontend fand ihn nicht, und die
+        # Steuerkraft je Einwohner*in blieb auf /haushalt/vergleich leer.
+        self._werte_umschreiben("council_city_comparison", "indicator", [
+            ("einwohner", "population")])
         # Die Auszahlungsarten der Ist-Investitionen, je Regelwerk eigene.
         self._werte_umschreiben("council_investments_actual_kinds", "field", [
             ("darlehen", "loans_granted"), ("grundvermoegen", "real_property"),
@@ -6615,8 +6621,8 @@ class CouncilStore:
             d["probes"] = _h.probe_texte(d.get("probe"))
             aus.append(d)
         # Der Ratsvorgang zu allen Dokumenten in EINER Abfrage — nicht je
-        # Datensatz eine. Ein Beleg-Apparat zeigt neun Teilhaushalts-Anlagen
-        # nebeneinander; neun Nachschläge daraus zu machen wäre ein N+1 an
+        # Datensatz eine. Ein Beleg-Apparat zeigt dreizehn Teilhaushalts-Anlagen
+        # nebeneinander; dreizehn Nachschläge daraus zu machen wäre ein N+1 an
         # genau der Stelle, an der die Seite ohnehin am meisten holt.
         beschluesse = self.beschluesse_zu_dokumenten(
             sorted({d["document_id"] for d in aus if d.get("document_id")}))
@@ -6748,7 +6754,7 @@ class CouncilStore:
         # deshalb dessen Dokument, mit eigener Fundstelle.
         "bilanz":               ("council_balance_sheet", "year", None, None),
         # Der einzige Schlüssel, hinter dem je Jahrgang MEHRERE Dokumente
-        # stehen: Ein Produkt-Jahrgang verteilt sich auf rund neun
+        # stehen: Ein Produkt-Jahrgang verteilt sich auf zwölf bis dreizehn
         # Teilhaushalts-Anlagen (s. finanzquellen.Finanzquelle).
         "teilhaushalt":         ("council_products", "year", None, "source_url"),
         "pruefbericht":         ("council_audit_report_sources", "year", None, "url"),
@@ -6905,7 +6911,7 @@ class CouncilStore:
             if treffer:
                 aus[key] = treffer
         # Ein Nachschlag für den ganzen Bereich statt einer je Dokument: Der
-        # Apparat einer Seite zeigt bis zu neun Teilhaushalts-Anlagen, und das
+        # Apparat einer Seite zeigt bis zu dreizehn Teilhaushalts-Anlagen, und das
         # Verzeichnis am Fuß zeigt alle Quellen auf einmal.
         beschluesse = self.beschluesse_zu_dokumenten(sorted(
             {r["document_id"] for liste in aus.values()

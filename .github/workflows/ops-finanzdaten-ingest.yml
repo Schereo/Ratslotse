@@ -263,51 +263,54 @@ jobs:
 
             # Was danach dasteht — und vor allem, ob eine Zeile ohne Herkunft
             # durchgerutscht ist. Das ist die einzige Zahl, die null sein MUSS.
+            # Die Tabellennamen sind die englischen seit #918 — mit den alten
+            # meldete jede Zeile „no such table“, und der Bericht war blind,
+            # ohne den Lauf rot zu färben (Nebenbefund aus dem Haushaltsvollzug-PR).
             .venv/bin/python - <<'PY'
             from council.store import CouncilStore
             s = CouncilStore("data/council.sqlite")
             tabellen = [
-                "council_haushalt", "council_ergebnishaushalt",
-                "council_ergebnisrechnung", "council_abweichungsgruende",
-                "council_produkte", "council_pruefberichte",
-                "council_konzern_posten", "council_konzern_traeger",
-                "council_steuern", "council_steuerkraft", "council_einwohner",
-                "council_staedtevergleich", "council_investitionen",
-                "council_stellenplan", "council_schulden",
-                "council_investitionsmassnahmen", "council_investitionen_ist",
-                "council_investitionen_ist_arten",
+                "council_budget", "council_income_budget",
+                "council_income_statement", "council_variance_reasons",
+                "council_products", "council_audit_reports",
+                "council_group_items", "council_group_entities",
+                "council_taxes", "council_tax_capacity", "council_einwohner",
+                "council_city_comparison", "council_investments",
+                "council_staff_plan", "council_debt",
+                "council_investment_measures", "council_investments_actual",
+                "council_investments_actual_kinds",
                 # Seit 08/2026: Finanzrechnung (#600), Bilanz (#602) und die
                 # lange Ausgabenreihe seit 1972 (#604). Eine Tabelle, die hier
                 # fehlt, fällt nur dadurch auf, dass irgendwann jemand eine
                 # leere Seite meldet — genau der Fall, den dieser Bericht
                 # verhindern soll.
-                "council_finanzrechnung", "council_bilanz",
-                "council_bilanz_erlaeuterungen", "council_ausgabenreihe",
+                "council_cash_flow_statement", "council_balance_sheet",
+                "council_balance_sheet_notes", "council_expense_series",
                 # Nachbewilligungen (§ 117 NKomVG). Die dritte Tabelle steht
                 # hier mit, obwohl ihre Zeilen an den Jahren hängen: Bleibt
                 # sie leer, während `..._jahre` gefüllt ist, hat das Kapitel
                 # seine vier Entscheidungswege nicht hergegeben — und genau
                 # die sind der Inhalt des Blocks.
-                "council_nachbewilligungen",
-                "council_nachbewilligung_jahre",
-                "council_nachbewilligung_kanaele",
-                # Die Zuwendungen an die Stadt. `council_spenden_verworfen`
+                "council_supplementary_approvals",
+                "council_supplementary_years",
+                "council_supplementary_channels",
+                # Die Zuwendungen an die Stadt. `council_donations_rejected`
                 # steht bewusst mit im Bericht: Die Zeilen ohne Zweitstelle
                 # sind Inhalt der Seite, nicht Abfall — verschwänden sie, ohne
                 # dass es auffällt, sähe die Reihe vollständiger aus, als sie
                 # ist.
-                "council_spenden", "council_spenden_verworfen",
+                "council_donations", "council_donations_rejected",
                 # Die beiden Steuertabellen des Jahrbuchs (#606). Bei
-                # `council_steuerplan` sagt die Jahresspanne mehr als die
+                # `council_tax_plan` sagt die Jahresspanne mehr als die
                 # Zeilenzahl: Sie muss über die Zeit WACHSEN, obwohl jede
                 # Ausgabe nur drei Jahrgänge führt — sonst liest der Lauf das
                 # Archiv nicht mit.
-                "council_steuerplan", "council_hebesaetze",
+                "council_tax_plan", "council_tax_rates",
                 # Bürgschaftsbestand und die dritte Schuldenzahl (#619). Bei
-                # `council_integrierte_schulden` ist EINE Zeile der
+                # `council_integrated_debt` ist EINE Zeile der
                 # Sollzustand, nicht ein Mangel: Die Quelle verbietet die
                 # Zeitreihe ausdrücklich.
-                "council_buergschaften", "council_integrierte_schulden",
+                "council_buergschaften", "council_integrated_debt",
                 # Die Wirtschaftspläne der Eigenbetriebe (#663). Die
                 # Zeilenzahl ist hier eine echte Aussage und keine Statistik:
                 # Gelesen wird nur, was seine Eckwerte im Beschlusstext trägt,
@@ -315,34 +318,34 @@ jobs:
                 # hier deutlich weniger sieht, hat entweder keine
                 # Vorlagen-Volltexte im Bestand oder einen Parser, dem ein
                 # Format entglitten ist.
-                "council_gebuehren", "council_gebuehrensaetze",
-                "council_haushaltssatzung",
-                "council_wirtschaftsplaene",
+                "council_fees", "council_fee_rates",
+                "council_budget_bylaw",
+                "council_business_plans",
                 # Die Änderungslisten (#734/#838). Die Summen-Tabelle steht mit
                 # dabei, weil sie der Beweis der anderen ist: Positionen ohne
                 # ihre Zusammenstellung hätte der Ingest gar nicht gespeichert
                 # — bliebe sie leer, während Positionen dastehen, wäre etwas
                 # an dieser Ordnung vorbeigelaufen.
-                "council_haushalt_aenderungen",
-                "council_haushalt_aenderungen_summen",
+                "council_budget_amendments",
+                "council_budget_amendments_totals",
                 # Dieselben Listen für den Finanzhaushalt. Von den 18
                 # Dokumenten lesen sich 15; die Zeilenzahl hier ist deshalb
                 # eine Aussage über den Parser, nicht nur über den Bestand.
-                "council_haushalt_aenderungen_fhh",
-                "council_haushalt_aenderungen_fhh_summen",
+                "council_budget_amendments_cash",
+                "council_budget_amendments_cash_totals",
                 # Der Haushaltsvollzug. Hier sagt die JAHRESSPANNE mehr als die
                 # Zeilenzahl: Ein Jahrgang besteht aus bis zu vier Stichtagen
                 # mit je zwei Haushalten, und ein Lauf, der nur den ersten
                 # geholt hat, sieht in der Zeilenzahl aus wie ein voller.
                 "council_budget_execution",
             ]
-            # Die Jahresspalte heißt nicht überall „jahr": council_haushalt
-            # führt „year", der Stellenplan „jahrgang". Der erste Lauf meldete
+            # Die Jahresspalte heißt nicht überall „year": der Stellenplan
+            # führt „budget_year", der Gesamtergebnishaushalt „plan_budget_year". Der erste Lauf meldete
             # für beide „no such column" — deshalb wird sie hier aus dem Schema
             # gelesen statt geraten.
             def jahresspalte(tabelle):
                 namen = [r[1] for r in s._conn.execute(f"PRAGMA table_info({tabelle})")]
-                for kandidat in ("jahr", "jahrgang", "year"):
+                for kandidat in ("year", "budget_year", "plan_budget_year", "report_year"):
                     if kandidat in namen:
                         return kandidat
                 return None
@@ -368,13 +371,15 @@ jobs:
             # nachdem alles Inhaltliche schon erledigt war. Leeres dict heißt:
             # keine Zeile ohne Herkunftsnachweis.
             # Was das Sehmodell gelesen hat — und was noch als Bild liegt.
+            # Gezählt wird `ocr_model`, nicht `status='ocr'` — den Status gibt es
+            # seit #679 nicht mehr, gelesene Scans stehen auf `ok`.
             # Steht hier, weil ein OCR-Lauf sonst nur im Log auftaucht: Die
             # Zahl der verbleibenden Scans ist die eigentliche Arbeitsliste,
             # und sie soll nicht erst auffallen, wenn eine Seite leer bleibt.
             try:
                 gelesen, offen = s._conn.execute(
-                    "SELECT SUM(status = 'ocr'), SUM(status = 'empty') "
-                    "FROM council_anlagen").fetchone()
+                    "SELECT SUM(ocr_model IS NOT NULL), SUM(status = 'empty') "
+                    "FROM council_attachments").fetchone()
                 print(f"\nAnlagen per OCR gelesen: {gelesen or 0}   "
                       f"noch als Bild: {offen or 0}")
             except Exception as e:                          # noqa: BLE001
@@ -397,8 +402,8 @@ jobs:
             print("\nVerfügbare Überschussrücklage nach Jahresergebnis:")
             if ruecklagen:
                 for zeile in ruecklagen:
-                    print(f"  {zeile['jahr']}: "
-                          f"{zeile['stand_nach_ergebnis'] / 1_000_000:.1f} Mio. Euro")
+                    print(f"  {zeile['year']}: "
+                          f"{zeile['state_after_result'] / 1_000_000:.1f} Mio. Euro")
             else:
                 print("  LEER — Bilanzrollen oder Jahresergebnis fehlen")
 
@@ -411,9 +416,9 @@ jobs:
             # neues Dokument bekommen — oder die Kopferkennung greift zu weit.
             try:
                 mit = s._conn.execute(
-                    "SELECT jahrgang, COUNT(*) FROM council_haushalt_aenderungen "
-                    "WHERE urheber IS NOT NULL GROUP BY jahrgang "
-                    "ORDER BY jahrgang").fetchall()
+                    "SELECT budget_year, COUNT(*) FROM council_budget_amendments "
+                    "WHERE author IS NOT NULL GROUP BY budget_year "
+                    "ORDER BY budget_year").fetchall()
                 print("\nÄnderungslisten mit Urheber je Position:")
                 for jahrgang, anzahl in mit:
                     print(f"  {jahrgang}: {anzahl} Positionen")

@@ -44,7 +44,7 @@ export function SteuerPlanIst({ zeilen, abgrenzung, beleg }: {
   const hantelZeilen: HantelZeile[] = sortiert.map((z) => ({
     label: String(z.year),
     plan: z.plan / 1e6,
-    ist: z.ist / 1e6,
+    ist: z.actual / 1e6,
     // `einordnung` ist Pflicht-FELD (GB-05). `null` heißt hier genau, was es
     // heißt: Tabelle 1103 erläutert ihre Zeilen nicht — sie stellt zwei Zahlen
     // nebeneinander, mehr nicht. Wo die Quelle doch etwas über sich selbst
@@ -60,7 +60,7 @@ export function SteuerPlanIst({ zeilen, abgrenzung, beleg }: {
   // Kennzahl, sondern die Zusammenfassung dessen, was die Hantel zeigt.
   const abweichungen = sortiert
     .filter((z) => z.plan > 0)
-    .map((z) => (z.ist / z.plan - 1) * 100);
+    .map((z) => (z.actual / z.plan - 1) * 100);
   const alleUeber = abweichungen.length > 1 && abweichungen.every((a) => a > 0);
   const kleinste = Math.min(...abweichungen);
   const groesste = Math.max(...abweichungen);

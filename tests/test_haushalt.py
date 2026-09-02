@@ -548,6 +548,42 @@ Ansatz 2025
 auf Sachvermögen 846,93
 """
 
+# Wörtlich aus „2026 019 Vw THH13 Haushalt 2026 Verwaltungsentwurf" (Dokument
+# 297429): Die nicht rechtsfähigen Stiftungen sind KEINEM Amt zugeordnet —
+# unter der Produktnummer steht direkt die Tabelle. Wer hier eine Amtszeile
+# erwartet, schluckt „Erträge und Aufwendungen Ergebnis 2024" als Amtsnamen
+# und verliert zugleich die Kopfspalte, an der die Jahreszuordnung hängt.
+THH_OHNE_AMT = """Teilergebnishaushalt THH13: nicht rechtsfähige Stiftungen
+Produkt: Stiftung Eric und Margarethe Collins (P51.111051)
+Erträge und Aufwendungen Ergebnis 2024
+- Euro -
+Ansatz 2025
+- Euro -
+Ansatz 2026
+- Euro -
+Ansatz 2027
+- Euro -
+Ansatz 2028
+- Euro -
+Ansatz 2029
+- Euro -
+Ordentliche Erträge
+06. privatrechtliche Entgelte 18.505,00 14.000 18.000 18.000 18.00018.000
+12. =Summe ordentliche
+Erträge
+24.908,85 21.000 25.000 25.000 25.000 25.000
+Ordentliche Aufwendungen
+16. Abschreibungen 1.254,00 1.065 1.370 1.429 1.4871.312
+20. = Summe ordentliche
+Aufwendungen
+56.119,94 36.907 38.054 38.112 38.171 38.229
+21. ordentliches Ergebnis
+Jahresüberschuss(+)
+/Jahresfehlbetrag (-)
+-31.211,09 -15.907 -13.054 -13.112 -13.171 -13.229
+1438
+"""
+
 # Ebenfalls wörtlich (Dokument 297443, Produkt P10.111002): Ein Produkt ohne
 # ordentliche Erträge lässt die Zeile „12. = Summe ordentliche Erträge" LEER.
 # Dahinter steht die nächste Tabellenzeile. Wer von der Beschriftung aus
@@ -593,14 +629,23 @@ Erträge und Aufwendungen Ergebnis 2021
 - Euro -
 Ansatz 2022
 - Euro -
+Ansatz 2023
+- Euro -
+Ansatz 2024
+- Euro -
+Ansatz 2025
+- Euro -
+Ansatz 2026
+- Euro -
 12. =Summe ordentliche
 Erträge
-1.000,00 2.000
+85.821,13 107.500 110.000 110.000 110.000 110.000
+Ordentliche Aufwendungen
 20. = Summe ordentliche
 Aufwendungen
-3.000,00 5.000
-21. ordentliches Ergebnis -2.000,00 -3.000
-1091
+947.363,78 905.095 1.008.213 1.012.706 1.016.925 1.021.227
+21. ordentliches Ergebnis -861.542,65 -797.595 -898.213 -902.706 -906.925 -911.227
+1090
 Teilergebnishaushalt THH10: Soziales und Gesundheit
 Produkt: Sozialhilfe SGB XII ö.T. (P10.311101)
 Amt für Teilhabe und Soziales
@@ -677,17 +722,53 @@ def test_parse_teilergebnishaushalt_produkte():
     p = produkte[0]
     assert p["product_no"] == "P10.111023" and p["product_name"] == "Archivierung"
     assert p["sub_budget_no"] == 6 and p["office"] == "Amt für Kultur, Museen und Sport"
-    # Haushaltsjahr = ERSTER Ansatz (2019), nicht das letzte Finanzplanungsjahr
-    assert p["year"] == 2019
-    assert p["revenues"] == 4206.0 and p["expenses"] == 484_239.0
-    assert p["result"] == -480_033.0
+    # Haushaltsjahr = DRITTE Kopfspalte (2020): davor das Ist 2018 und der
+    # fortgeschriebene Ansatz 2019, dahinter die Finanzplanung bis 2023.
+    assert p["year"] == 2020
+    assert p["revenues"] == 5684.0 and p["expenses"] == 436_282.0
+    assert p["result"] == -430_598.0
     # Die angeklebte Seitenzahl (601) darf kein Wert werden.
     assert p["result"] != 601
 
 
 def test_teilergebnishaushalt_prueft_summe():
-    kaputt = THH_PLAN.replace("-405.485,45 -480.033", "-405.485,45 -999.999")
+    kaputt = THH_PLAN.replace("-430.598 -437.476", "-999.999 -437.476")
     assert finanzberichte.parse_teilergebnishaushalt(kaputt) == []
+
+
+def test_teilergebnishaushalt_nimmt_den_ansatz_des_haushaltsjahres():
+    """Die dritte Kopfspalte, nicht die zweite: Der Plan 2020 nennt fünfmal
+    „Ansatz", beschlossen wird davon 2020. Spalte 2 ist der fortgeschriebene
+    Vorjahresansatz — sie zu lesen legte die ganze Schicht ein Jahr zurück,
+    und der jüngste Jahrgang käme nie an."""
+    p = finanzberichte.parse_teilergebnishaushalt(THH_PLAN)[0]
+    assert (p["year"], p["revenues"], p["expenses"]) == (2020, 5684.0, 436_282.0)
+    # Die Vorjahresspalte steht im selben Dokument und ist eine andere Zahl.
+    assert p["revenues"] != 4206.0
+
+
+def test_teilergebnishaushalt_ohne_tabellenkopf_raet_nichts():
+    """Ein Kopf mit weniger als drei Spalten sagt nicht, welche der
+    beschlossene Ansatz ist. Dann gibt es keine Zeile — eine geratene Spalte
+    wäre eine Zahl, für die niemand einstehen kann."""
+    verkuerzt = THH_PLAN.replace("Ansatz 2020\n- Euro -\n", "", 1)
+    verkuerzt = verkuerzt.replace("Ansatz 2021\n- Euro -\n", "", 1)
+    verkuerzt = verkuerzt.replace("Ansatz 2022\n- Euro -\n", "", 1)
+    verkuerzt = verkuerzt.replace("Ansatz 2023\n- Euro -\n", "", 1)
+    assert finanzberichte.parse_teilergebnishaushalt(verkuerzt) == []
+
+
+def test_teilhaushalt_ohne_amt_erfindet_keins():
+    """THH13 („nicht rechtsfähige Stiftungen") führt kein Amt: Unter der
+    Produktnummer steht direkt die Tabelle. Das Amt bleibt leer, und die
+    Kopfzeile bleibt Kopfzeile — sonst stünde „Erträge und Aufwendungen
+    Ergebnis 2024" als zuständige Stelle in der Datenbank."""
+    p = finanzberichte.parse_teilergebnishaushalt(THH_OHNE_AMT)[0]
+    assert p["office"] is None
+    assert p["sub_budget_no"] == 13 and p["product_no"] == "P51.111051"
+    assert p["year"] == 2026
+    assert p["revenues"] == 25_000.0 and p["expenses"] == 38_054.0
+    assert p["result"] == -13_054.0
 
 
 def test_teilergebnishaushalt_ab_plan_2025_mit_zwei_beschriftungszeilen():
@@ -701,10 +782,10 @@ def test_teilergebnishaushalt_ab_plan_2025_mit_zwei_beschriftungszeilen():
     assert p["product_no"] == "P10.111001" and p["sub_budget_no"] == 1
     assert p["product_name"] == "Rechnungsprüfung (örtliche Prüfung)"
     assert p["office"] == "Rechnungsprüfungsamt"
-    # Haushaltsjahr = ERSTER Ansatz (2024), nicht die Finanzplanungsjahre.
-    assert p["year"] == 2024
-    assert p["revenues"] == 160_800.0 and p["expenses"] == 1_349_214.0
-    assert p["result"] == -1_188_414.0
+    # Haushaltsjahr = DRITTE Kopfspalte (2025), nicht die Finanzplanungsjahre.
+    assert p["year"] == 2025
+    assert p["revenues"] == 159_550.0 and p["expenses"] == 1_431_642.0
+    assert p["result"] == -1_272_092.0
     # Die Rechenprobe des Dokuments geht auf: 12 − 20 = 21.
     assert p["revenues"] - p["expenses"] == p["result"]
     # Die angeklebte Seitenzahl (280) darf kein Wert werden.

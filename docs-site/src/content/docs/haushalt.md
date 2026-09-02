@@ -42,7 +42,7 @@ genau dieser Reihenfolge.
 | `/haushalt/einnahmen` | Schritt 1 — alle Einnahmequellen, **nach Entscheidungsmacht gruppiert** statt nach Betrag sortiert |
 | `/haushalt/pflicht` | Schritt 2 — muss oder kann: Ausgaben nach Gestaltungsspielraum, gegen die Selbstauskunft der Stadt gehalten |
 | `/haushalt/produkte[?nr=<produkt_nr>]` | Schritt 3 — „Was kostet eigentlich …?", zwei Abschnitte: `#bereiche` die zehn Teilhaushalte im Klartext (ihre Namen stammen aus der Verwaltungs­gliederung und sagen, wer zuständig ist, nicht worum es geht), `#produkte` die einzelnen Produkte mit Kosten, durchsuchbar. Die dritte Ebene — der Steckbrief eines Teilhaushalts — bleibt `/haushalt/bereich` |
-| `/haushalt/personal` | Schritt 4 — „Wer macht die Arbeit?“: der Stellenplan je Amtsbezeichnung, mit besetzten und unbesetzten Stellen zum Stichtag |
+| `/haushalt/personal` | Schritt 4 — „Wer macht die Arbeit?“: der Stellenplan je Amtsbezeichnung, mit besetzten und unbesetzten Stellen zum Stichtag — dazu, was das Personal kostet: Posten 13 der Ergebnisrechnung (Ist, Plan gegen Ist je Jahr) und der Ansatz des jüngsten Haushalts |
 | `/haushalt/investitionen[?jahr=<jahr>&thh=<nr>]` | Schritt 5 — „Was gebaut wird — und was daraus wurde", zwei Abschnitte: `#plan` der Finanzhaushalt je Teilhaushalt mit dem Investitionsprogramm (Vorhaben einzeln, durchsuchbar), `#gebaut` was am Jahresende tatsächlich abgeflossen ist — seit 2003, nach Auszahlungsart |
 | **Die Gegenprobe** | |
 | `/haushalt/plan-ist[?jahr=<jahr>]` | Schritt 6 — geplant gegen tatsächlich, je Teilhaushalt, mit den Abweichungsgründen der Verwaltung im Wortlaut |
@@ -398,7 +398,7 @@ Drei Regeln, die die Oberfläche daraus ableitet
    dann „Im Ratsinformationssystem suchen" statt „Dokument öffnen".
 
 Ein Jahrgang darf mehrere Dokumente tragen: Die Produktebene verteilt sich auf
-rund neun Teilhaushalts-Anlagen. Die API nennt alle; das Verzeichnis listet
+zwölf bis dreizehn Teilhaushalts-Anlagen. Die API nennt alle; das Verzeichnis listet
 sie, der Beleg-Chip verweist auf die Langfassung.
 
 :::note[Was der Altbestand mitbringt — und was nicht]
@@ -571,8 +571,8 @@ automatisch abgedeckt, und der Job darf beliebig oft laufen.
 
 :::danger[Einheit, nicht Jahrgang]
 Die kleinste Einheit ist **nicht** der Jahrgang, sondern das Dokument
-beziehungsweise die Ebene: Ein Produkt-Jahrgang verteilt sich auf rund neun
-Teilhaushalts-Anlagen, ein Jahresabschluss auf zwei Ebenen (Gesamtrechnung und
+beziehungsweise die Ebene: Ein Produkt-Jahrgang verteilt sich auf zwölf bis
+dreizehn Teilhaushalts-Anlagen, ein Jahresabschluss auf zwei Ebenen (Gesamtrechnung und
 Teil-Ergebnisrechnungen). **„Jahr ist da" heißt nicht „Jahr ist vollständig".**
 
 Und die Teile kommen nicht gleichzeitig. `check_protocols.py` legt eine Anlage
@@ -594,8 +594,8 @@ Tupel, deren erstes Element immer der Jahrgang ist:
 | Schlussbericht, Prüfungsfeststellungen, Gesamtabschluss, Haushaltsplan | der Jahrgang selbst | `(2024,)` |
 
 Den Schlüssel eines Teilhaushalts-Plans liefern Textkopf und Label zusammen:
-der Jahrgang aus der ersten Ansatzspalte, die Nummer aus `THH\s*0*(\d+)` im
-Label. Gegen alle 79 Teilhaushalts-Anlagen des Bestands geprüft — das Paar
+der Jahrgang aus der **dritten** Kopfspalte, die Nummer aus `THH\s*0*(\d+)` im
+Label. Gegen alle 110 Teilhaushalts-Anlagen des Bestands geprüft — das Paar
 trifft immer genau das, was `parse_teilergebnishaushalt` am Ende vergibt.
 :::
 
@@ -605,7 +605,7 @@ Aus acht Jahrgängen Sitzungsdaten (`council_sessions.session_date` über
 | Was | Wann im Rat | Versatz zum Jahrgang | Ausnahmen |
 |---|---|---|---|
 | Jahresabschluss + RPA-Schlussbericht + Rechenschaftsbericht | **Anfang September** | + 1 Jahr | 1× August |
-| Haushaltsplan mit Gesamtergebnishaushalt, Teilhaushalten und Stellenplan | **Anfang Oktober** | Plan und Stellenplan: − 1 Jahr · Teilhaushalte: ± 0 | 1× November |
+| Haushaltsplan mit Gesamtergebnishaushalt, Teilhaushalten und Stellenplan | **Anfang Oktober** | − 1 Jahr | 1× November |
 | Konsolidierter Gesamtabschluss (Prüfbericht des RPA) | **Februar** | + 2 Jahre | Juni bis Februar |
 
 Der dritte Takt kam mit dem Konzern-Bereich dazu und ist der langsamste: Ein
@@ -643,14 +643,33 @@ auf dreihundert, ist das eine neue Nachricht und keine Wiederholung.
 `council_attachments.fetched_at` trägt bei **allen** Finanzdokumenten den
 10.08.2026 — den Tag des Volltext-Backfills. Als Veröffentlichungsdatum ist das
 Feld wertlos. Der Jahrgang kommt deshalb aus dem Dokument selbst: aus dem Label
-(Jahresabschluss), dem Textanfang (Prüfberichte) oder der ersten Ansatzspalte
-im Tabellenkopf (Teilhaushalts-Pläne).
+(Jahresabschluss), dem Textanfang (Prüfberichte) oder dem Tabellenkopf
+(Teilhaushalts-Pläne).
 
-Bei den Teilhaushalts-Plänen ist das nicht dasselbe wie die Jahreszahl im
-Dateinamen: „2024 007 IVw THH01" ist der Haushaltsplan **2024**, seine erste
-Ansatzspalte trägt **2023** — und genau die übernimmt der Parser (alles danach
-ist mittelfristige Finanzplanung). Wer hier das Label läse, suchte einen
-Jahrgang, den die Tabelle nie zurückgibt.
+Bei den Teilhaushalts-Plänen ist der Kopf die **dritte** Spalte, und das war
+bis 09/2026 falsch: Gelesen wurde die erste Ansatzspalte. Der Kopf sagt sechs
+Jahre und fünfmal „Ansatz" — `Ergebnis 2024 · Ansatz 2025 · Ansatz 2026 ·
+Ansatz 2027 · Ansatz 2028 · Ansatz 2029` —, eingebracht wird davon genau eins:
+2026. Spalte 2 ist der fortgeschriebene Vorjahresansatz, 4 bis 6 sind
+mittelfristige Finanzplanung. Genau dieselbe Kopfzeile trägt Anlage 005, und
+dort las `income_budget.budget_year` seit jeher die dritte Spalte.
+
+Die Folge war eine Schicht, die ein Jahr hinter ihren eigenen Dokumenten
+herlief: Der Verwaltungsentwurf 2026 (eingebracht am 01.10.2025) füllte den
+Jahrgang **2025**, und die Produktebene 2026 wäre erst mit dem Entwurf 2027
+gekommen. Zwei Spuren zeigten darauf, bevor jemand nachrechnete: Die
+Produktebene endete 2025, während Gesamtergebnishaushalt und
+Investitionsprogramm aus **denselben** Haushaltsplänen bis 2026 reichen — und
+die Anlage „2019 THH 08" galt im Code als falsch beschriftet, weil der Parser
+sie 2018 nannte. Sie war richtig beschriftet.
+
+**Die Jahrgangsprobe.** Vier Label-Generationen tragen den Jahrgang selbst
+(„007 2023 THH01", „2024 007 IVw THH01", „2025 …", „2026 …"). Über alle **53
+Anlagen mit Jahreszahl im Label** trifft die dritte Kopfspalte genau diese Zahl
+— 53 von 53, an den PDFs nachgemessen. Die Reihenfolgeannahme ist damit belegt
+statt geglaubt, und `lies_teilhaushalte` hält sie bei jedem Lauf gegen das
+Label: Weichen beide ab, steht es als Warnung im Protokoll. Maßgeblich bleibt
+der Kopf — die Hälfte der Labels nennt gar keinen Jahrgang („007 THH01").
 :::
 
 ### Drei Regeln, die ihn unbeaufsichtigt tragen
@@ -716,7 +735,7 @@ Antworten, und eine davon veraltet still.
 | Jahresabschluss | Label `%Jahresabschluss%`, > 100 Seiten, **ohne** `%Rechenschaft%` / `%Schlussbericht%` | `council_income_statement` (+ `council_variance_reasons`) | September, Jahrgang + 1 |
 | Schlussbericht des RPA (Fundstelle) | Label `%chlussbericht%` **oder** Text beginnt mit `Schlussbericht`; entschieden am Textanfang | `council_audit_report_sources` | September, Jahrgang + 1 |
 | Prüfungsfeststellungen | Text `%Rechnungsprüfungsamtes%`, > 30 Seiten; entschieden am Textanfang | `council_audit_reports` | September, Jahrgang + 1 |
-| Teilhaushalts-Pläne | Label `%THH%`, > 40 Seiten | `council_products` | Oktober, Jahrgang + 0 |
+| Teilhaushalts-Pläne | Label `%THH%`, > 25 Seiten; Jahrgang aus der **dritten Spalte** des Tabellenkopfs | `council_products` | Oktober, Jahrgang − 1 |
 | Gesamtergebnishaushalt | Label `%Gesamtergebnishaushalt%`, > 10 Seiten; Jahrgang aus dem **Tabellenkopf** (vier der acht Dokumente tragen keine Jahreszahl im Label) | `council_income_budget` | Oktober, Jahrgang − 1 |
 | Stellenplan | Label `%Stellenplan%`, > 10 Seiten, **ohne** `%eändert%`; Jahrgang aus dem **Tabellenkopf** (drei Schreibweisen im Label, eine mit zwei Jahreszahlen) | `council_staff_plan` | Oktober, Jahrgang − 1 |
 | Konsolidierter Gesamtabschluss | **nur** Text (`konzernabschluss.TEXT_MUSTER`), > 40 Seiten — die Labels dieser Reihe sind wertlos | `council_group_items` (+ `council_group_entities`) | Februar, Jahrgang + 2 |
@@ -724,6 +743,26 @@ Antworten, und eine davon veraltet still.
 | Haushaltsplan | *(kein Anlagen-Muster — Download)* | `council_budget` | Oktober, Jahrgang − 1 |
 | Steuerkraft im Städtevergleich | *(kein Anlagen-Muster — Download beim LSN)* | `council_city_comparison`, Reihe `steuerkraft` | April, Jahrgang + 0 |
 | Realsteuervergleich (Hebesätze, Steuereinnahmekraft) | *(kein Anlagen-Muster — Download beim LSN)* | `council_city_comparison`, Reihe `realsteuern` | November, Jahrgang + 1 |
+
+:::caution[Eine Mindestseitenzahl ist eine Aussage über die Dokumente]
+Bei den Teilhaushalts-Plänen stand sie bis 09/2026 auf „> 40 Seiten" — und
+warf damit in **jedem** Jahrgang vier Teilhaushalte hinaus, weil vier davon
+schlicht dünner sind: THH13 (Stiftungen) hat 26 bis 28 Seiten, THH03
+(Wirtschaftsförderung und Liegenschaften) 28 bis 34, THH02 (Personal,
+Organisation, IT) und THH12 (Schule und Bildung) genau 40 — und `> 40` lässt
+40 nicht durch. Auf den Seiten stand dafür „kein auslesbarer
+Teilhaushaltsplan", also eine Aussage über die Stadt, die in Wahrheit eine über
+unsere Schwelle war.
+
+Die neue Schwelle ist gemessen: Der kleinste echte Plan im Bestand hat 26
+Seiten, der größte Fremdkörper mit `THH` im Label 22 (ein Auszug des
+Investitionsprogramms). 25 liegt dazwischen, mit Abstand nach beiden Seiten.
+Was dabei zusätzlich hereinkommt, sind Zweitfassungen derselben Pläne
+(„THH12", „zu TOP 9 THH12", „Anlage 4 THH 12" — dieselbe Datei unter einem
+anderen Tagesordnungspunkt); die Regel „das erste Dokument versorgt den
+Teilhaushalt" fängt sie ab, und die Zahl solcher Dubletten steigt damit von 6
+auf 11.
+:::
 
 :::note[Warum der Städtevergleich zwei Zeilen bekommt]
 Beide Reihen liegen in derselben Tabelle, aber ihre Jahresangaben bedeuten
@@ -767,8 +806,8 @@ September 2026 vorgelegt."* Das Wort „fehlt" kommt nicht vor — was die Stadt
 noch nicht veröffentlicht hat, fehlt uns nicht.
 
 **Ein halber Jahrgang gibt sich zu erkennen.** Sonst stünde er in derselben
-Jahresspanne wie ein vollständiger und sähe aus wie einer: *„Für 2023 haben wir
-6 von 9 Teilhaushalten."* / *„Für 2024 fehlt noch die Aufteilung auf die
+Jahresspanne wie ein vollständiger und sähe aus wie einer: *„Für 2019 haben wir
+12 von 13 Teilhaushalten."* / *„Für 2024 fehlt noch die Aufteilung auf die
 einzelnen Bereiche."* Der Maßstab ist der bestbelegte Jahrgang desselben
 Bestands — mehr wissen wir nicht, und weniger zu behaupten wäre falsche
 Bescheidenheit.
@@ -1171,17 +1210,23 @@ Bis 08/2026 stand hier und im Kopf von `lib/haushalt-pflicht.ts`, es gebe
 Halbsatz gilt weiter: Eine amtliche Einteilung **ganzer** Teilhaushalte gibt es
 nicht und wird es nicht geben, weil in jedem beides steckt. Der Rest stimmt
 nicht mehr — die Produktebene trägt zu jeder einzelnen Aufgabe zwei Angaben der
-Stadt selbst: `auftragsgrundlage` (377 von 377 Zeilen) und `beeinflussbarkeit`,
-also wie viel Spielraum die **Stadt** sieht (371 von 377).
+Stadt selbst: `legal_basis` (563 von 584 Zeilen) und `controllability`,
+also wie viel Spielraum die **Stadt** sieht (556 von 584).
 
 `spielraumBefunde()` fasst beides je Teilhaushalt **nach Aufwand gewichtet**
 zusammen (nicht nach Kopfzahl — sonst zöge ein 200.000-€-Produkt so schwer wie
-ein 70-Mio.-€-Produkt), `abgleich()` hält es gegen unsere Stufe. Ergebnis:
-**Bei 6 von 9 Teilhaushalten mit Produktdaten (Stand 2023) deckt es sich.** Bei
-drei nicht — bei „Jugend und Familie" sagen wir „Pflicht mit Spielraum", die
-Stadt sieht für 95 % des Geldes kaum welchen; bei „Finanzmanagement und Recht"
-und „Stadtplanung" ist es umgekehrt. Vier Teilhaushalte haben gar keine
-Produktebene und zählen als **offen**, nicht als Übereinstimmung.
+ein 70-Mio.-€-Produkt), `abgleich()` hält es gegen unsere Stufe. Wo beides
+auseinandergeht, weist die Seite es aus — bei „Jugend und Familie" etwa sagen
+wir „Pflicht mit Spielraum", die Stadt sah 2023 für 95 % des Geldes kaum
+welchen; bei „Finanzmanagement und Recht" und „Stadtplanung" war es umgekehrt.
+
+**Der Nenner hat sich seit 09/2026 geändert.** Bis dahin trugen nur 9 der 13
+Teilhaushalte überhaupt eine Produktebene, vier zählten deshalb als **offen**
+statt als Übereinstimmung — nicht, weil ihre Pläne fehlten, sondern weil eine
+Seitenschwelle sie aussortierte (s. „Eine Mindestseitenzahl ist eine Aussage
+über die Dokumente"). Seit der Korrektur liegen alle dreizehn vor; die Zahl
+der Abweichungen rechnet die Seite live aus dem Bestand, sie steht hier
+deshalb bewusst nicht als feste Zahl.
 
 Die Abweichung wird ausgewiesen, nicht geglättet: Die redaktionelle Stufe
 bleibt stehen, die Zeile bekommt eine Marke, die Zahl steht als Befund über der
@@ -1199,16 +1244,26 @@ eine Zahl ohne Maßstab. `abgleich()` rechnet beide Richtungen unverändert;
 nicht die Schlagzeile auf der Seite.
 
 **Zwei Jahre, nicht eins.** Der Plan reicht bis ins Kopfjahr der Seite, die
-Produktebene endet 2023. Jede Aussage aus ihr trägt deshalb ihren eigenen
-Jahresstempel (`SpielraumBefund.jahr`). Vermischen wäre die stillste Art, hier
-falsch zu liegen.
+Produktebene bis in den zuletzt eingebrachten Entwurf — seit 09/2026 ist das
+dasselbe Jahr, davor lag sie eines dahinter. Jede Aussage aus ihr trägt
+trotzdem ihren eigenen Jahresstempel (`SpielraumBefund.jahr`): Vermischen wäre
+die stillste Art, hier falsch zu liegen, und der Gleichstand ist kein
+Naturgesetz.
 :::
 
-Der Bestand (377 Produkte, 2018–2023): Auftragsgrundlage und Wirkungskreis
-tragen 100 %, Kurzbeschreibung, Beeinflussbarkeit und Zielgruppe je 98,4 %.
-Die sechs Lücken sind echt — „Personalzuweisung an das Jobcenter" führt den
-Plan ohne Beschreibungstext. Der Lauf von `ingest_finanzberichte.py` weist
-die Quote je Feld aus, die Seite nennt sie ebenfalls.
+Der Bestand (584 Produkte, 2019–2026, gemessen am 02.09.2026): Wirkungskreis
+trägt 96,6 %, Auftragsgrundlage 96,4 %, Kurzbeschreibung, Beeinflussbarkeit und
+Zielgruppe je 95,2 %. Die Lücken sind echt und benennbar: **20 der 21
+Stiftungs-Produkte** (THH13) führen gar keinen Steckbrief — der Plan stellt sie
+nur mit ihrer Rechnung dar —, „Personalzuweisung an das Jobcenter" (THH10)
+steht in allen acht Jahrgängen ohne Beschreibungstext, und einem Produkt aus
+THH03 fehlt die Auftragsgrundlage. Der Lauf von `ingest_finanzberichte.py`
+weist die Quote je Feld aus, die Seite nennt sie ebenfalls.
+
+Und ein Feld fehlt dort **absichtlich**: Die nicht rechtsfähigen Stiftungen
+sind keinem Amt zugeordnet, im Plan steht unter ihrer Produktnummer direkt die
+Tabelle. `office` bleibt für sie leer, statt die Kopfzeile der Tabelle als
+zuständige Stelle auszugeben.
 
 :::caution[Die Label stehen NACH ihrem Inhalt]
 Im PDF sitzt „Kurzbeschreibung:" als Spaltenüberschrift **links neben** dem
@@ -1304,10 +1359,13 @@ Eine Aufteilung nach Teilhaushalten. Der Jahresabschluss führt sie in
 Abschnitt 5 („Teil-Ergebnisrechnung THH01…"), der Gesamtergebnishaushalt
 nicht: In allen acht Dokumenten kommt „THH" kein einziges Mal vor. Für ein
 Bild, das Herkunft und Verwendung gegenüberstellt, liefert sie also nur die
-Herkunftsseite. `council_products` deckt nur 8 bis 10 der 13 Teilhaushalte ab
-(17–36 % unter der Summenzeile), `council_budget` ist vollständig, aber eine
-andere Gliederung (2026: 812,9 statt 788,6 Mio. € Erträge). Beides ist
-brauchbar — aber nur, wenn die Seite den Unterschied benennt.
+Herkunftsseite. `council_products` deckt seit 09/2026 **alle dreizehn**
+Teilhaushalte ab (2019–2023 zwölf — für THH13 hängt dort keine eigene Anlage
+an der Vorlage); wie viel der geplanten Aufwendungen die Produkte erklären,
+weist der Endpunkt je Jahrgang als `coverage_percent` aus. `council_budget` ist
+vollständig, aber eine andere Gliederung (2026: 812,9 statt 788,6 Mio. €
+Erträge). Beides ist brauchbar — aber nur, wenn die Seite den Unterschied
+benennt.
 :::
 
 ## Haushaltsvollzug: das laufende Jahr
@@ -1497,7 +1555,7 @@ Bereichs, die nicht in Euro rechnet. Er hat zwei Teile — A für Beamtinnen und
 Beamte (neun Spalten), B für Tarifbeschäftigte (acht) — und jeder Teil kommt
 **einzeln** durch seine Proben. Deshalb ist die Einheit der Teil und nicht der
 Jahrgang: Im Stellenplan 2026 gibt der Textextrakt für Teil B Glyphen-Nummern
-statt Buchstaben aus, Teil A steht sauber da.
+statt Buchstaben aus (Seiten 5–9, s. u.), Teil A steht sauber da.
 
 | Probe | Was sie prüft | Wo |
 |---|---|---|
@@ -1539,7 +1597,40 @@ und schlüge bei 143 zu.
 Stand heute: Sieben von acht möglichen Teilen im Bestand (2023–2026 Teil A,
 2023–2025 Teil B), 611 Zeilen, alle Summenproben auf 0,00 aufgegangen, zwei
 gekennzeichnete Zeilen. Die Jahrgänge 2019–2022 gibt es nicht — dort endet das
-Anlagenverzeichnis des Haushaltsplans bei „021 Wirtschaftsplan EGH".
+Anlagenverzeichnis des Haushaltsplans bei „021 Wirtschaftsplan EGH". Für 2020
+liegen zwar zwei Anlagen einer späteren Vorlage vor (19/0945), aber beide
+zeigen nur die **Tarifhälfte**: ein „Geänderter Stellenplan Teil B" und eine
+„Geänderte Übersicht zum Stellenplan Teil A", die im Inneren ebenfalls „II.
+Arbeitnehmerinnen und Arbeitnehmer" führt. Ein Jahrgang aus beiden läse sich
+wie ein Jahr ohne Beamtenstellen — er bleibt draußen.
+
+:::caution[Teil B 2026 fehlt an der Zeichenzuordnung, nicht am Parser]
+Der Stellenplan 2026 (Anlage 297432, 20 Seiten) trägt beide Teile — lesbar ist
+nur einer. Seitenweise nachgemessen, mit `pypdf` und damit derselben
+Extraktion wie der Backfill: **Teil A steht auf den Seiten 3–4** in
+TrueType/Type1, Buchstabenanteil 0,45 bis 0,50. **Teil B steht auf den Seiten
+5–9**, und die tragen eine **Type3**-Schrift ohne `ToUnicode`-Tabelle. Was
+`pypdf` daraus holt, sind Glyphen-Nummern („/0 /1 /2 /3") — 0,8 bis 1,6 %
+Buchstaben je Seite. Dieselbe Schrift steht auf den Seiten 15–20 (2,2 bis
+2,9 %), der Aufteilung nach der Verwaltungsgliederung, die diese Schicht
+ohnehin nicht liest. Im Jahrgang 2025 (Anlage 282872) sind dieselben Tabellen TrueType/Type1
+und gehen glatt durch.
+
+Das erklärt auch die Textmenge, die zuerst nach einer doppelten Extraktion
+aussah: 78.483 Zeichen für 2026 gegen 33.554 für 2025. Eine Glyphenseite
+liefert 4.000 bis 7.700 Zeichen „/12 /8 /3", eine echte Tabellenseite rund
+2.000 Zeichen Text. Über das ganze Dokument bleiben 11,2 % Buchstaben — mehr
+als die 5 %, ab denen `backfill_anlagen_texte.py` einen Volltext verwirft. Der
+Schaden ist **seitenweise**, und keine Schwelle über den ganzen Text sieht ihn:
+Auch `--glyphen`, das seit 09/2026 ganze Anlagen unterhalb der Schwelle für die
+OCR freigibt, greift bei diesem Dokument nicht — zwei Drittel davon sind ja
+lesbar.
+
+Reparieren ließe sich das nur mit Rendern und OCR (`council/ocr.py`): Eine
+Zeichenzuordnung, die nicht im PDF steht, lässt sich nicht aus ihm herauslesen.
+Bis dahin sagt der Datenstand „teilweise" und der Lauf nennt den Grund — was
+etwas anderes ist als „für 2026 gibt es keine Tarifbeschäftigten".
+:::
 
 **Gegenprobe, keine Probe:** Die Ist-Spalte des Vorvorjahres lässt sich gegen
 `council_income_statement` halten — aber sie ist die *Gesamt*ebene (mit den
@@ -3859,13 +3950,22 @@ Der Bereich zeigt lieber eine Lücke als eine Schätzung:
   Menge. Seitdem zieht `backfill_anlagen_texte.py --glyphen` die Schwelle
   nachträglich über den Bestand (Buchstabenanteil unter `MIN_BUCHSTABEN` →
   `empty`), und der OCR-Schritt desselben Ops-Laufs liest, was dort landet.
-- **Vollständige Produktebene** — für einige Teilhaushalte fehlen auslesbare
-  Dokumente: Im Bestand stehen 9 der 13 Teilhaushalte (2025: 10). Gemessen an
-  den Aufwendungen, die der Endpunkt als `coverage_percent` ausweist, deckt
-  die Produktebene je Jahrgang **71 % bis 87 %** (2020–2025; für 2018/2019
-  fehlt die Bezugsgröße in `council_budget`, für 2026 die Produktebene).
-  Deshalb trägt jedes Produkt ein Abdeckungs-Badge — eine Reihe, die nur die
-  vorhandenen Jahre zeigt, sähe sonst durchgehend aus.
+- **Vollständige Produktebene** — seit 09/2026 weitgehend erledigt: Im Bestand
+  stehen alle 13 Teilhaushalte (2019–2023: 12, dort hängt THH13 nicht als
+  eigene Anlage an der Vorlage), 584 Produkte über die Jahrgänge 2019–2026.
+  Was bleibt, ist die Ebene darunter: Ein Produkt kommt nur in die Tabelle,
+  wenn seine drei Summenzeilen so viele Zahlen tragen, wie der Kopf Spalten
+  nennt, und `Erträge − Aufwendungen = Ergebnis` aufgeht. Zwei Fälle fallen
+  deshalb heraus — Produkte **ohne ordentliche Erträge** (die Zeile 12 bleibt
+  leer) und **umstrukturierte Teilhaushalte**: THH07 nennt für 2026 sechs
+  Produkte, von denen fünf nur eine halbe Zeile tragen. Die alten führen nur
+  noch die Vergangenheitsspalten (der Plan hat sie zusammengelegt), die neuen
+  erst ab der Planjahr-Spalte. Vier Zahlen unter sechs Spalten sagen aber
+  nicht, zu welcher Spalte sie gehören — und eine geratene Zuordnung wäre eine
+  Zahl, für die niemand einstehen kann. Wie viel der geplanten Aufwendungen
+  die Produkte erklären, weist der Endpunkt je Jahrgang als `coverage_percent`
+  aus; jedes Produkt trägt zusätzlich ein Abdeckungs-Badge — eine Reihe, die
+  nur die vorhandenen Jahre zeigt, sähe sonst durchgehend aus.
 - Der Open-Data-Datensatz 1102 enthält abweichende Aufwendungen (2024: 764,7
   statt 728,2 Mio. €), ist aber weder als Ist noch als Nachtrag
   gekennzeichnet; genutzt wird daraus nur die Einwohnerspalte.

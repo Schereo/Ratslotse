@@ -193,7 +193,7 @@ export function NachbewilligungsBlock({ daten, year }: {
         <strong className="font-semibold">Außerplanmäßig bedeutet nicht automatisch
         ungedeckt:</strong> Die Vorlagen nennen jeweils eine Deckung. „Überplanmäßig“
         heißt, dass ein vorhandener Ansatz nicht ausreicht; „außerplanmäßig“, dass
-        für diesen Zweck kein Ansatz balance.
+        für diesen Zweck kein Ansatz besteht.
       </p>
 
       {gesamt != null && (

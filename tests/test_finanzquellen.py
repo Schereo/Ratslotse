@@ -126,9 +126,32 @@ JAHRGAENGE = {
 }
 
 
+def thh_kopf(year: int) -> str:
+    """Der Tabellenkopf eines Teilhaushalts-Plans für das Haushaltsjahr ``year``.
+
+    Sechs Spalten, wie in jedem echten Plan: das Ist des Vorvorjahres, der
+    fortgeschriebene Vorjahresansatz, **der Ansatz des Haushaltsjahres** und
+    drei Jahre mittelfristige Finanzplanung. Das Haushaltsjahr ist damit die
+    dritte Spalte — dieselbe, die auch Anlage 005 als Ansatz führt."""
+    return (f"Erträge und Aufwendungen Ergebnis {year - 2}\n- Euro -\n"
+            + "".join(f"Ansatz {j}\n- Euro -\n" for j in range(year - 1, year + 4)))
+
+
+def _spalten(wert: float, schritt: float) -> str:
+    """Sechs verschiedene Spaltenwerte um ``wert`` herum — der Haushaltsansatz
+    in der Mitte (Spalte 3).
+
+    Verschieden, damit ein Test die Spaltenwahl überhaupt prüfen kann: Stünde
+    überall dieselbe Zahl, ginge jede Spalte durch."""
+    return " ".join(eur(wert + schritt * (i - 2)) for i in range(6))
+
+
 def teilhaushalt_plan(sub_budget_no: int, sub_budget_name: str, produkte: list[tuple],
                       year: int) -> str:
     """Ein Teilhaushalts-Plan im Layout der echten Dokumente.
+
+    ``year`` ist der **Haushaltsjahrgang** des Plans, also die dritte
+    Kopfspalte — der Jahrgang, den ``parse_teilergebnishaushalt`` vergibt.
 
     Die Beträge stehen in **deutscher** Schreibweise mit Tausenderpunkt — so
     stehen sie im PDF-Extrakt, und nur so liest ``_thh_zahlen`` sie als eine
@@ -140,14 +163,10 @@ def teilhaushalt_plan(sub_budget_no: int, sub_budget_name: str, produkte: list[t
             f"Teilergebnishaushalt THH{sub_budget_no:02d}: {sub_budget_name}\n"
             f"Produkt: {name} ({product_no})\n"
             f"{office}\n"
-            f"Erträge und Aufwendungen Ergebnis {year - 1}\n- Euro -\n"
-            f"Ansatz {year}\n- Euro -\nAnsatz {year + 1}\n- Euro -\n"
-            f"12. = Summe ordentliche Erträge {eur(revenues - 100)} {eur(revenues)}"
-            f" {eur(revenues + 50)}\n"
-            f"20. = Summe ordentliche Aufwendungen {eur(expenses - 100)}"
-            f" {eur(expenses)} {eur(expenses + 50)}\n"
-            f"21. ordentliches Ergebnis {eur(result - 0)} {eur(result)}"
-            f" {eur(result - 50)}\n"
+            + thh_kopf(year) +
+            f"12. = Summe ordentliche Erträge {_spalten(revenues, 1_000)}\n"
+            f"20. = Summe ordentliche Aufwendungen {_spalten(expenses, 100)}\n"
+            f"21. ordentliches Ergebnis {_spalten(result, 900)}\n"
             "Kurzbeschreibung:\n")
     return text
 
@@ -194,7 +213,7 @@ def thh_bestand(tmp_path):
     store = CouncilStore(tmp_path / "council.sqlite")
     for i, (nr, (name, produkte)) in enumerate(sorted(THH_PLAENE.items())):
         anlage(store, 500 + i,
-               f"2028 {7 + i:03d} Vw THH{nr:02d} Haushalt 2028 Verwaltungsentwurf",
+               f"2027 {7 + i:03d} Vw THH{nr:02d} Haushalt 2027 Verwaltungsentwurf",
                teilhaushalt_plan(nr, name, produkte, 2027))
     with store._conn:  # noqa: SLF001
         store._conn.execute(  # noqa: SLF001
@@ -247,15 +266,33 @@ def test_rechenschaftsbericht_und_schlussbericht_sind_keine_jahresabschluesse(ba
     assert gefunden == {100, 101, 102}
 
 
-def test_teilhaushalt_jahrgang_kommt_aus_der_ansatzspalte():
-    """Der Plan „2024 … THH01" ist der Haushaltsplan 2024, seine erste
-    Ansatzspalte trägt aber 2023 — und genau die übernimmt der Parser. Wer
-    hier das Label läse, suchte einen Jahrgang, den die Tabelle nie liefert."""
+def test_teilhaushalt_jahrgang_ist_die_dritte_kopfspalte():
+    """Der Plan „2024 … THH01" ist der Haushaltsplan 2024 — und genau 2024
+    steht in seiner dritten Kopfspalte. Die erste Ansatzspalte (2023) ist der
+    fortgeschriebene Vorjahresansatz; sie zu nehmen hieße, die ganze Schicht
+    ein Jahr hinter ihre eigenen Dokumente zu legen."""
     kopf = ("Teilergebnishaushalt THH01: Verwaltungsführung\n"
             "Erträge und Aufwendungen Ergebnis 2022\n- Euro -\nAnsatz 2023\n"
-            "- Euro -\nAnsatz 2024\n- Euro -\n")
-    assert finanzquellen.teilhaushalt_jahrgang(kopf) == 2023
+            "- Euro -\nAnsatz 2024\n- Euro -\nAnsatz 2025\n- Euro -\n")
+    assert finanzquellen.teilhaushalt_jahrgang(kopf) == 2024
     assert finanzquellen.teilhaushalt_jahrgang("ohne Tabelle") is None
+
+
+def test_teilhaushalt_jahrgang_und_label_sagen_dasselbe():
+    """Die Jahrgangsprobe: Wo das Label einen Jahrgang nennt, nennt der
+    Tabellenkopf denselben. Vier Label-Generationen tragen ihn — über alle 53
+    Anlagen mit Jahreszahl im Label deckt es sich (gemessen 02.09.2026 an den
+    PDFs des Ratsinformationssystems)."""
+    for label, kopfjahr in (("2026 007 Vw THH01 Haushalt 2026 Verwaltungsentwurf", 2026),
+                            ("2024 007 IVw THH01", 2024), ("007 2023 THH01", 2023),
+                            ("2019 THH 08", 2019)):
+        kopf = ("Teilergebnishaushalt THH01: Verwaltungsführung\n"
+                + thh_kopf(kopfjahr))
+        assert finanzquellen.teilhaushalt_jahrgang(kopf) == kopfjahr
+        assert finanzquellen.teilhaushalt_label_jahr(label) == kopfjahr
+    # Die Hälfte der Labels nennt gar keinen Jahrgang — deshalb ist der
+    # Tabellenkopf maßgeblich und das Label nur die Gegenprobe.
+    assert finanzquellen.teilhaushalt_label_jahr("007 THH01") is None
 
 
 def test_teilhaushalt_nummer_aus_dem_label():
@@ -275,7 +312,7 @@ def test_einheit_eines_teilhaushalts_plans_ist_der_teilhaushalt():
     q = finanzquellen.QUELLEN["teilhaushalt"]
     row = {"label": "2028 010 Vw THH04 Haushalt 2028 Verwaltungsentwurf",
            "kopf": "Erträge und Aufwendungen Ergebnis 2026\nAnsatz 2027\nAnsatz 2028\n"}
-    assert q.einheiten_von(row) == {(2027, 4)}
+    assert q.einheiten_von(row) == {(2028, 4)}
     assert q.unit == "Teilhaushalte"
 
 
@@ -380,6 +417,46 @@ def test_fehlende_teilhaushalts_ebene_wird_nachgezogen(balance, tmp_path):
     finally:
         store.close()
     assert bericht["Neue Einheiten"] == 1
+
+
+def test_kleiner_teilhaushalt_kommt_durch_die_seitenschwelle(tmp_path):
+    """Vier Teilhaushalte sind dünner als der Rest: THH13 (Stiftungen) hat 26
+    bis 28 Seiten, THH03 28 bis 34, THH02 und THH12 genau 40. Die Schwelle
+    stand bis 09/2026 bei „> 40" und warf sie in **jedem** Jahrgang hinaus —
+    die Seiten sagten deshalb „kein auslesbarer Teilhaushaltsplan" für Schule
+    und Bildung, Wirtschaftsförderung und Stiftungen."""
+    store = CouncilStore(tmp_path / "council.sqlite")
+    name, produkte = THH_PLAENE[3]
+    anlage(store, 700, "2027 019 Vw THH13 Haushalt 2027 Verwaltungsentwurf",
+           teilhaushalt_plan(13, name, produkte, 2027), n_pages=26)
+    # Ein Auszug des Investitionsprogramms trägt „THH" ebenfalls im Label und
+    # ist mit 22 Seiten der größte Fremdkörper im Bestand — er bleibt draußen.
+    anlage(store, 701, "IP THH 08 Auszug", "kein Teilergebnishaushalt", n_pages=22)
+    try:
+        p = finanzquellen.Protokoll(still=True)
+        finanzquellen.lies_teilhaushalte(store, p, nur_fehlende=True)
+        assert produkt_einheiten(store) == [(2027, 13)]
+    finally:
+        store.close()
+
+
+def test_jahrgangsprobe_meldet_ein_abweichendes_label(tmp_path):
+    """Wo das Label einen Jahrgang nennt, muss es derselbe sein wie im
+    Tabellenkopf. Diese Gegenprobe hätte die Jahresverschiebung sofort
+    gezeigt, die bis 09/2026 in der Tabelle stand."""
+    store = CouncilStore(tmp_path / "council.sqlite")
+    name, produkte = THH_PLAENE[1]
+    anlage(store, 710, "2026 007 Vw THH01 Haushalt 2026 Verwaltungsentwurf",
+           teilhaushalt_plan(1, name, produkte, 2027))
+    try:
+        p = finanzquellen.Protokoll(still=True)
+        finanzquellen.lies_teilhaushalte(store, p, nur_fehlende=True)
+        assert any("Label nennt 2026" in w and "[2027]" in w for w in p.warnungen), \
+            p.warnungen
+        # Gemeldet, nicht verworfen: Maßgeblich bleibt der Tabellenkopf.
+        assert produkt_einheiten(store) == [(2027, 1)]
+    finally:
+        store.close()
 
 
 # --- Derselbe Teilhaushalt in zwei Dokumenten -------------------------------
@@ -694,7 +771,7 @@ def test_teilweise_gelesener_jahrgang_gibt_sich_zu_erkennen(thh_bestand):
     finanzquellen.lies_teilhaushalte(thh_bestand, p, nur_fehlende=True)
     # Ein zweiter, vollständiger Jahrgang als Maßstab.
     for i, (nr, (name, produkte)) in enumerate(sorted(THH_PLAENE.items())):
-        anlage(thh_bestand, 600 + i, f"2027 {7 + i:03d} Vw THH{nr:02d}",
+        anlage(thh_bestand, 600 + i, f"2026 {7 + i:03d} Vw THH{nr:02d}",
                teilhaushalt_plan(nr, name, produkte, 2026))
     p2 = finanzquellen.Protokoll(still=True)
     finanzquellen.lies_teilhaushalte(thh_bestand, p2, nur_fehlende=True)
@@ -727,7 +804,8 @@ def test_hinweis_meldet_liegengebliebene_einheiten(thh_bestand, tmp_path, monkey
         thh_bestand._conn.execute(  # noqa: SLF001
             "UPDATE council_attachments SET raw_text = ?, n_pages = 300, status = 'ok' "
             "WHERE document_id = 502",
-            ("Teilergebnishaushalt THH03: Jugend\nLayout geändert\nAnsatz 2027\n",))
+            ("Teilergebnishaushalt THH03: Jugend\nLayout geändert\n"
+             + thh_kopf(2027),))
     thh_bestand.close()
 
     gemeldet: list[str] = []
