@@ -173,10 +173,6 @@ OFFENE_SCHEMATA = set(BEWUSST_OFFEN) | NOCH_OFFEN
 #: sie stecken in einer der offenen Nutzlasten oben.
 WEB_OHNE_VERTRAG = {
     ("AdminStats", "web_users"),
-    ("AgendaAenderungZeile", "art"),
-    ("AgendaAenderungZeile", "nichtoeffentlich"),
-    ("CouncilSession", "matched_items"),
-    ("DecisionDetail", "art"),
     ("DecisionDetail", "bild"),
     ("DecisionDetail", "href"),
     ("Entity", "n_recent"),
@@ -184,7 +180,6 @@ WEB_OHNE_VERTRAG = {
     ("FieldRecap", "field_label"),
     ("FieldRecap", "generated_at"),
     ("FieldRecap", "n_decisions"),
-    ("Member", "art"),
     ("Member", "filter_parteien"),
     ("Member", "formen"),
     ("MemberDetail", "current_faction"),
@@ -196,7 +191,6 @@ WEB_OHNE_VERTRAG = {
     ("PartyAnalysis", "n_mit_beschluss"),
     ("QaAnswer", "mode"),
     ("QaSource", "ort_name"),
-    ("QuizBadge", "tier"),
     ("QuizImageCredit", "author"),
     ("QuizImageCredit", "license_url"),
 }
@@ -209,13 +203,11 @@ WEB_OHNE_VERTRAG = {
 #: worden: Er hieß seit #826 ``hits_6m``, und die App zeigte deshalb bei
 #: jedem Thema eine 0.)
 APP_OHNE_VERTRAG = {
-    "art",
     "calendar_id",
     "letzte",
     "location_slug",
     "n_stationen",
     "naechste",
-    "nichtoeffentlich",
     "ort_name",
     "rest",
 }

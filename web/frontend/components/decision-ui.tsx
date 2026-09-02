@@ -20,9 +20,13 @@ export function formatEuro(n: number): string {
  *  Q&A sources, "Ähnliche Beschlüsse" and goal decision lists. */
 export function DecisionLinkCard({ id, title, committee, session_date, field, leading, sub, score, amount }: {
   id: number;
-  title: string | null;
-  committee: string;
-  session_date: string;
+  title?: string | null;
+  // Fehlen dürfen: Ein Beschluss ohne Sitzung im Bestand trägt weder Gremium
+  // noch Datum, und das Themenfeld ist erst nach der Klassifikation da. Die
+  // Karte zeigt dann eben weniger — vorher stand hier `string`, und die
+  // Antwort schickte trotzdem `null`.
+  committee?: string | null;
+  session_date?: string | null;
   field?: string | null;
   leading?: React.ReactNode;
   sub?: string | null;
@@ -36,7 +40,13 @@ export function DecisionLinkCard({ id, title, committee, session_date, field, le
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             {field !== undefined && <FieldBadge field={field} />}
-            <span className="text-xs text-muted-foreground" title={committee}>{shortCommittee(committee)} · {formatDate(session_date)}</span>
+            {/* Gremium und Datum können fehlen — ein Beschluss ohne Sitzung im
+                Bestand hat beides nicht. Dann steht die Zeile eben leer, statt
+                „undefined" zu zeigen. */}
+            <span className="text-xs text-muted-foreground" title={committee ?? undefined}>
+              {[committee && shortCommittee(committee), session_date && formatDate(session_date)]
+                .filter(Boolean).join(" · ")}
+            </span>
             {score !== undefined && (
               <span className="rounded bg-muted px-1.5 text-xs font-medium tabular-nums text-muted-foreground" title="Ähnlichkeit zur Frage">
                 {Math.round(score * 100)}%
@@ -246,7 +256,7 @@ export function voteLabel(vote: string | null | undefined): string {
   return vote ? (VOTE_LABEL[vote] ?? vote) : "";
 }
 
-export function OutcomeBadge({ outcome }: { outcome: DecisionOutcome | null }) {
+export function OutcomeBadge({ outcome }: { outcome?: DecisionOutcome | null }) {
   if (!outcome) return null;
   const m = OUTCOME_META[outcome] ?? OUTCOME_META.no_decision;
   return (

@@ -103,7 +103,7 @@ class VideoResult(TypedDict):
     id: int
     ksinr: int
     item_number: str
-    outcome: str
+    outcome: Beschlussergebnis
     vote: str | None
     no_votes: int | None
     abstentions: int | None
@@ -118,6 +118,20 @@ class MyTopicItem(TypedDict):
     """„n TOPs zu deinen Themen" — Treffer der Tagesordnungs-Klassifikation."""
     item_number: str
     topic_name: str
+
+
+class MatchedAgendaItem(TypedDict):
+    """Ein Tagesordnungspunkt, der einen Suchbegriff getroffen hat.
+
+    Weniger Felder als ``AgendaItemRow``: Die Suche liest nur die Spalten der
+    Trefferzeile und lässt Anlagen, Kurzfassung und Kartentext weg. ``ksinr``
+    steht nicht dabei — die Punkte hängen schon an ihrer Sitzung.
+    """
+    item_number: str
+    title: str
+    template_number: str | None
+    kvonr: int | None
+    is_public: int
 
 
 class SessionRow(TypedDict):
@@ -146,6 +160,9 @@ class SessionRow(TypedDict):
     # Vom Sitzungs-Endpunkt angereichert: die TOPs dieser Sitzung, die zu
     # einem Thema des Kontos passen.
     my_topic_items: NotRequired[list[MyTopicItem]]
+    #: Bei einer Textsuche: die Tagesordnungspunkte, die den Suchbegriff
+    #: getroffen haben. Fehlt bei jeder anderen Abfrage.
+    matched_items: NotRequired[list[MatchedAgendaItem]]
     # Ende des „läuft gerade"-Fensters (``council.live``), nur an Sitzungen
     # von HEUTE — für alle anderen fehlt das Feld.
     live_until: NotRequired[str | None]
@@ -171,7 +188,7 @@ class DecisionRow(TypedDict):
     item_number: NotRequired[str | None]
     title: NotRequired[str | None]
     official_text: NotRequired[str | None]
-    outcome: NotRequired[str | None]
+    outcome: NotRequired[Beschlussergebnis | None]
     vote: NotRequired[str | None]
     no_votes: NotRequired[int | None]
     abstentions: NotRequired[int | None]
@@ -198,6 +215,16 @@ class DecisionRow(TypedDict):
     n_beratungen: NotRequired[int | None]
     location_matches: NotRequired[list[Any]]
     subvote_summary: NotRequired[Any]
+
+
+#: Was aus einem Tagesordnungspunkt geworden ist.
+#:
+#: Die fünf Werte stehen als Literal und nicht als ``str``, damit die
+#: Aufzählung im Vertrag ankommt: Beide Clients führten sie sonst von Hand,
+#: und eine Abschrift veraltet. Die Quelle sind die beiden Tupel
+#: ``CouncilStore._VOTE_OUTCOMES`` und ``_REPORT_OUTCOMES``; ein Wächter in
+#: ``tests/test_api_vertrag.py`` hält beide zusammen.
+Beschlussergebnis = Literal["accepted", "rejected", "postponed", "noted", "no_decision"]
 
 
 # --------------------------------------------------------------------------
@@ -230,7 +257,7 @@ class Ratsvorgang(TypedDict):
     kvonr: int | None
     top: str | None
     title: str | None
-    outcome: str | None
+    outcome: Beschlussergebnis | None
     vote: str | None
     template_number: str | None
     committee: str | None
@@ -307,6 +334,18 @@ class SetupState(TypedDict):
 class BadgeProgress(TypedDict):
     current: int
     target: int
+
+
+class QuizBadge(TypedDict):
+    """Ein Abzeichen im Quiz-Fortschritt (``routers.quiz._badges``).
+
+    Nicht zu verwechseln mit ``Badge`` darunter: Das sind die Lotsen-Abzeichen
+    des Kontos, dieses hier ist der Punkte-, Serien- oder Gebiets-Meilenstein
+    auf der Quiz-Seite.
+    """
+    key: str
+    label: str
+    tier: Literal["bronze", "silber", "gold"]
 
 
 class Badge(TypedDict):
@@ -535,7 +574,7 @@ class TopicDecision(TypedDict):
     committee: str
     session_date: str | None
     policy_field: str | None
-    outcome: str | None
+    outcome: Beschlussergebnis | None
     score: float
 
 
@@ -653,7 +692,7 @@ class Discovery(TypedDict):
     story: str
     decision_id: int
     title: str | None
-    outcome: str | None
+    outcome: Beschlussergebnis | None
     vote: str | None
     committee: str | None
     session_date: str | None
@@ -671,7 +710,7 @@ class SocialDecision(TypedDict):
     id: int
     title: str | None
     official_text: str | None
-    outcome: str | None
+    outcome: Beschlussergebnis | None
     vote: str | None
     simple_summary: str | None
     importance: int | None
@@ -823,7 +862,9 @@ class UserQuizQuestion(TypedDict):
     practiced: int
     correct_count: int
     created_at: str
-    qtype: str
+    #: ``mc`` = Multiple Choice, ``estimate`` = Schätzfrage. Als Literal, damit
+    #: die Aufzählung im Vertrag steht statt in jedem Client noch einmal.
+    qtype: Literal["mc", "estimate"]
     answer_value: float | None
     unit: str | None
     range_min: float | None
@@ -856,7 +897,7 @@ class QuizScore(TypedDict):
     total: QuizTotal
     wrong: int
     streak: int
-    badges: list[Any]
+    badges: list[QuizBadge]
     daily_done: bool
 
 
@@ -1386,12 +1427,29 @@ class BudgetOverview(TypedDict):
     provenance: NotRequired[Provenance]
 
 
+class AgendaChangeLine(TypedDict):
+    """Eine Zeile des Tagesordnungs-Diffs (``council.agenda_diff.zeilen``).
+
+    EINE Quelle für das Mail-HTML und die App-Ansicht „Zuletzt geändert".
+    Alles unescaped — wer HTML baut, escapet selbst.
+    """
+    #: ``new`` | ``changed`` | ``moved`` | ``template`` | ``attachments`` |
+    #: ``removed`` — die App färbt danach ein.
+    art: str
+    #: Der fette Kopf inklusive TOP-Nummer.
+    label: str
+    title: str
+    nichtoeffentlich: bool
+    #: Die leise Zusatzzeile („vorher: …") oder nichts.
+    detail: str | None
+
+
 class AgendaChange(TypedDict):
     """Eine Änderung an der Tagesordnung aus der Chronik (``agenda_changes``).
     ``satz`` ist der Satz für die Meldung, ``zeilen`` die Einzelheiten."""
     changed_at: str
     satz: str
-    zeilen: list[Any]
+    zeilen: list[AgendaChangeLine]
 
 
 class SessionDetail(SessionRow):
@@ -1422,7 +1480,9 @@ class ImportanceBreakdown(TypedDict):
     """
     score: int
     signals: dict[str, float | None]
-    contributions: Any
+    #: Punkte-Beitrag je vorhandenem Signal, Summe = ``score``. Fehlende
+    #: Signale stehen als ``None`` drin und fallen aus der Gewichtung.
+    contributions: dict[str, int | None]
     base_score: int
     impact: NotRequired[int]
     impact_reason: NotRequired[str]
@@ -1467,7 +1527,7 @@ class SimilarDecision(TypedDict):
     template_number: str | None
     summary: str | None
     policy_field: str | None
-    outcome: str | None
+    outcome: Beschlussergebnis | None
     session_date: str | None
     committee: str
     #: Kosinus-Ähnlichkeit aus ``scripts/embed_decisions.py``.
@@ -1847,7 +1907,7 @@ class ThisWeekFound(TypedDict):
     found: Literal[True]
     decision_id: int
     title: str
-    outcome: str | None
+    outcome: Beschlussergebnis | None
     committee: str | None
     session_date: str | None
     interest_reason: str
@@ -2113,9 +2173,16 @@ class TemplateUnfollowed(TypedDict):
     kvonr: int
 
 
+class MoneyByField(TypedDict):
+    """Erkanntes Volumen je Themenfeld (``CouncilStore.money_by_field``)."""
+    field: str
+    n: int
+    total: int
+
+
 class Finances(TypedDict):
-    by_field: Any
-    decisions: Any
+    by_field: list[MoneyByField]
+    decisions: list[DecisionRow]
     #: {Themenfeld-Schlüssel: Klartext} aus ``council.topics.POLICY_FIELDS``.
     field_labels: dict[str, str]
 
@@ -2178,7 +2245,7 @@ class GoalDecision(TypedDict):
     summary: str
     committee: str
     session_date: str
-    outcome: str
+    outcome: Beschlussergebnis
     policy_field: str
     stance: str
     rationale: str

@@ -11,8 +11,8 @@ import { useDebounce } from "@/lib/use-debounce";
 import { clearRecentSearches, getRecentSearches, pushRecentSearch } from "@/lib/recent-searches";
 import { offerIcs } from "@/lib/ics";
 import {
-  AgendaAenderung, CouncilSession, SessionDetail, AgendaItem, CouncilDecision, DecisionOutcome, PolicyField, Topic,
-  VideoResult,
+  AgendaAenderung, AgendaRowItem, CouncilSession, SessionDetail, AgendaItem, CouncilDecision, DecisionOutcome,
+  PolicyField, Topic, VideoResult,
 } from "@/lib/types";
 import { VideoResultChip, VideoResultsNotice } from "@/components/video-result";
 import {
@@ -56,7 +56,7 @@ const videoKey = (n: string | null | undefined) => (n ?? "").replace(/^[ÖN]\s+/
 
 /** Gliederungs-TOPs wie „Anträge der Fraktionen“ haben kein eigenes Ergebnis.
  *  Öffentlicher und nichtöffentlicher Teil werden getrennt betrachtet. */
-const hasAgendaChildren = (item: AgendaItem, items: AgendaItem[]) => {
+const hasAgendaChildren = (item: AgendaRowItem, items: AgendaItem[]) => {
   const parent = agendaNumber(item.item_number);
   if (!parent) return false;
   return items.some((candidate) =>
@@ -73,7 +73,7 @@ const hasAgendaChildren = (item: AgendaItem, items: AgendaItem[]) => {
 const topDomId = (ksinr: number, itemNumber: string) =>
   `top-${ksinr}-${(itemNumber || "").trim().replace(/[^\p{L}\p{N}]+/gu, "_")}`;
 
-function itemMatches(it: AgendaItem, query: string): boolean {
+function itemMatches(it: AgendaRowItem, query: string): boolean {
   const q = query.trim().toLowerCase();
   if (!q) return false;
   return it.title.toLowerCase().includes(q) || (it.template_number?.toLowerCase().includes(q) ?? false);
@@ -1001,12 +1001,12 @@ function YearDivider({ year }: { year: string }) {
  *  in deren Prompt) und kann deshalb nicht mehr als die Überschrift
  *  umformulieren. Beide kommen vom Server; die Reihenfolge steht auch dort
  *  (`store.agenda_items`) — hier nur noch die Auswahl fürs Auge. */
-function kurzfassung(it: AgendaItem): string | null {
+function kurzfassung(it: AgendaRowItem): string | null {
   return it.social_text || it.summary || null;
 }
 
 function AgendaRow({ it, query, outcome, decisionId, myTopic, domId, flash, ksinr, bookmarkable = true, videoResult }: {
-  it: AgendaItem; query: string; outcome?: DecisionOutcome | null;
+  it: AgendaRowItem; query: string; outcome?: DecisionOutcome | null;
   decisionId?: number; myTopic?: string;
   ksinr?: number;
   bookmarkable?: boolean;

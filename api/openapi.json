@@ -1329,7 +1329,9 @@
             "type": "string"
           },
           "zeilen": {
-            "items": {},
+            "items": {
+              "$ref": "#/components/schemas/AgendaChangeLine"
+            },
             "title": "Zeilen",
             "type": "array"
           }
@@ -1340,6 +1342,43 @@
           "zeilen"
         ],
         "title": "AgendaChange",
+        "type": "object"
+      },
+      "AgendaChangeLine": {
+        "description": "Eine Zeile des Tagesordnungs-Diffs (``council.agenda_diff.zeilen``).\n\nEINE Quelle für das Mail-HTML und die App-Ansicht „Zuletzt geändert\".\nAlles unescaped — wer HTML baut, escapet selbst.",
+        "properties": {
+          "art": {
+            "title": "Art",
+            "type": "string"
+          },
+          "detail": {
+            "title": "Detail",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "nichtoeffentlich": {
+            "title": "Nichtoeffentlich",
+            "type": "boolean"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "art",
+          "label",
+          "title",
+          "nichtoeffentlich",
+          "detail"
+        ],
+        "title": "AgendaChangeLine",
         "type": "object"
       },
       "AgendaItemRow": {
@@ -2238,6 +2277,13 @@
                 ]
               },
               "outcome": {
+                "enum": [
+                  "accepted",
+                  "rejected",
+                  "postponed",
+                  "noted",
+                  "no_decision"
+                ],
                 "title": "Outcome",
                 "type": [
                   "string",
@@ -2424,6 +2470,13 @@
                   "string",
                   "null"
                 ]
+              },
+              "matched_items": {
+                "items": {
+                  "$ref": "#/components/schemas/MatchedAgendaItem"
+                },
+                "title": "Matched Items",
+                "type": "array"
               },
               "my_topic_items": {
                 "items": {
@@ -4642,6 +4695,13 @@
             ]
           },
           "outcome": {
+            "enum": [
+              "accepted",
+              "rejected",
+              "postponed",
+              "noted",
+              "no_decision"
+            ],
             "title": "Outcome",
             "type": [
               "string",
@@ -5004,6 +5064,13 @@
             "type": "string"
           },
           "outcome": {
+            "enum": [
+              "accepted",
+              "rejected",
+              "postponed",
+              "noted",
+              "no_decision"
+            ],
             "title": "Outcome",
             "type": [
               "string",
@@ -5515,10 +5582,18 @@
       "Finances": {
         "properties": {
           "by_field": {
-            "title": "By Field"
+            "items": {
+              "$ref": "#/components/schemas/MoneyByField"
+            },
+            "title": "By Field",
+            "type": "array"
           },
           "decisions": {
-            "title": "Decisions"
+            "items": {
+              "$ref": "#/components/schemas/DecisionRow"
+            },
+            "title": "Decisions",
+            "type": "array"
           },
           "field_labels": {
             "additionalProperties": {
@@ -5654,6 +5729,13 @@
             "type": "integer"
           },
           "outcome": {
+            "enum": [
+              "accepted",
+              "rejected",
+              "postponed",
+              "noted",
+              "no_decision"
+            ],
             "title": "Outcome",
             "type": "string"
           },
@@ -6032,6 +6114,13 @@
                 ]
               },
               "outcome": {
+                "enum": [
+                  "accepted",
+                  "rejected",
+                  "postponed",
+                  "noted",
+                  "no_decision"
+                ],
                 "title": "Outcome",
                 "type": [
                   "string",
@@ -6157,7 +6246,14 @@
             "type": "integer"
           },
           "contributions": {
-            "title": "Contributions"
+            "additionalProperties": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "title": "Contributions",
+            "type": "object"
           },
           "impact": {
             "title": "Impact",
@@ -6856,6 +6952,46 @@
         "title": "MarkedHits",
         "type": "object"
       },
+      "MatchedAgendaItem": {
+        "description": "Ein Tagesordnungspunkt, der einen Suchbegriff getroffen hat.\n\nWeniger Felder als ``AgendaItemRow``: Die Suche liest nur die Spalten der\nTrefferzeile und lässt Anlagen, Kurzfassung und Kartentext weg. ``ksinr``\nsteht nicht dabei — die Punkte hängen schon an ihrer Sitzung.",
+        "properties": {
+          "is_public": {
+            "title": "Is Public",
+            "type": "integer"
+          },
+          "item_number": {
+            "title": "Item Number",
+            "type": "string"
+          },
+          "kvonr": {
+            "title": "Kvonr",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "template_number": {
+            "title": "Template Number",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "item_number",
+          "title",
+          "template_number",
+          "kvonr",
+          "is_public"
+        ],
+        "title": "MatchedAgendaItem",
+        "type": "object"
+      },
       "MediaUpload": {
         "properties": {
           "count": {
@@ -6880,6 +7016,30 @@
           "urls"
         ],
         "title": "MediaUpload",
+        "type": "object"
+      },
+      "MoneyByField": {
+        "description": "Erkanntes Volumen je Themenfeld (``CouncilStore.money_by_field``).",
+        "properties": {
+          "field": {
+            "title": "Field",
+            "type": "string"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "field",
+          "n",
+          "total"
+        ],
+        "title": "MoneyByField",
         "type": "object"
       },
       "MyTopicItem": {
@@ -8746,6 +8906,35 @@
         "title": "QuizAreas",
         "type": "object"
       },
+      "QuizBadge": {
+        "description": "Ein Abzeichen im Quiz-Fortschritt (``routers.quiz._badges``).\n\nNicht zu verwechseln mit ``Badge`` darunter: Das sind die Lotsen-Abzeichen\ndes Kontos, dieses hier ist der Punkte-, Serien- oder Gebiets-Meilenstein\nauf der Quiz-Seite.",
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "tier": {
+            "enum": [
+              "bronze",
+              "silber",
+              "gold"
+            ],
+            "title": "Tier",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "tier"
+        ],
+        "title": "QuizBadge",
+        "type": "object"
+      },
       "QuizDailyIn": {
         "properties": {
           "correct": {
@@ -9289,7 +9478,9 @@
         "description": "``Store.quiz_stats`` liefert ``by_area``/``total``, der Router hängt\nSerie, Abzeichen, Fehlerzahl und Tages-Status an.",
         "properties": {
           "badges": {
-            "items": {},
+            "items": {
+              "$ref": "#/components/schemas/QuizBadge"
+            },
             "title": "Badges",
             "type": "array"
           },
@@ -9383,6 +9574,13 @@
             ]
           },
           "outcome": {
+            "enum": [
+              "accepted",
+              "rejected",
+              "postponed",
+              "noted",
+              "no_decision"
+            ],
             "title": "Outcome",
             "type": [
               "string",
@@ -9805,6 +10003,13 @@
               "null"
             ]
           },
+          "matched_items": {
+            "items": {
+              "$ref": "#/components/schemas/MatchedAgendaItem"
+            },
+            "title": "Matched Items",
+            "type": "array"
+          },
           "my_topic_items": {
             "items": {
               "$ref": "#/components/schemas/MyTopicItem"
@@ -9917,6 +10122,13 @@
               "string",
               "null"
             ]
+          },
+          "matched_items": {
+            "items": {
+              "$ref": "#/components/schemas/MatchedAgendaItem"
+            },
+            "title": "Matched Items",
+            "type": "array"
           },
           "my_topic_items": {
             "items": {
@@ -10035,6 +10247,13 @@
             "type": "integer"
           },
           "outcome": {
+            "enum": [
+              "accepted",
+              "rejected",
+              "postponed",
+              "noted",
+              "no_decision"
+            ],
             "title": "Outcome",
             "type": [
               "string",
@@ -10128,6 +10347,13 @@
             ]
           },
           "outcome": {
+            "enum": [
+              "accepted",
+              "rejected",
+              "postponed",
+              "noted",
+              "no_decision"
+            ],
             "title": "Outcome",
             "type": [
               "string",
@@ -10559,6 +10785,13 @@
             "type": "string"
           },
           "outcome": {
+            "enum": [
+              "accepted",
+              "rejected",
+              "postponed",
+              "noted",
+              "no_decision"
+            ],
             "title": "Outcome",
             "type": [
               "string",
@@ -10654,6 +10887,13 @@
             "type": "integer"
           },
           "outcome": {
+            "enum": [
+              "accepted",
+              "rejected",
+              "postponed",
+              "noted",
+              "no_decision"
+            ],
             "title": "Outcome",
             "type": [
               "string",
@@ -10866,6 +11106,13 @@
             "type": "boolean"
           },
           "outcome": {
+            "enum": [
+              "accepted",
+              "rejected",
+              "postponed",
+              "noted",
+              "no_decision"
+            ],
             "title": "Outcome",
             "type": [
               "string",
@@ -11141,6 +11388,12 @@
           },
           "delivery_channel": {
             "default": "email",
+            "enum": [
+              "email",
+              "push",
+              "both",
+              "off"
+            ],
             "title": "Delivery Channel",
             "type": "string"
           },
@@ -11170,6 +11423,10 @@
             "type": "integer"
           },
           "role": {
+            "enum": [
+              "user",
+              "admin"
+            ],
             "title": "Role",
             "type": "string"
           },
@@ -11182,6 +11439,11 @@
           },
           "status": {
             "default": "pending",
+            "enum": [
+              "pending",
+              "active",
+              "blocked"
+            ],
             "title": "Status",
             "type": "string"
           }
@@ -11279,6 +11541,10 @@
             "type": "integer"
           },
           "qtype": {
+            "enum": [
+              "mc",
+              "estimate"
+            ],
             "title": "Qtype",
             "type": "string"
           },
@@ -11501,6 +11767,13 @@
             ]
           },
           "outcome": {
+            "enum": [
+              "accepted",
+              "rejected",
+              "postponed",
+              "noted",
+              "no_decision"
+            ],
             "title": "Outcome",
             "type": "string"
           },
@@ -11564,11 +11837,20 @@
             "type": "integer"
           },
           "role": {
+            "enum": [
+              "user",
+              "admin"
+            ],
             "title": "Role",
             "type": "string"
           },
           "status": {
             "default": "pending",
+            "enum": [
+              "pending",
+              "active",
+              "blocked"
+            ],
             "title": "Status",
             "type": "string"
           }
@@ -17349,6 +17631,13 @@
                       "type": "string"
                     },
                     "outcome": {
+                      "enum": [
+                        "accepted",
+                        "rejected",
+                        "postponed",
+                        "noted",
+                        "no_decision"
+                      ],
                       "title": "Outcome",
                       "type": [
                         "string",

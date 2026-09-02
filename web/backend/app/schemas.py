@@ -1,6 +1,7 @@
 """Pydantic request/response models."""
 from __future__ import annotations
 
+from typing import Literal
 from pydantic import BaseModel, EmailStr, Field
 
 
@@ -31,12 +32,32 @@ class VerifyEmailRequest(BaseModel):
     token: str = Field(min_length=1)
 
 
+#: Die Rolle eines Kontos. Steht als Literal und nicht als ``str``, damit die
+#: Aufzählung im Vertrag ankommt — sonst muss jeder Client sie abschreiben,
+#: und genau das ist passiert: Das Web führte die Vereinigung von Hand, und
+#: sie war unvollständig (``blocked`` fehlte).
+Rolle = Literal["user", "admin"]
+
+#: Der Zustand eines Kontos. ``blocked`` kann nur über ein Skript entstehen —
+#: die Admin-Oberfläche setzt nur ``active`` und ``pending``. Es steht hier
+#: trotzdem: Eine Antwortform, die einen vorhandenen Wert verschweigt, ist ein
+#: 500er in dem Moment, in dem er auftaucht.
+Kontostand = Literal["pending", "active", "blocked"]
+
+#: Wohin Benachrichtigungen gehen — ``off`` heißt: gar nicht.
+Zustellweg = Literal["email", "push", "both", "off"]
+
+#: Was aus einem Tagesordnungspunkt geworden ist. Dieselbe Aufzählung wie
+#: ``antworten.Beschlussergebnis``; ein Wächter hält beide zusammen.
+Beschlussergebnis = Literal["accepted", "rejected", "postponed", "noted", "no_decision"]
+
+
 class UserOut(BaseModel):
     id: int
     email: str
-    role: str
-    status: str = "pending"
-    delivery_channel: str = "email"
+    role: Rolle
+    status: Kontostand = "pending"
+    delivery_channel: Zustellweg = "email"
     email_verified: bool = False
     # Sign in with Apple (RL-1002): verknüpft? Und hat das Konto (noch) ein
     # selbst gesetztes Passwort? Steuert Konto-Chip + Passwort-Karte.
@@ -97,7 +118,7 @@ class TopicHitOut(BaseModel):
     title: str
     committee: str
     session_date: str
-    outcome: str | None = None
+    outcome: Beschlussergebnis | None = None
     # Noch nicht gesehen (dieselbe Menge, die das „n neue"-Abzeichen zählt).
     is_new: bool = False
 
@@ -183,8 +204,8 @@ class PlaceReviewIn(BaseModel):
 class WebUserOut(BaseModel):
     id: int
     email: str
-    role: str
-    status: str = "pending"
+    role: Rolle
+    status: Kontostand = "pending"
     email_verified: bool = False
     created_at: str
 
