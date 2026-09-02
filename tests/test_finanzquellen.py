@@ -1138,6 +1138,8 @@ ZAHLWORT = {
     "zwanzig": 20,
     "einundzwanzig": 21,
     "zweiundzwanzig": 22,
+    "dreiundzwanzig": 23,
+    "vierundzwanzig": 24,
 }
 
 DOKU = ROOT / "docs-site" / "src" / "content" / "docs" / "haushalt.md"

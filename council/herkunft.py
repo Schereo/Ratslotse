@@ -648,6 +648,16 @@ PROBEN: dict[str, str] = {
         "Aus dem Bestand vor der Herkunfts-Vereinheitlichung übernommen. Die "
         "Zeilen haben eine Probe bestanden — welche, hielt der alte Bestand "
         "nicht fest. Der nächste Einlese-Lauf trägt es nach.",
+    # Die Jahresabschlüsse der Eigenbetriebe (council/eigenbetriebe_abschluss.py)
+    "enterprise_accounts_columns":
+        "Die Mehrjahresübersicht des Prüfberichts nennt ihre Jahre im Kopf und "
+        "je Kennzahl genau so viele Werte; Fußnotenziffern vor den Werten "
+        "zählen nicht mit.",
+    "enterprise_accounts_overlap":
+        "Dieselbe Zahl steht in mehreren Berichten — als Geschäftsjahr im "
+        "eigenen, als Vorjahr in den folgenden. Wo zwei Berichte dasselbe Jahr "
+        "nennen, nennen sie dieselbe Zahl (auf Tausend gerundet); der jüngste "
+        "Bericht gilt, die anderen bezeugen ihn.",
 }
 
 #: Jede Tabelle, deren Zeilen eine ``herkunft_id`` tragen.

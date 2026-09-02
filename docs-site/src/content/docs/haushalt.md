@@ -127,6 +127,7 @@ die es nicht zeigen:
 | `council_budget_execution` | Haushaltsvollzug: Ansatz, Prognose zum Jahresende und Abweichung je Teilhaushalt, 2018–2026, viermal jährlich — für Ergebnis- **und** Finanzhaushalt. `plan_basis` sagt, ob die Ansatz-Spalte die Ermächtigungsübertragungen enthält (bis 2020) oder nicht (ab 2021) | Finanz- und Leistungsberichte — **Anlagen im RIS** | `scripts/ingest_haushaltsvollzug.py` |
 | `council_loan_notices`, `council_loan_items` | Kredite und Zinsen: je Unterrichtung des Rates nach der Kreditrichtlinie der Berichtszeitraum und die Zinsersparnis der Umschuldung, je Posten Art (Kreditaufnahme, Umschuldung, Prolongation, Ausleihung), Schuldner, Betrag, Zinssatz, Zinsbindung und Datum der Kreditentscheidung, 2018–2026 | Vorlagen „Unterrichtung des Rates über Kreditaufnahmen, Derivatabschlüsse und Umschuldungen“ — **Volltexte im RIS** | `scripts/ingest_kredite.py` |
 | `council_liquidity` | Liquiditätsstand: je Monatsende der Kontostand der Stadt in Euro seit 2015, jüngster Beleg je Monat, Wertzahl- und Überlappungsprobe | Grafiken „Liquiditätsstand zum Monatsende“ — **Anlagen der Monatsvorlagen im RIS** (der Ingest lädt sie selbst) | `scripts/ingest_liquiditaet.py` |
+| `council_enterprise_accounts` | Jahresabschlüsse der Eigenbetriebe: je Betrieb, Jahr und Kennzahl eine Zahl (Umsatzerlöse, Jahresergebnis, Bilanzsumme, Eigenkapital, Abschreibungen, Investitionen, Cashflow …) aus dem jüngsten Bericht, bezeugt von den Vorjahresspalten der folgenden; EGH und Hafen aus der Mehrjahresübersicht des RPA-Berichts, AWB aus dem Wirtschaftsprüfer-Bericht, Bäderbetrieb aus GuV und Bilanz | Vorlagen „Jahresabschluss und Lagebericht … für den Eigenbetrieb …“ — **Anlagen im RIS** (Prüfberichte, GuV, Bilanz) | `scripts/ingest_eigenbetriebe_abschluss.py` |
 | `council_income_statement` | Ansatz, Plan **und** Ergebnis je Posten — gesamt und je Teilhaushalt, 2017–2024 | Jahresabschlüsse — **Anlagen im RIS** | `scripts/ingest_finanzberichte.py` |
 | `council_income_budget` | Dieselben Posten für Jahre **ohne** Abschluss, 2019–2026 — je Zeile `art` (`ansatz` / `finanzplanung`) und `plan_jahrgang` | Gesamtergebnishaushalt (Anlage 005 des Haushaltsplans) — **Anlagen im RIS** | dito |
 | `council_variance_reasons` | Warum ein Posten vom Plan abwich (Abschnitt 6.3.1), 45 Einträge | dito | dito |
@@ -555,12 +556,12 @@ sondern auch, ob sie einer anderen etwas wegnimmt oder ihr etwas anhängt.
 
 ## Der Bereich hält sich selbst aktuell
 
-**Zweiundzwanzig** Datenschichten, jede einmal von Hand eingelesen — ohne Cron
+**Dreiundzwanzig** Datenschichten, jede einmal von Hand eingelesen — ohne Cron
 veraltet der ganze Bereich still, sobald niemand mehr daran denkt.
 `check_finanzdaten.py` (alle zwei Wochen) nimmt das ab: **Neun** liest er
-selbst nach (sie liegen als Anlage im Ratsinformationssystem), die **dreizehn**
+selbst nach (sie liegen als Anlage im Ratsinformationssystem), die **vierzehn**
 übrigen werden nur beobachtet — er meldet, dass ein Jahrgang fällig wäre, und
-nennt Quelle und Skript. Sieben davon kommen von außerhalb, sechs liegen zwar
+nennt Quelle und Skript. Sieben davon kommen von außerhalb, sieben liegen zwar
 im Ratsinformationssystem, haben aber eigene Einlese-Skripte. „Lädt nichts herunter" ist
 die Regel, an der dieser Job hängt. Maßgeblich ist `finanzquellen.REIHENFOLGE`;
 diese Doku zählt nach, sie legt nichts fest.

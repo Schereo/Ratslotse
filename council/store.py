@@ -3363,6 +3363,24 @@ class CouncilStore(*_geld.MIXINS):
             "probes TEXT NOT NULL, "
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL)"
         )
+        # Die Jahresabschlüsse der Eigenbetriebe (council/eigenbetriebe_abschluss.py):
+        # je Betrieb, Jahr und Kennzahl EINE Zahl — aus dem jüngsten Bericht,
+        # der sie nennt, bezeugt von den Vorjahresspalten der folgenden.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_enterprise_accounts ("
+            "enterprise TEXT NOT NULL, "          # Kürzel aus wirtschaftsplan.BETRIEBE
+            "year INTEGER NOT NULL, "
+            "metric TEXT NOT NULL, "             # eigenbetriebe_abschluss.METRIKEN
+            "value REAL NOT NULL, "              # Euro (Stück bei employees)
+            "unit TEXT NOT NULL, "               # TEUR | EUR | Stück — wie gedruckt
+            "report_year INTEGER NOT NULL, "     # der Bericht, aus dem die Zahl stammt
+            "confirmations INTEGER NOT NULL DEFAULT 1, "
+            "conflicts INTEGER NOT NULL DEFAULT 0, "
+            "document_id INTEGER, "
+            "probes TEXT NOT NULL, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (enterprise, year, metric))"
+        )
         # Kredite und Zinsen (council/loans.py): die Unterrichtungen des Rates
         # nach der Kreditrichtlinie — je Vorlage eine Zeile mit Berichts-
         # zeitraum und Zinsersparnis, je nummeriertem Posten eine Zeile mit
@@ -3742,6 +3760,7 @@ class CouncilStore(*_geld.MIXINS):
         # nach, bevor es merkt, dass es nichts nachzutragen gibt.
         "council_budget_execution": (None, "source_url", "ris"),
         "council_liquidity": (None, "url", "ris"),
+    "council_enterprise_accounts": (None, None, "ris"),
         # Kredite und Zinsen: neu, ohne Altbestand — derselbe Platzhalter.
         "council_loan_notices": (None, "document_url", "ris"),
         "council_loan_items": (None, "document_url", "ris"),
@@ -6914,6 +6933,7 @@ class CouncilStore(*_geld.MIXINS):
         "donations":     ("council_donations", "year", None),
         "loans":         ("council_loan_notices", "year", None),
         "liquidity":     ("council_liquidity", "year", None),
+        "enterprise_accounts": ("council_enterprise_accounts", "year", None),
         "tax_plan":  ("council_tax_plan", "year", None),
         "tax_rates":  ("council_tax_rates", "year", None),
     }
@@ -9036,6 +9056,67 @@ class CouncilStore(*_geld.MIXINS):
         try:
             return {(r[0], r[1]) for r in self._conn.execute(
                 "SELECT year, CAST(substr(month, 6, 2) AS INTEGER) FROM council_liquidity")}
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
+            return set()
+
+    # --- Jahresabschlüsse der Eigenbetriebe (council/eigenbetriebe_abschluss.py) --
+
+    def eigenbetrieb_abschluss_anlagen(self) -> list[dict]:
+        """Die Anlagen der Jahresabschluss-Vorlagen der Eigenbetriebe — mit
+        Titel der Vorlage, denn Betrieb und Jahr stehen dort, nicht im Label."""
+        from council.eigenbetriebe_abschluss import TITEL_MUSTER, TITEL_SQL
+        try:
+            return [dict(r) for r in self._conn.execute(
+                f"""SELECT t.kvonr, t.template_number, t.title, a.document_id, a.label,
+                           a.url, a.raw_text, a.n_pages, a.status
+                      FROM council_templates t JOIN council_attachments a ON a.kvonr = t.kvonr
+                     WHERE {TITEL_SQL}
+                     ORDER BY t.template_number, a.document_id""", list(TITEL_MUSTER))]
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
+            return []
+
+    def save_enterprise_accounts(self, rows: list[dict], herkunft) -> int:
+        """Die Kennzahlen schreiben — je Zeile ihre Herkunft (``row["herkunft"]``)."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            rueck = self.merke_herkunft(herkunft, fetched_at=now)
+            for r in rows:
+                hid = self.merke_herkunft(r["herkunft"], fetched_at=now) if r.get("herkunft") else rueck
+                self._conn.execute(
+                    "INSERT OR REPLACE INTO council_enterprise_accounts (enterprise, year, metric, "
+                    " value, unit, report_year, confirmations, conflicts, document_id, probes, "
+                    " herkunft_id, fetched_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                    (r["enterprise"], r["year"], r["metric"], r["value"], r["unit"],
+                     r["report_year"], r.get("confirmations", 1), r.get("conflicts", 0),
+                     r.get("document_id"), ",".join(r.get("probes") or []), hid, now))
+        return len(rows)
+
+    def get_enterprise_accounts(self, enterprise: str | None = None) -> list[dict]:
+        """Alle Kennzahlen, aufsteigend nach Betrieb, Jahr, Kennzahl."""
+        try:
+            sql = "SELECT * FROM council_enterprise_accounts"
+            args: tuple = ()
+            if enterprise:
+                sql += " WHERE enterprise = ?"
+                args = (enterprise,)
+            rows = [dict(r) for r in self._conn.execute(sql + " ORDER BY enterprise, year, metric", args)]
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
+            return []
+        for r in rows:
+            r["probes"] = [p for p in (r.get("probes") or "").split(",") if p]
+        return rows
+
+    def enterprise_account_einheiten(self) -> set[tuple]:
+        """``(Jahr, Betrieb)`` je Zeile — die Einheiten des Datenstands."""
+        try:
+            return {(r[0], r[1]) for r in self._conn.execute(
+                "SELECT DISTINCT year, enterprise FROM council_enterprise_accounts")}
         except sqlite3.OperationalError as fehler:
             if not tabelle_fehlt(fehler):
                 raise

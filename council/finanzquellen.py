@@ -709,6 +709,26 @@ def _marke_loans(store: CouncilStore) -> int | None:
     return reihen[0][0] if reihen and reihen[0][0] is not None else None
 
 
+def _bestand_eigenbetriebe_abschluss(store: CouncilStore) -> set[tuple]:
+    """``(Jahr, Betrieb)`` — die Einheit ist der Betrieb im Jahr: Vier Betriebe
+    legen getrennt vor, und ein Jahrgang mit zwei von vier ist „teilweise"."""
+    return store.enterprise_account_einheiten()
+
+
+def _marke_eigenbetriebe_abschluss(store: CouncilStore) -> int | None:
+    """Die jüngste Jahresabschluss-Vorlage eines Eigenbetriebs (``kvonr``)."""
+    from council.eigenbetriebe_abschluss import TITEL_MUSTER, TITEL_SQL
+    try:
+        r = store._conn.execute(  # noqa: SLF001
+            f"SELECT MAX(kvonr) FROM council_templates WHERE {TITEL_SQL}",
+            list(TITEL_MUSTER)).fetchone()
+    except sqlite3.OperationalError as fehler:
+        if not tabelle_fehlt(fehler):
+            raise
+        return None
+    return r[0] if r and r[0] is not None else None
+
+
 def _bestand_schulden(store: CouncilStore) -> set[tuple]:
     """Die Jahrgänge der Schuldenzeitreihe.
 
@@ -2283,6 +2303,8 @@ def _kette_pruefen(gelesen: dict[int, list[dict]], p: Protokoll) -> dict:
 
 # --- Die Registry -----------------------------------------------------------
 
+from council.eigenbetriebe_abschluss import TITEL_MUSTER as _EIGENBETRIEBE_TITEL  # noqa: E402
+
 QUELLEN: dict[str, Finanzquelle] = {}
 
 for _q in (
@@ -2761,6 +2783,29 @@ for _q in (
         lauf=("scripts/ingest_wirtschaftsplaene.py",),
     ),
     Finanzquelle(
+        key="enterprise_accounts",
+        label="Jahresabschlüsse der Eigenbetriebe",
+        was="Was aus dem Wirtschaftsplan wurde: Umsatzerlöse, Jahresergebnis, "
+            "Bilanzsumme und Eigenkapital der Eigenbetriebe laut geprüftem "
+            "Jahresabschluss — Gebäudewirtschaft und Hochbau (dort stecken die "
+            "Schulen), Abfallwirtschaft, Bäderbetrieb, Hafen.",
+        tabelle="council_enterprise_accounts",
+        unit="Betriebe",
+        # Der Prüfbericht kommt im Sommer des Folgejahres in den Rat (EGH 2025:
+        # Juli 2026, AWB 2025: Juni 2026).
+        erwarteter_monat=8,
+        versatz=1,
+        herkunft="ris",
+        # Die Anlagen heißen „Prüfbericht", „Bilanz", „GuV", „Anlage" — nur
+        # der Vorlagentitel sagt, dass es ein Jahresabschluss eines Betriebs
+        # ist. Kein Seitenminimum: Die GuV des Bäderbetriebs ist eine Seite.
+        erkennung=Erkennung(vorlagen_muster=tuple(_EIGENBETRIEBE_TITEL), oder=True),
+        marke=_marke_eigenbetriebe_abschluss,
+        nachschub="scripts/ingest_eigenbetriebe_abschluss.py",
+        lauf=("scripts/ingest_eigenbetriebe_abschluss.py",),
+        balance=_bestand_eigenbetriebe_abschluss,
+    ),
+    Finanzquelle(
         key="schulden",
         label="Schuldenstand",
         was="Wie viel die Stadt schuldet und wie sich das seit 1995 entwickelt "
@@ -2919,7 +2964,7 @@ REIHENFOLGE = ("haushaltsplan", "income_budget", "investitionen",
                "pruefungsfeststellungen",
                "konzernabschluss", "beteiligungsbericht", "fees",
                "budget_bylaw",
-               "wirtschaftsplan",
+               "wirtschaftsplan", "enterprise_accounts",
                "schulden", "loans", "liquidity",
                "lsn_steuerkraft", "lsn_realsteuern", "lsn_gewerbesteuer")
 

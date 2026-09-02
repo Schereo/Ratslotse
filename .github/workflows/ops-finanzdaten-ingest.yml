@@ -135,6 +135,9 @@ jobs:
             # Kredite und Zinsen: dieselbe Quelle wie die Zuwendungen —
             # Vorlagen-Volltexte im eigenen Bestand, kein Netz.
             .venv/bin/python scripts/ingest_kredite.py
+            # Die Jahresabschlüsse der Eigenbetriebe: Prüfberichte, GuV, Bilanz
+            # (council/eigenbetriebe_abschluss.py) — das Ist zum Wirtschaftsplan.
+            .venv/bin/python scripts/ingest_eigenbetriebe_abschluss.py
 
             # Die Wirtschaftspläne der Eigenbetriebe (#663). Wie die
             # Zuwendungen darüber liest dieser Lauf nicht aus dem Netz — die
