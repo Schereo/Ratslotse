@@ -414,3 +414,33 @@ def test_deutsche_sperrlisten_bleiben_deutsch():
         "Diese deutschen Sperrlisten haben ihr Stichwort verloren — vermutlich "
         "hat ein Umbenennen es mitgenommen:\n  " + "\n  ".join(fehlend)
     )
+
+
+def test_die_aufzaehlungen_stehen_nur_einmal():
+    """Eine Vereinigung im Vertrag muss zu ihrer Quelle im Code passen.
+
+    Bis 09/2026 führte das Web-Frontend die Aufzählungen von Hand — welche
+    Werte ein Beschluss-Ergebnis oder ein Konto-Status annehmen kann, stand
+    dort noch einmal. Eine Abschrift veraltet: Die Status-Vereinigung kannte
+    ``pending`` und ``active``, den dritten Wert ``blocked`` nicht.
+
+    Jetzt stehen sie im Vertrag, und beide Clients erben sie. Damit sie dort
+    stimmen, hält dieser Test sie gegen die Stelle, die sie wirklich bestimmt:
+    die Ergebnis-Tupel des Stores.
+    """
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from app import antworten, schemas
+    from council.store import CouncilStore
+
+    aus_dem_store = set(CouncilStore._VOTE_OUTCOMES) | set(CouncilStore._REPORT_OUTCOMES)
+    im_vertrag = set(antworten.Beschlussergebnis.__args__)
+    assert im_vertrag == aus_dem_store, (
+        "Die Ergebnis-Aufzählung im Vertrag passt nicht zu den Tupeln des "
+        f"Stores.\n  Vertrag: {sorted(im_vertrag)}\n  Store:   {sorted(aus_dem_store)}\n"
+        "Ein Wert, den der Vertrag verschweigt, ist ein 500er in dem Moment, "
+        "in dem er auftaucht — und einer zu viel eine Zusage, die niemand hält."
+    )
+    assert set(schemas.Beschlussergebnis.__args__) == im_vertrag, (
+        "antworten.Beschlussergebnis und schemas.Beschlussergebnis sind "
+        "auseinandergelaufen — zwei Aufzählungen für dieselbe Sache."
+    )

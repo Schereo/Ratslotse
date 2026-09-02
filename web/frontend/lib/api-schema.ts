@@ -4281,7 +4281,26 @@ export interface components {
             /** Satz */
             satz: string;
             /** Zeilen */
-            zeilen: unknown[];
+            zeilen: components["schemas"]["AgendaChangeLine"][];
+        };
+        /**
+         * AgendaChangeLine
+         * @description Eine Zeile des Tagesordnungs-Diffs (``council.agenda_diff.zeilen``).
+         *
+         *     EINE Quelle für das Mail-HTML und die App-Ansicht „Zuletzt geändert".
+         *     Alles unescaped — wer HTML baut, escapet selbst.
+         */
+        AgendaChangeLine: {
+            /** Art */
+            art: string;
+            /** Detail */
+            detail: string | null;
+            /** Label */
+            label: string;
+            /** Nichtoeffentlich */
+            nichtoeffentlich: boolean;
+            /** Title */
+            title: string;
         };
         /**
          * AgendaItemRow
@@ -4687,8 +4706,11 @@ export interface components {
                 no_votes?: number | null;
                 /** Official Text */
                 official_text?: string | null;
-                /** Outcome */
-                outcome?: string | null;
+                /**
+                 * Outcome
+                 * @enum {string|null}
+                 */
+                outcome?: "accepted" | "rejected" | "postponed" | "noted" | "no_decision" | null;
                 /** Parent Item */
                 parent_item?: string | null;
                 /** Parties */
@@ -4753,6 +4775,8 @@ export interface components {
                 live_until?: string | null;
                 /** Location */
                 location?: string | null;
+                /** Matched Items */
+                matched_items?: components["schemas"]["MatchedAgendaItem"][];
                 /** My Topic Items */
                 my_topic_items?: components["schemas"]["MyTopicItem"][];
                 /** N Items */
@@ -5650,8 +5674,11 @@ export interface components {
             no_votes?: number | null;
             /** Official Text */
             official_text?: string | null;
-            /** Outcome */
-            outcome?: string | null;
+            /**
+             * Outcome
+             * @enum {string|null}
+             */
+            outcome?: "accepted" | "rejected" | "postponed" | "noted" | "no_decision" | null;
             /** Parent Item */
             parent_item?: string | null;
             /** Parties */
@@ -5790,8 +5817,11 @@ export interface components {
             decision_id: number;
             /** Kicker */
             kicker: string;
-            /** Outcome */
-            outcome: string | null;
+            /**
+             * Outcome
+             * @enum {string|null}
+             */
+            outcome: "accepted" | "rejected" | "postponed" | "noted" | "no_decision" | null;
             /** Session Date */
             session_date: string | null;
             /** Story */
@@ -6008,9 +6038,9 @@ export interface components {
         /** Finances */
         Finances: {
             /** By Field */
-            by_field: unknown;
+            by_field: components["schemas"]["MoneyByField"][];
             /** Decisions */
-            decisions: unknown;
+            decisions: components["schemas"]["DecisionRow"][];
             /** Field Labels */
             field_labels: {
                 [key: string]: string;
@@ -6072,8 +6102,11 @@ export interface components {
             committee: string;
             /** Id */
             id: number;
-            /** Outcome */
-            outcome: string;
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "accepted" | "rejected" | "postponed" | "noted" | "no_decision";
             /** Policy Field */
             policy_field: string;
             /** Rationale */
@@ -6245,8 +6278,11 @@ export interface components {
                 ksinr: number;
                 /** Kvonr */
                 kvonr: number | null;
-                /** Outcome */
-                outcome: string | null;
+                /**
+                 * Outcome
+                 * @enum {string|null}
+                 */
+                outcome: "accepted" | "rejected" | "postponed" | "noted" | "no_decision" | null;
                 /** Template Number */
                 template_number: string | null;
                 /** Title */
@@ -6284,7 +6320,9 @@ export interface components {
             /** Base Score */
             base_score: number;
             /** Contributions */
-            contributions: unknown;
+            contributions: {
+                [key: string]: number | null;
+            };
             /** Impact */
             impact?: number;
             /** Impact Reason */
@@ -6533,6 +6571,26 @@ export interface components {
             /** Marked */
             marked: number;
         };
+        /**
+         * MatchedAgendaItem
+         * @description Ein Tagesordnungspunkt, der einen Suchbegriff getroffen hat.
+         *
+         *     Weniger Felder als ``AgendaItemRow``: Die Suche liest nur die Spalten der
+         *     Trefferzeile und lässt Anlagen, Kurzfassung und Kartentext weg. ``ksinr``
+         *     steht nicht dabei — die Punkte hängen schon an ihrer Sitzung.
+         */
+        MatchedAgendaItem: {
+            /** Is Public */
+            is_public: number;
+            /** Item Number */
+            item_number: string;
+            /** Kvonr */
+            kvonr: number | null;
+            /** Template Number */
+            template_number: string | null;
+            /** Title */
+            title: string;
+        };
         /** MediaUpload */
         MediaUpload: {
             /** Count */
@@ -6541,6 +6599,18 @@ export interface components {
             day: string;
             /** Urls */
             urls: string[];
+        };
+        /**
+         * MoneyByField
+         * @description Erkanntes Volumen je Themenfeld (``CouncilStore.money_by_field``).
+         */
+        MoneyByField: {
+            /** Field */
+            field: string;
+            /** N */
+            n: number;
+            /** Total */
+            total: number;
         };
         /**
          * MyTopicItem
@@ -7306,6 +7376,25 @@ export interface components {
             /** Topics */
             topics: components["schemas"]["QuizArea"][];
         };
+        /**
+         * QuizBadge
+         * @description Ein Abzeichen im Quiz-Fortschritt (``routers.quiz._badges``).
+         *
+         *     Nicht zu verwechseln mit ``Badge`` darunter: Das sind die Lotsen-Abzeichen
+         *     des Kontos, dieses hier ist der Punkte-, Serien- oder Gebiets-Meilenstein
+         *     auf der Quiz-Seite.
+         */
+        QuizBadge: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /**
+             * Tier
+             * @enum {string}
+             */
+            tier: "bronze" | "silber" | "gold";
+        };
         /** QuizDailyIn */
         QuizDailyIn: {
             /** Correct */
@@ -7519,7 +7608,7 @@ export interface components {
          */
         QuizScore: {
             /** Badges */
-            badges: unknown[];
+            badges: components["schemas"]["QuizBadge"][];
             /** By Area */
             by_area: components["schemas"]["QuizAreaScore"][];
             /** Daily Done */
@@ -7561,8 +7650,11 @@ export interface components {
             ksinr: number;
             /** Kvonr */
             kvonr: number | null;
-            /** Outcome */
-            outcome: string | null;
+            /**
+             * Outcome
+             * @enum {string|null}
+             */
+            outcome: "accepted" | "rejected" | "postponed" | "noted" | "no_decision" | null;
             /** Template Number */
             template_number: string | null;
             /** Title */
@@ -7760,6 +7852,8 @@ export interface components {
             live_until?: string | null;
             /** Location */
             location?: string | null;
+            /** Matched Items */
+            matched_items?: components["schemas"]["MatchedAgendaItem"][];
             /** My Topic Items */
             my_topic_items?: components["schemas"]["MyTopicItem"][];
             /** N Items */
@@ -7800,6 +7894,8 @@ export interface components {
             live_until?: string | null;
             /** Location */
             location?: string | null;
+            /** Matched Items */
+            matched_items?: components["schemas"]["MatchedAgendaItem"][];
             /** My Topic Items */
             my_topic_items?: components["schemas"]["MyTopicItem"][];
             /** N Items */
@@ -7854,8 +7950,11 @@ export interface components {
             committee: string;
             /** Id */
             id: number;
-            /** Outcome */
-            outcome: string | null;
+            /**
+             * Outcome
+             * @enum {string|null}
+             */
+            outcome: "accepted" | "rejected" | "postponed" | "noted" | "no_decision" | null;
             /** Policy Field */
             policy_field: string | null;
             /** Score */
@@ -7884,8 +7983,11 @@ export interface components {
             item_number: string | null;
             /** Official Text */
             official_text: string | null;
-            /** Outcome */
-            outcome: string | null;
+            /**
+             * Outcome
+             * @enum {string|null}
+             */
+            outcome: "accepted" | "rejected" | "postponed" | "noted" | "no_decision" | null;
             /** Session Date */
             session_date: string | null;
             /** Simple Summary */
@@ -8060,8 +8162,11 @@ export interface components {
             found: true;
             /** Interest Reason */
             interest_reason: string;
-            /** Outcome */
-            outcome: string | null;
+            /**
+             * Outcome
+             * @enum {string|null}
+             */
+            outcome: "accepted" | "rejected" | "postponed" | "noted" | "no_decision" | null;
             /** Session Date */
             session_date: string | null;
             /** Title */
@@ -8097,8 +8202,11 @@ export interface components {
             committee: string;
             /** Id */
             id: number;
-            /** Outcome */
-            outcome: string | null;
+            /**
+             * Outcome
+             * @enum {string|null}
+             */
+            outcome: "accepted" | "rejected" | "postponed" | "noted" | "no_decision" | null;
             /** Policy Field */
             policy_field: string | null;
             /** Score */
@@ -8194,8 +8302,11 @@ export interface components {
              * @default false
              */
             is_new: boolean;
-            /** Outcome */
-            outcome?: string | null;
+            /**
+             * Outcome
+             * @enum {string|null}
+             */
+            outcome?: "accepted" | "rejected" | "postponed" | "noted" | "no_decision" | null;
             /** Session Date */
             session_date: string;
             /** Title */
@@ -8320,8 +8431,9 @@ export interface components {
             /**
              * Delivery Channel
              * @default email
+             * @enum {string}
              */
-            delivery_channel: string;
+            delivery_channel: "email" | "push" | "both" | "off";
             /** Display Name */
             display_name?: string | null;
             /** Email */
@@ -8338,15 +8450,19 @@ export interface components {
             has_password: boolean;
             /** Id */
             id: number;
-            /** Role */
-            role: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "user" | "admin";
             /** Saves Conversations */
             saves_conversations?: number | null;
             /**
              * Status
              * @default pending
+             * @enum {string}
              */
-            status: string;
+            status: "pending" | "active" | "blocked";
         };
         /** UserQuizAnswerIn */
         UserQuizAnswerIn: {
@@ -8387,8 +8503,11 @@ export interface components {
             options: string[];
             /** Practiced */
             practiced: number;
-            /** Qtype */
-            qtype: string;
+            /**
+             * Qtype
+             * @enum {string}
+             */
+            qtype: "mc" | "estimate";
             /** Question */
             question: string;
             /** Range Max */
@@ -8465,8 +8584,11 @@ export interface components {
             model: string;
             /** No Votes */
             no_votes: number | null;
-            /** Outcome */
-            outcome: string;
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "accepted" | "rejected" | "postponed" | "noted" | "no_decision";
             /** Quote */
             quote: string;
             /** Video Id */
@@ -8489,13 +8611,17 @@ export interface components {
             email_verified: boolean;
             /** Id */
             id: number;
-            /** Role */
-            role: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "user" | "admin";
             /**
              * Status
              * @default pending
+             * @enum {string}
              */
-            status: string;
+            status: "pending" | "active" | "blocked";
         };
         /**
          * WeekPreview
@@ -12649,8 +12775,11 @@ export interface operations {
                         decision_id: number;
                         /** Kicker */
                         kicker: string;
-                        /** Outcome */
-                        outcome: string | null;
+                        /**
+                         * Outcome
+                         * @enum {string|null}
+                         */
+                        outcome: "accepted" | "rejected" | "postponed" | "noted" | "no_decision" | null;
                         /** Session Date */
                         session_date: string | null;
                         /** Story */
@@ -13232,4 +13361,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 4cd4ef335c15fd51170eec264eb9b540fbf125850444895b7b6364064ef16acd
+// vertrag-sha256: 4a483b5d331fda7e8b26f854d9e8489ed6a3009eb94f1c862527b01d934bd691

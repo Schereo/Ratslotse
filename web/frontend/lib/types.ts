@@ -1,69 +1,39 @@
 import type { components } from "./api-schema";
 
+/** Kurzform für die generierten Antwortformen aus `api-schema.ts`.
+ *
+ *  WARUM DAS HIER STEHT. Bis 09/2026 schrieb diese Datei 63 Antworttypen von
+ *  Hand aus. Eine Abschrift ist eine zweite Wahrheit neben dem Backend: Sie
+ *  veraltet lautlos, und zwar in jedem Frontend einzeln. Nachgemessen, bevor
+ *  die Umstellung begann: Die Vereinigung für den Konto-Status führte hier
+ *  „pending | active" — den dritten Wert `blocked` gibt es seit jeher, er
+ *  fehlte nur.
+ *
+ *  Ein abgeleiteter Typ kann das nicht: Er ändert sich mit dem Vertrag, und
+ *  wo eine Seite das nicht verkraftet, bricht der Übersetzer. */
+type S = components["schemas"];
+
 /** Wohin Benachrichtigungen gehen — „off" heißt: gar nicht. */
 export type DeliveryChannel = "email" | "both" | "push" | "off";
 
-export interface User {
-  id: number;
-  email: string;
-  role: "user" | "admin";
-  status: "pending" | "active";
-  delivery_channel: DeliveryChannel;
-  email_verified: boolean;
-  // Sign in with Apple (RL-1002): verknüpft? Hat das Konto ein eigenes Passwort?
-  apple_linked?: boolean;
-  has_password?: boolean;
-  // Present only on native-app auth responses; the web relies on the cookie.
-  access_token?: string | null;
-  display_name?: string | null;
-  /** Einwilligung „Gespräche merken": 1 = ja, 0 = nein, null = nie gefragt.
-   *  Kommt mit dem Konto, damit die Frage-Seite die Erstnutzungs-Karte sofort
-   *  richtig setzt statt sie nachzuschieben. */
-  saves_conversations?: number | null;
-}
+export type User = S["UserOut"];
 
-export interface CouncilSession {
-  // null = terminierte Sitzung aus dem RIS-Kalender, Tagesordnung noch
-  // nicht veröffentlicht (dann gibt es weder Detailseite noch TOPs).
-  ksinr: number | null;
-  committee: string;
-  session_date: string;
-  session_time: string;
-  /** Nur bei heutigen Sitzungen: Startzeit der nächsten desselben Tages und
-   *  damit das Ende des LIVE-Fensters (s. `lib/live`). Fehlt bei der letzten
-   *  Sitzung des Tages. */
-  live_until?: string | null;
-  location: string;
-  n_items: number;
-  // Present on text search: the agenda items that matched the query.
-  matched_items?: AgendaItem[];
-  // RL-902: TOPs dieser Sitzung, die zu eigenen Themen passen.
-  my_topic_items?: { item_number: string; topic_name: string }[];
-}
+export type CouncilSession = S["SessionRow"];
 
-export interface AgendaItem {
-  item_number: string;
-  title: string;
-  template_number: string | null;
-  kvonr: number | null;
-  is_public: number;
-  /** Dokument-Anhänge des TOP (RIS-PDFs) — ältere API-Antworten kennen das
-   *  Feld nicht. */
-  anlagen?: { label: string; url: string }[];
-  /** Ein Satz, worum es geht — dieselbe KI-Zusammenfassung wie in der
-   *  Tagesordnungs-Mail. Fehlt bei Routine-Punkten und alten Sitzungen. */
-  summary?: string | null;
-  /** Der bessere der beiden Sätze: aus Vorlage UND Anlagen geschrieben, nicht
-   *  nur aus dem Titel (`agenda_item_social`). Deshalb stehen hier Angaben,
-   *  die in keiner Überschrift vorkommen — „110 Wohneinheiten auf 8,6 Hektar".
-   *  Gibt es nur für kommende Sitzungen; sonst bleibt `summary`. */
-  social_text?: string | null;
-  /** Ein Dringlichkeitsantrag — im Ratsinformationssystem hat er keinen
-   *  eigenen Punkt, sondern hängt als Dokument an „Genehmigung der
-   *  Tagesordnung". Der Ratslotse macht daraus eine eigene Zeile mit der
-   *  Kennung `DZT n`; das Flag entscheidet der Server, nicht die Anzeige. */
-  dringlich?: boolean;
-}
+/** Ein Tagesordnungspunkt, wie ihn die Textsuche zurückgibt — fünf Spalten,
+ *  ohne Anlagen, Kurzfassung und Kartentext. */
+export type MatchedAgendaItem = S["MatchedAgendaItem"];
+
+/** Was eine Tagesordnungszeile WIRKLICH braucht.
+ *
+ *  Dieselbe Zeile rendert zwei Herkünfte: den vollen Punkt der Sitzungsseite
+ *  und den schmalen Treffer der Suche. Bis 09/2026 stand an der Stelle der
+ *  volle Typ — die Suchtreffer passten nie dazu, und die Zeile las vier
+ *  Felder, die es dort gar nicht gibt. Sie fragt sie ohnehin ab (`?.` und
+ *  Wahrheitsprüfung), es war nur nicht aufgeschrieben. */
+export type AgendaRowItem = MatchedAgendaItem & Partial<AgendaItem>;
+
+export type AgendaItem = S["AgendaItemRow"];
 
 export type DecisionOutcome =
   | "accepted" | "rejected" | "postponed" | "noted" | "no_decision";
@@ -117,11 +87,7 @@ export interface CouncilDecision {
   location_matches?: DecisionLocationMatch[];
 }
 
-export interface PolicyField {
-  key: string;
-  label: string;
-  count: number;
-}
+export type PolicyField = S["PolicyField"];
 
 export interface QaSource {
   id: number; title: string | null; summary: string | null;
@@ -178,11 +144,7 @@ export interface Trends {
   field_labels: Record<string, string>;
 }
 
-export interface FinanceData {
-  decisions: CouncilDecision[];
-  by_field: { field: string; total: number; n: number }[];
-  field_labels: Record<string, string>;
-}
+export type FinanceData = S["Finances"];
 
 export interface PartyAnalysis {
   coverage: { with_factions: number; total: number };
@@ -206,12 +168,7 @@ export interface PartyAnalysis {
   } | null;
 }
 
-export interface Attendee {
-  name: string | null;
-  party: string | null;
-  role: string | null;
-  note: string | null;
-}
+export type Attendee = S["Attendance"];
 
 /** Vorläufiges Abstimmungsergebnis aus der O1-Videoaufzeichnung — LLM-gelesen
  *  aus den YouTube-Untertiteln, ausdrücklich unter Vorbehalt. Erscheint nur
@@ -247,24 +204,7 @@ export type BookmarkState = "upcoming" | "waiting" | "protocol" | "decided" | "s
 /** Persönlicher Merkeintrag, serverseitig gegen den aktuellen Ratsbestand
  *  aufgelöst. Ein agenda_item bekommt automatisch `decision`, sobald das
  *  Protokoll verarbeitet wurde. */
-export interface BookmarkEntry {
-  id: number;
-  kind: BookmarkKind;
-  target_key: string;
-  title: string;
-  subtitle: string;
-  created_at: string;
-  notify_result: boolean;
-  result_notified_at: string | null;
-  state: BookmarkState;
-  url: string;
-  ksinr: number | null;
-  item_number: string | null;
-  is_group: boolean;
-  session: CouncilSession | null;
-  agenda_item: AgendaItem | null;
-  decision: CouncilDecision | null;
-}
+export type BookmarkEntry = S["BookmarkEntry"];
 
 export interface AgendaAenderungZeile {
   art: "new" | "changed" | "moved" | "template" | "attachments" | "removed";
@@ -274,11 +214,7 @@ export interface AgendaAenderungZeile {
   detail: string | null;
 }
 
-export interface AgendaAenderung {
-  changed_at: string;
-  satz: string;
-  zeilen: AgendaAenderungZeile[];
-}
+export type AgendaAenderung = S["AgendaChange"];
 
 export interface VorlageStop {
   ksinr: number;
@@ -326,24 +262,12 @@ export interface PlaceCandidate {
   evidence: PlaceCandidateEvidence[];
 }
 
-export interface EntityGeo {
-  lat: number;
-  lon: number;
-  geojson: { type: string; coordinates: unknown } | null;
-}
+export type EntityGeo = S["EntityGeo"];
 
 /** Ein verwandtes Thema (vorberechnet, council.related).
  *  `belegt` = kommt gemeinsam in Beschlüssen vor (`evidence` = in wie vielen),
  *  `aehnlich` = semantischer Nachbar aus den Embeddings, füllt nur auf. */
-export interface RelatedEntity {
-  slug: string;
-  name: string;
-  kind: string;
-  n: number;
-  rel_type: "documented" | "similar" | string;
-  score: number;
-  evidence: number;
-}
+export type RelatedEntity = S["RelatedEntity"];
 
 export interface EntityDetail {
   entity: Entity;
@@ -436,30 +360,9 @@ export interface VerwaltungDetail {
 export type PersonProfil = MemberDetail | VerwaltungDetail;
 
 /** Eine Station der offiziellen Beratungsfolge einer Vorlage. */
-export interface Beratung {
-  date: string | null;
-  committee: string;
-  top: string | null;
-  is_public: number | null;
-  result: string | null;
-  ksinr: number | null;
-  future: boolean;
-}
+export type Beratung = S["DeliberationStation"];
 
-export interface ImportanceBreakdown {
-  /** Endwert: Mittel aus `base_score` und `impact` (oder `base_score` allein). */
-  score: number;
-  /** Heuristik allein (die vier Signale) — vor der Mischung mit der Tragweite. */
-  base_score?: number;
-  /** RL-U16: KI-Tragweite 0–100 (fehlt, solange der Backfill sie nicht hat). */
-  impact?: number | null;
-  /** 0–1 je Signal, null wenn das Signal für diesen Beschluss fehlt. */
-  signals: { geld: number | null; umstritten: number | null; verbindlich: number | null; expense: number | null };
-  /** Gewichteter Punkte-Beitrag je Signal; Summe = `base_score`. */
-  contributions?: { geld: number | null; umstritten: number | null; verbindlich: number | null; expense: number | null };
-  /** RL-U16: 1-Satz-Begründung des Tragweite-Scores (fehlt vor dem Backfill). */
-  impact_reason?: string | null;
-}
+export type ImportanceBreakdown = S["ImportanceBreakdown"];
 
 export interface DecisionDetail {
   decision: CouncilDecision;
@@ -535,68 +438,16 @@ export interface DecisionDetail {
   }[];
 }
 
-export interface Topic {
-  id: number;
-  name: string;
-  description: string;
-  created_at: string;
-  /** „Beschlüsse zu diesem Thema" — die gespeicherten Treffer des letzten
-   *  Matching-Laufs (Definition: `council.topic_intel.treffer`). Dieselbe
-   *  Menge, die `/council?tab=decisions&cat=all&topic=<id>` auflistet; wer
-   *  die Zahl irgendwo anders herrechnet, baut die nächste Widersprüchlichkeit. */
-  decision_count: number;
-  /** Es gab mehr passende Beschlüsse, als der Matching-Lauf speichern durfte
-   *  — die Karte schreibt dann „40+" statt einer Endzahl, die keine ist. Gilt
-   *  genauso für die Trefferliste dahinter (view.tsx: `topicCapped`). */
-  decision_count_capped?: boolean;
-  /** Wurde für dieses Thema schon einmal abgeglichen? Trennt die zwei Nullen,
-   *  die auf der Karte gleich aussahen: „gerechnet, der Rat hat dazu wirklich
-   *  nichts entschieden" und „die Zahl steht noch aus". Fehlt das Feld (alte
-   *  Antwort aus dem Cache), gilt die vorsichtigere erste Lesart. */
-  matched?: boolean;
-  last_hit_id?: number | null;
-  last_hit_title?: string | null;
-  last_hit_date?: string | null;
-  unread_count?: number;
-  /** Die jüngsten Treffer selbst (neueste zuerst, höchstens fünf). Die Karte
-   *  zeigt sie direkt — vorher stand dort eine Zahl und ein einziger Titel,
-   *  man musste also jedes Thema öffnen, um zu sehen, was drinsteht. */
-  recent_hits?: TopicHit[];
-  /** Treffer des letzten halben Jahres — sagt, ob ein Thema gerade läuft
-   *  oder ruht. Die Gesamtzahl allein kann beides bedeuten. 30 Tage waren zu
-   *  kurz: Die Gremien tagen monatlich, im Sommer gar nicht. */
-  hits_6m?: number;
-}
+export type Topic = S["TopicOut"];
 
-export interface TopicHit {
-  id: number;
-  title: string;
-  committee: string;
-  session_date: string;
-  outcome: DecisionOutcome | null;
-  /** Noch nicht gesehen — dieselbe Menge, die das „n neue"-Abzeichen zählt. */
-  is_new: boolean;
-}
+export type TopicHit = S["TopicHitOut"];
 
 /** Ein Gremium samt dem, was die Abo-Seite darüber zeigt. `next_date` fehlt,
  *  solange das Ratsinfo keinen Termin führt — dann bleibt die Zeile leer,
  *  statt einen zu erfinden. */
-export interface CommitteeDetail {
-  name: string;
-  next_date: string | null;
-  next_time: string | null;
-  decisions_year: number;
-}
+export type CommitteeDetail = S["CommitteeDetail"];
 
-export interface TopicDecision {
-  id: number;
-  title: string;
-  committee: string;
-  session_date: string;
-  policy_field: string | null;
-  outcome: string | null;
-  score: number;
-}
+export type TopicDecision = S["TopicDecision"];
 
 export interface FieldRecap {
   policy_field: string;
@@ -608,14 +459,7 @@ export interface FieldRecap {
   generated_at: string;
 }
 
-export interface WebUser {
-  id: number;
-  email: string;
-  role: "user" | "admin";
-  status: "pending" | "active";
-  email_verified: boolean;
-  created_at: string;
-}
+export type WebUser = S["WebUserOut"];
 
 export interface AdminStats {
   web_users: { total: number; admins: number; active: number; pending: number };
@@ -624,15 +468,7 @@ export interface AdminStats {
 }
 
 /** Eingegangenes Nutzer-Feedback im Admin-Panel. `read_at` null = offen. */
-export interface AdminFeedback {
-  id: number;
-  owner_id: number;
-  email: string | null;
-  kind: "feature" | "bug" | "other" | string;
-  message: string;
-  created_at: string;
-  read_at: string | null;
-}
+export type AdminFeedback = S["AdminFeedbackRow"];
 
 export interface AdminUserDetail {
   id: number;
@@ -695,48 +531,12 @@ export interface AdminGrowth {
 }
 
 // ---- Quiz ----
-export interface QuizAreaEntry {
-  key: string;
-  label?: string;
-  /** Stabile ID aus dem gemeinsamen Ratslotse-Ortskatalog. */
-  place_id?: string;
-  kind?: string;
-  kind_label?: string;
-  parent_ids?: string[];
-  aliases?: string[];
-  electoral_districts?: number[];
-  districts?: string[];
-  /** Themen: Stadtteil des Themen-Orts (RL-U13); null/fehlend = stadtweit. */
-  district?: string | null;
-  questions: number;
-  points: number;
-}
-export interface QuizAreas {
-  electoral_districts: QuizAreaEntry[];
-  districts: QuizAreaEntry[];
-  topics: QuizAreaEntry[];
-  categories: string[];
-}
+export type QuizAreaEntry = S["QuizArea"];
+export type QuizAreas = S["QuizAreas"];
 /** Eigene Quizfrage (RL-U14) — privat je Konto, mit Übungs-Zählern.
  *  qtype "estimate" (Kategorie „Schätzfrage") nutzt answer_value + Slider-Bereich
  *  statt Optionen. */
-export interface UserQuizQuestion {
-  id: number;
-  question: string;
-  options: string[];
-  correct_index: number;
-  district: string | null;
-  category: string;
-  explanation: string | null;
-  qtype?: "mc" | "estimate";
-  answer_value?: number | null;
-  unit?: string | null;
-  range_min?: number | null;
-  range_max?: number | null;
-  practiced: number;
-  correct_count: number;
-  created_at: string;
-}
+export type UserQuizQuestion = S["UserQuizQuestion"];
 /** Eine Quizfrage OHNE Lösung — direkt aus dem API-Vertrag.
  *
  *  `source_type`/`source_ref` sind optional, weil die eigenen Übungsfragen
@@ -777,47 +577,11 @@ export interface QuizBadge {
   label: string;
   tier: "bronze" | "silber" | "gold";
 }
-export interface QuizStats {
-  by_area: { area_type: string; area_key: string; points: number; answered: number; correct: number; last_at: string | null }[];
-  total: { points: number; answered: number; correct: number };
-  wrong: number;
-  streak: number;
-  badges: QuizBadge[];
-  daily_done: boolean;
-}
-export interface QuizDailyResult {
-  day: string;
-  correct: number;
-  total: number;
-  points: number;
-  completed_at: string;
-}
-export interface QuizDaily {
-  day: string;
-  done: QuizDailyResult | null;
-  questions: QuizQuestion[];
-}
-export interface QuizFlagged {
-  question_id: number;
-  bad: number;
-  good: number;
-  comments: string | null;
-  question: string;
-  area_type: string;
-  area_key: string;
-  options: string[];
-  correct_index: number;
-}
+export type QuizStats = S["QuizScore"];
+export type QuizDailyResult = S["QuizDailyResult"];
+export type QuizDaily = S["QuizDailyRound"];
+export type QuizFlagged = S["QuizFlaggedQuestion"];
 
 /** Eine zusammengeführte Themen-Dublette (Admin). `alias_name` stammt aus den
  *  Roh-Beobachtungen — das Thema selbst gibt es nach dem Zusammenführen nicht mehr. */
-export interface EntityAlias {
-  slug: string;
-  canonical_slug: string;
-  source: "llm" | "manuell" | string;
-  reason: string | null;
-  created_at: string;
-  alias_name: string | null;
-  canonical_name: string | null;
-  canonical_n: number | null;
-}
+export type EntityAlias = S["AdminEntityAlias"];
