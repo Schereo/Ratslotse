@@ -977,6 +977,12 @@ type Vorschlag = {
   place?: string;
 };
 
+/** „Bebauungsplan 865", „Bebauungsplan S-745 B" — Namen, die ohne Einordnung
+ *  niemandem etwas sagen. Dieselbe Regel wie `_ist_plannummer` im Backend. */
+function istPlannummer(name: string): boolean {
+  return /\b(?:vorhabenbezogener\s+)?(?:bebauungs|flächennutzungs)plan\s+[\dSNOWM]/i.test(name);
+}
+
 /** Eine Reihe anklickbarer Vorschläge. Eigene Komponente, seit es zwei Gruppen
  *  gibt (Stadtteil und stadtweit) — sie müssen gleich aussehen und sich gleich
  *  verhalten, sonst liest man einen Unterschied hinein, den es nicht gibt.
@@ -1006,12 +1012,15 @@ function VorschlagsChips({ vorschlaege, vorhanden, busy, betont, onWaehlen }: {
             )}>
             {have ? <Check className="h-3 w-3" /> : <Plus className="h-3 w-3 text-muted-foreground" />}
             {v.name}
-            {/* Die Einordnung SICHTBAR, nicht als Tooltip: „Bebauungsplan 862"
-                sagt niemandem etwas, „Quartier am Krusenbusch" schon. Vorher
-                stand sie nur im title-Attribut, und auf dem Telefon gibt es
-                keinen Hover (Tims Befund, 02.09.2026). */}
-            {v.context && !v.place && (
-              <span className="max-w-[18ch] truncate text-[11px] text-muted-foreground">{v.context}</span>
+            {/* Die Einordnung SICHTBAR, nicht als Tooltip — aber nur dort, wo
+                der Name allein kryptisch ist: „Bebauungsplan 862" sagt
+                niemandem etwas, „Quartier am Krusenbusch" schon. Vorher stand
+                sie nur im title-Attribut, und auf dem Telefon gibt es keinen
+                Hover (Tims Befund, 02.09.2026). Bei allen anderen Namen wäre
+                sie der erste Satz der Beschreibung — „Die Sandkruger Straß…"
+                neben „Sandkruger Straße" wiederholt nur, was schon dasteht. */}
+            {v.context && !v.place && istPlannummer(v.name) && (
+              <span className="max-w-[26ch] truncate text-[11px] text-muted-foreground">{v.context}</span>
             )}
             {/* Ohne den Ortsnamen wäre „Kulturzentrum PFL" unter dem eigenen
                 Stadtteil eine Falschauskunft. */}
