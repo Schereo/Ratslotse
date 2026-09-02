@@ -129,11 +129,17 @@ def test_fehlendes_jahr_faellt_mit_vermerk_zurueck(tmp_path):
     st.close()
 
 
-@pytest.mark.skipif(not os.environ.get("COUNCIL_DB") or not os.path.exists(os.environ["COUNCIL_DB"]),
-                    reason="echte Datenbank nur per COUNCIL_DB — und nur, wenn die Datei da ist")
+# ACHTUNG, warum NICHT `COUNCIL_DB`: Drei Testmodule setzen diese Variable
+# beim Import auf eine Wegwerf-Datenbank (`test_backend_api`, `test_live_window`,
+# `test_social_api`). In einem vollständigen Lauf ist sie also IMMER gesetzt —
+# die Bedingung übersprang dann nichts, und der Test lief gegen eine leere oder
+# längst weggeräumte Datei („unable to open database file", roter Lauf auf dev
+# am 02.09.2026). Ein eigener Name ist das einzige verlässliche Ja.
+@pytest.mark.skipif(not os.environ.get("COUNCIL_DB_ECHT"),
+                    reason="echte Datenbank nur auf Ansage: COUNCIL_DB_ECHT=… setzen")
 def test_groesse_an_der_echten_datenbank():
     from council import geld
-    st = geld.lesestore(os.environ["COUNCIL_DB"])
+    st = geld.lesestore(os.environ["COUNCIL_DB_ECHT"])
     for frage, terms in (("Welche Änderungslisten gab es zum Haushalt 2026?", ["Haushalt"]),
                          ("Was hat die Steuerschätzung am Haushalt 2026 verändert?", ["Steuerschätzung", "Steuern"]),
                          ("Wer wollte den Haushalt 2021 ändern?", ["Haushalt"])):
