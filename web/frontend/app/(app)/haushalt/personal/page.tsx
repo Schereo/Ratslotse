@@ -428,7 +428,9 @@ export default function PersonalPage() {
                         {deStellen(z.positions_prior_year)} Stellen
                       </span>
                       <span className="w-[5.5rem] flex-none text-right font-display text-[14px] font-bold tabular-nums">
-                        {deStellen(z.vacant)}
+                        {/* Immer zwei Nachkommastellen: „13" neben „29,83" las
+                            sich wie eine andere Größe (Durchsicht 02.09.2026). */}
+                        {z.vacant.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
                     </li>
                   ))}

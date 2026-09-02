@@ -114,7 +114,15 @@ function Rang({ row, skala, aufVorhaben, vorhandene }: {
         />
       </div>
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-        {gegen ? (
+        {gegen && row.outflows <= 0 ? (
+          /* Ohne Auszahlung gibt es nichts zu decken — die Stiftungen 2025
+             planten 0 € Auszahlung bei 28 Tsd. € Einzahlung, und „davon
+             gedeckt" stand über der Summe (Durchsicht 02.09.2026). */
+          <p className="text-[11px] leading-snug text-muted-foreground">
+            Keine Auszahlung geplant — {gegen.value} {gegen.unit} Einzahlungen aus Zuschüssen,
+            Verkäufen oder Beiträgen
+          </p>
+        ) : gegen ? (
           <p className="text-[11px] leading-snug text-muted-foreground">
             <span className="font-medium text-foreground/80">Davon gedeckt:</span>{" "}
             {gegen.value} {gegen.unit} durch Zuschüsse, Verkäufe oder Beiträge

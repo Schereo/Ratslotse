@@ -44,7 +44,13 @@ export function IstKurve({ series, unit = "Mio. Euro" }: {
   if (series.length < 2) return null;
 
   const werte = series.map((p) => p.amount / 1e6);
-  const hi = Math.ceil(Math.max(...werte) / 50) * 50;
+  // Die Achse in runden Schritten: Bis 02.09.2026 stand sie in Vierteln
+  // der Obergrenze („63 · 125 · 188 · 250"). Jetzt wählt sie den kleinsten
+  // runden Schritt, mit dem höchstens fünf Linien reichen.
+  const spitze = Math.max(...werte);
+  const schrittweite = [10, 20, 25, 50, 100, 200, 250, 500, 1000]
+    .find((s) => s * 5 >= spitze) ?? 1000;
+  const hi = Math.max(schrittweite, Math.ceil(spitze / schrittweite) * schrittweite);
   const x = (i: number) => X0 + (i / (series.length - 1)) * (X1 - X0);
   const y = (v: number) => Y0 - (v / hi) * (Y0 - YTOP);
 
@@ -59,7 +65,7 @@ export function IstKurve({ series, unit = "Mio. Euro" }: {
     .sort((a, b) => a.delta - b.delta)
     .slice(0, 2);
 
-  const gitter = [0.25, 0.5, 0.75, 1].map((f) => Math.round(hi * f));
+  const gitter = Array.from({ length: Math.round(hi / schrittweite) }, (_, i) => (i + 1) * schrittweite);
   const erste = series[0], letzte = series[series.length - 1];
   const faktor = erste.amount > 0 ? letzte.amount / erste.amount : 0;
   // Jahres-Beschriftung ausdünnen, damit nichts überlappt.

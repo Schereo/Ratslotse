@@ -253,9 +253,16 @@ export function BereicheAbschnitt() {
             </p>
             <p className="mt-1.5 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
               Ein Teilhaushalt bündelt viele einzelne Aufgaben — Stadtarchiv, Feuerwehr,
-              Schwimmbad. Was jede davon kostet, steht auf der Produktebene:
-              Stand {produktBis}
-              <Beleg q="teilhaushalt" />, für das Haushaltsjahr {year} gibt es sie noch nicht.
+              Schwimmbad. Was jede davon kostet, steht auf der Produktebene
+              {/* Der Jahresstempel nur, wenn die Produktebene dem Kopfjahr
+                  hinterherhinkt — sonst stand hier „Stand 2026, für 2026 gibt
+                  es sie noch nicht" (Durchsicht 02.09.2026). */}
+              {produktBis < year ? (
+                <>: Stand {produktBis}<Beleg q="teilhaushalt" />, für das Haushaltsjahr {year} gibt
+                es sie noch nicht.</>
+              ) : (
+                <> — für {year} schon eingelesen<Beleg q="teilhaushalt" />.</>
+              )}
             </p>
             <Link href="/haushalt/produkte"
               className="mt-2 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-primary">

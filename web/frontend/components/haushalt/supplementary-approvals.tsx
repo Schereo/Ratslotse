@@ -228,10 +228,12 @@ export function NachbewilligungsBlock({ daten, year }: {
         <div className="mt-4">
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
             Wer über die Bewilligung entscheidet
+            {/* Der Chip hängt an der Überschrift — unter den Balken stand er
+                allein in einer Zeile (Durchsicht 02.09.2026). */}
+            <Beleg q="jahresabschluss" />
           </p>
           <div className="mt-2.5">
-            <KanalRangliste channels={bericht.channels}
-              beleg={<Beleg q="jahresabschluss" />} />
+            <KanalRangliste channels={bericht.channels} beleg={null} />
           </div>
           <p className="mt-3 max-w-[74ch] text-[11.5px] leading-relaxed text-muted-foreground">
             Der Rechenschaftsbericht unterscheidet vier Entscheidungswege. Nur einer

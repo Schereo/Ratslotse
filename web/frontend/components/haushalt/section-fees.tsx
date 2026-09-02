@@ -149,9 +149,20 @@ function BereichsKarte({ zeilen, tarife, herkunftFuer }: {
 }) {
   const nach = [...zeilen].sort((a, b) => a.year - b.year);
   const letzte = nach[nach.length - 1];
-  const series: JahrPunkt[] = nach
-    .filter((z) => z.fee != null)
-    .map((z) => ({ year: z.year, value: z.fee as number }));
+  // Fehlende Jahre stehen als Lücke MIT Grund in der Reihe: 2022 hat die
+  // Stadt keine Bedarfsberechnung ins Ratsinformationssystem gestellt — bis
+  // 02.09.2026 hieß das in der Grafik „ohne Wert und ohne Grund".
+  const mitGebuehr = nach.filter((z) => z.fee != null);
+  const series: JahrPunkt[] = [];
+  if (mitGebuehr.length) {
+    const vorhanden = new Map(mitGebuehr.map((z) => [z.year, z.fee as number]));
+    for (let j = mitGebuehr[0].year; j <= mitGebuehr[mitGebuehr.length - 1].year; j++) {
+      const fee = vorhanden.get(j);
+      series.push(fee != null
+        ? { year: j, value: fee }
+        : { year: j, fehlt: "keine Gebührenbedarfsberechnung im Ratsinformationssystem" });
+    }
+  }
 
   return (
     <section className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
