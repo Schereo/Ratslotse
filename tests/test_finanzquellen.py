@@ -19,6 +19,7 @@ einen 400.000-Zeichen-Extrakt ins Repo zu legen.
 """
 from __future__ import annotations
 
+import dataclasses
 import importlib.util
 import sys
 from datetime import date
@@ -1203,3 +1204,90 @@ def test_jede_erkennung_findet_ein_dokument_das_zu_ihr_passt(tmp_path):
                            "`oder=True`: " + "; ".join(blind))
     finally:
         store.close()
+
+
+# ---------------------------------------------------------------------------
+# Skriptläufe: der Cron ruft die Ingest-Skripte, sobald ein neues Dokument da ist
+# ---------------------------------------------------------------------------
+
+def _skript(tmp_path, rc: int = 0) -> Path:
+    """Ein Ingest-Skript-Doppel: schreibt eine Marke in eine Datei, endet mit ``rc``."""
+    pfad = tmp_path / "ingest_probe.py"
+    marker = tmp_path / "gelaufen.txt"
+    pfad.write_text(
+        "import os, sys, pathlib\n"
+        f"pathlib.Path({str(marker)!r}).write_text(os.environ.get('COUNCIL_DB', '') + '\\n', )\n"
+        "print('Probe-Skript: 3 Zeilen gespeichert')\n"
+        f"sys.exit({rc})\n")
+    return marker
+
+
+def _mit_probequelle(monkeypatch, tmp_path, marke_wert: list[int], rc: int = 0):
+    """Eine Datenart mit ``lauf`` und einer Marke, die der Test verschiebt."""
+    marker = _skript(tmp_path, rc)
+    q = dataclasses.replace(
+        finanzquellen.QUELLEN["budget_bylaw"], key="probe", label="Probequelle",
+        tabelle="council_budget_bylaw", lauf=(str(tmp_path / "ingest_probe.py"),),
+        marke=lambda store: marke_wert[0], erkennung=None)
+    monkeypatch.setitem(finanzquellen.QUELLEN, "probe", q)
+    monkeypatch.setattr(finanzquellen, "REIHENFOLGE", (*finanzquellen.REIHENFOLGE, "probe"))
+    return marker
+
+
+def test_cron_ruft_das_skript_bei_neuer_marke_und_dann_nicht_mehr(monkeypatch, tmp_path):
+    db = tmp_path / "council.sqlite"
+    CouncilStore(db).close()
+    marke = [17]
+    marker = _mit_probequelle(monkeypatch, tmp_path, marke)
+    bericht = check_finanzdaten.main(db=str(db), heute=date(2026, 9, 2), still=True)
+    assert bericht["Skriptläufe"] == 1 and bericht["Skriptläufe fehlgeschlagen"] == 0
+    assert marker.read_text().strip() == str(db), "das Skript bekommt die Datenbank des Laufs"
+    marker.unlink()
+    # Zweiter Lauf, dieselbe Marke: nichts Neues, kein Aufruf.
+    bericht = check_finanzdaten.main(db=str(db), heute=date(2026, 9, 2), still=True)
+    assert bericht["Skriptläufe"] == 0 and not marker.exists()
+    # Ein neues Dokument (höhere Marke): wieder ein Aufruf.
+    marke[0] = 18
+    bericht = check_finanzdaten.main(db=str(db), heute=date(2026, 9, 2), still=True)
+    assert bericht["Skriptläufe"] == 1 and marker.exists()
+    store = CouncilStore(db)
+    try:
+        m = store.ingest_marke("probe")
+        assert m["marke"] == 18 and m["ok"] == 1 and "3 Zeilen gespeichert" in m["summary"]
+    finally:
+        store.close()
+
+
+def test_gescheitertes_skript_wird_gemeldet_und_wiederholt(monkeypatch, tmp_path):
+    db = tmp_path / "council.sqlite"
+    CouncilStore(db).close()
+    marker = _mit_probequelle(monkeypatch, tmp_path, [5], rc=1)
+    p = finanzquellen.Protokoll(still=True)
+    bericht = check_finanzdaten.main(db=str(db), heute=date(2026, 9, 2), still=True,
+                                     trocken=False, protokoll=p)
+    assert bericht["Skriptläufe fehlgeschlagen"] == 1
+    assert "lauf:probe" in bericht["ausbleibend"]
+    assert any("endete mit Fehler" in w for w in p.warnungen)
+    marker.unlink()
+    # Ohne Erfolg bleibt die Marke offen: der nächste Lauf versucht es erneut.
+    bericht = check_finanzdaten.main(db=str(db), heute=date(2026, 9, 2), still=True)
+    assert bericht["Skriptläufe"] == 1 and marker.exists()
+
+
+def test_trockenlauf_ruft_kein_skript(monkeypatch, tmp_path):
+    db = tmp_path / "council.sqlite"
+    CouncilStore(db).close()
+    marker = _mit_probequelle(monkeypatch, tmp_path, [3])
+    bericht = check_finanzdaten.main(db=str(db), heute=date(2026, 9, 2), still=True, trocken=True)
+    assert bericht["Skriptläufe"] == 0 and not marker.exists()
+
+
+def test_vier_quellen_haben_ein_skript_und_eine_marke():
+    """Die vier Schichten aus dem Ratsinformationssystem, die bis 09/2026 nur
+    beobachtet wurden — jede kennt jetzt ihr Skript, und das Skript gibt es."""
+    mit_lauf = {k for k, q in finanzquellen.QUELLEN.items() if q.lauf}
+    assert mit_lauf >= {"budget_execution", "fees", "budget_bylaw", "wirtschaftsplan"}
+    for k in mit_lauf:
+        q = finanzquellen.QUELLEN[k]
+        assert (ROOT / q.lauf[0]).exists(), q.lauf
+        assert q.erkennung is not None or q.marke is not None, f"{k}: keine Dokumentmarke"

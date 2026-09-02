@@ -1403,6 +1403,8 @@ Der Preis dafür steht im Register: Diese Schicht ist **nicht** cron-fähig.
 hängt (siehe oben) —, also beobachtet er den Haushaltsvollzug nur und meldet,
 wenn ein Stichtag ausbleibt.
 
+**Seit 09/2026 ruft der Job außerdem die Ingest-Skripte** der vier Schichten aus dem Ratsinformationssystem, die keinen eigenen Leser haben (Haushaltsvollzug, Haushaltssatzung, Gebührenbedarf, Wirtschaftspläne) — sobald ein Dokument im Bestand liegt, das jünger ist als die Marke seines letzten Laufs (`Finanzquelle.lauf`, `Finanzquelle.dokumentmarke`, Tabelle `council_ingest_marks`). Der Job selbst lädt weiter nichts herunter; was ein Skript für sich holt, steht in dessen Kopf. Ein gescheiterter Lauf bleibt offen, wird beim nächsten Mal wiederholt und steht in der Hinweis-Mail.
+
 :::note[Vier Leserichtungen, und die richtige wird gesucht]
 Die Übersichtstabellen stehen im Querformat, und die Berichte lösen das auf
 drei Weisen: aufrecht auf einer Querformat-Seite (2023–2026), über

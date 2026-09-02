@@ -3337,6 +3337,17 @@ class CouncilStore(*_geld.MIXINS):
             "reason TEXT NOT NULL, "
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL)"
         )
+        # Die Marken der Skriptläufe des Datenstand-Crons (check_finanzdaten):
+        # je Datenart die Dokumentmarke, bei der ihr Ingest-Skript zuletzt
+        # lief — der Cron ruft es erst wieder, wenn ein neueres Dokument da ist.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_ingest_marks ("
+            "key TEXT PRIMARY KEY, "
+            "marke INTEGER NOT NULL, "
+            "ran_at TEXT NOT NULL, "
+            "ok INTEGER NOT NULL, "
+            "summary TEXT)"
+        )
         # Kredite und Zinsen (council/loans.py): die Unterrichtungen des Rates
         # nach der Kreditrichtlinie — je Vorlage eine Zeile mit Berichts-
         # zeitraum und Zinsersparnis, je nummeriertem Posten eine Zeile mit
@@ -8916,6 +8927,27 @@ class CouncilStore(*_geld.MIXINS):
                 [(v["template_number"], v.get("session_date"), v["reason"], rueck, now)
                  for v in verworfen])
         return len(zeilen)
+
+    # --- Marken der Skriptläufe (scripts/check_finanzdaten.py) --------------
+
+    def ingest_marke(self, key: str) -> dict | None:
+        """Bei welcher Dokumentmarke das Skript dieser Datenart zuletzt lief."""
+        try:
+            r = self._conn.execute(
+                "SELECT key, marke, ran_at, ok, summary FROM council_ingest_marks WHERE key = ?",
+                (key,)).fetchone()
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
+            return None
+        return dict(r) if r else None
+
+    def setze_ingest_marke(self, key: str, marke: int, ok: bool, summary: str = "") -> None:
+        with self._conn:
+            self._conn.execute(
+                "INSERT OR REPLACE INTO council_ingest_marks (key, marke, ran_at, ok, summary) "
+                "VALUES (?,?,?,?,?)",
+                (key, int(marke), datetime.utcnow().isoformat(timespec="seconds"), int(ok), summary[:2000]))
 
     # --- Kredite und Zinsen (council/loans.py) ------------------------------
 
