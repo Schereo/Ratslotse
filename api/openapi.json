@@ -23,8 +23,7 @@
         "properties": {
           "aliases": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/AdminEntityAlias"
             },
             "title": "Aliases",
             "type": "array"
@@ -134,12 +133,75 @@
         "title": "AdminCouncilStats",
         "type": "object"
       },
+      "AdminEntityAlias": {
+        "description": "Eine zusammengelegte Entität (``CouncilStore.list_entity_aliases``).\n\n``canonical_slug`` ist das AUFGELÖSTE Ziel: Eine Kette A→B→C wird bis zum\nEnde verfolgt, damit in der Liste nicht das leere Mittelglied steht.",
+        "properties": {
+          "alias_name": {
+            "title": "Alias Name",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "canonical_n": {
+            "title": "Canonical N",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "canonical_name": {
+            "title": "Canonical Name",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "canonical_slug": {
+            "title": "Canonical Slug",
+            "type": "string"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "slug",
+          "canonical_slug",
+          "source",
+          "reason",
+          "created_at",
+          "alias_name",
+          "canonical_name",
+          "canonical_n"
+        ],
+        "title": "AdminEntityAlias",
+        "type": "object"
+      },
       "AdminFeedbackList": {
         "properties": {
           "items": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/AdminFeedbackRow"
             },
             "title": "Items",
             "type": "array"
@@ -172,6 +234,56 @@
           "unread"
         ],
         "title": "AdminFeedbackRead",
+        "type": "object"
+      },
+      "AdminFeedbackRow": {
+        "description": "Eine Rückmeldung aus dem Kontaktformular (``Store.list_feedback``).\n\nDer SELECT nennt seine sieben Spalten ausdrücklich, die Aufzählung ist\nalso vollständig. ``read_at`` ist absichtlich global und nicht je Admin:\nWer eine Meldung abgearbeitet hat, hat sie für alle abgearbeitet.",
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "owner_id": {
+            "title": "Owner Id",
+            "type": "integer"
+          },
+          "read_at": {
+            "title": "Read At",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "owner_id",
+          "email",
+          "kind",
+          "message",
+          "created_at",
+          "read_at"
+        ],
+        "title": "AdminFeedbackRow",
         "type": "object"
       },
       "AdminGrowth": {
@@ -1159,6 +1271,25 @@
         "title": "AdminUserRow",
         "type": "object"
       },
+      "AgendaAttachment": {
+        "description": "Eine Anlage an einem Tagesordnungspunkt.",
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "url"
+        ],
+        "title": "AgendaAttachment",
+        "type": "object"
+      },
       "AgendaChange": {
         "description": "Eine Änderung an der Tagesordnung aus der Chronik (``agenda_changes``).\n``satz`` ist der Satz für die Meldung, ``zeilen`` die Einzelheiten.",
         "properties": {
@@ -1182,6 +1313,75 @@
           "zeilen"
         ],
         "title": "AgendaChange",
+        "type": "object"
+      },
+      "AgendaItemRow": {
+        "description": "Ein Tagesordnungspunkt, wie ``CouncilStore.agenda_items`` ihn liefert.\n\nDie ersten fünf Felder sind die Spalten, die die Abfrage ausdrücklich\nnennt — kein ``SELECT *``, die Aufzählung ist also vollständig. Die vier\ndarunter hängt dieselbe Methode an: die Anlagen des Punktes, die\nLLM-Kurzfassung, den besseren Kartentext, wo es ihn gibt, und das\nabgeleitete Dringlichkeits-Flag.\n\nBeide Aufrufer (die Sitzungs-Seite und die Merkliste über\n``council.bookmarks``) holen ihre Punkte aus derselben Methode; deshalb\nreicht eine Form für beide.",
+        "properties": {
+          "anlagen": {
+            "items": {
+              "$ref": "#/components/schemas/AgendaAttachment"
+            },
+            "title": "Anlagen",
+            "type": "array"
+          },
+          "dringlich": {
+            "title": "Dringlich",
+            "type": "boolean"
+          },
+          "is_public": {
+            "title": "Is Public",
+            "type": "integer"
+          },
+          "item_number": {
+            "title": "Item Number",
+            "type": "string"
+          },
+          "kvonr": {
+            "title": "Kvonr",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "social_text": {
+            "title": "Social Text",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "summary": {
+            "title": "Summary",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "template_number": {
+            "title": "Template Number",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "item_number",
+          "title",
+          "template_number",
+          "kvonr",
+          "is_public",
+          "anlagen",
+          "summary",
+          "social_text",
+          "dringlich"
+        ],
+        "title": "AgendaItemRow",
         "type": "object"
       },
       "AnalysisCoverage": {
@@ -1344,6 +1544,47 @@
           "question"
         ],
         "title": "AskTurn",
+        "type": "object"
+      },
+      "Attendance": {
+        "description": "Eine Zeile der Anwesenheitsliste (``CouncilStore.get_attendance``).",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "note": {
+            "title": "Note",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "party": {
+            "title": "Party",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "role": {
+            "title": "Role",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "party",
+          "role",
+          "note"
+        ],
+        "title": "Attendance",
         "type": "object"
       },
       "Badge": {
@@ -1558,8 +1799,72 @@
         "description": "Gebaut in ``council.bookmarks.serialize_bookmark`` — festes Literal,\ndeshalb hier vollständig aufgeschrieben. Die drei eingebetteten Objekte\nsind Roh-Zeilen und bleiben offen.",
         "properties": {
           "agenda_item": {
-            "additionalProperties": true,
-            "title": "Agenda Item",
+            "description": "Ein Tagesordnungspunkt, wie ``CouncilStore.agenda_items`` ihn liefert.\n\nDie ersten fünf Felder sind die Spalten, die die Abfrage ausdrücklich\nnennt — kein ``SELECT *``, die Aufzählung ist also vollständig. Die vier\ndarunter hängt dieselbe Methode an: die Anlagen des Punktes, die\nLLM-Kurzfassung, den besseren Kartentext, wo es ihn gibt, und das\nabgeleitete Dringlichkeits-Flag.\n\nBeide Aufrufer (die Sitzungs-Seite und die Merkliste über\n``council.bookmarks``) holen ihre Punkte aus derselben Methode; deshalb\nreicht eine Form für beide.",
+            "properties": {
+              "anlagen": {
+                "items": {
+                  "$ref": "#/components/schemas/AgendaAttachment"
+                },
+                "title": "Anlagen",
+                "type": "array"
+              },
+              "dringlich": {
+                "title": "Dringlich",
+                "type": "boolean"
+              },
+              "is_public": {
+                "title": "Is Public",
+                "type": "integer"
+              },
+              "item_number": {
+                "title": "Item Number",
+                "type": "string"
+              },
+              "kvonr": {
+                "title": "Kvonr",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "social_text": {
+                "title": "Social Text",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "summary": {
+                "title": "Summary",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "template_number": {
+                "title": "Template Number",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "title": {
+                "title": "Title",
+                "type": "string"
+              }
+            },
+            "required": [
+              "item_number",
+              "title",
+              "template_number",
+              "kvonr",
+              "is_public",
+              "anlagen",
+              "summary",
+              "social_text",
+              "dringlich"
+            ],
+            "title": "AgendaItemRow",
             "type": [
               "object",
               "null"
@@ -1890,8 +2195,7 @@
               },
               "my_topic_items": {
                 "items": {
-                  "additionalProperties": true,
-                  "type": "object"
+                  "$ref": "#/components/schemas/MyTopicItem"
                 },
                 "title": "My Topic Items",
                 "type": "array"
@@ -3175,8 +3479,7 @@
           },
           "items": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/WeekPreviewItem"
             },
             "title": "Items",
             "type": "array"
@@ -3223,16 +3526,14 @@
         "properties": {
           "attachments": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/TemplateAttachment"
             },
             "title": "Attachments",
             "type": "array"
           },
           "attendance": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/Attendance"
             },
             "title": "Attendance",
             "type": "array"
@@ -3250,16 +3551,14 @@
           },
           "deliberation_path": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/DeliberationStation"
             },
             "title": "Deliberation Path",
             "type": "array"
           },
           "entities": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/DecisionEntity"
             },
             "title": "Entities",
             "type": "array"
@@ -3358,8 +3657,7 @@
           },
           "similar": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/SimilarDecision"
             },
             "title": "Similar",
             "type": "array"
@@ -3400,6 +3698,33 @@
           "importance_breakdown"
         ],
         "title": "DecisionDetail",
+        "type": "object"
+      },
+      "DecisionEntity": {
+        "description": "Eine im Beschluss erkannte Entität (Vorhaben, Ort, Organisation).",
+        "properties": {
+          "kind": {
+            "title": "Kind",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "kind"
+        ],
+        "title": "DecisionEntity",
         "type": "object"
       },
       "DecisionFollow": {
@@ -3828,6 +4153,25 @@
         "title": "DecisionTemplate",
         "type": "object"
       },
+      "DecisionVote": {
+        "description": "Wie eine Fraktion zu einem Beschluss stand\n(``CouncilStore.decision_votes_for``).",
+        "properties": {
+          "faction": {
+            "title": "Faction",
+            "type": "string"
+          },
+          "stance": {
+            "title": "Stance",
+            "type": "string"
+          }
+        },
+        "required": [
+          "faction",
+          "stance"
+        ],
+        "title": "DecisionVote",
+        "type": "object"
+      },
       "DeepResearchBody": {
         "properties": {
           "conversation_id": {
@@ -3882,6 +4226,65 @@
           }
         },
         "title": "DeleteAccountRequest",
+        "type": "object"
+      },
+      "DeliberationStation": {
+        "description": "Eine Station der Beratungsfolge einer Vorlage.\n\n``future`` rechnet der Router aus dem Datum — das Ergebnis-Feld entscheidet\nausdrücklich NICHT, ob eine Station noch aussteht.",
+        "properties": {
+          "committee": {
+            "title": "Committee",
+            "type": "string"
+          },
+          "date": {
+            "title": "Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "future": {
+            "title": "Future",
+            "type": "boolean"
+          },
+          "is_public": {
+            "title": "Is Public",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "ksinr": {
+            "title": "Ksinr",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "result": {
+            "title": "Result",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "top": {
+            "title": "Top",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "date",
+          "committee",
+          "top",
+          "is_public",
+          "result",
+          "ksinr",
+          "future"
+        ],
+        "title": "DeliberationStation",
         "type": "object"
       },
       "DeliveryUpdate": {
@@ -4933,6 +5336,25 @@
         "title": "MediaUpload",
         "type": "object"
       },
+      "MyTopicItem": {
+        "description": "„n TOPs zu deinen Themen\" — Treffer der Tagesordnungs-Klassifikation.",
+        "properties": {
+          "item_number": {
+            "title": "Item Number",
+            "type": "string"
+          },
+          "topic_name": {
+            "title": "Topic Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "item_number",
+          "topic_name"
+        ],
+        "title": "MyTopicItem",
+        "type": "object"
+      },
       "NearbySuggestion": {
         "properties": {
           "context": {
@@ -5565,8 +5987,7 @@
           },
           "sources": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/PlaceSource"
             },
             "title": "Sources",
             "type": "array"
@@ -5695,8 +6116,7 @@
           },
           "sources": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/PlaceSource"
             },
             "title": "Sources",
             "type": "array"
@@ -5826,6 +6246,43 @@
           "status"
         ],
         "title": "PlaceReviewIn",
+        "type": "object"
+      },
+      "PlaceSource": {
+        "description": "Ein Beleg des Ortskatalogs (``council/oldenburg_places.json``).\n\nVier Schlüssel hat jede der elf Quellen, zwei kommen nur bei manchen vor.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "license": {
+            "title": "License",
+            "type": "string"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "title",
+          "url"
+        ],
+        "title": "PlaceSource",
         "type": "object"
       },
       "PolicyField": {
@@ -6975,8 +7432,7 @@
         "properties": {
           "questions": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/UserQuizQuestion"
             },
             "title": "Questions",
             "type": "array"
@@ -7554,16 +8010,14 @@
           },
           "agenda_items": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/AgendaItemRow"
             },
             "title": "Agenda Items",
             "type": "array"
           },
           "attendance": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/Attendance"
             },
             "title": "Attendance",
             "type": "array"
@@ -7613,8 +8067,7 @@
           },
           "my_topic_items": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/MyTopicItem"
             },
             "title": "My Topic Items",
             "type": "array"
@@ -7643,8 +8096,7 @@
           },
           "video_results": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/VideoResult"
             },
             "title": "Video Results",
             "type": "array"
@@ -7728,8 +8180,7 @@
           },
           "my_topic_items": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/MyTopicItem"
             },
             "title": "My Topic Items",
             "type": "array"
@@ -7832,6 +8283,75 @@
         "title": "SharePreview",
         "type": "object"
       },
+      "SimilarDecision": {
+        "description": "Ein semantischer Nachbar (``CouncilStore.get_similar``).",
+        "properties": {
+          "committee": {
+            "title": "Committee",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "policy_field": {
+            "title": "Policy Field",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          },
+          "session_date": {
+            "title": "Session Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "summary": {
+            "title": "Summary",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "template_number": {
+            "title": "Template Number",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "template_number",
+          "summary",
+          "policy_field",
+          "outcome",
+          "session_date",
+          "committee",
+          "score"
+        ],
+        "title": "SimilarDecision",
+        "type": "object"
+      },
       "SocialDecision": {
         "description": "Fester SELECT im Router plus ``votes`` — deshalb hier vollständig.",
         "properties": {
@@ -7904,8 +8424,7 @@
           },
           "votes": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/DecisionVote"
             },
             "title": "Votes",
             "type": "array"
@@ -8154,6 +8673,62 @@
           "message"
         ],
         "title": "SupportIn",
+        "type": "object"
+      },
+      "TemplateAttachment": {
+        "description": "Eine Anlage an der Vorlage eines Beschlusses.\n\n``applicants`` liegt in der Datenbank als JSON-Text und kommt hier\nausgepackt an — eine Liste von Fraktionsnamen (``[\"Die Linke\"]``).",
+        "properties": {
+          "applicants": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Applicants",
+            "type": "array"
+          },
+          "document_id": {
+            "title": "Document Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "is_image": {
+            "title": "Is Image",
+            "type": "integer"
+          },
+          "is_motion": {
+            "title": "Is Motion",
+            "type": "integer"
+          },
+          "label": {
+            "title": "Label",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "document_id",
+          "label",
+          "url",
+          "is_motion",
+          "applicants",
+          "status",
+          "is_image"
+        ],
+        "title": "TemplateAttachment",
         "type": "object"
       },
       "TemplateFollowed": {
@@ -8908,6 +9483,111 @@
         "title": "UserQuizAnswerIn",
         "type": "object"
       },
+      "UserQuizQuestion": {
+        "description": "Eine selbst angelegte Quizfrage (``Store._user_quiz_row``).\n\nDie Quelle ist zwar ein ``SELECT *``, die Methode baut daraus aber eine\nausdrückliche Projektion — die Aufzählung hier ist deshalb vollständig und\nbleibt es. ``owner_id`` fehlt bewusst (die Zeile gehört dem Abrufenden),\nund ``unit`` heißt in der Datenbank ``answer_unit``.",
+        "properties": {
+          "answer_value": {
+            "title": "Answer Value",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "correct_count": {
+            "title": "Correct Count",
+            "type": "integer"
+          },
+          "correct_index": {
+            "title": "Correct Index",
+            "type": "integer"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "district": {
+            "title": "District",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "explanation": {
+            "title": "Explanation",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "options": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Options",
+            "type": "array"
+          },
+          "practiced": {
+            "title": "Practiced",
+            "type": "integer"
+          },
+          "qtype": {
+            "title": "Qtype",
+            "type": "string"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          },
+          "range_max": {
+            "title": "Range Max",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "range_min": {
+            "title": "Range Min",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "unit": {
+            "title": "Unit",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "question",
+          "options",
+          "correct_index",
+          "district",
+          "category",
+          "explanation",
+          "practiced",
+          "correct_count",
+          "created_at",
+          "qtype",
+          "answer_value",
+          "unit",
+          "range_min",
+          "range_max"
+        ],
+        "title": "UserQuizQuestion",
+        "type": "object"
+      },
       "UserQuizQuestionIn": {
         "properties": {
           "answer_value": {
@@ -9043,6 +9723,87 @@
         "title": "VerifyEmailRequest",
         "type": "object"
       },
+      "VideoResult": {
+        "description": "Ein vorläufiges Ergebnis aus der Videoaufzeichnung.\n\nACHTUNG: Quelle ist ein ``SELECT *`` auf ``council_video_results``. Eine\nneue Spalte dort fiele ohne Eintrag hier still aus der Antwort — dagegen\nsteht ``test_api_vertrag.py::test_zeilen_typen_kennen_alle_spalten_ihrer_tabelle``.",
+        "properties": {
+          "abstentions": {
+            "title": "Abstentions",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "item_number": {
+            "title": "Item Number",
+            "type": "string"
+          },
+          "ksinr": {
+            "title": "Ksinr",
+            "type": "integer"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "no_votes": {
+            "title": "No Votes",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": "string"
+          },
+          "quote": {
+            "title": "Quote",
+            "type": "string"
+          },
+          "video_id": {
+            "title": "Video Id",
+            "type": "string"
+          },
+          "video_seconds": {
+            "title": "Video Seconds",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "vote": {
+            "title": "Vote",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "ksinr",
+          "item_number",
+          "outcome",
+          "vote",
+          "no_votes",
+          "abstentions",
+          "quote",
+          "video_id",
+          "video_seconds",
+          "model",
+          "created_at"
+        ],
+        "title": "VideoResult",
+        "type": "object"
+      },
       "WebUserOut": {
         "properties": {
           "created_at": {
@@ -9097,8 +9858,7 @@
           },
           "items": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/WeekPreviewItem"
             },
             "title": "Items",
             "type": "array"
@@ -9146,6 +9906,155 @@
           "upcoming"
         ],
         "title": "WeekPreview",
+        "type": "object"
+      },
+      "WeekPreviewItem": {
+        "description": "Ein Tagesordnungspunkt in „Diese Woche im Rat\".\n\nZwei Listen tragen diese Form: ``items`` (die hervorgehobenen Punkte, mit\nallen Feldern) und die Einträge in ``further_per_session`` — dort baut der\nStore die Punkte Feld für Feld neu zusammen und lässt fünf davon weg.\nDeshalb stehen genau diese fünf als ``NotRequired``.\n\nDer Store warnt an dieser Stelle selbst: „Wer hier ein Feld ergänzt, muss\nes an BEIDEN Stellen tun.\" Genau das ist zweimal schiefgegangen — einmal\nfehlte die Kurzfassung, einmal der Kartentext, und die Instagram-Karten\nstanden ohne Erklärung da.\n\nACHTUNG, Namensfalle: ``applicants`` ist hier EINE Zeichenkette (der aus\ndem Titel herausgetrennte Antragsteller). Das gleichnamige Feld an\n``TemplateAttachment`` ist eine Liste von Fraktionsnamen.",
+        "properties": {
+          "applicants": {
+            "title": "Applicants",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "behandlung": {
+            "title": "Behandlung",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "committee": {
+            "title": "Committee",
+            "type": "string"
+          },
+          "dringlich": {
+            "title": "Dringlich",
+            "type": "boolean"
+          },
+          "gruppe_nr": {
+            "title": "Gruppe Nr",
+            "type": "string"
+          },
+          "gruppe_stationen": {
+            "title": "Gruppe Stationen",
+            "type": "integer"
+          },
+          "gruppe_titel": {
+            "title": "Gruppe Titel",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "item_number": {
+            "title": "Item Number",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ksinr": {
+            "title": "Ksinr",
+            "type": "integer"
+          },
+          "kvonr": {
+            "title": "Kvonr",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "session_date": {
+            "title": "Session Date",
+            "type": "string"
+          },
+          "social_text": {
+            "title": "Social Text",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "summary": {
+            "title": "Summary",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "template_number": {
+            "title": "Template Number",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "titel_kurz": {
+            "title": "Titel Kurz",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "top": {
+            "title": "Top",
+            "type": "boolean"
+          },
+          "topic_name": {
+            "title": "Topic Name",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "vorgeschichte": {
+            "title": "Vorgeschichte",
+            "type": "integer"
+          },
+          "wichtig": {
+            "title": "Wichtig",
+            "type": "integer"
+          },
+          "wichtig_grund": {
+            "title": "Wichtig Grund",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "wichtig_quelle": {
+            "title": "Wichtig Quelle",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ksinr",
+          "item_number",
+          "title",
+          "titel_kurz",
+          "applicants",
+          "topic_name",
+          "summary",
+          "social_text",
+          "dringlich",
+          "wichtig",
+          "wichtig_grund",
+          "template_number",
+          "kvonr",
+          "committee",
+          "session_date",
+          "gruppe_nr",
+          "gruppe_titel",
+          "gruppe_stationen"
+        ],
+        "title": "WeekPreviewItem",
         "type": "object"
       }
     }

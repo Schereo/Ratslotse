@@ -50,11 +50,74 @@ class OkWithId(TypedDict):
     id: int
 
 
-# Roh-Zeilen aus den Stores. Sie stammen aus ``SELECT *`` bzw. breiten Joins
-# und wachsen mit ihren Tabellen — hier absichtlich durchgereicht statt
-# aufgezählt (siehe Regel 2 im Modul-Docstring). Die Aliase sind trotzdem
-# sprechend, damit im Schema steht, WAS für ein Objekt gemeint ist.
-AgendaItemRow = dict[str, Any]
+class AgendaAttachment(TypedDict):
+    """Eine Anlage an einem Tagesordnungspunkt."""
+    label: str
+    url: str
+
+
+class AgendaItemRow(TypedDict):
+    """Ein Tagesordnungspunkt, wie ``CouncilStore.agenda_items`` ihn liefert.
+
+    Die ersten fünf Felder sind die Spalten, die die Abfrage ausdrücklich
+    nennt — kein ``SELECT *``, die Aufzählung ist also vollständig. Die vier
+    darunter hängt dieselbe Methode an: die Anlagen des Punktes, die
+    LLM-Kurzfassung, den besseren Kartentext, wo es ihn gibt, und das
+    abgeleitete Dringlichkeits-Flag.
+
+    Beide Aufrufer (die Sitzungs-Seite und die Merkliste über
+    ``council.bookmarks``) holen ihre Punkte aus derselben Methode; deshalb
+    reicht eine Form für beide.
+    """
+    item_number: str
+    title: str
+    template_number: str | None
+    kvonr: int | None
+    is_public: int
+    anlagen: list[AgendaAttachment]
+    summary: str | None
+    #: Der Kartentext aus ``agenda_item_social`` — kennt Vorlage UND Anlagen
+    #: und ist deshalb der bessere der beiden Texte, wo es ihn gibt.
+    social_text: str | None
+    #: Abgeleitet (``council.dringlichkeit``), kein amtliches Feld. Es
+    #: entscheidet hier und nicht im Frontend, damit Web und App denselben
+    #: Punkt hervorheben.
+    dringlich: bool
+
+
+class Attendance(TypedDict):
+    """Eine Zeile der Anwesenheitsliste (``CouncilStore.get_attendance``)."""
+    name: str | None
+    party: str | None
+    role: str | None
+    note: str | None
+
+
+class VideoResult(TypedDict):
+    """Ein vorläufiges Ergebnis aus der Videoaufzeichnung.
+
+    ACHTUNG: Quelle ist ein ``SELECT *`` auf ``council_video_results``. Eine
+    neue Spalte dort fiele ohne Eintrag hier still aus der Antwort — dagegen
+    steht ``test_api_vertrag.py::test_zeilen_typen_kennen_alle_spalten_ihrer_tabelle``.
+    """
+    id: int
+    ksinr: int
+    item_number: str
+    outcome: str
+    vote: str | None
+    no_votes: int | None
+    abstentions: int | None
+    quote: str
+    video_id: str
+    video_seconds: int | None
+    model: str
+    created_at: str
+
+
+class MyTopicItem(TypedDict):
+    """„n TOPs zu deinen Themen" — Treffer der Tagesordnungs-Klassifikation."""
+    item_number: str
+    topic_name: str
 
 
 class SessionRow(TypedDict):
@@ -82,7 +145,7 @@ class SessionRow(TypedDict):
     n_items: NotRequired[int]
     # Vom Sitzungs-Endpunkt angereichert: die TOPs dieser Sitzung, die zu
     # einem Thema des Kontos passen.
-    my_topic_items: NotRequired[list[dict[str, Any]]]
+    my_topic_items: NotRequired[list[MyTopicItem]]
     # Ende des „läuft gerade"-Fensters (``council.live``), nur an Sitzungen
     # von HEUTE — für alle anderen fehlt das Feld.
     live_until: NotRequired[str | None]
@@ -513,6 +576,50 @@ class SourceCheck(TypedDict):
 # --------------------------------------------------------------------------
 
 
+class WeekPreviewItem(TypedDict):
+    """Ein Tagesordnungspunkt in „Diese Woche im Rat".
+
+    Zwei Listen tragen diese Form: ``items`` (die hervorgehobenen Punkte, mit
+    allen Feldern) und die Einträge in ``further_per_session`` — dort baut der
+    Store die Punkte Feld für Feld neu zusammen und lässt fünf davon weg.
+    Deshalb stehen genau diese fünf als ``NotRequired``.
+
+    Der Store warnt an dieser Stelle selbst: „Wer hier ein Feld ergänzt, muss
+    es an BEIDEN Stellen tun." Genau das ist zweimal schiefgegangen — einmal
+    fehlte die Kurzfassung, einmal der Kartentext, und die Instagram-Karten
+    standen ohne Erklärung da.
+
+    ACHTUNG, Namensfalle: ``applicants`` ist hier EINE Zeichenkette (der aus
+    dem Titel herausgetrennte Antragsteller). Das gleichnamige Feld an
+    ``TemplateAttachment`` ist eine Liste von Fraktionsnamen.
+    """
+    ksinr: int
+    item_number: str
+    title: str
+    titel_kurz: str
+    applicants: str | None
+    topic_name: str | None
+    summary: str | None
+    social_text: str | None
+    dringlich: bool
+    wichtig: int
+    wichtig_grund: str | None
+    template_number: str | None
+    kvonr: int | None
+    committee: str
+    session_date: str
+    #: Der Punkt, unter dem eine mehrstufige Sache gebündelt wird.
+    gruppe_nr: str
+    gruppe_titel: str | None
+    gruppe_stationen: int
+    #: Nur in ``items``, nicht in ``further_per_session``:
+    kind: NotRequired[str | None]
+    behandlung: NotRequired[str | None]
+    vorgeschichte: NotRequired[int]
+    wichtig_quelle: NotRequired[str]
+    top: NotRequired[bool]
+
+
 class CouncilWeekPreview(TypedDict):
     """``CouncilStore.wochenvorschau`` hat ZWEI Rückgabeformen: ohne Treffer
     nur fünf Schlüssel, mit Treffern elf. Die sechs Kennzahlen sind deshalb
@@ -525,7 +632,7 @@ class CouncilWeekPreview(TypedDict):
     from_date: str
     to_date: str
     sessions: list[SessionRow]
-    items: list[dict[str, Any]]
+    items: list[WeekPreviewItem]
     substantive_total: NotRequired[Any]
     substantive_per_session: NotRequired[Any]
     relevant_per_session: NotRequired[Any]
@@ -552,6 +659,13 @@ class Discovery(TypedDict):
     session_date: str | None
 
 
+class DecisionVote(TypedDict):
+    """Wie eine Fraktion zu einem Beschluss stand
+    (``CouncilStore.decision_votes_for``)."""
+    faction: str
+    stance: str
+
+
 class SocialDecision(TypedDict):
     """Fester SELECT im Router plus ``votes`` — deshalb hier vollständig."""
     id: int
@@ -564,7 +678,7 @@ class SocialDecision(TypedDict):
     item_number: str | None
     committee: str | None
     session_date: str | None
-    votes: list[dict[str, Any]]
+    votes: list[DecisionVote]
 
 
 class HighestDecisionId(TypedDict):
@@ -691,8 +805,33 @@ class QuizMapResult(TypedDict):
     points: int
 
 
+class UserQuizQuestion(TypedDict):
+    """Eine selbst angelegte Quizfrage (``Store._user_quiz_row``).
+
+    Die Quelle ist zwar ein ``SELECT *``, die Methode baut daraus aber eine
+    ausdrückliche Projektion — die Aufzählung hier ist deshalb vollständig und
+    bleibt es. ``owner_id`` fehlt bewusst (die Zeile gehört dem Abrufenden),
+    und ``unit`` heißt in der Datenbank ``answer_unit``.
+    """
+    id: int
+    question: str
+    options: list[str]
+    correct_index: int
+    district: str | None
+    category: str
+    explanation: str | None
+    practiced: int
+    correct_count: int
+    created_at: str
+    qtype: str
+    answer_value: float | None
+    unit: str | None
+    range_min: float | None
+    range_max: float | None
+
+
 class QuizOwnQuestions(TypedDict):
-    questions: list[dict[str, Any]]
+    questions: list[UserQuizQuestion]
 
 
 class QuizTotal(TypedDict):
@@ -749,8 +888,38 @@ class QuizFlagged(TypedDict):
 # ``ALTER TABLE`` still Felder zu schlucken (siehe Regel 2 oben).
 # --------------------------------------------------------------------------
 
-AdminFeedbackRow = dict[str, Any]
-AdminEntityAlias = dict[str, Any]
+class AdminFeedbackRow(TypedDict):
+    """Eine Rückmeldung aus dem Kontaktformular (``Store.list_feedback``).
+
+    Der SELECT nennt seine sieben Spalten ausdrücklich, die Aufzählung ist
+    also vollständig. ``read_at`` ist absichtlich global und nicht je Admin:
+    Wer eine Meldung abgearbeitet hat, hat sie für alle abgearbeitet.
+    """
+    id: int
+    owner_id: int
+    email: str | None
+    kind: str
+    message: str
+    created_at: str
+    read_at: str | None
+
+
+class AdminEntityAlias(TypedDict):
+    """Eine zusammengelegte Entität (``CouncilStore.list_entity_aliases``).
+
+    ``canonical_slug`` ist das AUFGELÖSTE Ziel: Eine Kette A→B→C wird bis zum
+    Ende verfolgt, damit in der Liste nicht das leere Mittelglied steht.
+    """
+    slug: str
+    canonical_slug: str
+    source: str | None
+    reason: str | None
+    created_at: str
+    #: Der Anzeigename des Alias — aus den Rohbeobachtungen, weil der Alias
+    #: selbst nach dem Neubau nicht mehr in ``council_entities`` steht.
+    alias_name: str | None
+    canonical_name: str | None
+    canonical_n: int | None
 
 
 class AdminUserFeatures(TypedDict):
@@ -1050,6 +1219,19 @@ class PlaceParent(TypedDict):
     kind: str
 
 
+class PlaceSource(TypedDict):
+    """Ein Beleg des Ortskatalogs (``council/oldenburg_places.json``).
+
+    Vier Schlüssel hat jede der elf Quellen, zwei kommen nur bei manchen vor.
+    """
+    id: str
+    type: str
+    title: str
+    url: str
+    license: NotRequired[str]
+    note: NotRequired[str]
+
+
 class PlaceEntry(TypedDict):
     """Ein Ort des Katalogs (``council.places.public_place``).
 
@@ -1076,7 +1258,7 @@ class PlaceEntry(TypedDict):
     lon: float | None
     kind_label: str
     parents: list[PlaceParent]
-    sources: list[dict[str, Any]]
+    sources: list[PlaceSource]
 
 
 class PlaceCatalog(TypedDict):
@@ -1090,7 +1272,7 @@ class PlaceCatalog(TypedDict):
     plural: str
     definition: str
     kinds: dict[str, str]
-    sources: list[dict[str, Any]]
+    sources: list[PlaceSource]
     places: list[PlaceEntry]
 
 
@@ -1213,11 +1395,11 @@ class SessionDetail(SessionRow):
     """
     agenda_items: list[AgendaItemRow]
     decisions: list[DecisionRow]
-    attendance: list[dict[str, Any]]
+    attendance: list[Attendance]
     has_protocol: bool
     # Vorläufige Ergebnisse aus der Videoaufzeichnung — die Brücke, bis das
     # Protokoll kommt.
-    video_results: list[dict[str, Any]]
+    video_results: list[VideoResult]
     url: str | None
     agenda_changes: list[AgendaChange]
 
@@ -1269,6 +1451,57 @@ class DecisionFollow(TypedDict):
     following: bool
 
 
+class SimilarDecision(TypedDict):
+    """Ein semantischer Nachbar (``CouncilStore.get_similar``)."""
+    id: int
+    title: str
+    template_number: str | None
+    summary: str | None
+    policy_field: str | None
+    outcome: str | None
+    session_date: str | None
+    committee: str
+    #: Kosinus-Ähnlichkeit aus ``scripts/embed_decisions.py``.
+    score: float
+
+
+class DecisionEntity(TypedDict):
+    """Eine im Beschluss erkannte Entität (Vorhaben, Ort, Organisation)."""
+    slug: str
+    name: str
+    kind: str | None
+
+
+class TemplateAttachment(TypedDict):
+    """Eine Anlage an der Vorlage eines Beschlusses.
+
+    ``applicants`` liegt in der Datenbank als JSON-Text und kommt hier
+    ausgepackt an — eine Liste von Fraktionsnamen (``["Die Linke"]``).
+    """
+    document_id: int | None
+    label: str | None
+    url: str | None
+    is_motion: int
+    applicants: list[str]
+    status: str
+    is_image: int
+
+
+class DeliberationStation(TypedDict):
+    """Eine Station der Beratungsfolge einer Vorlage.
+
+    ``future`` rechnet der Router aus dem Datum — das Ergebnis-Feld entscheidet
+    ausdrücklich NICHT, ob eine Station noch aussteht.
+    """
+    date: str | None
+    committee: str
+    top: str | None
+    is_public: int | None
+    result: str | None
+    ksinr: int | None
+    future: bool
+
+
 class DecisionDetail(TypedDict):
     """Ein Beschluss mit allem Drum und Dran — die geteilte Detailseite.
 
@@ -1280,23 +1513,23 @@ class DecisionDetail(TypedDict):
     des Bestands).
     """
     decision: DecisionRow
-    attendance: list[dict[str, Any]]
+    attendance: list[Attendance]
     present_parties: list[str]
     ratsinfo_url: str | None
     sub_votes: list[DecisionRow]
     template_journey: list[Any]
-    similar: list[dict[str, Any]]
-    entities: list[dict[str, Any]]
+    similar: list[SimilarDecision]
+    entities: list[DecisionEntity]
     participation: DecisionParticipation | None
     importance_breakdown: ImportanceBreakdown
     template: NotRequired[DecisionTemplate]
     template_url: NotRequired[str | None]
-    attachments: NotRequired[list[dict[str, Any]]]
+    attachments: NotRequired[list[TemplateAttachment]]
     # Zwei Formen (Nachbewilligung bzw. Bürgschaft) mit verschiedenen
     # Schlüsseln — deshalb offen statt geraten.
     budget_link: NotRequired[dict[str, Any] | None]
     plan_image: NotRequired[int | None]
-    deliberation_path: NotRequired[list[dict[str, Any]]]
+    deliberation_path: NotRequired[list[DeliberationStation]]
     follow: NotRequired[DecisionFollow]
 
 

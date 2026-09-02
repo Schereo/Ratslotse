@@ -14,7 +14,7 @@ dass jeder aufgerufene *Pfad* existiert. Beide sagen nichts über die
 **Warum das keine Liste ist, die man einmal leert.** Die meisten Felder, die
 hier stehen, sind völlig in Ordnung — sie existieren, das Backend liefert sie,
 nur beschreibt der Vertrag sie nicht: Sie stecken in einer der Nutzlasten, die
-irgendwo ein offenes ``additionalProperties`` tragen (Stand heute 28 von 229
+irgendwo ein offenes ``additionalProperties`` tragen (Stand heute 17 von 229
 Schemata). Solange das so ist, kann niemand maschinell zwischen „Feld, das der
 Vertrag verschweigt" und „Feld, das es nicht mehr gibt" unterscheiden.
 
@@ -122,65 +122,67 @@ def _offene_schemata() -> set[str]:
             if offen(schema)}
 
 
-#: Schemata mit einer offenen Stelle (``additionalProperties``). Genau hier
-#: hört die maschinelle Prüfung auf: Was in einer solchen Nutzlast steckt,
-#: kann niemand gegen den Vertrag halten. Die Liste ist die Arbeitsliste —
-#: sie darf schrumpfen und nicht wachsen.
-OFFENE_SCHEMATA = {
-    "AdminAliasList",
-    "AdminFeedbackList",
-    "AdminJob",
-    "AnalysisData",
-    "BookmarkEntry",
+#: Offene Stellen, die offen BLEIBEN — jede mit ihrem Grund.
+#:
+#: Es gibt zwei Sorten, die sich nicht beschreiben lassen, ohne etwas
+#: kaputtzumachen:
+#:
+#: * **gespeicherte JSON-Blobs.** Ein geteilter Antwort-Schnappschuss oder ein
+#:   fertiger Recherche-Job liegt so in der Datenbank, wie er zum Zeitpunkt
+#:   des Speicherns aussah. Ältere Zeilen tragen weniger Schlüssel; eine
+#:   Aufzählung schnitte die zusätzlichen still weg und machte alte
+#:   Teilen-Links ärmer.
+#: * **echte Freiform.** Ein GeoJSON-Umriss, die Kennzahlen eines Cron-Laufs
+#:   (jeder Job gibt eigene zurück) oder eine Nutzlast mit zwei bewusst
+#:   verschiedenen Formen.
+BEWUSST_OFFEN = {
+    "AdminJob": "`last` ist eine job_runs-Zeile; ihr `stats` ist die "
+                "Kennzahlen-Rückgabe des jeweiligen Jobs und je Job anders.",
+    "AnalysisData": "Die Hülle steht, die verschachtelten Auswertungen "
+                    "darunter bleiben offen (so schon im Code begründet).",
+    "ConversationTurn": "Gespeicherter Quellen-Block eines Gesprächs-Zugs — "
+                        "gewachsener JSON-Blob, ältere Zeilen tragen weniger.",
+    "DecisionDetail": "`budget_link` hat zwei Formen (Nachbewilligung bzw. "
+                      "Bürgschaft) mit verschiedenen Schlüsseln.",
+    "EntityGeo": "`geojson` ist ein Umriss in Freiform.",
+    "QaShare": "Geteilter Antwort-Schnappschuss aus `qa_shares.extras` — "
+               "gespeichert in der Form von damals.",
+    "QaShareBody": "Derselbe Blob auf dem Hinweg.",
+    "ResearchSnapshot": "Gespeicherter Quellen-Block eines Deep-Research-Jobs "
+                        "— im Code ausführlich begründet.",
+    "TrendData": "Die Hülle steht, die Reihen darunter bleiben offen "
+                 "(so schon im Code begründet).",
+}
+
+#: Die Arbeitsliste: Hier fehlt die Beschreibung noch, und sie soll kommen.
+#: Sie darf schrumpfen und nicht wachsen. Wer eine Nutzlast beschreibt,
+#: streicht ihre Zeile.
+NOCH_OFFEN = {
     "BudgetDataState",
     "BudgetDebt",
     "BudgetFixedAssets",
-    "ConversationTurn",
-    "CouncilWeekPreview",
-    "DecisionDetail",
     "Districts",
     "EntityDetail",
-    "EntityGeo",
     "GoalDetail",
     "PersonCouncil",
-    "PlaceCatalog",
-    "PlaceEntry",
-    "QaShare",
-    "QaShareBody",
-    "QuizOwnQuestions",
     "ResearchCurrent",
-    "ResearchSnapshot",
-    "SessionDetail",
-    "SessionRow",
-    "SocialDecision",
-    "TrendData",
-    "WeekPreview",
 }
+
+#: Beide zusammen — was der Vertrag heute offen lässt.
+OFFENE_SCHEMATA = set(BEWUSST_OFFEN) | NOCH_OFFEN
 
 #: Felder der handgeschriebenen Frontend-Typen, die der Vertrag nicht kennt.
 #: Stand 02.09.2026 nachgeprüft: Es gibt sie alle, das Backend liefert sie —
 #: sie stecken in einer der offenen Nutzlasten oben.
 WEB_OHNE_VERTRAG = {
-    ("AdminFeedback", "owner_id"),
-    ("AdminFeedback", "read_at"),
     ("AdminStats", "web_users"),
     ("AgendaAenderungZeile", "art"),
     ("AgendaAenderungZeile", "nichtoeffentlich"),
-    ("AgendaItem", "anlagen"),
-    ("AgendaItem", "dringlich"),
-    ("AgendaItem", "is_public"),
-    ("AgendaItem", "social_text"),
-    ("Beratung", "future"),
-    ("Beratung", "is_public"),
-    ("Beratung", "result"),
     ("CouncilSession", "matched_items"),
     ("DecisionDetail", "amount"),
-    ("DecisionDetail", "anlagen"),
-    ("DecisionDetail", "applicants"),
     ("DecisionDetail", "art"),
     ("DecisionDetail", "bild"),
     ("DecisionDetail", "href"),
-    ("DecisionDetail", "is_motion"),
     ("Entity", "n_recent"),
     ("EntityMapPoint", "location_slug"),
     ("FieldRecap", "field_label"),
@@ -202,14 +204,8 @@ WEB_OHNE_VERTRAG = {
     ("QaSource", "ort_name"),
     ("QuizBadge", "tier"),
     ("QuizImageCredit", "author"),
-    ("QuizImageCredit", "license"),
     ("QuizImageCredit", "license_url"),
     ("RelatedEntity", "rel_type"),
-    ("UserQuizQuestion", "correct_count"),
-    ("UserQuizQuestion", "practiced"),
-    ("VideoResult", "quote"),
-    ("VideoResult", "video_id"),
-    ("VideoResult", "video_seconds"),
 }
 
 #: Dasselbe für die iOS-App. Zwei Einträge sind hier anders als der Rest:
@@ -220,12 +216,8 @@ WEB_OHNE_VERTRAG = {
 #: worden: Er hieß seit #826 ``hits_6m``, und die App zeigte deshalb bei
 #: jedem Thema eine 0.)
 APP_OHNE_VERTRAG = {
-    "applicants",
     "art",
     "calendar_id",
-    "future",
-    "is_motion",
-    "is_public",
     "letzte",
     "location_slug",
     "n_stationen",
@@ -233,9 +225,6 @@ APP_OHNE_VERTRAG = {
     "nichtoeffentlich",
     "ort_name",
     "rest",
-    "result",
-    "titel_kurz",
-    "wichtig_grund",
 }
 
 def test_der_leser_findet_ueberhaupt_etwas():
@@ -265,8 +254,13 @@ def test_der_vertrag_bekommt_keine_neue_offene_stelle():
     geschlossen = sorted(OFFENE_SCHEMATA - ist)
     assert not geschlossen, (
         "Diese Schemata sind inzwischen vollständig beschrieben — bitte aus "
-        "OFFENE_SCHEMATA streichen, sonst schrumpft die Liste nie:\n  "
-        + "\n  ".join(geschlossen)
+        "NOCH_OFFEN (bzw. BEWUSST_OFFEN) streichen, sonst schrumpft die Liste "
+        "nie:\n  " + "\n  ".join(geschlossen)
+    )
+    doppelt = sorted(set(BEWUSST_OFFEN) & NOCH_OFFEN)
+    assert not doppelt, (
+        "Diese Schemata stehen in beiden Listen — entweder soll die Stelle "
+        "beschrieben werden oder nicht:\n  " + "\n  ".join(doppelt)
     )
 
 
