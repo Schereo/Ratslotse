@@ -93,7 +93,7 @@ etwas bedeutet.
 
 WAS DER BERICHT NICHT HERGIBT
 ------------------------------
-**Kein Ist zum Stichtag.** Alle 21 gelesenen Berichte führen Ansatz, Prognose
+**Kein Ist zum Stichtag.** Alle 24 gelesenen Berichte führen Ansatz, Prognose
 zum Jahresende und Abweichung — keiner nennt, was bis zum Stichtag tatsächlich
 gebucht war. „Zum 30. Juni“ ist der Tag, an dem die Ämter ihre Erwartung für
 den 31. Dezember abgegeben haben, nicht ein Halbjahres-Ist. Eine Spalte dafür
@@ -112,15 +112,15 @@ from council.herkunft import Herkunft
 # Proben
 # --------------------------------------------------------------------------
 
+#: Die vier Proben dieser Schicht. Nur ihre NAMEN stehen hier; die Erklärsätze
+#: dazu stehen in ``herkunft.PROBEN`` und nicht noch einmal daneben — sie sind
+#: für Leserinnen geschrieben und reisen über die API in den Beleg-Chip. Eine
+#: zweite Fassung driftet, und welche dann gilt, entschiede der Zufall des
+#: Aufrufwegs.
 PROBE_SPALTEN = "execution_columns"
 PROBE_ZEILE = "execution_row"
 PROBE_SUMME = "execution_totals"
 PROBE_ZEITRAUM = "execution_period"
-
-#: Ihre Erklärsätze stehen in ``herkunft.PROBEN`` und NICHT noch einmal hier:
-#: Sie sind für Leserinnen geschrieben und reisen über die API in den
-#: Beleg-Chip. Eine zweite Fassung neben der ersten driftet, und welche dann
-#: gilt, entscheidet der Zufall des Aufrufwegs.
 
 #: Was diese Schicht abdeckt — reist mit den Zahlen, nicht im Frontend.
 ABGRENZUNG = (
@@ -132,7 +132,7 @@ ABGRENZUNG = (
 
 #: Der Bericht rundet und sagt es selbst: „Es kann zu geringen
 #: Rundungsdifferenzen im Vergleich zu den einzelnen Übersichten der
-#: Teilhaushalte kommen.“ Gemessen über 42 Tabellen sind es höchstens 3 € auf
+#: Teilhaushalte kommen.“ Gemessen über 43 Tabellen sind es höchstens 3 € auf
 #: der Summenzeile. Fünfzehn Euro ist damit großzügig — und immer noch fünf
 #: Größenordnungen unter jedem Spaltenfehler, den diese Proben fangen sollen.
 TOLERANZ_EUR = 15.0
