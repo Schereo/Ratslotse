@@ -40,11 +40,16 @@ import time
 MINDESTENS = 2
 
 
-def gh(*args: str) -> str:
-    ergebnis = subprocess.run(["gh", *args], capture_output=True, text=True)
-    if ergebnis.returncode != 0:
-        raise SystemExit(f"gh {' '.join(args)} scheiterte:\n{ergebnis.stderr.strip()}")
-    return ergebnis.stdout.strip()
+def gh(*args: str, versuche: int = 1) -> str:
+    letzter = ""
+    for versuch in range(versuche):
+        ergebnis = subprocess.run(["gh", *args], capture_output=True, text=True)
+        if ergebnis.returncode == 0:
+            return ergebnis.stdout.strip()
+        letzter = ergebnis.stderr.strip()
+        if versuch + 1 < versuche:
+            time.sleep(15)
+    raise SystemExit(f"gh {' '.join(args)} scheiterte:\n{letzter}")
 
 
 def kopf_lokal() -> str:
@@ -53,8 +58,17 @@ def kopf_lokal() -> str:
 
 
 def pruefungen(sha: str) -> list[tuple[str, str, str]]:
+    """Der Stand der Prüfläufe — mit drei Versuchen.
+
+    Beim Warten läuft dieser Aufruf minutenlang alle 30 Sekunden. Ein einzelner
+    Aussetzer („error connecting to api.github.com", am 02.09.2026 mitten in
+    einem Lauf) darf das Tor nicht abbrechen lassen: Der Pull Request wäre
+    dann ungemergt, obwohl alles grün ist, und der nächste Anlauf müsste von
+    vorn warten.
+    """
     roh = gh("api", f"repos/{{owner}}/{{repo}}/commits/{sha}/check-runs",
-             "-q", ".check_runs[] | [.name, .status, (.conclusion // \"—\")] | @tsv")
+             "-q", ".check_runs[] | [.name, .status, (.conclusion // \"—\")] | @tsv",
+             versuche=3)
     return [tuple(z.split("\t")) for z in roh.splitlines() if z]
 
 

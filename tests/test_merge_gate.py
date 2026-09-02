@@ -58,3 +58,46 @@ def test_hilfe_laeuft():
                               cwd=WURZEL, capture_output=True, text=True)
     assert ergebnis.returncode == 0, ergebnis.stderr
     assert "--trocken" in ergebnis.stdout
+
+
+def test_gh_versucht_es_erneut(monkeypatch):
+    """Ein Netzaussetzer beim Warten darf das Tor nicht abbrechen lassen.
+
+    Am 02.09.2026 mitten in einem Lauf: „error connecting to api.github.com".
+    Der Pull Request blieb ungemergt, obwohl alles grün war, und der nächste
+    Anlauf musste von vorn warten.
+    """
+    import subprocess as sp
+
+    versuche = {"n": 0}
+
+    class Ergebnis:
+        def __init__(self, kode, aus="", fehler=""):
+            self.returncode, self.stdout, self.stderr = kode, aus, fehler
+
+    def unzuverlaessig(*_a, **_k):
+        versuche["n"] += 1
+        if versuche["n"] < 3:
+            return Ergebnis(1, fehler="error connecting to api.github.com")
+        return Ergebnis(0, aus="endlich\n")
+
+    monkeypatch.setattr(sp, "run", unzuverlaessig)
+    monkeypatch.setattr(tor, "subprocess", sp)
+    monkeypatch.setattr(tor.time, "sleep", lambda _s: None)
+    assert tor.gh("api", "x", versuche=3) == "endlich"
+    assert versuche["n"] == 3
+
+
+def test_gh_gibt_irgendwann_auf(monkeypatch):
+    import subprocess as sp
+
+    class Ergebnis:
+        returncode, stdout, stderr = 1, "", "dauerhaft kaputt"
+
+    monkeypatch.setattr(sp, "run", lambda *_a, **_k: Ergebnis())
+    monkeypatch.setattr(tor, "subprocess", sp)
+    monkeypatch.setattr(tor.time, "sleep", lambda _s: None)
+    import pytest
+    with pytest.raises(SystemExit) as fehler:
+        tor.gh("api", "x", versuche=2)
+    assert "dauerhaft kaputt" in str(fehler.value)
