@@ -10757,8 +10757,12 @@ class CouncilStore:
     #: First" (5) fallen raus, alles Ortsgebundene bleibt.
     CITYWIDE_FROM_DISTRICTS = 4
 
-    #: Was nach Adresse klingt statt nach Vorhaben. Solche Namen werden NICHT
-    #: verworfen — sie rutschen nur hinter alles andere.
+    #: Ab wie vielen Beschlüssen im Fenster ein bloßer Straßenname als
+    #: Vorschlag taugt. Darunter ist er eine Adresse aus einem Bebauungsplan.
+    STRASSE_MINDESTENS = 5
+
+    #: Was nach Adresse klingt statt nach Vorhaben. Starke Straßen bleiben
+    #: (s. STRASSE_MINDESTENS) — und rutschen hinter alles andere.
     _STRASSE = re.compile(r"(stra(ß|ss)e|str\.|weg|allee|ring|damm|chaussee|gasse|pfad|steig)$",
                           re.IGNORECASE)
     _STRASSE_VORNE = re.compile(r"^(am|an der|an den|auf dem|auf der|zum|zur|im|in der)\s",
@@ -10836,9 +10840,25 @@ class CouncilStore:
             f"WHERE slug IN ({platz}) AND lat IS NOT NULL AND lon IS NOT NULL",
             slugs).fetchall()}
 
+        from council.locations import affects_whole_city
+
         behalten = []
         for k in kandidaten:
             slug = k.get("slug") or ""
+            name = k.get("name") or ""
+            # Klingt der NAME nach einem stadtweiten Vorgang („TSH Konzept
+            # Berlin", „Mobilitätsplan 2030"), gehört er nicht unter einen
+            # Stadtteil — dieselbe Vokabel wie bei der Ortszuordnung. Die
+            # Breiten-Regel unten fängt das nur, wenn der Bestand schon breit
+            # genug ist; auf dev war er es nicht.
+            if affects_whole_city(name):
+                continue
+            # Ein bloßer Straßenname mit zwei, drei Erwähnungen ist kein
+            # Vorschlag, dem jemand folgen will. Straßen bleiben nur, wenn an
+            # ihnen wirklich etwas passiert — dann sind sie ein Vorhaben mit
+            # Adresse (Sandweg: 33 Beschlüsse). Und auch dann stehen sie hinten.
+            if self._looks_like_street(name) and (k.get("n_recent") or 0) < self.STRASSE_MINDESTENS:
+                continue
             bereiche = zugehoerig.get(slug)
             if bereiche is not None:
                 # Wir wissen, wo dieses Ding liegt. Dann entscheidet das — und

@@ -596,38 +596,60 @@ function ortsBeschreibung(ort: Ortsbereich): string {
  */
 function StadtteilStep({ onNext }: { onNext: () => void }) {
   const qc = useQueryClient();
-  const [busy, setBusy] = useState<string | null>(null);
   const [fehler, setFehler] = useState<string | null>(null);
+  // Was gerade unterwegs ist, je Stadtteil — und WOHIN (an oder aus). Die
+  // Anzeige folgt sofort dieser Absicht, nicht erst der Server-Antwort.
+  const [unterwegs, setUnterwegs] = useState<Map<string, boolean>>(() => new Map());
 
   const orte = useOrtsbereiche();
   const topics = useQuery({ queryKey: ["topics"], queryFn: () => api.get<TopicRow[]>("/topics") });
 
   const liste = orte.data ?? [];
   const meine = topics.data ?? [];
-  const gewaehlt = gewaehlteOrtsbereiche(meine, liste);
-  const namen = useMemo(() => new Set(gewaehlt.map((o) => o.name)), [gewaehlt]);
+  const bestaetigt = gewaehlteOrtsbereiche(meine, liste);
+  // Serverstand plus Absicht: Ein Klick zählt ab sofort, nicht erst, wenn der
+  // Server geantwortet hat und die Themen neu geladen sind.
+  const namen = useMemo(() => {
+    const n = new Set(bestaetigt.map((o) => o.name));
+    for (const [name, an] of unterwegs) { if (an) n.add(name); else n.delete(name); }
+    return n;
+  }, [bestaetigt, unterwegs]);
+  const gewaehlt = useMemo(() => liste.filter((o) => namen.has(o.name)), [liste, namen]);
   const auswaehlbar = useMemo(() => new Set(liste.map((o) => o.name)), [liste]);
 
-  /** An/aus je Stadtteil. `busy` merkt sich den EINEN, der gerade schaltet —
-   *  ein globales Sperren ließe die ganze Karte tot wirken, während nur ein
-   *  Klick unterwegs ist. */
-  const umschalten = async (name: string) => {
-    if (busy) return;
+  /** An/aus je Stadtteil — optimistisch und je Stadtteil für sich.
+   *
+   *  Ein Stadtteil IST ein Thema, und ein neues Thema gleicht der Server sofort
+   *  gegen den Bestand ab (`_erstabgleich`): warm eine halbe Sekunde, nach
+   *  einem Neustart des Dienstes bis zu zwanzig, weil erst die Modelle laden.
+   *  Vorher wartete die Pille genau so lange, bis sie umsprang, und ein
+   *  globaler Riegel sperrte jeden weiteren Klick — wer drei Stadtteile
+   *  wählen wollte, wartete dreimal (Tims Befund, 02.09.2026). Jetzt springt
+   *  die Anzeige sofort um, jeder Stadtteil hat seinen eigenen Wartezustand,
+   *  und die Klicks laufen nebeneinander. Erst wenn der Server NEIN sagt,
+   *  fällt die Anzeige zurück — mit einem Satz dazu. */
+  const umschalten = (name: string) => {
+    if (unterwegs.has(name)) return;
     const ort = liste.find((o) => o.name === name);
     if (!ort) return;
-    setBusy(name);
+    const an = !namen.has(name);
+    setUnterwegs((m) => new Map(m).set(name, an));
     setFehler(null);
-    try {
-      const vorhanden = meine.find((t) => t.name.toLowerCase() === name.toLowerCase());
-      if (vorhanden) await api.del(`/topics/${vorhanden.id}`);
-      else await api.post("/topics", { name: ort.name, description: ortsBeschreibung(ort) });
-      await qc.invalidateQueries({ queryKey: ["topics"] });
-      qc.invalidateQueries({ queryKey: ["topic-suggestions"] });
-    } catch {
-      setFehler("Das ließ sich gerade nicht speichern. Versuch es gleich noch einmal.");
-    } finally {
-      setBusy(null);
-    }
+    void (async () => {
+      try {
+        const vorhanden = meine.find((t) => t.name.toLowerCase() === name.toLowerCase());
+        if (!an && vorhanden) await api.del(`/topics/${vorhanden.id}`);
+        else if (an && !vorhanden) await api.post("/topics", { name: ort.name, description: ortsBeschreibung(ort) });
+        // Erst den Serverstand holen, DANN die Absicht fallen lassen — sonst
+        // flackert die Pille kurz zurück, bevor die neue Liste da ist.
+        await qc.invalidateQueries({ queryKey: ["topics"] });
+        qc.invalidateQueries({ queryKey: ["topic-suggestions"] });
+      } catch {
+        setFehler(`${name} ließ sich gerade nicht ${an ? "anlegen" : "entfernen"}. Versuch es gleich noch einmal.`);
+      } finally {
+        setUnterwegs((m) => { const n = new Map(m); n.delete(name); return n; });
+      }
+    })();
   };
 
   return (
@@ -636,10 +658,11 @@ function StadtteilStep({ onNext }: { onNext: () => void }) {
       lead="Zum Beispiel der, in dem du wohnst — aber genauso jeder andere, in dem gerade etwas passiert. Lotti meldet neue Beschlüsse und Planungen von dort. Mehrere sind möglich, alles jederzeit änderbar."
       pose="point"
       footer={
-        <Button className="w-full lg:w-auto lg:min-w-44" onClick={onNext} disabled={!!busy}>
-          {gewaehlt.length === 0 ? "Überspringen"
-            : gewaehlt.length === 1 ? `${gewaehlt[0].name} · Weiter`
-              : `${gewaehlt.length} Stadtteile · Weiter`}
+        <Button className="w-full lg:w-auto lg:min-w-44" onClick={onNext} disabled={unterwegs.size > 0}>
+          {unterwegs.size > 0 ? <><Loader2 className="h-4 w-4 animate-spin" /> Speichert …</>
+            : gewaehlt.length === 0 ? "Überspringen"
+              : gewaehlt.length === 1 ? `${gewaehlt[0].name} · Weiter`
+                : `${gewaehlt.length} Stadtteile · Weiter`}
         </Button>
       }
     >
@@ -648,21 +671,25 @@ function StadtteilStep({ onNext }: { onNext: () => void }) {
           der Weg für Tastatur und Screenreader. */}
       <div className="hidden rounded-2xl border border-border bg-background p-3 lg:block">
         <StadtteilKarte gewaehlt={namen} auswaehlbar={auswaehlbar}
-          onWaehlen={(n) => void umschalten(n)} />
+          onWaehlen={umschalten} />
       </div>
 
       <div className={cn("flex flex-wrap gap-1.5", liste.length && "lg:mt-4")}>
         {liste.map((o) => {
           const an = namen.has(o.name);
           return (
-            <button key={o.place_id} type="button" aria-pressed={an} disabled={!!busy}
-              onClick={() => void umschalten(o.name)}
+            // Nur DIESE Pille ist gesperrt, solange sie unterwegs ist — die
+            // anderen bleiben klickbar. Sie zeigt schon den Zielzustand und
+            // daneben den Spinner statt des Häkchens.
+            <button key={o.place_id} type="button" aria-pressed={an} aria-busy={unterwegs.has(o.name) || undefined}
+              disabled={unterwegs.has(o.name)}
+              onClick={() => umschalten(o.name)}
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-full border px-3 py-[6px] text-[12.5px] transition-colors disabled:opacity-60",
+                "inline-flex items-center gap-1.5 rounded-full border px-3 py-[6px] text-[12.5px] transition-colors disabled:opacity-80",
                 an ? "border-primary bg-primary font-semibold text-primary-foreground"
                    : "border-border bg-card text-foreground hover:bg-muted",
               )}>
-              {busy === o.name
+              {unterwegs.has(o.name)
                 ? <Loader2 className="h-3 w-3 animate-spin" />
                 : an && <Check className="h-3 w-3" />}
               {o.name}
@@ -704,6 +731,11 @@ function TopicStep({ onNext }: { onNext: () => void }) {
   const qc = useQueryClient();
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
+  // Der Name, der gerade angelegt wird: Er steht sofort als Zeile unter
+  // „Deine Themen", während der Server die Beschreibung schreibt und den
+  // Bestand abgleicht — das dauert je nach Modell zwei bis fünf Sekunden,
+  // und vorher sah man in der Zeit gar nichts (Tims Befund, 02.09.2026).
+  const [anlegend, setAnlegend] = useState<string | null>(null);
   const [warn, setWarn] = useState<string | null>(null);
   // Kein Fehler, sondern eine Auskunft: Das Thema IST angelegt, der Rat hat nur
   // noch nichts dazu entschieden. Darum eigene, ruhige Farbe statt Warngelb.
@@ -764,6 +796,7 @@ function TopicStep({ onNext }: { onNext: () => void }) {
     const clean = topicName.trim();
     if (clean.length < 2 || busy) return;
     setBusy(true);
+    setAnlegend(clean);
     setWarn(null);
     setNote(null);
     try {
@@ -783,12 +816,15 @@ function TopicStep({ onNext }: { onNext: () => void }) {
       }
       await api.post("/topics", { name: clean, description });
       setName("");
-      qc.invalidateQueries({ queryKey: ["topics"] });
+      // Erst die Liste holen, dann die Vorschau-Zeile wegnehmen — sonst
+      // verschwindet das Thema für einen Moment, bevor es wiederkommt.
+      await qc.invalidateQueries({ queryKey: ["topics"] });
       qc.invalidateQueries({ queryKey: ["topic-suggestions"] });
     } catch {
       setWarn("Das Thema konnte gerade nicht angelegt werden. Versuch es gleich nochmal.");
     } finally {
       setBusy(false);
+      setAnlegend(null);
     }
   };
 
@@ -830,6 +866,48 @@ function TopicStep({ onNext }: { onNext: () => void }) {
         <p role="status" className="mt-2 rounded-lg border border-border bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
           {note}
         </p>
+      )}
+
+      {/* Die eigenen Themen ZUERST — direkt unter dem Feld, in das man sie
+          tippt. Vorher standen sie unter allen Vorschlagsgruppen und damit
+          unter dem sichtbaren Bereich: Man legte ein Thema an und sah es
+          nicht (Tims Befund, 02.09.2026). Kompakt als Zeilen, nicht als
+          Karten; die Beschreibung steht als Tooltip und im Blatt „anpassen". */}
+      {(mine.length > 0 || anlegend) && (
+        <div className="mt-4 rounded-2xl border border-border bg-card p-3 lg:bg-background">
+          <Kicker>Deine Themen ({mine.length})</Kicker>
+          <ul className="mt-2 flex flex-col divide-y divide-border">
+            {anlegend && (
+              <li className="flex items-center gap-2 py-1.5 text-[13px] text-muted-foreground">
+                <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-primary" />
+                <span className="font-semibold text-foreground">{anlegend}</span>
+                <span>— Lotti liest die Beschlüsse dazu …</span>
+              </li>
+            )}
+            {mine.map((t) => (
+              <TopicZeile key={t.id} topic={t} matches={matchCount[t.name]}
+                istStadtteil={stadtteile.some((o) => o.name.toLowerCase() === t.name.toLowerCase())}
+                onEdit={() => setEditing(t)} onRemove={() => void remove(t.id)} />
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Solange die Vorschläge kommen, sagt die Fläche das — mit Platzhaltern
+          in Chip-Form, damit nichts springt, wenn sie eintreffen. Der
+          Endpunkt beurteilt jeden noch nie gesehenen Vorschlag einmal per
+          Modell; beim allerersten Aufruf sind das viele. */}
+      {suggestions.isPending && (
+        <div className="mt-4" aria-busy="true">
+          <Kicker><Loader2 className="h-3 w-3 animate-spin text-primary" />
+            {stadtteile.length ? `Lotti sucht, was in ${stadtteile.map((o) => o.name).join(" und ")} läuft …`
+                              : "Lotti sucht, was gerade im Rat läuft …"}</Kicker>
+          <div className="mt-2.5 flex flex-wrap gap-2">
+            {[104, 128, 92, 140, 112, 96].map((w, i) => (
+              <span key={i} style={{ width: w }} className="h-[34px] animate-pulse rounded-full border border-dashed border-border bg-muted/40" />
+            ))}
+          </div>
+        </div>
       )}
 
       {/* Zwei Gruppen statt einer Liste: „bei mir um die Ecke" und „in der
@@ -885,19 +963,6 @@ function TopicStep({ onNext }: { onNext: () => void }) {
         </div>
       )}
 
-      {mine.length > 0 && (
-        <div className="mt-4 rounded-2xl border border-border bg-card p-3.5 lg:bg-background">
-          <Kicker>Deine Themen ({mine.length})</Kicker>
-          <div className="mt-2.5 flex flex-col gap-2">
-            {mine.map((t) => (
-              <TopicCard key={t.id} topic={t} matches={matchCount[t.name]}
-                istStadtteil={stadtteile.some((o) => o.name.toLowerCase() === t.name.toLowerCase())}
-                onEdit={() => setEditing(t)} onRemove={() => void remove(t.id)} />
-            ))}
-          </div>
-        </div>
-      )}
-
       {editing && (
         <TopicSheet topic={editing} onClose={() => setEditing(null)}
           onSaved={() => { setEditing(null); qc.invalidateQueries({ queryKey: ["topics"] }); }} />
@@ -926,7 +991,7 @@ function VorschlagsChips({ vorschlaege, vorhanden, busy, betont, onWaehlen }: {
 }) {
   return (
     <div className="mt-2.5 flex flex-wrap gap-2">
-      {vorschlaege.slice(0, 7).map((v) => {
+      {vorschlaege.slice(0, 6).map((v) => {
         const have = vorhanden.some((t) => t.name === v.name);
         return (
           <button key={v.name} type="button" disabled={busy || have}
@@ -941,6 +1006,13 @@ function VorschlagsChips({ vorschlaege, vorhanden, busy, betont, onWaehlen }: {
             )}>
             {have ? <Check className="h-3 w-3" /> : <Plus className="h-3 w-3 text-muted-foreground" />}
             {v.name}
+            {/* Die Einordnung SICHTBAR, nicht als Tooltip: „Bebauungsplan 862"
+                sagt niemandem etwas, „Quartier am Krusenbusch" schon. Vorher
+                stand sie nur im title-Attribut, und auf dem Telefon gibt es
+                keinen Hover (Tims Befund, 02.09.2026). */}
+            {v.context && !v.place && (
+              <span className="max-w-[18ch] truncate text-[11px] text-muted-foreground">{v.context}</span>
+            )}
             {/* Ohne den Ortsnamen wäre „Kulturzentrum PFL" unter dem eigenen
                 Stadtteil eine Falschauskunft. */}
             {v.place && <span className="text-[11px] text-muted-foreground">{v.place}</span>}
@@ -951,10 +1023,12 @@ function VorschlagsChips({ vorschlaege, vorhanden, busy, betont, onWaehlen }: {
   );
 }
 
-/** Ein angelegtes Thema: Name, Herkunft der Beschreibung, wie viele Beschlüsse
- *  darauf passen — und der Weg, es anzupassen. Die Trefferzahl ist der Beleg
- *  dafür, dass die Beschreibung etwas taugt; ohne sie bliebe sie eine Behauptung. */
-function TopicCard({ topic, matches, istStadtteil, onEdit, onRemove }: {
+/** Ein angelegtes Thema als EINE Zeile: Name, Herkunft, Trefferzahl,
+ *  anpassen, entfernen. Die Beschreibung steht im Tooltip und im Blatt
+ *  „anpassen" — als Absatz auf der Karte trug sie 60 % der Höhe, und die
+ *  Liste rutschte unter den sichtbaren Bereich. Die Trefferzahl bleibt: Sie
+ *  ist der Beleg dafür, dass die Beschreibung etwas taugt. */
+function TopicZeile({ topic, matches, istStadtteil, onEdit, onRemove }: {
   topic: TopicRow;
   /** Zahl samt Herkunft — undefined, solange nichts ermittelt ist. Dann bleibt
    *  die Zeile leer statt „0" zu behaupten. `treffer` sind Beschlüsse, die auf
@@ -981,41 +1055,28 @@ function TopicCard({ topic, matches, istStadtteil, onEdit, onRemove }: {
     ? { n: topic.decision_count, source: "treffer" as const, gedeckelt: !!topic.decision_count_capped }
     : matches && { ...matches, gedeckelt: false };
   return (
-    <div className="rounded-xl border border-border bg-muted/30 px-3 py-2.5">
-      <div className="flex items-center gap-2">
-        <span className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">{topic.name}</span>
-        <button type="button" onClick={onRemove} aria-label={`${topic.name} entfernen`}
-          className="shrink-0 p-0.5 text-muted-foreground transition-colors hover:text-foreground">
-          <X className="h-3.5 w-3.5" />
-        </button>
-      </div>
-      <p className={cn("mt-1.5 flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.04em]",
-        istStadtteil ? "text-primary" : "text-signal")}>
-        {istStadtteil
-          ? <><MapPin className="h-[11px] w-[11px]" />DEIN STADTTEIL</>
-          : <><Sparkles className="h-[11px] w-[11px]" />AUTOMATISCH BESCHRIEBEN</>}
-      </p>
-      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{topic.description}</p>
-      <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-        {zahl && zahl.n > 0 && (
-          <>
-            <span className="rounded bg-primary/10 px-1.5 font-semibold tabular-nums text-primary">
-              {zahl.n}{zahl.gedeckelt ? "+" : ""}{" "}
-              {zahl.n === 1 && !zahl.gedeckelt ? "Beschluss" : "Beschlüsse"}
-            </span>
-            <span>
-              {zahl.source === "year"
-                ? "im letzten Jahr"
-                : zahl.n === 1 && !zahl.gedeckelt ? "passt dazu" : "passen dazu"}
-            </span>
-          </>
-        )}
-        <button type="button" onClick={onEdit}
-          className="ml-auto text-[11px] font-medium text-primary transition-colors hover:underline">
-          anpassen
-        </button>
-      </div>
-    </div>
+    <li className="flex items-center gap-2 py-1.5 text-[13px]" title={topic.description}>
+      <span className={cn("shrink-0", istStadtteil ? "text-primary" : "text-signal")} aria-hidden>
+        {istStadtteil ? <MapPin className="h-3.5 w-3.5" /> : <Sparkles className="h-3.5 w-3.5" />}
+      </span>
+      <span className="min-w-0 flex-1 truncate font-semibold text-foreground">{topic.name}</span>
+      {zahl && zahl.n > 0 && (
+        <span className="hidden shrink-0 text-[11px] text-muted-foreground sm:inline">
+          <span className="rounded bg-primary/10 px-1.5 font-semibold tabular-nums text-primary">
+            {zahl.n}{zahl.gedeckelt ? "+" : ""}
+          </span>{" "}
+          {zahl.source === "year" ? "im letzten Jahr" : zahl.n === 1 && !zahl.gedeckelt ? "Beschluss" : "Beschlüsse"}
+        </span>
+      )}
+      <button type="button" onClick={onEdit}
+        className="shrink-0 text-[11px] font-medium text-primary transition-colors hover:underline">
+        anpassen
+      </button>
+      <button type="button" onClick={onRemove} aria-label={`${topic.name} entfernen`}
+        className="shrink-0 p-0.5 text-muted-foreground transition-colors hover:text-foreground">
+        <X className="h-3.5 w-3.5" />
+      </button>
+    </li>
   );
 }
 

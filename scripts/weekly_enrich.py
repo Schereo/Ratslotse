@@ -7,6 +7,7 @@ press links and "Ähnliche Beschlüsse" are heavier and run here, once a week, i
 
      1. Entitäten (NER)        extract_entities.py         — rebuilds council_entities
      2. Beschreibungen         describe_entities.py        — fills missing descriptions (slug-keyed meta survives the rebuild)
+     2b. Vagheits-Urteile      warm_topic_vagueness.py     — beurteilt neue Vorschlags-Kandidaten vorab (sonst im Web-Request)
      3. Geocoding              geocode_entities.py         — geocodes new place entities
      4. Embeddings/Ähnliche    embed_decisions.py          — re-embeds for "Ähnliche Beschlüsse"
      5. Verwandte Themen       build_entity_relations.py   — "Hängt zusammen mit…" je Entität
@@ -47,6 +48,11 @@ load_dotenv(ROOT / ".env")  # für die Alert-Mail (RESEND_API_KEY, ALERT_EMAIL)
 STEPS: list[tuple[str, str]] = [
     ("Entitäten (NER)", "extract_entities.py"),
     ("Beschreibungen", "describe_entities.py"),
+    # Vagheits-Urteile der Vorschlags-Kandidaten VORRECHNEN (LLM, nur fehlende):
+    # Sonst beurteilt der Assistent sie im Web-Request, und Schritt 3 steht
+    # nach jeder Entitäten-Neuberechnung sekundenlang leer. Nach den
+    # Beschreibungen, weil das Urteil sie mit liest.
+    ("Vagheits-Urteile", "warm_topic_vagueness.py"),
     ("Geocoding", "geocode_entities.py"),
     ("Embeddings / Ähnliche", "embed_decisions.py"),
     # Anlagen (Task 33): Volltexte NEUER Anlagen nachladen (Netz+pypdf, kein

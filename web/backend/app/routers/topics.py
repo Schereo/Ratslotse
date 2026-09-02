@@ -430,7 +430,15 @@ def topic_suggestions(
     Reihenfolge, in der sie gefragt wurden; was dort schon vorkommt,
     wiederholen weder die anderen Ortsbereiche noch die stadtweite Liste.
     """
-    existing_tokens = [_name_tokens(t.name) for t in store.get_topics(user["id"])]
+    # Stadtteil-Themen zählen beim Dedupe NICHT mit. Sie sind Ortsangaben,
+    # keine Interessen: Wer „Krusenbusch" gewählt hat, bekäme sonst „Quartier
+    # am Krusenbusch", „Grundschule Krusenbusch" und „Eisenbahnüberführung
+    # Krusenbusch" als Dubletten weggefiltert — genau die besten Vorschläge
+    # für diesen Stadtteil —, und übrig blieben Straßennamen (Tims Befund,
+    # 02.09.2026: „überwiegend Straßennamen oder kryptische B-Plan-Nummern").
+    ortsnamen = {p.name.casefold() for p in council.all_places() if p.is_primary}
+    existing_tokens = [_name_tokens(t.name) for t in store.get_topics(user["id"])
+                       if (t.name or "").strip().casefold() not in ortsnamen]
     chosen_tokens: list[frozenset[str]] = []
 
     gruppen = []
