@@ -1445,7 +1445,10 @@ die „Finanz- und Leistungsberichte des Teilhaushaltes 07" für den
 Planungsausschuss, dazu die Fassungen der Eigenbetriebe (Gebäudewirtschaft,
 Hafen). Sie tragen dieselben Label und fallen still durch: Wer die stadtweite
 Übersichtstabelle mit dreizehn Teilhaushalten und Summenzeile nicht führt, ist
-kein Kandidat. „56 von 80 Anlagen ohne Übersichtstabelle" ist deshalb der
+kein Kandidat. Von 80 Anlagen mit einem Bericht-Label liefern **24** die
+Übersichtstabelle, zwei weitere sind der stadtweite Bericht und kommen
+trotzdem nicht durch (s. oben), und die restlichen **54** gehören anderen
+Häusern. „56 ohne Übersichtstabelle" im Protokoll des Laufs ist deshalb der
 Sollzustand und kein Befund. Als **Ausbau** wären die Teilhaushalts-Berichte
 die nächste Stufe: dieselbe Frage eine Ebene feiner, aber mit eigener
 Tabellenform und eigenen Proben.
