@@ -103,7 +103,7 @@ eine Einladung zum Missverständnis.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date
 
 from council.herkunft import Herkunft
@@ -703,6 +703,77 @@ def lies_tabellenseiten(seiten) -> Lesung:
             plan_basis=basis, positionen=positionen,
             probes=tuple(probes), probe_result=probe + zeitraum))
     return Lesung(berichte, risse)
+
+
+# --------------------------------------------------------------------------
+# Der Notweg für ein PDF ohne Zeichenzuordnung: die OCR-Lesung
+# --------------------------------------------------------------------------
+#
+# Der Bericht zum 30.06.2023 (Anlage 266188) bringt keinen brauchbaren
+# Textlayer mit — Glyphen-Salat, keine Spalte lesbar. Die Texterkennung
+# (``council/ocr.py``, im Backfill der Anlagen) liest solche Seiten als
+# Markdown-Tabellen: eine Zeile je Teilhaushalt, die Zellen mit „|“ getrennt.
+# Daraus entstehen hier Wörter mit GEDACHTEN Rahmen — jede Zelle eine Spalte
+# 100 pt weiter rechts, jede Zeile 20 pt tiefer — und dann läuft dieselbe
+# Tabellenlesung wie beim PDF: Spaltenbelegung über die Rechnung, Zeilen- und
+# Summenprobe, Stichtag und Abweichungsjahr aus dem Text drumherum. Die
+# Rahmen sind erfunden, die Proben nicht: Eine falsch erkannte Ziffer reißt
+# die Zeilengleichung genauso wie im PDF.
+
+_OCR_ZELLEN = re.compile(r"^\s*\|(.*)\|\s*$")
+#: Zellenbreite und Zeilenhöhe der gedachten Rahmen. Die Spaltenlücke der
+#: Tabellenlesung ist 12 pt, die Zuordnung verträgt 14 pt — 100 pt Abstand
+#: trennen die Spalten sicher, 20 pt Höhe die Zeilen (Grundlinien-Spiel 2,5).
+_OCR_SPALTE = 100.0
+_OCR_ZEILE = 20.0
+HINWEIS_OCR = "OCR-Lesung des gescannten Berichts (kein Textlayer im PDF)"
+
+
+def _ocr_seiten(text: str):
+    """Je Tabellenmarke im OCR-Text (Art, Zeilen aus gedachten Rahmen, Volltext)."""
+    marken = list(_MARKE.finditer(text))
+    for k, m in enumerate(marken):
+        ende = marken[k + 1].start() if k + 1 < len(marken) else len(text)
+        art = (ERGEBNISHAUSHALT if m.group(2) == "Ergebnishaushalt"
+               else FINANZHAUSHALT)
+        woerter: list[Wort] = []
+        for r, zeile in enumerate(text[m.end():ende].split("\n")):
+            z = _OCR_ZELLEN.match(zeile)
+            if z is None:
+                continue
+            zellen = [c.strip() for c in z.group(1).split("|")]
+            if all(set(c) <= set(":- ") for c in zellen):
+                continue  # die Trennzeile „| :--- | :--- |“
+            y = _OCR_ZEILE * (r + 1)
+            for j, zelle in enumerate(zellen):
+                links = _OCR_SPALTE * j
+                for i, wort in enumerate(zelle.split()):
+                    x0 = links + 6.0 * i
+                    # Zahlen rechtsbündig an die Zellenkante, damit die
+                    # Spaltenmitten aus ihren rechten Kanten entstehen;
+                    # Beschriftungen bleiben links davon.
+                    x1 = links + 60.0 if _ZAHL.match(wort) else x0 + 5.0
+                    woerter.append((x0, x1, y, wort))
+        # Der Stichtag steht ÜBER der Marke („Auswertung der Berichte zum …“),
+        # deshalb reicht der Volltext ein Stück zurück.
+        volltext = " ".join(text[max(0, m.start() - 300):ende].split())
+        yield art, _zeilen_bilden(woerter), volltext
+    # Die OCR liefert Buchstaben, keine Glyphen — der Anteil ist voll.
+    yield "letters", 1.0, ""
+
+
+def lies_ocr_text(text: str) -> Lesung:
+    """Die Übersichtstabellen aus der OCR-Lesung eines gescannten Berichts.
+
+    Für Dokumente, deren PDF keine Zeichenzuordnung trägt (s. o.). Liefert
+    dieselben Berichte wie :func:`lies_vollzugsbericht`, mit demselben
+    Probenlauf; das Probenergebnis nennt die OCR als Quelle.
+    """
+    lesung = lies_tabellenseiten(_ocr_seiten(text or ""))
+    return Lesung(
+        [replace(b, probe_result=f"{HINWEIS_OCR}; {b.probe_result}")
+         for b in lesung.berichte],
+        lesung.risse)
 
 
 def herkunft_fuer(bericht: Vollzugsbericht, *, document_id: int | None,
