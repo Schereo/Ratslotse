@@ -2851,36 +2851,37 @@ def geld_regeln(geld: dict | None, eng: bool = False) -> str:
         return ("\n\nDie Haushaltszahl im Kontext bekommt IMMER ihr Jahr und ihre "
                 "Quelle mit („laut Jahresabschluss 2024“) — sonst behauptet der "
                 "eine Satz eine Aktualität, die die Daten nicht haben.")
+    # Live gemessen am 02.09.2026: „Wie viel Geld hat die Stadt auf dem
+    # Konto?“ bekam „Die Ratsunterlagen geben keine direkte Auskunft … Der
+    # Liquiditätsstand betrug 136,1 Millionen Euro“ — die Zahl stand im
+    # Kontext, die Antwort verleugnete sie im ersten Satz. Die
+    # Haushaltsabschnitte SIND die Auskunft, die Beschlüsse daneben oft nur
+    # Kenntnisnahmen. Deshalb steht diese Regel ZUERST: Als fünfte hinter den
+    # vier Sorgfaltsregeln änderte sie am Modell nichts (nachgemessen).
     return (
         "\n\nZU DIESER FRAGE LIEGEN HAUSHALTSDATEN IM KONTEXT (eigene Abschnitte "
-        "unten). Vier Regeln dafür:\n"
-        "1. JAHR IMMER NENNEN. Die Quellen enden zu verschiedenen Zeitpunkten — "
+        "unten). Fünf Regeln dafür:\n"
+        "1. DIE HAUSHALTSDATEN SIND DIE ANTWORT. Beantwortet ein Abschnitt "
+        "unten die Frage, beginnt deine Antwort mit dieser Zahl und ihrer "
+        "Quelle — im ERSTEN Satz. Schreib NIE „die Ratsunterlagen geben keine "
+        "(direkte) Auskunft/Antwort“, wenn die Zahl im Kontext steht: "
+        "Haushaltsdaten SIND Ratsunterlagen. Beschlüsse, die nur einen Bericht "
+        "zur Kenntnis nehmen, sind Beiwerk und keine Einschränkung.\n"
+        "2. JAHR IMMER NENNEN. Die Quellen enden zu verschiedenen Zeitpunkten — "
         "Jahresabschlüsse, Produktebene, Prüfberichte und Konzern sind "
         "verschieden weit. Jede Zahl trägt das Jahr, aus dem sie stammt; ohne "
         "das behauptet die Antwort eine Aktualität, die die Daten nicht haben.\n"
-        "2. PLAN IST NICHT IST. „Geplant“ (Haushaltsplan, Produktebene) und "
+        "3. PLAN IST NICHT IST. „Geplant“ (Haushaltsplan, Produktebene) und "
         "„tatsächlich“ (Jahresabschluss, Steuereinnahmen) nie in einem Satz "
         "vermischen und immer benennen, was von beidem gemeint ist.\n"
-        "3. QUELLE NENNEN. Steht bei einer Zeile ein „Beleg:“, nenne das "
+        "4. QUELLE NENNEN. Steht bei einer Zeile ein „Beleg:“, nenne das "
         "Dokument im Satz („laut Schlussbericht des Rechnungsprüfungsamts zum "
         "Jahresabschluss 2023“). Haushaltszahlen sind KEINE Beschlüsse und "
         "bekommen deshalb NIE eine [id].\n"
-        "4. NICHT RECHNEN, WAS NICHT DASTEHT. Keine Summen über verschiedene "
+        "5. NICHT RECHNEN, WAS NICHT DASTEHT. Keine Summen über verschiedene "
         "Quellen, keine Prozentsätze, keine Pro-Kopf-Werte und keine "
         "Hochrechnungen auf andere Jahre — nur die Zahlen, die im Kontext "
-        "stehen, und die Vergleiche, die dort ausdrücklich angelegt sind.\n"
-        # Live gemessen am 02.09.2026: „Wie viel Geld hat die Stadt auf dem
-        # Konto?“ bekam „Die Ratsunterlagen geben keine direkte Auskunft …
-        # Der Liquiditätsstand betrug 136,1 Millionen Euro“ — die Zahl stand
-        # im Kontext, die Antwort verleugnete sie im ersten Satz. Die
-        # Haushaltsabschnitte SIND die Auskunft, die Beschlüsse daneben oft
-        # nur Kenntnisnahmen.
-        "5. DIE HAUSHALTSDATEN SIND DIE ANTWORT. Beantwortet ein Abschnitt "
-        "unten die Frage, beginne mit dieser Zahl und ihrer Quelle. Schreib "
-        "NICHT „die Ratsunterlagen geben keine Auskunft“, wenn die Zahl im "
-        "Kontext steht — Haushaltsdaten sind Ratsunterlagen. Beschlüsse, die "
-        "nur einen Bericht zur Kenntnis nehmen, sind dann Beiwerk und keine "
-        "Einschränkung."
+        "stehen, und die Vergleiche, die dort ausdrücklich angelegt sind."
     )
 
 
