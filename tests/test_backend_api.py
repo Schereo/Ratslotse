@@ -768,7 +768,7 @@ def test_haushalt_datenstand_nennt_alle_schichten(client):
                               "beteiligungsbericht", "fees",
                               "budget_bylaw",
                               "wirtschaftsplan",
-                              "schulden",
+                              "schulden", "liquidity",
                               "lsn_steuerkraft", "lsn_realsteuern",
                               "lsn_gewerbesteuer"}
     # Die Wirtschaftspläne der Eigenbetriebe: die einzige Schicht, deren
