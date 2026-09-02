@@ -54,6 +54,7 @@ import { useState, type ReactNode } from "react";
 import { deMio } from "@/components/grafik/format";
 import { Einordnung } from "@/components/grafik/einordnung";
 import { useBreite } from "@/lib/use-breite";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 export type HantelZeile = {
@@ -65,6 +66,9 @@ export type HantelZeile = {
    *  dass die Quelle diese Zeile nicht erläutert — das Feld wegzulassen ist
    *  kein gültiger Zustand. */
   einordnung: ReactNode | null;
+  /** Wohin die Zeile führt (der Bereichs-Steckbrief). Ohne `href` ist der
+   *  Name nur Text — keine Zeigerhand, wo der Klick nichts tut. */
+  href?: string;
 };
 
 export type HantelMassstab = "percent" | "amount";
@@ -115,6 +119,9 @@ export function Hantel({
   istLabel?: string;
 }) {
   const [alle, setAlle] = useState(false);
+  /** Die Zeile unter dem Zeiger — Spotlight (gb-zeile), aus React, nicht
+   *  aus `:hover`, damit der Fokus dasselbe bekommt. */
+  const [schwebt, setSchwebt] = useState<string | null>(null);
   const { box, breite } = useBreite();
   const schmal = breite < 520;
 
@@ -160,19 +167,23 @@ export function Hantel({
   const gitter = "grid-cols-[minmax(96px,150px)_1fr_auto]";
 
   /** Die Achse einer Zeile — Strecke, Null-Marke, beide Punkte. */
-  const achse = (z: HantelZeile) => {
+  const achse = (z: HantelZeile, rang: number) => {
     const s = skala(z);
     return (
       <div aria-hidden="true" className="relative h-5">
         <div className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-border/60" />
         <div className="absolute inset-y-0 w-px bg-border" style={{ left: `${nullPos}%` }} />
         {/* Die Abweichung als Strecke, ab der Null — immer Signal-Orange,
-            die Punkte nie farbcodiert (GB-05). */}
+            die Punkte nie farbcodiert (GB-05). Beim Aufbau wächst sie AUS DER
+            NULL heraus (gb-balken-auf, Ursprung je Richtung), versetzt je
+            Zeile; beim Umschalten des Maßstabs gleitet sie (gb-lage). */}
         <div
-          className="absolute top-1/2 h-[3px] -translate-y-1/2 rounded-full bg-signal/70"
+          className="gb-lage gb-balken-auf absolute top-1/2 h-[3px] -translate-y-1/2 rounded-full bg-signal/70"
           style={{
             left: `${Math.min(nullPos, pos(s))}%`,
             width: `${Math.max(Math.abs(pos(s) - nullPos), 0.5)}%`,
+            transformOrigin: s < 0 ? "100% 50%" : "0 50%",
+            animationDelay: `${rang * 45}ms`,
           }}
         />
         {/* Geplant: offener Punkt auf der Null. Tatsächlich: gefüllter
@@ -189,8 +200,8 @@ export function Hantel({
         />
         <span
           aria-hidden="true"
-          className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full"
-          style={{ left: `${pos(s)}%`, background: "var(--hh-aus-0)" }}
+          className="gb-lage gb-einblenden absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full"
+          style={{ left: `${pos(s)}%`, background: "var(--hh-aus-0)", animationDelay: `${rang * 45 + 320}ms` }}
         />
       </div>
     );
@@ -203,19 +214,23 @@ export function Hantel({
   const zahlen = (z: HantelZeile, mitQuote: boolean) => {
     const d = diff(z);
     const quote = anteil(z);
+    // Die Abweichung ist die Aussage der Zeile — sie steht in Bricolage und
+    // größer als Plan und Ist, die nur ihre Herkunft sind. Bis 02.09. standen
+    // alle vier Zahlen in derselben 12-px-Zeile.
     return (
-      <span className="whitespace-nowrap text-right text-[12px] tabular-nums">
+      <span className="inline-flex items-baseline justify-end gap-1.5 whitespace-nowrap text-right text-[12px] tabular-nums">
         <span className="sr-only">{planLabel} </span>
         <span className="text-muted-foreground">{deMio(z.plan as number)}</span>
-        <span aria-hidden="true" className="mx-1 text-muted-foreground">→</span>
+        <span aria-hidden="true" className="text-muted-foreground">→</span>
         <span className="sr-only">, {istLabel} </span>
         <span className="font-semibold">{deMio(z.ist as number)}</span>
         <span className="sr-only">, Abweichung </span>
-        <span className={cn("ml-1.5", d !== 0 && "text-signal")}>
+        <span className={cn("ml-1 font-display text-[15px] font-bold leading-none tracking-tight",
+                            d !== 0 && "text-signal")}>
           {d > 0 ? "+" : ""}{deMio(d)}
         </span>
         {mitQuote && quote != null && (
-          <span className="ml-1 text-[11px] text-muted-foreground">
+          <span className="text-[11px] text-muted-foreground">
             ({quote > 0 ? "+" : "−"}{Math.abs(quote).toLocaleString("de-DE", {
               minimumFractionDigits: 1, maximumFractionDigits: 1 })}&nbsp;%)
           </span>
@@ -224,16 +239,34 @@ export function Hantel({
     );
   };
 
+  /** Der Name der Zeile — Text, oder ein Link, wo die Zeile ein Ziel hat.
+   *  Zwei Zeilen statt `truncate`: „Finanzmanagement un…" sagte nichts. */
+  const name = (z: HantelZeile) => z.href ? (
+    <Link href={z.href} className="line-clamp-2 text-[12.5px] leading-tight text-primary hover:underline">
+      {z.label}
+    </Link>
+  ) : (
+    <span className="line-clamp-2 text-[12.5px] leading-tight">{z.label}</span>
+  );
+
   return (
-    <div ref={box} className="flex flex-col gap-2.5">
-      {gezeigt.map((z) => (
-        <div key={z.label} className="flex flex-col gap-1">
+    <div ref={box} className="flex flex-col gap-1.5" onMouseLeave={() => setSchwebt(null)}>
+      {gezeigt.map((z, rang) => (
+        <div
+          key={z.label}
+          data-schwebt={schwebt === z.label}
+          data-gedimmt={schwebt != null && schwebt !== z.label}
+          onMouseEnter={() => setSchwebt(z.label)}
+          onFocus={() => setSchwebt(z.label)}
+          onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setSchwebt(null); }}
+          className="gb-zeile -mx-2 flex flex-col gap-1 px-2 py-1"
+        >
           {schmal ? (
             // H4-A: Name über der Achse, Achse volle Breite, Werte unter den
             // Punkten — nie zweispaltig.
             <>
-              <span className="text-[12.5px] font-medium">{z.label}</span>
-              {achse(z)}
+              <span className="text-[12.5px] font-medium">{name(z)}</span>
+              {achse(z, rang)}
               <div className="flex items-baseline justify-between gap-2">
                 <span className="text-[11px] text-muted-foreground">
                   ○ Plan <span className="tabular-nums">{deMio(z.plan as number)}</span>
@@ -252,8 +285,8 @@ export function Hantel({
             </>
           ) : (
             <div className={cn("grid items-center gap-x-3", gitter)}>
-              <span className="truncate text-[12.5px]">{z.label}</span>
-              {achse(z)}
+              {name(z)}
+              {achse(z, rang)}
               {zahlen(z, true)}
             </div>
           )}

@@ -75,6 +75,9 @@ export function SegmentText({ stufen }: { stufen: string[] }) {
   const box = useRef<HTMLSpanElement>(null);
   const mess = useRef<HTMLSpanElement>(null);
   const [text, setText] = useState("");
+  /** Breite Segmente setzen ihren Text größer (die Regel der Kacheln:
+   *  Schrift folgt der Fläche). Gemessen, nicht geraten — ab 180 px. */
+  const [gross, setGross] = useState(false);
   // Zu EINEM String serialisiert, damit der Effekt eine stabile Abhängigkeit
   // hat — ein Array wäre bei jedem Render ein neues Objekt. JSON statt eines
   // Trennzeichens, weil die Kandidaten selbst Mittelpunkte und Kommata tragen.
@@ -91,6 +94,7 @@ export function SegmentText({ stufen }: { stufen: string[] }) {
       const stil = getComputedStyle(el);
       const platz = el.clientWidth
         - parseFloat(stil.paddingLeft || "0") - parseFloat(stil.paddingRight || "0");
+      setGross((alt) => (alt === platz >= 180 ? alt : platz >= 180));
       let passend = "";
       for (const k of kandidaten) {
         m.textContent = k;
@@ -108,7 +112,8 @@ export function SegmentText({ stufen }: { stufen: string[] }) {
   }, [key]);
 
   return (
-    <span ref={box} className="relative block w-full overflow-hidden whitespace-nowrap px-2">
+    <span ref={box} className={cn("relative block w-full overflow-hidden whitespace-nowrap px-2",
+                                  gross && "text-[12.5px]")}>
       {text}
       <span ref={mess} aria-hidden="true" className="pointer-events-none invisible absolute left-0 top-0 whitespace-nowrap" />
     </span>
@@ -129,6 +134,11 @@ function Leiste({ row, basis, nachkomma, restLabel, mark }: {
 }) {
   const rampe = row.rampe ?? "aus";
   const gezeigt = row.segmente.filter((s) => s.value > 0);
+  // Segment und Legendeneintrag heben sich GEMEINSAM (gb-segment / gb-zeile),
+  // in beide Richtungen: Zeigen auf das Segment findet den Namen, Zeigen auf
+  // den Namen das Segment. Aus React, nicht aus `:hover`, damit der Fokus in
+  // der Legende dasselbe bekommt.
+  const [schwebt, setSchwebt] = useState<number | null>(null);
   const summe = gezeigt.reduce((n, s) => n + s.value, 0);
   // Die Lücke zur Basis. Unterhalb eines halben Anzeigeschritts ist sie
   // Rundungsrauschen, kein Rest.
@@ -168,20 +178,26 @@ function Leiste({ row, basis, nachkomma, restLabel, mark }: {
             style={{ left: `${Math.min((mark.value / basis) * 100, 100)}%` }}
           />
         )}
-        <div className="flex h-full gap-[1.5px] overflow-hidden rounded-md" style={{ width: `${Math.min((summe / basis) * 100, 100)}%` }}>
+        <div className="flex h-full gap-[1.5px] overflow-hidden rounded-md" style={{ width: `${Math.min((summe / basis) * 100, 100)}%` }}
+          onMouseLeave={() => setSchwebt(null)}>
           {gezeigt.map((s, i) => {
             const farbe = farbeVon(s, i, rampe);
             return (
               <span
                 key={`${s.label}-${i}`}
-                className="flex min-w-0 items-center overflow-hidden text-[11px] font-semibold"
+                data-schwebt={schwebt === i}
+                data-gedimmt={schwebt != null && schwebt !== i}
+                onMouseEnter={() => setSchwebt(i)}
+                className="gb-segment gb-balken-auf flex min-w-0 items-center overflow-hidden text-[11px] font-semibold"
                 // Breite relativ zur SUMME der Zeile, weil der äußere Kasten
                 // schon den Anteil an der Basis trägt — so bleiben beide
-                // Maßstäbe exakt, ohne Mindestbreiten.
+                // Maßstäbe exakt, ohne Mindestbreiten. Beim Aufbau wachsen
+                // die Segmente von links, eines nach dem anderen.
                 style={{
                   width: `${(s.value / summe) * 100}%`,
                   background: s.offen ? schraffur(farbe) : farbe,
                   color: "var(--hh-seg-text)",
+                  animationDelay: `${i * 70}ms`,
                 }}
               >
                 {row.imBalken && !s.offen && s.value / basis >= MINDEST_ANTEIL && (
@@ -203,18 +219,33 @@ function Leiste({ row, basis, nachkomma, restLabel, mark }: {
       </div>
       {/* Die Legende ist die verbindliche Beschriftung — Text im Balken ist
           Zusatz. Segmente unter 10 % stehen NUR hier (GB-04). */}
-      <div className="mt-1.5 flex flex-wrap gap-x-3.5 gap-y-1">
+      <div className="mt-1.5 flex flex-wrap gap-x-2 gap-y-0.5" onMouseLeave={() => setSchwebt(null)}>
         {gezeigt.map((s, i) => {
           const farbe = farbeVon(s, i, rampe);
           return (
-            <span key={`${s.label}-${i}`} className="inline-flex items-center gap-1.5 text-[11px] text-foreground/80">
+            /* Ein Knopf ohne Klick-Folge: Fokus und Zeiger heben das Segment
+               hervor, mehr nicht — deshalb `cursor-default`. */
+            <button
+              key={`${s.label}-${i}`}
+              type="button"
+              data-schwebt={schwebt === i}
+              data-gedimmt={schwebt != null && schwebt !== i}
+              onMouseEnter={() => setSchwebt(i)}
+              onFocus={() => setSchwebt(i)}
+              onBlur={() => setSchwebt((v) => (v === i ? null : v))}
+              className={cn(
+                "gb-zeile inline-flex cursor-default items-center gap-1.5 rounded-md px-1.5 py-0.5 text-[11px] text-foreground/80",
+                "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring",
+                schwebt === i && "font-semibold text-foreground",
+              )}
+            >
               <span
                 aria-hidden="true"
                 className="h-2 w-2 rounded-[2px]"
                 style={{ background: s.offen ? schraffur(farbe) : farbe }}
               />
               {s.label} <span className="tabular-nums">{deZahl(s.value, nachkomma)}</span>
-            </span>
+            </button>
           );
         })}
         {rest != null && restLabel && (
