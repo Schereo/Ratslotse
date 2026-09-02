@@ -88,16 +88,24 @@ Wortgrenze verschieben. Grenze nur hinten setzen, und `\w*plan\b` niemals
 `council/store.py` trug bis 09/2026 **15.744 Zeilen in einer Klasse** mit 506
 Methoden. Der Haushalt ist als erste Ecke heraus:
 
-| Datei | Inhalt |
-|---|---|
-| `council/store.py` | Schema, Migrationen, Sitzungen, Beschlüsse, Personen, Suche |
-| `council/store_haushalt.py` | die 81 Abfragen der Haushalts-Seiten (`HaushaltMixin`) |
-| `council/store_orte.py` | Katalog, Geocodierung, Stadtteile, Kartenpunkte (`OrteMixin`) |
-| `council/store_presse.py` | Pressemitteilungen und Beteiligungen (`PresseMixin`) |
-| `council/store_quiz.py` | die Quiz-Abfragen (`QuizMixin`) |
-| `council/store_personen.py` | Ratsmitglieder, Verwaltung, Namensformen (`PersonenMixin`) |
-| `council/store_themen.py` | Entitäten, Aliasse, Steckbriefe (`ThemenMixin`) |
-| `council/store_helfer.py` | die paar Funktionen, die mehrere Ecken brauchen |
+| Datei | Methoden | Inhalt |
+|---|---|---|
+| `council/store.py` | 237 | **Kern**: Schema und Migrationen, Beschlüsse, Vorlagen, Anlagen, Suche, Embeddings |
+| `council/store_sitzungen.py` | 48 | Termine, Tagesordnungen, Gremien, Wochenvorschau |
+| `council/store_haushalt.py` | 81 | die Abfragen der Haushalts-Seiten |
+| `council/store_personen.py` | 31 | Ratsmitglieder, Verwaltung, Namensformen, Anwesenheit |
+| `council/store_themen.py` | 31 | Entitäten, Aliasse, Steckbriefe, Verwandtschaft |
+| `council/store_orte.py` | 27 | Katalog, Geocodierung, Stadtteile, Kartenpunkte |
+| `council/store_wortbeitraege.py` | 21 | Wortbeiträge und Videos |
+| `council/store_quiz.py` | 13 | die Quiz-Abfragen |
+| `council/store_presse.py` | 10 | Pressemitteilungen und Beteiligungen |
+| `council/store_fundstuecke.py` | 10 | Fundstücke, Rückblicke, Social-Text |
+| `council/geld/*.py` | 24 | je eine Facette der KI-Frage |
+| `council/store_helfer.py` | — | die paar Funktionen, die mehrere Ecken brauchen |
+
+Alle landen über Mixins in derselben `CouncilStore`; an den Aufrufstellen
+ändert sich nichts. `store.py` ist damit von 15.744 auf 9.979 Zeilen und von
+506 auf 237 eigene Methoden geschrumpft.
 
 `store_helfer.py` gibt es, weil ein Mixin in einer eigenen Datei nichts aus
 `store.py` importieren kann — das wäre ein Ring. Was mehrere Ecken brauchen und

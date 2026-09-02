@@ -22,9 +22,11 @@ from pathlib import Path
 WURZEL = Path(__file__).resolve().parents[1]
 STORE = WURZEL / "council" / "store.py"
 
-#: Stand nach dem sechsten Schnitt (02.09.2026). Darf schrumpfen.
-HOECHSTENS_METHODEN = 316
-HOECHSTENS_ZEILEN = 11655
+#: Stand nach dem NEUNTEN und vorerst letzten Schnitt (02.09.2026).
+#: Darf schrumpfen. Was jetzt noch hier liegt, ist der Kern: Schema und
+#: Migrationen, Beschlüsse, Vorlagen, Anlagen, Suche und Embeddings.
+HOECHSTENS_METHODEN = 237
+HOECHSTENS_ZEILEN = 9979
 
 
 def _klasse() -> ast.ClassDef:
@@ -57,21 +59,27 @@ def _mixins():
     import sys
 
     sys.path.insert(0, str(WURZEL))
+    from council.store_fundstuecke import FundstueckeMixin
     from council.store_haushalt import HaushaltMixin
     from council.store_orte import OrteMixin
     from council.store_personen import PersonenMixin
     from council.store_presse import PresseMixin
     from council.store_quiz import QuizMixin
+    from council.store_sitzungen import SitzungenMixin
     from council.store_themen import ThemenMixin
+    from council.store_wortbeitraege import WortbeitraegeMixin
 
     #: Ecke → (Mixin, Mindestzahl eigener Methoden).
     return {
+        "Fundstücke": (FundstueckeMixin, 9),
         "Haushalt": (HaushaltMixin, 80),
         "Orte": (OrteMixin, 25),
         "Personen": (PersonenMixin, 27),
         "Presse": (PresseMixin, 9),
         "Quiz": (QuizMixin, 12),
+        "Sitzungen": (SitzungenMixin, 47),
         "Themen": (ThemenMixin, 30),
+        "Wortbeiträge": (WortbeitraegeMixin, 20),
     }
 
 
