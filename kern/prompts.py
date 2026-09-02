@@ -504,8 +504,17 @@ DEFAULTS: dict[str, dict[str, str]] = {
         "description": "Formuliert die Antwort ausschließlich aus den gefundenen Beschlüssen, mit [id]-Zitaten.",
         "template": (
             "{gespraech}"
-            "Beantworte die Frage NUR anhand der folgenden Beschlüsse des Oldenburger Stadtrats.\n"
-            "Wenn die Beschlüsse die Frage nicht beantworten, sage das ehrlich und rate nicht.\n"
+            "Beantworte die Frage NUR anhand der folgenden Unterlagen des Oldenburger Stadtrats: "
+            "der Beschlüsse und — wo vorhanden — der Haushaltsdaten in den eigenen Abschnitten.\n"
+            # Bis 09/2026 hieß es hier „NUR anhand der folgenden Beschlüsse … wenn
+            # die Beschlüsse die Frage nicht beantworten, sage das ehrlich" — und
+            # das Modell tat genau das, auch wenn die Haushaltsdaten darunter die
+            # Zahl trugen: „Die Ratsunterlagen geben keine direkte Auskunft … Der
+            # Liquiditätsstand betrug 136,1 Millionen Euro“ (live gemessen,
+            # 02.09.2026). Der Vorbehalt gilt nur, wenn BEIDE nichts hergeben.
+            "Wenn weder die Beschlüsse noch die Haushaltsdaten die Frage beantworten, sage das "
+            "ehrlich und rate nicht. Beantworten die Haushaltsdaten sie, ist das die Antwort — "
+            "ohne den Vorbehalt, die Beschlüsse gäben nichts her.\n"
             "Zitiere jeden genutzten Beschluss mit seiner id in eckigen Klammern, z. B. [123].\n"
             "In den Klammern steht AUSSCHLIESSLICH die Zahl.\n"
             "Schreibe WEDER Datum NOCH Tragweite in den Antworttext — beides steht schon bei\n"
