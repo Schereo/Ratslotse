@@ -137,6 +137,23 @@ ABGRENZUNG = (
 #: Größenordnungen unter jedem Spaltenfehler, den diese Proben fangen sollen.
 TOLERANZ_EUR = 15.0
 
+#: Wie viele Gleichungen aufgehen müssen, damit die Spaltenbelegung als
+#: entschieden gilt. Vierzehn Zeilen mal fünf Gleichungen wären 70; leere
+#: Zellen nehmen ihre Gleichung mit, deshalb sind es real weniger. Gemessen
+#: über alle 43 Tabellen des Bestands liegt der niedrigste Wert bei **50**
+#: (ein Finanzhaushalt, in dem vier Teilhaushalte gar keine Einzahlungen
+#: planen). Vierzig lässt Luft nach unten und ist immer noch mehr als die
+#: Hälfte des Möglichen.
+MINDEST_GLEICHUNGEN = 40
+
+#: Und um wie viel die gewählte Belegung die verworfene schlagen muss.
+#: „Besser als die andere“ wäre zu wenig gesagt: Die falsche Belegung trifft
+#: nicht null, sondern bis zu **sieben** Gleichungen — dort, wo eine Zeile in
+#: beiden Lesarten aufgeht, weil ihre Ermächtigungsübertragung null ist. Gegen
+#: die schlechtesten gemessenen Werte (50 gegen 7) ist der Faktor drei
+#: großzügig und macht „eindeutig“ zu einer Aussage statt zu einer Hoffnung.
+FAKTOR_EINDEUTIG = 3
+
 #: Werte der Spalte ``plan_basis`` (s. Modulkopf).
 BASIS_ANSATZ = "budget"
 BASIS_MIT_UEBERTRAG = "budget_plus_carryover"
@@ -452,7 +469,7 @@ def _tabelle_lesen(zeilen: list[list[Wort]], art: str):
     roh = [(nr, label, _zuordnen(rest, mitten))
            for (nr, rest), label in zip(daten, beschriftet)]
     layout, basis, treffer, gegenprobe = _layout_waehlen(roh)
-    if treffer < 40 or gegenprobe >= treffer:
+    if treffer < MINDEST_GLEICHUNGEN or treffer < gegenprobe * FAKTOR_EINDEUTIG:
         raise VollzugFehler(
             f"{art}: Die Spaltenbelegung ist nicht entschieden "
             f"({treffer} Gleichungen gehen auf, die andere Belegung schafft "
