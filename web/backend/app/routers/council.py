@@ -1097,6 +1097,12 @@ def haushalt_uebersicht(
       Gesamtabschluss. ``revenues``/``expenses`` sind ``null``, wo die
       Quelle nur das Ergebnis nennt, und ``probes`` sagt, welche Rechenprobe
       für die Zeile gelaufen ist,
+    - ``enterprise_accounts``: das Ist zu den Wirtschaftsplänen — je Betrieb,
+      Jahr und Kennzahl EINE Zahl aus dem geprüften Jahresabschluss (``value``
+      in Euro, ``unit`` sagt, ob der Bericht in TEUR schrieb), aus dem
+      jüngsten Bericht, der sie nennt; ``confirmations`` zählt die Berichte,
+      die dieselbe Zahl nennen, ``conflicts`` die abweichenden. Buchwerte,
+      keine Marktwerte; mit dem Kernhaushalt nicht addierbar,
     - ``variance_reasons``: warum ein Posten vom Plan abwich, in den Worten
       der Verwaltung (Abschnitt 6.3.1 des Jahresabschlusses),
     - ``pruefberichte``: Fundstelle des RPA-Schlussberichts je Jahrgang,
@@ -1217,6 +1223,11 @@ def haushalt_uebersicht(
         # Vorschlag der Verwaltung einen Ratsbeschluss.
         "budget_bylaw": store.get_haushaltssatzungen,
         "business_plans": store.get_wirtschaftsplaene,
+        # Das Ist dazu: die Kennzahlen der Jahresabschlüsse je Betrieb und
+        # Jahr (council/eigenbetriebe_abschluss.py) — Umsatzerlöse,
+        # Jahresergebnis, Bilanzsumme, Eigenkapital … Eine Zeile je Kennzahl,
+        # `confirmations` sagt, wie viele Berichte dieselbe Zahl nennen.
+        "enterprise_accounts": store.get_enterprise_accounts,
         "variance_reasons": store.get_abweichungsgruende,
         "audit_report_sources": store.get_pruefbericht_quellen,
         "product_years": store.produkte_jahre,

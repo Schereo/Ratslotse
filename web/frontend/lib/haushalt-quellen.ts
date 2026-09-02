@@ -103,6 +103,7 @@ export type QuellenSchluessel =
   | "budget_bylaw"
   | "loans"
   | "liquidity"
+  | "enterprise_accounts"
   // Der Haushaltsvollzug — die Prognose-Berichte an den Finanzausschuss.
   // Eigener Schlüssel, weil es weder Plan noch Abschluss ist: Es ist die
   // Erwartung der Ämter im laufenden Jahr, je Stichtag neu.
@@ -341,6 +342,24 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     herausgeber: "Stadt Oldenburg, Controlling und Finanzen",
     as_of: "Berichte 2018–2026",
     standWort: "Haushaltsjahre",
+    url: "https://buergerinfo.oldenburg.de/",
+    art: "pdf",
+  },
+  enterprise_accounts: {
+    title: "Jahresabschlüsse der Eigenbetriebe (Prüfberichte, GuV und Bilanz)",
+    citation:
+      "Die geprüften Jahresabschlüsse der Eigenbetriebe — Gebäudewirtschaft und " +
+      "Hochbau, Abfallwirtschaftsbetrieb, Bäderbetrieb, Hafen — aus den Vorlagen " +
+      "„Jahresabschluss und Lagebericht … für den Eigenbetrieb …“. Gelesen wird die " +
+      "Mehrjahresübersicht des Prüfberichts (Kennzahlen in TEUR, jüngstes Jahr " +
+      "zuerst), beim Bäderbetrieb die Gewinn- und Verlustrechnung und die Bilanz in " +
+      "Euro. Dieselbe Zahl steht in bis zu fünf Berichten — als Geschäftsjahr im " +
+      "eigenen, als Vorjahr in den folgenden; der jüngste Bericht gilt, die anderen " +
+      "bezeugen ihn. Buchwerte nach Handelsrecht, keine Marktwerte; mit dem " +
+      "Kernhaushalt nicht addierbar.",
+    herausgeber: "Stadt Oldenburg, Rechnungsprüfungsamt bzw. Wirtschaftsprüfer",
+    as_of: "Geschäftsjahre 2015–2025",
+    standWort: "Geschäftsjahre",
     url: "https://buergerinfo.oldenburg.de/",
     art: "pdf",
   },
