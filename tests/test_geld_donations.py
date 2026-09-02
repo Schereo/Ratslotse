@@ -51,7 +51,7 @@ def test_die_alten_facetten_verschieben_sich_nicht():
     assert qa.geld_facetten("Wie hoch waren die Steuereinnahmen?", "money") == {
         "plan", "ansatz", "taxes", "ausgleich"}
     assert qa.geld_facetten("Wie viel gibt Oldenburg für Soziales aus?",
-                            "money") == {"plan", "produkte"}
+                            "money") == {"plan", "produkte", "ansatz"}
 
 
 # --- 2. Inhalt ------------------------------------------------------------

@@ -40,15 +40,18 @@ KORPUS: list[tuple[str, str, set[str]]] = [
     # --- Tims sechs Pflichtfragen ------------------------------------------
     # „Was kostet X?" ist die Frage der Produktebene: dort steht eine Aufgabe
     # mit ihren Kosten. Der Teilhaushalt (plan) trägt die grobe Summe dazu.
-    ("Was kostet die Feuerwehr?", "money", {"plan", "produkte"}),
+    # Seit 09/2026 wird auch der Ansatz GEFRAGT (Posten-Ebene: „Personal" →
+    # Personalaufwendungen); in den Kontext kommt er nur bei einem Treffer im
+    # Fragewortlaut — s. test_qa_posten.py und die Stadion-Regression unten.
+    ("Was kostet die Feuerwehr?", "money", {"plan", "produkte", "ansatz"}),
     # Dieselbe Frage als KOMPOSITUM. `\bkost` trifft nur „kostet"/„Kosten" am
     # Wortanfang; „Personalkosten", „Baukosten", „Betriebskosten" gingen bis
     # zum 17.08. leer aus — gemessen, nicht vermutet. Die Endung `kosten\b`
     # fängt sie. Beim Personal kommt der Stellenplan dazu, und das ist die
     # bessere Antwort: Personalausgaben ohne die Stellen dahinter sind eine
     # Zahl ohne Erklärung.
-    ("Wie hoch sind die Personalkosten?", "money", {"plan", "produkte", "stellenplan"}),
-    ("Was sind die Baukosten der Schule?", "money", {"plan", "produkte"}),
+    ("Wie hoch sind die Personalkosten?", "money", {"plan", "produkte", "stellenplan", "ansatz"}),
+    ("Was sind die Baukosten der Schule?", "money", {"plan", "produkte", "ansatz"}),
     # Plan gegen Ist — das kann NUR der Jahresabschluss beantworten.
     # `kassensicht` kommt seit 08/2026 mit jedem `ist` mit: Für 2024 weist die
     # Ergebnisrechnung einen Überschuss aus und die Finanzrechnung einen
@@ -65,7 +68,7 @@ KORPUS: list[tuple[str, str, set[str]]] = [
     ("Was hat das Rechnungsprüfungsamt beanstandet?", "topic", {"pruefung"}),
     # „Insgesamt" ist das Stichwort für den Konzern: der Kernhaushalt
     # antwortet mit 799 Mio., der Gesamtabschluss mit 1.242 Mio.
-    ("Was kostet die Stadt insgesamt?", "money", {"plan", "produkte", "konzern"}),
+    ("Was kostet die Stadt insgesamt?", "money", {"plan", "produkte", "konzern", "ansatz"}),
     # Keine Betragsfrage — eine Rechtsfrage. Nur die Produktebene führt die
     # Auftragsgrundlage je Aufgabe.
     ("Muss die Stadt das Theater betreiben?", "topic", {"produkte"}),
@@ -74,7 +77,7 @@ KORPUS: list[tuple[str, str, set[str]]] = [
     ("Wie werden die Müllgebühren berechnet?", "topic", {"fees"}),
 
     # --- Weitere echte Fragen ----------------------------------------------
-    ("Wie viel gibt Oldenburg für Soziales aus?", "money", {"plan", "produkte"}),
+    ("Wie viel gibt Oldenburg für Soziales aus?", "money", {"plan", "produkte", "ansatz"}),
     ("Wie hoch ist der Hebesatz der Grundsteuer?", "money", {"taxes", "ausgleich"}),
     ("Wie steht Oldenburg im Vergleich zu Osnabrück da?", "money", {"vergleich"}),
     ("Welche Aufgaben könnte die Stadt streichen?", "topic", {"produkte"}),
@@ -534,7 +537,7 @@ VARIANTEN = [
       "Feuerwehr Kosten",
       "Was gibt die Stadt für die Feuerwehr aus?",
       "Wie viel gibt Oldenburg für die Feuerwehr aus?"],
-     {"plan", "produkte"}),
+     {"plan", "produkte", "ansatz"}),
     ("Plan gegen Ist",
      ["Hat die Stadt 2024 mehr ausgegeben als geplant?",
       "Wurde der Haushalt 2024 eingehalten?",
@@ -1244,7 +1247,7 @@ def test_deepresearch_ruft_geld_kontext_statt_einzelquellen():
 def test_facetten_stehen_im_kontext_zum_mitloggen():
     store = _MessStore()
     kontext = qa.geld_kontext(store, "Was kostet die Feuerwehr?", "Feuerwehr", "money")
-    assert kontext["facets"] == sorted({"plan", "produkte"})
+    assert kontext["facets"] == sorted({"plan", "produkte", "ansatz"})
 
 
 def test_alle_facetten_haben_baustein_und_methode():
