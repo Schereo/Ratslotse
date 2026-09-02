@@ -337,7 +337,78 @@ def befunde(wurzel: Path = WURZEL) -> list[tuple[str, str, str, str]]:
     return sorted(set(aus))
 
 
+def ausgelieferter_stand(ref: str, ziel: Path) -> Path:
+    """Den App-Code aus ``ref`` auspacken und den JETZIGEN Vertrag danebenlegen.
+
+    Das ist die Release-Frage: Der Store trägt die App, die zu ``main`` gebaut
+    wurde; nach dem Release antwortet der Server nach dem neuen Vertrag. Was
+    die installierte App dann liest, sagt genau dieser Vergleich.
+    """
+    import subprocess
+
+    # Auspacken über `tar` und nicht über `tarfile`: Dessen `filter=`-Angabe,
+    # ohne die das Auspacken eine Warnung wirft, gibt es erst ab Python 3.12 —
+    # und dieses Skript soll auch mit dem System-Python laufen.
+    ziel.mkdir(parents=True, exist_ok=True)
+    archiv = ziel / "stand.tar"
+    with archiv.open("wb") as f:
+        subprocess.run(["git", "archive", ref, "ios"], cwd=WURZEL, stdout=f, check=True)
+    subprocess.run(["tar", "-xf", str(archiv), "-C", str(ziel)], check=True)
+    archiv.unlink()
+    (ziel / "api").mkdir(exist_ok=True)
+    (ziel / "api" / "openapi.json").write_bytes(VERTRAG.read_bytes())
+    return ziel
+
+
+def _bericht(gefunden, typen, decoder) -> None:
+    """Nach Swift-Typ gruppiert — ein Typ ist eine Ansicht in der App."""
+    from collections import defaultdict
+
+    hart: dict[str, set[str]] = defaultdict(set)
+    weich: dict[str, set[str]] = defaultdict(set)
+    for typ, _schema, feld, art in gefunden:
+        if art != "kennt der Vertrag nicht":
+            continue
+        optional = typen[typ][feld][1] or typ in decoder
+        (weich if optional else hart)[typ].add(feld)
+
+    def zeigen(gruppen: dict[str, set[str]], titel: str) -> None:
+        anzahl = sum(len(f) for f in gruppen.values())
+        print(f"{titel} — {anzahl} Feld(er) in {len(gruppen)} Typ(en):")
+        for typ in sorted(gruppen):
+            felder = sorted(gruppen[typ])
+            # Ein Typ, der ein ganzes Schema verfehlt, ist EINE Aussage und
+            # keine zwanzig; ausgeschrieben verdeckt er den Rest.
+            gezeigt = ", ".join(felder[:6])
+            rest = f" … (+{len(felder) - 6})" if len(felder) > 6 else ""
+            print(f"    {typ:26s} {gezeigt}{rest}")
+        print()
+
+    zeigen(hart, "ABBRUCH beim Decodieren, die Seite bleibt leer")
+    zeigen(weich, "still leer, die Seite steht ohne das Feld")
+
+
 if __name__ == "__main__":
+    import argparse
+    import tempfile
+
+    p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    p.add_argument("--ausgeliefert", metavar="REF", nargs="?", const="origin/main",
+                   help="Statt des Arbeitsstands den App-Code aus REF gegen den "
+                        "JETZIGEN Vertrag halten (Vorgabe: origin/main). "
+                        "Beantwortet: Was bricht in der installierten App, "
+                        "wenn dieser Stand nach main geht?")
+    args = p.parse_args()
+
+    if args.ausgeliefert:
+        with tempfile.TemporaryDirectory() as tmp:
+            wurzel = ausgelieferter_stand(args.ausgeliefert, Path(tmp))
+            typen, decoder = swift_typen(sorted((wurzel / "ios").rglob("*.swift")))
+            gefunden = befunde(wurzel)
+            print(f"App-Stand {args.ausgeliefert} gegen den jetzigen Vertrag\n")
+            _bericht(gefunden, typen, decoder)
+        raise SystemExit(0)
+
     gefunden = befunde()
     for swifttyp, schema, feld, was in gefunden:
         print(f"{swifttyp:26s} {schema:26s} {feld:26s} {was}")

@@ -98,3 +98,26 @@ def test_ausnahmeliste_traegt_keine_leichen():
         "Diese Ausnahmen decken nichts mehr ab und gehören gestrichen:\n"
         + "\n".join(f"  {t} → {s}.{f}" for t, s, f in veraltet)
     )
+
+
+def test_ausgelieferter_stand_laesst_sich_auspacken(tmp_path):
+    """Die Release-Frage muss sich jederzeit stellen lassen.
+
+    Gegen ``HEAD`` statt ``origin/main``: In der CI liegt der Klon flach, und
+    ein Zweig, den niemand geholt hat, existiert dort nicht.
+    """
+    from scripts.ios_vertrag import VERTRAG, ausgelieferter_stand
+
+    from scripts.ios_vertrag import swift_typen
+
+    wurzel = ausgelieferter_stand("HEAD", tmp_path)
+    assert (wurzel / "ios" / "Packages").is_dir()
+    # Der Vertrag muss der JETZIGE sein — sonst hielte die Probe zwei alte
+    # Stände gegeneinander und meldete fröhlich null Befunde.
+    assert (wurzel / "api" / "openapi.json").read_bytes() == VERTRAG.read_bytes()
+    # Und die Modelle müssen wirklich gelesen werden. Ein leeres oder halb
+    # ausgepacktes Verzeichnis ergäbe ebenfalls null Befunde, und das sähe
+    # aus wie „alles in Ordnung".
+    typen, _ = swift_typen(sorted((wurzel / "ios").rglob("*.swift")))
+    assert len(typen) > 200, len(typen)
+    befunde(wurzel)  # läuft durch, ohne zu werfen

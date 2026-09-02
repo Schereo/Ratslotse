@@ -167,6 +167,20 @@ Prod-Stand, `dev` der Integrations-Branch.**
 | **Fix/Hotfix** | PR mit `--base main` | Squash-Merge; deployt sofort auf Prod. Danach `main` nach `dev` zurückmergen (s. u.) |
 | **Release** | PR `dev` → `main` | **Merge-Commit, NICHT squashen** — sonst divergieren die Branches dauerhaft. Versionsschnitt (Changelog + Tag) gehört in diesen PR |
 
+**Vor dem Release: Was bricht die App im Store?** Sie wurde gegen `main`
+gebaut; nach dem Merge antwortet der Server nach dem neuen Vertrag. Ein
+umbenanntes Feld erreicht sie auf keinem Weg — bei einem nicht-optionalen
+bricht das Decodieren ab und die Ansicht bleibt leer.
+
+```bash
+python3 scripts/ios_vertrag.py --ausgeliefert
+```
+
+Zeigt nach Ansicht gruppiert, was abbricht und was still leer bleibt. Steht
+dort etwas, gehört ein neuer App-Build in den Store **und** `APP_MIN_BUILD`
+auf dessen Nummer gesetzt (die App fragt `/api/app-config` vor allem anderen
+und zeigt dann den Aktualisierungs-Schirm statt der kaputten Ansicht).
+
 **Nur ein gemergter Pull Request nach `main`** löst den Prod-Deploy aus
 (`.github/workflows/deploy.yml`, Trigger `pull_request: types:[closed]` +
 `merged == true`) — ein direkter Push auf `main` deployt **nicht**. Die Action
