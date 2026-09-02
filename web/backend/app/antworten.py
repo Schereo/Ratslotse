@@ -1556,18 +1556,25 @@ class TemplateAttachment(TypedDict):
     is_image: int
 
 
-class DeliberationStation(TypedDict):
-    """Eine Station der Beratungsfolge einer Vorlage.
-
-    ``future`` rechnet der Router aus dem Datum — das Ergebnis-Feld entscheidet
-    ausdrücklich NICHT, ob eine Station noch aussteht.
-    """
+class DeliberationStop(TypedDict):
+    """Eine Station der Beratungsfolge, wie ``get_beratungen`` sie liefert."""
     date: str | None
     committee: str
     top: str | None
     is_public: int | None
     result: str | None
     ksinr: int | None
+
+
+class DeliberationStation(DeliberationStop):
+    """Dieselbe Station auf der Beschluss-Seite — dort rechnet der Router
+    zusätzlich aus, ob sie noch aussteht.
+
+    ``future`` kommt aus dem DATUM und ausdrücklich nicht aus dem
+    Ergebnis-Feld. Die Folgen-Liste reicht die Stationen dagegen roh durch;
+    sie benutzt deshalb ``DeliberationStop`` — was hier als Pflichtfeld stünde,
+    wäre dort ein 500er (gemessen, nicht vermutet).
+    """
     future: bool
 
 
@@ -2159,8 +2166,31 @@ class QaExamples(TypedDict):
     sessions: Any
 
 
+class TemplateFollow(TypedDict):
+    """Ein verfolgter Vorgang samt Stand seiner Beratungsfolge.
+
+    Die ersten sechs Felder sind die Spalten aus ``template_follows``, die
+    drei darunter rechnet der Router je Vorgang aus. ``naechste`` und
+    ``letzte`` heißen bewusst weiter deutsch: Die App liest sie so, und ein
+    Umbenennen ohne Nachzug dort wäre ein stiller Ausfall.
+    """
+    id: int
+    kvonr: int
+    template_number: str | None
+    title: str | None
+    created_at: str
+    notified_at: str | None
+    url: str
+    n_stationen: int
+    #: Die nächste Station mit Datum in der Zukunft — ``None``, wenn keine
+    #: mehr aussteht.
+    naechste: DeliberationStop | None
+    #: Die jüngste Station bis heute.
+    letzte: DeliberationStop | None
+
+
 class TemplateFollows(TypedDict):
-    follows: Any
+    follows: list[TemplateFollow]
 
 
 class TemplateFollowed(TypedDict):
@@ -2195,8 +2225,29 @@ class Entities(TypedDict):
     entities: Any
 
 
+class CityMapPoint(TypedDict):
+    """Ein Punkt der Stadtkarte (``CouncilStore.city_map_points``).
+
+    Zwei Herkünfte in einer Liste: geocodierte Themen und belastbare
+    Beschlussorte. ``target`` sagt, wohin ein Tippen führt.
+    """
+    slug: str
+    name: str
+    kind: str
+    n: int
+    n_recent: int
+    last_date: str
+    lat: float
+    lon: float
+    target: str
+    #: Der Ort aus dem Katalog, wo einer zugeordnet ist.
+    place_id: str | None
+    location_slug: str
+    local_area_id: str
+
+
 class EntitiesMap(TypedDict):
-    entities: Any
+    entities: list[CityMapPoint]
 
 
 class PeopleDirectory(TypedDict):

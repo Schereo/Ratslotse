@@ -13,7 +13,7 @@ type HeuteSitzung = {
   /** Startzeit der nächsten Sitzung des Tages — Ende des Live-Fensters. */
   live_until?: string | null;
   tops: string[];
-  rest: number;
+  remaining: number;
 };
 
 type Heute =
@@ -52,7 +52,7 @@ export function HeuteLeiste() {
   // Der Rückfall auf die Kopf-Felder trägt ältere Antworten aus dem Cache.
   const tagesSitzungen: HeuteSitzung[] =
     data?.state === "heute"
-      ? data.sessions ?? [{ committee: data.committee, session_time: data.session_time, tops: data.tops, rest: data.rest }]
+      ? data.sessions ?? [{ committee: data.committee, session_time: data.session_time, tops: data.tops, remaining: data.remaining }]
       : [];
   const laufend = currentSession(tagesSitzungen, now);
   const aktuell =
@@ -65,7 +65,7 @@ export function HeuteLeiste() {
 
   const live = Boolean(laufend);
   const heute = Boolean(aktuell) && !live;
-  const nTops = aktuell ? aktuell.tops.length + aktuell.rest : 0;
+  const nTops = aktuell ? aktuell.tops.length + aktuell.remaining : 0;
   const stadtrat = Boolean(aktuell) && isStadtrat(aktuell.committee);
 
   return (
@@ -108,7 +108,7 @@ export function HeuteLeiste() {
             <>
               {aktuell.committee}, {aktuell.session_time} Uhr
               {aktuell.tops.length > 0 && <span className="text-muted-foreground"> — {aktuell.tops.join(" · ")}</span>}
-              {aktuell.rest > 0 && <span className="text-muted-foreground"> + {aktuell.rest} weitere</span>}
+              {aktuell.remaining > 0 && <span className="text-muted-foreground"> + {aktuell.remaining} weitere</span>}
             </>
           )}
           {data?.state === "naechste" && (

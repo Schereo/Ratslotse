@@ -5312,6 +5312,39 @@ export interface components {
             /** New Password */
             new_password: string;
         };
+        /**
+         * CityMapPoint
+         * @description Ein Punkt der Stadtkarte (``CouncilStore.city_map_points``).
+         *
+         *     Zwei Herkünfte in einer Liste: geocodierte Themen und belastbare
+         *     Beschlussorte. ``target`` sagt, wohin ein Tippen führt.
+         */
+        CityMapPoint: {
+            /** Kind */
+            kind: string;
+            /** Last Date */
+            last_date: string;
+            /** Lat */
+            lat: number;
+            /** Local Area Id */
+            local_area_id: string;
+            /** Location Slug */
+            location_slug: string;
+            /** Lon */
+            lon: number;
+            /** N */
+            n: number;
+            /** N Recent */
+            n_recent: number;
+            /** Name */
+            name: string;
+            /** Place Id */
+            place_id: string | null;
+            /** Slug */
+            slug: string;
+            /** Target */
+            target: string;
+        };
         /** CommitteeDetail */
         CommitteeDetail: {
             /** Decisions Year */
@@ -5781,10 +5814,13 @@ export interface components {
         };
         /**
          * DeliberationStation
-         * @description Eine Station der Beratungsfolge einer Vorlage.
+         * @description Dieselbe Station auf der Beschluss-Seite — dort rechnet der Router
+         *     zusätzlich aus, ob sie noch aussteht.
          *
-         *     ``future`` rechnet der Router aus dem Datum — das Ergebnis-Feld entscheidet
-         *     ausdrücklich NICHT, ob eine Station noch aussteht.
+         *     ``future`` kommt aus dem DATUM und ausdrücklich nicht aus dem
+         *     Ergebnis-Feld. Die Folgen-Liste reicht die Stationen dagegen roh durch;
+         *     sie benutzt deshalb ``DeliberationStop`` — was hier als Pflichtfeld stünde,
+         *     wäre dort ein 500er (gemessen, nicht vermutet).
          */
         DeliberationStation: {
             /** Committee */
@@ -5793,6 +5829,24 @@ export interface components {
             date: string | null;
             /** Future */
             future: boolean;
+            /** Is Public */
+            is_public: number | null;
+            /** Ksinr */
+            ksinr: number | null;
+            /** Result */
+            result: string | null;
+            /** Top */
+            top: string | null;
+        };
+        /**
+         * DeliberationStop
+         * @description Eine Station der Beratungsfolge, wie ``get_beratungen`` sie liefert.
+         */
+        DeliberationStop: {
+            /** Committee */
+            committee: string;
+            /** Date */
+            date: string | null;
             /** Is Public */
             is_public: number | null;
             /** Ksinr */
@@ -5890,7 +5944,7 @@ export interface components {
         /** EntitiesMap */
         EntitiesMap: {
             /** Entities */
-            entities: unknown;
+            entities: components["schemas"]["CityMapPoint"][];
         };
         /**
          * EntityAliasIn
@@ -8122,6 +8176,69 @@ export interface components {
             /** Url */
             url: string | null;
         };
+        /**
+         * TemplateFollow
+         * @description Ein verfolgter Vorgang samt Stand seiner Beratungsfolge.
+         *
+         *     Die ersten sechs Felder sind die Spalten aus ``template_follows``, die
+         *     drei darunter rechnet der Router je Vorgang aus. ``naechste`` und
+         *     ``letzte`` heißen bewusst weiter deutsch: Die App liest sie so, und ein
+         *     Umbenennen ohne Nachzug dort wäre ein stiller Ausfall.
+         */
+        TemplateFollow: {
+            /** Created At */
+            created_at: string;
+            /** Id */
+            id: number;
+            /** Kvonr */
+            kvonr: number;
+            /**
+             * DeliberationStop
+             * @description Eine Station der Beratungsfolge, wie ``get_beratungen`` sie liefert.
+             */
+            letzte: {
+                /** Committee */
+                committee: string;
+                /** Date */
+                date: string | null;
+                /** Is Public */
+                is_public: number | null;
+                /** Ksinr */
+                ksinr: number | null;
+                /** Result */
+                result: string | null;
+                /** Top */
+                top: string | null;
+            } | null;
+            /** N Stationen */
+            n_stationen: number;
+            /**
+             * DeliberationStop
+             * @description Eine Station der Beratungsfolge, wie ``get_beratungen`` sie liefert.
+             */
+            naechste: {
+                /** Committee */
+                committee: string;
+                /** Date */
+                date: string | null;
+                /** Is Public */
+                is_public: number | null;
+                /** Ksinr */
+                ksinr: number | null;
+                /** Result */
+                result: string | null;
+                /** Top */
+                top: string | null;
+            } | null;
+            /** Notified At */
+            notified_at: string | null;
+            /** Template Number */
+            template_number: string | null;
+            /** Title */
+            title: string | null;
+            /** Url */
+            url: string;
+        };
         /** TemplateFollowed */
         TemplateFollowed: {
             /** Following */
@@ -8132,7 +8249,7 @@ export interface components {
         /** TemplateFollows */
         TemplateFollows: {
             /** Follows */
-            follows: unknown;
+            follows: components["schemas"]["TemplateFollow"][];
         };
         /** TemplateUnfollowed */
         TemplateUnfollowed: {
@@ -13361,4 +13478,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 4a483b5d331fda7e8b26f854d9e8489ed6a3009eb94f1c862527b01d934bd691
+// vertrag-sha256: 7d7e79b52f98579b175829be112c6beee73c1cb841b55e4cf66796a0127ebf88

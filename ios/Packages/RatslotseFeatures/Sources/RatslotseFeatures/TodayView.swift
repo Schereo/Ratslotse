@@ -990,7 +990,7 @@ private struct TodayStatusCard: View {
 
     private var detail: String? {
         if today.state == "heute" {
-            let count = (today.tops?.count ?? 0) + (today.rest ?? 0)
+            let count = (today.tops?.count ?? 0) + (today.remaining ?? 0)
             return [today.sessionTime, count > 0 ? "\(count) öffentliche TOPs" : nil]
                 .compactMap { $0 }.joined(separator: " · ")
         }

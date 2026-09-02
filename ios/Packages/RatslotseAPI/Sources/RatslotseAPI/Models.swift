@@ -623,9 +623,18 @@ public struct FollowPage: Codable, Sendable {
 }
 
 public struct CouncilSession: Codable, Sendable, Hashable, Identifiable {
-    public var id: Int { ksinr ?? calendarID ?? title.hashValue }
+    /// Terminierte Sitzungen aus dem Kalender haben noch keine `ksinr` — die
+    /// bekommen sie erst mit der veröffentlichten Tagesordnung. Bis dahin
+    /// identifiziert sie das, was die Antwort wirklich trägt: Gremium, Datum
+    /// und Uhrzeit.
+    ///
+    /// Hier stand bis 09/2026 ein `calendarID`, das das Backend NIE geschickt
+    /// hat. Der Rückfall war deshalb immer `title.hashValue` — und zwei
+    /// Termine desselben Gremiums fielen in der Liste zusammen.
+    public var id: Int {
+        ksinr ?? "\(committee)|\(sessionDate)|\(sessionTime ?? "")".hashValue
+    }
     public let ksinr: Int?
-    public let calendarID: Int?
     public let committee: String
     public let sessionDate: String
     public let sessionTime: String?
@@ -643,7 +652,6 @@ public struct CouncilSession: Codable, Sendable, Hashable, Identifiable {
 
     enum CodingKeys: String, CodingKey {
         case ksinr, committee, location, title
-        case calendarID = "calendar_id"
         case sessionDate = "session_date"
         case sessionTime = "session_time"
         case liveUntil = "live_until"
@@ -654,7 +662,6 @@ public struct CouncilSession: Codable, Sendable, Hashable, Identifiable {
     public init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         ksinr = try values.decodeIfPresent(Int.self, forKey: .ksinr)
-        calendarID = try values.decodeIfPresent(Int.self, forKey: .calendarID)
         committee = try values.decodeIfPresent(String.self, forKey: .committee) ?? "Gremium"
         sessionDate = try values.decodeIfPresent(String.self, forKey: .sessionDate) ?? ""
         sessionTime = try values.decodeIfPresent(String.self, forKey: .sessionTime)
@@ -787,12 +794,15 @@ public struct TodayCard: Codable, Sendable {
     public let sessionDate: String?
     public let sessionTime: String?
     public let tops: [String]?
-    public let rest: Int?
+    /// Wie viele Punkte über die genannten hinaus noch auf der Tagesordnung
+    /// stehen. Hieß bis #911 `rest`; die App las den alten Namen weiter und
+    /// zählte die Punkte deshalb zu niedrig.
+    public let remaining: Int?
     public let label: String?
     public let until: String?
 
     enum CodingKeys: String, CodingKey {
-        case state, committee, tops, rest, label, until
+        case state, committee, tops, remaining, label, until
         case sessionDate = "session_date"
         case sessionTime = "session_time"
     }
