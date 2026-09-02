@@ -32,8 +32,8 @@ Leerzeichen („6.003. 089“, „- 96.165.678“) — damit ließe sich noch le
 ihn unbrauchbar macht, ist die **leere Zelle**: Wo ein Teilhaushalt keine
 Einzahlungen plant, druckt der Bericht nichts, und im Fließtext fehlt die Zahl
 einfach. Aus elf Spalten werden neun, und ab da steht jeder Betrag eine Spalte
-zu weit links. Gemessen an den 42 Tabellen des Bestands passiert das in 38 von
-ihnen mindestens einmal.
+zu weit links. Gemessen am Bestand: **128 leere Zellen in 18 der 43 Tabellen**
+— eine einzige von ihnen genügt, um den Rest ihrer Zeile zu verschieben.
 
 Mit den echten Wortkoordinaten (``pymupdf``) ist die leere Zelle genau das:
 eine Spalte ohne Wort. ``pymupdf`` ist dafür Voraussetzung und bewusst KEINE

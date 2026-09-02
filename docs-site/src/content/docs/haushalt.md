@@ -1334,9 +1334,10 @@ arbeitet (`pymupdf`), und aus einem anderen Grund als jene. Dort war es die
 Spaltenzuordnung; hier ist es die **leere Zelle**. Wo ein Teilhaushalt keine
 Einzahlungen plant, druckt der Bericht nichts — im Fließtext fehlt die Zahl
 dann einfach, aus elf Spalten werden neun, und ab da steht jeder Betrag eine
-Spalte zu weit links. Gemessen am Bestand passiert das in 38 der 43 Tabellen
-mindestens einmal. Mit den echten Koordinaten ist die leere Zelle genau das:
-eine Spalte ohne Wort.
+Spalte zu weit links. Gemessen am Bestand: **128 leere Zellen in 18 der 43
+Tabellen**, und eine einzige davon genügt, um den Rest ihrer Zeile zu
+verschieben. Mit den echten Koordinaten ist die leere Zelle genau das: eine
+Spalte ohne Wort.
 
 Der Preis dafür steht im Register: Diese Schicht ist **nicht** cron-fähig.
 `check_finanzdaten` lädt nichts herunter — das ist die Regel, an der der Job
