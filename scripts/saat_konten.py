@@ -9,11 +9,15 @@ gebaut statt geholt werden.
 
 Was entsteht:
 
-* ``admin@test.de`` mit Admin-Rolle — dieselbe Adresse, die die Browsertests
-  benutzen (``web/frontend/tests/e2e/helpers.ts``);
-* ``nutzerin@example.org`` als normales Konto mit Themen, Merkliste und
-  Benachrichtigungs-Einstellungen;
+* ``chef@example.org`` mit Admin-Rolle — für die Admin-Seiten;
+* ``nutzerin@example.org`` als normales Konto mit Themen und deren echten
+  Treffern aus dem Abzug;
 * beide bestätigt und aktiv, Passwort ``password123``.
+
+``admin@test.de`` legt die Saat ABSICHTLICH nicht an: Diese Adresse
+registrieren die Browsertests selbst (``tests/e2e/helpers.ts``), und ein
+Test prüft ausdrücklich, dass das Anlegen klappt. Ein vorhandenes Konto
+ließe ihn scheitern — gemessen, nicht vermutet.
 
 Aufruf::
 
@@ -59,9 +63,9 @@ def saat(db: Path, council_db: Path | None) -> dict:
     bericht: dict[str, int | str] = {"datenbank": str(db)}
     try:
         pw = _hash(PASSWORT)
-        admin = store.create_web_user("admin@test.de", pw, role="admin",
+        admin = store.create_web_user("chef@example.org", pw, role="admin",
                                       status="active", email_verified=True,
-                                      display_name="Admin")
+                                      display_name="Chefin")
         nutzerin = store.create_web_user("nutzerin@example.org", pw, role="user",
                                          status="active", email_verified=True,
                                          display_name="Nutzerin")
@@ -123,7 +127,7 @@ def main() -> int:
     args.db.parent.mkdir(parents=True, exist_ok=True)
     bericht = saat(args.db, args.council_db)
     print(f"✓ {args.db}")
-    print(f"  admin@test.de (Admin) und nutzerin@example.org — Passwort {PASSWORT}")
+    print(f"  chef@example.org (Admin) und nutzerin@example.org — Passwort {PASSWORT}")
     print(f"  {bericht['themen']} Themen, {bericht['treffer']} Treffer")
     return 0
 

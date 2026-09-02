@@ -43,10 +43,9 @@ else
   echo "Kein Abzug da — leere Ratsdaten (python scripts/lokale_daten.py hol)"
 fi
 
-# Konten säen, bevor der Server startet. Ohne sie steht jeder Browsertest vor
-# einem leeren Konto: kein Thema, keine Merkliste, kein Fortschritt — und
-# prüft damit einen Zustand, den nach dem ersten Tag niemand mehr hat.
-# `admin@test.de` ist dieselbe Adresse, die `tests/e2e/helpers.ts` benutzt.
+# Konten säen, bevor der Server startet. Die Saat legt `admin@test.de`
+# ABSICHTLICH nicht an — die Adresse registrieren die Tests selbst, und einer
+# prüft ausdrücklich, dass das Anlegen klappt.
 "$PYTHON_BIN" "$REPO_ROOT/scripts/saat_konten.py" --db "$RATSLOTSE_DB" \
   --council-db "$COUNCIL_DB" >/dev/null || echo "Saat übersprungen"
 
