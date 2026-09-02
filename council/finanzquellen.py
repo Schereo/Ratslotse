@@ -585,6 +585,13 @@ def _bestand_gebuehren(store: CouncilStore) -> set[tuple]:
         return set()
 
 
+def _bestand_liquiditaet(store: CouncilStore) -> set[tuple]:
+    """``(Jahr, Monat)`` je Zeile — die Einheit ist der Monat, nicht der
+    Jahrgang: Die Grafik kommt monatlich, und ein Jahrgang mit fünf Monaten
+    ist so lange „teilweise", bis der Dezember da ist."""
+    return store.liquidity_einheiten()
+
+
 def _bestand_haushaltsvollzug(store: CouncilStore) -> set[tuple]:
     """Welche ``(Jahrgang, Stichtag, Haushalt)`` im Bestand stehen.
 
@@ -2560,6 +2567,26 @@ for _q in (
         lauf=("scripts/ingest_haushaltsvollzug.py",),
     ),
     Finanzquelle(
+        key="liquidity",
+        label="Liquiditätsstand",
+        was="Wie viel Geld die Stadt am Monatsende auf dem Konto hat — die "
+            "Grafik, die die Verwaltung dem Finanzausschuss monatlich vorlegt, "
+            "als Zahlenreihe. Der Frühwarnwert: Sinkt er Richtung null, greift "
+            "der Höchstbetrag der Liquiditätskredite aus der Haushaltssatzung.",
+        tabelle="council_liquidity",
+        unit="Monat",
+        # Die Grafik zum Monatsende liegt binnen zwei Wochen im Ausschuss; der
+        # Januar-Stand eines Jahrgangs ist also ab Februar zu erwarten.
+        erwarteter_monat=2,
+        versatz=0,
+        herkunft="ris",
+        # Bis 2021 heißt die Anlage nur „Anlage" — das Muster greift also erst
+        # ab 2022; die älteren findet der Ingest über die Vorlage (kvonr).
+        erkennung=Erkennung(label_muster=("%Liquiditätsstand%",), oder=True),
+        nachschub="scripts/ingest_liquiditaet.py (lädt fehlende Grafiken selbst)",
+        balance=_bestand_liquiditaet,
+    ),
+    Finanzquelle(
         key="budget_bylaw",
         label="Haushaltssatzung",
         was="Der Rahmen, den der Haushaltsplan bekommt: wie viel die Stadt "
@@ -2788,7 +2815,7 @@ REIHENFOLGE = ("haushaltsplan", "income_budget", "investitionen",
                "konzernabschluss", "beteiligungsbericht", "fees",
                "budget_bylaw",
                "wirtschaftsplan",
-               "schulden",
+               "schulden", "liquidity",
                "lsn_steuerkraft", "lsn_realsteuern", "lsn_gewerbesteuer")
 
 #: Die Stelle hinter einer Herkunft, im Klartext. Sie steht in der Fußzeile des
