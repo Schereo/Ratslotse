@@ -692,8 +692,8 @@ def _marke_loans(store: CouncilStore) -> int | None:
     ``erkennung`` über Anlagen-Labels griffe ins Leere, die ``document_id``
     der Anlage gibt es hier nicht. Die ``kvonr`` wächst mit jeder neuen
     Vorlage und taugt deshalb als Marke."""
-    reihen = _jahre(store, "SELECT MAX(kvonr) FROM council_templates "
-                           "WHERE title LIKE '%Kreditaufnahme%' OR title LIKE 'Umschuldung%'")
+    from council.loans import TITEL_SQL
+    reihen = _jahre(store, f"SELECT MAX(kvonr) FROM council_templates WHERE {TITEL_SQL}")
     return reihen[0][0] if reihen and reihen[0][0] is not None else None
 
 

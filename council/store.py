@@ -9047,11 +9047,12 @@ class CouncilStore(*_geld.MIXINS):
         """Die Rohzeilen für ``council.loans.lies()``: Vorlagen samt Volltext.
 
         Breit gefasst — das Aussieben macht ``loans.erkenne()``."""
+        from council.loans import TITEL_SQL
         try:
             return [dict(r) for r in self._conn.execute(
-                """SELECT template_number, title, raw_text, document_id, document_url
+                f"""SELECT kvonr, template_number, title, raw_text, document_id, document_url
                      FROM council_templates
-                    WHERE title LIKE '%Kreditaufnahme%' OR title LIKE 'Umschuldung%'
+                    WHERE {TITEL_SQL}
                     ORDER BY template_number""")]
         except sqlite3.OperationalError as fehler:
             if not tabelle_fehlt(fehler):

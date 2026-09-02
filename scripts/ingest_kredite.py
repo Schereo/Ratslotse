@@ -19,6 +19,7 @@ load_dotenv(ROOT / ".env")
 
 from council import finanzquellen, herkunft as h, loans  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
+from council.vorlagen import fetch_vorlage  # noqa: E402
 
 COUNCIL_DB = ROOT / "data" / "council.sqlite"
 LABEL = "Unterrichtung des Rates über Kreditaufnahmen, Derivatabschlüsse und Umschuldungen"
@@ -39,11 +40,33 @@ def main() -> int:
     ap.add_argument("--db", type=Path, default=COUNCIL_DB)
     ap.add_argument("--trockenlauf", action="store_true")
     ap.add_argument("--schrumpf-erlauben", action="store_true")
+    ap.add_argument("--kein-download", action="store_true",
+                    help="fehlende Vorlagentexte nicht aus dem RIS nachladen")
     args = ap.parse_args()
 
     store = CouncilStore(args.db)
     try:
-        result = loans.lies(store.kreditunterrichtungen())
+        zeilen = store.kreditunterrichtungen()
+        # Die Unterrichtungen von 2018 bis 2022 liegen im Bestand OHNE Text:
+        # `check_protocols` holt Vorlagen erst seit 2022 mit Volltext, und der
+        # Vorlagen-Backfill kennt keine Datenart. Also holt dieser Lauf, was
+        # ihm fehlt — einmal, danach steht der Text in `council_templates`.
+        ohne_text = [z for z in zeilen
+                     if loans.erkenne(z.get("title")) and not (z.get("raw_text") or "").strip()
+                     and z.get("kvonr")]
+        if ohne_text and not args.kein_download and not args.trockenlauf:
+            geholt = 0
+            for z in ohne_text:
+                v = fetch_vorlage(int(z["kvonr"]))
+                if v and (v.get("raw_text") or "").strip():
+                    store.save_vorlage(v)
+                    geholt += 1
+            print(f"Vorlagentexte nachgeladen: {geholt} von {len(ohne_text)}", flush=True)
+            zeilen = store.kreditunterrichtungen()
+        elif ohne_text:
+            print(f"{len(ohne_text)} Unterrichtung(en) ohne Volltext (Nachladen: ohne "
+                  f"--kein-download/--trockenlauf)", flush=True)
+        result = loans.lies(zeilen)
         notices, items = result["notices"], result["items"]
         print(f"Unterrichtungen: {len(notices)} ({sum(n['none_reported'] for n in notices)} ohne Vorgang), "
               f"Posten: {len(items)}, verworfen: {len(result['rejected'])}")

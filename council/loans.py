@@ -59,7 +59,16 @@ FUNDSTELLE = ("Abschnitt „Bericht“ der Unterrichtung — nummerierte Posten;
 
 TITEL = re.compile(
     r"Unterrichtung des Rates über Kreditaufnahmen|"
+    r"^Unterrichtung nach § 8 der Kreditrichtlinie|"
     r"^Umschuldung (?:von|eines) (?:Kommunal|Investitions)kredit", re.IGNORECASE)
+
+#: Dieselbe Auswahl als SQL — für ``store.kreditunterrichtungen()`` und die
+#: Dokumentmarke der Finanzquelle. Bis 09/2026 fehlte das dritte Muster in
+#: beiden: Die Unterrichtungen von 2018 bis 2022 heißen „Unterrichtung nach
+#: § 8 der Kreditrichtlinie über aufgenommene Kredite …" — ohne das Wort
+#: „Kreditaufnahme" — und blieben damit vier Jahrgänge lang unsichtbar.
+TITEL_SQL = ("(title LIKE '%Kreditaufnahme%' OR title LIKE 'Umschuldung%' "
+             "OR title LIKE 'Unterrichtung nach § 8%')")
 
 _MONATE = {m: i + 1 for i, m in enumerate(
     ("januar", "februar", "märz", "april", "mai", "juni", "juli", "august",
@@ -70,21 +79,37 @@ _ZEITRAUM = re.compile(
     rf"((?:{_MONAT_RX})(?:\s*,\s*(?:{_MONAT_RX}))*(?:\s+und\s+(?:{_MONAT_RX}))?)\s+(\d{{4}})"
     rf"(?:\s+und\s+((?:{_MONAT_RX}))\s+(\d{{4}}))?",
     re.IGNORECASE)
+#: Die Form von 2021 nennt kein Jahr: „Innerhalb der Monate Januar und
+#: Februar sind folgende Kredite …" — das Jahr kommt vom Dokumentdatum.
+_ZEITRAUM_OHNE_JAHR = re.compile(
+    rf"Bericht:\s*(?:Innerhalb der Monate|In den Monaten|Im Monat)\s+"
+    rf"((?:{_MONAT_RX})(?:\s*,\s*(?:{_MONAT_RX}))*(?:\s+und\s+(?:{_MONAT_RX}))?)\s+sind",
+    re.IGNORECASE)
 _KEINE = re.compile(r"sind keine Kredite", re.IGNORECASE)
 _DATUM = r"(\d{2})\.(\d{2})\.(\d{4})"
 _DOK_DATUM = re.compile(rf"Datum:\s*{_DATUM}|^\s*{_DATUM}\s+(?:Amt|Fachdienst)")
 _POSTEN = re.compile(r"(?<![\d.])(\d{1,2})\.\)\s+")
 _BETRAG = re.compile(r"in H[öo]he von\s+(?:insgesamt\s+)?([\d.]+,\d{2})\s*(?:Euro|EUR)", re.IGNORECASE)
-_BETRAG_FELD = re.compile(r"Betrag:\s*([\d.]+,\d{2})\s*(?:Euro|EUR)")
+_BETRAG_FELD = re.compile(r"(?:Betrag|Abruf):\s*([\d.]+,\d{2})\s*(?:Euro|EUR)")
+#: Die Überschrift eines Feldlisten-Vorgangs: Schuldner, Gedankenstrich, Art.
+#: „EGH – Kreditaufnahme für Investitionen aus dem Wirtschaftsplan 2018",
+#: „EB Hafen – Kreditaufnahme …", „EGH - Kreditneuaufnahme …:" (2018).
+_FELD_KOPF = re.compile(
+    r"((?:EGH|EB Hafen|Eigenbetrieb [A-ZÄÖÜ][\wäöüß]+(?: und [A-ZÄÖÜ][\wäöüß]+)?|"
+    r"Bäderbetrieb(?: Oldenburg)?|BBO|Kernverwaltung|Abfallwirtschaftsbetrieb)\s*[–-]\s*"
+    r"(Kredit(?:neu)?aufnahme|Umschuldung|Prolongation|Ausleihung)[^:]*?)\s*:?\s*$")
 _ZINS = re.compile(r"Zinssatz(?:\s+in\s+H[öo]he\s+von|:)?\s*([\d]+,\d+)\s*%", re.IGNORECASE)
 _BINDUNG_JAHRE = re.compile(r"Zinsbindung(?:en)?\s+(?:für\s+weitere|von|über)\s+(\d{1,2})\s+Jahre", re.IGNORECASE)
-_BINDUNG_BIS = re.compile(rf"Zinsbindung(?:sende)?:?\s*(?:bis\s+(?:zum\s+)?)?{_DATUM}")
+_BINDUNG_BIS = re.compile(
+    rf"(?:Zinsbindung(?:sende)?|Zinsfestsetzung):?\s*(?:bis\s+(?:zum\s+)?)?{_DATUM}")
 _ENTSCHEIDUNG = re.compile(rf"(?:Kreditentscheidung|Entscheidung)(?:en)?\s+vom\s+{_DATUM}")
 _AM_ENTSCHIEDEN = re.compile(rf"Am\s+{_DATUM}\s+wurde")
 _ERSPARNIS = re.compile(
     rf"Zinsaufwand[^.]{{0,160}}?(?:für den |im )?Zeitraum\s+{_DATUM}\s+bis\s+{_DATUM}\s+um\s+([\d.]+,\d{{2}})\s*(?:Euro|EUR)\s+reduziert",
     re.IGNORECASE)
 _FINANZ = re.compile(r"Finanzielle Auswirkungen:?\s*(.*)$", re.IGNORECASE | re.DOTALL)
+#: Aufzählungszeichen vor einer Überschrift (Wingdings-Punkt, Bullet, Strich).
+_GLYPH = re.compile(r"^[\s\uf0b7\u2022\u00b7\-\u2013\u2014]+")
 _SEITENFUSS = re.compile(r"Ausdruck vom:\s*\d{2}\.\d{2}\.\d{4}\s+Seite:\s*\d+/\d+\s*")
 
 ARTEN: tuple[tuple[str, re.Pattern[str]], ...] = (
@@ -105,6 +130,7 @@ _SCHULDNER: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("Bäderbetrieb Oldenburg", re.compile(r"B[äa]derbetrieb", re.IGNORECASE)),
     ("Eigenbetrieb Gebäudewirtschaft und Hochbau", re.compile(r"Geb[äa]udewirtschaft|\bEGH\b", re.IGNORECASE)),
     ("Eigenbetrieb BBO", re.compile(r"\bBBO\b")),
+    ("Eigenbetrieb Hafen", re.compile(r"\bEB Hafen\b|Eigenbetrieb Hafen", re.IGNORECASE)),
     ("Abfallwirtschaftsbetrieb", re.compile(r"Abfallwirtschaftsbetrieb", re.IGNORECASE)),
     ("Kernverwaltung", re.compile(r"Kernverwaltung", re.IGNORECASE)),
 )
@@ -134,11 +160,22 @@ def erkenne(title: str | None) -> bool:
     return bool(TITEL.search(title or ""))
 
 
-def zeitraum(text: str) -> tuple[str | None, str | None]:
-    """„2026-06" bis „2026-08" aus „In den Monaten Juni, Juli und August 2026"."""
+def zeitraum(text: str, jahr: int | None = None) -> tuple[str | None, str | None]:
+    """„2026-06" bis „2026-08" aus „In den Monaten Juni, Juli und August 2026".
+
+    ``jahr`` ist das Jahr des Dokumentdatums — für die Form ohne Jahr
+    („Innerhalb der Monate Januar und Februar sind …", 2021). Reicht der
+    Zeitraum über den Jahreswechsel („Dezember und Januar"), gehört der
+    Dezember ins Vorjahr."""
     m = _ZEITRAUM.search(text)
     if not m:
-        return None, None
+        o = _ZEITRAUM_OHNE_JAHR.search(text)
+        if not o or jahr is None:
+            return None, None
+        monate = [x.strip().lower() for x in re.split(r",|\s+und\s+", o.group(1)) if x.strip()]
+        erster, letzter = _MONATE[monate[0]], _MONATE[monate[-1]]
+        von_jahr = jahr - 1 if erster > letzter else jahr
+        return f"{von_jahr}-{erster:02d}", f"{jahr}-{letzter:02d}"
     monate = [x.strip().lower() for x in re.split(r",|\s+und\s+", m.group(1)) if x.strip()]
     jahr = int(m.group(2))
     von = f"{jahr}-{_MONATE[monate[0]]:02d}"
@@ -148,7 +185,10 @@ def zeitraum(text: str) -> tuple[str | None, str | None]:
 
 
 def art(kopf: str) -> str:
-    k = kopf.strip()
+    # Aufzählungs-Glyphen davor („\uf0b7 Umschuldung …", 2018/2019) sind kein
+    # Teil der Überschrift — mit ihnen griff kein einziges ^-Muster. NUR
+    # Glyphen: Die Klammer von „(Teil-) Auszahlung" gehört zur Überschrift.
+    k = _GLYPH.sub("", kopf.strip())
     for name, rx in ARTEN:
         if rx.search(k):
             return name
@@ -225,6 +265,44 @@ def _posten_formular(text: str) -> list[dict]:
     }]
 
 
+def _posten_feldliste(text: str) -> list[dict]:
+    """Die Form von 2018 bis 2021: je Vorgang eine Überschrift („EGH –
+    Kreditaufnahme für Investitionen aus dem Wirtschaftsplan 2018") und
+    darunter eine Feldliste („Betrag:" oder „Abruf:", „Wertstellung:",
+    „Zinssatz:", „Zinsbindung:" bzw. „Zinsfestsetzung:") — mehrere je Bericht,
+    gruppiert unter Monatsüberschriften („Dezember 2019", „./." für einen
+    Monat ohne Vorgang). :func:`_posten_formular` liest davon genau EINEN
+    Vorgang (2022); hier zählt jeder Betrag."""
+    i = text.find("Bericht:")
+    j = text.find("Finanzielle Auswirkungen")
+    koerper = text[i:j if j > i else None] if i >= 0 else text
+    felder = list(_BETRAG_FELD.finditer(koerper))
+    if not felder:
+        return []
+    aus: list[dict] = []
+    for n, m in enumerate(felder):
+        vor = koerper[felder[n - 1].end() if n else 0:m.start()]
+        kopf_treffer = None
+        for k in _FELD_KOPF.finditer(vor):
+            kopf_treffer = k                       # der letzte vor dem Feld
+        kopf = (kopf_treffer.group(1) if kopf_treffer else vor[-120:]).strip().rstrip(":").strip()
+        art_teil = kopf_treffer.group(2) if kopf_treffer else kopf
+        absatz = koerper[m.start():felder[n + 1].start() if n + 1 < len(felder) else None]
+        aus.append({
+            "seq": n + 1, "heading": kopf[:200],
+            "kind": art(art_teil) if art(art_teil) != "other" else "loan",
+            "borrower": schuldner(kopf),
+            "amount": de_zahl(m.group(1)),
+            "rate_pct": (lambda z: de_zahl(z.group(1)) if z else None)(_ZINS.search(absatz)),
+            "fixed_years": None,
+            "fixed_until": (lambda z: iso(*z.groups()) if z else None)(_BINDUNG_BIS.search(absatz)),
+            "decided_at": (lambda z: iso(*z.groups()) if z else None)(
+                re.search(rf"Wertstellung:\s*{_DATUM}", absatz)),
+            "summary": absatz[:400],
+        })
+    return aus
+
+
 def _einzelposten(text: str) -> list[dict]:
     """Ein Bericht mit genau einem Vorgang ohne Nummer (2022): „Umschuldung von
     Kommunalkrediten in Höhe von insgesamt 78.812.404,40 Euro Mit Entscheidung
@@ -237,7 +315,7 @@ def _einzelposten(text: str) -> list[dict]:
     b = _BETRAG.search(rest)
     if not b or b.start() > 220:
         return []
-    kopf = rest[:b.end()].strip()
+    kopf = _GLYPH.sub("", rest[:b.end()].strip())
     return [{
         "seq": 1, "heading": kopf[:200], "kind": art(kopf), "borrower": schuldner(kopf),
         "amount": de_zahl(b.group(1)),
@@ -293,10 +371,14 @@ def lies(zeilen: Iterable[dict]) -> dict:
         if len(text) < 200:
             rejected.append({"template_number": nr, "reason": "kein Volltext"})
             continue
-        von, bis = zeitraum(text)
+        d = _DOK_DATUM.search(text)
+        dok_jahr = int(d.group(3) or d.group(6)) if d else None
+        von, bis = zeitraum(text, dok_jahr)
         posten = _posten(text)
-        if not posten and "Betrag:" in text:
-            posten = _posten_formular(text)
+        if not posten and ("Betrag:" in text or "Abruf:" in text):
+            posten = _posten_feldliste(text)
+            if len(posten) == 1 and "Betrag:" in text:
+                posten = _posten_formular(text)
         if not posten and _BETRAG.search(title):
             posten = _alte_form(text, title)
         if not posten and not _KEINE.search(text):
