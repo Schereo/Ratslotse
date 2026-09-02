@@ -44,6 +44,7 @@ import re
 import sqlite3
 from dataclasses import dataclass
 from typing import Any, Callable
+from kern.dbfehler import tabelle_fehlt
 
 
 @dataclass(frozen=True)
@@ -100,7 +101,9 @@ def jahrgang(conn: sqlite3.Connection, tabelle: str, spalte: str,
             if da:
                 return year, False
         juengst = conn.execute(f"SELECT MAX({spalte}) FROM {tabelle}{bed}").fetchone()[0]
-    except sqlite3.OperationalError:
+    except sqlite3.OperationalError as fehler:
+        if not tabelle_fehlt(fehler):
+            raise
         return None, False
     return juengst, year is not None and juengst is not None
 

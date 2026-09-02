@@ -73,6 +73,7 @@ from council import (anlagenspiegel, bilanz, buergschaften, indicators, income_b
                      herkunft, investitionsprogramm, konzernabschluss,
                      pruefberichte, stellenplan)
 from council.store import CouncilStore
+from kern.dbfehler import tabelle_fehlt
 
 #: Wie lange nach dem erwarteten Monat ein fehlender Jahrgang als „die Stadt
 #: ist eben spät dran" durchgeht. Danach ist er eine Meldung wert — nicht als
@@ -401,7 +402,9 @@ def _einheiten_teilhaushalt(row: dict) -> set[tuple]:
 def _jahre(store: CouncilStore, sql: str) -> list:
     try:
         return store._conn.execute(sql).fetchall()  # noqa: SLF001
-    except sqlite3.OperationalError:
+    except sqlite3.OperationalError as fehler:
+        if not tabelle_fehlt(fehler):
+            raise
         return []
 
 
@@ -699,7 +702,9 @@ def _anzahl(store: CouncilStore, sql: str, args: tuple) -> int:
     """Zeilenzahl einer Zieltabelle — 0, wenn es die Tabelle noch nicht gibt."""
     try:
         return store._conn.execute(sql, args).fetchone()[0]  # noqa: SLF001
-    except sqlite3.OperationalError:
+    except sqlite3.OperationalError as fehler:
+        if not tabelle_fehlt(fehler):
+            raise
         return 0
 
 
