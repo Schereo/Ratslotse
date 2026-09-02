@@ -179,8 +179,7 @@ def glyphseiten_reparieren(store: CouncilStore, wo: str, werte: list,
             continue
         if not n_ocr:
             continue
-        text = entfernen("
-".join(teile).strip())[:MAX_TEXT]
+        text = entfernen("\n".join(teile).strip())[:MAX_TEXT]
         with store._conn:
             store._conn.execute(
                 "UPDATE council_attachments SET raw_text=?, n_pages=?, status='ok', "
