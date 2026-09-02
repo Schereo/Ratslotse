@@ -22,8 +22,18 @@ def test_strip_prefix_handles_oe_and_n():
     assert videos.strip_prefix("Ö 10.3") == "10.3"
     assert videos.strip_prefix("N 4.2") == "4.2"
     assert videos.strip_prefix("8.1") == "8.1"
-    assert videos.strip_prefix("DZT 1") == "1"
     assert videos.strip_prefix("") == ""
+
+
+def test_strip_prefix_keeps_dringlichkeits_namespace():
+    """„DZT 1" ist NICHT „Ö 1": Dringlichkeitsanträge zählen eigenständig.
+
+    Ein `^[^\\d]+`-Schnitt verkürzte beide auf „1"; am 02.09.2026 hing
+    dadurch die Sachabstimmung über den PAK-Dringlichkeitsantrag am TOP
+    „Feststellung der Beschlussfähigkeit" — über den nie abgestimmt wird —
+    und beim Antrag selbst stand nichts."""
+    assert videos.strip_prefix("DZT 1") == "DZT 1"
+    assert videos.strip_prefix("DZT 1") != videos.strip_prefix("Ö 1")
 
 
 def test_fold_matches_asr_variance():
@@ -91,7 +101,9 @@ def _finding(nr="7.1", outcome="accepted", beleg=QUOTE, **kw):
 
 
 def _extract_with(pass_a: list[dict], pass_b: list[dict]) -> list[dict]:
-    with mock.patch.object(videos, "_one_pass", side_effect=[pass_a, pass_b]):
+    # _one_pass liefert (Befunde, ausgefallene Abschnitte).
+    with mock.patch.object(videos, "_one_pass",
+                           side_effect=[(pass_a, set()), (pass_b, set())]):
         return videos.extract_results(TRANSCRIPT, AGENDA)
 
 
@@ -126,9 +138,36 @@ def test_unknown_item_number_is_dropped():
     assert out == []
 
 
+def test_dringlichkeitsantrag_keeps_its_own_number():
+    """Ein Ergebnis für „DZT 1" landet bei DZT 1 — nicht bei „Ö 1"."""
+    agenda = AGENDA + [{"item_number": "Ö 1",
+                        "title": "Feststellung der Beschlussfähigkeit"},
+                       {"item_number": "DZT 1",
+                        "title": "Dringlichkeitsantrag: festgestellte PAK-Belastung"}]
+    fund = _finding(nr="DZT 1")
+    with mock.patch.object(videos, "_one_pass",
+                           side_effect=[([fund], set()), ([fund], set())]):
+        out = videos.extract_results(TRANSCRIPT, agenda)
+    assert [r["item_number"] for r in out] == ["DZT 1"]
+
+
 def test_missing_in_one_pass_is_withheld():
     out = _extract_with([_finding()], [])
     assert out == []
+
+
+def test_failed_chunk_is_reported_not_swallowed(caplog):
+    """Ein ausgefallener Abschnitt nimmt seine Region mit — das MUSS ins Log.
+
+    Am 02.09.2026 fiel B/0 dreimal leer aus; mit ihm verschwanden lautlos
+    alle vier Absetzungen, die zu Sitzungsbeginn verkündet worden waren.
+    Ohne diese Warnung sieht so ein Lauf aus wie eine stille Sitzung."""
+    with mock.patch.object(videos, "_one_pass",
+                           side_effect=[([_finding()], set()),
+                                        ([_finding()], {0})]):
+        with caplog.at_level("WARNING"):
+            videos.extract_results(TRANSCRIPT, AGENDA)
+    assert "Abschnitte ausgefallen" in caplog.text
 
 
 def test_anchor_prefers_full_quote_over_ambiguous_head():
