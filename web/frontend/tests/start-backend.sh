@@ -29,8 +29,16 @@ echo "RATSLOTSE_DB=$RATSLOTSE_DB"
 # Trap cleans up temp dir when this process exits.
 trap 'rm -rf "$TMP_DIR"' EXIT INT TERM
 
-cd "$REPO_ROOT/web/backend"
 PYTHON_BIN="${PYTHON_BIN:-$REPO_ROOT/.venv/bin/python}"
+
+# Konten säen, bevor der Server startet. Ohne sie steht jeder Browsertest vor
+# einem leeren Konto: kein Thema, keine Merkliste, kein Fortschritt — und
+# prüft damit einen Zustand, den nach dem ersten Tag niemand mehr hat.
+# `admin@test.de` ist dieselbe Adresse, die `tests/e2e/helpers.ts` benutzt.
+"$PYTHON_BIN" "$REPO_ROOT/scripts/saat_konten.py" --db "$RATSLOTSE_DB" \
+  --council-db "$COUNCIL_DB" >/dev/null || echo "Saat übersprungen"
+
+cd "$REPO_ROOT/web/backend"
 exec "$PYTHON_BIN" -m uvicorn \
   app.main:app \
   --host 127.0.0.1 \

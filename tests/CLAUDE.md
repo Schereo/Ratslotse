@@ -42,6 +42,18 @@ Stand: eine Datenbank im alten Schema anlegen, migrieren, und Spalte für
 Spalte mit einer frisch angelegten vergleichen. Und zweimal migrieren — eine
 Migration, die beim zweiten Lauf stolpert, bricht den nächsten Deploy.
 
+## Echte Daten, wo sie fehlen
+
+Die Suite läuft absichtlich gegen leere Datenbanken — das hält sie schnell und
+unabhängig. Für alles, was erst an Menge auffällt (Paginierung, lange Titel,
+Sonderfälle im Bestand), gibt es den Abzug: `python scripts/lokale_daten.py
+hol && setz` holt die Ratsdaten von dev, `python scripts/saat_konten.py` legt
+erfundene Konten dazu. Beides steht in der Wurzel-`CLAUDE.md`.
+
+Ein Test, der eine echte Datenbank braucht, hängt an einer **eigenen**
+Umgebungsvariable, nicht an `COUNCIL_DB` — die setzen drei Testmodule beim
+Import selbst, eine Bedingung darauf übersprang nie und riss den Lauf um.
+
 ## Kein Test gegen die eigene Fixture
 
 Wenn beide Seiten einer Schnittstelle ihre Testdaten selbst schreiben, prüfen
