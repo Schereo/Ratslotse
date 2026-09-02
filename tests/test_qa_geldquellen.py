@@ -109,9 +109,9 @@ KORPUS: list[tuple[str, str, set[str]]] = [
     ("Wie viele Mitarbeiter hat die Stadt?", "topic", {"stellenplan"}),
     # Die Änderungslisten. Vorher: {"plan", "ansatz"} — die Plan-Zahlen des
     # Haushalts, aber kein Wort darüber, wer ihn ändern wollte.
-    ("Wer wollte den Haushalt ändern?", "topic", {"plan", "ansatz", "antraege"}),
+    ("Wer wollte den Haushalt ändern?", "topic", {"plan", "ansatz", "antraege", "amendments"}),
     ("Welche Änderungslisten gab es zum Haushalt 2026?", "topic",
-     {"plan", "ansatz", "antraege"}),
+     {"plan", "ansatz", "antraege", "amendments"}),
 
     # --- Negativfälle -------------------------------------------------------
     # Ohne diese Zeilen optimiert man auf „lädt immer alles" und überflutet
@@ -459,7 +459,7 @@ def test_neue_facetten_ziehen_sich_nicht_gegenseitig(facette, fragen):
     ändern?" trägt „Haushalt" im Wortlaut, und die Plan-Zahlen sind dort der
     Gegenstand des Streits, nicht Beiwerk.
     """
-    zusatz = {"antraege": {"plan", "ansatz"},
+    zusatz = {"antraege": {"plan", "ansatz", "amendments"},
               # Plan und Ist derselben Frage — sie MÜSSEN zusammen kommen,
               # sonst hinge die Regel „nie voneinander abziehen" an einer
               # Zahl, die nicht im Kontext steht (council/qa.py).

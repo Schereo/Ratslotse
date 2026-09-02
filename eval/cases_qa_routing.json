@@ -83,7 +83,7 @@
     "id": "budget-amendments",
     "question": "Welche Änderungslisten gab es zum Haushalt 2026?",
     "allowed_types": ["topic", "money"],
-    "expected_facets": ["plan", "ansatz", "antraege"],
+    "expected_facets": ["plan", "ansatz", "antraege", "amendments"],
     "required_channels": ["decisions", "budget"],
     "forbidden_channels": ["documents"]
   },
