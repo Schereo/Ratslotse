@@ -74,7 +74,7 @@ jobs:
             # `--glyphen` stellt Anlagen, die VOR der Buchstaben-Schwelle mit
             # Glyphen-Rauschen auf `ok` geladen wurden, auf `empty` — sonst
             # sähe die OCR unten sie nie (Schlussbericht 2024, 295296).
-            .venv/bin/python scripts/backfill_anlagen_texte.py --nur-finanz --retry-failed --gekappte --glyphen
+            .venv/bin/python scripts/backfill_anlagen_texte.py --nur-finanz --retry-failed --gekappte --glyphen --glyphseiten
 
             # UND DANN die, die gar keine Textebene haben. Der Lauf oben setzt
             # sie auf `status='empty'`; dieser hier schickt jede Seite als Bild

@@ -552,8 +552,9 @@ def _einheiten_stellenplan(row: dict) -> set[tuple]:
     beginnt auf Seite 5, der Kandidaten-Ausschnitt endet bei 4.000 Zeichen).
     Das ist Absicht: Der Stellenplan **hat** zwei Teile, und ein Jahrgang, bei
     dem nur einer hereinkommt, ist unvollständig — genau das soll die
-    Buchführung sagen. Im Jahrgang 2026 ist das der Fall, weil Teil B im PDF
-    keine Zeichenzuordnung mitbringt; der Cron meldet ihn einmal als offen und
+    Buchführung sagen. Im Jahrgang 2026 war das der Fall, weil Teil B im PDF
+    keine Zeichenzuordnung mitbrachte (seit 09/2026 liest der Text-Backfill
+    solche Seiten per OCR, ``--glyphseiten``); der Cron meldet ihn einmal als offen und
     schweigt danach (``_schon_gemeldet``)."""
     year = stellenplan.budget_year(row.get("kopf"))
     return {(year, t) for t in sorted(stellenplan.TEIL_SPALTEN)} if year else set()
