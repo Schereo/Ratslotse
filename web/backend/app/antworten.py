@@ -2169,6 +2169,9 @@ class BudgetLoans(TypedDict):
     rates: list[LoanItem]
     refinancing_by_year: list[LoanYear]
     latest_refinancing: LoanItem | None
+    #: Herkunft je ``herkunft_id`` der Unterrichtungen und Geschäfte — ohne
+    #: sie stürzt der Kredite-Block ab (er liest ``provenance[id]``).
+    provenance: Provenance
     provenance: Provenance
 
 
