@@ -162,7 +162,7 @@ def _berichte(store: CouncilStore, serie: list[nb.Bewilligung],
         probe = nb.probe_tabelle(kap)
         abgleich = nb.probe_ratsabgleich(
             serie, kap, nb.vorlagen_im_kapitel(text))
-        rat = kap.channel("rat")
+        rat = kap.channel("council")
         print(f"  {year}: {kap.gesamt:>15,.2f} € gesamt · Rat "
               f"{rat.amount:>15,.2f} € ({kap.rats_anteil:.1f} %) · "
               f"{len(kap.channels)} Wege")
