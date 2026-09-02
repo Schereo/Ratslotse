@@ -407,7 +407,7 @@ export default function HaushaltPage() {
                     Ohne ihn trägt der Wert allein die Rechnung, die in der
                     Tabelle selbst steht. */}
                 {k.probes.includes("expense_series_annual_accounts") ? (
-                  <>Er stimmt mit der Gesamtergebnisrechnung im Jahresabschluss {k.year}
+                  <>Er stimmt mit der Gesamtergebnisrechnung im Jahresabschluss {k.year}{" "}
                   überein<Beleg q="jahresabschluss" />.</>
                 ) : (
                   <>Nur dieser Wert passt zu dem Pro-Kopf-Betrag in derselben
