@@ -73,8 +73,11 @@ export function Vollzug({ daten, year, onYear, beleg }: {
       einordnung: null,
     }));
 
+  // Die Abweichung ist die GEDRUCKTE des Berichts (der Parser hat sie gegen
+  // Ansatz und Prognose bewiesen) — nicht unsere Differenz zweier gerundeter
+  // Zahlen, die im Satz um einen Zehntel danebenläge.
   const abw = kern && kern.budgeted != null && kern.forecast != null
-    ? kern.forecast - kern.budgeted : null;
+    ? (kern.deviation ?? kern.forecast - kern.budgeted) : null;
 
   return (
     <section id="vollzug" className="scroll-mt-20 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
@@ -203,7 +206,7 @@ export function VollzugKarte({ daten }: { daten: VollzugDaten }) {
   const budget: VollzugHaushalt = s.budgets.includes("result") ? "result" : s.budgets[0];
   const kern = summe(daten, s.budget_year, s.as_of, budget, "result");
   if (!kern || kern.budgeted == null || kern.forecast == null) return null;
-  const abw = kern.forecast - kern.budgeted;
+  const abw = kern.deviation ?? kern.forecast - kern.budgeted;
   return (
     <a href="/haushalt/plan-ist#vollzug"
       className="group block rounded-2xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-primary/40">
