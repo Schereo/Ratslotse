@@ -72,9 +72,9 @@ KORPUS: list[tuple[str, str, set[str]]] = [
     # Keine Betragsfrage — eine Rechtsfrage. Nur die Produktebene führt die
     # Auftragsgrundlage je Aufgabe.
     ("Muss die Stadt das Theater betreiben?", "topic", {"produkte"}),
-    ("Warum steigen die Abfallgebühren?", "topic", {"fees"}),
-    ("Wie hoch ist die Straßenreinigungsgebühr?", "money", {"fees"}),
-    ("Wie werden die Müllgebühren berechnet?", "topic", {"fees"}),
+    ("Warum steigen die Abfallgebühren?", "topic", {"fees", "fee_rates"}),
+    ("Wie hoch ist die Straßenreinigungsgebühr?", "money", {"fees", "fee_rates"}),
+    ("Wie werden die Müllgebühren berechnet?", "topic", {"fees", "fee_rates"}),
 
     # --- Weitere echte Fragen ----------------------------------------------
     ("Wie viel gibt Oldenburg für Soziales aus?", "money", {"plan", "produkte", "ansatz"}),
@@ -150,7 +150,7 @@ KORPUS: list[tuple[str, str, set[str]]] = [
     # `plan`: Wer nach dem Vermögen fragt, soll keine Jahresausgabe daneben
     # bekommen, die sich damit nicht verrechnen lässt.
     ("Wie hoch ist das Eigenkapital der Stadt Oldenburg?", "money", {"bilanz"}),
-    ("Was besitzt die Stadt eigentlich?", "money", {"bilanz"}),
+    ("Was besitzt die Stadt eigentlich?", "money", {"bilanz", "assets"}),
     ("Wie viel hat die Stadt für Pensionen zurückgestellt?", "money", {"bilanz"}),
 
     # 4–5: Die Kassensicht. Sie kommt auch ungefragt mit, sobald es um das Ist
@@ -161,8 +161,8 @@ KORPUS: list[tuple[str, str, set[str]]] = [
      {"bilanz", "kassensicht"}),   # „liquide" trifft beide Quellen — richtig so
 
     # 6–7: Nachbewilligungen. Geld außerhalb des beschlossenen Haushalts.
-    ("Was wurde 2024 nachbewilligt?", "money", {"supplementary_approvals"}),
-    ("Wie viel wurde überplanmäßig bewilligt?", "money", {"supplementary_approvals"}),
+    ("Was wurde 2024 nachbewilligt?", "money", {"supplementary_approvals", "approvals"}),
+    ("Wie viel wurde überplanmäßig bewilligt?", "money", {"supplementary_approvals", "approvals"}),
 
     # 8–10: Die Kennzahlen. Die einzige Quelle, die ihre Formeln mitliefert —
     # „Eigenkapitalquote" zieht zusätzlich die Bilanz, aus der sie stammt.
@@ -209,6 +209,11 @@ ERWARTETE_METHODEN = {
     "kassensicht": "kassensicht_kontext",
     "supplementary_approvals": "nachbewilligungen_kontext",
     "indicators": "kennzahlen_kontext",
+    # Die Modul-Facetten für die letzten vier Tabellen ohne Zugang (09/2026).
+    "fee_rates": "fee_rates_context",
+    "assets": "assets_context",
+    "approvals": "approvals_context",
+    "population": "population_context",
 }
 
 
