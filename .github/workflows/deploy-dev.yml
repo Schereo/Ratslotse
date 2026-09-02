@@ -42,7 +42,25 @@ jobs:
           script: |
             set -e
             cd ~/app
-            git fetch origin dev
+            # Der Abruf bekommt drei Versuche. Am 02.09.2026 scheiterten sechs
+            # Dev-Deploys mit „could not read Username for 'https://github.com'"
+            # — bei einem ÖFFENTLICHEN Repo braucht der Abruf gar keine
+            # Anmeldung, und von Hand lief er unmittelbar danach durch. Die
+            # Fehlschläge kamen in Trauben, wenn mehrere Merges kurz
+            # hintereinander deployten: GitHub drosselt unangemeldete Abrufe je
+            # Adresse, und git deutet die Absage als Frage nach Zugangsdaten.
+            # GIT_TERMINAL_PROMPT=0, damit er dabei nicht wartet, sondern
+            # sofort scheitert und der nächste Versuch greifen kann.
+            export GIT_TERMINAL_PROMPT=0
+            for versuch in 1 2 3; do
+              if git fetch origin dev; then break; fi
+              if [ "$versuch" = 3 ]; then
+                echo "Abruf nach drei Versuchen gescheitert." >&2
+                exit 1
+              fi
+              echo "Abruf fehlgeschlagen, neuer Versuch in $((versuch * 15))s"
+              sleep $((versuch * 15))
+            done
             git reset --hard ${{ github.sha }}
             .venv/bin/pip install -q -r requirements.txt -r web/backend/requirements.txt
             cd web/frontend
