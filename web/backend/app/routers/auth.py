@@ -13,6 +13,7 @@ from kern.store import Store
 from kern.digest_email import knopf, render_html_email
 from kern.email import send_email
 
+from ..clients import client_kind, is_app_client
 from ..config import get_settings
 from ..antworten import Ok
 from ..deps import get_current_user, get_store
@@ -131,8 +132,14 @@ def _set_auth_cookie(response: Response, user: dict) -> None:
 
 
 def _is_app_client(request: Request) -> bool:
-    """The native (Capacitor) app sends `X-Client: app`; browsers don't."""
-    return request.headers.get("X-Client", "").lower() == "app"
+    """Kommt der Request aus einer App-Hülle? (Browser schicken keinen Header.)
+
+    Seit die Clients ihre Plattform mitschicken (``ios``/``android``) darf das
+    hier NICHT mehr auf ``== "app"`` prüfen: Die native iOS-App bekäme sonst bei
+    der Anmeldung kein Bearer-Token mehr in den Rumpf gelegt und stünde nach dem
+    nächsten Start abgemeldet da. ``app.clients`` kennt beide Schreibweisen.
+    """
+    return is_app_client(request)
 
 
 def _app_access_token(request: Request, user: dict) -> str | None:
@@ -194,6 +201,8 @@ def register(
     user_id = store.create_web_user(
         email, hash_password(body.password), role, user_status, email_verified=verified,
         display_name=body.display_name,
+        # Womit dieses Konto entstanden ist — Browser oder App (Admin 20a).
+        signup_client=client_kind(request),
     )
     # Default to email delivery so new accounts actually receive notifications.
     # They can switch channels later in /account.

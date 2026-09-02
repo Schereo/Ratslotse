@@ -187,7 +187,11 @@ public actor APIClient {
         request.httpMethod = method.rawValue
         request.httpBody = body
         request.timeoutInterval = acceptsSSE ? 300 : 30
-        request.setValue("app", forHTTPHeaderField: "X-Client")
+        // Bis 09/2026 stand hier "app" — das sagte nur „nativ", nicht welche
+        // Plattform. Das Backend nimmt beides an (app.clients), zählt aber nur
+        // mit dem genaueren Wert getrennt: Sonst stünde die native App in der
+        // Statistik im selben Topf wie die Capacitor-Hülle.
+        request.setValue("ios", forHTTPHeaderField: "X-Client")
         request.setValue(acceptsSSE ? "text/event-stream" : "application/json", forHTTPHeaderField: "Accept")
         if body != nil { request.setValue("application/json", forHTTPHeaderField: "Content-Type") }
         if let accessToken { request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization") }

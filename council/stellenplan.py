@@ -213,7 +213,8 @@ _ENDE = ("Dienstkräfte in der Ausbildungszeit", "Übersicht zum Stellenplan",
 #: Über das ganze Dokument gemittelt bleiben 11,2 % Buchstaben — mehr als die
 #: 5 %, ab denen ``backfill_anlagen_texte.py`` einen Volltext verwirft. Der
 #: Schaden ist seitenweise, nicht dokumentweise, und deshalb fängt ihn keine
-#: Schwelle über den ganzen Text.
+#: Schwelle über den ganzen Text — auch ``--glyphen`` nicht, das ganze Anlagen
+#: unterhalb der Schwelle für die OCR freigibt.
 #:
 #: Reparieren ließe sich das nur mit Rendern und OCR (``council/ocr.py``) —
 #: eine Zeichenzuordnung, die nicht im PDF steht, lässt sich nicht aus ihm

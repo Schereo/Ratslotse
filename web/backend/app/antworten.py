@@ -311,6 +311,13 @@ class TopicSuggestion(TypedDict):
     name: str
     description: str
     n: int
+    #: Kurze Einordnung für die Anzeige — bei einer Plannummer der Ortsbezug
+    #: aus der Klammer des Beschlusstitels („Quartier am Krusenbusch"), sonst
+    #: der erste Satz der Beschreibung. MUSS hier stehen: Die Antwortform ist
+    #: ein festes Literal, und was fehlt, schneidet FastAPI ab. Genau so kam
+    #: „Bebauungsplan 862" ohne jede Erklärung im Browser an, obwohl der
+    #: Endpunkt sie berechnet hatte (Tims Bild, 02.09.2026).
+    context: str | None
 
 
 class NearbySuggestion(TopicSuggestion):
@@ -706,6 +713,15 @@ class AdminUserDetail(TypedDict):
     subscriptions: list[str]
     history: list[int]
     history_days: list[str]
+    #: Womit das Konto angelegt wurde: web | ios | android | app. ``None`` =
+    #: vor Einführung der Messung registriert.
+    signup_client: str | None
+    #: Zugriffe je Client — {"web": 42, "ios": 7}. Muss HIER stehen, nicht nur
+    #: im Store: Die Antwortform ist ein festes Literal, und was nicht drinsteht,
+    #: schneidet FastAPI aus der Antwort. Genau das ist beim Zusammenführen mit
+    #: der Typisierung aus #916 passiert — der Store lieferte weiter, die
+    #: Antwort trug es nicht mehr.
+    clients: dict[str, int]
 
 
 class AdminPlaceCandidateEvidence(TypedDict):
@@ -823,12 +839,29 @@ class AdminCouncilStats(TypedDict):
     next_session: str | None
 
 
+class AdminClientShare(TypedDict):
+    client: str
+    n: int
+    #: Nur bei der Nutzung gefüllt (verschiedene Konten); bei der Registrierung
+    #: wäre die Zahl mit ``n`` identisch und steht deshalb auf 0.
+    users: int
+
+
 class AdminGrowth(TypedDict):
     users: AdminSeries
     topics: AdminSeries
     wau: list[int]
     wau_days: list[str]
     council: AdminCouncilStats
+    #: Zugriffe je Client, letzte 30 Tage — „App oder Web?". ``users`` zählt
+    #: jedes Konto genau einmal, unter seinem meistgenutzten Client.
+    clients: list[AdminClientShare]
+    #: Wie viele Konten in dem Zeitraum MEHRERE Clients benutzt haben. Die Zahl
+    #: gehört dazu: Ohne sie liest sich die Aufteilung so, als benutzte jede:r
+    #: genau eins.
+    clients_both: int
+    #: Womit die vorhandenen Konten angelegt wurden (gesamter Bestand).
+    signup_clients: list[AdminClientShare]
 
 
 class AdminQuizArea(TypedDict):
@@ -891,6 +924,12 @@ class AdminUserRow(TypedDict):
     n_quiz: int
     n_ki: int
     last_seen: str | None
+    #: Womit das Konto angelegt wurde: web | ios | android | app. ``None`` =
+    #: vor Einführung der Messung registriert.
+    signup_client: str | None
+    #: Zugriffe je Client — {"web": 42, "ios": 7}. Leer, solange nichts gemessen
+    #: wurde; ``unknown`` steht für die Zeilen aus der Zeit davor.
+    clients: dict[str, int]
 
 
 class AdminLimits(TypedDict):

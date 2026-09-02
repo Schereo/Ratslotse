@@ -306,3 +306,92 @@ def test_enges_fenster_gewinnt_nicht_mit_lauter_adressen(client):
     # Ein Vorhaben, das zufällig auf „-weg" endet, bleibt eine Adresse; ein
     # benanntes Vorhaben nicht.
     assert _tragende([{"name": "Bebauungsplan 851"}, {"name": "OLantis Huntebad"}]) == 2
+
+
+def test_stadtteil_thema_verdraengt_keine_vorschlaege_mit_seinem_namen(client):
+    """Tims Befund (02.09.2026): Unter Krusenbusch standen nur Straßen und
+    eine Plannummer. Ursache: Wer „Krusenbusch" als Thema hatte, dem wurden
+    „Quartier am Krusenbusch" und „Grundschule Krusenbusch" als Dubletten
+    weggefiltert — genau die besten Vorschläge. Ein Stadtteil-Thema ist eine
+    Ortsangabe, kein Interesse, und zählt beim Dedupe nicht mit.
+    """
+    _register(client)
+    _saat()
+    council = CouncilStore(Path(_pfade()[1]))
+    try:
+        with council._conn:
+            # Eine Entität, die den Stadtteil im Namen trägt, mit Beschlüssen in Osternburg.
+            ids = [r[0] for r in council._conn.execute(
+                "SELECT id FROM council_decisions ORDER BY id LIMIT 2").fetchall()]
+            council._conn.execute(
+                "INSERT INTO council_entities (id, slug, name, kind, n) VALUES (99,'sportpark-osternburg','Sportpark Osternburg','place',3)")
+            for did in ids:
+                council._conn.execute("INSERT INTO council_entity_links VALUES (99, ?)", (did,))
+        council.save_topic_vagueness("sportpark-osternburg", "Sportpark Osternburg",
+                                     {"vague": False, "hint": "", "suggestion": ""})
+    finally:
+        council.close()
+    # Der Stadtteil selbst als Thema — so legt ihn Schritt 2 an.
+    client.post("/api/topics", json={"name": "Osternburg", "description": "Neue Beschlüsse mit Bezug zu Osternburg."})
+    gruppe = client.get("/api/topics/suggestions?district=osternburg").json()["districts"][0]
+    assert "Sportpark Osternburg" in {s["name"] for s in gruppe["suggestions"]}
+
+
+def test_schwache_strasse_und_stadtweiter_name_bleiben_draussen(tmp_path):
+    """Ein Straßenname mit zwei Erwähnungen ist eine Adresse aus einem
+    Bebauungsplan, kein Vorschlag; „TSH Konzept Berlin" ist kein Thema für
+    Kreyenbrück. Beide fallen aus der Stadtteil-Liste — eine STARKE Straße
+    (Sandweg, 33 Beschlüsse) bleibt, hinten."""
+    from council.store import CouncilStore as CS
+    store = CS(tmp_path / "c.sqlite")
+    try:
+        kandidaten = [
+            {"slug": "sandweg", "name": "Sandweg", "n_recent": 33, "avg_interest": 50},
+            {"slug": "erikaweg", "name": "Erikaweg", "n_recent": 2, "avg_interest": 50},
+            {"slug": "tsh-konzept-berlin", "name": "TSH Konzept Berlin", "n_recent": 9, "avg_interest": 50},
+            {"slug": "klingenbergplatz", "name": "Klingenbergplatz", "n_recent": 4, "avg_interest": 50},
+        ]
+        place = store.resolve_place("kreyenbrueck")
+        namen = [k["name"] for k in store._rank_local_suggestions(kandidaten, place, "2023-01-01")]
+        assert namen == ["Klingenbergplatz", "Sandweg"], namen
+    finally:
+        store.close()
+
+
+def test_plannummer_holt_ihre_klammer_aus_einem_aelteren_titel(client):
+    """„Bebauungsplan 865" ohne Erklärung war genau das, was Tim „kryptisch"
+    nannte. Der jüngste Titel heißt oft nur „… - Satzungsbeschluss"; die
+    Klammer steht ein, zwei Beschlüsse weiter zurück — dort holt sie sich der
+    Chip. Und ohne jede Klammer fällt der Vorschlag weg."""
+    _register(client)
+    _saat()
+    council = CouncilStore(Path(_pfade()[1]))
+    try:
+        jung = (date.today() - timedelta(days=10)).isoformat()
+        alt = (date.today() - timedelta(days=40)).isoformat()
+        council.save_session(CouncilSession(2, "Rat", jung, "17:00", "Ratssaal"))
+        council.save_session(CouncilSession(3, "Rat", alt, "17:00", "Ratssaal"))
+        with council._conn:
+            council._insert_decision(2, 1, "decision", None, "Ö 1", "Bebauungsplan 865 - Satzungsbeschluss", "B",
+                                     "accepted", None, None, None, [], None, None, None)
+            council._insert_decision(3, 1, "decision", None, "Ö 1", "Bebauungsplan 865 (Quartier am Krusenbusch) - Aufstellungsbeschluss", "B",
+                                     "accepted", None, None, None, [], None, None, None)
+            council._insert_decision(2, 2, "decision", None, "Ö 2", "Bebauungsplan 999 - Satzungsbeschluss", "B",
+                                     "accepted", None, None, None, [], None, None, None)
+            ids = {r[1]: r[0] for r in council._conn.execute("SELECT id, title FROM council_decisions")}
+            council._conn.execute("INSERT INTO council_entities (id, slug, name, kind, n) VALUES (91,'bebauungsplan-865','Bebauungsplan 865','project',2)")
+            council._conn.execute("INSERT INTO council_entities (id, slug, name, kind, n) VALUES (92,'bebauungsplan-999','Bebauungsplan 999','project',2)")
+            for t, eid in (("Bebauungsplan 865 - Satzungsbeschluss", 91),
+                           ("Bebauungsplan 865 (Quartier am Krusenbusch) - Aufstellungsbeschluss", 91),
+                           ("Bebauungsplan 999 - Satzungsbeschluss", 92)):
+                council._conn.execute("INSERT INTO council_entity_links VALUES (?, ?)", (eid, ids[t]))
+            # 999 braucht zwei Beschlüsse, damit er überhaupt Kandidat wird.
+            council._conn.execute("INSERT INTO council_entity_links VALUES (92, ?)", (ids["Bebauungsplan 865 - Satzungsbeschluss"],))
+        for slug, name in (("bebauungsplan-865", "Bebauungsplan 865"), ("bebauungsplan-999", "Bebauungsplan 999")):
+            council.save_topic_vagueness(slug, name, {"vague": False, "hint": "", "suggestion": ""})
+    finally:
+        council.close()
+    antwort = client.get("/api/topics/suggestions").json()
+    nach_name = {s["name"]: s for s in antwort["suggestions"]}
+    assert nach_name["Bebauungsplan 865"]["context"] == "Quartier am Krusenbusch"
+    assert "Bebauungsplan 999" not in nach_name

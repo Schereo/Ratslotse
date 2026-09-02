@@ -1475,7 +1475,10 @@ aussah: 78.483 Zeichen für 2026 gegen 33.554 für 2025. Eine Glyphenseite
 liefert 4.000 bis 7.700 Zeichen „/12 /8 /3", eine echte Tabellenseite rund
 2.000 Zeichen Text. Über das ganze Dokument bleiben 11,2 % Buchstaben — mehr
 als die 5 %, ab denen `backfill_anlagen_texte.py` einen Volltext verwirft. Der
-Schaden ist **seitenweise**, und keine Schwelle über den ganzen Text sieht ihn.
+Schaden ist **seitenweise**, und keine Schwelle über den ganzen Text sieht ihn:
+Auch `--glyphen`, das seit 09/2026 ganze Anlagen unterhalb der Schwelle für die
+OCR freigibt, greift bei diesem Dokument nicht — zwei Drittel davon sind ja
+lesbar.
 
 Reparieren ließe sich das nur mit Rendern und OCR (`council/ocr.py`): Eine
 Zeichenzuordnung, die nicht im PDF steht, lässt sich nicht aus ihm herauslesen.
@@ -1585,6 +1588,14 @@ Zwei Fallen, die dabei teuer waren und als Test festgehalten sind:
   („K R U P K E"). Mit nur einem Leerzeichen hinter der Marke ginge er als
   `K`-Marke durch. Deshalb verlangt das Muster **zwei** Leerzeichen — den
   Abstand der Randspalte.
+- **Die OCR schreibt die Randspalte als einen Tabulator** („B\tDas
+  Rechnungsprüfungsamt …"). Der Schlussbericht 2024 kommt nur so in den
+  Bestand, und mit dem Zwei-Leerzeichen-Muster fand der Parser darin die
+  Legende, aber keine einzige Marke. Seit dem 02.09.2026 gilt ein einzelner
+  Tabulator als Trenner — er ist so eindeutig wie zwei Leerzeichen, denn die
+  gesperrte Unterschrift steht mit Leerzeichen da. Am echten Text gemessen:
+  15 Feststellungen 2024 (4 Beanstandungen, 1 wiederholte, 10 Hinweise),
+  nichts verworfen.
 
 **Zuordnung und Dedup.** Welcher Bericht zu welchem Jahresabschluss gehört,
 entscheidet der **Textanfang**, nicht das Label: „Schlussbericht JA 2017"
@@ -3785,10 +3796,14 @@ Der Bereich zeigt lieber eine Lücke als eine Schätzung:
   Oldenburg**" am Titelende, an dem die Stiftungs- und Eigenbetriebsberichte
   („…zum 31. Dezember") durchfallen. Genau das bleibt streng.
 
-  **Was noch fehlt:** ein Renderer auf der Maschine. Seine Seiten tragen kein
-  Bild, sondern Vektoren — `pypdfium2` (BSD, ein Wheel mit gebündeltem pdfium)
-  zieht der Ops-Workflow bei Bedarf nach. Erst danach ist der Jahrgang wirklich
-  im Bestand; bis dahin sagt die Seite es weiter, statt es zu überspielen.
+  **Was ihm danach noch im Weg stand (bis 02.09.2026):** Er war am 18.08.
+  VOR der Buchstaben-Schwelle geladen worden und stand deshalb mit seinen
+  460.084 Glyphen auf `status='ok'` — und `ok` fasst kein Lauf mehr an: der
+  Text-Backfill holt `listed`/`failed`, die OCR liest `empty`. Der Renderer
+  (`pypdfium2`) war längst installiert; das Dokument lag nur in der falschen
+  Menge. Seitdem zieht `backfill_anlagen_texte.py --glyphen` die Schwelle
+  nachträglich über den Bestand (Buchstabenanteil unter `MIN_BUCHSTABEN` →
+  `empty`), und der OCR-Schritt desselben Ops-Laufs liest, was dort landet.
 - **Vollständige Produktebene** — seit 09/2026 weitgehend erledigt: Im Bestand
   stehen alle 13 Teilhaushalte (2019–2023: 12, dort hängt THH13 nicht als
   eigene Anlage an der Vorlage), 584 Produkte über die Jahrgänge 2019–2026.
