@@ -2103,6 +2103,75 @@ class BudgetBalanceSheet(TypedDict):
     items: Any
 
 
+class LoanNotice(TypedDict):
+    """Eine Unterrichtung des Rates (``council_loan_notices``)."""
+    template_number: str
+    year: int
+    period_from: str
+    period_to: str
+    document_date: str | None
+    none_reported: int
+    items: int
+    interest_saving: float | None
+    saving_from: str | None
+    saving_to: str | None
+    document_id: int | None
+    document_url: str | None
+    probes: list[str]
+    herkunft_id: int | None
+    fetched_at: str
+
+
+class LoanItem(TypedDict):
+    """Ein Posten einer Unterrichtung (``council_loan_items``) samt dem
+    Berichtszeitraum seiner Vorlage."""
+    template_number: str
+    seq: int
+    year: int
+    #: loan | refinancing | prolongation | disbursement | lending | other
+    kind: str
+    borrower: str | None
+    heading: str
+    amount: float | None
+    rate_pct: float | None
+    fixed_years: int | None
+    fixed_until: str | None
+    decided_at: str | None
+    summary: str | None
+    herkunft_id: int | None
+    fetched_at: str
+    period_from: str
+    period_to: str
+
+
+# ``from`` ist ein Schlüsselwort — deshalb die funktionale Form.
+LoanGap = TypedDict("LoanGap", {"from": int, "to": int})
+LoanCoverage = TypedDict("LoanCoverage", {
+    "from": str | None, "to": str | None, "gaps": list[LoanGap],
+    "notices": int, "none_reported": int})
+
+
+class LoanYear(TypedDict):
+    year: int
+    amount: float
+    count: int
+    saving: float
+    saving_notices: int
+
+
+class BudgetLoans(TypedDict):
+    scope_note: str
+    #: {"loan": "Kreditaufnahme", …} aus ``council.loans.ART_NAMEN``.
+    kind_names: dict[str, str]
+    notices: list[LoanNotice]
+    items: list[LoanItem]
+    coverage: LoanCoverage
+    rates: list[LoanItem]
+    refinancing_by_year: list[LoanYear]
+    latest_refinancing: LoanItem | None
+    provenance: Provenance
+
+
 class BudgetDebt(TypedDict):
     scope_note: Any
     column_kinds: list[Any]

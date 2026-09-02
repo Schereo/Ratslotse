@@ -34,6 +34,7 @@ import re
 import sqlite3
 
 from council import geld
+from kern.dbfehler import tabelle_fehlt
 
 NAME = "measures"
 
@@ -132,7 +133,9 @@ class Store:
                 "SELECT sub_budget_no, code, label, grand_total, details, "
                 "herkunft_id FROM council_investment_measures "
                 "WHERE year = ? AND level = 'measure'", (jahr,))]
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
             return None
         bewertet = []
         for r in zeilen:

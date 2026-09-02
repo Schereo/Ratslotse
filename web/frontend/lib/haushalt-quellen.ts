@@ -101,6 +101,7 @@ export type QuellenSchluessel =
   // etwas anderes ist als der Haushaltsplan: Der Plan sagt, wofür das Geld
   // ausgegeben werden SOLL, die Satzung, was die Stadt DÜRFTE.
   | "budget_bylaw"
+  | "loans"
   // Der Haushaltsvollzug — die Prognose-Berichte an den Finanzausschuss.
   // Eigener Schlüssel, weil es weder Plan noch Abschluss ist: Es ist die
   // Erwartung der Ämter im laufenden Jahr, je Stichtag neu.
@@ -339,6 +340,22 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     herausgeber: "Stadt Oldenburg, Controlling und Finanzen",
     as_of: "Berichte 2018–2026",
     standWort: "Haushaltsjahre",
+    url: "https://buergerinfo.oldenburg.de/",
+    art: "pdf",
+  },
+  loans: {
+    title: "Unterrichtungen des Rates über Kreditaufnahmen und Umschuldungen",
+    citation:
+      "Die Berichte der Verwaltung an den Rat nach § 8 der Kreditrichtlinie — " +
+      "seit 2022 monatlich bis vierteljährlich, 2018 als Einzelberichte: je " +
+      "Vorgang Kreditaufnahme, Umschuldung oder Prolongation mit Betrag, " +
+      "Schuldner und, wo die Vorlage ihn nennt, dem Zinssatz und der " +
+      "Zinsbindung; dazu die Zinsersparnis der Umschuldung gegenüber " +
+      "herkömmlicher Kommunalkreditfinanzierung. Die Konditionen je Darlehen " +
+      "stehen in den Anlagen und sind nicht im Bestand.",
+    herausgeber: "Stadt Oldenburg, Amt für Controlling und Finanzen",
+    as_of: "Berichte 2018 und 2022–2026",
+    standWort: "Berichtsjahre",
     url: "https://buergerinfo.oldenburg.de/",
     art: "pdf",
   },

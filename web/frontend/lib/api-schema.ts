@@ -1600,6 +1600,55 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/council/budget/loans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Haushalt Kredite
+         * @description Kredite und Zinsen — die Unterrichtungen des Rates nach der Kreditrichtlinie.
+         *
+         *     Die Schuldenseite sagt, wie hoch die Schulden sind; das hier sagt, zu
+         *     welchen Bedingungen die Stadt und ihre Betriebe sich Geld leihen und
+         *     umschulden (``council/loans.py``).
+         *
+         *     - ``notices``: je Vorlage Berichtszeitraum, Zahl der Posten, Zinsersparnis
+         *       der Umschuldung — auch die Berichte OHNE Vorgang (``none_reported``),
+         *       damit die Reihe der Monate belegt ist und nicht nur leer.
+         *     - ``items``: die Posten mit Art, Schuldner, Betrag, Zinssatz, Zinsbindung
+         *       und Datum der Kreditentscheidung. ``borrower`` ist ``null`` bei den
+         *       Umschuldungen der Grundgeschäfte, die Kernverwaltung UND Betriebe
+         *       zugleich betreffen — die Vorlage nennt dort keinen.
+         *     - ``rates``: die Posten mit gedrucktem Zinssatz, jüngste zuerst — die
+         *       Antwort auf „zu welchem Zins leiht sich die Stadt Geld?".
+         *     - ``refinancing_by_year``: Umschuldungsvolumen und -zahl je Jahr samt der
+         *       Zinsersparnis, wo die Vorlage sie beziffert. Die Ersparnis ist die
+         *       Angabe der Verwaltung gegenüber „herkömmlicher Kommunalkredit-
+         *       finanzierung", keine Rechnung von uns. ACHTUNG beim Volumen: Die
+         *       Kommunalkredite der Grundgeschäfte laufen in Dreimonats-Tranchen und
+         *       werden JEDES QUARTAL neu ausgeschrieben (zum 16.02., 16.05., 16.08.,
+         *       16.11.) — die Jahressumme zählt dasselbe Kapital viermal. Wer eine
+         *       Zahl nennt, nimmt ``latest_refinancing``, nicht die Jahressumme.
+         *     - ``latest_refinancing``: der jüngste Umschuldungs-Posten (Betrag, Zeitraum).
+         *     - ``coverage``: erster und letzter Berichtsmonat und die Lücken dazwischen
+         *       (2019–2021 fehlen im Bestand; die Unterrichtung in dieser Form gibt es
+         *       seit 2022, davor Einzelberichte).
+         *
+         *     Die Konditionen je Darlehen (Bank, Marge, Laufzeit) stehen in den Anlagen
+         *     der Vorlagen und sind nicht im Bestand — ``scope_note`` sagt es.
+         */
+        get: operations["haushalt_kredite_api_council_budget_loans_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/council/budget/products": {
         parameters: {
             query?: never;
@@ -4866,6 +4915,67 @@ export interface components {
             /** Years */
             years: unknown;
         };
+        /** BudgetLoans */
+        BudgetLoans: {
+            coverage: components["schemas"]["LoanCoverage"];
+            /** Items */
+            items: components["schemas"]["LoanItem"][];
+            /** Kind Names */
+            kind_names: {
+                [key: string]: string;
+            };
+            /**
+             * LoanItem
+             * @description Ein Posten einer Unterrichtung (``council_loan_items``) samt dem
+             *     Berichtszeitraum seiner Vorlage.
+             */
+            latest_refinancing: {
+                /** Amount */
+                amount: number | null;
+                /** Borrower */
+                borrower: string | null;
+                /** Decided At */
+                decided_at: string | null;
+                /** Fetched At */
+                fetched_at: string;
+                /** Fixed Until */
+                fixed_until: string | null;
+                /** Fixed Years */
+                fixed_years: number | null;
+                /** Heading */
+                heading: string;
+                /** Herkunft Id */
+                herkunft_id: number | null;
+                /** Kind */
+                kind: string;
+                /** Period From */
+                period_from: string;
+                /** Period To */
+                period_to: string;
+                /** Rate Pct */
+                rate_pct: number | null;
+                /** Seq */
+                seq: number;
+                /** Summary */
+                summary: string | null;
+                /** Template Number */
+                template_number: string;
+                /** Year */
+                year: number;
+            } | null;
+            /** Notices */
+            notices: components["schemas"]["LoanNotice"][];
+            /** Provenance */
+            provenance: {
+                [key: string]: components["schemas"]["Herkunft"];
+            };
+            /** Rates */
+            rates: components["schemas"]["LoanItem"][];
+            /** Refinancing By Year */
+            refinancing_by_year: components["schemas"]["LoanYear"][];
+            /** Scope Note */
+            scope_note: string;
+        };
         /**
          * BudgetOverview
          * @description ``/api/council/budget`` — das Datenfundament des Haushalts-Bereichs.
@@ -5849,6 +5959,114 @@ export interface components {
              * @default false
              */
             limits_unlocked: boolean;
+        };
+        /** LoanCoverage */
+        LoanCoverage: {
+            /** From */
+            from: string | null;
+            /** Gaps */
+            gaps: components["schemas"]["LoanGap"][];
+            /** None Reported */
+            none_reported: number;
+            /** Notices */
+            notices: number;
+            /** To */
+            to: string | null;
+        };
+        /** LoanGap */
+        LoanGap: {
+            /** From */
+            from: number;
+            /** To */
+            to: number;
+        };
+        /**
+         * LoanItem
+         * @description Ein Posten einer Unterrichtung (``council_loan_items``) samt dem
+         *     Berichtszeitraum seiner Vorlage.
+         */
+        LoanItem: {
+            /** Amount */
+            amount: number | null;
+            /** Borrower */
+            borrower: string | null;
+            /** Decided At */
+            decided_at: string | null;
+            /** Fetched At */
+            fetched_at: string;
+            /** Fixed Until */
+            fixed_until: string | null;
+            /** Fixed Years */
+            fixed_years: number | null;
+            /** Heading */
+            heading: string;
+            /** Herkunft Id */
+            herkunft_id: number | null;
+            /** Kind */
+            kind: string;
+            /** Period From */
+            period_from: string;
+            /** Period To */
+            period_to: string;
+            /** Rate Pct */
+            rate_pct: number | null;
+            /** Seq */
+            seq: number;
+            /** Summary */
+            summary: string | null;
+            /** Template Number */
+            template_number: string;
+            /** Year */
+            year: number;
+        };
+        /**
+         * LoanNotice
+         * @description Eine Unterrichtung des Rates (``council_loan_notices``).
+         */
+        LoanNotice: {
+            /** Document Date */
+            document_date: string | null;
+            /** Document Id */
+            document_id: number | null;
+            /** Document Url */
+            document_url: string | null;
+            /** Fetched At */
+            fetched_at: string;
+            /** Herkunft Id */
+            herkunft_id: number | null;
+            /** Interest Saving */
+            interest_saving: number | null;
+            /** Items */
+            items: number;
+            /** None Reported */
+            none_reported: number;
+            /** Period From */
+            period_from: string;
+            /** Period To */
+            period_to: string;
+            /** Probes */
+            probes: string[];
+            /** Saving From */
+            saving_from: string | null;
+            /** Saving To */
+            saving_to: string | null;
+            /** Template Number */
+            template_number: string;
+            /** Year */
+            year: number;
+        };
+        /** LoanYear */
+        LoanYear: {
+            /** Amount */
+            amount: number;
+            /** Count */
+            count: number;
+            /** Saving */
+            saving: number;
+            /** Saving Notices */
+            saving_notices: number;
+            /** Year */
+            year: number;
         };
         /** LoginRequest */
         LoginRequest: {
@@ -9494,6 +9712,26 @@ export interface operations {
             };
         };
     };
+    haushalt_kredite_api_council_budget_loans_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetLoans"];
+                };
+            };
+        };
+    };
     haushalt_produkte_api_council_budget_products_get: {
         parameters: {
             query: {
@@ -12415,4 +12653,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: cbe87e5505c7af4c5c6386508485a6c8645c4159b2fae785560129e2149ad9ca
+// vertrag-sha256: 9de4ded1e4972aa83f66b7be77ca36fe1de5989088d5f6add35a79ef12900ec4

@@ -6854,6 +6854,10 @@ class CouncilStore(*_geld.MIXINS):
         # 42 Zeilen einer Tabelle anfasst; ihre Herkunft ist dieselbe.
         "budget_execution": ("council_budget_execution", "budget_year",
                              "t.is_total = 1", None),
+        # Kredite und Zinsen: je Unterrichtung eine Vorlage mit eigener
+        # Herkunft — die Papierliste eines Jahrgangs sind die Berichte des
+        # Jahres. `document_url` ist die Rückfallebene der Zeile.
+        "loans":            ("council_loan_notices", "year", None, "document_url"),
         # Die Änderungslisten zum Haushalt. Wie `wirtschaftsplan` stehen je
         # Jahrgang MEHRERE Papiere dahinter (Verw. I–III und die
         # Beschluss-Datei des AFB) — die Summen-Tabelle trägt je Dokument
@@ -8929,7 +8933,9 @@ class CouncilStore(*_geld.MIXINS):
                      FROM council_templates
                     WHERE title LIKE '%Kreditaufnahme%' OR title LIKE 'Umschuldung%'
                     ORDER BY template_number""")]
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
             return []
 
     def save_loan_notices(self, notices: list[dict], items: list[dict], herkunft) -> int:
@@ -8974,7 +8980,9 @@ class CouncilStore(*_geld.MIXINS):
         try:
             rows = [dict(r) for r in self._conn.execute(
                 "SELECT * FROM council_loan_notices ORDER BY period_from, template_number")]
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
             return []
         for r in rows:
             r["probes"] = [p for p in (r.get("probes") or "").split(",") if p]
@@ -8987,7 +8995,9 @@ class CouncilStore(*_geld.MIXINS):
                 "SELECT i.*, n.period_from, n.period_to FROM council_loan_items i "
                 "JOIN council_loan_notices n ON n.template_number = i.template_number "
                 "ORDER BY n.period_from, i.template_number, i.seq")]
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
             return []
 
     def get_spenden(self) -> list[dict]:

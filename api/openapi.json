@@ -2961,6 +2961,188 @@
         "title": "BudgetInvestments",
         "type": "object"
       },
+      "BudgetLoans": {
+        "properties": {
+          "coverage": {
+            "$ref": "#/components/schemas/LoanCoverage"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/LoanItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "kind_names": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Kind Names",
+            "type": "object"
+          },
+          "latest_refinancing": {
+            "description": "Ein Posten einer Unterrichtung (``council_loan_items``) samt dem\nBerichtszeitraum seiner Vorlage.",
+            "properties": {
+              "amount": {
+                "title": "Amount",
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "borrower": {
+                "title": "Borrower",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "decided_at": {
+                "title": "Decided At",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "fetched_at": {
+                "title": "Fetched At",
+                "type": "string"
+              },
+              "fixed_until": {
+                "title": "Fixed Until",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "fixed_years": {
+                "title": "Fixed Years",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "heading": {
+                "title": "Heading",
+                "type": "string"
+              },
+              "herkunft_id": {
+                "title": "Herkunft Id",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "kind": {
+                "title": "Kind",
+                "type": "string"
+              },
+              "period_from": {
+                "title": "Period From",
+                "type": "string"
+              },
+              "period_to": {
+                "title": "Period To",
+                "type": "string"
+              },
+              "rate_pct": {
+                "title": "Rate Pct",
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "seq": {
+                "title": "Seq",
+                "type": "integer"
+              },
+              "summary": {
+                "title": "Summary",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "template_number": {
+                "title": "Template Number",
+                "type": "string"
+              },
+              "year": {
+                "title": "Year",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "template_number",
+              "seq",
+              "year",
+              "kind",
+              "borrower",
+              "heading",
+              "amount",
+              "rate_pct",
+              "fixed_years",
+              "fixed_until",
+              "decided_at",
+              "summary",
+              "herkunft_id",
+              "fetched_at",
+              "period_from",
+              "period_to"
+            ],
+            "title": "LoanItem",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "notices": {
+            "items": {
+              "$ref": "#/components/schemas/LoanNotice"
+            },
+            "title": "Notices",
+            "type": "array"
+          },
+          "provenance": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Herkunft"
+            },
+            "title": "Provenance",
+            "type": "object"
+          },
+          "rates": {
+            "items": {
+              "$ref": "#/components/schemas/LoanItem"
+            },
+            "title": "Rates",
+            "type": "array"
+          },
+          "refinancing_by_year": {
+            "items": {
+              "$ref": "#/components/schemas/LoanYear"
+            },
+            "title": "Refinancing By Year",
+            "type": "array"
+          },
+          "scope_note": {
+            "title": "Scope Note",
+            "type": "string"
+          }
+        },
+        "required": [
+          "scope_note",
+          "kind_names",
+          "notices",
+          "items",
+          "coverage",
+          "rates",
+          "refinancing_by_year",
+          "latest_refinancing",
+          "provenance"
+        ],
+        "title": "BudgetLoans",
+        "type": "object"
+      },
       "BudgetOverview": {
         "description": "``/api/council/budget`` — das Datenfundament des Haushalts-Bereichs.\n\n**Jedes Feld ist ``NotRequired``, und zwar zwingend.** Der Endpunkt baut\nseine Antwort aus einer Bausteinliste und liefert mit ``?felder=…`` nur\ndie angeforderten Blöcke (``?felder=years,population`` sind zwei Schlüssel,\nnicht sechsundzwanzig). Ein Pflichtfeld wäre hier an jedem\nzugeschnittenen Aufruf ein 500.\n\nDie Werte bleiben ``Any``: Was in ihnen steht, kommt aus breiten\nStore-Abfragen, und eine geratene Verengung ließe Pydantic Werte\nKONVERTIEREN (siehe Kopf dieses Abschnitts). Was die einzelnen Blöcke\nbedeuten — und welche Angabe ohne welche nicht gezeigt werden darf —\nsteht im Docstring des Handlers (``routers/council.py::haushalt_uebersicht``).",
         "properties": {
@@ -5276,6 +5458,320 @@
           }
         },
         "title": "LimitsUpdate",
+        "type": "object"
+      },
+      "LoanCoverage": {
+        "properties": {
+          "from": {
+            "title": "From",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "gaps": {
+            "items": {
+              "$ref": "#/components/schemas/LoanGap"
+            },
+            "title": "Gaps",
+            "type": "array"
+          },
+          "none_reported": {
+            "title": "None Reported",
+            "type": "integer"
+          },
+          "notices": {
+            "title": "Notices",
+            "type": "integer"
+          },
+          "to": {
+            "title": "To",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "gaps",
+          "notices",
+          "none_reported"
+        ],
+        "title": "LoanCoverage",
+        "type": "object"
+      },
+      "LoanGap": {
+        "properties": {
+          "from": {
+            "title": "From",
+            "type": "integer"
+          },
+          "to": {
+            "title": "To",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "from",
+          "to"
+        ],
+        "title": "LoanGap",
+        "type": "object"
+      },
+      "LoanItem": {
+        "description": "Ein Posten einer Unterrichtung (``council_loan_items``) samt dem\nBerichtszeitraum seiner Vorlage.",
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "borrower": {
+            "title": "Borrower",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "decided_at": {
+            "title": "Decided At",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "fetched_at": {
+            "title": "Fetched At",
+            "type": "string"
+          },
+          "fixed_until": {
+            "title": "Fixed Until",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "fixed_years": {
+            "title": "Fixed Years",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "heading": {
+            "title": "Heading",
+            "type": "string"
+          },
+          "herkunft_id": {
+            "title": "Herkunft Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "period_from": {
+            "title": "Period From",
+            "type": "string"
+          },
+          "period_to": {
+            "title": "Period To",
+            "type": "string"
+          },
+          "rate_pct": {
+            "title": "Rate Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "seq": {
+            "title": "Seq",
+            "type": "integer"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "template_number": {
+            "title": "Template Number",
+            "type": "string"
+          },
+          "year": {
+            "title": "Year",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "template_number",
+          "seq",
+          "year",
+          "kind",
+          "borrower",
+          "heading",
+          "amount",
+          "rate_pct",
+          "fixed_years",
+          "fixed_until",
+          "decided_at",
+          "summary",
+          "herkunft_id",
+          "fetched_at",
+          "period_from",
+          "period_to"
+        ],
+        "title": "LoanItem",
+        "type": "object"
+      },
+      "LoanNotice": {
+        "description": "Eine Unterrichtung des Rates (``council_loan_notices``).",
+        "properties": {
+          "document_date": {
+            "title": "Document Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "document_id": {
+            "title": "Document Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "document_url": {
+            "title": "Document Url",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "fetched_at": {
+            "title": "Fetched At",
+            "type": "string"
+          },
+          "herkunft_id": {
+            "title": "Herkunft Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "interest_saving": {
+            "title": "Interest Saving",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "items": {
+            "title": "Items",
+            "type": "integer"
+          },
+          "none_reported": {
+            "title": "None Reported",
+            "type": "integer"
+          },
+          "period_from": {
+            "title": "Period From",
+            "type": "string"
+          },
+          "period_to": {
+            "title": "Period To",
+            "type": "string"
+          },
+          "probes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Probes",
+            "type": "array"
+          },
+          "saving_from": {
+            "title": "Saving From",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "saving_to": {
+            "title": "Saving To",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "template_number": {
+            "title": "Template Number",
+            "type": "string"
+          },
+          "year": {
+            "title": "Year",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "template_number",
+          "year",
+          "period_from",
+          "period_to",
+          "document_date",
+          "none_reported",
+          "items",
+          "interest_saving",
+          "saving_from",
+          "saving_to",
+          "document_id",
+          "document_url",
+          "probes",
+          "herkunft_id",
+          "fetched_at"
+        ],
+        "title": "LoanNotice",
+        "type": "object"
+      },
+      "LoanYear": {
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": "number"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "saving": {
+            "title": "Saving",
+            "type": "number"
+          },
+          "saving_notices": {
+            "title": "Saving Notices",
+            "type": "integer"
+          },
+          "year": {
+            "title": "Year",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "year",
+          "amount",
+          "count",
+          "saving",
+          "saving_notices"
+        ],
+        "title": "LoanYear",
         "type": "object"
       },
       "LoginRequest": {
@@ -12212,6 +12708,28 @@
           }
         },
         "summary": "Haushalt Weg",
+        "tags": [
+          "council"
+        ]
+      }
+    },
+    "/api/council/budget/loans": {
+      "get": {
+        "description": "Kredite und Zinsen — die Unterrichtungen des Rates nach der Kreditrichtlinie.\n\nDie Schuldenseite sagt, wie hoch die Schulden sind; das hier sagt, zu\nwelchen Bedingungen die Stadt und ihre Betriebe sich Geld leihen und\numschulden (``council/loans.py``).\n\n- ``notices``: je Vorlage Berichtszeitraum, Zahl der Posten, Zinsersparnis\n  der Umschuldung — auch die Berichte OHNE Vorgang (``none_reported``),\n  damit die Reihe der Monate belegt ist und nicht nur leer.\n- ``items``: die Posten mit Art, Schuldner, Betrag, Zinssatz, Zinsbindung\n  und Datum der Kreditentscheidung. ``borrower`` ist ``null`` bei den\n  Umschuldungen der Grundgeschäfte, die Kernverwaltung UND Betriebe\n  zugleich betreffen — die Vorlage nennt dort keinen.\n- ``rates``: die Posten mit gedrucktem Zinssatz, jüngste zuerst — die\n  Antwort auf „zu welchem Zins leiht sich die Stadt Geld?\".\n- ``refinancing_by_year``: Umschuldungsvolumen und -zahl je Jahr samt der\n  Zinsersparnis, wo die Vorlage sie beziffert. Die Ersparnis ist die\n  Angabe der Verwaltung gegenüber „herkömmlicher Kommunalkredit-\n  finanzierung\", keine Rechnung von uns. ACHTUNG beim Volumen: Die\n  Kommunalkredite der Grundgeschäfte laufen in Dreimonats-Tranchen und\n  werden JEDES QUARTAL neu ausgeschrieben (zum 16.02., 16.05., 16.08.,\n  16.11.) — die Jahressumme zählt dasselbe Kapital viermal. Wer eine\n  Zahl nennt, nimmt ``latest_refinancing``, nicht die Jahressumme.\n- ``latest_refinancing``: der jüngste Umschuldungs-Posten (Betrag, Zeitraum).\n- ``coverage``: erster und letzter Berichtsmonat und die Lücken dazwischen\n  (2019–2021 fehlen im Bestand; die Unterrichtung in dieser Form gibt es\n  seit 2022, davor Einzelberichte).\n\nDie Konditionen je Darlehen (Bank, Marge, Laufzeit) stehen in den Anlagen\nder Vorlagen und sind nicht im Bestand — ``scope_note`` sagt es.",
+        "operationId": "haushalt_kredite_api_council_budget_loans_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetLoans"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Haushalt Kredite",
         "tags": [
           "council"
         ]

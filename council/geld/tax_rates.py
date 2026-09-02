@@ -109,7 +109,9 @@ class Store:
             zeilen = [dict(r) for r in self._conn.execute(
                 "SELECT year, kind, rate, prior_rate, herkunft_id "
                 "FROM council_tax_rates ORDER BY kind, year")]
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
             return None
         if not zeilen:
             return None

@@ -49,6 +49,8 @@ import Link from "next/link";
 import { ArrowRight, FileText } from "lucide-react";
 import { Segmented } from "@/components/ui";
 import { useFetch } from "@/lib/use-fetch";
+import { KrediteBlock } from "@/components/haushalt/kredite";
+import type { KrediteDaten } from "@/lib/haushalt-kredite";
 import { deMio, haushaltUrl, type HaushaltAuswahl,
   type HaushaltssatzungZeile } from "@/lib/haushalt";
 import {
@@ -73,7 +75,7 @@ import { Fundstelle } from "@/components/haushalt/fundstelle";
 // einen Beleg-Chip darauf setzt. `Beleg` rendert dann bewusst nichts
 // („lieber keinen Chip als eine falsche Nummer") — und der Satz endete
 // mit einer Fußnote, die es nicht gab.
-const QUELLEN = ["schulden", "bilanz", "budget_bylaw",
+const QUELLEN = ["schulden", "bilanz", "budget_bylaw", "loans",
                  "jahresabschluss"] as const;
 
 /** Die Haushaltssatzung wird über den Bausteine-Endpunkt geholt und nicht über
@@ -513,6 +515,7 @@ function RahmenBlock({ row, herkunft }: {
 
 export default function SchuldenPage() {
   const { data, loading } = useFetch<SchuldenDaten>("/council/budget/debt");
+  const { data: krediteDaten } = useFetch<KrediteDaten>("/council/budget/loans");
   const { data: satzungDaten } = useFetch<
     HaushaltAuswahl<typeof SATZUNG_FELDER[number]>>(haushaltUrl(SATZUNG_FELDER));
   const [ansicht, setAnsicht] = useState<Ansicht>("total");
@@ -732,6 +735,12 @@ export default function SchuldenPage() {
             </section>
           );
         })()}
+
+        {/* ZU WELCHEM ZINS — die Unterrichtungen des Rates (council/loans.py):
+            Kreditaufnahmen mit Zinssatz, Umschuldungen mit Volumen und
+            Ersparnis. Eine dritte Quelle neben Jahrbuch und Abschluss, mit
+            eigenem Beleg; ohne Bestand kein Block. */}
+        <KrediteBlock daten={krediteDaten ?? null} />
 
         <LottiErklaert
           title="Warum es zwei Schuldenzahlen gibt"
