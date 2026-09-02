@@ -101,7 +101,8 @@ def test_positionsfrage_ohne_geld_zieht_nichts():
 
 
 @pytest.mark.parametrize("frage,alte", [
-    ("Was kostet der Ausbau der Nadorster Straße?", {"plan", "produkte"}),
+    # Seit #953 zieht eine Kosten-Frage auch den Ansatz (Posten-Ebene).
+    ("Was kostet der Ausbau der Nadorster Straße?", {"plan", "produkte", "ansatz"}),
     ("Wie viel investiert die Stadt?", {"investitionen", "gebaut"}),
     ("Welche Vorhaben stehen im Investitionsprogramm?", {"investitionen", "gebaut"}),
     ("Wird die Cäcilienbrücke saniert?", set()),
