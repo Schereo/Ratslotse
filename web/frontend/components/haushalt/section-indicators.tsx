@@ -329,9 +329,7 @@ export function KennzahlenAbschnitt() {
           </p>
           <p className="mt-1.5 max-w-[76ch] text-[13.5px] leading-relaxed text-foreground/90">
             Die Stadt wählt diese Kennzahlen aus und veröffentlicht die jeweilige
-            Berechnung. Wir geben Werte und Rechenwege im Wortlaut wieder. Drei Quoten
-            haben wir anhand der Bilanz desselben Abschlusses geprüft; sie stimmen mit
-            den veröffentlichten Nachkommastellen überein.<Beleg q="bilanz" />
+            Berechnung. Wir geben Werte und Rechenwege im Wortlaut wieder.<Beleg q="bilanz" />
           </p>
         </section>
 

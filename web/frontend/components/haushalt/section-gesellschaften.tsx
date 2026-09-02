@@ -410,6 +410,14 @@ export function GesellschaftenAbschnitt({ onBestand }: {
                 {gefiltert.length} von {liste.length} · Bericht {bericht}
               </p>
             </div>
+            {/* Einmal für alle Karten — bis 02.09.2026 stand der Satz auf zehn
+                Karten hintereinander. Unter der Zahl jeder Karte steht jetzt
+                ihre eigene Entwicklung. */}
+            <p className="max-w-[74ch] text-[12.5px] leading-relaxed text-muted-foreground">
+              Gewinn oder Verlust ist hier keine Note — welchen Auftrag eine Gesellschaft
+              damit erfüllt, steht in ihrem Steckbrief. Unter jeder Zahl steht, wie sie
+              sich seit dem ersten Bericht entwickelt hat.
+            </p>
             <Filterleiste liste={liste} form={form} setForm={setForm}
               suche={suche} setSuche={setSuche} />
             {gefiltert.length ? (

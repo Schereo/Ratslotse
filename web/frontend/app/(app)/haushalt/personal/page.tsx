@@ -450,7 +450,7 @@ export default function PersonalPage() {
         {/* Die Grenzen — eigener Block, nicht Kleingedrucktes. */}
         <section className="@container rounded-2xl border border-border border-l-[3px] border-l-signal bg-card p-4 shadow-sm">
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-signal">
-            Was diese Zahlen nicht hergeben
+            Was diese Zahlen nicht sagen
           </p>
           <ul className="mt-2 grid list-disc grid-cols-1 gap-x-8 gap-y-1.5 pl-4 text-[13px] leading-relaxed text-foreground/90 @3xl:grid-cols-2">
             <li>

@@ -461,10 +461,13 @@ export function InvestitionsplanAbschnitt({ onBestand }: {
         )}
 
         {/* Der Block, der nicht ans Ende gehört. */}
-        <section className="rounded-2xl border border-dashed border-border bg-muted/25 p-4 sm:p-5">
-          <h2 className="font-display text-[15.5px] font-bold tracking-tight">
+        {/* Derselbe Block wie auf den anderen Schritten (orange Kante, Kicker):
+            Bis 02.09.2026 stand er hier als dritter Stil neben den beiden
+            anderen der Seite. */}
+        <section className="@container rounded-2xl border border-border border-l-[3px] border-l-signal bg-card p-4 shadow-sm">
+          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-signal">
             Was diese Zahlen nicht sagen
-          </h2>
+          </p>
           <ul className="mt-2.5 flex list-disc flex-col gap-2 pl-4 text-[12.5px] leading-relaxed text-foreground/90">
             <li>
               <strong className="font-semibold text-foreground">

@@ -25,7 +25,8 @@
 // `/api/council/budget`. Hier steht keine Zahl fest im Code.
 
 import Link from "next/link";
-import { ChevronRight, ArrowRight } from "lucide-react";
+import { Fragment } from "react";
+import { ArrowRight } from "lucide-react";
 import { useFetch } from "@/lib/use-fetch";
 import { Beleg } from "@/components/haushalt/source";
 import { NamenKlartext } from "@/components/haushalt/namen-klartext";
@@ -122,42 +123,24 @@ function Finanzkachel({ z, daten, year }: {
           <p className="mt-3.5 font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
             Was hier zentral eingeht
           </p>
-          <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {posten.map((p) => (
-              <Link key={p.slug} href={`/haushalt/steuer?art=${p.slug}`}
-                className="group rounded-xl border border-border bg-card p-3 shadow-sm transition-colors hover:border-primary/40">
-                <p className="flex items-center gap-1 text-[12.5px] font-bold leading-snug">
+          {/* Eine Zeile statt sieben Kacheln: Die Steckbriefe mit denselben
+              Zahlen stehen auf „Woher kommt das Geld" — hier reicht der Weg
+              dorthin (Durchsicht 02.09.2026, Doppelung B3). */}
+          <p className="mt-1.5 max-w-[80ch] text-[12.5px] leading-relaxed text-foreground/90">
+            {posten.map((p, i) => (
+              <Fragment key={p.slug}>
+                {i > 0 && " · "}
+                <Link href={`/haushalt/steuer?art=${p.slug}`}
+                  className="font-semibold text-primary hover:underline">
                   {p.title}
-                  <ChevronRight aria-hidden className="h-3.5 w-3.5 flex-none text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-                </p>
-                <p className="mt-1.5 font-display text-[17px] font-bold tabular-nums">
-                  {deMio(p.mioWert)}
-                  <span className="ml-1 text-[11px] font-semibold text-muted-foreground">
-                    Mio.&nbsp;€ · Ist {p.year}
-                  </span>
-                </p>
-                <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">{p.wer}</p>
-              </Link>
+                </Link>{" "}
+                <span className="tabular-nums">{deMio(p.mioWert)}&#8239;Mio.&nbsp;€</span>
+              </Fragment>
             ))}
-            {/* Die letzte Kachel spannt die Zeile — aus demselben Grund wie
-                der siebte Wegweiser-Schritt: Sieben gleich große Kacheln
-                gehen in keiner Spaltenzahl auf, und eine einzelne in der
-                letzten Zeile liest sich wie ein Nachtrag. Inhaltlich passt
-                es ohnehin: Alle anderen sind Einnahmen, diese eine sind die
-                Ausgaben des Bereichs. */}
-            <div className="rounded-xl border border-border bg-card p-3 shadow-sm sm:col-span-2 lg:col-span-3">
-              <p className="text-[12.5px] font-bold leading-snug">Und die Aufgaben selbst</p>
-              <p className="mt-1.5 font-display text-[17px] font-bold tabular-nums">
-                {deMio(aus)}
-                <span className="ml-1 text-[11px] font-semibold text-muted-foreground">
-                  Mio.&nbsp;€ · Plan {year}
-                </span>
-              </p>
-              <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">
-                Kämmerei, Stadtkasse, Steuerabteilung, Rechtsamt und die Zinsen der Stadt.
-              </p>
-            </div>
-          </div>
+            {" "}— dazu die Aufgaben des Bereichs selbst, Kämmerei, Stadtkasse,
+            Steuerabteilung, Rechtsamt und die Zinsen der Stadt, mit{" "}
+            <span className="tabular-nums">{deMio(aus)}&#8239;Mio.&nbsp;€</span> (Plan {year}).
+          </p>
           {/* Zwei Stände auf einer Kachel — das muss dranstehen. Die
               Einnahme-Posten sind abgerechnete Ist-Werte, der Bereichsbetrag
               ist der Plan des Kopfjahres. Sie summieren sich deshalb nicht

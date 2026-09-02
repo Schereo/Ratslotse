@@ -234,8 +234,15 @@ export function einordnungFuer(daten: BeteiligungsDaten, g: Gesellschaft,
     return "Der Betrag ist deckungsgleich mit dem Gesamtabschluss — zwei Quellen, "
       + "eine Zahl.";
   }
-  return "Gewinn oder Verlust ist hier keine Note — welchen Auftrag die "
-    + "Gesellschaft damit erfüllt, steht in ihrem Steckbrief.";
+  // Der Rückfall berichtet die Entwicklung aus den Daten — ein Satz, der zu
+  // dieser Karte gehört. Dass Gewinn oder Verlust keine Note ist, steht
+  // EINMAL über dem Raster; auf zehn Karten hintereinander trug der Satz
+  // nichts mehr (Durchsicht 02.09.2026).
+  const erstes = ergebnisse[0];
+  if (erstes && juengstes && erstes.year !== juengstes.year) {
+    return `Von ${eur(erstes.value)} (${erstes.year}) auf ${eur(juengstes.value)} (${juengstes.year}).`;
+  }
+  return juengstes ? `Ein Jahresergebnis liegt vor: ${juengstes.year}.` : "Kein Jahresergebnis im Bericht.";
 }
 
 // --- Aufsichtsorgane und Eigentümer -----------------------------------------
