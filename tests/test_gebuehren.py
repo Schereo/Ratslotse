@@ -239,6 +239,58 @@ def test_positive_ueberdeckung_wird_nur_bei_exakter_kaskade_abgezogen():
         parse_anlage(kaputt)
 
 
+# Echt, Anlage 224365 (2021) in der OCR-Lesung des gescannten Berichts: Tabs
+# zwischen Beschriftung und Betrag, und ALLE Abzüge ohne Minuszeichen.
+ANLAGE_1_2021_OCR = """Anlage 1
+- Abfallbehandlungsanlagen -
+(Entsorgung von Rest- und Bioabfällen)
+
+Gebührenbedarfsrechnung 2021
+
+Kostenkalkulation für 2021\t9.993.180 €\tTz. 1
+Kosten, die durch Dritte erstattet werden\t3.156.249 €\tTz. 2
+Erlöse nach § 2 Absatz 4 und 8 der Abfallgebührensatzung
+und § 2 Absatz 9 Satz 2 und Absatz 11 der "Tarifsatzung"\t4.500 €\tTz. 3
+Nachsorgekosten; die aus der Rückstellung erstattet werden\t137.000 €\tTz. 3
+Bereinigte Kosten\t6.695.431 €
+Über-/Unterdeckung aus Vorjahren\t230.000 €\tTz. 4
+Kosten, die durch Gebühren zu decken sind\t6.465.431 €\tTz. 5
+angelieferte Jahresabfallmenge in Mg
+(Prognose 2020 = 52.700 Mg)\t53.000
+Gebührenermittlung:
+Kosten, die durch Gebühren
+zu decken sind\t6.465.431 €
+angelieferte Abfallmenge in Mg\t53.000
+Ergebnis/Gebühr je Mg\t121,989 €
+Gebührenvorschlag\t121,95 €
+"""
+
+
+def test_abzuege_ohne_minus_gehen_nur_ueber_die_exakte_kaskade_auf():
+    """2021 (OCR) druckt alle Abzüge positiv, dazwischen die Zwischensumme
+    „Bereinigte Kosten“. Der Parser rät kein Vorzeichen: Ein Betrag ist
+    Zwischensumme, wenn er dem laufenden Stand gleicht, sonst Abzug — und
+    nur wenn die Zeile „zu decken sind“ damit exakt getroffen wird, gilt
+    die Lesung."""
+    b = parse_anlage(ANLAGE_1_2021_OCR)
+    assert b.year == 2021 and b.area == "waste_treatment"
+    assert b.cost_calculation == 9_993_180
+    assert b.deductions == -(3_156_249 + 4_500 + 137_000 + 230_000)
+    assert b.costs_to_cover == 6_465_431
+    assert b.reference_quantity == 53_000 and b.reference_unit == "Mg"
+    assert b.fee == 121.989 and b.fee_proposed == 121.95
+
+    # Eine verstellte Ziffer, und keine Lesart trifft mehr: harter Riss,
+    # kein „passt ungefähr“.
+    kaputt = ANLAGE_1_2021_OCR.replace("3.156.249 €", "3.156.294 €")
+    with pytest.raises(GebuehrenFehler, match="Rest"):
+        parse_anlage(kaputt)
+    # Ohne die Zwischensumme geht dieselbe Kaskade genauso auf — sie war
+    # Bestätigung, nicht Bestandteil.
+    ohne_zwischensumme = ANLAGE_1_2021_OCR.replace("Bereinigte Kosten\t6.695.431 €\n", "")
+    assert parse_anlage(ohne_zwischensumme).deductions == b.deductions
+
+
 # --------------------------------------------------------------------------
 # (b) Die Division — und wie sie die Bezugsmenge findet
 # --------------------------------------------------------------------------
