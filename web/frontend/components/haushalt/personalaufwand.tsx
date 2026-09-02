@@ -84,7 +84,10 @@ export function Personalaufwand({ statement, budget, beleg, belegPlan }: {
       label: String(z.year),
       plan: (z.plan as number) / 1e6,
       ist: (z.result as number) / 1e6,
-      einordnung: z.plan_kind
+      // Nur die Ausnahme steht an der Zeile: Der nackte Ansatz ist die Regel
+      // und steht einmal unter der Grafik — acht gleiche Zeilen „Verglichen
+      // wird gegen: Haushaltsansatz" trugen nichts (Durchsicht 02.09.2026).
+      einordnung: z.plan_kind && z.plan_kind !== "budget"
         ? `Verglichen wird gegen: ${PLAN_ART_LABEL[z.plan_kind]}.`
         : null,
     }));
@@ -153,7 +156,9 @@ export function Personalaufwand({ statement, budget, beleg, belegPlan }: {
                 <>Mehr Personalaufwand als geplant kann ein Tarifabschluss sein oder
                   eine Stelle mehr, die besetzt wurde; weniger heißt oft, dass Stellen
                   unbesetzt blieben — wie viele, zeigt die Waffel oben. Die Farbe
-                  bewertet nichts.</>
+                  bewertet nichts. Verglichen wird gegen den Haushaltsansatz; rechnet
+                  ein Jahr gegen Nachtrag oder Gesamtermächtigung, steht es an der
+                  Zeile.</>
               }
               beleg={beleg}
             />

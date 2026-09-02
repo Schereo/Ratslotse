@@ -101,6 +101,7 @@ export function HebesatzTreppe({
   const ohneAufkommen = echteAenderungen.filter(
     (s) => s.prior_rate != null && !s.aufkommen).map((s) => s.year);
 
+
   return (
     <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
@@ -167,21 +168,16 @@ export function HebesatzTreppe({
                     {mitVorzeichen(punkte, 0)} Punkte · {mitVorzeichen(relativ)}&nbsp;%
                   </span>
                 </div>
-                <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">
-                  {auf && aufRelativ != null ? (
-                    <>
-                      {aufkommenLabel} im selben Jahr:{" "}
-                      <span className="tabular-nums text-foreground/85">
-                        {deMio(auf.vorher / 1e6)} → {deMio(auf.nachher / 1e6)}&nbsp;Mio.&nbsp;€
-                        {" "}({mitVorzeichen(aufRelativ)}&nbsp;%)
-                      </span>
-                      {aufkommenBeleg}
-                    </>
-                  ) : (
-                    <>Was in diesem Jahr hereinkam, wissen wir nicht: Die
-                      Aufkommensreihe der Stadt beginnt später.</>
-                  )}
-                </p>
+                {auf && aufRelativ != null && (
+                  <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">
+                    {aufkommenLabel} im selben Jahr:{" "}
+                    <span className="tabular-nums text-foreground/85">
+                      {deMio(auf.vorher / 1e6)} → {deMio(auf.nachher / 1e6)}&nbsp;Mio.&nbsp;€
+                      {" "}({mitVorzeichen(aufRelativ)}&nbsp;%)
+                    </span>
+                    {aufkommenBeleg}
+                  </p>
+                )}
                 {s.bemessung && (
                   /* Gestrichelt = „nicht von uns / gehört dazu" (Designsprache
                      §4). Kein Warn-Gelb: Eine Reform ist keine Störung. */

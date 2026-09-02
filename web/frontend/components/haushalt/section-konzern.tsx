@@ -156,11 +156,13 @@ export function KonzernAbschnitt({ onBestand }: {
       <div className="flex flex-col gap-4">
         <div className="flex items-end justify-between gap-5">
           <div className="min-w-0">
+            {/* Nicht noch einmal die Frage der Seite (H1) — die Antwort ist
+                der Abschnitt (Durchsicht 02.09.2026). */}
             <h2 className="font-display text-xl font-bold tracking-tight sm:text-[22px]">
-              Und ist das die ganze Stadt?
+              Die ganze Stadt in einer Rechnung
             </h2>
             <p className="mt-1.5 max-w-[64ch] text-sm leading-relaxed text-muted-foreground">
-              Nein. Der Haushalt zeigt die Verwaltung. Klinikum, Busse, Bäder und die
+              Der Haushalt zeigt die Verwaltung. Klinikum, Busse, Bäder und die
               städtischen Gebäude führen eigene Bücher — hier stehen sie zum ersten Mal
               in einer Rechnung.
             </p>

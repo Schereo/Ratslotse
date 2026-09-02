@@ -347,8 +347,10 @@ function BetriebsKarte({ zeilen, abschluesse, juengstesJahr, herkunftFuer }: {
       )}
       <div className="mt-2.5 border-t border-dashed border-border pt-2">
         <p className="text-[11.5px] leading-relaxed text-muted-foreground">
-          <span className="font-semibold text-foreground">Beleg: {b.kurz}.</span>{" "}
-          {b.lang}
+          {/* Kurz, mit der Erklärung im Tooltip: Drei Zeilen Probenbeschreibung
+              auf jeder der sieben Karten waren Selbstvergewisserung, keine
+              Auskunft (Durchsicht 02.09.2026, Designsprache § 7). */}
+          <span className="font-semibold text-foreground" title={b.lang}>Beleg: {b.kurz}.</span>
           <Beleg q="wirtschaftsplan" h={herkunftFuer(letzte.herkunft_id)} />
           {letzte.draft_date && ` · Stand des Verwaltungsentwurfs: ${letzte.draft_date}`}
         </p>

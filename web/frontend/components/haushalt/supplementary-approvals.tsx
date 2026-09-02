@@ -300,15 +300,8 @@ export function NachbewilligungsBlock({ daten, year }: {
           {unseres && bericht && ratsZeile != null
             && Math.abs(unseres.summe - ratsZeile) > 1 && (
             <p className="mt-2 max-w-[74ch] text-[11.5px] leading-relaxed text-muted-foreground">
-              Diese Liste ergibt {mio(unseres.summe)}&#8239;Mio.&nbsp;€, die
-              Zeile „{bericht.channels.find((k) => k.channel === "council")?.label}"
-              oben {mio(ratsZeile)}&#8239;Mio.&nbsp;€. Der Unterschied ist
-              keine Unsicherheit, sondern eine andere Frage:{" "}
-              <strong className="font-semibold">Wir nennen den Betrag, den die
-              Vorlage beantragt hat — der Rechenschaftsbericht den, der am Ende
-              gebucht wurde.</strong> Wo weniger gebraucht wurde als bewilligt,
-              schreibt er den kleineren Betrag; bei einer der Vorlagen nennt er
-              den Grund gleich dazu.
+              Die Liste nennt, was die Vorlagen beantragt haben; die Zeile oben,
+              was am Ende gebucht wurde — deshalb weichen die Summen leicht ab.
             </p>
           )}
         </div>
