@@ -125,6 +125,17 @@ def de_euro(euro: float | None) -> str:
     return f"{euro:,.0f} €".replace(",", ".")
 
 
+def de_betrag(euro: float | None) -> str:
+    """Volle Euro unter einer Million, sonst Millionen.
+
+    ``de_mio`` rundet auf eine Nachkommastelle — der ausgeglichene
+    Wirtschaftsplan des EGH (−15.621 €) wird darin zu „-0,0 Mio. €" und
+    liest sich wie ein Rundungsfehler (Fund der Beteiligungs-Facette)."""
+    if euro is None:
+        return "–"
+    return de_euro(euro) if abs(euro) < 1_000_000 else de_mio(euro)
+
+
 def de_zahl(v: float | None, stellen: int = 0) -> str:
     """„1.702,25“ — Tausenderpunkt und Dezimalkomma, ohne Einheit."""
     if v is None:
