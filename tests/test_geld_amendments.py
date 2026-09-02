@@ -147,3 +147,47 @@ def test_groesse_an_der_echten_datenbank():
         text = amendments.block(d)
         assert text and len(text) <= amendments.FACETTE.grenze, (frage, len(text))
     st.close()
+
+
+def _mit_finanzhaushalt(st):
+    """Dazu die FHH-Listen 2026 — die Positionen sind Investitionen."""
+    with st._conn:
+        for key, kind, label, ein, aus, saldo, own in (
+                ("administration_1", "draft", "Verwaltungsentwurf", 39.7, 80.8, -41.1, 0),
+                ("administration_1", "list", "Änderungsliste Verw. I", 0.0, 0.6, -0.6, 1),
+                ("administration_1", "final_total", "Summe", 39.7, 81.4, -41.7, 0)):
+            st._conn.execute(
+                "INSERT INTO council_budget_amendments_cash_totals (budget_year, list_key, year, kind, "
+                "label, inflows, outflows, balance, commitment_authorizations, own, document_id, "
+                "herkunft_id, fetched_at) VALUES (2026, ?, 2026, ?, ?, ?, ?, ?, 0, ?, 1, 1, '2026-09-02')",
+                (key, kind, label, ein * 1e6, aus * 1e6, saldo * 1e6, own))
+        for seq, label, product, ein, aus, erl in (
+                (1, "Feuerwache Süd, Neubau", "I10.126001.500", 0, 400_000, "Bedarfsanpassung"),
+                (2, "Radweg Alexanderstraße", "I10.541100.500", 0, 200_000, "Förderung eingeplant")):
+            st._conn.execute(
+                "INSERT INTO council_budget_amendments_cash (budget_year, list_key, year, seq, sub_budget, "
+                "page_draft, product, label, planned_draft, inflow, outflow, commitment_authorizations, "
+                "planned_new, explanation, author, document_id, herkunft_id, fetched_at) VALUES "
+                "(2026, 'administration_1', 2026, ?, 5, '70', ?, ?, 0, ?, ?, 0, ?, ?, NULL, 1, 1, '2026-09-02')",
+                (seq, product, label, ein, aus, aus, erl))
+    return st
+
+
+def test_finanzhaushalt_kommt_nur_auf_anfrage(tmp_path):
+    """„Welche Änderungen am Finanzhaushalt?“ bekam bis 09/2026 nur den
+    Ergebnishaushalt (live gemessen). Mit „Finanzhaushalt“ oder „Investition“
+    in den Begriffen kommen die FHH-Listen dazu — ohne bleibt es beim EHH."""
+    st = _mit_finanzhaushalt(_store(tmp_path))
+    try:
+        ohne = st.amendments_context(["haushalt", "verwaltung"], 2026)
+        assert ohne["cash"] is None
+        assert "FINANZHAUSHALT" not in amendments.block(ohne)
+        mit = st.amendments_context(["finanzhaushalt", "feuerwache"], 2026)
+        assert mit["cash"]["final"]["outflows"] == 81.4e6
+        assert mit["cash"]["positions"][0]["label"] == "Feuerwache Süd, Neubau"
+        text = amendments.block(mit)
+        assert "FINANZHAUSHALT (Investitionen)" in text
+        assert "Verwaltungsentwurf 2026: Einzahlungen 39,7 Mio. €, Auszahlungen 80,8 Mio. €" in text
+        assert "Feuerwache Süd, Neubau (I10.126001.500): Auszahlungen 0,4 Mio. €" in text
+    finally:
+        st.close()
