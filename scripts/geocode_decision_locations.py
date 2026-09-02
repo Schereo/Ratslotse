@@ -26,13 +26,17 @@ from scripts.geocode_entities import geocode  # noqa: E402
 COUNCIL_DB = ROOT / "data" / "council.sqlite"
 
 
-def process(council_db: Path, *, limit: int | None = None, sleep: float = 1.1) -> dict:
+def process(council_db: Path, *, limit: int | None = None, sleep: float = 1.1,
+            erneut: bool = False) -> dict:
     store = CouncilStore(council_db)
     curated = store.apply_curated_location_geocodes()
     reused = store.hydrate_location_geo_from_entities()
     districts = store.backfill_location_districts()
+    # Der Rest, den kein Geocoder je findet: Orte, die ihren Stadtteil im
+    # eigenen Namen tragen („GS Drielake", „Bürgerhaus Ofenerdiek").
+    aus_namen = store.backfill_location_districts_from_name()
     catalog_links = store.backfill_location_place_ids()
-    rows = store.locations_to_geocode(limit=limit)
+    rows = store.locations_to_geocode(limit=limit, retry_failed=erneut)
     print(f"Orts-Geocoding: reused={reused}, pending={len(rows)}", flush=True)
     located = missed = failed = 0
     for index, row in enumerate(rows, start=1):
@@ -67,8 +71,18 @@ def process(council_db: Path, *, limit: int | None = None, sleep: float = 1.1) -
                 f"missed={missed}, failed={failed}",
                 flush=True,
             )
+    # Nach dem Geocoden noch einmal ableiten: Was gerade Koordinaten bekommen
+    # hat, hat noch keinen Stadtteil — und ohne diesen zweiten Durchgang wären
+    # die frisch geocodierten Straßen sofort wieder Waisen.
+    store.merge_location_variants()
+    districts += store.backfill_location_districts()
+    korrigiert = (store.fix_contradicting_districts()
+                  + store.fix_eponymous_districts()
+                  + store.clear_code_only_districts())
+    store.rebuild_location_districts()
     store.close()
     return {"curated": curated, "reused": reused, "districts": districts,
+            "districts_from_name": aus_namen, "korrigiert": korrigiert,
             "catalog_links": catalog_links,
             "pending": len(rows), "located": located,
             "missed": missed, "failed": failed}
@@ -78,9 +92,13 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--db", type=Path, default=COUNCIL_DB)
     ap.add_argument("--limit", type=int)
+    ap.add_argument("--erneut", action="store_true",
+                    help="auch Orte erneut versuchen, bei denen das Geocoding schon "
+                         "einmal misslungen ist (Overpass/Nominatim antworten nicht "
+                         "jeden Tag gleich)")
     ap.add_argument("--sleep", type=float, default=1.1)
     args = ap.parse_args()
-    stats = process(args.db, limit=args.limit, sleep=args.sleep)
+    stats = process(args.db, limit=args.limit, sleep=args.sleep, erneut=args.erneut)
     print("Orts-Geocoding: " + ", ".join(f"{key}={value}" for key, value in stats.items()))
     return 1 if stats["failed"] else 0
 

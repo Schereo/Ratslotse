@@ -43,10 +43,15 @@ APP_URL = os.environ.get("APP_BASE_URL", "https://ratslotse.de")
 
 # Was im jeweiligen Schritt offen ist — die Mail sagt konkret, was noch fehlt,
 # statt allgemein „mach mal weiter".
+# Die Nummern zählen den Ablauf im Browser: 1 Gremien, 2 Stadtteil, 3 Themen,
+# 4 Mitteilungen. Die App kennt den Stadtteil-Schritt nicht und meldet 1–3 —
+# ihr Schritt 3 ist die Push-Frage. Der Satz zu 3 muss deshalb für beides
+# passen; deshalb nennt er die Themen und nicht „nur noch die Erlaubnis".
 OPEN_AT_STEP = {
     1: "Du wolltest gerade Gremien auswählen, über die Lotti dich informiert.",
-    2: "Du wolltest gerade Themen anlegen, zu denen Lotti sich meldet.",
-    3: "Es fehlt nur noch die Erlaubnis für Mitteilungen.",
+    2: "Du wolltest gerade Stadtteile auswählen, die dich interessieren.",
+    3: "Du wolltest gerade Themen anlegen, zu denen Lotti sich meldet.",
+    4: "Es fehlt nur noch, wie Lotti sich bei dir meldet.",
 }
 
 

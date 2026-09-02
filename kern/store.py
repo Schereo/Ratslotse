@@ -1345,14 +1345,51 @@ class Store:
             )
 
     def get_setup(self, user_id: int) -> dict:
+        """Stand des Einrichtungs-Assistenten — samt der Frage, ob er dran ist.
+
+        ``pending`` beantwortet „soll diese Person den Assistenten sehen?", und
+        zwar **serverseitig**: Web und App sollen dieselbe Antwort bekommen, und
+        die Regel hängt an Daten (Themen, Abos), die das Frontend sonst erst in
+        zwei zusätzlichen Requests holen müsste, bevor es überhaupt weiß, ob es
+        etwas anzeigen soll.
+
+        Drei Fälle:
+
+        * **abgeschlossen** (``done_at``) → nie wieder. „Überspringen" zählt als
+          abgeschlossen; ein weggeklickter Assistent, der wiederkommt, wäre
+          keiner.
+        * **angefangen** (``setup_step ≥ 1``) → weitermachen, wo aufgehört wurde.
+        * **nie angefangen** → nur, wenn das Konto noch leer ist. Wer längst
+          Themen oder Abos hat, hat sich erkennbar selbst eingerichtet und wird
+          nicht nachträglich durch einen Assistenten geschickt.
+        """
         row = self._conn.execute(
             "SELECT setup_step, setup_started_at, setup_done_at FROM web_users WHERE id = ?",
             (user_id,),
         ).fetchone()
         if not row:
-            return {"step": 0, "started_at": None, "done_at": None}
-        return {"step": row["setup_step"] or 0, "started_at": row["setup_started_at"],
-                "done_at": row["setup_done_at"]}
+            return {"step": 0, "started_at": None, "done_at": None, "pending": False}
+        step = row["setup_step"] or 0
+        if row["setup_done_at"]:
+            pending = False
+        elif step >= 1:
+            pending = True
+        else:
+            pending = not self._hat_eingerichtet(user_id)
+        return {"step": step, "started_at": row["setup_started_at"],
+                "done_at": row["setup_done_at"], "pending": pending}
+
+    def _hat_eingerichtet(self, user_id: int) -> bool:
+        """Hat dieses Konto schon irgendetwas eingerichtet (Thema oder Abo)?
+
+        Zwei ``EXISTS`` statt ``COUNT``: Es geht um „irgendwas" — SQLite hört
+        beim ersten Treffer auf zu suchen.
+        """
+        row = self._conn.execute(
+            "SELECT EXISTS(SELECT 1 FROM topics WHERE owner_id = ?) "
+            "    OR EXISTS(SELECT 1 FROM committee_subscriptions WHERE owner_id = ?)",
+            (user_id, user_id)).fetchone()
+        return bool(row[0])
 
     def setups_to_remind(self, older_than_hours: int = 48, limit: int = 200) -> list[dict]:
         """Konten, die die Einrichtung angefangen und liegen gelassen haben.

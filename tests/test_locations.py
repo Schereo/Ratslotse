@@ -264,7 +264,7 @@ def test_incremental_process_picks_up_only_new_decisions(tmp_path):
 
     first = process(db, use_llm=False)
     assert first == {"candidates": 2, "scanned": 2, "assigned": 1,
-                     "links": 1, "failed_batches": 0}
+                     "links": 1, "beiwerk_verworfen": 0, "failed_batches": 0}
     assert process(db, use_llm=False)["candidates"] == 0
 
     store = CouncilStore(db)

@@ -1652,6 +1652,22 @@ class CouncilStore:
             "CREATE INDEX IF NOT EXISTS idx_locations_place ON council_locations(place_id)")
         self._conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_locations_ortsbereich ON council_locations(local_area_id)")
+        # Ein Ort kann in MEHREREN Ortsbereichen liegen. ``council_locations.district``
+        # trägt weiterhin genau einen — den überwiegenden, für die Anzeige. Wo ein
+        # Ort tatsächlich hingehört, steht hier: Die Alexanderstraße läuft durch
+        # fünf Ortsbereiche, und wer nach Ziegelhof filtert, will sie sehen.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_location_districts ("
+            "location_slug TEXT NOT NULL, district TEXT NOT NULL, place_id TEXT, "
+            "share REAL NOT NULL DEFAULT 1.0, "
+            "PRIMARY KEY (location_slug, district))"
+        )
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_location_districts_place "
+            "ON council_location_districts(place_id)")
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_location_districts_district "
+            "ON council_location_districts(district)")
         self._conn.execute(
             "CREATE TABLE IF NOT EXISTS council_decision_locations ("
             "decision_id INTEGER NOT NULL, location_slug TEXT NOT NULL, "
@@ -9995,12 +10011,43 @@ class CouncilStore:
         return [dict(r) for r in rows]
 
     @staticmethod
-    def _place_location_condition(place) -> tuple[str, list]:
-        """SQL-Bedingung auf Alias ``l`` für einen kanonischen Katalogort."""
+    def _place_location_condition(place, *, nur_hauptbereich: bool = False) -> tuple[str, list]:
+        """SQL-Bedingung auf Alias ``l`` für einen kanonischen Katalogort.
+
+        ``nur_hauptbereich`` schaltet die Mehrfach-Zugehörigkeit ab. Zwei
+        Fragen, die verschieden zu beantworten sind:
+
+        *„Welche Beschlüsse betreffen den Ziegelhof?"* — die Alexanderstraße
+        läuft dort durch, also gehört „Ausbauplanung Alexanderstraße" dazu.
+        Weite Bedingung.
+
+        *„Welche THEMEN schlage ich für den Ziegelhof vor?"* — hier zählt eine
+        Entität mit, sobald sie in irgendeinem Beschluss zusammen mit der
+        Alexanderstraße vorkommt. Mit der weiten Bedingung schlug das
+        Ehnernviertel plötzlich „Hallensichel-Ost" und „Entlastungsstraße
+        Fliegerhorst" vor — Fliegerhorst-Themen, die über eine Straße
+        hereingeschwappt sind und die richtigen Vorschläge verdrängten.
+        Deshalb hier der Hauptbereich.
+
+        Die Vorschläge sind damit eine Teilmenge des Beschlussfilters, nie das
+        Gegenteil: Was vorgeschlagen wird, findet sich auch im Filter wieder.
+        """
         from council.locations import location_slug
 
-        if place.is_primary:
+        if place.is_primary and nur_hauptbereich:
             return "(l.local_area_id = ? OR l.district = ?)", [place.id, place.name]
+        if place.is_primary:
+            # ZUSÄTZLICH über die Zugehörigkeits-Tabelle, nicht statt der
+            # Spalte. Eine Straße durch fünf Ortsbereiche gehört in alle fünf
+            # Filter (siehe ``rebuild_location_districts``) — aber die Spalte
+            # bleibt daneben stehen: Sie ist immer gefüllt, die Tabelle wird
+            # erst von einem Lauf aufgebaut. Landete der Code vor dem ersten
+            # Lauf, fände der Stadtteil-Filter sonst gar nichts mehr. So kann
+            # er nur mehr finden als vorher, nie weniger.
+            return ("(l.local_area_id = ? OR l.district = ? OR l.slug IN ("
+                    "SELECT location_slug FROM council_location_districts "
+                    "WHERE place_id = ? OR district = ?))",
+                    [place.id, place.name, place.id, place.name])
         slugs = list(dict.fromkeys(location_slug(value)
                                    for value in (place.name, *place.aliases)))
         return (f"(l.place_id = ? OR l.slug IN ({','.join('?' * len(slugs))}))",
@@ -10102,11 +10149,23 @@ class CouncilStore:
             params.append(max(1, int(limit)))
         return [row[0] for row in self._conn.execute(sql, params).fetchall()]
 
-    def locations_to_geocode(self, limit: int | None = None) -> list[dict]:
+    def locations_to_geocode(self, limit: int | None = None,
+                             retry_failed: bool = False) -> list[dict]:
+        """Orte, die noch geokodiert werden müssen.
+
+        ``retry_failed`` nimmt auch die mit, bei denen es schon einmal
+        misslungen ist (``geo_tried = 1``, aber keine Koordinaten). Ohne diesen
+        Weg blieben sie für immer liegen: Auf Prod standen so 706 Orte, obwohl
+        ein erneuter Versuch für „Postweg", „Stubbenweg", „Ziegelweg" und
+        „Haaren" auf Anhieb Treffer lieferte — Overpass und Nominatim antworten
+        nicht jeden Tag gleich.
+        """
+        bedingung = ("(l.geo_tried = 0 OR l.lat IS NULL)" if retry_failed
+                     else "l.geo_tried = 0")
         sql = (
             "SELECT l.slug, l.name, l.kind, COUNT(dl.decision_id) AS n "
             "FROM council_locations l JOIN council_decision_locations dl "
-            "ON dl.location_slug = l.slug WHERE l.geo_tried = 0 "
+            f"ON dl.location_slug = l.slug WHERE {bedingung} "
             "GROUP BY l.slug ORDER BY n DESC, l.name"
         )
         args: tuple = ()
@@ -10165,23 +10224,321 @@ class CouncilStore:
                          AND m.lat IS NOT NULL AND m.lon IS NOT NULL)""", (now,))
         return cur.rowcount
 
+    #: Ab welchem Anteil der Stützpunkte ein Ortsbereich als berührt gilt.
+    #: Zehn Prozent von bis zu 60 Punkten sind ein echtes Straßenstück, keine
+    #: angeschnittene Ecke — und die zusätzliche Mindestzahl fängt sehr kurze
+    #: Geometrien ab, bei denen ein einzelner Punkt schon 10 % wäre.
+    ORTSBEREICH_ANTEIL = 0.10
+    ORTSBEREICH_MINDESTPUNKTE = 2
+
+    def merge_location_variants(self) -> int:
+        """Schreibvarianten desselben Ortes zu einem Eintrag zusammenführen.
+
+        „Alte Fleiwa" und „AlteFleiwa", „Marschwegstadion" und
+        „Marschweg-Stadion", „GS Röwekamp" und „Grundschule Röwekamp" standen
+        als getrennte Orte in den Daten — mit getrennten Beschlusslisten, damit
+        halbierten Zählern und zweimal derselben Sache in einer
+        Vorschlagsliste. Am Prod-Bestand (01.09.2026): 66 Gruppen mit 132
+        Einträgen.
+
+        **Welche Schreibweise überlebt**, entscheidet in dieser Reihenfolge:
+        die meisten Beschluss-Verweise (so schreibt es die Ratsverwaltung
+        überwiegend); dann keine einzelnen Buchstaben-Fragmente (die stammen
+        aus der PDF-Extraktion — „Kasin o- platz"); dann die meisten
+        Buchstaben; zuletzt alphabetisch, damit der Lauf reproduzierbar ist.
+
+        Geodaten und Stadtteil werden zusammengezogen: Hat der Gewinner keine,
+        erbt er sie von einer Variante. Genau davon lebt der Fall „Kennedy
+        straße" (stand auf Eversten) neben „Kennedystraße" (Bloherfelde) —
+        nach dem Zusammenführen gibt es nur noch eine Antwort.
+        """
+        from council.locations import variant_key
+
+        gruppen: dict[str, list] = {}
+        for row in self._conn.execute(
+            "SELECT slug,name,district,place_id,local_area_id,lat,lon,geojson,geo_tried,kind "
+            "FROM council_locations"
+        ).fetchall():
+            gruppen.setdefault(variant_key(row["name"]), []).append(dict(row))
+
+        zaehler = {r["location_slug"]: r["n"] for r in self._conn.execute(
+            "SELECT location_slug, COUNT(*) AS n FROM council_decision_locations "
+            "GROUP BY location_slug")}
+
+        def rang(zeile):
+            name = zeile["name"] or ""
+            fragmente = sum(1 for w in re.findall(r"[^\W\d_]+", name) if len(w) == 1)
+            return (-zaehler.get(zeile["slug"], 0), fragmente,
+                    -sum(c.isalpha() for c in name), name)
+
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        zusammengefuehrt = 0
+        for _, zeilen in gruppen.items():
+            if len(zeilen) < 2:
+                continue
+            zeilen.sort(key=rang)
+            sieger, verlierer = zeilen[0], zeilen[1:]
+            geerbt = {}
+            for feld in ("district", "place_id", "local_area_id", "lat", "lon", "geojson"):
+                if sieger[feld] is None:
+                    for v in verlierer:
+                        if v[feld] is not None:
+                            geerbt[feld] = v[feld]
+                            break
+            with self._conn:
+                for v in verlierer:
+                    self._conn.execute(
+                        "UPDATE OR IGNORE council_decision_locations SET location_slug=? "
+                        "WHERE location_slug=?", (sieger["slug"], v["slug"]))
+                    # Was beim Umhängen auf eine schon vorhandene Zeile stieß,
+                    # ist eine Dublette und darf jetzt weg.
+                    self._conn.execute(
+                        "DELETE FROM council_decision_locations WHERE location_slug=?",
+                        (v["slug"],))
+                    self._conn.execute(
+                        "UPDATE OR IGNORE council_place_reviews SET location_slug=? "
+                        "WHERE location_slug=?", (sieger["slug"], v["slug"]))
+                    self._conn.execute(
+                        "DELETE FROM council_place_reviews WHERE location_slug=?", (v["slug"],))
+                    self._conn.execute(
+                        "DELETE FROM council_location_districts WHERE location_slug=?",
+                        (v["slug"],))
+                    self._conn.execute(
+                        "DELETE FROM council_locations WHERE slug=?", (v["slug"],))
+                if geerbt:
+                    felder = ",".join(f"{k}=?" for k in geerbt)
+                    self._conn.execute(
+                        f"UPDATE council_locations SET {felder},updated_at=? WHERE slug=?",
+                        (*geerbt.values(), now, sieger["slug"]))
+            zusammengefuehrt += len(verlierer)
+        return zusammengefuehrt
+
+    def rebuild_location_districts(self) -> int:
+        """Die Ortsbereichs-Zugehörigkeit neu aufbauen — mehrere je Ort erlaubt.
+
+        ``council_locations.district`` trägt genau einen Stadtteil, den
+        überwiegenden. Für die Anzeige ist das richtig; zum Filtern ist es zu
+        wenig. Die Alexanderstraße verläuft zu 38 % in Bürgerfelde, zu 20 % in
+        Alexandersfeld, zu 18 % im Ziegelhof, zu 13 % im Ehnernviertel und zu
+        10 % in Dietrichsfeld — mit einer Spalte sehen vier Viertel ihre eigene
+        Straße nicht. Am Prod-Bestand (01.09.2026) betrifft das 99 Orte mit
+        zusammen rund 1.700 Beschluss-Zuordnungen.
+
+        **Gleichnamige Orte bekommen nur ihren eigenen Bereich.** Die Fläche,
+        die ein Kartendienst für „Ofenerdiek" liefert, schwappt nach Nadorst —
+        aber unser Katalog-Umriss IST die Definition von Ofenerdiek. 25 solcher
+        Orte gibt es; sie würden sonst ihre Nachbarn einfärben.
+        """
+        from council import geo, places
+
+        eponym = set()
+        for place in places.primary_places():
+            eponym.update(v.strip().casefold() for v in (place.name, *place.aliases))
+        nach_name = {p.name: p for p in places.primary_places()}
+
+        zeilen = []
+        for row in self._conn.execute(
+            "SELECT slug,name,district,geojson FROM council_locations "
+            "WHERE district IS NOT NULL"
+        ).fetchall():
+            bereiche = {row["district"]: 1.0}
+            if (row["geojson"]
+                    and (row["name"] or "").strip().casefold() not in eponym):
+                stimmen = geo.ortsbereiche_der_geometrie(row["geojson"])
+                gesamt = sum(stimmen.values()) or 1
+                for name, punkte in stimmen.items():
+                    anteil = punkte / gesamt
+                    if (anteil >= self.ORTSBEREICH_ANTEIL
+                            and punkte >= self.ORTSBEREICH_MINDESTPUNKTE):
+                        bereiche[name] = max(bereiche.get(name, 0.0), anteil)
+            for name, anteil in bereiche.items():
+                place = nach_name.get(name)
+                zeilen.append((row["slug"], name, place.id if place else None, anteil))
+        with self._conn:
+            self._conn.execute("DELETE FROM council_location_districts")
+            self._conn.executemany(
+                "INSERT OR REPLACE INTO council_location_districts "
+                "(location_slug,district,place_id,share) VALUES (?,?,?,?)", zeilen)
+        return len(zeilen)
+
+    def clear_code_only_districts(self) -> int:
+        """Nackten Kennungen den Stadtteil nehmen — den Verweis aber lassen.
+
+        „A 293", „A 29", „M-821": Diese Orte kommen über den Entitäten-Kanal
+        herein, der weder durch die Ortsprüfung noch durch die Beiwerk-Regel
+        läuft. Dass sie in einem Beschluss vorkommen, stimmt ja auch — die
+        Autobahn wird erwähnt. Falsch ist nur der Stadtteil: Eine Autobahn
+        quert die halbe Stadt, und „A 293 → Nadorst" schickt jemanden in ein
+        Viertel, mit dem der Beschluss nichts zu tun hat.
+
+        Deshalb bleibt der Verweis stehen und nur die Verortung fällt weg. Auf
+        dem Prod-Bestand (01.09.2026) sind das sechs Zuordnungen.
+        """
+        from council.locations import _CODE_ONLY_RE
+
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        betroffen = [
+            (now, row["slug"])
+            for row in self._conn.execute(
+                "SELECT slug, name FROM council_locations WHERE district IS NOT NULL")
+            if _CODE_ONLY_RE.match((row["name"] or "").strip())
+        ]
+        if betroffen:
+            with self._conn:
+                self._conn.executemany(
+                    "UPDATE council_locations SET district=NULL,local_area_id=NULL,"
+                    "updated_at=? WHERE slug=?", betroffen)
+        return len(betroffen)
+
     def backfill_location_districts(self) -> int:
-        """Stadtteil für ältere oder übernommene Ortskoordinaten lokal ableiten."""
-        from council import geo
+        """Stadtteil für ältere oder übernommene Ortskoordinaten lokal ableiten.
+
+        **Die Geometrie schlägt den Punkt.** Vorher entschied allein
+        ``ortsbereich_for(lat, lon)`` — also der Mittelpunkt der Bounding-Box.
+        Bei Flächen geht das; bei Straßen liegt dieser Punkt oft NEBEN der
+        Straße, und der Ort blieb ohne Stadtteil. Auf dem Prod-Bestand
+        (01.09.2026 gemessen) traf das u. a. „Alter Postweg" (verläuft
+        vollständig in Kreyenbrück), „Ziegelweg", „Haaren" und „Tweelbäker See".
+        Der Punkt bleibt der Rückfall für Orte ohne Geometrie.
+        """
+        from council import geo, places
+        from council.locations import _CODE_ONLY_RE
 
         rows = self._conn.execute(
-            "SELECT slug,lat,lon FROM council_locations "
+            "SELECT slug,name,lat,lon,geojson FROM council_locations "
             "WHERE lat IS NOT NULL AND lon IS NOT NULL "
             "AND (district IS NULL OR district = '')"
         ).fetchall()
         updates = []
         now = datetime.now(timezone.utc).isoformat(timespec="seconds")
         for row in rows:
-            district = geo.ortsbereich_for(row["lat"], row["lon"])
+            # Nackte Kennungen bekommen keinen Stadtteil — siehe
+            # ``clear_code_only_districts``. Der Riegel gehört HIER hin und
+            # nicht nur ins Aufräumen: Sonst füllt der nächste Lauf wieder auf,
+            # was der letzte gerade geleert hat.
+            if _CODE_ONLY_RE.match((row["name"] or "").strip()):
+                continue
+            district = (geo.ortsbereich_der_geometrie(row["geojson"])
+                        or geo.ortsbereich_for(row["lat"], row["lon"]))
             if district:
-                from council import places
                 place = places.resolve(district)
                 updates.append((district, place.id if place else None, now, row["slug"]))
+        if updates:
+            with self._conn:
+                self._conn.executemany(
+                    "UPDATE council_locations SET district=?,local_area_id=?,updated_at=? WHERE slug=?",
+                    updates,
+                )
+        return len(updates)
+
+    def fix_contradicting_districts(self) -> int:
+        """Eingetragene Stadtteile korrigieren, die der Geometrie widersprechen.
+
+        ``backfill_location_districts`` füllt nur LEERE Felder. Was einmal falsch
+        drinsteht, bleibt — und auf dem Prod-Bestand (01.09.2026 geprüft) waren
+        das 20 Orte mit zusammen 205 Beschluss-Zuordnungen: „Am Bahndamm" (65)
+        stand auf Drielake, verläuft aber in Drielaker-Moor; „Sandweg" (49) auf
+        Osternburg, liegt aber in Drielaker-Moor; „Bremer Straße" (28) umgekehrt.
+
+        Korrigiert wird **nur der klare Widerspruch**: Der eingetragene Bereich
+        wird von der Geometrie überhaupt nicht berührt. Eine Straße, die durch
+        drei Bereiche läuft und mit einem davon eingetragen ist, bleibt
+        unangetastet — sie ist nicht falsch, nur unvollständig.
+
+        Und der neue Bereich braucht mindestens zwei Stützpunkte, damit nicht
+        ein einzelner Ausreißer einer sonst fremden Geometrie entscheidet.
+        """
+        from council import geo, places
+
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        updates = []
+        for row in self._conn.execute(
+            "SELECT slug, district, geojson FROM council_locations "
+            "WHERE district IS NOT NULL AND geojson IS NOT NULL"
+        ).fetchall():
+            stimmen = geo.ortsbereiche_der_geometrie(row["geojson"])
+            if not stimmen or row["district"] in stimmen:
+                continue
+            name, gewicht = sorted(stimmen.items(), key=lambda t: (-t[1], t[0]))[0]
+            if gewicht < 2:
+                continue
+            place = places.resolve(name)
+            updates.append((name, place.id if place else None, now, row["slug"]))
+        if updates:
+            with self._conn:
+                self._conn.executemany(
+                    "UPDATE council_locations SET district=?,local_area_id=?,updated_at=? "
+                    "WHERE slug=?", updates)
+        return len(updates)
+
+    def fix_eponymous_districts(self) -> int:
+        """Ein Ort, der EXAKT wie ein Stadtteil heißt, IST dieser Stadtteil.
+
+        Auf Prod stand ein Ort namens „Drielake" (18 Zuordnungen) auf
+        „Drielaker-Moor" — der Geocoder hatte für den Namen eine Fläche im
+        Nachbarbereich gefunden. Bei exakter Namensgleichheit ist der Katalog
+        stärker als jede Geokodierung; er ist die Definition des Bereichs.
+
+        Bewusst nur EXAKTE Gleichheit (inkl. Aliasen), kein Teiltreffer:
+        „Grundschule Drielake" bleibt der Geokodierung überlassen, denn eine
+        Schule kann sehr wohl im Nachbarbereich stehen.
+        """
+        from council import places
+
+        nach_name = {}
+        for place in places.primary_places():
+            for variante in (place.name, *place.aliases):
+                nach_name[variante.casefold()] = place
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        updates = []
+        for row in self._conn.execute(
+            "SELECT slug, name, district FROM council_locations"
+        ).fetchall():
+            place = nach_name.get((row["name"] or "").strip().casefold())
+            if place and row["district"] != place.name:
+                updates.append((place.name, place.id, now, row["slug"]))
+        if updates:
+            with self._conn:
+                self._conn.executemany(
+                    "UPDATE council_locations SET district=?,local_area_id=?,updated_at=? "
+                    "WHERE slug=?", updates)
+        return len(updates)
+
+    def backfill_location_districts_from_name(self) -> int:
+        """Stadtteil aus dem NAMEN des Ortes ableiten — der billige Rest.
+
+        Viele Orte tragen ihren Stadtteil im eigenen Namen und werden trotzdem
+        nie geocodiert: „Oberschule Ofenerdiek", „GS Drielake", „OBS Eversten",
+        „Bürgerhaus Ofenerdiek", „Fliegerhorst-Innenstadt". Auf dem Prod-Bestand
+        (01.09.2026) waren das 71 Orte mit 176 Beschluss-Zuordnungen, die ohne
+        diese Regel unsichtbar blieben — kein Geocoder wird je „GS Drielake"
+        finden.
+
+        **Nur bei EINDEUTIGEM Treffer.** Nennt ein Name zwei Ortsbereiche
+        („Entlastungsstraße Fliegerhorst-Wechloy"), bleibt der Ort lieber ohne
+        Zuordnung als mit einer geratenen. Und nur, wo keine Koordinaten
+        vorliegen: Wo es Geometrie gibt, ist die verlässlicher als ein Wortlaut.
+        """
+        import re
+
+        from council import places
+
+        muster = []
+        for place in places.primary_places():
+            namen = sorted({place.name, *place.aliases}, key=len, reverse=True)
+            muster.append((place, re.compile(
+                r"\b(" + "|".join(re.escape(n) for n in namen) + r")\b", re.IGNORECASE)))
+
+        rows = self._conn.execute(
+            "SELECT slug,name FROM council_locations "
+            "WHERE lat IS NULL AND (district IS NULL OR district = '')"
+        ).fetchall()
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        updates = []
+        for row in rows:
+            treffer = [place for place, regex in muster if regex.search(row["name"] or "")]
+            if len(treffer) == 1:
+                updates.append((treffer[0].name, treffer[0].id, now, row["slug"]))
         if updates:
             with self._conn:
                 self._conn.executemany(
@@ -10224,17 +10581,42 @@ class CouncilStore:
 
     def set_location_geo(self, slug: str, lat: float | None, lon: float | None,
                          geojson: str | None) -> None:
+        """Koordinaten eines Ortes setzen — und den Stadtteil daraus ableiten.
+
+        Zwei Fälle, die vorher eine Zeile waren — und genau darin lag der Fehler:
+
+        * **Kein Ergebnis** (``lat is None``): Das Geocoding ist misslungen und
+          wird nur als „versucht" vermerkt. Ein Fehlschlag weiß nichts, also
+          darf er nichts wegnehmen. Vorher schrieb die Methode auch hier
+          ``district = NULL`` — auf dem Prod-Snapshot löschte der
+          Wiederholungslauf damit genau die Stadtteile wieder, die die
+          Namensregel zuvor gesetzt hatte („Oberschule Ofenerdiek").
+        * **Ergebnis außerhalb Oldenburgs**: Ein Treffer, der in keinem
+          Ortsbereich liegt, ist ein Beleg — der Ort gehört nicht hierher, und
+          ein alter Stadtteil an ihm wäre falsch. Der wird gelöscht.
+
+        Und der Stadtteil kommt aus der GEOMETRIE, wenn es eine gibt: Bei einer
+        Straße liegt der Bounding-Box-Mittelpunkt oft neben ihr.
+        """
         from council import geo, places
 
-        district = geo.ortsbereich_for(lat, lon) if lat is not None and lon is not None else None
-        primary = places.resolve(district)
+        hat_ergebnis = lat is not None and lon is not None
+        district = geo.ortsbereich_der_geometrie(geojson)
+        if not district and hat_ergebnis:
+            district = geo.ortsbereich_for(lat, lon)
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
         with self._conn:
-            self._conn.execute(
-                "UPDATE council_locations SET lat=?, lon=?, geojson=?, district=?, local_area_id=?, "
-                "geo_tried=1, updated_at=? WHERE slug=?",
-                (lat, lon, geojson, district, primary.id if primary else None,
-                 datetime.now(timezone.utc).isoformat(timespec="seconds"), slug),
-            )
+            if district or hat_ergebnis:
+                primary = places.resolve(district) if district else None
+                self._conn.execute(
+                    "UPDATE council_locations SET lat=?, lon=?, geojson=?, district=?, "
+                    "local_area_id=?, geo_tried=1, updated_at=? WHERE slug=?",
+                    (lat, lon, geojson, district, primary.id if primary else None, now, slug))
+            else:
+                # Fehlschlag: nur als versucht vermerken, Stadtteil unangetastet.
+                self._conn.execute(
+                    "UPDATE council_locations SET lat=NULL, lon=NULL, geojson=NULL, "
+                    "geo_tried=1, updated_at=? WHERE slug=?", (now, slug))
 
     def list_entities(self, limit: int = 300, kind: str = "") -> list[dict]:
         """Entities for the directory, most-referenced first — angereichert um
@@ -10292,7 +10674,8 @@ class CouncilStore:
         ).fetchone()
         return dict(row) if row else None
 
-    def suggested_entity_topics(self, days_back: int = 365, limit: int = 12) -> list[dict]:
+    def suggested_entity_topics(self, days_back: int = 365, limit: int = 12,
+                                place_id: str | None = None) -> list[dict]:
         """Konkrete Orte/Projekte mit jüngster Ratsaktivität — Futter für die
         Themen-Vorschläge. Ersetzt die reine Schlagwort-Häufigkeit, die
         Verwaltungsvokabeln belohnte („Bericht", „Annahme"): Menschen
@@ -10301,8 +10684,41 @@ class CouncilStore:
         gewinnt der interessantere Stoff (Interest-Score, neutral 50)."""
         from datetime import date, timedelta
         cutoff = (date.today() - timedelta(days=days_back)).isoformat()
+        # Auf einen Ortsbereich eingeschränkt: „was ist gerade in MEINEM
+        # Stadtteil los?". Die Bedingung sitzt auf dem Beschluss, nicht auf der
+        # Entität — eine Entität hat selbst keinen Ort, sie erbt ihn von den
+        # Beschlüssen, in denen sie vorkommt.
+        #
+        # Und genau deshalb HIER der Hauptbereich (``nur_hauptbereich=True``):
+        # Erbt eine Entität den Ort über jeden mitgenannten Ortsbezug, dann
+        # reicht eine lange Straße, um fremde Themen einzuschleppen. Siehe
+        # ``_place_location_condition``.
+        ort_bedingung, ort_params = "", []
+        if place_id:
+            place = self.resolve_place(place_id)
+            if not place:
+                return []
+            bedingung, params = self._place_location_condition(
+                place, nur_hauptbereich=True)
+            # Zweiter Weg, eng und ohne Einschleppen: Die Entität IST ein Ort,
+            # der in diesem Bereich liegt. Das gilt auch für die
+            # Mehrfach-Zugehörigkeit — und genau dafür ist es da: Die
+            # Alexanderstraße hat als Hauptbereich Bürgerfelde, verläuft aber
+            # auch durchs Ehnernviertel, den Ziegelhof, Alexandersfeld und
+            # Dietrichsfeld. Als Vorschlag ist sie dort richtig, denn sie liegt
+            # dort. Der Unterschied zur weiten Bedingung: Vorgeschlagen wird
+            # nur, was SELBST im Bereich liegt, nicht alles, was einmal im
+            # selben Beschluss danebenstand.
+            ort_bedingung = (
+                " AND (EXISTS (SELECT 1 FROM council_decision_locations dl "
+                "JOIN council_locations l ON l.slug = dl.location_slug "
+                f"WHERE dl.decision_id = d.id AND {bedingung})"
+                " OR e.slug IN (SELECT location_slug FROM council_location_districts "
+                "WHERE place_id = ? OR district = ?))"
+            )
+            ort_params = [*params, place.id, place.name]
         rows = self._conn.execute(
-            """SELECT e.slug, e.name, e.kind, m.description,
+            f"""SELECT e.slug, e.name, e.kind, m.description,
                       COUNT(DISTINCT el.decision_id) AS n_recent,
                       AVG(COALESCE(d.interest, 50)) AS avg_interest,
                       (SELECT d2.title
@@ -10317,14 +10733,142 @@ class CouncilStore:
                JOIN council_decisions d ON d.id = el.decision_id
                JOIN council_sessions cs ON cs.ksinr = d.ksinr
                LEFT JOIN council_entity_meta m ON m.slug = e.slug
-               WHERE e.kind IN ('place', 'project') AND cs.session_date >= ?
+               WHERE e.kind IN ('place', 'project') AND cs.session_date >= ?{ort_bedingung}
                GROUP BY e.id
                HAVING n_recent >= 2
                ORDER BY n_recent DESC, avg_interest DESC, e.name
                LIMIT ?""",
-            (cutoff, cutoff, limit),
+            # Mit Ortsfilter großzügig holen und ERST DANACH sieben. Das Limit
+            # greift auf der rohen Reihenfolge (Häufigkeit), und die führen im
+            # Stadtteil die Adressen aus Bebauungsplänen an: Bei ``LIMIT 16``
+            # füllten sie die Liste, und nach dem Sieben blieb fast nichts übrig
+            # — auf dem Prod-Auszug lieferte Osternburg so EINEN Vorschlag statt
+            # sechs. Die Obergrenze bleibt als Riegel gegen einen Ausreißer.
+            (cutoff, cutoff, *ort_params, 400 if place_id else limit),
         ).fetchall()
-        return [dict(r) for r in rows]
+        kandidaten = [dict(r) for r in rows]
+        if not place_id:
+            return kandidaten
+        return self._rank_local_suggestions(kandidaten, place, cutoff)[:limit]
+
+    #: Ab wie vielen Ortsbereichen eine Entität als stadtweit gilt. Auf dem
+    #: Prod-Bestand (01.09.2026) trennt 4 sauber: „Startchancen-Programm" (8),
+    #: „Lärmaktionsplan" (7), „Mobilitätsplan Oldenburg 2030" (6) und „Housing
+    #: First" (5) fallen raus, alles Ortsgebundene bleibt.
+    CITYWIDE_FROM_DISTRICTS = 4
+
+    #: Was nach Adresse klingt statt nach Vorhaben. Solche Namen werden NICHT
+    #: verworfen — sie rutschen nur hinter alles andere.
+    _STRASSE = re.compile(r"(stra(ß|ss)e|str\.|weg|allee|ring|damm|chaussee|gasse|pfad|steig)$",
+                          re.IGNORECASE)
+    _STRASSE_VORNE = re.compile(r"^(am|an der|an den|auf dem|auf der|zum|zur|im|in der)\s",
+                                re.IGNORECASE)
+
+    @classmethod
+    def _looks_like_street(cls, name: str) -> bool:
+        kern = name.split("/")[0].strip()
+        return bool(cls._STRASSE.search(kern)) or bool(cls._STRASSE_VORNE.match(kern))
+
+    def _rank_local_suggestions(self, kandidaten: list[dict], place, cutoff: str) -> list[dict]:
+        """Aussieben und ordnen, was für EINEN Ortsbereich vorgeschlagen wird.
+
+        Die rohe Abfrage liefert alles, was in einem Beschluss mit Ortsbezug
+        vorkam — und das ist zu grob. Am Prod-Bestand nachgemessen (01.09.2026)
+        standen unter „Osternburg" ganz oben „Sandweg, Ostweg, Danziger Straße",
+        die Cäcilienbrücke gar nicht; unter „Eversten" stand „Fliegerhorst".
+        Drei Ursachen, drei Regeln:
+
+        1. **Ein anderer Ortsbereich** ist kein Vorschlag für diesen. „Kreyenbrück-
+           Nord" unter Osternburg entsteht, weil ein Beschluss beide berührt.
+        2. **Stadtweite Programme** streuen über die halbe Stadt („Startchancen-
+           Programm" in 8 Ortsbereichen). Sie gehören in die stadtweite Liste,
+           nicht unter einen Stadtteil — dort sind sie das Gegenteil von
+           „ach, das betrifft mich".
+        3. **Koordinaten schlagen Nennung.** Wo eine Entität geocodiert ist
+           (gut die Hälfte), entscheidet ihr Punkt, nicht der Beschluss, in dem
+           sie erwähnt wurde. Ohne Koordinaten bleibt es bei der Nennung — die
+           Regel korrigiert nur nachweislich Falsches.
+
+        Und die Reihenfolge: Straßennamen nach hinten. Adressen aus Bebauungs-
+        plänen sind zwar Orte, aber nichts, dem man folgen möchte; sie bleiben
+        drin (manche Straße IST ein Vorhaben), stehen aber hinter allem anderen.
+        """
+        from council import geo, places
+
+        eigener = place.name.casefold()
+        fremde = {p.name.casefold() for p in places.primary_places()} - {eigener}
+        kandidaten = [k for k in kandidaten if (k.get("name") or "").casefold() not in fremde]
+        if not kandidaten:
+            return []
+
+        # Breite NUR für die Kandidaten bestimmen — über alle Entitäten wäre es
+        # ein Full-Scan im Web-Request.
+        slugs = [k.get("slug") or "" for k in kandidaten]
+        platz = ",".join("?" * len(slugs))
+        breite = {r["slug"]: r["orte"] for r in self._conn.execute(
+            # ABSICHTLICH die eine Hauptspalte und NICHT die Zugehörigkeits-
+            # Tabelle: Hier wird gemessen, wie breit ein Thema streut, um
+            # stadtweite Themen aus den Stadtteil-Listen zu halten. Zählte man
+            # jede berührte Zugehörigkeit mit, machte eine einzige lange Straße
+            # ihr Thema „stadtweit" — und die Alexanderstraße verschwände aus
+            # allen fünf Vierteln, statt in allen fünf zu stehen.
+            f"""SELECT e.slug, COUNT(DISTINCT COALESCE(l.local_area_id, l.district)) AS orte
+                  FROM council_entities e
+                  JOIN council_entity_links el ON el.entity_id = e.id
+                  JOIN council_decisions d ON d.id = el.decision_id
+                  JOIN council_sessions cs ON cs.ksinr = d.ksinr
+                  JOIN council_decision_locations dl ON dl.decision_id = d.id
+                  JOIN council_locations l ON l.slug = dl.location_slug
+                 WHERE e.slug IN ({platz}) AND cs.session_date >= ?
+                 GROUP BY e.slug""", (*slugs, cutoff)).fetchall()}
+
+        # Ist die Entität selbst ein Ort, wissen wir genau, wo sie liegt — aus
+        # dem ganzen Verlauf statt aus einem Punkt. Das ist die beste Auskunft,
+        # die es gibt, und sie schlägt beide Heuristiken darunter.
+        zugehoerig: dict[str, set] = {}
+        for r in self._conn.execute(
+            f"SELECT location_slug, district FROM council_location_districts "
+            f"WHERE location_slug IN ({platz})", slugs).fetchall():
+            zugehoerig.setdefault(r["location_slug"], set()).add(r["district"].casefold())
+
+        punkte = {r["slug"]: (r["lat"], r["lon"]) for r in self._conn.execute(
+            f"SELECT slug, lat, lon FROM council_entity_meta "
+            f"WHERE slug IN ({platz}) AND lat IS NOT NULL AND lon IS NOT NULL",
+            slugs).fetchall()}
+
+        behalten = []
+        for k in kandidaten:
+            slug = k.get("slug") or ""
+            bereiche = zugehoerig.get(slug)
+            if bereiche is not None:
+                # Wir wissen, wo dieses Ding liegt. Dann entscheidet das — und
+                # sonst nichts. Die Breiten-Regel darf hier NICHT greifen: Eine
+                # Straße durch fünf Ortsbereiche ist kein stadtweites Programm,
+                # sondern eine lange Straße, und in jedem dieser fünf ein
+                # richtiger Vorschlag. Und der Mittelpunkt der Entität erst
+                # recht nicht: Für den Sandweg liegt er in Osternburg, einem
+                # Bereich, den die Straße überhaupt nicht berührt — dieselbe
+                # Bounding-Box-Falle wie bei den Orten selbst.
+                if eigener not in bereiche:
+                    continue
+                behalten.append(k)
+                continue
+            if breite.get(slug, 1) >= self.CITYWIDE_FROM_DISTRICTS:
+                continue
+            punkt = punkte.get(slug)
+            if punkt:
+                liegt_in = geo.ortsbereich_for(punkt[0], punkt[1])
+                if liegt_in and liegt_in.casefold() != eigener:
+                    continue
+            behalten.append(k)
+
+        behalten.sort(key=lambda k: (
+            self._looks_like_street(k.get("name") or ""),
+            -(k.get("avg_interest") or 50),
+            -(k.get("n_recent") or 0),
+            k.get("name") or "",
+        ))
+        return behalten
 
     def list_entities_geo(self) -> list[dict]:
         """Geocoded entities (points) for the city-wide map — slug, name, kind, n, lat, lon."""

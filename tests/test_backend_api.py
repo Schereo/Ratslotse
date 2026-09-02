@@ -106,7 +106,7 @@ def test_native_api_top_level_contracts(client):
         ("/api/quiz/stats", {"total", "by_area", "wrong", "streak", "badges", "daily_done"}),
         ("/api/quiz/daily", {"day", "done", "questions"}),
         ("/api/quiz/own", {"questions"}),
-        ("/api/onboarding/setup", {"step", "started_at", "done_at"}),
+        ("/api/onboarding/setup", {"step", "started_at", "done_at", "pending"}),
     ]
     for path, required in object_contracts:
         response = client.get(path, headers={"X-Client": "app"})
@@ -2104,7 +2104,8 @@ def test_onboarding_is_per_account(client):
 def test_native_setup_progress_can_resume_after_reinstall(client):
     _register(client)
     assert client.get("/api/onboarding/setup").json() == {
-        "step": 0, "started_at": None, "done_at": None,
+        # `pending`: frisches Konto ohne Themen und Abos → der Assistent ist dran.
+        "step": 0, "started_at": None, "done_at": None, "pending": True,
     }
     started = client.post("/api/onboarding/setup", json={"step": 2, "done": False})
     assert started.status_code == 200
