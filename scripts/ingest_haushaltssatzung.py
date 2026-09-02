@@ -35,6 +35,7 @@ from council.budget_bylaw import (  # noqa: E402
     parse_satzung,
 )
 from council.steuertabellen import HEBESATZ_ARTEN  # noqa: E402
+from council import finanzquellen  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
 
 COUNCIL_DB = Path(os.environ.get("COUNCIL_DB") or ROOT / "data" / "council.sqlite")
@@ -95,11 +96,12 @@ def main() -> dict:
 
     store = CouncilStore(Path(args.db))
     try:
-        rows = [dict(r) for r in store._conn.execute(  # noqa: SLF001
-            "SELECT document_id, label, url, raw_text, status "
-            "FROM council_attachments WHERE label LIKE '%Haushaltssatzung%' "
-            "ORDER BY document_id")]
-        print(f"{len(rows)} Anlage(n) mit „Haushaltssatzung“ im Label.", flush=True)
+        # Die Auswahl kommt aus der Registry — dieselbe wie im Datenstand-Cron.
+        # Bis 09/2026 stand hier ein eigenes LIKE, und „HH Satzung 2022" fiel
+        # durch beide Netze zugleich.
+        quelle = finanzquellen.QUELLEN["budget_bylaw"]
+        rows = quelle.dokumente(store, "document_id, label, url, raw_text, status")
+        print(f"{len(rows)} Anlage(n) mit Haushaltssatzung-Label.", flush=True)
 
         gelesen, risse, ohne_text = [], [], []
         for r in rows:

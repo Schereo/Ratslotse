@@ -34,6 +34,7 @@ from council.fees import (  # noqa: E402
     lies,
     lies_gebuehrensaetze,
 )
+from council import finanzquellen  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
 
 COUNCIL_DB = Path(os.environ.get("COUNCIL_DB") or ROOT / "data" / "council.sqlite")
@@ -47,12 +48,17 @@ def main() -> dict:
 
     store = CouncilStore(Path(args.db))
     try:
+        # Die Auswahl kommt aus der Registry (Label ODER Vorlagentitel) — 2021
+        # heißt die Anlage nur „Anlagen 1-4", ein eigenes LIKE auf das Label
+        # sah sie bis 09/2026 nicht.
+        wo, werte = finanzquellen.QUELLEN["fees"].erkennung.where()
         rows = [dict(r) for r in store._conn.execute(  # noqa: SLF001
             "SELECT a.document_id, a.label, a.url, a.raw_text, a.status, "
             "       v.template_number "
             "FROM council_attachments a LEFT JOIN council_templates v ON v.kvonr = a.kvonr "
-            "WHERE a.label LIKE '%Gebührenbedarf%' ORDER BY a.document_id")]
-        print(f"{len(rows)} Anlage(n) mit „Gebührenbedarf“ im Label.", flush=True)
+            "WHERE a.document_id IN (SELECT document_id FROM council_attachments WHERE " + wo + ") "
+            "ORDER BY a.document_id", werte)]
+        print(f"{len(rows)} Anlage(n) als Gebührenbedarfsberechnung erkannt.", flush=True)
 
         gelesen, saetze_gelesen, risse, ohne_text = [], [], [], []
         for r in rows:

@@ -1293,3 +1293,62 @@ def test_vier_quellen_haben_ein_skript_und_eine_marke():
         q = finanzquellen.QUELLEN[k]
         assert (ROOT / q.lauf[0]).exists(), q.lauf
         assert q.erkennung is not None or q.marke is not None, f"{k}: keine Dokumentmarke"
+
+
+# --------------------------------------------------------------------------
+# Erkennung über den Vorlagentitel (Gebühren 2021, Satzung 2022)
+# --------------------------------------------------------------------------
+
+def _vorlage_mit_anlage(store, kvonr, titel, document_id, label):
+    with store._conn:
+        store._conn.execute(
+            "INSERT OR REPLACE INTO council_templates (kvonr, template_number, title, fetched_at, status) "
+            "VALUES (?, ?, ?, datetime('now'), 'ok')", (kvonr, f"nr-{kvonr}", titel))
+        store._conn.execute(
+            "INSERT INTO council_attachments (document_id, kvonr, label, url, raw_text, n_pages, "
+            "fetched_at, status) VALUES (?, ?, ?, 'https://x', '', 19, datetime('now'), 'listed')",
+            (document_id, kvonr, label))
+
+
+def test_gebuehren_erkennt_die_anlage_ueber_den_vorlagentitel(tmp_path):
+    """224365 heißt „Anlagen 1-4" und hängt an „Gebührenbedarfsberechnungen
+    2021 - Bericht" — ein Label-Muster allein sieht sie nie. Eine gleichnamige
+    Anlage unter einer fremden Vorlage darf trotzdem nicht mitkommen."""
+    store = CouncilStore(tmp_path / "e.sqlite")
+    try:
+        _vorlage_mit_anlage(store, 22026, "Gebührenbedarfsberechnungen 2021 - Bericht", 224365, "Anlagen 1-4")
+        _vorlage_mit_anlage(store, 24176, "Satzung über die Höhe der Gebühren", 240042, "Anlagen 1-4")
+        _vorlage_mit_anlage(store, 25164, "Irgendwas", 252299, "Gebührenbedarfsrechnung 2023 Anlagen")
+        rows = finanzquellen.QUELLEN["fees"].dokumente(store, "document_id")
+        assert sorted(r["document_id"] for r in rows) == [224365, 252299]
+    finally:
+        store.close()
+
+
+def test_hh_satzung_gilt_als_haushaltssatzung(tmp_path):
+    """„HH Satzung 2022" (243361) ist die Satzung 2022; der Nachtrag bleibt draußen."""
+    store = CouncilStore(tmp_path / "s.sqlite")
+    try:
+        _vorlage_mit_anlage(store, 24443, "Haushalt 2022 - Beschluss", 243361, "HH Satzung 2022")
+        _vorlage_mit_anlage(store, 18669, "Nachtrag", 218588, "1. Nachtragshaushaltssatzung 2020")
+        _vorlage_mit_anlage(store, 25350, "Haushalt 2023", 254437, "Haushaltssatzung 2023")
+        rows = finanzquellen.QUELLEN["budget_bylaw"].dokumente(store, "document_id")
+        assert sorted(r["document_id"] for r in rows) == [243361, 254437]
+    finally:
+        store.close()
+
+
+def test_finanz_anlagen_filter_umfasst_die_vorlagentitel(tmp_path):
+    """Die Backfills (Text, OCR) laden nur Finanz-Anlagen — und müssen dieselben
+    finden wie die Registry, sonst bleibt ein erkanntes Dokument ohne Text."""
+    store = CouncilStore(tmp_path / "f.sqlite")
+    try:
+        _vorlage_mit_anlage(store, 22026, "Gebührenbedarfsberechnungen 2021 - Bericht", 224365, "Anlagen 1-4")
+        _vorlage_mit_anlage(store, 1, "Bebauungsplan", 5, "Anlagen 1-4")
+        _vorlage_mit_anlage(store, 2, "Haushalt 2022 - Beschluss", 6, "HH Satzung 2022")
+        wo, werte = finanzquellen.finanz_anlagen_where()
+        rows = store._conn.execute(
+            f"SELECT document_id FROM council_attachments WHERE {wo}", werte).fetchall()
+        assert sorted(r[0] for r in rows) == [6, 224365]
+    finally:
+        store.close()
