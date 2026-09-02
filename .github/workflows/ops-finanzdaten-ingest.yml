@@ -344,10 +344,10 @@ jobs:
                         spanne = f"{von}–{bis}" if von else "—"
                     # Eine leere Tabelle ist keine Panne, aber eine Ansage: Die
                     # Seite dazu steht dann ohne Daten da.
-                    print(f"  {t:32} {n:>6} Zeilen  {spanne}"
+                    print(f"  {t:38} {n:>6} Zeilen  {spanne}"
                           + ("   ← LEER" if not n else ""))
                 except Exception as e:                      # noqa: BLE001
-                    print(f"  {t:32} — {e}")
+                    print(f"  {t:38} — {e}")
             # herkunft_luecken() liefert ein dict {Tabelle: Anzahl}, keine
             # Liste — das hat den Lauf am 17.08. mit „KeyError: slice" beendet,
             # nachdem alles Inhaltliche schon erledigt war. Leeres dict heißt:
