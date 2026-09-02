@@ -256,8 +256,8 @@ def zeilen_bauen(rohzeilen, spalten, erste_grundlinie: float = 176.6):
     return aus
 
 
-def lies(rohzeilen, spalten, kopf, art="result"):
-    return _tabelle_lesen(zeilen_bauen(rohzeilen, spalten), kopf, art)
+def lies(rohzeilen, spalten, _kopf=None, art="result"):
+    return _tabelle_lesen(zeilen_bauen(rohzeilen, spalten), art)
 
 
 # --------------------------------------------------------------------------

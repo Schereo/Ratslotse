@@ -429,7 +429,7 @@ def _layout_waehlen(roh: list[tuple[int, str, list[float | None]]]):
     return layout, basis, treffer, gegenprobe
 
 
-def _tabelle_lesen(zeilen: list[list[Wort]], volltext: str, art: str):
+def _tabelle_lesen(zeilen: list[list[Wort]], art: str):
     """Eine Übersichtstabelle → Positionen, geprüft. Wirft bei jedem Riss."""
     daten: list[tuple[int, list[Wort]]] = []
     for z in zeilen:
@@ -634,7 +634,7 @@ def lies_tabellenseiten(seiten) -> Lesung:
         if art in gefunden:
             continue
         try:
-            positionen, basis, probe = _tabelle_lesen(zeilen, volltext, art)
+            positionen, basis, probe = _tabelle_lesen(zeilen, art)
         except VollzugFehler as fehler:
             # Keine Tabelle auf dieser Seite ist der Normalfall: Die Marke
             # steht auch über den Erläuterungen. Eine ANGEFANGENE Tabelle,
