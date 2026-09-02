@@ -199,7 +199,9 @@ function BetriebsKarte({ zeilen, abschluesse, juengstesJahr, herkunftFuer }: {
   // Bäderbetrieb plant 0 €) — es sei denn, der Jahresabschluss zeichnet
   // daneben eine zweite Linie, die sich bewegt (Durchsicht 02.09.2026).
   const flach = new Set(nach.map((z) => z.result)).size <= 1;
-  const zeigKurve = nach.length >= 3 && (!flach || (ist?.series.length ?? 0) >= 2);
+  const istBewegt = new Set((ist?.series ?? []).map((p) => ("value" in p ? p.value : null))
+    .filter((v) => v != null)).size > 1;
+  const zeigKurve = nach.length >= 3 && (!flach || istBewegt);
 
   return (
     <div className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
