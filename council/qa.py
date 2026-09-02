@@ -1752,6 +1752,9 @@ _F_AUFGABE = re.compile(
 # „Betriebskosten" gingen leer aus, obwohl sie dieselbe Frage stellen. Die
 # Endung fängt sie, ohne die Falle zu öffnen, die `\bteuer` schließt: Ein Wort
 # wie „Kostüm" endet nicht auf „kosten".
+_F_AUFGABE_FUER = re.compile(
+    r"(?:haushalt|etat|budget|ansatz|geplant|eingeplant|vorgesehen|veranschlagt)"
+    r"[^.?!]{0,30}\bfuer\b")
 _F_KOSTEN = re.compile(
     r"\bkost|kosten\b|\bteuer|\bpreis|gibt.{0,40}\baus\b|geben.{0,40}\baus\b|"
     r"ausgegeben fuer|ausgaben fuer|aufwend")
@@ -1929,7 +1932,13 @@ def geld_facetten(question: str, typ: str = "topic") -> set[str]:
     # Stadt …", „Rechtsgrundlage", „kürzen") ziehen sie auch ohne Kostenwort:
     # „Muss die Stadt das Theater betreiben?" fragt nach der Pflicht, nicht
     # nach dem Preis, und nur die Produktebene weiß die Antwort.
-    if _F_KOSTEN.search(t) or _F_AUFGABE.search(t):
+    # … und bei der Plan-Frage nach einer AUFGABE („Was stand 2022 im Haushalt
+    # für die Feuerwehr?"): Der Teilhaushalt heißt „Sicherheit und Ordnung",
+    # das Produkt „Brandschutz und Feuerwehr" — die Produktebene ist die
+    # Quelle, die den Namen kennt. Ohne Begriffstreffer liefert sie nichts,
+    # der Prompt wächst also nur, wenn es die Aufgabe wirklich gibt.
+    if _F_KOSTEN.search(t) or _F_AUFGABE.search(t) or (
+            "plan" in f and _F_AUFGABE_FUER.search(t)):
         f.add("produkte")
     # Das Warum steht im Jahresabschluss — ohne dessen Zahlen schwebt es.
     # Deshalb zieht `gruende` immer `ist` mit.
@@ -2402,10 +2411,23 @@ def _ansatz_block(a: dict | None) -> str:
     Ausgabearten, wo `council_budget` nur Teilhaushalte kennt."""
     if not a or not a.get("posten"):
         return ""
-    zeilen = [f"- {p['label']}: {_eur(p.get('amount'))}" for p in a["posten"]]
+    zeilen = []
+    for p in a["posten"]:
+        s = f"- {p['label']}: Ansatz {a['year']} {_eur(p.get('amount'))}"
+        if p.get("actual") is not None:
+            s += (f"; zuletzt abgerechnet {p['actual_year']}: {_eur(p['actual'])} "
+                  "(Jahresabschluss — das IST zu diesem Posten)")
+        zeilen.append(s)
+    # Bei einem Treffer im Fragewortlaut steht die Anweisung VORN: Die
+    # Live-Messung vom 02.09. zeigte, dass das Modell den Posten sonst neben
+    # Teilhaushalt und Produkten übersieht — die Frage nach dem Personal
+    # bekam vier Produkte und keine Personalaufwendungen.
+    kopf = ("PASSEND ZUR FRAGE — diese Posten beantworten sie direkt; nenne sie "
+            "zuerst.\n" if a.get("treffer") else "")
     return (f"\nHAUSHALTSANSATZ {a['year']} nach Ertrags- und Aufwandsarten (GEPLANT,\n"
             "aus dem Gesamtergebnishaushalt — der Stand der Einbringung, nicht\n"
-            "zwingend der Beschluss des Rates; Jahr immer nennen, NIE mit [id])"
+            f"zwingend der Beschluss des Rates; Jahr immer nennen, NIE mit [id]).\n{kopf}"
+            "Die Posten gelten für die GANZE Kernverwaltung, nicht für einen Teilhaushalt"
             + _beleg_text(a.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n" + _jahr_hinweis(a))
 
 
@@ -2740,7 +2762,18 @@ def _antraege_block(a: dict | None) -> str:
 #: schon 20 Beschlüsse à ~600 Zeichen, Debatten, Presse und Steckbriefe; was
 #: hier dazukommt, geht davon ab. Reicht es nicht, fallen die hinteren
 #: Facetten (Reihenfolge: GELD_FACETTEN) heraus — gemessen im Testkorpus.
-GELD_MAX_CHARS = 4500
+#:
+#: 4.500 war der Wert vom 17.08.2026, gemessen an 20 Facetten, von denen die
+#: vier neuen nie zusammen feuerten. Seit 02.09. sind es 29 (Vollzug, Satzung,
+#: Spenden, Beteiligungen, Betriebe, Vorhaben, Hebesätze, Steuerplan,
+#: Ausgabenreihe), und die Bausteine der neuen Schichten tragen je einen
+#: Warn-Absatz und einen Beleg (1,2–2,4k Zeichen). Gemessen am Korpus von 34
+#: Fragen (scratchpad/mess_facetten.py, dev-Kopie): Bei 4.500 verloren drei
+#: Fragen ganze Bausteine — „Was wird 2026 gebaut?" das Ist zum Plan, „Was
+#: kostet der Neubau der Feuerwache?" die Produktebene (6.461 Zeichen
+#: zusammen). 6.500 hält alle 34; darüber wächst nur, was ohnehin nie
+#: zusammen feuert. Die Beschlüsse daneben (20 × ~600) bleiben unberührt.
+GELD_MAX_CHARS = 6500
 
 #: Baustein je Facette. Reihenfolge steckt in GELD_FACETTEN.
 _GELD_BAUSTEINE = {
