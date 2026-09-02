@@ -8728,7 +8728,7 @@ class CouncilStore:
         nicht halb in SQL."""
         return [dict(r) for r in self._conn.execute(
             """SELECT d.template_number, d.title AS title, d.official_text, d.outcome,
-                      s.session_date AS sitzung, s.committee AS gremiensitzung,
+                      s.session_date AS session_date, s.committee AS gremiensitzung,
                       v.raw_text, v.document_id AS document_id,
                       v.document_url AS dokument_url
                  FROM council_decisions d
