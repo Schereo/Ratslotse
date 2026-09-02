@@ -1460,13 +1460,14 @@ wie ein Jahr ohne Beamtenstellen — er bleibt draußen.
 
 :::caution[Teil B 2026 fehlt an der Zeichenzuordnung, nicht am Parser]
 Der Stellenplan 2026 (Anlage 297432, 20 Seiten) trägt beide Teile — lesbar ist
-nur einer. Seitenweise nachgemessen: **Teil A steht auf den Seiten 3–4** in
+nur einer. Seitenweise nachgemessen, mit `pypdf` und damit derselben
+Extraktion wie der Backfill: **Teil A steht auf den Seiten 3–4** in
 TrueType/Type1, Buchstabenanteil 0,45 bis 0,50. **Teil B steht auf den Seiten
 5–9**, und die tragen eine **Type3**-Schrift ohne `ToUnicode`-Tabelle. Was
-`pypdf` daraus holt, sind Glyphen-Nummern („/0 /1 /2 /3") — 0,3 bis 3,4 %
-Buchstaben je Seite. Dieselbe Schrift steht auf den Seiten 15–20, der
-Aufteilung nach der Verwaltungsgliederung, die diese Schicht ohnehin nicht
-liest. Im Jahrgang 2025 (Anlage 282872) sind dieselben Tabellen TrueType/Type1
+`pypdf` daraus holt, sind Glyphen-Nummern („/0 /1 /2 /3") — 0,8 bis 1,6 %
+Buchstaben je Seite. Dieselbe Schrift steht auf den Seiten 15–20 (2,2 bis
+2,9 %), der Aufteilung nach der Verwaltungsgliederung, die diese Schicht
+ohnehin nicht liest. Im Jahrgang 2025 (Anlage 282872) sind dieselben Tabellen TrueType/Type1
 und gehen glatt durch.
 
 Das erklärt auch die Textmenge, die zuerst nach einer doppelten Extraktion

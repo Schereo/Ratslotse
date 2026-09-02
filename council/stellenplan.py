@@ -198,11 +198,12 @@ _ENDE = ("Dienstkräfte in der Ausbildungszeit", "Übersicht zum Stellenplan",
 #: anderes als „gibt es nicht".
 #:
 #: NACHGEMESSEN am 02.09.2026 an Dokument 297432 („2026 022 Vw Stellenplan"),
-#: Seite für Seite: Teil A steht auf den Seiten 3–4 (Schrift TrueType/Type1,
-#: Buchstabenanteil 0,45 bis 0,50), **Teil B auf den Seiten 5–9** — und die
-#: tragen eine **Type3**-Schrift ohne ``ToUnicode``. Was dort herauskommt,
-#: sind zu 99,7 % keine Buchstaben (0,003 bis 0,034 je Seite). Dieselbe
-#: Schrift steht auf den Seiten 15–20, der Aufteilung nach der
+#: Seite für Seite mit ``pypdf``, also derselben Extraktion wie der Backfill:
+#: Teil A steht auf den Seiten 3–4 (Schrift TrueType/Type1, Buchstabenanteil
+#: 0,45 bis 0,50), **Teil B auf den Seiten 5–9** — und die tragen eine
+#: **Type3**-Schrift ohne ``ToUnicode``. Dort sind 0,8 bis 1,6 % des
+#: Extrakts Buchstaben, der Rest Glyphen-Nummern. Dieselbe Schrift steht auf
+#: den Seiten 15–20 (2,2 bis 2,9 %), der Aufteilung nach der
 #: Verwaltungsgliederung, die diese Schicht ohnehin nicht liest. Im Jahrgang
 #: 2025 (Dokument 282872) sind dieselben Tabellen TrueType/Type1 und lesbar.
 #:
