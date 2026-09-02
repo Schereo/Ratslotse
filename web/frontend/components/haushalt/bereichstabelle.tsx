@@ -301,9 +301,8 @@ export function Bereichstabelle({ zeilen, year }: { zeilen: HaushaltZeile[]; yea
                 <Info className="h-3 w-3 text-primary" />
               </span>
               <p className="text-[12px] leading-relaxed text-muted-foreground">
-                {ueberschuss.length === 1 ? "Ein Bereich wird" : `${ueberschuss.length} Bereiche werden`} in
-                der Zuschussliste nicht aufgeführt, weil die dort verbuchten Erträge mindestens
-                so hoch sind wie die Ausgaben:{" "}
+                {ueberschuss.length === 1 ? "Ein Bereich steht" : `${ueberschuss.length} Bereiche stehen`} nicht
+                in der Zuschussliste — die eigenen Erträge decken dort die Ausgaben:{" "}
                 {/* Als Klammerzusatz und nicht als Satz mit Verb: Ein Bereich
                     heißt „nicht rechtsfähige Stiftungen", der nächste
                     „Finanzmanagement und Recht" — jede Vorlage mit Prädikat
