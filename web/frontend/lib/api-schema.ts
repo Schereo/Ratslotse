@@ -4525,7 +4525,7 @@ export interface components {
             cash_budget_totals: unknown;
             /** Provenance */
             provenance: {
-                [key: string]: unknown;
+                [key: string]: components["schemas"]["Herkunft"];
             };
             /** Rows */
             rows: unknown;
@@ -4551,7 +4551,7 @@ export interface components {
             items: unknown;
             /** Provenance */
             provenance: {
-                [key: string]: unknown;
+                [key: string]: components["schemas"]["Herkunft"];
             };
             /** Years */
             years: unknown;
@@ -4564,7 +4564,7 @@ export interface components {
             cities: unknown;
             /** Provenance */
             provenance: {
-                [key: string]: unknown;
+                [key: string]: components["schemas"]["Herkunft"];
             };
             /** Values */
             values: unknown;
@@ -4594,7 +4594,7 @@ export interface components {
             interest_expense: unknown;
             /** Provenance */
             provenance: {
-                [key: string]: unknown;
+                [key: string]: components["schemas"]["Herkunft"];
             };
             /** Scope Note */
             scope_note: unknown;
@@ -4633,7 +4633,7 @@ export interface components {
             };
             /** Provenance */
             provenance: {
-                [key: string]: unknown;
+                [key: string]: components["schemas"]["Herkunft"];
             };
             /** Reporting Dates */
             reporting_dates: unknown[];
@@ -4656,7 +4656,7 @@ export interface components {
             missing: unknown;
             /** Provenance */
             provenance: {
-                [key: string]: unknown;
+                [key: string]: components["schemas"]["Herkunft"];
             };
             /** Scope Note */
             scope_note: unknown;
@@ -4677,7 +4677,7 @@ export interface components {
             items: unknown;
             /** Provenance */
             provenance: {
-                [key: string]: unknown;
+                [key: string]: components["schemas"]["Herkunft"];
             };
             /** Years */
             years: unknown;
@@ -4696,7 +4696,7 @@ export interface components {
             people: unknown[];
             /** Provenance */
             provenance: {
-                [key: string]: unknown;
+                [key: string]: components["schemas"]["Herkunft"];
             };
             /** Report Years */
             report_years: unknown;
@@ -4711,7 +4711,7 @@ export interface components {
             measures: unknown[];
             /** Provenance */
             provenance: {
-                [key: string]: unknown;
+                [key: string]: components["schemas"]["Herkunft"];
             };
             /** Sub Budgets */
             sub_budgets: unknown[];
@@ -4728,7 +4728,7 @@ export interface components {
             investments: unknown[];
             /** Provenance */
             provenance: {
-                [key: string]: unknown;
+                [key: string]: components["schemas"]["Herkunft"];
             };
             /** Sub Budgets */
             sub_budgets: unknown[];
@@ -4786,7 +4786,7 @@ export interface components {
             product_years?: unknown;
             /** Provenance */
             provenance?: {
-                [key: string]: unknown;
+                [key: string]: components["schemas"]["Herkunft"];
             };
             /** Reserves */
             reserves?: unknown;
@@ -4843,7 +4843,7 @@ export interface components {
             part_names: unknown;
             /** Provenance */
             provenance: {
-                [key: string]: unknown;
+                [key: string]: components["schemas"]["Herkunft"];
             };
             /** Rows */
             rows: unknown;
@@ -5568,6 +5568,77 @@ export interface components {
         Health: {
             /** Status */
             status: string;
+        };
+        /**
+         * Herkunft
+         * @description Ein Datensatz aus ``council_provenance``, wie ihn ``get_herkunft`` ausgibt.
+         *
+         *     ACHTUNG: Die Quelle ist ein ``SELECT *``. Jede neue Spalte der Tabelle ist
+         *     sofort Teil der Antwort — und fiele ohne Eintrag hier genauso still wieder
+         *     heraus, weil ein TypedDict entfernt, was es nicht kennt. Dagegen steht
+         *     ``tests/test_api_vertrag.py::test_zeilen_typen_kennen_alle_spalten_ihrer_tabelle``.
+         *
+         *     ``key`` fehlt bewusst: Der interne Fingerabdruck wird vor der Ausgabe
+         *     entfernt, er ist kein Lesestoff.
+         */
+        Herkunft: {
+            /** As Of */
+            as_of: string | null;
+            /** Citation */
+            citation: string | null;
+            /** Document Id */
+            document_id: number | null;
+            /** Fetched At */
+            fetched_at: string;
+            /** Id */
+            id: number;
+            /** Kind */
+            kind: string;
+            /** Label */
+            label: string | null;
+            /**
+             * Ratsvorgang
+             * @description Der Beschluss, der ein Beleg-Dokument verabschiedet hat.
+             *
+             *     Wird in ``CouncilStore.beschluesse_zu_dokumenten`` Feld für Feld gebaut,
+             *     nicht aus einem ``SELECT *`` — die Aufzählung hier ist deshalb vollständig
+             *     und bleibt es.
+             *
+             *     ``outcome`` kommt ungefiltert, auch ``vertagt`` oder ``abgelehnt``: Eine
+             *     Zahl, deren Vorgang noch läuft, ist keine Zahl ohne Beleg.
+             */
+            official_text: {
+                /** Committee */
+                committee: string | null;
+                /** Date */
+                date: string | null;
+                /** Id */
+                id: number;
+                /** Ksinr */
+                ksinr: number;
+                /** Kvonr */
+                kvonr: number | null;
+                /** Outcome */
+                outcome: string | null;
+                /** Template Number */
+                template_number: string | null;
+                /** Title */
+                title: string | null;
+                /** Top */
+                top: string | null;
+                /** Vote */
+                vote: string | null;
+            } | null;
+            /** Page */
+            page: number | null;
+            /** Probe */
+            probe: string;
+            /** Probe Result */
+            probe_result: string | null;
+            /** Probes */
+            probes: string[];
+            /** Url */
+            url: string | null;
         };
         /** HighestDecisionId */
         HighestDecisionId: {
@@ -6568,6 +6639,39 @@ export interface components {
             correct: number;
             /** Points */
             points: number;
+        };
+        /**
+         * Ratsvorgang
+         * @description Der Beschluss, der ein Beleg-Dokument verabschiedet hat.
+         *
+         *     Wird in ``CouncilStore.beschluesse_zu_dokumenten`` Feld für Feld gebaut,
+         *     nicht aus einem ``SELECT *`` — die Aufzählung hier ist deshalb vollständig
+         *     und bleibt es.
+         *
+         *     ``outcome`` kommt ungefiltert, auch ``vertagt`` oder ``abgelehnt``: Eine
+         *     Zahl, deren Vorgang noch läuft, ist keine Zahl ohne Beleg.
+         */
+        Ratsvorgang: {
+            /** Committee */
+            committee: string | null;
+            /** Date */
+            date: string | null;
+            /** Id */
+            id: number;
+            /** Ksinr */
+            ksinr: number;
+            /** Kvonr */
+            kvonr: number | null;
+            /** Outcome */
+            outcome: string | null;
+            /** Template Number */
+            template_number: string | null;
+            /** Title */
+            title: string | null;
+            /** Top */
+            top: string | null;
+            /** Vote */
+            vote: string | null;
         };
         /** RegisterRequest */
         RegisterRequest: {
@@ -11946,4 +12050,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: e5864460e918e22a1f01fce0c533c8adb5f6104d456c3ca5c22a66a40b85773b
+// vertrag-sha256: 931dbf9bbda9f7e8a2a218eb2f3a1851b4f97d1845df83e28123fbbfa8138a60

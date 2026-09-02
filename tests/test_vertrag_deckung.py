@@ -14,7 +14,7 @@ dass jeder aufgerufene *Pfad* existiert. Beide sagen nichts über die
 **Warum das keine Liste ist, die man einmal leert.** Die meisten Felder, die
 hier stehen, sind völlig in Ordnung — sie existieren, das Backend liefert sie,
 nur beschreibt der Vertrag sie nicht: Sie stecken in einer der Nutzlasten, die
-irgendwo ein offenes ``additionalProperties`` tragen (Stand heute 43 von 229
+irgendwo ein offenes ``additionalProperties`` tragen (Stand heute 30 von 229
 Schemata). Solange das so ist, kann niemand maschinell zwischen „Feld, das der
 Vertrag verschweigt" und „Feld, das es nicht mehr gibt" unterscheiden.
 
@@ -132,19 +132,10 @@ OFFENE_SCHEMATA = {
     "AdminJob",
     "AnalysisData",
     "BookmarkEntry",
-    "BudgetAmendmentLists",
-    "BudgetBalanceSheet",
-    "BudgetComparison",
     "BudgetDataState",
     "BudgetDebt",
     "BudgetExecution",
     "BudgetFixedAssets",
-    "BudgetGroup",
-    "BudgetHoldings",
-    "BudgetInvestmentProgram",
-    "BudgetInvestments",
-    "BudgetOverview",
-    "BudgetStaffPlan",
     "ConversationTurn",
     "CouncilWeekPreview",
     "DecisionDetail",
@@ -200,13 +191,11 @@ WEB_OHNE_VERTRAG = {
     ("Beratung", "future"),
     ("Beratung", "is_public"),
     ("Beratung", "result"),
-    ("Beratung", "top"),
     ("DecisionDetail", "amount"),
     ("DecisionDetail", "anlagen"),
     ("DecisionDetail", "applicants"),
     ("DecisionDetail", "art"),
     ("DecisionDetail", "bild"),
-    ("DecisionDetail", "document_id"),
     ("DecisionDetail", "href"),
     ("DecisionDetail", "is_motion"),
     ("FieldRecap", "field_label"),
@@ -223,16 +212,6 @@ WEB_OHNE_VERTRAG = {
     ("QuizImageCredit", "license"),
     ("QuizImageCredit", "license_url"),
     ("QuizBadge", "tier"),
-    # `lib/herkunft.ts` — das Beleg-Format. Es hängt an `provenance`, und das
-    # ist in zwölf Haushalts-Schemata eine offene Nutzlast. Wer `Provenance`
-    # in antworten.py beschreibt, streicht diese sieben Zeilen auf einmal.
-    ("Herkunft", "as_of"),
-    ("Herkunft", "document_id"),
-    ("Herkunft", "page"),
-    ("Herkunft", "probe"),
-    ("Herkunft", "probe_result"),
-    ("Herkunft", "probes"),
-    ("Ratsvorgang", "top"),
 }
 
 #: Dasselbe für die iOS-App. Zwei Einträge sind hier anders als der Rest:
@@ -246,7 +225,6 @@ APP_OHNE_VERTRAG = {
     "applicants",
     "art",
     "calendar_id",
-    "document_id",
     "future",
     "is_motion",
     "is_public",
@@ -259,7 +237,6 @@ APP_OHNE_VERTRAG = {
     "rest",
     "result",
     "titel_kurz",
-    "top",
     "wichtig_grund",
 }
 
