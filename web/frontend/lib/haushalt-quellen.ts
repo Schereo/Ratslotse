@@ -357,6 +357,9 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     herausgeber: "Stadt Oldenburg, Amt für Controlling und Finanzen",
     as_of: "Berichte 2018 und 2022–2026",
     standWort: "Berichtsjahre",
+    url: "https://buergerinfo.oldenburg.de/",
+    art: "pdf",
+  },
   liquidity: {
     title: "Liquiditätsstand zum Monatsende",
     citation:

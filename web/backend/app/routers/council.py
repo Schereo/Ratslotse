@@ -38,7 +38,7 @@ from kern.store import Store
 from .. import deepresearch
 from ..config import get_settings
 from ..antworten import (AnalysisData, BudgetAmendmentLists, BudgetAuditReports,
-                         BudgetBalanceSheet, BudgetComparison, BudgetDataState, BudgetDebt, BudgetLoans,
+                         BudgetBalanceSheet, BudgetComparison, BudgetDataState, BudgetDebt, BudgetLiquidity, BudgetLoans,
                          BudgetDispute, BudgetDocuments, BudgetExecution,
                          BudgetFixedAssets, BudgetGroup,
                          BudgetHoldings, BudgetInvestmentProgram, BudgetInvestments,
@@ -3976,6 +3976,60 @@ def haushalt_bilanz(
         "years": store.bilanz_jahre(),
         "items": posten,
         "explanations": erlaeuterungen,
+        "provenance": {str(h["id"]): h for h in store.get_herkunft(ids)},
+    }
+
+
+@router.get("/budget/liquidity")
+def haushalt_liquiditaet(
+    _user: dict = Depends(require_active),
+    store: CouncilStore = Depends(get_council_store),
+) -> BudgetLiquidity:
+    """Der Liquiditätsstand — wie viel Geld die Stadt am Monatsende auf dem Konto hat.
+
+    Aus den Grafiken, die die Verwaltung dem Finanzausschuss monatlich vorlegt
+    (``council/liquidity.py``): je Monat der jüngste Beleg, ``confirmations``
+    sagt, in wie vielen Grafiken der Wert steht, ``revised_from`` trägt den
+    Wert, den eine spätere Grafik der Verwaltung ersetzt hat.
+
+    - ``latest``: der jüngste Monat; ``last_12``: Tief und Hoch der letzten
+      zwölf Monate; ``year_ends``: die Dezember-Stände — der Vergleich über
+      Jahre, ohne die Saisonkurve.
+    - ``coverage``: erster und letzter Monat und die fehlenden dazwischen.
+
+    Der Stand ist ein KONTOSTAND, kein Vermögen und kein Haushaltsergebnis;
+    er kann unter null liegen (Juli 2016: −7,6 Mio. €). Der Rahmen dafür
+    steht in § 4 der Haushaltssatzung (Höchstbetrag der Liquiditätskredite,
+    ``/budget``, ``budget_bylaw``).
+    """
+    reihe = store.get_liquidity()
+    monate = [r["month"] for r in reihe]
+    fehlend: list[str] = []
+    if monate:
+        j, m = int(monate[0][:4]), int(monate[0][5:7])
+        vorhanden = set(monate)
+        while f"{j:04d}-{m:02d}" <= monate[-1]:
+            k = f"{j:04d}-{m:02d}"
+            if k not in vorhanden:
+                fehlend.append(k)
+            m += 1
+            if m > 12:
+                m, j = 1, j + 1
+    letzte12 = reihe[-12:]
+    ids = sorted({r["herkunft_id"] for r in reihe if r.get("herkunft_id") is not None})
+    return {
+        "scope_note": ("Kontostand der Stadt am Monatsende laut der Grafik, die die Verwaltung dem "
+                       "Ausschuss für Finanzen und Beteiligungen monatlich vorlegt — kein Vermögen, "
+                       "kein Haushaltsergebnis. Kann unter null liegen; den Rahmen dafür setzt § 4 "
+                       "der Haushaltssatzung (Höchstbetrag der Liquiditätskredite)."),
+        "series": reihe,
+        "latest": reihe[-1] if reihe else None,
+        "last_12": {"months": len(letzte12),
+                    "min": min(letzte12, key=lambda r: r["amount"]) if letzte12 else None,
+                    "max": max(letzte12, key=lambda r: r["amount"]) if letzte12 else None},
+        "year_ends": [r for r in reihe if r["month"].endswith("-12")],
+        "coverage": {"from": monate[0] if monate else None, "to": monate[-1] if monate else None,
+                     "missing": fehlend, "months": len(monate)},
         "provenance": {str(h["id"]): h for h in store.get_herkunft(ids)},
     }
 

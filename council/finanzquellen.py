@@ -2584,6 +2584,7 @@ for _q in (
         # ab 2022; die älteren findet der Ingest über die Vorlage (kvonr).
         erkennung=Erkennung(label_muster=("%Liquiditätsstand%",), oder=True),
         nachschub="scripts/ingest_liquiditaet.py (lädt fehlende Grafiken selbst)",
+        lauf=("scripts/ingest_liquiditaet.py",),
         balance=_bestand_liquiditaet,
     ),
     Finanzquelle(

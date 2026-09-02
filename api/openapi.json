@@ -2961,6 +2961,142 @@
         "title": "BudgetInvestments",
         "type": "object"
       },
+      "BudgetLiquidity": {
+        "properties": {
+          "coverage": {
+            "$ref": "#/components/schemas/LiquidityCoverage"
+          },
+          "last_12": {
+            "$ref": "#/components/schemas/LiquidityWindow"
+          },
+          "latest": {
+            "description": "Ein Monatsende (``council_liquidity``).",
+            "properties": {
+              "amount": {
+                "title": "Amount",
+                "type": "number"
+              },
+              "as_of": {
+                "title": "As Of",
+                "type": "string"
+              },
+              "confirmations": {
+                "title": "Confirmations",
+                "type": "integer"
+              },
+              "document_id": {
+                "title": "Document Id",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "fetched_at": {
+                "title": "Fetched At",
+                "type": "string"
+              },
+              "herkunft_id": {
+                "title": "Herkunft Id",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "month": {
+                "title": "Month",
+                "type": "string"
+              },
+              "probes": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Probes",
+                "type": "array"
+              },
+              "revised_from": {
+                "title": "Revised From",
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "template_number": {
+                "title": "Template Number",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "url": {
+                "title": "Url",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "year": {
+                "title": "Year",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "month",
+              "year",
+              "amount",
+              "as_of",
+              "confirmations",
+              "revised_from",
+              "document_id",
+              "url",
+              "template_number",
+              "probes",
+              "herkunft_id",
+              "fetched_at"
+            ],
+            "title": "LiquidityMonth",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "provenance": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Herkunft"
+            },
+            "title": "Provenance",
+            "type": "object"
+          },
+          "scope_note": {
+            "title": "Scope Note",
+            "type": "string"
+          },
+          "series": {
+            "items": {
+              "$ref": "#/components/schemas/LiquidityMonth"
+            },
+            "title": "Series",
+            "type": "array"
+          },
+          "year_ends": {
+            "items": {
+              "$ref": "#/components/schemas/LiquidityMonth"
+            },
+            "title": "Year Ends",
+            "type": "array"
+          }
+        },
+        "required": [
+          "scope_note",
+          "series",
+          "latest",
+          "last_12",
+          "year_ends",
+          "coverage",
+          "provenance"
+        ],
+        "title": "BudgetLiquidity",
+        "type": "object"
+      },
       "BudgetLoans": {
         "properties": {
           "coverage": {
@@ -3103,13 +3239,6 @@
             "title": "Notices",
             "type": "array"
           },
-          "provenance": {
-            "additionalProperties": {
-              "$ref": "#/components/schemas/Herkunft"
-            },
-            "title": "Provenance",
-            "type": "object"
-          },
           "rates": {
             "items": {
               "$ref": "#/components/schemas/LoanItem"
@@ -3137,8 +3266,7 @@
           "coverage",
           "rates",
           "refinancing_by_year",
-          "latest_refinancing",
-          "provenance"
+          "latest_refinancing"
         ],
         "title": "BudgetLoans",
         "type": "object"
@@ -5460,6 +5588,325 @@
         "title": "LimitsUpdate",
         "type": "object"
       },
+      "LiquidityCoverage": {
+        "properties": {
+          "from": {
+            "title": "From",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "missing": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing",
+            "type": "array"
+          },
+          "months": {
+            "title": "Months",
+            "type": "integer"
+          },
+          "to": {
+            "title": "To",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "missing",
+          "months"
+        ],
+        "title": "LiquidityCoverage",
+        "type": "object"
+      },
+      "LiquidityMonth": {
+        "description": "Ein Monatsende (``council_liquidity``).",
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": "number"
+          },
+          "as_of": {
+            "title": "As Of",
+            "type": "string"
+          },
+          "confirmations": {
+            "title": "Confirmations",
+            "type": "integer"
+          },
+          "document_id": {
+            "title": "Document Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "fetched_at": {
+            "title": "Fetched At",
+            "type": "string"
+          },
+          "herkunft_id": {
+            "title": "Herkunft Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "month": {
+            "title": "Month",
+            "type": "string"
+          },
+          "probes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Probes",
+            "type": "array"
+          },
+          "revised_from": {
+            "title": "Revised From",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "template_number": {
+            "title": "Template Number",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "url": {
+            "title": "Url",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "year": {
+            "title": "Year",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "month",
+          "year",
+          "amount",
+          "as_of",
+          "confirmations",
+          "revised_from",
+          "document_id",
+          "url",
+          "template_number",
+          "probes",
+          "herkunft_id",
+          "fetched_at"
+        ],
+        "title": "LiquidityMonth",
+        "type": "object"
+      },
+      "LiquidityWindow": {
+        "properties": {
+          "max": {
+            "description": "Ein Monatsende (``council_liquidity``).",
+            "properties": {
+              "amount": {
+                "title": "Amount",
+                "type": "number"
+              },
+              "as_of": {
+                "title": "As Of",
+                "type": "string"
+              },
+              "confirmations": {
+                "title": "Confirmations",
+                "type": "integer"
+              },
+              "document_id": {
+                "title": "Document Id",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "fetched_at": {
+                "title": "Fetched At",
+                "type": "string"
+              },
+              "herkunft_id": {
+                "title": "Herkunft Id",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "month": {
+                "title": "Month",
+                "type": "string"
+              },
+              "probes": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Probes",
+                "type": "array"
+              },
+              "revised_from": {
+                "title": "Revised From",
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "template_number": {
+                "title": "Template Number",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "url": {
+                "title": "Url",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "year": {
+                "title": "Year",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "month",
+              "year",
+              "amount",
+              "as_of",
+              "confirmations",
+              "revised_from",
+              "document_id",
+              "url",
+              "template_number",
+              "probes",
+              "herkunft_id",
+              "fetched_at"
+            ],
+            "title": "LiquidityMonth",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "min": {
+            "description": "Ein Monatsende (``council_liquidity``).",
+            "properties": {
+              "amount": {
+                "title": "Amount",
+                "type": "number"
+              },
+              "as_of": {
+                "title": "As Of",
+                "type": "string"
+              },
+              "confirmations": {
+                "title": "Confirmations",
+                "type": "integer"
+              },
+              "document_id": {
+                "title": "Document Id",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "fetched_at": {
+                "title": "Fetched At",
+                "type": "string"
+              },
+              "herkunft_id": {
+                "title": "Herkunft Id",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "month": {
+                "title": "Month",
+                "type": "string"
+              },
+              "probes": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Probes",
+                "type": "array"
+              },
+              "revised_from": {
+                "title": "Revised From",
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "template_number": {
+                "title": "Template Number",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "url": {
+                "title": "Url",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "year": {
+                "title": "Year",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "month",
+              "year",
+              "amount",
+              "as_of",
+              "confirmations",
+              "revised_from",
+              "document_id",
+              "url",
+              "template_number",
+              "probes",
+              "herkunft_id",
+              "fetched_at"
+            ],
+            "title": "LiquidityMonth",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "months": {
+            "title": "Months",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "months",
+          "min",
+          "max"
+        ],
+        "title": "LiquidityWindow",
+        "type": "object"
+      },
       "LoanCoverage": {
         "properties": {
           "from": {
@@ -5657,17 +6104,6 @@
               "null"
             ]
           },
-          "fetched_at": {
-            "title": "Fetched At",
-            "type": "string"
-          },
-          "herkunft_id": {
-            "title": "Herkunft Id",
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
           "interest_saving": {
             "title": "Interest Saving",
             "type": [
@@ -5690,13 +6126,6 @@
           "period_to": {
             "title": "Period To",
             "type": "string"
-          },
-          "probes": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Probes",
-            "type": "array"
           },
           "saving_from": {
             "title": "Saving From",
@@ -5733,10 +6162,7 @@
           "saving_from",
           "saving_to",
           "document_id",
-          "document_url",
-          "probes",
-          "herkunft_id",
-          "fetched_at"
+          "document_url"
         ],
         "title": "LoanNotice",
         "type": "object"
@@ -12708,6 +13134,28 @@
           }
         },
         "summary": "Haushalt Weg",
+        "tags": [
+          "council"
+        ]
+      }
+    },
+    "/api/council/budget/liquidity": {
+      "get": {
+        "description": "Der Liquiditätsstand — wie viel Geld die Stadt am Monatsende auf dem Konto hat.\n\nAus den Grafiken, die die Verwaltung dem Finanzausschuss monatlich vorlegt\n(``council/liquidity.py``): je Monat der jüngste Beleg, ``confirmations``\nsagt, in wie vielen Grafiken der Wert steht, ``revised_from`` trägt den\nWert, den eine spätere Grafik der Verwaltung ersetzt hat.\n\n- ``latest``: der jüngste Monat; ``last_12``: Tief und Hoch der letzten\n  zwölf Monate; ``year_ends``: die Dezember-Stände — der Vergleich über\n  Jahre, ohne die Saisonkurve.\n- ``coverage``: erster und letzter Monat und die fehlenden dazwischen.\n\nDer Stand ist ein KONTOSTAND, kein Vermögen und kein Haushaltsergebnis;\ner kann unter null liegen (Juli 2016: −7,6 Mio. €). Der Rahmen dafür\nsteht in § 4 der Haushaltssatzung (Höchstbetrag der Liquiditätskredite,\n``/budget``, ``budget_bylaw``).",
+        "operationId": "haushalt_liquiditaet_api_council_budget_liquidity_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetLiquidity"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Haushalt Liquiditaet",
         "tags": [
           "council"
         ]
