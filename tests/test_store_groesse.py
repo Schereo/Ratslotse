@@ -24,7 +24,10 @@ STORE = WURZEL / "council" / "store.py"
 
 #: Stand nach dem vierten Schnitt (02.09.2026). Darf schrumpfen.
 HOECHSTENS_METHODEN = 375
-HOECHSTENS_ZEILEN = 13171
+#: 13.171 nach dem Schnitt, +7 für den Kommentar über der doppelt vergebenen
+#: `_ANREDEN`-Liste. Die Sperrklinke hat den Zuwachs gefangen und die
+#: Entscheidung erzwungen — so soll sie wirken.
+HOECHSTENS_ZEILEN = 13178
 
 
 def _klasse() -> ast.ClassDef:
