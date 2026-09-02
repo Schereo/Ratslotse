@@ -109,13 +109,6 @@ _BASIS_SATZ = (
     "nicht dieselbe Größe wie der Ansatz ab 2021.")
 
 
-def _beleg_text(b: dict | None) -> str:
-    if not b:
-        return ""
-    teile = [str(t) for t in (b.get("label"), b.get("citation")) if t]
-    return f" — Beleg: {', '.join(teile)}" if teile else ""
-
-
 def _de_tag(iso: str | None) -> str:
     """„30.06.2026" aus „2026-06-30" — wie die Seite den Stichtag schreibt."""
     if not iso or len(iso) < 10:
@@ -207,7 +200,7 @@ def block(data: dict | None) -> str:
         f"- {_ERGEBNIS_WORT['result']} {data['year']}, Stand {tag}: geplant "
         f"{geld.de_mio(e.get('budgeted'))}, erwartet {geld.de_mio(e.get('forecast'))} "
         f"— Abweichung {geld.de_mio(e.get('deviation'))} (so im Bericht gedruckt)"
-        + _beleg_text(data.get("beleg"))
+        + geld.beleg_text(data.get("beleg"))
     ]
     if data.get("anderer_jahrgang"):
         zeilen.append("- Für das gefragte Jahr liegt kein Bericht vor; die "

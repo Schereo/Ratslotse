@@ -56,21 +56,6 @@ def recognize(text: str, typ: str, facets: set[str]) -> bool:
     return bool(_SPENDE.search(text) or _ZUWENDUNG.search(text))
 
 
-def _euro(v: float | None) -> str:
-    """„788.669 €" — die Beträge dieser Quelle sind fünf- bis sechsstellig.
-
-    ``geld.de_mio`` wäre hier falsch: Es machte aus jeder Jahressumme
-    „0,8 Mio. €" und aus jeder einzelnen Spende „0,3 Mio. €"."""
-    return f"{v:,.0f} €".replace(",", ".") if v is not None else "–"
-
-
-def _beleg_text(b: dict | None) -> str:
-    if not b:
-        return ""
-    teile = [str(t) for t in (b.get("label"), b.get("citation")) if t]
-    return f" — Beleg: {', '.join(teile)}" if teile else ""
-
-
 class Store:
     """Mixin für ``CouncilStore`` — die Spendenreihe für den Antwort-Prompt."""
 
@@ -138,7 +123,7 @@ def block(data: dict | None) -> str:
     if not data or data.get("summe") is None:
         return ""
     kopf = (f"- {data['year']}: {data['anzahl']} Beschlüsse über zusammen "
-            f"{_euro(data['summe'])}")
+            f"{geld.de_euro(data['summe'])}")
     if data.get("gremien"):
         kopf += " (" + ", ".join(f"{x['committee']} {x['anzahl']}"
                                  for x in data["gremien"]) + ")"
@@ -151,8 +136,8 @@ def block(data: dict | None) -> str:
                       f"Bestand; die Zahlen oben sind die von {data['year']}.")
     g = data["groesste"]
     zeilen.append(f"- Größte einzelne Vorlage {data['year']}: "
-                  f"{_euro(g.get('amount'))} (Vorlage {g.get('template_number')})"
-                  + _beleg_text(data.get("beleg")))
+                  f"{geld.de_euro(g.get('amount'))} (Vorlage {g.get('template_number')})"
+                  + geld.beleg_text(data.get("beleg")))
     zeilen.append("- Wer entscheidet, hängt an der EINZELNEN Zuwendung: bis "
                   "100 € die Oberbürgermeisterin oder der Oberbürgermeister, bis "
                   "2.000 € der Verwaltungsausschuss, darüber der Rat.")
@@ -161,7 +146,7 @@ def block(data: dict | None) -> str:
     # die Begründungen die Antwort, und beides zusammen sprengte das
     # Zeichenbudget aller Geld-Bausteine zusammen.
     if not ausschreiben:
-        reihe = ", ".join(f"{r['year']}: {_euro(r['summe'])}"
+        reihe = ", ".join(f"{r['year']}: {geld.de_euro(r['summe'])}"
                           for r in data["reihe"])
         zeilen.append(f"- Summe je Jahr — {reihe}")
     if data.get("luecken"):

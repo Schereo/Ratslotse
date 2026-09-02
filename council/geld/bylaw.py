@@ -73,13 +73,6 @@ _REIHEN: tuple[tuple[str, str, re.Pattern[str]], ...] = (
 )
 
 
-def _beleg_text(b: dict | None) -> str:
-    if not b:
-        return ""
-    teile = [str(t) for t in (b.get("label"), b.get("citation")) if t]
-    return f" — Beleg: {', '.join(teile)}" if teile else ""
-
-
 def _betrag(v: float | None) -> str:
     """Beträge der Satzung — mit dem Satz statt der Ziffer für die Null.
 
@@ -155,7 +148,7 @@ def block(data: dict | None) -> str:
         f"{geld.de_mio(z.get('ordinary_revenues'))}, ordentliche Aufwendungen "
         f"{geld.de_mio(z.get('ordinary_expenses'))} — der Entwurf plant damit "
         f"{'einen Überschuss' if ergebnis >= 0 else 'einen Fehlbetrag'} von "
-        f"{geld.de_mio(abs(ergebnis))}" + _beleg_text(data.get("beleg")),
+        f"{geld.de_mio(abs(ergebnis))}" + geld.beleg_text(data.get("beleg")),
         f"- Finanzhaushalt {data['year']} (§ 1, „Nachrichtlich“): Einzahlungen "
         f"{geld.de_mio(z.get('in_total'))}, Auszahlungen "
         f"{geld.de_mio(z.get('out_total'))}",

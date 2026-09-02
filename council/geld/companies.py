@@ -49,7 +49,7 @@ NAME = "companies"
 #: („Wie ist der Stand beim Stadion?"). Die beiden Stadion-Gesellschaften
 #: kommen über ihren vollen Namen.
 _KURZNAMEN = (
-    r"klinikum|volkshochschule|abfallwirtschaftsbetrieb|baederbetrieb|"
+    r"klinikum|volkshochschule|abfallwirtschaftsbetrieb|baederbetrieb|\bbaeder\b|"
     r"grossleitstelle|weser ems hall|technologie und gruenderzentrum|"
     r"oldenburg tourismus|tourismus und marketing|verkehr und wasser|"
     r"gebaeudewirtschaft|stadionplanungsgesellschaft|stadion oldenburg|"
@@ -147,24 +147,6 @@ def _kurz(text: str | None, grenze: int) -> str:
     if punkt > grenze * 0.4:
         return t[:punkt + 1]
     return t[:t.rfind(" ", 0, grenze)] + " …"
-
-
-def _prozent(v: float | None) -> str:
-    return "–" if v is None else f"{v:.1f}".replace(".", ",") + " %"
-
-
-def _betrag(v: float | None) -> str:
-    """Millionen, aber nicht bis zur Unkenntlichkeit.
-
-    ``geld.de_mio`` rundet auf eine Nachkommastelle — der ausgeglichene
-    Wirtschaftsplan des EGH (−15.621 €) wird darin zu „-0,0 Mio. €" und liest
-    sich wie ein Rundungsfehler. Unter einer Million steht deshalb der volle
-    Betrag; darüber sind die Nachkommastellen ohnehin Rauschen."""
-    if v is None:
-        return "–"
-    if abs(v) < 1_000_000:
-        return f"{v:,.0f} €".replace(",", ".")
-    return geld.de_mio(v)
 
 
 class Store:
@@ -330,25 +312,9 @@ class Store:
                 "results_sum": summe[0], "results_n": summe[1]}
 
 
-def _beleg_text(b: dict | None) -> str:
-    """„ — Beleg: Beteiligungsbericht 2024, Abschnitt 2.4.8, S. 178".
-
-    Wortgleich mit ``qa._beleg_text``; importieren geht nicht, weil ``qa``
-    dieses Paket lädt und nicht umgekehrt."""
-    if not b:
-        return ""
-    teile = [t for t in (b.get("label"), b.get("citation")) if t]
-    if b.get("page"):
-        teile.append(f"S. {b['page']}")
-    if not teile:
-        return ""
-    as_of = f", Stand {b['as_of']}" if b.get("as_of") else ""
-    return f" — Beleg: {', '.join(str(t) for t in teile)}{as_of}"
-
-
 def _kennzahl(k: dict) -> str:
     titel = _KENNZAHL_TITEL.get(k["kind"], k["kind"])
-    wert = _prozent(k["value"]) if k["unit"] != "eur" else _betrag(k["value"])
+    wert = geld.de_prozent(k["value"]) if k["unit"] != "eur" else geld.de_betrag(k["value"])
     return f"{titel} {k['year']}: {wert}"
 
 
@@ -378,7 +344,7 @@ def _gesellschaft_zeilen(g: dict, voll: bool) -> list[str]:
     if any(k["kind"] == "jahresergebnis" and k["value"] == 0
            for k in g.get("indicators") or []):
         zeilen.append(f"  - {_NULL_IST_VERTRAG}")
-    eigner = [f"{e['name']} {_prozent(e['share_pct'])}" for e in (g.get("owners") or [])
+    eigner = [f"{e['name']} {geld.de_prozent(e['share_pct'])}" for e in (g.get("owners") or [])
               if e.get("share_pct") is not None]
     if eigner:
         rest = len(eigner) - 3
@@ -405,13 +371,13 @@ def _ueberblick_zeilen(u: dict, jahr: int | None) -> list[str]:
     zeilen = [f"- {u['count']} Gesellschaften und Betriebe führt der Bericht: "
               + ", ".join(f"{n}× {form}" for form, n in u["forms"])]
     for g in u["largest"]:
-        anteil = (f", Anteil der Stadt {_prozent(g['share_pct'])}"
+        anteil = (f", Anteil der Stadt {geld.de_prozent(g['share_pct'])}"
                   if g.get("share_pct") is not None else "")
-        zeilen.append(f"  - {g['name']}: Bilanzsumme {_betrag(g['bilanzsumme'])} "
+        zeilen.append(f"  - {g['name']}: Bilanzsumme {geld.de_betrag(g['bilanzsumme'])} "
                       f"({g['year']}){anteil}")
     if u.get("results_sum") is not None and u.get("results_n"):
         zeilen.append(f"- Die {u['results_n']} Jahresergebnisse, die der Bericht für "
-                      f"{jahr} nennt, ergeben zusammen {_betrag(u['results_sum'])}. "
+                      f"{jahr} nennt, ergeben zusammen {geld.de_betrag(u['results_sum'])}. "
                       "Das ist NICHT das Konzernergebnis — der Gesamtabschluss rechnet "
                       "die Verflechtungen zwischen den Einheiten erst heraus.")
     return zeilen
@@ -453,7 +419,7 @@ def block(data: dict | None) -> str:
             "verrechenbar. Was im Haushalt ankommt, steht — wenn überhaupt —\nin der "
             "Zeile „Für den Stadthaushalt“. Ein Verlust ist hier keine Note: Bus und\n"
             "Bäder sollen bezahlbar sein, nicht profitabel. Nie mit [id] zitieren"
-            + _beleg_text(_kopf_beleg(data)) + ":\n" + "\n".join(zeilen) + "\n")
+            + geld.beleg_text(_kopf_beleg(data), stand=True) + ":\n" + "\n".join(zeilen) + "\n")
 
 
 FACETTE = geld.Facette(

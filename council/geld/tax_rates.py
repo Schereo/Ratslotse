@@ -184,17 +184,12 @@ def _beleg_zeile(b: dict | None) -> str:
     return f" — Beleg: {', '.join(teile)}" if teile else ""
 
 
-def _zahl(n: int | None) -> str:
-    """„8.421" — deutsche Tausenderpunkte, für Zählwerte."""
-    return f"{n:,}".replace(",", ".") if n is not None else "–"
-
-
 def _statistik_text(s: dict) -> str:
     """Der Nenner als eigener Absatz — mit seiner Abgrenzung, nie ohne."""
     zeilen = [
         f"- Erfasste Betriebe und Betriebsstätten {s['year']}: "
-        f"{_zahl(s['cases'])}, davon mit positivem Steuermessbetrag "
-        f"{_zahl(s['cases_positive'])}",
+        f"{geld.de_zahl(s['cases'])}, davon mit positivem Steuermessbetrag "
+        f"{geld.de_zahl(s['cases_positive'])}",
     ]
     if s.get("tax_base_eur") is not None:
         zeilen.append(f"- Steuermessbetrag zusammen: "
@@ -202,7 +197,7 @@ def _statistik_text(s: dict) -> str:
     if s.get("apportionments") is not None:
         zeilen.append(
             f"- davon zerlegte Betriebsstätten (Firmen mit mehreren Standorten, "
-            f"§ 28 GewStG): {_zahl(s['apportionments'])} Fälle mit "
+            f"§ 28 GewStG): {geld.de_zahl(s['apportionments'])} Fälle mit "
             f"{geld.de_mio(s.get('apportioned_assessment_eur'))} Messbetrag")
     # Der Verzug steht IMMER dabei, nicht nur bei abweichendem Jahrgang: Neben
     # einer Aufkommensreihe bis 2025 ist ein Nenner von 2021 sonst eine
