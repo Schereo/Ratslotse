@@ -216,11 +216,19 @@ def lies_mehrjahresuebersicht(text: str, enterprise: str, report_year: int,
         kern = zeile.strip()
         if not kern:
             continue
-        # Ein zweiter Jahreskopf beendet die Tabelle (die nächste Übersicht).
+        # Ein zweiter Jahreskopf beendet die Tabelle (die nächste Übersicht) —
+        # und die erste Prozentzeile ebenfalls: Eigenkapitalquote und Renditen
+        # stehen in jeder Bauform ganz unten. Was danach kommt, ist eine
+        # andere Tabelle; der AWB-Bericht führt dort „Verbindlichkeiten" mit
+        # ganz anderen Spalten, und die landeten sonst als Kennzahl.
         if _JAHRESKOPF.match(kern + "\n") and i > 0:
             break
+        if _PROZENT.search(kern) and i > 0:
+            break
         for metric, muster in METRIKEN:
-            if metric in gesehen or not re.match(muster, kern, re.I):
+            # Das Label muss frei stehen: „BilanzsummeT€24.506…" (AWB 2025,
+            # Textextrakt ohne Leerzeichen) ist keine lesbare Zeile.
+            if metric in gesehen or not re.match(muster + r"(?=\s|$)", kern, re.I):
                 continue
             # Werte dieser Zeile und der folgenden, bis n Zahlen beisammen
             # sind — Fußnotenziffern stehen davor, also zählen die LETZTEN n.
@@ -342,9 +350,22 @@ def betriebsjahr(title: str) -> tuple[str, int] | None:
     return betrieb[0], int(jahr.group(1))
 
 
+#: Ab dieser Seitenzahl ist ein Dokument ein Prüfbericht, und GuV und Bilanz
+#: darin sind Anhänge unter vielen Tabellen — der Griff nach „der größten
+#: Zeile" träfe dort die falsche. Die eigenen GuV- und Bilanz-Anlagen des
+#: Bäderbetriebs haben ein bis zwei Seiten, sein Gesamtdokument zwanzig.
+_KURZES_DOKUMENT = 25
+_GUV_BILANZ_LABEL = re.compile(r"GuV|Gewinn|Bilanz", re.I)
+
+
 def lies_dokument(text: str, title: str, label: str,
-                  document_id: int | None) -> Lesung:
-    """Die passende Bauform für dieses Dokument — Übersicht, GuV oder Bilanz."""
+                  document_id: int | None, n_pages: int | None = None) -> Lesung:
+    """Die passende Bauform für dieses Dokument — Übersicht, GuV oder Bilanz.
+
+    Die Übersicht hat Vorrang. GuV und Bilanz werden nur in Dokumenten
+    gelesen, die eine SIND (Label) oder kurz genug dafür (Seitenzahl): Im
+    RPA-Bericht 2022 des EGH fehlt die Übersicht, und der Griff nach der
+    größten Zahlenzeile machte dort den Jahresüberschuss zum Eigenkapital."""
     bj = betriebsjahr(title)
     if bj is None:
         aus = Lesung(); aus.hinweise.append("Betrieb oder Jahr nicht im Vorlagentitel")
@@ -355,6 +376,11 @@ def lies_dokument(text: str, title: str, label: str,
     if lesung.kennzahlen:
         return lesung
     hinweise = list(lesung.hinweise)
+    if not (_GUV_BILANZ_LABEL.search(label or "")
+            or (n_pages is not None and n_pages <= _KURZES_DOKUMENT)):
+        hinweise.append("kein GuV-/Bilanz-Dokument (Label, Seitenzahl) — kein Notweg")
+        aus = Lesung(); aus.hinweise = hinweise
+        return aus
     aus = Lesung(form="guv+bilanz")
     if re.search(r"Gewinn-?\s*und\s*Verlustrechnung|GuV", text + " " + (label or ""), re.I):
         g = lies_guv(text, enterprise, report_year, document_id)

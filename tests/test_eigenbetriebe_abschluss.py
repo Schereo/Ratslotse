@@ -116,3 +116,38 @@ def test_store_rundlauf(tmp_path):
     store.save_enterprise_accounts(zeilen, lauf)
     assert len(store.get_enterprise_accounts()) == len(zeilen)
     store.close()
+
+
+def test_pruefbericht_ohne_uebersicht_kennt_keinen_notweg():
+    """Der RPA-Bericht 2022 des EGH trägt keine Mehrjahresübersicht. Der Griff
+    nach der größten Zahlenzeile machte dort den Jahresüberschuss zum
+    Eigenkapital — für lange Dokumente ohne GuV-/Bilanz-Label gibt es ihn nicht."""
+    text = ("Jahresabschluss 2022 Eigenbetrieb Gebäudewirtschaft und Hochbau\n"
+            "A.V. Jahresüberschuss/ Jahresfehlbetrag 2.103.265,69 4.360.849,65\n"
+            "Summe Eigenkapital 268.241.905,50 272.602.755,15\n")
+    l = ea.lies_dokument(text, FX["egh_2024"]["title"].replace("2024", "2022"),
+                         "EGH Jahresabschlussbericht 2022", 1, n_pages=94)
+    assert not l.kennzahlen and any("Notweg" in h for h in l.hinweise)
+    # Dasselbe Dokument als kurze Anlage oder mit GuV-Label geht den Notweg.
+    assert ea.lies_dokument(text, FX["egh_2024"]["title"].replace("2024", "2022"),
+                            "GuV 2022", 1, n_pages=94).form == "guv+bilanz"
+
+
+def test_verklebte_zeilen_gelten_nicht():
+    """AWB 2025: der Textextrakt verliert die Leerzeichen — „BilanzsummeT€24.506…"
+    ist keine lesbare Zeile, die Übersicht bleibt leer."""
+    text = ("Die Entwicklung des Eigenbetriebs in den letzten fünf Jahren\n"
+            "2025 2024 2023 2022 2021\n"
+            "BilanzsummeT€24.50625.50026.49923.44022.115\n"
+            "UmsatzerlöseT€24.87423.82422.04520.42620.538\n")
+    l = ea.lies_dokument(text, FX["awb_2024"]["title"].replace("2024", "2025"), "Prüfbericht", 1, 96)
+    assert not l.kennzahlen
+
+
+def test_prozentzeile_beendet_die_tabelle():
+    """Hinter der Eigenkapitalquote beginnt eine andere Tabelle — deren
+    „Verbindlichkeiten" mit anderen Spalten wurden zur Kennzahl (AWB)."""
+    text = (FX["awb_2024"]["text"] + "\nVerbindlichkeiten 3.600 2.700\n")
+    l = ea.lies_dokument(text, FX["awb_2024"]["title"], "Anlage", 1, 90)
+    verb = [k for k in l.kennzahlen if k.metric == "liabilities"]
+    assert not verb

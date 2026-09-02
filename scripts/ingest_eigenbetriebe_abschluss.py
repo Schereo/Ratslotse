@@ -46,7 +46,8 @@ def main() -> int:
             text = a.get("raw_text") or ""
             if not text.strip():
                 continue
-            lesung = ea.lies_dokument(text, a["title"], a["label"], a["document_id"])
+            lesung = ea.lies_dokument(text, a["title"], a["label"], a["document_id"],
+                                      a.get("n_pages"))
             if lesung.kennzahlen:
                 alle.extend(lesung.kennzahlen)
                 bj = ea.betriebsjahr(a["title"])
