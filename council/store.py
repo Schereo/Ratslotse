@@ -13193,7 +13193,17 @@ class CouncilStore(*_geld.MIXINS):
         "stadtplanung": ("bebauungsplan", "sanierungsgebiet", "stadtentwicklung",
                          "isek", "flächennutzungsplan", "wohnraum", "leerstand"),
         "schule": ("bildung", "schulbau", "ganztag"),
-        "jugend": ("kita", "kindertagesstätte", "krippe"),
+        "jugend": ("kita", "kindertagesstätte", "krippe", "jugendhilfe",
+                   "spielplatz", "familie"),
+        # Gemessen 02.09.2026 an der Live-Antwort: „Was stand 2022 im Haushalt
+        # für die Feuerwehr?" fand keinen Teilhaushalt — die Feuerwehr heißt
+        # dort „Sicherheit und Ordnung", und das sagt kein Fragewortlaut.
+        "sicherheit": ("feuerwehr", "brandschutz", "rettungsdienst",
+                       "katastrophenschutz", "ordnungsamt", "bürgeramt",
+                       "ordnungsdienst"),
+        "soziales": ("sozialhilfe", "grundsicherung", "wohngeld", "pflege",
+                     "asyl", "geflüchtete", "obdachlos", "gesundheitsamt"),
+        "finanzmanagement": ("kämmerei", "stadtkasse", "steuern"),
     }
 
     @staticmethod
@@ -13751,6 +13761,23 @@ class CouncilStore(*_geld.MIXINS):
         # Begriffe sind zum Finden gut und zum Entscheiden zu weit.
         treffer = bool(passend) and (frage is None or any(
             self._trifft(r["label"], frage) for r in passend))
+        # Zu jedem getroffenen Posten das jüngste Ist derselben Nummer aus der
+        # Ergebnisrechnung: „Personalaufwendungen: Ansatz 2026 209,4 Mio. €,
+        # zuletzt abgerechnet 2024: 184,8 Mio. €". Die Facette `ist` feuert bei
+        # „Was kostet das Personal?" nicht (kein Ist-Wort), und ohne diese
+        # Spalte bliebe die Antwort beim Plan — die Live-Messung vom 02.09.
+        # zeigte genau das.
+        if treffer:
+            for r in passend:
+                try:
+                    z = self._conn.execute(
+                        "SELECT year, result FROM council_income_statement "
+                        "WHERE sub_budget_no IS NULL AND nr = ? AND result IS NOT NULL "
+                        "ORDER BY year DESC LIMIT 1", (r["nr"],)).fetchone()
+                except sqlite3.OperationalError:
+                    z = None
+                if z:
+                    r["actual_year"], r["actual"] = z["year"], z["result"]
         if not passend:
             # Ohne Treffer die Summenzeilen — sie beantworten „was nimmt die
             # Stadt ein, was gibt sie aus" und sind nie daneben.

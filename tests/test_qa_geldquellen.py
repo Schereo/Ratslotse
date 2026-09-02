@@ -1063,7 +1063,8 @@ def test_voller_geld_kontext_bleibt_im_budget(tmp_path):
 #: die Antwort auf Tims Frage „wie viel brauchen die neuen Bausteine wirklich,
 #: BEVOR Du sie alle zuschaltest": Zusammen sind es rund 4.400 Zeichen — das
 #: ganze Budget. Sie feuern nur nie zusammen (s. die Gegenrichtungs-Tests
-#: oben), und genau deshalb ist der Deckel bei 4.500 geblieben.
+#: oben), und genau deshalb blieb der Deckel bis 09/2026 bei 4.500 (seit den
+#: neun Modul-Facetten 6.500 — Begründung an `GELD_MAX_CHARS`).
 NEUE_BAUSTEIN_GRENZEN = {
     "schulden": 1200,
     "stellenplan": 1200,

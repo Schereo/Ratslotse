@@ -94,3 +94,32 @@ def test_geld_kontext_laedt_den_ansatz_bei_postentreffer_trotz_teilhaushalt(stor
 ])
 def test_jahresergebnis_zieht_den_abschluss(frage):
     assert "ist" in qa.geld_facetten(frage, "topic")
+
+
+# --- Nachmessung an der Live-Antwort vom 02.09. (Qualitäts-PR) ------------------
+
+def test_ansatz_treffer_tragen_das_juengste_ist_und_stehen_vorn(store):
+    a = store.ansatz_fuer_begriffe(["Personal"], year=2026, frage=["Personal"])
+    p13 = next(p for p in a["posten"] if p["nr"] == 13)
+    assert (p13["actual_year"], p13["actual"]) == (2024, pytest.approx(184.8e6))
+    text = qa._ansatz_block(a)
+    assert "PASSEND ZUR FRAGE" in text
+    assert "Ansatz 2026" in text and "zuletzt abgerechnet 2024" in text
+    # Ohne Treffer weder Marker noch Ist-Spalte — die Summenzeilen bleiben, was sie waren.
+    b = store.ansatz_fuer_begriffe(["Feuerwehr"], year=2026, frage=["Feuerwehr"])
+    assert "PASSEND" not in qa._ansatz_block(b) and "actual" not in b["posten"][0]
+
+
+def test_plan_frage_nach_einer_aufgabe_zieht_die_produktebene():
+    f = qa.geld_facetten("Was stand 2022 im Haushalt für die Feuerwehr?", "money")
+    assert {"plan", "produkte"} <= f
+    # … aber nicht jede Plan-Frage: ohne „für" bleibt es beim Teilhaushalt.
+    assert "produkte" not in qa.geld_facetten("Wie hoch ist der Haushalt 2026?", "money")
+
+
+def test_teilhaushalt_synonyme_kennen_feuerwehr_und_kita():
+    passt = CouncilStore._bereich_passt
+    assert passt("Sicherheit und Ordnung", ["feuerwehr"])
+    assert passt("Soziales und Gesundheit", ["asyl"])
+    assert passt("Jugend und Familie", ["kita"])
+    assert not passt("Sicherheit und Ordnung", ["kita"])
