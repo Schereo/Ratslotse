@@ -2382,7 +2382,9 @@
       "BudgetExecution": {
         "properties": {
           "budget_names": {
-            "additionalProperties": true,
+            "additionalProperties": {
+              "type": "string"
+            },
             "title": "Budget Names",
             "type": "object"
           },
@@ -2390,12 +2392,16 @@
             "title": "Editions"
           },
           "kind_names": {
-            "additionalProperties": true,
+            "additionalProperties": {
+              "type": "string"
+            },
             "title": "Kind Names",
             "type": "object"
           },
           "plan_basis_note": {
-            "additionalProperties": true,
+            "additionalProperties": {
+              "type": "string"
+            },
             "title": "Plan Basis Note",
             "type": "object"
           },
@@ -2805,7 +2811,11 @@
             "title": "Missing"
           },
           "part_names": {
-            "title": "Part Names"
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Part Names",
+            "type": "object"
           },
           "provenance": {
             "additionalProperties": {
@@ -4430,7 +4440,9 @@
             "title": "Decisions"
           },
           "field_labels": {
-            "additionalProperties": true,
+            "additionalProperties": {
+              "type": "string"
+            },
             "title": "Field Labels",
             "type": "object"
           }

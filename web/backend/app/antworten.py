@@ -1637,15 +1637,19 @@ class BudgetStaffPlan(TypedDict):
     provenance: Provenance
     editions: Any
     totals: Any
-    part_names: Any
+    #: {"A": "Beamtinnen und Beamte", "B": …} aus ``council.stellenplan``.
+    part_names: dict[str, str]
     rows: Any
 
 
 class BudgetExecution(TypedDict):
     scope_note: Any
-    plan_basis_note: dict[str, Any]
-    budget_names: dict[str, Any]
-    kind_names: dict[str, Any]
+    #: Drei feste Nachschlagewerke aus ``council.budget_execution``:
+    #: der Erklärsatz je Plan-Grundlage, die Namen der Haushalte und die
+    #: der Ergebnisarten. Alle drei sind dort ``dict[str, str]``.
+    plan_basis_note: dict[str, str]
+    budget_names: dict[str, str]
+    kind_names: dict[str, str]
     editions: Any
     reporting_dates: list[Any]
     totals: Any
@@ -1783,7 +1787,8 @@ class TemplateUnfollowed(TypedDict):
 class Finances(TypedDict):
     by_field: Any
     decisions: Any
-    field_labels: dict[str, Any]
+    #: {Themenfeld-Schlüssel: Klartext} aus ``council.topics.POLICY_FIELDS``.
+    field_labels: dict[str, str]
 
 
 class PolicyFieldRecaps(TypedDict):
