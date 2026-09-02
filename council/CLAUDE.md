@@ -82,3 +82,25 @@ Nummerierung und `cited` auseinander.
 `\bwort\b` trifft im Deutschen fast nichts, weil Komposita die hintere
 Wortgrenze verschieben. Grenze nur hinten setzen, und `\w*plan\b` niemals
 öffnen — das trifft Bebauungsplan bis Stellenplan.
+
+## Wo eine neue Abfrage hingehört
+
+`council/store.py` trug bis 09/2026 **15.744 Zeilen in einer Klasse** mit 506
+Methoden. Der Haushalt ist als erste Ecke heraus:
+
+| Datei | Inhalt |
+|---|---|
+| `council/store.py` | Schema, Migrationen, Sitzungen, Beschlüsse, Personen, Orte, Suche |
+| `council/store_haushalt.py` | die 81 Abfragen der Haushalts-Seiten (`HaushaltMixin`) |
+| `council/geld/*.py` | je eine Facette der KI-Frage, je eine Store-Methode |
+
+Alle drei landen über Mixins in derselben `CouncilStore`, an den Aufrufstellen
+ändert sich also nichts: `store.get_haushalt(...)` heißt überall weiter so.
+
+**Neue Abfrage einer Fachecke gehört in deren Modul**, nicht in die Mitte.
+`tests/test_store_groesse.py` hält die Zahl der Methoden in `CouncilStore`
+fest; sie darf schrumpfen und nicht wachsen. Gehört eine Abfrage wirklich in
+die Mitte, wird die Zahl dort angehoben — mit einem Satz, warum.
+
+**Schema und Migrationen bleiben in `store.py`.** Sie gehören der Datenbank
+als Ganzem, nicht einer ihrer Ecken.
