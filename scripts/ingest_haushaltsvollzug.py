@@ -43,9 +43,11 @@ from council import finanzquellen  # noqa: E402
 from council.budget_execution import (  # noqa: E402
     VollzugFehler,
     herkunft_fuer,
+    lies_q1_vorlage,
     lies_vollzugsbericht,
 )
 from council.store import CouncilStore  # noqa: E402
+from council.vorlagen import fetch_vorlage  # noqa: E402
 
 COUNCIL_DB = Path(os.environ.get("COUNCIL_DB") or ROOT / "data" / "council.sqlite")
 
@@ -145,6 +147,36 @@ def main() -> dict:
                         "Menschen, nicht für einen Lauf.")
                     je_einheit.pop(einheit)
 
+        # Die Berichte zum 31. März haben keine Anlage — ihre Tabelle steht im
+        # Vorlagentext (s. ``lies_q1_vorlage``). Ohne Text im Bestand wird die
+        # Vorlage einmal nachgeladen; danach steht sie in ``council_templates``.
+        q1_vorlagen = [dict(r) for r in store._conn.execute(  # noqa: SLF001
+            "SELECT kvonr, template_number, title, raw_text, document_url "
+            "FROM council_templates WHERE title LIKE '%Leistungsbericht%' "
+            "AND (title LIKE '%31.03.%' OR title LIKE '%31. März%') "
+            "ORDER BY template_number")]
+        for v in q1_vorlagen:
+            text = v.get("raw_text") or ""
+            if not text.strip() and not args.trockenlauf and v.get("kvonr"):
+                geholt = fetch_vorlage(int(v["kvonr"]))
+                if geholt and (geholt.get("raw_text") or "").strip():
+                    store.save_vorlage(geholt)
+                    text = geholt["raw_text"]
+            try:
+                bericht = lies_q1_vorlage(text, v.get("title") or "")
+            except VollzugFehler as fehler:
+                risse.append(f"Vorlage {v['template_number']}: {fehler}")
+                continue
+            if bericht is None:
+                ohne_tabelle += 1
+                continue
+            einheit = (bericht.budget_year, bericht.as_of, bericht.budget)
+            if einheit in vorhanden:
+                continue
+            je_einheit.setdefault(einheit, ({
+                "document_id": None,
+                "label": f"Vorlage {v['template_number']} — {(v.get('title') or '')[:80]}",
+                "url": v.get("document_url")}, bericht))
         if je_einheit:
             print("\nGelesen:", flush=True)
             for einheit, (r, bericht) in sorted(je_einheit.items()):

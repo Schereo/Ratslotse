@@ -192,7 +192,7 @@ export function Vollzug({ daten, year, onYear, beleg }: {
           gemessen={`${stichtage.length} ${stichtage.length === 1 ? "Stichtag" : "Stichtage"} im Jahrgang ${year}`}
           nichtAussagen={[
             "Kein Ist zum Stichtag: Die Berichte nennen nicht, was bis dahin gebucht war, sondern was die Ämter bis zum 31. Dezember erwarten.",
-            "Das erste Quartal fehlt: Der Bericht zum 31. März steht als andere Tabelle im Vorlagentext und wird nicht gelesen.",
+            "Der Bericht zum 31. März nennt je Teilhaushalt nur das Jahresergebnis — keine Erträge, keine Aufwendungen, keinen Finanzhaushalt. Die Verwaltung schreibt ihn in die Vorlage statt in eine Anlage; die Aufteilung kommt erst mit dem Bericht zum 30. Juni.",
             "Was am Jahresende wirklich herauskam, steht weiter unten im Jahresabschluss — für jedes Jahr, das einen hat.",
           ]}
         />
