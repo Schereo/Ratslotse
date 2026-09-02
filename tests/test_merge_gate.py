@@ -36,8 +36,16 @@ def test_gar_keine_pruefung_ist_kein_gruen():
     assert urteil([]) == "wartet"
 
 
-def test_eine_einzige_pruefung_reicht_nicht():
-    assert urteil([("docs", "completed", "success")]) == "zu wenige"
+def test_eine_einzige_pflichtpruefung_reicht():
+    """`test.yml` hat als einziger Workflow keinen Pfad-Filter. Ein PR, der nur
+    eine Testdatei anfasst, bekommt deshalb genau diesen einen Lauf — und war
+    am 02.09.2026 vom Tor abgelehnt worden, obwohl alles in Ordnung war."""
+    assert urteil([("test", "completed", "success")]) == "gruen"
+
+
+def test_ohne_die_pflichtpruefung_wird_nicht_gemergt():
+    """Ein Pull Request mit Konflikt bekommt gar keine Läufe — dann fehlt sie."""
+    assert urteil([("docs-review", "completed", "success")]) == "fehlt"
 
 
 def test_ein_fehlschlag_ist_rot():
