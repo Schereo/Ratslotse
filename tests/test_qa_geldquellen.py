@@ -23,7 +23,7 @@ jedem Push läuft.
 """
 import pytest
 
-from council import qa
+from council import geld, qa
 from council.store import CouncilStore
 
 
@@ -217,6 +217,13 @@ class _MessStore:
         self.aufrufe.append(name)
         return value
 
+    def __getattr__(self, name):
+        # Die Modul-Facetten (council/geld/) — ihre Methoden heißen im
+        # Register; alles andere bleibt ein AttributeError wie zuvor.
+        if name in geld.METHODEN.values():
+            return lambda *a, **k: self._merken(name, None)
+        raise AttributeError(name)
+
     def bilanz_kontext(self):
         return self._merken("bilanz_kontext", None)
 
@@ -304,7 +311,7 @@ def test_korpus_ruft_die_richtigen_store_methoden(question, typ, erwartet):
     store = _MessStore()
     kontext = qa.geld_kontext(store, question, "Suchbegriffe der Expansion", typ)
     assert set(kontext["facets"]) == erwartet
-    erwartete_calls = {ERWARTETE_METHODEN[f] for f in erwartet}
+    erwartete_calls = {{**ERWARTETE_METHODEN, **geld.METHODEN}[f] for f in erwartet}
     # `steuerkraft_kontext` läuft nur bei echtem Steuer-Treffer oder bei
     # ausdrücklicher NFAG-Frage — der Attrappen-Store liefert keinen Treffer.
     if "ausgleich" in erwartet and "steuerkraft_kontext" not in set(store.aufrufe):
@@ -1241,10 +1248,15 @@ def test_facetten_stehen_im_kontext_zum_mitloggen():
 
 
 def test_alle_facetten_haben_baustein_und_methode():
-    """Wer eine Facette hinzufügt, ohne sie zu verdrahten, fliegt hier auf."""
+    """Wer eine Facette hinzufügt, ohne sie zu verdrahten, fliegt hier auf.
+
+    Die Modul-Facetten (council/geld/) bringen Methode und Baustein selbst
+    mit; ihre Namen stehen deshalb nicht in ``ERWARTETE_METHODEN``, sondern
+    kommen aus dem Register."""
+    alle = {**ERWARTETE_METHODEN, **geld.METHODEN}
     assert set(qa.GELD_FACETTEN) == set(qa._GELD_BAUSTEINE)
-    assert set(qa.GELD_FACETTEN) == set(ERWARTETE_METHODEN)
-    for methode in ERWARTETE_METHODEN.values():
+    assert set(qa.GELD_FACETTEN) == set(alle)
+    for methode in alle.values():
         assert callable(getattr(CouncilStore, methode)), methode
         assert hasattr(_MessStore, methode), methode
 
