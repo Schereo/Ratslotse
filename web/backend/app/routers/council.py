@@ -3524,7 +3524,13 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                         for s in steckbriefe]
                         if qa.steckbrief_karte_zeigen(q_suche) else []})
             yield _sse({"type": "step", "step": "answer"})
-            if not candidates and not anlagen_rows:
+            # Eine Haushaltsfrage ohne passenden Beschluss ist KEIN Leerlauf: Die
+            # Geld-Bausteine tragen die Antwort („Was kostet eine Restmülltonne?“
+            # trifft keinen Beschluss, aber die Gebührensätze). Bis 09/2026 kam
+            # hier „keine Beschlüsse gefunden“, obwohl der Kontext die Zahl hatte.
+            hat_geld = bool(geld.get("facets")) and any(
+                v for k, v in geld.items() if k != "facets")
+            if not candidates and not anlagen_rows and not hat_geld:
                 leer_text = "Dazu habe ich keine passenden Beschlüsse gefunden."
                 if sitzungen and ort:
                     leer_text = (f"In der gefragten Sitzung habe ich keine Beschlüsse mit "
