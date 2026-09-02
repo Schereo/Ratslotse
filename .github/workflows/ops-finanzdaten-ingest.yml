@@ -221,6 +221,9 @@ jobs:
             # er auch der vierte Ingest, den `check_finanzdaten` NICHT
             # übernehmen kann („lädt nichts herunter").
             .venv/bin/python scripts/ingest_haushaltsvollzug.py
+            # Der Liquiditätsstand: die Grafiken der Monatsvorlagen — lädt
+            # fehlende Anlagen selbst (bis 2021 heißen sie nur „Anlage").
+            .venv/bin/python scripts/ingest_liquiditaet.py
 
             # Die beiden Steuertabellen des Jahrbuchs (1103 Plan neben Ist je
             # Steuerart, 1105 Hebesätze seit 1980). Sie stehen NACH

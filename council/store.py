@@ -3348,6 +3348,21 @@ class CouncilStore(*_geld.MIXINS):
             "ok INTEGER NOT NULL, "
             "summary TEXT)"
         )
+        # Der Liquiditätsstand (council/liquidity.py): je Monatsende der Stand
+        # in Euro, aus den Grafiken der monatlichen Vorlagen — jüngster Beleg
+        # je Monat, `confirmations` = in wie vielen Grafiken der Wert steht.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_liquidity ("
+            "month TEXT PRIMARY KEY, "           # YYYY-MM
+            "year INTEGER NOT NULL, "
+            "amount REAL NOT NULL, "             # Euro
+            "as_of TEXT NOT NULL, "              # Stichtag der Grafik, ISO
+            "confirmations INTEGER NOT NULL DEFAULT 1, "
+            "revised_from REAL, "                # der verdrängte Wert einer Korrektur
+            "document_id INTEGER, url TEXT, template_number TEXT, "
+            "probes TEXT NOT NULL, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL)"
+        )
         # Kredite und Zinsen (council/loans.py): die Unterrichtungen des Rates
         # nach der Kreditrichtlinie — je Vorlage eine Zeile mit Berichts-
         # zeitraum und Zinsersparnis, je nummeriertem Posten eine Zeile mit
@@ -3726,6 +3741,7 @@ class CouncilStore(*_geld.MIXINS):
         # Eintrag muss trotzdem stehen — `_herkunft_nachtragen` schlägt hier
         # nach, bevor es merkt, dass es nichts nachzutragen gibt.
         "council_budget_execution": (None, "source_url", "ris"),
+        "council_liquidity": (None, "url", "ris"),
         # Kredite und Zinsen: neu, ohne Altbestand — derselbe Platzhalter.
         "council_loan_notices": (None, "document_url", "ris"),
         "council_loan_items": (None, "document_url", "ris"),
@@ -6869,6 +6885,9 @@ class CouncilStore(*_geld.MIXINS):
         # Herkunft — die Papierliste eines Jahrgangs sind die Berichte des
         # Jahres. `document_url` ist die Rückfallebene der Zeile.
         "loans":            ("council_loan_notices", "year", None, "document_url"),
+        # Der Liquiditätsstand: je Monat die Grafik, aus der der Wert zuletzt
+        # bestätigt wurde — die Papierliste eines Jahrgangs sind die Grafiken.
+        "liquidity":        ("council_liquidity", "year", None, "url"),
         # Die Änderungslisten zum Haushalt. Wie `wirtschaftsplan` stehen je
         # Jahrgang MEHRERE Papiere dahinter (Verw. I–III und die
         # Beschluss-Datei des AFB) — die Summen-Tabelle trägt je Dokument
@@ -6894,6 +6913,7 @@ class CouncilStore(*_geld.MIXINS):
         "integrierte_schulden": ("council_integrated_debt", "year", None),
         "donations":     ("council_donations", "year", None),
         "loans":         ("council_loan_notices", "year", None),
+        "liquidity":     ("council_liquidity", "year", None),
         "tax_plan":  ("council_tax_plan", "year", None),
         "tax_rates":  ("council_tax_rates", "year", None),
     }
@@ -8952,6 +8972,74 @@ class CouncilStore(*_geld.MIXINS):
                 "INSERT OR REPLACE INTO council_ingest_marks (key, marke, ran_at, ok, summary) "
                 "VALUES (?,?,?,?,?)",
                 (key, int(marke), datetime.utcnow().isoformat(timespec="seconds"), int(ok), summary[:2000]))
+
+    # --- Liquiditätsstand (council/liquidity.py) ----------------------------
+
+    def liquiditaetsanlagen(self) -> list[dict]:
+        """Die Anlagen der Liquiditätsstand-Vorlagen — mit oder ohne Text.
+
+        Über ``kvonr``, nicht über ein Label-Muster: Bis 2021 heißt die
+        Anlage schlicht „Anlage", erst danach trägt sie den Titel der
+        Grafik."""
+        try:
+            return [dict(r) for r in self._conn.execute(
+                """SELECT t.template_number, a.document_id, a.label, a.url, a.raw_text,
+                          a.status, a.n_pages
+                     FROM council_templates t JOIN council_attachments a ON a.kvonr = t.kvonr
+                    WHERE t.title LIKE 'Liquiditätsstand%'
+                    ORDER BY t.template_number, a.document_id""")]
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
+            return []
+
+    def anlagentext_nachtragen(self, document_id: int, text: str, n_pages: int) -> None:
+        """Den heruntergeladenen Text einer Anlage ablegen — damit der nächste
+        Lauf (und die KI-Frage) ihn haben, ohne noch einmal zu laden."""
+        with self._conn:
+            self._conn.execute(
+                "UPDATE council_attachments SET raw_text = ?, n_pages = ?, status = 'ok', "
+                "fetched_at = datetime('now') WHERE document_id = ?", (text, n_pages, document_id))
+
+    def save_liquidity(self, rows: list[dict], herkunft) -> int:
+        """Die Monatsreihe schreiben — je Zeile ihre Herkunft (``row["herkunft"]``),
+        sonst die des Laufs. ``INSERT OR REPLACE`` je Monat."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            rueck = self.merke_herkunft(herkunft, fetched_at=now)
+            for r in rows:
+                hid = self.merke_herkunft(r["herkunft"], fetched_at=now) if r.get("herkunft") else rueck
+                self._conn.execute(
+                    "INSERT OR REPLACE INTO council_liquidity (month, year, amount, as_of, confirmations, "
+                    " revised_from, document_id, url, template_number, probes, herkunft_id, fetched_at) "
+                    "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                    (r["month"], r["year"], r["amount"], r["as_of"], r.get("confirmations", 1),
+                     r.get("revised_from"), r.get("document_id"), r.get("url"), r.get("template_number"),
+                     ",".join(r.get("probes") or []), hid, now))
+        return len(rows)
+
+    def get_liquidity(self) -> list[dict]:
+        """Die Monatsreihe, aufsteigend; ``probes`` als Liste."""
+        try:
+            rows = [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_liquidity ORDER BY month")]
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
+            return []
+        for r in rows:
+            r["probes"] = [p for p in (r.get("probes") or "").split(",") if p]
+        return rows
+
+    def liquidity_einheiten(self) -> set[tuple]:
+        """``(Jahr, Monat)`` je Zeile — die Einheiten des Datenstands."""
+        try:
+            return {(r[0], r[1]) for r in self._conn.execute(
+                "SELECT year, CAST(substr(month, 6, 2) AS INTEGER) FROM council_liquidity")}
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
+            return set()
 
     # --- Kredite und Zinsen (council/loans.py) ------------------------------
 

@@ -1600,6 +1600,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/council/budget/liquidity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Haushalt Liquiditaet
+         * @description Der Liquiditätsstand — wie viel Geld die Stadt am Monatsende auf dem Konto hat.
+         *
+         *     Aus den Grafiken, die die Verwaltung dem Finanzausschuss monatlich vorlegt
+         *     (``council/liquidity.py``): je Monat der jüngste Beleg, ``confirmations``
+         *     sagt, in wie vielen Grafiken der Wert steht, ``revised_from`` trägt den
+         *     Wert, den eine spätere Grafik der Verwaltung ersetzt hat.
+         *
+         *     - ``latest``: der jüngste Monat; ``last_12``: Tief und Hoch der letzten
+         *       zwölf Monate; ``year_ends``: die Dezember-Stände — der Vergleich über
+         *       Jahre, ohne die Saisonkurve.
+         *     - ``coverage``: erster und letzter Monat und die fehlenden dazwischen.
+         *
+         *     Der Stand ist ein KONTOSTAND, kein Vermögen und kein Haushaltsergebnis;
+         *     er kann unter null liegen (Juli 2016: −7,6 Mio. €). Der Rahmen dafür
+         *     steht in § 4 der Haushaltssatzung (Höchstbetrag der Liquiditätskredite,
+         *     ``/budget``, ``budget_bylaw``).
+         */
+        get: operations["haushalt_liquiditaet_api_council_budget_liquidity_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/council/budget/loans": {
         parameters: {
             query?: never;
@@ -5023,6 +5058,51 @@ export interface components {
             /** Years */
             years: unknown;
         };
+        /** BudgetLiquidity */
+        BudgetLiquidity: {
+            coverage: components["schemas"]["LiquidityCoverage"];
+            last_12: components["schemas"]["LiquidityWindow"];
+            /**
+             * LiquidityMonth
+             * @description Ein Monatsende (``council_liquidity``).
+             */
+            latest: {
+                /** Amount */
+                amount: number;
+                /** As Of */
+                as_of: string;
+                /** Confirmations */
+                confirmations: number;
+                /** Document Id */
+                document_id: number | null;
+                /** Fetched At */
+                fetched_at: string;
+                /** Herkunft Id */
+                herkunft_id: number | null;
+                /** Month */
+                month: string;
+                /** Probes */
+                probes: string[];
+                /** Revised From */
+                revised_from: number | null;
+                /** Template Number */
+                template_number: string | null;
+                /** Url */
+                url: string | null;
+                /** Year */
+                year: number;
+            } | null;
+            /** Provenance */
+            provenance: {
+                [key: string]: components["schemas"]["Herkunft"];
+            };
+            /** Scope Note */
+            scope_note: string;
+            /** Series */
+            series: components["schemas"]["LiquidityMonth"][];
+            /** Year Ends */
+            year_ends: components["schemas"]["LiquidityMonth"][];
+        };
         /** BudgetLoans */
         BudgetLoans: {
             coverage: components["schemas"]["LoanCoverage"];
@@ -6230,6 +6310,112 @@ export interface components {
              */
             limits_unlocked: boolean;
         };
+        /** LiquidityCoverage */
+        LiquidityCoverage: {
+            /** From */
+            from: string | null;
+            /** Missing */
+            missing: string[];
+            /** Months */
+            months: number;
+            /** To */
+            to: string | null;
+        };
+        /**
+         * LiquidityMonth
+         * @description Ein Monatsende (``council_liquidity``).
+         */
+        LiquidityMonth: {
+            /** Amount */
+            amount: number;
+            /** As Of */
+            as_of: string;
+            /** Confirmations */
+            confirmations: number;
+            /** Document Id */
+            document_id: number | null;
+            /** Fetched At */
+            fetched_at: string;
+            /** Herkunft Id */
+            herkunft_id: number | null;
+            /** Month */
+            month: string;
+            /** Probes */
+            probes: string[];
+            /** Revised From */
+            revised_from: number | null;
+            /** Template Number */
+            template_number: string | null;
+            /** Url */
+            url: string | null;
+            /** Year */
+            year: number;
+        };
+        /** LiquidityWindow */
+        LiquidityWindow: {
+            /**
+             * LiquidityMonth
+             * @description Ein Monatsende (``council_liquidity``).
+             */
+            max: {
+                /** Amount */
+                amount: number;
+                /** As Of */
+                as_of: string;
+                /** Confirmations */
+                confirmations: number;
+                /** Document Id */
+                document_id: number | null;
+                /** Fetched At */
+                fetched_at: string;
+                /** Herkunft Id */
+                herkunft_id: number | null;
+                /** Month */
+                month: string;
+                /** Probes */
+                probes: string[];
+                /** Revised From */
+                revised_from: number | null;
+                /** Template Number */
+                template_number: string | null;
+                /** Url */
+                url: string | null;
+                /** Year */
+                year: number;
+            } | null;
+            /**
+             * LiquidityMonth
+             * @description Ein Monatsende (``council_liquidity``).
+             */
+            min: {
+                /** Amount */
+                amount: number;
+                /** As Of */
+                as_of: string;
+                /** Confirmations */
+                confirmations: number;
+                /** Document Id */
+                document_id: number | null;
+                /** Fetched At */
+                fetched_at: string;
+                /** Herkunft Id */
+                herkunft_id: number | null;
+                /** Month */
+                month: string;
+                /** Probes */
+                probes: string[];
+                /** Revised From */
+                revised_from: number | null;
+                /** Template Number */
+                template_number: string | null;
+                /** Url */
+                url: string | null;
+                /** Year */
+                year: number;
+            } | null;
+            /** Months */
+            months: number;
+        };
         /** LoanCoverage */
         LoanCoverage: {
             /** From */
@@ -6300,10 +6486,6 @@ export interface components {
             document_id: number | null;
             /** Document Url */
             document_url: string | null;
-            /** Fetched At */
-            fetched_at: string;
-            /** Herkunft Id */
-            herkunft_id: number | null;
             /** Interest Saving */
             interest_saving: number | null;
             /** Items */
@@ -6314,8 +6496,6 @@ export interface components {
             period_from: string;
             /** Period To */
             period_to: string;
-            /** Probes */
-            probes: string[];
             /** Saving From */
             saving_from: string | null;
             /** Saving To */
@@ -10091,6 +10271,26 @@ export interface operations {
             };
         };
     };
+    haushalt_liquiditaet_api_council_budget_liquidity_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetLiquidity"];
+                };
+            };
+        };
+    };
     haushalt_kredite_api_council_budget_loans_get: {
         parameters: {
             query?: never;
@@ -13032,4 +13232,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 7dbe3b38862965ca2d8bafd87b77cb8044894cb269fd834801f9d6a420a0677a
+// vertrag-sha256: 4cd4ef335c15fd51170eec264eb9b540fbf125850444895b7b6364064ef16acd
