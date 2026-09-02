@@ -29,8 +29,27 @@ echo "RATSLOTSE_DB=$RATSLOTSE_DB"
 # Trap cleans up temp dir when this process exits.
 trap 'rm -rf "$TMP_DIR"' EXIT INT TERM
 
-cd "$REPO_ROOT/web/backend"
 PYTHON_BIN="${PYTHON_BIN:-$REPO_ROOT/.venv/bin/python}"
+
+# Ratsdaten aus dem lokalen Abzug, wenn einer da ist (scripts/lokale_daten.py).
+# Ohne ihn laufen die Tests wie bisher gegen eine leere Datenbank — in der CI
+# ist das der Normalfall. Der Klon kostet auf APFS nichts, weil er erst beim
+# Schreiben Platz braucht.
+ABZUG="${XDG_CACHE_HOME:-$HOME/.cache}/ratslotse/council.sqlite"
+if [ -f "$ABZUG" ]; then
+  cp -c "$ABZUG" "$COUNCIL_DB" 2>/dev/null || cp "$ABZUG" "$COUNCIL_DB"
+  echo "Ratsdaten aus dem Abzug: $ABZUG"
+else
+  echo "Kein Abzug da — leere Ratsdaten (python scripts/lokale_daten.py hol)"
+fi
+
+# Konten säen, bevor der Server startet. Die Saat legt `admin@test.de`
+# ABSICHTLICH nicht an — die Adresse registrieren die Tests selbst, und einer
+# prüft ausdrücklich, dass das Anlegen klappt.
+"$PYTHON_BIN" "$REPO_ROOT/scripts/saat_konten.py" --db "$RATSLOTSE_DB" \
+  --council-db "$COUNCIL_DB" >/dev/null || echo "Saat übersprungen"
+
+cd "$REPO_ROOT/web/backend"
 exec "$PYTHON_BIN" -m uvicorn \
   app.main:app \
   --host 127.0.0.1 \

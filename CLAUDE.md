@@ -67,6 +67,28 @@ Zwei SQLite-DBs unter `data/` (gitignored): `ratslotse.sqlite` (Konten, Themen, 
 und `council.sqlite` (Sitzungen, Beschlüsse). Beide werden lokal beim ersten Lauf
 angelegt.
 
+**Mit echten Daten arbeiten.** Leer angelegt taugen die beiden wenig: Eine
+Liste, die nie mehr als drei Einträge sieht, bekommt keine Paginierung; ein
+Titel, der nie lang wird, bricht erst auf dem Server um. Deshalb:
+
+```bash
+python scripts/lokale_daten.py hol    # Ratsdaten von dev (~220 MB, ~25 s)
+python scripts/lokale_daten.py setz   # in data/ DIESES Worktrees legen
+python scripts/saat_konten.py         # erfundene Konten dazu
+```
+
+Der Abzug liegt in `~/.cache/ratslotse` und wird von allen Worktrees geteilt;
+`setz` legt je Worktree eine eigene Kopie an (auf APFS ein Copy-on-write-Klon,
+der erst beim Schreiben Platz kostet). `stand` sagt, wie alt er ist, und warnt
+ab zwei Wochen — gegen alte Daten zu prüfen fühlt sich an wie gegen echte.
+
+**Die Konten werden gebaut, nicht geholt.** Die echte Konten-Datenbank trägt
+Adressen, Tokens und gespeicherte Gespräche; sie gehört auf kein Notebook. Aus
+dem Abzug fallen deshalb auch die nutzerbezogenen Tabellen der Rats-Datenbank
+heraus (die Liste dafür ist dieselbe, die das Konto-Löschen benutzt), dazu
+Embeddings und Anlagen-Volltexte — zusammen gut 60 % der Datei, und für die
+Arbeit an einer Oberfläche ohne Belang.
+
 **Dev-Server-Konfig für Coding-Agents:** `.claude/launch.json` ist **nicht**
 eingecheckt — Agent-Werkzeuge schreiben dort ihre eigenen Ports und Backends
 hinein, das ist Arbeitsstand. Im neuen Checkout einmal
