@@ -49,26 +49,6 @@ BEWUSST_OFFEN: dict[tuple[str, str], list[str]] = {
     # bevor sie gestellt wird: `naechste` ist künftig, `letzte` war es nie.
     ("CouncilConsultationStop", "TemplateFollow.letzte"): ["future"],
     ("CouncilConsultationStop", "TemplateFollow.naechste"): ["future"],
-
-    # ── Der Vertrag UNTERTREIBT: Feld ist immer da, steht aber nicht in
-    #    `required` ───────────────────────────────────────────────────────────
-    #
-    # Alle folgenden Felder haben im Pydantic-Modell bzw. im TypedDict einen
-    # Vorgabewert. FastAPI serialisiert sie deshalb IMMER, trägt sie aber
-    # nicht in `required` ein — der Vertrag erlaubt also formal ein Weglassen,
-    # das es nicht gibt. Die App liest sie zu Recht als Pflichtfelder.
-    #
-    # Das sauber zu machen heißt, die Vorgabewerte aus den Modellen zu nehmen
-    # und sie an jeder Erzeugungsstelle zu übergeben. Das ist eine eigene
-    # Runde und gehört nicht in dieselbe wie das Werkzeug, das es findet.
-    ("User", "UserOut"): [
-        "apple_linked", "delivery_channel", "email_verified", "has_password",
-        "status",
-    ],
-    ("AppConfiguration", "AppConfigOut"): ["min_build"],
-    ("TopicHit", "TopicHitOut"): ["is_new"],
-    ("FollowEntry", "TemplateFollow"): ["template_number", "title"],
-    ("CouncilParticipation", "DecisionDetail.participation"): ["title", "url"],
 }
 
 ERLAUBT = {

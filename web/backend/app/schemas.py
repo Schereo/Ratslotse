@@ -53,16 +53,22 @@ Beschlussergebnis = Literal["accepted", "rejected", "postponed", "noted", "no_de
 
 
 class UserOut(BaseModel):
+    # Die Felder unten tragen bewusst KEINEN Vorgabewert mehr. Ein Vorgabewert
+    # macht das Feld im Schema optional — obwohl FastAPI es beim Serialisieren
+    # immer mitschickt. Der Vertrag sagte damit „darf fehlen" über etwas, das nie
+    # fehlt, und die Clients mussten einen Fall behandeln, den es nicht gibt (die
+    # App las sie zu Recht als Pflichtfelder, siehe tests/test_ios_vertrag.py).
+    # Alle Erzeugungsstellen übergeben sie ohnehin ausdrücklich.
     id: int
     email: str
     role: Rolle
-    status: Kontostand = "pending"
-    delivery_channel: Zustellweg = "email"
-    email_verified: bool = False
+    status: Kontostand
+    delivery_channel: Zustellweg
+    email_verified: bool
     # Sign in with Apple (RL-1002): verknüpft? Und hat das Konto (noch) ein
     # selbst gesetztes Passwort? Steuert Konto-Chip + Passwort-Karte.
-    apple_linked: bool = False
-    has_password: bool = True
+    apple_linked: bool
+    has_password: bool
     # Populated only for native-app clients (which send `X-Client: app`) on
     # login/register/verify-email. Web clients authenticate via the httpOnly
     # cookie and leave this null.
@@ -79,7 +85,7 @@ class UserOut(BaseModel):
 class AppConfigOut(BaseModel):
     """Compatibility contract consumed before a native app starts loading data."""
 
-    min_build: int = 0
+    min_build: int
     note: str | None = None
 
 
@@ -120,7 +126,7 @@ class TopicHitOut(BaseModel):
     session_date: str
     outcome: Beschlussergebnis | None = None
     # Noch nicht gesehen (dieselbe Menge, die das „n neue"-Abzeichen zählt).
-    is_new: bool = False
+    is_new: bool
 
 
 class TopicOut(BaseModel):

@@ -443,11 +443,14 @@ public struct CouncilAttachment: Codable, Sendable, Hashable, Identifiable {
 }
 
 public struct CouncilParticipation: Codable, Sendable, Equatable {
-    public let title: String
+    /// `title` und `url` stehen im Vertrag als `str | None` — eine
+    /// Beteiligung ohne Titel oder Verweis hätte die Beschluss-Seite sonst
+    /// gar nicht mehr geladen.
+    public let title: String?
     public let step: String?
     public let from: String?
     public let until: String?
-    public let url: String
+    public let url: String?
     public let status: String?
 
     enum CodingKeys: String, CodingKey {
@@ -601,8 +604,12 @@ public struct BookmarkPage: Codable, Sendable {
 public struct FollowEntry: Codable, Sendable, Identifiable {
     public let id: Int
     public let templateID: Int
-    public let templateNumber: String
-    public let title: String
+    /// Beide dürfen fehlen: Der Vertrag beschreibt sie als `str | None`, und
+    /// im Bestand stehen Vorlagen ohne Titel (gemessen 02.09.2026: zwei von
+    /// 5.083). Als Pflichtfelder gelesen hätte EINE davon gereicht, um die
+    /// ganze Folgen-Liste beim Decodieren abbrechen zu lassen.
+    public let templateNumber: String?
+    public let title: String?
     public let url: String
     public let stationCount: Int
     public let next: CouncilConsultationStop?

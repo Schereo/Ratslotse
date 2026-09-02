@@ -1515,7 +1515,6 @@
         "description": "Compatibility contract consumed before a native app starts loading data.",
         "properties": {
           "min_build": {
-            "default": 0,
             "title": "Min Build",
             "type": "integer"
           },
@@ -1527,6 +1526,9 @@
             ]
           }
         },
+        "required": [
+          "min_build"
+        ],
         "title": "AppConfigOut",
         "type": "object"
       },
@@ -11455,7 +11457,6 @@
             "type": "integer"
           },
           "is_new": {
-            "default": false,
             "title": "Is New",
             "type": "boolean"
           },
@@ -11486,7 +11487,8 @@
           "id",
           "title",
           "committee",
-          "session_date"
+          "session_date",
+          "is_new"
         ],
         "title": "TopicHitOut",
         "type": "object"
@@ -11779,12 +11781,10 @@
             ]
           },
           "apple_linked": {
-            "default": false,
             "title": "Apple Linked",
             "type": "boolean"
           },
           "delivery_channel": {
-            "default": "email",
             "enum": [
               "email",
               "push",
@@ -11806,12 +11806,10 @@
             "type": "string"
           },
           "email_verified": {
-            "default": false,
             "title": "Email Verified",
             "type": "boolean"
           },
           "has_password": {
-            "default": true,
             "title": "Has Password",
             "type": "boolean"
           },
@@ -11835,7 +11833,6 @@
             ]
           },
           "status": {
-            "default": "pending",
             "enum": [
               "pending",
               "active",
@@ -11848,7 +11845,12 @@
         "required": [
           "id",
           "email",
-          "role"
+          "role",
+          "status",
+          "delivery_channel",
+          "email_verified",
+          "apple_linked",
+          "has_password"
         ],
         "title": "UserOut",
         "type": "object"
