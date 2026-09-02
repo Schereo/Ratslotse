@@ -787,6 +787,7 @@ def lies_q1_vorlage(text: str, title: str = "") -> Vollzugsbericht | None:
     segment = glatt[kopf:summe]
     starts = list(_Q1_ZEILE.finditer(segment))
     positionen: list[Position] = []
+    nachgefuehrt = 0
     for k, m in enumerate(starts):
         ende = starts[k + 1].start() if k + 1 < len(starts) else len(segment)
         chunk = segment[m.end():ende]
@@ -795,6 +796,14 @@ def lies_q1_vorlage(text: str, title: str = "") -> Vollzugsbericht | None:
             continue
         (budgeted, forecast, deviation), a, _b = gelesen
         label = re.sub(r"\s*-\s*$", "", chunk[:a]).strip(" -:")
+        # Die Abweichung ist die Aussage der Zeile; die Prognose-Zelle ist
+        # nicht überall nachgeführt (2026: „-113.195.538 -113.680.505
+        # - 6.622.000" — die Prognose trägt 0,5 Mio., die Abweichung 6,6).
+        # Die Summenzeile bestätigt die Abweichungen: Plan plus Abweichungen
+        # ergibt dort die Prognose. Also gilt je Zeile Plan plus Abweichung.
+        if abs((forecast - budgeted) - deviation) > 2:
+            forecast = budgeted + deviation
+            nachgefuehrt += 1
         positionen.append(Position(
             sub_budget=int(m.group(1)), kind="result", label=label,
             budgeted=budgeted, forecast=forecast, deviation=deviation,
@@ -827,4 +836,7 @@ def lies_q1_vorlage(text: str, title: str = "") -> Vollzugsbericht | None:
         probes=(PROBE_Q1_SUMMEN,),
         probe_result=(f"{len(positionen) - 1} Teilhaushalte; Plan und Abweichung "
                       "summieren auf die gedruckte Summenzeile, Plan plus Abweichung "
-                      "ergibt die Prognose"))
+                      "ergibt die Prognose"
+                      + (f"; in {nachgefuehrt} Zeile(n) die Prognose aus Plan plus "
+                         "Abweichung gebildet, weil die gedruckte Zelle die Abweichung "
+                         "nicht trug" if nachgefuehrt else "")))

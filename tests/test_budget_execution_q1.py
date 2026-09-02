@@ -40,6 +40,11 @@ def test_minus_mit_leerzeichen_und_strich_als_null():
     b26 = {p.sub_budget: p for p in _lies("26/0155").positionen}
     assert (b26[1].budgeted, b26[1].deviation) == (-8_844_512, 0.0)
     assert (b26[2].forecast, b26[2].deviation) == (-48_517_854, -4_000_000)
+    # Zeile 10 druckt eine Prognose, die die Abweichung nicht trägt — es gilt
+    # Plan plus Abweichung (die Summenzeile bestätigt die Abweichungen).
+    assert (b26[10].budgeted, b26[10].deviation, b26[10].forecast) == (
+        -113_195_538, -6_622_000, -119_817_538)
+    assert b26[11].forecast == -129_875_120 + 6_137_000
     assert b26[13].label.startswith("Nicht rechtsfähige")
     b25 = {p.sub_budget: p for p in _lies("25/0308").positionen}
     assert (b25[1].budgeted, b25[4].deviation) == (-8_964_051, 48_800_000)
