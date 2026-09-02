@@ -23,8 +23,7 @@
         "properties": {
           "aliases": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/AdminEntityAlias"
             },
             "title": "Aliases",
             "type": "array"
@@ -134,12 +133,75 @@
         "title": "AdminCouncilStats",
         "type": "object"
       },
+      "AdminEntityAlias": {
+        "description": "Eine zusammengelegte Entität (``CouncilStore.list_entity_aliases``).\n\n``canonical_slug`` ist das AUFGELÖSTE Ziel: Eine Kette A→B→C wird bis zum\nEnde verfolgt, damit in der Liste nicht das leere Mittelglied steht.",
+        "properties": {
+          "alias_name": {
+            "title": "Alias Name",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "canonical_n": {
+            "title": "Canonical N",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "canonical_name": {
+            "title": "Canonical Name",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "canonical_slug": {
+            "title": "Canonical Slug",
+            "type": "string"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "slug",
+          "canonical_slug",
+          "source",
+          "reason",
+          "created_at",
+          "alias_name",
+          "canonical_name",
+          "canonical_n"
+        ],
+        "title": "AdminEntityAlias",
+        "type": "object"
+      },
       "AdminFeedbackList": {
         "properties": {
           "items": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/AdminFeedbackRow"
             },
             "title": "Items",
             "type": "array"
@@ -172,6 +234,56 @@
           "unread"
         ],
         "title": "AdminFeedbackRead",
+        "type": "object"
+      },
+      "AdminFeedbackRow": {
+        "description": "Eine Rückmeldung aus dem Kontaktformular (``Store.list_feedback``).\n\nDer SELECT nennt seine sieben Spalten ausdrücklich, die Aufzählung ist\nalso vollständig. ``read_at`` ist absichtlich global und nicht je Admin:\nWer eine Meldung abgearbeitet hat, hat sie für alle abgearbeitet.",
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "owner_id": {
+            "title": "Owner Id",
+            "type": "integer"
+          },
+          "read_at": {
+            "title": "Read At",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "owner_id",
+          "email",
+          "kind",
+          "message",
+          "created_at",
+          "read_at"
+        ],
+        "title": "AdminFeedbackRow",
         "type": "object"
       },
       "AdminGrowth": {

@@ -3692,9 +3692,7 @@ export interface components {
         /** AdminAliasList */
         AdminAliasList: {
             /** Aliases */
-            aliases: {
-                [key: string]: unknown;
-            }[];
+            aliases: components["schemas"]["AdminEntityAlias"][];
         };
         /** AdminClientShare */
         AdminClientShare: {
@@ -3730,12 +3728,35 @@ export interface components {
             /** Upcoming */
             upcoming: number;
         };
+        /**
+         * AdminEntityAlias
+         * @description Eine zusammengelegte Entität (``CouncilStore.list_entity_aliases``).
+         *
+         *     ``canonical_slug`` ist das AUFGELÖSTE Ziel: Eine Kette A→B→C wird bis zum
+         *     Ende verfolgt, damit in der Liste nicht das leere Mittelglied steht.
+         */
+        AdminEntityAlias: {
+            /** Alias Name */
+            alias_name: string | null;
+            /** Canonical N */
+            canonical_n: number | null;
+            /** Canonical Name */
+            canonical_name: string | null;
+            /** Canonical Slug */
+            canonical_slug: string;
+            /** Created At */
+            created_at: string;
+            /** Reason */
+            reason: string | null;
+            /** Slug */
+            slug: string;
+            /** Source */
+            source: string | null;
+        };
         /** AdminFeedbackList */
         AdminFeedbackList: {
             /** Items */
-            items: {
-                [key: string]: unknown;
-            }[];
+            items: components["schemas"]["AdminFeedbackRow"][];
             /** Unread */
             unread: number;
         };
@@ -3745,6 +3766,30 @@ export interface components {
             ok: boolean;
             /** Unread */
             unread: number;
+        };
+        /**
+         * AdminFeedbackRow
+         * @description Eine Rückmeldung aus dem Kontaktformular (``Store.list_feedback``).
+         *
+         *     Der SELECT nennt seine sieben Spalten ausdrücklich, die Aufzählung ist
+         *     also vollständig. ``read_at`` ist absichtlich global und nicht je Admin:
+         *     Wer eine Meldung abgearbeitet hat, hat sie für alle abgearbeitet.
+         */
+        AdminFeedbackRow: {
+            /** Created At */
+            created_at: string;
+            /** Email */
+            email: string | null;
+            /** Id */
+            id: number;
+            /** Kind */
+            kind: string;
+            /** Message */
+            message: string;
+            /** Owner Id */
+            owner_id: number;
+            /** Read At */
+            read_at: string | null;
         };
         /** AdminGrowth */
         AdminGrowth: {
@@ -12244,4 +12289,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 9fbf44b7692cac96308336adaaaac4eda575ed777f0c2becf3e088003e684255
+// vertrag-sha256: ce8ffe961ff0837044ad1d1fc9398c6facfd0b6d9e104f1e5ffe9de71c216bfc

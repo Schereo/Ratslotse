@@ -812,8 +812,38 @@ class QuizFlagged(TypedDict):
 # ``ALTER TABLE`` still Felder zu schlucken (siehe Regel 2 oben).
 # --------------------------------------------------------------------------
 
-AdminFeedbackRow = dict[str, Any]
-AdminEntityAlias = dict[str, Any]
+class AdminFeedbackRow(TypedDict):
+    """Eine Rückmeldung aus dem Kontaktformular (``Store.list_feedback``).
+
+    Der SELECT nennt seine sieben Spalten ausdrücklich, die Aufzählung ist
+    also vollständig. ``read_at`` ist absichtlich global und nicht je Admin:
+    Wer eine Meldung abgearbeitet hat, hat sie für alle abgearbeitet.
+    """
+    id: int
+    owner_id: int
+    email: str | None
+    kind: str
+    message: str
+    created_at: str
+    read_at: str | None
+
+
+class AdminEntityAlias(TypedDict):
+    """Eine zusammengelegte Entität (``CouncilStore.list_entity_aliases``).
+
+    ``canonical_slug`` ist das AUFGELÖSTE Ziel: Eine Kette A→B→C wird bis zum
+    Ende verfolgt, damit in der Liste nicht das leere Mittelglied steht.
+    """
+    slug: str
+    canonical_slug: str
+    source: str | None
+    reason: str | None
+    created_at: str
+    #: Der Anzeigename des Alias — aus den Rohbeobachtungen, weil der Alias
+    #: selbst nach dem Neubau nicht mehr in ``council_entities`` steht.
+    alias_name: str | None
+    canonical_name: str | None
+    canonical_n: int | None
 
 
 class AdminUserFeatures(TypedDict):
