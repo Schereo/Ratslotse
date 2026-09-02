@@ -35,9 +35,17 @@ import subprocess
 import sys
 import time
 
-#: Weniger als so viele abgeschlossene Prüfungen heißt: Hier lief etwas nicht.
-#: Das Repo fährt auf jedem PR mindestens Tests und die Doku-Durchsicht.
-MINDESTENS = 2
+#: Diese Prüfung MUSS es geben. `test.yml` hat als einziger Workflow keinen
+#: Pfad-Filter — er läuft auf jedem Pull Request, egal was darin steht. Fehlt
+#: er, lief gar nichts, und das ist der gefährlichste Zustand: Ein Pull
+#: Request mit Konflikt bekommt überhaupt keine Läufe, und null Prüfungen
+#: sähen sonst aus wie „alles grün".
+#:
+#: Vorher stand hier eine ZAHL („mindestens zwei"). Sie war zu grob: Am
+#: 02.09.2026 hatte ein Pull Request nur `test`, weil er außer einer
+#: Testdatei nichts anfasste und `docs-review` einen Pfad-Filter hat. Das Tor
+#: verweigerte den Merge, obwohl alles in Ordnung war.
+PFLICHTPRUEFUNG = "test"
 
 
 def gh(*args: str, versuche: int = 1) -> str:
@@ -90,8 +98,8 @@ def urteil(zeilen: list[tuple[str, str, str]]) -> str:
     """
     if not zeilen or any(z[1] != "completed" for z in zeilen):
         return "wartet"
-    if len(zeilen) < MINDESTENS:
-        return "zu wenige"
+    if not any(z[0] == PFLICHTPRUEFUNG for z in zeilen):
+        return "fehlt"
     if any(z[2] not in BESTANDEN for z in zeilen):
         return "rot"
     return "gruen"
@@ -137,10 +145,10 @@ def main(argv: list[str] | None = None) -> int:
         time.sleep(30)
 
     print(bericht(zeilen))
-    if stand == "zu wenige":
-        print(f"  Nur {len(zeilen)} Prüfung(en) — erwartet werden mindestens "
-              f"{MINDESTENS}. Ein Pull Request, auf dem nichts lief, sieht aus "
-              "wie einer, auf dem alles grün ist.", file=sys.stderr)
+    if stand == "fehlt":
+        print(f"  Die Prüfung „{PFLICHTPRUEFUNG}\" fehlt — sie läuft auf JEDEM "
+              "Pull Request. Fehlt sie, lief gar nichts, und das sieht aus wie "
+              "„alles grün\".", file=sys.stderr)
         return 1
     if stand == "rot":
         rot = [n for n, _, e in zeilen if e not in BESTANDEN]
