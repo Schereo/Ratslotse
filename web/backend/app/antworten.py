@@ -576,6 +576,50 @@ class SourceCheck(TypedDict):
 # --------------------------------------------------------------------------
 
 
+class WeekPreviewItem(TypedDict):
+    """Ein Tagesordnungspunkt in „Diese Woche im Rat".
+
+    Zwei Listen tragen diese Form: ``items`` (die hervorgehobenen Punkte, mit
+    allen Feldern) und die Einträge in ``further_per_session`` — dort baut der
+    Store die Punkte Feld für Feld neu zusammen und lässt fünf davon weg.
+    Deshalb stehen genau diese fünf als ``NotRequired``.
+
+    Der Store warnt an dieser Stelle selbst: „Wer hier ein Feld ergänzt, muss
+    es an BEIDEN Stellen tun." Genau das ist zweimal schiefgegangen — einmal
+    fehlte die Kurzfassung, einmal der Kartentext, und die Instagram-Karten
+    standen ohne Erklärung da.
+
+    ACHTUNG, Namensfalle: ``applicants`` ist hier EINE Zeichenkette (der aus
+    dem Titel herausgetrennte Antragsteller). Das gleichnamige Feld an
+    ``TemplateAttachment`` ist eine Liste von Fraktionsnamen.
+    """
+    ksinr: int
+    item_number: str
+    title: str
+    titel_kurz: str
+    applicants: str | None
+    topic_name: str | None
+    summary: str | None
+    social_text: str | None
+    dringlich: bool
+    wichtig: int
+    wichtig_grund: str | None
+    template_number: str | None
+    kvonr: int | None
+    committee: str
+    session_date: str
+    #: Der Punkt, unter dem eine mehrstufige Sache gebündelt wird.
+    gruppe_nr: str
+    gruppe_titel: str | None
+    gruppe_stationen: int
+    #: Nur in ``items``, nicht in ``further_per_session``:
+    kind: NotRequired[str | None]
+    behandlung: NotRequired[str | None]
+    vorgeschichte: NotRequired[int]
+    wichtig_quelle: NotRequired[str]
+    top: NotRequired[bool]
+
+
 class CouncilWeekPreview(TypedDict):
     """``CouncilStore.wochenvorschau`` hat ZWEI Rückgabeformen: ohne Treffer
     nur fünf Schlüssel, mit Treffern elf. Die sechs Kennzahlen sind deshalb
@@ -588,7 +632,7 @@ class CouncilWeekPreview(TypedDict):
     from_date: str
     to_date: str
     sessions: list[SessionRow]
-    items: list[dict[str, Any]]
+    items: list[WeekPreviewItem]
     substantive_total: NotRequired[Any]
     substantive_per_session: NotRequired[Any]
     relevant_per_session: NotRequired[Any]
@@ -615,6 +659,13 @@ class Discovery(TypedDict):
     session_date: str | None
 
 
+class DecisionVote(TypedDict):
+    """Wie eine Fraktion zu einem Beschluss stand
+    (``CouncilStore.decision_votes_for``)."""
+    faction: str
+    stance: str
+
+
 class SocialDecision(TypedDict):
     """Fester SELECT im Router plus ``votes`` — deshalb hier vollständig."""
     id: int
@@ -627,7 +678,7 @@ class SocialDecision(TypedDict):
     item_number: str | None
     committee: str | None
     session_date: str | None
-    votes: list[dict[str, Any]]
+    votes: list[DecisionVote]
 
 
 class HighestDecisionId(TypedDict):
@@ -754,8 +805,33 @@ class QuizMapResult(TypedDict):
     points: int
 
 
+class UserQuizQuestion(TypedDict):
+    """Eine selbst angelegte Quizfrage (``Store._user_quiz_row``).
+
+    Die Quelle ist zwar ein ``SELECT *``, die Methode baut daraus aber eine
+    ausdrückliche Projektion — die Aufzählung hier ist deshalb vollständig und
+    bleibt es. ``owner_id`` fehlt bewusst (die Zeile gehört dem Abrufenden),
+    und ``unit`` heißt in der Datenbank ``answer_unit``.
+    """
+    id: int
+    question: str
+    options: list[str]
+    correct_index: int
+    district: str | None
+    category: str
+    explanation: str | None
+    practiced: int
+    correct_count: int
+    created_at: str
+    qtype: str
+    answer_value: float | None
+    unit: str | None
+    range_min: float | None
+    range_max: float | None
+
+
 class QuizOwnQuestions(TypedDict):
-    questions: list[dict[str, Any]]
+    questions: list[UserQuizQuestion]
 
 
 class QuizTotal(TypedDict):
@@ -1143,6 +1219,19 @@ class PlaceParent(TypedDict):
     kind: str
 
 
+class PlaceSource(TypedDict):
+    """Ein Beleg des Ortskatalogs (``council/oldenburg_places.json``).
+
+    Vier Schlüssel hat jede der elf Quellen, zwei kommen nur bei manchen vor.
+    """
+    id: str
+    type: str
+    title: str
+    url: str
+    license: NotRequired[str]
+    note: NotRequired[str]
+
+
 class PlaceEntry(TypedDict):
     """Ein Ort des Katalogs (``council.places.public_place``).
 
@@ -1169,7 +1258,7 @@ class PlaceEntry(TypedDict):
     lon: float | None
     kind_label: str
     parents: list[PlaceParent]
-    sources: list[dict[str, Any]]
+    sources: list[PlaceSource]
 
 
 class PlaceCatalog(TypedDict):
@@ -1183,7 +1272,7 @@ class PlaceCatalog(TypedDict):
     plural: str
     definition: str
     kinds: dict[str, str]
-    sources: list[dict[str, Any]]
+    sources: list[PlaceSource]
     places: list[PlaceEntry]
 
 

@@ -14,7 +14,7 @@ dass jeder aufgerufene *Pfad* existiert. Beide sagen nichts über die
 **Warum das keine Liste ist, die man einmal leert.** Die meisten Felder, die
 hier stehen, sind völlig in Ordnung — sie existieren, das Backend liefert sie,
 nur beschreibt der Vertrag sie nicht: Sie stecken in einer der Nutzlasten, die
-irgendwo ein offenes ``additionalProperties`` tragen (Stand heute 23 von 229
+irgendwo ein offenes ``additionalProperties`` tragen (Stand heute 17 von 229
 Schemata). Solange das so ist, kann niemand maschinell zwischen „Feld, das der
 Vertrag verschweigt" und „Feld, das es nicht mehr gibt" unterscheiden.
 
@@ -150,6 +150,8 @@ BEWUSST_OFFEN = {
     "QaShareBody": "Derselbe Blob auf dem Hinweg.",
     "ResearchSnapshot": "Gespeicherter Quellen-Block eines Deep-Research-Jobs "
                         "— im Code ausführlich begründet.",
+    "TrendData": "Die Hülle steht, die Reihen darunter bleiben offen "
+                 "(so schon im Code begründet).",
 }
 
 #: Die Arbeitsliste: Hier fehlt die Beschreibung noch, und sie soll kommen.
@@ -159,18 +161,11 @@ NOCH_OFFEN = {
     "BudgetDataState",
     "BudgetDebt",
     "BudgetFixedAssets",
-    "CouncilWeekPreview",
     "Districts",
     "EntityDetail",
     "GoalDetail",
     "PersonCouncil",
-    "PlaceCatalog",
-    "PlaceEntry",
-    "QuizOwnQuestions",
     "ResearchCurrent",
-    "SocialDecision",
-    "TrendData",
-    "WeekPreview",
 }
 
 #: Beide zusammen — was der Vertrag heute offen lässt.
@@ -209,11 +204,8 @@ WEB_OHNE_VERTRAG = {
     ("QaSource", "ort_name"),
     ("QuizBadge", "tier"),
     ("QuizImageCredit", "author"),
-    ("QuizImageCredit", "license"),
     ("QuizImageCredit", "license_url"),
     ("RelatedEntity", "rel_type"),
-    ("UserQuizQuestion", "correct_count"),
-    ("UserQuizQuestion", "practiced"),
 }
 
 #: Dasselbe für die iOS-App. Zwei Einträge sind hier anders als der Rest:
@@ -233,8 +225,6 @@ APP_OHNE_VERTRAG = {
     "nichtoeffentlich",
     "ort_name",
     "rest",
-    "titel_kurz",
-    "wichtig_grund",
 }
 
 def test_der_leser_findet_ueberhaupt_etwas():

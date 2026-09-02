@@ -3479,8 +3479,7 @@
           },
           "items": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/WeekPreviewItem"
             },
             "title": "Items",
             "type": "array"
@@ -4152,6 +4151,25 @@
           "financial_impact"
         ],
         "title": "DecisionTemplate",
+        "type": "object"
+      },
+      "DecisionVote": {
+        "description": "Wie eine Fraktion zu einem Beschluss stand\n(``CouncilStore.decision_votes_for``).",
+        "properties": {
+          "faction": {
+            "title": "Faction",
+            "type": "string"
+          },
+          "stance": {
+            "title": "Stance",
+            "type": "string"
+          }
+        },
+        "required": [
+          "faction",
+          "stance"
+        ],
+        "title": "DecisionVote",
         "type": "object"
       },
       "DeepResearchBody": {
@@ -5969,8 +5987,7 @@
           },
           "sources": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/PlaceSource"
             },
             "title": "Sources",
             "type": "array"
@@ -6099,8 +6116,7 @@
           },
           "sources": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/PlaceSource"
             },
             "title": "Sources",
             "type": "array"
@@ -6230,6 +6246,43 @@
           "status"
         ],
         "title": "PlaceReviewIn",
+        "type": "object"
+      },
+      "PlaceSource": {
+        "description": "Ein Beleg des Ortskatalogs (``council/oldenburg_places.json``).\n\nVier Schlüssel hat jede der elf Quellen, zwei kommen nur bei manchen vor.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "license": {
+            "title": "License",
+            "type": "string"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "title",
+          "url"
+        ],
+        "title": "PlaceSource",
         "type": "object"
       },
       "PolicyField": {
@@ -7379,8 +7432,7 @@
         "properties": {
           "questions": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/UserQuizQuestion"
             },
             "title": "Questions",
             "type": "array"
@@ -8372,8 +8424,7 @@
           },
           "votes": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/DecisionVote"
             },
             "title": "Votes",
             "type": "array"
@@ -9432,6 +9483,111 @@
         "title": "UserQuizAnswerIn",
         "type": "object"
       },
+      "UserQuizQuestion": {
+        "description": "Eine selbst angelegte Quizfrage (``Store._user_quiz_row``).\n\nDie Quelle ist zwar ein ``SELECT *``, die Methode baut daraus aber eine\nausdrückliche Projektion — die Aufzählung hier ist deshalb vollständig und\nbleibt es. ``owner_id`` fehlt bewusst (die Zeile gehört dem Abrufenden),\nund ``unit`` heißt in der Datenbank ``answer_unit``.",
+        "properties": {
+          "answer_value": {
+            "title": "Answer Value",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "correct_count": {
+            "title": "Correct Count",
+            "type": "integer"
+          },
+          "correct_index": {
+            "title": "Correct Index",
+            "type": "integer"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "district": {
+            "title": "District",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "explanation": {
+            "title": "Explanation",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "options": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Options",
+            "type": "array"
+          },
+          "practiced": {
+            "title": "Practiced",
+            "type": "integer"
+          },
+          "qtype": {
+            "title": "Qtype",
+            "type": "string"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          },
+          "range_max": {
+            "title": "Range Max",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "range_min": {
+            "title": "Range Min",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "unit": {
+            "title": "Unit",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "question",
+          "options",
+          "correct_index",
+          "district",
+          "category",
+          "explanation",
+          "practiced",
+          "correct_count",
+          "created_at",
+          "qtype",
+          "answer_value",
+          "unit",
+          "range_min",
+          "range_max"
+        ],
+        "title": "UserQuizQuestion",
+        "type": "object"
+      },
       "UserQuizQuestionIn": {
         "properties": {
           "answer_value": {
@@ -9702,8 +9858,7 @@
           },
           "items": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/WeekPreviewItem"
             },
             "title": "Items",
             "type": "array"
@@ -9751,6 +9906,155 @@
           "upcoming"
         ],
         "title": "WeekPreview",
+        "type": "object"
+      },
+      "WeekPreviewItem": {
+        "description": "Ein Tagesordnungspunkt in „Diese Woche im Rat\".\n\nZwei Listen tragen diese Form: ``items`` (die hervorgehobenen Punkte, mit\nallen Feldern) und die Einträge in ``further_per_session`` — dort baut der\nStore die Punkte Feld für Feld neu zusammen und lässt fünf davon weg.\nDeshalb stehen genau diese fünf als ``NotRequired``.\n\nDer Store warnt an dieser Stelle selbst: „Wer hier ein Feld ergänzt, muss\nes an BEIDEN Stellen tun.\" Genau das ist zweimal schiefgegangen — einmal\nfehlte die Kurzfassung, einmal der Kartentext, und die Instagram-Karten\nstanden ohne Erklärung da.\n\nACHTUNG, Namensfalle: ``applicants`` ist hier EINE Zeichenkette (der aus\ndem Titel herausgetrennte Antragsteller). Das gleichnamige Feld an\n``TemplateAttachment`` ist eine Liste von Fraktionsnamen.",
+        "properties": {
+          "applicants": {
+            "title": "Applicants",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "behandlung": {
+            "title": "Behandlung",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "committee": {
+            "title": "Committee",
+            "type": "string"
+          },
+          "dringlich": {
+            "title": "Dringlich",
+            "type": "boolean"
+          },
+          "gruppe_nr": {
+            "title": "Gruppe Nr",
+            "type": "string"
+          },
+          "gruppe_stationen": {
+            "title": "Gruppe Stationen",
+            "type": "integer"
+          },
+          "gruppe_titel": {
+            "title": "Gruppe Titel",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "item_number": {
+            "title": "Item Number",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ksinr": {
+            "title": "Ksinr",
+            "type": "integer"
+          },
+          "kvonr": {
+            "title": "Kvonr",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "session_date": {
+            "title": "Session Date",
+            "type": "string"
+          },
+          "social_text": {
+            "title": "Social Text",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "summary": {
+            "title": "Summary",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "template_number": {
+            "title": "Template Number",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "titel_kurz": {
+            "title": "Titel Kurz",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "top": {
+            "title": "Top",
+            "type": "boolean"
+          },
+          "topic_name": {
+            "title": "Topic Name",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "vorgeschichte": {
+            "title": "Vorgeschichte",
+            "type": "integer"
+          },
+          "wichtig": {
+            "title": "Wichtig",
+            "type": "integer"
+          },
+          "wichtig_grund": {
+            "title": "Wichtig Grund",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "wichtig_quelle": {
+            "title": "Wichtig Quelle",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ksinr",
+          "item_number",
+          "title",
+          "titel_kurz",
+          "applicants",
+          "topic_name",
+          "summary",
+          "social_text",
+          "dringlich",
+          "wichtig",
+          "wichtig_grund",
+          "template_number",
+          "kvonr",
+          "committee",
+          "session_date",
+          "gruppe_nr",
+          "gruppe_titel",
+          "gruppe_stationen"
+        ],
+        "title": "WeekPreviewItem",
         "type": "object"
       }
     }

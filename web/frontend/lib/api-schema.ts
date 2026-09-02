@@ -5117,9 +5117,7 @@ export interface components {
             /** Further Per Session */
             further_per_session?: unknown;
             /** Items */
-            items: {
-                [key: string]: unknown;
-            }[];
+            items: components["schemas"]["WeekPreviewItem"][];
             /** Matches Per Session */
             matches_per_session?: unknown;
             /** Matches Total */
@@ -5356,6 +5354,17 @@ export interface components {
             template_number: string | null;
             /** Title */
             title: string | null;
+        };
+        /**
+         * DecisionVote
+         * @description Wie eine Fraktion zu einem Beschluss stand
+         *     (``CouncilStore.decision_votes_for``).
+         */
+        DecisionVote: {
+            /** Faction */
+            faction: string;
+            /** Stance */
+            stance: string;
         };
         /** DeepResearchBody */
         DeepResearchBody: {
@@ -6151,9 +6160,7 @@ export interface components {
             /** Singular */
             singular: string;
             /** Sources */
-            sources: {
-                [key: string]: unknown;
-            }[];
+            sources: components["schemas"]["PlaceSource"][];
         };
         /** PlaceDetail */
         PlaceDetail: {
@@ -6207,9 +6214,7 @@ export interface components {
             /** Source Ids */
             source_ids: string[];
             /** Sources */
-            sources: {
-                [key: string]: unknown;
-            }[];
+            sources: components["schemas"]["PlaceSource"][];
         };
         /**
          * PlaceParent
@@ -6253,6 +6258,26 @@ export interface components {
             source_url?: string | null;
             /** Status */
             status: string;
+        };
+        /**
+         * PlaceSource
+         * @description Ein Beleg des Ortskatalogs (``council/oldenburg_places.json``).
+         *
+         *     Vier Schlüssel hat jede der elf Quellen, zwei kommen nur bei manchen vor.
+         */
+        PlaceSource: {
+            /** Id */
+            id: string;
+            /** License */
+            license?: string;
+            /** Note */
+            note?: string;
+            /** Title */
+            title: string;
+            /** Type */
+            type: string;
+            /** Url */
+            url: string;
         };
         /** PolicyField */
         PolicyField: {
@@ -6689,9 +6714,7 @@ export interface components {
         /** QuizOwnQuestions */
         QuizOwnQuestions: {
             /** Questions */
-            questions: {
-                [key: string]: unknown;
-            }[];
+            questions: components["schemas"]["UserQuizQuestion"][];
         };
         /**
          * QuizQuestion
@@ -7095,9 +7118,7 @@ export interface components {
             /** Vote */
             vote: string | null;
             /** Votes */
-            votes: {
-                [key: string]: unknown;
-            }[];
+            votes: components["schemas"]["DecisionVote"][];
         };
         /** SourceCheck */
         SourceCheck: {
@@ -7559,6 +7580,47 @@ export interface components {
             /** Value */
             value?: number | null;
         };
+        /**
+         * UserQuizQuestion
+         * @description Eine selbst angelegte Quizfrage (``Store._user_quiz_row``).
+         *
+         *     Die Quelle ist zwar ein ``SELECT *``, die Methode baut daraus aber eine
+         *     ausdrückliche Projektion — die Aufzählung hier ist deshalb vollständig und
+         *     bleibt es. ``owner_id`` fehlt bewusst (die Zeile gehört dem Abrufenden),
+         *     und ``unit`` heißt in der Datenbank ``answer_unit``.
+         */
+        UserQuizQuestion: {
+            /** Answer Value */
+            answer_value: number | null;
+            /** Category */
+            category: string;
+            /** Correct Count */
+            correct_count: number;
+            /** Correct Index */
+            correct_index: number;
+            /** Created At */
+            created_at: string;
+            /** District */
+            district: string | null;
+            /** Explanation */
+            explanation: string | null;
+            /** Id */
+            id: number;
+            /** Options */
+            options: string[];
+            /** Practiced */
+            practiced: number;
+            /** Qtype */
+            qtype: string;
+            /** Question */
+            question: string;
+            /** Range Max */
+            range_max: number | null;
+            /** Range Min */
+            range_min: number | null;
+            /** Unit */
+            unit: string | null;
+        };
         /** UserQuizQuestionIn */
         UserQuizQuestionIn: {
             /** Answer Value */
@@ -7671,9 +7733,7 @@ export interface components {
             /** Further Per Session */
             further_per_session?: unknown;
             /** Items */
-            items: {
-                [key: string]: unknown;
-            }[];
+            items: components["schemas"]["WeekPreviewItem"][];
             /** Matches Per Session */
             matches_per_session?: unknown;
             /** Matches Total */
@@ -7690,6 +7750,72 @@ export interface components {
             to_date: string;
             /** Upcoming */
             upcoming: components["schemas"]["SessionRow"][];
+        };
+        /**
+         * WeekPreviewItem
+         * @description Ein Tagesordnungspunkt in „Diese Woche im Rat".
+         *
+         *     Zwei Listen tragen diese Form: ``items`` (die hervorgehobenen Punkte, mit
+         *     allen Feldern) und die Einträge in ``further_per_session`` — dort baut der
+         *     Store die Punkte Feld für Feld neu zusammen und lässt fünf davon weg.
+         *     Deshalb stehen genau diese fünf als ``NotRequired``.
+         *
+         *     Der Store warnt an dieser Stelle selbst: „Wer hier ein Feld ergänzt, muss
+         *     es an BEIDEN Stellen tun." Genau das ist zweimal schiefgegangen — einmal
+         *     fehlte die Kurzfassung, einmal der Kartentext, und die Instagram-Karten
+         *     standen ohne Erklärung da.
+         *
+         *     ACHTUNG, Namensfalle: ``applicants`` ist hier EINE Zeichenkette (der aus
+         *     dem Titel herausgetrennte Antragsteller). Das gleichnamige Feld an
+         *     ``TemplateAttachment`` ist eine Liste von Fraktionsnamen.
+         */
+        WeekPreviewItem: {
+            /** Applicants */
+            applicants: string | null;
+            /** Behandlung */
+            behandlung?: string | null;
+            /** Committee */
+            committee: string;
+            /** Dringlich */
+            dringlich: boolean;
+            /** Gruppe Nr */
+            gruppe_nr: string;
+            /** Gruppe Stationen */
+            gruppe_stationen: number;
+            /** Gruppe Titel */
+            gruppe_titel: string | null;
+            /** Item Number */
+            item_number: string;
+            /** Kind */
+            kind?: string | null;
+            /** Ksinr */
+            ksinr: number;
+            /** Kvonr */
+            kvonr: number | null;
+            /** Session Date */
+            session_date: string;
+            /** Social Text */
+            social_text: string | null;
+            /** Summary */
+            summary: string | null;
+            /** Template Number */
+            template_number: string | null;
+            /** Titel Kurz */
+            titel_kurz: string;
+            /** Title */
+            title: string;
+            /** Top */
+            top?: boolean;
+            /** Topic Name */
+            topic_name: string | null;
+            /** Vorgeschichte */
+            vorgeschichte?: number;
+            /** Wichtig */
+            wichtig: number;
+            /** Wichtig Grund */
+            wichtig_grund: string | null;
+            /** Wichtig Quelle */
+            wichtig_quelle?: string;
         };
     };
     responses: never;
@@ -12289,4 +12415,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: ce8ffe961ff0837044ad1d1fc9398c6facfd0b6d9e104f1e5ffe9de71c216bfc
+// vertrag-sha256: cbe87e5505c7af4c5c6386508485a6c8645c4159b2fae785560129e2149ad9ca
