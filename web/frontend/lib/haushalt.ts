@@ -539,7 +539,7 @@ export type Spenden = {
   years: SpendenJahr[];
   vorlagen: SpendenVorlage[];
   /** Beschlusszeilen ohne Zweitstelle — mit dem Satz, warum sie fehlen. */
-  ohne_beleg: { template_number: string; sitzung?: string | null; reason: string }[];
+  ohne_beleg: { template_number: string; session_date?: string | null; reason: string }[];
   /** Wer über welche **einzelne** Zuwendung entscheidet. */
   schwellen: { committee: string; ab: number | null; bis: number | null }[];
 };
@@ -555,7 +555,7 @@ export type SpendenJahr = {
 export type SpendenVorlage = {
   template_number: string;
   year: number;
-  sitzung: string;
+  session_date: string;
   amount: number;
   committee?: string | null;
   /** „identisch" oder „zerlegung" — wie die Zweitstelle den Betrag belegt. */

@@ -572,8 +572,8 @@ export default function EinnahmenPage() {
                       key={v.template_number}
                       label={v.template_number}
                       reason={v.reason}
-                      date={v.sitzung
-                        ? new Date(v.sitzung).toLocaleDateString("de-DE")
+                      date={v.session_date
+                        ? new Date(v.session_date).toLocaleDateString("de-DE")
                         : undefined}
                     />
                   ))}
