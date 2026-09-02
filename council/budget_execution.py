@@ -426,6 +426,19 @@ def _gleichungen(r: dict, layout: tuple[str, ...]) -> list[tuple[str, float, flo
     return aus
 
 
+def _andere_basis(r: dict, layout: tuple[str, ...], gedruckt: float) -> float | None:
+    """Geht die Aufwands-Abweichung dieser Zeile auf der JEWEILS ANDEREN
+    Basis auf — mit Übertragung statt ohne, oder umgekehrt? Liefert den
+    Betrag, um den die Zeile dadurch von der Tabellenbasis abweicht."""
+    g = r.get
+    if None in (g("exp_fc"), g("exp_plan"), g("carryover")):
+        return None
+    uebertrag = g("carryover") if layout is _NEU else -g("carryover")
+    if abs(g("exp_fc") - g("exp_plan") - uebertrag - gedruckt) <= TOLERANZ_EUR:
+        return uebertrag
+    return None
+
+
 def _layout_waehlen(roh: list[tuple[int, str, list[float | None]]]):
     """Die Spaltenbelegung, unter der die Tabelle sich selbst bestätigt.
 
@@ -480,12 +493,30 @@ def _tabelle_lesen(zeilen: list[list[Wort]], art: str):
             f"{gegenprobe}) — ohne eindeutige Belegung wird nichts gespeichert.")
 
     zeilenwerte = [(nr, label, dict(zip(layout, werte))) for nr, label, werte in roh]
+    mischbasis: list[str] = []
+    versatz = 0.0
     for nr, label, r in zeilenwerte:
         for name, links, rechts in _gleichungen(r, layout):
-            if abs(links - rechts) > TOLERANZ_EUR:
-                raise VollzugFehler(
-                    f"{art}, Zeile {nr or 'Summen'} ({label}): {name} geht nicht "
-                    f"auf — gerechnet {links:,.0f} €, gedruckt {rechts:,.0f} €.")
+            if abs(links - rechts) <= TOLERANZ_EUR:
+                continue
+            if name == "Abweichung Aufwand" and nr == 0 and mischbasis \
+                    and abs(links - versatz - rechts) <= TOLERANZ_EUR:
+                continue  # die Summenzeile trägt den Versatz der Mischzeilen
+            if name == "Abweichung Aufwand" and nr != 0 \
+                    and (u := _andere_basis(r, layout, rechts)) is not None:
+                # Im Bericht zum 30.06.2024 rechnet Teilhaushalt 13 seine
+                # Aufwands-Abweichung gegen Ansatz PLUS Ermächtigungs-
+                # übertragung (−40.377 € bei gleichem Ansatz und Prognose),
+                # alle anderen Zeilen gegen den Ansatz allein. Die Zahl geht
+                # auf — nur auf der anderen Basis — und die Summenzeile
+                # enthält sie so. Sie bleibt, wie gedruckt, und die Probe
+                # nennt die Zeile.
+                mischbasis.append(f"Zeile {nr} ({label})")
+                versatz += u
+                continue
+            raise VollzugFehler(
+                f"{art}, Zeile {nr or 'Summen'} ({label}): {name} geht nicht "
+                f"auf — gerechnet {links:,.0f} €, gedruckt {rechts:,.0f} €.")
 
     summe = next(r for nr, _l, r in zeilenwerte if nr == 0)
     teile = [r for nr, _l, r in zeilenwerte if nr != 0]
@@ -515,6 +546,12 @@ def _tabelle_lesen(zeilen: list[list[Wort]], art: str):
         f"{treffer} Gleichungen gehen auf (die verworfene Spaltenbelegung "
         f"schafft {gegenprobe}); die Summenzeile ist aus "
         f"{len(teile)} Teilhaushalten nachgerechnet")
+    if mischbasis:
+        ergebnis_probe += (
+            "; " + ", ".join(mischbasis) + " rechnet die Aufwands-Abweichung "
+            + ("gegen den Ansatz allein" if basis == BASIS_MIT_UEBERTRAG
+               else "gegen Ansatz plus Ermächtigungsübertragung")
+            + " — im Bericht so gedruckt, die Summenzeile enthält sie so")
     return positionen, basis, ergebnis_probe
 
 
