@@ -16,8 +16,12 @@ public struct SSEEvent: Codable, Sendable, Equatable {
     public var text: String? { fields["text"]?.string }
     public var step: String? { fields["step"]?.string }
     public var conversationID: Int? { fields["conversation_id"]?.int }
+    /// Der Server sendet die Anschlussfragen als `questions` — und hat sie nie
+    /// anders genannt (nachgesehen 02.09.2026). Der Rückfall auf `suggestions`
+    /// stand hier trotzdem, und die aufgezeichnete Probe benutzte ihn: Sie
+    /// prüfte damit gegen eine Nutzlast, die es nirgends gibt.
     public var suggestions: [String] {
-        (fields["questions"] ?? fields["suggestions"])?.array?.compactMap(\.string) ?? []
+        fields["questions"]?.array?.compactMap(\.string) ?? []
     }
 }
 

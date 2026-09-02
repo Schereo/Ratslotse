@@ -772,8 +772,8 @@ const fmtDatumVoll = (d?: string | null) =>
  *  reißt diese Karte die Tagesordnung an, deterministisch aus dem
  *  Sitzungskalender, nie vom Modell. Sitzungen MIT Beschlüssen brauchen die
  *  Karte nicht: Deren Inhalt steht bereits in den Quellen. */
-export function TagesordnungBlock({ sitzungen }: { sitzungen: SitzungsInfo[] }) {
-  const mitAgenda = sitzungen.filter((s) => s.n_agenda > 0);
+export function TagesordnungBlock({ sessions }: { sessions: SitzungsInfo[] }) {
+  const mitAgenda = sessions.filter((s) => s.n_agenda > 0);
   if (mitAgenda.length === 0) return null;
   return (
     <>

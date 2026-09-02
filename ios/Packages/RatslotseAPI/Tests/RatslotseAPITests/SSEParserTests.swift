@@ -2,9 +2,10 @@ import Foundation
 import Testing
 @testable import RatslotseAPI
 
-@Test func recordedAskStreamParsesAllFrames() throws {
+/// Liest eine aufgezeichnete Antwort und gibt die decodierten Ereignisse.
+private func frames(_ name: String) throws -> [SSEEvent] {
     let url = try #require(Bundle.module.url(
-        forResource: "ask", withExtension: "sse", subdirectory: "Fixtures"
+        forResource: name, withExtension: "sse", subdirectory: "Fixtures"
     ))
     let raw = try String(contentsOf: url, encoding: .utf8)
     var parser = SSEParser()
@@ -14,11 +15,49 @@ import Testing
         payloads.append(finalPayload)
     }
     let decoder = JSONDecoder()
-    let events = try payloads.map { try decoder.decode(SSEEvent.self, from: Data($0.utf8)) }
+    return try payloads.map { try decoder.decode(SSEEvent.self, from: Data($0.utf8)) }
+}
 
-    #expect(events.map(\.type) == ["step", "sources", "token", "token", "suggestions", "done"])
+@Test func recordedAskStreamParsesAllFrames() throws {
+    let events = try frames("ask")
+
+    #expect(events.map(\.type) == [
+        "step", "step", "sources", "step", "token", "token",
+        "replace", "suggestions", "done",
+    ])
     #expect(events.filter { $0.type == "token" }.compactMap(\.text).joined() == "Die Stadt baut aus [42].")
     #expect(events.last?.conversationID == 7)
+    #expect(events.last?.fields["cited"]?.array?.compactMap(\.int) == [42])
+}
+
+/// Die Anschlussfragen heißen auf der Leitung `questions`. Die Aufzeichnung
+/// benutzte bis 02.09.2026 `suggestions` — ein Name, den der Server NIE
+/// gesendet hat; die Probe prüfte damit gegen eine erfundene Nutzlast.
+@Test func followUpQuestionsComeFromTheFieldTheServerSends() throws {
+    let events = try frames("ask")
+    let vorschlaege = try #require(events.first { $0.type == "suggestions" })
+    #expect(vorschlaege.suggestions == ["Wann beginnt das?"])
+}
+
+/// Der Tagesordnungs-Baustein reist im `sources`-Rahmen mit und heißt seit
+/// #913 `sessions`. Im Web stand danach an drei Stellen weiter `sitzungen`,
+/// und der Baustein verschwand — deshalb hält die Probe den Namen fest.
+@Test func sourcesFrameCarriesAgendaSessions() throws {
+    let quellen = try #require(try frames("ask").first { $0.type == "sources" })
+    let sitzungen = try #require(quellen.fields["sessions"]?.array)
+    #expect(sitzungen.count == 1)
+    #expect(sitzungen.first?.object?["committee"]?.string == "Verkehrsausschuss")
+}
+
+/// Die beiden Schluss-Rahmen, die es in keiner geglückten Antwort gibt — und
+/// die deshalb bis 02.09.2026 in keiner Aufzeichnung standen.
+@Test func abortAndErrorFramesDecode() throws {
+    let abbruch = try frames("ask-abbruch")
+    #expect(abbruch.map(\.type) == ["token", "abbruch"])
+
+    let fehler = try frames("ask-fehler")
+    #expect(fehler.map(\.type) == ["step", "error"])
+    #expect(fehler.last?.fields["message"]?.string == "Frage fehlgeschlagen.")
 }
 
 @Test func parserJoinsDataLinesAndIgnoresKeepalive() {

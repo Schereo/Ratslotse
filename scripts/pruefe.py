@@ -155,6 +155,11 @@ PRUEFUNGEN: list[Pruefung] = [
     Pruefung("ios", "Swift-Modelle gegen ihr Schema halten", schnell=True,
              befehl=[PY, "-m", "pytest", "tests/test_ios_vertrag.py", "-q"],
              braucht=_modul_fehlt("pytest", DEV_INSTALL)),
+    # Der Ereignis-Strom ist die einzige Nutzlast, die der Vertrag ausdrücklich
+    # NICHT beschreibt — und die beide Clients von Hand parsen.
+    Pruefung("strom", "Ereignis-Strom gegen die beiden Client-Parser", schnell=True,
+             befehl=[PY, "-m", "pytest", "tests/test_sse_vertrag.py", "-q"],
+             braucht=_modul_fehlt("pytest", DEV_INSTALL)),
     Pruefung("tests", "die Testsuite", befehl=[PY, "-m", "pytest", "tests/", "-q"],
              braucht=_modul_fehlt("pytest", DEV_INSTALL)),
     Pruefung("tsc", "TypeScript des Frontends übersetzen", cwd=FRONTEND,
