@@ -484,19 +484,19 @@ function Kachel({
   const w = b.breite, h = b.hoehe;
   const schmalKachel = schmal(w);
   const beschriftet = traegtText(w, h);
-  const stufe = schmalKachel ? "klein" : textstufe(w, h);
+  const stufe = schmalKachel ? "small" : textstufe(w, h);
   const mitEinheit = traegtEinheit(w, h);
-  const zusatz = stufe === "gross" && !!d.zusatz && h >= 170;
+  const zusatz = stufe === "large" && !!d.zusatz && h >= 170;
   const mitAnteil = !!anteil && !schmalKachel
-    && (stufe === "gross" || (stufe === "mittel" && h >= 100));
+    && (stufe === "large" || (stufe === "medium" && h >= 100));
   // Die Zusatzzeile kostet den Namen eine Zeile — sonst stünde der Block
   // über dem Zahlenblock und würde gestaucht.
   const zeilen = Math.max(1, namenszeilenStufe(stufe, w, h) - (zusatz ? 1 : 0));
   const zeile = TEXTMASSE[stufe].zeile;
   // Zahl und Anteilszeile mit festen Zeilenhöhen (s. TEXTMASSE): 28 + 4 + 16
   // = 48 ≤ 50 (groß), 18 + 2 + 14 = 34 ≤ 36 (mittel), 14 ≤ 16 (klein).
-  const zahlZeile = stufe === "gross" ? 28 : stufe === "mittel" ? 18 : 14;
-  const anteilZeile = stufe === "gross" ? 16 : 14;
+  const zahlZeile = stufe === "large" ? 28 : stufe === "medium" ? 18 : 14;
+  const anteilZeile = stufe === "large" ? 16 : 14;
   const style: CSSProperties = {
     left: b.x, top: b.y, width: w, height: h,
     background: farbe,
@@ -534,9 +534,9 @@ function Kachel({
             schmalKachel
               ? "flex-row-reverse items-start justify-end p-1.5"
               : "flex-col justify-between",
-            !schmalKachel && stufe === "gross" && "p-2.5",
-            !schmalKachel && stufe === "mittel" && "p-2",
-            !schmalKachel && stufe === "klein" && "p-1.5",
+            !schmalKachel && stufe === "large" && "p-2.5",
+            !schmalKachel && stufe === "medium" && "p-2",
+            !schmalKachel && stufe === "small" && "p-1.5",
           )}
           style={{ color: textFarbe }}
         >
@@ -545,15 +545,15 @@ function Kachel({
               Stufe bekommt keinen Zwischenraum: Ihr Zeilenmaß (kachelflaeche
               .ts, MASSE) rechnet mit 12 + 16 px, jeder Pixel mehr schnitt
               „Abrissmaßnahmen" in der dritten Zeile durch. */}
-          <span className={cn("flex min-h-0 flex-col", stufe !== "klein" && "gap-0.5")}>
+          <span className={cn("flex min-h-0 flex-col", stufe !== "small" && "gap-0.5")}>
             {/* Schmale Kacheln beschriften vertikal (GB-08). */}
             <span
               className={cn(
                 "min-h-0 overflow-hidden break-words",
                 zeilen > 1 && "hyphens-auto",
-                stufe === "gross" && "text-[13.5px] font-semibold",
-                stufe === "mittel" && "text-[12.5px] font-semibold",
-                stufe === "klein" && "text-[11px] font-medium",
+                stufe === "large" && "text-[13.5px] font-semibold",
+                stufe === "medium" && "text-[12.5px] font-semibold",
+                stufe === "small" && "text-[11px] font-medium",
                 schmalKachel && "[writing-mode:vertical-rl]",
               )}
               style={{
@@ -581,9 +581,9 @@ function Kachel({
           >
             <span className={cn(
               "block whitespace-nowrap tabular-nums",
-              stufe === "gross" && "font-display text-[28px] font-bold tracking-tight",
-              stufe === "mittel" && "font-display text-[18px] font-bold tracking-tight",
-              stufe === "klein" && "text-[11.5px] font-bold",
+              stufe === "large" && "font-display text-[28px] font-bold tracking-tight",
+              stufe === "medium" && "font-display text-[18px] font-bold tracking-tight",
+              stufe === "small" && "text-[11.5px] font-bold",
             )} style={{ lineHeight: `${zahlZeile}px` }}>
               {deMio(d.value / 1e6)}
               {/* Ein geschütztes Leerzeichen statt eines Randes: Der Rand
@@ -592,9 +592,9 @@ function Kachel({
               {mitEinheit && (
                 <span className={cn(
                   "font-sans font-semibold opacity-85",
-                  stufe === "gross" && "text-[12px] tracking-normal",
-                  stufe === "mittel" && "text-[11px] tracking-normal",
-                  stufe === "klein" && "text-[10px]",
+                  stufe === "large" && "text-[12px] tracking-normal",
+                  stufe === "medium" && "text-[11px] tracking-normal",
+                  stufe === "small" && "text-[10px]",
                 )}>
                   {" "}
                   {einheit}
@@ -604,7 +604,7 @@ function Kachel({
             {mitAnteil && (
               <span className={cn(
                 "block whitespace-nowrap tabular-nums opacity-85",
-                stufe === "gross" ? "mt-1 text-[11.5px]" : "mt-0.5 text-[10.5px]",
+                stufe === "large" ? "mt-1 text-[11.5px]" : "mt-0.5 text-[10.5px]",
               )} style={{ lineHeight: `${anteilZeile}px` }}>
                 {anteil}&nbsp;% der Fläche
               </span>
@@ -627,7 +627,7 @@ function RestInhalt({ name, summe, breite: w, hoehe: h, hinweis, aufklappbar }: 
   return (
     <span className={cn(
       "relative flex h-full flex-col justify-between",
-      stufe === "gross" ? "p-2.5" : "p-2",
+      stufe === "large" ? "p-2.5" : "p-2",
     )}>
       {aufklappbar && (
         <Maximize2 aria-hidden="true"
@@ -637,9 +637,9 @@ function RestInhalt({ name, summe, breite: w, hoehe: h, hinweis, aufklappbar }: 
           „Ertragsarten" quer ab (lang="de" trennt). */}
       <span className={cn(
         "hyphens-auto break-words pr-4 font-semibold leading-tight text-foreground/85",
-        stufe === "gross" && "text-[13.5px]",
-        stufe === "mittel" && "text-[12.5px]",
-        stufe === "klein" && "text-[11.5px]",
+        stufe === "large" && "text-[13.5px]",
+        stufe === "medium" && "text-[12.5px]",
+        stufe === "small" && "text-[11.5px]",
       )}>
         {name}
       </span>
@@ -650,13 +650,13 @@ function RestInhalt({ name, summe, breite: w, hoehe: h, hinweis, aufklappbar }: 
         {w >= 150 && <>zusammen{" "}</>}
         <span className={cn(
           "whitespace-nowrap font-semibold tabular-nums text-foreground/85",
-          stufe === "gross" && "font-display text-[24px] font-bold leading-none tracking-tight",
-          stufe === "mittel" && "font-display text-[16px] font-bold leading-none tracking-tight",
+          stufe === "large" && "font-display text-[24px] font-bold leading-none tracking-tight",
+          stufe === "medium" && "font-display text-[16px] font-bold leading-none tracking-tight",
         )}>
           {summe}
         </span>
         {w >= 150 && h >= 76 && (
-          <span className={cn("block", stufe === "gross" ? "mt-1.5 text-[11.5px]" : "mt-0.5")}>
+          <span className={cn("block", stufe === "large" ? "mt-1.5 text-[11.5px]" : "mt-0.5")}>
             {hinweis}
           </span>
         )}

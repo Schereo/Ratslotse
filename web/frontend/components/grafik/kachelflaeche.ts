@@ -121,12 +121,12 @@ export function namenszeilen(breite: number, hoehe: number): number {
  *
  *  Schmale Kacheln (`schmal()`) bleiben vertikal beschriftet, unabhängig von
  *  der Stufe. */
-export type Textstufe = "gross" | "mittel" | "klein";
+export type Textstufe = "large" | "medium" | "small";
 
 export function textstufe(breite: number, hoehe: number): Textstufe {
-  if (breite >= 200 && hoehe >= 130) return "gross";
-  if (breite >= 112 && hoehe >= 72) return "mittel";
-  return "klein";
+  if (breite >= 200 && hoehe >= 130) return "large";
+  if (breite >= 112 && hoehe >= 72) return "medium";
+  return "small";
 }
 
 /** Trägt die Kachel ihre Einheit hinter der Zahl?
@@ -137,7 +137,7 @@ export function textstufe(breite: number, hoehe: number): Textstufe {
  *  Stufe braucht für „146,8 Mio. €" bei 11,5 px rund 80 px Breite. Vertikal
  *  beschriftete Kacheln zählen ihre Höhe. */
 export function traegtEinheit(breite: number, hoehe: number): boolean {
-  if (textstufe(breite, hoehe) !== "klein") return true;
+  if (textstufe(breite, hoehe) !== "small") return true;
   return (schmal(breite) ? hoehe : breite) >= 96;
 }
 
@@ -151,16 +151,16 @@ export function traegtEinheit(breite: number, hoehe: number): boolean {
  *  durchgeschnitten (gemessen 02.09.). Was die Probe rechnet, muss die
  *  Kachel auch setzen. */
 export const TEXTMASSE: Record<Textstufe, { zeile: number; rand: number; wertblock: number }> = {
-  gross: { zeile: 17, rand: 20, wertblock: 50 },
-  mittel: { zeile: 15, rand: 16, wertblock: 36 },
-  klein: { zeile: ZEILE_KLEIN, rand: 12, wertblock: 16 },
+  large: { zeile: 17, rand: 20, wertblock: 50 },
+  medium: { zeile: 15, rand: 16, wertblock: 36 },
+  small: { zeile: ZEILE_KLEIN, rand: 12, wertblock: 16 },
 };
 
 /** Wie viele Zeilen der NAME auf einer Kachel dieser Stufe bekommt — die
  *  Verallgemeinerung von `namenszeilen()`, die für die kleine Stufe dieselbe
  *  Zahl liefert (die Probe hält beide gleich). */
 export function namenszeilenStufe(stufe: Textstufe, breite: number, hoehe: number): number {
-  if (stufe === "klein") return namenszeilen(breite, hoehe);
+  if (stufe === "small") return namenszeilen(breite, hoehe);
   const m = TEXTMASSE[stufe];
   return Math.max(1, Math.floor((hoehe - m.rand - m.wertblock) / m.zeile));
 }

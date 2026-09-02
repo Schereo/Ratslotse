@@ -104,7 +104,7 @@ pruefe("Beschriftung: eine schmale, hohe Kachel trägt sie (vertikal)",
 //     der größte Posten bei jeder Breite groß — sonst hieße die Stufe nichts.
 // --------------------------------------------------------------------------
 {
-  const rang = { klein: 0, mittel: 1, gross: 2 };
+  const rang = { small: 0, medium: 1, large: 2 };
   let treppe = true;
   for (let b = 40; b <= 600 && treppe; b += 8) {
     for (let h = 34; h <= 440; h += 8) {
@@ -114,18 +114,18 @@ pruefe("Beschriftung: eine schmale, hohe Kachel trägt sie (vertikal)",
   pruefe("Textstufe: eine größere Kachel wird nie kleiner gesetzt", treppe, "Treppe verletzt");
   pruefe("Textstufe: die kleine Stufe zählt ihre Zeilen wie namenszeilen()",
     [[64, 40], [100, 60], [44, 120]].every(([b, h]) =>
-      namenszeilenStufe("klein", b, h) === namenszeilen(b, h)),
+      namenszeilenStufe("small", b, h) === namenszeilen(b, h)),
     "abweichend");
   pruefe("Textstufe: 200 × 130 px ist groß und trägt mindestens zwei Namenszeilen",
-    textstufe(200, 130) === "gross" && namenszeilenStufe("gross", 200, 130) >= 2,
-    `${textstufe(200, 130)}, ${namenszeilenStufe("gross", 200, 130)} Zeilen`);
+    textstufe(200, 130) === "large" && namenszeilenStufe("large", 200, 130) >= 2,
+    `${textstufe(200, 130)}, ${namenszeilenStufe("large", 200, 130)} Zeilen`);
   pruefe("Einheit: 64 × 40 px trägt keine, 112 × 72 px trägt sie",
     !traegtEinheit(64, 40) && traegtEinheit(112, 72), "abweichend");
   const knoten = ERTRAEGE.map((value, i) => ({ value, i }));
   let grossUeberall = true;
   for (let b = 520; b <= 1200 && grossUeberall; b += 8) {
     const k = kacheln(knoten, b, kachelHoehe(b)).find((x) => x.daten.i === 0);
-    if (!k || textstufe(k.breite, k.hoehe) !== "gross") grossUeberall = false;
+    if (!k || textstufe(k.breite, k.hoehe) !== "large") grossUeberall = false;
   }
   pruefe("Textstufe: der größte Ertragsposten steht bei jeder Breite groß",
     grossUeberall, "an mindestens einer Breite nicht");
