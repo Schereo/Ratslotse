@@ -51,7 +51,7 @@
     "id": "investments-total",
     "question": "Wie viel investiert die Stadt?",
     "allowed_types": ["money"],
-    "expected_facets": ["investitionen", "gebaut"],
+    "expected_facets": ["investitionen", "gebaut", "measures"],
     "required_channels": ["decisions", "budget"],
     "forbidden_channels": ["debates", "documents"]
   },
