@@ -22,12 +22,9 @@ from pathlib import Path
 WURZEL = Path(__file__).resolve().parents[1]
 STORE = WURZEL / "council" / "store.py"
 
-#: Stand nach dem vierten Schnitt (02.09.2026). Darf schrumpfen.
-HOECHSTENS_METHODEN = 375
-#: 13.171 nach dem Schnitt, +7 für den Kommentar über der doppelt vergebenen
-#: `_ANREDEN`-Liste. Die Sperrklinke hat den Zuwachs gefangen und die
-#: Entscheidung erzwungen — so soll sie wirken.
-HOECHSTENS_ZEILEN = 13178
+#: Stand nach dem sechsten Schnitt (02.09.2026). Darf schrumpfen.
+HOECHSTENS_METHODEN = 316
+HOECHSTENS_ZEILEN = 11655
 
 
 def _klasse() -> ast.ClassDef:
@@ -62,15 +59,19 @@ def _mixins():
     sys.path.insert(0, str(WURZEL))
     from council.store_haushalt import HaushaltMixin
     from council.store_orte import OrteMixin
+    from council.store_personen import PersonenMixin
     from council.store_presse import PresseMixin
     from council.store_quiz import QuizMixin
+    from council.store_themen import ThemenMixin
 
     #: Ecke → (Mixin, Mindestzahl eigener Methoden).
     return {
         "Haushalt": (HaushaltMixin, 80),
         "Orte": (OrteMixin, 25),
+        "Personen": (PersonenMixin, 27),
         "Presse": (PresseMixin, 9),
         "Quiz": (QuizMixin, 12),
+        "Themen": (ThemenMixin, 30),
     }
 
 
