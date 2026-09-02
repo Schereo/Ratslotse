@@ -3644,6 +3644,15 @@ export interface components {
                 [key: string]: unknown;
             }[];
         };
+        /** AdminClientShare */
+        AdminClientShare: {
+            /** Client */
+            client: string;
+            /** N */
+            n: number;
+            /** Users */
+            users: number;
+        };
         /** AdminCouncilStats */
         AdminCouncilStats: {
             /** Agenda Items */
@@ -3687,7 +3696,13 @@ export interface components {
         };
         /** AdminGrowth */
         AdminGrowth: {
+            /** Clients */
+            clients: components["schemas"]["AdminClientShare"][];
+            /** Clients Both */
+            clients_both: number;
             council: components["schemas"]["AdminCouncilStats"];
+            /** Signup Clients */
+            signup_clients: components["schemas"]["AdminClientShare"][];
             topics: components["schemas"]["AdminSeries"];
             users: components["schemas"]["AdminSeries"];
             /** Wau */
@@ -3953,6 +3968,10 @@ export interface components {
         AdminUserDetail: {
             /** Apple Linked */
             apple_linked: boolean;
+            /** Clients */
+            clients: {
+                [key: string]: number;
+            };
             /** Created At */
             created_at: string | null;
             /** Deep Limit */
@@ -3978,6 +3997,8 @@ export interface components {
             role: string;
             /** Saves Conversations */
             saves_conversations: number | null;
+            /** Signup Client */
+            signup_client: string | null;
             /** Status */
             status: string;
             /** Subscriptions */
@@ -4014,6 +4035,10 @@ export interface components {
         AdminUserRow: {
             /** Apple Linked */
             apple_linked: boolean;
+            /** Clients */
+            clients: {
+                [key: string]: number;
+            };
             /** Created At */
             created_at: string | null;
             /** Email */
@@ -4032,6 +4057,8 @@ export interface components {
             n_topics: number;
             /** Role */
             role: string;
+            /** Signup Client */
+            signup_client: string | null;
             /** Status */
             status: string;
         };
@@ -11803,4 +11830,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 492c6bdfa493d4ee8c216577ba9bddac1f99fd16f6c44e30f7caa1028859df74
+// vertrag-sha256: f327f8fc51bc7e670c07f7eee929d4d1d5f01e752dfc9b8a71c892167512de77

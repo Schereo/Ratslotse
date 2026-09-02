@@ -36,6 +36,29 @@
         "title": "AdminAliasList",
         "type": "object"
       },
+      "AdminClientShare": {
+        "properties": {
+          "client": {
+            "title": "Client",
+            "type": "string"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "users": {
+            "title": "Users",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "client",
+          "n",
+          "users"
+        ],
+        "title": "AdminClientShare",
+        "type": "object"
+      },
       "AdminCouncilStats": {
         "properties": {
           "agenda_items": {
@@ -153,8 +176,26 @@
       },
       "AdminGrowth": {
         "properties": {
+          "clients": {
+            "items": {
+              "$ref": "#/components/schemas/AdminClientShare"
+            },
+            "title": "Clients",
+            "type": "array"
+          },
+          "clients_both": {
+            "title": "Clients Both",
+            "type": "integer"
+          },
           "council": {
             "$ref": "#/components/schemas/AdminCouncilStats"
+          },
+          "signup_clients": {
+            "items": {
+              "$ref": "#/components/schemas/AdminClientShare"
+            },
+            "title": "Signup Clients",
+            "type": "array"
           },
           "topics": {
             "$ref": "#/components/schemas/AdminSeries"
@@ -182,7 +223,10 @@
           "topics",
           "wau",
           "wau_days",
-          "council"
+          "council",
+          "clients",
+          "clients_both",
+          "signup_clients"
         ],
         "title": "AdminGrowth",
         "type": "object"
@@ -865,6 +909,13 @@
             "title": "Apple Linked",
             "type": "boolean"
           },
+          "clients": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Clients",
+            "type": "object"
+          },
           "created_at": {
             "title": "Created At",
             "type": [
@@ -934,6 +985,13 @@
               "null"
             ]
           },
+          "signup_client": {
+            "title": "Signup Client",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "status": {
             "title": "Status",
             "type": "string"
@@ -970,7 +1028,9 @@
           "topics",
           "subscriptions",
           "history",
-          "history_days"
+          "history_days",
+          "signup_client",
+          "clients"
         ],
         "title": "AdminUserDetail",
         "type": "object"
@@ -1020,6 +1080,13 @@
             "title": "Apple Linked",
             "type": "boolean"
           },
+          "clients": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Clients",
+            "type": "object"
+          },
           "created_at": {
             "title": "Created At",
             "type": [
@@ -1062,6 +1129,13 @@
             "title": "Role",
             "type": "string"
           },
+          "signup_client": {
+            "title": "Signup Client",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "status": {
             "title": "Status",
             "type": "string"
@@ -1078,7 +1152,9 @@
           "n_subscriptions",
           "n_quiz",
           "n_ki",
-          "last_seen"
+          "last_seen",
+          "signup_client",
+          "clients"
         ],
         "title": "AdminUserRow",
         "type": "object"
