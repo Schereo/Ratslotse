@@ -729,7 +729,7 @@ export function Zeitreihe({
         <div className="mt-2 flex flex-col gap-1.5">
           {luecken.map((s) => (
             <LueckenFeld key={s.year} label={String(s.year)}
-              reason={s.art === "luecke" ? s.punkt.fehlt : "in der Reihe ohne Wert und ohne Grund"}
+              reason={s.art === "luecke" ? s.punkt.fehlt : "für dieses Jahr liegt kein Wert vor"}
               date={s.art === "luecke" ? s.punkt.date : undefined} />
           ))}
         </div>
@@ -743,7 +743,7 @@ export function Zeitreihe({
           <button type="button" onClick={() => setTabelleOffen((t) => !t)}
             aria-expanded={tabelleOffen} className="mt-2 text-[12px] font-semibold text-primary">
             {tabelleOffen ? "Tabelle ausblenden"
-              : `Alle ${stellenListe.length} Werte als Tabelle`}
+              : `Alle ${werte.length} Werte als Tabelle`}
           </button>
           {tabelleOffen && (
             <div className="mt-2 grid grid-cols-[repeat(auto-fill,minmax(104px,1fr))] gap-x-3 gap-y-1 text-[11.5px] tabular-nums">

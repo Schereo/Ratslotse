@@ -51,7 +51,7 @@
 // oder bloße Paragraphen-Nummern wie „§§ 2 (3),17,18,42 …" —, bleibt der
 // Absatz, wie er ist. Geraten wird nichts, und kein Wort ändert sich.
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -113,13 +113,18 @@ function AbdeckungsBadge({ years, alle, knapp }: {
         knapp ? "hidden @2xl/treffer:inline-flex" : "inline-flex",
       )}>
         <Check aria-hidden className="h-3 w-3" />
-        {Math.min(...alle)}–{Math.max(...alle)}
+        Daten {Math.min(...alle)}–{Math.max(...alle)}
       </span>
     );
   }
+  // Im Klartext statt „OHNE 2019–2020": Fehlen nur die frühen Jahre, heißt
+  // das „Daten ab 2021"; fehlt etwas mittendrin, bleibt die Lücke benannt.
+  const vorhanden = alle.filter((j) => years.includes(j));
+  const erstes = Math.min(...vorhanden);
+  const nurVorne = fehlt.every((j) => j < erstes);
   return (
     <span className="inline-flex items-center gap-1 rounded border border-dashed border-border px-1.5 py-0.5 font-mono text-[9.5px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
-      ohne {jahresspannen(fehlt)}
+      {nurVorne ? `Daten ab ${erstes}` : `Lücke ${jahresspannen(fehlt)}`}
     </span>
   );
 }
@@ -190,7 +195,9 @@ function Treffer({ p, max, aktiv, alleJahre, eingebettet = false }: {
             {n < 0 && "+"}{b.value}
           </span>
           <span className="mt-0.5 block font-mono text-[9.5px] uppercase text-muted-foreground">
-            {b.unit}
+            {/* Ein Produkt mit Überschuss trägt ein Plus — und sagt, was das
+                Plus ist (Durchsicht 02.09.2026: „+405,8 Mio. €" unerklärt). */}
+            {n < 0 ? `${b.unit} Überschuss` : b.unit}
           </span>
         </span>
       </div>
@@ -690,6 +697,14 @@ export function ProdukteAbschnitt({ onBestand }: {
   }, [year, entprellt, office, spielraum, nr]);
 
   const { data, loading } = useFetch<ProdukteAntwort>(abfrage);
+  // EIN Zähler für Hero, Einleitung, Amt-Filter und Trefferzeile: die
+  // ungefilterte Liste. Die Amts-Facetten zählten nur Produkte MIT Amt (70),
+  // die Liste zeigte 77 — die sieben nicht rechtsfähigen Stiftungen haben
+  // keins (Durchsicht 02.09.2026).
+  const [gesamtUngefiltert, setGesamtUngefiltert] = useState<number | null>(null);
+  useEffect(() => {
+    if (data && !entprellt.trim() && !office && !spielraum) setGesamtUngefiltert(data.products.length);
+  }, [data, entprellt, office, spielraum]);
 
   useEffect(() => {
     if (!onBestand) return;
@@ -701,7 +716,7 @@ export function ProdukteAbschnitt({ onBestand }: {
     // Seite, nicht die gerade getippte Suche — beim Filtern bleibt der
     // zuletzt gemeldete Bestand stehen.
     if (entprellt.trim() || office || spielraum) return;
-    const count = (data.facets?.aemter ?? []).reduce((s, a) => s + a.count, 0);
+    const count = data.products.length;
     const beispiele = [...data.products]
       .sort((a, b) => Math.abs(netto(b)) - Math.abs(netto(a)))
       .slice(0, 3)
@@ -746,7 +761,9 @@ export function ProdukteAbschnitt({ onBestand }: {
   const gefiltert = Boolean(entprellt.trim() || office || spielraum);
   const aemter = data?.facets?.aemter ?? [];
   const stufen = data?.facets?.spielraum ?? {};
-  const gesamt = aemter.reduce((s, a) => s + a.count, 0);
+  const mitAmt = aemter.reduce((s, a) => s + a.count, 0);
+  const gesamt = gesamtUngefiltert ?? Math.max(mitAmt, produkte.length);
+  const ohneAmt = Math.max(gesamt - mitAmt, 0);
   const mitBeschreibung = data?.facets?.mit_feld?.short_description ?? 0;
   const aktiv = data?.product ?? null;
 
@@ -767,9 +784,11 @@ export function ProdukteAbschnitt({ onBestand }: {
             <p className="max-w-[68ch] text-[15px] leading-relaxed text-foreground/90">
               Der Haushalt gliedert die Arbeit der Stadt in <GlossaryText text="Produkte" />:
               einzelne Aufgaben mit eigener Nummer, Budget und zuständigem Amt. Hier stehen{" "}
-              <strong>{gesamt}</strong> Produkte aus dem Haushaltsjahr {year} mit ihren
-              geplanten Aufwendungen, Beschreibungen und der Einschätzung der Stadt zum
-              finanziellen Spielraum.
+              <strong>{gesamt}</strong> Produkte aus dem Haushaltsjahr {year}
+              {ohneAmt > 0 && (
+                <>, darunter {ohneAmt} ohne zuständiges Amt (die nicht rechtsfähigen Stiftungen)</>
+              )}, mit ihren geplanten Aufwendungen, Beschreibungen und der Einschätzung der
+              Stadt zum finanziellen Spielraum.
             </p>
             {/* Der Jahres-Sprung stand bisher nur ganz unten im Abdeckungs-Block.
                 Wer von der Übersicht kommt, hat dort ein späteres Planjahr
@@ -861,24 +880,43 @@ export function ProdukteAbschnitt({ onBestand }: {
              nicht — dieselbe Fensterbreite meint zwei Platzangebote. */
           <div className="@container/treffer">
             <div className="grid gap-2 @3xl/treffer:grid-cols-2">
-              {produkte.map((p) => {
+              {produkte.map((p, i) => {
                 const offen = !!aktiv && p.product_no === nr;
+                // Die Liste ist nach Zuschussbedarf sortiert; Produkte, die
+                // mehr einbringen als sie kosten, stehen am Ende. Vor dem
+                // ersten steht, warum: Sonst las sich „Rechnungswesen
+                // +405,8 Mio. €" hinter Stiftungen mit 2.228 € wie ein
+                // Sortierfehler (Durchsicht 02.09.2026).
+                const ersterUeberschuss = netto(p) < 0 && (i === 0 || netto(produkte[i - 1]) >= 0);
+                const trenner = ersterUeberschuss && !gefiltert ? (
+                  <p key={`trenner-${p.product_no}`}
+                    className="@3xl/treffer:col-span-full mt-2 border-t border-dashed border-border pt-2.5 text-[12px] leading-relaxed text-muted-foreground">
+                    <span className="font-semibold text-foreground/80">Ab hier: Überschüsse.</span>{" "}
+                    Diese Produkte bringen der Stadt mehr ein, als sie kosten — hier werden
+                    Steuern, Zinsen und Umlagen verbucht. Das Plus ist der Überschuss.
+                  </p>
+                ) : null;
                 // Geschlossen ist die Karte ein Rasterkind wie jedes andere.
                 // Geöffnet wird sie zur Hülle: derselbe Rahmen um Kopf und
                 // Steckbrief, im zweispaltigen Raster über die volle Breite.
                 if (!offen) {
                   return (
-                    <Treffer key={p.product_no} p={p} max={maxWert} aktiv={false}
-                      alleJahre={alleJahre} />
+                    <Fragment key={p.product_no}>
+                      {trenner}
+                      <Treffer p={p} max={maxWert} aktiv={false} alleJahre={alleJahre} />
+                    </Fragment>
                   );
                 }
                 return (
-                  <div key={p.product_no}
-                    className="overflow-hidden rounded-xl border border-primary/50 bg-primary/[0.04] shadow-sm @3xl/treffer:col-span-full">
-                    <Treffer p={p} max={maxWert} aktiv alleJahre={alleJahre} eingebettet />
-                    <SteckbriefTeil aktiv={aktiv} year={year} alleJahre={alleJahre}
-                      aufSchliessen={() => router.push("/haushalt/produkte", { scroll: false })} />
-                  </div>
+                  <Fragment key={p.product_no}>
+                    {trenner}
+                    <div
+                      className="overflow-hidden rounded-xl border border-primary/50 bg-primary/[0.04] shadow-sm @3xl/treffer:col-span-full">
+                      <Treffer p={p} max={maxWert} aktiv alleJahre={alleJahre} eingebettet />
+                      <SteckbriefTeil aktiv={aktiv} year={year} alleJahre={alleJahre}
+                        aufSchliessen={() => router.push("/haushalt/produkte", { scroll: false })} />
+                    </div>
+                  </Fragment>
                 );
               })}
             </div>

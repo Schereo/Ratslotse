@@ -183,7 +183,17 @@ function BetriebsKarte({ zeilen, abschluesse, juengstesJahr, herkunftFuer }: {
   const nach = [...zeilen].sort((a, b) => a.year - b.year);
   const letzte = juengsteZeile(zeilen);
   const b = beleg(letzte.probes);
-  const series: JahrPunkt[] = nach.map((z) => ({ year: z.year, value: z.result / 1e6 }));
+  // Fehlende Jahrgänge als Lücke MIT Grund — statt „ohne Wert und ohne
+  // Grund" (Durchsicht 02.09.2026): Für das Jahr liegt kein lesbarer
+  // Wirtschaftsplan im Ratsinformationssystem.
+  const ergebnisNach = new Map(nach.map((z) => [z.year, z.result / 1e6]));
+  const series: JahrPunkt[] = [];
+  for (let j = nach[0].year; j <= nach[nach.length - 1].year; j++) {
+    const v = ergebnisNach.get(j);
+    series.push(v != null
+      ? { year: j, value: v }
+      : { year: j, fehlt: "kein lesbarer Wirtschaftsplan für dieses Jahr im Ratsinformationssystem" });
+  }
   const zeigKurve = nach.length >= 3;
   const ist = abschlussSicht(abschluesse, zeilen);
 
