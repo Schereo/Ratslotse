@@ -328,9 +328,8 @@ def test_stiftungs_anlage_ist_der_teilhaushalt_13(tmp_path):
                     (did, label))
         rows = finanzquellen.QUELLEN["teilhaushalt"].dokumente(store, "document_id")
         assert sorted(r["document_id"] for r in rows) == [194235, 297429]
-        einheiten = finanzquellen._einheiten_teilhaushalt(
-            {"label": "019 nicht rechtsfähige Stiftungen", "kopf": "Stadt Oldenburg THH13 Nicht rechtsfähige Stiftungen"})
-        assert {nr for _, nr in einheiten} == {13}
+        # Ohne Nummer im Label kommt sie vom Deckblatt.
+        assert finanzquellen.teilhaushalt_nummer("Stadt Oldenburg THH13 Nicht rechtsfähige Stiftungen") == 13
     finally:
         store.close()
 
