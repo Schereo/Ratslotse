@@ -4619,17 +4619,17 @@ export interface components {
         BudgetExecution: {
             /** Budget Names */
             budget_names: {
-                [key: string]: unknown;
+                [key: string]: string;
             };
             /** Editions */
             editions: unknown;
             /** Kind Names */
             kind_names: {
-                [key: string]: unknown;
+                [key: string]: string;
             };
             /** Plan Basis Note */
             plan_basis_note: {
-                [key: string]: unknown;
+                [key: string]: string;
             };
             /** Provenance */
             provenance: {
@@ -4840,7 +4840,9 @@ export interface components {
             /** Missing */
             missing: unknown;
             /** Part Names */
-            part_names: unknown;
+            part_names: {
+                [key: string]: string;
+            };
             /** Provenance */
             provenance: {
                 [key: string]: components["schemas"]["Herkunft"];
@@ -5498,7 +5500,7 @@ export interface components {
             decisions: unknown;
             /** Field Labels */
             field_labels: {
-                [key: string]: unknown;
+                [key: string]: string;
             };
         };
         /** ForgotPasswordRequest */
@@ -12050,4 +12052,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 931dbf9bbda9f7e8a2a218eb2f3a1851b4f97d1845df83e28123fbbfa8138a60
+// vertrag-sha256: 098569f3bba8c3689434a6d2c670941ccd6dac495bb05d89f56ec566529b49ba

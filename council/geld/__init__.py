@@ -17,7 +17,7 @@ und wird beim Import entdeckt — niemand trägt es irgendwo ein:
   ``facetten`` die bis dahin erkannten Facetten (damit eine Facette an eine
   andere andocken kann: „vorhaben“ an „investitionen“).
 * eine **Store-Mixin-Klasse** mit genau einer Methode
-  ``<methode>(woerter, year=None) -> dict | None`` — ``CouncilStore`` erbt
+  ``<methode>(terms, year=None) -> dict | None`` — ``CouncilStore`` erbt
   alle Mixins; die Methode arbeitet mit ``self._conn``, ``self._trifft`` und
   ``self._beleg`` wie die zwanzig älteren. ``None`` heißt: nichts
   Einschlägiges — dann wächst der Prompt nicht.
@@ -115,6 +115,95 @@ def de_mio(euro: float | None) -> str:
     v = euro / 1e6
     s = f"{abs(v):,.1f}".replace(",", "X").replace(".", ",").replace("X", ".")
     return f"{'-' if v < 0 else ''}{s} Mio. €"
+
+
+def de_euro(euro: float | None) -> str:
+    """„788.669 €“ — für Beträge, die in Mio. zu „0,8“ verkämen (Spenden,
+    Gebühren, Pro-Kopf-Werte)."""
+    if euro is None:
+        return "–"
+    return f"{euro:,.0f} €".replace(",", ".")
+
+
+def de_zahl(v: float | None, stellen: int = 0) -> str:
+    """„1.702,25“ — Tausenderpunkt und Dezimalkomma, ohne Einheit."""
+    if v is None:
+        return "–"
+    return (f"{v:,.{stellen}f}".replace(",", "\x00").replace(".", ",")
+            .replace("\x00", "."))
+
+
+def de_prozent(v: float | None, stellen: int = 1) -> str:
+    """„42,8 %“ — das Dezimalkomma ist die Falle, in die jeder Baustein beim
+    ersten Anlauf läuft („+42.8 %“)."""
+    if v is None:
+        return "–"
+    return f"{v:.{stellen}f} %".replace(".", ",")
+
+
+def beleg_text(b: dict | None, stand: bool = False) -> str:
+    """„ — Beleg: Jahresabschluss 2024, Abschnitt 6.2, S. 41“.
+
+    Dieselbe Zeile wie ``qa._beleg_text`` — hier, weil ``qa`` dieses Paket
+    importiert und nicht umgekehrt. ``stand`` hängt „Stand …“ an; die
+    Facetten lassen es meist weg, weil ``as_of`` bei den Haushalts-
+    Herkünften oft ein ganzer Abgrenzungssatz ist (200–300 Zeichen), den
+    der Baustein-Kopf schon als Anweisung führt."""
+    if not b:
+        return ""
+    teile = [str(t) for t in (b.get("label"), b.get("citation")) if t]
+    if b.get("page"):
+        teile.append(f"S. {b['page']}")
+    if not teile:
+        return ""
+    as_of = f", Stand {b['as_of']}" if stand and b.get("as_of") else ""
+    return f" — Beleg: {', '.join(teile)}{as_of}"
+
+
+_JAHR = re.compile(r"\b(19[89]\d|20[0-4]\d)\b")
+_ZEITRAUM = ("seit", "ab", "nach", "zwischen", "bis")
+
+
+def jahr_aus_text(text: str) -> int | None:
+    """Das eine gefragte Jahr aus einem (gefalteten oder rohen) Wortlaut.
+
+    Zwei Jahre („von 2019 bis 2024“) sind ein Zeitraum, keins; „seit 2020“,
+    „ab 2020“, „nach 2020“ ist der Anfang einer Reihe, nicht der Jahrgang.
+    Dieselbe Regel wie ``qa.haushaltsjahr`` — für ``erkennen``, das nur den
+    Text sieht und ``qa`` nicht importieren kann."""
+    t = falte(text or "")
+    jahre = sorted({int(j) for j in _JAHR.findall(t)})
+    if len(jahre) != 1:
+        return None
+    if re.search(r"\b(" + "|".join(_ZEITRAUM) + r")\s+" + str(jahre[0]) + r"\b", t):
+        return None
+    return jahre[0]
+
+
+def lesestore(pfad: str):
+    """Ein Store NUR ZUM LESEN — für Größenmessungen an einer echten Datenbank.
+
+    ``CouncilStore`` migriert beim Öffnen und schreibt dabei; wer die
+    dev-Kopie nur befragen will, darf sie nicht anfassen. Das hier öffnet
+    ``mode=ro`` und bringt mit, was die Facetten-Methoden brauchen:
+    ``_conn``, ``_trifft``, ``_beleg`` und alle Mixins."""
+    from council.store import CouncilStore   # spät: store importiert dieses Paket
+
+    conn = sqlite3.connect(f"file:{pfad}?mode=ro", uri=True)
+    conn.row_factory = sqlite3.Row
+
+    class _LeseStore(*MIXINS):
+        _trifft = CouncilStore._trifft
+        _falte_wort = CouncilStore._falte_wort
+        _stamm = CouncilStore._stamm
+        _beleg = CouncilStore._beleg
+
+        def close(self) -> None:
+            conn.close()
+
+    st = _LeseStore()
+    st._conn = conn
+    return st
 
 
 def _lade() -> tuple[Facette, ...]:

@@ -124,7 +124,12 @@ KORPUS: list[tuple[str, str, set[str]]] = [
     ("Was sagte die SPD zum Klimaschutz?", "party", set()),
     ("Was sagte die SPD zum Stadionneubau?", "party", set()),
     ("Wie hat sich die Diskussion um den Stadionneubau entwickelt?", "history", set()),
-    ("Was ist die GSG?", "topic", set()),
+    # „Was ist die GSG?" stand hier, solange es keine Quelle gab, die es
+    # beantwortet — die Frage zog vorher den Ergebnishaushalt, in dem die GSG
+    # nicht vorkommt. Seit 09/2026 gibt es den Beteiligungsbericht als eigene
+    # Facette (`council/geld/companies.py`), und der IST die Antwort:
+    # Wohnungsgesellschaft, wem sie gehört, was sie erwirtschaftet.
+    ("Was ist die GSG?", "topic", {"companies"}),
     ("Wer ist im Verwaltungsausschuss?", "topic", set()),
     # Die Gegenprobe zu den vier Neuzugängen: Wörter, die ihnen nahekommen,
     # ohne sie zu meinen. „Anträge stellen" ist das Verb, keine Planstelle;
