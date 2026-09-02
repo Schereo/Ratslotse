@@ -21,7 +21,7 @@ Jahresabschluss, ein Nachtragshaushalt oder ein nachgereichter Prüfbericht
 werden eingesammelt, sobald sie da sind, und der Job darf beliebig oft laufen.
 
 **Einheit, nicht Jahrgang** — das ist der Punkt, an dem die erste Fassung
-falsch lag. Ein Produkt-Jahrgang verteilt sich auf rund neun
+falsch lag. Ein Produkt-Jahrgang verteilt sich auf zwölf bis dreizehn
 Teilhaushalts-Anlagen, ein Jahresabschluss auf zwei Ebenen. Und die kommen
 **nicht gleichzeitig**: ``check_protocols`` legt eine Anlage ohne Volltext an
 (``n_pages=0``), den holt ``backfill_anlagen_texte.py`` erst später und in
@@ -238,7 +238,7 @@ def main(db: str | None = None, heute: date | None = None,
                 continue
 
             # Gefragt wird nach EINHEITEN, nicht nach Jahrgängen: Ein
-            # Produkt-Jahrgang steckt in rund neun Anlagen, ein Jahresabschluss
+            # Produkt-Jahrgang steckt in zwölf bis dreizehn Anlagen, ein Jahresabschluss
             # in zwei Ebenen. „Jahr ist da" hieße sonst „Jahr ist fertig" —
             # und der Rest käme nie nach.
             kandidaten = q.kandidaten(store)

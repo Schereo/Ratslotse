@@ -167,7 +167,7 @@ class Finanzquelle:
     Jahrgang. Wo die Einheit kleiner ist, sagt es ``einheiten_von``; zwei
     Beispiele, an denen die Regel hängt:
 
-    - Ein Produkt-Jahrgang verteilt sich auf rund neun Teilhaushalts-Anlagen
+    - Ein Produkt-Jahrgang verteilt sich auf zwölf bis dreizehn Teilhaushalts-Anlagen
       (``council/store.py`` sagt es bei ``save_produkte`` selbst: „Die Produkte
       eines Jahres verteilen sich auf mehrere Teilhaushalts-Dokumente, die
       nacheinander eingelesen werden").
@@ -337,9 +337,6 @@ def _einheiten_feststellungen(row: dict) -> set[tuple]:
     return {(year,)} if year else set()
 
 
-#: Erste Ansatzspalte im Tabellenkopf eines Teilhaushalts-Plans.
-_ANSATZ = re.compile(r"Ansatz\s+(20\d\d)")
-
 #: Nummer des Teilhaushalts aus dem Label — „007 THH01", „2024 007 IVw THH01",
 #: „TOP 5 - Anlage III - THH 08". Führende Nullen und der Zwischenraum
 #: schwanken zwischen den Jahrgängen.
@@ -361,18 +358,35 @@ def teilhaushalt_nummer(label: str | None) -> int | None:
 def teilhaushalt_jahrgang(text: str | None) -> int | None:
     """Für welchen Jahrgang ein Teilhaushalts-Plan Ansätze liefert.
 
-    Nicht das Jahr aus dem Dateinamen: Der Plan „2024 007 IVw THH01" ist der
-    Haushaltsplan **2024**, seine erste Ansatzspalte trägt aber 2023 — genau
-    den Wert, den ``parse_teilergebnishaushalt`` übernimmt (die späteren
-    Spalten sind mittelfristige Finanzplanung, keine beschlossenen Ansätze).
-    Wer hier das Label läse, suchte einen Jahrgang, den die Tabelle nie
-    zurückgibt, und der Cron liefe in eine Endlosschleife aus Nachladen und
-    Nichtfinden.
+    Aus dem Tabellenkopf, nicht aus dem Dateinamen: Drei der acht Jahrgänge
+    heißen schlicht „007 THH01" und tragen gar keine Jahreszahl. Der Kopf sagt
+    es immer — und zwar in seiner **dritten** Spalte, dem zweiten ``Ansatz``
+    (die erste Ansatzspalte ist der fortgeschriebene Vorjahresansatz, die
+    weiteren sind Finanzplanung). Dieselbe Spalte übernimmt
+    ``parse_teilergebnishaushalt``; wer hier eine andere läse, suchte einen
+    Jahrgang, den die Tabelle nie zurückgibt, und der Cron liefe in eine
+    Endlosschleife aus Nachladen und Nichtfinden.
 
-    Geprüft gegen alle 79 Teilhaushalts-Anlagen des Bestands: Der erste
-    ``Ansatz JJJJ`` im Dokumentkopf ist immer der Jahrgang, den der Parser am
-    Ende vergibt (siehe ``tests/test_finanzquellen.py``)."""
-    m = _ANSATZ.search(text or "")
+    Bis 09/2026 stand hier die **erste** Ansatzspalte. Damit hing die ganze
+    Schicht ein Jahr hinter ihren Dokumenten (s. ``finanzberichte``,
+    Abschnitt „Welche Spalte der beschlossene Ansatz ist")."""
+    return finanzberichte.thh_budget_year(text)
+
+
+#: Die Jahreszahl im Label — „2026 007 Vw THH01", „007 2023 THH01". Vier der
+#: acht Jahrgangs-Generationen tragen sie, die älteren nicht.
+_LABEL_JAHR = re.compile(r"(20\d\d)")
+
+
+def teilhaushalt_label_jahr(label: str | None) -> int | None:
+    """Der Jahrgang, den das Label behauptet — ``None``, wenn es keinen nennt.
+
+    Nur zur **Gegenprobe**: Maßgeblich bleibt der Tabellenkopf, weil ihn jedes
+    Dokument hat. Aber wo beide etwas sagen, müssen sie dasselbe sagen — über
+    die 53 Anlagen mit Jahreszahl im Label tun sie das ausnahmslos. Genau
+    diese Probe hätte die Jahresverschiebung von 09/2026 sofort gezeigt:
+    „2026 007 Vw THH01" wurde als Jahrgang 2025 abgelegt."""
+    m = _LABEL_JAHR.search(label or "")
     return int(m.group(1)) if m else None
 
 
@@ -1802,14 +1816,17 @@ def lies_teilhaushalte(store: CouncilStore, p: Protokoll,
     **Ein Teilhaushalt wird genau einmal versorgt, vom ersten Dokument.**
     Sechs (Jahrgang, Teilhaushalt)-Paare hängen an zwei Vorlagen — dieselbe
     PDF-Datei, ein zweites Mal unter einem anderen Tagesordnungspunkt
-    hochgeladen (2018/THH08, 2018/THH11, 2019/THH11, 2020/THH08, 2021/THH08,
-    2022/THH08; nachgemessen 08/2026, der Volltext ist Byte für Byte
+    hochgeladen (2019/THH08, 2019/THH11, 2020/THH11, 2021/THH08, 2022/THH08,
+    2023/THH08; nachgemessen 08/2026, der Volltext ist Byte für Byte
     derselbe). Ohne Regel entschied die Sortierung der Kandidaten, welches
     Dokument als Quelle in der Zeile steht — und das fiel zugunsten der
     schlechteren Angabe aus: „TOP 5 - Anlage III - THH 08" sagt außerhalb
-    seiner Sitzung nichts, und „2019 THH 08" trägt am Plan für **2018** die
-    falsche Jahreszahl. Das erste Dokument ist die Anlage der Haushalts-
-    vorlage selbst und führt die Zählung des Plans („014 THH08").
+    seiner Sitzung nichts. Das erste Dokument ist die Anlage der Haushalts-
+    vorlage selbst und führt die Zählung des Plans („014 THH08"). Mit der
+    niedrigeren Seitenschwelle (25 statt 40) kommen die Zweitfassungen der
+    kleineren Teilhaushalte dazu — „THH12", „zu TOP 9 THH12", „Anlage 4 THH
+    12" —, dieselbe Regel fängt sie; aus sechs Paaren werden damit elf
+    (nachgemessen 02.09.2026).
 
     Weichen die Zahlen des zweiten Dokuments ab, ist das eine **neue Lage** —
     ein Nachtragshaushalt etwa, der einen Ansatz wirklich ändert. Dann wird
@@ -1833,7 +1850,20 @@ def lies_teilhaushalte(store: CouncilStore, p: Protokoll,
         if not produkte:
             ohne += 1
             continue
-        for year in {x["year"] for x in produkte}:
+        # Jahrgangsprobe: Wo das Label einen Jahrgang nennt, muss es derselbe
+        # sein, den der Tabellenkopf nennt. Sie ist keine Sperre (die Hälfte
+        # der Labels nennt gar keinen), aber der Wächter über die
+        # Spaltenwahl — genau diese Verschiebung stand ein Jahr lang
+        # unbemerkt in der Tabelle.
+        label_jahr = teilhaushalt_label_jahr(r["label"])
+        jahre_im_dokument = {x["year"] for x in produkte}
+        if label_jahr and label_jahr not in jahre_im_dokument:
+            p.warnen(
+                f"  Dokument {r['document_id']} ({r['label']!r}): Das Label "
+                f"nennt {label_jahr}, der Tabellenkopf "
+                f"{sorted(jahre_im_dokument)} — die Spaltenzuordnung prüfen "
+                f"(council/finanzberichte.py, thh_kopfspalten).")
+        for year in jahre_im_dokument:
             part = [x for x in produkte if x["year"] == year]
             # ``save_produkte`` löscht nichts, überschreibt aber Zeile für
             # Zeile. Verglichen wird deshalb je Teilhaushalt, nicht je Jahr:
@@ -1876,7 +1906,11 @@ def lies_teilhaushalte(store: CouncilStore, p: Protokoll,
                                     else "Teilergebnishaushalt, Produktebene"),
                         probe_result=f"{len(stueck)} Produktzeilen mit "
                                        f"aufgehender Ergebnis-Rechnung",
-                        as_of=f"Haushaltsplan {year}"))
+                        # Wie beim Gesamtergebnishaushalt und beim Stellenplan:
+                        # Die Anlage hängt an der Vorlage, mit der die
+                        # Verwaltung den Haushalt einbringt. Was der Rat daran
+                        # noch ändert, steht nicht darin.
+                        as_of=f"Haushaltsplan {year} — Stand der Einbringung"))
                     versorgt[(year, sub_budget_no)] = (_produkt_signatur(stueck), r)
                     neue_einheiten.add((year, sub_budget_no))
                     je_jahr[year] = je_jahr.get(year, 0) + len(stueck)
@@ -2222,8 +2256,14 @@ for _q in (
         label="Teilhaushalts-Pläne (Produktebene)",
         was="Was einzelne Aufgaben kosten — von der Musikschule bis zur Straßenreinigung.",
         tabelle="council_products",
+        # Anlagen 007–019 desselben Haushaltsplans wie Anlage 005 und der
+        # Stellenplan — also derselbe Takt: Einbringung Anfang Oktober des
+        # VORJAHRES. Bis 09/2026 stand hier ``versatz=0``, passend zur
+        # damaligen Jahresverschiebung des Parsers; der Datenstand meldete
+        # den Jahrgang 2026 damit als „ab 01.10.2026 zu erwarten", obwohl
+        # seine dreizehn Dokumente seit dem 01.10.2025 im Bestand lagen.
         erwarteter_monat=10,
-        versatz=0,
+        versatz=-1,
         herkunft="ris",
         # ``document_id`` ist die getfile-Nummer des Ratsinformationssystems
         # und steigt mit jedem Upload — die Kandidaten kommen damit in
@@ -2232,10 +2272,22 @@ for _q in (
         # Dokument versorgt den Teilhaushalt" (siehe `lies_teilhaushalte`)
         # braucht ein Kriterium, das etwas bedeutet. Nach `label` sortiert
         # gewänne sonst der Zufall der Schreibweise.
-        erkennung=Erkennung(label_muster=("%THH%",), mindest_seiten=40,
+        # 25 Seiten, nicht 40: Vier Teilhaushalte sind schlicht dünner als der
+        # Rest — THH13 (Stiftungen) hat 26 bis 28 Seiten, THH03
+        # (Wirtschaftsförderung) 28 bis 34, THH02 und THH12 genau 40. Die alte
+        # Schwelle („> 40") warf sie in JEDEM Jahrgang hinaus, und die Seiten
+        # sagten deshalb „kein auslesbarer Teilhaushaltsplan" für Schule und
+        # Bildung, Wirtschaftsförderung und Stiftungen — obwohl ihre Pläne
+        # danebenlagen und sich anstandslos lesen lassen.
+        #
+        # 25 ist gemessen, nicht gegriffen: Der kleinste echte Plan des
+        # Bestands hat 26 Seiten, der größte Fremdkörper mit „THH" im Label
+        # 22 (ein Auszug des Investitionsprogramms). Dazwischen liegt die
+        # Schwelle mit Abstand nach beiden Seiten.
+        erkennung=Erkennung(label_muster=("%THH%",), mindest_seiten=25,
                             ordnung="document_id"),
         # Die Einheit ist der Teilhaushalt, nicht der Jahrgang: Ein Jahr
-        # verteilt sich auf rund neun Anlagen, die einzeln lesbar werden.
+        # verteilt sich auf zwölf bis dreizehn Anlagen, die einzeln lesbar werden.
         unit="Teilhaushalte",
         einheiten_von=_einheiten_teilhaushalt,
         balance=_bestand_produkte,
