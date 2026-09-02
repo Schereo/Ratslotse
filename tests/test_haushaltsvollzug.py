@@ -307,6 +307,45 @@ def test_die_uebertragung_haengt_an_der_aufwandszeile_und_sonst_nirgends():
     assert je_art[(1, "result")].carryover is None
 
 
+def _mit_mischzeile(rohzeilen, uebertrag="40.377", abweichung="-40.377",
+                    summe_abweichung="14.344.495", summe_uebertrag="6.043.466"):
+    """Die Tabelle 2025 mit Teilhaushalt 13, wie er im Bericht zum 30.06.2024
+    steht: Ansatz gleich Prognose, trotzdem eine Aufwands-Abweichung in Höhe
+    der Ermächtigungsübertragung — und eine Summenzeile, die sie enthält."""
+    aus = []
+    for nr, label, werte in rohzeilen:
+        w = list(werte)
+        if nr == 13:
+            w[7], w[10] = abweichung, uebertrag
+        if nr == 0:
+            w[7], w[10] = summe_abweichung, summe_uebertrag
+        aus.append((nr, label, w))
+    return aus
+
+
+def test_eine_zeile_darf_ihre_abweichung_gegen_ansatz_plus_uebertragung_rechnen():
+    """Im Bericht zum 30.06.2024 rechnet Teilhaushalt 13 seine Aufwands-
+    Abweichung gegen Ansatz PLUS Ermächtigungsübertragung, alle anderen gegen
+    den Ansatz allein; die Summenzeile enthält die Zahl so. Die Zeile bleibt,
+    wie gedruckt, und die Probe nennt sie — statt den ganzen Halbjahresstand
+    des Ergebnishaushalts zu verwerfen."""
+    positionen, basis, probe = lies(_mit_mischzeile(EHH_2025), SPALTEN_2025)
+    assert basis == BASIS_ANSATZ
+    thh13 = next(p for p in positionen if p.sub_budget == 13 and p.kind == "expense")
+    assert (thh13.deviation, thh13.carryover) == (-40_377, 40_377)
+    assert "Zeile 13 (Nicht rechtsfähige Stiftungen)" in probe
+    assert "Ansatz plus Ermächtigungsübertragung" in probe
+    summe = next(p for p in positionen if p.is_total and p.kind == "expense")
+    assert summe.deviation == 14_344_495
+
+    # Passt die Zahl auf KEINER der beiden Basen, reißt die Zeile wie bisher.
+    with pytest.raises(VollzugFehler, match="Zeile 13"):
+        lies(_mit_mischzeile(EHH_2025, abweichung="-40.000"), SPALTEN_2025)
+    # Und enthält die Summenzeile den Versatz nicht, reißt die Summenprobe.
+    with pytest.raises(VollzugFehler, match="Summen"):
+        lies(_mit_mischzeile(EHH_2025, summe_abweichung="14.384.872"), SPALTEN_2025)
+
+
 def test_eine_leere_zelle_bleibt_leer_und_wird_nicht_zur_null():
     """Vier Teilhaushalte planen 2018 keine Einzahlungen. Der Bericht druckt
     dort nichts — eine erfundene Null sähe aus wie eine Auskunft."""
