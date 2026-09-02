@@ -399,6 +399,39 @@ def _kaskade_aus_der_reihenfolge(part: str) -> tuple[float, float, float] | None
     return gefunden
 
 
+def _kaskade_ohne_vorzeichen(kalkulation: float, kaskade: str, zu_decken: float
+                             ) -> float | None:
+    """Die Kaskade lesen, wenn die Abzüge ohne Minus gedruckt sind.
+
+    In der Abfallbehandlung 2021 (OCR-Lesung des gescannten Berichts) stehen
+    alle Abzüge positiv: „Kosten, die durch Dritte erstattet werden
+    3.156.249 €“, dazwischen die Zwischensumme „Bereinigte Kosten“. Ob ein
+    Betrag Abzug oder Zwischensumme ist, entscheidet nicht die Beschriftung,
+    sondern ob er dem laufenden Stand gleicht. Und ob die „Über-/Unterdeckung
+    aus Vorjahren“ abgezogen oder hinzugerechnet wird, entscheidet allein,
+    welche der beiden Lesarten die Zeile „zu decken sind“ trifft — höchstens
+    ein Betrag darf sich addieren, alle anderen sind Abzüge. Trifft keine
+    Lesart, gibt es keine Kaskade; geraten wird nicht.
+
+    Liefert die Summe der Abzüge (negativ) oder ``None``.
+    """
+    betraege = [_eur(x) for x in _BETRAG_RE.findall(kaskade) if x.strip("-. ")]
+    if not betraege or any(b < 0 for b in betraege) or len(betraege) > 12:
+        return None
+    for addiert in (None, *range(len(betraege))):
+        laufend = kalkulation
+        abzuege = 0.0
+        for i, betrag in enumerate(betraege):
+            if abs(laufend - betrag) <= TOLERANZ_EUR:
+                continue  # Zwischensumme, etwa „Bereinigte Kosten“
+            vorzeichen = 1.0 if i == addiert else -1.0
+            laufend += vorzeichen * betrag
+            abzuege += vorzeichen * betrag
+        if abs(laufend - zu_decken) <= TOLERANZ_EUR:
+            return abzuege
+    return None
+
+
 def parse_anlage(part: str, template_number: str | None = None) -> Gebuehrenbedarf:
     """Eine Anlage lesen — geprüft, oder gar nicht."""
     area = _bereich_aus_kopf(part)
@@ -421,6 +454,12 @@ def parse_anlage(part: str, template_number: str | None = None) -> Gebuehrenbeda
             value = _eur(ueberdeckung.group(1))
             if value > 0 and abs(rest - value) <= TOLERANZ_EUR:
                 deductions -= value
+        if abs(kalkulation + deductions - zu_decken) > TOLERANZ_EUR:
+            # Abzüge ohne Minus gedruckt (OCR-Lesung 2021)? Nur wenn die
+            # Kaskade damit exakt aufgeht.
+            ohne_vorzeichen = _kaskade_ohne_vorzeichen(kalkulation, kaskade, zu_decken)
+            if ohne_vorzeichen is not None:
+                deductions = ohne_vorzeichen
     else:
         # Beschriftungen und Beträge stehen in getrennten Blöcken (2024).
         ueber_reihenfolge = _kaskade_aus_der_reihenfolge(part)
