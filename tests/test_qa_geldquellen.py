@@ -1258,7 +1258,7 @@ def test_alle_facetten_haben_baustein_und_methode():
     assert set(qa.GELD_FACETTEN) == set(alle)
     for methode in alle.values():
         assert callable(getattr(CouncilStore, methode)), methode
-        assert hasattr(_MessStore, methode), methode
+        assert hasattr(_MessStore(), methode), methode
 
 
 def test_wortstamm_faltet_umlaute_und_kappt():
