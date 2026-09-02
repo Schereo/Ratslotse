@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import sqlite3
 import sys
 from pathlib import Path
 
@@ -33,6 +34,7 @@ from council.budget_bylaw import (  # noqa: E402
     herkunft_fuer,
     parse_satzung,
 )
+from council.steuertabellen import HEBESATZ_ARTEN  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
 
 COUNCIL_DB = Path(os.environ.get("COUNCIL_DB") or ROOT / "data" / "council.sqlite")
@@ -48,29 +50,39 @@ def hebesatz_probe(store: CouncilStore, satzung) -> str | None:
     """
     try:
         rows = store._conn.execute(  # noqa: SLF001
-            "SELECT art, rate FROM council_tax_rates WHERE year = ?",
+            "SELECT kind, rate FROM council_tax_rates WHERE year = ?",
             (satzung.year,)).fetchall()
-    except Exception:  # noqa: BLE001 — Tabelle kann fehlen
+    except sqlite3.Error:  # die Tabelle gibt es erst nach dem Steuer-Ingest
         return None
     if not rows:
         return None
 
+    # Die Schlüssel kommen aus `HEBESATZ_ARTEN` und werden nicht danebengetippt.
+    # Genau daran hing diese Probe: Sie stand seit ihrer Einführung (#674) mit
+    # den Schlüsseln `grundsteuer_a`/`grundsteuer_b`/`gewerbesteuer` da,
+    # während in der Spalte „Grundsteuer A" & Co. steht — `felder.get()` traf
+    # nie, `geprueft` blieb leer, und der Rückgabewert war jedes Mal `None`.
+    # Der Umbau auf englische Spaltennamen legte später noch einen zweiten
+    # Bruch obendrauf (`art` heißt `kind`), den das umschließende `except`
+    # verschluckte. Die Satzungen liefen also drei Monate lang ungeprüft
+    # durch eine Prüfung, die es zu geben schien.
+    a, b, gewerbe = HEBESATZ_ARTEN
     felder = {
-        "grundsteuer_a": satzung.property_tax_a_rate,
-        "grundsteuer_b": satzung.property_tax_b_rate,
-        "gewerbesteuer": satzung.trade_tax_rate,
+        a: satzung.property_tax_a_rate,
+        b: satzung.property_tax_b_rate,
+        gewerbe: satzung.trade_tax_rate,
     }
     geprueft = []
-    for art, value in rows:
-        eigen = felder.get(art)
+    for kind, value in rows:
+        eigen = felder.get(kind)
         if eigen is None:
             continue
         if int(value) != int(eigen):
             raise SatzungFehler(
-                f"Hebesatz {art} {satzung.year}: Die Satzung sagt {eigen} v.H., "
+                f"Hebesatz {kind} {satzung.year}: Die Satzung sagt {eigen} v.H., "
                 f"das Statistische Jahrbuch {int(value)} v.H. — zwei Häuser "
                 "widersprechen sich.")
-        geprueft.append(f"{art} {eigen} v.H.")
+        geprueft.append(f"{kind} {eigen} v.H.")
     return ("Hebesatz gegen Tabelle 1105 gehalten: " + ", ".join(geprueft)
             if geprueft else None)
 
