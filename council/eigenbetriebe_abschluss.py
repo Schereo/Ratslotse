@@ -322,9 +322,13 @@ def lies_bilanz(text: str, enterprise: str, report_year: int,
         aus.kennzahlen.append(Kennzahl(enterprise, jahr_, "balance_total", wert, einheit,
                                        report_year, document_id, FUNDSTELLE_BILANZ,
                                        PROBE_UEBERLAPPUNG))
-    # Eigenkapital: die letzte Paarzeile im Abschnitt „Eigenkapital" vor den
-    # Rückstellungen — die Zwischensumme aus Stammkapital und Rücklagen.
-    ek = re.search(r"Eigenkapital(.*?)R[üu]ckstellungen", glatt, re.S | re.I)
+    # Eigenkapital: die letzte Paarzeile im Abschnitt „Eigenkapital" vor dem
+    # nächsten Passivposten — die Zwischensumme aus Stammkapital, Rücklagen
+    # und Bilanzgewinn. Beim AWB steht zwischen Eigenkapital und
+    # Rückstellungen noch „B. Sonderposten“; wer erst an den Rückstellungen
+    # abschneidet, nimmt dessen Zeile (1.448.253 €) für das Eigenkapital
+    # (12.426.374 €).
+    ek = re.search(r"Eigenkapital(.*?)(?:Sonderposten|R[üu]ckstellungen)", glatt, re.S | re.I)
     if ek:
         block = [(z, _paar(z)) for z in ek.group(1).split("\n")]
         block = [p for _z, p in block if p is not None]
@@ -449,7 +453,11 @@ def text_aus_wortrahmen(pdf_bytes: bytes) -> str:
 # --------------------------------------------------------------------------
 
 def _toleranz(*einheiten: str) -> float:
-    return 500.0 if "TEUR" in einheiten else 1.0
+    """Zwei Berichte dürfen um EINEN Tausender auseinanderliegen, sobald einer
+    in TEUR rechnet: Der AWB nennt den Cashflow 2024 einmal mit 1.858 und
+    einmal mit 1.859 TEUR, und die Bilanz in Euro (12.426.373,63) liegt 626 €
+    neben der Übersicht (12.427 TEUR). Beides ist Rundung, kein Widerspruch."""
+    return 1000.0 if "TEUR" in einheiten else 1.0
 
 
 def zusammenfuehren(kennzahlen: list[Kennzahl]) -> tuple[list[dict], list[str]]:
