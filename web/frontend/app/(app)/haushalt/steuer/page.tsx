@@ -647,7 +647,7 @@ function SteuerInner() {
                   Vollbalken des geltenden Satzes mit viel Leere darüber
                   (Durchsicht 02.09.2026). Der Satz darunter sagt dann, dass
                   die Zahl fehlt. */}
-              {geltendeStufe && vorgeschlagen != null && (
+              {geltendeStufe && vorgeschlagen != null && vorgeschlagen > geltendeStufe.rate && (
                 <AbgelehnteStufe
                   year={HEBESATZ_ABGELEHNT.year}
                   geltend={geltendeStufe.rate}
@@ -658,7 +658,7 @@ function SteuerInner() {
                   satzungBeleg={<Beleg q="budget_bylaw" />}
                 />
               )}
-              {geltendeStufe && vorgeschlagen == null && (
+              {geltendeStufe && !(vorgeschlagen != null && vorgeschlagen > geltendeStufe.rate) && (
                 <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
                   Um wie viele Punkte der Satz hätte steigen sollen, können wir für{" "}
                   {HEBESATZ_ABGELEHNT.year} nicht belegen — die Satzung nennt keinen Vorschlag;
