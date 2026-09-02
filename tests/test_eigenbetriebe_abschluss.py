@@ -8,6 +8,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from council import eigenbetriebe_abschluss as ea
 from council import herkunft as h
 from council.store import CouncilStore
@@ -142,6 +144,52 @@ def test_verklebte_zeilen_gelten_nicht():
             "UmsatzerlöseT€24.87423.82422.04520.42620.538\n")
     l = ea.lies_dokument(text, FX["awb_2024"]["title"].replace("2024", "2025"), "Prüfbericht", 1, 96)
     assert not l.kennzahlen
+    # Genau dieser Text ist der Fall für die Wortrahmen des PDFs — ein
+    # lesbarer Extrakt ohne Übersicht ist es nicht.
+    assert ea.braucht_wortrahmen(l, text)
+    assert not ea.braucht_wortrahmen(l, "Jahresabschluss 2025, ohne Tabelle 24.506 25.500")
+    gelesen = _lies("awb_2024")
+    assert not ea.braucht_wortrahmen(gelesen, FX["awb_2024"]["text"])
+
+
+def test_wortrahmen_setzen_die_verklebte_uebersicht_neu():
+    """AWB 2025: Was der Extrakt verklebt, trägt das PDF als getrennte Wörter
+    mit Rahmen. Aus den Rahmen entsteht die Zeile wieder — Grundlinie gleich,
+    nach x sortiert — und die Übersicht liest sich wie jede andere."""
+    pymupdf = pytest.importorskip("pymupdf")
+    # Die Basisschrift des erzeugten PDFs kennt kein „€“; „TEUR“ sagt
+    # dasselbe, und der Leser streift beide Einheiten gleich ab.
+    doc = pymupdf.open()
+    page = doc.new_page()
+    zeilen = [
+        ("Die Entwicklung des Eigenbetriebs in den letzten fünf Jahren",),
+        ("2025", "2024", "2023", "2022", "2021"),
+        ("Vermögenslage",),
+        ("Bilanzsumme", "TEUR", "24.506", "25.500", "26.499", "23.440", "22.115"),
+        ("Eigenkapital", "TEUR", "14.866", "14.319", "14.143", "13.612", "13.212"),
+        ("Ertragslage",),
+        ("Umsatzerlöse", "TEUR", "24.874", "23.824", "22.045", "20.426", "20.538"),
+        ("Jahresergebnis", "TEUR", "547", "294", "650", "538", "495"),
+        ("Eigenkapitalquote", "%", "60,7", "56,2", "53,4", "58,1", "59,7"),
+    ]
+    for i, zellen in enumerate(zeilen):
+        y = 80 + 14 * i
+        # Kennzahl-Zeilen: Label links, Zahlen in eigenen Zellen rechts —
+        # jede Zelle ein eigener Schreibvorgang, wie im Bericht.
+        x = 40
+        for j, zelle in enumerate(zellen):
+            page.insert_text((x, y), zelle, fontsize=8)
+            x += 150 if j == 0 else 50
+    pdf = doc.tobytes()
+    doc.close()
+    text = ea.text_aus_wortrahmen(pdf)
+    assert "Bilanzsumme TEUR 24.506 25.500 26.499 23.440 22.115" in text
+    l = ea.lies_mehrjahresuebersicht(text, "awb", 2025, 1)
+    assert {k.year for k in l.kennzahlen} == {2021, 2022, 2023, 2024, 2025}
+    assert _wert(l, 2025, "balance_total") == 24_506_000
+    assert _wert(l, 2021, "result") == 495_000
+    assert _wert(l, 2025, "revenues") == 24_874_000
+    assert all(k.metric != "equity_ratio" for k in l.kennzahlen)
 
 
 def test_prozentzeile_beendet_die_tabelle():
