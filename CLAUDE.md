@@ -174,6 +174,16 @@ baut die Doku, rsync't den Code auf den Server (via SSH-ProxyJump, Ziel-Hosts
 als GitHub-Secrets) und startet die systemd-Services neu. Nicht überschrieben
 werden `.env`, `data/`, `.venv/`.
 
+**Nach dem Neustart läuft eine Rauchprobe.** `scripts/rauchprobe.py` ruft die
+Endpunkte ohne Konto auf dem frisch gestarteten Dienst auf und hält jede
+Antwort gegen `api/openapi.json` — Pflichtfeld da, Typ passend. Der Grund:
+`/api/health` fasst die Datenbank nicht an, eine Abfrage auf eine Spalte, die
+eine Migration gerade entfernt hat, wirft aber erst beim ersten echten Aufruf.
+Scheitert eine Probe, ist der Deploy rot (die Dienste laufen dann trotzdem
+schon mit dem neuen Stand — die Meldung ist der Alarm, keine Rücknahme). Lokal
+gegen einen eigenen Server: `python3 scripts/rauchprobe.py --basis
+http://127.0.0.1:8000`.
+
 **Rückmerge nach jedem Fix auf `main`** (hält den nächsten Release-PR
 konfliktfrei, v. a. im Changelog):
 

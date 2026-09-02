@@ -150,10 +150,21 @@ jobs:
               if curl -sf -o /dev/null http://127.0.0.1:3000/ \
                  && curl -sf -o /dev/null http://127.0.0.1:8000/api/health; then
                 echo "Dienste antworten nach $((i * 2))s."
-                exit 0
+                bereit=1
+                break
               fi
             done
-            echo "FEHLER: Dienste antworten 60s nach dem Neustart nicht."
-            systemctl is-active nwz-web-api nwz-web-frontend || true
-            journalctl -u nwz-web-frontend -n 30 --no-pager || true
-            exit 1
+            if [ -z "$bereit" ]; then
+              echo "FEHLER: Dienste antworten 60s nach dem Neustart nicht."
+              systemctl is-active nwz-web-api nwz-web-frontend || true
+              journalctl -u nwz-web-frontend -n 30 --no-pager || true
+              exit 1
+            fi
+
+            # „Der Prozess läuft" ist nicht „er tut das Richtige": `health`
+            # fasst die Datenbank nicht an, eine Abfrage auf eine Spalte, die
+            # eine Migration gerade entfernt hat, wirft aber erst beim ersten
+            # echten Aufruf. Die Rauchprobe ruft die Endpunkte ohne Konto auf
+            # und hält jede Antwort gegen den Vertrag, der neben dem Code auf
+            # demselben Server liegt. Sie braucht kein Fremdpaket.
+            python3 ~/app/scripts/rauchprobe.py --basis http://127.0.0.1:8000
