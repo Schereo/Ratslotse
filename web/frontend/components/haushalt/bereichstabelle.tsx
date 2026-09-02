@@ -34,7 +34,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ChevronDown, ChevronRight, Info } from "lucide-react";
-import { Segmented } from "@/components/ui";
+import { ScrollZeile, Segmented } from "@/components/ui";
 import { Beleg } from "@/components/haushalt/source";
 import { bereichKanon } from "@/lib/haushalt-bereiche";
 import { HaushaltZeile, bereichSlug, bereiche, deMio, mio } from "@/lib/haushalt";
@@ -239,13 +239,13 @@ export function Bereichstabelle({ zeilen, year }: { zeilen: HaushaltZeile[]; yea
               <span className="shrink-0 font-mono text-[9.5px] font-medium uppercase tracking-[0.09em] text-muted-foreground">
                 Reihenfolge
               </span>
-              <div className="scrollbar-none -mx-1 overflow-x-auto px-1">
+              <ScrollZeile className="-mx-1 px-1">
                 <Segmented className="w-max" value={sortierung} onChange={setSortierung} tone="primary"
                   options={[
                     { value: "stadt", label: "höchster Zuschuss" },
                     { value: "gesamt", label: "höchste Ausgaben" },
                   ]} />
-              </div>
+              </ScrollZeile>
             </div>
             <span className="inline-flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
               <span className="h-3 w-3 rounded-[3px]" style={{ background: "var(--hh-ein-0)" }} />

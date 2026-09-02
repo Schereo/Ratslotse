@@ -122,10 +122,34 @@
   h3 {
     @apply font-display;
     hyphens: auto;
+    /* Trennen darf nur, was lang ist: „verste-hen“, „automa-tisch“ und
+       „Ol-denburg“ standen in Titeln auf dem Handy (Durchsicht 02.09.2026).
+       Ein Wort braucht 14 Zeichen, sechs davor und fünf danach — das
+       „Ratsinformationssystem“ bricht weiter sauber, das Verb bleibt ganz.
+       Und Titel werden ausgewogen umbrochen, statt ein Wort allein zu
+       lassen. */
+    hyphenate-limit-chars: 14 6 5;
+    text-wrap: balance;
   }
 }
 
 @layer components {
+  /* Scroll-Zeilen (Chip-Reihen, Segment-Schalter): Der Inhalt fadet am
+     verdeckten Ende per Maske aus, statt hart abgeschnitten zu stehen
+     (Designsprache § 6). Welche Klasse gilt, misst `useScrollRand` — eine
+     Zeile, die hineinpasst, trägt keine. */
+  .gb-maske-rechts {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 44px), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 44px), transparent);
+  }
+  .gb-maske-links {
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 44px);
+    mask-image: linear-gradient(to right, transparent, #000 44px);
+  }
+  .gb-maske-beide {
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 44px, #000 calc(100% - 44px), transparent);
+    mask-image: linear-gradient(to right, transparent, #000 44px, #000 calc(100% - 44px), transparent);
+  }
   /* Der Abdunkler unter jedem Dialog — eine Klasse statt einer Farbe je
      Komponente, weil genau daran ein Blatt zerbrochen ist.
      „Thema anpassen" trug `rgba(9,17,27,0.42)`; das ist Pixel für Pixel die
