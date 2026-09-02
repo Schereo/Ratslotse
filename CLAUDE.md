@@ -166,6 +166,7 @@ Prod-Stand, `dev` der Integrations-Branch.**
 | Was | Wohin | Wie |
 |-----|-------|-----|
 | **Neues Feature** | PR mit `--base dev` | Squash-Merge; jeder Push auf `dev` deployt auf dev.ratslotse.de |
+| **Vorschau ohne dev anzufassen** | Merge nach `feature` | Jeder Push auf `feature` deployt auf feature.ratslotse.de (zweite Instanz auf derselben Dev-VM, eigene Datenbanken) |
 | **Fix/Hotfix** | PR mit `--base main` | Squash-Merge; deployt sofort auf Prod. Danach `main` nach `dev` zurückmergen (s. u.) |
 | **Release** | PR `dev` → `main` | **Merge-Commit, NICHT squashen** — sonst divergieren die Branches dauerhaft. Versionsschnitt (Changelog + Tag) gehört in diesen PR |
 
@@ -240,7 +241,28 @@ auf jedem PR). Die Dev-VM zieht per `git fetch` + `reset --hard`, baut
 Frontend + Backend-Deps und startet ihre Services neu. Prod bleibt davon
 komplett unberührt. **Kein Force-Push auf `dev`** — der Branch trägt seit dem
 Umbau gemeinsame Historie; wer einen Wegwerf-Stand testen will, nimmt dafür
-einen PR nach `dev` oder fragt Tim.
+den Branch `feature` (s. u.).
+
+### Feature-Umgebung (feature.ratslotse.de)
+
+**Zweite Instanz auf derselben Dev-VM** — eigenes Verzeichnis `~/app-feature`,
+eigene Ports (Next 3001, uvicorn 8001), eigene Units `nwz-feature-api` /
+`nwz-feature-frontend`, eigene `.env` und **eigene Datenbanken**. Geteilt wird
+nur die Maschine. **Jeder Push auf den Branch `feature`** deployt dorthin
+(`.github/workflows/deploy-feature.yml`), Basic-Auth wie dev, Build ebenfalls
+mit `NEXT_PUBLIC_RATSLOTSE_ENV=dev`.
+
+Wozu: `dev` trägt den Stand, der als nächstes nach `main` fährt. Wer etwas
+Größeres vorzeigen will, ohne diesen Stand anzufassen, mergt es nach `feature`.
+`feature` ist ein Wegwerf-Zweig — Force-Push erlaubt, der Deploy zieht per
+`reset --hard`. Frisch halten heißt `dev` → `feature` mergen, nie umgekehrt;
+fertige Arbeit geht wie immer per PR nach `dev`.
+
+**Beide Deploys teilen sich eine `concurrency`-Gruppe** (`deploy-dev-vm`,
+`cancel-in-progress: false`). Zwei gleichzeitige `next build` passen nicht auf
+2 Kerne/8 GB — der OOM-Killer träfe sonst den *laufenden* Dienst der anderen
+Instanz, und der Ausfall sähe aus wie ein Fehler im gebauten Code. Preis: ein
+Dev-Deploy wartet ggf. auf einen Feature-Build.
 
 ## `.env` (nur auf dem Server, nicht im Repo)
 
