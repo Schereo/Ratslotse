@@ -18,6 +18,11 @@ web/frontend/node_modules/
 # mit den gemeinsamen Einträgen: .claude/launch.example.json (einmal kopieren).
 .claude/launch.json
 
+# Persönliche Freigaben und Einstellungen der eigenen Claude-Sitzung.
+# Die GETEILTEN Einstellungen stehen in `.claude/settings.json` und sind
+# eingecheckt; diese hier ist Arbeitsstand und gehört niemandem sonst.
+.claude/settings.local.json
+
 # Lokal installierte Agent-Skills (npx skills add …) — Fremdinhalte, nicht committen
 .agents/
 .claude/skills/

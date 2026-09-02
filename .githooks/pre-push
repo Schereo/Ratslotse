@@ -1,0 +1,28 @@
+#!/bin/sh
+# Hält die Prüfungen an, die NACH dem Push teuer werden.
+#
+# Warum push und nicht commit: Ein Commit lässt sich noch umschreiben. Ist er
+# gepusht, ist ein Fehler öffentlich — bei einer fremden E-Mail-Adresse hilft
+# dann kein Revert mehr (siehe CLAUDE.md), und ein Vertrag, der dem Code
+# hinterherläuft, lässt die iOS-App gegen eine Fassung generieren, die es nicht
+# mehr gibt.
+#
+# Es läuft `scripts/pruefe.py --schnell` — rund vier Sekunden für alle fünf
+# Prüfungen. Die Testsuite und der TypeScript-Übersetzer laufen hier bewusst
+# NICHT: Sie dauern Minuten, und der verbindliche Gate ist ohnehin die CI.
+#
+# Einschalten:  git config core.hooksPath .githooks
+# Einmal umgehen (begründete Ausnahme):  git push --no-verify
+
+set -e
+
+wurzel=$(git rev-parse --show-toplevel)
+
+if [ -x "$wurzel/.venv/bin/python" ]; then
+  py="$wurzel/.venv/bin/python"
+else
+  # Im Worktree liegt das venv im Haupt-Checkout; pruefe.py findet es selbst.
+  py=$(command -v python3 || command -v python) || exit 0  # kein Python — nicht im Weg stehen
+fi
+
+"$py" "$wurzel/scripts/pruefe.py" --schnell

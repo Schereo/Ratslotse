@@ -74,6 +74,66 @@ hinein, das ist Arbeitsstand. Im neuen Checkout einmal
 gemeinsamen Einträge (`frontend`, `docs`). Bis 08/2026 war die Datei getrackt,
 weshalb sich session-eigene Konfigs in fremde PRs geschmuggelt haben.
 
+## Arbeitsablauf für Coding-Agents
+
+> Diese Datei ist die einzige Quelle der Projektregeln. **`AGENTS.md` ist ein
+> Symlink hierauf** — wer Regeln ändert, ändert sie hier, und Codex liest
+> dieselben. Vorher trug `AGENTS.md` vier Zeilen Arbeitsablauf und sonst
+> nichts; ein Agent, der nur sie las, kannte weder das Branch-Modell noch die
+> Changelog-Pflicht noch die Designsprache.
+
+**Vor jedem Push — ein Befehl:**
+
+```bash
+python scripts/pruefe.py            # alles, was auch die CI prüft
+python scripts/pruefe.py --schnell  # die fünf Prüfungen unter ~4 s
+```
+
+Er bündelt, was vorher über `CONTRIBUTING.md` und drei Workflow-Dateien
+verstreut stand: Adressen-Lint, ruff, den API-Vertrag, die generierten
+Frontend-Typen, die Changelog-Fragmente, die Testsuite, den
+TypeScript-Übersetzer und die beiden Grafik-Proben. `--liste` zeigt sie
+einzeln, `--nur ruff,vertrag` wählt aus.
+
+**Den Hook einschalten** (einmal je Checkout):
+
+```bash
+git config core.hooksPath .githooks
+```
+
+Danach läuft `--schnell` vor jedem `git push` und `lint_adressen.py` vor jedem
+Commit. In einer Claude-Code-Sitzung passiert das von selbst — `.claude/settings.json`
+setzt den Wert beim Sitzungsstart, **falls er noch nicht gesetzt ist**. Wer die
+Hooks bewusst nicht will, setzt `git config core.hooksPath /dev/null`; ein
+gesetzter Wert wird nie überschrieben. Für eine begründete Ausnahme im Einzelfall:
+`git push --no-verify`.
+
+**Regeln je Schicht.** Neben dieser Datei liegt in jedem größeren Verzeichnis
+eine eigene `CLAUDE.md` mit den Regeln, die genau dort gelten — sie wird
+automatisch mitgelesen, sobald dort gearbeitet wird:
+
+| Datei | Worum es geht |
+|---|---|
+| [`council/CLAUDE.md`](council/CLAUDE.md) | Scraper, Parser, Stores: Schema **und** Migration, Register mitpflegen |
+| [`kern/CLAUDE.md`](kern/CLAUDE.md) | Benachrichtigungen nur über `notify.einreihen`, LLM-Aufrufe, Cron-Takte |
+| [`web/backend/CLAUDE.md`](web/backend/CLAUDE.md) | Neue Endpunkte: Antwortform in `antworten.py`, Vertrag neu schneiden |
+| [`web/frontend/CLAUDE.md`](web/frontend/CLAUDE.md) | Nur über `lib/api.ts` ans Backend, Typen aus `lib/vertrag.ts`, Designsprache |
+| [`ios/CLAUDE.md`](ios/CLAUDE.md) | XcodeGen-Nachzug, handgeschriebene Modelle, Decode-Fallen |
+| [`scripts/CLAUDE.md`](scripts/CLAUDE.md) | Cron-Jobs: `run_guarded`, Takt in `kern/jobs.py`, Kennzahlen |
+| [`tests/CLAUDE.md`](tests/CLAUDE.md) | Wächter-Tests: was sie halten sollen und wie man einen neuen baut |
+
+**Ein Auftrag, ein Branch, ein Pull Request.** Branch von `dev` (Feature) bzw.
+`main` (Fix), committen, pushen, PR öffnen — Regeln dazu unten unter
+„Deployment & Branch-Modell". Fremde, nicht zum Auftrag gehörende Änderungen
+gehören nicht in den Commit.
+
+**Selbst mergen, sobald die CI grün ist** — Squash-Merge, außer beim Release
+(der bleibt ein Merge-Commit). **Niemals einen roten Lauf mergen**, und nie
+gegen eine CI mergen, die noch den vorherigen Commit prüft: `gh pr checks`
+zeigt nach einem Force-Push minutenlang den alten Stand, also gegen die SHA
+prüfen. Bei fehlenden Rechten, roten Checks oder Konflikten nicht mergen,
+sondern den konkreten Blocker melden.
+
 ## Deployment & Branch-Modell
 
 Gehostet auf einem eigenen VPS (privat). Seit 08/2026 gilt: **`main` ist der

@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "git config core.hooksPath >/dev/null 2>&1 || git config core.hooksPath .githooks",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  }
+}
