@@ -1674,14 +1674,41 @@ class AnalysisData(TypedDict):
     antrag_stats: Any
 
 
+class MoneyDriver(TypedDict):
+    """Der größte Einzel-Euro-Beschluss eines Quartals — die Tatsache hinter
+    dem Balken. Ein Quartal ohne Geldbeschluss trägt ``null``."""
+    id: int
+    title: str
+    eur: float
+
+
+class EmergingTag(TypedDict):
+    """Ein Schlagwort, das in den letzten beiden Quartalen auffällig oft
+    vorkam (mindestens zweimal), ohne Verfahrens-Vokabular."""
+    tag: str
+    n: int
+
+
 class TrendData(TypedDict):
-    """``CouncilStore.activity_trends`` — Hülle beschrieben, Reihen offen."""
+    """``CouncilStore.activity_trends`` plus die Klartext-Namen der Felder.
+
+    Die Reihen standen hier bis 02.09.2026 als ``Any``. Das ist beim Vertrag
+    nicht dasselbe wie „egal": Das Web leitet seine Typen aus diesen Formen
+    ab, und was hier ``Any`` heißt, muss dort von Hand nachgetippt werden —
+    mit allem, was Handarbeit an einer Schnittstelle bedeutet.
+    """
     quarters: list[str]
+    #: Je Themenfeld eine Zahl pro Quartal, in der Reihenfolge von ``quarters``.
     fields: list[str]
-    by_field: dict[str, Any]
+    by_field: dict[str, list[int]]
     money: list[float]
-    money_drivers: list[Any]
-    emerging: Any
+    money_drivers: list[MoneyDriver | None]
+    emerging: list[EmergingTag]
+    #: Klartext-Namen der Themenfelder. Die Route rechnet sie aus `POLICY_FIELDS`
+    #: aus und hängt sie an — undeklariert hat FastAPI sie wieder ENTFERNT, und
+    #: die App las ein Pflichtfeld, das nie ankam: Die Trend-Ansicht brach beim
+    #: Decodieren ab, nicht sichtbar als Fehler, sondern als leere Seite.
+    field_labels: dict[str, str]
 class PublicNumbers(TypedDict):
     """Die drei Kennzahlen der öffentlichen Startseite — ohne Anmeldung,
     ohne Inhalte (``CouncilStore.public_stats``)."""

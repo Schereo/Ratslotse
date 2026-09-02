@@ -153,8 +153,6 @@ BEWUSST_OFFEN = {
     "QaShareBody": "Derselbe Blob auf dem Hinweg.",
     "ResearchSnapshot": "Gespeicherter Quellen-Block eines Deep-Research-Jobs "
                         "— im Code ausführlich begründet.",
-    "TrendData": "Die Hülle steht, die Reihen darunter bleiben offen "
-                 "(so schon im Code begründet).",
 }
 
 #: Die Arbeitsliste: Hier fehlt die Beschreibung noch, und sie soll kommen.
