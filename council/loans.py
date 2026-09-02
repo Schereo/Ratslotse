@@ -108,6 +108,8 @@ _ERSPARNIS = re.compile(
     rf"Zinsaufwand[^.]{{0,160}}?(?:für den |im )?Zeitraum\s+{_DATUM}\s+bis\s+{_DATUM}\s+um\s+([\d.]+,\d{{2}})\s*(?:Euro|EUR)\s+reduziert",
     re.IGNORECASE)
 _FINANZ = re.compile(r"Finanzielle Auswirkungen:?\s*(.*)$", re.IGNORECASE | re.DOTALL)
+#: Aufzählungszeichen vor einer Überschrift (Wingdings-Punkt, Bullet, Strich).
+_GLYPH = re.compile(r"^[\s\uf0b7\u2022\u00b7\-\u2013\u2014]+")
 _SEITENFUSS = re.compile(r"Ausdruck vom:\s*\d{2}\.\d{2}\.\d{4}\s+Seite:\s*\d+/\d+\s*")
 
 ARTEN: tuple[tuple[str, re.Pattern[str]], ...] = (
@@ -184,8 +186,9 @@ def zeitraum(text: str, jahr: int | None = None) -> tuple[str | None, str | None
 
 def art(kopf: str) -> str:
     # Aufzählungs-Glyphen davor („\uf0b7 Umschuldung …", 2018/2019) sind kein
-    # Teil der Überschrift — mit ihnen griff kein einziges ^-Muster.
-    k = re.sub(r"^[\W_]+", "", kopf.strip())
+    # Teil der Überschrift — mit ihnen griff kein einziges ^-Muster. NUR
+    # Glyphen: Die Klammer von „(Teil-) Auszahlung" gehört zur Überschrift.
+    k = _GLYPH.sub("", kopf.strip())
     for name, rx in ARTEN:
         if rx.search(k):
             return name
@@ -312,7 +315,7 @@ def _einzelposten(text: str) -> list[dict]:
     b = _BETRAG.search(rest)
     if not b or b.start() > 220:
         return []
-    kopf = re.sub(r"^[\W_]+", "", rest[:b.end()].strip())
+    kopf = _GLYPH.sub("", rest[:b.end()].strip())
     return [{
         "seq": 1, "heading": kopf[:200], "kind": art(kopf), "borrower": schuldner(kopf),
         "amount": de_zahl(b.group(1)),

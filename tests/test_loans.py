@@ -205,3 +205,5 @@ def test_aufzaehlungsglyph_vor_der_umschuldung():
     """18/0910: „\uf0b7 Umschuldung von Kommunalkrediten …" — der Glyph machte
     daraus einen „Sonstigen Vorgang"."""
     assert loans.art("\uf0b7 Umschuldung von Kommunalkrediten in Höhe von 94.577.181,61 EUR") == "refinancing"
+    # Die Klammer ist keine Aufzählung — „(Teil-) Auszahlung" bleibt eine Auszahlung.
+    assert loans.art("(Teil-) Auszahlung der Kernverwaltung an den Eigenbetrieb BBO") == "disbursement"
