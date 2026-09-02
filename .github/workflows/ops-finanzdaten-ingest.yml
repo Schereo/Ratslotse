@@ -71,7 +71,10 @@ jobs:
             # („Anlagen zum Anhang"). Der Schalter darf dauerhaft mitlaufen:
             # Sind die Texte einmal vollständig, ist ihre Länge krumm und der
             # Filter greift nicht mehr.
-            .venv/bin/python scripts/backfill_anlagen_texte.py --nur-finanz --retry-failed --gekappte
+            # `--glyphen` stellt Anlagen, die VOR der Buchstaben-Schwelle mit
+            # Glyphen-Rauschen auf `ok` geladen wurden, auf `empty` — sonst
+            # sähe die OCR unten sie nie (Schlussbericht 2024, 295296).
+            .venv/bin/python scripts/backfill_anlagen_texte.py --nur-finanz --retry-failed --gekappte --glyphen
 
             # UND DANN die, die gar keine Textebene haben. Der Lauf oben setzt
             # sie auf `status='empty'`; dieser hier schickt jede Seite als Bild
