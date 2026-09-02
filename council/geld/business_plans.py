@@ -28,6 +28,7 @@ import re
 import sqlite3
 
 from council import geld
+from kern.dbfehler import tabelle_fehlt
 
 NAME = "business_plans"
 
@@ -135,7 +136,9 @@ class Store:
             return {"year": jahr, **({"year_asked": year} if weicht else {}),
                     "plans": plaene, "detail": bool(treffer),
                     "beleg": self._beleg(plaene[0]["herkunft_id"])}
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
             return None
 
     def _plan(self, enterprise: str, jahr: int) -> dict | None:

@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
 from typing import Iterable
+from kern.dbfehler import tabelle_fehlt
 
 
 logger = logging.getLogger("kern.store")
@@ -822,7 +823,9 @@ class Store:
         def zeilen(t: str) -> int:
             try:
                 return self._conn.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
-            except sqlite3.OperationalError:
+            except sqlite3.OperationalError as fehler:
+                if not tabelle_fehlt(fehler):
+                    raise
                 return 0
 
         for alt, neu in TABELLEN_UMBENANNT:

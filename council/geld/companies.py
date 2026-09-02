@@ -31,6 +31,7 @@ import re
 import sqlite3
 
 from council import geld
+from kern.dbfehler import tabelle_fehlt
 
 NAME = "companies"
 
@@ -212,7 +213,9 @@ class Store:
                     "companies": [],
                     "overview": self._ueberblick(reihen, bericht, jahr),
                     "beleg": self._beleg(reihen[0]["herkunft_id"])}
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
             return None
 
     def _passende(self, reihen, terms: list[str]) -> list:

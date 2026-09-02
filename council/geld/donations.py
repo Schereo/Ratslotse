@@ -26,6 +26,7 @@ import re
 import sqlite3
 
 from council import geld
+from kern.dbfehler import tabelle_fehlt
 
 NAME = "donations"
 
@@ -105,7 +106,9 @@ class Store:
             luecken = self._conn.execute(
                 "SELECT template_number, session_date, reason "
                 "FROM council_donations_rejected ORDER BY session_date").fetchall()
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
             return None
         if not reihe or groesste is None:
             return None

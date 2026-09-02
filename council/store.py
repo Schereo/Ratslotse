@@ -14,6 +14,7 @@ from .scraper import CouncilSession
 from .parties import order_key, parties_for_faction
 from . import importance as _importance
 from council.kontaktdaten import maskieren
+from kern.dbfehler import tabelle_fehlt
 
 
 
@@ -1123,7 +1124,9 @@ class CouncilStore(*_geld.MIXINS):
         def zeilen(tabelle: str) -> int:
             try:
                 return self._conn.execute(f"SELECT COUNT(*) FROM {tabelle}").fetchone()[0]
-            except sqlite3.OperationalError:
+            except sqlite3.OperationalError as fehler:
+                if not tabelle_fehlt(fehler):
+                    raise
                 return 0
 
         for alt, neu in TABELLEN_UMBENANNT:
@@ -3781,7 +3784,9 @@ class CouncilStore(*_geld.MIXINS):
             treffer = self._conn.execute(
                 "SELECT document_id FROM council_attachments WHERE url = ? LIMIT 2",
                 (url,)).fetchall()
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
             return None
         return treffer[0][0] if len(treffer) == 1 else None
 
@@ -6581,7 +6586,9 @@ class CouncilStore(*_geld.MIXINS):
                 f"WHERE a.document_id IN ({platz}) AND d.kind = 'decision' "
                 + self._BESCHLUSS_ORDNUNG,
                 list(dokument_ids)).fetchall()
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
             return {}
         # Die Ordnung entscheidet: Der erste Treffer je Dokument gewinnt, alle
         # weiteren sind frühere Stationen derselben Vorlage.
@@ -6617,7 +6624,9 @@ class CouncilStore(*_geld.MIXINS):
                 rows = self._conn.execute(
                     f"SELECT * FROM council_provenance WHERE id IN ({platz}) ORDER BY id",
                     list(ids)).fetchall()
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
             return []
         aus = []
         for r in rows:
@@ -7035,7 +7044,9 @@ class CouncilStore(*_geld.MIXINS):
         try:
             r = self._conn.execute(
                 "SELECT year, population FROM council_einwohner ORDER BY year DESC LIMIT 1").fetchone()
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
             return None
         return dict(r) if r else None
 
@@ -7109,7 +7120,9 @@ class CouncilStore(*_geld.MIXINS):
                 rows = self._conn.execute(
                     "SELECT * FROM council_variance_reasons WHERE year = ? ORDER BY nr",
                     (year,)).fetchall()
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
             return []
         return [dict(r) for r in rows]
 
@@ -7248,7 +7261,9 @@ class CouncilStore(*_geld.MIXINS):
                 rows = self._conn.execute(
                     "SELECT * FROM council_cash_flow_statement WHERE year = ? ORDER BY nr",
                     (year,)).fetchall()
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
             return []
         return [dict(r) for r in rows]
 
@@ -7294,7 +7309,9 @@ class CouncilStore(*_geld.MIXINS):
                 rows = self._conn.execute(sql.format("")).fetchall()
             else:
                 rows = self._conn.execute(sql.format("WHERE year = ?"), (year,)).fetchall()
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
             return []
         return [dict(r) for r in rows]
 
@@ -7321,7 +7338,9 @@ class CouncilStore(*_geld.MIXINS):
                 "SELECT year, role, value, herkunft_id FROM council_balance_sheet "
                 "WHERE role IN ('ordinary_surplus_reserve', "
                 "'annual_result_balance_sheet') ORDER BY year, role").fetchall()
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
             return []
         years: dict[int, dict] = {}
         for row in rows:
@@ -7381,7 +7400,9 @@ class CouncilStore(*_geld.MIXINS):
                 rows = self._conn.execute(sql.format("")).fetchall()
             else:
                 rows = self._conn.execute(sql.format("WHERE year = ?"), (year,)).fetchall()
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
             return []
         return [dict(r) for r in rows]
 
@@ -7741,7 +7762,9 @@ class CouncilStore(*_geld.MIXINS):
                 rows = self._conn.execute(
                     "SELECT * FROM council_group_items WHERE year = ? ORDER BY nr",
                     (year,)).fetchall()
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
             return []
         return [dict(r) for r in rows]
 
@@ -7762,7 +7785,9 @@ class CouncilStore(*_geld.MIXINS):
                 "SELECT year, label, result FROM council_income_statement "
                 "WHERE sub_budget_no IS NULL AND result IS NOT NULL "
                 "  AND label LIKE 'Summe ordentliche%' ORDER BY year").fetchall()
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
             return {}
         aus: dict[int, dict] = {}
         for r in rows:
@@ -7870,7 +7895,9 @@ class CouncilStore(*_geld.MIXINS):
             rows = self._conn.execute(
                 "SELECT * FROM council_companies WHERE report_year = ? "
                 "ORDER BY classification", (report_year,)).fetchall()
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
             return []
         return [dict(r) for r in rows]
 
@@ -7886,7 +7913,9 @@ class CouncilStore(*_geld.MIXINS):
             rows = self._conn.execute(
                 "SELECT * FROM council_company_texts WHERE company = ? "
                 "AND report_year = ?", (company, report_year)).fetchall()
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
             return []
         return [dict(r) for r in rows]
 
@@ -7910,7 +7939,9 @@ class CouncilStore(*_geld.MIXINS):
             rows = self._conn.execute(
                 f"SELECT * FROM {tabelle} WHERE report_year = ? "
                 f"ORDER BY {ordnung}", (report_year,)).fetchall()
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
             return []
         return [dict(r) for r in rows]
 
@@ -7940,7 +7971,9 @@ class CouncilStore(*_geld.MIXINS):
                     "SELECT * FROM council_company_indicators "
                     "WHERE company = ? ORDER BY indicator, year",
                     (company,)).fetchall()
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
             return []
         return [dict(r) for r in rows]
 
@@ -7955,7 +7988,9 @@ class CouncilStore(*_geld.MIXINS):
                 rows = self._conn.execute(
                     "SELECT * FROM council_group_entities WHERE year = ? "
                     "ORDER BY kind, amount_keur DESC", (year,)).fetchall()
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
             return []
         return [dict(r) for r in rows]
 
@@ -7997,7 +8032,9 @@ class CouncilStore(*_geld.MIXINS):
         try:
             rows = self._conn.execute(
                 "SELECT * FROM council_debt ORDER BY year").fetchall()
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
             return []
         return [dict(r) for r in rows]
 
@@ -8660,7 +8697,9 @@ class CouncilStore(*_geld.MIXINS):
             row = self._conn.execute(
                 "SELECT raw_text FROM council_attachments WHERE document_id = ?",
                 (document_id,)).fetchone()
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
             return None
         return (row["raw_text"] or None) if row else None
 
@@ -9194,7 +9233,9 @@ class CouncilStore(*_geld.MIXINS):
                 rows = self._conn.execute(
                     "SELECT * FROM council_city_comparison WHERE series = ? "
                     "ORDER BY year, city, indicator", (series,)).fetchall()
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
             return []
         return [dict(r) for r in rows]
 
@@ -9245,7 +9286,9 @@ class CouncilStore(*_geld.MIXINS):
                 rows = self._conn.execute(
                     "SELECT * FROM council_trade_tax_statistics "
                     "WHERE key = ? ORDER BY year", (key,)).fetchall()
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
             return []
         return [dict(r) for r in rows]
 
@@ -9411,7 +9454,9 @@ class CouncilStore(*_geld.MIXINS):
                 rows = self._conn.execute(
                     "SELECT * FROM council_audit_reports WHERE year = ? ORDER BY seq",
                     (year,)).fetchall()
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
             return []
         return [dict(r) for r in rows]
 
@@ -9449,7 +9494,9 @@ class CouncilStore(*_geld.MIXINS):
                 "SELECT year, indicator, value FROM council_city_comparison "
                 "WHERE series = 'fiscal_equalization' AND key = ? "
                 "ORDER BY year", (key,)).fetchall()
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
             return []
         nach_jahr: dict[int, dict] = {}
         for r in rows:
@@ -9646,7 +9693,9 @@ class CouncilStore(*_geld.MIXINS):
                 "ORDER BY rank LIMIT ?",
                 (match, limit),
             ).fetchall()
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
             return []
         # FTS5 rank is negative (more negative = better); flip so larger = better.
         return [(r[0], -float(r[1]), r[2] or "") for r in rows]
@@ -11823,7 +11872,9 @@ class CouncilStore(*_geld.MIXINS):
             rows = self._conn.execute(
                 "SELECT report_year, name, position FROM council_company_people "
                 "WHERE name IS NOT NULL AND name != ''").fetchall()
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
             return []
         if not rows:
             return []
@@ -12170,7 +12221,9 @@ class CouncilStore(*_geld.MIXINS):
                 """SELECT DISTINCT p.name FROM council_persons p
                    JOIN council_memberships m ON m.kpenr = p.kpenr
                    WHERE m.role LIKE 'Ratsmitglied%' OR m.role LIKE 'Grundmandat%'""").fetchall()
-        except sqlite3.OperationalError:   # Stammdaten noch nicht geholt
+        except sqlite3.OperationalError as fehler:   # Stammdaten noch nicht geholt
+            if not tabelle_fehlt(fehler):
+                raise
             return set()
         return {self.person_slug(r["name"]) for r in rows}
 
@@ -12181,7 +12234,9 @@ class CouncilStore(*_geld.MIXINS):
             rows = self._conn.execute(
                 "SELECT name, current_faction FROM council_persons "
                 "WHERE current_faction IS NOT NULL AND current_faction != ''").fetchall()
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
             return {}
         return {self.person_slug(r["name"]): r["current_faction"] for r in rows}
 
@@ -13164,7 +13219,9 @@ class CouncilStore(*_geld.MIXINS):
             if nur_laufende and hat_status:
                 sql += " WHERE status = 'laufend'"
             rows = self._conn.execute(sql).fetchall()
-        except sqlite3.OperationalError:  # Tabelle entsteht erst mit dem ersten Lauf
+        except sqlite3.OperationalError as fehler:  # Tabelle entsteht erst mit dem ersten Lauf
+            if not tabelle_fehlt(fehler):
+                raise
             return []
         out = []
         for r in rows:
@@ -13422,7 +13479,9 @@ class CouncilStore(*_geld.MIXINS):
             r = self._conn.execute(
                 "SELECT label, citation, page, as_of, url FROM council_provenance "
                 "WHERE id = ?", (herkunft_id,)).fetchone()
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
             return None
         return dict(r) if r else None
 
@@ -13916,7 +13975,9 @@ class CouncilStore(*_geld.MIXINS):
                     GROUP BY v.template_number
                     ORDER BY date DESC NULLS LAST, v.template_number DESC
                     LIMIT ?""", (limit,)).fetchall()
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
             return []
         return [dict(r) for r in rows]
 
@@ -13948,7 +14009,9 @@ class CouncilStore(*_geld.MIXINS):
                 aus.append({"art": "Kernhaushalt (nur Geldschulden)", "year": r["year"],
                             "amount": r["value"],
                             "source": "Bilanz des Jahresabschlusses"})
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
             pass
         try:
             r = self._conn.execute(
@@ -13958,7 +14021,9 @@ class CouncilStore(*_geld.MIXINS):
                 aus.append({"art": "Konzern Stadt (anteilig, mit Beteiligungen)",
                             "year": r["year"], "amount": r["total"],
                             "source": "Integrierte Schulden der Statistischen Ämter"})
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
             pass
         return aus
 
@@ -14118,7 +14183,9 @@ class CouncilStore(*_geld.MIXINS):
             r = self._conn.execute(
                 "SELECT year, balance, reason, herkunft_id FROM council_buergschaften "
                 "ORDER BY year DESC LIMIT 1").fetchone()
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
             return None
         if not r:
             return None
@@ -14128,7 +14195,9 @@ class CouncilStore(*_geld.MIXINS):
                 "SELECT value FROM council_balance_sheet WHERE role = 'guarantee_provisions' "
                 "AND year = ?", (r["year"],)).fetchone()
             rueck = z["value"] if z else None
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
             pass
         return {"year": r["year"], "balance": r["balance"], "reason": r["reason"],
                 "rueckstellung": rueck, "beleg": self._beleg(r["herkunft_id"])}
@@ -14251,7 +14320,9 @@ class CouncilStore(*_geld.MIXINS):
                 "FROM council_decisions d JOIN council_sessions cs ON cs.ksinr = d.ksinr "
                 "WHERE d.kind = 'decision' AND (d.title LIKE 'Haushaltssatzung und Haushaltsplan%' "
                 "   OR d.title LIKE 'Haushalt 2%')").fetchall()
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
             return None
         anker: dict[int, dict[int, dict]] = {}
         for r in rows:
@@ -14417,7 +14488,9 @@ class CouncilStore(*_geld.MIXINS):
                 "SELECT rowid, rank, snippet(council_press_fts, 0, '', '', ' … ', 16) "
                 "FROM council_press_fts WHERE council_press_fts MATCH ? ORDER BY rank LIMIT ?",
                 (" OR ".join(terms), limit)).fetchall()
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
             return []
         return [(r[0], -float(r[1]), r[2] or "") for r in rows]
 
@@ -14812,7 +14885,9 @@ class CouncilStore(*_geld.MIXINS):
                 "WHERE council_speeches_fts MATCH ? ORDER BY rank LIMIT ?",
                 (" OR ".join(terms), limit)).fetchall()
             return [(r[0], -float(r[1])) for r in rows]
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
             return []
 
     def wortbeitraege_missing_embeddings(self) -> list[dict]:
