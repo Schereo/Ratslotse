@@ -90,9 +90,18 @@ Methoden. Der Haushalt ist als erste Ecke heraus:
 
 | Datei | Inhalt |
 |---|---|
-| `council/store.py` | Schema, Migrationen, Sitzungen, Beschlüsse, Personen, Orte, Suche |
+| `council/store.py` | Schema, Migrationen, Sitzungen, Beschlüsse, Personen, Suche |
 | `council/store_haushalt.py` | die 81 Abfragen der Haushalts-Seiten (`HaushaltMixin`) |
+| `council/store_orte.py` | Katalog, Geocodierung, Stadtteile, Kartenpunkte (`OrteMixin`) |
 | `council/geld/*.py` | je eine Facette der KI-Frage, je eine Store-Methode |
+
+Der Schnitt läuft je Ecke über den **Aufrufkegel**, nicht über ein
+Namensmuster: was die Endpunkte dieser Ecke am `store` aufrufen, plus was
+diese Methoden ihrerseits an `self` rufen — abzüglich der allgemeinen Helfer,
+die die Ecke zwar benutzt, die ihr aber nicht gehören. Bei den Orten waren das
+sechs Beschluss-Helfer (`_decision_where`, `search_decisions`, …); gemessen
+ruft keine der umgezogenen Methoden sie an, die Grenze läuft also wirklich
+dazwischen.
 
 Alle drei landen über Mixins in derselben `CouncilStore`, an den Aufrufstellen
 ändert sich also nichts: `store.get_haushalt(...)` heißt überall weiter so.
