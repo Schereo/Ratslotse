@@ -150,9 +150,9 @@ class Store:
             return None
         try:
             summen = [dict(r) for r in self._conn.execute(
-                "SELECT list_key, kind, label, inflows, outflows, balance, herkunft_id "
+                "SELECT list_key, kind, label, inflows, outflows, balance, own, herkunft_id "
                 "FROM council_budget_amendments_cash_totals "
-                "WHERE budget_year = ? AND year = ? AND own = 1", (jahr, jahr))]
+                "WHERE budget_year = ? AND year = ?", (jahr, jahr))]
             zeilen = [dict(r) for r in self._conn.execute(
                 "SELECT list_key, sub_budget, product, label, inflow, outflow, explanation "
                 "FROM council_budget_amendments_cash WHERE budget_year = ? AND year = ? "
@@ -182,7 +182,7 @@ class Store:
             "draft": next((s for s in summen if s["kind"] == "draft"), None),
             "final": next((s for s in summen if s["kind"] == "final_total"
                            and s["list_key"] == letztes), None),
-            "lists": [s for s in summen if s["kind"] == "list"],
+            "lists": [s for s in summen if s["kind"] == "list" and s.get("own")],
             "final_document": letztes,
             "positions": treffer,
         }
