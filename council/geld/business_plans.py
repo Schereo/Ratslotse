@@ -159,7 +159,35 @@ class Store:
                 # Endet die Reihe VOR dem Jahrgang des Bereichs, ist das keine
                 # Lücke im Bestand: Dann gibt es schlicht keinen weiteren Plan.
                 "ended": letztes < jahr,
-                "duty": _WAS_SIE_TUN.get(enterprise)}
+                "duty": _WAS_SIE_TUN.get(enterprise),
+                "actual": self._abschluss(enterprise, zeile["year"])}
+
+    def _abschluss(self, enterprise: str, jahr: int) -> dict | None:
+        """Das Ist zum Plan: der geprüfte Jahresabschluss desselben Jahres —
+        oder, wenn der noch fehlt, der jüngste davor (``council_enterprise_accounts``,
+        seit #981). „Plan ist nicht Abschluss" bleibt die Regel des Bausteins;
+        wo der Abschluss vorliegt, steht er als eigene Zeile daneben, damit
+        die Antwort auf „Wie lief das Jahr?" nicht beim Vorsatz endet."""
+        try:
+            jahr_ist = self._conn.execute(
+                "SELECT MAX(year) FROM council_enterprise_accounts WHERE enterprise = ? "
+                "AND year <= ? AND metric = 'result'", (enterprise, jahr)).fetchone()[0]
+            if jahr_ist is None:
+                return None
+            rows = self._conn.execute(
+                "SELECT metric, value, report_year, confirmations, herkunft_id "
+                "FROM council_enterprise_accounts WHERE enterprise = ? AND year = ?",
+                (enterprise, jahr_ist)).fetchall()
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
+            return None
+        werte = {r["metric"]: r["value"] for r in rows}
+        ergebnis = next((r for r in rows if r["metric"] == "result"), None)
+        return {"year": jahr_ist, "same_year": jahr_ist == jahr, "values": werte,
+                "report_year": ergebnis["report_year"] if ergebnis else None,
+                "confirmations": ergebnis["confirmations"] if ergebnis else None,
+                "beleg": self._beleg(ergebnis["herkunft_id"]) if ergebnis else None}
 
 
 def _plan_zeilen(p: dict, detail: bool) -> list[str]:
@@ -196,6 +224,25 @@ def _plan_zeilen(p: dict, detail: bool) -> list[str]:
         zeilen.append("  - Danach legte dieser Betrieb keinen Wirtschaftsplan mehr "
                       "vor — das ist keine Lücke im Bestand, sondern das Ende der "
                       "Reihe.")
+    if p.get("actual"):
+        a = p["actual"]
+        w = a["values"]
+        teile = [f"Jahresergebnis {geld.de_betrag(w.get('result'))}"]
+        if w.get("revenues") is not None:
+            teile.insert(0, f"Umsatzerlöse {geld.de_betrag(w['revenues'])}")
+        if w.get("balance_total") is not None:
+            teile.append(f"Bilanzsumme {geld.de_betrag(w['balance_total'])}")
+        if w.get("equity") is not None:
+            teile.append(f"Eigenkapital {geld.de_betrag(w['equity'])}")
+        satz = (f"  - IST laut geprüftem Jahresabschluss {a['year']}: " + ", ".join(teile))
+        if a["same_year"]:
+            satz += f" — gegenüber dem Plan-Ergebnis {geld.de_betrag(p['result'])}"
+        else:
+            satz += f" (jüngster Abschluss; für {p['year']} liegt noch keiner vor)"
+        if a.get("confirmations") and a["confirmations"] > 1:
+            satz += f"; {a['confirmations']} Berichte nennen dieselbe Zahl"
+        satz += geld.beleg_text(a.get("beleg"))
+        zeilen.append(satz)
     return zeilen
 
 
@@ -212,8 +259,10 @@ def block(data: dict | None) -> str:
                       f"{data['year_asked']} aus.")
     return (f"\nWIRTSCHAFTSPLÄNE DER EIGENBETRIEBE (Jahrgang {data['year']}, je eine "
             "eigene\nRatsvorlage). Nutze das, wenn nach einem Eigenbetrieb, seinem "
-            "Plan oder seinem\nErgebnis gefragt ist. DAS IST EIN PLAN, KEIN "
-            "JAHRESABSCHLUSS — der Vorsatz für\nein Jahr, nicht sein Ergebnis. Und "
+            "Plan oder seinem\nErgebnis gefragt ist. DIE ERSTE ZEILE JE BETRIEB IST EIN "
+            "PLAN, KEIN\nJAHRESABSCHLUSS — der Vorsatz für ein Jahr, nicht sein Ergebnis; "
+            "wo eine\nZeile „IST laut geprüftem Jahresabschluss“ dabeisteht, ist DAS das "
+            "Ergebnis. Und "
             "diese Betriebe stehen NICHT im Kernhaushalt:\nWer dort nach ihnen sucht, "
             "findet sie nicht, und ihre Beträge sind mit denen des\nStadthaushalts "
             "nicht verrechenbar. Die Betriebe untereinander NIE addieren —\nder "
@@ -232,5 +281,8 @@ FACETTE = geld.Facette(
     # 1.357 Zeichen an der dev-Datenbank gemessen (der Überblick über den
     # Jahrgang 2026); die Grenze lässt Luft für drei Betriebe mit Vermögens-
     # plan und Verpflichtungsermächtigungen nebeneinander.
-    mixin=Store, rang=50, grenze=1600,
+    # Mit der IST-Zeile je Betrieb (Jahresabschluss, seit #981) wächst der
+    # Baustein um rund 200 Zeichen je Betrieb: 1.600 für einen Betrieb mit
+    # Abschluss, an der dev-Kopie gemessen (02.09.2026).
+    mixin=Store, rang=50, grenze=2200,
     probefrage="Was steht im Wirtschaftsplan des Abfallwirtschaftsbetriebs?")

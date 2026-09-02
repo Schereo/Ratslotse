@@ -208,3 +208,33 @@ def test_bausteingroesse_am_echten_bestand(frage, begriffe, tmp_path):
         pytest.skip(str(e))
     finally:
         store.close()
+
+
+def _mit_abschluss(store: CouncilStore, enterprise: str, year: int, **werte) -> CouncilStore:
+    """Die Kennzahlen eines Jahresabschlusses dazu (Schicht seit #981)."""
+    with store._conn:
+        for metric, value in werte.items():
+            store._conn.execute(
+                "INSERT INTO council_enterprise_accounts (enterprise, year, metric, value, unit, "
+                "report_year, confirmations, conflicts, document_id, probes, herkunft_id, fetched_at) "
+                "VALUES (?, ?, ?, ?, 'TEUR', ?, 2, 0, 1, 'enterprise_accounts_overlap', 1, '2026-09-02')",
+                (enterprise, year, metric, value, year + 1))
+    return store
+
+
+def test_ist_laut_jahresabschluss_steht_beim_plan(tmp_path):
+    """Plan ist nicht Abschluss — aber wo der Abschluss vorliegt, steht er als
+    eigene Zeile daneben. Gleiches Jahr: Vergleich mit dem Plan-Ergebnis;
+    sonst der jüngste Abschluss mit dem Vermerk, dass der des Planjahrs fehlt."""
+    store = _mit_abschluss(_store(tmp_path), "abfall", 2025,
+                           revenues=23_824_000, result=294_000, balance_total=25_500_000)
+    try:
+        d = store.business_plans_context(["abfallwirtschaftsbetrieb"], 2025)
+        text = business_plans.block(d)
+        assert "IST laut geprüftem Jahresabschluss 2025: Umsatzerlöse 23,8 Mio. €, Jahresergebnis 294.000 €, Bilanzsumme 25,5 Mio. €" in text
+        assert "gegenüber dem Plan-Ergebnis 627.511 €" in text and "2 Berichte nennen dieselbe Zahl" in text
+        d = store.business_plans_context(["abfallwirtschaftsbetrieb"], 2026)
+        text = business_plans.block(d)
+        assert "jüngster Abschluss; für 2026 liegt noch keiner vor" in text
+    finally:
+        store.close()
