@@ -509,6 +509,55 @@ lotti-figur {
   transform-origin: 50% 15%;
 }
 
+/* ── Kachelfläche (components/grafik/treemap.tsx) ──────────────────────────
+   Lage und Maß einer Kachel sind Übergänge: Wechselt der Jahrgang, gleitet
+   dieselbe Kachel an ihren neuen Platz, statt neu aufzutauchen. Unter dem
+   Zeiger hebt sie sich leicht und bekommt einen hellen Schimmer von oben;
+   die übrigen treten zurück (Spotlight), solange der Zeiger auf der Fläche
+   ist. `kf-auf` ist die einmalige Staffel beim Aufbau (H5-07: keine
+   Schleife) — `backwards`, nicht `both`: `both` hielte nach dem Ende das
+   `transform: none` der letzten Stufe fest und schlüge den Hover-Hub tot.
+   Der prefers-reduced-motion-Block unten legt alles still. */
+.kf-kachel {
+  transition:
+    left 380ms var(--ease-out-strong),
+    top 380ms var(--ease-out-strong),
+    width 380ms var(--ease-out-strong),
+    height 380ms var(--ease-out-strong),
+    transform 180ms var(--ease-out-strong),
+    box-shadow 180ms var(--ease-out-strong),
+    opacity 220ms ease-out;
+  box-shadow: inset 0 0 0 1px rgba(2, 32, 71, 0.06);
+}
+.kf-kachel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0) 60%);
+  opacity: 0;
+  transition: opacity 180ms ease-out;
+}
+.kf-kachel[data-schwebt="true"] {
+  transform: translateY(-1px) scale(1.012);
+  box-shadow:
+    inset 0 0 0 1px rgba(2, 32, 71, 0.08),
+    0 8px 18px -8px rgba(2, 32, 71, 0.45);
+}
+.kf-kachel[data-schwebt="true"]::after { opacity: 1; }
+.kf-kachel[data-gedimmt="true"] { opacity: 0.72; }
+.dark .kf-kachel { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05); }
+.dark .kf-kachel[data-schwebt="true"] {
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.1),
+    0 8px 18px -8px rgba(0, 0, 0, 0.6);
+}
+@keyframes kf-auf {
+  from { opacity: 0; transform: scale(0.94); }
+  to { opacity: 1; transform: none; }
+}
+.kf-auf { animation: kf-auf 480ms var(--ease-out-strong) backwards; }
+
 /* Honour users who prefer fewer animations. */
 @media (prefers-reduced-motion: reduce) {
   *,
