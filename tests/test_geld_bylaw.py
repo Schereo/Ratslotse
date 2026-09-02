@@ -49,7 +49,7 @@ def test_diese_fragen_ziehen_sie_nicht(frage):
 
 def test_die_alten_facetten_verschieben_sich_nicht():
     assert qa.geld_facetten("Wie hoch ist der Hebesatz der Grundsteuer?",
-                            "money") == {"taxes", "ausgleich"}
+                            "money") == {"taxes", "ausgleich", "tax_rates"}
     assert qa.geld_facetten("Wie viel Schulden hat Oldenburg?",
                             "money") == {"schulden"}
 

@@ -78,7 +78,8 @@ KORPUS: list[tuple[str, str, set[str]]] = [
 
     # --- Weitere echte Fragen ----------------------------------------------
     ("Wie viel gibt Oldenburg für Soziales aus?", "money", {"plan", "produkte", "ansatz"}),
-    ("Wie hoch ist der Hebesatz der Grundsteuer?", "money", {"taxes", "ausgleich"}),
+    ("Wie hoch ist der Hebesatz der Grundsteuer?", "money",
+     {"taxes", "ausgleich", "tax_rates"}),
     ("Wie steht Oldenburg im Vergleich zu Osnabrück da?", "money", {"vergleich"}),
     ("Welche Aufgaben könnte die Stadt streichen?", "topic", {"produkte"}),
     # „Steuereinnahmen" trägt „einnahm" und zieht damit auch die Plan-Seite —
@@ -100,8 +101,9 @@ KORPUS: list[tuple[str, str, set[str]]] = [
     # Frage sagt fast nie, welches von beidem gemeint ist — und die Regel
     # „nie voneinander abziehen" hinge an einer Zahl, die gar nicht im
     # Kontext steht, wenn nur eine der beiden käme.
-    ("Was wird gebaut?", "topic", {"investitionen", "gebaut"}),
-    ("Wie viel investiert die Stadt?", "money", {"investitionen", "gebaut"}),
+    ("Was wird gebaut?", "topic", {"investitionen", "gebaut", "measures"}),
+    ("Wie viel investiert die Stadt?", "money",
+     {"investitionen", "gebaut", "measures"}),
     # Stellen statt Euro. Vorher: {} — Personalfragen bekamen Aufwendungen.
     ("Wie viele Stellen sind unbesetzt?", "topic", {"stellenplan"}),
     ("Wie viele Mitarbeiter hat die Stadt?", "topic", {"stellenplan"}),
@@ -461,7 +463,10 @@ def test_neue_facetten_ziehen_sich_nicht_gegenseitig(facette, fragen):
               # Plan und Ist derselben Frage — sie MÜSSEN zusammen kommen,
               # sonst hinge die Regel „nie voneinander abziehen" an einer
               # Zahl, die nicht im Kontext steht (council/qa.py).
-              "investitionen": {"gebaut"}}
+              # `measures` ist die Ebene DARUNTER (einzelne Vorhaben) und
+              # dockt an `investitionen` an — ohne benanntes Vorhaben
+              # liefert es nichts.
+              "investitionen": {"gebaut", "measures"}}
     erlaubt = {facette} | zusatz.get(facette, set())
     for question in fragen:
         gefunden = qa.geld_facetten(question, "topic")
@@ -487,7 +492,7 @@ def test_investitionsfrage_zieht_nicht_den_ergebnishaushalt():
     Sie zieht den Finanzhaushalt — und zwar in beiden Fassungen: den Plan
     aus dem Haushaltsplan und das Ist aus dem Statistischen Jahrbuch."""
     f = qa.geld_facetten("Wie viel investiert die Stadt?", "money")
-    assert f == {"investitionen", "gebaut"}
+    assert f == {"investitionen", "gebaut", "measures"}
     assert "plan" not in f and "ansatz" not in f
 
 
