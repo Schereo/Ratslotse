@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { api } from "@/lib/api";
 import { currentSession, isStadtrat, runningTimeText, timeOnDay, O1_STREAM_URL } from "@/lib/live";
 import { cn } from "@/lib/utils";
 
@@ -33,8 +34,11 @@ export function HeuteLeiste() {
   const [data, setData] = useState<Heute | null>(null);
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
-    fetch("/api/council/heute")
-      .then((r) => (r.ok ? r.json() : null))
+    // Über `lib/api`, nicht per nacktem fetch: Ein relativer Pfad zeigt in der
+    // Capacitor-Hülle ins Nichts (das Bundle läuft dort unter
+    // capacitor://localhost). Fehler bleiben still — die Leiste hat einen
+    // Leerzustand und soll die Landing nicht mit einer Meldung stören.
+    api.get<Heute>("/council/heute")
       .then((d) => d && setData(d))
       .catch(() => {});
     const id = setInterval(() => setNow(new Date()), 60_000);
