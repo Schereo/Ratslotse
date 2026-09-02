@@ -159,12 +159,25 @@ automatisch mitgelesen, sobald dort gearbeitet wird:
 „Deployment & Branch-Modell". Fremde, nicht zum Auftrag gehörende Änderungen
 gehören nicht in den Commit.
 
-**Selbst mergen, sobald die CI grün ist** — Squash-Merge, außer beim Release
-(der bleibt ein Merge-Commit). **Niemals einen roten Lauf mergen**, und nie
-gegen eine CI mergen, die noch den vorherigen Commit prüft: `gh pr checks`
-zeigt nach einem Force-Push minutenlang den alten Stand, also gegen die SHA
-prüfen. Bei fehlenden Rechten, roten Checks oder Konflikten nicht mergen,
-sondern den konkreten Blocker melden.
+**Selbst mergen, sobald die CI grün ist** — mit einem Befehl, nicht von Hand:
+
+```bash
+python scripts/merge_wenn_gruen.py     # wartet, prüft gegen die Kopf-SHA, merged
+```
+
+Er prüft, was eine Handschleife übersieht: dass wirklich jede Prüfung
+`completed` ist (`gh pr checks` zeigt nach einem Force-Push minutenlang den
+alten Stand), dass überhaupt welche gelaufen sind (ein PR mit Konflikt bekommt
+gar keine — null Prüfungen sähen sonst aus wie „alles grün"), und dass der
+lokale Stand der des PR ist. Squash-Merge, danach wird der Zweig gelöscht.
+`--trocken` prüft nur.
+
+Das steht hier als Befehl, weil die Regel als Text nicht gereicht hat: Am
+02.09.2026 wurde #1000 gemergt, während die Testprüfung noch lief.
+
+Der **Release** bleibt Handarbeit — er ist ein Merge-Commit, kein Squash. Bei
+fehlenden Rechten, roten Checks oder Konflikten nicht mergen, sondern den
+konkreten Blocker melden.
 
 ## Deployment & Branch-Modell
 
