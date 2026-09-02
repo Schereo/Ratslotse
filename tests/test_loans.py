@@ -135,3 +135,73 @@ def test_store_rundlauf(tmp_path):
     assert len(store.get_loan_items()) == 3
     assert not {t: k for t, k in store.herkunft_luecken().items() if t.startswith("council_loan")}
     store.close()
+
+
+# --------------------------------------------------------------------------
+# Die alte Form (2018–2021): „Unterrichtung nach § 8 der Kreditrichtlinie"
+# --------------------------------------------------------------------------
+
+import json
+from pathlib import Path
+
+ALT = json.loads((Path(__file__).parent / "fixtures" / "kredite_alte_form.json").read_text())
+
+
+def _alt(*nrs):
+    return [{"template_number": nr, "title": ALT[nr]["title"], "raw_text": ALT[nr]["raw_text"],
+             "document_id": 2000 + i, "document_url": f"https://example.org/alt/{i}", "kvonr": 100 + i}
+            for i, nr in enumerate(nrs)]
+
+
+def test_erkennung_der_alten_unterrichtung():
+    """2018–2022 heißen die Berichte „Unterrichtung nach § 8 der Kreditrichtlinie
+    über aufgenommene Kredite …" — ohne das Wort Kreditaufnahme. Vier Jahrgänge
+    fehlten, weil weder Titel-Regex noch SQL sie kannten."""
+    assert loans.erkenne(ALT["19/0016"]["title"])
+    assert "Unterrichtung nach § 8" in loans.TITEL_SQL
+
+
+def test_feldliste_2018_mit_abruf_und_zinsfestsetzung():
+    """19/0016: zwei Abrufe des EGH im Dezember 2018 — „Abruf:" statt „Betrag:",
+    „Zinsfestsetzung:" statt „Zinsbindung:", EONIA-Zins ohne Zahl."""
+    n, items = _nach(loans.lies(_alt("19/0016")), "19/0016")
+    assert (n["period_from"], n["period_to"], n["year"]) == ("2018-12", "2019-01", 2018)
+    assert [i["amount"] for i in items][:2] == [2_330_900.0, 9_000_000.0]
+    assert all(i["borrower"] == "Eigenbetrieb Gebäudewirtschaft und Hochbau" for i in items[:2])
+    assert all(i["kind"] == "loan" for i in items[:2])
+    assert items[0]["rate_pct"] is None and items[0]["fixed_until"] is None
+    assert items[1]["rate_pct"] == 0.0 and items[1]["fixed_until"] == "2048-11-16"
+    assert items[0]["decided_at"] == "2018-12-28"
+    assert loans.POSTEN_BETRAG in n["probes"]
+
+
+def test_feldliste_2019_zwei_betriebe_und_leerer_monat():
+    """20/0028: EGH und EB Hafen im Dezember 2019, der Januar 2020 steht als „./."."""
+    n, items = _nach(loans.lies(_alt("20/0028")), "20/0028")
+    assert (n["period_from"], n["period_to"]) == ("2019-12", "2020-01")
+    assert [(i["borrower"], i["amount"], i["fixed_until"]) for i in items] == [
+        ("Eigenbetrieb Gebäudewirtschaft und Hochbau", 10_000_000.0, "2049-11-16"),
+        ("Eigenbetrieb Hafen", 804_000.0, "2044-11-16")]
+    assert not n["none_reported"]
+
+
+def test_zeitraum_ohne_jahr_kommt_vom_dokumentdatum():
+    """21/0144: „Innerhalb der Monate Januar und Februar sind …" — kein Jahr im
+    Satz; das Dokument ist vom 15.02.2021."""
+    n, items = _nach(loans.lies(_alt("21/0144")), "21/0144")
+    assert (n["period_from"], n["period_to"], n["year"]) == ("2021-01", "2021-02", 2021)
+    assert len(items) == 1 and items[0]["kind"] == "refinancing"
+    assert items[0]["amount"] == 83_663_105.08
+    assert n["interest_saving"] == 76_474.0
+
+
+def test_zeitraum_ueber_den_jahreswechsel_ohne_jahr():
+    assert loans.zeitraum("Bericht: Innerhalb der Monate Dezember und Januar sind", 2021) == (
+        "2020-12", "2021-01")
+    assert loans.zeitraum("Bericht: Innerhalb der Monate Januar und Februar sind", None) == (None, None)
+
+
+def test_aufzaehlungsglyph_vor_der_umschuldung():
+    """18/0910: „\uf0b7 Umschuldung von Kommunalkrediten …" — der Glyph machte
+    daraus einen „Sonstigen Vorgang"."""
+    assert loans.art("\uf0b7 Umschuldung von Kommunalkrediten in Höhe von 94.577.181,61 EUR") == "refinancing"
