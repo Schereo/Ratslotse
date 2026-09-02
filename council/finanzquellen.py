@@ -2044,7 +2044,7 @@ def lies_konzernabschluesse(store: CouncilStore, p: Protokoll,
                               len(result["posten"]), schuetzen):
             geschuetzt += 1 if alt else 0
             continue
-        entity = [z | {"art": block["art"]}
+        entity = [z | {"kind": block["kind"]}
                    for block in result["entity"] for z in block["zeilen"]]
 
         # Zwei Herkünfte, weil es zwei Abschnitte sind: Die Posten stehen in
