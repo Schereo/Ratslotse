@@ -6907,6 +6907,10 @@ class CouncilStore(*_geld.MIXINS):
         # Der Liquiditätsstand: je Monat die Grafik, aus der der Wert zuletzt
         # bestätigt wurde — die Papierliste eines Jahrgangs sind die Grafiken.
         "liquidity":        ("council_liquidity", "year", None, "url"),
+        # Die Jahresabschlüsse der Eigenbetriebe: je Jahrgang bis zu vier
+        # Prüfberichte (ein Betrieb, ein Papier), jede Kennzahl zeigt auf den
+        # jüngsten Bericht, der sie nennt.
+        "enterprise_accounts": ("council_enterprise_accounts", "year", None, None),
         # Die Änderungslisten zum Haushalt. Wie `wirtschaftsplan` stehen je
         # Jahrgang MEHRERE Papiere dahinter (Verw. I–III und die
         # Beschluss-Datei des AFB) — die Summen-Tabelle trägt je Dokument

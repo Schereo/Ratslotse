@@ -915,6 +915,12 @@ export interface paths {
          *       Gesamtabschluss. ``revenues``/``expenses`` sind ``null``, wo die
          *       Quelle nur das Ergebnis nennt, und ``probes`` sagt, welche Rechenprobe
          *       für die Zeile gelaufen ist,
+         *     - ``enterprise_accounts``: das Ist zu den Wirtschaftsplänen — je Betrieb,
+         *       Jahr und Kennzahl EINE Zahl aus dem geprüften Jahresabschluss (``value``
+         *       in Euro, ``unit`` sagt, ob der Bericht in TEUR schrieb), aus dem
+         *       jüngsten Bericht, der sie nennt; ``confirmations`` zählt die Berichte,
+         *       die dieselbe Zahl nennen, ``conflicts`` die abweichenden. Buchwerte,
+         *       keine Marktwerte; mit dem Kernhaushalt nicht addierbar,
          *     - ``variance_reasons``: warum ein Posten vom Plan abwich, in den Worten
          *       der Verwaltung (Abschnitt 6.3.1 des Jahresabschlusses),
          *     - ``pruefberichte``: Fundstelle des RPA-Schlussberichts je Jahrgang,
@@ -5217,6 +5223,8 @@ export interface components {
             cash_flow_statement?: unknown;
             /** Donations */
             donations?: unknown;
+            /** Enterprise Accounts */
+            enterprise_accounts?: unknown;
             /** Expense Series */
             expense_series?: unknown;
             /** Fee Rates */
@@ -13518,4 +13526,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 10f44375f0b9ea079664708bd54f40dd618037e705d19d560166c8342d0e999c
+// vertrag-sha256: 63c1a037febe0bc83f76bc89e142f2f15f443c89293b5a7cdaa85274a430dadc

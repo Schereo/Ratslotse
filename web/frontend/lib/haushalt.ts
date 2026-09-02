@@ -317,6 +317,8 @@ export type HaushaltDaten = {
   reserves?: RuecklageJahr[];
   /** Die Wirtschaftspläne der Eigenbetriebe — der Haushalt neben dem Haushalt. */
   business_plans?: WirtschaftsplanZeile[];
+  /** Das Ist dazu: Kennzahlen der geprüften Jahresabschlüsse je Betrieb und Jahr. */
+  enterprise_accounts?: EigenbetriebKennzahl[];
   /** Die Herkunft je `herkunft_id` — nur die Einträge, auf die eine gelieferte
    *  Zeile zeigt.
    *
@@ -1088,6 +1090,29 @@ export type HaushaltssatzungZeile = {
   session_date: string | null;
   template_number: string | null;
   probes: string;
+  herkunft_id: number | null;
+};
+
+/** Eine Kennzahl eines Eigenbetriebs aus dem geprüften Jahresabschluss
+ *  (`council/eigenbetriebe_abschluss.py`). `metric` ist eine von
+ *  `revenues`, `result`, `balance_total`, `equity`, `fixed_assets`,
+ *  `current_assets`, `liabilities`, `depreciation`, `investments`, `cashflow`,
+ *  `gross_profit`, `operating_result`, `financial_result`, `employees`.
+ *  `value` steht in Euro (Stück bei `employees`); `unit` sagt, ob der Bericht
+ *  in TEUR schrieb. `confirmations` zählt die Berichte, die dieselbe Zahl
+ *  nennen — dieselbe Zahl steht als Geschäftsjahr im eigenen und als Vorjahr
+ *  in den folgenden Berichten. */
+export type EigenbetriebKennzahl = {
+  enterprise: string;
+  year: number;
+  metric: string;
+  value: number;
+  unit: string;
+  report_year: number;
+  confirmations: number;
+  conflicts: number;
+  document_id: number | null;
+  probes: string[];
   herkunft_id: number | null;
 };
 

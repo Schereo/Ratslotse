@@ -1411,6 +1411,7 @@ class BudgetOverview(TypedDict):
     fee_rates: NotRequired[Any]
     budget_bylaw: NotRequired[Any]
     business_plans: NotRequired[Any]
+    enterprise_accounts: NotRequired[Any]
     variance_reasons: NotRequired[Any]
     audit_report_sources: NotRequired[Any]
     product_years: NotRequired[Any]

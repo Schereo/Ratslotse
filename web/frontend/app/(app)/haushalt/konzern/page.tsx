@@ -39,13 +39,13 @@ import { GesellschaftenAbschnitt } from "@/components/haushalt/section-gesellsch
 import { BetriebeAbschnitt } from "@/components/haushalt/section-betriebe";
 import { GebuehrenAbschnitt } from "@/components/haushalt/section-fees";
 
-const FELDER = ["business_plans", "fees", "fee_rates", "provenance"] as const;
+const FELDER = ["business_plans", "enterprise_accounts", "fees", "fee_rates", "provenance"] as const;
 
 /** Ausgeschrieben, nicht zusammengesetzt: `tests/test_quellen_dokumente.py`
  *  liest die Literale dieser Liste. Reihenfolge = Nummerierung der Chips, also
  *  die Reihenfolge der Abschnitte. */
 const QUELLEN: QuellenSchluessel[] = [
-  "gesamtabschluss", "beteiligungsbericht", "wirtschaftsplan", "fees",
+  "gesamtabschluss", "beteiligungsbericht", "wirtschaftsplan", "enterprise_accounts", "fees",
 ];
 
 const MARKEN = [
