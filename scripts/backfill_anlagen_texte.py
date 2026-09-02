@@ -111,10 +111,11 @@ def process(db_path: Path, limit: int | None, workers: int, retry_failed: bool,
         status_filter = "('listed','failed')" if retry_failed else "('listed')"
         wo, werte = "", []
         if nur_finanz:
-            muster = finanz_muster()
-            wo = " AND (" + " OR ".join("label LIKE ?" for _ in muster) + ")"
-            werte = muster
-            print(f"Nur Finanz-Anlagen: {', '.join(muster)}", flush=True)
+            from council import finanzquellen as fq
+            filter_sql, werte = fq.finanz_anlagen_where()
+            wo = " AND " + filter_sql
+            print(f"Nur Finanz-Anlagen: {', '.join(finanz_muster())}"
+                  + (" + Vorlagentitel" if "council_templates" in filter_sql else ""), flush=True)
         # Anlagen, die VOR der Buchstaben-Schwelle geladen wurden, stehen mit
         # ihrem Glyphen-Rauschen auf `ok` — und `ok` fasst kein Lauf mehr an:
         # nicht dieser (er holt `listed`/`failed`), nicht die OCR (sie liest

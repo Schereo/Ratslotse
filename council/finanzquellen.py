@@ -131,6 +131,12 @@ class Erkennung:
     mindest_seiten: int = 0
     #: Label-Muster, die ein Dokument ausschließen.
     ausschluesse: tuple[str, ...] = ()
+    #: SQL-LIKE-Muster auf den TITEL DER VORLAGE, an der die Anlage hängt
+    #: (``council_templates.title`` über ``kvonr``). Für Anlagen, deren Label
+    #: nichts sagt: Die Gebührenbedarfsberechnung 2021 heißt im RIS nur
+    #: „Anlagen 1-4" — ihre Vorlage aber „Gebührenbedarfsberechnungen 2021 -
+    #: Bericht". Mit ``oder=True`` genügt Label ODER Vorlagentitel.
+    vorlagen_muster: tuple[str, ...] = ()
     #: ORDER BY der Kandidatenabfrage.
     ordnung: str = "label"
 
@@ -143,6 +149,9 @@ class Erkennung:
             werte.append(m)
         for m in self.text_muster:
             teile.append("raw_text LIKE ?")
+            werte.append(m)
+        for m in self.vorlagen_muster:
+            teile.append("kvonr IN (SELECT kvonr FROM council_templates WHERE title LIKE ?)")
             werte.append(m)
         wo = [f"({(' OR ' if self.oder else ' AND ').join(teile)})"] if teile else []
         if self.mindest_seiten:
@@ -157,6 +166,32 @@ class Erkennung:
         wo, werte = self.where()
         return (f"SELECT {spalten} FROM council_attachments WHERE {wo} "
                 f"ORDER BY {self.ordnung}"), werte
+
+
+def finanz_anlagen_where() -> tuple[str, list]:
+    """WHERE-Fragment „diese Anlage könnte eine Finanzschicht füllen" — für die
+    Backfill-Skripte (Text, OCR), die nur die Finanz-Anlagen laden sollen.
+
+    ODER über alle Label-Muster UND über alle Vorlagentitel-Muster der
+    Registry. Bis 09/2026 bauten beide Skripte ihr ODER nur aus den
+    Label-Mustern: Die Gebührenbedarfsberechnung 2021 („Anlagen 1-4", ein
+    Scan) fiel damit durch jedes Netz — kein Text, keine OCR, kein Jahrgang,
+    und der Datenstand meldete eine Lücke, für die das Dokument längst da war."""
+    labels: list[str] = []
+    titel: list[str] = []
+    for key in REIHENFOLGE:
+        e = QUELLEN[key].erkennung
+        if e is None:
+            continue
+        labels.extend(m for m in e.label_muster if m not in labels)
+        titel.extend(m for m in e.vorlagen_muster if m not in titel)
+    teile = ["label LIKE ?"] * len(labels)
+    werte: list = list(labels)
+    if titel:
+        teile.append("kvonr IN (SELECT kvonr FROM council_templates WHERE "
+                     + " OR ".join("title LIKE ?" for _ in titel) + ")")
+        werte.extend(titel)
+    return "(" + " OR ".join(teile) + ")", werte
 
 
 @dataclass(frozen=True)
@@ -2540,8 +2575,14 @@ for _q in (
         erwarteter_monat=11,
         versatz=-1,
         herkunft="ris",
+        # 2021 heißt die Anlage nur „Anlagen 1-4" (224365, ein Scan) — erkannt
+        # wird sie über ihre Vorlage „Gebührenbedarfsberechnungen 2021 -
+        # Bericht". Für 2022 gibt es im RIS KEINE Bedarfsberechnung, nur die
+        # Tarifsatzung (240042); die Lücke ist eine der Quelle.
         erkennung=Erkennung(
             label_muster=("%Gebührenbedarf%",),
+            vorlagen_muster=("%Gebührenbedarfsberechnung%",),
+            oder=True,
         ),
         nachschub="scripts/ingest_gebuehren.py",
         balance=_bestand_gebuehren,
@@ -2648,8 +2689,12 @@ for _q in (
         erwarteter_monat=11,
         versatz=-1,
         herkunft="ris",
+        # 2022 hängt die Satzung als „HH Satzung 2022" an der Vorlage
+        # „Haushalt 2022 - Beschluss" (Anlage 243361) — mit nur dem ersten
+        # Muster fehlte der Jahrgang von 08/2026 bis 09/2026.
         erkennung=Erkennung(
-            label_muster=("%Haushaltssatzung%",),
+            label_muster=("%Haushaltssatzung%", "%HH Satzung%"),
+            oder=True,
             # Der Nachtrag trägt dasselbe Wort im Label und eine ganz andere
             # Tabelle. Er fliegt schon im Parser raus; hier steht er noch
             # einmal, damit der Backfill ihn gar nicht erst holt.
