@@ -1497,6 +1497,14 @@ Zwei Fallen, die dabei teuer waren und als Test festgehalten sind:
   („K R U P K E"). Mit nur einem Leerzeichen hinter der Marke ginge er als
   `K`-Marke durch. Deshalb verlangt das Muster **zwei** Leerzeichen — den
   Abstand der Randspalte.
+- **Die OCR schreibt die Randspalte als einen Tabulator** („B\tDas
+  Rechnungsprüfungsamt …"). Der Schlussbericht 2024 kommt nur so in den
+  Bestand, und mit dem Zwei-Leerzeichen-Muster fand der Parser darin die
+  Legende, aber keine einzige Marke. Seit dem 02.09.2026 gilt ein einzelner
+  Tabulator als Trenner — er ist so eindeutig wie zwei Leerzeichen, denn die
+  gesperrte Unterschrift steht mit Leerzeichen da. Am echten Text gemessen:
+  15 Feststellungen 2024 (4 Beanstandungen, 1 wiederholte, 10 Hinweise),
+  nichts verworfen.
 
 **Zuordnung und Dedup.** Welcher Bericht zu welchem Jahresabschluss gehört,
 entscheidet der **Textanfang**, nicht das Label: „Schlussbericht JA 2017"
