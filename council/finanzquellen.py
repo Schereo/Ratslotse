@@ -557,6 +557,21 @@ def _bestand_gebuehren(store: CouncilStore) -> set[tuple]:
         return set()
 
 
+def _bestand_haushaltsvollzug(store: CouncilStore) -> set[tuple]:
+    """Welche ``(Jahrgang, Stichtag, Haushalt)`` im Bestand stehen.
+
+    Die Einheit ist die einzelne Übersichtstabelle, nicht der Jahrgang: Ein
+    Haushaltsjahr besteht aus bis zu vier Stichtagen mit je zwei Haushalten.
+    Wer je Jahrgang buchführte, hielte 2025 nach dem Bericht zum 31. März für
+    erledigt — und zöge die drei folgenden Quartale nie nach.
+
+    Der Stichtag steht im Tupel und nicht nur das Quartal, weil die Stadt ihn
+    selbst so schreibt: „zum 30. Juni“ ist der Berichtsstand, und in einem
+    Jahrgang sind die vier Stichtage vier verschiedene Erwartungen an
+    dasselbe Jahresende."""
+    return store.haushaltsvollzug_einheiten()
+
+
 def _bestand_haushaltssatzung(store: CouncilStore) -> set[tuple]:
     """Die Haushaltsjahre, für die eine Satzung im Bestand steht.
 
@@ -2473,6 +2488,46 @@ for _q in (
         balance=_bestand_gebuehren,
     ),
     Finanzquelle(
+        key="budget_execution",
+        label="Haushaltsvollzug",
+        was="Wie das laufende Haushaltsjahr gegen seinen Plan läuft: Die "
+            "Verwaltung berichtet dem Finanzausschuss vierteljährlich, was "
+            "sie bis zum 31. Dezember erwartet — je Teilhaushalt und für die "
+            "ganze Stadt. Die Schicht schließt die Lücke zwischen dem Plan "
+            "für das kommende Jahr und dem Abschluss, der zwei Jahre "
+            "zurückliegt.",
+        tabelle="council_budget_execution",
+        unit="Stichtag",
+        # Der Bericht zu einem Stichtag liegt im Quartal danach im Ausschuss;
+        # der 31.12. gehört noch zum Jahrgang, erscheint aber erst im
+        # Folgejahr. Gemessen an den Beratungsterminen der 31 Vorlagen ist der
+        # Bericht zum 31. Dezember der SPÄTESTE eines Jahrgangs und trifft im
+        # März/April des Folgejahres ein (2023→24/0006 am 06.02.2024,
+        # 2024→24/0827 im Februar 2025, 2025→25/0922 im Februar 2026). Der
+        # April ist die Schwelle: zu früh gemeldet wäre der teurere Fehler.
+        erwarteter_monat=4,
+        versatz=1,
+        herkunft="ris",
+        # Bewusst nur ZWEI Muster, und beide breit: Der Bericht heißt in den
+        # Anlagen mal „Finanz- und Leistungsbericht zum 30.06.2018“, mal
+        # schlicht „FLB 31.12.2024“. Dieselben Label tragen aber auch die
+        # Fassungen der Eigenbetriebe und der Fachausschüsse — aussortiert
+        # werden die nicht hier, sondern am Dokument: Wer die stadtweite
+        # Übersichtstabelle mit dreizehn Teilhaushalten und Summenzeile nicht
+        # führt, fällt im Parser still durch (s. council/budget_execution.py).
+        erkennung=Erkennung(
+            label_muster=("%Leistungsbericht%", "%FLB%"),
+            oder=True,
+        ),
+        # Kein `einlesen`: Dieser Lauf LÄDT die PDFs herunter, weil die
+        # Spaltenzuordnung Wortkoordinaten braucht und der gespeicherte
+        # Textauszug sie nicht hergibt. „Lädt nichts herunter“ ist die Regel,
+        # an der `check_finanzdaten` hängt — also beobachtet der Cron diese
+        # Schicht nur und meldet, wenn ein Stichtag ausbleibt.
+        nachschub="scripts/ingest_haushaltsvollzug.py (lädt die PDFs selbst)",
+        balance=_bestand_haushaltsvollzug,
+    ),
+    Finanzquelle(
         key="budget_bylaw",
         label="Haushaltssatzung",
         was="Der Rahmen, den der Haushaltsplan bekommt: wie viel die Stadt "
@@ -2687,8 +2742,13 @@ for _q in (
 #: dieselbe Frage eine Stufe feiner — erst wie viel ein Bereich investiert,
 #: dann welches Vorhaben das ist. Dieselbe Ordnung wie bei Teilhaushalten und
 #: Stellenplan, und aus demselben Grund.
+#: Der Haushaltsvollzug steht zwischen Plan und Abschluss, und zwar genau da,
+#: weil er zeitlich dazwischenliegt: Erst was die Stadt vorhat, dann wie es im
+#: laufenden Jahr läuft, dann wie es ausgegangen ist. Die drei nebeneinander
+#: sind die Geschichte eines Haushaltsjahres.
 REIHENFOLGE = ("haushaltsplan", "income_budget", "investitionen",
-               "investitionsprogramm", "jahresabschluss", "teilhaushalt",
+               "investitionsprogramm", "budget_execution",
+               "jahresabschluss", "teilhaushalt",
                "stellenplan", "indicators", "rpa_fundstelle",
                "pruefungsfeststellungen",
                "konzernabschluss", "beteiligungsbericht", "fees",

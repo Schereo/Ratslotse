@@ -2857,6 +2857,47 @@ class CouncilStore:
             "PRIMARY KEY (year, supplement))"
         )
 
+        # Der Haushaltsvollzug (`council/budget_execution.py`) — die
+        # vierteljährlichen Finanz- und Leistungsberichte an den Ausschuss für
+        # Finanzen und Beteiligungen. Die Schicht, die die Lücke zwischen Plan
+        # (kommendes Jahr) und Jahresabschluss (vorvorletztes Jahr) schließt.
+        #
+        # `sub_budget = 0` IST KEINE TEILHAUSHALTS-NUMMER, sondern die
+        # gedruckte Summenzeile. Ein NULL wäre ehrlicher, taugt in SQLite aber
+        # nicht als Teil eines Primärschlüssels — dort gelten zwei NULL als
+        # verschieden, und derselbe Bericht ließe sich beliebig oft einfügen.
+        # `is_total` sagt dasselbe noch einmal für Abfragen, die die Null nicht
+        # kennen.
+        #
+        # `plan_basis` IST KEIN TECHNIKFELD. Bis 2020 rechnet die Ansatz-Spalte
+        # des Ergebnisses die Ermächtigungsübertragungen aus dem Vorjahr mit
+        # ein, ab 2021 nicht mehr. Eine Zeitreihe, die das nicht mitführt,
+        # vergleicht über den Schnitt hinweg zwei verschiedene Größen — für
+        # 2018 einen Überschuss von 5,4 statt der 8,8 Millionen des Plans.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_budget_execution ("
+            "budget_year INTEGER NOT NULL, "
+            "as_of TEXT NOT NULL, "            # Stichtag, ISO (2025-06-30)
+            "budget TEXT NOT NULL, "           # result | cash
+            "sub_budget INTEGER NOT NULL, "    # 1..13; 0 = Summenzeile
+            "kind TEXT NOT NULL, "             # revenue/expense/result bzw.
+            "label TEXT NOT NULL, "            #   inflow/outflow/result
+            "budgeted REAL, "                  # Ansatz
+            "forecast REAL, "                  # Prognose zum 31.12.
+            "deviation REAL, "                 # gedruckte Abweichung
+            # „nachrichtlich: Ermächtigungsübertragungen" — nur an der
+            # Aufwands- bzw. Auszahlungszeile, denn genau dazu ermächtigen sie
+            # (§ 20 KomHKVO). Anderswo NULL statt 0: Der Bericht sagt dort
+            # nichts, und eine erfundene Null sähe aus wie eine Auskunft.
+            "carryover REAL, "
+            "plan_basis TEXT NOT NULL, "       # budget | budget_plus_carryover
+            "is_total INTEGER NOT NULL DEFAULT 0, "
+            "probes TEXT NOT NULL, "
+            "herkunft_id INTEGER, "
+            "fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (budget_year, as_of, budget, sub_budget, kind))"
+        )
+
         # Die Änderungslisten zum Haushalt (council/aenderungslisten.py) —
         # was am Verwaltungsentwurf im Verfahren noch geändert wurde, Position
         # für Position. Je Zeile EIN Planjahr: Dieselbe Maßnahme steht im
@@ -3627,6 +3668,10 @@ class CouncilStore:
         "council_company_indicators":   (None, "source_url", "city"),
         "council_company_people":     (None, "source_url", "city"),
         "council_company_owners":  (None, "source_url", "city"),
+        # Der Haushaltsvollzug: neu, ohne Altbestand, ohne Altspalten. Der
+        # Eintrag muss trotzdem stehen — `_herkunft_nachtragen` schlägt hier
+        # nach, bevor es merkt, dass es nichts nachzutragen gibt.
+        "council_budget_execution": (None, "source_url", "ris"),
     }
 
     @staticmethod
@@ -6750,6 +6795,13 @@ class CouncilStore:
         # Schlüssel unterscheidet sie nicht, die Fundstelle tut es.
         "budget_bylaw":     ("council_budget_bylaw", "year", None, None),
         "fees":            ("council_fees", "year", None, None),
+        # Der Haushaltsvollzug trägt je Jahrgang bis zu ACHT Dokumente (vier
+        # Stichtage × zwei Haushalte), und jedes ist ein eigenes Papier mit
+        # eigener Vorlagennummer — dieselbe Lage wie beim Wirtschaftsplan.
+        # Gefiltert wird auf die Summenzeile, damit der Join nicht jede der
+        # 42 Zeilen einer Tabelle anfasst; ihre Herkunft ist dieselbe.
+        "budget_execution": ("council_budget_execution", "budget_year",
+                             "t.is_total = 1", None),
         # Die Änderungslisten zum Haushalt. Wie `wirtschaftsplan` stehen je
         # Jahrgang MEHRERE Papiere dahinter (Verw. I–III und die
         # Beschluss-Datei des AFB) — die Summen-Tabelle trägt je Dokument
@@ -8281,6 +8333,98 @@ class CouncilStore:
         try:
             return [r[0] for r in self._conn.execute(
                 "SELECT DISTINCT year FROM council_budget_bylaw ORDER BY year")]
+        except sqlite3.OperationalError:
+            return []
+
+    # --- Haushaltsvollzug (council.budget_execution) ------------------------
+
+    def save_haushaltsvollzug(self, bericht, herkunft) -> int:
+        """Eine Übersichtstabelle eines Finanz- und Leistungsberichts ersetzen.
+
+        Ersetzt wird nach ``(budget_year, as_of, budget)`` — der Einheit, die
+        EIN Lauf liefert. Nicht nach Jahrgang und nicht nach Stichtag: Ein
+        Dokument trägt beide Haushalte, und sie kommen einzeln durch ihre
+        Proben. Im Bericht zum 30.06.2024 fällt der Ergebnishaushalt an einem
+        Fehler im Dokument durch, der Finanzhaushalt nicht — wer nach Stichtag
+        löschte, risse den mit.
+
+        Übergeben wird nur, was seine Proben bestanden hat; diese Methode
+        prüft nichts nach, sie schreibt.
+        """
+        probes = herkunft.probe
+        if not isinstance(probes, str):
+            probes = ",".join(probes)
+
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.execute(
+                "DELETE FROM council_budget_execution "
+                "WHERE budget_year = ? AND as_of = ? AND budget = ?",
+                (bericht.budget_year, bericht.as_of, bericht.budget))
+            self._conn.executemany(
+                "INSERT INTO council_budget_execution ("
+                " budget_year, as_of, budget, sub_budget, kind, label, "
+                " budgeted, forecast, deviation, carryover, plan_basis, "
+                " is_total, probes, herkunft_id, fetched_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                [(bericht.budget_year, bericht.as_of, bericht.budget,
+                  p.sub_budget, p.kind, p.label, p.budgeted, p.forecast,
+                  p.deviation, p.carryover, bericht.plan_basis,
+                  1 if p.is_total else 0, probes, hid, now)
+                 for p in bericht.positionen])
+        return len(bericht.positionen)
+
+    def haushaltsvollzug_einheiten(self) -> set[tuple]:
+        """Welche ``(Jahrgang, Stichtag, Haushalt)`` im Bestand stehen.
+
+        Die Einheit ist die Tabelle und nicht der Jahrgang: Ein Haushaltsjahr
+        besteht aus bis zu vier Stichtagen mit je zwei Haushalten. Wer je
+        Jahrgang buchführt, hält 2025 nach dem Bericht zum 31. März für
+        erledigt und zieht die drei folgenden Quartale nie nach."""
+        try:
+            return {(r[0], r[1], r[2]) for r in self._conn.execute(
+                "SELECT DISTINCT budget_year, as_of, budget "
+                "FROM council_budget_execution")}
+        except sqlite3.OperationalError:
+            return set()
+
+    def get_haushaltsvollzug(self, budget_year: int | None = None,
+                             totals_only: bool = False) -> list[dict]:
+        """Vollzugs-Zeilen, ältester Stichtag zuerst.
+
+        ``totals_only`` liefert nur die Summenzeilen — die Frage „wie läuft
+        das Jahr?" braucht dreizehn Teilhaushalte nicht, und über acht
+        Jahrgänge sind das der Unterschied zwischen 100 und 1.300 Zeilen."""
+        wo, werte = [], []
+        if budget_year is not None:
+            wo.append("budget_year = ?")
+            werte.append(budget_year)
+        if totals_only:
+            wo.append("is_total = 1")
+        satz = (" WHERE " + " AND ".join(wo)) if wo else ""
+        try:
+            return [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_budget_execution" + satz
+                + " ORDER BY budget_year, as_of, budget, sub_budget, kind",
+                werte)]
+        except sqlite3.OperationalError:
+            return []
+
+    def haushaltsvollzug_stichtage(self) -> list[dict]:
+        """Je Jahrgang und Stichtag, welche Haushalte vorliegen.
+
+        Das ist die Liste, aus der eine Oberfläche ihren Umschalter baut —
+        und zugleich die Auskunft, wo ein Quartal fehlt: Wo ein Stichtag nur
+        einen der beiden Haushalte führt, steht das hier und nicht in einer
+        Lücke, die niemand sieht."""
+        try:
+            return [dict(r) for r in self._conn.execute(
+                "SELECT budget_year, as_of, "
+                "       GROUP_CONCAT(DISTINCT budget) AS budgets, "
+                "       MIN(plan_basis) AS plan_basis "
+                "FROM council_budget_execution "
+                "GROUP BY budget_year, as_of ORDER BY budget_year, as_of")]
         except sqlite3.OperationalError:
             return []
 
