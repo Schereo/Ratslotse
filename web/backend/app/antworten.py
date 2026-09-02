@@ -138,6 +138,86 @@ class DecisionRow(TypedDict):
 
 
 # --------------------------------------------------------------------------
+# Belege: woher eine Zahl stammt
+# --------------------------------------------------------------------------
+#
+# `provenance` steht in zwölf Antwortformen und war in allen zwölf ein
+# `dict[str, Any]`. Damit war es für beide Clients eine geschlossene Kiste:
+# Der Vertrag sagte „irgendein Objekt", und jedes Feld darin — `probe`,
+# `document_id`, `official_text` — musste auf beiden Seiten von Hand
+# abgeschrieben werden. Zwei der fünf Abschriften im Frontend kannten
+# `document_id` nicht, obwohl der Beleg-Chip daran hängt.
+#
+# Beschrieben ist es eine Abbildung `{herkunft_id: Herkunft}` — im Schema
+# `additionalProperties: {$ref: Herkunft}` und damit generierbar.
+
+
+class Ratsvorgang(TypedDict):
+    """Der Beschluss, der ein Beleg-Dokument verabschiedet hat.
+
+    Wird in ``CouncilStore.beschluesse_zu_dokumenten`` Feld für Feld gebaut,
+    nicht aus einem ``SELECT *`` — die Aufzählung hier ist deshalb vollständig
+    und bleibt es.
+
+    ``outcome`` kommt ungefiltert, auch ``vertagt`` oder ``abgelehnt``: Eine
+    Zahl, deren Vorgang noch läuft, ist keine Zahl ohne Beleg.
+    """
+    id: int
+    ksinr: int
+    kvonr: int | None
+    top: str | None
+    title: str | None
+    outcome: str | None
+    vote: str | None
+    template_number: str | None
+    committee: str | None
+    date: str | None
+
+
+class Herkunft(TypedDict):
+    """Ein Datensatz aus ``council_provenance``, wie ihn ``get_herkunft`` ausgibt.
+
+    ACHTUNG: Die Quelle ist ein ``SELECT *``. Jede neue Spalte der Tabelle ist
+    sofort Teil der Antwort — und fiele ohne Eintrag hier genauso still wieder
+    heraus, weil ein TypedDict entfernt, was es nicht kennt. Dagegen steht
+    ``tests/test_api_vertrag.py::test_zeilen_typen_kennen_alle_spalten_ihrer_tabelle``.
+
+    ``key`` fehlt bewusst: Der interne Fingerabdruck wird vor der Ausgabe
+    entfernt, er ist kein Lesestoff.
+    """
+    id: int
+    #: ``ris`` = Anlage im Ratsinformationssystem, ``city`` = Download von
+    #: oldenburg.de, ``lsn`` = Tabelle des Landesamts für Statistik.
+    kind: str
+    #: Die RIS-Dokumentnummer — der Anker, über den der Ratsvorgang gefunden
+    #: wird. ``None`` bei ``city``/``lsn``.
+    document_id: int | None
+    label: str | None
+    url: str | None
+    citation: str | None
+    page: int | None
+    #: Die bestandenen Rechenproben als Schlüssel, kommagetrennt. In der
+    #: Datenbank NOT NULL: eine Zahl ohne Probe kommt nicht in den Bestand.
+    probe: str
+    probe_result: str | None
+    as_of: str | None
+    #: „Zuletzt bestätigt", nicht „zuerst gesehen".
+    fetched_at: str
+    #: Die Erklärsätze zu den Proben — aus ``herkunft.PROBEN``, nicht aus der
+    #: Datenbank. Namensfalle: ``Herkunft.probes`` in Python liefert die
+    #: Proben-NAMEN, dieses Feld die ausformulierten Sätze.
+    probes: list[str]
+    #: ``None``, wo keine Vorlage im Bestand steht. Ein erfundener Vorgang
+    #: wäre der schlimmere Fehler.
+    official_text: Ratsvorgang | None
+
+
+#: Je ``herkunft_id`` (als Zeichenkette, weil JSON keine Zahlen als Schlüssel
+#: kennt) der zugehörige Beleg.
+Provenance = dict[str, Herkunft]
+
+
+# --------------------------------------------------------------------------
 # Onboarding & Einrichtung
 # --------------------------------------------------------------------------
 
@@ -1112,7 +1192,7 @@ class BudgetOverview(TypedDict):
     trade_tax_statistics: NotRequired[Any]
     # Je `herkunft_id` das Dokument samt Fundstelle, Rechenprobe und Stichtag.
     # Die Register-Schlüssel darin (``plan``, ``jahresabschluss`` …) bleiben deutsch.
-    provenance: NotRequired[dict[str, Any]]
+    provenance: NotRequired[Provenance]
 
 
 class AgendaChange(TypedDict):
@@ -1554,7 +1634,7 @@ class BudgetProducts(TypedDict):
 class BudgetStaffPlan(TypedDict):
     missing: Any
     groups: Any
-    provenance: dict[str, Any]
+    provenance: Provenance
     editions: Any
     totals: Any
     part_names: Any
@@ -1570,7 +1650,7 @@ class BudgetExecution(TypedDict):
     reporting_dates: list[Any]
     totals: Any
     rows: Any
-    provenance: dict[str, Any]
+    provenance: Provenance
 
 
 class BudgetAuditReports(TypedDict):
@@ -1582,7 +1662,7 @@ class BudgetAuditReports(TypedDict):
 
 class BudgetGroup(TypedDict):
     cross_check: Any
-    provenance: dict[str, Any]
+    provenance: Provenance
     years: Any
     consolidated: list[Any]
     items: Any
@@ -1593,7 +1673,7 @@ class BudgetHoldings(TypedDict):
     report_years: Any
     owners: Any
     companies: list[Any]
-    provenance: dict[str, Any]
+    provenance: Provenance
     years: list[Any]
     indicators: Any
     group_comparison: Any
@@ -1604,14 +1684,14 @@ class BudgetHoldings(TypedDict):
 class BudgetInvestments(TypedDict):
     financial_budget: list[Any]
     investments: list[Any]
-    provenance: dict[str, Any]
+    provenance: Provenance
     years: Any
     sub_budgets: list[Any]
 
 
 class BudgetInvestmentProgram(TypedDict):
     totals: list[Any]
-    provenance: dict[str, Any]
+    provenance: Provenance
     years: Any
     measures: list[Any]
     sub_budgets: list[Any]
@@ -1636,7 +1716,7 @@ class BudgetDispute(TypedDict):
 
 
 class BudgetAmendmentLists(TypedDict):
-    provenance: dict[str, Any]
+    provenance: Provenance
     totals: Any
     rows: Any
     # Der FINANZhaushalt, seit 08/2026. Eigene Schlüssel statt einer
@@ -1762,7 +1842,7 @@ class GoalDetail(TypedDict):
 
 class BudgetComparison(TypedDict):
     citation: Any
-    provenance: dict[str, Any]
+    provenance: Provenance
     years: Any
     cities: Any
     values: Any
@@ -1772,7 +1852,7 @@ class BudgetFixedAssets(TypedDict):
     scope_note: Any
     fixed_assets: dict[str, Any]
     missing: Any
-    provenance: dict[str, Any]
+    provenance: Provenance
     years: list[Any]
     accounting_systems: list[Any]
     series: Any
@@ -1780,7 +1860,7 @@ class BudgetFixedAssets(TypedDict):
 
 class BudgetBalanceSheet(TypedDict):
     explanations: Any
-    provenance: dict[str, Any]
+    provenance: Provenance
     years: Any
     items: Any
 
@@ -1789,7 +1869,7 @@ class BudgetDebt(TypedDict):
     scope_note: Any
     column_kinds: list[Any]
     guarantees: dict[str, Any]
-    provenance: dict[str, Any]
+    provenance: Provenance
     integrated_debt: Any
     years: list[Any]
     series: Any

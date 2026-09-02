@@ -237,29 +237,41 @@ def test_zeilen_typen_kennen_alle_spalten_ihrer_tabelle():
     ``SELECT l.*`` arbeitet: Jede neue Spalte von ``council_locations`` ist
     sofort Teil der Antwort — und fiele ohne Eintrag im TypedDict genauso
     still wieder heraus.
+
+    ``Herkunft`` kam dazu, als ``provenance`` in zwölf Antwortformen vom
+    offenen ``dict[str, Any]`` auf eine beschriebene Abbildung umgestellt
+    wurde. Ohne diesen Test wäre das ein Rückschritt gewesen: Vorher ging
+    jede neue Spalte von ``council_provenance`` unbesehen durch, danach
+    verschwände sie stumm. Der Test dreht das um — jetzt wird es ein roter
+    Lauf. ``key`` steht in ``ENTFERNT``, weil ``get_herkunft`` den internen
+    Fingerabdruck vor der Ausgabe wegnimmt.
     """
     import tempfile
     from typing import get_type_hints
 
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-    from app.antworten import AdminPlaceCandidate, DecisionRow, SessionRow
+    from app.antworten import AdminPlaceCandidate, DecisionRow, Herkunft, SessionRow
     from council.store import CouncilStore
+
+    #: Spalten, die der Store vor der Ausgabe absichtlich entfernt.
+    ENTFERNT = {"council_provenance": {"key"}}
 
     with tempfile.TemporaryDirectory() as d:
         store = CouncilStore(Path(d) / "council.sqlite")
         try:
             spalten = {
                 tabelle: {r[1] for r in store._conn.execute(
-                    f"PRAGMA table_info({tabelle})")}
+                    f"PRAGMA table_info({tabelle})")} - ENTFERNT.get(tabelle, set())
                 for tabelle in ("council_decisions", "council_sessions",
-                                "council_locations")
+                                "council_locations", "council_provenance")
             }
         finally:
             store.close()
 
     for typ, tabelle in ((DecisionRow, "council_decisions"),
                          (SessionRow, "council_sessions"),
-                         (AdminPlaceCandidate, "council_locations")):
+                         (AdminPlaceCandidate, "council_locations"),
+                         (Herkunft, "council_provenance")):
         deklariert = set(get_type_hints(typ, include_extras=True))
         fehlend = spalten[tabelle] - deklariert
         assert not fehlend, (
