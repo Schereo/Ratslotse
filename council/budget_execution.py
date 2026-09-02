@@ -118,6 +118,10 @@ from council.herkunft import Herkunft
 #: zweite Fassung driftet, und welche dann gilt, entschiede der Zufall des
 #: Aufrufwegs.
 PROBE_SPALTEN = "execution_columns"
+#: Der Bericht zum 31. März hat keine Anlage — seine Tabelle steht im
+#: Vorlagentext und trägt je Teilhaushalt nur das Jahresergebnis. Die Probe
+#: dafür sind die Spaltensummen gegen die gedruckte Summenzeile.
+PROBE_Q1_SUMMEN = "execution_q1_totals"
 PROBE_ZEILE = "execution_row"
 PROBE_SUMME = "execution_totals"
 PROBE_ZEITRAUM = "execution_period"
@@ -707,13 +711,120 @@ def herkunft_fuer(bericht: Vollzugsbericht, *, document_id: int | None,
     tabelle = ("1. Ergebnishaushalt" if bericht.budget == ERGEBNISHAUSHALT
                else "2. Finanzhaushalt")
     tag = date.fromisoformat(bericht.as_of)
+    if PROBE_Q1_SUMMEN in bericht.probes:
+        fundstelle = (f"Vorlagentext des Berichts zum {tag:%d.%m.%Y}, Tabelle "
+                      "„Ergebnishaushalt – Teilhaushalte – Jahresergebnis“ "
+                      "(Plan, Prognose zum 31. Dezember, Abweichung)")
+    else:
+        fundstelle = f"Auswertung der Berichte zum {tag:%d.%m.%Y}, {tabelle}"
     return Herkunft(
         kind="ris",
         probe=list(bericht.probes),
         document_id=document_id,
         label=label or f"Finanz- und Leistungsbericht zum {bericht.as_of}",
         url=url,
-        citation=f"Auswertung der Berichte zum {tag:%d.%m.%Y}, {tabelle}",
+        citation=fundstelle,
         probe_result=bericht.probe_result,
         as_of=f"Finanz- und Leistungsbericht zum {tag:%d.%m.%Y}",
     )
+
+
+# --------------------------------------------------------------------------
+# Der Bericht zum 31. März: eine Tabelle im Vorlagentext
+# --------------------------------------------------------------------------
+#
+# Zum ersten Quartal legt die Verwaltung keine Anlage vor. Die Vorlage selbst
+# trägt eine kleinere Tabelle: je Teilhaushalt das Jahresergebnis als Plan,
+# als Prognose zum 31. Dezember und die Abweichung, darunter die Summenzeile
+# „Summe Teilhaushalte (Gesamtergebnishaushalt)". Keine Erträge, keine
+# Aufwendungen, kein Finanzhaushalt — dafür die früheste Erwartung des Jahres
+# (2022, 2024, 2025, 2026; 2018 berichtet nur in Prosa).
+#
+# Gelesen wird aus dem Fließtext, nicht aus Wortkoordinaten: Die Tabelle hat
+# drei Zahlenspalten und keine leeren Zellen — eine fehlende Abweichung steht
+# als Gedankenstrich. Die Zahlen schreiben das Minus mal mit, mal ohne
+# Leerzeichen („-8.844.512", „- 8.964.051"), und 2022 heißt Null „0".
+#
+# Die Probe: Die dreizehn Teilhaushalte ergeben in Plan UND Abweichung die
+# gedruckte Summenzeile. Die Prognose-Spalte ist absichtlich NICHT je Zeile
+# geprüft: 2026 druckt der Bericht in zwei Zeilen dieselbe Prognose wie den
+# Plan und daneben trotzdem eine Abweichung — die Abweichung ist dort die
+# Aussage, die Prognose-Zelle nicht nachgeführt. Die Summenzeile geht auf.
+
+_Q1_JAHR = re.compile(r"Haushaltsvollzug\s+(20\d\d)")
+_Q1_ZEILE = re.compile(r"(?<![\d.])(0[1-9]|1[0-3])\s*-?\s+(?=[A-ZÄÖÜ])")
+_Q1_ZAHL = re.compile(
+    r"-\s?\d{1,3}(?:\.\d{3})+|\d{1,3}(?:\.\d{3})+|(?<=\s)-(?=\s)|(?<![\w.,])\d+(?![\w.,])")
+
+
+def _q1_wert(token: str) -> float:
+    token = token.replace(" ", "")
+    return 0.0 if token == "-" else float(token.replace(".", ""))
+
+
+def _q1_zahlen(chunk: str, n: int = 3) -> tuple[list[float], int, int] | None:
+    """Die ersten ``n`` Zahlen eines Abschnitts — mit Anfang der ersten und
+    Ende der letzten, damit Bezeichnung und Bemerkung drumherum bleiben."""
+    treffer = list(_Q1_ZAHL.finditer(chunk))
+    if len(treffer) < n:
+        return None
+    return ([_q1_wert(m.group(0)) for m in treffer[:n]],
+            treffer[0].start(), treffer[n - 1].end())
+
+
+def lies_q1_vorlage(text: str, title: str = "") -> Vollzugsbericht | None:
+    """Die Ergebnis-Tabelle des Berichts zum 31. März aus dem Vorlagentext.
+
+    ``None``, wenn die Vorlage keine solche Tabelle trägt (2018). Wirft
+    :class:`VollzugFehler`, wenn die Spaltensummen die Summenzeile verfehlen."""
+    glatt = re.sub(r"\s+", " ", text or "")
+    jahr = _Q1_JAHR.search(title or "") or _Q1_JAHR.search(glatt)
+    kopf = glatt.find("Teilhaushalte Jahresergebnis")
+    summe = glatt.find("Summe Teilhaushalte", kopf if kopf >= 0 else 0)
+    if not jahr or kopf < 0 or summe < 0:
+        return None
+    year = int(jahr.group(1))
+    segment = glatt[kopf:summe]
+    starts = list(_Q1_ZEILE.finditer(segment))
+    positionen: list[Position] = []
+    for k, m in enumerate(starts):
+        ende = starts[k + 1].start() if k + 1 < len(starts) else len(segment)
+        chunk = segment[m.end():ende]
+        gelesen = _q1_zahlen(chunk)
+        if gelesen is None:
+            continue
+        (budgeted, forecast, deviation), a, _b = gelesen
+        label = re.sub(r"\s*-\s*$", "", chunk[:a]).strip(" -:")
+        positionen.append(Position(
+            sub_budget=int(m.group(1)), kind="result", label=label,
+            budgeted=budgeted, forecast=forecast, deviation=deviation,
+            carryover=None, is_total=False))
+    gesamt = _q1_zahlen(glatt[summe + len("Summe Teilhaushalte"):summe + 260])
+    if not gesamt or len(positionen) < 10:
+        raise VollzugFehler(
+            f"Bericht zum 31.03.{year}: {len(positionen)} Teilhaushalts-Zeilen und "
+            f"{'keine' if not gesamt else 'eine'} Summenzeile gefunden — andere Bauform?")
+    (b, f, d), _a, _b = gesamt
+    for name, ist, soll in (("Plan", sum(p.budgeted for p in positionen), b),
+                            ("Abweichung", sum(p.deviation for p in positionen), d)):
+        if abs(ist - soll) > 2:
+            raise VollzugFehler(
+                f"Bericht zum 31.03.{year}: {name} der Teilhaushalte summiert auf "
+                f"{ist:,.0f}, die Summenzeile nennt {soll:,.0f}.")
+    # Die Abweichungen sind auf volle Tausend gerundet, die Prognose nicht:
+    # 2026 liegen Plan plus Abweichung 33 € neben der gedruckten Prognose.
+    # Deshalb hier Toleranz, während Plan und Abweichung auf den Euro treffen.
+    if abs((b + d) - f) > 5_000:
+        raise VollzugFehler(
+            f"Bericht zum 31.03.{year}: Summenzeile — Plan {b:,.0f} plus Abweichung "
+            f"{d:,.0f} ergibt nicht die Prognose {f:,.0f}.")
+    positionen.append(Position(
+        sub_budget=0, kind="result", label="Summe Teilhaushalte (Gesamtergebnishaushalt)",
+        budgeted=b, forecast=f, deviation=d, carryover=None, is_total=True))
+    return Vollzugsbericht(
+        budget_year=year, as_of=f"{year}-03-31", budget=ERGEBNISHAUSHALT,
+        plan_basis=BASIS_ANSATZ, positionen=positionen,
+        probes=(PROBE_Q1_SUMMEN,),
+        probe_result=(f"{len(positionen) - 1} Teilhaushalte; Plan und Abweichung "
+                      "summieren auf die gedruckte Summenzeile, Plan plus Abweichung "
+                      "ergibt die Prognose"))

@@ -185,6 +185,11 @@ PROBEN: dict[str, str] = {
         "„Plan/Ist-Abweichung“. Beide nennen dasselbe Jahr — ein Bericht zum "
         "31. Dezember erscheint erst im Folgejahr und ließe sich sonst dort "
         "einordnen.",
+    "execution_q1_totals":
+        "Der Bericht zum 31. März trägt seine Tabelle im Vorlagentext, je "
+        "Teilhaushalt nur das Jahresergebnis. Die dreizehn Zeilen ergeben in "
+        "Plan und Abweichung die gedruckte Summenzeile, und Plan plus "
+        "Abweichung ergibt dort die Prognose.",
     # Die Kernzahl aus dem Beschlusstext, bestätigt durch die Anlage
     # (council/wirtschaftsplan_kernzahl.py) — die einzige Probe des Bereichs,
     # die über ZWEI Dokumente geht.
