@@ -4665,6 +4665,13 @@
       },
       "NearbySuggestion": {
         "properties": {
+          "context": {
+            "title": "Context",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "description": {
             "title": "Description",
             "type": "string"
@@ -4686,6 +4693,7 @@
           "name",
           "description",
           "n",
+          "context",
           "place"
         ],
         "title": "NearbySuggestion",
@@ -8334,6 +8342,13 @@
       },
       "TopicSuggestion": {
         "properties": {
+          "context": {
+            "title": "Context",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "description": {
             "title": "Description",
             "type": "string"
@@ -8350,7 +8365,8 @@
         "required": [
           "name",
           "description",
-          "n"
+          "n",
+          "context"
         ],
         "title": "TopicSuggestion",
         "type": "object"

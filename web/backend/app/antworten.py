@@ -311,6 +311,13 @@ class TopicSuggestion(TypedDict):
     name: str
     description: str
     n: int
+    #: Kurze Einordnung für die Anzeige — bei einer Plannummer der Ortsbezug
+    #: aus der Klammer des Beschlusstitels („Quartier am Krusenbusch"), sonst
+    #: der erste Satz der Beschreibung. MUSS hier stehen: Die Antwortform ist
+    #: ein festes Literal, und was fehlt, schneidet FastAPI ab. Genau so kam
+    #: „Bebauungsplan 862" ohne jede Erklärung im Browser an, obwohl der
+    #: Endpunkt sie berechnet hatte (Tims Bild, 02.09.2026).
+    context: str | None
 
 
 class NearbySuggestion(TopicSuggestion):

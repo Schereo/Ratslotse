@@ -5557,6 +5557,8 @@ export interface components {
         };
         /** NearbySuggestion */
         NearbySuggestion: {
+            /** Context */
+            context: string | null;
             /** Description */
             description: string;
             /** N */
@@ -7077,6 +7079,8 @@ export interface components {
         };
         /** TopicSuggestion */
         TopicSuggestion: {
+            /** Context */
+            context: string | null;
             /** Description */
             description: string;
             /** N */
@@ -11830,4 +11834,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: f327f8fc51bc7e670c07f7eee929d4d1d5f01e752dfc9b8a71c892167512de77
+// vertrag-sha256: 0fe2850601664145ea8e7ba60ff79a177df07b2058e92d9da83444f032f7d68b

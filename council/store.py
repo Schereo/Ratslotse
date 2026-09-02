@@ -10784,8 +10784,12 @@ class CouncilStore:
     #: First" (5) fallen raus, alles Ortsgebundene bleibt.
     CITYWIDE_FROM_DISTRICTS = 4
 
-    #: Was nach Adresse klingt statt nach Vorhaben. Solche Namen werden NICHT
-    #: verworfen — sie rutschen nur hinter alles andere.
+    #: Ab wie vielen Beschlüssen im Fenster ein bloßer Straßenname als
+    #: Vorschlag taugt. Darunter ist er eine Adresse aus einem Bebauungsplan.
+    STRASSE_MINDESTENS = 5
+
+    #: Was nach Adresse klingt statt nach Vorhaben. Starke Straßen bleiben
+    #: (s. STRASSE_MINDESTENS) — und rutschen hinter alles andere.
     _STRASSE = re.compile(r"(stra(ß|ss)e|str\.|weg|allee|ring|damm|chaussee|gasse|pfad|steig)$",
                           re.IGNORECASE)
     _STRASSE_VORNE = re.compile(r"^(am|an der|an den|auf dem|auf der|zum|zur|im|in der)\s",
@@ -10823,8 +10827,14 @@ class CouncilStore:
         from council import geo, places
 
         eigener = place.name.casefold()
-        fremde = {p.name.casefold() for p in places.primary_places()} - {eigener}
-        kandidaten = [k for k in kandidaten if (k.get("name") or "").casefold() not in fremde]
+        # ALLE Ortsbereichsnamen raus, auch der eigene. Ein anderer Ortsbereich
+        # ist kein Vorschlag für diesen; und der eigene ist längst gewählt —
+        # die Stadtteil-Liste gibt es ja nur, weil er in Schritt 2 angeklickt
+        # wurde. „✓ Bümmerstede" als erster Vorschlag unter Bümmerstede sagte
+        # nichts, und „Kreyenbrück · Kreyenbrück" unter Nebenan las sich wie
+        # ein Fehler (Tims Bild, 02.09.2026).
+        ortsbereiche = {p.name.casefold() for p in places.primary_places()}
+        kandidaten = [k for k in kandidaten if (k.get("name") or "").casefold() not in ortsbereiche]
         if not kandidaten:
             return []
 
@@ -10863,9 +10873,25 @@ class CouncilStore:
             f"WHERE slug IN ({platz}) AND lat IS NOT NULL AND lon IS NOT NULL",
             slugs).fetchall()}
 
+        from council.locations import affects_whole_city
+
         behalten = []
         for k in kandidaten:
             slug = k.get("slug") or ""
+            name = k.get("name") or ""
+            # Klingt der NAME nach einem stadtweiten Vorgang („TSH Konzept
+            # Berlin", „Mobilitätsplan 2030"), gehört er nicht unter einen
+            # Stadtteil — dieselbe Vokabel wie bei der Ortszuordnung. Die
+            # Breiten-Regel unten fängt das nur, wenn der Bestand schon breit
+            # genug ist; auf dev war er es nicht.
+            if affects_whole_city(name):
+                continue
+            # Ein bloßer Straßenname mit zwei, drei Erwähnungen ist kein
+            # Vorschlag, dem jemand folgen will. Straßen bleiben nur, wenn an
+            # ihnen wirklich etwas passiert — dann sind sie ein Vorhaben mit
+            # Adresse (Sandweg: 33 Beschlüsse). Und auch dann stehen sie hinten.
+            if self._looks_like_street(name) and (k.get("n_recent") or 0) < self.STRASSE_MINDESTENS:
+                continue
             bereiche = zugehoerig.get(slug)
             if bereiche is not None:
                 # Wir wissen, wo dieses Ding liegt. Dann entscheidet das — und
@@ -10896,6 +10922,23 @@ class CouncilStore:
             k.get("name") or "",
         ))
         return behalten
+
+    def entity_title_with_parenthetical(self, slug: str) -> str | None:
+        """Der jüngste Beschlusstitel dieser Entität, der eine Klammer trägt.
+
+        Für eine Plannummer ist die Klammer die einzige lesbare Einordnung
+        („Bebauungsplan 865 (Quartier am Krusenbusch)"), und sie steht nicht in
+        jedem Titel: Der jüngste heißt oft nur „… - Satzungsbeschluss". Dann
+        zeigte der Chip die nackte Nummer (Tims Bild, 02.09.2026). Ein
+        Beschluss weiter zurück trägt sie fast immer."""
+        row = self._conn.execute(
+            """SELECT d.title FROM council_entities e
+                 JOIN council_entity_links el ON el.entity_id = e.id
+                 JOIN council_decisions d ON d.id = el.decision_id
+                 JOIN council_sessions cs ON cs.ksinr = d.ksinr
+                WHERE e.slug = ? AND d.title LIKE '%(%'
+                ORDER BY cs.session_date DESC, d.id DESC LIMIT 1""", (slug,)).fetchone()
+        return row["title"] if row else None
 
     def list_entities_geo(self) -> list[dict]:
         """Geocoded entities (points) for the city-wide map — slug, name, kind, n, lat, lon."""
