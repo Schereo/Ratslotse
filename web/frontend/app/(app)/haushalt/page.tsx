@@ -35,6 +35,8 @@ import { Wegweiser } from "@/components/haushalt/wegweiser";
 import { Datenstand } from "@/components/haushalt/datenstand";
 import { useFetch } from "@/lib/use-fetch";
 import { Tafel } from "@/components/haushalt/tafel";
+import { VollzugKarte } from "@/components/haushalt/vollzug";
+import type { VollzugDaten } from "@/lib/haushalt-vollzug";
 import { Bereichstabelle } from "@/components/haushalt/bereichstabelle";
 import { Gegenbalken } from "@/components/haushalt/gegenbalken";
 import { Flussbild, flussbildQuellen } from "@/components/haushalt/flussbild";
@@ -60,6 +62,9 @@ export default function HaushaltPage() {
   // Nur den Aufwands-Posten je Teilhaushalt: Das Flussbild zeichnet rechts
   // genau ihn. Die volle Ebene wären 795 statt 178 KB — bei identischem Bild.
   const { data, loading } = useFetch<HaushaltAuswahl<typeof FELDER[number]>>(haushaltUrl(FELDER, "20"));
+  // Der jüngste Zwischenstand des laufenden Jahres — nur die Summenzeilen,
+  // die Übersicht braucht die Teilhaushalte nicht (Endpunkt ohne Jahrgang).
+  const vollzug = useFetch<VollzugDaten>("/council/budget/execution");
   const years = useMemo(() => (data ? jahreSortiert(data) : []), [data]);
   const [year, setJahr] = useState<number | null>(null);
   const [visual, setVisual] = useState<"balken" | "euro">("balken");
@@ -233,6 +238,11 @@ export default function HaushaltPage() {
           ? <Gegenbalken zeilen={zeilen} year={aktJahr} />
           : <Steuereuro zeilen={zeilen} year={aktJahr} />}
       </Tafel>
+      {/* Der Zwischenstand: Was die Verwaltung im laufenden Jahr erwartet,
+          in einem Satz — die Brücke vom Plan zur Gegenprobe. */}
+      {vollzug.data && vollzug.data.reporting_dates.length > 0 && (
+        <VollzugKarte daten={vollzug.data} />
+      )}
       {source && (
         <p className="-mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
           Quelle: {source.url

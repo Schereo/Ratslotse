@@ -63,6 +63,8 @@ import { cn } from "@/lib/utils";
 import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 import { SchrittPfad } from "@/components/haushalt/schritt-pfad";
 import { Seitenbuehne, ZaehlZahl } from "@/components/haushalt/seitenbuehne";
+import { Vollzug } from "@/components/haushalt/vollzug";
+import type { VollzugDaten } from "@/lib/haushalt-vollzug";
 
 /** Hinweis auf die Prüfung — hier und nirgends sonst, weil das
  *  Rechnungsprüfungsamt genau diesen Vergleich seit Jahren beanstandet:
@@ -158,6 +160,15 @@ function PlanIstInner() {
   const gewaehltesJahr = Number(useSearchParams().get("year")) || null;
   const { data, loading } = useFetch<HaushaltAuswahl<typeof FELDER[number]>>(haushaltUrl(FELDER));
   const [zahlenOffen, setZahlenOffen] = useState(false);
+  // Der Haushaltsvollzug hat seinen eigenen Jahrgang: Er läuft dem Abschluss
+  // um zwei Jahre voraus. Ohne Wahl zeigt er den jüngsten; die Teilhaushalte
+  // kommen nur für den gewählten Jahrgang mit (Endpunkt-Doku).
+  const [vollzugWahl, setVollzugWahl] = useState<number | null>(null);
+  const vollzugKopf = useFetch<VollzugDaten>("/council/budget/execution");
+  const vollzugJahr = vollzugWahl ?? vollzugKopf.data?.editions.at(-1) ?? null;
+  const vollzug = useFetch<VollzugDaten>(
+    vollzugJahr ? `/council/budget/execution?budget_year=${vollzugJahr}` : null);
+  const vollzugDaten = vollzug.data ?? vollzugKopf.data ?? null;
   const [massstab, setMassstab] = useState<HantelMassstab>("percent");
 
   const years = data?.plan_actual_years ?? [];
@@ -259,6 +270,7 @@ function PlanIstInner() {
   // `components/haushalt/source.tsx`) — die Zeilen stünden dann ohne Beleg da.
   const hatNachbewilligungen = (data.supplementary_approvals?.serie ?? []).length > 0;
   const quellen: QuellenSchluessel[] = [
+    ...(vollzugDaten?.reporting_dates.length ? (["budget_execution"] as const) : []),
     "jahresabschluss",
     ...(kasse ? (["cash_flow_statement"] as const) : []),
     "plan",
@@ -401,6 +413,18 @@ function PlanIstInner() {
         Der Jahresabschluss zeigt später, was tatsächlich verbucht wurde. Hier stehen Plan
         und Ergebnis nebeneinander.
       </p>
+
+      {/* Erst die Erwartung, dann das Ergebnis: Der Haushaltsvollzug steht VOR
+          den abgeschlossenen Jahren, weil er das Jahr zeigt, das gerade
+          läuft — und das der Abschluss erst zwei Jahre später einholt. */}
+      {vollzugDaten && vollzugJahr && vollzugDaten.reporting_dates.length > 0 && (
+        <Vollzug daten={vollzugDaten} year={vollzugJahr} onYear={setVollzugWahl}
+          beleg={<Beleg q="budget_execution" />} />
+      )}
+
+      <h2 className="mt-2 font-display text-[19px] font-bold tracking-tight">
+        Was aus dem Plan wurde
+      </h2>
 
       {/* Jahr-Umschalter: nur Jahre mit echtem Abschluss (scrollbar wie #497). */}
       {years.length > 1 && (

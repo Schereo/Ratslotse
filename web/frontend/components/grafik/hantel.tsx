@@ -86,6 +86,7 @@ export function Hantel({
   zeilen, unit = "Mio. €", massstab = "percent",
   sortierung = "deviation", schwelle, beleg,
   wovon = "der Bereich", keineWertung = AUSGABEN_KEINE_WERTUNG,
+  planLabel = "geplant", istLabel = "tatsächlich",
 }: {
   zeilen: HantelZeile[];
   /** Einheit der Beträge — steht an den Skalenenden und in der Legende. */
@@ -107,6 +108,11 @@ export function Hantel({
   /** Der ausgeschriebene Verzicht auf eine Wertung. Er bleibt Pflicht — nur
    *  sein Wortlaut hängt daran, worüber die Hantel spricht. */
   keineWertung?: ReactNode;
+  /** Was die beiden Enden heißen. „tatsächlich" stimmt nur, wo ein Abschluss
+   *  vorliegt; der Haushaltsvollzug setzt eine ERWARTUNG dagegen und sagt
+   *  deshalb „erwartet" — dieselbe Hantel, ein anderes Wort. */
+  planLabel?: string;
+  istLabel?: string;
 }) {
   const [alle, setAlle] = useState(false);
   const { box, breite } = useBreite();
@@ -199,10 +205,10 @@ export function Hantel({
     const quote = anteil(z);
     return (
       <span className="whitespace-nowrap text-right text-[12px] tabular-nums">
-        <span className="sr-only">geplant </span>
+        <span className="sr-only">{planLabel} </span>
         <span className="text-muted-foreground">{deMio(z.plan as number)}</span>
         <span aria-hidden="true" className="mx-1 text-muted-foreground">→</span>
-        <span className="sr-only">, tatsächlich </span>
+        <span className="sr-only">, {istLabel} </span>
         <span className="font-semibold">{deMio(z.ist as number)}</span>
         <span className="sr-only">, Abweichung </span>
         <span className={cn("ml-1.5", d !== 0 && "text-signal")}>
@@ -292,11 +298,11 @@ export function Hantel({
       <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-border/60 pt-2.5 text-[11.5px] text-muted-foreground">
         <span className="inline-flex items-center gap-1.5">
           <span className="h-2.5 w-2.5 rounded-full border-2 bg-card" style={{ borderColor: "var(--hh-ein-0)" }} />
-          geplant
+          {planLabel}
         </span>
         <span className="inline-flex items-center gap-1.5">
           <span className="h-3 w-3 rounded-full" style={{ background: "var(--hh-aus-0)" }} />
-          tatsächlich
+          {istLabel}
         </span>
         <span className="inline-flex items-center gap-1.5">
           <span className="h-[3px] w-4 rounded-full bg-signal/70" />

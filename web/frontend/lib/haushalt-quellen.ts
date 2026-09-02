@@ -101,6 +101,10 @@ export type QuellenSchluessel =
   // etwas anderes ist als der Haushaltsplan: Der Plan sagt, wofür das Geld
   // ausgegeben werden SOLL, die Satzung, was die Stadt DÜRFTE.
   | "budget_bylaw"
+  // Der Haushaltsvollzug — die Prognose-Berichte an den Finanzausschuss.
+  // Eigener Schlüssel, weil es weder Plan noch Abschluss ist: Es ist die
+  // Erwartung der Ämter im laufenden Jahr, je Stichtag neu.
+  | "budget_execution"
   // Die Gebührenbedarfsberechnung — eigener Schlüssel, weil sie ein anderes
   // Dokument ist als der Wirtschaftsplan desselben Betriebs: Der Plan sagt,
   // was der Betrieb vorhat, die Berechnung, was die Leute dafür zahlen.
@@ -321,6 +325,22 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     as_of: "Änderungslisten 2019–2026",
     art: "pdf",
     url: "https://buergerinfo.oldenburg.de",
+  },
+  budget_execution: {
+    title: "Finanz- und Leistungsberichte zum Haushaltsvollzug",
+    citation:
+      "Die vierteljährlichen Berichte der Verwaltung an den Ausschuss für Finanzen " +
+      "und Beteiligungen (§ 31 KomHKVO), Abschnitt „Auswertung der Berichte zum …“: " +
+      "je Teilhaushalt und als Summe der Ansatz, die Prognose der Ämter für den " +
+      "31. Dezember und die Abweichung — für den Ergebnis- und den Finanzhaushalt " +
+      "getrennt. Stichtage 30. Juni, 30. September und 31. Dezember; der Bericht " +
+      "zum 31. März steht als andere Tabelle im Vorlagentext und wird nicht gelesen. " +
+      "Die Dokumente hängen als Anlagen an Ratsvorlagen im Bürgerinformationssystem.",
+    herausgeber: "Stadt Oldenburg, Controlling und Finanzen",
+    as_of: "Berichte 2018–2026",
+    standWort: "Haushaltsjahre",
+    url: "https://buergerinfo.oldenburg.de/",
+    art: "pdf",
   },
   budget_bylaw: {
     title: "Haushaltssatzungen der Stadt Oldenburg",
