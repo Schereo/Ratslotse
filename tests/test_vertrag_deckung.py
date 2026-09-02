@@ -175,8 +175,6 @@ WEB_OHNE_VERTRAG = {
     ("AdminStats", "web_users"),
     ("DecisionDetail", "bild"),
     ("DecisionDetail", "href"),
-    ("Entity", "n_recent"),
-    ("EntityMapPoint", "location_slug"),
     ("FieldRecap", "field_label"),
     ("FieldRecap", "generated_at"),
     ("FieldRecap", "n_decisions"),
@@ -195,21 +193,19 @@ WEB_OHNE_VERTRAG = {
     ("QuizImageCredit", "license_url"),
 }
 
-#: Dasselbe für die iOS-App. Zwei Einträge sind hier anders als der Rest:
-#: ``calendar_id`` schickt das Backend NIRGENDS — der Schlüssel dient in
-#: ``SessionRow`` als Ersatz-Identität für Kalendertermine ohne ``ksinr`` und
-#: ist damit immer leer. Was dort stattdessen stehen sollte, ist offen.
-#: (Der dritte tote Schlüssel, ``hits_30d``, ist am 02.09.2026 behoben
-#: worden: Er hieß seit #826 ``hits_6m``, und die App zeigte deshalb bei
-#: jedem Thema eine 0.)
+#: Dasselbe für die iOS-App.
+#:
+#: Nur noch EIN Schlüssel, und der bleibt: ``ort_name`` reist im Quellen-Block
+#: der KI-Antwort mit, und der geht als Ereignis-Strom über die Leitung —
+#: eine Nutzlast, die der Vertrag ausdrücklich nicht beschreibt (sie steht in
+#: ``KEIN_JSON`` im Vertragstest). Er ist echt, nur nicht beschreibbar.
+#:
+#: (Die beiden anderen sind am 02.09.2026 verschwunden: ``hits_30d`` hieß
+#: seit #826 ``hits_6m`` und war ein Fehler auf Prod; ``calendar_id`` hat das
+#: Backend NIE geschickt — der Schlüssel diente als Ersatz-Identität und war
+#: immer leer.)
 APP_OHNE_VERTRAG = {
-    "calendar_id",
-    "letzte",
-    "location_slug",
-    "n_stationen",
-    "naechste",
     "ort_name",
-    "rest",
 }
 
 def test_der_leser_findet_ueberhaupt_etwas():

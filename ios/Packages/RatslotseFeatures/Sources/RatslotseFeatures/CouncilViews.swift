@@ -754,7 +754,6 @@ struct CouncilBrowserView: View {
               "my_topic_items": []
             },
             {
-              "calendar_id": 99,
               "committee": "Verkehrsausschuss",
               "session_date": "2027-01-14",
               "session_time": "17:00",

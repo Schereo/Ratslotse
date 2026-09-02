@@ -3765,6 +3765,78 @@
         "title": "ChangePasswordRequest",
         "type": "object"
       },
+      "CityMapPoint": {
+        "description": "Ein Punkt der Stadtkarte (``CouncilStore.city_map_points``).\n\nZwei Herkünfte in einer Liste: geocodierte Themen und belastbare\nBeschlussorte. ``target`` sagt, wohin ein Tippen führt.",
+        "properties": {
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "last_date": {
+            "title": "Last Date",
+            "type": "string"
+          },
+          "lat": {
+            "title": "Lat",
+            "type": "number"
+          },
+          "local_area_id": {
+            "title": "Local Area Id",
+            "type": "string"
+          },
+          "location_slug": {
+            "title": "Location Slug",
+            "type": "string"
+          },
+          "lon": {
+            "title": "Lon",
+            "type": "number"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "n_recent": {
+            "title": "N Recent",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "place_id": {
+            "title": "Place Id",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "target": {
+            "title": "Target",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "kind",
+          "n",
+          "n_recent",
+          "last_date",
+          "lat",
+          "lon",
+          "target",
+          "place_id",
+          "location_slug",
+          "local_area_id"
+        ],
+        "title": "CityMapPoint",
+        "type": "object"
+      },
       "CommitteeDetail": {
         "properties": {
           "decisions_year": {
@@ -4970,7 +5042,7 @@
         "type": "object"
       },
       "DeliberationStation": {
-        "description": "Eine Station der Beratungsfolge einer Vorlage.\n\n``future`` rechnet der Router aus dem Datum — das Ergebnis-Feld entscheidet\nausdrücklich NICHT, ob eine Station noch aussteht.",
+        "description": "Dieselbe Station auf der Beschluss-Seite — dort rechnet der Router\nzusätzlich aus, ob sie noch aussteht.\n\n``future`` kommt aus dem DATUM und ausdrücklich nicht aus dem\nErgebnis-Feld. Die Folgen-Liste reicht die Stationen dagegen roh durch;\nsie benutzt deshalb ``DeliberationStop`` — was hier als Pflichtfeld stünde,\nwäre dort ein 500er (gemessen, nicht vermutet).",
         "properties": {
           "committee": {
             "title": "Committee",
@@ -5026,6 +5098,60 @@
           "future"
         ],
         "title": "DeliberationStation",
+        "type": "object"
+      },
+      "DeliberationStop": {
+        "description": "Eine Station der Beratungsfolge, wie ``get_beratungen`` sie liefert.",
+        "properties": {
+          "committee": {
+            "title": "Committee",
+            "type": "string"
+          },
+          "date": {
+            "title": "Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "is_public": {
+            "title": "Is Public",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "ksinr": {
+            "title": "Ksinr",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "result": {
+            "title": "Result",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "top": {
+            "title": "Top",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "date",
+          "committee",
+          "top",
+          "is_public",
+          "result",
+          "ksinr"
+        ],
+        "title": "DeliberationStop",
         "type": "object"
       },
       "DeliveryUpdate": {
@@ -5240,7 +5366,11 @@
       "EntitiesMap": {
         "properties": {
           "entities": {
-            "title": "Entities"
+            "items": {
+              "$ref": "#/components/schemas/CityMapPoint"
+            },
+            "title": "Entities",
+            "type": "array"
           }
         },
         "required": [
@@ -10697,6 +10827,180 @@
         "title": "TemplateAttachment",
         "type": "object"
       },
+      "TemplateFollow": {
+        "description": "Ein verfolgter Vorgang samt Stand seiner Beratungsfolge.\n\nDie ersten sechs Felder sind die Spalten aus ``template_follows``, die\ndrei darunter rechnet der Router je Vorgang aus. ``naechste`` und\n``letzte`` heißen bewusst weiter deutsch: Die App liest sie so, und ein\nUmbenennen ohne Nachzug dort wäre ein stiller Ausfall.",
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kvonr": {
+            "title": "Kvonr",
+            "type": "integer"
+          },
+          "letzte": {
+            "description": "Eine Station der Beratungsfolge, wie ``get_beratungen`` sie liefert.",
+            "properties": {
+              "committee": {
+                "title": "Committee",
+                "type": "string"
+              },
+              "date": {
+                "title": "Date",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "is_public": {
+                "title": "Is Public",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "ksinr": {
+                "title": "Ksinr",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "result": {
+                "title": "Result",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "top": {
+                "title": "Top",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "date",
+              "committee",
+              "top",
+              "is_public",
+              "result",
+              "ksinr"
+            ],
+            "title": "DeliberationStop",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "n_stationen": {
+            "title": "N Stationen",
+            "type": "integer"
+          },
+          "naechste": {
+            "description": "Eine Station der Beratungsfolge, wie ``get_beratungen`` sie liefert.",
+            "properties": {
+              "committee": {
+                "title": "Committee",
+                "type": "string"
+              },
+              "date": {
+                "title": "Date",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "is_public": {
+                "title": "Is Public",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "ksinr": {
+                "title": "Ksinr",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "result": {
+                "title": "Result",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "top": {
+                "title": "Top",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "date",
+              "committee",
+              "top",
+              "is_public",
+              "result",
+              "ksinr"
+            ],
+            "title": "DeliberationStop",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "notified_at": {
+            "title": "Notified At",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "template_number": {
+            "title": "Template Number",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "title": "Title",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kvonr",
+          "template_number",
+          "title",
+          "created_at",
+          "notified_at",
+          "url",
+          "n_stationen",
+          "naechste",
+          "letzte"
+        ],
+        "title": "TemplateFollow",
+        "type": "object"
+      },
       "TemplateFollowed": {
         "properties": {
           "following": {
@@ -10718,7 +11022,11 @@
       "TemplateFollows": {
         "properties": {
           "follows": {
-            "title": "Follows"
+            "items": {
+              "$ref": "#/components/schemas/TemplateFollow"
+            },
+            "title": "Follows",
+            "type": "array"
           }
         },
         "required": [
