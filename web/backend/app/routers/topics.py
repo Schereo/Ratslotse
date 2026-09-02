@@ -224,6 +224,25 @@ def _similar_names(a: frozenset[str], b: frozenset[str]) -> bool:
     return bool(a) and bool(b) and (a <= b or b <= a)
 
 
+_PLANNUMMER = re.compile(r"\b(?:vorhabenbezogener\s+)?(?:bebauungs|flächennutzungs)plan\s+[\dSNOWM]", re.I)
+
+
+#: Der Rest eines Titels nach der Plannummer, wenn er KEIN Ort ist: die
+#: Verfahrensschritte eines Bebauungsplans und ihre üblichen Zusätze.
+_VERFAHRENSSCHRITT = re.compile(
+    r"^(?:(?:erneuter\s+|zweiter\s+|\d\.\s*)?"
+    r"(?:aufstellungs|auslegungs|satzungs|feststellungs|veröffentlichungs|offenlegungs)?beschluss"
+    r"|bericht|sachstand(?:sbericht)?|grundzüge der planung|prüfung der stellungnahmen"
+    r"|verlängerung(?: der veränderungssperre)?|änderung(?: nr\.?\s*\d+)?|teil [a-z])"
+    r"\b.*$", re.I)
+
+
+def _ist_plannummer(name: str) -> bool:
+    """„Bebauungsplan 865", „Bebauungsplan S-745 B" — ein Name, der ohne
+    Einordnung niemandem etwas sagt."""
+    return bool(_PLANNUMMER.search(name))
+
+
 def _suggestion_context(name: str, candidate: dict) -> str | None:
     """Kurze menschliche Einordnung für Vorschlagskarten.
 
@@ -234,7 +253,7 @@ def _suggestion_context(name: str, candidate: dict) -> str | None:
     """
     description = (candidate.get("description") or "").strip()
     latest_title = (candidate.get("latest_title") or "").strip()
-    if re.search(r"\b(?:vorhabenbezogener\s+)?bebauungsplan\s+\d", name, re.I):
+    if _ist_plannummer(name):
         parenthetical = re.search(r"\(([^()]{4,160})\)", latest_title)
         if parenthetical:
             return re.sub(r"\s*/\s*", " / ", parenthetical.group(1)).strip()
@@ -243,7 +262,13 @@ def _suggestion_context(name: str, candidate: dict) -> str | None:
             r"^[\s:–—-]+|\s+[–—-]\s+(?:Aufstellungs|Auslegungs|Satzungs|Feststellungs).*$",
             "", remainder, flags=re.I,
         ).strip()
-        if remainder:
+        # Was übrig bleibt, muss ein ORT sein, kein Verfahrensschritt. Bei
+        # „Bebauungsplan 865 - Satzungsbeschluss" verschluckt der erste Zweig
+        # oben den Bindestrich, der zweite sieht danach kein „ - Satzungs…"
+        # mehr — und „Satzungsbeschluss" stand als Einordnung auf dem Chip.
+        # Ohne Ort lieber nichts: Dann greift der Rückgriff auf einen älteren
+        # Titel mit Klammer, und ohne den fällt der Vorschlag weg.
+        if remainder and not _VERFAHRENSSCHRITT.match(remainder):
             return remainder[:160].rstrip(" ,;:–—-")
     if description:
         sentence = re.split(r"(?<=[.!?])\s+", description, maxsplit=1)[0].strip()
@@ -293,6 +318,17 @@ def _build_suggestions(council: CouncilStore, candidates: list[dict],
                 f"Stadtrats rund um {name}."
             )
         slug = e.get("slug") or ""
+        context = _suggestion_context(name, e)
+        if context is None and _ist_plannummer(name):
+            # Der jüngste Titel trug keine Klammer („… - Satzungsbeschluss");
+            # ein älterer fast immer. Und bleibt es bei der nackten Nummer,
+            # fällt der Vorschlag weg: „Bebauungsplan 865" ohne Erklärung war
+            # genau das, was Tim „kryptisch" nannte (02.09.2026).
+            titel = council.entity_title_with_parenthetical(slug)
+            if titel:
+                context = _suggestion_context(name, {**e, "latest_title": titel})
+            if context is None:
+                continue
         verdict = verdicts.get(slug)
         if verdict is None or verdict.get("name") != name:
             # Noch nie (oder unter anderem Namen) geprüft — jetzt einmal, dann
@@ -309,7 +345,7 @@ def _build_suggestions(council: CouncilStore, candidates: list[dict],
         out.append({
             "name": name,
             "description": description,
-            "context": _suggestion_context(name, e),
+            "context": context,
             "n": e["n_recent"],
         })
         if len(out) >= limit:
