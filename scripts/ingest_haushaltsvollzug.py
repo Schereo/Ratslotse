@@ -44,6 +44,7 @@ from council.budget_execution import (  # noqa: E402
     VollzugFehler,
     herkunft_fuer,
     lies_q1_vorlage,
+    lies_ocr_text,
     lies_vollzugsbericht,
 )
 from council.store import CouncilStore  # noqa: E402
@@ -93,7 +94,7 @@ def main() -> dict:
     quelle = finanzquellen.QUELLEN["budget_execution"]
     store = CouncilStore(Path(args.db))
     try:
-        kandidaten = quelle.dokumente(store, "document_id, label, url")
+        kandidaten = quelle.dokumente(store, "document_id, label, url, raw_text")
         kandidaten.sort(key=lambda r: r["document_id"])
         vorhanden = quelle.vorhandene(store, args.nur_fehlende)
         print(f"{len(kandidaten)} Anlage(n) mit einem Bericht-Label; "
@@ -120,6 +121,12 @@ def main() -> dict:
                 risse.append(f"{r['document_id']} ({r['label'][:50]}): "
                              f"Download fehlgeschlagen — {fehler}")
                 continue
+            if (not lesung.berichte and any("Glyphen" in satz for satz in lesung.risse)
+                    and "Auswertung der Berichte" in (r.get("raw_text") or "")):
+                # Kein Textlayer im PDF, aber der Anlagen-Backfill hat den
+                # Scan per OCR gelesen: Aus dessen Tabellen entsteht der
+                # Bericht — mit denselben Proben (s. ``lies_ocr_text``).
+                lesung = lies_ocr_text(r["raw_text"])
             for satz in lesung.risse:
                 risse.append(f"{r['document_id']} ({r['label'][:50]}): {satz}")
             if not lesung.berichte:

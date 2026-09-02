@@ -17,12 +17,15 @@ es braucht, liefe in der CI gar nicht erst. Die Naht dafür ist
 """
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from council import herkunft
 from council.budget_execution import (
     BASIS_ANSATZ,
     BASIS_MIT_UEBERTRAG,
+    HINWEIS_OCR,
     PROBE_SPALTEN,
     PROBE_SUMME,
     PROBE_ZEILE,
@@ -30,6 +33,7 @@ from council.budget_execution import (
     VollzugFehler,
     _tabelle_lesen,
     herkunft_fuer,
+    lies_ocr_text,
     lies_tabellenseiten,
     stichtag,
 )
@@ -447,6 +451,61 @@ def test_die_herkunft_nennt_dokument_fundstelle_und_probe():
     assert h.document_id == 295049
     assert "1. Ergebnishaushalt" in h.citation
     assert "30.06.2025" in h.as_of
+
+
+# --------------------------------------------------------------------------
+# Die OCR-Lesung: ein Scan ohne Textlayer (Anlage 266188, 30.06.2023)
+# --------------------------------------------------------------------------
+
+#: Echt: die beiden Tabellenseiten des Berichts zum 30.06.2023, wie die
+#: Texterkennung sie liest — Markdown-Tabellen, eine Zeile je Teilhaushalt.
+OCR_2023 = (Path(__file__).parent / "fixtures" / "vollzug_ocr_2023.txt").read_text()
+
+
+def test_die_ocr_lesung_liest_beide_tabellen_mit_denselben_proben():
+    """Aus den OCR-Zellen entstehen Wörter mit gedachten Rahmen; danach läuft
+    dieselbe Tabellenlesung wie beim PDF — Spaltenbelegung über die Rechnung,
+    Zeilen- und Summenprobe, Stichtag und Abweichungsjahr aus dem Text."""
+    lesung = lies_ocr_text(OCR_2023)
+    assert lesung.risse == []
+    assert [b.budget for b in lesung.berichte] == ["cash", "result"]
+    ehh = next(b for b in lesung.berichte if b.budget == "result")
+    assert (ehh.budget_year, ehh.as_of, ehh.plan_basis) == (2023, "2023-06-30", BASIS_ANSATZ)
+    assert set(ehh.probes) == {PROBE_SPALTEN, PROBE_ZEILE, PROBE_SUMME, PROBE_ZEITRAUM}
+    assert ehh.probe_result.startswith(HINWEIS_OCR)
+    summe = ehh.summe
+    assert (summe["revenue"].budgeted, summe["revenue"].forecast) == (666_679_334, 670_606_575)
+    assert (summe["result"].budgeted, summe["result"].forecast) == (-8_864_946, -40_767_080)
+    assert summe["expense"].carryover == 12_475_152
+    thh9 = next(p for p in ehh.positionen if p.sub_budget == 9 and p.kind == "result")
+    assert thh9.label == "Klima, Umwelt, Mobilität, Bau, Grün, Friedhöfe"
+    assert thh9.deviation == 1_064
+    fhh = next(b for b in lesung.berichte if b.budget == "cash")
+    assert fhh.summe["outflow"].forecast == 103_424_283
+    assert len(fhh.positionen) == 14 * 3
+    # Die Herkunft nennt die OCR als Quelle — wer die Zahl prüft, weiß, dass
+    # sie über eine Texterkennung kam.
+    h = herkunft_fuer(ehh, document_id=266188, label="Bericht", url="https://example.org/266188")
+    assert HINWEIS_OCR in (h.probe_result or "")
+
+
+def test_eine_falsch_erkannte_ziffer_reisst_die_ocr_tabelle():
+    """Die Rahmen sind gedacht, die Proben nicht: Eine verdrehte Ziffer in
+    einer Zelle lässt die Zeilengleichung reißen — und nur diese Tabelle
+    fällt, die andere bleibt."""
+    kaputt = OCR_2023.replace("| 04 | Finanzmanagement und Recht | 430.933.963 |",
+                              "| 04 | Finanzmanagement und Recht | 430.939.963 |")
+    lesung = lies_ocr_text(kaputt)
+    assert [b.budget for b in lesung.berichte] == ["cash"]
+    assert len(lesung.risse) == 1 and "Zeile 4" in lesung.risse[0]
+
+
+def test_ein_ocr_text_ohne_tabellen_bleibt_still():
+    """Erläuterungsseiten tragen die Marke „1. Ergebnishaushalt“ auch — ohne
+    Tabelle dahinter ist das kein Riss, sondern nichts."""
+    lesung = lies_ocr_text("Auswertung der Berichte zum 30.06.2023\n1. Ergebnishaushalt\n"
+                           "Die Erträge entwickeln sich planmäßig.\n")
+    assert lesung.berichte == [] and lesung.risse == []
 
 
 def test_jede_probe_dieser_schicht_steht_im_register():
