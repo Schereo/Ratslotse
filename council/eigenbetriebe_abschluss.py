@@ -393,6 +393,58 @@ def lies_dokument(text: str, title: str, label: str,
 
 
 # --------------------------------------------------------------------------
+# Der Notweg für verklebten Text: die Wortrahmen des PDFs
+# --------------------------------------------------------------------------
+#
+# Der AWB-Prüfbericht 2025 (Anlage 310439) liefert im Textextrakt keine
+# Leerzeichen zwischen den Zellen: „BilanzsummeT€24.50625.500…“. Für den
+# Extrakt sind das Zeichen ohne Abstand; für das PDF sind es getrennte Wörter
+# mit eigenen Rahmen. Aus den Rahmen lässt sich die Zeile wiederherstellen —
+# Wörter derselben Grundlinie, nach x sortiert, mit Leerzeichen dazwischen.
+# Der Weg wird nur beschritten, wenn der Extrakt die Übersicht zwar findet,
+# aber keine Zeile daraus lesen kann; und ``pymupdf`` bleibt bewusst keine
+# Abhängigkeit des Projekts (s. ``council/budget_execution.py``).
+
+#: Verklebte Zellen: ein Kleinbuchstabe direkt vor „T€“ und einer Ziffer
+#: („BilanzsummeT€24.506“) oder zwei Tausenderzahlen ohne Abstand
+#: („24.50625.500“). Der Jahreskopf verklebt dabei gleich mit
+#: („20252024202320222021“), deshalb kann nicht die Lesung entscheiden,
+#: sondern nur der Text.
+_VERKLEBT = re.compile(r"[a-zäöüß]T€\d|\d\.\d{3}\d{2}\.\d{3}")
+
+
+def braucht_wortrahmen(lesung: Lesung, text: str) -> bool:
+    """Nichts gelesen, und der Text zeigt verklebte Zellen — der Fall für die Rahmen."""
+    return not lesung.kennzahlen and _VERKLEBT.search(text or "") is not None
+
+
+def text_aus_wortrahmen(pdf_bytes: bytes) -> str:
+    """Den Text aus den Wortrahmen des PDFs zeilenweise neu setzen.
+
+    Zeile ist, was dieselbe Grundlinie teilt (2,5 pt Spiel, wie im
+    Vollzugsbericht-Leser); die Wörter darin stehen nach ihrer linken Kante.
+    """
+    try:
+        import pymupdf  # noqa: PLC0415 — bewusst optional, s. o.
+    except ImportError as e:  # pragma: no cover — auf Maschinen mit Paket unerreichbar
+        raise AbschlussFehler(
+            "pymupdf fehlt — die Wortrahmen brauchen das Paket. "
+            "Einmalig installieren: .venv/bin/pip install pymupdf") from e
+    seiten: list[str] = []
+    with pymupdf.open(stream=pdf_bytes, filetype="pdf") as doc:
+        for page in doc:
+            woerter = sorted((round(w[3], 1), w[0], w[4]) for w in page.get_text("words"))
+            zeilen: list[tuple[float, list[tuple[float, str]]]] = []
+            for y, x, t in woerter:
+                if zeilen and abs(y - zeilen[-1][0]) <= 2.5:
+                    zeilen[-1][1].append((x, t))
+                else:
+                    zeilen.append((y, [(x, t)]))
+            seiten.append("\n".join(" ".join(t for _x, t in sorted(z)) for _y, z in zeilen))
+    return "\n".join(seiten)
+
+
+# --------------------------------------------------------------------------
 # Der Bestand: jüngster Bericht gewinnt, die anderen bezeugen
 # --------------------------------------------------------------------------
 

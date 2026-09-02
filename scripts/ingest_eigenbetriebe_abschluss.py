@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+import urllib.request
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -28,11 +29,20 @@ COUNCIL_DB = ROOT / "data" / "council.sqlite"
 LABEL = "Jahresabschlüsse der Eigenbetriebe (Prüfberichte, GuV und Bilanz im RIS)"
 
 
+def _laden(url: str) -> bytes:
+    anfrage = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+    with urllib.request.urlopen(anfrage, timeout=45) as antwort:
+        return antwort.read()
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--db", type=Path, default=COUNCIL_DB)
     ap.add_argument("--trockenlauf", action="store_true")
     ap.add_argument("--schrumpf-erlauben", action="store_true")
+    ap.add_argument("--ohne-download", action="store_true",
+                    help="Verklebte Übersichten nicht über die Wortrahmen des PDFs "
+                         "nachlesen (kein Netz, kein pymupdf).")
     args = ap.parse_args()
 
     store = CouncilStore(args.db)
@@ -48,6 +58,26 @@ def main() -> int:
                 continue
             lesung = ea.lies_dokument(text, a["title"], a["label"], a["document_id"],
                                       a.get("n_pages"))
+            if (ea.braucht_wortrahmen(lesung, text) and a.get("url")
+                    and not args.ohne_download):
+                # Der Textextrakt fand die Übersicht, konnte aber keine Zeile
+                # lesen (verklebte Zellen, AWB 2025) — die Wortrahmen des PDFs
+                # setzen die Zeilen neu. Was dabei rauskommt, geht durch
+                # dieselbe Lesung und dieselben Proben.
+                try:
+                    nachgelesen = ea.lies_dokument(
+                        ea.text_aus_wortrahmen(_laden(a["url"])), a["title"], a["label"],
+                        a["document_id"], a.get("n_pages"))
+                except (OSError, ea.AbschlussFehler) as fehler:
+                    lesung.hinweise.append(f"Wortrahmen: {fehler}")
+                else:
+                    if nachgelesen.kennzahlen:
+                        nachgelesen.form = f"{nachgelesen.form} aus Wortrahmen"
+                        lesung = nachgelesen
+                    else:
+                        lesung.hinweise.append(
+                            "auch aus den Wortrahmen keine Zeile: "
+                            + "; ".join(nachgelesen.hinweise[:2]))
             if lesung.kennzahlen:
                 alle.extend(lesung.kennzahlen)
                 bj = ea.betriebsjahr(a["title"])
