@@ -134,7 +134,7 @@ _BETRAG_RE = re.compile(_BETRAG)
 
 
 def _eur(roh: str) -> float:
-    return float(roh.replace(" ", "").replace(".", "").replace(",", "."))
+    return float("".join(roh.split()).replace(".", "").replace(",", "."))
 
 
 def _glaetten(text: str) -> str:
@@ -247,9 +247,15 @@ SATZARTEN: tuple[_Satzart, ...] = (
 #: Erläuterungen darunter anders). Das ``be`` ist deshalb optional — die
 #: Alternative wäre gewesen, einen ganzen Jahrgang liegen zu lassen, weil ein
 #: Sachbearbeiter 2019 zwei Silben kürzer getippt hat.
-_JAHR = re.compile(r"Geb[üu]hrenbedarfs(?:be)?rechnung\s+(\d{4})")
-_KALKULATION = re.compile(r"Kostenkalkulation f[üu]r \d{4}\s*" + _BETRAG)
-_ZU_DECKEN = re.compile(r"decken sind\s*" + _BETRAG)
+#: Der Jahrgang steht im Titel — oder, wo der fehlt (Straßenreinigung 2019,
+#: OCR), in der Kalkulationszeile selbst: „Gebührenkalkulation für 2019“.
+_JAHR = re.compile(r"(?:Geb[üu]hrenbedarfs(?:be)?rechnung|(?:Kosten|Geb[üu]hren)kalkulation f[üu]r)"
+                   r"\s+(\d{4})")
+_KALKULATION = re.compile(r"(?:Kosten|Geb[üu]hren)kalkulation f[üu]r \d{4}\s*" + _BETRAG)
+#: Zwei Formen: der Betrag hinter „zu decken sind“ — oder davor, wenn die
+#: Zeile umbricht („Kosten, die durch Gebühren 2.797.352 € zu decken sind“).
+_ZU_DECKEN = re.compile(r"decken sind\s*" + _BETRAG
+                        + r"|durch Geb[üu]hren\s*" + _BETRAG + r"\s*zu decken sind")
 #: Die Gebührenzeile MIT ihrer Einheit — beides in einem Griff.
 #:
 #: Die Einheit irgendwo im Anlagentext zu suchen ging schief: Im Abschnitt
@@ -405,23 +411,30 @@ def _kaskade_ohne_vorzeichen(kalkulation: float, kaskade: str, zu_decken: float
 
     In der Abfallbehandlung 2021 (OCR-Lesung des gescannten Berichts) stehen
     alle Abzüge positiv: „Kosten, die durch Dritte erstattet werden
-    3.156.249 €“, dazwischen die Zwischensumme „Bereinigte Kosten“. Ob ein
-    Betrag Abzug oder Zwischensumme ist, entscheidet nicht die Beschriftung,
-    sondern ob er dem laufenden Stand gleicht. Und ob die „Über-/Unterdeckung
-    aus Vorjahren“ abgezogen oder hinzugerechnet wird, entscheidet allein,
-    welche der beiden Lesarten die Zeile „zu decken sind“ trifft — höchstens
-    ein Betrag darf sich addieren, alle anderen sind Abzüge. Trifft keine
-    Lesart, gibt es keine Kaskade; geraten wird nicht.
+    3.156.249 €“, dazwischen die Zwischensumme „Bereinigte Kosten“. 2019
+    (ebenfalls Scan) verliert die OCR nur ZWEI der vier Minuszeichen — die
+    Vorzeichen sind also auch gemischt nicht verlässlich. Ein negativer
+    Betrag ist sicher ein Abzug; bei einem positiven entscheidet nicht die
+    Beschriftung, ob er Abzug oder Zwischensumme ist, sondern ob er dem
+    laufenden Stand gleicht. Und ob die „Über-/Unterdeckung aus Vorjahren“
+    abgezogen oder hinzugerechnet wird, entscheidet allein, welche der
+    Lesarten die Zeile „zu decken sind“ trifft — höchstens ein Betrag darf
+    sich addieren, alle anderen sind Abzüge. Trifft keine Lesart, gibt es
+    keine Kaskade; geraten wird nicht.
 
     Liefert die Summe der Abzüge (negativ) oder ``None``.
     """
     betraege = [_eur(x) for x in _BETRAG_RE.findall(kaskade) if x.strip("-. ")]
-    if not betraege or any(b < 0 for b in betraege) or len(betraege) > 12:
+    if not betraege or len(betraege) > 12:
         return None
     for addiert in (None, *range(len(betraege))):
         laufend = kalkulation
         abzuege = 0.0
         for i, betrag in enumerate(betraege):
+            if betrag < 0:
+                laufend += betrag  # gedrucktes Minus: sicher ein Abzug
+                abzuege += betrag
+                continue
             if abs(laufend - betrag) <= TOLERANZ_EUR:
                 continue  # Zwischensumme, etwa „Bereinigte Kosten“
             vorzeichen = 1.0 if i == addiert else -1.0
@@ -444,7 +457,7 @@ def parse_anlage(part: str, template_number: str | None = None) -> Gebuehrenbeda
     k = _KALKULATION.search(part)
     d = _ZU_DECKEN.search(part)
     if k and d:
-        kalkulation, zu_decken = _eur(k.group(1)), _eur(d.group(1))
+        kalkulation, zu_decken = _eur(k.group(1)), _eur(d.group(1) or d.group(2))
         kaskade = part[k.end():d.start()]
         deductions = sum(_eur(x) for x in _BETRAG_RE.findall(kaskade)
                       if x.strip().startswith("-"))
@@ -558,11 +571,24 @@ def _anlage_4(text: str) -> str | None:
 
 def _saetze_altes_layout(part: str, template_number: str | None) -> list[Gebuehrensatz] | None:
     """Die eine Vorschlagszeile der Tabellen 2023–2025 lesen."""
-    m = re.search(r"\bVorschl(?:ag|[äa]ge)(?:\s+f[üu]r)?\s+(\d{4})\s+", part, re.I)
-    if not m:
+    treffer = list(re.finditer(r"\bVorschl(?:ag|[äa]ge)(?:\s+f[üu]r)?\s+(\d{4})\s+", part, re.I))
+    if not treffer:
         return None
-    year = int(m.group(1))
-    werte = [_satz_eur(x) for x in _SATZ_BETRAG.findall(part[m.end():])]
+    # Die Zeile endet beim ersten Wort, das kein Tarifbetrag (und kein „/“
+    # dazwischen) ist: Im Scan 2019 folgen der Tabelle noch die
+    # Erläuterungsseiten, und deren Beträge zählten sonst mit (145 statt 12).
+    # Der Text ist hier geglättet, Zeilenumbrüche gibt es nicht mehr. Und das
+    # Wort „Vorschläge“ steht dort schon in der Überschrift („2008 – 2018;
+    # Vorschläge für 2019“) — es zählt der Treffer, hinter dem die Zeile steht.
+    year = int(treffer[0].group(1))
+    werte: list[float] = []
+    for m in treffer:
+        zeile = re.match(r"(?:\s*(?:/|" + _SATZ_BETRAG.pattern + r"))+", part[m.end():])
+        gefunden = [_satz_eur(x) for x in _SATZ_BETRAG.findall(zeile.group(0))] if zeile else []
+        if len(gefunden) == len(SATZARTEN) or len(gefunden) > len(werte):
+            year, werte = int(m.group(1)), gefunden
+        if len(werte) == len(SATZARTEN):
+            break
     if len(werte) != len(SATZARTEN):
         raise GebuehrenFehler(
             f"Anlage 4 für {year}: {len(werte)} statt {len(SATZARTEN)} "
