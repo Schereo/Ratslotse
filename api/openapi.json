@@ -3239,6 +3239,13 @@
             "title": "Notices",
             "type": "array"
           },
+          "provenance": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Herkunft"
+            },
+            "title": "Provenance",
+            "type": "object"
+          },
           "rates": {
             "items": {
               "$ref": "#/components/schemas/LoanItem"
@@ -3266,7 +3273,8 @@
           "coverage",
           "rates",
           "refinancing_by_year",
-          "latest_refinancing"
+          "latest_refinancing",
+          "provenance"
         ],
         "title": "BudgetLoans",
         "type": "object"

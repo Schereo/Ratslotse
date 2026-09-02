@@ -5045,6 +5045,10 @@ export interface components {
             } | null;
             /** Notices */
             notices: components["schemas"]["LoanNotice"][];
+            /** Provenance */
+            provenance: {
+                [key: string]: components["schemas"]["Herkunft"];
+            };
             /** Rates */
             rates: components["schemas"]["LoanItem"][];
             /** Refinancing By Year */
@@ -12849,4 +12853,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 0c031d4380e2d3f91dd168b40e3bc44f4c1d83ddd75c2409832248317b61d328
+// vertrag-sha256: 7262d0f6928b99bad1e79c7a4223e66109e9acc1e935de8c4d4e23dcb93e4f67
