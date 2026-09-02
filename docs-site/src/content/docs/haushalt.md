@@ -3697,10 +3697,14 @@ Der Bereich zeigt lieber eine Lücke als eine Schätzung:
   Oldenburg**" am Titelende, an dem die Stiftungs- und Eigenbetriebsberichte
   („…zum 31. Dezember") durchfallen. Genau das bleibt streng.
 
-  **Was noch fehlt:** ein Renderer auf der Maschine. Seine Seiten tragen kein
-  Bild, sondern Vektoren — `pypdfium2` (BSD, ein Wheel mit gebündeltem pdfium)
-  zieht der Ops-Workflow bei Bedarf nach. Erst danach ist der Jahrgang wirklich
-  im Bestand; bis dahin sagt die Seite es weiter, statt es zu überspielen.
+  **Was ihm danach noch im Weg stand (bis 02.09.2026):** Er war am 18.08.
+  VOR der Buchstaben-Schwelle geladen worden und stand deshalb mit seinen
+  460.084 Glyphen auf `status='ok'` — und `ok` fasst kein Lauf mehr an: der
+  Text-Backfill holt `listed`/`failed`, die OCR liest `empty`. Der Renderer
+  (`pypdfium2`) war längst installiert; das Dokument lag nur in der falschen
+  Menge. Seitdem zieht `backfill_anlagen_texte.py --glyphen` die Schwelle
+  nachträglich über den Bestand (Buchstabenanteil unter `MIN_BUCHSTABEN` →
+  `empty`), und der OCR-Schritt desselben Ops-Laufs liest, was dort landet.
 - **Vollständige Produktebene** — für einige Teilhaushalte fehlen auslesbare
   Dokumente: Im Bestand stehen 9 der 13 Teilhaushalte (2025: 10). Gemessen an
   den Aufwendungen, die der Endpunkt als `coverage_percent` ausweist, deckt

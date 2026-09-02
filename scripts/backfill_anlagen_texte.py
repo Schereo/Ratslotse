@@ -104,7 +104,8 @@ def finanz_muster() -> list[str]:
 
 
 def process(db_path: Path, limit: int | None, workers: int, retry_failed: bool,
-            nur_finanz: bool = False, gekappte: bool = False) -> dict:
+            nur_finanz: bool = False, gekappte: bool = False,
+            glyphen: bool = False) -> dict:
     store = CouncilStore(db_path)
     try:
         status_filter = "('listed','failed')" if retry_failed else "('listed')"
@@ -114,6 +115,32 @@ def process(db_path: Path, limit: int | None, workers: int, retry_failed: bool,
             wo = " AND (" + " OR ".join("label LIKE ?" for _ in muster) + ")"
             werte = muster
             print(f"Nur Finanz-Anlagen: {', '.join(muster)}", flush=True)
+        # Anlagen, die VOR der Buchstaben-Schwelle geladen wurden, stehen mit
+        # ihrem Glyphen-Rauschen auf `ok` — und `ok` fasst kein Lauf mehr an:
+        # nicht dieser (er holt `listed`/`failed`), nicht die OCR (sie liest
+        # `empty`). Genau so lag der Schlussbericht 2024 (Dokument 295296) vom
+        # 18.08. bis zum 02.09.2026 mit 460.084 Zeichen und keinem Buchstaben
+        # da, während der Renderer längst installiert war. Der Schalter zieht
+        # die Schwelle nachträglich über den Bestand und stellt solche Anlagen
+        # dorthin, wo die OCR sie findet. Gerechnet wird in Python, nicht in
+        # SQL (SQLite kennt kein isalpha) — mit `--nur-finanz` sind das rund
+        # 300 Texte, ohne den Filter der ganze Bestand.
+        glyphen_geleert = 0
+        if glyphen:
+            for r in store._conn.execute(
+                    "SELECT document_id, raw_text FROM council_attachments "
+                    f"WHERE status = 'ok' AND raw_text != ''{wo}", werte).fetchall():
+                if buchstabenanteil(r["raw_text"]) >= MIN_BUCHSTABEN:
+                    continue
+                with store._conn:
+                    store._conn.execute(
+                        "UPDATE council_attachments SET raw_text='', status='empty', "
+                        "fetched_at=datetime('now') WHERE document_id = ?",
+                        (r["document_id"],))
+                glyphen_geleert += 1
+                print(f"  [{r['document_id']}] Glyphen statt Buchstaben — "
+                      f"auf 'empty' gesetzt, die OCR liest es", flush=True)
+            print(f"Glyphen-Anlagen auf 'empty' gesetzt: {glyphen_geleert}", flush=True)
         # Der Status-Filter steht in Klammern neben der Kappungs-Bedingung, nicht
         # davor: `A AND B OR C` läse sich sonst als `(A AND B) OR C` — der
         # `--nur-finanz`-Filter fiele für die gekappten Anlagen weg, und ein
@@ -174,7 +201,8 @@ def process(db_path: Path, limit: int | None, workers: int, retry_failed: bool,
                 if (ok + leer + fehler) % 100 == 0:
                     print(f"  {ok + leer + fehler}/{len(rows)} (Text {ok}, leer {leer}, "
                           f"Fehler {fehler})", flush=True)
-        return {"geladen": ok, "ohne_text": leer, "fehler": fehler, "gesamt": len(rows)}
+        return {"geladen": ok, "ohne_text": leer, "fehler": fehler, "gesamt": len(rows),
+                "glyphen_geleert": glyphen_geleert}
     finally:
         store.close()
 
@@ -190,12 +218,18 @@ def main() -> dict:
     ap.add_argument("--gekappte", action="store_true",
                     help="auch Anlagen erneut holen, die an einer früheren "
                          "MAX_TEXT-Grenze abgeschnitten wurden (FRUEHERE_GRENZEN)")
+    ap.add_argument("--glyphen", action="store_true",
+                    help="Anlagen, die mit kaputter Zeichenzuordnung auf 'ok' stehen "
+                         "(Buchstabenanteil unter MIN_BUCHSTABEN), auf 'empty' setzen — "
+                         "damit die OCR sie liest")
     ap.add_argument("--db", default=str(COUNCIL_DB))
     args = ap.parse_args()
     stats = process(Path(args.db), args.limit, args.workers, args.retry_failed,
-                    nur_finanz=args.nur_finanz, gekappte=args.gekappte)
+                    nur_finanz=args.nur_finanz, gekappte=args.gekappte,
+                    glyphen=args.glyphen)
     print(f"Anlagen-Texte: {stats['geladen']} mit Text, {stats['ohne_text']} ohne, "
-          f"{stats['fehler']} Fehler von {stats['gesamt']}", flush=True)
+          f"{stats['fehler']} Fehler von {stats['gesamt']}, "
+          f"{stats['glyphen_geleert']} Glyphen-Anlagen an die OCR", flush=True)
     return stats
 
 
