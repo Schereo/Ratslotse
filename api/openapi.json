@@ -1159,6 +1159,25 @@
         "title": "AdminUserRow",
         "type": "object"
       },
+      "AgendaAttachment": {
+        "description": "Eine Anlage an einem Tagesordnungspunkt.",
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "url"
+        ],
+        "title": "AgendaAttachment",
+        "type": "object"
+      },
       "AgendaChange": {
         "description": "Eine Änderung an der Tagesordnung aus der Chronik (``agenda_changes``).\n``satz`` ist der Satz für die Meldung, ``zeilen`` die Einzelheiten.",
         "properties": {
@@ -1182,6 +1201,75 @@
           "zeilen"
         ],
         "title": "AgendaChange",
+        "type": "object"
+      },
+      "AgendaItemRow": {
+        "description": "Ein Tagesordnungspunkt, wie ``CouncilStore.agenda_items`` ihn liefert.\n\nDie ersten fünf Felder sind die Spalten, die die Abfrage ausdrücklich\nnennt — kein ``SELECT *``, die Aufzählung ist also vollständig. Die vier\ndarunter hängt dieselbe Methode an: die Anlagen des Punktes, die\nLLM-Kurzfassung, den besseren Kartentext, wo es ihn gibt, und das\nabgeleitete Dringlichkeits-Flag.\n\nBeide Aufrufer (die Sitzungs-Seite und die Merkliste über\n``council.bookmarks``) holen ihre Punkte aus derselben Methode; deshalb\nreicht eine Form für beide.",
+        "properties": {
+          "anlagen": {
+            "items": {
+              "$ref": "#/components/schemas/AgendaAttachment"
+            },
+            "title": "Anlagen",
+            "type": "array"
+          },
+          "dringlich": {
+            "title": "Dringlich",
+            "type": "boolean"
+          },
+          "is_public": {
+            "title": "Is Public",
+            "type": "integer"
+          },
+          "item_number": {
+            "title": "Item Number",
+            "type": "string"
+          },
+          "kvonr": {
+            "title": "Kvonr",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "social_text": {
+            "title": "Social Text",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "summary": {
+            "title": "Summary",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "template_number": {
+            "title": "Template Number",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "item_number",
+          "title",
+          "template_number",
+          "kvonr",
+          "is_public",
+          "anlagen",
+          "summary",
+          "social_text",
+          "dringlich"
+        ],
+        "title": "AgendaItemRow",
         "type": "object"
       },
       "AnalysisCoverage": {
@@ -1344,6 +1432,47 @@
           "question"
         ],
         "title": "AskTurn",
+        "type": "object"
+      },
+      "Attendance": {
+        "description": "Eine Zeile der Anwesenheitsliste (``CouncilStore.get_attendance``).",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "note": {
+            "title": "Note",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "party": {
+            "title": "Party",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "role": {
+            "title": "Role",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "party",
+          "role",
+          "note"
+        ],
+        "title": "Attendance",
         "type": "object"
       },
       "Badge": {
@@ -1558,8 +1687,72 @@
         "description": "Gebaut in ``council.bookmarks.serialize_bookmark`` — festes Literal,\ndeshalb hier vollständig aufgeschrieben. Die drei eingebetteten Objekte\nsind Roh-Zeilen und bleiben offen.",
         "properties": {
           "agenda_item": {
-            "additionalProperties": true,
-            "title": "Agenda Item",
+            "description": "Ein Tagesordnungspunkt, wie ``CouncilStore.agenda_items`` ihn liefert.\n\nDie ersten fünf Felder sind die Spalten, die die Abfrage ausdrücklich\nnennt — kein ``SELECT *``, die Aufzählung ist also vollständig. Die vier\ndarunter hängt dieselbe Methode an: die Anlagen des Punktes, die\nLLM-Kurzfassung, den besseren Kartentext, wo es ihn gibt, und das\nabgeleitete Dringlichkeits-Flag.\n\nBeide Aufrufer (die Sitzungs-Seite und die Merkliste über\n``council.bookmarks``) holen ihre Punkte aus derselben Methode; deshalb\nreicht eine Form für beide.",
+            "properties": {
+              "anlagen": {
+                "items": {
+                  "$ref": "#/components/schemas/AgendaAttachment"
+                },
+                "title": "Anlagen",
+                "type": "array"
+              },
+              "dringlich": {
+                "title": "Dringlich",
+                "type": "boolean"
+              },
+              "is_public": {
+                "title": "Is Public",
+                "type": "integer"
+              },
+              "item_number": {
+                "title": "Item Number",
+                "type": "string"
+              },
+              "kvonr": {
+                "title": "Kvonr",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "social_text": {
+                "title": "Social Text",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "summary": {
+                "title": "Summary",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "template_number": {
+                "title": "Template Number",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "title": {
+                "title": "Title",
+                "type": "string"
+              }
+            },
+            "required": [
+              "item_number",
+              "title",
+              "template_number",
+              "kvonr",
+              "is_public",
+              "anlagen",
+              "summary",
+              "social_text",
+              "dringlich"
+            ],
+            "title": "AgendaItemRow",
             "type": [
               "object",
               "null"
@@ -1890,8 +2083,7 @@
               },
               "my_topic_items": {
                 "items": {
-                  "additionalProperties": true,
-                  "type": "object"
+                  "$ref": "#/components/schemas/MyTopicItem"
                 },
                 "title": "My Topic Items",
                 "type": "array"
@@ -3223,16 +3415,14 @@
         "properties": {
           "attachments": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/TemplateAttachment"
             },
             "title": "Attachments",
             "type": "array"
           },
           "attendance": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/Attendance"
             },
             "title": "Attendance",
             "type": "array"
@@ -3250,16 +3440,14 @@
           },
           "deliberation_path": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/DeliberationStation"
             },
             "title": "Deliberation Path",
             "type": "array"
           },
           "entities": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/DecisionEntity"
             },
             "title": "Entities",
             "type": "array"
@@ -3358,8 +3546,7 @@
           },
           "similar": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/SimilarDecision"
             },
             "title": "Similar",
             "type": "array"
@@ -3400,6 +3587,33 @@
           "importance_breakdown"
         ],
         "title": "DecisionDetail",
+        "type": "object"
+      },
+      "DecisionEntity": {
+        "description": "Eine im Beschluss erkannte Entität (Vorhaben, Ort, Organisation).",
+        "properties": {
+          "kind": {
+            "title": "Kind",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "kind"
+        ],
+        "title": "DecisionEntity",
         "type": "object"
       },
       "DecisionFollow": {
@@ -3882,6 +4096,65 @@
           }
         },
         "title": "DeleteAccountRequest",
+        "type": "object"
+      },
+      "DeliberationStation": {
+        "description": "Eine Station der Beratungsfolge einer Vorlage.\n\n``future`` rechnet der Router aus dem Datum — das Ergebnis-Feld entscheidet\nausdrücklich NICHT, ob eine Station noch aussteht.",
+        "properties": {
+          "committee": {
+            "title": "Committee",
+            "type": "string"
+          },
+          "date": {
+            "title": "Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "future": {
+            "title": "Future",
+            "type": "boolean"
+          },
+          "is_public": {
+            "title": "Is Public",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "ksinr": {
+            "title": "Ksinr",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "result": {
+            "title": "Result",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "top": {
+            "title": "Top",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "date",
+          "committee",
+          "top",
+          "is_public",
+          "result",
+          "ksinr",
+          "future"
+        ],
+        "title": "DeliberationStation",
         "type": "object"
       },
       "DeliveryUpdate": {
@@ -4931,6 +5204,25 @@
           "urls"
         ],
         "title": "MediaUpload",
+        "type": "object"
+      },
+      "MyTopicItem": {
+        "description": "„n TOPs zu deinen Themen\" — Treffer der Tagesordnungs-Klassifikation.",
+        "properties": {
+          "item_number": {
+            "title": "Item Number",
+            "type": "string"
+          },
+          "topic_name": {
+            "title": "Topic Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "item_number",
+          "topic_name"
+        ],
+        "title": "MyTopicItem",
         "type": "object"
       },
       "NearbySuggestion": {
@@ -7554,16 +7846,14 @@
           },
           "agenda_items": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/AgendaItemRow"
             },
             "title": "Agenda Items",
             "type": "array"
           },
           "attendance": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/Attendance"
             },
             "title": "Attendance",
             "type": "array"
@@ -7613,8 +7903,7 @@
           },
           "my_topic_items": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/MyTopicItem"
             },
             "title": "My Topic Items",
             "type": "array"
@@ -7643,8 +7932,7 @@
           },
           "video_results": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/VideoResult"
             },
             "title": "Video Results",
             "type": "array"
@@ -7728,8 +8016,7 @@
           },
           "my_topic_items": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/MyTopicItem"
             },
             "title": "My Topic Items",
             "type": "array"
@@ -7830,6 +8117,75 @@
           "title"
         ],
         "title": "SharePreview",
+        "type": "object"
+      },
+      "SimilarDecision": {
+        "description": "Ein semantischer Nachbar (``CouncilStore.get_similar``).",
+        "properties": {
+          "committee": {
+            "title": "Committee",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "policy_field": {
+            "title": "Policy Field",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          },
+          "session_date": {
+            "title": "Session Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "summary": {
+            "title": "Summary",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "template_number": {
+            "title": "Template Number",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "template_number",
+          "summary",
+          "policy_field",
+          "outcome",
+          "session_date",
+          "committee",
+          "score"
+        ],
+        "title": "SimilarDecision",
         "type": "object"
       },
       "SocialDecision": {
@@ -8154,6 +8510,62 @@
           "message"
         ],
         "title": "SupportIn",
+        "type": "object"
+      },
+      "TemplateAttachment": {
+        "description": "Eine Anlage an der Vorlage eines Beschlusses.\n\n``applicants`` liegt in der Datenbank als JSON-Text und kommt hier\nausgepackt an — eine Liste von Fraktionsnamen (``[\"Die Linke\"]``).",
+        "properties": {
+          "applicants": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Applicants",
+            "type": "array"
+          },
+          "document_id": {
+            "title": "Document Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "is_image": {
+            "title": "Is Image",
+            "type": "integer"
+          },
+          "is_motion": {
+            "title": "Is Motion",
+            "type": "integer"
+          },
+          "label": {
+            "title": "Label",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "document_id",
+          "label",
+          "url",
+          "is_motion",
+          "applicants",
+          "status",
+          "is_image"
+        ],
+        "title": "TemplateAttachment",
         "type": "object"
       },
       "TemplateFollowed": {
@@ -9041,6 +9453,87 @@
           "token"
         ],
         "title": "VerifyEmailRequest",
+        "type": "object"
+      },
+      "VideoResult": {
+        "description": "Ein vorläufiges Ergebnis aus der Videoaufzeichnung.\n\nACHTUNG: Quelle ist ein ``SELECT *`` auf ``council_video_results``. Eine\nneue Spalte dort fiele ohne Eintrag hier still aus der Antwort — dagegen\nsteht ``test_api_vertrag.py::test_zeilen_typen_kennen_alle_spalten_ihrer_tabelle``.",
+        "properties": {
+          "abstentions": {
+            "title": "Abstentions",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "item_number": {
+            "title": "Item Number",
+            "type": "string"
+          },
+          "ksinr": {
+            "title": "Ksinr",
+            "type": "integer"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "no_votes": {
+            "title": "No Votes",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": "string"
+          },
+          "quote": {
+            "title": "Quote",
+            "type": "string"
+          },
+          "video_id": {
+            "title": "Video Id",
+            "type": "string"
+          },
+          "video_seconds": {
+            "title": "Video Seconds",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "vote": {
+            "title": "Vote",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "ksinr",
+          "item_number",
+          "outcome",
+          "vote",
+          "no_votes",
+          "abstentions",
+          "quote",
+          "video_id",
+          "video_seconds",
+          "model",
+          "created_at"
+        ],
+        "title": "VideoResult",
         "type": "object"
       },
       "WebUserOut": {

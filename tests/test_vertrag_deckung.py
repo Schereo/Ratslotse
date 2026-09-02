@@ -14,7 +14,7 @@ dass jeder aufgerufene *Pfad* existiert. Beide sagen nichts über die
 **Warum das keine Liste ist, die man einmal leert.** Die meisten Felder, die
 hier stehen, sind völlig in Ordnung — sie existieren, das Backend liefert sie,
 nur beschreibt der Vertrag sie nicht: Sie stecken in einer der Nutzlasten, die
-irgendwo ein offenes ``additionalProperties`` tragen (Stand heute 28 von 229
+irgendwo ein offenes ``additionalProperties`` tragen (Stand heute 25 von 229
 Schemata). Solange das so ist, kann niemand maschinell zwischen „Feld, das der
 Vertrag verschweigt" und „Feld, das es nicht mehr gibt" unterscheiden.
 
@@ -131,7 +131,6 @@ OFFENE_SCHEMATA = {
     "AdminFeedbackList",
     "AdminJob",
     "AnalysisData",
-    "BookmarkEntry",
     "BudgetDataState",
     "BudgetDebt",
     "BudgetFixedAssets",
@@ -150,8 +149,6 @@ OFFENE_SCHEMATA = {
     "QuizOwnQuestions",
     "ResearchCurrent",
     "ResearchSnapshot",
-    "SessionDetail",
-    "SessionRow",
     "SocialDecision",
     "TrendData",
     "WeekPreview",
@@ -166,21 +163,11 @@ WEB_OHNE_VERTRAG = {
     ("AdminStats", "web_users"),
     ("AgendaAenderungZeile", "art"),
     ("AgendaAenderungZeile", "nichtoeffentlich"),
-    ("AgendaItem", "anlagen"),
-    ("AgendaItem", "dringlich"),
-    ("AgendaItem", "is_public"),
-    ("AgendaItem", "social_text"),
-    ("Beratung", "future"),
-    ("Beratung", "is_public"),
-    ("Beratung", "result"),
     ("CouncilSession", "matched_items"),
     ("DecisionDetail", "amount"),
-    ("DecisionDetail", "anlagen"),
-    ("DecisionDetail", "applicants"),
     ("DecisionDetail", "art"),
     ("DecisionDetail", "bild"),
     ("DecisionDetail", "href"),
-    ("DecisionDetail", "is_motion"),
     ("Entity", "n_recent"),
     ("EntityMapPoint", "location_slug"),
     ("FieldRecap", "field_label"),
@@ -207,9 +194,6 @@ WEB_OHNE_VERTRAG = {
     ("RelatedEntity", "rel_type"),
     ("UserQuizQuestion", "correct_count"),
     ("UserQuizQuestion", "practiced"),
-    ("VideoResult", "quote"),
-    ("VideoResult", "video_id"),
-    ("VideoResult", "video_seconds"),
 }
 
 #: Dasselbe für die iOS-App. Zwei Einträge sind hier anders als der Rest:
@@ -220,12 +204,8 @@ WEB_OHNE_VERTRAG = {
 #: worden: Er hieß seit #826 ``hits_6m``, und die App zeigte deshalb bei
 #: jedem Thema eine 0.)
 APP_OHNE_VERTRAG = {
-    "applicants",
     "art",
     "calendar_id",
-    "future",
-    "is_motion",
-    "is_public",
     "letzte",
     "location_slug",
     "n_stationen",
@@ -233,7 +213,6 @@ APP_OHNE_VERTRAG = {
     "nichtoeffentlich",
     "ort_name",
     "rest",
-    "result",
     "titel_kurz",
     "wichtig_grund",
 }

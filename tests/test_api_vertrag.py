@@ -250,7 +250,8 @@ def test_zeilen_typen_kennen_alle_spalten_ihrer_tabelle():
     from typing import get_type_hints
 
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-    from app.antworten import AdminPlaceCandidate, DecisionRow, Herkunft, SessionRow
+    from app.antworten import (AdminPlaceCandidate, DecisionRow, Herkunft,
+                               SessionRow, VideoResult)
     from council.store import CouncilStore
 
     #: Spalten, die der Store vor der Ausgabe absichtlich entfernt.
@@ -263,7 +264,8 @@ def test_zeilen_typen_kennen_alle_spalten_ihrer_tabelle():
                 tabelle: {r[1] for r in store._conn.execute(
                     f"PRAGMA table_info({tabelle})")} - ENTFERNT.get(tabelle, set())
                 for tabelle in ("council_decisions", "council_sessions",
-                                "council_locations", "council_provenance")
+                                "council_locations", "council_provenance",
+                                "council_video_results")
             }
         finally:
             store.close()
@@ -271,7 +273,8 @@ def test_zeilen_typen_kennen_alle_spalten_ihrer_tabelle():
     for typ, tabelle in ((DecisionRow, "council_decisions"),
                          (SessionRow, "council_sessions"),
                          (AdminPlaceCandidate, "council_locations"),
-                         (Herkunft, "council_provenance")):
+                         (Herkunft, "council_provenance"),
+                         (VideoResult, "council_video_results")):
         deklariert = set(get_type_hints(typ, include_extras=True))
         fehlend = spalten[tabelle] - deklariert
         assert not fehlend, (

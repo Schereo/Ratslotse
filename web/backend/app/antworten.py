@@ -50,11 +50,74 @@ class OkWithId(TypedDict):
     id: int
 
 
-# Roh-Zeilen aus den Stores. Sie stammen aus ``SELECT *`` bzw. breiten Joins
-# und wachsen mit ihren Tabellen — hier absichtlich durchgereicht statt
-# aufgezählt (siehe Regel 2 im Modul-Docstring). Die Aliase sind trotzdem
-# sprechend, damit im Schema steht, WAS für ein Objekt gemeint ist.
-AgendaItemRow = dict[str, Any]
+class AgendaAttachment(TypedDict):
+    """Eine Anlage an einem Tagesordnungspunkt."""
+    label: str
+    url: str
+
+
+class AgendaItemRow(TypedDict):
+    """Ein Tagesordnungspunkt, wie ``CouncilStore.agenda_items`` ihn liefert.
+
+    Die ersten fünf Felder sind die Spalten, die die Abfrage ausdrücklich
+    nennt — kein ``SELECT *``, die Aufzählung ist also vollständig. Die vier
+    darunter hängt dieselbe Methode an: die Anlagen des Punktes, die
+    LLM-Kurzfassung, den besseren Kartentext, wo es ihn gibt, und das
+    abgeleitete Dringlichkeits-Flag.
+
+    Beide Aufrufer (die Sitzungs-Seite und die Merkliste über
+    ``council.bookmarks``) holen ihre Punkte aus derselben Methode; deshalb
+    reicht eine Form für beide.
+    """
+    item_number: str
+    title: str
+    template_number: str | None
+    kvonr: int | None
+    is_public: int
+    anlagen: list[AgendaAttachment]
+    summary: str | None
+    #: Der Kartentext aus ``agenda_item_social`` — kennt Vorlage UND Anlagen
+    #: und ist deshalb der bessere der beiden Texte, wo es ihn gibt.
+    social_text: str | None
+    #: Abgeleitet (``council.dringlichkeit``), kein amtliches Feld. Es
+    #: entscheidet hier und nicht im Frontend, damit Web und App denselben
+    #: Punkt hervorheben.
+    dringlich: bool
+
+
+class Attendance(TypedDict):
+    """Eine Zeile der Anwesenheitsliste (``CouncilStore.get_attendance``)."""
+    name: str | None
+    party: str | None
+    role: str | None
+    note: str | None
+
+
+class VideoResult(TypedDict):
+    """Ein vorläufiges Ergebnis aus der Videoaufzeichnung.
+
+    ACHTUNG: Quelle ist ein ``SELECT *`` auf ``council_video_results``. Eine
+    neue Spalte dort fiele ohne Eintrag hier still aus der Antwort — dagegen
+    steht ``test_api_vertrag.py::test_zeilen_typen_kennen_alle_spalten_ihrer_tabelle``.
+    """
+    id: int
+    ksinr: int
+    item_number: str
+    outcome: str
+    vote: str | None
+    no_votes: int | None
+    abstentions: int | None
+    quote: str
+    video_id: str
+    video_seconds: int | None
+    model: str
+    created_at: str
+
+
+class MyTopicItem(TypedDict):
+    """„n TOPs zu deinen Themen" — Treffer der Tagesordnungs-Klassifikation."""
+    item_number: str
+    topic_name: str
 
 
 class SessionRow(TypedDict):
@@ -82,7 +145,7 @@ class SessionRow(TypedDict):
     n_items: NotRequired[int]
     # Vom Sitzungs-Endpunkt angereichert: die TOPs dieser Sitzung, die zu
     # einem Thema des Kontos passen.
-    my_topic_items: NotRequired[list[dict[str, Any]]]
+    my_topic_items: NotRequired[list[MyTopicItem]]
     # Ende des „läuft gerade"-Fensters (``council.live``), nur an Sitzungen
     # von HEUTE — für alle anderen fehlt das Feld.
     live_until: NotRequired[str | None]
@@ -1213,11 +1276,11 @@ class SessionDetail(SessionRow):
     """
     agenda_items: list[AgendaItemRow]
     decisions: list[DecisionRow]
-    attendance: list[dict[str, Any]]
+    attendance: list[Attendance]
     has_protocol: bool
     # Vorläufige Ergebnisse aus der Videoaufzeichnung — die Brücke, bis das
     # Protokoll kommt.
-    video_results: list[dict[str, Any]]
+    video_results: list[VideoResult]
     url: str | None
     agenda_changes: list[AgendaChange]
 
@@ -1269,6 +1332,57 @@ class DecisionFollow(TypedDict):
     following: bool
 
 
+class SimilarDecision(TypedDict):
+    """Ein semantischer Nachbar (``CouncilStore.get_similar``)."""
+    id: int
+    title: str
+    template_number: str | None
+    summary: str | None
+    policy_field: str | None
+    outcome: str | None
+    session_date: str | None
+    committee: str
+    #: Kosinus-Ähnlichkeit aus ``scripts/embed_decisions.py``.
+    score: float
+
+
+class DecisionEntity(TypedDict):
+    """Eine im Beschluss erkannte Entität (Vorhaben, Ort, Organisation)."""
+    slug: str
+    name: str
+    kind: str | None
+
+
+class TemplateAttachment(TypedDict):
+    """Eine Anlage an der Vorlage eines Beschlusses.
+
+    ``applicants`` liegt in der Datenbank als JSON-Text und kommt hier
+    ausgepackt an — eine Liste von Fraktionsnamen (``["Die Linke"]``).
+    """
+    document_id: int | None
+    label: str | None
+    url: str | None
+    is_motion: int
+    applicants: list[str]
+    status: str
+    is_image: int
+
+
+class DeliberationStation(TypedDict):
+    """Eine Station der Beratungsfolge einer Vorlage.
+
+    ``future`` rechnet der Router aus dem Datum — das Ergebnis-Feld entscheidet
+    ausdrücklich NICHT, ob eine Station noch aussteht.
+    """
+    date: str | None
+    committee: str
+    top: str | None
+    is_public: int | None
+    result: str | None
+    ksinr: int | None
+    future: bool
+
+
 class DecisionDetail(TypedDict):
     """Ein Beschluss mit allem Drum und Dran — die geteilte Detailseite.
 
@@ -1280,23 +1394,23 @@ class DecisionDetail(TypedDict):
     des Bestands).
     """
     decision: DecisionRow
-    attendance: list[dict[str, Any]]
+    attendance: list[Attendance]
     present_parties: list[str]
     ratsinfo_url: str | None
     sub_votes: list[DecisionRow]
     template_journey: list[Any]
-    similar: list[dict[str, Any]]
-    entities: list[dict[str, Any]]
+    similar: list[SimilarDecision]
+    entities: list[DecisionEntity]
     participation: DecisionParticipation | None
     importance_breakdown: ImportanceBreakdown
     template: NotRequired[DecisionTemplate]
     template_url: NotRequired[str | None]
-    attachments: NotRequired[list[dict[str, Any]]]
+    attachments: NotRequired[list[TemplateAttachment]]
     # Zwei Formen (Nachbewilligung bzw. Bürgschaft) mit verschiedenen
     # Schlüsseln — deshalb offen statt geraten.
     budget_link: NotRequired[dict[str, Any] | None]
     plan_image: NotRequired[int | None]
-    deliberation_path: NotRequired[list[dict[str, Any]]]
+    deliberation_path: NotRequired[list[DeliberationStation]]
     follow: NotRequired[DecisionFollow]
 
 

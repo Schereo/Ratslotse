@@ -4115,6 +4115,16 @@ export interface components {
             status: string;
         };
         /**
+         * AgendaAttachment
+         * @description Eine Anlage an einem Tagesordnungspunkt.
+         */
+        AgendaAttachment: {
+            /** Label */
+            label: string;
+            /** Url */
+            url: string;
+        };
+        /**
          * AgendaChange
          * @description Eine Änderung an der Tagesordnung aus der Chronik (``agenda_changes``).
          *     ``satz`` ist der Satz für die Meldung, ``zeilen`` die Einzelheiten.
@@ -4126,6 +4136,40 @@ export interface components {
             satz: string;
             /** Zeilen */
             zeilen: unknown[];
+        };
+        /**
+         * AgendaItemRow
+         * @description Ein Tagesordnungspunkt, wie ``CouncilStore.agenda_items`` ihn liefert.
+         *
+         *     Die ersten fünf Felder sind die Spalten, die die Abfrage ausdrücklich
+         *     nennt — kein ``SELECT *``, die Aufzählung ist also vollständig. Die vier
+         *     darunter hängt dieselbe Methode an: die Anlagen des Punktes, die
+         *     LLM-Kurzfassung, den besseren Kartentext, wo es ihn gibt, und das
+         *     abgeleitete Dringlichkeits-Flag.
+         *
+         *     Beide Aufrufer (die Sitzungs-Seite und die Merkliste über
+         *     ``council.bookmarks``) holen ihre Punkte aus derselben Methode; deshalb
+         *     reicht eine Form für beide.
+         */
+        AgendaItemRow: {
+            /** Anlagen */
+            anlagen: components["schemas"]["AgendaAttachment"][];
+            /** Dringlich */
+            dringlich: boolean;
+            /** Is Public */
+            is_public: number;
+            /** Item Number */
+            item_number: string;
+            /** Kvonr */
+            kvonr: number | null;
+            /** Social Text */
+            social_text: string | null;
+            /** Summary */
+            summary: string | null;
+            /** Template Number */
+            template_number: string | null;
+            /** Title */
+            title: string;
         };
         /** AnalysisCoverage */
         AnalysisCoverage: {
@@ -4213,6 +4257,20 @@ export interface components {
             /** Question */
             question: string;
         };
+        /**
+         * Attendance
+         * @description Eine Zeile der Anwesenheitsliste (``CouncilStore.get_attendance``).
+         */
+        Attendance: {
+            /** Name */
+            name: string | null;
+            /** Note */
+            note: string | null;
+            /** Party */
+            party: string | null;
+            /** Role */
+            role: string | null;
+        };
         /** Badge */
         Badge: {
             /** Earned */
@@ -4296,9 +4354,39 @@ export interface components {
          *     sind Roh-Zeilen und bleiben offen.
          */
         BookmarkEntry: {
-            /** Agenda Item */
+            /**
+             * AgendaItemRow
+             * @description Ein Tagesordnungspunkt, wie ``CouncilStore.agenda_items`` ihn liefert.
+             *
+             *     Die ersten fünf Felder sind die Spalten, die die Abfrage ausdrücklich
+             *     nennt — kein ``SELECT *``, die Aufzählung ist also vollständig. Die vier
+             *     darunter hängt dieselbe Methode an: die Anlagen des Punktes, die
+             *     LLM-Kurzfassung, den besseren Kartentext, wo es ihn gibt, und das
+             *     abgeleitete Dringlichkeits-Flag.
+             *
+             *     Beide Aufrufer (die Sitzungs-Seite und die Merkliste über
+             *     ``council.bookmarks``) holen ihre Punkte aus derselben Methode; deshalb
+             *     reicht eine Form für beide.
+             */
             agenda_item: {
-                [key: string]: unknown;
+                /** Anlagen */
+                anlagen: components["schemas"]["AgendaAttachment"][];
+                /** Dringlich */
+                dringlich: boolean;
+                /** Is Public */
+                is_public: number;
+                /** Item Number */
+                item_number: string;
+                /** Kvonr */
+                kvonr: number | null;
+                /** Social Text */
+                social_text: string | null;
+                /** Summary */
+                summary: string | null;
+                /** Template Number */
+                template_number: string | null;
+                /** Title */
+                title: string;
             } | null;
             /** Created At */
             created_at: string;
@@ -4421,9 +4509,7 @@ export interface components {
                 /** Location */
                 location?: string | null;
                 /** My Topic Items */
-                my_topic_items?: {
-                    [key: string]: unknown;
-                }[];
+                my_topic_items?: components["schemas"]["MyTopicItem"][];
                 /** N Items */
                 n_items?: number;
                 /** Session Date */
@@ -5017,26 +5103,18 @@ export interface components {
          */
         DecisionDetail: {
             /** Attachments */
-            attachments?: {
-                [key: string]: unknown;
-            }[];
+            attachments?: components["schemas"]["TemplateAttachment"][];
             /** Attendance */
-            attendance: {
-                [key: string]: unknown;
-            }[];
+            attendance: components["schemas"]["Attendance"][];
             /** Budget Link */
             budget_link?: {
                 [key: string]: unknown;
             } | null;
             decision: components["schemas"]["DecisionRow"];
             /** Deliberation Path */
-            deliberation_path?: {
-                [key: string]: unknown;
-            }[];
+            deliberation_path?: components["schemas"]["DeliberationStation"][];
             /** Entities */
-            entities: {
-                [key: string]: unknown;
-            }[];
+            entities: components["schemas"]["DecisionEntity"][];
             follow?: components["schemas"]["DecisionFollow"];
             importance_breakdown: components["schemas"]["ImportanceBreakdown"];
             /**
@@ -5066,9 +5144,7 @@ export interface components {
             /** Ratsinfo Url */
             ratsinfo_url: string | null;
             /** Similar */
-            similar: {
-                [key: string]: unknown;
-            }[];
+            similar: components["schemas"]["SimilarDecision"][];
             /** Sub Votes */
             sub_votes: components["schemas"]["DecisionRow"][];
             template?: components["schemas"]["DecisionTemplate"];
@@ -5076,6 +5152,18 @@ export interface components {
             template_journey: unknown[];
             /** Template Url */
             template_url?: string | null;
+        };
+        /**
+         * DecisionEntity
+         * @description Eine im Beschluss erkannte Entität (Vorhaben, Ort, Organisation).
+         */
+        DecisionEntity: {
+            /** Kind */
+            kind: string | null;
+            /** Name */
+            name: string;
+            /** Slug */
+            slug: string;
         };
         /**
          * DecisionFollow
@@ -5256,6 +5344,29 @@ export interface components {
              * @default
              */
             current_password: string;
+        };
+        /**
+         * DeliberationStation
+         * @description Eine Station der Beratungsfolge einer Vorlage.
+         *
+         *     ``future`` rechnet der Router aus dem Datum — das Ergebnis-Feld entscheidet
+         *     ausdrücklich NICHT, ob eine Station noch aussteht.
+         */
+        DeliberationStation: {
+            /** Committee */
+            committee: string;
+            /** Date */
+            date: string | null;
+            /** Future */
+            future: boolean;
+            /** Is Public */
+            is_public: number | null;
+            /** Ksinr */
+            ksinr: number | null;
+            /** Result */
+            result: string | null;
+            /** Top */
+            top: string | null;
         };
         /** DeliveryUpdate */
         DeliveryUpdate: {
@@ -5708,6 +5819,16 @@ export interface components {
             day: string;
             /** Urls */
             urls: string[];
+        };
+        /**
+         * MyTopicItem
+         * @description „n TOPs zu deinen Themen" — Treffer der Tagesordnungs-Klassifikation.
+         */
+        MyTopicItem: {
+            /** Item Number */
+            item_number: string;
+            /** Topic Name */
+            topic_name: string;
         };
         /** NearbySuggestion */
         NearbySuggestion: {
@@ -6777,13 +6898,9 @@ export interface components {
             /** Agenda Changes */
             agenda_changes: components["schemas"]["AgendaChange"][];
             /** Agenda Items */
-            agenda_items: {
-                [key: string]: unknown;
-            }[];
+            agenda_items: components["schemas"]["AgendaItemRow"][];
             /** Attendance */
-            attendance: {
-                [key: string]: unknown;
-            }[];
+            attendance: components["schemas"]["Attendance"][];
             /** Committee */
             committee: string;
             /** Decisions */
@@ -6799,9 +6916,7 @@ export interface components {
             /** Location */
             location?: string | null;
             /** My Topic Items */
-            my_topic_items?: {
-                [key: string]: unknown;
-            }[];
+            my_topic_items?: components["schemas"]["MyTopicItem"][];
             /** N Items */
             n_items?: number;
             /** Session Date */
@@ -6811,9 +6926,7 @@ export interface components {
             /** Url */
             url: string | null;
             /** Video Results */
-            video_results: {
-                [key: string]: unknown;
-            }[];
+            video_results: components["schemas"]["VideoResult"][];
         };
         /** SessionList */
         SessionList: {
@@ -6843,9 +6956,7 @@ export interface components {
             /** Location */
             location?: string | null;
             /** My Topic Items */
-            my_topic_items?: {
-                [key: string]: unknown;
-            }[];
+            my_topic_items?: components["schemas"]["MyTopicItem"][];
             /** N Items */
             n_items?: number;
             /** Session Date */
@@ -6886,6 +6997,30 @@ export interface components {
         SharePreview: {
             /** Description */
             description: string;
+            /** Title */
+            title: string;
+        };
+        /**
+         * SimilarDecision
+         * @description Ein semantischer Nachbar (``CouncilStore.get_similar``).
+         */
+        SimilarDecision: {
+            /** Committee */
+            committee: string;
+            /** Id */
+            id: number;
+            /** Outcome */
+            outcome: string | null;
+            /** Policy Field */
+            policy_field: string | null;
+            /** Score */
+            score: number;
+            /** Session Date */
+            session_date: string | null;
+            /** Summary */
+            summary: string | null;
+            /** Template Number */
+            template_number: string | null;
             /** Title */
             title: string;
         };
@@ -7018,6 +7153,29 @@ export interface components {
              * @default
              */
             website: string;
+        };
+        /**
+         * TemplateAttachment
+         * @description Eine Anlage an der Vorlage eines Beschlusses.
+         *
+         *     ``applicants`` liegt in der Datenbank als JSON-Text und kommt hier
+         *     ausgepackt an — eine Liste von Fraktionsnamen (``["Die Linke"]``).
+         */
+        TemplateAttachment: {
+            /** Applicants */
+            applicants: string[];
+            /** Document Id */
+            document_id: number | null;
+            /** Is Image */
+            is_image: number;
+            /** Is Motion */
+            is_motion: number;
+            /** Label */
+            label: string | null;
+            /** Status */
+            status: string;
+            /** Url */
+            url: string | null;
         };
         /** TemplateFollowed */
         TemplateFollowed: {
@@ -7399,6 +7557,40 @@ export interface components {
         VerifyEmailRequest: {
             /** Token */
             token: string;
+        };
+        /**
+         * VideoResult
+         * @description Ein vorläufiges Ergebnis aus der Videoaufzeichnung.
+         *
+         *     ACHTUNG: Quelle ist ein ``SELECT *`` auf ``council_video_results``. Eine
+         *     neue Spalte dort fiele ohne Eintrag hier still aus der Antwort — dagegen
+         *     steht ``test_api_vertrag.py::test_zeilen_typen_kennen_alle_spalten_ihrer_tabelle``.
+         */
+        VideoResult: {
+            /** Abstentions */
+            abstentions: number | null;
+            /** Created At */
+            created_at: string;
+            /** Id */
+            id: number;
+            /** Item Number */
+            item_number: string;
+            /** Ksinr */
+            ksinr: number;
+            /** Model */
+            model: string;
+            /** No Votes */
+            no_votes: number | null;
+            /** Outcome */
+            outcome: string;
+            /** Quote */
+            quote: string;
+            /** Video Id */
+            video_id: string;
+            /** Video Seconds */
+            video_seconds: number | null;
+            /** Vote */
+            vote: string | null;
         };
         /** WebUserOut */
         WebUserOut: {
@@ -12052,4 +12244,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 098569f3bba8c3689434a6d2c670941ccd6dac495bb05d89f56ec566529b49ba
+// vertrag-sha256: 9fbf44b7692cac96308336adaaaac4eda575ed777f0c2becf3e088003e684255
