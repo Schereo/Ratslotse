@@ -7,7 +7,11 @@ set -e
 REPO_ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 TMP_DIR="$(mktemp -d /tmp/ratslotse-e2e-XXXXXX)"
 
-export NWZ_DB="$TMP_DIR/nwz.sqlite"
+# Der Schalter heißt RATSLOTSE_DB, seit die Konten-Datenbank umbenannt wurde
+# (08/2026). Hier stand danach noch NWZ_DB — den liest niemand mehr, und die
+# Vorgabe greift: Die Browsertests liefen damit gegen die ECHTE lokale
+# data/ratslotse.sqlite und legten dort ihre Testkonten an.
+export RATSLOTSE_DB="$TMP_DIR/ratslotse.sqlite"
 export COUNCIL_DB="$TMP_DIR/council.sqlite"
 export WEB_JWT_SECRET="e2e-test-secret"
 export WEB_ADMIN_EMAIL="admin@test.de"
@@ -20,7 +24,7 @@ export RESEND_API_KEY=""
 export PYTHONPATH="$REPO_ROOT"
 
 echo "E2E backend tmp dir: $TMP_DIR"
-echo "NWZ_DB=$NWZ_DB"
+echo "RATSLOTSE_DB=$RATSLOTSE_DB"
 
 # Trap cleans up temp dir when this process exits.
 trap 'rm -rf "$TMP_DIR"' EXIT INT TERM
