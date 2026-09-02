@@ -91,7 +91,8 @@ jobs:
               sleep $((versuch * 15))
             done
             git reset --hard ${{ github.sha }}
-            .venv/bin/pip install -q -r requirements.txt -r web/backend/requirements.txt
+            .venv/bin/pip install -q -r requirements.txt -r web/backend/requirements.txt \
+              -c constraints.txt
             cd web/frontend
             npm ci --no-audit --no-fund
             # Umgebungs-Gate: Features, die nur auf dev.ratslotse.de sichtbar

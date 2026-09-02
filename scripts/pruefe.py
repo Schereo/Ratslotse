@@ -135,7 +135,7 @@ def _modul_fehlt(modul: str, hinweis: str):
     return pruefen
 
 
-DEV_INSTALL = ".venv/bin/pip install -r requirements-dev.txt"
+DEV_INSTALL = ".venv/bin/pip install -r requirements-dev.txt -c constraints.txt"
 
 PRUEFUNGEN: list[Pruefung] = [
     Pruefung("adressen", "fremde E-Mail-Adressen im Diff", schnell=True,
