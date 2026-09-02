@@ -7,6 +7,10 @@ __pycache__/
 *.log
 .pytest_cache/
 .ruff_cache/
+# Was `scripts/dev.py` sich über den eigenen Server merkt (Port und PID).
+# Je Worktree eigener Arbeitsstand; das Protokoll deckt schon `*.log` ab.
+.dev-server.json
+
 web/frontend/.next/
 # Eigenes Build-Verzeichnis des Dev-Servers (next.config.mjs) — trennt
 # `next dev` von `next build`, die sich sonst .next zerlegen.

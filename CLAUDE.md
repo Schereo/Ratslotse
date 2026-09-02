@@ -49,10 +49,18 @@ Zwei Stellen tragen den alten Namen weiter:
 ## Lokale Entwicklung
 
 ```bash
-# Backend (FastAPI)
+# Backend (FastAPI) — einmal einrichten
 python3.12 -m venv .venv && .venv/bin/pip install -r requirements.txt \
   -r web/backend/requirements.txt -c constraints.txt
-cd web/backend && ../../.venv/bin/uvicorn app.main:app --reload --port 8000
+
+# und dann starten. Der Starter sucht sich einen freien Port, verdrahtet die
+# Datenbanken aus data/ und weigert sich, einen FREMDEN Prozess mitzubenutzen.
+# Genau daran ist am 02.09.2026 eine halbe Stunde draufgegangen: Auf dem
+# geratenen Port lag ein zwei Wochen alter Server einer anderen Sitzung, der
+# eigene startete gar nicht — und `/api/health` antwortete trotzdem.
+python scripts/dev.py start     # nennt Port, PID und die Zeile fürs Frontend
+python scripts/dev.py status
+python scripts/dev.py stop      # hält den EIGENEN an, nie einen fremden
 
 # Frontend (Next.js)
 cd web/frontend && npm install && npm run dev      # :3000, /api/* → Backend
