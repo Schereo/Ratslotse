@@ -1782,6 +1782,9 @@ _F_ANSATZ = re.compile(
 # Planungsfrage. Die weichen Wörter brauchen deshalb einen Geld-Anker.
 _F_IST_HART = re.compile(
     r"ausgegeben|jahresabschluss|income_statement|abgerechnet|rechnungsergebnis|"
+    # „Jahresergebnis" zog bis 09/2026 gar nichts — die schlichteste Frage an
+    # den Abschluss bekam keinen Abschluss.
+    r"jahresergebnis|ordentliche[sn]? ergebnis|"
     r"ueberschritten|fehlbetrag|\bdefizit|ueberschuss|\bbilanz")
 _F_IST_WEICH = re.compile(
     r"tatsaechlich|wirklich|am ende|unterm strich|eingehalten|abweich|"
@@ -1908,7 +1911,12 @@ def geld_facetten(question: str, typ: str = "topic") -> set[str]:
         f.add("vergleich")
     if _F_PLAN.search(t):
         f.add("plan")
-    if _F_ANSATZ.search(t):
+    # Der Ansatz auch bei Kosten-Fragen: „Was kostet das Personal?" ist die
+    # Frage an POSTEN 13 des Gesamtergebnishaushalts. Ob der Baustein dann
+    # wirklich in den Kontext kommt, entscheidet `geld_kontext` am Treffer
+    # im Fragewortlaut — sonst hätte „Was kostete der Stadionumbau?" den
+    # Gesamthaushalt im Kontext (der Grund, warum `_F_ANSATZ` eng ist).
+    if _F_ANSATZ.search(t) or (_F_KOSTEN.search(t) and "plan" in f):
         f.add("ansatz")
     if _F_IST_HART.search(t) or (_F_IST_WEICH.search(t) and "plan" in f):
         f.add("ist")
@@ -2054,12 +2062,22 @@ def geld_kontext(store, question: str, begriffe: str = "", typ: str = "topic") -
         aus["konzern"] = _sicher(store.konzern_kontext, year=jahr)
     if "vergleich" in facetten:
         aus["vergleich"] = _sicher(store.staedtevergleich_kontext, year=jahr)
-    if "ansatz" in facetten and not aus.get("haushalt"):
-        # Der Ergebnishaushalt ist die feinere Plan-Quelle (Einnahmearten),
-        # aber die gröbere ist die vertrautere: Solange `council_budget`
-        # einen Teilhaushalt zur Frage hat, reicht der. Erst wenn er nichts
-        # hergibt, lohnt der Ansatz die Zeichen.
-        aus["ansatz"] = _sicher(store.ansatz_fuer_begriffe, woerter, year=jahr)
+    if "ansatz" in facetten:
+        # Der Ergebnishaushalt ist die feinere Plan-Quelle (Ertrags- und
+        # Aufwandsarten), die gröbere (`council_budget`, Teilhaushalte) die
+        # vertrautere. Treffen die Begriffe einen POSTEN („Personal" →
+        # Personalaufwendungen, „Zinsen", „Transfer"), ist der Ansatz die
+        # Antwort und kommt immer; sonst nur, wenn der Teilhaushalt nichts
+        # hergibt — die Summenzeilen lohnen die Zeichen nicht zweimal.
+        # `frage` = die Wörter der ROHEN Frage: Der Treffer, der den Baustein
+        # trotz Teilhaushalt hineinholt, muss aus dem Wortlaut kommen — die
+        # Expansion streut „Finanzierung" ein, und das träfe „Zinsen und
+        # ähnliche Finanzerträge" in jeder Stadion-Frage.
+        eigen = bool(_F_ANSATZ.search(_falte(question or "")))
+        a = _sicher(store.ansatz_fuer_begriffe, woerter, year=jahr,
+                    frage=[w for w in (question or "").split() if len(w) >= 4])
+        if a and (a.get("treffer") or (eigen and not aus.get("haushalt"))):
+            aus["ansatz"] = a
     if "schulden" in facetten:
         aus["schulden"] = _sicher(store.schulden_kontext, year=jahr)
     if "bilanz" in facetten:
@@ -2260,6 +2278,20 @@ def _ist_block(ist: dict | None) -> str:
         # Antwort in genau diesen Jahrgängen zwei verschiedene Dinge.
         zeilen.append(f"  (\"geplant\" ist in diesem Jahrgang der/die {g['plan_kind']}, "
                       f"nicht der nackte Haushaltsansatz — sag das dazu)")
+    e = ist.get("ergebnis") or {}
+    if e.get("ordentlich"):
+        plan, tat = e["ordentlich"]
+        s = (f"- Ordentliches Ergebnis {ist['year']} (Erträge minus Aufwendungen): "
+             f"geplant {_eur(plan)}, tatsächlich {_eur(tat)}")
+        if e.get("ausserordentlich"):
+            plan2, tat2 = e["ausserordentlich"]
+            s += (f"; außerordentliches Ergebnis geplant {_eur(plan2)}, tatsächlich "
+                  f"{_eur(tat2)} — das Jahresergebnis ist die Summe beider, nenne beide")
+        zeilen.append(s)
+    for p in ist.get("posten") or []:
+        abw = f", Abweichung {_eur(p['deviation'])}" if p.get("deviation") is not None else ""
+        zeilen.append(f"- Posten {p['nr']} {p['label']} {ist['year']}: geplant "
+                      f"{_eur(p.get('planned'))}, tatsächlich {_eur(p.get('actual'))}{abw}")
     for b in ist.get("bereiche") or []:
         zeilen.append(f"- {b.get('name')} {ist['year']}: Aufwendungen geplant "
                       f"{_eur(b.get('expenses_planned'))}, tatsächlich "

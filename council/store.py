@@ -13502,10 +13502,15 @@ class CouncilStore(*_geld.MIXINS):
                                         gefragt, "result IS NOT NULL")
         if not year:
             return None
+        # Die Gesamtrechnung mit ALLEN Posten, die Teilhaushalte nur mit ihren
+        # Summen: „Was kostet das Personal?" braucht Posten 13 der Gesamt-
+        # rechnung — bis 09/2026 lieferte diese Methode nur die Summen 12/20,
+        # und die Antwort kannte den Personalaufwand nicht, obwohl er dastand.
         rows = [dict(r) for r in self._conn.execute(
-            "SELECT sub_budget_no, sub_budget_name, nr, budgeted, plan, plan_kind, result, deviation, "
-            " herkunft_id FROM council_income_statement "
-            "WHERE year = ? AND nr IN (12, 20) ORDER BY sub_budget_no, nr", (year,))]
+            "SELECT sub_budget_no, sub_budget_name, nr, label, budgeted, plan, plan_kind, "
+            " result, deviation, herkunft_id FROM council_income_statement "
+            "WHERE year = ? AND (sub_budget_no IS NULL OR nr IN (12, 20)) "
+            "ORDER BY sub_budget_no, nr", (year,))]
         if not rows:
             return None
 
@@ -13524,7 +13529,33 @@ class CouncilStore(*_geld.MIXINS):
                 "herkunft_id": a.get("herkunft_id") or e.get("herkunft_id"),
             }
 
-        gesamt = paar([r for r in rows if r["sub_budget_no"] is None])
+        gesamt_rows = [r for r in rows if r["sub_budget_no"] is None]
+        gesamt = paar(gesamt_rows)
+
+        def wert(r: dict) -> tuple:
+            return (r.get("budgeted") if r.get("plan") is None else r.get("plan"), r.get("result"))
+
+        # Die Ergebniszeilen (21 ordentlich, 24 außerordentlich) immer: „Wie
+        # war das Jahresergebnis?" ist die schlichteste Frage an den Abschluss,
+        # und die Summen 12/20 beantworten sie nur über eine Rechnung, die
+        # das Modell nicht anstellen soll.
+        ergebnis = {}
+        for r in gesamt_rows:
+            if r["nr"] == 21:
+                ergebnis["ordentlich"] = wert(r)
+            elif r["nr"] == 24:
+                ergebnis["ausserordentlich"] = wert(r)
+        # Die einzelnen Posten NUR bei Begriffstreffer (Personal, Zinsen,
+        # Transfer, Abschreibungen …) — sonst wären es 22 Zeilen je Frage.
+        posten: list[dict] = []
+        if begriffe:
+            kandidaten = [r for r in gesamt_rows if r["nr"] not in (12, 20, 21, 24)]
+            bewertet = [(self._trifft(r.get("label"), begriffe), r) for r in kandidaten]
+            posten = [{"nr": r["nr"], "label": r["label"], "planned": wert(r)[0],
+                       "actual": r.get("result"), "deviation": r.get("deviation")}
+                      for n, r in sorted(bewertet,
+                                         key=lambda x: (-x[0], -abs(x[1].get("deviation") or 0)))
+                      if n][:3]
         bereiche: list[dict] = []
         if begriffe:
             nach_thh: dict[int, list[dict]] = {}
@@ -13535,6 +13566,7 @@ class CouncilStore(*_geld.MIXINS):
                         for t in nach_thh.values()]
             bereiche = [b for n, b in sorted(bewertet, key=lambda x: -x[0]) if n][:limit]
         return {"year": year, "gesamt": gesamt, "bereiche": bereiche,
+                "posten": posten, "ergebnis": ergebnis,
                 "beleg": self._beleg(gesamt.get("herkunft_id")),
                 **({"year_asked": gefragt} if abweicht else {})}
 
@@ -13689,7 +13721,8 @@ class CouncilStore(*_geld.MIXINS):
                 **({"year_asked": gefragt} if abweicht else {})}
 
     def ansatz_fuer_begriffe(self, begriffe: list[str], limit: int = 4,
-                             year: int | None = None) -> dict | None:
+                             year: int | None = None,
+                             frage: list[str] | None = None) -> dict | None:
         """Einnahme- und Ausgabearten des jüngsten **Planjahres** aus dem
         Gesamtergebnishaushalt.
 
@@ -13710,13 +13743,21 @@ class CouncilStore(*_geld.MIXINS):
             return None
         bewertet = [(self._trifft(r["label"], begriffe), r) for r in rows]
         passend = [r for n, r in sorted(bewertet, key=lambda x: -x[0]) if n][:limit]
+        # `treffer` sagt dem Aufrufer, ob die Begriffe einen Posten getroffen
+        # haben: Dann ist der Baustein die Antwort (Personalaufwendungen,
+        # Zinsen, Transfer) und gehört in den Kontext, auch wenn `council_budget`
+        # schon einen Teilhaushalt liefert.
+        # Gemessen am ROHEN Fragewortlaut, wenn er mitkommt: Die expandierten
+        # Begriffe sind zum Finden gut und zum Entscheiden zu weit.
+        treffer = bool(passend) and (frage is None or any(
+            self._trifft(r["label"], frage) for r in passend))
         if not passend:
             # Ohne Treffer die Summenzeilen — sie beantworten „was nimmt die
             # Stadt ein, was gibt sie aus" und sind nie daneben.
             passend = [r for r in rows if r["is_total"]][:limit]
         if not passend:
             return None
-        return {"year": year, "posten": passend,
+        return {"year": year, "posten": passend, "treffer": treffer,
                 "beleg": self._beleg(passend[0].get("herkunft_id")),
                 **({"year_asked": gefragt} if abweicht else {})}
 
