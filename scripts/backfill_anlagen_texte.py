@@ -29,7 +29,7 @@ load_dotenv(ROOT / ".env")
 
 from council.store import CouncilStore  # noqa: E402
 from council.kontaktdaten import entfernen  # noqa: E402
-from council.vorlagen import _pdf_text  # noqa: E402
+from council.vorlagen import _pdf_text, _session  # noqa: E402
 
 COUNCIL_DB = Path(os.environ.get("COUNCIL_DB") or ROOT / "data" / "council.sqlite")
 MIN_TEXT = 200          # darunter gilt das PDF als Scan/Bild ('empty')
@@ -101,6 +101,97 @@ def finanz_muster() -> list[str]:
             continue
         muster.extend(getattr(erkennung, "label_muster", None) or ())
     return sorted(set(muster))
+
+
+#: Ab wie vielen Zeichen eine Seite überhaupt als „beschrieben" gilt — kürzere
+#: Seiten (Deckblatt, Trennblatt) tragen zu wenig, um ihren Buchstabenanteil
+#: zu beurteilen.
+MIN_SEITENTEXT = 200
+
+
+def seite_braucht_ocr(text: str) -> bool:
+    """Ist DIESE Seite Glyphen-Salat, obwohl das Dokument als Ganzes lesbar ist?
+
+    Der Stellenplan 2026 (Anlage 297432) trägt Teil A mit Zeichenzuordnung und
+    Teil B ohne: Seiten 5–9 liefern 6.000 Zeichen wie „/0 /1 /2 /3 /i255" bei
+    ein Prozent Buchstaben. Das ganze Dokument liegt bei 20 % Buchstaben und
+    fällt damit durch kein Glyphen-Netz — die Buchstaben-Schwelle ist eine
+    Dokument-Schwelle. Der Teil B fehlte deshalb seit 10/2025."""
+    return len(text) >= MIN_SEITENTEXT and buchstabenanteil(text) < MIN_BUCHSTABEN
+
+
+def hat_glyphstrecke(text: str, fenster: int = 2000) -> bool:
+    """Vorprüfung am gespeicherten Text, ohne Download: Trägt er einen langen
+    Abschnitt, der aussieht wie eine Glyphenseite? Die Seitengrenzen sind im
+    gespeicherten Text verloren, deshalb Fenster fester Länge."""
+    for i in range(0, max(1, len(text) - fenster + 1), fenster):
+        if seite_braucht_ocr(text[i:i + fenster]):
+            return True
+    return False
+
+
+def glyphseiten_reparieren(store: CouncilStore, wo: str, werte: list,
+                           document_id: int | None = None,
+                           limit: int | None = None) -> dict:
+    """Anlagen mit lesbarem Text UND einzelnen Glyphenseiten: die Glyphenseiten
+    per OCR lesen und den Text seitenrichtig neu zusammensetzen.
+
+    Läuft nur über ``status='ok'`` — genau die Menge, die weder dieser Lauf
+    (er holt ``listed``/``failed``) noch die OCR (sie liest ``empty``) je
+    wieder anfasst. Gerechnet wird zweistufig: erst die Vorprüfung am
+    gespeicherten Text (kostet nichts), dann seitenweise am PDF; nur die
+    Glyphenseiten gehen ans Modell (``council.ocr.lies_seite``)."""
+    import io
+
+    import pypdf
+
+    from council import ocr
+
+    bedingung = "status = 'ok' AND raw_text != '' AND url IS NOT NULL"
+    params: list = list(werte)
+    if document_id is not None:
+        bedingung = "document_id = ? AND url IS NOT NULL"
+        params = [document_id]
+        wo = ""
+    rows = store._conn.execute(
+        f"SELECT document_id, url, raw_text FROM council_attachments WHERE {bedingung}{wo} "
+        f"ORDER BY document_id DESC" + (f" LIMIT {int(limit)}" if limit else ""), params).fetchall()
+    geprueft = repariert = seiten = fehler = 0
+    for r in rows:
+        if document_id is None and not hat_glyphstrecke(r["raw_text"] or ""):
+            continue
+        geprueft += 1
+        try:
+            antwort = _session.get(r["url"], timeout=90)
+            antwort.raise_for_status()
+            reader = pypdf.PdfReader(io.BytesIO(antwort.content))
+            teile: list[str] = []
+            n_ocr = 0
+            for page in reader.pages:
+                t = page.extract_text() or ""
+                if seite_braucht_ocr(t):
+                    t = ocr.lies_seite(ocr.seite_als_bild(page))
+                    n_ocr += 1
+                teile.append(t)
+        except Exception as exc:  # noqa: BLE001 — eine kaputte Anlage stoppt nichts
+            fehler += 1
+            print(f"  [{r['document_id']}] Glyphseiten: FEHLER {exc}", flush=True)
+            continue
+        if not n_ocr:
+            continue
+        text = entfernen("\n".join(teile).strip())[:MAX_TEXT]
+        with store._conn:
+            store._conn.execute(
+                "UPDATE council_attachments SET raw_text=?, n_pages=?, status='ok', "
+                "fetched_at=datetime('now') WHERE document_id = ?",
+                (text, len(reader.pages), r["document_id"]))
+        repariert += 1
+        seiten += n_ocr
+        print(f"  [{r['document_id']}] {n_ocr} von {len(reader.pages)} Seiten per OCR ersetzt "
+              f"({len(text)} Zeichen)", flush=True)
+    print(f"Glyphseiten: {geprueft} Anlage(n) geprüft, {repariert} repariert "
+          f"({seiten} Seiten per OCR), {fehler} Fehler", flush=True)
+    return {"geprueft": geprueft, "repariert": repariert, "seiten": seiten, "fehler": fehler}
 
 
 def process(db_path: Path, limit: int | None, workers: int, retry_failed: bool,
@@ -223,14 +314,37 @@ def main() -> dict:
                     help="Anlagen, die mit kaputter Zeichenzuordnung auf 'ok' stehen "
                          "(Buchstabenanteil unter MIN_BUCHSTABEN), auf 'empty' setzen — "
                          "damit die OCR sie liest")
+    ap.add_argument("--glyphseiten", action="store_true",
+                    help="Anlagen auf 'ok', die EINZELNE Seiten ohne Zeichenzuordnung "
+                         "tragen (Stellenplan 2026, Teil B): diese Seiten per OCR "
+                         "lesen und den Text neu zusammensetzen")
+    ap.add_argument("--document-id", type=int, default=None,
+                    help="mit --glyphseiten: genau diese Anlage reparieren")
     ap.add_argument("--db", default=str(COUNCIL_DB))
     args = ap.parse_args()
+    if args.glyphseiten and args.document_id is not None:
+        store = CouncilStore(Path(args.db))
+        try:
+            return glyphseiten_reparieren(store, "", [], document_id=args.document_id)
+        finally:
+            store.close()
     stats = process(Path(args.db), args.limit, args.workers, args.retry_failed,
                     nur_finanz=args.nur_finanz, gekappte=args.gekappte,
                     glyphen=args.glyphen)
     print(f"Anlagen-Texte: {stats['geladen']} mit Text, {stats['ohne_text']} ohne, "
           f"{stats['fehler']} Fehler von {stats['gesamt']}, "
           f"{stats['glyphen_geleert']} Glyphen-Anlagen an die OCR", flush=True)
+    if args.glyphseiten:
+        store = CouncilStore(Path(args.db))
+        try:
+            wo, werte = "", []
+            if args.nur_finanz:
+                from council import finanzquellen as fq
+                filter_sql, werte = fq.finanz_anlagen_where()
+                wo = " AND " + filter_sql
+            stats["glyphseiten"] = glyphseiten_reparieren(store, wo, werte, limit=args.limit)
+        finally:
+            store.close()
     return stats
 
 
