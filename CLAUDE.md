@@ -50,7 +50,8 @@ Zwei Stellen tragen den alten Namen weiter:
 
 ```bash
 # Backend (FastAPI)
-python3.12 -m venv .venv && .venv/bin/pip install -r requirements.txt -r web/backend/requirements.txt
+python3.12 -m venv .venv && .venv/bin/pip install -r requirements.txt \
+  -r web/backend/requirements.txt -c constraints.txt
 cd web/backend && ../../.venv/bin/uvicorn app.main:app --reload --port 8000
 
 # Frontend (Next.js)
@@ -60,7 +61,8 @@ cd web/frontend && npm install && npm run dev      # :3000, /api/* → Backend
 cd docs-site && npm install && npm run dev
 
 # Tests
-.venv/bin/pip install -r requirements-dev.txt && .venv/bin/python -m pytest tests/ -q
+.venv/bin/pip install -r requirements-dev.txt -c constraints.txt
+.venv/bin/python -m pytest tests/ -q
 ```
 
 Zwei SQLite-DBs unter `data/` (gitignored): `ratslotse.sqlite` (Konten, Themen, Gespräche)

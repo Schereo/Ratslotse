@@ -43,7 +43,11 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt -r requirements-dev.txt
+          # -c constraints.txt: dieselben Fassungen wie auf Prod. Ohne das
+          # prüfte die CI gegen die jeweils neueste — und damit gegen etwas
+          # anderes, als die Seite trägt (gemessen 02.09.2026: fastapi 0.137
+          # auf Prod, 0.139 auf dev, in der CI wieder etwas Drittes).
+          pip install -r requirements.txt -r requirements-dev.txt -c constraints.txt
 
       - name: Run tests
         run: python -m pytest tests/ -q
@@ -131,7 +135,8 @@ jobs:
             set -e
             cd ~/app
             # Backend deps (idempotent) + frontend build, then restart web services.
-            .venv/bin/pip install -q -r requirements.txt -r web/backend/requirements.txt
+            .venv/bin/pip install -q -r requirements.txt -r web/backend/requirements.txt \
+              -c constraints.txt
             cd web/frontend && npm ci --no-audit --no-fund
             # CARTO_API_KEY: Key für die Kartenkacheln, zur Build-Zeit ins
             # Client-Bundle einkompiliert (NEXT_PUBLIC_, s. lib/basemap.ts).
