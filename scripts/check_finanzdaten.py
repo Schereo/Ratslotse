@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 """Neue Haushalts-Jahrgänge von allein nachziehen (alle zwei Wochen).
 
-Der Haushalts-Bereich lebt von einundzwanzig Datenschichten (``finanzquellen.
+Der Haushalts-Bereich lebt von zweiundzwanzig Datenschichten (``finanzquellen.
 REIHENFOLGE``), die bis 08/2026 alle von Hand eingelesen wurden. Dieser Job
 holt die **neun**, die als Anlage im Ratsinformationssystem liegen UND einen
-eigenen Leser mitbringen (``einlesen``). Von den elf übrigen kommen sieben von
+eigenen Leser mitbringen (``einlesen``). Von den dreizehn übrigen kommen sieben von
 außerhalb und haben eigene Wege — ausdrücklich so, denn „lädt nichts herunter"
-ist die Regel, an der dieser Job hängt. Die restlichen vier liegen zwar im
+ist die Regel, an der dieser Job hängt. Die restlichen sechs liegen zwar im
 Ratsinformationssystem, werden aber von eigenen Skripten eingelesen
 (``ingest_wirtschaftsplaene.py``, ``ingest_haushaltssatzung.py``,
-``ingest_gebuehren.py``, ``ingest_haushaltsvollzug.py``). Bis 09/2026 hat
+``ingest_gebuehren.py``, ``ingest_haushaltsvollzug.py``,
+``ingest_liquiditaet.py``, ``ingest_kredite.py``). Bis 09/2026 hat
 dieser Job sie nur beobachtet; seit Tims Punkt 5 („Frische automatisieren")
 **ruft er ihre Skripte auf, sobald ein neues Dokument im Bestand liegt** —
 gemessen an der Dokumentmarke (``Finanzquelle.dokumentmarke``), die sich der

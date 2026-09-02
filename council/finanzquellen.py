@@ -640,6 +640,28 @@ def _bestand_wirtschaftsplan(store: CouncilStore) -> set[tuple]:
         return set()
 
 
+def _bestand_loans(store: CouncilStore) -> set[tuple]:
+    """Die Jahrgänge, für die eine Unterrichtung über Kreditaufnahmen im
+    Bestand steht. Einheit ist der Jahrgang des Berichtszeitraums — eine
+    Unterrichtung deckt ein Halbjahr oder ein Quartal, die Frage der Seite
+    ist aber „bis wann reichen die Zahlen?"."""
+    return {(r[0],) for r in _jahre(
+        store, "SELECT DISTINCT year FROM council_loan_notices")}
+
+
+def _marke_loans(store: CouncilStore) -> int | None:
+    """Die jüngste Vorlage, die eine Unterrichtung sein könnte — dieselbe
+    Auswahl wie ``store.kreditunterrichtungen()``, als ``kvonr``.
+
+    Die Schicht hängt an VORLAGEN mit Volltext, nicht an Anlagen: Eine
+    ``erkennung`` über Anlagen-Labels griffe ins Leere, die ``document_id``
+    der Anlage gibt es hier nicht. Die ``kvonr`` wächst mit jeder neuen
+    Vorlage und taugt deshalb als Marke."""
+    reihen = _jahre(store, "SELECT MAX(kvonr) FROM council_templates "
+                           "WHERE title LIKE '%Kreditaufnahme%' OR title LIKE 'Umschuldung%'")
+    return reihen[0][0] if reihen and reihen[0][0] is not None else None
+
+
 def _bestand_schulden(store: CouncilStore) -> set[tuple]:
     """Die Jahrgänge der Schuldenzeitreihe.
 
@@ -2588,6 +2610,26 @@ for _q in (
         balance=_bestand_liquiditaet,
     ),
     Finanzquelle(
+        key="loans",
+        label="Kreditaufnahmen und Umschuldungen",
+        was="Welche Kredite die Stadt aufgenommen, umgeschuldet oder verlängert "
+            "hat — zu welchem Zins und mit welcher Bindung. Die Unterrichtungen "
+            "des Rates nach der Kreditrichtlinie, halbjährlich bis quartalsweise.",
+        tabelle="council_loan_notices",
+        nebentabellen=("council_loan_items",),
+        # Die Unterrichtung über das zweite Halbjahr kommt im Frühjahr des
+        # Folgejahres in den Rat — der Jahrgang gilt ab März als fällig.
+        erwarteter_monat=3,
+        versatz=1,
+        herkunft="ris",
+        # Vorlagen mit Volltext, keine Anlagen — deshalb keine ``erkennung``,
+        # sondern eine eigene Marke (s. ``_marke_loans``).
+        marke=_marke_loans,
+        nachschub="scripts/ingest_kredite.py (liest die Vorlagen-Volltexte)",
+        lauf=("scripts/ingest_kredite.py",),
+        balance=_bestand_loans,
+    ),
+    Finanzquelle(
         key="budget_bylaw",
         label="Haushaltssatzung",
         was="Der Rahmen, den der Haushaltsplan bekommt: wie viel die Stadt "
@@ -2816,7 +2858,7 @@ REIHENFOLGE = ("haushaltsplan", "income_budget", "investitionen",
                "konzernabschluss", "beteiligungsbericht", "fees",
                "budget_bylaw",
                "wirtschaftsplan",
-               "schulden", "liquidity",
+               "schulden", "loans", "liquidity",
                "lsn_steuerkraft", "lsn_realsteuern", "lsn_gewerbesteuer")
 
 #: Die Stelle hinter einer Herkunft, im Klartext. Sie steht in der Fußzeile des
