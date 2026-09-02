@@ -380,8 +380,8 @@ export default function EinnahmenPage() {
                   + `${zuweisungJahr.year} rund ${deMio(zuweisungJahr.allocations / 1e6)} Millionen Euro`
                 : "")
             + ". Die Karten sind eine Auswahl wiederkehrender Einnahmequellen mit klarer"
-            + " Zuständigkeit. Gebühren, Kostenerstattungen und zweckgebundene Zuschüsse"
-            + " stehen vollständig in der geplanten Aufteilung weiter oben. Die Beträge"
+            + " Zuständigkeit. Alle Ertragsarten mit ihren Summen zeigt die geplante"
+            + " Aufteilung weiter oben. Die Beträge"
             + " hier dürfen wegen ihrer unterschiedlichen Jahre nicht dazuaddiert werden."}
         />
       )}

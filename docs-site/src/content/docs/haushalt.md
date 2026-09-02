@@ -42,7 +42,7 @@ genau dieser Reihenfolge.
 | `/haushalt/einnahmen` | Schritt 1 — alle Einnahmequellen, **nach Entscheidungsmacht gruppiert** statt nach Betrag sortiert |
 | `/haushalt/pflicht` | Schritt 2 — muss oder kann: Ausgaben nach Gestaltungsspielraum, gegen die Selbstauskunft der Stadt gehalten |
 | `/haushalt/produkte[?nr=<produkt_nr>]` | Schritt 3 — „Was kostet eigentlich …?", zwei Abschnitte: `#bereiche` die zehn Teilhaushalte im Klartext (ihre Namen stammen aus der Verwaltungs­gliederung und sagen, wer zuständig ist, nicht worum es geht), `#produkte` die einzelnen Produkte mit Kosten, durchsuchbar. Die dritte Ebene — der Steckbrief eines Teilhaushalts — bleibt `/haushalt/bereich` |
-| `/haushalt/personal` | Schritt 4 — „Wer macht die Arbeit?“: der Stellenplan je Amtsbezeichnung, mit besetzten und unbesetzten Stellen zum Stichtag |
+| `/haushalt/personal` | Schritt 4 — „Wer macht die Arbeit?“: der Stellenplan je Amtsbezeichnung, mit besetzten und unbesetzten Stellen zum Stichtag — dazu, was das Personal kostet: Posten 13 der Ergebnisrechnung (Ist, Plan gegen Ist je Jahr) und der Ansatz des jüngsten Haushalts |
 | `/haushalt/investitionen[?jahr=<jahr>&thh=<nr>]` | Schritt 5 — „Was gebaut wird — und was daraus wurde", zwei Abschnitte: `#plan` der Finanzhaushalt je Teilhaushalt mit dem Investitionsprogramm (Vorhaben einzeln, durchsuchbar), `#gebaut` was am Jahresende tatsächlich abgeflossen ist — seit 2003, nach Auszahlungsart |
 | **Die Gegenprobe** | |
 | `/haushalt/plan-ist[?jahr=<jahr>]` | Schritt 6 — geplant gegen tatsächlich, je Teilhaushalt, mit den Abweichungsgründen der Verwaltung im Wortlaut |

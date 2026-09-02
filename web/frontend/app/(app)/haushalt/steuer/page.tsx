@@ -451,7 +451,8 @@ function SteuerInner() {
       {/* Dieselbe Ordnung wie bei den Steuern: erst was hereinkam, dann was man
           erwartet hatte — nur aus der anderen Quelle. */}
       {istEntgelt && (
-        <EntgeltePlanIst zeilen={entgelt} beleg={<Beleg q="jahresabschluss" />} />
+        <EntgeltePlanIst zeilen={entgelt} beleg={<Beleg q="jahresabschluss" />}
+          keineWertung={art.planIstWertung} />
       )}
 
       {/* Wofür die Leute zahlen. Steht bewusst hinter der Kurve und nicht neben
@@ -463,6 +464,7 @@ function SteuerInner() {
             (z) => z.nr === art.ergebnisPosten && z.sub_budget_no !== null && z.year === letzte.year,
           )}
           year={letzte.year}
+          title={art.bereicheTitel}
           beleg={<Beleg q="ergebnisrechnung_thh" />}
         />
       )}
@@ -478,13 +480,18 @@ function SteuerInner() {
           <p className="mt-1.5 max-w-[70ch] text-[12.5px] leading-relaxed text-foreground/80">
             <GlossaryText text={art.grenze} />
           </p>
-          <Link
-            href="/haushalt/konzern#fees"
-            className="mt-2.5 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-primary hover:underline"
-          >
-            Was du dafür zahlst — die Gebührenbedarfsberechnung
-            <ChevronRight className="h-3.5 w-3.5" />
-          </Link>
+          {/* Die Brücke zur Gebührenbedarfsberechnung gehört nur den Gebühren
+              (Posten 5) — für Erstattungen und Zuweisungen gibt es kein
+              „was du dafür zahlst". */}
+          {art.ergebnisPosten === 5 && (
+            <Link
+              href="/haushalt/konzern#fees"
+              className="mt-2.5 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-primary hover:underline"
+            >
+              Was du dafür zahlst — die Gebührenbedarfsberechnung
+              <ChevronRight className="h-3.5 w-3.5" />
+            </Link>
+          )}
         </div>
       )}
 
