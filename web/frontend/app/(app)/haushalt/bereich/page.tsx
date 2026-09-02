@@ -199,10 +199,29 @@ function BereichInner() {
     return <div className="py-16 text-center text-sm text-muted-foreground">Haushalt wird geladen …</div>;
   }
   if (!z || !year || !kanon) {
+    // Keine Sackgasse: Ohne (oder mit unbekanntem) Namen stehen hier die
+    // Bereiche selbst zur Wahl (Durchsicht 02.09.2026).
+    const auswahl = bereiche(zeilen);
     return (
-      <div className="py-16 text-center text-sm text-muted-foreground">
-        Diesen Bereich kennen wir nicht.{" "}
-        <Link href="/haushalt/produkte#bereiche" className="font-semibold text-primary">Alle Bereiche ansehen</Link>
+      <div className="mx-auto max-w-[64ch] py-12 text-sm text-muted-foreground">
+        <p className="text-center">
+          {slug.trim() ? "Diesen Bereich kennen wir nicht." : "Welchen Bereich möchtest du sehen?"}
+        </p>
+        {auswahl.length > 0 && (
+          <ul className="mt-4 flex flex-wrap justify-center gap-1.5">
+            {auswahl.map((r) => (
+              <li key={r.area}>
+                <Link href={`/haushalt/bereich?name=${bereichSlug(r.area)}`}
+                  className="inline-flex min-h-[32px] items-center rounded-full border border-border bg-card px-3 text-[12.5px] font-semibold text-foreground hover:border-primary/40">
+                  {r.area}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+        <p className="mt-4 text-center">
+          <Link href="/haushalt/produkte#bereiche" className="font-semibold text-primary">Alle Bereiche im Vergleich</Link>
+        </p>
       </div>
     );
   }

@@ -32,6 +32,15 @@ const QUELLEN: QuellenSchluessel[] = [
   "plan", "taxes", "tax_capacity", "teilhaushalt",
 ];
 
+/** Produktnamen, die nach etwas anderem klingen, als sie enthalten:
+ *  „Rechnungswesen" ist die Kämmerei-Buchung von Steuern, Zinsen und Umlagen
+ *  — in der Bühne stand der Name kommentarlos als größter Zuschussposten
+ *  (Durchsicht 02.09.2026). Der amtliche Name bleibt, der Zusatz sagt, was
+ *  darin verbucht wird. */
+const KLARTEXT: Record<string, string> = {
+  Rechnungswesen: "Rechnungswesen · Steuern, Zinsen, Umlagen",
+};
+
 const MARKEN = [
   { id: "bereiche", title: "Was die Namen heißen" },
   { id: "produkte", title: "Was einzelne Aufgaben kosten" },
@@ -90,7 +99,9 @@ function ProdukteSeiteInner() {
                 const max = Math.max(...balance.beispiele.map((b) => b.value), 1);
                 return balance.beispiele.map((b) => (
                   <span key={b.name} className="flex flex-col gap-[3px]">
-                    <span className="truncate text-[9.5px] leading-none text-muted-foreground">{b.name}</span>
+                    <span className="truncate text-[9.5px] leading-none text-muted-foreground">
+                      {KLARTEXT[b.name] ?? b.name}
+                    </span>
                     <span className="block h-3 rounded-[4px]" style={{
                       width: `${Math.max((b.value / max) * 100, 4)}%`,
                       background: "var(--sb-voll)",
