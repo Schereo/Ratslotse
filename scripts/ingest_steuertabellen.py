@@ -104,7 +104,7 @@ def ist_reihe(store: CouncilStore) -> tuple[dict, dict]:
     for row in store.get_steuereinnahmen():
         if row.get("amount") is None:
             continue
-        alle.setdefault(row["year"], {})[row["art"]] = float(row["amount"])
+        alle.setdefault(row["year"], {})[row["kind"]] = float(row["amount"])
     grundsteuer = {j: w[GRUNDSTEUER] for j, w in alle.items() if GRUNDSTEUER in w}
     return alle, grundsteuer
 
@@ -250,7 +250,7 @@ def main() -> int:
                       f"Jahrgänge {result['years']}")
 
             zeilen_1103 = stt.zusammenlegen(
-                gelesen, lambda z: (z["year"], z["art"]))
+                gelesen, lambda z: (z["year"], z["kind"]))
             jahre_1103 = sorted({z["year"] for z in zeilen_1103})
             print(f"  zusammengelegt: {len(zeilen_1103)} Zeilen · "
                   f"Jahrgänge {jahre_1103}")
@@ -274,7 +274,7 @@ def main() -> int:
                 sprung = result["sprungjahre"]
                 print(f"  {name}: {len(result['zeilen'])} Zeilen")
             zeilen_1105 = stt.zusammenlegen(
-                gelesen5, lambda z: (z["year"], z["art"]))
+                gelesen5, lambda z: (z["year"], z["kind"]))
             jahre_1105 = sorted({z["year"] for z in zeilen_1105})
             if zeilen_1105:
                 print(f"  zusammengelegt: {len(zeilen_1105)} Zeilen · "
