@@ -571,6 +571,29 @@ lotti-figur {
     0 8px 18px -8px rgba(0, 0, 0, 0.6);
 }
 .gb-fuehrung { transition: transform 160ms var(--ease-out-strong); }
+/* Lage und Maß gleiten (Hantel-Umschalter: die Punkte wandern statt zu
+   springen) — ohne den Innenrand der Kachel. */
+.gb-lage {
+  transition:
+    left 380ms var(--ease-out-strong),
+    width 380ms var(--ease-out-strong),
+    transform 380ms var(--ease-out-strong);
+}
+/* Eine ZEILE unter dem Zeiger (Hantel, Rangliste): Grund leicht getönt, die
+   übrigen treten zurück. Kein Hub — Zeilen liegen im Fluss, ein Versatz
+   verschöbe den Text. */
+.gb-zeile {
+  border-radius: 10px;
+  transition: opacity 200ms ease-out, background-color 180ms ease-out;
+}
+.gb-zeile[data-schwebt="true"] { background-color: hsl(var(--muted) / 0.55); }
+.gb-zeile[data-gedimmt="true"] { opacity: 0.68; }
+/* Ein SEGMENT in einer Leiste (Gegenbalken): Das gewählte wird eine Spur
+   heller, die übrigen treten zurück. Kein Transform — die Leiste beschneidet
+   ihre Segmente, ein Hub wäre abgeschnitten. */
+.gb-segment { transition: opacity 180ms ease-out, filter 180ms ease-out; }
+.gb-segment[data-schwebt="true"] { filter: brightness(1.07); }
+.gb-segment[data-gedimmt="true"] { opacity: 0.45; }
 
 @keyframes gb-auf {
   from { opacity: 0; transform: scale(0.94); }
