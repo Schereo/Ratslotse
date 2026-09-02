@@ -195,6 +195,15 @@ Endpunkte ohne Konto auf dem frisch gestarteten Dienst auf und hält jede
 Antwort gegen `api/openapi.json` — Pflichtfeld da, Typ passend. Der Grund:
 `/api/health` fasst die Datenbank nicht an, eine Abfrage auf eine Spalte, die
 eine Migration gerade entfernt hat, wirft aber erst beim ersten echten Aufruf.
+Seit dem Ausbau gehört auch die **angemeldete** Fläche dazu: Die Probe baut
+sich auf dem Server selbst ein Token, gültig fünf Minuten, aus
+`WEB_JWT_SECRET` und der Konto-Zeile von `RAUCHPROBE_KONTO` (Vorgabe:
+`WEB_ADMIN_EMAIL`). Nichts gespeichert, nichts zusätzlich einzurichten. Sie
+ruft damit die Ratsinhalte, die Auswertungen und alle 20 Haushalts-Schichten
+ab — nichts Persönliches, nichts Schreibendes, nichts, was ein Sprachmodell
+kostet; `tests/test_rauchprobe.py` hält das fest. Ohne `.env` entfällt der
+Teil, statt zu scheitern.
+
 Scheitert eine Probe, ist der Deploy rot (die Dienste laufen dann trotzdem
 schon mit dem neuen Stand — die Meldung ist der Alarm, keine Rücknahme). Lokal
 gegen einen eigenen Server: `python3 scripts/rauchprobe.py --basis

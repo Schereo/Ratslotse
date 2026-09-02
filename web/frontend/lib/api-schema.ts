@@ -5321,30 +5321,42 @@ export interface components {
          * CityMapPoint
          * @description Ein Punkt der Stadtkarte (``CouncilStore.city_map_points``).
          *
-         *     Zwei Herkünfte in einer Liste: geocodierte Themen und belastbare
-         *     Beschlussorte. ``target`` sagt, wohin ein Tippen führt.
+         *     Zwei Herkünfte in einer Liste, und sie tragen NICHT dieselben Felder:
+         *
+         *     * ``kind="beschlussort"`` — aus dem Ortskatalog, mit Katalog-Bezug und
+         *       Datum des jüngsten Beschlusses (gemessen 02.09.2026: 523 Punkte).
+         *     * ``kind="place"`` / ``"organisation"`` — geocodierte Themen. Sie kennen
+         *       weder Katalog noch Beschlussdatum; die fünf Felder unten fehlen dort
+         *       **ganz**, sie stehen nicht auf ``null`` (121 Punkte).
+         *
+         *     Deshalb ``NotRequired``. Als Pflichtfelder deklariert war das ein 500er auf
+         *     der ganzen Karte: Ein fehlender Pflichtschlüssel ist für FastAPI ein
+         *     ``ResponseValidationError``, nicht ein leeres Feld — 605 auf einmal, und
+         *     die Antwort kam gar nicht erst heraus.
+         *
+         *     ``target`` sagt, wohin ein Tippen führt.
          */
         CityMapPoint: {
             /** Kind */
             kind: string;
             /** Last Date */
-            last_date: string;
+            last_date?: string;
             /** Lat */
             lat: number;
             /** Local Area Id */
-            local_area_id: string;
+            local_area_id?: string;
             /** Location Slug */
-            location_slug: string;
+            location_slug?: string;
             /** Lon */
             lon: number;
             /** N */
             n: number;
             /** N Recent */
-            n_recent: number;
+            n_recent?: number;
             /** Name */
             name: string;
             /** Place Id */
-            place_id: string | null;
+            place_id?: string | null;
             /** Slug */
             slug: string;
             /** Target */
@@ -13509,4 +13521,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: d12ebb7a9a92765743c5de381f70d55cd7911df3e42befdb8914f441d3988bc2
+// vertrag-sha256: b6ea2150c9b69f74c2f2d639eb54462726812647423633145fb1536e305b8473

@@ -28,8 +28,14 @@ mit der Standardbibliothek, damit sie auf jedem Server ohne Vorbereitung geht.
 from __future__ import annotations
 
 import argparse
+import base64
+import hashlib
+import hmac
 import json
+import os
+import sqlite3
 import sys
+import time
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -49,6 +55,61 @@ PROBEN: tuple[str, ...] = (
     "/api/council/heute",
     "/api/council/people-directory",
     "/api/council/qa-beispiele",
+)
+
+#: Endpunkte MIT Konto. Bewusst nur die, deren Antwort für alle gleich
+#: aussieht: Ratsinhalte, Auswertungen, Haushalt. Nichts Persönliches (Themen,
+#: Lesezeichen, Gespräche, Abzeichen) — die Probe soll die Daten einer echten
+#: Person nicht anfassen. Und nichts, was schreibt oder Geld kostet: eine
+#: Quizrunde legt eine an, die Themen-Vorschläge fragen ein Sprachmodell.
+MIT_KONTO: tuple[str, ...] = (
+    # Ratsinhalte und Auswertungen
+    "/api/council/decisions",
+    "/api/council/sessions",
+    "/api/council/committees",
+    "/api/council/fields",
+    "/api/council/parties",
+    "/api/council/districts",
+    "/api/council/places",
+    "/api/council/entities",
+    "/api/council/entities-map",
+    "/api/council/members",
+    "/api/council/finance",
+    "/api/council/goals",
+    "/api/council/trends",
+    "/api/council/analysis",
+    "/api/council/field-recaps",
+    "/api/council/week-preview",
+    "/api/council/diese-woche",
+    "/api/council/daily-find",
+    "/api/council/zahl-der-woche",
+    "/api/council/session-break",
+    "/api/quiz/areas",
+    # Haushalt: 21 Schichten, jede über eigene Tabellen. Genau die Fläche, die
+    # eine Migration trifft — und die einzige, die sie nach dem Deploy anfasst.
+    "/api/council/budget",
+    "/api/council/budget/amendment-lists",
+    "/api/council/budget/assets",
+    "/api/council/budget/audit-reports",
+    "/api/council/budget/balance-sheet",
+    "/api/council/budget/comparison",
+    "/api/council/budget/data-status",
+    "/api/council/budget/debate",
+    "/api/council/budget/debt",
+    "/api/council/budget/documents",
+    "/api/council/budget/execution",
+    "/api/council/budget/group",
+    "/api/council/budget/investment-programme",
+    "/api/council/budget/investments",
+    "/api/council/budget/journey",
+    "/api/council/budget/liquidity",
+    "/api/council/budget/loans",
+    # `budget/products` fehlt hier bewusst: Es verlangt ein Pflicht-Jahr in
+    # der Abfrage, und eine fest eingetragene Jahreszahl wäre eine Probe mit
+    # Verfallsdatum. Der Test unten hält fest, dass keine Probe einen
+    # Pflichtparameter hat — sonst meldet sie für immer 422.
+    "/api/council/budget/shareholdings",
+    "/api/council/budget/staff-plan",
 )
 
 #: Proben, deren Pfad einen Wert braucht, den eine frühere Probe liefert.
@@ -143,11 +204,109 @@ class Vertrag:
         return fehler
 
 
+# ------------------------------------------------------------- Anmeldung
+
+def env_lesen(datei: Path) -> dict[str, str]:
+    """``.env`` als Wörterbuch. Absichtlich naiv — hier steht kein Shell-Code."""
+    werte: dict[str, str] = {}
+    if not datei.exists():
+        return werte
+    for zeile in datei.read_text().splitlines():
+        zeile = zeile.strip()
+        if not zeile or zeile.startswith("#") or "=" not in zeile:
+            continue
+        name, wert = zeile.split("=", 1)
+        werte[name.strip()] = wert.strip().strip("\"'")
+    return werte
+
+
+def kontendatenbank(wurzel: Path, env: dict[str, str]) -> Path | None:
+    """Die Datei, die die laufende App benutzt — nach derselben Regel wie sie.
+
+    ``kern/store.py::_umzug_von_nwz`` behandelt eine **leere** Zieldatei als
+    „nicht da": Sie entsteht, sobald irgendwer den neuen Pfad einmal öffnet,
+    und lag auf Prod monatelang neben der gefüllten alten. Wer hier nur auf
+    Existenz prüft, liest eine Datenbank ohne Tabellen und meldet „Konto nicht
+    gefunden", während die App bestens läuft.
+    """
+    gesetzt = env.get("RATSLOTSE_DB") or os.environ.get("RATSLOTSE_DB")
+    if gesetzt:
+        return Path(gesetzt).expanduser()
+    for name in ("ratslotse.sqlite", "nwz.sqlite"):
+        pfad = wurzel / "data" / name
+        if pfad.exists() and pfad.stat().st_size:
+            return pfad
+    return None
+
+
+def _b64(roh: bytes) -> str:
+    return base64.urlsafe_b64encode(roh).decode().rstrip("=")
+
+
+def token_bauen(wurzel: Path, konto: str | None) -> tuple[str | None, str]:
+    """``(Token, Begründung)`` — ein kurzlebiges Token für die Proben mit Konto.
+
+    Bewusst **kein** gespeichertes Token: Die Probe baut sich auf dem Server
+    selbst eines, gültig fünf Minuten. Dazu braucht sie nur das Signier-
+    geheimnis und die Konto-Zeile — beides liegt dort ohnehin. Die Formel ist
+    dieselbe wie in ``web/backend/app/security.py`` und kommt mit der
+    Standardbibliothek aus (HMAC-SHA256).
+    """
+    env = env_lesen(wurzel / ".env")
+    geheimnis = env.get("WEB_JWT_SECRET") or os.environ.get("WEB_JWT_SECRET", "")
+    adresse = konto or env.get("RAUCHPROBE_KONTO") or env.get("WEB_ADMIN_EMAIL", "")
+    if not geheimnis:
+        return None, "kein WEB_JWT_SECRET"
+    if not adresse:
+        return None, "kein Konto (RAUCHPROBE_KONTO oder WEB_ADMIN_EMAIL)"
+    datenbank = kontendatenbank(wurzel, env)
+    if datenbank is None:
+        return None, "keine Konten-Datenbank gefunden"
+    # `mode=ro` zuerst, weil es garantiert nichts anfasst. Es scheitert aber an
+    # einer WAL-Datenbank, neben der gerade keine `-shm` liegt: Die müsste
+    # SQLite anlegen, und genau das darf es im Nur-Lese-Modus nicht. Dann
+    # normal öffnen — die App tut nichts anderes, und hier wird ausschließlich
+    # gelesen. `immutable=1` wäre der dritte Weg und der falsche: Es verspricht
+    # SQLite, dass sich die Datei nicht ändert, und das ist bei einer laufenden
+    # Anwendung schlicht gelogen.
+    verbindung = None
+    try:
+        try:
+            verbindung = sqlite3.connect(f"file:{datenbank}?mode=ro", uri=True)
+            verbindung.execute("SELECT 1 FROM web_users LIMIT 1")
+        except sqlite3.Error:
+            if verbindung is not None:
+                verbindung.close()
+            verbindung = sqlite3.connect(str(datenbank), timeout=5)
+        zeile = verbindung.execute(
+            "SELECT id, token_version FROM web_users WHERE lower(email) = lower(?)",
+            (adresse,),
+        ).fetchone()
+    except sqlite3.Error as fehler:
+        return None, f"Konten-Datenbank nicht lesbar ({fehler})"
+    finally:
+        if verbindung is not None:
+            verbindung.close()
+    if not zeile:
+        return None, f"Konto {adresse} gibt es nicht"
+
+    kopf = _b64(json.dumps({"alg": "HS256", "typ": "JWT"}).encode())
+    nutz = _b64(json.dumps(
+        {"sub": str(zeile[0]), "exp": int(time.time()) + 300, "ver": zeile[1]}
+    ).encode())
+    signiert = f"{kopf}.{nutz}".encode()
+    zeichen = _b64(hmac.new(geheimnis.encode(), signiert, hashlib.sha256).digest())
+    return f"{kopf}.{nutz}.{zeichen}", adresse
+
+
 # ------------------------------------------------------------------- Abruf
 
-def hole(basis: str, pfad: str, zeitlimit: float) -> tuple[int, Any]:
-    anfrage = urllib.request.Request(
-        basis.rstrip("/") + pfad, headers={"User-Agent": "ratslotse-rauchprobe"})
+def hole(basis: str, pfad: str, zeitlimit: float,
+         token: str | None = None) -> tuple[int, Any]:
+    kopfzeilen = {"User-Agent": "ratslotse-rauchprobe"}
+    if token:
+        kopfzeilen["Authorization"] = f"Bearer {token}"
+    anfrage = urllib.request.Request(basis.rstrip("/") + pfad, headers=kopfzeilen)
     try:
         with urllib.request.urlopen(anfrage, timeout=zeitlimit) as antwort:
             roh = antwort.read()
@@ -180,25 +339,20 @@ def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument("--basis", default="http://127.0.0.1:8000",
                    help="Wurzel des laufenden Backends")
-    p.add_argument("--zeitlimit", type=float, default=15.0)
+    p.add_argument("--zeitlimit", type=float, default=20.0)
+    p.add_argument("--konto", help="E-Mail für die Proben MIT Konto "
+                                   "(Vorgabe: RAUCHPROBE_KONTO, sonst WEB_ADMIN_EMAIL)")
     args = p.parse_args(argv)
 
     vertrag = Vertrag(json.loads(VERTRAG.read_text()))
     antworten: dict[str, Any] = {}
     schlecht = 0
+    token, woher = token_bauen(WURZEL, args.konto)
 
-    proben = [(pfad, pfad) for pfad in PROBEN]
-    for muster, quelle, weg in ABGELEITET:
-        wert = tiefer(antworten.get(quelle), weg) if quelle in antworten else None
-        if wert is None:
-            # Erst nach dem ersten Durchlauf bekannt — deshalb unten noch einmal.
-            continue
-        proben.append((muster, muster.format(**{muster.split("{")[1].split("}")[0]: wert})))
-
-    def lauf(paare):
+    def lauf(paare, mit_token=None):
         nonlocal schlecht
         for muster, pfad in paare:
-            kode, daten = hole(args.basis, pfad, args.zeitlimit)
+            kode, daten = hole(args.basis, pfad, args.zeitlimit, mit_token)
             if kode != 200:
                 grund = {0: f"nicht erreichbar ({daten})",
                          -1: "Antwort ist kein JSON"}.get(kode, f"HTTP {kode}")
@@ -222,17 +376,27 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"  ✓ {pfad}")
 
     print(f"Rauchprobe gegen {args.basis}")
-    lauf(proben)
+    print("\nohne Konto:")
+    lauf([(pfad, pfad) for pfad in PROBEN])
 
-    # Zweiter Durchgang für die Proben, deren Wert erst jetzt bekannt ist.
+    # Proben, deren Pfad erst aus einer Antwort von oben entsteht.
     nachgereicht = []
     for muster, quelle, weg in ABGELEITET:
         wert = tiefer(antworten.get(quelle), weg)
-        if wert is not None and muster not in antworten:
+        if wert is not None:
             name = muster.split("{")[1].split("}")[0]
             nachgereicht.append((muster, muster.format(**{name: wert})))
     if nachgereicht:
         lauf(nachgereicht)
+
+    if token:
+        print(f"\nmit Konto ({woher}):")
+        lauf([(pfad, pfad) for pfad in MIT_KONTO], token)
+    else:
+        # Kein Abbruch: Die Proben ohne Konto sind das Gate, die mit Konto sind
+        # die Kür. Eine Umgebung ohne `.env` (ein Notebook etwa) soll die Probe
+        # trotzdem fahren können.
+        print(f"\nmit Konto: übersprungen — {woher}")
 
     if schlecht:
         print(f"\n{schlecht} Probe(n) gescheitert.")
