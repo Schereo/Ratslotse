@@ -49,7 +49,7 @@ import Link from "next/link";
 import { ArrowRight, FileText } from "lucide-react";
 import { useFetch } from "@/lib/use-fetch";
 import {
-  GebautDaten, GebautLuecke, Herkunft, deMioEuro, groessterPosten,
+  GebautDaten, GebautLuecke, deMioEuro, groessterPosten,
   herkunftVon, infrastruktur, juengsteReihe, reihen, sachvermoegen,
   strassen, verzehr,
 } from "@/lib/haushalt-gebaut";
@@ -59,6 +59,7 @@ import { NahtSaeulen, type NahtJahr } from "@/components/grafik/naht-saeulen";
 import { Anteilsbalken } from "@/components/haushalt/anteilsbalken";
 import { Beleg } from "@/components/haushalt/source";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
+import { Fundstelle } from "@/components/haushalt/fundstelle";
 
 // `jahresabschluss` gehört dazu: Zwei Beleg-Chips dieser Seite zeigen
 // darauf, und ohne den Eintrag hier rendern sie nichts — die Zahlen aus
@@ -91,23 +92,6 @@ function lueckeGrund(l: GebautLuecke): string {
  *  keine der beiden Tabellen. */
 const TOENE = ["var(--hh-aus-0)", "var(--hh-aus-2)", "var(--hh-aus-4)",
   "var(--hh-aus-6)", "var(--hh-aus-1)", "var(--hh-aus-3)"];
-
-/** Wo eine Angabe im Dokument steht — dieselbe Bauart wie auf der
- *  Schulden-Seite und bewusst nicht geteilt: Die Seiten sollen einander nicht
- *  brechen. */
-function Fundstelle({ h }: { h: Herkunft | null }) {
-  if (!h?.citation) return null;
-  return (
-    <div className="border-t border-dashed border-border pt-2.5">
-      <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-        Woher diese Zahlen kommen
-      </p>
-      <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">
-        {h.citation}{h.as_of ? ` · ${h.as_of}` : ""}
-      </p>
-    </div>
-  );
-}
 
 /** Was aus den Investitionen wurde — und dass der Bestand trotzdem schrumpft.
  *

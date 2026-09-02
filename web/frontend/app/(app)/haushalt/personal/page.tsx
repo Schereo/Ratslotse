@@ -52,6 +52,7 @@ import { SchrittPfad } from "@/components/haushalt/schritt-pfad";
 import { Seitenbuehne, ZaehlZahl } from "@/components/haushalt/seitenbuehne";
 import { Personalaufwand } from "@/components/haushalt/personalaufwand";
 import { haushaltUrl, type HaushaltAuswahl } from "@/lib/haushalt";
+import { Fundstelle } from "@/components/haushalt/fundstelle";
 
 // Der Stellenplan ist die Quelle der Seite; der Jahresabschluss und der
 // Gesamtergebnishaushalt tragen seit 02.09.2026 die Zahl dazu, was das Personal
@@ -73,26 +74,6 @@ const FEHLT_GRUND = "das PDF gibt hier Zeichen-Nummern statt Buchstaben aus; "
  *  `luecke()`, gerundet auf ganze Prozent. */
 function pct(anteil: number): string {
   return (anteil * 100).toLocaleString("de-DE", { maximumFractionDigits: 0 });
-}
-
-/** Die Herkunft einer Angabe im Klartext — dasselbe Muster wie auf
- *  /haushalt/konzern: Das Quellenverzeichnis am Seitenende beschreibt die
- *  Quelle der ganzen Seite, das hier gehört an die einzelne Zahl. */
-function Fundstelle({ daten, id }: { daten: StellenplanDaten; id: number | null }) {
-  const h = herkunftVon(daten, id);
-  if (!h) return null;
-  return (
-    <div className="border-t border-dashed border-border pt-2.5">
-      <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-        Woher diese Zahlen kommen
-      </p>
-      {h.citation && (
-        <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">
-          {h.citation}{h.as_of ? ` · ${h.as_of}` : ""}
-        </p>
-      )}
-    </div>
-  );
 }
 
 export default function PersonalPage() {
@@ -460,7 +441,7 @@ export default function PersonalPage() {
                 </p>
               </div>
               <div className="mt-3">
-                <Fundstelle daten={daten} id={teilGesamt?.herkunft_id ?? null} />
+                <Fundstelle h={herkunftVon(daten, teilGesamt?.herkunft_id ?? null)} />
               </div>
             </>
           )}

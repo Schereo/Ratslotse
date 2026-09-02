@@ -35,13 +35,14 @@ import { ArrowRight, ExternalLink, FileText } from "lucide-react";
 import { useFetch } from "@/lib/use-fetch";
 import { decisionHref } from "@/lib/routes";
 import {
-  AUSGLIEDERUNGEN_2018, Herkunft, ROLLEN, VergleichDaten, WOLFSBURG,
+  AUSGLIEDERUNGEN_2018, ROLLEN, VergleichDaten, WOLFSBURG,
   ZITAT_VERWALTUNG, antragAnlage, antwortAnlage, balken, herkunftVon,
   juengstesJahr, platzVonOldenburg, series, steuerkraftJeEinwohner, change,
 } from "@/lib/haushalt-vergleich";
 import { Staedtevergleich, Zeitreihe } from "@/components/haushalt/staedtevergleich";
 import { SlopePaar, type SlopePaarZeile } from "@/components/grafik/slope-paar";
 import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/source";
+import { Fundstelle } from "@/components/haushalt/fundstelle";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { GlossaryText } from "@/components/glossary-text";
 import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
@@ -49,27 +50,6 @@ import { SchrittPfad } from "@/components/haushalt/schritt-pfad";
 import { Seitenbuehne, ZaehlZahl } from "@/components/haushalt/seitenbuehne";
 
 const QUELLEN = ["lsn_finanzausgleich", "lsn_realsteuern", "vergleich_2018"] as const;
-
-/** Wo eine Angabe im Dokument steht — dieselbe Bauart wie auf der
- *  Konzern-Seite: Abschnitt und Stand, sonst nichts.
- *
- *  Unsere Proben und ihr Messwert standen bis 16.08. daneben, auf dieser
- *  Seite gleich dreimal. Sie sind raus (DESIGNSPRACHE.md § 7) — sie laufen
- *  weiter, sie stehen in der Technik-Doku, aber sie sagen einer Leserin
- *  nichts über die Steuerkraft Oldenburgs. */
-function Fundstelle({ h }: { h: Herkunft | null }) {
-  if (!h?.citation) return null;
-  return (
-    <div className="mt-3 border-t border-dashed border-border pt-2.5">
-      <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-        Woher diese Zahlen kommen
-      </p>
-      <p className="mt-1 max-w-[86ch] text-[11.5px] leading-relaxed text-muted-foreground">
-        {h.citation}{h.as_of ? ` · ${h.as_of}` : ""}
-      </p>
-    </div>
-  );
-}
 
 function Abschnitt({ kicker, zusatz, id, children }: {
   kicker: string; zusatz?: string; id?: string; children: React.ReactNode;
@@ -254,7 +234,7 @@ export default function VergleichSeite() {
               aus derselben Tabelle. Das Landesamt weist den Pro-Kopf-Wert nicht selbst aus —
               keine amtliche Kennzahl.
             </p>
-            <Fundstelle h={hSteuerkraft} />
+            <Fundstelle h={hSteuerkraft} className="mt-3" />
           </Abschnitt>
         )}
 
@@ -327,7 +307,7 @@ export default function VergleichSeite() {
                 </>
               )}
             </p>
-            <Fundstelle h={hRealsteuern} />
+            <Fundstelle h={hRealsteuern} className="mt-3" />
           </Abschnitt>
         )}
 
@@ -354,7 +334,7 @@ export default function VergleichSeite() {
                   change={change(wobReihe)} />
               </div>
             )}
-            <Fundstelle h={hRealsteuern} />
+            <Fundstelle h={hRealsteuern} className="mt-3" />
           </Abschnitt>
         )}
 
