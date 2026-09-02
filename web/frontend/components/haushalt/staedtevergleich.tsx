@@ -24,6 +24,7 @@
 // nur HERVORGEHOBEN — damit man die eigene Stadt findet, nicht damit man sie
 // bewertet.
 
+import { useState } from "react";
 import { Balken, euroJeEw } from "@/lib/haushalt-vergleich";
 import { cn } from "@/lib/utils";
 
@@ -38,22 +39,35 @@ export function Staedtevergleich({
    *  der Steuerkraft — die Steuereinnahmekraft kennt die Schwelle nicht. */
   hinweisUnter100k?: boolean;
 }) {
+  // Zeile unter dem Zeiger — Spotlight wie in der Rangliste des Baukastens
+  // (GB-03, deren Zwilling diese Liste ist: gleiche Schiene, gleiche Marke).
+  const [schwebt, setSchwebt] = useState<string | null>(null);
   if (!zeilen.length) return null;
   const groesster = Math.max(...zeilen.map((z) => z.value));
   const betroffen = hinweisUnter100k && zeilen.some((z) => z.unter_100k);
 
   return (
     <div>
-      <ol className="flex flex-col gap-1.5">
-        {zeilen.map((z) => {
+      <ol className="flex flex-col gap-0.5" onMouseLeave={() => setSchwebt(null)}>
+        {zeilen.map((z, rang) => {
           const anteil = groesster > 0 ? (z.value / groesster) * 100 : 0;
           return (
-            <li key={z.key} className="grid grid-cols-[7.5rem_1fr_auto] items-center gap-2 sm:grid-cols-[9rem_1fr_auto] sm:gap-3">
+            <li
+              key={z.key}
+              data-schwebt={schwebt === z.key}
+              data-gedimmt={schwebt != null && schwebt !== z.key}
+              onMouseEnter={() => setSchwebt(z.key)}
+              className="gb-zeile -mx-2 grid grid-cols-[7.5rem_1fr_auto] items-center gap-2 px-2 py-1 sm:grid-cols-[9rem_1fr_auto] sm:gap-3"
+            >
               <span className={cn(
-                "truncate text-[12.5px] leading-tight",
+                "flex min-w-0 items-center gap-1.5 text-[12.5px] leading-tight",
                 z.ist_oldenburg ? "font-bold text-foreground" : "text-muted-foreground",
               )}>
-                {z.name}
+                {/* Die „hier"-Marke: Oldenburg ist die Zeile, nach der man sucht. */}
+                {z.ist_oldenburg && (
+                  <span aria-hidden="true" className="h-1.5 w-1.5 flex-none rounded-full bg-primary" />
+                )}
+                <span className="truncate">{z.name}</span>
                 {/* Kreuz statt Sternchen: Die Fußnote unten endet auf
                     „Einwohner*innen" — zwei Sternchen mit verschiedener
                     Bedeutung nebeneinander liest niemand auseinander. */}
@@ -65,15 +79,19 @@ export function Staedtevergleich({
                   und wo das Maximum liegt — ohne sie schwebten die Balken. */}
               <span className="h-1.5 w-full overflow-hidden rounded-full"
                 style={{ background: "var(--hh-ein-6)" }}>
-                <span className="block h-full rounded-full"
+                {/* Wächst beim Aufbau von links, Zeile für Zeile (gb-balken-auf). */}
+                <span className="gb-lage gb-balken-auf block h-full rounded-full"
                   style={{
                     width: `${Math.max(anteil, 1.5)}%`,
                     background: z.ist_oldenburg ? "var(--hh-ein-0)" : "var(--hh-ein-3)",
+                    animationDelay: `${rang * 40}ms`,
                   }} />
               </span>
               <span className={cn(
-                "text-right font-mono text-[12px] tabular-nums",
-                z.ist_oldenburg ? "font-bold text-foreground" : "text-muted-foreground",
+                "whitespace-nowrap text-right tabular-nums",
+                z.ist_oldenburg
+                  ? "font-display text-[14px] font-bold text-foreground"
+                  : "text-[12px] font-semibold text-muted-foreground",
               )}>
                 {unit === "percent"
                   ? `${Math.round(z.value)} %`

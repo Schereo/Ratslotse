@@ -258,15 +258,21 @@ export function NahtSaeulen({ years, naht, gruppierungMobil = 2, unit, title, be
           }));
           // Von unten stapeln: größte Gruppe unten, 2 px Fuge dazwischen.
           let unten = Y0;
+          // Spotlight: Ist eine Stelle gewählt, treten die anderen Säulen
+          // leicht zurück (gb-segment) — die gewählte trägt außerdem das Band
+          // der Ablese-Fläche. Beim Aufbau wächst jede Säule von unten, links
+          // nach rechts versetzt (gb-saeule-auf).
+          const gedimmt = ablesen.gewaehlt && ablesen.aktiv !== i;
           return (
-            <g key={j.year}>
+            <g key={j.year} className="gb-segment" data-gedimmt={gedimmt}>
               {werte.map((s, k) => {
                 const hoehe = Math.max(Y0 - y(s.value), 0);
                 const oben = unten - hoehe;
                 unten = oben - 2;
                 return hoehe > 0 ? (
                   <rect key={k} x={x} y={oben} width={b} height={hoehe}
-                    style={{ fill: s.farbe }} />
+                    className="gb-saeule-auf"
+                    style={{ fill: s.farbe, animationDelay: `${i * 12}ms` }} />
                 ) : null;
               })}
               {endwerte.has(j.year) && (() => {
@@ -275,7 +281,10 @@ export function NahtSaeulen({ years, naht, gruppierungMobil = 2, unit, title, be
                 // dort aus der viewBox: Bei 54 Säulen auf 375 px war aus
                 // „76,5" ein „6,5" geworden. Am Rand rastet die Beschriftung
                 // deshalb auf die Kante ein statt auf die Säulenmitte.
-                const text = deZahl(summe(j), summe(j) >= 100 ? 0 : 1);
+                // Mit Einheit — „850" allein war die eine Zahl im Bild ohne
+                // sie. Schmal bleibt es bei der Zahl, dort trägt die Karte.
+                const text = deZahl(summe(j), summe(j) >= 100 ? 0 : 1)
+                  + (schmal ? "" : `\u00a0${unit}`);
                 const halb = text.length * 3.2;
                 const links = mitte(i) - halb < X0;
                 const rechts = mitte(i) + halb > X1;
@@ -283,7 +292,11 @@ export function NahtSaeulen({ years, naht, gruppierungMobil = 2, unit, title, be
                   <text x={links ? X0 : rechts ? X1 : mitte(i)}
                     y={y(summe(j)) - 6}
                     textAnchor={links ? "start" : rechts ? "end" : "middle"}
-                    fontSize={10.5} className="fill-foreground font-mono font-semibold">
+                    fontSize={10.5} className="fill-foreground stroke-card font-mono font-semibold gb-einblenden"
+                    // Halo in Kartenfarbe: Mit Einheit reicht die Zahl über die
+                    // Nachbarsäule, ohne Halo schnitt deren Kante durch die Ziffern.
+                    style={{ animationDelay: `${years.length * 12 + 200}ms`,
+                             paintOrder: "stroke", strokeWidth: 3, strokeLinejoin: "round" }}>
                     {text}
                   </text>
                 );
