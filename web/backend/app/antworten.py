@@ -2256,22 +2256,34 @@ class Entities(TypedDict):
 class CityMapPoint(TypedDict):
     """Ein Punkt der Stadtkarte (``CouncilStore.city_map_points``).
 
-    Zwei Herkünfte in einer Liste: geocodierte Themen und belastbare
-    Beschlussorte. ``target`` sagt, wohin ein Tippen führt.
+    Zwei Herkünfte in einer Liste, und sie tragen NICHT dieselben Felder:
+
+    * ``kind="beschlussort"`` — aus dem Ortskatalog, mit Katalog-Bezug und
+      Datum des jüngsten Beschlusses (gemessen 02.09.2026: 523 Punkte).
+    * ``kind="place"`` / ``"organisation"`` — geocodierte Themen. Sie kennen
+      weder Katalog noch Beschlussdatum; die fünf Felder unten fehlen dort
+      **ganz**, sie stehen nicht auf ``null`` (121 Punkte).
+
+    Deshalb ``NotRequired``. Als Pflichtfelder deklariert war das ein 500er auf
+    der ganzen Karte: Ein fehlender Pflichtschlüssel ist für FastAPI ein
+    ``ResponseValidationError``, nicht ein leeres Feld — 605 auf einmal, und
+    die Antwort kam gar nicht erst heraus.
+
+    ``target`` sagt, wohin ein Tippen führt.
     """
     slug: str
     name: str
     kind: str
     n: int
-    n_recent: int
-    last_date: str
     lat: float
     lon: float
     target: str
+    n_recent: NotRequired[int]
+    last_date: NotRequired[str]
     #: Der Ort aus dem Katalog, wo einer zugeordnet ist.
-    place_id: str | None
-    location_slug: str
-    local_area_id: str
+    place_id: NotRequired[str | None]
+    location_slug: NotRequired[str]
+    local_area_id: NotRequired[str]
 
 
 class EntitiesMap(TypedDict):

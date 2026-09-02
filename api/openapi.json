@@ -3771,7 +3771,7 @@
         "type": "object"
       },
       "CityMapPoint": {
-        "description": "Ein Punkt der Stadtkarte (``CouncilStore.city_map_points``).\n\nZwei Herkünfte in einer Liste: geocodierte Themen und belastbare\nBeschlussorte. ``target`` sagt, wohin ein Tippen führt.",
+        "description": "Ein Punkt der Stadtkarte (``CouncilStore.city_map_points``).\n\nZwei Herkünfte in einer Liste, und sie tragen NICHT dieselben Felder:\n\n* ``kind=\"beschlussort\"`` — aus dem Ortskatalog, mit Katalog-Bezug und\n  Datum des jüngsten Beschlusses (gemessen 02.09.2026: 523 Punkte).\n* ``kind=\"place\"`` / ``\"organisation\"`` — geocodierte Themen. Sie kennen\n  weder Katalog noch Beschlussdatum; die fünf Felder unten fehlen dort\n  **ganz**, sie stehen nicht auf ``null`` (121 Punkte).\n\nDeshalb ``NotRequired``. Als Pflichtfelder deklariert war das ein 500er auf\nder ganzen Karte: Ein fehlender Pflichtschlüssel ist für FastAPI ein\n``ResponseValidationError``, nicht ein leeres Feld — 605 auf einmal, und\ndie Antwort kam gar nicht erst heraus.\n\n``target`` sagt, wohin ein Tippen führt.",
         "properties": {
           "kind": {
             "title": "Kind",
@@ -3830,14 +3830,9 @@
           "name",
           "kind",
           "n",
-          "n_recent",
-          "last_date",
           "lat",
           "lon",
-          "target",
-          "place_id",
-          "location_slug",
-          "local_area_id"
+          "target"
         ],
         "title": "CityMapPoint",
         "type": "object"
