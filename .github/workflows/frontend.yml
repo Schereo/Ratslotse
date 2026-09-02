@@ -52,6 +52,27 @@ jobs:
       - name: TypeScript übersetzen (ohne Ausgabe)
         run: npx tsc --noEmit
 
+      # ESLint, bewusst auf EINE Klasse eingestellt — dieselbe Überlegung wie
+      # bei ruff („nur F", s. `ruff.toml`). Gemessen am 02.09.2026 auf dem
+      # Bestand:
+      #
+      #     next/core-web-vitals, unverändert  →  ~40 Fehler
+      #     davon `react/no-unescaped-entities`   fast alle
+      #
+      # Diese Regel meldet das typografische Anführungszeichen in deutschem
+      # JSX-Text. Sie einzuschalten hieße, den Bestand umzuschreiben, und sie
+      # hat noch nie einen Fehler gefunden. Sie ist aus.
+      #
+      # Scharf sind die beiden Hook-Regeln. `rules-of-hooks` findet eine
+      # Klasse, die zur Laufzeit als „Rendered fewer hooks than expected"
+      # abstürzt und die der Übersetzer nicht sieht; sie steht auf Fehler und
+      # hat heute null Funde, ist also ohne Umbau einschaltbar.
+      # `exhaustive-deps` steht auf Hinweis: Die 11 Funde im Bestand sind zum
+      # Teil bewusst so, das zu entscheiden ist Handarbeit und gehört nicht in
+      # denselben Schritt wie das Einschalten.
+      - name: ESLint (Hook-Regeln)
+        run: npx next lint
+
       # Rechnet die Skalen-Regeln des Grafik-Baukastens nach. Der Übersetzer
       # oben kann das nicht: Eine Achse, die jeden Wert der Reihe aus dem Bild
       # schiebt, ist typkorrekt. Node liest die `.ts` direkt (Type-Stripping),

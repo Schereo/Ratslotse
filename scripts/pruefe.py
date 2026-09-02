@@ -154,6 +154,8 @@ PRUEFUNGEN: list[Pruefung] = [
              braucht=_modul_fehlt("pytest", DEV_INSTALL)),
     Pruefung("tsc", "TypeScript des Frontends übersetzen", cwd=FRONTEND,
              befehl=["npx", "tsc", "--noEmit"], braucht=_node_fehlt),
+    Pruefung("lint", "ESLint des Frontends (Hook-Regeln)", cwd=FRONTEND,
+             befehl=["npx", "next", "lint"], braucht=_node_fehlt),
     Pruefung("skala", "Skalen des Grafik-Baukastens nachrechnen", cwd=FRONTEND,
              befehl=["node", "--experimental-strip-types", "scripts/pruefe-skala.mjs"],
              braucht=_node_fehlt),

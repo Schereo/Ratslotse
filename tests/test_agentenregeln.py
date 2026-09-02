@@ -86,7 +86,8 @@ def _ci_schritte(datei: Path) -> set[str]:
         marken |= set(re.findall(r"scripts/[\w-]+\.(?:py|mjs)", nackt))
         for wort, muster in (("ruff", r"\bruff check\b"),
                              ("pytest", r"\bpytest\b"),
-                             ("tsc", r"\btsc --noEmit\b")):
+                             ("tsc", r"\btsc --noEmit\b"),
+                             ("next lint", r"\bnext lint\b")):
             if re.search(muster, nackt):
                 marken.add(wort)
     return marken
@@ -107,8 +108,13 @@ def test_pruefe_kennt_jeden_schritt_der_ci():
 
     # Die Marken sind Dateinamen bzw. Werkzeugnamen; sie müssen im Skript
     # vorkommen. Pfade werden dort relativ zum jeweiligen Arbeitsverzeichnis
-    # geschrieben, deshalb reicht der Dateiname.
-    fehlen = sorted(m for m in verlangt if Path(m).name not in quelle and m not in quelle)
+    # geschrieben, deshalb reicht der Dateiname — und ein mehrteiliger
+    # Werkzeugname („next lint") steht dort als Liste einzelner Wörter.
+    def kennt(marke: str) -> bool:
+        return (marke in quelle or Path(marke).name in quelle
+                or all(w in quelle for w in marke.split()))
+
+    fehlen = sorted(m for m in verlangt if not kennt(m))
     assert not fehlen, (
         "Diese Prüfschritte fährt die CI, scripts/pruefe.py kennt sie nicht:\n  "
         + "\n  ".join(fehlen)
