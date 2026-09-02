@@ -102,6 +102,7 @@ export type QuellenSchluessel =
   // ausgegeben werden SOLL, die Satzung, was die Stadt DÜRFTE.
   | "budget_bylaw"
   | "loans"
+  | "liquidity"
   // Der Haushaltsvollzug — die Prognose-Berichte an den Finanzausschuss.
   // Eigener Schlüssel, weil es weder Plan noch Abschluss ist: Es ist die
   // Erwartung der Ämter im laufenden Jahr, je Stichtag neu.
@@ -356,6 +357,20 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     herausgeber: "Stadt Oldenburg, Amt für Controlling und Finanzen",
     as_of: "Berichte 2018 und 2022–2026",
     standWort: "Berichtsjahre",
+    url: "https://buergerinfo.oldenburg.de/",
+    art: "pdf",
+  },
+  liquidity: {
+    title: "Liquiditätsstand zum Monatsende",
+    citation:
+      "Die Grafik, die die Verwaltung dem Ausschuss für Finanzen und Beteiligungen " +
+      "monatlich vorlegt — der Kontostand der Stadt am Monatsende, vier Jahrgänge " +
+      "im Vergleich. Die Zahlen stehen nur im PDF der Anlage; gelesen wird die " +
+      "Zahlenfolge des Diagramms, geprüft an der Zahl der Werte und am Abgleich der " +
+      "überlappenden Jahrgänge. Ein Kontostand, kein Vermögen und kein Haushaltsergebnis.",
+    herausgeber: "Stadt Oldenburg, Amt für Controlling und Finanzen",
+    as_of: "monatlich seit 2015",
+    standWort: "Monate",
     url: "https://buergerinfo.oldenburg.de/",
     art: "pdf",
   },

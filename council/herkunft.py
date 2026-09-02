@@ -520,6 +520,16 @@ PROBEN: dict[str, str] = {
     "guarantee_table":
         "Der Betrag steht auf den Cent in der Übersichtstabelle des "
         "Jahresabschlusses, nicht nur als gerundete Millionenangabe im Text.",
+    # Der Liquiditätsstand aus den Grafiken der Monatsvorlagen (council/liquidity.py).
+    "liquidity_value_count":
+        "Die Zahl der Werte im Textauszug der Grafik geht auf: zwölf je "
+        "abgeschlossenem Jahrgang plus die Monate des laufenden bis zum "
+        "Stichtag, danach beginnen die Achsenmarken (−10, 0, 10 …). Stimmt "
+        "die Zahl nicht, wird die Grafik nicht gelesen.",
+    "liquidity_overlap":
+        "Aufeinanderfolgende Grafiken teilen sich drei Jahrgänge; derselbe "
+        "Monat trägt in allen denselben Wert. Weicht einer ab, bleibt der "
+        "Monat draußen statt mit einem von beiden dazustehen.",
     # Kredite und Zinsen aus den Unterrichtungen des Rates (council/loans.py).
     "loan_notice_period":
         "Der Berichtszeitraum steht im ersten Satz des Berichts („In den "
@@ -743,6 +753,9 @@ HERKUNFT_TABELLEN: tuple[str, ...] = (
     # die Posten erben sie.
     "council_loan_notices",
     "council_loan_items",
+    # Der Liquiditätsstand (council/liquidity.py): je Monat die Herkunft
+    # der Grafik, aus der der Wert zuletzt bestätigt wurde.
+    "council_liquidity",
 )
 
 

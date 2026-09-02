@@ -2117,6 +2117,17 @@ class LoanNotice(TypedDict):
     saving_to: str | None
     document_id: int | None
     document_url: str | None
+class LiquidityMonth(TypedDict):
+    """Ein Monatsende (``council_liquidity``)."""
+    month: str
+    year: int
+    amount: float
+    as_of: str
+    confirmations: int
+    revised_from: float | None
+    document_id: int | None
+    url: str | None
+    template_number: str | None
     probes: list[str]
     herkunft_id: int | None
     fetched_at: str
@@ -2172,6 +2183,25 @@ class BudgetLoans(TypedDict):
     #: Herkunft je ``herkunft_id`` der Unterrichtungen und Geschäfte — ohne
     #: sie stürzt der Kredite-Block ab (er liest ``provenance[id]``).
     provenance: Provenance
+
+
+class LiquidityWindow(TypedDict):
+    months: int
+    min: LiquidityMonth | None
+    max: LiquidityMonth | None
+
+
+LiquidityCoverage = TypedDict("LiquidityCoverage", {
+    "from": str | None, "to": str | None, "missing": list[str], "months": int})
+
+
+class BudgetLiquidity(TypedDict):
+    scope_note: str
+    series: list[LiquidityMonth]
+    latest: LiquidityMonth | None
+    last_12: LiquidityWindow
+    year_ends: list[LiquidityMonth]
+    coverage: LiquidityCoverage
     provenance: Provenance
 
 

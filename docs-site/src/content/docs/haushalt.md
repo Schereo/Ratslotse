@@ -126,6 +126,7 @@ die es nicht zeigen:
 | `council_investment_measures` | **Einzelne Vorhaben** je Teilhaushalt, 2019–2026 (**Plan**) — IPSP-Element, Bezeichnung und Gesamtinvestitionssumme; `ebene` (`massnahme` / `teilhaushalt` / `gesamt`). Ohne Jahresraten, s. u. | Investitionsprogramm (Anlage 004 des Haushaltsplans) — **Anlagen im RIS** | `scripts/ingest_finanzberichte.py` |
 | `council_budget_execution` | Haushaltsvollzug: Ansatz, Prognose zum Jahresende und Abweichung je Teilhaushalt, 2018–2026, viermal jährlich — für Ergebnis- **und** Finanzhaushalt. `plan_basis` sagt, ob die Ansatz-Spalte die Ermächtigungsübertragungen enthält (bis 2020) oder nicht (ab 2021) | Finanz- und Leistungsberichte — **Anlagen im RIS** | `scripts/ingest_haushaltsvollzug.py` |
 | `council_loan_notices`, `council_loan_items` | Kredite und Zinsen: je Unterrichtung des Rates nach der Kreditrichtlinie der Berichtszeitraum und die Zinsersparnis der Umschuldung, je Posten Art (Kreditaufnahme, Umschuldung, Prolongation, Ausleihung), Schuldner, Betrag, Zinssatz, Zinsbindung und Datum der Kreditentscheidung, 2018 und 2022–2026 | Vorlagen „Unterrichtung des Rates über Kreditaufnahmen, Derivatabschlüsse und Umschuldungen“ — **Volltexte im RIS** | `scripts/ingest_kredite.py` |
+| `council_liquidity` | Liquiditätsstand: je Monatsende der Kontostand der Stadt in Euro seit 2015, jüngster Beleg je Monat, Wertzahl- und Überlappungsprobe | Grafiken „Liquiditätsstand zum Monatsende“ — **Anlagen der Monatsvorlagen im RIS** (der Ingest lädt sie selbst) | `scripts/ingest_liquiditaet.py` |
 | `council_income_statement` | Ansatz, Plan **und** Ergebnis je Posten — gesamt und je Teilhaushalt, 2017–2024 | Jahresabschlüsse — **Anlagen im RIS** | `scripts/ingest_finanzberichte.py` |
 | `council_income_budget` | Dieselben Posten für Jahre **ohne** Abschluss, 2019–2026 — je Zeile `art` (`ansatz` / `finanzplanung`) und `plan_jahrgang` | Gesamtergebnishaushalt (Anlage 005 des Haushaltsplans) — **Anlagen im RIS** | dito |
 | `council_variance_reasons` | Warum ein Posten vom Plan abwich (Abschnitt 6.3.1), 45 Einträge | dito | dito |
@@ -554,7 +555,7 @@ sondern auch, ob sie einer anderen etwas wegnimmt oder ihr etwas anhängt.
 
 ## Der Bereich hält sich selbst aktuell
 
-**Zwanzig** Datenschichten, jede einmal von Hand eingelesen — ohne Cron
+**Einundzwanzig** Datenschichten, jede einmal von Hand eingelesen — ohne Cron
 veraltet der ganze Bereich still, sobald niemand mehr daran denkt.
 `check_finanzdaten.py` (alle zwei Wochen) nimmt das ab: **Neun** liest er
 selbst nach (sie liegen als Anlage im Ratsinformationssystem), die **elf**

@@ -50,6 +50,8 @@ import { ArrowRight, FileText } from "lucide-react";
 import { Segmented } from "@/components/ui";
 import { useFetch } from "@/lib/use-fetch";
 import { KrediteBlock } from "@/components/haushalt/kredite";
+import { LiquiditaetsBlock } from "@/components/haushalt/liquiditaet";
+import type { LiquiditaetsDaten } from "@/lib/haushalt-liquiditaet";
 import type { KrediteDaten } from "@/lib/haushalt-kredite";
 import { deMio, haushaltUrl, type HaushaltAuswahl,
   type HaushaltssatzungZeile } from "@/lib/haushalt";
@@ -75,7 +77,7 @@ import { Fundstelle } from "@/components/haushalt/fundstelle";
 // einen Beleg-Chip darauf setzt. `Beleg` rendert dann bewusst nichts
 // („lieber keinen Chip als eine falsche Nummer") — und der Satz endete
 // mit einer Fußnote, die es nicht gab.
-const QUELLEN = ["schulden", "bilanz", "budget_bylaw", "loans",
+const QUELLEN = ["schulden", "bilanz", "budget_bylaw", "loans", "liquidity",
                  "jahresabschluss"] as const;
 
 /** Die Haushaltssatzung wird über den Bausteine-Endpunkt geholt und nicht über
@@ -516,6 +518,7 @@ function RahmenBlock({ row, herkunft }: {
 export default function SchuldenPage() {
   const { data, loading } = useFetch<SchuldenDaten>("/council/budget/debt");
   const { data: krediteDaten } = useFetch<KrediteDaten>("/council/budget/loans");
+  const { data: liquiDaten } = useFetch<LiquiditaetsDaten>("/council/budget/liquidity");
   const { data: satzungDaten } = useFetch<
     HaushaltAuswahl<typeof SATZUNG_FELDER[number]>>(haushaltUrl(SATZUNG_FELDER));
   const [ansicht, setAnsicht] = useState<Ansicht>("total");
@@ -1002,6 +1005,12 @@ export default function SchuldenPage() {
             </li>
           </ul>
         </section>
+
+        {/* WIE VIEL GELD AUF DEM KONTO IST — die Monatsgrafik der Verwaltung
+            (council/liquidity.py), direkt vor dem Rahmen aus § 4: Der Stand
+            ist die Zahl, der Höchstbetrag darunter ihre Grenze. */}
+        <LiquiditaetsBlock daten={liquiDaten ?? null}
+          hoechstbetrag={satzung?.liquidity_loans ?? null} />
 
         {satzung && <RahmenBlock row={satzung}
           herkunft={herkunftVon(satzungDaten, satzung.herkunft_id)} />}
