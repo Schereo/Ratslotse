@@ -451,7 +451,8 @@ function SteuerInner() {
       {/* Dieselbe Ordnung wie bei den Steuern: erst was hereinkam, dann was man
           erwartet hatte — nur aus der anderen Quelle. */}
       {istEntgelt && (
-        <EntgeltePlanIst zeilen={entgelt} beleg={<Beleg q="jahresabschluss" />} />
+        <EntgeltePlanIst zeilen={entgelt} beleg={<Beleg q="jahresabschluss" />}
+          keineWertung={art.planIstWertung} />
       )}
 
       {/* Wofür die Leute zahlen. Steht bewusst hinter der Kurve und nicht neben
@@ -463,6 +464,7 @@ function SteuerInner() {
             (z) => z.nr === art.ergebnisPosten && z.sub_budget_no !== null && z.year === letzte.year,
           )}
           year={letzte.year}
+          title={art.bereicheTitel}
           beleg={<Beleg q="ergebnisrechnung_thh" />}
         />
       )}

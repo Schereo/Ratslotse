@@ -33,12 +33,14 @@ import type { ErgebnisPosten } from "@/lib/haushalt";
 /** Eine Zeile der Aufschlüsselung. */
 type Bereich = { name: string; amount: number };
 
-export function EntgelteBereiche({ zeilen, year, beleg }: {
+export function EntgelteBereiche({ zeilen, year, beleg, title }: {
   /** Die Teilhaushalts-Zeilen **eines** Postens und **eines** Jahres. */
   zeilen: ErgebnisPosten[];
   year: number;
   /** Beleg-Chip-Slot (GB-00) — die Seite wählt die Quelle. */
   beleg?: React.ReactNode;
+  /** Überschrift (`SteuerArt.bereicheTitel`); ohne sie die Gebühren-Fassung. */
+  title?: string;
 }) {
   // `result` ist nullbar: Ein Teilhaushalt, der diesen Posten nicht führt,
   // hat dort keine Null, sondern keine Zeile. Beides als 0 zu zeichnen machte
@@ -57,7 +59,7 @@ export function EntgelteBereiche({ zeilen, year, beleg }: {
     <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
       <div className="flex items-baseline justify-between gap-3">
         <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-          Wofür die Leute zahlen
+          {title ?? "Wofür die Leute zahlen"}
         </p>
         {/* Ehrliche Menge statt „viele" (Designsprache § 6). */}
         <span className="font-mono text-[10px] uppercase text-muted-foreground">

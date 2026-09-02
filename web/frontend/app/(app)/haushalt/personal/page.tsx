@@ -50,8 +50,18 @@ import { cn } from "@/lib/utils";
 import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 import { SchrittPfad } from "@/components/haushalt/schritt-pfad";
 import { Seitenbuehne, ZaehlZahl } from "@/components/haushalt/seitenbuehne";
+import { Personalaufwand } from "@/components/haushalt/personalaufwand";
+import { haushaltUrl, type HaushaltAuswahl } from "@/lib/haushalt";
 
-const QUELLEN = ["stellenplan"] as const;
+// Der Stellenplan ist die Quelle der Seite; der Jahresabschluss und der
+// Gesamtergebnishaushalt tragen seit 02.09.2026 die Zahl dazu, was das Personal
+// kostet (Baustein `Personalaufwand`).
+const QUELLEN = ["stellenplan", "jahresabschluss", "income_budget"] as const;
+
+/** Nur die Kernverwaltung (`sub_budget_item=keine`): Die Kachel braucht die
+ *  Posten 13–20 gesamt, keine Teilhaushalts-Zeilen — das spart den mit
+ *  Abstand größten Block der Schnittstelle. */
+const AUFWAND_FELDER = ["income_statement", "income_budget"] as const;
 
 /** Warum ein Teil in einem Jahrgang fehlt. „Gibt es nicht" und „steht im PDF,
  *  ist aber nicht lesbar" sind zwei verschiedene Auskünfte, und nur die
@@ -100,6 +110,8 @@ export default function PersonalPage() {
   const detail = useFetch<StellenplanDaten>(
     aktJahr ? `/council/budget/staff-plan?budget_year=${aktJahr}` : null);
   const daten = detail.data ?? jahrgaenge.data;
+  const aufwand = useFetch<HaushaltAuswahl<typeof AUFWAND_FELDER[number]>>(
+    haushaltUrl(AUFWAND_FELDER, "keine"));
 
   // Eine Skala je Teil (H3-01): A und B stehen nie gleichzeitig im Bild,
   // und innerhalb eines Teils soll die Schere über die Jahrgänge lesbar
@@ -222,9 +234,9 @@ export default function PersonalPage() {
 
         {/* Einstiegstext unter der Bühne, kleiner (Tim, 26.08.). */}
         <p className="max-w-[76ch] text-[13px] leading-relaxed text-foreground/85">
-          Personal ist der größte Aufwandsbereich der Stadt. Mit dem Stellenplan legt der
-          Rat fest, wie viele Stellen die Verwaltung in den einzelnen Besoldungs- und
-          Entgeltgruppen vorhalten darf.
+          Personal ist einer der größten Aufwandsposten der Stadt — was es kostet, steht
+          unten in Zahlen. Mit dem Stellenplan legt der Rat fest, wie viele Stellen die
+          Verwaltung in den einzelnen Besoldungs- und Entgeltgruppen vorhalten darf.
         </p>
 
         {/* Das tragende Bild (H3-01): Waffel links, Jahrgangs-Paare rechts —
@@ -336,6 +348,18 @@ export default function PersonalPage() {
             </span>
           ))}
         </div>
+
+        {/* Die Zahl zur Behauptung im Einstiegstext — aus dem Jahresabschluss
+            und dem Haushaltsplan, nicht aus dem Stellenplan. Steht hinter der
+            Waffel, weil sie deren Frage beantwortet: Was kosten die Stellen? */}
+        {aufwand.data?.income_statement && (
+          <Personalaufwand
+            statement={aufwand.data.income_statement}
+            budget={aufwand.data.income_budget ?? []}
+            beleg={<Beleg q="jahresabschluss" />}
+            belegPlan={<Beleg q="income_budget" />}
+          />
+        )}
 
         <LottiErklaert
           title="Was ist ein Stellenplan?"

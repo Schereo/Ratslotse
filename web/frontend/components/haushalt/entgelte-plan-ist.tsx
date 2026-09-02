@@ -25,11 +25,14 @@
 import { Hantel, type HantelZeile } from "@/components/grafik/hantel";
 import { PLAN_ART_LABEL, type ErgebnisPosten } from "@/lib/haushalt";
 
-export function EntgeltePlanIst({ zeilen, beleg }: {
+export function EntgeltePlanIst({ zeilen, beleg, keineWertung }: {
   /** Die Gesamt-Zeilen (thh_nr = null) EINES Postens, ein Eintrag je Jahr. */
   zeilen: ErgebnisPosten[];
   /** Beleg-Chip-Slot (GB-00) — die Seite wählt die Quelle. */
   beleg?: React.ReactNode;
+  /** Der Nicht-Wertungs-Satz der Einnahmeart (`SteuerArt.planIstWertung`);
+   *  ohne ihn gilt die Gebühren-Fassung unten. */
+  keineWertung?: React.ReactNode;
 }) {
   // Beide Werte müssen da sein: Eine Hantel mit einem Ende ist keine Hantel,
   // sondern ein Punkt, der so tut, als wäre er ein Vergleich.
@@ -74,7 +77,7 @@ export function EntgeltePlanIst({ zeilen, beleg }: {
              Reihenfolge tragen — wie weit es danebenlag, zeigt die Länge. */
           sortierung="alpha"
           wovon="diese Einnahme"
-          keineWertung={
+          keineWertung={keineWertung ??
             <>Die Farbe bewertet nicht: Weniger als geplant heißt hier, dass
               Leistungen weniger genutzt wurden — mehr heißt umgekehrt, dass
               der Ansatz zu vorsichtig war. Keines von beidem ist für sich
