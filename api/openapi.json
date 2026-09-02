@@ -2168,7 +2168,9 @@
             "title": "Cash Budget Totals"
           },
           "provenance": {
-            "additionalProperties": true,
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Herkunft"
+            },
             "title": "Provenance",
             "type": "object"
           },
@@ -2226,7 +2228,9 @@
             "title": "Items"
           },
           "provenance": {
-            "additionalProperties": true,
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Herkunft"
+            },
             "title": "Provenance",
             "type": "object"
           },
@@ -2252,7 +2256,9 @@
             "title": "Cities"
           },
           "provenance": {
-            "additionalProperties": true,
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Herkunft"
+            },
             "title": "Provenance",
             "type": "object"
           },
@@ -2314,7 +2320,9 @@
             "title": "Interest Expense"
           },
           "provenance": {
-            "additionalProperties": true,
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Herkunft"
+            },
             "title": "Provenance",
             "type": "object"
           },
@@ -2392,7 +2400,9 @@
             "type": "object"
           },
           "provenance": {
-            "additionalProperties": true,
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Herkunft"
+            },
             "title": "Provenance",
             "type": "object"
           },
@@ -2441,7 +2451,9 @@
             "title": "Missing"
           },
           "provenance": {
-            "additionalProperties": true,
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Herkunft"
+            },
             "title": "Provenance",
             "type": "object"
           },
@@ -2488,7 +2500,9 @@
             "title": "Items"
           },
           "provenance": {
-            "additionalProperties": true,
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Herkunft"
+            },
             "title": "Provenance",
             "type": "object"
           },
@@ -2529,7 +2543,9 @@
             "type": "array"
           },
           "provenance": {
-            "additionalProperties": true,
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Herkunft"
+            },
             "title": "Provenance",
             "type": "object"
           },
@@ -2567,7 +2583,9 @@
             "type": "array"
           },
           "provenance": {
-            "additionalProperties": true,
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Herkunft"
+            },
             "title": "Provenance",
             "type": "object"
           },
@@ -2608,7 +2626,9 @@
             "type": "array"
           },
           "provenance": {
-            "additionalProperties": true,
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Herkunft"
+            },
             "title": "Provenance",
             "type": "object"
           },
@@ -2683,7 +2703,9 @@
             "title": "Product Years"
           },
           "provenance": {
-            "additionalProperties": true,
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Herkunft"
+            },
             "title": "Provenance",
             "type": "object"
           },
@@ -2786,7 +2808,9 @@
             "title": "Part Names"
           },
           "provenance": {
-            "additionalProperties": true,
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Herkunft"
+            },
             "title": "Provenance",
             "type": "object"
           },
@@ -4581,6 +4605,186 @@
           "status"
         ],
         "title": "Health",
+        "type": "object"
+      },
+      "Herkunft": {
+        "description": "Ein Datensatz aus ``council_provenance``, wie ihn ``get_herkunft`` ausgibt.\n\nACHTUNG: Die Quelle ist ein ``SELECT *``. Jede neue Spalte der Tabelle ist\nsofort Teil der Antwort — und fiele ohne Eintrag hier genauso still wieder\nheraus, weil ein TypedDict entfernt, was es nicht kennt. Dagegen steht\n``tests/test_api_vertrag.py::test_zeilen_typen_kennen_alle_spalten_ihrer_tabelle``.\n\n``key`` fehlt bewusst: Der interne Fingerabdruck wird vor der Ausgabe\nentfernt, er ist kein Lesestoff.",
+        "properties": {
+          "as_of": {
+            "title": "As Of",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "citation": {
+            "title": "Citation",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "document_id": {
+            "title": "Document Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "fetched_at": {
+            "title": "Fetched At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "official_text": {
+            "description": "Der Beschluss, der ein Beleg-Dokument verabschiedet hat.\n\nWird in ``CouncilStore.beschluesse_zu_dokumenten`` Feld für Feld gebaut,\nnicht aus einem ``SELECT *`` — die Aufzählung hier ist deshalb vollständig\nund bleibt es.\n\n``outcome`` kommt ungefiltert, auch ``vertagt`` oder ``abgelehnt``: Eine\nZahl, deren Vorgang noch läuft, ist keine Zahl ohne Beleg.",
+            "properties": {
+              "committee": {
+                "title": "Committee",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "date": {
+                "title": "Date",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "id": {
+                "title": "Id",
+                "type": "integer"
+              },
+              "ksinr": {
+                "title": "Ksinr",
+                "type": "integer"
+              },
+              "kvonr": {
+                "title": "Kvonr",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "outcome": {
+                "title": "Outcome",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "template_number": {
+                "title": "Template Number",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "title": {
+                "title": "Title",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "top": {
+                "title": "Top",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "vote": {
+                "title": "Vote",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "ksinr",
+              "kvonr",
+              "top",
+              "title",
+              "outcome",
+              "vote",
+              "template_number",
+              "committee",
+              "date"
+            ],
+            "title": "Ratsvorgang",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "page": {
+            "title": "Page",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "probe": {
+            "title": "Probe",
+            "type": "string"
+          },
+          "probe_result": {
+            "title": "Probe Result",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "probes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Probes",
+            "type": "array"
+          },
+          "url": {
+            "title": "Url",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "document_id",
+          "label",
+          "url",
+          "citation",
+          "page",
+          "probe",
+          "probe_result",
+          "as_of",
+          "fetched_at",
+          "probes",
+          "official_text"
+        ],
+        "title": "Herkunft",
         "type": "object"
       },
       "HighestDecisionId": {
@@ -7053,6 +7257,89 @@
           "correct"
         ],
         "title": "QuizTotal",
+        "type": "object"
+      },
+      "Ratsvorgang": {
+        "description": "Der Beschluss, der ein Beleg-Dokument verabschiedet hat.\n\nWird in ``CouncilStore.beschluesse_zu_dokumenten`` Feld für Feld gebaut,\nnicht aus einem ``SELECT *`` — die Aufzählung hier ist deshalb vollständig\nund bleibt es.\n\n``outcome`` kommt ungefiltert, auch ``vertagt`` oder ``abgelehnt``: Eine\nZahl, deren Vorgang noch läuft, ist keine Zahl ohne Beleg.",
+        "properties": {
+          "committee": {
+            "title": "Committee",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date": {
+            "title": "Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "ksinr": {
+            "title": "Ksinr",
+            "type": "integer"
+          },
+          "kvonr": {
+            "title": "Kvonr",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "template_number": {
+            "title": "Template Number",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "title": "Title",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "top": {
+            "title": "Top",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "vote": {
+            "title": "Vote",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "ksinr",
+          "kvonr",
+          "top",
+          "title",
+          "outcome",
+          "vote",
+          "template_number",
+          "committee",
+          "date"
+        ],
+        "title": "Ratsvorgang",
         "type": "object"
       },
       "RegisterRequest": {

@@ -1612,7 +1612,7 @@ def _haushalt_block(zeilen: list[dict] | None) -> str:
         teile.append(s)
     return ("\nSTADTHAUSHALT (GEPLANTE Zahlen aus dem beschlossenen Haushaltsplan; nur\n"
             "nutzen, wenn einschlägig — im Text als „Laut Haushaltsplan JAHR …“ nennen,\n"
-            "NIE mit [id]):\n" + "\n".join(teile) + "\n")
+            "NIE mit [id]):\n" + "\n".join(teile) + "\n" + _jahr_hinweis(zeilen))
 
 
 def _steuern_block(zeilen: list[dict] | None) -> str:
@@ -1632,7 +1632,7 @@ def _steuern_block(zeilen: list[dict] | None) -> str:
         teile.append(s)
     return ("\nSTEUEREINNAHMEN (IST-Zahlen der Stadt, NICHT der Haushaltsplan — nie mit\n"
             "den Plan-Zahlen oben vermischen; im Text als „tatsächlich eingenommen“\n"
-            "kennzeichnen und das Jahr nennen, NIE mit [id]):\n" + "\n".join(teile) + "\n")
+            "kennzeichnen und das Jahr nennen, NIE mit [id]):\n" + "\n".join(teile) + "\n" + _jahr_hinweis(zeilen))
 
 
 def _steuerkraft_block(k: dict | None) -> str:
@@ -1651,7 +1651,7 @@ def _steuerkraft_block(k: dict | None) -> str:
         "- REGEL: Steigt die eigene Steuerkraft, sinken die Schlüsselzuweisungen des\n"
         "  Landes. Von einer Steuererhöhung bleibt der Stadt deshalb nur ein Teil —\n"
         "  sag das dazu, wenn du über mehr Einnahmen sprichst. Nenne keine\n"
-        "  Prozentsätze oder Beträge, die hier nicht stehen.\n")
+        "  Prozentsätze oder Beträge, die hier nicht stehen.\n" + _jahr_hinweis(k))
 
 
 # ===========================================================================
@@ -1782,6 +1782,9 @@ _F_ANSATZ = re.compile(
 # Planungsfrage. Die weichen Wörter brauchen deshalb einen Geld-Anker.
 _F_IST_HART = re.compile(
     r"ausgegeben|jahresabschluss|income_statement|abgerechnet|rechnungsergebnis|"
+    # „Jahresergebnis" zog bis 09/2026 gar nichts — die schlichteste Frage an
+    # den Abschluss bekam keinen Abschluss.
+    r"jahresergebnis|ordentliche[sn]? ergebnis|"
     r"ueberschritten|fehlbetrag|\bdefizit|ueberschuss|\bbilanz")
 _F_IST_WEICH = re.compile(
     r"tatsaechlich|wirklich|am ende|unterm strich|eingehalten|abweich|"
@@ -1872,8 +1875,19 @@ def haushaltsjahr(question: str) -> int | None:
     Nur die Änderungslisten brauchen das: Sie liegen je Jahrgang vor, und
     „Wer wollte den Haushalt 2024 ändern?" meint 2024 und nicht den jüngsten
     Jahrgang. Steht keine Jahreszahl da, entscheidet die Quelle."""
-    m = _F_JAHRGANG.search(question or "")
-    return int(m.group(1)) if m else None
+    t = _falte(question or "")
+    jahre = sorted({int(j) for j in _F_JAHRGANG.findall(t)})
+    if len(jahre) != 1:
+        # Kein Jahr — oder zwei („von 2019 bis 2024"): Das ist ein Zeitraum,
+        # und ein Zeitraum hat keinen Jahrgang. Dann entscheidet die Quelle.
+        return None
+    # „seit 2020", „ab 2020", „nach 2020": Das Jahr ist der ANFANG einer
+    # Reihe, nicht der gefragte Jahrgang. Lieferte die Facette dann 2020,
+    # bekäme „Wie haben sich die Ausgaben seit 2020 entwickelt?" den ältesten
+    # Punkt der Reihe statt der Reihe.
+    if re.search(r"\b(seit|ab|nach|zwischen|bis)\s+" + str(jahre[0]) + r"\b", t):
+        return None
+    return jahre[0]
 
 
 def geld_facetten(question: str, typ: str = "topic") -> set[str]:
@@ -1897,7 +1911,12 @@ def geld_facetten(question: str, typ: str = "topic") -> set[str]:
         f.add("vergleich")
     if _F_PLAN.search(t):
         f.add("plan")
-    if _F_ANSATZ.search(t):
+    # Der Ansatz auch bei Kosten-Fragen: „Was kostet das Personal?" ist die
+    # Frage an POSTEN 13 des Gesamtergebnishaushalts. Ob der Baustein dann
+    # wirklich in den Kontext kommt, entscheidet `geld_kontext` am Treffer
+    # im Fragewortlaut — sonst hätte „Was kostete der Stadionumbau?" den
+    # Gesamthaushalt im Kontext (der Grund, warum `_F_ANSATZ` eng ist).
+    if _F_ANSATZ.search(t) or (_F_KOSTEN.search(t) and "plan" in f):
         f.add("ansatz")
     if _F_IST_HART.search(t) or (_F_IST_WEICH.search(t) and "plan" in f):
         f.add("ist")
@@ -1977,14 +1996,30 @@ def geld_facetten(question: str, typ: str = "topic") -> set[str]:
     return f
 
 
-def _sicher(fn, *args, standard=None):
+def _sicher(fn, *args, standard=None, **kw):
     """Eine Quelle abfragen — Zusatz, nie Blocker. Fällt die Tabelle (frische
     Datenbank ohne Ingest-Lauf), bleibt der Baustein leer statt die Antwort
     zu verlieren."""
     try:
-        return fn(*args)
+        return fn(*args, **kw)
     except Exception:  # noqa: BLE001
         return standard
+
+
+def _jahr_hinweis(d, jahr_key: str = "year") -> str:
+    """Die Zeile, die dazukommt, wenn die Quelle das gefragte Jahr nicht hat.
+
+    Seit 09/2026 liefern die Facetten den JAHRGANG AUS DER FRAGE, wenn sie
+    ihn haben — und sonst den jüngsten, wie vorher. Der zweite Fall ist der
+    gefährliche: Wer nach 2019 fragt und stillschweigend 2026 bekommt, liest
+    die Zahl als 2019. Deshalb steht es dabei, und zwar als Anweisung."""
+    if isinstance(d, list):
+        d = d[0] if d else None
+    if not d or not d.get("year_asked"):
+        return ""
+    return (f"- ACHTUNG: Für {d['year_asked']} liegt diese Quelle nicht vor; oben steht "
+            f"der Jahrgang {d.get(jahr_key)}. Sag das ausdrücklich dazu und gib die "
+            f"Zahlen nicht für {d['year_asked']} aus.\n")
 
 
 def geld_kontext(store, question: str, begriffe: str = "", typ: str = "topic") -> dict:
@@ -1999,60 +2034,71 @@ def geld_kontext(store, question: str, begriffe: str = "", typ: str = "topic") -
     facetten = geld_facetten(question, typ)
     # Die Begriffe kommen aus der Expansion; ohne sie tut es die Frage selbst.
     woerter = [w for w in (begriffe or question or "").split() if w]
+    # Das Jahr aus der FRAGE, nicht aus den Begriffen: Die Expansion streut
+    # Jahreszahlen ein, die niemand getippt hat. Jede Quelle bekommt es und
+    # liefert den Jahrgang, wenn sie ihn hat — sonst den jüngsten, mit Vermerk.
+    jahr = haushaltsjahr(question)
     aus: dict = {"facets": sorted(facetten)}
     if "fees" in facetten:
-        aus["fees"] = _sicher(store.gebuehren_fuer_begriffe, woerter)
+        aus["fees"] = _sicher(store.gebuehren_fuer_begriffe, woerter, year=jahr)
     if "plan" in facetten:
-        aus["haushalt"] = _sicher(store.haushalt_fuer_begriffe, woerter, standard=[])
+        aus["haushalt"] = _sicher(store.haushalt_fuer_begriffe, woerter, standard=[], year=jahr)
     if "taxes" in facetten:
-        aus["taxes"] = _sicher(store.steuern_fuer_begriffe, woerter, standard=[])
+        aus["taxes"] = _sicher(store.steuern_fuer_begriffe, woerter, standard=[], year=jahr)
     if "ausgleich" in facetten:
         # Wie bisher: der Dämpfer nur, wenn es wirklich um Steuern geht —
         # sonst hinge er an jeder Zuweisungs-Frage ohne Bezug.
         if aus.get("taxes") or _F_AUSGLEICH.search(_falte(question or "")):
-            aus["tax_capacity"] = _sicher(store.steuerkraft_kontext)
+            aus["tax_capacity"] = _sicher(store.steuerkraft_kontext, year=jahr)
     if "ist" in facetten:
-        aus["ist"] = _sicher(store.result_actual_for_terms, woerter)
+        aus["ist"] = _sicher(store.result_actual_for_terms, woerter, year=jahr)
     if "gruende" in facetten:
-        aus["gruende"] = _sicher(store.abweichungsgruende_fuer_begriffe, woerter, standard=[])
+        aus["gruende"] = _sicher(store.abweichungsgruende_fuer_begriffe, woerter, standard=[], year=jahr)
     if "pruefung" in facetten:
-        aus["pruefung"] = _sicher(store.pruefberichte_fuer_begriffe, woerter)
+        aus["pruefung"] = _sicher(store.pruefberichte_fuer_begriffe, woerter, year=jahr)
     if "produkte" in facetten:
-        aus["produkte"] = _sicher(store.produkte_fuer_begriffe, woerter)
+        aus["produkte"] = _sicher(store.produkte_fuer_begriffe, woerter, year=jahr)
     if "konzern" in facetten:
-        aus["konzern"] = _sicher(store.konzern_kontext)
+        aus["konzern"] = _sicher(store.konzern_kontext, year=jahr)
     if "vergleich" in facetten:
-        aus["vergleich"] = _sicher(store.staedtevergleich_kontext)
-    if "ansatz" in facetten and not aus.get("haushalt"):
-        # Der Ergebnishaushalt ist die feinere Plan-Quelle (Einnahmearten),
-        # aber die gröbere ist die vertrautere: Solange `council_budget`
-        # einen Teilhaushalt zur Frage hat, reicht der. Erst wenn er nichts
-        # hergibt, lohnt der Ansatz die Zeichen.
-        aus["ansatz"] = _sicher(store.ansatz_fuer_begriffe, woerter)
+        aus["vergleich"] = _sicher(store.staedtevergleich_kontext, year=jahr)
+    if "ansatz" in facetten:
+        # Der Ergebnishaushalt ist die feinere Plan-Quelle (Ertrags- und
+        # Aufwandsarten), die gröbere (`council_budget`, Teilhaushalte) die
+        # vertrautere. Treffen die Begriffe einen POSTEN („Personal" →
+        # Personalaufwendungen, „Zinsen", „Transfer"), ist der Ansatz die
+        # Antwort und kommt immer; sonst nur, wenn der Teilhaushalt nichts
+        # hergibt — die Summenzeilen lohnen die Zeichen nicht zweimal.
+        # `frage` = die Wörter der ROHEN Frage: Der Treffer, der den Baustein
+        # trotz Teilhaushalt hineinholt, muss aus dem Wortlaut kommen — die
+        # Expansion streut „Finanzierung" ein, und das träfe „Zinsen und
+        # ähnliche Finanzerträge" in jeder Stadion-Frage.
+        eigen = bool(_F_ANSATZ.search(_falte(question or "")))
+        a = _sicher(store.ansatz_fuer_begriffe, woerter, year=jahr,
+                    frage=[w for w in (question or "").split() if len(w) >= 4])
+        if a and (a.get("treffer") or (eigen and not aus.get("haushalt"))):
+            aus["ansatz"] = a
     if "schulden" in facetten:
-        aus["schulden"] = _sicher(store.schulden_kontext)
+        aus["schulden"] = _sicher(store.schulden_kontext, year=jahr)
     if "bilanz" in facetten:
-        aus["bilanz"] = _sicher(store.bilanz_kontext)
+        aus["bilanz"] = _sicher(store.bilanz_kontext, year=jahr)
     if "kassensicht" in facetten:
-        aus["kassensicht"] = _sicher(store.kassensicht_kontext)
+        aus["kassensicht"] = _sicher(store.kassensicht_kontext, year=jahr)
     if "supplementary_approvals" in facetten:
-        aus["supplementary_approvals"] = _sicher(store.nachbewilligungen_kontext,
-                                           haushaltsjahr(question))
+        aus["supplementary_approvals"] = _sicher(store.nachbewilligungen_kontext, jahr)
     if "indicators" in facetten:
-        aus["indicators"] = _sicher(store.kennzahlen_kontext)
+        aus["indicators"] = _sicher(store.kennzahlen_kontext, year=jahr)
     if "investitionen" in facetten:
-        aus["investitionen"] = _sicher(store.investitionen_fuer_begriffe, woerter)
+        aus["investitionen"] = _sicher(store.investitionen_fuer_begriffe, woerter, year=jahr)
     if "gebaut" in facetten:
-        aus["gebaut"] = _sicher(store.investitionen_ist_kontext)
+        aus["gebaut"] = _sicher(store.investitionen_ist_kontext, year=jahr)
     if "stellenplan" in facetten:
-        aus["stellenplan"] = _sicher(store.stellenplan_kontext)
+        aus["stellenplan"] = _sicher(store.stellenplan_kontext, budget_year=jahr)
     if "antraege" in facetten:
         # Das Jahr aus der FRAGE, nicht aus den Begriffen: Die Expansion
         # streut Jahreszahlen ein, die niemand getippt hat.
-        aus["antraege"] = _sicher(store.haushaltsantraege_kontext, haushaltsjahr(question))
-    # Die Modul-Facetten: eine Store-Methode je Facette, Signatur
-    # (woerter, year) — das Jahr aus der FRAGE, wie bei den Anträgen.
-    jahr = haushaltsjahr(question)
+        aus["antraege"] = _sicher(store.haushaltsantraege_kontext, jahr)
+    # Die Modul-Facetten: eine Store-Methode je Facette, Signatur (woerter, year).
     for fac in _geld.FACETTEN:
         if fac.name in facetten:
             aus[fac.key] = _sicher(getattr(store, fac.methode), woerter, jahr)
@@ -2213,6 +2259,7 @@ def _gebuehren_block(g: dict | None) -> str:
           "Gesamtkalkulation zeigt, DASS sich Kosten oder Abzüge geändert haben; sie "
           "belegt ohne einzelne Kostenpositionen nicht, WARUM. Ein Vorschlag wird erst "
           "durch einen passenden Ratsbeschluss zur beschlossenen Gebühr.\n"
+        + _jahr_hinweis(g)
     )
 
 
@@ -2231,6 +2278,20 @@ def _ist_block(ist: dict | None) -> str:
         # Antwort in genau diesen Jahrgängen zwei verschiedene Dinge.
         zeilen.append(f"  (\"geplant\" ist in diesem Jahrgang der/die {g['plan_kind']}, "
                       f"nicht der nackte Haushaltsansatz — sag das dazu)")
+    e = ist.get("ergebnis") or {}
+    if e.get("ordentlich"):
+        plan, tat = e["ordentlich"]
+        s = (f"- Ordentliches Ergebnis {ist['year']} (Erträge minus Aufwendungen): "
+             f"geplant {_eur(plan)}, tatsächlich {_eur(tat)}")
+        if e.get("ausserordentlich"):
+            plan2, tat2 = e["ausserordentlich"]
+            s += (f"; außerordentliches Ergebnis geplant {_eur(plan2)}, tatsächlich "
+                  f"{_eur(tat2)} — das Jahresergebnis ist die Summe beider, nenne beide")
+        zeilen.append(s)
+    for p in ist.get("posten") or []:
+        abw = f", Abweichung {_eur(p['deviation'])}" if p.get("deviation") is not None else ""
+        zeilen.append(f"- Posten {p['nr']} {p['label']} {ist['year']}: geplant "
+                      f"{_eur(p.get('planned'))}, tatsächlich {_eur(p.get('actual'))}{abw}")
     for b in ist.get("bereiche") or []:
         zeilen.append(f"- {b.get('name')} {ist['year']}: Aufwendungen geplant "
                       f"{_eur(b.get('expenses_planned'))}, tatsächlich "
@@ -2238,7 +2299,7 @@ def _ist_block(ist: dict | None) -> str:
     return ("\nGEPLANT UND TATSÄCHLICH (Jahresabschluss "
             f"{ist['year']} — ABGERECHNETE Zahlen, nicht der Haushaltsplan; nenne\n"
             "IMMER das Jahr dazu und nie mit [id] zitieren)"
-            + _beleg_text(ist.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n")
+            + _beleg_text(ist.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n" + _jahr_hinweis(ist))
 
 
 def _gruende_block(gruende: list[dict] | None) -> str:
@@ -2254,7 +2315,7 @@ def _gruende_block(gruende: list[dict] | None) -> str:
     return ("\nWARUM DER PLAN NICHT AUFGING (Erläuterungen der Verwaltung zum\n"
             "Jahresabschluss — das ist ihre Begründung, keine Feststellung von uns;\n"
             "gib sie als „Die Verwaltung begründet das damit, dass …“ wieder,\n"
-            "NIE mit [id]):\n" + "\n".join(zeilen) + "\n")
+            "NIE mit [id]):\n" + "\n".join(zeilen) + "\n" + _jahr_hinweis(gruende))
 
 
 def _pruefung_block(p: dict | None) -> str:
@@ -2274,7 +2335,7 @@ def _pruefung_block(p: dict | None) -> str:
             + (f": {verteilung}" if verteilung else "") + "). Unten eine AUSWAHL —\n"
             "sag, dass es eine Auswahl ist, nenne die Textziffer als Fundstelle und\n"
             "das geprüfte Jahr; NIE mit [id] zitieren"
-            + _beleg_text(p.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n")
+            + _beleg_text(p.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n" + _jahr_hinweis(p))
 
 
 def _produkte_block(p: dict | None) -> str:
@@ -2299,7 +2360,7 @@ def _produkte_block(p: dict | None) -> str:
             f"Teilhaushalts-Pläne, Stand {p['year']} — PLAN-Zahlen). Die\n"
             "„Rechtsgrundlage“ sagt, ob eine Aufgabe pflichtig oder freiwillig ist;\n"
             "sie ist die Selbstauskunft des Haushaltsplans, kein Rechtsgutachten —\n"
-            "gib sie als solche wieder und NIE mit [id]:\n" + "\n".join(zeilen) + "\n")
+            "gib sie als solche wieder und NIE mit [id]:\n" + "\n".join(zeilen) + "\n" + _jahr_hinweis(p))
 
 
 def _konzern_block(k: dict | None) -> str:
@@ -2320,7 +2381,7 @@ def _konzern_block(k: dict | None) -> str:
             "Kernverwaltung PLUS Eigenbetriebe und Beteiligungen). Nutze das, wenn nach\n"
             "der Stadt ALS GANZES gefragt ist; die Zahlen sind mit denen des\n"
             "Kernhaushalts NICHT verrechenbar und NIE mit [id] zu zitieren"
-            + _beleg_text(k.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n")
+            + _beleg_text(k.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n" + _jahr_hinweis(k))
 
 
 def _vergleich_block(v: dict | None) -> str:
@@ -2333,7 +2394,7 @@ def _vergleich_block(v: dict | None) -> str:
     return (f"\nIM VERGLEICH ({v['indicator']}, {v['year']}, amtliche Statistik des\n"
             "Landesamts für Statistik Niedersachsen — alle kreisfreien Städte\n"
             "Niedersachsens). Für die Einordnung „wo steht Oldenburg?“; NIE mit [id]"
-            + _beleg_text(v.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n")
+            + _beleg_text(v.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n" + _jahr_hinweis(v))
 
 
 def _ansatz_block(a: dict | None) -> str:
@@ -2345,7 +2406,7 @@ def _ansatz_block(a: dict | None) -> str:
     return (f"\nHAUSHALTSANSATZ {a['year']} nach Ertrags- und Aufwandsarten (GEPLANT,\n"
             "aus dem Gesamtergebnishaushalt — der Stand der Einbringung, nicht\n"
             "zwingend der Beschluss des Rates; Jahr immer nennen, NIE mit [id])"
-            + _beleg_text(a.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n")
+            + _beleg_text(a.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n" + _jahr_hinweis(a))
 
 
 def _stellen(v) -> str:
@@ -2382,7 +2443,7 @@ def _bilanz_block(b: dict | None) -> str:
             f"(31.12.{b['year']}),\nkein Haushaltsjahr: Diese Beträge NIE mit "
             "Erträgen, Aufwendungen oder dem\nDefizit eines Jahres verrechnen. Nie "
             "mit [id] zitieren"
-            + _beleg_text(b.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n")
+            + _beleg_text(b.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n" + _jahr_hinweis(b))
 
 
 def _kassensicht_block(k: dict | None) -> str:
@@ -2397,7 +2458,7 @@ def _kassensicht_block(k: dict | None) -> str:
             "beide für dasselbe Jahr in verschiedene Richtungen\nzeigen (2024: dort "
             "ein Überschuss, hier ein Fehlbetrag an Finanzmitteln), und\nbeides "
             "stimmt. Sag dazu, welche der beiden du nennst. Nie mit [id] zitieren"
-            + _beleg_text(k.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n")
+            + _beleg_text(k.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n" + _jahr_hinweis(k))
 
 
 def _nachbewilligungen_block(n: dict | None) -> str:
@@ -2425,7 +2486,7 @@ def _nachbewilligungen_block(n: dict | None) -> str:
             "Kapitel 3).\nGeld, das AUSSERHALB des beschlossenen Haushalts "
             "bewilligt wurde. Nicht mit\ndem Haushaltsplan verrechnen — es kommt "
             "obendrauf. Nie mit [id] zitieren"
-            + _beleg_text(n.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n")
+            + _beleg_text(n.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n" + _jahr_hinweis(n))
 
 
 def _kennzahlen_block(k: dict | None) -> str:
@@ -2471,7 +2532,7 @@ def _kennzahlen_block(k: dict | None) -> str:
             "„Kennzahlenübersicht und\nBerechnungsmethoden“). Die Rechenwege sind "
             "GEDRUCKT — zitiere sie, statt\neine Quote selbst zu bilden. Nie mit "
             "[id] zitieren"
-            + _beleg_text(k.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n")
+            + _beleg_text(k.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n" + _jahr_hinweis(k))
 
 
 def _schulden_block(s: dict | None) -> str:
@@ -2530,7 +2591,7 @@ def _schulden_block(s: dict | None) -> str:
             "ein BESTAND am Stichtag, kein Jahresbetrag — nie mit Aufwendungen, "
             "Erträgen\noder dem Defizit eines Haushaltsjahres verrechnen und nie als "
             "„Ausgaben“\nbezeichnen. Nenne das Jahr und die Abgrenzung mit, NIE mit [id]"
-            + _beleg_text(s.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n")
+            + _beleg_text(s.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n" + _jahr_hinweis(s))
 
 
 def _investitionen_block(i: dict | None) -> str:
@@ -2556,7 +2617,7 @@ def _investitionen_block(i: dict | None) -> str:
             "beiden nie addieren, nie voneinander abziehen, nie als Anteil "
             "gegeneinander\nrechnen. Und diese Zeilen nennen KEIN einzelnes Vorhaben: "
             "„Verkehr und\nStraßenbau: 10,5 Mio. €“ sagt nicht, welche Straße. NIE mit [id]"
-            + _beleg_text(i.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n")
+            + _beleg_text(i.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n" + _jahr_hinweis(i))
 
 
 def _gebaut_block(g: dict | None) -> str:
@@ -2598,7 +2659,7 @@ def _gebaut_block(g: dict | None) -> str:
             "die Kernverwaltung. Keine Differenz bilden, keine „Umsetzungsquote“, "
             "keinen\nProzentsatz: Diese Rechnung steht in keinem Dokument. Nenne das "
             "Jahr und die\nAbgrenzung mit, NIE mit [id]"
-            + _beleg_text(g.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n")
+            + _beleg_text(g.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n" + _jahr_hinweis(g))
 
 
 def _stellenplan_block(s: dict | None) -> str:
@@ -2633,7 +2694,7 @@ def _stellenplan_block(s: dict | None) -> str:
             "minus besetzt“: Das mischt zwei Stichtage und steht\nin keinem Dokument. "
             "Die unbesetzten Stellen stehen als eigene Angabe da.\nEine Zeile „Stellen "
             "insgesamt“ gibt es im Plan nicht; addiere die Teile nicht.\nNIE mit [id]"
-            + _beleg_text(s.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n")
+            + _beleg_text(s.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n" + _jahr_hinweis(s, "budget_year"))
 
 
 def _antraege_block(a: dict | None) -> str:
@@ -2672,7 +2733,7 @@ def _antraege_block(a: dict | None) -> str:
             "liegt uns nicht als Text vor; erfinde\nkeine Inhalte dazu und leite auch "
             "keine aus dem Titel ab. Gemeinsame Listen\nzählen für jede beteiligte "
             "Fraktion, die Zahlen sind deshalb nicht\naddierbar. NIE mit [id]:\n"
-            + "\n".join(zeilen) + "\n")
+            + "\n".join(zeilen) + "\n" + _jahr_hinweis(a))
 
 
 #: Zeichenbudget für ALLE Geld-Bausteine zusammen. Der Antwort-Prompt trägt

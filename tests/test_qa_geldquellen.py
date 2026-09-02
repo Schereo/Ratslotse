@@ -40,15 +40,18 @@ KORPUS: list[tuple[str, str, set[str]]] = [
     # --- Tims sechs Pflichtfragen ------------------------------------------
     # „Was kostet X?" ist die Frage der Produktebene: dort steht eine Aufgabe
     # mit ihren Kosten. Der Teilhaushalt (plan) trägt die grobe Summe dazu.
-    ("Was kostet die Feuerwehr?", "money", {"plan", "produkte"}),
+    # Seit 09/2026 wird auch der Ansatz GEFRAGT (Posten-Ebene: „Personal" →
+    # Personalaufwendungen); in den Kontext kommt er nur bei einem Treffer im
+    # Fragewortlaut — s. test_qa_posten.py und die Stadion-Regression unten.
+    ("Was kostet die Feuerwehr?", "money", {"plan", "produkte", "ansatz"}),
     # Dieselbe Frage als KOMPOSITUM. `\bkost` trifft nur „kostet"/„Kosten" am
     # Wortanfang; „Personalkosten", „Baukosten", „Betriebskosten" gingen bis
     # zum 17.08. leer aus — gemessen, nicht vermutet. Die Endung `kosten\b`
     # fängt sie. Beim Personal kommt der Stellenplan dazu, und das ist die
     # bessere Antwort: Personalausgaben ohne die Stellen dahinter sind eine
     # Zahl ohne Erklärung.
-    ("Wie hoch sind die Personalkosten?", "money", {"plan", "produkte", "stellenplan"}),
-    ("Was sind die Baukosten der Schule?", "money", {"plan", "produkte"}),
+    ("Wie hoch sind die Personalkosten?", "money", {"plan", "produkte", "stellenplan", "ansatz"}),
+    ("Was sind die Baukosten der Schule?", "money", {"plan", "produkte", "ansatz"}),
     # Plan gegen Ist — das kann NUR der Jahresabschluss beantworten.
     # `kassensicht` kommt seit 08/2026 mit jedem `ist` mit: Für 2024 weist die
     # Ergebnisrechnung einen Überschuss aus und die Finanzrechnung einen
@@ -65,7 +68,7 @@ KORPUS: list[tuple[str, str, set[str]]] = [
     ("Was hat das Rechnungsprüfungsamt beanstandet?", "topic", {"pruefung"}),
     # „Insgesamt" ist das Stichwort für den Konzern: der Kernhaushalt
     # antwortet mit 799 Mio., der Gesamtabschluss mit 1.242 Mio.
-    ("Was kostet die Stadt insgesamt?", "money", {"plan", "produkte", "konzern"}),
+    ("Was kostet die Stadt insgesamt?", "money", {"plan", "produkte", "konzern", "ansatz"}),
     # Keine Betragsfrage — eine Rechtsfrage. Nur die Produktebene führt die
     # Auftragsgrundlage je Aufgabe.
     ("Muss die Stadt das Theater betreiben?", "topic", {"produkte"}),
@@ -74,7 +77,7 @@ KORPUS: list[tuple[str, str, set[str]]] = [
     ("Wie werden die Müllgebühren berechnet?", "topic", {"fees"}),
 
     # --- Weitere echte Fragen ----------------------------------------------
-    ("Wie viel gibt Oldenburg für Soziales aus?", "money", {"plan", "produkte"}),
+    ("Wie viel gibt Oldenburg für Soziales aus?", "money", {"plan", "produkte", "ansatz"}),
     ("Wie hoch ist der Hebesatz der Grundsteuer?", "money",
      {"taxes", "ausgleich", "tax_rates"}),
     ("Wie steht Oldenburg im Vergleich zu Osnabrück da?", "money", {"vergleich"}),
@@ -226,66 +229,66 @@ class _MessStore:
             return lambda *a, **k: self._merken(name, None)
         raise AttributeError(name)
 
-    def bilanz_kontext(self):
+    def bilanz_kontext(self, **kw):
         return self._merken("bilanz_kontext", None)
 
-    def gebuehren_fuer_begriffe(self, b, limit_jahre=4):
+    def gebuehren_fuer_begriffe(self, b, limit_jahre=4, **kw):
         return self._merken("gebuehren_fuer_begriffe", None)
 
-    def kassensicht_kontext(self):
+    def kassensicht_kontext(self, **kw):
         return self._merken("kassensicht_kontext", None)
 
-    def nachbewilligungen_kontext(self, year=None):
+    def nachbewilligungen_kontext(self, year=None, **kw):
         return self._merken("nachbewilligungen_kontext", None)
 
-    def kennzahlen_kontext(self, limit=13):
+    def kennzahlen_kontext(self, limit=13, **kw):
         return self._merken("kennzahlen_kontext", None)
 
-    def haushalt_fuer_begriffe(self, b, limit=3):
+    def haushalt_fuer_begriffe(self, b, limit=3, **kw):
         return self._merken("haushalt_fuer_begriffe", [])
 
-    def ansatz_fuer_begriffe(self, b, limit=4):
+    def ansatz_fuer_begriffe(self, b, limit=4, **kw):
         return self._merken("ansatz_fuer_begriffe", None)
 
-    def steuern_fuer_begriffe(self, b):
+    def steuern_fuer_begriffe(self, b, **kw):
         return self._merken(
             "steuern_fuer_begriffe",
             [{"art": "total", "year": 2025, "amount": 1.0}] if self._steuern_treffer else [])
 
-    def steuerkraft_kontext(self):
+    def steuerkraft_kontext(self, **kw):
         return self._merken("steuerkraft_kontext", None)
 
-    def result_actual_for_terms(self, b, limit=2):
+    def result_actual_for_terms(self, b, limit=2, **kw):
         return self._merken("result_actual_for_terms", None)
 
-    def abweichungsgruende_fuer_begriffe(self, b, limit=3):
+    def abweichungsgruende_fuer_begriffe(self, b, limit=3, **kw):
         return self._merken("abweichungsgruende_fuer_begriffe", [])
 
-    def pruefberichte_fuer_begriffe(self, b, limit=4):
+    def pruefberichte_fuer_begriffe(self, b, limit=4, **kw):
         return self._merken("pruefberichte_fuer_begriffe", None)
 
-    def produkte_fuer_begriffe(self, b, limit=4):
+    def produkte_fuer_begriffe(self, b, limit=4, **kw):
         return self._merken("produkte_fuer_begriffe", None)
 
-    def konzern_kontext(self):
+    def konzern_kontext(self, **kw):
         return self._merken("konzern_kontext", None)
 
-    def staedtevergleich_kontext(self, series="tax_capacity"):
+    def staedtevergleich_kontext(self, series="tax_capacity", **kw):
         return self._merken("staedtevergleich_kontext", None)
 
-    def schulden_kontext(self):
+    def schulden_kontext(self, **kw):
         return self._merken("schulden_kontext", None)
 
-    def investitionen_fuer_begriffe(self, b, limit=3):
+    def investitionen_fuer_begriffe(self, b, limit=3, **kw):
         return self._merken("investitionen_fuer_begriffe", None)
 
-    def investitionen_ist_kontext(self):
+    def investitionen_ist_kontext(self, **kw):
         return self._merken("investitionen_ist_kontext", None)
 
-    def stellenplan_kontext(self, budget_year=None):
+    def stellenplan_kontext(self, budget_year=None, **kw):
         return self._merken("stellenplan_kontext", None)
 
-    def haushaltsantraege_kontext(self, year=None, limit=8):
+    def haushaltsantraege_kontext(self, year=None, limit=8, **kw):
         self.jahr_argument = year
         return self._merken("haushaltsantraege_kontext", None)
 
@@ -539,7 +542,7 @@ VARIANTEN = [
       "Feuerwehr Kosten",
       "Was gibt die Stadt für die Feuerwehr aus?",
       "Wie viel gibt Oldenburg für die Feuerwehr aus?"],
-     {"plan", "produkte"}),
+     {"plan", "produkte", "ansatz"}),
     ("Plan gegen Ist",
      ["Hat die Stadt 2024 mehr ausgegeben als geplant?",
       "Wurde der Haushalt 2024 eingehalten?",
@@ -1249,7 +1252,7 @@ def test_deepresearch_ruft_geld_kontext_statt_einzelquellen():
 def test_facetten_stehen_im_kontext_zum_mitloggen():
     store = _MessStore()
     kontext = qa.geld_kontext(store, "Was kostet die Feuerwehr?", "Feuerwehr", "money")
-    assert kontext["facets"] == sorted({"plan", "produkte"})
+    assert kontext["facets"] == sorted({"plan", "produkte", "ansatz"})
 
 
 def test_alle_facetten_haben_baustein_und_methode():

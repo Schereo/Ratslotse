@@ -63,7 +63,10 @@ public struct Topic: Codable, Sendable, Equatable, Identifiable {
     public let lastHitDate: String?
     public let unreadCount: Int
     public let recentHits: [TopicHit]
-    public let hits30Days: Int
+    /// Treffer der letzten sechs Monate. Hieß bis #826 `hits_30d` und zählte
+    /// 30 Tage; die App las den alten Namen noch, bekam ihn nie und zeigte
+    /// deshalb bei jedem Thema eine 0.
+    public let hits6Months: Int
 
     enum CodingKeys: String, CodingKey {
         case id, name, description, matched
@@ -75,7 +78,7 @@ public struct Topic: Codable, Sendable, Equatable, Identifiable {
         case lastHitDate = "last_hit_date"
         case unreadCount = "unread_count"
         case recentHits = "recent_hits"
-        case hits30Days = "hits_30d"
+        case hits6Months = "hits_6m"
     }
 
     public init(from decoder: Decoder) throws {
@@ -92,7 +95,7 @@ public struct Topic: Codable, Sendable, Equatable, Identifiable {
         lastHitDate = try values.decodeIfPresent(String.self, forKey: .lastHitDate)
         unreadCount = try values.decodeIfPresent(Int.self, forKey: .unreadCount) ?? 0
         recentHits = try values.decodeIfPresent([TopicHit].self, forKey: .recentHits) ?? []
-        hits30Days = try values.decodeIfPresent(Int.self, forKey: .hits30Days) ?? 0
+        hits6Months = try values.decodeIfPresent(Int.self, forKey: .hits6Months) ?? 0
     }
 }
 

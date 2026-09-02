@@ -55,13 +55,14 @@ import { Segmented } from "@/components/ui";
 import { useFetch } from "@/lib/use-fetch";
 import { amount, deMio, mio } from "@/lib/haushalt";
 import {
-  Herkunft, InvestitionenDaten, InvestitionsZeile, finanzhaushaltJahr,
+  InvestitionenDaten, InvestitionsZeile, finanzhaushaltJahr,
   gesamtJahr, herkunftVon, investitionsAnteil, netto, series, teilhaushalte,
 } from "@/lib/haushalt-investitionen";
 import {
   ProgrammDaten, count, passenderJahrgang,
 } from "@/lib/haushalt-investitionsprogramm";
 import { Beleg } from "@/components/haushalt/source";
+import { Fundstelle } from "@/components/haushalt/fundstelle";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { Vorhaben } from "@/components/haushalt/vorhaben";
 import { cn } from "@/lib/utils";
@@ -69,33 +70,6 @@ import { cn } from "@/lib/utils";
 
 /** Anker des Summen-Blocks — Ziel des Rückwegs aus den Vorhaben. */
 const ANKER_BEREICHE = "bereiche";
-
-/** Die Herkunft einer Angabe im Klartext — dieselbe Form wie auf
- *  `/haushalt/konzern`: welcher Abschnitt, welcher Stand.
- *
- *  HIER STANDEN BIS 16.08. AUCH UNSERE PROBEN — die Sätze aus
- *  `herkunft.PROBEN` und darunter „Gemessen: 0,00 € Restbetrag“. Das sagt
- *  etwas über uns und nichts über den Haushalt (DESIGNSPRACHE.md § 7); auf
- *  `/haushalt/konzern` ist es aus demselben Grund verschwunden. Die Proben
- *  laufen unverändert weiter, die API liefert sie weiter, Tests halten sie
- *  fest und die Technik-Doku beschreibt sie. Nur die Zurschaustellung ist weg.
- *  Gehört an die einzelne Zahl; das Verzeichnis am Seitenende beschreibt die
- *  Quelle der ganzen Seite. */
-function Fundstelle({ h }: { h: Herkunft | null }) {
-  if (!h) return null;
-  return (
-    <div className="border-t border-dashed border-border pt-2.5">
-      <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-        Woher diese Zahlen kommen
-      </p>
-      {h.citation && (
-        <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">
-          {h.citation}{h.as_of ? ` · ${h.as_of}` : ""}
-        </p>
-      )}
-    </div>
-  );
-}
 
 /** Eine Zeile der Rangliste: Bereich, Balken, Betrag — und was dagegensteht.
  *

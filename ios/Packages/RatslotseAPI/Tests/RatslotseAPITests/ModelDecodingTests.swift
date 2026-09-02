@@ -149,7 +149,7 @@ import Testing
         "outcome": "accepted",
         "is_new": true
       }],
-      "hits_30d": 3
+      "hits_6m": 3
     }
     """#
 
@@ -163,7 +163,7 @@ import Testing
     #expect(decision.factions.isEmpty)
     #expect(topic.recentHits.first?.id == 42)
     #expect(topic.recentHits.first?.isNew == true)
-    #expect(topic.hits30Days == 3)
+    #expect(topic.hits6Months == 3)
     #expect(topic.unreadCount == 0)
 }
 

@@ -75,7 +75,7 @@
     "id": "whole-city-cost",
     "question": "Was kostet die Stadt insgesamt?",
     "allowed_types": ["money"],
-    "expected_facets": ["plan", "produkte", "konzern"],
+    "expected_facets": ["plan", "produkte", "konzern", "ansatz"],
     "required_channels": ["decisions", "budget"],
     "forbidden_channels": ["debates"]
   },

@@ -204,7 +204,10 @@ export function nummerierung(
   const aus: NummerEintrag[] = [];
   for (const q of key) {
     const benutzte = jeDokument[q];
-    if (benutzte && benutzte.length > 1) {
+    // Auch EIN benanntes Papier bekommt seinen Eintrag: Sonst fiele die Art
+    // auf die Jahrgangsliste zurück — und die kennt nur den Jahrgang der
+    // Seite, nicht den der Zahl (Vollzug 2026 auf der Abschluss-Seite 2024).
+    if (benutzte && benutzte.length >= 1) {
       // DIE SEITE SAGT, WELCHE PAPIERE SIE BENUTZT — nicht der Jahrgang.
       //
       // Ein erster Versuch nahm die Dokumente des gezeigten Jahres. Auf

@@ -9073,7 +9073,7 @@ class CouncilStore(*_geld.MIXINS):
         except sqlite3.OperationalError:
             return []
 
-    def investitionen_ist_kontext(self) -> dict | None:
+    def investitionen_ist_kontext(self, year: int | None = None) -> dict | None:
         """Was die Stadt zuletzt wirklich investiert hat — für die KI-Frage.
 
         Wenige Zeilen statt Bestand, wie bei allen Geld-Bausteinen: der
@@ -9095,7 +9095,10 @@ class CouncilStore(*_geld.MIXINS):
             return None
         if not rows:
             return None
-        neu = rows[-1]
+        idx = next((i for i, r in enumerate(rows) if r["year"] == year), len(rows) - 1)
+        abweicht = year is not None and rows[idx]["year"] != year
+        rows_bis = rows[:idx + 1]
+        neu = rows[idx]
         try:
             arten = [(r["title"], r["amount"]) for r in self._conn.execute(
                 "SELECT title, amount FROM council_investments_actual_kinds "
@@ -9112,14 +9115,15 @@ class CouncilStore(*_geld.MIXINS):
             "year": neu["year"],
             "total": neu["total"],
             "arten": arten,
-            "davor": ({"year": rows[-2]["year"], "total": rows[-2]["total"]}
-                      if len(rows) > 1 else None),
+            "davor": ({"year": rows_bis[-2]["year"], "total": rows_bis[-2]["total"]}
+                      if len(rows_bis) > 1 else None),
             "hoch": ({"year": hoch["year"], "total": hoch["total"]}
                      if hoch["year"] != neu["year"] else None),
             "reihe_ab": rows[0]["year"],
             "fehlend": fehlend,
             "abgrenzung": _ii.ABGRENZUNG,
             "beleg": self._beleg(neu.get("herkunft_id")),
+            **({"year_asked": year} if abweicht else {}),
         }
 
     def schulden_jahre(self) -> list[int]:
@@ -13224,15 +13228,14 @@ class CouncilStore(*_geld.MIXINS):
                         return True
         return False
 
-    def haushalt_fuer_begriffe(self, begriffe: list[str], limit: int = 3) -> list[dict]:
+    def haushalt_fuer_begriffe(self, begriffe: list[str], limit: int = 3,
+                               year: int | None = None) -> list[dict]:
         """Teilhaushalts-Zeilen des neuesten Jahres, deren Bereich zu einem der
         Suchbegriffe passt („Radverkehr" → „Verkehr und Straßenbau"); fragt
         jemand nach dem Haushalt insgesamt, kommt die Summenzeile. Für den
         Geld-Kontext der KI-Frage — Plan-Zahlen, klar getrennt von Beschlüssen."""
-        try:
-            year = self._conn.execute("SELECT MAX(year) FROM council_budget").fetchone()[0]
-        except sqlite3.OperationalError:
-            return []
+        gefragt = year
+        year, abweicht = _geld.jahrgang(self._conn, "council_budget", "year", gefragt)
         if not year:
             return []
         # 16 statt 10: Die Begriffe der Gründlichen Recherche kommen aus
@@ -13250,6 +13253,9 @@ class CouncilStore(*_geld.MIXINS):
             if self._bereich_passt(r["area"] or "", woerter):
                 out.append(dict(r))
         out = out[:limit]
+        if abweicht:
+            for r in out:
+                r["year_asked"] = gefragt
         # Entwicklung mitgeben: derselbe Bereich im ältesten vorhandenen Jahr.
         # Nur bei EXAKT gleichem Namen — die Teilhaushalts-Zuschnitte ändern
         # sich über die Jahre, ein Vergleich über Zuschnittgrenzen wäre falsch.
@@ -13288,7 +13294,8 @@ class CouncilStore(*_geld.MIXINS):
         "getränkesteuer": "Getränkesteuer",
     }
 
-    def steuern_fuer_begriffe(self, begriffe: list[str]) -> list[dict]:
+    def steuern_fuer_begriffe(self, begriffe: list[str],
+                              year: int | None = None) -> list[dict]:
         """IST-Steuereinnahmen zu den gefragten Steuerarten: neuester Wert plus
         der Wert von vor zehn Jahren (Entwicklung), je Art. Fragt jemand
         allgemein nach „Steuern"/„Einnahmen", kommt die Gesamtsumme.
@@ -13306,10 +13313,7 @@ class CouncilStore(*_geld.MIXINS):
             arten = ["total"]
         if not arten:
             return []
-        try:
-            neuestes = self._conn.execute("SELECT MAX(year) FROM council_taxes").fetchone()[0]
-        except sqlite3.OperationalError:
-            return []
+        neuestes, abweicht = _geld.jahrgang(self._conn, "council_taxes", "year", year)
         if not neuestes:
             return []
         out: list[dict] = []
@@ -13322,28 +13326,30 @@ class CouncilStore(*_geld.MIXINS):
                 continue
             out.append({"kind": art, "year": neuestes, "amount": werte[neuestes],
                         "year_before": neuestes - 10 if (neuestes - 10) in werte else None,
-                        "amount_before": werte.get(neuestes - 10)})
+                        "amount_before": werte.get(neuestes - 10),
+                        **({"year_asked": year} if abweicht else {})})
         return out
 
-    def steuerkraft_kontext(self) -> dict | None:
+    def steuerkraft_kontext(self, year: int | None = None) -> dict | None:
         """Steuerkraftmesszahl + Schlüsselzuweisungen der beiden jüngsten Jahre.
 
         Für Fragen nach Hebesätzen und „mehr Steuern einnehmen": Steigt die
         eigene Steuerkraft, sinken die Zuweisungen des Landes (NFAG) — ohne
         diesen Kontext klingt jede Mehreinnahme nach vollem Gewinn."""
-        try:
-            rows = self._conn.execute(
-                "SELECT year, tax_index, allocations FROM council_tax_capacity "
-                "WHERE tax_index IS NOT NULL AND allocations IS NOT NULL "
-                "ORDER BY year DESC LIMIT 2").fetchall()
-        except sqlite3.OperationalError:
+        wo = "tax_index IS NOT NULL AND allocations IS NOT NULL"
+        gewaehlt, abweicht = _geld.jahrgang(self._conn, "council_tax_capacity", "year", year, wo)
+        if gewaehlt is None:
             return None
+        rows = self._conn.execute(
+            f"SELECT year, tax_index, allocations FROM council_tax_capacity WHERE {wo} "
+            "AND year <= ? ORDER BY year DESC LIMIT 2", (gewaehlt,)).fetchall()
         if len(rows) < 2:
             return None
         neu, alt = dict(rows[0]), dict(rows[1])
         return {"year": neu["year"], "tax_index": neu["tax_index"], "allocations": neu["allocations"],
                 "year_before": alt["year"], "tax_index_before": alt["tax_index"],
-                "zuweisungen_davor": alt["allocations"]}
+                "zuweisungen_davor": alt["allocations"],
+                **({"year_asked": year} if abweicht else {})}
 
     # ---- Der Haushalts-Bestand als Quelle der KI-Frage (Tim, 16.08.) -------
     #
@@ -13421,7 +13427,7 @@ class CouncilStore(*_geld.MIXINS):
         return dict(r) if r else None
 
     def gebuehren_fuer_begriffe(self, begriffe: list[str],
-                                limit_jahre: int = 4) -> dict | None:
+                                limit_jahre: int = 4, year: int | None = None) -> dict | None:
         """Gebührenbedarfsberechnungen passend zur Frage, jüngste zuerst.
 
         Die Tabelle enthält drei getrennte Kalkulationen. Eine Müllfrage
@@ -13456,8 +13462,17 @@ class CouncilStore(*_geld.MIXINS):
         if not rows:
             return None
         gruppen: list[dict] = []
+        # Das gefragte Jahr zuerst, wenn der Bereich es führt — sonst bleibt
+        # die Reihenfolge „jüngste zuerst", und der Baustein sagt, dass das
+        # gefragte Jahr fehlt.
+        vorhanden = {r["year"] for r in rows}
+        abweicht = year is not None and year not in vorhanden
         for area in bereiche:
-            werte = [r for r in rows if r["area"] == area][:limit_jahre]
+            werte = [r for r in rows if r["area"] == area]
+            if year in vorhanden:
+                werte = ([r for r in werte if r["year"] == year]
+                         + [r for r in werte if r["year"] != year])
+            werte = werte[:limit_jahre]
             if not werte:
                 continue
             for r in werte:
@@ -13465,9 +13480,12 @@ class CouncilStore(*_geld.MIXINS):
             gruppen.append({"area": area,
                             "area_name": werte[0]["area_name"],
                             "werte": werte})
-        return {"bereiche": gruppen} if gruppen else None
+        if not gruppen:
+            return None
+        return {"bereiche": gruppen, **({"year_asked": year} if abweicht else {})}
 
-    def result_actual_for_terms(self, begriffe: list[str], limit: int = 2) -> dict | None:
+    def result_actual_for_terms(self, begriffe: list[str], limit: int = 2,
+                                year: int | None = None) -> dict | None:
         """„Geplant und tatsächlich" aus dem jüngsten Jahresabschluss.
 
         Der Unterschied zu ``haushalt_fuer_begriffe`` ist das ganze Anliegen:
@@ -13479,18 +13497,20 @@ class CouncilStore(*_geld.MIXINS):
         ``plan_kind`` reist mit: „Plan" heißt 2018 Gesamtermächtigung und 2020
         Ansatz samt Nachtrag. Eine Abweichung ohne ihre Bezugsgröße zu nennen,
         wäre in genau den zwei Jahrgängen falsch, in denen es darauf ankommt."""
-        try:
-            year = self._conn.execute(
-                "SELECT MAX(year) FROM council_income_statement "
-                "WHERE result IS NOT NULL").fetchone()[0]
-        except sqlite3.OperationalError:
-            return None
+        gefragt = year
+        year, abweicht = _geld.jahrgang(self._conn, "council_income_statement", "year",
+                                        gefragt, "result IS NOT NULL")
         if not year:
             return None
+        # Die Gesamtrechnung mit ALLEN Posten, die Teilhaushalte nur mit ihren
+        # Summen: „Was kostet das Personal?" braucht Posten 13 der Gesamt-
+        # rechnung — bis 09/2026 lieferte diese Methode nur die Summen 12/20,
+        # und die Antwort kannte den Personalaufwand nicht, obwohl er dastand.
         rows = [dict(r) for r in self._conn.execute(
-            "SELECT sub_budget_no, sub_budget_name, nr, budgeted, plan, plan_kind, result, deviation, "
-            " herkunft_id FROM council_income_statement "
-            "WHERE year = ? AND nr IN (12, 20) ORDER BY sub_budget_no, nr", (year,))]
+            "SELECT sub_budget_no, sub_budget_name, nr, label, budgeted, plan, plan_kind, "
+            " result, deviation, herkunft_id FROM council_income_statement "
+            "WHERE year = ? AND (sub_budget_no IS NULL OR nr IN (12, 20)) "
+            "ORDER BY sub_budget_no, nr", (year,))]
         if not rows:
             return None
 
@@ -13509,7 +13529,33 @@ class CouncilStore(*_geld.MIXINS):
                 "herkunft_id": a.get("herkunft_id") or e.get("herkunft_id"),
             }
 
-        gesamt = paar([r for r in rows if r["sub_budget_no"] is None])
+        gesamt_rows = [r for r in rows if r["sub_budget_no"] is None]
+        gesamt = paar(gesamt_rows)
+
+        def wert(r: dict) -> tuple:
+            return (r.get("budgeted") if r.get("plan") is None else r.get("plan"), r.get("result"))
+
+        # Die Ergebniszeilen (21 ordentlich, 24 außerordentlich) immer: „Wie
+        # war das Jahresergebnis?" ist die schlichteste Frage an den Abschluss,
+        # und die Summen 12/20 beantworten sie nur über eine Rechnung, die
+        # das Modell nicht anstellen soll.
+        ergebnis = {}
+        for r in gesamt_rows:
+            if r["nr"] == 21:
+                ergebnis["ordentlich"] = wert(r)
+            elif r["nr"] == 24:
+                ergebnis["ausserordentlich"] = wert(r)
+        # Die einzelnen Posten NUR bei Begriffstreffer (Personal, Zinsen,
+        # Transfer, Abschreibungen …) — sonst wären es 22 Zeilen je Frage.
+        posten: list[dict] = []
+        if begriffe:
+            kandidaten = [r for r in gesamt_rows if r["nr"] not in (12, 20, 21, 24)]
+            bewertet = [(self._trifft(r.get("label"), begriffe), r) for r in kandidaten]
+            posten = [{"nr": r["nr"], "label": r["label"], "planned": wert(r)[0],
+                       "actual": r.get("result"), "deviation": r.get("deviation")}
+                      for n, r in sorted(bewertet,
+                                         key=lambda x: (-x[0], -abs(x[1].get("deviation") or 0)))
+                      if n][:3]
         bereiche: list[dict] = []
         if begriffe:
             nach_thh: dict[int, list[dict]] = {}
@@ -13520,21 +13566,20 @@ class CouncilStore(*_geld.MIXINS):
                         for t in nach_thh.values()]
             bereiche = [b for n, b in sorted(bewertet, key=lambda x: -x[0]) if n][:limit]
         return {"year": year, "gesamt": gesamt, "bereiche": bereiche,
-                "beleg": self._beleg(gesamt.get("herkunft_id"))}
+                "posten": posten, "ergebnis": ergebnis,
+                "beleg": self._beleg(gesamt.get("herkunft_id")),
+                **({"year_asked": gefragt} if abweicht else {})}
 
     def abweichungsgruende_fuer_begriffe(self, begriffe: list[str],
-                                         limit: int = 3) -> list[dict]:
+                                         limit: int = 3, year: int | None = None) -> list[dict]:
         """Das *Warum* zu den Abweichungen, in den Worten der Verwaltung.
 
         Passt kein Begriff, kommen die **größten** Abweichungen: Wer „Warum
         wich der Haushalt ab?" fragt, meint die, über die es sich zu reden
         lohnt — und der Fragetyp-Filter davor sorgt dafür, dass diese Methode
         gar nicht erst läuft, wenn es nicht um Geld geht."""
-        try:
-            year = self._conn.execute(
-                "SELECT MAX(year) FROM council_variance_reasons").fetchone()[0]
-        except sqlite3.OperationalError:
-            return []
+        gefragt = year
+        year, abweicht = _geld.jahrgang(self._conn, "council_variance_reasons", "year", gefragt)
         if not year:
             return []
         rows = [dict(r) for r in self._conn.execute(
@@ -13546,9 +13591,12 @@ class CouncilStore(*_geld.MIXINS):
             passend = sorted(rows, key=lambda r: -abs(r.get("delta_meur") or 0))[:limit]
         for r in passend:
             r["beleg"] = self._beleg(r.get("herkunft_id"))
+            if abweicht:
+                r["year_asked"] = gefragt
         return passend
 
-    def pruefberichte_fuer_begriffe(self, begriffe: list[str], limit: int = 4) -> dict | None:
+    def pruefberichte_fuer_begriffe(self, begriffe: list[str], limit: int = 4,
+                                    year: int | None = None) -> dict | None:
         """Feststellungen des Rechnungsprüfungsamts zum jüngsten geprüften
         Jahrgang.
 
@@ -13556,11 +13604,8 @@ class CouncilStore(*_geld.MIXINS):
         zuerst: Etwas, das der Prüfer zum wiederholten Mal aufschreibt, ist der
         Kern der Frage „Was wurde beanstandet?" — eine einmalige Randnotiz
         nicht."""
-        try:
-            year = self._conn.execute(
-                "SELECT MAX(year) FROM council_audit_reports").fetchone()[0]
-        except sqlite3.OperationalError:
-            return None
+        gefragt = year
+        year, abweicht = _geld.jahrgang(self._conn, "council_audit_reports", "year", gefragt)
         if not year:
             return None
         rows = [dict(r) for r in self._conn.execute(
@@ -13581,7 +13626,8 @@ class CouncilStore(*_geld.MIXINS):
         return {"year": year, "feststellungen": passend, "gesamt": len(rows),
                 "nach_marke": zaehl, "beleg": self._beleg(rows[0].get("herkunft_id"))}
 
-    def produkte_fuer_begriffe(self, begriffe: list[str], limit: int = 4) -> dict | None:
+    def produkte_fuer_begriffe(self, begriffe: list[str], limit: int = 4,
+                               year: int | None = None) -> dict | None:
         """Aufgaben der Stadt mit Kosten, Amt, **Rechtsgrundlage** und der
         Spielraum-Selbstauskunft des Plans.
 
@@ -13594,10 +13640,8 @@ class CouncilStore(*_geld.MIXINS):
         dass jeder Begriff trifft: Die Suchbegriffe kommen aus der
         Query-Expansion und enthalten Synonyme, die absichtlich nicht alle
         passen. Sortiert wird nach Trefferzahl, dann nach Zuschussbedarf."""
-        try:
-            year = self._conn.execute("SELECT MAX(year) FROM council_products").fetchone()[0]
-        except sqlite3.OperationalError:
-            return None
+        gefragt = year
+        year, abweicht = _geld.jahrgang(self._conn, "council_products", "year", gefragt)
         if not year:
             return None
         rows = [dict(r) for r in self._conn.execute(
@@ -13613,20 +13657,18 @@ class CouncilStore(*_geld.MIXINS):
             return None
         for r in passend:
             r["beleg"] = self._beleg(r.get("herkunft_id"))
-        return {"year": year, "produkte": passend}
+        return {"year": year, "produkte": passend,
+                **({"year_asked": gefragt} if abweicht else {})}
 
-    def konzern_kontext(self) -> dict | None:
+    def konzern_kontext(self, year: int | None = None) -> dict | None:
         """Der Konzern Stadt: Erträge, Aufwendungen und die größten Träger.
 
         Dazu die Kernverwaltung desselben Jahres aus dem Jahresabschluss — die
         Differenz ist der ganze Punkt. „Was kostet die Stadt?" beantwortet der
         Kernhaushalt zu klein, weil Klinikum, Eigenbetriebe und Beteiligungen
         nicht darin stehen."""
-        try:
-            year = self._conn.execute(
-                "SELECT MAX(year) FROM council_group_items").fetchone()[0]
-        except sqlite3.OperationalError:
-            return None
+        gefragt = year
+        year, abweicht = _geld.jahrgang(self._conn, "council_group_items", "year", gefragt)
         if not year:
             return None
         # Über die ROLLE, nicht über die Nummer: Posten 15 ist bis 2018 die
@@ -13646,20 +13688,19 @@ class CouncilStore(*_geld.MIXINS):
                 "expenses": expense.get("amount"), "entity": entity,
                 "kern": self.kernverwaltung_ist().get(year) or {},
                 "beleg": self._beleg(expense.get("herkunft_id")
-                                     or revenues.get("herkunft_id"))}
+                                     or revenues.get("herkunft_id")),
+                **({"year_asked": gefragt} if abweicht else {})}
 
-    def staedtevergleich_kontext(self, series: str = "tax_capacity") -> dict | None:
+    def staedtevergleich_kontext(self, series: str = "tax_capacity",
+                                 year: int | None = None) -> dict | None:
         """Die jüngste Kennzahl einer Reihe für alle acht kreisfreien Städte.
 
         Eine Kennzahl, nicht alle: Der Vergleich soll die Antwort einordnen
         („Oldenburg liegt auf Platz 5 von 8"), nicht eine Tabelle in den
         Prompt schreiben."""
-        try:
-            year = self._conn.execute(
-                "SELECT MAX(year) FROM council_city_comparison WHERE series = ?",
-                (series,)).fetchone()[0]
-        except sqlite3.OperationalError:
-            return None
+        gefragt = year
+        year, abweicht = _geld.jahrgang(self._conn, "council_city_comparison", "year", gefragt,
+                                        f"series = '{series}'")
         if not year:
             return None
         indicator = self._conn.execute(
@@ -13676,9 +13717,12 @@ class CouncilStore(*_geld.MIXINS):
             return None
         return {"year": year, "series": series, "indicator": indicator[0],
                 "unit": rows[0].get("unit"), "staedte": rows,
-                "beleg": self._beleg(rows[0].get("herkunft_id"))}
+                "beleg": self._beleg(rows[0].get("herkunft_id")),
+                **({"year_asked": gefragt} if abweicht else {})}
 
-    def ansatz_fuer_begriffe(self, begriffe: list[str], limit: int = 4) -> dict | None:
+    def ansatz_fuer_begriffe(self, begriffe: list[str], limit: int = 4,
+                             year: int | None = None,
+                             frage: list[str] | None = None) -> dict | None:
         """Einnahme- und Ausgabearten des jüngsten **Planjahres** aus dem
         Gesamtergebnishaushalt.
 
@@ -13686,12 +13730,9 @@ class CouncilStore(*_geld.MIXINS):
         eine Vorausschau nach § 8 NKomVG und kein beschlossener Haushalt. Sie
         in einen Antwort-Kontext zu legen hieße, dem Modell einen Plan für
         2029 anzubieten, den nie jemand aufgestellt hat."""
-        try:
-            year = self._conn.execute(
-                "SELECT MAX(year) FROM council_income_budget "
-                "WHERE kind = 'budget'").fetchone()[0]
-        except sqlite3.OperationalError:
-            return None
+        gefragt = year
+        year, abweicht = _geld.jahrgang(self._conn, "council_income_budget", "year", gefragt,
+                                        "kind = 'budget'")
         if not year:
             return None
         rows = [dict(r) for r in self._conn.execute(
@@ -13702,14 +13743,23 @@ class CouncilStore(*_geld.MIXINS):
             return None
         bewertet = [(self._trifft(r["label"], begriffe), r) for r in rows]
         passend = [r for n, r in sorted(bewertet, key=lambda x: -x[0]) if n][:limit]
+        # `treffer` sagt dem Aufrufer, ob die Begriffe einen Posten getroffen
+        # haben: Dann ist der Baustein die Antwort (Personalaufwendungen,
+        # Zinsen, Transfer) und gehört in den Kontext, auch wenn `council_budget`
+        # schon einen Teilhaushalt liefert.
+        # Gemessen am ROHEN Fragewortlaut, wenn er mitkommt: Die expandierten
+        # Begriffe sind zum Finden gut und zum Entscheiden zu weit.
+        treffer = bool(passend) and (frage is None or any(
+            self._trifft(r["label"], frage) for r in passend))
         if not passend:
             # Ohne Treffer die Summenzeilen — sie beantworten „was nimmt die
             # Stadt ein, was gibt sie aus" und sind nie daneben.
             passend = [r for r in rows if r["is_total"]][:limit]
         if not passend:
             return None
-        return {"year": year, "posten": passend,
-                "beleg": self._beleg(passend[0].get("herkunft_id"))}
+        return {"year": year, "posten": passend, "treffer": treffer,
+                "beleg": self._beleg(passend[0].get("herkunft_id")),
+                **({"year_asked": gefragt} if abweicht else {})}
 
     # ---- Vier Schichten, die die KI-Frage nicht kannte (Tim, 17.08.) -------
     #
@@ -13730,7 +13780,7 @@ class CouncilStore(*_geld.MIXINS):
     # Es gelten dieselben zwei Regeln wie für den Abschnitt darüber: wenige
     # Zeilen statt Bestand, und jede Zahl mit ihrem Beleg.
 
-    def schulden_kontext(self) -> dict | None:
+    def schulden_kontext(self, year: int | None = None) -> dict | None:
         """Der Schuldenstand: jüngstes Jahr, Vorjahr, höchster Stand der Reihe.
 
         Ein **Bestand**, kein Jahresverlauf — und genau deshalb eine eigene
@@ -13757,7 +13807,12 @@ class CouncilStore(*_geld.MIXINS):
             return None
         if not rows:
             return None
-        neu = rows[-1]
+        # Das gefragte Jahr, wenn die Reihe es führt — sonst das jüngste, und
+        # der Baustein sagt, dass es nicht das gefragte ist.
+        idx = next((i for i, r in enumerate(rows) if r["year"] == year), len(rows) - 1)
+        abweicht = year is not None and rows[idx]["year"] != year
+        rows_bis = rows[:idx + 1]
+        neu = rows[idx]
         arten = [(title, neu[field]) for field, title in _schulden.SPALTEN
                  if field not in ("total", "per_capita")
                  and neu.get(field) is not None]
@@ -13772,12 +13827,13 @@ class CouncilStore(*_geld.MIXINS):
             "arten": arten,
             "breakdown_rejected": neu.get("breakdown_rejected"),
             "revised": bool(neu.get("revised")),
-            "davor": ({"year": rows[-2]["year"], "total": rows[-2]["total"]}
-                      if len(rows) > 1 else None),
+            "davor": ({"year": rows_bis[-2]["year"], "total": rows_bis[-2]["total"]}
+                      if len(rows_bis) > 1 else None),
             "hoch": ({"year": hoch["year"], "total": hoch["total"]}
                      if hoch["year"] != neu["year"] else None),
             "reihe_ab": rows[0]["year"],
             "abgrenzung": _schulden.ABGRENZUNG,
+            **({"year_asked": year} if abweicht else {}),
             "beleg": self._beleg(neu.get("herkunft_id")),
             "weitere": self._schulden_abgrenzungen(),
             "buergschaften": self._buergschafts_kontext(),
@@ -13906,7 +13962,7 @@ class CouncilStore(*_geld.MIXINS):
             pass
         return aus
 
-    def bilanz_kontext(self) -> dict | None:
+    def bilanz_kontext(self, year: int | None = None) -> dict | None:
         """Was der Stadt gehört und wem es zusteht — der jüngste Stichtag.
 
         Die Bilanz ist die einzige Quelle des Bereichs, die einen **Stichtag**
@@ -13915,14 +13971,10 @@ class CouncilStore(*_geld.MIXINS):
         Stadt hat 1,48 Mrd. €" und „die Stadt gibt 799 Mio. € aus" sind zwei
         Sätze über zwei verschiedene Dinge.
         """
-        try:
-            year = self._conn.execute(
-                "SELECT MAX(year) AS j FROM council_balance_sheet").fetchone()
-        except sqlite3.OperationalError:
+        gefragt = year
+        year, abweicht = _geld.jahrgang(self._conn, "council_balance_sheet", "year", gefragt)
+        if year is None:
             return None
-        if not year or year["j"] is None:
-            return None
-        year = year["j"]
         posten = {r["role"]: r["value"] for r in self._conn.execute(
             "SELECT role, value FROM council_balance_sheet WHERE year = ? AND role IS NOT NULL",
             (year,))}
@@ -13941,9 +13993,10 @@ class CouncilStore(*_geld.MIXINS):
                         "provisions", "pension_provisions", "liabilities")
                        if r in posten],
             "beleg": self._beleg(beleg["herkunft_id"] if beleg else None),
+            **({"year_asked": gefragt} if abweicht else {}),
         }
 
-    def kassensicht_kontext(self) -> dict | None:
+    def kassensicht_kontext(self, year: int | None = None) -> dict | None:
         """Was tatsächlich geflossen ist — die Finanzrechnung (Abschnitt 4.1).
 
         Die zweite Rechnung desselben Jahresabschlusses, und sie kann der
@@ -13953,14 +14006,10 @@ class CouncilStore(*_geld.MIXINS):
         entsteht, die andere, wenn Geld fließt. Ohne die zweite Zahl entsteht
         ein falscher Eindruck, und zwar in beide Richtungen.
         """
-        try:
-            year = self._conn.execute(
-                "SELECT MAX(year) AS j FROM council_cash_flow_statement").fetchone()
-        except sqlite3.OperationalError:
+        gefragt = year
+        year, abweicht = _geld.jahrgang(self._conn, "council_cash_flow_statement", "year", gefragt)
+        if year is None:
             return None
-        if not year or year["j"] is None:
-            return None
-        year = year["j"]
         zeilen = [dict(r) for r in self._conn.execute(
             "SELECT nr, label, result, role, herkunft_id "
             "FROM council_cash_flow_statement WHERE year = ? ORDER BY nr", (year,))]
@@ -13971,7 +14020,8 @@ class CouncilStore(*_geld.MIXINS):
         summen = [z for z in zeilen if z.get("role")]
         return {"year": year,
                 "zeilen": [(z["label"], z["result"], z["role"]) for z in summen],
-                "beleg": self._beleg(zeilen[0].get("herkunft_id"))}
+                "beleg": self._beleg(zeilen[0].get("herkunft_id")),
+                **({"year_asked": gefragt} if abweicht else {})}
 
     def nachbewilligungen_kontext(self, year: int | None = None) -> dict | None:
         """Was beschlossen wurde, NACHDEM der Haushalt beschlossen war (§ 117).
@@ -13989,6 +14039,7 @@ class CouncilStore(*_geld.MIXINS):
         if not rows:
             return None
         row = next((r for r in rows if r["year"] == year), rows[-1])
+        abweicht = year is not None and row["year"] != year
         channels = []
         try:
             channels = [(r["channel"], r["amount_operating"], r["amount_capital"])
@@ -14006,9 +14057,10 @@ class CouncilStore(*_geld.MIXINS):
                 "commitments": row.get("commitments_amount"),
                 "channels": channels,
                 "probe_text": row.get("probe_text") if not row.get("probe_ok") else None,
-                "beleg": self._beleg(row.get("herkunft_id"))}
+                "beleg": self._beleg(row.get("herkunft_id")),
+                **({"year_asked": year} if abweicht else {})}
 
-    def kennzahlen_kontext(self, limit: int = 13) -> dict | None:
+    def kennzahlen_kontext(self, limit: int = 13, year: int | None = None) -> dict | None:
         """Die dreizehn Kennzahlen — jeweils der jüngste Stand, mit Rechenweg.
 
         Die einzige Quelle des Bereichs, die ihre eigenen Formeln mitliefert.
@@ -14030,7 +14082,9 @@ class CouncilStore(*_geld.MIXINS):
         formeln = {}
         for f in self.get_kennzahl_formeln():
             formeln[f["indicator"]] = f["formula"]
-        juengstes = max(z["year"] for z in series)
+        jahre = {z["year"] for z in series}
+        juengstes = year if year in jahre else max(jahre)
+        abweicht = year is not None and juengstes != year
         aktuell = [z for z in series if z["year"] == juengstes][:limit]
         label = {k.key: k.label for k in _kz.KENNZAHLEN}
         unit = {k.key: k.unit for k in _kz.KENNZAHLEN}
@@ -14048,6 +14102,7 @@ class CouncilStore(*_geld.MIXINS):
                              unit.get(f["indicator"], "eur"))
                             for f in funde if f["art"] == "revision"],
             "beleg": self._beleg(aktuell[0].get("herkunft_id") if aktuell else None),
+            **({"year_asked": year} if abweicht else {}),
         }
 
     def _buergschafts_kontext(self) -> dict | None:
@@ -14079,7 +14134,7 @@ class CouncilStore(*_geld.MIXINS):
                 "rueckstellung": rueck, "beleg": self._beleg(r["herkunft_id"])}
 
     def investitionen_fuer_begriffe(self, begriffe: list[str],
-                                    limit: int = 3) -> dict | None:
+                                    limit: int = 3, year: int | None = None) -> dict | None:
         """Was die Stadt bauen und kaufen will — Summenzeile und die
         Teilhaushalte, die zur Frage passen.
 
@@ -14094,12 +14149,9 @@ class CouncilStore(*_geld.MIXINS):
         Verwaltungstätigkeit mit, ist von keiner Probe der Datei gedeckt und
         stünde im Prompt direkt neben einer geprüften Zahl.
         """
-        try:
-            year = self._conn.execute(
-                "SELECT MAX(year) FROM council_investments "
-                "WHERE level = 'investments'").fetchone()[0]
-        except sqlite3.OperationalError:
-            return None
+        gefragt = year
+        year, abweicht = _geld.jahrgang(self._conn, "council_investments", "year", gefragt,
+                                        "level = 'investments'")
         if not year:
             return None
         rows = [dict(r) for r in self._conn.execute(
@@ -14117,7 +14169,8 @@ class CouncilStore(*_geld.MIXINS):
             # meint die, über die zu reden sich lohnt.
             passend = sorted(teile, key=lambda r: -(r["outflows"] or 0))[:limit]
         return {"year": year, "gesamt": gesamt, "teilhaushalte": passend,
-                "beleg": self._beleg(gesamt.get("herkunft_id"))}
+                "beleg": self._beleg(gesamt.get("herkunft_id")),
+                **({"year_asked": gefragt} if abweicht else {})}
 
     def stellenplan_kontext(self, budget_year: int | None = None) -> dict | None:
         """Die Gesamtzeilen des Stellenplans — Stellen, filled, nicht besetzt.
@@ -14140,12 +14193,9 @@ class CouncilStore(*_geld.MIXINS):
         3. Es gibt im Plan keine Zeile „Stellen insgesamt". Diese Methode
            bildet auch keine: Was hier steht, steht so im Dokument.
         """
-        try:
-            budget_year = budget_year or self._conn.execute(
-                "SELECT MAX(budget_year) FROM council_staff_plan "
-                "WHERE kind = 'total'").fetchone()[0]
-        except sqlite3.OperationalError:
-            return None
+        gefragt = budget_year
+        budget_year, abweicht = _geld.jahrgang(self._conn, "council_staff_plan", "budget_year",
+                                               gefragt, "kind = 'total'")
         if not budget_year:
             return None
         rows = [dict(r) for r in self._conn.execute(
@@ -14166,6 +14216,7 @@ class CouncilStore(*_geld.MIXINS):
             "teile": rows,
             "fehlend": [_stellenplan.TEIL_NAMEN[t] for t in fehlend],
             "beleg": self._beleg(rows[0].get("herkunft_id")),
+            **({"year_asked": gefragt} if abweicht else {}),
         }
 
     def haushaltsantraege_kontext(self, year: int | None = None,
@@ -14223,6 +14274,7 @@ class CouncilStore(*_geld.MIXINS):
         if not anker:
             return None
         gewaehlt = year if year in anker else max(anker)
+        abweicht = year is not None and gewaehlt != year
 
         stationen = []
         for st in sorted(anker[gewaehlt].values(),
@@ -14275,7 +14327,8 @@ class CouncilStore(*_geld.MIXINS):
         # tagt zuletzt. Käme je eine dritte Station dazu, fiele damit die
         # früheste heraus — nie die entscheidende.
         return {"year": gewaehlt, "years": sorted(anker),
-                "stationen": stationen[-2:]}
+                "stationen": stationen[-2:],
+                **({"year_asked": year} if abweicht else {})}
 
     # ---- Teilvoten aus raw_result (welche Fraktion stimmte wie) ----
 

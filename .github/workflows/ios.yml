@@ -1,14 +1,21 @@
 name: iOS
 
+# `api/openapi.json` steht bewusst in den Pfaden: Die App liest ihre Felder aus
+# handgeschriebenen `CodingKeys`, und eine Umbenennung im BACKEND erreichte sie
+# auf keinem Weg — dieser Workflow lief nur bei Änderungen unter `ios/`. Genau
+# so blieb `hits_30d` stehen, nachdem das Feld `hits_6m` hieß: Die App zeigte
+# unter jedem Thema eine 0, bis es jemandem auffiel.
 on:
   pull_request:
     paths:
       - 'ios/**'
+      - 'api/openapi.json'
       - '.github/workflows/ios.yml'
   push:
     branches: [main, dev]
     paths:
       - 'ios/**'
+      - 'api/openapi.json'
       - '.github/workflows/ios.yml'
 
 jobs:

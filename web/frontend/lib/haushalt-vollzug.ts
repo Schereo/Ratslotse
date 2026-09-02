@@ -16,6 +16,7 @@
 //     samt Ermächtigungsübertragungen, ab 2021 der nackte Ansatz. Wer beides
 //     nebeneinanderstellt, sagt es dazu — `plan_basis_note` liefert den Satz.
 
+import type { Herkunft } from "@/lib/herkunft";
 
 export type VollzugHaushalt = "result" | "cash";
 export type VollzugArt = "revenue" | "expense" | "inflow" | "outflow" | "result";
@@ -61,8 +62,33 @@ export type VollzugDaten = {
   totals: VollzugZeile[];
   /** Die dreizehn Teilhaushalte, nur für das angefragte Jahr. */
   rows: VollzugZeile[];
-  provenance: Record<string, { id: number; citation?: string | null; url?: string | null; as_of?: string | null }>;
+  /** Je `herkunft_id` das Papier — dieselbe Form wie überall im Bereich. */
+  provenance: Record<string, Herkunft>;
 };
+
+/** Das Papier, auf dem eine Zeile ruht — oder null, wo keines vermerkt ist. */
+export function herkunftVon(d: VollzugDaten, id: number | null): Herkunft | null {
+  return id == null ? null : d.provenance[String(id)] ?? null;
+}
+
+/** Die Adressen der Berichte eines Jahrgangs, je Stichtag eine, in
+ *  Stichtags-Reihenfolge. Ergebnis- und Finanzhaushalt stehen im SELBEN
+ *  PDF (zwei Abschnitte), deshalb je Stichtag eine Adresse, nicht zwei.
+ *
+ *  Das ist die Liste für `jeDokument` (s. `components/haushalt/source.tsx`):
+ *  Die Seite „Geplant und geworden" zeigt den Abschluss von 2024 und den
+ *  Vollzug von 2026 — würde das Quellenverzeichnis die Berichte über den
+ *  Jahrgang der Seite suchen, stünden unter einer 2026er-Zahl die Papiere
+ *  von 2024. Genau das war der Fehler, den Tim am 02.09.2026 gemeldet hat. */
+export function berichteUrls(d: VollzugDaten, year: number): string[] {
+  const aus: string[] = [];
+  for (const s of stichtageDesJahres(d, year)) {
+    const zeile = d.totals.find((z) => z.budget_year === year && z.as_of === s.as_of && z.is_total === 1);
+    const url = zeile ? herkunftVon(d, zeile.herkunft_id)?.url : null;
+    if (url && !aus.includes(url)) aus.push(url);
+  }
+  return aus;
+}
 
 /** „30.06.2025" aus „2025-06-30". */
 export function deStichtag(iso: string): string {
