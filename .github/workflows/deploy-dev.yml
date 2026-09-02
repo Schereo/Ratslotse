@@ -109,3 +109,6 @@ jobs:
             sleep 3
             curl -sf -o /dev/null http://127.0.0.1:3000 && echo "Frontend OK"
             curl -sf http://127.0.0.1:8000/api/health && echo " API OK"
+            # Dieselbe Rauchprobe wie auf Prod — hier zuerst, damit ein Bruch
+            # auffällt, bevor er dorthin fährt.
+            python3 ~/app/scripts/rauchprobe.py --basis http://127.0.0.1:8000
