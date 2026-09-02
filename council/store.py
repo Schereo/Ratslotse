@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import sqlite3
+from council import geld as _geld
 
 from .scraper import CouncilSession
 from .parties import order_key, parties_for_faction
@@ -765,7 +766,11 @@ TABELLEN_UMBENANNT: list[tuple[str, str]] = [
     ("council_bilanz", "council_balance_sheet"),
 ]
 
-class CouncilStore:
+# Die Store-Mixins der Modul-Facetten (council/geld/): je Facette eine
+# Methode `(woerter, year=None)`, die mit `_conn`, `_trifft` und `_beleg`
+# arbeitet. Der Stern ist Absicht — wer eine Facette baut, fasst diese
+# Datei nicht an.
+class CouncilStore(*_geld.MIXINS):
     def __init__(self, path: str | Path, ratslotse_db_path: str | Path | None = None):
         self._path = path
         # Sibling ratslotse.sqlite holds the chat_id→owner_id map for the migration.

@@ -15,6 +15,7 @@ import re
 
 from kern import llm, prompts
 from council import ernte
+from council import geld as _geld
 from council.topics import _strip_fences  # noqa: F401  (kept for symmetry / future use)
 
 # Antwort-Modell: gemini-2.5-flash antwortet in ~1,2–1,8 s, wo deepseek übers
@@ -1709,11 +1710,15 @@ def _steuerkraft_block(k: dict | None) -> str:
 #: der andere drinbliebe, stünde eine Investitionszahl ohne ihr Gegenstück im
 #: Kontext — und die Regel „nie voneinander abziehen" hinge an einer Zahl, die
 #: gar nicht da ist. Nebeneinander fallen sie zusammen oder gar nicht.
-GELD_FACETTEN = ("schulden", "fees", "stellenplan", "investitionen", "gebaut",
-                 "ist", "gruende", "pruefung", "produkte", "antraege",
-                 "plan", "ansatz", "taxes", "ausgleich", "konzern", "vergleich",
-                 # Die vier Schichten aus den Jahresabschlüssen (08/2026).
-                 "bilanz", "kassensicht", "supplementary_approvals", "indicators")
+_ALTE_FACETTEN = ("schulden", "fees", "stellenplan", "investitionen", "gebaut",
+                  "ist", "gruende", "pruefung", "produkte", "antraege",
+                  "plan", "ansatz", "taxes", "ausgleich", "konzern", "vergleich",
+                  # Die vier Schichten aus den Jahresabschlüssen (08/2026).
+                  "bilanz", "kassensicht", "supplementary_approvals", "indicators")
+# Seit 09/2026 kommen neue Facetten als Module in `council/geld/` dazu
+# (Docstring dort). Ihr Rang entscheidet, ob sie vor oder hinter den alten
+# stehen; die alten behalten ihre Reihenfolge untereinander.
+GELD_FACETTEN = _geld.NAMEN_VORN + _ALTE_FACETTEN + _geld.NAMEN_HINTEN
 
 #: Alle Muster arbeiten auf `_falte()`-Text: kleingeschrieben, Umlaute
 #: ausgeschrieben, Satzzeichen zu Leerzeichen. Deshalb steht hier „pruef",
@@ -1961,6 +1966,12 @@ def geld_facetten(question: str, typ: str = "topic") -> set[str]:
         f.add("stellenplan")
     if _F_AENDERUNGSLISTE.search(t) or (_F_STREIT.search(t) and (f & {"plan", "ansatz"})):
         f.add("antraege")
+    # Die Modul-Facetten (council/geld/): jede prüft ihren eigenen Wortlaut
+    # und sieht, was bis hierher erkannt wurde — so kann „vorhaben" an
+    # „investitionen" andocken, ohne dessen Muster zu kopieren.
+    for fac in _geld.FACETTEN:
+        if fac.erkennen(t, typ, f):
+            f.add(fac.name)
     if not f and typ == "money":
         f = {"plan"}   # das Verhalten von vor dieser Runde, unverändert
     return f
@@ -2039,6 +2050,12 @@ def geld_kontext(store, question: str, begriffe: str = "", typ: str = "topic") -
         # Das Jahr aus der FRAGE, nicht aus den Begriffen: Die Expansion
         # streut Jahreszahlen ein, die niemand getippt hat.
         aus["antraege"] = _sicher(store.haushaltsantraege_kontext, haushaltsjahr(question))
+    # Die Modul-Facetten: eine Store-Methode je Facette, Signatur
+    # (woerter, year) — das Jahr aus der FRAGE, wie bei den Anträgen.
+    jahr = haushaltsjahr(question)
+    for fac in _geld.FACETTEN:
+        if fac.name in facetten:
+            aus[fac.key] = _sicher(getattr(store, fac.methode), woerter, jahr)
     return aus
 
 
@@ -2687,6 +2704,8 @@ _GELD_BAUSTEINE = {
     "konzern": ("konzern", _konzern_block),
     "vergleich": ("vergleich", _vergleich_block),
 }
+# Die Modul-Facetten bringen ihren Baustein selbst mit.
+_GELD_BAUSTEINE.update(_geld.BAUSTEINE)
 
 
 def _geld_vereinheitlichen(geld: dict | None, haushalt, taxes, tax_capacity) -> dict:
