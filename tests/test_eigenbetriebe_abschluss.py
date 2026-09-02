@@ -192,6 +192,52 @@ def test_wortrahmen_setzen_die_verklebte_uebersicht_neu():
     assert all(k.metric != "equity_ratio" for k in l.kennzahlen)
 
 
+def test_die_bilanz_schneidet_das_eigenkapital_vor_dem_sonderposten_ab():
+    """AWB 2018 (Prüfbericht Teil 2, OCR): Zwischen Eigenkapital und
+    Rückstellungen steht „B. Sonderposten“. Die letzte Paarzeile vor den
+    Rückstellungen war dessen Zeile — das Eigenkapital ist die Summenzeile
+    hinter dem Bilanzgewinn."""
+    text = ("Bilanz zum 31. Dezember 2018\n"
+            "A. EIGENKAPITAL\n"
+            "I. Stammkapital 7.900.000,00 7.900.000,00\n"
+            "II. Zweckgebundene Rücklagen\n"
+            "1. Rücklagen nach § 12 Abs. 4 EigBVO 2.153.451,26 1.974.741,01\n"
+            "2. Rücklage für Rekultivierung 925.400,00 865.400,00\n"
+            "3. Deponiebewertungsrücklage BilMoG 1.276.688,95 1.403.798,31\n"
+            " 4.355.540,21 4.243.939,32\n"
+            "III. Bilanzgewinn 170.833,42 132.578,94\n"
+            " 12.426.373,63 12.276.518,26\n"
+            "\n"
+            "B. SONDERPOSTEN 1.448.253,00 1.533.864,00\n"
+            "\n"
+            "C. RÜCKSTELLUNGEN\n"
+            "1. Pensionsrückstellungen 3.000.000,00 2.900.000,00\n"
+            "Bilanzsumme 22.011.336,75 23.837.530,18\n")
+    l = ea.lies_bilanz(text, "awb", 2018, 206874)
+    assert _wert(l, 2018, "equity") == 12_426_373.63
+    assert _wert(l, 2017, "equity") == 12_276_518.26
+    assert _wert(l, 2018, "balance_total") == 22_011_336.75
+
+
+def test_ein_tausender_rundung_zwischen_berichten_ist_kein_widerspruch():
+    """Der AWB nennt den Cashflow 2024 einmal mit 1.858, einmal mit 1.859
+    TEUR; die Bilanz in Euro liegt 626 € neben der Übersicht in TEUR. Beides
+    bestätigt sich, statt als strittig zu verschwinden."""
+    k = lambda value, unit, report_year, doc: ea.Kennzahl(  # noqa: E731
+        "awb", 2024, "cashflow", value, unit, report_year, doc,
+        ea.FUNDSTELLE_UEBERSICHT, ea.PROBE_SPALTEN)
+    zeilen, strittig = ea.zusammenfuehren([k(1_858_000.0, "TEUR", 2025, 2),
+                                           k(1_859_000.0, "TEUR", 2024, 1)])
+    assert strittig == [] and zeilen[0]["value"] == 1_858_000 and zeilen[0]["confirmations"] == 2
+    zeilen, strittig = ea.zusammenfuehren([k(12_427_000.0, "TEUR", 2025, 2),
+                                           k(12_426_373.63, "EUR", 2018, 1)])
+    assert strittig == [] and zeilen[0]["confirmations"] == 2
+    # Mehr als ein Tausender bleibt strittig.
+    zeilen, strittig = ea.zusammenfuehren([k(1_858_000.0, "TEUR", 2025, 2),
+                                           k(1_860_000.0, "TEUR", 2024, 1)])
+    assert len(strittig) == 1 and zeilen[0]["conflicts"] == 1
+
+
 def test_prozentzeile_beendet_die_tabelle():
     """Hinter der Eigenkapitalquote beginnt eine andere Tabelle — deren
     „Verbindlichkeiten" mit anderen Spalten wurden zur Kennzahl (AWB)."""
