@@ -205,7 +205,10 @@ type Turn = {
   planning_procedures?: Planung[];
   /** Sitzungs-Fragetyp: die aufgelöste Sitzung — Futter für den
    *  Tagesordnungs-Baustein, wenn es (noch) keine Beschlüsse gibt. */
-  sitzungen?: SitzungsInfo[];
+  /** Der Tagesordnungs-Baustein. Heißt seit #913 auf der Leitung `sessions`;
+   *  hier stand bis 02.09.2026 weiter `sitzungen`, und damit erschien der
+   *  Baustein weder aus dem Strom noch aus einem geladenen Gespräch. */
+  sessions?: SitzungsInfo[];
   attachments?: AnlagenHinweis[];
   /** Wie tragfähig die gefundenen Beschlüsse sind (deterministisch aus den
    *  Relevanz-Werten) — „duenn" blendet einen Ehrlichkeits-Hinweis ein. */
@@ -815,7 +818,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
             attachments: (msg.attachments as AnlagenHinweis[]) ?? [],
             context: (msg.question as string) ?? null,
             planning_procedures: (msg.planning_procedures as Planung[]) ?? [],
-            sitzungen: (msg.sitzungen as SitzungsInfo[]) ?? [],
+            sessions: (msg.sessions as SitzungsInfo[]) ?? [],
             evidence_level: (msg.evidence_level as "solide" | "duenn") ?? undefined,
             steckbriefe: (msg.steckbriefe as Turn["steckbriefe"]) ?? [],
             chart: (msg.chart as QaGrafik | null) ?? null,
@@ -1359,7 +1362,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
       type DbTurn = { question: string; answer: string; sources: {
         sources?: QaSource[]; cited?: number[]; press_releases?: PresseHinweis[];
         debates?: DebattenHinweis[]; attachments?: AnlagenHinweis[];
-        planning_procedures?: Planung[]; sitzungen?: SitzungsInfo[];
+        planning_procedures?: Planung[]; sessions?: SitzungsInfo[];
         research?: boolean; context?: string | null;
         documents_read?: number; period?: string;
         chart?: QaGrafik | null } | null };
@@ -1371,7 +1374,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         debates: t.sources?.debates ?? [],
         attachments: t.sources?.attachments ?? [],
         planning_procedures: t.sources?.planning_procedures ?? [],
-        sitzungen: t.sources?.sitzungen ?? [],
+        sessions: t.sources?.sessions ?? [],
         chart: t.sources?.chart ?? null,
         cited: t.sources?.cited ?? [],
         // Die kondensierte Frage aus dem Snapshot, sonst die Originalfrage.
@@ -1529,7 +1532,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     fetch(apiUrl("/council/qa-beispiele"), { credentials: "include", headers: authHeaders() })
       .then((r) => (r.ok ? r.json() : null))
       .then((b) => {
-        const rows = (b?.sitzungen ?? []) as { committee: string; session_date: string; top_titel?: string | null }[];
+        const rows = (b?.sessions ?? []) as { committee: string; session_date: string; top_titel?: string | null }[];
         if (rows.length === 0 || !lebt) return;
         // Zwei frische Anlässe, aber nicht zweimal dieselbe Datums-Formel:
         // erst die jüngste Sitzung, dann KONKRET ihr wichtigster Beschluss
@@ -2329,8 +2332,8 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
               Sie steht ZUOBERST: Für diese Fragen ist sie die eigentliche
               Antwort-Beilage — unter dem Parteien-Baustein rutschte sie
               unter die Falz und blieb unbemerkt (Tims Befund 26.08.). */}
-          {!beschaeftigt && (turn.sitzungen?.length ?? 0) > 0 && (
-            <TagesordnungBlock sitzungen={turn.sitzungen ?? []} />
+          {!beschaeftigt && (turn.sessions?.length ?? 0) > 0 && (
+            <TagesordnungBlock sessions={turn.sessions ?? []} />
           )}
 
           {!beschaeftigt && turn.answer && !turn.fehler && !turn.abgebrochen
