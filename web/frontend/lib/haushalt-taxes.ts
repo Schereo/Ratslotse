@@ -294,7 +294,7 @@ export const STEUERARTEN: SteuerArt[] = [
     },
   },
   {
-    slug: "kleine-taxes",
+    slug: "kleine-steuern",
     datenArt: "Vergnügungssteuer",
     title: "Kleine örtliche Steuern",
     kurz:
@@ -360,7 +360,7 @@ export const STEUERARTEN: SteuerArt[] = [
     },
   },
   {
-    slug: "fees",
+    slug: "gebuehren",
     datenArt: null, // In keiner der Open-Data-Steuerreihen enthalten …
     // … dafür im Jahresabschluss, als Posten 5 der Ergebnisrechnung.
     ergebnisPosten: 5,

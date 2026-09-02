@@ -1499,6 +1499,12 @@ class CouncilStore:
         self._werte_umschreiben("council_city_comparison", "series", [
             ("steuerkraft", "tax_capacity"), ("finanzausgleich", "fiscal_equalization"),
             ("realsteuern", "real_taxes")])
+        # Der Einwohner-Indikator derselben Tabelle: Der Parser schreibt seit
+        # dem Umbau `population` (tests/test_staedtevergleich.py), der Bestand
+        # trug noch `einwohner` — das Frontend fand ihn nicht, und die
+        # Steuerkraft je Einwohner*in blieb auf /haushalt/vergleich leer.
+        self._werte_umschreiben("council_city_comparison", "indicator", [
+            ("einwohner", "population")])
         # Die Auszahlungsarten der Ist-Investitionen, je Regelwerk eigene.
         self._werte_umschreiben("council_investments_actual_kinds", "field", [
             ("darlehen", "loans_granted"), ("grundvermoegen", "real_property"),

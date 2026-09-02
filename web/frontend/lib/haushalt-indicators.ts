@@ -47,7 +47,7 @@ export const GRUPPEN: { title: string; question: string; keys: string[] }[] = [
     title: "Was auf jede*n entfällt",
     question: "Dieselben Beträge, geteilt durch die Zahl der Einwohnenden — "
       + "die Reihe, die vom Wachstum der Stadt abhängt.",
-    keys: ["population", "vermoegen_je_einwohner", "verschuldung_je_einwohner",
+    keys: ["einwohner", "vermoegen_je_einwohner", "verschuldung_je_einwohner",
            "verschuldung_mit_rueckstellungen_je_einwohner",
            "neuverschuldung_je_einwohner", "netto_neuinvestitionen_je_einwohner"],
   },

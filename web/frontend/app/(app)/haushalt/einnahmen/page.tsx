@@ -244,7 +244,7 @@ export default function EinnahmenPage() {
               stehen abgerechnete Werte eines früheren. */}
           <p className="max-w-[70ch] text-[12.5px] leading-relaxed text-muted-foreground">
             Achtung beim Jahr: Bei den Steuern stehen hier <strong>abgerechnete Beträge
-            aus {year}</strong> — was wirklich geflossen ist. Die Übersicht zeigt dagegen den
+            aus {year}</strong> — was wirklich geflossen ist. Die Übersicht zeigt dagegen den{" "}
             <em>Plan</em> für ein späteres Jahr. Beide Zahlen sind richtig, sie beantworten nur
             verschiedene Fragen. Jede Karte nennt ihr Jahr selbst — die Schlüsselzuweisungen
             laufen dem Rest voraus.

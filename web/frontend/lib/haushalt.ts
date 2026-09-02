@@ -581,7 +581,7 @@ export type SteuerplanZeile = {
   /** Ansatz der beschlossenen Haushaltssatzung, in Euro. */
   plan: number;
   /** Rechnungsergebnis desselben Jahres, in Euro. */
-  ist: number;
+  actual: number;
   /** Die Quelle nennt dieses Ergebnis selbst „vorläufig" — es kann sich noch
    *  ändern, und das gehört an die Zahl. */
   provisional: 0 | 1;
