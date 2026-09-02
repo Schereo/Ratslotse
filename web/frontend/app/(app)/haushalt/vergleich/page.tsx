@@ -358,7 +358,7 @@ export default function VergleichSeite() {
               Lesebereich. Schwelle am CONTAINER
               (Designsprache §4), nicht am Fenster: Bei 1024 px Fenster ist
               neben der Seitenleiste nur Platz für Spalten von 344 px. */}
-          <div className="mt-2 grid items-start gap-x-8 gap-y-3.5 @5xl/kern:grid-cols-2">
+          <div className="mt-2">
             <div className="flex max-w-[76ch] flex-col gap-2.5 text-[13px] leading-relaxed text-foreground/90">
               <p>
                 Die Ausgaben je Einwohner*in stehen in beiden Haushalten. Ein direkter
@@ -385,8 +385,18 @@ export default function VergleichSeite() {
               </p>
             </div>
 
+          </div>
+          {/* Die Belege — der Vorgang von 2018 mit Tabelle und Zitat, dazu
+              Innenministerium und Statistisches Bundesamt — stehen seit
+              02.09.2026 hinter einem Auslöser: Das Argument oben trägt die
+              Seite, die Herleitung ist einen Klick entfernt und vollständig. */}
+          <details className="group mt-3">
+            <summary className="cursor-pointer list-none text-[12.5px] font-semibold text-primary marker:content-none">
+              <span className="group-open:hidden">Die Belege: die Stadt 2018, das Innenministerium, das Statistische Bundesamt</span>
+              <span className="hidden group-open:inline">Weniger</span>
+            </summary>
             {/* Der Beleg aus dem eigenen Bestand. */}
-            <div className="rounded-xl border border-border bg-muted/30 p-3.5">
+            <div className="mt-2 rounded-xl border border-border bg-muted/30 p-3.5">
               <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
                 Aus dem Ratsinformationssystem · {data.citation.template_number} · 2018
               </p>
@@ -454,7 +464,6 @@ export default function VergleichSeite() {
                 )}
               </div>
             </div>
-          </div>
 
           {/* Steht UNTER beiden Spalten, nicht in einer: „Dieselbe Warnung"
               meint den Beleg daneben mit — der Satz muss also nach ihm
@@ -469,6 +478,7 @@ export default function VergleichSeite() {
             die Vergleichbarkeit werde dadurch eingeschränkt, dass der Ausgliederungsprozess
             unterschiedlich weit fortgeschritten sei. Drei Instanzen, derselbe Befund.
           </p>
+          </details>
         </section>
 
         {/* --- Wen man überhaupt vergleichen würde --- */}

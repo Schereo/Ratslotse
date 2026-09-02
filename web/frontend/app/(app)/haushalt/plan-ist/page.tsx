@@ -305,14 +305,10 @@ function PlanIstInner() {
       } else {
         wortlautBei.set(g.nr, b.name);
         imBild.add(g.nr);
-        einordnung = (
-          <>
-            {g.text}{" "}
-            <span className="font-mono text-[9.5px] uppercase tracking-[0.09em] text-muted-foreground">
-              — Jahresabschluss {year}, Abschnitt 6.3.1, Wortlaut der Verwaltung
-            </span>
-          </>
-        );
+        // Eingeklappt wie im Einnahmen-Block darüber: Fünf Zeilen Wortlaut
+        // unter jeder Bereichszeile machten die Liste zum Dokument, und die
+        // Seite trug zwei Muster für dieselbe Auskunft (Durchsicht 02.09.2026).
+        einordnung = <Warum reason={g} kompakt />;
       }
     } else if (alle.length) {
       einordnung = (

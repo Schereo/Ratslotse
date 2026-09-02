@@ -84,7 +84,6 @@ import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { OutcomeBadge, OutcomeDot } from "@/components/decision-ui";
 import { parteiDot } from "@/components/qa-bausteine";
 import type { DecisionOutcome } from "@/lib/types";
-import { Schlangenpfad } from "@/components/grafik/schlangenpfad";
 import { cn } from "@/lib/utils";
 
 
@@ -141,70 +140,24 @@ function Fraktion({ label, unklar = false }: { label: string | null; unklar?: bo
  *  damit die Seiten eine Sprache sprechen.
  *  Gekürzt wird dadurch nichts: Der Wortlaut bleibt Zeichen für Zeichen der
  *  des Protokolls. */
-/** Der Punkt an der Rednerliste — wer spricht, in der Marken-Grammatik der
- *  Fraktions-Chips darüber.
- *
- *  Drei Lagen, drei Formen, alle drei gibt es im Bereich schon:
- *  * **Ratsmitglied mit Fraktion** — gefüllter Parteipunkt, dieselbe Farbe
- *    wie im Chip „CDU 4" am Kopf der Karte.
- *  * **Fraktion nicht eindeutig** — gestrichelter Hohlpunkt, wie ihn die
- *    `Fraktion`-Zeile für diesen Fall schon führt (Namensvettern-Regel:
- *    eine geratene Fraktion wäre schlimmer als eine fehlende).
- *  * **Verwaltung und Sitzungsleitung** — Hohlpunkt mit fester Kontur: Sie
- *    sprechen für ihr Amt, nicht für eine Fraktion, und eine Parteifarbe
- *    stünde ihnen falsch. Gruppen-Labels mit Schrägstrich bekommen den
- *    neutralen Punkt, aus demselben Grund wie in den Chips (s. NEUTRAL). */
-function RednerPunkt({ b, rechts }: { b: StreitWortbeitrag; rechts: boolean }) {
-  const lage = cn(
-    "absolute top-[18px] h-[11px] w-[11px] rounded-full",
-    // Schmale Karte: alle Punkte links übereinander. Breite Karte: der Punkt
-    // sitzt am ÄUSSEREN Ufer seiner Karte — der Pfad pendelt dadurch über die
-    // volle Breite, nicht nur bis zur Mitte.
-    rechts ? "left-1 @2xl:left-auto @2xl:right-1" : "left-1",
-  );
-  if (b.role !== "council") {
-    return <span aria-hidden data-punkt className={cn(lage, "border-[1.5px] border-muted-foreground/70 bg-card")} />;
-  }
-  if (b.fraktion_unklar || !b.fraktion) {
-    return <span aria-hidden data-punkt className={cn(lage, "border border-dashed border-muted-foreground/60 bg-card")} />;
-  }
-  const dot = b.fraktion.includes("/") ? NEUTRAL : parteiDot(b.fraktion);
-  return (
-    <span aria-hidden data-punkt className={lage} style={{
-      background: dot.bg,
-      boxShadow: dot.ring ? "inset 0 0 0 1px rgba(0,0,0,.15)" : undefined,
-    }} />
-  );
-}
-
-/** Die Debatte auf dem Schlangenpfad (`components/grafik/schlangenpfad.tsx`,
- *  dort steht der Vertrag des Bausteins): Jede Rede ist eine opake Station,
- *  ihr `RednerPunkt` der Anker der Route, und `data-auftritt` lässt sie beim
- *  ersten Sichtkontakt erscheinen.
- *
- *  Die Liste bekommt an der Aufrufstelle ein `key` je Jahrgang: Die
- *  Beobachter des Bausteins binden sich beim Einhängen, ein Jahrgangswechsel
- *  muss den Pfad deshalb neu aufsetzen. */
+/** Die Debatte als Liste, in der Reihenfolge des Protokolls. */
 function DebattenListe({ reden }: { reden: StreitWortbeitrag[] }) {
+  // Seit 02.09.2026 eine Liste statt des Schlangenpfads: 19 Karten im
+  // Zickzack machten den Schritt 11.800 px hoch, und der Fraktionspunkt saß
+  // am Seitenrand, weit weg von seiner Karte. Der Punkt steht jetzt am Namen.
   return (
-    <Schlangenpfad>
-      <ol className="relative list-none">
-        {reden.map((b, i) => <Rede key={i} b={b} rechts={i % 2 === 1} />)}
-      </ol>
-    </Schlangenpfad>
+    <ol className="flex list-none flex-col gap-2.5">
+      {reden.map((b, i) => <Rede key={i} b={b} />)}
+    </ol>
   );
 }
 
-function Rede({ b, rechts }: { b: StreitWortbeitrag; rechts: boolean }) {
+function Rede({ b }: { b: StreitWortbeitrag }) {
   const [offen, setOffen] = useState(false);
   const { kopf, rest } = vorschau(b.text);
 
   return (
-    <li data-auftritt className={cn(
-      "group relative pb-7 last:pb-0",
-      "transition-opacity duration-700 ease-out motion-safe:data-[reveal=aus]:opacity-0",
-    )}>
-      <RednerPunkt b={b} rechts={rechts} />
+    <li>
       {/* DIE KARTE IST OPAK, und das ist keine Kosmetik, sondern die Statik
           dieses Elements: Der Pfad darf dadurch frei und mit vollem Schwung
           HINTER den Wortbeiträgen durchlaufen — ein erster Entwurf ließ den
@@ -213,24 +166,16 @@ function Rede({ b, rechts }: { b: StreitWortbeitrag; rechts: boolean }) {
           er doch durch den Text (Tims Befund). Die Verschiebung beim
           Auftritt liegt an der Karte, NICHT am <li>: Der Punkt ist der
           Messanker des Pfads und muss stehen bleiben. */}
-      <div className={cn(
-        "relative ml-7 rounded-xl border border-border bg-card p-3.5 shadow-sm",
-        "transition-transform duration-700 ease-out",
-        "@2xl:w-[56%]",
-        rechts
-          ? "@2xl:ml-auto @2xl:mr-7 motion-safe:group-data-[reveal=aus]:translate-x-4"
-          : "motion-safe:group-data-[reveal=aus]:-translate-x-4",
-      )}>
+      <div className="rounded-xl border border-border bg-card p-3.5 shadow-sm">
         <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5">
           <span className="text-[13px] font-semibold leading-snug text-foreground">{b.name}</span>
           {/* Bei Verwaltung und Sitzungsleitung sagt die Anrede die Rolle
               schon („Oberbürgermeister", „Stadtkämmerin") — ein zusätzliches
-              „Verwaltung" daneben wäre dieselbe Angabe zweimal. */}
-          {b.role === "council" && (b.fraktion_unklar ? (
-            <span className="text-[11.5px] text-muted-foreground">Fraktion nicht eindeutig</span>
-          ) : b.fraktion && (
-            <span className="text-[11.5px] font-medium text-foreground/80">{b.fraktion}</span>
-          ))}
+              „Verwaltung" daneben wäre dieselbe Angabe zweimal. Der
+              Fraktionspunkt steht am Namen (Marken-Grammatik der Fraktion). */}
+          {b.role === "council" && (
+            <Fraktion label={b.fraktion} unklar={b.fraktion_unklar} />
+          )}
           <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground/80">
             {b.anrede}
           </span>
@@ -245,7 +190,7 @@ function Rede({ b, rechts }: { b: StreitWortbeitrag; rechts: boolean }) {
             onClick={() => setOffen((o) => !o)}
             className="mt-1 inline-flex min-h-[32px] items-center text-[11.5px] font-semibold text-primary"
           >
-            {offen ? "Weniger" : `Ganzen Beitrag lesen (${b.zeichen.toLocaleString("de-DE")} Zeichen)`}
+            {offen ? "Weniger" : "Ganzen Beitrag lesen"}
           </button>
         )}
       </div>

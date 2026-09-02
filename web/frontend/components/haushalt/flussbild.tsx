@@ -191,10 +191,9 @@ function NurHerkunft({ arten, letztes, aufJahr }: {
           Für {arten.year} können wir bisher nur die Einnahmeseite zeigen.
         </p>
         <p className="mt-1 max-w-[68ch] text-[12.5px] leading-relaxed text-foreground/85">
-          Die Einnahmearten stammen aus Anlage 005 des von der Verwaltung eingebrachten
-          Haushaltsplans {arten.planJahrgang}. Die Ausgaben nach Bereichen liegen nur aus
-          dem später beschlossenen Plan vor. Ein gemeinsames Bild würde damit Entwurf und
-          Beschluss vermischen. Deshalb zeigen wir die Ausgabenseite für dieses Jahr nicht.
+          Die Einnahmearten stammen aus dem Verwaltungsentwurf {arten.planJahrgang}, die
+          Ausgaben nach Bereichen erst aus dem beschlossenen Plan — ein gemeinsames Bild
+          würde Entwurf und Beschluss vermischen.
         </p>
         {/* Der Abstand zur Anzeigetafel derselben Seite. Gerechnet, nicht
             behauptet — und nur gezeigt, wenn es ihn gibt: Bei einem Jahrgang

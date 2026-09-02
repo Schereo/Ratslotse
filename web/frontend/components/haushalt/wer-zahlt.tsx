@@ -346,6 +346,14 @@ export function WerZahlt({ taxes, art, vergleichArt, vergleichTitel, tax_rates,
         </div>
       )}
 
+      {/* Die Herleitung — fünf Absätze und zwei Spalten Stichpunkte — steht
+          seit 02.09.2026 hinter einem Auslöser: Der Steckbrief ist zum Lesen
+          der Zahl da, nicht zum Studium der Gewerbesteuer. Nichts ist weg. */}
+      <details className="group mt-3">
+        <summary className="cursor-pointer list-none text-[12px] font-semibold text-primary marker:content-none">
+          <span className="group-open:hidden">Mehr dazu — was die Zahlen trotzdem verraten und woher die Steuer kommt</span>
+          <span className="hidden group-open:inline">Weniger</span>
+        </summary>
       {misst && (
         <p className="mt-3 max-w-[74ch] text-[13px] leading-relaxed text-foreground/90">
           <strong>Was die Zahlen trotzdem verraten.</strong> Bei beiden Steuern beschließt der
@@ -419,6 +427,8 @@ export function WerZahlt({ taxes, art, vergleichArt, vergleichTitel, tax_rates,
           </ul>
         </div>
       </div>
+
+      </details>
 
       <p className="mt-3 max-w-[74ch] text-[11.5px] leading-relaxed text-muted-foreground">
         Deshalb nennen wir keine Unternehmen. Aus den öffentlich verfügbaren Daten lässt

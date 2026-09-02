@@ -202,16 +202,25 @@ export function BilanzBlock() {
           {/* Der Wortlaut der Verwaltung, nicht unsere Zusammenfassung — dieselbe
               Machart wie <Warum> auf /haushalt/plan-ist. Gekürzt wäre er schnell
               etwas anderes; die Absätze kommen so aus dem Dokument. */}
-          <div className="mt-2.5 flex flex-col gap-2 border-l-2 border-border pl-3">
-            {cash.text.split("\n\n").map((absatz, i) => (
-              <p key={i} className="max-w-[74ch] text-[12.5px] leading-relaxed text-foreground/85">
-                {absatz}
-              </p>
-            ))}
-          </div>
-          <p className="mt-2.5 font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-            Jahresabschluss {s.year}, Abschnitt 6.2.7 — Wortlaut der Verwaltung
-          </p>
+          {/* Fünf Absätze Verwaltungstext standen hier offen im Fluss der
+              Seite (Durchsicht 02.09.2026). Der Wortlaut bleibt vollständig —
+              einen Klick entfernt, wie „Warum?" auf /plan-ist. */}
+          <details className="group mt-2.5 ml-0.5 border-l-2 border-border pl-2.5">
+            <summary className="cursor-pointer list-none text-[11.5px] font-semibold text-primary marker:content-none">
+              <span className="group-open:hidden">Was der Jahresabschluss dazu schreibt</span>
+              <span className="hidden group-open:inline">Weniger</span>
+            </summary>
+            <div className="mt-1.5 flex flex-col gap-2">
+              {cash.text.split("\n\n").map((absatz, i) => (
+                <p key={i} className="max-w-[74ch] text-[12.5px] leading-relaxed text-foreground/85">
+                  {absatz}
+                </p>
+              ))}
+            </div>
+            <p className="mt-1.5 font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+              Jahresabschluss {s.year}, Abschnitt 6.2.7 — Wortlaut der Verwaltung
+            </p>
+          </details>
         </section>
       )}
     </>
