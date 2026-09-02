@@ -132,6 +132,9 @@ jobs:
             # den Volltext-Lauf oben gibt es keine Zweitstelle und damit keine
             # einzige Zeile — deshalb steht das hier und nicht weiter oben.
             .venv/bin/python scripts/ingest_spenden.py
+            # Kredite und Zinsen: dieselbe Quelle wie die Zuwendungen —
+            # Vorlagen-Volltexte im eigenen Bestand, kein Netz.
+            .venv/bin/python scripts/ingest_kredite.py
 
             # Die Wirtschaftspläne der Eigenbetriebe (#663). Wie die
             # Zuwendungen darüber liest dieser Lauf nicht aus dem Netz — die
