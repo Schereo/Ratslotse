@@ -109,6 +109,7 @@ die es nicht zeigen:
 | `…/haushalt/vergleich` | `/haushalt/vergleich` | eigene Tabelle (LSN), acht Städte × Jahrgänge |
 | `…/haushalt/investitionen` | `/haushalt/investitionen` | eigene Tabelle, **anderer Haushalt** (Finanz- statt Ergebnishaushalt) — nicht mit den übrigen Zahlen verrechenbar |
 | `…/haushalt/gebaut` | `/haushalt/investitionen#gebaut` | eigene Tabellen; **Ist statt Plan** und nach Auszahlungsart statt nach Teilhaushalt — bewusst nicht mit `…/haushalt/investitionen` zusammengelegt, damit die beiden Summen nicht als „geplant gegen gebaut" gelesen und voneinander abgezogen werden. Seit 21.08.2026 stehen sie als zwei ABSCHNITTE einer Seite; die Datenwege bleiben getrennt, und der Einwand („Warum hier keine Umsetzungsquote steht") steht seither VOR den Ist-Zahlen statt dahinter |
+| `…/budget/execution` | Haushaltsvollzug (Frontend noch offen) | eigene Tabelle; die Summenzeilen aller Jahrgänge kommen immer mit, die dreizehn Teilhaushalte nur für den angefragten Jahrgang — über acht Jahrgänge wären das rund 1.800 Zeilen |
 | `…/haushalt/schulden` | `/haushalt/schulden` | eigene Tabelle, eigene Jahrgangsreihe (bis 1995 zurück) |
 | `…/haushalt/weg` | `/haushalt/mitreden#termine` | Ratsdaten statt Finanzdokumenten (Beratungsfolge, Sitzungen) |
 | `…/haushalt/datenstand` | Block „Bis wann die Zahlen reichen" | rechnet über den Bestand, nicht über Inhalte |
@@ -122,6 +123,7 @@ die es nicht zeigen:
 | `council_einwohner` | Einwohnerzahl je Jahr seit 2010 | Open-Data-Portal, Datensatz 1102 | dito |
 | `council_investments` | Investitionen des **Finanz**haushalts je Teilhaushalt, 2022–2025 (**Plan**) — Ein- und Auszahlungen, dazu die Summenzeile und der Gesamtbetrag des Finanzhaushalts als Bezugsgröße | Open-Data-Portal, Datensatz 1101, Tabellenblatt „Finanzhaushalt" | dito |
 | `council_investment_measures` | **Einzelne Vorhaben** je Teilhaushalt, 2019–2026 (**Plan**) — IPSP-Element, Bezeichnung und Gesamtinvestitionssumme; `ebene` (`massnahme` / `teilhaushalt` / `gesamt`). Ohne Jahresraten, s. u. | Investitionsprogramm (Anlage 004 des Haushaltsplans) — **Anlagen im RIS** | `scripts/ingest_finanzberichte.py` |
+| `council_budget_execution` | Haushaltsvollzug: Ansatz, Prognose zum Jahresende und Abweichung je Teilhaushalt, 2018–2026, viermal jährlich — für Ergebnis- **und** Finanzhaushalt. `plan_basis` sagt, ob die Ansatz-Spalte die Ermächtigungsübertragungen enthält (bis 2020) oder nicht (ab 2021) | Finanz- und Leistungsberichte — **Anlagen im RIS** | `scripts/ingest_haushaltsvollzug.py` |
 | `council_income_statement` | Ansatz, Plan **und** Ergebnis je Posten — gesamt und je Teilhaushalt, 2017–2024 | Jahresabschlüsse — **Anlagen im RIS** | `scripts/ingest_finanzberichte.py` |
 | `council_income_budget` | Dieselben Posten für Jahre **ohne** Abschluss, 2019–2026 — je Zeile `art` (`ansatz` / `finanzplanung`) und `plan_jahrgang` | Gesamtergebnishaushalt (Anlage 005 des Haushaltsplans) — **Anlagen im RIS** | dito |
 | `council_variance_reasons` | Warum ein Posten vom Plan abwich (Abschnitt 6.3.1), 45 Einträge | dito | dito |
@@ -550,12 +552,12 @@ sondern auch, ob sie einer anderen etwas wegnimmt oder ihr etwas anhängt.
 
 ## Der Bereich hält sich selbst aktuell
 
-**Neunzehn** Datenschichten, jede einmal von Hand eingelesen — ohne Cron
+**Zwanzig** Datenschichten, jede einmal von Hand eingelesen — ohne Cron
 veraltet der ganze Bereich still, sobald niemand mehr daran denkt.
 `check_finanzdaten.py` (alle zwei Wochen) nimmt das ab: **Neun** liest er
-selbst nach (sie liegen als Anlage im Ratsinformationssystem), die **zehn**
+selbst nach (sie liegen als Anlage im Ratsinformationssystem), die **elf**
 übrigen werden nur beobachtet — er meldet, dass ein Jahrgang fällig wäre, und
-nennt Quelle und Skript. Sieben davon kommen von außerhalb, drei liegen zwar
+nennt Quelle und Skript. Sieben davon kommen von außerhalb, vier liegen zwar
 im Ratsinformationssystem, haben aber eigene Einlese-Skripte. „Lädt nichts herunter" ist
 die Regel, an der dieser Job hängt. Maßgeblich ist `finanzquellen.REIHENFOLGE`;
 diese Doku zählt nach, sie legt nichts fest.
@@ -718,6 +720,7 @@ Antworten, und eine davon veraltet still.
 | Gesamtergebnishaushalt | Label `%Gesamtergebnishaushalt%`, > 10 Seiten; Jahrgang aus dem **Tabellenkopf** (vier der acht Dokumente tragen keine Jahreszahl im Label) | `council_income_budget` | Oktober, Jahrgang − 1 |
 | Stellenplan | Label `%Stellenplan%`, > 10 Seiten, **ohne** `%eändert%`; Jahrgang aus dem **Tabellenkopf** (drei Schreibweisen im Label, eine mit zwei Jahreszahlen) | `council_staff_plan` | Oktober, Jahrgang − 1 |
 | Konsolidierter Gesamtabschluss | **nur** Text (`konzernabschluss.TEXT_MUSTER`), > 40 Seiten — die Labels dieser Reihe sind wertlos | `council_group_items` (+ `council_group_entities`) | Februar, Jahrgang + 2 |
+| Haushaltsvollzug | Label `%Leistungsbericht%` **oder** `%FLB%`; entschieden wird am **Dokument** — wer die stadtweite Übersichtstabelle nicht führt, fällt durch (Eigenbetriebe, Fachausschüsse) | `council_budget_execution` | April, Jahrgang + 1 (der Bericht zum 31.12. ist der späteste eines Jahrgangs) |
 | Haushaltsplan | *(kein Anlagen-Muster — Download)* | `council_budget` | Oktober, Jahrgang − 1 |
 | Steuerkraft im Städtevergleich | *(kein Anlagen-Muster — Download beim LSN)* | `council_city_comparison`, Reihe `steuerkraft` | April, Jahrgang + 0 |
 | Realsteuervergleich (Hebesätze, Steuereinnahmekraft) | *(kein Anlagen-Muster — Download beim LSN)* | `council_city_comparison`, Reihe `realsteuern` | November, Jahrgang + 1 |
@@ -1306,6 +1309,145 @@ Herkunftsseite. `council_products` deckt nur 8 bis 10 der 13 Teilhaushalte ab
 andere Gliederung (2026: 812,9 statt 788,6 Mio. € Erträge). Beides ist
 brauchbar — aber nur, wenn die Seite den Unterschied benennt.
 :::
+
+## Haushaltsvollzug: das laufende Jahr
+
+Zwischen dem Plan für das kommende Jahr und dem Jahresabschluss, der zwei
+Jahre zurückliegt, klaffte bis 09/2026 das Jahr, um das es gerade geht. Die
+Stadt berichtet darüber vierteljährlich: § 31 der Niedersächsischen
+Kommunalhaushalts- und -kassenverordnung verpflichtet die Verwaltung, dem
+Ausschuss für Finanzen und Beteiligungen zu den Stichtagen 31.03., 30.06.,
+30.09. und 31.12. zu sagen, was sie bis zum Jahresende erwartet. Das Papier
+heißt seit 2018 **Finanz- und Leistungsbericht** (davor „Quartalsbericht").
+
+Gelesen werden daraus die beiden Übersichtstabellen unter „Auswertung der
+Berichte zum …": **1. Ergebnishaushalt** und **2. Finanzhaushalt**, je
+dreizehn Teilhaushalte und eine gedruckte Summenzeile, mit Ansatz, Prognose
+zum 31. Dezember und der Abweichung dazwischen. Tabelle
+`council_budget_execution`, Ingest `scripts/ingest_haushaltsvollzug.py`,
+Endpunkt `GET /api/council/budget/execution`.
+
+### Warum dieser Parser das PDF holt statt den gespeicherten Text zu lesen
+
+Er ist nach den Änderungslisten der zweite, der mit **Wortkoordinaten**
+arbeitet (`pymupdf`), und aus einem anderen Grund als jene. Dort war es die
+Spaltenzuordnung; hier ist es die **leere Zelle**. Wo ein Teilhaushalt keine
+Einzahlungen plant, druckt der Bericht nichts — im Fließtext fehlt die Zahl
+dann einfach, aus elf Spalten werden neun, und ab da steht jeder Betrag eine
+Spalte zu weit links. Gemessen am Bestand passiert das in 38 der 43 Tabellen
+mindestens einmal. Mit den echten Koordinaten ist die leere Zelle genau das:
+eine Spalte ohne Wort.
+
+Der Preis dafür steht im Register: Diese Schicht ist **nicht** cron-fähig.
+`check_finanzdaten` lädt nichts herunter — das ist die Regel, an der der Job
+hängt (siehe oben) —, also beobachtet er den Haushaltsvollzug nur und meldet,
+wenn ein Stichtag ausbleibt.
+
+:::note[Vier Leserichtungen, und die richtige wird gesucht]
+Die Übersichtstabellen stehen im Querformat, und die Berichte lösen das auf
+drei Weisen: aufrecht auf einer Querformat-Seite (2023–2026), über
+`/Rotate 270` (2018–2022) und — in drei Berichten — mit im Inhaltsstrom
+gedrehtem Text auf einer aufrechten Seite. In den ersten beiden Fällen liefert
+`pymupdf` schon Anzeigekoordinaten, im dritten nicht.
+
+Geraten wird deshalb nicht: Von den vier möglichen Drehungen wird die genommen,
+in der die Seite ihre Tabellenmarke und mindestens acht Datenzeilen samt
+Summenzeile zeigt. Eine falsche Drehung liefert Buchstabensalat und fällt
+sofort durch.
+:::
+
+### Vier Proben, und die erste sichert keine Zahl, sondern eine Bedeutung
+
+1. **Spaltenprobe** (`execution_columns`). Die Tabelle hat in allen Jahrgängen
+   elf Zahlenspalten — aber nicht dieselben. Bis 2020 steht die
+   Ermächtigungsübertragung an **dritter** Stelle und ist in die Ansatz-Spalte
+   eingerechnet („Verfügbare Mittel im Saldo"); ab 2021 steht sie als
+   „nachrichtlich" hinten und bleibt draußen. Die Kopfzeile sagt das zwar, ist
+   aber über die Seite verstreut („Ermächti- gungsübertra- gungen") und in
+   einem Bericht von einem senkrecht gesetzten „T e n d e n z" durchsetzt.
+   Also entscheidet die Rechnung: Beide Belegungen werden durchprobiert, und
+   genommen wird die, unter der die Gleichungen aufgehen. Unter der anderen
+   geht **keine einzige** auf — die Beträge liegen Millionen auseinander.
+2. **Zeilenprobe** (`execution_row`). Fünf Gleichungen je Teilhaushalt:
+   Erträge − Aufwendungen (− Übertragung) = Ansatz-Ergebnis, dasselbe für die
+   Prognose, und die drei gedruckten Abweichungen sind die Differenz der
+   beiden. Stünde ein Betrag eine Spalte daneben, ginge das nicht auf.
+3. **Summenprobe** (`execution_totals`). Die dreizehn Teilhaushalte ergeben in
+   jeder Spalte die Summenzeile, die der Bericht selbst darunter druckt.
+4. **Zeitraumprobe** (`execution_period`). Das Haushaltsjahr steht zweimal auf
+   derselben Seite: über dem Stichtag und in der Spaltengruppe
+   „Plan/Ist-Abweichung". Ein Bericht zum 31. Dezember erscheint erst im
+   Folgejahr und ließe sich ohne diese Probe dort einordnen.
+
+Die Toleranz liegt bei **15 €**, und der Bericht begründet sie selbst: „Es kann
+zu geringen Rundungsdifferenzen im Vergleich zu den einzelnen Übersichten der
+Teilhaushalte kommen." Gemessen über 43 Tabellen sind es höchstens 3 € auf der
+Summenzeile — fünf Größenordnungen unter jedem Spaltenfehler, den diese Proben
+fangen sollen.
+
+:::danger[„Ansatz" heißt hier zweierlei, und die Zeile sagt welches]
+Aus der Layout-Frage folgt eine Falle, die **keine** Rechenprobe fängt: Die
+Ansatz-Spalte des Ergebnisses enthält bis 2020 die Ermächtigungsübertragungen
+aus dem Vorjahr und ab 2021 nicht mehr. Für 2018 stünde dort ein Überschuss von
+5,4 Millionen — der Haushaltsplan selbst weist 8,8 Millionen aus, die Differenz
+sind die 3,4 Millionen Übertragung.
+
+Jede Zeile trägt deshalb ihr `plan_basis`: `budget` oder
+`budget_plus_carryover`. Das ist kein Technikfeld, sondern die Bedingung dafür,
+dass eine Zeitreihe über den Schnitt 2020/2021 etwas bedeutet — dieselbe
+Überlegung wie bei „Ansatz heißt fünfmal etwas anderes" einen Abschnitt weiter
+oben. Den Satz für Leserinnen liefert die API in `plan_basis_note` mit.
+:::
+
+### Die Einheit ist die Tabelle, nicht der Jahrgang
+
+Ein Haushaltsjahr besteht aus bis zu vier Stichtagen mit je zwei Haushalten.
+Buchgeführt wird deshalb über `(Jahrgang, Stichtag, Haushalt)`. Wer je Jahrgang
+buchführte, hielte 2025 nach dem Bericht zum 31. März für erledigt und zöge die
+drei folgenden Quartale nie nach.
+
+Das ist auch kein theoretischer Fall: Im Bericht zum 30.06.2024 weist die Stadt
+beim Teilhaushalt 13 eine Aufwands-Abweichung von −40.377 € aus, obwohl Ansatz
+und Prognose dort gleich sind — die Zahl ist die Ermächtigungsübertragung,
+einmal zu weit links. Die Zeilenprobe reißt, der **Ergebnis**haushalt dieses
+Stichtags bleibt draußen. Sein Finanzhaushalt, an dem nichts falsch ist, kommt
+herein.
+
+### Was diese Schicht nicht hergibt
+
+**Kein Ist zum Stichtag.** Alle gelesenen Berichte führen Ansatz, Prognose zum
+Jahresende und Abweichung — keiner nennt, was bis zum Stichtag tatsächlich
+gebucht war. „Zum 30. Juni" ist der Tag, an dem die Ämter ihre Erwartung für
+den 31. Dezember abgegeben haben, nicht ein Halbjahres-Ist. Eine Spalte dafür
+gibt es deshalb nicht; sie wäre in jeder Zeile leer und in jeder Anzeige eine
+Einladung zum Missverständnis. Was am Jahresende wirklich herauskam, steht im
+Jahresabschluss — und der kommt zwei Jahre später.
+
+**Kein erstes Quartal.** Die Berichte zum 31. März hängen als Tabelle im
+**Vorlagentext** und nicht als Anlage, und sie führen je Teilhaushalt nur das
+Jahresergebnis, nicht Erträge und Aufwendungen. Sie sind damit eine andere
+Tabelle mit anderen Proben. Dazu kommt ein Befund, der gegen ein schnelles
+Nachrüsten spricht: In der Vorlage 25/0308 (Q1 2025) stehen in der
+Finanzhaushalts-Tabelle bei drei Teilhaushalten die Prognosewerte des
+**Ergebnis**haushalts, und die gedruckte Summe passt zu keiner der beiden
+Lesarten. Ein Parser, der das übernähme, machte aus einem Fehler der Stadt eine
+Zahl mit Beleg.
+
+**Nicht 2017.** Der Bericht zum 31.12.2017 (Anlage 184154) führt eine Tabelle
+mit **zwölf** Zahlenspalten und ohne die Überschrift „Auswertung der Berichte
+zum …". Er wird gemeldet und nicht gelesen — ein drittes Layout für einen
+einzigen Stichtag zu bauen, ohne zweiten Beleg dafür, dass es je wiederkommt,
+wäre Code, den niemand prüfen kann.
+
+**Nicht die Teilhaushalts-Berichte.** Unter demselben Namen liegen im Bestand
+die „Finanz- und Leistungsberichte des Teilhaushaltes 07" für den
+Planungsausschuss, dazu die Fassungen der Eigenbetriebe (Gebäudewirtschaft,
+Hafen). Sie tragen dieselben Label und fallen still durch: Wer die stadtweite
+Übersichtstabelle mit dreizehn Teilhaushalten und Summenzeile nicht führt, ist
+kein Kandidat. „56 von 80 Anlagen ohne Übersichtstabelle" ist deshalb der
+Sollzustand und kein Befund. Als **Ausbau** wären die Teilhaushalts-Berichte
+die nächste Stufe: dieselbe Frage eine Ebene feiner, aber mit eigener
+Tabellenform und eigenen Proben.
 
 ## Vier Prüfungen, und keine davon ist optional
 

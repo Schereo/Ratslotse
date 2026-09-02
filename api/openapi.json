@@ -2295,6 +2295,60 @@
         "title": "BudgetDocuments",
         "type": "object"
       },
+      "BudgetExecution": {
+        "properties": {
+          "budget_names": {
+            "additionalProperties": true,
+            "title": "Budget Names",
+            "type": "object"
+          },
+          "editions": {
+            "title": "Editions"
+          },
+          "kind_names": {
+            "additionalProperties": true,
+            "title": "Kind Names",
+            "type": "object"
+          },
+          "plan_basis_note": {
+            "additionalProperties": true,
+            "title": "Plan Basis Note",
+            "type": "object"
+          },
+          "provenance": {
+            "additionalProperties": true,
+            "title": "Provenance",
+            "type": "object"
+          },
+          "reporting_dates": {
+            "items": {},
+            "title": "Reporting Dates",
+            "type": "array"
+          },
+          "rows": {
+            "title": "Rows"
+          },
+          "scope_note": {
+            "title": "Scope Note"
+          },
+          "totals": {
+            "title": "Totals"
+          }
+        },
+        "required": [
+          "scope_note",
+          "plan_basis_note",
+          "budget_names",
+          "kind_names",
+          "editions",
+          "reporting_dates",
+          "totals",
+          "rows",
+          "provenance"
+        ],
+        "title": "BudgetExecution",
+        "type": "object"
+      },
       "BudgetFixedAssets": {
         "properties": {
           "accounting_systems": {
@@ -10700,6 +10754,52 @@
           }
         },
         "summary": "Haushalt Dokumente",
+        "tags": [
+          "council"
+        ]
+      }
+    },
+    "/api/council/budget/execution": {
+      "get": {
+        "description": "Der Haushaltsvollzug: wie das laufende Jahr gegen seinen Plan läuft.\n\nDie Schicht zwischen Plan und Abschluss. Die Verwaltung berichtet dem\nAusschuss für Finanzen und Beteiligungen vierteljährlich, was sie bis zum\n31. Dezember erwartet — je Teilhaushalt und für die ganze Stadt.\n\n- ``editions``: Haushaltsjahre mit mindestens einem gelesenen Bericht,\n- ``reporting_dates``: je Jahrgang die Stichtage und welche Haushalte an\n  ihnen vorliegen. Wo ein Stichtag nur einen der beiden führt, steht das\n  hier — sonst sähe ein halbes Quartal aus wie ein ganzes,\n- ``totals``: die Summenzeilen **aller** Jahrgänge. Das ist die\n  Zeitreihe, die die Übersicht braucht, und sie ist klein genug, um immer\n  mitzukommen,\n- ``rows``: die dreizehn Teilhaushalte — nur mit ``budget_year``, weil das\n  über acht Jahrgänge rund 1.800 Zeilen wären,\n- ``provenance``: je ``herkunft_id`` Dokument, Fundstelle und bestandene\n  Probe. Ergebnis- und Finanzhaushalt eines Stichtags tragen\n  **verschiedene** IDs: dieselbe Datei, aber zwei Tabellen mit je eigener\n  Rechenprobe.\n\nZwei Dinge, die jede Anzeige mitführen muss:\n\n``plan_basis`` sagt, was in der Ansatz-Spalte steht. Bis zum\nHaushaltsjahr 2020 rechnet sie die Ermächtigungsübertragungen aus dem\nVorjahr mit ein, ab 2021 nicht mehr. Wer beide Jahrgänge nebeneinander\nzeigt, ohne das zu sagen, vergleicht zwei verschiedene Größen —\n``plan_basis_note`` liefert den Satz dazu.\n\nUnd ``forecast`` ist eine **Erwartung**, kein Ist. „Zum 30. Juni\" ist der\nTag, an dem die Ämter ihre Prognose für den 31. Dezember abgegeben haben,\nnicht ein Halbjahres-Ergebnis. Was am Jahresende wirklich herauskam, steht\nim Jahresabschluss (``…/budget?felder=income_statement``) — und der kommt\nzwei Jahre später.",
+        "operationId": "haushalt_vollzug_api_council_budget_execution_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "budget_year",
+            "required": false,
+            "schema": {
+              "title": "Budget Year",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetExecution"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Haushalt Vollzug",
         "tags": [
           "council"
         ]

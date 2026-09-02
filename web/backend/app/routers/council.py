@@ -39,7 +39,8 @@ from .. import deepresearch
 from ..config import get_settings
 from ..antworten import (AnalysisData, BudgetAmendmentLists, BudgetAuditReports,
                          BudgetBalanceSheet, BudgetComparison, BudgetDataState, BudgetDebt,
-                         BudgetDispute, BudgetDocuments, BudgetFixedAssets, BudgetGroup,
+                         BudgetDispute, BudgetDocuments, BudgetExecution,
+                         BudgetFixedAssets, BudgetGroup,
                          BudgetHoldings, BudgetInvestmentProgram, BudgetInvestments,
                          BudgetOverview, BudgetPath, BudgetProducts, BudgetStaffPlan, Committees,
                          ConversationDetail, ConversationList, ConversationSetting,
@@ -550,6 +551,69 @@ def haushalt_stellenplan(
         "groups": gruppen,
         "rows": zeilen,
         "missing": fehlend,
+        "provenance": {str(h["id"]): h for h in store.get_herkunft(ids)},
+    }
+
+
+@router.get("/budget/execution")
+def haushalt_vollzug(
+    budget_year: int | None = None,
+    _user: dict = Depends(require_active),
+    store: CouncilStore = Depends(get_council_store),
+) -> BudgetExecution:
+    """Der Haushaltsvollzug: wie das laufende Jahr gegen seinen Plan läuft.
+
+    Die Schicht zwischen Plan und Abschluss. Die Verwaltung berichtet dem
+    Ausschuss für Finanzen und Beteiligungen vierteljährlich, was sie bis zum
+    31. Dezember erwartet — je Teilhaushalt und für die ganze Stadt.
+
+    - ``editions``: Haushaltsjahre mit mindestens einem gelesenen Bericht,
+    - ``reporting_dates``: je Jahrgang die Stichtage und welche Haushalte an
+      ihnen vorliegen. Wo ein Stichtag nur einen der beiden führt, steht das
+      hier — sonst sähe ein halbes Quartal aus wie ein ganzes,
+    - ``totals``: die Summenzeilen **aller** Jahrgänge. Das ist die
+      Zeitreihe, die die Übersicht braucht, und sie ist klein genug, um immer
+      mitzukommen,
+    - ``rows``: die dreizehn Teilhaushalte — nur mit ``budget_year``, weil das
+      über acht Jahrgänge rund 1.800 Zeilen wären,
+    - ``provenance``: je ``herkunft_id`` Dokument, Fundstelle und bestandene
+      Probe. Ergebnis- und Finanzhaushalt eines Stichtags tragen
+      **verschiedene** IDs: dieselbe Datei, aber zwei Tabellen mit je eigener
+      Rechenprobe.
+
+    Zwei Dinge, die jede Anzeige mitführen muss:
+
+    ``plan_basis`` sagt, was in der Ansatz-Spalte steht. Bis zum
+    Haushaltsjahr 2020 rechnet sie die Ermächtigungsübertragungen aus dem
+    Vorjahr mit ein, ab 2021 nicht mehr. Wer beide Jahrgänge nebeneinander
+    zeigt, ohne das zu sagen, vergleicht zwei verschiedene Größen —
+    ``plan_basis_note`` liefert den Satz dazu.
+
+    Und ``forecast`` ist eine **Erwartung**, kein Ist. „Zum 30. Juni" ist der
+    Tag, an dem die Ämter ihre Prognose für den 31. Dezember abgegeben haben,
+    nicht ein Halbjahres-Ergebnis. Was am Jahresende wirklich herauskam, steht
+    im Jahresabschluss (``…/budget?felder=income_statement``) — und der kommt
+    zwei Jahre später."""
+    from council import budget_execution as _be
+
+    summen = store.get_haushaltsvollzug(totals_only=True)
+    zeilen = (store.get_haushaltsvollzug(budget_year=budget_year)
+              if budget_year is not None else [])
+    stichtage = store.haushaltsvollzug_stichtage()
+    for s in stichtage:
+        s["budgets"] = sorted((s.get("budgets") or "").split(","))
+
+    ids = sorted({z["herkunft_id"] for z in (*summen, *zeilen)
+                  if z["herkunft_id"] is not None})
+    return {
+        "scope_note": _be.ABGRENZUNG,
+        "plan_basis_note": _be.BASIS_ERKLAERT,
+        "budget_names": _be.HAUSHALT_NAMEN,
+        "kind_names": _be.ART_NAMEN,
+        "editions": sorted({z["budget_year"] for z in summen}),
+        "reporting_dates": stichtage,
+        "totals": summen,
+        "rows": zeilen,
         "provenance": {str(h["id"]): h for h in store.get_herkunft(ids)},
     }
 

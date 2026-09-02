@@ -1,15 +1,20 @@
 #!/usr/bin/env python3
 """Neue Haushalts-Jahrgänge von allein nachziehen (alle zwei Wochen).
 
-Der Haushalts-Bereich lebt von neunzehn Datenschichten (``finanzquellen.
+Der Haushalts-Bereich lebt von zwanzig Datenschichten (``finanzquellen.
 REIHENFOLGE``), die bis 08/2026 alle von Hand eingelesen wurden. Dieser Job
 holt die **neun**, die als Anlage im Ratsinformationssystem liegen UND einen
-eigenen Leser mitbringen (``einlesen``). Von den zehn übrigen kommen sieben von
+eigenen Leser mitbringen (``einlesen``). Von den elf übrigen kommen sieben von
 außerhalb und haben eigene Wege — ausdrücklich so, denn „lädt nichts herunter"
-ist die Regel, an der dieser Job hängt. Die restlichen drei liegen zwar im
+ist die Regel, an der dieser Job hängt. Die restlichen vier liegen zwar im
 Ratsinformationssystem, werden aber von eigenen Skripten eingelesen
 (``ingest_wirtschaftsplaene.py``, ``ingest_haushaltssatzung.py``,
-``ingest_gebuehren.py``); dieser Job beobachtet sie nur und meldet, wenn ein Jahrgang überfällig wird. Ohne diesen Job veraltet er still, sobald niemand mehr
+``ingest_gebuehren.py``, ``ingest_haushaltsvollzug.py``); dieser Job beobachtet
+sie nur und meldet, wenn ein Jahrgang überfällig wird. Beim Haushaltsvollzug
+ist das keine Bequemlichkeit, sondern dieselbe Regel: Seine Spaltenzuordnung
+braucht Wortkoordinaten, sein Skript lädt die PDFs also selbst herunter — und
+genau das darf dieser Job nicht.
+Ohne diesen Job veraltet er still, sobald niemand mehr
 daran denkt: Die Stadt legt jeden September einen Jahresabschluss und jeden
 Oktober einen Haushaltsplan vor, und beides landet ohne Zutun als PDF-Anlage
 in ``council_attachments`` — gelesen hat es bloß niemand.

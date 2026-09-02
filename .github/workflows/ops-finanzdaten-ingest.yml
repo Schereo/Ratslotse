@@ -203,6 +203,19 @@ jobs:
             # deshalb steht es direkt daneben.
             .venv/bin/python scripts/ingest_aenderungslisten_fhh.py
 
+            # Der Haushaltsvollzug — die vierteljährlichen Finanz- und
+            # Leistungsberichte. Steht direkt hinter den Änderungslisten, weil
+            # er dieselbe Voraussetzung hat und aus demselben Grund: `pymupdf`
+            # ist oben schon nachgezogen, und ohne Wortkoordinaten wäre die
+            # leere Zelle dieser Tabellen nicht von einer fehlenden Spalte zu
+            # unterscheiden (s. council/budget_execution.py).
+            #
+            # Er hängt an KEINEM der Läufe darüber: Aus `council_attachments`
+            # liest er nur Label und URL und lädt die PDFs selbst — deshalb ist
+            # er auch der vierte Ingest, den `check_finanzdaten` NICHT
+            # übernehmen kann („lädt nichts herunter").
+            .venv/bin/python scripts/ingest_haushaltsvollzug.py
+
             # Die beiden Steuertabellen des Jahrbuchs (1103 Plan neben Ist je
             # Steuerart, 1105 Hebesätze seit 1980). Sie stehen NACH
             # ingest_finanzen_opendata.py, und das ist keine Sortierlaune:
@@ -314,6 +327,11 @@ jobs:
                 # eine Aussage über den Parser, nicht nur über den Bestand.
                 "council_haushalt_aenderungen_fhh",
                 "council_haushalt_aenderungen_fhh_summen",
+                # Der Haushaltsvollzug. Hier sagt die JAHRESSPANNE mehr als die
+                # Zeilenzahl: Ein Jahrgang besteht aus bis zu vier Stichtagen
+                # mit je zwei Haushalten, und ein Lauf, der nur den ersten
+                # geholt hat, sieht in der Zeilenzahl aus wie ein voller.
+                "council_budget_execution",
             ]
             # Die Jahresspalte heißt nicht überall „jahr": council_haushalt
             # führt „year", der Stellenplan „jahrgang". Der erste Lauf meldete
