@@ -1375,6 +1375,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/council/budget/execution": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Haushalt Vollzug
+         * @description Der Haushaltsvollzug: wie das laufende Jahr gegen seinen Plan läuft.
+         *
+         *     Die Schicht zwischen Plan und Abschluss. Die Verwaltung berichtet dem
+         *     Ausschuss für Finanzen und Beteiligungen vierteljährlich, was sie bis zum
+         *     31. Dezember erwartet — je Teilhaushalt und für die ganze Stadt.
+         *
+         *     - ``editions``: Haushaltsjahre mit mindestens einem gelesenen Bericht,
+         *     - ``reporting_dates``: je Jahrgang die Stichtage und welche Haushalte an
+         *       ihnen vorliegen. Wo ein Stichtag nur einen der beiden führt, steht das
+         *       hier — sonst sähe ein halbes Quartal aus wie ein ganzes,
+         *     - ``totals``: die Summenzeilen **aller** Jahrgänge. Das ist die
+         *       Zeitreihe, die die Übersicht braucht, und sie ist klein genug, um immer
+         *       mitzukommen,
+         *     - ``rows``: die dreizehn Teilhaushalte — nur mit ``budget_year``, weil das
+         *       über acht Jahrgänge rund 1.800 Zeilen wären,
+         *     - ``provenance``: je ``herkunft_id`` Dokument, Fundstelle und bestandene
+         *       Probe. Ergebnis- und Finanzhaushalt eines Stichtags tragen
+         *       **verschiedene** IDs: dieselbe Datei, aber zwei Tabellen mit je eigener
+         *       Rechenprobe.
+         *
+         *     Zwei Dinge, die jede Anzeige mitführen muss:
+         *
+         *     ``plan_basis`` sagt, was in der Ansatz-Spalte steht. Bis zum
+         *     Haushaltsjahr 2020 rechnet sie die Ermächtigungsübertragungen aus dem
+         *     Vorjahr mit ein, ab 2021 nicht mehr. Wer beide Jahrgänge nebeneinander
+         *     zeigt, ohne das zu sagen, vergleicht zwei verschiedene Größen —
+         *     ``plan_basis_note`` liefert den Satz dazu.
+         *
+         *     Und ``forecast`` ist eine **Erwartung**, kein Ist. „Zum 30. Juni" ist der
+         *     Tag, an dem die Ämter ihre Prognose für den 31. Dezember abgegeben haben,
+         *     nicht ein Halbjahres-Ergebnis. Was am Jahresende wirklich herauskam, steht
+         *     im Jahresabschluss (``…/budget?felder=income_statement``) — und der kommt
+         *     zwei Jahre später.
+         */
+        get: operations["haushalt_vollzug_api_council_budget_execution_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/council/budget/group": {
         parameters: {
             query?: never;
@@ -4562,6 +4614,35 @@ export interface components {
             documents: unknown;
             /** Editions */
             editions: unknown;
+        };
+        /** BudgetExecution */
+        BudgetExecution: {
+            /** Budget Names */
+            budget_names: {
+                [key: string]: unknown;
+            };
+            /** Editions */
+            editions: unknown;
+            /** Kind Names */
+            kind_names: {
+                [key: string]: unknown;
+            };
+            /** Plan Basis Note */
+            plan_basis_note: {
+                [key: string]: unknown;
+            };
+            /** Provenance */
+            provenance: {
+                [key: string]: unknown;
+            };
+            /** Reporting Dates */
+            reporting_dates: unknown[];
+            /** Rows */
+            rows: unknown;
+            /** Scope Note */
+            scope_note: unknown;
+            /** Totals */
+            totals: unknown;
         };
         /** BudgetFixedAssets */
         BudgetFixedAssets: {
@@ -8822,6 +8903,37 @@ export interface operations {
             };
         };
     };
+    haushalt_vollzug_api_council_budget_execution_get: {
+        parameters: {
+            query?: {
+                budget_year?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetExecution"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     haushalt_konzern_api_council_budget_group_get: {
         parameters: {
             query?: never;
@@ -11834,4 +11946,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 0fe2850601664145ea8e7ba60ff79a177df07b2058e92d9da83444f032f7d68b
+// vertrag-sha256: e5864460e918e22a1f01fce0c533c8adb5f6104d456c3ca5c22a66a40b85773b

@@ -161,6 +161,30 @@ PROBEN: dict[str, str] = {
     "bylaw_assessment_rate":
         "Der Hebesatz aus § 5 der Satzung steht auch in Tabelle 1105 des "
         "Statistischen Jahrbuchs: zwei Dokumente aus zwei Häusern.",
+    # Der Haushaltsvollzug (council/budget_execution.py) — die
+    # vierteljährlichen Finanz- und Leistungsberichte. Die erste Probe ist die
+    # ungewöhnliche: Sie sichert nicht eine Zahl ab, sondern die BEDEUTUNG der
+    # Spalte, in der sie steht. Die Berichte wechseln 2021 ihr Tabellenlayout,
+    # und die Kopfzeile ist über die Seite verstreut.
+    "execution_columns":
+        "Welche Spalte was bedeutet, ist gerechnet und nicht der Kopfzeile "
+        "geglaubt: Von den beiden Belegungen, die dieser Bericht haben kann, "
+        "gilt die, unter der die Rechnungen der Tabelle aufgehen. Unter der "
+        "anderen geht keine einzige auf.",
+    "execution_row":
+        "Jede Zeile rechnet sich selbst vor: Erträge minus Aufwendungen ist "
+        "das Ergebnis — im Ansatz wie in der Prognose —, und die gedruckte "
+        "Abweichung ist die Differenz der beiden. Fünf Gleichungen je "
+        "Teilhaushalt, alle nachgerechnet.",
+    "execution_totals":
+        "Die dreizehn Teilhaushalte ergeben in jeder Spalte die Summenzeile, "
+        "die der Bericht selbst darunter druckt.",
+    "execution_period":
+        "Das Haushaltsjahr steht zweimal auf derselben Seite: in der "
+        "Überschrift über dem Stichtag und in der Spaltengruppe "
+        "„Plan/Ist-Abweichung“. Beide nennen dasselbe Jahr — ein Bericht zum "
+        "31. Dezember erscheint erst im Folgejahr und ließe sich sonst dort "
+        "einordnen.",
     # Die Kernzahl aus dem Beschlusstext, bestätigt durch die Anlage
     # (council/wirtschaftsplan_kernzahl.py) — die einzige Probe des Bereichs,
     # die über ZWEI Dokumente geht.
@@ -698,6 +722,13 @@ HERKUNFT_TABELLEN: tuple[str, ...] = (
     "council_company_indicators",
     "council_company_people",
     "council_company_owners",
+    # Der Haushaltsvollzug (council/budget_execution.py) — die
+    # vierteljährlichen Finanz- und Leistungsberichte. Neu, ohne Altbestand:
+    # Herkunft ausschließlich über `herkunft_id`. Je Dokument bis zu ZWEI
+    # Herkünfte, eine je Haushalt — sie zeigen auf dieselbe Datei, ihre
+    # Fundstelle unterscheidet sie („1. Ergebnishaushalt" gegen
+    # „2. Finanzhaushalt"), und beide kommen einzeln durch ihre Proben.
+    "council_budget_execution",
 )
 
 

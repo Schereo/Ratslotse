@@ -1561,6 +1561,18 @@ class BudgetStaffPlan(TypedDict):
     rows: Any
 
 
+class BudgetExecution(TypedDict):
+    scope_note: Any
+    plan_basis_note: dict[str, Any]
+    budget_names: dict[str, Any]
+    kind_names: dict[str, Any]
+    editions: Any
+    reporting_dates: list[Any]
+    totals: Any
+    rows: Any
+    provenance: dict[str, Any]
+
+
 class BudgetAuditReports(TypedDict):
     findings: list[Any]
     years: Any
