@@ -52,9 +52,10 @@
 // darin wären für die Vorlesehilfe unsichtbar. Die Gesamtbeschreibung hängt
 // als `aria-describedby` an einem sr-only-Absatz daneben (`AbleseTexte`).
 
-import { useCallback, useId, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useId, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { bisectCenter } from "d3-array";
 import { TABLEISTE_HOEHE } from "@/components/nav";
+import { deZahl } from "@/components/grafik/format";
 import { cn } from "@/lib/utils";
 
 export type AbleseWert = {
@@ -118,7 +119,146 @@ export function useAblesen(count: number, standard: number): AbleseSteuerung {
   return { aktiv, gewaehlt: gewaehlt != null, waehle, zuruecksetzen, tastatur, setTastatur };
 }
 
-/** Die Leiste unter dem Diagramm — echter Text, immer sichtbar.
+/** Die Farbmarke einer Ablesekarte: Farbe, Schraffur (Sammelposten) oder
+ *  nichts — dann steht ein leerer Rahmen, damit der Text nicht springt. */
+export type AbleseMarkeKarte = {
+  farbe?: string;
+  schraffiert?: boolean;
+  /** Eckig für Flächen (Kacheln, Segmente), rund für Reihen (Vorgabe). */
+  eckig?: boolean;
+};
+
+const NEUTRALE_SCHRAFFUR =
+  "repeating-linear-gradient(135deg, hsl(var(--muted-foreground) / 0.16) 0 3px, transparent 3px 6px)";
+
+/** <Ablesekarte> — die Auskunft unter dem Bild, als Karte (seit 02.09.).
+ *
+ *  Bis dahin war die Ableseleiste ein grauer Kasten mit 12,5-px-Mono: Jahr,
+ *  dann Werte in einer Zeile. Sie sah aus wie ein Hinweis, nicht wie die
+ *  Auskunft — obwohl sie die EINZIGE Stelle ist, an der der Wert einer Stelle
+ *  steht (GB-00: kein Tooltip). Jetzt trägt sie ihn wie eine Kennzahl:
+ *  Farbmarke, Name (das Jahr, die Kachel, die Säule), eine Zusatzzeile, die
+ *  Hauptzahl in Bricolage mit ihrer Einheit darunter, Nebenwerte als kleine
+ *  Zeile, wo die Fläche ein Ganzes zerlegt ein Anteilsbalken.
+ *
+ *  Eine Karte für alle Grafiken: Kachelfläche, Zeitreihe, Naht-Säulen,
+ *  Ketten-Matrix, Labor — und die künftigen. Wer sie ändert, ändert alle;
+ *  das ist der Zweck. Sie rechnet nichts und formatiert nichts — die Grafik
+ *  liefert fertige Zeichenketten. */
+export function Ablesekarte({
+  marke, name, zusatz, wert, wertLabel, wertSignal, nebenwerte, anteil, anmerkung,
+  note, haftet = false, live = false, className,
+}: {
+  marke?: AbleseMarkeKarte;
+  name: ReactNode;
+  zusatz?: ReactNode;
+  /** Die Hauptzahl, fertig formatiert („337,0" / „—"). */
+  wert: string;
+  /** Was unter der Hauptzahl steht: die Einheit oder der Name der Größe. */
+  wertLabel?: string;
+  /** Signal-Orange: die Hauptzahl ist eine Differenz oder eine Lücke. */
+  wertSignal?: boolean;
+  /** Weitere Werte der Stelle („ggü. Vorjahr +42,1", die Zweitreihe). */
+  nebenwerte?: AbleseWert[];
+  /** Anteil in Prozent (0–100) — als schmaler Balken und als Zahl. */
+  anteil?: number;
+  /** Der Anmerkungssatz zum ⓘ — eine eigene Zeile, nie ein Tooltip. */
+  anmerkung?: string;
+  /** Der Bedien-Hinweis, ganz unten, klein. */
+  note?: ReactNode;
+  /** Mobil am unteren Rand anheften (s. Ableseleiste). */
+  haftet?: boolean;
+  /** `aria-live` — nur, wo die Karte nicht bei jeder Zeigerbewegung wechselt. */
+  live?: boolean;
+  className?: string;
+}) {
+  return (
+    <div
+      aria-live={live ? "polite" : undefined}
+      className={cn(
+        haftet && "gb-ablese-leiste",
+        "rounded-xl border border-border/70 bg-muted/30 px-3.5 py-2.5",
+        className,
+      )}
+      style={{ "--gb-ablese-bottom": `calc(${TABLEISTE_HOEHE} + 0.5rem)` } as CSSProperties}
+    >
+      <div className="flex items-center gap-3">
+        {marke && (
+          <span
+            aria-hidden="true"
+            className={cn(
+              "flex-none transition-colors duration-200",
+              marke.eckig ? "h-3.5 w-3.5 rounded-[3px]" : "h-3 w-3 rounded-full",
+              marke.schraffiert && "border border-dashed border-border",
+              !marke.farbe && !marke.schraffiert && "ring-1 ring-inset ring-foreground/20",
+            )}
+            style={{
+              background: marke.farbe,
+              backgroundImage: marke.schraffiert ? NEUTRALE_SCHRAFFUR : undefined,
+            }}
+          />
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[13px] font-semibold leading-snug text-foreground">{name}</p>
+          {zusatz && (
+            <p className="truncate text-[11.5px] leading-snug text-muted-foreground">{zusatz}</p>
+          )}
+          {anteil != null && (
+            <span className="mt-1.5 block h-[3px] w-full max-w-[280px] overflow-hidden rounded-full bg-border/70">
+              <span
+                className="block h-full rounded-full bg-primary transition-[width] duration-300 ease-out"
+                style={{ width: `${Math.max(1, Math.min(100, anteil))}%` }}
+              />
+            </span>
+          )}
+          {nebenwerte && nebenwerte.length > 0 && (
+            <p className="mt-1 flex flex-wrap gap-x-3.5 gap-y-0.5 text-[11.5px] leading-snug">
+              {nebenwerte.map((w) => (
+                <span key={w.label} className="inline-flex items-baseline gap-1.5">
+                  {w.farbe && (
+                    <span aria-hidden="true" className="h-2 w-2 flex-none translate-y-[-1px] self-center rounded-full"
+                      style={{ background: w.farbe }} />
+                  )}
+                  <span className="text-muted-foreground">{w.label}</span>
+                  {/* `whitespace-nowrap`: Der Betrag trägt seine Einheit, und
+                      die darf NIE von ihrer Zahl abreißen. */}
+                  <span className={cn("whitespace-nowrap font-semibold tabular-nums",
+                                      w.signal ? "text-signal" : "text-foreground")}>{w.value}</span>
+                </span>
+              ))}
+            </p>
+          )}
+        </div>
+        <div className="flex-none text-right">
+          <p className={cn(
+            "whitespace-nowrap font-display text-[20px] font-bold leading-none tracking-tight tabular-nums",
+            wertSignal ? "text-signal" : "text-foreground",
+          )}>
+            {wert}
+          </p>
+          {(wertLabel || anteil != null) && (
+            <p className="mt-1 whitespace-nowrap text-[11px] leading-none text-muted-foreground">
+              {anteil != null ? <>{deZahl(anteil, 1)}&nbsp;% der Fläche</> : wertLabel}
+            </p>
+          )}
+        </div>
+      </div>
+      {anmerkung && (
+        <p className="mt-1.5 max-w-[76ch] border-t border-border/60 pt-1.5 text-[11.5px] leading-relaxed text-foreground/85">
+          <span aria-hidden="true" className="mr-1 font-mono text-[10px] font-semibold text-foreground/70">ⓘ</span>
+          {anmerkung}
+        </p>
+      )}
+      {note && (
+        <p className="mt-1 text-[10.5px] leading-snug text-muted-foreground">{note}</p>
+      )}
+    </div>
+  );
+}
+
+/** Die Leiste unter dem Diagramm — echter Text, immer sichtbar; seit 02.09.
+ *  gerendert als <Ablesekarte>: Der erste Wert der Stelle ist die Hauptzahl,
+ *  die übrigen stehen als Nebenwerte darunter.
  *
  *  Mobil (unter 744 px) zusätzlich STICKY am unteren Rand (H4-A): Solange
  *  die Karte im Bild ist, bleibt die Wertzeile über der Tab-Leiste sichtbar —
@@ -141,61 +281,30 @@ export function Ableseleiste({ stelle, steuerung, note, className, haftet = true
    *  18.08.2026). Zwei klebende Ebenen übereinander kann niemand lesen. */
   haftet?: boolean;
 }) {
+  const [haupt, ...neben] = stelle.werte;
   return (
-    <div
-      className={cn(haftet && "gb-ablese-leiste",
-                    "rounded-xl border border-border bg-muted/40 px-3 py-2", className)}
-      style={{ "--gb-ablese-bottom": `calc(${TABLEISTE_HOEHE} + 0.5rem)` } as CSSProperties}
-    >
-      {/* ZWEI LAYOUTS, EIN MARKUP.
-          Breit läuft die Zeile um (viele kurze Werte nebeneinander). Schmal
-          ist das falsch: Sechs Einträge mit langen Namen wie „Erwerb von
-          Grundstücken und Gebäuden" ergaben Treppenstufen, in denen Name und
-          Betrag nicht mehr zusammenfanden. Unter 480 px steht deshalb jeder
-          Eintrag auf einer eigenen Zeile, Name links, Betrag rechtsbündig —
-          die Beträge stehen dann untereinander und sind vergleichbar. */}
-      <div className="flex flex-col gap-y-1 ab-lesezeile:flex-row ab-lesezeile:flex-wrap
-                      ab-lesezeile:items-baseline ab-lesezeile:gap-x-3.5">
-        <span className="font-mono text-[12.5px] font-semibold uppercase tracking-[0.08em] tabular-nums">
-          {stelle.title}
-        </span>
-        {stelle.werte.map((w) => (
-          <span key={w.label}
-            className="flex items-baseline justify-between gap-2 text-[12.5px] leading-tight
-                       ab-lesezeile:inline-flex ab-lesezeile:justify-start ab-lesezeile:gap-1.5">
-            <span className="flex min-w-0 items-baseline gap-1.5">
-              {w.farbe && (
-                <span aria-hidden="true" className="h-2 w-2 flex-none translate-y-[-1px] self-center rounded-full"
-                  style={{ background: w.farbe }} />
-              )}
-              <span className="text-muted-foreground">{w.label}</span>
-            </span>
-            {/* `whitespace-nowrap`: Der Betrag trägt seine Einheit („0,2 Mio.
-                €"), und die darf NIE von ihrer Zahl abreißen — auf 375 px
-                stand das € sonst allein auf der nächsten Zeile. */}
-            <span className={cn("flex-none whitespace-nowrap font-semibold tabular-nums",
-                                w.signal && "text-signal")}>{w.value}</span>
-          </span>
-        ))}
-      </div>
-      {stelle.anmerkung && (
-        <p className="mt-1.5 max-w-[76ch] border-t border-border/60 pt-1.5 text-[11.5px] leading-relaxed text-foreground/85">
-          <span aria-hidden="true" className="mr-1 font-mono text-[10px] font-semibold text-foreground/70">ⓘ</span>
-          {stelle.anmerkung}
-        </p>
-      )}
-      <p className="mt-1 text-[10.5px] leading-snug text-muted-foreground">
+    <Ablesekarte
+      haftet={haftet}
+      className={className}
+      marke={haupt ? { farbe: haupt.signal ? "hsl(var(--signal))" : haupt.farbe } : undefined}
+      name={stelle.title}
+      wert={haupt?.value ?? "—"}
+      wertLabel={haupt?.label}
+      wertSignal={haupt?.signal}
+      nebenwerte={neben}
+      anmerkung={stelle.anmerkung}
+      note={<>
         {note ?? "Überfahren, tippen oder mit den Pfeiltasten wechseln."}
         {steuerung.gewaehlt && <> · <button type="button" onClick={steuerung.zuruecksetzen}
           className="font-semibold text-primary">zurücksetzen</button></>}
-      </p>
-    </div>
+      </>}
+    />
   );
 }
 
 /** Der sr-only-Absatz mit der Gesamtbeschreibung. Gehört neben die Grafik und
  *  wird von ihr per `aria-describedby` referenziert. */
-export function AbleseBeschreibung({ id, children }: { id: string; children: React.ReactNode }) {
+export function AbleseBeschreibung({ id, children }: { id: string; children: ReactNode }) {
   return <p id={id} className="sr-only">{children}</p>;
 }
 
@@ -278,20 +387,31 @@ export function AbleseFlaeche({
 
   return (
     <g>
-      {/* Führungslinie: Ohne sie wüsste niemand, welche Stelle die Leiste
-          gerade zeigt. Im Ruhezustand blass, nach einer Wahl deutlicher. */}
-      <line
-        x1={mx} y1={yVon} x2={mx} y2={yVon + hoehe}
-        strokeWidth={1} strokeDasharray={gewaehlt ? undefined : "3 3"}
-        className={gewaehlt ? "stroke-foreground/45" : "stroke-foreground/25"}
-      />
-      {/* Radius 6,5, nicht mehr: Liegen zwei Reihen dicht beieinander (2021:
-          716,8 gegen 748,1 sind 23 px), berührten sich zwei 7,5er-Ringe zu
-          einer Acht. */}
-      {ringe.map((r, i) => (
-        <circle key={i} cx={mx} cy={r.y} r={6.5} fill="none" strokeWidth={1.6}
-          opacity={0.9} style={{ stroke: r.farbe }} />
-      ))}
+      {/* Die Führung GLEITET zur gewählten Stelle (`.gb-fuehrung`, ein
+          Transform-Übergang) statt zu springen — und ein blasses Band hinter
+          der Stelle sagt, wie breit ein Jahr ist. Führungslinie: Ohne sie
+          wüsste niemand, welche Stelle die Karte gerade zeigt. Im Ruhezustand
+          blass, nach einer Wahl deutlicher. Alles in einer Gruppe, deren
+          Transform der einzige bewegte Wert ist. */}
+      <g className="gb-fuehrung" style={{ transform: `translate(${mx}px, 0)` }}>
+        <rect x={-bandBreite / 2} y={yVon} width={bandBreite} height={hoehe}
+          className="fill-foreground" opacity={gewaehlt ? 0.05 : 0.03} />
+        <line
+          x1={0} y1={yVon} x2={0} y2={yVon + hoehe}
+          strokeWidth={1} strokeDasharray={gewaehlt ? undefined : "3 3"}
+          className={gewaehlt ? "stroke-foreground/45" : "stroke-foreground/25"}
+        />
+        {/* Radius 6,5, nicht mehr: Liegen zwei Reihen dicht beieinander (2021:
+            716,8 gegen 748,1 sind 23 px), berührten sich zwei 7,5er-Ringe zu
+            einer Acht. Der Ring gleitet in der Höhe mit, ein gefüllter Kern
+            markiert den Wert selbst. */}
+        {ringe.map((r, i) => (
+          <g key={i} className="gb-fuehrung" style={{ transform: `translate(0, ${r.y}px)` }}>
+            <circle r={6.5} fill="none" strokeWidth={1.6} opacity={0.9} style={{ stroke: r.farbe }} />
+            <circle r={2.5} style={{ fill: r.farbe }} />
+          </g>
+        ))}
+      </g>
 
       {/* Zeigerfang über der ganzen Zeichenfläche. `fill="transparent"` statt
           `fill="none"`: `none` bekommt gar keine Zeigerereignisse. */}

@@ -30,7 +30,9 @@
 // Nachricht und ein fallendes Aufkommen keine gute; beide Richtungen tragen
 // dieselbe neutrale Auszeichnung.
 
+import { useState } from "react";
 import { Zeitreihe } from "@/components/grafik/zeitreihe";
+import { cn } from "@/lib/utils";
 import { Einordnung } from "@/components/grafik/einordnung";
 import { deZahl, mitVorzeichen } from "@/components/grafik/format";
 import { deMio } from "@/lib/haushalt";
@@ -75,6 +77,11 @@ export function HebesatzTreppe({
   beleg?: React.ReactNode;
   aufkommenBeleg?: React.ReactNode;
 }) {
+  // Bild ↔ Liste (seit 02.09.): `vonListe` ist das Jahr unter dem Zeiger in
+  // der Liste (wählt die Stufe im Bild), `vomBild` das Jahr, das das Bild
+  // gerade zeigt (hebt die Zeile hervor). Zwei Werte, damit nichts kreist.
+  const [vonListe, setVonListe] = useState<number | null>(null);
+  const [vomBild, setVomBild] = useState<number | null>(null);
   if (series.length < 2) return null;
   const sortiert = [...series].sort((a, b) => a.year - b.year);
 
@@ -139,8 +146,10 @@ export function HebesatzTreppe({
             + ` ${deZahl(letzte.rate, 0)} Prozent`}
           /* Keine `tabelle`: Die Werte stehen unten ohnehin einzeln — und dort
              mit dem Aufkommen daneben, ohne das ein Hebesatz irreführt. */
-          note="Prozentpunkte · Jahr überfahren, antippen oder mit den Pfeiltasten wechseln."
+          note="Prozentpunkte · Jahr überfahren, antippen oder mit den Pfeiltasten wechseln. Die Liste darunter zeigt mit."
           beleg={beleg}
+          aktivesJahr={vonListe}
+          onAktivesJahr={setVomBild}
         />
       </div>
 
@@ -155,8 +164,24 @@ export function HebesatzTreppe({
             const relativ = (s.rate / (s.prior_rate as number) - 1) * 100;
             const auf = s.aufkommen;
             const aufRelativ = auf ? (auf.nachher / auf.vorher - 1) * 100 : null;
+            const hervorgehoben = vomBild === s.year;
             return (
-              <li key={s.year} className="rounded-xl bg-muted/30 p-2.5">
+              /* Die Zeile zeigt auf ihre Stufe und die Stufe auf ihre Zeile:
+                 Zeigen oder Fokus wählt das Jahr im Bild, das Bild hebt die
+                 Zeile hervor. `tabIndex` macht die Zeile zum Tastaturziel. */
+              <li
+                key={s.year}
+                tabIndex={0}
+                onMouseEnter={() => setVonListe(s.year)}
+                onMouseLeave={() => setVonListe(null)}
+                onFocus={() => setVonListe(s.year)}
+                onBlur={() => setVonListe(null)}
+                className={cn(
+                  "rounded-xl p-2.5 transition-colors duration-200",
+                  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring",
+                  hervorgehoben ? "bg-primary/[0.07] ring-1 ring-inset ring-primary/25" : "bg-muted/30",
+                )}
+              >
                 <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
                   <span className="font-mono text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                     {s.year}

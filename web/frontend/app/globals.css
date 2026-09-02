@@ -509,16 +509,27 @@ lotti-figur {
   transform-origin: 50% 15%;
 }
 
-/* ── Kachelfläche (components/grafik/treemap.tsx) ──────────────────────────
-   Lage und Maß einer Kachel sind Übergänge: Wechselt der Jahrgang, gleitet
-   dieselbe Kachel an ihren neuen Platz, statt neu aufzutauchen. Unter dem
-   Zeiger hebt sie sich leicht und bekommt einen hellen Schimmer von oben;
-   die übrigen treten zurück (Spotlight), solange der Zeiger auf der Fläche
-   ist. `kf-auf` ist die einmalige Staffel beim Aufbau (H5-07: keine
-   Schleife) — `backwards`, nicht `both`: `both` hielte nach dem Ende das
-   `transform: none` der letzten Stufe fest und schlüge den Hover-Hub tot.
+/* ── Bewegungs-Grammatik des Grafik-Baukastens (`.gb-*`) ───────────────────
+   Drei Regeln, die jede Grafik gleich fährt (seit 02.09., zuerst für die
+   Kachelfläche gebaut, dann verallgemeinert):
+
+   1. EINMALIGE STAFFEL BEIM AUFBAU (H5-07: keine Schleife). `gb-auf` blendet
+      ein Element ein und lässt es leicht wachsen; `gb-zeichnen` zeichnet
+      eine Linie von links nach rechts (braucht `pathLength={1}` am Pfad);
+      `gb-einblenden` blendet nur ein; `gb-saeule-auf` wächst von unten,
+      `gb-balken-auf` von links (`transform-origin` gesetzt). Die Staffel
+      kommt aus `animation-delay` je Element. Alle mit `backwards`, nicht
+      `both`: `both` hielte nach dem Ende `transform: none` fest und schlüge
+      jeden Hover-Übergang tot.
+   2. SPOTLIGHT UNTER DEM ZEIGER. `gb-spot` mit `data-schwebt` hebt ein
+      Element leicht und gibt ihm einen Schimmer von oben; `data-gedimmt`
+      lässt die übrigen zurücktreten — solange der Zeiger auf der Fläche ist.
+   3. ÜBERGÄNGE STATT SPRÜNGE. `gb-kachel` überblendet Lage und Maß (Jahrgang
+      wechselt → Kachel gleitet), `gb-fuehrung` die Führungslinie einer
+      Ablese-Fläche zur gewählten Stelle.
+
    Der prefers-reduced-motion-Block unten legt alles still. */
-.kf-kachel {
+.gb-kachel {
   transition:
     left 380ms var(--ease-out-strong),
     top 380ms var(--ease-out-strong),
@@ -529,34 +540,74 @@ lotti-figur {
     opacity 220ms ease-out;
   box-shadow: inset 0 0 0 1px rgba(2, 32, 71, 0.06);
 }
-.kf-kachel::after {
+.gb-spot {
+  transition:
+    transform 180ms var(--ease-out-strong),
+    box-shadow 180ms var(--ease-out-strong),
+    opacity 220ms ease-out;
+}
+.gb-spot::after {
   content: "";
   position: absolute;
   inset: 0;
   pointer-events: none;
+  border-radius: inherit;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0) 60%);
   opacity: 0;
   transition: opacity 180ms ease-out;
 }
-.kf-kachel[data-schwebt="true"] {
+.gb-spot[data-schwebt="true"] {
   transform: translateY(-1px) scale(1.012);
   box-shadow:
     inset 0 0 0 1px rgba(2, 32, 71, 0.08),
     0 8px 18px -8px rgba(2, 32, 71, 0.45);
 }
-.kf-kachel[data-schwebt="true"]::after { opacity: 1; }
-.kf-kachel[data-gedimmt="true"] { opacity: 0.72; }
-.dark .kf-kachel { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05); }
-.dark .kf-kachel[data-schwebt="true"] {
+.gb-spot[data-schwebt="true"]::after { opacity: 1; }
+.gb-spot[data-gedimmt="true"] { opacity: 0.72; }
+.dark .gb-kachel { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05); }
+.dark .gb-spot[data-schwebt="true"] {
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.1),
     0 8px 18px -8px rgba(0, 0, 0, 0.6);
 }
-@keyframes kf-auf {
+.gb-fuehrung { transition: transform 160ms var(--ease-out-strong); }
+
+@keyframes gb-auf {
   from { opacity: 0; transform: scale(0.94); }
   to { opacity: 1; transform: none; }
 }
-.kf-auf { animation: kf-auf 480ms var(--ease-out-strong) backwards; }
+.gb-auf { animation: gb-auf 480ms var(--ease-out-strong) backwards; }
+@keyframes gb-einblenden {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.gb-einblenden { animation: gb-einblenden 500ms ease-out backwards; }
+@keyframes gb-zeichnen {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+.gb-zeichnen {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+  animation: gb-zeichnen 900ms var(--ease-out-strong) backwards;
+}
+@keyframes gb-saeule-auf {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+.gb-saeule-auf {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: gb-saeule-auf 560ms var(--ease-out-strong) backwards;
+}
+@keyframes gb-balken-auf {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+.gb-balken-auf {
+  transform-origin: 0 50%;
+  animation: gb-balken-auf 560ms var(--ease-out-strong) backwards;
+}
 
 /* Honour users who prefer fewer animations. */
 @media (prefers-reduced-motion: reduce) {
