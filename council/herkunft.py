@@ -520,6 +520,16 @@ PROBEN: dict[str, str] = {
     "guarantee_table":
         "Der Betrag steht auf den Cent in der Übersichtstabelle des "
         "Jahresabschlusses, nicht nur als gerundete Millionenangabe im Text.",
+    # Kredite und Zinsen aus den Unterrichtungen des Rates (council/loans.py).
+    "loan_notice_period":
+        "Der Berichtszeitraum steht im ersten Satz des Berichts („In den "
+        "Monaten Juni, Juli und August 2026 …“) oder, bei der alten Form, im "
+        "Zeitraum der Zinsersparnis; ohne ihn hängt die Unterrichtung an "
+        "keinem Monat und kommt nicht herein.",
+    "loan_item_heading_amount":
+        "Jeder Kredit-, Umschuldungs- und Prolongationsposten trägt seinen "
+        "Betrag in der Überschrift („in Höhe von insgesamt 48.241.251,34 "
+        "Euro“) — gelesen wird nur dort, nie aus dem Fließtext darunter.",
     "donation_second_mention":
         "Der angenommene Betrag steht zweimal in derselben Vorlage: einmal im "
         "Beschlussvorschlag, einmal im Abschnitt zu den finanziellen "
@@ -729,6 +739,10 @@ HERKUNFT_TABELLEN: tuple[str, ...] = (
     # Fundstelle unterscheidet sie („1. Ergebnishaushalt" gegen
     # „2. Finanzhaushalt"), und beide kommen einzeln durch ihre Proben.
     "council_budget_execution",
+    # Kredite und Zinsen (council/loans.py): je Unterrichtung eine Herkunft,
+    # die Posten erben sie.
+    "council_loan_notices",
+    "council_loan_items",
 )
 
 

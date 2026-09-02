@@ -3337,6 +3337,41 @@ class CouncilStore(*_geld.MIXINS):
             "reason TEXT NOT NULL, "
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL)"
         )
+        # Kredite und Zinsen (council/loans.py): die Unterrichtungen des Rates
+        # nach der Kreditrichtlinie — je Vorlage eine Zeile mit Berichts-
+        # zeitraum und Zinsersparnis, je nummeriertem Posten eine Zeile mit
+        # Art, Schuldner, Betrag, Zinssatz, Zinsbindung. Beträge in Euro.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_loan_notices ("
+            "template_number TEXT PRIMARY KEY, "
+            "year INTEGER NOT NULL, "            # Jahr des Berichtszeitraums
+            "period_from TEXT NOT NULL, "        # YYYY-MM
+            "period_to TEXT NOT NULL, "
+            "document_date TEXT, "               # ISO
+            "none_reported INTEGER NOT NULL DEFAULT 0, "  # „keine Kredite …"
+            "items INTEGER NOT NULL DEFAULT 0, "
+            "interest_saving REAL, "             # Zinsersparnis der Umschuldung
+            "saving_from TEXT, saving_to TEXT, "
+            "document_id INTEGER, document_url TEXT, "
+            "probes TEXT NOT NULL, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL)"
+        )
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_loan_items ("
+            "template_number TEXT NOT NULL, "
+            "seq INTEGER NOT NULL, "
+            "year INTEGER NOT NULL, "
+            "kind TEXT NOT NULL, "               # loan | refinancing | prolongation | disbursement | lending | other
+            "borrower TEXT, "                    # NULL = Grundgeschäfte der Stadt samt Betrieben
+            "heading TEXT NOT NULL, "
+            "amount REAL, "
+            "rate_pct REAL, "
+            "fixed_years INTEGER, fixed_until TEXT, "
+            "decided_at TEXT, "
+            "summary TEXT, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (template_number, seq))"
+        )
         # Was je Steuerart geplant war und was daraus wurde — Tabelle 1103 des
         # Statistischen Jahrbuchs (council/steuertabellen.py). Beträge in Euro;
         # die Quelle rechnet in Tausend Euro.
@@ -3680,6 +3715,9 @@ class CouncilStore(*_geld.MIXINS):
         # Eintrag muss trotzdem stehen — `_herkunft_nachtragen` schlägt hier
         # nach, bevor es merkt, dass es nichts nachzutragen gibt.
         "council_budget_execution": (None, "source_url", "ris"),
+        # Kredite und Zinsen: neu, ohne Altbestand — derselbe Platzhalter.
+        "council_loan_notices": (None, "document_url", "ris"),
+        "council_loan_items": (None, "document_url", "ris"),
     }
 
     @staticmethod
@@ -6840,6 +6878,7 @@ class CouncilStore(*_geld.MIXINS):
         "vermoegensgruppen": ("council_vermoegensgruppen", "year", None),
         "integrierte_schulden": ("council_integrated_debt", "year", None),
         "donations":     ("council_donations", "year", None),
+        "loans":         ("council_loan_notices", "year", None),
         "tax_plan":  ("council_tax_plan", "year", None),
         "tax_rates":  ("council_tax_rates", "year", None),
     }
@@ -8877,6 +8916,79 @@ class CouncilStore(*_geld.MIXINS):
                 [(v["template_number"], v.get("session_date"), v["reason"], rueck, now)
                  for v in verworfen])
         return len(zeilen)
+
+    # --- Kredite und Zinsen (council/loans.py) ------------------------------
+
+    def kreditunterrichtungen(self) -> list[dict]:
+        """Die Rohzeilen für ``council.loans.lies()``: Vorlagen samt Volltext.
+
+        Breit gefasst — das Aussieben macht ``loans.erkenne()``."""
+        try:
+            return [dict(r) for r in self._conn.execute(
+                """SELECT template_number, title, raw_text, document_id, document_url
+                     FROM council_templates
+                    WHERE title LIKE '%Kreditaufnahme%' OR title LIKE 'Umschuldung%'
+                    ORDER BY template_number""")]
+        except sqlite3.OperationalError:
+            return []
+
+    def save_loan_notices(self, notices: list[dict], items: list[dict], herkunft) -> int:
+        """Die Unterrichtungen und ihre Posten schreiben — je Vorlage ihre
+        eigene Herkunft (``row["herkunft"]``), sonst die des Laufs.
+
+        ``INSERT OR REPLACE`` je Vorlage; die Posten einer Vorlage werden
+        vorher gelöscht, damit ein neu gelesener Bericht keine alten Posten
+        neben den neuen stehen lässt."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            rueck = self.merke_herkunft(herkunft, fetched_at=now)
+            for n in notices:
+                hid = (self.merke_herkunft(n["herkunft"], fetched_at=now)
+                       if n.get("herkunft") else rueck)
+                self._conn.execute(
+                    "INSERT OR REPLACE INTO council_loan_notices "
+                    "(template_number, year, period_from, period_to, document_date, "
+                    " none_reported, items, interest_saving, saving_from, saving_to, "
+                    " document_id, document_url, probes, herkunft_id, fetched_at) "
+                    "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    (n["template_number"], n["year"], n["period_from"], n["period_to"],
+                     n.get("document_date"), int(bool(n.get("none_reported"))), n.get("items", 0),
+                     n.get("interest_saving"), n.get("saving_from"), n.get("saving_to"),
+                     n.get("document_id"), n.get("document_url"), ",".join(n.get("probes") or []),
+                     hid, now))
+                self._conn.execute("DELETE FROM council_loan_items WHERE template_number = ?",
+                                   (n["template_number"],))
+                for it in (i for i in items if i["template_number"] == n["template_number"]):
+                    self._conn.execute(
+                        "INSERT OR REPLACE INTO council_loan_items "
+                        "(template_number, seq, year, kind, borrower, heading, amount, rate_pct, "
+                        " fixed_years, fixed_until, decided_at, summary, herkunft_id, fetched_at) "
+                        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                        (it["template_number"], it["seq"], it["year"], it["kind"], it.get("borrower"),
+                         it["heading"], it.get("amount"), it.get("rate_pct"), it.get("fixed_years"),
+                         it.get("fixed_until"), it.get("decided_at"), it.get("summary"), hid, now))
+        return len(notices)
+
+    def get_loan_notices(self) -> list[dict]:
+        """Die Unterrichtungen, aufsteigend nach Berichtszeitraum; ``probes`` als Liste."""
+        try:
+            rows = [dict(r) for r in self._conn.execute(
+                "SELECT * FROM council_loan_notices ORDER BY period_from, template_number")]
+        except sqlite3.OperationalError:
+            return []
+        for r in rows:
+            r["probes"] = [p for p in (r.get("probes") or "").split(",") if p]
+        return rows
+
+    def get_loan_items(self) -> list[dict]:
+        """Alle Posten, aufsteigend nach Berichtszeitraum, Vorlage und Nummer."""
+        try:
+            return [dict(r) for r in self._conn.execute(
+                "SELECT i.*, n.period_from, n.period_to FROM council_loan_items i "
+                "JOIN council_loan_notices n ON n.template_number = i.template_number "
+                "ORDER BY n.period_from, i.template_number, i.seq")]
+        except sqlite3.OperationalError:
+            return []
 
     def get_spenden(self) -> list[dict]:
         """Die Spendenreihe je Vorlage, aufsteigend nach Sitzungsdatum.
