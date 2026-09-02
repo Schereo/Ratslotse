@@ -156,7 +156,9 @@ export function Personalaufwand({ statement, budget, beleg, belegPlan }: {
                 <>Mehr Personalaufwand als geplant kann ein Tarifabschluss sein oder
                   eine Stelle mehr, die besetzt wurde; weniger heißt oft, dass Stellen
                   unbesetzt blieben — wie viele, zeigt die Waffel oben. Die Farbe
-                  bewertet nichts.</>
+                  bewertet nichts. Verglichen wird gegen den Haushaltsansatz; rechnet
+                  ein Jahr gegen Nachtrag oder Gesamtermächtigung, steht es an der
+                  Zeile.</>
               }
               beleg={beleg}
             />
