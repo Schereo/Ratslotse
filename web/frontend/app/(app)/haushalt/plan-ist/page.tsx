@@ -60,6 +60,7 @@ import {
   NachbewilligungsBefund, NachbewilligungsBlock,
 } from "@/components/haushalt/supplementary-approvals";
 import { cn } from "@/lib/utils";
+import { ScrollZeile } from "@/components/ui";
 import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 import { SchrittPfad } from "@/components/haushalt/schritt-pfad";
 import { Seitenbuehne, ZaehlZahl } from "@/components/haushalt/seitenbuehne";
@@ -440,7 +441,7 @@ function PlanIstInner() {
           <span className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
             Abgeschlossenes Haushaltsjahr
           </span>
-          <div className="scrollbar-none -mx-1 flex items-center gap-1 overflow-x-auto px-1 py-0.5">
+          <ScrollZeile className="-mx-1 flex items-center gap-1 px-1 py-0.5">
             <div className="flex flex-none items-center gap-1 rounded-full border border-border bg-card p-1">
               {years.map((j) => (
                 <Link key={j} href={`/haushalt/plan-ist?year=${j}`} scroll={false}
@@ -450,7 +451,7 @@ function PlanIstInner() {
                 </Link>
               ))}
             </div>
-          </div>
+          </ScrollZeile>
         </div>
       )}
 
@@ -636,7 +637,7 @@ function PlanIstInner() {
           {/* Umschalter wie brutto/netto auf der Bereichsseite: Der Wechsel
               dreht die Reihenfolge, und darin steckt die Aussage. */}
           <div className="mb-3 flex flex-col gap-1.5">
-            <div className="scrollbar-none -mx-1 flex items-center gap-1 overflow-x-auto px-1 py-0.5">
+            <ScrollZeile className="-mx-1 flex items-center gap-1 px-1 py-0.5">
               <div className="flex w-max flex-none items-center gap-1 rounded-full border border-border bg-muted/40 p-1">
                 {([
                   ["percent", "Abweichung in Prozent"],
@@ -651,7 +652,7 @@ function PlanIstInner() {
                   </button>
                 ))}
               </div>
-            </div>
+            </ScrollZeile>
             <p className="text-[11.5px] leading-relaxed text-muted-foreground">
               {massstab === "percent"
                 ? "Gemessen am eigenen Plan — so lässt sich ein Bereich von 231 Mio. € mit einem von 6 Mio. € vergleichen. Vorn steht, wessen Plan am weitesten danebenlag."

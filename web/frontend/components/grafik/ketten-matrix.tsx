@@ -73,7 +73,10 @@ function Zelle({ year, mark, luecke, mitJahr }: {
       aria-hidden="true"
       className={cn(
         "flex flex-none flex-col items-center justify-center rounded-lg border",
-        mitJahr ? "h-[42px] w-[34px]" : "h-[36px] w-[36px]",
+        // Karten-Chips auf dem Handy schmaler: Acht Jahre à 34 px brachen
+        // in der Karte (302 px Innenbreite) in 7 + 1 um (Durchsicht
+        // 02.09.2026, /pruefung) — 30 px und 4 px Abstand ergeben 268.
+        mitJahr ? "h-[38px] w-[30px] sm:h-[42px] sm:w-[34px]" : "h-[36px] w-[36px]",
         luecke
           ? "hh-schraffur border-dashed border-signal/70"
           : mark

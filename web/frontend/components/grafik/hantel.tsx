@@ -277,9 +277,20 @@ export function Hantel({
       {/* Skalenenden — ohne sie wüsste niemand, wofür die Länge steht. */}
       <div className={cn("grid gap-x-3", schmal ? "grid-cols-1" : gitter)}>
         {!schmal && <span />}
-        <div className="relative h-4 text-[10px] tabular-nums text-muted-foreground">
-          {min < 0 && <span className="absolute left-0 top-0 whitespace-nowrap">{skalenEnde(min)}</span>}
-          <span className="absolute top-0 -translate-x-1/2 whitespace-nowrap" style={{ left: `${nullPos}%` }}>
+        {/* Der Nullpunkt-Text bleibt IN der Zeile: Bei einem Nullpunkt am
+            linken Rand ragte „wie geplant" halb aus der Karte (Durchsicht
+            02.09.2026, /steuer mobil). Sein Mittelpunkt hält 2,5 rem Abstand
+            zu beiden Enden; steht dort schon das linke Skalenende, rutscht das
+            in eine zweite Zeile. */}
+        <div className={cn("relative text-[10px] tabular-nums text-muted-foreground",
+          min < 0 && nullPos < 16 ? "h-8" : "h-4")}>
+          {min < 0 && (
+            <span className={cn("absolute left-0 whitespace-nowrap", nullPos < 16 ? "top-4" : "top-0")}>
+              {skalenEnde(min)}
+            </span>
+          )}
+          <span className="absolute top-0 -translate-x-1/2 whitespace-nowrap"
+            style={{ left: `clamp(2.5rem, ${nullPos}%, calc(100% - 2.5rem))` }}>
             wie geplant
           </span>
           {max > 0 && <span className="absolute right-0 top-0 whitespace-nowrap">{skalenEnde(max)}</span>}
