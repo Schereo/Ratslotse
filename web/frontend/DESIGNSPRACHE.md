@@ -375,7 +375,59 @@ Dot hsl(209 18% 65%), kombiniertes Label.
   ohne Datenverlust („Frage steht wieder im Eingabefeld").
 - Ehrliche Mengen: nie „viele", immer Zahl + Zeitraum.
 
-## 7. Anti-Patterns
+## 7. Bewegung
+
+Bis 09/2026 stand hier nichts, und entsprechend sah es aus: ein paar sehr
+sorgfältige Einzelstücke (Onboarding-Auftakt, Abzeichen-Feier, Lotti) und
+dazwischen eine Oberfläche, in der Zustände einfach umsprangen. Die Regeln
+unten sind der gemeinsame Nenner; die Bausteine dazu stehen in
+`app/globals.css` unter „Bewegung: die gemeinsamen Bausteine".
+
+- **Bewegung erklärt einen Zusammenhang oder sie fällt weg.** Sie zeigt, wo
+  etwas herkommt (die Markierung fährt vom alten Ziel zum neuen), dass etwas
+  eine Schublade ist (das Blatt fährt von unten ein) oder in welcher
+  Reihenfolge etwas gemeint ist (Listen laufen gestaffelt ein). Bewegung, die
+  nur hübsch ist, kostet Aufmerksamkeit ohne Gegenwert — und Aufmerksamkeit
+  gehört hier den Inhalten.
+- **Vier Dauern, keine fünfte.** `--takt-tipp` (120 ms, Zustand unter dem
+  Finger) · `--takt-fluss` (180 ms, der Normalfall) · `--takt-weg` (260 ms,
+  eine sichtbare Strecke) · `--takt-buehne` (340 ms, etwas betritt die Seite).
+  Als Utilities `duration-tipp/-fluss/-weg/-buehne`. Der Abgang ist mit
+  `--takt-abgang` (200 ms) kürzer als der Auftritt: Wer schließt, hat sich
+  entschieden und wartet nur noch.
+- **Vier Kurven, dieselbe Logik.** `ease-out-strong` für Eintritte und
+  Feedback, `ease-in-out-strong` für Bewegung auf dem Schirm, `ease-drawer`
+  für Blätter, `ease-back-out` (Überschwinger) nur für Kleinteile bis etwa
+  40 px — größer wirkt Überschwingen wie Wackelpudding.
+- **Nur `transform` und `opacity`.** Alles andere löst Layout oder Paint aus
+  und ruckelt auf dem Telefon. Eine Fläche, die breiter wird, skaliert; eine
+  Liste, die einläuft, verschiebt sich — keine animierten `width`, `height`,
+  `top`, `margin`.
+- **Der erste Auftritt bewegt sich nicht.** Eine Markierung, die beim
+  Seitenaufruf aus der Ecke hereinfliegt, behauptet einen Weg, den niemand
+  gegangen ist. Gefahren wird erst, wenn es einen Vorgängerstand gibt
+  (`components/gleit-marker.tsx`).
+- **Ein gehaltenes `transform` ist ein Containing Block.** Jede Animation mit
+  `fill-mode: both` hält ihren Endframe fest; ein Element mit `transform` —
+  auch der Identität — wird dadurch zum Bezugsrahmen für jedes
+  `position: fixed` darin. Deshalb endet `fade-up` auf `transform: none` und
+  der Seiten-Einstieg (`page-in`) blendet nur ein, statt anzuheben: Der
+  Chat-Composer hing sonst die ersten 0,34 s jeder Navigation 164 px zu hoch
+  (Tims Befund 15.08.). Wer eine neue Ein-Animation schreibt, prüft beides.
+- **Gestaffelt heißt gedeckelt.** Der Versatz endet bei der sechsten Zeile
+  (`components/staffel.tsx`); ohne Deckel käme die 40. Zeile einer
+  Trefferliste 1,8 s nach der ersten und die Seite wirkte lahm statt lebendig.
+- **Endlos laufende Bewegung braucht eine Pause.** Der Glanz über dem
+  KI-Frage-Segment ruht ~70 % seines Loops, das Maskottchen atmet und blinzelt
+  in Abständen von Sekunden. Ein Dauer-Flackern im Blickfeld macht den Text
+  daneben unlesbar.
+- **`prefers-reduced-motion` ist keine Kür.** Der globale Block in
+  `app/globals.css` legt Dauern still; wer eine Bewegung baut, deren
+  Endzustand nicht von allein steht (Sichtbarkeit per JS, gestaffelte
+  Verzögerungen), sorgt selbst dafür, dass dort sofort der Endwert steht — so
+  wie `Reveal` und `.staffel-auf` es tun.
+
+## 8. Anti-Patterns
 
 Keine Anführungszeichen um Paraphrasen · keine Stimm-/Abstimmungsgrafiken ·
 kein Signal-Orange als Flächenfarbe · keine Parteifarben-Flächen · kein Emoji

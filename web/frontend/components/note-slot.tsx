@@ -26,7 +26,7 @@ export type Hinweis = { key: string; label: string; node: ReactNode };
  * Slot das DOM: ein leerer Träger heißt „hat nichts zu sagen". Ein
  * MutationObserver hält das aktuell, wenn eine Query später eintrifft.
  */
-export function HinweisSlot({ hinweise, className }: { hinweise: Hinweis[]; className?: string }) {
+export function HinweisSlot({ hinweise, className, style }: { hinweise: Hinweis[]; className?: string; style?: React.CSSProperties }) {
   const refs = useRef<(HTMLDivElement | null)[]>([]);
   const [filled, setFilled] = useState<boolean[]>(() => hinweise.map(() => false));
   const [expanded, setExpanded] = useState(false);
@@ -62,7 +62,7 @@ export function HinweisSlot({ hinweise, className }: { hinweise: Hinweis[]; clas
     // Der Slot besitzt den Abstand, nicht die einzelnen Hinweise: leere und
     // eingeklappte Träger stehen auf display:none und sind damit gar keine
     // Flex-Items mehr — nur zwischen wirklich sichtbaren Hinweisen entsteht Luft.
-    <div className={cn("flex flex-col items-start gap-4", className)}>
+    <div className={cn("flex flex-col items-start gap-4", className)} style={style}>
       {hinweise.map((h, i) => (
         <div
           key={h.key}

@@ -69,6 +69,38 @@
     --ease-in-out-strong: cubic-bezier(0.77, 0, 0.175, 1);
     --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
     --ease-back-out: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+    /* Takt — die vier Dauern, in denen sich hier alles bewegt. Sie stehen
+       neben den Kurven, weil beides zusammen eine Bewegung ergibt: Die Kurve
+       sagt WIE, der Takt sagt WIE LANGE. Wer eine neue Bewegung baut, nimmt
+       eine dieser vier und keine frei gewählte Zahl — vier gleiche Dauern
+       lesen sich als ein System, sieben verschiedene als Zufall.
+
+       tipp   — Zustand unter dem Finger/Zeiger: Farbe, Druck, Fokusring. So
+                kurz, dass es nicht wie eine Animation wirkt, sondern wie
+                Materialverhalten.
+       fluss  — der Normalfall: Hover-Flächen, Pill-Wechsel, kleine Wege.
+       weg    — etwas legt eine sichtbare Strecke zurück (die gleitende
+                Aktiv-Markierung der Navigation, Akkordeons).
+       buehne — etwas betritt oder verlässt die Seite (Sheet, Seiteneinstieg,
+                gestaffelte Listen). Das Verlassen ist bewusst schneller als
+                das Betreten (`--takt-abgang`): Wer schließt, hat sich schon
+                entschieden und wartet nur noch. */
+    --takt-tipp: 120ms;
+    --takt-fluss: 180ms;
+    --takt-weg: 260ms;
+    --takt-buehne: 340ms;
+    --takt-abgang: 200ms;
+    /* Wann die Beschriftung eines Segments umspringt, während die Fläche noch
+       zu ihr unterwegs ist (s. `.segment-knopf` weiter unten).
+       Der Wert ist an der KURVE abgelesen, nicht an der Dauer:
+       `--ease-out-strong` hat nach einem knappen Drittel der Zeit schon rund
+       85 % der Strecke hinter sich. Bei den ersten Anläufen (190 ms, also drei
+       Viertel des Weges) lag die Fläche in Einzelbildern über 100 ms unter
+       einer Schrift, die noch die alte Farbe trug — grau auf blau, genauso
+       falsch wie vorher weiß auf grau, nur andersherum. 90 ms ist der Moment,
+       in dem die Fläche wirklich da ist. */
+    --takt-schrift-verzug: 90ms;
   }
 
   .dark {
@@ -1141,3 +1173,140 @@ lotti-figur {
 .hh-regler:focus-visible { outline: none; }
 .hh-regler:focus-visible::-webkit-slider-thumb { outline: 2px solid hsl(var(--primary)); outline-offset: 2px; }
 .hh-regler:focus-visible::-moz-range-thumb { outline: 2px solid hsl(var(--primary)); outline-offset: 2px; }
+
+/* ══ Bewegung: die gemeinsamen Bausteine ═══════════════════════════════════
+   Die Takt-Token stehen oben bei den Kurven (`--takt-*`), hier stehen die
+   Bewegungen, die mehr als eine Stelle braucht. Regel für alles darunter:
+   **nur `transform` und `opacity`** (beides läuft im Compositor, alles andere
+   löst Layout aus und ruckelt auf dem Telefon) — und keine Bewegung, die eine
+   Aussage trägt, die es ohne sie nicht gäbe. Stillgelegt wird alles vom
+   globalen `prefers-reduced-motion`-Block weiter oben.
+
+   ── Gleitende Aktiv-Markierung (`.gleit-marker`) ──────────────────────────
+   Der aktive Punkt der Navigation ist eine Fläche, die von einem Ziel zum
+   nächsten GLEITET, statt am alten zu verschwinden und am neuen aufzutauchen.
+   Das ist der Unterschied zwischen „zwei Zustände" und „ein Weg": Man sieht,
+   woher man kam. Sie liegt als EIN Element hinter den Zielen (`components/
+   nav.tsx`), wird aus deren Maßen gerechnet und per transform verschoben.
+
+   Zwei Regeln, sonst wird sie falsch:
+   • Der erste Aufschlag hat keine Bewegung. Beim Laden der Seite käme sie
+     sonst aus der linken oberen Ecke hereingeflogen — die Markierung würde
+     einen Weg behaupten, den niemand gegangen ist. Erst der zweite Wechsel
+     gleitet (`data-gleitet="true"`).
+   • `width`/`height` per transform (`scale`), nicht als Eigenschaft: Ein
+     animiertes `width` rechnet in jedem Frame das Layout neu. */
+.gleit-marker {
+  position: absolute;
+  left: 0;
+  top: 0;
+  border-radius: var(--gleit-radius, 0.5rem);
+  /* Über eine Variable statt einer Klasse, damit eine andere Fläche (die
+     weiße Pille des Segment-Umschalters) sie setzen kann, ohne mit Tailwind
+     um die Spezifität zu ringen. */
+  background-color: var(--gleit-farbe, hsl(var(--primary) / 0.1));
+  transform-origin: 0 0;
+  pointer-events: none;
+  opacity: 0;
+}
+.gleit-marker[data-sichtbar="true"] {
+  opacity: 1;
+}
+.gleit-marker[data-gleitet="true"] {
+  transition:
+    transform var(--takt-weg) var(--ease-out-strong),
+    opacity var(--takt-fluss) ease-out;
+}
+/* Sobald der Marker misst, gibt der aktive Punkt seine eigene Fläche ab —
+   vorher (SSR, vor der Hydration, ohne JS) trägt sie ER, sonst stünde die
+   Navigation für einen Moment ganz ohne Markierung da. Die Farbe verschwindet
+   ohne Übergang: Ein Ausblenden hier liefe gegen die einfahrende Fläche und
+   ergäbe ein kurzes Doppelbild. */
+.gleit-gruppe[data-marker="an"] [data-aktiv="true"] {
+  background-color: transparent;
+  /* Auch den Schatten: Beim Segment-Umschalter trägt ihn die gleitende Fläche,
+     sonst stünde er doppelt — einmal wandernd, einmal am Knopf klebend. */
+  box-shadow: none;
+}
+
+/* ── Segment-Knopf: Schrift wartet auf die Fläche ──────────────────────────
+   Die Beschriftung des aktiven Segments steht auf der gleitenden Fläche, hat
+   aber ihre eigene Transition — und lief ihr davon: Der Text des Ziels war
+   nach 150 ms weiß, die blaue Fläche kam erst nach 260 ms an. Dazwischen stand
+   weiße Schrift auf hellgrauem Grund, und der ganze Wechsel wirkte flackrig
+   statt geführt (Tims Befund 03.09.2026: „der switch … ist nicht smooth").
+
+   Die drei Dauern stehen deshalb hier statt in Utility-Klassen: Sie müssen
+   sich unterscheiden — Druck-Feedback (`transform`) soll SOFORT kommen, Farbe
+   im Takt der Fläche.
+
+   Das Ziel schaltet seine Schrift zusätzlich HART um (`0s`) und erst nach
+   `--takt-schrift-verzug`. Beides ist Absicht: Eine Überblendung geht
+   zwangsläufig durch einen Zustand, in dem Schrift und Untergrund nicht
+   zusammengehören — erst weiß auf grau, dann grau auf blau. Ein harter
+   Wechsel hat diesen Zustand nicht, und mitten in einer laufenden Bewegung
+   fällt er nicht auf: Die Fläche ist bei drei Vierteln ihrer Zeit mit der
+   starken Kurve praktisch angekommen, die Schrift landet also auf ihrem
+   eigenen Grund (wann genau, s. `--takt-schrift-verzug`). Das verlassene Segment braucht die Verzögerung nicht — es
+   trägt in dem Moment schon die Klasse des inaktiven Zustands und dunkelt
+   sofort nach, während die Fläche unter ihm wegfährt. */
+.segment-knopf {
+  transition:
+    color var(--takt-fluss) var(--ease-out-strong),
+    background-color var(--takt-fluss) var(--ease-out-strong),
+    transform var(--takt-tipp) var(--ease-out-strong);
+}
+.gleit-gruppe[data-marker="an"] .segment-knopf[data-aktiv="true"] {
+  transition-duration: 0s, var(--takt-fluss), var(--takt-tipp);
+  transition-delay: var(--takt-schrift-verzug), 0s, 0s;
+}
+
+/* ── Bottom-Sheet (das „Mehr"-Menü der Tab-Leiste) ─────────────────────────
+   Es fuhr bis 09/2026 gar nicht — es war da oder weg. Ein Blatt, das ohne
+   Weg erscheint, wirkt wie ein Fehler im Rendering, nicht wie eine Schublade.
+   Der Abgang ist kürzer als der Auftritt (s. `--takt-abgang`) und braucht
+   deshalb in React einen Nachlauf, bevor das Element wirklich verschwindet. */
+@keyframes sheet-auf {
+  from { transform: translateY(100%); }
+  to { transform: none; }
+}
+@keyframes sheet-zu {
+  from { transform: none; }
+  to { transform: translateY(100%); }
+}
+.animate-sheet-auf { animation: sheet-auf var(--takt-buehne) var(--ease-drawer) both; }
+.animate-sheet-zu { animation: sheet-zu var(--takt-abgang) var(--ease-drawer) both; }
+@keyframes scrim-auf { from { opacity: 0; } to { opacity: 1; } }
+@keyframes scrim-zu { from { opacity: 1; } to { opacity: 0; } }
+.animate-scrim-auf { animation: scrim-auf var(--takt-fluss) ease-out both; }
+.animate-scrim-zu { animation: scrim-zu var(--takt-abgang) ease-in both; }
+
+/* ── Aufpoppen (Zähler, Punkte, frisch erschienene Marken) ─────────────────
+   Mit Überschwingen (`--ease-back-out`), weil das Ding ANKOMMT — ein Zähler,
+   der von 0 auf 3 springt, soll man bemerken. Nur für Kleinteile: Auf einer
+   Fläche über ~40 px sieht Überschwingen nach Wackelpudding aus. */
+@keyframes pop-in {
+  from { transform: scale(0.4); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+.animate-pop-in { animation: pop-in var(--takt-weg) var(--ease-back-out) both; }
+
+@media (prefers-reduced-motion: no-preference) {
+  /* ── Gestaffelter Listen-Einstieg ────────────────────────────────────────
+     Eine Liste, deren Zeilen 45 ms versetzt einlaufen, liest sich als Folge
+     statt als Block — das Auge bekommt eine Reihenfolge geschenkt, die die
+     Liste ohnehin hat. Der Versatz ist bei der SECHSTEN Zeile gedeckelt
+     (`components/staffel.tsx` rechnet ihn aus): Bei 40 Treffern wäre die
+     letzte sonst 1,8 s nach der ersten dran, und die Seite fühlte sich nicht
+     lebendig an, sondern kaputt.
+
+     Es läuft `fade-up` — dasselbe Keyframe wie beim einzelnen Baustein, mit
+     seiner wichtigen Eigenheit: Es endet auf `transform: none`, nicht auf
+     `translateY(0)`, weil `fill-mode: both` den Endframe festhält und jedes
+     gehaltene transform das Element zum Containing Block für `position:fixed`
+     darin macht (s. Kommentar am Keyframe). */
+  .staffel-auf {
+    animation: fade-up var(--takt-buehne) var(--ease-out-strong) both;
+    animation-delay: calc(var(--staffel-i, 0) * 45ms);
+  }
+}

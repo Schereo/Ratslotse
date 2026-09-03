@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Search, ExternalLink, ChevronDown, ChevronRight, Scale, SlidersHorizontal, Users, Sparkles, Split, X, Flame, History, CalendarPlus, Paperclip, MapPin } from "lucide-react";
 import { api, qs, ApiError } from "@/lib/api";
 import { fragenHref, decisionHref, ortHref } from "@/lib/routes";
+import { STAFFEL, staffelStil } from "@/components/staffel";
 import { useDebounce } from "@/lib/use-debounce";
 import { clearRecentSearches, getRecentSearches, pushRecentSearch } from "@/lib/recent-searches";
 import { offerIcs } from "@/lib/ics";
@@ -170,7 +171,7 @@ function subvoteLabel(s: NonNullable<CouncilDecision["subvote_summary"]>): strin
   return parts.join(" · ");
 }
 
-function DecisionCard({ d, query }: { d: CouncilDecision; query: string }) {
+function DecisionCard({ d, query, rang = 0 }: { d: CouncilDecision; query: string; rang?: number }) {
   const isSub = d.kind === "subvote";
   const sub = d.subvote_summary;
   const locationMatches = d.location_matches ?? [];
@@ -186,7 +187,11 @@ function DecisionCard({ d, query }: { d: CouncilDecision; query: string }) {
     router.push(fragenHref({ q: `Erzähl mir mehr zu „${d.title ?? ""}".` }));
   };
   return (
-    <Link href={decisionHref(d.id)} className="block">
+    // Die Treffer laufen der Reihe nach ein, statt als Block dazustehen — bei
+    // einer neuen Suche oder einer neuen Seite montiert React sie ohnehin neu
+    // (`key` ist die Beschluss-ID), die Bewegung läuft also genau dann, wenn
+    // sich die Liste wirklich ändert.
+    <Link href={decisionHref(d.id)} className={cn("block", STAFFEL)} style={staffelStil(rang)}>
       {/* Design 22a: drei feste Zonen statt verstreuter Elemente — Statuszeile
           (Ergebnis-Punkt + „Wichtig" zusammen, Chevron rechts; Gremium·Datum·TOP
           als ruhige zweite Zeile) → Titel + 2-Zeilen-Auszug → Fußzeile
@@ -936,7 +941,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
               <Pagination compact page={page} totalPages={totalPages}
                 onChange={(p) => changePage(p, false)} className="ml-auto" />
             </div>
-            {decisions.map((d) => <DecisionCard key={d.id} d={d} query={query} />)}
+            {decisions.map((d, i) => <DecisionCard key={d.id} d={d} query={query} rang={i} />)}
             <Pagination page={page} totalPages={totalPages} onChange={changePage} className="pt-2" />
           </div>
         )}
@@ -1589,7 +1594,7 @@ function SessionsTab({ committees }: { committees: string[] }) {
                 return (
                   <Fragment key={`${s.committee}|${s.session_date}|${s.session_time}`}>
                   {trenner}
-                  <Card className="p-4">
+                  <Card className={cn("p-4", STAFFEL)} style={staffelStil(i)}>
                     {/* Mobil wandert die Badge unter den Text — sonst quetscht
                         sie den Gremiumsnamen auf „Ausschuss …" zusammen. */}
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
@@ -1660,8 +1665,10 @@ function SessionsTab({ committees }: { committees: string[] }) {
                   id={`session-${s.ksinr}`}
                   className={cn(
                     "overflow-hidden p-0 transition-shadow",
+                    STAFFEL,
                     flashKsinr === s.ksinr && "ring-2 ring-primary",
                   )}
+                  style={staffelStil(i)}
                 >
                   <button type="button" onClick={() => toggle(s)} className="group flex w-full items-center justify-between gap-3 p-4 text-left transition-colors hover:bg-muted/40">
                     <div className="flex min-w-0 items-center gap-3">

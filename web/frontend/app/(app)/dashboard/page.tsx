@@ -25,6 +25,8 @@ import { startGuidedTour } from "@/components/tour";
 import { ConfettiBurst } from "@/components/confetti";
 import { useOnboarding, type StepId } from "@/components/onboarding";
 import { useCountUp } from "@/lib/use-countup";
+import { STAFFEL, staffelStil } from "@/components/staffel";
+import { cn } from "@/lib/utils";
 
 const FRAGEN_HREF = fragenHref();
 
@@ -117,8 +119,11 @@ export default function DashboardPage() {
 
   return (
     <div>
-      {/* Kopf: Begrüßung + DIE Signal-Handlung des Screens („Frag den Rat"). */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      {/* Kopf: Begrüßung + DIE Signal-Handlung des Screens („Frag den Rat").
+          Die vier Blöcke des Briefings laufen versetzt ein (s.
+          components/staffel.tsx) — man liest die Seite in der Reihenfolge,
+          in der sie gemeint ist, statt vor einem fertigen Block zu stehen. */}
+      <div className={cn("flex flex-wrap items-center justify-between gap-4", STAFFEL)} style={staffelStil(0)}>
         <div className="flex min-w-0 items-center gap-4">
           <Mascot pose="wave" className="h-[72px] w-[72px] shrink-0 sm:h-[88px] sm:w-[88px]" />
           <div className="min-w-0">
@@ -144,7 +149,8 @@ export default function DashboardPage() {
           ist (7-Tage-Snooze) — er steht hier zuletzt, weil er sich am ehesten
           vertagen lässt. */}
       <HinweisSlot
-        className="mt-6"
+        className={cn("mt-6", STAFFEL)}
+        style={staffelStil(1)}
         hinweise={[
           { key: "live", label: "Sitzung läuft", node: <LiveBanner /> },
           { key: "pause", label: "Sitzungspause", node: <SitzungspauseBanner /> },
@@ -189,7 +195,7 @@ export default function DashboardPage() {
           sie ist, desto mehr trägt sie (Ort, Kurzbegründung, dritter Punkt).
           Darunter bleibt das Raster für die beiden kurzen Karten. */}
       {vorschau && (
-        <div className="mt-6">
+        <div className={cn("mt-6", STAFFEL)} style={staffelStil(2)}>
           <WocheImRat vorschau={vorschau} heuteIso={heuteIso} />
         </div>
       )}
@@ -197,7 +203,7 @@ export default function DashboardPage() {
       {/* Nur noch zwei kurze Karten: „Neu zu deinen Themen" (Rückblick) und
           „Zahl der Woche". Zwei Spalten reichen — die dritte war für die
           Sitzungs-Liste da, die jetzt in der Wochen-Karte steckt. */}
-      <div className="@container/raster mt-4">
+      <div className={cn("@container/raster mt-4", STAFFEL)} style={staffelStil(3)}>
         <div className="grid grid-cols-1 items-start gap-4 @3xl/raster:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
           {/* Neu zu deinen Themen — der Rückblick auf entschiedene Beschlüsse.
               Die Vorschau auf die Woche ist seit Design 14 eine eigene Karte
