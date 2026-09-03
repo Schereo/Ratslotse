@@ -97,6 +97,32 @@ def test_kaputte_fragmente_werfen(tmp_path, inhalt, part):
     assert part in str(fehler.value)
 
 
+def test_ueberschrift_im_fragment_wird_abgewiesen(tmp_path):
+    """Der Schnitt zieht ein Fragment zu EINEM Listenpunkt zusammen. Eine
+    Überschrift darin landet deshalb mitten im Satz — genau so steckte #816
+    im Changelog: „- ### Kurzfassungen: … Die Tragweite-Gründe …". Der Prüfer
+    ließ das durch, weil er nur Frontmatter und Nicht-Leere ansah."""
+    pfad = _fragment(
+        tmp_path,
+        "---\nkategorie: geaendert\n---\n\n"
+        "### Kurzfassungen: genauer, aktuelleres Modell\n\n"
+        "Die Tragweite-Gründe laufen jetzt auf einem anderen Modell.\n",
+    )
+    with pytest.raises(FragmentFehler, match="Überschrift"):
+        lies_fragment(pfad)
+
+
+def test_mehrere_absaetze_bleiben_erlaubt(tmp_path):
+    """Nur die Überschrift ist das Problem, nicht der Aufbau: Absätze werden
+    zu einem Fließtext verbunden, das ist gewollt."""
+    pfad = _fragment(
+        tmp_path,
+        "---\nkategorie: geaendert\n---\n\n"
+        "**Kernsatz.** Erster Absatz.\n\nZweiter Absatz.\n",
+    )
+    assert lies_fragment(pfad).text == "**Kernsatz.** Erster Absatz. Zweiter Absatz."
+
+
 def test_readme_und_unterstrich_sind_keine_fragmente(tmp_path):
     _fragment(tmp_path, "# Wie das hier geht\n", name="README.md")
     _fragment(tmp_path, "Notiz\n", name="_entwurf.md")
@@ -257,8 +283,8 @@ def test_kernsaetze_behalten_ueberschrift_und_nummer():
 
 
 def test_kernsatz_faellt_auf_den_ersten_satz_zurueck():
-    """Nicht jeder Eintrag beginnt fett — #816 hat sich eine ``###``-Überschrift
-    in den Fragmenttext geschrieben, die der Schnitt mit eingerückt hat."""
+    """Nicht jeder Eintrag beginnt fett — die Jahrgänge v1.0–v1.4 stammen aus der
+    Zeit vor den Fragmenten und schreiben schlichte Sätze."""
     kurz = kernsaetze("- ### Kurzfassungen: genauer. Und dann viel mehr Text. (#816)")
     assert kurz == "- **Kurzfassungen: genauer.** (#816)"
 
