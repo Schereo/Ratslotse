@@ -90,6 +90,12 @@ jobs:
               > "$ziel.txt"
             ssh "$ziel" 'cd ~/app && .venv/bin/python /tmp/haushalt_fingerprint.py --db data/council.sqlite --zeilen --ohne-herkunft' \
               > "$ziel-nur-zahlen.txt"
+            # Dritter Modus, je SPALTE ein Abdruck. Er steht nicht im Bericht,
+            # sondern nur im Anhang: Gebraucht wird er erst, wenn eine Tabelle
+            # in JEDER Zeile abweicht — dann nennt er die Spalte, die daran
+            # schuld ist, statt 623 gleich aussehende Zeilenbefunde zu liefern.
+            ssh "$ziel" 'cd ~/app && .venv/bin/python /tmp/haushalt_fingerprint.py --db data/council.sqlite --spalten' \
+              > "$ziel-spalten.txt"
             echo "$ziel: $(wc -l < "$ziel.txt") Zeilen"
           done
 
@@ -116,4 +122,6 @@ jobs:
             prod.txt
             dev-nur-zahlen.txt
             prod-nur-zahlen.txt
+            dev-spalten.txt
+            prod-spalten.txt
             bericht.md

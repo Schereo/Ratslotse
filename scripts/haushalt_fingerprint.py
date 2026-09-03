@@ -121,6 +121,30 @@ def fingerabdruck(conn: sqlite3.Connection, tabelle: str,
     return len(zeilen), gesamt, zeilen
 
 
+def spaltenabdruck(conn: sqlite3.Connection, tabelle: str) -> list[tuple[str, str]]:
+    """``[(spalte, hash)]`` — je Spalte ein Abdruck über ihre sortierten Werte.
+
+    Der Schritt NACH einem Befund, und der wichtigste: Weicht eine Tabelle in
+    JEDER Zeile ab, ist das fast nie ein Datenproblem, sondern eine einzelne
+    Spalte, die überall anders aussieht — eine VM-eigene Nummer, ein Pfad, ein
+    Zeitstempel unter unerwartetem Namen. Zeilenweise sieht man das nicht: Dort
+    weichen einfach alle 623 ab.
+
+    Sortiert wird JE SPALTE für sich. Die Zeilenzuordnung geht dabei verloren,
+    und das ist Absicht: Gefragt ist „steht in dieser Spalte dieselbe Menge an
+    Werten?", nicht „in derselben Reihenfolge". Eine Spalte, die hier
+    übereinstimmt, kann als Ursache ausgeschlossen werden.
+    """
+    cols = [r[1] for r in conn.execute(f'PRAGMA table_info("{tabelle}")')]
+    aus = []
+    for c in cols:
+        werte = sorted(
+            "\x00" if v[0] is None else str(v[0])
+            for v in conn.execute(f'SELECT "{c}" FROM "{tabelle}"'))
+        aus.append((c, hashlib.sha256("\x1f".join(werte).encode()).hexdigest()))
+    return aus
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument("--db", help="Pfad zur council.sqlite (Vorgabe: COUNCIL_DB bzw. data/)")
@@ -128,6 +152,11 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--zeilen", action="store_true",
                    help="die Einzelhashes ausgeben — für den Vergleich INNERHALB "
                         "einer Tabelle, wenn ihr Gesamthash abweicht")
+    p.add_argument("--spalten", action="store_true",
+                   help="je Spalte einen Abdruck ausgeben statt je Zeile. Der "
+                        "Schritt nach einem Befund: Weicht eine Tabelle in JEDER "
+                        "Zeile ab, nennt das hier die Spalte, die daran schuld "
+                        "ist. Auch das nur als Hash, nie als Inhalt.")
     p.add_argument("--ohne-herkunft", action="store_true",
                    help="den Beleg NICHT mitzählen, nur die Zahlen. Trennt die "
                         "beiden Diagnosen: Weichen zwei Umgebungen auch ohne "
@@ -156,6 +185,9 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"{name:42} FEHLER  {exc}")
                 continue
             print(f"{name:42} {n:>6}  {h}")
+            if args.spalten:
+                for spalte, sh in spaltenabdruck(conn, name):
+                    print(f"    {name}\t{spalte}\t{sh}")
             if args.zeilen:
                 # MIT Tabellenname, damit sich die Ausgabe je Tabelle
                 # auseinandernehmen lässt. Und bewusst nur Hashes: Diese Zeilen
