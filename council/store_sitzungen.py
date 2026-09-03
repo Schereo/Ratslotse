@@ -960,6 +960,37 @@ class SitzungenMixin:
             "SELECT item_number, text FROM agenda_item_social WHERE ksinr = ?",
             (ksinr,)) if r["text"]}
 
+    def agenda_wichtigkeit(self, ksinr: int) -> dict[str, int]:
+        """{item_number: Tragweite 0–100} einer Sitzung (``agenda_item_impact``).
+
+        Nur die bewerteten Punkte — wo nichts steht, steht auch hier nichts;
+        eine geratene Null wäre eine Aussage, die niemand getroffen hat. Der
+        Aufrufer (die Tagesordnungs-Mail) hebt danach die stärksten Punkte
+        hervor.
+
+        Die beiden lesezeitigen Korrekturen der Wochen-Karte gelten mit,
+        sonst hieße derselbe Punkt an zwei Stellen verschieden wichtig:
+        ``formalakt_deckel`` drückt Widmung/Einziehung/Umstufung nach unten,
+        ``dringlichkeits_boden`` hebt Dringlichkeitsanträge an.
+        """
+        from council.impact import dringlichkeits_boden, formalakt_deckel  # noqa: PLC0415
+
+        out: dict[str, int] = {}
+        for r in self._conn.execute(
+                "SELECT i.item_number, i.impact, a.title FROM agenda_item_impact i "
+                "LEFT JOIN council_agenda_items a "
+                "       ON a.ksinr = i.ksinr AND a.item_number = i.item_number "
+                "WHERE i.ksinr = ? AND i.impact IS NOT NULL", (int(ksinr),)):
+            wert = int(r["impact"])
+            deckel = formalakt_deckel(r["title"])
+            if deckel is not None and wert > deckel:
+                wert = deckel
+            boden = dringlichkeits_boden(r["item_number"])
+            if boden is not None and wert < boden:
+                wert = boden
+            out[r["item_number"]] = wert
+        return out
+
     def agenda_items(self, ksinr: int) -> list[dict]:
         rows = self._conn.execute(
             """SELECT item_number, title, template_number, kvonr, is_public
@@ -1160,18 +1191,29 @@ class SitzungenMixin:
         return " ".join(re.sub(r"[^a-zäöüß# ]+", " ", roh).split())
 
     def agenda_items_needing_impact(self, limit: int | None = None,
-                                    tage_voraus: int = 21) -> list[dict]:
+                                    tage_voraus: int = 21,
+                                    ksinr: int | None = None) -> list[dict]:
         """Öffentliche Tagesordnungspunkte kommender Sitzungen ohne Tragweite.
 
         Nur nach vorn: Die Wochen-Karte schaut voraus, und für vergangene
         Sitzungen gibt es später den Beschluss samt eigener Bewertung. Der
         Auszug kommt aus der Kurzfassung, ersatzweise aus dem Vorlagentext —
         beides liegt vor der Sitzung vor.
+
+        Mit ``ksinr`` genau EINE Sitzung, dann ohne Zeitfenster — dieselbe
+        Ausnahme wie bei ``agenda_items_needing_social_text`` und aus demselben
+        Grund: Die Tagesordnungs-Mail hebt die wichtigsten Punkte hervor und
+        braucht deren Bewertung, sobald die Tagesordnung erscheint. Der
+        Tranchen-Lauf am Ende von ``check_committees`` käme dafür zu spät (er
+        steht hinter der Meldeschleife), und eine Tagesordnung kann auch mehr
+        als drei Wochen vor dem Termin veröffentlicht werden.
         """
         from datetime import date, timedelta
 
         heute = date.today().isoformat()
         bis = (date.today() + timedelta(days=tage_voraus)).isoformat()
+        if ksinr is not None:
+            heute, bis = "0000-00-00", "9999-99-99"
         sql = """SELECT a.ksinr, a.item_number, a.title, a.template_number, a.kvonr,
                         s.summary, cs.committee, cs.session_date,
                         v.proposed_decision, v.financial_impact, v.office, v.kind,
@@ -1202,16 +1244,19 @@ class SitzungenMixin:
                         ON i.ksinr = a.ksinr AND i.item_number = a.item_number
                  WHERE a.is_public = 1 AND i.impact IS NULL
                    AND cs.session_date >= ? AND cs.session_date <= ?
-                   AND a.title IS NOT NULL AND length(a.title) >= 8
-                 ORDER BY cs.session_date, a.id"""
+                   AND a.title IS NOT NULL AND length(a.title) >= 8"""
         args: tuple = (heute, bis)
+        if ksinr is not None:
+            sql += " AND a.ksinr = ?"
+            args += (ksinr,)
+        sql += " ORDER BY cs.session_date, a.id"
         if limit is not None:
             # Großzügig holen und ERST danach kürzen: Die Formalien fliegen in
             # Python raus, und von 20 Zeilen sind gut die Hälfte „Genehmigung
             # der Tagesordnung" — ein SQL-LIMIT lieferte sonst eine halb leere
             # Tranche.
             sql += " LIMIT ?"
-            args = (heute, bis, limit * 3)
+            args += (limit * 3,)
         roh = [dict(r) for r in self._conn.execute(sql, args).fetchall()]
         # Formalien kosten nur Geld — dieselbe Regel wie in der Wochen-Karte.
         echte = [r for r in roh if not self._FORMALIE_RE.search(r["title"] or "")]
