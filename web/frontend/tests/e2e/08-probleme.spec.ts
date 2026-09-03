@@ -62,8 +62,8 @@ test.describe("Öffentliche Problemübersicht", () => {
     await page.goto("/probleme");
 
     await expect(page.getByRole("heading", { name: "Probleme in Oldenburg" })).toBeVisible();
-    await expect(page.getByText(/frei erfunden/i)).toBeVisible();
-    await expect(page.getByText(/^Ratslotse ist ein unabhängiges Bürgerprojekt/)).toBeVisible();
+    await expect(page.getByText("Feature-Vorschau · frei erfundene Beispiele")).toBeVisible();
+    await expect(page.getByText("Unabhängig · kein Angebot der Stadt Oldenburg · keine amtlichen Status.")).toBeVisible();
     await expect(page.locator(".problem-map-point")).toHaveCount(1);
     await expect(page.locator(".problem-map-facility")).toHaveCount(1);
     await expect(page.locator(".problem-map-route")).toHaveCount(1);
@@ -81,11 +81,39 @@ test.describe("Öffentliche Problemübersicht", () => {
     await expect(page.locator(".problem-map-route")).toHaveCount(1);
     await expect(page.locator(".problem-map-point")).toHaveCount(0);
 
-    await page.getByRole("button", { name: "Status" }).click();
+    await page.getByRole("button", { name: "Status", exact: true }).click();
     await expect(page).toHaveURL(/view=status/);
     await expect(page.getByRole("button", { name: /stadtweites Thema/i })).toBeVisible();
     await expect(page.getByRole("button", { name: /kaputte Altgeometrie/i })).toBeVisible();
     await expect(page.getByLabel("Kartenthemen")).toHaveCount(0);
+  });
+
+  test("legt Beispiel-, Farb- und Statushinweise per Tastatur offen", async ({ page }) => {
+    await page.goto("/probleme");
+
+    const exampleInfo = page.getByRole("button", { name: "Mehr zu den fiktiven Beispielen" });
+    await expect(page.getByText("Alle als Beispiel bezeichneten Einträge und Zahlen sind frei erfunden.")).toHaveCount(0);
+    await expect(page.getByText("Farben zeigen die Zahl unabhängiger Meldungen, nicht die Dringlichkeit.")).toHaveCount(0);
+    await expect(page.getByText("Status sind Einordnungen von Ratslotse, keine amtlichen Bearbeitungsstände.")).toHaveCount(0);
+    await expect(exampleInfo).toHaveAttribute("aria-expanded", "false");
+    await exampleInfo.focus();
+    await exampleInfo.press("Enter");
+    await expect(exampleInfo).toHaveAttribute("aria-expanded", "true");
+    await expect(page.getByRole("dialog", { name: "Fiktive Beispiele" })).toBeVisible();
+    await expect(page.getByText("Alle als Beispiel bezeichneten Einträge und Zahlen sind frei erfunden.")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(exampleInfo).toHaveAttribute("aria-expanded", "false");
+    await expect(exampleInfo).toBeFocused();
+
+    const contextInfo = page.getByRole("button", { name: "Farben und Status erklären" });
+    await contextInfo.focus();
+    await contextInfo.press("Enter");
+    await expect(contextInfo).toHaveAttribute("aria-expanded", "true");
+    await expect(page.getByRole("dialog", { name: "Farben und Status" })).toBeVisible();
+    await expect(page.getByText("Farben zeigen die Zahl unabhängiger Meldungen, nicht die Dringlichkeit.")).toBeVisible();
+    await expect(page.getByText("Status sind Einordnungen von Ratslotse, keine amtlichen Bearbeitungsstände.")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(contextInfo).toBeFocused();
   });
 
   test("meldet ausgefallene Kartenkacheln und lädt sie erneut", async ({ page }) => {
@@ -133,7 +161,7 @@ test.describe("Öffentliche Problemübersicht auf schmalem Touch-Gerät", () => 
     colorScheme: "dark",
   });
 
-  test("bleibt im Dark Mode ohne seitliches Seiten-Überlaufen bedienbar", async ({ page }) => {
+  test("bleibt im Dark Mode ohne seitliches Seiten-Überlaufen bedienbar", async ({ page }, testInfo) => {
     await page.addInitScript(() => localStorage.setItem("theme", "dark"));
     await page.route("**/api/probleme", (route) => route.fulfill({
       status: 200,
@@ -144,7 +172,16 @@ test.describe("Öffentliche Problemübersicht auf schmalem Touch-Gerät", () => 
 
     await expect(page.locator("html")).toHaveClass(/dark/);
     await expect(page.getByLabel("Problemkarte von Oldenburg")).toBeVisible();
-    await page.getByRole("button", { name: "Status" }).tap();
+    await page.getByRole("button", { name: "Farben und Status erklären" }).tap();
+    const explanation = page.getByText("Farben zeigen die Zahl unabhängiger Meldungen, nicht die Dringlichkeit.");
+    await expect(explanation).toBeVisible();
+    const explanationBox = await explanation.boundingBox();
+    expect(explanationBox).not.toBeNull();
+    expect(explanationBox!.x).toBeGreaterThanOrEqual(0);
+    expect(explanationBox!.x + explanationBox!.width).toBeLessThanOrEqual(390);
+    await page.screenshot({ path: testInfo.outputPath("dark-disclosure.png"), fullPage: true });
+    await page.keyboard.press("Escape");
+    await page.getByRole("button", { name: "Status", exact: true }).tap();
     await expect(page.getByRole("button", { name: /stadtweites Thema/i })).toBeVisible();
     const sizes = await page.evaluate(() => ({
       viewport: window.innerWidth,

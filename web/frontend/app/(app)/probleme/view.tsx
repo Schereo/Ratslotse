@@ -1,10 +1,11 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { type ReactElement, type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { Columns3, Info, Map as MapIcon, MapPin, X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { EmptyState, ErrorState, PageHeader, Segmented, Spinner } from "@/components/ui";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { vertrag } from "@/lib/vertrag";
 import {
@@ -63,15 +64,23 @@ export default function View() {
 
   return (
     <div className="space-y-4">
-      <PageHeader
-        title={PROBLEM_ANGEBOT.name}
-        description="Beobachtungen aus der Stadt, von Ratslotse geprüft und ohne persönliche Angaben gebündelt."
-      />
+      <PageHeader title={PROBLEM_ANGEBOT.name} />
 
       {fictional && (
-        <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-relaxed text-amber-900 dark:border-amber-900 dark:bg-amber-950/35 dark:text-amber-100" role="status">
-          <strong>Feature-Vorschau:</strong> Alle als Beispiel bezeichneten Einträge und Zahlen sind frei erfunden.
-        </p>
+        <div className="inline-flex min-h-10 max-w-full items-center gap-1 rounded-full border border-amber-200 bg-amber-50 py-1 pl-3 pr-1 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950/35 dark:text-amber-100">
+          <span role="status"><strong>Feature-Vorschau</strong> · frei erfundene Beispiele</span>
+          <InfoPopover
+            contentLabel="Fiktive Beispiele"
+            trigger={(
+              <button type="button" aria-label="Mehr zu den fiktiven Beispielen" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:hover:bg-amber-900/60">
+                <Info className="h-3.5 w-3.5" aria-hidden />
+              </button>
+            )}
+          >
+            <p>Alle als Beispiel bezeichneten Einträge und Zahlen sind frei erfunden.</p>
+            <p className="mt-2">Sie zeigen nur, wie die Übersicht funktioniert.</p>
+          </InfoPopover>
+        </div>
       )}
 
       <Segmented
@@ -93,12 +102,28 @@ export default function View() {
         </div>
       )}
 
-      <div className="flex flex-col gap-2 text-xs leading-relaxed text-muted-foreground sm:flex-row sm:items-start sm:justify-between">
-        <p className="flex max-w-[76ch] items-start gap-1.5">
-          <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
-          Ratslotse ist ein unabhängiges Bürgerprojekt und kein Angebot der Stadt Oldenburg. Farben zeigen nur die Meldehäufigkeit, nie Dringlichkeit. Status sind keine amtlichen Bearbeitungsstände.
+      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+        <p className="flex items-center gap-1.5">
+          <Info className="h-3.5 w-3.5 shrink-0" aria-hidden />
+          Unabhängig · kein Angebot der Stadt Oldenburg · keine amtlichen Status.
         </p>
-        <FrequencyLegend />
+        <InfoPopover
+          contentLabel="Farben und Status"
+          align="end"
+          className="w-80"
+          trigger={(
+            <button type="button" aria-label="Farben und Status erklären" className="inline-flex min-h-10 items-center gap-1.5 rounded-lg px-2 font-medium text-primary transition-colors hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <Info className="h-3.5 w-3.5" aria-hidden /> Farben &amp; Status
+            </button>
+          )}
+        >
+          <p className="font-semibold text-foreground">Farben</p>
+          <p className="mt-1">Farben zeigen die Zahl unabhängiger Meldungen, nicht die Dringlichkeit.</p>
+          <FrequencyLegend />
+          <p className="mt-3 font-semibold text-foreground">Status</p>
+          <p className="mt-1">Status sind Einordnungen von Ratslotse, keine amtlichen Bearbeitungsstände.</p>
+          <p className="mt-1">Eine Bearbeitung durch die Stadt zeigen wir nur mit überprüfbarer städtischer Quelle.</p>
+        </InfoPopover>
       </div>
 
       {query.isLoading ? (
@@ -130,6 +155,23 @@ export default function View() {
   );
 }
 
+function InfoPopover({ trigger, contentLabel, align = "start", className, children }: {
+  trigger: ReactElement;
+  contentLabel: string;
+  align?: "start" | "center" | "end";
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+      <PopoverContent aria-label={contentLabel} align={align} className={cn("w-72 max-w-[calc(100vw-2rem)] p-3 text-xs leading-relaxed text-muted-foreground", className)}>
+        {children}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 function ThemeFilter({ active, onClick, children }: { active: boolean; onClick: () => void; children: string }) {
   return (
     <button type="button" aria-pressed={active} onClick={onClick} className={cn(
@@ -141,7 +183,7 @@ function ThemeFilter({ active, onClick, children }: { active: boolean; onClick: 
 
 function FrequencyLegend() {
   return (
-    <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1" aria-label="Legende der Meldehäufigkeit">
+    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1" aria-label="Legende der Meldehäufigkeit">
       {(Object.entries(MELDE_HAEUFIGKEIT) as [ProblemFrequency, string][]).map(([frequency, label]) => (
         <span key={frequency} className="inline-flex items-center gap-1">
           <span className={`problem-frequency-dot frequency-${frequency}`} aria-hidden />{label}
