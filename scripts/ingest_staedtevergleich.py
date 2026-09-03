@@ -38,7 +38,7 @@ Aufruf::
 
 Die Übersichtsseiten, auf denen die jeweils neuen Nummern stehen:
 
-- ``statistik.niedersachsen.de/kommunaler-fiscal_equalization/…-tabellen-214575.html``
+- ``statistik.niedersachsen.de/kommunaler-finanzausgleich/…-tabellen-214575.html``
 - ``statistik.niedersachsen.de/…/realsteuervergleich_in_niedersachsen/…-197957.html``
 """
 from __future__ import annotations
