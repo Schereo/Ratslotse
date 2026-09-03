@@ -472,6 +472,20 @@ def run_watcher(
                     # Thema korrigiert oder gelöscht ist, versucht der nächste
                     # Lauf es neu, statt die Nutzer*in dauerhaft leer auszugehen.
                     continue
+                except llm.EmptyResponseError as exc:
+                    # Der Provider war auch nach den vier Anläufen in llm._create
+                    # nicht lieferfähig. Dasselbe Fangnetz wie oben: Diese eine
+                    # Zuordnung fällt aus, der Lauf geht weiter — sonst nimmt
+                    # eine Modell-Störung dem GANZEN Cron-Lauf die Meldungen,
+                    # inklusive der Sitzungen, die längst klassifiziert sind.
+                    print(f"    ⚠️ Modell antwortete nicht für owner "
+                          f"{owner['owner_id']}: {exc} — übersprungen, "
+                          f"der nächste Lauf versucht es erneut.")
+                    if stats is not None:
+                        stats["Modell-Ausfälle übersprungen"] = \
+                            stats.get("Modell-Ausfälle übersprungen", 0) + 1
+                    # Auch hier: agenda_hash NICHT merken.
+                    continue
 
                 if nwz_store is not None:
                     nwz_store.replace_agenda_matches(

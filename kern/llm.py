@@ -147,10 +147,55 @@ def is_content_filter(exc: BaseException) -> bool:
     return "content_filter" in blob or "content management policy" in blob or "responsibleai" in blob
 
 
+class EmptyResponseError(RuntimeError):
+    """OpenRouter hat mit HTTP 200 geantwortet, aber ohne ``choices``.
+
+    Der Fehler des Upstream-Providers (Timeout, 5xx, überlastete Endpunkte)
+    kommt bei OpenRouter nicht immer als HTTP-Status zurück, sondern als
+    Körper ``{"error": {…}}`` mit Status 200. Das OpenAI-SDK baut daraus ein
+    ChatCompletion, dessen ``choices`` schlicht ``None`` ist — jede Aufrufstelle
+    lief damit in ein ``TypeError: 'NoneType' object is not subscriptable``,
+    Hunderte Zeilen vom eigentlichen Grund entfernt (so am 03.09.2026 in
+    ``check_council``). Hier fällt der Fall EINMAL auf, mit dem Providertext
+    im Klartext, und gilt als vorübergehend — die vier Anläufe von ``_create``
+    holen den nächsten, gesunden Endpunkt.
+    """
+
+
+def _antwort_fehlertext(resp: Any) -> str:
+    """Den Fehler aus einer ``choices``-losen Antwort lesbar machen."""
+    fehler = getattr(resp, "error", None)
+    if fehler is None:
+        fehler = (getattr(resp, "model_extra", None) or {}).get("error")
+    if isinstance(fehler, dict):
+        teile = [str(fehler.get(k)) for k in ("code", "message") if fehler.get(k) is not None]
+        # Der Providername steckt eine Ebene tiefer und sagt beim Nachschauen
+        # im OpenRouter-Log am meisten.
+        anbieter = (fehler.get("metadata") or {}).get("provider_name")
+        if anbieter:
+            teile.append(f"provider={anbieter}")
+        if teile:
+            return " ".join(teile)
+    if fehler:
+        return str(fehler)
+    return "keine Angabe des Providers"
+
+
+def _pruefe_choices(resp: Any, model: str | None) -> None:
+    """Raise EmptyResponseError, wenn die Antwort keine ``choices`` trägt."""
+    if getattr(resp, "choices", None):
+        return
+    raise EmptyResponseError(
+        f"{model or 'unbekanntes Modell'}: Antwort ohne choices — {_antwort_fehlertext(resp)}")
+
+
 def _is_transient(exc: BaseException) -> bool:
-    """True for errors worth retrying: rate-limit, server errors, network, or a
+    """True for errors worth retrying: rate-limit, server errors, network, a
     malformed/truncated response body (provider returned non-JSON — seen
-    intermittently with reasoning models on large requests)."""
+    intermittently with reasoning models on large requests), or a 200er ohne
+    ``choices`` (Provider-Fehler im Körper statt im Status)."""
+    if isinstance(exc, EmptyResponseError):
+        return True
     if isinstance(exc, RateLimitError):
         return True
     if isinstance(exc, APIStatusError) and exc.status_code >= 500:
@@ -174,7 +219,12 @@ def _create(**kwargs: Any):
     # USD, inkl. Provider-Routing) — Modellpreise von Hand pflegen entfällt
     # damit dort, wo der Wert ankommt (Admin-Statistik, Eval-Kostenzeile).
     merged.setdefault("extra_body", {}).setdefault("usage", {"include": True})
-    return get_client().chat.completions.create(**merged)
+    resp = get_client().chat.completions.create(**merged)
+    # Beim Strom ist die erste Antwort ein Iterator, keine fertige Completion —
+    # dort prüft chat_stream ohnehin jeden Chunk auf `choices`.
+    if not merged.get("stream"):
+        _pruefe_choices(resp, merged.get("model"))
+    return resp
 
 
 # Kosten-Zähler je Prozess: die Eval-Suite bildet daraus Deltas je Frage.
