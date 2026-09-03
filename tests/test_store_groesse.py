@@ -22,11 +22,11 @@ from pathlib import Path
 WURZEL = Path(__file__).resolve().parents[1]
 STORE = WURZEL / "council" / "store.py"
 
-#: Stand nach dem elften Schnitt (03.09.2026). Darf schrumpfen. Was jetzt
+#: Stand nach dem zwölften Schnitt (03.09.2026). Darf schrumpfen. Was jetzt
 #: noch hier liegt, ist der Kern: Beschlüsse, Vorlagen, Anlagen, Herkunft,
 #: Suche und Embeddings.
-HOECHSTENS_METHODEN = 167
-HOECHSTENS_ZEILEN = 5072
+HOECHSTENS_METHODEN = 161
+HOECHSTENS_ZEILEN = 4786
 
 
 def _klasse() -> ast.ClassDef:
@@ -74,7 +74,7 @@ def _mixins():
     return {
         "Fundstücke": (FundstueckeMixin, 9),
         "Haushalt": (HaushaltMixin, 135),
-        "Orte": (OrteMixin, 25),
+        "Orte": (OrteMixin, 32),
         "Personen": (PersonenMixin, 27),
         "Presse": (PresseMixin, 9),
         "Quiz": (QuizMixin, 12),

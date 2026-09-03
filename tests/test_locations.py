@@ -17,7 +17,7 @@ from scripts.review_location_candidates_2026_08 import review_manifest
 
 def test_full_location_review_manifest_is_complete_and_valid():
     from collections import Counter
-    from council.store import CONCRETE_LOCATION_KINDS
+    from council.store_orte import CONCRETE_LOCATION_KINDS
 
     manifest = review_manifest()
     assert len(manifest) == 123
