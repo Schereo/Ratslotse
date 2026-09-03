@@ -207,17 +207,41 @@ private struct AdminLLMView: View {
     private func load() async { do { data = try await model.api.get("/api/admin/llm-usage"); error = nil } catch { self.error = error.localizedDescription } }
 }
 
-private struct AdminUserRow: Decodable, Sendable, Identifiable { let id: Int; let email: String; let role: String; let status: String; let lastSeen: String?; let nTopics: Int; let nAbos: Int; let nQuiz: Int; let nKi: Int; enum CodingKeys: String, CodingKey { case id,email,role,status; case lastSeen = "last_seen"; case nTopics = "n_topics"; case nAbos = "n_subscriptions"; case nQuiz = "n_quiz"; case nKi = "n_ki" } }
+/// `roles` ist optional mit Vorgabe: Ein Backend im Stand vor 09/2026 schickt
+/// das Feld nicht, und ein nicht-optionales ließe den Decoder werfen — die
+/// Nutzer*innen-Liste bliebe dann leer statt unvollständig (ios/CLAUDE.md).
+private struct AdminUserRow: Decodable, Sendable, Identifiable { let id: Int; let email: String; let role: String; let roles: [String]?; let status: String; let lastSeen: String?; let nTopics: Int; let nAbos: Int; let nQuiz: Int; let nKi: Int; enum CodingKeys: String, CodingKey { case id,email,role,roles,status; case lastSeen = "last_seen"; case nTopics = "n_topics"; case nAbos = "n_subscriptions"; case nQuiz = "n_quiz"; case nKi = "n_ki" } }
+
+/// Die vergebbaren Rollen für das Menü — Schlüssel und Beschriftung.
+///
+/// Bewusst hier abgetippt und nicht aus `/api/admin/roles` geholt: Die App
+/// verwaltet Rollen nur nebenbei (der Ort dafür ist das Web-Panel), und ein
+/// Katalog-Abruf für ein Menü mit zwei Einträgen wäre mehr Fläche als Nutzen.
+/// Kommt eine dritte Rolle dazu, gehört sie hier ergänzt — die App zeigt
+/// vorhandene Rollen aber auch ohne Eintrag an (`roles` oben).
+private let ADMIN_ROLLEN: [(String, String)] = [("council_member", "Ratsmitglied"), ("admin", "Admin")]
 private struct AdminUsersView: View {
     let model: AppModel; @State private var users: [AdminUserRow] = []; @State private var query = ""; @State private var error: String?
     var filtered: [AdminUserRow] { query.isEmpty ? users : users.filter { $0.email.localizedCaseInsensitiveContains(query) } }
     var body: some View { adminList(title: "Nutzer*innen", subtitle: "\(users.count) Konten") {
         TextField("E-Mail suchen", text: $query).textFieldStyle(.roundedBorder)
-        ForEach(filtered) { user in VStack(alignment: .leading, spacing: 10) { HStack { Text(user.email).font(RatsFont.body(14, weight: .semibold)).lineLimit(1); Spacer(); Text(user.role).font(RatsFont.mono(9)).foregroundStyle(user.role == "admin" ? RatsColor.signal : RatsColor.secondary) }; Text("\(user.nTopics) Themen · \(user.nAbos) Abos · \(user.nKi) KI-Fragen · \(user.nQuiz) Quiz").font(RatsFont.body(11)).foregroundStyle(RatsColor.secondary); HStack { Menu(user.role == "admin" ? "Admin" : "Nutzer*in") { Button("Nutzer*in") { Task { await update(user, key: "role", value: "user") } }; Button("Admin") { Task { await update(user, key: "role", value: "admin") } } }.buttonStyle(.bordered); Button(user.status == "active" ? "Sperren" : "Freischalten") { Task { await update(user, key: "status", value: user.status == "active" ? "pending" : "active") } }.buttonStyle(.bordered).disabled(user.id == model.user?.id) } }.ratsCard() }
+        ForEach(filtered) { user in VStack(alignment: .leading, spacing: 10) { HStack { Text(user.email).font(RatsFont.body(14, weight: .semibold)).lineLimit(1); Spacer(); Text((user.roles ?? []).isEmpty ? "user" : (user.roles ?? []).joined(separator: " · ")).font(RatsFont.mono(9)).foregroundStyle(user.role == "admin" ? RatsColor.signal : RatsColor.secondary) }; Text("\(user.nTopics) Themen · \(user.nAbos) Abos · \(user.nKi) KI-Fragen · \(user.nQuiz) Quiz").font(RatsFont.body(11)).foregroundStyle(RatsColor.secondary); HStack { Menu("Rollen") { ForEach(ADMIN_ROLLEN, id: \.0) { rolle in Button((user.roles ?? []).contains(rolle.0) ? "\(rolle.1) entfernen" : "\(rolle.1) geben") { Task { await setzeRollen(user, umschalten: rolle.0) } } } }.buttonStyle(.bordered); Button(user.status == "active" ? "Sperren" : "Freischalten") { Task { await update(user, key: "status", value: user.status == "active" ? "pending" : "active") } }.buttonStyle(.bordered).disabled(user.id == model.user?.id) } }.ratsCard() }
         if let error { ErrorCard(message: error) { Task { await load() } } }
     }.task { await load() } }
     private func load() async { do { users = try await model.api.get("/api/admin/users"); error = nil } catch { self.error = error.localizedDescription } }
     private func update(_ user: AdminUserRow, key: String, value: String) async { do { let body = JSONValue.object([key: .string(value)]); try await model.api.sendVoid("/api/admin/users/\(user.id)/\(key)", method: .put, body: body); await load() } catch { self.error = error.localizedDescription } }
+    /// Eine Rolle an- oder abschalten. Geschickt wird die VOLLSTÄNDIGE Liste:
+    /// Der Endpunkt setzt den Endzustand, damit sich zwei gleichzeitig
+    /// arbeitende Admins nicht überkreuzen.
+    private func setzeRollen(_ user: AdminUserRow, umschalten rolle: String) async {
+        let bisher = user.roles ?? []
+        let neu = bisher.contains(rolle) ? bisher.filter { $0 != rolle } : bisher + [rolle]
+        do {
+            let body = JSONValue.object(["roles": .array(neu.map { .string($0) })])
+            try await model.api.sendVoid("/api/admin/users/\(user.id)/roles", method: .put, body: body)
+            await load()
+        } catch { self.error = error.localizedDescription }
+    }
 }
 
 private struct QuizEnvelope: Decodable, Sendable { let flagged: [FlaggedQuiz] }

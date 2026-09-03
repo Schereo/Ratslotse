@@ -7,6 +7,7 @@ import { Clock, MailWarning } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { darfAdmin } from "@/lib/rechte";
 import { initPush } from "@/lib/push";
 import { DesktopSidebar, MobileTopbar, MobileBottomNav, TABLEISTE_HOEHE } from "@/components/nav";
 import { SlashSearchShortcut } from "@/components/keyboard-shortcuts";
@@ -30,8 +31,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   // Geteilte Detailseiten lassen sich ohne Konto lesen (s. lib/public-routes.ts).
   const oeffentlich = istOeffentlich(pathname);
 
-  const needsVerify = !!user && !user.email_verified && user.role !== "admin";
-  const pending = !!user && user.status === "pending" && user.role !== "admin";
+  const needsVerify = !!user && !user.email_verified && !darfAdmin(user);
+  const pending = !!user && user.status === "pending" && !darfAdmin(user);
   const gated = needsVerify || pending;
 
   // Poll /me every 30 s while the account is gated (email unverified or awaiting

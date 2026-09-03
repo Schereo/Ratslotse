@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { api, qs } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { darfAdmin } from "@/lib/rechte";
 import { useDebounce } from "@/lib/use-debounce";
 import { decisionHref } from "@/lib/routes";
 import { getRecentDecisions } from "@/lib/recent";
@@ -127,7 +128,7 @@ export function CommandPalette() {
       { key: "nav-meine", section: "Navigation", label: "Meine Themen", icon: Tags, run: () => go("/topics") },
       { key: "nav-merkliste", section: "Navigation", label: "Merkliste", icon: Bookmark, run: () => go("/bookmarks") },
       { key: "nav-konto", section: "Navigation", label: "Mein Konto", icon: UserCircle, run: () => go("/account") },
-      ...(user?.role === "admin"
+      ...(darfAdmin(user)
         ? [{ key: "nav-admin", section: "Navigation", label: "Admin", icon: Settings, run: () => go("/admin") } as Item]
         : []),
     ].filter((i) => match(i.label));

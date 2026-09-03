@@ -11,6 +11,7 @@ import { Button, Input } from "@/components/ui";
 import { Mascot, type MascotPose } from "@/components/mascot";
 import { committeeExplains, committeeIcon, committeeRank, shortCommittee } from "@/lib/committees";
 import { useAuth } from "@/lib/auth";
+import { darfAdmin } from "@/lib/rechte";
 import { TopicSheet, type Described } from "@/components/topic-sheet";
 import { StadtteilKarte } from "@/components/stadtteil-karte";
 
@@ -138,9 +139,9 @@ function reportSetupStep(step: number, done = false) {
  *  unbestätigt, und die Schritte 1–3 (Abos, Themen) laufen dann in 403. Erst
  *  wenn es freigeschaltet ist, geht es weiter; bis dahin liegt die
  *  Bestätigungs-Aufforderung frei. Admins sind wie im App-Layout ausgenommen. */
-function isUsable(user: { status?: string; email_verified?: boolean; role?: string } | null): boolean {
+function isUsable(user: { status?: string; email_verified?: boolean; permissions?: readonly string[] | null } | null): boolean {
   if (!user) return false;
-  if (user.role === "admin") return true;
+  if (darfAdmin(user)) return true;
   return user.status === "active" && !!user.email_verified;
 }
 

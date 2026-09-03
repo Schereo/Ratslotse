@@ -1090,6 +1090,13 @@
             "title": "Role",
             "type": "string"
           },
+          "roles": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Roles",
+            "type": "array"
+          },
           "saves_conversations": {
             "title": "Saves Conversations",
             "type": [
@@ -1127,6 +1134,7 @@
           "id",
           "email",
           "role",
+          "roles",
           "status",
           "created_at",
           "last_seen",
@@ -1241,6 +1249,13 @@
             "title": "Role",
             "type": "string"
           },
+          "roles": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Roles",
+            "type": "array"
+          },
           "signup_client": {
             "title": "Signup Client",
             "type": [
@@ -1257,6 +1272,7 @@
           "id",
           "email",
           "role",
+          "roles",
           "status",
           "created_at",
           "apple_linked",
@@ -10102,7 +10118,54 @@
         "title": "ResetPasswordRequest",
         "type": "object"
       },
+      "RoleInfo": {
+        "description": "Ein Eintrag des Rollen-Katalogs — die Auswahl im Admin-Panel baut sich\ndaraus, statt Rollennamen und Beschriftungen abzuschreiben.",
+        "properties": {
+          "assignable": {
+            "title": "Assignable",
+            "type": "boolean"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "key": {
+            "enum": [
+              "user",
+              "council_member",
+              "admin"
+            ],
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "permissions": {
+            "items": {
+              "enum": [
+                "budget",
+                "admin"
+              ],
+              "type": "string"
+            },
+            "title": "Permissions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "description",
+          "permissions",
+          "assignable"
+        ],
+        "title": "RoleInfo",
+        "type": "object"
+      },
       "RoleUpdate": {
+        "description": "Alt-Weg: EINE Rolle setzen (ersetzt alle anderen).\n\nBleibt, weil die ausgelieferte iOS-App genau das schickt. Neue Clients\nnehmen ``RolesUpdate``.",
         "properties": {
           "role": {
             "title": "Role",
@@ -10113,6 +10176,21 @@
           "role"
         ],
         "title": "RoleUpdate",
+        "type": "object"
+      },
+      "RolesUpdate": {
+        "description": "Die Rollen eines Kontos setzen — die ganze Liste, nicht ein Delta.\n\nAbsicht: Ein PUT mit der vollständigen Liste ist idempotent und kann sich\nnicht mit einem parallelen Klick überkreuzen. Ein „füge hinzu\"-Endpunkt\nhätte zwei Admins, die gleichzeitig arbeiten, unbemerkt zusammenaddiert.",
+        "properties": {
+          "roles": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 16,
+            "title": "Roles",
+            "type": "array"
+          }
+        },
+        "title": "RolesUpdate",
         "type": "object"
       },
       "SessionDetail": {
@@ -11818,13 +11896,37 @@
             "title": "Id",
             "type": "integer"
           },
+          "permissions": {
+            "items": {
+              "enum": [
+                "budget",
+                "admin"
+              ],
+              "type": "string"
+            },
+            "title": "Permissions",
+            "type": "array"
+          },
           "role": {
             "enum": [
               "user",
+              "council_member",
               "admin"
             ],
             "title": "Role",
             "type": "string"
+          },
+          "roles": {
+            "items": {
+              "enum": [
+                "user",
+                "council_member",
+                "admin"
+              ],
+              "type": "string"
+            },
+            "title": "Roles",
+            "type": "array"
           },
           "saves_conversations": {
             "title": "Saves Conversations",
@@ -11847,6 +11949,8 @@
           "id",
           "email",
           "role",
+          "roles",
+          "permissions",
           "status",
           "delivery_channel",
           "email_verified",
@@ -12239,10 +12343,24 @@
           "role": {
             "enum": [
               "user",
+              "council_member",
               "admin"
             ],
             "title": "Role",
             "type": "string"
+          },
+          "roles": {
+            "default": [],
+            "items": {
+              "enum": [
+                "user",
+                "council_member",
+                "admin"
+              ],
+              "type": "string"
+            },
+            "title": "Roles",
+            "type": "array"
           },
           "status": {
             "default": "pending",
@@ -13298,6 +13416,32 @@
         ]
       }
     },
+    "/api/admin/roles": {
+      "get": {
+        "description": "Der Rollen-Katalog: welche Rollen es gibt und was sie dürfen.\n\nBeide Frontends bauen ihre Auswahl daraus, statt Rollennamen und\nBeschriftungen abzuschreiben — eine neue Rolle in ``kern/roles.py``\nerscheint damit im Admin-Panel, ohne dass jemand das Frontend anfasst.",
+        "operationId": "list_roles_api_admin_roles_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RoleInfo"
+                  },
+                  "title": "Response List Roles Api Admin Roles Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Roles",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/api/admin/stats/growth": {
       "get": {
         "description": "Wachstums-Verläufe + WAU + Ratsinfo-Import für den Statistik-Tab (20a).",
@@ -13466,6 +13610,7 @@
     },
     "/api/admin/users/{user_id}/role": {
       "put": {
+        "description": "Alt-Weg: EINE Rolle setzen — sie ersetzt alle anderen.\n\nBleibt bestehen, weil die im App Store ausgelieferte iOS-App genau diesen\nAufruf schickt (`AdminView.swift`). Ihn zu entfernen hieße dort ein\nKnopf, der wortlos nichts tut. Neue Clients nehmen ``PUT …/roles``.",
         "operationId": "set_role_api_admin_users__user_id__role_put",
         "parameters": [
           {
@@ -13511,6 +13656,59 @@
           }
         },
         "summary": "Set Role",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/users/{user_id}/roles": {
+      "put": {
+        "description": "Die Rollen eines Kontos setzen — die vollständige Liste.\n\n``[]`` heißt „nur noch die Standardrolle\": Sie hat jedes Konto ohnehin und\nsteht deshalb nie in der Liste (siehe ``kern/roles.py``).",
+        "operationId": "set_roles_api_admin_users__user_id__roles_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "title": "User Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RolesUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebUserOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Roles",
         "tags": [
           "admin"
         ]

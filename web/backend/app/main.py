@@ -49,7 +49,7 @@ def _warn_if_admin_bootstrap_pending() -> None:
         konto = next(
             (u for u in users if str(u.get("email") or "").strip().lower() == configured), None
         )
-        if konto is None or konto.get("role") == "admin":
+        if konto is None or "admin" in (konto.get("roles") or []):
             return
         logger.warning(
             "WEB_ADMIN_EMAIL %s hat ein Konto, aber keine Adminrechte. Sie werden erst mit "

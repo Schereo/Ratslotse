@@ -6036,3 +6036,79 @@ def test_council_parties_liefert_kanonische_filterwerte(client):
             {"key": "Volt", "label": "Volt", "count": 1},
         ]
     }
+
+
+# ---- Rollen und Rechte ----
+def test_haushalt_ist_zu_fuer_regulaere_konten_und_offen_fuer_ratsmitglieder(client):
+    """Der Beweis am laufenden Server statt an der Signatur.
+
+    Alle drei Fälle in einem Test, weil sie nur zusammen etwas aussagen: Ein
+    403 für jeden wäre auch dann grün, wenn die Rolle gar nichts bewirkte.
+    """
+    _register(client, "buerger@example.org")
+    assert client.get("/api/council/budget/data-status").status_code == 403
+
+    store = Store(RATSLOTSE_DB)
+    try:
+        uid = store.get_web_user_by_email("buerger@example.org")["id"]
+        store.set_web_user_roles(uid, ["council_member"])
+    finally:
+        store.close()
+    assert client.get("/api/council/budget/data-status").status_code == 200
+
+    # Der Admin kommt über sein eigenes Recht hinein, ohne Ratsmandat.
+    store = Store(RATSLOTSE_DB)
+    try:
+        store.set_web_user_roles(uid, ["admin"])
+    finally:
+        store.close()
+    assert client.get("/api/council/budget/data-status").status_code == 200
+
+
+def test_konto_schickt_seine_rechte_mit(client):
+    """``/auth/me`` trägt ``permissions``; daran hängt die Oberfläche beider
+    Frontends. Ohne das Feld müssten sie Rollennamen abtippen — und eine neue
+    Rolle bräuchte ein App-Update im Store."""
+    _register(client, "wer@example.org")
+    me = client.get("/api/auth/me").json()
+    assert me["roles"] == [] and me["permissions"] == []
+    # `role` bleibt gefüllt: Die ausgelieferte App liest es als Pflichtfeld.
+    assert me["role"] == "user"
+
+    store = Store(RATSLOTSE_DB)
+    try:
+        store.set_web_user_roles(
+            store.get_web_user_by_email("wer@example.org")["id"], ["council_member"])
+    finally:
+        store.close()
+    me = client.get("/api/auth/me").json()
+    assert me["roles"] == ["council_member"]
+    assert me["permissions"] == ["budget"]
+    assert me["role"] == "council_member"
+
+
+def test_admin_verwaltet_rollen_und_sperrt_sich_nicht_selbst_aus(client):
+    """Die eine Sperre, die kein Undo mehr aufhebt: Wer sich selbst die
+    Adminrechte nimmt, kommt nicht mehr ins Panel — die Reparatur wäre ein
+    SSH-Zugang plus ``scripts/grant_admin.py``."""
+    _register(client)  # admin@test.de, per grant_admin zum Admin gemacht
+    ziel = client.post("/api/auth/register",
+                       json={"email": "rat@example.org", "password": "password123"})
+    ziel_id = ziel.json()["id"]
+    client.post("/api/auth/login", json={"email": "admin@test.de", "password": "password123"})
+
+    katalog = client.get("/api/admin/roles").json()
+    assert {r["key"] for r in katalog} == {"user", "council_member", "admin"}
+    assert [r for r in katalog if r["key"] == "council_member"][0]["permissions"] == ["budget"]
+
+    r = client.put(f"/api/admin/users/{ziel_id}/roles", json={"roles": ["council_member"]})
+    assert r.status_code == 200 and r.json()["roles"] == ["council_member"]
+
+    # Unbekannte Rolle: 400 mit Namen statt stiller Übernahme.
+    r = client.put(f"/api/admin/users/{ziel_id}/roles", json={"roles": ["hausmeister"]})
+    assert r.status_code == 400 and "hausmeister" in r.json()["detail"]
+
+    # Selbst-Entzug bleibt gesperrt — auch über den neuen Weg.
+    ich = client.get("/api/auth/me").json()["id"]
+    assert client.put(f"/api/admin/users/{ich}/roles", json={"roles": []}).status_code == 400
+    assert client.put(f"/api/admin/users/{ich}/role", json={"role": "user"}).status_code == 400

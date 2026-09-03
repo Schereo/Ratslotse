@@ -65,6 +65,23 @@ generisches Netz: Es gibt nur endpunkt-eigene Tests, ein versehentlich offener
 neuer Endpunkt bleibt grün. Beim Anlegen also ausdrücklich entscheiden, ob er
 öffentlich sein soll, und die Entscheidung in den Pull Request schreiben.
 
+**Braucht der Endpunkt mehr als „eingeloggt", dann ein RECHT — keinen
+Rollennamen.** Die Rollen und ihre Rechte stehen in `kern/roles.py`, die
+Prüfung baut `require_permission("…")`:
+
+```python
+require_budget = require_permission("budget")   # Modul-Konstante neben dem Router
+…
+_user: dict = Depends(require_budget),
+```
+
+`user["role"] == "admin"` im Router ist der Fehler, gegen den das gebaut ist:
+Ein Konto trägt seit 09/2026 **mehrere** Rollen, und jede neue müsste sonst an
+jeder Prüfstelle nachgezogen werden. Wer einen ganzen Bereich absichert,
+schreibt den Wächter dazu — für den Haushalt hält `tests/test_rollen.py` fest,
+dass jede der zwanzig `/budget…`-Routen die Prüfung trägt, und nennt die
+vergessene beim Namen.
+
 Gesperrte oder unbestätigte Konten bekommen **403, nicht 401** — die iOS-App
 unterscheidet daran, ob sie zur Anmeldung schickt oder das Konto erklärt.
 

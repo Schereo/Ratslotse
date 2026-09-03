@@ -10,9 +10,14 @@ gebaut statt geholt werden.
 Was entsteht:
 
 * ``chef@example.org`` mit Admin-Rolle — für die Admin-Seiten;
+* ``ratsfrau@example.org`` mit der Rolle ``council_member`` — das einzige
+  Konto, mit dem sich der **Haushalts-Bereich** lokal öffnen lässt (er hängt
+  seit 09/2026 am Recht ``budget``, siehe ``kern/roles.py``). Ohne dieses
+  Konto stünde man vor zwanzig 404-Seiten und suchte den Fehler im Code;
 * ``nutzerin@example.org`` als normales Konto mit Themen und deren echten
-  Treffern aus dem Abzug;
-* beide bestätigt und aktiv, Passwort ``password123``.
+  Treffern aus dem Abzug — bewusst OHNE Zusatzrolle, damit man die Sicht
+  eines gewöhnlichen Kontos auch wirklich sehen kann;
+* alle drei bestätigt und aktiv, Passwort ``password123``.
 
 ``admin@test.de`` legt die Saat ABSICHTLICH nicht an: Diese Adresse
 registrieren die Browsertests selbst (``tests/e2e/helpers.ts``), und ein
@@ -69,8 +74,13 @@ def saat(db: Path, council_db: Path | None) -> dict:
         nutzerin = store.create_web_user("nutzerin@example.org", pw, role="user",
                                          status="active", email_verified=True,
                                          display_name="Nutzerin")
+        ratsfrau = store.create_web_user("ratsfrau@example.org", pw,
+                                         status="active", email_verified=True,
+                                         display_name="Ratsfrau")
+        store.set_web_user_roles(ratsfrau, ["council_member"])
         bericht["admin_id"] = admin
         bericht["nutzerin_id"] = nutzerin
+        bericht["ratsfrau_id"] = ratsfrau
 
         themen = [store.add_topic(nutzerin, name, beschreibung)
                   for name, beschreibung in THEMEN]
@@ -127,7 +137,8 @@ def main() -> int:
     args.db.parent.mkdir(parents=True, exist_ok=True)
     bericht = saat(args.db, args.council_db)
     print(f"✓ {args.db}")
-    print(f"  chef@example.org (Admin) und nutzerin@example.org — Passwort {PASSWORT}")
+    print(f"  chef@example.org (Admin), ratsfrau@example.org (Ratsmitglied → Haushalt) "
+          f"und nutzerin@example.org — Passwort {PASSWORT}")
     print(f"  {bericht['themen']} Themen, {bericht['treffer']} Treffer")
     return 0
 

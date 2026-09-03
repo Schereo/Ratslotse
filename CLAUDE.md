@@ -372,6 +372,19 @@ NWZ_OPENROUTER_ZDR=1                 # "0" lockert die Zero-Data-Retention-Pflic
   gibt es keinen Bestätigungslink — dann nach der Registrierung einmal auf dem
   Server: `.venv/bin/python scripts/grant_admin.py <adresse>` (befördert nur ein
   **vorhandenes** Konto). Beide Fälle stehen als WARNING im Log (`nwz-web-api`).
+- **Rollen und Rechte:** Ein Konto trägt seit 09/2026 **mehrere** Rollen
+  (Tabelle `web_user_roles`); welche es gibt und was sie dürfen, steht an genau
+  einer Stelle — [`kern/roles.py`](kern/roles.py). Geprüft wird immer gegen ein
+  **Recht**, nie gegen einen Rollennamen: im Backend über
+  `Depends(require_permission("…"))`, im Web über `lib/rechte.ts`, in der App
+  über `User.can(_:)`. Eine neue Rolle ist damit ein Eintrag in der Registry —
+  ohne Frontend-Release und ohne App-Update im Store. Heute gibt es zwei
+  Rechte: `budget` (der Haushalts-Bereich, Rolle *Ratsmitglied*) und `admin`.
+  Vergeben werden Rollen im Admin-Panel unter *Web-Nutzer*innen*; auf der
+  Kommandozeile ergänzt `scripts/grant_admin.py` die Adminrolle, ohne die
+  übrigen anzutasten. `web_users.role` daneben ist nur noch ein abgeleitetes
+  Schaufenster für die ausgelieferte iOS-App — **nie** die Grundlage einer
+  Rechteprüfung.
 - **Changelog-Pflicht:** Jeder nutzerrelevante PR legt **eine Datei** an:
   `changelog.d/<slug>.md` — Frontmatter `kategorie: hinzugefuegt | geaendert |
   behoben`, darunter der Eintrag im gewohnten Stil (deutsch, fett beginnender

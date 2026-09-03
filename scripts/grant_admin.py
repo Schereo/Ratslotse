@@ -62,9 +62,12 @@ def grant_admin(email: str, db_path: str | None = None) -> tuple[bool, str]:
             )
         user_id = int(user["id"])
         changed: list[str] = []
-        if user.get("role") != "admin":
-            store.set_web_user_role(user_id, "admin")
-            changed.append("Rolle → admin")
+        # ERGÄNZEN, nicht setzen: Wer schon Ratsmitglied ist, soll das durch
+        # die Beförderung nicht verlieren (`set_web_user_role` ersetzt die
+        # ganze Liste, `add_web_user_role` hängt an).
+        if "admin" not in store.get_web_user_roles(user_id):
+            store.add_web_user_role(user_id, "admin")
+            changed.append("Rolle admin ergänzt")
         if user.get("status") != "active":
             store.set_web_user_status(user_id, "active")
             changed.append("Status → active")

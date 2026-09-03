@@ -416,6 +416,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/roles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Roles
+         * @description Der Rollen-Katalog: welche Rollen es gibt und was sie dürfen.
+         *
+         *     Beide Frontends bauen ihre Auswahl daraus, statt Rollennamen und
+         *     Beschriftungen abzuschreiben — eine neue Rolle in ``kern/roles.py``
+         *     erscheint damit im Admin-Panel, ohne dass jemand das Frontend anfasst.
+         */
+        get: operations["list_roles_api_admin_roles_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/stats/growth": {
         parameters: {
             query?: never;
@@ -507,8 +531,38 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Set Role */
+        /**
+         * Set Role
+         * @description Alt-Weg: EINE Rolle setzen — sie ersetzt alle anderen.
+         *
+         *     Bleibt bestehen, weil die im App Store ausgelieferte iOS-App genau diesen
+         *     Aufruf schickt (`AdminView.swift`). Ihn zu entfernen hieße dort ein
+         *     Knopf, der wortlos nichts tut. Neue Clients nehmen ``PUT …/roles``.
+         */
         put: operations["set_role_api_admin_users__user_id__role_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/users/{user_id}/roles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set Roles
+         * @description Die Rollen eines Kontos setzen — die vollständige Liste.
+         *
+         *     ``[]`` heißt „nur noch die Standardrolle": Sie hat jedes Konto ohnehin und
+         *     steht deshalb nie in der Liste (siehe ``kern/roles.py``).
+         */
+        put: operations["set_roles_api_admin_users__user_id__roles_put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -4195,6 +4249,8 @@ export interface components {
             limits_unlocked: boolean;
             /** Role */
             role: string;
+            /** Roles */
+            roles: string[];
             /** Saves Conversations */
             saves_conversations: number | null;
             /** Signup Client */
@@ -4257,6 +4313,8 @@ export interface components {
             n_topics: number;
             /** Role */
             role: string;
+            /** Roles */
+            roles: string[];
             /** Signup Client */
             signup_client: string | null;
             /** Status */
@@ -7930,10 +7988,48 @@ export interface components {
             /** Token */
             token: string;
         };
-        /** RoleUpdate */
+        /**
+         * RoleInfo
+         * @description Ein Eintrag des Rollen-Katalogs — die Auswahl im Admin-Panel baut sich
+         *     daraus, statt Rollennamen und Beschriftungen abzuschreiben.
+         */
+        RoleInfo: {
+            /** Assignable */
+            assignable: boolean;
+            /** Description */
+            description: string;
+            /**
+             * Key
+             * @enum {string}
+             */
+            key: "user" | "council_member" | "admin";
+            /** Label */
+            label: string;
+            /** Permissions */
+            permissions: ("budget" | "admin")[];
+        };
+        /**
+         * RoleUpdate
+         * @description Alt-Weg: EINE Rolle setzen (ersetzt alle anderen).
+         *
+         *     Bleibt, weil die ausgelieferte iOS-App genau das schickt. Neue Clients
+         *     nehmen ``RolesUpdate``.
+         */
         RoleUpdate: {
             /** Role */
             role: string;
+        };
+        /**
+         * RolesUpdate
+         * @description Die Rollen eines Kontos setzen — die ganze Liste, nicht ein Delta.
+         *
+         *     Absicht: Ein PUT mit der vollständigen Liste ist idempotent und kann sich
+         *     nicht mit einem parallelen Klick überkreuzen. Ein „füge hinzu"-Endpunkt
+         *     hätte zwei Admins, die gleichzeitig arbeiten, unbemerkt zusammenaddiert.
+         */
+        RolesUpdate: {
+            /** Roles */
+            roles?: string[];
         };
         /**
          * SessionDetail
@@ -8640,11 +8736,15 @@ export interface components {
             has_password: boolean;
             /** Id */
             id: number;
+            /** Permissions */
+            permissions: ("budget" | "admin")[];
             /**
              * Role
              * @enum {string}
              */
-            role: "user" | "admin";
+            role: "user" | "council_member" | "admin";
+            /** Roles */
+            roles: ("user" | "council_member" | "admin")[];
             /** Saves Conversations */
             saves_conversations?: number | null;
             /**
@@ -8804,7 +8904,12 @@ export interface components {
              * Role
              * @enum {string}
              */
-            role: "user" | "admin";
+            role: "user" | "council_member" | "admin";
+            /**
+             * Roles
+             * @default []
+             */
+            roles: ("user" | "council_member" | "admin")[];
             /**
              * Status
              * @default pending
@@ -9529,6 +9634,26 @@ export interface operations {
             };
         };
     };
+    list_roles_api_admin_roles_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoleInfo"][];
+                };
+            };
+        };
+    };
     stats_growth_api_admin_stats_growth_get: {
         parameters: {
             query?: {
@@ -9658,6 +9783,41 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["RoleUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebUserOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_roles_api_admin_users__user_id__roles_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RolesUpdate"];
             };
         };
         responses: {
@@ -13552,4 +13712,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 2b6fd7258858e2e65eff3b1ab502a009dbc4fc57a2b6e0cc1f99261593f5b7a9
+// vertrag-sha256: 1d0b2019b40393939f11a667757299858a292e259154485e79dcdeb1c5d28ba7

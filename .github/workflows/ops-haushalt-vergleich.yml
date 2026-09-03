@@ -1,0 +1,115 @@
+# Vergleicht die Finanzdaten von dev und Prod — Zahl für Zahl.
+#
+# WARUM ES IHN GIBT. Der Ops-Lauf `ops-finanzdaten-ingest.yml` liest die
+# Haushaltszahlen auf einer VM ein und meldet danach Zeilenzahlen. Das ist die
+# halbe Auskunft: Zwei Umgebungen können in jeder Tabelle gleich viele Zeilen
+# tragen und in jeder einzelnen Zahl auseinanderliegen. Seit der Bereich auf
+# Prod sichtbar ist (Recht `budget`, `kern/roles.py`), ist „stimmen die Zahlen
+# dort wirklich?" keine akademische Frage mehr.
+#
+# Ein `sqlite3 .dump`-Vergleich taugt dafür nicht: Drei Spaltenarten sind je
+# Maschine verschieden, ohne dass inhaltlich etwas abweicht — `id`,
+# `herkunft_id` (beide AUTOINCREMENT) und `decision_id`. Ein naiver Vergleich
+# meldete 17.814 Unterschiede, die keine sind. `scripts/haushalt_fingerprint.py`
+# löst genau die auf: Es vergleicht statt der Herkunfts-NUMMER den sha256 des
+# Papiers dahinter (`council_provenance.key`) und statt der Beschluss-Nummer
+# den dreistufigen Schlüssel aus dem Ratsinformationssystem. Die Begründung im
+# Detail steht im Kopf des Skripts.
+#
+# NUR LESEND. Beide Läufe öffnen die Datenbank mit `mode=ro` und laufen neben
+# den laufenden Diensten. Der Job schreibt auf keiner VM etwas.
+#
+# ROT HEISST: eine Tabelle weicht ab. Die Meldung nennt sie beim Namen, und
+# `--tabelle <name> --zeilen` sagt danach, welche Zeile es ist.
+name: "Ops: Finanzdaten dev↔prod vergleichen"
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: ops-haushalt-vergleich
+  cancel-in-progress: false
+
+jobs:
+  vergleichen:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Derselbe ProxyJump-Aufbau wie in deploy.yml, nur mit zwei Zielen.
+      - name: SSH einrichten
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' \
+            'Host edge' \
+            "  HostName ${{ secrets.VPS_PROXY_HOST }}" \
+            "  User ${{ secrets.VPS_USER }}" \
+            "  Port ${{ secrets.VPS_SSH_PORT }}" \
+            '  IdentityFile ~/.ssh/id_ed25519' \
+            '  StrictHostKeyChecking no' \
+            'Host prod' \
+            "  HostName ${{ secrets.VPS_HOST }}" \
+            "  User ${{ secrets.VPS_USER }}" \
+            "  Port ${{ secrets.VPS_SSH_PORT }}" \
+            '  IdentityFile ~/.ssh/id_ed25519' \
+            '  ProxyJump edge' \
+            '  StrictHostKeyChecking no' \
+            'Host dev' \
+            "  HostName ${{ secrets.VPS_DEV_HOST }}" \
+            "  User ${{ secrets.VPS_USER }}" \
+            "  Port ${{ secrets.VPS_SSH_PORT }}" \
+            '  IdentityFile ~/.ssh/id_ed25519' \
+            '  ProxyJump edge' \
+            '  StrictHostKeyChecking no' \
+            > ~/.ssh/config
+          chmod 600 ~/.ssh/config
+
+      # Das Skript wird MITGESCHICKT und nicht auf der VM gesucht: Dort liegt
+      # der gedeployte Stand, und auf der Dev-VM ist das `dev`, auf Prod `main`.
+      # Ein Vergleich mit zwei verschiedenen Fassungen des Vergleichers wäre
+      # wertlos — beide Seiten müssen mit demselben Maß gemessen werden.
+      - name: Fingerabdrücke holen
+        run: |
+          for ziel in dev prod; do
+            scp -q scripts/haushalt_fingerprint.py "$ziel:/tmp/haushalt_fingerprint.py"
+            ssh "$ziel" 'cd ~/app && .venv/bin/python /tmp/haushalt_fingerprint.py --db data/council.sqlite' \
+              > "$ziel.txt"
+            echo "$ziel: $(wc -l < "$ziel.txt") Zeilen"
+          done
+
+      - name: Vergleichen
+        run: |
+          {
+            echo '## Finanzdaten dev ↔ prod'
+            echo
+            if diff -q dev.txt prod.txt >/dev/null; then
+              echo "✅ Identisch — jede Tabelle, jede Zahl, jeder Herkunfts-Beleg."
+              echo
+              echo '```'
+              tail -2 dev.txt
+              echo '```'
+            else
+              echo "⚠️ Diese Tabellen weichen ab:"
+              echo
+              echo '```diff'
+              diff -u dev.txt prod.txt | head -60
+              echo '```'
+              echo
+              echo 'Welche ZEILE abweicht, sagt danach:'
+              echo '`.venv/bin/python scripts/haushalt_fingerprint.py --tabelle <name> --zeilen`'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+          diff -u dev.txt prod.txt
+
+      - name: Fingerabdrücke aufheben
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: haushalt-fingerabdruecke
+          path: |
+            dev.txt
+            prod.txt
