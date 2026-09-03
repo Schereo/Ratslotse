@@ -59,12 +59,19 @@ kommen soll.
 ```bash
 .venv/bin/python scripts/changelog_schnitt.py 1.13.0 --trocken   # erst schauen
 .venv/bin/python scripts/changelog_schnitt.py 1.13.0
-git tag -a v1.13.0 -m "…" && git push origin v1.13.0
+git tag -a v1.13.0 -m "Ratslotse 1.13.0" && git push origin v1.13.0
+.venv/bin/python scripts/changelog_schnitt.py 1.13.0 --release --titel "v1.13.0 — …"
 ```
 
 Der Schnitt hängt an jedes der 57 Fragmente die PR-Nummer aus dem
 Squash-Commit, der es angelegt hat, sortiert sie unter `## [1.13.0] – Datum`
-und löscht die Fragmente. **Das gehört in den Release-PR**, nicht davor.
+und löscht die Fragmente. **Das gehört in den Release-PR**, nicht davor —
+Tag und `--release` dagegen erst **nach** dessen Merge: Vorher gibt es den
+Commit noch nicht, auf den beide zeigen.
+
+Den letzten Befehl nicht auslassen. Ein Tag allein taucht bei GitHub nur unter
+„Tags" auf; v1.14.0, v1.15.0 und v2.0.0 hingen deshalb wochenlang ohne Release
+herum, während die Release-Seite v1.13.2 als „Latest" zeigte.
 
 ## Was der Release am Server verändert
 
