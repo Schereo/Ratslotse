@@ -55,7 +55,7 @@ def _insert_verified_accounts(database, *reporter_ids: int) -> None:
 
 def _private_schema_signature(database) -> list[tuple[str, str, str | None]]:
     with sqlite3.connect(database) as connection:
-        return connection.execute(
+        rows = connection.execute(
             """SELECT type, name, sql
                FROM sqlite_master
                WHERE tbl_name IN (
@@ -64,24 +64,60 @@ def _private_schema_signature(database) -> list[tuple[str, str, str | None]]:
                )
                ORDER BY type, name"""
         ).fetchall()
+    return [
+        (object_type, name, " ".join(sql.split()) if sql else None)
+        for object_type, name, sql in rows
+    ]
+
+
+def _private_data_schema_signature(database) -> list[tuple[str, str, str | None]]:
+    return [
+        row
+        for row in _private_schema_signature(database)
+        if row[1] != "civic_report_schema_migrations"
+    ]
+
+
+def _drop_private_triggers(connection: sqlite3.Connection) -> None:
+    triggers = connection.execute(
+        """SELECT name FROM sqlite_master
+           WHERE type = 'trigger' AND name LIKE 'trg_civic_report%'"""
+    ).fetchall()
+    for (trigger,) in triggers:
+        connection.execute(f'DROP TRIGGER "{trigger}"')
 
 
 def _downgrade_private_schema_to_version_two(database) -> None:
     with sqlite3.connect(database) as connection:
-        triggers = connection.execute(
-            """SELECT name FROM sqlite_master
-               WHERE type = 'trigger' AND name LIKE 'trg_civic_report%'"""
-        ).fetchall()
-        for (trigger,) in triggers:
-            connection.execute(f'DROP TRIGGER "{trigger}"')
-        connection.execute(
-            "DELETE FROM civic_report_schema_migrations WHERE version >= 3"
+        _drop_private_triggers(connection)
+        # Repräsentative Triggernamen aus dem Stand vor der Folgemigration:
+        # Version 3 muss bestehende Definitionen ersetzen, nicht nur ergänzen.
+        connection.executescript(
+            """CREATE TRIGGER trg_civic_reports_submitted_content_no_update
+                   BEFORE UPDATE OF draft_text ON civic_reports
+                   WHEN OLD.status = 'submitted'
+                   BEGIN
+                       SELECT RAISE(ABORT, 'pre-fix submitted trigger');
+                   END;
+               CREATE TRIGGER trg_civic_reports_revision_requires_observation
+                   BEFORE UPDATE OF content_revision ON civic_reports
+                   BEGIN
+                       SELECT RAISE(ABORT, 'pre-fix revision trigger');
+                   END;
+               CREATE TRIGGER trg_civic_report_observations_match_revision
+                   BEFORE INSERT ON civic_report_observations
+                   BEGIN
+                       SELECT RAISE(ABORT, 'pre-fix observation trigger');
+                   END;
+               DROP INDEX IF EXISTS uq_civic_report_observations_revision;
+               DELETE FROM civic_report_schema_migrations WHERE version >= 3;"""
         )
 
 
 def _downgrade_private_schema_to_version_one(database) -> None:
     _downgrade_private_schema_to_version_two(database)
     with sqlite3.connect(database) as connection:
+        _drop_private_triggers(connection)
         connection.executescript(
             """DROP TABLE civic_report_observations;
                DELETE FROM civic_report_schema_migrations WHERE version >= 2;"""
@@ -664,6 +700,9 @@ def test_private_migration_upgrades_the_pre_fix_version_two_schema(tmp_path):
         confirmed_text="Bestätigte fiktive Beobachtung nach Migration",
     )
     migrated_store.close()
+    fresh_database = tmp_path / "fresh.sqlite"
+    fresh_store = PrivateReportStore(fresh_database)
+    fresh_store.close()
 
     assert submitted.content_revision == 1
     assert [observation.text for observation in submitted.observations] == [
@@ -678,7 +717,10 @@ def test_private_migration_upgrades_the_pre_fix_version_two_schema(tmp_path):
         versions = connection.execute(
             "SELECT version FROM civic_report_schema_migrations ORDER BY version"
         ).fetchall()
-    assert versions == [(1,), (2,), (3,)]
+    assert versions == [(1,), (2,), (3,), (4,)]
+    assert _private_data_schema_signature(database) == _private_data_schema_signature(
+        fresh_database
+    )
 
 
 def test_private_migration_preserves_legacy_reports_without_revision_columns(tmp_path):
@@ -693,6 +735,7 @@ def test_private_migration_preserves_legacy_reports_without_revision_columns(tmp
                );
                INSERT INTO civic_report_schema_migrations VALUES (1, '2026-08-01');
                INSERT INTO civic_report_schema_migrations VALUES (2, '2026-08-01');
+               INSERT INTO civic_report_schema_migrations VALUES (3, '2026-08-01');
                CREATE TABLE civic_reports (
                    id INTEGER PRIMARY KEY AUTOINCREMENT,
                    reporter_id INTEGER NOT NULL,
@@ -743,12 +786,20 @@ def test_private_migration_preserves_legacy_reports_without_revision_columns(tmp
         observed_on="2026-09-01",
     )
     store.close()
+    fresh_database = tmp_path / "fresh.sqlite"
+    fresh_store = PrivateReportStore(fresh_database)
+    fresh_store.close()
 
     assert migrated is not None
     assert migrated.content_revision == 1
     assert [observation.content_revision for observation in migrated.observations] == [1]
     assert updated.content_revision == 2
     assert [observation.content_revision for observation in updated.observations] == [1, 2]
+    assert _private_data_schema_signature(database) == _private_data_schema_signature(
+        fresh_database
+    )
+    with sqlite3.connect(database) as connection:
+        assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
 
 
 def test_private_migration_grows_repeatably_without_replacing_public_data(tmp_path):
@@ -794,7 +845,7 @@ def test_private_migration_grows_repeatably_without_replacing_public_data(tmp_pa
         versions = connection.execute(
             "SELECT version FROM civic_report_schema_migrations ORDER BY version"
         ).fetchall()
-    assert versions == [(1,), (2,), (3,)]
+    assert versions == [(1,), (2,), (3,), (4,)]
     public_store = ProblemStore(grown_database)
     assert public_store.list_public_problems() == public_before
     public_store.close()
@@ -838,4 +889,4 @@ def test_failed_private_migration_rolls_back_the_whole_version(tmp_path):
         versions = connection.execute(
             "SELECT version FROM civic_report_schema_migrations ORDER BY version"
         ).fetchall()
-    assert versions == [(1,), (2,), (3,)]
+    assert versions == [(1,), (2,), (3,), (4,)]

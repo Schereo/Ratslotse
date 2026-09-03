@@ -191,6 +191,44 @@ _TRIGGER_NAMES = (
     "trg_civic_report_observations_no_direct_delete",
 )
 
+_INVARIANT_MIGRATION_STATEMENTS = (
+    *(f"DROP TRIGGER IF EXISTS {name}" for name in _TRIGGER_NAMES),
+    """UPDATE civic_report_observations AS observation
+       SET content_revision = (
+           SELECT COUNT(*) FROM civic_report_observations AS prior
+           WHERE prior.report_id = observation.report_id
+             AND prior.id <= observation.id
+       )
+       WHERE content_revision = 0""",
+    """UPDATE civic_reports
+       SET content_revision = MAX(
+           content_revision,
+           COALESCE((
+               SELECT MAX(content_revision)
+               FROM civic_report_observations
+               WHERE report_id = civic_reports.id
+           ), CASE WHEN status = 'submitted' THEN 1 ELSE 0 END)
+       )""",
+    """INSERT INTO civic_report_observations (
+           report_id, content_revision, text, observed_at, created_at
+       )
+       SELECT id, content_revision, confirmed_text, observed_at, submitted_at
+       FROM civic_reports AS report
+       WHERE status = 'submitted'
+         AND NOT EXISTS (
+             SELECT 1 FROM civic_report_observations
+             WHERE report_id = report.id
+         )""",
+    """CREATE INDEX IF NOT EXISTS idx_civic_reports_owner
+           ON civic_reports(reporter_id, updated_at DESC)""",
+    """CREATE INDEX IF NOT EXISTS idx_civic_report_observations_report
+           ON civic_report_observations(report_id, content_revision)""",
+    """CREATE UNIQUE INDEX IF NOT EXISTS
+           uq_civic_report_observations_revision
+           ON civic_report_observations(report_id, content_revision)""",
+    *_INVARIANT_TRIGGERS,
+)
+
 _MIGRATIONS: tuple[tuple[int, tuple[str, ...]], ...] = (
     (
         1,
@@ -267,50 +305,83 @@ _MIGRATIONS: tuple[tuple[int, tuple[str, ...]], ...] = (
                    ON civic_report_observations(report_id, content_revision)""",
         ),
     ),
-    (
-        3,
-        (
-            *(f"DROP TRIGGER IF EXISTS {name}" for name in _TRIGGER_NAMES),
-            """UPDATE civic_report_observations AS observation
-               SET content_revision = (
-                   SELECT COUNT(*) FROM civic_report_observations AS prior
-                   WHERE prior.report_id = observation.report_id
-                     AND prior.id <= observation.id
-               )
-               WHERE content_revision = 0""",
-            """UPDATE civic_reports
-               SET content_revision = MAX(
-                   content_revision,
-                   COALESCE((
-                       SELECT MAX(content_revision)
-                       FROM civic_report_observations
-                       WHERE report_id = civic_reports.id
-                   ), CASE WHEN status = 'submitted' THEN 1 ELSE 0 END)
-               )""",
-            """INSERT INTO civic_report_observations (
-                   report_id, content_revision, text, observed_at, created_at
-               )
-               SELECT id, content_revision, confirmed_text, observed_at, submitted_at
-               FROM civic_reports AS report
-               WHERE status = 'submitted'
-                 AND NOT EXISTS (
-                     SELECT 1 FROM civic_report_observations
-                     WHERE report_id = report.id
-                 )""",
-            """CREATE UNIQUE INDEX IF NOT EXISTS
-                   uq_civic_report_observations_revision
-                   ON civic_report_observations(report_id, content_revision)""",
-            *_INVARIANT_TRIGGERS,
-        ),
-    ),
+    (3, _INVARIANT_MIGRATION_STATEMENTS),
+    # Version 4 baut ein bereits von der früheren Version 3 markiertes
+    # Legacy-Schema auf dieselben Tabellen-Constraints wie eine frische DB um.
+    (4, _INVARIANT_MIGRATION_STATEMENTS),
 )
+
+
+_REPORT_COLUMNS = (
+    "id", "reporter_id", "draft_text", "confirmed_text", "category",
+    "scope_kind", "location_label", "latitude", "longitude", "observed_at",
+    "status", "content_revision", "submitted_at", "created_at", "updated_at",
+)
+_OBSERVATION_COLUMNS = (
+    "id", "report_id", "content_revision", "text", "observed_at", "created_at",
+)
+
+
+def _private_schema_requires_rebuild(connection: sqlite3.Connection) -> bool:
+    report_columns = tuple(
+        str(row["name"])
+        for row in connection.execute("PRAGMA table_info(civic_reports)")
+    )
+    observation_columns = tuple(
+        str(row["name"])
+        for row in connection.execute("PRAGMA table_info(civic_report_observations)")
+    )
+    report_foreign_keys = {
+        (str(row["from"]), str(row["table"]), str(row["to"]), str(row["on_delete"]))
+        for row in connection.execute("PRAGMA foreign_key_list(civic_reports)")
+    }
+    observation_foreign_keys = {
+        (str(row["from"]), str(row["table"]), str(row["to"]), str(row["on_delete"]))
+        for row in connection.execute("PRAGMA foreign_key_list(civic_report_observations)")
+    }
+    report_sql_row = connection.execute(
+        "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'civic_reports'"
+    ).fetchone()
+    observation_sql_row = connection.execute(
+        """SELECT sql FROM sqlite_master
+           WHERE type = 'table' AND name = 'civic_report_observations'"""
+    ).fetchone()
+    report_sql = str(report_sql_row["sql"] if report_sql_row else "")
+    observation_sql = str(observation_sql_row["sql"] if observation_sql_row else "")
+    return (
+        report_columns != _REPORT_COLUMNS
+        or observation_columns != _OBSERVATION_COLUMNS
+        or ("reporter_id", "web_users", "id", "CASCADE") not in report_foreign_keys
+        or (
+            "report_id", "civic_reports", "id", "CASCADE"
+        ) not in observation_foreign_keys
+        or not all(
+            fragment in report_sql
+            for fragment in (
+                "CHECK (category IN",
+                "CHECK (scope_kind IN",
+                "CHECK (status IN",
+                "date(observed_at)",
+                "datetime(created_at)",
+                "datetime(updated_at)",
+            )
+        )
+        or not all(
+            fragment in observation_sql
+            for fragment in (
+                "CHECK (content_revision >= 1)",
+                "date(observed_at)",
+                "datetime(created_at)",
+            )
+        )
+    )
 
 
 def _migration_upgrade_statements(
     connection: sqlite3.Connection,
     version: int,
 ) -> tuple[str, ...]:
-    if version != 3:
+    if version not in (3, 4) or not _private_schema_requires_rebuild(connection):
         return ()
     report_columns = {
         str(row["name"])
@@ -320,20 +391,42 @@ def _migration_upgrade_statements(
         str(row["name"])
         for row in connection.execute("PRAGMA table_info(civic_report_observations)")
     }
-    statements: list[str] = []
-    if "content_revision" not in report_columns:
-        statements.append(
-            """ALTER TABLE civic_reports
-               ADD COLUMN content_revision INTEGER NOT NULL DEFAULT 0
-               CHECK (content_revision >= 0)"""
-        )
-    if "content_revision" not in observation_columns:
-        statements.append(
-            """ALTER TABLE civic_report_observations
-               ADD COLUMN content_revision INTEGER NOT NULL DEFAULT 0
-               CHECK (content_revision >= 0)"""
-        )
-    return tuple(statements)
+    report_revision = (
+        "CASE WHEN status = 'submitted' THEN MAX(content_revision, 1) "
+        "ELSE content_revision END"
+        if "content_revision" in report_columns
+        else "CASE WHEN status = 'submitted' THEN 1 ELSE 0 END"
+    )
+    observation_revision = (
+        "content_revision"
+        if "content_revision" in observation_columns
+        else "ROW_NUMBER() OVER (PARTITION BY report_id ORDER BY id)"
+    )
+    create_reports = _MIGRATIONS[0][1][0]
+    create_observations = _MIGRATIONS[1][1][0]
+    return (
+        "ALTER TABLE civic_report_observations "
+        "RENAME TO civic_report_observations_before_v3",
+        "ALTER TABLE civic_reports RENAME TO civic_reports_before_v3",
+        create_reports,
+        f"""INSERT INTO civic_reports (
+                id, reporter_id, draft_text, confirmed_text, category, scope_kind,
+                location_label, latitude, longitude, observed_at, status,
+                content_revision, submitted_at, created_at, updated_at
+            )
+            SELECT id, reporter_id, draft_text, confirmed_text, category, scope_kind,
+                   location_label, latitude, longitude, observed_at, status,
+                   {report_revision}, submitted_at, created_at, updated_at
+            FROM civic_reports_before_v3""",
+        create_observations,
+        f"""INSERT INTO civic_report_observations (
+                id, report_id, content_revision, text, observed_at, created_at
+            )
+            SELECT id, report_id, {observation_revision}, text, observed_at, created_at
+            FROM civic_report_observations_before_v3""",
+        "DROP TABLE civic_report_observations_before_v3",
+        "DROP TABLE civic_reports_before_v3",
+    )
 
 
 @dataclass(frozen=True)
@@ -485,6 +578,12 @@ class PrivateReportStore:
         )
         self._conn.commit()
         for version, statements in _MIGRATIONS:
+            rebuild = version in (3, 4) and _private_schema_requires_rebuild(self._conn)
+            if rebuild:
+                # SQLite kann Fremdschlüssel nur außerhalb einer Transaktion
+                # abschalten. Der Tabellenumbau selbst bleibt in BEGIN IMMEDIATE
+                # atomar; vor dem Commit wird der neue Stand vollständig geprüft.
+                self._conn.execute("PRAGMA foreign_keys=OFF")
             try:
                 self._conn.execute("BEGIN IMMEDIATE")
                 applied = self._conn.execute(
@@ -498,6 +597,13 @@ class PrivateReportStore:
                     self._conn.execute(statement)
                 for statement in statements:
                     self._conn.execute(statement)
+                foreign_key_errors = self._conn.execute(
+                    "PRAGMA foreign_key_check"
+                ).fetchall()
+                if foreign_key_errors:
+                    raise sqlite3.IntegrityError(
+                        "private report migration violates foreign keys"
+                    )
                 self._conn.execute(
                     """INSERT INTO civic_report_schema_migrations(version, applied_at)
                        VALUES (?, ?)""",
@@ -508,6 +614,9 @@ class PrivateReportStore:
                 if self._conn.in_transaction:
                     self._conn.rollback()
                 raise
+            finally:
+                if rebuild:
+                    self._conn.execute("PRAGMA foreign_keys=ON")
 
     def create_draft(self, *, reporter_id: int, content: DraftContent) -> int:
         if not _is_storage_id(reporter_id):
