@@ -3073,6 +3073,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/probleme/{problem_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Public Problem
+         * @description Eine veröffentlichte Projektion über ihre stabile ID lesen.
+         */
+        get: operations["public_problem_api_probleme__problem_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/push/register": {
         parameters: {
             query?: never;
@@ -12491,6 +12511,37 @@ export interface operations {
             };
         };
     };
+    public_problem_api_probleme__problem_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                problem_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicProblemSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     register_push_api_push_register_post: {
         parameters: {
             query?: never;
@@ -13636,4 +13687,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 682eb2b60af9e056e1dec10d7cdfd9dd61c4551768484df6886e4169eadfbf0e
+// vertrag-sha256: 6f2602eaceb946cb33a9a8c40bcc41c531cef0800e17959c37e02edf10081395

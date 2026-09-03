@@ -74,6 +74,35 @@ def test_public_projection_ranks_only_published_unresolved_rows_by_lifetime_repo
     store.close()
 
 
+def test_public_detail_returns_only_a_visible_projection(tmp_path):
+    from buergerportal.store import ProblemStore
+
+    database = tmp_path / "ratslotse.sqlite"
+    store = ProblemStore(database)
+    _projection(database, title="Veröffentlicht", published=True, reports=4)
+    _projection(database, title="Noch in Moderation", published=False, reports=4)
+    _projection(
+        database, title="Offenbar behoben", published=True,
+        status="apparently_resolved", reports=4,
+    )
+    _projection(database, title="Ohne Meldung", published=False, reports=0)
+    with sqlite3.connect(database) as connection:
+        # Defensive publication filter even if legacy/corrupt data bypassed the
+        # schema invariant that normally forbids a reportless publication.
+        connection.execute("PRAGMA ignore_check_constraints = ON")
+        connection.execute(
+            "UPDATE civic_problems SET published_at = updated_at WHERE title = ?",
+            ("Ohne Meldung",),
+        )
+
+    assert store.get_public_problem(1) == store.list_public_problems()[0]
+    assert store.get_public_problem(2) is None
+    assert store.get_public_problem(3) is None
+    assert store.get_public_problem(4) is None
+    assert store.get_public_problem(999) is None
+    store.close()
+
+
 def test_public_projection_keeps_only_truthful_map_geometry(tmp_path):
     from buergerportal.store import ProblemStore
 
@@ -176,6 +205,38 @@ def test_public_api_is_open_filtered_and_exposes_only_the_approved_projection(tm
     assert client.get("/api/probleme?status=amtlich_in_bearbeitung").status_code == 422
     status_values = app.openapi()["components"]["schemas"]["PublicProblemSummary"]["properties"]["status"]["enum"]
     assert status_values == ["new", "multiple_reports", "verified", "persists"]
+    store.close()
+
+
+def test_public_detail_api_is_open_and_uses_the_overview_projection(tmp_path):
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from buergerportal.store import ProblemStore
+    from web.backend.app.deps import get_problem_store
+    from web.backend.app.routers.problems import router
+
+    database = tmp_path / "ratslotse.sqlite"
+    store = ProblemStore(database)
+    _projection(database, title="Veröffentlicht", published=True, reports=4)
+    _projection(database, title="Noch in Moderation", published=False, reports=4)
+    _projection(
+        database, title="Offenbar behoben", published=True,
+        status="apparently_resolved", reports=4,
+    )
+    app = FastAPI()
+    app.include_router(router)
+    app.dependency_overrides[get_problem_store] = lambda: store
+    client = TestClient(app)
+
+    listed = client.get("/api/probleme").json()["problems"][0]
+    detail = client.get("/api/probleme/1")
+
+    assert detail.status_code == 200
+    assert detail.json() == listed
+    assert client.get("/api/probleme/2").status_code == 404
+    assert client.get("/api/probleme/3").status_code == 404
+    assert client.get("/api/probleme/999").status_code == 404
     store.close()
 
 
@@ -309,6 +370,7 @@ def test_feature_examples_are_guarded_fictional_and_idempotent(tmp_path, monkeyp
 
     assert first_count == second_count == 7
     assert [problem["id"] for problem in second] == [problem["id"] for problem in first]
+    assert second_store.get_public_problem(second[0]["id"]) == second[0]
     assert all(problem["fictional"] for problem in second)
     assert all(problem["title"].startswith("Beispiel:") for problem in second)
     assert {problem["scope_kind"] for problem in second} == {
@@ -380,9 +442,11 @@ def test_application_registers_public_problem_endpoint(tmp_path):
     _projection(database, title="Öffentliche Projektion", published=True)
     app.dependency_overrides[get_problem_store] = lambda: store
     try:
-        response = TestClient(app).get("/api/probleme")
+        client = TestClient(app)
+        response = client.get("/api/probleme")
         assert response.status_code == 200
         assert response.json()["problems"][0]["title"] == "Öffentliche Projektion"
+        assert client.get("/api/probleme/1").json() == response.json()["problems"][0]
     finally:
         app.dependency_overrides.pop(get_problem_store, None)
         store.close()

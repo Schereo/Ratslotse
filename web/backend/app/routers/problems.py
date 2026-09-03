@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from buergerportal.domain import PROBLEM_CATEGORIES, PROBLEM_STATUSES
 from buergerportal.store import ProblemStore
 
-from ..antworten import PublicProblemList
+from ..antworten import PublicProblemList, PublicProblemSummary
 from ..deps import get_problem_store
 
 router = APIRouter(prefix="/api/probleme", tags=["probleme"])
@@ -31,3 +31,15 @@ def public_problems(
         )
     problems = store.list_public_problems(category=category, status=problem_status)
     return {"problems": problems, "total": len(problems)}
+
+
+@router.get("/{problem_id}")
+def public_problem(
+    problem_id: int,
+    store: ProblemStore = Depends(get_problem_store),
+) -> PublicProblemSummary:
+    """Eine veröffentlichte Projektion über ihre stabile ID lesen."""
+    problem = store.get_public_problem(problem_id)
+    if problem is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Problem nicht gefunden.")
+    return problem

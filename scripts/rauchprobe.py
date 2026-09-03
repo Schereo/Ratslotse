@@ -56,6 +56,7 @@ PROBEN: tuple[str, ...] = (
 #: ``(Muster, Quell-Pfad, Schlüsselpfad in deren Antwort)``. Fehlt der Wert —
 #: an einem Tag ohne Sitzung etwa —, entfällt die Probe, sie scheitert nicht.
 ABGELEITET: tuple[tuple[str, str, tuple[str, ...]], ...] = (
+    ("/api/probleme/{problem_id}", "/api/probleme", ("problems", "0", "id")),
     ("/api/council/person/{slug}", "/api/council/people-directory",
      ("people", "0", "slug")),
     # Die Reden hängen an der FTS-Tabelle und an einem Join über die Sitzungen —
