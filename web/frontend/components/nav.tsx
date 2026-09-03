@@ -20,6 +20,7 @@ import { FeedbackButton, openFeedback } from "@/components/feedback";
 import { WebThemeSwitch } from "@/components/web-theme-switch";
 import { cn, pfad } from "@/lib/utils";
 import { openCommandPalette } from "@/components/command-palette";
+import { useGleitMarker, GleitMarker } from "@/components/gleit-marker";
 
 // `tour` markiert Elemente als Anker für die Lotti-Tour (components/tour.tsx);
 // Sidebar und Bottom-Nav tragen denselben Wert — die Tour nimmt das sichtbare.
@@ -80,7 +81,14 @@ function useUnreadFeedback(enabled: boolean): number {
 function UnreadBadge({ n }: { n: number }) {
   if (n <= 0) return null;
   return (
-    <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-signal px-1.5 text-[11px] font-bold tabular-nums text-signal-foreground">
+    // `key` auf der Zahl: Der Zähler wird alle 60 s neu geholt: Springt er von
+    // 2 auf 3, montiert React denselben Knoten neu und die Pop-Animation läuft
+    // wieder — ohne den Schlüssel liefe sie nur beim allerersten Erscheinen,
+    // und genau der Sprung ist die Nachricht.
+    <span
+      key={n}
+      className="animate-pop-in ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-signal px-1.5 text-[11px] font-bold tabular-nums text-signal-foreground"
+    >
       {n > 99 ? "99+" : n}
     </span>
   );
@@ -152,14 +160,26 @@ function NavItem({ item, active, badge = 0, onNavigate }: { item: Item; active: 
       href={item.href}
       onClick={onNavigate}
       data-tour={item.tour}
+      data-aktiv={active ? "true" : undefined}
       aria-current={active ? "page" : undefined}
       className={cn(
-        // Aktiv = Pill (RL-102): Fläche + Farbe, kein Akzent-Balken mehr.
-        "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+        // Aktiv = Pill (RL-102): Fläche + Farbe, kein Akzent-Balken mehr. Die
+        // Fläche zeichnet seit 09/2026 die gleitende Markierung (s. o.); die
+        // Klasse hier bleibt als Stand ohne JS stehen und wird vom Marker
+        // übernommen, sobald er misst.
+        "group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-fluss",
         active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent hover:text-foreground",
       )}
     >
-      <Icon className="h-4 w-4" />
+      {/* Das Zeichen rückt beim Überfahren einen halben Schritt vor und steht
+          am aktiven Punkt etwas größer — die zwei Pixel sagen „hier geht es
+          weiter", ohne dass die Zeile ihren Platz ändert. */}
+      <Icon
+        className={cn(
+          "h-4 w-4 shrink-0 transition-transform duration-fluss ease-out-strong",
+          active ? "scale-110" : "group-hover:translate-x-0.5",
+        )}
+      />
       {item.label}
       <UnreadBadge n={badge} />
     </Link>
@@ -174,31 +194,40 @@ function NavLinksInner({ activeTab, onNavigate }: { activeTab: string; onNavigat
   const unread = useUnreadTopicHits();
   const openFeedback = useUnreadFeedback(user?.role === "admin");
 
-  return (
-    <nav className="flex-1 space-y-1 px-3">
-      {MAIN_ITEMS.map((l) => (
-        <NavItem
-          key={l.href}
-          item={l}
-          active={l.tab ? onCouncil && activeTab === l.tab : isActive(l.href)}
-          onNavigate={onNavigate}
-        />
-      ))}
+  // Der Marker muss neu messen, sobald sich das aktive Ziel ändern KANN — das
+  // ist der Pfad plus der ?tab=-Wert (fünf der Punkte zeigen auf /council und
+  // unterscheiden sich nur darin) plus die Admin-Zeile, die die Liste
+  // verlängert, sobald die Rolle geladen ist.
+  const { gruppeRef, markerRef } = useGleitMarker(`${pathname}|${activeTab}|${user?.role ?? ""}`, "seitenleiste");
 
-      <SectionHeader>Persönlich</SectionHeader>
-      <NavItem item={PERSONAL} active={isActive("/topics")} badge={unread} onNavigate={onNavigate} />
-      <NavItem item={ABOS} active={isActive("/abos")} onNavigate={onNavigate} />
-      <NavItem item={BOOKMARKS} active={isActive("/bookmarks")} onNavigate={onNavigate} />
-      <NavItem item={QUIZ} active={isActive("/quiz")} onNavigate={onNavigate} />
-      {user?.role === "admin" && (
-        <NavItem
-          item={{ href: "/admin", label: "Admin", icon: Settings }}
-          active={isActive("/admin")}
-          badge={openFeedback}
-          onNavigate={onNavigate}
-        />
-      )}
-    </nav>
+  return (
+    <div ref={gruppeRef} className="gleit-gruppe relative flex-1">
+      <GleitMarker markerRef={markerRef} radius="var(--radius)" />
+      <nav className="space-y-1 px-3">
+        {MAIN_ITEMS.map((l) => (
+          <NavItem
+            key={l.href}
+            item={l}
+            active={l.tab ? onCouncil && activeTab === l.tab : isActive(l.href)}
+            onNavigate={onNavigate}
+          />
+        ))}
+
+        <SectionHeader>Persönlich</SectionHeader>
+        <NavItem item={PERSONAL} active={isActive("/topics")} badge={unread} onNavigate={onNavigate} />
+        <NavItem item={ABOS} active={isActive("/abos")} onNavigate={onNavigate} />
+        <NavItem item={BOOKMARKS} active={isActive("/bookmarks")} onNavigate={onNavigate} />
+        <NavItem item={QUIZ} active={isActive("/quiz")} onNavigate={onNavigate} />
+        {user?.role === "admin" && (
+          <NavItem
+            item={{ href: "/admin", label: "Admin", icon: Settings }}
+            active={isActive("/admin")}
+            badge={openFeedback}
+            onNavigate={onNavigate}
+          />
+        )}
+      </nav>
+    </div>
   );
 }
 
@@ -246,7 +275,7 @@ function UserFooter({ onNavigate, showTheme = false }: { onNavigate?: () => void
       <FeedbackButton onNavigate={onNavigate} />
       <button
         onClick={onLogout}
-        className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
+        className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors duration-fluss hover:bg-accent hover:text-foreground"
       >
         <LogOut className="h-4 w-4" /> Abmelden
       </button>
@@ -310,7 +339,7 @@ export function DesktopSidebar() {
           onClick={openCommandPalette}
           aria-label="Befehle und Sprünge öffnen (Tastenkürzel ⌘K)"
           title="Befehle & Sprünge — ⌘K"
-          className="ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border/70 bg-muted/50 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          className="ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border/70 bg-muted/50 text-muted-foreground transition-[color,background-color,transform] duration-fluss ease-out-strong hover:bg-accent hover:text-foreground active:scale-95"
         >
           <Command className="h-4 w-4" />
         </button>
@@ -334,7 +363,7 @@ export function MobileTopbar() {
         type="button"
         onClick={openCommandPalette}
         aria-label="Suchen und Befehle öffnen"
-        className="flex h-9 w-9 items-center justify-center rounded-md text-foreground transition-colors hover:bg-accent"
+        className="flex h-9 w-9 items-center justify-center rounded-md text-foreground transition-[color,background-color,transform] duration-fluss ease-out-strong hover:bg-accent active:scale-90"
       >
         <Search className="h-[19px] w-[19px]" />
       </button>
@@ -358,13 +387,25 @@ function BottomNavMitParams() {
 
 function BottomNavInner({ tab }: { tab: string | null }) {
   const pathname = pfad(usePathname());
-  const [mehrOffen, setMehrOffen] = useState(false);
-  // Seitenwechsel (auch via Tab-Bar unterm Sheet) schließt das Sheet.
-  useEffect(() => { setMehrOffen(false); }, [pathname, tab]);
-  const mehrAktiv = mehrOffen || MEHR_AKTIV(pathname, tab);
+  /** Drei Stände statt eines Schalters: Das Blatt braucht Zeit zum Hinausfahren,
+   *  und solange es fährt, muss es noch im Baum stehen. `abgang` ist genau
+   *  dieses Fenster — es endet, wenn die Animation meldet, dass sie durch ist. */
+  const [mehr, setMehr] = useState<"zu" | "auf" | "abgang">("zu");
+  const mehrOffen = mehr !== "zu";
+  const schliessen = () => setMehr((v) => (v === "auf" ? "abgang" : v));
+  // Seitenwechsel (auch via Tab-Bar unterm Sheet) räumt das Blatt SOFORT weg:
+  // Wer navigiert, wartet nicht auf eine Schublade, die er hinter sich lässt.
+  useEffect(() => { setMehr("zu"); }, [pathname, tab]);
+  // Optik hängt am „auf", nicht am „offen": Sobald geschlossen wird, fährt die
+  // Markierung zum echten Tab zurück, während das Blatt hinausgleitet — beides
+  // gehört zur selben Handlung und soll gemeinsam laufen.
+  const mehrAktiv = mehr === "auf" || MEHR_AKTIV(pathname, tab);
+  const { gruppeRef, markerRef } = useGleitMarker(`${pathname}|${tab ?? ""}|${mehr}`, "tableiste");
   return (
     <>
-      {mehrOffen && <MehrSheet onClose={() => setMehrOffen(false)} />}
+      {mehrOffen && (
+        <MehrSheet abgang={mehr === "abgang"} onClose={schliessen} onFertig={() => setMehr("zu")} />
+      )}
       <nav
         // Echtes Glas statt nur Blur (iOS-Look): halbtransparente Fläche +
         // backdrop-saturate, eine 1-px-Lichtkante innen (simuliert die
@@ -405,16 +446,20 @@ function BottomNavInner({ tab }: { tab: string | null }) {
             schwebenden Tab-Leiste, die iPadOS selbst zeigt. `md:` heißt hier
             immer „breites Touch-Gerät", weil die ganze Leiste ab `desk`
             ohnehin der Seitenleiste weicht. */}
-        <div className="flex w-full md:mx-auto md:max-w-2xl">
+        <div ref={gruppeRef} className="gleit-gruppe relative flex w-full md:mx-auto md:max-w-2xl">
+          {/* Die Markierung fährt quer durch die Leiste mit — auf dem Telefon
+              ist das die sichtbarste Bewegung der ganzen App, weil hier jeder
+              Wechsel stattfindet. Rund wie die Pillen, hinter denen sie liegt. */}
+          <GleitMarker markerRef={markerRef} radius="9999px" />
           {TABS.map((l) => (
-            <BottomNavItem key={l.label} item={l} active={!mehrOffen && l.aktiv(pathname, tab)} />
+            <BottomNavItem key={l.label} item={l} active={mehr !== "auf" && l.aktiv(pathname, tab)} />
           ))}
           {/* „Mehr" ist ein Schalter, kein Link: öffnet/schließt das Sheet. */}
           <button
             type="button"
-            onClick={() => setMehrOffen((v) => !v)}
-            aria-expanded={mehrOffen}
-            aria-current={mehrAktiv && !mehrOffen ? "page" : undefined}
+            onClick={() => (mehr === "auf" ? schliessen() : setMehr("auf"))}
+            aria-expanded={mehr === "auf"}
+            aria-current={mehrAktiv && mehr !== "auf" ? "page" : undefined}
             className={cn(
               // Größere Symbole/Schrift auf dem iPad, dafür weniger Polsterung:
               // Die Leiste bleibt gleich hoch, das Ziel darin wird größer.
@@ -422,8 +467,19 @@ function BottomNavInner({ tab }: { tab: string | null }) {
               mehrAktiv ? "text-primary" : "text-muted-foreground hover:text-foreground",
             )}
           >
-            <span className={cn("relative rounded-full px-3.5 py-1 transition-colors", mehrAktiv && "bg-primary/10")}>
-              <MoreHorizontal className={cn("h-5 w-5 transition-transform md:h-6 md:w-6", mehrAktiv && "scale-110")} />
+            <span
+              data-aktiv={mehrAktiv ? "true" : undefined}
+              className={cn("relative rounded-full px-3.5 py-1 transition-colors", mehrAktiv && "bg-primary/10")}
+            >
+              {/* Die drei Punkte drehen sich beim Öffnen eine Vierteldrehung —
+                  aus „hier ist mehr" wird sichtbar „das Blatt ist offen". */}
+              <MoreHorizontal
+                className={cn(
+                  "h-5 w-5 transition-transform duration-weg ease-out-strong md:h-6 md:w-6",
+                  mehrAktiv && "scale-110",
+                  mehr === "auf" && "rotate-90",
+                )}
+              />
             </span>
             Mehr
           </button>
@@ -449,8 +505,11 @@ function BottomNavItem({ item, active }: { item: Item; active: boolean }) {
         active ? "text-primary" : "text-muted-foreground hover:text-foreground",
       )}
     >
-      <span className={cn("relative rounded-full px-3.5 py-1 transition-colors", active && "bg-primary/10")}>
-        <Icon className={cn("h-5 w-5 transition-transform md:h-6 md:w-6", active && "scale-110")} />
+      <span
+        data-aktiv={active ? "true" : undefined}
+        className={cn("relative rounded-full px-3.5 py-1 transition-colors", active && "bg-primary/10")}
+      >
+        <Icon className={cn("h-5 w-5 transition-transform duration-weg ease-out-strong md:h-6 md:w-6", active && "scale-110")} />
         {showDot && <span className="absolute right-1.5 top-0 h-2 w-2 rounded-full bg-signal ring-2 ring-card" aria-hidden />}
       </span>
       {item.label}
@@ -466,11 +525,16 @@ function MehrZeile({ href, icon: Icon, label, badge = 0, primaerFarbe = true, on
 }) {
   return (
     <Link href={href} onClick={onClose}
-      className="flex min-h-11 items-center gap-3 border-b border-border/60 px-1 py-2.5 text-sm font-medium text-foreground transition-colors active:bg-muted">
+      className="group flex min-h-11 items-center gap-3 border-b border-border/60 px-1 py-2.5 text-sm font-medium text-foreground transition-colors active:bg-muted">
       <Icon className={cn("h-[17px] w-[17px] shrink-0", primaerFarbe ? "text-primary" : "text-muted-foreground")} aria-hidden />
       <span className="min-w-0 flex-1">{label}</span>
       <UnreadBadge n={badge} />
-      <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" aria-hidden />
+      {/* Der Pfeil rückt unter dem Finger einen Schritt vor — die Zeile
+          bestätigt damit die Richtung, in die sie führt. */}
+      <ChevronRight
+        className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50 transition-transform duration-tipp ease-out-strong group-active:translate-x-0.5"
+        aria-hidden
+      />
     </Link>
   );
 }
@@ -478,7 +542,7 @@ function MehrZeile({ href, icon: Icon, label, badge = 0, primaerFarbe = true, on
 /** Bottom Sheet über der Tab-Bar: Konto-Zeile, Ziele ohne Tab-Platz, dann
  *  Einstellungen/Feedback/Abmelden und die Pflicht-Links als Fußzeile — es
  *  ersetzt Burger-Menü UND Seiten-Footer auf Mobil (9a④, 6a③). */
-function MehrSheet({ onClose }: { onClose: () => void }) {
+function MehrSheet({ abgang, onClose, onFertig }: { abgang: boolean; onClose: () => void; onFertig: () => void }) {
   const router = useRouter();
   const { user, logout } = useAuth();
   const openFeedbackUnread = useUnreadFeedback(user?.role === "admin");
@@ -490,6 +554,16 @@ function MehrSheet({ onClose }: { onClose: () => void }) {
   }, []);
   // Wisch nach unten schließt (9a④) — simple Geste, kein Mitzieh-Effekt.
   const startY = useRef<number | null>(null);
+  /** Auffangnetz für den Abgang: Normalerweise räumt `onAnimationEnd` das
+   *  Blatt weg. Feuert das Ereignis nicht — der Tab wechselt mitten in der
+   *  Animation in den Hintergrund, ein Zoom unterbricht sie —, bliebe sonst
+   *  ein unsichtbares Blatt über der Seite liegen und finge jeden Tipper ab.
+   *  Der Wecker läuft etwas länger als der Abgang selbst (`--takt-abgang`). */
+  useEffect(() => {
+    if (!abgang) return;
+    const t = setTimeout(onFertig, 400);
+    return () => clearTimeout(t);
+  }, [abgang, onFertig]);
   const onLogout = async () => {
     onClose();
     await logout();
@@ -499,9 +573,18 @@ function MehrSheet({ onClose }: { onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-40 desk:hidden" role="dialog" aria-modal="true" aria-label="Mehr">
       <button type="button" aria-label="Menü schließen" onClick={onClose}
-        className="scrim absolute inset-0" />
+        className={cn("scrim absolute inset-0", abgang ? "animate-scrim-zu" : "animate-scrim-auf")} />
       <div
-        className="absolute inset-x-0 bottom-0 rounded-t-[20px] bg-card px-4 pt-2 shadow-[0_-18px_50px_-12px_rgba(2,32,71,0.45)]"
+        className={cn(
+          "absolute inset-x-0 bottom-0 rounded-t-[20px] bg-card px-4 pt-2 shadow-[0_-18px_50px_-12px_rgba(2,32,71,0.45)]",
+          abgang ? "animate-sheet-zu" : "animate-sheet-auf",
+        )}
+        onAnimationEnd={(e) => {
+          // Nur auf das eigene Hinausfahren hören: Im Blatt laufen weitere
+          // Animationen (die Pop-Marke an „Admin"), deren Ende hier ebenfalls
+          // ankommt und das Blatt sonst mitten im Auftritt wegräumte.
+          if (e.animationName === "sheet-zu" && e.target === e.currentTarget) onFertig();
+        }}
         /* Das Sheet dockt UNTER der Leiste an — sein Fuß hält deren Höhe frei,
            plus 0,75 rem Luft. Aus derselben Quelle wie die Leiste selbst. */
         style={{ paddingBottom: `calc(${TABLEISTE_HOEHE} + 0.75rem)` }}

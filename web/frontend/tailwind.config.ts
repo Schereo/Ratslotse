@@ -150,6 +150,20 @@ const config: Config = {
         "accordion-up": "accordion-up 0.2s ease-out",
         bob: "bob 4s ease-in-out infinite",
       },
+      // Der Takt als Utilities (duration-fluss, duration-weg …) — dieselbe
+      // Bauform wie bei den Kurven darunter, die Werte stehen als
+      // CSS-Variablen in globals.css. Ohne diesen Eintrag gäbe es die Dauern
+      // nur als arbitrary value, und `duration-[var(--takt-fluss)]` erzeugt
+      // Tailwind hier NICHT: Die Klasse steht im DOM, CSS gibt es keins, und
+      // still gilt weiter die 150-ms-Vorgabe von `transition` (im Browser
+      // nachgemessen). Dieselbe Falle wie bei `min-[…]`, s. CLAUDE.md.
+      transitionDuration: {
+        tipp: "var(--takt-tipp)",
+        fluss: "var(--takt-fluss)",
+        weg: "var(--takt-weg)",
+        buehne: "var(--takt-buehne)",
+        abgang: "var(--takt-abgang)",
+      },
       // Starke Kurven als Utilities (ease-out-strong, ease-drawer …) —
       // die Werte stehen als CSS-Variablen in globals.css.
       transitionTimingFunction: {
