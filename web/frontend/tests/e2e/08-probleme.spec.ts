@@ -1,6 +1,7 @@
 import { expect, test, type Locator, type TestInfo } from "@playwright/test";
 import type { ProblemList } from "@/lib/probleme";
 import type { User } from "@/lib/types";
+import type { ApiAntwort } from "@/lib/vertrag";
 
 const problems = [
   {
@@ -78,6 +79,21 @@ const signedInUser = {
   apple_linked: false,
   has_password: true,
 } satisfies User;
+const onboardingState = { steps: [], celebrated: true } satisfies ApiAntwort<"/onboarding">;
+const setupState = {
+  step: 3,
+  started_at: null,
+  done_at: "2026-09-03T00:00:00Z",
+  pending: false,
+} satisfies ApiAntwort<"/onboarding/setup">;
+const unreadTopicHits = { total: 0 } satisfies ApiAntwort<"/topics/unread-count">;
+const badgeState = {
+  badges: [],
+  earned_count: 0,
+  newly_earned: [],
+  next: null,
+  total: 0,
+} satisfies ApiAntwort<"/badges">;
 
 async function expectComparableRanking(entries: Locator) {
   const rows = await entries.evaluateAll((nodes) => nodes.map((node) => {
@@ -161,22 +177,22 @@ test.describe("Öffentliche Problemübersicht", () => {
     await page.route("**/api/onboarding", (route) => route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify({ steps: [], celebrated: true }),
+      body: JSON.stringify(onboardingState),
     }));
     await page.route("**/api/onboarding/setup", (route) => route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify({ step: 3, started_at: null, done_at: "2026-09-03T00:00:00Z", pending: false }),
+      body: JSON.stringify(setupState),
     }));
     await page.route("**/api/topics/unread-count", (route) => route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify({ total: 0 }),
+      body: JSON.stringify(unreadTopicHits),
     }));
     await page.route("**/api/badges", (route) => route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify({ badges: [] }),
+      body: JSON.stringify(badgeState),
     }));
 
     await page.goto("/probleme");
