@@ -72,8 +72,8 @@ export function Segmented<T extends string>({
               // Press-Feedback wie beim Button — Segment-Wechsel ist eine der
               // häufigsten Berührungen der App (Tabs, Filter). Die drei
               // Übergänge (Farbe, Fläche, Druck) laufen unterschiedlich lang
-              // und stehen deshalb als `.segment-knopf` in globals.css.
-              "segment-knopf relative inline-flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium active:scale-[0.97]",
+              // und stehen deshalb als `.gleit-knopf` in globals.css.
+              "gleit-knopf relative inline-flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium active:scale-[0.97]",
               active
                 ? tone === "primary"
                   ? "bg-primary text-primary-foreground shadow-sm"
