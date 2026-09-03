@@ -54,6 +54,10 @@ def test_run_watcher_persists_matches_and_skips_unchanged(tmp_path, monkeypatch)
         session_time="17:00", location="Fleiwa",
         agenda_items=[AgendaItem(item_number="Ö 6", title="Radweg Hauptstraße")],
     )
+    # Ohne diesen Riegel liefe der Rückblick des Watchers (Nachtrag verpasster
+    # Sitzungen) im Test ins echte Ratsinfo.
+    monkeypatch.setattr(watcher.CouncilScraper, "past_session_ids",
+                        lambda self, months_back=3: [])
     monkeypatch.setattr(watcher.CouncilScraper, "upcoming_calendar",
                         lambda self, months_ahead=3: ([42], []))
     monkeypatch.setattr(watcher.CouncilScraper, "fetch_session", lambda self, k: session)
@@ -131,6 +135,10 @@ def test_content_filter_skips_owner_without_killing_the_run(tmp_path, monkeypatc
         session_time="17:00", location="Fleiwa",
         agenda_items=[AgendaItem(item_number="Ö 6", title="Radweg Hauptstraße")],
     )
+    # Ohne diesen Riegel liefe der Rückblick des Watchers (Nachtrag verpasster
+    # Sitzungen) im Test ins echte Ratsinfo.
+    monkeypatch.setattr(watcher.CouncilScraper, "past_session_ids",
+                        lambda self, months_back=3: [])
     monkeypatch.setattr(watcher.CouncilScraper, "upcoming_calendar",
                         lambda self, months_ahead=3: ([42], []))
     monkeypatch.setattr(watcher.CouncilScraper, "fetch_session", lambda self, k: session)
@@ -334,6 +342,10 @@ def test_modell_ausfall_ueberspringt_nur_diesen_owner(tmp_path, monkeypatch):
         session_time="17:00", location="Fleiwa",
         agenda_items=[AgendaItem(item_number="Ö 6", title="Radweg Hauptstraße")],
     )
+    # Ohne diesen Riegel liefe der Rückblick des Watchers (Nachtrag verpasster
+    # Sitzungen) im Test ins echte Ratsinfo.
+    monkeypatch.setattr(watcher.CouncilScraper, "past_session_ids",
+                        lambda self, months_back=3: [])
     monkeypatch.setattr(watcher.CouncilScraper, "upcoming_calendar",
                         lambda self, months_ahead=3: ([42], []))
     monkeypatch.setattr(watcher.CouncilScraper, "fetch_session", lambda self, k: session)

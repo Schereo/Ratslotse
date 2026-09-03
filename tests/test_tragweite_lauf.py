@@ -43,6 +43,9 @@ class _StummerScraper:
     def upcoming_calendar(self, months_ahead=3):
         return [], []
 
+    def past_session_ids(self, months_back=3):
+        return []
+
 
 def _seede_punkt(db: Path) -> None:
     """Eine kommende Sitzung mit einem bewertbaren Punkt — ohne ihn liefert
