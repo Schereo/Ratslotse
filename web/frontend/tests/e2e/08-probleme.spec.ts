@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type TestInfo } from "@playwright/test";
 import type { ProblemList } from "@/lib/probleme";
+import type { User } from "@/lib/types";
 
 const problems = [
   {
@@ -66,6 +67,17 @@ const problemResponse = {
   problems: rankedProblems,
   total: rankedProblems.length,
 } satisfies ProblemList;
+
+const signedInUser = {
+  id: 1,
+  email: "user@test.de",
+  role: "user",
+  status: "active",
+  email_verified: true,
+  delivery_channel: "email",
+  apple_linked: false,
+  has_password: true,
+} satisfies User;
 
 async function expectComparableRanking(entries: Locator) {
   const rows = await entries.evaluateAll((nodes) => nodes.map((node) => {
@@ -144,14 +156,7 @@ test.describe("Öffentliche Problemübersicht", () => {
     await page.route("**/api/auth/me", (route) => route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify({
-        id: 1,
-        email: "user@test.de",
-        role: "user",
-        status: "active",
-        email_verified: true,
-        delivery_channel: "email",
-      }),
+      body: JSON.stringify(signedInUser),
     }));
     await page.route("**/api/onboarding", (route) => route.fulfill({
       status: 200,
