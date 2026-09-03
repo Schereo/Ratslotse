@@ -346,7 +346,19 @@ class PushUnregisterRequest(BaseModel):
 
 
 class SetupUpdate(BaseModel):
-    """Design 26a: erreichter Schritt des Einrichtungs-Assistenten (0–3)."""
+    """Design 26a: erreichter Schritt des Einrichtungs-Assistenten (0–4).
 
-    step: int = Field(ge=0, le=3)
+    VIER, nicht drei: Der Browser hat seit 09/2026 einen eigenen
+    Stadtteil-Schritt — 1 Gremien, 2 Stadtteil, 3 Themen, 4 Mitteilungen. Bis
+    03.09.2026 stand hier ``le=3``, während der Router bereits auf 4 klemmte
+    und sein Kommentar die Vier erklärte. Der Browser meldete seinen letzten
+    Schritt deshalb mit 422 zurück — und verschluckte den Fehler, weil er die
+    Meldung als „fire and forget" abschickt.
+
+    Die App kennt weiter drei Schritte und schickt nie mehr als 3; beim Lesen
+    klemmt sie selbst auf 3 (``AppModel.synchronizeOnboarding``). Eine
+    gespeicherte 4 ist für sie also ungefährlich.
+    """
+
+    step: int = Field(ge=0, le=4)
     done: bool = False

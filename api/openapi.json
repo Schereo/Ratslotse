@@ -10369,7 +10369,7 @@
         "type": "object"
       },
       "SetupUpdate": {
-        "description": "Design 26a: erreichter Schritt des Einrichtungs-Assistenten (0–3).",
+        "description": "Design 26a: erreichter Schritt des Einrichtungs-Assistenten (0–4).\n\nVIER, nicht drei: Der Browser hat seit 09/2026 einen eigenen\nStadtteil-Schritt — 1 Gremien, 2 Stadtteil, 3 Themen, 4 Mitteilungen. Bis\n03.09.2026 stand hier ``le=3``, während der Router bereits auf 4 klemmte\nund sein Kommentar die Vier erklärte. Der Browser meldete seinen letzten\nSchritt deshalb mit 422 zurück — und verschluckte den Fehler, weil er die\nMeldung als „fire and forget\" abschickt.\n\nDie App kennt weiter drei Schritte und schickt nie mehr als 3; beim Lesen\nklemmt sie selbst auf 3 (``AppModel.synchronizeOnboarding``). Eine\ngespeicherte 4 ist für sie also ungefährlich.",
         "properties": {
           "done": {
             "default": false,
@@ -10377,7 +10377,7 @@
             "type": "boolean"
           },
           "step": {
-            "maximum": 3.0,
+            "maximum": 4.0,
             "minimum": 0.0,
             "title": "Step",
             "type": "integer"
