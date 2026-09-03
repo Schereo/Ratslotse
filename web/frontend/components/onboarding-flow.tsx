@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bell, Check, Landmark, Loader2, Mail, MapPin, Plus, Sparkles, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { isNativeApp } from "@/lib/platform";
@@ -767,23 +767,64 @@ function TopicStep({ onNext }: { onNext: () => void }) {
   // in einem React-Zustand, der beim Neuladen weg wäre.
   const stadtteile = gewaehlteOrtsbereiche(topics.data ?? [], orte.data ?? []);
   const ortsIds = stadtteile.map((o) => o.place_id);
-  const suggestions = useQuery({
-    // Die Stadtteile gehören in den Schlüssel: Wer in Schritt 2 zurückgeht und
-    // umwählt, bekäme sonst die Vorschläge der alten Auswahl aus dem Cache.
-    queryKey: ["topic-suggestions", ortsIds.join(",")],
-    queryFn: () => api.get<{
-      suggestions: Vorschlag[];
-      districts: {
-        place_id: string; name: string; months: number;
-        suggestions: Vorschlag[];
-        /** Aus den nächsten Ortsbereichen — jeder trägt seinen Herkunftsort. */
-        nearby: (Vorschlag & { place: string })[];
-      }[];
-    }>(`/topics/suggestions${ortsIds.length
-      ? `?${ortsIds.map((id) => `district=${encodeURIComponent(id)}`).join("&")}` : ""}`),
-    // Erst fragen, wenn die Auswahl feststeht — sonst liefe ein erster Aufruf
-    // ohne sie und die lokalen Listen erschienen mit Verzögerung.
-    enabled: !topics.isPending && !orte.isPending,
+  // EIN Aufruf JE STADTTEIL statt einem für alle. Der Endpunkt beurteilt jeden
+  // noch nie gesehenen Vorschlag einmal per Modell; bei zwei, drei Stadtteilen
+  // wartete man vorher auf den letzten, bevor der erste erschien — und sah so
+  // lange nur Platzhalter (Tims Befund, 03.09.2026). Getrennt gefragt steht
+  // jede Gruppe da, sobald sie fertig ist, und die noch laufenden sagen mit
+  // eigener Überschrift, dass sie noch kommen.
+  //
+  // NACHEINANDER, nicht gleichzeitig: Jeder Aufruf bekommt mit `exclude` zu
+  // hören, was oben schon steht. Das ist dasselbe gemeinsame Gedächtnis, das
+  // vorher im Server lag — ohne es stünde nicht nur dieselbe Baustelle
+  // zweimal, die zweite Gruppe füllte sich auch nicht mehr von nebenan auf
+  // und stünde einfach kürzer da (gemessen: Tweelbäke sank von sechs auf
+  // zwei). Schneller wird es dadurch nicht, aber die erste Gruppe steht nach
+  // ihrem eigenen Aufruf statt nach allen.
+  const bereit = !topics.isPending && !orte.isPending;
+  const schluessel = (id: string, gesehen: string[]) =>
+    ["topic-suggestions", "district", id, gesehen.join("|")] as const;
+  const namenVon = (g: VorschlagsGruppe | null | undefined) =>
+    g ? [...g.suggestions, ...g.nearby].map((v) => v.name) : [];
+  // Die Kette WÄHREND des Renderns aufbauen: Was schon da ist, steht im Cache
+  // — und `useQueries` hängt an genau diesen Schlüsseln, der nächste Render
+  // verlängert die Kette also von selbst.
+  let gesehen: string[] = [];
+  let wartetNoch = false;                 // ab der ersten offenen Gruppe
+  const ketten = ortsIds.map((id) => {
+    const key = schluessel(id, gesehen);
+    const daten = qc.getQueryData<VorschlagsGruppe | null>(key);
+    const eintrag = { id, key, exclude: gesehen, enabled: bereit && !wartetNoch };
+    if (daten === undefined) wartetNoch = true;
+    else gesehen = [...gesehen, ...namenVon(daten)];
+    return eintrag;
+  });
+  const gruppenQueries = useQueries({
+    queries: ketten.map((k) => ({
+      // Die Stadtteile UND das schon Gezeigte gehören in den Schlüssel: Wer in
+      // Schritt 2 zurückgeht und umwählt, bekäme sonst die Vorschläge der alten
+      // Auswahl aus dem Cache.
+      queryKey: k.key,
+      queryFn: () => api.get<VorschlagsAntwort>(
+        `/topics/suggestions?district=${encodeURIComponent(k.id)}&citywide=0`
+        + k.exclude.map((n) => `&exclude=${encodeURIComponent(n)}`).join(""))
+        .then((d) => d.districts[0] ?? null),
+      // Erst fragen, wenn die Auswahl feststeht — sonst liefe ein erster Aufruf
+      // ohne sie und die lokalen Listen erschienen mit Verzögerung.
+      enabled: k.enabled,
+    })),
+  });
+  // Stadtweit kommt zuletzt: Was die Stadtteile schon zeigen, gehört dort nicht
+  // noch einmal hin.
+  const alleGruppenDa = gruppenQueries.every((q) => q.data !== undefined);
+  const stadtweitExclude = gruppenQueries.flatMap((q) => namenVon(q.data));
+  const stadtweitQuery = useQuery({
+    queryKey: ["topic-suggestions", "stadtweit", stadtweitExclude.join("|")],
+    queryFn: () => api.get<VorschlagsAntwort>(
+      "/topics/suggestions?citywide=1"
+      + stadtweitExclude.map((n) => `&exclude=${encodeURIComponent(n)}`).join(""))
+      .then((d) => d.suggestions),
+    enabled: bereit && alleGruppenDa,
   });
 
   /** RL-U17: Der Nutzer tippt nur den Namen — die Beschreibung entsteht aus den
@@ -824,7 +865,11 @@ function TopicStep({ onNext }: { onNext: () => void }) {
       // Erst die Liste holen, dann die Vorschau-Zeile wegnehmen — sonst
       // verschwindet das Thema für einen Moment, bevor es wiederkommt.
       await qc.invalidateQueries({ queryKey: ["topics"] });
-      qc.invalidateQueries({ queryKey: ["topic-suggestions"] });
+      // Die Vorschläge bleiben, wie sie sind. Der angeklickte Chip zeigt über
+      // „Deine Themen" von selbst sein Häkchen — sie neu zu holen, würde ihn
+      // dagegen aus der Liste nehmen (er ist ja jetzt ein vorhandenes Thema)
+      // und die Gruppen darunter neu anstoßen, weil sie in der Kette hängen.
+      // Man klickt einen Vorschlag und die halbe Fläche fängt neu an zu laden.
     } catch {
       setWarn("Das Thema konnte gerade nicht angelegt werden. Versuch es gleich nochmal.");
     } finally {
@@ -837,13 +882,14 @@ function TopicStep({ onNext }: { onNext: () => void }) {
     try {
       await api.del(`/topics/${id}`);
       qc.invalidateQueries({ queryKey: ["topics"] });
-      qc.invalidateQueries({ queryKey: ["topic-suggestions"] });
+      // Vorschläge: s. `add` — der Chip wird durch die frische Themenliste
+      // wieder anklickbar, dafür braucht es keinen neuen Aufruf.
     } catch { /* bleibt stehen — beim nächsten Laden wieder korrekt */ }
   };
 
   const mine = topics.data ?? [];
-  const gruppen = suggestions.data?.districts ?? [];
-  const stadtweite = suggestions.data?.suggestions ?? [];
+  const gruppen = stadtteile.map((ort, i) => ({ ort, query: gruppenQueries[i] }));
+  const nochUnterwegs = gruppen.filter((g) => g.query?.isPending).map((g) => g.ort.name);
   return (
     <StepShell
       title="Worüber willst du Bescheid wissen?"
@@ -902,70 +948,80 @@ function TopicStep({ onNext }: { onNext: () => void }) {
           in Chip-Form, damit nichts springt, wenn sie eintreffen. Der
           Endpunkt beurteilt jeden noch nie gesehenen Vorschlag einmal per
           Modell; beim allerersten Aufruf sind das viele. */}
-      {suggestions.isPending && (
-        <div className="mt-4" aria-busy="true">
-          <Kicker><Loader2 className="h-3 w-3 animate-spin text-primary" />
-            {stadtteile.length ? `Lotti sucht, was in ${stadtteile.map((o) => o.name).join(" und ")} läuft …`
-                              : "Lotti sucht, was gerade im Rat läuft …"}</Kicker>
-          <div className="mt-2.5 flex flex-wrap gap-2">
-            {[104, 128, 92, 140, 112, 96].map((w, i) => (
-              <span key={i} style={{ width: w }} className="h-[34px] animate-pulse rounded-full border border-dashed border-border bg-muted/40" />
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Zwei Gruppen statt einer Liste: „bei mir um die Ecke" und „in der
           Stadt" sind zwei verschiedene Interessen, und wer beides gemischt
           untereinander sieht, kann nicht wählen. Der Stadtteil steht zuerst —
-          er ist der Grund, warum in Schritt 2 danach gefragt wurde. Was das
-          Backend hier einsortiert, taucht in der stadtweiten Liste nicht noch
-          einmal auf. */}
-      {gruppen.map((g) => (
-        <div key={g.place_id} className="mt-4">
-          <Kicker className="text-primary">
-            <MapPin className="h-3 w-3" />
-            Aus {g.name}
-            {/* Zeitraum dazuschreiben, sobald es mehr als ein Jahr war. In
-                ruhigen Stadtteilen reicht ein Jahr nicht für sechs Vorschläge;
-                das stumm zu weiten hieße, Aktualität zu behaupten. */}
-            {g.months > 12 && (
-              <span className="font-sans text-[11px] font-medium normal-case tracking-normal text-muted-foreground">
-                · letzte {Math.round(g.months / 12)} Jahre
-              </span>
-            )}
-          </Kicker>
-          {g.suggestions.length > 0 ? (
-            <VorschlagsChips vorschlaege={g.suggestions} vorhanden={mine} busy={busy} betont
-              onWaehlen={(v) => void add(v.name, v.description, v.n)} />
-          ) : (
-            // Leere Liste ausdrücklich benennen statt den Block wegzulassen —
-            // sonst sähe es aus, als hätte der Schritt etwas verschluckt.
-            <p className="mt-2 text-xs text-muted-foreground">
-              Im Rat war {g.name} zuletzt kaum ein Thema. Der Stadtteil bleibt trotzdem
-              beobachtet — Lotti meldet sich, sobald etwas kommt.
-            </p>
-          )}
+          er ist der Grund, warum in Schritt 2 danach gefragt wurde.
 
-          {/* Nebenan: nur wenn der Stadtteil selbst keine sechs hergibt. Eigene
-              Beschriftung, weil es eben NICHT aus diesem Stadtteil ist — unter
-              „Aus Dobbenviertel" wäre das Kulturzentrum PFL schlicht falsch. */}
-          {g.nearby.length > 0 && (
-            <>
-              <Kicker className="mt-3">Direkt nebenan</Kicker>
-              <VorschlagsChips vorschlaege={g.nearby} vorhanden={mine} busy={busy}
+          Jede Gruppe erscheint, sobald IHR Aufruf zurück ist. Die noch
+          laufenden stehen mit ihrer eigenen Überschrift und Platzhaltern da:
+          So sieht man, was schon zur Auswahl steht, und weiß zugleich, dass
+          Bümmerstede noch kommt. */}
+      {gruppen.map(({ ort, query }) => {
+        const g = query?.data ?? null;
+        return (
+          <div key={ort.place_id} className="mt-4">
+            <Kicker className="text-primary">
+              <MapPin className="h-3 w-3" />
+              Aus {ort.name}
+              {/* Zeitraum dazuschreiben, sobald es mehr als ein Jahr war. In
+                  ruhigen Stadtteilen reicht ein Jahr nicht für sechs Vorschläge;
+                  das stumm zu weiten hieße, Aktualität zu behaupten. */}
+              {g && g.months > 12 && (
+                <span className="font-sans text-[11px] font-medium normal-case tracking-normal text-muted-foreground">
+                  · letzte {Math.round(g.months / 12)} Jahre
+                </span>
+              )}
+              {!g && query?.isPending && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
+            </Kicker>
+            {!g ? (
+              <VorschlagsPlatzhalter />
+            ) : g.suggestions.length > 0 ? (
+              <VorschlagsChips vorschlaege={g.suggestions} vorhanden={mine} busy={busy} betont
                 onWaehlen={(v) => void add(v.name, v.description, v.n)} />
-            </>
-          )}
-        </div>
-      ))}
+            ) : (
+              // Leere Liste ausdrücklich benennen statt den Block wegzulassen —
+              // sonst sähe es aus, als hätte der Schritt etwas verschluckt.
+              <p className="mt-2 text-xs text-muted-foreground">
+                Im Rat war {ort.name} zuletzt kaum ein Thema. Der Stadtteil bleibt trotzdem
+                beobachtet — Lotti meldet sich, sobald etwas kommt.
+              </p>
+            )}
 
-      {stadtweite.length > 0 && (
-        <div className="mt-4">
-          <Kicker>{gruppen.length ? "Stadtweit" : "Gerade aktuell im Rat"}</Kicker>
-          <VorschlagsChips vorschlaege={stadtweite} vorhanden={mine} busy={busy}
-            onWaehlen={(v) => void add(v.name, v.description, v.n)} />
-        </div>
+            {/* Nebenan: nur wenn der Stadtteil selbst keine sechs hergibt. Eigene
+                Beschriftung, weil es eben NICHT aus diesem Stadtteil ist — unter
+                „Aus Dobbenviertel" wäre das Kulturzentrum PFL schlicht falsch. */}
+            {g && g.nearby.length > 0 && (
+              <>
+                <Kicker className="mt-3">Direkt nebenan</Kicker>
+                <VorschlagsChips vorschlaege={g.nearby} vorhanden={mine} busy={busy}
+                  onWaehlen={(v) => void add(v.name, v.description, v.n)} />
+              </>
+            )}
+          </div>
+        );
+      })}
+
+      <div className="mt-4">
+        <Kicker>
+          {gruppen.length ? "Stadtweit" : "Gerade aktuell im Rat"}
+          {stadtweitQuery.isPending && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
+        </Kicker>
+        {stadtweitQuery.isPending
+          ? <VorschlagsPlatzhalter />
+          : <VorschlagsChips vorschlaege={stadtweitQuery.data ?? []} vorhanden={mine} busy={busy}
+              onWaehlen={(v) => void add(v.name, v.description, v.n)} />}
+      </div>
+
+      {/* Was noch aussteht, EINMAL am Ende benennen — sonst liest sich die
+          Seite, als wäre sie fertig, und die letzte Gruppe erschiene aus dem
+          Nichts. */}
+      {nochUnterwegs.length > 0 && (
+        <p role="status" className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-primary" />
+          Lotti liest noch, was in {nochUnterwegs.join(" und ")} läuft — du kannst
+          schon auswählen.
+        </p>
       )}
 
       {editing && (
@@ -976,11 +1032,33 @@ function TopicStep({ onNext }: { onNext: () => void }) {
   );
 }
 
+type VorschlagsGruppe = {
+  place_id: string; name: string; months: number;
+  suggestions: Vorschlag[];
+  /** Aus den nächsten Ortsbereichen — jeder trägt seinen Herkunftsort. */
+  nearby: (Vorschlag & { place: string })[];
+};
+
+type VorschlagsAntwort = { suggestions: Vorschlag[]; districts: VorschlagsGruppe[] };
+
 type Vorschlag = {
   name: string; description: string; n: number; context?: string | null;
   /** Nur bei „nebenan": aus welchem Ortsbereich der Vorschlag stammt. */
   place?: string;
 };
+
+/** Chips in Wartestellung: gleiche Höhe wie die echten, damit nichts springt,
+ *  wenn die Gruppe eintrifft. */
+function VorschlagsPlatzhalter() {
+  return (
+    <div className="mt-2.5 flex flex-wrap gap-2" aria-busy="true">
+      {[104, 128, 92, 140, 112, 96].map((w, i) => (
+        <span key={i} style={{ width: w }}
+          className="h-[34px] animate-pulse rounded-full border border-dashed border-border bg-muted/40" />
+      ))}
+    </div>
+  );
+}
 
 /** „Bebauungsplan 865", „Bebauungsplan S-745 B" — Namen, die ohne Einordnung
  *  niemandem etwas sagen. Dieselbe Regel wie `_ist_plannummer` im Backend. */

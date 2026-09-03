@@ -276,6 +276,46 @@ def _suggestion_context(name: str, candidate: dict) -> str | None:
     return None
 
 
+def _kontext_orte(context: str | None) -> list[frozenset[str]]:
+    """Die Ortsnamen, die in der Einordnung einer Plannummer stecken.
+
+    „Am Schulgraben / Tweelbäker Tredde" nennt ZWEI Orte; beide können als
+    eigener Vorschlag danebenstehen. Deshalb je Teil eine Wortmenge.
+
+    Nur kurze Teile ohne Satzzeichen gelten als Ortsname. Fällt die Einordnung
+    auf die redaktionelle Beschreibung zurück („Der Bebauungsplan regelt …"),
+    nennt sie oft mehrere Orte im Fließtext — daraus einen Dubletten-Schluss zu
+    ziehen, träfe zu viel.
+    """
+    if not context:
+        return []
+    teile = [t.strip() for t in re.split(r"\s*/\s*", context) if t.strip()]
+    return [t for t in (_name_tokens(teil) for teil in teile
+                        if len(teil.split()) <= 6 and not teil.endswith((".", "!", "?")))
+            if t]
+
+
+def _einordnung_schon_genannt(name: str, context: str | None,
+                              tokenmengen: list[frozenset[str]]) -> bool:
+    """Steht alles, was die zweite Zeile nennt, ohnehin schon daneben?
+
+    Eine Plannummer trägt ihren Ort in der zweiten Zeile: „Bebauungsplan 865"
+    mit „Quartier am Krusenbusch" darunter. Steht dieses Quartier daneben auch
+    als eigener Chip, ist es zweimal da — einmal verständlich, einmal als
+    Nummer (Tims Befund, 03.09.2026). Dann fällt die Nummer weg, nicht der
+    Klartext: Das Quartier ist das Thema, „865" nur sein Aktenzeichen.
+
+    **JEDER** genannte Ort muss gedeckt sein. „Bebauungsplan 862 (Am
+    Schulgraben / Tweelbäker Tredde)" bleibt also stehen, solange nur die
+    Tredde daneben steht: Über den Schulgraben sagt sonst nichts etwas.
+    """
+    if not _ist_plannummer(name):
+        return False
+    teile = _kontext_orte(context)
+    return bool(teile) and all(
+        any(_similar_names(teil, andere) for andere in tokenmengen) for teil in teile)
+
+
 def _build_suggestions(council: CouncilStore, candidates: list[dict],
                        existing_tokens: list, chosen_tokens: list, limit: int = 6) -> list[dict]:
     """Aus Roh-Entitäten anzeigbare Vorschläge machen.
@@ -329,6 +369,11 @@ def _build_suggestions(council: CouncilStore, candidates: list[dict],
                 context = _suggestion_context(name, {**e, "latest_title": titel})
             if context is None:
                 continue
+        # Plannummer und Klartext nicht nebeneinander — und das gilt über die
+        # Gruppen hinweg: ``chosen_tokens`` trägt die Namen der schon
+        # gezeigten Vorschläge, ``existing_tokens`` die Themen des Kontos.
+        if _einordnung_schon_genannt(name, context, existing_tokens + chosen_tokens):
+            continue
         verdict = verdicts.get(slug)
         if verdict is None or verdict.get("name") != name:
             # Noch nie (oder unter anderem Namen) geprüft — jetzt einmal, dann
@@ -341,6 +386,12 @@ def _build_suggestions(council: CouncilStore, candidates: list[dict],
                 logger.warning("Vagheits-Urteil für %s nicht speicherbar", slug, exc_info=True)
         if verdict.get("vague"):
             continue
+        # Und andersherum: Der Klartext kann NACH der Nummer kommen — dann
+        # fällt die Nummer nachträglich weg. „Bebauungsplan 865" steht in der
+        # rohen Reihenfolge vor „Quartier am Krusenbusch".
+        out = [fertig for fertig in out
+               if not _einordnung_schon_genannt(fertig["name"], fertig.get("context"),
+                                                existing_tokens + chosen_tokens + [tokens])]
         chosen_tokens.append(tokens)
         out.append({
             "name": name,
@@ -436,17 +487,43 @@ def _local_suggestions(council: CouncilStore, place, existing_tokens: list,
             # zählt „gibt es überhaupt etwas" mehr als „ist es taufrisch".
             for eintrag in _build_suggestions(
                 council,
-                council.suggested_entity_topics(days_back=LOCAL_WINDOW_DAYS[-1], limit=16,
-                                                place_id=nb.id),
+                _ohne_eigenen_ortsbereich(
+                    council,
+                    council.suggested_entity_topics(days_back=LOCAL_WINDOW_DAYS[-1], limit=16,
+                                                    place_id=nb.id),
+                    place),
                 existing_tokens, chosen_tokens, limit=6 - len(letzte) - len(nebenan),
             ):
                 nebenan.append({**eintrag, "place": nb.name})
     return letzte, nebenan, round(tage / 30.4)
 
 
+def _ohne_eigenen_ortsbereich(council: CouncilStore, kandidaten: list[dict], place) -> list[dict]:
+    """Aus der Nachbar-Liste alles streichen, was auch im EIGENEN Bereich liegt.
+
+    „Direkt nebenan" ist eine Behauptung über die Lage, und bei Straßen war sie
+    falsch: „Tweelbäker Tredde" und „Am Schmeel" führen mitten durch
+    Krusenbusch, standen dort aber unter „nebenan" — sie gehören eben AUCH zu
+    Tweelbäke, und der Nachbar-Block fragt nur nach dessen Liste (Tims Befund,
+    03.09.2026).
+
+    Die Ursache war die halbe Straßen-Geometrie (s.
+    ``geocode_entities._is_street``); dieser Filter ist die zweite Sperre. Er
+    hält auch dann, wenn eine Geometrie wieder einmal unvollständig ist: Was
+    nachweislich im eigenen Bereich liegt, steht entweder in der eigenen Liste
+    oder gar nicht — aber nie unter „nebenan".
+    """
+    zugehoerig = council.location_districts([k.get("slug") or "" for k in kandidaten])
+    eigener = place.name.casefold()
+    return [k for k in kandidaten
+            if eigener not in zugehoerig.get(k.get("slug") or "", set())]
+
+
 @router.get("/suggestions")
 def topic_suggestions(
     district: Annotated[list[str], Query()] = [],  # noqa: B006 — FastAPI liest die Vorgabe nur
+    exclude: Annotated[list[str], Query()] = [],  # noqa: B006 — dito
+    citywide: bool = True,
     user: dict = Depends(require_active),
     store: Store = Depends(get_store),
     council: CouncilStore = Depends(get_council_store),
@@ -465,6 +542,19 @@ def topic_suggestions(
     getrennt sieht, kann wählen. Die Ortsbereiche stehen zuerst und in der
     Reihenfolge, in der sie gefragt wurden; was dort schon vorkommt,
     wiederholen weder die anderen Ortsbereiche noch die stadtweite Liste.
+
+    ``?citywide=0`` lässt die stadtweite Liste weg. Damit kann die Oberfläche
+    **je Ortsbereich einzeln** fragen und jede Gruppe zeigen, sobald sie da
+    ist: Ein Aufruf beurteilt jeden noch nie gesehenen Vorschlag einmal per
+    Modell, und bei zwei, drei Stadtteilen wartete man vorher auf ALLE, bevor
+    der erste erschien (Tims Befund, 03.09.2026).
+
+    ``?exclude=<name>`` (mehrfach erlaubt) reicht das gemeinsame Gedächtnis
+    über die getrennten Aufrufe hinweg: Die Oberfläche schickt mit, was in den
+    vorherigen Gruppen schon steht. Ohne das käme dieselbe Baustelle zweimal —
+    und schlimmer: Die dünne Gruppe füllte sich nicht mehr von nebenan auf, sie
+    stünde einfach kürzer da. Deshalb wirkt der Wert wie ein vorhandenes Thema
+    und nicht wie ein Filter über die fertige Liste.
     """
     # Stadtteil-Themen zählen beim Dedupe NICHT mit. Sie sind Ortsangaben,
     # keine Interessen: Wer „Krusenbusch" gewählt hat, bekäme sonst „Quartier
@@ -475,6 +565,7 @@ def topic_suggestions(
     ortsnamen = {p.name.casefold() for p in council.all_places() if p.is_primary}
     existing_tokens = [_name_tokens(t.name) for t in store.get_topics(user["id"])
                        if (t.name or "").strip().casefold() not in ortsnamen]
+    existing_tokens += [t for t in (_name_tokens(n) for n in exclude if n.strip()) if t]
     chosen_tokens: list[frozenset[str]] = []
 
     gruppen = []
@@ -492,7 +583,7 @@ def topic_suggestions(
 
     stadtweit = _build_suggestions(
         council, council.suggested_entity_topics(days_back=365, limit=16),
-        existing_tokens, chosen_tokens, limit=6)
+        existing_tokens, chosen_tokens, limit=6) if citywide else []
     return {"suggestions": stadtweit, "districts": gruppen}
 
 

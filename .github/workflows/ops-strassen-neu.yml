@@ -1,0 +1,100 @@
+# Manuell auslösbarer Ops-Lauf: Straßen, von denen nur EIN Segment gespeichert
+# ist, vollständig nachtragen.
+#
+# WOFÜR. Bis 09/2026 entschied allein ein Namensmuster, ob eine Straße bei
+# Overpass (alle Segmente) oder bei Nominatim (das eine Segment, das zufällig
+# zuerst passt) geholt wird. 96 von 570 Straßen fielen durch das Muster —
+# „Tweelbäker Tredde", „Am Schmeel", „Babenend", „Huntemannstr". Von ihnen
+# steht nur ein Stück in der Datenbank, und damit auch nur ein Teil ihrer
+# Ortsbereiche: „Tweelbäker Tredde" lag ganz in Tweelbäke, obwohl 51 von 85
+# Stützpunkten der vollen Straße in Krusenbusch liegen. Im
+# Einrichtungs-Assistenten stand sie deshalb unter „direkt nebenan", während
+# sie mitten durch den eigenen Stadtteil führt (Tims Befund, 03.09.2026).
+#
+# WARUM DER LÄUFER HOLT UND NICHT DER SERVER. Der erste Anlauf ließ den Server
+# je Straße einzeln bei Overpass fragen — und lief ins Leere:
+# **overpass-api.de ist von beiden VPS aus überhaupt nicht erreichbar**
+# (Errno 101, „Network is unreachable", über das NAT-Gateway; dev wie Prod),
+# und die erreichbaren Spiegel antworten auf `/api/interpreter` nicht. Weil
+# der Rückfall auf Nominatim stumm war, meldete der Lauf `located=513,
+# missed=2, failed=0` und hatte trotzdem nur 15 Straßen wirklich geholt.
+#
+# Deshalb ist es jetzt umgedreht: Der GitHub-Läufer holt in EINEM Aufruf alle
+# benannten Wege Oldenburgs (6.534 Wege, 1.950 Namen, 5,9 MB, ~7 s), lädt den
+# Schnappschuss auf den Server, und dort läuft der Abgleich ganz ohne Netz.
+# Die Overpass-API bekommt einen Aufruf statt fünfhundert.
+name: "Ops: Straßen vollständig nachtragen"
+
+on:
+  workflow_dispatch:
+    inputs:
+      ziel:
+        description: "Auf welcher Umgebung"
+        type: choice
+        options: [dev, prod]
+        default: dev
+      trocken:
+        description: "Nur zählen, nichts schreiben"
+        type: boolean
+        default: false
+
+concurrency:
+  group: ops-strassen-neu
+  cancel-in-progress: false
+
+jobs:
+  strassen:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: requests installieren
+        run: pip install requests
+
+      - name: Schnappschuss von Overpass holen
+        run: python scripts/strassen_snapshot.py holen --datei strassen-snapshot.json
+
+      - name: Schnappschuss auf den Server legen
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ inputs.ziel == 'prod' && secrets.VPS_HOST || secrets.VPS_DEV_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.VPS_SSH_PORT }}
+          proxy_host: ${{ secrets.VPS_PROXY_HOST }}
+          proxy_username: ${{ secrets.VPS_USER }}
+          proxy_key: ${{ secrets.SSH_PRIVATE_KEY }}
+          proxy_port: ${{ secrets.VPS_SSH_PORT }}
+          source: strassen-snapshot.json
+          target: app/data/
+
+      - name: Abgleich auf dem Server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ inputs.ziel == 'prod' && secrets.VPS_HOST || secrets.VPS_DEV_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.VPS_SSH_PORT }}
+          proxy_host: ${{ secrets.VPS_PROXY_HOST }}
+          proxy_username: ${{ secrets.VPS_USER }}
+          proxy_key: ${{ secrets.SSH_PRIVATE_KEY }}
+          proxy_port: ${{ secrets.VPS_SSH_PORT }}
+          # Der Abgleich rechnet ohne Netz; die Ortsbereichs-Zugehörigkeiten
+          # werden am Ende in einem Rutsch neu aufgebaut. Ein paar Minuten.
+          command_timeout: 30m
+          # Der Schalter kommt über eine Shell-Variable und NICHT als
+          # bedingte Fortsetzungszeile: `${{ … || '' }}` hinter einem
+          # Backslash hat argparse ein leeres Argument zugestellt
+          # („unrecognized arguments:"), der Lauf brach ab, bevor er etwas tat.
+          # Dasselbe Muster wie in ops-sitzungsorte.yml.
+          script: |
+            set -e
+            cd ~/app
+            TROCKEN=""
+            if [ "${{ inputs.trocken }}" = "true" ]; then TROCKEN="--trocken"; fi
+            .venv/bin/python scripts/strassen_snapshot.py anwenden \
+              --datei data/strassen-snapshot.json $TROCKEN

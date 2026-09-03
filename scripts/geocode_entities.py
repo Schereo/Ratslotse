@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import re
 import sys
 import time
@@ -42,10 +43,83 @@ _GEOM = ("LineString", "MultiLineString", "Polygon", "MultiPolygon")
 # Names ending in a street-type word → fetch the WHOLE street from Overpass (all
 # segments), not just the single segment Nominatim happens to return.
 _STREET_RE = re.compile(r"(stra(ss|ß)e|weg|allee|platz|ring|damm|wall|markt|chaussee|stieg|twiete|kamp|gang)$", re.I)
+#: Ortsarten, die IMMER als Straße geholt werden — was die Ortserkennung schon
+#: als Straße eingetragen hat, muss kein Namensmuster noch einmal erraten.
+_STREET_KINDS = frozenset({"street", "square"})
 
 
-def _is_street(name: str) -> bool:
-    return bool(_STREET_RE.search(name.strip()))
+#: Wie oft der Overpass-Weg in diesem Prozess nicht geliefert hat. Der Aufrufer
+#: schreibt die Zahlen in seine Kennzahlen: Ein Lauf, der 500 Straßen „geholt"
+#: hat, dabei aber 500 Overpass-Ausfälle zählt, hat NICHT das getan, was er
+#: sollte (s. `geocode`).
+overpass_ausfaelle = {"fehler": 0, "ohne_treffer": 0, "nicht_erreichbar": 0,
+                      "strassen_versucht": 0}
+
+#: Ergebnis der Erreichbarkeitsprobe, einmal je Prozess. ``None`` = noch nicht
+#: gemessen.
+_overpass_bereit: bool | None = None
+
+
+def overpass_bereit(url: str = OVERPASS) -> bool:
+    """Antwortet Overpass überhaupt? EINMAL je Lauf gemessen.
+
+    **Warum das vor die Arbeit gehört.** Am 03.09.2026 war overpass-api.de von
+    beiden VPS aus nicht erreichbar (Errno 101 über das NAT-Gateway). Ohne
+    Probe lief der Reparaturlauf trotzdem 513-mal in denselben Fehler, fiel
+    jedes Mal still auf Nominatim zurück und meldete am Ende
+    ``located=513, missed=2, failed=0``. Die Probe macht daraus EINE Messung
+    mit klarer Ansage — und spart die 513 vergeblichen Versuche.
+
+    Gefragt wird der Endpunkt, der auch benutzt wird: ``/api/status`` einiger
+    Spiegel antwortete, während ``/api/interpreter`` in den Timeout lief.
+    """
+    global _overpass_bereit
+    if _overpass_bereit is None:
+        try:
+            antwort = requests.post(
+                url, data={"data": "[out:json][timeout:10];out count;"},
+                headers=HEADERS, timeout=15)
+            antwort.raise_for_status()
+            _overpass_bereit = True
+        except Exception as fehler:  # noqa: BLE001 — genau das ist die Auskunft
+            _overpass_bereit = False
+            logging.getLogger(__name__).error(
+                "OVERPASS NICHT ERREICHBAR (%s: %s). Straßen bekommen in diesem "
+                "Lauf nur EIN Nominatim-Segment statt der ganzen Straße — und "
+                "damit nur einen Teil ihrer Ortsbereiche. Der Bestand geht über "
+                "den Workflow „Ops: Straßen vollständig nachtragen\" "
+                "(scripts/strassen_snapshot.py).",
+                type(fehler).__name__, str(fehler)[:200])
+    return _overpass_bereit
+
+
+def _is_street(name: str, kind: str | None = None) -> bool:
+    """Ist das ein Straßenname — also: ganze Geometrie bei Overpass holen?
+
+    **Die ART schlägt den Namen.** Bis 09/2026 entschied allein das
+    Namensmuster oben, und es kennt nur die geläufigen Endungen. Am
+    Prod-Bestand (03.09.2026 gemessen) fielen damit 96 der 570 Straßen durch:
+    „Tweelbäker Tredde", „Am Schmeel", „Babenend", „Watertucht",
+    „Huntemannstr" (abgekürzt, ohne Punkt). Sie gingen an Nominatim, und das
+    liefert EIN Segment statt der ganzen Straße — der Rest der Straße samt
+    seiner Ortsbereiche fehlte. „Tweelbäker Tredde" lag damit ganz in
+    Tweelbäke, obwohl 51 von 85 Stützpunkten der vollen Straße in Krusenbusch
+    liegen; im Einrichtungs-Assistenten stand sie deshalb unter „direkt
+    nebenan", während sie mitten durch den eigenen Stadtteil führt (Tims
+    Befund, 03.09.2026).
+
+    ``kind`` ist die Ortsart aus ``council_locations`` — die Ortserkennung hat
+    dort längst „street" stehen. Wo es die Art nicht gibt (Entitäten), bleibt
+    es beim Namensmuster, ergänzt um die Muster des Stores: abgekürzte
+    Straßen („…str") und die Namen, die vorne statt hinten erkennbar sind
+    („Am Schmeel", „Unter den Eichen").
+    """
+    from council.store import CouncilStore
+
+    if (kind or "").strip().lower() in _STREET_KINDS:
+        return True
+    name = name.strip()
+    return bool(_STREET_RE.search(name)) or CouncilStore._looks_like_street(name)
 
 
 def overpass_street(name: str) -> tuple | None:
@@ -88,7 +162,7 @@ def nominatim(name: str) -> tuple | None:
     return lat, lon, geojson
 
 
-def geocode(name: str) -> tuple | None:
+def geocode(name: str, kind: str | None = None) -> tuple | None:
     """Route by name: a street → its full geometry from Overpass (fall back to Nominatim
     if Overpass fails); anything else → Nominatim point/polygon.
 
@@ -99,13 +173,32 @@ def geocode(name: str) -> tuple | None:
     irgendwo dazwischen — „Alter Postweg" war so für den Stadtteil-Filter
     verloren, obwohl sein Oldenburger Teil sauber in Kreyenbrück liegt.
     """
-    if _is_street(name):
+    if _is_street(name, kind):
+        overpass_ausfaelle["strassen_versucht"] += 1
+        if not overpass_bereit():
+            # Die Probe hat es schon gemeldet; hier wird nur gezählt, damit die
+            # Kennzahlen des Laufs die Wahrheit sagen.
+            overpass_ausfaelle["nicht_erreichbar"] += 1
+            return nominatim(name)
         try:
             res = overpass_street(name)
             if res:
                 return _auf_stadtgebiet(res)
-        except Exception:  # noqa: BLE001 — Overpass hiccup → fall back to Nominatim
-            pass
+            overpass_ausfaelle["ohne_treffer"] += 1
+        except Exception as fehler:  # noqa: BLE001 — Nominatim ist der Rückfall
+            # NICHT still: Am 03.09.2026 war overpass-api.de von beiden VPS aus
+            # gar nicht erreichbar (Errno 101 über das NAT-Gateway). Der stumme
+            # Rückfall ließ das wie einen gelungenen Lauf aussehen —
+            # `located=513, missed=2, failed=0` —, während 498 Straßen ein
+            # Nominatim-Einzelsegment bekamen statt der ganzen Straße. Ein
+            # ausgefallener Dienst muss sich wie ein Ausfall lesen.
+            overpass_ausfaelle["fehler"] += 1
+            if overpass_ausfaelle["fehler"] <= 3:
+                logging.getLogger(__name__).warning(
+                    "Overpass nicht erreichbar (%s: %s) — %r fällt auf Nominatim "
+                    "zurück und bekommt damit nur EIN Straßensegment. Der ganze "
+                    "Bestand geht über scripts/strassen_snapshot.py.",
+                    type(fehler).__name__, fehler, name)
     return nominatim(name)
 
 

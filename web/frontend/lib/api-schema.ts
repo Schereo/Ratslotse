@@ -3717,6 +3717,19 @@ export interface paths {
          *     getrennt sieht, kann wählen. Die Ortsbereiche stehen zuerst und in der
          *     Reihenfolge, in der sie gefragt wurden; was dort schon vorkommt,
          *     wiederholen weder die anderen Ortsbereiche noch die stadtweite Liste.
+         *
+         *     ``?citywide=0`` lässt die stadtweite Liste weg. Damit kann die Oberfläche
+         *     **je Ortsbereich einzeln** fragen und jede Gruppe zeigen, sobald sie da
+         *     ist: Ein Aufruf beurteilt jeden noch nie gesehenen Vorschlag einmal per
+         *     Modell, und bei zwei, drei Stadtteilen wartete man vorher auf ALLE, bevor
+         *     der erste erschien (Tims Befund, 03.09.2026).
+         *
+         *     ``?exclude=<name>`` (mehrfach erlaubt) reicht das gemeinsame Gedächtnis
+         *     über die getrennten Aufrufe hinweg: Die Oberfläche schickt mit, was in den
+         *     vorherigen Gruppen schon steht. Ohne das käme dieselbe Baustelle zweimal —
+         *     und schlimmer: Die dünne Gruppe füllte sich nicht mehr von nebenan auf, sie
+         *     stünde einfach kürzer da. Deshalb wirkt der Wert wie ein vorhandenes Thema
+         *     und nicht wie ein Filter über die fertige Liste.
          */
         get: operations["topic_suggestions_api_topics_suggestions_get"];
         put?: never;
@@ -13515,6 +13528,8 @@ export interface operations {
         parameters: {
             query?: {
                 district?: string[];
+                exclude?: string[];
+                citywide?: boolean;
             };
             header?: never;
             path?: never;
@@ -13697,4 +13712,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 5f5939623b32d990cb30b1b4ea4c46b04bf0a93175669248a894e398b5eb0f59
+// vertrag-sha256: 1d0b2019b40393939f11a667757299858a292e259154485e79dcdeb1c5d28ba7

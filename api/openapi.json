@@ -18814,7 +18814,7 @@
     },
     "/api/topics/suggestions": {
       "get": {
-        "description": "Anklickbare Themen-Vorschläge aus den echten Daten: konkrete Orte und\nProjekte mit jüngster Ratsaktivität (Entitäten) statt der häufigsten\nSchlagworte — die belohnten Verwaltungsvokabeln („Bericht\", „Annahme\").\nDie KI-Beschreibung der Entität wird zur Themen-Beschreibung und macht\nden Themen-Wächter treffsicherer als ein generischer Satz. Ohne Themen,\ndie der Account schon angelegt hat; ein Klick legt direkt an.\n\n``?district=<place_id>`` (mehrfach erlaubt) hängt je Ortsbereich eine\n**eigene** Liste davor: dieselbe Auswahl, auf diesen Ortsbereich\neingeschränkt. Die Trennung ist der Punkt — „was ist in Osternburg los?\"\nist eine andere Frage als „was läuft gerade in der Stadt?\", und wer beides\ngetrennt sieht, kann wählen. Die Ortsbereiche stehen zuerst und in der\nReihenfolge, in der sie gefragt wurden; was dort schon vorkommt,\nwiederholen weder die anderen Ortsbereiche noch die stadtweite Liste.",
+        "description": "Anklickbare Themen-Vorschläge aus den echten Daten: konkrete Orte und\nProjekte mit jüngster Ratsaktivität (Entitäten) statt der häufigsten\nSchlagworte — die belohnten Verwaltungsvokabeln („Bericht\", „Annahme\").\nDie KI-Beschreibung der Entität wird zur Themen-Beschreibung und macht\nden Themen-Wächter treffsicherer als ein generischer Satz. Ohne Themen,\ndie der Account schon angelegt hat; ein Klick legt direkt an.\n\n``?district=<place_id>`` (mehrfach erlaubt) hängt je Ortsbereich eine\n**eigene** Liste davor: dieselbe Auswahl, auf diesen Ortsbereich\neingeschränkt. Die Trennung ist der Punkt — „was ist in Osternburg los?\"\nist eine andere Frage als „was läuft gerade in der Stadt?\", und wer beides\ngetrennt sieht, kann wählen. Die Ortsbereiche stehen zuerst und in der\nReihenfolge, in der sie gefragt wurden; was dort schon vorkommt,\nwiederholen weder die anderen Ortsbereiche noch die stadtweite Liste.\n\n``?citywide=0`` lässt die stadtweite Liste weg. Damit kann die Oberfläche\n**je Ortsbereich einzeln** fragen und jede Gruppe zeigen, sobald sie da\nist: Ein Aufruf beurteilt jeden noch nie gesehenen Vorschlag einmal per\nModell, und bei zwei, drei Stadtteilen wartete man vorher auf ALLE, bevor\nder erste erschien (Tims Befund, 03.09.2026).\n\n``?exclude=<name>`` (mehrfach erlaubt) reicht das gemeinsame Gedächtnis\nüber die getrennten Aufrufe hinweg: Die Oberfläche schickt mit, was in den\nvorherigen Gruppen schon steht. Ohne das käme dieselbe Baustelle zweimal —\nund schlimmer: Die dünne Gruppe füllte sich nicht mehr von nebenan auf, sie\nstünde einfach kürzer da. Deshalb wirkt der Wert wie ein vorhandenes Thema\nund nicht wie ein Filter über die fertige Liste.",
         "operationId": "topic_suggestions_api_topics_suggestions_get",
         "parameters": [
           {
@@ -18828,6 +18828,29 @@
               },
               "title": "District",
               "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "exclude",
+            "required": false,
+            "schema": {
+              "default": [],
+              "items": {
+                "type": "string"
+              },
+              "title": "Exclude",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "citywide",
+            "required": false,
+            "schema": {
+              "default": true,
+              "title": "Citywide",
+              "type": "boolean"
             }
           }
         ],

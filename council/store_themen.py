@@ -277,11 +277,7 @@ class ThemenMixin:
         # Ist die Entität selbst ein Ort, wissen wir genau, wo sie liegt — aus
         # dem ganzen Verlauf statt aus einem Punkt. Das ist die beste Auskunft,
         # die es gibt, und sie schlägt beide Heuristiken darunter.
-        zugehoerig: dict[str, set] = {}
-        for r in self._conn.execute(
-            f"SELECT location_slug, district FROM council_location_districts "
-            f"WHERE location_slug IN ({platz})", slugs).fetchall():
-            zugehoerig.setdefault(r["location_slug"], set()).add(r["district"].casefold())
+        zugehoerig = self.location_districts(slugs)
 
         punkte = {r["slug"]: (r["lat"], r["lon"]) for r in self._conn.execute(
             f"SELECT slug, lat, lon FROM council_entity_meta "
