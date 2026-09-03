@@ -820,6 +820,26 @@ class Store:
     #: Eigene Karte, eigene Marke — die drei früheren sind auf dev gesetzt.
     _QA_ORTE_SCHLUESSEL = {"ortsbereich_id": "local_area_id"}
 
+    def _marke_gesetzt(self, marke: str) -> bool:
+        """Ist dieser Migrationsschritt schon gelaufen? — OHNE zu schreiben.
+
+        Der Punkt ist das „ohne". ``_migrate()`` läuft bei jedem Store-Aufbau,
+        und der passiert je HTTP-Request (``Depends(get_store)``). Wer die
+        Marken-Tabelle mit ``CREATE TABLE IF NOT EXISTS`` in einem
+        ``with self._conn:`` anlegt, BEVOR er die Marke liest, versucht bei
+        jeder einzelnen Anfrage eine Schreibtransaktion auf einer Datenbank, an
+        der ein Dienst hängt — und bekommt unter Gleichlauf „database is
+        locked". Gemessen: zwölf solche Versuche je Request, allein aus
+        ``_json_schluessel_umbenennen``.
+
+        Existiert die Tabelle noch nicht, gilt der Schritt als nicht gelaufen;
+        angelegt wird sie erst von dem, der wirklich etwas zu schreiben hat.
+        """
+        if not self._table_cols("migration_marks"):
+            return False
+        return bool(self._conn.execute(
+            "SELECT 1 FROM migration_marks WHERE marke = ?", (marke,)).fetchone())
+
     def _json_schluessel_umbenennen(self, tabelle: str, spalte: str, marke: str,
                                     karte: dict[str, str] | None = None) -> None:
         """Die Schlüssel INNERHALB eines JSON-Blobs nachziehen — einmalig.
@@ -839,12 +859,7 @@ class Store:
         hat — und die Marke des ersten Laufs hätte den zweiten verschluckt.
         """
         import json as _js
-        with self._conn:
-            self._conn.execute(
-                "CREATE TABLE IF NOT EXISTS migration_marks ("
-                "marke TEXT PRIMARY KEY, gesetzt_am TEXT NOT NULL)")
-        if self._conn.execute(
-                "SELECT 1 FROM migration_marks WHERE marke = ?", (marke,)).fetchone():
+        if self._marke_gesetzt(marke):
             return
         spalten = {r[1] for r in self._conn.execute(f"PRAGMA table_info({tabelle})")}
         if spalte not in spalten:
@@ -870,11 +885,17 @@ class Store:
             if neu != roh:
                 geaendert.append((neu, rid))
         with self._conn:
+            # Die Marken-Tabelle entsteht HIER, im schreibenden Zweig — nicht
+            # oben beim Lesen (siehe `_marke_gesetzt`).
+            self._conn.execute(
+                "CREATE TABLE IF NOT EXISTS migration_marks ("
+                "marke TEXT PRIMARY KEY, gesetzt_am TEXT NOT NULL)")
             if geaendert:
                 self._conn.executemany(
                     f"UPDATE {tabelle} SET {spalte} = ? WHERE rowid = ?", geaendert)
             self._conn.execute(
-                "INSERT INTO migration_marks (marke, gesetzt_am) VALUES (?, datetime('now'))",
+                "INSERT OR REPLACE INTO migration_marks (marke, gesetzt_am) "
+                "VALUES (?, datetime('now'))",
                 (marke,))
         if geaendert:
             logging.getLogger("kern.store").warning(
@@ -929,18 +950,19 @@ class Store:
         die Abwesenheit besonderer Rechte, und eine Zeile je Konto wäre eine
         Behauptung, die beim nächsten Rollen-Umbau gepflegt werden müsste.
         """
-        with self._conn:
-            self._conn.execute(
-                "CREATE TABLE IF NOT EXISTS migration_marks ("
-                "marke TEXT PRIMARY KEY, gesetzt_am TEXT NOT NULL)")
         marke = "rollen_n_m_2026_09"
-        if self._conn.execute(
-                "SELECT 1 FROM migration_marks WHERE marke = ?", (marke,)).fetchone():
+        log = logging.getLogger("kern.store")
+        # ERST LESEN, DANN SCHREIBEN. `_migrate()` läuft bei jedem
+        # Store-Aufbau, und der passiert je HTTP-Request (`Depends(get_store)`).
+        # Ein `CREATE TABLE IF NOT EXISTS` in einem `with self._conn:` versucht
+        # dort bei JEDEM Request eine Schreibtransaktion — auf einer Datenbank,
+        # an der schon ein Dienst hängt. Ist die Marke gesetzt, schreibt dieser
+        # Schritt jetzt gar nichts mehr.
+        if self._marke_gesetzt(marke):
             return
         if not self._table_cols("web_users"):
             return
         from kern import roles as _roles
-        log = logging.getLogger("kern.store")
         now = datetime.utcnow().isoformat(timespec="seconds")
         zeilen = self._conn.execute(
             "SELECT id, role FROM web_users WHERE role IS NOT NULL AND role != ?",
@@ -955,13 +977,31 @@ class Store:
             if r["role"] not in _roles.ROLES:
                 log.warning("Konto %s trägt die unbekannte Rolle %r — nicht übernommen.",
                             r["id"], r["role"])
-        with self._conn:
-            self._conn.executemany(
-                "INSERT OR IGNORE INTO web_user_roles (user_id, role, granted_at) "
-                "VALUES (?, ?, ?)", uebernommen)
-            self._conn.execute(
-                "INSERT OR REPLACE INTO migration_marks (marke, gesetzt_am) VALUES (?, ?)",
-                (marke, now))
+        try:
+            with self._conn:
+                self._conn.execute(
+                    "CREATE TABLE IF NOT EXISTS migration_marks ("
+                    "marke TEXT PRIMARY KEY, gesetzt_am TEXT NOT NULL)")
+                self._conn.executemany(
+                    "INSERT OR IGNORE INTO web_user_roles (user_id, role, granted_at) "
+                    "VALUES (?, ?, ?)", uebernommen)
+                self._conn.execute(
+                    "INSERT OR REPLACE INTO migration_marks (marke, gesetzt_am) VALUES (?, ?)",
+                    (marke, now))
+        except sqlite3.OperationalError as exc:
+            # „database is locked": Ein anderer Request ist gerade beim selben
+            # Schritt. Das darf DIESEN Request nicht mit 500 abbrechen — genau
+            # das passiert sonst im Gedränge direkt nach einem Neustart, wenn
+            # mehrere Anfragen gleichzeitig auf eine noch nicht migrierte
+            # Datenbank treffen. Der Schritt ist idempotent und durch die Marke
+            # gedeckelt; der nächste Request holt ihn nach.
+            #
+            # Die Ausnahme ist bewusst eng: Alles außer einer Sperre fliegt
+            # weiter. Eine kaputte Migration soll laut sein.
+            if "locked" not in str(exc) and "busy" not in str(exc).lower():
+                raise
+            log.warning("Rollen-Übernahme verschoben (Datenbank belegt): %s", exc)
+            return
         if uebernommen:
             log.info("Rollen übernommen: %d Konten aus web_users.role", len(uebernommen))
 
