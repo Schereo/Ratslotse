@@ -68,6 +68,11 @@ const problemResponse = {
   problems: rankedProblems,
   total: rankedProblems.length,
 } satisfies ProblemList;
+const citywideProblem = problems[5] satisfies ApiAntwort<"/probleme/{problem_id}">;
+const negativeCitywideProblem = {
+  ...citywideProblem,
+  id: -6,
+} satisfies ApiAntwort<"/probleme/{problem_id}">;
 
 const signedInUser = {
   id: 1,
@@ -220,6 +225,7 @@ test.describe("Öffentliche Problemübersicht", () => {
     await page.locator(".problem-map-route-control").press("Enter");
     await expect(page.getByRole("heading", { level: 2, name: "Beispiel: Radroute" })).toBeVisible();
     await expect(page.getByText("1 unabhängige Meldung", { exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Details ansehen" })).toHaveAttribute("href", "/probleme/3");
     for (const status of ["Neu", "Mehrfach gemeldet", "Geprüft", "Weiterhin vorhanden"]) {
       await expect(page.getByText(status, { exact: true })).toHaveCount(0);
     }
@@ -260,6 +266,139 @@ test.describe("Öffentliche Problemübersicht", () => {
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.screenshot({ path: testInfo.outputPath("rangliste-desktop-light.png"), fullPage: true });
     expect(runtimeErrors).toEqual([]);
+  });
+
+  test("öffnet eine öffentliche Detailseite aus der Rangliste", async ({ page }, testInfo) => {
+    await page.route("**/api/probleme/6", (route) => route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(citywideProblem),
+    }));
+    await page.goto("/probleme?view=meistgemeldet");
+
+    await page.getByRole("button", { name: /1\. Beispiel: stadtweites Thema/i }).click();
+    await page.getByRole("link", { name: "Details ansehen" }).click();
+
+    await expect(page).toHaveURL(/\/probleme\/6$/);
+    await expect(page).toHaveTitle(/Problem in Oldenburg.*Ratslotse/);
+    await expect(page.getByRole("heading", { level: 1, name: citywideProblem.title })).toBeVisible();
+    await expect(page.getByText(citywideProblem.summary, { exact: true })).toBeVisible();
+    await expect(page.getByText("18 unabhängige Meldungen", { exact: true })).toBeVisible();
+    await expect(page.getByText("Kinderbetreuung", { exact: true })).toBeVisible();
+    await expect(page.getByText("Gesamtes Stadtgebiet (Beispiel)", { exact: true })).toBeVisible();
+    await expect(page.getByLabel("Problemkarte von Oldenburg")).toHaveCount(0);
+    await expect(page.getByText("Kein einzelner Kartenort", { exact: false })).toBeVisible();
+    await expect(page.getByText("Mehrfach gemeldet", { exact: true })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Zur Übersicht" })).toBeVisible();
+    await page.screenshot({ path: testInfo.outputPath("problem-detail-desktop-light.png"), fullPage: true });
+  });
+
+  test("erklärt und teilt auch ein negatives Feature-Detail", async ({ page }) => {
+    await page.route("**/api/probleme/-6", (route) => route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(negativeCitywideProblem),
+    }));
+    await page.goto("/probleme/-6");
+
+    await expect(page.getByRole("heading", { level: 1, name: negativeCitywideProblem.title })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Teilen" })).toBeVisible();
+    const help = page.getByRole("button", { name: "Lotti-Hilfe öffnen: Problem erklären" });
+    await help.focus();
+    await help.press("Enter");
+    await expect(page.getByRole("dialog", { name: "Lotti erklärt das Problem" })).toBeVisible();
+    await expect(page.getByText(/Die lebenszeitliche Zahl zählt freigegebene unabhängige Meldungen/)).toBeVisible();
+    await expect(page.getByText(/Stadtweite Probleme.*keinen erfundenen Punkt/)).toBeVisible();
+    await expect(page.getByText(/Dieses Beispiel und seine Zahlen sind frei erfunden/)).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(help).toBeFocused();
+  });
+
+  test("verlinkt Details in der nativen Hülle auf den statischen Query-Adapter", async ({ page }) => {
+    await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+    await page.addInitScript(() => {
+      (window as Window & { CapacitorCustomPlatform?: { name: string } }).CapacitorCustomPlatform = { name: "ios" };
+      localStorage.setItem("ratslotse.onboarding.done", "1");
+      const browserFetch = window.fetch.bind(window);
+      window.fetch = (input, init) => {
+        const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+        return browserFetch(url.replace("https://ratslotse.de/api", "/api"), init);
+      };
+    });
+    await page.route("**/api/probleme/6", (route) => route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(citywideProblem),
+    }));
+    await page.goto("/probleme?view=meistgemeldet");
+
+    await page.getByRole("button", { name: /1\. Beispiel: stadtweites Thema/i }).click();
+    await page.getByRole("link", { name: "Details ansehen" }).click();
+
+    await expect(page).toHaveURL(/\/probleme\?problem=6$/);
+    await expect(page.getByRole("heading", { level: 2, name: citywideProblem.title })).toBeVisible();
+    await page.getByRole("button", { name: "Teilen" }).click();
+    await expect.poll(() => page.evaluate(() => navigator.clipboard.readText()))
+      .toBe("https://ratslotse.de/probleme/6");
+  });
+
+  test("öffnet und schließt die query-basierte App-Detailansicht", async ({ page }) => {
+    await page.route("**/api/probleme/-6", (route) => route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(negativeCitywideProblem),
+    }));
+    await page.goto("/probleme?problem=-6");
+
+    await expect(page.getByRole("heading", { level: 1, name: "Probleme in Oldenburg" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: negativeCitywideProblem.title })).toBeVisible();
+    await expect(page.getByText(/Feature-Vorschau.*frei erfundenes Beispiel/)).toHaveCount(1);
+    await page.getByRole("button", { name: "Details schließen" }).click();
+    await expect(page).toHaveURL(/\/probleme$/);
+    await expect(page.getByRole("button", { name: "Karte", exact: true })).toBeVisible();
+  });
+
+  test("zeigt jede ehrliche Detailgeometrie fokussiert", async ({ page }) => {
+    const cases = [
+      { problem: problems[0], selected: ".problem-map-point.is-selected" },
+      { problem: problems[1], selected: ".problem-map-facility.is-selected" },
+      { problem: problems[2], selected: ".problem-map-route.is-selected" },
+      { problem: problems[3], selected: ".problem-map-area.is-selected" },
+      { problem: problems[4], selected: ".problem-map-area.is-selected" },
+    ];
+
+    for (const example of cases) {
+      await page.route(`**/api/probleme/${example.problem.id}`, (route) => route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(example.problem satisfies ApiAntwort<"/probleme/{problem_id}">),
+      }));
+      await page.goto(`/probleme/${example.problem.id}`);
+
+      await expect(page.getByLabel("Problemkarte von Oldenburg")).toBeVisible();
+      await expect(page.locator(example.selected)).toHaveCount(1);
+      await expect(page.getByRole("button", { name: new RegExp(example.problem.title) })).toHaveCount(0);
+    }
+  });
+
+  test("erklärt unbekannte und ungültige Detail-IDs ohne Anmeldeschranke", async ({ page }) => {
+    await page.route("**/api/probleme/999", (route) => route.fulfill({
+      status: 404,
+      contentType: "application/json",
+      body: JSON.stringify({ detail: "Problem nicht gefunden." }),
+    }));
+
+    await page.goto("/probleme/999");
+    await expect(page.getByRole("heading", { level: 1, name: "Problem nicht gefunden" })).toBeVisible();
+    await expect(page).toHaveURL(/\/probleme\/999$/);
+
+    await page.goto("/probleme/0");
+    await expect(page.getByRole("heading", { level: 1, name: "Problem nicht gefunden" })).toBeVisible();
+    await expect(page).toHaveURL(/\/probleme\/0$/);
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+
+    await page.goto("/probleme?problem=0");
+    await expect(page.getByRole("heading", { level: 2, name: "Problem nicht gefunden" })).toBeVisible();
   });
 
   test("ordnet alle Ränge auf einer gemeinsamen vergleichbaren Schiene an", async ({ page }, testInfo) => {
@@ -524,6 +663,26 @@ test.describe("Öffentliche Problemübersicht auf schmalem Touch-Gerät", () => 
     await expect(selectedFacility).toHaveCSS("transition-duration", "0s");
     await expect(page.locator(".problem-map-route")).toHaveCSS("transition-duration", "0s");
     await expect(page.locator(".problem-map-area").first()).toHaveCSS("transition-duration", "0s");
+  });
+
+  test("zeigt ein kartierbares Detail mobil ohne Seitenüberlauf", async ({ page }, testInfo) => {
+    await page.addInitScript(() => localStorage.setItem("theme", "dark"));
+    await page.route("**/api/probleme/2", (route) => route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(problems[1] satisfies ApiAntwort<"/probleme/{problem_id}">),
+    }));
+    await page.goto("/probleme/2");
+
+    await expect(page.locator("html")).toHaveClass(/dark/);
+    await expect(page.getByRole("heading", { level: 1, name: problems[1].title })).toBeVisible();
+    await expect(page.locator(".problem-map-facility.is-selected")).toHaveCount(1);
+    const sizes = await page.evaluate(() => ({
+      viewport: window.innerWidth,
+      page: document.documentElement.scrollWidth,
+    }));
+    expect(sizes.page).toBeLessThanOrEqual(sizes.viewport);
+    await page.screenshot({ path: testInfo.outputPath("problem-detail-mobile-dark.png"), fullPage: true });
   });
 });
 

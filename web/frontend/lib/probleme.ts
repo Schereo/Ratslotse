@@ -48,6 +48,21 @@ export function reportCountLabel(count: number): string {
   return `${count} unabhängige ${count === 1 ? "Meldung" : "Meldungen"}`;
 }
 
+/** Reale Projektionen sind positiv, Feature-Beispiele absichtlich negativ. */
+export function parseProblemId(raw: string): number | null {
+  if (!/^-?[1-9]\d*$/.test(raw)) return null;
+  const value = Number(raw);
+  return Number.isSafeInteger(value) ? value : null;
+}
+
+export function problemDetailHref(problemId: number): `/probleme/${number}` {
+  return `/probleme/${problemId}`;
+}
+
+export function problemAppDetailHref(problemId: number): `/probleme?problem=${number}` {
+  return `/probleme?problem=${problemId}`;
+}
+
 function isPosition(value: unknown): value is number[] {
   return (
     Array.isArray(value)

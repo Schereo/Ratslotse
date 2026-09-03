@@ -65,6 +65,14 @@ Score. Additive Migrationen stehen in
 `civic_problem_schema_migrations`, laufen wiederholbar und erhalten eine ältere
 Legacy-Projektion mit `unique_reporters`.
 
+Die öffentliche Detailansicht ist keine zweite oder reichere Projektion. Sie
+liest genau einen Eintrag durch dieselbe Filter- und Serialisierungsgrenze wie
+die Übersicht. Dadurch kann ein Detail-Link weder unveröffentlichte oder gelöste
+Einträge noch zusätzliche Spalten, Rohmeldungen oder Moderationsdaten sichtbar
+machen. Eine öffentliche Zeitleiste entsteht erst, wenn eigenständige,
+quellenbelegte Projektionsereignisse modelliert sind; Statuswerte und Zeitstempel
+werden dafür nicht umgedeutet.
+
 Die Tabelle `civic_problem_feature_examples` gehört allein zur isolierten
 Feature-Vorschau. Sie ist von `civic_problems` getrennt, damit Beispiele auch
 bestehende Veröffentlichungssperren für echte Projektionen nicht umgehen. Der

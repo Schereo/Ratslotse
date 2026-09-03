@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { serverApiUrl } from "@/lib/api";
+import type { ApiAntwort } from "@/lib/vertrag";
 
 /** Link-Vorschau für geteilte Detailseiten (Design 29a, P1).
  *
@@ -9,12 +11,12 @@ import type { Metadata } from "next";
  *  und Datum liegen im Backend bereit; hier werden sie in die Vorschau
  *  geschrieben.
  *
- *  Die Seiten der App arbeiten mit Query-Parametern (`?id=`) statt Pfad-
- *  Segmenten, damit der (app)-Bereich sauber statisch exportiert (siehe
- *  lib/routes.ts). `generateMetadata` darf `searchParams` deshalb NUR im
- *  Server-Build anfassen — im Export (MOBILE=1) würde jeder Zugriff die Seite
- *  dynamisch machen und den Build abbrechen. Darum steht in jeder Hülle die
- *  Kurzschluss-Zeile `if (istExport()) return {}`.
+ *  Die Council-Seiten arbeiten mit Query-Parametern (`?id=`), damit der
+ *  (app)-Bereich sauber statisch exportiert (siehe lib/routes.ts).
+ *  `generateMetadata` darf `searchParams` deshalb NUR im Server-Build
+ *  anfassen. Die kanonische Problem-Detailroute ist dagegen ein Pfadsegment;
+ *  build-mobile.mjs nimmt sie aus dem Export, dessen Query-Adapter unter
+ *  `/probleme?problem=` keine eigenen Metadaten erzeugt.
  */
 
 /** Der native App-Build ist ein statischer Export ohne Server — dort gibt es
@@ -23,14 +25,9 @@ export const istExport = () => process.env.MOBILE === "1";
 
 export type VorschauArt = "decision" | "person" | "thema" | "sitzung" | "ort";
 
-/** Backend-Origin für den Server-seitigen Abruf. Im Betrieb läuft das Frontend
- *  neben dem Backend auf demselben Host; `BACKEND_URL` ist dieselbe Variable,
- *  die auch next.config.mjs für die /api-Weiterleitung benutzt. */
-const BACKEND = process.env.BACKEND_URL || "http://localhost:8000";
-
 async function holeVorschau(art: VorschauArt, key: string) {
   try {
-    const res = await fetch(`${BACKEND}/api/council/preview/${art}/${encodeURIComponent(key)}`, {
+    const res = await fetch(serverApiUrl(`/council/preview/${art}/${encodeURIComponent(key)}`), {
       // Geteilte Links werden von Messengern oft im Schwarm abgerufen — eine
       // Viertelstunde Cache reicht völlig und hält die Last vom Backend fern.
       next: { revalidate: 900 },
@@ -42,6 +39,39 @@ async function holeVorschau(art: VorschauArt, key: string) {
     // kaputter Seitenaufruf — die Metadaten sind nie den Fehler wert.
     return null;
   }
+}
+
+/** Ausfallsichere Link-Vorschau für eine öffentliche Problemprojektion. */
+export async function problemVorschauMetadata(
+  problemId: number | null,
+  pfad: string,
+): Promise<Metadata> {
+  let title = "Problem in Oldenburg — Ratslotse";
+  let description = "Moderierte öffentliche Informationen zu einem Problem in Oldenburg.";
+  let found = false;
+  if (!istExport() && problemId !== null) {
+    try {
+      const response = await fetch(serverApiUrl(`/probleme/${problemId}`), {
+        next: { revalidate: 900 },
+      });
+      if (response.ok) {
+        const problem = await response.json() as ApiAntwort<"/probleme/{problem_id}">;
+        title = `${problem.title} — Ratslotse`;
+        description = problem.summary;
+        found = true;
+      }
+    } catch {
+      // Metadaten dürfen die öffentliche Seite nie unlesbar machen.
+    }
+  }
+  return {
+    title,
+    description,
+    alternates: { canonical: pfad },
+    robots: found ? undefined : { index: false, follow: false },
+    openGraph: { title, description, url: pfad, type: "article" },
+    twitter: { card: "summary_large_image", title, description },
+  };
 }
 
 /** Fertige `Metadata` für eine geteilte Detailseite. Ohne Treffer bleibt es bei

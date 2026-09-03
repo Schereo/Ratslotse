@@ -20,10 +20,13 @@ beginnt kein späterer Punkt.
 1. **Öffentliche Problemübersicht (#1034): umgesetzt.** Rein lesende
    API-Projektion, Karte, Themenfilter, alle ehrlichen Geometrieformen, sichere
    Feature-Beispiele, Navigation, Sitemap und öffentlicher Vertrag.
-2. **Rangliste (#1042): umgesetzt auf diesem Task-Branch.** Nur ungelöste Projektionen, exakte
-   lebenszeitliche Zahl unabhängiger Meldungen, deterministische Rangfolge,
-   vergleichbare Balkenschienen, zugängliche Vorschauen und ehrlicher Kartenfokus.
-3. Öffentliche Detailseite und plattformgerechte Verlinkung — offen.
+2. **Rangliste (#1042): auf `feature` umgesetzt und abgenommen.** Nur ungelöste
+   Projektionen, exakte lebenszeitliche Zahl unabhängiger Meldungen,
+   deterministische Rangfolge, vergleichbare Balkenschienen, zugängliche
+   Vorschauen und ehrlicher Kartenfokus.
+3. **Öffentliche Detailseite (#1058): umgesetzt auf diesem Task-Branch.** Sichere
+   Einzelprojektion, kanonische Web-Route, Query-Adapter im statischen Export,
+   Teilen, Lotti-Hilfe und ehrliche Detailkarte.
 4. Private Meldungs-Domäne und sichere Persistenz — offen.
 5. Eigentümergebundene Entwurfs- und Einreichungs-API — offen.
 6. Geführter Meldechat und prominenter Einstieg — offen.
@@ -33,7 +36,7 @@ beginnt kein späterer Punkt.
 
 ## Noch nicht Teil des Bürgerportal-Stands
 
-Keine Detailseite, privaten Meldetabellen oder Meldungsendpunkte, KI-Aufrufe,
+Keine privaten Meldetabellen oder Meldungsendpunkte, KI-Aufrufe,
 Moderationsoberfläche, automatische Veröffentlichung, Uploads oder öffentlichen
-Kommentare. Die nächste Iteration startet erst nach ausdrücklicher Abnahme der
-deployten Übersicht.
+Kommentare. Iteration 3 ist erst nach ausdrücklicher Abnahme der deployten
+Detailseite abgeschlossen.

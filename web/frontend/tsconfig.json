@@ -20,5 +20,6 @@
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts",
     ".next-dev/types/**/*.ts"],
-  "exclude": ["node_modules", "playwright.config.ts", "tests", "playwright-report", "test-results"]
+  "exclude": ["node_modules", "playwright.config.ts", "tests", "playwright-report", "test-results",
+    ".next-dev/types.mobile-disabled"]
 }

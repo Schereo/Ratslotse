@@ -126,6 +126,12 @@ export function apiUrl(path: string): string {
   return `${apiBase()}/api${path}`;
 }
 
+/** Absolute backend URL for server-only requests such as link metadata. */
+export function serverApiUrl(path: string): string {
+  const backend = (process.env.BACKEND_URL || "http://localhost:8000").replace(/\/$/, "");
+  return `${backend}/api${path}`;
+}
+
 /** Auth headers for manual fetches (e.g. SSE streaming) that bypass the `api` wrapper.
  *  Empty on web (the cookie handles auth); bearer + client marker in the app. */
 export function authHeaders(): Record<string, string> {

@@ -10,6 +10,10 @@ from typing import Any
 from .domain import PROBLEM_CATEGORIES, PROBLEM_STATUSES, SCOPE_KINDS
 
 
+_SQLITE_INTEGER_MIN = -(2**63)
+_SQLITE_INTEGER_MAX = 2**63 - 1
+
+
 def _sql_enum(values: tuple[str, ...]) -> str:
     return ", ".join(f"'{value}'" for value in values)
 
@@ -187,18 +191,34 @@ class ProblemStore:
         category: str | None = None,
         status: str | None = None,
     ) -> list[dict[str, Any]]:
-        clauses = [
-            "published_at IS NOT NULL",
-            "independent_reports >= 1",
-            "status != 'apparently_resolved'",
-        ]
-        params: list[str] = []
+        clauses: list[str] = []
+        params: list[Any] = []
         if category is not None:
             clauses.append("category = ?")
             params.append(category)
         if status is not None:
             clauses.append("status = ?")
             params.append(status)
+        return self._read_public_problems(clauses, params)
+
+    def get_public_problem(self, problem_id: int) -> dict[str, Any] | None:
+        """Eine Projektion nur unter denselben Sichtbarkeitsregeln wie die Liste."""
+        if not _SQLITE_INTEGER_MIN <= problem_id <= _SQLITE_INTEGER_MAX:
+            return None
+        problems = self._read_public_problems(["id = ?"], [problem_id])
+        return problems[0] if problems else None
+
+    def _read_public_problems(
+        self,
+        extra_clauses: list[str],
+        params: list[Any],
+    ) -> list[dict[str, Any]]:
+        clauses = [
+            "published_at IS NOT NULL",
+            "independent_reports >= 1",
+            "status != 'apparently_resolved'",
+            *extra_clauses,
+        ]
         example_clauses = [clause for clause in clauses if clause != "published_at IS NOT NULL"]
         rows = self._conn.execute(
             f"""SELECT id, title, summary, category, scope_kind, location_label,

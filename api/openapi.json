@@ -17526,6 +17526,49 @@
         ]
       }
     },
+    "/api/probleme/{problem_id}": {
+      "get": {
+        "description": "Eine veröffentlichte Projektion über ihre stabile ID lesen.",
+        "operationId": "public_problem_api_probleme__problem_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "problem_id",
+            "required": true,
+            "schema": {
+              "title": "Problem Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Public Problem",
+        "tags": [
+          "probleme"
+        ]
+      }
+    },
     "/api/push/register": {
       "post": {
         "description": "Register (or refresh) the caller's device push token. Idempotent — the app\nre-registers on every launch, which also re-homes a token if the OS rotated it.",

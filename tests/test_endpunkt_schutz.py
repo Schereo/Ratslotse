@@ -80,6 +80,7 @@ OEFFENTLICH = {
     # privaten Meldungen liegen in einer getrennten Domäne und sind kein Teil
     # dieses Endpunkts.
     ("get", "/api/probleme"),
+    ("get", "/api/probleme/{problem_id}"),
 
     # Geteilte Antworten: Der Token IST der Zugang — wer den Link hat, darf
     # lesen und melden. Ein Konto zu verlangen machte das Teilen sinnlos.

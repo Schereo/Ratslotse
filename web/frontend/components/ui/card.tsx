@@ -25,9 +25,10 @@ export function Badge({ children, color = "slate", className }: { children: Reac
   );
 }
 
-export function Spinner({ className }: { className?: string }) {
+export function Spinner({ className, label }: { className?: string; label?: string }) {
   return (
-    <div className={cn("flex items-center justify-center p-8", className)}>
+    <div className={cn("flex items-center justify-center p-8", className)} role={label ? "status" : undefined}>
+      {label && <span className="sr-only">{label}</span>}
       {/* 600 ms statt 1 s Umdrehung: ein schnellerer Spinner lässt dieselbe
           Ladezeit kürzer wirken (wahrgenommene Performance). */}
       <div className="h-6 w-6 animate-spin rounded-full border-2 border-muted border-t-primary [animation-duration:600ms]" />
@@ -41,6 +42,7 @@ export function EmptyState({
   icon: Icon,
   mascot,
   action,
+  headingLevel,
 }: {
   title: string;
   hint?: string;
@@ -48,7 +50,10 @@ export function EmptyState({
   /** Lotti statt Icon zeigen — Pose passend zum Kontext (search/sleep/confused/…). */
   mascot?: MascotPose;
   action?: React.ReactNode;
+  /** Auf eigenständigen Leerseiten ist der Titel die Seitenüberschrift. */
+  headingLevel?: 1 | 2 | 3;
 }) {
+  const Title = headingLevel ? (`h${headingLevel}` as "h1" | "h2" | "h3") : "p";
   return (
     <div className="flex flex-col items-center rounded-xl border border-dashed border-border bg-card px-6 py-12 text-center">
       {mascot ? (
@@ -60,7 +65,7 @@ export function EmptyState({
           </span>
         )
       )}
-      <p className="font-medium text-foreground">{title}</p>
+      <Title className="font-medium text-foreground">{title}</Title>
       {hint && <p className="mt-1 max-w-sm text-sm text-muted-foreground">{hint}</p>}
       {action && <div className="mt-4">{action}</div>}
     </div>

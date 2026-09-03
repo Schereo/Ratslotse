@@ -40,15 +40,15 @@ function focusProblem(
 
 function shapeStyle(frequency: ProblemFrequency, scope: "route" | "area", selected: boolean): PathOptions {
   if (scope === "route") {
-    return { className: `problem-map-route frequency-${frequency}`, weight: selected ? 8 : 5, opacity: 0.92, lineCap: "round", lineJoin: "round" };
+    return { className: `problem-map-route frequency-${frequency}${selected ? " is-selected" : ""}`, weight: selected ? 8 : 5, opacity: 0.92, lineCap: "round", lineJoin: "round" };
   }
-  return { className: `problem-map-area frequency-${frequency}`, fillOpacity: selected ? 0.3 : 0.16, opacity: 0.9, weight: selected ? 4 : 2 };
+  return { className: `problem-map-area frequency-${frequency}${selected ? " is-selected" : ""}`, fillOpacity: selected ? 0.3 : 0.16, opacity: 0.9, weight: selected ? 4 : 2 };
 }
 
 export function ProblemMap({ problems, selectedId, onSelect, className }: {
   problems: PublicProblem[];
   selectedId: number | null;
-  onSelect: (id: number) => void;
+  onSelect?: (id: number) => void;
   className?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -100,7 +100,7 @@ export function ProblemMap({ problems, selectedId, onSelect, className }: {
             const marker = L.marker([problem.latitude!, problem.longitude!], {
               title: label,
               alt: label,
-              keyboard: true,
+              keyboard: !!selectRef.current,
               icon: L.divIcon({
                 className: "problem-map-icon",
                 html: `<span class="problem-map-pin problem-map-${problem.scope_kind} frequency-${problem.frequency}${selected ? " is-selected" : ""}" style="--problem-pin-size:${size}px"></span>`,
@@ -108,7 +108,7 @@ export function ProblemMap({ problems, selectedId, onSelect, className }: {
                 iconAnchor: [size / 2, size / 2],
               }),
             }).addTo(map);
-            marker.on("click", () => selectRef.current(problem.id));
+            if (selectRef.current) marker.on("click", () => selectRef.current?.(problem.id));
             const tooltip = document.createElement("span");
             tooltip.textContent = problem.title;
             marker.bindTooltip(tooltip, { direction: "top", offset: [0, -(size / 2)] });
@@ -120,17 +120,18 @@ export function ProblemMap({ problems, selectedId, onSelect, className }: {
 
           const scope = problem.scope_kind;
           if (scope !== "route" && scope !== "area") continue;
-          const hitShape = scope === "route"
+          const hitShape = scope === "route" && selectRef.current
             ? L.geoJSON(problem.geometry!, { style: { color: "#000", opacity: 0.001, weight: 28 } }).addTo(map)
             : null;
-          const shape = L.geoJSON(problem.geometry!, { interactive: scope === "area", style: shapeStyle(problem.frequency, scope, selected) }).addTo(map);
+          const shape = L.geoJSON(problem.geometry!, { interactive: scope === "area" && !!selectRef.current, style: shapeStyle(problem.frequency, scope, selected) }).addTo(map);
           const paths: Path[] = [];
           shape.eachLayer((layer) => paths.push(layer as Path));
           const controls: Path[] = [];
           (hitShape ?? shape).eachLayer((layer) => {
             const path = layer as Path;
+            if (!selectRef.current) return;
             controls.push(path);
-            path.on("click", () => selectRef.current(problem.id));
+            path.on("click", () => selectRef.current?.(problem.id));
             const tooltip = document.createElement("span");
             tooltip.textContent = problem.title;
             path.bindTooltip(tooltip, { sticky: true });
@@ -145,7 +146,7 @@ export function ProblemMap({ problems, selectedId, onSelect, className }: {
               const key = (event as KeyboardEvent).key;
               if (key !== "Enter" && key !== " ") return;
               event.preventDefault();
-              selectRef.current(problem.id);
+              selectRef.current?.(problem.id);
             });
           });
           const shapeBounds = (shape as LeafletGeoJSON).getBounds();
@@ -186,7 +187,10 @@ export function ProblemMap({ problems, selectedId, onSelect, className }: {
     }
     for (const [id, shape] of shapesRef.current) {
       const selected = id === selectedId;
-      shape.paths.forEach((path) => path.setStyle(shapeStyle(shape.frequency, shape.scope, selected)));
+      shape.paths.forEach((path) => {
+        path.setStyle(shapeStyle(shape.frequency, shape.scope, selected));
+        path.getElement()?.classList.toggle("is-selected", selected);
+      });
       shape.controls.forEach((control) => control.getElement()?.setAttribute("aria-pressed", String(selected)));
     }
     const selectedProblem = problems.find((problem) => problem.id === selectedId);
