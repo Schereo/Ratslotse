@@ -9,6 +9,7 @@ press links and "Ähnliche Beschlüsse" are heavier and run here, once a week, i
      2. Beschreibungen         describe_entities.py        — fills missing descriptions (slug-keyed meta survives the rebuild)
      2b. Vagheits-Urteile      warm_topic_vagueness.py     — beurteilt neue Vorschlags-Kandidaten vorab (sonst im Web-Request)
      3. Geocoding              geocode_entities.py         — geocodes new place entities
+    3b. Straßen-Geometrie     strassen_snapshot.py        — alle benannten Wege in EINEM Overpass-Aufruf, dann lokal abgleichen
      4. Embeddings/Ähnliche    embed_decisions.py          — re-embeds for "Ähnliche Beschlüsse"
      5. Verwandte Themen       build_entity_relations.py   — "Hängt zusammen mit…" je Entität
      6. Themen ↔ Beschlüsse    match_topics_decisions.py   — matcht Nutzer-Themen gegen Beschlüsse
@@ -54,6 +55,13 @@ STEPS: list[tuple[str, str]] = [
     # Beschreibungen, weil das Urteil sie mit liest.
     ("Vagheits-Urteile", "warm_topic_vagueness.py"),
     ("Geocoding", "geocode_entities.py"),
+    # Straßen sind der Sonderfall: Overpass erlaubt dieser IP zwei Abfragen
+    # gleichzeitig („Rate limit: 2"), und 500 Einzelabfragen ernten 429/504 —
+    # gemessen am 03.09.2026, als ein Reparaturlauf 498 von 513 Straßen still
+    # mit einem Nominatim-Einzelsegment abspeiste. EIN Aufruf holt alle 6.534
+    # benannten Wege Oldenburgs; der Abgleich läuft danach ohne Netz. Damit
+    # reparieren sich auch neu dazugekommene Straßen von selbst.
+    ("Straßen-Geometrie", "strassen_snapshot.py aktualisieren"),
     ("Embeddings / Ähnliche", "embed_decisions.py"),
     # Anlagen (Task 33): Volltexte NEUER Anlagen nachladen (Netz+pypdf, kein
     # LLM; der Alt-Bestand kam per Einmal-Batch) und ihre Chunk-Vektoren für
