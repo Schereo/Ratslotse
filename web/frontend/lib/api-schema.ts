@@ -3730,6 +3730,14 @@ export interface paths {
          *     und schlimmer: Die dünne Gruppe füllte sich nicht mehr von nebenan auf, sie
          *     stünde einfach kürzer da. Deshalb wirkt der Wert wie ein vorhandenes Thema
          *     und nicht wie ein Filter über die fertige Liste.
+         *
+         *     ``city`` (Vorgabe an): die kuratierten Stadtthemen aus
+         *     ``council.city_topics`` — Radverkehr, Kitas, Wohnungsbau. Sie kosten kein
+         *     Modell, nur eine Zählung, und stehen im Assistenten ganz oben. ``?city=0``
+         *     lässt sie weg, ``?citywide=0&city=1`` holt NUR sie.
+         *
+         *     ``limit`` (1–6) und ``nearby`` gelten je Stadtteil-Gruppe: Der Assistent
+         *     fragt seit dem 03.09.2026 zwei je Stadtteil ohne Nachbarschaft ab.
          */
         get: operations["topic_suggestions_api_topics_suggestions_get"];
         put?: never;
@@ -5432,6 +5440,26 @@ export interface components {
             slug: string;
             /** Target */
             target: string;
+        };
+        /**
+         * CityTopicSuggestion
+         * @description Ein kuratiertes Stadtthema (``council.city_topics``): Radverkehr, Kitas,
+         *     Wohnungsbau — Interessen statt Straßennamen. Gleiche Kachel wie die
+         *     Entitäts-Vorschläge, plus Schlüssel und Zeitraum der Zählung.
+         */
+        CityTopicSuggestion: {
+            /** Context */
+            context: string | null;
+            /** Description */
+            description: string;
+            /** Key */
+            key: string;
+            /** Months */
+            months: number;
+            /** N */
+            n: number;
+            /** Name */
+            name: string;
         };
         /** CommitteeDetail */
         CommitteeDetail: {
@@ -8669,6 +8697,8 @@ export interface components {
         };
         /** TopicSuggestions */
         TopicSuggestions: {
+            /** City */
+            city: components["schemas"]["CityTopicSuggestion"][];
             /** Districts */
             districts: components["schemas"]["DistrictSuggestions"][];
             /** Suggestions */
@@ -13530,6 +13560,9 @@ export interface operations {
                 district?: string[];
                 exclude?: string[];
                 citywide?: boolean;
+                city?: boolean;
+                limit?: number;
+                nearby?: boolean;
             };
             header?: never;
             path?: never;
@@ -13712,4 +13745,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 1d0b2019b40393939f11a667757299858a292e259154485e79dcdeb1c5d28ba7
+// vertrag-sha256: c6897098bac804122401af5f39d2a1cd16f060ea7e987a999e5ffefe74345e9c

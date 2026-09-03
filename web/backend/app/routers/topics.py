@@ -431,8 +431,14 @@ NEIGHBOURS = 3
 
 
 def _local_suggestions(council: CouncilStore, place, existing_tokens: list,
-                        chosen_tokens: list) -> tuple[list[dict], list[dict], int]:
+                        chosen_tokens: list, limit: int = 6,
+                        nearby: bool = True) -> tuple[list[dict], list[dict], int]:
     """Vorschläge für einen Ortsbereich: eigene, nebenan, und wie weit zurück.
+
+    ``limit`` ist die Zielzahl je Stadtteil (Vorgabe sechs). Der Assistent
+    fragt seit dem Umbau vom 03.09.2026 nur noch zwei je Stadtteil ab: Vier
+    Stadtteile mit je sechs Chips plus Nachbarschaft waren eine Wand aus
+    Straßennamen. ``nearby=False`` lässt das Auffüllen von nebenan weg.
 
     Gibt zurück, WIE WEIT gesucht wurde (in Monaten): Die Oberfläche schreibt das
     dazu. „Aus Bornhorst" über einen drei Jahre alten Vorgang wäre sonst eine
@@ -459,9 +465,9 @@ def _local_suggestions(council: CouncilStore, place, existing_tokens: list,
         probe = list(chosen_tokens)
         gefunden = _build_suggestions(
             council, council.suggested_entity_topics(days_back=tage, limit=16, place_id=place.id),
-            existing_tokens, probe, limit=6)
+            existing_tokens, probe, limit=limit)
         runden.append((tage, gefunden))
-        if len(gefunden) >= 6 and _tragende(gefunden) >= TRAGENDE_MINDESTENS:
+        if len(gefunden) >= limit and _tragende(gefunden) >= min(TRAGENDE_MINDESTENS, limit):
             break
     # Das engste Fenster, das genug TRAGENDE Vorschläge hat — nicht einfach das
     # erste mit sechs Einträgen. Seit auch Straßen ihren Stadtteil sicher kennen,
@@ -474,11 +480,11 @@ def _local_suggestions(council: CouncilStore, place, existing_tokens: list,
         chosen_tokens.append(_name_tokens(eintrag["name"]))
 
     nebenan: list[dict] = []
-    if len(letzte) < 6:
+    if nearby and len(letzte) < limit:
         from council import geo
 
         for nachbar in geo.nachbar_ortsbereiche(place.name, NEIGHBOURS):
-            if len(letzte) + len(nebenan) >= 6:
+            if len(letzte) + len(nebenan) >= limit:
                 break
             nb = council.resolve_place(nachbar)
             if not nb:
@@ -492,7 +498,7 @@ def _local_suggestions(council: CouncilStore, place, existing_tokens: list,
                     council.suggested_entity_topics(days_back=LOCAL_WINDOW_DAYS[-1], limit=16,
                                                     place_id=nb.id),
                     place),
-                existing_tokens, chosen_tokens, limit=6 - len(letzte) - len(nebenan),
+                existing_tokens, chosen_tokens, limit=limit - len(letzte) - len(nebenan),
             ):
                 nebenan.append({**eintrag, "place": nb.name})
     return letzte, nebenan, round(tage / 30.4)
@@ -524,6 +530,9 @@ def topic_suggestions(
     district: Annotated[list[str], Query()] = [],  # noqa: B006 — FastAPI liest die Vorgabe nur
     exclude: Annotated[list[str], Query()] = [],  # noqa: B006 — dito
     citywide: bool = True,
+    city: bool = True,
+    limit: Annotated[int, Query(ge=1, le=6)] = 6,
+    nearby: bool = True,
     user: dict = Depends(require_active),
     store: Store = Depends(get_store),
     council: CouncilStore = Depends(get_council_store),
@@ -555,7 +564,17 @@ def topic_suggestions(
     und schlimmer: Die dünne Gruppe füllte sich nicht mehr von nebenan auf, sie
     stünde einfach kürzer da. Deshalb wirkt der Wert wie ein vorhandenes Thema
     und nicht wie ein Filter über die fertige Liste.
+
+    ``city`` (Vorgabe an): die kuratierten Stadtthemen aus
+    ``council.city_topics`` — Radverkehr, Kitas, Wohnungsbau. Sie kosten kein
+    Modell, nur eine Zählung, und stehen im Assistenten ganz oben. ``?city=0``
+    lässt sie weg, ``?citywide=0&city=1`` holt NUR sie.
+
+    ``limit`` (1–6) und ``nearby`` gelten je Stadtteil-Gruppe: Der Assistent
+    fragt seit dem 03.09.2026 zwei je Stadtteil ohne Nachbarschaft ab.
     """
+    from council.city_topics import city_topic_suggestions
+
     # Stadtteil-Themen zählen beim Dedupe NICHT mit. Sie sind Ortsangaben,
     # keine Interessen: Wer „Krusenbusch" gewählt hat, bekäme sonst „Quartier
     # am Krusenbusch", „Grundschule Krusenbusch" und „Eisenbahnüberführung
@@ -574,7 +593,7 @@ def topic_suggestions(
         if not place:
             continue                              # geraten oder veraltet — still übergehen
         lokal, nebenan, fenster = _local_suggestions(
-            council, place, existing_tokens, chosen_tokens)
+            council, place, existing_tokens, chosen_tokens, limit=limit, nearby=nearby)
         # Auch mit leerer Liste antworten: „In diesem Stadtteil war zuletzt
         # nichts" ist eine Auskunft. Ein weggelassener Block sähe aus wie ein
         # Fehler.
@@ -584,7 +603,8 @@ def topic_suggestions(
     stadtweit = _build_suggestions(
         council, council.suggested_entity_topics(days_back=365, limit=16),
         existing_tokens, chosen_tokens, limit=6) if citywide else []
-    return {"suggestions": stadtweit, "districts": gruppen}
+    stadtthemen = city_topic_suggestions(council) if city else []
+    return {"city": stadtthemen, "suggestions": stadtweit, "districts": gruppen}
 
 
 @router.post("/describe")

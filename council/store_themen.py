@@ -133,6 +133,19 @@ class ThemenMixin:
             r["n_recent"] = r["n_recent"] or 0
         return rows
 
+    def decision_texts_since(self, date_from: str) -> list[str]:
+        """Titel und Zusammenfassung jedes Beschlusses seit ``date_from`` — das
+        Zählgut der Stadtthemen (``council.city_topics``). Nur echte
+        Beschlüsse, keine Unterpunkte: Ein Beschluss soll ein Thema einmal
+        zählen, nicht je Absatz."""
+        rows = self._conn.execute(
+            """SELECT d.title, d.summary FROM council_decisions d
+               JOIN council_sessions s ON s.ksinr = d.ksinr
+               WHERE s.session_date >= ? AND d.kind = 'decision'""",
+            (date_from,),
+        ).fetchall()
+        return [f"{r[0] or ''} {r[1] or ''}" for r in rows]
+
     def suggested_entity_topics(self, days_back: int = 365, limit: int = 12,
                                 place_id: str | None = None) -> list[dict]:
         """Konkrete Orte/Projekte mit jüngster Ratsaktivität — Futter für die

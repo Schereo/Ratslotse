@@ -523,8 +523,23 @@ class DistrictSuggestions(TypedDict):
     months: int
 
 
+class CityTopicSuggestion(TopicSuggestion):
+    """Ein kuratiertes Stadtthema (``council.city_topics``): Radverkehr, Kitas,
+    Wohnungsbau — Interessen statt Straßennamen. Gleiche Kachel wie die
+    Entitäts-Vorschläge, plus Schlüssel und Zeitraum der Zählung."""
+    #: Stabiler Schlüssel des Eintrags in der Registry (``cycling``, ``childcare``).
+    key: str
+    #: Zeitraum der Zahl ``n`` in Monaten — die Oberfläche schreibt ihn dazu.
+    months: int
+
+
 class TopicSuggestions(TypedDict):
-    #: Stadtweit — was gerade überhaupt im Rat läuft.
+    #: Kuratierte Stadtthemen mit Substanz, die aktivsten zuerst. Anders als
+    #: die übrigen Listen NICHT um die eigenen Themen bereinigt: Die Liste ist
+    #: stabil, die Oberfläche markiert, was schon angelegt ist. Leer bei
+    #: ``?city=0``.
+    city: list[CityTopicSuggestion]
+    #: Stadtweit — was gerade überhaupt im Rat läuft (Entitäten).
     suggestions: list[TopicSuggestion]
     #: Je mitgegebenem ``?district=`` eine Gruppe, in derselben Reihenfolge.
     #: Keine der Listen überschneidet sich mit einer anderen oder mit

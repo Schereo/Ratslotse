@@ -3853,6 +3853,48 @@
         "title": "CityMapPoint",
         "type": "object"
       },
+      "CityTopicSuggestion": {
+        "description": "Ein kuratiertes Stadtthema (``council.city_topics``): Radverkehr, Kitas,\nWohnungsbau — Interessen statt Straßennamen. Gleiche Kachel wie die\nEntitäts-Vorschläge, plus Schlüssel und Zeitraum der Zählung.",
+        "properties": {
+          "context": {
+            "title": "Context",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "months": {
+            "title": "Months",
+            "type": "integer"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "description",
+          "n",
+          "context",
+          "key",
+          "months"
+        ],
+        "title": "CityTopicSuggestion",
+        "type": "object"
+      },
       "CommitteeDetail": {
         "properties": {
           "decisions_year": {
@@ -11723,6 +11765,13 @@
       },
       "TopicSuggestions": {
         "properties": {
+          "city": {
+            "items": {
+              "$ref": "#/components/schemas/CityTopicSuggestion"
+            },
+            "title": "City",
+            "type": "array"
+          },
           "districts": {
             "items": {
               "$ref": "#/components/schemas/DistrictSuggestions"
@@ -11739,6 +11788,7 @@
           }
         },
         "required": [
+          "city",
           "suggestions",
           "districts"
         ],
@@ -18814,7 +18864,7 @@
     },
     "/api/topics/suggestions": {
       "get": {
-        "description": "Anklickbare Themen-Vorschläge aus den echten Daten: konkrete Orte und\nProjekte mit jüngster Ratsaktivität (Entitäten) statt der häufigsten\nSchlagworte — die belohnten Verwaltungsvokabeln („Bericht\", „Annahme\").\nDie KI-Beschreibung der Entität wird zur Themen-Beschreibung und macht\nden Themen-Wächter treffsicherer als ein generischer Satz. Ohne Themen,\ndie der Account schon angelegt hat; ein Klick legt direkt an.\n\n``?district=<place_id>`` (mehrfach erlaubt) hängt je Ortsbereich eine\n**eigene** Liste davor: dieselbe Auswahl, auf diesen Ortsbereich\neingeschränkt. Die Trennung ist der Punkt — „was ist in Osternburg los?\"\nist eine andere Frage als „was läuft gerade in der Stadt?\", und wer beides\ngetrennt sieht, kann wählen. Die Ortsbereiche stehen zuerst und in der\nReihenfolge, in der sie gefragt wurden; was dort schon vorkommt,\nwiederholen weder die anderen Ortsbereiche noch die stadtweite Liste.\n\n``?citywide=0`` lässt die stadtweite Liste weg. Damit kann die Oberfläche\n**je Ortsbereich einzeln** fragen und jede Gruppe zeigen, sobald sie da\nist: Ein Aufruf beurteilt jeden noch nie gesehenen Vorschlag einmal per\nModell, und bei zwei, drei Stadtteilen wartete man vorher auf ALLE, bevor\nder erste erschien (Tims Befund, 03.09.2026).\n\n``?exclude=<name>`` (mehrfach erlaubt) reicht das gemeinsame Gedächtnis\nüber die getrennten Aufrufe hinweg: Die Oberfläche schickt mit, was in den\nvorherigen Gruppen schon steht. Ohne das käme dieselbe Baustelle zweimal —\nund schlimmer: Die dünne Gruppe füllte sich nicht mehr von nebenan auf, sie\nstünde einfach kürzer da. Deshalb wirkt der Wert wie ein vorhandenes Thema\nund nicht wie ein Filter über die fertige Liste.",
+        "description": "Anklickbare Themen-Vorschläge aus den echten Daten: konkrete Orte und\nProjekte mit jüngster Ratsaktivität (Entitäten) statt der häufigsten\nSchlagworte — die belohnten Verwaltungsvokabeln („Bericht\", „Annahme\").\nDie KI-Beschreibung der Entität wird zur Themen-Beschreibung und macht\nden Themen-Wächter treffsicherer als ein generischer Satz. Ohne Themen,\ndie der Account schon angelegt hat; ein Klick legt direkt an.\n\n``?district=<place_id>`` (mehrfach erlaubt) hängt je Ortsbereich eine\n**eigene** Liste davor: dieselbe Auswahl, auf diesen Ortsbereich\neingeschränkt. Die Trennung ist der Punkt — „was ist in Osternburg los?\"\nist eine andere Frage als „was läuft gerade in der Stadt?\", und wer beides\ngetrennt sieht, kann wählen. Die Ortsbereiche stehen zuerst und in der\nReihenfolge, in der sie gefragt wurden; was dort schon vorkommt,\nwiederholen weder die anderen Ortsbereiche noch die stadtweite Liste.\n\n``?citywide=0`` lässt die stadtweite Liste weg. Damit kann die Oberfläche\n**je Ortsbereich einzeln** fragen und jede Gruppe zeigen, sobald sie da\nist: Ein Aufruf beurteilt jeden noch nie gesehenen Vorschlag einmal per\nModell, und bei zwei, drei Stadtteilen wartete man vorher auf ALLE, bevor\nder erste erschien (Tims Befund, 03.09.2026).\n\n``?exclude=<name>`` (mehrfach erlaubt) reicht das gemeinsame Gedächtnis\nüber die getrennten Aufrufe hinweg: Die Oberfläche schickt mit, was in den\nvorherigen Gruppen schon steht. Ohne das käme dieselbe Baustelle zweimal —\nund schlimmer: Die dünne Gruppe füllte sich nicht mehr von nebenan auf, sie\nstünde einfach kürzer da. Deshalb wirkt der Wert wie ein vorhandenes Thema\nund nicht wie ein Filter über die fertige Liste.\n\n``city`` (Vorgabe an): die kuratierten Stadtthemen aus\n``council.city_topics`` — Radverkehr, Kitas, Wohnungsbau. Sie kosten kein\nModell, nur eine Zählung, und stehen im Assistenten ganz oben. ``?city=0``\nlässt sie weg, ``?citywide=0&city=1`` holt NUR sie.\n\n``limit`` (1–6) und ``nearby`` gelten je Stadtteil-Gruppe: Der Assistent\nfragt seit dem 03.09.2026 zwei je Stadtteil ohne Nachbarschaft ab.",
         "operationId": "topic_suggestions_api_topics_suggestions_get",
         "parameters": [
           {
@@ -18850,6 +18900,38 @@
             "schema": {
               "default": true,
               "title": "Citywide",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "city",
+            "required": false,
+            "schema": {
+              "default": true,
+              "title": "City",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 6,
+              "maximum": 6,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "nearby",
+            "required": false,
+            "schema": {
+              "default": true,
+              "title": "Nearby",
               "type": "boolean"
             }
           }
