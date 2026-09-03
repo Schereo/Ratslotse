@@ -213,9 +213,19 @@ def register(
         # Womit dieses Konto entstanden ist — Browser oder App (Admin 20a).
         signup_client=client_kind(request),
     )
-    # Default to email delivery so new accounts actually receive notifications.
-    # They can switch channels later in /account.
-    store.set_delivery_channel(user_id, "email")
+    # Der Zustellweg wird NICHT vorbelegt, wenn der Assistent im Browser gleich
+    # danach fragt: „Soll Lotti sich melden?" stand über einem Schalter,
+    # der längst an war, und die Antwort dort änderte nichts (Tim, 03.09.2026:
+    # „das sollte ja meine Entscheidung sein"). Ein Konto ohne Zustellweg
+    # bekommt bis zur Zusage keine Benachrichtigungen — die einmalige
+    # Erinnerung an die halbfertige Einrichtung geht trotzdem raus
+    # (`Store.setups_to_remind`), sie ist eine Service-Mail zum eigenen Konto
+    # und keine Ratsmeldung.
+    #
+    # Die native App fragt in ihrem Assistenten NUR nach Push. Dort bliebe ein
+    # „off" also stehen, wenn jemand die Systemabfrage ablehnt — deshalb
+    # behält sie die bisherige Vorbelegung.
+    store.set_delivery_channel(user_id, "email" if is_app_client(request) else "off")
     created_user = store.get_web_user_by_id(user_id)
     _set_auth_cookie(response, created_user)
     if user_status == "pending":

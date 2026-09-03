@@ -186,6 +186,13 @@ class TopicOut(BaseModel):
     # waren es 30 Tage, was bei fast jedem Thema eine 0 ergab: Die Gremien
     # tagen monatlich, im Sommer gar nicht, und Protokolle kommen mit Verzug.
     hits_6m: int = 0
+    # Treffer der letzten zwölf Monate — dasselbe Fenster, in dem der
+    # Einrichtungs-Assistent seine Vorschläge zählt. Er zeigt in „Deine Themen"
+    # diese Zahl statt der Gesamtzahl seit 2018: Wer den Chip „Digitale
+    # Verwaltung 7" anklickte, las oben „23 Beschlüsse" und hielt beides für
+    # dieselbe Größe (Tim, 03.09.2026). Auf der Themen-Karte bleibt die
+    # Gesamtzahl; dort ist der Bestand die Frage, im Assistenten die Aktualität.
+    hits_12m: int = 0
 
 
 # ---- subscriptions ----

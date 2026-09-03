@@ -11704,6 +11704,11 @@
             "title": "Description",
             "type": "string"
           },
+          "hits_12m": {
+            "default": 0,
+            "title": "Hits 12M",
+            "type": "integer"
+          },
           "hits_6m": {
             "default": 0,
             "title": "Hits 6M",
