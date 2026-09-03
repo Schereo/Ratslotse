@@ -905,9 +905,17 @@ def test_wieder_einschalten_faengt_bei_null_an(store, monkeypatch):
     assert title == ["danach"]
 
 
-def test_abgeschaltet_bekommt_keine_einrichtungs_erinnerung(store):
-    """Auch die freundlich gemeinte Erinnerung schweigt — sonst wäre der
-    Aus-Schalter nur eine Bitte."""
+def test_einrichtungs_erinnerung_auch_ohne_zustellweg(store):
+    """Die einmalige Erinnerung an die halbfertige Einrichtung geht auch an
+    Konten ohne Zustellweg.
+
+    Bis zum 03.09.2026 war ``off`` hier ein Ausschlussgrund, und das stimmte,
+    solange die Registrierung ``email`` vorbelegte. Seit ein Browser-Konto
+    ohne Zustellweg startet (der Assistent fragt danach), heißt ``off`` bei
+    genau dieser Gruppe „noch nicht gefragt" — die Bedingung hätte also die
+    Halbfertigen ausgeschlossen, um die es geht. Die laufenden
+    Benachrichtigungen bleiben davon unberührt: Sie hängen an
+    ``notify.gewuenscht`` und schweigen weiter (s. Test darüber)."""
     from datetime import timedelta
 
     def _halb_eingerichtet(email: str) -> int:
@@ -925,4 +933,7 @@ def test_abgeschaltet_bekommt_keine_einrichtungs_erinnerung(store):
 
     kandidaten = [u["id"] for u in store.setups_to_remind(older_than_hours=48)]
     assert laut in kandidaten
-    assert still not in kandidaten
+    assert still in kandidaten
+    # Und trotzdem keine Ratsmeldung an dasselbe Konto — der Aus-Schalter
+    # wirkt dort, wo er hingehört.
+    assert not notify.gewuenscht(store, still, notify.N2_THEMA)

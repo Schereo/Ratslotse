@@ -129,6 +129,10 @@ def test_merkliste_top_wird_zum_beschluss_und_meldet_ergebnis(client):
     importieren. Derselbe Eintrag zeigt danach den Beschluss und erzeugt genau
     eine Ergebnis-Meldung — ohne doppelten Beschluss-Merker."""
     _register(client)
+    # Seit dem 03.09.2026 startet ein Browser-Konto OHNE Zustellweg — der
+    # Einrichtungs-Assistent fragt danach. Hier steht die Zusage, die er
+    # abholt; ohne sie käme die Meldung zu Recht nicht in die Warteschlange.
+    client.put("/api/account/delivery", json={"delivery_channel": "email"})
     tag = (date.today() + timedelta(days=2)).isoformat()
     cs = CouncilStore(COUNCIL_DB)
     cs.save_session(CouncilSession(
@@ -283,6 +287,27 @@ def test_register_never_grants_admin(client):
     store = Store(RATSLOTSE_DB)
     assert store.get_web_user_by_email("admin@test.de")["role"] == "user"
     store.close()
+
+
+def test_registrierung_im_browser_belegt_keinen_zustellweg(client):
+    """Der Assistent fragt „Soll Lotti sich melden?" — also darf die Antwort
+    nicht schon vorher feststehen.
+
+    Bis zum 03.09.2026 setzte die Registrierung ``email``; der Schritt zeigte
+    dann „ist für dich bereits eingeschaltet" und ein Nein dort änderte nichts
+    (Tim: „das sollte ja meine Entscheidung sein"). Die native App fragt in
+    ihrem Assistenten NUR nach Push und behält deshalb die Vorbelegung —
+    sonst stünde ein Konto ohne jeden Weg da, wenn jemand die
+    System-Nachfrage ablehnt."""
+    im_browser = client.post("/api/auth/register",
+                             json={"email": "browser@test.de", "password": "password123"})
+    assert im_browser.status_code == 201
+    assert im_browser.json()["delivery_channel"] == "off"
+
+    in_der_app = client.post("/api/auth/register", headers={"X-Client": "ios"},
+                             json={"email": "app@test.de", "password": "password123"})
+    assert in_der_app.status_code == 201
+    assert in_der_app.json()["delivery_channel"] == "email"
 
 
 def test_first_registrant_on_empty_db_is_not_admin(client):
@@ -1691,6 +1716,10 @@ def test_karte_traegt_ihre_juengsten_treffer(client):
     # Thema gerade läuft oder ruht — die Gesamtzahl kann beides bedeuten.
     # Von den sechs Beschlüssen liegen die aus 1, 5 und 40 Tagen im Fenster.
     assert t["hits_6m"] == 3
+    # Und dasselbe für zwölf Monate — die Zahl, die der Einrichtungs-Assistent
+    # zeigt, damit sie zu den Vorschlags-Chips daneben passt („Beschlüsse der
+    # letzten 12 Monate"). Von den sechs liegt nur der 400 Tage alte draußen.
+    assert t["hits_12m"] == 5
 
 
 def test_punkte_und_abzeichen_zaehlen_dieselbe_menge(client):
@@ -4955,6 +4984,9 @@ def test_zustellweg_off_ist_erlaubt_und_raeumt_die_warteschlange(client):
     from kern import notify
 
     owner = _register(client).json()["id"]
+    # Erst zusagen (das tut sonst der Einrichtungs-Assistent) — ohne
+    # Zustellweg gäbe es nichts abzuschalten.
+    client.put("/api/account/delivery", json={"delivery_channel": "email"})
 
     # Etwas liegt schon in der Warteschlange, als abgeschaltet wird.
     store = Store(RATSLOTSE_DB)

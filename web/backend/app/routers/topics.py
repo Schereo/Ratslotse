@@ -35,7 +35,7 @@ from __future__ import annotations
 
 import re
 import logging
-from datetime import date
+from datetime import date, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
@@ -70,6 +70,22 @@ def _vor_sechs_monaten(heute: date | None = None) -> date:
     from council.topic_intel import vor_sechs_monaten
 
     return vor_sechs_monaten(heute)
+
+
+def _vor_zwoelf_monaten(heute: date | None = None) -> date:
+    """Der Stichtag hinter „n in 12 Monaten" — das Fenster des Einrichtungs-
+    Assistenten.
+
+    Die Vorschlags-Chips dort zählen seit jeher zwölf Monate
+    (``council.city_topics.WINDOW_DAYS``, dieselben 365 Tage). Daneben stand
+    für dasselbe Thema die Gesamtzahl seit 2018: derselbe Klick las sich als
+    „7" unten und „23" oben (Tim, 03.09.2026). Das Thema liefert seine Treffer
+    deshalb zusätzlich im selben Fenster — dieselbe Definition von „Beschluss
+    zu diesem Thema" wie überall (s. Modul-Kopf), nur datumsbeschnitten.
+    """
+    from council.city_topics import WINDOW_DAYS
+
+    return (heute or date.today()) - timedelta(days=WINDOW_DAYS)
 
 
 def _own_topic(store: Store, owner_id: int, topic_id: int):
@@ -166,6 +182,7 @@ def list_topics(
     # aus derselben Abfrage, damit Abzeichen und Punkte nie auseinandergehen.
     unseen_ids = store.unseen_hit_ids(owner_id)
     as_of_date = _vor_sechs_monaten().isoformat()
+    as_of_12m = _vor_zwoelf_monaten().isoformat()
     out = []
     for t in topics:
         hits = sorted((by_id[d] for d in cand.get(t.id, []) if d in by_id),
@@ -200,6 +217,7 @@ def list_topics(
                     for d in hits[:5]
                 ],
                 hits_6m=sum(1 for d in hits if (d.get("session_date") or "") >= as_of_date),
+                hits_12m=sum(1 for d in hits if (d.get("session_date") or "") >= as_of_12m),
             )
         )
     return out
@@ -594,8 +612,6 @@ def _mit_ortsgrund(council: CouncilStore, eintraege: list[dict], place, tage: in
     ziel = eintraege if nur is None else nur
     if not ziel:
         return
-    from datetime import timedelta
-
     cutoff = (date.today() - timedelta(days=tage)).isoformat()
     titel = council.local_reason_titles([e["slug"] for e in ziel if e.get("slug")],
                                         place, cutoff)
