@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { Clock, MailWarning } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { darfAdmin } from "@/lib/rechte";
@@ -21,7 +21,8 @@ import { BackToTop } from "@/components/back-to-top";
 import { ScrollMemory } from "@/components/scroll-memory";
 import { PeekingChick } from "@/components/peeking-chick";
 import { PublicShell } from "@/components/public-shell";
-import { Button, Card, CardListSkeleton, Skeleton, toast } from "@/components/ui";
+import { Button, Card, CardListSkeleton, Skeleton, Spinner, toast } from "@/components/ui";
+import { SETUP_QUERY_KEY, holeSetupStand } from "@/lib/onboarding-setup";
 import { istOeffentlich, mitRuecksprung } from "@/lib/public-routes";
 import type { User } from "@/lib/types";
 
@@ -36,12 +37,25 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pending = !!user && user.status === "pending" && !darfAdmin(user);
   const gated = needsVerify || pending;
 
-  // Poll /me every 30 s while the account is gated (email unverified or awaiting
-  // approval) so it auto-unlocks without a page reload.
+  // Solange das Konto gesperrt ist, hier auf die Bestätigung warten, statt eine
+  // Seite neu laden zu lassen. Beim Warten auf die E-Mail im Sekundentakt: Das
+  // ist der Tab, in dem registriert wurde, und die Bestätigung passiert in
+  // aller Regel binnen einer Minute im Nachbartab. Die 30 s von früher hießen,
+  // dass dieser Screen nach der Bestätigung noch eine halbe Minute stehenblieb.
+  // Für ein deaktiviertes Konto (`pending`) bleibt der ruhige Takt.
+  const queryClient = useQueryClient();
   useQuery({
     queryKey: ["me-poll"],
-    queryFn: () => api.get<User>("/auth/me").then((u) => { refresh(); return u; }),
-    refetchInterval: gated ? 30_000 : false,
+    queryFn: () => api.get<User>("/auth/me").then((u) => {
+      refresh();
+      // Sobald es freigegeben ist: den Stand des Assistenten gleich mitholen,
+      // damit direkt das Einrichten steht und nicht erst „Heute" aufblitzt.
+      if (u.email_verified && u.status === "active") {
+        void queryClient.prefetchQuery({ queryKey: SETUP_QUERY_KEY, queryFn: holeSetupStand, retry: false });
+      }
+      return u;
+    }),
+    refetchInterval: needsVerify ? 3_000 : pending ? 30_000 : false,
     enabled: gated,
   });
 
@@ -250,6 +264,12 @@ function VerifyNotice({ email }: { email: string }) {
         Wir haben einen Bestätigungslink an <span className="font-medium">{email}</span> geschickt.
         Klick den Link, um fortzufahren. Schau auch im Spam-Ordner nach.
       </p>
+      {/* Der Screen wartet sichtbar mit: Sobald der Link im anderen Tab (oder
+          auf dem Handy) geklickt ist, springt es hier von selbst weiter — ohne
+          diesen Hinweis sieht die Seite aus, als wäre sie zu Ende. */}
+      <div className="mt-5 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+        <Spinner /> Warten auf deine Bestätigung …
+      </div>
       <Button onClick={resend} disabled={busy} variant="secondary" className="mt-5">
         {busy ? "Senden…" : "E-Mail erneut senden"}
       </Button>
