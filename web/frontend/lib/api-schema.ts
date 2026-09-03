@@ -7368,13 +7368,13 @@ export interface components {
         };
         /** QaSharePress */
         QaSharePress: {
-            /**
-             * Auszug
-             * @default
-             */
-            auszug: string;
             /** Date */
             date?: string | null;
+            /**
+             * Excerpt
+             * @default
+             */
+            excerpt: string;
             /** Title */
             title: string;
             /** Url */
@@ -13537,4 +13537,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 43acce81003739cdb6d63374535d14801587b1441632d0a4672e8afd164a7482
+// vertrag-sha256: a753168cdbedbbac8b6f8d62dae66e12209a98f29c462ffa8a472c92475c1229

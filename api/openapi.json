@@ -8785,12 +8785,6 @@
       },
       "QaSharePress": {
         "properties": {
-          "auszug": {
-            "default": "",
-            "maxLength": 600,
-            "title": "Auszug",
-            "type": "string"
-          },
           "date": {
             "maxLength": 10,
             "title": "Date",
@@ -8798,6 +8792,12 @@
               "string",
               "null"
             ]
+          },
+          "excerpt": {
+            "default": "",
+            "maxLength": 600,
+            "title": "Excerpt",
+            "type": "string"
           },
           "title": {
             "maxLength": 300,

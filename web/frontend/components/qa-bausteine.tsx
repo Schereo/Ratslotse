@@ -35,7 +35,7 @@ import { HAUSHALT_FREI } from "@/lib/haushalt-frei";
 export type PresseHinweis = { title: string; url: string; date: string | null;
   /** Anriss der Meldung (600 Zeichen aus dem Volltext). Ältere gespeicherte
    *  Gespräche kennen das Feld nicht — dann bleibt es die reine Titelzeile. */
-  auszug?: string };
+  excerpt?: string };
 
 /** Task 33: Anlagen-Fundstelle (Gutachten, Konzept, Stellungnahme) aus der
  *  schnellen oder gründlichen Recherche. */
@@ -750,9 +750,9 @@ export function PresseBlock({ press_releases }: { press_releases: PresseHinweis[
               {/* Die Meldung SELBST, nicht nur ihre Überschrift: Ohne den
                   Anriss war die Karte eine reine Weiterleitung auf die
                   Stadt-Seite (Tims Befund 01.09.2026). */}
-              {p.auszug && (
+              {p.excerpt && (
                 <span className="mt-0.5 line-clamp-3 block text-[11.5px] leading-snug text-muted-foreground">
-                  {p.auszug}
+                  {p.excerpt}
                 </span>
               )}
             </a>

@@ -428,7 +428,7 @@ def _run(job: DeepJob, ratslotse_db: str, council_db: str) -> None:
             "sources": [_qa_source(c) for c in candidates],
             "presse_kompakt": [{"title": p.get("title"), "url": p.get("url"),
                                 "date": p.get("date"),
-                                "auszug": (p.get("auszug") or "")[:600]}
+                                "excerpt": (p.get("auszug") or "")[:600]}
                                for p in presse_rows],
             "debatten_kompakt": [{"speaker": d.get("speaker"), "party": d.get("party"),
                                   "art": d.get("art"), "top": d.get("top"),
