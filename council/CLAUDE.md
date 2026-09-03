@@ -90,10 +90,10 @@ Methoden. Der Haushalt ist als erste Ecke heraus:
 
 | Datei | Methoden | Inhalt |
 |---|---|---|
-| `council/store.py` | 222 | **Kern**: Beschlüsse, Vorlagen, Anlagen, Suche, Embeddings |
+| `council/store.py` | 167 | **Kern**: Beschlüsse, Vorlagen, Anlagen, Herkunft, Suche, Embeddings |
 | `council/store_schema.py` | 15 | `SCHEMA`, Migration und ihre Vokabulare |
 | `council/store_sitzungen.py` | 48 | Termine, Tagesordnungen, Gremien, Wochenvorschau |
-| `council/store_haushalt.py` | 81 | die Abfragen der Haushalts-Seiten |
+| `council/store_haushalt.py` | 136 | Haushalts-Seiten, Lese- UND Schreibseite |
 | `council/store_personen.py` | 31 | Ratsmitglieder, Verwaltung, Namensformen, Anwesenheit |
 | `council/store_themen.py` | 31 | Entitäten, Aliasse, Steckbriefe, Verwandtschaft |
 | `council/store_orte.py` | 27 | Katalog, Geocodierung, Stadtteile, Kartenpunkte |
@@ -105,13 +105,18 @@ Methoden. Der Haushalt ist als erste Ecke heraus:
 | `council/store_helfer.py` | — | die paar Funktionen, die mehrere Ecken brauchen |
 
 Alle landen über Mixins in derselben `CouncilStore`; an den Aufrufstellen
-ändert sich nichts. `store.py` ist damit von 15.744 auf 6.432 Zeilen und von
-506 auf 222 eigene Methoden geschrumpft.
+ändert sich nichts. `store.py` ist damit von 15.744 auf 5.072 Zeilen und von
+506 auf 167 eigene Methoden geschrumpft.
 
 `store_helfer.py` gibt es, weil ein Mixin in einer eigenen Datei nichts aus
 `store.py` importieren kann — das wäre ein Ring. Was mehrere Ecken brauchen und
 keiner gehört, wandert dorthin.
 | `council/geld/*.py` | je eine Facette der KI-Frage, je eine Store-Methode |
+
+**Die Wurzeln müssen BEIDE Seiten treffen.** Der erste Haushalts-Schnitt ging
+nur von den Endpunkten aus — 55 `save_*`-Methoden blieben deshalb im Kern
+zurück, obwohl sie nirgendwo sonst gebraucht werden. Zu den Wurzeln gehören
+also die Endpunkte **und** die Ingest-Module und -Skripte der Ecke.
 
 Der Schnitt läuft je Ecke über den **Aufrufkegel**, nicht über ein
 Namensmuster: was die Endpunkte dieser Ecke am `store` aufrufen, plus was

@@ -672,40 +672,6 @@ class CouncilStore(FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
             )
         self.refresh_abweichung(ksinr=ksinr)
 
-    def refresh_abweichung(self, ksinr: int | None = None, template_number: str | None = None) -> int:
-        """Beschluss ↔ Beschlussvorschlag vergleichen (council.ernte.deviation)
-        und das Ergebnis an den Beschlüssen ablegen. Zwei Auslöser, weil Vorlage
-        und Protokoll in beliebiger Reihenfolge eintreffen: nach save_protocol
-        (per ksinr) und nach save_vorlage (per template_number). Nur angenommene
-        Beschlüsse — eine Vertagung oder Ablehnung ist keine Textänderung."""
-        from council import ernte
-
-        sql = ("SELECT id, template_number, official_text FROM council_decisions "
-               "WHERE kind = 'decision' AND outcome = 'accepted' "
-               "AND official_text IS NOT NULL AND template_number IS NOT NULL")
-        args: tuple = ()
-        if ksinr is not None:
-            sql += " AND ksinr = ?"
-            args = (ksinr,)
-        elif template_number is not None:
-            # Auch Beschlüsse, die eine REVISION dieser Nummer zitieren
-            # („22/0348/1" bei gespeicherter Basis „22/0348") — der
-            # get_vorlage_by_nr-Fallback löst sie ohnehin auf (Befund E2).
-            base = "/".join(template_number.split("/")[:2])
-            sql += " AND (template_number IN (?, ?) OR template_number LIKE ? || '/%')"
-            args = (template_number, base, template_number)
-        vorschlaege: dict[str, str | None] = {}
-        updates = []
-        for did, nr, official_text in self._conn.execute(sql, args).fetchall():
-            if nr not in vorschlaege:
-                v = self.get_vorlage_by_nr(nr)
-                vorschlaege[nr] = (v or {}).get("proposed_decision")
-            updates.append((ernte.deviation(vorschlaege[nr], official_text), did))
-        if updates:
-            with self._conn:
-                self._conn.executemany(
-                    "UPDATE council_decisions SET deviation = ? WHERE id = ?", updates)
-        return len(updates)
 
     def mark_protocol_failed(self, ksinr: int, document: dict) -> None:
         now = datetime.utcnow().isoformat(timespec="seconds")
@@ -1809,164 +1775,17 @@ class CouncilStore(FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
 
     # --- Stadt-Haushalt (council.haushalt) -----------------------------------
 
-    def save_haushalt(self, year: int, rows: list[dict], herkunft) -> int:
-        """Ergebnishaushalt eines Jahres speichern — ersetzt den bisherigen
-        Stand des Jahres komplett (Re-Ingest idempotent).
-
-        ``herkunft`` ist eine :class:`council.herkunft.Herkunft` und hat den
-        früheren ``source_url``-String abgelöst: Eine URL allein sagt nicht,
-        an welcher Stelle eines 300-Seiten-PDFs gelesen wurde und was die
-        Zahlen absichert. ``source_url`` steht weiter in der Tabelle und wird
-        aus derselben Angabe gefüllt."""
-        now = datetime.utcnow().isoformat(timespec="seconds")
-        with self._conn:
-            hid = self.merke_herkunft(herkunft, fetched_at=now)
-            self._conn.execute("DELETE FROM council_budget WHERE year = ?", (year,))
-            for r in rows:
-                self._conn.execute(
-                    "INSERT INTO council_budget (year, area, revenues, expenses, "
-                    " result, is_total, source_url, fetched_at, herkunft_id) "
-                    "VALUES (?,?,?,?,?,?,?,?,?)",
-                    (year, r["area"], r.get("revenues"), r.get("expenses"),
-                     r.get("result"), int(r.get("is_total", 0)),
-                     herkunft.url, now, hid))
-        return len(rows)
 
 
 
-    def save_steuereinnahmen(self, rows: list[dict], herkunft) -> int:
-        """Ist-Steuereinnahmen (year, art, betrag) ersetzen — Re-Ingest idempotent."""
-        now = datetime.utcnow().isoformat(timespec="seconds")
-        with self._conn:
-            hid = self.merke_herkunft(herkunft, fetched_at=now)
-            self._conn.executemany(
-                "INSERT OR REPLACE INTO council_taxes "
-                "(year, kind, amount, source_url, fetched_at, herkunft_id) "
-                "VALUES (?,?,?,?,?,?)",
-                [(r["year"], r["kind"], r.get("amount"), herkunft.url, now, hid)
-                 for r in rows])
-        return len(rows)
 
 
-    def save_steuerkraft(self, rows: list[dict], herkunft) -> int:
-        """Steuerkraftmesszahl + Schlüsselzuweisungen je Ausgleichsjahr ersetzen.
-
-        Anders als die Nachbar-Methoden räumt diese auch auf: Der Datensatz
-        1106 liefert die **ganze** Reihe bei jedem Lauf, und seit der
-        Jahres-Korrektur (``haushalt._STEUERKRAFT_VERSATZ``) trägt jede Zeile
-        ein anderes Jahr als beim letzten Mal. Ein reines INSERT OR REPLACE
-        ließe genau einen Jahrgang als Leiche zurück — den ältesten, den es
-        nach dem Rücken nicht mehr gibt. Der stünde dann mit den Beträgen
-        seines Nachfolgers in der Tabelle, und niemand käme je darauf.
-
-        Eine leere Lieferung räumt **nichts** ab: Ein misslungener Download
-        darf den Bestand nicht löschen. Der Ingest bricht in dem Fall ohnehin
-        vorher ab, aber die Methode soll das auch allein aushalten.
-        """
-        if not rows:
-            return 0
-        now = datetime.utcnow().isoformat(timespec="seconds")
-        with self._conn:
-            hid = self.merke_herkunft(herkunft, fetched_at=now)
-            self._conn.executemany(
-                "INSERT OR REPLACE INTO council_tax_capacity "
-                "(year, tax_index, tax_capacity_per_capita, allocations, allocations_per_capita, "
-                " source_url, fetched_at, herkunft_id) VALUES (?,?,?,?,?,?,?,?)",
-                [(r["year"], r.get("tax_index"), r.get("tax_capacity_per_capita"),
-                  r.get("allocations"), r.get("allocations_per_capita"),
-                  herkunft.url, now, hid) for r in rows])
-            years = [r["year"] for r in rows]
-            self._conn.execute(
-                "DELETE FROM council_tax_capacity WHERE year NOT IN "
-                f"({','.join('?' * len(years))})", years)
-        return len(rows)
-
-    def save_einwohner(self, rows: list[dict], herkunft) -> int:
-        """Einwohnerzahlen je Jahr ersetzen (idempotent)."""
-        now = datetime.utcnow().isoformat(timespec="seconds")
-        with self._conn:
-            hid = self.merke_herkunft(herkunft, fetched_at=now)
-            self._conn.executemany(
-                "INSERT OR REPLACE INTO council_einwohner "
-                "(year, population, source_url, fetched_at, herkunft_id) "
-                "VALUES (?,?,?,?,?)",
-                [(r["year"], r["population"], herkunft.url, now, hid) for r in rows])
-        return len(rows)
 
 
-    def save_ergebnisrechnung(self, year: int, posten: list[dict], herkunft,
-                              sub_budget_no: int | None = None, sub_budget_name: str | None = None,
-                              ersetzen: bool = True) -> int:
-        """Ergebnisrechnung einer Ebene speichern — ohne ``sub_budget_no`` die
-        Gesamtrechnung, sonst der jeweilige Teilhaushalt.
-
-        ``ersetzen`` löscht vorher die betroffene Ebene dieses Jahres; beim
-        Einlesen mehrerer Teilhaushalte nacheinander bleibt es an.
-
-        ``herkunft`` steht, wo früher ``label, url`` standen. Die beiden
-        Ebenen dieses Dokuments bekommen bewusst **verschiedene** Herkünfte:
-        Sie stehen an verschiedenen Stellen des Jahresabschlusses und sind
-        durch verschiedene Proben gedeckt."""
-        now = datetime.utcnow().isoformat(timespec="seconds")
-        with self.transaktion():
-            hid = self.merke_herkunft(herkunft, fetched_at=now)
-            if ersetzen:
-                if sub_budget_no is None:
-                    self._conn.execute(
-                        "DELETE FROM council_income_statement WHERE year = ? AND sub_budget_no IS NULL",
-                        (year,))
-                else:
-                    self._conn.execute(
-                        "DELETE FROM council_income_statement WHERE year = ? AND sub_budget_no = ?",
-                        (year, sub_budget_no))
-            self._conn.executemany(
-                "INSERT INTO council_income_statement (year, sub_budget_no, sub_budget_name, nr, label, "
-                " prior_year, budgeted, plan, plan_kind, result, deviation, is_total, "
-                " source_label, source_url, fetched_at, herkunft_id) "
-                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                # `plan` fällt auf `ansatz` zurück, wenn der Aufrufer keine
-                # eigene Bezugsgröße mitbringt — und zwar auch bei
-                # ausdrücklichem ``None``. `p.get("plan", …)` täte das nicht:
-                # Der Vorgabewert greift nur bei fehlendem Schlüssel. Dieselbe
-                # Falle stand im Lesepfad (s. `get_plan_ist.plan_von`).
-                [(year, sub_budget_no, sub_budget_name, p["nr"], p["label"], p.get("prior_year"),
-                  p.get("budgeted"),
-                  p.get("budgeted") if p.get("plan") is None else p.get("plan"),
-                  p.get("plan_kind"),
-                  p.get("result"), p.get("deviation"),
-                  p.get("is_total", 0), herkunft.label, herkunft.url, now, hid)
-                 for p in posten])
-        return len(posten)
-
-    def save_abweichungsgruende(self, year: int, gruende: list[dict], herkunft) -> int:
-        """Erläuterungen zu den Plan/Ist-Abweichungen eines Jahrgangs
-        ersetzen. Übergeben wird nur, was die Rechenprobe bestanden hat."""
-        now = datetime.utcnow().isoformat(timespec="seconds")
-        with self.transaktion():
-            hid = self.merke_herkunft(herkunft, fetched_at=now)
-            self._conn.execute(
-                "DELETE FROM council_variance_reasons WHERE year = ?", (year,))
-            self._conn.executemany(
-                "INSERT INTO council_variance_reasons (year, nr, label, "
-                " delta_meur, percent, text, source_label, source_url, fetched_at, "
-                " herkunft_id) VALUES (?,?,?,?,?,?,?,?,?,?)",
-                [(year, g["nr"], g["label"], g.get("delta_meur"), g.get("percent"),
-                  g["text"], herkunft.label, herkunft.url, now, hid) for g in gruende])
-        return len(gruende)
 
 
-    def save_pruefbericht_quelle(self, year: int, herkunft,
-                                 n_pages: int | None, readable: bool) -> None:
-        """Fundstelle des RPA-Schlussberichts eines Jahrgangs merken."""
-        now = datetime.utcnow().isoformat(timespec="seconds")
-        with self.transaktion():
-            hid = self.merke_herkunft(herkunft, fetched_at=now)
-            self._conn.execute(
-                "INSERT OR REPLACE INTO council_audit_report_sources "
-                "(year, label, url, n_pages, readable, fetched_at, herkunft_id) "
-                "VALUES (?,?,?,?,?,?,?)",
-                (year, herkunft.label, herkunft.url, n_pages,
-                 1 if readable else 0, now, hid))
+
+
 
 
     def get_plan_ist(self, year: int) -> dict:
@@ -2026,27 +1845,6 @@ class CouncilStore(FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
 
     # --- Finanzrechnung der Kernverwaltung (council.finanzberichte) ----------
 
-    def save_finanzrechnung(self, year: int, zeilen: list[dict], herkunft) -> int:
-        """Die Kassensicht eines Jahrgangs ersetzen.
-
-        Übergeben wird nur, was ``finanzberichte.finanzprobe`` durchgelassen
-        hat — die Funktion streicht Ketten, die nicht aufgehen, schon vorher
-        heraus. Hier wird deshalb nichts mehr geprüft, nur geschrieben."""
-        now = datetime.utcnow().isoformat(timespec="seconds")
-        with self.transaktion():
-            hid = self.merke_herkunft(herkunft, fetched_at=now)
-            self._conn.execute("DELETE FROM council_cash_flow_statement WHERE year = ?", (year,))
-            self._conn.executemany(
-                "INSERT INTO council_cash_flow_statement (year, nr, role, label, "
-                " prior_year, budgeted, plan, plan_kind, result, deviation, "
-                " authorization, is_total, herkunft_id, fetched_at) "
-                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                [(year, z["nr"], z.get("role"), z["label"], z.get("prior_year"),
-                  z.get("budgeted"), z.get("plan"), z.get("plan_kind"), z.get("result"),
-                  z.get("deviation"), z.get("authorization"),
-                  z.get("is_total", 0), hid, now)
-                 for z in zeilen])
-        return len(zeilen)
 
 
     def finanzrechnung_jahre(self) -> list[int]:
@@ -2059,322 +1857,42 @@ class CouncilStore(FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
 
     # --- Bilanz der Stadt (council.bilanz) -----------------------------------
 
-    def save_bilanz(self, year: int, posten: list[dict], herkunft) -> int:
-        """Einen Bilanzstichtag ersetzen.
-
-        Übergeben wird nur, was ``bilanz.bilanzprobe`` durchgelassen hat —
-        eine Bilanz, deren Seiten nicht aufgehen, kommt dort gar nicht erst
-        heraus. Hier wird deshalb nichts mehr geprüft, nur geschrieben."""
-        now = datetime.utcnow().isoformat(timespec="seconds")
-        with self.transaktion():
-            hid = self.merke_herkunft(herkunft, fetched_at=now)
-            self._conn.execute("DELETE FROM council_balance_sheet WHERE year = ?", (year,))
-            self._conn.executemany(
-                "INSERT INTO council_balance_sheet (year, role, page, level, nr, "
-                " label, value, herkunft_id, fetched_at) "
-                "VALUES (?,?,?,?,?,?,?,?,?)",
-                [(year, p["role"], p["page"], p["level"], p.get("nr"),
-                  p["label"], p["value"], hid, now) for p in posten])
-        return len(posten)
 
 
 
 
-    def save_bilanz_erlaeuterungen(self, year: int, abschnitte: list[dict],
-                                   herkunft) -> int:
-        """Die Erläuterungen des Anhangs zu einem Jahrgang ersetzen."""
-        now = datetime.utcnow().isoformat(timespec="seconds")
-        with self.transaktion():
-            hid = self.merke_herkunft(herkunft, fetched_at=now)
-            self._conn.execute(
-                "DELETE FROM council_balance_sheet_notes WHERE year = ?", (year,))
-            self._conn.executemany(
-                "INSERT INTO council_balance_sheet_notes (year, role, nr, "
-                " heading, text, herkunft_id, fetched_at) VALUES (?,?,?,?,?,?,?)",
-                [(year, a["role"], a["nr"], a["heading"], a["text"], hid, now)
-                 for a in abschnitte])
-        return len(abschnitte)
 
 
 
     # --- Gesamtergebnishaushalt (Planjahre, council.ergebnishaushalt) --------
 
-    def save_ergebnishaushalt(self, plan_budget_year: int, zeilen: list[dict],
-                              herkunft) -> int:
-        """Einen Haushaltsplan-Jahrgang ersetzen — Ansatz und Finanzplanung
-        zusammen, weil sie aus **einer** Tabelle eines Dokuments stammen.
 
-        Gelöscht wird nach ``plan_budget_year``, nicht nach ``year``: Was der
-        Haushalt 2026 über 2027 sagt, gehört ihm; was der Haushalt 2027 über
-        2027 sagt, ist eine andere Zeile und bleibt stehen.
-
-        Übergeben wird nur, was beide Pflicht-Proben bestanden hat — diese
-        Methode prüft nichts nach, sie schreibt."""
-        now = datetime.utcnow().isoformat(timespec="seconds")
-        with self.transaktion():
-            hid = self.merke_herkunft(herkunft, fetched_at=now)
-            self._conn.execute(
-                "DELETE FROM council_income_budget WHERE plan_budget_year = ?",
-                (plan_budget_year,))
-            self._conn.executemany(
-                "INSERT INTO council_income_budget (plan_budget_year, year, kind, nr, "
-                " label, amount, is_total, fetched_at, herkunft_id) "
-                "VALUES (?,?,?,?,?,?,?,?,?)",
-                [(plan_budget_year, z["year"], z["kind"], z["nr"], z["label"],
-                  z["amount"], 1 if z.get("is_total") else 0, now, hid)
-                 for z in zeilen])
-        return len(zeilen)
-
-    def ergebnishaushalt_jahrgaenge(self) -> list[int]:
-        """Haushaltsplan-Jahrgänge, die eingelesen sind (aufsteigend).
-
-        Der **Plan**-Jahrgang, nicht die Jahre darin: Ein Dokument trägt sein
-        Planjahr und drei Finanzplanungsjahre, und vollständig ist es erst,
-        wenn alle vier dastehen — was ``save_ergebnishaushalt`` zusammen
-        schreibt oder gar nicht."""
-        try:
-            return [r[0] for r in self._conn.execute(
-                "SELECT DISTINCT plan_budget_year FROM council_income_budget "
-                "ORDER BY plan_budget_year")]
-        except sqlite3.OperationalError:
-            return []
 
 
 
     # --- Stellenplan (council.stellenplan) ----------------------------------
 
-    def save_stellenplan(self, budget_year: int, part: str, zeilen: list[dict],
-                         herkunft, as_of_date: str | None = None) -> int:
-        """Einen Teil eines Stellenplan-Jahrgangs ersetzen.
-
-        Ersetzt wird nach ``(budget_year, part)``, nicht nach Jahrgang: Die
-        beiden Teile stehen zwar im selben PDF, kommen aber einzeln durch
-        ihre Proben — im Jahrgang 2026 ist Teil B im Textextrakt unlesbar,
-        Teil A tadellos. Wer nach Jahrgang löschte, risse mit dem einen den
-        anderen mit.
-
-        Übergeben wird nur, was seine Proben bestanden hat; diese Methode
-        prüft nichts nach, sie schreibt."""
-        now = datetime.utcnow().isoformat(timespec="seconds")
-        with self.transaktion():
-            hid = self.merke_herkunft(herkunft, fetched_at=now)
-            self._conn.execute(
-                "DELETE FROM council_staff_plan WHERE budget_year = ? AND part = ?",
-                (budget_year, part))
-            self._conn.executemany(
-                "INSERT INTO council_staff_plan (budget_year, part, row_no, kind, "
-                " pay_group, seq_no, label, pay_grade, positions_planned, "
-                " positions_prior_year, filled, filled_by_officials, filled_by_employees, "
-                " vacant, as_of_date, consistent, fetched_at, herkunft_id) "
-                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                [(budget_year, part, i, z["kind"], z.get("pay_group"), z.get("seq_no"),
-                  z["label"], z.get("pay_grade"), z["positions_planned"],
-                  z["positions_prior_year"], z["filled"], z.get("filled_by_officials"),
-                  z.get("filled_by_employees"), z["vacant"], as_of_date,
-                  1 if z.get("consistent", 1) else 0, now, hid)
-                 for i, z in enumerate(zeilen)])
-        return len(zeilen)
 
 
 
     # --- Investitionen des Finanzhaushalts (council.investitionen) ----------
 
-    def save_investitionen(self, year: int, zeilen: list[dict], gesamt: dict,
-                           herkunft, finanzhaushalt: dict | None = None,
-                           herkunft_finanzhaushalt=None) -> int:
-        """Einen Jahrgang Investitionen ersetzen — Teilhaushalte und
-        Summenzeile zusammen, weil sie aus **einer** Tabelle stammen und die
-        Summenzeile das Ziel der Rechenprobe ist.
-
-        Zwei Herkünfte, weil es zwei verschiedene Aussagen sind: Die
-        Investitionen sind durch die Summenprobe der Datei gedeckt, der
-        *Gesamtbetrag des Finanzhaushaltes* ist es nicht (er zählt die laufende
-        Verwaltungstätigkeit mit, und nichts in der Datei summiert sich auf
-        ihn). Eine gemeinsame Herkunft behauptete für ihn eine Probe, die es
-        nicht gibt.
-
-        Übergeben wird nur, was die Probe bestanden hat — diese Methode prüft
-        nichts nach, sie schreibt."""
-        now = datetime.utcnow().isoformat(timespec="seconds")
-        with self.transaktion():
-            hid = self.merke_herkunft(herkunft, fetched_at=now)
-            self._conn.execute(
-                "DELETE FROM council_investments WHERE year = ?", (year,))
-            werte = [(year, "sub_budget", z["sub_budget_no"], z["label"],
-                      z["inflows"], z["outflows"], now, hid)
-                     for z in zeilen]
-            werte.append((year, "investments", 0, gesamt["label"],
-                          gesamt["inflows"], gesamt["outflows"], now, hid))
-            if finanzhaushalt:
-                hid_fh = (self.merke_herkunft(herkunft_finanzhaushalt, fetched_at=now)
-                          if herkunft_finanzhaushalt is not None else hid)
-                werte.append((year, "financial_budget", 0,
-                              finanzhaushalt["label"],
-                              finanzhaushalt["inflows"],
-                              finanzhaushalt["outflows"], now, hid_fh))
-            self._conn.executemany(
-                "INSERT INTO council_investments (year, level, sub_budget_no, label, "
-                " inflows, outflows, fetched_at, herkunft_id) "
-                "VALUES (?,?,?,?,?,?,?,?)", werte)
-        return len(werte)
 
 
 
     # --- Investitionsprogramm (Anlage 004 des Haushaltsplans) ---------------
 
-    def save_investitionsprogramm(self, year: int, gelesen: dict,
-                                  herkunft) -> int:
-        """Einen Jahrgang Investitionsmaßnahmen ersetzen.
-
-        Maßnahmen und beide Summenebenen zusammen, weil sie aus **einem**
-        Dokument stammen und die Summen die Ziele der Rechenproben sind. Eine
-        Herkunft für alles: Anders als beim Finanzhaushalt gibt es hier keine
-        Zeile, die von den Proben nicht gedeckt wäre — was nicht aufgeht, kommt
-        gar nicht erst herein (``investitionsprogramm.lies``).
-
-        Übergeben wird nur, was die Proben bestanden hat; diese Methode prüft
-        nichts nach, sie schreibt."""
-        now = datetime.utcnow().isoformat(timespec="seconds")
-        with self.transaktion():
-            hid = self.merke_herkunft(herkunft, fetched_at=now)
-            self._conn.execute(
-                "DELETE FROM council_investment_measures WHERE year = ?",
-                (year,))
-            werte = []
-            for nr, a in sorted(gelesen["abschnitte"].items()):
-                for m in a["massnahmen"]:
-                    werte.append((year, "measure", nr, m["code"],
-                                  m["label"], m["grand_total"],
-                                  " · ".join(m.get("details") or []) or None,
-                                  now, hid))
-                werte.append((year, "sub_budget", nr, "", a["name"],
-                              a["summe"], None, now, hid))
-            werte.append((year, "total", 0, "", "Gesamtinvestitionsprogramm",
-                          gelesen["kopfsumme"], None, now, hid))
-            self._conn.executemany(
-                "INSERT INTO council_investment_measures "
-                "(year, level, sub_budget_no, code, label, grand_total, "
-                " details, fetched_at, herkunft_id) VALUES (?,?,?,?,?,?,?,?,?)",
-                werte)
-        return len(werte)
 
 
 
     # --- Konzern Stadt Oldenburg (konsolidierter Gesamtabschluss) -----------
 
-    def save_konzern_jahrgang(self, year: int, posten: list[dict],
-                              entity: list[dict], herkunft,
-                              herkunft_traeger=None) -> dict:
-        """Einen Jahrgang des Gesamtabschlusses ersetzen — beide Ebenen.
-
-        Zusammen, weil sie aus **einem** Dokument stammen und ein halb
-        geschriebener Jahrgang für den nächsten Lauf wie ein fertiger aussähe.
-        Aber mit **zwei** Herkünften: Die Posten stehen in Abschnitt 3.2, die
-        Trägeraufstellung in 4.1.1, und sie sind durch verschiedene Proben
-        gedeckt. Fehlt ``herkunft_traeger``, gilt dieselbe für beide.
-
-        Übergeben wird nur, was die Proben bestanden hat — diese Methode prüft
-        nichts nach, sie schreibt."""
-        now = datetime.utcnow().isoformat(timespec="seconds")
-        with self.transaktion():
-            hid = self.merke_herkunft(herkunft, fetched_at=now)
-            hid_traeger = (self.merke_herkunft(herkunft_traeger, fetched_at=now)
-                           if herkunft_traeger is not None else hid)
-            self._conn.execute("DELETE FROM council_group_items WHERE year = ?", (year,))
-            self._conn.execute("DELETE FROM council_group_entities WHERE year = ?", (year,))
-            self._conn.executemany(
-                "INSERT INTO council_group_items (year, nr, label, role, "
-                " amount, prior_year, is_total, fetched_at, herkunft_id) "
-                "VALUES (?,?,?,?,?,?,?,?,?)",
-                [(year, p["nr"], p["label"], p.get("role"), p["amount"],
-                  p.get("prior_year"), 1 if p.get("is_total") else 0, now, hid)
-                 for p in posten])
-            self._conn.executemany(
-                "INSERT INTO council_group_entities (year, kind, entity_key, entity, "
-                " amount_keur, prior_year_keur, fetched_at, herkunft_id) "
-                "VALUES (?,?,?,?,?,?,?,?)",
-                [(year, t["kind"], t["entity_key"], t["entity"], t["amount_keur"],
-                  t.get("prior_year_keur"), now, hid_traeger) for t in entity])
-        return {"posten": len(posten), "entity": len(entity)}
 
 
 
 
     # --- Beteiligungsbericht (§ 151 NKomVG) ---------------------------------
 
-    def save_beteiligungsbericht(self, stammdaten: list[dict], texte: list[dict],
-                                 indicators: list[dict],
-                                 personen: list[dict] | None = None,
-                                 eigentuemer: list[dict] | None = None) -> dict:
-        """Den **ganzen** Bestand des Beteiligungsberichts ersetzen.
-
-        Ungewöhnlich für diesen Store, und mit Grund: Die Überlappungsprobe
-        spannt sich über mehrere Berichte. Ob der Wert für 2022 gilt,
-        entscheidet nicht der Bericht 2022 allein, sondern sein Vergleich mit
-        2023 und 2024 — und `n_reports` (in wie vielen er steht) ändert sich,
-        sobald ein neuer Jahrgang dazukommt. Jahrgangsweise zu schreiben
-        hieße, diese Zahl in jeder zweiten Zeile veralten zu lassen.
-
-        Das Einlesen liest deshalb immer alle vorhandenen Berichte und
-        übergibt das Ergebnis in einem Stück. Übergeben wird nur, was die
-        Proben bestanden hat — diese Methode prüft nichts nach, sie schreibt.
-
-        Jede Liste bringt ihre eigene ``herkunft`` je Zeile mit: Die Kennzahlen
-        eines Jahres stammen aus einem anderen Bericht als die Texte daneben,
-        und die Probe ist eine andere."""
-        now = datetime.utcnow().isoformat(timespec="seconds")
-        with self.transaktion():
-            for tabelle in ("council_company_indicators",
-                            "council_company_texts",
-                            "council_company_people",
-                            "council_company_owners",
-                            "council_companies"):
-                self._conn.execute(f"DELETE FROM {tabelle}")
-            for z in stammdaten:
-                self._conn.execute(
-                    "INSERT INTO council_companies (report_year, company, "
-                    " name, classification, page, consolidated_key, fetched_at, herkunft_id) "
-                    "VALUES (?,?,?,?,?,?,?,?)",
-                    (z["report_year"], z["company"], z["name"], z["classification"],
-                     z.get("page"), z.get("consolidated_key"), now,
-                     self.merke_herkunft(z["herkunft"], fetched_at=now)))
-            for z in texte:
-                self._conn.execute(
-                    "INSERT INTO council_company_texts (report_year, "
-                    " company, section, text, fetched_at, herkunft_id) "
-                    "VALUES (?,?,?,?,?,?)",
-                    (z["report_year"], z["company"], z["section"], z["text"],
-                     now, self.merke_herkunft(z["herkunft"], fetched_at=now)))
-            for z in indicators:
-                self._conn.execute(
-                    "INSERT INTO council_company_indicators (company, "
-                    " indicator, year, value, unit, report_year, n_reports, "
-                    " fetched_at, herkunft_id) VALUES (?,?,?,?,?,?,?,?,?)",
-                    (z["company"], z["indicator"], z["year"], z["value"],
-                     z["unit"], z["report_year"], z["n_reports"], now,
-                     self.merke_herkunft(z["herkunft"], fetched_at=now)))
-            for z in personen or []:
-                self._conn.execute(
-                    "INSERT INTO council_company_people (report_year, "
-                    " company, sort_order, committee, name, position, "
-                    " chair_role, note, roles_assignable, fetched_at, "
-                    " herkunft_id) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
-                    (z["report_year"], z["company"], z["sort_order"],
-                     z["committee"], z["name"], z.get("position"), z.get("chair_role"),
-                     z.get("note"), int(bool(z["roles_assignable"])), now,
-                     self.merke_herkunft(z["herkunft"], fetched_at=now)))
-            for z in eigentuemer or []:
-                self._conn.execute(
-                    "INSERT INTO council_company_owners (report_year, "
-                    " company, sort_order, name, amount_eur, "
-                    " share_pct, fetched_at, herkunft_id) "
-                    "VALUES (?,?,?,?,?,?,?,?)",
-                    (z["report_year"], z["company"], z["sort_order"],
-                     z["name"], z.get("amount_eur"), z.get("share_pct"), now,
-                     self.merke_herkunft(z["herkunft"], fetched_at=now)))
-        return {"gesellschaften": len(stammdaten), "texte": len(texte),
-                "indicators": len(indicators), "personen": len(personen or []),
-                "eigentuemer": len(eigentuemer or [])}
 
 
 
@@ -2386,32 +1904,6 @@ class CouncilStore(FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
 
     # --- Schuldenstand (Tabelle 1108 des Statistischen Jahrbuchs) ------------
 
-    def save_schulden(self, zeilen: list[dict], herkunft) -> int:
-        """Schuldenjahrgänge ersetzen — je Jahr eine Zeile.
-
-        Ersetzt wird **nur, was die Lieferung mitbringt**, nicht die ganze
-        Tabelle: Ein Lauf, dem ein Jahrgang an der Probe durchgefallen ist,
-        darf den vorher gespeicherten Stand dieses Jahrgangs nicht mit
-        wegräumen. Wer wirklich aufräumen will, tut das von Hand.
-
-        Übergeben wird nur, was seine Probe bestanden hat — diese Methode
-        prüft nichts nach, sie schreibt. Was die Aufteilung verloren hat
-        (Fall 2022, s. ``council/schulden.py``), kommt hier mit ``None`` in
-        den vier Artenspalten an und bleibt auch so stehen."""
-        now = datetime.utcnow().isoformat(timespec="seconds")
-        with self.transaktion():
-            hid = self.merke_herkunft(herkunft, fetched_at=now)
-            self._conn.executemany(
-                "INSERT OR REPLACE INTO council_debt "
-                "(year, credit_market, special_funds, public_authorities, "
-                " municipal_enterprises, total, per_capita, breakdown_rejected, "
-                " revised, herkunft_id, fetched_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
-                [(z["year"], z.get("credit_market"), z.get("special_funds"),
-                  z.get("public_authorities"), z.get("municipal_enterprises"),
-                  z["total"], z.get("per_capita"),
-                  z.get("breakdown_rejected"), int(bool(z.get("revised"))),
-                  hid, now) for z in zeilen])
-        return len(zeilen)
 
 
     # --- Lange Ausgabenreihe (Datensatz 1102, seit 1972) --------------------
@@ -2485,56 +1977,8 @@ class CouncilStore(FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
                  plan.draft_date, probes, hid, now))
         return 1
 
-    def save_gebuehrenbedarf(self, bedarf, herkunft) -> int:
-        """Einen Gebührenbereich eines Jahrgangs speichern.
-
-        Je Bereich und Jahr eine Zeile, und je Zeile eine eigene Herkunft: Die
-        drei Bereiche stehen in drei Anlagen und prüfen sich einzeln — ein
-        gemeinsamer Beleg wäre für zwei von drei der falsche.
-        """
-        probes = herkunft.probe
-        if not isinstance(probes, str):
-            probes = ",".join(probes)
-
-        now = datetime.utcnow().isoformat(timespec="seconds")
-        with self.transaktion():
-            hid = self.merke_herkunft(herkunft, fetched_at=now)
-            self._conn.execute(
-                "INSERT OR REPLACE INTO council_fees "
-                "(year, area, area_name, cost_calculation, deductions, "
-                " costs_to_cover, reference_quantity, reference_unit, fee, "
-                " fee_proposed, template_number, probes, herkunft_id, fetched_at) "
-                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                (bedarf.year, bedarf.area, bedarf.area_name,
-                 bedarf.cost_calculation, bedarf.deductions,
-                 bedarf.costs_to_cover, bedarf.reference_quantity,
-                 bedarf.reference_unit, bedarf.fee,
-                 bedarf.fee_proposed, bedarf.template_number,
-                 probes, hid, now))
-        return 1
 
 
-    def save_gebuehrensaetze(self, saetze, herkuenfte) -> int:
-        """Die vollständigen zwölf Tarife eines Vorschlagsjahres ersetzen."""
-        saetze, herkuenfte = list(saetze), list(herkuenfte)
-        if len(saetze) != len(herkuenfte):
-            raise ValueError("Jeder Gebührensatz braucht genau eine Herkunft")
-        now = datetime.utcnow().isoformat(timespec="seconds")
-        with self.transaktion():
-            for satz, herkunft in zip(saetze, herkuenfte, strict=True):
-                probes = herkunft.probe
-                if not isinstance(probes, str):
-                    probes = ",".join(probes)
-                hid = self.merke_herkunft(herkunft, fetched_at=now)
-                self._conn.execute(
-                    "INSERT OR REPLACE INTO council_fee_rates "
-                    "(year, key, area, label, amount, unit, "
-                    " prior_year, change_pct, template_number, probes, "
-                    " herkunft_id, fetched_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
-                    (satz.year, satz.key, satz.area, satz.label,
-                     satz.amount, satz.unit, satz.prior_year,
-                     satz.change_pct, satz.template_number, probes, hid, now))
-        return len(saetze)
 
 
     def gebuehren_jahre(self) -> list[int]:
@@ -2624,47 +2068,6 @@ class CouncilStore(FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
 
 
 
-    def save_haushaltssatzung(self, satzung, herkunft) -> int:
-        """Eine Haushaltssatzung speichern — ein Jahrgang, eine Fassung.
-
-        Wie bei den Wirtschaftsplänen kommen die Proben aus der HERKUNFT und
-        werden hier nicht noch einmal behauptet: Ob der Hebesatz gegen das
-        Statistische Jahrbuch geprüft werden konnte, hängt daran, ob dessen
-        Tabelle diesen Jahrgang schon trägt — der Parser weiß das, der Store
-        nicht.
-        """
-        probes = herkunft.probe
-        if not isinstance(probes, str):
-            probes = ",".join(probes)
-
-        now = datetime.utcnow().isoformat(timespec="seconds")
-        with self.transaktion():
-            hid = self.merke_herkunft(herkunft, fetched_at=now)
-            self._conn.execute(
-                "INSERT OR REPLACE INTO council_budget_bylaw "
-                "(year, supplement, version, ordinary_revenues, "
-                " ordinary_expenses, extraordinary_revenues, extraordinary_expenses, "
-                " in_operating, out_operating, in_capital, out_capital, "
-                " in_financing, out_financing, in_total, out_total, "
-                " investment_loans, commitment_authorizations, "
-                " liquidity_loans, property_tax_a_rate, "
-                " property_tax_b_rate, trade_tax_rate, session_date, "
-                " template_number, probes, herkunft_id, fetched_at) "
-                "VALUES (" + ",".join("?" * 26) + ")",
-                (satzung.year, satzung.supplement, satzung.version,
-                 satzung.ordinary_revenues, satzung.ordinary_expenses,
-                 satzung.extraordinary_revenues, satzung.extraordinary_expenses,
-                 satzung.in_operating, satzung.out_operating,
-                 satzung.in_capital, satzung.out_capital,
-                 satzung.in_financing, satzung.out_financing,
-                 satzung.in_total, satzung.out_total,
-                 satzung.investment_loans,
-                 satzung.commitment_authorizations,
-                 satzung.liquidity_loans,
-                 satzung.property_tax_a_rate, satzung.property_tax_b_rate,
-                 satzung.trade_tax_rate, satzung.session_date,
-                 satzung.template_number, probes, hid, now))
-        return 1
 
 
     def haushaltssatzung_jahre(self) -> list[int]:
@@ -2677,56 +2080,7 @@ class CouncilStore(FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
 
     # --- Haushaltsvollzug (council.budget_execution) ------------------------
 
-    def save_haushaltsvollzug(self, bericht, herkunft) -> int:
-        """Eine Übersichtstabelle eines Finanz- und Leistungsberichts ersetzen.
 
-        Ersetzt wird nach ``(budget_year, as_of, budget)`` — der Einheit, die
-        EIN Lauf liefert. Nicht nach Jahrgang und nicht nach Stichtag: Ein
-        Dokument trägt beide Haushalte, und sie kommen einzeln durch ihre
-        Proben. Im Bericht zum 30.06.2024 fällt der Ergebnishaushalt an einem
-        Fehler im Dokument durch, der Finanzhaushalt nicht — wer nach Stichtag
-        löschte, risse den mit.
-
-        Übergeben wird nur, was seine Proben bestanden hat; diese Methode
-        prüft nichts nach, sie schreibt.
-        """
-        probes = herkunft.probe
-        if not isinstance(probes, str):
-            probes = ",".join(probes)
-
-        now = datetime.utcnow().isoformat(timespec="seconds")
-        with self.transaktion():
-            hid = self.merke_herkunft(herkunft, fetched_at=now)
-            self._conn.execute(
-                "DELETE FROM council_budget_execution "
-                "WHERE budget_year = ? AND as_of = ? AND budget = ?",
-                (bericht.budget_year, bericht.as_of, bericht.budget))
-            self._conn.executemany(
-                "INSERT INTO council_budget_execution ("
-                " budget_year, as_of, budget, sub_budget, kind, label, "
-                " budgeted, forecast, deviation, carryover, plan_basis, "
-                " is_total, probes, herkunft_id, fetched_at) "
-                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                [(bericht.budget_year, bericht.as_of, bericht.budget,
-                  p.sub_budget, p.kind, p.label, p.budgeted, p.forecast,
-                  p.deviation, p.carryover, bericht.plan_basis,
-                  1 if p.is_total else 0, probes, hid, now)
-                 for p in bericht.positionen])
-        return len(bericht.positionen)
-
-    def haushaltsvollzug_einheiten(self) -> set[tuple]:
-        """Welche ``(Jahrgang, Stichtag, Haushalt)`` im Bestand stehen.
-
-        Die Einheit ist die Tabelle und nicht der Jahrgang: Ein Haushaltsjahr
-        besteht aus bis zu vier Stichtagen mit je zwei Haushalten. Wer je
-        Jahrgang buchführt, hält 2025 nach dem Bericht zum 31. März für
-        erledigt und zieht die drei folgenden Quartale nie nach."""
-        try:
-            return {(r[0], r[1], r[2]) for r in self._conn.execute(
-                "SELECT DISTINCT budget_year, as_of, budget "
-                "FROM council_budget_execution")}
-        except sqlite3.OperationalError:
-            return set()
 
 
 
@@ -2740,73 +2094,8 @@ class CouncilStore(FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
         except sqlite3.OperationalError:
             return []
 
-    def save_buergschaften(self, zeilen: list[dict], herkunft) -> int:
-        """Bürgschafts-Jahrgänge ersetzen — je Jahr eine Zeile.
 
-        Wie bei ``save_ausgabenreihe`` wird nur ersetzt, was die Lieferung
-        mitbringt: Ein Lauf, dem ein Jahrgang durchgefallen ist, räumt den
-        vorher gespeicherten Stand dieses Jahrgangs nicht mit weg.
 
-        Aufgerufen wird sie **je Herkunfts-Gruppe**, nicht einmal für die
-        ganze Reihe — jeder Jahrgang steht in seinem eigenen Jahresabschluss,
-        und 2021 steht sogar in dem des Folgejahres. Ein gemeinsamer Beleg
-        wäre für fünf von sechs Zeilen der falsche."""
-        now = datetime.utcnow().isoformat(timespec="seconds")
-        with self.transaktion():
-            hid = self.merke_herkunft(herkunft, fetched_at=now)
-            self._conn.executemany(
-                "INSERT OR REPLACE INTO council_buergschaften "
-                "(year, balance, exact, out_next_year, source, reason, "
-                " single_amount, probes, herkunft_id, fetched_at) "
-                "VALUES (?,?,?,?,?,?,?,?,?,?)",
-                [(z["year"], z["balance"], int(bool(z.get("exact"))),
-                  int(bool(z.get("out_next_year"))), z["source"], z.get("reason"),
-                  z.get("single_amount"), ",".join(z.get("probes") or []),
-                  hid, now) for z in zeilen])
-        return len(zeilen)
-
-    def save_kennzahlen(self, report_year: int, zeilen: list[dict],
-                        formeln: list[dict], herkunft) -> int:
-        """Einen Rechenschaftsbericht ersetzen — Werte und Rechenwege zusammen.
-
-        Ersetzt wird genau **dieser Bericht**, nicht die Jahrgänge, die er
-        zeigt. Der Bericht 2024 druckt 2020–2024; wer nach Datenjahr löschte,
-        risse dem Bericht 2021 vier seiner fünf Spalten heraus — und mit ihnen
-        die Vergleichsstände, aus denen die Korrekturen sichtbar werden.
-        """
-        now = datetime.utcnow().isoformat(timespec="seconds")
-        with self.transaktion():
-            hid = self.merke_herkunft(herkunft, fetched_at=now)
-            self._conn.execute("DELETE FROM council_indicators WHERE report_year = ?",
-                               (report_year,))
-            self._conn.execute("DELETE FROM council_indicator_formulas WHERE report_year = ?",
-                               (report_year,))
-            self._conn.executemany(
-                "INSERT INTO council_indicators "
-                "(report_year, indicator, year, label, value, unit, decimals, "
-                " version, herkunft_id, fetched_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
-                [(report_year, z["indicator"], z["year"], z["label"], z["value"],
-                  z["unit"], z["decimals"], z.get("version"), hid, now)
-                 for z in zeilen])
-            self._conn.executemany(
-                "INSERT INTO council_indicator_formulas "
-                "(report_year, indicator, version, heading, formula, "
-                " herkunft_id, fetched_at) VALUES (?,?,?,?,?,?,?)",
-                [(report_year, f["indicator"], f.get("version") or 1,
-                  f["heading"], f["formula"], hid, now) for f in formeln])
-        return len(zeilen)
-
-    def get_kennzahlen(self) -> list[dict]:
-        """Alle Stände aller Berichte — die Belegkette, nicht die Anzeigereihe.
-
-        Wer die Reihe will, nimmt ``council.indicators.neueste``; wer die
-        Korrekturen zeigen will, braucht alle Stände.
-        """
-        try:
-            return [dict(r) for r in self._conn.execute(
-                "SELECT * FROM council_indicators ORDER BY indicator, year, report_year")]
-        except sqlite3.OperationalError:
-            return []
 
     def get_kennzahl_formeln(self) -> list[dict]:
         """Die gedruckten Rechenwege, ältester Bericht zuerst."""
@@ -2816,70 +2105,11 @@ class CouncilStore(FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
         except sqlite3.OperationalError:
             return []
 
-    def save_anlagenspiegel(self, year: int, zeilen: list[dict], herkunft) -> int:
-        """Den Anlagenspiegel eines Jahrgangs ersetzen.
-
-        Je Jahrgang ein Aufruf mit einem Beleg: Die Tabelle steht in genau
-        einem Dokument, anders als bei den Bürgschaften, wo ein Jahrgang im
-        Abschluss des Folgejahres stehen kann.
-
-        Ersetzt wird nur DIESER Jahrgang — ein Lauf, dem ein anderer
-        durchgefallen ist, räumt dessen Stand nicht mit weg.
-        """
-        now = datetime.utcnow().isoformat(timespec="seconds")
-        with self.transaktion():
-            hid = self.merke_herkunft(herkunft, fetched_at=now)
-            self._conn.execute("DELETE FROM council_fixed_assets WHERE year = ?", (year,))
-            self._conn.executemany(
-                "INSERT INTO council_fixed_assets "
-                "(year, nr, label, n_columns, cost_opening, additions, disposals, "
-                " transfers, cost_closing, depreciation_opening, depreciation, depreciation_releases, "
-                " write_ups, depreciation_transfers, depreciation_closing, book_value, "
-                " book_value_prior_year, probes, herkunft_id, fetched_at) "
-                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                [(year, z["nr"], z["label"], z["n_columns"],
-                  z["cost_opening"], z["additions"], z["disposals"], z["transfers"],
-                  z["cost_closing"], z["depreciation_opening"], z["depreciation"],
-                  z["depreciation_releases"], z["write_ups"], z["depreciation_transfers"],
-                  z["depreciation_closing"], z["book_value"], z["book_value_prior_year"],
-                  ",".join(z.get("probes") or []), hid, now) for z in zeilen])
-        return len(zeilen)
-
-
-    def save_vermoegensgruppen(self, year: int, gruppen: list[dict], herkunft) -> int:
-        """Die Untergliederung des Infrastrukturvermögens eines Jahrgangs."""
-        now = datetime.utcnow().isoformat(timespec="seconds")
-        with self.transaktion():
-            hid = self.merke_herkunft(herkunft, fetched_at=now)
-            self._conn.execute("DELETE FROM council_vermoegensgruppen WHERE year = ?", (year,))
-            self._conn.executemany(
-                "INSERT INTO council_vermoegensgruppen "
-                "(year, group_name, book_value, book_value_prior_year, herkunft_id, fetched_at) "
-                "VALUES (?,?,?,?,?,?)",
-                [(year, g["group_name"], g["book_value"], g.get("book_value_prior_year"), hid, now)
-                 for g in gruppen])
-        return len(gruppen)
 
 
 
-    def save_integrierte_schulden(self, row: dict, herkunft) -> int:
-        """Einen Stichtag der integrierten Schulden ersetzen."""
-        now = datetime.utcnow().isoformat(timespec="seconds")
-        with self.transaktion():
-            hid = self.merke_herkunft(herkunft, fetched_at=now)
-            self._conn.execute(
-                "INSERT OR REPLACE INTO council_integrated_debt "
-                "(year, ars, population, total, per_capita, core_budget, "
-                " extra_budgets, other, extra_under_50, other_below_50, "
-                " change, probes, herkunft_id, fetched_at) "
-                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                (row["year"], row["ars"], row.get("population"),
-                 row["total"], row.get("per_capita"),
-                 row.get("core_budget"), row.get("extra_budgets"),
-                 row.get("other"), row.get("extra_under_50"),
-                 row.get("other_below_50"), row.get("insgesamt_change"),
-                 ",".join(row.get("probes") or []), hid, now))
-        return 1
+
+
 
 
     # --- Nachbewilligungen nach § 117 NKomVG --------------------------------
@@ -2902,101 +2132,8 @@ class CouncilStore(FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
             return None
         return (row["raw_text"] or None) if row else None
 
-    def nachbewilligungs_vorlagen(self) -> tuple[list[dict], dict[str, list[dict]]]:
-        """Die Rohdaten für ``council/supplementary_approvals.aus_vorlagen``.
 
-        → ``(vorlagen, beschluesse)`` — **erst die Vorlagen, dann die nach
-        Vorlagen-Nummer gruppierten Beschlusszeilen**, genau in der
-        Reihenfolge, die der Parser erwartet.
 
-        Der Filter läuft über den **Titel**, nicht über eine Vorlagenart:
-        ``art`` heißt hier „Beschlussvorlage" oder „Berichtsvorlage" und sagt
-        nichts über den Inhalt. Vorgefiltert wird nur grob (SQL kennt unser
-        Muster nicht); die Feinentscheidung trifft
-        ``supplementary_approvals.ist_nachbewilligung``.
-
-        **Der Join läuft über ``template_number``, nicht über ``kvonr``.** Das ist
-        keine Stilfrage: ``council_decisions.kvonr`` ist im gesamten Bestand
-        ``NULL`` (8.369 von 8.369 Zeilen). Ein Join darüber liefert
-        schweigend null Treffer — und eine Seite, die behauptet, der Rat habe
-        nie über eine Nachbewilligung entschieden."""
-        try:
-            vorlagen = [dict(r) for r in self._conn.execute(
-                "SELECT template_number, title, proposed_decision, raw_text "
-                "FROM council_templates "
-                "WHERE template_number IS NOT NULL "
-                "  AND (title LIKE '%planmäßig%' OR title LIKE '%planmässig%')"
-            )]
-            rows = [dict(r) for r in self._conn.execute(
-                "SELECT d.id, d.template_number, d.outcome, d.vote, "
-                "       cs.committee, cs.session_date "
-                "FROM council_decisions d "
-                "JOIN council_sessions cs ON cs.ksinr = d.ksinr "
-                "WHERE d.template_number IS NOT NULL AND d.kind = 'decision' "
-                + self._BESCHLUSS_ORDNUNG
-            )]
-        except sqlite3.OperationalError:
-            return [], {}
-        beschluesse: dict[str, list[dict]] = {}
-        for r in rows:
-            beschluesse.setdefault(str(r["template_number"]), []).append(r)
-        return vorlagen, beschluesse
-
-    def save_nachbewilligungen(self, zeilen: list[dict], herkunft) -> int:
-        """Die RIS-Serie ersetzen — je Vorlage eine Zeile.
-
-        Wie bei ``save_schulden`` wird nur ersetzt, was die Lieferung
-        mitbringt. Übergeben wird, was der Parser gelesen hat; diese Methode
-        prüft nichts nach."""
-        now = datetime.utcnow().isoformat(timespec="seconds")
-        with self.transaktion():
-            hid = self.merke_herkunft(herkunft, fetched_at=now)
-            self._conn.executemany(
-                "INSERT OR REPLACE INTO council_supplementary_approvals "
-                "(template_number, year, title, kind, category, amount, "
-                " amount_source, decided, in_plenary, council_decision, "
-                " decision_id, committees, "
-                " fulltext_probe, herkunft_id, fetched_at) "
-                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                [(z["template_number"], z.get("year"), z["title"], z["kind"],
-                  z["category"], z.get("amount"), z.get("amount_source"),
-                  int(bool(z.get("decided"))), int(bool(z.get("in_plenary"))),
-                  int(bool(z.get("council_decision"))),
-                  z.get("decision_id"),
-                  json.dumps(z.get("committees") or [], ensure_ascii=False),
-                  int(bool(z.get("fulltext_probe"))), hid, now)
-                 for z in zeilen])
-        return len(zeilen)
-
-    def save_nachbewilligung_jahr(self, year: dict, channels: list[dict],
-                                  herkunft) -> int:
-        """Ein Jahrgang aus Kapitel 3 des Rechenschaftsberichts.
-
-        Jahreszeile und Kanäle wandern zusammen in **eine** Transaktion: Ein
-        Bestand, in dem die Summenzeile eines Jahres steht und seine vier
-        Wege fehlen, wäre genau der Zustand, den die Tabellenprobe unmöglich
-        machen soll."""
-        now = datetime.utcnow().isoformat(timespec="seconds")
-        with self.transaktion():
-            hid = self.merke_herkunft(herkunft, fetched_at=now)
-            self._conn.execute(
-                "INSERT OR REPLACE INTO council_supplementary_years "
-                "(year, total_operating, total_capital, total_per_text, "
-                " commitments_amount, probe_ok, probe_text, herkunft_id, "
-                " fetched_at) VALUES (?,?,?,?,?,?,?,?,?)",
-                (year["year"], year["total_operating"], year["total_capital"],
-                 year.get("total_per_text"), year.get("commitments_amount"),
-                 int(bool(year.get("probe_ok"))), year.get("probe_text"),
-                 hid, now))
-            self._conn.executemany(
-                "INSERT OR REPLACE INTO council_supplementary_channels "
-                "(year, channel, label, count_operating, amount_operating, "
-                " count_capital, amount_capital, herkunft_id, fetched_at) "
-                "VALUES (?,?,?,?,?,?,?,?,?)",
-                [(year["year"], k["channel"], k["label"], k["count_operating"],
-                  k["amount_operating"], k["count_capital"],
-                  k["amount_capital"], hid, now) for k in channels])
-        return len(channels)
 
 
 
@@ -3011,37 +2148,6 @@ class CouncilStore(FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
 
     # --- Zuwendungen an die Stadt (aus den Ratsbeschlüssen) ----------------
 
-    def save_spenden(self, zeilen: list[dict], verworfen: list[dict],
-                     herkunft) -> int:
-        """Die geprüfte Spendenreihe schreiben — je Vorlage eine Zeile.
-
-        Anders als bei den übrigen Schichten bringt **jede Zeile ihre eigene
-        Herkunft mit** (``row["herkunft"]``): Jede Vorlage ist ein eigenes
-        PDF mit eigener Dokument-ID. ``herkunft`` ist die Rückfallebene für
-        die verworfenen Zeilen und für Zeilen ohne eigenen Anker — sie
-        beschreibt den Lauf, nicht ein Dokument.
-
-        ``INSERT OR REPLACE``, kein ``DELETE FROM``: Eine Teillieferung
-        (etwa nach einem abgebrochenen Volltext-Lauf) ersetzt nur, was sie
-        mitbringt, und räumt den Bestand nicht ab."""
-        now = datetime.utcnow().isoformat(timespec="seconds")
-        with self.transaktion():
-            rueck = self.merke_herkunft(herkunft, fetched_at=now)
-            self._conn.executemany(
-                "INSERT OR REPLACE INTO council_donations "
-                "(template_number, year, session_date, amount, committee, layout, second_mention, "
-                " probes, herkunft_id, fetched_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
-                [(z["template_number"], z["year"], z["session_date"], z["amount"], z.get("committee"),
-                  z.get("layout"), z["second_mention"], ",".join(z["probes"]),
-                  self.merke_herkunft(z["herkunft"], fetched_at=now)
-                  if z.get("herkunft") else rueck, now)
-                 for z in zeilen])
-            self._conn.executemany(
-                "INSERT OR REPLACE INTO council_donations_rejected "
-                "(template_number, session_date, reason, herkunft_id, fetched_at) VALUES (?,?,?,?,?)",
-                [(v["template_number"], v.get("session_date"), v["reason"], rueck, now)
-                 for v in verworfen])
-        return len(zeilen)
 
     # --- Marken der Skriptläufe (scripts/check_finanzdaten.py) --------------
 
@@ -3066,23 +2172,6 @@ class CouncilStore(FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
 
     # --- Liquiditätsstand (council/liquidity.py) ----------------------------
 
-    def liquiditaetsanlagen(self) -> list[dict]:
-        """Die Anlagen der Liquiditätsstand-Vorlagen — mit oder ohne Text.
-
-        Über ``kvonr``, nicht über ein Label-Muster: Bis 2021 heißt die
-        Anlage schlicht „Anlage", erst danach trägt sie den Titel der
-        Grafik."""
-        try:
-            return [dict(r) for r in self._conn.execute(
-                """SELECT t.template_number, a.document_id, a.label, a.url, a.raw_text,
-                          a.status, a.n_pages
-                     FROM council_templates t JOIN council_attachments a ON a.kvonr = t.kvonr
-                    WHERE t.title LIKE 'Liquiditätsstand%'
-                    ORDER BY t.template_number, a.document_id""")]
-        except sqlite3.OperationalError as fehler:
-            if not tabelle_fehlt(fehler):
-                raise
-            return []
 
     def anlagentext_nachtragen(self, document_id: int, text: str, n_pages: int) -> None:
         """Den heruntergeladenen Text einer Anlage ablegen — damit der nächste
@@ -3092,33 +2181,8 @@ class CouncilStore(FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
                 "UPDATE council_attachments SET raw_text = ?, n_pages = ?, status = 'ok', "
                 "fetched_at = datetime('now') WHERE document_id = ?", (text, n_pages, document_id))
 
-    def save_liquidity(self, rows: list[dict], herkunft) -> int:
-        """Die Monatsreihe schreiben — je Zeile ihre Herkunft (``row["herkunft"]``),
-        sonst die des Laufs. ``INSERT OR REPLACE`` je Monat."""
-        now = datetime.utcnow().isoformat(timespec="seconds")
-        with self.transaktion():
-            rueck = self.merke_herkunft(herkunft, fetched_at=now)
-            for r in rows:
-                hid = self.merke_herkunft(r["herkunft"], fetched_at=now) if r.get("herkunft") else rueck
-                self._conn.execute(
-                    "INSERT OR REPLACE INTO council_liquidity (month, year, amount, as_of, confirmations, "
-                    " revised_from, document_id, url, template_number, probes, herkunft_id, fetched_at) "
-                    "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
-                    (r["month"], r["year"], r["amount"], r["as_of"], r.get("confirmations", 1),
-                     r.get("revised_from"), r.get("document_id"), r.get("url"), r.get("template_number"),
-                     ",".join(r.get("probes") or []), hid, now))
-        return len(rows)
 
 
-    def liquidity_einheiten(self) -> set[tuple]:
-        """``(Jahr, Monat)`` je Zeile — die Einheiten des Datenstands."""
-        try:
-            return {(r[0], r[1]) for r in self._conn.execute(
-                "SELECT year, CAST(substr(month, 6, 2) AS INTEGER) FROM council_liquidity")}
-        except sqlite3.OperationalError as fehler:
-            if not tabelle_fehlt(fehler):
-                raise
-            return set()
 
     # --- Jahresabschlüsse der Eigenbetriebe (council/eigenbetriebe_abschluss.py) --
 
@@ -3155,33 +2219,9 @@ class CouncilStore(FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
         return len(rows)
 
 
-    def enterprise_account_einheiten(self) -> set[tuple]:
-        """``(Jahr, Betrieb)`` je Zeile — die Einheiten des Datenstands."""
-        try:
-            return {(r[0], r[1]) for r in self._conn.execute(
-                "SELECT DISTINCT year, enterprise FROM council_enterprise_accounts")}
-        except sqlite3.OperationalError as fehler:
-            if not tabelle_fehlt(fehler):
-                raise
-            return set()
 
     # --- Kredite und Zinsen (council/loans.py) ------------------------------
 
-    def kreditunterrichtungen(self) -> list[dict]:
-        """Die Rohzeilen für ``council.loans.lies()``: Vorlagen samt Volltext.
-
-        Breit gefasst — das Aussieben macht ``loans.erkenne()``."""
-        from council.loans import TITEL_SQL
-        try:
-            return [dict(r) for r in self._conn.execute(
-                f"""SELECT kvonr, template_number, title, raw_text, document_id, document_url
-                     FROM council_templates
-                    WHERE {TITEL_SQL}
-                    ORDER BY template_number""")]
-        except sqlite3.OperationalError as fehler:
-            if not tabelle_fehlt(fehler):
-                raise
-            return []
 
     def save_loan_notices(self, notices: list[dict], items: list[dict], herkunft) -> int:
         """Die Unterrichtungen und ihre Posten schreiben — je Vorlage ihre
@@ -3232,151 +2272,20 @@ class CouncilStore(FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
         except sqlite3.OperationalError:
             return []
 
-    def zuwendungsbeschluesse(self) -> list[dict]:
-        """Die Rohzeilen für ``council.donations.lies()``.
-
-        Absichtlich breit gefasst (``Annahme%Zuwendung%``): Das Aussieben
-        macht ``donations.erkenne()``, damit die Regel an einer Stelle steht und
-        nicht halb in SQL."""
-        return [dict(r) for r in self._conn.execute(
-            """SELECT d.template_number, d.title AS title, d.official_text, d.outcome,
-                      s.session_date AS session_date, s.committee AS gremiensitzung,
-                      v.raw_text, v.document_id AS document_id,
-                      v.document_url AS dokument_url
-                 FROM council_decisions d
-                 LEFT JOIN council_sessions s ON s.ksinr = d.ksinr
-                 LEFT JOIN council_templates v ON v.template_number = d.template_number
-                WHERE d.kind = 'decision' AND d.title LIKE 'Annahme%Zuwendung%'
-                ORDER BY s.session_date, d.template_number""")]
 
     # --- Steuertabellen des Jahrbuchs (1103 und 1105) -----------------------
 
-    def save_steuerplan(self, zeilen: list[dict], herkunft) -> int:
-        """Plan neben Ist je Steuerart — ersetzt, was die Lieferung mitbringt.
-
-        Nicht die ganze Tabelle: Jede Ausgabe von 1103 führt nur **drei**
-        Jahrgänge, und der Lauf legt mehrere Ausgaben nacheinander ab. Ein
-        ``DELETE`` vor dem Schreiben löschte deshalb genau das, wofür das
-        Archiv gebaut wurde — die Jahrgänge, die nur noch in einer älteren
-        Ausgabe stehen.
-
-        Übergeben wird nur, was seine Proben bestanden hat; diese Methode prüft
-        nichts nach."""
-        now = datetime.utcnow().isoformat(timespec="seconds")
-        with self.transaktion():
-            hid = self.merke_herkunft(herkunft, fetched_at=now)
-            self._conn.executemany(
-                "INSERT OR REPLACE INTO council_tax_plan "
-                "(year, kind, plan, actual, provisional, herkunft_id, fetched_at) "
-                "VALUES (?,?,?,?,?,?,?)",
-                [(z["year"], z["kind"], z["plan"], z["actual"],
-                  int(bool(z.get("provisional"))), hid, now) for z in zeilen])
-        return len(zeilen)
 
 
-    def steuerplan_jahre(self) -> list[int]:
-        """Welche Jahrgänge im Bestand stehen — für den Bestandsschutz."""
-        try:
-            return [r[0] for r in self._conn.execute(
-                "SELECT DISTINCT year FROM council_tax_plan ORDER BY year")]
-        except sqlite3.OperationalError:
-            return []
-
-    def save_hebesaetze(self, zeilen: list[dict], herkunft) -> int:
-        """Die Hebesatz-Treppe — je Änderungsjahr und Steuerart eine Zeile."""
-        now = datetime.utcnow().isoformat(timespec="seconds")
-        with self.transaktion():
-            hid = self.merke_herkunft(herkunft, fetched_at=now)
-            self._conn.executemany(
-                "INSERT OR REPLACE INTO council_tax_rates "
-                "(year, kind, rate, prior_rate, herkunft_id, fetched_at) "
-                "VALUES (?,?,?,?,?,?)",
-                [(z["year"], z["kind"], z["rate"], z.get("prior_rate"),
-                  hid, now) for z in zeilen])
-        return len(zeilen)
 
 
-    def hebesatz_jahre(self) -> list[int]:
-        """Welche Änderungsjahre im Bestand stehen — für den Bestandsschutz."""
-        try:
-            return [r[0] for r in self._conn.execute(
-                "SELECT DISTINCT year FROM council_tax_rates ORDER BY year")]
-        except sqlite3.OperationalError:
-            return []
+
 
     # --- Ist-Investitionen (Tabellen 1107/1107-1 des Jahrbuchs) -------------
 
-    def save_investitionen_ist(self, zeilen: list[dict], herkunft,
-                               verworfen: list[dict] | None = None) -> int:
-        """Investitions-Jahrgänge ersetzen — je Jahr eine Zeile plus ihre Arten.
-
-        Ersetzt wird **nur, was die Lieferung mitbringt**, nicht die ganze
-        Tabelle: Ein Lauf, dem ein Jahrgang an der Probe durchgefallen ist,
-        darf den vorher gespeicherten Stand dieses Jahrgangs nicht mit
-        wegräumen (derselbe Grund wie bei ``save_schulden``).
-
-        Die Arten eines Jahrgangs werden vorher gelöscht statt nur überschrieben:
-        Wechselte die Quelle ihren Spaltenschnitt, bliebe eine abgeschaffte Art
-        sonst als Karteileiche stehen und die Aufteilung summierte sich auf
-        mehr als die Summe daneben.
-
-        ``verworfen`` sind die Jahrgänge, die die Probe **nicht** bestanden
-        haben (``lies()["verworfen"]``): Grund und gemessene ``difference``
-        werden mitgeschrieben, damit die Seite ihre Lücke beziffern kann
-        statt sie nur zu behaupten. Ein Jahrgang, der jetzt durchkommt,
-        verliert dabei seinen alten Lücken-Eintrag — sonst stünde er in
-        beiden Tabellen und die Seite zeigte eine Lücke, die es nicht mehr
-        gibt.
-
-        Übergeben wird an ``zeilen`` nur, was seine Probe bestanden hat —
-        diese Methode prüft nichts nach, sie schreibt."""
-        from council import investitionen_ist as _ii
-
-        now = datetime.utcnow().isoformat(timespec="seconds")
-        with self.transaktion():
-            hid = self.merke_herkunft(herkunft, fetched_at=now)
-            self._conn.executemany(
-                "INSERT OR REPLACE INTO council_investments_actual "
-                "(year, accounting_system, total, herkunft_id, fetched_at) "
-                "VALUES (?,?,?,?,?)",
-                [(z["year"], z["accounting_system"], z["total"], hid, now)
-                 for z in zeilen])
-            self._conn.executemany(
-                "DELETE FROM council_investments_actual_kinds WHERE year = ?",
-                [(z["year"],) for z in zeilen])
-            arten = []
-            for z in zeilen:
-                spalten = _ii.SPALTEN[z["accounting_system"]]
-                for i, (field, title) in enumerate(spalten[:-1]):
-                    if z.get(field) is None:
-                        continue
-                    arten.append((z["year"], field, title, i, z[field], hid, now))
-            self._conn.executemany(
-                "INSERT OR REPLACE INTO council_investments_actual_kinds "
-                "(year, field, title, sort_order, amount, herkunft_id, fetched_at) "
-                "VALUES (?,?,?,?,?,?,?)", arten)
-            # Ein übernommener Jahrgang ist keine Lücke mehr.
-            self._conn.executemany(
-                "DELETE FROM council_investments_actual_rejected WHERE year = ?",
-                [(z["year"],) for z in zeilen])
-            self._conn.executemany(
-                "INSERT OR REPLACE INTO council_investments_actual_rejected "
-                "(year, accounting_system, reason, difference, herkunft_id, fetched_at) "
-                "VALUES (?,?,?,?,?,?)",
-                [(v["year"], v["accounting_system"], v["reason"], v.get("difference"),
-                  hid, now) for v in (verworfen or [])])
-        return len(zeilen)
 
 
 
-    def investitionen_ist_jahre(self) -> list[int]:
-        """Welche Jahrgänge im Bestand stehen — der Bestandsschutz vergleicht
-        gegen diese Zahl, bevor ein Lauf sie überschreibt."""
-        try:
-            return [r[0] for r in self._conn.execute(
-                "SELECT year FROM council_investments_actual ORDER BY year")]
-        except sqlite3.OperationalError:
-            return []
 
     def investitionen_ist_kontext(self, year: int | None = None) -> dict | None:
         """Was die Stadt zuletzt wirklich investiert hat — für die KI-Frage.
@@ -3431,155 +2340,20 @@ class CouncilStore(FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
             **({"year_asked": year} if abweicht else {}),
         }
 
-    def schulden_jahre(self) -> list[int]:
-        """Welche Jahrgänge im Bestand stehen."""
-        try:
-            return [r[0] for r in self._conn.execute(
-                "SELECT year FROM council_debt ORDER BY year")]
-        except sqlite3.OperationalError:
-            return []
 
-    def einwohner_je_jahr(self) -> dict[int, int]:
-        """Alle bekannten Einwohnerzahlen als ``{year: zahl}``.
-
-        Der Divisor der Pro-Kopf-Gegenprobe (``council/schulden.py``). Bewusst
-        die ganze Reihe und nicht nur der jüngste Wert wie bei
-        ``einwohner_aktuell``: Geprüft wird jeder Jahrgang gegen die
-        Einwohnerzahl **seines** Jahres, nicht gegen die von heute."""
-        try:
-            return {r[0]: r[1] for r in self._conn.execute(
-                "SELECT year, population FROM council_einwohner")}
-        except sqlite3.OperationalError:
-            return {}
 
     # --- Städtevergleich (amtliche Statistik des LSN) ------------------------
 
-    def save_staedtevergleich(self, series: str, zeilen: list[dict], herkunft) -> int:
-        """Eine Reihe des Städtevergleichs ersetzen — ``tax_capacity`` oder
-        ``realsteuern``.
-
-        Ersetzt wird **je Reihe und je betroffenem Jahr**, nicht die ganze
-        Tabelle: Die beiden Reihen kommen aus verschiedenen Dateien, die zu
-        verschiedenen Zeiten im Jahr erscheinen. Ein Lauf, der nur den
-        Realsteuervergleich neu einliest, darf die Steuerkraft-Reihe nicht
-        mitnehmen — sonst hinge der Bestand davon ab, in welcher Reihenfolge
-        jemand die beiden Ingests anstößt.
-
-        Übergeben wird nur, was seine Probe bestanden hat; diese Methode prüft
-        nichts nach, sie schreibt."""
-        now = datetime.utcnow().isoformat(timespec="seconds")
-        years = {int(z["year"]) for z in zeilen}
-        with self.transaktion():
-            hid = self.merke_herkunft(herkunft, fetched_at=now)
-            for year in sorted(years):
-                self._conn.execute(
-                    "DELETE FROM council_city_comparison WHERE series = ? AND year = ?",
-                    (series, year))
-            self._conn.executemany(
-                "INSERT INTO council_city_comparison (series, year, key, "
-                " city, indicator, value, unit, herkunft_id, fetched_at) "
-                "VALUES (?,?,?,?,?,?,?,?,?)",
-                [(series, z["year"], z["key"], z["city"], z["indicator"],
-                  z["value"], z["unit"], hid, now) for z in zeilen])
-        return len(zeilen)
-
-
-    def save_gewerbesteuerstatistik(self, zeilen: list[dict], herkunft) -> int:
-        """Einen Erhebungsjahrgang der Gewerbesteuerstatistik ersetzen.
-
-        Ersetzt wird **je Jahr**, nicht die ganze Tabelle: Die Jahrgänge kommen
-        aus je eigenen Berichten, und ein Lauf, der 2021 nachträgt, darf 2017
-        bis 2020 nicht mitnehmen. Ein Jahrgang wird dagegen vollständig
-        ersetzt — das LSN gibt korrigierte Fassungen heraus (der Jahrgang 2020
-        wurde am 11.02.2026 nachgebessert), und eine Korrektur, die alte Zeilen
-        stehen ließe, wäre keine.
-
-        Übergeben wird nur, was seine Proben bestanden hat; diese Methode prüft
-        nichts nach, sie schreibt."""
-        now = datetime.utcnow().isoformat(timespec="seconds")
-        years = {int(z["year"]) for z in zeilen}
-        spalten = ("year", "key", "city", "cases", "cases_positive",
-                   "tax_base_eur", "assessments", "assessments_positive",
-                   "assessment_tax_base_eur", "apportionments",
-                   "apportionments_positive", "apportioned_assessment_eur",
-                   "rate", "confidential")
-        with self.transaktion():
-            hid = self.merke_herkunft(herkunft, fetched_at=now)
-            for year in sorted(years):
-                self._conn.execute(
-                    "DELETE FROM council_trade_tax_statistics WHERE year = ?",
-                    (year,))
-            self._conn.executemany(
-                f"INSERT INTO council_trade_tax_statistics "
-                f"({', '.join(spalten)}, herkunft_id, fetched_at) "
-                f"VALUES ({', '.join('?' * len(spalten))},?,?)",
-                [tuple(z.get(s) for s in spalten) + (hid, now) for z in zeilen])
-        return len(zeilen)
-
-
-    def save_produkte(self, year: int, produkte: list[dict], herkunft) -> int:
-        """Produkte eines Jahres einfügen/aktualisieren. Bewusst KEIN Löschen
-        des Jahrgangs: Die Produkte eines Jahres verteilen sich auf mehrere
-        Teilhaushalts-Dokumente, die nacheinander eingelesen werden.
-
-        ``INSERT OR REPLACE`` ersetzt bei gleichem ``(year, product_no)`` die
-        **ganze** Zeile, samt Herkunft — wer zuletzt schreibt, gewinnt. Das ist
-        hier nur deshalb ungefährlich, weil der Aufrufer dafür sorgt, dass ein
-        Teilhaushalt genau einmal geschrieben wird: Sechs (Jahrgang,
-        Teilhaushalt)-Paare liegen doppelt im Anlagenbestand, und welches der
-        beiden Dokumente in der Zeile steht, soll keine Frage der
-        Sortierreihenfolge sein. Die Regel und die Messung dazu stehen in
-        ``council.finanzquellen.lies_teilhaushalte``. Wer einen zweiten
-        Schreibweg zu dieser Tabelle baut, braucht dieselbe Vorentscheidung —
-        die Tabelle selbst kann sie nicht treffen, sie sieht nur eine Zeile."""
-        now = datetime.utcnow().isoformat(timespec="seconds")
-        with self.transaktion():
-            hid = self.merke_herkunft(herkunft, fetched_at=now)
-            self._conn.executemany(
-                "INSERT OR REPLACE INTO council_products (year, product_no, product_name, "
-                " sub_budget_no, sub_budget_name, office, revenues, expenses, result, "
-                " short_description, legal_basis, controllability, "
-                " controllability_raw, scope, target_group, "
-                " source_label, source_url, fetched_at, herkunft_id) "
-                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                [(year, p["product_no"], p["product_name"], p.get("sub_budget_no"), p.get("sub_budget_name"),
-                  p.get("office"), p.get("revenues"), p.get("expenses"), p.get("result"),
-                  p.get("short_description"), p.get("legal_basis"),
-                  p.get("controllability"), p.get("controllability_raw"),
-                  p.get("scope"), p.get("target_group"),
-                  herkunft.label, herkunft.url, now, hid) for p in produkte])
-        return len(produkte)
 
 
 
 
 
 
-    def save_pruefbericht(self, year: int, feststellungen: list[dict], herkunft) -> int:
-        """Prüfungsfeststellungen eines Schlussberichts speichern.
 
-        Der Jahrgang wird vorher geleert: Ein Bericht ist ein Dokument, und
-        ein erneuter Ingest liest dasselbe Dokument neu — Zeilen von früheren
-        Läufen stehen zu lassen hieße, alte Parser-Stände zu konservieren.
 
-        Die ``citation`` der Herkunft bleibt hier bewusst grob („Randmarken
-        des Berichts"): Die genaue Fundstelle einer Feststellung ist ihre
-        **Textziffer** und ihre **Seite**, und die stehen je Zeile in der
-        Tabelle. Die Herkunft beschreibt das Dokument, nicht die Zeile."""
-        now = datetime.utcnow().isoformat(timespec="seconds")
-        with self.transaktion():
-            hid = self.merke_herkunft(herkunft, fetched_at=now)
-            self._conn.execute("DELETE FROM council_audit_reports WHERE year = ?", (year,))
-            self._conn.executemany(
-                "INSERT INTO council_audit_reports (year, seq, mark, mark_name, "
-                " mark_explanation, text_number, section, chain, page, text, "
-                " follow_paragraph, source_label, source_url, fetched_at, herkunft_id) "
-                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                [(year, f["seq"], f["mark"], f["mark_name"], f.get("mark_explanation"),
-                  f["text_number"], f["section"], f.get("chain"), f.get("page"),
-                  f["text"], f.get("follow_paragraph"), herkunft.label, herkunft.url, now, hid)
-                 for f in feststellungen])
-        return len(feststellungen)
+
+
 
 
 
@@ -5535,64 +4309,6 @@ class CouncilStore(FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
     # Es gelten dieselben zwei Regeln wie für den Abschnitt darüber: wenige
     # Zeilen statt Bestand, und jede Zahl mit ihrem Beleg.
 
-    def schulden_kontext(self, year: int | None = None) -> dict | None:
-        """Der Schuldenstand: jüngstes Jahr, Vorjahr, höchster Stand der Reihe.
-
-        Ein **Bestand**, kein Jahresverlauf — und genau deshalb eine eigene
-        Quelle. Der Haushaltsplan sagt, was die Stadt in einem Jahr einnimmt
-        und ausgibt; was am 31.12. an Krediten offen ist, sagt er nicht.
-
-        Die Abgrenzung reist als Feld mit (``council.schulden.ABGRENZUNG``)
-        und ist nicht schmückendes Beiwerk: Gezählt wird die Stadt als
-        Rechtsträger — Kernhaushalt und Eigenbetriebe, ohne die rechtlich
-        selbstständigen Beteiligungen. Die Konzern-Zahl heißt genauso und ist
-        ein Vielfaches; ohne den Satz daneben ist „337 Mio. €" eine von zwei
-        Zahlen, die beide so heißen.
-
-        Die vier Artenspalten dürfen NULL sein (Fall 2022, s.
-        ``council/schulden.py``) — dann kommt die Aufteilung nicht mit, und
-        ``breakdown_rejected`` sagt, warum.
-        """
-        from council import schulden as _schulden
-
-        try:
-            rows = [dict(r) for r in self._conn.execute(
-                "SELECT * FROM council_debt ORDER BY year")]
-        except sqlite3.OperationalError:
-            return None
-        if not rows:
-            return None
-        # Das gefragte Jahr, wenn die Reihe es führt — sonst das jüngste, und
-        # der Baustein sagt, dass es nicht das gefragte ist.
-        idx = next((i for i, r in enumerate(rows) if r["year"] == year), len(rows) - 1)
-        abweicht = year is not None and rows[idx]["year"] != year
-        rows_bis = rows[:idx + 1]
-        neu = rows[idx]
-        arten = [(title, neu[field]) for field, title in _schulden.SPALTEN
-                 if field not in ("total", "per_capita")
-                 and neu.get(field) is not None]
-        # Der höchste Stand der Reihe ist eine Angabe der Daten, keine
-        # Bewertung: Er sagt, ob die jüngste Zahl im historischen Vergleich
-        # oben oder unten liegt — sonst schwebt sie ohne jeden Maßstab.
-        hoch = max(rows, key=lambda r: r["total"])
-        return {
-            "year": neu["year"],
-            "total": neu["total"],
-            "per_capita": neu.get("per_capita"),
-            "arten": arten,
-            "breakdown_rejected": neu.get("breakdown_rejected"),
-            "revised": bool(neu.get("revised")),
-            "davor": ({"year": rows_bis[-2]["year"], "total": rows_bis[-2]["total"]}
-                      if len(rows_bis) > 1 else None),
-            "hoch": ({"year": hoch["year"], "total": hoch["total"]}
-                     if hoch["year"] != neu["year"] else None),
-            "reihe_ab": rows[0]["year"],
-            "abgrenzung": _schulden.ABGRENZUNG,
-            **({"year_asked": year} if abweicht else {}),
-            "beleg": self._beleg(neu.get("herkunft_id")),
-            "weitere": self._schulden_abgrenzungen(),
-            "buergschaften": self._buergschafts_kontext(),
-        }
 
     def haushalts_anschluss(self, decision_id: int, template_number: str | None) -> dict | None:
         """Wo dieser Beschluss im Haushalts-Bereich wieder auftaucht.
@@ -5638,51 +4354,6 @@ class CouncilStore(FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
         return None
 
 
-    def _schulden_abgrenzungen(self) -> list[dict]:
-        """Die ANDEREN beiden Zahlen, die auch „die Schulden der Stadt" heißen.
-
-        Es gibt drei, sie unterscheiden sich um das Siebzehnfache, und jede
-        ist für ihre Abgrenzung richtig (Stand 31.12.2024):
-
-        * **43,7 Mio. €** — die Geldschulden des Kernhaushalts allein, wie sie
-          in der Bilanz des Jahresabschlusses stehen.
-        * **294,9 Mio. €** — die Stadt als Rechtsträger, also mit ihren
-          Eigenbetrieben. Das ist die Reihe des Statistischen Jahrbuchs, die
-          Zahl im Block darüber.
-        * **740,3 Mio. €** — der ganze „Konzern Stadt", anteilig nach
-          Beteiligungshöhe, aus dem Tabellenband der Statistischen Ämter.
-
-        Ohne diese Liste beantwortet die KI-Frage „Wie hoch sind die Schulden?"
-        mit **einer** Zahl, und welche das ist, entscheidet der Zufall der
-        Facette. Die drei nebeneinander sind die ehrliche Antwort — addiert
-        werden dürfen sie nie, sie enthalten einander.
-        """
-        aus: list[dict] = []
-        try:
-            r = self._conn.execute(
-                "SELECT year, value FROM council_balance_sheet WHERE role = 'financial_liabilities' "
-                "ORDER BY year DESC LIMIT 1").fetchone()
-            if r:
-                aus.append({"art": "Kernhaushalt (nur Geldschulden)", "year": r["year"],
-                            "amount": r["value"],
-                            "source": "Bilanz des Jahresabschlusses"})
-        except sqlite3.OperationalError as fehler:
-            if not tabelle_fehlt(fehler):
-                raise
-            pass
-        try:
-            r = self._conn.execute(
-                "SELECT year, total FROM council_integrated_debt "
-                "ORDER BY year DESC LIMIT 1").fetchone()
-            if r:
-                aus.append({"art": "Konzern Stadt (anteilig, mit Beteiligungen)",
-                            "year": r["year"], "amount": r["total"],
-                            "source": "Integrierte Schulden der Statistischen Ämter"})
-        except sqlite3.OperationalError as fehler:
-            if not tabelle_fehlt(fehler):
-                raise
-            pass
-        return aus
 
     def bilanz_kontext(self, year: int | None = None) -> dict | None:
         """Was der Stadt gehört und wem es zusteht — der jüngste Stichtag.
@@ -5827,37 +4498,6 @@ class CouncilStore(FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
             **({"year_asked": year} if abweicht else {}),
         }
 
-    def _buergschafts_kontext(self) -> dict | None:
-        """Wofür die Stadt geradesteht — die Zahl, die in keiner Schuldenreihe steht.
-
-        Eine Bürgschaft kostet nichts, solange sie nicht gezogen wird, und
-        taucht deshalb in keiner der drei Schuldenzahlen auf. Ende 2024 waren
-        es 220,3 Mio. € — das Fünffache der eigenen Geldschulden des
-        Kernhaushalts. Wer nach den Schulden fragt, bekommt das dazu, aber
-        ausdrücklich als **eigene** Größe: Eine Bürgschaft ist keine Schuld.
-        """
-        try:
-            r = self._conn.execute(
-                "SELECT year, balance, reason, herkunft_id FROM council_buergschaften "
-                "ORDER BY year DESC LIMIT 1").fetchone()
-        except sqlite3.OperationalError as fehler:
-            if not tabelle_fehlt(fehler):
-                raise
-            return None
-        if not r:
-            return None
-        rueck = None
-        try:
-            z = self._conn.execute(
-                "SELECT value FROM council_balance_sheet WHERE role = 'guarantee_provisions' "
-                "AND year = ?", (r["year"],)).fetchone()
-            rueck = z["value"] if z else None
-        except sqlite3.OperationalError as fehler:
-            if not tabelle_fehlt(fehler):
-                raise
-            pass
-        return {"year": r["year"], "balance": r["balance"], "reason": r["reason"],
-                "rueckstellung": rueck, "beleg": self._beleg(r["herkunft_id"])}
 
     def investitionen_fuer_begriffe(self, begriffe: list[str],
                                     limit: int = 3, year: int | None = None) -> dict | None:
