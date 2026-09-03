@@ -393,7 +393,9 @@ private struct MainTabsView: View {
             case "session-detail":
                 model.councilSection = .sessions
                 model.selectedTab = .council
-                model.navigation = [.sessions(ksinr: 42, tops: [])]
+                // Mit hervorgehobenem Punkt: Ein geteilter Link trägt den TOP
+                // mit, und die Sichtprobe soll genau diesen Zustand zeigen.
+                model.navigation = [.sessions(ksinr: 42, tops: ["Ö 7"])]
             case "map":
                 model.navigation.removeAll()
                 model.councilSection = .map

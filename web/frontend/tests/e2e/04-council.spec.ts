@@ -188,3 +188,36 @@ test.describe("Ratsinformationssystem", () => {
     await expect(page.getByText("Fundstelle: „Widmung Klingenbergplatz“")).toBeVisible();
   });
 });
+
+/** Die geteilte Sitzung — sie muss OHNE Konto aufgehen.
+ *
+ *  Bewusst ein eigener Block ohne `loginAdmin`: Genau das ist der Fall, den
+ *  ein weitergereichter Link auslöst, und genau der ging vorher in der
+ *  Anmeldewand unter. Steht hier eines Tages wieder ein Login-Formular, ist
+ *  der Teilen-Knopf wertlos geworden, ohne dass es sonst jemand merkt.
+ */
+test.describe("Geteilte Sitzung ohne Konto", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.route("**/api/council/session/42", (route) =>
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(MOCK_DETAIL) }),
+    );
+  });
+
+  test("zeigt Gremium und Tagesordnung statt der Anmeldung", async ({ page }) => {
+    await page.goto("/council/sitzung?ksinr=42");
+    await expect(page.getByRole("heading", { name: /Bauausschuss/ })).toBeVisible();
+    await expect(page.getByText("Bebauungsplan Hafen")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Sitzung teilen" })).toBeVisible();
+    // Der Weg ins Konto steht am Fuß der Seite, nicht davor.
+    await expect(page.getByRole("link", { name: "Kostenlos registrieren" })).toBeVisible();
+    await expect(page.locator("#password")).toHaveCount(0);
+  });
+
+  test("hebt den geteilten Tagesordnungspunkt hervor", async ({ page }) => {
+    await page.goto("/council/sitzung?ksinr=42&top=%C3%96%202");
+    const zeile = page.locator("li", { hasText: "Radwegekonzept" }).first();
+    // Die Markierung bleibt hier stehen (anders als der kurze Blitz in der
+    // Liste) — sie ist der Grund, warum die Seite offen ist.
+    await expect(zeile).toHaveClass(/ring-primary/, { timeout: 10_000 });
+  });
+});
