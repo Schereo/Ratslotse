@@ -665,7 +665,7 @@ lotti-figur {
   width: 0.625rem;
 }
 .problem-rank-bar {
-  transition: width 420ms var(--ease-out-strong);
+  transition: none;
 }
 @keyframes problem-vorschau-oeffnen {
   from { opacity: 0; transform: translateY(-4px); }
@@ -675,7 +675,12 @@ lotti-figur {
   animation: problem-vorschau-oeffnen 180ms var(--ease-out-strong);
 }
 @media (prefers-reduced-motion: reduce) {
-  .problem-rank-bar { transition-duration: 0s !important; }
+  .problem-rank-bar,
+  .problem-disclosure-card,
+  .problem-disclosure-chevron,
+  .problem-map-pin,
+  .problem-map-route,
+  .problem-map-area { transition-duration: 0s !important; }
   .problem-preview { animation: none !important; }
 }
 

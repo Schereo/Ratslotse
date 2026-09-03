@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import type { ProblemList } from "@/lib/probleme";
 
 const problems = [
   {
@@ -54,20 +55,24 @@ const problems = [
     geometry: { type: "LineString", coordinates: [[8.2, 53.14]] },
     status: "new", frequency: "several", fictional: true,
   },
-];
+] satisfies ProblemList["problems"];
 
 const rankedProblems = [...problems].sort((a, b) => (
   b.independent_reports - a.independent_reports
   || a.title.localeCompare(b.title, "de")
   || a.id - b.id
 ));
+const problemResponse = {
+  problems: rankedProblems,
+  total: rankedProblems.length,
+} satisfies ProblemList;
 
 test.describe("Öffentliche Problemübersicht", () => {
   test.beforeEach(async ({ page }) => {
     await page.route("**/api/probleme", (route) => route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify({ problems: rankedProblems, total: rankedProblems.length }),
+      body: JSON.stringify(problemResponse),
     }));
   });
 
@@ -109,10 +114,46 @@ test.describe("Öffentliche Problemübersicht", () => {
     await expect(entries.nth(2)).toContainText("Beispiel: getrennte Grünflächen");
     await expect(entries.nth(3)).toContainText("Beispiel: Musterquartier");
     await expect(page.locator('[data-ranggruppe="top-drei"]')).toHaveCount(3);
+    await expect(page.locator(".problem-rank-bar").first()).toHaveCSS("transition-duration", "0s");
+    const rank = entries.nth(0).getByText("01", { exact: true });
+    await expect(rank).toHaveCSS("font-family", /Inter/);
+    expect(await rank.evaluate((element) => getComputedStyle(element).fontFamily)).not.toMatch(/Bricolage/i);
     await expect(page.getByText("Offenbar behoben")).toHaveCount(0);
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.screenshot({ path: testInfo.outputPath("meistgemeldet-desktop-light.png"), fullPage: true });
     expect(runtimeErrors).toEqual([]);
+  });
+
+  test("zeichnet auch bei großer Zahlenspanne mathematisch proportionale Rangbalken", async ({ page }) => {
+    const spreadResponse = {
+      problems: [
+        {
+          ...problems[5],
+          id: 101,
+          title: "Beispiel: sehr häufig bestätigt",
+          independent_reports: 10_000,
+        },
+        {
+          ...problems[2],
+          id: 102,
+          title: "Beispiel: einmal bestätigt",
+          independent_reports: 1,
+        },
+      ],
+      total: 2,
+    } satisfies ProblemList;
+    await page.unroute("**/api/probleme");
+    await page.route("**/api/probleme", (route) => route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(spreadResponse),
+    }));
+
+    await page.goto("/probleme?view=meistgemeldet");
+
+    const entries = page.getByRole("list", { name: "Meistgemeldete ungelöste Probleme" }).getByRole("listitem");
+    await expect(entries.nth(0).locator(".problem-rank-bar")).toHaveAttribute("style", "width: 100%;");
+    await expect(entries.nth(1).locator(".problem-rank-bar")).toHaveAttribute("style", "width: 0.01%;");
   });
 
   test("klappt Vorschauen per Tastatur auf und fokussiert ehrliche Geometrien", async ({ page }) => {
@@ -218,7 +259,7 @@ test.describe("Öffentliche Problemübersicht", () => {
       } : {
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({ problems: [], total: 0 }),
+        body: JSON.stringify({ problems: [], total: 0 } satisfies ProblemList),
       });
     });
     await page.goto("/probleme");
@@ -235,7 +276,6 @@ test.describe("Öffentliche Problemübersicht auf schmalem Touch-Gerät", () => 
     viewport: { width: 390, height: 844 },
     hasTouch: true,
     colorScheme: "dark",
-    reducedMotion: "reduce",
   });
 
   test("bleibt im Dark Mode ohne seitliches Seiten-Überlaufen bedienbar", async ({ page }, testInfo) => {
@@ -244,7 +284,7 @@ test.describe("Öffentliche Problemübersicht auf schmalem Touch-Gerät", () => 
     await page.route("**/api/probleme", (route) => route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify({ problems: rankedProblems, total: rankedProblems.length }),
+      body: JSON.stringify(problemResponse),
     }));
     await page.goto("/probleme");
 
@@ -262,7 +302,10 @@ test.describe("Öffentliche Problemübersicht auf schmalem Touch-Gerät", () => 
     await page.getByRole("button", { name: "Meistgemeldet", exact: true }).tap();
     await expect(page.getByRole("button", { name: /stadtweites Thema/i })).toBeVisible();
     await expect(page.locator(".problem-rank-bar").first()).toHaveCSS("transition-duration", "0s");
-    await page.getByRole("button", { name: /1\. Beispiel: stadtweites Thema/i }).tap();
+    const citywideToggle = page.getByRole("button", { name: /1\. Beispiel: stadtweites Thema/i });
+    await expect(citywideToggle.locator("svg")).toHaveCSS("transition-duration", "0s");
+    await expect(citywideToggle.locator("xpath=..")).toHaveCSS("transition-duration", "0s");
+    await citywideToggle.tap();
     await expect(page.getByText("Kein einzelner Kartenort: Dieses Beispiel gilt für das gesamte Stadtgebiet.")).toBeVisible();
     await expect(page.locator(".problem-preview")).toHaveCSS("animation-name", "none");
     await page.evaluate(() => window.scrollTo(0, 0));
@@ -275,6 +318,10 @@ test.describe("Öffentliche Problemübersicht auf schmalem Touch-Gerät", () => 
 
     await page.getByRole("button", { name: /2\. Beispiel: Musterhalle/i }).tap();
     await page.getByRole("button", { name: "Beispiel: Musterhalle auf der Karte zeigen" }).tap();
-    await expect(page.locator(".problem-map-facility.is-selected")).toHaveCount(1);
+    const selectedFacility = page.locator(".problem-map-facility.is-selected");
+    await expect(selectedFacility).toHaveCount(1);
+    await expect(selectedFacility).toHaveCSS("transition-duration", "0s");
+    await expect(page.locator(".problem-map-route")).toHaveCSS("transition-duration", "0s");
+    await expect(page.locator(".problem-map-area").first()).toHaveCSS("transition-duration", "0s");
   });
 });

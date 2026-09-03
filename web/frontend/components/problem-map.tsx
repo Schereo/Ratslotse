@@ -28,13 +28,13 @@ function focusProblem(
   map.stop();
   if (problem.scope_kind === "point" || problem.scope_kind === "facility") {
     const marker = markers.get(problem.id);
-    if (marker) map.flyTo(marker.getLatLng(), problem.scope_kind === "facility" ? 16 : 17, { animate, duration: 0.45 });
+    if (marker) map.flyTo(marker.getLatLng(), problem.scope_kind === "facility" ? 16 : 17, { animate, duration: 0.28 });
     return;
   }
   const shape = shapes.get(problem.id);
   if (shape?.bounds.isValid()) {
     const zoom = Math.max(map.getMinZoom(), Math.min(16, map.getBoundsZoom(shape.bounds) - 1));
-    map.flyTo(shape.bounds.getCenter(), zoom, { animate, duration: 0.45 });
+    map.flyTo(shape.bounds.getCenter(), zoom, { animate, duration: 0.28 });
   }
 }
 

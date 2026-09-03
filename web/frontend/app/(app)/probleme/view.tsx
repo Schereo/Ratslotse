@@ -12,13 +12,13 @@ import {
   X,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { MeldeRangbalken } from "@/components/grafik/melde-rangbalken";
 import { Mascot } from "@/components/mascot";
 import { EmptyState, ErrorState, PageHeader, Segmented, Spinner } from "@/components/ui";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { vertrag } from "@/lib/vertrag";
 import {
-  ACTIVE_PROBLEM_STATUS,
   isProblemMappable,
   MELDE_HAEUFIGKEIT,
   PROBLEM_ANGEBOT,
@@ -26,8 +26,8 @@ import {
   PROBLEM_SCOPE,
   PROBLEM_STATUS,
   reportCountLabel,
-  type ActiveProblemStatus,
   type ProblemFrequency,
+  type ProblemStatus,
   type PublicProblem,
 } from "@/lib/probleme";
 
@@ -42,7 +42,7 @@ const ProblemMap = dynamic(
 );
 
 type Ansicht = "karte" | "meistgemeldet";
-const STATUS_OPTIONS = Object.entries(ACTIVE_PROBLEM_STATUS) as [ActiveProblemStatus, string][];
+const STATUS_OPTIONS = Object.entries(PROBLEM_STATUS) as [ProblemStatus, string][];
 const CATEGORY_OPTIONS = Object.entries(PROBLEM_KATEGORIEN) as [PublicProblem["category"], string][];
 const FREQUENCY_OPTIONS = Object.entries(MELDE_HAEUFIGKEIT) as [ProblemFrequency, string][];
 const EMPTY_PROBLEMS: PublicProblem[] = [];
@@ -56,7 +56,7 @@ export default function View() {
   const all = query.data?.problems ?? EMPTY_PROBLEMS;
   const [ansicht, setAnsicht] = useState<Ansicht>("karte");
   const [category, setCategory] = useState<PublicProblem["category"] | "all">("all");
-  const [problemStatus, setProblemStatus] = useState<ActiveProblemStatus | "all">("all");
+  const [problemStatus, setProblemStatus] = useState<ProblemStatus | "all">("all");
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const statusProblems = useMemo(
     () => all.filter((problem) => problemStatus === "all" || problem.status === problemStatus),
@@ -142,7 +142,7 @@ export default function View() {
           <select
             aria-label="Status filtern"
             value={problemStatus}
-            onChange={(event) => setProblemStatus(event.target.value as ActiveProblemStatus | "all")}
+            onChange={(event) => setProblemStatus(event.target.value as ProblemStatus | "all")}
             className="min-h-11 rounded-lg border border-border bg-card px-3 text-sm font-medium text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <option value="all">Alle ungelösten Status</option>
@@ -312,13 +312,12 @@ function LeaderboardEntry({ problem, rank, maxReports, expanded, onToggle, onSho
   const previewId = `problem-preview-${problem.id}`;
   const countLabel = reportCountLabel(problem.independent_reports);
   const topThree = rank <= 3;
-  const width = `${Math.max(4, (problem.independent_reports / maxReports) * 100)}%`;
 
   return (
     <li
       data-ranggruppe={topThree ? "top-drei" : "weitere"}
       className={cn(
-        "overflow-hidden rounded-xl border bg-card shadow-sm transition-[border-color,background-color]",
+        "problem-disclosure-card overflow-hidden rounded-xl border bg-card shadow-sm transition-[border-color,background-color]",
         topThree ? "border-primary/25 bg-primary/[0.025]" : "border-border",
         expanded && "border-primary/45",
       )}
@@ -333,7 +332,7 @@ function LeaderboardEntry({ problem, rank, maxReports, expanded, onToggle, onSho
         className="grid min-h-[5.5rem] w-full grid-cols-[2.75rem_1fr_auto] items-center gap-2.5 px-3 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:grid-cols-[3.5rem_1fr_auto] sm:gap-4 sm:px-4"
       >
         <span className={cn(
-          "font-display text-xl font-bold tabular-nums text-muted-foreground",
+          "font-sans text-xl font-bold tabular-nums text-muted-foreground",
           topThree && "text-primary sm:text-2xl",
         )} aria-hidden>{String(rank).padStart(2, "0")}</span>
         <span className="min-w-0">
@@ -343,14 +342,15 @@ function LeaderboardEntry({ problem, rank, maxReports, expanded, onToggle, onSho
             <span aria-hidden>·</span>
             <StatusBadge status={problem.status} />
           </span>
-          <span className="mt-2 block h-1.5 overflow-hidden rounded-full bg-primary/8" aria-hidden>
-            <span
-              className={`problem-rank-bar frequency-${problem.frequency} block h-full rounded-full bg-[var(--problem-frequency)]`}
-              style={{ width }}
+          <span className="mt-2 block">
+            <MeldeRangbalken
+              wert={problem.independent_reports}
+              maximum={maxReports}
+              haeufigkeit={problem.frequency}
             />
           </span>
         </span>
-        <ChevronDown className={cn("h-5 w-5 text-muted-foreground transition-transform", expanded && "rotate-180")} aria-hidden />
+        <ChevronDown className={cn("problem-disclosure-chevron h-5 w-5 text-muted-foreground transition-transform", expanded && "rotate-180")} aria-hidden />
       </button>
 
       {expanded && (
