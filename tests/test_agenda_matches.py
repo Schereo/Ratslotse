@@ -308,3 +308,59 @@ def test_vorlagen_auszug_beginnt_beim_inhalt():
 
     aus = watcher._vorlagen_auszuege(_Store(), _sess_mit_vorlagen())
     assert aus["26/0001"].startswith("Anlass: Das Schulgebäude")
+
+
+def test_modell_ausfall_ueberspringt_nur_diesen_owner(tmp_path, monkeypatch):
+    """03.09.2026 auf Prod: OpenRouter antwortete mit HTTP 200, aber ohne
+    `choices` — die Aufrufstelle lief in ein `TypeError: 'NoneType' object is
+    not subscriptable` und riss den GANZEN check_council-Lauf ab, nachdem
+    sechs Sitzungen längst klassifiziert waren. Ein Modell-Ausfall darf nur
+    diese eine Zuordnung kosten."""
+    from council import watcher
+    from council.scraper import AgendaItem, CouncilSession
+    from kern.llm import EmptyResponseError
+
+    ratslotse = Store(tmp_path / "ratslotse.sqlite")
+    stumm = ratslotse.add_topic(1, "Schulbegleitung", "Assistenz an Schulen")
+    gut = ratslotse.add_topic(2, "Radwege", "Ausbau von Radwegen")
+    owners = [
+        {"owner_id": 1, "delivery_channel": "email", "email": None, "push_tokens": [], "topics": [stumm]},
+        {"owner_id": 2, "delivery_channel": "email", "email": None, "push_tokens": [], "topics": [gut]},
+    ]
+
+    future = (date.today() + timedelta(days=5)).isoformat()
+    session = CouncilSession(
+        ksinr=42, committee="Verkehrsausschuss", session_date=future,
+        session_time="17:00", location="Fleiwa",
+        agenda_items=[AgendaItem(item_number="Ö 6", title="Radweg Hauptstraße")],
+    )
+    monkeypatch.setattr(watcher.CouncilScraper, "upcoming_calendar",
+                        lambda self, months_ahead=3: ([42], []))
+    monkeypatch.setattr(watcher.CouncilScraper, "fetch_session", lambda self, k: session)
+
+    def fake_classify(sess, topics, store=None):
+        if any("Schulbegleitung" in t["name"] for t in topics):
+            raise EmptyResponseError("openai/gpt-5.6-luna: Antwort ohne choices — 502")
+        return {0: ["Ö 6"]}
+
+    monkeypatch.setattr(watcher, "_classify_agenda", fake_classify)
+
+    stats: dict = {}
+    alerts = watcher.run_watcher(
+        tmp_path / "council.sqlite",
+        owners,
+        ratslotse_store=ratslotse,
+        stats=stats,
+    )
+
+    # Owner 2 bekommt seine Meldung, der Lauf läuft zu Ende …
+    assert len(alerts) == 1
+    assert ratslotse.agenda_matches_for_owner(2, [42]) == {
+        42: [{"item_number": "Ö 6", "topic_name": "Radwege"}]
+    }
+    # … Owner 1 bleibt UNklassifiziert, damit der nächste Lauf es erneut versucht.
+    assert ratslotse.agenda_matches_for_owner(1, [42]) == {}
+    assert ratslotse.agenda_classified_hash(1, 42) is None
+    # Und der Ausfall steht als Kennzahl im Admin-Panel statt nur im Log.
+    assert stats["Modell-Ausfälle übersprungen"] == 1
+    ratslotse.close()
