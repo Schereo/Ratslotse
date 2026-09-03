@@ -101,8 +101,28 @@ jobs:
             RATSLOTSE_FEATURE_SEED=1 .venv/bin/python scripts/saat_buergerportal_feature.py
             cd web/frontend
             npm ci --no-audit --no-fund
+            # BACKEND_URL gehört an den BUILD, nicht nur an den Dienst.
+            # `next build` wertet `rewrites()` aus next.config.mjs aus und
+            # schreibt das aufgelöste Ziel fest in
+            # .next/routes-manifest.json; `next start` liest danach das
+            # Manifest, nicht mehr die Config. Ohne die Variable hier landet
+            # dort der Default `http://localhost:8000` — das ist das Backend
+            # der DEV-Instanz auf derselben VM. Das
+            # `Environment=BACKEND_URL=http://127.0.0.1:8001` in der Unit
+            # nwz-feature-frontend ist korrekt, kommt aber zu spät.
+            #
+            # Am 03.09.2026 hat genau das die Feature-Instanz still an die
+            # dev-Datenbanken gehängt: /api/probleme antwortete auf :8001 mit
+            # 200 und über die Seite mit 404 (aus dem dev-Backend), und die
+            # versprochene Trennung „eigene Datenbanken" galt für alles, was
+            # über den Browser lief, nicht — Lesen wie Schreiben.
+            #
+            # Dev und Prod laufen nur zufällig richtig: Dort IST der Default
+            # 8000 das eigene Backend.
+            #
             # Dev-Funktionen bleiben sichtbar; das Bürgerportal erhält daneben
             # einen eigenen Schalter, den weder Dev noch Produktion setzen.
+            BACKEND_URL=http://127.0.0.1:8001 \
             NEXT_PUBLIC_RATSLOTSE_ENV=dev \
             NEXT_PUBLIC_BUERGERPORTAL=1 \
             NEXT_PUBLIC_CARTO_API_KEY="${{ secrets.CARTO_API_KEY }}" \
@@ -114,3 +134,10 @@ jobs:
             # Dieselbe Rauchprobe wie auf dev und Prod: „der Prozess läuft" ist
             # nicht „er tut das Richtige".
             python3 ~/app-feature/scripts/rauchprobe.py --basis http://127.0.0.1:8001
+            # Und einmal DURCH das Frontend. Die Probe gegen :8001 kann den
+            # Fehler von oben prinzipiell nicht sehen — sie fragt das Backend
+            # ja direkt. Erst der Weg über :3001 nimmt denselben Proxy wie ein
+            # Browser und beantwortet die eigentliche Frage: Redet diese
+            # Instanz mit IHREM Backend? Nachgestellt am 03.09.2026: gegen
+            # :3001 fiel genau die eine Probe um, die dem dev-Backend fehlte.
+            python3 ~/app-feature/scripts/rauchprobe.py --basis http://127.0.0.1:3001
