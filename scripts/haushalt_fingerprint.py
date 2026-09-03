@@ -78,45 +78,107 @@ def _tabellen(conn: sqlite3.Connection) -> list[str]:
     return aus
 
 
-def _ausdruck(conn: sqlite3.Connection, tabelle: str) -> tuple[str, str]:
-    """``(SELECT-Liste, FROM/JOIN-Teil)`` für eine Tabelle.
+def _ausdruck(conn: sqlite3.Connection, tabelle: str,
+              mit_herkunft: bool = True) -> tuple[str, str, list[str]]:
+    """``(SELECT-Liste, FROM/JOIN-Teil, Feldnamen)`` für eine Tabelle.
 
     Die Verweise werden im SQL aufgelöst statt in Python: Bei 17.814 Zeilen
     wären das sonst zwei Abfragen je Zeile.
+
+    Die Spalten gehen NACH NAMEN sortiert hinein, nicht in der Reihenfolge des
+    Schemas. Das ist keine Kosmetik, sondern der Grund, warum dieser Vergleich
+    überhaupt funktioniert: ``PRAGMA table_info`` liefert die PHYSISCHE
+    Reihenfolge, und die hängt an der Migrationsgeschichte. Auf dev sind
+    Spalten einzeln per ALTER TABLE gewachsen, auf Prod am Stück aus dem
+    ``SCHEMA`` entstanden — ``council_products`` trägt dieselben 19 Spalten in
+    verschiedener Folge, ``council_budget_amendments`` und
+    ``council_business_plans`` ebenso.
+
+    Die erste Fassung verkettete positionsweise und meldete daraufhin alle 623
+    Zeilen als abweichend, obwohl jede Zahl übereinstimmte. Ein
+    Vergleichswerkzeug, das denselben Bestand für verschieden erklärt, ist
+    schlimmer als keines: Es schickt jemanden auf die Suche nach einem Fehler,
+    den es nicht gibt.
     """
     cols = [r[1] for r in conn.execute(f'PRAGMA table_info("{tabelle}")')]
-    teile = [f't."{c}"' for c in cols if c not in ORTSGEBUNDEN]
+    genutzt = sorted(c for c in cols if c not in ORTSGEBUNDEN)
+    teile = [f't."{c}"' for c in genutzt]
+    namen = list(genutzt)
     frm = f'"{tabelle}" t'
-    if "herkunft_id" in cols:
+    if "herkunft_id" in cols and mit_herkunft:
         # Der sha256 der Quelle statt ihrer Nummer. LEFT JOIN, weil eine
         # fehlende Herkunft ein Befund ist und kein Grund, die Zeile zu
         # verschweigen — sie fällt dann als NULL auf.
         teile.append("p.key")
+        namen.append("herkunft")
         frm += ' LEFT JOIN council_provenance p ON p.id = t.herkunft_id'
     if "decision_id" in cols:
         # Der dreistufige Beschluss-Schlüssel aus dem Ratsinformationssystem.
         teile.append("d.ksinr || '/' || COALESCE(d.position, '') "
                      "|| '/' || COALESCE(d.item_number, '')")
+        namen.append("beschluss")
         frm += ' LEFT JOIN council_decisions d ON d.id = t.decision_id'
-    return ", ".join(teile), frm
+    return ", ".join(teile), frm, namen
 
 
-def fingerabdruck(conn: sqlite3.Connection, tabelle: str) -> tuple[int, str, list[str]]:
+def fingerabdruck(conn: sqlite3.Connection, tabelle: str,
+                  mit_herkunft: bool = True) -> tuple[int, str, list[str]]:
     """``(Zeilen, Hash, Zeilenhashes)`` einer Tabelle.
 
     Sortiert wird über den fertigen Zeilentext und nicht über Spalten: Welche
     Spalten eine Tabelle sortierbar machen, ist von Tabelle zu Tabelle
     verschieden, und eine falsche Reihenfolge würde einen Unterschied
     behaupten, den es nicht gibt.
+
+    Die Spalten selbst gehen NAMENSSORTIERT und mit ihrem Namen in den Hash
+    (siehe `_ausdruck`) — sonst hinge das Ergebnis an der Migrationsgeschichte
+    der jeweiligen Umgebung.
     """
-    auswahl, frm = _ausdruck(conn, tabelle)
+    auswahl, frm, namen = _ausdruck(conn, tabelle, mit_herkunft)
     zeilen = []
     for r in conn.execute(f"SELECT {auswahl} FROM {frm}"):
-        text = "\x1f".join("\x00" if v is None else str(v) for v in r)
+        # Jeder Wert trägt seinen Spaltennamen. Damit ist der Abdruck
+        # unabhängig von der Spaltenreihenfolge UND merkt eine Umbenennung,
+        # statt sie stillschweigend wegzusortieren. Die Benennung passiert
+        # hier und nicht im SQL: Der Platzhalter für NULL ist ein Nullbyte, und
+        # das lässt SQLite in einer Abfrage nicht durch.
+        # `\x00` als Platzhalter für NULL, nicht der Leerstring: „nie gefüllt"
+        # und „leer gelesen" sind zwei verschiedene Befunde, und ein Werkzeug,
+        # das sie verwischt, verschweigt genau die Sorte Lücke, die es finden
+        # soll. Genau diese Verwechslung ist beim Umbau hier passiert und von
+        # `tests/test_haushalt_fingerprint.py` gefangen worden. Das Nullbyte
+        # steht deshalb in Python und nicht im SQL — dort lässt SQLite es nicht
+        # durch ("the query contains a null character").
+        text = "\x1f".join(f"{n}={chr(0) if v is None else v}"
+                           for n, v in zip(namen, r))
         zeilen.append(hashlib.sha256(text.encode()).hexdigest())
     zeilen.sort()
     gesamt = hashlib.sha256("".join(zeilen).encode()).hexdigest()
     return len(zeilen), gesamt, zeilen
+
+
+def spaltenabdruck(conn: sqlite3.Connection, tabelle: str) -> list[tuple[str, str]]:
+    """``[(spalte, hash)]`` — je Spalte ein Abdruck über ihre sortierten Werte.
+
+    Der Schritt NACH einem Befund, und der wichtigste: Weicht eine Tabelle in
+    JEDER Zeile ab, ist das fast nie ein Datenproblem, sondern eine einzelne
+    Spalte, die überall anders aussieht — eine VM-eigene Nummer, ein Pfad, ein
+    Zeitstempel unter unerwartetem Namen. Zeilenweise sieht man das nicht: Dort
+    weichen einfach alle 623 ab.
+
+    Sortiert wird JE SPALTE für sich. Die Zeilenzuordnung geht dabei verloren,
+    und das ist Absicht: Gefragt ist „steht in dieser Spalte dieselbe Menge an
+    Werten?", nicht „in derselben Reihenfolge". Eine Spalte, die hier
+    übereinstimmt, kann als Ursache ausgeschlossen werden.
+    """
+    cols = [r[1] for r in conn.execute(f'PRAGMA table_info("{tabelle}")')]
+    aus = []
+    for c in cols:
+        werte = sorted(
+            "\x00" if v[0] is None else str(v[0])
+            for v in conn.execute(f'SELECT "{c}" FROM "{tabelle}"'))
+        aus.append((c, hashlib.sha256("\x1f".join(werte).encode()).hexdigest()))
+    return aus
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -126,6 +188,18 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--zeilen", action="store_true",
                    help="die Einzelhashes ausgeben — für den Vergleich INNERHALB "
                         "einer Tabelle, wenn ihr Gesamthash abweicht")
+    p.add_argument("--spalten", action="store_true",
+                   help="je Spalte einen Abdruck ausgeben statt je Zeile. Der "
+                        "Schritt nach einem Befund: Weicht eine Tabelle in JEDER "
+                        "Zeile ab, nennt das hier die Spalte, die daran schuld "
+                        "ist. Auch das nur als Hash, nie als Inhalt.")
+    p.add_argument("--ohne-herkunft", action="store_true",
+                   help="den Beleg NICHT mitzählen, nur die Zahlen. Trennt die "
+                        "beiden Diagnosen: Weichen zwei Umgebungen auch ohne "
+                        "Herkunft ab, stehen dort andere ZAHLEN; weichen sie nur "
+                        "MIT ab, sind die Zahlen gleich und stammen aus einem "
+                        "anders belegten Dokument. Das ist ein sehr großer "
+                        "Unterschied und die erste Frage bei jedem Befund.")
     args = p.parse_args(argv)
 
     pfad = _db_pfad(args.db)
@@ -142,14 +216,23 @@ def main(argv: list[str] | None = None) -> int:
         ohne_herkunft = 0
         for name in namen:
             try:
-                n, h, einzeln = fingerabdruck(conn, name)
+                n, h, einzeln = fingerabdruck(conn, name, not args.ohne_herkunft)
             except sqlite3.OperationalError as exc:
                 print(f"{name:42} FEHLER  {exc}")
                 continue
             print(f"{name:42} {n:>6}  {h}")
+            if args.spalten:
+                for spalte, sh in spaltenabdruck(conn, name):
+                    print(f"    {name}\t{spalte}\t{sh}")
             if args.zeilen:
+                # MIT Tabellenname, damit sich die Ausgabe je Tabelle
+                # auseinandernehmen lässt. Und bewusst nur Hashes: Diese Zeilen
+                # landen in Action-Protokollen, und die sind bei einem
+                # öffentlichen Repo öffentlich. `council_donations` trägt
+                # Spendernamen — ein Inhalts-Dump wäre hier ein Datenleck und
+                # kein Diagnosewerkzeug.
                 for z in einzeln:
-                    print(f"    {z}")
+                    print(f"    {name}\t{z}")
         # Dieselbe Zahl, die der Ops-Lauf meldet — hier noch einmal, damit ein
         # Vergleich der beiden Ausgaben sie mitprüft.
         for name in namen:
