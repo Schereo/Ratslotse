@@ -72,38 +72,39 @@ jobs:
       # der gedeployte Stand, und auf der Dev-VM ist das `dev`, auf Prod `main`.
       # Ein Vergleich mit zwei verschiedenen Fassungen des Vergleichers wäre
       # wertlos — beide Seiten müssen mit demselben Maß gemessen werden.
+      # Das Skript wird MITGESCHICKT und nicht auf der VM gesucht: Dort liegt
+      # der gedeployte Stand, und auf der Dev-VM ist das `dev`, auf Prod `main`.
+      # Ein Vergleich mit zwei verschiedenen Fassungen des Vergleichers wäre
+      # wertlos — beide Seiten müssen mit demselben Maß gemessen werden.
+      #
+      # Zwei Modi je VM, und das ist der Kern der Diagnose: `--ohne-herkunft`
+      # zählt nur die ZAHLEN, der Vollmodus zählt den Beleg mit. Weichen zwei
+      # Umgebungen in beiden ab, stehen dort andere Zahlen. Weichen sie nur im
+      # Vollmodus ab, sind die Zahlen gleich und stammen aus einem anders
+      # belegten Dokument — ein völlig anderer Befund.
       - name: Fingerabdrücke holen
         run: |
           for ziel in dev prod; do
             scp -q scripts/haushalt_fingerprint.py "$ziel:/tmp/haushalt_fingerprint.py"
-            ssh "$ziel" 'cd ~/app && .venv/bin/python /tmp/haushalt_fingerprint.py --db data/council.sqlite' \
+            ssh "$ziel" 'cd ~/app && .venv/bin/python /tmp/haushalt_fingerprint.py --db data/council.sqlite --zeilen' \
               > "$ziel.txt"
+            ssh "$ziel" 'cd ~/app && .venv/bin/python /tmp/haushalt_fingerprint.py --db data/council.sqlite --zeilen --ohne-herkunft' \
+              > "$ziel-nur-zahlen.txt"
             echo "$ziel: $(wc -l < "$ziel.txt") Zeilen"
           done
 
       - name: Vergleichen
         run: |
-          {
-            echo '## Finanzdaten dev ↔ prod'
-            echo
-            if diff -q dev.txt prod.txt >/dev/null; then
-              echo "✅ Identisch — jede Tabelle, jede Zahl, jeder Herkunfts-Beleg."
-              echo
-              echo '```'
-              tail -2 dev.txt
-              echo '```'
-            else
-              echo "⚠️ Diese Tabellen weichen ab:"
-              echo
-              echo '```diff'
-              diff -u dev.txt prod.txt | head -60
-              echo '```'
-              echo
-              echo 'Welche ZEILE abweicht, sagt danach:'
-              echo '`.venv/bin/python scripts/haushalt_fingerprint.py --tabelle <name> --zeilen`'
-            fi
-          } >> "$GITHUB_STEP_SUMMARY"
-          diff -u dev.txt prod.txt
+          # Die Logik steht in einem SKRIPT und nicht als Python-Heredoc hier:
+          # Inline-Python in Workflow-Dateien ist in diesem Repo schon einmal
+          # zum Nachzügler geworden (#933/#934) — kein Linter sieht es, keine
+          # Umbenennung erreicht es, und testen kann man es gar nicht.
+          python3 scripts/haushalt_vergleich.py dev.txt prod.txt \
+            --nur-zahlen dev-nur-zahlen.txt prod-nur-zahlen.txt \
+            | tee bericht.md
+          ergebnis=${PIPESTATUS[0]}
+          cat bericht.md >> "$GITHUB_STEP_SUMMARY"
+          exit "$ergebnis"
 
       - name: Fingerabdrücke aufheben
         if: always()
@@ -113,3 +114,6 @@ jobs:
           path: |
             dev.txt
             prod.txt
+            dev-nur-zahlen.txt
+            prod-nur-zahlen.txt
+            bericht.md

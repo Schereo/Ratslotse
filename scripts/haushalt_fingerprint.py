@@ -78,7 +78,8 @@ def _tabellen(conn: sqlite3.Connection) -> list[str]:
     return aus
 
 
-def _ausdruck(conn: sqlite3.Connection, tabelle: str) -> tuple[str, str]:
+def _ausdruck(conn: sqlite3.Connection, tabelle: str,
+              mit_herkunft: bool = True) -> tuple[str, str]:
     """``(SELECT-Liste, FROM/JOIN-Teil)`` für eine Tabelle.
 
     Die Verweise werden im SQL aufgelöst statt in Python: Bei 17.814 Zeilen
@@ -87,7 +88,7 @@ def _ausdruck(conn: sqlite3.Connection, tabelle: str) -> tuple[str, str]:
     cols = [r[1] for r in conn.execute(f'PRAGMA table_info("{tabelle}")')]
     teile = [f't."{c}"' for c in cols if c not in ORTSGEBUNDEN]
     frm = f'"{tabelle}" t'
-    if "herkunft_id" in cols:
+    if "herkunft_id" in cols and mit_herkunft:
         # Der sha256 der Quelle statt ihrer Nummer. LEFT JOIN, weil eine
         # fehlende Herkunft ein Befund ist und kein Grund, die Zeile zu
         # verschweigen — sie fällt dann als NULL auf.
@@ -101,7 +102,8 @@ def _ausdruck(conn: sqlite3.Connection, tabelle: str) -> tuple[str, str]:
     return ", ".join(teile), frm
 
 
-def fingerabdruck(conn: sqlite3.Connection, tabelle: str) -> tuple[int, str, list[str]]:
+def fingerabdruck(conn: sqlite3.Connection, tabelle: str,
+                  mit_herkunft: bool = True) -> tuple[int, str, list[str]]:
     """``(Zeilen, Hash, Zeilenhashes)`` einer Tabelle.
 
     Sortiert wird über den fertigen Zeilentext und nicht über Spalten: Welche
@@ -109,7 +111,7 @@ def fingerabdruck(conn: sqlite3.Connection, tabelle: str) -> tuple[int, str, lis
     verschieden, und eine falsche Reihenfolge würde einen Unterschied
     behaupten, den es nicht gibt.
     """
-    auswahl, frm = _ausdruck(conn, tabelle)
+    auswahl, frm = _ausdruck(conn, tabelle, mit_herkunft)
     zeilen = []
     for r in conn.execute(f"SELECT {auswahl} FROM {frm}"):
         text = "\x1f".join("\x00" if v is None else str(v) for v in r)
@@ -126,6 +128,13 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--zeilen", action="store_true",
                    help="die Einzelhashes ausgeben — für den Vergleich INNERHALB "
                         "einer Tabelle, wenn ihr Gesamthash abweicht")
+    p.add_argument("--ohne-herkunft", action="store_true",
+                   help="den Beleg NICHT mitzählen, nur die Zahlen. Trennt die "
+                        "beiden Diagnosen: Weichen zwei Umgebungen auch ohne "
+                        "Herkunft ab, stehen dort andere ZAHLEN; weichen sie nur "
+                        "MIT ab, sind die Zahlen gleich und stammen aus einem "
+                        "anders belegten Dokument. Das ist ein sehr großer "
+                        "Unterschied und die erste Frage bei jedem Befund.")
     args = p.parse_args(argv)
 
     pfad = _db_pfad(args.db)
@@ -142,14 +151,20 @@ def main(argv: list[str] | None = None) -> int:
         ohne_herkunft = 0
         for name in namen:
             try:
-                n, h, einzeln = fingerabdruck(conn, name)
+                n, h, einzeln = fingerabdruck(conn, name, not args.ohne_herkunft)
             except sqlite3.OperationalError as exc:
                 print(f"{name:42} FEHLER  {exc}")
                 continue
             print(f"{name:42} {n:>6}  {h}")
             if args.zeilen:
+                # MIT Tabellenname, damit sich die Ausgabe je Tabelle
+                # auseinandernehmen lässt. Und bewusst nur Hashes: Diese Zeilen
+                # landen in Action-Protokollen, und die sind bei einem
+                # öffentlichen Repo öffentlich. `council_donations` trägt
+                # Spendernamen — ein Inhalts-Dump wäre hier ein Datenleck und
+                # kein Diagnosewerkzeug.
                 for z in einzeln:
-                    print(f"    {z}")
+                    print(f"    {name}\t{z}")
         # Dieselbe Zahl, die der Ops-Lauf meldet — hier noch einmal, damit ein
         # Vergleich der beiden Ausgaben sie mitprüft.
         for name in namen:
