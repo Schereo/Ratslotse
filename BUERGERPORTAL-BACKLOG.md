@@ -20,7 +20,7 @@ beginnt kein späterer Punkt.
 1. **Öffentliche Problemübersicht (#1034): umgesetzt.** Rein lesende
    API-Projektion, Karte, Themenfilter, alle ehrlichen Geometrieformen, sichere
    Feature-Beispiele, Navigation, Sitemap und öffentlicher Vertrag.
-2. **Rangliste (#1042): umgesetzt.** Nur ungelöste Projektionen, exakte
+2. **Rangliste (#1042): umgesetzt auf diesem Task-Branch.** Nur ungelöste Projektionen, exakte
    lebenszeitliche Zahl unabhängiger Meldungen, deterministische Rangfolge,
    vergleichbare Balkenschienen, zugängliche Vorschauen und ehrlicher Kartenfokus.
 3. Öffentliche Detailseite und plattformgerechte Verlinkung — offen.

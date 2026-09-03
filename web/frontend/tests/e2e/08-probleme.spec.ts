@@ -140,6 +140,47 @@ test.describe("Öffentliche Problemübersicht", () => {
     await expect.soft(page.getByRole("button", { name: /Lotti.*Hilfe/i })).toBeVisible({ timeout: 500 });
   });
 
+  test("bewahrt die Unabhängigkeit im angemeldeten App-Fuß", async ({ page }) => {
+    await page.route("**/api/auth/me", (route) => route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        id: 1,
+        email: "user@test.de",
+        role: "user",
+        status: "active",
+        email_verified: true,
+        delivery_channel: "email",
+      }),
+    }));
+    await page.route("**/api/onboarding", (route) => route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ steps: [], celebrated: true }),
+    }));
+    await page.route("**/api/onboarding/setup", (route) => route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ step: 3, started_at: null, done_at: "2026-09-03T00:00:00Z", pending: false }),
+    }));
+    await page.route("**/api/topics/unread-count", (route) => route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ total: 0 }),
+    }));
+    await page.route("**/api/badges", (route) => route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ badges: [] }),
+    }));
+
+    await page.goto("/probleme");
+
+    const signedInFooter = page.locator("aside").filter({ hasText: "user@test.de" });
+    await expect(signedInFooter).toBeVisible();
+    await expect(signedInFooter.getByText("Ratslotse ist ein privates Bürgerprojekt und kein Angebot der Stadt Oldenburg.", { exact: true })).toBeVisible();
+  });
+
   test("zeigt Karte und Rangliste ohne Anmeldung", async ({ page }, testInfo) => {
     const runtimeErrors: string[] = [];
     page.on("pageerror", (error) => runtimeErrors.push(error.stack ?? error.message));
