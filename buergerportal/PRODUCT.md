@@ -15,25 +15,32 @@ für die Meldehäufigkeit: 1, 2–4, 5–9 oder 10 und mehr.
 
 `/probleme` ist ohne Anmeldung lesbar und auf der Feature-Umgebung freigeschaltet.
 Die Karte ist die Standardansicht. Direkt erreichbare Themenchips filtern die
-Karte. Ein kompakter Statusfilter bleibt in Karte und Rangliste erhalten; Status
-bestimmt aber nicht mehr das Layout.
+Karte. Veröffentlichte Projektionen brauchen keinen zusätzlichen Freigabe- oder
+Mehrfachmeldungs-Status in der Oberfläche: Karte, Auswahl und Rangliste zeigen
+vorerst weder Statusfilter noch Status-Badges. Die exakte Meldezahl trägt die
+Mengeninformation bereits selbst.
 
 „Meistgemeldet“ ersetzt das frühere Status-Board. Die Rangliste enthält nur
 ungelöste Projektionen und ordnet sie nach der lebenszeitlichen Gesamtzahl
 freigegebener unabhängiger meldender Personen, absteigend. Gleichstände werden
 nach Titel und dann ID aufgelöst. Jede Zeile nennt die exakte Zahl; sie zeigt
 Aufmerksamkeit, nicht Wahrheit, Dringlichkeit, Schadenshöhe oder Betroffenenzahl.
-Die ersten drei Zeilen sind ruhig hervorgehoben. Lotti weist mit der an diesen
-Zustand gebundenen Zeigegeste auf Platz 1 hin, ohne ein ungelöstes Problem zu
-feiern.
+Die ersten drei Einträge bilden auf breiten Ansichten eine klarere, asymmetrische
+Spitzengruppe; mobil bleiben sie kompakte Rangzeilen. Lotti ist der eine
+kontextuelle Hilfezugang für Karte und Rangliste. Geschlossen ruht sie auf der
+Karte beziehungsweise weist in der Rangliste auf den Inhalt, geöffnet erklärt
+sie mit der zustandsgebundenen `erklaert`-Regung Skala, Zählgrenzen und fiktive
+Beispiele. Sie ist ein echter Tastatur- und Touch-Button und feiert kein
+ungelöstes Problem.
 
 Die per Tastatur bedienbare Vorschau enthält ausschließlich die freigegebene
 Zusammenfassung und Metadaten der öffentlichen Projektion. Punkte,
 Einrichtungen, Routen, Polygone und MultiPolygone lassen sich nur mit gültiger
 Geometrie auf der Karte fokussieren. Stadtweite und fehlerhafte Projektionen
 bleiben in der Rangliste; die Vorschau erklärt, warum kein Kartenpunkt erfunden
-wird. Bewegungen markieren nur Aufklappen und Kartenfokus und entfallen bei
-`prefers-reduced-motion`.
+wird. Bewegungen markieren den Eintritt in die Rangliste, Hover/Fokus, Aufklappen,
+Lotti-Hilfe und Kartenfokus. Sie sind zustandsgebunden, laufen nicht zufällig
+und entfallen bei `prefers-reduced-motion`.
 
 `GET /api/probleme` liefert die moderierte Zusammenfassung, die exakte Zahl und
 das Häufigkeitsband, aber niemals Identitäten, Rohtexte, einzelne Meldungen oder

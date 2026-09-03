@@ -15,7 +15,7 @@ export function MeldeRanglisteGrafik({
 }) {
   return (
     <figure>
-      <ol className="space-y-2.5" aria-label="Meistgemeldete ungelöste Probleme">
+      <ol className="problem-leaderboard grid grid-cols-1 gap-2.5 breit:grid-cols-12" aria-label="Meistgemeldete ungelöste Probleme">
         {children}
       </ol>
       <figcaption className="mt-3 text-[11px] leading-relaxed text-muted-foreground">

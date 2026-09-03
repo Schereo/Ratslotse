@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { type ReactElement, type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronDown,
   Info,
@@ -27,10 +27,8 @@ import {
   PROBLEM_ANGEBOT,
   PROBLEM_KATEGORIEN,
   PROBLEM_SCOPE,
-  PROBLEM_STATUS,
   reportCountLabel,
   type ProblemFrequency,
-  type ProblemStatus,
   type PublicProblem,
 } from "@/lib/probleme";
 
@@ -45,7 +43,6 @@ const ProblemMap = dynamic(
 );
 
 type Ansicht = "karte" | "meistgemeldet";
-const STATUS_OPTIONS = Object.entries(PROBLEM_STATUS) as [ProblemStatus, string][];
 const CATEGORY_OPTIONS = Object.entries(PROBLEM_KATEGORIEN) as [PublicProblem["category"], string][];
 const FREQUENCY_OPTIONS = Object.entries(MELDE_HAEUFIGKEIT) as [ProblemFrequency, string][];
 const EMPTY_PROBLEMS: PublicProblem[] = [];
@@ -59,17 +56,12 @@ export default function View() {
   const all = query.data?.problems ?? EMPTY_PROBLEMS;
   const [ansicht, setAnsicht] = useState<Ansicht>("karte");
   const [category, setCategory] = useState<PublicProblem["category"] | "all">("all");
-  const [problemStatus, setProblemStatus] = useState<ProblemStatus | "all">("all");
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const statusProblems = useMemo(
-    () => all.filter((problem) => problemStatus === "all" || problem.status === problemStatus),
-    [all, problemStatus],
-  );
   const mapProblems = useMemo(
-    () => statusProblems.filter((problem) => (
+    () => all.filter((problem) => (
       isProblemMappable(problem) && (category === "all" || problem.category === category)
     )),
-    [statusProblems, category],
+    [all, category],
   );
   const selected = all.find((problem) => problem.id === selectedId) ?? null;
   const fictional = all.some((problem) => problem.fictional);
@@ -78,12 +70,6 @@ export default function View() {
     const view = new URLSearchParams(window.location.search).get("view");
     if (view === "meistgemeldet" || view === "status") setAnsicht("meistgemeldet");
   }, []);
-
-  useEffect(() => {
-    if (selected && problemStatus !== "all" && selected.status !== problemStatus) {
-      setSelectedId(null);
-    }
-  }, [problemStatus, selected]);
 
   const changeView = useCallback((next: Ansicht) => {
     setAnsicht(next);
@@ -95,7 +81,6 @@ export default function View() {
 
   const showOnMap = useCallback((problem: PublicProblem) => {
     setCategory("all");
-    setProblemStatus("all");
     setSelectedId(problem.id);
     changeView("karte");
   }, [changeView]);
@@ -105,19 +90,8 @@ export default function View() {
       <PageHeader title={PROBLEM_ANGEBOT.name} />
 
       {fictional && (
-        <div className="inline-flex min-h-10 max-w-full items-center gap-1 rounded-full border border-amber-200 bg-amber-50 py-1 pl-3 pr-1 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950/35 dark:text-amber-100">
+        <div className="inline-flex min-h-10 max-w-full items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950/35 dark:text-amber-100">
           <span role="status"><strong>Feature-Vorschau</strong> · frei erfundene Beispiele</span>
-          <InfoPopover
-            contentLabel="Fiktive Beispiele"
-            trigger={(
-              <button type="button" aria-label="Mehr zu den fiktiven Beispielen" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:hover:bg-amber-900/60">
-                <Info className="h-3.5 w-3.5" aria-hidden />
-              </button>
-            )}
-          >
-            <p>Alle als Beispiel bezeichneten Einträge und Zahlen sind frei erfunden.</p>
-            <p className="mt-2">Sie zeigen nur, wie die Übersicht funktioniert.</p>
-          </InfoPopover>
         </div>
       )}
 
@@ -131,53 +105,22 @@ export default function View() {
         className="w-full sm:w-80"
       />
 
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        {ansicht === "karte" ? (
-          <div className="flex flex-wrap gap-2" role="group" aria-label="Kartenthemen">
-            <ThemeFilter active={category === "all"} onClick={() => setCategory("all")}>Alle</ThemeFilter>
-            {CATEGORY_OPTIONS.map(([key, label]) => (
-              <ThemeFilter key={key} active={category === key} onClick={() => setCategory(key)}>{label}</ThemeFilter>
-            ))}
-          </div>
-        ) : <span />}
-        <label className="grid gap-1 text-[11px] font-medium text-muted-foreground">
-          <span className="font-mono uppercase tracking-[0.1em]">Status filtern</span>
-          <select
-            aria-label="Status filtern"
-            value={problemStatus}
-            onChange={(event) => setProblemStatus(event.target.value as ProblemStatus | "all")}
-            className="min-h-11 rounded-lg border border-border bg-card px-3 text-sm font-medium text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <option value="all">Alle ungelösten Status</option>
-            {STATUS_OPTIONS.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-          </select>
-        </label>
-      </div>
+      {ansicht === "karte" && (
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Kartenthemen">
+          <ThemeFilter active={category === "all"} onClick={() => setCategory("all")}>Alle</ThemeFilter>
+          {CATEGORY_OPTIONS.map(([key, label]) => (
+            <ThemeFilter key={key} active={category === key} onClick={() => setCategory(key)}>{label}</ThemeFilter>
+          ))}
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
         <p className="flex items-center gap-1.5">
           <Info className="h-3.5 w-3.5 shrink-0" aria-hidden />
-          Unabhängig · kein Angebot der Stadt Oldenburg · keine amtlichen Status.
+          Unabhängige Meldungen · privates Bürgerprojekt, kein Angebot der Stadt Oldenburg.
         </p>
-        <InfoPopover
-          contentLabel="Farben und Status"
-          align="end"
-          className="w-80"
-          trigger={(
-            <button type="button" aria-label="Farben und Status erklären" className="inline-flex min-h-10 items-center gap-1.5 rounded-lg px-2 font-medium text-primary transition-colors hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-              <Info className="h-3.5 w-3.5" aria-hidden /> Farben &amp; Status
-            </button>
-          )}
-        >
-          <p className="font-semibold text-foreground">Farben</p>
-          <p className="mt-1">Farben zeigen die Zahl unabhängiger Meldungen, nicht die Dringlichkeit.</p>
-          <p className="mt-3 font-semibold text-foreground">Status</p>
-          <p className="mt-1">Status sind Einordnungen von Ratslotse, keine amtlichen Bearbeitungsstände.</p>
-          <p className="mt-1">Eine Bearbeitung durch die Stadt zeigen wir nur mit überprüfbarer städtischer Quelle.</p>
-        </InfoPopover>
+        <LottiHelp ansicht={ansicht} fictional={fictional} />
       </div>
-
-      <FrequencyScale />
 
       {query.isLoading ? (
         <Spinner className="min-h-[420px] rounded-xl border border-border bg-card" />
@@ -190,7 +133,7 @@ export default function View() {
           <EmptyState
             mascot="search"
             title="Keine kartierbaren Probleme für diese Auswahl"
-            action={<button type="button" onClick={() => { setCategory("all"); setProblemStatus("all"); }} className="min-h-11 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-primary hover:bg-muted">Alle ungelösten Probleme zeigen</button>}
+            action={<button type="button" onClick={() => setCategory("all")} className="min-h-11 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-primary hover:bg-muted">Alle ungelösten Probleme zeigen</button>}
           />
         ) : (
           <div className="space-y-3">
@@ -198,27 +141,72 @@ export default function View() {
             {selected && isProblemMappable(selected) && <SelectedProblem problem={selected} onClose={() => setSelectedId(null)} />}
           </div>
         )
-      ) : statusProblems.length === 0 ? (
-        <EmptyState mascot="search" title="Keine ungelösten Probleme mit diesem Status" hint="Wähle einen anderen Status." />
       ) : (
-        <Leaderboard problems={statusProblems} allProblems={all} selectedId={selectedId} onSelect={setSelectedId} onShowMap={showOnMap} />
+        <Leaderboard problems={all} selectedId={selectedId} onSelect={setSelectedId} onShowMap={showOnMap} />
       )}
     </div>
   );
 }
 
-function InfoPopover({ trigger, contentLabel, align = "start", className, children }: {
-  trigger: ReactElement;
-  contentLabel: string;
-  align?: "start" | "center" | "end";
-  className?: string;
-  children: ReactNode;
-}) {
+function LottiHelp({ ansicht, fictional }: { ansicht: Ansicht; fictional: boolean }) {
+  const [open, setOpen] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const leaderboard = ansicht === "meistgemeldet";
+  const viewLabel = leaderboard ? "Rangliste" : "Karte";
+
   return (
-    <Popover>
-      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
-      <PopoverContent aria-label={contentLabel} align={align} className={cn("w-72 max-w-[calc(100vw-2rem)] p-3 text-xs leading-relaxed text-muted-foreground", className)}>
-        {children}
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label={`Lotti-Hilfe ${open ? "schließen" : "öffnen"}: ${viewLabel} erklären`}
+          aria-expanded={open}
+          className="problem-lotti-help group inline-flex min-h-11 items-center gap-2 rounded-xl border border-primary/20 bg-primary/[0.045] py-1 pl-1 pr-3 text-left text-primary shadow-sm transition-[border-color,background-color,transform] hover:border-primary/35 hover:bg-primary/[0.075] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <Mascot
+            regung={open ? "erklaert" : leaderboard ? "zeigt-runter" : "ruht"}
+            regie="ruhig"
+            decorative
+            className="problem-lotti-figur h-11 w-11 shrink-0"
+          />
+          <span>
+            <span className="block font-mono text-[9px] font-medium uppercase tracking-[0.11em]">Lotti hilft</span>
+            <span className="block text-xs font-semibold text-foreground">{viewLabel} verstehen</span>
+          </span>
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        ref={contentRef}
+        aria-label={`Lotti erklärt die ${viewLabel}`}
+        align="end"
+        onOpenAutoFocus={(event) => {
+          event.preventDefault();
+          contentRef.current?.focus();
+        }}
+        className="max-h-[var(--radix-popover-content-available-height)] w-[22rem] max-w-[calc(100vw-2rem)] overflow-y-auto p-4 text-xs leading-relaxed text-muted-foreground"
+      >
+        <div className="grid grid-cols-[3rem_1fr_2.75rem] items-start gap-3">
+          <Mascot regung="erklaert" regie="ruhig" decorative className="h-12 w-12 shrink-0" />
+          <div className="min-w-0">
+            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-primary">Lotti erklärt</p>
+            <p className="mt-1 font-display text-base font-bold text-foreground">{viewLabel} verstehen</p>
+          </div>
+          <button type="button" onClick={() => setOpen(false)} aria-label="Hilfe schließen" className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <X className="h-4 w-4" aria-hidden />
+          </button>
+        </div>
+        {leaderboard ? (
+          <p className="mt-3">
+            Die lebenszeitliche Zahl zählt freigegebene unabhängige Meldungen. Aktualisierungen derselben Person erhöhen sie nicht. Rang und Zahl zeigen Aufmerksamkeit, nicht Wahrheit, Dringlichkeit, Schadenshöhe oder die Zahl betroffener Personen.
+          </p>
+        ) : (
+          <p className="mt-3">
+            Die Karte zeigt nur freigegebene, ehrlich kartierbare Orte und Flächen. Stadtweite Probleme und unbrauchbare Geometrien bekommen keinen erfundenen Punkt.
+          </p>
+        )}
+        <div className="mt-3"><FrequencyScale /></div>
+        <p className="mt-3">Hafenblau zeigt ausschließlich die Zahl unabhängiger Meldungen, von hell nach dunkel. Es ist kein Dringlichkeits- oder Wahrheitsurteil.</p>
+        {fictional && <p className="mt-3">Alle als Beispiel bezeichneten Einträge und Zahlen sind frei erfunden. Sie zeigen nur, wie die Übersicht funktioniert.</p>}
       </PopoverContent>
     </Popover>
   );
@@ -252,34 +240,22 @@ function FrequencyScale() {
   );
 }
 
-function Leaderboard({ problems, allProblems, selectedId, onSelect, onShowMap }: {
+function Leaderboard({ problems, selectedId, onSelect, onShowMap }: {
   problems: PublicProblem[];
-  allProblems: PublicProblem[];
   selectedId: number | null;
   onSelect: (id: number | null) => void;
   onShowMap: (problem: PublicProblem) => void;
 }) {
-  const mostReportedProblem = problems[0];
-  const maxReports = Math.max(...allProblems.map((problem) => problem.independent_reports));
-  const ranks = new Map(allProblems.map((problem, index) => [problem.id, index + 1]));
+  const maxReports = Math.max(...problems.map((problem) => problem.independent_reports));
+  const ranks = new Map(problems.map((problem, index) => [problem.id, index + 1]));
 
   return (
     <section className="space-y-4" aria-labelledby="meistgemeldet-heading">
       <div className="overflow-hidden rounded-2xl border border-primary/20 bg-primary/[0.045] px-4 py-3 sm:px-6 sm:py-4">
-        <div className="grid items-center gap-3 sm:grid-cols-[7rem_1fr]">
-          <Mascot
-            pose="point"
-            regie="ruhig"
-            label={`Lotti zeigt auf das meistgemeldete Problem dieser Auswahl: ${mostReportedProblem.title}`}
-            className="mx-auto h-24 w-24 sm:h-28 sm:w-28"
-          />
-          <div>
-            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-primary">Gemeinschaftliche Aufmerksamkeit</p>
-            <h2 id="meistgemeldet-heading" className="mt-1 font-display text-2xl font-bold text-foreground sm:text-3xl">Meistgemeldet</h2>
-            <p id="report-count-explanation" className="mt-2 max-w-[76ch] text-[13px] leading-relaxed text-muted-foreground">
-              Die lebenszeitliche Zahl unabhängiger freigegebener Meldungen zeigt gemeinschaftliche Aufmerksamkeit. Sie ist keine Aussage über Wahrheit, Dringlichkeit, Schadenshöhe oder die Zahl betroffener Personen.
-            </p>
-          </div>
+        <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-primary">Gemeinschaftliche Aufmerksamkeit</p>
+        <div className="mt-1 flex flex-wrap items-end justify-between gap-2">
+          <h2 id="meistgemeldet-heading" className="font-display text-2xl font-bold text-foreground sm:text-3xl">Meistgemeldet</h2>
+          <p id="report-count-explanation" className="text-xs font-medium text-muted-foreground">Rang · unabhängige Meldungen · gesamter Zeitraum</p>
         </div>
       </div>
 
@@ -326,10 +302,14 @@ function LeaderboardEntry({ problem, rank, maxReports, expanded, onToggle, onSho
   return (
     <li
       data-ranggruppe={topThree ? "top-drei" : "weitere"}
+      style={{ "--problem-rank-index": rank - 1 } as CSSProperties}
       className={cn(
-        "problem-disclosure-card overflow-hidden rounded-xl border bg-card shadow-sm transition-[border-color,background-color]",
-        topThree ? "border-primary/25 bg-primary/[0.025]" : "border-border",
-        expanded && "border-primary/45",
+        "problem-disclosure-card overflow-hidden rounded-xl border bg-card shadow-sm",
+        topThree && "breit:min-h-[11rem]",
+        rank === 1 && "border-primary/40 bg-gradient-to-br from-primary/[0.10] via-primary/[0.035] to-card breit:col-span-6",
+        (rank === 2 || rank === 3) && "border-primary/25 bg-gradient-to-br from-primary/[0.055] to-card breit:col-span-3",
+        !topThree && "border-border breit:col-span-12",
+        expanded && "is-expanded border-primary/55",
       )}
     >
       <button
@@ -339,19 +319,27 @@ function LeaderboardEntry({ problem, rank, maxReports, expanded, onToggle, onSho
         aria-describedby="report-count-explanation"
         aria-label={`${rank}. ${problem.title}, ${countLabel}`}
         onClick={onToggle}
-        className="grid min-h-[5.5rem] w-full grid-cols-[2.75rem_1fr_auto] items-center gap-2.5 px-3 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:grid-cols-[3.5rem_1fr_auto] sm:gap-4 sm:px-4"
+        className={cn(
+          "grid min-h-[5.5rem] w-full grid-cols-[2.75rem_1fr_auto] items-center gap-2.5 px-3 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:grid-cols-[3.5rem_1fr_auto] sm:gap-4 sm:px-4",
+          topThree && "breit:h-full breit:content-center breit:py-5",
+        )}
       >
         <span className={cn(
-          "font-sans text-xl font-bold tabular-nums text-muted-foreground",
-          topThree && "text-primary sm:text-2xl",
+          "font-display text-xl font-bold tabular-nums text-muted-foreground",
+          topThree && "text-primary sm:text-2xl breit:text-4xl",
+          rank === 1 && "breit:text-5xl",
         )} aria-hidden>{String(rank).padStart(2, "0")}</span>
         <span className="min-w-0">
-          <span className="block text-sm font-semibold leading-snug text-foreground sm:text-[15px]">{problem.title}</span>
-          <span className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-            <strong className="font-semibold tabular-nums text-foreground">{countLabel}</strong>
-            <span aria-hidden>·</span>
-            <StatusBadge status={problem.status} />
-          </span>
+          <span className={cn(
+            "block text-sm font-semibold leading-snug text-foreground sm:text-[15px]",
+            topThree && "breit:font-display breit:text-base",
+            rank === 1 && "breit:text-xl",
+          )}>{problem.title}</span>
+          <strong className={cn(
+            "mt-1.5 block text-xs font-semibold tabular-nums text-foreground",
+            topThree && "breit:text-sm",
+            rank === 1 && "breit:font-display breit:text-lg",
+          )}>{countLabel}</strong>
           <span className="mt-2 block">
             <MeldeRangbalken
               wert={problem.independent_reports}
@@ -389,25 +377,14 @@ function LeaderboardEntry({ problem, rank, maxReports, expanded, onToggle, onSho
   );
 }
 
-function StatusBadge({ status }: { status: PublicProblem["status"] }) {
-  return (
-    <span className="inline-flex rounded-full border border-border bg-muted/65 px-2 py-0.5 text-[10.5px] font-semibold text-muted-foreground">
-      {PROBLEM_STATUS[status]}
-    </span>
-  );
-}
-
 function SelectedProblem({ problem, onClose }: { problem: PublicProblem; onClose: () => void }) {
   return (
     <div className="relative rounded-xl border border-primary/20 bg-card p-4" aria-live="polite">
       <button type="button" onClick={onClose} aria-label="Auswahl schließen" className="absolute right-2 top-2 flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
         <X className="h-4 w-4" aria-hidden />
       </button>
-      <div className="flex flex-wrap items-center gap-2 pr-10">
-        <StatusBadge status={problem.status} />
-        <strong className="text-xs font-semibold tabular-nums text-primary">{reportCountLabel(problem.independent_reports)}</strong>
-      </div>
-      <h2 className="mt-2 pr-10 font-display text-base font-bold text-foreground">{problem.title}</h2>
+      <strong className="block pr-10 text-xs font-semibold tabular-nums text-primary">{reportCountLabel(problem.independent_reports)}</strong>
+      <h2 className="mt-1 pr-10 font-display text-base font-bold text-foreground">{problem.title}</h2>
       <p className="mt-1 max-w-[76ch] text-[13px] leading-relaxed text-foreground/85">{problem.summary}</p>
       <p className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
         <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden />
