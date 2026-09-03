@@ -103,6 +103,16 @@ def lauf(ziel, netz_unbenutzt=None, heute=HEUTE, **rest):
                   jahrbuch_html=JAHRBUCH, kfa_html=KFA, **rest)
 
 
+# --- Quellen-Adressen -------------------------------------------------------
+
+def test_kfa_uebersicht_verwendet_aktuellen_deutschen_cms_pfad():
+    """Der frühere englische CMS-Pfad liefert seit September 2026 nur 404."""
+    assert a.KFA_URL == (
+        "https://www.statistik.niedersachsen.de/kommunaler-finanzausgleich/"
+        "kommunaler-finanzausgleich-in-niedersachsen-tabellen-214575.html"
+    )
+
+
 # --- Zusage 1: nichts wird doppelt abgelegt ---------------------------------
 
 def test_zweiter_lauf_legt_nichts_doppelt_ab(tmp_path, netz):
