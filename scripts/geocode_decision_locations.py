@@ -21,6 +21,7 @@ load_dotenv(ROOT / ".env")
 
 from council import geo, places  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
+from kern.alerts import notify_admin  # noqa: E402
 from scripts.geocode_entities import geocode, overpass_ausfaelle  # noqa: E402
 
 COUNCIL_DB = ROOT / "data" / "council.sqlite"
@@ -101,6 +102,8 @@ def process(council_db: Path, *, limit: int | None = None, sleep: float = 1.1,
                   + store.fix_eponymous_districts()
                   + store.clear_code_only_districts())
     store.rebuild_location_districts()
+    offen_danach = len(store.street_locations_to_refine())
+    _melde_overpass_ausfall(offen_danach)
     store.close()
     return {"curated": curated, "reused": reused, "districts": districts,
             "districts_from_name": aus_namen, "korrigiert": korrigiert,
@@ -111,7 +114,46 @@ def process(council_db: Path, *, limit: int | None = None, sleep: float = 1.1,
             # Overpass-Ausfällen heißt, dass fast jede Straße nur ihr
             # Nominatim-Einzelsegment bekam (s. geocode_entities.geocode).
             "overpass_fehler": overpass_ausfaelle["fehler"],
-            "overpass_ohne_treffer": overpass_ausfaelle["ohne_treffer"]}
+            "overpass_ohne_treffer": overpass_ausfaelle["ohne_treffer"],
+            "overpass_nicht_erreichbar": overpass_ausfaelle["nicht_erreichbar"],
+            # Der Gesundheitswert des Bestands: Straßen, von denen weiter nur
+            # ein Teilstück gespeichert ist. Er gehört in die Kennzahlen, weil
+            # er nicht von selbst sinkt — steigt oder klebt er, hat der
+            # Straßen-Weg ein Problem, ohne dass ein Lauf scheitert.
+            "strassen_ohne_vollgeometrie": offen_danach}
+
+
+def _melde_overpass_ausfall(offen: int) -> None:
+    """Einen ausgefallenen Straßen-Dienst melden — nicht nur loggen.
+
+    **Der Fall, gegen den das steht.** Am 03.09.2026 lief der Reparaturlauf
+    über 513 Straßen und meldete ``located=513, missed=2, failed=0``. Overpass
+    war von beiden VPS aus nicht erreichbar, der Rückfall auf Nominatim stumm,
+    und 498 Straßen bekamen ein Einzelsegment statt der ganzen Straße. Ein
+    Lauf, der das nicht sagt, ist ein Lauf, der lügt.
+
+    Gemeldet wird nur, wenn es wirklich Straßen zu holen GAB und **alle**
+    scheiterten. Damit kommt die Mail an dem Tag, an dem etwas verdorben wurde,
+    und nicht jeden Tag, an dem gar keine neue Straße dazukam.
+    """
+    versucht = overpass_ausfaelle["strassen_versucht"]
+    verloren = overpass_ausfaelle["nicht_erreichbar"] + overpass_ausfaelle["fehler"]
+    if not versucht or verloren < versucht:
+        return
+    notify_admin(
+        f"<b>Overpass nicht erreichbar</b> — {verloren} von {versucht} Straßen "
+        f"haben in diesem Lauf nur ein <i>einzelnes</i> Nominatim-Segment "
+        f"bekommen statt der ganzen Straße. Sie kennen damit nur einen Teil "
+        f"der Ortsbereiche, durch die sie führen; im Einrichtungs-Assistenten "
+        f"landen sie unter „direkt nebenan\", obwohl sie durch den eigenen "
+        f"Stadtteil laufen.<br><br>"
+        f"Aktuell {offen} Straßen ohne vollständige Geometrie. Reparatur: "
+        f"Workflow <code>Ops: Straßen vollständig nachtragen</code> "
+        f"(<code>scripts/strassen_snapshot.py</code>) — der holt den ganzen "
+        f"Bestand in einem Aufruf von einer Maschine mit Zugang.",
+        betreff="Ratslotse – Straßen-Geokodierung eingeschränkt",
+        fusszeile="Hinweis eines Cron-Jobs — der Lauf selbst ist nicht "
+                  "gescheitert, sein Ergebnis aber unvollständig.")
 
 
 def main() -> int:
