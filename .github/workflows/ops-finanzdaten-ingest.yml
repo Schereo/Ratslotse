@@ -28,10 +28,14 @@
 # wiederholbar: Eine Quelle, die weniger liest als der gespeicherte Stand,
 # überschreibt ihn nicht, sondern meldet es.
 #
-# NICHT ENTHALTEN: der Takt danach. `check_finanzdaten` hält den Bestand
-# aktuell, steht aber nur in der crontab der Dev-VM (`kern/jobs.py`). Auf Prod
-# braucht es dafür einen eigenen Eintrag — sonst ist dieser Lauf hier eine
-# Momentaufnahme, die langsam veraltet.
+# DER TAKT DANACH steht schon: `check_finanzdaten` hält den Bestand aktuell und
+# läuft auf Prod sonntags 6:00 (`0 6 * * 0`). Hier stand am 03.09.2026 das
+# Gegenteil — „steht nur in der crontab der Dev-VM" —, abgeschrieben aus einem
+# veralteten Kommentar in `kern/jobs.py` statt auf dem Server nachgesehen. Auf
+# dev gibt es den Job überhaupt nicht.
+#
+# Dieser Lauf hier ersetzt den Cron also weiterhin nicht, er zieht ihn vor:
+# für einen frisch gebauten Parser, der nicht bis Sonntag warten soll.
 name: "Ops: Finanzdaten einlesen"
 
 on:

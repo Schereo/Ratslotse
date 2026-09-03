@@ -9,19 +9,27 @@ Ebenen. Der Bereich unter `/haushalt` übersetzt ihn — und macht dabei an jede
 Stelle sichtbar, welche Zahl amtlich ist, welche wir gerechnet haben und
 welche schlicht fehlt.
 
-:::note[Vorerst nur auf dev.ratslotse.de]
-Der Bereich liegt hinter dem Umgebungs-Gate: `web/frontend/lib/haushalt-frei.ts`
-prüft `NEXT_PUBLIC_RATSLOTSE_ENV`, das nur der Dev-Build setzt. Auf
-ratslotse.de rendert keine seiner Seiten, und die Anker dorthin
-(Seitenleiste, „Mehr"-Sheet, der Verweis auf den Beschluss-Seiten) fehlen
-ebenfalls — ein Gate ohne seine Einstiege hinterließe Links ins Leere.
+:::note[Ratsmitgliedern vorbehalten]
+Der Bereich hängt seit 09/2026 am Recht `budget`: Wer die Rolle
+*Ratsmitglied* trägt (oder Admin ist), sieht ihn — alle anderen bekommen ein
+404, und die Anker dorthin (Seitenleiste, „Mehr"-Sheet, der Verweis auf den
+Beschluss-Seiten) stehen erst gar nicht da; ein Gate ohne seine Einstiege
+hinterließe Links ins Leere. Die eigentliche Sperre sitzt im Backend: Alle
+zwanzig `/api/council/budget…`-Routen verlangen dasselbe Recht, und
+`tests/test_rollen.py` hält fest, dass keine vergessen wird.
 
-Zwei Dinge, die daraus folgen: Auf Prod laufen weder die Ingest-Skripte noch
-der Cron `check_finanzdaten`, die Haushalts-Tabellen entstehen dort leer und
-bleiben es (die Geld-Bausteine der KI-Frage vertragen das — **jeder** von
-ihnen liefert bei leeren Daten einen Leerstring, und jede Abfrage steht in
-`qa._sicher`, kann die Antwort also nicht blockieren; `tests/test_haushalt_gate.py`
-prüft beides über alle Bausteine automatisch, nicht über eine Aufzählung).
+Vorher lag der Bereich hinter einem Umgebungs-Gate und war auf ratslotse.de
+für **alle** unsichtbar. Die Rolle leistet dasselbe, aber richtig herum: Er
+ist dort, wo er hingehört, und sichtbar für die, für die er gebaut ist.
+
+Auf Prod ist der Bestand seit dem 03.09.2026 eingelesen, und der Cron
+`check_finanzdaten` hält ihn dort sonntags aktuell. Die Vorsorge für den
+leeren Fall bleibt trotzdem in Kraft und wird weiter geprüft: **Jeder**
+Geld-Baustein der KI-Frage liefert bei leeren Daten einen Leerstring, und jede
+Abfrage steht in `qa._sicher`, kann die Antwort also nicht blockieren
+(`tests/test_haushalt_gate.py` prüft beides über alle Bausteine automatisch,
+nicht über eine Aufzählung). Eine frisch aufgesetzte Umgebung startet leer,
+und genau dort muss das tragen.
 Und: Weil `app/(app)/` ein Client-Layout ist, kommt die
 Antwort mit HTTP 200 statt 404 — ein „Soft 404". Inhaltlich folgenlos,
 weshalb `/haushalt` auch nicht in der Sitemap steht. `tests/test_haushalt_gate.py`
@@ -558,7 +566,7 @@ sondern auch, ob sie einer anderen etwas wegnimmt oder ihr etwas anhängt.
 
 **Dreiundzwanzig** Datenschichten, jede einmal von Hand eingelesen — ohne Cron
 veraltet der ganze Bereich still, sobald niemand mehr daran denkt.
-`check_finanzdaten.py` (alle zwei Wochen) nimmt das ab: **Neun** liest er
+`check_finanzdaten.py` (sonntags) nimmt das ab: **Neun** liest er
 selbst nach (sie liegen als Anlage im Ratsinformationssystem), die **vierzehn**
 übrigen werden nur beobachtet — er meldet, dass ein Jahrgang fällig wäre, und
 nennt Quelle und Skript. Sieben davon kommen von außerhalb, sieben liegen zwar

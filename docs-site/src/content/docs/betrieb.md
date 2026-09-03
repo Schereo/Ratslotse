@@ -232,15 +232,23 @@ Die Zeitpläne stehen als Docstring im jeweiligen Skript und in
 | `weekly_enrich.py` | sonntags `0 3 * * 0` | LLM- und Embedding-Backfills in 14 Schritten (siehe unten). |
 | `remind_setup.py` | täglich `0 11 * * *` | Genau eine Service-Mail an Konten, die den Einrichtungs-Assistenten angefangen und seit 48 h nicht beendet haben. |
 | `abendmeldungen.py` | täglich `0 18 * * *` | Abend-Anlässe aus Design 30a: N5 Vorabend-Erinnerung täglich, N6 Wochenüberblick nur sonntags. Beide standardmäßig aus — sie erreichen nur, wer sie im Konto einschaltet. |
-| `check_finanzdaten.py`&nbsp;¹ | 14-tägig `30 4 * * 0` | Neue Haushalts-Jahrgänge aus dem Anlagenbestand einlesen (Jahresabschluss, Teilhaushalts-Pläne, Prüfberichte) und melden, wenn ein erwarteter Jahrgang ausbleibt. Lädt nichts herunter, ergänzt nur Fehlendes — siehe [Stadtfinanzen](/docs/haushalt/#der-bereich-hält-sich-selbst-aktuell). |
+| `check_finanzdaten.py`&nbsp;¹ | sonntags `0 6 * * 0` | Neue Haushalts-Jahrgänge aus dem Anlagenbestand einlesen (Jahresabschluss, Teilhaushalts-Pläne, Prüfberichte) und melden, wenn ein erwarteter Jahrgang ausbleibt. Lädt nichts herunter, ergänzt nur Fehlendes — siehe [Stadtfinanzen](/docs/haushalt/#der-bereich-hält-sich-selbst-aktuell). |
+| `check_beteiligungsbericht.py` | sonntags `30 6 * * 0` | Lädt die Beteiligungsberichte von oldenburg.de und liest Gesellschaften, Aufsichtsorgane und Kennzahlen daraus. Der einzige Haushalts-Cron, der selbst herunterlädt. |
 | `archive_statistik.py` | täglich `0 4 * * *` | Sichert die amtlichen Statistik-Quellen versioniert unter `data/archiv/` — siehe unten. |
 
-¹ **Nur auf der Dev-VM.** Der Haushalts-Bereich steht hinterm Umgebungs-Gate und
-ist auf ratslotse.de nicht sichtbar (`web/frontend/lib/haushalt-frei.ts`); seine
-Tabellen bleiben dort leer. In der Cron-Übersicht des Admin-Panels erscheint der
-Job auf Prod deshalb als „unknown" — nie gelaufen, nicht überfällig. Wer ihn dort
-einträgt, macht den Bereich nicht sichtbar, füllt aber eine Datenbank, die
-niemand liest.
+¹ **Nur auf Prod** — und das ist seit 09/2026 die richtige Seite. Der
+Haushalts-Bereich hing bis dahin an einem Umgebungs-Gate und war auf
+ratslotse.de unsichtbar; hier stand deshalb das Gegenteil („nur auf der
+Dev-VM"). Seit dem Rollen-Umbau hängt er am Recht `budget` und ist dort für
+Ratsmitglieder sichtbar (`kern/roles.py`), die Daten sind eingelesen. Auf der
+Dev-VM gibt es beide Jobs **nicht**; dort zieht `ops-finanzdaten-ingest.yml`
+den Bestand von Hand nach.
+
+Am 03.09.2026 auf dem Server nachgesehen, nachdem hier und in `kern/jobs.py`
+jahrelang eine Angabe stand, die nie gestimmt hat: Beide Takte sind
+**wöchentlich**, nicht 14-tägig. Was in dieser Tabelle steht, ist eine Kopie
+der crontab — und eine Kopie wird nur dann nicht zur Lüge, wenn jemand
+nachsieht statt abzuschreiben.
 
 ### Was der Protokoll-Lauf inline nachzieht
 
