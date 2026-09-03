@@ -9,8 +9,8 @@ import { startGuidedTour, tourGesehen } from "@/components/tour";
 import {
   ONBOARDING_DONE_EVENT,
   ONBOARDING_FINISHED_EVENT,
-  setTourEinladungOffen,
 } from "@/components/onboarding-flow";
+import { einladungStand, merkeEinladung } from "@/lib/tour-einladung";
 
 /**
  * Lottis Einladung zur Tour — der Moment direkt nach der Einrichtung.
@@ -22,26 +22,22 @@ import {
  * müssen (Tims Befund, 03.09.2026). Jetzt tritt Lotti groß vor die Seite und
  * fragt — Tour starten oder erst mal selbst umschauen. Beides ist ein Tipp.
  *
- * Wann sie erscheint: genau einmal, ausgelöst vom Ereignis „Einrichtung
- * wirklich abgeschlossen" (nicht vom allgemeinen Done-Signal, das auch feuert,
- * wenn der Flow sich bloß nicht zeigt). Der Zustand liegt im localStorage,
- * damit ein Neuladen in der Sekunde dazwischen die Einladung nicht
- * verschluckt — und nie ein zweites Mal, auch nicht, wenn die Tour über die
- * Karte längst gelaufen ist.
+ * Wann sie erscheint: genau einmal, sobald der Assistent seinen letzten Schritt
+ * abgeschlossen hat. Maßgeblich ist die gemerkte Marke (`lib/tour-einladung.ts`),
+ * die der Assistent beim Abschluss selbst setzt — das Ereignis daneben ist nur
+ * die Abkürzung für den Fall, dass diese Komponente in dem Moment schon steht.
+ * Auf das Ereignis allein war Verlass genau nicht: Die Einladung hängt in der
+ * App-Hülle, und wer den Assistenten in einem Tab beendet, der noch das Bündel
+ * von vor einem Deploy fährt, hatte sie nie gemountet — auf Prod ist die
+ * Einladung dadurch komplett ausgefallen (Tims Befund, 03.09.2026).
+ *
+ * Nie ein zweites Mal, auch nicht, wenn die Tour über die „Erste Schritte"-Karte
+ * längst gelaufen ist.
  */
 
-/** "offen" — Einladung steht aus; "erledigt" — beantwortet, egal wie. */
-const KEY = "ratslotse:tour-einladung";
 /** Der Assistent verschwindet ohne Ausblendung; ein Wimpernschlag Pause, damit
  *  die Seite dahinter einmal ganz zu sehen war, bevor Lotti davortritt. */
 const VERZOEGERUNG_MS = 450;
-
-function stand(): string | null {
-  try { return localStorage.getItem(KEY); } catch { return null; }
-}
-function merke(wert: "offen" | "erledigt") {
-  try { localStorage.setItem(KEY, wert); } catch { /* egal */ }
-}
 
 export function TourEinladung() {
   const [offen, setOffen] = useState(false);
@@ -51,12 +47,15 @@ export function TourEinladung() {
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;
     const zeigen = () => {
-      if (tourGesehen()) { merke("erledigt"); return; }
-      setTourEinladungOffen(true); // synchron: das Done-Signal kommt gleich danach
+      // Wer die Tour schon kennt, wird nicht eingeladen — die Marke wird dann
+      // gleich hier abgeräumt, damit die Abzeichen nicht darauf warten.
+      if (tourGesehen()) { merkeEinladung("erledigt"); return; }
       timer = setTimeout(() => setOffen(true), VERZOEGERUNG_MS);
     };
-    if (stand() === "offen") zeigen();
-    const onFinished = () => { merke("offen"); zeigen(); };
+    if (einladungStand() === "offen") zeigen();
+    // Der Assistent hat die Marke schon gesetzt; das Ereignis sagt nur, dass
+    // es jetzt gleich losgeht, ohne auf das nächste Aufbauen zu warten.
+    const onFinished = () => zeigen();
     window.addEventListener(ONBOARDING_FINISHED_EVENT, onFinished);
     return () => {
       window.removeEventListener(ONBOARDING_FINISHED_EVENT, onFinished);
@@ -65,10 +64,10 @@ export function TourEinladung() {
   }, []);
 
   const schliessen = useCallback(() => {
-    merke("erledigt");
+    merkeEinladung("erledigt");
     setOffen(false);
-    setTourEinladungOffen(false);
-    // Die zurückgehaltenen Abzeichen dürfen jetzt.
+    // Die zurückgehaltenen Abzeichen dürfen jetzt — die Marke steht nicht mehr
+    // auf „offen", der Riegel in isOnboardingVisible() ist damit weg.
     window.dispatchEvent(new Event(ONBOARDING_DONE_EVENT));
   }, []);
 
