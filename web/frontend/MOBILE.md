@@ -27,6 +27,16 @@ npm run cap:android   # unveröffentlichtes Android-Gerüst öffnen
 
 Neue iOS-Funktionen und iOS-Releases werden nur noch aus `ios/` gebaut.
 
+### Öffentliche Problem-Details
+
+Die kanonische Web-Route `/probleme/[id]` wird serverseitig gerendert und kann
+wegen beliebiger IDs nicht Teil des statischen Android-Exports sein.
+`build-mobile.mjs` nimmt sie deshalb nur während des Exports heraus. Das
+Android-Gerüst zeigt dieselben Details unter `/probleme?problem=[id]`;
+`lib/app-links.ts` übersetzt eingehende kanonische Links auf diesen Query-Pfad.
+Geteilt wird weiterhin die Web-Route. Die native SwiftUI-App besitzt noch keine
+Bürgerportal-Ansicht und öffnet Problem-Links im Web.
+
 ## Gemeinsame produktive Voraussetzungen
 
 - Bundle-ID: `de.ratslotse.app`

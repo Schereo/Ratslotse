@@ -52,15 +52,40 @@ private Moderationsdaten. Die Feature-Daten sind im Titel und in der Oberfläche
 als frei erfundene Beispiele gekennzeichnet. Sie werden idempotent ausschließlich
 in der separaten Feature-Datenbank erzeugt.
 
+## Öffentliche Detailseite — Iteration 3
+
+Die kanonische Web-Route `/probleme/[id]` zeigt dieselbe datensparsame
+öffentliche Projektion wie die Übersicht: Titel, moderierte Zusammenfassung,
+Kategorie, freigegebenen Ortsbezug, ehrliche Geometrie, exakte unabhängige
+Meldezahl und Häufigkeitsband. `GET /api/probleme/{problem_id}` verwendet
+identische Sichtbarkeits- und Projektionsregeln wie die Liste. Unveröffentlichte,
+gelöste, meldungslose oder unbekannte IDs liefern keinen Datensatz.
+
+Karte und Rangliste trennen „Auf der Karte zeigen“ von „Details ansehen“.
+Ehrlich kartierbare Details fokussieren ihre Geometrie; stadtweite und ungültige
+Geografien erklären knapp, warum keine Karte erscheint. Status-Badges und eine
+aus Daten oder Statuswerten erfundene Zeitleiste bleiben aus. Lotti ist der eine
+kontextuelle Hilfezugang für Zählgrenzen, Geografie und fiktive Beispiele. Die
+Seite lässt sich über ihre kanonische Web-URL teilen und bleibt ohne Konto
+lesbar.
+
+Der statische Android-Export kann beliebige IDs nicht vorab erzeugen. Dort
+öffnet `/probleme?problem=[id]` dieselbe Darstellung innerhalb der Übersicht;
+eingehende Web-Links werden auf diesen Query-Pfad übersetzt. Auch negative IDs
+der ausschließlich auf `feature` vorhandenen Beispiele sind gültig. Die native
+iOS-App besitzt noch keine Bürgerportal-Ansicht und öffnet diese öffentlichen
+Links deshalb im Web.
+
 ## Routen
 
 | Route | Sichtbarkeit | Stand |
 |---|---|---|
 | `/probleme` | öffentlich | Iteration 2 |
-| `/probleme/[id]` | öffentlich | späterer eigener Schnitt |
+| `/probleme/[id]` | öffentlich | Iteration 3 |
+| `/probleme?problem=[id]` | öffentlich | Iteration 3, statischer App-Adapter |
 | `/probleme/melden` | verifiziertes Nicht-Admin-Konto | späterer eigener Schnitt |
 | `/meine-meldungen` | Eigentümer*in | reserviert |
 | `/admin/meldungen` | Admin | reserviert |
 
-Iteration 2 enthält keine Detailseite, private Meldung, Moderationsoberfläche,
-automatische Veröffentlichung oder KI-Funktion.
+Iteration 3 enthält keine private Meldung, öffentliche Zeitleiste,
+Moderationsoberfläche, automatische Veröffentlichung oder KI-Funktion.
