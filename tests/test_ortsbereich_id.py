@@ -37,7 +37,8 @@ def test_die_spalte_zieht_um_und_behaelt_ihre_werte(tmp_path):
 
 def test_der_add_column_guard_prueft_den_neuen_namen():
     """Sonst legte der Start die alte Spalte leer daneben — genau #917."""
-    q = (WURZEL / "council" / "store.py").read_text()
+    # Alle Store-Dateien: Die Migration ist seit 09/2026 in `store_schema.py`.
+    q = "\n".join(p.read_text() for p in sorted((WURZEL / "council").glob("store*.py")))
     m = re.search(r'if "(\w+)" not in \w+:\s*\n\s*self\._conn\.execute\("ALTER TABLE council_locations ADD COLUMN local_area_id TEXT"\)', q)
     assert m, "ADD COLUMN local_area_id nicht gefunden"
     assert m.group(1) == "local_area_id", f"der Guard prüft {m.group(1)!r}, nicht die Spalte selbst"

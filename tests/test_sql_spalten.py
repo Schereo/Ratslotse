@@ -55,7 +55,7 @@ AUSNAHMEN = {
     # `_doppelte_bildspalte_aufloesen` räumt eine doppelt angelegte Spalte auf
     # und muss dafür die alte lesen. Es ist eine Migration, nur heißt sie
     # nicht so — deshalb greift die Regel oben hier nicht.
-    ("council/store.py", "bild"),
+    ("council/store_schema.py", "bild"),
 }
 
 

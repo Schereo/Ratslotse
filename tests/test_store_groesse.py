@@ -22,11 +22,12 @@ from pathlib import Path
 WURZEL = Path(__file__).resolve().parents[1]
 STORE = WURZEL / "council" / "store.py"
 
-#: Stand nach dem NEUNTEN und vorerst letzten Schnitt (02.09.2026).
-#: Darf schrumpfen. Was jetzt noch hier liegt, ist der Kern: Schema und
-#: Migrationen, Beschlüsse, Vorlagen, Anlagen, Suche und Embeddings.
-HOECHSTENS_METHODEN = 237
-HOECHSTENS_ZEILEN = 9979
+#: Stand nach dem zehnten Schnitt (03.09.2026). Darf schrumpfen. Was jetzt
+#: noch hier liegt, ist der Kern: Beschlüsse, Vorlagen, Anlagen, Suche und
+#: Embeddings. Schema und Migration stehen seit dem zehnten Schnitt daneben —
+#: `_migrate` allein war 2.458 Zeilen.
+HOECHSTENS_METHODEN = 222
+HOECHSTENS_ZEILEN = 6432
 
 
 def _klasse() -> ast.ClassDef:
@@ -65,6 +66,7 @@ def _mixins():
     from council.store_personen import PersonenMixin
     from council.store_presse import PresseMixin
     from council.store_quiz import QuizMixin
+    from council.store_schema import SchemaMixin
     from council.store_sitzungen import SitzungenMixin
     from council.store_themen import ThemenMixin
     from council.store_wortbeitraege import WortbeitraegeMixin
@@ -77,6 +79,7 @@ def _mixins():
         "Personen": (PersonenMixin, 27),
         "Presse": (PresseMixin, 9),
         "Quiz": (QuizMixin, 12),
+        "Schema": (SchemaMixin, 14),
         "Sitzungen": (SitzungenMixin, 47),
         "Themen": (ThemenMixin, 30),
         "Wortbeiträge": (WortbeitraegeMixin, 20),
@@ -116,6 +119,8 @@ def test_migrationen_bleiben_beim_schema():
     Beim Quiz-Schnitt wären drei ``_migrate_quiz_*`` fast mit umgezogen; sie
     laufen aus ``_migrate`` heraus und gehören neben das übrige Schema.
     """
-    for mixin, _ in _mixins().values():
+    for name, (mixin, _) in _mixins().items():
+        if name == "Schema":
+            continue          # dort gehören sie hin, das ist ihre Ecke
         wandernde = [n for n in vars(mixin) if n.startswith("_migrate")]
-        assert not wandernde, (mixin.__name__, wandernde)
+        assert not wandernde, (name, wandernde)
