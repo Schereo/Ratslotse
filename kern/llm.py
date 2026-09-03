@@ -213,7 +213,7 @@ def _is_transient(exc: BaseException) -> bool:
     stop=stop_after_attempt(4),
     reraise=True,
 )
-def _create(**kwargs: Any):
+def _create(*, _allow_empty_response: bool = False, **kwargs: Any):
     merged = _with_model_params(_with_routing(kwargs))
     # OpenRouter soll die ECHTEN Kosten des Aufrufs mitliefern (usage.cost, in
     # USD, inkl. Provider-Routing) — Modellpreise von Hand pflegen entfällt
@@ -222,7 +222,11 @@ def _create(**kwargs: Any):
     resp = get_client().chat.completions.create(**merged)
     # Beim Strom ist die erste Antwort ein Iterator, keine fertige Completion —
     # dort prüft chat_stream ohnehin jeden Chunk auf `choices`.
-    if not merged.get("stream"):
+    # Wenige Aufrufer besitzen bereits eine bewusst andere Leerantwort-
+    # Strategie (Chunk verwerfen, lokaler Retry oder optionaler Baustein).
+    # Nur sie dürfen die rohe Antwort übernehmen; überall sonst bleibt der
+    # zentrale, retried Fehler verbindlich.
+    if not merged.get("stream") and not _allow_empty_response:
         _pruefe_choices(resp, merged.get("model"))
     return resp
 
@@ -277,7 +281,9 @@ def chat_complete(**kwargs: Any):
     errors (4xx other than 429) propagate immediately without retry.
 
     Pass ``_feature="…"`` to record this call's token usage per feature for the admin
-    LLM page (stripped before the API call; best-effort).
+    LLM page (stripped before the API call; best-effort). ``_allow_empty_response``
+    is reserved for callers that explicitly handle a response without
+    ``choices``; the private flag is never sent upstream.
     """
     feature = kwargs.pop("_feature", None)
     resp = _create(**kwargs)

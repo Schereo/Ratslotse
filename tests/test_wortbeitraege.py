@@ -67,6 +67,7 @@ def test_choices_null_wird_retried(monkeypatch):
     calls = {"n": 0}
 
     def fake(**kwargs):
+        assert kwargs["_allow_empty_response"] is True
         resp = antworten[min(calls["n"], 1)]
         calls["n"] += 1
         return resp
@@ -470,6 +471,20 @@ def test_partei_meinungen_fasst_schreibvarianten_zusammen(monkeypatch):
     assert [e["party"] for e in out] == ["SPD", "Bündnis 90/Die Grünen"]
     assert [e["contributions"] for e in out] == [2, 2]
     assert "SPD-Fraktion (" not in gesehen["prompt"]
+
+
+def test_partei_meinungen_leere_providerantwort_bleibt_ohne_baustein(monkeypatch):
+    """Die optionale Verdichtung behält ihren direkten None-Fallback."""
+    def empty_response(**kwargs):
+        assert kwargs["_allow_empty_response"] is True
+        return SimpleNamespace(choices=None, usage=None)
+
+    monkeypatch.setattr(qa.llm, "chat_complete", empty_response)
+    rows = ([{"party": "SPD", "speaker": "A", "text": "Beitrag zur Sache " * 3,
+              "session_date": "2026-01-01"}] * 2
+            + [{"party": "CDU", "speaker": "B", "text": "Weitere Position " * 3,
+                "session_date": "2026-01-02"}] * 2)
+    assert qa.partei_meinungen("Frage?", rows) is None
 
 
 def test_partei_meinungen_rettet_abgeschnittene_antwort(monkeypatch):

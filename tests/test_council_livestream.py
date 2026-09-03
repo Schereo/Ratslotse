@@ -3,6 +3,7 @@ Schlussformel, Parallel-Transkription (ffmpeg und LLM gemockt)."""
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 from unittest import mock
 
 import pytest
@@ -47,6 +48,25 @@ def test_looks_fabricated_by_chars_per_second():
     assert livestream._looks_fabricated("x" * 58_000, 80)
     # 600 s echte Rede liegen bei ~9k Zeichen — weit unter der Grenze.
     assert not livestream._looks_fabricated("x" * 9_000, 600)
+
+
+def test_empty_provider_responses_drop_only_the_chunk(tmp_path, monkeypatch, caplog):
+    """Drei leere Antworten verwerfen nur dieses Stück; der lokale Fallback
+    bleibt trotz des zentralen Guards erreichbar."""
+    chunk = tmp_path / "chunk_004.mp3"
+    chunk.write_bytes(b"audio")
+    calls = []
+
+    def empty_response(**kwargs):
+        calls.append(kwargs)
+        return SimpleNamespace(choices=None, usage=None)
+
+    monkeypatch.setattr(livestream.llm, "chat_complete", empty_response)
+    with caplog.at_level("WARNING"):
+        assert livestream.transcribe_chunk(chunk) == ""
+    assert len(calls) == 3
+    assert all(call["_allow_empty_response"] is True for call in calls)
+    assert "dreimal leere Antwort" in caplog.text
 
 
 def test_parse_segments_caps_marks_beyond_chunk_end():
@@ -133,6 +153,29 @@ def test_record_and_transcribe_transcribes_finished_chunks(tmp_path):
                            side_effect=lambda p, attempt=0: texts[p.name]):
         segs = livestream.record_and_transcribe(tmp_path, poll_seconds=0)
     assert [s for s, _ in segs] == [5, 610]
+
+
+def test_recording_continues_after_one_empty_transcript_chunk(tmp_path, monkeypatch):
+    """Ein ausgefallener erster Chunk darf ffmpeg und die späteren Chunks der
+    einmaligen Sitzung nicht mit abräumen."""
+    (tmp_path / "chunk_000.mp3").write_bytes(b"a")
+    (tmp_path / "chunk_001.mp3").write_bytes(b"b")
+    calls = []
+
+    def responses(**kwargs):
+        calls.append(kwargs)
+        content = (None if len(calls) <= 3 else
+                   "[00:10] Damit schließe ich die Sitzung.")
+        choices = None if content is None else [SimpleNamespace(
+            message=SimpleNamespace(content=content))]
+        return SimpleNamespace(choices=choices, usage=None)
+
+    monkeypatch.setattr(livestream.llm, "chat_complete", responses)
+    monkeypatch.setattr(livestream, "start_recording", lambda *_args: _FakeProc())
+    segments = livestream.record_and_transcribe(tmp_path, poll_seconds=0)
+    assert segments == [(610, "Damit schließe ich die Sitzung.")]
+    assert len(calls) == 4
+    assert all(call["_allow_empty_response"] is True for call in calls)
 
 
 def test_record_and_transcribe_without_ffmpeg(tmp_path):
