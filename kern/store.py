@@ -429,8 +429,8 @@ CREATE INDEX IF NOT EXISTS idx_feedback_created ON feedback(created_at DESC);
 # Alle Tabellen, die an einem Konto hängen — Grundlage von `delete_web_user`
 # (DSGVO Art. 17, Recht auf Löschung). Die Liste steht bewusst explizit hier
 # statt zur Laufzeit aus dem Schema geraten zu werden; damit sie vollständig
-# BLEIBT, prüft `test_delete_web_user_covers_every_user_table` sie gegen das
-# Schema. Wer eine neue nutzerbezogene Tabelle anlegt, trägt sie hier ein —
+# BLEIBT, prüft `test_delete_web_user_covers_every_user_table` sie gegen alle
+# beteiligten Schemata. Wer eine neue nutzerbezogene Tabelle anlegt, trägt sie hier ein —
 # sonst schlägt der Test fehl und nennt die fehlende Tabelle.
 USER_OWNED_TABLES: tuple[tuple[str, str], ...] = (
     ("topics", "owner_id"),
@@ -460,6 +460,10 @@ USER_OWNED_TABLES: tuple[tuple[str, str], ...] = (
     ("feedback", "owner_id"),
     ("password_reset_tokens", "user_id"),
     ("email_verification_tokens", "user_id"),
+    # Eigenes privates Bürgerportal-Schema; die Tabelle entsteht erst, wenn
+    # PrivateReportStore verwendet wird. Die zentrale Kontolöschung räumt sie
+    # dennoch mit ab, sobald sie in derselben Datenbank vorhanden ist.
+    ("civic_reports", "reporter_id"),
 )
 
 
@@ -569,6 +573,7 @@ class Store:
         # file); busy_timeout lets writers wait instead of failing immediately.
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.execute("PRAGMA busy_timeout=5000")
+        self._conn.execute("PRAGMA foreign_keys=ON")
         # VOR dem Schema — sonst legt `CREATE TABLE IF NOT EXISTS` die neue
         # Tabelle leer an und die Umbenennung unterbleibt für immer
         # (s. `_web_users_spalten_nachziehen`, derselbe Fehler spaltenweise).
@@ -2050,13 +2055,20 @@ class Store:
     def delete_web_user(self, user_id: int) -> None:
         """Hard-delete a web account and everything keyed to it (GDPR: right to erasure).
 
-        Räumt jede Tabelle aus ``USER_OWNED_TABLES`` ab — die Liste wird von
-        einem Test gegen das Schema geprüft, damit hier nichts liegen bleibt,
+        Räumt jede vorhandene Tabelle aus ``USER_OWNED_TABLES`` ab — die Liste
+        wird von einem Test gegen alle beteiligten Schemata geprüft, damit nichts liegen bleibt,
         wenn später eine nutzerbezogene Tabelle dazukommt.
         """
+        existing_tables = {
+            str(row[0])
+            for row in self._conn.execute(
+                "SELECT name FROM sqlite_master WHERE type = 'table'"
+            )
+        }
         with self._conn:
             for table, column in USER_OWNED_TABLES:
-                self._conn.execute(f"DELETE FROM {table} WHERE {column} = ?", (user_id,))
+                if table in existing_tables:
+                    self._conn.execute(f"DELETE FROM {table} WHERE {column} = ?", (user_id,))
             self._conn.execute("DELETE FROM web_users WHERE id = ?", (user_id,))
 
     # ---- „Meine Gespräche" (5a/I-04 + Design 6a) ---------------------------

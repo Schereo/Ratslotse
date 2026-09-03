@@ -38,6 +38,21 @@ def _insert_public_projection(database) -> None:
         )
 
 
+def _insert_verified_accounts(database, *reporter_ids: int) -> None:
+    from kern.store import Store
+
+    store = Store(database)
+    with store._conn:
+        for reporter_id in reporter_ids:
+            store._conn.execute(
+                """INSERT OR IGNORE INTO web_users (
+                       id, email, password_hash, role, status, email_verified, created_at
+                   ) VALUES (?, ?, 'x', 'user', 'active', 1, '2026-09-01')""",
+                (reporter_id, f"meldung-{reporter_id}@test.de"),
+            )
+    store.close()
+
+
 def _private_schema_signature(database) -> list[tuple[str, str, str | None]]:
     with sqlite3.connect(database) as connection:
         return connection.execute(
@@ -54,17 +69,68 @@ def _private_schema_signature(database) -> list[tuple[str, str, str | None]]:
 def _downgrade_private_schema_to_version_one(database) -> None:
     with sqlite3.connect(database) as connection:
         connection.executescript(
-            """DROP TRIGGER trg_civic_report_observations_no_update;
+            """DROP TRIGGER trg_civic_reports_revision_requires_observation;
+               DROP TRIGGER trg_civic_reports_submitted_insert_observation;
+               DROP TRIGGER trg_civic_reports_submission_observation;
+               DROP TRIGGER trg_civic_report_observations_no_update;
                DROP INDEX idx_civic_report_observations_report;
                DROP TABLE civic_report_observations;
                DELETE FROM civic_report_schema_migrations WHERE version = 2;"""
         )
 
 
+def test_drafts_require_an_existing_verified_account(tmp_path):
+    from buergerportal.reports import DraftContent, PrivateReportStore
+    from kern.store import Store
+
+    database = tmp_path / "ratslotse.sqlite"
+    account_store = Store(database)
+    pending_id = account_store.create_web_user(
+        "offen@test.de",
+        "x",
+        status="pending",
+        email_verified=False,
+    )
+    verified_id = account_store.create_web_user(
+        "bestaetigt@test.de",
+        "x",
+        status="active",
+        email_verified=True,
+    )
+    account_store.close()
+    private_store = PrivateReportStore(database)
+    content = DraftContent(
+        text="Fiktiver Entwurf",
+        category="public_space",
+        scope_kind="citywide",
+        observed_on="2026-09-01",
+    )
+
+    with pytest.raises(ValueError, match="bestätigtes Konto"):
+        private_store.create_draft(reporter_id=999_999, content=content)
+    with pytest.raises(ValueError, match="bestätigtes Konto"):
+        private_store.create_draft(reporter_id=pending_id, content=content)
+    draft_id = private_store.create_draft(reporter_id=verified_id, content=content)
+    account_store = Store(database)
+    account_store.set_web_user_status(verified_id, "suspended")
+    account_store.close()
+
+    with pytest.raises(ValueError, match="bestätigtes Konto"):
+        private_store.submit_owned_draft(
+            draft_id,
+            reporter_id=verified_id,
+            confirmed_text="Bestätigte fiktive Beobachtung",
+        )
+    assert private_store.get_owned_report(draft_id, reporter_id=verified_id) is not None
+    private_store.close()
+
+
 def test_owner_can_create_and_read_a_private_draft(tmp_path):
     from buergerportal.reports import DraftContent, PrivateReportStore
 
-    store = PrivateReportStore(tmp_path / "ratslotse.sqlite")
+    database = tmp_path / "ratslotse.sqlite"
+    _insert_verified_accounts(database, 17, 18)
+    store = PrivateReportStore(database)
     draft_id = store.create_draft(
         reporter_id=17,
         content=DraftContent(
@@ -82,7 +148,7 @@ def test_owner_can_create_and_read_a_private_draft(tmp_path):
 
     assert draft is not None
     assert draft.id == draft_id
-    assert draft.text == "Am fiktiven Kanal ist der Weg abends nicht beleuchtet."
+    assert draft.draft_text == "Am fiktiven Kanal ist der Weg abends nicht beleuchtet."
     assert draft.confirmed_text is None
     assert draft.category == "public_space"
     assert draft.scope_kind == "point"
@@ -102,7 +168,9 @@ def test_drafts_enforce_controlled_private_content_and_geography(tmp_path):
     from buergerportal.domain import SCOPE_KINDS
     from buergerportal.reports import DraftContent, PrivateReportStore
 
-    store = PrivateReportStore(tmp_path / "ratslotse.sqlite")
+    database = tmp_path / "ratslotse.sqlite"
+    _insert_verified_accounts(database, 17)
+    store = PrivateReportStore(database)
     invalid_contents = (
         DraftContent("", "public_space", "citywide", "2026-09-01"),
         DraftContent("Text", "unknown", "citywide", "2026-09-01"),
@@ -148,6 +216,7 @@ def test_database_enforces_private_report_invariants(tmp_path):
     from buergerportal.reports import DraftContent, PrivateReportStore
 
     database = tmp_path / "ratslotse.sqlite"
+    _insert_verified_accounts(database, 17)
     store = PrivateReportStore(database)
     draft_id = store.create_draft(
         reporter_id=17,
@@ -188,7 +257,9 @@ def test_only_owner_can_change_a_draft(tmp_path):
         PrivateReportStore,
     )
 
-    store = PrivateReportStore(tmp_path / "ratslotse.sqlite")
+    database = tmp_path / "ratslotse.sqlite"
+    _insert_verified_accounts(database, 17, 18)
+    store = PrivateReportStore(database)
     draft_id = store.create_draft(
         reporter_id=17,
         content=DraftContent(
@@ -215,7 +286,7 @@ def test_only_owner_can_change_a_draft(tmp_path):
         store.update_owned_draft(draft_id, reporter_id=18, content=changed)
     draft = store.update_owned_draft(draft_id, reporter_id=17, content=changed)
 
-    assert draft.text == "Korrigierte fiktive Beschreibung"
+    assert draft.draft_text == "Korrigierte fiktive Beschreibung"
     assert draft.category == "accessibility"
     assert draft.scope_kind == "facility"
     assert draft.location_label == "Fiktive Musterhalle"
@@ -234,7 +305,9 @@ def test_submission_is_owner_bound_once_and_records_the_first_observation(tmp_pa
         PrivateReportStore,
     )
 
-    store = PrivateReportStore(tmp_path / "ratslotse.sqlite")
+    database = tmp_path / "ratslotse.sqlite"
+    _insert_verified_accounts(database, 17, 18)
+    store = PrivateReportStore(database)
     draft_id = store.create_draft(
         reporter_id=17,
         content=DraftContent(
@@ -302,7 +375,9 @@ def test_later_observations_append_without_replacing_the_first(tmp_path):
         PrivateReportStore,
     )
 
-    store = PrivateReportStore(tmp_path / "ratslotse.sqlite")
+    database = tmp_path / "ratslotse.sqlite"
+    _insert_verified_accounts(database, 17, 18)
+    store = PrivateReportStore(database)
     draft_id = store.create_draft(
         reporter_id=17,
         content=DraftContent(
@@ -367,6 +442,7 @@ def test_database_keeps_observations_immutable_and_revision_bound(tmp_path):
     from buergerportal.reports import DraftContent, PrivateReportStore
 
     database = tmp_path / "ratslotse.sqlite"
+    _insert_verified_accounts(database, 17)
     store = PrivateReportStore(database)
     draft_id = store.create_draft(
         reporter_id=17,
@@ -389,6 +465,12 @@ def test_database_keeps_observations_immutable_and_revision_bound(tmp_path):
         with pytest.raises(sqlite3.IntegrityError, match="submitted reports are immutable"):
             connection.execute(
                 "UPDATE civic_reports SET draft_text = 'ersetzt' WHERE id = ?",
+                (draft_id,),
+            )
+        connection.rollback()
+        with pytest.raises(sqlite3.IntegrityError, match="report revision requires observation"):
+            connection.execute(
+                "UPDATE civic_reports SET content_revision = 99 WHERE id = ?",
                 (draft_id,),
             )
         connection.rollback()
@@ -421,6 +503,7 @@ def test_concurrent_submission_creates_exactly_one_first_observation(tmp_path):
     )
 
     database = tmp_path / "ratslotse.sqlite"
+    _insert_verified_accounts(database, 17)
     first_store = PrivateReportStore(database)
     draft_id = first_store.create_draft(
         reporter_id=17,
@@ -475,6 +558,7 @@ def test_erasing_reporter_data_removes_only_private_owned_content(tmp_path):
     public_store = ProblemStore(database)
     _insert_public_projection(database)
     public_before = public_store.list_public_problems()
+    _insert_verified_accounts(database, 17, 18)
     private_store = PrivateReportStore(database)
 
     first_id = private_store.create_draft(
@@ -551,6 +635,7 @@ def test_private_migration_grows_repeatably_without_replacing_public_data(tmp_pa
     _insert_public_projection(grown_database)
     public_before = public_store.list_public_problems()
     public_store.close()
+    _insert_verified_accounts(grown_database, 17)
     old_store = PrivateReportStore(grown_database)
     old_draft_id = old_store.create_draft(
         reporter_id=17,
@@ -572,7 +657,7 @@ def test_private_migration_grows_repeatably_without_replacing_public_data(tmp_pa
     reopened_store.close()
 
     assert migrated_draft is not None
-    assert migrated_draft.text == "Fiktiver Entwurf aus Schema-Version 1"
+    assert migrated_draft.draft_text == "Fiktiver Entwurf aus Schema-Version 1"
     assert schema_after_migration == fresh_schema
     assert _private_schema_signature(grown_database) == schema_after_migration
     with sqlite3.connect(grown_database) as connection:

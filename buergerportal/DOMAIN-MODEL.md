@@ -27,7 +27,9 @@ Rohtexte, Einzelmeldungen und Moderationsdaten bleiben privat.
 ## Privates Schreibmodell — Iteration 4
 
 `PrivateReportStore` besitzt die Tabellen `civic_reports` und
-`civic_report_observations`; `ProblemStore` besitzt sie ausdrücklich nicht. Jede
+`civic_report_observations`; `ProblemStore` besitzt sie ausdrücklich nicht. Eine
+Meldung verweist per Fremdschlüssel auf ein bestehendes Ratslotse-Konto; nur ein
+aktives, bestätigtes Konto darf private Inhalte anlegen oder verändern. Jede
 private Lese- und Änderungsoperation verlangt die ID der meldenden Person.
 Unbekannte und fremde Meldungs-IDs werden dabei nicht unterschieden und geben
 keinen Inhalt preis.
@@ -52,8 +54,10 @@ Die privaten Migrationen werden einzeln atomar in
 nur private Tabellen, Indizes und Trigger an und verändern weder
 `civic_problems` noch `civic_problem_feature_examples`. Die explizite
 Kontolöschgrenze `erase_reporter_data` entfernt alle privaten Meldungen und ihre
-Beobachtungen einer Eigentümer-ID per Fremdschlüssel-Kaskade. Sie schreibt nicht
-in öffentliche Projektionen.
+Beobachtungen einer Eigentümer-ID per Fremdschlüssel-Kaskade. Zusätzlich kennt
+die zentrale Kontolöschung `civic_reports`, damit auch der bestehende
+DSGVO-Löschweg keine privaten Daten zurücklässt. Beide Wege schreiben nicht in
+öffentliche Projektionen.
 
 ## Veröffentlichung bleibt geschlossen
 
