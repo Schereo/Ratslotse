@@ -3,7 +3,7 @@ from __future__ import annotations
 import contextlib
 import json
 import re
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 
 import sqlite3
@@ -16,7 +16,7 @@ from kern.dbfehler import tabelle_fehlt
 from council.store_helfer import _dedup_keys, _int_or_none
 from council.store_fundstuecke import FundstueckeMixin
 from council.store_haushalt import HaushaltMixin
-from council.store_orte import CONCRETE_LOCATION_KINDS, OrteMixin
+from council.store_orte import OrteMixin
 from council.store_personen import PersonenMixin
 from council.store_presse import PresseMixin
 from council.store_quiz import QuizMixin
@@ -2539,58 +2539,6 @@ class CouncilStore(FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
 
     # ---- Explizite Ortszuordnungen je Beschluss ---------------------------
 
-    def decision_location_batches(self, *, batch_size: int = 12,
-                                  pending_only: bool = True,
-                                  limit: int | None = None):
-        """Beschlüsse samt Vorlage speicherschonend in Batches liefern.
-
-        Im Tageslauf kommen nur ungescannte Vorgänge oder solche mit einer
-        später geladenen Vorlage zurück. ``pending_only=False`` ist der
-        bewusste Voll-Backfill nach dem Leeren der Scan-Tabelle.
-        """
-        inner = """SELECT d.id, d.title, d.official_text, d.template_number,
-                      COALESCE(
-                        (SELECT v.raw_text FROM council_templates v
-                         WHERE v.kvonr = d.kvonr AND v.status = 'ok' LIMIT 1),
-                        (SELECT v.raw_text FROM council_templates v
-                         WHERE v.status = 'ok' AND v.template_number = d.template_number
-                         ORDER BY v.kvonr DESC LIMIT 1),
-                        (SELECT v.raw_text FROM council_templates v
-                         WHERE v.status = 'ok' AND d.template_number IS NOT NULL
-                           AND instr(d.template_number, v.template_number || '/') = 1
-                         ORDER BY v.kvonr DESC LIMIT 1)
-                      ) AS vorlage_text,
-                      COALESCE(
-                        (SELECT v.fetched_at FROM council_templates v
-                         WHERE v.kvonr = d.kvonr AND v.status = 'ok' LIMIT 1),
-                        (SELECT v.fetched_at FROM council_templates v
-                         WHERE v.status = 'ok' AND v.template_number = d.template_number
-                         ORDER BY v.kvonr DESC LIMIT 1),
-                        (SELECT v.fetched_at FROM council_templates v
-                         WHERE v.status = 'ok' AND d.template_number IS NOT NULL
-                           AND instr(d.template_number, v.template_number || '/') = 1
-                         ORDER BY v.kvonr DESC LIMIT 1),
-                        ''
-                      ) AS vorlage_fetched_at,
-                      s.source_hash AS existing_source_hash,
-                      s.scanned_at
-               FROM council_decisions d
-               LEFT JOIN council_decision_location_scans s ON s.decision_id = d.id
-               WHERE d.kind = 'decision'"""
-        sql = f"SELECT * FROM ({inner}) q"
-        if pending_only:
-            sql += (" WHERE existing_source_hash IS NULL OR "
-                    "(vorlage_fetched_at != '' AND "
-                    "datetime(vorlage_fetched_at) > datetime(scanned_at))")
-        sql += " ORDER BY id DESC"
-        if limit is not None:
-            sql += f" LIMIT {max(0, int(limit))}"
-        cursor = self._conn.execute(sql)
-        while True:
-            rows = cursor.fetchmany(max(1, int(batch_size)))
-            if not rows:
-                break
-            yield [dict(r) for r in rows]
 
     def decisions_for_location_extraction(self) -> list[dict]:
         """Kompatible Listenansicht; große Backfills nutzen die Batch-Methode."""
@@ -2601,21 +2549,6 @@ class CouncilStore(FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
         return {r["decision_id"]: r["source_hash"] for r in self._conn.execute(
             "SELECT decision_id, source_hash FROM council_decision_location_scans")}
 
-    def place_observations_for_decisions(self, ids: list[int]) -> dict[int, list[dict]]:
-        """Einmalige alte NER-Orte als günstige Startbasis übernehmen."""
-        if not ids:
-            return {}
-        ph = ",".join("?" * len(ids))
-        rows = self._conn.execute(
-            f"SELECT decision_id, name FROM council_entity_obs "
-            f"WHERE kind = 'place' AND decision_id IN ({ph})", ids).fetchall()
-        out: dict[int, list[dict]] = {}
-        for r in rows:
-            out.setdefault(r["decision_id"], []).append({
-                "name": r["name"], "kind": "other", "source": "official_text",
-                "evidence": r["name"], "method": "entity_obs", "confidence": 0.86,
-            })
-        return out
 
     # ---- gemeinsamer, redaktionell erweiterbarer Ortskatalog -----------------
 
@@ -2625,166 +2558,7 @@ class CouncilStore(FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
 
 
 
-    def location_candidates(self, status_filter: str = "pending", *, limit: int = 200,
-                            min_decisions: int = 3) -> list[dict]:
-        """Häufige, noch nicht statisch katalogisierte Ortsnamen samt Belegen."""
-        status_filter = status_filter if status_filter in {
-            "pending", "concrete", "approved", "alias", "rejected", "all"
-        } else "pending"
-        # Auch zur Laufzeit freigegebene Katalogorte zählen als bekannt. So
-        # verschwinden nach dem Backfill nicht nur statische Stadtteile,
-        # sondern ebenso Schreibvarianten neuer redaktioneller Orte aus
-        # der offenen Kandidatenliste.
-        known_ids = sorted(place.id for place in self.all_places())
-        review_where = ""
-        review_params: list = []
-        if status_filter == "pending":
-            review_where = "AND r.status IS NULL"
-        elif status_filter != "all":
-            review_where = "AND r.status = ?"
-            review_params.append(status_filter)
-        known_placeholders = ",".join("?" for _ in known_ids)
-        known_where = (
-            f"AND (r.status IS NOT NULL OR l.place_id IS NULL "
-            f"OR l.place_id NOT IN ({known_placeholders}))"
-            if known_ids else ""
-        )
-        # Die offene Liste ist eine Prioritätenliste, kein Dump aller einmalig
-        # erwähnten Namen. Bereits geprüfte Einträge müssen dagegen auch dann
-        # sichtbar bleiben, wenn sie nur in einem Beschluss vorkommen.
-        effective_min = max(1, int(min_decisions)) if status_filter == "pending" else 1
-        rows = self._conn.execute(
-            f"""SELECT l.*, r.status AS review_status, r.place_id AS review_place_id,
-                      r.name AS review_name, r.kind AS review_kind, r.parent_id,
-                      r.aliases, r.description, r.source_url, r.quiz_enabled,
-                      r.canonical_place_id, r.note, r.updated_by, r.updated_at AS reviewed_at,
-                      COUNT(DISTINCT dl.decision_id) AS decision_count,
-                      MAX(cs.session_date) AS last_date,
-                      AVG(dl.confidence) AS avg_confidence
-               FROM council_locations l
-               JOIN council_decision_locations dl ON dl.location_slug=l.slug
-               JOIN council_decisions d ON d.id=dl.decision_id AND d.kind='decision'
-               JOIN council_sessions cs ON cs.ksinr=d.ksinr
-               LEFT JOIN council_place_reviews r ON r.location_slug=l.slug
-               WHERE l.kind IN ('district','area','other') {review_where} {known_where}
-               GROUP BY l.slug
-               HAVING COUNT(DISTINCT dl.decision_id) >= ?
-               ORDER BY decision_count DESC, last_date DESC, l.name
-               LIMIT ?""", (*review_params, *known_ids, effective_min,
-                              max(1, min(int(limit), 500)))
-        ).fetchall()
-        out = []
-        for row in rows:
-            state = row["review_status"] or "pending"
-            evidence = self._conn.execute(
-                """SELECT d.id,d.title,cs.session_date,dl.evidence,dl.method,dl.confidence
-                   FROM council_decision_locations dl
-                   JOIN council_decisions d ON d.id=dl.decision_id
-                   JOIN council_sessions cs ON cs.ksinr=d.ksinr
-                   WHERE dl.location_slug=? AND d.kind='decision'
-                   ORDER BY cs.session_date DESC,d.id DESC LIMIT 3""",
-                (row["slug"],),
-            ).fetchall()
-            item = dict(row)
-            item["status"] = state
-            try:
-                item["aliases"] = json.loads(row["aliases"] or "[]")
-            except (TypeError, json.JSONDecodeError):
-                item["aliases"] = []
-            item["evidence"] = [dict(sample) for sample in evidence]
-            out.append(item)
-        return out
 
-    def review_location_candidate(self, location_slug: str, *, status: str,
-                                  place_id: str | None = None, name: str | None = None,
-                                  kind: str | None = None, parent_id: str | None = None,
-                                  aliases: list[str] | None = None,
-                                  description: str | None = None,
-                                  source_url: str | None = None,
-                                  quiz_enabled: bool = False,
-                                  canonical_place_id: str | None = None,
-                                  note: str | None = None,
-                                  updated_by: str | None = None) -> dict:
-        """Redaktionelles Urteil speichern und stabile IDs an Rohorte schreiben."""
-        from council import places
-        from council.locations import location_slug as slugify
-
-        if status not in {"concrete", "approved", "alias", "rejected"}:
-            raise ValueError("Unbekannter Prüfstatus")
-        observed = self._conn.execute(
-            "SELECT * FROM council_locations WHERE slug=?", (location_slug,)).fetchone()
-        if not observed:
-            raise KeyError(location_slug)
-        allowed_kinds = {key for key in places.catalog()["kinds"] if key != "local_area"}
-        if status == "approved":
-            place_id = slugify(place_id or name or observed["name"])
-            name = (name or observed["name"]).strip()
-            kind = kind or "neighborhood"
-            if not place_id or not name or kind not in allowed_kinds:
-                raise ValueError("Freigegebener Ort braucht Name, gültige ID und Ortstyp")
-            if not (source_url or "").startswith(("https://", "http://")):
-                raise ValueError("Freigegebener Ort braucht eine Quellen-URL")
-            if places.resolve(place_id) or any(p.id == place_id for p in self._reviewed_places()
-                                                if p.id != observed["place_id"]):
-                raise ValueError("Orts-ID ist bereits vergeben")
-            parent = places.resolve(parent_id) if parent_id else None
-            if parent_id and (not parent or not parent.is_primary):
-                raise ValueError("Elternort muss ein primärer Ortsbereich sein")
-        elif status == "concrete":
-            name = (name or observed["name"]).strip()
-            if not name or kind not in CONCRETE_LOCATION_KINDS:
-                raise ValueError("Konkreter Ort braucht Name und gültigen Ortstyp")
-            # Konkrete Punkte bleiben exakte Fundorte und werden absichtlich
-            # nicht Teil des flächigen Ortskatalogs.
-            place_id = None
-            canonical_place_id = None
-            parent_id = observed["local_area_id"]
-            source_url = None
-            quiz_enabled = False
-        elif status == "alias":
-            target = self.resolve_place(canonical_place_id)
-            if not target:
-                raise ValueError("Alias-Ziel ist unbekannt")
-            canonical_place_id = target.id
-            parents = self.primary_parents(target)
-            parent_id = parents[0].id if len(parents) == 1 else None
-            place_id = target.id
-        else:
-            place_id = None
-            parent_id = None
-        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
-        clean_aliases = list(dict.fromkeys(value.strip() for value in (aliases or []) if value.strip()))
-        with self._conn:
-            self._conn.execute(
-                """INSERT INTO council_place_reviews
-                   (location_slug,status,place_id,name,kind,parent_id,aliases,description,
-                    source_url,quiz_enabled,canonical_place_id,note,updated_by,updated_at)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-                   ON CONFLICT(location_slug) DO UPDATE SET
-                    status=excluded.status,place_id=excluded.place_id,name=excluded.name,
-                    kind=excluded.kind,parent_id=excluded.parent_id,aliases=excluded.aliases,
-                    description=excluded.description,source_url=excluded.source_url,
-                    quiz_enabled=excluded.quiz_enabled,
-                    canonical_place_id=excluded.canonical_place_id,note=excluded.note,
-                    updated_by=excluded.updated_by,updated_at=excluded.updated_at""",
-                (location_slug, status, place_id, name, kind, parent_id,
-                 json.dumps(clean_aliases, ensure_ascii=False), description, source_url,
-                 int(quiz_enabled), canonical_place_id, note, updated_by, now),
-            )
-            if status == "concrete":
-                self._conn.execute(
-                    "UPDATE council_locations SET place_id=NULL,updated_at=? WHERE slug=?",
-                    (now, location_slug),
-                )
-            else:
-                self._conn.execute(
-                    "UPDATE council_locations SET place_id=?,local_area_id=?,updated_at=? WHERE slug=?",
-                    (place_id, parent_id, now, location_slug),
-                )
-        self._runtime_places_cache = None
-        self._place_aliases_cache = None
-        return next(item for item in self.location_candidates("all", limit=500)
-                    if item["slug"] == location_slug)
 
     def delete_location_review(self, location_slug: str) -> bool:
         with self._conn:
@@ -2797,67 +2571,7 @@ class CouncilStore(FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
         self.backfill_location_place_ids()
         return True
 
-    def save_decision_locations(self, decision_id: int, rows: list[dict],
-                                source_hash: str | None) -> int:
-        """Zuordnungen eines Beschlusses atomar ersetzen und ggf. Scanstand merken.
 
-        ``source_hash=None`` speichert sichere Regex-/Bestandsfunde nach einem
-        LLM-Fehler, markiert den Vorgang aber nicht als fertig: der nächste
-        inkrementelle Lauf versucht die semantische Ergänzung erneut.
-        """
-        from council.locations import location_slug
-
-        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
-        by_slug: dict[str, dict] = {}
-        for row in rows:
-            slug = row.get("slug") or location_slug(row.get("name") or "")
-            if not slug:
-                continue
-            if slug not in by_slug or float(row.get("confidence") or 0) > float(by_slug[slug].get("confidence") or 0):
-                by_slug[slug] = row
-        with self._conn:
-            self._conn.execute(
-                "DELETE FROM council_decision_locations WHERE decision_id = ?", (decision_id,))
-            for slug, row in by_slug.items():
-                place = self.resolve_place(row.get("name"))
-                parents = self.primary_parents(place)
-                primary = parents[0] if len(parents) == 1 else None
-                self._conn.execute(
-                    "INSERT INTO council_locations"
-                    "(slug,name,kind,district,place_id,local_area_id,updated_at) "
-                    "VALUES (?,?,?,?,?,?,?) "
-                    "ON CONFLICT(slug) DO UPDATE SET name=excluded.name, kind=excluded.kind, "
-                    "place_id=COALESCE(excluded.place_id,council_locations.place_id), "
-                    "local_area_id=COALESCE(excluded.local_area_id,council_locations.local_area_id), "
-                    "district=COALESCE(excluded.district,council_locations.district), "
-                    "updated_at=excluded.updated_at",
-                    (slug, place.name if place else row["name"],
-                     "district" if place and place.is_primary else row.get("kind") or "other",
-                     primary.name if primary else None, place.id if place else None,
-                     primary.id if primary else None, now),
-                )
-                self._conn.execute(
-                    "INSERT INTO council_decision_locations "
-                    "(decision_id,location_slug,source,evidence,method,confidence,updated_at) "
-                    "VALUES (?,?,?,?,?,?,?)",
-                    (decision_id, slug, row.get("source") or "official_text",
-                     (row.get("evidence") or row["name"])[:500], row.get("method") or "llm",
-                     max(0.0, min(1.0, float(row.get("confidence") or 0))), now),
-                )
-            if source_hash is not None:
-                self._conn.execute(
-                    "INSERT INTO council_decision_location_scans(decision_id,source_hash,scanned_at) "
-                    "VALUES (?,?,?) ON CONFLICT(decision_id) DO UPDATE SET "
-                    "source_hash=excluded.source_hash, scanned_at=excluded.scanned_at",
-                    (decision_id, source_hash, now),
-                )
-        return len(by_slug)
-
-    def reset_decision_location_scans(self) -> None:
-        """Vollständigen Neu-Lauf erlauben; Geocodes der Orte bleiben erhalten."""
-        with self._conn:
-            self._conn.execute("DELETE FROM council_decision_locations")
-            self._conn.execute("DELETE FROM council_decision_location_scans")
 
     def decision_locations(self, decision_id: int) -> list[dict]:
         rows = self._conn.execute(

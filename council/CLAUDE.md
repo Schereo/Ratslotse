@@ -90,13 +90,13 @@ Methoden. Der Haushalt ist als erste Ecke heraus:
 
 | Datei | Methoden | Inhalt |
 |---|---|---|
-| `council/store.py` | 167 | **Kern**: Beschlüsse, Vorlagen, Anlagen, Herkunft, Suche, Embeddings |
+| `council/store.py` | 161 | **Kern**: Beschlüsse, Vorlagen, Anlagen, Herkunft, Suche, Embeddings |
 | `council/store_schema.py` | 15 | `SCHEMA`, Migration und ihre Vokabulare |
 | `council/store_sitzungen.py` | 48 | Termine, Tagesordnungen, Gremien, Wochenvorschau |
 | `council/store_haushalt.py` | 136 | Haushalts-Seiten, Lese- UND Schreibseite |
 | `council/store_personen.py` | 31 | Ratsmitglieder, Verwaltung, Namensformen, Anwesenheit |
 | `council/store_themen.py` | 31 | Entitäten, Aliasse, Steckbriefe, Verwandtschaft |
-| `council/store_orte.py` | 27 | Katalog, Geocodierung, Stadtteile, Kartenpunkte |
+| `council/store_orte.py` | 33 | Katalog, Geocodierung, Stadtteile, Kartenpunkte |
 | `council/store_wortbeitraege.py` | 21 | Wortbeiträge und Videos |
 | `council/store_quiz.py` | 13 | die Quiz-Abfragen |
 | `council/store_presse.py` | 10 | Pressemitteilungen und Beteiligungen |
@@ -105,8 +105,8 @@ Methoden. Der Haushalt ist als erste Ecke heraus:
 | `council/store_helfer.py` | — | die paar Funktionen, die mehrere Ecken brauchen |
 
 Alle landen über Mixins in derselben `CouncilStore`; an den Aufrufstellen
-ändert sich nichts. `store.py` ist damit von 15.744 auf 5.072 Zeilen und von
-506 auf 167 eigene Methoden geschrumpft.
+ändert sich nichts. `store.py` ist damit von 15.744 auf 4.786 Zeilen und von
+506 auf 161 eigene Methoden geschrumpft.
 
 `store_helfer.py` gibt es, weil ein Mixin in einer eigenen Datei nichts aus
 `store.py` importieren kann — das wäre ein Ring. Was mehrere Ecken brauchen und
