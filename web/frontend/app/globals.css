@@ -1214,7 +1214,7 @@ lotti-figur {
 }
 .gleit-marker[data-gleitet="true"] {
   transition:
-    transform var(--takt-weg) var(--ease-out-strong),
+    transform var(--takt-weg) var(--gleit-kurve, var(--ease-out-strong)),
     opacity var(--takt-fluss) ease-out;
 }
 /* Sobald der Marker misst, gibt der aktive Punkt seine eigene Fläche ab —
@@ -1229,7 +1229,7 @@ lotti-figur {
   box-shadow: none;
 }
 
-/* ── Segment-Knopf: Schrift wartet auf die Fläche ──────────────────────────
+/* ── Knopf unter der Markierung: Schrift wartet auf die Fläche ────────────
    Die Beschriftung des aktiven Segments steht auf der gleitenden Fläche, hat
    aber ihre eigene Transition — und lief ihr davon: Der Text des Ziels war
    nach 150 ms weiß, die blaue Fläche kam erst nach 260 ms an. Dazwischen stand
@@ -1238,7 +1238,8 @@ lotti-figur {
 
    Die drei Dauern stehen deshalb hier statt in Utility-Klassen: Sie müssen
    sich unterscheiden — Druck-Feedback (`transform`) soll SOFORT kommen, Farbe
-   im Takt der Fläche.
+   im Takt der Fläche. Benutzt von den Segment-Umschaltern und den Seitenzahlen
+   — überall dort, wo Schrift auf der gleitenden Fläche steht.
 
    Das Ziel schaltet seine Schrift zusätzlich HART um (`0s`) und erst nach
    `--takt-schrift-verzug`. Beides ist Absicht: Eine Überblendung geht
@@ -1250,13 +1251,13 @@ lotti-figur {
    eigenen Grund (wann genau, s. `--takt-schrift-verzug`). Das verlassene Segment braucht die Verzögerung nicht — es
    trägt in dem Moment schon die Klasse des inaktiven Zustands und dunkelt
    sofort nach, während die Fläche unter ihm wegfährt. */
-.segment-knopf {
+.gleit-knopf {
   transition:
     color var(--takt-fluss) var(--ease-out-strong),
     background-color var(--takt-fluss) var(--ease-out-strong),
     transform var(--takt-tipp) var(--ease-out-strong);
 }
-.gleit-gruppe[data-marker="an"] .segment-knopf[data-aktiv="true"] {
+.gleit-gruppe[data-marker="an"] .gleit-knopf[data-aktiv="true"] {
   transition-duration: 0s, var(--takt-fluss), var(--takt-tipp);
   transition-delay: var(--takt-schrift-verzug), 0s, 0s;
 }

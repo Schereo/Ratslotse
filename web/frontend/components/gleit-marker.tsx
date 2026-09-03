@@ -150,10 +150,14 @@ export function useGleitMarker(schluessel: string, merkname?: string) {
  *  entschiede also die Reihenfolge im gebauten Stylesheet — und die steht
  *  nirgends geschrieben. `className` bleibt für alles, was die Grundregel gar
  *  nicht anfasst (Schatten). */
-export function GleitMarker({ markerRef, radius, farbe, className }: {
+export function GleitMarker({ markerRef, radius, farbe, kurve, className }: {
   markerRef: React.RefObject<HTMLSpanElement>;
   radius: string;
   farbe?: string;
+  /** Abweichende Kurve — z. B. `var(--ease-back-out)`, damit die Fläche am
+   *  Ziel kurz einrastet statt nur anzukommen. Nur für kurze Wege zwischen
+   *  kleinen Zielen; über etwa 40 px wirkt Überschwingen wie Wackelpudding. */
+  kurve?: string;
   className?: string;
 }) {
   return (
@@ -161,7 +165,11 @@ export function GleitMarker({ markerRef, radius, farbe, className }: {
       ref={markerRef}
       aria-hidden
       className={["gleit-marker", className].filter(Boolean).join(" ")}
-      style={{ "--gleit-radius": radius, ...(farbe ? { "--gleit-farbe": farbe } : {}) } as React.CSSProperties}
+      style={{
+        "--gleit-radius": radius,
+        ...(farbe ? { "--gleit-farbe": farbe } : {}),
+        ...(kurve ? { "--gleit-kurve": kurve } : {}),
+      } as React.CSSProperties}
     />
   );
 }
