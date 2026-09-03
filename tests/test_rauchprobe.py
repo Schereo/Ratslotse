@@ -146,3 +146,50 @@ def test_probe_mit_konto_braucht_wirklich_ein_konto(pfad):
     assert ("get", pfad) not in OEFFENTLICH, (
         f"{pfad} geht ohne Konto und gehört nach PROBEN."
     )
+
+
+# ---- Rechte des Probe-Kontos ----
+
+def test_haushalt_erwartet_ohne_recht_eine_sperre_und_mit_recht_daten():
+    """Die Probe muss einen 403 vom Ausfall unterscheiden können.
+
+    Der Haushalt hängt am Recht ``budget``. Ein Probe-Konto ohne dieses Recht
+    bekommt zwanzigmal 403 — und das ist die RICHTIGE Antwort, kein Ausfall.
+    Gemessen am 03.09.2026: Auf Prod trägt ``WEB_ADMIN_EMAIL`` die Adminrolle
+    (48/48 grün), auf dev zeigt dieselbe Variable auf ein Konto ohne Rolle und
+    der Deploy wurde durch 19 „Ausfälle" rot, die in Wahrheit die korrekt
+    greifende Sperre waren.
+    """
+    from scripts.rauchprobe import BUDGET_PREFIX, RECHTE_DES_KONTOS, erwarteter_kode
+
+    vorher = set(RECHTE_DES_KONTOS)
+    try:
+        RECHTE_DES_KONTOS.clear()
+        assert erwarteter_kode(BUDGET_PREFIX + "/debt") == 403
+        assert erwarteter_kode("/api/council/decisions") == 200, (
+            "Nur der Haushalt hängt am Recht — eine Ratsinhalts-Route darf die "
+            "Erwartung nicht ändern.")
+        RECHTE_DES_KONTOS.add("budget")
+        assert erwarteter_kode(BUDGET_PREFIX + "/debt") == 200
+    finally:
+        RECHTE_DES_KONTOS.clear()
+        RECHTE_DES_KONTOS.update(vorher)
+
+
+def test_jede_haushalts_probe_wird_von_der_rechtepruefung_erfasst():
+    """Beide Richtungen, wie jeder Wächter hier.
+
+    Das Präfix muss ALLE Haushalts-Proben treffen — sonst meldet eine einzelne
+    Route auf einer Umgebung ohne das Recht weiter einen Ausfall. Und es darf
+    keine fremde Probe treffen, sonst würde dort eine Sperre erwartet, wo
+    Daten kommen müssen.
+    """
+    from scripts.rauchprobe import BUDGET_PREFIX
+
+    haushalt = [p for p in MIT_KONTO if "/budget" in p]
+    assert haushalt, "keine Haushalts-Probe gefunden — Liste umgebaut?"
+    nicht_erfasst = [p for p in haushalt if not p.startswith(BUDGET_PREFIX)]
+    assert not nicht_erfasst, (
+        f"Diese Haushalts-Proben fallen nicht unter BUDGET_PREFIX: {nicht_erfasst}")
+    fremd = [p for p in MIT_KONTO if p.startswith(BUDGET_PREFIX) and "/budget" not in p]
+    assert not fremd, f"BUDGET_PREFIX trifft fremde Proben: {fremd}"
