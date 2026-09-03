@@ -330,7 +330,7 @@ class OrteMixin:
         return out
 
     def street_locations_to_refine(self, limit: int | None = None) -> list[dict]:
-        """Straßen, von denen nur EIN Segment gespeichert ist.
+        """Straßen ohne vollständige Geometrie — Einzelsegment oder gar keine.
 
         Nominatim gibt zu einem Straßennamen den Weg zurück, der zufällig
         zuerst passt — bei „Tweelbäker Tredde" ein 800-m-Stück von 2,4 km.
@@ -338,17 +338,22 @@ class OrteMixin:
         auseinanderhält: an der Geometrie-Art. Alles, was für eine Straße
         KEIN ``MultiLineString`` ist, stammt aus dem Einzel-Segment-Weg.
 
+        Ohne Geometrie zählen sie mit: Bei ihnen hat der Geocoder einmal
+        nichts gefunden (``geo_tried = 1``, kein Umriss) — im
+        Straßen-Schnappschuss stehen sie trotzdem oft.
+
         Das ist eine Reparatur des Bestands, kein Dauerlauf: Neue Orte gehen
         seit der ``kind``-Weiche in ``geocode_entities._is_street`` von
         vornherein an Overpass. Am Prod-Bestand (03.09.2026) betrifft es 430
-        Straßen, 96 davon mit einem Namen, den kein Muster als Straße erkennt.
+        Straßen mit Einzelsegment, 96 davon mit einem Namen, den kein Muster
+        als Straße erkennt, plus 140 ohne jede Geometrie.
         """
         sql = (
-            "SELECT l.slug, l.name, l.kind, COUNT(dl.decision_id) AS n "
+            "SELECT l.slug, l.name, l.kind, l.geojson, COUNT(dl.decision_id) AS n "
             "FROM council_locations l LEFT JOIN council_decision_locations dl "
             "ON dl.location_slug = l.slug "
-            "WHERE l.kind IN ('street','square') AND l.geojson IS NOT NULL "
-            "AND l.geojson NOT LIKE '%MultiLineString%' "
+            "WHERE l.kind IN ('street','square') "
+            "AND (l.geojson IS NULL OR l.geojson NOT LIKE '%MultiLineString%') "
             "GROUP BY l.slug ORDER BY n DESC, l.name"
         )
         args: tuple = ()
@@ -356,6 +361,20 @@ class OrteMixin:
             sql += " LIMIT ?"
             args = (int(limit),)
         return [dict(r) for r in self._conn.execute(sql, args)]
+
+    def street_entities_to_refine(self) -> list[dict]:
+        """Entitäten ohne vollständige Straßen-Geometrie.
+
+        Eine Entität, die eine Straße IST („Nadorster Straße"), trägt ihren
+        eigenen Punkt in ``council_entity_meta`` — er ist der Rückfall der
+        Stadtteil-Zuordnung und der Pin auf der Stadtkarte. Auch er stammt aus
+        demselben Einzel-Segment-Weg und ist damit derselbe Fehler.
+        """
+        return [dict(r) for r in self._conn.execute(
+            "SELECT e.slug, e.name, m.geojson FROM council_entities e "
+            "JOIN council_entity_meta m ON m.slug = e.slug "
+            "WHERE e.kind IN ('place', 'project') "
+            "AND (m.geojson IS NULL OR m.geojson NOT LIKE '%MultiLineString%')")]
 
     def apply_curated_location_geocodes(self) -> int:
         """Schwierige Ratsorte vor dem freien Geocoder reproduzierbar verorten."""
