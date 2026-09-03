@@ -76,6 +76,19 @@ test.describe("Öffentliche Problemübersicht", () => {
     }));
   });
 
+  test("hält Produkterklärungen hinter der Lotti-Hilfe statt dauerhaft im Weg", async ({ page }) => {
+    await page.goto("/probleme?view=meistgemeldet");
+    await expect(page.getByRole("heading", { name: "Meistgemeldet" })).toBeVisible();
+
+    // Post-merge feedback from the deployed feature: these five signals were
+    // archived together and must remain guarded at the browser seam.
+    await expect.soft(page.getByText("Meldehäufigkeit", { exact: true })).toHaveCount(0, { timeout: 500 });
+    await expect.soft(page.getByText(/Die lebenszeitliche Zahl unabhängiger freigegebener Meldungen zeigt/)).toHaveCount(0, { timeout: 500 });
+    await expect.soft(page.getByLabel("Status filtern")).toHaveCount(0, { timeout: 500 });
+    await expect.soft(page.getByText("Mehrfach gemeldet", { exact: true })).toHaveCount(0, { timeout: 500 });
+    await expect.soft(page.getByRole("button", { name: /Lotti.*Hilfe/i })).toBeVisible({ timeout: 500 });
+  });
+
   test("zeigt Karte und Meistgemeldet-Rangliste ohne Anmeldung", async ({ page }, testInfo) => {
     const runtimeErrors: string[] = [];
     page.on("pageerror", (error) => runtimeErrors.push(error.stack ?? error.message));
@@ -83,7 +96,7 @@ test.describe("Öffentliche Problemübersicht", () => {
 
     await expect(page.getByRole("heading", { name: "Probleme in Oldenburg" })).toBeVisible();
     await expect(page.getByText("Feature-Vorschau · frei erfundene Beispiele")).toBeVisible();
-    await expect(page.getByText("Unabhängig · kein Angebot der Stadt Oldenburg · keine amtlichen Status.")).toBeVisible();
+    await expect(page.getByText("Unabhängige Meldungen · privates Bürgerprojekt, kein Angebot der Stadt Oldenburg.")).toBeVisible();
     await expect(page.locator(".problem-map-point")).toHaveCount(1);
     await expect(page.locator(".problem-map-facility")).toHaveCount(1);
     await expect(page.locator(".problem-map-route")).toHaveCount(1);
@@ -94,6 +107,9 @@ test.describe("Öffentliche Problemübersicht", () => {
     await page.locator(".problem-map-route-control").press("Enter");
     await expect(page.getByRole("heading", { level: 2, name: "Beispiel: Radroute" })).toBeVisible();
     await expect(page.getByText("1 unabhängige Meldung", { exact: true })).toBeVisible();
+    for (const status of ["Neu", "Mehrfach gemeldet", "Geprüft", "Weiterhin vorhanden"]) {
+      await expect(page.getByText(status, { exact: true })).toHaveCount(0);
+    }
 
     await page.getByRole("button", { name: "Mobilität & Verkehr" }).click();
     await expect(page.getByRole("button", { name: "Mobilität & Verkehr" })).toHaveAttribute("aria-pressed", "true");
@@ -104,8 +120,9 @@ test.describe("Öffentliche Problemübersicht", () => {
     await page.getByRole("button", { name: "Meistgemeldet", exact: true }).click();
     await expect(page).toHaveURL(/view=meistgemeldet/);
     await expect(page.getByRole("heading", { name: "Meistgemeldet" })).toBeVisible();
-    await expect(page.getByText(/gemeinschaftliche Aufmerksamkeit.*keine Aussage über Wahrheit, Dringlichkeit/i)).toBeVisible();
-    await expect(page.getByLabel("Hafenblau-Skala der Meldehäufigkeit")).toBeVisible();
+    await expect(page.getByText(/gemeinschaftliche Aufmerksamkeit.*keine Aussage über Wahrheit, Dringlichkeit/i)).toHaveCount(0);
+    await expect(page.getByLabel("Hafenblau-Skala der Meldehäufigkeit")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /Lotti-Hilfe öffnen: Rangliste erklären/i })).toBeVisible();
     const entries = page.getByRole("list", { name: "Meistgemeldete ungelöste Probleme" }).getByRole("listitem");
     await expect(entries).toHaveCount(7);
     await expect(entries.nth(0)).toContainText("Beispiel: stadtweites Thema");
@@ -120,12 +137,89 @@ test.describe("Öffentliche Problemübersicht", () => {
     await expect(attribution).toBeVisible();
     await expect(page.locator(".problem-rank-bar").first()).toHaveCSS("transition-duration", "0s");
     const rank = entries.nth(0).getByText("01", { exact: true });
-    await expect(rank).toHaveCSS("font-family", /Inter/);
+    const exactCount = entries.nth(0).getByText("18 unabhängige Meldungen", { exact: true });
+    await expect(rank).toHaveCSS("font-family", /Inter|IBM Plex Mono/);
+    await expect(exactCount).toHaveCSS("font-family", /Inter|IBM Plex Mono/);
     expect(await rank.evaluate((element) => getComputedStyle(element).fontFamily)).not.toMatch(/Bricolage/i);
+    expect(await exactCount.evaluate((element) => getComputedStyle(element).fontFamily)).not.toMatch(/Bricolage/i);
     await expect(page.getByText("Offenbar behoben")).toHaveCount(0);
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.screenshot({ path: testInfo.outputPath("meistgemeldet-desktop-light.png"), fullPage: true });
     expect(runtimeErrors).toEqual([]);
+  });
+
+  test("nutzt Desktopbreite für eine klar hierarchische Top drei", async ({ page }) => {
+    await page.goto("/probleme?view=meistgemeldet");
+
+    const entries = page.getByRole("list", { name: "Meistgemeldete ungelöste Probleme" }).getByRole("listitem");
+    await expect(entries).toHaveCount(7);
+    const [first, second, third, fourth] = await Promise.all([
+      entries.nth(0).boundingBox(),
+      entries.nth(1).boundingBox(),
+      entries.nth(2).boundingBox(),
+      entries.nth(3).boundingBox(),
+    ]);
+    expect(first).not.toBeNull();
+    expect(second).not.toBeNull();
+    expect(third).not.toBeNull();
+    expect(fourth).not.toBeNull();
+    expect(Math.abs(first!.y - second!.y)).toBeLessThanOrEqual(4);
+    expect(Math.abs(second!.y - third!.y)).toBeLessThanOrEqual(4);
+    expect(first!.width).toBeGreaterThan(second!.width * 1.5);
+    expect(first!.height).toBeGreaterThan(fourth!.height * 1.25);
+
+    // A wide window can still contain a narrow card area (for example beside
+    // navigation). Layout therefore follows the graphic's container, not the viewport.
+    const list = page.getByRole("list", { name: "Meistgemeldete ungelöste Probleme" });
+    await list.evaluate((element) => {
+      (element.parentElement as HTMLElement).style.width = "760px";
+    });
+    const [narrowFirst, narrowSecond] = await Promise.all([
+      entries.nth(0).boundingBox(),
+      entries.nth(1).boundingBox(),
+    ]);
+    expect(narrowFirst).not.toBeNull();
+    expect(narrowSecond).not.toBeNull();
+    expect(Math.abs(narrowFirst!.width - narrowSecond!.width)).toBeLessThanOrEqual(2);
+    expect(narrowSecond!.y).toBeGreaterThan(narrowFirst!.y + narrowFirst!.height);
+  });
+
+  test("bindet Bewegung an Eintritt, Fokus, Auswahl und Lotti-Hilfe", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await page.goto("/probleme?view=meistgemeldet");
+
+    const first = page.locator('[data-ranggruppe="top-drei"]').first();
+    const toggle = first.getByRole("button", { name: /1\. Beispiel: stadtweites Thema/i });
+    const bar = first.locator(".problem-rank-bar");
+    expect(await first.evaluate((element) => getComputedStyle(element).animationName)).not.toBe("none");
+    expect(await bar.evaluate((element) => getComputedStyle(element).animationName)).not.toBe("none");
+    const durations = await Promise.all([
+      first.evaluate((element) => getComputedStyle(element).animationDuration),
+      bar.evaluate((element) => getComputedStyle(element).animationDuration),
+    ]);
+    expect(durations.map((duration) => Number.parseFloat(duration))).toEqual([
+      expect.any(Number),
+      expect.any(Number),
+    ]);
+    expect(durations.every((duration) => Number.parseFloat(duration) <= 0.3)).toBe(true);
+    await expect(bar).toHaveCSS("transform", "matrix(1, 0, 0, 1, 0, 0)");
+    const borderBeforeHover = await first.evaluate((element) => getComputedStyle(element).borderColor);
+    await toggle.hover();
+    await expect.poll(() => first.evaluate((element) => getComputedStyle(element).transform)).not.toBe("none");
+    const hoverStyle = await first.evaluate((element) => ({
+      border: getComputedStyle(element).borderColor,
+      shadow: getComputedStyle(element).boxShadow,
+    }));
+    expect(hoverStyle.border).not.toBe(borderBeforeHover);
+    expect(hoverStyle.shadow).toContain("1px 2px");
+    expect(hoverStyle.shadow).not.toContain("24px");
+    await toggle.click();
+    expect(await page.locator(".problem-preview").evaluate((element) => getComputedStyle(element).animationName)).not.toBe("none");
+
+    const help = page.getByRole("button", { name: "Lotti-Hilfe öffnen: Rangliste erklären" });
+    await expect(help.locator("lotti-figur")).toHaveAttribute("regung", "zeigt-runter");
+    await help.click();
+    await expect(page.getByRole("button", { name: "Lotti-Hilfe schließen: Rangliste erklären" }).locator("lotti-figur")).toHaveAttribute("regung", "erklaert");
   });
 
   test("zeichnet auch bei großer Zahlenspanne mathematisch proportionale Rangbalken", async ({ page }) => {
@@ -184,12 +278,6 @@ test.describe("Öffentliche Problemübersicht", () => {
     await page.getByRole("button", { name: "Meistgemeldet", exact: true }).click();
     await page.getByRole("button", { name: /Beispiel: kaputte Altgeometrie/i }).click();
     await expect(page.getByText("Keine brauchbare Geometrie: Dieses Beispiel kann nicht ehrlich auf der Karte gezeigt werden.")).toBeVisible();
-
-    await page.getByRole("combobox", { name: "Status filtern" }).selectOption("verified");
-    const filtered = page.getByRole("list", { name: "Meistgemeldete ungelöste Probleme" }).getByRole("listitem");
-    await expect(filtered).toHaveCount(2);
-    await expect(filtered.nth(0)).toContainText("Musterhalle");
-    await expect(filtered.nth(1)).toContainText("getrennte Grünflächen");
   });
 
   test("fokussiert Punkt, Einrichtung, Route und Gebiet aus der Rangliste", async ({ page }) => {
@@ -209,32 +297,41 @@ test.describe("Öffentliche Problemübersicht", () => {
     }
   });
 
-  test("legt Beispiel-, Farb- und Statushinweise per Tastatur offen", async ({ page }) => {
+  test("Lotti erklärt Karte und Rangliste per Tastatur und gibt den Fokus zurück", async ({ page }) => {
     await page.goto("/probleme");
 
-    const exampleInfo = page.getByRole("button", { name: "Mehr zu den fiktiven Beispielen" });
+    await expect(page.getByRole("button", { name: "Mehr zu den fiktiven Beispielen" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Farben und Status erklären" })).toHaveCount(0);
     await expect(page.getByText("Alle als Beispiel bezeichneten Einträge und Zahlen sind frei erfunden.")).toHaveCount(0);
-    await expect(page.getByText("Farben zeigen die Zahl unabhängiger Meldungen, nicht die Dringlichkeit.")).toHaveCount(0);
-    await expect(page.getByText("Status sind Einordnungen von Ratslotse, keine amtlichen Bearbeitungsstände.")).toHaveCount(0);
-    await expect(exampleInfo).toHaveAttribute("aria-expanded", "false");
-    await exampleInfo.focus();
-    await exampleInfo.press("Enter");
-    await expect(exampleInfo).toHaveAttribute("aria-expanded", "true");
-    await expect(page.getByRole("dialog", { name: "Fiktive Beispiele" })).toBeVisible();
-    await expect(page.getByText("Alle als Beispiel bezeichneten Einträge und Zahlen sind frei erfunden.")).toBeVisible();
-    await page.keyboard.press("Escape");
-    await expect(exampleInfo).toHaveAttribute("aria-expanded", "false");
-    await expect(exampleInfo).toBeFocused();
+    await expect(page.getByLabel("Hafenblau-Skala der Meldehäufigkeit")).toHaveCount(0);
 
-    const contextInfo = page.getByRole("button", { name: "Farben und Status erklären" });
-    await contextInfo.focus();
-    await contextInfo.press("Enter");
-    await expect(contextInfo).toHaveAttribute("aria-expanded", "true");
-    await expect(page.getByRole("dialog", { name: "Farben und Status" })).toBeVisible();
-    await expect(page.getByText("Farben zeigen die Zahl unabhängiger Meldungen, nicht die Dringlichkeit.")).toBeVisible();
-    await expect(page.getByText("Status sind Einordnungen von Ratslotse, keine amtlichen Bearbeitungsstände.")).toBeVisible();
+    const mapHelp = page.getByRole("button", { name: "Lotti-Hilfe öffnen: Karte erklären" });
+    await expect(mapHelp).toHaveAttribute("aria-expanded", "false");
+    await expect(mapHelp.locator("lotti-figur")).toHaveAttribute("regung", "ruht");
+    await mapHelp.focus();
+    await mapHelp.press("Enter");
+
+    const dialog = page.getByRole("dialog", { name: "Lotti erklärt die Karte" });
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toBeFocused();
+    await expect(page.getByRole("button", { name: "Lotti-Hilfe schließen: Karte erklären" })).toHaveAttribute("aria-expanded", "true");
+    await expect(page.getByRole("button", { name: /Lotti-Hilfe schließen/ }).locator("lotti-figur")).toHaveAttribute("regung", "erklaert");
+    await expect(page.getByLabel("Hafenblau-Skala der Meldehäufigkeit")).toBeVisible();
+    await expect(page.getByText(/Hafenblau zeigt ausschließlich die Zahl unabhängiger Meldungen/)).toBeVisible();
+    await expect(page.getByText("Alle als Beispiel bezeichneten Einträge und Zahlen sind frei erfunden. Sie zeigen nur, wie die Übersicht funktioniert.")).toBeVisible();
+
     await page.keyboard.press("Escape");
-    await expect(contextInfo).toBeFocused();
+    await expect(mapHelp).toHaveAttribute("aria-expanded", "false");
+    await expect(mapHelp).toBeFocused();
+
+    await page.getByRole("button", { name: "Meistgemeldet", exact: true }).click();
+    const leaderboardHelp = page.getByRole("button", { name: "Lotti-Hilfe öffnen: Rangliste erklären" });
+    await expect(leaderboardHelp.locator("lotti-figur")).toHaveAttribute("regung", "zeigt-runter");
+    await leaderboardHelp.press("Enter");
+    await expect(page.getByRole("dialog", { name: "Lotti erklärt die Rangliste" })).toBeVisible();
+    await expect(page.getByText(/Die lebenszeitliche Zahl zählt freigegebene unabhängige Meldungen/)).toBeVisible();
+    await page.getByRole("button", { name: "Hilfe schließen", exact: true }).click();
+    await expect(leaderboardHelp).toBeFocused();
   });
 
   test("meldet ausgefallene Kartenkacheln und lädt sie erneut", async ({ page }) => {
@@ -294,8 +391,8 @@ test.describe("Öffentliche Problemübersicht auf schmalem Touch-Gerät", () => 
 
     await expect(page.locator("html")).toHaveClass(/dark/);
     await expect(page.getByLabel("Problemkarte von Oldenburg")).toBeVisible();
-    await page.getByRole("button", { name: "Farben und Status erklären" }).tap();
-    const explanation = page.getByText("Farben zeigen die Zahl unabhängiger Meldungen, nicht die Dringlichkeit.");
+    await page.getByRole("button", { name: "Lotti-Hilfe öffnen: Karte erklären" }).tap();
+    const explanation = page.getByText(/Hafenblau zeigt ausschließlich die Zahl unabhängiger Meldungen/);
     await expect(explanation).toBeVisible();
     const explanationBox = await explanation.boundingBox();
     expect(explanationBox).not.toBeNull();
@@ -306,6 +403,11 @@ test.describe("Öffentliche Problemübersicht auf schmalem Touch-Gerät", () => 
     await page.getByRole("button", { name: "Meistgemeldet", exact: true }).tap();
     await expect(page.getByRole("button", { name: /stadtweites Thema/i })).toBeVisible();
     await expect(page.locator(".problem-rank-bar").first()).toHaveCSS("transition-duration", "0s");
+    await expect(page.locator('[data-ranggruppe="top-drei"]').first()).toHaveCSS("animation-name", "none");
+    await expect(page.locator(".problem-rank-bar").first()).toHaveCSS("animation-name", "none");
+    const lottiHelp = page.getByRole("button", { name: "Lotti-Hilfe öffnen: Rangliste erklären" });
+    await expect(lottiHelp).toHaveCSS("transition-duration", "0s");
+    await expect(lottiHelp.locator("lotti-figur")).toHaveCSS("transition-duration", "0s");
     const citywideToggle = page.getByRole("button", { name: /1\. Beispiel: stadtweites Thema/i });
     await expect(citywideToggle.locator("svg")).toHaveCSS("transition-duration", "0s");
     await expect(citywideToggle.locator("xpath=..")).toHaveCSS("transition-duration", "0s");
@@ -328,4 +430,40 @@ test.describe("Öffentliche Problemübersicht auf schmalem Touch-Gerät", () => 
     await expect(page.locator(".problem-map-route")).toHaveCSS("transition-duration", "0s");
     await expect(page.locator(".problem-map-area").first()).toHaveCSS("transition-duration", "0s");
   });
+});
+
+test("bleibt zusätzlich auf Desktop dunkel und Mobile hell stimmig", async ({ browser }, testInfo) => {
+  const variants = [
+    { name: "desktop-dark", viewport: { width: 1440, height: 900 }, colorScheme: "dark" as const, hasTouch: false },
+    { name: "mobile-light", viewport: { width: 390, height: 844 }, colorScheme: "light" as const, hasTouch: true },
+  ];
+
+  for (const variant of variants) {
+    const context = await browser.newContext({
+      viewport: variant.viewport,
+      colorScheme: variant.colorScheme,
+      hasTouch: variant.hasTouch,
+      reducedMotion: "no-preference",
+    });
+    await context.addInitScript((theme) => localStorage.setItem("theme", theme), variant.colorScheme);
+    const page = await context.newPage();
+    await page.route("**/api/probleme", (route) => route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(problemResponse),
+    }));
+    await page.goto("/probleme?view=meistgemeldet");
+
+    if (variant.colorScheme === "dark") await expect(page.locator("html")).toHaveClass(/dark/);
+    else await expect(page.locator("html")).not.toHaveClass(/dark/);
+    await expect(page.getByRole("heading", { name: "Meistgemeldet" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Lotti-Hilfe öffnen: Rangliste erklären" })).toBeVisible();
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(overflow).toBeLessThanOrEqual(1);
+    const finalEntry = page.getByRole("list", { name: "Meistgemeldete ungelöste Probleme" }).getByRole("listitem").last();
+    await expect(finalEntry).toHaveCSS("opacity", "1");
+    await expect(finalEntry.locator(".problem-rank-bar")).toHaveCSS("transform", "matrix(1, 0, 0, 1, 0, 0)");
+    await page.screenshot({ path: testInfo.outputPath(`${variant.name}.png`), fullPage: true });
+    await context.close();
+  }
 });

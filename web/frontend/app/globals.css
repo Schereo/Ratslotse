@@ -664,24 +664,21 @@ lotti-figur {
   height: 0.625rem;
   width: 0.625rem;
 }
-.problem-rank-bar {
-  transition: none;
+.problem-lotti-figur {
+  transition: transform 180ms var(--ease-out-strong);
 }
-@keyframes problem-vorschau-oeffnen {
-  from { opacity: 0; transform: translateY(-4px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-.problem-preview {
-  animation: problem-vorschau-oeffnen 180ms var(--ease-out-strong);
+@media (prefers-reduced-motion: no-preference) {
+  .problem-lotti-help:hover .problem-lotti-figur,
+  .problem-lotti-help:focus-visible .problem-lotti-figur {
+    transform: translateY(-2px) rotate(-2deg);
+  }
 }
 @media (prefers-reduced-motion: reduce) {
-  .problem-rank-bar,
-  .problem-disclosure-card,
-  .problem-disclosure-chevron,
+  .problem-lotti-help,
+  .problem-lotti-figur,
   .problem-map-pin,
   .problem-map-route,
   .problem-map-area { transition-duration: 0s !important; }
-  .problem-preview { animation: none !important; }
 }
 
 /* ── Kommunalwahl-Bereich ─────────────────────────────────────────────────
