@@ -3,9 +3,9 @@
 }
 
 .list {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 0.625rem;
-  grid-template-columns: minmax(0, 1fr);
   list-style: none;
   margin: 0;
   padding: 0;
@@ -59,38 +59,8 @@
   padding: 0.75rem 1rem;
 }
 
-@container (min-width: 768px) {
-  .list {
-    grid-template-columns: repeat(12, minmax(0, 1fr));
-  }
-
-  .first {
-    grid-column: span 6;
-    min-height: 11rem;
-  }
-
-  .podium {
-    grid-column: span 3;
-    min-height: 11rem;
-  }
-
-  .other {
-    grid-column: span 12;
-  }
-
-  .topToggle {
-    align-content: center;
-    gap: 1rem;
-    grid-template-columns: 3.5rem minmax(0, 1fr) auto;
-    height: 100%;
-    padding: 1.25rem 1rem;
-  }
-
-  .preview {
-    margin-left: 4.5rem;
-    padding-left: 0;
-    padding-right: 1rem;
-  }
+.topToggle {
+  min-height: 6.5rem;
 }
 
 @keyframes rankEntry {

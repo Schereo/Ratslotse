@@ -292,6 +292,9 @@ function RechtsLinks({ zentriert = false }: { zentriert?: boolean }) {
           <a href="/docs" className="hover:text-foreground">Technik-Doku</a>
         </>
       )}
+      <span className="mt-1.5 block">
+        Ratslotse ist ein privates Bürgerprojekt und kein Angebot der Stadt Oldenburg.
+      </span>
     </p>
   );
 }
