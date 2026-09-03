@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
 from typing import Iterable
+from kern.dbfehler import tabelle_fehlt
 
 
 logger = logging.getLogger("kern.store")
@@ -48,7 +49,7 @@ CREATE TABLE IF NOT EXISTS committee_subscriptions (
 -- fürs Anzeigen, weil sie in der anderen Datenbank liegen (kein Join möglich).
 -- `stations` hält den zuletzt GEMELDETEN Stand der Beratungsfolge: Der Cron
 -- vergleicht dagegen und schickt nur, was wirklich dazugekommen ist.
-CREATE TABLE IF NOT EXISTS vorlage_follows (
+CREATE TABLE IF NOT EXISTS template_follows (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     owner_id    INTEGER NOT NULL,
     kvonr       INTEGER NOT NULL,
@@ -59,7 +60,7 @@ CREATE TABLE IF NOT EXISTS vorlage_follows (
     notified_at TEXT,
     UNIQUE(owner_id, kvonr)
 );
-CREATE INDEX IF NOT EXISTS idx_vorlage_follows_kvonr ON vorlage_follows(kvonr);
+CREATE INDEX IF NOT EXISTS idx_vorlage_follows_kvonr ON template_follows(kvonr);
 
 -- Persönliche Merkliste: eine gemeinsame Ablage für Sitzungen, einzelne TOPs
 -- und gefasste Beschlüsse. `target_key` ist die technische Identität beim
@@ -180,6 +181,12 @@ CREATE TABLE IF NOT EXISTS web_users (
     -- Wann die Themen-Übersicht zuletzt offen war. Der Zähler an „Meine
     -- Themen" zeigt nur, was SEITDEM dazukam; NULL = noch nie nachgesehen.
     topics_seen_at   TEXT,
+    -- Womit dieses Konto angelegt wurde: web | ios | android | app. NULL =
+    -- vor der Messung registriert. Getrennt von der laufenden Nutzung in
+    -- `user_activity`: Woher jemand KOMMT und was er DANN benutzt, sind zwei
+    -- Fragen — wer sich im Browser registriert und später nur noch die App
+    -- öffnet, wäre sonst nicht von einem reinen Web-Konto zu unterscheiden.
+    signup_client    TEXT,
     created_at       TEXT NOT NULL
 );
 
@@ -248,19 +255,19 @@ CREATE TABLE IF NOT EXISTS council_agenda_classified (
 );
 
 -- „Meine Gespräche" (5a/I-04 + Design 6a): KI-Verläufe am Konto, nur mit
--- ausdrücklicher Einwilligung (web_users.qa_speichern = 1). user_id steht
+-- ausdrücklicher Einwilligung (web_users.saves_conversations = 1). user_id steht
 -- denormalisiert auch an den Turns, damit die Konto-Löschung über
 -- USER_OWNED_TABLES beide Tabellen ohne Waisen abräumt.
-CREATE TABLE IF NOT EXISTS qa_gespraeche (
+CREATE TABLE IF NOT EXISTS qa_conversations (
     id       INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id  INTEGER NOT NULL,
     title    TEXT NOT NULL,
     created  TEXT NOT NULL,
     updated  TEXT NOT NULL
 );
-CREATE INDEX IF NOT EXISTS idx_qa_gespraeche_user ON qa_gespraeche(user_id, updated DESC);
+CREATE INDEX IF NOT EXISTS idx_qa_gespraeche_user ON qa_conversations(user_id, updated DESC);
 
-CREATE TABLE IF NOT EXISTS qa_gespraech_turns (
+CREATE TABLE IF NOT EXISTS qa_conversation_turns (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     conversation_id INTEGER NOT NULL,
     user_id         INTEGER NOT NULL,
@@ -269,7 +276,7 @@ CREATE TABLE IF NOT EXISTS qa_gespraech_turns (
     sources         TEXT,               -- JSON {sources, cited}
     created         TEXT NOT NULL
 );
-CREATE INDEX IF NOT EXISTS idx_qa_turns_gespraech ON qa_gespraech_turns(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_qa_turns_gespraech ON qa_conversation_turns(conversation_id);
 
 -- Geteilte „Frag den Rat"-Antworten (Task 31): bewusste Einzel-
 -- Veröffentlichung per Klick — unabhängig vom „Gespräche speichern"-Opt-in.
@@ -282,7 +289,7 @@ CREATE TABLE IF NOT EXISTS qa_shares (
     answer   TEXT NOT NULL,
     sources  TEXT,                  -- JSON [{id, title, session_date, committee, outcome}]
     created  TEXT NOT NULL,
-    extras   TEXT                   -- JSON {debatten, presse, anlagen, parteien}
+    extras   TEXT                   -- JSON {debates, press_releases, attachments, parties}
 );
 
 -- „Gründliche Recherche" (RG-10): server-seitige Recherche-Jobs. Der Job
@@ -369,9 +376,20 @@ CREATE INDEX IF NOT EXISTS idx_user_quiz_owner ON user_quiz_questions(owner_id);
 CREATE TABLE IF NOT EXISTS user_activity (
     owner_id INTEGER NOT NULL,
     day      TEXT NOT NULL,           -- YYYY-MM-DD
-    feature  TEXT NOT NULL,           -- session | ki_frage | suche | quiz | thema | analyse | karte
+    -- Was gezählt wird. `session` schreibt jede angemeldete Anfrage
+    -- (deps.py) und trägt `last_seen` und die WAU; die übrigen sind die
+    -- Funktionen, die das Admin-Panel je Konto zeigt. Neue Werte
+    -- englisch. `quiz` steht nicht dabei: Das zählt beantwortete Fragen
+    -- aus `quiz_answers`, nicht Aufrufe.
+    feature  TEXT NOT NULL,           -- session | ai_question | research | search | analysis | map
+    -- Womit zugegriffen wurde: web | ios | android | app | unknown. `app` ist
+    -- der Altwert der Capacitor-Hülle, die sich nicht genauer ausweist;
+    -- `unknown` tragen die Zeilen von vor dieser Messung. Teil des Primär-
+    -- schlüssels, weil dieselbe Person am selben Tag beides benutzt haben kann
+    -- — sonst gewänne der Client, der zufällig zuerst kam.
+    client   TEXT NOT NULL DEFAULT 'unknown',
     count    INTEGER NOT NULL DEFAULT 1,
-    PRIMARY KEY (owner_id, day, feature)
+    PRIMARY KEY (owner_id, day, feature, client)
 );
 CREATE INDEX IF NOT EXISTS idx_user_activity_day ON user_activity(day);
 CREATE INDEX IF NOT EXISTS idx_user_activity_owner ON user_activity(owner_id);
@@ -417,7 +435,7 @@ CREATE INDEX IF NOT EXISTS idx_feedback_created ON feedback(created_at DESC);
 USER_OWNED_TABLES: tuple[tuple[str, str], ...] = (
     ("topics", "owner_id"),
     ("committee_subscriptions", "owner_id"),
-    ("vorlage_follows", "owner_id"),
+    ("template_follows", "owner_id"),
     ("bookmarks", "owner_id"),
     ("notification_queue", "owner_id"),
     ("council_results_sent", "owner_id"),
@@ -427,8 +445,8 @@ USER_OWNED_TABLES: tuple[tuple[str, str], ...] = (
     ("council_agenda_matches", "owner_id"),
     ("council_agenda_classified", "owner_id"),
     ("push_tokens", "owner_id"),
-    ("qa_gespraeche", "user_id"),
-    ("qa_gespraech_turns", "user_id"),
+    ("qa_conversations", "user_id"),
+    ("qa_conversation_turns", "user_id"),
     ("qa_shares", "user_id"),
     ("deep_research_jobs", "user_id"),
     ("quiz_answers", "owner_id"),
@@ -480,9 +498,32 @@ def _umzug_von_nwz(ziel: Path) -> None:
     Vorher wird der WAL eingecheckt: Nur so ist die Hauptdatei vollständig und
     die Begleitdateien (``-wal``/``-shm``) sind entbehrlich.
     """
-    if ziel.exists() or ziel.name == "nwz.sqlite":
+    if ziel.name == "nwz.sqlite":
         return
     alt = ziel.with_name("nwz.sqlite")
+    if ziel.exists():
+        # Eine LEERE Zieldatei ist kein Umzug, sondern ein Stolperstein: Sie
+        # entsteht, sobald irgendetwas den neuen Pfad einmal öffnet, ohne zu
+        # schreiben — und blockiert danach den Umzug für immer. Der Start
+        # fände dann eine Datenbank ohne Tabellen vor, legte das Schema neu an
+        # und die App käme mit LEEREN Konten hoch, während die echten Daten
+        # unberührt unter dem alten Namen liegen. Genau davor warnt CLAUDE.md.
+        #
+        # Auf Prod stand am 01.09.2026 eine solche 0-Byte-Datei neben einer
+        # 37-MB-`nwz.sqlite` mit 22 Konten. Deshalb: 0 Byte heißt „nicht da".
+        if ziel.stat().st_size or not alt.exists() or not alt.stat().st_size:
+            if ziel.stat().st_size and alt.exists() and alt.stat().st_size:
+                # Beide gefüllt — das kann keine Maschine entscheiden.
+                logging.getLogger("kern.store").warning(
+                    "Zwei gefüllte Datenbanken nebeneinander: %s (%d Bytes) und %s "
+                    "(%d Bytes). Es wird %s benutzt; die andere bitte von Hand "
+                    "prüfen und wegräumen.",
+                    ziel.name, ziel.stat().st_size, alt.name, alt.stat().st_size, ziel.name)
+            return
+        ziel.unlink()
+        logging.getLogger("kern.store").warning(
+            "Leere %s entfernt — sie hätte den Umzug von %s blockiert.",
+            ziel.name, alt.name)
     if not alt.exists():
         return
     try:
@@ -504,6 +545,15 @@ def _umzug_von_nwz(ziel: Path) -> None:
             alt, ziel)
 
 
+#: Die vier deutschen Tabellennamen der Konten-Datenbank und ihre Nachfolger
+#: (01.09.2026). Nach Länge sortiert: `qa_conversation_turns` vor `qa_conversations`.
+TABELLEN_UMBENANNT: list[tuple[str, str]] = [
+    ("qa_gespraech_turns", "qa_conversation_turns"),
+    ("qa_gespraeche", "qa_conversations"),
+    ("migrationsmarken", "migration_marks"),
+    ("vorlage_follows", "template_follows"),
+]
+
 class Store:
     def __init__(self, path: str | Path):
         self.path = Path(path)
@@ -512,13 +562,17 @@ class Store:
         self._conn = sqlite3.connect(self.path, timeout=15, check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
         # SQLites eingebautes lower() kennt nur ASCII — „Cäcilienbrücke" bliebe
-        # damit groß-A-Ä-blind. Für Titel-Suchen (qa_gespraeche) rechnet Python.
+        # damit groß-A-Ä-blind. Für Titel-Suchen (qa_conversations) rechnet Python.
         self._conn.create_function("unicode_lower", 1,
                                    lambda t: t.lower() if isinstance(t, str) else t)
         # WAL allows concurrent readers/writer (bot + cron + web API share this
         # file); busy_timeout lets writers wait instead of failing immediately.
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.execute("PRAGMA busy_timeout=5000")
+        # VOR dem Schema — sonst legt `CREATE TABLE IF NOT EXISTS` die neue
+        # Tabelle leer an und die Umbenennung unterbleibt für immer
+        # (s. `_web_users_spalten_nachziehen`, derselbe Fehler spaltenweise).
+        self._tabellen_umbenennen()
         self._conn.executescript(SCHEMA)
         self._conn.commit()
         self._migrate()
@@ -544,6 +598,46 @@ class Store:
                 logging.getLogger("kern.store").warning(
                     "Werte umgeschrieben: %s.%s %r → %r (%d Zeilen)",
                     tabelle, spalte, alt, neu, cur.rowcount)
+
+    #: Zwei Spalten, die der Umbau auf englische Bezeichner (01.09.2026)
+    #: im CODE umbenannt hat, ohne eine Migration mitzuliefern.
+    _WEB_USERS_UMBENANNT = [("qa_speichern", "saves_conversations"),
+                            ("limits_frei", "limits_unlocked")]
+
+    def _web_users_spalten_nachziehen(self) -> None:
+        """`qa_speichern`/`limits_frei` auf ihre englischen Namen bringen.
+
+        Zwei Fälle, und der zweite ist der unangenehme:
+
+        * **Nur die alte Spalte da** — schlichtes Umbenennen.
+        * **Beide da, die neue leer.** So sah dev nach dem Deploy aus: Der
+          `ALTER TABLE`-Block prüfte auf den NEUEN Namen, fand ihn nicht und
+          legte die Spalte leer an; die Daten blieben in der alten. Dann muss
+          erst der Inhalt hinüber und die alte weg, sonst benennt sich nichts
+          mehr um (der Zielname ist ja belegt) und die Werte bleiben
+          unsichtbar.
+
+        Idempotent: Nach dem ersten Lauf sind es zwei PRAGMA-Abfragen.
+        """
+        vorhanden = {r[1] for r in self._conn.execute("PRAGMA table_info(web_users)")}
+        if not vorhanden:
+            return
+        log = logging.getLogger("kern.store")
+        for alt, neu in self._WEB_USERS_UMBENANNT:
+            if alt not in vorhanden:
+                continue
+            if neu in vorhanden:
+                # Die leer danebengelegte Spalte: Inhalt retten, dann weg.
+                with self._conn:
+                    self._conn.execute(
+                        f"UPDATE web_users SET {neu} = {alt} WHERE {neu} IS NULL")
+                    self._conn.execute(f"ALTER TABLE web_users DROP COLUMN {alt}")
+                log.warning("web_users.%s in %s übernommen und entfernt", alt, neu)
+            else:
+                with self._conn:
+                    self._conn.execute(
+                        f"ALTER TABLE web_users RENAME COLUMN {alt} TO {neu}")
+                log.warning("Spalte umbenannt: web_users.%s → %s", alt, neu)
 
     def _spalten_umbenennen(self, tabelle: str, paare: list[tuple[str, str]]) -> None:
         """Benennt Spalten um, sofern sie noch alt heißen — idempotent.
@@ -603,7 +697,58 @@ class Store:
         "gremium": "committee", "fassung": "version", "schluessel": "key",
     }
 
-    def _json_schluessel_umbenennen(self, tabelle: str, spalte: str, marke: str) -> None:
+    #: Die BLOCKNAMEN derselben Nutzlast — der zweite Schnitt (01.09.2026).
+    #:
+    #: Der erste Lauf hat sie bewusst stehen lassen. Sie stehen nicht nur auf
+    #: der Leitung, sondern als JSON-Blob in `qa_conversation_turns.sources`:
+    #: Ohne diesen Umzug fänden gespeicherte Gespräche ihre Presse-, Debatten-
+    #: und Anlagen-Blöcke nicht wieder und zeigten sie leer.
+    #:
+    #: Bewusst NICHT drin: `art`, `nr`, `top` und `auszug` — sie sitzen eine
+    #: Ebene tiefer und sind zu allgemein, um sie über den ganzen Baum zu
+    #: ersetzen. `kvonr` und `ksinr` sind RIS-Kürzel wie `ris` oder `lsn`.
+    _QA_QUELLEN_SCHLUESSEL = {
+        "presse": "press_releases", "debatten": "debates",
+        "anlagen": "attachments", "planungen": "planning_procedures",
+        "parteien": "parties", "sitzungen": "sessions", "grafik": "chart",
+        "gelesen": "documents_read", "zeitraum": "period", "kontext": "context",
+        "recherche": "research", "geld": "money", "beleglage": "evidence_level",
+        "facetten": "facets", "facetten_fertig": "facets_done",
+        "facetten_namen": "facet_names", "facetten_gesamt": "facets_total",
+        "ohne_beitraege": "without_speeches",
+        # `nachkomma` und `mehr` stehen BEWUSST nicht hier: Sie sind keine
+        # Namen dieser Nutzlast, sondern Props der ganzen Grafik-Familie
+        # (`components/grafik/*`), die sich der Haushalt mit der KI-Antwort
+        # teilt. Sie umzubenennen hieße, zwanzig Dateien quer durch den
+        # Haushalt anzufassen — ein eigener Schnitt, nicht dieser.
+    }
+
+    #: Eine Ebene TIEFER als die Blocknamen: die Felder der Zeilen.
+    #:
+    #: In #913 hatte ich sie als „zu allgemein für einen Lauf über den ganzen
+    #: Baum" liegen gelassen. Sie stehen damit aber als letzte deutsche FELDER
+    #: in der OpenAPI-Doku — und die soll durchgehend englisch sein. Die
+    #: Pfad-Auszählung der 113 echten Prod-Blöcke zeigt, dass jeder dieser
+    #: Namen dort GENAU EINE Bedeutung hat: `art` nur in `debatten[]` und
+    #: `planungen[]` (beide „Art"), `top` und `protokoll_*` nur in
+    #: `debatten[]`, `nr` nur in `anlagen[]`, `auszug` in `debatten[]` und
+    #: `anlagen[]`. Damit ist der Lauf über den Baum hier belegbar sicher.
+    #:
+    #: EIGENE Karte und EIGENE Marke, nicht `_QA_QUELLEN_SCHLUESSEL` erweitert:
+    #: Dessen Marke ist auf `dev` seit #913 gesetzt, eine Erweiterung liefe dort
+    #: nie wieder an.
+    _QA_ZEILEN_SCHLUESSEL = {
+        "art": "kind", "top": "agenda_item", "auszug": "excerpt",
+        "protokoll_url": "minutes_url", "protokoll_seite": "minutes_page",
+        "nr": "number", "haltung": "stance", "einig": "unanimous",
+    }
+
+    #: Vierter Blob-Lauf (01.09.2026): der Ortsbereich in `location_matches`.
+    #: Eigene Karte, eigene Marke — die drei früheren sind auf dev gesetzt.
+    _QA_ORTE_SCHLUESSEL = {"ortsbereich_id": "local_area_id"}
+
+    def _json_schluessel_umbenennen(self, tabelle: str, spalte: str, marke: str,
+                                    karte: dict[str, str] | None = None) -> None:
         """Die Schlüssel INNERHALB eines JSON-Blobs nachziehen — einmalig.
 
         Die Spalten sind längst englisch, ihr INHALT nicht: Ein gespeicherter
@@ -611,22 +756,32 @@ class Store:
         `datum`. Die Oberfläche liest sie neuerdings englisch und zeigte
         deshalb leere Namen. Eine Marke sorgt dafür, dass der Umbau genau
         einmal läuft und frisch geschriebene Zeilen nicht noch einmal trifft.
+
+        `karte` sagt, WELCHE Schlüssel umziehen; ohne Angabe die alte
+        Feld-Karte. Sie gehört zum Aufruf und nicht in die Methode, weil der
+        Umbau in Schnitten passiert: Der erste Lauf ließ die Blocknamen
+        (`presse`, `debatten`, `anlagen`, `parteien`) bewusst stehen, der
+        zweite zieht genau die nach. Eine gemeinsame Karte hätte beim zweiten
+        Lauf auch Schlüssel getroffen, die der erste absichtlich verschont
+        hat — und die Marke des ersten Laufs hätte den zweiten verschluckt.
         """
         import json as _js
         with self._conn:
             self._conn.execute(
-                "CREATE TABLE IF NOT EXISTS migrationsmarken ("
+                "CREATE TABLE IF NOT EXISTS migration_marks ("
                 "marke TEXT PRIMARY KEY, gesetzt_am TEXT NOT NULL)")
         if self._conn.execute(
-                "SELECT 1 FROM migrationsmarken WHERE marke = ?", (marke,)).fetchone():
+                "SELECT 1 FROM migration_marks WHERE marke = ?", (marke,)).fetchone():
             return
         spalten = {r[1] for r in self._conn.execute(f"PRAGMA table_info({tabelle})")}
         if spalte not in spalten:
             return
 
+        paare = self._JSON_SCHLUESSEL if karte is None else karte
+
         def um(x):
             if isinstance(x, dict):
-                return {self._JSON_SCHLUESSEL.get(k, k): um(v) for k, v in x.items()}
+                return {paare.get(k, k): um(v) for k, v in x.items()}
             if isinstance(x, list):
                 return [um(v) for v in x]
             return x
@@ -646,11 +801,49 @@ class Store:
                 self._conn.executemany(
                     f"UPDATE {tabelle} SET {spalte} = ? WHERE rowid = ?", geaendert)
             self._conn.execute(
-                "INSERT INTO migrationsmarken (marke, gesetzt_am) VALUES (?, datetime('now'))",
+                "INSERT INTO migration_marks (marke, gesetzt_am) VALUES (?, datetime('now'))",
                 (marke,))
         if geaendert:
             logging.getLogger("kern.store").warning(
                 "JSON-Schlüssel nachgezogen: %s.%s (%d Zeilen)", tabelle, spalte, len(geaendert))
+
+    def _tabellen_umbenennen(self) -> None:
+        """Die vier deutschen Tabellennamen umziehen — einmalig, VOR dem Schema.
+
+        Drei Fälle wie in `council/store.py::_tabellen_umbenennen`: nur alt →
+        umbenennen; beide da, neue leer → leere weg, dann umbenennen; beide
+        gefüllt → nichts anfassen, beide Zeilenzahlen ins Log.
+        """
+        log = logging.getLogger("kern.store")
+        vorhanden = {r[0] for r in self._conn.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table'")}
+        if not vorhanden:
+            return
+
+        def zeilen(t: str) -> int:
+            try:
+                return self._conn.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
+            except sqlite3.OperationalError as fehler:
+                if not tabelle_fehlt(fehler):
+                    raise
+                return 0
+
+        for alt, neu in TABELLEN_UMBENANNT:
+            if alt not in vorhanden:
+                continue
+            if neu in vorhanden:
+                if zeilen(neu):
+                    log.warning("Zwei gefüllte Tabellen nebeneinander: %s (%d) und %s (%d) — "
+                                "bitte von Hand prüfen, es wird nichts angefasst.",
+                                alt, zeilen(alt), neu, zeilen(neu))
+                    continue
+                with self._conn:
+                    self._conn.execute(f"DROP TABLE {neu}")
+                log.warning("Leere %s entfernt — sie hätte den Umzug blockiert.", neu)
+            with self._conn:
+                self._conn.execute(f"ALTER TABLE {alt} RENAME TO {neu}")
+            vorhanden.discard(alt); vorhanden.add(neu)
+            log.warning("Tabelle umbenannt: %s → %s", alt, neu)
 
     def _migrate(self) -> None:
         # 08/2026: Die Prompt-Overrides sind ausgebaut — die Prompt-Texte leben
@@ -660,17 +853,29 @@ class Store:
         # doch etwas darin stehen, landet es vorher im Log — ein stillschweigend
         # gelöschter, von Hand geschriebener Prompttext wäre ein schlechter Tausch.
         self._prompts_tabelle_entfernen()
-        for tabelle, spalte in (("qa_gespraech_turns", "sources"),
+        for tabelle, spalte in (("qa_conversation_turns", "sources"),
                                 ("qa_shares", "extras"),
                                 ("deep_research_jobs", "sources")):
             self._json_schluessel_umbenennen(tabelle, spalte, f"json_englisch_{tabelle}_{spalte}")
+            # Zweiter Schnitt: die Blocknamen, die der erste stehen ließ.
+            # EIGENE Marke — sonst verschluckt die des ersten Laufs diesen.
+            self._json_schluessel_umbenennen(
+                tabelle, spalte, f"json_bloecke_{tabelle}_{spalte}",
+                self._QA_QUELLEN_SCHLUESSEL)
+            # Dritter Schnitt: die Feldnamen IN den Zeilen der Blöcke.
+            self._json_schluessel_umbenennen(
+                tabelle, spalte, f"json_zeilen_{tabelle}_{spalte}",
+                self._QA_ZEILEN_SCHLUESSEL)
+            self._json_schluessel_umbenennen(
+                tabelle, spalte, f"json_ortsbereich_{tabelle}_{spalte}",
+                self._QA_ORTE_SCHLUESSEL)
         # 08/2026: Reste der NWZ-Abo-Prüfung. Seit der Ausgliederung des
         # Zeitungs-Scrapers liest sie kein Code mehr; auf Tims Anweisung
         # (30.08.2026) verschwinden sie samt Inhalt. Backup lag vor.
         self._tote_spalten_entfernen("web_users", [
             "nwz_username", "nwz_verified_at", "nwz_fulltext_allowed"])
         # Die Schnittstelle spricht Englisch, die Spalten ziehen nach.
-        self._spalten_umbenennen("qa_gespraeche", [("titel", "title")])
+        self._spalten_umbenennen("qa_conversations", [("titel", "title")])
         # Der ALTE Name ist die Quelle der Migration — in #859 hatte ein
         # Suchen-und-Ersetzen ihn mitgenommen und den Schritt wirkungslos
         # gemacht. Bestehende Datenbanken wären deutsch geblieben.
@@ -680,9 +885,9 @@ class Store:
         self._spalten_umbenennen("deep_research_jobs", [
             ("frage", "question"), ("bericht", "report"),
             ("quellen", "sources"), ("gesehen", "seen")])
-        for tabelle in ("vorlage_follows", "bookmarks"):
+        for tabelle in ("template_follows", "bookmarks"):
             self._spalten_umbenennen(tabelle, [("vorlage_nr", "template_number")])
-        self._spalten_umbenennen("qa_gespraech_turns", [
+        self._spalten_umbenennen("qa_conversation_turns", [
             ("gespraech_id", "conversation_id"), ("frage", "question"),
             ("antwort", "answer"), ("quellen", "sources")])
         # Die Quiz-Kategorien stehen als Daten in den Zeilen, in der
@@ -693,6 +898,37 @@ class Store:
         ]
         self._werte_umschreiben("quiz_answers", "category", QUIZ_KATEGORIEN)
         self._werte_umschreiben("user_quiz_questions", "category", QUIZ_KATEGORIEN)
+
+        # Die Namen der LLM-Aufrufe, wie sie das Kosten-Tracking je Feature
+        # zählt (`llm_usage.feature`, gesetzt über `_feature=` in `kern/llm.py`).
+        #
+        # ACHTUNG, zwei Namensräume mit denselben Wörtern: `qa_antwort`,
+        # `deep_bericht`, `partei_meinungen` und vier weitere sind AUCH
+        # Schlüssel in `kern/prompts.py::DEFAULTS`. Die bleiben stehen — ein
+        # Suchen-und-Ersetzen über den blossen String hätte `prompts.get(…)`
+        # ins Leere laufen lassen, ohne dass ein Test rot wird.
+        self._werte_umschreiben("llm_usage", "feature", [
+            ("anlagen_ocr", "attachment_ocr"), ("beschluss_orte", "decision_places"),
+            ("deep_bericht", "deep_report"), ("deep_zerlegung", "deep_decomposition"),
+            ("entitaeten_beschreibung", "entity_description"), ("entitaeten_ner", "entity_ner"),
+            ("entity_dubletten", "entity_duplicates"), ("fundstueck_story", "daily_find_story"),
+            ("livestream_transkript", "livestream_transcript"), ("partei_meinungen", "party_opinions"),
+            ("protokoll_extraktion", "minutes_extraction"), ("qa_analyse", "qa_analysis"),
+            ("qa_antwort", "qa_answer"), ("qa_einfach", "qa_simple"),
+            ("social_kartentext", "social_card_text"), ("social_kritiker", "social_critic"),
+            ("themen_klassifikation", "topic_classification"), ("themenfeld_rueckblick", "field_recap"),
+            ("topic_auto_beschreibung", "topic_auto_description"), ("video_ergebnisse", "video_results"),
+            ("wortbeitraege", "speeches"), ("ziel_bewertung", "goal_rating"),
+            # Ein Experiment, das es im Code nicht mehr gibt — die 259 Zeilen
+            # auf dev stehen aber weiter in der Kostenstatistik.
+            ("exp_sitzungsklassifikation", "exp_session_classification"),
+        ])
+        # Dasselbe für die Nutzungszählung. `session` ist schon englisch; der
+        # BLOCKNAME der Admin-Antwort heisst weiter `ki_frage` (API-Feldnamen
+        # sind ein eigener Schnitt), s. `get_web_user_detail`.
+        self._werte_umschreiben("user_activity", "feature", [
+            ("recherche", "research"), ("ki_frage", "ai_question"),
+        ])
         cols = {r[1] for r in self._conn.execute("PRAGMA table_info(topics)").fetchall()}
         if "chat_id" not in cols:
             admin = int(os.environ.get("TELEGRAM_CHAT_ID", 0))
@@ -720,6 +956,13 @@ class Store:
                         "UPDATE topics SET chat_id = ? WHERE chat_id = 0", (admin,)
                     )
         # web_users gained status / NWZ-verification columns after the first cut.
+        # Zuerst umbenennen, DANN die Spaltenliste lesen: Sonst hält der
+        # nächste Block eine gewachsene Datenbank für unvollständig und legt
+        # die neue Spalte LEER daneben, während die Daten in der alten liegen
+        # bleiben. Genau das ist am 01.09.2026 auf dev passiert — die
+        # Einwilligung „Gespräche speichern" stand danach für alle auf „nie
+        # gefragt", obwohl sie in `qa_speichern` weiter da war.
+        self._web_users_spalten_nachziehen()
         wu_cols = {r[1] for r in self._conn.execute("PRAGMA table_info(web_users)").fetchall()}
         if wu_cols:
             with self._conn:
@@ -760,30 +1003,73 @@ class Store:
                 if "notify_prefs" not in wu_cols:
                     # Design 30a: die sechs Anlass-Schalter als JSON.
                     self._conn.execute("ALTER TABLE web_users ADD COLUMN notify_prefs TEXT")
-                if "qa_speichern" not in wu_cols:
+                if "saves_conversations" not in wu_cols:
                     # 6a①②: NULL = noch nie gefragt (Erstnutzungs-Karte),
                     # 1 = Gespräche speichern, 0 = bewusst aus.
-                    self._conn.execute("ALTER TABLE web_users ADD COLUMN qa_speichern INTEGER")
+                    self._conn.execute("ALTER TABLE web_users ADD COLUMN saves_conversations INTEGER")
+                # Admin-steuerbare Frage-Limits je Konto (10.08.26):
+                # deep_limit = Recherchen/Tag (NULL = Standard, 0 = unbegrenzt,
+                # N = eigenes Limit); limits_unlocked = 1 überspringt die
+                # Rate-Limiter der Frage-Endpoints.
+                #
+                # JEDE Spalte prüft sich SELBST. Vorher hingen beide an
+                # `deep_limit` — als `limits_frei` zu `limits_unlocked` wurde,
+                # war `deep_limit` längst da, der Zweig lief nie, und die
+                # Spalte fehlte auf jeder gewachsenen Datenbank. Aufgefallen
+                # ist das nicht, weil `SELECT *` nicht wirft: `get()` lieferte
+                # None, der Rate-Limiter griff stillschweigend immer.
                 if "deep_limit" not in wu_cols:
-                    # Admin-steuerbare Frage-Limits je Konto (10.08.26):
-                    # deep_limit = Recherchen/Tag (NULL = Standard,
-                    # 0 = unbegrenzt, N = eigenes Limit); limits_frei = 1
-                    # überspringt die Rate-Limiter der Frage-Endpoints.
                     self._conn.execute("ALTER TABLE web_users ADD COLUMN deep_limit INTEGER")
+                if "limits_unlocked" not in wu_cols:
                     self._conn.execute(
-                        "ALTER TABLE web_users ADD COLUMN limits_frei INTEGER NOT NULL DEFAULT 0")
+                        "ALTER TABLE web_users ADD COLUMN limits_unlocked INTEGER NOT NULL DEFAULT 0")
                 # Einrichtungs-Assistent (Design 26a): welcher Schritt zuletzt
                 # erreicht wurde. Eigene Spalten statt der onboarding-JSON —
                 # die gehört der „Erste Schritte"-Tour, und der Erinnerungs-Cron
                 # will ohnehin per SQL filtern statt JSON zu parsen.
-                if "setup_step" not in wu_cols:
-                    self._conn.execute("ALTER TABLE web_users ADD COLUMN setup_step INTEGER")
-                    self._conn.execute("ALTER TABLE web_users ADD COLUMN setup_started_at TEXT")
-                    self._conn.execute("ALTER TABLE web_users ADD COLUMN setup_updated_at TEXT")
-                    self._conn.execute("ALTER TABLE web_users ADD COLUMN setup_done_at TEXT")
-                    # Wann die eine Erinnerungsmail rausging — verhindert, dass
-                    # jemand sie zweimal bekommt.
-                    self._conn.execute("ALTER TABLE web_users ADD COLUMN setup_reminded_at TEXT")
+                # Auch hier prüft jede Spalte sich selbst. Bisher hingen alle
+                # fünf an `setup_step`; das ging gut, weil sie zusammen
+                # eingeführt wurden — eine sechste hätte auf jeder gewachsenen
+                # Datenbank gefehlt. `setup_reminded_at` verhindert, dass
+                # jemand die Erinnerungsmail zweimal bekommt.
+                for spalte, typ in (("setup_step", "INTEGER"), ("setup_started_at", "TEXT"),
+                                    ("setup_updated_at", "TEXT"), ("setup_done_at", "TEXT"),
+                                    ("setup_reminded_at", "TEXT")):
+                    if spalte not in wu_cols:
+                        self._conn.execute(
+                            f"ALTER TABLE web_users ADD COLUMN {spalte} {typ}")
+                # Womit das Konto angelegt wurde (Admin: „App oder Web?").
+                # Bestandskonten bleiben NULL — sie sind vor der Messung
+                # entstanden, und ein geratenes „web" wäre eine Behauptung.
+                if "signup_client" not in wu_cols:
+                    self._conn.execute("ALTER TABLE web_users ADD COLUMN signup_client TEXT")
+        # Aktivität trägt seit 09/2026 den Client (Admin: „App oder Web?").
+        # Die Spalte gehört in den PRIMÄRSCHLÜSSEL — dieselbe Person kann am
+        # selben Tag beides benutzen —, und den kann SQLite nicht ändern: also
+        # Tabelle neu bauen und umkopieren. Die Altzeilen bekommen `unknown`
+        # statt `web`: Sie stammen aus der Zeit vor der Messung, und ein
+        # geratenes „web" wäre in der Statistik nicht von einer echten Messung
+        # zu unterscheiden.
+        ua_cols = self._table_cols("user_activity")
+        if ua_cols and "client" not in ua_cols:
+            with self._conn:
+                self._conn.execute("""CREATE TABLE user_activity_neu (
+                    owner_id INTEGER NOT NULL,
+                    day      TEXT NOT NULL,
+                    feature  TEXT NOT NULL,
+                    client   TEXT NOT NULL DEFAULT 'unknown',
+                    count    INTEGER NOT NULL DEFAULT 1,
+                    PRIMARY KEY (owner_id, day, feature, client)
+                )""")
+                self._conn.execute(
+                    "INSERT INTO user_activity_neu (owner_id, day, feature, client, count) "
+                    "SELECT owner_id, day, feature, 'unknown', count FROM user_activity")
+                self._conn.execute("DROP TABLE user_activity")
+                self._conn.execute("ALTER TABLE user_activity_neu RENAME TO user_activity")
+                self._conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_user_activity_day ON user_activity(day)")
+                self._conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_user_activity_owner ON user_activity(owner_id)")
         # Schätzfrage-Slider für eigene Fragen (RL-U14-Erweiterung): Zahl-Felder
         # zur seit RL-U14 bestehenden Tabelle nachziehen.
         uq_cols = self._table_cols("user_quiz_questions")
@@ -968,14 +1254,18 @@ class Store:
 
     def create_web_user(self, email: str, password_hash: str, role: str = "user",
                         status: str = "pending", email_verified: bool = False,
-                        display_name: str | None = None) -> int:
+                        display_name: str | None = None,
+                        signup_client: str | None = None) -> int:
+        """``signup_client`` hält fest, WOMIT das Konto entstanden ist (web |
+        ios | android | app). ``None`` bleibt None statt „web" zu raten — so
+        bleiben Bestandskonten in der Statistik als ungemessen erkennbar."""
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self._conn:
             cur = self._conn.execute(
-                "INSERT INTO web_users (email, password_hash, role, status, email_verified, created_at, display_name) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO web_users (email, password_hash, role, status, email_verified, created_at, "
+                "display_name, signup_client) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 (email.lower().strip(), password_hash, role, status, 1 if email_verified else 0, now,
-                 (display_name or "").strip()[:60] or None),
+                 (display_name or "").strip()[:60] or None, signup_client),
             )
         return cur.lastrowid
 
@@ -1106,14 +1396,51 @@ class Store:
             )
 
     def get_setup(self, user_id: int) -> dict:
+        """Stand des Einrichtungs-Assistenten — samt der Frage, ob er dran ist.
+
+        ``pending`` beantwortet „soll diese Person den Assistenten sehen?", und
+        zwar **serverseitig**: Web und App sollen dieselbe Antwort bekommen, und
+        die Regel hängt an Daten (Themen, Abos), die das Frontend sonst erst in
+        zwei zusätzlichen Requests holen müsste, bevor es überhaupt weiß, ob es
+        etwas anzeigen soll.
+
+        Drei Fälle:
+
+        * **abgeschlossen** (``done_at``) → nie wieder. „Überspringen" zählt als
+          abgeschlossen; ein weggeklickter Assistent, der wiederkommt, wäre
+          keiner.
+        * **angefangen** (``setup_step ≥ 1``) → weitermachen, wo aufgehört wurde.
+        * **nie angefangen** → nur, wenn das Konto noch leer ist. Wer längst
+          Themen oder Abos hat, hat sich erkennbar selbst eingerichtet und wird
+          nicht nachträglich durch einen Assistenten geschickt.
+        """
         row = self._conn.execute(
             "SELECT setup_step, setup_started_at, setup_done_at FROM web_users WHERE id = ?",
             (user_id,),
         ).fetchone()
         if not row:
-            return {"step": 0, "started_at": None, "done_at": None}
-        return {"step": row["setup_step"] or 0, "started_at": row["setup_started_at"],
-                "done_at": row["setup_done_at"]}
+            return {"step": 0, "started_at": None, "done_at": None, "pending": False}
+        step = row["setup_step"] or 0
+        if row["setup_done_at"]:
+            pending = False
+        elif step >= 1:
+            pending = True
+        else:
+            pending = not self._hat_eingerichtet(user_id)
+        return {"step": step, "started_at": row["setup_started_at"],
+                "done_at": row["setup_done_at"], "pending": pending}
+
+    def _hat_eingerichtet(self, user_id: int) -> bool:
+        """Hat dieses Konto schon irgendetwas eingerichtet (Thema oder Abo)?
+
+        Zwei ``EXISTS`` statt ``COUNT``: Es geht um „irgendwas" — SQLite hört
+        beim ersten Treffer auf zu suchen.
+        """
+        row = self._conn.execute(
+            "SELECT EXISTS(SELECT 1 FROM topics WHERE owner_id = ?) "
+            "    OR EXISTS(SELECT 1 FROM committee_subscriptions WHERE owner_id = ?)",
+            (user_id, user_id)).fetchone()
+        return bool(row[0])
 
     def setups_to_remind(self, older_than_hours: int = 48, limit: int = 200) -> list[dict]:
         """Konten, die die Einrichtung angefangen und liegen gelassen haben.
@@ -1628,13 +1955,13 @@ class Store:
         return dict(row) if row else None
 
     def set_web_user_limits(self, user_id: int, deep_limit: int | None,
-                            limits_frei: bool) -> None:
+                            limits_unlocked: bool) -> None:
         """Admin-steuerbare Frage-Limits je Konto: Recherche-Tageslimit
         (None = Standard, 0 = unbegrenzt) + Rate-Limit-Befreiung."""
         with self._conn:
             self._conn.execute(
-                "UPDATE web_users SET deep_limit = ?, limits_frei = ? WHERE id = ?",
-                (deep_limit, 1 if limits_frei else 0, user_id))
+                "UPDATE web_users SET deep_limit = ?, limits_unlocked = ? WHERE id = ?",
+                (deep_limit, 1 if limits_unlocked else 0, user_id))
 
     def list_web_users(self) -> list[dict]:
         rows = self._conn.execute(
@@ -1737,14 +2064,14 @@ class Store:
     def get_qa_speichern(self, user_id: int) -> int | None:
         """Einwilligung: None = nie gefragt, 1 = speichern, 0 = bewusst aus."""
         row = self._conn.execute(
-            "SELECT qa_speichern FROM web_users WHERE id = ?", (user_id,)).fetchone()
+            "SELECT saves_conversations FROM web_users WHERE id = ?", (user_id,)).fetchone()
         return None if row is None or row[0] is None else int(row[0])
 
     def set_qa_speichern(self, user_id: int, an: bool) -> None:
         """Schalter umlegen. Löscht bewusst NICHTS — was mit bestehenden
         Gesprächen passiert, entscheidet der Ausschalt-Dialog getrennt."""
         with self._conn:
-            self._conn.execute("UPDATE web_users SET qa_speichern = ? WHERE id = ?",
+            self._conn.execute("UPDATE web_users SET saves_conversations = ? WHERE id = ?",
                                (1 if an else 0, user_id))
 
     def qa_share_anlegen(self, user_id: int, question: str, answer: str,
@@ -1787,13 +2114,13 @@ class Store:
             extras = {}
         return {"question": row["question"], "answer": row["answer"],
                 "sources": quellen, "created": row["created"],
-                "debatten": extras.get("debatten") or [],
-                "presse": extras.get("presse") or [],
-                "anlagen": extras.get("anlagen") or [],
-                "parteien": extras.get("parteien") or [],
+                "debates": extras.get("debates") or [],
+                "press_releases": extras.get("press_releases") or [],
+                "attachments": extras.get("attachments") or [],
+                "parties": extras.get("parties") or [],
                 # Die Grafik zur Antwort — vor diesem Nachtrag geteilte
                 # Antworten haben keine; die Seite zeigt dann keine.
-                "grafik": extras.get("grafik")}
+                "chart": extras.get("chart")}
 
     def qa_share_owner_id(self, token: str) -> int | None:
         """Interne Zuordnung für Moderation; nie Teil der öffentlichen API."""
@@ -1894,26 +2221,26 @@ class Store:
             if not self._conn.execute("SELECT 1 FROM web_users WHERE id = ?", (user_id,)).fetchone():
                 return None
             cur = self._conn.execute(
-                "INSERT INTO qa_gespraeche (user_id, title, created, updated) VALUES (?, ?, ?, ?)",
+                "INSERT INTO qa_conversations (user_id, title, created, updated) VALUES (?, ?, ?, ?)",
                 (user_id, (title or "Gespräch").strip()[:120], now, now))
             return int(cur.lastrowid)
 
-    def qa_turn_speichern(self, gespraech_id: int, user_id: int, question: str,
+    def qa_turn_speichern(self, conversation_id: int, user_id: int, question: str,
                           answer: str, quellen_json: str | None) -> bool:
         """Turn anhängen — nur ins eigene Gespräch (user_id doppelt geprüft)."""
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self._conn:
             ok = self._conn.execute(
-                "SELECT 1 FROM qa_gespraeche WHERE id = ? AND user_id = ?",
-                (gespraech_id, user_id)).fetchone()
+                "SELECT 1 FROM qa_conversations WHERE id = ? AND user_id = ?",
+                (conversation_id, user_id)).fetchone()
             if not ok:
                 return False
             self._conn.execute(
-                "INSERT INTO qa_gespraech_turns (conversation_id, user_id, question, answer, sources, created) "
+                "INSERT INTO qa_conversation_turns (conversation_id, user_id, question, answer, sources, created) "
                 "VALUES (?, ?, ?, ?, ?, ?)",
-                (gespraech_id, user_id, question[:600], answer[:8000], quellen_json, now))
-            self._conn.execute("UPDATE qa_gespraeche SET updated = ? WHERE id = ?",
-                               (now, gespraech_id))
+                (conversation_id, user_id, question[:600], answer[:8000], quellen_json, now))
+            self._conn.execute("UPDATE qa_conversations SET updated = ? WHERE id = ?",
+                               (now, conversation_id))
             return True
 
     @staticmethod
@@ -1928,7 +2255,7 @@ class Store:
             begriff = begriff.replace(zeichen, "\\" + zeichen)
         return f"%{begriff}%"
 
-    def qa_gespraeche(self, user_id: int, limit: int = 30, offset: int = 0,
+    def qa_conversations(self, user_id: int, limit: int = 30, offset: int = 0,
                       suche: str | None = None) -> list[dict]:
         """Eine Seite der Gesprächsliste, neueste zuerst.
 
@@ -1947,8 +2274,8 @@ class Store:
         werte: list = [user_id] + ([muster] if muster else []) + [max(0, limit), max(0, offset)]
         rows = self._conn.execute(
             f"""SELECT g.id, g.title, g.updated,
-                      (SELECT COUNT(*) FROM qa_gespraech_turns t WHERE t.conversation_id = g.id) AS n_turns
-               FROM qa_gespraeche g WHERE g.user_id = ?{filt}
+                      (SELECT COUNT(*) FROM qa_conversation_turns t WHERE t.conversation_id = g.id) AS n_turns
+               FROM qa_conversations g WHERE g.user_id = ?{filt}
                ORDER BY g.updated DESC, g.id DESC LIMIT ? OFFSET ?""", werte).fetchall()
         return [dict(r) for r in rows]
 
@@ -1958,22 +2285,22 @@ class Store:
         filt = " AND unicode_lower(title) LIKE ? ESCAPE '\\'" if muster else ""
         werte: list = [user_id] + ([muster] if muster else [])
         return self._conn.execute(
-            f"SELECT COUNT(*) FROM qa_gespraeche WHERE user_id = ?{filt}",
+            f"SELECT COUNT(*) FROM qa_conversations WHERE user_id = ?{filt}",
             werte).fetchone()[0]
 
-    def qa_gespraech(self, gespraech_id: int, user_id: int) -> dict | None:
+    def qa_gespraech(self, conversation_id: int, user_id: int) -> dict | None:
         g = self._conn.execute(
-            "SELECT id, title, updated FROM qa_gespraeche WHERE id = ? AND user_id = ?",
-            (gespraech_id, user_id)).fetchone()
+            "SELECT id, title, updated FROM qa_conversations WHERE id = ? AND user_id = ?",
+            (conversation_id, user_id)).fetchone()
         if not g:
             return None
         turns = self._conn.execute(
-            "SELECT question, answer, sources FROM qa_gespraech_turns "
+            "SELECT question, answer, sources FROM qa_conversation_turns "
             "WHERE conversation_id = ? ORDER BY id",
-            (gespraech_id,)).fetchall()
+            (conversation_id,)).fetchall()
         return {**dict(g), "turns": [dict(t) for t in turns]}
 
-    def qa_gespraech_umbenennen(self, gespraech_id: int, user_id: int, title: str) -> bool:
+    def qa_gespraech_umbenennen(self, conversation_id: int, user_id: int, title: str) -> bool:
         """Titel ändern — nur am eigenen Gespräch (Design 9a②: Wisch links →
         Umbenennen). ``updated`` bleibt unberührt: Umbenennen ist Pflege, kein
         Gesprächsfortschritt, und soll die Liste nicht umsortieren."""
@@ -1982,25 +2309,25 @@ class Store:
             return False
         with self._conn:
             cur = self._conn.execute(
-                "UPDATE qa_gespraeche SET title = ? WHERE id = ? AND user_id = ?",
-                (title, gespraech_id, user_id))
+                "UPDATE qa_conversations SET title = ? WHERE id = ? AND user_id = ?",
+                (title, conversation_id, user_id))
             return (cur.rowcount or 0) > 0
 
-    def qa_gespraech_loeschen(self, gespraech_id: int, user_id: int) -> bool:
+    def qa_gespraech_loeschen(self, conversation_id: int, user_id: int) -> bool:
         with self._conn:
             self._conn.execute(
-                "DELETE FROM qa_gespraech_turns WHERE conversation_id = ? AND user_id = ?",
-                (gespraech_id, user_id))
+                "DELETE FROM qa_conversation_turns WHERE conversation_id = ? AND user_id = ?",
+                (conversation_id, user_id))
             cur = self._conn.execute(
-                "DELETE FROM qa_gespraeche WHERE id = ? AND user_id = ?",
-                (gespraech_id, user_id))
+                "DELETE FROM qa_conversations WHERE id = ? AND user_id = ?",
+                (conversation_id, user_id))
             return (cur.rowcount or 0) > 0
 
     def qa_gespraeche_loeschen(self, user_id: int) -> int:
         """Alle Gespräche eines Kontos löschen (Ausschalt-Dialog „Alle löschen")."""
         with self._conn:
-            self._conn.execute("DELETE FROM qa_gespraech_turns WHERE user_id = ?", (user_id,))
-            cur = self._conn.execute("DELETE FROM qa_gespraeche WHERE user_id = ?", (user_id,))
+            self._conn.execute("DELETE FROM qa_conversation_turns WHERE user_id = ?", (user_id,))
+            cur = self._conn.execute("DELETE FROM qa_conversations WHERE user_id = ?", (user_id,))
             return cur.rowcount or 0
 
     # ---- Feedback ----------------------------------------------------------
@@ -2088,20 +2415,90 @@ class Store:
         return out
 
     # ---- Aktivitäts-Tracking + Wachstum (Admin 20a) ----
-    def record_activity(self, owner_id: int, feature: str = "session") -> None:
-        """Ein Feature-Nutzungsereignis je Konto/Tag zählen (best-effort, nie
-        load-bearing). ‚session‘ wird bei jedem eingeloggten Request gesetzt
-        (throttled durch den Tages-PK)."""
+    def record_activity(self, owner_id: int, feature: str = "session",
+                        client: str = "unknown") -> None:
+        """Ein Feature-Nutzungsereignis je Konto/Tag/Client zählen (best-effort,
+        nie load-bearing). ‚session‘ wird bei jedem eingeloggten Request gesetzt
+        (throttled durch den Tages-PK).
+
+        ``client`` ist eines von web | ios | android | app | unknown und kommt
+        aus dem ``X-Client``-Header (siehe ``app.clients``). Er steht im PK, weil
+        dieselbe Person am selben Tag am Rechner und am Telefon arbeiten kann.
+        """
         from datetime import date
         try:
             with self._conn:
                 self._conn.execute(
-                    "INSERT INTO user_activity (owner_id, day, feature, count) VALUES (?, ?, ?, 1) "
-                    "ON CONFLICT(owner_id, day, feature) DO UPDATE SET count = count + 1",
-                    (owner_id, date.today().isoformat(), feature),
+                    "INSERT INTO user_activity (owner_id, day, feature, client, count) "
+                    "VALUES (?, ?, ?, ?, 1) "
+                    "ON CONFLICT(owner_id, day, feature, client) DO UPDATE SET count = count + 1",
+                    (owner_id, date.today().isoformat(), feature, client),
                 )
         except Exception:  # noqa: BLE001 — Aktivitäts-Log darf nie einen Request brechen
             pass
+
+    def client_usage(self, owner_id: int) -> dict[str, int]:
+        """Wie oft dieses Konto von welchem Client aus zugegriffen hat.
+
+        Nur ``session`` wird gezählt: Das ist der Request-Takt und damit das
+        einzige Signal, das JEDER Client gleich erzeugt. Zählte man alle
+        Features mit, hinge das Bild daran, welche Funktion wo beliebter ist.
+        """
+        return {r["client"]: r["c"] for r in self._conn.execute(
+            "SELECT client, SUM(count) c FROM user_activity "
+            "WHERE owner_id = ? AND feature = 'session' GROUP BY client", (owner_id,)).fetchall()}
+
+    def client_split(self, days: int = 30) -> dict:
+        """Womit die Leute arbeiten — für die Admin-Statistik.
+
+        Je Client zwei Zahlen: ``n`` (Zugriffe) und ``users`` (Konten, für die
+        DIESER Client der meistgenutzte ist). Die zweite ist die, die man
+        anzeigt, und sie zählt **jedes Konto genau einmal**.
+
+        Das ist der Punkt, an dem die naheliegende Fassung falsch ist: Zählte
+        man je Client die verschiedenen Konten, stünde ein Konto, das App und
+        Web benutzt, in beiden Zahlen — die Summe wäre größer als der Bestand,
+        und ein Balken daraus behauptete eine Aufteilung, die keine ist.
+        Deshalb entscheidet je Konto der Client mit den meisten Zugriffen; wie
+        viele Konten überhaupt mehrere benutzen, steht separat in ``both``.
+
+        ``unknown`` (Zeilen von vor der Messung) nimmt an der Kür des
+        meistgenutzten Clients nicht teil — ungemessen ist keine Plattform.
+        """
+        from datetime import date, timedelta
+        seit = (date.today() - timedelta(days=max(1, days) - 1)).isoformat()
+        rows = self._conn.execute(
+            "SELECT owner_id, client, SUM(count) n FROM user_activity "
+            "WHERE feature = 'session' AND day >= ? AND client <> 'unknown' "
+            "GROUP BY owner_id, client", (seit,)).fetchall()
+
+        zugriffe: dict[str, int] = {}
+        je_konto: dict[int, list[tuple[str, int]]] = {}
+        for r in rows:
+            zugriffe[r["client"]] = zugriffe.get(r["client"], 0) + r["n"]
+            je_konto.setdefault(r["owner_id"], []).append((r["client"], r["n"]))
+
+        konten: dict[str, int] = {}
+        both = 0
+        for eintraege in je_konto.values():
+            if len(eintraege) > 1:
+                both += 1
+            # Bei Gleichstand entscheidet der Name — irgendein Client muss
+            # gewinnen, und ein stabiles Ergebnis ist besser als ein zufälliges.
+            fuehrend = sorted(eintraege, key=lambda e: (-e[1], e[0]))[0][0]
+            konten[fuehrend] = konten.get(fuehrend, 0) + 1
+
+        clients = [{"client": c, "n": zugriffe[c], "users": konten.get(c, 0)}
+                   for c in sorted(zugriffe, key=lambda c: -zugriffe[c])]
+        return {"clients": clients, "both": both}
+
+    def signup_client_split(self) -> list[dict]:
+        """Womit die vorhandenen Konten angelegt wurden. NULL (vor der Messung
+        registriert) kommt als ``unknown`` heraus, damit die Summe stimmt."""
+        rows = self._conn.execute(
+            "SELECT COALESCE(signup_client, 'unknown') client, COUNT(*) n "
+            "FROM web_users GROUP BY 1 ORDER BY n DESC").fetchall()
+        return [{"client": r["client"], "n": r["n"]} for r in rows]
 
     def wau_series(self, weeks: int = 8) -> list[dict]:
         """Aktive Konten je Woche (DISTINCT owner_id), älteste zuerst — 20a-WAU.
@@ -2153,6 +2550,12 @@ class Store:
             "topics": {"total": len(t), "series": t_series, "delta": t_delta, "days": t_days},
             "wau": [w["n"] for w in wau],
             "wau_days": [w["day"] for w in wau],
+            # „App oder Web?" — die Nutzung der letzten 30 Tage bewusst fest,
+            # nicht am Zeitraum-Umschalter: Die Frage ist „womit arbeiten die
+            # Leute GERADE", nicht „womit über alle Zeit".
+            **{"clients": (aufteilung := self.client_split(30))["clients"],
+               "clients_both": aufteilung["both"]},
+            "signup_clients": [{**r, "users": 0} for r in self.signup_client_split()],
         }
 
     def admin_user_rows(self) -> list[dict]:
@@ -2160,19 +2563,32 @@ class Store:
         Abo-, Quiz- und KI-Frage-Zahl + letzter Aktivitätstag. Alles in
         ratslotse.sqlite, ein Query."""
         rows = self._conn.execute(
-            """SELECT u.id, u.email, u.role, u.status, u.created_at, u.apple_sub,
+            """SELECT u.id, u.email, u.role, u.status, u.created_at, u.apple_sub, u.signup_client,
                       (SELECT COUNT(*) FROM topics t WHERE t.owner_id = u.id) n_topics,
-                      (SELECT COUNT(*) FROM committee_subscriptions s WHERE s.owner_id = u.id) n_abos,
+                      (SELECT COUNT(*) FROM committee_subscriptions s WHERE s.owner_id = u.id) n_subscriptions,
                       (SELECT COUNT(DISTINCT question_id) FROM quiz_answers q WHERE q.owner_id = u.id) n_quiz,
+                      -- Der gespeicherte Wert heißt seit dem Werte-Umbau
+                      -- `ai_question`; die Spalte der Antwort weiter `n_ki`.
                       (SELECT COALESCE(SUM(count), 0) FROM user_activity a
-                         WHERE a.owner_id = u.id AND a.feature = 'ki_frage') n_ki,
+                         WHERE a.owner_id = u.id AND a.feature = 'ai_question') n_ki,
                       (SELECT MAX(day) FROM user_activity a WHERE a.owner_id = u.id) last_seen
                FROM web_users u ORDER BY u.created_at DESC"""
         ).fetchall()
+        # Ein zweiter Query statt eines Unterausdrucks je Client: Die Liste
+        # zeigt die AUFTEILUNG, nicht eine Zahl — und welche Clients es gibt,
+        # steht in den Daten, nicht im SQL.
+        nutzung: dict[int, dict[str, int]] = {}
+        for r in self._conn.execute(
+            "SELECT owner_id, client, SUM(count) c FROM user_activity "
+            "WHERE feature = 'session' GROUP BY owner_id, client"
+        ).fetchall():
+            nutzung.setdefault(r["owner_id"], {})[r["client"]] = r["c"]
         return [{"id": r["id"], "email": r["email"], "role": r["role"], "status": r["status"],
                  "created_at": r["created_at"], "apple_linked": bool(r["apple_sub"]),
-                 "n_topics": r["n_topics"], "n_abos": r["n_abos"], "n_quiz": r["n_quiz"],
-                 "n_ki": r["n_ki"], "last_seen": r["last_seen"]} for r in rows]
+                 "n_topics": r["n_topics"], "n_subscriptions": r["n_subscriptions"],
+                 "n_quiz": r["n_quiz"], "n_ki": r["n_ki"], "last_seen": r["last_seen"],
+                 "signup_client": r["signup_client"],
+                 "clients": nutzung.get(r["id"], {})} for r in rows]
 
     def admin_user_detail(self, uid: int) -> dict | None:
         """Nutzer-Detail (Design 20a): Feature-Nutzung, Angelegtes, 30-Tage-
@@ -2193,8 +2609,8 @@ class Store:
         by_day = {r["day"]: r["c"] for r in self._conn.execute(
             "SELECT day, SUM(count) c FROM user_activity WHERE owner_id = ? AND day >= ? GROUP BY day",
             (uid, since)).fetchall()}
-        verlauf_days = [(date.today() - timedelta(days=29 - i)).isoformat() for i in range(30)]
-        verlauf = [by_day.get(d, 0) for d in verlauf_days]
+        history_days = [(date.today() - timedelta(days=29 - i)).isoformat() for i in range(30)]
+        verlauf = [by_day.get(d, 0) for d in history_days]
         return {
             "id": u["id"], "email": u["email"], "role": u["role"], "status": u["status"],
             "created_at": u["created_at"],
@@ -2202,13 +2618,28 @@ class Store:
                 "SELECT MAX(day) FROM user_activity WHERE owner_id = ?", (uid,)).fetchone()[0],
             "apple_linked": bool(u.get("apple_sub")), "has_password": bool(u.get("password_set", 1)),
             "delivery_channel": u.get("delivery_channel", "email"),
+            # Womit angemeldet und womit gearbeitet — zwei verschiedene Fragen.
+            "signup_client": u.get("signup_client"),
+            "clients": self.client_usage(uid),
             # Einwilligung „Gespräche speichern": None = nie gefragt, 1 = an, 0 = aus.
-            "qa_speichern": u.get("qa_speichern"),
+            "saves_conversations": u.get("saves_conversations"),
             # Admin-steuerbare Frage-Limits (10.08.26) — fürs Formular im Detail.
-            "deep_limit": u.get("deep_limit"), "limits_frei": bool(u.get("limits_frei")),
-            "features": {"ki_frage": feats.get("ki_frage", 0), "suche": feats.get("suche", 0),
-                         "quiz": n_quiz, "analyse": feats.get("analyse", 0), "karte": feats.get("karte", 0)},
-            "topics": topics, "abos": abos, "verlauf": verlauf, "verlauf_days": verlauf_days,
+            "deep_limit": u.get("deep_limit"), "limits_unlocked": bool(u.get("limits_unlocked")),
+            # Links der API-Feldname, rechts der GESPEICHERTE Wert. Die beiden
+            # fallen auseinander, seit die Werte englisch heißen und die
+            # Feldnamen dieses Blocks als einzige noch deutsch sind (s. die
+            # Begründung zu `ki_frage` in `scripts/pruefe_alte_werte.py`).
+            # `suche`, `analyse` und `karte` standen bis zum 01.09.2026
+            # dauerhaft auf 0: Die Zähler gab es seit Design 20a, die
+            # `record_activity`-Aufrufe dazu nie. `quiz` kommt nicht aus
+            # `user_activity`, sondern zählt beantwortete Fragen.
+            "features": {"ki_frage": feats.get("ai_question", 0),
+                         "research": feats.get("research", 0),
+                         "suche": feats.get("search", 0),
+                         "quiz": n_quiz,
+                         "analyse": feats.get("analysis", 0),
+                         "karte": feats.get("map", 0)},
+            "topics": topics, "subscriptions": abos, "history": verlauf, "history_days": history_days,
         }
 
     # ---- topics ----
@@ -2831,7 +3262,7 @@ class Store:
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self._conn:
             cur = self._conn.execute(
-                "INSERT OR IGNORE INTO vorlage_follows "
+                "INSERT OR IGNORE INTO template_follows "
                 "(owner_id, kvonr, template_number, title, stations, created_at) VALUES (?,?,?,?,?,?)",
                 (owner_id, kvonr, template_number or "", title or "", stations, now),
             )
@@ -2840,21 +3271,21 @@ class Store:
     def unfollow_vorlage(self, owner_id: int, kvonr: int) -> bool:
         with self._conn:
             cur = self._conn.execute(
-                "DELETE FROM vorlage_follows WHERE owner_id = ? AND kvonr = ?", (owner_id, kvonr)
+                "DELETE FROM template_follows WHERE owner_id = ? AND kvonr = ?", (owner_id, kvonr)
             )
         return cur.rowcount > 0
 
     def get_vorlage_follows(self, owner_id: int) -> list[dict]:
         rows = self._conn.execute(
             "SELECT id, kvonr, template_number, title, created_at, notified_at "
-            "FROM vorlage_follows WHERE owner_id = ? ORDER BY created_at DESC",
+            "FROM template_follows WHERE owner_id = ? ORDER BY created_at DESC",
             (owner_id,),
         ).fetchall()
         return [dict(r) for r in rows]
 
     def is_following_vorlage(self, owner_id: int, kvonr: int) -> bool:
         return self._conn.execute(
-            "SELECT 1 FROM vorlage_follows WHERE owner_id = ? AND kvonr = ?", (owner_id, kvonr)
+            "SELECT 1 FROM template_follows WHERE owner_id = ? AND kvonr = ?", (owner_id, kvonr)
         ).fetchone() is not None
 
     def get_vorlage_follow_targets(self) -> list[dict]:
@@ -2867,7 +3298,7 @@ class Store:
         rows = self._conn.execute(
             """SELECT f.id, f.owner_id, f.kvonr, f.template_number, f.title, f.stations,
                       wu.delivery_channel, wu.email, wu.display_name
-               FROM vorlage_follows f JOIN web_users wu ON wu.id = f.owner_id
+               FROM template_follows f JOIN web_users wu ON wu.id = f.owner_id
                WHERE wu.status = 'active'
                ORDER BY f.kvonr"""
         ).fetchall()
@@ -2882,6 +3313,6 @@ class Store:
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self._conn:
             self._conn.execute(
-                "UPDATE vorlage_follows SET stations = ?, notified_at = ? WHERE id = ?",
+                "UPDATE template_follows SET stations = ?, notified_at = ? WHERE id = ?",
                 (stations, now, follow_id),
             )

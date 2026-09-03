@@ -163,15 +163,9 @@ export function Kassenzettel({
 
             {fuss}
 
-            {/* Rundungszeile — automatisch (GB-13): Sie erscheint genau
-                dann, wenn die je für sich gerundeten Posten die Gesamtsumme
-                verfehlen, und verschwindet mit dem Grund. */}
-            {teileSumme !== summe && (
-              <p className="mt-2.5 text-[10px] leading-relaxed text-muted-foreground">
-                Rundung: Die Einzelposten ergeben {deZahl(teileSumme)}&nbsp;€, die
-                Gesamtsumme {deZahl(summe)}&nbsp;€.
-              </p>
-            )}
+            {/* Keine Rundungszeile mehr (GB-13 aufgehoben, 02.09.2026): Dass die
+                gerundeten Posten die Gesamtsumme um einen Euro verfehlen,
+                beruhigt uns und erklärt niemandem etwas (Designsprache § 7). */}
 
             {source && (
               <p className="mt-3 border-t border-dashed border-border pt-2.5 text-center text-[9.5px] leading-relaxed text-muted-foreground">

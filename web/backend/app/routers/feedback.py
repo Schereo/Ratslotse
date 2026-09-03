@@ -93,7 +93,7 @@ def submit_feedback(
     return {"ok": True}
 
 
-@router.post("/kontakt", status_code=status.HTTP_202_ACCEPTED)
+@router.post("/contact", status_code=status.HTTP_202_ACCEPTED)
 def submit_support(
     request: Request,
     body: SupportIn,

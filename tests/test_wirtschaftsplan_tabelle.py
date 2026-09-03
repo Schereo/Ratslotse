@@ -221,9 +221,9 @@ def test_speichern_neben_dem_beschlusstext(tmp_path):
             plan, probes, url="https://example.org/x", document_id=283481))
         zeilen = store.get_wirtschaftsplaene("awb")
         assert len(zeilen) == 1 and zeilen[0]["revenues"] == 25_197_796.0
-        assert "wirtschaftsplan_spalten" in zeilen[0]["probes"]
+        assert "business_plan_columns" in zeilen[0]["probes"]
         assert store.wirtschaftsplan_jahre("awb") == [2025]
-        assert "council_wirtschaftsplaene" not in store.herkunft_luecken()
+        assert "council_business_plans" not in store.herkunft_luecken()
     finally:
         store.close()
 

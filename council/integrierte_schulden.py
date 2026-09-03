@@ -75,7 +75,7 @@ UEBERSICHT_URL = ("https://www.statistikportal.de/de/veroeffentlichungen/"
 LINK_MUSTER = re.compile(
     r'href="([^"]*Integrierte_Schulden[^"]*\.xlsx)"', re.IGNORECASE)
 
-PROBE_KERNHAUSHALT = "integrierte_schulden_kernhaushalt"
+PROBE_KERNHAUSHALT = "integrated_debt_core_budget"
 
 PROBEN: dict[str, str] = {
     PROBE_KERNHAUSHALT: (

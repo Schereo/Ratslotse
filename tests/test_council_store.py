@@ -515,10 +515,10 @@ def test_anlagen_embedding_roundtrip(tmp_path):
     try:
         with store._conn:
             store._conn.execute(
-                "INSERT INTO council_vorlagen (kvonr, template_number, title, status, fetched_at) "
+                "INSERT INTO council_templates (kvonr, template_number, title, status, fetched_at) "
                 "VALUES (111, '26/0100', 'Grundsatzbeschluss Stadionneubau', 'ok', datetime('now'))")
             store._conn.executemany(
-                "INSERT INTO council_anlagen (document_id, kvonr, label, url, raw_text, "
+                "INSERT INTO council_attachments (document_id, kvonr, label, url, raw_text, "
                 "fetched_at, status) VALUES (?, ?, ?, ?, ?, datetime('now'), ?)",
                 [(901, 111, "Schalltechnisches Gutachten", "https://x/901",
                   "Lärmpegel liegt unter dem Grenzwert. " * 20, "ok"),
@@ -529,7 +529,7 @@ def test_anlagen_embedding_roundtrip(tmp_path):
         # Nur die beiden ok-Anlagen, neueste (höchste id) zuerst; empty fehlt.
         assert [t["document_id"] for t in todo] == [903, 901]
         assert todo[1]["template_number"] == "26/0100"
-        assert todo[1]["vorlage_titel"] == "Grundsatzbeschluss Stadionneubau"
+        assert todo[1]["template_title"] == "Grundsatzbeschluss Stadionneubau"
 
         for t in todo:
             store.replace_anlage_embeddings(
@@ -541,12 +541,12 @@ def test_anlagen_embedding_roundtrip(tmp_path):
         # Anzeige-Zeilen behalten die Treffer-Reihenfolge + tragen die Vorlage.
         rows = store.anlagen_by_ids([903, 901])
         assert [r["document_id"] for r in rows] == [903, 901]
-        assert rows[1]["vorlage_titel"] == "Grundsatzbeschluss Stadionneubau"
+        assert rows[1]["template_title"] == "Grundsatzbeschluss Stadionneubau"
 
         # Geänderter Text → anderer Hash → wieder in der Fehlt-Liste.
         with store._conn:
             store._conn.execute(
-                "UPDATE council_anlagen SET raw_text = 'Neuer Text, deutlich anders und lang genug fuer einen Chunk. ' || raw_text "
+                "UPDATE council_attachments SET raw_text = 'Neuer Text, deutlich anders und lang genug fuer einen Chunk. ' || raw_text "
                 "WHERE document_id = 901")
         assert [t["document_id"] for t in store.anlagen_missing_embeddings()] == [901]
     finally:
@@ -580,13 +580,13 @@ def test_anlagen_reranking_bekommt_vorlagentitel(tmp_path, monkeypatch):
     try:
         with store._conn:
             store._conn.executemany(
-                "INSERT INTO council_vorlagen (kvonr, template_number, title, status, fetched_at) "
+                "INSERT INTO council_templates (kvonr, template_number, title, status, fetched_at) "
                 "VALUES (?, ?, ?, 'ok', '')", [
                     (111, "26/0100", "Bebauungsplan Fliegerhorst"),
                     (222, "26/0200", "Bebauungsplan anderes Gebiet"),
                 ])
             store._conn.executemany(
-                "INSERT INTO council_anlagen (document_id, kvonr, label, url, raw_text, "
+                "INSERT INTO council_attachments (document_id, kvonr, label, url, raw_text, "
                 "fetched_at, status) VALUES (?, ?, 'Umweltbericht', 'https://x', "
                 "'Alter Chunk ohne Thema', '', 'ok')", [(901, 111), (902, 222)])
         monkeypatch.setattr(emb, "_anlage_matrix", lambda _store: (

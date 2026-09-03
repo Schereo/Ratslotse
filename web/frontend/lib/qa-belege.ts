@@ -42,9 +42,9 @@ export const anlagenBuchstabe = (i: number) => String.fromCharCode(97 + (i % 26)
  *  halluziniertes „[A9]" bekommt keinen Buchstaben und wird beim Rendern
  *  ersatzlos geschluckt (wie die ungültigen [id] serverseitig). */
 export function anlagenBuchstaben(
-  text: string, anlagen: { nr?: number | null }[] | undefined | null,
+  text: string, attachments: { nr?: number | null }[] | undefined | null,
 ): Map<number, string> {
-  const vorhanden = new Set((anlagen ?? []).map((a, i) => a.nr ?? i + 1));
+  const vorhanden = new Set((attachments ?? []).map((a, i) => a.nr ?? i + 1));
   const map = new Map<number, string>();
   for (const g of text.matchAll(ANL_RE)) {
     const nr = anlagenNr(g[0]);

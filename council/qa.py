@@ -15,6 +15,7 @@ import re
 
 from kern import llm, prompts
 from council import ernte
+from council import geld as _geld
 from council.topics import _strip_fences  # noqa: F401  (kept for symmetry / future use)
 
 # Antwort-Modell: gemini-2.5-flash antwortet in ~1,2–1,8 s, wo deepseek übers
@@ -47,7 +48,7 @@ def extract_keywords(question: str) -> list[str]:
     return out[:8]
 
 
-# Die Prompt-Templates leben in kern/prompts.py („qa_antwort" / „qa_suchbegriffe")
+# Die Prompt-Templates leben in kern/prompts.py („qa_answer" / „qa_search_terms")
 # und sind — wie alle anderen — über das Admin-UI live editierbar.
 
 
@@ -314,9 +315,9 @@ def analyse_query(question: str, model: str = EXPAND_MODEL,
     extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in model else {}
     try:
         block = f"\nBisheriges Gespräch (für Rückbezüge):\n{vtext}\n" if vtext else ""
-        prompt = prompts.render("qa_analyse", question=question.strip()[:300], verlauf=block)
+        prompt = prompts.render("qa_analysis", question=question.strip()[:300], verlauf=block)
         resp = llm.chat_complete(
-            model=model, _feature="qa_analyse", temperature=0, max_tokens=480,
+            model=model, _feature="qa_analysis", temperature=0, max_tokens=480,
             timeout=8.0, response_format={"type": "json_object"},
             messages=[{"role": "user", "content": prompt}], **extra,
         )
@@ -360,7 +361,7 @@ def sort_verlauf(candidates: list[dict]) -> list[dict]:
     return sorted(candidates, key=lambda c: (c.get("session_date") or "", c.get("id") or 0))
 
 
-# Typ-spezifische Zusatzregeln für das Antwort-Prompt (qa_antwort hat dafür
+# Typ-spezifische Zusatzregeln für das Antwort-Prompt (qa_answer hat dafür
 # den {extra_regeln}-Slot; alte Admin-Overrides ohne den Slot ignorieren den
 # Parameter einfach — format() stört sich nicht an überzähligen kwargs).
 # Punktfragen („Wann wurde X beschlossen?") bekommen eine knappe Antwort:
@@ -458,7 +459,7 @@ def expand_query(question: str, model: str = EXPAND_MODEL) -> str:
         return hit
     extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in model else {}
     try:
-        prompt = prompts.render("qa_suchbegriffe", question=question.strip()[:300])
+        prompt = prompts.render("qa_search_terms", question=question.strip()[:300])
         # timeout: Die Expansion steht auf dem kritischen Pfad VOR den Quellen —
         # ein hängender Provider darf nicht den SDK-Default (600 s!) ausreizen;
         # nach 8 s je Versuch ist die rohe Frage als Query der bessere Deal.
@@ -661,7 +662,7 @@ def protokolle_verlinken(store, rows: list[dict]) -> None:
     except Exception:  # noqa: BLE001 — Verlinkung ist Zusatz, nie Blocker
         return
     for r in rows:
-        r["protokoll_url"] = urls.get(r.get("ksinr"))
+        r["minutes_url"] = urls.get(r.get("ksinr"))
 
 
 def finde_person(store, question: str) -> dict | None:
@@ -895,7 +896,7 @@ _SITZUNGEN_MAX = 3
 def finde_sitzungen(store, question: str) -> list[dict]:
     """Sitzungs-Fragetyp: Nennt die Frage ein konkretes Sitzungsdatum („am
     17.06.2026", „17. Juni") oder die letzte/nächste Sitzung eines Gremiums?
-    Liefert die gemeinten Sitzungen, jede mit ``beschluss_ids`` in
+    Liefert die gemeinten Sitzungen, jede mit ``decision_ids`` in
     Tagesordnungs-Reihenfolge und — solange es keine Beschlüsse gibt — der
     Tagesordnung. Deterministisch wie finde_person; leer bei Fehlern, der
     Sitzungs-Anker ist Zusatz, nie Blocker."""
@@ -950,9 +951,9 @@ def _finde_sitzungen(store, question: str) -> list[dict]:
              "session_time": r.get("session_time"), "location": r.get("location"),
              "kuenftig": str(r.get("session_date") or "") > heute}
         # Terminierte Kalender-Einträge (upcoming) haben noch kein ksinr.
-        s["beschluss_ids"] = (store.decision_ids_der_sitzung(s["ksinr"])
+        s["decision_ids"] = (store.decision_ids_der_sitzung(s["ksinr"])
                               if s["ksinr"] else [])
-        if not s["beschluss_ids"]:
+        if not s["decision_ids"]:
             agenda = store.agenda_items(s["ksinr"]) if s["ksinr"] else []
             # Der Kartentext zuerst: Er entsteht aus Vorlage UND Anlagen und
             # sagt deshalb, WAS beantragt ist („110 Wohneinheiten auf 8,6
@@ -985,7 +986,7 @@ def _sitzungen_block(sitzungen: list[dict] | None) -> str:
             kopf += f" um {s['session_time']} Uhr"
         if s.get("location"):
             kopf += f" ({s['location']})"
-        n = len(s.get("beschluss_ids") or [])
+        n = len(s.get("decision_ids") or [])
         if n:
             kopf += (f": Alle {n} Tagesordnungspunkte samt Ergebnis stehen oben "
                      "im Kontext, in der Reihenfolge der Sitzung.")
@@ -1234,9 +1235,9 @@ def deep_zerlege(question: str, model: str = EXPAND_MODEL) -> list[dict]:
     extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in model else {}
     try:
         resp = llm.chat_complete(
-            model=model, _feature="deep_zerlegung", temperature=0, max_tokens=500,
+            model=model, _feature="deep_decomposition", temperature=0, max_tokens=500,
             timeout=12.0, response_format={"type": "json_object"},
-            messages=[{"role": "user", "content": prompts.render("deep_zerlegung",
+            messages=[{"role": "user", "content": prompts.render("deep_decomposition",
                                                                  question=question.strip()[:300])}],
             **extra)
         data = json.loads(_strip_fences(resp.choices[0].message.content or ""))
@@ -1297,7 +1298,7 @@ def _anlagen_block(anlagen: list[dict] | None) -> str:
     zeilen = "\n".join(
         f"[A{a.get('nr') or i + 1}] {a.get('label') or 'Anlage'} "
         f"(zur Vorlage {a.get('template_number') or '?'}"
-        f"{' — ' + a['vorlage_titel'][:80] if a.get('vorlage_titel') else ''}): "
+        f"{' — ' + a['template_title'][:80] if a.get('template_title') else ''}): "
         f"{(a.get('citation') or '').strip()[:ANLAGEN_ZEICHEN]}"
         for i, a in enumerate(frisch))
     return ("\nAUS DEN ANLAGEN (Gutachten, Konzepte, Stellungnahmen zu den Vorlagen —\n"
@@ -1314,7 +1315,7 @@ def _planungen_block(planungen: list[dict] | None) -> str:
     if not planungen:
         return ""
     zeilen = "\n".join(
-        f"- {p.get('vorlage_titel') or p.get('template_number')}: {p.get('committee')} am "
+        f"- {p.get('template_title') or p.get('template_number')}: {p.get('committee')} am "
         f"{_datum_de(p.get('date'))}" for p in planungen[:8])
     return ("\nGEPLANTE NÄCHSTE STATIONEN (aus den Beratungsfolgen — für den Abschnitt "
             "„Wie es weitergeht“; als Termin nennen, NIE mit [id]):\n" + zeilen + "\n")
@@ -1345,12 +1346,12 @@ def deep_bericht_stream(question: str, candidates: list[dict],
     geld = _geld_vereinheitlichen(geld, haushalt, taxes, tax_capacity)
     zusatz = (_debatten_block(debatten) + _presse_block(presse)
               + geld_regeln(geld) + geld_block(geld) + _anlagen_block(anlagen))
-    prompt = prompts.render("deep_bericht", question=question.strip()[:300],
+    prompt = prompts.render("deep_report", question=question.strip()[:300],
                             context=_build_context(candidates),
                             zusatz=zusatz,
                             planungen=_planungen_block(planungen))
     extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in model else {}
-    yield from llm.chat_stream(model=model, _feature="deep_bericht", temperature=0.2,
+    yield from llm.chat_stream(model=model, _feature="deep_report", temperature=0.2,
                                max_tokens=4000,
                                messages=[{"role": "user", "content": prompt}], **extra)
 
@@ -1467,15 +1468,15 @@ def partei_meinungen(question: str, rows: list[dict], model: str = MODEL) -> lis
             f"{(b.get('text') or '').strip()[:300]}"
             for b in gruppen[label])
         teile.append(f"{label} ({len(gruppen[label])} Beiträge):\n{zeilen}")
-    prompt = prompts.render("partei_meinungen", question=question.strip()[:300],
-                            beitraege="\n".join(teile))
+    prompt = prompts.render("party_opinions", question=question.strip()[:300],
+                            contributions="\n".join(teile))
     extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in model else {}
     # 2000 Token reichten nicht mehr: Mit dem Beschluss-Anker stehen bis zu 15
     # Fraktionen und Verbände im Prompt, die Antwort lief mitten in der AfD-
     # Position ins Limit („finish_reason: length", an der Baumschutz-Frage
     # gemessen) — und ein abgeschnittenes Array ließ den Baustein KOMPLETT
     # verschwinden. Erst Platz schaffen, dann trotzdem retten, was da ist.
-    resp = llm.chat_complete(model=model, _feature="partei_meinungen", temperature=0,
+    resp = llm.chat_complete(model=model, _feature="party_opinions", temperature=0,
                              max_tokens=6000, messages=[{"role": "user", "content": prompt}],
                              **extra)
     content = _strip_fences(resp.choices[0].message.content or "") if resp.choices else ""
@@ -1487,19 +1488,19 @@ def partei_meinungen(question: str, rows: list[dict], model: str = MODEL) -> lis
         if not isinstance(e, dict) or e.get("party") not in gruppen:
             continue  # Halluzinations-Guard: nur Fraktionen aus dem Input
         kern = e.get("kernaussage") if isinstance(e.get("kernaussage"), dict) else None
-        haltung = str(e.get("haltung") or "").strip().lower()
+        haltung = str(e.get("stance") or "").strip().lower()
         out.append({
             "party": e["party"],
-            "haltung": haltung if haltung in ("dafür", "dagegen", "offen", "gewandelt") else "offen",
+            "stance": haltung if haltung in ("dafür", "dagegen", "offen", "gewandelt") else "offen",
             "position": str(e.get("position") or "").strip()[:400],
-            "einig": bool(e.get("einig", True)),
+            "unanimous": bool(e.get("unanimous", True)),
             "note": (str(e.get("note")) or "").strip()[:200] or None if e.get("note") else None,
             "kernaussage": {
                 "text": str(kern.get("text") or "").strip()[:300],
                 "speaker": str(kern.get("speaker") or "").strip()[:80] or None,
                 "date": str(kern.get("date") or "").strip()[:10] or None,
             } if kern and kern.get("text") else None,
-            "beitraege": len(gruppen[e["party"]]),
+            "contributions": len(gruppen[e["party"]]),
             # Aufklappbare Zeile (Tims Wunsch): die verdichteten Beiträge im
             # Wortlaut — dieselben, die auch das LLM gesehen hat.
             "beitraege_liste": [{
@@ -1611,7 +1612,7 @@ def _haushalt_block(zeilen: list[dict] | None) -> str:
         teile.append(s)
     return ("\nSTADTHAUSHALT (GEPLANTE Zahlen aus dem beschlossenen Haushaltsplan; nur\n"
             "nutzen, wenn einschlägig — im Text als „Laut Haushaltsplan JAHR …“ nennen,\n"
-            "NIE mit [id]):\n" + "\n".join(teile) + "\n")
+            "NIE mit [id]):\n" + "\n".join(teile) + "\n" + _jahr_hinweis(zeilen))
 
 
 def _steuern_block(zeilen: list[dict] | None) -> str:
@@ -1631,7 +1632,7 @@ def _steuern_block(zeilen: list[dict] | None) -> str:
         teile.append(s)
     return ("\nSTEUEREINNAHMEN (IST-Zahlen der Stadt, NICHT der Haushaltsplan — nie mit\n"
             "den Plan-Zahlen oben vermischen; im Text als „tatsächlich eingenommen“\n"
-            "kennzeichnen und das Jahr nennen, NIE mit [id]):\n" + "\n".join(teile) + "\n")
+            "kennzeichnen und das Jahr nennen, NIE mit [id]):\n" + "\n".join(teile) + "\n" + _jahr_hinweis(zeilen))
 
 
 def _steuerkraft_block(k: dict | None) -> str:
@@ -1650,7 +1651,7 @@ def _steuerkraft_block(k: dict | None) -> str:
         "- REGEL: Steigt die eigene Steuerkraft, sinken die Schlüsselzuweisungen des\n"
         "  Landes. Von einer Steuererhöhung bleibt der Stadt deshalb nur ein Teil —\n"
         "  sag das dazu, wenn du über mehr Einnahmen sprichst. Nenne keine\n"
-        "  Prozentsätze oder Beträge, die hier nicht stehen.\n")
+        "  Prozentsätze oder Beträge, die hier nicht stehen.\n" + _jahr_hinweis(k))
 
 
 # ===========================================================================
@@ -1709,11 +1710,15 @@ def _steuerkraft_block(k: dict | None) -> str:
 #: der andere drinbliebe, stünde eine Investitionszahl ohne ihr Gegenstück im
 #: Kontext — und die Regel „nie voneinander abziehen" hinge an einer Zahl, die
 #: gar nicht da ist. Nebeneinander fallen sie zusammen oder gar nicht.
-GELD_FACETTEN = ("schulden", "fees", "stellenplan", "investitionen", "gebaut",
-                 "ist", "gruende", "pruefung", "produkte", "antraege",
-                 "plan", "ansatz", "taxes", "ausgleich", "konzern", "vergleich",
-                 # Die vier Schichten aus den Jahresabschlüssen (08/2026).
-                 "bilanz", "kassensicht", "supplementary_approvals", "indicators")
+_ALTE_FACETTEN = ("schulden", "fees", "stellenplan", "investitionen", "gebaut",
+                  "ist", "gruende", "pruefung", "produkte", "antraege",
+                  "plan", "ansatz", "taxes", "ausgleich", "konzern", "vergleich",
+                  # Die vier Schichten aus den Jahresabschlüssen (08/2026).
+                  "bilanz", "kassensicht", "supplementary_approvals", "indicators")
+# Seit 09/2026 kommen neue Facetten als Module in `council/geld/` dazu
+# (Docstring dort). Ihr Rang entscheidet, ob sie vor oder hinter den alten
+# stehen; die alten behalten ihre Reihenfolge untereinander.
+GELD_FACETTEN = _geld.NAMEN_VORN + _ALTE_FACETTEN + _geld.NAMEN_HINTEN
 
 #: Alle Muster arbeiten auf `_falte()`-Text: kleingeschrieben, Umlaute
 #: ausgeschrieben, Satzzeichen zu Leerzeichen. Deshalb steht hier „pruef",
@@ -1747,6 +1752,9 @@ _F_AUFGABE = re.compile(
 # „Betriebskosten" gingen leer aus, obwohl sie dieselbe Frage stellen. Die
 # Endung fängt sie, ohne die Falle zu öffnen, die `\bteuer` schließt: Ein Wort
 # wie „Kostüm" endet nicht auf „kosten".
+_F_AUFGABE_FUER = re.compile(
+    r"(?:haushalt|etat|budget|ansatz|geplant|eingeplant|vorgesehen|veranschlagt)"
+    r"[^.?!]{0,30}\bfuer\b")
 _F_KOSTEN = re.compile(
     r"\bkost|kosten\b|\bteuer|\bpreis|gibt.{0,40}\baus\b|geben.{0,40}\baus\b|"
     r"ausgegeben fuer|ausgaben fuer|aufwend")
@@ -1777,6 +1785,9 @@ _F_ANSATZ = re.compile(
 # Planungsfrage. Die weichen Wörter brauchen deshalb einen Geld-Anker.
 _F_IST_HART = re.compile(
     r"ausgegeben|jahresabschluss|income_statement|abgerechnet|rechnungsergebnis|"
+    # „Jahresergebnis" zog bis 09/2026 gar nichts — die schlichteste Frage an
+    # den Abschluss bekam keinen Abschluss.
+    r"jahresergebnis|ordentliche[sn]? ergebnis|"
     r"ueberschritten|fehlbetrag|\bdefizit|ueberschuss|\bbilanz")
 _F_IST_WEICH = re.compile(
     r"tatsaechlich|wirklich|am ende|unterm strich|eingehalten|abweich|"
@@ -1867,8 +1878,19 @@ def haushaltsjahr(question: str) -> int | None:
     Nur die Änderungslisten brauchen das: Sie liegen je Jahrgang vor, und
     „Wer wollte den Haushalt 2024 ändern?" meint 2024 und nicht den jüngsten
     Jahrgang. Steht keine Jahreszahl da, entscheidet die Quelle."""
-    m = _F_JAHRGANG.search(question or "")
-    return int(m.group(1)) if m else None
+    t = _falte(question or "")
+    jahre = sorted({int(j) for j in _F_JAHRGANG.findall(t)})
+    if len(jahre) != 1:
+        # Kein Jahr — oder zwei („von 2019 bis 2024"): Das ist ein Zeitraum,
+        # und ein Zeitraum hat keinen Jahrgang. Dann entscheidet die Quelle.
+        return None
+    # „seit 2020", „ab 2020", „nach 2020": Das Jahr ist der ANFANG einer
+    # Reihe, nicht der gefragte Jahrgang. Lieferte die Facette dann 2020,
+    # bekäme „Wie haben sich die Ausgaben seit 2020 entwickelt?" den ältesten
+    # Punkt der Reihe statt der Reihe.
+    if re.search(r"\b(seit|ab|nach|zwischen|bis)\s+" + str(jahre[0]) + r"\b", t):
+        return None
+    return jahre[0]
 
 
 def geld_facetten(question: str, typ: str = "topic") -> set[str]:
@@ -1892,7 +1914,12 @@ def geld_facetten(question: str, typ: str = "topic") -> set[str]:
         f.add("vergleich")
     if _F_PLAN.search(t):
         f.add("plan")
-    if _F_ANSATZ.search(t):
+    # Der Ansatz auch bei Kosten-Fragen: „Was kostet das Personal?" ist die
+    # Frage an POSTEN 13 des Gesamtergebnishaushalts. Ob der Baustein dann
+    # wirklich in den Kontext kommt, entscheidet `geld_kontext` am Treffer
+    # im Fragewortlaut — sonst hätte „Was kostete der Stadionumbau?" den
+    # Gesamthaushalt im Kontext (der Grund, warum `_F_ANSATZ` eng ist).
+    if _F_ANSATZ.search(t) or (_F_KOSTEN.search(t) and "plan" in f):
         f.add("ansatz")
     if _F_IST_HART.search(t) or (_F_IST_WEICH.search(t) and "plan" in f):
         f.add("ist")
@@ -1905,7 +1932,13 @@ def geld_facetten(question: str, typ: str = "topic") -> set[str]:
     # Stadt …", „Rechtsgrundlage", „kürzen") ziehen sie auch ohne Kostenwort:
     # „Muss die Stadt das Theater betreiben?" fragt nach der Pflicht, nicht
     # nach dem Preis, und nur die Produktebene weiß die Antwort.
-    if _F_KOSTEN.search(t) or _F_AUFGABE.search(t):
+    # … und bei der Plan-Frage nach einer AUFGABE („Was stand 2022 im Haushalt
+    # für die Feuerwehr?"): Der Teilhaushalt heißt „Sicherheit und Ordnung",
+    # das Produkt „Brandschutz und Feuerwehr" — die Produktebene ist die
+    # Quelle, die den Namen kennt. Ohne Begriffstreffer liefert sie nichts,
+    # der Prompt wächst also nur, wenn es die Aufgabe wirklich gibt.
+    if _F_KOSTEN.search(t) or _F_AUFGABE.search(t) or (
+            "plan" in f and _F_AUFGABE_FUER.search(t)):
         f.add("produkte")
     # Das Warum steht im Jahresabschluss — ohne dessen Zahlen schwebt es.
     # Deshalb zieht `gruende` immer `ist` mit.
@@ -1961,19 +1994,41 @@ def geld_facetten(question: str, typ: str = "topic") -> set[str]:
         f.add("stellenplan")
     if _F_AENDERUNGSLISTE.search(t) or (_F_STREIT.search(t) and (f & {"plan", "ansatz"})):
         f.add("antraege")
+    # Die Modul-Facetten (council/geld/): jede prüft ihren eigenen Wortlaut
+    # und sieht, was bis hierher erkannt wurde — so kann „vorhaben" an
+    # „investitionen" andocken, ohne dessen Muster zu kopieren.
+    for fac in _geld.FACETTEN:
+        if fac.erkennen(t, typ, f):
+            f.add(fac.name)
     if not f and typ == "money":
         f = {"plan"}   # das Verhalten von vor dieser Runde, unverändert
     return f
 
 
-def _sicher(fn, *args, standard=None):
+def _sicher(fn, *args, standard=None, **kw):
     """Eine Quelle abfragen — Zusatz, nie Blocker. Fällt die Tabelle (frische
     Datenbank ohne Ingest-Lauf), bleibt der Baustein leer statt die Antwort
     zu verlieren."""
     try:
-        return fn(*args)
+        return fn(*args, **kw)
     except Exception:  # noqa: BLE001
         return standard
+
+
+def _jahr_hinweis(d, jahr_key: str = "year") -> str:
+    """Die Zeile, die dazukommt, wenn die Quelle das gefragte Jahr nicht hat.
+
+    Seit 09/2026 liefern die Facetten den JAHRGANG AUS DER FRAGE, wenn sie
+    ihn haben — und sonst den jüngsten, wie vorher. Der zweite Fall ist der
+    gefährliche: Wer nach 2019 fragt und stillschweigend 2026 bekommt, liest
+    die Zahl als 2019. Deshalb steht es dabei, und zwar als Anweisung."""
+    if isinstance(d, list):
+        d = d[0] if d else None
+    if not d or not d.get("year_asked"):
+        return ""
+    return (f"- ACHTUNG: Für {d['year_asked']} liegt diese Quelle nicht vor; oben steht "
+            f"der Jahrgang {d.get(jahr_key)}. Sag das ausdrücklich dazu und gib die "
+            f"Zahlen nicht für {d['year_asked']} aus.\n")
 
 
 def geld_kontext(store, question: str, begriffe: str = "", typ: str = "topic") -> dict:
@@ -1988,57 +2043,74 @@ def geld_kontext(store, question: str, begriffe: str = "", typ: str = "topic") -
     facetten = geld_facetten(question, typ)
     # Die Begriffe kommen aus der Expansion; ohne sie tut es die Frage selbst.
     woerter = [w for w in (begriffe or question or "").split() if w]
-    aus: dict = {"facetten": sorted(facetten)}
+    # Das Jahr aus der FRAGE, nicht aus den Begriffen: Die Expansion streut
+    # Jahreszahlen ein, die niemand getippt hat. Jede Quelle bekommt es und
+    # liefert den Jahrgang, wenn sie ihn hat — sonst den jüngsten, mit Vermerk.
+    jahr = haushaltsjahr(question)
+    aus: dict = {"facets": sorted(facetten)}
     if "fees" in facetten:
-        aus["fees"] = _sicher(store.gebuehren_fuer_begriffe, woerter)
+        aus["fees"] = _sicher(store.gebuehren_fuer_begriffe, woerter, year=jahr)
     if "plan" in facetten:
-        aus["haushalt"] = _sicher(store.haushalt_fuer_begriffe, woerter, standard=[])
+        aus["haushalt"] = _sicher(store.haushalt_fuer_begriffe, woerter, standard=[], year=jahr)
     if "taxes" in facetten:
-        aus["taxes"] = _sicher(store.steuern_fuer_begriffe, woerter, standard=[])
+        aus["taxes"] = _sicher(store.steuern_fuer_begriffe, woerter, standard=[], year=jahr)
     if "ausgleich" in facetten:
         # Wie bisher: der Dämpfer nur, wenn es wirklich um Steuern geht —
         # sonst hinge er an jeder Zuweisungs-Frage ohne Bezug.
         if aus.get("taxes") or _F_AUSGLEICH.search(_falte(question or "")):
-            aus["tax_capacity"] = _sicher(store.steuerkraft_kontext)
+            aus["tax_capacity"] = _sicher(store.steuerkraft_kontext, year=jahr)
     if "ist" in facetten:
-        aus["ist"] = _sicher(store.result_actual_for_terms, woerter)
+        aus["ist"] = _sicher(store.result_actual_for_terms, woerter, year=jahr)
     if "gruende" in facetten:
-        aus["gruende"] = _sicher(store.abweichungsgruende_fuer_begriffe, woerter, standard=[])
+        aus["gruende"] = _sicher(store.abweichungsgruende_fuer_begriffe, woerter, standard=[], year=jahr)
     if "pruefung" in facetten:
-        aus["pruefung"] = _sicher(store.pruefberichte_fuer_begriffe, woerter)
+        aus["pruefung"] = _sicher(store.pruefberichte_fuer_begriffe, woerter, year=jahr)
     if "produkte" in facetten:
-        aus["produkte"] = _sicher(store.produkte_fuer_begriffe, woerter)
+        aus["produkte"] = _sicher(store.produkte_fuer_begriffe, woerter, year=jahr)
     if "konzern" in facetten:
-        aus["konzern"] = _sicher(store.konzern_kontext)
+        aus["konzern"] = _sicher(store.konzern_kontext, year=jahr)
     if "vergleich" in facetten:
-        aus["vergleich"] = _sicher(store.staedtevergleich_kontext)
-    if "ansatz" in facetten and not aus.get("haushalt"):
-        # Der Ergebnishaushalt ist die feinere Plan-Quelle (Einnahmearten),
-        # aber die gröbere ist die vertrautere: Solange `council_haushalt`
-        # einen Teilhaushalt zur Frage hat, reicht der. Erst wenn er nichts
-        # hergibt, lohnt der Ansatz die Zeichen.
-        aus["ansatz"] = _sicher(store.ansatz_fuer_begriffe, woerter)
+        aus["vergleich"] = _sicher(store.staedtevergleich_kontext, year=jahr)
+    if "ansatz" in facetten:
+        # Der Ergebnishaushalt ist die feinere Plan-Quelle (Ertrags- und
+        # Aufwandsarten), die gröbere (`council_budget`, Teilhaushalte) die
+        # vertrautere. Treffen die Begriffe einen POSTEN („Personal" →
+        # Personalaufwendungen, „Zinsen", „Transfer"), ist der Ansatz die
+        # Antwort und kommt immer; sonst nur, wenn der Teilhaushalt nichts
+        # hergibt — die Summenzeilen lohnen die Zeichen nicht zweimal.
+        # `frage` = die Wörter der ROHEN Frage: Der Treffer, der den Baustein
+        # trotz Teilhaushalt hineinholt, muss aus dem Wortlaut kommen — die
+        # Expansion streut „Finanzierung" ein, und das träfe „Zinsen und
+        # ähnliche Finanzerträge" in jeder Stadion-Frage.
+        eigen = bool(_F_ANSATZ.search(_falte(question or "")))
+        a = _sicher(store.ansatz_fuer_begriffe, woerter, year=jahr,
+                    frage=[w for w in (question or "").split() if len(w) >= 4])
+        if a and (a.get("treffer") or (eigen and not aus.get("haushalt"))):
+            aus["ansatz"] = a
     if "schulden" in facetten:
-        aus["schulden"] = _sicher(store.schulden_kontext)
+        aus["schulden"] = _sicher(store.schulden_kontext, year=jahr)
     if "bilanz" in facetten:
-        aus["bilanz"] = _sicher(store.bilanz_kontext)
+        aus["bilanz"] = _sicher(store.bilanz_kontext, year=jahr)
     if "kassensicht" in facetten:
-        aus["kassensicht"] = _sicher(store.kassensicht_kontext)
+        aus["kassensicht"] = _sicher(store.kassensicht_kontext, year=jahr)
     if "supplementary_approvals" in facetten:
-        aus["supplementary_approvals"] = _sicher(store.nachbewilligungen_kontext,
-                                           haushaltsjahr(question))
+        aus["supplementary_approvals"] = _sicher(store.nachbewilligungen_kontext, jahr)
     if "indicators" in facetten:
-        aus["indicators"] = _sicher(store.kennzahlen_kontext)
+        aus["indicators"] = _sicher(store.kennzahlen_kontext, year=jahr)
     if "investitionen" in facetten:
-        aus["investitionen"] = _sicher(store.investitionen_fuer_begriffe, woerter)
+        aus["investitionen"] = _sicher(store.investitionen_fuer_begriffe, woerter, year=jahr)
     if "gebaut" in facetten:
-        aus["gebaut"] = _sicher(store.investitionen_ist_kontext)
+        aus["gebaut"] = _sicher(store.investitionen_ist_kontext, year=jahr)
     if "stellenplan" in facetten:
-        aus["stellenplan"] = _sicher(store.stellenplan_kontext)
+        aus["stellenplan"] = _sicher(store.stellenplan_kontext, budget_year=jahr)
     if "antraege" in facetten:
         # Das Jahr aus der FRAGE, nicht aus den Begriffen: Die Expansion
         # streut Jahreszahlen ein, die niemand getippt hat.
-        aus["antraege"] = _sicher(store.haushaltsantraege_kontext, haushaltsjahr(question))
+        aus["antraege"] = _sicher(store.haushaltsantraege_kontext, jahr)
+    # Die Modul-Facetten: eine Store-Methode je Facette, Signatur (woerter, year).
+    for fac in _geld.FACETTEN:
+        if fac.name in facetten:
+            aus[fac.key] = _sicher(getattr(store, fac.methode), woerter, jahr)
     return aus
 
 
@@ -2095,7 +2167,7 @@ def geld_grafik(store, geld: dict) -> dict | None:
         if len(series) >= 2:
             s = geld["schulden"]
             return {
-                "art": "schulden",
+                "kind": "schulden",
                 "title": "Schuldenstand der Stadt",
                 "unit": "Mio. €",
                 "nachkomma": 1,
@@ -2125,7 +2197,7 @@ def geld_grafik(store, geld: dict) -> dict | None:
             title = ("Steuereinnahmen insgesamt" if art == "total"
                      else f"{art} — Ist-Einnahmen")
             return {
-                "art": "taxes",
+                "kind": "taxes",
                 "title": title,
                 "unit": "Mio. €",
                 "nachkomma": 1,
@@ -2143,7 +2215,7 @@ def geld_grafik(store, geld: dict) -> dict | None:
 def _beleg_text(b: dict | None) -> str:
     """„ — Beleg: Jahresabschluss 2024, Abschnitt 6.2 (Stand 31.12.2024)".
 
-    Ohne Fundstelle keine Zahl: `council_herkunft` weiß zu jedem Datensatz,
+    Ohne Fundstelle keine Zahl: `council_provenance` weiß zu jedem Datensatz,
     aus welchem Dokument und welchem Abschnitt er stammt, und der Prompt kann
     nur zitieren, was im Kontext steht."""
     if not b:
@@ -2196,6 +2268,7 @@ def _gebuehren_block(g: dict | None) -> str:
           "Gesamtkalkulation zeigt, DASS sich Kosten oder Abzüge geändert haben; sie "
           "belegt ohne einzelne Kostenpositionen nicht, WARUM. Ein Vorschlag wird erst "
           "durch einen passenden Ratsbeschluss zur beschlossenen Gebühr.\n"
+        + _jahr_hinweis(g)
     )
 
 
@@ -2214,6 +2287,20 @@ def _ist_block(ist: dict | None) -> str:
         # Antwort in genau diesen Jahrgängen zwei verschiedene Dinge.
         zeilen.append(f"  (\"geplant\" ist in diesem Jahrgang der/die {g['plan_kind']}, "
                       f"nicht der nackte Haushaltsansatz — sag das dazu)")
+    e = ist.get("ergebnis") or {}
+    if e.get("ordentlich"):
+        plan, tat = e["ordentlich"]
+        s = (f"- Ordentliches Ergebnis {ist['year']} (Erträge minus Aufwendungen): "
+             f"geplant {_eur(plan)}, tatsächlich {_eur(tat)}")
+        if e.get("ausserordentlich"):
+            plan2, tat2 = e["ausserordentlich"]
+            s += (f"; außerordentliches Ergebnis geplant {_eur(plan2)}, tatsächlich "
+                  f"{_eur(tat2)} — das Jahresergebnis ist die Summe beider, nenne beide")
+        zeilen.append(s)
+    for p in ist.get("posten") or []:
+        abw = f", Abweichung {_eur(p['deviation'])}" if p.get("deviation") is not None else ""
+        zeilen.append(f"- Posten {p['nr']} {p['label']} {ist['year']}: geplant "
+                      f"{_eur(p.get('planned'))}, tatsächlich {_eur(p.get('actual'))}{abw}")
     for b in ist.get("bereiche") or []:
         zeilen.append(f"- {b.get('name')} {ist['year']}: Aufwendungen geplant "
                       f"{_eur(b.get('expenses_planned'))}, tatsächlich "
@@ -2221,7 +2308,7 @@ def _ist_block(ist: dict | None) -> str:
     return ("\nGEPLANT UND TATSÄCHLICH (Jahresabschluss "
             f"{ist['year']} — ABGERECHNETE Zahlen, nicht der Haushaltsplan; nenne\n"
             "IMMER das Jahr dazu und nie mit [id] zitieren)"
-            + _beleg_text(ist.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n")
+            + _beleg_text(ist.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n" + _jahr_hinweis(ist))
 
 
 def _gruende_block(gruende: list[dict] | None) -> str:
@@ -2237,7 +2324,7 @@ def _gruende_block(gruende: list[dict] | None) -> str:
     return ("\nWARUM DER PLAN NICHT AUFGING (Erläuterungen der Verwaltung zum\n"
             "Jahresabschluss — das ist ihre Begründung, keine Feststellung von uns;\n"
             "gib sie als „Die Verwaltung begründet das damit, dass …“ wieder,\n"
-            "NIE mit [id]):\n" + "\n".join(zeilen) + "\n")
+            "NIE mit [id]):\n" + "\n".join(zeilen) + "\n" + _jahr_hinweis(gruende))
 
 
 def _pruefung_block(p: dict | None) -> str:
@@ -2257,7 +2344,7 @@ def _pruefung_block(p: dict | None) -> str:
             + (f": {verteilung}" if verteilung else "") + "). Unten eine AUSWAHL —\n"
             "sag, dass es eine Auswahl ist, nenne die Textziffer als Fundstelle und\n"
             "das geprüfte Jahr; NIE mit [id] zitieren"
-            + _beleg_text(p.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n")
+            + _beleg_text(p.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n" + _jahr_hinweis(p))
 
 
 def _produkte_block(p: dict | None) -> str:
@@ -2282,7 +2369,7 @@ def _produkte_block(p: dict | None) -> str:
             f"Teilhaushalts-Pläne, Stand {p['year']} — PLAN-Zahlen). Die\n"
             "„Rechtsgrundlage“ sagt, ob eine Aufgabe pflichtig oder freiwillig ist;\n"
             "sie ist die Selbstauskunft des Haushaltsplans, kein Rechtsgutachten —\n"
-            "gib sie als solche wieder und NIE mit [id]:\n" + "\n".join(zeilen) + "\n")
+            "gib sie als solche wieder und NIE mit [id]:\n" + "\n".join(zeilen) + "\n" + _jahr_hinweis(p))
 
 
 def _konzern_block(k: dict | None) -> str:
@@ -2303,7 +2390,7 @@ def _konzern_block(k: dict | None) -> str:
             "Kernverwaltung PLUS Eigenbetriebe und Beteiligungen). Nutze das, wenn nach\n"
             "der Stadt ALS GANZES gefragt ist; die Zahlen sind mit denen des\n"
             "Kernhaushalts NICHT verrechenbar und NIE mit [id] zu zitieren"
-            + _beleg_text(k.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n")
+            + _beleg_text(k.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n" + _jahr_hinweis(k))
 
 
 def _vergleich_block(v: dict | None) -> str:
@@ -2316,19 +2403,32 @@ def _vergleich_block(v: dict | None) -> str:
     return (f"\nIM VERGLEICH ({v['indicator']}, {v['year']}, amtliche Statistik des\n"
             "Landesamts für Statistik Niedersachsen — alle kreisfreien Städte\n"
             "Niedersachsens). Für die Einordnung „wo steht Oldenburg?“; NIE mit [id]"
-            + _beleg_text(v.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n")
+            + _beleg_text(v.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n" + _jahr_hinweis(v))
 
 
 def _ansatz_block(a: dict | None) -> str:
     """Der Gesamtergebnishaushalt eines Planjahres — Einnahme- und
-    Ausgabearten, wo `council_haushalt` nur Teilhaushalte kennt."""
+    Ausgabearten, wo `council_budget` nur Teilhaushalte kennt."""
     if not a or not a.get("posten"):
         return ""
-    zeilen = [f"- {p['label']}: {_eur(p.get('amount'))}" for p in a["posten"]]
+    zeilen = []
+    for p in a["posten"]:
+        s = f"- {p['label']}: Ansatz {a['year']} {_eur(p.get('amount'))}"
+        if p.get("actual") is not None:
+            s += (f"; zuletzt abgerechnet {p['actual_year']}: {_eur(p['actual'])} "
+                  "(Jahresabschluss — das IST zu diesem Posten)")
+        zeilen.append(s)
+    # Bei einem Treffer im Fragewortlaut steht die Anweisung VORN: Die
+    # Live-Messung vom 02.09. zeigte, dass das Modell den Posten sonst neben
+    # Teilhaushalt und Produkten übersieht — die Frage nach dem Personal
+    # bekam vier Produkte und keine Personalaufwendungen.
+    kopf = ("PASSEND ZUR FRAGE — diese Posten beantworten sie direkt; nenne sie "
+            "zuerst.\n" if a.get("treffer") else "")
     return (f"\nHAUSHALTSANSATZ {a['year']} nach Ertrags- und Aufwandsarten (GEPLANT,\n"
             "aus dem Gesamtergebnishaushalt — der Stand der Einbringung, nicht\n"
-            "zwingend der Beschluss des Rates; Jahr immer nennen, NIE mit [id])"
-            + _beleg_text(a.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n")
+            f"zwingend der Beschluss des Rates; Jahr immer nennen, NIE mit [id]).\n{kopf}"
+            "Die Posten gelten für die GANZE Kernverwaltung, nicht für einen Teilhaushalt"
+            + _beleg_text(a.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n" + _jahr_hinweis(a))
 
 
 def _stellen(v) -> str:
@@ -2348,15 +2448,15 @@ def _bilanz_block(b: dict | None) -> str:
     if not b or not b.get("bilanzsumme"):
         return ""
     namen = {
-        "sachvermoegen": "Sachvermögen (Grundstücke, Gebäude, Straßen, Fahrzeuge)",
-        "infrastrukturvermoegen": "davon Infrastruktur (Straßen, Wege, Brücken, Kanäle)",
-        "finanzvermoegen": "Finanzvermögen (Beteiligungen, Ausleihungen, Forderungen)",
-        "liquide_mittel": "liquide Mittel",
-        "nettoposition": "Nettoposition (das Eigenkapital der Stadt)",
-        "sonderposten": "Sonderposten (erhaltene Zuschüsse, noch nicht aufgelöst)",
-        "rueckstellungen": "Rückstellungen",
-        "pensionsrueckstellungen": "davon Pensionsrückstellungen",
-        "schulden": "Schulden und ähnliche Verbindlichkeiten",
+        "tangible_assets": "Sachvermögen (Grundstücke, Gebäude, Straßen, Fahrzeuge)",
+        "infrastructure_assets": "davon Infrastruktur (Straßen, Wege, Brücken, Kanäle)",
+        "financial_assets": "Finanzvermögen (Beteiligungen, Ausleihungen, Forderungen)",
+        "cash_and_equivalents": "liquide Mittel",
+        "net_position": "Nettoposition (das Eigenkapital der Stadt)",
+        "special_items": "Sonderposten (erhaltene Zuschüsse, noch nicht aufgelöst)",
+        "provisions": "Rückstellungen",
+        "pension_provisions": "davon Pensionsrückstellungen",
+        "liabilities": "Schulden und ähnliche Verbindlichkeiten",
     }
     zeilen = [f"- Bilanzsumme zum 31.12.{b['year']}: {_eur(b['bilanzsumme'])}"]
     for role, value in b.get("posten") or []:
@@ -2365,7 +2465,7 @@ def _bilanz_block(b: dict | None) -> str:
             f"(31.12.{b['year']}),\nkein Haushaltsjahr: Diese Beträge NIE mit "
             "Erträgen, Aufwendungen oder dem\nDefizit eines Jahres verrechnen. Nie "
             "mit [id] zitieren"
-            + _beleg_text(b.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n")
+            + _beleg_text(b.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n" + _jahr_hinweis(b))
 
 
 def _kassensicht_block(k: dict | None) -> str:
@@ -2380,7 +2480,7 @@ def _kassensicht_block(k: dict | None) -> str:
             "beide für dasselbe Jahr in verschiedene Richtungen\nzeigen (2024: dort "
             "ein Überschuss, hier ein Fehlbetrag an Finanzmitteln), und\nbeides "
             "stimmt. Sag dazu, welche der beiden du nennst. Nie mit [id] zitieren"
-            + _beleg_text(k.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n")
+            + _beleg_text(k.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n" + _jahr_hinweis(k))
 
 
 def _nachbewilligungen_block(n: dict | None) -> str:
@@ -2408,7 +2508,7 @@ def _nachbewilligungen_block(n: dict | None) -> str:
             "Kapitel 3).\nGeld, das AUSSERHALB des beschlossenen Haushalts "
             "bewilligt wurde. Nicht mit\ndem Haushaltsplan verrechnen — es kommt "
             "obendrauf. Nie mit [id] zitieren"
-            + _beleg_text(n.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n")
+            + _beleg_text(n.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n" + _jahr_hinweis(n))
 
 
 def _kennzahlen_block(k: dict | None) -> str:
@@ -2454,7 +2554,7 @@ def _kennzahlen_block(k: dict | None) -> str:
             "„Kennzahlenübersicht und\nBerechnungsmethoden“). Die Rechenwege sind "
             "GEDRUCKT — zitiere sie, statt\neine Quote selbst zu bilden. Nie mit "
             "[id] zitieren"
-            + _beleg_text(k.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n")
+            + _beleg_text(k.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n" + _jahr_hinweis(k))
 
 
 def _schulden_block(s: dict | None) -> str:
@@ -2513,7 +2613,7 @@ def _schulden_block(s: dict | None) -> str:
             "ein BESTAND am Stichtag, kein Jahresbetrag — nie mit Aufwendungen, "
             "Erträgen\noder dem Defizit eines Haushaltsjahres verrechnen und nie als "
             "„Ausgaben“\nbezeichnen. Nenne das Jahr und die Abgrenzung mit, NIE mit [id]"
-            + _beleg_text(s.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n")
+            + _beleg_text(s.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n" + _jahr_hinweis(s))
 
 
 def _investitionen_block(i: dict | None) -> str:
@@ -2539,7 +2639,7 @@ def _investitionen_block(i: dict | None) -> str:
             "beiden nie addieren, nie voneinander abziehen, nie als Anteil "
             "gegeneinander\nrechnen. Und diese Zeilen nennen KEIN einzelnes Vorhaben: "
             "„Verkehr und\nStraßenbau: 10,5 Mio. €“ sagt nicht, welche Straße. NIE mit [id]"
-            + _beleg_text(i.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n")
+            + _beleg_text(i.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n" + _jahr_hinweis(i))
 
 
 def _gebaut_block(g: dict | None) -> str:
@@ -2581,7 +2681,7 @@ def _gebaut_block(g: dict | None) -> str:
             "die Kernverwaltung. Keine Differenz bilden, keine „Umsetzungsquote“, "
             "keinen\nProzentsatz: Diese Rechnung steht in keinem Dokument. Nenne das "
             "Jahr und die\nAbgrenzung mit, NIE mit [id]"
-            + _beleg_text(g.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n")
+            + _beleg_text(g.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n" + _jahr_hinweis(g))
 
 
 def _stellenplan_block(s: dict | None) -> str:
@@ -2616,7 +2716,7 @@ def _stellenplan_block(s: dict | None) -> str:
             "minus besetzt“: Das mischt zwei Stichtage und steht\nin keinem Dokument. "
             "Die unbesetzten Stellen stehen als eigene Angabe da.\nEine Zeile „Stellen "
             "insgesamt“ gibt es im Plan nicht; addiere die Teile nicht.\nNIE mit [id]"
-            + _beleg_text(s.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n")
+            + _beleg_text(s.get("beleg")) + ":\n" + "\n".join(zeilen) + "\n" + _jahr_hinweis(s, "budget_year"))
 
 
 def _antraege_block(a: dict | None) -> str:
@@ -2655,14 +2755,25 @@ def _antraege_block(a: dict | None) -> str:
             "liegt uns nicht als Text vor; erfinde\nkeine Inhalte dazu und leite auch "
             "keine aus dem Titel ab. Gemeinsame Listen\nzählen für jede beteiligte "
             "Fraktion, die Zahlen sind deshalb nicht\naddierbar. NIE mit [id]:\n"
-            + "\n".join(zeilen) + "\n")
+            + "\n".join(zeilen) + "\n" + _jahr_hinweis(a))
 
 
 #: Zeichenbudget für ALLE Geld-Bausteine zusammen. Der Antwort-Prompt trägt
 #: schon 20 Beschlüsse à ~600 Zeichen, Debatten, Presse und Steckbriefe; was
 #: hier dazukommt, geht davon ab. Reicht es nicht, fallen die hinteren
 #: Facetten (Reihenfolge: GELD_FACETTEN) heraus — gemessen im Testkorpus.
-GELD_MAX_CHARS = 4500
+#:
+#: 4.500 war der Wert vom 17.08.2026, gemessen an 20 Facetten, von denen die
+#: vier neuen nie zusammen feuerten. Seit 02.09. sind es 29 (Vollzug, Satzung,
+#: Spenden, Beteiligungen, Betriebe, Vorhaben, Hebesätze, Steuerplan,
+#: Ausgabenreihe), und die Bausteine der neuen Schichten tragen je einen
+#: Warn-Absatz und einen Beleg (1,2–2,4k Zeichen). Gemessen am Korpus von 34
+#: Fragen (scratchpad/mess_facetten.py, dev-Kopie): Bei 4.500 verloren drei
+#: Fragen ganze Bausteine — „Was wird 2026 gebaut?" das Ist zum Plan, „Was
+#: kostet der Neubau der Feuerwache?" die Produktebene (6.461 Zeichen
+#: zusammen). 6.500 hält alle 34; darüber wächst nur, was ohnehin nie
+#: zusammen feuert. Die Beschlüsse daneben (20 × ~600) bleiben unberührt.
+GELD_MAX_CHARS = 6500
 
 #: Baustein je Facette. Reihenfolge steckt in GELD_FACETTEN.
 _GELD_BAUSTEINE = {
@@ -2687,6 +2798,8 @@ _GELD_BAUSTEINE = {
     "konzern": ("konzern", _konzern_block),
     "vergleich": ("vergleich", _vergleich_block),
 }
+# Die Modul-Facetten bringen ihren Baustein selbst mit.
+_GELD_BAUSTEINE.update(_geld.BAUSTEINE)
 
 
 def _geld_vereinheitlichen(geld: dict | None, haushalt, taxes, tax_capacity) -> dict:
@@ -2738,21 +2851,34 @@ def geld_regeln(geld: dict | None, eng: bool = False) -> str:
         return ("\n\nDie Haushaltszahl im Kontext bekommt IMMER ihr Jahr und ihre "
                 "Quelle mit („laut Jahresabschluss 2024“) — sonst behauptet der "
                 "eine Satz eine Aktualität, die die Daten nicht haben.")
+    # Live gemessen am 02.09.2026: „Wie viel Geld hat die Stadt auf dem
+    # Konto?“ bekam „Die Ratsunterlagen geben keine direkte Auskunft … Der
+    # Liquiditätsstand betrug 136,1 Millionen Euro“ — die Zahl stand im
+    # Kontext, die Antwort verleugnete sie im ersten Satz. Die
+    # Haushaltsabschnitte SIND die Auskunft, die Beschlüsse daneben oft nur
+    # Kenntnisnahmen. Deshalb steht diese Regel ZUERST: Als fünfte hinter den
+    # vier Sorgfaltsregeln änderte sie am Modell nichts (nachgemessen).
     return (
         "\n\nZU DIESER FRAGE LIEGEN HAUSHALTSDATEN IM KONTEXT (eigene Abschnitte "
-        "unten). Vier Regeln dafür:\n"
-        "1. JAHR IMMER NENNEN. Die Quellen enden zu verschiedenen Zeitpunkten — "
+        "unten). Fünf Regeln dafür:\n"
+        "1. DIE HAUSHALTSDATEN SIND DIE ANTWORT. Beantwortet ein Abschnitt "
+        "unten die Frage, beginnt deine Antwort mit dieser Zahl und ihrer "
+        "Quelle — im ERSTEN Satz. Schreib NIE „die Ratsunterlagen geben keine "
+        "(direkte) Auskunft/Antwort“, wenn die Zahl im Kontext steht: "
+        "Haushaltsdaten SIND Ratsunterlagen. Beschlüsse, die nur einen Bericht "
+        "zur Kenntnis nehmen, sind Beiwerk und keine Einschränkung.\n"
+        "2. JAHR IMMER NENNEN. Die Quellen enden zu verschiedenen Zeitpunkten — "
         "Jahresabschlüsse, Produktebene, Prüfberichte und Konzern sind "
         "verschieden weit. Jede Zahl trägt das Jahr, aus dem sie stammt; ohne "
         "das behauptet die Antwort eine Aktualität, die die Daten nicht haben.\n"
-        "2. PLAN IST NICHT IST. „Geplant“ (Haushaltsplan, Produktebene) und "
+        "3. PLAN IST NICHT IST. „Geplant“ (Haushaltsplan, Produktebene) und "
         "„tatsächlich“ (Jahresabschluss, Steuereinnahmen) nie in einem Satz "
         "vermischen und immer benennen, was von beidem gemeint ist.\n"
-        "3. QUELLE NENNEN. Steht bei einer Zeile ein „Beleg:“, nenne das "
+        "4. QUELLE NENNEN. Steht bei einer Zeile ein „Beleg:“, nenne das "
         "Dokument im Satz („laut Schlussbericht des Rechnungsprüfungsamts zum "
         "Jahresabschluss 2023“). Haushaltszahlen sind KEINE Beschlüsse und "
         "bekommen deshalb NIE eine [id].\n"
-        "4. NICHT RECHNEN, WAS NICHT DASTEHT. Keine Summen über verschiedene "
+        "5. NICHT RECHNEN, WAS NICHT DASTEHT. Keine Summen über verschiedene "
         "Quellen, keine Prozentsätze, keine Pro-Kopf-Werte und keine "
         "Hochrechnungen auf andere Jahre — nur die Zahlen, die im Kontext "
         "stehen, und die Vergleiche, die dort ausdrücklich angelegt sind."
@@ -2861,7 +2987,7 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "topic",
             "angenommene/abgelehnte Beschlüsse klar von bloßen Berichten oder "
             f"Kenntnisnahmen.{anker}"
         )
-    prompt = prompts.render("qa_antwort", question=question.strip()[:300],
+    prompt = prompts.render("qa_answer", question=question.strip()[:300],
                             context=_build_context(candidates),
                             # Die Haushalts-Regeln hängen am KONTEXT, nicht am
                             # Fragetyp: „Was hat das Rechnungsprüfungsamt
@@ -2892,7 +3018,7 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "topic",
 # Ergebnis: dieselbe Antwort, nur anders sortiert, mit „Ausfallbürgschaften",
 # „Teilfortschreibung des Nahverkehrsplans" und „VBN-Tarifgebiet 3" darin.
 # Jetzt erkennt das Backend den Wunsch und nimmt einen EIGENEN Prompt
-# („qa_einfach"), der die vorliegende Antwort umschreibt statt neu zu antworten.
+# („qa_simple"), der die vorliegende Antwort umschreibt statt neu zu antworten.
 _VEREINFACHEN_RE = re.compile(
     r"ohne\s+(fachbegriffe|fachw[oö]rter|fachchinesisch|fachsprache|amtsdeutsch|"
     r"beh[oö]rdendeutsch|fremdw[oö]rter)"
@@ -2943,7 +3069,7 @@ def vereinfachen_messages(question: str, bisher: str | None, candidates: list[di
     Haushalts-Block: Deren Kontext-Anweisungen („ergänze IMMER einen Absatz zum
     Meinungsbild") arbeiten gegen die Kürze — genau daran ist die beiläufige
     Bitte im normalen Prompt schon gescheitert."""
-    prompt = prompts.render("qa_einfach", question=question.strip()[:300],
+    prompt = prompts.render("qa_simple", question=question.strip()[:300],
                             bisher=_bisher_block(bisher),
                             context=_build_context(candidates))
     extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in model else {}
@@ -2958,7 +3084,7 @@ def vereinfachen_stream(question: str, bisher: str | None, candidates: list[dict
                         model: str = MODEL):
     """Die einfache Fassung als Token-Stream (wie answer_stream)."""
     messages, extra = vereinfachen_messages(question, bisher, candidates, model)
-    yield from llm.chat_stream(model=model, _feature="qa_einfach", temperature=0.2,
+    yield from llm.chat_stream(model=model, _feature="qa_simple", temperature=0.2,
                                max_tokens=VEREINFACHEN_TOKENS, messages=messages, **extra)
 
 
@@ -2967,7 +3093,7 @@ def vereinfachen_question(question: str, bisher: str | None, candidates: list[di
     """One-shot-Variante für den Ersatzweg, wenn der Stream abreißt.
     Liefert ``(answer, cited_ids)`` wie answer_question."""
     messages, extra = vereinfachen_messages(question, bisher, candidates, model)
-    resp = llm.chat_complete(model=model, _feature="qa_einfach", temperature=0.2,
+    resp = llm.chat_complete(model=model, _feature="qa_simple", temperature=0.2,
                              max_tokens=VEREINFACHEN_TOKENS, messages=messages, **extra)
     answer = (resp.choices[0].message.content or "").strip()
     return resolve_citations(answer, {c["id"] for c in candidates})
@@ -3001,7 +3127,7 @@ def answer_question(question: str, candidates: list[dict], model: str = MODEL, t
     messages, extra = _answer_messages(question, candidates, typ, model, presse, verlauf,
                                        haushalt, debatten, anlagen, gross, steckbriefe, duenn, eng,
                                        taxes, tax_capacity, geld, sitzungen, ort)
-    resp = llm.chat_complete(model=model, _feature="qa_antwort", temperature=0.2,
+    resp = llm.chat_complete(model=model, _feature="qa_answer", temperature=0.2,
                              max_tokens=_answer_tokens(typ, gross, eng), messages=messages, **extra)
     answer = (resp.choices[0].message.content or "").strip()
     return resolve_citations(answer, {c["id"] for c in candidates})
@@ -3022,13 +3148,13 @@ def answer_stream(question: str, candidates: list[dict], model: str = MODEL, typ
     messages, extra = _answer_messages(question, candidates, typ, model, presse, verlauf,
                                        haushalt, debatten, anlagen, gross, steckbriefe, duenn, eng,
                                        taxes, tax_capacity, geld, sitzungen, ort)
-    yield from llm.chat_stream(model=model, _feature="qa_antwort", temperature=0.2,
+    yield from llm.chat_stream(model=model, _feature="qa_answer", temperature=0.2,
                                max_tokens=_answer_tokens(typ, gross, eng), messages=messages, **extra)
 
 
 # --- Folgefragen (Design 24a / RL-U06) --------------------------------------
 # Das Antwort-LLM hängt seine Vorschläge als letzte Zeile an (siehe Prompt
-# „qa_antwort"). Der Marker trennt sie vom Antworttext — der Router streamt
+# „qa_answer"). Der Marker trennt sie vom Antworttext — der Router streamt
 # alles davor als Token und schneidet ab hier ab.
 FOLLOWUP_MARKER = "FOLGEFRAGEN:"
 _MAX_FOLLOWUPS = 3

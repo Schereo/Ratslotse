@@ -35,13 +35,14 @@ import { ArrowRight, ExternalLink, FileText } from "lucide-react";
 import { useFetch } from "@/lib/use-fetch";
 import { decisionHref } from "@/lib/routes";
 import {
-  AUSGLIEDERUNGEN_2018, Herkunft, ROLLEN, VergleichDaten, WOLFSBURG,
+  AUSGLIEDERUNGEN_2018, ROLLEN, VergleichDaten, WOLFSBURG,
   ZITAT_VERWALTUNG, antragAnlage, antwortAnlage, balken, herkunftVon,
   juengstesJahr, platzVonOldenburg, series, steuerkraftJeEinwohner, change,
 } from "@/lib/haushalt-vergleich";
 import { Staedtevergleich, Zeitreihe } from "@/components/haushalt/staedtevergleich";
 import { SlopePaar, type SlopePaarZeile } from "@/components/grafik/slope-paar";
 import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/source";
+import { Fundstelle } from "@/components/haushalt/fundstelle";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { GlossaryText } from "@/components/glossary-text";
 import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
@@ -49,27 +50,6 @@ import { SchrittPfad } from "@/components/haushalt/schritt-pfad";
 import { Seitenbuehne, ZaehlZahl } from "@/components/haushalt/seitenbuehne";
 
 const QUELLEN = ["lsn_finanzausgleich", "lsn_realsteuern", "vergleich_2018"] as const;
-
-/** Wo eine Angabe im Dokument steht — dieselbe Bauart wie auf der
- *  Konzern-Seite: Abschnitt und Stand, sonst nichts.
- *
- *  Unsere Proben und ihr Messwert standen bis 16.08. daneben, auf dieser
- *  Seite gleich dreimal. Sie sind raus (DESIGNSPRACHE.md § 7) — sie laufen
- *  weiter, sie stehen in der Technik-Doku, aber sie sagen einer Leserin
- *  nichts über die Steuerkraft Oldenburgs. */
-function Fundstelle({ h }: { h: Herkunft | null }) {
-  if (!h?.citation) return null;
-  return (
-    <div className="mt-3 border-t border-dashed border-border pt-2.5">
-      <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-        Woher diese Zahlen kommen
-      </p>
-      <p className="mt-1 max-w-[86ch] text-[11.5px] leading-relaxed text-muted-foreground">
-        {h.citation}{h.as_of ? ` · ${h.as_of}` : ""}
-      </p>
-    </div>
-  );
-}
 
 function Abschnitt({ kicker, zusatz, id, children }: {
   kicker: string; zusatz?: string; id?: string; children: React.ReactNode;
@@ -93,7 +73,7 @@ function Abschnitt({ kicker, zusatz, id, children }: {
 }
 
 export default function VergleichSeite() {
-  const { data, loading } = useFetch<VergleichDaten>("/council/haushalt/vergleich");
+  const { data, loading } = useFetch<VergleichDaten>("/council/budget/comparison");
 
   if (loading) {
     return (
@@ -114,10 +94,10 @@ export default function VergleichSeite() {
   }
 
   const skJahr = juengstesJahr(data, "tax_capacity");
-  const rsJahr = juengstesJahr(data, "realsteuern");
+  const rsJahr = juengstesJahr(data, "real_taxes");
   const tax_capacity = skJahr ? steuerkraftJeEinwohner(data, skJahr) : [];
-  const grundsteuer = rsJahr ? balken(data, "realsteuern", "hebesatz_grundsteuer_b", rsJahr) : [];
-  const einnahmekraft = rsJahr ? balken(data, "realsteuern", "steuereinnahmekraft_je_ew", rsJahr) : [];
+  const grundsteuer = rsJahr ? balken(data, "real_taxes", "hebesatz_grundsteuer_b", rsJahr) : [];
+  const einnahmekraft = rsJahr ? balken(data, "real_taxes", "steuereinnahmekraft_je_ew", rsJahr) : [];
 
   // Der Grundsteuer-Sprung (H3-07): Hebesatz vor und nach der Reform 2025 —
   // als Slope-Paar MIT Bruch-Marker, denn über die Reform hinweg sind die
@@ -135,9 +115,9 @@ export default function VergleichSeite() {
   // einen Vergleich, den die Seite gar nicht zeigte. Jetzt entscheidet, ob
   // die Werte wirklich dastehen.
   const rsVorjahrKandidat = rsJahr != null
-    && (data.years.realsteuern ?? []).includes(rsJahr - 1) ? rsJahr - 1 : null;
+    && (data.years.real_taxes ?? []).includes(rsJahr - 1) ? rsJahr - 1 : null;
   const grundsteuerVorher = rsVorjahrKandidat != null
-    ? balken(data, "realsteuern", "hebesatz_grundsteuer_b", rsVorjahrKandidat) : [];
+    ? balken(data, "real_taxes", "hebesatz_grundsteuer_b", rsVorjahrKandidat) : [];
   const rsVorjahr = grundsteuerVorher.length > 0 ? rsVorjahrKandidat : null;
   const sprungPaare: SlopePaarZeile[] = grundsteuer
     .flatMap((z): SlopePaarZeile[] => {
@@ -155,15 +135,15 @@ export default function VergleichSeite() {
   // Die Herkunft hängt an der Zeile, nicht an der Seite — beide Reihen haben
   // eine eigene (verschiedene Dateien, verschiedene Proben).
   const hSteuerkraft = herkunftVon(data,
-    data.werte.find((w) => w.series === "tax_capacity")?.herkunft_id);
+    data.values.find((w) => w.series === "tax_capacity")?.herkunft_id);
   const hRealsteuern = herkunftVon(data,
-    data.werte.find((w) => w.series === "realsteuern")?.herkunft_id);
+    data.values.find((w) => w.series === "real_taxes")?.herkunft_id);
 
   const olReihe = series(data, "steuereinnahmekraft_je_ew", "403000");
   const wobReihe = series(data, "steuereinnahmekraft_je_ew", WOLFSBURG);
 
-  const answer = antwortAnlage(data.beleg);
-  const antrag = antragAnlage(data.beleg);
+  const answer = antwortAnlage(data.citation);
+  const antrag = antragAnlage(data.citation);
   const hatZahlen = tax_capacity.length > 0 || grundsteuer.length > 0;
 
   return (
@@ -254,7 +234,7 @@ export default function VergleichSeite() {
               aus derselben Tabelle. Das Landesamt weist den Pro-Kopf-Wert nicht selbst aus —
               keine amtliche Kennzahl.
             </p>
-            <Fundstelle h={hSteuerkraft} />
+            <Fundstelle h={hSteuerkraft} className="mt-3" />
           </Abschnitt>
         )}
 
@@ -327,7 +307,7 @@ export default function VergleichSeite() {
                 </>
               )}
             </p>
-            <Fundstelle h={hRealsteuern} />
+            <Fundstelle h={hRealsteuern} className="mt-3" />
           </Abschnitt>
         )}
 
@@ -354,7 +334,7 @@ export default function VergleichSeite() {
                   change={change(wobReihe)} />
               </div>
             )}
-            <Fundstelle h={hRealsteuern} />
+            <Fundstelle h={hRealsteuern} className="mt-3" />
           </Abschnitt>
         )}
 
@@ -378,7 +358,7 @@ export default function VergleichSeite() {
               Lesebereich. Schwelle am CONTAINER
               (Designsprache §4), nicht am Fenster: Bei 1024 px Fenster ist
               neben der Seitenleiste nur Platz für Spalten von 344 px. */}
-          <div className="mt-2 grid items-start gap-x-8 gap-y-3.5 @5xl/kern:grid-cols-2">
+          <div className="mt-2">
             <div className="flex max-w-[76ch] flex-col gap-2.5 text-[13px] leading-relaxed text-foreground/90">
               <p>
                 Die Ausgaben je Einwohner*in stehen in beiden Haushalten. Ein direkter
@@ -405,10 +385,20 @@ export default function VergleichSeite() {
               </p>
             </div>
 
+          </div>
+          {/* Die Belege — der Vorgang von 2018 mit Tabelle und Zitat, dazu
+              Innenministerium und Statistisches Bundesamt — stehen seit
+              02.09.2026 hinter einem Auslöser: Das Argument oben trägt die
+              Seite, die Herleitung ist einen Klick entfernt und vollständig. */}
+          <details className="group mt-3">
+            <summary className="cursor-pointer list-none text-[12.5px] font-semibold text-primary marker:content-none">
+              <span className="group-open:hidden">Die Belege: die Stadt 2018, das Innenministerium, das Statistische Bundesamt</span>
+              <span className="hidden group-open:inline">Weniger</span>
+            </summary>
             {/* Der Beleg aus dem eigenen Bestand. */}
-            <div className="rounded-xl border border-border bg-muted/30 p-3.5">
+            <div className="mt-2 rounded-xl border border-border bg-muted/30 p-3.5">
               <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-                Aus dem Ratsinformationssystem · {data.beleg.template_number} · 2018
+                Aus dem Ratsinformationssystem · {data.citation.template_number} · 2018
               </p>
               <p className="mt-1.5 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
                 Die FDP-Fraktion fragte im November 2018, wie sich die Personalquote
@@ -442,11 +432,11 @@ export default function VergleichSeite() {
 
               {/* Die Verweise: erst der Vorgang bei uns, dann die Originale. */}
               <div className="mt-3 flex flex-col gap-1.5 border-t border-dashed border-border pt-2.5">
-                {data.beleg.decision_id != null && (
-                  <Link href={decisionHref(data.beleg.decision_id)}
+                {data.citation.decision_id != null && (
+                  <Link href={decisionHref(data.citation.decision_id)}
                     className="group inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-primary">
                     <FileText className="h-3.5 w-3.5 flex-none" />
-                    Der Vorgang bei uns: {data.beleg.title ?? data.beleg.template_number}
+                    Der Vorgang bei uns: {data.citation.title ?? data.citation.template_number}
                     <ArrowRight size={13} strokeWidth={2}
                       className="transition-transform group-hover:translate-x-0.5" />
                   </Link>
@@ -465,16 +455,15 @@ export default function VergleichSeite() {
                     Antrag der FDP-Fraktion im Original (PDF)
                   </a>
                 )}
-                {!data.beleg.anlagen.length && (
-                  <a href={data.beleg.vorlage_url} target="_blank" rel="noopener noreferrer"
+                {!data.citation.attachments.length && (
+                  <a href={data.citation.template_url} target="_blank" rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-primary">
                     <ExternalLink className="h-3.5 w-3.5 flex-none" />
-                    Vorlage {data.beleg.template_number} im Bürgerinformationssystem
+                    Vorlage {data.citation.template_number} im Bürgerinformationssystem
                   </a>
                 )}
               </div>
             </div>
-          </div>
 
           {/* Steht UNTER beiden Spalten, nicht in einer: „Dieselbe Warnung"
               meint den Beleg daneben mit — der Satz muss also nach ihm
@@ -489,6 +478,7 @@ export default function VergleichSeite() {
             die Vergleichbarkeit werde dadurch eingeschränkt, dass der Ausgliederungsprozess
             unterschiedlich weit fortgeschritten sei. Drei Instanzen, derselbe Befund.
           </p>
+          </details>
         </section>
 
         {/* --- Wen man überhaupt vergleichen würde --- */}
@@ -510,7 +500,7 @@ export default function VergleichSeite() {
               (Designsprache §4). */}
           <ul className="mt-3 grid gap-x-6 gap-y-2.5 @5xl/section:grid-cols-3">
             {Object.entries(ROLLEN).map(([key, r]) => {
-              const stadt = data.staedte.find((s) => s.key === key);
+              const stadt = data.cities.find((s) => s.key === key);
               if (!stadt) return null;
               return (
                 <li key={key} className="border-l-2 border-border pl-3">
@@ -568,13 +558,10 @@ export default function VergleichSeite() {
               <strong>Eine gemeinsame Zeitreihe mit den Steuerkraft-Zahlen auf{" "}
               <Link href="/haushalt/steuer" className="font-semibold text-primary">
                 Woher das Geld kommt
-              </Link>.</strong> Beide Reihen nennen dieselben Beträge und tragen
-              inzwischen auch dieselbe Jahresangabe: Der offene Datensatz der Stadt
-              beschriftete sie ein Jahr zu früh — nachgewiesen an den eigenen Büchern
-              der Stadt, in denen das Geld ein Jahr später als Ist verbucht ist —, und
-              wir haben das korrigiert. Wir rechnen sie trotzdem nicht zusammen: Sie
-              stammen aus zwei Veröffentlichungen, die sich in Nachträgen und
-              Revisionen um kleine Beträge unterscheiden können.
+              </Link>.</strong> Beide Reihen nennen dieselben Beträge. Wir rechnen
+              sie trotzdem nicht zusammen: Sie stammen aus zwei Veröffentlichungen,
+              die sich in Nachträgen und Revisionen um kleine Beträge unterscheiden
+              können.
             </li>
           </ul>
         </section>

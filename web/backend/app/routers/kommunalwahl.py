@@ -27,7 +27,7 @@ from pathlib import Path
 import requests
 from fastapi import APIRouter, HTTPException
 
-from ..antworten import QuellenPruefung
+from ..antworten import SourceCheck
 router = APIRouter(prefix="/api/kommunalwahl", tags=["kommunalwahl"])
 
 # Repo-Wurzel: web/backend/app/routers/ -> vier Ebenen hoch.
@@ -63,7 +63,7 @@ class _Ergebnis:
     def als_json(self) -> dict:
         return {
             "status": self.status,
-            "geprueft_vor_sekunden": max(0, int(time.time() - self.geprueft_um)),
+            "checked_seconds_ago": max(0, int(time.time() - self.geprueft_um)),
         }
 
 
@@ -98,7 +98,7 @@ def _pruefe(slug: str) -> _Ergebnis:
 
 
 @router.get("/source/{slug}")
-def quelle_pruefen(slug: str) -> QuellenPruefung:
+def quelle_pruefen(slug: str) -> SourceCheck:
     """Ist das PDF hinter dem Partei-Link noch die ausgewertete Datei?"""
     if slug not in _manifest():   # Whitelist — nie Dateisystem oder freie URLs
         raise HTTPException(status_code=404, detail="Keine prüfbare PDF-Quelle zu diesem Slug.")

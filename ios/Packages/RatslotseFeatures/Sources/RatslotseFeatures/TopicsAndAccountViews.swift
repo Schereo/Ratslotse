@@ -175,7 +175,7 @@ struct TopicsView: View {
             topics = try await topicsRequest
             suggestions = await suggestionsRequest?.suggestions ?? []
             error = nil
-            try? await model.api.sendVoid("/api/topics/uebersicht-gesehen")
+            try? await model.api.sendVoid("/api/topics/overview-seen")
         } catch { self.error = error.localizedDescription }
     }
 
@@ -316,7 +316,7 @@ private struct TopicCard: View {
             if !topic.recentHits.isEmpty {
                 MonoKicker(
                     "Zuletzt gefunden",
-                    trailing: "\(countLabel) · \(topic.hits30Days) in 30 Tagen"
+                    trailing: "\(countLabel) · \(topic.hits6Months) in 6 Monaten"
                 )
                 VStack(spacing: 0) {
                     ForEach(Array(topic.recentHits.prefix(3).enumerated()), id: \.element.id) { index, hit in

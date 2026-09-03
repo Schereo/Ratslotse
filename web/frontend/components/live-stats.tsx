@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { api } from "@/lib/api";
 import { useCountUp } from "@/lib/use-countup";
 
 type Stats = { decisions: number; sessions: number; entities: number };
@@ -13,8 +14,9 @@ export function LiveStats({ inline = false }: { inline?: boolean } = {}) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    fetch("/api/council/public-stats")
-      .then((r) => (r.ok ? r.json() : null))
+    // Über `lib/api`, nicht per nacktem fetch — siehe `heute-leiste.tsx`:
+    // relativ aufgelöst zeigt der Pfad in der Capacitor-Hülle ins Nichts.
+    api.get<Stats>("/council/public-stats")
       .then((d) => d && setStats(d))
       .catch(() => {});
   }, []);

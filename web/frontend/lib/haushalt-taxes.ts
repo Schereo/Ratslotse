@@ -61,6 +61,14 @@ export type SteuerArt = {
   /** Der Pro-Kopf-Satz, wo „aus der ${titel}" kein Deutsch ergibt
    *  („aus der Gebühren und Beiträge"). */
   proKopfWas?: string;
+  /** Überschrift der Teilhaushalts-Aufschlüsselung im Steckbrief. Der
+   *  Vorgabetext „Wofür die Leute zahlen" passt nur für Gebühren —
+   *  Erstattungen und Zuweisungen kommen an, niemand zahlt sie. */
+  bereicheTitel?: string;
+  /** Der Satz, der die Plan-Ist-Abweichung dieser Einnahme einordnet, ohne
+   *  zu werten. Die Gebühren-Fassung („Leistungen weniger genutzt") wäre für
+   *  eine Erstattung schlicht falsch. */
+  planIstWertung?: string;
   title: string;
   /** Ein Satz, der die Steuer erklärt, ohne ein Fachwort zu benutzen. */
   kurz: string;
@@ -294,7 +302,7 @@ export const STEUERARTEN: SteuerArt[] = [
     },
   },
   {
-    slug: "kleine-taxes",
+    slug: "kleine-steuern",
     datenArt: "Vergnügungssteuer",
     title: "Kleine örtliche Steuern",
     kurz:
@@ -360,7 +368,7 @@ export const STEUERARTEN: SteuerArt[] = [
     },
   },
   {
-    slug: "fees",
+    slug: "gebuehren",
     datenArt: null, // In keiner der Open-Data-Steuerreihen enthalten …
     // … dafür im Jahresabschluss, als Posten 5 der Ergebnisrechnung.
     ergebnisPosten: 5,
@@ -401,6 +409,105 @@ export const STEUERARTEN: SteuerArt[] = [
         "Eine Gebühr ist kein Preis, sondern eine Umlage der echten Kosten. Deshalb kann die " +
         "Stadt sie nicht erhöhen, um ein Loch im Haushalt zu stopfen — sie darf nur so viel " +
         "verlangen, wie die Leistung sie kostet.",
+    },
+  },
+  // Die beiden Posten, die nach den Steuern die größten Einnahmen sind — und
+  // bis 02.09.2026 nur in der Flächen-Aufteilung standen, ohne Karte und ohne
+  // Steckbrief: Kostenerstattungen (Posten 7, 2024: 133,6 Mio. € Ist) und
+  // Zuwendungen (Posten 2, 179,1 Mio. €). Beide kommen wie die Gebühren aus
+  // der Ergebnisrechnung, beide tragen deshalb dieselbe Grenze (Kernverwaltung)
+  // und dieselbe Bauform (Ist-Kurve, Plan gegen Ist, Teilhaushalte).
+  {
+    slug: "kostenerstattungen",
+    datenArt: null, // keine Steuer — Posten 7 der Ergebnisrechnung
+    ergebnisPosten: 7,
+    grenze:
+      "Hier steht nur Geld, das die Stadt zuerst selbst ausgezahlt hat und " +
+      "zurückbekommt. Was der Bund direkt an die Berechtigten überweist, taucht " +
+      "in keinem städtischen Haushalt auf — und die Eigenbetriebe zählt der " +
+      "Jahresabschluss der Kernverwaltung nicht mit.",
+    proKopfWas: "an Erstattungen",
+    bereicheTitel: "Wo die Erstattungen ankommen",
+    planIstWertung:
+      "Die Farbe bewertet nicht: Erstattungen folgen den Ausgaben, für die sie fließen — " +
+      "mehr als geplant heißt meist, dass auch die Sozialleistungen über dem Plan lagen, " +
+      "weniger das Gegenteil. Keines von beidem ist für sich genommen gut oder schlecht.",
+    title: "Erstattungen von Bund und Land",
+    kurz:
+      "Viele Sozialleistungen zahlt die Stadt zuerst aus — Bund und Land erstatten " +
+      "ihr danach einen festen Anteil. Wie hoch der ist, steht im Gesetz, nicht im Rat.",
+    spielraum: "keiner",
+    stellschraube: "Erstattungsquoten stehen im Bundes- und Landesrecht",
+    stufen: [
+      {
+        wer: "Bundestag",
+        title: "Wer welchen Anteil trägt",
+        text: "Die Sozialgesetzbücher legen fest, welchen Teil einer Leistung der Bund erstattet — die Grundsicherung im Alter zum Beispiel ganz, die Unterkunftskosten des Bürgergelds zu einem festen Prozentsatz.",
+      },
+      {
+        wer: "Land",
+        title: "Was das Land übernimmt",
+        text: "Niedersachsen erstattet der Stadt unter anderem Kosten für die Aufnahme Geflüchteter und beteiligt sich an Sozial- und Eingliederungshilfe — nach Landesrecht.",
+      },
+      {
+        wer: "Rat Oldenburg",
+        title: "Nichts.",
+        text: "An den Quoten kann der Rat nichts ändern. Ob jede Erstattung beantragt und abgerechnet wird, ist Verwaltungsarbeit, kein Beschluss.",
+      },
+    ],
+    lotti: {
+      title: "Warum diese Einnahme kein Spielraum ist",
+      text:
+        "Eine Erstattung ist Geld, das die Stadt schon einmal ausgegeben hat. Steigt sie, " +
+        "sind meist auch die Ausgaben gestiegen, für die sie fließt — mehr Erstattung " +
+        "heißt nicht mehr Geld zum Gestalten.",
+    },
+  },
+  {
+    slug: "zuweisungen",
+    datenArt: null, // Posten 2 der Ergebnisrechnung
+    ergebnisPosten: 2,
+    grenze:
+      "Die Schlüsselzuweisungen von der eigenen Karte stecken hier mit drin — " +
+      "dieser Posten ist die Summe aller Zuweisungen, nicht etwas Zusätzliches. " +
+      "Die Eigenbetriebe zählt der Jahresabschluss der Kernverwaltung nicht mit.",
+    proKopfWas: "an Zuweisungen von Land und Bund",
+    bereicheTitel: "Wo die Zuweisungen ankommen",
+    planIstWertung:
+      "Die Farbe bewertet nicht: Ob mehr oder weniger ankommt als geplant, entscheidet " +
+      "sich im Landestopf und in Förderbescheiden, nicht im Rathaus. Keines von beidem " +
+      "ist für sich genommen gut oder schlecht.",
+    title: "Zuweisungen von Land und Bund",
+    kurz:
+      "Geld, das Land und Bund der Stadt für ihre Aufgaben überweisen — mal frei " +
+      "verwendbar wie die Schlüsselzuweisungen, mal an einen Zweck gebunden wie die " +
+      "Förderung der Kitas.",
+    spielraum: "keiner",
+    stellschraube: "Formeln und Förderprogramme von Land und Bund — kein Ratsbeschluss",
+    stufen: [
+      {
+        wer: "Land",
+        title: "Die allgemeinen Zuweisungen",
+        text: "Schlüsselzuweisungen und die Zuweisungen für die Aufgaben als kreisfreie Stadt kommen aus dem Finanzausgleich — nach Formel, nicht auf Antrag.",
+        gesetz: "nfag",
+      },
+      {
+        wer: "Bund und Land",
+        title: "Die zweckgebundenen",
+        text: "Für Kitas, Schulen, Kultur oder Straßen gibt es Zuweisungen mit Zweckbindung. Die Stadt darf das Geld nur dafür ausgeben, wofür es gedacht ist — und muss es oft erst beantragen.",
+      },
+      {
+        wer: "Rat Oldenburg",
+        title: "Nichts — außer sich zu bewerben",
+        text: "Der Rat beschließt keine Zuweisung. Er kann Förderprogramme nutzen, indem die Stadt sich bewirbt, und trägt dann meist einen Eigenanteil.",
+      },
+    ],
+    lotti: {
+      title: "Warum „Zuweisung“ nicht „Geschenk“ heißt",
+      text:
+        "Land und Bund geben der Stadt Aufgaben — Kitaplätze, Schulen, Sozialleistungen — " +
+        "und geben Geld dazu, weil die Stadt sie sonst nicht bezahlen könnte. Die " +
+        "Zuweisung ist der Anteil des Landes an einer Aufgabe, die es selbst vorschreibt.",
     },
   },
 ];

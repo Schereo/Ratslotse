@@ -1,6 +1,6 @@
 """Der Gesamtergebnishaushalt: was die Stadt für ein **Planjahr** ansetzt.
 
-``council_ergebnisrechnung`` (aus den Jahresabschlüssen) kann die Erträge nach
+``council_income_statement`` (aus den Jahresabschlüssen) kann die Erträge nach
 Arten nur für Jahre zeigen, die **abgeschlossen** sind — 2025 und 2026 haben
 noch keinen Jahresabschluss und stehen deshalb dort gar nicht. Die Zahlen
 existieren trotzdem längst: Jeder Haushaltsplan trägt als Anlage 005 den
@@ -95,11 +95,11 @@ liefert diese Schicht deshalb nur die **linke** Seite. Die rechte müsste aus
 einer der beiden anderen kommen, und beide haben einen Haken, der benannt
 gehört, statt ihn zu überkleben:
 
-* ``council_produkte`` (aus den THH-Plänen) deckt nur 8 bis 10 der 13
+* ``council_products`` (aus den THH-Plänen) deckt nur 8 bis 10 der 13
   Teilhaushalte ab — für die Jahrgänge 2019–2023 summieren sich die Produkte
   auf 17 bis 36 % **weniger** als der Gesamtergebnishaushalt für dasselbe Jahr
   ausweist. Und die THH-Pläne reichen bis zum Ansatzjahr 2025, nicht 2026.
-* ``council_haushalt`` trägt für 2025 und 2026 dreizehn Bereiche samt
+* ``council_budget`` trägt für 2025 und 2026 dreizehn Bereiche samt
   Summenzeile, ist also vollständig — aber eine **andere Gliederung**: Für
   2026 nennt es 812,9 Mio. € Erträge und 883,9 Mio. € Aufwendungen, wo diese
   Tabelle 788,6 und 880,8 Mio. € führt. Die Differenz ist echt und nicht
@@ -301,7 +301,7 @@ def lies(text: str) -> dict:
       (``ansatz``/``finanzplanung``), ``nr``, ``label``, ``amount``,
       ``is_total``. Nur, was gespeichert werden darf.
     * ``ist`` — die Ist-Spalte des Vorvorjahres, ``{nr: amount}``. Sie wird
-      **nicht** gespeichert (dafür gibt es ``council_ergebnisrechnung``),
+      **nicht** gespeichert (dafür gibt es ``council_income_statement``),
       sondern dient als Gegenprobe gegen den Jahresabschluss.
     * ``bestanden`` — ob beide Pflicht-Proben aufgehen. Ist sie ``False``, ist
       ``zeilen`` leer: Ein Dokument, dessen Tabelle nicht aufgeht, gibt keine
@@ -314,8 +314,8 @@ def lies(text: str) -> dict:
 
     gelesen = _zeilen_lesen(text)
     probes = []
-    for name, fn in (("ergebnishaushalt_summenzeilen", summenprobe),
-                     ("ergebnishaushalt_planspalte", planspaltenprobe)):
+    for name, fn in (("income_budget_total_rows", summenprobe),
+                     ("income_budget_plan_column", planspaltenprobe)):
         ok, warum = fn(gelesen)
         probes.append({"probe": name, "ok": ok, "warum": warum})
     bestanden = all(p["ok"] for p in probes)
@@ -369,7 +369,7 @@ def gegenprobe(ist: dict[int, float], gespeichert: dict[int, float],
 
     **Achtung, hier liegt eine Falle.** Der Gesamtergebnishaushalt ist die
     *Gesamt*ebene — Kernverwaltung **einschließlich** der nicht rechtsfähigen
-    Stiftungen. ``council_ergebnisrechnung`` führt die Kernverwaltung allein.
+    Stiftungen. ``council_income_statement`` führt die Kernverwaltung allein.
     Beide Zahlen sind richtig, beide heißen „Ergebnis 2024", und sie sind
     nicht dieselben: Über acht Jahrgänge stimmen 6 bis 8 von 23 Posten exakt
     überein, der Rest liegt um bis zu 0,45 Mio. € bei 800 Mio. auseinander.

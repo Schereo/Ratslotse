@@ -46,7 +46,7 @@ public struct User: Codable, Sendable, Equatable, Identifiable {
         case hasPassword = "has_password"
         case accessToken = "access_token"
         case displayName = "display_name"
-        case savesConversations = "qa_speichern"
+        case savesConversations = "saves_conversations"
     }
 }
 
@@ -63,7 +63,10 @@ public struct Topic: Codable, Sendable, Equatable, Identifiable {
     public let lastHitDate: String?
     public let unreadCount: Int
     public let recentHits: [TopicHit]
-    public let hits30Days: Int
+    /// Treffer der letzten sechs Monate. Hieß bis #826 `hits_30d` und zählte
+    /// 30 Tage; die App las den alten Namen noch, bekam ihn nie und zeigte
+    /// deshalb bei jedem Thema eine 0.
+    public let hits6Months: Int
 
     enum CodingKeys: String, CodingKey {
         case id, name, description, matched
@@ -75,7 +78,7 @@ public struct Topic: Codable, Sendable, Equatable, Identifiable {
         case lastHitDate = "last_hit_date"
         case unreadCount = "unread_count"
         case recentHits = "recent_hits"
-        case hits30Days = "hits_30d"
+        case hits6Months = "hits_6m"
     }
 
     public init(from decoder: Decoder) throws {
@@ -92,7 +95,7 @@ public struct Topic: Codable, Sendable, Equatable, Identifiable {
         lastHitDate = try values.decodeIfPresent(String.self, forKey: .lastHitDate)
         unreadCount = try values.decodeIfPresent(Int.self, forKey: .unreadCount) ?? 0
         recentHits = try values.decodeIfPresent([TopicHit].self, forKey: .recentHits) ?? []
-        hits30Days = try values.decodeIfPresent(Int.self, forKey: .hits30Days) ?? 0
+        hits6Months = try values.decodeIfPresent(Int.self, forKey: .hits6Months) ?? 0
     }
 }
 
@@ -262,17 +265,16 @@ public struct DecisionDetail: Codable, Sendable {
     public let planImageID: Int?
 
     enum CodingKeys: String, CodingKey {
-        case decision, attendance, entities, similar, participation = "beteiligung", follow
+        case decision, attendance, entities, similar, participation, follow, template
         case subVotes = "sub_votes"
-        case templateJourney = "vorlage_journey"
-        case consultations = "beratungsfolge"
-        case templateURL = "vorlage_url"
-        case template = "vorlage"
-        case attachments = "anlagen"
+        case templateJourney = "template_journey"
+        case consultations = "deliberation_path"
+        case templateURL = "template_url"
+        case attachments = "attachments"
         case importance = "importance_breakdown"
         case presentParties = "present_parties"
         case ratsinfoURL = "ratsinfo_url"
-        case planImageID = "plan_bild"
+        case planImageID = "plan_image"
     }
 
     public init(
@@ -441,11 +443,14 @@ public struct CouncilAttachment: Codable, Sendable, Hashable, Identifiable {
 }
 
 public struct CouncilParticipation: Codable, Sendable, Equatable {
-    public let title: String
+    /// `title` und `url` stehen im Vertrag als `str | None` — eine
+    /// Beteiligung ohne Titel oder Verweis hätte die Beschluss-Seite sonst
+    /// gar nicht mehr geladen.
+    public let title: String?
     public let step: String?
     public let from: String?
     public let until: String?
-    public let url: String
+    public let url: String?
     public let status: String?
 
     enum CodingKeys: String, CodingKey {
@@ -599,8 +604,12 @@ public struct BookmarkPage: Codable, Sendable {
 public struct FollowEntry: Codable, Sendable, Identifiable {
     public let id: Int
     public let templateID: Int
-    public let templateNumber: String
-    public let title: String
+    /// Beide dürfen fehlen: Der Vertrag beschreibt sie als `str | None`, und
+    /// im Bestand stehen Vorlagen ohne Titel (gemessen 02.09.2026: zwei von
+    /// 5.083). Als Pflichtfelder gelesen hätte EINE davon gereicht, um die
+    /// ganze Folgen-Liste beim Decodieren abbrechen zu lassen.
+    public let templateNumber: String?
+    public let title: String?
     public let url: String
     public let stationCount: Int
     public let next: CouncilConsultationStop?
@@ -621,9 +630,18 @@ public struct FollowPage: Codable, Sendable {
 }
 
 public struct CouncilSession: Codable, Sendable, Hashable, Identifiable {
-    public var id: Int { ksinr ?? calendarID ?? title.hashValue }
+    /// Terminierte Sitzungen aus dem Kalender haben noch keine `ksinr` — die
+    /// bekommen sie erst mit der veröffentlichten Tagesordnung. Bis dahin
+    /// identifiziert sie das, was die Antwort wirklich trägt: Gremium, Datum
+    /// und Uhrzeit.
+    ///
+    /// Hier stand bis 09/2026 ein `calendarID`, das das Backend NIE geschickt
+    /// hat. Der Rückfall war deshalb immer `title.hashValue` — und zwei
+    /// Termine desselben Gremiums fielen in der Liste zusammen.
+    public var id: Int {
+        ksinr ?? "\(committee)|\(sessionDate)|\(sessionTime ?? "")".hashValue
+    }
     public let ksinr: Int?
-    public let calendarID: Int?
     public let committee: String
     public let sessionDate: String
     public let sessionTime: String?
@@ -635,13 +653,11 @@ public struct CouncilSession: Codable, Sendable, Hashable, Identifiable {
     /// instead of meeting in parallel. Only sent for today's sessions.
     public let liveUntil: String?
     public let location: String?
-    public let title: String
     public let itemCount: Int
     public let myTopicItems: [JSONValue]?
 
     enum CodingKeys: String, CodingKey {
-        case ksinr, committee, location, title
-        case calendarID = "calendar_id"
+        case ksinr, committee, location
         case sessionDate = "session_date"
         case sessionTime = "session_time"
         case liveUntil = "live_until"
@@ -652,13 +668,11 @@ public struct CouncilSession: Codable, Sendable, Hashable, Identifiable {
     public init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         ksinr = try values.decodeIfPresent(Int.self, forKey: .ksinr)
-        calendarID = try values.decodeIfPresent(Int.self, forKey: .calendarID)
         committee = try values.decodeIfPresent(String.self, forKey: .committee) ?? "Gremium"
         sessionDate = try values.decodeIfPresent(String.self, forKey: .sessionDate) ?? ""
         sessionTime = try values.decodeIfPresent(String.self, forKey: .sessionTime)
         liveUntil = try values.decodeIfPresent(String.self, forKey: .liveUntil)
         location = try values.decodeIfPresent(String.self, forKey: .location)
-        title = try values.decodeIfPresent(String.self, forKey: .title) ?? committee
         itemCount = try values.decodeIfPresent(Int.self, forKey: .itemCount) ?? 0
         myTopicItems = try values.decodeIfPresent([JSONValue].self, forKey: .myTopicItems)
     }
@@ -696,7 +710,7 @@ public struct AgendaItem: Codable, Sendable, Hashable, Identifiable {
         case itemNumber = "item_number"
         case templateNumber = "template_number"
         case isPublic = "is_public"
-        case attachments = "anlagen"
+        case attachments = "attachments"
     }
 
     public init(from decoder: Decoder) throws {
@@ -775,7 +789,7 @@ public struct SessionDetail: Codable, Sendable {
         case sessionTime = "session_time"
         case agendaItems = "agenda_items"
         case hasProtocol = "has_protocol"
-        case agendaChanges = "aenderungen"
+        case agendaChanges = "agenda_changes"
     }
 }
 
@@ -785,12 +799,15 @@ public struct TodayCard: Codable, Sendable {
     public let sessionDate: String?
     public let sessionTime: String?
     public let tops: [String]?
-    public let rest: Int?
+    /// Wie viele Punkte über die genannten hinaus noch auf der Tagesordnung
+    /// stehen. Hieß bis #911 `rest`; die App las den alten Namen weiter und
+    /// zählte die Punkte deshalb zu niedrig.
+    public let remaining: Int?
     public let label: String?
     public let until: String?
 
     enum CodingKeys: String, CodingKey {
-        case state, committee, tops, rest, label, until
+        case state, committee, tops, remaining, label, until
         case sessionDate = "session_date"
         case sessionTime = "session_time"
     }
@@ -828,16 +845,16 @@ public struct WeekPreview: Codable, Sendable {
 
     enum CodingKeys: String, CodingKey {
         case found
-        case from = "von"
-        case through = "bis"
-        case sessions = "sitzungen"
-        case items = "punkte"
-        case relevantItemsPerSession = "relevant_je_sitzung"
-        case additionalItemsPerSession = "weitere_je_sitzung"
-        case personalMatchesPerSession = "treffer_je_sitzung"
-        case personalMatches = "treffer_gesamt"
-        case contentItemCount = "inhaltlich_gesamt"
-        case contentItemsPerSession = "inhaltlich_je_sitzung"
+        case from = "from_date"
+        case through = "to_date"
+        case sessions = "sessions"
+        case items = "items"
+        case relevantItemsPerSession = "relevant_per_session"
+        case additionalItemsPerSession = "further_per_session"
+        case personalMatchesPerSession = "matches_per_session"
+        case personalMatches = "matches_total"
+        case contentItemCount = "substantive_total"
+        case contentItemsPerSession = "substantive_per_session"
     }
 }
 

@@ -3,7 +3,7 @@
 // native app the base is the absolute backend origin and auth is a bearer token.
 import { toast } from "sonner";
 import { entwurfSichern, entwurfZiel } from "./draft";
-import { apiBase, isNativeApp } from "./platform";
+import { apiBase, clientMarke, isNativeApp } from "./platform";
 import { getCachedToken } from "./token";
 
 /** Feldnamen aus Pydantics ``loc`` in etwas, das man vorlesen kann. */
@@ -62,7 +62,9 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
       "Content-Type": "application/json",
       // The native app has no cross-site cookie: it flags itself so the backend
       // returns a long-lived token on login, and carries that token as a bearer.
-      ...(native ? { "X-Client": "app" } : {}),
+      // Der Wert nennt die Plattform (ios | android), damit das Backend „App
+      // oder Web?" beantworten kann; Browser schicken den Header gar nicht.
+      ...(native ? { "X-Client": clientMarke() } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(options.headers || {}),
     },
@@ -130,7 +132,7 @@ export function authHeaders(): Record<string, string> {
   const native = isNativeApp();
   const token = native ? getCachedToken() : null;
   return {
-    ...(native ? { "X-Client": "app" } : {}),
+    ...(native ? { "X-Client": clientMarke() } : {}),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 }

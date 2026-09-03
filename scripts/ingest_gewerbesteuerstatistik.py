@@ -135,7 +135,7 @@ def main() -> int:
                     continue
 
                 # --- Probe 3: der Hebesatz gegen das Jahrbuch ---
-                probes = ["gewst_summenprobe", "gewst_blattprobe"]
+                probes = ["trade_tax_sum_check", "trade_tax_sheet_check"]
                 ergebnisse = [f"{len(zeilen)} Städte nachgerechnet",
                               blatt["result"]]
                 erwartet = gs.hebesatz_im_jahr(treppe, budget_year.year)
@@ -146,7 +146,7 @@ def main() -> int:
                           "Jahrbuch nennen verschiedene Hebesätze.")
                     continue
                 if hebe["ok"]:
-                    probes.append("gewst_hebesatzprobe")
+                    probes.append("trade_tax_assessment_rate_check")
                     ergebnisse.append(hebe["result"])
 
                 geschrieben[budget_year.year] = store.save_gewerbesteuerstatistik(
@@ -166,7 +166,7 @@ def main() -> int:
 
         store.herkunft_aufraeumen()
         luecken = {t: n for t, n in store.herkunft_luecken().items()
-                   if t == "council_gewerbesteuerstatistik"}
+                   if t == "council_trade_tax_statistics"}
         if luecken:
             print(f"WARNUNG: Zeilen ohne Herkunft: {luecken}")
     finally:

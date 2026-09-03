@@ -158,7 +158,7 @@ private struct CouncilMember: Decodable, Sendable, Identifiable {
     }
 }
 
-private struct PeopleLexiconResponse: Decodable, Sendable { let personen: [AdministrationPerson] }
+private struct PeopleLexiconResponse: Decodable, Sendable { let people: [AdministrationPerson] }
 
 private struct AdministrationPerson: Decodable, Sendable, Identifiable {
     var id: String { slug }
@@ -242,8 +242,8 @@ private struct CouncilGoal: Decodable, Sendable, Identifiable {
     let key: String
     let label: String
     let description: String
-    let voran: Int
-    let bremst: Int
+    let advances: Int
+    let hinders: Int
     let neutral: Int
     let total: Int
 }
@@ -663,11 +663,11 @@ struct CouncilInsightsView: View {
                     }.buttonStyle(RatsPlainButtonStyle())
                     GoalBalanceBar(goal: goal)
                     HStack {
-                        Text("\(goal.bremst) bremsen").foregroundStyle(RatsColor.danger)
+                        Text("\(goal.hinders) bremsen").foregroundStyle(RatsColor.danger)
                         Spacer()
                         Text("\(goal.neutral) neutral").foregroundStyle(RatsColor.muted)
                         Spacer()
-                        Text("\(goal.voran) voran").foregroundStyle(RatsColor.success)
+                        Text("\(goal.advances) voran").foregroundStyle(RatsColor.success)
                     }
                     .font(RatsFont.body(9.5, weight: .semibold))
                     if expandedGoals.contains(goal.key) {
@@ -903,8 +903,8 @@ struct CouncilInsightsView: View {
                 fieldLabels: ["verkehr": "Verkehr", "soziales": "Soziales", "kultur": "Kultur"]
             )
             goals = [
-                CouncilGoal(key: "klima", label: "Klimaneutrale Stadt", description: "Emissionen senken und Oldenburg an den Klimawandel anpassen.", voran: 18, bremst: 3, neutral: 7, total: 28),
-                CouncilGoal(key: "teilhabe", label: "Soziale Teilhabe", description: "Gute Zugänge zu Wohnen, Bildung und öffentlichem Leben schaffen.", voran: 14, bremst: 2, neutral: 5, total: 21),
+                CouncilGoal(key: "klima", label: "Klimaneutrale Stadt", description: "Emissionen senken und Oldenburg an den Klimawandel anpassen.", advances: 18, hinders: 3, neutral: 7, total: 28),
+                CouncilGoal(key: "teilhabe", label: "Soziale Teilhabe", description: "Gute Zugänge zu Wohnen, Bildung und öffentlichem Leben schaffen.", advances: 14, hinders: 2, neutral: 5, total: 21),
             ]
             goalDetails["klima"] = [GoalDecision(id: 1, title: "Neue Busspuren für Oldenburg", summary: "Busverkehr beschleunigen.", policyField: "verkehr", outcome: "accepted", sessionDate: "2026-08-26", committee: "Rat", stance: "advances", rationale: "Stärkt den öffentlichen Verkehr.")]
             return
@@ -917,7 +917,7 @@ struct CouncilInsightsView: View {
             async let financeRequest: FinanceResponse = model.api.get("/api/council/finance")
             async let goalRequest: GoalsResponse = model.api.get("/api/council/goals")
             async let recapRequest: FieldRecapsResponse = model.api.get("/api/council/field-recaps")
-            async let peopleRequest: PeopleLexiconResponse = model.api.get("/api/council/personen-lexikon")
+            async let peopleRequest: PeopleLexiconResponse = model.api.get("/api/council/people-directory")
             let responses = try await (trendRequest, partyRequest, memberRequest, financeRequest, goalRequest, recapRequest, peopleRequest)
             trends = responses.0
             parties = responses.1
@@ -925,7 +925,7 @@ struct CouncilInsightsView: View {
             finance = responses.3
             goals = responses.4.goals
             fieldRecaps = responses.5.recaps
-            administrationPeople = responses.6.personen.filter { $0.art == "city" && $0.role != nil }
+            administrationPeople = responses.6.people.filter { $0.art == "city" && $0.role != nil }
             error = nil
         } catch { self.error = error.localizedDescription }
     }
@@ -1140,9 +1140,9 @@ private struct GoalBalanceBar: View {
         let total = max(1, goal.total)
         GeometryReader { proxy in
             HStack(spacing: 1) {
-                Rectangle().fill(RatsColor.danger.opacity(0.78)).frame(width: proxy.size.width * Double(goal.bremst) / Double(total))
+                Rectangle().fill(RatsColor.danger.opacity(0.78)).frame(width: proxy.size.width * Double(goal.hinders) / Double(total))
                 Rectangle().fill(RatsColor.muted.opacity(0.35)).frame(width: proxy.size.width * Double(goal.neutral) / Double(total))
-                Rectangle().fill(RatsColor.success.opacity(0.78)).frame(width: proxy.size.width * Double(goal.voran) / Double(total))
+                Rectangle().fill(RatsColor.success.opacity(0.78)).frame(width: proxy.size.width * Double(goal.advances) / Double(total))
             }
             .clipShape(Capsule())
         }

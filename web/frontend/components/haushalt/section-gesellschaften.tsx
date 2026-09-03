@@ -229,7 +229,7 @@ export function GesellschaftenAbschnitt({ onBestand }: {
   const params = useSearchParams();
   const router = useRouter();
   const gewaehlt = params.get("g");
-  const { data, loading } = useFetch<BeteiligungsDaten>("/council/haushalt/beteiligungen");
+  const { data, loading } = useFetch<BeteiligungsDaten>("/council/budget/shareholdings");
   const [form, setForm] = useState<Rechtsform | null>(null);
   const [suche, setSuche] = useState("");
   // Mobil steht die Konzernkarte hinter dem Auslöser „Wer gehört zu wem?" —
@@ -249,7 +249,7 @@ export function GesellschaftenAbschnitt({ onBestand }: {
   }, [onBestand, data, liste]);
 
   const aktiv = liste.find((g) => g.company === gewaehlt) ?? null;
-  const bericht = data?.berichtsjahre?.[data.berichtsjahre.length - 1] ?? null;
+  const bericht = data?.report_years?.[data.report_years.length - 1] ?? null;
   const years = data?.years ?? [];
   const quelleUrl = herkunftVon(data, liste[0]?.herkunft_id)?.url ?? null;
 
@@ -410,6 +410,14 @@ export function GesellschaftenAbschnitt({ onBestand }: {
                 {gefiltert.length} von {liste.length} · Bericht {bericht}
               </p>
             </div>
+            {/* Einmal für alle Karten — bis 02.09.2026 stand der Satz auf zehn
+                Karten hintereinander. Unter der Zahl jeder Karte steht jetzt
+                ihre eigene Entwicklung. */}
+            <p className="max-w-[74ch] text-[12.5px] leading-relaxed text-muted-foreground">
+              Gewinn oder Verlust ist hier keine Note — welchen Auftrag eine Gesellschaft
+              damit erfüllt, steht in ihrem Steckbrief. Unter jeder Zahl steht, wie sie
+              sich seit dem ersten Bericht entwickelt hat.
+            </p>
             <Filterleiste liste={liste} form={form} setForm={setForm}
               suche={suche} setSuche={setSuche} />
             {gefiltert.length ? (

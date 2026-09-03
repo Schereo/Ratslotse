@@ -1,18 +1,27 @@
 #!/usr/bin/env python3
 """Neue Haushalts-Jahrgänge von allein nachziehen (alle zwei Wochen).
 
-Der Haushalts-Bereich lebt von neunzehn Datenschichten (``finanzquellen.
+Der Haushalts-Bereich lebt von dreiundzwanzig Datenschichten (``finanzquellen.
 REIHENFOLGE``), die bis 08/2026 alle von Hand eingelesen wurden. Dieser Job
 holt die **neun**, die als Anlage im Ratsinformationssystem liegen UND einen
-eigenen Leser mitbringen (``einlesen``). Von den zehn übrigen kommen sieben von
+eigenen Leser mitbringen (``einlesen``). Von den vierzehn übrigen kommen sieben von
 außerhalb und haben eigene Wege — ausdrücklich so, denn „lädt nichts herunter"
-ist die Regel, an der dieser Job hängt. Die restlichen drei liegen zwar im
+ist die Regel, an der dieser Job hängt. Die restlichen sieben liegen zwar im
 Ratsinformationssystem, werden aber von eigenen Skripten eingelesen
 (``ingest_wirtschaftsplaene.py``, ``ingest_haushaltssatzung.py``,
-``ingest_gebuehren.py``); dieser Job beobachtet sie nur und meldet, wenn ein Jahrgang überfällig wird. Ohne diesen Job veraltet er still, sobald niemand mehr
+``ingest_gebuehren.py``, ``ingest_haushaltsvollzug.py``,
+``ingest_liquiditaet.py``, ``ingest_kredite.py``, ``ingest_eigenbetriebe_abschluss.py``). Bis 09/2026 hat
+dieser Job sie nur beobachtet; seit Tims Punkt 5 („Frische automatisieren")
+**ruft er ihre Skripte auf, sobald ein neues Dokument im Bestand liegt** —
+gemessen an der Dokumentmarke (``Finanzquelle.dokumentmarke``), die sich der
+Job je Datenart merkt (``council_ingest_marks``). Die Regel bleibt: Der Job
+selbst lädt nichts herunter. Was ein Skript für sich holt (der Haushaltsvollzug
+braucht Wortkoordinaten und lädt seine PDFs deshalb selbst), ist Sache des
+Skripts und steht in seinem Kopf.
+Ohne diesen Job veraltet er still, sobald niemand mehr
 daran denkt: Die Stadt legt jeden September einen Jahresabschluss und jeden
 Oktober einen Haushaltsplan vor, und beides landet ohne Zutun als PDF-Anlage
-in ``council_anlagen`` — gelesen hat es bloß niemand.
+in ``council_attachments`` — gelesen hat es bloß niemand.
 
 **Der Job ist bestandsgesteuert, nicht kalendergesteuert.** Er fragt nicht
 „ist es September?", sondern „welche **Einheit** fehlt mir, und liegt
@@ -21,7 +30,7 @@ Jahresabschluss, ein Nachtragshaushalt oder ein nachgereichter Prüfbericht
 werden eingesammelt, sobald sie da sind, und der Job darf beliebig oft laufen.
 
 **Einheit, nicht Jahrgang** — das ist der Punkt, an dem die erste Fassung
-falsch lag. Ein Produkt-Jahrgang verteilt sich auf rund neun
+falsch lag. Ein Produkt-Jahrgang verteilt sich auf zwölf bis dreizehn
 Teilhaushalts-Anlagen, ein Jahresabschluss auf zwei Ebenen. Und die kommen
 **nicht gleichzeitig**: ``check_protocols`` legt eine Anlage ohne Volltext an
 (``n_pages=0``), den holt ``backfill_anlagen_texte.py`` erst später und in
@@ -63,9 +72,9 @@ ein Erkennungsmuster nicht mehr? Das zweite ist der eigentliche Zweck. Gemeldet
 wird nur, wenn sich gegenüber dem letzten Lauf etwas geändert hat; alle
 vierzehn Tage dieselbe Mail wäre eine, die niemand mehr liest.
 
-Was der Job **nicht** abdeckt: ``council_haushalt`` (die Planwerte), die
+Was der Job **nicht** abdeckt: ``council_budget`` (die Planwerte), die
 Open-Data-Schichten (Steuern, Steuerkraft, Einwohner) und den Städtevergleich
-(``council_staedtevergleich``). Sie kommen nicht aus dem
+(``council_city_comparison``). Sie kommen nicht aus dem
 Ratsinformationssystem, sondern per Download von oldenburg.de bzw. vom
 Landesamt für Statistik — und Herunterladen ist Regel 1. Ihr Ausbleiben meldet
 der Job trotzdem; welches Skript dann dran ist, steht bei der Schicht
@@ -174,7 +183,7 @@ def _hinweis_text(zeilen: list[dict], gesehen: dict[str, set[int]],
             reason = ("<b>Dokument liegt vor, wird aber nicht übernommen</b> — "
                      "Erkennung oder Parser prüfen")
         elif q.herkunft == "ris":
-            reason = "kein passendes Dokument in council_anlagen"
+            reason = "kein passendes Dokument in council_attachments"
         else:
             # Was zu tun ist, weiß die Schicht selbst — hier stand bis 08/2026
             # ein fester Satz über oldenburg.de, und der schickte den Leser
@@ -211,6 +220,56 @@ def _hinweis_text(zeilen: list[dict], gesehen: dict[str, set[int]],
     return "\n".join(teile)
 
 
+#: Wie lange ein Ingest-Skript laufen darf, bevor der Cron es abbricht. Der
+#: Haushaltsvollzug lädt 31 PDFs und braucht Minuten; eine halbe Stunde ist
+#: die Grenze, hinter der etwas hängt statt zu arbeiten.
+SKRIPT_TIMEOUT_S = 1800
+
+
+def _skriptlauf(q, store: CouncilStore, p: finanzquellen.Protokoll,
+                trocken: bool, fehlgeschlagen: list[str]) -> int:
+    """Das Ingest-Skript einer Datenart aufrufen — wenn ein neues Dokument da ist.
+
+    Verglichen wird die Dokumentmarke (jüngstes lesbares Dokument im Bestand)
+    mit der Marke des letzten Laufs. Gleich heißt: nichts Neues, kein Lauf.
+    Größer heißt: Ein Dokument liegt vor, das das Skript noch nie gesehen hat
+    — der Aufruf folgt, und die Marke wird nur bei Erfolg als „erledigt"
+    gewertet, damit ein gescheiterter Lauf beim nächsten Mal wiederholt wird
+    (und gemeldet, s. ``ausbleibend``). Gibt 1 zurück, wenn ein Skript lief."""
+    import subprocess
+    import sys
+
+    marke = q.dokumentmarke(store)
+    if marke is None:
+        p.sagen(f"{q.label}: kein Dokument im Bestand — Skript ({q.lauf[0]}) nicht gerufen")
+        return 0
+    letzter = store.ingest_marke(q.key)
+    if letzter and letzter["ok"] and letzter["marke"] >= marke:
+        p.sagen(f"{q.label}: nichts Neues seit dem letzten Skriptlauf (Marke {marke})")
+        return 0
+    p.sagen(f"{q.label}: neues Dokument (Marke {marke}, zuletzt "
+            f"{letzter['marke'] if letzter else '—'}) — {q.lauf[0]} wird gerufen")
+    if trocken:
+        return 0
+    pfad = Path(q.lauf[0])
+    befehl = [sys.executable, str(pfad if pfad.is_absolute() else ROOT / pfad), *q.lauf[1:]]
+    try:
+        lauf = subprocess.run(befehl, capture_output=True, text=True, timeout=SKRIPT_TIMEOUT_S,
+                              cwd=str(ROOT),
+                              env={**os.environ, "COUNCIL_DB": str(store._path)})  # noqa: SLF001
+        ok, ausgabe = lauf.returncode == 0, (lauf.stdout + lauf.stderr)
+    except subprocess.TimeoutExpired as fehler:
+        ok, ausgabe = False, f"Zeitüberschreitung nach {SKRIPT_TIMEOUT_S} s: {fehler}"
+    schwanz = "\n".join(ausgabe.strip().splitlines()[-6:])
+    store.setze_ingest_marke(q.key, marke, ok, schwanz)
+    if ok:
+        p.sagen(f"  {q.label}: Skript fertig — {schwanz.splitlines()[-1] if schwanz else 'ohne Ausgabe'}")
+    else:
+        fehlgeschlagen.append(q.key)
+        p.warnen(f"  {q.label}: Skript {q.lauf[0]} endete mit Fehler:\n{schwanz}")
+    return 1
+
+
 def main(db: str | None = None, heute: date | None = None,
          trocken: bool = False, still: bool = False,
          protokoll: finanzquellen.Protokoll | None = None) -> dict:
@@ -223,7 +282,9 @@ def main(db: str | None = None, heute: date | None = None,
     #: Welche Jahrgänge als Dokument vorliegen — trennt in der Meldung „die
     #: Stadt ist spät dran" von „wir lesen es nicht mehr".
     gesehen: dict[str, set[int]] = {}
-    geschuetzt = neue_einheiten = 0
+    geschuetzt = neue_einheiten = skriptlaeufe = 0
+    #: Skriptläufe, die mit Fehler endeten — sie gehören in die Meldung.
+    fehlgeschlagen: list[str] = []
     rest: dict[str, set[tuple]] = {}
 
     try:
@@ -231,6 +292,9 @@ def main(db: str | None = None, heute: date | None = None,
             q = finanzquellen.QUELLEN[key]
             vorhanden = q.balance(store)
             if not q.automatisch:
+                if q.lauf:
+                    skriptlaeufe += _skriptlauf(q, store, p, trocken, fehlgeschlagen)
+                    continue
                 # Beobachtet, nicht eingelesen: Diese Schicht kommt per
                 # Download und bleibt Sache eines Ingest-Skripts von Hand.
                 p.sagen(f"{q.label}: {len(finanzquellen.jahrgaenge(vorhanden))} Jahrgänge, "
@@ -238,7 +302,7 @@ def main(db: str | None = None, heute: date | None = None,
                 continue
 
             # Gefragt wird nach EINHEITEN, nicht nach Jahrgängen: Ein
-            # Produkt-Jahrgang steckt in rund neun Anlagen, ein Jahresabschluss
+            # Produkt-Jahrgang steckt in zwölf bis dreizehn Anlagen, ein Jahresabschluss
             # in zwei Ebenen. „Jahr ist da" hieße sonst „Jahr ist fertig" —
             # und der Rest käme nie nach.
             kandidaten = q.kandidaten(store)
@@ -319,7 +383,8 @@ def main(db: str | None = None, heute: date | None = None,
     ausbleibend = sorted(
         [f"{z['key']}:{j}" for z in as_of for j in z["ueberfaellig"]]
         + [f"{key}:offen:{e}" for key, offen in rest.items() for e in sorted(map(str, offen))]
-        + [f"herkunft:{tabelle}:{n}" for tabelle, n in ohne_herkunft.items()])
+        + [f"herkunft:{tabelle}:{n}" for tabelle, n in ohne_herkunft.items()]
+        + [f"lauf:{key}" for key in fehlgeschlagen])
 
     gemeldet = False
     if ausbleibend and not trocken and not _schon_gemeldet(ausbleibend):
@@ -335,6 +400,8 @@ def main(db: str | None = None, heute: date | None = None,
         "Neue Einheiten": neue_einheiten,
         "Bestand geschützt": geschuetzt,
         "Hinweis verschickt": 1 if gemeldet else 0,
+        "Skriptläufe": skriptlaeufe,
+        "Skriptläufe fehlgeschlagen": len(fehlgeschlagen),
         "Zeilen ohne Herkunft": sum(ohne_herkunft.values()),
         "ausbleibend": ausbleibend,
     }

@@ -17,7 +17,7 @@ auf 73 %. Wer nur den ersten Bestand zeigt, zeigt eine schrumpfende Teilmenge,
 als wäre sie das Ganze.
 
 Nichts wird hier geladen — beide Quellen liegen bereits im Bestand
-(``council_vorlagen.raw_text`` und ``council_anlagen.raw_text``).
+(``council_templates.raw_text`` und ``council_attachments.raw_text``).
 
 **Reihenfolge ist Pflicht, nicht Geschmack.** Die drei Rechenschaftsberichte
 liegen im Bestand als Anlage mit ``status='listed'`` und **leerem**
@@ -109,7 +109,7 @@ def _serie(store: CouncilStore, trocken: bool) -> dict:
             "fulltext_probe": nb.probe_volltext(b, volltexte.get(b.template_number)),
         })
 
-    einzel = [z for z in zeilen if z["art"] != nb.ART_SCHWELLE]
+    einzel = [z for z in zeilen if z["kind"] != nb.ART_SCHWELLE]
     aus_titel = sum(1 for z in einzel if z["amount_source"] == "title")
     aus_text = sum(1 for z in einzel if z["amount_source"] == "proposed_decision")
     ohne = [z["template_number"] for z in einzel if z["amount_source"] is None]
@@ -162,7 +162,7 @@ def _berichte(store: CouncilStore, serie: list[nb.Bewilligung],
         probe = nb.probe_tabelle(kap)
         abgleich = nb.probe_ratsabgleich(
             serie, kap, nb.vorlagen_im_kapitel(text))
-        rat = kap.channel("rat")
+        rat = kap.channel("council")
         print(f"  {year}: {kap.gesamt:>15,.2f} € gesamt · Rat "
               f"{rat.amount:>15,.2f} € ({kap.rats_anteil:.1f} %) · "
               f"{len(kap.channels)} Wege")

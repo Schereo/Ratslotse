@@ -32,7 +32,7 @@ EGH-Wirtschaftsplan-Vorlage trägt die Eckwerte im Klartext::
     und Verpflichtungsermächtigungen von 104.980.000 Euro
 
 Das ist der Beschlusstext, über den abgestimmt wird — keine Zusammenfassung
-und keine Anlage, die später ausgetauscht werden könnte. `council_vorlagen`
+und keine Anlage, die später ausgetauscht werden könnte. `council_templates`
 führt ihn längst als Volltext; es brauchte nur niemand.
 
 Die Rechenprobe steht im Text
@@ -93,9 +93,9 @@ from dataclasses import dataclass
 from council.herkunft import Herkunft
 
 #: Name der Rechenprobe, die im Dokument selbst steht.
-PROBE_ERFOLGSPLAN = "wirtschaftsplan_erfolgsplan"
+PROBE_ERFOLGSPLAN = "business_plan_profit_loss"
 #: Die zweite: Fließtext-Jahr gegen Titel-Jahr.
-PROBE_JAHR = "wirtschaftsplan_jahr"
+PROBE_JAHR = "business_plan_year"
 
 PROBEN: dict[str, str] = {
     PROBE_ERFOLGSPLAN:
@@ -348,7 +348,7 @@ def dokument_name(plan: Wirtschaftsplan) -> str:
 
     ACHTUNG, das ändert den Herkunfts-Fingerabdruck (``Herkunft.key``
     schließt ``label`` ein): Der nächste Einlesevorgang legt neue Zeilen in
-    ``council_herkunft`` an und hängt die Daten dort ein. Die alten bleiben
+    ``council_provenance`` an und hängt die Daten dort ein. Die alten bleiben
     unreferenziert liegen — sichtbar wird davon nichts."""
     return f"{plan.enterprise_name}: Wirtschaftsplan {plan.year}"
 

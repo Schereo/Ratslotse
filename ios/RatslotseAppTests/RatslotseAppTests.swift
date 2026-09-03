@@ -150,14 +150,14 @@ import Testing
       "answer": "Der Rat hat zugestimmt [42].",
       "created": "2026-08-29T08:15:00",
       "sources": [{"id":42,"title":"Sichere Querung","session_date":"2026-08-28","committee":"Rat","outcome":"accepted"}],
-      "debatten": [{"speaker":"Anna Beispiel","party":"SPD","auszug":"Wir stimmen zu."}],
-      "presse": [{"title":"Mitteilung","url":"https://www.oldenburg.de/presse"}],
-      "anlagen": [{"nr":1,"label":"Lageplan","url":"https://buergerinfo.oldenburg.de/getfile.php?id=42"}],
-      "parteien": [
-        {"party":"SPD","haltung":"dafür","position":"Zustimmung","einig":true},
-        {"party":"CDU","haltung":"dagegen","position":"Ablehnung","einig":false}
+      "debates": [{"speaker":"Anna Beispiel","party":"SPD","excerpt":"Wir stimmen zu."}],
+      "press_releases": [{"title":"Mitteilung","url":"https://www.oldenburg.de/presse"}],
+      "attachments": [{"nr":1,"label":"Lageplan","url":"https://buergerinfo.oldenburg.de/getfile.php?id=42"}],
+      "parties": [
+        {"party":"SPD","stance":"dafür","position":"Zustimmung","unanimous":true},
+        {"party":"CDU","stance":"dagegen","position":"Ablehnung","unanimous":false}
       ],
-      "grafik": {"art":"linie","title":"Kosten","unit":"Mio. €","series":[{"year":2026,"value":2.5}]}
+      "chart": {"art":"linie","title":"Kosten","unit":"Mio. €","series":[{"year":2026,"value":2.5}]}
     }
     """#.utf8)
 
@@ -168,8 +168,8 @@ import Testing
     #expect(snapshot.press.count == 1)
     #expect(snapshot.attachments.count == 1)
     #expect(snapshot.parties.count == 2)
-    #expect(snapshot.evidenceFields["grafik"] != nil)
-    #expect(snapshot.evidenceFields["parteien"]?.array?.count == 2)
+    #expect(snapshot.evidenceFields["chart"] != nil)
+    #expect(snapshot.evidenceFields["parties"]?.array?.count == 2)
 
     let legacy = try JSONDecoder().decode(
         SharedAnswerSnapshot.self,
@@ -209,7 +209,7 @@ import Testing
       "has_password": true,
       "access_token": "must-stay-in-keychain",
       "display_name": "Offline Test",
-      "qa_speichern": 1
+      "saves_conversations": 1
     }
     """#.utf8))
 
@@ -240,7 +240,7 @@ import Testing
           "has_password": true,
           "access_token": null,
           "display_name": "Test",
-          "qa_speichern": 0
+          "saves_conversations": 0
         }
         """.data(using: .utf8)
     )
@@ -266,7 +266,7 @@ import Testing
     try await model.setConversationSaving(true)
 
     #expect(model.conversationSavingPreference == 1)
-    #expect(ConversationSettingURLProtocol.lastRequest?.url?.path == "/api/council/gespraeche/einstellung")
+    #expect(ConversationSettingURLProtocol.lastRequest?.url?.path == "/api/council/conversations/setting")
     #expect(ConversationSettingURLProtocol.lastRequest?.httpMethod == "POST")
     let body = try #require(ConversationSettingURLProtocol.lastRequestBody)
     #expect(try JSONDecoder().decode(ConversationSettingRequest.self, from: body).an)
@@ -278,7 +278,7 @@ import Testing
     let defaults = try #require(UserDefaults(suiteName: suiteName))
     defer { defaults.removePersistentDomain(forName: suiteName) }
     let userData = try #require(
-        #"{"id":17,"email":"chat@example.org","role":"user","status":"pending","delivery_channel":"email","email_verified":false,"apple_linked":false,"has_password":true,"access_token":null,"display_name":"Chat Test","qa_speichern":1}"#.data(using: .utf8)
+        #"{"id":17,"email":"chat@example.org","role":"user","status":"pending","delivery_channel":"email","email_verified":false,"apple_linked":false,"has_password":true,"access_token":null,"display_name":"Chat Test","saves_conversations":1}"#.data(using: .utf8)
     )
     let user = try JSONDecoder().decode(User.self, from: userData)
 
@@ -291,7 +291,7 @@ import Testing
     #expect(relaunched.activeConversationID == 812)
 
     let disabledData = try #require(
-        #"{"id":17,"email":"chat@example.org","role":"user","status":"pending","delivery_channel":"email","email_verified":false,"apple_linked":false,"has_password":true,"access_token":null,"display_name":"Chat Test","qa_speichern":0}"#.data(using: .utf8)
+        #"{"id":17,"email":"chat@example.org","role":"user","status":"pending","delivery_channel":"email","email_verified":false,"apple_linked":false,"has_password":true,"access_token":null,"display_name":"Chat Test","saves_conversations":0}"#.data(using: .utf8)
     )
     let disabledUser = try JSONDecoder().decode(User.self, from: disabledData)
     try await relaunched.adopt(user: disabledUser)
@@ -424,7 +424,7 @@ import Testing
       "entities": [{"slug":"haushalt-2026","name":"Haushalt 2026"}],
       "present_parties": [],
       "similar": [],
-      "plan_bild": 44
+      "plan_image": 44
     }
     """#.utf8)
     let detail = try JSONDecoder().decode(DecisionDetail.self, from: data)
@@ -505,32 +505,32 @@ import Testing
 
     let party = QuestionEvidenceAvailability(fields: [
         "qtype": .string("party"),
-        "debatten": .array([.object(["speaker": .string("Muster")])]),
+        "debates": .array([.object(["speaker": .string("Muster")])]),
     ])
     #expect(party.showsPartyOpinions)
     #expect(party.showsDebates)
     #expect(!party.showsPress)
 
     let documents = QuestionEvidenceAvailability(fields: [
-        "anlagen": .array([.object(["nr": .number(1)])]),
+        "attachments": .array([.object(["nr": .number(1)])]),
     ])
     #expect(documents.showsAttachments)
 
     let status = QuestionEvidenceAvailability(fields: [
-        "planungen": .array([.object(["date": .string("2026-09-01")])]),
+        "planning_procedures": .array([.object(["date": .string("2026-09-01")])]),
     ])
     #expect(status.showsPlanning)
 
-    let budget = QuestionEvidenceAvailability(fields: ["grafik": .object([:])])
+    let budget = QuestionEvidenceAvailability(fields: ["chart": .object([:])])
     #expect(budget.showsChart)
 
     let current = QuestionEvidenceAvailability(fields: [
-        "presse": .array([.object(["title": .string("Mitteilung")])]),
+        "press_releases": .array([.object(["title": .string("Mitteilung")])]),
     ])
     #expect(current.showsPress)
 
     let session = QuestionEvidenceAvailability(fields: [
-        "sitzungen": .array([.object(["committee": .string("Rat")])]),
+        "sessions": .array([.object(["committee": .string("Rat")])]),
     ])
     #expect(session.showsSessions)
 }
@@ -683,7 +683,7 @@ private final class FeedbackURLProtocol: URLProtocol {
             "kind": "party",
             "parties": ["Grüne"]
           },
-          "art": "council",
+          "kind": "council",
           "organisation": null,
           "n_sessions": 136,
           "active_from": "2021-11-22",
@@ -698,9 +698,9 @@ private final class FeedbackURLProtocol: URLProtocol {
           },
           "committees": [{"committee": "Rat", "n": 39, "chair": true}],
           "recent": [{"ksinr": 4599, "committee": "Kulturausschuss", "session_date": "2026-06-16"}],
-          "wortbeitraege": [{"kind": "speech", "top": "TOP 5", "text": "Beitrag", "committee": "Rat", "session_date": "2026-06-16"}],
-          "wortbeitraege_gesamt": 18,
-          "wortbeitraege_gremien": [{"committee": "Rat", "n": 18}]
+          "speeches": [{"kind": "speech", "agenda_item": "TOP 5", "text": "Beitrag", "committee": "Rat", "session_date": "2026-06-16"}],
+          "speeches_total": 18,
+          "speeches_committees": [{"committee": "Rat", "n": 18}]
         }
         """.data(using: .utf8)
     )
@@ -721,16 +721,16 @@ private final class FeedbackURLProtocol: URLProtocol {
     let data = try #require(
         """
         {
-          "typ": "administration",
+          "type": "administration",
           "name": "Jürgen Krogmann",
           "slug": "juergen-krogmann",
           "role": "Oberbürgermeister",
           "aktiv": true,
           "von": "2014",
           "bis": "2026",
-          "wortbeitraege": [],
-          "wortbeitraege_gesamt": 0,
-          "wortbeitraege_gremien": []
+          "speeches": [],
+          "speeches_total": 0,
+          "speeches_committees": []
         }
         """.data(using: .utf8)
     )
@@ -771,7 +771,7 @@ private final class FeedbackURLProtocol: URLProtocol {
           "name": "Anne Beispiel",
           "party": null,
           "current_affiliation": "SPD-Fraktion",
-          "art": "council",
+          "kind": "council",
           "organisation": null,
           "n_sessions": 1,
           "active_from": null,
@@ -864,7 +864,7 @@ private final class FeedbackURLProtocol: URLProtocol {
           "template_number": "26/0412",
           "is_public": 1,
           "summary": "Der Ausschuss berät zwei Varianten.",
-          "anlagen": [
+          "attachments": [
             {"label": "Lageplan Querungsstelle", "url": "https://buergerinfo.oldenburg.de/getfile.php?id=310001"},
             {"label": "Verkehrsgutachten", "url": "https://buergerinfo.oldenburg.de/getfile.php?id=310002"}
           ]
@@ -899,7 +899,7 @@ private final class FeedbackURLProtocol: URLProtocol {
           "decisions": [],
           "has_protocol": false,
           "url": "https://buergerinfo.oldenburg.de/si0057.php?__ksinr=42",
-          "aenderungen": [{
+          "agenda_changes": [{
             "changed_at": "2026-08-30T12:15:00+02:00",
             "satz": "Ein TOP wurde ergänzt und eine Anlage aktualisiert.",
             "zeilen": [{
@@ -909,7 +909,7 @@ private final class FeedbackURLProtocol: URLProtocol {
               "nichtoeffentlich": false,
               "detail": "Neu auf die Tagesordnung gesetzt"
             }, {
-              "art": "anlagen",
+              "art": "attachments",
               "label": "Ö 4",
               "title": "Radverkehrskonzept",
               "nichtoeffentlich": 1,

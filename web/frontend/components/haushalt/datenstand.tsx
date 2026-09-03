@@ -42,7 +42,7 @@ export type Datenschicht = {
   naechster_jahrgang: number;
   naechster_ab: string;
   erwarteter_monat: number;
-  monat: string;
+  month_name: string;
   herkunft: string;
   /** Die veröffentlichende Stelle im Klartext („Portal der Stadt"). */
   source: string;
@@ -57,7 +57,7 @@ export type Datenschicht = {
   teilweise: number[];
 };
 
-export type Antwort = { heute: string; schichten: Datenschicht[] };
+export type Antwort = { today: string; layers: Datenschicht[] };
 
 /** „2017–2024" bzw. „2024" — und nichts, wo nichts ist. */
 function spanne(years: number[]): string | null {
@@ -116,7 +116,7 @@ function vonHandNachStelle(schichten: Datenschicht[]): { source: string; labels:
 export function ausblick(s: Datenschicht, heute: string): { text: string; wartet: boolean } {
   const year = s.naechster_jahrgang;
   const ab = new Date(s.naechster_ab);
-  const monatJahr = `${s.monat} ${ab.getFullYear()}`;
+  const monatJahr = `${s.month_name} ${ab.getFullYear()}`;
   if (s.ueberfaellig.includes(year)) {
     return {
       text: `Der Jahrgang ${year} wäre seit ${monatJahr} zu erwarten und liegt noch nicht vor.`,
@@ -171,15 +171,15 @@ export function Fussnote({ schichten }: { schichten: Datenschicht[] }) {
 }
 
 export function Datenstand() {
-  const { data } = useFetch<Antwort>("/council/haushalt/datenstand");
+  const { data } = useFetch<Antwort>("/council/budget/data-status");
   // Still bleiben, solange nichts da ist: Ein Skelett für einen Nachtrag am
   // Seitenende wäre mehr Unruhe als Information.
-  if (!data || data.schichten.length === 0) return null;
+  if (!data || data.layers.length === 0) return null;
   // Die Spanne über ALLE Schichten — das, was in der zugeklappten Lade steht.
   // Ein „bis 2026" wäre gelogen: Der Plan reicht so weit, die Abrechnung
   // zwei Jahre kürzer. Beide Enden zu nennen ist die einzige Angabe, die für
   // die ganze Liste stimmt.
-  const alleJahre = data.schichten.flatMap((s) => s.jahrgaenge);
+  const alleJahre = data.layers.flatMap((s) => s.jahrgaenge);
   const gesamtspanne = spanne(
     [...new Set(alleJahre)].sort((a, b) => a - b));
 
@@ -198,9 +198,9 @@ export function Datenstand() {
       </p>
 
       <ul className="mt-3 flex flex-col gap-2.5">
-        {data.schichten.map((s) => {
+        {data.layers.map((s) => {
           const area = spanne(s.jahrgaenge);
-          const { text, wartet } = ausblick(s, data.heute);
+          const { text, wartet } = ausblick(s, data.today);
           // Nur der jüngste unvollständige Jahrgang wird benannt: Die älteren
           // sind eine Geschichte für sich und würden die Zeile zumauern.
           const offen = s.teilweise[s.teilweise.length - 1];
@@ -245,7 +245,7 @@ export function Datenstand() {
         })}
       </ul>
 
-      <Fussnote schichten={data.schichten} />
+      <Fussnote schichten={data.layers} />
     </Apparat>
   );
 }

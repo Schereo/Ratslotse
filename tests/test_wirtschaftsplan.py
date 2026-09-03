@@ -221,7 +221,7 @@ def test_speichern_und_lesen(tmp_path):
         assert len(zeilen) == 1
         assert zeilen[0]["result"] == -15_621.0
         assert zeilen[0]["enterprise_name"].startswith("Eigenbetrieb Gebäudewirtschaft")
-        assert "wirtschaftsplan_erfolgsplan" in zeilen[0]["probes"]
+        assert "business_plan_profit_loss" in zeilen[0]["probes"]
         assert store.wirtschaftsplan_jahre("egh") == [2026]
         assert store.wirtschaftsplan_jahre("bbo") == []
     finally:
@@ -239,6 +239,6 @@ def test_jede_zeile_traegt_ihre_herkunft(tmp_path):
                                 ("18/0880", TITEL_2019, TEXT_2019)):
             p = parse_wirtschaftsplan(nr, title, text)
             store.save_wirtschaftsplan(p, herkunft_fuer(p, url="https://example.org/x"))
-        assert "council_wirtschaftsplaene" not in store.herkunft_luecken()
+        assert "council_business_plans" not in store.herkunft_luecken()
     finally:
         store.close()

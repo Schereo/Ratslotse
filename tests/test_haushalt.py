@@ -106,7 +106,7 @@ def test_chart_json_shape():
 def test_store_haushalt_roundtrip_and_quiz(tmp_path, source):
     store = CouncilStore(tmp_path / "c.sqlite")
     rows = haushalt.parse_ergebnishaushalt(PAGE_2026)
-    q = source("Haushaltsplan 2026", "http://pdf", probe="summenzeile")
+    q = source("Haushaltsplan 2026", "http://pdf", probe="total_row")
     assert store.save_haushalt(2026, rows, q) == 14
     assert store.save_haushalt(2026, rows, q) == 14  # Re-Ingest idempotent
     got = store.get_haushalt(2026)
@@ -548,6 +548,42 @@ Ansatz 2025
 auf Sachvermögen 846,93
 """
 
+# Wörtlich aus „2026 019 Vw THH13 Haushalt 2026 Verwaltungsentwurf" (Dokument
+# 297429): Die nicht rechtsfähigen Stiftungen sind KEINEM Amt zugeordnet —
+# unter der Produktnummer steht direkt die Tabelle. Wer hier eine Amtszeile
+# erwartet, schluckt „Erträge und Aufwendungen Ergebnis 2024" als Amtsnamen
+# und verliert zugleich die Kopfspalte, an der die Jahreszuordnung hängt.
+THH_OHNE_AMT = """Teilergebnishaushalt THH13: nicht rechtsfähige Stiftungen
+Produkt: Stiftung Eric und Margarethe Collins (P51.111051)
+Erträge und Aufwendungen Ergebnis 2024
+- Euro -
+Ansatz 2025
+- Euro -
+Ansatz 2026
+- Euro -
+Ansatz 2027
+- Euro -
+Ansatz 2028
+- Euro -
+Ansatz 2029
+- Euro -
+Ordentliche Erträge
+06. privatrechtliche Entgelte 18.505,00 14.000 18.000 18.000 18.00018.000
+12. =Summe ordentliche
+Erträge
+24.908,85 21.000 25.000 25.000 25.000 25.000
+Ordentliche Aufwendungen
+16. Abschreibungen 1.254,00 1.065 1.370 1.429 1.4871.312
+20. = Summe ordentliche
+Aufwendungen
+56.119,94 36.907 38.054 38.112 38.171 38.229
+21. ordentliches Ergebnis
+Jahresüberschuss(+)
+/Jahresfehlbetrag (-)
+-31.211,09 -15.907 -13.054 -13.112 -13.171 -13.229
+1438
+"""
+
 # Ebenfalls wörtlich (Dokument 297443, Produkt P10.111002): Ein Produkt ohne
 # ordentliche Erträge lässt die Zeile „12. = Summe ordentliche Erträge" LEER.
 # Dahinter steht die nächste Tabellenzeile. Wer von der Beschriftung aus
@@ -593,14 +629,23 @@ Erträge und Aufwendungen Ergebnis 2021
 - Euro -
 Ansatz 2022
 - Euro -
+Ansatz 2023
+- Euro -
+Ansatz 2024
+- Euro -
+Ansatz 2025
+- Euro -
+Ansatz 2026
+- Euro -
 12. =Summe ordentliche
 Erträge
-1.000,00 2.000
+85.821,13 107.500 110.000 110.000 110.000 110.000
+Ordentliche Aufwendungen
 20. = Summe ordentliche
 Aufwendungen
-3.000,00 5.000
-21. ordentliches Ergebnis -2.000,00 -3.000
-1091
+947.363,78 905.095 1.008.213 1.012.706 1.016.925 1.021.227
+21. ordentliches Ergebnis -861.542,65 -797.595 -898.213 -902.706 -906.925 -911.227
+1090
 Teilergebnishaushalt THH10: Soziales und Gesundheit
 Produkt: Sozialhilfe SGB XII ö.T. (P10.311101)
 Amt für Teilhabe und Soziales
@@ -677,17 +722,53 @@ def test_parse_teilergebnishaushalt_produkte():
     p = produkte[0]
     assert p["product_no"] == "P10.111023" and p["product_name"] == "Archivierung"
     assert p["sub_budget_no"] == 6 and p["office"] == "Amt für Kultur, Museen und Sport"
-    # Haushaltsjahr = ERSTER Ansatz (2019), nicht das letzte Finanzplanungsjahr
-    assert p["year"] == 2019
-    assert p["revenues"] == 4206.0 and p["expenses"] == 484_239.0
-    assert p["result"] == -480_033.0
+    # Haushaltsjahr = DRITTE Kopfspalte (2020): davor das Ist 2018 und der
+    # fortgeschriebene Ansatz 2019, dahinter die Finanzplanung bis 2023.
+    assert p["year"] == 2020
+    assert p["revenues"] == 5684.0 and p["expenses"] == 436_282.0
+    assert p["result"] == -430_598.0
     # Die angeklebte Seitenzahl (601) darf kein Wert werden.
     assert p["result"] != 601
 
 
 def test_teilergebnishaushalt_prueft_summe():
-    kaputt = THH_PLAN.replace("-405.485,45 -480.033", "-405.485,45 -999.999")
+    kaputt = THH_PLAN.replace("-430.598 -437.476", "-999.999 -437.476")
     assert finanzberichte.parse_teilergebnishaushalt(kaputt) == []
+
+
+def test_teilergebnishaushalt_nimmt_den_ansatz_des_haushaltsjahres():
+    """Die dritte Kopfspalte, nicht die zweite: Der Plan 2020 nennt fünfmal
+    „Ansatz", beschlossen wird davon 2020. Spalte 2 ist der fortgeschriebene
+    Vorjahresansatz — sie zu lesen legte die ganze Schicht ein Jahr zurück,
+    und der jüngste Jahrgang käme nie an."""
+    p = finanzberichte.parse_teilergebnishaushalt(THH_PLAN)[0]
+    assert (p["year"], p["revenues"], p["expenses"]) == (2020, 5684.0, 436_282.0)
+    # Die Vorjahresspalte steht im selben Dokument und ist eine andere Zahl.
+    assert p["revenues"] != 4206.0
+
+
+def test_teilergebnishaushalt_ohne_tabellenkopf_raet_nichts():
+    """Ein Kopf mit weniger als drei Spalten sagt nicht, welche der
+    beschlossene Ansatz ist. Dann gibt es keine Zeile — eine geratene Spalte
+    wäre eine Zahl, für die niemand einstehen kann."""
+    verkuerzt = THH_PLAN.replace("Ansatz 2020\n- Euro -\n", "", 1)
+    verkuerzt = verkuerzt.replace("Ansatz 2021\n- Euro -\n", "", 1)
+    verkuerzt = verkuerzt.replace("Ansatz 2022\n- Euro -\n", "", 1)
+    verkuerzt = verkuerzt.replace("Ansatz 2023\n- Euro -\n", "", 1)
+    assert finanzberichte.parse_teilergebnishaushalt(verkuerzt) == []
+
+
+def test_teilhaushalt_ohne_amt_erfindet_keins():
+    """THH13 („nicht rechtsfähige Stiftungen") führt kein Amt: Unter der
+    Produktnummer steht direkt die Tabelle. Das Amt bleibt leer, und die
+    Kopfzeile bleibt Kopfzeile — sonst stünde „Erträge und Aufwendungen
+    Ergebnis 2024" als zuständige Stelle in der Datenbank."""
+    p = finanzberichte.parse_teilergebnishaushalt(THH_OHNE_AMT)[0]
+    assert p["office"] is None
+    assert p["sub_budget_no"] == 13 and p["product_no"] == "P51.111051"
+    assert p["year"] == 2026
+    assert p["revenues"] == 25_000.0 and p["expenses"] == 38_054.0
+    assert p["result"] == -13_054.0
 
 
 def test_teilergebnishaushalt_ab_plan_2025_mit_zwei_beschriftungszeilen():
@@ -701,10 +782,10 @@ def test_teilergebnishaushalt_ab_plan_2025_mit_zwei_beschriftungszeilen():
     assert p["product_no"] == "P10.111001" and p["sub_budget_no"] == 1
     assert p["product_name"] == "Rechnungsprüfung (örtliche Prüfung)"
     assert p["office"] == "Rechnungsprüfungsamt"
-    # Haushaltsjahr = ERSTER Ansatz (2024), nicht die Finanzplanungsjahre.
-    assert p["year"] == 2024
-    assert p["revenues"] == 160_800.0 and p["expenses"] == 1_349_214.0
-    assert p["result"] == -1_188_414.0
+    # Haushaltsjahr = DRITTE Kopfspalte (2025), nicht die Finanzplanungsjahre.
+    assert p["year"] == 2025
+    assert p["revenues"] == 159_550.0 and p["expenses"] == 1_431_642.0
+    assert p["result"] == -1_272_092.0
     # Die Rechenprobe des Dokuments geht auf: 12 − 20 = 21.
     assert p["revenues"] - p["expenses"] == p["result"]
     # Die angeklebte Seitenzahl (280) darf kein Wert werden.
@@ -842,7 +923,7 @@ def test_store_finanzberichte_roundtrip(tmp_path, source):
 
     produkte = finanzberichte.parse_teilergebnishaushalt(THH_PLAN)
     assert store.save_produkte(2019, produkte, source(
-        "THH06", "http://thh06", probe="produktzeile")) == 1
+        "THH06", "http://thh06", probe="product_row")) == 1
     assert store.produkte_jahre() == [2019]
     assert store.get_produkte(2019, sub_budget_no=6)[0]["product_name"] == "Archivierung"
     assert store.get_produkte(2019, sub_budget_no=99) == []
@@ -860,9 +941,9 @@ def test_produkt_suche_und_filter(tmp_path, source):
     Zeile mehrere hundert Zeichen Fließtext."""
     store = CouncilStore(tmp_path / "c.sqlite")
     store.save_produkte(2019, finanzberichte.parse_teilergebnishaushalt(THH_PLAN),
-                        source("THH06", "http://thh06", probe="produktzeile"))
+                        source("THH06", "http://thh06", probe="product_row"))
     store.save_produkte(2019, finanzberichte.parse_teilergebnishaushalt(THH_MIT_GRUNDDATEN),
-                        source("THH10", "http://thh10", probe="produktzeile"))
+                        source("THH10", "http://thh10", probe="product_row"))
     assert len(store.get_produkte(2019)) == 2
 
     # Name, Nummer, Amt und Kurzbeschreibung sind durchsuchbar …
@@ -898,13 +979,13 @@ def test_produkt_steckbrief_migration(tmp_path):
     pfad = tmp_path / "alt.sqlite"
     conn = sqlite3.connect(pfad)
     conn.execute(
-        "CREATE TABLE council_produkte ("
+        "CREATE TABLE council_products ("
         "year INTEGER NOT NULL, product_no TEXT NOT NULL, product_name TEXT NOT NULL, "
         "sub_budget_no INTEGER, sub_budget_name TEXT, office TEXT, "
         "revenues REAL, expenses REAL, result REAL, "
         "source_label TEXT, source_url TEXT, fetched_at TEXT NOT NULL, "
         "PRIMARY KEY (year, product_no))")
-    conn.execute("INSERT INTO council_produkte VALUES "
+    conn.execute("INSERT INTO council_products VALUES "
                  "(2019,'P10.111023','Archivierung',6,'Kultur',NULL,1,2,-1,NULL,NULL,'x')")
     conn.commit()
     conn.close()
@@ -1030,7 +1111,7 @@ def test_store_plan_ist(tmp_path, source):
     for t in finanzberichte.parse_teilergebnisrechnungen(JA_THH, 2023):
         store.save_ergebnisrechnung(
             2023, t["posten"],
-            source("JA 2023", "http://ja2023", probe="summenprobe"),
+            source("JA 2023", "http://ja2023", probe="sub_budget_sum_check"),
             sub_budget_no=t["sub_budget_no"], sub_budget_name=t["sub_budget_name"])
 
     assert store.plan_actual_years() == [2023]
@@ -1420,7 +1501,7 @@ def test_abweichungsgruende_brauchen_die_rechenprobe():
 def test_store_abweichungsgruende_roundtrip(tmp_path, source):
     store = CouncilStore(tmp_path / "c.sqlite")
     gruende = finanzberichte.parse_abweichungsgruende(JA_WARUM, 2024)
-    q = source("JA 2024", "http://x", probe="abweichungstext")
+    q = source("JA 2024", "http://x", probe="variance_text")
     assert store.save_abweichungsgruende(2024, gruende, q) == 2
     assert store.save_abweichungsgruende(2024, gruende, q) == 2
     geladen = store.get_abweichungsgruende(2024)
@@ -1458,9 +1539,9 @@ def test_pruefbericht_erkennung():
 def test_store_pruefberichte_roundtrip(tmp_path, source):
     store = CouncilStore(tmp_path / "c.sqlite")
     store.save_pruefbericht_quelle(
-        2023, source("Schlussbericht 2023", "http://x", probe="eingangsformel"), 61, True)
+        2023, source("Schlussbericht 2023", "http://x", probe="preamble_scope"), 61, True)
     store.save_pruefbericht_quelle(
-        2024, source("Schlussbericht 2024", "http://y", probe="eingangsformel"), 64, False)
+        2024, source("Schlussbericht 2024", "http://y", probe="preamble_scope"), 64, False)
     n_reports = store.get_pruefbericht_quellen()
     assert [b["year"] for b in n_reports] == [2023, 2024]
     assert n_reports[0]["readable"] == 1 and n_reports[1]["readable"] == 0
@@ -1485,10 +1566,10 @@ def test_abschlussfragen_tragen_stabile_schluessel_ohne_jahr(tmp_path):
 
     store = CouncilStore(str(tmp_path / "c.sqlite"))
     c = store._conn                                       # noqa: SLF001
-    c.execute("INSERT INTO council_schulden (year, total, per_capita, fetched_at) "
+    c.execute("INSERT INTO council_debt (year, total, per_capita, fetched_at) "
               "VALUES (2024, 294851000, 1673, '2026-08-18')")
-    c.execute("INSERT INTO council_bilanz (year, role, page, level, label, value, "
-              " fetched_at) VALUES (2024, 'geldschulden', 'passiva', 2, 'Geldschulden', "
+    c.execute("INSERT INTO council_balance_sheet (year, role, page, level, label, value, "
+              " fetched_at) VALUES (2024, 'financial_liabilities', 'passiva', 2, 'Geldschulden', "
               " 43690972, '2026-08-18')")
     c.execute("INSERT INTO council_buergschaften (year, balance, exact, out_next_year, "
               " source, probes, fetched_at) VALUES (2024, 220300000, 1, 0, "
@@ -1500,7 +1581,7 @@ def test_abschlussfragen_tragen_stabile_schluessel_ohne_jahr(tmp_path):
     assert not any("Wie hoch sind die Schulden" in q["question"] for q in fragen)
     assert any("gerade" in q["question"] for q in fragen)
 
-    c.execute("INSERT INTO council_integrierte_schulden (year, ars, total, probes, "
+    c.execute("INSERT INTO council_integrated_debt (year, ars, total, probes, "
               " fetched_at) VALUES (2024, '03403000', 740300000, '', '2026-08-18')")
     c.commit()
     fragen = haushalt.build_abschluss_questions(store)
@@ -1558,7 +1639,7 @@ def test_buergschafts_vorlagen_je_vorlage_eine_zeile(tmp_path):
             (2, "25/0826", "Verlängerung Ausfallbürgschaft der Stadt Oldenburg über "
                            "300.000 Euro für die Volkshochschule"),
             (3, "24/0999", "Neubau einer Schule")):
-        c.execute("INSERT INTO council_vorlagen (kvonr, template_number, title, fetched_at) "
+        c.execute("INSERT INTO council_templates (kvonr, template_number, title, fetched_at) "
                   "VALUES (?, ?, ?, '2026-08-18')", (kvonr, nr, title))
     for ksinr, date in ((10, "2023-06-01"), (11, "2025-12-03"), (12, "2025-12-15")):
         c.execute("INSERT INTO council_sessions (ksinr, session_date, session_time, "
@@ -1589,19 +1670,19 @@ def test_haushalts_anschluss_nur_wo_er_belegt_ist(tmp_path):
     Der pauschale Verweis „wie sich das im Gesamthaushalt ausnimmt" steht an
     jedem Beschluss mit Finanz-Feld und ist deshalb für keinen eine Auskunft.
     Diese Karte hängt an einer echten Verknüpfung: entweder zeigt
-    ``council_nachbewilligungen.decision_id`` auf genau diesen Beschluss,
+    ``council_supplementary_approvals.decision_id`` auf genau diesen Beschluss,
     oder seine Vorlage steht im Bürgschafts-Zeitstrahl.
     """
     from council.store import CouncilStore
 
     store = CouncilStore(str(tmp_path / "c.sqlite"))
     c = store._conn                                       # noqa: SLF001
-    c.execute("INSERT INTO council_vorlagen (kvonr, template_number, title, fetched_at) "
+    c.execute("INSERT INTO council_templates (kvonr, template_number, title, fetched_at) "
               "VALUES (1, '25/0826', 'Verlängerung Ausfallbürgschaft der Stadt "
               "Oldenburg für die Volkshochschule', '2026-08-18')")
-    c.execute("INSERT INTO council_vorlagen (kvonr, template_number, title, fetched_at) "
+    c.execute("INSERT INTO council_templates (kvonr, template_number, title, fetched_at) "
               "VALUES (2, '24/0999', 'Neubau einer Schule', '2026-08-18')")
-    c.execute("INSERT INTO council_nachbewilligungen (template_number, title, kind, category, "
+    c.execute("INSERT INTO council_supplementary_approvals (template_number, title, kind, category, "
               " decided, in_plenary, council_decision, fulltext_probe, amount, year, "
               " decision_id, committees, fetched_at) "
               "VALUES ('18/0187', 'Außerplanmäßige Bewilligung', 'ausserplanmaessig', "

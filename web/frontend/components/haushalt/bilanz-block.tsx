@@ -71,7 +71,7 @@ function vielfachesText(v: number): string {
 }
 
 export function BilanzBlock() {
-  const { data } = useFetch<BilanzDaten>("/council/haushalt/bilanz");
+  const { data } = useFetch<BilanzDaten>("/council/budget/balance-sheet");
   const s = juengsterStichtag(data);
   // Ohne vollständige Bilanz gibt es diesen Block nicht. Kein Platzhalter,
   // keine halbe Bilanz: Eine Vermögensseite, bei der ein Hauptposten fehlt,
@@ -79,10 +79,10 @@ export function BilanzBlock() {
   if (!data || !s) return null;
 
   const p = s.posten;
-  const pension = p.pensionen_gesamt?.value ?? null;
-  const nurPension = p.pensionsrueckstellungen?.value ?? null;
-  const beihilfe = p.beihilferueckstellungen?.value ?? null;
-  const kredite = p.geldschulden?.value ?? null;
+  const pension = p.pension_and_similar_provisions?.value ?? null;
+  const nurPension = p.pension_provisions?.value ?? null;
+  const beihilfe = p.healthcare_allowance_provisions?.value ?? null;
+  const kredite = p.financial_liabilities?.value ?? null;
   const v = vielfaches(s);
   const cash = cashPoolingHinweis(data, s.year);
 
@@ -187,10 +187,10 @@ export function BilanzBlock() {
       )}
 
       {/* DER SPRUNG, DER KEINER IST. Nur mit dem Erläuterungstext — s. Kopf. */}
-      {cash && p.schulden && (
+      {cash && p.liabilities && (
         <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-            Warum die Bilanz {s.year} plötzlich {deMio(p.schulden.value / 1e6)}&#8239;Mio.&nbsp;€
+            Warum die Bilanz {s.year} plötzlich {deMio(p.liabilities.value / 1e6)}&#8239;Mio.&nbsp;€
             Schulden ausweist
           </p>
           <p className="mt-2 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
@@ -202,16 +202,25 @@ export function BilanzBlock() {
           {/* Der Wortlaut der Verwaltung, nicht unsere Zusammenfassung — dieselbe
               Machart wie <Warum> auf /haushalt/plan-ist. Gekürzt wäre er schnell
               etwas anderes; die Absätze kommen so aus dem Dokument. */}
-          <div className="mt-2.5 flex flex-col gap-2 border-l-2 border-border pl-3">
-            {cash.text.split("\n\n").map((absatz, i) => (
-              <p key={i} className="max-w-[74ch] text-[12.5px] leading-relaxed text-foreground/85">
-                {absatz}
-              </p>
-            ))}
-          </div>
-          <p className="mt-2.5 font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-            Jahresabschluss {s.year}, Abschnitt 6.2.7 — Wortlaut der Verwaltung
-          </p>
+          {/* Fünf Absätze Verwaltungstext standen hier offen im Fluss der
+              Seite (Durchsicht 02.09.2026). Der Wortlaut bleibt vollständig —
+              einen Klick entfernt, wie „Warum?" auf /plan-ist. */}
+          <details className="group mt-2.5 ml-0.5 border-l-2 border-border pl-2.5">
+            <summary className="cursor-pointer list-none text-[11.5px] font-semibold text-primary marker:content-none">
+              <span className="group-open:hidden">Was der Jahresabschluss dazu schreibt</span>
+              <span className="hidden group-open:inline">Weniger</span>
+            </summary>
+            <div className="mt-1.5 flex flex-col gap-2">
+              {cash.text.split("\n\n").map((absatz, i) => (
+                <p key={i} className="max-w-[74ch] text-[12.5px] leading-relaxed text-foreground/85">
+                  {absatz}
+                </p>
+              ))}
+            </div>
+            <p className="mt-1.5 font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+              Jahresabschluss {s.year}, Abschnitt 6.2.7 — Wortlaut der Verwaltung
+            </p>
+          </details>
         </section>
       )}
     </>

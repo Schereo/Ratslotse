@@ -1,0 +1,3 @@
+data: {"type":"step","step":"expand"}
+
+data: {"type":"error","message":"Frage fehlgeschlagen."}

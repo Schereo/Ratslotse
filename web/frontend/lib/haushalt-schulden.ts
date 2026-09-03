@@ -38,8 +38,8 @@ export type SchuldenDaten = {
   years: number[];
   /** Was diese Zahlen zählen — kommt aus `council/schulden.py`, damit
    *  Oberfläche und Datenbank dieselbe Auskunft geben. */
-  abgrenzung: string;
-  arten: { field: string; title: string }[];
+  scope_note: string;
+  column_kinds: { field: string; title: string }[];
   /** Was der Schuldenstand im Jahr kostet: Posten 17 der Ergebnisrechnung
    *  („Zinsen und ähnliche Aufwendungen"), also Ist aus dem Jahresabschluss —
    *  nicht aus dem Jahrbuch, aus dem der Bestand kommt.
@@ -49,7 +49,7 @@ export type SchuldenDaten = {
    *  keinem Dokument steht.
    *
    *  Leer, solange kein Jahresabschluss eingelesen ist. */
-  zinslast: { year: number; expense: number; herkunft_id: number | null }[];
+  interest_expense: { year: number; expense: number; herkunft_id: number | null }[];
   /** Wofür die Stadt geradesteht — die zweite, größere Zahl dieser Seite.
    *
    *  Sie ist **keine Schuld**: eine Bürgschaft wird nur fällig, wenn die
@@ -57,13 +57,13 @@ export type SchuldenDaten = {
    *  zusammen, und keine darf allein stehen — das Volumen (2024: 220,3 Mio.),
    *  die eigenen Geldschulden daneben (43,7 Mio.) und die Rückstellung für
    *  den erwarteten Ausfall (1,3 Mio.). */
-  buergschaften?: {
+  guarantees?: {
     series: Buergschaft[];
     /** Bilanzposten 3.7 je Jahr — nur 2021–2024 im Bestand; die früheren
      *  Abschlüsse gliedern die Rückstellungen anders. */
-    rueckstellung: { year: number; value: number | null; herkunft_id: number | null }[];
-    geldschulden: { year: number; value: number | null; herkunft_id: number | null }[];
-    abgrenzung: string;
+    provision: { year: number; value: number | null; herkunft_id: number | null }[];
+    financial_debt: { year: number; value: number | null; herkunft_id: number | null }[];
+    scope_note: string;
     /** Die Ratsbeschlüsse hinter dem Bestand — die GESCHICHTE, nicht die Summe.
      *
      *  Diese Beträge dürfen **nie addiert** werden, und die Liste zeigt selbst
@@ -71,28 +71,28 @@ export type SchuldenDaten = {
      *  Volkshochschule" ist dieselbe Bürgschaft wie zwei Jahre zuvor,
      *  „Anpassung … Weser-Ems Halle" ändert eine bestehende. Was der Bestand
      *  ist, sagt allein der Jahresabschluss (`series`). */
-    vorlagen?: BuergschaftsVorlage[];
+    templates?: BuergschaftsVorlage[];
   };
   /** Die dritte Schuldenzahl — was der ganze „Konzern Stadt" anteilig
    *  schuldet. `null`, solange der Tabellenband nicht eingelesen ist.
    *
    *  **Nur ein Stichtag, nie eine Kurve.** Der Berichtskreis wechselt zwischen
    *  den Ausgaben; die Quelle rät selbst davon ab, Jahrgänge zu vergleichen.
-   *  `anteil_unter_50` kommt gerechnet aus dem Backend und ist keine
+   *  `share_below_50` kommt gerechnet aus dem Backend und ist keine
    *  Nebensache: Er sagt, welcher Teil der Summe aus Unternehmen stammt, für
    *  die die Stadt nicht haftet (2024: 58 %). */
-  integrierte_schulden?: {
+  integrated_debt?: {
     as_of_date: {
       year: number; total: number; per_capita: number | null;
       core_budget: number | null; extra_budgets: number | null;
       other: number | null; population: number | null;
       change: number | null; herkunft_id: number | null;
     };
-    anteil_unter_50: number | null;
-    abgrenzung: string;
-    keine_reihe: string;
+    share_below_50: number | null;
+    scope_note: string;
+    no_series_note: string;
   } | null;
-  herkunft: Record<string, Herkunft>;
+  provenance: Record<string, Herkunft>;
 };
 
 /** Ein Jahr Bürgschaftsbestand — mit zwei Angaben über seinen Beleg.
@@ -123,7 +123,7 @@ export type Buergschaft = {
  *  Jahresabschlüsse enden früher. Wer beide Reihen am selben Jahr aufhängt,
  *  zeigt für die Zinsen dauerhaft nichts. */
 export function juengsteZinslast(daten: SchuldenDaten | null) {
-  const series = daten?.zinslast ?? [];
+  const series = daten?.interest_expense ?? [];
   return series.length ? series[series.length - 1] : null;
 }
 

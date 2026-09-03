@@ -29,6 +29,7 @@ from pydantic import BaseModel, Field
 
 from kern.store import Store
 
+from ..clients import client_kind
 from ..config import get_settings
 from ..deps import get_store
 from ..ratelimit import login_limiter
@@ -240,6 +241,7 @@ def apple_login(
         user_id = store.create_web_user(
             email, hash_password(secrets.token_urlsafe(32)),
             "admin" if is_admin else "user", "active", email_verified=True,
+            signup_client=client_kind(request),
         )
         store.set_delivery_channel(user_id, "email")
         store.link_apple_sub(user_id, sub, password_set=False)

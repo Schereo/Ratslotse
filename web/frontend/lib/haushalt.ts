@@ -1,5 +1,5 @@
 // Datenschicht des Haushalts-Bereichs (Design-Serie „Haushalt" H-01…H-09).
-// Quelle ist GET /api/council/haushalt: Ergebnishaushalt je Planjahr
+// Quelle ist GET /api/council/budget: Ergebnishaushalt je Planjahr
 // (Teilhaushalte + Summenzeile), dazu Ist-Steuereinnahmen und Steuerkraft —
 // hier stehen nur Ableitungen, keine erfundenen Zahlen (Designprinzip:
 // fehlende Daten heißen sichtbar „[folgt]", nie interpoliert).
@@ -164,18 +164,18 @@ export type Produkt = {
   target_group?: string | null;
   source_label: string | null; source_url: string | null;
   /** Jahrgänge, in denen dieses Produkt im Bestand steht — gegen
-   *  `alle_jahre` gehalten wird daraus das Abdeckungs-Badge (H4-04). */
+   *  `all_years` gehalten wird daraus das Abdeckungs-Badge (H4-04). */
   years?: number[];
 };
 
 export type ProdukteAntwort = {
-  year: number; produkte: Produkt[]; treffer?: number;
-  abdeckung_prozent: number | null; plan_expenses: number | null;
+  year: number; products: Produkt[]; matches?: number;
+  coverage_percent: number | null; plan_expenses: number | null;
   /** Alle Jahrgänge mit Produktebene — die Bezugsreihe der `years` je
    *  Produkt. */
-  alle_jahre?: number[];
+  all_years?: number[];
   /** Filterwerte mit Anzahl + wie viele Produkte welches Feld tragen. */
-  facetten?: {
+  facets?: {
     aemter: { office: string; count: number }[];
     spielraum: Partial<Record<Spielraum, number>>;
     mit_feld: Record<string, number>;
@@ -249,8 +249,8 @@ export type KennzahlFormel = {
   /** Wie die Überschrift im Bericht lautet — nicht unser Label. */
   heading: string;
   formula: string;
-  von_bericht: number;
-  bis_bericht: number;
+  from_report_year: number;
+  to_report_year: number;
   herkunft_id?: number | null;
 };
 
@@ -277,8 +277,8 @@ export type Kennzahlen = {
   /** Schlüssel → „prozent" | „eur" | „anzahl". */
   unit: Record<string, string>;
   series: KennzahlPunkt[];
-  formeln: KennzahlFormel[];
-  funde: KennzahlFund[];
+  formulas: KennzahlFormel[];
+  finds: KennzahlFund[];
 };
 
 export type HaushaltDaten = {
@@ -317,10 +317,12 @@ export type HaushaltDaten = {
   reserves?: RuecklageJahr[];
   /** Die Wirtschaftspläne der Eigenbetriebe — der Haushalt neben dem Haushalt. */
   business_plans?: WirtschaftsplanZeile[];
+  /** Das Ist dazu: Kennzahlen der geprüften Jahresabschlüsse je Betrieb und Jahr. */
+  enterprise_accounts?: EigenbetriebKennzahl[];
   /** Die Herkunft je `herkunft_id` — nur die Einträge, auf die eine gelieferte
    *  Zeile zeigt.
    *
-   *  ANFORDERN MUSS MAN SIE (`FELDER` um `"herkunft"` ergänzen). Die meisten
+   *  ANFORDERN MUSS MAN SIE (`FELDER` um `"provenance"` ergänzen). Die meisten
    *  Seiten dieses Bereichs brauchen sie nicht: Ihr Beleg hängt am
    *  Quellen-Schlüssel, und `/haushalt/dokumente` liefert je Jahrgang das
    *  zugehörige Papier.
@@ -330,7 +332,7 @@ export type HaushaltDaten = {
    *  Betrieben. Dann ist die `herkunft_id` der Zeile die einzige Angabe, die
    *  „diese Zahl steht in DIESEM Papier" beantwortet
    *  (`components/haushalt/source.tsx: Dokumentbeleg`). */
-  herkunft?: Record<string, Herkunft>;
+  provenance?: Record<string, Herkunft>;
   /** Die Haushaltssatzung je Jahrgang — der Rahmen um den Plan. */
   budget_bylaw?: HaushaltssatzungZeile[];
   /** Woraus die Abfall- und Straßenreinigungsgebühren entstehen. */
@@ -386,7 +388,7 @@ export type HaushaltDaten = {
  *      const { data } = useFetch<HaushaltAuswahl<typeof FELDER[number]>>(
  *        haushaltUrl(FELDER));
  *
- *  `herkunft` ist bewusst **nicht** dabei: Die Belege dieser Seiten hängen am
+ *  `provenance` ist bewusst **nicht** dabei: Die Belege dieser Seiten hängen am
  *  Quellen-Schlüssel (`lib/haushalt-quellen.ts` + `/haushalt/dokumente`), nicht
  *  an der `herkunft_id` der Zeile. Wer sie doch braucht, fordert sie an. */
 export function haushaltUrl(
@@ -408,8 +410,8 @@ export function haushaltUrl(
   thhPosten?: "keine" | string,
 ): string {
   const teile = [`felder=${felder.join(",")}`];
-  if (thhPosten !== undefined) teile.push(`thh_posten=${thhPosten}`);
-  return `/council/haushalt?${teile.join("&")}`;
+  if (thhPosten !== undefined) teile.push(`sub_budget_item=${thhPosten}`);
+  return `/council/budget?${teile.join("&")}`;
 }
 
 /** Der Ausschnitt von `HaushaltDaten`, den `haushaltUrl(FELDER)` liefert. */
@@ -417,21 +419,21 @@ export type HaushaltAuswahl<K extends keyof HaushaltDaten> = Pick<HaushaltDaten,
 
 /** Die Herkunft zu einer `herkunft_id` — oder `null`.
  *
- *  Absichtlich strukturell getypt (`{ herkunft?: … }` statt eines konkreten
+ *  Absichtlich strukturell getypt (`{ provenance?: … }` statt eines konkreten
  *  Seitentyps): Dieselbe Suche steht in neun Seitenmodulen dieses Bereichs,
  *  jedes Mal wortgleich, weil jedes seinen eigenen Antworttyp hat. Diese
- *  Fassung passt auf alle — auch auf `HaushaltAuswahl<…>`, sobald `"herkunft"`
+ *  Fassung passt auf alle — auch auf `HaushaltAuswahl<…>`, sobald `"provenance"`
  *  in `FELDER` steht.
  *
  *  Gibt `null` zurück, wenn die Karte gar nicht angefordert wurde. Das ist
  *  bewusst kein Fehler: Die Anzeige lässt den Dokumentbeleg dann weg und
  *  behält ihren Quellen-Chip — sichtbar falsch wäre schlimmer als knapp. */
 export function herkunftVon(
-  daten: { herkunft?: Record<string, Herkunft> } | null | undefined,
+  daten: { provenance?: Record<string, Herkunft> } | null | undefined,
   id: number | null | undefined,
 ): Herkunft | null {
-  if (!daten?.herkunft || id == null) return null;
-  return daten.herkunft[String(id)] ?? null;
+  if (!daten?.provenance || id == null) return null;
+  return daten.provenance[String(id)] ?? null;
 }
 
 /** Welche Sorte Nachbewilligung eine Zeile ist.
@@ -539,7 +541,7 @@ export type Spenden = {
   years: SpendenJahr[];
   vorlagen: SpendenVorlage[];
   /** Beschlusszeilen ohne Zweitstelle — mit dem Satz, warum sie fehlen. */
-  ohne_beleg: { template_number: string; sitzung?: string | null; reason: string }[];
+  ohne_beleg: { template_number: string; session_date?: string | null; reason: string }[];
   /** Wer über welche **einzelne** Zuwendung entscheidet. */
   schwellen: { committee: string; ab: number | null; bis: number | null }[];
 };
@@ -555,7 +557,7 @@ export type SpendenJahr = {
 export type SpendenVorlage = {
   template_number: string;
   year: number;
-  sitzung: string;
+  session_date: string;
   amount: number;
   committee?: string | null;
   /** „identisch" oder „zerlegung" — wie die Zweitstelle den Betrag belegt. */
@@ -581,7 +583,7 @@ export type SteuerplanZeile = {
   /** Ansatz der beschlossenen Haushaltssatzung, in Euro. */
   plan: number;
   /** Rechnungsergebnis desselben Jahres, in Euro. */
-  ist: number;
+  actual: number;
   /** Die Quelle nennt dieses Ergebnis selbst „vorläufig" — es kann sich noch
    *  ändern, und das gehört an die Zahl. */
   provisional: 0 | 1;
@@ -1001,7 +1003,7 @@ export function flussbild(
  *  dort also keine einzelne Division. Eine 0 wäre eine Behauptung. */
 export type GebuehrenZeile = {
   year: number;
-  /** `abfallbehandlung` · `abfallsammlung` · `strassenreinigung`. */
+  /** `waste_treatment` · `waste_collection` · `street_cleaning`. */
   area: string;
   area_name: string;
   /** Was der Bereich im Jahr insgesamt kostet. */
@@ -1088,6 +1090,29 @@ export type HaushaltssatzungZeile = {
   session_date: string | null;
   template_number: string | null;
   probes: string;
+  herkunft_id: number | null;
+};
+
+/** Eine Kennzahl eines Eigenbetriebs aus dem geprüften Jahresabschluss
+ *  (`council/eigenbetriebe_abschluss.py`). `metric` ist eine von
+ *  `revenues`, `result`, `balance_total`, `equity`, `fixed_assets`,
+ *  `current_assets`, `liabilities`, `depreciation`, `investments`, `cashflow`,
+ *  `gross_profit`, `operating_result`, `financial_result`, `employees`.
+ *  `value` steht in Euro (Stück bei `employees`); `unit` sagt, ob der Bericht
+ *  in TEUR schrieb. `confirmations` zählt die Berichte, die dieselbe Zahl
+ *  nennen — dieselbe Zahl steht als Geschäftsjahr im eigenen und als Vorjahr
+ *  in den folgenden Berichten. */
+export type EigenbetriebKennzahl = {
+  enterprise: string;
+  year: number;
+  metric: string;
+  value: number;
+  unit: string;
+  report_year: number;
+  confirmations: number;
+  conflicts: number;
+  document_id: number | null;
+  probes: string[];
   herkunft_id: number | null;
 };
 

@@ -36,8 +36,8 @@ from dataclasses import dataclass
 
 from council.herkunft import Herkunft
 
-PROBE_FINANZHAUSHALT = "satzung_finanzhaushalt"
-PROBE_HEBESATZ = "satzung_hebesatz"
+PROBE_FINANZHAUSHALT = "bylaw_cash_budget"
+PROBE_HEBESATZ = "bylaw_assessment_rate"
 
 PROBEN: dict[str, str] = {
     PROBE_FINANZHAUSHALT:

@@ -49,6 +49,10 @@ import Link from "next/link";
 import { ArrowRight, FileText } from "lucide-react";
 import { Segmented } from "@/components/ui";
 import { useFetch } from "@/lib/use-fetch";
+import { KrediteBlock } from "@/components/haushalt/kredite";
+import { LiquiditaetsBlock } from "@/components/haushalt/liquiditaet";
+import type { LiquiditaetsDaten } from "@/lib/haushalt-liquiditaet";
+import type { KrediteDaten } from "@/lib/haushalt-kredite";
 import { deMio, haushaltUrl, type HaushaltAuswahl,
   type HaushaltssatzungZeile } from "@/lib/haushalt";
 import {
@@ -67,12 +71,13 @@ import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weit
 import { SchrittPfad } from "@/components/haushalt/schritt-pfad";
 import { Seitenbuehne, ZaehlZahl } from "@/components/haushalt/seitenbuehne";
 import { BilanzBlock } from "@/components/haushalt/bilanz-block";
+import { Fundstelle } from "@/components/haushalt/fundstelle";
 
 // `jahresabschluss` stand bis zum 21.08.2026 NICHT hier, obwohl die Seite
 // einen Beleg-Chip darauf setzt. `Beleg` rendert dann bewusst nichts
 // („lieber keinen Chip als eine falsche Nummer") — und der Satz endete
 // mit einer Fußnote, die es nicht gab.
-const QUELLEN = ["schulden", "bilanz", "budget_bylaw",
+const QUELLEN = ["schulden", "bilanz", "budget_bylaw", "loans", "liquidity",
                  "jahresabschluss"] as const;
 
 /** Die Haushaltssatzung wird über den Bausteine-Endpunkt geholt und nicht über
@@ -80,45 +85,10 @@ const QUELLEN = ["schulden", "bilanz", "budget_bylaw",
  *  leihen DARF, neben dem, was sie schuldet), ist aber eine eigene Schicht mit
  *  eigener Herkunft. Ein zweiter Abruf ist ehrlicher als ein Endpunkt, der
  *  zwei Quellen zu einer Antwort verrührt. */
-// `herkunft` mit — der Rahmen-Block zeigte seine drei Zahlen bis zum
+// `provenance` mit — der Rahmen-Block zeigte seine drei Zahlen bis zum
 // 21.08.2026 ganz ohne Beleg: Die Quelle stand im Verzeichnis am Seitenfuß,
 // an den Zahlen selbst stand nichts.
-const SATZUNG_FELDER = ["budget_bylaw", "herkunft"] as const;
-
-/** Wo eine Angabe im Dokument steht: welcher Abschnitt, welcher Stand. Das
- *  Quellenverzeichnis am Seitenende beschreibt die Quelle der ganzen Seite;
- *  das hier gehört an die einzelne Zahl und ist der Grund, warum man sie in
- *  einem mehrseitigen PDF wiederfindet.
- *
- *  BEWUSST OHNE UNSERE PROBEN. Die erste Fassung dieser Seite zeigte hier die
- *  Sätze aus `herkunft.PROBEN` und darunter „Gemessen: Summenprobe 30 von
- *  31". Das sagt etwas über uns und nichts über die Schulden der Stadt —
- *  Selbstvergewisserung (DESIGNSPRACHE.md § 7), und `konzern/page.tsx` hat
- *  denselben Block am 16.08. aus demselben Grund verloren. Die Proben laufen
- *  unverändert weiter, die API liefert sie weiter, Tests halten sie fest und
- *  die Technik-Doku beschreibt sie. Nur die Zurschaustellung ist weg.
- *
- *  Was **inhaltlich** aus einer gerissenen Probe folgt, bleibt selbstver-
- *  ständlich stehen: dass für 2022 die Aufteilung fehlt, steht als Satz an
- *  der Aufteilung — das ist eine Grenze der Zahlen und keine Auskunft über
- *  unsere Sorgfalt.
- *
- *  Bewusst dieselbe Bauart wie in `konzern/page.tsx` und `vergleich/page.tsx`
- *  und bewusst nicht geteilt — die drei Seiten sollen einander nicht brechen. */
-function Fundstelle({ h }: { h: Herkunft | null }) {
-  // Ohne Fundstelle nichts — sonst bliebe eine Überschrift ohne Inhalt stehen.
-  if (!h?.citation) return null;
-  return (
-    <div className="border-t border-dashed border-border pt-2.5">
-      <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-        Woher diese Zahlen kommen
-      </p>
-      <p className="mt-1 max-w-[86ch] text-[11.5px] leading-relaxed text-muted-foreground">
-        {h.citation}{h.as_of ? ` · ${h.as_of}` : ""}
-      </p>
-    </div>
-  );
-}
+const SATZUNG_FELDER = ["budget_bylaw", "provenance"] as const;
 
 /** Wofür die Stadt geradesteht — Bürgschaften neben den eigenen Schulden.
  *
@@ -208,12 +178,12 @@ function BeschlussStrahl({ vorlagen }: { vorlagen: BuergschaftsVorlage[] }) {
 }
 
 function BuergschaftsBlock({ daten }: { daten: SchuldenDaten | null }) {
-  const b = daten?.buergschaften;
+  const b = daten?.guarantees;
   const series = b?.series ?? [];
   if (!series.length) return null;
 
-  const geld = new Map((b?.geldschulden ?? []).map((z) => [z.year, z.value]));
-  const rueck = new Map((b?.rueckstellung ?? []).map((z) => [z.year, z.value]));
+  const geld = new Map((b?.financial_debt ?? []).map((z) => [z.year, z.value]));
+  const rueck = new Map((b?.provision ?? []).map((z) => [z.year, z.value]));
   const letzter = series[series.length - 1];
   const erster = series[0];
   const gsErst = geld.get(erster.year) ?? null;
@@ -299,7 +269,7 @@ function BuergschaftsBlock({ daten }: { daten: SchuldenDaten | null }) {
           </p>
         ) : null}
         <p className="mt-2 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
-          {b?.abgrenzung}
+          {b?.scope_note}
         </p>
       </div>
 
@@ -352,7 +322,7 @@ function BuergschaftsBlock({ daten }: { daten: SchuldenDaten | null }) {
         {erster.year === letzter.year ? " ein Stichtag." : ` ${series.length} Stichtage.`}
       </p>
 
-      <BeschlussStrahl vorlagen={b?.vorlagen ?? []} />
+      <BeschlussStrahl vorlagen={b?.templates ?? []} />
 
       <Fundstelle h={herkunftVon(daten, letzter.herkunft_id)} />
     </section>
@@ -372,7 +342,7 @@ function BuergschaftsBlock({ daten }: { daten: SchuldenDaten | null }) {
  *
  *  Rendert nichts ohne eingelesenen Tabellenband. */
 function DritteZahlBlock({ daten }: { daten: SchuldenDaten | null }) {
-  const i = daten?.integrierte_schulden;
+  const i = daten?.integrated_debt;
   if (!i?.as_of_date) return null;
   const s = i.as_of_date;
   const series = daten?.series ?? [];
@@ -425,12 +395,12 @@ function DritteZahlBlock({ daten }: { daten: SchuldenDaten | null }) {
       {/* Der Satz, ohne den die 740 Millionen falsch gelesen werden. Er steht
           im Fließtext und nicht im Kleingedruckten — er ist die Aussage. */}
       <p className="max-w-[76ch] text-[12.5px] leading-relaxed text-foreground/90">
-        {i.abgrenzung}
-        {i.anteil_unter_50 != null ? (
+        {i.scope_note}
+        {i.share_below_50 != null ? (
           <>
             {" "}Konkret sind das{" "}
             <strong className="text-foreground">
-              {(i.anteil_unter_50 * 100).toFixed(0)}&nbsp;%
+              {(i.share_below_50 * 100).toFixed(0)}&nbsp;%
             </strong>{" "}
             der Summe.
           </>
@@ -440,7 +410,7 @@ function DritteZahlBlock({ daten }: { daten: SchuldenDaten | null }) {
       <p className="max-w-[76ch] text-[12px] leading-relaxed text-muted-foreground">
         {/* Ohne eigenen Vorspann: Der Satz aus dem Backend beginnt selbst mit
             „Nur ein Stichtag" — ein Label davor sagte dasselbe zweimal. */}
-        {i.keine_reihe}
+        {i.no_series_note}
       </p>
 
       <Fundstelle h={herkunftVon(daten, s.herkunft_id)} />
@@ -546,7 +516,9 @@ function RahmenBlock({ row, herkunft }: {
 
 
 export default function SchuldenPage() {
-  const { data, loading } = useFetch<SchuldenDaten>("/council/haushalt/schulden");
+  const { data, loading } = useFetch<SchuldenDaten>("/council/budget/debt");
+  const { data: krediteDaten } = useFetch<KrediteDaten>("/council/budget/loans");
+  const { data: liquiDaten } = useFetch<LiquiditaetsDaten>("/council/budget/liquidity");
   const { data: satzungDaten } = useFetch<
     HaushaltAuswahl<typeof SATZUNG_FELDER[number]>>(haushaltUrl(SATZUNG_FELDER));
   const [ansicht, setAnsicht] = useState<Ansicht>("total");
@@ -569,7 +541,7 @@ export default function SchuldenPage() {
   // Quelle weist keinen Pro-Kopf-Zins aus, und wir dividieren nicht selbst.
   const zinsreihe = useMemo(
     () => (ansicht === "total"
-      ? (data?.zinslast ?? []).map((z) => ({ year: z.year, value: z.expense / 1e6 }))
+      ? (data?.interest_expense ?? []).map((z) => ({ year: z.year, value: z.expense / 1e6 }))
       : undefined),
     [data, ansicht]);
 
@@ -637,7 +609,7 @@ export default function SchuldenPage() {
             die Treppe, maßstäblich zu den Zahlen, und klickt zum Block
             „Warum man drei Zahlen hört". Ohne Tabellenband keine Bühne. */}
         {(() => {
-          const st = data?.integrierte_schulden?.as_of_date;
+          const st = data?.integrated_debt?.as_of_date;
           if (!st) return null;
           const entity = (data?.series ?? []).find((z) => z.year === st.year)?.total ?? null;
           const stufen = [
@@ -719,7 +691,7 @@ export default function SchuldenPage() {
           </div>
           {/* Der Wortlaut kommt aus dem Backend — s. Kopfkommentar. */}
           <p className="max-w-[76ch] rounded-xl bg-muted/60 px-3 py-2.5 text-[13px] leading-relaxed text-foreground/90">
-            <strong>Gezählt wird:</strong> {data.abgrenzung}
+            <strong>Gezählt wird:</strong> {data.scope_note}
           </p>
           {letzter.revised === 1 && (
             <p className="text-[11.5px] leading-relaxed text-muted-foreground">
@@ -766,6 +738,12 @@ export default function SchuldenPage() {
             </section>
           );
         })()}
+
+        {/* ZU WELCHEM ZINS — die Unterrichtungen des Rates (council/loans.py):
+            Kreditaufnahmen mit Zinssatz, Umschuldungen mit Volumen und
+            Ersparnis. Eine dritte Quelle neben Jahrbuch und Abschluss, mit
+            eigenem Beleg; ohne Bestand kein Block. */}
+        <KrediteBlock daten={krediteDaten ?? null} />
 
         <LottiErklaert
           title="Warum es zwei Schuldenzahlen gibt"
@@ -1027,6 +1005,12 @@ export default function SchuldenPage() {
             </li>
           </ul>
         </section>
+
+        {/* WIE VIEL GELD AUF DEM KONTO IST — die Monatsgrafik der Verwaltung
+            (council/liquidity.py), direkt vor dem Rahmen aus § 4: Der Stand
+            ist die Zahl, der Höchstbetrag darunter ihre Grenze. */}
+        <LiquiditaetsBlock daten={liquiDaten ?? null}
+          hoechstbetrag={satzung?.liquidity_loans ?? null} />
 
         {satzung && <RahmenBlock row={satzung}
           herkunft={herkunftVon(satzungDaten, satzung.herkunft_id)} />}

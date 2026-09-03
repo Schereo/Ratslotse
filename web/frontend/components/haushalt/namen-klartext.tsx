@@ -38,7 +38,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ChevronDown, ChevronRight } from "lucide-react";
-import { Segmented } from "@/components/ui";
+import { ScrollZeile, Segmented } from "@/components/ui";
 import { bereichKanon } from "@/lib/haushalt-bereiche";
 import { HaushaltZeile, bereichSlug, bereiche, deMio, mio } from "@/lib/haushalt";
 import { useBreite } from "@/lib/use-breite";
@@ -228,13 +228,13 @@ export function NamenKlartext({ zeilen, year, aktiv, className }: {
           <span className="shrink-0 font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
             Reihenfolge
           </span>
-          <div className="scrollbar-none -mx-1 overflow-x-auto px-1">
+          <ScrollZeile className="-mx-1 px-1">
             <Segmented className="w-max" value={sortierung} onChange={setSortierung} tone="primary"
               options={[
                 { value: "aus", label: "was ein Bereich ausgibt" },
                 { value: "stadt", label: "Zuschussbedarf des Bereichs" },
               ]} />
-          </div>
+          </ScrollZeile>
         </div>
         <span className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
           Mio. € · {year} · {rows.length} Teilhaushalte

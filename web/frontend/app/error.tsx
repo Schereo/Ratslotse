@@ -13,7 +13,7 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
   return (
     <div className="flex min-h-screen items-center justify-center bg-waves px-4">
       <Card className="w-full max-w-sm p-8 text-center">
-        <Mascot pose="confused" className="mx-auto h-24 w-24" />
+        <Mascot regung="ist-traurig" className="mx-auto h-24 w-24" />
         <h1 className="mt-4 text-lg font-semibold text-foreground">Etwas ist schiefgelaufen</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Da ist Lotti kurz vom Kurs abgekommen. Bitte versuche es erneut — falls das Problem bleibt, lade die Seite neu.

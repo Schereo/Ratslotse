@@ -193,7 +193,7 @@ export function NachbewilligungsBlock({ daten, year }: {
         <strong className="font-semibold">Außerplanmäßig bedeutet nicht automatisch
         ungedeckt:</strong> Die Vorlagen nennen jeweils eine Deckung. „Überplanmäßig“
         heißt, dass ein vorhandener Ansatz nicht ausreicht; „außerplanmäßig“, dass
-        für diesen Zweck kein Ansatz balance.
+        für diesen Zweck kein Ansatz besteht.
       </p>
 
       {gesamt != null && (
@@ -228,10 +228,12 @@ export function NachbewilligungsBlock({ daten, year }: {
         <div className="mt-4">
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
             Wer über die Bewilligung entscheidet
+            {/* Der Chip hängt an der Überschrift — unter den Balken stand er
+                allein in einer Zeile (Durchsicht 02.09.2026). */}
+            <Beleg q="jahresabschluss" />
           </p>
           <div className="mt-2.5">
-            <KanalRangliste channels={bericht.channels}
-              beleg={<Beleg q="jahresabschluss" />} />
+            <KanalRangliste channels={bericht.channels} beleg={null} />
           </div>
           <p className="mt-3 max-w-[74ch] text-[11.5px] leading-relaxed text-muted-foreground">
             Der Rechenschaftsbericht unterscheidet vier Entscheidungswege. Nur einer
@@ -298,15 +300,8 @@ export function NachbewilligungsBlock({ daten, year }: {
           {unseres && bericht && ratsZeile != null
             && Math.abs(unseres.summe - ratsZeile) > 1 && (
             <p className="mt-2 max-w-[74ch] text-[11.5px] leading-relaxed text-muted-foreground">
-              Diese Liste ergibt {mio(unseres.summe)}&#8239;Mio.&nbsp;€, die
-              Zeile „{bericht.channels.find((k) => k.channel === "council")?.label}"
-              oben {mio(ratsZeile)}&#8239;Mio.&nbsp;€. Der Unterschied ist
-              keine Unsicherheit, sondern eine andere Frage:{" "}
-              <strong className="font-semibold">Wir nennen den Betrag, den die
-              Vorlage beantragt hat — der Rechenschaftsbericht den, der am Ende
-              gebucht wurde.</strong> Wo weniger gebraucht wurde als bewilligt,
-              schreibt er den kleineren Betrag; bei einer der Vorlagen nennt er
-              den Grund gleich dazu.
+              Die Liste nennt, was die Vorlagen beantragt haben; die Zeile oben,
+              was am Ende gebucht wurde — deshalb weichen die Summen leicht ab.
             </p>
           )}
         </div>

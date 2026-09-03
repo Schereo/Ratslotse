@@ -25,7 +25,7 @@ Drei Schichten, drei Herkünfte
 
 Warum deterministisch statt LLM
 -------------------------------
-``council_wortbeitraege`` gibt es bereits — LLM-extrahiert, aber nur für eine
+``council_speeches`` gibt es bereits — LLM-extrahiert, aber nur für eine
 Handvoll Sitzungen. Diese Seite nimmt sie **nicht**: Wären die einen Jahrgänge
 modellgelesen und die anderen regex-gelesen, hinge die Länge und Auswahl der
 Zitate daran, welcher Jahrgang zufällig durch welches Verfahren lief — und

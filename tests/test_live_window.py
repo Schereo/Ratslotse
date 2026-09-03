@@ -29,7 +29,7 @@ import pytest
 _BACKEND = Path(__file__).resolve().parents[1] / "web" / "backend"
 sys.path.insert(0, str(_BACKEND))
 _TMP = tempfile.mkdtemp()
-os.environ["NWZ_DB"] = str(Path(_TMP) / "nwz.sqlite")
+os.environ["RATSLOTSE_DB"] = str(Path(_TMP) / "ratslotse.sqlite")
 os.environ["COUNCIL_DB"] = str(Path(_TMP) / "council.sqlite")
 os.environ["WEB_JWT_SECRET"] = "test-secret"
 os.environ["COOKIE_SECURE"] = "false"
@@ -174,7 +174,7 @@ def test_heute_briefing_kennt_den_ganzen_tag(store):
     ]
     # Die TOPs gehören jeweils zur eigenen Sitzung, nicht pauschal zur ersten.
     assert daten["sessions"][2]["tops"] == ["Haushaltssatzung 2027", "Neubau der Kita Bloherfelde"]
-    assert daten["sessions"][2]["rest"] == 1
+    assert daten["sessions"][2]["remaining"] == 1
     assert daten["sessions"][1]["tops"] == []          # nur ein Kalendertermin
     # Die Kopf-Felder bleiben bei der ersten Sitzung — ältere App-Installationen
     # lesen sie unverändert weiter.

@@ -204,7 +204,7 @@ struct PublicProfileView: View {
                         kind: "fraktion",
                         parties: ["SPD"]
                     ),
-                    art: "council",
+                    kind: "council",
                     organisation: nil,
                     nSessions: 18,
                     activeFrom: "2021-11-01",
@@ -760,7 +760,7 @@ struct PublicPersonProfile: Codable, Sendable {
 
         enum CodingKeys: String, CodingKey {
             case text, committee, kind
-            case agendaItem = "top"
+            case agendaItem = "agenda_item"
             case sessionDate = "session_date"
         }
     }
@@ -776,7 +776,7 @@ struct PublicPersonProfile: Codable, Sendable {
     let type: String
     let party: String?
     let currentAffiliation: Affiliation?
-    let art: String?
+    let kind: String?
     let organisation: String?
     let nSessions: Int
     let activeFrom: String?
@@ -794,16 +794,15 @@ struct PublicPersonProfile: Codable, Sendable {
     let mentionedUntil: String?
 
     enum CodingKeys: String, CodingKey {
-        case name, slug, party, art, organisation, committees, recent, ris
-        case type = "typ"
+        case name, slug, type, party, kind, organisation, committees, recent, ris
         case currentAffiliation = "current_affiliation"
         case nSessions = "n_sessions"
         case activeFrom = "active_from"
         case activeTo = "active_to"
         case factionTimeline = "faction_timeline"
-        case speeches = "wortbeitraege"
-        case speechCount = "wortbeitraege_gesamt"
-        case speechCommittees = "wortbeitraege_gremien"
+        case speeches
+        case speechCount = "speeches_total"
+        case speechCommittees = "speeches_committees"
         case administrationRole = "role"
         case isActive = "aktiv"
         case mentionedFrom = "von"
@@ -816,7 +815,7 @@ struct PublicPersonProfile: Codable, Sendable {
         type: String,
         party: String?,
         currentAffiliation: Affiliation?,
-        art: String?,
+        kind: String?,
         organisation: String?,
         nSessions: Int,
         activeFrom: String?,
@@ -838,7 +837,7 @@ struct PublicPersonProfile: Codable, Sendable {
         self.type = type
         self.party = party
         self.currentAffiliation = currentAffiliation
-        self.art = art
+        self.kind = kind
         self.organisation = organisation
         self.nSessions = nSessions
         self.activeFrom = activeFrom
@@ -863,7 +862,7 @@ struct PublicPersonProfile: Codable, Sendable {
         type = try values.decodeIfPresent(String.self, forKey: .type) ?? "council"
         party = try values.decodeIfPresent(String.self, forKey: .party)
         currentAffiliation = try values.decodeIfPresent(Affiliation.self, forKey: .currentAffiliation)
-        art = try values.decodeIfPresent(String.self, forKey: .art)
+        kind = try values.decodeIfPresent(String.self, forKey: .kind)
         organisation = try values.decodeIfPresent(String.self, forKey: .organisation)
         nSessions = try values.decodeIfPresent(Int.self, forKey: .nSessions) ?? 0
         activeFrom = try values.decodeIfPresent(String.self, forKey: .activeFrom)
@@ -883,7 +882,7 @@ struct PublicPersonProfile: Codable, Sendable {
 
     var roleLabel: String {
         if type == "administration" { return administrationRole ?? "Stadtverwaltung" }
-        return switch art {
+        return switch kind {
         case "council": "Ratsmitglied"
         case "advisory": "Beratendes Mitglied"
         case "administration": "Stadtverwaltung"
@@ -1385,7 +1384,7 @@ private struct PersonProfileOverview: View {
                 query.append(URLQueryItem(name: "committee", value: selectedCommittee))
             }
             let page: SpeechPage = try await model.api.get(
-                "/api/council/person/\(person.slug)/wortbeitraege",
+                "/api/council/person/\(person.slug)/speeches",
                 query: query
             )
             speeches = reset ? page.items : speeches + page.items

@@ -107,8 +107,8 @@ SCHWELLEN: tuple[tuple[str, float | None, float | None], ...] = (
 FUNDSTELLE = 'Beschlussvorschlag und Abschnitt „Auswirkungen a) Finanzen“ ' \
              '(ältere Vorlagen: „Finanzielle Auswirkungen“)'
 
-ZWEITSTELLE = "spenden_zweitstelle"
-PROTOKOLLABGLEICH = "spenden_protokollabgleich"
+ZWEITSTELLE = "donation_second_mention"
+PROTOKOLLABGLEICH = "donation_minutes_match"
 
 # --- Zahlen lesen ----------------------------------------------------------
 # Die drei Extrakt-Reparaturen stecken hier und nirgends sonst; council/money.py

@@ -4,7 +4,11 @@ export default defineConfig({
   testDir: "./tests/e2e",
   timeout: 30_000,
   expect: { timeout: 10_000 }, // auth API call can take a few seconds on first render
-  retries: 0,
+  // In der CI EIN Versuch mehr. Browsertests hängen an Zeitverhalten, das auf
+  // einem geteilten Läufer schwankt — ein einzelner Aussetzer soll keinen Merge
+  // blockieren. Lokal bleibt es bei null: Wer hier grün sieht, soll es auch
+  // beim ersten Anlauf gewesen sein.
+  retries: process.env.CI ? 1 : 0,
   workers: 1, // serial so the shared backend DB stays consistent
 
   use: {

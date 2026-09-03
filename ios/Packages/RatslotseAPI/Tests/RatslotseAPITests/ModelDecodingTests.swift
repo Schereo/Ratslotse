@@ -18,24 +18,24 @@ import Testing
         "id": 43, "title": "Änderungsantrag", "committee": "Verkehrsausschuss",
         "session_date": "2026-02-01", "outcome": "rejected", "factions": ["CDU"]
       }],
-      "vorlage_journey": [{
+      "template_journey": [{
         "ksinr": 87, "committee": "Ausschuss", "session_date": "2026-01-20", "item_number": "Ö 3"
       }],
-      "beratungsfolge": [{
+      "deliberation_path": [{
         "date": "2026-02-01", "committee": "Rat", "top": "Ö 2", "result": "angenommen",
         "ksinr": 88, "future": false
       }],
-      "vorlage_url": "https://buergerinfo.oldenburg.de/vo0050.php?__kvonr=901",
-      "vorlage": {
+      "template_url": "https://buergerinfo.oldenburg.de/vo0050.php?__kvonr=901",
+      "template": {
         "template_number": "26/0400", "title": "Radweg", "kind": "Beschlussvorlage",
         "document_url": "https://example.test/vorlage.pdf", "n_pages": 3,
         "excerpt": "Sachverhalt: Die Stadt plant einen Radweg.", "office": "Amt für Verkehr"
       },
-      "anlagen": [{
+      "attachments": [{
         "document_id": 77, "label": "Antrag der SPD", "url": "https://example.test/77.pdf",
         "is_motion": 1, "applicants": ["SPD"], "status": "ok"
       }],
-      "beteiligung": {
+      "participation": {
         "title": "Beteiligung zum Plan", "schritt": "Entwurf", "valid_from": "2026-01-01",
         "valid_until": "2026-02-15", "url": "https://example.test/beteiligung", "status": "laufend"
       },
@@ -149,7 +149,7 @@ import Testing
         "outcome": "accepted",
         "is_new": true
       }],
-      "hits_30d": 3
+      "hits_6m": 3
     }
     """#
 
@@ -163,7 +163,7 @@ import Testing
     #expect(decision.factions.isEmpty)
     #expect(topic.recentHits.first?.id == 42)
     #expect(topic.recentHits.first?.isNew == true)
-    #expect(topic.hits30Days == 3)
+    #expect(topic.hits6Months == 3)
     #expect(topic.unreadCount == 0)
 }
 
@@ -184,9 +184,9 @@ import Testing
     let json = #"""
     {
       "found": true,
-      "von": "2026-08-28",
-      "bis": "2026-09-04",
-      "sitzungen": [{
+      "from_date": "2026-08-28",
+      "to_date": "2026-09-04",
+      "sessions": [{
         "ksinr": 88,
         "committee": "Ausschuss für Stadtplanung und Bauen",
         "session_date": "2026-08-31",
@@ -194,7 +194,7 @@ import Testing
         "location": "Altes Rathaus",
         "n_items": 14
       }],
-      "punkte": [{
+      "items": [{
         "ksinr": 88,
         "item_number": "Ö 6",
         "title": "Bebauungsplan 851 – Satzungsbeschluss",
@@ -207,8 +207,8 @@ import Testing
         "wichtig_grund": "Legt langfristig fest, was gebaut werden darf.",
         "top": true
       }],
-      "relevant_je_sitzung": {"88": 3},
-      "weitere_je_sitzung": {"88": [{
+      "relevant_per_session": {"88": 3},
+      "further_per_session": {"88": [{
         "ksinr": 88,
         "item_number": "Ö 7",
         "title": "Quartier am Krusenbusch",
@@ -220,10 +220,10 @@ import Testing
         "topic_name": null,
         "wichtig_grund": null
       }]},
-      "treffer_je_sitzung": {"88": 1},
-      "treffer_gesamt": 1,
-      "inhaltlich_gesamt": 11,
-      "inhaltlich_je_sitzung": {"88": 8}
+      "matches_per_session": {"88": 1},
+      "matches_total": 1,
+      "substantive_total": 11,
+      "substantive_per_session": {"88": 8}
     }
     """#
 

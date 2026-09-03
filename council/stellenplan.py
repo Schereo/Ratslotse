@@ -101,6 +101,13 @@ bleibt trotzdem draußen: Er ist eine *Änderung* des Plans statt der
 eingebrachte Plan, und er trägt nur Teil B. Ein Jahr, das nur die Tarifhälfte
 zeigt, läse sich wie ein Jahr ohne Beamtenstellen.
 
+Und ein Teil A gibt es dazu **nicht**: Die zweite Anlage derselben Vorlage
+(19/0945, Dokument 210793) heißt zwar „Geänderte Übersicht zum Stellenplan
+Teil A", ist aber die *Aufteilung nach der Verwaltungsgliederung* — und auch
+sie zeigt nur „II. Arbeitnehmerinnen und Arbeitnehmer", also wieder die
+Tarifhälfte, quer nach Ämtern statt nach Funktionen (nachgesehen 02.09.2026
+in beiden PDFs). Der Jahrgang 2020 ist damit nicht halb da, sondern gar nicht.
+
 Wie beim Gesamtergebnishaushalt gilt: Es ist der **Verwaltungsentwurf**. Was
 der Rat in den Beratungen daran ändert, steht nicht darin; die Herkunft sagt
 das über ``as_of``.
@@ -189,6 +196,29 @@ _ENDE = ("Dienstkräfte in der Ausbildungszeit", "Übersicht zum Stellenplan",
 #: die Glyphen-Nummern aus („/0 /1 /2 /3"). Im Stellenplan 2026 betrifft das
 #: genau die Seiten von Teil B — er ist dort nicht lesbar, und das ist etwas
 #: anderes als „gibt es nicht".
+#:
+#: NACHGEMESSEN am 02.09.2026 an Dokument 297432 („2026 022 Vw Stellenplan"),
+#: Seite für Seite mit ``pypdf``, also derselben Extraktion wie der Backfill:
+#: Teil A steht auf den Seiten 3–4 (Schrift TrueType/Type1, Buchstabenanteil
+#: 0,45 bis 0,50), **Teil B auf den Seiten 5–9** — und die tragen eine
+#: **Type3**-Schrift ohne ``ToUnicode``. Dort sind 0,8 bis 1,6 % des
+#: Extrakts Buchstaben, der Rest Glyphen-Nummern. Dieselbe Schrift steht auf
+#: den Seiten 15–20 (2,2 bis 2,9 %), der Aufteilung nach der
+#: Verwaltungsgliederung, die diese Schicht ohnehin nicht liest. Im Jahrgang
+#: 2025 (Dokument 282872) sind dieselben Tabellen TrueType/Type1 und lesbar.
+#:
+#: Das ist die ganze Erklärung für die 78.483 Zeichen des Jahrgangs 2026
+#: gegen 33.554 des Jahrgangs 2025: Eine Glyphenseite liefert 4.000 bis 7.700
+#: Zeichen „/12 /8 /3", eine echte Tabellenseite rund 2.000 Zeichen Text.
+#: Über das ganze Dokument gemittelt bleiben 11,2 % Buchstaben — mehr als die
+#: 5 %, ab denen ``backfill_anlagen_texte.py`` einen Volltext verwirft. Der
+#: Schaden ist seitenweise, nicht dokumentweise, und deshalb fängt ihn keine
+#: Schwelle über den ganzen Text — auch ``--glyphen`` nicht, das ganze Anlagen
+#: unterhalb der Schwelle für die OCR freigibt.
+#:
+#: Reparieren ließe sich das nur mit Rendern und OCR (``council/ocr.py``) —
+#: eine Zeichenzuordnung, die nicht im PDF steht, lässt sich nicht aus ihm
+#: herauslesen. Bis dahin gilt: Teil B 2026 fehlt, mit Grund.
 _GLYPHEN = re.compile(r"(?:/(?:\d{1,3}|i\d{1,3})\s*){12,}")
 
 
@@ -614,15 +644,15 @@ def lies(text: str) -> dict:
         # die Aussage trägt, dass die Spalten bedeuten, was wir ihnen
         # zuschreiben. Eine bestandene Probe zu verschweigen, weil sie ein
         # Vorfilter ist, hieße den Beleg um sein Fundament zu kürzen.
-        probes.append({"probe": "stellenplan_spaltenprobe", "ok": True,
+        probes.append({"probe": "staffing_plan_columns", "ok": True,
                        "warum": ""})
         for name_probe, result_probe in (
-            ("stellenplan_gruppensummen", gruppenprobe(gruppen)),
-            ("stellenplan_besetzung", besetzungsprobe(alle_summen)),
+            ("staffing_plan_group_totals", gruppenprobe(gruppen)),
+            ("staffing_plan_occupancy", besetzungsprobe(alle_summen)),
             # Die dritte Stufe nur, wo das Dokument eine eigene Gesamtzeile
             # führt (Teil A). Teil B hat eine Gruppe, deren Summe zugleich die
             # Gesamtsumme ist — dort wiederholte sie bloß die zweite Stufe.
-            *((("stellenplan_gesamtsumme", gesamtprobe(gruppen, gesamt)),)
+            *((("staffing_plan_grand_total", gesamtprobe(gruppen, gesamt)),)
               if gesamt else ()),
         ):
             probes.append({"probe": name_probe, "ok": result_probe[0],

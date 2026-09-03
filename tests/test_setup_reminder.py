@@ -44,7 +44,10 @@ def _backdate(store: Store, uid: int, hours: int) -> None:
 
 def test_step_is_persisted(store):
     uid = _user(store)
-    assert store.get_setup(uid) == {"step": 0, "started_at": None, "done_at": None}
+    # `pending`: leeres Konto, nie angefangen → der Assistent ist dran.
+    assert store.get_setup(uid) == {
+        "step": 0, "started_at": None, "done_at": None, "pending": True,
+    }
     store.set_setup_step(uid, 2)
     saved = store.get_setup(uid)
     assert saved["step"] == 2 and saved["started_at"] and saved["done_at"] is None

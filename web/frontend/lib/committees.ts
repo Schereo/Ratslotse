@@ -1,3 +1,8 @@
+import {
+  Baby, Building2, Bus, ClipboardList, Coins, Drama, Gavel, Globe, GraduationCap,
+  Hammer, HeartHandshake, Landmark, Laptop, Leaf, Recycle, Trophy, Users, type LucideIcon,
+} from "lucide-react";
+
 // Kurznamen für die (langen) Oldenburger Gremiennamen — eine Funktion, überall
 // (Design 19a). Amtliche Namen wie „Ausschuss für Wirtschaftsförderung,
 // Digitalisierung und internationale Zusammenarbeit" sprengen jede Karte, jedes
@@ -115,4 +120,44 @@ const RANK: Record<string, number> = {
  *  den gepflegten, aber vor gar nichts — sie verschwinden nie aus der Liste. */
 export function committeeRank(name: string | null | undefined): number {
   return RANK[shortCommittee(name)] ?? 50;
+}
+
+// Ein Zeichen je Gremium (Onboarding, Schritt 1). Zwölf gleich gebaute Kacheln
+// mit Name und Satz waren „sehr plain, sehr langweilig" (Tim, 01.09.2026): Man
+// muss jede lesen, um sie zu unterscheiden. Ein Zeichen sagt es auf einen Blick.
+//
+// Lucide (DESIGNSPRACHE §4), je eins, das den Sachbereich trägt — kein
+// Schmuck: Kelle für den Bau, Blatt fürs Grün, Bus für den Verkehr. Tim wünscht
+// sich hier eigentlich kleine Lotti-Varianten je Ausschuss; der Sprite-Katalog
+// (public/lotti/lotti.json) kennt aber nur Verhaltensweisen — nickt, liest,
+// hebt Pokal — und keine Sachbereiche. Dafür bräuchte es eine Render-Runde im
+// Lotti-Studio mit einem Requisit je Gremium (Bauhelm, Gießkanne, Fahrradhelm,
+// Sparschwein …). Bis dahin steht hier das Zeichen; die Kachel ist so gebaut,
+// dass das Sprite an dieselbe Stelle rückt (`GremiumZeichen` im Onboarding).
+//
+// Bewusst dieselbe Datei wie shortCommittee und EXPLAINS: eine Quelle je Gremium.
+const ICONS: Record<string, LucideIcon> = {
+  "Rat": Landmark,
+  "Verwaltungsausschuss": Gavel,
+  "Allgemeine Angelegenheiten": ClipboardList,
+  "Finanzen & Beteiligungen": Coins,
+  "Integration & Migration": Globe,
+  "Stadtgrün & Klima": Leaf,
+  "Umwelt & Klima": Leaf,
+  "Stadtplanung & Bauen": Building2,
+  "Wirtschaft & Digitales": Laptop,
+  "Abfallwirtschaft": Recycle,
+  "Betrieb Gebäudewirtschaft": Hammer,
+  "Jugendhilfe": Baby,
+  "Kultur": Drama,
+  "Schule": GraduationCap,
+  "Soziales": HeartHandshake,
+  "Sport": Trophy,
+  "Verkehr": Bus,
+};
+
+/** Das Zeichen des Gremiums. Unbekannte Gremien bekommen die Gruppe — ein
+ *  Gremium sind Menschen, die zusammensitzen; das ist nie falsch, nur allgemein. */
+export function committeeIcon(name: string | null | undefined): LucideIcon {
+  return ICONS[shortCommittee(name)] ?? Users;
 }

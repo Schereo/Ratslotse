@@ -150,7 +150,7 @@ Kapitel 11 - Verwaltung und Finanzen
 Fachdienst Geo und Daten"""
 
 #: Die Aufkommensreihe der Grundsteuer A+B aus Tabelle 1104
-#: (``council_steuern``), in Euro — **vollständig und echt**, 1998 bis 2025.
+#: (``council_taxes``), in Euro — **vollständig und echt**, 1998 bis 2025.
 #:
 #: Vollständig, weil die Gegenprobe sie so braucht: Sie verschiebt die Reihe um
 #: ein Jahr und verlangt, dass die Prüfung anschlägt. Mit Löchern verschöbe sie
@@ -282,7 +282,7 @@ def test_die_beschriftung_wird_gegen_tabelle_1104_geprueft():
     result = stt.lies_1103(PDF_1103, IST_REIHE)
     assert result["years"] == [2023, 2024, 2025]
     assert result["verworfen"] == []
-    assert "steuerplan_istabgleich" in result["probes"]
+    assert "tax_budget_actuals_match" in result["probes"]
 
 
 def test_ein_jahresversatz_wuerde_auffallen():
@@ -519,7 +519,7 @@ def test_gespeichert_wird_mit_herkunft_und_kommt_gleich_wieder_heraus(tmp_path):
         # Keine Zeile ohne Herkunftsnachweis — die eine Zahl, die null sein muss.
         luecken = store.herkunft_luecken()
         assert not {t: n for t, n in luecken.items()
-                    if t in ("council_steuerplan", "council_hebesaetze")}
+                    if t in ("council_tax_plan", "council_tax_rates")}
     finally:
         store.close()
 
@@ -530,7 +530,7 @@ def test_ein_zweiter_lauf_wirft_aeltere_jahrgaenge_nicht_weg(tmp_path):
     store = CouncilStore(tmp_path / "council.sqlite")
     try:
         h = herkunft.Herkunft(kind="city", url=stt.TABELLE_1103_URL,
-                              probe=["steuerplan_summenzeile"])
+                              probe=["tax_budget_total_row"])
         store.save_steuerplan(
             stt.lies_1103(PDF_1103_AUSGABE_2024, IST_REIHE)["zeilen"], h)
         store.save_steuerplan(stt.lies_1103(PDF_1103, IST_REIHE)["zeilen"], h)
@@ -551,7 +551,7 @@ def test_ein_zweiter_lauf_wirft_aeltere_jahrgaenge_nicht_weg(tmp_path):
     ("Grunderwerbsteuer", None),
 ])
 def test_zeilennamen_werden_auf_die_arten_der_ist_reihe_abgebildet(label, erwartet):
-    """Die Schreibweisen müssen exakt denen aus `council_steuern` entsprechen —
+    """Die Schreibweisen müssen exakt denen aus `council_taxes` entsprechen —
     daran hängt der Abgleich, und ein Tippfehler ließe ihn still ins Leere
     laufen. „Grunderwerbsteuer" steht als Gegenprobe dabei: Sie ist keine
     Zeile dieser Tabelle und darf auch nicht versehentlich als Grundsteuer

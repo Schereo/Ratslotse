@@ -46,24 +46,24 @@ import { Zeitreihe } from "@/components/grafik/zeitreihe";
 import type { JahrPunkt } from "@/components/grafik/daten";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 
-// `herkunft` mit: Jeder Bereich hat seine eigene Fundstelle in derselben
+// `provenance` mit: Jeder Bereich hat seine eigene Fundstelle in derselben
 // Datei („Gebührenbedarfsberechnung 2026, Straßenreinigung"), und die ist
 // der Unterschied zwischen einem 40-Seiten-PDF und einer Stelle darin.
 /** Was dieser Abschnitt braucht. Die SEITE holt es zusammen mit den
- *  Wirtschaftsplänen in EINEM Aufruf — beide Abschnitte brauchen `herkunft`,
+ *  Wirtschaftsplänen in EINEM Aufruf — beide Abschnitte brauchen `provenance`,
  *  und `useFetch` hat keinen Zwischenspeicher. */
 export type GebuehrenDaten = HaushaltAuswahl<
-  "fees" | "fee_rates" | "herkunft"
+  "fees" | "fee_rates" | "provenance"
 >;
 
 /** Was der Bereich macht — eine Zeile, damit die Zahl einen Gegenstand hat. */
 const WAS_ES_IST: Record<string, string> = {
-  abfallbehandlung:
+  waste_treatment:
     "Was mit Rest- und Bioabfall passiert, nachdem er abgeholt wurde: "
     + "Behandlung, Verwertung, Deponienachsorge.",
-  abfallsammlung:
+  waste_collection:
     "Das Abholen selbst — Tonnen, Sperrmüll, Grüngut, Wertstoffberatung.",
-  strassenreinigung:
+  street_cleaning:
     "Kehren, Winterdienst und Reinigung der öffentlichen Straßen.",
 };
 
@@ -149,9 +149,20 @@ function BereichsKarte({ zeilen, tarife, herkunftFuer }: {
 }) {
   const nach = [...zeilen].sort((a, b) => a.year - b.year);
   const letzte = nach[nach.length - 1];
-  const series: JahrPunkt[] = nach
-    .filter((z) => z.fee != null)
-    .map((z) => ({ year: z.year, value: z.fee as number }));
+  // Fehlende Jahre stehen als Lücke MIT Grund in der Reihe: 2022 hat die
+  // Stadt keine Bedarfsberechnung ins Ratsinformationssystem gestellt — bis
+  // 02.09.2026 hieß das in der Grafik „ohne Wert und ohne Grund".
+  const mitGebuehr = nach.filter((z) => z.fee != null);
+  const series: JahrPunkt[] = [];
+  if (mitGebuehr.length) {
+    const vorhanden = new Map(mitGebuehr.map((z) => [z.year, z.fee as number]));
+    for (let j = mitGebuehr[0].year; j <= mitGebuehr[mitGebuehr.length - 1].year; j++) {
+      const fee = vorhanden.get(j);
+      series.push(fee != null
+        ? { year: j, value: fee }
+        : { year: j, fehlt: "keine Gebührenbedarfsberechnung im Ratsinformationssystem" });
+    }
+  }
 
   return (
     <section className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
@@ -262,7 +273,7 @@ export function GebuehrenAbschnitt({ data, loading }: {
     }
     // Feste Reihenfolge: erst das Abholen, dann die Behandlung, dann die
     // Straße — so, wie der Abfall den Weg nimmt.
-    const ordnung = ["abfallsammlung", "abfallbehandlung", "strassenreinigung"];
+    const ordnung = ["waste_collection", "waste_treatment", "street_cleaning"];
     return [...gruppen.entries()]
       .sort((a, b) => ordnung.indexOf(a[0]) - ordnung.indexOf(b[0]))
       .map(([, v]) => v);

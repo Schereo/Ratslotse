@@ -20,10 +20,13 @@ import { GlossaryText } from "@/components/glossary-text";
 import { cn } from "@/lib/utils";
 
 export function LottiErklaert({
-  title, text, pose = "point", className,
+  title, text, pose, className,
 }: {
   title: string;
   text: string;
+  /** Ohne Angabe ERKLÄRT Lotti (beide Flügel öffnen, zwei Betonungen) —
+   *  die Regung gehört zur Rolle der Karte. `pose` bleibt für die Stellen,
+   *  die bewusst etwas anderes wollen (suchen, winken). */
   pose?: "point" | "search" | "wave" | "confused";
   className?: string;
 }) {
@@ -60,7 +63,7 @@ export function LottiErklaert({
       "flex max-w-[70ch] gap-3.5 rounded-2xl border border-primary/20 bg-primary/[0.04] p-3.5",
       className,
     )}>
-      <Mascot pose={pose} decorative className="h-11 w-11 flex-none sm:h-12 sm:w-12" />
+      <Mascot pose={pose} regung={pose ? undefined : "erklaert"} decorative className="h-11 w-11 flex-none sm:h-12 sm:w-12" />
       <div className="min-w-0">
         <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-primary">
           {title}

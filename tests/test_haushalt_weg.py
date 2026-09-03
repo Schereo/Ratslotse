@@ -127,7 +127,7 @@ def test_falsch_betitelte_vorlage_verschiebt_den_zeitraum_nicht(store):
 def test_schreibweisen_des_titels(store, title):
     """Drei Schreibweisen, ein Jahrgang — alle drei stehen so im Bestand."""
     runde_2026(store)
-    store._conn.execute("UPDATE council_vorlagen SET title = ? WHERE kvonr = 101", (title,))
+    store._conn.execute("UPDATE council_templates SET title = ? WHERE kvonr = 101", (title,))
     [r] = store.haushalt_weg()
     assert r["fachausschuesse"]["committees"] == ["Schulausschuss"]
 

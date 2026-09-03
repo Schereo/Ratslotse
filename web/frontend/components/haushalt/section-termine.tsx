@@ -63,7 +63,7 @@
 //
 // Der Jahresabschluss steht auf dem Strahl mit „≈": Seine Lage ist aus den
 // festgestellten Abschlüssen früherer Jahrgänge gemessen (Ratsvorgänge aus
-// `/council/haushalt/dokumente`), kein Termin. Ohne diese Messgrundlage
+// `/council/budget/documents`), kein Termin. Ohne diese Messgrundlage
 // entfällt die Station — geraten wird nicht.
 
 import { useEffect, useMemo, useState } from "react";
@@ -101,17 +101,17 @@ export function TermineAbschnitt({ onBestand }: {
     year: number;
   }) => void;
 } = {}) {
-  const { data, loading } = useFetch<WegDaten>("/council/haushalt/weg");
-  const { data: dokumente } = useFetch<DokumenteAntwort>("/council/haushalt/dokumente");
+  const { data, loading } = useFetch<WegDaten>("/council/budget/journey");
+  const { data: dokumente } = useFetch<DokumenteAntwort>("/council/budget/documents");
   const [gewaehlt, setGewaehlt] = useState<number | null>(null);
   // Einmal gemerkt statt je Render neu: `heute` ist Anker des Strahls.
   const heute = useMemo(() => new Date(), []);
 
   useEffect(() => {
     if (!onBestand || loading) return;
-    if (!data?.runden.length) { onBestand({ naechster: null, phasen: [], year: 0 }); return; }
+    if (!data?.rounds.length) { onBestand({ naechster: null, phasen: [], year: 0 }); return; }
     const tag = `${heute.getFullYear()}-${String(heute.getMonth() + 1).padStart(2, "0")}-${String(heute.getDate()).padStart(2, "0")}`;
-    const kommend = data.runden
+    const kommend = data.rounds
       .flatMap((r) => r.stationen)
       .filter((st) => st.date >= tag)
       .sort((a, b) => a.date.localeCompare(b.date));
@@ -120,7 +120,7 @@ export function TermineAbschnitt({ onBestand }: {
     // Zeitstrahl unten ausführlich zeichnet. „erledigt" heißt: liegt hinter
     // uns; „aktuell" ist die erste, die es nicht ist. Das Haushaltsjahr gilt
     // als erreicht, sobald der Rat beschlossen hat.
-    const r = data.runden[data.runden.length - 1];
+    const r = data.rounds[data.rounds.length - 1];
     const ratsbeschluss = [...r.stationen]
       .filter((st) => st.role === "Entscheidung" && st.result
         && !/zurückgestellt|abgesetzt|vertagt/i.test(st.result))
@@ -153,7 +153,7 @@ export function TermineAbschnitt({ onBestand }: {
   if (loading) {
     return <div className="py-16 text-center text-sm text-muted-foreground">Wird geladen …</div>;
   }
-  const runden = data?.runden ?? [];
+  const runden = data?.rounds ?? [];
   if (!runden.length) {
     return (
       <div className="py-16 text-center text-sm text-muted-foreground">
@@ -167,7 +167,7 @@ export function TermineAbschnitt({ onBestand }: {
   const runde = runden.find((r) => r.year === year)!;
   const rh = rhythmus(runden);
   const haeufigster = rh.entwurfMonate[0];
-  const abschluss = jahresabschlussMass(dokumente?.dokumente?.jahresabschluss);
+  const abschluss = jahresabschlussMass(dokumente?.documents?.jahresabschluss);
 
   // ---- Die Stationen des Strahls: Lagen aus der laufenden Runde, --------
   // ---- Zählangaben aus allen Jahrgängen. --------------------------------

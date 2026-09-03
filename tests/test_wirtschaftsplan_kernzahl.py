@@ -167,7 +167,7 @@ def test_die_herkunft_nennt_die_beleglage():
     plan, wort, lage = parse_kernzahl(
         "25/0819", TITEL_BBGO, TEXT_BBGO, 2026, [ANLAGE_BBGO])
     h = herkunft_fuer(plan, wort, lage, url=None, kvonr=28315)
-    assert "wirtschaftsplan_kernzahl" in h.probe
+    assert "business_plan_key_figure" in h.probe
     assert "in der Anlage" in h.probe_result
     assert "kvonr=28315" in h.url
 
@@ -186,7 +186,7 @@ def test_zeile_ohne_ertraege_laesst_sich_speichern(tmp_path):
         assert len(zeilen) == 1
         assert zeilen[0]["revenues"] is None
         assert zeilen[0]["result"] == -10_128_335.0
-        assert "council_wirtschaftsplaene" not in store.herkunft_luecken()
+        assert "council_business_plans" not in store.herkunft_luecken()
     finally:
         store.close()
 

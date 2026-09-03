@@ -581,7 +581,7 @@ def test_store_finanzrechnung_roundtrip(tmp_path, source):
     zeilen, _, _ = finanzberichte.finanzprobe(
         finanzberichte.parse_finanzrechnung(FR_2024, 2024))
     q = source("Jahresabschluss 2024", "https://example.org/ja2024.pdf",
-               probe="finanzkaskade")
+               probe="cash_flow_cascade")
     assert store.save_finanzrechnung(2024, zeilen, q) == len(zeilen)
     assert store.save_finanzrechnung(2024, zeilen, q) == len(zeilen)  # idempotent
     assert store.finanzrechnung_jahre() == [2024]
@@ -591,7 +591,7 @@ def test_store_finanzrechnung_roundtrip(tmp_path, source):
     assert geladen["closing_balance"]["plan"] is None
     # Jede Zeile weiß, woher sie kommt.
     assert all(z["herkunft_id"] for z in store.get_finanzrechnung(2024))
-    assert store.herkunft_luecken().get("council_finanzrechnung") is None
+    assert store.herkunft_luecken().get("council_cash_flow_statement") is None
     store.close()
 
 

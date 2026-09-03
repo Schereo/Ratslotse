@@ -70,12 +70,12 @@ import re
 #: Bilanzposten mit der Rückstellung für erwartete Ausfälle — die Gegenzahl
 #: zum Bestand. `council/bilanz.py` führt die Posten unter Namen, nicht unter
 #: Gliederungsnummern; im Dokument ist es Passivposten 3.7.
-RUECKSTELLUNG_ROLLE = "buergschaftsrueckstellung"
+RUECKSTELLUNG_ROLLE = "guarantee_provisions"
 
 #: Die andere Gegenzahl: was die Stadt selbst schuldet. 2024 standen 43,7 Mio. €
 #: Geldschulden 220,3 Mio. € Bürgschaften gegenüber — Faktor fünf. Der Bestand
 #: ohne diese Zahl daneben ist eine Zahl ohne Maßstab.
-GELDSCHULDEN_ROLLE = "geldschulden"
+GELDSCHULDEN_ROLLE = "financial_liabilities"
 
 #: Der Abschnitt des Anhangs, aus dem der Bestand ab 2022 kommt.
 ABSCHNITT = "6.2.10 Eventualverbindlichkeiten"
@@ -94,8 +94,8 @@ ABGRENZUNG = (
     "wird. Deshalb steht der Bestand nicht in der Bilanz, sondern als "
     "„Eventualverbindlichkeit“ im Anhang.")
 
-PROBE_KETTE = "buergschaft_kette"
-PROBE_TABELLE = "buergschaft_tabelle"
+PROBE_KETTE = "guarantee_chain"
+PROBE_TABELLE = "guarantee_table"
 
 PROBEN: dict[str, str] = {
     PROBE_KETTE: ("Der Anfangsbestand dieses Jahrgangs stimmt mit dem "

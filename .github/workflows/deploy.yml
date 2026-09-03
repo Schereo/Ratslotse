@@ -43,7 +43,11 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt -r requirements-dev.txt
+          # -c constraints.txt: dieselben Fassungen wie auf Prod. Ohne das
+          # prüfte die CI gegen die jeweils neueste — und damit gegen etwas
+          # anderes, als die Seite trägt (gemessen 02.09.2026: fastapi 0.137
+          # auf Prod, 0.139 auf dev, in der CI wieder etwas Drittes).
+          pip install -r requirements.txt -r requirements-dev.txt -c constraints.txt
 
       - name: Run tests
         run: python -m pytest tests/ -q
@@ -131,7 +135,8 @@ jobs:
             set -e
             cd ~/app
             # Backend deps (idempotent) + frontend build, then restart web services.
-            .venv/bin/pip install -q -r requirements.txt -r web/backend/requirements.txt
+            .venv/bin/pip install -q -r requirements.txt -r web/backend/requirements.txt \
+              -c constraints.txt
             cd web/frontend && npm ci --no-audit --no-fund
             # CARTO_API_KEY: Key für die Kartenkacheln, zur Build-Zeit ins
             # Client-Bundle einkompiliert (NEXT_PUBLIC_, s. lib/basemap.ts).
@@ -150,10 +155,21 @@ jobs:
               if curl -sf -o /dev/null http://127.0.0.1:3000/ \
                  && curl -sf -o /dev/null http://127.0.0.1:8000/api/health; then
                 echo "Dienste antworten nach $((i * 2))s."
-                exit 0
+                bereit=1
+                break
               fi
             done
-            echo "FEHLER: Dienste antworten 60s nach dem Neustart nicht."
-            systemctl is-active nwz-web-api nwz-web-frontend || true
-            journalctl -u nwz-web-frontend -n 30 --no-pager || true
-            exit 1
+            if [ -z "$bereit" ]; then
+              echo "FEHLER: Dienste antworten 60s nach dem Neustart nicht."
+              systemctl is-active nwz-web-api nwz-web-frontend || true
+              journalctl -u nwz-web-frontend -n 30 --no-pager || true
+              exit 1
+            fi
+
+            # „Der Prozess läuft" ist nicht „er tut das Richtige": `health`
+            # fasst die Datenbank nicht an, eine Abfrage auf eine Spalte, die
+            # eine Migration gerade entfernt hat, wirft aber erst beim ersten
+            # echten Aufruf. Die Rauchprobe ruft die Endpunkte ohne Konto auf
+            # und hält jede Antwort gegen den Vertrag, der neben dem Code auf
+            # demselben Server liegt. Sie braucht kein Fremdpaket.
+            python3 ~/app/scripts/rauchprobe.py --basis http://127.0.0.1:8000

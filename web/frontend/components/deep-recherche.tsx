@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 /** Künftige Beratungsstation einer zitierten Vorlage (Sitzungskalender). */
 export type Planung = {
   kvonr: number; date: string | null; committee: string | null;
-  template_number: string | null; vorlage_titel: string | null;
+  template_number: string | null; template_title: string | null;
 };
 
 export type DeepPhase = "zerlegen" | "suchen" | "lesen" | "schreiben";
@@ -97,10 +97,13 @@ export function RechercheLimitKarte({ onSchnelleFrage }: { onSchnelleFrage: () =
 }
 
 /** Fortschritts-Karte (8a②): Phasen-Checkliste, Facetten-Chips, Balken mit
- *  grober Restzeit, Abbrechen. Lotti sucht. Erscheint anstelle der Antwort,
- *  solange der Job läuft. */
-export function RechercheFortschritt({ phase, facetten, facettenFertig, dokumente, onStop }: {
-  phase: DeepPhase; facetten: DeepFacette[]; facettenFertig: number;
+ *  grober Restzeit, Abbrechen. Lotti macht die PHASE mit (Tims Wahl
+ *  01.09.26): Sie jongliert beim Zerlegen und Suchen („dauert eine halbe
+ *  Minute, ich unterhalte dich solange"), liest, wenn Dokumente gelesen
+ *  werden, und schreibt beim Bericht — alles Schleifen aus dem
+ *  Werkzeug-Blatt, sie laufen durch, bis der Bericht kommt. */
+export function RechercheFortschritt({ phase, facets, facettenFertig, dokumente, onStop }: {
+  phase: DeepPhase; facets: DeepFacette[]; facettenFertig: number;
   dokumente: number | null; onStop: () => void;
 }) {
   // Grobe Fortschritts-Heuristik: zerlegen 8 %, suchen bis 55 %, lesen 62 %,
@@ -119,7 +122,7 @@ export function RechercheFortschritt({ phase, facetten, facettenFertig, dokument
   useEffect(() => { setNativ(isNativeApp()); }, []);
   const percent =
     phase === "zerlegen" ? 8
-    : phase === "suchen" ? 10 + (facetten.length ? (facettenFertig / facetten.length) * 45 : 20)
+    : phase === "suchen" ? 10 + (facets.length ? (facettenFertig / facets.length) * 45 : 20)
     : phase === "lesen" ? 62
     : Math.min(95, 68 + tick);
   // Zeitangaben an echten Läufen gemessen (11.08.: 28 s und 36 s für eine
@@ -145,18 +148,20 @@ export function RechercheFortschritt({ phase, facetten, facettenFertig, dokument
   return (
     <div role="status" className="rounded-[14px] border-2 border-dashed border-border bg-card/60 p-3.5">
       <div className="flex gap-3">
-        <Mascot pose="search" className="h-[52px] w-[52px] shrink-0" />
+        <Mascot
+          regung={phase === "lesen" ? "liest" : phase === "schreiben" ? "schreibt" : "jongliert"}
+          className="h-[72px] w-[72px] shrink-0" />
         <div className="flex min-w-0 flex-1 flex-col gap-1.5 pt-0.5">
-          {schritt(zustand(0), stufe > 0 && facetten.length > 0
-            ? `Frage in ${facetten.length} Facetten zerlegt` : "Frage zerlegen …")}
+          {schritt(zustand(0), stufe > 0 && facets.length > 0
+            ? `Frage in ${facets.length} Facetten zerlegt` : "Frage zerlegen …")}
           {schritt(zustand(1), phase === "suchen" ? "Facetten durchsuchen …" : "Facetten durchsuchen")}
           {schritt(zustand(2), dokumente ? `${dokumente} Dokumente lesen` : "Dokumente lesen")}
           {schritt(zustand(3), "Bericht schreiben")}
         </div>
       </div>
-      {facetten.length > 0 && (
+      {facets.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-1.5 border-t border-border/60 pt-2.5">
-          {facetten.map((f, i) => {
+          {facets.map((f, i) => {
             const fertig = i < facettenFertig || stufe > 1;
             const aktiv = !fertig && i === facettenFertig && phase === "suchen";
             return (
@@ -321,20 +326,20 @@ export function Sprungmarken({ abschnitte, ankerPrefix }: {
 
 /** „Wie es weitergeht" (8b): künftige Beratungsstationen der zitierten
  *  Vorlagen — deterministisch aus dem Sitzungskalender, nie vom Modell. */
-export function WieEsWeitergeht({ planungen }: { planungen: Planung[] }) {
-  if (planungen.length === 0) return null;
+export function WieEsWeitergeht({ planning_procedures }: { planning_procedures: Planung[] }) {
+  if (planning_procedures.length === 0) return null;
   return (
     <div className="rounded-xl border border-border bg-card px-3.5 py-3">
       <p className="font-mono text-[9px] font-medium uppercase tracking-[0.1em] text-primary">
         Wie es weitergeht
       </p>
       <div className="mt-2 flex flex-col gap-2">
-        {planungen.slice(0, 5).map((p, i) => (
+        {planning_procedures.slice(0, 5).map((p, i) => (
           <div key={`${p.kvonr}-${p.date}-${i}`} className="flex items-start gap-2.5">
             <CalendarDays className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
             <div className="min-w-0 flex-1">
               <p className="text-[12.5px] leading-snug text-foreground">
-                {p.vorlage_titel || p.template_number || "Vorlage"}
+                {p.template_title || p.template_number || "Vorlage"}
               </p>
               <p className="mt-0.5 font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
                 {p.committee}{p.date ? ` · ${fmtDatum(p.date)}` : ""}

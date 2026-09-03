@@ -18,11 +18,10 @@ from kern.email import send_email
 from kern.store import Store
 
 from ..config import get_settings
-from ..antworten import (AdminAliasGeloescht, AdminAliasListe, AdminFeedbackGelesen,
-                        AdminFeedbackListe, AdminGrenzen, AdminJob, AdminLlmVerbrauch,
-                        AdminNutzerDetail, AdminNutzerZeile, AdminOrtsKandidat,
-                        AdminOrtsKandidaten, AdminQuizStatistik, AdminUngelesen,
-                        AdminWachstum, Ok)
+from ..antworten import (AdminAliasDeleted, AdminAliasList, AdminFeedbackList, AdminFeedbackRead,
+                         AdminGrowth, AdminJob, AdminLimits, AdminLlmUsage, AdminPlaceCandidate,
+                         AdminPlaceCandidates, AdminQuizStats, AdminUnread, AdminUserDetail,
+                         AdminUserRow, Ok)
 from ..deps import get_council_store, get_store, require_admin
 from ..schemas import (EntityAliasIn, EntityAliasOut, LimitsUpdate, PlaceReviewIn,                        RoleUpdate, StatusUpdate, WebUserOut)
 
@@ -72,7 +71,7 @@ def stats_growth(
     _admin: dict = Depends(require_admin),
     store: Store = Depends(get_store),
     council: CouncilStore = Depends(get_council_store),
-) -> AdminWachstum:
+) -> AdminGrowth:
     """Wachstums-Verläufe + WAU + Ratsinfo-Import für den Statistik-Tab (20a)."""
     days = _RANGE_DAYS.get(range, 90)
     data = store.admin_growth(days)
@@ -85,7 +84,7 @@ def quiz_stats(
     _admin: dict = Depends(require_admin),
     store: Store = Depends(get_store),
     council: CouncilStore = Depends(get_council_store),
-) -> AdminQuizStatistik:
+) -> AdminQuizStats:
     """Quiz-Kennzahlen für den Admin-Tab (Design 21a): aktive Fragen, ⌀
     Trefferquote, Meldungen + Gebiete mit wenigen offenen Fragen („bald leer“,
     aufsteigend — Generierung anstoßen)."""
@@ -97,10 +96,10 @@ def quiz_stats(
         key=lambda g: g["n"],
     )
     return {
-        "fragen_aktiv": total["fragen"],
+        "questions_active": total["fragen"],
         "avg_accuracy": k["avg_accuracy"],
-        "gemeldet": k["gemeldet"],
-        "gebiete_niedrig": gebiete,
+        "reported": k["gemeldet"],
+        "weak_categories": gebiete,
     }
 
 
@@ -152,7 +151,7 @@ def jobs(_admin: dict = Depends(require_admin), store: Store = Depends(get_store
 
 
 @router.get("/llm-usage")
-def llm_usage(_admin: dict = Depends(require_admin)) -> AdminLlmVerbrauch:
+def llm_usage(_admin: dict = Depends(require_admin)) -> AdminLlmUsage:
     """LLM-Kosten-Dashboard (Design 21a): per-Feature-Aggregat + 30-Tage-Verlauf,
     Monatskosten mit Hochrechnung und Budget-Ampel (aus llm_usage in ratslotse.sqlite)."""
     from kern import usage
@@ -166,7 +165,7 @@ def list_feedback(
     limit: int = Query(100, ge=1, le=500),
     _admin: dict = Depends(require_admin),
     store: Store = Depends(get_store),
-) -> AdminFeedbackListe:
+) -> AdminFeedbackList:
     """Eingegangenes Nutzer-Feedback, neueste zuerst — plus die Zahl der
     offenen Einträge für das Zeichen in der Navigation."""
     return {
@@ -179,7 +178,7 @@ def list_feedback(
 def feedback_unread_count(
     _admin: dict = Depends(require_admin),
     store: Store = Depends(get_store),
-) -> AdminUngelesen:
+) -> AdminUnread:
     """Schlanker Endpunkt allein für das Zeichen in der Navigation — die
     Sidebar liegt auf jeder Seite an und soll dafür nicht die ganze Liste holen."""
     return {"total": store.count_unread_feedback()}
@@ -191,7 +190,7 @@ def mark_feedback_read(
     read: bool = True,
     _admin: dict = Depends(require_admin),
     store: Store = Depends(get_store),
-) -> AdminFeedbackGelesen:
+) -> AdminFeedbackRead:
     """Als erledigt markieren — `?read=false` macht es wieder rückgängig."""
     if not store.set_feedback_read(feedback_id, read):
         raise HTTPException(status_code=404, detail="Feedback nicht gefunden.")
@@ -211,14 +210,14 @@ def delete_reported_qa_share(
 
 # ---- web users ----
 @router.get("/users")
-def list_users(_admin: dict = Depends(require_admin), store: Store = Depends(get_store)) -> list[AdminNutzerZeile]:
+def list_users(_admin: dict = Depends(require_admin), store: Store = Depends(get_store)) -> list[AdminUserRow]:
     """Nutzer-Liste mit Aktivitätssignalen (Design 20a): Themen-/Abo-/Quiz-/
     KI-Frage-Zahl + letzter Aktivitätstag je Konto."""
     return store.admin_user_rows()
 
 
 @router.get("/users/{user_id}")
-def user_detail(user_id: int, _admin: dict = Depends(require_admin), store: Store = Depends(get_store)) -> AdminNutzerDetail:
+def user_detail(user_id: int, _admin: dict = Depends(require_admin), store: Store = Depends(get_store)) -> AdminUserDetail:
     """Nutzer-Detail (Design 20a): Feature-Nutzung, Angelegtes, 30-Tage-Verlauf."""
     detail = store.admin_user_detail(user_id)
     if not detail:
@@ -273,15 +272,15 @@ def set_limits(
     body: LimitsUpdate,
     _admin: dict = Depends(require_admin),
     store: Store = Depends(get_store),
-) -> AdminGrenzen:
+) -> AdminLimits:
     """Frage-Limits je Konto (Tims Wunsch 10.08.): Recherche-Tageskontingent
     (None = Standard, 0 = unbegrenzt, N = eigenes Limit) und Befreiung von den
     Rate-Limitern der Frage-Endpoints — z. B. für Power-Nutzer oder Tests."""
     if not store.get_web_user_by_id(user_id):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Nutzer*in nicht gefunden.")
-    store.set_web_user_limits(user_id, body.deep_limit, body.limits_frei)
+    store.set_web_user_limits(user_id, body.deep_limit, body.limits_unlocked)
     u = store.get_web_user_by_id(user_id)
-    return {"deep_limit": u.get("deep_limit"), "limits_frei": bool(u.get("limits_frei"))}
+    return {"deep_limit": u.get("deep_limit"), "limits_unlocked": bool(u.get("limits_unlocked"))}
 
 
 # ---- Themen-Dubletten (council.aliases) ----
@@ -289,7 +288,7 @@ def set_limits(
 def list_entity_aliases(
     _admin: dict = Depends(require_admin),
     store: CouncilStore = Depends(get_council_store),
-) -> AdminAliasListe:
+) -> AdminAliasList:
     """Zusammengeführte Themen mit Quelle und Begründung, für die Durchsicht."""
     return {"aliases": store.list_entity_aliases()}
 
@@ -334,7 +333,7 @@ def delete_entity_alias(
     slug: str,
     _admin: dict = Depends(require_admin),
     store: CouncilStore = Depends(get_council_store),
-) -> AdminAliasGeloescht:
+) -> AdminAliasDeleted:
     """Eine Zusammenführung aufheben — das Thema erscheint wieder eigenständig.
 
     Möglich, weil die Roh-Beobachtungen unangetastet bleiben und die Themen
@@ -356,7 +355,7 @@ def place_candidates(
     min_decisions: int = Query(3, ge=1, le=100),
     _admin: dict = Depends(require_admin),
     store: CouncilStore = Depends(get_council_store),
-) -> AdminOrtsKandidaten:
+) -> AdminPlaceCandidates:
     """Automatisch gefundene, noch nicht statisch katalogisierte Orte prüfen."""
     items = store.location_candidates(
         review_status, limit=limit, min_decisions=min_decisions)
@@ -369,7 +368,7 @@ def review_place_candidate(
     body: PlaceReviewIn,
     admin: dict = Depends(require_admin),
     store: CouncilStore = Depends(get_council_store),
-) -> AdminOrtsKandidat:
+) -> AdminPlaceCandidate:
     try:
         return store.review_location_candidate(
             location_slug, status=body.status, place_id=body.place_id,

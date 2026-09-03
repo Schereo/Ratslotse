@@ -53,14 +53,14 @@ export type StellenZeile = {
 };
 
 export type StellenplanDaten = {
-  jahrgaenge: number[];
-  teile: Record<StellenTeil, string>;
-  summen: StellenZeile[];
-  gruppen: StellenZeile[];
+  editions: number[];
+  part_names: Record<StellenTeil, string>;
+  totals: StellenZeile[];
+  groups: StellenZeile[];
   /** Nur für den angefragten Jahrgang — je Jahrgang rund 190 Zeilen. */
-  zeilen: StellenZeile[];
-  fehlend: { budget_year: number; part: StellenTeil; name: string }[];
-  herkunft: Record<string, Herkunft>;
+  rows: StellenZeile[];
+  missing: { budget_year: number; part: StellenTeil; name: string }[];
+  provenance: Record<string, Herkunft>;
 };
 
 /** Wie die Teile auf der Seite heißen. Der Plan schreibt „Arbeitnehmerinnen
@@ -77,14 +77,14 @@ export const TEILE: StellenTeil[] = ["A", "B"];
 /** Die Gesamtzeile eines Jahrgangs und Teils — oder `null`, wo sie fehlt. */
 export function gesamt(daten: StellenplanDaten, budget_year: number,
                        part: StellenTeil): StellenZeile | null {
-  return daten.summen.find((z) => z.budget_year === budget_year && z.part === part) ?? null;
+  return daten.totals.find((z) => z.budget_year === budget_year && z.part === part) ?? null;
 }
 
 /** Fehlt dieser Teil im Jahrgang? Dann gibt es ihn nicht als Null, sondern
  *  als Lücke mit Begründung. */
 export function fehlt(daten: StellenplanDaten, budget_year: number,
                       part: StellenTeil): boolean {
-  return daten.fehlend.some((f) => f.budget_year === budget_year && f.part === part);
+  return daten.missing.some((f) => f.budget_year === budget_year && f.part === part);
 }
 
 /** Die Besetzungslücke eines Teils — ausschließlich aus der Vorjahresspalte.
@@ -110,7 +110,7 @@ export function luecke(z: StellenZeile | null): {
 /** Jahrgänge, für die dieser Teil vorliegt — aufsteigend. */
 export function jahrgaengeMitTeil(daten: StellenplanDaten,
                                   part: StellenTeil): number[] {
-  return daten.summen.filter((z) => z.part === part)
+  return daten.totals.filter((z) => z.part === part)
     .map((z) => z.budget_year).sort((a, b) => a - b);
 }
 
@@ -158,5 +158,5 @@ export function deDatum(iso: string | null): string {
 export function herkunftVon(daten: StellenplanDaten,
                             id: number | null | undefined): Herkunft | null {
   if (id == null) return null;
-  return daten.herkunft[String(id)] ?? null;
+  return daten.provenance[String(id)] ?? null;
 }

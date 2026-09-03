@@ -599,8 +599,8 @@ def embed_anlagen_missing(store, limit: int | None = None) -> int:
     for a in todo:
         prefix = " | ".join(t for t in (
             a.get("label"),
-            f"Vorlage {a.get('template_number')}: {a.get('vorlage_titel')}"
-            if a.get("template_number") or a.get("vorlage_titel") else None,
+            f"Vorlage {a.get('template_number')}: {a.get('template_title')}"
+            if a.get("template_number") or a.get("template_title") else None,
         ) if t)
         chunks = anlage_chunks(a.get("raw_text") or "", prefix=prefix)
         if not chunks:
@@ -662,7 +662,7 @@ def _anlage_lexikalisch(store, query: str, expanded: str, limit: int) -> list[in
     for row in store.anlagen_metadata_rows():
         label_tokens = _anlage_meta_tokens(row.get("label") or "")
         title_tokens = _anlage_meta_tokens(
-            f"{row.get('template_number') or ''} {row.get('vorlage_titel') or ''}")
+            f"{row.get('template_number') or ''} {row.get('template_title') or ''}")
         label_hits = q_tokens & label_tokens
         title_hits = q_tokens & title_tokens
         # Ein Dokumenttyp im Label ist besonders aussagekräftig; Titelwörter
@@ -713,8 +713,8 @@ def search_anlagen(store, query: str, expanded: str, top_k: int = 6,
         a = meta.get(did, {})
         metadata = " | ".join(t for t in (
             a.get("label"),
-            f"Vorlage {a.get('template_number')}: {a.get('vorlage_titel')}"
-            if a.get("template_number") or a.get("vorlage_titel") else None,
+            f"Vorlage {a.get('template_number')}: {a.get('template_title')}"
+            if a.get("template_number") or a.get("template_title") else None,
         ) if t)
         # v2-Chunks tragen diese Metadaten bereits. Nicht doppeln: Der
         # Zusatzkanal-Reranker deckelt bewusst bei 150 Zeichen, und ein

@@ -20,14 +20,14 @@ export type { Herkunft };
 export type VergleichStadt = {
   key: string;
   name: string;
-  ist_oldenburg: boolean;
+  is_oldenburg: boolean;
   /** Unter 100.000 Einwohnern rechnet das NFAG die Steuerkraftmesszahl mit
    *  anderen Nivellierungshebesätzen — die Fußnote gehört an den Wert. */
-  unter_100k: boolean;
+  below_100k: boolean;
 };
 
 export type VergleichWert = {
-  series: "tax_capacity" | "realsteuern";
+  series: "tax_capacity" | "real_taxes";
   year: number;
   key: string;
   city: string;
@@ -41,25 +41,25 @@ export type VergleichWert = {
 export type VergleichBeleg = {
   template_number: string;
   kvonr: number;
-  vorlage_url: string;
+  template_url: string;
   /** Der Eintrag in unserem eigenen Bestand — der Ausschuss hat den Bericht
    *  zur Kenntnis genommen. `null`, wenn der Bestand ihn (noch) nicht kennt. */
   decision_id: number | null;
   title: string | null;
-  anlagen: { document_id: number; label: string | null; url: string | null; is_motion: number }[];
+  attachments: { document_id: number; label: string | null; url: string | null; is_motion: number }[];
 };
 
 export type VergleichDaten = {
-  staedte: VergleichStadt[];
-  werte: VergleichWert[];
-  years: { tax_capacity?: number[]; realsteuern?: number[] };
-  beleg: VergleichBeleg;
-  herkunft: Record<string, Herkunft>;
+  cities: VergleichStadt[];
+  values: VergleichWert[];
+  years: { tax_capacity?: number[]; real_taxes?: number[] };
+  citation: VergleichBeleg;
+  provenance: Record<string, Herkunft>;
 };
 
 export function herkunftVon(daten: VergleichDaten,
                             id: number | null | undefined): Herkunft | null {
-  return id == null ? null : daten.herkunft[String(id)] ?? null;
+  return id == null ? null : daten.provenance[String(id)] ?? null;
 }
 
 /** Eine Kennzahl eines Jahres, je Stadt — `null`, wo sie fehlt.
@@ -68,11 +68,11 @@ export function herkunftVon(daten: VergleichDaten,
  *  nicht aufging, steht gar nicht im Bestand (`council/staedtevergleich.py`).
  *  Die Oberfläche zeigt dann eine Lücke, keine geschätzte Zahl. */
 export function indicator(
-  daten: VergleichDaten, series: "tax_capacity" | "realsteuern",
+  daten: VergleichDaten, series: "tax_capacity" | "real_taxes",
   name: string, year: number,
 ): Map<string, VergleichWert> {
   const aus = new Map<string, VergleichWert>();
-  for (const w of daten.werte) {
+  for (const w of daten.values) {
     if (w.series === series && w.indicator === name && w.year === year) {
       aus.set(w.key, w);
     }
@@ -82,7 +82,7 @@ export function indicator(
 
 /** Das jüngste Jahr einer Reihe, für das überhaupt etwas vorliegt. */
 export function juengstesJahr(daten: VergleichDaten,
-                              series: "tax_capacity" | "realsteuern"): number | null {
+                              series: "tax_capacity" | "real_taxes"): number | null {
   const years = daten.years[series] ?? [];
   return years.length ? years[years.length - 1] : null;
 }
@@ -106,30 +106,30 @@ export function steuerkraftJeEinwohner(daten: VergleichDaten, year: number): Bal
   const tax_index = indicator(daten, "tax_capacity", "steuerkraftmesszahl", year);
   const population = indicator(daten, "tax_capacity", "population", year);
   const aus: Balken[] = [];
-  for (const s of daten.staedte) {
+  for (const s of daten.cities) {
     const m = tax_index.get(s.key);
     const e = population.get(s.key);
     if (!m || !e || !e.value) continue;
     aus.push({
       key: s.key, name: s.name,
       value: (m.value * 1000) / e.value,
-      ist_oldenburg: s.ist_oldenburg, unter_100k: s.unter_100k,
+      ist_oldenburg: s.is_oldenburg, unter_100k: s.below_100k,
     });
   }
   return aus.sort((a, b) => b.value - a.value);
 }
 
 /** Eine gespeicherte Pro-Kopf- oder Prozent-Kennzahl als Balkenliste. */
-export function balken(daten: VergleichDaten, series: "tax_capacity" | "realsteuern",
+export function balken(daten: VergleichDaten, series: "tax_capacity" | "real_taxes",
                        name: string, year: number): Balken[] {
   const werte = indicator(daten, series, name, year);
   const aus: Balken[] = [];
-  for (const s of daten.staedte) {
+  for (const s of daten.cities) {
     const w = werte.get(s.key);
     if (!w) continue;
     aus.push({
       key: s.key, name: s.name, value: w.value,
-      ist_oldenburg: s.ist_oldenburg, unter_100k: s.unter_100k,
+      ist_oldenburg: s.is_oldenburg, unter_100k: s.below_100k,
     });
   }
   return aus.sort((a, b) => b.value - a.value);
@@ -144,7 +144,7 @@ export function platzVonOldenburg(zeilen: Balken[]): number | null {
 /** Eine Zeitreihe je Stadt — für die Steuereinnahmekraft über drei Jahre. */
 export function series(daten: VergleichDaten, name: string,
                       key: string): { year: number; value: number }[] {
-  return daten.werte
+  return daten.values
     .filter((w) => w.indicator === name && w.key === key)
     .map((w) => ({ year: w.year, value: w.value }))
     .sort((a, b) => a.year - b.year);
@@ -227,11 +227,11 @@ export const AUSGLIEDERUNGEN_2018: { stadt: string; was: string }[] = [
  *  Liste. Erkannt am Label, weil die `document_id` eine Eigenschaft unseres
  *  Bestands ist und kein Schlüssel, den die Seite kennen sollte. */
 export function antwortAnlage(beleg: VergleichBeleg) {
-  return beleg.anlagen.find((a) => /beantwortung/i.test(a.label ?? "")) ?? null;
+  return beleg.attachments.find((a) => /beantwortung/i.test(a.label ?? "")) ?? null;
 }
 
 export function antragAnlage(beleg: VergleichBeleg) {
-  return beleg.anlagen.find((a) => /antrag/i.test(a.label ?? "")
+  return beleg.attachments.find((a) => /antrag/i.test(a.label ?? "")
     && !/beantwortung/i.test(a.label ?? "")) ?? null;
 }
 

@@ -14,17 +14,37 @@ zugänglicher oder korrekter machen, sind willkommen.
 
 ## Vor dem Pull Request
 
-- **Tests laufen lassen:** `python -m pytest tests/ -q` (grün halten).
-- **Backend-Import prüfen:** `python -c "import nwz, council, scripts.check_council"`
-  (Repo-Root) und `cd web/backend && python -c "import app.main"` — beides muss ohne
-  Fehler durchlaufen (Python 3.12).
-- **Frontend baut:** `cd web/frontend && npm run build`.
+**Ein Befehl prüft alles, was auch die CI prüft:**
+
+```bash
+python scripts/pruefe.py
+```
+
+Er fährt Adressen-Lint, ruff, den API-Vertrag, die generierten Frontend-Typen,
+die Changelog-Fragmente, die Testsuite, den TypeScript-Übersetzer und die
+beiden Grafik-Proben. `--schnell` beschränkt ihn auf die fünf Prüfungen unter
+vier Sekunden, `--liste` zählt sie auf. Fehlt ein Werkzeug, sagt er, welches.
+
+**Einmal je Checkout einschalten**, dann läuft `--schnell` vor jedem Push und
+der Adressen-Lint vor jedem Commit:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+Was der Befehl nicht abdeckt und je nach Änderung dazugehört:
+
+- **Frontend baut:** `cd web/frontend && npm run build` (der Übersetzer allein
+  sieht den Bundler nicht).
 - **Doku baut** (falls `docs-site/` betroffen): `cd docs-site && npm run build`.
 - **Changelog-Fragment** (falls die Änderung Nutzer\*innen betrifft): eine Datei
   `changelog.d/<slug>.md` mit `kategorie: hinzugefuegt | geaendert | behoben` im
   Frontmatter und dem Eintrag darunter — ohne PR-Nummer, die trägt der
   Versionsschnitt nach. Nicht in `CHANGELOG.md` schreiben: Dort kollidiert jeder
-  parallele PR. Prüfen: `python scripts/changelog_schnitt.py --pruefen`.
+  parallele PR.
+- **Regeln der Schicht, in der du arbeitest:** neben dieser Datei liegt in
+  jedem größeren Verzeichnis eine eigene `CLAUDE.md` (`council/`, `kern/`,
+  `scripts/`, `web/backend/`, `web/frontend/`, `ios/`, `tests/`).
 - **Keine Secrets/Infra** im Diff (Keys, echte Server-IPs/Hosts, personenbezogene
   Daten). Konfiguration gehört in `.env` / GitHub-Secrets, nicht ins Repo.
 

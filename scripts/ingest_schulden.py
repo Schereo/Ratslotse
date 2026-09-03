@@ -54,8 +54,8 @@ _UA = {"User-Agent": "Ratslotse/1.0 (ratslotse.de; Haushalts-Bereich)"}
 #: Probenschlüssel → wie die Probe im Messwert heißt. Der Schlüssel steht
 #: schon in ``Herkunft.probe``; ``probe_result`` ist der Satz daneben und
 #: soll ihn nicht bloß wiederholen.
-PROBENNAMEN = {"schulden_summenzeile": "Summenprobe",
-               "schulden_prokopf": "Pro-Kopf-Gegenprobe"}
+PROBENNAMEN = {"debt_total_row": "Summenprobe",
+               "debt_per_capita": "Pro-Kopf-Gegenprobe"}
 
 
 def _de(zahl: float, nachkomma: int = 0, vorzeichen: bool = False) -> str:
@@ -233,7 +233,7 @@ def main() -> int:
 
         store.herkunft_aufraeumen()
         luecken = {t: n for t, n in store.herkunft_luecken().items()
-                   if t == "council_schulden"}
+                   if t == "council_debt"}
         if luecken:
             print(f"WARNUNG: Zeilen ohne Herkunft: {luecken}", file=sys.stderr)
     finally:

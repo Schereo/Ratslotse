@@ -51,7 +51,7 @@ Nur das Ergebnis, und das ist der Punkt
 ---------------------------------------
 Diese Route liefert **kein** Erträge/Aufwendungen-Paar. Das ist keine
 Nachlässigkeit, sondern die ehrliche Grenze: Die einzige Zahl dieser Dokumente,
-die zweifach belegt ist, ist das Jahresergebnis. ``council_wirtschaftsplaene``
+die zweifach belegt ist, ist das Jahresergebnis. ``council_business_plans``
 lässt ``revenues`` und ``expenses`` deshalb seit 20.08.2026 offen — ein
 ``NULL`` sagt „diese Quelle nennt es nicht", eine 0 wäre eine Behauptung.
 
@@ -75,8 +75,8 @@ from council.herkunft import Herkunft
 from council.wirtschaftsplan import (BETRIEBE, Wirtschaftsplan,
                                     WirtschaftsplanFehler, dokument_name)
 
-PROBE_KERNZAHL = "wirtschaftsplan_kernzahl"
-PROBE_INVESTITIONEN = "wirtschaftsplan_investitionen"
+PROBE_KERNZAHL = "business_plan_key_figure"
+PROBE_INVESTITIONEN = "business_plan_investments"
 
 PROBEN: dict[str, str] = {
     PROBE_KERNZAHL:

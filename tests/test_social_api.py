@@ -57,13 +57,13 @@ def test_ohne_token_ist_die_schnittstelle_aus(client):
     """Eine Standard-Installation soll gar nichts exponieren — und nicht
     verraten, dass es den Endpunkt gäbe."""
     get_settings.cache_clear()
-    assert client.get("/api/social/wochenvorschau").status_code == 404
+    assert client.get("/api/social/week-preview").status_code == 404
 
 
 def test_falscher_token_wird_abgewiesen(client, monkeypatch):
     _mit_token(monkeypatch)
     try:
-        r = client.get("/api/social/wochenvorschau",
+        r = client.get("/api/social/week-preview",
                        headers={"X-Social-Token": "falsch"})
         assert r.status_code == 401
     finally:
@@ -73,11 +73,11 @@ def test_falscher_token_wird_abgewiesen(client, monkeypatch):
 def test_richtiger_token_liefert_die_vorschau(client, monkeypatch):
     token = _mit_token(monkeypatch)
     try:
-        r = client.get("/api/social/wochenvorschau",
+        r = client.get("/api/social/week-preview",
                        headers={"X-Social-Token": token})
         assert r.status_code == 200
         daten = r.json()
-        assert "sitzungen" in daten and "punkte" in daten and "kommende" in daten
+        assert "sessions" in daten and "items" in daten and "upcoming" in daten
     finally:
         get_settings.cache_clear()
 
@@ -88,7 +88,7 @@ def test_nur_jpeg_wird_angenommen(client, monkeypatch, tmp_path):
     monkeypatch.setenv("SOCIAL_MEDIA_DIR", str(tmp_path))
     try:
         r = client.post(
-            "/api/social/medien/2026-08-24",
+            "/api/social/media/2026-08-24",
             headers={"X-Social-Token": token},
             files={"dateien": ("karte.jpg", io.BytesIO(b"<html>kein Bild"), "image/jpeg")},
         )
@@ -102,7 +102,7 @@ def test_tag_muss_ein_datum_sein(client, monkeypatch, tmp_path):
     monkeypatch.setenv("SOCIAL_MEDIA_DIR", str(tmp_path))
     try:
         r = client.post(
-            "/api/social/medien/..%2F..%2Fetc",
+            "/api/social/media/..%2F..%2Fetc",
             headers={"X-Social-Token": token},
             files={"dateien": ("a.jpg", io.BytesIO(b"\xff\xd8\xffrest"), "image/jpeg")},
         )
@@ -114,7 +114,7 @@ def test_tag_muss_ein_datum_sein(client, monkeypatch, tmp_path):
 def test_sitzungen_tag_muss_datum_sein(client, monkeypatch):
     token = _mit_token(monkeypatch)
     try:
-        r = client.get("/api/social/sitzungen/nicht-date",
+        r = client.get("/api/social/sessions/nicht-date",
                        headers={"X-Social-Token": token})
         assert r.status_code == 400
     finally:
@@ -129,7 +129,7 @@ def test_sitzungen_liefert_den_kalendertag(client, monkeypatch, council_store):
         "(1, 'Verkehrsausschuss', '2026-08-24', '17:00', 'Ratssaal', '')")
     council_store._conn.commit()
     try:
-        r = client.get("/api/social/sitzungen/2026-08-24",
+        r = client.get("/api/social/sessions/2026-08-24",
                        headers={"X-Social-Token": token})
         assert r.status_code == 200
         daten = r.json()
@@ -141,7 +141,7 @@ def test_sitzungen_liefert_den_kalendertag(client, monkeypatch, council_store):
 def test_fundstueck_ohne_eintrag_ist_null(client, monkeypatch, council_store):
     token = _mit_token(monkeypatch)
     try:
-        r = client.get("/api/social/fundstueck/2026-08-25",
+        r = client.get("/api/social/daily-find/2026-08-25",
                        headers={"X-Social-Token": token})
         assert r.status_code == 200 and r.json() is None
     finally:
@@ -164,7 +164,7 @@ def test_neue_beschluesse_filtert_wichtigkeit_und_id(client, monkeypatch, counci
               "VALUES (10, 'CDU', 'against')")
     c.commit()
     try:
-        r = client.get("/api/social/neue-beschluesse",
+        r = client.get("/api/social/new-decisions",
                        headers={"X-Social-Token": token},
                        params={"seit_id": 0, "mindest_wichtig": 55})
         assert r.status_code == 200
@@ -178,9 +178,9 @@ def test_neue_beschluesse_filtert_wichtigkeit_und_id(client, monkeypatch, counci
 def test_hoechste_beschluss_id_ohne_bestand_ist_null(client, monkeypatch, council_store):
     token = _mit_token(monkeypatch)
     try:
-        r = client.get("/api/social/hoechste-beschluss-id",
+        r = client.get("/api/social/highest-decision-id",
                        headers={"X-Social-Token": token})
-        assert r.status_code == 200 and r.json() == {"hoechste_id": 0}
+        assert r.status_code == 200 and r.json() == {"highest_id": 0}
     finally:
         get_settings.cache_clear()
 
@@ -193,7 +193,7 @@ def test_hochladen_vergibt_die_namen_selbst(client, monkeypatch, tmp_path):
     try:
         jpeg = b"\xff\xd8\xff" + b"x" * 100
         r = client.post(
-            "/api/social/medien/2026-08-24",
+            "/api/social/media/2026-08-24",
             headers={"X-Social-Token": token},
             files=[("dateien", ("../boese.php", io.BytesIO(jpeg), "image/jpeg")),
                    ("dateien", ("zweite.jpg", io.BytesIO(jpeg), "image/jpeg"))],
@@ -222,7 +222,7 @@ def test_kennung_darf_mehr_als_ein_datum_sein(client, monkeypatch, tmp_path):
     try:
         for kennung in ("2026-08-24", "2026-08-24-fundstueck", "beschluss-4711",
                         "stories-2026-08-24"):
-            r = client.post(f"/api/social/medien/{kennung}",
+            r = client.post(f"/api/social/media/{kennung}",
                             headers={"X-Social-Token": token},
                             files={"dateien": ("k.jpg", io.BytesIO(jpeg), "image/jpeg")})
             assert r.status_code == 200, (kennung, r.text)
@@ -240,7 +240,7 @@ def test_kennung_laesst_keinen_pfad_durch(client, monkeypatch, tmp_path):
     jpeg = b"\xff\xd8\xff" + b"x" * 64
     try:
         for boese in ("stories/2026-08-24", "..", "-start", "a" * 65, "Gross"):
-            r = client.post(f"/api/social/medien/{boese}",
+            r = client.post(f"/api/social/media/{boese}",
                             headers={"X-Social-Token": token},
                             files={"dateien": ("k.jpg", io.BytesIO(jpeg), "image/jpeg")})
             assert r.status_code in (400, 404), (boese, r.status_code)
@@ -264,7 +264,7 @@ def test_abgelegte_bilder_sind_oeffentlich_abrufbar(monkeypatch, tmp_path):
         modul = importlib.reload(hauptmodul)
         with TestClient(modul.app) as c:
             jpeg = b"\xff\xd8\xff" + b"y" * 200
-            r = c.post("/api/social/medien/2026-08-24",
+            r = c.post("/api/social/media/2026-08-24",
                        headers={"X-Social-Token": "geheim-fuer-den-bot"},
                        files={"dateien": ("k.jpg", io.BytesIO(jpeg), "image/jpeg")})
             assert r.status_code == 200, r.text

@@ -226,7 +226,7 @@ def _pruefe_am_text(session: CouncilSession, topic: dict, nums: list[str],
             model=MODEL, response_format={"type": "json_object"}, temperature=0,
             max_tokens=400,
             messages=[{"role": "user", "content": prompts.render(
-                "council_watcher_pruefung", thema=topic.get("name", ""),
+                "council_watcher_check", thema=topic.get("name", ""),
                 beschreibung=topic.get("description", ""), kandidaten="\n".join(zeilen))}],
         )
         roh = (answer.choices[0].message.content or "").strip()

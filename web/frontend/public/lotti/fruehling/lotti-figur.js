@@ -22,7 +22,7 @@
  * `background-position`, und der Browser schiebt dafür nur eine bereits
  * dekodierte Textur. Das läuft auch auf einem alten Telefon.
  *
- * DREI BLÄTTER, EINZELN GEHOLT. Ein Blatt mit allem wäre bequem und
+ * MEHRERE BLÄTTER, EINZELN GEHOLT. Ein Blatt mit allem wäre bequem und
  * falsch: Eine Seite, die nur ein ruhendes Maskottchen zeigt, lädt sonst
  * auch das Winken, das Suchen und vier Zeigerichtungen mit. Der Kern
  * (ruhen, blinzeln, nicken) ist ein Fünftel des Ganzen; alles andere holt
@@ -257,7 +257,14 @@ class LottiFigur extends HTMLElement {
    * dagegen am meisten.
    */
   _lebenAnwenden() {
-    const an = !this._regung && !this._ruhig && !this.hasAttribute('ohne-leben');
+    /* Beim BLINZELN läuft die Grundregung weiter: Der Lidschlag bewegt
+       nur die Augen und beißt sich nicht mit Atmen und Wiegen — sie
+       abzuschalten hieße, dass die Figur bei jedem Blinzeln aus der
+       Atemphase auf Neutral springt (der zweite Teil des Flackerns,
+       Tims Befund 01.09.26). Für alles andere gilt weiter: eine
+       Bewegung zur Zeit. */
+    const an = (!this._regung || this._regung.name === 'blinzelt')
+      && !this._ruhig && !this.hasAttribute('ohne-leben');
     this._buehne.classList.toggle('lebt', an);
   }
 
@@ -331,7 +338,15 @@ class LottiFigur extends HTMLElement {
     if (!eintrag) return false;
 
     const starten = () => {
-      this._ueberblenden();
+      /* Die Blende NUR, wenn wirklich etwas springt: mitten aus einer
+         laufenden Regung heraus, oder hinein in eine Schleife (die
+         startet nicht in der Ruhehaltung). Vom Ruhebild in eine einmalige
+         Regung ist der Sprung per Bauregel null — ihr Anfang IST die
+         Ruhehaltung. Und die Blende ist nicht gratis: 140 ms liegen altes
+         und neues Bild übereinander; die deckenden Pixel ändert das
+         nicht, den HALBTRANSPARENTEN Bodenschatten verdoppelt es — er
+         pulsierte bei jedem Blinzeln auf (Tims Befund 01.09.26). */
+      if (this._regung || eintrag.wiederholt) this._ueberblenden();
       this._regung = { name, ...eintrag };
       this._imBild = 0;
       this._richtung = 1;
@@ -419,6 +434,8 @@ class LottiFigur extends HTMLElement {
       this._takten();
       return;
     }
+    // Hier bleibt die Blende: `ruhe()` reißt mitten aus einer Schleife
+    // oder Folge — der Sprung zur Ruhehaltung ist echt.
     this._ueberblenden();
     this._regung = null;
     this._richtung = 1;
@@ -489,7 +506,10 @@ class LottiFigur extends HTMLElement {
 
   _beenden(jetzt) {
     const name = this._regung?.name;
-    this._ueberblenden();
+    /* KEINE Blende: Jede Regung, die hier ankommt, endet per Bauregel in
+       der Ruhehaltung (Rückwärts-Regungen bei Bild 0 sowieso) — der
+       Wechsel aufs Ruhebild ist deckungsgleich, die Blende ließe nur den
+       Schatten aufpulsen. */
     this._regung = null;
     this._richtung = 1;
     this._imBild = 0;
@@ -516,13 +536,16 @@ class LottiFigur extends HTMLElement {
      dazu, weil der Vorrat mitwächst.
 
      Die GEWICHTE sind der Rest: Blinzeln ist immer richtig, Nicken
-     gelegentlich, alles andere selten. Ein Maskottchen, das ständig winkt,
-     ist kein lebendiges, sondern ein aufdringliches. */
+     gelegentlich. MEHR IST ES SEIT DEM 01.09.26 BEWUSST NICHT: Die erste
+     Fassung würfelte auch Winken, Lachen und Staunen — sobald eine Seite
+     ein Blatt für ihre eigene Regung geladen hatte, winkte die Figur
+     daneben ohne Anlass. Eine Geste, die etwas BEDEUTEN soll („gefunden!",
+     „hör her"), darf nicht auch zufällig passieren; alles außer Blinzeln
+     und Nicken spielt deshalb nur, wer es ausdrücklich verlangt. */
 
   /** Was die Regie überhaupt spielen darf, nach Häufigkeit gewichtet. */
   static REGIE = {
-    blinzelt: 10, nickt: 2, wartet: 2, 'schaut-umher': 2,
-    denkt: 1, staunt: 1, 'freut-sich': 1, seufzt: 1, lacht: 1, winkt: 1,
+    blinzelt: 10, nickt: 1,
   };
 
   /** Wie lange die Regie zwischen zwei Einfällen wartet. */
@@ -541,8 +564,10 @@ class LottiFigur extends HTMLElement {
     for (const [name, gewicht] of Object.entries(LottiFigur.REGIE)) {
       const eintrag = this._verzeichnis?.regungen?.[name];
       if (!eintrag || !this._blatt(eintrag.gruppe)?.bereit) continue;
-      // Nichts, was hängen bleibt: Eine gehaltene Geste löste sich nie auf.
-      if (eintrag.halt != null) continue;
+      // Nichts, was hängen bleibt: Eine gehaltene Geste löste sich nie
+      // auf, und eine Schleife (wiederholt) liefe bis zum Seitenwechsel —
+      // die erste Fassung blieb so nach Minuten im „denkt" stehen.
+      if (eintrag.halt != null || eintrag.wiederholt) continue;
       for (let i = 0; i < gewicht; i++) vorrat.push(name);
     }
     if (!vorrat.length) return 'blinzelt';

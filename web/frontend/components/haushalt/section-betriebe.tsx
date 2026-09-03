@@ -35,7 +35,8 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { useFetch } from "@/lib/use-fetch";
 import {
-  HaushaltAuswahl, WirtschaftsplanZeile, deMio, haushaltUrl, herkunftVon,
+  EigenbetriebKennzahl, HaushaltAuswahl, WirtschaftsplanZeile, deMio, haushaltUrl,
+  herkunftVon,
 } from "@/lib/haushalt";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import type { Herkunft } from "@/lib/herkunft";
@@ -47,14 +48,14 @@ import type { JahrPunkt } from "@/components/grafik/daten";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { cn } from "@/lib/utils";
 
-// `herkunft` ist hier PFLICHT und keine Zugabe: Ein Jahrgang besteht aus
+// `provenance` ist hier PFLICHT und keine Zugabe: Ein Jahrgang besteht aus
 // bis zu sieben Plänen von sieben Betrieben, und nur die `herkunft_id` der
 // Zeile sagt, welches der sieben Papiere hinter DIESER Karte steht.
 /** Was dieser Abschnitt an Daten braucht. Die SEITE holt sie — sie muss aus
  *  denselben Zeilen die Nummerierung der Wirtschaftspläne rechnen
  *  (`jeDokument`), und `useFetch` hat keinen Zwischenspeicher: Ein zweiter
  *  Aufruf wäre ein zweiter Request auf dieselbe Adresse. */
-export type BetriebeDaten = HaushaltAuswahl<"business_plans" | "herkunft">;
+export type BetriebeDaten = HaushaltAuswahl<"business_plans" | "enterprise_accounts" | "provenance">;
 
 
 
@@ -93,17 +94,17 @@ const ENDE: Record<string, string> = {
  *  (`council/wirtschaftsplan_kernzahl.BELEGLAGE`) — hier nur die Fassung für
  *  Leserinnen. */
 const BELEGLAGE: Record<string, { kurz: string; lang: string }> = {
-  wirtschaftsplan_kernzahl: {
+  business_plan_key_figure: {
     kurz: "Beschluss + Anlage",
     lang: "Die Zahl steht im Beschlusstext der Ratsvorlage und noch einmal in "
       + "der beigefügten Anlage — zwei getrennte Dokumente.",
   },
-  wirtschaftsplan_erfolgsplan: {
+  business_plan_profit_loss: {
     kurz: "Beschlusstext, nachgerechnet",
     lang: "Der Beschlusstext nennt Erträge, Aufwendungen und Ergebnis; die "
       + "Rechnung geht auf den Cent auf.",
   },
-  wirtschaftsplan_spalten: {
+  business_plan_columns: {
     kurz: "Erfolgsplan, spaltenweise geprüft",
     lang: "Aus dem Erfolgsplan der Anlage. Erträge minus Aufwendungen ergibt "
       + "das Ergebnis — geprüft in jeder Spalte der Tabelle, nicht nur in der "
@@ -142,8 +143,35 @@ function juengsteZeile(zeilen: WirtschaftsplanZeile[]): WirtschaftsplanZeile {
   return [...zeilen].sort((a, b) => a.year - b.year)[zeilen.length - 1];
 }
 
-function BetriebsKarte({ zeilen, juengstesJahr, herkunftFuer }: {
-  zeilen: WirtschaftsplanZeile[]; juengstesJahr: number;
+/** Die Kennzahl eines Jahres — oder null, wenn der Abschluss sie nicht nennt. */
+function kennzahl(abschluesse: EigenbetriebKennzahl[], year: number,
+                  metric: string): EigenbetriebKennzahl | null {
+  return abschluesse.find((k) => k.year === year && k.metric === metric) ?? null;
+}
+
+/** Das Ist eines Betriebs: der jüngste Abschluss mit Jahresergebnis, und
+ *  die Reihe der Jahresergebnisse für die Kurve neben dem Plan. Der Plan des
+ *  Jahres wird danebengelegt, wo es ihn gibt — „geplant −0,4, geworden −2,7“
+ *  ist der Satz, für den diese Schicht gebaut wurde. */
+function abschlussSicht(abschluesse: EigenbetriebKennzahl[], plaene: WirtschaftsplanZeile[]) {
+  const ergebnisse = abschluesse.filter((k) => k.metric === "result")
+    .sort((a, b) => a.year - b.year);
+  if (!ergebnisse.length) return null;
+  const letztes = ergebnisse[ergebnisse.length - 1];
+  const plan = plaene.find((z) => z.year === letztes.year) ?? null;
+  return {
+    year: letztes.year,
+    result: letztes,
+    revenues: kennzahl(abschluesse, letztes.year, "revenues"),
+    balance: kennzahl(abschluesse, letztes.year, "balance_total"),
+    equity: kennzahl(abschluesse, letztes.year, "equity"),
+    plan,
+    series: ergebnisse.map((k) => ({ year: k.year, value: k.value / 1e6 })),
+  };
+}
+
+function BetriebsKarte({ zeilen, abschluesse, juengstesJahr, herkunftFuer }: {
+  zeilen: WirtschaftsplanZeile[]; abschluesse: EigenbetriebKennzahl[]; juengstesJahr: number;
   /** Die Suche, nicht das Ergebnis: WELCHE Zeile die jüngste ist, entscheidet
    *  diese Karte selbst (s. `nach` unten) — der Aufrufer wüsste es nur, wenn
    *  er dieselbe Sortierung noch einmal schriebe, und zwei Fassungen
@@ -155,8 +183,25 @@ function BetriebsKarte({ zeilen, juengstesJahr, herkunftFuer }: {
   const nach = [...zeilen].sort((a, b) => a.year - b.year);
   const letzte = juengsteZeile(zeilen);
   const b = beleg(letzte.probes);
-  const series: JahrPunkt[] = nach.map((z) => ({ year: z.year, value: z.result / 1e6 }));
-  const zeigKurve = nach.length >= 3;
+  // Fehlende Jahrgänge als Lücke MIT Grund — statt „ohne Wert und ohne
+  // Grund" (Durchsicht 02.09.2026): Für das Jahr liegt kein lesbarer
+  // Wirtschaftsplan im Ratsinformationssystem.
+  const ergebnisNach = new Map(nach.map((z) => [z.year, z.result / 1e6]));
+  const series: JahrPunkt[] = [];
+  for (let j = nach[0].year; j <= nach[nach.length - 1].year; j++) {
+    const v = ergebnisNach.get(j);
+    series.push(v != null
+      ? { year: j, value: v }
+      : { year: j, fehlt: "kein lesbarer Wirtschaftsplan für dieses Jahr im Ratsinformationssystem" });
+  }
+  const ist = abschlussSicht(abschluesse, zeilen);
+  // Keine Kurve für einen Plan, der jedes Jahr dieselbe Zahl nennt (der
+  // Bäderbetrieb plant 0 €) — es sei denn, der Jahresabschluss zeichnet
+  // daneben eine zweite Linie, die sich bewegt (Durchsicht 02.09.2026).
+  const flach = new Set(nach.map((z) => z.result)).size <= 1;
+  const istBewegt = new Set((ist?.series ?? []).map((p) => ("value" in p ? p.value : null))
+    .filter((v) => v != null)).size > 1;
+  const zeigKurve = nach.length >= 3 && (!flach || istBewegt);
 
   return (
     <div className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
@@ -216,7 +261,7 @@ function BetriebsKarte({ zeilen, juengstesJahr, herkunftFuer }: {
           Die Bedingung hängt an der PROBE und nicht am Betriebskürzel: Wer
           künftig ebenfalls ausgeglichen plant, bekommt denselben Satz, ohne dass
           ihn jemand hier einträgt. */}
-      {letzte.result === 0 && letzte.probes.includes("kernzahl") && (
+      {letzte.result === 0 && letzte.probes.includes("business_plan_key_figure") && (
         <p className="mt-2 max-w-[62ch] text-[12px] leading-relaxed text-muted-foreground">
           <span className="font-semibold text-foreground">Ein ausgeglichener
           Plan.</span> Die Null ist keine fehlende Zahl, sondern die Absicht:
@@ -247,10 +292,71 @@ function BetriebsKarte({ zeilen, juengstesJahr, herkunftFuer }: {
         </p>
       )}
 
+      {/* WAS DARAUS WURDE. Der Plan oben ist der Vorsatz; hier steht, was der
+          geprüfte Jahresabschluss danach sagt — für das jüngste Jahr, das
+          einen trägt. Der Satz „geplant … geworden …“ kommt nur, wenn beide
+          dasselbe Jahr meinen; sonst stünde ein Plan neben einem fremden
+          Ist. Buchwerte nach Handelsrecht, keine Marktwerte. */}
+      {ist && (
+        <div className="mt-3 rounded-xl border border-border bg-muted/30 p-3">
+          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+            Was daraus wurde · Jahresabschluss {ist.year}
+          </p>
+          <dl className="mt-1.5 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-[13px]">
+            {ist.revenues && (
+              <>
+                <dt className="text-muted-foreground">Umsatzerlöse</dt>
+                <dd className="text-right font-semibold tabular-nums">
+                  {deMio(ist.revenues.value / 1e6)}&#8239;Mio.&nbsp;€
+                </dd>
+              </>
+            )}
+            <dt className="font-semibold">Jahresergebnis</dt>
+            <dd className="text-right font-display text-[15px] font-bold tabular-nums">
+              {deMio(ist.result.value / 1e6)}&#8239;Mio.&nbsp;€
+            </dd>
+            {ist.balance && (
+              <>
+                <dt className="text-muted-foreground">Bilanzsumme</dt>
+                <dd className="text-right font-semibold tabular-nums">
+                  {deMio(ist.balance.value / 1e6)}&#8239;Mio.&nbsp;€
+                </dd>
+              </>
+            )}
+            {ist.equity && (
+              <>
+                <dt className="text-muted-foreground">Eigenkapital</dt>
+                <dd className="text-right font-semibold tabular-nums">
+                  {deMio(ist.equity.value / 1e6)}&#8239;Mio.&nbsp;€
+                </dd>
+              </>
+            )}
+          </dl>
+          {ist.plan && (
+            <p className="mt-1.5 max-w-[62ch] text-[12px] leading-relaxed text-muted-foreground">
+              Geplant waren für {ist.year}{" "}
+              <span className="font-semibold text-foreground tabular-nums">
+                {deMio(ist.plan.result / 1e6)}&#8239;Mio.&nbsp;€
+              </span>, geworden sind es{" "}
+              <span className="font-semibold text-foreground tabular-nums">
+                {deMio(ist.result.value / 1e6)}&#8239;Mio.&nbsp;€
+              </span>.
+            </p>
+          )}
+          <p className="mt-1.5 text-[11.5px] leading-relaxed text-muted-foreground">
+            Beleg: Prüfbericht zum Jahresabschluss {ist.result.report_year}
+            {ist.result.confirmations > 1
+              && ` · ${ist.result.confirmations} Berichte nennen dieselbe Zahl`}.
+            <Beleg q="enterprise_accounts" h={herkunftFuer(ist.result.herkunft_id)} />
+          </p>
+        </div>
+      )}
       <div className="mt-2.5 border-t border-dashed border-border pt-2">
         <p className="text-[11.5px] leading-relaxed text-muted-foreground">
-          <span className="font-semibold text-foreground">Beleg: {b.kurz}.</span>{" "}
-          {b.lang}
+          {/* Kurz, mit der Erklärung im Tooltip: Drei Zeilen Probenbeschreibung
+              auf jeder der sieben Karten waren Selbstvergewisserung, keine
+              Auskunft (Durchsicht 02.09.2026, Designsprache § 7). */}
+          <span className="font-semibold text-foreground" title={b.lang}>Beleg: {b.kurz}.</span>
           <Beleg q="wirtschaftsplan" h={herkunftFuer(letzte.herkunft_id)} />
           {letzte.draft_date && ` · Stand des Verwaltungsentwurfs: ${letzte.draft_date}`}
         </p>
@@ -268,6 +374,9 @@ function BetriebsKarte({ zeilen, juengstesJahr, herkunftFuer }: {
             unit="Mio. €"
             nachkomma={2}
             title="Jahresergebnis im Plan"
+            zweitreihe={ist && ist.series.length >= 2
+              ? { label: "laut Jahresabschluss", series: ist.series }
+              : undefined}
             ariaTitel={`Geplantes Jahresergebnis ${letzte.enterprise_name}, `
               + `${nach[0].year} bis ${letzte.year}, in Millionen Euro`}
           />
@@ -362,6 +471,8 @@ export function BetriebeAbschnitt({ data, loading }: {
         <div className="grid gap-4 lg:grid-cols-2">
           {nachBetrieb.map((zeilen) => (
             <BetriebsKarte key={zeilen[0].enterprise} zeilen={zeilen}
+              abschluesse={(data.enterprise_accounts ?? [])
+                .filter((k) => k.enterprise === zeilen[0].enterprise)}
               juengstesJahr={juengstes}
               herkunftFuer={(id) => herkunftVon(data, id)} />
           ))}
@@ -382,7 +493,9 @@ export function BetriebeAbschnitt({ data, loading }: {
               <strong className="text-foreground">Der Eigenbetrieb Hafen.</strong>{" "}
               Von ihm liegen nur zwei Wirtschaftspläne vor, beide aus 2019 und
               2020, in einem Aufbau, den wir nicht maschinell auslesen können.
-              Deshalb weisen wir daraus keine Zahlen aus.
+              Deshalb weisen wir daraus keine Zahlen aus. Seine geprüften
+              Jahresabschlüsse 2017 bis 2020 stehen im Bestand und in der
+              KI-Frage — eine Karte bekommt er erst mit einem lesbaren Plan.
             </li>
             <li>
               <strong className="text-foreground">Erträge und Aufwendungen der

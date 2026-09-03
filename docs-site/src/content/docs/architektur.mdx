@@ -115,7 +115,7 @@ nötigen Felder.
 - `council_alerts_sent`, `committee_notifications` — Deduplizierung der Benachrichtigungen
 - `committee_summaries` — gecachte Agenda-Zusammenfassungen
 - `council_protocols`, `council_decisions`, `council_attendance`,
-  `council_vorlagen`, `council_anlagen`, `council_beratungen` — Dokument-Auswertung
+  `council_templates`, `council_attachments`, `council_deliberations` — Dokument-Auswertung
   und Beratungsfolge (siehe [Beschlüsse](/docs/beschluesse/))
 - `council_persons`, `council_memberships` — Mandatsträger*innen und Gremien
 - `council_entities` (+ `_links`, `_meta`, `_obs`, `_scanned`) — erkannte Orte
@@ -124,9 +124,9 @@ nötigen Felder.
   („Ähnliche Beschlüsse", siehe [ADR 0003](/docs/adr/0003-fastembed-statt-torch/))
 - `council_field_recaps`, `council_goal_links` — Themenfeld-Rückblicke und
   Ziele-Tracking
-- `council_fundstuecke` — kuratierte „Fundstück des Tages"-Karten
+- `council_daily_finds` — kuratierte „Fundstück des Tages"-Karten
   (siehe [Bewertungs-Scores](/docs/bewertungen/))
-- `council_quiz_questions`, `council_haushalt` — Quizfragen und Haushaltszahlen
+- `council_quiz_questions`, `council_budget` — Quizfragen und Haushaltszahlen
 - `council_decisions_fts` — FTS5-Volltextindex über die Beschlüsse
 
 ---

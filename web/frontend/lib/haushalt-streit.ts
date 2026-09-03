@@ -2,7 +2,7 @@
 //
 // Die Seite zeigt drei Dinge je Haushaltsjahrgang: welche Änderungslisten zur
 // Abstimmung standen, was in der Debatte gesagt wurde und wie am Ende
-// abgestimmt wurde. Alles kommt aus `/council/haushalt/streit`, also aus den
+// abgestimmt wurde. Alles kommt aus `/council/budget/debate`, also aus den
 // Ratsprotokollen — nicht aus einem Finanzdokument.
 //
 // AUSGEWOGENHEIT IST HIER KEINE GESCHMACKSFRAGE, SONDERN DIE HAUPTREGEL.
@@ -74,11 +74,11 @@ export type StreitStation = {
   official_text: StreitBeschluss | null;
   antraege: StreitAntrag[];
   debatte: StreitWortbeitrag[];
-  protokoll_url: string | null;
+  minutes_url: string | null;
 };
 
 export type StreitRunde = { year: number; stationen: StreitStation[] };
-export type StreitDaten = { runden: StreitRunde[] };
+export type StreitDaten = { rounds: StreitRunde[] };
 
 /** So viele Zeichen jeder Rede stehen ohne Aufklappen da — für jede gleich. */
 export const VORSCHAU_ZEICHEN = 320;
@@ -102,12 +102,12 @@ export function vorschau(text: string): { kopf: string; rest: string } {
 
 /** Die Jahrgänge, neueste zuerst — so steht der aktuelle Streit oben. */
 export function jahrgaenge(daten: StreitDaten | null): number[] {
-  return (daten?.runden ?? []).map((r) => r.year).sort((a, b) => b - a);
+  return (daten?.rounds ?? []).map((r) => r.year).sort((a, b) => b - a);
 }
 
 export function runde(daten: StreitDaten | null, year: number | null): StreitRunde | null {
   if (!daten || year == null) return null;
-  return daten.runden.find((r) => r.year === year) ?? null;
+  return daten.rounds.find((r) => r.year === year) ?? null;
 }
 
 /** Die Station, an der die Debatte hängt: die mit den meisten Wortbeiträgen.
@@ -189,7 +189,7 @@ export function verhandlungsBilanz(r: StreitRunde | null): BilanzZeile[] {
  *  nie zu `ohne`: Sitzungsleitung ist eine Rolle, keine Fraktion. */
 export function ohneZuordnung(daten: StreitDaten | null): { ohne: number; gesamt: number } {
   let ohne = 0, gesamt = 0;
-  for (const r of daten?.runden ?? []) {
+  for (const r of daten?.rounds ?? []) {
     for (const s of r.stationen) {
       for (const b of s.debatte) {
         gesamt += 1;
@@ -204,19 +204,19 @@ export function ohneZuordnung(daten: StreitDaten | null): { ohne: number; gesamt
  *  auch die der Verwaltung) und Wortbeiträge über welchen Zeitraum im
  *  Bestand stehen — gezählt, nicht geschrieben. */
 export function balance(daten: StreitDaten | null): {
-  listen: number; beitraege: number; jahrgaenge: number; von: number; bis: number;
+  listen: number; contributions: number; jahrgaenge: number; von: number; bis: number;
 } {
-  const runden = daten?.runden ?? [];
-  let listen = 0, beitraege = 0;
+  const runden = daten?.rounds ?? [];
+  let listen = 0, contributions = 0;
   for (const r of runden) {
     for (const s of r.stationen) {
       listen += s.antraege.length;
-      beitraege += s.debatte.length;
+      contributions += s.debatte.length;
     }
   }
   const years = runden.map((r) => r.year);
   return {
-    listen, beitraege, jahrgaenge: runden.length,
+    listen, contributions, jahrgaenge: runden.length,
     von: years.length ? Math.min(...years) : 0,
     bis: years.length ? Math.max(...years) : 0,
   };

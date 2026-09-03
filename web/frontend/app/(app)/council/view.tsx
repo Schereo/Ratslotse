@@ -11,8 +11,8 @@ import { useDebounce } from "@/lib/use-debounce";
 import { clearRecentSearches, getRecentSearches, pushRecentSearch } from "@/lib/recent-searches";
 import { offerIcs } from "@/lib/ics";
 import {
-  AgendaAenderung, CouncilSession, SessionDetail, AgendaItem, CouncilDecision, DecisionOutcome, PolicyField, Topic,
-  VideoResult,
+  AgendaAenderung, AgendaRowItem, CouncilSession, SessionDetail, AgendaItem, CouncilDecision, DecisionOutcome,
+  PolicyField, Topic, VideoResult,
 } from "@/lib/types";
 import { VideoResultChip, VideoResultsNotice } from "@/components/video-result";
 import {
@@ -47,10 +47,16 @@ const sessionUrl = (ksinr: number) => `https://buergerinfo.oldenburg.de/si0057.p
    Zeile. */
 const topKey = (n: string | null | undefined) => (n ?? "").replace(/^\p{L}+\s+/u, "").trim();
 const agendaNumber = (n: string | null | undefined) => n?.match(/\d+(?:\.\d+)*/)?.[0] ?? "";
+/* Schlüssel für Video-Ergebnisse: wie `topKey`, aber es fallen NUR die
+   amtlichen Ö/N-Marker weg. Dringlichkeitsanträge zählen eigenständig —
+   „DZT 1" ist nicht „Ö 1". `topKey` verkürzte beide auf „1" und hängte das
+   Ergebnis des Antrags an „Feststellung der Beschlussfähigkeit" (02.09.2026);
+   spiegelt `videos.strip_prefix` im Backend. */
+const videoKey = (n: string | null | undefined) => (n ?? "").replace(/^[ÖN]\s+/iu, "").trim();
 
 /** Gliederungs-TOPs wie „Anträge der Fraktionen“ haben kein eigenes Ergebnis.
  *  Öffentlicher und nichtöffentlicher Teil werden getrennt betrachtet. */
-const hasAgendaChildren = (item: AgendaItem, items: AgendaItem[]) => {
+const hasAgendaChildren = (item: AgendaRowItem, items: AgendaItem[]) => {
   const parent = agendaNumber(item.item_number);
   if (!parent) return false;
   return items.some((candidate) =>
@@ -67,7 +73,7 @@ const hasAgendaChildren = (item: AgendaItem, items: AgendaItem[]) => {
 const topDomId = (ksinr: number, itemNumber: string) =>
   `top-${ksinr}-${(itemNumber || "").trim().replace(/[^\p{L}\p{N}]+/gu, "_")}`;
 
-function itemMatches(it: AgendaItem, query: string): boolean {
+function itemMatches(it: AgendaRowItem, query: string): boolean {
   const q = query.trim().toLowerCase();
   if (!q) return false;
   return it.title.toLowerCase().includes(q) || (it.template_number?.toLowerCase().includes(q) ?? false);
@@ -169,7 +175,7 @@ function DecisionCard({ d, query }: { d: CouncilDecision; query: string }) {
   const sub = d.subvote_summary;
   const locationMatches = d.location_matches ?? [];
   const primaryLocation = locationMatches[0];
-  const locationProfileId = primaryLocation?.place_id ?? primaryLocation?.ortsbereich_id;
+  const locationProfileId = primaryLocation?.place_id ?? primaryLocation?.local_area_id;
   const router = useRouter();
   const sp = useSearchParams();
   // 5a/I-08: aus der Trefferkarte direkt ins Ratsgespräch — die Frage steht
@@ -995,12 +1001,12 @@ function YearDivider({ year }: { year: string }) {
  *  in deren Prompt) und kann deshalb nicht mehr als die Überschrift
  *  umformulieren. Beide kommen vom Server; die Reihenfolge steht auch dort
  *  (`store.agenda_items`) — hier nur noch die Auswahl fürs Auge. */
-function kurzfassung(it: AgendaItem): string | null {
+function kurzfassung(it: AgendaRowItem): string | null {
   return it.social_text || it.summary || null;
 }
 
 function AgendaRow({ it, query, outcome, decisionId, myTopic, domId, flash, ksinr, bookmarkable = true, videoResult }: {
-  it: AgendaItem; query: string; outcome?: DecisionOutcome | null;
+  it: AgendaRowItem; query: string; outcome?: DecisionOutcome | null;
   decisionId?: number; myTopic?: string;
   ksinr?: number;
   bookmarkable?: boolean;
@@ -1171,7 +1177,13 @@ function ohneMarke(title: string): string {
  * also in 30 % der Sitzungen — Resolution Iran, Anwohnerparken, Lachgas,
  * Fliegerhorst, Platanen am Stadtmuseum. Keine Randthemen.
  */
-function DringlichkeitsBlock({ items, ksinr }: { items: AgendaItem[]; ksinr?: number }) {
+function DringlichkeitsBlock({ items, ksinr, videoByItem }: {
+  items: AgendaItem[]; ksinr?: number;
+  /** Vorläufige Ergebnisse je Schlüssel (s. videoKey) — der Antrag wird
+   *  später in der Sitzung auch inhaltlich abgestimmt, und dieses Ergebnis
+   *  gehört an SEINE Karte, nicht an einen gleichnamigen Ö-Punkt. */
+  videoByItem?: Record<string, VideoResult>;
+}) {
   if (items.length === 0) return null;
   return (
     <div className="mb-3 space-y-2">
@@ -1197,6 +1209,9 @@ function DringlichkeitsBlock({ items, ksinr }: { items: AgendaItem[]; ksinr?: nu
                 Kurzfristig eingebracht: Er steht in keiner Tagesordnung. Zu Beginn
                 der Sitzung wird erst darüber abgestimmt, ob er überhaupt behandelt wird.
               </p>
+              {videoByItem?.[videoKey(it.item_number)] && (
+                <VideoResultChip r={videoByItem[videoKey(it.item_number)]} layout="block" />
+              )}
               {(it.anlagen?.length ?? 0) > 0 && (
                 <p className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5">
                   {it.anlagen!.map((a) => (
@@ -1280,7 +1295,7 @@ function SessionsTab({ committees }: { committees: string[] }) {
   // Query wie im Banner (React Query dedupliziert, staleTime 1 h).
   const { data: pause } = useQuery({
     queryKey: ["sitzungspause"],
-    queryFn: () => api.get<{ active: boolean }>("/council/sitzungspause"),
+    queryFn: () => api.get<{ active: boolean }>("/council/session-break"),
     staleTime: 60 * 60 * 1000,
   });
 
@@ -1630,7 +1645,7 @@ function SessionsTab({ committees }: { committees: string[] }) {
               // Beschluss (das Protokoll gewinnt immer, s. AgendaRow).
               const videoByItem: Record<string, VideoResult> = {};
               for (const v of d?.video_results ?? []) {
-                const key = topKey(v.item_number);
+                const key = videoKey(v.item_number);
                 if (!(key in outcomeByItem)) videoByItem[key] ??= v;
               }
               const videoCount = Object.keys(videoByItem).length;
@@ -1693,8 +1708,8 @@ function SessionsTab({ committees }: { committees: string[] }) {
                             {/* Nur bei anstehenden Sitzungen: Nach der Sitzung
                                 ist die Änderungs-Historie Verwaltungsrauschen. */}
                             {heuteTag != null && s.session_date >= heuteTag
-                              && (d?.aenderungen?.length ?? 0) > 0 && (
-                              <AenderungenSection aenderungen={d!.aenderungen!} />
+                              && (d?.agenda_changes?.length ?? 0) > 0 && (
+                              <AenderungenSection aenderungen={d!.agenda_changes!} />
                             )}
                             {/* Vorbehalts-Hinweis EINMAL über der Liste — der
                                 Disclaimer hat einen festen Ort, statt an jedem
@@ -1709,7 +1724,8 @@ function SessionsTab({ committees }: { committees: string[] }) {
                                 DringlichkeitsBlock). */}
                             <DringlichkeitsBlock
                               items={(d?.agenda_items ?? []).filter((it) => it.dringlich)}
-                              ksinr={s.ksinr ?? undefined} />
+                              ksinr={s.ksinr ?? undefined}
+                              videoByItem={videoByItem} />
                             <ul className="space-y-0.5">
                               {(d?.agenda_items ?? []).filter((it) => !it.dringlich).map((it, i) => (
                                 <AgendaRow key={i} it={it} query={query}
@@ -1717,7 +1733,7 @@ function SessionsTab({ committees }: { committees: string[] }) {
                                   bookmarkable={!hasAgendaChildren(it, d?.agenda_items ?? [])}
                                   outcome={it.is_public ? outcomeByItem[topKey(it.item_number)] : undefined}
                                   decisionId={it.is_public ? decisionByItem[topKey(it.item_number)] : undefined}
-                                  videoResult={it.is_public ? videoByItem[topKey(it.item_number)] : undefined}
+                                  videoResult={it.is_public ? videoByItem[videoKey(it.item_number)] : undefined}
                                   myTopic={myByItem[it.item_number]}
                                   domId={s.ksinr != null ? topDomId(s.ksinr, it.item_number) : undefined}
                                   flash={s.ksinr != null && flashTop === topDomId(s.ksinr, it.item_number)} />

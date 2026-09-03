@@ -1,6 +1,7 @@
 """Pydantic request/response models."""
 from __future__ import annotations
 
+from typing import Literal
 from pydantic import BaseModel, EmailStr, Field
 
 
@@ -31,17 +32,43 @@ class VerifyEmailRequest(BaseModel):
     token: str = Field(min_length=1)
 
 
+#: Die Rolle eines Kontos. Steht als Literal und nicht als ``str``, damit die
+#: Aufzählung im Vertrag ankommt — sonst muss jeder Client sie abschreiben,
+#: und genau das ist passiert: Das Web führte die Vereinigung von Hand, und
+#: sie war unvollständig (``blocked`` fehlte).
+Rolle = Literal["user", "admin"]
+
+#: Der Zustand eines Kontos. ``blocked`` kann nur über ein Skript entstehen —
+#: die Admin-Oberfläche setzt nur ``active`` und ``pending``. Es steht hier
+#: trotzdem: Eine Antwortform, die einen vorhandenen Wert verschweigt, ist ein
+#: 500er in dem Moment, in dem er auftaucht.
+Kontostand = Literal["pending", "active", "blocked"]
+
+#: Wohin Benachrichtigungen gehen — ``off`` heißt: gar nicht.
+Zustellweg = Literal["email", "push", "both", "off"]
+
+#: Was aus einem Tagesordnungspunkt geworden ist. Dieselbe Aufzählung wie
+#: ``antworten.Beschlussergebnis``; ein Wächter hält beide zusammen.
+Beschlussergebnis = Literal["accepted", "rejected", "postponed", "noted", "no_decision"]
+
+
 class UserOut(BaseModel):
+    # Die Felder unten tragen bewusst KEINEN Vorgabewert mehr. Ein Vorgabewert
+    # macht das Feld im Schema optional — obwohl FastAPI es beim Serialisieren
+    # immer mitschickt. Der Vertrag sagte damit „darf fehlen" über etwas, das nie
+    # fehlt, und die Clients mussten einen Fall behandeln, den es nicht gibt (die
+    # App las sie zu Recht als Pflichtfelder, siehe tests/test_ios_vertrag.py).
+    # Alle Erzeugungsstellen übergeben sie ohnehin ausdrücklich.
     id: int
     email: str
-    role: str
-    status: str = "pending"
-    delivery_channel: str = "email"
-    email_verified: bool = False
+    role: Rolle
+    status: Kontostand
+    delivery_channel: Zustellweg
+    email_verified: bool
     # Sign in with Apple (RL-1002): verknüpft? Und hat das Konto (noch) ein
     # selbst gesetztes Passwort? Steuert Konto-Chip + Passwort-Karte.
-    apple_linked: bool = False
-    has_password: bool = True
+    apple_linked: bool
+    has_password: bool
     # Populated only for native-app clients (which send `X-Client: app`) on
     # login/register/verify-email. Web clients authenticate via the httpOnly
     # cookie and leave this null.
@@ -50,15 +77,15 @@ class UserOut(BaseModel):
     # Einwilligung „Gespräche merken" (null = nie gefragt). Reist mit dem
     # Konto mit, damit die Frage-Seite beim Öffnen sofort weiß, ob die
     # Erstnutzungs-Karte steht — sonst erscheint sie erst nach der Antwort von
-    # /council/gespraeche und schiebt den halben Bildschirm nach unten
+    # /council/conversations und schiebt den halben Bildschirm nach unten
     # (gemessen: ein Sprung mit CLS 0,196 bei 600 ms Antwortzeit).
-    qa_speichern: int | None = None
+    saves_conversations: int | None = None
 
 
 class AppConfigOut(BaseModel):
     """Compatibility contract consumed before a native app starts loading data."""
 
-    min_build: int = 0
+    min_build: int
     note: str | None = None
 
 
@@ -97,9 +124,9 @@ class TopicHitOut(BaseModel):
     title: str
     committee: str
     session_date: str
-    outcome: str | None = None
+    outcome: Beschlussergebnis | None = None
     # Noch nicht gesehen (dieselbe Menge, die das „n neue"-Abzeichen zählt).
-    is_new: bool = False
+    is_new: bool
 
 
 class TopicOut(BaseModel):
@@ -183,8 +210,8 @@ class PlaceReviewIn(BaseModel):
 class WebUserOut(BaseModel):
     id: int
     email: str
-    role: str
-    status: str = "pending"
+    role: Rolle
+    status: Kontostand = "pending"
     email_verified: bool = False
     created_at: str
 
@@ -201,7 +228,7 @@ class LimitsUpdate(BaseModel):
     """Admin-steuerbare Frage-Limits je Konto: Recherchen/Tag (None = Standard,
     0 = unbegrenzt, sonst eigenes Tageslimit) + Rate-Limit-Befreiung."""
     deep_limit: int | None = Field(default=None, ge=0, le=999)
-    limits_frei: bool = False
+    limits_unlocked: bool = False
 
 
 class ChangePasswordRequest(BaseModel):
@@ -319,7 +346,19 @@ class PushUnregisterRequest(BaseModel):
 
 
 class SetupUpdate(BaseModel):
-    """Design 26a: erreichter Schritt des Einrichtungs-Assistenten (0–3)."""
+    """Design 26a: erreichter Schritt des Einrichtungs-Assistenten (0–4).
 
-    step: int = Field(ge=0, le=3)
+    VIER, nicht drei: Der Browser hat seit 09/2026 einen eigenen
+    Stadtteil-Schritt — 1 Gremien, 2 Stadtteil, 3 Themen, 4 Mitteilungen. Bis
+    03.09.2026 stand hier ``le=3``, während der Router bereits auf 4 klemmte
+    und sein Kommentar die Vier erklärte. Der Browser meldete seinen letzten
+    Schritt deshalb mit 422 zurück — und verschluckte den Fehler, weil er die
+    Meldung als „fire and forget" abschickt.
+
+    Die App kennt weiter drei Schritte und schickt nie mehr als 3; beim Lesen
+    klemmt sie selbst auf 3 (``AppModel.synchronizeOnboarding``). Eine
+    gespeicherte 4 ist für sie also ungefährlich.
+    """
+
+    step: int = Field(ge=0, le=4)
     done: bool = False

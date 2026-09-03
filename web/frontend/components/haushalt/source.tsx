@@ -126,13 +126,13 @@ export function Quellenkontext({ keys, jeDokument = LEER, year = null, children 
   // Ein Aufruf je Seite, wenige Dutzend Zeilen. Bewusst hier und nicht in
   // jeder Seite: Sonst müsste jede von ihnen dieselbe Verkabelung tragen,
   // und die eine, die es vergisst, zeigt wieder auf die Startseite.
-  const { data } = useFetch<DokumenteAntwort>("/council/haushalt/dokumente");
+  const { data } = useFetch<DokumenteAntwort>("/council/budget/documents");
   const eintraege = useMemo(
-    () => nummerierung(keys, jeDokument, data?.dokumente, year),
-    [keys, jeDokument, data?.dokumente, year]);
+    () => nummerierung(keys, jeDokument, data?.documents, year),
+    [keys, jeDokument, data?.documents, year]);
   return (
     <SeitenQuellen.Provider value={{
-      keys, dokumente: data?.dokumente, jahrgaenge: data?.jahrgaenge, year,
+      keys, dokumente: data?.documents, jahrgaenge: data?.editions, year,
       eintraege,
     }}>
       {children}
@@ -187,9 +187,17 @@ export function Beleg({ q, h, className }: {
   const nr = eintrag.nr;
   // Steht die Nummer für genau ein Papier, zeigt das Fähnchen dessen
   // Fundstelle — sonst die der Art (das jüngste Papier des Jahrgangs).
-  const ziel = eintrag.dokument
-    ? { dokument: eintrag.dokument, budget_year: eintrag.dokument.year,
-        abweichend: year == null || eintrag.dokument.year !== year,
+  // Ein Papier kann mehrere Fundstellen tragen (der Vollzugsbericht hat
+  // einen Abschnitt je Haushalt, beide unter derselben Adresse). Die
+  // Jahrgangsliste kennt davon eine — die Herkunft der Zeile kennt die
+  // richtige. Wo sie dasselbe Papier meint, gilt ihre Fundstelle.
+  const dokument = eintrag.dokument && h?.url === eintrag.dokument.url
+    ? { ...eintrag.dokument, citation: h.citation ?? eintrag.dokument.citation,
+        page: h.page ?? eintrag.dokument.page }
+    : eintrag.dokument;
+  const ziel = dokument
+    ? { dokument, budget_year: dokument.year,
+        abweichend: year == null || dokument.year !== year,
         weitere: 0 }
     : belegziel(dokumente, q, year);
   return (
@@ -606,7 +614,13 @@ export function Quellenverzeichnis({ keys }: { keys: QuellenSchluessel[] }) {
         {gruppen.map(({ k, nummern }) => {
           const q = QUELLEN[k];
           const einzeln = nummern.length > 1 || nummern[0].dokument != null;
-          const ziel = belegziel(dokumente, k, year);
+          // Ein benanntes Papier ist das Ziel — nicht das, was die
+          // Jahrgangsliste für das Jahr der Seite hergäbe (s. `nummerierung`).
+          const benannt = nummern.length === 1 ? nummern[0].dokument : null;
+          const ziel: Belegziel | null = benannt
+            ? { dokument: benannt, budget_year: benannt.year,
+                abweichend: year == null || benannt.year !== year, weitere: 0 }
+            : belegziel(dokumente, k, year);
           const alle = nummern[0].dokumente;
           return (
             <div key={k} id={eintragId(k)} className="flex scroll-mt-24 gap-2.5">

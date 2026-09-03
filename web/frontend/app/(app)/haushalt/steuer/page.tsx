@@ -12,6 +12,7 @@
 
 import { Suspense, useMemo } from "react";
 import Link from "next/link";
+import { deZahl } from "@/components/grafik/format";
 import { useSearchParams } from "next/navigation";
 import { ChevronRight } from "lucide-react";
 import { useFetch } from "@/lib/use-fetch";
@@ -221,7 +222,16 @@ function SteuerInner() {
   //    der Vorschlag, den der Rat abgelehnt hat, und nicht das Ergebnis.
   //    Trägt der Bestand ihn nicht oder liegt er nicht über dem geltenden
   //    Satz, zeigt die Grafik keine Höhe (die Komponente entscheidet das).
-  const geltendeStufe = hebeHaupt.at(-1) ?? null;
+  // Die STUFEN der Reihe — nicht die Zeilen. Seit 2025 führt sie auch
+  // Stand-Zeilen ohne Änderung (Realsteuervergleich des Landesamts); die
+  // Gewerbesteuer steht dort mit 439 % wie 2015. Ein Satz gilt seit der
+  // Stufe, auf der er zuletzt geändert wurde — Bühne und Befund lasen bis
+  // 02.09.2026 „seit 2025" aus der jüngsten Zeile, während die KI-Frage im
+  // selben Moment richtig „seit 2015" sagte.
+  const hebeSortiert = [...hebeHaupt].sort((a, b) => a.year - b.year);
+  const hebeStufen = hebeSortiert.filter(
+    (z, i) => i === 0 || z.rate !== hebeSortiert[i - 1].rate);
+  const geltendeStufe = hebeStufen.at(-1) ?? null;
   const vorgeschlagen = (satzungDaten?.budget_bylaw ?? [])
     .find((z) => z.year === HEBESATZ_ABGELEHNT.year && z.supplement === 0)
     ?.trade_tax_rate ?? null;
@@ -313,10 +323,12 @@ function SteuerInner() {
           in der Kennzahl-Karte oben, mit eigenem Jahr). Nur wo eine
           Hebesatz-Reihe vorliegt (Realsteuern); erfunden wird keine. */}
       {(() => {
-        const series = [...hebeHaupt].sort((a, b) => a.year - b.year);
-        const akt = series.at(-1);
+        const series = hebeSortiert;
+        // Stufen statt Zeilen — Begründung an `hebeStufen` oben.
+        const aenderungen = hebeStufen;
+        const akt = aenderungen.at(-1);
         if (series.length < 2 || !akt) return null;
-        const stufen = series.slice(-4);
+        const stufen = aenderungen.slice(-4);
         const min = Math.min(...stufen.map((z) => z.rate));
         const max = Math.max(...stufen.map((z) => z.rate));
         const hoehe = (w: number) => (max > min ? 12 + ((w - min) / (max - min)) * 28 : 24);
@@ -324,7 +336,7 @@ function SteuerInner() {
           <Seitenbuehne
             kicker={`Steuer-Steckbrief · Hebesatz ${art.hebesatzArten?.[0] ?? art.title}`}
             zahl={<><ZaehlZahl value={akt.rate} />&#8239;% seit {akt.year}</>}
-            sub={`davor ${series.length - 1} ${series.length - 1 === 1 ? "Änderung" : "Änderungen"} seit ${series[0].year} — beschlossen jeweils vom Rat`}
+            sub={`davor ${aenderungen.length - 1} ${aenderungen.length - 1 === 1 ? "Änderung" : "Änderungen"} seit ${series[0].year} — beschlossen jeweils vom Rat`}
             minibild={{
               href: "#rate",
               label: "Hebesatz-Treppe — klickt zur ganzen Reihe seit 1980",
@@ -451,7 +463,8 @@ function SteuerInner() {
       {/* Dieselbe Ordnung wie bei den Steuern: erst was hereinkam, dann was man
           erwartet hatte — nur aus der anderen Quelle. */}
       {istEntgelt && (
-        <EntgeltePlanIst zeilen={entgelt} beleg={<Beleg q="jahresabschluss" />} />
+        <EntgeltePlanIst zeilen={entgelt} beleg={<Beleg q="jahresabschluss" />}
+          keineWertung={art.planIstWertung} />
       )}
 
       {/* Wofür die Leute zahlen. Steht bewusst hinter der Kurve und nicht neben
@@ -463,6 +476,7 @@ function SteuerInner() {
             (z) => z.nr === art.ergebnisPosten && z.sub_budget_no !== null && z.year === letzte.year,
           )}
           year={letzte.year}
+          title={art.bereicheTitel}
           beleg={<Beleg q="ergebnisrechnung_thh" />}
         />
       )}
@@ -478,13 +492,18 @@ function SteuerInner() {
           <p className="mt-1.5 max-w-[70ch] text-[12.5px] leading-relaxed text-foreground/80">
             <GlossaryText text={art.grenze} />
           </p>
-          <Link
-            href="/haushalt/konzern#fees"
-            className="mt-2.5 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-primary hover:underline"
-          >
-            Was du dafür zahlst — die Gebührenbedarfsberechnung
-            <ChevronRight className="h-3.5 w-3.5" />
-          </Link>
+          {/* Die Brücke zur Gebührenbedarfsberechnung gehört nur den Gebühren
+              (Posten 5) — für Erstattungen und Zuweisungen gibt es kein
+              „was du dafür zahlst". */}
+          {art.ergebnisPosten === 5 && (
+            <Link
+              href="/haushalt/konzern#fees"
+              className="mt-2.5 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-primary hover:underline"
+            >
+              Was du dafür zahlst — die Gebührenbedarfsberechnung
+              <ChevronRight className="h-3.5 w-3.5" />
+            </Link>
+          )}
         </div>
       )}
 
@@ -624,7 +643,11 @@ function SteuerInner() {
               </p>
               {/* Das Bild dazu — ohne geltenden Satz gar nicht: Ein
                   schraffiertes Stück ohne Bezugsgröße zeigt nichts. */}
-              {geltendeStufe && (
+              {/* Nur mit Vorschlagszahl: Ohne sie war das Bild ein einzelner
+                  Vollbalken des geltenden Satzes mit viel Leere darüber
+                  (Durchsicht 02.09.2026). Der Satz darunter sagt dann, dass
+                  die Zahl fehlt. */}
+              {geltendeStufe && vorgeschlagen != null && vorgeschlagen > geltendeStufe.rate && (
                 <AbgelehnteStufe
                   year={HEBESATZ_ABGELEHNT.year}
                   geltend={geltendeStufe.rate}
@@ -634,6 +657,13 @@ function SteuerInner() {
                   beleg={<Beleg q="tax_rates" />}
                   satzungBeleg={<Beleg q="budget_bylaw" />}
                 />
+              )}
+              {geltendeStufe && !(vorgeschlagen != null && vorgeschlagen > geltendeStufe.rate) && (
+                <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
+                  Um wie viele Punkte der Satz hätte steigen sollen, können wir für{" "}
+                  {HEBESATZ_ABGELEHNT.year} nicht belegen — die Satzung nennt keinen Vorschlag;
+                  der geltende Satz bleibt {deZahl(geltendeStufe.rate)}&nbsp;%.
+                </p>
               )}
               {/* Der Verweis auf die Treppe nur, wo eine steht: Ohne
                   eingelesene Reihe zeigt der Block darüber einen einzelnen

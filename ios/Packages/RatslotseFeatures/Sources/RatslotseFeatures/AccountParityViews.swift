@@ -129,7 +129,7 @@ struct ConversationSettingsCard: View {
         isLoading = true
         defer { isLoading = false }
         do {
-            let response: JSONValue = try await model.api.get("/api/council/gespraeche")
+            let response: JSONValue = try await model.api.get("/api/council/conversations")
             setting = response.object?["saves_conversations"]?.int ?? model.conversationSavingPreference
             conversationCount = response.object?["conversations"]?.array?.count ?? 0
             error = nil
@@ -158,7 +158,7 @@ struct ConversationSettingsCard: View {
         isSaving = true
         defer { isSaving = false }
         do {
-            try await model.api.sendVoid("/api/council/gespraeche", method: .delete)
+            try await model.api.sendVoid("/api/council/conversations", method: .delete)
             conversationCount = 0
             asksAboutExisting = false
             error = nil

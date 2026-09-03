@@ -190,7 +190,7 @@ def _anlage(store: CouncilStore, text: str, document_id: int = 297441) -> None:
     """Ein Gesamtergebnishaushalt als Anlage im Bestand — so, wie ihn der
     Protokoll-Scraper ablegt."""
     store._conn.execute(
-        "INSERT OR REPLACE INTO council_anlagen (document_id, kvonr, label, url, "
+        "INSERT OR REPLACE INTO council_attachments (document_id, kvonr, label, url, "
         " raw_text, n_pages, fetched_at) VALUES (?,?,?,?,?,?,?)",
         (document_id, 1, "2026 005 Vw Gesamtergebnishaushalt",
          "https://example.org/geh2026.pdf", text, 18, "2026-08-16"))
@@ -199,8 +199,8 @@ def _anlage(store: CouncilStore, text: str, document_id: int = 297441) -> None:
 
 def _quelle(document_id: int = 297441) -> herkunft.Herkunft:
     return herkunft.Herkunft(
-        kind="ris", probe=["ergebnishaushalt_summenzeilen",
-                          "ergebnishaushalt_planspalte"],
+        kind="ris", probe=["income_budget_total_rows",
+                          "income_budget_plan_column"],
         document_id=document_id, label="2026 005 Vw Gesamtergebnishaushalt",
         url="https://example.org/geh2026.pdf",
         citation="Gesamtergebnishaushalt, Posten 1–24")
@@ -231,7 +231,7 @@ def test_ansatz_und_finanzplanung_landen_getrennt():
                         "financial_plan": {2027, 2028, 2029}}
 
     # Die beiden vorderen Spalten werden gar nicht erst gespeichert: Die erste
-    # ist ein Ist (dafür gibt es council_ergebnisrechnung), die zweite ein
+    # ist ein Ist (dafür gibt es council_income_statement), die zweite ein
     # fortgeschriebener Vorjahresansatz, der dem beschlossenen widerspräche.
     assert 2024 not in {z["year"] for z in r["zeilen"]}
     assert 2025 not in {z["year"] for z in r["zeilen"]}
@@ -283,7 +283,7 @@ def test_summenprobe_wirft_einen_verrutschten_jahrgang_weg():
     assert r["bestanden"] is False
     assert r["zeilen"] == []
     assert r["budget_year"] == 2026          # erkannt, aber nicht übernommen
-    (summen,) = [p for p in r["probes"] if p["probe"] == "ergebnishaushalt_summenzeilen"]
+    (summen,) = [p for p in r["probes"] if p["probe"] == "income_budget_total_rows"]
     assert summen["ok"] is False
     assert "Posten 1–11" in summen["warum"] and "Spalte 3" in summen["warum"]
     assert summen["warum"] in r["nachweis"]
@@ -304,7 +304,7 @@ def test_summenprobe_prueft_auch_die_finanzplanungsspalten():
     kaputt = GEH_2026.replace("372.762.700 378.699.900", "372.772.700 378.699.900", 1)
     r = eh.lies(kaputt)
     assert r["bestanden"] is False
-    (summen,) = [p for p in r["probes"] if p["probe"] == "ergebnishaushalt_summenzeilen"]
+    (summen,) = [p for p in r["probes"] if p["probe"] == "income_budget_total_rows"]
     assert "Spalte 5" in summen["warum"]
 
 
@@ -319,8 +319,8 @@ def test_planspaltenprobe_haelt_die_trennlinie():
     r = eh.lies(ohne_echo)
     assert r["bestanden"] is False
     assert r["zeilen"] == []
-    (summen,) = [p for p in r["probes"] if p["probe"] == "ergebnishaushalt_summenzeilen"]
-    (spalte,) = [p for p in r["probes"] if p["probe"] == "ergebnishaushalt_planspalte"]
+    (summen,) = [p for p in r["probes"] if p["probe"] == "income_budget_total_rows"]
+    (spalte,) = [p for p in r["probes"] if p["probe"] == "income_budget_plan_column"]
     assert summen["ok"] is True           # die Tabelle selbst ist in Ordnung …
     assert spalte["ok"] is False          # … aber die Trennlinie ist unbelegt
     assert "Posten 1" in spalte["warum"]
@@ -334,7 +334,7 @@ def test_planspaltenprobe_merkt_wenn_die_wiederholung_woanders_hinzeigt():
     r = eh.lies(verschoben)
     assert r["bestanden"] is False
     assert r["zeilen"] == []
-    (spalte,) = [p for p in r["probes"] if p["probe"] == "ergebnishaushalt_planspalte"]
+    (spalte,) = [p for p in r["probes"] if p["probe"] == "income_budget_plan_column"]
     assert "nicht auf das Planjahr" in spalte["warum"]
     assert "366,584,100" in spalte["warum"]     # die Zahl, auf die sie zeigte
 
@@ -453,11 +453,11 @@ def test_jede_zeile_weiss_woher_sie_kommt(tmp_path):
     assert store.herkunft_luecken() == {}
     row = store._conn.execute(
         "SELECT p.amount, h.probe, h.document_id, h.citation "
-        "FROM council_ergebnishaushalt p "
-        "JOIN council_herkunft h ON h.id = p.herkunft_id LIMIT 1").fetchone()
+        "FROM council_income_budget p "
+        "JOIN council_provenance h ON h.id = p.herkunft_id LIMIT 1").fetchone()
     assert row["document_id"] == 297441
-    assert row["probe"] == ("ergebnishaushalt_summenzeilen,"
-                              "ergebnishaushalt_planspalte")
+    assert row["probe"] == ("income_budget_total_rows,"
+                              "income_budget_plan_column")
     # Beide Proben tragen einen Satz für Leserinnen — sonst ließe sich die
     # Herkunft gar nicht erst bauen.
     (h,) = store.get_herkunft()
@@ -559,7 +559,7 @@ def test_zweites_dokument_zum_selben_jahrgang_wird_gemeldet(tmp_path):
 
 def test_gegenprobe_misst_und_verwirft_nicht():
     """Die Ist-Spalte ist die **Gesamt**ebene (mit den nicht rechtsfähigen
-    Stiftungen), `council_ergebnisrechnung` die Kernverwaltung. Beide Zahlen
+    Stiftungen), `council_income_statement` die Kernverwaltung. Beide Zahlen
     sind richtig und beide heißen „Ergebnis 2024".
 
     Gemessen an acht Jahrgängen: 6 bis 8 von 23 Posten stimmen exakt überein,
@@ -615,7 +615,7 @@ def test_plan_faellt_auf_ansatz_zurueck(tmp_path):
 
     # … und der Lesepfad hält auch stand, wenn in der Tabelle wirklich NULL
     # steht (Altbestand, den kein Schreibweg mehr anfasst).
-    store._conn.execute("UPDATE council_ergebnisrechnung SET plan = NULL")
+    store._conn.execute("UPDATE council_income_statement SET plan = NULL")
     store._conn.commit()
     d = store.get_plan_ist(2023)
     assert d["gesamt"]["revenues_planned"] == 664_574_528.42

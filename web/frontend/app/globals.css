@@ -41,15 +41,22 @@
                    (Onboarding-Auftakt, Karte im Vollbild)
          dialog    Blatt/Dialog samt Abdunkler — liegt auch über einer Fläche
          meldung   Toast/Feier: bleibt auch über einem Dialog sichtbar
-       Benutzung: `className="z-[var(--ebene-dialog)]"`.
+       Benutzung: `className="z-[var(--level-dialog)]"`.
        Noch nicht überall nachgezogen (die Zahlen dort stimmen, nur die Namen
        fehlen): components/nav.tsx, components/ui/dialog.tsx + sheet.tsx,
        components/tour.tsx, components/badges.tsx. */
-    --ebene-huelle: 40;
-    --ebene-schwebend: 60;
-    --ebene-flaeche: 100;
-    --ebene-dialog: 110;
-    --ebene-meldung: 120;
+    /* Die Namen sind seit #862 englisch — dort wurden die VERWENDUNGEN
+       umgestellt (`z-[var(--level-…)]` in onboarding-flow, topic-sheet und
+       public-shell), die Definitionen hier aber nicht. Ergebnis: drei
+       Bausteine standen ohne z-index da (`auto`), weil eine undefinierte
+       Variable keinen Wert liefert. Sichtbar wurde es erst, als der
+       Einrichtungs-Assistent auch im Browser lief: Auf dem Telefon lagen
+       Kopfleiste und Tab-Bar (z-index 40) über ihm. */
+    --level-huelle: 40;
+    --level-schwebend: 60;
+    --level-flaeche: 100;
+    --level-dialog: 110;
+    --level-meldung: 120;
     /* Signal-Orange (Lotsenboot): Maskottchen, Highlights, sparsame Akzente.
        Token-Spec 6a: hell 19 92% 50 (Button-Fill), dunkel 19 95% 60. */
     --signal: 19 92% 50%;
@@ -115,10 +122,34 @@
   h3 {
     @apply font-display;
     hyphens: auto;
+    /* Trennen darf nur, was lang ist: „verste-hen“, „automa-tisch“ und
+       „Ol-denburg“ standen in Titeln auf dem Handy (Durchsicht 02.09.2026).
+       Ein Wort braucht 14 Zeichen, sechs davor und fünf danach — das
+       „Ratsinformationssystem“ bricht weiter sauber, das Verb bleibt ganz.
+       Und Titel werden ausgewogen umbrochen, statt ein Wort allein zu
+       lassen. */
+    hyphenate-limit-chars: 14 6 5;
+    text-wrap: balance;
   }
 }
 
 @layer components {
+  /* Scroll-Zeilen (Chip-Reihen, Segment-Schalter): Der Inhalt fadet am
+     verdeckten Ende per Maske aus, statt hart abgeschnitten zu stehen
+     (Designsprache § 6). Welche Klasse gilt, misst `useScrollRand` — eine
+     Zeile, die hineinpasst, trägt keine. */
+  .gb-maske-rechts {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 44px), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 44px), transparent);
+  }
+  .gb-maske-links {
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 44px);
+    mask-image: linear-gradient(to right, transparent, #000 44px);
+  }
+  .gb-maske-beide {
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 44px, #000 calc(100% - 44px), transparent);
+    mask-image: linear-gradient(to right, transparent, #000 44px, #000 calc(100% - 44px), transparent);
+  }
   /* Der Abdunkler unter jedem Dialog — eine Klasse statt einer Farbe je
      Komponente, weil genau daran ein Blatt zerbrochen ist.
      „Thema anpassen" trug `rgba(9,17,27,0.42)`; das ist Pixel für Pixel die
@@ -476,6 +507,129 @@ lotti-figur {
 .glocke-laeutet {
   animation: glocke-laeuten 900ms var(--ease-out-strong, ease-out);
   transform-origin: 50% 15%;
+}
+
+/* ── Bewegungs-Grammatik des Grafik-Baukastens (`.gb-*`) ───────────────────
+   Drei Regeln, die jede Grafik gleich fährt (seit 02.09., zuerst für die
+   Kachelfläche gebaut, dann verallgemeinert):
+
+   1. EINMALIGE STAFFEL BEIM AUFBAU (H5-07: keine Schleife). `gb-auf` blendet
+      ein Element ein und lässt es leicht wachsen; `gb-zeichnen` zeichnet
+      eine Linie von links nach rechts (braucht `pathLength={1}` am Pfad);
+      `gb-einblenden` blendet nur ein; `gb-saeule-auf` wächst von unten,
+      `gb-balken-auf` von links (`transform-origin` gesetzt). Die Staffel
+      kommt aus `animation-delay` je Element. Alle mit `backwards`, nicht
+      `both`: `both` hielte nach dem Ende `transform: none` fest und schlüge
+      jeden Hover-Übergang tot.
+   2. SPOTLIGHT UNTER DEM ZEIGER. `gb-spot` mit `data-schwebt` hebt ein
+      Element leicht und gibt ihm einen Schimmer von oben; `data-gedimmt`
+      lässt die übrigen zurücktreten — solange der Zeiger auf der Fläche ist.
+   3. ÜBERGÄNGE STATT SPRÜNGE. `gb-kachel` überblendet Lage und Maß (Jahrgang
+      wechselt → Kachel gleitet), `gb-fuehrung` die Führungslinie einer
+      Ablese-Fläche zur gewählten Stelle.
+
+   Der prefers-reduced-motion-Block unten legt alles still. */
+.gb-kachel {
+  transition:
+    left 380ms var(--ease-out-strong),
+    top 380ms var(--ease-out-strong),
+    width 380ms var(--ease-out-strong),
+    height 380ms var(--ease-out-strong),
+    transform 180ms var(--ease-out-strong),
+    box-shadow 180ms var(--ease-out-strong),
+    opacity 220ms ease-out;
+  box-shadow: inset 0 0 0 1px rgba(2, 32, 71, 0.06);
+}
+.gb-spot {
+  transition:
+    transform 180ms var(--ease-out-strong),
+    box-shadow 180ms var(--ease-out-strong),
+    opacity 220ms ease-out;
+}
+.gb-spot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0) 60%);
+  opacity: 0;
+  transition: opacity 180ms ease-out;
+}
+.gb-spot[data-schwebt="true"] {
+  transform: translateY(-1px) scale(1.012);
+  box-shadow:
+    inset 0 0 0 1px rgba(2, 32, 71, 0.08),
+    0 8px 18px -8px rgba(2, 32, 71, 0.45);
+}
+.gb-spot[data-schwebt="true"]::after { opacity: 1; }
+.gb-spot[data-gedimmt="true"] { opacity: 0.72; }
+.dark .gb-kachel { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05); }
+.dark .gb-spot[data-schwebt="true"] {
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.1),
+    0 8px 18px -8px rgba(0, 0, 0, 0.6);
+}
+.gb-fuehrung { transition: transform 160ms var(--ease-out-strong); }
+/* Lage und Maß gleiten (Hantel-Umschalter: die Punkte wandern statt zu
+   springen) — ohne den Innenrand der Kachel. */
+.gb-lage {
+  transition:
+    left 380ms var(--ease-out-strong),
+    width 380ms var(--ease-out-strong),
+    transform 380ms var(--ease-out-strong);
+}
+/* Eine ZEILE unter dem Zeiger (Hantel, Rangliste): Grund leicht getönt, die
+   übrigen treten zurück. Kein Hub — Zeilen liegen im Fluss, ein Versatz
+   verschöbe den Text. */
+.gb-zeile {
+  border-radius: 10px;
+  transition: opacity 200ms ease-out, background-color 180ms ease-out;
+}
+.gb-zeile[data-schwebt="true"] { background-color: hsl(var(--muted) / 0.55); }
+.gb-zeile[data-gedimmt="true"] { opacity: 0.68; }
+/* Ein SEGMENT in einer Leiste (Gegenbalken): Das gewählte wird eine Spur
+   heller, die übrigen treten zurück. Kein Transform — die Leiste beschneidet
+   ihre Segmente, ein Hub wäre abgeschnitten. */
+.gb-segment { transition: opacity 180ms ease-out, filter 180ms ease-out; }
+.gb-segment[data-schwebt="true"] { filter: brightness(1.07); }
+.gb-segment[data-gedimmt="true"] { opacity: 0.45; }
+
+@keyframes gb-auf {
+  from { opacity: 0; transform: scale(0.94); }
+  to { opacity: 1; transform: none; }
+}
+.gb-auf { animation: gb-auf 480ms var(--ease-out-strong) backwards; }
+@keyframes gb-einblenden {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.gb-einblenden { animation: gb-einblenden 500ms ease-out backwards; }
+@keyframes gb-zeichnen {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+.gb-zeichnen {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+  animation: gb-zeichnen 900ms var(--ease-out-strong) backwards;
+}
+@keyframes gb-saeule-auf {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+.gb-saeule-auf {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: gb-saeule-auf 560ms var(--ease-out-strong) backwards;
+}
+@keyframes gb-balken-auf {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+.gb-balken-auf {
+  transform-origin: 0 50%;
+  animation: gb-balken-auf 560ms var(--ease-out-strong) backwards;
 }
 
 /* Honour users who prefer fewer animations. */
@@ -907,7 +1061,7 @@ lotti-figur {
    geratene Zahl (DESIGNSPRACHE § 5). Der Hintergrund wird hier gedeckt
    (Karte + Muted-Schleier statt nur `bg-muted/40`): Im angehefteten Zustand
    scrollt Karteninhalt unter der Leiste durch, und durch eine durchsichtige
-   Fläche schimmerte er hindurch. z-index unter `--ebene-huelle` (40): Die
+   Fläche schimmerte er hindurch. z-index unter `--level-huelle` (40): Die
    Leiste schwebt über ihrer Karte, nie über Kopf- oder Tab-Leiste. */
 @media (max-width: 743.98px) {
   .gb-ablese-leiste {

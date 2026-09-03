@@ -59,7 +59,7 @@ Extra-Paket nur für einen Ingest, der einmal im Jahr von Hand läuft, käme in
 
 Der Jahresversatz, der hier NICHT auftaucht
 --------------------------------------------
-Unser Open-Data-Datensatz 1106 (``council_steuerkraft``) trägt dieselben
+Unser Open-Data-Datensatz 1106 (``council_tax_capacity``) trägt dieselben
 Beträge wie das LSN, aber unter einer um **ein Jahr verschobenen**
 Jahresangabe: Was das LSN „KFA 2026" nennt, heißt dort „Ausgleichsjahr 2025"
 (drei Wertepaare geprüft, zwei unabhängige Wege). Welche Beschriftung stimmt,
@@ -67,7 +67,7 @@ ist offen und wird bei der Statistikstelle geklärt.
 
 Bis dahin gilt die Regel, an der sich diese Schicht ausrichtet: **Zahlen aus
 dieser Tabelle stehen nie unkommentiert neben Zahlen aus
-``council_steuerkraft``.** Sie liegen in einer eigenen Tabelle, tragen die
+``council_tax_capacity``.** Sie liegen in einer eigenen Tabelle, tragen die
 Jahresangabe des LSN und sagen das auf der Seite auch. Beides
 zusammenzuwerfen hieße, zwei Jahre gegeneinander zu plotten, die nicht
 dasselbe meinen.
@@ -677,10 +677,10 @@ def zeilen_realsteuern(budget_year: Realsteuerjahrgang) -> tuple[list[dict], lis
         probe = probe_hebesatz(eintrag)
         if not probe["ok"]:
             verworfen.append({"key": key, "city": KREISFREIE_STAEDTE[key],
-                              "series": "realsteuern", "reason": "Hebesatzprobe",
+                              "series": "real_taxes", "reason": "Hebesatzprobe",
                               "result": probe["result"]})
             continue
-        gemeinsam = {"series": "realsteuern", "year": budget_year.year,
+        gemeinsam = {"series": "real_taxes", "year": budget_year.year,
                      "key": key, "city": KREISFREIE_STAEDTE[key]}
         for suffix in _REALSTEUERN.values():
             if (value := eintrag.get(f"rate_{suffix}")) is not None:
@@ -694,14 +694,14 @@ def zeilen_realsteuern(budget_year: Realsteuerjahrgang) -> tuple[list[dict], lis
         probe = probe_dreijahresmittel(eintrag)
         if not probe["ok"]:
             verworfen.append({"key": key, "city": KREISFREIE_STAEDTE[key],
-                              "series": "realsteuern", "reason": "Dreijahresmittel",
+                              "series": "real_taxes", "reason": "Dreijahresmittel",
                               "result": probe["result"]})
             continue
         # Jeder Jahreswert trägt SEIN Jahr, nicht das Berichtsjahr der Datei.
         # Der Realsteuervergleich 2025 führt auch 2023 und 2024 — eine Zeile,
         # die alles unter 2025 ablegte, machte aus drei Jahren eines.
         for year, werte in sorted(eintrag["je_jahr"].items()):
-            zeilen.append({"series": "realsteuern", "year": year,
+            zeilen.append({"series": "real_taxes", "year": year,
                            "key": key, "city": KREISFREIE_STAEDTE[key],
                            "indicator": "steuereinnahmekraft_je_ew",
                            "value": werte["je_ew"], "unit": "eur_je_ew"})

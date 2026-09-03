@@ -172,7 +172,7 @@ const STUFEN: { kicker: string; question: string; ziele: Ziel[] }[] = [
       {
         href: "/haushalt/plan-ist",
         title: "Geplant und geworden",
-        text: "Wie sich Plan und tatsächliches Ergebnis in den Jahresabschlüssen unterscheiden.",
+        text: "Was die Verwaltung im laufenden Jahr erwartet — und wie sich Plan und Ergebnis in den Jahresabschlüssen unterscheiden.",
         zeichen: ClipboardCheck,
       },
       {

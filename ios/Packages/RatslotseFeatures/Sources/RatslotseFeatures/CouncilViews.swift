@@ -753,7 +753,6 @@ struct CouncilBrowserView: View {
               "my_topic_items": []
             },
             {
-              "calendar_id": 99,
               "committee": "Verkehrsausschuss",
               "session_date": "2027-01-14",
               "session_time": "17:00",
@@ -1259,7 +1258,7 @@ struct DecisionDetailView: View {
                     )
 
                     if let participation = detail.participation,
-                       let url = URL(string: participation.url) {
+                       let roh = participation.url, let url = URL(string: roh) {
                         DecisionParticipationBanner(participation: participation, url: url)
                     }
 
@@ -1413,8 +1412,8 @@ struct DecisionDetailView: View {
           "entities": [{"slug":"haushalt-2026","name":"Haushalt 2026"}],
           "present_parties": ["SPD", "CDU", "Grüne", "FDP"],
           "ratsinfo_url": "https://ratslotse.de",
-          "vorlage_url": "https://ratslotse.de",
-          "vorlage": {
+          "template_url": "https://ratslotse.de",
+          "template": {
             "template_number":"26/0456",
             "title":"Haushaltssatzung und Haushaltsplan 2026",
             "kind":"Beschlussvorlage",
@@ -1424,12 +1423,12 @@ struct DecisionDetailView: View {
             "climate_impact":"Mehrere Investitionen betreffen energetische Sanierungen und klimafreundliche Mobilität.",
             "financial_impact":"Die vorgesehenen Investitionen sind in der mittelfristigen Finanzplanung berücksichtigt."
           },
-          "anlagen": [
+          "attachments": [
             {"document_id":77,"label":"Haushaltsplan 2026 – Gesamtfassung","url":"https://ratslotse.de","is_antrag":0,"antragsteller":[],"status":"ok"},
             {"document_id":78,"label":"Änderungsantrag zum Investitionsprogramm","url":"https://ratslotse.de","is_antrag":1,"antragsteller":["SPD","Grüne"],"status":"ok"}
           ],
           "importance_breakdown": {"score":82,"impact_reason":"Der Beschluss betrifft nahezu alle Aufgaben der Stadt und legt den finanziellen Rahmen für das ganze Jahr fest."},
-          "beratungsfolge": [
+          "deliberation_path": [
             {"date":"2026-01-21","committee":"Finanzen und Beteiligungen","top":"4","result":"empfohlen","ksinr":87,"future":false},
             {"date":"2026-02-09","committee":"Rat der Stadt","top":"6.5","result":"angenommen","ksinr":88,"future":false}
           ],
@@ -1469,7 +1468,7 @@ struct DecisionDetailView: View {
             defer { isWorking = false }
             do {
                 let updated: FollowStatus = try await model.api.sendWithoutBody(
-                    "/api/council/vorlage/\(follow.templateID)/follow",
+                    "/api/council/template/\(follow.templateID)/follow",
                     method: follow.following ? .delete : .post
                 )
                 guard let current = detail else { return }
@@ -2010,7 +2009,7 @@ private struct DecisionParticipationBanner: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Hier kannst du dich beteiligen")
                         .font(RatsFont.body(14, weight: .bold))
-                    Text(participation.title)
+                    Text(participation.title ?? "Beteiligungsverfahren")
                         .font(RatsFont.body(13, weight: .medium))
                     Text([participation.step, participation.until.map { "bis \($0)" }].compactMap { $0 }.joined(separator: " · "))
                         .font(RatsFont.body(10.5))
@@ -2442,9 +2441,9 @@ struct SavedCouncilView: View {
                     ForEach(follows) { follow in
                         HStack(alignment: .top, spacing: 10) {
                             VStack(alignment: .leading, spacing: 7) {
-                                Text(follow.title.isEmpty ? follow.templateNumber : follow.title)
+                                Text(follow.title?.isEmpty == false ? follow.title! : (follow.templateNumber ?? "Ohne Titel"))
                                     .font(RatsFont.body(15, weight: .semibold))
-                                Text("\(follow.templateNumber) · \(follow.stationCount) Stationen")
+                                Text("\(follow.templateNumber ?? "—") · \(follow.stationCount) Stationen")
                                     .font(RatsFont.mono(10)).foregroundStyle(RatsColor.muted)
                                 if let next = follow.next {
                                     Text("Als Nächstes: \([next.committee, RatsDate.short(next.date)].compactMap { $0 }.joined(separator: " · "))")
@@ -2776,7 +2775,7 @@ struct SavedCouncilView: View {
         Task {
             do {
                 let _: FollowStatus = try await model.api.sendWithoutBody(
-                    "/api/council/vorlage/\(follow.templateID)/follow", method: .delete
+                    "/api/council/template/\(follow.templateID)/follow", method: .delete
                 )
                 follows.removeAll { $0.id == follow.id }
             } catch { self.error = error.localizedDescription }
@@ -2982,18 +2981,18 @@ private struct SessionDetailView: View {
           "session_time": "17:00",
           "location": "Alte Fleiwa, Industriestraße 1d, Sitzungssaal 1/2",
           "agenda_items": [
-            {"item_number":"Ö 4","title":"Radverkehrskonzept für Oldenburg","is_public":1,"summary":"Der Ausschuss berät die nächsten Schritte für sichere Radverbindungen.","anlagen":[]},
-            {"item_number":"Ö 7","title":"Sichere Querung an der Cloppenburger Straße","is_public":1,"summary":null,"anlagen":[]}
+            {"item_number":"Ö 4","title":"Radverkehrskonzept für Oldenburg","is_public":1,"summary":"Der Ausschuss berät die nächsten Schritte für sichere Radverbindungen.","attachments":[]},
+            {"item_number":"Ö 7","title":"Sichere Querung an der Cloppenburger Straße","is_public":1,"summary":null,"attachments":[]}
           ],
           "decisions": [],
           "has_protocol": false,
           "url": "https://ratslotse.de",
-          "aenderungen": [{
+          "agenda_changes": [{
             "changed_at": "2026-08-30T12:15:00+02:00",
             "satz": "Ein TOP wurde ergänzt und eine Anlage aktualisiert.",
             "zeilen": [
               {"art":"new","label":"Ö 7","title":"Sichere Querung an der Cloppenburger Straße","nichtoeffentlich":false,"detail":"Neu auf die Tagesordnung gesetzt"},
-              {"art":"anlagen","label":"Ö 4","title":"Radverkehrskonzept für Oldenburg","nichtoeffentlich":false,"detail":"Eine Anlage hinzugefügt"}
+              {"art":"attachments","label":"Ö 4","title":"Radverkehrskonzept für Oldenburg","nichtoeffentlich":false,"detail":"Eine Anlage hinzugefügt"}
             ]
           }, {
             "changed_at": "2026-08-28T09:30:00+02:00",

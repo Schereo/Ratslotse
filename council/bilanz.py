@@ -7,7 +7,7 @@ naheliegende Frage „Oldenburg hat kaum Kredite, also keine Schulden?" ist das
 die Antwort.
 
 Fundstelle ist Abschnitt 2.1 „Bilanz der Stadt Oldenburg zum 31.12.JJJJ" des
-Jahresabschlusses (``council_anlagen``) — dasselbe Dokument, aus dem
+Jahresabschlusses (``council_attachments``) — dasselbe Dokument, aus dem
 ``council/finanzberichte.py`` schon Ergebnis- und Finanzrechnung liest. Kein
 neuer Download.
 
@@ -109,44 +109,44 @@ PASSIVA = "passiva"
 #: ähnliche Verpflichtungen", 2024 schreibt es aus.
 ROLLEN: tuple[tuple[str, str, int, str], ...] = (
     # --- Aktiva: was die Stadt hat ---
-    ("immaterielles_vermoegen", AKTIVA, 1, r"^Immaterielles Verm[öo]gen$"),
-    ("sachvermoegen", AKTIVA, 1, r"^Sachverm[öo]gen$"),
-    ("infrastrukturvermoegen", AKTIVA, 2, r"^Infrastrukturverm[öo]gen$"),
-    ("finanzvermoegen", AKTIVA, 1, r"^Finanzverm[öo]gen$"),
-    ("liquide_mittel", AKTIVA, 1, r"^Liquide Mittel$"),
-    ("aktive_rap", AKTIVA, 1, r"^Aktive Rechnungsabgrenzung$"),
+    ("intangible_assets", AKTIVA, 1, r"^Immaterielles Verm[öo]gen$"),
+    ("tangible_assets", AKTIVA, 1, r"^Sachverm[öo]gen$"),
+    ("infrastructure_assets", AKTIVA, 2, r"^Infrastrukturverm[öo]gen$"),
+    ("financial_assets", AKTIVA, 1, r"^Finanzverm[öo]gen$"),
+    ("cash_and_equivalents", AKTIVA, 1, r"^Liquide Mittel$"),
+    ("prepaid_expenses", AKTIVA, 1, r"^Aktive Rechnungsabgrenzung$"),
     # --- Passiva: wem es zusteht ---
-    ("nettoposition", PASSIVA, 1, r"^Nettoposition$"),
+    ("net_position", PASSIVA, 1, r"^Nettoposition$"),
     # Die Rücklage, aus der ein geplanter Fehlbetrag ausgeglichen werden kann,
     # ist NICHT der Hauptposten „Rücklagen" insgesamt. Maßgeblich ist die
     # Unterzeile 1.2.1; zweckgebundene Rücklagen und Rücklagen aus
     # Investitionszuwendungen stehen nicht frei für den Haushaltsausgleich.
-    ("ruecklagen_gesamt", PASSIVA, 2, r"^R[üu]cklagen$"),
-    ("ueberschussruecklage_ordentlich", PASSIVA, 3,
+    ("reserves_total", PASSIVA, 2, r"^R[üu]cklagen$"),
+    ("ordinary_surplus_reserve", PASSIVA, 3,
      r"^R[üu]cklagen aus [Üü]bersch[üu]ssen des ordentlichen Ergebnisses$"),
     # Das Jahresergebnis steht am Bilanzstichtag noch neben der Rücklage und
     # wird erst danach zugeführt. Für den verfügbaren Stand „unter
     # Berücksichtigung des Ergebnisses" gehören beide deshalb zusammen.
-    ("jahresergebnis_bilanz", PASSIVA, 2, r"^Jahresergebnis$"),
-    ("sonderposten", PASSIVA, 2, r"^Sonderposten$"),
-    ("schulden", PASSIVA, 1, r"^Schulden$"),
-    ("geldschulden", PASSIVA, 2, r"^Geldschulden$"),
-    ("rueckstellungen", PASSIVA, 1, r"^R[üu]ckstellungen$"),
+    ("annual_result_balance_sheet", PASSIVA, 2, r"^Jahresergebnis$"),
+    ("special_items", PASSIVA, 2, r"^Sonderposten$"),
+    ("liabilities", PASSIVA, 1, r"^Schulden$"),
+    ("financial_liabilities", PASSIVA, 2, r"^Geldschulden$"),
+    ("provisions", PASSIVA, 1, r"^R[üu]ckstellungen$"),
     # Die drei Zeilen aus dem Kopf dieser Datei. Reihenfolge egal — die
     # `$`-Anker schließen sich gegenseitig aus.
-    ("pensionen_gesamt", PASSIVA, 2,
+    ("pension_and_similar_provisions", PASSIVA, 2,
      r"^Pensionsr[üu]ckst(?:ellungen)?\.?\s+und\s+[äa]hnliche\s+Verpflichtungen$"),
-    ("pensionsrueckstellungen", PASSIVA, 3, r"^Pensionsr[üu]ckstellungen$"),
-    ("beihilferueckstellungen", PASSIVA, 3, r"^Beihilfer[üu]ckstellungen$"),
+    ("pension_provisions", PASSIVA, 3, r"^Pensionsr[üu]ckstellungen$"),
+    ("healthcare_allowance_provisions", PASSIVA, 3, r"^Beihilfer[üu]ckstellungen$"),
     # Die Gegenzahl zum Bürgschaftsbestand (`council/buergschaften.py`): Was
     # die Stadt an Ausfall tatsächlich erwartet — 2024 rund 1,3 Mio. € gegen
     # 220,3 Mio. € verbürgtes Volumen, also 0,6 %. Ohne diese Zeile stünde der
     # Bestand ohne seine Einordnung da, und 220 Millionen lesen sich dann wie
     # eine drohende Zahlung. Ebene 3: ein Unterposten der Rückstellungen, kein
     # Hauptposten — die Bilanzsumme rührt sie nicht an.
-    ("buergschaftsrueckstellung", PASSIVA, 3,
+    ("guarantee_provisions", PASSIVA, 3,
      r"^R[üu]ckstellungen f[üu]r drohende Verpflichtungen aus B[üu]rgschaften"),
-    ("passive_rap", PASSIVA, 1, r"^Passive\s+Rechnungsabgrenzung$"),
+    ("deferred_income", PASSIVA, 1, r"^Passive\s+Rechnungsabgrenzung$"),
 )
 
 #: Die Hauptposten je Seite — ihre Summe ist die Bilanzsumme.
@@ -168,8 +168,8 @@ TOLERANZ = 1.0
 #: Die Gliederungsprobe, die den Rückstellungs-Widerspruch auflöst:
 #: 3.1.1 + 3.1.2 = 3.1. Sie ist Kür, keine Pflicht — ein Jahrgang, der die
 #: Aufschlüsselung nicht druckt, verliert nur sie, nicht seine Bilanz.
-PROBE_GLIEDERUNG = ("pensionsrueckstellungen", "beihilferueckstellungen",
-                    "pensionen_gesamt")
+PROBE_GLIEDERUNG = ("pension_provisions", "healthcare_allowance_provisions",
+                    "pension_and_similar_provisions")
 
 _BETRAG = re.compile(r"-?\d{1,3}(?:\.\d{3})*,\d{2}")
 
@@ -408,13 +408,13 @@ def bilanzprobe(gelesen: dict) -> tuple[dict | None, list[str], list[str]]:
                       f"Passiva {passiva:,.2f} €, Differenz {difference:,.2f} €"], []
 
     budget_year = {"year": gelesen["year"], "posten": posten,
-                "bilanzsumme": aktiva, "probes": ["bilanz_ausgleich"],
+                "bilanzsumme": aktiva, "probes": ["balance_sheet_equality"],
                 "balancing_difference": difference}
 
     gedruckt = gelesen.get("gedruckte_summe")
     if gedruckt is not None:
         if abs(gedruckt[1] - aktiva) <= TOLERANZ:
-            budget_year["probes"].append("bilanzsumme_gedruckt")
+            budget_year["probes"].append("balance_sheet_total_printed")
             budget_year["gedruckte_summe"] = gedruckt[1]
         else:
             hinweise.append(
@@ -424,7 +424,7 @@ def bilanzprobe(gelesen: dict) -> tuple[dict | None, list[str], list[str]]:
     pension, beihilfe, gesamt = (_wert(posten, r) for r in PROBE_GLIEDERUNG)
     if None not in (pension, beihilfe, gesamt):
         if abs(pension + beihilfe - gesamt) <= TOLERANZ:
-            budget_year["probes"].append("rueckstellungs_gliederung")
+            budget_year["probes"].append("provisions_breakdown")
         else:
             hinweise.append(
                 f"Rückstellungs-Gliederung geht nicht auf: {pension:,.2f} + "
@@ -584,7 +584,7 @@ def kassenprobe(jahrgaenge: dict[int, dict],
     risse: list[tuple[int, str]] = []
     for year in sorted(jahrgaenge):
         kasse = endbestaende.get(year)
-        bilanz = _wert(jahrgaenge[year]["posten"], "liquide_mittel")
+        bilanz = _wert(jahrgaenge[year]["posten"], "cash_and_equivalents")
         if kasse is None or bilanz is None:
             continue
         if abs(kasse - bilanz) > TOLERANZ:

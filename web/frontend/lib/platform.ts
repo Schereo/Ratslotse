@@ -23,6 +23,19 @@ export function nativePlatform(): "ios" | "android" | null {
   }
 }
 
+/** Der Wert für den `X-Client`-Header: welche Hülle hier läuft.
+ *
+ *  Im Browser wird der Header gar nicht gesetzt — das Backend liest „kein
+ *  Header" als `web`. In der App nennt er die Plattform statt wie früher bloß
+ *  `app`; nur so lässt sich im Admin-Bereich „App oder Web?" beantworten.
+ *  `app` bleibt der Rückfall, falls Capacitor die Plattform nicht kennt: Der
+ *  Wert MUSS nativ bleiben, sonst bekäme die Anmeldung nur ein Cookie statt
+ *  des Bearer-Tokens, das die App braucht.
+ */
+export function clientMarke(): "ios" | "android" | "app" {
+  return nativePlatform() ?? "app";
+}
+
 // Absolute backend origin for the native app; "" (same-origin) on the web.
 export function apiBase(): string {
   if (!isNativeApp()) return "";

@@ -1,7 +1,7 @@
 """Der Konzern Stadt Oldenburg aus dem konsolidierten Gesamtabschluss.
 
 Alle Fixtures sind verkürzte, aber **wörtliche** Ausschnitte aus echten
-pypdf-Extrakten der Prüfberichte in ``council_anlagen`` — jeder mit genau der
+pypdf-Extrakten der Prüfberichte in ``council_attachments`` — jeder mit genau der
 Eigenheit, an der ein naiver Parser scheitert:
 
 - **2016** (``document_id`` 213675) trägt als Label schlicht „Anlage", und der
@@ -373,12 +373,12 @@ def test_speichern_und_lesen(tmp_path):
         store.save_konzern_jahrgang(
             2024, result["posten"], entity,
             _herkunft("Abschnitt 3.2, Gesamtergebnisrechnung des Konzerns",
-                      ["konzern_ergebnisprobe", "konzern_ausserordentlich",
-                       "konzern_gesamtergebnis"],
+                      ["group_ordinary_result", "group_extraordinary_result",
+                       "group_total_result"],
                       ka.probennachweis(result["probes"])),
             _herkunft("Abschnitt 4.1.1, Aufstellung nach Aufgabenträgern",
-                      ["konzern_zeilenprobe", "konzern_traegersumme",
-                       "konzern_querprobe"],
+                      ["group_row_change", "group_entity_total",
+                       "group_cross_check"],
                       ka.traegernachweis(result["entity"])))
 
         assert store.konzern_jahre() == [2024]
@@ -403,8 +403,8 @@ def test_speichern_und_lesen(tmp_path):
 
         # Keine Zeile ohne Herkunft — das ist der Sollzustand.
         luecken = {t: n for t, n in store.herkunft_luecken().items() if n}
-        assert "council_konzern_posten" not in luecken
-        assert "council_konzern_traeger" not in luecken
+        assert "council_group_items" not in luecken
+        assert "council_group_entities" not in luecken
 
         # Zweimal speichern ersetzt, statt zu verdoppeln — und legt keine
         # zweite Herkunft an (idempotent über den Fingerabdruck).
@@ -412,12 +412,12 @@ def test_speichern_und_lesen(tmp_path):
         store.save_konzern_jahrgang(
             2024, result["posten"], entity,
             _herkunft("Abschnitt 3.2, Gesamtergebnisrechnung des Konzerns",
-                      ["konzern_ergebnisprobe", "konzern_ausserordentlich",
-                       "konzern_gesamtergebnis"],
+                      ["group_ordinary_result", "group_extraordinary_result",
+                       "group_total_result"],
                       ka.probennachweis(result["probes"])),
             _herkunft("Abschnitt 4.1.1, Aufstellung nach Aufgabenträgern",
-                      ["konzern_zeilenprobe", "konzern_traegersumme",
-                       "konzern_querprobe"],
+                      ["group_row_change", "group_entity_total",
+                       "group_cross_check"],
                       ka.traegernachweis(result["entity"])))
         assert len(store.get_konzern_posten(2024)) == len(result["posten"])
         assert len(store.get_herkunft()) == vorher
@@ -446,7 +446,7 @@ def test_gegenprobe_gegen_die_kernverwaltung(tmp_path):
             {"nr": 20, "label": "Summe ordentliche Aufwendungen",
              "result": 764416063.76, "is_total": 1},
         ], herkunft.Herkunft(
-            kind="ris", probe="strukturprobe", document_id=295294,
+            kind="ris", probe="structure_check", document_id=295294,
             label="Jahresabschluss 2024", url="https://example.org/ja2024.pdf"))
 
         ist = store.kernverwaltung_ist()

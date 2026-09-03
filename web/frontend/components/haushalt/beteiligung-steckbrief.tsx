@@ -461,7 +461,7 @@ export function Steckbrief({ daten, g, zurueck }: {
   daten: BeteiligungsDaten; g: Gesellschaft; zurueck: () => void;
 }) {
   const alleReihen = useMemo(() => reihen(daten, g.company), [daten, g.company]);
-  const vergleich = daten.konzernvergleich.find((z) => z.company === g.company);
+  const vergleich = daten.group_comparison.find((z) => z.company === g.company);
   const form = rechtsform(g);
 
   const personen = useMemo(() => aufsichtspersonen(daten, g.company),

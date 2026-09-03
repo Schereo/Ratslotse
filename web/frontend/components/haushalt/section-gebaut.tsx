@@ -49,7 +49,7 @@ import Link from "next/link";
 import { ArrowRight, FileText } from "lucide-react";
 import { useFetch } from "@/lib/use-fetch";
 import {
-  GebautDaten, GebautLuecke, Herkunft, deMioEuro, groessterPosten,
+  GebautDaten, GebautLuecke, deMioEuro, groessterPosten,
   herkunftVon, infrastruktur, juengsteReihe, reihen, sachvermoegen,
   strassen, verzehr,
 } from "@/lib/haushalt-gebaut";
@@ -59,6 +59,7 @@ import { NahtSaeulen, type NahtJahr } from "@/components/grafik/naht-saeulen";
 import { Anteilsbalken } from "@/components/haushalt/anteilsbalken";
 import { Beleg } from "@/components/haushalt/source";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
+import { Fundstelle } from "@/components/haushalt/fundstelle";
 
 // `jahresabschluss` gehört dazu: Zwei Beleg-Chips dieser Seite zeigen
 // darauf, und ohne den Eintrag hier rendern sie nichts — die Zahlen aus
@@ -92,23 +93,6 @@ function lueckeGrund(l: GebautLuecke): string {
 const TOENE = ["var(--hh-aus-0)", "var(--hh-aus-2)", "var(--hh-aus-4)",
   "var(--hh-aus-6)", "var(--hh-aus-1)", "var(--hh-aus-3)"];
 
-/** Wo eine Angabe im Dokument steht — dieselbe Bauart wie auf der
- *  Schulden-Seite und bewusst nicht geteilt: Die Seiten sollen einander nicht
- *  brechen. */
-function Fundstelle({ h }: { h: Herkunft | null }) {
-  if (!h?.citation) return null;
-  return (
-    <div className="border-t border-dashed border-border pt-2.5">
-      <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-        Woher diese Zahlen kommen
-      </p>
-      <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">
-        {h.citation}{h.as_of ? ` · ${h.as_of}` : ""}
-      </p>
-    </div>
-  );
-}
-
 /** Was aus den Investitionen wurde — und dass der Bestand trotzdem schrumpft.
  *
  *  DIE ZWEITE HÄLFTE DER SEITE. Bis hierher steht, was die Stadt gebaut hat.
@@ -125,7 +109,7 @@ function Fundstelle({ h }: { h: Herkunft | null }) {
  *
  *  Rendert nichts, solange kein Anlagenspiegel eingelesen ist. */
 function AnlagenBlock({ daten }: { daten: GebautDaten | null }) {
-  const a = daten?.anlagen;
+  const a = daten?.fixed_assets;
   const years = a?.years ?? [];
   const year = years[years.length - 1];
   const infra = infrastruktur(a, year);
@@ -229,7 +213,7 @@ export function GebautAbschnitt({ onBestand }: {
    *  (H5-02). `luecken` sind die Jahre, die als Lücke im Bild stehen. */
   onBestand?: (b: { jahrgaenge: number; luecken: number[] } | null) => void;
 } = {}) {
-  const { data, loading } = useFetch<GebautDaten>("/council/haushalt/gebaut");
+  const { data, loading } = useFetch<GebautDaten>("/council/budget/assets");
 
   const alle = useMemo(() => reihen(data ?? null), [data]);
   const juengste = useMemo(() => juengsteReihe(data ?? null), [data]);
@@ -395,7 +379,7 @@ export function GebautAbschnitt({ onBestand }: {
           </div>
           {/* Der Wortlaut kommt aus dem Backend — s. Kopfkommentar. */}
           <p className="max-w-[76ch] rounded-xl bg-muted/60 px-3 py-2.5 text-[13px] leading-relaxed text-foreground/90">
-            <strong>Gezählt wird:</strong> {data.abgrenzung}
+            <strong>Gezählt wird:</strong> {data.scope_note}
           </p>
           <Fundstelle h={hLetzter} />
         </section>

@@ -84,7 +84,7 @@ Dokument und lassen sich gegen nichts rechnen. Sie tragen deshalb
 Der Abgleich mit dem Gesamtabschluss — nachgerechnet
 ------------------------------------------------------
 Dieselben Gesellschaften stehen auch im konsolidierten Gesamtabschluss
-(``council_konzern_traeger``), dort mit ihren *ordentlichen Erträgen* und
+(``council_group_entities``), dort mit ihren *ordentlichen Erträgen* und
 *Aufwendungen* in Tausend Euro. Deren Differenz ist der Beitrag der
 Gesellschaft zum Konzernergebnis — und damit die einzige Zahl beider
 Dokumente, die sich überhaupt vergleichen lässt.
@@ -1267,8 +1267,8 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
         for x in e["dokumentproben"]:
             if not x["ok"]:
                 continue
-            name = ("beteiligung_bilanzprobe" if x["indicator"] == "bilanzsumme"
-                    else "beteiligung_ergebnisprobe")
+            name = ("shareholding_balance_sheet_check" if x["indicator"] == "bilanzsumme"
+                    else "shareholding_result_check")
             s = (x["company"], x["indicator"], x["year"])
             # Die **größte** gemessene Abweichung gewinnt: Belegen mehrere
             # Berichte dieselbe Zahl, ist der schlechteste Messwert die
@@ -1302,7 +1302,7 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
                 "classification": g.classification, "page": g.seite_gedruckt,
                 "consolidated_key": g.consolidated_key,
                 "herkunft": _h.Herkunft(
-                    probe="beteiligung_seitenprobe",
+                    probe="shareholding_page_check",
                     citation=f"Abschnitt {g.classification} — {g.name}",
                     probe_result=f"Inhaltsverzeichnis und Trennseite nennen "
                                    f"beide Seite {g.seite_gedruckt}",
@@ -1338,7 +1338,7 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
                     # gerissen ist, steht auch kein Amt da, und die Zeile sagt
                     # ausdrücklich „ungeprüft" statt eine Probe zu behaupten.
                     "herkunft": _h.Herkunft(
-                        probe=("beteiligung_spaltenprobe" if person.position
+                        probe=("shareholding_column_check" if person.position
                                else _h.UNGEPRUEFT),
                         citation=f"Abschnitt {g.classification} — "
                                    f"{person.committee}",
@@ -1356,7 +1356,7 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
                     "amount_eur": e_.amount_eur,
                     "share_pct": e_.share_pct,
                     "herkunft": _h.Herkunft(
-                        probe="beteiligung_anteilsprobe",
+                        probe="shareholding_share_check",
                         citation=f"Abschnitt {g.classification} — "
                                    f"Beteiligungsverhältnisse",
                         probe_result=anteilsprobe,
@@ -1380,7 +1380,7 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
             name, delta = dokumentprobe[ref]
             probes.append(name)
         if len(je_bericht) > 1:
-            probes.append("beteiligung_ueberlappung")
+            probes.append("shareholding_overlap")
         if not probes:
             verworfen += 1
             continue

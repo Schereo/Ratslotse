@@ -1,7 +1,7 @@
 """Prüfungsfeststellungen aus den Schlussberichten des Rechnungsprüfungsamts.
 
 Das Fixture ist ein verkürzter, aber **wörtlicher** Ausschnitt aus dem echten
-pypdf-Extrakt des Schlussberichts zum Jahresabschluss 2023 (``council_anlagen``
+pypdf-Extrakt des Schlussberichts zum Jahresabschluss 2023 (``council_attachments``
 document_id 280863): Titelblock, Inhaltsverzeichnis, Randmarken-Legende und
 zwei Abschnitte mit ihren Feststellungen — inklusive der Eigenheiten, an denen
 ein naiver Parser scheitert:
@@ -209,7 +209,7 @@ def test_speichern_und_lesen(tmp_path, source):
         n = store.save_pruefbericht(2023, gefunden, source(
             "Schlussbericht 2023",
             "https://buergerinfo.oldenburg.de/getfile.php?id=280863&type=do",
-            probe="legende_und_verzeichnis"))
+            probe="legend_and_index"))
         assert n == 2
         assert store.pruefbericht_jahre() == [2023]
         zeilen = store.get_pruefberichte()
@@ -221,7 +221,7 @@ def test_speichern_und_lesen(tmp_path, source):
         # Erneuter Ingest ersetzt den Jahrgang, statt ihn zu verdoppeln.
         store.save_pruefbericht(2023, gefunden, source(
             "Schlussbericht 2023", "https://example.org/sb2023.pdf",
-            probe="legende_und_verzeichnis"))
+            probe="legend_and_index"))
         assert len(store.get_pruefberichte(2023)) == 2
     finally:
         store.close()
@@ -268,3 +268,34 @@ def test_der_titel_muss_trotzdem_vorne_stehen():
     nicht noch einmal betitelt."""
     weit_hinten = ("Blindtext. " * 200) + OHNE_BRIEFKOPF
     assert pruefberichte.erkenne_jahrgang(weit_hinten) is None
+
+
+# --------------------------------------------------------------------------
+# Die OCR-Form: ein Tabulator statt zwei Leerzeichen
+# --------------------------------------------------------------------------
+
+#: So gibt das Sehmodell den Schlussbericht 2024 wieder (Dokument 295296,
+#: gelesen am 02.09.2026): Die Randspalte wird zu EINEM Tabulator, in der
+#: Legende wie im Fließtext („B\tBeanstandung", „H\tDie gesetzliche Frist …").
+OCR_BERICHT = (BERICHT
+               .replace(" B  ", "B\t").replace(" WB  ", "WB\t").replace(" H  ", "H\t"))
+
+
+def test_ocr_marken_mit_tabulator_werden_gelesen():
+    """Mit dem alten Muster (zwei Leerzeichen) fand der Parser im OCR-Text
+    null Feststellungen — die Legende ja, die Marken nein. Am echten Text 2024
+    gemessen: 18 Tab-Marken, davon 3 in der Legende, 15 Feststellungen."""
+    assert sorted(pruefberichte.parse_legende(OCR_BERICHT)) == ["B", "H", "WB"]
+    ergebnis = pruefberichte.parse_feststellungen(OCR_BERICHT)
+    assert [f["mark"] for f in ergebnis["feststellungen"]] == ["H", "WB"]
+    assert ergebnis["feststellungen"][0]["text"].startswith("Die gesetzliche Frist")
+    assert ergebnis["feststellungen"][1]["text_number"] == "4.2.4"
+    assert ergebnis["verworfen"] == []
+
+
+def test_ein_einzelnes_leerzeichen_bleibt_keine_marke():
+    """Der Tabulator ist eindeutig, ein Leerzeichen nicht — die gesperrte
+    Unterschrift („K R U P K E") steht mit Leerzeichen da."""
+    text = BERICHT.replace(" WB  Das", " WB Das")
+    marken = [f["mark"] for f in pruefberichte.parse_feststellungen(text)["feststellungen"]]
+    assert marken == ["H"]

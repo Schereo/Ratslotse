@@ -44,7 +44,7 @@ import { Segmented } from "@/components/ui";
 import { useFetch } from "@/lib/use-fetch";
 import { deMio } from "@/lib/haushalt";
 import {
-  Herkunft, KonzernDaten, herkunftVon, jahrDaten, juengstesVergleichsjahr,
+  KonzernDaten, herkunftVon, jahrDaten, juengstesVergleichsjahr,
   kernAnteil, konsolidierung, traegerJahre, traegerListe,
 } from "@/lib/haushalt-konzern";
 import { KonzernLuecke, LueckeArt } from "@/components/haushalt/konzern-luecke";
@@ -53,41 +53,12 @@ import { Beleg } from "@/components/haushalt/source";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { GlossaryText } from "@/components/glossary-text";
 import { cn } from "@/lib/utils";
+import { Fundstelle } from "@/components/haushalt/fundstelle";
 
 // Nur was auf dieser Seite auch zitiert wird: „jahresabschluss" stand hier,
 // solange der Gegenproben-Block stand — er war die einzige Stelle mit einem
 // Beleg darauf. Ein Schlüssel ohne Fußnote im Text wäre ein Eintrag im
 // Verzeichnis, auf den nichts zeigt.
-
-/** Wo eine Angabe im Dokument steht: welcher Abschnitt, welcher Stand. Das
- *  Quellenverzeichnis am Seitenende beschreibt die Quelle der ganzen Seite;
- *  das hier gehört an die einzelne Zahl und ist der Grund, warum man sie in
- *  einem 300-Seiten-PDF wiederfindet.
- *
- *  HIER STANDEN BIS 16.08. AUCH UNSERE PROBEN: die Sätze aus
- *  `herkunft.PROBEN` und darunter „Gemessen: 0,00 % Abweichung". Das sagte
- *  etwas über uns und nichts über den Haushalt — dieselbe
- *  Selbstvergewisserung wie die Gegenproben-Tabelle, die auf dieser Seite
- *  stand (DESIGNSPRACHE.md § 7). Die Proben laufen unverändert weiter, die
- *  API liefert sie weiter, Tests halten sie fest und die Technik-Doku
- *  beschreibt sie. Nur die Zurschaustellung ist weg. */
-function Fundstelle({ h, className }: { h: Herkunft | null; className?: string }) {
-  // Ohne Fundstelle nichts — sonst bliebe eine Überschrift ohne Inhalt stehen.
-  // Der Abstand kommt deshalb per `className` von außen statt aus einem
-  // Wrapper-<div>: Ein leerer Wrapper mit `mt-3` hinterließe genau die Lücke,
-  // die dieses `return null` vermeiden soll.
-  if (!h?.citation) return null;
-  return (
-    <div className={cn("border-t border-dashed border-border pt-2.5", className)}>
-      <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-        Woher diese Zahlen kommen
-      </p>
-      <p className="mt-1 max-w-[86ch] text-[11.5px] leading-relaxed text-muted-foreground">
-        {h.citation}{h.as_of ? ` · ${h.as_of}` : ""}
-      </p>
-    </div>
-  );
-}
 
 /** Die Kernaussage als Zahl — bewusst zwei Beträge und ein Anteil, mehr nicht.
  *  Der Anteil ist unsere Rechnung und steht als solche gekennzeichnet. */
@@ -141,7 +112,7 @@ export function KonzernAbschnitt({ onBestand }: {
    *  Antwort (H5-02). Erträge, wie im Vergleichsbalken unten. */
   onBestand?: (b: { anteil: number; year: number } | null) => void;
 } = {}) {
-  const { data, loading } = useFetch<KonzernDaten>("/council/haushalt/konzern");
+  const { data, loading } = useFetch<KonzernDaten>("/council/budget/group");
 
   useEffect(() => {
     if (!onBestand || loading) return;
@@ -163,7 +134,7 @@ export function KonzernAbschnitt({ onBestand }: {
   }
   // Ohne eingelesene Gesamtabschlüsse gibt es diese Seite nicht — lieber ein
   // ehrlicher Hinweis als eine Seite voller Striche.
-  if (!data || !data.konzern.length || !kopfJahr) {
+  if (!data || !data.consolidated.length || !kopfJahr) {
     return (
       <div className="rounded-2xl border border-border bg-card p-5 text-sm leading-relaxed text-muted-foreground">
         Für diese Seite sind noch keine Gesamtabschlüsse eingelesen.{" "}
@@ -185,11 +156,13 @@ export function KonzernAbschnitt({ onBestand }: {
       <div className="flex flex-col gap-4">
         <div className="flex items-end justify-between gap-5">
           <div className="min-w-0">
+            {/* Nicht noch einmal die Frage der Seite (H1) — die Antwort ist
+                der Abschnitt (Durchsicht 02.09.2026). */}
             <h2 className="font-display text-xl font-bold tracking-tight sm:text-[22px]">
-              Und ist das die ganze Stadt?
+              Die ganze Stadt in einer Rechnung
             </h2>
             <p className="mt-1.5 max-w-[64ch] text-sm leading-relaxed text-muted-foreground">
-              Nein. Der Haushalt zeigt die Verwaltung. Klinikum, Busse, Bäder und die
+              Der Haushalt zeigt die Verwaltung. Klinikum, Busse, Bäder und die
               städtischen Gebäude führen eigene Bücher — hier stehen sie zum ersten Mal
               in einer Rechnung.
             </p>

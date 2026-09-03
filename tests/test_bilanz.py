@@ -202,11 +202,11 @@ def test_verschraenktes_layout_verliert_keinen_hauptposten():
     Zeile** wieder an, hinter den Beträgen der Passivseite. Ein Parser, der
     Zeilen an ``^`` trennt, verlöre genau die vier Posten hier."""
     werte = _werte(_lies(B_2024, 2024))
-    assert werte["sachvermoegen"] == 605_573_107.06
-    assert werte["infrastrukturvermoegen"] == 361_653_777.68
-    assert werte["finanzvermoegen"] == 645_348_451.45
-    assert werte["liquide_mittel"] == 118_001_891.26
-    assert werte["aktive_rap"] == 19_671_338.55
+    assert werte["tangible_assets"] == 605_573_107.06
+    assert werte["infrastructure_assets"] == 361_653_777.68
+    assert werte["financial_assets"] == 645_348_451.45
+    assert werte["cash_and_equivalents"] == 118_001_891.26
+    assert werte["prepaid_expenses"] == 19_671_338.55
 
 
 def test_verfuegbare_ruecklage_bleibt_von_zweckbindungen_getrennt():
@@ -214,9 +214,9 @@ def test_verfuegbare_ruecklage_bleibt_von_zweckbindungen_getrennt():
     Jahresergebnis — nicht der größere Sammelposten 1.2 mit zweckgebundenen
     Rücklagen."""
     werte = _werte(_lies(B_2024, 2024))
-    assert werte["ruecklagen_gesamt"] == 210_654_550.36
-    assert werte["ueberschussruecklage_ordentlich"] == 188_946_996.63
-    assert werte["jahresergebnis_bilanz"] == 6_136_250.91
+    assert werte["reserves_total"] == 210_654_550.36
+    assert werte["ordinary_surplus_reserve"] == 188_946_996.63
+    assert werte["annual_result_balance_sheet"] == 6_136_250.91
 
 
 def test_roemische_und_arabische_nummern_stehen_daneben():
@@ -224,11 +224,11 @@ def test_roemische_und_arabische_nummern_stehen_daneben():
     sonst brauchte jedes Layout seinen eigenen Zweig."""
     n2019 = {p["role"]: p["nr"] for p in _lies(B_2019, 2019)["posten"]}
     n2024 = {p["role"]: p["nr"] for p in _lies(B_2024, 2024)["posten"]}
-    assert n2019["sachvermoegen"] == "II" and n2024["sachvermoegen"] == "2"
+    assert n2019["tangible_assets"] == "II" and n2024["tangible_assets"] == "2"
     # Dieselbe Nummer, zwei verschiedene Posten: „1." ist ab 2021 auf der
     # Aktivseite das immaterielle Vermögen und auf der Passivseite die
     # Nettoposition. Deshalb ist die Rolle der Schlüssel.
-    assert n2024["immaterielles_vermoegen"] == n2024["nettoposition"] == "1"
+    assert n2024["intangible_assets"] == n2024["net_position"] == "1"
 
 
 def test_der_wortlaut_des_dokuments_bleibt_stehen():
@@ -237,10 +237,10 @@ def test_der_wortlaut_des_dokuments_bleibt_stehen():
     die Fußnotenmarke darf nicht mit hineinrutschen."""
     b19 = {p["role"]: p["label"] for p in _lies(B_2019, 2019)["posten"]}
     b24 = {p["role"]: p["label"] for p in _lies(B_2024, 2024)["posten"]}
-    assert b19["pensionen_gesamt"] == "Pensionsrückst. und ähnliche Verpflichtungen"
-    assert b24["pensionen_gesamt"] == "Pensionsrückstellungen und ähnliche Verpflichtungen"
-    assert b24["immaterielles_vermoegen"] == "Immaterielles Vermögen"   # ohne „1)"
-    assert b24["sonderposten"] == "Sonderposten"
+    assert b19["pension_and_similar_provisions"] == "Pensionsrückst. und ähnliche Verpflichtungen"
+    assert b24["pension_and_similar_provisions"] == "Pensionsrückstellungen und ähnliche Verpflichtungen"
+    assert b24["intangible_assets"] == "Immaterielles Vermögen"   # ohne „1)"
+    assert b24["special_items"] == "Sonderposten"
     assert not any(re.search(r"\d\)", w) for w in b24.values())
 
 
@@ -251,8 +251,8 @@ def test_seitenfuss_und_klammerbetrag_verdraengen_keinen_posten():
     Betrag an der Zeile davor — und die flöge über die Zwei-Spalten-Regel
     heraus."""
     werte = _werte(_lies(B_2024, 2024))
-    assert werte["infrastrukturvermoegen"] == 361_653_777.68
-    assert werte["rueckstellungen"] == 337_210_902.05
+    assert werte["infrastructure_assets"] == 361_653_777.68
+    assert werte["provisions"] == 337_210_902.05
     assert 6_003_088.68 not in werte.values()
 
 
@@ -287,7 +287,7 @@ def test_ein_fehlender_hauptposten_ist_kein_stiller_ausfall():
     ohne = B_2019.replace("V. Aktive Rechnungsabgrenzung 17.565.955,89 17.671.780,50\n", "")
     budget_year, fehler, _ = bilanz.bilanzprobe(bilanz.parse_bilanz(ohne, 2019))
     assert budget_year is None
-    assert fehler and "aktive_rap" in fehler[0]
+    assert fehler and "prepaid_expenses" in fehler[0]
 
 
 def test_ohne_abschnitt_kein_jahrgang():
@@ -303,10 +303,10 @@ def test_ein_jahrgang_ohne_gedruckte_bilanzsumme_geht_trotzdem_durch():
     ist kein Mangel: Der Ausgleich beider Seiten belegt sie ohnehin."""
     budget_year = _lies(B_2024, 2024)
     assert "gedruckte_summe" not in budget_year
-    assert budget_year["probes"] == ["bilanz_ausgleich", "rueckstellungs_gliederung"]
+    assert budget_year["probes"] == ["balance_sheet_equality", "provisions_breakdown"]
     # 2019 hat sie — dort ist sie die dritte Bestätigung.
     alt = _lies(B_2019, 2019)
-    assert "bilanzsumme_gedruckt" in alt["probes"]
+    assert "balance_sheet_total_printed" in alt["probes"]
     assert alt["gedruckte_summe"] == pytest.approx(SUMME[2019], abs=0.01)
 
 
@@ -315,7 +315,7 @@ def test_eine_falsche_gedruckte_summe_kostet_nur_ihre_probe():
                             "1.156.033.798,05 1.193.569.000,00")
     budget_year, fehler, hinweise = bilanz.bilanzprobe(bilanz.parse_bilanz(falsch, 2019))
     assert budget_year is not None and not fehler
-    assert "bilanzsumme_gedruckt" not in budget_year["probes"]
+    assert "balance_sheet_total_printed" not in budget_year["probes"]
     assert hinweise and "gedruckte Bilanzsumme" in hinweise[0]
 
 
@@ -327,25 +327,25 @@ def test_pension_plus_beihilfe_ergibt_die_oberposition(text, year):
     Zahlen, und beide stimmen. 3.1 schließt die Beihilfe ein, 3.1.1 nicht."""
     budget_year = _lies(text, year)
     w = _werte(budget_year)
-    assert w["pensionsrueckstellungen"] + w["beihilferueckstellungen"] == pytest.approx(
-        w["pensionen_gesamt"], abs=0.01)
-    assert "rueckstellungs_gliederung" in budget_year["probes"]
+    assert w["pension_provisions"] + w["healthcare_allowance_provisions"] == pytest.approx(
+        w["pension_and_similar_provisions"], abs=0.01)
+    assert "provisions_breakdown" in budget_year["probes"]
     # Und die Ebenen sagen, welche Zahl über welcher steht.
     ebenen = {p["role"]: p["level"] for p in budget_year["posten"]}
-    assert ebenen["rueckstellungen"] == 1
-    assert ebenen["pensionen_gesamt"] == 2
-    assert ebenen["pensionsrueckstellungen"] == ebenen["beihilferueckstellungen"] == 3
+    assert ebenen["provisions"] == 1
+    assert ebenen["pension_and_similar_provisions"] == 2
+    assert ebenen["pension_provisions"] == ebenen["healthcare_allowance_provisions"] == 3
 
 
 def test_2024_traegt_die_zahlen_aus_dem_kopfkommentar():
     """Die drei Beträge, um die es geht — als Regressionsanker, damit ein
     Umbau am Parser sie nicht lautlos verschiebt."""
     w = _werte(_lies(B_2024, 2024))
-    assert w["pensionen_gesamt"] == 311_789_660.00
-    assert w["pensionsrueckstellungen"] == 266_259_316.00
-    assert w["beihilferueckstellungen"] == 45_530_344.00
+    assert w["pension_and_similar_provisions"] == 311_789_660.00
+    assert w["pension_provisions"] == 266_259_316.00
+    assert w["healthcare_allowance_provisions"] == 45_530_344.00
     # Die Kreditschulden daneben: ein Siebtel der Pensionszusagen.
-    assert w["geldschulden"] == 43_690_971.71
+    assert w["financial_liabilities"] == 43_690_971.71
 
 
 def test_eine_gerissene_gliederung_ist_ein_hinweis_kein_ausfall():
@@ -357,7 +357,7 @@ def test_eine_gerissene_gliederung_ist_ein_hinweis_kein_ausfall():
     budget_year, fehler, hinweise = bilanz.bilanzprobe(bilanz.parse_bilanz(kaputt, 2024))
     assert budget_year is not None and not fehler
     assert budget_year["bilanzsumme"] == pytest.approx(SUMME[2024], abs=0.01)
-    assert "rueckstellungs_gliederung" not in budget_year["probes"]
+    assert "provisions_breakdown" not in budget_year["probes"]
     assert hinweise and "Rückstellungs-Gliederung" in hinweise[0]
 
 
@@ -367,7 +367,7 @@ def test_ein_jahrgang_ohne_aufschluesselung_verliert_nur_die_probe():
     ohne = re.sub(r"3\.1\.[12].*\n", "", B_2024)
     budget_year, fehler, hinweise = bilanz.bilanzprobe(bilanz.parse_bilanz(ohne, 2024))
     assert budget_year is not None and not fehler and not hinweise
-    assert budget_year["probes"] == ["bilanz_ausgleich"]
+    assert budget_year["probes"] == ["balance_sheet_equality"]
 
 
 # --- Über Dokumentgrenzen: die Vorjahreskette -------------------------------
@@ -391,13 +391,13 @@ def test_vorjahreskette_findet_einen_riss():
     eine ab, hat sich einer der beiden verlesen."""
     chain = _kette()
     for p in chain[2023]["posten"]:
-        if p["role"] == "sachvermoegen":
+        if p["role"] == "tangible_assets":
             p["value"] += 1000.0
     risse = bilanz.vorjahreskette(chain)
     assert len(risse) == 1
     year, folge, warum = risse[0]
     assert (year, folge) == (2023, 2024)
-    assert "sachvermoegen" in warum
+    assert "tangible_assets" in warum
 
 
 def test_vorjahreskette_schweigt_ohne_nachbarn():
@@ -569,7 +569,7 @@ def test_der_cash_pooling_text_kommt_vollstaendig_mit():
     207,1 Mio. € nicht angezeigt werden.** Er muss also ankommen — mit
     aufgelöster Silbentrennung, ohne Seitenfüße, in Absätzen."""
     nach_rolle = {a["role"]: a for a in bilanz.parse_erlaeuterungen(ANHANG_2024, 2024)}
-    schulden = nach_rolle["schulden"]
+    schulden = nach_rolle["liabilities"]
     assert schulden["nr"] == 7
     assert schulden["heading"] == "Schulden"
     assert "Bilanzverlängerung" in schulden["text"]
@@ -585,7 +585,7 @@ def test_der_cash_pooling_text_kommt_vollstaendig_mit():
 
 def test_seitenfuss_zerreisst_keinen_erlaeuterungssatz():
     liquide = next(a for a in bilanz.parse_erlaeuterungen(ANHANG_2024, 2024)
-                   if a["role"] == "liquide_mittel")
+                   if a["role"] == "cash_and_equivalents")
     assert "JA 38" not in liquide["text"]
 
 
@@ -605,12 +605,12 @@ def test_ein_verschobener_abschnitt_faellt_auf():
     ok, warum = bilanz.erlaeuterungsprobe(
         bilanz.parse_erlaeuterungen(verschoben, 2024))
     assert not ok
-    assert "6.2.7" in warum and "schulden" in warum
+    assert "6.2.7" in warum and "liabilities" in warum
 
 
 def test_ein_leerer_abschnitt_zaehlt_nicht_als_erlaeuterung():
     ok, warum = bilanz.erlaeuterungsprobe(
-        [{"role": r, "nr": i + 1, "heading": b, "text": "" if r == "schulden" else "x"}
+        [{"role": r, "nr": i + 1, "heading": b, "text": "" if r == "liabilities" else "x"}
          for i, (r, b) in enumerate(zip(
              bilanz.PFLICHT_ROLLEN,
              ("Immaterielles Vermögen", "Sachvermögen", "Finanzvermögen",
@@ -625,7 +625,7 @@ def test_ein_leerer_abschnitt_zaehlt_nicht_als_erlaeuterung():
 def source():
     from council import herkunft
     return herkunft.Herkunft(
-        probe=["bilanz_ausgleich", "bilanz_kassenprobe"],
+        probe=["balance_sheet_equality", "balance_sheet_cash_check"],
         citation="Abschnitt 2.1 — Bilanz der Stadt Oldenburg zum 31.12.2024",
         probe_result="Aktiva und Passiva stimmen auf den Cent überein",
         as_of="31.12.2024", kind="ris", document_id=4711,
@@ -640,7 +640,7 @@ def test_store_bilanz_roundtrip(tmp_path, source):
         assert store.bilanz_jahre() == [2024]
         rows = store.get_bilanz(2024)
         werte = {r["role"]: r["value"] for r in rows}
-        assert werte["pensionen_gesamt"] == 311_789_660.00
+        assert werte["pension_and_similar_provisions"] == 311_789_660.00
         assert store.get_ruecklagen() == [{
             "year": 2024,
             "reserves": 188_946_996.63,
@@ -654,7 +654,7 @@ def test_store_bilanz_roundtrip(tmp_path, source):
         assert rows[0]["page"] == "aktiva" and rows[-1]["page"] == "passiva"
         # Die Herkunft hängt an jeder Zeile und trägt beide Proben.
         h = store.get_herkunft([rows[0]["herkunft_id"]])[0]
-        assert "bilanz_kassenprobe" in h["probe"]
+        assert "balance_sheet_cash_check" in h["probe"]
         # Ein zweiter Lauf ersetzt den Stichtag, statt ihn zu verdoppeln.
         store.save_bilanz(2024, budget_year["posten"], source)
         assert len(store.get_bilanz(2024)) == len(budget_year["posten"])
@@ -669,7 +669,7 @@ def test_store_erlaeuterungen_roundtrip(tmp_path, source):
         assert store.save_bilanz_erlaeuterungen(2024, abschnitte, source) == 9
         raus = store.get_bilanz_erlaeuterungen(2024)
         assert [r["nr"] for r in raus] == list(range(1, 10))
-        schulden = next(r for r in raus if r["role"] == "schulden")
+        schulden = next(r for r in raus if r["role"] == "liabilities")
         assert "Cash-Pooling" in schulden["text"]
     finally:
         store.close()
@@ -690,8 +690,8 @@ def test_jede_probe_der_bilanz_ist_erklaert():
     """Was in ``herkunft.PROBEN`` fehlt, steht auf der Seite ohne Erklärung —
     und eine Probe, die niemand versteht, ist keine."""
     from council import herkunft
-    vergeben = {"bilanz_ausgleich", "bilanzsumme_gedruckt", "rueckstellungs_gliederung",
-                "bilanz_vorjahreskette", "bilanz_kassenprobe", "bilanz_erlaeuterung"}
+    vergeben = {"balance_sheet_equality", "balance_sheet_total_printed", "provisions_breakdown",
+                "balance_sheet_prior_year_chain", "balance_sheet_cash_check", "balance_sheet_notes"}
     assert vergeben <= set(herkunft.PROBEN)
-    for tabelle in ("council_bilanz", "council_bilanz_erlaeuterungen"):
+    for tabelle in ("council_balance_sheet", "council_balance_sheet_notes"):
         assert tabelle in herkunft.HERKUNFT_TABELLEN

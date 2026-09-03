@@ -40,6 +40,7 @@ import os
 import re
 import shutil
 import subprocess
+import time
 import unicodedata
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, timedelta
@@ -59,6 +60,17 @@ TITLE_DATE_TOLERANCE_DAYS = 2
 
 _TITLE_RE = re.compile(r"Ratssitzung Oldenburg\s*\|\s*(\d{2})\.(\d{2})\.(\d{4})")
 
+#: So oft wird eine leere Antwort wiederholt, bevor der Abschnitt aufgibt.
+EMPTY_RETRIES = 4
+
+
+class EmptyAnswer(RuntimeError):
+    """Das Modell lieferte wiederholt eine Antwort ohne Inhalt.
+
+    Eigene Ausnahme, damit ``_one_pass`` den Abschnitt als AUSGEFALLEN
+    zählen kann statt ihn für „nichts gefunden" zu halten — der
+    Unterschied entscheidet, ob eine ganze Region still verschwindet."""
+
 SYSTEM_PROMPT = """Du liest das automatisch erzeugte Transkript einer Ratssitzung der
 Stadt Oldenburg und ziehst daraus die Abstimmungsergebnisse.
 
@@ -66,7 +78,12 @@ TEXTQUALITAET: Das Transkript stammt aus einer Spracherkennung. Sie
 verschluckt den Punkt in Tagesordnungspunkt-Nummern ("141" meint 14.1,
 "147 8 und 9" meint 14.7, 14.8 und 14.9) und verschreibt Eigennamen.
 Ordne Nummern IMMER gegen die mitgelieferte Tagesordnung zu und nutze den
-mitgesprochenen Titel als Kontrolle.
+mitgesprochenen Titel als Kontrolle. Uebernimm die Kennung dabei ZEICHEN-
+GENAU so, wie sie links in der Tagesordnung steht — auch wenn sie keine
+reine Zahl ist. Ein Dringlichkeitsantrag heisst dort z. B. "DZT 1"; er hat
+eine eigene Zaehlung und ist NICHT der Tagesordnungspunkt 1. Ueber ihn wird
+zweimal abgestimmt: zu Sitzungsbeginn nur ueber die Dringlichkeit
+(art="vorab"), spaeter in der Sitzung ueber die Sache selbst (art="haupt").
 
 ABLAUF: Die Sitzungsleitung ruft den Punkt auf ("Dann machen wir mit 7.1
 weiter, Umgestaltung des Bahnhofsvorplatzes"), danach die Aussprache, dann
@@ -182,11 +199,25 @@ def fetch_transcript(video_id: str, workdir: Path) -> list[tuple[float, str]] | 
 
 # ------------------------------------------------------- Text-Werkzeuge
 
+#: NUR die amtlichen Öffentlich/Nichtöffentlich-Marker aus
+#: council_agenda_items. Alles andere davor ist ein eigener Namensraum.
+_AMTLICH_PREFIX = re.compile(r"^[ÖN]\s+", re.IGNORECASE)
+
+
 def strip_prefix(item_number: str) -> str:
-    """'Ö 10.3' → '10.3'. council_agenda_items führt das Ö/N-Präfix,
-    council_decisions nicht — und 'Ö' ist kein ASCII-O, eine Zeichenklasse
-    ließe es durch. Alles vor der ersten Ziffer fällt weg."""
-    return re.sub(r"^[^\d]+", "", str(item_number or "").strip())
+    """'Ö 10.3' → '10.3', damit die Nummer zu council_decisions passt —
+    aber 'DZT 1' bleibt 'DZT 1'.
+
+    Zwei Fallen in einer Zeile. Erstens führt council_agenda_items das
+    Ö/N-Präfix und council_decisions nicht; 'Ö' ist dabei kein ASCII-'O',
+    eine Zeichenklasse `[OoNn]` ließe es durch. Zweitens — und das kostete
+    am 02.09.2026 ein sichtbar falsches Ergebnis — haben
+    Dringlichkeitsanträge (council/dringlichkeit.py) eine EIGENE Zählung:
+    'DZT 1' ist nicht 'Ö 1'. Ein `^[^\\d]+`-Schnitt verkürzte beide auf
+    '1', worauf die Sachabstimmung über den PAK-Dringlichkeitsantrag am
+    TOP „Feststellung der Beschlussfähigkeit" hing — über den nie
+    abgestimmt wird — und beim Antrag selbst nichts stand."""
+    return _AMTLICH_PREFIX.sub("", str(item_number or "").strip(), count=1)
 
 
 def _fold(s: str) -> str:
@@ -319,19 +350,23 @@ def _ask(agenda_text: str, chunk: str, tag: str, attempt: int = 0) -> list[dict]
     content = (f"TAGESORDNUNG DIESER SITZUNG (Nummer<TAB>Titel):\n{agenda_text}\n\n"
                f"TRANSKRIPT-ABSCHNITT:\n{chunk}")
     resp = llm.chat_complete(
-        model=MODEL, _feature="video_ergebnisse",
+        model=MODEL, _feature="video_results",
         messages=[{"role": "system", "content": SYSTEM_PROMPT},
                   {"role": "user", "content": content}],
         temperature=0, response_format={"type": "json_object"}, max_tokens=32_000,
     )
     # gpt-5.6-luna liefert vereinzelt eine Antwort ganz OHNE choices (kein
     # Fehler, kein Inhalt) — chat_complete wirft dabei nicht, also selbst
-    # noch einmal versuchen, sonst fällt der Abschnitt still aus.
+    # noch einmal versuchen. Der Ausfall ist teurer als er aussieht: Ein
+    # verlorener Abschnitt nimmt seine ganze Region mit, weil der Konsens
+    # den zweiten Durchlauf braucht. Am 02.09.2026 fiel so B/0 aus — mit ihm
+    # alle vier Absetzungen, die die Leitung zu Sitzungsbeginn verkündet
+    # hatte. Deshalb hartnäckiger versuchen, mit wachsender Pause.
     if not getattr(resp, "choices", None):
-        if attempt < 2:
+        if attempt < EMPTY_RETRIES:
+            time.sleep(2 ** attempt)
             return _ask(agenda_text, chunk, tag, attempt + 1)
-        log.warning("Video-Lesen %s: dreimal leere Antwort", tag)
-        return []
+        raise EmptyAnswer(f"{tag}: {EMPTY_RETRIES + 1}x leere Antwort")
     raw = (resp.choices[0].message.content or "").strip()
     raw = re.sub(r"^```(?:json)?|```$", "", raw, flags=re.M).strip()
     try:
@@ -347,9 +382,17 @@ def _ask(agenda_text: str, chunk: str, tag: str, attempt: int = 0) -> list[dict]
         return []
 
 
-def _one_pass(agenda_text: str, text: str, start: int, tag: str) -> list[dict]:
+def _one_pass(agenda_text: str, text: str, start: int,
+              tag: str) -> tuple[list[dict], set[int]]:
+    """Ein Durchlauf über alle Abschnitte → (Befunde, ausgefallene Abschnitte).
+
+    Die Ausfall-Menge ist kein Beiwerk: Fehlt ein Abschnitt in EINEM
+    Durchlauf, findet in seiner Region kein Konsens mehr statt, und die
+    Ergebnisse verschwinden lautlos. Der Aufrufer meldet das.
+    """
     chunks = _chunks(text, start)
     found: list[dict] = []
+    fehlend: set[int] = set()
     with ThreadPoolExecutor(max_workers=3) as ex:
         futures = {ex.submit(_ask, agenda_text, c, f"{tag}/{i}"): i
                    for i, c in enumerate(chunks)}
@@ -360,8 +403,9 @@ def _one_pass(agenda_text: str, text: str, start: int, tag: str) -> list[dict]:
                     r["_chunk"] = i
                     found.append(r)
             except Exception:  # noqa: BLE001 — ein Abschnitt darf ausfallen
+                fehlend.add(i)
                 log.exception("Video-Lesen %s/%s fehlgeschlagen", tag, i)
-    return found
+    return found, fehlend
 
 
 def _consolidate(found: list[dict], folded_text: str,
@@ -402,9 +446,17 @@ def extract_results(segments: list[tuple[float, str]],
     # Sicherung 3: zwei Durchläufe, Schnittkanten um einen halben Abschnitt
     # versetzt — ein Votum, das im ersten auf der Kante stirbt, liegt im
     # zweiten mitten im Abschnitt.
-    pass_a = _consolidate(_one_pass(agenda_text, text, 0, "A"), folded, valid)
-    pass_b = _consolidate(_one_pass(agenda_text, text, CHUNK_CHARS // 2, "B"),
-                          folded, valid)
+    roh_a, fehlend_a = _one_pass(agenda_text, text, 0, "A")
+    roh_b, fehlend_b = _one_pass(agenda_text, text, CHUNK_CHARS // 2, "B")
+    if fehlend_a or fehlend_b:
+        # Kein stiller Verlust: In der Region eines ausgefallenen Abschnitts
+        # kann kein Konsens entstehen, dort fehlen Ergebnisse. Das gehört ins
+        # Log, sonst sieht ein unvollständiger Lauf aus wie eine stille Sitzung.
+        log.warning("Video-Lesen: Abschnitte ausgefallen (A=%s, B=%s) — in "
+                    "deren Bereich fehlen Ergebnisse, weil der Konsens beide "
+                    "Durchläufe braucht", sorted(fehlend_a), sorted(fehlend_b))
+    pass_a = _consolidate(roh_a, folded, valid)
+    pass_b = _consolidate(roh_b, folded, valid)
 
     results: list[dict] = []
     for nr in sorted(set(pass_a) & set(pass_b)):

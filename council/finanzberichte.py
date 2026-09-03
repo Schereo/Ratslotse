@@ -1,7 +1,7 @@
 """Jahresabschlüsse und Teilhaushalte aus dem Ratsinformationssystem lesen.
 
 Beide Dokumenttypen liegen längst als Anlagen zu Ratsvorlagen in
-``council_anlagen`` — mit Volltext, den der Protokoll-Scraper ohnehin zieht.
+``council_attachments`` — mit Volltext, den der Protokoll-Scraper ohnehin zieht.
 Kein neuer Download, keine neue Quelle:
 
 - **Jahresabschluss** (300+ Seiten, jährlich): enthält die Ergebnisrechnung
@@ -1118,11 +1118,103 @@ def pruefbericht_aus_anlage(label: str | None, raw_text: str | None) -> dict | N
 
 # --- Teilhaushalte: Produktebene --------------------------------------------
 
+#: Der Kopf über jeder Produkttabelle: Teilhaushalt, Produkt, Amt.
+#:
+#: DAS AMT IST OPTIONAL, und das ist keine Vorsicht: THH13 („nicht rechtsfähige
+#: Stiftungen") führt gar keins — unter „Produkt: Stiftung Theodor Francksen
+#: (P53.111053)" steht direkt die Tabelle. Ohne den Vorbehalt schluckte dieser
+#: Ausdruck deren erste Zeile als Amtsnamen, und in der Datenbank stünde bei
+#: sieben Stiftungen „Erträge und Aufwendungen Ergebnis 2024" als zuständige
+#: Stelle. Eine Lücke ist besser als ein erfundenes Amt.
 _PRODUKT_KOPF = re.compile(
     r"Teilergebnishaushalt\s+THH(\d+):\s*([^\n]+?)\s*\n\s*"
-    r"Produkt:\s*(.+?)\s*\((P[\d.]+)\)\s*\n\s*([^\n]+)")
+    r"Produkt:\s*(.+?)\s*\((P[\d.]+)\)[ \t]*\n"
+    r"(?:[ \t]*(?!Erträge\s+und\s+Aufwendungen\b|Ergebnis\s+20\d\d\b)"
+    r"([^\n]+))?")
 #: Zahlen in den THH-Tabellen stehen teils ohne Nachkommastellen („484.239").
 _THH_BETRAG = re.compile(r"-?\d{1,3}(?:\.\d{3})*(?:,\d{2})?")
+
+# --- Welche Spalte der beschlossene Ansatz ist ------------------------------
+#
+# Der Kopf eines Teilhaushalts-Plans nennt sechs Jahre und sagt fünfmal
+# „Ansatz“::
+#
+#     Ergebnis 2024 | Ansatz 2025 | Ansatz 2026 | Ansatz 2027 | Ansatz 2028 | Ansatz 2029
+#
+# Eingebracht wird davon genau **eins** — hier 2026. 2025 ist der
+# fortgeschriebene Vorjahresansatz, 2027–2029 sind mittelfristige
+# Finanzplanung nach § 8 NKomVG. Genau dieselbe Kopfzeile trägt Anlage 005
+# (der Gesamtergebnishaushalt), und dort liest ``income_budget.budget_year``
+# seit jeher die **dritte** Spalte.
+#
+# DER FEHLER, DEN DAS BEHEBT: Bis 09/2026 nahm dieser Parser den ERSTEN
+# Ansatz. Damit stand die Produktebene ein Jahr hinter dem Plan, aus dem sie
+# stammt — der Verwaltungsentwurf 2026 füllte den Jahrgang 2025, und der
+# Jahrgang 2026 wäre erst mit dem Entwurf 2027 gekommen. Zwei Spuren führten
+# darauf: Die Schicht endete 2025, während Gesamtergebnishaushalt und
+# Investitionsprogramm aus **denselben** Haushaltsplänen bis 2026 reichen;
+# und die Anlage „2019 THH 08“ galt im Code als falsch beschriftet, weil der
+# Parser sie 2018 nannte.
+#
+# DIE JAHRGANGSPROBE: Vier Label-Generationen tragen den Jahrgang selbst
+# („007 2023 THH01“, „2024 007 IVw THH01“, „2025 …“, „2026 …“). Über alle 53
+# Anlagen mit Jahreszahl im Label trifft die dritte Kopfspalte diese Zahl —
+# 53 von 53, gemessen 02.09.2026 an den PDFs. Die Reihenfolgeannahme ist
+# damit belegt und keine Vermutung; ``lies_teilhaushalte`` hält sie bei jedem
+# Lauf gegen das Label.
+
+#: Der Tabellenkopf: „Ergebnis JJJJ“ und dahinter n × „Ansatz JJJJ“.
+_THH_KOPF = re.compile(r"(Ergebnis|Ansatz)\s+(20\d\d)")
+
+#: Die Spalte mit dem beschlossenen Ansatz — die dritte (s. o.).
+_THH_PLANSPALTE = 2
+
+
+def thh_kopfspalten(text: str | None) -> list[tuple[str, int]]:
+    """Die Spalten des **ersten** Tabellenkopfs — ``[("Ergebnis", 2024), …]``.
+
+    Nur der erste Kopf: Er wiederholt sich auf jeder Seite, und ein Block über
+    einen Seitenumbruch hinweg trüge ihn sonst zweimal. Gelesen wird deshalb
+    ab dem ersten ``Ergebnis JJJJ`` so weit, wie die Jahre lückenlos
+    weiterzählen; die Wiederholung fängt wieder bei ihrem eigenen Ergebnis an
+    und bricht die Kette."""
+    spalten = [(art, int(jahr)) for art, jahr in _THH_KOPF.findall(text or "")]
+    if not spalten or spalten[0][0] != "Ergebnis":
+        # Ein Block kann mitten in der Tabelle beginnen; dann steht der Kopf
+        # weiter vorn. Ab dem ersten „Ergebnis“ suchen statt raten.
+        anfang = next((i for i, (art, _) in enumerate(spalten)
+                       if art == "Ergebnis"), None)
+        if anfang is None:
+            return []
+        spalten = spalten[anfang:]
+    lauf = [spalten[0]]
+    for art, jahr in spalten[1:]:
+        if art != "Ansatz" or jahr != lauf[-1][1] + 1:
+            break
+        lauf.append((art, jahr))
+    return lauf
+
+
+def thh_planspalte(kopf: list[tuple[str, int]]) -> int | None:
+    """Der Index der Ansatzspalte, die eingebracht wird — oder ``None``.
+
+    ``None`` heißt: Dieser Kopf sieht nicht aus wie der eines
+    Teilhaushalts-Plans (zu wenige Spalten, andere Reihenfolge, Jahressprung).
+    Dann wird das Produkt übersprungen. Zu raten, welche Spalte gemeint sein
+    könnte, hieße eine Zahl auf die Seite zu schreiben, für die niemand
+    einstehen kann."""
+    return _THH_PLANSPALTE if len(kopf) > _THH_PLANSPALTE else None
+
+
+def thh_budget_year(text: str | None) -> int | None:
+    """Für welchen Haushaltsjahrgang ein Teilhaushalts-Plan Ansätze liefert.
+
+    Aus dem Tabellenkopf, nicht aus dem Label: Drei der acht Jahrgänge tragen
+    gar keine Jahreszahl im Label („007 THH01“). Wo eine steht, ist sie
+    dieselbe — das ist die Jahrgangsprobe oben."""
+    kopf = thh_kopfspalten(text)
+    idx = thh_planspalte(kopf)
+    return kopf[idx][1] if idx is not None else None
 
 
 def _thh_zahlen(row: str) -> list[float]:
@@ -1400,9 +1492,11 @@ def _steckbrief(block: str) -> dict[str, str | None]:
 def parse_teilergebnishaushalt(text: str) -> list[dict]:
     """Produkte eines Teilhaushalts-Plans → je Produkt ein dict mit
     ``{sub_budget_no, sub_budget_name, product_no, product_name, office, year, revenues,
-    expenses, result}`` für das **Haushaltsjahr** des Dokuments — das
-    ist der ERSTE Ansatz im Tabellenkopf; die weiteren Spalten sind die
-    mittelfristige Finanzplanung und keine beschlossenen Ansätze.
+    expenses, result}`` für das **Haushaltsjahr** des Dokuments — das ist die
+    dritte Spalte des Tabellenkopfs (der zweite ``Ansatz``): davor steht der
+    fortgeschriebene Vorjahresansatz, dahinter die mittelfristige
+    Finanzplanung. Warum die dritte und woran das gemessen ist, steht bei
+    ``thh_kopfspalten``.
 
     Dazu der Steckbrief des Produkts (``short_description``,
     ``legal_basis``, ``controllability`` + ``controllability_raw``,
@@ -1445,18 +1539,17 @@ def parse_teilergebnishaushalt(text: str) -> list[dict]:
         fremd = next((k for k in koepfe[i + 1:] if k.group(4) != product_no), None)
         steckbrief = _steckbrief(text[m.end():fremd.start() if fremd else len(text)])
 
-        # Spalten aus dem Kopf: „Ergebnis JJJJ“ + n × „Ansatz JJJJ“.
-        # Das HAUSHALTSJAHR ist der ERSTE Ansatz — die weiteren Spalten sind
-        # die mittelfristige Finanzplanung (bis +4 Jahre). Die letzte Spalte
-        # zu nehmen hieße, Finanzplanungswerte als Haushaltsansatz auszugeben.
-        kopf = re.findall(r"(Ergebnis|Ansatz)\s+(20\d\d)", block[:600])
-        years = [int(j) for _, j in kopf]
-        if len(years) < 2:
+        # Spalten aus dem Kopf: „Ergebnis JJJJ“ + n × „Ansatz JJJJ“. Welche
+        # davon der beschlossene Ansatz ist, sagt `thh_planspalte`.
+        # Das Fenster beginnt beim Kopf, nicht beim Block: Wo ein Produkt
+        # kein Amt führt (THH13), steht die erste Kopfzeile der Tabelle
+        # unmittelbar hinter der Produktnummer — hinter `m.end()` fehlte
+        # damit ausgerechnet das „Ergebnis JJJJ", an dem die Spalten hängen.
+        kopf = thh_kopfspalten(text[m.start():m.end() + 600])
+        plan_idx = thh_planspalte(kopf)
+        if plan_idx is None:
             continue
-        spalten = len(years)
-        ansatz_idx = next((i for i, (art, _) in enumerate(kopf) if art == "Ansatz"), None)
-        if ansatz_idx is None:
-            continue
+        spalten = len(kopf)
 
         werte = {}
         for key, muster in (
@@ -1469,7 +1562,7 @@ def parse_teilergebnishaushalt(text: str) -> list[dict]:
             zahlen = _thh_wertezeile(block, muster, spalten)
             if zahlen is None:
                 continue
-            werte[key] = zahlen[ansatz_idx]
+            werte[key] = zahlen[plan_idx]
         if len(werte) < 3:
             continue
         # Prüfsumme des Dokuments: Erträge − Aufwendungen = Ergebnis.
@@ -1478,7 +1571,8 @@ def parse_teilergebnishaushalt(text: str) -> list[dict]:
         gefunden[product_no] = {
             "sub_budget_no": int(sub_budget_no), "sub_budget_name": sub_budget_name.strip(),
             "product_no": product_no, "product_name": product_name.strip(),
-            "office": office.strip(), "year": years[ansatz_idx], **werte,
+            "office": (office or "").strip() or None,
+            "year": kopf[plan_idx][1], **werte,
             **steckbrief,
             "controllability": normalisiere_beeinflussbarkeit(
                 steckbrief["controllability_raw"]),

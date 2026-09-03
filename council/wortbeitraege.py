@@ -67,11 +67,11 @@ def _ein_fenster(text: str, model: str) -> list[dict]:
         # (Bei Gemini gemessen wirkungslos — Flag dort bewusst weggelassen.)
         extra = {"extra_body": {"reasoning": {"enabled": False}}}
     messages = [{"role": "user",
-                 "content": prompts.render("wortbeitraege_extract", text=text)}]
+                 "content": prompts.render("speeches_extract", text=text)}]
     last_err: Exception = ValueError("no response")
     for versuch in range(2):
         resp = llm.chat_complete(
-            model=model, _feature="wortbeitraege", temperature=0,
+            model=model, _feature="speeches", temperature=0,
             max_tokens=16000, messages=messages, **extra,
         )
         # choices kann bei Provider-Fehlern/Content-Filter null sein — der
@@ -110,7 +110,7 @@ def extract_wortbeitraege(raw_text: str, model: str = MODEL) -> list[dict]:
     """Alle Beiträge eines Protokolls, Fenster-übergreifend dedupliziert und
     auf das erwartete Schema geprüft (unbekannte Arten → 'rede')."""
     gesehen: set[tuple] = set()
-    beitraege: list[dict] = []
+    contributions: list[dict] = []
     for part in _fenster(raw_text or ""):
         for r in _ein_fenster(part, model):
             if not isinstance(r, dict):
@@ -138,7 +138,7 @@ def extract_wortbeitraege(raw_text: str, model: str = MODEL) -> list[dict]:
                     value = (schnitt[:leer] if leer > max_len * 0.6 else schnitt).rstrip(" ,;-/")
                 return value or None
 
-            beitraege.append({
+            contributions.append({
                 "kind": art if art in ARTEN else "speech",
                 "top": field("top", 120),
                 "speaker": field("speaker", 80),
@@ -148,7 +148,7 @@ def extract_wortbeitraege(raw_text: str, model: str = MODEL) -> list[dict]:
                 "text": text,
                 "answer": field("answer"),
             })
-    return beitraege
+    return contributions
 
 
 # ---- Seitengenaue Fundstellen (Tims Wunsch 18.08.) -------------------------

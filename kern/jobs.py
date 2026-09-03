@@ -75,7 +75,7 @@ JOBS: list[dict] = [
     {
         "key": "check_finanzdaten",
         "label": "Haushaltsdaten",
-        "description": "Neue Jahresabschlüsse, Teilhaushalts-Pläne und Prüfberichte aus dem Anlagenbestand — plus Hinweis, wenn ein Jahrgang ausbleibt.",
+        "description": "Neue Jahresabschlüsse, Teilhaushalts-Pläne und Prüfberichte aus dem Anlagenbestand; ruft die Ingest-Skripte von Vollzug, Satzung, Gebühren und Wirtschaftsplänen, sobald ein neues Dokument da ist — plus Hinweis, wenn ein Jahrgang ausbleibt.",
         # Bestandsgesteuert, nicht kalendergesteuert: Der Takt bestimmt nur,
         # wie schnell ein neuer Jahrgang auf der Seite steht (s. Skript-Kopf).
         #

@@ -7,7 +7,7 @@
 //
 // Je Datenzeile weiß es die Datenbank seit 08/2026 genauer: `council_herkunft`
 // führt Dokument, Fundstelle darin, bestandene Rechenprobe samt Messwert und
-// Stichtag, und `GET /api/council/haushalt` liefert das als `herkunft` mit
+// Stichtag, und `GET /api/council/budget` liefert das als `herkunft` mit
 // (Format und Begründung: `council/herkunft.py`). Wer einen Beleg auf die
 // einzelne Zahl genau machen will, nimmt die `herkunft_id` der Zeile — nicht
 // diese Konstante.
@@ -23,7 +23,7 @@
 //
 // Wo die Spanne aus dem Bestand fällt, steht sie deshalb nicht mehr hier:
 // `standWort` trägt nur noch das Wort davor („Jahresabschlüsse"), die Zahlen
-// kommen aus `GET /api/council/haushalt/dokumente` (`jahrgaenge`, gerechnet
+// kommen aus `GET /api/council/budget/documents` (`editions`, gerechnet
 // in `CouncilStore.haushalt_jahrgaenge`). Zusammengesetzt wird in
 // `standText()`.
 //
@@ -101,6 +101,13 @@ export type QuellenSchluessel =
   // etwas anderes ist als der Haushaltsplan: Der Plan sagt, wofür das Geld
   // ausgegeben werden SOLL, die Satzung, was die Stadt DÜRFTE.
   | "budget_bylaw"
+  | "loans"
+  | "liquidity"
+  | "enterprise_accounts"
+  // Der Haushaltsvollzug — die Prognose-Berichte an den Finanzausschuss.
+  // Eigener Schlüssel, weil es weder Plan noch Abschluss ist: Es ist die
+  // Erwartung der Ämter im laufenden Jahr, je Stichtag neu.
+  | "budget_execution"
   // Die Gebührenbedarfsberechnung — eigener Schlüssel, weil sie ein anderes
   // Dokument ist als der Wirtschaftsplan desselben Betriebs: Der Plan sagt,
   // was der Betrieb vorhat, die Berechnung, was die Leute dafür zahlen.
@@ -321,6 +328,70 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     as_of: "Änderungslisten 2019–2026",
     art: "pdf",
     url: "https://buergerinfo.oldenburg.de",
+  },
+  budget_execution: {
+    title: "Finanz- und Leistungsberichte zum Haushaltsvollzug",
+    citation:
+      "Die vierteljährlichen Berichte der Verwaltung an den Ausschuss für Finanzen " +
+      "und Beteiligungen (§ 31 KomHKVO), Abschnitt „Auswertung der Berichte zum …“: " +
+      "je Teilhaushalt und als Summe der Ansatz, die Prognose der Ämter für den " +
+      "31. Dezember und die Abweichung — für den Ergebnis- und den Finanzhaushalt " +
+      "getrennt. Stichtage 30. Juni, 30. September und 31. Dezember; der Bericht " +
+      "zum 31. März steht als andere Tabelle im Vorlagentext und wird nicht gelesen. " +
+      "Die Dokumente hängen als Anlagen an Ratsvorlagen im Bürgerinformationssystem.",
+    herausgeber: "Stadt Oldenburg, Controlling und Finanzen",
+    as_of: "Berichte 2018–2026",
+    standWort: "Haushaltsjahre",
+    url: "https://buergerinfo.oldenburg.de/",
+    art: "pdf",
+  },
+  enterprise_accounts: {
+    title: "Jahresabschlüsse der Eigenbetriebe (Prüfberichte, GuV und Bilanz)",
+    citation:
+      "Die geprüften Jahresabschlüsse der Eigenbetriebe — Gebäudewirtschaft und " +
+      "Hochbau, Abfallwirtschaftsbetrieb, Bäderbetrieb, Hafen — aus den Vorlagen " +
+      "„Jahresabschluss und Lagebericht … für den Eigenbetrieb …“. Gelesen wird die " +
+      "Mehrjahresübersicht des Prüfberichts (Kennzahlen in TEUR, jüngstes Jahr " +
+      "zuerst), beim Bäderbetrieb die Gewinn- und Verlustrechnung und die Bilanz in " +
+      "Euro. Dieselbe Zahl steht in bis zu fünf Berichten — als Geschäftsjahr im " +
+      "eigenen, als Vorjahr in den folgenden; der jüngste Bericht gilt, die anderen " +
+      "bezeugen ihn. Buchwerte nach Handelsrecht, keine Marktwerte; mit dem " +
+      "Kernhaushalt nicht addierbar.",
+    herausgeber: "Stadt Oldenburg, Rechnungsprüfungsamt bzw. Wirtschaftsprüfer",
+    as_of: "Geschäftsjahre 2015–2025",
+    standWort: "Geschäftsjahre",
+    url: "https://buergerinfo.oldenburg.de/",
+    art: "pdf",
+  },
+  loans: {
+    title: "Unterrichtungen des Rates über Kreditaufnahmen und Umschuldungen",
+    citation:
+      "Die Berichte der Verwaltung an den Rat nach § 8 der Kreditrichtlinie — " +
+      "seit 2022 monatlich bis vierteljährlich, 2018 als Einzelberichte: je " +
+      "Vorgang Kreditaufnahme, Umschuldung oder Prolongation mit Betrag, " +
+      "Schuldner und, wo die Vorlage ihn nennt, dem Zinssatz und der " +
+      "Zinsbindung; dazu die Zinsersparnis der Umschuldung gegenüber " +
+      "herkömmlicher Kommunalkreditfinanzierung. Die Konditionen je Darlehen " +
+      "stehen in den Anlagen und sind nicht im Bestand.",
+    herausgeber: "Stadt Oldenburg, Amt für Controlling und Finanzen",
+    as_of: "Berichte 2018 und 2022–2026",
+    standWort: "Berichtsjahre",
+    url: "https://buergerinfo.oldenburg.de/",
+    art: "pdf",
+  },
+  liquidity: {
+    title: "Liquiditätsstand zum Monatsende",
+    citation:
+      "Die Grafik, die die Verwaltung dem Ausschuss für Finanzen und Beteiligungen " +
+      "monatlich vorlegt — der Kontostand der Stadt am Monatsende, vier Jahrgänge " +
+      "im Vergleich. Die Zahlen stehen nur im PDF der Anlage; gelesen wird die " +
+      "Zahlenfolge des Diagramms, geprüft an der Zahl der Werte und am Abgleich der " +
+      "überlappenden Jahrgänge. Ein Kontostand, kein Vermögen und kein Haushaltsergebnis.",
+    herausgeber: "Stadt Oldenburg, Amt für Controlling und Finanzen",
+    as_of: "monatlich seit 2015",
+    standWort: "Monate",
+    url: "https://buergerinfo.oldenburg.de/",
+    art: "pdf",
   },
   budget_bylaw: {
     title: "Haushaltssatzungen der Stadt Oldenburg",

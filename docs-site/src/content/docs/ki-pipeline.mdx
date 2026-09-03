@@ -110,6 +110,66 @@ eine stabile ID, einen Typ, Aliase, Quellen und optional Elternorte sowie
 Koordinaten. Neue Ortslinks erhalten `place_id` und `ortsbereich_id`; ein
 Backfill ergänzt sie im Bestand.
 
+#### Vier Regeln, die dabei aussieben (Prüfung des Bestands, 09/2026)
+
+Ein Abgleich der echten Zuordnungen legte vier Fehlerklassen offen. Alle vier
+sind jetzt Code, keine davon fällt in einer frischen Testdatenbank auf:
+
+1. **Der Verlauf schlägt den Punkt.** Der Ortsbereich wurde aus dem Mittelpunkt
+   des umschließenden Rechtecks abgeleitet. Bei Flächen trägt das, bei Straßen
+   nicht: Eine Straße mit einem Knick hat diesen Punkt neben sich. „Alter
+   Postweg" verläuft vollständig in Kreyenbrück und lag in keinem Ortsbereich.
+   `geo.ortsbereich_der_geometrie` stimmt jetzt über Stützpunkte der ganzen
+   Geometrie ab; der Punkt bleibt der Rückfall ohne Geometrie.
+2. **Der Name zählt, wenn er eindeutig ist.** „Oberschule Ofenerdiek",
+   „GS Drielake" — kein Geocoder kennt sie, 71 Orte mit 176 Verweisen blieben
+   deshalb ohne Stadtteil. `backfill_location_districts_from_name` liest ihn aus
+   dem Namen, aber nur bei **einem** Treffer: „Entlastungsstraße
+   Fliegerhorst-Wechloy" bleibt lieber ohne Zuordnung als mit einer geratenen.
+3. **Stadtweites bleibt stadtweit.** 110 Vorgänge, die dem Titel nach die ganze
+   Stadt betreffen, trugen einen Stadtteil aus einer Nebenerwähnung im
+   Vorlagentext — der „Oldenburg Pass" an der Anschrift des Verkehrsbetriebs.
+   `locations.ortsbezug_ist_beiwerk` verwirft solche Funde, aber nur wenn drei
+   Dinge zusammenkommen: stadtweite Vokabel im Titel, kein Ort im Titel, Fund
+   aus dem Vorlagentext. Deshalb bleibt „Masterplan Fliegerhorst" unangetastet —
+   auch im Genitiv („Unterschutzstellung des **Heidbrooks**").
+4. **Gattungsbegriffe sind keine Orte.** „Gemeindestraße" (51 Verweise),
+   „Entlastungsstraße" (38), „Kunstrasenplatz" (19), „Radweg" (13),
+   „Monitoring" — der Gattungsfilter hing bis dahin nur am Regex-Kanal, über
+   das Modell kamen sie ungehindert durch. Nur die bloße Form ist gesperrt.
+
+5. **Fremde Straßen werden abgeschnitten.** `overpass_street` sucht Wege eines
+   Namens in einem RECHTECK um Oldenburg, und das ist größer als die Stadt: Bei
+   häufigen Namen kam der gleichnamige Weg der Nachbargemeinde mit, alle
+   Segmente wurden verschmolzen, und der Mittelpunkt lag dazwischen — in keinem
+   Ortsbereich. `geo.auf_stadtgebiet_beschneiden` wirft die fremden Segmente
+   weg und rechnet den Mittelpunkt neu; liegt gar nichts in der Stadt, ist der
+   Treffer keiner. Die Polygone gehören uns, das Rechteck war nur eine
+   Vorauswahl.
+
+Zwei Fallen, die beim Prüflauf selbst zuschlugen und deshalb Code geworden sind:
+Ein **misslungenes** Geocoding darf keinen Stadtteil löschen (ein Fehlschlag
+weiß nichts) — ein Treffer **außerhalb** Oldenburgs dagegen schon (der weiß
+etwas). Und fehlen die Ortsbereichs-Polygone, liefert jede Geo-Ableitung still
+`None`; der Lauf sieht erfolgreich aus und ordnet nichts zu. `geo._features()`
+schreibt das jetzt als Warnung ins Log.
+
+Ein weiterer Fund gehört nicht in die Qualität, sondern in den Datenschutz:
+Fundstellen, die wie eine Wohnanschrift aussehen (`… 49, 26127 Oldenburg`),
+werden abgewiesen. Sie stammten aus Vorlagen zu Ausschussbesetzungen und
+verorteten Personalbeschlüsse nach der Privatadresse eines Mitglieds.
+
+**Bestand nachziehen** — beides ohne `--apply` erst als Bericht:
+
+```bash
+.venv/bin/python scripts/geocode_decision_locations.py --erneut
+.venv/bin/python scripts/revalidate_decision_locations.py --apply
+```
+
+Der erste Lauf holt Orte nach, bei denen das Geocoding schon einmal misslungen
+ist (Overpass und Nominatim antworten nicht jeden Tag gleich) und leitet danach
+Stadtteile neu ab. Der zweite wendet die Regeln 3 und 4 auf den Bestand an.
+
 Häufige, noch unbekannte Gebietsnamen landen mit ihren Fundstellen in der
 Admin-Prüfung. Freigaben oder Alias-Zuordnungen erweitern den Laufzeitkatalog
 sofort und werden beim nächsten Beschlussimport deterministisch erkannt;
@@ -264,20 +324,20 @@ Frage-Wortlaut** — deterministisch, ohne LLM-Call:
 
 | Facette | Quelle | Beantwortet | Bestand endet |
 |---------|--------|-------------|---------------|
-| `schulden` | `council_schulden` | „Wie viel Schulden hat Oldenburg?" (Bestand am Stichtag) | 2025 |
-| `stellenplan` | `council_stellenplan` | „Wie viele Stellen sind unbesetzt?" | Planjahr |
-| `investitionen` | `council_investitionen` | „Was wird gebaut?" (Finanzhaushalt) | Planjahr |
+| `schulden` | `council_debt` | „Wie viel Schulden hat Oldenburg?" (Bestand am Stichtag) | 2025 |
+| `stellenplan` | `council_staff_plan` | „Wie viele Stellen sind unbesetzt?" | Planjahr |
+| `investitionen` | `council_investments` | „Was wird gebaut?" (Finanzhaushalt) | Planjahr |
 | `antraege` | `council_decisions` (`subvote`) | „Wer wollte den Haushalt ändern?" | letzter Jahrgang |
-| `plan` | `council_haushalt` | „Was kostet die Feuerwehr?" (Teilhaushalt) | Planjahr |
-| `ansatz` | `council_ergebnishaushalt` | „Was nimmt die Stadt ein?" (Ertrags-/Aufwandsarten) | Planjahr |
-| `ist` | `council_ergebnisrechnung` | „Hat die Stadt mehr ausgegeben als geplant?" | 2024 |
-| `gruende` | `council_abweichungsgruende` | „Warum kam mehr Gewerbesteuer rein?" | 2024 |
-| `produkte` | `council_produkte` | „Muss die Stadt das Theater betreiben?" (Rechtsgrundlage) | 2023 |
-| `pruefung` | `council_pruefberichte` | „Was hat das Rechnungsprüfungsamt beanstandet?" | 2023 |
+| `plan` | `council_budget` | „Was kostet die Feuerwehr?" (Teilhaushalt) | Planjahr |
+| `ansatz` | `council_income_budget` | „Was nimmt die Stadt ein?" (Ertrags-/Aufwandsarten) | Planjahr |
+| `ist` | `council_income_statement` | „Hat die Stadt mehr ausgegeben als geplant?" | 2024 |
+| `gruende` | `council_variance_reasons` | „Warum kam mehr Gewerbesteuer rein?" | 2024 |
+| `produkte` | `council_products` | „Muss die Stadt das Theater betreiben?" (Rechtsgrundlage) | 2023 |
+| `pruefung` | `council_audit_reports` | „Was hat das Rechnungsprüfungsamt beanstandet?" | 2023 |
 | `konzern` | `council_konzern_*` | „Was kostet die Stadt insgesamt?" (1.242 statt 799 Mio.) | 2024 |
-| `vergleich` | `council_staedtevergleich` | „Wie steht Oldenburg da?" | LSN-Jahrgang |
-| `steuern` | `council_steuern` | „Wie hoch waren die Steuereinnahmen?" (Ist) | Open-Data-Jahrgang |
-| `ausgleich` | `council_steuerkraft` | „Was bringt eine Hebesatz-Erhöhung wirklich?" | Ausgleichsjahr |
+| `vergleich` | `council_city_comparison` | „Wie steht Oldenburg da?" | LSN-Jahrgang |
+| `steuern` | `council_taxes` | „Wie hoch waren die Steuereinnahmen?" (Ist) | Open-Data-Jahrgang |
+| `ausgleich` | `council_tax_capacity` | „Was bringt eine Hebesatz-Erhöhung wirklich?" | Ausgleichsjahr |
 
 Die vier oberen kamen am 17.08. dazu, und drei von ihnen mussten dafür einer
 Quelle **weggenommen** werden: „Schulden" und „Investitionen" standen im
@@ -338,7 +398,7 @@ Frage, die alles zog, behielt danach von den zehn älteren Quellen keine
 einzige. Seine eigene Frage zieht sonst nur `plan` und `ansatz`, und die
 stehen beide dahinter; hinter `produkte` kostet er also nichts.
 
-Jede Zeile trägt ihren **Beleg** aus `council_herkunft` (Dokument, Fundstelle,
+Jede Zeile trägt ihren **Beleg** aus `council_provenance` (Dokument, Fundstelle,
 Seite, Stichtag) und ihr **Jahr** — die Quellen enden zu verschiedenen
 Zeitpunkten, und eine Antwort, die das verschweigt, behauptet eine Aktualität,
 die die Daten nicht haben. Haushaltszahlen sind keine Beschlüsse und bekommen

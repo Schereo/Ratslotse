@@ -25,11 +25,14 @@
 import { Hantel, type HantelZeile } from "@/components/grafik/hantel";
 import { PLAN_ART_LABEL, type ErgebnisPosten } from "@/lib/haushalt";
 
-export function EntgeltePlanIst({ zeilen, beleg }: {
+export function EntgeltePlanIst({ zeilen, beleg, keineWertung }: {
   /** Die Gesamt-Zeilen (thh_nr = null) EINES Postens, ein Eintrag je Jahr. */
   zeilen: ErgebnisPosten[];
   /** Beleg-Chip-Slot (GB-00) — die Seite wählt die Quelle. */
   beleg?: React.ReactNode;
+  /** Der Nicht-Wertungs-Satz der Einnahmeart (`SteuerArt.planIstWertung`);
+   *  ohne ihn gilt die Gebühren-Fassung unten. */
+  keineWertung?: React.ReactNode;
 }) {
   // Beide Werte müssen da sein: Eine Hantel mit einem Ende ist keine Hantel,
   // sondern ein Punkt, der so tut, als wäre er ein Vergleich.
@@ -45,7 +48,10 @@ export function EntgeltePlanIst({ zeilen, beleg }: {
     // Die Bezugsgröße dieses Jahrgangs, im Klartext des Dokuments. Wo sie
     // fehlt, wird sie nicht durch „Ansatz" ersetzt — dann steht sie eben nicht
     // da, statt geraten zu werden.
-    einordnung: z.plan_kind
+    // Nur die Ausnahme steht an der Zeile: Der nackte Ansatz ist die Regel
+    // und steht einmal unter der Grafik — acht gleiche Zeilen „Verglichen
+    // wird gegen: Haushaltsansatz" trugen nichts (Durchsicht 02.09.2026).
+    einordnung: z.plan_kind && z.plan_kind !== "budget"
       ? `Verglichen wird gegen: ${PLAN_ART_LABEL[z.plan_kind]}.`
       : null,
   }));
@@ -63,7 +69,9 @@ export function EntgeltePlanIst({ zeilen, beleg }: {
       </div>
       <p className="mt-1.5 max-w-[70ch] text-[12.5px] leading-relaxed text-foreground/80">
         Was im beschlossenen Haushalt stand — und was am Ende des Jahres
-        tatsächlich in der Kasse war.
+        tatsächlich in der Kasse war. Verglichen wird gegen den Haushaltsansatz;
+        rechnet ein Jahr gegen Nachtrag oder Gesamtermächtigung, steht es an
+        der Zeile.
       </p>
 
       <div className="mt-3">
@@ -74,7 +82,7 @@ export function EntgeltePlanIst({ zeilen, beleg }: {
              Reihenfolge tragen — wie weit es danebenlag, zeigt die Länge. */
           sortierung="alpha"
           wovon="diese Einnahme"
-          keineWertung={
+          keineWertung={keineWertung ??
             <>Die Farbe bewertet nicht: Weniger als geplant heißt hier, dass
               Leistungen weniger genutzt wurden — mehr heißt umgekehrt, dass
               der Ansatz zu vorsichtig war. Keines von beidem ist für sich

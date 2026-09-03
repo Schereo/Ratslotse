@@ -96,7 +96,7 @@ def link_suchen(muster) -> str | None:
 
 
 def ist_reihe(store: CouncilStore) -> tuple[dict, dict]:
-    """``council_steuern`` in die beiden Formen bringen, die die Proben brauchen.
+    """``council_taxes`` in die beiden Formen bringen, die die Proben brauchen.
 
     ``({year: {art: euro}}, {year: grundsteuer_euro})`` — die erste für den
     Ist-Abgleich von 1103, die zweite für die Sprungjahr-Probe von 1105."""
@@ -104,7 +104,7 @@ def ist_reihe(store: CouncilStore) -> tuple[dict, dict]:
     for row in store.get_steuereinnahmen():
         if row.get("amount") is None:
             continue
-        alle.setdefault(row["year"], {})[row["art"]] = float(row["amount"])
+        alle.setdefault(row["year"], {})[row["kind"]] = float(row["amount"])
     grundsteuer = {j: w[GRUNDSTEUER] for j, w in alle.items() if GRUNDSTEUER in w}
     return alle, grundsteuer
 
@@ -182,7 +182,7 @@ def main() -> int:
     try:
         alle_ist, grundsteuer = ist_reihe(store)
         if not alle_ist:
-            print("ABBRUCH: `council_steuern` ist leer. Beide Tabellen hängen "
+            print("ABBRUCH: `council_taxes` ist leer. Beide Tabellen hängen "
                   "für die Prüfung ihrer Jahresbeschriftung an dieser Reihe — "
                   "ohne sie käme nichts Geprüftes herein. Erst "
                   "scripts/ingest_finanzen_opendata.py laufen lassen.",
@@ -250,7 +250,7 @@ def main() -> int:
                       f"Jahrgänge {result['years']}")
 
             zeilen_1103 = stt.zusammenlegen(
-                gelesen, lambda z: (z["year"], z["art"]))
+                gelesen, lambda z: (z["year"], z["kind"]))
             jahre_1103 = sorted({z["year"] for z in zeilen_1103})
             print(f"  zusammengelegt: {len(zeilen_1103)} Zeilen · "
                   f"Jahrgänge {jahre_1103}")
@@ -274,7 +274,7 @@ def main() -> int:
                 sprung = result["sprungjahre"]
                 print(f"  {name}: {len(result['zeilen'])} Zeilen")
             zeilen_1105 = stt.zusammenlegen(
-                gelesen5, lambda z: (z["year"], z["art"]))
+                gelesen5, lambda z: (z["year"], z["kind"]))
             jahre_1105 = sorted({z["year"] for z in zeilen_1105})
             if zeilen_1105:
                 print(f"  zusammengelegt: {len(zeilen_1105)} Zeilen · "
@@ -328,7 +328,7 @@ def main() -> int:
                 nach_ausgabe.setdefault(row["ausgabe"], []).append(row)
             for name, part in sorted(nach_ausgabe.items()):
                 years = sorted({z["year"] for z in part})
-                probes = proben_je_ausgabe.get(name) or ["steuerplan_summenzeile"]
+                probes = proben_je_ausgabe.get(name) or ["tax_budget_total_row"]
                 nachweis = (
                     f"{len(years)} Jahrgänge ({years[0]}–{years[-1]}), "
                     f"bestanden: "
@@ -377,7 +377,7 @@ def main() -> int:
 
         store.herkunft_aufraeumen()
         luecken = {t: n for t, n in store.herkunft_luecken().items()
-                   if t in ("council_steuerplan", "council_hebesaetze")}
+                   if t in ("council_tax_plan", "council_tax_rates")}
         if luecken:
             print(f"WARNUNG: Zeilen ohne Herkunft: {luecken}", file=sys.stderr)
     finally:

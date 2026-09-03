@@ -41,17 +41,17 @@ export type GebautDaten = {
   years: number[];
   /** Was diese Zahlen zählen — kommt aus `council/investitionen_ist.py`,
    *  damit Oberfläche und Datenbank dieselbe Auskunft geben. */
-  abgrenzung: string;
+  scope_note: string;
   accounting_systems: { key: string; title: string }[];
   /** Jahre, die INNERHALB einer Reihe fehlen, je Regelwerk. Sie sind nicht
    *  null, sondern unbelegt: Ihre Zeilensumme geht in der Quelle selbst nicht
    *  auf, und anders als bei den Schulden gibt es keine zweite Probe, die
    *  wenigstens die Summe trüge. */
-  fehlend: Record<string, GebautLuecke[]>;
+  missing: Record<string, GebautLuecke[]>;
   /** Was aus den Investitionen wurde — der Anlagenspiegel des
    *  Jahresabschlusses (Abschnitt 8.1). */
-  anlagen?: Anlagen;
-  herkunft: Record<string, Herkunft>;
+  fixed_assets?: Anlagen;
+  provenance: Record<string, Herkunft>;
 };
 
 /** Eine Zeile des Anlagenspiegels: eine Vermögensposition in einem Jahr.
@@ -90,10 +90,10 @@ export type VermoegensGruppe = {
 export type Anlagen = {
   series: AnlagePosten[];
   years: number[];
-  gruppen: VermoegensGruppe[];
+  groups: VermoegensGruppe[];
   /** Die Jahre MIT Untergliederung — kürzer als `years`, und das muss die
    *  Seite sagen dürfen, statt eine Lücke als Null zu zeichnen. */
-  gruppen_jahre: number[];
+  group_years: number[];
   probes: Record<string, string>;
 };
 
@@ -131,13 +131,13 @@ export function verzehr(posten: AnlagePosten | null): {
 
 /** Die Straßen-Untergruppe eines Jahres, falls der Jahrgang sie führt. */
 export function strassen(anlagen: Anlagen | undefined, year: number): VermoegensGruppe | null {
-  return (anlagen?.gruppen ?? []).find(
+  return (anlagen?.groups ?? []).find(
     (g) => g.year === year && /Straßen/i.test(g.gruppe)) ?? null;
 }
 
 export function herkunftVon(daten: GebautDaten | null, id: number | null): Herkunft | null {
   if (!daten || id == null) return null;
-  return daten.herkunft[String(id)] ?? null;
+  return daten.provenance[String(id)] ?? null;
 }
 
 export type Reihe = {
@@ -161,7 +161,7 @@ export function reihen(daten: GebautDaten | null): Reihe[] {
       key: r.key,
       title: r.title,
       years: daten.series.filter((z) => z.accounting_system === r.key),
-      fehlend: daten.fehlend[r.key] ?? [],
+      fehlend: daten.missing[r.key] ?? [],
     }))
     .filter((r) => r.years.length > 0);
 }

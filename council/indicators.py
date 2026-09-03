@@ -147,17 +147,17 @@ KENNZAHLEN: tuple[Kennzahl, ...] = (
 #: Was sich aus unserer Bilanz nachrechnen lässt: Kennzahl → (Zähler-Rolle,
 #: Nenner ist immer die Bilanzsumme). Nur diese drei — bei den Kennzahlen je
 #: Einwohner rechnet die Stadt mit einer *anderen* Schuldenabgrenzung als
-#: ``council_schulden``, und ein Abgleich meldete dort verlässlich eine
+#: ``council_debt``, und ein Abgleich meldete dort verlässlich eine
 #: Differenz, die keine ist.
 BILANZ_QUOTE = {
-    "eigenkapitalquote_2": "nettoposition",
-    "anlagenintensitaet": "sachvermoegen",
-    "infrastrukturquote": "infrastrukturvermoegen",
+    "eigenkapitalquote_2": "net_position",
+    "anlagenintensitaet": "tangible_assets",
+    "infrastrukturquote": "infrastructure_assets",
 }
 
 #: Die Aktiv-Posten, die zusammen die Bilanzsumme ergeben.
-AKTIVA = ("immaterielles_vermoegen", "sachvermoegen", "finanzvermoegen",
-          "liquide_mittel", "aktive_rap")
+AKTIVA = ("intangible_assets", "tangible_assets", "financial_assets",
+          "cash_and_equivalents", "prepaid_expenses")
 
 #: Schreibweisen, die denselben Rechenweg meinen. Bewusst kurz und
 #: aufzählend: Wer hier großzügig normalisiert, verschmilzt zwei verschiedene
@@ -166,9 +166,9 @@ AKTIVA = ("immaterielles_vermoegen", "sachvermoegen", "finanzvermoegen",
 #: „Gesamtschulden" gegen „Schulden" wird hier **nicht** derselbe.
 SCHREIBWEISEN = ((r"\binkl\.", "inklusive"), (r"\s+", " "), (r"[*]", " * "))
 
-PROBE_UEBERLAPPUNG = "kennzahlen_ueberlappung"
-PROBE_BILANZ = "kennzahlen_gegen_bilanz"
-PROBE_VERMOEGEN = "kennzahlen_vermoegensprobe"
+PROBE_UEBERLAPPUNG = "indicators_overlap"
+PROBE_BILANZ = "indicators_vs_balance_sheet"
+PROBE_VERMOEGEN = "indicators_assets_check"
 
 
 def _flach(text: str) -> str:
@@ -475,7 +475,7 @@ def vermoegensprobe(zeilen: list[dict], bilanz: list[dict]) -> tuple[int, list[d
     for b in bilanz:
         if b.get("role") in AKTIVA:
             aktiva[b["year"]] = aktiva.get(b["year"], 0.0) + b["value"]
-        if b.get("role") == "aktive_rap":
+        if b.get("role") == "prepaid_expenses":
             rap[b["year"]] = b["value"]
 
     # Nur Zeilen DESSELBEN Berichts multiplizieren — zwei Berichte gemischt

@@ -308,7 +308,8 @@ def _zelle(row: list[Wort], links: float, rechts: float) -> int | None:
 
 # ------------------------------------------------------------------ Positionen
 
-def _ist_position(row: list[Wort], spalten: FhhSpalten | None) -> bool:
+def _ist_position(row: list[Wort], spalten: FhhSpalten | None,
+                  thh_x: float | None = None) -> bool:
     """Positionszeilen beginnen mit Lfd. Nr. und Teilhaushalt, ganz links.
 
     Der Teilhaushalt steht ein- ODER zweistellig: Die meisten Dokumente
@@ -320,6 +321,45 @@ def _ist_position(row: list[Wort], spalten: FhhSpalten | None) -> bool:
             and re.fullmatch(r"\d{1,3}", row[0][3]) is not None
             and (re.fullmatch(r"\d{1,2}", row[1][3]) is not None
                  or row[1][3] == "alle")
+            and row[0][0] < spalten.bez[0]
+            and not _in_thh_spalte(row, thh_x))
+
+
+#: Wie weit die erste Zahl einer Zeile von der Kopfkante „THH" entfernt
+#: stehen darf, um noch IN der THH-Spalte zu liegen. 212802: Kopf bei 57,4,
+#: die nummernlosen Zeilen bei 62,0; die nummerierten Zeilen beginnen bei
+#: 41 — 16 pt weiter links.
+_THH_TOLERANZ = 8
+
+
+def _thh_kante(zeilen: list[list[Wort]]) -> float | None:
+    """Die linke Kante des Kopfworts „THH" — ``None`` auf Seiten ohne Kopf."""
+    for row in zeilen[:18]:
+        for x0, _x1, _y, text in row:
+            if text == "THH":
+                return x0
+    return None
+
+
+def _in_thh_spalte(row: list[Wort], thh_x: float | None) -> bool:
+    return thh_x is not None and abs(row[0][0] - thh_x) <= _THH_TOLERANZ
+
+
+def _ohne_nummer(row: list[Wort], spalten: FhhSpalten | None,
+                 thh_x: float | None) -> bool:
+    """Eine Positionszeile OHNE Lfd. Nr.: Sie beginnt mit dem Teilhaushalt,
+    und der steht in der THH-Spalte statt ganz links.
+
+    212802 (Beschluss 2020) setzt im Block 2022 acht Positionen, und keine
+    trägt eine Nummer. Als nummerierte Zeilen gelesen wurde „03 70 …" zur
+    Position 3 im Teilhaushalt 70: Zwei solcher Zeilen überlebten das Falten
+    der Doppelnummern, sechs fielen weg — und die Positionsprobe 2022
+    verfehlte jede Zusammenstellungs-Zeile. Ohne Kopfwort „THH" auf der
+    Seite (oder einer Vorseite) gibt es diese Lesart nicht: Dann bleibt die
+    Regel, dass die erste Zahl die Nummer ist."""
+    return (spalten is not None and len(row) >= 3
+            and re.fullmatch(r"\d{1,2}", row[0][3]) is not None
+            and _in_thh_spalte(row, thh_x)
             and row[0][0] < spalten.bez[0])
 
 
@@ -329,15 +369,20 @@ def _ist_position(row: list[Wort], spalten: FhhSpalten | None) -> bool:
 _PRODUKT = re.compile(r"[IP]\d[\d.]*")
 
 
-def _position_lesen(row: list[Wort], year: int, spalten: FhhSpalten) -> FhhZeile:
-    seq = int(row[0][3])
-    sub_budget = int(row[1][3]) if row[1][3] != "alle" else None
+def _position_lesen(row: list[Wort], year: int, spalten: FhhSpalten,
+                    seq: int | None = None) -> FhhZeile:
+    """``seq`` kommt aus der Zeile — oder, bei Zeilen ohne Lfd. Nr., vom
+    Aufrufer (fortlaufend je Planjahr); dann beginnt die Zeile mit dem THH."""
+    if seq is None:
+        seq = int(row[0][3])
+        row = row[1:]
+    sub_budget = int(row[0][3]) if row[0][3] != "alle" else None
 
     page: str | None = None
     product: str | None = None
     label: list[str] = []
     bez_links, bez_rechts = spalten.bez
-    for x0, x1, _y, text in row[2:]:
+    for x0, x1, _y, text in row[1:]:
         if x0 >= spalten.amount[0][0] - 1:
             break                       # ab hier beginnen die Beträge
         if bez_links - 1 <= x0 and x1 <= bez_rechts + 1:
@@ -542,11 +587,16 @@ def parse_fhh_seiten(seiten: list[list[Wort]],
     # (:func:`_block_jahr`) — ein dokumentweiter Merker hat beim EHH schon
     # einmal alle vier Blöcke auf dasselbe Planjahr fallen lassen (303358).
     jahr_merker: int | None = None
+    # Die THH-Kante gilt wie das Planjahr über Seitengrenzen: Folgeseiten
+    # wiederholen das Raster, nicht immer den Kopf.
+    thh_x: float | None = None
 
     for nr, woerter in enumerate(seiten):
         zeilen = zeilen_bilden(woerter)
         senkrecht = linien[nr][1] if nr < len(linien) else []
         spalten = _spalten(zeilen, senkrecht)
+        if spalten is not None and (kante := _thh_kante(zeilen)) is not None:
+            thh_x = kante
         seitentext = " ".join(w[3] for w in woerter)
         marker = _JAHR_MARKER.search(seitentext)
         if marker:
@@ -568,8 +618,14 @@ def parse_fhh_seiten(seiten: list[list[Wort]],
                 block_jahr = int(text.strip())
 
             if spalten is not None and year is not None:
-                if _ist_position(row, spalten):
+                if _ist_position(row, spalten, thh_x):
                     position = _position_lesen(row, year, spalten)
+                    aus.zeilen.append(position)
+                    positionen.append((row[0][2], position))
+                    continue
+                if _ohne_nummer(row, spalten, thh_x):
+                    naechste = max((z.seq for z in aus.zeilen if z.year == year), default=0) + 1
+                    position = _position_lesen(row, year, spalten, seq=naechste)
                     aus.zeilen.append(position)
                     positionen.append((row[0][2], position))
                     continue
@@ -729,22 +785,61 @@ def _betragszeilen(zeilen: list[list[Wort]], spalten: FhhSpalten,
     for row in zeilen:
         if row[0][2] >= boden:
             continue
-        zellen: dict[int, int] = {}
-        mehrdeutig = set()
-        for w in row:
-            for i, (links, rechts) in enumerate(spalten.amount):
-                if not (links < w[1] <= rechts + 1 and w[0] >= links - 1):
-                    continue
-                value = _wert(w[3])
-                if value is None:
-                    continue
-                if i in zellen:
-                    mehrdeutig.add(i)
-                zellen[i] = value
-        for i in mehrdeutig:
-            zellen.pop(i, None)
+        zellen = _zellen_der_zeile(row, spalten)
         if len(zellen) >= 2 and _SOLL_NEU in zellen:
             aus.append((row[0][2], zellen))
+    return aus
+
+
+def _zellen_der_zeile(row: list[Wort], spalten: FhhSpalten) -> dict[int, int]:
+    """Was in dieser Grundlinie in welcher Betragsspalte steht — mehrdeutige
+    Spalten (zwei Zahlen in einer) fallen weg."""
+    zellen: dict[int, int] = {}
+    mehrdeutig = set()
+    for w in row:
+        for i, (links, rechts) in enumerate(spalten.amount):
+            if not (links < w[1] <= rechts + 1 and w[0] >= links - 1):
+                continue
+            value = _wert(w[3])
+            if value is None:
+                continue
+            if i in zellen:
+                mehrdeutig.add(i)
+            zellen[i] = value
+    for i in mehrdeutig:
+        zellen.pop(i, None)
+    return zellen
+
+
+#: Die Spalten Einzahlungen und Auszahlungen — die einzigen, in denen ein
+#: Betrag allein stehen darf.
+_EIN_AUS = (1, 2)
+
+
+def _notbetraege(zeilen: list[list[Wort]], spalten: FhhSpalten,
+                 boden: float) -> list[tuple[float, dict[int, int]]]:
+    """Die NOTFORM einer Betragszeile: genau ein Betrag, in Ein- oder
+    Auszahlungen, und sonst nichts.
+
+    196998 (2019, Verw. I) setzt für Position 1 nur „200.000" in die
+    Auszahlungen — kein Soll laut Entwurf, kein neues Soll. Nach der Regel von
+    :func:`_betragszeilen` war das keine Betragszeile; die Position blieb
+    leer, und der Positionsprobe 2019 fehlten genau diese 200.000 €.
+
+    Zwei Sicherungen, damit die Notform nichts hereinholt, was die strenge
+    Form absichtlich draußen hält: Der Betrag muss ein voller Hunderter sein
+    (die Fußzeile „Seite 3" setzt ihre Ziffer in die Auszahlungs-Spalte), und
+    der Aufrufer gibt ihn nur einer Position, die sonst KEINEN Betrag hat
+    (die Blocksumme unter der letzten Position kann nichts überschreiben)."""
+    aus: list[tuple[float, dict[int, int]]] = []
+    for row in zeilen:
+        if row[0][2] >= boden:
+            continue
+        zellen = _zellen_der_zeile(row, spalten)
+        if len(zellen) == 1 and next(iter(zellen)) in _EIN_AUS:
+            wert = next(iter(zellen.values()))
+            if wert != 0 and wert % 100 == 0:
+                aus.append((row[0][2], zellen))
     return aus
 
 
@@ -807,6 +902,15 @@ def _betraege_anbauen(positionen: list[tuple[float, FhhZeile]],
                 (position.planned_draft, position.inflow,
                  position.outflow, position.commitment_authorizations, position.planned_new) = (
                     zellen.get(i) for i in range(5))
+                break
+    # Die Notform (s. :func:`_notbetraege`) füllt nur, was leer geblieben ist.
+    for y, zellen in _notbetraege(zeilen, spalten, boden):
+        for oben, position, unten in spannen:
+            if oben - 2 <= y < unten:
+                if (position.planned_draft, position.inflow, position.outflow,
+                        position.planned_new) == (None, None, None, None):
+                    position.inflow = zellen.get(1)
+                    position.outflow = zellen.get(2)
                 break
 
 
@@ -934,8 +1038,8 @@ def lies_fhh_liste(pdf_bytes: bytes) -> FhhErgebnis:
 def herkunft_fuer(label: str, url: str | None, document_id: int) -> Herkunft:
     return Herkunft(
         kind="ris",
-        probe=("aenderungsliste_fhh_zeilen", "aenderungsliste_summen",
-               "aenderungsliste_positionen"),
+        probe=("amendment_list_cash_budget_rows", "amendment_list_totals",
+               "amendment_list_items"),
         label=label,
         url=url or f"https://buergerinfo.oldenburg.de/getfile.php?id={document_id}&type=do",
         document_id=document_id,

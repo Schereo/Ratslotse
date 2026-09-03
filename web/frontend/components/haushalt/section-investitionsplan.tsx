@@ -55,13 +55,14 @@ import { Segmented } from "@/components/ui";
 import { useFetch } from "@/lib/use-fetch";
 import { amount, deMio, mio } from "@/lib/haushalt";
 import {
-  Herkunft, InvestitionenDaten, InvestitionsZeile, finanzhaushaltJahr,
+  InvestitionenDaten, InvestitionsZeile, finanzhaushaltJahr,
   gesamtJahr, herkunftVon, investitionsAnteil, netto, series, teilhaushalte,
 } from "@/lib/haushalt-investitionen";
 import {
   ProgrammDaten, count, passenderJahrgang,
 } from "@/lib/haushalt-investitionsprogramm";
 import { Beleg } from "@/components/haushalt/source";
+import { Fundstelle } from "@/components/haushalt/fundstelle";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { Vorhaben } from "@/components/haushalt/vorhaben";
 import { cn } from "@/lib/utils";
@@ -69,33 +70,6 @@ import { cn } from "@/lib/utils";
 
 /** Anker des Summen-Blocks — Ziel des Rückwegs aus den Vorhaben. */
 const ANKER_BEREICHE = "bereiche";
-
-/** Die Herkunft einer Angabe im Klartext — dieselbe Form wie auf
- *  `/haushalt/konzern`: welcher Abschnitt, welcher Stand.
- *
- *  HIER STANDEN BIS 16.08. AUCH UNSERE PROBEN — die Sätze aus
- *  `herkunft.PROBEN` und darunter „Gemessen: 0,00 € Restbetrag“. Das sagt
- *  etwas über uns und nichts über den Haushalt (DESIGNSPRACHE.md § 7); auf
- *  `/haushalt/konzern` ist es aus demselben Grund verschwunden. Die Proben
- *  laufen unverändert weiter, die API liefert sie weiter, Tests halten sie
- *  fest und die Technik-Doku beschreibt sie. Nur die Zurschaustellung ist weg.
- *  Gehört an die einzelne Zahl; das Verzeichnis am Seitenende beschreibt die
- *  Quelle der ganzen Seite. */
-function Fundstelle({ h }: { h: Herkunft | null }) {
-  if (!h) return null;
-  return (
-    <div className="border-t border-dashed border-border pt-2.5">
-      <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-        Woher diese Zahlen kommen
-      </p>
-      {h.citation && (
-        <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">
-          {h.citation}{h.as_of ? ` · ${h.as_of}` : ""}
-        </p>
-      )}
-    </div>
-  );
-}
 
 /** Eine Zeile der Rangliste: Bereich, Balken, Betrag — und was dagegensteht.
  *
@@ -140,7 +114,15 @@ function Rang({ row, skala, aufVorhaben, vorhandene }: {
         />
       </div>
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-        {gegen ? (
+        {gegen && row.outflows <= 0 ? (
+          /* Ohne Auszahlung gibt es nichts zu decken — die Stiftungen 2025
+             planten 0 € Auszahlung bei 28 Tsd. € Einzahlung, und „davon
+             gedeckt" stand über der Summe (Durchsicht 02.09.2026). */
+          <p className="text-[11px] leading-snug text-muted-foreground">
+            Keine Auszahlung geplant — {gegen.value} {gegen.unit} Einzahlungen aus Zuschüssen,
+            Verkäufen oder Beiträgen
+          </p>
+        ) : gegen ? (
           <p className="text-[11px] leading-snug text-muted-foreground">
             <span className="font-medium text-foreground/80">Davon gedeckt:</span>{" "}
             {gegen.value} {gegen.unit} durch Zuschüsse, Verkäufe oder Beiträge
@@ -170,18 +152,18 @@ export function InvestitionsplanAbschnitt({ onBestand }: {
    *  damit die Zahl nicht am Jahr-Umschalter hängt. */
   onBestand?: (b: { vorhaben: number; von: number; bis: number } | null) => void;
 } = {}) {
-  const { data, loading } = useFetch<InvestitionenDaten>("/council/haushalt/investitionen");
+  const { data, loading } = useFetch<InvestitionenDaten>("/council/budget/investments");
   // Die Vorhaben kommen aus einer anderen Quelle (Haushaltsplan statt
   // Open-Data-Portal) und reichen weiter zurück. Eigener Abruf, eigene
   // Jahresliste — zusammengelegt wäre einer von beiden immer beschnitten.
   const { data: programm, loading: programmLaedt } = useFetch<ProgrammDaten>(
-    "/council/haushalt/investitionsprogramm");
+    "/council/budget/investment-programme");
 
   useEffect(() => {
     if (!onBestand || programmLaedt) return;
-    if (!programm?.massnahmen.length || !programm.years.length) { onBestand(null); return; }
+    if (!programm?.measures.length || !programm.years.length) { onBestand(null); return; }
     onBestand({
-      vorhaben: programm.massnahmen.length,
+      vorhaben: programm.measures.length,
       von: Math.min(...programm.years),
       bis: Math.max(...programm.years),
     });
@@ -487,10 +469,13 @@ export function InvestitionsplanAbschnitt({ onBestand }: {
         )}
 
         {/* Der Block, der nicht ans Ende gehört. */}
-        <section className="rounded-2xl border border-dashed border-border bg-muted/25 p-4 sm:p-5">
-          <h2 className="font-display text-[15.5px] font-bold tracking-tight">
+        {/* Derselbe Block wie auf den anderen Schritten (orange Kante, Kicker):
+            Bis 02.09.2026 stand er hier als dritter Stil neben den beiden
+            anderen der Seite. */}
+        <section className="@container rounded-2xl border border-border border-l-[3px] border-l-signal bg-card p-4 shadow-sm">
+          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-signal">
             Was diese Zahlen nicht sagen
-          </h2>
+          </p>
           <ul className="mt-2.5 flex list-disc flex-col gap-2 pl-4 text-[12.5px] leading-relaxed text-foreground/90">
             <li>
               <strong className="font-semibold text-foreground">

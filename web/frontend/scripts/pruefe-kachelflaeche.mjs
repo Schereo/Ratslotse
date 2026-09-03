@@ -12,7 +12,8 @@
 
 import { readFileSync } from "node:fs";
 import {
-  beschriftet, buendelGrenze, kachelHoehe, kacheln, namenszeilen, rampenText,
+  beschriftet, buendelGrenze, kachelHoehe, kacheln, namenszeilen, namenszeilenStufe,
+  rampenText, textstufe, traegtEinheit,
 } from "../components/grafik/kachelflaeche.ts";
 
 let fehler = 0;
@@ -95,6 +96,40 @@ pruefe("Beschriftung: 64 × 40 px trägt sie",
   beschriftet(64, 40), "beschriftet(64, 40) = false");
 pruefe("Beschriftung: eine schmale, hohe Kachel trägt sie (vertikal)",
   beschriftet(44, 120), "beschriftet(44, 120) = false");
+
+// --------------------------------------------------------------------------
+// (e) Die Schrift folgt der Fläche: Die drei Stufen sind eine Treppe (nie
+//     wird eine kleinere Kachel größer gesetzt als eine größere), die kleine
+//     Stufe zählt ihre Zeilen wie zuvor, und auf der Erträge-Fläche steht
+//     der größte Posten bei jeder Breite groß — sonst hieße die Stufe nichts.
+// --------------------------------------------------------------------------
+{
+  const rang = { small: 0, medium: 1, large: 2 };
+  let treppe = true;
+  for (let b = 40; b <= 600 && treppe; b += 8) {
+    for (let h = 34; h <= 440; h += 8) {
+      if (rang[textstufe(b, h)] > rang[textstufe(b + 8, h + 8)]) { treppe = false; break; }
+    }
+  }
+  pruefe("Textstufe: eine größere Kachel wird nie kleiner gesetzt", treppe, "Treppe verletzt");
+  pruefe("Textstufe: die kleine Stufe zählt ihre Zeilen wie namenszeilen()",
+    [[64, 40], [100, 60], [44, 120]].every(([b, h]) =>
+      namenszeilenStufe("small", b, h) === namenszeilen(b, h)),
+    "abweichend");
+  pruefe("Textstufe: 200 × 130 px ist groß und trägt mindestens zwei Namenszeilen",
+    textstufe(200, 130) === "large" && namenszeilenStufe("large", 200, 130) >= 2,
+    `${textstufe(200, 130)}, ${namenszeilenStufe("large", 200, 130)} Zeilen`);
+  pruefe("Einheit: 64 × 40 px trägt keine, 112 × 72 px trägt sie",
+    !traegtEinheit(64, 40) && traegtEinheit(112, 72), "abweichend");
+  const knoten = ERTRAEGE.map((value, i) => ({ value, i }));
+  let grossUeberall = true;
+  for (let b = 520; b <= 1200 && grossUeberall; b += 8) {
+    const k = kacheln(knoten, b, kachelHoehe(b)).find((x) => x.daten.i === 0);
+    if (!k || textstufe(k.breite, k.hoehe) !== "large") grossUeberall = false;
+  }
+  pruefe("Textstufe: der größte Ertragsposten steht bei jeder Breite groß",
+    grossUeberall, "an mindestens einer Breite nicht");
+}
 
 // --------------------------------------------------------------------------
 // (f) `buendelGrenze` hält ihren Vertrag: Beim gelieferten Schnitt trägt

@@ -23,7 +23,7 @@ export default function AppError({
 
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center">
-      <Mascot pose="confused" className="h-28 w-28" />
+      <Mascot regung="ist-traurig" className="h-28 w-28" />
       <h1 className="mt-4 text-xl font-semibold text-foreground">Etwas ist schiefgelaufen</h1>
       <p className="mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
         Da ist Lotti kurz vom Kurs abgekommen. Versuch es erneut — die Navigation

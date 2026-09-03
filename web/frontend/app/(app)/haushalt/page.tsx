@@ -35,6 +35,8 @@ import { Wegweiser } from "@/components/haushalt/wegweiser";
 import { Datenstand } from "@/components/haushalt/datenstand";
 import { useFetch } from "@/lib/use-fetch";
 import { Tafel } from "@/components/haushalt/tafel";
+import { VollzugKarte } from "@/components/haushalt/vollzug";
+import { berichteUrls, type VollzugDaten } from "@/lib/haushalt-vollzug";
 import { Bereichstabelle } from "@/components/haushalt/bereichstabelle";
 import { Gegenbalken } from "@/components/haushalt/gegenbalken";
 import { Flussbild, flussbildQuellen } from "@/components/haushalt/flussbild";
@@ -60,6 +62,17 @@ export default function HaushaltPage() {
   // Nur den Aufwands-Posten je Teilhaushalt: Das Flussbild zeichnet rechts
   // genau ihn. Die volle Ebene wären 795 statt 178 KB — bei identischem Bild.
   const { data, loading } = useFetch<HaushaltAuswahl<typeof FELDER[number]>>(haushaltUrl(FELDER, "20"));
+  // Der jüngste Zwischenstand des laufenden Jahres — nur die Summenzeilen,
+  // die Übersicht braucht die Teilhaushalte nicht (Endpunkt ohne Jahrgang).
+  const vollzug = useFetch<VollzugDaten>("/council/budget/execution");
+  // Der Bericht der Zwischenstand-Karte, einzeln nummeriert — die Karte
+  // zeigt den jüngsten Stichtag, egal welches Planjahr oben gewählt ist.
+  const jeDokument = useMemo(() => {
+    const d = vollzug.data;
+    const j = d?.reporting_dates.at(-1)?.budget_year;
+    const urls = d && j ? berichteUrls(d, j) : [];
+    return urls.length ? { budget_execution: urls } : {};
+  }, [vollzug.data]);
   const years = useMemo(() => (data ? jahreSortiert(data) : []), [data]);
   const [year, setJahr] = useState<number | null>(null);
   const [visual, setVisual] = useState<"balken" | "euro">("balken");
@@ -141,6 +154,7 @@ export default function HaushaltPage() {
   // Flussbild.
   const quellen: QuellenSchluessel[] = [
     "plan",
+    ...(vollzug.data?.reporting_dates.length ? (["budget_execution"] as const) : []),
     ...(zeigtZettel ? kassenzettelQuellen(data, aktJahr) : []),
     ...flussbildQuellen(data, aktJahr),
     ...(langeJahre.length > 0 ? (["expense_series"] as const) : []),
@@ -163,7 +177,7 @@ export default function HaushaltPage() {
       ? langLetzter.year : null;
 
   return (
-    <Quellenkontext keys={quellen} year={aktJahr}>
+    <Quellenkontext keys={quellen} jeDokument={jeDokument} year={aktJahr}>
     <div className="flex flex-col gap-4">
       {/* Kopf: Jahr-Umschalter und Quelle. Der Titel der Seite steht auf der
           Anzeigetafel — hier oben nur der Kicker, damit klar ist, wo man ist. */}
@@ -233,6 +247,11 @@ export default function HaushaltPage() {
           ? <Gegenbalken zeilen={zeilen} year={aktJahr} />
           : <Steuereuro zeilen={zeilen} year={aktJahr} />}
       </Tafel>
+      {/* Der Zwischenstand: Was die Verwaltung im laufenden Jahr erwartet,
+          in einem Satz — die Brücke vom Plan zur Gegenprobe. */}
+      {vollzug.data && vollzug.data.reporting_dates.length > 0 && (
+        <VollzugKarte daten={vollzug.data} beleg={(h) => <Beleg q="budget_execution" h={h} />} />
+      )}
       {source && (
         <p className="-mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
           Quelle: {source.url
@@ -406,8 +425,8 @@ export default function HaushaltPage() {
                     auf den Abschluss steht an der Zeile als bestandene Probe.
                     Ohne ihn trägt der Wert allein die Rechnung, die in der
                     Tabelle selbst steht. */}
-                {k.probes.includes("ausgabenreihe_jahresabschluss") ? (
-                  <>Er stimmt mit der Gesamtergebnisrechnung im Jahresabschluss {k.year}
+                {k.probes.includes("expense_series_annual_accounts") ? (
+                  <>Er stimmt mit der Gesamtergebnisrechnung im Jahresabschluss {k.year}{" "}
                   überein<Beleg q="jahresabschluss" />.</>
                 ) : (
                   <>Nur dieser Wert passt zu dem Pro-Kopf-Betrag in derselben

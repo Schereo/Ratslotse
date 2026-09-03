@@ -278,7 +278,7 @@ def main() -> int:
                     probe=list(probes),
                     citation=_fundstelle(
                         accounting_system, source,
-                        "ausgabenreihe_jahresabschluss" in probes),
+                        "expense_series_annual_accounts" in probes),
                     probe_result=nachweis))
                 print(f"  {ar.REGELWERK[accounting_system]}, {spanne} "
                       f"({source.upper()}): {count}")
@@ -286,7 +286,7 @@ def main() -> int:
 
         store.herkunft_aufraeumen()
         luecken = {t: n for t, n in store.herkunft_luecken().items()
-                   if t == "council_ausgabenreihe"}
+                   if t == "council_expense_series"}
         if luecken:
             print(f"WARNUNG: Zeilen ohne Herkunft: {luecken}", file=sys.stderr)
     finally:

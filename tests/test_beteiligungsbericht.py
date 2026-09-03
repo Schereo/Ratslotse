@@ -442,7 +442,7 @@ def test_gespeicherte_kennzahl_traegt_probe_und_messwert(tmp_path):
     assert len(zeilen) == 1
     h = store.get_herkunft([zeilen[0]["herkunft_id"]])[0]
     assert h["kind"] == "city"
-    assert h["probe"] == "beteiligung_bilanzprobe"
+    assert h["probe"] == "shareholding_balance_sheet_check"
     assert "Abschnitt 2.2.1" in h["citation"]
     assert h["page"] == 2
     assert "0.00" in h["probe_result"]
@@ -504,7 +504,7 @@ def test_konzernvergleich_ist_einordnung_und_verwirft_nichts(tmp_path):
     source = herkunft.Herkunft(kind="ris", document_id=302709,
                                label="Gesamtabschluss 2024",
                                url="https://example.org/ga2024.pdf",
-                               probe="konzern_traegersumme")
+                               probe="group_entity_total")
     store.save_konzern_jahrgang(2024, [], [
         {"kind": "revenues", "entity_key": "egh", "entity": "EGH",
          "amount_keur": 69889.0, "prior_year_keur": None},
@@ -525,7 +525,7 @@ def test_konzernvergleich_ist_einordnung_und_verwirft_nichts(tmp_path):
 
 # --- Abschnitt 3: Aufsichtsorgane -------------------------------------------
 #
-# Alle Fixtures hier sind wörtliche `council_gesellschaft_texte`-Inhalte aus
+# Alle Fixtures hier sind wörtliche `council_company_texts`-Inhalte aus
 # den Berichten 2022–2024, jeder mit genau einer Eigenheit.
 
 #: AWB 2023 — der Fall, für den es die Rechenprobe gibt: **acht** Namen,
@@ -775,14 +775,14 @@ def test_personen_und_eigentuemer_landen_mit_herkunft_im_bestand(tmp_path):
     assert all(p["position"] == "Ratsmitglied" for p in personen)
     assert all(p["roles_assignable"] == 1 for p in personen)
     h = store.get_herkunft([personen[0]["herkunft_id"]])[0]
-    assert h["probe"] == "beteiligung_spaltenprobe"
+    assert h["probe"] == "shareholding_column_check"
     assert "Betriebsausschuss" in h["citation"]
 
     eigner = store.get_gesellschaft_eigentuemer()
     assert [e["name"] for e in eigner] == ["Stadt Oldenburg"]
     assert eigner[0]["amount_eur"] == 22000000.0
     he = store.get_herkunft([eigner[0]["herkunft_id"]])[0]
-    assert he["probe"] == "beteiligung_anteilsprobe"
+    assert he["probe"] == "shareholding_share_check"
     assert "22.000.000,00" in he["probe_result"]
 
     # Keine Zeile ohne Herkunft — auch die beiden neuen Tabellen nicht.

@@ -1,6 +1,6 @@
 # Manuell auslösbarer Ops-Lauf: generiert alle Themenfeld-Rückblicke neu
 # (scripts/generate_field_recaps.py --force). Nützlich nach Änderungen am
-# recap_themenfeld-Prompt (admin-editierbar), statt auf den wöchentlichen
+# recap_policy_field-Prompt, statt auf den wöchentlichen
 # Lauf (So 03:00) zu warten. Kostet je Lauf ein paar Cent LLM (12 Felder).
 # Gleiche SSH-Mechanik wie deploy.yml; keine Inputs, nur Collaborator.
 name: "Ops: Rückblicke regenerieren"

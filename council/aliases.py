@@ -198,13 +198,13 @@ def decide(pairs: list[dict], entities: list[dict], titles: dict[int, list[str]]
             resp = llm.chat_complete(
                 model=model,
                 messages=[
-                    {"role": "system", "content": prompts.get("entity_dubletten_system")},
+                    {"role": "system", "content": prompts.get("entity_duplicates_system")},
                     {"role": "user", "content": prompts.render(
-                        "entity_dubletten_user", paare=_render(chunk, by_id, titles))},
+                        "entity_duplicates_user", paare=_render(chunk, by_id, titles))},
                 ],
                 temperature=0.1,
                 response_format={"type": "json_object"},
-                _feature="entity_dubletten",
+                _feature="entity_duplicates",
             )
             data = json.loads(_strip_fences(resp.choices[0].message.content))
         except Exception as exc:  # noqa: BLE001 — ein Batch darf den Lauf nicht kippen

@@ -19,6 +19,7 @@ einen 400.000-Zeichen-Extrakt ins Repo zu legen.
 """
 from __future__ import annotations
 
+import dataclasses
 import importlib.util
 import sys
 from datetime import date
@@ -126,9 +127,32 @@ JAHRGAENGE = {
 }
 
 
+def thh_kopf(year: int) -> str:
+    """Der Tabellenkopf eines Teilhaushalts-Plans für das Haushaltsjahr ``year``.
+
+    Sechs Spalten, wie in jedem echten Plan: das Ist des Vorvorjahres, der
+    fortgeschriebene Vorjahresansatz, **der Ansatz des Haushaltsjahres** und
+    drei Jahre mittelfristige Finanzplanung. Das Haushaltsjahr ist damit die
+    dritte Spalte — dieselbe, die auch Anlage 005 als Ansatz führt."""
+    return (f"Erträge und Aufwendungen Ergebnis {year - 2}\n- Euro -\n"
+            + "".join(f"Ansatz {j}\n- Euro -\n" for j in range(year - 1, year + 4)))
+
+
+def _spalten(wert: float, schritt: float) -> str:
+    """Sechs verschiedene Spaltenwerte um ``wert`` herum — der Haushaltsansatz
+    in der Mitte (Spalte 3).
+
+    Verschieden, damit ein Test die Spaltenwahl überhaupt prüfen kann: Stünde
+    überall dieselbe Zahl, ginge jede Spalte durch."""
+    return " ".join(eur(wert + schritt * (i - 2)) for i in range(6))
+
+
 def teilhaushalt_plan(sub_budget_no: int, sub_budget_name: str, produkte: list[tuple],
                       year: int) -> str:
     """Ein Teilhaushalts-Plan im Layout der echten Dokumente.
+
+    ``year`` ist der **Haushaltsjahrgang** des Plans, also die dritte
+    Kopfspalte — der Jahrgang, den ``parse_teilergebnishaushalt`` vergibt.
 
     Die Beträge stehen in **deutscher** Schreibweise mit Tausenderpunkt — so
     stehen sie im PDF-Extrakt, und nur so liest ``_thh_zahlen`` sie als eine
@@ -140,14 +164,10 @@ def teilhaushalt_plan(sub_budget_no: int, sub_budget_name: str, produkte: list[t
             f"Teilergebnishaushalt THH{sub_budget_no:02d}: {sub_budget_name}\n"
             f"Produkt: {name} ({product_no})\n"
             f"{office}\n"
-            f"Erträge und Aufwendungen Ergebnis {year - 1}\n- Euro -\n"
-            f"Ansatz {year}\n- Euro -\nAnsatz {year + 1}\n- Euro -\n"
-            f"12. = Summe ordentliche Erträge {eur(revenues - 100)} {eur(revenues)}"
-            f" {eur(revenues + 50)}\n"
-            f"20. = Summe ordentliche Aufwendungen {eur(expenses - 100)}"
-            f" {eur(expenses)} {eur(expenses + 50)}\n"
-            f"21. ordentliches Ergebnis {eur(result - 0)} {eur(result)}"
-            f" {eur(result - 50)}\n"
+            + thh_kopf(year) +
+            f"12. = Summe ordentliche Erträge {_spalten(revenues, 1_000)}\n"
+            f"20. = Summe ordentliche Aufwendungen {_spalten(expenses, 100)}\n"
+            f"21. ordentliches Ergebnis {_spalten(result, 900)}\n"
             "Kurzbeschreibung:\n")
     return text
 
@@ -167,7 +187,7 @@ def anlage(store: CouncilStore, document_id: int, label: str,
            text: str, n_pages: int = 300) -> None:
     with store._conn:  # noqa: SLF001
         store._conn.execute(  # noqa: SLF001
-            "INSERT OR REPLACE INTO council_anlagen "
+            "INSERT OR REPLACE INTO council_attachments "
             "(document_id, kvonr, label, url, raw_text, n_pages, fetched_at, status) "
             "VALUES (?,?,?,?,?,?,?,?)",
             (document_id, 1, label, f"https://example.org/{document_id}.pdf",
@@ -194,11 +214,11 @@ def thh_bestand(tmp_path):
     store = CouncilStore(tmp_path / "council.sqlite")
     for i, (nr, (name, produkte)) in enumerate(sorted(THH_PLAENE.items())):
         anlage(store, 500 + i,
-               f"2028 {7 + i:03d} Vw THH{nr:02d} Haushalt 2028 Verwaltungsentwurf",
+               f"2027 {7 + i:03d} Vw THH{nr:02d} Haushalt 2027 Verwaltungsentwurf",
                teilhaushalt_plan(nr, name, produkte, 2027))
     with store._conn:  # noqa: SLF001
         store._conn.execute(  # noqa: SLF001
-            "UPDATE council_anlagen SET raw_text = '', n_pages = 0, status = 'listed' "
+            "UPDATE council_attachments SET raw_text = '', n_pages = 0, status = 'listed' "
             "WHERE document_id IN (502, 503)")
     return store
 
@@ -206,7 +226,7 @@ def thh_bestand(tmp_path):
 def produkt_einheiten(store: CouncilStore) -> list[tuple]:
     """(Jahr, Teilhaushalt) — die Einheiten, in denen die Produkte hereinkommen."""
     return sorted(tuple(r) for r in store._conn.execute(  # noqa: SLF001
-        "SELECT DISTINCT year, sub_budget_no FROM council_produkte"))
+        "SELECT DISTINCT year, sub_budget_no FROM council_products"))
 
 
 def inhalt(store: CouncilStore) -> dict:
@@ -215,9 +235,9 @@ def inhalt(store: CouncilStore) -> dict:
     nicht: Ein Lauf, der jede Zeile identisch neu schreibt, sähe daran gleich
     aus."""
     aus = {}
-    for tabelle in ("council_ergebnisrechnung", "council_abweichungsgruende",
-                    "council_produkte", "council_pruefberichte",
-                    "council_pruefbericht_quellen"):
+    for tabelle in ("council_income_statement", "council_variance_reasons",
+                    "council_products", "council_audit_reports",
+                    "council_audit_report_sources"):
         rows = store._conn.execute(f"SELECT * FROM {tabelle}").fetchall()  # noqa: SLF001
         aus[tabelle] = sorted(
             repr({k: r[k] for k in r.keys() if k != "fetched_at"}) for r in rows)
@@ -247,15 +267,33 @@ def test_rechenschaftsbericht_und_schlussbericht_sind_keine_jahresabschluesse(ba
     assert gefunden == {100, 101, 102}
 
 
-def test_teilhaushalt_jahrgang_kommt_aus_der_ansatzspalte():
-    """Der Plan „2024 … THH01" ist der Haushaltsplan 2024, seine erste
-    Ansatzspalte trägt aber 2023 — und genau die übernimmt der Parser. Wer
-    hier das Label läse, suchte einen Jahrgang, den die Tabelle nie liefert."""
+def test_teilhaushalt_jahrgang_ist_die_dritte_kopfspalte():
+    """Der Plan „2024 … THH01" ist der Haushaltsplan 2024 — und genau 2024
+    steht in seiner dritten Kopfspalte. Die erste Ansatzspalte (2023) ist der
+    fortgeschriebene Vorjahresansatz; sie zu nehmen hieße, die ganze Schicht
+    ein Jahr hinter ihre eigenen Dokumente zu legen."""
     kopf = ("Teilergebnishaushalt THH01: Verwaltungsführung\n"
             "Erträge und Aufwendungen Ergebnis 2022\n- Euro -\nAnsatz 2023\n"
-            "- Euro -\nAnsatz 2024\n- Euro -\n")
-    assert finanzquellen.teilhaushalt_jahrgang(kopf) == 2023
+            "- Euro -\nAnsatz 2024\n- Euro -\nAnsatz 2025\n- Euro -\n")
+    assert finanzquellen.teilhaushalt_jahrgang(kopf) == 2024
     assert finanzquellen.teilhaushalt_jahrgang("ohne Tabelle") is None
+
+
+def test_teilhaushalt_jahrgang_und_label_sagen_dasselbe():
+    """Die Jahrgangsprobe: Wo das Label einen Jahrgang nennt, nennt der
+    Tabellenkopf denselben. Vier Label-Generationen tragen ihn — über alle 53
+    Anlagen mit Jahreszahl im Label deckt es sich (gemessen 02.09.2026 an den
+    PDFs des Ratsinformationssystems)."""
+    for label, kopfjahr in (("2026 007 Vw THH01 Haushalt 2026 Verwaltungsentwurf", 2026),
+                            ("2024 007 IVw THH01", 2024), ("007 2023 THH01", 2023),
+                            ("2019 THH 08", 2019)):
+        kopf = ("Teilergebnishaushalt THH01: Verwaltungsführung\n"
+                + thh_kopf(kopfjahr))
+        assert finanzquellen.teilhaushalt_jahrgang(kopf) == kopfjahr
+        assert finanzquellen.teilhaushalt_label_jahr(label) == kopfjahr
+    # Die Hälfte der Labels nennt gar keinen Jahrgang — deshalb ist der
+    # Tabellenkopf maßgeblich und das Label nur die Gegenprobe.
+    assert finanzquellen.teilhaushalt_label_jahr("007 THH01") is None
 
 
 def test_teilhaushalt_nummer_aus_dem_label():
@@ -264,8 +302,36 @@ def test_teilhaushalt_nummer_aus_dem_label():
     for label, erwartet in (("007 THH01", 1), ("2024 007 IVw THH01", 1),
                             ("TOP 5 - Anlage III - THH 08", 8),
                             ("2019 THH 08", 8), ("THH11", 11),
-                            ("Anlage 4 THH11", 11), ("ohne Nummer", None)):
+                            ("Anlage 4 THH11", 11), ("ohne Nummer", None),
+                            # 2019–2023: der Teilhaushalt 13 ohne das Wort THH.
+                            ("019 nicht rechtsfähige Stiftungen", 13),
+                            ("019 2023 Nicht rechtsfähige Stiftungen", 13),
+                            # … aber die rechtsfähigen Stiftungen sind keiner.
+                            ("020 Rechtsfähige Stiftungen", None)):
         assert finanzquellen.teilhaushalt_nummer(label) == erwartet
+
+
+def test_stiftungs_anlage_ist_der_teilhaushalt_13(tmp_path):
+    """194235 („019 nicht rechtsfähige Stiftungen", 28 Seiten, Kopf „THH13")
+    war fünf Jahrgänge lang unsichtbar: Das Muster „%THH%" sah das Label
+    nicht. Die rechtsfähigen Stiftungen daneben bleiben draußen."""
+    store = CouncilStore(tmp_path / "t.sqlite")
+    try:
+        with store._conn:
+            for did, label in ((194235, "019 nicht rechtsfähige Stiftungen"),
+                               (198169, "020 rechtsfähige Stiftungen"),
+                               (297429, "2026 019 Vw THH13 Haushalt 2026 Verwaltungsentwurf")):
+                store._conn.execute(
+                    "INSERT INTO council_attachments (document_id, kvonr, label, url, raw_text, "
+                    "n_pages, fetched_at, status) VALUES (?, 1, ?, 'https://x', "
+                    "'Stadt Oldenburg THH13 Nicht rechtsfähige Stiftungen', 28, datetime('now'), 'ok')",
+                    (did, label))
+        rows = finanzquellen.QUELLEN["teilhaushalt"].dokumente(store, "document_id")
+        assert sorted(r["document_id"] for r in rows) == [194235, 297429]
+        # Ohne Nummer im Label kommt sie vom Deckblatt.
+        assert finanzquellen.teilhaushalt_nummer("Stadt Oldenburg THH13 Nicht rechtsfähige Stiftungen") == 13
+    finally:
+        store.close()
 
 
 def test_einheit_eines_teilhaushalts_plans_ist_der_teilhaushalt():
@@ -275,7 +341,7 @@ def test_einheit_eines_teilhaushalts_plans_ist_der_teilhaushalt():
     q = finanzquellen.QUELLEN["teilhaushalt"]
     row = {"label": "2028 010 Vw THH04 Haushalt 2028 Verwaltungsentwurf",
            "kopf": "Erträge und Aufwendungen Ergebnis 2026\nAnsatz 2027\nAnsatz 2028\n"}
-    assert q.einheiten_von(row) == {(2027, 4)}
+    assert q.einheiten_von(row) == {(2028, 4)}
     assert q.unit == "Teilhaushalte"
 
 
@@ -302,7 +368,7 @@ def test_nachgereichter_volltext_wird_beim_naechsten_lauf_gelesen(thh_bestand):
         name, produkte = THH_PLAENE[nr]
         with thh_bestand._conn:  # noqa: SLF001
             thh_bestand._conn.execute(  # noqa: SLF001
-                "UPDATE council_anlagen SET raw_text = ?, n_pages = 300, status = 'ok' "
+                "UPDATE council_attachments SET raw_text = ?, n_pages = 300, status = 'ok' "
                 "WHERE document_id = ?", (teilhaushalt_plan(nr, name, produkte, 2027),
                                           document_id))
 
@@ -333,7 +399,7 @@ def test_cron_zieht_den_nachgereichten_teilhaushalt_nach(thh_bestand, tmp_path):
         name, produkte = THH_PLAENE[nr]
         with thh_bestand._conn:  # noqa: SLF001
             thh_bestand._conn.execute(  # noqa: SLF001
-                "UPDATE council_anlagen SET raw_text = ?, n_pages = 300, status = 'ok' "
+                "UPDATE council_attachments SET raw_text = ?, n_pages = 300, status = 'ok' "
                 "WHERE document_id = ?", (teilhaushalt_plan(nr, name, produkte, 2027),
                                           document_id))
     thh_bestand.close()
@@ -361,9 +427,9 @@ def test_fehlende_teilhaushalts_ebene_wird_nachgezogen(balance, tmp_path):
     # Der Zustand nach einem Lauf, in dem nur die Teilhaushalte scheiterten.
     with balance._conn:  # noqa: SLF001
         balance._conn.execute(  # noqa: SLF001
-            "DELETE FROM council_ergebnisrechnung WHERE year = 2024 AND sub_budget_no IS NOT NULL")
+            "DELETE FROM council_income_statement WHERE year = 2024 AND sub_budget_no IS NOT NULL")
         balance._conn.execute(  # noqa: SLF001
-            "DELETE FROM council_abweichungsgruende WHERE year = 2024")
+            "DELETE FROM council_variance_reasons WHERE year = 2024")
     assert 2024 in balance.ergebnisrechnung_jahre(), "die Gesamtrechnung steht noch"
     assert 2024 not in balance.plan_actual_years()
     balance.close()
@@ -380,6 +446,46 @@ def test_fehlende_teilhaushalts_ebene_wird_nachgezogen(balance, tmp_path):
     finally:
         store.close()
     assert bericht["Neue Einheiten"] == 1
+
+
+def test_kleiner_teilhaushalt_kommt_durch_die_seitenschwelle(tmp_path):
+    """Vier Teilhaushalte sind dünner als der Rest: THH13 (Stiftungen) hat 26
+    bis 28 Seiten, THH03 28 bis 34, THH02 und THH12 genau 40. Die Schwelle
+    stand bis 09/2026 bei „> 40" und warf sie in **jedem** Jahrgang hinaus —
+    die Seiten sagten deshalb „kein auslesbarer Teilhaushaltsplan" für Schule
+    und Bildung, Wirtschaftsförderung und Stiftungen."""
+    store = CouncilStore(tmp_path / "council.sqlite")
+    name, produkte = THH_PLAENE[3]
+    anlage(store, 700, "2027 019 Vw THH13 Haushalt 2027 Verwaltungsentwurf",
+           teilhaushalt_plan(13, name, produkte, 2027), n_pages=26)
+    # Ein Auszug des Investitionsprogramms trägt „THH" ebenfalls im Label und
+    # ist mit 22 Seiten der größte Fremdkörper im Bestand — er bleibt draußen.
+    anlage(store, 701, "IP THH 08 Auszug", "kein Teilergebnishaushalt", n_pages=22)
+    try:
+        p = finanzquellen.Protokoll(still=True)
+        finanzquellen.lies_teilhaushalte(store, p, nur_fehlende=True)
+        assert produkt_einheiten(store) == [(2027, 13)]
+    finally:
+        store.close()
+
+
+def test_jahrgangsprobe_meldet_ein_abweichendes_label(tmp_path):
+    """Wo das Label einen Jahrgang nennt, muss es derselbe sein wie im
+    Tabellenkopf. Diese Gegenprobe hätte die Jahresverschiebung sofort
+    gezeigt, die bis 09/2026 in der Tabelle stand."""
+    store = CouncilStore(tmp_path / "council.sqlite")
+    name, produkte = THH_PLAENE[1]
+    anlage(store, 710, "2026 007 Vw THH01 Haushalt 2026 Verwaltungsentwurf",
+           teilhaushalt_plan(1, name, produkte, 2027))
+    try:
+        p = finanzquellen.Protokoll(still=True)
+        finanzquellen.lies_teilhaushalte(store, p, nur_fehlende=True)
+        assert any("Label nennt 2026" in w and "[2027]" in w for w in p.warnungen), \
+            p.warnungen
+        # Gemeldet, nicht verworfen: Maßgeblich bleibt der Tabellenkopf.
+        assert produkt_einheiten(store) == [(2027, 1)]
+    finally:
+        store.close()
 
 
 # --- Derselbe Teilhaushalt in zwei Dokumenten -------------------------------
@@ -419,11 +525,11 @@ def test_zweites_dokument_zum_selben_teilhaushalt_wird_uebersprungen(tmp_path):
         # Es gilt das ERSTE Dokument — die Anlage der Haushaltsvorlage selbst,
         # nicht die Zweitveröffentlichung unter einem Tagesordnungspunkt.
         quellen = {r[0] for r in store._conn.execute(  # noqa: SLF001
-            "SELECT DISTINCT source_label FROM council_produkte")}
+            "SELECT DISTINCT source_label FROM council_products")}
         assert quellen == {"007 THH01"}
         dokumente = {r[0] for r in store._conn.execute(  # noqa: SLF001
-            "SELECT DISTINCT h.document_id FROM council_produkte p "
-            "JOIN council_herkunft h ON h.id = p.herkunft_id")}
+            "SELECT DISTINCT h.document_id FROM council_products p "
+            "JOIN council_provenance h ON h.id = p.herkunft_id")}
         assert dokumente == {600}
 
         # Und keine Herkunft, auf die niemand zeigt: Genau daran ist der
@@ -456,7 +562,7 @@ def test_abweichende_zahlen_im_zweiten_dokument_werden_gemeldet(tmp_path):
 
         # Gemeldet, nicht überschrieben: Es gilt weiter das erste Dokument.
         revenues = sorted(r[0] for r in store._conn.execute(  # noqa: SLF001
-            "SELECT revenues FROM council_produkte"))
+            "SELECT revenues FROM council_products"))
         assert revenues == [1_000.0, 4_000.0]
     finally:
         store.close()
@@ -484,7 +590,7 @@ def test_holt_den_fehlenden_jahrgang_nach(balance, tmp_path):
 
     with balance._conn:  # noqa: SLF001
         balance._conn.execute(  # noqa: SLF001
-            "DELETE FROM council_ergebnisrechnung WHERE year = 2024")
+            "DELETE FROM council_income_statement WHERE year = 2024")
     assert balance.ergebnisrechnung_jahre() == [2023, 2025]
     balance.close()
 
@@ -583,7 +689,7 @@ def test_job_laesst_bestand_stehen_wenn_der_parser_nichts_mehr_liefert(balance, 
     # Alle drei Dokumente unleserlich machen — der Bestand bleibt.
     with balance._conn:  # noqa: SLF001
         balance._conn.execute(  # noqa: SLF001
-            "UPDATE council_anlagen SET raw_text = 'Layout geändert'")
+            "UPDATE council_attachments SET raw_text = 'Layout geändert'")
 
     p2 = finanzquellen.Protokoll(still=True)
     finanzquellen.lies_jahresabschluesse(balance, p2)
@@ -605,7 +711,7 @@ def test_leerer_prueferbericht_loescht_die_feststellungen_nicht(tmp_path, source
          "section": "Prüfungsauftrag", "text": f"Feststellung {i}"}
         for i in range(1, 21)], source("Schlussbericht 2023",
                                        "https://example.org/sb2023.pdf",
-                                       probe="legende_und_verzeichnis"))
+                                       probe="legend_and_index"))
     assert len(store.get_pruefberichte(2023)) == 20
 
     # Ein Bericht, der als Dokument erkannt wird, aus dem aber nichts zu holen
@@ -694,7 +800,7 @@ def test_teilweise_gelesener_jahrgang_gibt_sich_zu_erkennen(thh_bestand):
     finanzquellen.lies_teilhaushalte(thh_bestand, p, nur_fehlende=True)
     # Ein zweiter, vollständiger Jahrgang als Maßstab.
     for i, (nr, (name, produkte)) in enumerate(sorted(THH_PLAENE.items())):
-        anlage(thh_bestand, 600 + i, f"2027 {7 + i:03d} Vw THH{nr:02d}",
+        anlage(thh_bestand, 600 + i, f"2026 {7 + i:03d} Vw THH{nr:02d}",
                teilhaushalt_plan(nr, name, produkte, 2026))
     p2 = finanzquellen.Protokoll(still=True)
     finanzquellen.lies_teilhaushalte(thh_bestand, p2, nur_fehlende=True)
@@ -725,9 +831,10 @@ def test_hinweis_meldet_liegengebliebene_einheiten(thh_bestand, tmp_path, monkey
     # THH03 bekommt Text, aber sein Inhalt ist unlesbar geworden.
     with thh_bestand._conn:  # noqa: SLF001
         thh_bestand._conn.execute(  # noqa: SLF001
-            "UPDATE council_anlagen SET raw_text = ?, n_pages = 300, status = 'ok' "
+            "UPDATE council_attachments SET raw_text = ?, n_pages = 300, status = 'ok' "
             "WHERE document_id = 502",
-            ("Teilergebnishaushalt THH03: Jugend\nLayout geändert\nAnsatz 2027\n",))
+            ("Teilergebnishaushalt THH03: Jugend\nLayout geändert\n"
+             + thh_kopf(2027),))
     thh_bestand.close()
 
     gemeldet: list[str] = []
@@ -753,7 +860,7 @@ def test_zeilen_ohne_herkunft_loesen_eine_mail_aus(thh_bestand, tmp_path, monkey
     fehlt. Auf einer Seite, deren Anspruch „jede Zahl sagt, woher sie stammt"
     ist, fällt das erst auf, wenn jemand auf den Chip tippt.
 
-    Geprüft wird an `council_steuern`, und zwar mit Absicht: Bei den neun
+    Geprüft wird an `council_taxes`, und zwar mit Absicht: Bei den neun
     Schichten, die der Job selbst einliest, **heilt** er eine solche Lücke
     beim nächsten Lauf (die Einheit gilt als offen und wird neu geschrieben,
     mitsamt frischer Herkunft). Liegen bleibt sie genau dort, wo niemand
@@ -770,7 +877,7 @@ def test_zeilen_ohne_herkunft_loesen_eine_mail_aus(thh_bestand, tmp_path, monkey
     # nicht trägt — so sieht ein Schreibweg aus, der `herkunft_id` vergisst.
     with thh_bestand._conn:  # noqa: SLF001
         thh_bestand._conn.execute(  # noqa: SLF001
-            "INSERT INTO council_steuern (year, kind, amount, fetched_at, herkunft_id) "
+            "INSERT INTO council_taxes (year, kind, amount, fetched_at, herkunft_id) "
             "VALUES (2025, 'Gewerbesteuer (-umlage)', 222117000.0, '2026-08-20', NULL)")
     thh_bestand.close()
 
@@ -783,10 +890,10 @@ def test_zeilen_ohne_herkunft_loesen_eine_mail_aus(thh_bestand, tmp_path, monkey
     # Die ZAHL gehört in den Wiederholungs-Schlüssel, nicht nur der Name:
     # Sonst hieße „schon gemeldet" auch dann Schweigen, wenn aus einer Zeile
     # ohne Beleg dreihundert geworden sind.
-    assert "herkunft:council_steuern:1" in bericht["ausbleibend"]
+    assert "herkunft:council_taxes:1" in bericht["ausbleibend"]
     assert len(gemeldet) == 1, "der Befund muss eine Mail auslösen, nicht nur das Log"
     assert "nicht sagen, woher sie kommen" in gemeldet[0]
-    assert "council_steuern" in gemeldet[0]
+    assert "council_taxes" in gemeldet[0]
 
 
 def test_hinweis_ohne_herkunftsluecke_schweigt_darueber(balance):
@@ -795,7 +902,7 @@ def test_hinweis_ohne_herkunftsluecke_schweigt_darueber(balance):
     as_of = finanzquellen.datenstand(balance, date(2027, 11, 1))
     ohne = check_finanzdaten._hinweis_text(as_of, {}, {}, date(2027, 11, 1))
     mit = check_finanzdaten._hinweis_text(as_of, {}, {}, date(2027, 11, 1),
-                                          {"council_steuern": 7})
+                                          {"council_taxes": 7})
     balance.close()
     assert "woher sie kommen" not in ohne
     assert "woher sie kommen" in mit and "7 Zeile(n)" in mit
@@ -841,7 +948,7 @@ def test_luecken_im_bestand_bleiben_sichtbar(balance):
     finanzquellen.lies_jahresabschluesse(balance, p)
     with balance._conn:  # noqa: SLF001
         balance._conn.execute(  # noqa: SLF001
-            "DELETE FROM council_ergebnisrechnung WHERE year = 2024")
+            "DELETE FROM council_income_statement WHERE year = 2024")
 
     as_of = {z["key"]: z for z in finanzquellen.datenstand(balance, date(2026, 8, 16))}
     assert as_of["jahresabschluss"]["luecken"] == [2024]
@@ -918,7 +1025,7 @@ def lsn_bestand(tmp_path):
     (das zweite ist ihre Rechenprobe), ein Realsteuervergleich drei."""
     store = CouncilStore(tmp_path / "council.sqlite")
     staedtevergleich(store, "tax_capacity", [2026])
-    staedtevergleich(store, "realsteuern", [2023, 2024, 2025])
+    staedtevergleich(store, "real_taxes", [2023, 2024, 2025])
     return store
 
 
@@ -947,7 +1054,7 @@ def test_die_beiden_reihen_bleiben_zwei_zeilen(lsn_bestand):
     hinkt ihm nach. Genau diese Verwechslung ist der Grund, warum der
     Städtevergleich überhaupt eine eigene Tabelle hat."""
     as_of = finanzquellen.datenstand(lsn_bestand, date(2026, 8, 16))
-    zeilen = [z for z in as_of if z["tabelle"] == "council_staedtevergleich"]
+    zeilen = [z for z in as_of if z["tabelle"] == "council_city_comparison"]
     assert [z["key"] for z in zeilen] == ["lsn_steuerkraft", "lsn_realsteuern"]
     # Keine der beiden Zeilen behauptet eine Lücke, die es nicht gibt.
     assert all(z["luecken"] == [] for z in zeilen)
@@ -1029,6 +1136,10 @@ ZAHLWORT = {
     "elf": 11, "zwölf": 12, "dreizehn": 13, "vierzehn": 14, "fünfzehn": 15,
     "sechzehn": 16, "siebzehn": 17, "achtzehn": 18, "neunzehn": 19,
     "zwanzig": 20,
+    "einundzwanzig": 21,
+    "zweiundzwanzig": 22,
+    "dreiundzwanzig": 23,
+    "vierundzwanzig": 24,
 }
 
 DOKU = ROOT / "docs-site" / "src" / "content" / "docs" / "haushalt.md"
@@ -1107,12 +1218,12 @@ def test_jede_erkennung_findet_ein_dokument_das_zu_ihr_passt(tmp_path):
             if not muster:
                 continue          # Quellen, die am Text erkennen, prüft dieser Test nicht
             with store._conn:
-                store._conn.execute("DELETE FROM council_anlagen")
+                store._conn.execute("DELETE FROM council_attachments")
                 for i, m in enumerate(muster):
                     # Aus dem LIKE-Muster ein Label bauen, das genau IHM genügt.
                     label = m.replace("%", "")
                     store._conn.execute(
-                        "INSERT INTO council_anlagen (document_id, kvonr, label, url, "
+                        "INSERT INTO council_attachments (document_id, kvonr, label, url, "
                         "raw_text, n_pages, fetched_at, status) "
                         "VALUES (?, 1, ?, 'https://x', 'x', 999, datetime('now'), 'ok')",
                         (1000 + i, label))
@@ -1123,5 +1234,151 @@ def test_jede_erkennung_findet_ein_dokument_das_zu_ihr_passt(tmp_path):
         assert not blind, ("Diese Quellen finden kein Dokument, das eines ihrer "
                            "eigenen Label-Muster erfüllt — vermutlich fehlt "
                            "`oder=True`: " + "; ".join(blind))
+    finally:
+        store.close()
+
+
+# ---------------------------------------------------------------------------
+# Skriptläufe: der Cron ruft die Ingest-Skripte, sobald ein neues Dokument da ist
+# ---------------------------------------------------------------------------
+
+def _skript(tmp_path, rc: int = 0) -> Path:
+    """Ein Ingest-Skript-Doppel: schreibt eine Marke in eine Datei, endet mit ``rc``."""
+    pfad = tmp_path / "ingest_probe.py"
+    marker = tmp_path / "gelaufen.txt"
+    pfad.write_text(
+        "import os, sys, pathlib\n"
+        f"pathlib.Path({str(marker)!r}).write_text(os.environ.get('COUNCIL_DB', '') + '\\n', )\n"
+        "print('Probe-Skript: 3 Zeilen gespeichert')\n"
+        f"sys.exit({rc})\n")
+    return marker
+
+
+def _mit_probequelle(monkeypatch, tmp_path, marke_wert: list[int], rc: int = 0):
+    """Eine Datenart mit ``lauf`` und einer Marke, die der Test verschiebt."""
+    marker = _skript(tmp_path, rc)
+    q = dataclasses.replace(
+        finanzquellen.QUELLEN["budget_bylaw"], key="probe", label="Probequelle",
+        tabelle="council_budget_bylaw", lauf=(str(tmp_path / "ingest_probe.py"),),
+        marke=lambda store: marke_wert[0], erkennung=None)
+    monkeypatch.setitem(finanzquellen.QUELLEN, "probe", q)
+    monkeypatch.setattr(finanzquellen, "REIHENFOLGE", (*finanzquellen.REIHENFOLGE, "probe"))
+    return marker
+
+
+def test_cron_ruft_das_skript_bei_neuer_marke_und_dann_nicht_mehr(monkeypatch, tmp_path):
+    db = tmp_path / "council.sqlite"
+    CouncilStore(db).close()
+    marke = [17]
+    marker = _mit_probequelle(monkeypatch, tmp_path, marke)
+    bericht = check_finanzdaten.main(db=str(db), heute=date(2026, 9, 2), still=True)
+    assert bericht["Skriptläufe"] == 1 and bericht["Skriptläufe fehlgeschlagen"] == 0
+    assert marker.read_text().strip() == str(db), "das Skript bekommt die Datenbank des Laufs"
+    marker.unlink()
+    # Zweiter Lauf, dieselbe Marke: nichts Neues, kein Aufruf.
+    bericht = check_finanzdaten.main(db=str(db), heute=date(2026, 9, 2), still=True)
+    assert bericht["Skriptläufe"] == 0 and not marker.exists()
+    # Ein neues Dokument (höhere Marke): wieder ein Aufruf.
+    marke[0] = 18
+    bericht = check_finanzdaten.main(db=str(db), heute=date(2026, 9, 2), still=True)
+    assert bericht["Skriptläufe"] == 1 and marker.exists()
+    store = CouncilStore(db)
+    try:
+        m = store.ingest_marke("probe")
+        assert m["marke"] == 18 and m["ok"] == 1 and "3 Zeilen gespeichert" in m["summary"]
+    finally:
+        store.close()
+
+
+def test_gescheitertes_skript_wird_gemeldet_und_wiederholt(monkeypatch, tmp_path):
+    db = tmp_path / "council.sqlite"
+    CouncilStore(db).close()
+    marker = _mit_probequelle(monkeypatch, tmp_path, [5], rc=1)
+    p = finanzquellen.Protokoll(still=True)
+    bericht = check_finanzdaten.main(db=str(db), heute=date(2026, 9, 2), still=True,
+                                     trocken=False, protokoll=p)
+    assert bericht["Skriptläufe fehlgeschlagen"] == 1
+    assert "lauf:probe" in bericht["ausbleibend"]
+    assert any("endete mit Fehler" in w for w in p.warnungen)
+    marker.unlink()
+    # Ohne Erfolg bleibt die Marke offen: der nächste Lauf versucht es erneut.
+    bericht = check_finanzdaten.main(db=str(db), heute=date(2026, 9, 2), still=True)
+    assert bericht["Skriptläufe"] == 1 and marker.exists()
+
+
+def test_trockenlauf_ruft_kein_skript(monkeypatch, tmp_path):
+    db = tmp_path / "council.sqlite"
+    CouncilStore(db).close()
+    marker = _mit_probequelle(monkeypatch, tmp_path, [3])
+    bericht = check_finanzdaten.main(db=str(db), heute=date(2026, 9, 2), still=True, trocken=True)
+    assert bericht["Skriptläufe"] == 0 and not marker.exists()
+
+
+def test_vier_quellen_haben_ein_skript_und_eine_marke():
+    """Die vier Schichten aus dem Ratsinformationssystem, die bis 09/2026 nur
+    beobachtet wurden — jede kennt jetzt ihr Skript, und das Skript gibt es."""
+    mit_lauf = {k for k, q in finanzquellen.QUELLEN.items() if q.lauf}
+    assert mit_lauf >= {"budget_execution", "fees", "budget_bylaw", "wirtschaftsplan"}
+    for k in mit_lauf:
+        q = finanzquellen.QUELLEN[k]
+        assert (ROOT / q.lauf[0]).exists(), q.lauf
+        assert q.erkennung is not None or q.marke is not None, f"{k}: keine Dokumentmarke"
+
+
+# --------------------------------------------------------------------------
+# Erkennung über den Vorlagentitel (Gebühren 2021, Satzung 2022)
+# --------------------------------------------------------------------------
+
+def _vorlage_mit_anlage(store, kvonr, titel, document_id, label):
+    with store._conn:
+        store._conn.execute(
+            "INSERT OR REPLACE INTO council_templates (kvonr, template_number, title, fetched_at, status) "
+            "VALUES (?, ?, ?, datetime('now'), 'ok')", (kvonr, f"nr-{kvonr}", titel))
+        store._conn.execute(
+            "INSERT INTO council_attachments (document_id, kvonr, label, url, raw_text, n_pages, "
+            "fetched_at, status) VALUES (?, ?, ?, 'https://x', '', 19, datetime('now'), 'listed')",
+            (document_id, kvonr, label))
+
+
+def test_gebuehren_erkennt_die_anlage_ueber_den_vorlagentitel(tmp_path):
+    """224365 heißt „Anlagen 1-4" und hängt an „Gebührenbedarfsberechnungen
+    2021 - Bericht" — ein Label-Muster allein sieht sie nie. Eine gleichnamige
+    Anlage unter einer fremden Vorlage darf trotzdem nicht mitkommen."""
+    store = CouncilStore(tmp_path / "e.sqlite")
+    try:
+        _vorlage_mit_anlage(store, 22026, "Gebührenbedarfsberechnungen 2021 - Bericht", 224365, "Anlagen 1-4")
+        _vorlage_mit_anlage(store, 24176, "Satzung über die Höhe der Gebühren", 240042, "Anlagen 1-4")
+        _vorlage_mit_anlage(store, 25164, "Irgendwas", 252299, "Gebührenbedarfsrechnung 2023 Anlagen")
+        rows = finanzquellen.QUELLEN["fees"].dokumente(store, "document_id")
+        assert sorted(r["document_id"] for r in rows) == [224365, 252299]
+    finally:
+        store.close()
+
+
+def test_hh_satzung_gilt_als_haushaltssatzung(tmp_path):
+    """„HH Satzung 2022" (243361) ist die Satzung 2022; der Nachtrag bleibt draußen."""
+    store = CouncilStore(tmp_path / "s.sqlite")
+    try:
+        _vorlage_mit_anlage(store, 24443, "Haushalt 2022 - Beschluss", 243361, "HH Satzung 2022")
+        _vorlage_mit_anlage(store, 18669, "Nachtrag", 218588, "1. Nachtragshaushaltssatzung 2020")
+        _vorlage_mit_anlage(store, 25350, "Haushalt 2023", 254437, "Haushaltssatzung 2023")
+        rows = finanzquellen.QUELLEN["budget_bylaw"].dokumente(store, "document_id")
+        assert sorted(r["document_id"] for r in rows) == [243361, 254437]
+    finally:
+        store.close()
+
+
+def test_finanz_anlagen_filter_umfasst_die_vorlagentitel(tmp_path):
+    """Die Backfills (Text, OCR) laden nur Finanz-Anlagen — und müssen dieselben
+    finden wie die Registry, sonst bleibt ein erkanntes Dokument ohne Text."""
+    store = CouncilStore(tmp_path / "f.sqlite")
+    try:
+        _vorlage_mit_anlage(store, 22026, "Gebührenbedarfsberechnungen 2021 - Bericht", 224365, "Anlagen 1-4")
+        _vorlage_mit_anlage(store, 1, "Bebauungsplan", 5, "Anlagen 1-4")
+        _vorlage_mit_anlage(store, 2, "Haushalt 2022 - Beschluss", 6, "HH Satzung 2022")
+        wo, werte = finanzquellen.finanz_anlagen_where()
+        rows = store._conn.execute(
+            f"SELECT document_id FROM council_attachments WHERE {wo}", werte).fetchall()
+        assert sorted(r[0] for r in rows) == [6, 224365]
     finally:
         store.close()

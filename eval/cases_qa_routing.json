@@ -3,7 +3,7 @@
     "id": "fee-waste-why",
     "question": "Warum steigen die Abfallgebühren?",
     "allowed_types": ["money", "topic"],
-    "expected_facets": ["fees"],
+    "expected_facets": ["fees", "fee_rates"],
     "required_channels": ["decisions", "budget"],
     "forbidden_channels": ["debates", "documents"]
   },
@@ -11,7 +11,7 @@
     "id": "fee-street-amount",
     "question": "Wie hoch ist die Straßenreinigungsgebühr?",
     "allowed_types": ["money", "topic"],
-    "expected_facets": ["fees"],
+    "expected_facets": ["fees", "fee_rates"],
     "required_channels": ["decisions", "budget"],
     "forbidden_channels": ["debates", "documents"]
   },
@@ -19,7 +19,7 @@
     "id": "fee-waste-method",
     "question": "Wie werden die Müllgebühren berechnet?",
     "allowed_types": ["money", "topic"],
-    "expected_facets": ["fees"],
+    "expected_facets": ["fees", "fee_rates"],
     "required_channels": ["decisions", "budget"],
     "forbidden_channels": ["debates"]
   },
@@ -51,7 +51,7 @@
     "id": "investments-total",
     "question": "Wie viel investiert die Stadt?",
     "allowed_types": ["money"],
-    "expected_facets": ["investitionen", "gebaut"],
+    "expected_facets": ["investitionen", "gebaut", "measures"],
     "required_channels": ["decisions", "budget"],
     "forbidden_channels": ["debates", "documents"]
   },
@@ -75,7 +75,7 @@
     "id": "whole-city-cost",
     "question": "Was kostet die Stadt insgesamt?",
     "allowed_types": ["money"],
-    "expected_facets": ["plan", "produkte", "konzern"],
+    "expected_facets": ["plan", "produkte", "konzern", "ansatz"],
     "required_channels": ["decisions", "budget"],
     "forbidden_channels": ["debates"]
   },
@@ -83,7 +83,7 @@
     "id": "budget-amendments",
     "question": "Welche Änderungslisten gab es zum Haushalt 2026?",
     "allowed_types": ["topic", "money"],
-    "expected_facets": ["plan", "ansatz", "antraege"],
+    "expected_facets": ["plan", "ansatz", "antraege", "amendments"],
     "required_channels": ["decisions", "budget"],
     "forbidden_channels": ["documents"]
   },

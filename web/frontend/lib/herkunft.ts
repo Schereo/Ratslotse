@@ -58,9 +58,13 @@ export type Ratsvorgang = {
  *  `beschluss`). */
 export type Herkunft = {
   id: number;
-  /** `ris` = Anlage im Ratsinformationssystem, `stadt` = Download von
-   *  oldenburg.de, `lsn` = Tabelle des Landesamts für Statistik. */
-  art: string;
+  /** `ris` = Anlage im Ratsinformationssystem, `city` = Download von
+   *  oldenburg.de, `lsn` = Tabelle des Landesamts für Statistik.
+   *
+   *  Hieß bis zum Umbau auf englische Spaltennamen `art`. Der Typ trug den
+   *  alten Namen noch — folgenlos, weil ihn niemand liest, aber irreführend
+   *  für die nächste Person. */
+  kind: string;
   /** Die RIS-Dokumentnummer der Anlage — der stabile Anker, über den der
    *  Ratsvorgang gefunden wird. `null` bei `stadt`/`lsn`. */
   document_id: number | null;

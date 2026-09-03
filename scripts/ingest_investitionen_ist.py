@@ -207,14 +207,14 @@ def main() -> int:
                     label=f"Statistisches Jahrbuch der Stadt Oldenburg, Tabelle "
                           f"{nummer} — Investitionen {von} bis {bis}",
                     as_of=f"Rechnungsergebnisse {von}–{bis}",
-                    probe="investitionen_ist_zeilensumme",
+                    probe="investments_actual_row_total",
                     citation=citation, probe_result=nachweis),
                     verworfen=verw)
             print(f"  gespeichert: {geschrieben} Jahrgänge")
 
         store.herkunft_aufraeumen()
         luecken = {t: n for t, n in store.herkunft_luecken().items()
-                   if t.startswith("council_investitionen_ist")}
+                   if t.startswith("council_investments_actual")}
         if luecken:
             print(f"WARNUNG: Zeilen ohne Herkunft: {luecken}", file=sys.stderr)
     finally:

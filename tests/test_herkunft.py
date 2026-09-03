@@ -25,35 +25,35 @@ from council.store import CouncilStore
 #
 # Wörtlich der Stand von vor 08/2026: drei Schreibweisen für dieselbe Sache
 # (`source_label`/`source_url`, `label`/`url`, `source_url`), keine
-# `herkunft_id`, keine `council_herkunft`.
+# `herkunft_id`, keine `council_provenance`.
 
 ALTES_SCHEMA = """
-CREATE TABLE council_anlagen (
+CREATE TABLE council_attachments (
   document_id INTEGER PRIMARY KEY, kvonr INTEGER NOT NULL, label TEXT,
   url TEXT, is_motion INTEGER NOT NULL DEFAULT 0, applicants TEXT,
   raw_text TEXT, n_pages INTEGER, fetched_at TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'listed');
-CREATE TABLE council_ergebnisrechnung (
+CREATE TABLE council_income_statement (
   year INTEGER NOT NULL, sub_budget_no INTEGER, sub_budget_name TEXT,
   nr INTEGER NOT NULL, label TEXT NOT NULL,
   prior_year REAL, budgeted REAL, plan REAL, plan_kind TEXT,
   result REAL, deviation REAL, is_total INTEGER NOT NULL DEFAULT 0,
   source_label TEXT, source_url TEXT, fetched_at TEXT NOT NULL,
   PRIMARY KEY (year, sub_budget_no, nr));
-CREATE TABLE council_abweichungsgruende (
+CREATE TABLE council_variance_reasons (
   year INTEGER NOT NULL, nr INTEGER NOT NULL, label TEXT NOT NULL,
   delta_meur REAL, percent REAL, text TEXT NOT NULL,
   source_label TEXT, source_url TEXT, fetched_at TEXT NOT NULL,
   PRIMARY KEY (year, nr));
-CREATE TABLE council_pruefbericht_quellen (
+CREATE TABLE council_audit_report_sources (
   year INTEGER PRIMARY KEY, label TEXT, url TEXT, n_pages INTEGER,
   readable INTEGER NOT NULL DEFAULT 1, fetched_at TEXT NOT NULL);
-CREATE TABLE council_haushalt (
+CREATE TABLE council_budget (
   id INTEGER PRIMARY KEY AUTOINCREMENT, year INTEGER NOT NULL,
   area TEXT NOT NULL, revenues REAL, expenses REAL, result REAL,
   is_total INTEGER NOT NULL DEFAULT 0,
   source_url TEXT, fetched_at TEXT NOT NULL, UNIQUE(year, area));
-CREATE TABLE council_steuern (
+CREATE TABLE council_taxes (
   year INTEGER NOT NULL, art TEXT NOT NULL, amount REAL,
   source_url TEXT, fetched_at TEXT NOT NULL, PRIMARY KEY (year, art));
 """
@@ -72,11 +72,11 @@ def alte_db(tmp_path):
     pfad = tmp_path / "alt.sqlite"
     cn = sqlite3.connect(pfad)
     cn.executescript(ALTES_SCHEMA)
-    cn.execute("INSERT INTO council_anlagen (document_id, kvonr, label, url, "
+    cn.execute("INSERT INTO council_attachments (document_id, kvonr, label, url, "
                "n_pages, fetched_at) VALUES (280861, 4711, ?, ?, 312, '2026-08-10T09:00:00')",
                (JA_LABEL, JA_URL))
     cn.executemany(
-        "INSERT INTO council_ergebnisrechnung (year, sub_budget_no, sub_budget_name, nr, label, "
+        "INSERT INTO council_income_statement (year, sub_budget_no, sub_budget_name, nr, label, "
         " prior_year, budgeted, plan, plan_kind, result, deviation, is_total, "
         " source_label, source_url, fetched_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         [(2023, None, None, 12, "Summe ordentliche Erträge", 696_600_000.0,
@@ -89,21 +89,21 @@ def alte_db(tmp_path):
           21_000_000.0, 21_000_000.0, "ansatz", 20_400_000.0, -600_000.0, 1,
           JA_LABEL, JA_URL, "2026-08-14T07:12:01")])
     cn.execute(
-        "INSERT INTO council_abweichungsgruende (year, nr, label, delta_meur, "
+        "INSERT INTO council_variance_reasons (year, nr, label, delta_meur, "
         " percent, text, source_label, source_url, fetched_at) VALUES (?,?,?,?,?,?,?,?,?)",
         (2023, 1, "Steuern und ähnliche Abgaben", 75.1, 24.82,
          "Die Mehrerträge entfallen nahezu auf den Bereich der Gewerbesteuer.",
          JA_LABEL, JA_URL, "2026-08-14T07:12:00"))
     cn.execute(
-        "INSERT INTO council_pruefbericht_quellen (year, label, url, n_pages, readable, "
+        "INSERT INTO council_audit_report_sources (year, label, url, n_pages, readable, "
         " fetched_at) VALUES (2023, 'Schlussbericht 2023', ?, 61, 1, '2026-08-14T07:13:00')",
         (JA_URL,))
     cn.executemany(
-        "INSERT INTO council_haushalt (year, area, revenues, expenses, result, "
+        "INSERT INTO council_budget (year, area, revenues, expenses, result, "
         " is_total, source_url, fetched_at) VALUES (?,?,?,?,?,?,?,?)",
         [(2026, "Jugend und Familie", 40e6, 210e6, -170e6, 0, PLAN_URL, "2026-08-01T06:00:00"),
          (2026, "Summe", 52e6, 271e6, -219e6, 1, PLAN_URL, "2026-08-01T06:00:00")])
-    cn.execute("INSERT INTO council_steuern (year, art, amount, source_url, fetched_at) "
+    cn.execute("INSERT INTO council_taxes (year, art, amount, source_url, fetched_at) "
                "VALUES (2025, 'Gewerbesteuer (-umlage)', 214000000.0, ?, '2026-08-02T06:00:00')",
                (CSV_URL,))
     cn.commit()
@@ -134,7 +134,7 @@ def test_alte_datenbank_bekommt_die_spalte_und_verliert_keine(alte_db):
     #: Spalten, die eine Umbenennung ABLÖST — dort ist das Verschwinden der
     #: Auftrag. Die Liste steht als Literal da, damit jede andere
     #: verschwundene Spalte weiter auffliegt.
-    UMBENANNT = {("council_steuern", "art")}
+    UMBENANNT = {("council_taxes", "art")}
     vorher = {t: _spalten(alte_db, t)
               for t in herkunft.HERKUNFT_TABELLEN if _spalten(alte_db, t)}
     CouncilStore(alte_db).close()
@@ -156,9 +156,9 @@ def test_kein_einziger_bestehender_wert_aendert_sich(alte_db):
     Ausnahme steht als Liste hier, nicht als Automatik — eine Spalte, die
     sich ohne Eintrag ändert, soll weiter auffliegen."""
     #: (Tabelle, Spalte) → hier darf sich der Wert ändern.
-    ERLAUBT = {("council_ergebnisrechnung", "plan_kind"),
-               ("council_finanzrechnung", "plan_kind"),
-               ("council_steuern", "art")}
+    ERLAUBT = {("council_income_statement", "plan_kind"),
+               ("council_cash_flow_statement", "plan_kind"),
+               ("council_taxes", "art")}
     snapshot = {}
     for tabelle in herkunft.HERKUNFT_TABELLEN:
         spalten = [s for s in _spalten(alte_db, tabelle)
@@ -178,12 +178,12 @@ def test_kein_einziger_bestehender_wert_aendert_sich(alte_db):
 
 def test_altbestand_erbt_label_und_url_und_gewinnt_den_anker(alte_db):
     """Übernommen wird, was in den Daten steht — und die `document_id` kommt
-    dazu: Sie lässt sich über die URL eindeutig in `council_anlagen`
+    dazu: Sie lässt sich über die URL eindeutig in `council_attachments`
     auflösen. Das ist Ableitung, keine Vermutung."""
     store = CouncilStore(alte_db)
     row = store._conn.execute(
-        "SELECT h.* FROM council_ergebnisrechnung e "
-        "JOIN council_herkunft h ON h.id = e.herkunft_id "
+        "SELECT h.* FROM council_income_statement e "
+        "JOIN council_provenance h ON h.id = e.herkunft_id "
         "WHERE e.year = 2023 AND e.sub_budget_no IS NULL AND e.nr = 12").fetchone()
     store.close()
     assert row["label"] == JA_LABEL
@@ -213,16 +213,16 @@ def test_altbestand_bekommt_unbekannt_statt_einer_erfundenen_probe(alte_db):
 
 
 def test_die_quellenart_kommt_aus_der_url_nicht_aus_der_tabelle(alte_db):
-    """`council_haushalt` trägt beide Arten: Manche Jahrgänge kamen als PDF von
+    """`council_budget` trägt beide Arten: Manche Jahrgänge kamen als PDF von
     oldenburg.de, 2024 als CSV aus dem Open-Data-Portal. Eine feste Zuordnung
     „Tabelle → Quellenart" verfehlte den zweiten Fall still."""
     store = CouncilStore(alte_db)
     art = dict(store._conn.execute(
-        "SELECT h.url, h.kind FROM council_haushalt x "
-        "JOIN council_herkunft h ON h.id = x.herkunft_id").fetchall())
+        "SELECT h.url, h.kind FROM council_budget x "
+        "JOIN council_provenance h ON h.id = x.herkunft_id").fetchall())
     steuer_art = store._conn.execute(
-        "SELECT h.kind FROM council_steuern s "
-        "JOIN council_herkunft h ON h.id = s.herkunft_id").fetchone()[0]
+        "SELECT h.kind FROM council_taxes s "
+        "JOIN council_provenance h ON h.id = s.herkunft_id").fetchone()[0]
     store.close()
     assert art == {PLAN_URL: "city"}
     assert steuer_art == "opendata"
@@ -250,7 +250,7 @@ def test_geschriebene_zeile_weiss_wo_sie_steht_und_womit_sie_gedeckt_ist(tmp_pat
         {"nr": 12, "label": "Summe ordentliche Erträge", "budgeted": 693.6e6,
          "plan": 693.6e6, "plan_kind": "budget", "result": 799.1e6, "is_total": 1},
     ], Herkunft(
-        kind="ris", probe=["strukturprobe", "vorjahreskette"], document_id=280863,
+        kind="ris", probe=["structure_check", "prior_year_chain"], document_id=280863,
         label="Jahresabschluss 2024 der Kernverwaltung",
         url="https://buergerinfo.oldenburg.de/getfile.php?id=280863&type=do",
         citation="Ergebnisrechnung der Kernverwaltung, Posten 1–24",
@@ -258,12 +258,12 @@ def test_geschriebene_zeile_weiss_wo_sie_steht_und_womit_sie_gedeckt_ist(tmp_pat
 
     row = store._conn.execute(
         "SELECT e.result, h.citation, h.page, h.probe, h.document_id, h.as_of "
-        "FROM council_ergebnisrechnung e "
-        "JOIN council_herkunft h ON h.id = e.herkunft_id").fetchone()
+        "FROM council_income_statement e "
+        "JOIN council_provenance h ON h.id = e.herkunft_id").fetchone()
     assert row["result"] == 799.1e6
     assert row["citation"] == "Ergebnisrechnung der Kernverwaltung, Posten 1–24"
     assert row["page"] == 161
-    assert row["probe"] == "strukturprobe,vorjahreskette"
+    assert row["probe"] == "structure_check,prior_year_chain"
     assert row["document_id"] == 280863
     assert row["as_of"] == "Jahresabschluss 2024"
 
@@ -279,7 +279,7 @@ def test_die_alten_spalten_tragen_weiter_dieselben_werte(tmp_path):
     """`source_label`/`source_url` verschwinden nicht — sie werden aus
     derselben Angabe gefüllt. Kein Lesepfad muss sich ändern."""
     store = CouncilStore(tmp_path / "c.sqlite")
-    q = Herkunft(kind="ris", probe="produktzeile", document_id=7,
+    q = Herkunft(kind="ris", probe="product_row", document_id=7,
                  label="007 THH01", url="https://example.org/thh01.pdf",
                  citation="Teilergebnishaushalt THH01, Produktebene")
     store.save_produkte(2023, [{"product_no": "P10.111023", "product_name": "Archivierung",
@@ -303,16 +303,16 @@ def test_zwei_ebenen_desselben_dokuments_bekommen_zwei_herkuenfte(tmp_path):
     posten = [{"nr": 12, "label": "Summe ordentliche Erträge", "budgeted": 1.0,
                "result": 2.0, "is_total": 1}]
     store.save_ergebnisrechnung(2023, posten, Herkunft(
-        probe="strukturprobe", citation="Ergebnisrechnung der Kernverwaltung",
+        probe="structure_check", citation="Ergebnisrechnung der Kernverwaltung",
         **gemeinsam))
     store.save_ergebnisrechnung(2023, posten, Herkunft(
-        probe="summenprobe", citation="Teil-Ergebnisrechnung THH07",
+        probe="sub_budget_sum_check", citation="Teil-Ergebnisrechnung THH07",
         probe_result="0.00 % Abweichung zur Gesamtrechnung", **gemeinsam),
         sub_budget_no=7, sub_budget_name="Stadtplanung")
 
     nach_ebene = dict(store._conn.execute(
-        "SELECT COALESCE(e.sub_budget_no, -1), h.citation FROM council_ergebnisrechnung e "
-        "JOIN council_herkunft h ON h.id = e.herkunft_id").fetchall())
+        "SELECT COALESCE(e.sub_budget_no, -1), h.citation FROM council_income_statement e "
+        "JOIN council_provenance h ON h.id = e.herkunft_id").fetchall())
     assert nach_ebene[-1] == "Ergebnisrechnung der Kernverwaltung"
     assert nach_ebene[7] == "Teil-Ergebnisrechnung THH07"
     assert len(store.get_herkunft()) == 2
@@ -361,11 +361,11 @@ def test_ohne_probe_gibt_es_keine_herkunft():
     with pytest.raises(ValueError, match="Unbekannte Probe"):
         Herkunft(kind="ris", probe="augenmass", url="https://example.org/x")
     with pytest.raises(ValueError, match="Unbekannte Quellenart"):
-        Herkunft(kind="irgendwoher", probe="summenzeile", url="https://example.org/x")
+        Herkunft(kind="irgendwoher", probe="total_row", url="https://example.org/x")
     with pytest.raises(ValueError, match="ohne Verweis"):
-        Herkunft(kind="ris", probe="summenzeile")
+        Herkunft(kind="ris", probe="total_row")
     with pytest.raises(ValueError, match="Widerspruch"):
-        Herkunft(kind="ris", probe=[herkunft.UNGEPRUEFT, "summenzeile"],
+        Herkunft(kind="ris", probe=[herkunft.UNGEPRUEFT, "total_row"],
                  url="https://example.org/x")
     # Der ausdrückliche Verzicht geht — und ist als solcher erkennbar.
     ohne = Herkunft(kind="opendata", probe=herkunft.UNGEPRUEFT, url=CSV_URL)
@@ -379,10 +379,10 @@ def test_luecken_melden_zeilen_ohne_herkunft(tmp_path):
     store = CouncilStore(tmp_path / "c.sqlite")
     assert store.herkunft_luecken() == {}
     store._conn.execute(
-        "INSERT INTO council_steuern (year, kind, amount, source_url, fetched_at) "
+        "INSERT INTO council_taxes (year, kind, amount, source_url, fetched_at) "
         "VALUES (2025, 'Hundesteuer', 1.0, 'https://example.org/x.csv', '2026-01-01')")
     store._conn.commit()
-    assert store.herkunft_luecken() == {"council_steuern": 1}
+    assert store.herkunft_luecken() == {"council_taxes": 1}
     store.close()
 
 
@@ -395,13 +395,13 @@ def test_verwaiste_herkunft_wird_aufgeraeumt(tmp_path):
     store.save_ergebnisrechnung(2023, posten, Herkunft(
         kind="ris", probe=herkunft.UNBEKANNT, url=JA_URL))
     store.save_ergebnisrechnung(2023, posten, Herkunft(
-        kind="ris", probe="strukturprobe", url=JA_URL,
+        kind="ris", probe="structure_check", url=JA_URL,
         citation="Ergebnisrechnung der Kernverwaltung"))
     assert len(store.get_herkunft()) == 2      # die alte hängt noch herum
 
     assert store.herkunft_aufraeumen() == 1
     (uebrig,) = store.get_herkunft()
-    assert uebrig["probe"] == "strukturprobe"
+    assert uebrig["probe"] == "structure_check"
     assert store.herkunft_luecken() == {}
     assert store.herkunft_aufraeumen() == 0    # zweimal aufräumen tut nichts
     store.close()
@@ -423,7 +423,7 @@ def test_dokumente_je_quelle_und_jahrgang(tmp_path):
     posten = [{"nr": 12, "label": "Summe", "budgeted": 1.0, "result": 2.0}]
     for year, doc in ((2023, 280861), (2024, 295294)):
         store.save_ergebnisrechnung(year, posten, Herkunft(
-            kind="ris", probe="strukturprobe", document_id=doc,
+            kind="ris", probe="structure_check", document_id=doc,
             label=f"Jahresabschluss {year}",
             url=f"https://buergerinfo.oldenburg.de/getfile.php?id={doc}&type=do",
             citation="Ergebnisrechnung der Kernverwaltung", page=161))
@@ -445,10 +445,10 @@ def test_dokumente_trennen_die_zwei_ebenen_eines_jahresabschlusses(tmp_path):
     gemeinsam = dict(kind="ris", document_id=99, label="JA 2023", url=JA_URL)
     posten = [{"nr": 12, "label": "Summe", "budgeted": 1.0, "result": 2.0}]
     store.save_ergebnisrechnung(2023, posten, Herkunft(
-        probe="strukturprobe", citation="Ergebnisrechnung der Kernverwaltung",
+        probe="structure_check", citation="Ergebnisrechnung der Kernverwaltung",
         **gemeinsam))
     store.save_ergebnisrechnung(2023, posten, Herkunft(
-        probe="summenprobe", citation="Teil-Ergebnisrechnung THH07",
+        probe="sub_budget_sum_check", citation="Teil-Ergebnisrechnung THH07",
         **gemeinsam), sub_budget_no=7, sub_budget_name="Stadtplanung")
 
     doks = store.haushalt_dokumente()
@@ -466,7 +466,7 @@ def test_ein_jahrgang_darf_mehrere_dokumente_tragen(tmp_path):
         store.save_produkte(2023, [
             {"product_no": f"P{sub_budget}", "product_name": "Aufgabe", "sub_budget_no": sub_budget,
              "revenues": 1.0, "expenses": 2.0, "result": -1.0}],
-            Herkunft(kind="ris", probe="produktzeile", document_id=sub_budget,
+            Herkunft(kind="ris", probe="product_row", document_id=sub_budget,
                      label=f"007 THH0{sub_budget}",
                      url=f"https://buergerinfo.oldenburg.de/getfile.php?id={sub_budget}&type=do"))
 
@@ -487,7 +487,7 @@ def test_ohne_dokument_meldet_sich_die_quelle_gar_nicht(tmp_path):
     # auf die Alt-Spalte greift, sonst verlöre die Umstellung Belege, die es
     # vorher schon gab.
     store._conn.execute(
-        "INSERT INTO council_haushalt (year, area, expenses, is_total, "
+        "INSERT INTO council_budget (year, area, expenses, is_total, "
         " source_url, fetched_at) VALUES (2020, 'Summe', 1.0, 1, ?, '2026-01-01')",
         (PLAN_URL,))
     store._conn.commit()
@@ -511,7 +511,7 @@ def test_vergessene_zieltabelle_verliert_ihre_herkunft_nicht(tmp_path):
     store = CouncilStore(tmp_path / "c.sqlite")
     store.save_ergebnisrechnung(2023, [
         {"nr": 12, "label": "Summe", "budgeted": 1.0, "result": 2.0}],
-        Herkunft(kind="ris", probe="strukturprobe", url=JA_URL,
+        Herkunft(kind="ris", probe="structure_check", url=JA_URL,
                  citation="Ergebnisrechnung der Kernverwaltung"))
 
     # Eine Schicht, die es in `HERKUNFT_TABELLEN` nie geschafft hat.
@@ -520,7 +520,7 @@ def test_vergessene_zieltabelle_verliert_ihre_herkunft_nicht(tmp_path):
             "CREATE TABLE council_beteiligungen_kennzahlen ("
             "year INTEGER, value REAL, herkunft_id INTEGER)")
         hid = store.merke_herkunft(Herkunft(
-            kind="ris", probe="summenzeile", url=JA_URL,
+            kind="ris", probe="total_row", url=JA_URL,
             citation="Abschnitt 4.1.1, Aufstellung nach Aufgabenträgern"))
         store._conn.execute(
             "INSERT INTO council_beteiligungen_kennzahlen VALUES (2023, 1.0, ?)", (hid,))
@@ -531,7 +531,7 @@ def test_vergessene_zieltabelle_verliert_ihre_herkunft_nicht(tmp_path):
     # Und der Verweis zeigt weiter auf genau das Dokument, aus dem er stammt.
     (probe,) = store._conn.execute(
         "SELECT h.citation FROM council_beteiligungen_kennzahlen k "
-        "JOIN council_herkunft h ON h.id = k.herkunft_id").fetchone()
+        "JOIN council_provenance h ON h.id = k.herkunft_id").fetchone()
     assert probe == "Abschnitt 4.1.1, Aufstellung nach Aufgabenträgern"
 
     # Und sie ist auch für die Lücken-Meldung sichtbar, statt stillgestellt.
@@ -546,7 +546,7 @@ def test_vergessene_zieltabelle_verliert_ihre_herkunft_nicht(tmp_path):
 #
 # Der Beleg-Chip kannte bisher das Dokument. Was fehlte, war der Weg vom
 # Dokument zu dem Beschluss, der es verabschiedet hat — die Strecke
-# `council_herkunft.document_id` → `council_anlagen.kvonr` →
+# `council_provenance.document_id` → `council_attachments.kvonr` →
 # `council_decisions.kvonr`. Erst damit wird aus „steht im Jahresabschluss
 # 2024" ein „der Rat hat das am … beschlossen".
 
@@ -575,7 +575,7 @@ def _vorgang(store, *, kvonr=900, document_id=7001, stationen=()):
 def _herkunft_mit_dokument(store, document_id=7001):
     with store.transaktion():
         return store.merke_herkunft(Herkunft(
-            kind="ris", probe="summenzeile", document_id=document_id,
+            kind="ris", probe="total_row", document_id=document_id,
             label="Jahresabschluss 2024", url="https://example.org/ja2024.pdf",
             citation="Ergebnisrechnung der Kernverwaltung"))
 
@@ -653,10 +653,10 @@ def test_jahrgaenge_kommen_aus_dem_bestand(tmp_path):
 
     with store._conn:
         store._conn.execute(
-            "INSERT INTO council_haushalt (year, area, expenses, is_total, "
+            "INSERT INTO council_budget (year, area, expenses, is_total, "
             " source_url, fetched_at) VALUES (2019, 'Summe', 1.0, 1, NULL, '2026-01-01')")
         store._conn.execute(
-            "INSERT INTO council_haushalt (year, area, expenses, is_total, "
+            "INSERT INTO council_budget (year, area, expenses, is_total, "
             " source_url, fetched_at) VALUES (2020, 'Summe', 1.0, 1, ?, '2026-01-01')",
             (PLAN_URL,))
 
@@ -675,7 +675,7 @@ def test_jahrgaenge_trennen_die_zwei_ebenen_des_abschlusses(tmp_path):
     with store._conn:
         for year, sub_budget in ((2022, None), (2023, None), (2022, 7)):
             store._conn.execute(
-                "INSERT INTO council_ergebnisrechnung (year, sub_budget_no, nr, label, "
+                "INSERT INTO council_income_statement (year, sub_budget_no, nr, label, "
                 " fetched_at) VALUES (?, ?, 12, 'Erträge', '2026-01-01')", (year, sub_budget))
 
     years = store.haushalt_jahrgaenge()
@@ -690,7 +690,7 @@ def test_herkunft_ohne_dokument_bleibt_unberuehrt(tmp_path):
     store = CouncilStore(tmp_path / "c.sqlite")
     with store.transaktion():
         hid = store.merke_herkunft(Herkunft(
-            kind="city", probe="summenzeile",
+            kind="city", probe="total_row",
             url="https://oldenburg.de/haushalt.pdf",
             citation="Gesamtergebnisplan"))
 

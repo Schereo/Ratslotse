@@ -17,7 +17,7 @@ from scripts.review_location_candidates_2026_08 import review_manifest
 
 def test_full_location_review_manifest_is_complete_and_valid():
     from collections import Counter
-    from council.store import CONCRETE_LOCATION_KINDS
+    from council.store_orte import CONCRETE_LOCATION_KINDS
 
     manifest = review_manifest()
     assert len(manifest) == 123
@@ -45,7 +45,7 @@ def test_curated_location_geocodes_are_complete_valid_and_idempotent(tmp_path):
     store._conn.commit()
     assert store.apply_curated_location_geocodes() == 1
     row = store.location_by_slug("skateanlage-eversten")
-    assert (row["lat"], row["lon"], row["ortsbereich_id"]) == (
+    assert (row["lat"], row["lon"], row["local_area_id"]) == (
         53.1379232, 8.1719987, "eversten")
     assert store.apply_curated_location_geocodes() == 0
     store.close()
@@ -264,7 +264,7 @@ def test_incremental_process_picks_up_only_new_decisions(tmp_path):
 
     first = process(db, use_llm=False)
     assert first == {"candidates": 2, "scanned": 2, "assigned": 1,
-                     "links": 1, "failed_batches": 0}
+                     "links": 1, "beiwerk_verworfen": 0, "failed_batches": 0}
     assert process(db, use_llm=False)["candidates"] == 0
 
     store = CouncilStore(db)
@@ -281,7 +281,7 @@ def test_incremental_process_picks_up_only_new_decisions(tmp_path):
     # Beschluss wieder zum Kandidaten (im echten Lauf wertet sie das LLM aus).
     store = CouncilStore(db)
     store._conn.execute(
-        "INSERT INTO council_vorlagen "
+        "INSERT INTO council_templates "
         "(kvonr,template_number,title,raw_text,fetched_at,status) "
         "VALUES (1,'26/0001','Jahresbericht','Ort im späteren Volltext',"
         "'9999-01-01T00:00:00','ok')")
@@ -492,7 +492,7 @@ def test_reviewed_place_joins_catalog_extraction_search_and_map(tmp_path):
         }], f"hash-{decision_id}")
     store._conn.execute(
         "UPDATE council_locations SET lat=53.16,lon=8.22,geo_tried=1,"
-        "district='Nadorst',ortsbereich_id='nadorst' WHERE slug='testquartier'"
+        "district='Nadorst',local_area_id='nadorst' WHERE slug='testquartier'"
     )
     store._conn.commit()
 

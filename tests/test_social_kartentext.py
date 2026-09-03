@@ -46,7 +46,7 @@ def _punkt(store, ksinr=1, nummer="Ö 10", title="Ausfallbürgschaft für das Kl
         "VALUES (?, ?, ?, 1, ?)", (ksinr, nummer, title, kvonr))
     if vorlage:
         store._conn.execute(
-            "INSERT OR REPLACE INTO council_vorlagen (kvonr, template_number, title, raw_text, "
+            "INSERT OR REPLACE INTO council_templates (kvonr, template_number, title, raw_text, "
             "fetched_at) VALUES (?, ?, ?, ?, '2026-08-30')",
             (kvonr, "26/0001", title, "Sachverhalt: Die Stadt bürgt für ein Darlehen."))
     if impact is not None:
@@ -149,7 +149,7 @@ def test_dringlichkeitsantrag_kommt_ueber_seine_anlage_hinein(store):
     _punkt(store, nummer="DZT 1", title="Dringlichkeitsantrag: PAK-Belastung",
            impact=65, vorlage=False)
     store._conn.execute(
-        "INSERT INTO council_agenda_anlagen (ksinr, item_number, label, url, raw_text) "
+        "INSERT INTO council_agenda_attachments (ksinr, item_number, label, url, raw_text) "
         "VALUES (1, 'DZT 1', 'Dringlichkeitsantrag PAK', 'https://example.org/a.pdf', ?)",
         ("Die Gruppe beantragt eine sofortige Prüfung der Flugplatzbäke.",))
     store._conn.commit()
@@ -167,7 +167,7 @@ def test_vergangene_sitzungen_bleiben_draussen(store):
 
 
 def test_wochenvorschau_reicht_den_kartentext_durch(store):
-    """Der Bot liest ihn über /api/social/wochenvorschau — er muss also im
+    """Der Bot liest ihn über /api/social/week-preview — er muss also im
     Punkt-Dict ankommen, neben der Kurzfassung, nicht statt ihrer."""
     _sitzung(store)
     _punkt(store, nummer="Ö 10", impact=75)
@@ -179,7 +179,7 @@ def test_wochenvorschau_reicht_den_kartentext_durch(store):
     store.save_social_text(1, "Ö 10", "Zur Abstimmung steht eine Bürgschaft über "
                                       "13,5 Millionen Euro.", "vorlage+anlagen")
 
-    punkte = store.wochenvorschau(tage=10, max_punkte=40)["punkte"]
+    punkte = store.wochenvorschau(tage=10, max_punkte=40)["items"]
     unserer = [p for p in punkte if p["item_number"] == "Ö 10"]
     assert unserer, "Punkt fehlt ganz in der Wochenvorschau"
     assert unserer[0]["social_text"].startswith("Zur Abstimmung steht")
@@ -220,7 +220,7 @@ def test_der_text_wird_auf_kartenlaenge_gekappt(monkeypatch):
 
 
 def test_auch_die_restliste_traegt_den_kartentext(store):
-    """Die zweite Karte einer Sitzung wird aus ``weitere_je_sitzung`` gebaut.
+    """Die zweite Karte einer Sitzung wird aus ``further_per_session`` gebaut.
 
     Diese Liste entsteht Feld für Feld — und genau dort fehlte der neue
     Kartentext: Der Dringlichkeitsantrag zur PAK-Belastung stand auf der
@@ -236,8 +236,8 @@ def test_auch_die_restliste_traegt_den_kartentext(store):
         store.save_social_text(1, nr, f"Kartentext zu Punkt {i}.", "vorlage")
 
     daten = store.wochenvorschau(tage=10, max_punkte=40)
-    assert all(p["social_text"] for p in daten["punkte"])
-    rest = daten["weitere_je_sitzung"][1]
+    assert all(p["social_text"] for p in daten["items"])
+    rest = daten["further_per_session"][1]
     assert rest, "kein Punkt in der Restliste — Test prüft nichts"
     assert all(p["social_text"] for p in rest)
 

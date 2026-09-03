@@ -4,7 +4,7 @@
 **Das Problem.** ``scripts/pruefe_wertreste.py`` fragt von der Datenbank aus:
 Kommt jeder gespeicherte Wert im Code noch vor? Die umgekehrte Lücke sieht es
 nicht — und die ist die teurere. Benennt ein Schnitt einen Wert um
-(``council_haushalt_aenderungen_summen.kind`` von ``entwurf`` auf ``draft``)
+(``council_budget_amendments_totals.kind`` von ``entwurf`` auf ``draft``)
 und zieht das Web-Frontend nicht nach, dann sucht dort weiter jemand
 ``s.kind === "entwurf"``. Der Vergleich wird nie wahr, die Karte verliert ihre
 Zeile, **und nichts schlägt an**: Der Typ ist ``string``, TypeScript ist
@@ -67,7 +67,7 @@ ERLAUBT = {
     "rat": "Rollen der Haushaltsdebatte und `art` der Personen-Bausteine",
     "verwaltung": "dieselben Rollen; dazu `typ` des Personen-Profils",
     "beratend": "`art` der Personen-Bausteine",
-    "beteiligung": "zugleich FELDname der Beschluss-Antwort (`beteiligung`)",
+    "beteiligung": "Dateinamen und Prosa der Beteiligungsberichte (das Feld heißt `participation`)",
     "leitung": "Rolle der Haushaltsdebatte",
     "thema": "Pfad-Teil der Link-Vorschau (/preview/thema/…) und `kind` der Nachbarn",
     "stadt": "`entity_key` des Konzerns und `art` der Personen-Bausteine",
@@ -105,8 +105,20 @@ ERLAUBT = {
     # wäre jedes Vorkommen ein toter Vergleich, deshalb der Zeilen-Filter.
     "neu": "Tagesordnungs-Diff, Query-Parameter, Vorlese-Text und die "
            "Seitenangabe „neu“ aus dem Änderungslisten-PDF",
-    "teilhaushalt": "Schlüssel des Beleg-Apparats (council_produkte)",
-    "investitionen": "Schlüssel des Beleg-Apparats (council_investitionen)",
+    "teilhaushalt": "Schlüssel des Beleg-Apparats (council_products)",
+    "geldschulden": ("Blockname der Schulden-Antwort (council.py: \"geldschulden\": …) — "
+                     "die API-Blocknamen sind ein eigener Schnitt, noch offen"),
+    # Drei Wörter, die als WERT umgezogen sind, im Frontend aber Bezeichner
+    # bzw. Blockname geblieben sind. Die API-Feldnamen `wortbeitraege` und
+    # `recherche` heißen seit dem Feldnamen-Schnitt `speeches` und `research`.
+    "wortbeitraege": ("Komponenten- und Variablenname der Personen-Seite — der WERT "
+                      "`llm_usage.feature` heißt seit 01.09.2026 `speeches`"),
+    "recherche": ("Modus der Gründlichen Recherche im Frontend — der WERT "
+                  "`user_activity.feature` heißt seit 01.09.2026 `research`"),
+    "ki_frage": ("Blockname der Admin-Antwort (`features.ki_frage`) — der WERT "
+                 "`user_activity.feature` heißt seit 01.09.2026 `ai_question`"),
+    "investitionen": "Schlüssel des Beleg-Apparats (council_investments)",
+    "schulden": "Schlüssel des Beleg-Apparats und QA-Facette — beide bleiben deutsch",
 }
 
 #: Zusätzliche Bedingung für einen ERLAUBT-Eintrag: Nur wenn die Zeile dazu
@@ -114,7 +126,11 @@ ERLAUBT = {
 #: überall.
 _BELEG = re.compile(r'Beleg q=|QUELLEN|QuellenSchluessel|as const|^\s*\| "|'
                     r'"(plan|investitionsprogramm|budget_bylaw|jahresabschluss|'
-                    r'stellenplan|pruefbericht|schulden)"')
+                    r'stellenplan|pruefbericht|schulden)"|'
+                    # Seit der Pruefer auch objektwertige Schluessel sieht,
+                    # faellt das Verzeichnis selbst auf: `investitionen: {`,
+                    # eine Zeile ueber `title:` und `citation:`.
+                    r'^\s*\w+: \{\s*$')
 
 #: Ein Kommentar — dort darf jedes Wort stehen.
 _KOMMENTAR = re.compile(r'^\s*(//|\*|/\*)')
@@ -126,6 +142,9 @@ ERLAUBT_ZEILE = {
     # erkennt man an einem Nachbarschlüssel oder am `as const` der Liste.
     "teilhaushalt": _BELEG,
     "investitionen": _BELEG,
+    # Dazu der Parametername der Zinsspannen-Rechnung in `haushalt-labor.ts`:
+    # `schulden: { year: number; total: number }[]` ist eine TYP-Angabe.
+    "schulden": re.compile(_BELEG.pattern + r'|: \{ year: number'),
     # Diese beiden dürfen nur noch in Fließtext-Kommentaren stehen. Stünde
     # eines wieder in einem Vergleich, wäre genau das der Fehler von #890.
     "entwurf": _KOMMENTAR,
@@ -139,7 +158,10 @@ ERLAUBT_ZEILE = {
     "unbekannt": re.compile(r'\|\|'),
     # `dagegen` ist daneben die Haltung einer Partei aus der KI-Antwort
     # (dafür|dagegen|offen|gewandelt) — ein eigenes Vokabular, eigener Schnitt.
-    "dagegen": re.compile(r'haltung|dafür|label: "dagegen"'),
+    # Das Feld hieß bis 01.09.2026 `haltung`; seit dem OpenAPI-Schnitt heißt es
+    # `stance`. Der WERT bleibt deutsch — er ist die Partei-Haltung der
+    # KI-Antwort und steht so im Prompt.
+    "dagegen": re.compile(r'haltung|stance|dafür|label: "dagegen"'),
     # `belegt` ist daneben das Urteil der Themen-Prüfung
     # (belegt|plausibel|ungeeignet) und die Beleglage einer Kernzahl.
     "belegt": re.compile(r'verdict|plausibel|beleglage|belegt:\s*Kasten'),
@@ -152,7 +174,9 @@ ERLAUBT_ZEILE = {
     # `role` mit dem Wert `rat` ist die Haushaltsdebatte; die Anwesenheits-
     # Rollen kennen kein `rat`, der Vergleich ist also eindeutig.
     "rat": re.compile(r'\bart\b|StreitRolle|typ\?:|\brole\b|"rat" \| "verwaltung"|'
-                      r'^\s*(//|\*)|committee ==='),
+                      # `fa` und `rat` sind die zwei Spalten der Antrags-Bilanz
+                      # (`haushalt-streit.ts`) — Felder einer Zeile, kein Wert.
+                      r'^\s*(//|\*)|committee ===|fa: \{ ein'),
     "thema": re.compile(r'case topic|"kind":|VorschauArt|target\?:|'
                         r'vorschauMetadata|/preview|kind: "thema"|^\s*(//|\*)'),
     "verwaltung": re.compile(r'\btyp\b|type ==|StreitRolle|\bart\b'),
@@ -173,8 +197,8 @@ ERLAUBT_ZEILE = {
     "beides": re.compile(r'^\s*(//|\*)'),
     "entfernt": re.compile(r'^\s*(//|\*)'),
     "geaendert": re.compile(r'^\s*(//|\*)|geaendert: "Ge'),
-    # `beteiligung` ist daneben ein FELDname der Beschluss-Antwort — Felder
-    # sind ein eigener Schnitt, die Werte darin sind schon englisch.
+    # `beteiligung` war bis zum Feldnamen-Schnitt auch der FELDname der
+    # Beschluss-Antwort (heute `participation`); die Werte sind englisch.
     "beteiligung": re.compile(r'"beteiligung":|= "beteiligung"'),
     "orte": re.compile(r'Tab\b|tab ===|sp\.get|p\.delete|Ortskandidaten'),
     "mittel": re.compile(r'DIFF_LABEL'),
@@ -182,8 +206,8 @@ ERLAUBT_ZEILE = {
     "leitung": re.compile(r'StreitRolle|\brole\b'),
     "stadt": re.compile(r'entity_key|\bart\b|Sortierung|sortierung|value: "stadt"|'
                         r'\brole\b|\{ stadt,|stadt:\s*string'),
-    # Daneben ist `vorlage` ein FELDname der Beschluss-Antwort — der ist
-    # ein eigener Schnitt und nicht Teil der Werte-Reihe.
+    # `vorlage` war bis zum Feldnamen-Schnitt auch der FELDname der
+    # Beschluss-Antwort (heute `template`); der Wert ist die Zielart.
     "vorlage": re.compile(r'Zielart|art ===|\bart\b|source:|^\s*\| "|'
                           r'return "vorlage"|"vorlage":|= "vorlage"'),
 }
@@ -206,6 +230,7 @@ ERLAUBT_STELLE = {
     ("ProfileAndQuizViews.swift", "beratend"): "`art` des Personen-Profils, im Backend deutsch",
     ("RatslotseAppTests.swift", "thema"): "`qtype` der Beleg-Prüfung, im Backend deutsch",
     ("haushalt-vergleich.ts", "stadt"): "Feldname der Vergleichsstädte-Zeilen (`{stadt, was}`), kein Wert",
+    ("haushalt-indicators.ts", "einwohner"): "Kennzahl-Schlüssel der Stadt (`council_indicators`) bleiben deutsch wie `steuerquote`; umbenannt wurde nur der Einwohner-Indikator des Städtevergleichs",
     ("haushalt-konzern.ts", "stadt"): "Beschriftung zum `entity_key` des Konzerns — der bleibt deutsch",
     ("haushalt-dokumente.ts", "vorlage"): "Beschriftung zur Zielart des Beleg-Apparats — die bleibt deutsch",
     ("page.tsx", "ort"): "Pfad-Teil der Link-Vorschau (/preview/ort/…) — eigener Schnitt",
@@ -235,14 +260,25 @@ _PAAR = re.compile(r"""\(\s*["']([a-z][a-z0-9_+]*)["']\s*,\s*["']([a-z][a-z0-9_+
 
 
 def migrationspaare() -> set[tuple[str, str]]:
-    """Alle ``("alt", "neu")`` aus den Werte-Migrationen von ``store.py``."""
-    text = (WURZEL / "council" / "store.py").read_text()
+    """Alle ``("alt", "neu")`` aus den Werte-Migrationen BEIDER Stores.
+
+    `kern/store.py` gehört dazu, seit dort die Quiz-Werte (#891) und die
+    Feature-Namen des Kosten-Trackings umziehen: Die Konten-Datenbank hat
+    eigene Werte-Vokabulare, und die Oberfläche liest sie genauso.
+    """
     paare = set()
-    for block in re.finditer(r"_werte_umschreiben\((.*?)\]\)", text, re.S):
-        paare.update(_PAAR.findall(block.group(1)))
-    # Listen-Konstanten, die mehrere Aufrufe teilen (ORTSARTEN).
-    for block in re.finditer(r"^\s+[A-Z_]{4,} = \[\n(.*?)\n\s+\]$", text, re.S | re.M):
-        paare.update(_PAAR.findall(block.group(1)))
+    # Alle `store*.py` beider Pakete: `council/store.py` ist seit 09/2026
+    # aufgeteilt, und die Werte-Migrationen stehen jetzt in `store_schema.py`.
+    # Eine feste Dateiliste hätte den Wächter still auf 39 Paare halbiert.
+    quellen = sorted((WURZEL / "council").glob("store*.py")) + \
+        sorted((WURZEL / "kern").glob("store*.py"))
+    for quelle in quellen:
+        text = quelle.read_text()
+        for block in re.finditer(r"_werte_umschreiben\((.*?)\]\)", text, re.S):
+            paare.update(_PAAR.findall(block.group(1)))
+        # Listen-Konstanten, die mehrere Aufrufe teilen (ORTSARTEN).
+        for block in re.finditer(r"^\s+[A-Z_]{4,} = \[\n(.*?)\n\s+\]$", text, re.S | re.M):
+            paare.update(_PAAR.findall(block.group(1)))
     return {(a, b) for a, b in paare | ZUSATZ_PAARE if a != b}
 
 
@@ -278,9 +314,15 @@ def main() -> int:
     # nicht-leere ZEICHENKETTE stehen. Eine Typ-Eigenschaft (`stadt: number`),
     # eine Destrukturierung (`{ posten }`) oder ein Verweis (`rat: z.rat`) ist
     # nie eine Wertetabelle — eine Beschriftung oder Farbe immer.
+    #
+    # Rechts steht ausserdem manchmal ein OBJEKT statt einer Zeichenkette:
+    # `BELEGLAGE` in `section-betriebe.tsx` haengt an jeden Probennamen ein
+    # `{ kurz, lang }`. Dieselbe tote Zuordnung, nur eine Ebene tiefer — der
+    # Pruefer sah sie bis zum 01.09.2026 nicht, weil er eine Zeichenkette
+    # verlangte.
     muster = re.compile(
         rf'"(?P<zitiert>{W})"'
-        rf'|(?:^|[{{,])\s*(?P<schluessel>{W})\s*:\s*"[^"]')
+        rf'|(?:^|[{{,])\s*(?P<schluessel>{W})\s*:\s*(?:"[^"]|{{)')
     funde: list[str] = []
     for pfad in dateien():
         rel = pfad.relative_to(WURZEL)

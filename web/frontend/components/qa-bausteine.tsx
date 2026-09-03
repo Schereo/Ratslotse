@@ -45,7 +45,7 @@ export type AnlagenHinweis = {
    *  Karte einfach ohne Buchstabe (in diesen Texten steht auch kein Marker). */
   nr?: number | null;
   label: string | null; url: string | null;
-  template_number: string | null; vorlage_titel: string | null; auszug: string;
+  template_number: string | null; template_title: string | null; excerpt: string;
 };
 
 /** Task 16: Wortbeitrag aus einem Sitzungsprotokoll (Rede, Anfrage,
@@ -57,7 +57,7 @@ export type AnlagenHinweis = {
  *  weiß nicht einmal, dass es die Grafik gibt — sie hängt am
  *  Quellen-Ereignis, nicht an der Antwort. */
 export type QaGrafik = {
-  art: string;
+  kind: string;
   title: string;
   unit: string;
   nachkomma: number;
@@ -71,16 +71,16 @@ export type QaGrafik = {
 
 export type DebattenHinweis = {
   speaker: string | null; party: string | null; art: string;
-  top: string | null; auszug: string; committee: string | null; date: string | null;
+  top: string | null; excerpt: string; committee: string | null; date: string | null;
   /** getfile-URL des Protokoll-PDFs — ältere gespeicherte Gespräche kennen
    *  das Feld nicht, dann fehlt schlicht das Icon. */
-  protokoll_url?: string | null;
+  minutes_url?: string | null;
   /** PDF-Seite der Fundstelle (über den Sprecher-Namen verankert) —
    *  null/fehlend = Link aufs ganze PDF, nie eine geratene Seite. */
-  protokoll_seite?: number | null;
+  minutes_page?: number | null;
 };
 
-/** Personen-Badge-Eintrag aus /council/personen-lexikon (Tims Wunsch 12.08.):
+/** Personen-Badge-Eintrag aus /council/people-directory (Tims Wunsch 12.08.):
  *  Ratsmitglieder mit Partei, Verwaltung mit geerntetem Amt; `aktiv` heißt in
  *  den letzten zwölf Monaten in einer Anwesenheitsliste gesehen. */
 export type PersonEintrag = {
@@ -110,7 +110,7 @@ let _lexikonPromise: Promise<PersonEintrag[]> | null = null;
 function usePersonenLexikon(): PersonEintrag[] {
   const [lex, setLex] = useState<PersonEintrag[]>([]);
   useEffect(() => {
-    _lexikonPromise ||= fetch(apiUrl("/council/personen-lexikon"),
+    _lexikonPromise ||= fetch(apiUrl("/council/people-directory"),
       { credentials: "include", headers: authHeaders() })
       .then((r) => (r.ok ? r.json() : { personen: [] }))
       .then((b) => (b?.personen ?? []) as PersonEintrag[])
@@ -370,7 +370,7 @@ export function PersonBadge({ p, zeilenPartei = null }: {
   // Der Zeitraum sagt, WORAUS wir die Person kennen. Bei den Aufsichtsorganen
   // sind das Berichtsjahrgänge, nicht Sitzungen — „In den Sitzungen seit
   // 2022" wäre für eine Betriebsratsvorsitzende schlicht falsch.
-  const zeitraum = p.art === "participation"
+  const period = p.art === "participation"
     ? (p.von && p.bis
       ? (p.von === p.bis ? `Im Beteiligungsbericht ${p.von}`
         : `In den Beteiligungsberichten ${p.von}–${p.bis}`)
@@ -410,8 +410,8 @@ export function PersonBadge({ p, zeilenPartei = null }: {
               Zum Zeitpunkt des Beitrags: <strong className="font-semibold text-foreground">{zeilenPartei}</strong>
             </span>
           )}
-          {zeitraum && (
-            <span className="mt-1 block text-[10.5px] text-muted-foreground/70">{zeitraum}</span>
+          {period && (
+            <span className="mt-1 block text-[10.5px] text-muted-foreground/70">{period}</span>
           )}
           {/* Verwaltung verlinkt nur mit ERKANNTEM Amt (Tims Wunsch 19.08.) —
               ohne rolle liefert /person/{slug} 404 (verwaltung_detail() im
@@ -432,10 +432,10 @@ export function PersonBadge({ p, zeilenPartei = null }: {
 }
 
 export type ParteiMeinung = {
-  party: string; haltung?: "dafür" | "dagegen" | "offen" | "gewandelt";
-  position: string; einig: boolean; note: string | null;
+  party: string; stance?: "dafür" | "dagegen" | "offen" | "gewandelt";
+  position: string; unanimous: boolean; note: string | null;
   kernaussage: { text: string; speaker: string | null; date: string | null } | null;
-  beitraege: number;
+  contributions: number;
   beitraege_liste?: { speaker: string | null; date: string; art: string | null;
     committee: string | null; text: string }[];
 };
@@ -662,20 +662,20 @@ export function AntwortText({ text: rohtext, idToNum, onJump, quelleHref,
  * Zitat-Reihenfolge. Eigene Komponente, damit die Server-Seite nur ein
  * schlichtes id-Array über die Grenze reichen muss und keine Map.
  */
-export function GeteilterAntwortText({ text, quellenIds, anlagen }: {
-  text: string; quellenIds: number[]; anlagen?: AnlagenHinweis[];
+export function GeteilterAntwortText({ text, quellenIds, attachments }: {
+  text: string; quellenIds: number[]; attachments?: AnlagenHinweis[];
 }) {
   const idToNum = new Map(quellenIds.map((id, i) => [id, i + 1] as const));
   return <AntwortText text={text} idToNum={idToNum}
-    anlBuchstaben={anlagenBuchstaben(text, anlagen)} />;
+    anlBuchstaben={anlagenBuchstaben(text, attachments)} />;
 }
 
 /* ------------------------ Belege-Bausteine -------------------------- */
 
 /** Task 33: Anlagen-Treffer der Gründlichen Recherche — Gutachten und
  *  Konzepte, verlinkt aufs öffentliche PDF im Ratsinformationssystem. */
-export function AnlagenBlock({ anlagen, ankerPrefix, buchstaben }: {
-  anlagen: AnlagenHinweis[]; ankerPrefix: string;
+export function AnlagenBlock({ attachments, ankerPrefix, buchstaben }: {
+  attachments: AnlagenHinweis[]; ankerPrefix: string;
   /** nr → a/b/c für die im Bericht belegten Anlagen. */
   buchstaben: Map<number, string>;
 }) {
@@ -686,7 +686,7 @@ export function AnlagenBlock({ anlagen, ankerPrefix, buchstaben }: {
         Aus den Anlagen <span className="text-muted-foreground/60">· Gutachten &amp; Konzepte</span>
       </p>
       <ul className="mt-1.5 space-y-2">
-        {anlagen.map((a, i) => {
+        {attachments.map((a, i) => {
           const nr = a.nr ?? i + 1;
           const b = buchstaben.get(nr);
           return (
@@ -712,33 +712,33 @@ export function AnlagenBlock({ anlagen, ankerPrefix, buchstaben }: {
               )}
               <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />
             </a>
-            {a.vorlage_titel && (
-              <p className="mt-0.5 truncate text-[11px] text-muted-foreground/80">zu: {a.vorlage_titel}</p>
+            {a.template_title && (
+              <p className="mt-0.5 truncate text-[11px] text-muted-foreground/80">zu: {a.template_title}</p>
             )}
-            {a.auszug && (
-              <p className="mt-0.5 text-muted-foreground">{a.auszug}{a.auszug.length >= 220 ? "…" : ""}</p>
+            {a.excerpt && (
+              <p className="mt-0.5 text-muted-foreground">{a.excerpt}{a.excerpt.length >= 220 ? "…" : ""}</p>
             )}
           </li>
           );
         })}
       </ul>
-      {belegt > 0 && belegt < anlagen.length && (
+      {belegt > 0 && belegt < attachments.length && (
         <p className="mt-2 text-[10.5px] leading-relaxed text-muted-foreground/70">
-          Die übrigen wurden gelesen, aber im Bericht nicht belegt.
+          Die übrigen wurden documents_read, aber im Bericht nicht belegt.
         </p>
       )}
     </div>
   );
 }
 
-export function PresseBlock({ presse }: { presse: PresseHinweis[] }) {
+export function PresseBlock({ press_releases }: { press_releases: PresseHinweis[] }) {
   return (
     <div className="rounded-xl border border-dashed border-border p-3">
       <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
         Aktuelles von der Stadt <span className="text-muted-foreground/60">· extern</span>
       </p>
       <ul className="mt-1.5 space-y-1">
-        {presse.map((p) => (
+        {press_releases.map((p) => (
           <li key={p.url}>
             <a href={p.url} target="_blank" rel="noopener noreferrer"
               className="group block rounded-lg px-1.5 py-1 text-sm transition-colors hover:bg-muted">
@@ -785,8 +785,8 @@ const fmtDatumVoll = (d?: string | null) =>
  *  reißt diese Karte die Tagesordnung an, deterministisch aus dem
  *  Sitzungskalender, nie vom Modell. Sitzungen MIT Beschlüssen brauchen die
  *  Karte nicht: Deren Inhalt steht bereits in den Quellen. */
-export function TagesordnungBlock({ sitzungen }: { sitzungen: SitzungsInfo[] }) {
-  const mitAgenda = sitzungen.filter((s) => s.n_agenda > 0);
+export function TagesordnungBlock({ sessions }: { sessions: SitzungsInfo[] }) {
+  const mitAgenda = sessions.filter((s) => s.n_agenda > 0);
   if (mitAgenda.length === 0) return null;
   return (
     <>
@@ -844,7 +844,7 @@ export function TagesordnungBlock({ sitzungen }: { sitzungen: SitzungsInfo[] }) 
 /** Task 16: Wortbeiträge aus den Sitzungsprotokollen — was im Rat GESAGT
  *  wurde (Reden, Anfragen mit Verwaltungsantwort, Einwohnerfragen, Zusagen),
  *  im Unterschied zu dem, was beschlossen wurde. */
-export function DebattenBlock({ debatten }: { debatten: DebattenHinweis[] }) {
+export function DebattenBlock({ debates }: { debates: DebattenHinweis[] }) {
   const artLabel: Record<string, string> = {
     speech: "Rede", inquiry: "Anfrage", citizen_question: "Einwohnerfrage", pledge: "Zusage",
   };
@@ -854,7 +854,7 @@ export function DebattenBlock({ debatten }: { debatten: DebattenHinweis[] }) {
         Aus den Ratsdebatten <span className="text-muted-foreground/60">· Protokolle</span>
       </p>
       <ul className="mt-1.5 space-y-2">
-        {debatten.map((d, i) => (
+        {debates.map((d, i) => (
           <DebattenZeile key={i} d={d} artLabel={artLabel} />
         ))}
       </ul>
@@ -874,7 +874,7 @@ export function DebattenBlock({ debatten }: { debatten: DebattenHinweis[] }) {
 function DebattenZeile({ d, artLabel }: { d: DebattenHinweis; artLabel: Record<string, string> }) {
   const [offen, setOffen] = useState(false);
   // Ab dieser Länge lohnt der Toggle; kürzere Beiträge stehen einfach ganz da.
-  const lang = d.auszug.length > 260;
+  const lang = d.excerpt.length > 260;
   return (
     <li className="text-[12.5px] leading-snug">
       <p className="flex items-baseline gap-2">
@@ -899,14 +899,14 @@ function DebattenZeile({ d, artLabel }: { d: DebattenHinweis; artLabel: Record<s
             Margins vergrößern nur die Tippfläche, nicht die Optik. Mit
             bekannter Fundstelle springt #page direkt zur Seite (Chrome/
             Firefox/Edge; Safari öffnet dann schlicht das PDF). */}
-        {d.protokoll_url && (
+        {d.minutes_url && (
           <a target="_blank" rel="noopener noreferrer"
-            href={d.protokoll_seite ? `${d.protokoll_url}#page=${d.protokoll_seite}` : d.protokoll_url}
-            title={d.protokoll_seite
-              ? `Sitzungsprotokoll öffnen (PDF, Seite ${d.protokoll_seite})`
+            href={d.minutes_page ? `${d.minutes_url}#page=${d.minutes_page}` : d.minutes_url}
+            title={d.minutes_page
+              ? `Sitzungsprotokoll öffnen (PDF, Seite ${d.minutes_page})`
               : "Sitzungsprotokoll öffnen (PDF)"}
-            aria-label={d.protokoll_seite
-              ? `Sitzungsprotokoll öffnen (PDF, Seite ${d.protokoll_seite})`
+            aria-label={d.minutes_page
+              ? `Sitzungsprotokoll öffnen (PDF, Seite ${d.minutes_page})`
               : "Sitzungsprotokoll öffnen (PDF)"}
             className="-m-1.5 shrink-0 p-1.5 text-muted-foreground/60 transition-colors hover:text-primary">
             <FileDown className="h-3 w-3" aria-hidden />
@@ -915,7 +915,7 @@ function DebattenZeile({ d, artLabel }: { d: DebattenHinweis; artLabel: Record<s
       </p>
       <p className={cn("mt-0.5 whitespace-pre-wrap text-muted-foreground",
         !offen && lang && "line-clamp-4")}>
-        {d.auszug}
+        {d.excerpt}
       </p>
       {lang && (
         <button type="button" onClick={() => setOffen((v) => !v)} aria-expanded={offen}
@@ -958,20 +958,20 @@ export function parteiDot(label: string): { bg: string; ring: boolean } {
  * „wird gerade geladen" — auf der geteilten Seite gibt es diesen Zustand
  * nicht, dort kommen die Positionen aus dem Snapshot.
  */
-export function ParteienListe({ parteien, ohneBeitraege = [], onFrageStellen }: {
-  parteien: ParteiMeinung[] | null;
+export function ParteienListe({ parties, ohneBeitraege = [], onFrageStellen }: {
+  parties: ParteiMeinung[] | null;
   ohneBeitraege?: string[];
   onFrageStellen?: (text: string) => void;
 }) {
   // Klick auf die Zeile klappt die verdichteten Original-Beiträge auf
   // (Tims Wunsch: „auf die Partei klicken, um alle Beiträge zu sehen").
   const [offen, setOffen] = useState<string | null>(null);
-  const daten = [...new Set((parteien ?? []).map((p) => p.kernaussage?.date).filter(Boolean))];
+  const daten = [...new Set((parties ?? []).map((p) => p.kernaussage?.date).filter(Boolean))];
   // In den Ausschüssen reden auch Verbände und beratende Mitglieder (NABU,
   // BUND, Ortslandvolkverband) — seit die Beiträge über die belegten
   // Beschlüsse kommen, oft ein Drittel der Zeilen. „13 Fraktionen" wäre dann
   // schlicht falsch gezählt.
-  const nurFraktionen = (parteien ?? []).every((p) => parteiKuerzel(p.party) !== "Rat");
+  const nurFraktionen = (parties ?? []).every((p) => parteiKuerzel(p.party) !== "Rat");
   return (
     <div className="rounded-xl border border-border bg-card p-3.5 shadow-sm print:break-inside-avoid">
       <div className="flex items-baseline justify-between gap-2">
@@ -979,12 +979,12 @@ export function ParteienListe({ parteien, ohneBeitraege = [], onFrageStellen }: 
           Aus den Ratsdebatten
         </p>
         <p className="text-[10.5px] text-muted-foreground/70">
-          {parteien === null ? "Positionen werden verdichtet …"
-            : `${parteien.length} ${nurFraktionen ? "Fraktionen" : "Fraktionen und Verbände"}`
+          {parties === null ? "Positionen werden verdichtet …"
+            : `${parties.length} ${nurFraktionen ? "Fraktionen" : "Fraktionen und Verbände"}`
               + (daten.length === 1 ? ` · Sitzung ${daten[0]}` : "")}
         </p>
       </div>
-      {parteien === null ? (
+      {parties === null ? (
         <div aria-hidden className="mt-3 flex animate-pulse flex-col gap-3.5">
           {[34, 28, 40].map((w, i) => (
             <div key={i} className="flex gap-2.5">
@@ -1000,7 +1000,7 @@ export function ParteienListe({ parteien, ohneBeitraege = [], onFrageStellen }: 
       ) : (
         <>
           <div className="mt-2 flex flex-col divide-y divide-border/60">
-            {parteien.map((p) => {
+            {parties.map((p) => {
               const dot = parteiDot(p.party);
               const aufklappbar = (p.beitraege_liste?.length ?? 0) > 0;
               const istOffen = offen === p.party;
@@ -1016,24 +1016,24 @@ export function ParteienListe({ parteien, ohneBeitraege = [], onFrageStellen }: 
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <p className="text-[12.5px] font-bold">{p.party}</p>
-                      {p.haltung && HALTUNG_BADGE[p.haltung] && (
+                      {p.stance && HALTUNG_BADGE[p.stance] && (
                         <span className={cn("rounded-full px-2 py-px text-[10px] font-semibold",
-                          HALTUNG_BADGE[p.haltung].cls)}>
-                          {HALTUNG_BADGE[p.haltung].label}
+                          HALTUNG_BADGE[p.stance].cls)}>
+                          {HALTUNG_BADGE[p.stance].label}
                         </span>
                       )}
                       {/* Ehrlichkeit zur Datenbasis: aus wie vielen Wortbeiträgen
                           die Position verdichtet ist (Tims Befund 10.08.). */}
-                      {p.beitraege > 0 && (
+                      {p.contributions > 0 && (
                         <span className="inline-flex items-center gap-0.5 font-mono text-[10px] text-muted-foreground/70">
-                          {p.beitraege === 1 ? "1 Beitrag" : `${p.beitraege} Beiträge`}
+                          {p.contributions === 1 ? "1 Beitrag" : `${p.contributions} Beiträge`}
                           {aufklappbar && (
                             <ChevronDown aria-hidden
                               className={cn("h-3 w-3 transition-transform", istOffen && "rotate-180")} />
                           )}
                         </span>
                       )}
-                      {!p.einig && (
+                      {!p.unanimous && (
                         <span className="rounded-full bg-amber-100 px-2 py-px text-[10px] font-semibold text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
                           uneinheitlich
                         </span>
@@ -1048,7 +1048,7 @@ export function ParteienListe({ parteien, ohneBeitraege = [], onFrageStellen }: 
                       )}
                     </div>
                     <p className="mt-0.5 text-[12.5px] leading-relaxed text-foreground/90">
-                      {p.position}{!p.einig && p.note ? ` — ${p.note}` : ""}
+                      {p.position}{!p.unanimous && p.note ? ` — ${p.note}` : ""}
                     </p>
                     {p.kernaussage && (
                       <p className="mt-1 text-[12px] italic leading-snug text-muted-foreground">
@@ -1098,35 +1098,35 @@ export function ParteienListe({ parteien, ohneBeitraege = [], onFrageStellen }: 
  *  Die Quellzeile sagt ausdrücklich, dass die Grafik NICHT vom Modell
  *  stammt — im Chat ist das die eine Verwechslung, die niemand riskieren
  *  darf: Alles andere auf dem Bildschirm ist generierter Text. */
-export function GrafikKarte({ grafik }: { grafik: QaGrafik }) {
-  if ((grafik.series?.length ?? 0) < 2) return null;
+export function GrafikKarte({ chart }: { chart: QaGrafik }) {
+  if ((chart.series?.length ?? 0) < 2) return null;
   return (
     <div className="rounded-xl border border-border bg-card p-3">
       <Zeitreihe
-        series={grafik.series}
-        unit={grafik.unit}
-        nachkomma={grafik.nachkomma}
-        title={grafik.title}
-        ariaTitel={`${grafik.title} im Verlauf, aus den Daten der Stadt`}
+        series={chart.series}
+        unit={chart.unit}
+        nachkomma={chart.nachkomma}
+        title={chart.title}
+        ariaTitel={`${chart.title} im Verlauf, aus den Daten der Stadt`}
         tabelle
-        note={grafik.note ?? undefined}
+        note={chart.note ?? undefined}
         // Im Chat klebt schon die Eingabezeile am unteren Rand — eine
         // zweite klebende Ebene schob sich darüber (Tims Befund 18.08.).
         leisteHaftet={false}
       />
-      {grafik.source && (
+      {chart.source && (
         <p className="mt-2 border-t border-dashed border-border pt-2 text-[10.5px] leading-relaxed text-muted-foreground">
-          {grafik.source} — die Reihe kommt aus unserer Datenbank, nicht aus der
+          {chart.source} — die Reihe kommt aus unserer Datenbank, nicht aus der
           KI-Antwort.
         </p>
       )}
       {/* Die Anschlussstelle: Wer mehr wissen will, bekommt die Seite, die
           genau diese Reihe erklärt. Hinter dem Gate — auf Prod wäre der
           Link ein 404, und ein Satz, der auf nichts zeigt, bliebe stehen. */}
-      {HAUSHALT_FREI && grafik.mehr?.href && (
-        <Link href={grafik.mehr.href}
+      {HAUSHALT_FREI && chart.mehr?.href && (
+        <Link href={chart.mehr.href}
           className="group mt-2 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-primary">
-          Mehr dazu: {grafik.mehr.label}
+          Mehr dazu: {chart.mehr.label}
           <ArrowRight size={14} strokeWidth={2}
             className="transition-transform group-hover:translate-x-0.5" />
         </Link>

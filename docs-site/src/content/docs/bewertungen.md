@@ -88,7 +88,7 @@ n Stationen der Beratungsfolge ≤ 1 → Signal fehlt
 sonst min(1, (n - 1) / 5)          → 6+ Stationen = Vollausschlag
 ```
 
-Gezählt werden die Zeilen in `council_beratungen` zum `kvonr` des Beschlusses.
+Gezählt werden die Zeilen in `council_deliberations` zum `kvonr` des Beschlusses.
 
 ### Fehlende Signale fallen aus der Gewichtung
 
@@ -124,7 +124,7 @@ die aufklappbare Wichtigkeits-Karte auf der Beschluss-Seite.
 ## 2. Tragweite — LLM nach fester Rubrik
 
 `council/impact.py` lässt ein LLM bewerten, **wie folgenreich** ein Beschluss
-für die Stadt ist. Der Prompt (`impact_bewertung_system` in `kern/prompts.py`,
+für die Stadt ist. Der Prompt (`impact_rating_system` in `kern/prompts.py`,
 in `kern/prompts.py`) gibt vier Rubriken zu je 0–25 Punkten vor, die
 addiert werden:
 
@@ -157,7 +157,7 @@ LLM-Aufrufe über OpenRouter ([ADR 0001](/docs/adr/0001-openrouter/)).
 
 `council/interest.py` misst etwas ganz anderes: Wie **erzählenswert** ist ein
 Beschluss für normale Stadtbewohner*innen? Der Prompt
-(`interest_bewertung_system`) fragt nach Gesprächswert („Würde man es beim
+(`interest_rating_system`) fragt nach Gesprächswert („Würde man es beim
 Abendessen erzählen?"), Alltagsnähe, Kuriosität/Überraschung und Konkretheit
 (ein Ort, ein Ding, ein Datum) und staffelt die Skala:
 
@@ -177,7 +177,7 @@ Tragweite mit ihrer festen Rubrik.
 ### Fundstück des Tages
 
 `council/fundstueck.py` kuratiert daraus je Kalendertag **einen** Archiv-Fund
-(Tabelle `council_fundstuecke`, ein Datensatz je Tag mit Kicker und
+(Tabelle `council_daily_finds`, ein Datensatz je Tag mit Kicker und
 1-Satz-Story):
 
 - **Jahrestage gewinnen**: gleicher Kalendertag, früheres Jahr, `interest ≥ 45`
@@ -328,7 +328,7 @@ nachschärfen statt einhängen. Das restliche Eval-Harness beschreibt
   Suchkriterium war er wenig sinnvoll; er wirkt weiter über das Fundstück, die
   Wochenkarte und Tie-Breaks. Der API-Wert `sort=interest` bleibt bestehen,
   damit ältere geteilte Links nicht brechen.
-- **Fundstück des Tages** auf der Übersicht (`GET /council/fundstueck`) sowie
+- **Fundstück des Tages** auf der Übersicht (`GET /council/daily-find`) sowie
   die Karte „Diese Woche im Rat" (`GET /council/diese-woche`), die den
   interessantesten Beschluss der letzten 7 Tage samt `interest_reason`-Satz
   zeigt, wenn es keine persönlichen Treffer gibt.

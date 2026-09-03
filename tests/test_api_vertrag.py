@@ -8,13 +8,11 @@ ableiten, und kein PR-Diff zeigt, dass sich ein Feld geändert hat. Ohne Gate
 schleicht sich das mit jedem neuen Endpunkt zurück; die Formen stehen deshalb
 in ``web/backend/app/antworten.py`` und dieser Test hält sie dort fest.
 
-Die Ausnahmeliste unten ist keine Schlupflücke, sondern die sichtbare
-Restschuld: Diese Nutzlasten reicht der Handler unverändert aus dem Store
-durch (breite ``SELECT``-Zeilen). Sie sind absichtlich offen, weil eine
-unvollständige Aufzählung Felder STILL aus der Antwort entfernen würde — ein
-TypedDict filtert, was es nicht kennt. Wer eine davon sauber typisiert,
-streicht ihren Eintrag hier. Wer einen NEUEN Endpunkt ohne Form baut, wird
-rot.
+Seit 09/2026 ist die Restschuld abgetragen: ``OFFEN`` ist leer, jede
+JSON-Antwort trägt ihre Form. Die Liste bleibt trotzdem stehen — sie ist der
+Ort, an dem eine bewusste Ausnahme sichtbar würde, und der Test darunter
+meldet einen Eintrag, der nicht mehr nötig ist. Wer einen NEUEN Endpunkt ohne
+Form baut, wird rot.
 """
 import os
 import sys
@@ -26,30 +24,26 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "web" / "backend"))
 os.environ.setdefault("WEB_JWT_SECRET", "test-secret")
 
 
-# Nutzlasten, die direkt aus einer breiten Store-Abfrage kommen. Sie tragen in
-# `antworten.py` einen sprechenden Namen, aber (noch) keine Felder.
-OFFEN = {
-    ("get", "/api/council/places"),
-    ("get", "/api/council/wochenvorschau"),
-    ("get", "/api/council/haushalt"),
-    ("get", "/api/council/session/{ksinr}"),
-    ("get", "/api/council/decision/{decision_id}"),
-    ("get", "/api/council/qa-share/{token}"),
-    ("get", "/api/council/deep-research/{job_id}"),
-    ("get", "/api/council/public-stats"),
-    ("get", "/api/council/entity/{slug}"),
-    ("get", "/api/council/person/{slug}"),
-    ("get", "/api/council/person/{slug}/wortbeitraege"),
-    ("get", "/api/admin/llm-usage"),
-    ("get", "/api/admin/users/{user_id}"),
-    ("put", "/api/admin/place-candidates/{location_slug}"),
-}
+# Nutzlasten, die direkt aus einer breiten Store-Abfrage kommen und in
+# `antworten.py` zwar einen sprechenden Namen tragen, aber keine Felder.
+# Leer seit 09/2026 — ein neuer Eintrag hier ist eine Entscheidung, kein Rest.
+OFFEN: set[tuple[str, str]] = set()
 
-# Kein JSON-Body: zwei SSE-Ströme und eine Bilddatei.
+# Kein JSON-Body: zwei SSE-Ströme und eine Bilddatei. Ihre Medientypen und
+# Ereignis-Arten stehen als `responses=` am Dekorator (s. `antworten.py`,
+# Abschnitt „Antworten, die kein JSON sind"); der Test unten prüft, dass sie
+# dort auch wirklich ankommen.
 KEIN_JSON = {
     ("post", "/api/council/ask"),
     ("get", "/api/council/deep-research/{job_id}/events"),
     ("get", "/api/council/plan-bild/{document_id}"),
+}
+
+#: Welchen Medientyp diese drei Endpunkte liefern MÜSSEN.
+KEIN_JSON_MEDIENTYP = {
+    ("post", "/api/council/ask"): "text/event-stream",
+    ("get", "/api/council/deep-research/{job_id}/events"): "text/event-stream",
+    ("get", "/api/council/plan-bild/{document_id}"): "image/jpeg",
 }
 
 
@@ -115,6 +109,32 @@ def test_ausnahmeliste_ist_nicht_veraltet(endpunkte):
     )
 
 
+def test_stroeme_und_bilder_nennen_ihren_medientyp():
+    """Die drei Nicht-JSON-Endpunkte müssen sagen, WAS sie liefern.
+
+    Ohne `responses=` erzeugt FastAPI für sie ein leeres
+    `application/json`-Schema — die Doku behauptete damit ein JSON-Objekt, wo
+    ein SSE-Strom bzw. ein JPEG kommt, und beide Generatoren bauten daraus
+    einen Typ, den nie jemand bekommt. Ein falsches Schema ist schlechter als
+    keins, deshalb ein Test und keine Konvention.
+    """
+    from app.main import app
+
+    spec = app.openapi()
+    fehlend = []
+    for (methode, pfad), medientyp in sorted(KEIN_JSON_MEDIENTYP.items()):
+        inhalt = (spec["paths"][pfad][methode].get("responses", {})
+                  .get("200", {}).get("content", {}))
+        if medientyp not in inhalt:
+            fehlend.append(f"{methode.upper()} {pfad} → erwartet {medientyp}, "
+                           f"da steht {sorted(inhalt) or 'nichts'}")
+    assert not fehlend, (
+        "Diese Endpunkte nennen ihren Medientyp nicht. Die passende "
+        "`responses=`-Angabe steht in web/backend/app/antworten.py:\n  "
+        + "\n  ".join(fehlend)
+    )
+
+
 def test_bekannte_endpunkte_sind_nicht_verschwunden(endpunkte):
     """Die Listen oben nennen echte Pfade — ein Tippfehler oder ein
     umbenannter Endpunkt soll auffallen, nicht stillschweigend durchrutschen."""
@@ -170,12 +190,12 @@ def test_nullable_felder_sind_swift_lesbar():
     Pydantic schreibt sie als ``anyOf`` mit einem ``null``-Zweig — gültiges
     OpenAPI 3.1, aber ``swift-openapi-generator`` lässt solche Eigenschaften
     STILL weg (gemessen 30.08.2026: 139 Felder in 55 Schemata, u. a.
-    ``GespraecheListe.einstellung``). ``scripts/openapi_schnitt.py`` zieht sie
+    ``ConversationList.saves_conversations``). ``scripts/openapi_schnitt.py`` zieht sie
     deshalb zusammen; dieser Test hält fest, dass das auch weiter passiert.
 
     Auch ``$ref`` neben ``null`` fällt darunter — der Schnitt schreibt solche
     Objekte aus, statt sie zu verweisen, weil der Generator sie sonst ebenfalls
-    weglässt (``Merkeintrag.session`` war genau dieser Fall).
+    weglässt (``BookmarkEntry.session`` war genau dieser Fall).
     """
     import json
 
@@ -205,35 +225,56 @@ def test_nullable_felder_sind_swift_lesbar():
 
 
 def test_zeilen_typen_kennen_alle_spalten_ihrer_tabelle():
-    """``Beschlusszeile``/``Sitzungszeile`` zählen Spalten auf — das ist nur
-    sicher, solange die Aufzählung vollständig bleibt.
+    """``DecisionRow``/``SessionRow``/``AdminPlaceCandidate`` zählen Spalten
+    auf — das ist nur sicher, solange die Aufzählung vollständig bleibt.
 
     Ein TypedDict ENTFERNT, was es nicht kennt. Bekäme ``council_decisions``
     eine neue Spalte, verschwände sie stillschweigend aus der API — kein
     Fehler, nur fehlende Daten in Web und App. Dieser Test macht daraus einen
     roten Lauf.
+
+    ``AdminPlaceCandidate`` steht hier, weil ``location_candidates`` mit
+    ``SELECT l.*`` arbeitet: Jede neue Spalte von ``council_locations`` ist
+    sofort Teil der Antwort — und fiele ohne Eintrag im TypedDict genauso
+    still wieder heraus.
+
+    ``Herkunft`` kam dazu, als ``provenance`` in zwölf Antwortformen vom
+    offenen ``dict[str, Any]`` auf eine beschriebene Abbildung umgestellt
+    wurde. Ohne diesen Test wäre das ein Rückschritt gewesen: Vorher ging
+    jede neue Spalte von ``council_provenance`` unbesehen durch, danach
+    verschwände sie stumm. Der Test dreht das um — jetzt wird es ein roter
+    Lauf. ``key`` steht in ``ENTFERNT``, weil ``get_herkunft`` den internen
+    Fingerabdruck vor der Ausgabe wegnimmt.
     """
     import tempfile
     from typing import get_type_hints
 
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-    from app.antworten import Beschlusszeile, Sitzungszeile
+    from app.antworten import (AdminPlaceCandidate, DecisionRow, Herkunft,
+                               SessionRow, VideoResult)
     from council.store import CouncilStore
+
+    #: Spalten, die der Store vor der Ausgabe absichtlich entfernt.
+    ENTFERNT = {"council_provenance": {"key"}}
 
     with tempfile.TemporaryDirectory() as d:
         store = CouncilStore(Path(d) / "council.sqlite")
         try:
             spalten = {
-                "council_decisions": {r[1] for r in store._conn.execute(
-                    "PRAGMA table_info(council_decisions)")},
-                "council_sessions": {r[1] for r in store._conn.execute(
-                    "PRAGMA table_info(council_sessions)")},
+                tabelle: {r[1] for r in store._conn.execute(
+                    f"PRAGMA table_info({tabelle})")} - ENTFERNT.get(tabelle, set())
+                for tabelle in ("council_decisions", "council_sessions",
+                                "council_locations", "council_provenance",
+                                "council_video_results")
             }
         finally:
             store.close()
 
-    for typ, tabelle in ((Beschlusszeile, "council_decisions"),
-                         (Sitzungszeile, "council_sessions")):
+    for typ, tabelle in ((DecisionRow, "council_decisions"),
+                         (SessionRow, "council_sessions"),
+                         (AdminPlaceCandidate, "council_locations"),
+                         (Herkunft, "council_provenance"),
+                         (VideoResult, "council_video_results")):
         deklariert = set(get_type_hints(typ, include_extras=True))
         fehlend = spalten[tabelle] - deklariert
         assert not fehlend, (
@@ -241,6 +282,30 @@ def test_zeilen_typen_kennen_alle_spalten_ihrer_tabelle():
             f"damit still aus der API:\n  " + "\n  ".join(sorted(fehlend)) +
             "\nIn web/backend/app/antworten.py ergänzen (als NotRequired)."
         )
+
+
+def test_ortseintrag_kennt_alle_felder_des_dataclass():
+    """``PlaceEntry`` zählt die Felder von ``council.places.Place`` auf.
+
+    ``public_place`` reicht das Dataclass per ``asdict`` durch — ein neues
+    Feld dort wäre sofort Teil der Antwort und fiele ohne Eintrag hier genauso
+    still wieder heraus. Derselbe Grund wie beim Spalten-Test darüber, nur
+    dass die Quelle kein ``PRAGMA`` hat.
+    """
+    from dataclasses import fields
+    from typing import get_type_hints
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from app.antworten import PlaceEntry
+    from council.places import Place
+
+    deklariert = set(get_type_hints(PlaceEntry, include_extras=True))
+    fehlend = {f.name for f in fields(Place)} - deklariert
+    assert not fehlend, (
+        "PlaceEntry kennt diese Felder von council.places.Place nicht — sie "
+        "fallen damit still aus /api/council/places:\n  "
+        + "\n  ".join(sorted(fehlend))
+    )
 
 
 def test_keine_wirkungslosen_migrationspaare():
@@ -288,9 +353,9 @@ def test_keine_wirkungslosen_migrationspaare():
 #: Bot fällt dort auf seinen direkten Datenbankweg zurück. Das ist ein Befund
 #: für das andere Repo, kein Ziel für einen Wächter hier.
 OEFFENTLICHE_PFADE = (
-    "/api/social/hoechste-beschluss-id",
-    "/api/social/neue-beschluesse",
-    "/api/social/wochenvorschau",
+    "/api/social/highest-decision-id",
+    "/api/social/new-decisions",
+    "/api/social/week-preview",
 )
 
 
@@ -348,4 +413,34 @@ def test_deutsche_sperrlisten_bleiben_deutsch():
     assert not fehlend, (
         "Diese deutschen Sperrlisten haben ihr Stichwort verloren — vermutlich "
         "hat ein Umbenennen es mitgenommen:\n  " + "\n  ".join(fehlend)
+    )
+
+
+def test_die_aufzaehlungen_stehen_nur_einmal():
+    """Eine Vereinigung im Vertrag muss zu ihrer Quelle im Code passen.
+
+    Bis 09/2026 führte das Web-Frontend die Aufzählungen von Hand — welche
+    Werte ein Beschluss-Ergebnis oder ein Konto-Status annehmen kann, stand
+    dort noch einmal. Eine Abschrift veraltet: Die Status-Vereinigung kannte
+    ``pending`` und ``active``, den dritten Wert ``blocked`` nicht.
+
+    Jetzt stehen sie im Vertrag, und beide Clients erben sie. Damit sie dort
+    stimmen, hält dieser Test sie gegen die Stelle, die sie wirklich bestimmt:
+    die Ergebnis-Tupel des Stores.
+    """
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from app import antworten, schemas
+    from council.store import CouncilStore
+
+    aus_dem_store = set(CouncilStore._VOTE_OUTCOMES) | set(CouncilStore._REPORT_OUTCOMES)
+    im_vertrag = set(antworten.Beschlussergebnis.__args__)
+    assert im_vertrag == aus_dem_store, (
+        "Die Ergebnis-Aufzählung im Vertrag passt nicht zu den Tupeln des "
+        f"Stores.\n  Vertrag: {sorted(im_vertrag)}\n  Store:   {sorted(aus_dem_store)}\n"
+        "Ein Wert, den der Vertrag verschweigt, ist ein 500er in dem Moment, "
+        "in dem er auftaucht — und einer zu viel eine Zusage, die niemand hält."
+    )
+    assert set(schemas.Beschlussergebnis.__args__) == im_vertrag, (
+        "antworten.Beschlussergebnis und schemas.Beschlussergebnis sind "
+        "auseinandergelaufen — zwei Aufzählungen für dieselbe Sache."
     )

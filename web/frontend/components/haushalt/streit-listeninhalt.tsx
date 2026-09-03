@@ -218,7 +218,7 @@ export function StreitListenInhalt({ daten, year }: {
                       aus {eigene.length} Position{eigene.length === 1 ? "" : "en"}
                     </span>
                   )}
-                  <Beleg q="aenderungsliste" h={daten ? daten.herkunft[String(s.herkunft_id)] ?? null : null} />
+                  <Beleg q="aenderungsliste" h={daten ? daten.provenance[String(s.herkunft_id)] ?? null : null} />
                 </p>
               );
             })}

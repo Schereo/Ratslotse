@@ -240,14 +240,14 @@ def pruefe_llm(text: str, source: str) -> tuple[bool, str]:
     Sonderbaufläche", das wörtlich in der Vorlage steht. Ein Wächter, der
     alles verwirft, leert nur die Karten (gemessen 30.08.26).
     """
-    system = prompts.get("social_kritiker_system")
-    user = prompts.render("social_kritiker_user", source=source[:60_000], text=text)
+    system = prompts.get("social_critic_system")
+    user = prompts.render("social_critic_user", source=source[:60_000], text=text)
     try:
         resp = llm.chat_complete(
             model=MODEL, response_format={"type": "json_object"},
             messages=[{"role": "system", "content": system},
                       {"role": "user", "content": user}],
-            max_tokens=600, _feature="social_kritiker")
+            max_tokens=600, _feature="social_critic")
         roh = (resp.choices[0].message.content or "").strip()
         if roh.startswith("```"):
             roh = roh.strip("`")

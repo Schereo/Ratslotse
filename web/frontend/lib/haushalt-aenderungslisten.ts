@@ -1,7 +1,7 @@
 // Typen und Rechenwege für „Was in den Listen stand" — die Inhalts-Ebene
 // unter dem Streit-Abschnitt (/haushalt/mitreden#streit).
 //
-// Die Daten kommen aus `/council/haushalt/aenderungslisten`: je Dokument
+// Die Daten kommen aus `/council/budget/amendment-lists`: je Dokument
 // (Verw. I–III, Beschluss-Datei des AFB) die Positionen des
 // Haushaltsjahrgangs und die Zusammenstellungen aller Planjahre. Jede
 // Positionsliste wurde beim Einlesen gegen ihre eigene Zusammenstellung
@@ -100,18 +100,18 @@ export type FhhSumme = {
 };
 
 export type AenderungslistenDaten = {
-  zeilen: AenderungsZeile[];
-  summen: AenderungsSumme[];
+  rows: AenderungsZeile[];
+  totals: AenderungsSumme[];
   /** Der Finanzhaushalt — leer, solange sein Ingest nicht gelaufen ist. */
-  fhh_zeilen?: FhhZeile[];
-  fhh_summen?: FhhSumme[];
-  herkunft: Record<string, Herkunft>;
+  cash_budget_rows?: FhhZeile[];
+  cash_budget_totals?: FhhSumme[];
+  provenance: Record<string, Herkunft>;
 };
 
 export function herkunftVon(
   daten: AenderungslistenDaten | null, id: number | null | undefined,
 ): Herkunft | null {
-  return daten && id != null ? daten.herkunft[String(id)] ?? null : null;
+  return daten && id != null ? daten.provenance[String(id)] ?? null : null;
 }
 
 /** Anzeige-Namen der Dokumente. Die Schlüssel kommen aus
@@ -151,10 +151,10 @@ export function listenFuerJahr(
   if (!daten || year == null) return [];
   const aus: ListeImJahr[] = [];
   for (const key of REIHENFOLGE) {
-    const zeilen = daten.zeilen.filter(
+    const zeilen = daten.rows.filter(
       (z) => z.budget_year === year && z.list_key === key);
     if (!zeilen.length) continue;
-    const summen = daten.summen.filter(
+    const summen = daten.totals.filter(
       (s) => s.budget_year === year && s.list_key === key);
     const imJahr = summen.filter((s) => s.year === year);
     const eigene = imJahr.find((s) => s.own === 1);
@@ -190,7 +190,7 @@ export function politikZeilen(
   daten: AenderungslistenDaten | null, year: number | null,
 ): AenderungsSumme[] {
   if (!daten || year == null) return [];
-  return daten.summen.filter(
+  return daten.totals.filter(
     (s) => s.budget_year === year && s.year === year && s.kind === "list"
       && !s.label.includes("nderungsliste"));
 }
@@ -216,7 +216,7 @@ export function positionenVon(
 ): AenderungsZeile[] {
   if (!daten) return [];
   const kern = labelKern(summe.label);
-  return daten.zeilen.filter(
+  return daten.rows.filter(
     (z) => z.budget_year === summe.budget_year && z.year === summe.year
       && z.list_key === summe.list_key && z.author != null
       && kern.includes(labelKern(z.author)));
@@ -264,7 +264,7 @@ export function verfahrensWeg(
   daten: AenderungslistenDaten | null, budget_year: number | null,
 ): VerfahrensWeg | null {
   if (!daten || budget_year == null) return null;
-  const imJahr = daten.summen.filter(
+  const imJahr = daten.totals.filter(
     (s) => s.budget_year === budget_year && s.year === budget_year);
   if (!imJahr.length) return null;
 
@@ -319,11 +319,11 @@ export function fhhListenFuerJahr(
   if (!daten || year == null) return [];
   const aus: FhhListeImJahr[] = [];
   for (const key of REIHENFOLGE) {
-    const zeilen = (daten.fhh_zeilen ?? []).filter(
+    const zeilen = (daten.cash_budget_rows ?? []).filter(
       (z) => z.budget_year === year && z.list_key === key
         && (z.inflow != null || z.outflow != null));
     if (!zeilen.length) continue;
-    const eigene = (daten.fhh_summen ?? []).find(
+    const eigene = (daten.cash_budget_totals ?? []).find(
       (s) => s.budget_year === year && s.year === year && s.list_key === key
         && s.own === 1);
     aus.push({

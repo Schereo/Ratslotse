@@ -28,12 +28,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from council.store import (  # noqa: E402
+from council.store import CouncilStore  # noqa: E402
+from council.store_schema import (  # noqa: E402
     _FACH_SPALTEN,
     _GELD_SPALTEN,
     _REST_SPALTEN,
     _STRUKTUR_SPALTEN,
-    CouncilStore,
 )
 
 #: Alle vier Listen zusammen — sie werden in `_migrate` nacheinander angewandt.
@@ -101,7 +101,7 @@ def test_die_migration_fuehrt_eine_alte_form_in_die_frische_ueber(tmp_path):
     alt_pfad = tmp_path / "alt.sqlite"
     conn = sqlite3.connect(alt_pfad)
     conn.execute(
-        "CREATE TABLE council_integrierte_schulden ("
+        "CREATE TABLE council_integrated_debt ("
         "year INTEGER PRIMARY KEY, ars TEXT NOT NULL, population REAL, "
         "insgesamt REAL NOT NULL, per_capita REAL, core_budget REAL, "
         "extra_budgets REAL, sonstige REAL, extra_under_50 REAL, "
@@ -110,8 +110,8 @@ def test_die_migration_fuehrt_eine_alte_form_in_die_frische_ueber(tmp_path):
     conn.commit()
     conn.close()
 
-    gewachsen = _frisches_schema(alt_pfad)["council_integrierte_schulden"]
-    frisch = _frisches_schema(tmp_path / "frisch.sqlite")["council_integrierte_schulden"]
+    gewachsen = _frisches_schema(alt_pfad)["council_integrated_debt"]
+    frisch = _frisches_schema(tmp_path / "frisch.sqlite")["council_integrated_debt"]
     assert gewachsen == frisch, (
         "Nach der Migration hat die gewachsene Datenbank andere Spalten als "
         f"eine frische: nur gewachsen {sorted(gewachsen - frisch)}, "

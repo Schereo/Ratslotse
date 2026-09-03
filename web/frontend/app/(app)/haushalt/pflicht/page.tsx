@@ -128,12 +128,12 @@ export default function PflichtPage() {
   // den Satz zu schreiben hieße, beim nächsten Nachzug still zu lügen.
   const produktVon = data?.product_years?.length ? Math.min(...data.product_years) : null;
   const { data: produktdaten } = useFetch<ProdukteAntwort>(
-    produktJahr ? `/council/haushalt/produkte?year=${produktJahr}` : null,
+    produktJahr ? `/council/budget/products?year=${produktJahr}` : null,
   );
 
   const befunde = useMemo<Map<BereichSchluessel, SpielraumBefund>>(
     () => (produktdaten && produktJahr
-      ? spielraumBefunde(produktdaten.produkte, produktJahr)
+      ? spielraumBefunde(produktdaten.products, produktJahr)
       : new Map()),
     [produktdaten, produktJahr],
   );
@@ -362,9 +362,9 @@ export default function PflichtPage() {
             Für {rows.length - geprueft.length} von {rows.length} Teilhaushalten gibt es keine Angabe:
             Die Produktebene reicht von {produktVon} bis {produktJahr} und deckt nicht jeden
             Teilhaushalt ab.
-            {produktdaten?.abdeckung_prozent != null && (
+            {produktdaten?.coverage_percent != null && (
               <> Die gefundenen Aufgaben erklären{" "}
-              {produktdaten.abdeckung_prozent.toLocaleString("de-DE", { maximumFractionDigits: 1 })}
+              {produktdaten.coverage_percent.toLocaleString("de-DE", { maximumFractionDigits: 1 })}
               &nbsp;% der für {produktJahr} geplanten Aufwendungen.</>
             )}{" "}
             Aufgabe für Aufgabe steht es auf der{" "}

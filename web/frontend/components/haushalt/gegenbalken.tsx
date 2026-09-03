@@ -231,13 +231,16 @@ export function Gegenbalken({ zeilen, year }: { zeilen: HaushaltZeile[]; year: n
             >
               {100 - einEnde >= 20 && (
                 <span className="whitespace-nowrap font-mono text-[9.5px] font-bold uppercase text-signal">
-                  {deMio(-balance)}&#8239;Mio.&nbsp;€ geplantes Minus
+                  {/* Schraffur = aus der Rücklage gedeckt; das stand nirgends
+                      dabei, und der Kasten hing frei zwischen den Balken
+                      (Durchsicht 02.09.2026). */}
+                  {deMio(-balance)}&#8239;Mio.&nbsp;€ geplantes Minus · aus der Rücklage
                 </span>
               )}
             </div>
             {100 - einEnde < 20 && (
               <p className="absolute right-0 top-6 font-mono text-[9.5px] font-bold uppercase text-signal">
-                {deMio(-balance)}&#8239;Mio.&nbsp;€ geplantes Minus
+                {deMio(-balance)}&#8239;Mio.&nbsp;€ geplantes Minus · aus der Rücklage
               </p>
             )}
           </>

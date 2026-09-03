@@ -60,9 +60,12 @@ import {
   NachbewilligungsBefund, NachbewilligungsBlock,
 } from "@/components/haushalt/supplementary-approvals";
 import { cn } from "@/lib/utils";
+import { ScrollZeile } from "@/components/ui";
 import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 import { SchrittPfad } from "@/components/haushalt/schritt-pfad";
 import { Seitenbuehne, ZaehlZahl } from "@/components/haushalt/seitenbuehne";
+import { Vollzug } from "@/components/haushalt/vollzug";
+import { berichteUrls, type VollzugDaten } from "@/lib/haushalt-vollzug";
 
 /** Hinweis auf die Prüfung — hier und nirgends sonst, weil das
  *  Rechnungsprüfungsamt genau diesen Vergleich seit Jahren beanstandet:
@@ -74,10 +77,10 @@ import { Seitenbuehne, ZaehlZahl } from "@/components/haushalt/seitenbuehne";
 function PruefungsHinweis() {
   // Nur die wiederholten Beanstandungen: Der volle Bestand ist rund 250 kB
   // Prosa und wird auf dieser Seite nirgends angezeigt.
-  const { data } = useFetch<PruefberichtDaten>("/council/haushalt/pruefberichte?mark=WB");
+  const { data } = useFetch<PruefberichtDaten>("/council/budget/audit-reports?mark=WB");
   const chain = useMemo(() => {
-    if (!data?.feststellungen?.length) return null;
-    return wiederholungsketten(data.feststellungen)
+    if (!data?.findings?.length) return null;
+    return wiederholungsketten(data.findings)
       .find((k) => k.key.includes("planistvergleich")) ?? null;
   }, [data]);
   if (!chain) return null;
@@ -158,6 +161,23 @@ function PlanIstInner() {
   const gewaehltesJahr = Number(useSearchParams().get("year")) || null;
   const { data, loading } = useFetch<HaushaltAuswahl<typeof FELDER[number]>>(haushaltUrl(FELDER));
   const [zahlenOffen, setZahlenOffen] = useState(false);
+  // Der Haushaltsvollzug hat seinen eigenen Jahrgang: Er läuft dem Abschluss
+  // um zwei Jahre voraus. Ohne Wahl zeigt er den jüngsten; die Teilhaushalte
+  // kommen nur für den gewählten Jahrgang mit (Endpunkt-Doku).
+  const [vollzugWahl, setVollzugWahl] = useState<number | null>(null);
+  const vollzugKopf = useFetch<VollzugDaten>("/council/budget/execution");
+  const vollzugJahr = vollzugWahl ?? vollzugKopf.data?.editions.at(-1) ?? null;
+  const vollzug = useFetch<VollzugDaten>(
+    vollzugJahr ? `/council/budget/execution?budget_year=${vollzugJahr}` : null);
+  const vollzugDaten = vollzug.data ?? vollzugKopf.data ?? null;
+  // Die Berichte des Vollzug-Jahrgangs bekommen im Verzeichnis eigene
+  // Nummern: Die Seite zeigt den Abschluss 2024 UND den Vollzug 2026 — über
+  // den Jahrgang der Seite fände das Verzeichnis für den Vollzug die
+  // falschen Papiere (die von 2024).
+  const jeDokument = useMemo(() => {
+    const urls = vollzugDaten && vollzugJahr ? berichteUrls(vollzugDaten, vollzugJahr) : [];
+    return urls.length ? { budget_execution: urls } : {};
+  }, [vollzugDaten, vollzugJahr]);
   const [massstab, setMassstab] = useState<HantelMassstab>("percent");
 
   const years = data?.plan_actual_years ?? [];
@@ -259,6 +279,7 @@ function PlanIstInner() {
   // `components/haushalt/source.tsx`) — die Zeilen stünden dann ohne Beleg da.
   const hatNachbewilligungen = (data.supplementary_approvals?.serie ?? []).length > 0;
   const quellen: QuellenSchluessel[] = [
+    ...(vollzugDaten?.reporting_dates.length ? (["budget_execution"] as const) : []),
     "jahresabschluss",
     ...(kasse ? (["cash_flow_statement"] as const) : []),
     "plan",
@@ -285,14 +306,10 @@ function PlanIstInner() {
       } else {
         wortlautBei.set(g.nr, b.name);
         imBild.add(g.nr);
-        einordnung = (
-          <>
-            {g.text}{" "}
-            <span className="font-mono text-[9.5px] uppercase tracking-[0.09em] text-muted-foreground">
-              — Jahresabschluss {year}, Abschnitt 6.3.1, Wortlaut der Verwaltung
-            </span>
-          </>
-        );
+        // Eingeklappt wie im Einnahmen-Block darüber: Fünf Zeilen Wortlaut
+        // unter jeder Bereichszeile machten die Liste zum Dokument, und die
+        // Seite trug zwei Muster für dieselbe Auskunft (Durchsicht 02.09.2026).
+        einordnung = <Warum reason={g} kompakt />;
       }
     } else if (alle.length) {
       einordnung = (
@@ -315,7 +332,7 @@ function PlanIstInner() {
     .sort((a, b) => Math.abs(b.delta_meur ?? 0) - Math.abs(a.delta_meur ?? 0));
 
   return (
-    <Quellenkontext keys={quellen} year={year}>
+    <Quellenkontext keys={quellen} jeDokument={jeDokument} year={year}>
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
         <Link href="/haushalt" className="hover:text-foreground">Haushalt</Link>
@@ -402,13 +419,25 @@ function PlanIstInner() {
         und Ergebnis nebeneinander.
       </p>
 
+      {/* Erst die Erwartung, dann das Ergebnis: Der Haushaltsvollzug steht VOR
+          den abgeschlossenen Jahren, weil er das Jahr zeigt, das gerade
+          läuft — und das der Abschluss erst zwei Jahre später einholt. */}
+      {vollzugDaten && vollzugJahr && vollzugDaten.reporting_dates.length > 0 && (
+        <Vollzug daten={vollzugDaten} year={vollzugJahr} onYear={setVollzugWahl}
+          beleg={(h) => <Beleg q="budget_execution" h={h} />} />
+      )}
+
+      <h2 className="mt-2 font-display text-[19px] font-bold tracking-tight">
+        Was aus dem Plan wurde
+      </h2>
+
       {/* Jahr-Umschalter: nur Jahre mit echtem Abschluss (scrollbar wie #497). */}
       {years.length > 1 && (
         <div className="flex flex-col gap-1.5">
           <span className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
             Abgeschlossenes Haushaltsjahr
           </span>
-          <div className="scrollbar-none -mx-1 flex items-center gap-1 overflow-x-auto px-1 py-0.5">
+          <ScrollZeile className="-mx-1 flex items-center gap-1 px-1 py-0.5">
             <div className="flex flex-none items-center gap-1 rounded-full border border-border bg-card p-1">
               {years.map((j) => (
                 <Link key={j} href={`/haushalt/plan-ist?year=${j}`} scroll={false}
@@ -418,7 +447,7 @@ function PlanIstInner() {
                 </Link>
               ))}
             </div>
-          </div>
+          </ScrollZeile>
         </div>
       )}
 
@@ -604,7 +633,7 @@ function PlanIstInner() {
           {/* Umschalter wie brutto/netto auf der Bereichsseite: Der Wechsel
               dreht die Reihenfolge, und darin steckt die Aussage. */}
           <div className="mb-3 flex flex-col gap-1.5">
-            <div className="scrollbar-none -mx-1 flex items-center gap-1 overflow-x-auto px-1 py-0.5">
+            <ScrollZeile className="-mx-1 flex items-center gap-1 px-1 py-0.5">
               <div className="flex w-max flex-none items-center gap-1 rounded-full border border-border bg-muted/40 p-1">
                 {([
                   ["percent", "Abweichung in Prozent"],
@@ -619,7 +648,7 @@ function PlanIstInner() {
                   </button>
                 ))}
               </div>
-            </div>
+            </ScrollZeile>
             <p className="text-[11.5px] leading-relaxed text-muted-foreground">
               {massstab === "percent"
                 ? "Gemessen am eigenen Plan — so lässt sich ein Bereich von 231 Mio. € mit einem von 6 Mio. € vergleichen. Vorn steht, wessen Plan am weitesten danebenlag."

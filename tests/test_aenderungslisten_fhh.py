@@ -327,3 +327,93 @@ def test_widerspruechliche_doppelzeile_reisst():
         parse_fhh_seiten(
             [seite_a, seite_b, summen],
             [linien([100, 150]), linien([100, 150]), linien([], [])])
+
+
+# ------------------------------------------------------ Die drei Abgewiesenen
+
+def position_ohne_nummer(y, sub_budget, werte, product="I10.089905.500",
+                         label=("Fliegerhorst",), page="70"):
+    """Eine Positionszeile OHNE Lfd. Nr. — beginnt mit dem THH in dessen Spalte."""
+    aus = [w(78, 88, y, sub_budget)]
+    if page:
+        aus.append(w(105, 120, y, page))
+    if product:
+        aus.append(w(134, 194, y, product))
+    x = 200
+    for part in label:
+        aus.append(w(x, x + 5 * len(part), y, part))
+        x += 5 * len(part) + 5
+    for field, text in werte.items():
+        aus.append(amount(text, KANTE[field], y))
+    return aus
+
+
+def test_position_mit_einzelnem_betrag_ohne_neues_soll():
+    """196998 (2019, Verw. I): Position 1 trägt nur „200.000" in den
+    Auszahlungen — kein Soll laut Entwurf, kein neues Soll. Ohne die Notform
+    blieb sie leer, und der Positionsprobe fehlten genau diese 200.000 €."""
+    tabelle = kopf(2019) + [
+        *position(104, 1, "03", {}, product="I10.080005.501",
+                  label=("Erschließung",)),
+        amount("200.000", KANTE["aus"], 130),
+        *position(160, 2, "03", {"soll": "8.855.000", "ein": "200.000",
+                                 "neu": "9.055.000"},
+                  product="I10.080619.565", label=("Einzahlungen",)),
+    ]
+    summen = summenblock(2019, [
+        ("Verwaltungsentwurf Stand: 17.10.18", "0", "0", "0", "0", None),
+        ("Änderungsliste Verw. I", "200.000", "200.000", "0", "0", None),
+        ("", "200.000", "200.000", "0", "0", None),
+    ])
+    aus = parse_fhh_seiten([tabelle, summen], [linien([90, 200]), linien([], [])])
+    z1, z2 = aus.zeilen
+    assert (z1.inflow, z1.outflow, z1.planned_new) == (None, 200_000, None)
+    assert (z2.inflow, z2.planned_new) == (200_000, 9_055_000)
+
+
+def test_fusszeile_ist_keine_notform():
+    """„Seite 3" setzt seine Ziffer in die Auszahlungs-Spalte — ein einzelner
+    Betrag, aber kein voller Hunderter. Die Position bleibt leer, und die
+    Positionsprobe meldet das Dokument, statt 7 € zu erfinden (7 liegt über
+    der Toleranz von 2 € je Zeile; eine 3 schluckte sie)."""
+    tabelle = kopf(2019) + [
+        *position(104, 1, "03", {}),
+        amount("7", KANTE["aus"], 130),
+    ]
+    summen = summenblock(2019, [
+        ("Änderungsliste Verw. I", "0", "7", "-7", "0", None),
+    ])
+    with pytest.raises(ListenFehler, match="Positionsprobe 2019"):
+        parse_fhh_seiten([tabelle, summen], [linien([90, 200]), linien([], [])])
+
+
+def test_positionen_ohne_laufende_nummer_zaehlen_durch():
+    """212802 (Beschluss 2020), Block 2022: acht Positionen, keine trägt eine
+    Lfd. Nr. Als nummerierte Zeilen gelesen wurde „03 70 …" zur Position 3 im
+    Teilhaushalt 70 — zwei überlebten das Falten, sechs fielen weg."""
+    tabelle = kopf(2022) + [w(54, 70, 78, "Nr."), w(78, 95, 78, "THH")] + [
+        *position_ohne_nummer(104, "03", {"soll": "0", "ein": "3.000.000",
+                                          "neu": "3.000.000"}),
+        *position_ohne_nummer(160, "07", {"soll": "300.000", "aus": "1.650.000",
+                                          "neu": "1.950.000"},
+                              product="I10.180800.500", label=("Käthe-Kollwitz",)),
+    ]
+    summen = summenblock(2022, [
+        ("Änderungsliste Verw. I", "3.000.000", "1.650.000", "1.350.000", "0", None),
+    ])
+    aus = parse_fhh_seiten([tabelle, summen], [linien([90, 200]), linien([], [])])
+    assert [(z.seq, z.sub_budget, z.inflow, z.outflow) for z in aus.zeilen] == [
+        (1, 3, 3_000_000, None), (2, 7, None, 1_650_000)]
+
+
+def test_nummerierte_zeilen_bleiben_nummeriert_trotz_thh_kopf():
+    """Mit Kopfwort „THH" auf der Seite muss die gewöhnliche Zeile „4 03 …"
+    weiter ihre Nummer behalten — die erste Zahl steht 24 pt links der Kante."""
+    tabelle = kopf(2026) + [w(54, 70, 78, "Nr."), w(78, 95, 78, "THH")] + [
+        *position(104, 4, "03", {"soll": "0", "aus": "400.000", "neu": "400.000"}),
+    ]
+    summen = summenblock(2026, [
+        ("Änderungsliste Verw. I", "0", "400.000", "-400.000", "0", None),
+    ])
+    aus = parse_fhh_seiten([tabelle, summen], [linien([90, 200]), linien([], [])])
+    assert [(z.seq, z.sub_budget, z.outflow) for z in aus.zeilen] == [(4, 3, 400_000)]

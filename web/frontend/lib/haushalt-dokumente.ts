@@ -12,7 +12,7 @@
 // Nachprüfbarkeit gebaut ist.
 //
 // Hier steht deshalb die andere Hälfte: je Quelle und Jahrgang das konkrete
-// PDF, aus `GET /api/council/haushalt/dokumente` (Zuordnung und Begründung in
+// PDF, aus `GET /api/council/budget/documents` (Zuordnung und Begründung in
 // `CouncilStore._DOKUMENT_QUELLEN`). Die statische Adresse bleibt die
 // Rückfallebene — aber wo sie greift, heißt der Link auch nicht mehr
 // „Dokument öffnen".
@@ -47,11 +47,11 @@ export type HaushaltDokument = {
 export type HaushaltDokumente = Partial<Record<QuellenSchluessel, HaushaltDokument[]>>;
 
 export type DokumenteAntwort = {
-  dokumente: HaushaltDokumente;
+  documents: HaushaltDokumente;
   /** Je Quelle die Jahrgänge, die wirklich im Bestand stehen — die Grundlage
    *  des Datenstands im Quellenverzeichnis (s. `standText`). Kommt aus
    *  derselben Antwort, weil es an derselben Stelle gebraucht wird. */
-  jahrgaenge: Jahrgaenge;
+  editions: Jahrgaenge;
 };
 
 /** Das Dokument, auf das ein Beleg zeigt — samt allem, was danebengeschrieben
@@ -204,7 +204,10 @@ export function nummerierung(
   const aus: NummerEintrag[] = [];
   for (const q of key) {
     const benutzte = jeDokument[q];
-    if (benutzte && benutzte.length > 1) {
+    // Auch EIN benanntes Papier bekommt seinen Eintrag: Sonst fiele die Art
+    // auf die Jahrgangsliste zurück — und die kennt nur den Jahrgang der
+    // Seite, nicht den der Zahl (Vollzug 2026 auf der Abschluss-Seite 2024).
+    if (benutzte && benutzte.length >= 1) {
       // DIE SEITE SAGT, WELCHE PAPIERE SIE BENUTZT — nicht der Jahrgang.
       //
       // Ein erster Versuch nahm die Dokumente des gezeigten Jahres. Auf

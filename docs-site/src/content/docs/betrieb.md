@@ -80,13 +80,14 @@ sind, prüfen `tests/test_changelog_fragmente.py` und
 
 ## Deploy-Wege
 
-Fünf Workflows in `.github/workflows/`:
+Sechs Workflows in `.github/workflows/`:
 
 | Workflow | Trigger | Was passiert |
 |---|---|---|
 | `test.yml` | Push auf `main`, jeder Pull Request | Python 3.12, `requirements.txt` + `requirements-dev.txt`, dann `pytest tests/ -q`. |
 | `deploy.yml` | `pull_request: types:[closed]` auf `main` mit `merged == true`, zusätzlich `workflow_dispatch` | Test-Gate (derselbe Lauf wie `test.yml`, als harte `needs`-Abhängigkeit), dann Doku-Build, rsync des Codes auf die App-VM (SSH mit ProxyJump über die Edge-VM) und Neustart der beiden systemd-Services. |
 | `deploy-dev.yml` | jeder Push auf `dev`, zusätzlich `workflow_dispatch` | Deployt auf die Dev-VM — ohne Test-Gate (siehe unten). |
+| `deploy-feature.yml` | jeder Push auf `feature`, zusätzlich `workflow_dispatch` | Deployt auf die **zweite Instanz auf derselben Dev-VM** (eigenes Verzeichnis, eigene Ports, eigene Datenbanken) — ebenfalls ohne Test-Gate. |
 | `docs.yml` | PR und Push auf `main`, nur bei Änderungen unter `docs-site/**` | Baut die Starlight-Doku und schlägt fehl, wenn sie nicht mehr baut (kaputte Links, Frontmatter, MDX). |
 | `docs-review.yml` | PR `opened` / `reopened` / `ready_for_review`, keine Forks | KI-Review, das den Diff auf Doku-Drift prüft und **genau einen** PR-Kommentar postet. Nur `contents: read` — die Action kann nichts committen. `continue-on-error: true`, der Review ist also kein Qualitäts-Gate. |
 
@@ -153,10 +154,45 @@ sind (der Prod-Build setzt die Variable nicht, dort liefern solche Seiten
 werden, braucht die Dev-VM dafür keinen `.env`-Eintrag.
 
 Der Lauf hat **kein Test-Gate** (die Tests laufen ohnehin an jedem PR), ein
-`concurrency`-Block mit `cancel-in-progress: true` (bei schnell
-aufeinanderfolgenden Pushes gewinnt der neueste), ein Kommando-Timeout von 30
-Minuten für `npm ci` + `next build` und am Ende zwei Smoke-Checks gegen
-Frontend und `/api/health`. Prod bleibt davon vollständig unberührt.
+Kommando-Timeout von 30 Minuten für `npm ci` + `next build` und am Ende zwei
+Smoke-Checks gegen Frontend und `/api/health` plus die Rauchprobe. Prod bleibt
+davon vollständig unberührt.
+
+Der `concurrency`-Block teilt sich die Gruppe mit dem Feature-Deploy (siehe
+[Feature-Umgebung](#feature-umgebung)) und steht auf `cancel-in-progress:
+false`. Beide Instanzen liegen auf derselben VM; zwei gleichzeitige
+`next build` passen dort nicht nebeneinander, und der OOM-Killer trifft dann
+den *laufenden* Dienst der anderen Instanz. Sie bauen deshalb nacheinander,
+und keiner der beiden Läufe wird abgebrochen — ein abgebrochener Deploy
+hinterließe eine Umgebung auf altem Stand, ohne dass es jemandem auffällt.
+
+---
+
+## Feature-Umgebung
+
+Auf **derselben VM** wie die Dev-Umgebung läuft eine zweite, vollständig
+getrennte Instanz für den Branch `feature`. Sie hat ein eigenes
+Arbeitsverzeichnis, eigene systemd-Units, eigene Ports, eine eigene `.env`
+und **eigene Datenbanken** — dev und feature teilen sich nur die Maschine.
+
+Wozu: `dev` trägt den Stand, der als nächstes nach `main` fährt. Wer etwas
+Größeres oder Wackeliges vorzeigen will, ohne diesen Stand anzufassen, mergt
+es nach `feature` und zeigt es unter der eigenen Subdomain.
+
+- **Eigene Datenbanken sind der Kern der Trennung.** Ein Feature-Branch
+  bringt typischerweise Migrationen mit. Teilte er die Dateien mit dev, zöge
+  die erste Migration die Dev-Umgebung mit um — und zurück käme man nur über
+  ein Backup. Der Bestand wurde einmalig als konsistenter
+  `sqlite3`-Backup-Schnappschuss aus der Dev-Datenbank kopiert.
+- **Gleiches Umgebungs-Gate wie dev** (`NEXT_PUBLIC_RATSLOTSE_ENV=dev`) —
+  sonst wäre die Instanz für genau die Features blind, für die man sie baut.
+- **Basic-Auth vor dem vhost**, kein Mailversand, keine Crons.
+- **Kein Force-Push nötig, aber erlaubt:** `feature` ist ein Wegwerf-Zweig.
+  Der Deploy holt den Stand per `git fetch` + `git reset --hard <sha>` und
+  kommt mit jedem Umbau der Historie zurecht.
+
+Frisch halten heißt: `dev` nach `feature` mergen (nicht umgekehrt). Fertige
+Arbeit geht wie immer per Pull Request nach `dev`.
 
 ---
 

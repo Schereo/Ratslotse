@@ -84,7 +84,7 @@ test.describe("Topics", () => {
     await page.screenshot({ path: "test-results/screenshots/05-topics-list.png", fullPage: true });
   });
 
-  test("delete opens confirm dialog, not window.confirm", async ({ page }) => {
+  test("die Lösch-Rückfrage steht in der Karte, nicht in window.confirm", async ({ page }) => {
     await mockUser(page);
     await page.route("**/api/topics", (route) =>
       route.fulfill({
@@ -102,11 +102,22 @@ test.describe("Topics", () => {
       route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ committees: [] }) }),
     );
 
+    // Ein echtes `window.confirm` würde Playwright automatisch wegklicken —
+    // deshalb wird hier mitgeschrieben, ob überhaupt eines auftaucht.
+    const browserDialoge: string[] = [];
+    page.on("dialog", (d) => { browserDialoge.push(d.type()); void d.dismiss(); });
+
     await page.goto("/topics");
-    // Click the trash icon — should open a custom dialog, NOT window.confirm
-    await page.locator('[aria-label*="Löschen"], button:has([data-lucide="trash-2"])').first().click();
-    await expect(page.getByRole("dialog")).toBeVisible();
-    await expect(page.getByText("Thema löschen")).toBeVisible();
+    // Der Knopf trägt den Themennamen in seiner Beschriftung („Radwege
+    // löschen") — klein geschrieben. Der alte Selektor suchte nach
+    // `aria-label*="Löschen"` mit großem L und fand nichts.
+    await page.getByRole("button", { name: "Radwege löschen" }).click();
+    // Der Punkt dieses Tests ist unverändert: Es darf KEIN `window.confirm`
+    // sein. Nur steht die Rückfrage seit dem Umbau in der Karte selbst und
+    // nicht mehr in einem Dialog darüber.
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(page.getByText(/Thema löschen\? Du bekommst dazu keine Treffer mehr\./)).toBeVisible();
+    expect(browserDialoge, "window.confirm hätte den Test blockiert").toEqual([]);
     // animations: "disabled" fast-forwards the dialog fade so the capture isn't
     // taken mid-animation (which renders the content semi-transparent).
     await page.screenshot({ path: "test-results/screenshots/05-topics-confirm-dialog.png", fullPage: true, animations: "disabled" });

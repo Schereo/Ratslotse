@@ -46,11 +46,11 @@ from dataclasses import dataclass
 
 from council.herkunft import Herkunft
 
-PROBE_KASKADE = "gebuehren_kaskade"
-PROBE_DIVISION = "gebuehren_division"
-PROBE_SATZANZAHL = "gebuehrensaetze_anzahl"
-PROBE_ECKWERTE = "gebuehrensaetze_eckwerte"
-PROBE_VORJAHRESVERGLEICH = "gebuehrensaetze_vorjahresvergleich"
+PROBE_KASKADE = "fee_cascade"
+PROBE_DIVISION = "fee_division"
+PROBE_SATZANZAHL = "fee_rate_count"
+PROBE_ECKWERTE = "fee_rate_benchmarks"
+PROBE_VORJAHRESVERGLEICH = "fee_rate_prior_year_comparison"
 
 PROBEN: dict[str, str] = {
     PROBE_KASKADE:
@@ -87,9 +87,9 @@ class GebuehrenFehler(RuntimeError):
 
 BEREICHE: dict[str, tuple[str, str]] = {
     # Kürzel → (Muster im Anlagenkopf, Name für die Anzeige)
-    "abfallbehandlung": (r"Abfallbehandlungsanlagen", "Abfallbehandlungsanlagen"),
-    "abfallsammlung": (r"Abfallsammlung", "Abfallsammlung"),
-    "strassenreinigung": (r"Stra[ßs]enreinigung", "Straßenreinigung"),
+    "waste_treatment": (r"Abfallbehandlungsanlagen", "Abfallbehandlungsanlagen"),
+    "waste_collection": (r"Abfallsammlung", "Abfallsammlung"),
+    "street_cleaning": (r"Stra[ßs]enreinigung", "Straßenreinigung"),
 }
 
 #: Die Einheit, in der die Bezugsmenge gemessen wird — sie steht im Dokument
@@ -134,7 +134,7 @@ _BETRAG_RE = re.compile(_BETRAG)
 
 
 def _eur(roh: str) -> float:
-    return float(roh.replace(" ", "").replace(".", "").replace(",", "."))
+    return float("".join(roh.split()).replace(".", "").replace(",", "."))
 
 
 def _glaetten(text: str) -> str:
@@ -203,34 +203,34 @@ class _Satzart:
 # Bezeichnungen stehen 2026 als Zeilen. Die Einheiten sind keine Ableitung,
 # sondern stammen aus deren Kopf bzw. Bezeichnung.
 SATZARTEN: tuple[_Satzart, ...] = (
-    _Satzart("abfallbehandlung_mg", "abfallbehandlung", "AB", "Gebühr je Mg",
+    _Satzart("waste_treatment_per_mg", "waste_treatment", "AB", "Gebühr je Mg",
              "Mg", r"Geb[üu]hr je Mg"),
-    _Satzart("grundgebuehr", "abfallsammlung", "AS", "Grundgebühr",
+    _Satzart("base_fee", "waste_collection", "AS", "Grundgebühr",
              "Grundgebühr", r"Grundgeb[üu]hr"),
-    _Satzart("litergebuehr", "abfallsammlung", "AS", "Allgemeine Litergebühr",
+    _Satzart("per_litre_fee", "waste_collection", "AS", "Allgemeine Litergebühr",
              "Liter Behältervolumen", r"Allg\.\s*Litergeb[üu]hr"),
-    _Satzart("biogrundmenge_60l", "abfallsammlung", "AS", "Biogrundmenge 60 L",
+    _Satzart("organic_base_volume_60l", "waste_collection", "AS", "Biogrundmenge 60 L",
              "60 L Biogrundmenge", r"Biogrundmenge\s+60\s*L"),
-    _Satzart("sperrmuellkarte", "abfallsammlung", "AS", "Sperrmüllkarte",
+    _Satzart("bulky_waste_card", "waste_collection", "AS", "Sperrmüllkarte",
              "Karte", r"Sperrm[üu]llkarte"),
-    _Satzart("gruengutkarte", "abfallsammlung", "AS", "Grüngutkarte",
+    _Satzart("green_waste_card", "waste_collection", "AS", "Grüngutkarte",
              "Karte", r"Gr[üu]ngutkarte"),
-    _Satzart("sperrmuell_1m3", "abfallsammlung", "AS",
+    _Satzart("bulky_waste_1m3", "waste_collection", "AS",
              "Sperrmüllanlieferung 1 m³", "Anlieferung 1 m³",
              r"Sperrm[üu]llanlieferung\s+1\s*m\s*³"),
-    _Satzart("sperrmuell_2m3", "abfallsammlung", "AS",
+    _Satzart("bulky_waste_2m3", "waste_collection", "AS",
              "Sperrmüllanlieferung 2 m³", "Anlieferung 2 m³",
              r"Sperrm[üu]llanlieferung\s+2\s*m\s*³"),
-    _Satzart("gruengut_05m3", "abfallsammlung", "AS",
+    _Satzart("green_waste_05m3", "waste_collection", "AS",
              "Grüngutanlieferung bis 0,5 m³", "Anlieferung bis 0,5 m³",
              r"Gr[üu]ngutanlieferung\s+bis\s+0,5\s*m\s*³"),
-    _Satzart("gruengut_1m3", "abfallsammlung", "AS",
+    _Satzart("green_waste_1m3", "waste_collection", "AS",
              "Grüngutanlieferung bis 1 m³", "Anlieferung bis 1 m³",
              r"Gr[üu]ngutanlieferung\s+bis\s+1\s*m\s*³"),
-    _Satzart("gruengut_2m3", "abfallsammlung", "AS",
+    _Satzart("green_waste_2m3", "waste_collection", "AS",
              "Grüngutanlieferung bis 2 m³", "Anlieferung bis 2 m³",
              r"Gr[üu]ngutanlieferung\s+bis\s+2\s*m\s*³"),
-    _Satzart("strassenreinigung_qw", "strassenreinigung", "SR",
+    _Satzart("street_cleaning_per_metre", "street_cleaning", "SR",
              "Gebühr je Meter Quadratwurzel bei wöchentlicher Reinigung",
              "Meter Quadratwurzel", r"Geb[üu]hr je Meter Quadratwurzel"),
 )
@@ -247,9 +247,15 @@ SATZARTEN: tuple[_Satzart, ...] = (
 #: Erläuterungen darunter anders). Das ``be`` ist deshalb optional — die
 #: Alternative wäre gewesen, einen ganzen Jahrgang liegen zu lassen, weil ein
 #: Sachbearbeiter 2019 zwei Silben kürzer getippt hat.
-_JAHR = re.compile(r"Geb[üu]hrenbedarfs(?:be)?rechnung\s+(\d{4})")
-_KALKULATION = re.compile(r"Kostenkalkulation f[üu]r \d{4}\s*" + _BETRAG)
-_ZU_DECKEN = re.compile(r"decken sind\s*" + _BETRAG)
+#: Der Jahrgang steht im Titel — oder, wo der fehlt (Straßenreinigung 2019,
+#: OCR), in der Kalkulationszeile selbst: „Gebührenkalkulation für 2019“.
+_JAHR = re.compile(r"(?:Geb[üu]hrenbedarfs(?:be)?rechnung|(?:Kosten|Geb[üu]hren)kalkulation f[üu]r)"
+                   r"\s+(\d{4})")
+_KALKULATION = re.compile(r"(?:Kosten|Geb[üu]hren)kalkulation f[üu]r \d{4}\s*" + _BETRAG)
+#: Zwei Formen: der Betrag hinter „zu decken sind“ — oder davor, wenn die
+#: Zeile umbricht („Kosten, die durch Gebühren 2.797.352 € zu decken sind“).
+_ZU_DECKEN = re.compile(r"decken sind\s*" + _BETRAG
+                        + r"|durch Geb[üu]hren\s*" + _BETRAG + r"\s*zu decken sind")
 #: Die Gebührenzeile MIT ihrer Einheit — beides in einem Griff.
 #:
 #: Die Einheit irgendwo im Anlagentext zu suchen ging schief: Im Abschnitt
@@ -399,6 +405,46 @@ def _kaskade_aus_der_reihenfolge(part: str) -> tuple[float, float, float] | None
     return gefunden
 
 
+def _kaskade_ohne_vorzeichen(kalkulation: float, kaskade: str, zu_decken: float
+                             ) -> float | None:
+    """Die Kaskade lesen, wenn die Abzüge ohne Minus gedruckt sind.
+
+    In der Abfallbehandlung 2021 (OCR-Lesung des gescannten Berichts) stehen
+    alle Abzüge positiv: „Kosten, die durch Dritte erstattet werden
+    3.156.249 €“, dazwischen die Zwischensumme „Bereinigte Kosten“. 2019
+    (ebenfalls Scan) verliert die OCR nur ZWEI der vier Minuszeichen — die
+    Vorzeichen sind also auch gemischt nicht verlässlich. Ein negativer
+    Betrag ist sicher ein Abzug; bei einem positiven entscheidet nicht die
+    Beschriftung, ob er Abzug oder Zwischensumme ist, sondern ob er dem
+    laufenden Stand gleicht. Und ob die „Über-/Unterdeckung aus Vorjahren“
+    abgezogen oder hinzugerechnet wird, entscheidet allein, welche der
+    Lesarten die Zeile „zu decken sind“ trifft — höchstens ein Betrag darf
+    sich addieren, alle anderen sind Abzüge. Trifft keine Lesart, gibt es
+    keine Kaskade; geraten wird nicht.
+
+    Liefert die Summe der Abzüge (negativ) oder ``None``.
+    """
+    betraege = [_eur(x) for x in _BETRAG_RE.findall(kaskade) if x.strip("-. ")]
+    if not betraege or len(betraege) > 12:
+        return None
+    for addiert in (None, *range(len(betraege))):
+        laufend = kalkulation
+        abzuege = 0.0
+        for i, betrag in enumerate(betraege):
+            if betrag < 0:
+                laufend += betrag  # gedrucktes Minus: sicher ein Abzug
+                abzuege += betrag
+                continue
+            if abs(laufend - betrag) <= TOLERANZ_EUR:
+                continue  # Zwischensumme, etwa „Bereinigte Kosten“
+            vorzeichen = 1.0 if i == addiert else -1.0
+            laufend += vorzeichen * betrag
+            abzuege += vorzeichen * betrag
+        if abs(laufend - zu_decken) <= TOLERANZ_EUR:
+            return abzuege
+    return None
+
+
 def parse_anlage(part: str, template_number: str | None = None) -> Gebuehrenbedarf:
     """Eine Anlage lesen — geprüft, oder gar nicht."""
     area = _bereich_aus_kopf(part)
@@ -411,7 +457,7 @@ def parse_anlage(part: str, template_number: str | None = None) -> Gebuehrenbeda
     k = _KALKULATION.search(part)
     d = _ZU_DECKEN.search(part)
     if k and d:
-        kalkulation, zu_decken = _eur(k.group(1)), _eur(d.group(1))
+        kalkulation, zu_decken = _eur(k.group(1)), _eur(d.group(1) or d.group(2))
         kaskade = part[k.end():d.start()]
         deductions = sum(_eur(x) for x in _BETRAG_RE.findall(kaskade)
                       if x.strip().startswith("-"))
@@ -421,6 +467,12 @@ def parse_anlage(part: str, template_number: str | None = None) -> Gebuehrenbeda
             value = _eur(ueberdeckung.group(1))
             if value > 0 and abs(rest - value) <= TOLERANZ_EUR:
                 deductions -= value
+        if abs(kalkulation + deductions - zu_decken) > TOLERANZ_EUR:
+            # Abzüge ohne Minus gedruckt (OCR-Lesung 2021)? Nur wenn die
+            # Kaskade damit exakt aufgeht.
+            ohne_vorzeichen = _kaskade_ohne_vorzeichen(kalkulation, kaskade, zu_decken)
+            if ohne_vorzeichen is not None:
+                deductions = ohne_vorzeichen
     else:
         # Beschriftungen und Beträge stehen in getrennten Blöcken (2024).
         ueber_reihenfolge = _kaskade_aus_der_reihenfolge(part)
@@ -519,11 +571,24 @@ def _anlage_4(text: str) -> str | None:
 
 def _saetze_altes_layout(part: str, template_number: str | None) -> list[Gebuehrensatz] | None:
     """Die eine Vorschlagszeile der Tabellen 2023–2025 lesen."""
-    m = re.search(r"\bVorschl(?:ag|[äa]ge)(?:\s+f[üu]r)?\s+(\d{4})\s+", part, re.I)
-    if not m:
+    treffer = list(re.finditer(r"\bVorschl(?:ag|[äa]ge)(?:\s+f[üu]r)?\s+(\d{4})\s+", part, re.I))
+    if not treffer:
         return None
-    year = int(m.group(1))
-    werte = [_satz_eur(x) for x in _SATZ_BETRAG.findall(part[m.end():])]
+    # Die Zeile endet beim ersten Wort, das kein Tarifbetrag (und kein „/“
+    # dazwischen) ist: Im Scan 2019 folgen der Tabelle noch die
+    # Erläuterungsseiten, und deren Beträge zählten sonst mit (145 statt 12).
+    # Der Text ist hier geglättet, Zeilenumbrüche gibt es nicht mehr. Und das
+    # Wort „Vorschläge“ steht dort schon in der Überschrift („2008 – 2018;
+    # Vorschläge für 2019“) — es zählt der Treffer, hinter dem die Zeile steht.
+    year = int(treffer[0].group(1))
+    werte: list[float] = []
+    for m in treffer:
+        zeile = re.match(r"(?:\s*(?:/|" + _SATZ_BETRAG.pattern + r"))+", part[m.end():])
+        gefunden = [_satz_eur(x) for x in _SATZ_BETRAG.findall(zeile.group(0))] if zeile else []
+        if len(gefunden) == len(SATZARTEN) or len(gefunden) > len(werte):
+            year, werte = int(m.group(1)), gefunden
+        if len(werte) == len(SATZARTEN):
+            break
     if len(werte) != len(SATZARTEN):
         raise GebuehrenFehler(
             f"Anlage 4 für {year}: {len(werte)} statt {len(SATZARTEN)} "
@@ -587,11 +652,11 @@ def lies_gebuehrensaetze(text: str, template_number: str | None = None) -> list[
     bedarfe, risse = lies(text, template_number)
     eckwerte = {
         b.area: b.fee_proposed for b in bedarfe
-        if b.year == year and b.area in ("abfallbehandlung", "strassenreinigung")
+        if b.year == year and b.area in ("waste_treatment", "street_cleaning")
     }
     tarifwerte = {s.area: s.amount for s in saetze
-                  if s.key in ("abfallbehandlung_mg", "strassenreinigung_qw")}
-    if set(eckwerte) != {"abfallbehandlung", "strassenreinigung"}:
+                  if s.key in ("waste_treatment_per_mg", "street_cleaning_per_metre")}
+    if set(eckwerte) != {"waste_treatment", "street_cleaning"}:
         details = f"; gerissene Anlagen: {' | '.join(risse)}" if risse else ""
         raise GebuehrenFehler(
             f"Anlage 4 für {year}: Eckwerte aus Anlagen 1 und 3 fehlen{details}")

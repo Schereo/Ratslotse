@@ -27,7 +27,7 @@ import textwrap
 # Modell nach .format() bekommt.
 
 DEFAULTS: dict[str, dict[str, str]] = {
-    "deep_zerlegung": {
+    "deep_decomposition": {
         "title": "Gründliche Recherche – Facetten-Zerlegung",
         "description": "Zerlegt eine Frage in 3–5 Recherche-Facetten für den Deep-Research-Modus (Task 34). Platzhalter: {question}.",
         "template": (
@@ -45,7 +45,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "Antworte NUR mit dem JSON.\n\nFRAGE: {question}"
         ),
     },
-    "deep_bericht": {
+    "deep_report": {
         "title": "Gründliche Recherche – Bericht",
         "description": "Der lange, gegliederte Recherche-Bericht des Deep-Research-Modus (Task 34). Platzhalter: {question}, {context}, {zusatz}, {planungen}.",
         "template": (
@@ -77,15 +77,15 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "\nBESCHLÜSSE:\n{context}\n{zusatz}\nFRAGE: {question}"
         ),
     },
-    "partei_meinungen": {
+    "party_opinions": {
         "title": "Parteien-Baustein der KI-Frage",
         "description": "Verdichtet Wortbeiträge je Fraktion zu einer Position für den Baustein „Das sagen die Parteien“ (Task 30).",
         "template": (
             "Du bekommst Wortbeiträge aus Sitzungsprotokollen des Oldenburger Stadtrats "
             "zu einer Frage, gruppiert nach Fraktion. Verdichte je Fraktion die Position "
             "als JSON-Array:\n"
-            '[{{"party": "Label wie angegeben", "haltung": "dafür"|"dagegen"|"offen"|"gewandelt", '
-            '"position": "1-2 Sätze Haltung zur Sache mit Kernargument", "einig": true, '
+            '[{{"party": "Label wie angegeben", "stance": "dafür"|"dagegen"|"offen"|"gewandelt", '
+            '"position": "1-2 Sätze Haltung zur Sache mit Kernargument", "unanimous": true, '
             '"note": null, "kernaussage": {{"text": "prägnanteste Aussage, dicht an der '
             'Vorlage", "speaker": "Name", "date": "TT.MM.JJJJ"}}}}]\n\n'
             "Regeln:\n"
@@ -95,7 +95,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "— nicht die Nacherzählung des stärksten Einzelbeitrags. Hat sich die "
             "Haltung über die Zeit entwickelt oder gibt es mehrere Facetten, benenne "
             "das (die Beiträge stehen chronologisch).\n"
-            "- haltung: „dafür\"/„dagegen\" nur bei klar belegter Linie zur gefragten "
+            "- stance: „dafür\"/„dagegen\" nur bei klar belegter Linie zur gefragten "
             "Sache; „gewandelt\" NUR, wenn sich die Haltung über die Zeit erkennbar "
             "geändert hat (dann steht die Wende auch in position); sonst „offen\".\n"
             "- einig=false NUR bei echtem inhaltlichem Widerspruch INNERHALB der "
@@ -103,10 +103,10 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "- Fraktionen ohne verwertbare inhaltliche Substanz weglassen.\n"
             "- Reihenfolge: stärkste Substanz zuerst.\n"
             "Antworte NUR mit dem JSON-Array.\n\n"
-            "FRAGE: {question}\n\nBEITRÄGE:\n{beitraege}"
+            "FRAGE: {question}\n\nBEITRÄGE:\n{contributions}"
         ),
     },
-    "wortbeitraege_extract": {
+    "speeches_extract": {
         "title": "Wortbeiträge aus Protokollen",
         "description": "Extrahiert Redebeiträge, Anfragen & Anregungen, Einwohnerfragen und Verwaltungszusagen aus einem Sitzungsprotokoll (Task 16).",
         "template": (
@@ -202,7 +202,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
             Gib has_content: false zurück, wenn nur Routine-TOPs übrig bleiben.
         """),
     },
-    "social_kartentext_system": {
+    "social_card_text_system": {
         "title": "Social-Kartentext – System",
         "description": ("Ein bis zwei neutrale Sätze je Tagesordnungspunkt für die "
                         "Instagram-Karte. Sieht Vorlage und Anlagen, darf nicht werten."),
@@ -240,7 +240,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
             Antworte ausschließlich als JSON: {"text": "…"}
         """),
     },
-    "social_kartentext_user": {
+    "social_card_text_user": {
         "title": "Social-Kartentext – Aufgabe",
         "description": "Ein Punkt samt Vorlage und Anlagen. Platzhalter: {kontext}.",
         "template": textwrap.dedent("""\
@@ -249,7 +249,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
             Schreibe die Erklärzeile zu diesem Tagesordnungspunkt.
         """),
     },
-    "social_kritiker_system": {
+    "social_critic_system": {
         "title": "Social-Kartentext – Kritiker",
         "description": ("Belegt jede Angabe eines Kartentextes wörtlich aus der Quelle. "
                         "Zweite Stufe nach der deterministischen Prüfung."),
@@ -276,7 +276,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
             reason: nur bei false, ein Satz. Sonst leer.
         """),
     },
-    "social_kritiker_user": {
+    "social_critic_user": {
         "title": "Social-Kartentext – Kritiker, Aufgabe",
         "description": "Quelle und Satz. Platzhalter: {source}, {text}.",
         "template": textwrap.dedent("""\
@@ -315,7 +315,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
             Antworte ausschließlich als JSON.
         """),
     },
-    "council_watcher_pruefung": {
+    "council_watcher_check": {
         "title": "Stadtrat-Watcher – Treffer gegen die Vorlage prüfen",
         "description": "Zweite Stufe: Prüft je Kandidaten-TOP am Vorlagentext, ob das Thema wirklich behandelt wird. Platzhalter: {thema}, {beschreibung}, {kandidaten}.",
         "template": textwrap.dedent("""\
@@ -366,7 +366,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
             }}
         """),
     },
-    "qa_suchbegriffe": {
+    "qa_search_terms": {
         "title": "Frag den Rat – Suchbegriffe",
         "description": "Übersetzt die Nutzerfrage in Suchbegriffe für die semantische Beschluss-Suche.",
         "template": (
@@ -377,7 +377,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "SUCHBEGRIFFE:"
         ),
     },
-    "qa_analyse": {
+    "qa_analysis": {
         "title": "Frag den Rat – Frage-Analyse",
         "description": "Ein Call vor der Suche: eigenständige Frage, Suchbegriffe, Fragetyp und Rechercheplan im Shadow-Mode als JSON. Platzhalter: {question}, {verlauf}.",
         "template": (
@@ -442,7 +442,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "FRAGE: {question}"
         ),
     },
-    "topic_auto_beschreibung": {
+    "topic_auto_description": {
         "title": "Thema – Beschreibung automatisch",
         "description": "Macht aus einem Themen-Namen + echten Beschlüssen eine Wächter-Beschreibung. Platzhalter: {name}, {context}.",
         "template": (
@@ -481,7 +481,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "Thema für den Rat ist (wird angezeigt). Sonst leer."
         ),
     },
-    "recap_themenfeld": {
+    "recap_policy_field": {
         "title": "Themenfeld-Rückblick",
         "description": "Wöchentliche Kurzfassung je Themenfeld: eine Kernaussage + Stichpunkte. Platzhalter: {field}, {items}.",
         "template": (
@@ -499,13 +499,22 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "- Erfinde nichts; stütze dich ausschließlich auf die vorgelegten Einträge."
         ),
     },
-    "qa_antwort": {
+    "qa_answer": {
         "title": "Frag den Rat – Antwort",
         "description": "Formuliert die Antwort ausschließlich aus den gefundenen Beschlüssen, mit [id]-Zitaten.",
         "template": (
             "{gespraech}"
-            "Beantworte die Frage NUR anhand der folgenden Beschlüsse des Oldenburger Stadtrats.\n"
-            "Wenn die Beschlüsse die Frage nicht beantworten, sage das ehrlich und rate nicht.\n"
+            "Beantworte die Frage NUR anhand der folgenden Unterlagen des Oldenburger Stadtrats: "
+            "der Beschlüsse und — wo vorhanden — der Haushaltsdaten in den eigenen Abschnitten.\n"
+            # Bis 09/2026 hieß es hier „NUR anhand der folgenden Beschlüsse … wenn
+            # die Beschlüsse die Frage nicht beantworten, sage das ehrlich" — und
+            # das Modell tat genau das, auch wenn die Haushaltsdaten darunter die
+            # Zahl trugen: „Die Ratsunterlagen geben keine direkte Auskunft … Der
+            # Liquiditätsstand betrug 136,1 Millionen Euro“ (live gemessen,
+            # 02.09.2026). Der Vorbehalt gilt nur, wenn BEIDE nichts hergeben.
+            "Wenn weder die Beschlüsse noch die Haushaltsdaten die Frage beantworten, sage das "
+            "ehrlich und rate nicht. Beantworten die Haushaltsdaten sie, ist das die Antwort — "
+            "ohne den Vorbehalt, die Beschlüsse gäben nichts her.\n"
             "Zitiere jeden genutzten Beschluss mit seiner id in eckigen Klammern, z. B. [123].\n"
             "In den Klammern steht AUSSCHLIESSLICH die Zahl.\n"
             "Schreibe WEDER Datum NOCH Tragweite in den Antworttext — beides steht schon bei\n"
@@ -547,7 +556,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "beziehen („Wer stimmte dagegen?“), müssen aber je EIN klares Ziel haben."
         ),
     },
-    "qa_einfach": {
+    "qa_simple": {
         "title": "Frag den Rat – Einfacher erklären",
         "description": (
             "Schreibt eine schon vorliegende Antwort in einfache Sprache um (Knopf "
@@ -627,7 +636,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "Beschlusstext:\n{official_text}"
         ),
     },
-    "impact_bewertung_system": {
+    "impact_rating_system": {
         "title": "Tragweite – System (RL-U16)",
         "description": "Bewertet Beschlüsse nach Tragweite/Folgenschwere (0–100) — speist den Wichtig-Wert.",
         "template": (
@@ -653,12 +662,12 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "genau ein Eintrag je vorgelegtem Beschluss."
         ),
     },
-    "impact_bewertung_user": {
+    "impact_rating_user": {
         "title": "Tragweite – Auftrag (RL-U16)",
         "description": "Batch zu bewertender Beschlüsse (id, Titel, Signale, Auszug).",
         "template": "Bewerte die Tragweite dieser Beschlüsse:\n\n{batch}",
     },
-    "top_wichtigkeit_system": {
+    "agenda_item_importance_system": {
         "title": "Wichtigster Punkt der Woche – System",
         "description": "Bewertet Tagesordnungspunkte VOR der Sitzung (0–100) und erklärt sie in Alltagssprache.",
         "template": (
@@ -733,12 +742,12 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "vorgelegtem Punkt."
         ),
     },
-    "top_wichtigkeit_user": {
+    "agenda_item_importance_user": {
         "title": "Wichtigster Punkt der Woche – Auftrag",
         "description": "Batch der Tagesordnungspunkte (id, Titel, Signale, Beschlussvorschlag).",
         "template": "Bewerte diese Tagesordnungspunkte:\n\n{batch}",
     },
-    "interest_bewertung_system": {
+    "interest_rating_system": {
         "title": "Interessantheit – System (RL-U11)",
         "description": "Bewertet Beschlüsse nach Gesprächswert fürs „Fundstück des Tages“ (0–100).",
         "template": (
@@ -757,12 +766,12 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "\"reason\": \"<max. 1 kurzer Satz>\"}]} — genau ein Eintrag je vorgelegtem Beschluss."
         ),
     },
-    "interest_bewertung_user": {
+    "interest_rating_user": {
         "title": "Interessantheit – Auftrag (RL-U11)",
         "description": "Batch zu bewertender Beschlüsse (id, Titel, Auszug).",
         "template": "Bewerte diese Beschlüsse:\n\n{batch}",
     },
-    "fundstueck_story_system": {
+    "daily_find_story_system": {
         "title": "Fundstück-Story – System (RL-U11)",
         "description": "Schreibt den einen Satz der Fundstück-Karte („Heute vor N Jahren …“).",
         "template": (
@@ -778,7 +787,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "Antworte als JSON: {\"story\": \"...\"}"
         ),
     },
-    "fundstueck_story_user": {
+    "daily_find_story_user": {
         "title": "Fundstück-Story – Auftrag (RL-U11)",
         "description": "Der Beschluss, zu dem die Story entsteht.",
         "template": (
@@ -788,7 +797,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "Beschlusstext (Auszug):\n{official_text}"
         ),
     },
-    "entity_dubletten_system": {
+    "entity_duplicates_system": {
         "title": "Themen-Dubletten – System",
         "description": "Entscheidet, ob zwei Themen-Namen dieselbe Sache bezeichnen (Zusammenführung).",
         "template": (
@@ -821,7 +830,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "\"reason\": \"<max. 1 kurzer Satz>\"}}]}} — genau ein Eintrag je vorgelegtem Paar."
         ),
     },
-    "entity_dubletten_user": {
+    "entity_duplicates_user": {
         "title": "Themen-Dubletten – Auftrag",
         "description": "Die zu prüfenden Namenspaare mit Beschlusszahl und Beispieltiteln.",
         "template": "Prüfe diese Paare:\n\n{paare}",

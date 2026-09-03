@@ -69,15 +69,15 @@ export default function LaborPage() {
   // jüngste. Fehlt sie ganz, läuft das Labor ohne Vergleichsgrößen weiter.
   const produktJahr = data?.product_years?.at(-1) ?? null;
   const { data: produkte } = useFetch<ProdukteAntwort>(
-    produktJahr ? `/council/haushalt/produkte?year=${produktJahr}` : null);
+    produktJahr ? `/council/budget/products?year=${produktJahr}` : null);
   // Die drei Zugaben — jede Komponente kommt mit `null` zurecht und lässt
   // ihren Baustein dann weg, statt mit halben Daten zu rechnen.
-  const { data: vergleich } = useFetch<VergleichDaten>("/council/haushalt/vergleich");
-  const { data: programm } = useFetch<ProgrammDaten>("/council/haushalt/investitionsprogramm");
-  const { data: schulden } = useFetch<SchuldenDaten>("/council/haushalt/schulden");
+  const { data: vergleich } = useFetch<VergleichDaten>("/council/budget/comparison");
+  const { data: programm } = useFetch<ProgrammDaten>("/council/budget/investment-programme");
+  const { data: schulden } = useFetch<SchuldenDaten>("/council/budget/debt");
   // Der Maßstab unter dem Labor: was das echte Verfahren bewegt hat.
   // Vierte Zugabe — fehlt sie, entfällt die Karte, das Labor rechnet weiter.
-  const { data: listen } = useFetch<AenderungslistenDaten>("/council/haushalt/aenderungslisten");
+  const { data: listen } = useFetch<AenderungslistenDaten>("/council/budget/amendment-lists");
 
   if (loading || !data) {
     return <div className="py-16 text-center text-sm text-muted-foreground">Labor wird geladen …</div>;
@@ -113,7 +113,7 @@ export default function LaborPage() {
 
       <Labor
         daten={data}
-        produkte={produkte?.produkte ?? []} produktJahr={produktJahr}
+        produkte={produkte?.products ?? []} produktJahr={produktJahr}
         vergleich={vergleich ?? null}
         programm={programm ?? null}
         schulden={schulden ?? null}

@@ -48,7 +48,7 @@ export function FollowedVorgaenge() {
   });
 
   const unfollow = useMutation({
-    mutationFn: (kvonr: number) => api.del(`/council/vorlage/${kvonr}/follow`),
+    mutationFn: (kvonr: number) => api.del(`/council/template/${kvonr}/follow`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["vorlage-follows"] });
       toast.success("Vorgang wird nicht mehr verfolgt.");

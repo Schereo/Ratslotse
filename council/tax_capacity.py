@@ -1,6 +1,6 @@
 """Die dritte Komponente des Finanzausgleichs — und warum sie gefehlt hat.
 
-Was in `council_steuerkraft` steht, ist **nicht** alles
+Was in `council_tax_capacity` steht, ist **nicht** alles
 --------------------------------------------------------
 Der Open-Data-Datensatz 1106 der Stadt führt eine Spalte
 „Schluesselzuweisungen, Anordnungssoll". Nachgemessen (17.08.2026) enthält sie
@@ -258,10 +258,10 @@ def probe_gegen_jahrbuch(budget_year: KfaZuweisungen, jahrbuch_teur: float,
 
 
 def zeilen_finanzausgleich(budget_year: KfaZuweisungen) -> list[dict]:
-    """Ein Jahrgang → Zeilen für ``council_staedtevergleich``.
+    """Ein Jahrgang → Zeilen für ``council_city_comparison``.
 
     Bewusst dieselbe Tabelle wie die Steuerkraftmesszahlen und **nicht** eine
-    neue Spalte in ``council_steuerkraft``: Dort stünde in einer Zeile eine
+    neue Spalte in ``council_tax_capacity``: Dort stünde in einer Zeile eine
     Zahl aus dem Open-Data-Portal neben einer vom Land, und eine Zeile trägt
     genau **eine** Herkunft (s. ``council/herkunft.py``). Getrennt lässt sich
     von jeder Zahl sagen, wer sie veröffentlicht hat.

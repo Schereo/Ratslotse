@@ -8,16 +8,16 @@ import UIKit
 
 private struct ResearchCurrentResponse: Codable, Sendable {
     let job: ResearchSnapshot?
-    let frei: Int?
+    let remaining: Int?
 }
 
 private struct ResearchStartResponse: Codable, Sendable {
     let jobID: String
-    let frei: Int?
+    let remaining: Int?
 
     enum CodingKeys: String, CodingKey {
         case jobID = "job_id"
-        case frei
+        case remaining
     }
 }
 
@@ -67,7 +67,7 @@ struct QuestionPerson: Decodable, Sendable, Hashable {
 }
 
 private struct QuestionPeopleEnvelope: Decodable, Sendable {
-    let personen: [QuestionPerson]
+    let people: [QuestionPerson]
 }
 
 private struct QuestionExamplesEnvelope: Decodable, Sendable {
@@ -313,10 +313,10 @@ struct QuestionsView: View {
 
     private func loadPersonLexicon() async {
         guard personLexicon.isEmpty else { return }
-        guard let response: QuestionPeopleEnvelope = try? await model.api.get("/api/council/personen-lexikon") else {
+        guard let response: QuestionPeopleEnvelope = try? await model.api.get("/api/council/people-directory") else {
             return
         }
-        personLexicon = response.personen
+        personLexicon = response.people
     }
 
     private func loadQuestionExamples() async {
@@ -420,7 +420,7 @@ struct QuestionsView: View {
             let sources = evidence["sources"]?.array?.compactMap {
                 try? $0.decoded(DecisionSummary.self)
             } ?? []
-            let research = evidence["recherche"]?.bool == true
+            let research = evidence["research"]?.bool == true
                 ? ResearchState(status: "fertig")
                 : nil
             return QuestionTurn(
@@ -442,7 +442,7 @@ struct QuestionsView: View {
               let id = model.activeConversationID
         else { return }
         do {
-            let payload: JSONValue = try await model.api.get("/api/council/gespraeche/\(id)")
+            let payload: JSONValue = try await model.api.get("/api/council/conversations/\(id)")
             guard turns.isEmpty else { return }
             loadConversation(id, payload: payload)
         } catch let error as APIError where error.statusCode == 404 || error.isUnauthorized {
@@ -568,7 +568,7 @@ struct QuestionsView: View {
                 )
                 guard let current = turns.firstIndex(where: { $0.id == turnID }) else { return }
                 turns[current].research?.jobID = response.jobID
-                researchRemaining = response.frei
+                researchRemaining = response.remaining
                 model.hasRecoverableResearch = true
                 await streamResearch(turnID: turnID, jobID: response.jobID)
             } catch is CancellationError {
@@ -631,8 +631,8 @@ struct QuestionsView: View {
         switch event.type {
         case "phase":
             turns[index].research?.phase = event.fields["phase"]?.string ?? turns[index].research?.phase ?? "zerlegen"
-        case "facetten":
-            turns[index].research?.facets = event.fields["facetten"]?.array?.compactMap(\.string).map {
+        case "facets":
+            turns[index].research?.facets = event.fields["facets"]?.array?.compactMap(\.string).map {
                 ResearchFacet(name: $0)
             } ?? []
             turns[index].research?.phase = "suchen"
@@ -655,7 +655,7 @@ struct QuestionsView: View {
             turns[index].error = nil
         case "gestoppt":
             turns[index].research?.status = "gestoppt"
-            turns[index].research?.partialPossible = event.fields["teilbericht_moeglich"]?.bool ?? false
+            turns[index].research?.partialPossible = event.fields["partial_report_possible"]?.bool ?? false
         case "fehler":
             turns[index].research?.status = "fehler"
             turns[index].error = "Die Recherche ist abgebrochen. Der Versuch zählt nicht gegen dein Kontingent."
@@ -668,7 +668,7 @@ struct QuestionsView: View {
                 model.setActiveConversationID(conversationID)
             }
             if let jobID {
-                Task { try? await model.api.sendVoid("/api/council/deep-research/\(jobID)/gesehen") }
+                Task { try? await model.api.sendVoid("/api/council/deep-research/\(jobID)/seen") }
             }
         default:
             break
@@ -687,7 +687,7 @@ struct QuestionsView: View {
                 )
                 guard let current = turns.firstIndex(where: { $0.id == turnID }) else { return }
                 turns[current].research?.status = "gestoppt"
-                turns[current].research?.partialPossible = response.object?["teilbericht_moeglich"]?.bool ?? false
+                turns[current].research?.partialPossible = response.object?["partial_report_possible"]?.bool ?? false
                 researchStreamTask?.cancel()
                 researchStreamTask = nil
             } catch {
@@ -706,7 +706,7 @@ struct QuestionsView: View {
             else { return }
             do {
                 let _: JSONValue = try await model.api.sendWithoutBody(
-                    "/api/council/deep-research/\(jobID)/teilbericht"
+                    "/api/council/deep-research/\(jobID)/partial-report"
                 )
                 guard let current = turns.firstIndex(where: { $0.id == turnID }) else { return }
                 turns[current].research?.status = "laeuft"
@@ -739,8 +739,8 @@ struct QuestionsView: View {
 
     private func restoreCurrentResearch() async {
         do {
-            let current: ResearchCurrentResponse = try await model.api.get("/api/council/deep-research/aktuell")
-            researchRemaining = current.frei
+            let current: ResearchCurrentResponse = try await model.api.get("/api/council/deep-research/current")
+            researchRemaining = current.remaining
             guard let snapshot = current.job else { return }
 
             let turnID: UUID
@@ -841,21 +841,21 @@ struct QuestionsView: View {
               "slug": "verkehrswende",
               "beschreibung": "Beschlüsse zu Bus, Radverkehr und klimafreundlicher Mobilität."
             }],
-            "sitzungen": [{
+            "sessions": [{
               "ksinr": 8001,
               "committee": "Rat der Stadt",
               "session_date": "2026-08-26",
               "session_time": "18:00",
               "agenda": [{"item_number": "Ö 10", "title": "Neue Busspuren für Oldenburg"}]
             }],
-            "anlagen": [{
+            "attachments": [{
               "nr": 1,
               "label": "Übersichtskarte der Busspuren",
               "template_number": "26/0801",
-              "auszug": "Geplante Abschnitte am Innenstadtring.",
+              "excerpt": "Geplante Abschnitte am Innenstadtring.",
               "url": "https://example.org/karte.pdf"
             }],
-            "presse": [{
+            "press_releases": [{
               "title": "Stadt stellt Maßnahmen für einen schnelleren Busverkehr vor",
               "date": "2026-08-27",
               "url": "https://example.org/presse",
@@ -876,30 +876,30 @@ struct QuestionsView: View {
               "beitraege": 2,
               "kernaussage": {"text": "Acht Millionen für zwei Kilometer Busspur muss man den Leuten erst einmal erklären.", "speaker": "Jonas Muster", "date": "2026-08-26"}
             }],
-            "debatten": [{
+            "debates": [{
               "speaker": "Mara Beispiel",
               "party": "Bündnis 90/Die Grünen",
               "art": "Wortbeitrag",
               "date": "2026-08-26",
-              "auszug": "Die Busspuren sollen Anschlüsse stabilisieren und den Umweltverbund stärken."
+              "excerpt": "Die Busspuren sollen Anschlüsse stabilisieren und den Umweltverbund stärken."
             }, {
-              "sprecher": "Jonas Muster",
-              "partei": "BSW",
+              "speaker": "Jonas Muster",
+              "party": "BSW",
               "art": "Rede",
-              "datum": "2026-08-26",
-              "auszug": "Die Kosten je Kilometer Busspur seien im Vergleich zu anderen Städten zu hoch angesetzt."
+              "date": "2026-08-26",
+              "excerpt": "Die Kosten je Kilometer Busspur seien im Vergleich zu anderen Städten zu hoch angesetzt."
             }, {
-              "sprecher": "Herr Beispielhaft",
+              "speaker": "Herr Beispielhaft",
               "art": "Rede",
-              "datum": "2026-08-26",
-              "auszug": "Die Verwaltung verweist auf die Förderkulisse des Landes; ohne sie trüge die Stadt den vollen Betrag."
+              "date": "2026-08-26",
+              "excerpt": "Die Verwaltung verweist auf die Förderkulisse des Landes; ohne sie trüge die Stadt den vollen Betrag."
             }],
-            "planungen": [{
-              "vorlage_titel": "Umsetzung der Busspuren",
+            "planning_procedures": [{
+              "template_title": "Umsetzung der Busspuren",
               "committee": "Verkehrsausschuss",
               "date": "2026-11-12"
             }],
-            "grafik": {
+            "chart": {
               "title": "Vorgesehene Investitionen",
               "unit": "Mio. €",
               "note": "Planwerte aus der Beschlussvorlage.",
@@ -1510,8 +1510,8 @@ struct QuestionEvidenceAvailability {
 
     init(fields: [String: JSONValue] = [:]) {
         let type = fields["qtype"]?.string?.lowercased() ?? ""
-        let debates = fields["debatten"]?.array ?? []
-        let parties = fields["parteien"]?.array ?? []
+        let debates = fields["debates"]?.array ?? []
+        let parties = fields["parties"]?.array ?? []
 
         // Dieselbe Zuständigkeit wie im Web: Der validierte Rechercheplan im
         // Backend schaltet diese Kanäle einzeln frei. Die Oberfläche zeigt nur
@@ -1519,12 +1519,12 @@ struct QuestionEvidenceAvailability {
         // abweichende Stichwort-Heuristik.
         showsDebates = !debates.isEmpty
         showsPartyOpinions = type != "person" && (parties.count >= 2 || showsDebates)
-        showsPress = !(fields["presse"]?.array ?? []).isEmpty
-        showsAttachments = !(fields["anlagen"]?.array ?? []).isEmpty
-        showsPlanning = !(fields["planungen"]?.array ?? []).isEmpty
+        showsPress = !(fields["press_releases"]?.array ?? []).isEmpty
+        showsAttachments = !(fields["attachments"]?.array ?? []).isEmpty
+        showsPlanning = !(fields["planning_procedures"]?.array ?? []).isEmpty
         showsBriefs = !(fields["steckbriefe"]?.array ?? []).isEmpty
-        showsChart = fields["grafik"] != nil
-        showsSessions = !(fields["sitzungen"]?.array ?? []).isEmpty
+        showsChart = fields["chart"] != nil
+        showsSessions = !(fields["sessions"]?.array ?? []).isEmpty
     }
 }
 
@@ -1948,7 +1948,7 @@ private struct QuestionEvidenceSidebar: View {
     }
 
     private func hasSourceEvidence(_ fields: [String: JSONValue]) -> Bool {
-        ["anlagen", "presse", "debatten"].contains {
+        ["attachments", "press_releases", "debates"].contains {
             !(fields[$0]?.array ?? []).isEmpty
         }
     }
@@ -1986,11 +1986,11 @@ struct PartyOpinion: Codable, Sendable, Identifiable {
     enum CodingKeys: String, CodingKey {
         case position
         case party = "party"
-        case stance = "haltung"
-        case united = "einig"
+        case stance = "stance"
+        case united = "unanimous"
         case hint = "note"
         case coreStatement = "kernaussage"
-        case contributions = "beitraege"
+        case contributions = "contributions"
     }
 
     var jsonValue: JSONValue {
@@ -1998,11 +1998,11 @@ struct PartyOpinion: Codable, Sendable, Identifiable {
             "party": .string(party),
             "position": .string(position),
         ]
-        if let stance { fields["haltung"] = .string(stance) }
-        if let united { fields["einig"] = .bool(united) }
+        if let stance { fields["stance"] = .string(stance) }
+        if let united { fields["unanimous"] = .bool(united) }
         if let hint { fields["note"] = .string(hint) }
         if let coreStatement { fields["kernaussage"] = coreStatement.jsonValue }
-        if let contributions { fields["beitraege"] = .number(Double(contributions)) }
+        if let contributions { fields["contributions"] = .number(Double(contributions)) }
         return .object(fields)
     }
 }
@@ -2012,8 +2012,8 @@ private struct PartyOpinionsResponse: Codable, Sendable {
     let withoutContributions: [String]
 
     enum CodingKeys: String, CodingKey {
-        case parties = "parteien"
-        case withoutContributions = "ohne_beitraege"
+        case parties = "parties"
+        case withoutContributions = "without_speeches"
     }
 }
 
@@ -2031,11 +2031,11 @@ struct SharedAnswerSnapshot: Decodable, Sendable {
     enum CodingKeys: String, CodingKey {
         case question, answer, sources
         case created
-        case debates = "debatten"
-        case press = "presse"
-        case attachments = "anlagen"
-        case parties = "parteien"
-        case chart = "grafik"
+        case debates = "debates"
+        case press = "press_releases"
+        case attachments = "attachments"
+        case parties = "parties"
+        case chart = "chart"
     }
 
     init(from decoder: Decoder) throws {
@@ -2053,11 +2053,11 @@ struct SharedAnswerSnapshot: Decodable, Sendable {
 
     var evidenceFields: [String: JSONValue] {
         var fields: [String: JSONValue] = [:]
-        if !debates.isEmpty { fields["debatten"] = .array(debates) }
-        if !press.isEmpty { fields["presse"] = .array(press) }
-        if !attachments.isEmpty { fields["anlagen"] = .array(attachments) }
-        if !parties.isEmpty { fields["parteien"] = .array(parties.map(\.jsonValue)) }
-        if let chart { fields["grafik"] = chart }
+        if !debates.isEmpty { fields["debates"] = .array(debates) }
+        if !press.isEmpty { fields["press_releases"] = .array(press) }
+        if !attachments.isEmpty { fields["attachments"] = .array(attachments) }
+        if !parties.isEmpty { fields["parties"] = .array(parties.map(\.jsonValue)) }
+        if let chart { fields["chart"] = chart }
         return fields
     }
 }
@@ -2122,7 +2122,7 @@ private struct PartyOpinionsView: View {
     }
 
     private func load() async {
-        struct Body: Codable, Sendable { let question: String; let beschluss_ids: [Int] }
+        struct Body: Codable, Sendable { let question: String; let decision_ids: [Int] }
         let citedIDs = QuestionCitationIndex(text: turn.answer, sources: turn.sources)
             .citedSources
             .map(\.id)
@@ -2136,13 +2136,13 @@ private struct PartyOpinionsView: View {
         do {
             response = try await model.api.send(
                 "/api/council/party-meinungen",
-                body: Body(question: String(turn.question.prefix(300)), beschluss_ids: decisionIDs)
+                body: Body(question: String(turn.question.prefix(300)), decision_ids: decisionIDs)
             )
         } catch { self.error = error.localizedDescription }
     }
 
     private var snapshotParties: [PartyOpinion] {
-        (turn.evidence["parteien"]?.array ?? []).compactMap { try? $0.decoded(PartyOpinion.self) }
+        (turn.evidence["parties"]?.array ?? []).compactMap { try? $0.decoded(PartyOpinion.self) }
     }
 
     private var renderedResponse: PartyOpinionsResponse? {
@@ -2366,10 +2366,10 @@ struct SharedAnswerView: View {
         defer { isLoading = false }
         do {
             async let snapshotRequest: SharedAnswerSnapshot = model.api.get("/api/council/qa-share/\(token)")
-            async let peopleRequest: QuestionPeopleEnvelope? = try? model.api.get("/api/council/personen-lexikon")
+            async let peopleRequest: QuestionPeopleEnvelope? = try? model.api.get("/api/council/people-directory")
             let loaded = try await snapshotRequest
             snapshot = loaded
-            people = await peopleRequest?.personen ?? []
+            people = await peopleRequest?.people ?? []
         } catch let apiError as APIError where apiError.statusCode == 404 {
             snapshot = nil
             error = "Diese geteilte Antwort gibt es nicht mehr. Der Link ist abgelaufen oder wurde gelöscht."
@@ -2551,11 +2551,11 @@ private struct QuestionAnswerActions: View {
                             outcome: $0.outcome
                         )
                     },
-                    debatten: turn.evidence["debatten"]?.array ?? [],
-                    presse: turn.evidence["presse"]?.array ?? [],
-                    anlagen: turn.evidence["anlagen"]?.array ?? [],
+                    debatten: turn.evidence["debates"]?.array ?? [],
+                    presse: turn.evidence["press_releases"]?.array ?? [],
+                    anlagen: turn.evidence["attachments"]?.array ?? [],
                     parteien: parties,
-                    grafik: turn.evidence["grafik"]
+                    grafik: turn.evidence["chart"]
                 )
             )
             guard let url = URL(string: "https://ratslotse.de/g?t=\(response.token)") else { return }
@@ -2566,20 +2566,20 @@ private struct QuestionAnswerActions: View {
     }
 
     private func partyOpinionsForShare() async -> [PartyOpinion] {
-        let embedded = (turn.evidence["parteien"]?.array ?? []).compactMap {
+        let embedded = (turn.evidence["parties"]?.array ?? []).compactMap {
             try? $0.decoded(PartyOpinion.self)
         }
         if embedded.count >= 2 { return embedded }
-        guard !(turn.evidence["debatten"]?.array ?? []).isEmpty else { return [] }
+        guard !(turn.evidence["debates"]?.array ?? []).isEmpty else { return [] }
 
-        struct Body: Codable, Sendable { let question: String; let beschluss_ids: [Int] }
+        struct Body: Codable, Sendable { let question: String; let decision_ids: [Int] }
         let citationIndex = QuestionCitationIndex(text: turn.answer, sources: turn.sources)
         let IDs = citationIndex.citedSources.isEmpty
             ? Array(turn.sources.prefix(20).map(\.id))
             : citationIndex.citedSources.map(\.id)
         guard let response: PartyOpinionsResponse = try? await model.api.send(
             "/api/council/party-meinungen",
-            body: Body(question: String(turn.question.prefix(300)), beschluss_ids: IDs)
+            body: Body(question: String(turn.question.prefix(300)), decision_ids: IDs)
         ) else { return [] }
         return response.parties.count >= 2 ? response.parties : []
     }
@@ -2653,20 +2653,20 @@ struct CouncilEvidenceBlocks: View {
         QuestionEvidenceAvailability(fields: fields)
     }
     private var attachments: [[String: JSONValue]] {
-        visibility.showsAttachments ? objects("anlagen") : []
+        visibility.showsAttachments ? objects("attachments") : []
     }
     private var press: [[String: JSONValue]] {
-        visibility.showsPress ? objects("presse") : []
+        visibility.showsPress ? objects("press_releases") : []
     }
     private var debates: [[String: JSONValue]] {
-        visibility.showsDebates ? objects("debatten") : []
+        visibility.showsDebates ? objects("debates") : []
     }
     private var sessions: [[String: JSONValue]] {
-        let rows = objects("sitzungen")
+        let rows = objects("sessions")
         return visibility.showsSessions ? rows : []
     }
     private var planning: [[String: JSONValue]] {
-        visibility.showsPlanning ? objects("planungen") : []
+        visibility.showsPlanning ? objects("planning_procedures") : []
     }
     private var briefs: [[String: JSONValue]] {
         visibility.showsBriefs ? objects("steckbriefe") : []
@@ -2676,7 +2676,7 @@ struct CouncilEvidenceBlocks: View {
 
     @ViewBuilder
     var body: some View {
-        if includesAnswerInsights, fields["beleglage"]?.string == "duenn" {
+        if includesAnswerInsights, fields["evidence_level"]?.string == "duenn" {
             RatsLabel(
                 "Dünne Beschlusslage – die Antwort stützt sich nur auf wenige passende Ratsunterlagen.",
                 .searchX, size: 12
@@ -2765,7 +2765,7 @@ struct CouncilEvidenceBlocks: View {
                         let title = item["label"]?.string ?? "Anlage"
                         let row = EvidenceTextRow(
                             title: "[A\(number)] \(title)",
-                            detail: item["auszug"]?.string,
+                            detail: item["excerpt"]?.string,
                             meta: item["template_number"]?.string,
                             symbol: .fileText
                         )
@@ -2816,7 +2816,7 @@ struct CouncilEvidenceBlocks: View {
                         let row = EvidenceTextRow(
                             title: speaker,
                             party: party,
-                            detail: item["auszug"]?.string,
+                            detail: item["excerpt"]?.string,
                             meta: [kind, RatsDate.short(item["date"]?.string)].compactMap { $0 }.joined(separator: " · "),
                             symbol: .messageSquareQuote
                         )
@@ -2838,7 +2838,7 @@ struct CouncilEvidenceBlocks: View {
                 VStack(alignment: .leading, spacing: 10) {
                     ForEach(Array(planning.enumerated()), id: \.offset) { _, item in
                         EvidenceTextRow(
-                            title: item["vorlage_titel"]?.string ?? item["template_number"]?.string ?? "Vorlage",
+                            title: item["template_title"]?.string ?? item["template_number"]?.string ?? "Vorlage",
                             detail: item["committee"]?.string,
                             meta: RatsDate.short(item["date"]?.string),
                             symbol: .gitBranch
@@ -2854,7 +2854,7 @@ struct CouncilEvidenceBlocks: View {
 
         if includesAnswerInsights,
            visibility.showsChart,
-           let chart = EvidenceChartData(fields["grafik"]) {
+           let chart = EvidenceChartData(fields["chart"]) {
             EvidenceInteractiveChart(chart: chart)
         }
     }
@@ -2864,8 +2864,8 @@ struct CouncilEvidenceBlocks: View {
     }
 
     private func debateURL(_ item: [String: JSONValue]) -> URL? {
-        guard let raw = item["protokoll_url"]?.string else { return nil }
-        if let page = item["protokoll_seite"]?.int {
+        guard let raw = item["minutes_url"]?.string else { return nil }
+        if let page = item["minutes_page"]?.int {
             return URL(string: "\(raw)#page=\(page)")
         }
         return URL(string: raw)
@@ -3400,7 +3400,7 @@ struct CitedAnswerText: View {
 
     private var citationMarkdown: String {
         let attachmentNumbers = Set(
-            (evidence["anlagen"]?.array ?? []).enumerated().map { offset, value in
+            (evidence["attachments"]?.array ?? []).enumerated().map { offset, value in
                 value.object?["nr"]?.int ?? offset + 1
             }
         )
@@ -3412,7 +3412,7 @@ struct CitedAnswerText: View {
     }
 
     private func attachmentURL(number: Int) -> URL? {
-        let rows = evidence["anlagen"]?.array?.compactMap(\.object) ?? []
+        let rows = evidence["attachments"]?.array?.compactMap(\.object) ?? []
         guard let raw = rows.first(where: { $0["nr"]?.int == number })?["url"]?.string else { return nil }
         return URL(string: raw)
     }
