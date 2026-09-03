@@ -181,8 +181,8 @@ JAHRBUCH_URL = schulden.JAHRBUCH_URL
 #: Statistik Niedersachsen. Sie führt alle Jahrgänge seit 2013 — die
 #: Download-Nummern darunter wechseln jährlich und stehen deshalb nirgends
 #: fest verdrahtet.
-KFA_URL = ("https://www.statistik.niedersachsen.de/kommunaler-fiscal_equalization/"
-           "kommunaler-fiscal_equalization-in-niedersachsen-tabellen-214575.html")
+KFA_URL = ("https://www.statistik.niedersachsen.de/kommunaler-finanzausgleich/"
+           "kommunaler-finanzausgleich-in-niedersachsen-tabellen-214575.html")
 
 #: Nur Dateien aus dem Statistik-Verzeichnis der Stadt. Die Übersichtsseite
 #: verlinkt auch Broschüren aus anderen Ordnern; das Archiv soll die
