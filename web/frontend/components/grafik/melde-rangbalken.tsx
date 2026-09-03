@@ -19,7 +19,7 @@ export type MeldeRangzeile = {
  *
  * Die Seite liefert ausschließlich die öffentlichen Zeilendaten, ihren
  * Aufklappzustand und den fachlichen Vorschauinhalt. Das Grafikmodul besitzt
- * Rang, Maximum, proportionale Balken, Container-Hierarchie, Interaktion,
+ * Rang, Maximum, eine gemeinsame proportionale Schiene, Interaktion,
  * Animation und die einmalige sichtbare Quellenzeile.
  */
 export function MeldeRanglisteGrafik({

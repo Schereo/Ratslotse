@@ -3,7 +3,6 @@
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Info,
   ListOrdered,
   Map as MapIcon,
   MapPin,
@@ -99,7 +98,7 @@ export default function View() {
         onChange={changeView}
         options={[
           { value: "karte", label: "Karte", icon: MapIcon },
-          { value: "meistgemeldet", label: "Meistgemeldet", icon: ListOrdered },
+          { value: "meistgemeldet", label: "Rangliste", icon: ListOrdered },
         ]}
         className="w-full sm:w-80"
       />
@@ -113,11 +112,7 @@ export default function View() {
         </div>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-        <p className="flex items-center gap-1.5">
-          <Info className="h-3.5 w-3.5 shrink-0" aria-hidden />
-          Unabhängige Meldungen · privates Bürgerprojekt, kein Angebot der Stadt Oldenburg.
-        </p>
+      <div className="flex justify-end">
         <LottiHelp ansicht={ansicht} fictional={fictional} />
       </div>
 
@@ -259,15 +254,7 @@ function Leaderboard({ problems, selectedId, onSelect, onShowMap }: {
   });
 
   return (
-    <section className="space-y-4" aria-labelledby="meistgemeldet-heading">
-      <div className="overflow-hidden rounded-2xl border border-primary/20 bg-primary/[0.045] px-4 py-3 sm:px-6 sm:py-4">
-        <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-primary">Gemeinschaftliche Aufmerksamkeit</p>
-        <div className="mt-1 flex flex-wrap items-end justify-between gap-2">
-          <h2 id="meistgemeldet-heading" className="font-display text-2xl font-bold text-foreground sm:text-3xl">Meistgemeldet</h2>
-          <p className="text-xs font-medium text-muted-foreground">Rang · unabhängige Meldungen · gesamter Zeitraum</p>
-        </div>
-      </div>
-
+    <section aria-label="Rangliste">
       <MeldeRanglisteGrafik
         zeilen={zeilen}
         beleg={(

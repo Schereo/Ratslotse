@@ -51,7 +51,7 @@ Erlaubte Bezüge sind Punkt, Einrichtung, Route, Gebiet und Stadtgebiet.
 - Stadtgebiet: keine erfundene Geometrie.
 
 Ungültige oder nicht ehrlich kartierbare Projektionen bleiben in der
-„Meistgemeldet“-Rangliste und werden auf der Karte ausgelassen. Die Vorschau
+Rangliste und werden auf der Karte ausgelassen. Die Vorschau
 benennt diese Grenze, statt einen stadtweiten oder ersatzweisen Punkt zu erfinden.
 
 ## Öffentliche Übersichtsprojektion

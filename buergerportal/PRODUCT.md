@@ -20,15 +20,18 @@ Mehrfachmeldungs-Status in der Oberfläche: Karte, Auswahl und Rangliste zeigen
 vorerst weder Statusfilter noch Status-Badges. Die exakte Meldezahl trägt die
 Mengeninformation bereits selbst.
 
-„Meistgemeldet“ ersetzt das frühere Status-Board. Die Rangliste enthält nur
-ungelöste Projektionen und ordnet sie nach der lebenszeitlichen Gesamtzahl
-freigegebener unabhängiger meldender Personen, absteigend. Gleichstände werden
-nach Titel und dann ID aufgelöst. Jede Zeile nennt die exakte Zahl; sie zeigt
-Aufmerksamkeit, nicht Wahrheit, Dringlichkeit, Schadenshöhe oder Betroffenenzahl.
-Die ersten drei Einträge bilden ab 768 px verfügbarer Grafikbreite eine klarere,
-asymmetrische Spitzengruppe; in schmaleren Containern bleiben sie kompakte
-Rangzeilen. Lotti ist der eine
-kontextuelle Hilfezugang für Karte und Rangliste. Geschlossen ruht sie auf der
+Der Tab „Rangliste“ ersetzt das frühere Status-Board; der kompatible Direktlink
+bleibt `/probleme?view=meistgemeldet`. Die Rangliste enthält nur ungelöste
+Projektionen und ordnet sie nach der lebenszeitlichen Gesamtzahl freigegebener
+unabhängiger meldender Personen, absteigend. Gleichstände werden nach Titel und
+dann ID aufgelöst. Jede Zeile nennt die exakte Zahl; sie zeigt Aufmerksamkeit,
+nicht Wahrheit, Dringlichkeit, Schadenshöhe oder Betroffenenzahl. Alle Ränge
+stehen auf Desktop und Mobil als gleich breite Zeilen untereinander. Ihre Balken
+wachsen auf einer gemeinsamen Null-bis-Maximum-Schiene von links nach rechts;
+die ersten drei unterscheiden sich kompakt durch Tönung, Schrift und Rangzahl,
+nicht durch eine andere Kartenbreite. Die Quellenzeile bleibt direkt unter der
+Rangliste sichtbar, die Projekt-/Amtlichkeitseinordnung im Pflicht-Fuß. Lotti ist
+der eine kontextuelle Hilfezugang für Karte und Rangliste. Geschlossen ruht sie auf der
 Karte beziehungsweise weist in der Rangliste auf den Inhalt, geöffnet erklärt
 sie mit der zustandsgebundenen `erklaert`-Regung Skala, Zählgrenzen und fiktive
 Beispiele. Sie ist ein echter Tastatur- und Touch-Button und feiert kein
