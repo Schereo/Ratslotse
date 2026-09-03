@@ -66,5 +66,9 @@ def set_setup(
     # Gremien, 2 Stadtteil, 3 Themen, 4 Mitteilungen. Die App kennt weiter drei
     # (ohne den Stadtteil-Schritt) und schickt deshalb nie mehr als 3 — die
     # Grenze schneidet ihr nichts ab.
+    #
+    # Das Schema lässt die 4 erst seit 03.09.2026 durch. Vorher stand dort
+    # `le=3`, und dieser Kommentar behauptete eine Grenze, die nie erreicht
+    # wurde: Der letzte Schritt des Browsers kam als 422 zurück.
     store.set_setup_step(user["id"], max(0, min(4, payload.step)), done=payload.done)
     return store.get_setup(user["id"])

@@ -8013,7 +8013,18 @@ export interface components {
         };
         /**
          * SetupUpdate
-         * @description Design 26a: erreichter Schritt des Einrichtungs-Assistenten (0–3).
+         * @description Design 26a: erreichter Schritt des Einrichtungs-Assistenten (0–4).
+         *
+         *     VIER, nicht drei: Der Browser hat seit 09/2026 einen eigenen
+         *     Stadtteil-Schritt — 1 Gremien, 2 Stadtteil, 3 Themen, 4 Mitteilungen. Bis
+         *     03.09.2026 stand hier ``le=3``, während der Router bereits auf 4 klemmte
+         *     und sein Kommentar die Vier erklärte. Der Browser meldete seinen letzten
+         *     Schritt deshalb mit 422 zurück — und verschluckte den Fehler, weil er die
+         *     Meldung als „fire and forget" abschickt.
+         *
+         *     Die App kennt weiter drei Schritte und schickt nie mehr als 3; beim Lesen
+         *     klemmt sie selbst auf 3 (``AppModel.synchronizeOnboarding``). Eine
+         *     gespeicherte 4 ist für sie also ungefährlich.
          */
         SetupUpdate: {
             /**
@@ -13521,4 +13532,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: b6ea2150c9b69f74c2f2d639eb54462726812647423633145fb1536e305b8473
+// vertrag-sha256: 1c5d883db7f503a694f687f2e384b4520e18c727feeb845119ec02679a70403b

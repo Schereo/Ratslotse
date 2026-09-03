@@ -2120,6 +2120,32 @@ def test_native_setup_progress_can_resume_after_reinstall(client):
     assert completed["done_at"] is not None
 
 
+def test_der_vierte_schritt_des_browsers_kommt_an(client):
+    """Der Browser hat vier Schritte: Gremien, Stadtteil, Themen, Mitteilungen.
+
+    Bis 03.09.2026 nahm das Schema nur `step ≤ 3`, während der Router bereits
+    auf 4 klemmte und sein Kommentar die Vier erklärte. Der letzte Schritt kam
+    deshalb als 422 zurück — und niemand merkte es, weil der Browser die
+    Meldung als „fire and forget" abschickt (`.catch(() => {})`).
+
+    Die Folge war still: `setup_step` blieb bei 3. Wer auf dem letzten Schritt
+    aufhörte, bekam die Erinnerungs-Mail, als stünde er noch bei den Themen —
+    und stieg auf einem anderen Gerät auch dort wieder ein.
+    """
+    _register(client)
+    vierter = client.post("/api/onboarding/setup", json={"step": 4, "done": False})
+    assert vierter.status_code == 200, vierter.text
+    assert vierter.json()["step"] == 4
+    assert client.get("/api/onboarding/setup").json()["step"] == 4
+
+
+def test_mehr_als_vier_schritte_gibt_es_nicht(client):
+    """Die Grenze bleibt eine Grenze — sonst schreibt sich jede Zahl ins Konto."""
+    _register(client)
+    assert client.post("/api/onboarding/setup", json={"step": 5}).status_code == 422
+    assert client.post("/api/onboarding/setup", json={"step": -1}).status_code == 422
+
+
 # ---- quiz ----
 def _seed_quiz(area_key="Osternburg", area_type="district", n=3, category="history",
                difficulty="medium"):

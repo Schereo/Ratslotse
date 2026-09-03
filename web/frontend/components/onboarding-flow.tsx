@@ -213,7 +213,11 @@ export function OnboardingFlow() {
     }
     if (!setupData) return;              // Antwort steht noch aus: nichts zeigen
     if (!setupData.pending) { setStep(null); return; }
-    setStep(Math.max(0, Math.min(3, setupData.step)) as Step);
+    // Bis 4, nicht bis 3: Der letzte Schritt (Mitteilungen) IST ein Schritt,
+    // an dem man aufhören kann. Die 3 hier hätte auch nach dem Server-Fix
+    // dafür gesorgt, dass ein Wiedereinstieg beim Themen-Schritt landet — man
+    // hätte ihn ein zweites Mal gemacht.
+    setStep(Math.max(0, Math.min(4, setupData.step)) as Step);
   }, [user, loading, native, setupData, pathname]);
 
   const go = (next: Step | "done") => {
