@@ -88,10 +88,11 @@ MIT_KONTO: tuple[str, ...] = (
     # Haushalt: 21 Schichten, jede über eigene Tabellen. Genau die Fläche, die
     # eine Migration trifft — und die einzige, die sie nach dem Deploy anfasst.
     # Die zwanzig Haushalts-Routen verlangen seit 09/2026 das Recht `budget`
-    # (Ratsmitglied oder Admin, siehe kern/roles.py). Die Vorgabe für das
-    # Probe-Konto ist WEB_ADMIN_EMAIL und trägt es damit; wer RAUCHPROBE_KONTO
-    # auf ein gewöhnliches Konto setzt, bekommt hier zwanzig 403er — das ist
-    # dann kein Ausfall, sondern die falsche Wahl des Kontos.
+    # (Ratsmitglied oder Admin, siehe kern/roles.py). Hat das Probe-Konto es
+    # nicht, sind 403er hier KEIN Ausfall — dann prüft die Probe stattdessen,
+    # dass die Sperre wirklich greift. Die Begründung steht bei
+    # `rechte_pruefen`; gemessen auf dev, wo WEB_ADMIN_EMAIL auf ein Konto
+    # ohne Adminrolle zeigt und der Deploy dadurch rot wurde.
     "/api/council/budget",
     "/api/council/budget/amendment-lists",
     "/api/council/budget/assets",
@@ -116,6 +117,14 @@ MIT_KONTO: tuple[str, ...] = (
     "/api/council/budget/shareholdings",
     "/api/council/budget/staff-plan",
 )
+
+#: Präfix der Routen, die das Recht `budget` verlangen.
+#:
+#: Als PRÄFIX und nicht als Liste: Eine neue Haushalts-Route soll hier nicht
+#: vergessen werden können. Wozu die Unterscheidung gut ist, steht bei
+#: `rechte_pruefen` weiter unten.
+BUDGET_PREFIX = "/api/council/budget"
+
 
 #: Proben, deren Pfad einen Wert braucht, den eine frühere Probe liefert.
 #: ``(Muster, Quell-Pfad, Schlüsselpfad in deren Antwort)``. Fehlt der Wert —
@@ -244,6 +253,37 @@ def kontendatenbank(wurzel: Path, env: dict[str, str]) -> Path | None:
     return None
 
 
+#: Die Rechte des Probe-Kontos, von ``token_bauen`` gefüllt. Modulweit und
+#: nicht als Rückgabewert, damit die Signatur von ``token_bauen`` (und damit
+#: ``tests/test_rauchprobe.py``) unverändert bleibt.
+RECHTE_DES_KONTOS: set[str] = set()
+
+
+def erwarteter_kode(pfad: str) -> int:
+    """Welche Antwort ist für DIESEN Pfad die richtige — 200 oder 403?
+
+    Der Haushalt hängt am Recht ``budget``. Hat das Probe-Konto es, muss die
+    Route 200 liefern und ihre Antwort zum Vertrag passen. Hat es das Recht
+    NICHT, ist 403 die richtige Antwort — und die Probe prüft dann, dass die
+    Sperre wirklich greift, statt zwanzigmal einen Ausfall zu melden, der
+    keiner ist.
+
+    Warum nicht einfach überspringen: Ein stilles Überspringen wäre die
+    schlechteste der drei Möglichkeiten. Es sähe grün aus und prüfte nichts —
+    genau die Sorte Fehler, an der dieses Projekt sonst hängt. So prüft jede
+    Umgebung etwas Sinnvolles: eine mit berechtigtem Konto die Daten, eine
+    ohne die Sperre.
+
+    Gemessen am 03.09.2026: Auf Prod trägt ``WEB_ADMIN_EMAIL`` die Adminrolle
+    und damit ``budget`` — 48/48 grün. Auf dev zeigt dieselbe Variable auf ein
+    Konto ohne Rolle, und der Deploy wurde durch 19 „Ausfälle" rot, die in
+    Wahrheit die korrekt greifende Sperre waren.
+    """
+    if pfad.startswith(BUDGET_PREFIX) and "budget" not in RECHTE_DES_KONTOS:
+        return 403
+    return 200
+
+
 def _b64(roh: bytes) -> str:
     return base64.urlsafe_b64encode(roh).decode().rstrip("=")
 
@@ -279,6 +319,16 @@ def token_bauen(wurzel: Path, konto: str | None) -> tuple[str | None, str]:
             "SELECT id, token_version FROM web_users WHERE lower(email) = lower(?)",
             (adresse,),
         ).fetchone()
+        if zeile:
+            # Die Rechte des Probe-Kontos, aus derselben Verbindung. Ohne sie
+            # könnte die Probe einen 403 nicht von einem Ausfall unterscheiden
+            # — siehe `rechte_pruefen`.
+            try:
+                rollen = [r[0] for r in verbindung.execute(
+                    "SELECT role FROM web_user_roles WHERE user_id = ?", (zeile[0],))]
+            except sqlite3.Error:
+                # Eine Datenbank vor dem Rollen-Umbau: Dann gilt die Alt-Spalte.
+                rollen = []
     except sqlite3.Error as fehler:
         return None, f"Konten-Datenbank nicht lesbar ({fehler})"
     finally:
@@ -297,7 +347,13 @@ def token_bauen(wurzel: Path, konto: str | None) -> tuple[str | None, str]:
     signiert = f"{kopf}.{nutz}".encode()
     zeichen = _b64(hmac.new(geheimnis.encode(), signiert, hashlib.sha256).digest())
     # Zurück kommt die KONTO-NUMMER, nicht die Adresse — aus demselben Grund.
-    return f"{kopf}.{nutz}.{zeichen}", f"Konto {zeile[0]}"
+    from kern import roles as _roles
+
+    rechte = sorted(_roles.permissions_for(rollen))
+    RECHTE_DES_KONTOS.clear()
+    RECHTE_DES_KONTOS.update(rechte)
+    zusatz = f", Rechte: {', '.join(rechte)}" if rechte else ", ohne Zusatzrechte"
+    return f"{kopf}.{nutz}.{zeichen}", f"Konto {zeile[0]}{zusatz}"
 
 
 # ------------------------------------------------------------------- Abruf
@@ -353,7 +409,19 @@ def main(argv: list[str] | None = None) -> int:
     def lauf(paare, mit_token=None):
         nonlocal schlecht
         for muster, pfad in paare:
+            erwartet = erwarteter_kode(pfad) if mit_token else 200
             kode, daten = hole(args.basis, pfad, args.zeitlimit, mit_token)
+            if erwartet != 200:
+                # Für diese Route ist die SPERRE das Erwartete. Sie wird
+                # geprüft, nicht übersprungen (Begründung in `erwarteter_kode`).
+                if kode == erwartet:
+                    print(f"  ✓ {pfad}  {kode} — Sperre greift")
+                else:
+                    print(f"  ✗ {pfad}  HTTP {kode}, erwartet {erwartet} "
+                          f"(das Probe-Konto hat das Recht nicht — die Route "
+                          f"müsste es abweisen)")
+                    schlecht += 1
+                continue
             if kode != 200:
                 grund = {0: f"nicht erreichbar ({daten})",
                          -1: "Antwort ist kein JSON"}.get(kode, f"HTTP {kode}")
@@ -402,7 +470,13 @@ def main(argv: list[str] | None = None) -> int:
     if schlecht:
         print(f"\n{schlecht} Probe(n) gescheitert.")
         return 1
-    print(f"\n{len(antworten)} Probe(n) in Ordnung.")
+    gesperrt = sum(1 for pfad in MIT_KONTO if token and erwarteter_kode(pfad) != 200)
+    if gesperrt:
+        print(f"\n{len(antworten)} Probe(n) in Ordnung, {gesperrt} Sperre(n) geprüft "
+              f"(dem Probe-Konto fehlt das Recht `budget` — auf dieser Umgebung "
+              f"prüft die Probe deshalb, DASS der Haushalt abweist).")
+    else:
+        print(f"\n{len(antworten)} Probe(n) in Ordnung.")
     return 0
 
 
