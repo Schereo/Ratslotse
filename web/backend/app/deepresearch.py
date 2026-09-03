@@ -427,7 +427,9 @@ def _run(job: DeepJob, ratslotse_db: str, council_db: str) -> None:
             "period": zeitraum, "context": job.suchfrage,
             "sources": [_qa_source(c) for c in candidates],
             "presse_kompakt": [{"title": p.get("title"), "url": p.get("url"),
-                                "date": p.get("date")} for p in presse_rows],
+                                "date": p.get("date"),
+                                "excerpt": (p.get("auszug") or "")[:600]}
+                               for p in presse_rows],
             "debatten_kompakt": [{"speaker": d.get("speaker"), "party": d.get("party"),
                                   "art": d.get("art"), "top": d.get("top"),
                                   "excerpt": (d.get("text") or "")[:2000],

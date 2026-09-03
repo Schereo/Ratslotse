@@ -23,16 +23,16 @@ public struct MonoKicker: View {
 
 public struct Pill: View {
     private let text: String
-    private let symbol: String?
+    private let symbol: RatsGlyph?
 
-    public init(_ text: String, symbol: String? = nil) {
+    public init(_ text: String, symbol: RatsGlyph? = nil) {
         self.text = text
         self.symbol = symbol
     }
 
     public var body: some View {
         HStack(spacing: 5) {
-            if let symbol { Image(systemName: symbol) }
+            if let symbol { RatsIcon(symbol, size: 12) }
             Text(text)
         }
         .font(RatsFont.body(12, weight: .semibold))
@@ -120,7 +120,7 @@ public struct SourceRow: View {
                 if let meta { Text(meta).font(RatsFont.mono(9)).foregroundStyle(RatsColor.muted) }
             }
             Spacer(minLength: 0)
-            Image(systemName: "chevron.right").font(.caption).foregroundStyle(RatsColor.muted)
+            RatsIcon(.chevronRight, size: 12).foregroundStyle(RatsColor.muted)
         }
         .foregroundStyle(RatsColor.text)
         .contentShape(Rectangle())
@@ -159,7 +159,7 @@ public struct QuestionComposer: View {
 
     public var body: some View {
         HStack(spacing: 9) {
-            Image(systemName: "sparkles")
+            RatsIcon(.sparkles, size: 16)
                 .foregroundStyle(RatsColor.signal)
             TextField("Was möchtest du über den Rat wissen?", text: $text, axis: .vertical)
                 .font(RatsFont.body())
@@ -167,8 +167,7 @@ public struct QuestionComposer: View {
                 .submitLabel(.send)
                 .onSubmit(action)
             Button(action: action) {
-                Image(systemName: isSending ? "stop.fill" : "arrow.up")
-                    .font(.system(size: 15, weight: .bold))
+                RatsIcon(isSending ? .square : .arrowUp, size: 15)
                     .foregroundStyle(RatsColor.primaryText)
                     .frame(width: 38, height: 38)
                     .background(RatsColor.primary.opacity(text.trimmingCharacters(in: .whitespaces).isEmpty ? 0.35 : 1))

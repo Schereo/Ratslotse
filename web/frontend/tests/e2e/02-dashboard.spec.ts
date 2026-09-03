@@ -28,6 +28,23 @@ test.describe("Dashboard", () => {
   });
 
   test("Erste Schritte zeigen Fortschritt und führen zur ersten Station", async ({ page }) => {
+    // Der Hinweis-Platz zeigt EINEN Hinweis, nach Priorität: Live > Pause >
+    // Erste Schritte > Mitteilungen. Was gerade gewinnt, hängt am Datenstand —
+    // in der CI ist die Rats-Datenbank leer, und dann meldet der Server eine
+    // Sitzungspause, hinter der die Leiste unter „Mehr" verschwindet. Der Test
+    // hat lokal bestanden und in der CI nicht.
+    //
+    // Deshalb werden die beiden höher stehenden Hinweise hier stillgelegt: Der
+    // Test soll die Erste-Schritte-Leiste prüfen, nicht die Tagesform der
+    // Sitzungsdaten.
+    await page.route("**/api/council/session-break", (route) =>
+      route.fulfill({ status: 200, contentType: "application/json",
+        body: JSON.stringify({ state: "none", label: null, until: null }) }));
+    await page.route("**/api/council/heute", (route) =>
+      route.fulfill({ status: 200, contentType: "application/json",
+        body: JSON.stringify({ state: "pause" }) }));
+    await page.reload();
+
     const leiste = page.locator("[data-tour='erste-schritte']");
     await expect(leiste).toBeVisible();
     await expect(leiste).toContainText("Erste Schritte mit Lotti");

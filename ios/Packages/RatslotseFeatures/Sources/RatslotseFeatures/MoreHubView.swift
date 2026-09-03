@@ -306,11 +306,11 @@ private enum NativeFeedbackKind: String, CaseIterable, Identifiable {
         }
     }
 
-    var symbol: String {
+    var symbol: RatsGlyph {
         switch self {
-        case .feature: "sparkles"
-        case .bug: "ladybug"
-        case .other: "bubble.left.and.bubble.right"
+        case .feature: .sparkles
+        case .bug: .bug
+        case .other: .messagesSquare
         }
     }
 }
@@ -357,16 +357,15 @@ private struct NativeFeedbackView: View {
                 kicker: "Direkt an Ratslotse",
                 title: "Was können wir besser machen?",
                 message: "Ideen, Fehler und Dinge, die dich stören – deine Nachricht landet direkt bei uns.",
-                symbol: "message.badge"
+                symbol: .messageCircleMore
             )
 
-            RatsSectionPanel("Worum geht es?", detail: "Wähle die passendste Kategorie.", symbol: "tag") {
+            RatsSectionPanel("Worum geht es?", detail: "Wähle die passendste Kategorie.", symbol: .tag) {
                 HStack(spacing: 8) {
                     ForEach(NativeFeedbackKind.allCases) { entry in
                         Button { kind = entry } label: {
                             VStack(spacing: 6) {
-                                Image(systemName: entry.symbol)
-                                    .font(.system(size: 16, weight: .semibold))
+                                RatsIcon(entry.symbol, size: 11)
                                 Text(entry.label)
                                     .font(RatsFont.body(11, weight: .semibold))
                                     .lineLimit(1)
@@ -386,7 +385,7 @@ private struct NativeFeedbackView: View {
                 }
             }
 
-            RatsSectionPanel("Deine Nachricht", detail: "Je konkreter, desto leichter können wir es verbessern.", symbol: "text.alignleft") {
+            RatsSectionPanel("Deine Nachricht", detail: "Je konkreter, desto leichter können wir es verbessern.", symbol: .alignLeft) {
                 VStack(alignment: .leading, spacing: 8) {
                     TextField(
                         "Was fehlt, was funktioniert nicht oder was wäre hilfreich?",
@@ -427,7 +426,7 @@ private struct NativeFeedbackView: View {
             Button { Task { await send() } } label: {
                 HStack(spacing: 8) {
                     if isSending { ProgressView().tint(RatsColor.primaryText) }
-                    else { Image(systemName: "paperplane.fill") }
+                    else { RatsIcon(.send, size: 16) }
                     Text(isSending ? "Wird gesendet …" : "Feedback senden")
                 }
                 .frame(maxWidth: .infinity)
@@ -448,7 +447,7 @@ private struct NativeFeedbackView: View {
                 kicker: "Danke dir",
                 title: "Ist angekommen!",
                 message: "Dein Feedback wurde gespeichert. Wir schauen es uns an und melden uns bei Rückfragen über deine Konto-Adresse.",
-                symbol: "checkmark"
+                symbol: .check
             )
             Button("Fertig") { dismiss() }
                 .buttonStyle(PrimaryButtonStyle())

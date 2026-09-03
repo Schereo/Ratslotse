@@ -330,6 +330,51 @@ import Testing
     #expect(!markdown.contains("999"))
 }
 
+@Test func answerBlocksKeepTheBoundariesTheMarkdownParserSwallows() throws {
+    // `AttributedString(markdown:)` erkennt Absätze und Überschriften zwar,
+    // wirft ihre Grenzen im Ergebnis aber ersatzlos weg — die Antwort stand
+    // als eine Zeile ohne Leerzeichen da (Tims Befund 31.08.2026). Deshalb
+    // schneidet die App die Blöcke selbst.
+    let blocks = questionAnswerBlocks("""
+        Der Aufstellungsbeschluss wurde vertagt [7].
+
+        ## Kosten und Finanzierung
+
+        **Planungskosten**: Der Stadt entstehen Kosten in üblicher Höhe.
+        Der Betrag steht noch nicht fest.
+
+        ### Offene Punkte
+
+        - Erschließungskosten offen
+        * Sozialquote erneut beraten
+        """)
+
+    #expect(blocks.count == 5)
+    guard case .paragraph(let intro) = blocks[0] else { Issue.record("Absatz erwartet"); return }
+    #expect(intro == "Der Aufstellungsbeschluss wurde vertagt [7].")
+    guard case .heading(let head) = blocks[1] else { Issue.record("Kopf erwartet"); return }
+    #expect(head == "Kosten und Finanzierung")
+    // Zwei Zeilen ohne Leerzeile bleiben EIN Absatz — der Umbruch überlebt,
+    // weil je Block nur die Inline-Syntax geparst wird.
+    guard case .paragraph(let costs) = blocks[2] else { Issue.record("Absatz erwartet"); return }
+    #expect(costs == "**Planungskosten**: Der Stadt entstehen Kosten in üblicher Höhe.\nDer Betrag steht noch nicht fest.")
+    guard case .subheading(let sub) = blocks[3] else { Issue.record("Unterkopf erwartet"); return }
+    #expect(sub == "Offene Punkte")
+    guard case .list(let items) = blocks[4] else { Issue.record("Liste erwartet"); return }
+    #expect(items == ["Erschließungskosten offen", "Sozialquote erneut beraten"])
+
+    // Fett am Zeilenanfang ist KEIN Listenpunkt: „*" zählt nur mit
+    // Leerzeichen dahinter.
+    guard case .paragraph(let bold)? = questionAnswerBlocks("**Einnahmen**: Aus Verkäufen.").first
+    else { Issue.record("Absatz erwartet"); return }
+    #expect(bold == "**Einnahmen**: Aus Verkäufen.")
+
+    // „#Oldenburg" ist ein Wort, keine Überschrift.
+    guard case .paragraph(let hashtag)? = questionAnswerBlocks("#Oldenburg bleibt Thema.").first
+    else { Issue.record("Absatz erwartet"); return }
+    #expect(hashtag == "#Oldenburg bleibt Thema.")
+}
+
 @Test func decisionSummaryUsesTheSharedBackendImportanceScore() throws {
     let data = Data(#"{"id":17,"title":"Haushaltsplan 2026","importance":82}"#.utf8)
     let decision = try JSONDecoder().decode(DecisionSummary.self, from: data)

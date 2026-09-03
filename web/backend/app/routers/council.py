@@ -2129,6 +2129,12 @@ class QaSharePress(BaseModel):
     title: str = Field(max_length=300)
     url: str = Field(max_length=500)
     date: str | None = Field(default=None, max_length=10)
+    # Ohne den Anriss verlöre ein geteiltes Gespräch die Meldung selbst und
+    # zeigte nur noch einen Link nach draußen. Der Name folgt seinen
+    # Geschwistern ``attachments[].excerpt`` und ``debates[].excerpt``: Beim
+    # Anlegen dieses Feldes (01.09.2026) hießen die noch deutsch und der
+    # Wire-Umbau stand aus — er ist seit 02.09.2026 durch.
+    excerpt: str = Field(default="", max_length=600)
 
 
 class QaShareAttachment(BaseModel):
@@ -2992,7 +2998,13 @@ def _presse_kompakt(rows: list[dict]) -> list[dict]:
     """Anzeige-Form der Presse-Treffer — identisch im sources-Event und im
     Gesprächs-Snapshot, damit ein geladenes Gespräch nichts verliert."""
     return [{"title": p.get("title"), "url": p.get("url"),
-             "date": p.get("date")} for p in rows]
+             "date": p.get("date"),
+             # Der Anriss stand längst in der Abfrage (``presse_by_ids`` kürzt
+             # den Volltext auf 600 Zeichen), fiel hier aber wieder raus: Die
+             # Karte trug nur einen Titel und einen Link auf die Stadt-Seite,
+             # die Meldung selbst musste man auswärts lesen (Tims Befund
+             # 01.09.2026).
+             "excerpt": (p.get("auszug") or "")[:600]} for p in rows]
 
 
 def _sitzungen_kompakt(sitzungen: list[dict]) -> list[dict]:

@@ -10,7 +10,7 @@ struct BadgeCollectionCard: View {
         RatsSectionPanel(
             "Deine Lotsen-Abzeichen",
             detail: "Fürs Erkunden – ohne Rangliste und ohne verlorene Serien.",
-            symbol: "medal.fill"
+            symbol: .medal
         ) {
             if let snapshot = model.badgeSnapshot {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -23,7 +23,7 @@ struct BadgeCollectionCard: View {
                         .foregroundStyle(RatsColor.secondary)
                     Spacer(minLength: 0)
                     if snapshot.earnedCount == snapshot.total {
-                        Label("Komplett", systemImage: "checkmark.seal.fill")
+                        RatsLabel("Komplett", .badgeCheck)
                             .font(RatsFont.body(11, weight: .semibold))
                             .foregroundStyle(RatsColor.success)
                     }
@@ -37,8 +37,7 @@ struct BadgeCollectionCard: View {
 
                 if let next = snapshot.next {
                     HStack(alignment: .top, spacing: 10) {
-                        Image(systemName: "location.north.fill")
-                            .font(.system(size: 12, weight: .semibold))
+                        RatsIcon(.navigation, size: 12)
                             .foregroundStyle(RatsColor.signal)
                             .frame(width: 28, height: 28)
                             .background(RatsColor.signal.opacity(0.09))
@@ -75,8 +74,7 @@ private struct BadgeTile: View {
             HStack(alignment: .top) {
                 BadgeMedallion(badgeID: badge.id, earned: badge.earned, size: 48)
                 Spacer(minLength: 4)
-                Image(systemName: badge.earned ? "sparkles" : "lock.fill")
-                    .font(.system(size: 10, weight: .bold))
+                RatsIcon(badge.earned ? .sparkles : .lock, size: 10)
                     .foregroundStyle(badge.earned ? palette.accent : RatsColor.muted)
                     .frame(width: 25, height: 25)
                     .background(badge.earned ? palette.accent.opacity(0.11) : RatsColor.separator)
@@ -182,8 +180,7 @@ struct BadgeCelebrationOverlay: View {
                     Button {
                         withAnimation(.snappy) { model.dismissBadgeCelebration() }
                     } label: {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 12, weight: .bold))
+                        RatsIcon(.x, size: 12)
                             .foregroundStyle(RatsColor.secondary)
                             .frame(width: 32, height: 32)
                             .background(RatsColor.stage)
@@ -245,8 +242,7 @@ private struct BadgeMedallion: View {
             Circle()
                 .fill(Color.black.opacity(earned ? 0.10 : 0.03))
                 .padding(size * 0.19)
-            Image(systemName: badgeSymbol(badgeID))
-                .font(.system(size: size * 0.34, weight: .bold))
+            RatsIcon(badgeSymbol(badgeID), size: size * 0.34)
                 .foregroundStyle(earned ? Color.white : RatsColor.muted)
                 .shadow(color: .black.opacity(earned ? 0.22 : 0), radius: 1, y: 1)
             if earned {
@@ -255,7 +251,7 @@ private struct BadgeMedallion: View {
                     .frame(width: size * 0.31, height: size * 0.075)
                     .rotationEffect(.degrees(-34))
                     .offset(x: -size * 0.17, y: -size * 0.22)
-                Image(systemName: "sparkle")
+                RatsIcon(.sparkle, size: 16)
                     .font(.system(size: size * 0.18, weight: .bold))
                     .foregroundStyle(palette.metal)
                     .shadow(color: palette.metal.opacity(0.7), radius: 4)
@@ -298,16 +294,16 @@ private func badgePalette(_ id: String) -> BadgePalette {
     }
 }
 
-private func badgeSymbol(_ id: String) -> String {
+private func badgeSymbol(_ id: String) -> RatsGlyph {
     switch id {
-    case "erste-frage": "sparkles"
-    case "themen-lotse": "tag.fill"
-    case "quiz-serie": "trophy.fill"
-    case "kartograf": "map.fill"
-    case "analyst": "chart.bar.xaxis"
-    case "sitzungsgast": "calendar.badge.clock"
-    case "fruehwarner": "bell.badge.fill"
-    case "kompass": "location.north.circle.fill"
-    default: "medal.fill"
+    case "erste-frage": .sparkles
+    case "themen-lotse": .tag
+    case "quiz-serie": .quiz
+    case "kartograf": .map
+    case "analyst": .analysis
+    case "sitzungsgast": .calendarClock
+    case "fruehwarner": .bellDot
+    case "kompass": .navigation
+    default: .medal
     }
 }

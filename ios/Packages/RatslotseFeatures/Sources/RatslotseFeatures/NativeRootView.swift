@@ -69,7 +69,7 @@ public struct NativeRootView: View {
         .preferredColorScheme(preferredColorScheme)
         .overlay(alignment: .top) {
             if model.isOffline {
-                Label("Offline", systemImage: "wifi.slash")
+                RatsLabel("Offline", .wifiOff)
                     .font(RatsFont.body(11, weight: .semibold))
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
@@ -289,7 +289,7 @@ private struct UpdateRequiredView: View {
                         .foregroundStyle(RatsColor.bodyText)
                         .lineSpacing(4)
                     Link(destination: URL(string: "https://apps.apple.com/app/id6786553049")!) {
-                        Label("Im App Store aktualisieren", systemImage: "arrow.down.app")
+                        RatsLabel("Im App Store aktualisieren", .download)
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(PrimaryButtonStyle())

@@ -113,7 +113,7 @@ struct GuidedTourView: View {
                             dismiss()
                             DispatchQueue.main.async { open(target) }
                         } label: {
-                            Label("Diesen Bereich ausprobieren", systemImage: "arrow.up.right")
+                            RatsLabel("Diesen Bereich ausprobieren", .arrowUpRight)
                                 .frame(maxWidth: .infinity)
                         }
                         .buttonStyle(SecondaryButtonStyle())
@@ -139,7 +139,7 @@ struct GuidedTourView: View {
             Text("Der Rat hat mehrere sichere Querungen und Fahrradstraßen beraten. [1]")
                 .font(RatsFont.body(15))
                 .lineSpacing(4)
-            Label("1  Amtliche Quelle · Beispiel", systemImage: "doc.text.magnifyingglass")
+            RatsLabel("1  Amtliche Quelle · Beispiel", .fileSearch)
                 .font(RatsFont.body(11, weight: .semibold))
                 .foregroundStyle(RatsColor.primary)
                 .padding(.horizontal, 11)

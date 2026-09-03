@@ -8793,6 +8793,12 @@
               "null"
             ]
           },
+          "excerpt": {
+            "default": "",
+            "maxLength": 600,
+            "title": "Excerpt",
+            "type": "string"
+          },
           "title": {
             "maxLength": 300,
             "title": "Title",

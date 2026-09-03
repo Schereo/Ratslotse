@@ -381,7 +381,7 @@ struct CouncilInsightsView: View {
                                     query: [.init(name: "q", value: topic.tag)]
                                 )
                             } label: {
-                                Label("\(topic.tag) · \(topic.n)", systemImage: "arrow.up.right")
+                                RatsLabel("\(topic.tag) · \(topic.n)", .arrowUpRight)
                                 .font(RatsFont.body(11, weight: .semibold))
                                 .foregroundStyle(RatsColor.primary)
                                 .padding(.horizontal, 10)
@@ -428,7 +428,7 @@ struct CouncilInsightsView: View {
                                     .foregroundStyle(RatsColor.primary)
                                     .padding(.horizontal, 7).padding(.vertical, 3)
                                     .background(RatsColor.primary.opacity(0.08)).clipShape(Capsule())
-                                Image(systemName: "chevron.down")
+                                RatsIcon(.chevronDown, size: 11.5)
                                     .rotationEffect(.degrees(expandedRecaps.contains(recap.id) ? 180 : 0))
                                     .foregroundStyle(RatsColor.muted)
                             }
@@ -550,7 +550,7 @@ struct CouncilInsightsView: View {
                     RatsGlyphView(glyph: .profile, color: RatsColor.primary).frame(width: 17, height: 17)
                     Text(partyFilter.isEmpty ? "Alle Fraktionen" : partyFilter)
                     Spacer()
-                    Image(systemName: "chevron.up.chevron.down")
+                    RatsIcon(.chevronsUpDown, size: 12)
                 }
                 .font(RatsFont.body(12, weight: .semibold))
                 .foregroundStyle(RatsColor.bodyText)
@@ -656,7 +656,7 @@ struct CouncilInsightsView: View {
                             Text(goal.description).font(RatsFont.body(10.5)).foregroundStyle(RatsColor.secondary).lineLimit(3)
                         }
                         Spacer()
-                        Image(systemName: "chevron.down")
+                        RatsIcon(.chevronDown, size: 16)
                             .rotationEffect(.degrees(expandedGoals.contains(goal.key) ? 180 : 0))
                             .foregroundStyle(RatsColor.muted)
                     }
