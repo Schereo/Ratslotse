@@ -28,12 +28,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from council.store import (  # noqa: E402
+from council.store import CouncilStore  # noqa: E402
+from council.store_schema import (  # noqa: E402
     _FACH_SPALTEN,
     _GELD_SPALTEN,
     _REST_SPALTEN,
     _STRUKTUR_SPALTEN,
-    CouncilStore,
 )
 
 #: Alle vier Listen zusammen — sie werden in `_migrate` nacheinander angewandt.

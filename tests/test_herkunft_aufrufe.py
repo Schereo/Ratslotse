@@ -110,14 +110,16 @@ def test_jeder_neuberechnungslauf_traegt_seine_eigene_marke():
     Zeile nicht wieder — und der nächste Ingest legte jede Quelle ein zweites
     Mal an, ohne dass irgendetwas rot wird.
     """
-    baum = ast.parse((WURZEL / "council" / "store.py").read_text())
+    # Alle Store-Dateien: Die Migration ist seit 09/2026 in `store_schema.py`.
+    baeume = [ast.parse(p.read_text())
+              for p in sorted((WURZEL / "council").glob("store*.py"))]
     marken = []
-    for knoten in ast.walk(baum):
+    for knoten in (k for b in baeume for k in ast.walk(b)):
         if not (isinstance(knoten, ast.Call) and isinstance(knoten.func, ast.Attribute)
                 and knoten.func.attr == "_herkunft_schluessel_neu"):
             continue
         assert len(knoten.args) == 1 and isinstance(knoten.args[0], ast.Constant), (
-            f"store.py:{knoten.lineno}: Marke muss beim Aufruf stehen")
+            f"Zeile {knoten.lineno}: Marke muss beim Aufruf stehen")
         marken.append(knoten.args[0].value)
     assert marken, "kein Aufruf gefunden — die Prüfung wäre wertlos grün"
     doppelt = {m for m in marken if marken.count(m) > 1}

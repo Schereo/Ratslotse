@@ -90,7 +90,8 @@ Methoden. Der Haushalt ist als erste Ecke heraus:
 
 | Datei | Methoden | Inhalt |
 |---|---|---|
-| `council/store.py` | 237 | **Kern**: Schema und Migrationen, Beschlüsse, Vorlagen, Anlagen, Suche, Embeddings |
+| `council/store.py` | 222 | **Kern**: Beschlüsse, Vorlagen, Anlagen, Suche, Embeddings |
+| `council/store_schema.py` | 15 | `SCHEMA`, Migration und ihre Vokabulare |
 | `council/store_sitzungen.py` | 48 | Termine, Tagesordnungen, Gremien, Wochenvorschau |
 | `council/store_haushalt.py` | 81 | die Abfragen der Haushalts-Seiten |
 | `council/store_personen.py` | 31 | Ratsmitglieder, Verwaltung, Namensformen, Anwesenheit |
@@ -104,8 +105,8 @@ Methoden. Der Haushalt ist als erste Ecke heraus:
 | `council/store_helfer.py` | — | die paar Funktionen, die mehrere Ecken brauchen |
 
 Alle landen über Mixins in derselben `CouncilStore`; an den Aufrufstellen
-ändert sich nichts. `store.py` ist damit von 15.744 auf 9.979 Zeilen und von
-506 auf 237 eigene Methoden geschrumpft.
+ändert sich nichts. `store.py` ist damit von 15.744 auf 6.432 Zeilen und von
+506 auf 222 eigene Methoden geschrumpft.
 
 `store_helfer.py` gibt es, weil ein Mixin in einer eigenen Datei nichts aus
 `store.py` importieren kann — das wäre ein Ring. Was mehrere Ecken brauchen und
@@ -128,5 +129,12 @@ Alle drei landen über Mixins in derselben `CouncilStore`, an den Aufrufstellen
 fest; sie darf schrumpfen und nicht wachsen. Gehört eine Abfrage wirklich in
 die Mitte, wird die Zahl dort angehoben — mit einem Satz, warum.
 
-**Schema und Migrationen bleiben in `store.py`.** Sie gehören der Datenbank
-als Ganzem, nicht einer ihrer Ecken.
+**Schema und Migrationen gehören der Datenbank als Ganzem**, nicht einer
+Fach-Ecke. Sie liegen seit 09/2026 trotzdem in einer eigenen Datei
+(`store_schema.py`) — `_migrate` allein war 2.458 Zeilen, ein Viertel des
+Stores in einer Methode. Das ist keine Ecke, sondern dieselbe Sache in einer
+eigenen Datei; die Reihenfolge der Schritte ist unverändert.
+
+**Wächter, die Quelltext lesen, lesen `council/store*.py` — alle.** Vier Tests
+suchten an der festen Datei `store.py`; nach dem Umzug fanden sie 39 statt 84
+Migrationspaaren und waren trotzdem grün, bis der Zählwert-Test anschlug.

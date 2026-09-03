@@ -267,8 +267,13 @@ def migrationspaare() -> set[tuple[str, str]]:
     eigene Werte-Vokabulare, und die Oberfläche liest sie genauso.
     """
     paare = set()
-    for laden in ("council", "kern"):
-        text = (WURZEL / laden / "store.py").read_text()
+    # Alle `store*.py` beider Pakete: `council/store.py` ist seit 09/2026
+    # aufgeteilt, und die Werte-Migrationen stehen jetzt in `store_schema.py`.
+    # Eine feste Dateiliste hätte den Wächter still auf 39 Paare halbiert.
+    quellen = sorted((WURZEL / "council").glob("store*.py")) + \
+        sorted((WURZEL / "kern").glob("store*.py"))
+    for quelle in quellen:
+        text = quelle.read_text()
         for block in re.finditer(r"_werte_umschreiben\((.*?)\]\)", text, re.S):
             paare.update(_PAAR.findall(block.group(1)))
         # Listen-Konstanten, die mehrere Aufrufe teilen (ORTSARTEN).
