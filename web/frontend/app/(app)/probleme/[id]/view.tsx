@@ -1,20 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
 import { PublicProblemDetail } from "@/components/public-problem-detail";
-import { ApiError, api } from "@/lib/api";
-import type { ApiAntwort } from "@/lib/vertrag";
+import { ApiError } from "@/lib/api";
+import { usePublicProblem } from "@/lib/use-public-problem";
 import { Button, EmptyState, ErrorState, Spinner } from "@/components/ui";
 
 export default function DetailView({ problemId }: { problemId: number | null }) {
-  const query = useQuery({
-    queryKey: ["public-problem", problemId],
-    queryFn: () => api.get<ApiAntwort<"/probleme/{problem_id}">>(`/probleme/${problemId}`),
-    enabled: problemId !== null,
-    staleTime: 60_000,
-    retry: false,
-  });
+  const query = usePublicProblem(problemId);
   const notFound = problemId === null || query.error instanceof ApiError && query.error.status === 404;
 
   if (notFound) {

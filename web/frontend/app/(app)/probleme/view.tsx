@@ -20,10 +20,11 @@ import {
 import { ProblemHelp } from "@/components/problem-help";
 import { PublicProblemDetail } from "@/components/public-problem-detail";
 import { EmptyState, ErrorState, PageHeader, Segmented, Spinner } from "@/components/ui";
-import { ApiError, api } from "@/lib/api";
+import { ApiError } from "@/lib/api";
 import { isNativeApp } from "@/lib/platform";
 import { cn } from "@/lib/utils";
-import { vertrag, type ApiAntwort } from "@/lib/vertrag";
+import { usePublicProblem } from "@/lib/use-public-problem";
+import { vertrag } from "@/lib/vertrag";
 import {
   isProblemMappable,
   PROBLEM_ANGEBOT,
@@ -61,13 +62,7 @@ export default function View() {
     enabled: detailParam === null,
     staleTime: 60_000,
   });
-  const detailQuery = useQuery({
-    queryKey: ["public-problem", detailId],
-    queryFn: () => api.get<ApiAntwort<"/probleme/{problem_id}">>(`/probleme/${detailId}`),
-    enabled: detailId !== null,
-    staleTime: 60_000,
-    retry: false,
-  });
+  const detailQuery = usePublicProblem(detailId);
   const all = query.data?.problems ?? EMPTY_PROBLEMS;
   const [ansicht, setAnsicht] = useState<Ansicht>("karte");
   const [category, setCategory] = useState<PublicProblem["category"] | "all">("all");
@@ -110,7 +105,7 @@ export default function View() {
     <div className="space-y-4">
       <PageHeader title={PROBLEM_ANGEBOT.name} />
 
-      {fictional && (
+      {detailParam === null && fictional && (
         <div className="inline-flex min-h-10 max-w-full items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950/35 dark:text-amber-100">
           <span role="status"><strong>Feature-Vorschau</strong> · frei erfundene Beispiele</span>
         </div>

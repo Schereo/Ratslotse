@@ -1,4 +1,5 @@
 """Wächter für Sichtbarkeit und Feature-only-Beispieldaten des Bürgerportals."""
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -35,6 +36,48 @@ def test_problem_route_and_entry_points_share_the_environment_gate():
     )
     assert GATE in sitemap and "`${BASE}/probleme`" in sitemap, (
         "Den Sitemap-Eintrag in app/sitemap.ts mit PROBLEME_FREI schützen."
+    )
+
+
+def test_android_registers_canonical_problem_app_links():
+    manifest = ET.parse(FRONTEND / "android" / "app" / "src" / "main" / "AndroidManifest.xml")
+    android = "{http://schemas.android.com/apk/res/android}"
+
+    app_links = set()
+    for intent_filter in manifest.findall(".//intent-filter"):
+        actions = frozenset(
+            action.get(f"{android}name")
+            for action in intent_filter.findall("action")
+        )
+        categories = frozenset(
+            category.get(f"{android}name")
+            for category in intent_filter.findall("category")
+        )
+        if "android.intent.action.VIEW" not in actions:
+            continue
+        for data in intent_filter.findall("data"):
+            app_links.add((
+                intent_filter.get(f"{android}autoVerify"),
+                categories,
+                data.get(f"{android}scheme"),
+                data.get(f"{android}host"),
+                data.get(f"{android}pathPrefix"),
+            ))
+
+    expected = {(
+        "true",
+        frozenset({
+            "android.intent.category.DEFAULT",
+            "android.intent.category.BROWSABLE",
+        }),
+        "https",
+        "ratslotse.de",
+        "/probleme/",
+    )}
+    assert app_links == expected, (
+        "AndroidManifest.xml auf genau den verifizierten HTTPS-App-Link "
+        "ratslotse.de/probleme/* mit DEFAULT+BROWSABLE begrenzen; danach "
+        "`.venv/bin/pytest tests/test_buergerportal_gate.py -q` ausführen."
     )
 
 

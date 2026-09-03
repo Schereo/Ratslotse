@@ -34,8 +34,12 @@ wegen beliebiger IDs nicht Teil des statischen Android-Exports sein.
 `build-mobile.mjs` nimmt sie deshalb nur während des Exports heraus. Das
 Android-Gerüst zeigt dieselben Details unter `/probleme?problem=[id]`;
 `lib/app-links.ts` übersetzt eingehende kanonische Links auf diesen Query-Pfad.
-Geteilt wird weiterhin die Web-Route. Die native SwiftUI-App besitzt noch keine
-Bürgerportal-Ansicht und öffnet Problem-Links im Web.
+Geteilt wird weiterhin die Web-Route. Das Android-Gerüst registriert
+`https://ratslotse.de/probleme/*` als App Link; vor seiner ersten signierten
+Veröffentlichung muss der Platzhalter in `.well-known/assetlinks.json` durch
+den SHA-256-Fingerabdruck des Veröffentlichungsschlüssels ersetzt werden. Die
+native SwiftUI-App besitzt noch keine Bürgerportal-Ansicht und öffnet
+Problem-Links deshalb im Web.
 
 ## Gemeinsame produktive Voraussetzungen
 

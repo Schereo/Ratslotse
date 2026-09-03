@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { serverApiUrl } from "@/lib/api";
 import type { ApiAntwort } from "@/lib/vertrag";
 
 /** Link-Vorschau für geteilte Detailseiten (Design 29a, P1).
@@ -24,14 +25,9 @@ export const istExport = () => process.env.MOBILE === "1";
 
 export type VorschauArt = "decision" | "person" | "thema" | "sitzung" | "ort";
 
-/** Backend-Origin für den Server-seitigen Abruf. Im Betrieb läuft das Frontend
- *  neben dem Backend auf demselben Host; `BACKEND_URL` ist dieselbe Variable,
- *  die auch next.config.mjs für die /api-Weiterleitung benutzt. */
-const BACKEND = process.env.BACKEND_URL || "http://localhost:8000";
-
 async function holeVorschau(art: VorschauArt, key: string) {
   try {
-    const res = await fetch(`${BACKEND}/api/council/preview/${art}/${encodeURIComponent(key)}`, {
+    const res = await fetch(serverApiUrl(`/council/preview/${art}/${encodeURIComponent(key)}`), {
       // Geteilte Links werden von Messengern oft im Schwarm abgerufen — eine
       // Viertelstunde Cache reicht völlig und hält die Last vom Backend fern.
       next: { revalidate: 900 },
@@ -55,7 +51,7 @@ export async function problemVorschauMetadata(
   let found = false;
   if (!istExport() && problemId !== null) {
     try {
-      const response = await fetch(`${BACKEND}/api/probleme/${problemId}`, {
+      const response = await fetch(serverApiUrl(`/probleme/${problemId}`), {
         next: { revalidate: 900 },
       });
       if (response.ok) {

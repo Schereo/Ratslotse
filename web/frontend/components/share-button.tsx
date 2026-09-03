@@ -2,17 +2,16 @@
 
 import { Share2 } from "lucide-react";
 import { Button, toast } from "@/components/ui";
-import { apiBase, isNativeApp } from "@/lib/platform";
+import { isNativeApp } from "@/lib/platform";
 
 /**
  * Teilt die öffentliche Web-URL der Seite: Web Share API wo vorhanden (mobil),
- * sonst Link in die Zwischenablage. Aus der nativen App heraus wird die
- * konfigurierte Web-/API-Origin geteilt — der capacitor://-Origin wäre für
- * Empfänger nutzlos. Ohne abweichende Konfiguration ist das ratslotse.de.
+ * sonst Link in die Zwischenablage. Aus der nativen App heraus wird immer die
+ * ratslotse.de-URL geteilt — der capacitor://-Origin wäre für Empfänger nutzlos.
  */
 export function ShareButton({ path, title, className, iconOnly }: { path: string; title: string; className?: string; iconOnly?: boolean }) {
   const share = async () => {
-    const base = isNativeApp() ? apiBase() : window.location.origin;
+    const base = isNativeApp() ? "https://ratslotse.de" : window.location.origin;
     const url = `${base}${path}`;
     if (navigator.share) {
       try {

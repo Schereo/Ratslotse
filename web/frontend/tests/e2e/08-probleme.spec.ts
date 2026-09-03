@@ -352,6 +352,7 @@ test.describe("Öffentliche Problemübersicht", () => {
 
     await expect(page.getByRole("heading", { level: 1, name: "Probleme in Oldenburg" })).toBeVisible();
     await expect(page.getByRole("heading", { level: 2, name: negativeCitywideProblem.title })).toBeVisible();
+    await expect(page.getByText(/Feature-Vorschau.*frei erfundenes Beispiel/)).toHaveCount(1);
     await page.getByRole("button", { name: "Details schließen" }).click();
     await expect(page).toHaveURL(/\/probleme$/);
     await expect(page.getByRole("button", { name: "Karte", exact: true })).toBeVisible();

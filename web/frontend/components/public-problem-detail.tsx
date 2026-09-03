@@ -40,7 +40,7 @@ export function PublicProblemDetail({
   const SectionHeading = headingLevel === 1 ? "h2" : "h3";
 
   return (
-    <article className="mx-auto max-w-4xl space-y-5">
+    <article className="mx-auto max-w-[76ch] space-y-5 text-[15px]">
       <div className="flex flex-wrap items-center justify-between gap-3">
         {onClose ? (
           <button
@@ -79,7 +79,7 @@ export function PublicProblemDetail({
         <Heading className="mt-2 font-display text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
           {problem.title}
         </Heading>
-        <p className="mt-4 text-[15px] leading-relaxed text-foreground/85">{problem.summary}</p>
+        <p className="mt-4 leading-relaxed text-foreground/85">{problem.summary}</p>
       </header>
 
       <section className="rounded-xl border border-border bg-card p-5" aria-labelledby="problem-ort">
@@ -107,7 +107,7 @@ export function PublicProblemDetail({
         )}
       </section>
 
-      <p className="text-xs leading-relaxed text-muted-foreground">
+      <p className="font-mono text-[11px] leading-relaxed text-muted-foreground">
         Quelle: Freigegebene unabhängige Meldungen im Ratslotse-Meldungsbestand · gesamter Zeitraum
       </p>
     </article>

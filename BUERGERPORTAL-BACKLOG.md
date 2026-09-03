@@ -36,7 +36,7 @@ beginnt kein späterer Punkt.
 
 ## Noch nicht Teil des Bürgerportal-Stands
 
-Keine Detailseite, privaten Meldetabellen oder Meldungsendpunkte, KI-Aufrufe,
+Keine privaten Meldetabellen oder Meldungsendpunkte, KI-Aufrufe,
 Moderationsoberfläche, automatische Veröffentlichung, Uploads oder öffentlichen
-Kommentare. Die nächste Iteration startet erst nach ausdrücklicher Abnahme der
-deployten Übersicht.
+Kommentare. Iteration 3 ist erst nach ausdrücklicher Abnahme der deployten
+Detailseite abgeschlossen.

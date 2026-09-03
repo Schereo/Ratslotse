@@ -100,6 +100,8 @@ def test_public_detail_returns_only_a_visible_projection(tmp_path):
     assert store.get_public_problem(3) is None
     assert store.get_public_problem(4) is None
     assert store.get_public_problem(999) is None
+    assert store.get_public_problem(2**63) is None
+    assert store.get_public_problem(-(2**63) - 1) is None
     store.close()
 
 
@@ -237,6 +239,8 @@ def test_public_detail_api_is_open_and_uses_the_overview_projection(tmp_path):
     assert client.get("/api/probleme/2").status_code == 404
     assert client.get("/api/probleme/3").status_code == 404
     assert client.get("/api/probleme/999").status_code == 404
+    assert client.get(f"/api/probleme/{2**63}").status_code == 404
+    assert client.get(f"/api/probleme/{-(2**63) - 1}").status_code == 404
     store.close()
 
 
