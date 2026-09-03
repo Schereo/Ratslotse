@@ -67,7 +67,28 @@ Das Skript hängt an jedes Fragment die Nummer des Squash-Commits, der die Datei
 angelegt hat (`git log --diff-filter=A`; findet es keine, warnt es und lässt den
 Eintrag ohne Nummer), sortiert es unter `## [x.y.z] – Datum` in seinen
 Abschnitt, löscht die Fragmente und zieht die Compare-Links am Dateiende nach.
-Anschließend wird der annotierte Tag `vx.y.z` gesetzt und gepusht.
+
+**Nach dem Merge des Release-PRs** wird der annotierte Tag gesetzt — und aus ihm
+das GitHub-Release:
+
+```bash
+git tag -a v1.13.0 -m "Ratslotse 1.13.0" && git push origin v1.13.0
+.venv/bin/python scripts/changelog_schnitt.py 1.13.0 --release \
+    --titel "v1.13.0 — Belege bis zur Protokollseite"
+```
+
+Der zweite Schritt war bis 09/2026 Handarbeit und fiel dreimal aus: v1.14.0,
+v1.15.0 und v2.0.0 lagen als Tags im Repository, ohne dass jemand ein Release
+daraus machte — GitHub führt einen bloßen Tag nur unter „Tags", die
+Release-Seite zeigte deshalb wochenlang v1.13.2 als neuesten Stand. `--release`
+liest den fertigen Abschnitt aus `CHANGELOG.md`, prüft, dass der Tag wirklich
+bei `origin` liegt und das Release noch nicht existiert, und legt es über `gh`
+an. Zwei Feinheiten: Ist ein Jahrgang zu umfangreich für einen Release-Text —
+GitHub nimmt 125.000 Zeichen, der Abschnitt zu 1.14.0 hat 181.451 — gehen statt
+eines Fehlers nur die Kernsätze aller Einträge raus, darüber der Verweis auf den
+vollständigen Text. Und `--latest` setzt das Skript nur, wenn die Version im
+Changelog obenauf steht, damit ein nachgereichtes Release für einen alten Tag
+den aktuellen Stand nicht verdrängt.
 
 Von Hand direkt unter `## [Unreleased]` eingetragene Einträge bleiben gültig —
 sie wandern beim Schnitt unverändert mit unter die neue Version. `/changelog`
