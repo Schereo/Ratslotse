@@ -25,6 +25,11 @@ nach (der Squash-Commit, der die Datei angelegt hat, trägt sie im Titel).
 Erlaubte Kategorien: ``hinzugefuegt``, ``geaendert``, ``behoben`` (die
 Schreibweisen mit Umlaut werden ebenfalls gelesen).
 
+**Keine Überschrift im Fragment.** Der Text wird zu *einem* Listenpunkt
+zusammengezogen; ein ``### …`` darin landet mitten im Satz. Genau so steht #816
+im Changelog: „- ### Kurzfassungen: … Die Tragweite-Gründe …". Mehrere Absätze
+sind dagegen in Ordnung — sie werden zu einem Fließtext verbunden.
+
 **Aufruf beim Versionsschnitt** (im Release-PR ``dev`` → ``main``)::
 
     .venv/bin/python scripts/changelog_schnitt.py 1.13.0 --trocken   # anschauen
@@ -84,6 +89,10 @@ REIHENFOLGE = ["Hinzugefügt", "Geändert", "Behoben"]
 FRONTMATTER = re.compile(r"\A---[ \t]*\r?\n(.*?)\r?\n---[ \t]*\r?\n(.*)\Z", re.S)
 SCHLUESSEL = re.compile(r"^[ \t]*([A-Za-zäöüß_]+)[ \t]*:[ \t]*(.*?)[ \t]*$")
 PR_NUMMER = re.compile(r"\(#(\d+)\)")
+# Ein Fragment ist EIN Listenpunkt — eine Überschrift darin gibt es nicht.
+# #816 hat sich eine geschrieben; der Schnitt zog sie mit in den Punkt, und im
+# Changelog stand seitdem „- ### Kurzfassungen: … Die Tragweite-Gründe …".
+UEBERSCHRIFT = re.compile(r"^[ \t]*#{1,6}[ \t]")
 
 # Zeilenbreite des Changelogs. Die Datei ist von Hand auf ~80 Zeichen umbrochen;
 # ein Fragment, das als eine 900-Zeichen-Zeile landet, fiele sofort auf.
@@ -150,6 +159,15 @@ def lies_fragment(pfad: Path) -> Fragment:
         erlaubt = ", ".join(KATEGORIEN)
         raise FragmentFehler(
             f"{pfad.name}: kategorie '{werte.get('kategorie', '')}' unbekannt (erlaubt: {erlaubt})"
+        )
+
+    erste = next((z for z in rumpf.splitlines() if z.strip()), "")
+    if UEBERSCHRIFT.match(erste):
+        raise FragmentFehler(
+            f"{pfad.name}: der Text beginnt mit einer Überschrift ('{erste.strip()}'). "
+            "Der Eintrag wird beim Schnitt zu EINEM Listenpunkt zusammengezogen — "
+            "die Überschrift landet dann mitten darin. Stattdessen fett beginnen: "
+            "'**Kernsatz.** Dann der Fließtext.'"
         )
 
     text = " ".join(rumpf.split())
@@ -383,9 +401,9 @@ def abschnitt(changelog: str, version: str) -> str:
 def _kernsatz(text: str) -> str:
     """Der fett gesetzte Kernsatz eines Eintrags — der Rest fällt weg.
 
-    Fällt auf den ersten Satz zurück, wenn ein Eintrag nicht fett beginnt (im
-    Bestand gibt es einen solchen: #816 hat sich eine ``###``-Überschrift in
-    seinen Fragmenttext geschrieben, die der Schnitt mit eingerückt hat).
+    Fällt auf den ersten Satz zurück, wenn ein Eintrag nicht fett beginnt. Das
+    ist im Bestand vor allem die Zeit vor den Fragmenten (v1.0–v1.4), wo Einträge
+    als schlichte Sätze geschrieben wurden.
     """
     text = " ".join(text.split()).lstrip("# ")
     fett = re.match(r"\*\*(.+?)\*\*", text)

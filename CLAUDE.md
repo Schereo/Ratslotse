@@ -398,6 +398,11 @@ NWZ_OPENROUTER_ZDR=1                 # "0" lockert die Zero-Data-Retention-Pflic
   **Kernsatz fett.** Dann der Fließtext.
   ```
 
+  **Keine Überschrift im Fragment.** Der Text wird zu *einem* Listenpunkt
+  zusammengezogen; ein `### …` darin landet mitten im Satz. `--pruefen` weist
+  das seit 09/2026 ab — davor stand #816 als „- ### Kurzfassungen: … Die
+  Tragweite-Gründe …" im Changelog. Mehrere Absätze sind dagegen in Ordnung,
+  sie werden zu einem Fließtext verbunden.
   Ein Fragment je PR heißt: zwei parallele Zweige fassen nie dieselbe Datei an,
   der Merge kollidiert also nicht mehr im Changelog — und die Nummer muss
   niemand raten (sie existiert beim Schreiben ja noch gar nicht).
