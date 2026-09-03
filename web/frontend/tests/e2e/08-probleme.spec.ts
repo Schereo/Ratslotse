@@ -88,6 +88,20 @@ test.describe("Öffentliche Problemübersicht", () => {
     await expect(page.getByLabel("Kartenthemen")).toHaveCount(0);
   });
 
+  test("meldet ausgefallene Kartenkacheln und lädt sie erneut", async ({ page }) => {
+    let tileRequests = 0;
+    await page.route("**.basemaps.cartocdn.com/**", (route) => {
+      tileRequests += 1;
+      return route.abort("failed");
+    });
+    await page.goto("/probleme");
+
+    await expect(page.getByRole("alert").filter({ hasText: "Karte konnte nicht geladen werden" })).toBeVisible();
+    const beforeRetry = tileRequests;
+    await page.getByRole("button", { name: "Nochmal versuchen" }).click();
+    await expect.poll(() => tileRequests).toBeGreaterThan(beforeRetry);
+  });
+
   test("bietet bei einem Ladefehler einen erneuten Versuch", async ({ page }) => {
     let attempts = 0;
     await page.unroute("**/api/probleme");

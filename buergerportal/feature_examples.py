@@ -1,13 +1,11 @@
 """Fiktive Projektionen ausschließlich für die isolierte Feature-Instanz."""
 from __future__ import annotations
 
-import json
 import os
-import sqlite3
 from pathlib import Path
 from typing import Any
 
-from .store import ProblemStore
+from .store import FeatureExampleStore
 
 _PUBLISHED_AT = "2026-09-02T12:00:00+00:00"
 
@@ -15,6 +13,7 @@ _PUBLISHED_AT = "2026-09-02T12:00:00+00:00"
 # die Koordinaten dienen nur dazu, die Geometrieformen in Oldenburg zu prüfen.
 _EXAMPLES: tuple[dict[str, Any], ...] = (
     {
+        "id": -1_034_001,
         "key": "issue-1034-point",
         "title": "Beispiel: dunkler Fußweg am Musterkanal",
         "summary": "Fiktive Zusammenfassung einer fehlenden Beleuchtung.",
@@ -27,6 +26,7 @@ _EXAMPLES: tuple[dict[str, Any], ...] = (
         "reports": 3,
     },
     {
+        "id": -1_034_002,
         "key": "issue-1034-facility",
         "title": "Beispiel: Fahrradständer an der Musterhalle überfüllt",
         "summary": "Fiktive Zusammenfassung zu einer erfundenen Einrichtung.",
@@ -39,6 +39,7 @@ _EXAMPLES: tuple[dict[str, Any], ...] = (
         "reports": 11,
     },
     {
+        "id": -1_034_003,
         "key": "issue-1034-route",
         "title": "Beispiel: Lücke auf einer fiktiven Radroute",
         "summary": "Fiktiver Streckenabschnitt für die Routendarstellung.",
@@ -53,6 +54,7 @@ _EXAMPLES: tuple[dict[str, Any], ...] = (
         "reports": 1,
     },
     {
+        "id": -1_034_004,
         "key": "issue-1034-polygon",
         "title": "Beispiel: wenig Schatten im Musterquartier",
         "summary": "Fiktive Fläche für die Polygondarstellung.",
@@ -70,6 +72,7 @@ _EXAMPLES: tuple[dict[str, Any], ...] = (
         "reports": 7,
     },
     {
+        "id": -1_034_005,
         "key": "issue-1034-multipolygon",
         "title": "Beispiel: zwei fiktive Grünflächen ohne Zugang",
         "summary": "Fiktive getrennte Flächen für die MultiPolygon-Darstellung.",
@@ -87,6 +90,7 @@ _EXAMPLES: tuple[dict[str, Any], ...] = (
         "reports": 5,
     },
     {
+        "id": -1_034_006,
         "key": "issue-1034-citywide",
         "title": "Beispiel: fiktiver stadtweiter Betreuungsengpass",
         "summary": "Fiktives stadtweites Problem ohne erfundenen Kartenpunkt.",
@@ -97,6 +101,7 @@ _EXAMPLES: tuple[dict[str, Any], ...] = (
         "reports": 18,
     },
     {
+        "id": -1_034_007,
         "key": "issue-1034-malformed",
         "title": "Beispiel: ältere Route ohne brauchbare Geometrie",
         "summary": "Fiktiver Altbestand, der nur im vollständigen Board stehen darf.",
@@ -134,54 +139,9 @@ def seed_feature_examples(
     _guard_feature_database(database_path, root)
 
     # Erst nach bestandenem Guard werden Verzeichnisse oder Datenbank angefasst.
-    ProblemStore(database_path).close()
-    connection = sqlite3.connect(database_path)
+    store = FeatureExampleStore(database_path)
     try:
-        with connection:
-            for example in _EXAMPLES:
-                connection.execute(
-                    """INSERT INTO civic_problems (
-                           example_key, title, summary, category, tags_json,
-                           scope_kind, location_label, latitude, longitude,
-                           geometry_json, status, independent_reports,
-                           first_observed_at, last_observed_at, published_at,
-                           updated_at, is_fictional
-                       ) VALUES (?, ?, ?, ?, '[]', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
-                       ON CONFLICT(example_key) DO UPDATE SET
-                           title = excluded.title,
-                           summary = excluded.summary,
-                           category = excluded.category,
-                           scope_kind = excluded.scope_kind,
-                           location_label = excluded.location_label,
-                           latitude = excluded.latitude,
-                           longitude = excluded.longitude,
-                           geometry_json = excluded.geometry_json,
-                           status = excluded.status,
-                           independent_reports = excluded.independent_reports,
-                           first_observed_at = excluded.first_observed_at,
-                           last_observed_at = excluded.last_observed_at,
-                           published_at = excluded.published_at,
-                           updated_at = excluded.updated_at,
-                           is_fictional = 1""",
-                    (
-                        example["key"],
-                        example["title"],
-                        example["summary"],
-                        example["category"],
-                        example["scope_kind"],
-                        example["location_label"],
-                        example.get("latitude"),
-                        example.get("longitude"),
-                        json.dumps(example.get("geometry"), ensure_ascii=False)
-                        if example.get("geometry") else None,
-                        example["status"],
-                        example["reports"],
-                        _PUBLISHED_AT,
-                        _PUBLISHED_AT,
-                        _PUBLISHED_AT,
-                        _PUBLISHED_AT,
-                    ),
-                )
+        store.upsert_examples(_EXAMPLES, observed_at=_PUBLISHED_AT)
     finally:
-        connection.close()
+        store.close()
     return len(_EXAMPLES)

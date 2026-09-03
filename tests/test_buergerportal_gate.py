@@ -13,11 +13,22 @@ def test_problem_route_and_entry_points_share_the_environment_gate():
     nav = (FRONTEND / "components" / "nav.tsx").read_text()
     sitemap = (FRONTEND / "app" / "sitemap.ts").read_text()
 
-    assert 'process.env.NEXT_PUBLIC_RATSLOTSE_ENV === "dev"' in gate
-    assert f"export const {GATE}" in gate
-    assert GATE in page and "notFound()" in page
-    assert GATE in nav and 'href: "/probleme"' in nav
-    assert GATE in sitemap and "`${BASE}/probleme`" in sitemap
+    assert 'process.env.NEXT_PUBLIC_BUERGERPORTAL === "1"' in gate, (
+        "lib/probleme-frei.ts muss den eigenen Feature-Build-Schalter prüfen."
+    )
+    assert f"export const {GATE}" in gate, "PROBLEME_FREI wieder exportieren."
+    assert GATE in page and "notFound()" in page, (
+        "app/(app)/probleme/page.tsx muss außerhalb von app-feature 404 liefern."
+    )
+    assert "generateMetadata" in page and "metadataFrei" in page, (
+        "Auch die Metadaten in probleme/page.tsx hinter PROBLEME_FREI legen."
+    )
+    assert GATE in nav and 'href: "/probleme"' in nav, (
+        "Den /probleme-Link in components/nav.tsx mit PROBLEME_FREI schützen."
+    )
+    assert GATE in sitemap and "`${BASE}/probleme`" in sitemap, (
+        "Den Sitemap-Eintrag in app/sitemap.ts mit PROBLEME_FREI schützen."
+    )
 
 
 def test_only_feature_deployment_can_invoke_the_example_seeder():
@@ -27,7 +38,22 @@ def test_only_feature_deployment_can_invoke_the_example_seeder():
         if SEED_COMMAND in workflow.read_text():
             callers.append(workflow.name)
 
-    assert callers == ["deploy-feature.yml"]
+    assert callers == ["deploy-feature.yml"], (
+        "Den Beispiel-Seed-Aufruf aus allen Workflows außer deploy-feature.yml entfernen."
+    )
     feature = (workflows / "deploy-feature.yml").read_text()
-    assert "cd ~/app-feature" in feature
-    assert f"RATSLOTSE_FEATURE_SEED=1 .venv/bin/python {SEED_COMMAND}" in feature
+    assert "cd ~/app-feature" in feature, "Feature-Deploy muss vor dem Seed nach ~/app-feature wechseln."
+    assert f"RATSLOTSE_FEATURE_SEED=1 .venv/bin/python {SEED_COMMAND}" in feature, (
+        "Feature-Seed in deploy-feature.yml nur mit RATSLOTSE_FEATURE_SEED=1 aufrufen."
+    )
+    assert "NEXT_PUBLIC_BUERGERPORTAL=1" in feature, (
+        "Nur deploy-feature.yml darf die Bürgerportal-Oberfläche freischalten."
+    )
+    unlocked = sorted(
+        path.name
+        for path in workflows.glob("*.yml")
+        if "NEXT_PUBLIC_BUERGERPORTAL=1" in path.read_text()
+    )
+    assert unlocked == ["deploy-feature.yml"], (
+        "NEXT_PUBLIC_BUERGERPORTAL=1 aus allen Workflows außer deploy-feature.yml entfernen."
+    )

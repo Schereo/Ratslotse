@@ -1,3 +1,3 @@
-// Die erste Bürgerportal-Iteration wird ausschließlich auf dev/feature gebaut.
-// Im Produktions-Build bleiben Route, Navigation und Sitemap unsichtbar.
-export const PROBLEME_FREI = process.env.NEXT_PUBLIC_RATSLOTSE_ENV === "dev";
+// Die erste Bürgerportal-Iteration wird ausschließlich für app-feature gebaut.
+// Weder Dev noch Produktion setzen diesen eigenen Build-Schalter.
+export const PROBLEME_FREI = process.env.NEXT_PUBLIC_BUERGERPORTAL === "1";

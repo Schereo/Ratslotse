@@ -57,7 +57,10 @@ mindestens eine unabhängige Meldung. Additive Migrationen stehen in
 `civic_problem_schema_migrations`, laufen wiederholbar und erhalten eine ältere
 Legacy-Projektion mit `unique_reporters`.
 
-Die Spalten `example_key` und `is_fictional` gehören allein zur isolierten
-Feature-Vorschau. Der Seeder akzeptiert ausschließlich den exakten Pfad
-`app-feature/data/ratslotse.sqlite` und zusätzlich einen nur im Feature-Deploy
-gesetzten Schalter. Dev und Produktion brechen vor dem Öffnen einer Datenbank ab.
+Die Tabelle `civic_problem_feature_examples` gehört allein zur isolierten
+Feature-Vorschau. Sie ist von `civic_problems` getrennt, damit Beispiele auch
+bestehende Veröffentlichungssperren für echte Projektionen nicht umgehen. Der
+Seeder schreibt über `FeatureExampleStore` und akzeptiert ausschließlich den
+exakten Pfad `app-feature/data/ratslotse.sqlite` sowie den nur im Feature-Deploy
+gesetzten Schalter. Dev und Produktion brechen vor dem Öffnen einer Datenbank ab;
+die Oberfläche wird zusätzlich nur mit `NEXT_PUBLIC_BUERGERPORTAL=1` gebaut.

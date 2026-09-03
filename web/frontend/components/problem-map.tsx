@@ -57,6 +57,9 @@ export function ProblemMap({ problems, selectedId, onSelect, className }: {
           subdomains: "abcd",
           attribution: "&copy; OpenStreetMap, &copy; CARTO",
         }).addTo(map);
+        tiles.once("tileerror", () => {
+          if (!cancelled) setMapError(true);
+        });
         observer = new MutationObserver(() => tiles.setUrl(TILES));
         observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
 

@@ -101,10 +101,10 @@ jobs:
             RATSLOTSE_FEATURE_SEED=1 .venv/bin/python scripts/saat_buergerportal_feature.py
             cd web/frontend
             npm ci --no-audit --no-fund
-            # Umgebungs-Gate: dieselbe Marke wie auf dev, damit die dort
-            # freigeschalteten Seiten auch hier sichtbar sind (sonst wäre die
-            # Instanz für genau die Features blind, für die man sie baut).
+            # Dev-Funktionen bleiben sichtbar; das Bürgerportal erhält daneben
+            # einen eigenen Schalter, den weder Dev noch Produktion setzen.
             NEXT_PUBLIC_RATSLOTSE_ENV=dev \
+            NEXT_PUBLIC_BUERGERPORTAL=1 \
             NEXT_PUBLIC_CARTO_API_KEY="${{ secrets.CARTO_API_KEY }}" \
             npm run build
             sudo systemctl restart nwz-feature-api nwz-feature-frontend

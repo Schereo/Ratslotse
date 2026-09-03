@@ -21,7 +21,6 @@ CREATE TABLE IF NOT EXISTS civic_problem_schema_migrations (
 );
 CREATE TABLE IF NOT EXISTS civic_problems (
     id                  INTEGER PRIMARY KEY AUTOINCREMENT,
-    example_key         TEXT UNIQUE,
     title               TEXT NOT NULL,
     summary             TEXT NOT NULL,
     category            TEXT NOT NULL CHECK (category IN ({_sql_enum(PROBLEM_CATEGORIES)})),
@@ -37,13 +36,32 @@ CREATE TABLE IF NOT EXISTS civic_problems (
     last_observed_at     TEXT NOT NULL,
     published_at         TEXT,
     updated_at           TEXT NOT NULL,
-    is_fictional         INTEGER NOT NULL DEFAULT 0 CHECK (is_fictional IN (0, 1)),
     CHECK (latitude IS NULL OR latitude BETWEEN -90 AND 90),
     CHECK (longitude IS NULL OR longitude BETWEEN -180 AND 180),
     CHECK (published_at IS NULL OR independent_reports >= 1)
 );
 CREATE INDEX IF NOT EXISTS idx_civic_problems_public
     ON civic_problems(published_at, last_observed_at DESC);
+
+-- Eigene Tabelle statt Umgehung der realen Veröffentlichungssperren: Diese
+-- Zeilen existieren nur in app-feature und sind schon im Schema fiktiv.
+CREATE TABLE IF NOT EXISTS civic_problem_feature_examples (
+    id                  INTEGER PRIMARY KEY CHECK (id < 0),
+    example_key         TEXT NOT NULL UNIQUE,
+    title               TEXT NOT NULL,
+    summary             TEXT NOT NULL,
+    category            TEXT NOT NULL CHECK (category IN ({_sql_enum(PROBLEM_CATEGORIES)})),
+    scope_kind           TEXT NOT NULL CHECK (scope_kind IN ({_sql_enum(SCOPE_KINDS)})),
+    location_label       TEXT NOT NULL DEFAULT '',
+    latitude             REAL,
+    longitude            REAL,
+    geometry_json        TEXT,
+    status               TEXT NOT NULL CHECK (status IN ({_sql_enum(PROBLEM_STATUSES)})),
+    independent_reports  INTEGER NOT NULL CHECK (independent_reports >= 1),
+    last_observed_at     TEXT NOT NULL,
+    CHECK (latitude IS NULL OR latitude BETWEEN -90 AND 90),
+    CHECK (longitude IS NULL OR longitude BETWEEN -180 AND 180)
+);
 """
 
 
@@ -155,20 +173,9 @@ class ProblemStore:
                     self._conn.execute(
                         "UPDATE civic_problems SET independent_reports = unique_reporters"
                     )
-            if "example_key" not in columns:
-                self._conn.execute("ALTER TABLE civic_problems ADD COLUMN example_key TEXT")
-            if "is_fictional" not in columns:
-                self._conn.execute(
-                    "ALTER TABLE civic_problems ADD COLUMN is_fictional "
-                    "INTEGER NOT NULL DEFAULT 0"
-                )
-            self._conn.execute(
-                "CREATE UNIQUE INDEX IF NOT EXISTS idx_civic_problems_example_key "
-                "ON civic_problems(example_key) WHERE example_key IS NOT NULL"
-            )
             self._conn.executemany(
                 "INSERT OR IGNORE INTO civic_problem_schema_migrations(version) VALUES (?)",
-                ((1,), (2,)),
+                ((1,), (2,), (3,)),
             )
 
     def close(self) -> None:
@@ -188,14 +195,21 @@ class ProblemStore:
         if status is not None:
             clauses.append("status = ?")
             params.append(status)
+        example_clauses = [clause for clause in clauses if clause != "published_at IS NOT NULL"]
         rows = self._conn.execute(
             f"""SELECT id, title, category, scope_kind, location_label,
                        latitude, longitude, geometry_json, status,
-                       independent_reports, is_fictional
+                       independent_reports, 0 AS is_fictional, last_observed_at
                 FROM civic_problems
                 WHERE {' AND '.join(clauses)}
+                UNION ALL
+                SELECT id, title, category, scope_kind, location_label,
+                       latitude, longitude, geometry_json, status,
+                       independent_reports, 1 AS is_fictional, last_observed_at
+                FROM civic_problem_feature_examples
+                WHERE {' AND '.join(example_clauses)}
                 ORDER BY last_observed_at DESC, id DESC""",
-            params,
+            [*params, *params],
         ).fetchall()
         return [self._public_summary(row) for row in rows]
 
@@ -222,3 +236,52 @@ class ProblemStore:
             "frequency": report_frequency(row["independent_reports"]),
             "fictional": bool(row["is_fictional"]),
         }
+
+
+class FeatureExampleStore(ProblemStore):
+    """Schreibgrenze für fiktive Zeilen der isolierten Feature-Datenbank."""
+
+    def upsert_examples(
+        self,
+        examples: tuple[dict[str, Any], ...],
+        *,
+        observed_at: str,
+    ) -> None:
+        with self._conn:
+            for example in examples:
+                geometry = example.get("geometry")
+                self._conn.execute(
+                    """INSERT INTO civic_problem_feature_examples (
+                           id, example_key, title, summary, category, scope_kind,
+                           location_label, latitude, longitude, geometry_json,
+                           status, independent_reports, last_observed_at
+                       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                       ON CONFLICT(example_key) DO UPDATE SET
+                           id = excluded.id,
+                           title = excluded.title,
+                           summary = excluded.summary,
+                           category = excluded.category,
+                           scope_kind = excluded.scope_kind,
+                           location_label = excluded.location_label,
+                           latitude = excluded.latitude,
+                           longitude = excluded.longitude,
+                           geometry_json = excluded.geometry_json,
+                           status = excluded.status,
+                           independent_reports = excluded.independent_reports,
+                           last_observed_at = excluded.last_observed_at""",
+                    (
+                        example["id"],
+                        example["key"],
+                        example["title"],
+                        example["summary"],
+                        example["category"],
+                        example["scope_kind"],
+                        example["location_label"],
+                        example.get("latitude"),
+                        example.get("longitude"),
+                        json.dumps(geometry, ensure_ascii=False) if geometry else None,
+                        example["status"],
+                        example["reports"],
+                        observed_at,
+                    ),
+                )

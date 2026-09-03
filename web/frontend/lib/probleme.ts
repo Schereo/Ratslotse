@@ -40,9 +40,9 @@ export const PROBLEM_SCOPE: Record<PublicProblem["scope_kind"], string> = {
 
 export const MELDE_HAEUFIGKEIT: Record<ProblemFrequency, string> = {
   once: "einmal gemeldet",
-  several: "mehrfach gemeldet",
-  many: "häufig gemeldet",
-  very_many: "sehr häufig gemeldet",
+  several: "2–4 Mal gemeldet",
+  many: "5–9 Mal gemeldet",
+  very_many: "10 Mal oder öfter gemeldet",
 };
 
 function isPosition(value: unknown): value is number[] {
