@@ -8297,6 +8297,31 @@
         "title": "PolicyFields",
         "type": "object"
       },
+      "ProblemGeometry": {
+        "description": "Vom Store kanonisiertes GeoJSON; die Tiefe hängt am Geometrietyp.",
+        "properties": {
+          "coordinates": {
+            "items": {},
+            "title": "Coordinates",
+            "type": "array"
+          },
+          "type": {
+            "enum": [
+              "LineString",
+              "Polygon",
+              "MultiPolygon"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "coordinates"
+        ],
+        "title": "ProblemGeometry",
+        "type": "object"
+      },
       "PublicNumbers": {
         "description": "Die drei Kennzahlen der öffentlichen Startseite — ohne Anmeldung,\nohne Inhalte (``CouncilStore.public_stats``).",
         "properties": {
@@ -8319,6 +8344,152 @@
           "entities"
         ],
         "title": "PublicNumbers",
+        "type": "object"
+      },
+      "PublicProblemList": {
+        "properties": {
+          "problems": {
+            "items": {
+              "$ref": "#/components/schemas/PublicProblemSummary"
+            },
+            "title": "Problems",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "problems",
+          "total"
+        ],
+        "title": "PublicProblemList",
+        "type": "object"
+      },
+      "PublicProblemSummary": {
+        "description": "Karten-/Board-Projektion ohne exakte Meldezahl oder private Evidenz.",
+        "properties": {
+          "category": {
+            "enum": [
+              "mobility",
+              "public_space",
+              "education",
+              "childcare",
+              "housing",
+              "environment",
+              "accessibility",
+              "administration",
+              "other"
+            ],
+            "title": "Category",
+            "type": "string"
+          },
+          "fictional": {
+            "title": "Fictional",
+            "type": "boolean"
+          },
+          "frequency": {
+            "enum": [
+              "once",
+              "several",
+              "many",
+              "very_many"
+            ],
+            "title": "Frequency",
+            "type": "string"
+          },
+          "geometry": {
+            "description": "Vom Store kanonisiertes GeoJSON; die Tiefe hängt am Geometrietyp.",
+            "properties": {
+              "coordinates": {
+                "items": {},
+                "title": "Coordinates",
+                "type": "array"
+              },
+              "type": {
+                "enum": [
+                  "LineString",
+                  "Polygon",
+                  "MultiPolygon"
+                ],
+                "title": "Type",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "coordinates"
+            ],
+            "title": "ProblemGeometry",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "latitude": {
+            "title": "Latitude",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "location_label": {
+            "title": "Location Label",
+            "type": "string"
+          },
+          "longitude": {
+            "title": "Longitude",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "scope_kind": {
+            "enum": [
+              "point",
+              "facility",
+              "route",
+              "area",
+              "citywide"
+            ],
+            "title": "Scope Kind",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "new",
+              "multiple_reports",
+              "verified",
+              "persists",
+              "apparently_resolved"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "category",
+          "scope_kind",
+          "location_label",
+          "latitude",
+          "longitude",
+          "geometry",
+          "status",
+          "frequency",
+          "fictional"
+        ],
+        "title": "PublicProblemSummary",
         "type": "object"
       },
       "PushRegisterRequest": {
@@ -17283,6 +17454,66 @@
         "summary": "Set Setup",
         "tags": [
           "onboarding"
+        ]
+      }
+    },
+    "/api/probleme": {
+      "get": {
+        "description": "Freigegebene, datensparsame Projektionen ohne exakte Meldezahlen.",
+        "operationId": "public_problems_api_probleme_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "schema": {
+              "maxLength": 80,
+              "title": "Category",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "maxLength": 80,
+              "title": "Status",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProblemList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Public Problems",
+        "tags": [
+          "probleme"
         ]
       }
     },

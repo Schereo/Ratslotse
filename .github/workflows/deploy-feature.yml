@@ -95,6 +95,10 @@ jobs:
             git reset --hard ${{ github.sha }}
             .venv/bin/pip install -q -r requirements.txt -r web/backend/requirements.txt \
               -c constraints.txt
+            # Ausschließlich diese Instanz erhält die klar markierten, fiktiven
+            # Problemprojektionen. Der Seeder prüft zusätzlich den exakten
+            # Checkout- und DB-Pfad und bricht auf dev/Prod vor jedem Schreiben ab.
+            RATSLOTSE_FEATURE_SEED=1 .venv/bin/python scripts/saat_buergerportal_feature.py
             cd web/frontend
             npm ci --no-audit --no-fund
             # Umgebungs-Gate: dieselbe Marke wie auf dev, damit die dort

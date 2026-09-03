@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { themaKeys, vergleichsSlugs } from "@/lib/kommunalwahl";
+import { PROBLEME_FREI } from "@/lib/probleme-frei";
 
 const BASE = "https://ratslotse.de";
 
@@ -35,6 +36,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${BASE}/hilfe`, changeFrequency: "monthly", priority: 0.5 },
     { url: `${BASE}/impressum`, changeFrequency: "yearly", priority: 0.3 },
     { url: `${BASE}/datenschutz`, changeFrequency: "yearly", priority: 0.3 },
+    ...(PROBLEME_FREI
+      ? [{ url: `${BASE}/probleme`, changeFrequency: "daily" as const, priority: 0.8 }]
+      : []),
     ...kommunalwahl,
   ];
 }

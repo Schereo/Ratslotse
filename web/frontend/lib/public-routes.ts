@@ -18,6 +18,7 @@ export const OEFFENTLICHE_PFADE = [
   "/council/decision",
   "/council/thema",
   "/council/person",
+  "/probleme",
 ] as const;
 
 /** Ist dieser Pfad ohne Konto lesbar? */

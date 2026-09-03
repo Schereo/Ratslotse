@@ -76,6 +76,11 @@ OEFFENTLICH = {
     ("get", "/api/council/public-stats"),
     ("get", "/api/council/qa-beispiele"),
 
+    # Bürgerportal: Nur die moderierte, datensparsame Problemprojektion. Die
+    # privaten Meldungen liegen in einer getrennten Domäne und sind kein Teil
+    # dieses Endpunkts.
+    ("get", "/api/probleme"),
+
     # Geteilte Antworten: Der Token IST der Zugang — wer den Link hat, darf
     # lesen und melden. Ein Konto zu verlangen machte das Teilen sinnlos.
     ("get", "/api/council/qa-share/{token}"),
