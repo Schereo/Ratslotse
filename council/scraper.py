@@ -222,6 +222,37 @@ class CouncilScraper:
         scheduled.extend(self.rss_scheduled())
         return ids, scheduled
 
+    def past_session_ids(self, months_back: int = 3) -> list[int]:
+        """Verlinkte Sitzungs-IDs der letzten ``months_back`` Monate — der Blick
+        zurück, den ``upcoming_calendar`` nicht hat.
+
+        **Warum es den braucht.** Der Kalenderlauf ging vom laufenden Monat nur
+        nach vorn. Was er in seinem Fenster verpasste — ein ausgefallener
+        Cron-Lauf, eine erst kurz vor der Sitzung veröffentlichte Tagesordnung,
+        eine nachträglich ins Ratsinfo eingetragene Sitzung —, sah er **nie
+        wieder**: Am nächsten Tag lag der Monat hinter dem Fenster. Am
+        03.09.2026 fehlten dadurch 14 der 79 verlinkten Sitzungen des Jahres
+        2026, darunter die einzige Sitzung des Ausschusses für
+        Wirtschaftsförderung (04.05.2026) — der Ausschuss stand auf der
+        Abo-Seite bei „0 Beschlüsse 2026", obwohl er getagt hatte. Acht der
+        Vierzehn liegen in einer einzigen Woche; ein Ausfall in der Woche
+        darauf ist damit dauerhaft ein Loch im Bestand.
+
+        Nur die IDs, keine Termine: Der Terminplan
+        (``replace_scheduled_sessions``) beschreibt, was noch kommt, und würde
+        von vergangenen Kalenderzeilen nur zugemüllt.
+        """
+        ids: list[int] = []
+        target = date.today().replace(day=1)
+        for _ in range(months_back):
+            # Rückwärts über den Monatsersten: minus ein Tag landet immer im
+            # Vormonat, egal wie lang der ist.
+            target = (target - timedelta(days=1)).replace(day=1)
+            for sid in self.session_ids_for_month(target.year, target.month):
+                if sid not in ids:
+                    ids.append(sid)
+        return ids
+
     def fetch_session(self, ksinr: int) -> CouncilSession | None:
         soup = self._get("si0057.php", __ksinr=ksinr)
         h1 = soup.find("h1")

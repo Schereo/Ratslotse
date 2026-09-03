@@ -386,6 +386,7 @@ def run_watcher(
     db_path: str | Path,
     owners: list[dict],
     months_ahead: int = 3,
+    months_back: int = 3,
     ratslotse_store=None,
     stats: dict | None = None,
 ) -> list[str]:
@@ -393,6 +394,9 @@ def run_watcher(
     Scrape upcoming sessions once, classify their agendas per owner, persist
     the matches (RL-902) and send alerts. Returns the alert messages sent.
 
+    months_back: wie viele Monate der Kalenderlauf zusätzlich ZURÜCK liest, um
+            Sitzungen nachzutragen, die er damals verpasst hat (0 schaltet den
+            Nachlauf ab).
     owners: get_all_owner_digests()-Zeilen — je {owner_id, topics: [TopicRow],
             delivery_channel, email, push_tokens}.
     ratslotse_store: offener kern.store.Store für die Treffer-Persistenz; ohne ihn
@@ -415,6 +419,27 @@ def run_watcher(
     if stats is not None:
         stats["Sitzungen mit Tagesordnung"] = len(session_ids)
         stats["Termine im Kalender"] = len(scheduled)
+
+    # Der Blick zurück (s. CouncilScraper.past_session_ids): Was der Lauf
+    # damals verpasst hat, holt er hier nach — sonst bleibt es für immer weg,
+    # weil das Vorwärtsfenster über den Monat hinweggezogen ist. Geholt wird
+    # nur, was wir noch nicht kennen; im Regelfall ist das nichts und der
+    # Nachlauf kostet drei Kalenderseiten.
+    nachzuegler: list[int] = []
+    try:
+        rueckblick = scraper.past_session_ids(months_back=months_back)
+        bekannt = store.known_session_ids(rueckblick)
+        nachzuegler = [k for k in rueckblick if k not in bekannt]
+    except Exception as exc:  # noqa: BLE001 — der Nachlauf darf den Lauf nie stoppen
+        print(f"  ⚠️ Rückblick übersprungen: {exc}")
+    if nachzuegler:
+        print(f"  Nachtrag: {len(nachzuegler)} vergangene Sitzung(en) fehlten im Bestand")
+    for ksinr in nachzuegler:
+        session = scraper.fetch_session(ksinr)
+        if session:
+            store.save_session(session)
+    if stats is not None:
+        stats["Nachgetragene Sitzungen"] = len(nachzuegler)
 
     alerts_sent: list[str] = []
 

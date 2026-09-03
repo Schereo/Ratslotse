@@ -1042,6 +1042,18 @@ class SitzungenMixin:
             "SELECT id FROM council_decisions WHERE ksinr = ? AND kind = 'decision' "
             "ORDER BY position", (int(ksinr),))]
 
+    def known_session_ids(self, ksinrs: list[int]) -> set[int]:
+        """Welche dieser Sitzungs-IDs kennen wir schon? Für den Nachlauf im
+        Watcher, der den Kalender rückwärts liest: Von den Sitzungen der letzten
+        Monate ist fast alles längst da, und jede einzelne Seite noch einmal zu
+        holen wären Dutzende Abrufe je Lauf für nichts."""
+        if not ksinrs:
+            return set()
+        platz = ",".join("?" * len(ksinrs))
+        return {r[0] for r in self._conn.execute(
+            f"SELECT ksinr FROM council_sessions WHERE ksinr IN ({platz})",
+            [int(k) for k in ksinrs])}
+
     def get_session(self, ksinr: int) -> dict | None:
         row = self._conn.execute(
             """SELECT cs.ksinr, cs.committee, cs.session_date, cs.session_time, cs.location,
