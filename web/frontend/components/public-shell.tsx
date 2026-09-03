@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Mascot } from "@/components/mascot";
 import { Button, Card } from "@/components/ui";
 import { mitRuecksprung } from "@/lib/public-routes";
@@ -20,6 +21,7 @@ export function PublicShell({ children }: { children: React.ReactNode }) {
   // Erst nach dem Mounten lesbar; `useSearchParams` würde die Seite in eine
   // Suspense-Grenze zwingen und den statischen Export (MOBILE=1) brechen.
   const [zurueck, setZurueck] = useState("/dashboard");
+  const pathname = usePathname();
   useEffect(() => {
     setZurueck(window.location.pathname + window.location.search);
   }, []);
@@ -55,7 +57,10 @@ export function PublicShell({ children }: { children: React.ReactNode }) {
       <main id="main" tabIndex={-1} className="flex flex-1 flex-col outline-none">
         <div className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
           {children}
-          <Einladung zurueck={zurueck} />
+          {/* Die Problemübersicht ist selbst ein öffentlicher Einstieg. Die
+              Beschluss-Einladung („du liest eine einzelne Seite") wäre hier
+              sachlich falsch und bleibt den geteilten Ratsseiten vorbehalten. */}
+          {!pathname?.startsWith("/probleme") && <Einladung zurueck={zurueck} />}
         </div>
 
         <footer className="border-t border-border bg-background/85 py-4 text-center text-xs text-muted-foreground">

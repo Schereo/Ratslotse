@@ -15,6 +15,7 @@ import { useAuth } from "@/lib/auth";
 import { LANDING_HREF } from "@/components/native-redirect";
 import { isNativeApp } from "@/lib/platform";
 import { HAUSHALT_FREI } from "@/lib/haushalt-frei";
+import { PROBLEME_FREI } from "@/lib/probleme-frei";
 import { Brand, BrandMark } from "@/components/brand";
 import { FeedbackButton, openFeedback } from "@/components/feedback";
 import { WebThemeSwitch } from "@/components/web-theme-switch";
@@ -100,6 +101,7 @@ const MAIN_ITEMS: (Item & { tab?: string })[] = [
   { href: "/council", label: "Suche", icon: Search, tab: "decisions" },
   { href: "/council?tab=sessions", label: "Sitzungen", icon: CalendarDays, tab: "sessions" },
   { href: "/council?tab=themen", label: "Stadtkarte", icon: MapIcon, tab: "themen" },
+  ...(PROBLEME_FREI ? [{ href: "/probleme", label: "Probleme", icon: MapIcon }] : []),
   { href: "/council?tab=analysis", label: "Analyse", icon: BarChart3, tab: "analysis" },
   // Design-Serie „Haushalt" (H-01): eigener Bereich in der Sidebar; mobil
   // hängt er im „Mehr"-Sheet — die Tab-Bar bleibt fünfteilig (H-05).
@@ -135,7 +137,7 @@ const MEHR_AKTIV = (pathname: string, tab: string | null) =>
   // (Beschluss, Person, Thema), die ihr Inneres sind.
   (pathname === "/council" && tab !== "sessions")
   || pathname.startsWith("/council/")
-  || ["/abos", "/bookmarks", "/quiz", "/account", "/admin"].some((p) => pathname === p || pathname.startsWith(p + "/"));
+  || ["/abos", "/bookmarks", "/quiz", "/account", "/admin", "/probleme"].some((p) => pathname === p || pathname.startsWith(p + "/"));
 
 // RL-U09: In der App-Hülle sitzt der Lotti-Himmel-Schalter (WebThemeSwitch)
 // nur in der Desktop-Sidebar — mobil läuft die Wahl über Konto →
@@ -532,6 +534,7 @@ function MehrSheet({ onClose }: { onClose: () => void }) {
               zuoberst im Sheet, vor Stadtkarte und Analyse. */}
           <MehrZeile href="/council" icon={Search} label="Suche" onClose={onClose} />
           <MehrZeile href="/council?tab=themen" icon={MapIcon} label="Stadtkarte" onClose={onClose} />
+          {PROBLEME_FREI && <MehrZeile href="/probleme" icon={MapIcon} label="Probleme" onClose={onClose} />}
           <MehrZeile href="/council?tab=analysis" icon={BarChart3} label="Analyse" onClose={onClose} />
           {HAUSHALT_FREI && <MehrZeile href="/haushalt" icon={Euro} label="Haushalt" onClose={onClose} />}
           {/* Direkt hinter „Themen" in der Tab-Leiste gedacht: Die Abos sind

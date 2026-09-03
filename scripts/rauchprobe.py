@@ -49,6 +49,7 @@ PROBEN: tuple[str, ...] = (
     "/api/council/heute",
     "/api/council/people-directory",
     "/api/council/qa-beispiele",
+    "/api/probleme",
 )
 
 #: Proben, deren Pfad einen Wert braucht, den eine frühere Probe liefert.

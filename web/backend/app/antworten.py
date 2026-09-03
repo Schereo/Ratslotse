@@ -611,6 +611,43 @@ class SourceCheck(TypedDict):
 
 
 # --------------------------------------------------------------------------
+# Bürgerportal — ausschließlich freigegebene öffentliche Projektionen
+# --------------------------------------------------------------------------
+
+
+class ProblemGeometry(TypedDict):
+    """Vom Store kanonisiertes GeoJSON; die Tiefe hängt am Geometrietyp."""
+    type: Literal["LineString", "Polygon", "MultiPolygon"]
+    coordinates: list[Any]
+
+
+class PublicProblemSummary(TypedDict):
+    """Karten-/Board-Projektion ohne exakte Meldezahl oder private Evidenz."""
+    id: int
+    title: str
+    category: Literal[
+        "mobility", "public_space", "education", "childcare", "housing",
+        "environment", "accessibility", "administration", "other",
+    ]
+    scope_kind: Literal["point", "facility", "route", "area", "citywide"]
+    location_label: str
+    latitude: float | None
+    longitude: float | None
+    geometry: ProblemGeometry | None
+    status: Literal[
+        "new", "multiple_reports", "verified", "persists", "apparently_resolved",
+    ]
+    frequency: Literal["once", "several", "many", "very_many"]
+    #: Nur Testprojektionen der isolierten Feature-Instanz tragen diese Marke.
+    fictional: bool
+
+
+class PublicProblemList(TypedDict):
+    problems: list[PublicProblemSummary]
+    total: int
+
+
+# --------------------------------------------------------------------------
 # Social-Schnittstelle (Instagram-Bot, eigenes Repo)
 # --------------------------------------------------------------------------
 

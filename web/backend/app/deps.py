@@ -11,11 +11,21 @@ from .security import decode_access_token
 
 from kern.store import Store
 from council.store import CouncilStore
+from buergerportal.store import ProblemStore
 
 
 def get_store() -> Iterator[Store]:
     settings = get_settings()
     store = Store(settings.ratslotse_db)
+    try:
+        yield store
+    finally:
+        store.close()
+
+
+def get_problem_store() -> Iterator[ProblemStore]:
+    """Öffentliche Problemprojektion in der aktuellen Ratslotse-Datenbank."""
+    store = ProblemStore(get_settings().ratslotse_db)
     try:
         yield store
     finally:

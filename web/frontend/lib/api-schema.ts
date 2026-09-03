@@ -3053,6 +3053,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/probleme": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Public Problems
+         * @description Freigegebene, datensparsame Projektionen ohne exakte Meldezahlen.
+         */
+        get: operations["public_problems_api_probleme_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/push/register": {
         parameters: {
             query?: never;
@@ -7160,6 +7180,19 @@ export interface components {
             fields: components["schemas"]["PolicyField"][];
         };
         /**
+         * ProblemGeometry
+         * @description Vom Store kanonisiertes GeoJSON; die Tiefe hängt am Geometrietyp.
+         */
+        ProblemGeometry: {
+            /** Coordinates */
+            coordinates: unknown[];
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "LineString" | "Polygon" | "MultiPolygon";
+        };
+        /**
          * PublicNumbers
          * @description Die drei Kennzahlen der öffentlichen Startseite — ohne Anmeldung,
          *     ohne Inhalte (``CouncilStore.public_stats``).
@@ -7171,6 +7204,64 @@ export interface components {
             entities: number;
             /** Sessions */
             sessions: number;
+        };
+        /** PublicProblemList */
+        PublicProblemList: {
+            /** Problems */
+            problems: components["schemas"]["PublicProblemSummary"][];
+            /** Total */
+            total: number;
+        };
+        /**
+         * PublicProblemSummary
+         * @description Karten-/Board-Projektion ohne exakte Meldezahl oder private Evidenz.
+         */
+        PublicProblemSummary: {
+            /**
+             * Category
+             * @enum {string}
+             */
+            category: "mobility" | "public_space" | "education" | "childcare" | "housing" | "environment" | "accessibility" | "administration" | "other";
+            /** Fictional */
+            fictional: boolean;
+            /**
+             * Frequency
+             * @enum {string}
+             */
+            frequency: "once" | "several" | "many" | "very_many";
+            /**
+             * ProblemGeometry
+             * @description Vom Store kanonisiertes GeoJSON; die Tiefe hängt am Geometrietyp.
+             */
+            geometry: {
+                /** Coordinates */
+                coordinates: unknown[];
+                /**
+                 * Type
+                 * @enum {string}
+                 */
+                type: "LineString" | "Polygon" | "MultiPolygon";
+            } | null;
+            /** Id */
+            id: number;
+            /** Latitude */
+            latitude: number | null;
+            /** Location Label */
+            location_label: string;
+            /** Longitude */
+            longitude: number | null;
+            /**
+             * Scope Kind
+             * @enum {string}
+             */
+            scope_kind: "point" | "facility" | "route" | "area" | "citywide";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "new" | "multiple_reports" | "verified" | "persists" | "apparently_resolved";
+            /** Title */
+            title: string;
         };
         /** PushRegisterRequest */
         PushRegisterRequest: {
@@ -12364,6 +12455,38 @@ export interface operations {
             };
         };
     };
+    public_problems_api_probleme_get: {
+        parameters: {
+            query?: {
+                category?: string | null;
+                status?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicProblemList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     register_push_api_push_register_post: {
         parameters: {
             query?: never;
@@ -13509,4 +13632,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: d12ebb7a9a92765743c5de381f70d55cd7911df3e42befdb8914f441d3988bc2
+// vertrag-sha256: 0f3863bbf3a1a745dae439adec0fa1aa9a91685faadf431d04d71828dfe2101c
