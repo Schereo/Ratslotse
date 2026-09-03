@@ -28,7 +28,8 @@ import {
 } from "@/lib/qa-belege";
 import { apiUrl, authHeaders } from "@/lib/api";
 import { Zeitreihe } from "@/components/grafik/zeitreihe";
-import { HAUSHALT_FREI } from "@/lib/haushalt-frei";
+import { useAuth } from "@/lib/auth";
+import { darfHaushalt } from "@/lib/rechte";
 
 /* ------------------------------ Typen ------------------------------ */
 
@@ -1099,6 +1100,7 @@ export function ParteienListe({ parties, ohneBeitraege = [], onFrageStellen }: {
  *  stammt — im Chat ist das die eine Verwechslung, die niemand riskieren
  *  darf: Alles andere auf dem Bildschirm ist generierter Text. */
 export function GrafikKarte({ chart }: { chart: QaGrafik }) {
+  const { user } = useAuth();
   if ((chart.series?.length ?? 0) < 2) return null;
   return (
     <div className="rounded-xl border border-border bg-card p-3">
@@ -1121,9 +1123,12 @@ export function GrafikKarte({ chart }: { chart: QaGrafik }) {
         </p>
       )}
       {/* Die Anschlussstelle: Wer mehr wissen will, bekommt die Seite, die
-          genau diese Reihe erklärt. Hinter dem Gate — auf Prod wäre der
-          Link ein 404, und ein Satz, der auf nichts zeigt, bliebe stehen. */}
-      {HAUSHALT_FREI && chart.mehr?.href && (
+          genau diese Reihe erklärt. Nur für Konten mit Haushalts-Recht — für
+          alle anderen wäre der Link ein 404, und ein Satz, der auf nichts
+          zeigt, bliebe stehen. Die ANTWORT selbst bleibt für alle da: Die
+          KI-Frage rechnet mit Haushaltszahlen weiter, gesperrt ist die
+          zwanzigseitige Aufbereitung dahinter. */}
+      {darfHaushalt(user) && chart.mehr?.href && (
         <Link href={chart.mehr.href}
           className="group mt-2 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-primary">
           Mehr dazu: {chart.mehr.label}

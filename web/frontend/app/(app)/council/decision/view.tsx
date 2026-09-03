@@ -20,7 +20,8 @@ import { useZurueck } from "@/lib/zurueck";
 import { Mascot } from "@/components/mascot";
 import { cn } from "@/lib/utils";
 import { useFetch } from "@/lib/use-fetch";
-import { HAUSHALT_FREI } from "@/lib/haushalt-frei";
+import { useAuth } from "@/lib/auth";
+import { darfHaushalt } from "@/lib/rechte";
 
 function MetaCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -149,6 +150,9 @@ function GlanceCard({
   className?: string;
 }) {
   const hasVote = d.outcome === "accepted" || d.outcome === "rejected" || !!d.vote;
+  // Für die beiden Anschlussstellen in den Haushalt weiter unten: Sie stehen
+  // nur bei Konten, die den Bereich auch öffnen dürfen.
+  const { user } = useAuth();
   return (
     <Card className={cn("p-4", className)}>
       <h2 className="font-display text-sm font-bold text-foreground">Auf einen Blick</h2>
@@ -236,13 +240,13 @@ function GlanceCard({
           <span className="block border-l-2 border-border pl-2.5 text-foreground/85">
             „{data.template.financial_impact.trim()}“
           </span>
-          {/* Die Quellenangabe steht immer, der Weiterverweis nur dort, wo es
-              den Haushalts-Bereich gibt — auf Prod ist /haushalt ein 404
-              (lib/haushalt-frei.ts). Ohne das Gate bliebe ein Satz stehen,
-              der auf nichts zeigt. */}
+          {/* Die Quellenangabe steht immer, der Weiterverweis nur bei denen,
+              die den Haushalts-Bereich überhaupt öffnen dürfen — für alle
+              anderen ist /haushalt ein 404 (lib/rechte.ts). Ohne das Gate
+              bliebe ein Satz stehen, der auf nichts zeigt. */}
           <span className="mt-1.5 block text-[11px] text-muted-foreground">
             Aus der Vorlage, Feld „Finanzielle Auswirkungen“
-            {HAUSHALT_FREI && (
+            {darfHaushalt(user) && (
               <>
                 {" "}· wie sich das im Gesamthaushalt ausnimmt, zeigt der{" "}
                 <Link href="/haushalt" className="font-medium text-primary">Haushalt</Link>.
@@ -258,7 +262,7 @@ function GlanceCard({
           entweder zeigt `council_nachbewilligungen.decision_id` auf genau
           diesen Beschluss, oder seine Vorlage steht im Bürgschafts-Zeitstrahl.
           Sonst kommt sie gar nicht (`budget_link === null`). */}
-      {HAUSHALT_FREI && data.budget_link && (
+      {darfHaushalt(user) && data.budget_link && (
         <GlanceRow>
           <Link href={data.budget_link.href}
             className="group flex flex-wrap items-baseline gap-x-2 gap-y-1 rounded-xl border border-border bg-card px-3 py-2.5 transition-colors hover:border-primary/40">

@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response, status
 
+from kern import roles as kern_roles
 from kern.store import Store
 from kern.digest_email import knopf, render_html_email
 from kern.email import send_email
@@ -48,7 +49,7 @@ def _configured_admin_email(settings) -> str:  # noqa: ANN001 — Settings ODER 
 
 def _has_admin(store: Store) -> bool:
     """Gibt es in diesem Deployment überhaupt (noch) eine Adminrolle?"""
-    return any(u.get("role") == "admin" for u in store.list_web_users())
+    return any("admin" in (u.get("roles") or []) for u in store.list_web_users())
 
 
 def _promote_configured_admin(store: Store, user: dict) -> dict:
@@ -73,11 +74,14 @@ def _promote_configured_admin(store: Store, user: dict) -> dict:
     configured = _configured_admin_email(get_settings())
     if not configured or str(user.get("email") or "").strip().lower() != configured:
         return user
-    if user.get("role") != "user" or user.get("status") != "active":
+    # Gegen die ROLLENLISTE, nicht gegen die abgeleitete Spalte: Seit es
+    # mehrere Rollen gibt, hieße `role != "user"` auch „ist Ratsmitglied" — und
+    # das wäre kein Grund, die Erst-Einrichtung zu verweigern.
+    if user.get("roles") or user.get("status") != "active":
         return user
     if _has_admin(store):
         return user
-    store.set_web_user_role(int(user["id"]), "admin")
+    store.add_web_user_role(int(user["id"]), "admin")
     logger.info("WEB_ADMIN_EMAIL %s bestätigt — Konto %s ist jetzt Admin (Erst-Einrichtung).",
                 configured, user["id"])
     return store.get_web_user_by_id(int(user["id"])) or user
@@ -93,7 +97,7 @@ def _notify_admins_registration(new_email: str) -> None:
     try:
         admins = [
             u["email"] for u in store.list_web_users()
-            if u.get("role") == "admin" and not str(u.get("email", "")).endswith("@local")
+            if "admin" in (u.get("roles") or []) and not str(u.get("email", "")).endswith("@local")
         ]
     finally:
         store.close()
@@ -159,10 +163,15 @@ def _app_access_token(request: Request, user: dict) -> str | None:
 
 
 def _to_out(user: dict, access_token: str | None = None) -> UserOut:
+    # Rollen und Rechte kommen aus `kern.roles` und nicht aus der Spalte:
+    # `role` daneben ist nur die stärkste davon, für die ausgelieferte App.
+    rollen_des_kontos = kern_roles.known_roles(user.get("roles"))
     return UserOut(
         id=user["id"],
         email=user["email"],
-        role=user["role"],
+        role=kern_roles.primary_role(rollen_des_kontos),
+        roles=rollen_des_kontos,
+        permissions=sorted(kern_roles.permissions_for(rollen_des_kontos)),
         status=user.get("status", "active"),
         delivery_channel=user.get("delivery_channel", "email"),
         email_verified=bool(user.get("email_verified")),

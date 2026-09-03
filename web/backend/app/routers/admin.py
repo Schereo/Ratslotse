@@ -15,6 +15,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, s
 from council.store import CouncilStore
 from kern.digest_email import knopf, render_html_email
 from kern.email import send_email
+from kern import roles as rollen
 from kern.store import Store
 
 from ..config import get_settings
@@ -23,7 +24,8 @@ from ..antworten import (AdminAliasDeleted, AdminAliasList, AdminFeedbackList, A
                          AdminPlaceCandidates, AdminQuizStats, AdminUnread, AdminUserDetail,
                          AdminUserRow, Ok)
 from ..deps import get_council_store, get_store, require_admin
-from ..schemas import (EntityAliasIn, EntityAliasOut, LimitsUpdate, PlaceReviewIn,                        RoleUpdate, StatusUpdate, WebUserOut)
+from ..schemas import (EntityAliasIn, EntityAliasOut, LimitsUpdate, PlaceReviewIn,
+                       RoleInfo, RolesUpdate, RoleUpdate, StatusUpdate, WebUserOut)
 
 logger = logging.getLogger("ratslotse.web.admin")
 
@@ -225,6 +227,43 @@ def user_detail(user_id: int, _admin: dict = Depends(require_admin), store: Stor
     return detail
 
 
+@router.get("/roles")
+def list_roles(_admin: dict = Depends(require_admin)) -> list[RoleInfo]:
+    """Der Rollen-Katalog: welche Rollen es gibt und was sie dürfen.
+
+    Beide Frontends bauen ihre Auswahl daraus, statt Rollennamen und
+    Beschriftungen abzuschreiben — eine neue Rolle in ``kern/roles.py``
+    erscheint damit im Admin-Panel, ohne dass jemand das Frontend anfasst.
+    """
+    return [RoleInfo(**r) for r in rollen.catalog()]
+
+
+def _rollen_setzen(store: Store, admin: dict, user_id: int, gewuenscht: list[str]) -> WebUserOut:
+    """Gemeinsamer Kern beider Schreibwege (eine Rolle / die ganze Liste).
+
+    Die beiden Sperren dahinter sind der Grund, warum es die Funktion gibt:
+    Sie dürfen nicht an einem der beiden Wege hängen, sonst führt der andere
+    daran vorbei.
+    """
+    unbekannt = [r for r in gewuenscht if r not in rollen.ROLES]
+    if unbekannt:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            f"Unbekannte Rolle(n): {', '.join(sorted(set(unbekannt)))}. "
+            f"Bekannt: {', '.join(rollen.ROLE_ORDER)}.")
+    target = store.get_web_user_by_id(user_id)
+    if not target:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Nutzer*in nicht gefunden.")
+    # Sich selbst auszusperren ist der eine Fehler, den kein Undo mehr
+    # aufhebt: Danach kommt niemand mehr ins Panel, und die Reparatur ist ein
+    # SSH-Zugang plus `scripts/grant_admin.py`.
+    if target["id"] == admin["id"] and "admin" not in gewuenscht:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST,
+                            "Du kannst dir nicht selbst die Adminrechte entziehen.")
+    store.set_web_user_roles(user_id, gewuenscht, granted_by=admin["id"])
+    return WebUserOut(**store.get_web_user_by_id(user_id))
+
+
 @router.put("/users/{user_id}/role", response_model=WebUserOut)
 def set_role(
     user_id: int,
@@ -232,15 +271,30 @@ def set_role(
     admin: dict = Depends(require_admin),
     store: Store = Depends(get_store),
 ) -> WebUserOut:
-    if body.role not in ("user", "admin"):
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Rolle muss 'user' oder 'admin' sein.")
-    target = store.get_web_user_by_id(user_id)
-    if not target:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Nutzer*in nicht gefunden.")
-    if target["id"] == admin["id"] and body.role != "admin":
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Du kannst dir nicht selbst die Adminrechte entziehen.")
-    store.set_web_user_role(user_id, body.role)
-    return WebUserOut(**store.get_web_user_by_id(user_id))
+    """Alt-Weg: EINE Rolle setzen — sie ersetzt alle anderen.
+
+    Bleibt bestehen, weil die im App Store ausgelieferte iOS-App genau diesen
+    Aufruf schickt (`AdminView.swift`). Ihn zu entfernen hieße dort ein
+    Knopf, der wortlos nichts tut. Neue Clients nehmen ``PUT …/roles``.
+    """
+    return _rollen_setzen(store, admin, user_id,
+                          [] if body.role == rollen.DEFAULT_ROLE else [body.role])
+
+
+@router.put("/users/{user_id}/roles", response_model=WebUserOut)
+def set_roles(
+    user_id: int,
+    body: RolesUpdate,
+    admin: dict = Depends(require_admin),
+    store: Store = Depends(get_store),
+) -> WebUserOut:
+    """Die Rollen eines Kontos setzen — die vollständige Liste.
+
+    ``[]`` heißt „nur noch die Standardrolle": Sie hat jedes Konto ohnehin und
+    steht deshalb nie in der Liste (siehe ``kern/roles.py``).
+    """
+    return _rollen_setzen(store, admin, user_id,
+                          [r for r in body.roles if r != rollen.DEFAULT_ROLE])
 
 
 @router.put("/users/{user_id}/status", response_model=WebUserOut)

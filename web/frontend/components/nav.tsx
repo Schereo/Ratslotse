@@ -14,7 +14,7 @@ import { vertrag } from "@/lib/vertrag";
 import { useAuth } from "@/lib/auth";
 import { LANDING_HREF } from "@/components/native-redirect";
 import { isNativeApp } from "@/lib/platform";
-import { HAUSHALT_FREI } from "@/lib/haushalt-frei";
+import { darfAdmin, darfHaushalt } from "@/lib/rechte";
 import { Brand, BrandMark } from "@/components/brand";
 import { FeedbackButton, openFeedback } from "@/components/feedback";
 import { WebThemeSwitch } from "@/components/web-theme-switch";
@@ -101,12 +101,16 @@ const MAIN_ITEMS: (Item & { tab?: string })[] = [
   { href: "/council?tab=sessions", label: "Sitzungen", icon: CalendarDays, tab: "sessions" },
   { href: "/council?tab=themen", label: "Stadtkarte", icon: MapIcon, tab: "themen" },
   { href: "/council?tab=analysis", label: "Analyse", icon: BarChart3, tab: "analysis" },
-  // Design-Serie „Haushalt" (H-01): eigener Bereich in der Sidebar; mobil
-  // hängt er im „Mehr"-Sheet — die Tab-Bar bleibt fünfteilig (H-05).
-  // Hinterm Umgebungs-Gate: Wo /haushalt ein 404 ist, darf auch kein Anker
-  // dorthin stehen (lib/haushalt-frei.ts).
-  ...(HAUSHALT_FREI ? [{ href: "/haushalt", label: "Haushalt", icon: Euro }] : []),
 ];
+
+// Design-Serie „Haushalt" (H-01): eigener Bereich in der Sidebar; mobil hängt
+// er im „Mehr"-Sheet — die Tab-Bar bleibt fünfteilig (H-05).
+//
+// Steht seit dem Rollen-Umbau NEBEN der Liste statt darin: Wer ihn sehen darf,
+// hängt am Konto (Recht `budget`), und eine Modul-Konstante kennt kein Konto.
+// Ein Anker auf eine Seite, die für diese Person ein 404 ist, wäre schlechter
+// als kein Anker — genau diese Falle steht in web/frontend/CLAUDE.md.
+const HAUSHALT: Item = { href: "/haushalt", label: "Haushalt", icon: Euro };
 const PERSONAL: Item = { href: "/topics", label: "Meine Themen", icon: Tags, tour: "nav-themen" };
 // Split 28.08.2026: Ausschuss-Abos hingen als Block unter „Meine Themen" und
 // bekamen dadurch weder Platz noch einen eigenen Weg dorthin — man musste an
@@ -172,7 +176,7 @@ function NavLinksInner({ activeTab, onNavigate }: { activeTab: string; onNavigat
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/");
   const onCouncil = pathname === "/council" || pathname.startsWith("/council/");
   const unread = useUnreadTopicHits();
-  const openFeedback = useUnreadFeedback(user?.role === "admin");
+  const openFeedback = useUnreadFeedback(darfAdmin(user));
 
   return (
     <nav className="flex-1 space-y-1 px-3">
@@ -184,13 +188,16 @@ function NavLinksInner({ activeTab, onNavigate }: { activeTab: string; onNavigat
           onNavigate={onNavigate}
         />
       ))}
+      {darfHaushalt(user) && (
+        <NavItem item={HAUSHALT} active={isActive("/haushalt")} onNavigate={onNavigate} />
+      )}
 
       <SectionHeader>Persönlich</SectionHeader>
       <NavItem item={PERSONAL} active={isActive("/topics")} badge={unread} onNavigate={onNavigate} />
       <NavItem item={ABOS} active={isActive("/abos")} onNavigate={onNavigate} />
       <NavItem item={BOOKMARKS} active={isActive("/bookmarks")} onNavigate={onNavigate} />
       <NavItem item={QUIZ} active={isActive("/quiz")} onNavigate={onNavigate} />
-      {user?.role === "admin" && (
+      {darfAdmin(user) && (
         <NavItem
           item={{ href: "/admin", label: "Admin", icon: Settings }}
           active={isActive("/admin")}
@@ -481,7 +488,7 @@ function MehrZeile({ href, icon: Icon, label, badge = 0, primaerFarbe = true, on
 function MehrSheet({ onClose }: { onClose: () => void }) {
   const router = useRouter();
   const { user, logout } = useAuth();
-  const openFeedbackUnread = useUnreadFeedback(user?.role === "admin");
+  const openFeedbackUnread = useUnreadFeedback(darfAdmin(user));
   // Hintergrund einfrieren, solange das Sheet offen ist.
   useEffect(() => {
     const alt = document.body.style.overflow;
@@ -533,14 +540,14 @@ function MehrSheet({ onClose }: { onClose: () => void }) {
           <MehrZeile href="/council" icon={Search} label="Suche" onClose={onClose} />
           <MehrZeile href="/council?tab=themen" icon={MapIcon} label="Stadtkarte" onClose={onClose} />
           <MehrZeile href="/council?tab=analysis" icon={BarChart3} label="Analyse" onClose={onClose} />
-          {HAUSHALT_FREI && <MehrZeile href="/haushalt" icon={Euro} label="Haushalt" onClose={onClose} />}
+          {darfHaushalt(user) && <MehrZeile href="/haushalt" icon={Euro} label="Haushalt" onClose={onClose} />}
           {/* Direkt hinter „Themen" in der Tab-Leiste gedacht: Die Abos sind
               die zweite Art, dem Rat zu folgen, und hatten seit dem Split vom
               28.08.2026 keinen eigenen Weg mehr auf dem Telefon. */}
           <MehrZeile href="/abos" icon={Bell} label="Ausschuss-Abos" onClose={onClose} />
           <MehrZeile href="/bookmarks" icon={Bookmark} label="Merkliste" onClose={onClose} />
           <MehrZeile href="/quiz" icon={Trophy} label="Quiz" onClose={onClose} />
-          {user?.role === "admin" && (
+          {darfAdmin(user) && (
             <MehrZeile href="/admin" icon={Settings} label="Admin" badge={openFeedbackUnread} primaerFarbe={false} onClose={onClose} />
           )}
           <button type="button" onClick={() => { onClose(); openFeedback(); }}

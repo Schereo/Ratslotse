@@ -87,6 +87,11 @@ MIT_KONTO: tuple[str, ...] = (
     "/api/quiz/areas",
     # Haushalt: 21 Schichten, jede über eigene Tabellen. Genau die Fläche, die
     # eine Migration trifft — und die einzige, die sie nach dem Deploy anfasst.
+    # Die zwanzig Haushalts-Routen verlangen seit 09/2026 das Recht `budget`
+    # (Ratsmitglied oder Admin, siehe kern/roles.py). Die Vorgabe für das
+    # Probe-Konto ist WEB_ADMIN_EMAIL und trägt es damit; wer RAUCHPROBE_KONTO
+    # auf ein gewöhnliches Konto setzt, bekommt hier zwanzig 403er — das ist
+    # dann kein Ausfall, sondern die falsche Wahl des Kontos.
     "/api/council/budget",
     "/api/council/budget/amendment-lists",
     "/api/council/budget/assets",

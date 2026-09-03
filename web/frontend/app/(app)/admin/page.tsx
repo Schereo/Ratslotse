@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { darfAdmin } from "@/lib/rechte";
 import { AdminUserDetail, AdminGrowth, QuizFlagged, EntityAlias, AdminFeedback, PlaceCandidate } from "@/lib/types";
 // Aus dem API-Vertrag statt von Hand: Diese drei Formen stehen im Backend
 // vollständig, ein umbenanntes Feld bricht damit hier den Build.
@@ -22,6 +23,8 @@ type JobLauf = {
 type AdminJob = Omit<ApiAntwort<"/admin/jobs">[number], "last"> & { last: JobLauf | null };
 type AdminUserRow = ApiAntwort<"/admin/users">[number];
 type AdminQuizStats = ApiAntwort<"/admin/quiz/stats">;
+/** Ein Eintrag des Rollen-Katalogs — aus dem Vertrag, nicht abgetippt. */
+type RolleInfo = ApiAntwort<"/admin/roles">[number];
 import { Badge, Button, Card, ChartSkeleton, ConfirmDialog, ErrorState, Input, PageHeader, Select, Spinner, TableSkeleton, Textarea, formatDate, formatDateTime, toast } from "@/components/ui";
 import { AreaSparkline, MiniBars, StatKicker } from "@/components/admin-charts";
 import { cn } from "@/lib/utils";
@@ -36,7 +39,7 @@ export default function AdminPage() {
   const [tab, setTab] = useState<Tab>("stats");
 
   if (loading) return <Spinner />;
-  if (!user || user.role !== "admin") {
+  if (!user || !darfAdmin(user)) {
     if (!loading) router.replace("/dashboard");
     return <Spinner />;
   }
@@ -707,6 +710,14 @@ function UsersTab({ currentUserId }: { currentUserId: number }) {
     queryKey: ["admin", "users"],
     queryFn: () => vertrag.get("/admin/users"),
   });
+  // Der Rollen-Katalog kommt vom Server (Namen, Beschriftung, Rechte). Er
+  // steht hier und nicht als Liste im Code, damit eine neue Rolle in
+  // `kern/roles.py` im Panel erscheint, ohne dass jemand das Frontend anfasst.
+  const { data: rollenKatalog = [] } = useQuery({
+    queryKey: ["admin", "roles"],
+    queryFn: () => vertrag.get("/admin/roles"),
+    staleTime: 60 * 60 * 1000,  // ändert sich nur mit einem Deploy
+  });
 
   if (isPending) return <Spinner />;
   if (isError) return <ErrorState title="Die Nutzer*innen kamen nicht durch" onRetry={() => void refetch()} busy={isFetching} />;
@@ -744,7 +755,15 @@ function UsersTab({ currentUserId }: { currentUserId: number }) {
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5">
                     <span className="truncate text-[13.5px] font-semibold text-foreground">{u.email}</span>
-                    {u.role === "admin" && <span className="shrink-0 rounded bg-primary/10 px-1.5 text-[10px] font-semibold text-primary">admin</span>}
+                    {/* Ein Abzeichen JE Rolle: Seit ein Konto mehrere tragen
+                        kann, verschwiege ein einzelnes „admin" das Ratsmandat
+                        daneben. Die Beschriftung kommt aus dem Katalog, damit
+                        eine neue Rolle hier ohne Codeänderung auftaucht. */}
+                    {(u.roles ?? []).map((r) => (
+                      <span key={r} className="shrink-0 rounded bg-primary/10 px-1.5 text-[10px] font-semibold text-primary">
+                        {rollenKatalog.find((k) => k.key === r)?.label ?? r}
+                      </span>
+                    ))}
                     {u.status !== "active" && <span className="shrink-0 rounded bg-amber-500/15 px-1.5 text-[10px] font-semibold text-amber-700 dark:text-amber-500">wartet</span>}
                   </div>
                   <div className="mt-1 flex flex-wrap gap-1">
@@ -766,13 +785,16 @@ function UsersTab({ currentUserId }: { currentUserId: number }) {
       </Card>
 
       {selected != null
-        ? <UserDetailPanel userId={selected} isSelf={selected === currentUserId} onClose={() => setSelected(null)} />
+        ? <UserDetailPanel userId={selected} isSelf={selected === currentUserId}
+                           rollenKatalog={rollenKatalog} onClose={() => setSelected(null)} />
         : <Card className="hidden p-8 text-center text-sm text-muted-foreground lg:block">Nutzer*in wählen, um Details zu sehen.</Card>}
     </div>
   );
 }
 
-function UserDetailPanel({ userId, isSelf, onClose }: { userId: number; isSelf: boolean; onClose: () => void }) {
+function UserDetailPanel({ userId, isSelf, rollenKatalog, onClose }: {
+  userId: number; isSelf: boolean; rollenKatalog: RolleInfo[]; onClose: () => void;
+}) {
   const qc = useQueryClient();
   const { data, isPending } = useQuery({
     queryKey: ["admin", "user", userId],
@@ -783,10 +805,13 @@ function UserDetailPanel({ userId, isSelf, onClose }: { userId: number; isSelf: 
     qc.invalidateQueries({ queryKey: ["admin", "user", userId] });
     qc.invalidateQueries({ queryKey: ["admin", "users"] });
   };
-  const roleMutation = useMutation({
-    mutationFn: (role: "user" | "admin") => api.put(`/admin/users/${userId}/role`, { role }),
-    onSuccess: () => { toast.success("Rolle aktualisiert."); invalidate(); },
-    onError: () => toast.error("Rolle konnte nicht geändert werden."),
+  // Die VOLLSTÄNDIGE Liste geht raus, nicht ein Delta: Ein PUT mit dem
+  // gewünschten Endzustand ist idempotent und kann sich nicht mit dem Klick
+  // eines zweiten Admins überkreuzen.
+  const rollenMutation = useMutation({
+    mutationFn: (roles: string[]) => api.put(`/admin/users/${userId}/roles`, { roles }),
+    onSuccess: () => { toast.success("Rollen aktualisiert."); invalidate(); },
+    onError: () => toast.error("Rollen konnten nicht geändert werden."),
   });
   const statusMutation = useMutation({
     mutationFn: (status: "active" | "pending") => api.put(`/admin/users/${userId}/status`, { status }),
@@ -887,15 +912,57 @@ function UserDetailPanel({ userId, isSelf, onClose }: { userId: number; isSelf: 
       <StatKickerSpaced>Aktivität (30 Tage)</StatKickerSpaced>
       <MiniBars values={data.history} days={data.history_days} height={38} highlightLast={false} className="mt-2" />
 
+      {/* Rollen. Bis 09/2026 stand hier ein Umschalt-Knopf „Zu Admin" — der
+          ging nur, solange es zwei Rollen gab. Jetzt trägt ein Konto mehrere,
+          und jede ist ein eigener Schalter. */}
+      <StatKickerSpaced>Rollen</StatKickerSpaced>
+      <div className="mt-2 flex flex-col gap-1.5">
+        {rollenKatalog.filter((r) => r.assignable).map((r) => {
+          const an = (data.roles ?? []).includes(r.key);
+          // Sich selbst die Adminrechte zu nehmen ist der eine Fehler ohne
+          // Undo: Danach kommt niemand mehr ins Panel. Der Server weist es
+          // ohnehin ab (400) — hier steht der Schalter gar nicht erst zur
+          // Verfügung, statt einen Klick anzubieten, der scheitert.
+          const gesperrt = isSelf && r.key === "admin" && an;
+          return (
+            <button
+              key={r.key}
+              type="button"
+              disabled={gesperrt || rollenMutation.isPending}
+              aria-pressed={an}
+              onClick={() => rollenMutation.mutate(
+                an ? (data.roles ?? []).filter((x) => x !== r.key) : [...(data.roles ?? []), r.key])}
+              className={cn(
+                "flex items-start gap-3 rounded-[10px] border px-3 py-2.5 text-left transition-colors",
+                an ? "border-primary/40 bg-primary/[0.06]" : "border-border bg-card hover:bg-accent",
+                gesperrt && "cursor-not-allowed opacity-60",
+              )}
+            >
+              <span className={cn(
+                "mt-px flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[5px] border",
+                an ? "border-primary bg-primary text-primary-foreground" : "border-input bg-background",
+              )} aria-hidden>
+                {an && (
+                  <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor"
+                       strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><path d="m5 13 4 4L19 7" /></svg>
+                )}
+              </span>
+              <span className="min-w-0">
+                <span className="block text-[13px] font-semibold text-foreground">{r.label}</span>
+                <span className="mt-0.5 block text-[11.5px] leading-snug text-muted-foreground">
+                  {gesperrt ? "Du kannst dir die Adminrechte nicht selbst entziehen." : r.description}
+                </span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
       {!isSelf && (
         <div className="mt-4 flex gap-2 border-t border-border pt-4">
           <Button variant="secondary" size="sm"
             onClick={() => statusMutation.mutate(data.status === "active" ? "pending" : "active")}>
             {data.status === "active" ? "Sperren" : "Freischalten"}
-          </Button>
-          <Button variant="secondary" size="sm"
-            onClick={() => roleMutation.mutate(data.role === "admin" ? "user" : "admin")}>
-            {data.role === "admin" ? "Zu Nutzer*in" : "Zu Admin"}
           </Button>
         </div>
       )}

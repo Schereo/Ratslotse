@@ -22,8 +22,9 @@ python scripts/saat_konten.py         # erfundene Konten dazu
 
 Danach steht der Bestand: rund 8.200 Beschlüsse, 870 Sitzungen, 42.000
 Wortbeiträge, dazu ein Konto mit Themen und Treffern. Anmelden als
-`nutzerin@example.org` (oder `chef@example.org` für den Admin-Bereich),
-Passwort `password123`. `stand` sagt, wie alt der Abzug ist.
+`nutzerin@example.org`, `chef@example.org` (Admin-Bereich) oder
+`ratsfrau@example.org` — nur die kommt in den **Haushalt**, er hängt am Recht
+`budget`. Passwort überall `password123`. `stand` sagt, wie alt der Abzug ist.
 
 Der Abzug trägt **keine** Konten und keine Personendaten; Näheres in der
 Wurzel-[`CLAUDE.md`](../../CLAUDE.md).
@@ -78,9 +79,35 @@ kein Vorbild.
 - **Der Kartenkachel-Parameter heißt `key`, nicht `api_key`.** Ein falscher
   Name liefert Status 200 samt Wasserzeichen; der Fehler sieht aus wie „Key
   wirkt nicht". Die URL entsteht zentral in `lib/basemap.ts`.
-- **Ein Umgebungs-Gate braucht auch seine Einstiegspunkte.** Seite gesperrt,
-  Navigation und Metadaten aber nicht — dann stehen die Links auf Prod weiter
-  da und führen ins Leere.
+- **Ein Gate braucht auch seine Einstiegspunkte.** Seite gesperrt, Navigation
+  und Metadaten aber nicht — dann stehen die Links weiter da und führen ins
+  Leere. Gilt unverändert für das Rechte-Gate: Wer einen Bereich sperrt,
+  sperrt jeden Anker darauf mit.
+
+## Rechte prüfen, nicht Rollen
+
+`user.role === "admin"` stand bis 09/2026 an sechs Stellen. Ein Konto trägt
+inzwischen **mehrere** Rollen, und jede neue hätte alle sechs gebraucht — die
+vergessene Stelle meldet sich nicht, sie lässt jemanden rein oder sperrt ihn
+aus. Deshalb geht jede Prüfung über [`lib/rechte.ts`](lib/rechte.ts):
+
+```ts
+import { darfHaushalt, darfAdmin, hatRecht } from "@/lib/rechte";
+```
+
+Die Rechte kommen als `user.permissions` aus dem Vertrag; welche Rolle welches
+trägt, weiß nur der Server (`kern/roles.py`). Eine neue Rolle wirkt damit ohne
+Frontend-Release. **Ein Rollenname im Frontend ist der Rückschritt** — auch in
+einer Auswahl: Das Admin-Panel baut seine aus `GET /admin/roles`.
+
+Zwei Dinge, die daran hängen:
+
+- **Auf `loading` warten, bevor gesperrt wird.** `useAuth()` kennt die Rechte
+  erst nach `/auth/me`; ein `notFound()` davor trifft jede berechtigte Person
+  beim ersten Aufruf und bei jedem Neuladen.
+- **Das Gate im Frontend ist Höflichkeit, nicht Schutz.** Die Sperre sitzt an
+  den Endpunkten. Ein Bereich, dessen Seiten gegatet sind und dessen Routen
+  offen, ist offen.
 
 ## Was die Prüfungen NICHT sehen
 

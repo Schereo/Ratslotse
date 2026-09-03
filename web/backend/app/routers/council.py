@@ -56,7 +56,8 @@ from ..antworten import (AnalysisData, BudgetAmendmentLists, BudgetAuditReports,
                          SSE_FRAGE, SSE_RECHERCHE,
                          TemplateFollowed, TemplateFollows, TemplateUnfollowed, ThisWeek,
                          TodayBriefing, TrendData)
-from ..deps import get_council_store, get_store, optional_user, require_active
+from ..deps import (get_council_store, get_store, optional_user, require_active,
+                    require_permission)
 from ..ratelimit import (
     partei_meinungen_limiter,
     qa_feedback_limiter,
@@ -66,6 +67,14 @@ from ..ratelimit import (
 )
 
 router = APIRouter(prefix="/api/council", tags=["council"])
+
+#: Der Haushalts-Bereich ist Ratsmitgliedern (und Admins) vorbehalten — 20
+#: Routen unter ``/budget…``, eine Dependency für alle. Wer eine neue anlegt,
+#: nimmt DIESE hier und nicht ``require_active``; ``tests/test_rollen.py``
+#: hält das fest und nennt den vergessenen Pfad beim Namen. Ohne den Wächter
+#: wäre eine vergessene Route offen und niemandem fiele es auf (die Regel
+#: dazu steht in ``web/backend/CLAUDE.md``).
+require_budget = require_permission("budget")
 
 _log = logging.getLogger(__name__)
 
@@ -444,7 +453,7 @@ def haushalt_produkte(
     office: str | None = None,
     controllability: str | None = None,
     number: str | None = None,
-    _user: dict = Depends(require_active),
+    _user: dict = Depends(require_budget),
     store: CouncilStore = Depends(get_council_store),
 ) -> BudgetProducts:
     """Produktebene eines Haushaltsjahres — was einzelne Aufgaben kosten,
@@ -493,7 +502,7 @@ def haushalt_produkte(
 @router.get("/budget/staff-plan")
 def haushalt_stellenplan(
     budget_year: int | None = None,
-    _user: dict = Depends(require_active),
+    _user: dict = Depends(require_budget),
     store: CouncilStore = Depends(get_council_store),
 ) -> BudgetStaffPlan:
     """Der Stellenplan: wie viele Stellen die Stadt vorhält und wie viele
@@ -558,7 +567,7 @@ def haushalt_stellenplan(
 @router.get("/budget/execution")
 def haushalt_vollzug(
     budget_year: int | None = None,
-    _user: dict = Depends(require_active),
+    _user: dict = Depends(require_budget),
     store: CouncilStore = Depends(get_council_store),
 ) -> BudgetExecution:
     """Der Haushaltsvollzug: wie das laufende Jahr gegen seinen Plan läuft.
@@ -621,7 +630,7 @@ def haushalt_vollzug(
 @router.get("/budget/audit-reports")
 def haushalt_pruefberichte(
     mark: str | None = Query(None, pattern="^(B|WB|H|K)$"),
-    _user: dict = Depends(require_active),
+    _user: dict = Depends(require_budget),
     store: CouncilStore = Depends(get_council_store),
 ) -> BudgetAuditReports:
     """Prüfungsfeststellungen des Rechnungsprüfungsamts, alle Jahrgänge.
@@ -661,7 +670,7 @@ def haushalt_pruefberichte(
 
 @router.get("/budget/group")
 def haushalt_konzern(
-    _user: dict = Depends(require_active),
+    _user: dict = Depends(require_budget),
     store: CouncilStore = Depends(get_council_store),
 ) -> BudgetGroup:
     """Der Konzern Stadt Oldenburg — was der Kernhaushalt **nicht** zeigt.
@@ -817,7 +826,7 @@ def _lexikon_zuordnung(store: CouncilStore,
 
 @router.get("/budget/shareholdings")
 def haushalt_beteiligungen(
-    _user: dict = Depends(require_active),
+    _user: dict = Depends(require_budget),
     store: CouncilStore = Depends(get_council_store),
 ) -> BudgetHoldings:
     """Die städtischen Gesellschaften — was sie tun, wer sie beaufsichtigt.
@@ -900,7 +909,7 @@ def haushalt_beteiligungen(
 
 @router.get("/budget/investments")
 def haushalt_investitionen(
-    _user: dict = Depends(require_active),
+    _user: dict = Depends(require_budget),
     store: CouncilStore = Depends(get_council_store),
 ) -> BudgetInvestments:
     """Was die Stadt bauen und kaufen will — die Investitionen des
@@ -941,7 +950,7 @@ def haushalt_investitionen(
 
 @router.get("/budget/investment-programme")
 def haushalt_investitionsprogramm(
-    _user: dict = Depends(require_active),
+    _user: dict = Depends(require_budget),
     store: CouncilStore = Depends(get_council_store),
 ) -> BudgetInvestmentProgram:
     """Die einzelnen Vorhaben — die Ebene unter ``/haushalt/investitionen``.
@@ -983,7 +992,7 @@ def haushalt_investitionsprogramm(
 
 @router.get("/budget/data-status")
 def haushalt_datenstand(
-    _user: dict = Depends(require_active),
+    _user: dict = Depends(require_budget),
     store: CouncilStore = Depends(get_council_store),
 ) -> BudgetDataState:
     """Bis wann die Zahlen reichen — je Datenschicht ein Jahrgangs-Stand.
@@ -1015,7 +1024,7 @@ def haushalt_datenstand(
 
 @router.get("/budget/documents")
 def haushalt_dokumente(
-    _user: dict = Depends(require_active),
+    _user: dict = Depends(require_budget),
     store: CouncilStore = Depends(get_council_store),
 ) -> BudgetDocuments:
     """Je Quelle des Haushalts-Bereichs das **Dokument** — Jahrgang für Jahrgang.
@@ -1053,7 +1062,7 @@ def haushalt_dokumente(
 def haushalt_uebersicht(
     felder: str | None = None,
     sub_budget_item: str | None = None,
-    _user: dict = Depends(require_active),
+    _user: dict = Depends(require_budget),
     store: CouncilStore = Depends(get_council_store),
 ) -> BudgetOverview:
     """Datenfundament des Haushalts-Bereichs, in einem Aufruf:
@@ -1527,7 +1536,7 @@ def _spenden_jahre(vorlagen: list[dict]) -> list[dict]:
 @router.get("/budget/journey")
 def haushalt_weg(
     year: int | None = None,
-    _user: dict = Depends(require_active),
+    _user: dict = Depends(require_budget),
     store: CouncilStore = Depends(get_council_store),
 ) -> BudgetPath:
     """Der Weg eines Haushalts durch den Rat — wann welche Station war.
@@ -1557,7 +1566,7 @@ def haushalt_weg(
 @router.get("/budget/debate")
 def haushalt_streit(
     year: int | None = None,
-    _user: dict = Depends(require_active),
+    _user: dict = Depends(require_budget),
     store: CouncilStore = Depends(get_council_store),
 ) -> BudgetDispute:
     """Der Streit ums Geld — die Auseinandersetzung um jeden Haushaltsjahrgang.
@@ -1582,7 +1591,7 @@ def haushalt_streit(
 
 @router.get("/budget/amendment-lists")
 def haushalt_aenderungslisten(
-    _user: dict = Depends(require_active),
+    _user: dict = Depends(require_budget),
     store: CouncilStore = Depends(get_council_store),
 ) -> BudgetAmendmentLists:
     """Der Inhalt der Änderungslisten — die Ebene unter ``/haushalt/streit``.
@@ -3781,7 +3790,7 @@ VERGLEICH_BELEG_KVONR = 17170
 
 @router.get("/budget/comparison")
 def haushalt_vergleich(
-    _user: dict = Depends(require_active),
+    _user: dict = Depends(require_budget),
     store: CouncilStore = Depends(get_council_store),
 ) -> BudgetComparison:
     """Was sich zwischen Städten vergleichen lässt — und der Beleg, warum das
@@ -3864,7 +3873,7 @@ def haushalt_vergleich(
 
 @router.get("/budget/assets")
 def haushalt_gebaut(
-    _user: dict = Depends(require_active),
+    _user: dict = Depends(require_budget),
     store: CouncilStore = Depends(get_council_store),
 ) -> BudgetFixedAssets:
     """Was die Stadt wirklich investiert hat — Tabellen 1107/1107-1 des
@@ -3960,7 +3969,7 @@ def haushalt_gebaut(
 
 @router.get("/budget/balance-sheet")
 def haushalt_bilanz(
-    _user: dict = Depends(require_active),
+    _user: dict = Depends(require_budget),
     store: CouncilStore = Depends(get_council_store),
 ) -> BudgetBalanceSheet:
     """Die Bilanz der Stadt — Abschnitt 2.1 der Jahresabschlüsse.
@@ -4011,7 +4020,7 @@ def haushalt_bilanz(
 
 @router.get("/budget/liquidity")
 def haushalt_liquiditaet(
-    _user: dict = Depends(require_active),
+    _user: dict = Depends(require_budget),
     store: CouncilStore = Depends(get_council_store),
 ) -> BudgetLiquidity:
     """Der Liquiditätsstand — wie viel Geld die Stadt am Monatsende auf dem Konto hat.
@@ -4065,7 +4074,7 @@ def haushalt_liquiditaet(
 
 @router.get("/budget/loans")
 def haushalt_kredite(
-    _user: dict = Depends(require_active),
+    _user: dict = Depends(require_budget),
     store: CouncilStore = Depends(get_council_store),
 ) -> BudgetLoans:
     """Kredite und Zinsen — die Unterrichtungen des Rates nach der Kreditrichtlinie.
@@ -4148,7 +4157,7 @@ def haushalt_kredite(
 
 @router.get("/budget/debt")
 def haushalt_schulden(
-    _user: dict = Depends(require_active),
+    _user: dict = Depends(require_budget),
     store: CouncilStore = Depends(get_council_store),
 ) -> BudgetDebt:
     """Der Schuldenstand der Stadt seit 1995 — Tabelle 1108 des Statistischen
