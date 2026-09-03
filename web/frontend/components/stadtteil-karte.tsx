@@ -140,12 +140,14 @@ export function StadtteilKarte({ gewaehlt, auswaehlbar, onWaehlen, className }: 
             const offen = auswaehlbar.has(f.name);
             const hell = schwebt === f.name && offen;
             return (
+              // Bewusst NICHT fokussierbar: Chrome legt den Fokus-Ring einer
+              // SVG-Fläche um deren Bounding-Box, nicht um den Umriss — beim
+              // Klick stand also ein blaues Rechteck quer über der Stadt. Die
+              // Karte ist die Zeige-Geste; Tastatur und Screenreader gehen
+              // über die Liste daneben (das svg trägt role="img" und ist
+              // damit ohnehin ein Blatt im Baum, die Flächen waren dort nie
+              // erreichbar — nur 31 Tab-Stopps lagen davor).
               <path key={f.name} d={f.d}
-                role="button" tabIndex={offen ? 0 : -1}
-                aria-pressed={aktiv} aria-label={f.name}
-                onKeyDown={(e) => {
-                  if (offen && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onWaehlen(f.name); }
-                }}
                 className={cn(
                   "transition-[fill,stroke] duration-150",
                   offen ? "cursor-pointer" : "cursor-default",
