@@ -21,7 +21,7 @@ load_dotenv(ROOT / ".env")
 
 from council import geo, places  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
-from scripts.geocode_entities import geocode  # noqa: E402
+from scripts.geocode_entities import geocode, overpass_ausfaelle  # noqa: E402
 
 COUNCIL_DB = ROOT / "data" / "council.sqlite"
 
@@ -106,7 +106,12 @@ def process(council_db: Path, *, limit: int | None = None, sleep: float = 1.1,
             "districts_from_name": aus_namen, "korrigiert": korrigiert,
             "catalog_links": catalog_links,
             "pending": len(rows), "located": located,
-            "missed": missed, "failed": failed}
+            "missed": missed, "failed": failed,
+            # Gehört in die Kennzahlen, nicht ins Log: „located=513" bei 498
+            # Overpass-Ausfällen heißt, dass fast jede Straße nur ihr
+            # Nominatim-Einzelsegment bekam (s. geocode_entities.geocode).
+            "overpass_fehler": overpass_ausfaelle["fehler"],
+            "overpass_ohne_treffer": overpass_ausfaelle["ohne_treffer"]}
 
 
 def main() -> int:

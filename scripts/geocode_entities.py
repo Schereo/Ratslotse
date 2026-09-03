@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import re
 import sys
 import time
@@ -45,6 +46,13 @@ _STREET_RE = re.compile(r"(stra(ss|ß)e|weg|allee|platz|ring|damm|wall|markt|cha
 #: Ortsarten, die IMMER als Straße geholt werden — was die Ortserkennung schon
 #: als Straße eingetragen hat, muss kein Namensmuster noch einmal erraten.
 _STREET_KINDS = frozenset({"street", "square"})
+
+
+#: Wie oft der Overpass-Weg in diesem Prozess nicht geliefert hat. Der Aufrufer
+#: schreibt die Zahl in seine Kennzahlen: Ein Lauf, der 500 Straßen „geholt"
+#: hat, dabei aber 500 Overpass-Ausfälle zählt, hat NICHT das getan, was er
+#: sollte (s. `geocode`).
+overpass_ausfaelle = {"fehler": 0, "ohne_treffer": 0}
 
 
 def _is_street(name: str, kind: str | None = None) -> bool:
@@ -132,8 +140,21 @@ def geocode(name: str, kind: str | None = None) -> tuple | None:
             res = overpass_street(name)
             if res:
                 return _auf_stadtgebiet(res)
-        except Exception:  # noqa: BLE001 — Overpass hiccup → fall back to Nominatim
-            pass
+            overpass_ausfaelle["ohne_treffer"] += 1
+        except Exception as fehler:  # noqa: BLE001 — Nominatim ist der Rückfall
+            # NICHT still: Am 03.09.2026 war overpass-api.de von beiden VPS aus
+            # gar nicht erreichbar (Errno 101 über das NAT-Gateway). Der stumme
+            # Rückfall ließ das wie einen gelungenen Lauf aussehen —
+            # `located=513, missed=2, failed=0` —, während 498 Straßen ein
+            # Nominatim-Einzelsegment bekamen statt der ganzen Straße. Ein
+            # ausgefallener Dienst muss sich wie ein Ausfall lesen.
+            overpass_ausfaelle["fehler"] += 1
+            if overpass_ausfaelle["fehler"] <= 3:
+                logging.getLogger(__name__).warning(
+                    "Overpass nicht erreichbar (%s: %s) — %r fällt auf Nominatim "
+                    "zurück und bekommt damit nur EIN Straßensegment. Der ganze "
+                    "Bestand geht über scripts/strassen_snapshot.py.",
+                    type(fehler).__name__, fehler, name)
     return nominatim(name)
 
 
