@@ -4,6 +4,8 @@ from __future__ import annotations
 from typing import Literal
 from pydantic import BaseModel, EmailStr, Field
 
+from kern import roles as rollen
+
 
 # ---- auth ----
 class RegisterRequest(BaseModel):
@@ -36,7 +38,16 @@ class VerifyEmailRequest(BaseModel):
 #: Aufzählung im Vertrag ankommt — sonst muss jeder Client sie abschreiben,
 #: und genau das ist passiert: Das Web führte die Vereinigung von Hand, und
 #: sie war unvollständig (``blocked`` fehlte).
-Rolle = Literal["user", "admin"]
+#:
+#: Die Aufzählung wird aus ``kern.roles`` GERECHNET und nicht abgetippt: Eine
+#: neue Rolle dort und ein vergessenes Literal hier hieße, dass der Vertrag
+#: einen Wert verschweigt, den die Antwort trägt — und ein Client, der ihn
+#: nicht kennt, bricht beim Decodieren ab (die App tut genau das).
+Rolle = Literal[tuple(rollen.ROLE_ORDER)]  # type: ignore[valid-type]
+
+#: Ein einzelnes Recht. Rechte sind das, wogegen geprüft wird; Rollen bündeln
+#: sie nur. Auch hier: gerechnet, nicht abgetippt.
+Recht = Literal[tuple(rollen.PERMISSIONS)]  # type: ignore[valid-type]
 
 #: Der Zustand eines Kontos. ``blocked`` kann nur über ein Skript entstehen —
 #: die Admin-Oberfläche setzt nur ``active`` und ``pending``. Es steht hier
@@ -61,7 +72,18 @@ class UserOut(BaseModel):
     # Alle Erzeugungsstellen übergeben sie ohnehin ausdrücklich.
     id: int
     email: str
+    # Die STÄRKSTE Rolle. Bleibt Pflichtfeld, weil die im App Store
+    # ausgelieferte App sie so decodiert und `isAdmin` daraus ableitet — sie zu
+    # entfernen hieße, jede installierte App beim nächsten Release zu zerlegen
+    # (der Hebel dagegen wäre APP_MIN_BUILD, und dafür ist das hier zu klein).
+    # Neuer Code liest `roles`/`permissions`.
     role: Rolle
+    #: Alle Rollen dieses Kontos.
+    roles: list[Rolle]
+    #: Was dieses Konto DARF — die Vereinigung der Rechte seiner Rollen. Die
+    #: Frontends prüfen dagegen und müssen deshalb nicht wissen, welche Rollen
+    #: es gibt: Eine neue Rolle wirkt ohne Frontend-Release.
+    permissions: list[Recht]
     status: Kontostand
     delivery_channel: Zustellweg
     email_verified: bool
@@ -211,13 +233,41 @@ class WebUserOut(BaseModel):
     id: int
     email: str
     role: Rolle
+    roles: list[Rolle] = []
     status: Kontostand = "pending"
     email_verified: bool = False
     created_at: str
 
 
 class RoleUpdate(BaseModel):
-    role: str  # 'user' | 'admin'
+    """Alt-Weg: EINE Rolle setzen (ersetzt alle anderen).
+
+    Bleibt, weil die ausgelieferte iOS-App genau das schickt. Neue Clients
+    nehmen ``RolesUpdate``.
+    """
+    role: str
+
+
+class RolesUpdate(BaseModel):
+    """Die Rollen eines Kontos setzen — die ganze Liste, nicht ein Delta.
+
+    Absicht: Ein PUT mit der vollständigen Liste ist idempotent und kann sich
+    nicht mit einem parallelen Klick überkreuzen. Ein „füge hinzu"-Endpunkt
+    hätte zwei Admins, die gleichzeitig arbeiten, unbemerkt zusammenaddiert.
+    """
+    roles: list[str] = Field(default_factory=list, max_length=16)
+
+
+class RoleInfo(BaseModel):
+    """Ein Eintrag des Rollen-Katalogs — die Auswahl im Admin-Panel baut sich
+    daraus, statt Rollennamen und Beschriftungen abzuschreiben."""
+    key: Rolle
+    label: str
+    description: str
+    permissions: list[Recht]
+    #: ``False`` für die Standardrolle: Sie hat jedes Konto ohnehin, ein
+    #: Kästchen dafür wäre eine Lüge.
+    assignable: bool
 
 
 class StatusUpdate(BaseModel):

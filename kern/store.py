@@ -191,6 +191,26 @@ CREATE TABLE IF NOT EXISTS web_users (
     created_at       TEXT NOT NULL
 );
 
+-- Die Rollen eines Kontos (n:m). Ein Konto kann mehrere tragen — Ratsmitglied
+-- UND Admin ist ein echter Fall, kein Sonderfall.
+--
+-- Diese Tabelle ist die WAHRHEIT. `web_users.role` daneben ist nur noch ein
+-- Schaufenster: die stärkste Rolle, abgeleitet und ausschließlich von
+-- `set_web_user_roles()` geschrieben. Die Spalte bleibt, weil die im App Store
+-- ausgelieferte iOS-App `role` als Pflichtfeld decodiert (kern.roles erklärt
+-- den Rest) — sie zu entfernen hieße, die App beim nächsten Release zu
+-- zerlegen. Wer Rechte prüft, prüft NIE gegen diese Spalte.
+--
+-- `granted_by` ist die id des Admins, der die Rolle vergeben hat (NULL für die
+-- Migration und für die Erst-Einrichtung aus WEB_ADMIN_EMAIL).
+CREATE TABLE IF NOT EXISTS web_user_roles (
+    user_id    INTEGER NOT NULL,
+    role       TEXT NOT NULL,
+    granted_at TEXT NOT NULL,
+    granted_by INTEGER,
+    PRIMARY KEY (user_id, role)
+);
+
 -- Single-use password-reset tokens (only the sha256 hash is stored) with expiry.
 CREATE TABLE IF NOT EXISTS password_reset_tokens (
     token_hash TEXT PRIMARY KEY,
@@ -461,6 +481,7 @@ USER_OWNED_TABLES: tuple[tuple[str, str], ...] = (
     ("feedback", "owner_id"),
     ("password_reset_tokens", "user_id"),
     ("email_verification_tokens", "user_id"),
+    ("web_user_roles", "user_id"),
 )
 
 
@@ -897,6 +918,53 @@ class Store:
             vorhanden.discard(alt); vorhanden.add(neu)
             log.warning("Tabelle umbenannt: %s → %s", alt, neu)
 
+    def _rollen_aus_spalte_uebernehmen(self) -> None:
+        """Einmalig: `web_users.role` → Zeilen in `web_user_roles`.
+
+        Läuft genau einmal je Datenbank (Marke). Danach schreibt nur noch
+        `set_web_user_roles()` beide Seiten, und die Spalte ist ein abgeleitetes
+        Schaufenster (Begründung am Tabellen-Schema).
+
+        Konten mit der Standardrolle bekommen bewusst KEINE Zeile: „user" ist
+        die Abwesenheit besonderer Rechte, und eine Zeile je Konto wäre eine
+        Behauptung, die beim nächsten Rollen-Umbau gepflegt werden müsste.
+        """
+        with self._conn:
+            self._conn.execute(
+                "CREATE TABLE IF NOT EXISTS migration_marks ("
+                "marke TEXT PRIMARY KEY, gesetzt_am TEXT NOT NULL)")
+        marke = "rollen_n_m_2026_09"
+        if self._conn.execute(
+                "SELECT 1 FROM migration_marks WHERE marke = ?", (marke,)).fetchone():
+            return
+        if not self._table_cols("web_users"):
+            return
+        from kern import roles as _roles
+        log = logging.getLogger("kern.store")
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        zeilen = self._conn.execute(
+            "SELECT id, role FROM web_users WHERE role IS NOT NULL AND role != ?",
+            (_roles.DEFAULT_ROLE,)).fetchall()
+        uebernommen = [(r["id"], r["role"], now) for r in zeilen
+                       if r["role"] in _roles.ROLES]
+        # Eine unbekannte Rolle in einer gewachsenen Datenbank wird gemeldet,
+        # nicht stillschweigend geschluckt: Sie ist entweder ein Tippfehler von
+        # `grant_admin.py` oder eine Rolle, die jemand ausgebaut hat — beides
+        # will man sehen, bevor jemand seine Rechte verliert.
+        for r in zeilen:
+            if r["role"] not in _roles.ROLES:
+                log.warning("Konto %s trägt die unbekannte Rolle %r — nicht übernommen.",
+                            r["id"], r["role"])
+        with self._conn:
+            self._conn.executemany(
+                "INSERT OR IGNORE INTO web_user_roles (user_id, role, granted_at) "
+                "VALUES (?, ?, ?)", uebernommen)
+            self._conn.execute(
+                "INSERT OR REPLACE INTO migration_marks (marke, gesetzt_am) VALUES (?, ?)",
+                (marke, now))
+        if uebernommen:
+            log.info("Rollen übernommen: %d Konten aus web_users.role", len(uebernommen))
+
     def _migrate(self) -> None:
         # 08/2026: Die Prompt-Overrides sind ausgebaut — die Prompt-Texte leben
         # nur noch als Code in `kern/prompts.py` (Tims Entscheidung,
@@ -1095,6 +1163,10 @@ class Store:
                 # entstanden, und ein geratenes „web" wäre eine Behauptung.
                 if "signup_client" not in wu_cols:
                     self._conn.execute("ALTER TABLE web_users ADD COLUMN signup_client TEXT")
+        # Die Rollen ziehen aus der Spalte in die Tabelle um (09/2026).
+        # `web_user_roles` legt das SCHEMA selbst an (CREATE TABLE IF NOT
+        # EXISTS läuft bei jedem Öffnen) — hier fehlt nur der Inhalt.
+        self._rollen_aus_spalte_uebernehmen()
         # Aktivität trägt seit 09/2026 den Client (Admin: „App oder Web?").
         # Die Spalte gehört in den PRIMÄRSCHLÜSSEL — dieselbe Person kann am
         # selben Tag beides benutzen —, und den kann SQLite nicht ändern: also
@@ -1319,6 +1391,17 @@ class Store:
                 (email.lower().strip(), password_hash, role, status, 1 if email_verified else 0, now,
                  (display_name or "").strip()[:60] or None, signup_client),
             )
+        # Die Rollen-Zeile entsteht HIER und nicht beim Aufrufer: Sonst gäbe es
+        # einen Weg, ein Konto mit `role='admin'` in der Spalte anzulegen, dem
+        # in `web_user_roles` nichts entspricht — die Rechteprüfung sähe einen
+        # gewöhnlichen Nutzer, das Admin-Panel einen Admin. Genau ein Aufrufer
+        # macht das (der Apple-Weg für die konfigurierte Admin-Adresse).
+        from kern import roles as _roles
+        if role in _roles.ROLES and role != _roles.DEFAULT_ROLE:
+            with self._conn:
+                self._conn.execute(
+                    "INSERT OR IGNORE INTO web_user_roles (user_id, role, granted_at) "
+                    "VALUES (?, ?, ?)", (cur.lastrowid, role, now))
         return cur.lastrowid
 
     def set_display_name(self, user_id: int, display_name: str | None) -> None:
@@ -1332,7 +1415,7 @@ class Store:
         row = self._conn.execute(
             "SELECT * FROM web_users WHERE apple_sub = ?", (apple_sub,)
         ).fetchone()
-        return dict(row) if row else None
+        return self._mit_rollen(row)
 
     def link_apple_sub(self, user_id: int, apple_sub: str, *, password_set: bool | None = None) -> None:
         """Apple-ID mit einem Konto verknüpfen (RL-1002). password_set=False
@@ -1994,17 +2077,31 @@ class Store:
         self._attach_push_tokens(by)
         return owner
 
+    def _mit_rollen(self, row) -> dict | None:
+        """Ein geladenes Konto um seine Rollen ergänzen.
+
+        Jeder Weg, auf dem ein Konto in den Code kommt, geht hier durch — sonst
+        gäbe es einen Ladeweg, auf dem `user["roles"]` fehlt, und die
+        Rechteprüfung dahinter wäre ein KeyError oder, schlimmer, ein stilles
+        „hat keine Rechte".
+        """
+        if not row:
+            return None
+        konto = dict(row)
+        konto["roles"] = self.get_web_user_roles(konto["id"])
+        return konto
+
     def get_web_user_by_email(self, email: str) -> dict | None:
         row = self._conn.execute(
             "SELECT * FROM web_users WHERE email = ?", (email.lower().strip(),)
         ).fetchone()
-        return dict(row) if row else None
+        return self._mit_rollen(row)
 
     def get_web_user_by_id(self, user_id: int) -> dict | None:
         row = self._conn.execute(
             "SELECT * FROM web_users WHERE id = ?", (user_id,)
         ).fetchone()
-        return dict(row) if row else None
+        return self._mit_rollen(row)
 
     def set_web_user_limits(self, user_id: int, deep_limit: int | None,
                             limits_unlocked: bool) -> None:
@@ -2020,11 +2117,109 @@ class Store:
             "SELECT id, email, role, status, email_verified, created_at "
             "FROM web_users ORDER BY created_at"
         ).fetchall()
-        return [dict(r) for r in rows]
+        karte = self.web_user_roles_map()
+        return [dict(r, roles=karte.get(r["id"], [])) for r in rows]
+
+    # ---- Rollen (n:m, siehe kern/roles.py) ----
+
+    def get_web_user_roles(self, user_id: int) -> list[str]:
+        """Die vergebenen Rollen eines Kontos, in fester Reihenfolge.
+
+        Die Standardrolle steht NICHT in der Tabelle und wird hier auch nicht
+        erfunden — `kern.roles.permissions_for` kommt mit einer leeren Liste
+        zurecht, sie trägt ohnehin keine Rechte.
+        """
+        from kern import roles as _roles
+        try:
+            rows = self._conn.execute(
+                "SELECT role FROM web_user_roles WHERE user_id = ?", (user_id,)).fetchall()
+        except sqlite3.OperationalError as exc:
+            # Eine Datenbank, die noch nicht migriert ist, soll niemanden
+            # aussperren — sie fällt auf die Alt-Spalte zurück.
+            if not tabelle_fehlt(exc):
+                raise
+            row = self._conn.execute(
+                "SELECT role FROM web_users WHERE id = ?", (user_id,)).fetchone()
+            return _roles.known_roles([row["role"]] if row else [])
+        return _roles.known_roles([r["role"] for r in rows])
+
+    def set_web_user_roles(self, user_id: int, roles, granted_by: int | None = None) -> list[str]:
+        """Die Rollen eines Kontos setzen — die EINZIGE Stelle, die schreibt.
+
+        Schreibt beides in einer Transaktion: die Zeilen in `web_user_roles`
+        (die Wahrheit) und die abgeleitete Spalte `web_users.role` (das
+        Schaufenster für die ausgelieferte iOS-App). Zwei Wahrheiten wären hier
+        genau die stille Sorte Fehler, die niemandem auffällt, bis jemand
+        aussperrt ist — deshalb gibt es nur diesen einen Schreiber.
+
+        Gibt die tatsächlich gesetzten (bekannten) Rollen zurück.
+        """
+        from kern import roles as _roles
+        gewuenscht = _roles.known_roles(roles)
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute("DELETE FROM web_user_roles WHERE user_id = ?", (user_id,))
+            self._conn.executemany(
+                "INSERT INTO web_user_roles (user_id, role, granted_at, granted_by) "
+                "VALUES (?, ?, ?, ?)",
+                [(user_id, r, now, granted_by) for r in gewuenscht])
+            self._conn.execute(
+                "UPDATE web_users SET role = ? WHERE id = ?",
+                (_roles.primary_role(gewuenscht), user_id))
+        return gewuenscht
+
+    def web_user_roles_map(self, user_ids=None) -> dict[int, list[str]]:
+        """Rollen für viele Konten auf einmal — für die Admin-Liste.
+
+        Eine Abfrage je Zeile wäre bei mehreren hundert Konten das übliche
+        N+1-Problem; `user_ids=None` holt alles, was überhaupt eine Rolle hat
+        (die Tabelle enthält nur die Nicht-Standard-Fälle und ist damit klein).
+        """
+        from kern import roles as _roles
+        sql = "SELECT user_id, role FROM web_user_roles"
+        args: tuple = ()
+        if user_ids is not None:
+            ids = list(user_ids)
+            if not ids:
+                return {}
+            sql += f" WHERE user_id IN ({','.join('?' * len(ids))})"
+            args = tuple(ids)
+        try:
+            rows = self._conn.execute(sql, args).fetchall()
+        except sqlite3.OperationalError as exc:
+            if not tabelle_fehlt(exc):
+                raise
+            return {}
+        roh: dict[int, list[str]] = {}
+        for r in rows:
+            roh.setdefault(r["user_id"], []).append(r["role"])
+        return {uid: _roles.known_roles(rs) for uid, rs in roh.items()}
+
+    def add_web_user_role(self, user_id: int, role: str, granted_by: int | None = None) -> list[str]:
+        """Eine Rolle ERGÄNZEN, ohne die anderen anzufassen.
+
+        Der Unterschied zu `set_web_user_roles` ist der Grund, warum es beides
+        gibt: `grant_admin.py` soll jemanden zum Admin machen, ihm dabei aber
+        nicht sein Ratsmandat wegnehmen.
+        """
+        return self.set_web_user_roles(
+            user_id, [*self.get_web_user_roles(user_id), role], granted_by)
+
+    def remove_web_user_role(self, user_id: int, role: str, granted_by: int | None = None) -> list[str]:
+        """Eine Rolle entziehen, die anderen behalten."""
+        return self.set_web_user_roles(
+            user_id, [r for r in self.get_web_user_roles(user_id) if r != role], granted_by)
 
     def set_web_user_role(self, user_id: int, role: str) -> None:
-        with self._conn:
-            self._conn.execute("UPDATE web_users SET role = ? WHERE id = ?", (role, user_id))
+        """Alt-Weg: genau EINE Rolle setzen.
+
+        Bleibt, weil die ausgelieferte iOS-App `PUT /admin/users/{id}/role`
+        aufruft (`AdminView.swift`) — ein entfernter Weg hieße dort ein stiller
+        Fehlschlag. Er ist bewusst kein Sonderpfad, sondern schreibt über
+        `set_web_user_roles`; sonst hätte er die Tabelle nicht mitgezogen.
+        """
+        from kern import roles as _roles
+        self.set_web_user_roles(user_id, [] if role == _roles.DEFAULT_ROLE else [role])
 
     def increment_token_version(self, user_id: int) -> int:
         """Bump token_version so all existing JWTs for this user become invalid."""
@@ -2635,7 +2830,9 @@ class Store:
             "WHERE feature = 'session' GROUP BY owner_id, client"
         ).fetchall():
             nutzung.setdefault(r["owner_id"], {})[r["client"]] = r["c"]
+        rollen = self.web_user_roles_map()
         return [{"id": r["id"], "email": r["email"], "role": r["role"], "status": r["status"],
+                 "roles": rollen.get(r["id"], []),
                  "created_at": r["created_at"], "apple_linked": bool(r["apple_sub"]),
                  "n_topics": r["n_topics"], "n_subscriptions": r["n_subscriptions"],
                  "n_quiz": r["n_quiz"], "n_ki": r["n_ki"], "last_seen": r["last_seen"],
@@ -2665,6 +2862,9 @@ class Store:
         verlauf = [by_day.get(d, 0) for d in history_days]
         return {
             "id": u["id"], "email": u["email"], "role": u["role"], "status": u["status"],
+            # `roles` ist die Wahrheit, `role` daneben nur die stärkste davon —
+            # das Admin-Panel bearbeitet die Liste, nicht die Spalte.
+            "roles": u.get("roles", []),
             "created_at": u["created_at"],
             "last_seen": self._conn.execute(
                 "SELECT MAX(day) FROM user_activity WHERE owner_id = ?", (uid,)).fetchone()[0],

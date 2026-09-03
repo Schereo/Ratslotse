@@ -79,11 +79,17 @@ JOBS: list[dict] = [
         # Bestandsgesteuert, nicht kalendergesteuert: Der Takt bestimmt nur,
         # wie schnell ein neuer Jahrgang auf der Seite steht (s. Skript-Kopf).
         #
-        # Läuft vorerst NUR auf der Dev-VM: Der Haushalts-Bereich steht hinterm
-        # Umgebungs-Gate (web/frontend/lib/haushalt-frei.ts), auf Prod bleiben
-        # seine Tabellen leer. In der Cron-Übersicht erscheint der Job dort
-        # deshalb als „unknown" (nie gelaufen) — nicht als überfällig; die
-        # Ampel kennt „stale" nur für Jobs mit mindestens einem Lauf.
+        # Steht bis heute NUR in der crontab der Dev-VM. Das war richtig,
+        # solange der Haushalts-Bereich hinterm Umgebungs-Gate stand und auf
+        # Prod niemand ihn sah; seit 09/2026 hängt er am Recht `budget` und ist
+        # dort für Ratsmitglieder sichtbar (kern/roles.py).
+        #
+        # OFFEN: der Eintrag in der Prod-crontab. Ohne ihn bleibt der einmalige
+        # Ops-Lauf (`ops-finanzdaten-ingest.yml`, Umgebung `prod`) eine
+        # Momentaufnahme — neue Jahrgänge kämen nie nach. Auffallen würde das
+        # NICHT: In der Cron-Übersicht steht der Job auf Prod als „unknown"
+        # (nie gelaufen), nicht als überfällig; die Ampel kennt „stale" nur für
+        # Jobs mit mindestens einem Lauf. Genau deshalb steht es hier.
         "schedule": "alle zwei Wochen, sonntags 4:30 Uhr",
         "max_age_h": 16 * 24,
     },

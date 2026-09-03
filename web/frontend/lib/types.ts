@@ -468,7 +468,10 @@ export type AdminFeedback = S["AdminFeedbackRow"];
 export interface AdminUserDetail {
   id: number;
   email: string;
-  role: "user" | "admin";
+  /** Die stärkste Rolle. `roles` daneben ist die Wahrheit — das Panel
+   *  bearbeitet die Liste, nicht diesen Wert. */
+  role: string;
+  roles: string[];
   status: "active" | "pending";
   created_at: string;
   last_seen: string | null;

@@ -25,7 +25,17 @@ public struct SetupProgress: Codable, Sendable, Equatable {
 public struct User: Codable, Sendable, Equatable, Identifiable {
     public let id: Int
     public let email: String
+    /// Die stärkste Rolle. Bleibt, weil ältere App-Fassungen sie so lesen —
+    /// neuer Code fragt `can(_:)`.
     public let role: String
+    /// Alle Rollen dieses Kontos. Optional mit Vorgabe, weil ein Backend im
+    /// Stand vor 09/2026 sie nicht mitschickt: Ein nicht-optionales Feld ließe
+    /// den `JSONDecoder` dort werfen, und die App käme nicht über die Anmeldung
+    /// hinaus (die Falle steht in ios/CLAUDE.md).
+    public let roles: [String]?
+    /// Was dieses Konto DARF — gegen diese Liste wird geprüft, nie gegen einen
+    /// Rollennamen. Eine neue Rolle im Backend wirkt damit ohne App-Update.
+    public let permissions: [String]?
     public let status: String
     public let deliveryChannel: String
     public let emailVerified: Bool
@@ -36,10 +46,21 @@ public struct User: Codable, Sendable, Equatable, Identifiable {
     public let savesConversations: Int?
 
     public var isActive: Bool { status == "active" && emailVerified }
-    public var isAdmin: Bool { role == "admin" }
+
+    /// Trägt dieses Konto das Recht? Der eine Weg, Rechte zu prüfen.
+    public func can(_ permission: String) -> Bool {
+        if let permissions { return permissions.contains(permission) }
+        // Backend ohne Rechte-Feld: auf die Alt-Spalte zurückfallen, damit ein
+        // Admin nicht plötzlich vor verschlossenen Türen steht.
+        return role == "admin"
+    }
+
+    public var isAdmin: Bool { can("admin") }
+    /// Der Haushalts-Bereich (im Web 20 Seiten; die App zeigt ihn noch nicht).
+    public var canSeeBudget: Bool { can("budget") }
 
     enum CodingKeys: String, CodingKey {
-        case id, email, role, status
+        case id, email, role, roles, permissions, status
         case deliveryChannel = "delivery_channel"
         case emailVerified = "email_verified"
         case appleLinked = "apple_linked"

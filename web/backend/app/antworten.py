@@ -988,6 +988,7 @@ class AdminUserDetail(TypedDict):
     id: int
     email: str
     role: str
+    roles: list[str]
     status: str
     created_at: str | None
     last_seen: str | None
@@ -1205,7 +1206,10 @@ class AdminFeedbackRead(TypedDict):
 class AdminUserRow(TypedDict):
     id: int
     email: str
+    #: Die stärkste Rolle (Abkürzung fürs Abzeichen in der Liste).
     role: str
+    #: Alle Rollen — die Wahrheit; das Detail bearbeitet diese Liste.
+    roles: list[str]
     status: str
     created_at: str | None
     apple_linked: bool
