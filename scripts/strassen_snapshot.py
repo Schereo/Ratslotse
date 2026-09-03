@@ -57,6 +57,14 @@ HEADERS = {"User-Agent": "Ratslotse/1.0 (https://ratslotse.de; civic info, stree
 #: wird jede Geometrie hinterher auf das Stadtgebiet beschnitten.
 BBOX = (53.08, 8.10, 53.22, 8.30)
 
+#: Wie viele benannte Wege der Schnappschuss mindestens enthalten muss.
+#: Gemessen am 03.09.2026: 6.534. Deutlich weniger heißt, dass die Antwort
+#: abgeschnitten oder aus dem falschen Ausschnitt kam — und ein zu kleiner
+#: Schnappschuss darf gute Geometrien nicht überschreiben. Der Wert liegt
+#: bewusst weit unter dem gemessenen: Er soll einen Ausfall fangen, nicht
+#: jedes Auf und Ab in OSM.
+MINDESTENS_WEGE = 3000
+
 
 def holen(url: str = OVERPASS, timeout: int = 300) -> dict:
     """Alle benannten Wege im Rechteck — ein Aufruf, rohe Overpass-Antwort."""
@@ -72,6 +80,14 @@ def holen(url: str = OVERPASS, timeout: int = 300) -> dict:
     print(f"Schnappschuss: {len(wege)} benannte Wege, "
           f"{round(len(antwort.content) / 1e6, 1)} MB, {round(time.time() - start, 1)} s",
           flush=True)
+    if len(wege) < MINDESTENS_WEGE:
+        # Lieber gar kein Schnappschuss als ein halber: Ein abgeschnittenes
+        # Ergebnis (Overpass unter Last liefert das) sähe für den Abgleich aus
+        # wie „diese Straßen gibt es nicht mehr".
+        raise SystemExit(
+            f"Nur {len(wege)} benannte Wege — erwartet sind über {MINDESTENS_WEGE} "
+            f"(gemessen: 6.534). Die Antwort ist unvollständig oder kam aus dem "
+            f"falschen Ausschnitt; nichts geschrieben.")
     return daten
 
 
@@ -205,6 +221,14 @@ def main() -> int:
     print(("TROCKEN: " if args.trocken else "")
           + "Straßen-Schnappschuss: "
           + ", ".join(f"{k}={v}" for k, v in stand.items()))
+    # Ein Lauf, der auf 687 offene Orte keinen einzigen Treffer hat, hat nicht
+    # „nichts zu tun" — er hat die falsche Datei gelesen. Das muss der
+    # Rückgabewert sagen, sonst steht der Workflow grün und niemand sieht es.
+    if stand["orte_offen"] and not (stand["orte_neu"] + stand["orte_unveraendert"]):
+        print(f"FEHLER: {stand['orte_offen']} Straßen offen, aber KEIN Namenstreffer "
+              f"im Schnappschuss ({stand['namen']} Namen). Falsche oder leere Datei?",
+              file=sys.stderr)
+        return 1
     return 0
 
 

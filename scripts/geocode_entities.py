@@ -49,10 +49,48 @@ _STREET_KINDS = frozenset({"street", "square"})
 
 
 #: Wie oft der Overpass-Weg in diesem Prozess nicht geliefert hat. Der Aufrufer
-#: schreibt die Zahl in seine Kennzahlen: Ein Lauf, der 500 Straßen „geholt"
+#: schreibt die Zahlen in seine Kennzahlen: Ein Lauf, der 500 Straßen „geholt"
 #: hat, dabei aber 500 Overpass-Ausfälle zählt, hat NICHT das getan, was er
 #: sollte (s. `geocode`).
-overpass_ausfaelle = {"fehler": 0, "ohne_treffer": 0}
+overpass_ausfaelle = {"fehler": 0, "ohne_treffer": 0, "nicht_erreichbar": 0,
+                      "strassen_versucht": 0}
+
+#: Ergebnis der Erreichbarkeitsprobe, einmal je Prozess. ``None`` = noch nicht
+#: gemessen.
+_overpass_bereit: bool | None = None
+
+
+def overpass_bereit(url: str = OVERPASS) -> bool:
+    """Antwortet Overpass überhaupt? EINMAL je Lauf gemessen.
+
+    **Warum das vor die Arbeit gehört.** Am 03.09.2026 war overpass-api.de von
+    beiden VPS aus nicht erreichbar (Errno 101 über das NAT-Gateway). Ohne
+    Probe lief der Reparaturlauf trotzdem 513-mal in denselben Fehler, fiel
+    jedes Mal still auf Nominatim zurück und meldete am Ende
+    ``located=513, missed=2, failed=0``. Die Probe macht daraus EINE Messung
+    mit klarer Ansage — und spart die 513 vergeblichen Versuche.
+
+    Gefragt wird der Endpunkt, der auch benutzt wird: ``/api/status`` einiger
+    Spiegel antwortete, während ``/api/interpreter`` in den Timeout lief.
+    """
+    global _overpass_bereit
+    if _overpass_bereit is None:
+        try:
+            antwort = requests.post(
+                url, data={"data": "[out:json][timeout:10];out count;"},
+                headers=HEADERS, timeout=15)
+            antwort.raise_for_status()
+            _overpass_bereit = True
+        except Exception as fehler:  # noqa: BLE001 — genau das ist die Auskunft
+            _overpass_bereit = False
+            logging.getLogger(__name__).error(
+                "OVERPASS NICHT ERREICHBAR (%s: %s). Straßen bekommen in diesem "
+                "Lauf nur EIN Nominatim-Segment statt der ganzen Straße — und "
+                "damit nur einen Teil ihrer Ortsbereiche. Der Bestand geht über "
+                "den Workflow „Ops: Straßen vollständig nachtragen\" "
+                "(scripts/strassen_snapshot.py).",
+                type(fehler).__name__, str(fehler)[:200])
+    return _overpass_bereit
 
 
 def _is_street(name: str, kind: str | None = None) -> bool:
@@ -136,6 +174,12 @@ def geocode(name: str, kind: str | None = None) -> tuple | None:
     verloren, obwohl sein Oldenburger Teil sauber in Kreyenbrück liegt.
     """
     if _is_street(name, kind):
+        overpass_ausfaelle["strassen_versucht"] += 1
+        if not overpass_bereit():
+            # Die Probe hat es schon gemeldet; hier wird nur gezählt, damit die
+            # Kennzahlen des Laufs die Wahrheit sagen.
+            overpass_ausfaelle["nicht_erreichbar"] += 1
+            return nominatim(name)
         try:
             res = overpass_street(name)
             if res:

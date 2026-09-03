@@ -145,3 +145,52 @@ def test_namen_werden_exakt_gruppiert():
     ]})
     assert set(nach_namen) == {"sandweg", "am sandweg"}
     assert len(nach_namen["sandweg"]) == 2
+
+
+def test_halber_schnappschuss_wird_abgewiesen(monkeypatch):
+    """Lieber kein Schnappschuss als ein halber.
+
+    Overpass unter Last liefert abgeschnittene Antworten. Für den Abgleich
+    sähe das aus wie „diese Straßen gibt es nicht mehr" — und er würde gute
+    Geometrien überschreiben.
+    """
+    import pytest
+
+    from scripts import strassen_snapshot as snap
+
+    class Antwort:
+        status_code = 200
+        content = b"{}"
+
+        @staticmethod
+        def raise_for_status():
+            pass
+
+        @staticmethod
+        def json():
+            return {"elements": [
+                {"tags": {"name": f"Weg {i}"},
+                 "geometry": [{"lon": 8.2, "lat": 53.1}, {"lon": 8.21, "lat": 53.1}]}
+                for i in range(10)]}
+
+    monkeypatch.setattr(snap.requests, "post", lambda *a, **k: Antwort())
+    with pytest.raises(SystemExit) as fehler:
+        snap.holen()
+    assert "unvollständig" in str(fehler.value)
+
+
+def test_lauf_ohne_jeden_treffer_meldet_fehler(tmp_path, monkeypatch, capsys):
+    """Ein Schnappschuss, der zu keinem Ort passt, ist die falsche Datei — und
+    darf nicht als grüner Lauf durchgehen."""
+    from scripts import strassen_snapshot as snap
+
+    db = tmp_path / "c.sqlite"
+    _saat(db)
+    datei = tmp_path / "fremd.json"
+    datei.write_text(json.dumps({"elements": [
+        {"tags": {"name": "Gibtesnichtstraße"},
+         "geometry": [{"lon": 8.2, "lat": 53.1}, {"lon": 8.21, "lat": 53.1}]}]}),
+        encoding="utf-8")
+    monkeypatch.setattr(sys, "argv", ["x", "anwenden", "--db", str(db), "--datei", str(datei)])
+    assert snap.main() == 1
+    assert "KEIN Namenstreffer" in capsys.readouterr().err
