@@ -102,7 +102,7 @@ def start_recording(dest_dir: Path, max_seconds: int | None = None) -> subproces
                     "(statisches Build nach ~/bin/ffmpeg legen)")
         return None
     dest_dir.mkdir(parents=True, exist_ok=True)
-    cmd = [exe, "-loglevel", "error", "-i", STREAM_URL,
+    cmd = [exe, "-nostdin", "-y", "-loglevel", "error", "-i", STREAM_URL,
            "-t", str(int(max_seconds or MAX_HOURS * 3600)),
            "-vn", "-ac", "1", "-b:a", "32k",
            "-f", "segment", "-segment_time", str(CHUNK_SECONDS),
@@ -222,9 +222,11 @@ def record_and_transcribe(dest_dir: Path,
     segments: list[tuple[float, str]] = []
     done: set[int] = set()
     closing = False
+    exit_code: int | None = None
     try:
         while True:
-            running = proc.poll() is None
+            exit_code = proc.poll()
+            running = exit_code is None
             chunks = sorted(dest_dir.glob("chunk_*.mp3"))
             for idx, path in enumerate(chunks):
                 finished = (idx < len(chunks) - 1) or not running
@@ -250,4 +252,13 @@ def record_and_transcribe(dest_dir: Path,
                 proc.wait(timeout=30)
             except subprocess.TimeoutExpired:
                 proc.kill()
+    # Eine erkannte Schlussformel beendet ffmpeg absichtlich per SIGTERM.
+    # Jeder andere Fehler muss den Cron-Lauf fehlschlagen lassen: Ein still
+    # akzeptierter Teilmitschnitt würde unvollständige Ergebnisse veröffentlichen
+    # und in Kombination mit alten Chunks wie ein erfolgreicher Retry wirken.
+    if exit_code not in (None, 0) and not closing:
+        raise RuntimeError(
+            f"ffmpeg-Aufnahme mit Exitcode {exit_code} abgebrochen "
+            f"({len(done)} fertige Stücke)"
+        )
     return segments

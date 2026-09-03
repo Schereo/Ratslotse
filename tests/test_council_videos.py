@@ -220,10 +220,20 @@ def test_sessions_needing_video_check(store):
     # Ohne decisions und ohne video_results → Kandidat.
     need = store.sessions_needing_video_check("2026-08-01")
     assert [s["ksinr"] for s in need] == [4702]
-    # Mit Video-Ergebnissen → erledigt.
+
+    # Der Livestream liefert schon Ergebnisse, aber noch keine Sprung-Links:
+    # Der YouTube-Nachlauf muss die Sitzung weiter finden.
+    store.save_video_results(4702, "", "livestream-model", [
+        {"item_number": "7.1", "outcome": "accepted", "quote": "live"}])
+    assert [s["ksinr"] for s in
+            store.sessions_needing_video_check("2026-08-01")] == [4702]
+
+    # Der YouTube-Lauf ersetzt den Livestream-Bestand vollständig und erst
+    # dessen echte Video-ID schließt die Sitzung aus weiteren Läufen aus.
     store.save_video_results(4702, "vid123", "m", [
         {"item_number": "7.1", "outcome": "accepted", "quote": "x"}])
     assert store.sessions_needing_video_check("2026-08-01") == []
+    assert [r["video_id"] for r in store.get_video_results(4702)] == ["vid123"]
 
 
 def test_sessions_with_protocol_are_not_candidates(store):

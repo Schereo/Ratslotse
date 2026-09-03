@@ -41,7 +41,7 @@ JOBS: list[dict] = [
         "key": "record_council_livestream",
         "label": "Livestream-Mitschnitt (Rat)",
         "description": "Schneidet die Ratssitzung live aus dem O1-Stream mit und liest die Abstimmungsergebnisse noch am Sitzungsabend — an Tagen ohne Ratssitzung ein Leerlauf.",
-        "schedule": "täglich 16 Uhr",
+        "schedule": "täglich 13 Uhr UTC (14/15 Uhr lokal)",
         "max_age_h": 30,
     },
     {

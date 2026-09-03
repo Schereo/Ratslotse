@@ -106,8 +106,12 @@ Repo-Root — dieselben Dateien wie die Cron-Skripte.
    Rate-Limiter umgehen) — nicht entfernen.
 7. **Passwordless sudo** (`/etc/sudoers.d/tim-nwz`) um die neuen Services ergänzen:
    ```
-   tim ALL=(ALL) NOPASSWD: /bin/systemctl restart nwz-web-api, /bin/systemctl restart nwz-web-frontend
+   tim ALL=(ALL) NOPASSWD: /bin/systemctl stop nwz-web-api, /bin/systemctl start nwz-web-api, /bin/systemctl restart nwz-web-frontend
    ```
+   Der Release-Preflight prüft diese drei exakten Befehle vor dem ersten
+   Dateitransfer über die ausführliche Policy-Ausgabe von `sudo -n -ll`
+   (benötigt sudo 1.9.15 oder neuer) und verlangt dort ausdrücklich
+   `!authenticate`; weiter gefasste Service-Rechte sind nicht erforderlich.
 
 Danach übernimmt die GitHub Action (`deploy.yml`) bei jedem Merge auf `main`
 automatisch: rsync, Backend-Deps, `npm ci && npm run build`, Service-Restart.

@@ -6,7 +6,9 @@ YouTube; die Auto-Untertitel liefern die Abstimmungsergebnisse 1–2 Monate
 vor dem amtlichen Protokoll (Verfahren und Messung: ``council/videos.py``).
 
 Kandidaten sind Ratssitzungen der letzten Wochen, die noch keine
-Protokoll-Beschlüsse und noch keine Video-Ergebnisse haben. Je Kandidat:
+Protokoll-Beschlüsse und noch keine YouTube-Ergebnisse haben. Vorläufige
+Ergebnisse direkt aus dem Livestream bleiben ausdrücklich offen, damit echte
+Video-Links und Zeitmarken nachgereicht werden. Je Kandidat:
 Video suchen → Untertitel ziehen → streng lesen → speichern. Fehlt das
 Video oder fehlen die Untertitel noch (YouTube braucht nach dem Upload
 Stunden für die Spracherkennung), versucht es der nächste Lauf wieder —
