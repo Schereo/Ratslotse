@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import html
 import os
+import re
 
 # Eigene Konstante statt Import aus kern.notify: notify → delivery →
 # digest_email wäre ein Ring. Beide lesen dieselbe Umgebungsvariable.
@@ -167,6 +168,55 @@ def gremium_abo_begruendung(gremium: str, mit_aenderungs_schalter: bool = False)
         f"Du bekommst diese Meldung, weil du das Gremium „{_esc(gremium)}“ abonniert hast."
         f"<br>{wege}</div>"
     )
+
+
+#: Kennzeichen der Abschnitts-Kicker. Es steht in der Mail als ``class``, die
+#: dort nichts tut — gebraucht wird es von ``ohne_abschnitte`` für die
+#: Push-Vorschau. Ein Marker im HTML ist der einzige Weg zurück: Die fertige
+#: Zusammenfassung wird als EIN String gecacht, ihre Teile stehen dem
+#: Aufrufer später nicht mehr getrennt zur Verfügung.
+_ABSCHNITT_MARKE = "rl-abschnitt"
+_ABSCHNITT_RE = re.compile(
+    rf"<div class='{_ABSCHNITT_MARKE}'.*?</div>", re.DOTALL)
+
+
+def abschnitt(kicker: str, zaehler: str = "") -> str:
+    """Mono-Kicker über einem Block, rechts eine ehrliche Zahl.
+
+    Der Baustein aus der Designsprache (§5: „QUELLEN · AKTUELLES VON DER
+    STADT …" plus Zähl-Angabe), hier für die E-Mail: Er teilt eine lange
+    Tagesordnung in „Das Wichtigste" und „Alle Punkte", statt sie als eine
+    Liste ohne Halt zu schicken (Tims Befund 03.09.2026).
+
+    Die Zahl gehört dazu, nicht als Schmuck: „Alle Punkte 10" sagt vor dem
+    Scrollen, worauf man sich einlässt — die Designsprache verlangt Zahl statt
+    „viele". Für die zwei Zellen nebeneinander steht hier wie in der Kopfzeile
+    eine Tabelle: Outlook rendert mit der Word-Engine und kennt kein ``flex``.
+    """
+    rechts = (
+        f"<td style='font-family:{_MONO};font-size:11px;color:{_LEISE};"
+        f"text-align:right;white-space:nowrap;padding-left:12px'>{_esc(zaehler)}</td>"
+        if zaehler else ""
+    )
+    return (
+        f"<div class='{_ABSCHNITT_MARKE}' style='margin:20px 0 12px;"
+        f"border-top:1px solid {_LINIE};padding-top:14px'>"
+        "<table role='presentation' width='100%' cellpadding='0' cellspacing='0' "
+        "border='0' style='width:100%'><tr>"
+        f"<td style='font-family:{_MONO};font-size:11px;letter-spacing:.11em;"
+        f"text-transform:uppercase;color:{_GRAU}'>{_esc(kicker)}</td>"
+        f"{rechts}</tr></table></div>"
+    )
+
+
+def ohne_abschnitte(html: str) -> str:
+    """Dieselbe Nachricht ohne ihre Abschnitts-Kicker — für die Push-Vorschau.
+
+    Auf dem Sperrbildschirm sind 180 Zeichen alles, was es gibt; „Das
+    Wichtigste Alle Punkte 10" wäre davon ein Fünftel Gliederung und kein Wort
+    Inhalt.
+    """
+    return _ABSCHNITT_RE.sub("", html or "")
 
 
 def liste(zeilen: list[str]) -> str:
