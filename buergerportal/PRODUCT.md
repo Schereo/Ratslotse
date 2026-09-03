@@ -25,8 +25,9 @@ ungelöste Projektionen und ordnet sie nach der lebenszeitlichen Gesamtzahl
 freigegebener unabhängiger meldender Personen, absteigend. Gleichstände werden
 nach Titel und dann ID aufgelöst. Jede Zeile nennt die exakte Zahl; sie zeigt
 Aufmerksamkeit, nicht Wahrheit, Dringlichkeit, Schadenshöhe oder Betroffenenzahl.
-Die ersten drei Einträge bilden auf breiten Ansichten eine klarere, asymmetrische
-Spitzengruppe; mobil bleiben sie kompakte Rangzeilen. Lotti ist der eine
+Die ersten drei Einträge bilden ab 768 px verfügbarer Grafikbreite eine klarere,
+asymmetrische Spitzengruppe; in schmaleren Containern bleiben sie kompakte
+Rangzeilen. Lotti ist der eine
 kontextuelle Hilfezugang für Karte und Rangliste. Geschlossen ruht sie auf der
 Karte beziehungsweise weist in der Rangliste auf den Inhalt, geöffnet erklärt
 sie mit der zustandsgebundenen `erklaert`-Regung Skala, Zählgrenzen und fiktive

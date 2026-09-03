@@ -137,7 +137,11 @@ test.describe("Öffentliche Problemübersicht", () => {
     await expect(attribution).toBeVisible();
     await expect(page.locator(".problem-rank-bar").first()).toHaveCSS("transition-duration", "0s");
     const rank = entries.nth(0).getByText("01", { exact: true });
-    await expect(rank).toBeVisible();
+    const exactCount = entries.nth(0).getByText("18 unabhängige Meldungen", { exact: true });
+    await expect(rank).toHaveCSS("font-family", /Inter|IBM Plex Mono/);
+    await expect(exactCount).toHaveCSS("font-family", /Inter|IBM Plex Mono/);
+    expect(await rank.evaluate((element) => getComputedStyle(element).fontFamily)).not.toMatch(/Bricolage/i);
+    expect(await exactCount.evaluate((element) => getComputedStyle(element).fontFamily)).not.toMatch(/Bricolage/i);
     await expect(page.getByText("Offenbar behoben")).toHaveCount(0);
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.screenshot({ path: testInfo.outputPath("meistgemeldet-desktop-light.png"), fullPage: true });
@@ -163,6 +167,21 @@ test.describe("Öffentliche Problemübersicht", () => {
     expect(Math.abs(second!.y - third!.y)).toBeLessThanOrEqual(4);
     expect(first!.width).toBeGreaterThan(second!.width * 1.5);
     expect(first!.height).toBeGreaterThan(fourth!.height * 1.25);
+
+    // A wide window can still contain a narrow card area (for example beside
+    // navigation). Layout therefore follows the graphic's container, not the viewport.
+    const list = page.getByRole("list", { name: "Meistgemeldete ungelöste Probleme" });
+    await list.evaluate((element) => {
+      (element.parentElement as HTMLElement).style.width = "760px";
+    });
+    const [narrowFirst, narrowSecond] = await Promise.all([
+      entries.nth(0).boundingBox(),
+      entries.nth(1).boundingBox(),
+    ]);
+    expect(narrowFirst).not.toBeNull();
+    expect(narrowSecond).not.toBeNull();
+    expect(Math.abs(narrowFirst!.width - narrowSecond!.width)).toBeLessThanOrEqual(2);
+    expect(narrowSecond!.y).toBeGreaterThan(narrowFirst!.y + narrowFirst!.height);
   });
 
   test("bindet Bewegung an Eintritt, Fokus, Auswahl und Lotti-Hilfe", async ({ page }) => {
@@ -171,12 +190,31 @@ test.describe("Öffentliche Problemübersicht", () => {
 
     const first = page.locator('[data-ranggruppe="top-drei"]').first();
     const toggle = first.getByRole("button", { name: /1\. Beispiel: stadtweites Thema/i });
-    await expect(first).toHaveCSS("animation-name", "problem-rang-eintritt");
-    await expect(first.locator(".problem-rank-bar")).toHaveCSS("animation-name", "problem-rangbalken-eintritt");
+    const bar = first.locator(".problem-rank-bar");
+    expect(await first.evaluate((element) => getComputedStyle(element).animationName)).not.toBe("none");
+    expect(await bar.evaluate((element) => getComputedStyle(element).animationName)).not.toBe("none");
+    const durations = await Promise.all([
+      first.evaluate((element) => getComputedStyle(element).animationDuration),
+      bar.evaluate((element) => getComputedStyle(element).animationDuration),
+    ]);
+    expect(durations.map((duration) => Number.parseFloat(duration))).toEqual([
+      expect.any(Number),
+      expect.any(Number),
+    ]);
+    expect(durations.every((duration) => Number.parseFloat(duration) <= 0.3)).toBe(true);
+    await expect(bar).toHaveCSS("transform", "matrix(1, 0, 0, 1, 0, 0)");
+    const borderBeforeHover = await first.evaluate((element) => getComputedStyle(element).borderColor);
     await toggle.hover();
     await expect.poll(() => first.evaluate((element) => getComputedStyle(element).transform)).not.toBe("none");
+    const hoverStyle = await first.evaluate((element) => ({
+      border: getComputedStyle(element).borderColor,
+      shadow: getComputedStyle(element).boxShadow,
+    }));
+    expect(hoverStyle.border).not.toBe(borderBeforeHover);
+    expect(hoverStyle.shadow).toContain("1px 2px");
+    expect(hoverStyle.shadow).not.toContain("24px");
     await toggle.click();
-    await expect(page.locator(".problem-preview")).toHaveCSS("animation-name", "problem-vorschau-oeffnen");
+    expect(await page.locator(".problem-preview").evaluate((element) => getComputedStyle(element).animationName)).not.toBe("none");
 
     const help = page.getByRole("button", { name: "Lotti-Hilfe öffnen: Rangliste erklären" });
     await expect(help.locator("lotti-figur")).toHaveAttribute("regung", "zeigt-runter");

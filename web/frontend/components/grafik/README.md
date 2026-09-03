@@ -78,7 +78,7 @@ Erklärsatz kompiliert nicht. Gerendert werden sie über `<Einordnung>`.
 | `<ZeitreiheMini>` (GB-01 mini) | `zeitreihe.tsx` | Karten-Sparkline: gleiche `defined()`-Lückenbrüche, Endpunkt-Beschriftung bleibt auf jedem Gerät (H4-11), Nulllinie bei Vorzeichenwechsel, `role="img"` mit ganzem Satz. Ohne Achsen und Ableseleiste — die große Kennzahl daneben ist die Auskunft. |
 | `<NahtSaeulen>` (GB-02) | `naht-saeulen.tsx` | `jahre {jahr, teile[] \| fehlt}[] · naht? {zwischen, text} · gruppierungMobil · einheit`. Zwei Farbwelten links/rechts der Naht (aus-/ein-Rampe), erzwungen — keine Farb-Props. Stapel bündeln nach Größe (Desktop 3, mobil 2 Gruppen), die Ableseleiste trennt ALLE Arten. Trägt eine Reihe nur EINE Art je Jahr, fällt die Zeile „insgesamt" weg (sie stünde sonst zweimal dieselbe Zahl) und die Legende nennt statt der Arten die beiden Abgrenzungen. Lücken: volle Säule + `<LueckenFeld>`, von der Komponente gerendert. Keine Rechnung über die Naht. Die Jahresachse beschriftet immer das letzte Jahr und lässt ein Rasterjahr direkt davor weg (bei 54 Säulen stand dort sonst „2425"). Einsatz: Gebaut, Übersicht (lange Ausgabenreihe). |
 | `<RanglisteSchiene>` (GB-03) | `rangliste-schiene.tsx` | `zeilen {label, wert, hervorgehoben?, zusatz?}[] · schiene ("null-bis-max" \| [min, max]) · einheit · mittelmarke?`. Schiene immer sichtbar (Null-Basis); `hervorgehoben` findet, bewertet nie — eine Grün/Rot-Prop existiert nicht. Mobil wandert das Label über den Balken (eingebaut, kein Prop). Einsatz: Investitionen (mobil, via Treemap). |
-| `<MeldeRanglisteGrafik>` + `<MeldeRangbalken>` | `melde-rangbalken.tsx` | Bürgerportal-Rangliste mit gemeinsamem Pflicht-Slot `beleg` und schmaler Null-bis-Max-Schiene je Rangzeile: `wert · maximum · haeufigkeit`. Der Rahmen rendert den von der Seite gewählten Beleg einmal sichtbar direkt unter allen Balken. Die Fülllänge ist exakt proportional und hat bewusst keine Mindestbreite; die lesbare exakte Zahl steht daneben. Beim Eintritt wächst die Schiene einmal aus ihrer Nullbasis; `prefers-reduced-motion` zeigt sofort den Endwert. Einsatz: „Meistgemeldet“. |
+| `<MeldeRanglisteGrafik>` | `melde-rangbalken.tsx` | Tiefe Bürgerportal-Rangliste: `zeilen {key, label, wert, haeufigkeit, offen, umschalten, vorschau} · beleg`. Das Modul besitzt Rang/Maximum, proportionale Null-bis-Max-Schiene, Aufklapp-Semantik, Motion und responsive Hierarchie; die Seite liefert nur öffentliche Zeilendaten, Zustand und fachlichen Vorschauinhalt. Die ersten drei nutzen ab 768 px **Containerbreite** ein 6/3/3-Raster, nicht ab Fensterbreite. Die Fülllänge hat bewusst keine Mindestbreite; die exakte Zahl steht daneben. Eintritt und Balken dauern höchstens 300 ms, `prefers-reduced-motion` zeigt sofort den Endwert. Der Beleg steht einmal sichtbar direkt unter allen Balken. Einsatz: „Meistgemeldet“. |
 | `<Gegenbalken>` (GB-04) | `gegenbalken.tsx` | Ein oder zwei 100-%-Leisten auf **einer** `basis` — asymmetrische 100 % sind nicht konstruierbar. `restLabel` benennt die Lücke zur Basis (Schraffur + Signal), `marke` den Differenz-Strich. Segmente < 10 % nie im Balken beschriftet; verbindlich ist die Legende darunter. `SegmentText` (gemessene Beschriftung) exportiert auch für den Tafel-Gegenbalken (`components/haushalt/gegenbalken.tsx`). Einsatz: Pflicht, Bereichs-Steckbrief (Kopf-Tafel). |
 | `<Hantel>` (GB-05) | `hantel.tsx` | `zeilen {label, plan, ist, einordnung}[] · massstab ("prozent" \| "betrag") · sortierung ("abweichung" Default \| "alpha") · schwelle?`. `einordnung` ist Pflicht-FELD — eine Hantel ohne Erklärsatz kompiliert nicht (`null` = „Quelle erläutert nicht", ausgeschrieben). Verbindung immer Orange, Punkte nie farbcodiert; Achse trägt ihre Einheit selbst. Verallgemeinert aus der früheren `components/haushalt/hantel.tsx` — deren Kopfkommentar (Abweichungs-Achse, keine Log-Skala, **keine Bewertungsfarben**) ist mitgewandert und bleibt die Referenz des Bereichs. Einsatz: Plan-Ist, Bereichs-Steckbrief. |
 | `<Waffel>` (GB-06) | `waffel.tsx` | `gesamt · proQuadrat · markiert {anzahl, grund, stichtag} · einheit · grundLabel`. Markierung immer Signal-**Umriss**, nie Fläche; Stichtag und Rundungszeile rendert die Komponente. 14 Quadrate je Reihe, mobil 10 à 13 px (CSS `.gb-waffel`). Nicht interaktiv, `role="img"`. Einsatz: Personal. |
@@ -156,15 +156,15 @@ scripts/pruefe-skala.mjs`.
 - Haushaltsgrafiken verwenden nur die Rampen-Tokens `--hh-ein-*` /
   `--hh-aus-*` (app/globals.css) — hell/dunkel kommt gratis. Auf der
   Anzeigetafel (`.hh-tafel`) binden die Rampen an die FLÄCHE; Komponenten
-  schreiben keine Sonderfarben. Der spezialisierte `<MeldeRangbalken>` nimmt
-  ebenfalls keine Farb-Prop: Er verwendet dieselben zentralen
+  schreiben keine Sonderfarben. Die interne Melderangbalken-Implementierung
+  nimmt ebenfalls keine Farb-Prop: Sie verwendet dieselben zentralen
   `frequency-*`-Klassen wie die Problemkarte, weil genau diese gemeinsame,
   beschriftete Hafenblau-Skala Teil ihres Datenvertrags ist.
 - **Signal-Orange nur für Abweichungen/Differenzen** (und die
   Lücken-Konvention: Schraffur `hh-schraffur` + gestrichelte Signal-Kante).
   **Keine Bewertungsfarben** — kein Grün/Rot, keine „gut/schlecht"-Props;
   ein Zuschuss ist Daseinsvorsorge, keine Schwäche.
-- Animation: nur CSS-Transitions auf SVG-Attribute, ≤300 ms,
+- Animation: nur CSS-Transitions/-Keyframes, ≤300 ms,
   `prefers-reduced-motion` respektiert. Keine Library-Animationen.
 
 ## Breakpoints (H4-A): eingebaut, kein Prop

@@ -1,9 +1,8 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ChevronDown,
   Info,
   ListOrdered,
   Map as MapIcon,
@@ -13,8 +12,8 @@ import {
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  MeldeRangbalken,
   MeldeRanglisteGrafik,
+  type MeldeRangzeile,
 } from "@/components/grafik/melde-rangbalken";
 import { Mascot } from "@/components/mascot";
 import { EmptyState, ErrorState, PageHeader, Segmented, Spinner } from "@/components/ui";
@@ -246,8 +245,18 @@ function Leaderboard({ problems, selectedId, onSelect, onShowMap }: {
   onSelect: (id: number | null) => void;
   onShowMap: (problem: PublicProblem) => void;
 }) {
-  const maxReports = Math.max(...problems.map((problem) => problem.independent_reports));
-  const ranks = new Map(problems.map((problem, index) => [problem.id, index + 1]));
+  const zeilen: MeldeRangzeile[] = problems.map((problem) => {
+    const offen = selectedId === problem.id;
+    return {
+      key: problem.id,
+      label: problem.title,
+      wert: problem.independent_reports,
+      haeufigkeit: problem.frequency,
+      offen,
+      umschalten: () => onSelect(offen ? null : problem.id),
+      vorschau: <ProblemPreview problem={problem} onShowMap={() => onShowMap(problem)} />,
+    };
+  });
 
   return (
     <section className="space-y-4" aria-labelledby="meistgemeldet-heading">
@@ -255,125 +264,45 @@ function Leaderboard({ problems, selectedId, onSelect, onShowMap }: {
         <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-primary">Gemeinschaftliche Aufmerksamkeit</p>
         <div className="mt-1 flex flex-wrap items-end justify-between gap-2">
           <h2 id="meistgemeldet-heading" className="font-display text-2xl font-bold text-foreground sm:text-3xl">Meistgemeldet</h2>
-          <p id="report-count-explanation" className="text-xs font-medium text-muted-foreground">Rang · unabhängige Meldungen · gesamter Zeitraum</p>
+          <p className="text-xs font-medium text-muted-foreground">Rang · unabhängige Meldungen · gesamter Zeitraum</p>
         </div>
       </div>
 
       <MeldeRanglisteGrafik
+        zeilen={zeilen}
         beleg={(
           <>
             <span className="font-mono font-medium uppercase tracking-[0.07em] text-foreground/75">Quelle der Rangfolge:</span>{" "}
             Freigegebene unabhängige Meldungen im Ratslotse-Meldungsbestand · gesamter Zeitraum
           </>
         )}
-      >
-        {problems.map((problem) => {
-          const rank = ranks.get(problem.id) ?? 0;
-          const expanded = selectedId === problem.id;
-          return (
-            <LeaderboardEntry
-              key={problem.id}
-              problem={problem}
-              rank={rank}
-              maxReports={maxReports}
-              expanded={expanded}
-              onToggle={() => onSelect(expanded ? null : problem.id)}
-              onShowMap={() => onShowMap(problem)}
-            />
-          );
-        })}
-      </MeldeRanglisteGrafik>
+      />
     </section>
   );
 }
 
-function LeaderboardEntry({ problem, rank, maxReports, expanded, onToggle, onShowMap }: {
-  problem: PublicProblem;
-  rank: number;
-  maxReports: number;
-  expanded: boolean;
-  onToggle: () => void;
-  onShowMap: () => void;
-}) {
-  const previewId = `problem-preview-${problem.id}`;
-  const countLabel = reportCountLabel(problem.independent_reports);
-  const topThree = rank <= 3;
-
+function ProblemPreview({ problem, onShowMap }: { problem: PublicProblem; onShowMap: () => void }) {
   return (
-    <li
-      data-ranggruppe={topThree ? "top-drei" : "weitere"}
-      style={{ "--problem-rank-index": rank - 1 } as CSSProperties}
-      className={cn(
-        "problem-disclosure-card overflow-hidden rounded-xl border bg-card shadow-sm",
-        topThree && "breit:min-h-[11rem]",
-        rank === 1 && "border-primary/40 bg-gradient-to-br from-primary/[0.10] via-primary/[0.035] to-card breit:col-span-6",
-        (rank === 2 || rank === 3) && "border-primary/25 bg-gradient-to-br from-primary/[0.055] to-card breit:col-span-3",
-        !topThree && "border-border breit:col-span-12",
-        expanded && "is-expanded border-primary/55",
+    <>
+      <p className="max-w-[76ch] text-[13px] leading-relaxed text-foreground/85">{problem.summary}</p>
+      <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+        <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden />
+        {problem.location_label || PROBLEM_SCOPE[problem.scope_kind]}
+        <span aria-hidden>·</span>
+        {PROBLEM_KATEGORIEN[problem.category]}
+      </p>
+      {isProblemMappable(problem) ? (
+        <button type="button" onClick={onShowMap} aria-label={`${problem.title} auf der Karte zeigen`} className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-lg border border-primary/25 bg-primary/5 px-3 py-2 text-sm font-semibold text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <Navigation className="h-4 w-4" aria-hidden /> Auf der Karte zeigen
+        </button>
+      ) : (
+        <p className="mt-3 rounded-lg border border-dashed border-border bg-muted/45 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+          {problem.scope_kind === "citywide"
+            ? "Kein einzelner Kartenort: Dieses Beispiel gilt für das gesamte Stadtgebiet."
+            : "Keine brauchbare Geometrie: Dieses Beispiel kann nicht ehrlich auf der Karte gezeigt werden."}
+        </p>
       )}
-    >
-      <button
-        type="button"
-        aria-expanded={expanded}
-        aria-controls={previewId}
-        aria-describedby="report-count-explanation"
-        aria-label={`${rank}. ${problem.title}, ${countLabel}`}
-        onClick={onToggle}
-        className={cn(
-          "grid min-h-[5.5rem] w-full grid-cols-[2.75rem_1fr_auto] items-center gap-2.5 px-3 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:grid-cols-[3.5rem_1fr_auto] sm:gap-4 sm:px-4",
-          topThree && "breit:h-full breit:content-center breit:py-5",
-        )}
-      >
-        <span className={cn(
-          "font-display text-xl font-bold tabular-nums text-muted-foreground",
-          topThree && "text-primary sm:text-2xl breit:text-4xl",
-          rank === 1 && "breit:text-5xl",
-        )} aria-hidden>{String(rank).padStart(2, "0")}</span>
-        <span className="min-w-0">
-          <span className={cn(
-            "block text-sm font-semibold leading-snug text-foreground sm:text-[15px]",
-            topThree && "breit:font-display breit:text-base",
-            rank === 1 && "breit:text-xl",
-          )}>{problem.title}</span>
-          <strong className={cn(
-            "mt-1.5 block text-xs font-semibold tabular-nums text-foreground",
-            topThree && "breit:text-sm",
-            rank === 1 && "breit:font-display breit:text-lg",
-          )}>{countLabel}</strong>
-          <span className="mt-2 block">
-            <MeldeRangbalken
-              wert={problem.independent_reports}
-              maximum={maxReports}
-              haeufigkeit={problem.frequency}
-            />
-          </span>
-        </span>
-        <ChevronDown className={cn("problem-disclosure-chevron h-5 w-5 text-muted-foreground transition-transform", expanded && "rotate-180")} aria-hidden />
-      </button>
-
-      {expanded && (
-        <div id={previewId} className="problem-preview border-t border-border/70 px-4 py-3 sm:ml-[4.5rem] sm:px-0 sm:pr-4" role="region" aria-label={`Vorschau: ${problem.title}`}>
-          <p className="max-w-[76ch] text-[13px] leading-relaxed text-foreground/85">{problem.summary}</p>
-          <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
-            <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden />
-            {problem.location_label || PROBLEM_SCOPE[problem.scope_kind]}
-            <span aria-hidden>·</span>
-            {PROBLEM_KATEGORIEN[problem.category]}
-          </p>
-          {isProblemMappable(problem) ? (
-            <button type="button" onClick={onShowMap} aria-label={`${problem.title} auf der Karte zeigen`} className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-lg border border-primary/25 bg-primary/5 px-3 py-2 text-sm font-semibold text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-              <Navigation className="h-4 w-4" aria-hidden /> Auf der Karte zeigen
-            </button>
-          ) : (
-            <p className="mt-3 rounded-lg border border-dashed border-border bg-muted/45 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
-              {problem.scope_kind === "citywide"
-                ? "Kein einzelner Kartenort: Dieses Beispiel gilt für das gesamte Stadtgebiet."
-                : "Keine brauchbare Geometrie: Dieses Beispiel kann nicht ehrlich auf der Karte gezeigt werden."}
-            </p>
-          )}
-        </div>
-      )}
-    </li>
+    </>
   );
 }
 
