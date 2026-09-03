@@ -7,6 +7,121 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [2.1.0] – 2026-09-03
+
+### Hinzugefügt
+- **Lotti lädt nach der Einrichtung zur Tour ein.** Wer den
+  Einrichtungs-Assistenten beendet hatte, stand danach unvermittelt auf der
+  vollen Übersicht — und die geführte Tour, die genau das erklärt, begann hinter
+  einem kleinen Knopf in der „Erste Schritte“-Karte, den man erst einmal finden
+  musste. Jetzt tritt Lotti direkt danach groß vor die Seite und fragt, ob sie
+  einmal herumführen soll: „Tour starten“ beginnt sofort, „Erst mal selbst
+  umschauen“ schließt die Einladung, und ein Hinweis nennt den Ort, an dem die
+  Tour später jederzeit wartet. Die Frage kommt genau einmal. (#1061)
+- **Rollen: Der Haushalt gehört jetzt den Ratsmitgliedern.** Ein Konto konnte
+  bisher nur „Nutzer*in" oder „Admin" sein. Neu kommt die Rolle **Ratsmitglied**
+  dazu, und ein Konto kann mehrere gleichzeitig tragen. Woran eine Rolle hängt,
+  sind **Rechte**: Ratsmitglieder und Admins haben das Recht auf den
+  Haushalts-Bereich — die zwanzig Seiten mit Zahlen, Belegen und Auswertungen —,
+  alle anderen sehen ihn nicht und finden auch keinen Link dorthin. Der Bereich
+  war zuvor überhaupt nur auf der Testumgebung erreichbar; er fährt damit mit
+  und ist dort sichtbar, wo er hingehört. Admins vergeben die Rollen im
+  Admin-Panel unter *Web-Nutzer*innen*, in der App genauso. Für die geplante
+  vereinfachte Ansicht ist damit die Grundlage gelegt: Weitere Rollen sind ein
+  Eintrag im Server und brauchen weder ein neues Frontend noch ein App-Update.
+  (#1044)
+
+### Geändert
+- **Die Oberfläche bewegt sich jetzt mit.** Die Markierung des aktiven Punktes
+  fährt in der Seitenleiste, in der Tab-Leiste und in den Segment-Umschaltern
+  von einem Ziel zum nächsten, statt am alten zu verlöschen und am neuen
+  aufzutauchen — man sieht, wo man herkam. Das „Mehr"-Blatt auf dem Telefon
+  fährt von unten ein und wieder hinaus, Treffer- und Sitzungslisten laufen
+  gestaffelt ein, und neue Zähler kommen mit einem kurzen Aufpoppen an. Alles
+  davon ruht, wenn im Betriebssystem „Bewegung reduzieren" eingeschaltet ist.
+  (#1045)
+- **Die Themen-Vorschläge erscheinen jetzt Stadtteil für Stadtteil.** Wer
+  mehrere Stadtteile gewählt hat, wartete bisher, bis alle fertig waren — bis
+  dahin standen dort nur Platzhalter. Jede Gruppe wird nun einzeln geholt und
+  erscheint, sobald sie da ist; die noch laufenden nennen sich mit Namen, damit
+  klar ist, was noch kommt. (#1043)
+- **Aus dem Tag wird jetzt automatisch ein GitHub-Release.** Der Versionsschnitt
+  setzte bisher nur den Changelog-Abschnitt; das Release auf GitHub musste
+  jemand danach von Hand anlegen — und genau das fiel dreimal aus: v1.14.0,
+  v1.15.0 und v2.0.0 lagen wochenlang als bloße Tags im Repository, während die
+  Release-Seite v1.13.2 als neuesten Stand zeigte. `changelog_schnitt.py` kann
+  den Schritt jetzt selbst (`--release`): Es liest den fertigen Abschnitt aus
+  `CHANGELOG.md`, prüft, dass der Tag wirklich bei GitHub liegt und das Release
+  noch nicht existiert, und legt es an. Ist ein Jahrgang zu umfangreich für
+  einen Release-Text — GitHub nimmt 125.000 Zeichen, der Abschnitt zu 1.14.0 hat
+  181.451 — gehen statt eines Fehlers nur die Kernsätze aller Einträge raus,
+  darüber der Verweis auf den vollständigen Text. Und „Latest" bekommt nur, wer
+  im Changelog obenauf steht: Ein nachgereichtes Release für einen alten Tag
+  darf den aktuellen Stand nicht verdrängen. (#1053)
+- **Die Seitenzahlen rasten weiter.** Die Blätter-Leiste wuchs bisher mit der
+  Position — auf Seite 1 standen vier Felder da, auf Seite 4 sieben. Jeder Klick
+  schob damit alle Zahlen zur Seite. Jetzt hat sie immer gleich viele Felder,
+  und die blaue Markierung fährt von einer Zahl zur nächsten, statt an der einen
+  zu verlöschen und an der anderen aufzutauchen. (#1052)
+- **Die Straßen-Geometrie frischt sich jetzt wöchentlich selbst auf.** Neu
+  hinzugekommene Straßen mussten bisher von Hand nachgetragen werden. Der
+  sonntägliche Lauf holt die Umrisse jetzt in einem Zug mit — und wiederholt es
+  mit wachsender Pause, wenn der Kartendienst gerade ausgelastet ist, statt
+  still ein Teilstück zu speichern. (#1051)
+
+### Behoben
+- **Blättern und Aufklappen ruckeln nicht mehr.** Beim Wechsel der Seitenzahl
+  wurde die Trefferliste kurz durch ein Ladeskelett ersetzt — die Seite wurde
+  schlagartig kürzer, sprang beim Eintreffen der neuen Treffer zurück und der
+  Sprung zum Listenanfang arbeitete dagegen. Jetzt bleiben die bisherigen
+  Treffer stehen und werden nur leiser, bis die neuen da sind. Die Tagesordnung
+  einer Sitzung fährt auf und zu, statt zu erscheinen und zu verschwinden, und
+  wartet dabei, bis ihre Punkte geladen sind — solange dreht sich an der Karte
+  ein Fortschrittszeichen. (#1050)
+- **Ein Changelog-Eintrag stand seit August mit einer Überschrift mitten im
+  Satz.** Auf ratslotse.de/changelog begann der Eintrag zu #816 mit „`###
+  Kurzfassungen: genauer, aktuelleres Modell, keine stillen Ausfälle` Die
+  Tragweite-Gründe und TOP-Kurzfassungen laufen …" — die Überschrift des
+  Fragments war beim Versionsschnitt in den Listenpunkt gerutscht, weil der
+  Schnitt jedes Fragment zu *einem* Punkt zusammenzieht. Der Eintrag ist jetzt
+  im gewohnten Stil geschrieben, inhaltlich unverändert. Damit das nicht wieder
+  passiert, weist die Fragment-Prüfung eine Überschrift am Textanfang jetzt ab
+  und sagt, wie es stattdessen aussehen muss; mehrere Absätze bleiben erlaubt.
+  (#1055)
+- **Straßen im eigenen Stadtteil stehen nicht mehr unter „direkt nebenan".** Von
+  Straßen, deren Name kein geläufiges Muster trifft — „Tweelbäker Tredde", „Am
+  Schmeel", „Babenend" —, war bisher nur ein einzelnes Stück gespeichert, und
+  damit auch nur ein Teil der Stadtteile, durch die sie führen. Im
+  Einrichtungs-Assistenten landeten sie deshalb unter den Nachbarschafts-
+  Vorschlägen, obwohl sie mitten durch den eigenen Stadtteil laufen. Sie werden
+  jetzt vollständig geholt, und der Nachbar-Block lässt grundsätzlich weg, was
+  auch im eigenen Bereich liegt. Außerdem steht ein Bebauungsplan nicht mehr
+  neben dem Ort, den er in seiner zweiten Zeile ohnehin nennt: Der Klartext
+  bleibt, die Plannummer geht. (#1043)
+- **Ein ausgefallener Kartendienst fällt jetzt auf.** Bislang konnte die
+  Straßen-Geokodierung stillschweigend auf einen zweiten Dienst zurückfallen und
+  dabei nur Teilstücke speichern — der Lauf meldete trotzdem Erfolg. Er prüft
+  die Erreichbarkeit jetzt einmal vorab, schreibt Ausfall und Folge ins
+  Protokoll, zählt beides in seinen Kennzahlen und meldet einen Totalausfall per
+  E-Mail. (#1048)
+- **Kein blaues Rechteck mehr über der Stadtteil-Karte.** Wer im
+  Einrichtungs-Assistenten einen Stadtteil anklickte, bekam einen rechteckigen
+  Rahmen quer über die Karte gelegt — der Fokus-Rahmen des Browsers, der bei
+  Karten-Flächen nicht dem Umriss folgt, sondern dem Kasten darum. Die Karte ist
+  jetzt reine Zeige-Fläche; Tastatur und Screenreader gehen wie bisher über die
+  Stadtteil-Liste darunter. (#1041)
+- **Das Statistik-Archiv erreicht die Tabellen zum kommunalen Finanzausgleich
+  wieder.** Der Archivlauf verwendet nun die aktuelle Adresse des Landesamts für
+  Statistik Niedersachsen. (#1049)
+- **Straßen kennen wieder alle Stadtteile, durch die sie führen.** Von einer
+  Straße stand oft nur ein einzelnes Teilstück in der Datenbank — und damit auch
+  nur ein Teil ihrer Stadtteile. „Tweelbäker Tredde" galt als Straße in
+  Tweelbäke, obwohl der größere Teil in Krusenbusch liegt. Ursache war ein
+  Kartendienst, den die Server überhaupt nicht erreichen; der Rückfall auf den
+  zweiten Dienst lieferte still nur ein Teilstück. Die Straßen werden jetzt in
+  einem Zug vollständig geholt und der Ausfall wird gemeldet statt verschluckt.
+  (#1046)
+
 ## [2.0.0] – 2026-09-03
 
 ### Hinzugefügt
@@ -6573,7 +6688,8 @@ Open-Source-Go-Live von Ratslotse.
 *Dieser Changelog beginnt mit dem Open-Source-Release von Ratslotse. Die
 Entwicklungshistorie davor ist nicht Teil dieses Repositories.*
 
-[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v2.0.0...main
+[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v2.1.0...main
+[2.1.0]: https://github.com/Schereo/Ratslotse/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/Schereo/Ratslotse/compare/v1.15.0...v2.0.0
 [1.15.0]: https://github.com/Schereo/Ratslotse/compare/v1.14.0...v1.15.0
 [1.14.0]: https://github.com/Schereo/Ratslotse/compare/v1.13.2...v1.14.0
