@@ -99,10 +99,14 @@ def test_chat_complete_delegates_to_get_client(monkeypatch):
     """chat_complete should call client.chat.completions.create with the kwargs."""
     calls = []
 
+    # Eine Antwort MIT choices — chat_complete prüft das seit dem Fund vom
+    # 03.09.2026 (Provider-Fehler kommen bei OpenRouter als 200er ohne choices).
+    antwort = type("R", (), {"choices": [object()], "usage": None})()
+
     class _FakeCompletions:
         def create(self, **kwargs):
             calls.append(kwargs)
-            return "response"
+            return antwort
 
     class _FakeClient:
         chat = type("", (), {"completions": _FakeCompletions()})()
@@ -110,7 +114,7 @@ def test_chat_complete_delegates_to_get_client(monkeypatch):
     monkeypatch.setenv("NWZ_OPENROUTER_ROUTING", "off")  # test pure delegation, no routing block
     monkeypatch.setattr(llm, "get_client", lambda: _FakeClient())
     result = llm.chat_complete(model="openai/gpt-4o-mini", messages=[])
-    assert result == "response"
+    assert result is antwort
     # usage.include ist gesetzter Standard: OpenRouter liefert damit die echten
     # Kosten des Aufrufs zurück (usage.cost) — Basis für Admin-Statistik und Eval.
     assert calls == [{"model": "openai/gpt-4o-mini", "messages": [],
@@ -129,3 +133,59 @@ def test_provider_routing_excludes_china_and_requires_zdr(monkeypatch):
 def test_provider_routing_disabled_by_env(monkeypatch):
     monkeypatch.setenv("NWZ_OPENROUTER_ROUTING", "off")
     assert llm._routing_extra_body() == {}
+
+
+# --------------------------------------------------------------------------- #
+# Antwort ohne choices (OpenRouter meldet Provider-Fehler mit HTTP 200)
+# --------------------------------------------------------------------------- #
+
+class _AntwortOhneChoices:
+    """Was das SDK aus `{"error": {…}}` mit Status 200 baut: choices is None."""
+
+    def __init__(self, fehler=None):
+        self.choices = None
+        if fehler is not None:
+            self.error = fehler
+
+
+def test_leere_antwort_wirft_mit_providertext():
+    """Der Grund muss im Fehler stehen — sonst sucht man ihn wie am 03.09.2026
+    als `TypeError: 'NoneType' object is not subscriptable` an der Aufrufstelle."""
+    resp = _AntwortOhneChoices({"code": 502, "message": "Provider returned error",
+                                "metadata": {"provider_name": "Azure"}})
+    with pytest.raises(llm.EmptyResponseError) as exc:
+        llm._pruefe_choices(resp, "openai/gpt-5.6-luna")
+    text = str(exc.value)
+    assert "openai/gpt-5.6-luna" in text and "502" in text
+    assert "Provider returned error" in text and "Azure" in text
+
+
+def test_leere_antwort_auch_ohne_fehlerfeld():
+    with pytest.raises(llm.EmptyResponseError):
+        llm._pruefe_choices(_AntwortOhneChoices(), "openai/gpt-4o-mini")
+
+
+def test_gefuellte_antwort_geht_durch():
+    resp = type("R", (), {"choices": [object()]})()
+    llm._pruefe_choices(resp, "openai/gpt-4o-mini")  # wirft nicht
+
+
+def test_is_transient_leere_antwort():
+    """Ein 200er ohne choices ist fast immer ein überlasteter Endpunkt — die
+    vier Anläufe von _create sollen greifen, statt den Cron-Lauf zu reißen."""
+    assert llm._is_transient(llm.EmptyResponseError("leer"))
+
+
+def test_create_prueft_die_antwort(monkeypatch):
+    """Die Prüfung sitzt IN _create, damit sie unter dem Retry liegt."""
+    class _FakeCompletions:
+        def create(self, **kwargs):
+            return _AntwortOhneChoices({"message": "upstream timeout"})
+
+    class _FakeClient:
+        chat = type("", (), {"completions": _FakeCompletions()})()
+
+    monkeypatch.setattr(llm, "get_client", lambda: _FakeClient())
+    with pytest.raises(llm.EmptyResponseError):
+        # __wrapped__ = ein Anlauf ohne die Wartezeiten von tenacity.
+        llm._create.__wrapped__(model="openai/gpt-4o-mini", messages=[])
