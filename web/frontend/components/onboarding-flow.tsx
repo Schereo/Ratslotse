@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bell, Check, Landmark, Loader2, Mail, MapPin, Plus, Sparkles, X } from "lucide-react";
 import { api } from "@/lib/api";
+import { SETUP_QUERY_KEY, holeSetupStand } from "@/lib/onboarding-setup";
 import { isNativeApp } from "@/lib/platform";
 import { cn, pfad } from "@/lib/utils";
 import { Button, Input } from "@/components/ui";
@@ -163,7 +164,8 @@ function isUsable(user: { status?: string; email_verified?: boolean; permissions
 /** Server-Stand des Assistenten. `pending` beantwortet „ist er dran?" — die
  *  Regel steht im Backend (`Store.get_setup`), damit Web und App dieselbe
  *  Antwort bekommen und das Frontend nicht erst Themen und Abos zählen muss. */
-type SetupStand = { step: number; started_at: string | null; done_at: string | null; pending: boolean };
+// Typ, Schlüssel und Abruf stehen in lib/onboarding-setup.ts — sie werden auch
+// dort gebraucht, wo dieser Assistent noch gar nicht geladen sein soll.
 
 export function OnboardingFlow() {
   const { user, loading } = useAuth();
@@ -178,8 +180,8 @@ export function OnboardingFlow() {
   const fertig = useRef(false);
 
   const setup = useQuery({
-    queryKey: ["onboarding-setup"],
-    queryFn: () => api.get<SetupStand>("/onboarding/setup"),
+    queryKey: SETUP_QUERY_KEY,
+    queryFn: holeSetupStand,
     enabled: isUsable(user),
     staleTime: 60_000,
     retry: false,

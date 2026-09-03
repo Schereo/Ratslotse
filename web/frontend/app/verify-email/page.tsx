@@ -3,13 +3,15 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CheckCircle2, XCircle } from "lucide-react";
+import { XCircle } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
 import { setToken } from "@/lib/token";
 import type { User } from "@/lib/types";
 import { Button, Spinner } from "@/components/ui";
 import { AuthShell } from "@/components/auth-shell";
 import { useAuth } from "@/lib/auth";
+import { SETUP_QUERY_KEY, holeSetupStand } from "@/lib/onboarding-setup";
 
 type State = "missing" | "verifying" | "ok" | "error";
 
@@ -17,6 +19,7 @@ function VerifyInner() {
   const token = useSearchParams().get("token") ?? "";
   const { refresh } = useAuth();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [state, setState] = useState<State>(token ? "verifying" : "missing");
   const [error, setError] = useState("");
   const ran = useRef(false);
@@ -30,23 +33,35 @@ function VerifyInner() {
         // Native app via deep link: the backend hands back a bearer token so the
         // user lands logged-in. On the web access_token is null → no-op.
         if (u.access_token) await setToken(u.access_token);
-        setState("ok");
         try { await refresh(); } catch { /* not logged in — fine */ }
+        // Den Stand des Assistenten schon HIER holen, nicht erst im Dashboard:
+        // Sonst stünde nach dem Sprung erst „Heute" und der Assistent legte
+        // sich eine Antwort später darüber. Fehlschlag ist egal — dann fragt
+        // der Assistent selbst nach (er tut es ohnehin).
+        try {
+          await queryClient.prefetchQuery({ queryKey: SETUP_QUERY_KEY, queryFn: holeSetupStand, retry: false });
+        } catch { /* nicht angemeldet o. Ä. — der Assistent fragt selbst */ }
+        setState("ok");
       } catch (err) {
         setError(err instanceof ApiError ? err.message : "Bestätigung fehlgeschlagen.");
         setState("error");
       }
     })();
-  }, [token, refresh]);
+  }, [token, refresh, queryClient]);
 
   // Nach dem Bestätigen nicht stehenbleiben: In der App kommt man über einen
   // Deep-Link aus dem Mail-Programm hierher. Wer danach die App wechselt und
   // später zurückkommt, landete sonst wieder auf dieser Seite — mitten im
-  // Einrichten und ohne erkennbaren Grund. Kurz bestätigen, dann weiter.
+  // Einrichten und ohne erkennbaren Grund.
+  //
+  // Ohne Verzögerung und ohne eigene Erfolgskarte: Bis 09/2026 stand hier 1,4 s
+  // lang ein helles „E-Mail bestätigt" mit Weiter-Knopf, bevor der dunkle
+  // Assistent kam — ein dritter Screen zwischen Mail und Einrichtung, der
+  // nichts trug. Wer aus der Mail zurückkommt, springt jetzt direkt ins
+  // Einrichten; bis dahin läuft der Lade-Zustand dieser Seite weiter.
   useEffect(() => {
     if (state !== "ok") return;
-    const t = setTimeout(() => router.replace("/dashboard"), 1400);
-    return () => clearTimeout(t);
+    router.replace("/dashboard");
   }, [state, router]);
 
   if (state === "missing") {
@@ -57,23 +72,12 @@ function VerifyInner() {
       </p>
     );
   }
-  if (state === "verifying") {
+  // „ok" zeigt dasselbe Bild wie „verifying": Der Sprung ins Einrichten ist
+  // schon unterwegs, ein zweiter Zustand wäre nur ein Aufblitzen.
+  if (state === "verifying" || state === "ok") {
     return (
       <div className="mt-6 flex items-center gap-3 text-sm text-muted-foreground">
-        <Spinner /> E-Mail wird bestätigt…
-      </div>
-    );
-  }
-  if (state === "ok") {
-    return (
-      <div className="mt-6 space-y-4">
-        <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-          <CheckCircle2 className="h-5 w-5 text-emerald-600" /> E-Mail bestätigt.
-        </div>
-        <p className="text-sm text-muted-foreground">
-          Danke! Dein Konto ist jetzt aktiv — es geht gleich weiter.
-        </p>
-        <Link href="/dashboard"><Button className="w-full">Weiter zum Dashboard</Button></Link>
+        <Spinner /> {state === "ok" ? "Es geht los…" : "E-Mail wird bestätigt…"}
       </div>
     );
   }
