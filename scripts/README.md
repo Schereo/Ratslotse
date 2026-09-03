@@ -11,7 +11,7 @@ Zeitpläne stehen in den jeweiligen Docstrings; maßgeblich ist die laufende
 
 | Skript | Schedule | Zweck |
 |--------|----------|-------|
-| `backup_db.py` | `0 3 * * *` | SQLite-Backup (7 Kopien je DB) |
+| `backup_db.py` | `0 3 * * *` | SQLite-Backup (7 Tages- + 4 Wochenstände je DB) |
 | `check_committees.py` | `0 7 * * *` | Ausschuss-Tagesordnungen prüfen, benachrichtigen |
 | `check_council.py` | `0 8,14 * * *` | Stadtratssitzungen auf Themen-Matches prüfen |
 | `check_protocols.py` | `0 9 * * *` | Protokolle parsen → ruft die Sub-Steps (s.u.) |
