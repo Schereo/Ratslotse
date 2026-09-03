@@ -48,20 +48,28 @@ def _projection(
     connection.close()
 
 
-def test_public_projection_lists_only_published_rows_without_exact_counts(tmp_path):
+def test_public_projection_ranks_only_published_unresolved_rows_by_lifetime_reports(tmp_path):
     from buergerportal.store import ProblemStore
 
     database = tmp_path / "ratslotse.sqlite"
     store = ProblemStore(database)
-    _projection(database, title="Freigegebenes Problem", published=True, reports=4)
-    _projection(database, title="Noch in Moderation", published=False, reports=7)
+    _projection(database, title="Weniger gemeldet", published=True, reports=4)
+    _projection(database, title="Noch in Moderation", published=False, reports=12)
+    _projection(
+        database, title="Offenbar behoben", published=True,
+        status="apparently_resolved", reports=20,
+    )
+    _projection(database, title="Gleichstand B", published=True, reports=7)
+    _projection(database, title="Gleichstand A", published=True, reports=7)
 
     result = store.list_public_problems()
 
-    assert [problem["title"] for problem in result] == ["Freigegebenes Problem"]
-    assert result[0]["frequency"] == "several"
-    assert "independent_reports" not in result[0]
-    assert "summary" not in result[0]
+    assert [problem["title"] for problem in result] == [
+        "Gleichstand A", "Gleichstand B", "Weniger gemeldet",
+    ]
+    assert [problem["independent_reports"] for problem in result] == [7, 7, 4]
+    assert result[0]["summary"] == "Eine moderierte öffentliche Zusammenfassung."
+    assert result[0]["frequency"] == "many"
     assert "tags" not in result[0]
     store.close()
 
@@ -118,7 +126,7 @@ def test_public_projection_keeps_only_truthful_map_geometry(tmp_path):
     store.close()
 
 
-def test_public_api_is_open_filtered_and_uses_the_sparse_response_contract(tmp_path):
+def test_public_api_is_open_filtered_and_exposes_only_the_approved_projection(tmp_path):
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
 
@@ -148,6 +156,7 @@ def test_public_api_is_open_filtered_and_uses_the_sparse_response_contract(tmp_p
         "problems": [{
             "id": 2,
             "title": "Fiktive Hitzeinsel",
+            "summary": "Eine moderierte öffentliche Zusammenfassung.",
             "category": "environment",
             "scope_kind": "point",
             "location_label": "Beispielort",
@@ -155,14 +164,18 @@ def test_public_api_is_open_filtered_and_uses_the_sparse_response_contract(tmp_p
             "longitude": 8.214,
             "geometry": None,
             "status": "persists",
+            "independent_reports": 1,
             "frequency": "once",
             "fictional": False,
         }],
         "total": 1,
     }
-    assert "independent_reports" not in response.text
+    assert "independent_reports" in response.text
+    assert "tags" not in response.text
     assert client.get("/api/probleme?category=personenkritik").status_code == 422
     assert client.get("/api/probleme?status=amtlich_in_bearbeitung").status_code == 422
+    status_values = app.openapi()["components"]["schemas"]["PublicProblemSummary"]["properties"]["status"]["enum"]
+    assert status_values == ["new", "multiple_reports", "verified", "persists"]
     store.close()
 
 
@@ -215,6 +228,7 @@ def test_projection_migration_preserves_legacy_public_rows_and_is_idempotent(tmp
     assert projected["Bestehende Projektion"] == {
         "id": 41,
         "title": "Bestehende Projektion",
+        "summary": "Öffentliche Zusammenfassung",
         "category": "public_space",
         "scope_kind": "citywide",
         "location_label": "Gesamtes Stadtgebiet",
@@ -222,6 +236,7 @@ def test_projection_migration_preserves_legacy_public_rows_and_is_idempotent(tmp
         "longitude": None,
         "geometry": None,
         "status": "multiple_reports",
+        "independent_reports": 3,
         "frequency": "several",
         "fictional": False,
     }

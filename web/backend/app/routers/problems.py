@@ -18,7 +18,7 @@ def public_problems(
     problem_status: str | None = Query(default=None, alias="status", max_length=80),
     store: ProblemStore = Depends(get_problem_store),
 ) -> PublicProblemList:
-    """Freigegebene, datensparsame Projektionen ohne exakte Meldezahlen."""
+    """Ungelöste öffentliche Projektionen nach unabhängigen Meldungen."""
     if category is not None and category not in PROBLEM_CATEGORIES:
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_ENTITY,

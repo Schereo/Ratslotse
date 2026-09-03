@@ -4,6 +4,7 @@ export type ProblemList = ApiAntwort<"/probleme">;
 export type PublicProblem = ProblemList["problems"][number];
 export type ProblemFrequency = PublicProblem["frequency"];
 export type ProblemStatus = PublicProblem["status"];
+export type ActiveProblemStatus = ProblemStatus;
 
 export const PROBLEM_ANGEBOT = {
   name: "Probleme in Oldenburg",
@@ -22,7 +23,7 @@ export const PROBLEM_KATEGORIEN: Record<PublicProblem["category"], string> = {
   other: "Sonstiges kommunales Thema",
 };
 
-export const PROBLEM_STATUS: Record<ProblemStatus, string> = {
+export const PROBLEM_STATUS = {
   new: "Neu",
   multiple_reports: "Mehrfach gemeldet",
   verified: "Geprüft",
@@ -39,11 +40,22 @@ export const PROBLEM_SCOPE: Record<PublicProblem["scope_kind"], string> = {
 };
 
 export const MELDE_HAEUFIGKEIT: Record<ProblemFrequency, string> = {
-  once: "einmal gemeldet",
-  several: "2–4 Mal gemeldet",
-  many: "5–9 Mal gemeldet",
-  very_many: "10 Mal oder öfter gemeldet",
+  once: "1 Meldung",
+  several: "2–4 Meldungen",
+  many: "5–9 Meldungen",
+  very_many: "10 oder mehr Meldungen",
 };
+
+export const ACTIVE_PROBLEM_STATUS: Record<ActiveProblemStatus, string> = {
+  new: PROBLEM_STATUS.new,
+  multiple_reports: PROBLEM_STATUS.multiple_reports,
+  verified: PROBLEM_STATUS.verified,
+  persists: PROBLEM_STATUS.persists,
+};
+
+export function reportCountLabel(count: number): string {
+  return `${count} unabhängige ${count === 1 ? "Meldung" : "Meldungen"}`;
+}
 
 function isPosition(value: unknown): value is number[] {
   return (

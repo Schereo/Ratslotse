@@ -3062,7 +3062,7 @@ export interface paths {
         };
         /**
          * Public Problems
-         * @description Freigegebene, datensparsame Projektionen ohne exakte Meldezahlen.
+         * @description Ungelöste öffentliche Projektionen nach unabhängigen Meldungen.
          */
         get: operations["public_problems_api_probleme_get"];
         put?: never;
@@ -7214,7 +7214,7 @@ export interface components {
         };
         /**
          * PublicProblemSummary
-         * @description Karten-/Board-Projektion ohne exakte Meldezahl oder private Evidenz.
+         * @description Datensparsame Übersicht aus der freigegebenen öffentlichen Projektion.
          */
         PublicProblemSummary: {
             /**
@@ -7244,6 +7244,8 @@ export interface components {
             } | null;
             /** Id */
             id: number;
+            /** Independent Reports */
+            independent_reports: number;
             /** Latitude */
             latitude: number | null;
             /** Location Label */
@@ -7259,7 +7261,9 @@ export interface components {
              * Status
              * @enum {string}
              */
-            status: "new" | "multiple_reports" | "verified" | "persists" | "apparently_resolved";
+            status: "new" | "multiple_reports" | "verified" | "persists";
+            /** Summary */
+            summary: string;
             /** Title */
             title: string;
         };
@@ -13632,4 +13636,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 0f3863bbf3a1a745dae439adec0fa1aa9a91685faadf431d04d71828dfe2101c
+// vertrag-sha256: 682eb2b60af9e056e1dec10d7cdfd9dd61c4551768484df6886e4169eadfbf0e

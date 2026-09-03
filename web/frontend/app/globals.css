@@ -599,8 +599,9 @@ lotti-figur {
   isolation: isolate;
 }
 
-/* Problemkarte: Die vier Farben codieren ausschließlich Meldehäufigkeit.
-   Exakte Zahlen sind kein Teil der öffentlichen Übersichtsprojektion. */
+/* Bürgerportal: dieselbe beschriftete Hafenblau-Rampe trägt Rangliste und
+   Karte. Die vier Stufen codieren ausschließlich die lebenszeitliche Zahl
+   unabhängiger freigegebener Meldungen — nie Dringlichkeit oder Status. */
 .problem-map-icon {
   align-items: center;
   background: transparent;
@@ -648,16 +649,34 @@ lotti-figur {
 .problem-map-icon:focus-visible .problem-map-pin {
   box-shadow: 0 0 0 4px hsl(var(--ring) / 0.35), 0 4px 14px rgb(0 0 0 / 0.32);
 }
-.frequency-once { --problem-frequency: #64748b; }
-.frequency-several { --problem-frequency: #0284c7; }
-.frequency-many { --problem-frequency: #ea8a00; }
-.frequency-very_many { --problem-frequency: #dc2626; }
+.frequency-once { --problem-frequency: hsl(205 76% 78%); }
+.frequency-several { --problem-frequency: hsl(205 82% 60%); }
+.frequency-many { --problem-frequency: hsl(205 90% 43%); }
+.frequency-very_many { --problem-frequency: hsl(205 92% 28%); }
+.dark .frequency-once { --problem-frequency: hsl(202 80% 76%); }
+.dark .frequency-several { --problem-frequency: hsl(202 85% 60%); }
+.dark .frequency-many { --problem-frequency: hsl(202 90% 46%); }
+.dark .frequency-very_many { --problem-frequency: hsl(202 88% 34%); }
 .problem-frequency-dot {
   background: var(--problem-frequency, hsl(var(--primary)));
   border-radius: 9999px;
   display: inline-block;
   height: 0.625rem;
   width: 0.625rem;
+}
+.problem-rank-bar {
+  transition: width 420ms var(--ease-out-strong);
+}
+@keyframes problem-vorschau-oeffnen {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.problem-preview {
+  animation: problem-vorschau-oeffnen 180ms var(--ease-out-strong);
+}
+@media (prefers-reduced-motion: reduce) {
+  .problem-rank-bar { transition-duration: 0s !important; }
+  .problem-preview { animation: none !important; }
 }
 
 /* ── Kommunalwahl-Bereich ─────────────────────────────────────────────────

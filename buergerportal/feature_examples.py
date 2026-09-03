@@ -87,7 +87,7 @@ _EXAMPLES: tuple[dict[str, Any], ...] = (
             ],
         },
         "status": "verified",
-        "reports": 5,
+        "reports": 7,
     },
     {
         "id": -1_034_006,
@@ -109,7 +109,7 @@ _EXAMPLES: tuple[dict[str, Any], ...] = (
         "scope_kind": "route",
         "location_label": "Fiktiver Altbestand",
         "geometry": {"type": "LineString", "coordinates": [[8.2, 53.14]]},
-        "status": "apparently_resolved",
+        "status": "new",
         "reports": 2,
     },
 )

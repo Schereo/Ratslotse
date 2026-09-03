@@ -12,13 +12,17 @@ Eine öffentliche Antwort wird niemals aus Rohmeldungen serialisiert.
 | Konto-ID und Meldungstext | moderierter Titel und neutrale Zusammenfassung |
 | einzelne Beobachtungen | kontrollierte Kategorie und freigegebene Geografie |
 | genauer Eingabeort | vergröberter oder ausdrücklich freigegebener Ortsbezug |
-| KI-Urteil und Begründung | grobes Häufigkeitsband |
+| KI-Urteil und Begründung | lebenszeitliche Zahl freigegebener unabhängiger Meldungen plus Häufigkeitsband |
 | Moderationsnotiz | belegbarer Status |
 
-Die Listenprojektion in Iteration 1 enthält absichtlich weder Zusammenfassung
-noch exakte Zahl unabhängiger Meldungen. Sie liefert nur das daraus abgeleitete
-Band `once`, `several`, `many` oder `very_many`. Es bedeutet Häufigkeit, nie
-Dringlichkeit.
+Seit Iteration 2 enthält die Übersichtsprojektion die moderierte öffentliche
+Zusammenfassung und die exakte lebenszeitliche Zahl freigegebener unabhängiger
+meldender Personen. Aktualisierungen derselben Person erhöhen sie nicht. Daneben
+bleibt das daraus abgeleitete Band `once`, `several`, `many` oder `very_many`
+für die gemeinsame Hafenblau-Skala von Karte und Rangliste. Zahl und Band
+bedeuten gemeinschaftliche Bestätigung und Aufmerksamkeit, nie Wahrheit,
+Dringlichkeit, Schadenshöhe oder die Zahl betroffener Personen. Identitäten,
+Rohtexte, Einzelmeldungen und Moderationsdaten bleiben privat.
 
 ## Veröffentlichung bleibt geschlossen
 
@@ -46,14 +50,18 @@ Erlaubte Bezüge sind Punkt, Einrichtung, Route, Gebiet und Stadtgebiet.
 - Koordinaten: `[Längengrad, Breitengrad]`;
 - Stadtgebiet: keine erfundene Geometrie.
 
-Ungültige oder nicht ehrlich kartierbare Projektionen bleiben im vollständigen
-Status-Board und werden auf der Karte ausgelassen.
+Ungültige oder nicht ehrlich kartierbare Projektionen bleiben in der
+„Meistgemeldet“-Rangliste und werden auf der Karte ausgelassen. Die Vorschau
+benennt diese Grenze, statt einen stadtweiten oder ersatzweisen Punkt zu erfinden.
 
-## Iteration-1-Schema
+## Öffentliche Übersichtsprojektion
 
 `civic_problems` speichert ausschließlich die öffentliche Projektion. Der Store
-liest explizite Spalten und filtert zwingend auf `published_at IS NOT NULL` und
-mindestens eine unabhängige Meldung. Additive Migrationen stehen in
+liest explizite Spalten und filtert zwingend auf `published_at IS NOT NULL`,
+mindestens eine unabhängige Meldung und einen ungelösten Status. Er sortiert
+nach `independent_reports DESC`, bei Gleichstand nach Titel und ID. Damit ist
+die Rangfolge deterministisch und enthält weder Zeitfenster noch versteckten
+Score. Additive Migrationen stehen in
 `civic_problem_schema_migrations`, laufen wiederholbar und erhalten eine ältere
 Legacy-Projektion mit `unique_reporters`.
 

@@ -17,19 +17,21 @@ beginnt kein späterer Punkt.
 
 ## Iterationen
 
-1. **Öffentliche Problemübersicht (#1034): umgesetzt auf diesem Task-Branch.**
-   Rein lesende API-Projektion, Karte, Themenfilter, vollständiges Status-Board,
-   alle ehrlichen Geometrieformen, sichere Feature-Beispiele, Navigation,
-   Sitemap und aktueller Vertrag.
-2. Öffentliche Detailseite und plattformgerechte Verlinkung — offen.
-3. Private Meldungs-Domäne und sichere Persistenz — offen.
-4. Eigentümergebundene Entwurfs- und Einreichungs-API — offen.
-5. Geführter Meldechat und prominenter Einstieg — offen.
-6. Lokale Sicherheits-/Eignungsprüfung vor externen KI-Aufrufen — offen.
-7. Moderation, Clustering, privates Dashboard und Beta-Betrieb — in weitere,
+1. **Öffentliche Problemübersicht (#1034): umgesetzt.** Rein lesende
+   API-Projektion, Karte, Themenfilter, alle ehrlichen Geometrieformen, sichere
+   Feature-Beispiele, Navigation, Sitemap und öffentlicher Vertrag.
+2. **„Meistgemeldet“-Rangliste (#1042): umgesetzt auf diesem Task-Branch.** Nur
+   ungelöste Projektionen, exakte lebenszeitliche Zahl unabhängiger Meldungen,
+   deterministische Rangfolge, zugängliche Vorschauen und ehrlicher Kartenfokus.
+3. Öffentliche Detailseite und plattformgerechte Verlinkung — offen.
+4. Private Meldungs-Domäne und sichere Persistenz — offen.
+5. Eigentümergebundene Entwurfs- und Einreichungs-API — offen.
+6. Geführter Meldechat und prominenter Einstieg — offen.
+7. Lokale Sicherheits-/Eignungsprüfung vor externen KI-Aufrufen — offen.
+8. Moderation, Clustering, privates Dashboard und Beta-Betrieb — in weitere,
    einzeln abgenommene Schnitte zu zerlegen.
 
-## Nicht Teil von #1034
+## Noch nicht Teil des Bürgerportal-Stands
 
 Keine Detailseite, privaten Meldetabellen oder Meldungsendpunkte, KI-Aufrufe,
 Moderationsoberfläche, automatische Veröffentlichung, Uploads oder öffentlichen

@@ -622,9 +622,10 @@ class ProblemGeometry(TypedDict):
 
 
 class PublicProblemSummary(TypedDict):
-    """Karten-/Board-Projektion ohne exakte Meldezahl oder private Evidenz."""
+    """Datensparsame Übersicht aus der freigegebenen öffentlichen Projektion."""
     id: int
     title: str
+    summary: str
     category: Literal[
         "mobility", "public_space", "education", "childcare", "housing",
         "environment", "accessibility", "administration", "other",
@@ -634,9 +635,10 @@ class PublicProblemSummary(TypedDict):
     latitude: float | None
     longitude: float | None
     geometry: ProblemGeometry | None
-    status: Literal[
-        "new", "multiple_reports", "verified", "persists", "apparently_resolved",
-    ]
+    status: Literal["new", "multiple_reports", "verified", "persists"]
+    #: Lebenszeitliche Gesamtzahl freigegebener unabhängiger meldender Personen.
+    #: Keine Identitäten, Rohtexte oder einzelnen Meldungen verlassen die Grenze.
+    independent_reports: int
     frequency: Literal["once", "several", "many", "very_many"]
     #: Nur Testprojektionen der isolierten Feature-Instanz tragen diese Marke.
     fictional: bool
