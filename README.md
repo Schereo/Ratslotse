@@ -39,7 +39,7 @@ der Rat dazu etwas beschließt — per Web-Push oder E-Mail.
 
 | Zeit | Script | Aufgabe |
 |------|--------|---------|
-| 03:00 täglich | `backup_db.py` | SQLite-Backup (hält die letzten 7 Kopien je DB) |
+| 03:00 täglich | `backup_db.py` | SQLite-Backup (7 Tages- + 4 Wochenstände je DB ≈ ein Monat) |
 | 07:00 täglich | `check_committees.py` | Ausschuss-Tagesordnungen prüfen, Abonnenten benachrichtigen |
 | 08:00 + 14:00 täglich | `check_council.py` | Stadtratssitzungen auf Themen-Matches prüfen |
 | 09:00 täglich | `check_protocols.py` | Neue Sitzungsprotokolle parsen + Beschlüsse klassifizieren |

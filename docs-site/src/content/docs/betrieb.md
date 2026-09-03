@@ -321,11 +321,26 @@ per `nohup` weiter, während der Workflow selbst schon fertig ist.
 konsistent, ohne den laufenden Betrieb zu stoppen. Die Kopien landen unter
 `data/backups/` mit Datum im Dateinamen.
 
-- **Rotation:** `KEEP = 7` — je Datenbank bleiben die letzten sieben
-  Generationen, ältere werden gelöscht.
+- **Rotation:** zwei Stufen, `TAEGLICH = 7` und `WOECHENTLICH = 4`. Es bleiben
+  die sieben jüngsten Sicherungen, dazu aus jeder der vier Kalenderwochen
+  **vor** diesem Fenster die jüngste — zusammen 29 bis 35 Tage Abdeckung.
+  Sieben Tage feinkörnig decken „gestern war es noch gut" ab, die Wochenmarken
+  alles, was erst später auffällt. Der Zusatz „vor dem Fenster" ist nicht
+  kosmetisch: Reicht das Tagesfenster in die Vorwoche hinein, läge deren Marke
+  einen Tag neben einem Tagesstand und gewänne keinen Abstand — der Bestand
+  endete dann schon nach 22 Tagen.
+- **Handkopien bleiben liegen.** Gezählt wird nur, was `<stamm>_JJJJ-MM-TT.sqlite`
+  heißt. Eine von Hand gezogene `council_vor_release_v2.0.0.sqlite` fällt aus der
+  Rotation heraus: Sie wird nie gelöscht und kostet auch keinen Platz im Bestand.
+  Vorher war beides falsch herum — gelöscht wurde `sorted(...)[:-7]`, und weil
+  `council_pre_…` alphabetisch hinter `council_2026-…` steht, warfen zwei
+  Handkopien vom August zwei Tagesstände hinaus (am 03.09.2026 lagen deshalb nur
+  fünf Tagesstände von `council` vor, aber sieben von `nwz`).
 - **Off-Site-Mirror (optional):** Ist `BACKUP_RSYNC_TARGET` gesetzt, wird das
   Backup-Verzeichnis anschließend per `rsync -az --delete` gespiegelt; das Ziel
-  ist damit ein exaktes Abbild der 7-Tage-Rotation. Der SSH-Port kommt aus
+  ist damit ein exaktes Abbild der lokalen Rotation. Eine Kopie gegen
+  Serververlust, aber kein Archiv: Was lokal gelöscht wird, ist beim nächsten
+  Lauf auch dort weg. Der SSH-Port kommt aus
   `BACKUP_RSYNC_SSH_PORT` (Default `22`), `BatchMode=yes` verhindert
   Passwort-Prompts im Cron. Fehler werfen und landen damit im Alarmweg.
 - **Fehlt jede Datenbank**, wirft der Lauf bewusst eine Exception — ein

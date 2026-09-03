@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Tägliche Sicherung — die letzten 7 Kopien je Datenbank, optional per rsync
-gespiegelt.
+"""Tägliche Sicherung — sieben Tages- und drei Wochenstände je Datenbank,
+optional per rsync gespiegelt.
 
 Gesichert wird ALLES, was der Server nicht aus dem Repo wiederherstellen kann:
 
@@ -20,7 +20,7 @@ Cron (als Nutzer tim auf dem App-Server):
 
 Off-Site-Mirror (optional, .env):
   BACKUP_RSYNC_TARGET=user@host:pfad/   # z. B. die Edge-VM — bei Serververlust
-  BACKUP_RSYNC_SSH_PORT=22              # bleiben die letzten 7 Kopien erhalten
+  BACKUP_RSYNC_SSH_PORT=22              # bleibt der ganze Bestand erhalten
 """
 from __future__ import annotations
 
@@ -28,7 +28,8 @@ import os
 import sqlite3
 import subprocess
 import sys
-from datetime import datetime
+import re
+from datetime import date, datetime
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -39,10 +40,92 @@ load_dotenv(ROOT / ".env")  # BACKUP_RSYNC_*, RESEND_API_KEY/ALERT_EMAIL (Alerts
 
 DATA = ROOT / "data"
 BACKUP_DIR = DATA / "backups"
-KEEP = 7
+
+#: Tagesstände: die jüngsten sieben Sicherungen bleiben in jedem Fall.
+TAEGLICH = 7
+#: Wochenstände: aus jeder der vier Kalenderwochen VOR dem Tagesfenster bleibt
+#: zusätzlich die jüngste Sicherung. Sieben Tage feinkörnig für „gestern war es
+#: noch gut", vier Wochenmarken für alles, was erst später auffällt; vorher
+#: endete der Bestand nach sieben Tagen, und ein Schaden, den niemand in einer
+#: Woche bemerkte, war endgültig.
+#:
+#: **Warum vier und nicht drei.** „7 Tage + 3 Wochen = 1 Monat" stimmt nur,
+#: wenn das Tagesfenster genau auf einer Kalenderwoche liegt. Tut es das nicht,
+#: reicht es in die Vorwoche hinein, und deren Marke fällt weg — der Bestand
+#: endete dann schon nach 22 Tagen. Mit vier Marken sind es verlässlich 29 bis
+#: 35 Tage, also wirklich ein Monat. Kosten: eine Kopie je Datenbank mehr.
+WOECHENTLICH = 4
+
+#: Ein Sicherungsname ist ``<stamm>_JJJJ-MM-TT.sqlite`` — sonst nichts.
+_DATIERT = re.compile(r"^(?P<datum>\d{4}-\d{2}-\d{2})$")
 
 
-def backup_db(src: Path) -> None:
+def sicherungsdatum(pfad: Path, stamm: str) -> date | None:
+    """Das Datum aus dem Dateinamen, oder ``None`` für alles andere.
+
+    Das ``None`` ist die eigentliche Aussage: Handkopien wie
+    ``council_pre_location_backfill_2026-08-26.sqlite`` tragen hinter dem Stamm
+    kein reines Datum und fallen damit **aus der Rotation heraus** — sie bleiben
+    liegen, bis jemand sie löscht.
+
+    Vorher gab es diese Unterscheidung nicht: Gelöscht wurde ``sorted(...)[:-7]``,
+    und weil ``council_pre_...`` alphabetisch **hinter** ``council_2026-...``
+    steht, warfen zwei Handkopien vom August die beiden ältesten Tagesstände
+    hinaus. Auf Prod lagen deshalb am 03.09.2026 nur fünf Tagesstände von
+    ``council``, aber sieben von ``nwz``.
+    """
+    if not pfad.name.startswith(f"{stamm}_") or not pfad.name.endswith(".sqlite"):
+        return None
+    treffer = _DATIERT.match(pfad.name[len(stamm) + 1:-len(".sqlite")])
+    if not treffer:
+        return None
+    try:
+        return date.fromisoformat(treffer.group("datum"))
+    except ValueError:                      # 2026-13-45 o. Ä. — kein Datum
+        return None
+
+
+def rotation(pfade, stamm: str, taeglich: int = TAEGLICH,
+             woechentlich: int = WOECHENTLICH) -> tuple[list[Path], list[Path]]:
+    """Teilt die datierten Sicherungen in (behalten, löschen).
+
+    Zwei Stufen, die zweite greift erst hinter der ersten:
+
+    1. die jüngsten ``taeglich`` Sicherungen — unabhängig davon, welche
+       Kalendertage sie tragen. Fällt der Cron zwei Tage aus, deckt die Stufe
+       eben neun Tage ab statt sieben; ein Ausfall soll den Bestand nicht
+       zusätzlich verkürzen.
+    2. aus jeder Kalenderwoche (ISO) **vor** dem Tagesfenster die jüngste
+       Sicherung, davon die jüngsten ``woechentlich``.
+
+    Der Zusatz „vor dem Tagesfenster" ist der Punkt, an dem die naive Fassung
+    scheitert: Reicht das Fenster in die Vorwoche hinein, läge deren jüngste
+    Sicherung einen Tag neben einem Tagesstand — eine Wochenmarke, die keinen
+    Abstand gewinnt. Gezählt werden deshalb nur Wochen, die das Fenster gar
+    nicht mehr berührt.
+
+    Alles ohne Datum im Namen taucht in keiner der beiden Listen auf.
+    """
+    datiert = [(d, p) for p in pfade if (d := sicherungsdatum(p, stamm))]
+    datiert.sort(key=lambda paar: (paar[0], paar[1].name), reverse=True)
+
+    tagesstaende = datiert[:taeglich]
+    behalten = [p for _, p in tagesstaende]
+    grenze = min(d for d, _ in tagesstaende).isocalendar()[:2] if tagesstaende else None
+
+    je_woche: dict[tuple[int, int], Path] = {}
+    for d, p in datiert[taeglich:]:         # absteigend, also gewinnt die jüngste
+        woche = d.isocalendar()[:2]
+        if grenze is not None and woche >= grenze:
+            continue                        # dieselbe Woche wie ein Tagesstand
+        je_woche.setdefault(woche, p)
+    behalten += list(je_woche.values())[:woechentlich]
+
+    bleibt = set(behalten)
+    return behalten, [p for _, p in datiert if p not in bleibt]
+
+
+def backup_db(src: Path) -> int:
     BACKUP_DIR.mkdir(parents=True, exist_ok=True)
     date_str = datetime.now().strftime("%Y-%m-%d")
     dst = BACKUP_DIR / f"{src.stem}_{date_str}.sqlite"
@@ -54,18 +137,20 @@ def backup_db(src: Path) -> None:
     src_conn.close()
     dst_conn.close()
 
-    # Prune old backups
-    backups = sorted(BACKUP_DIR.glob(f"{src.stem}_*.sqlite"))
-    for old in backups[:-KEEP]:
-        old.unlink()
+    behalten, veraltet = rotation(BACKUP_DIR.glob(f"{src.stem}_*.sqlite"), src.stem)
+    for alt in veraltet:
+        alt.unlink()
 
-    print(f"✓  {src.name} → {dst.name}")
+    print(f"✓  {src.name} → {dst.name} ({len(behalten)} Stände im Bestand)")
+    return len(behalten)
 
 
 def offsite_sync() -> None:
     """Mirror the backup directory to BACKUP_RSYNC_TARGET (if configured).
 
-    `--delete` hält das Ziel als exakten Spiegel der lokalen 7-Tage-Rotation.
+    `--delete` hält das Ziel als exakten Spiegel der lokalen Rotation — es ist
+    damit eine Kopie gegen Serververlust, aber kein Archiv: Was hier gelöscht
+    wird, ist beim nächsten Lauf auch dort weg.
     BatchMode verhindert Passwort-Prompts im Cron; ein Fehler wirft und landet
     damit im run_guarded-Alert."""
     target = os.environ.get("BACKUP_RSYNC_TARGET")
@@ -146,12 +231,12 @@ def dateien_spiegeln() -> dict[str, int]:
 
 def main() -> dict:
     """Gibt die Kennzahlen des Laufs für die Cron-Übersicht zurück."""
-    gesichert, bytes_total = 0, 0
+    gesichert, bytes_total, staende = 0, 0, 0
     # ALLE Datenbanken statt einer festen Liste: Eine neu hinzugekommene wäre
     # sonst still durchgerutscht. `data/backups/` bleibt außen vor (dort liegen
     # die Kopien selbst), `-wal`/`-shm` sind keine .sqlite-Dateien.
     for db_path in sorted(DATA.glob("*.sqlite")):
-        backup_db(db_path)
+        staende += backup_db(db_path)
         gesichert += 1
         bytes_total += db_path.stat().st_size
     if not gesichert:
@@ -162,6 +247,7 @@ def main() -> dict:
     return {
         "Datenbanken gesichert": gesichert,
         "Größe (MB)": round(bytes_total / 1_000_000, 1),
+        "Stände im Bestand": staende,
         "Planzeichnungen": gespiegelt.get("Planzeichnungen", 0),
         "Statistik-Archiv": gespiegelt.get("Statistik-Archiv", 0),
         ".env gesichert": "ja" if env_dabei else "nein",
