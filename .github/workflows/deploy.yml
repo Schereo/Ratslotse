@@ -72,7 +72,7 @@ jobs:
           npm ci
           npm run build
 
-      - name: Deploy via rsync
+      - name: Configure deployment SSH
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
         run: |
@@ -95,6 +95,61 @@ jobs:
             '  StrictHostKeyChecking no' \
             > ~/.ssh/config
           chmod 600 ~/.ssh/config
+
+      # Erste Rückfalllinie noch VOR jeder Codeübertragung. Der finale Snapshot
+      # folgt nach dem Build bei gestopptem API-Dienst direkt an der
+      # Migrationsgrenze. Hier läuft absichtlich der bisher installierte,
+      # bereits geprüfte backup_db.py; der direkte main()-Aufruf umgeht nur den
+      # job_runs-Nachtrag, der sonst selbst den Account-Store öffnen würde.
+      # BACKUP_ENV=0 kopiert keine Secrets, BACKUP_RSYNC_TARGET= hält den
+      # Release unabhängig vom Off-Site-Ziel.
+      - name: Create and verify pre-transfer rollback baseline
+        run: |
+          ssh target '
+            set -eu
+            cd ~/app
+            mkdir -p data/backups
+            marker=data/backups/.predeploy-start
+            touch "$marker"
+            BACKUP_ENV=0 BACKUP_RSYNC_TARGET= \
+              .venv/bin/python -c "from scripts.backup_db import main; main()"
+            .venv/bin/python - --root . --newer-than "$marker"
+            rm -f "$marker"
+          ' < scripts/verify_predeploy_backup.py
+
+      # Reine Leseprüfung der Produktionsvoraussetzungen. Sie installiert
+      # nichts, schreibt keine .env und fasst die Crontab nicht an. Modellzugriff
+      # und der echte HLS-Stream bleiben externe Canaries; hier werden die lokal
+      # sicher prüfbaren Voraussetzungen vor rsync fail-closed validiert.
+      - name: Verify release runtime prerequisites
+        run: |
+          ssh target '
+            set -eu
+            cd ~/app
+            .venv/bin/python - --root . --minimum-app-build 19
+          ' < scripts/verify_release_runtime.py
+
+      # Der Marker liegt in data/ (vom rsync ausgeschlossen) und muss VOR dem
+      # ersten neuen Python-Modul existieren. Der laufende alte API-Prozess
+      # darf bis zum fertigen Build weiterarbeiten; ein während rsync neu
+      # gestarteter Cron wird entweder vom neuen Store-Guard blockiert oder
+      # später als noch laufender Altprozess erkannt. Ein vorhandener Marker
+      # stammt aus einem nicht abgeschlossenen Cutover und ist ein harter
+      # manueller Recovery-Fall, kein Anlass zum Überschreiben.
+      - name: Enter release maintenance barrier
+        run: |
+          ssh target '
+            set -eu
+            cd ~/app
+            wartung=data/.release-maintenance
+            if ! (set -o noclobber; printf "%s\n" "${{ github.sha }}" > "$wartung") 2>/dev/null; then
+              echo "BLOCKIERT: $wartung existiert bereits; vorherigen Cutover zuerst prüfen."
+              exit 1
+            fi
+          '
+
+      - name: Deploy via rsync
+        run: |
           # '.env.local' braucht eine eigene Ausnahme: Der Name ist nicht '.env',
           # und ohne sie löscht --delete eine auf dem Server angelegte
           # web/frontend/.env.local beim nächsten Deploy wieder weg.
@@ -143,7 +198,40 @@ jobs:
             # Fehlt das Secret, baut der Build trotzdem durch — die Karten
             # tragen dann nur wieder CARTOs „API KEY REQUIRED"-Wasserzeichen.
             NEXT_PUBLIC_CARTO_API_KEY="${{ secrets.CARTO_API_KEY }}" npm run build
-            sudo systemctl restart nwz-web-api nwz-web-frontend
+            cd ~/app
+
+            # Ab hier darf kein alter Prozess mehr schreiben: Neue Store-
+            # Instanzen respektieren den Marker, der API-Dienst wird gestoppt,
+            # und der Prozess-Scan fängt noch laufende Cron-/Ops-Prozesse ab,
+            # die bereits den vorherigen Code geladen hatten. Bei jedem Fehler
+            # bleiben Marker und API-Stopp bewusst bestehen; ein manueller
+            # Start könnte sonst ungeprüfte Vorwärtsmigrationen auslösen.
+            wartung=data/.release-maintenance
+            if [ ! -f "$wartung" ] || [ "$(cat "$wartung")" != "${{ github.sha }}" ]; then
+              echo "BLOCKIERT: $wartung fehlt oder gehört nicht zu diesem Commit."
+              exit 1
+            fi
+            cutover_aktiv=1
+            trap 'if [ "$cutover_aktiv" = 1 ]; then echo "BLOCKIERT: Wartungsbarriere bleibt aktiv; API wird nicht automatisch gestartet."; fi' EXIT
+            sudo /bin/systemctl stop nwz-web-api
+            .venv/bin/python scripts/verify_release_runtime.py \
+              --root . --minimum-app-build 19 --require-quiescent \
+              --quiescent-timeout 120
+
+            # Ein Cutover-Befehl sperrt beide autoritativen Datenbanken gegen
+            # Writes, erstellt eindeutige rotationsfreie Snapshots samt
+            # SHA-/Schema-/Tabellenmanifest und führt danach beide
+            # Migrationsstapel explizit aus. Erst nach dem Post-Migration-
+            # quick_check wird die Wartungsbarriere aufgehoben.
+            snapshot_label="deploy_${{ github.sha }}_$(date -u +%Y%m%dT%H%M%SZ)"
+            RATSLOTSE_RELEASE_MAINTENANCE=1 \
+              .venv/bin/python scripts/prepare_release_databases.py \
+              --root . --snapshot-label "$snapshot_label"
+            rm -f "$wartung"
+            cutover_aktiv=0
+            trap - EXIT
+            sudo /bin/systemctl start nwz-web-api
+            sudo /bin/systemctl restart nwz-web-frontend
 
             # Erst wenn beide Dienste wirklich antworten, gilt der Deploy als
             # geglückt. Ohne diese Prüfung meldete der Lauf „success", während

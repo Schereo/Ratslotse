@@ -2,9 +2,14 @@
 Schlussformel, Parallel-Transkription (ffmpeg und LLM gemockt)."""
 from __future__ import annotations
 
+from pathlib import Path
+from types import SimpleNamespace
 from unittest import mock
 
+import pytest
+
 from council import livestream
+from scripts import record_council_livestream
 
 
 # ------------------------------------------------------------- parse_segments
@@ -43,6 +48,25 @@ def test_looks_fabricated_by_chars_per_second():
     assert livestream._looks_fabricated("x" * 58_000, 80)
     # 600 s echte Rede liegen bei ~9k Zeichen — weit unter der Grenze.
     assert not livestream._looks_fabricated("x" * 9_000, 600)
+
+
+def test_empty_provider_responses_drop_only_the_chunk(tmp_path, monkeypatch, caplog):
+    """Drei leere Antworten verwerfen nur dieses Stück; der lokale Fallback
+    bleibt trotz des zentralen Guards erreichbar."""
+    chunk = tmp_path / "chunk_004.mp3"
+    chunk.write_bytes(b"audio")
+    calls = []
+
+    def empty_response(**kwargs):
+        calls.append(kwargs)
+        return SimpleNamespace(choices=None, usage=None)
+
+    monkeypatch.setattr(livestream.llm, "chat_complete", empty_response)
+    with caplog.at_level("WARNING"):
+        assert livestream.transcribe_chunk(chunk) == ""
+    assert len(calls) == 3
+    assert all(call["_allow_empty_response"] is True for call in calls)
+    assert "dreimal leere Antwort" in caplog.text
 
 
 def test_parse_segments_caps_marks_beyond_chunk_end():
@@ -92,6 +116,32 @@ class _FakeProc:
         return 0
 
 
+class _FailedProc:
+    """ffmpeg ist vor dem ersten vollständigen Chunk fehlgeschlagen."""
+
+    def poll(self):
+        return 1
+
+    def terminate(self):
+        raise AssertionError("beendeten Prozess nicht terminieren")
+
+
+class _TerminatedProc:
+    """SIGTERM nach gefundener Schlussformel ist ein erwartetes Ende."""
+
+    def __init__(self):
+        self.terminated = False
+
+    def poll(self):
+        return -15 if self.terminated else None
+
+    def terminate(self):
+        self.terminated = True
+
+    def wait(self, timeout=None):
+        return -15
+
+
 def test_record_and_transcribe_transcribes_finished_chunks(tmp_path):
     (tmp_path / "chunk_000.mp3").write_bytes(b"a")
     (tmp_path / "chunk_001.mp3").write_bytes(b"b")
@@ -105,6 +155,99 @@ def test_record_and_transcribe_transcribes_finished_chunks(tmp_path):
     assert [s for s, _ in segs] == [5, 610]
 
 
+def test_recording_continues_after_one_empty_transcript_chunk(tmp_path, monkeypatch):
+    """Ein ausgefallener erster Chunk darf ffmpeg und die späteren Chunks der
+    einmaligen Sitzung nicht mit abräumen."""
+    (tmp_path / "chunk_000.mp3").write_bytes(b"a")
+    (tmp_path / "chunk_001.mp3").write_bytes(b"b")
+    calls = []
+
+    def responses(**kwargs):
+        calls.append(kwargs)
+        content = (None if len(calls) <= 3 else
+                   "[00:10] Damit schließe ich die Sitzung.")
+        choices = None if content is None else [SimpleNamespace(
+            message=SimpleNamespace(content=content))]
+        return SimpleNamespace(choices=choices, usage=None)
+
+    monkeypatch.setattr(livestream.llm, "chat_complete", responses)
+    monkeypatch.setattr(livestream, "start_recording", lambda *_args: _FakeProc())
+    segments = livestream.record_and_transcribe(tmp_path, poll_seconds=0)
+    assert segments == [(610, "Damit schließe ich die Sitzung.")]
+    assert len(calls) == 4
+    assert all(call["_allow_empty_response"] is True for call in calls)
+
+
 def test_record_and_transcribe_without_ffmpeg(tmp_path):
     with mock.patch.object(livestream, "start_recording", return_value=None):
         assert livestream.record_and_transcribe(tmp_path) == []
+
+
+def test_record_and_transcribe_raises_on_ffmpeg_failure(tmp_path):
+    with mock.patch.object(livestream, "start_recording",
+                           return_value=_FailedProc()):
+        with pytest.raises(RuntimeError, match="ffmpeg-Aufnahme mit Exitcode 1"):
+            livestream.record_and_transcribe(tmp_path, poll_seconds=0)
+
+
+def test_record_and_transcribe_accepts_intentional_sigterm(tmp_path):
+    (tmp_path / "chunk_000.mp3").write_bytes(b"a")
+    (tmp_path / "chunk_001.mp3").write_bytes(b"b")
+    texts = {
+        "chunk_000.mp3": "[00:05] Damit schließe ich die Sitzung.",
+        "chunk_001.mp3": "[00:01] Abspann.",
+    }
+    with mock.patch.object(livestream, "start_recording",
+                           return_value=_TerminatedProc()), \
+         mock.patch.object(livestream, "transcribe_chunk",
+                           side_effect=lambda p, attempt=0: texts[p.name]):
+        segments = livestream.record_and_transcribe(tmp_path, poll_seconds=0)
+    assert [text for _, text in segments] == [
+        "Damit schließe ich die Sitzung.", "Abspann."]
+
+
+def test_livestream_retry_uses_fresh_directory(tmp_path, monkeypatch):
+    """Chunks eines abgebrochenen Laufs dürfen nie im Retry auftauchen."""
+    root = tmp_path / "recordings"
+    root.mkdir()
+    (root / "chunk_000.mp3").write_bytes(b"alter lauf")
+    monkeypatch.setattr(record_council_livestream, "RECORDING_ROOT", root)
+
+    seen: list[Path] = []
+
+    def fake_record(run_dir: Path):
+        seen.append(run_dir)
+        assert not list(run_dir.glob("chunk_*.mp3"))
+        (run_dir / "chunk_000.mp3").write_bytes(b"dieser lauf")
+        return [(0.0, "Transkript")]
+
+    with mock.patch.object(record_council_livestream.livestream,
+                           "record_and_transcribe", side_effect=fake_record):
+        assert record_council_livestream._record_fresh(4702)
+        assert record_council_livestream._record_fresh(4702)
+
+    assert len(seen) == 2
+    assert seen[0] != seen[1]
+    assert all(not path.exists() for path in seen)
+    # Ein Rest aus dem alten, nicht isolierten Layout bleibt zwar liegen, ist
+    # aber in keinem der beiden neuen Run-Verzeichnisse sichtbar.
+    assert (root / "chunk_000.mp3").read_bytes() == b"alter lauf"
+
+
+def test_recorder_does_not_repeat_existing_livestream_results():
+    today = record_council_livestream.datetime.now(
+        record_council_livestream.TZ
+    ).date().isoformat()
+    store = mock.Mock()
+    store.sessions_needing_video_check.return_value = [{
+        "ksinr": 4702,
+        "session_date": today,
+        "session_time": "17:00",
+    }]
+    store.get_video_results.return_value = [{"video_id": ""}]
+
+    with mock.patch.object(record_council_livestream, "CouncilStore",
+                           return_value=store), \
+         mock.patch.object(record_council_livestream, "_record_fresh") as record:
+        assert record_council_livestream.main() == {"sitzung_heute": 0}
+    record.assert_not_called()

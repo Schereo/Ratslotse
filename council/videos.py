@@ -71,6 +71,7 @@ class EmptyAnswer(RuntimeError):
     zählen kann statt ihn für „nichts gefunden" zu halten — der
     Unterschied entscheidet, ob eine ganze Region still verschwindet."""
 
+
 SYSTEM_PROMPT = """Du liest das automatisch erzeugte Transkript einer Ratssitzung der
 Stadt Oldenburg und ziehst daraus die Abstimmungsergebnisse.
 
@@ -351,17 +352,16 @@ def _ask(agenda_text: str, chunk: str, tag: str, attempt: int = 0) -> list[dict]
                f"TRANSKRIPT-ABSCHNITT:\n{chunk}")
     resp = llm.chat_complete(
         model=MODEL, _feature="video_results",
+        _allow_empty_response=True,
         messages=[{"role": "system", "content": SYSTEM_PROMPT},
                   {"role": "user", "content": content}],
         temperature=0, response_format={"type": "json_object"}, max_tokens=32_000,
     )
     # gpt-5.6-luna liefert vereinzelt eine Antwort ganz OHNE choices (kein
-    # Fehler, kein Inhalt) — chat_complete wirft dabei nicht, also selbst
-    # noch einmal versuchen. Der Ausfall ist teurer als er aussieht: Ein
-    # verlorener Abschnitt nimmt seine ganze Region mit, weil der Konsens
-    # den zweiten Durchlauf braucht. Am 02.09.2026 fiel so B/0 aus — mit ihm
-    # alle vier Absetzungen, die die Leitung zu Sitzungsbeginn verkündet
-    # hatte. Deshalb hartnäckiger versuchen, mit wachsender Pause.
+    # Fehler, kein Inhalt). Dieser Aufrufer behält bewusst seine fünf lokalen
+    # Versuche: Ein verlorener Abschnitt nimmt seine ganze Region mit, weil der
+    # Konsens den zweiten Durchlauf braucht. Am 02.09.2026 fiel so B/0 aus —
+    # mit ihm alle vier Absetzungen zu Sitzungsbeginn.
     if not getattr(resp, "choices", None):
         if attempt < EMPTY_RETRIES:
             time.sleep(2 ** attempt)

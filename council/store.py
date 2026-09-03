@@ -13,6 +13,7 @@ from .parties import order_key, parties_for_faction
 from . import importance as _importance
 from council.kontaktdaten import maskieren
 from kern.dbfehler import tabelle_fehlt
+from kern.maintenance import require_database_available
 from council.store_helfer import _dedup_keys, _int_or_none
 from council.store_fundstuecke import FundstueckeMixin
 from council.store_haushalt import HaushaltMixin
@@ -82,6 +83,7 @@ class CouncilStore(FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
                    ThemenMixin, WortbeitraegeMixin, *_geld.MIXINS):
     def __init__(self, path: str | Path, ratslotse_db_path: str | Path | None = None):
         self._path = path
+        require_database_available(path)
         # Sibling ratslotse.sqlite holds the chat_id→owner_id map for the migration.
         if ratslotse_db_path is None and isinstance(path, (str, Path)) and str(path) != ":memory:":
             ratslotse_db_path = Path(path).parent / "ratslotse.sqlite"
@@ -4781,6 +4783,3 @@ class CouncilStore(FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
     #: jedem Protokoll als eigene Beschlusszeile — wo er fehlt, wird der
     #: Oberpunkt aus der Nummer der Schlussabstimmung abgeleitet.
     _STREIT_SAMMEL = re.compile(r"^Haushalt\s+(\d{4})\s*$")
-
-
-

@@ -320,9 +320,9 @@ def test_modell_ausfall_ueberspringt_nur_diesen_owner(tmp_path, monkeypatch):
     from council.scraper import AgendaItem, CouncilSession
     from kern.llm import EmptyResponseError
 
-    nwz = Store(tmp_path / "nwz.sqlite")
-    stumm = nwz.add_topic(1, "Schulbegleitung", "Assistenz an Schulen")
-    gut = nwz.add_topic(2, "Radwege", "Ausbau von Radwegen")
+    ratslotse = Store(tmp_path / "ratslotse.sqlite")
+    stumm = ratslotse.add_topic(1, "Schulbegleitung", "Assistenz an Schulen")
+    gut = ratslotse.add_topic(2, "Radwege", "Ausbau von Radwegen")
     owners = [
         {"owner_id": 1, "delivery_channel": "email", "email": None, "push_tokens": [], "topics": [stumm]},
         {"owner_id": 2, "delivery_channel": "email", "email": None, "push_tokens": [], "topics": [gut]},
@@ -346,16 +346,21 @@ def test_modell_ausfall_ueberspringt_nur_diesen_owner(tmp_path, monkeypatch):
     monkeypatch.setattr(watcher, "_classify_agenda", fake_classify)
 
     stats: dict = {}
-    alerts = watcher.run_watcher(tmp_path / "council.sqlite", owners, nwz_store=nwz, stats=stats)
+    alerts = watcher.run_watcher(
+        tmp_path / "council.sqlite",
+        owners,
+        ratslotse_store=ratslotse,
+        stats=stats,
+    )
 
     # Owner 2 bekommt seine Meldung, der Lauf läuft zu Ende …
     assert len(alerts) == 1
-    assert nwz.agenda_matches_for_owner(2, [42]) == {
+    assert ratslotse.agenda_matches_for_owner(2, [42]) == {
         42: [{"item_number": "Ö 6", "topic_name": "Radwege"}]
     }
     # … Owner 1 bleibt UNklassifiziert, damit der nächste Lauf es erneut versucht.
-    assert nwz.agenda_matches_for_owner(1, [42]) == {}
-    assert nwz.agenda_classified_hash(1, 42) is None
+    assert ratslotse.agenda_matches_for_owner(1, [42]) == {}
+    assert ratslotse.agenda_classified_hash(1, 42) is None
     # Und der Ausfall steht als Kennzahl im Admin-Panel statt nur im Log.
     assert stats["Modell-Ausfälle übersprungen"] == 1
-    nwz.close()
+    ratslotse.close()

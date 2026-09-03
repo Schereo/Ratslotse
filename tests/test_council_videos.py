@@ -170,6 +170,26 @@ def test_failed_chunk_is_reported_not_swallowed(caplog):
     assert "Abschnitte ausgefallen" in caplog.text
 
 
+def test_empty_provider_responses_keep_local_retry_and_fail_only_chunk(monkeypatch, caplog):
+    """Fünf leere Antworten enden als ausgefallener Abschnitt, nicht als
+    Abbruch des ganzen Video-Laufs."""
+    calls = []
+
+    def empty_response(**kwargs):
+        calls.append(kwargs)
+        return type("Response", (), {"choices": None, "usage": None})()
+
+    monkeypatch.setattr(videos.llm, "chat_complete", empty_response)
+    monkeypatch.setattr(videos.time, "sleep", lambda _seconds: None)
+    with caplog.at_level("ERROR"):
+        found, failed = videos._one_pass("Ö 1\tTest", "Transkript", 0, "A")
+    assert found == []
+    assert failed == {0}
+    assert len(calls) == videos.EMPTY_RETRIES + 1 == 5
+    assert all(call["_allow_empty_response"] is True for call in calls)
+    assert "Video-Lesen A/0 fehlgeschlagen" in caplog.text
+
+
 def test_anchor_prefers_full_quote_over_ambiguous_head():
     """Die Abstimmungs-Formeln beginnen wortgleich — der 60-Zeichen-Kopf
     allein verankerte TOP 14.4 bei Minute 25 statt 1:50 (gemessen 31.08.).
@@ -220,10 +240,20 @@ def test_sessions_needing_video_check(store):
     # Ohne decisions und ohne video_results → Kandidat.
     need = store.sessions_needing_video_check("2026-08-01")
     assert [s["ksinr"] for s in need] == [4702]
-    # Mit Video-Ergebnissen → erledigt.
+
+    # Der Livestream liefert schon Ergebnisse, aber noch keine Sprung-Links:
+    # Der YouTube-Nachlauf muss die Sitzung weiter finden.
+    store.save_video_results(4702, "", "livestream-model", [
+        {"item_number": "7.1", "outcome": "accepted", "quote": "live"}])
+    assert [s["ksinr"] for s in
+            store.sessions_needing_video_check("2026-08-01")] == [4702]
+
+    # Der YouTube-Lauf ersetzt den Livestream-Bestand vollständig und erst
+    # dessen echte Video-ID schließt die Sitzung aus weiteren Läufen aus.
     store.save_video_results(4702, "vid123", "m", [
         {"item_number": "7.1", "outcome": "accepted", "quote": "x"}])
     assert store.sessions_needing_video_check("2026-08-01") == []
+    assert [r["video_id"] for r in store.get_video_results(4702)] == ["vid123"]
 
 
 def test_sessions_with_protocol_are_not_candidates(store):

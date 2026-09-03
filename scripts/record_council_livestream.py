@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Ratssitzung live aus dem O1-Stream mitschneiden → vorläufige Ergebnisse.
 
-Läuft täglich am Nachmittag (Cron-Empfehlung ``0 16 * * *``): Gibt es heute
+Läuft täglich am Nachmittag (Cron auf dem UTC-Server: ``0 13 * * *``): Gibt es heute
 eine Ratssitzung ohne Ergebnisse, wartet der Job bis kurz vor Sitzungsbeginn,
 schneidet den O1-Stream mit, transkribiert parallel zur Aufnahme und liest
 die Abstimmungsergebnisse mit derselben strengen Extraktion wie der
@@ -42,16 +42,36 @@ TZ = ZoneInfo("Europe/Berlin")
 #: Aufnahme beginnt etwas vor der angesetzten Zeit — der Stream läuft eh.
 LEAD_MINUTES = 5
 #: Länger als das wartet der Job nicht auf den Sitzungsbeginn (Schutz
-#: gegen kaputte session_time; Cron um 16 Uhr + 17-Uhr-Sitzung = 55 min).
+#: gegen kaputte session_time; der 13-Uhr-UTC-Cron läuft in Oldenburg je nach
+#: Sommerzeit um 14 oder 15 Uhr und wartet z. B. bis zur 17-Uhr-Sitzung).
 MAX_WAIT_HOURS = 5
+#: Jeder Lauf bekommt darunter ein eigenes temporäres Verzeichnis. Ein
+#: abgebrochener Vorgängerlauf darf seine ``chunk_*.mp3`` nie in einen Retry
+#: hineinreichen.
+RECORDING_ROOT = Path(tempfile.gettempdir()) / "council-livestream"
+
+
+def _record_fresh(ksinr: int) -> list[tuple[float, str]]:
+    """Eine Aufnahme in einem garantiert leeren, danach gelöschten Run-Pfad."""
+    RECORDING_ROOT.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(
+        prefix=f"{ksinr}-", dir=RECORDING_ROOT
+    ) as run_dir:
+        return livestream.record_and_transcribe(Path(run_dir))
 
 
 def main() -> dict:
     """Gibt die Kennzahlen des Laufs für die Cron-Übersicht zurück."""
     store = CouncilStore(COUNCIL_DB)
     today = datetime.now(TZ).date().isoformat()
-    candidates = [s for s in store.sessions_needing_video_check(today)
-                  if s["session_date"][:10] == today]
+    candidates = [
+        s for s in store.sessions_needing_video_check(today)
+        if s["session_date"][:10] == today
+        # Der YouTube-Lauf soll Livestream-Ergebnisse weiter sehen; dieser
+        # Recorder selbst darf eine bereits ausgewertete Sitzung nicht erneut
+        # mitschneiden.
+        and not store.get_video_results(s["ksinr"])
+    ]
     if not candidates:
         return {"sitzung_heute": 0}
     s = candidates[0]
@@ -76,9 +96,8 @@ def main() -> dict:
                  wait.total_seconds() // 60, s["ksinr"], s["session_time"])
         time.sleep(wait.total_seconds())
 
-    workdir = Path(tempfile.gettempdir()) / "council-livestream" / str(s["ksinr"])
     t0 = time.monotonic()
-    segments = livestream.record_and_transcribe(workdir)
+    segments = _record_fresh(s["ksinr"])
     stats["aufnahme_min"] = int((time.monotonic() - t0) / 60)
     stats["transkript_segmente"] = len(segments)
     if not segments:

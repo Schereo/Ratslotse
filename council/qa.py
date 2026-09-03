@@ -1476,9 +1476,11 @@ def partei_meinungen(question: str, rows: list[dict], model: str = MODEL) -> lis
     # Position ins Limit („finish_reason: length", an der Baumschutz-Frage
     # gemessen) — und ein abgeschnittenes Array ließ den Baustein KOMPLETT
     # verschwinden. Erst Platz schaffen, dann trotzdem retten, was da ist.
-    resp = llm.chat_complete(model=model, _feature="party_opinions", temperature=0,
-                             max_tokens=6000, messages=[{"role": "user", "content": prompt}],
-                             **extra)
+    resp = llm.chat_complete(
+        model=model, _feature="party_opinions", _allow_empty_response=True,
+        temperature=0, max_tokens=6000,
+        messages=[{"role": "user", "content": prompt}], **extra,
+    )
     content = _strip_fences(resp.choices[0].message.content or "") if resp.choices else ""
     data = _json_array_notfalls_gerettet(content)
     if data is None:

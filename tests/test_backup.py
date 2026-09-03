@@ -3,6 +3,8 @@ import sqlite3
 import sys
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 
@@ -67,3 +69,20 @@ def test_env_sicherung_laesst_sich_abschalten(tmp_path, monkeypatch):
 
     assert b.main()[".env gesichert"] == "nein"
     assert not (data / "backups" / "env.backup").exists()
+
+
+def test_regulaeres_backup_respektiert_release_barriere(tmp_path, monkeypatch):
+    from kern.maintenance import BYPASS_ENV, MARKER_NAME
+    from scripts import backup_db as b
+
+    data = tmp_path / "data"
+    data.mkdir()
+    _db(data / "ratslotse.sqlite")
+    (data / MARKER_NAME).touch()
+    monkeypatch.setattr(b, "DATA", data)
+    monkeypatch.setattr(b, "BACKUP_DIR", data / "backups")
+    monkeypatch.delenv(BYPASS_ENV, raising=False)
+
+    with pytest.raises(RuntimeError, match="Release-Wartung aktiv"):
+        b.backup_databases()
+    assert not (data / "backups").exists()

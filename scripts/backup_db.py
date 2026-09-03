@@ -38,6 +38,8 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 load_dotenv(ROOT / ".env")  # BACKUP_RSYNC_*, RESEND_API_KEY/ALERT_EMAIL (Alerts)
 
+from kern.maintenance import BYPASS_ENV, MARKER_NAME  # noqa: E402
+
 DATA = ROOT / "data"
 BACKUP_DIR = DATA / "backups"
 
@@ -229,8 +231,19 @@ def dateien_spiegeln() -> dict[str, int]:
     return aus
 
 
-def main() -> dict:
-    """Gibt die Kennzahlen des Laufs für die Cron-Übersicht zurück."""
+def backup_databases() -> dict[str, int | float]:
+    """Back up every top-level SQLite database and return its core metrics.
+
+    Keeping this unit separate lets callers back up the databases without file
+    mirrors, off-site transfer or ``run_guarded``. Release snapshots use the
+    stricter quiesced cutover helper in ``prepare_release_databases.py``.
+    """
+    marker = DATA / MARKER_NAME
+    if marker.exists() and os.environ.get(BYPASS_ENV) != "1":
+        raise RuntimeError(
+            f"Release-Wartung aktiv ({marker}); reguläres Backup ausgesetzt"
+        )
+
     gesichert, bytes_total, staende = 0, 0, 0
     # ALLE Datenbanken statt einer festen Liste: Eine neu hinzugekommene wäre
     # sonst still durchgerutscht. `data/backups/` bleibt außen vor (dort liegen
@@ -241,13 +254,21 @@ def main() -> dict:
         bytes_total += db_path.stat().st_size
     if not gesichert:
         raise RuntimeError("keine Datenbank gefunden — es wurde nichts gesichert")
-    env_dabei = backup_env()
-    gespiegelt = dateien_spiegeln()
-    offsite_sync()
     return {
         "Datenbanken gesichert": gesichert,
         "Größe (MB)": round(bytes_total / 1_000_000, 1),
         "Stände im Bestand": staende,
+    }
+
+
+def main() -> dict:
+    """Gibt die Kennzahlen des Laufs für die Cron-Übersicht zurück."""
+    stats = backup_databases()
+    env_dabei = backup_env()
+    gespiegelt = dateien_spiegeln()
+    offsite_sync()
+    return {
+        **stats,
         "Planzeichnungen": gespiegelt.get("Planzeichnungen", 0),
         "Statistik-Archiv": gespiegelt.get("Statistik-Archiv", 0),
         ".env gesichert": "ja" if env_dabei else "nein",
