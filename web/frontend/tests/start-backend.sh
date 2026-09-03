@@ -29,7 +29,24 @@ echo "RATSLOTSE_DB=$RATSLOTSE_DB"
 # Trap cleans up temp dir when this process exits.
 trap 'rm -rf "$TMP_DIR"' EXIT INT TERM
 
-PYTHON_BIN="${PYTHON_BIN:-$REPO_ROOT/.venv/bin/python}"
+# Das venv liegt im HAUPT-Checkout: `.venv/` ist gitignored und wird beim
+# Anlegen eines Worktrees nicht mitkopiert. Ohne diesen zweiten Kandidaten
+# startet die Browser-Suite aus einem Worktree gar nicht — der Server bricht
+# mit „No such file or directory" ab, und Playwright meldet nur, dass der
+# webServer nicht hochkam. Dieselbe Suche wie in `scripts/pruefe.py`.
+if [ -z "$PYTHON_BIN" ]; then
+  PYTHON_BIN="$REPO_ROOT/.venv/bin/python"
+  if [ ! -x "$PYTHON_BIN" ]; then
+    GEMEINSAM="$(git -C "$REPO_ROOT" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)"
+    [ -n "$GEMEINSAM" ] && PYTHON_BIN="$(dirname "$GEMEINSAM")/.venv/bin/python"
+  fi
+fi
+if [ ! -x "$PYTHON_BIN" ]; then
+  echo "Kein Python-venv gefunden ($PYTHON_BIN)." >&2
+  echo "  python3.12 -m venv .venv && .venv/bin/pip install -r requirements.txt \\" >&2
+  echo "    -r web/backend/requirements.txt -c constraints.txt" >&2
+  exit 1
+fi
 
 # Ratsdaten aus dem lokalen Abzug, wenn einer da ist (scripts/lokale_daten.py).
 # Ohne ihn laufen die Tests wie bisher gegen eine leere Datenbank — in der CI

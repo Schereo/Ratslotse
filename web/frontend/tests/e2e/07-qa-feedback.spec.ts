@@ -6,7 +6,7 @@
  * sich nicht mehr korrigieren, beide Knöpfe waren danach dauerhaft disabled.
  */
 import { test, expect } from "@playwright/test";
-import { ADMIN_EMAIL, ADMIN_PASSWORD, loginAdmin } from "./helpers";
+import { ADMIN_EMAIL, ADMIN_PASSWORD, loginAdmin, gespraecheNichtMerken } from "./helpers";
 
 /** Anmelden, egal ob das Konto schon existiert: Läuft die ganze Suite, hat
  *  01-auth es angelegt; läuft nur diese Datei, legt sie es selbst an. */
@@ -41,13 +41,20 @@ test.describe("Daumen-Feedback", () => {
       await route.fulfill({ status: 201, contentType: "application/json", body: '{"ok":true}' });
     });
 
+    await gespraecheNichtMerken(page);
     await page.goto("/fragen");
-    await page.getByPlaceholder(/Frag den Rat/).fill("Was wurde zum Radverkehr beschlossen?");
+    // Der Platzhalter heißt „Deine Frage …" — „Frag den Rat" steht heute auf
+    // dem Knopf des Dashboards, nicht im Eingabefeld.
+    await page.getByPlaceholder(/Deine Frage/).fill("Was wurde zum Radverkehr beschlossen?");
     await page.keyboard.press("Enter");
     await expect(page.getByText("Der Rat hat mehrere Fahrradstraßen beschlossen.")).toBeVisible();
-    // Das Abzeichen „Erste Frage" legt sich über die Aktionszeile.
+    // Das Abzeichen „Erste Frage" legt sich über die Aktionszeile — und es
+    // erscheint mit Verzögerung. Eine Sichtprüfung SOFORT nach der Antwort
+    // kommt zu früh: Sie meldet „nicht da", und der Daumen darunter bleibt
+    // danach unklickbar („visible, enabled and stable", 52 Versuche lang).
     const abzeichen = page.getByRole("button", { name: "Weiter" });
-    if (await abzeichen.isVisible().catch(() => false)) await abzeichen.click();
+    await abzeichen.click({ timeout: 5_000 }).catch(() => {});
+    await expect(abzeichen).toHaveCount(0);
 
     const hoch = page.getByRole("button", { name: "Antwort war hilfreich" });
     const runter = page.getByRole("button", { name: "Antwort war nicht hilfreich" });

@@ -135,6 +135,14 @@ python scripts/pruefe.py            # alles, was auch die CI prüft
 python scripts/pruefe.py --schnell  # die fünf Prüfungen unter ~4 s
 ```
 
+Nicht dabei sind die **Browsertests** — sie brauchen zwei laufende Server und
+einen Browser und dauern zwei Minuten. Sie laufen in der CI
+(`.github/workflows/e2e.yml`) und lokal auf Zuruf:
+
+```bash
+cd web/frontend && npx playwright test
+```
+
 Er bündelt, was vorher über `CONTRIBUTING.md` und drei Workflow-Dateien
 verstreut stand: Adressen-Lint, ruff, den API-Vertrag, die generierten
 Frontend-Typen, die Changelog-Fragmente, die Testsuite, den
