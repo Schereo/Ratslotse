@@ -395,3 +395,115 @@ def test_plannummer_holt_ihre_klammer_aus_einem_aelteren_titel(client):
     nach_name = {s["name"]: s for s in antwort["suggestions"]}
     assert nach_name["Bebauungsplan 865"]["context"] == "Quartier am Krusenbusch"
     assert "Bebauungsplan 999" not in nach_name
+
+
+def test_nebenan_zeigt_nichts_aus_dem_eigenen_stadtteil(client):
+    """„Direkt nebenan" ist eine Behauptung über die Lage — und sie war falsch.
+
+    Tims Befund (03.09.2026): Unter Krusenbusch standen „Tweelbäker Tredde"
+    und „Am Schmeel" als nebenan, obwohl beide Straßen mitten durch
+    Krusenbusch führen. Sie gehören eben AUCH zum Nachbarn, und der
+    Nachbar-Block fragt nur nach dessen Liste. Was nachweislich im eigenen
+    Bereich liegt, steht in der eigenen Liste — oder gar nicht.
+    """
+    from app.routers.topics import _ohne_eigenen_ortsbereich
+    from council.store import CouncilStore as CS
+
+    _register(client)
+    _saat()
+    council = CS(Path(_pfade()[1]))
+    try:
+        with council._conn:
+            # Wie eine Straße, die durch beide Bereiche läuft.
+            council._conn.executemany(
+                "INSERT OR REPLACE INTO council_location_districts "
+                "(location_slug,district,place_id,share) VALUES (?,?,?,?)",
+                [("alte-fleiwa", "Osternburg", "osternburg", 0.6),
+                 ("alte-fleiwa", "Drielake", "drielake", 0.4)])
+        place = council.resolve_place("drielake")
+        kandidaten = [{"slug": "alte-fleiwa", "name": "Alte Fleiwa"},
+                      {"slug": "caecilienbruecke", "name": "Cäcilienbrücke"}]
+        bleibt = [k["name"] for k in _ohne_eigenen_ortsbereich(council, kandidaten, place)]
+        assert bleibt == ["Cäcilienbrücke"], bleibt
+    finally:
+        council.close()
+    # Und über den Endpunkt: unter „nebenan" darf sie nicht auftauchen.
+    gruppe = client.get("/api/topics/suggestions?district=drielake").json()["districts"][0]
+    assert "Alte Fleiwa" not in {v["name"] for v in gruppe["nearby"]}
+
+
+def test_plannummer_und_klartext_stehen_nicht_nebeneinander(client):
+    """Tims Befund (03.09.2026): Unter Krusenbusch stand „Quartier am
+    Krusenbusch" zweimal — einmal als eigener Chip, einmal als Einordnung
+    unter „Bebauungsplan 865". Dann bleibt der Klartext: Das Quartier ist das
+    Thema, die Nummer nur sein Aktenzeichen.
+    """
+    from app.routers.topics import _einordnung_schon_genannt, _name_tokens
+
+    daneben = [_name_tokens("Quartier am Krusenbusch")]
+    assert _einordnung_schon_genannt("Bebauungsplan 865", "Quartier am Krusenbusch", daneben)
+    # Ein anderer Ort ist keine Dublette — und ein Klartext-Chip verdrängt
+    # niemals einen anderen Klartext-Chip.
+    assert not _einordnung_schon_genannt("Bebauungsplan 865", "Quartier am Krusenbusch",
+                                         [_name_tokens("Eisenbahnüberführung Krusenbusch")])
+    assert not _einordnung_schon_genannt("Quartier am Krusenbusch", "Ein Gebiet im Süden.",
+                                         [_name_tokens("Bebauungsplan 865")])
+    # Nennt die Klammer ZWEI Orte, muss auch jeder gedeckt sein: Über den
+    # Schulgraben sagt sonst nichts etwas, die Nummer bleibt also stehen.
+    zwei = ("Bebauungsplan 862", "Am Schulgraben / Tweelbäker Tredde")
+    assert not _einordnung_schon_genannt(*zwei, [_name_tokens("Tweelbäker Tredde")])
+    assert _einordnung_schon_genannt(*zwei, [_name_tokens("Tweelbäker Tredde"),
+                                             _name_tokens("Am Schulgraben")])
+    # Ein Fließtext als Einordnung ist keine Ortsnennung — daraus wird nie
+    # eine Dublette geschlossen.
+    assert not _einordnung_schon_genannt(
+        "Bebauungsplan 865",
+        "Der Plan regelt die Bebauung im Quartier am Krusenbusch.", daneben)
+
+    _register(client)
+    _saat()
+    council = CouncilStore(Path(_pfade()[1]))
+    try:
+        jung = (date.today() - timedelta(days=10)).isoformat()
+        council.save_session(CouncilSession(2, "Rat", jung, "17:00", "Ratssaal"))
+        with council._conn:
+            titel = [
+                "Bebauungsplan 865 (Quartier am Krusenbusch) - Aufstellungsbeschluss",
+                "Bebauungsplan 865 (Quartier am Krusenbusch) - Satzungsbeschluss",
+                "Quartier am Krusenbusch - Sachstand",
+                "Quartier am Krusenbusch - Erschließung",
+            ]
+            for nr, t in enumerate(titel, start=10):
+                council._insert_decision(2, nr, "decision", None, f"Ö {nr}", t, "B",
+                                         "accepted", None, None, None, [], None, None, None)
+            ids = {r[1]: r[0] for r in council._conn.execute("SELECT id, title FROM council_decisions")}
+            council._conn.execute(
+                "INSERT INTO council_entities (id, slug, name, kind, n) "
+                "VALUES (93,'bebauungsplan-865','Bebauungsplan 865','project',2)")
+            council._conn.execute(
+                "INSERT INTO council_entities (id, slug, name, kind, n) "
+                "VALUES (94,'quartier-am-krusenbusch','Quartier am Krusenbusch','place',2)")
+            for t in titel[:2]:
+                council._conn.execute("INSERT INTO council_entity_links VALUES (93, ?)", (ids[t],))
+            for t in titel[2:]:
+                council._conn.execute("INSERT INTO council_entity_links VALUES (94, ?)", (ids[t],))
+        for slug, name in (("bebauungsplan-865", "Bebauungsplan 865"),
+                           ("quartier-am-krusenbusch", "Quartier am Krusenbusch")):
+            council.save_topic_vagueness(slug, name, {"vague": False, "hint": "", "suggestion": ""})
+    finally:
+        council.close()
+    namen = {s["name"] for s in client.get("/api/topics/suggestions").json()["suggestions"]}
+    assert "Quartier am Krusenbusch" in namen
+    assert "Bebauungsplan 865" not in namen, namen
+
+
+def test_citywide_null_laesst_die_stadtweite_liste_weg(client):
+    """Damit die Oberfläche je Stadtteil einzeln fragen kann: Ein Aufruf je
+    Gruppe, jede erscheint, sobald sie da ist — statt dass man auf die
+    langsamste wartet."""
+    _register(client)
+    _saat()
+    antwort = client.get("/api/topics/suggestions?district=osternburg&citywide=0").json()
+    assert antwort["suggestions"] == []
+    assert [g["name"] for g in antwort["districts"]] == ["Osternburg"]
+    assert {s["name"] for s in antwort["districts"][0]["suggestions"]} == {"Alte Fleiwa", "Cäcilienbrücke"}
