@@ -170,6 +170,26 @@ def test_failed_chunk_is_reported_not_swallowed(caplog):
     assert "Abschnitte ausgefallen" in caplog.text
 
 
+def test_empty_provider_responses_keep_local_retry_and_fail_only_chunk(monkeypatch, caplog):
+    """Fünf leere Antworten enden als ausgefallener Abschnitt, nicht als
+    Abbruch des ganzen Video-Laufs."""
+    calls = []
+
+    def empty_response(**kwargs):
+        calls.append(kwargs)
+        return type("Response", (), {"choices": None, "usage": None})()
+
+    monkeypatch.setattr(videos.llm, "chat_complete", empty_response)
+    monkeypatch.setattr(videos.time, "sleep", lambda _seconds: None)
+    with caplog.at_level("ERROR"):
+        found, failed = videos._one_pass("Ö 1\tTest", "Transkript", 0, "A")
+    assert found == []
+    assert failed == {0}
+    assert len(calls) == videos.EMPTY_RETRIES + 1 == 5
+    assert all(call["_allow_empty_response"] is True for call in calls)
+    assert "Video-Lesen A/0 fehlgeschlagen" in caplog.text
+
+
 def test_anchor_prefers_full_quote_over_ambiguous_head():
     """Die Abstimmungs-Formeln beginnen wortgleich — der 60-Zeichen-Kopf
     allein verankerte TOP 14.4 bei Minute 25 statt 1:50 (gemessen 31.08.).

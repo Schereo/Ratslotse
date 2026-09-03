@@ -142,6 +142,7 @@ def transcribe_chunk(path: Path, attempt: int = 0) -> str:
     audio = base64.b64encode(path.read_bytes()).decode()
     resp = llm.chat_complete(
         model=STT_MODEL, _feature="livestream_transcript",
+        _allow_empty_response=True,
         messages=[{"role": "user", "content": [
             {"type": "text", "text": TRANSCRIBE_PROMPT},
             {"type": "input_audio",

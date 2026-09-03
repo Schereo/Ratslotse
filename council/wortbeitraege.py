@@ -72,11 +72,11 @@ def _ein_fenster(text: str, model: str) -> list[dict]:
     for versuch in range(2):
         resp = llm.chat_complete(
             model=model, _feature="speeches", temperature=0,
+            _allow_empty_response=True,
             max_tokens=16000, messages=messages, **extra,
         )
-        # choices kann bei Provider-Fehlern/Content-Filter null sein — der
-        # nackte [0]-Zugriff riss im Massenlauf aus der Retry-Schleife aus
-        # (ksinr 4299/4301, 10.08.). Leer → normaler Retry-Pfad.
+        # Dieser Batch-Pfad behält zwei lokale Versuche: Das Protokoll bleibt
+        # bei dauerhaft leerer Providerantwort für den nächsten Lauf offen.
         choices = getattr(resp, "choices", None) or []
         content = _strip_fences(choices[0].message.content or "") if choices else ""
         if content:
