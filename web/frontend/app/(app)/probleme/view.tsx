@@ -12,7 +12,10 @@ import {
   X,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { MeldeRangbalken } from "@/components/grafik/melde-rangbalken";
+import {
+  MeldeRangbalken,
+  MeldeRanglisteGrafik,
+} from "@/components/grafik/melde-rangbalken";
 import { Mascot } from "@/components/mascot";
 import { EmptyState, ErrorState, PageHeader, Segmented, Spinner } from "@/components/ui";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -256,7 +259,7 @@ function Leaderboard({ problems, allProblems, selectedId, onSelect, onShowMap }:
   onSelect: (id: number | null) => void;
   onShowMap: (problem: PublicProblem) => void;
 }) {
-  const observedProblem = problems[0];
+  const mostReportedProblem = problems[0];
   const maxReports = Math.max(...allProblems.map((problem) => problem.independent_reports));
   const ranks = new Map(allProblems.map((problem, index) => [problem.id, index + 1]));
 
@@ -267,7 +270,7 @@ function Leaderboard({ problems, allProblems, selectedId, onSelect, onShowMap }:
           <Mascot
             pose="point"
             regie="ruhig"
-            label={`Lotti zeigt auf das meistgemeldete Problem dieser Auswahl: ${observedProblem.title}`}
+            label={`Lotti zeigt auf das meistgemeldete Problem dieser Auswahl: ${mostReportedProblem.title}`}
             className="mx-auto h-24 w-24 sm:h-28 sm:w-28"
           />
           <div>
@@ -280,7 +283,14 @@ function Leaderboard({ problems, allProblems, selectedId, onSelect, onShowMap }:
         </div>
       </div>
 
-      <ol className="space-y-2.5" aria-label="Meistgemeldete ungelöste Probleme">
+      <MeldeRanglisteGrafik
+        beleg={(
+          <>
+            <span className="font-mono font-medium uppercase tracking-[0.07em] text-foreground/75">Quelle der Rangfolge:</span>{" "}
+            Freigegebene unabhängige Meldungen im Ratslotse-Meldungsbestand · gesamter Zeitraum
+          </>
+        )}
+      >
         {problems.map((problem) => {
           const rank = ranks.get(problem.id) ?? 0;
           const expanded = selectedId === problem.id;
@@ -296,7 +306,7 @@ function Leaderboard({ problems, allProblems, selectedId, onSelect, onShowMap }:
             />
           );
         })}
-      </ol>
+      </MeldeRanglisteGrafik>
     </section>
   );
 }

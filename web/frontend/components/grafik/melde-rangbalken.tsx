@@ -1,4 +1,29 @@
+import type { ReactNode } from "react";
 import type { ProblemFrequency } from "@/lib/probleme";
+
+/**
+ * Gemeinsamer Rahmen der Ranglisten-Grafik. Die Seite liefert den Beleg,
+ * weil nur sie die Herkunft ihrer Daten kennt; das Grafikmodul hält ihn als
+ * sichtbare Quellenzeile unmittelbar bei allen Balken (GB-00).
+ */
+export function MeldeRanglisteGrafik({
+  children,
+  beleg,
+}: {
+  children: ReactNode;
+  beleg: ReactNode;
+}) {
+  return (
+    <figure>
+      <ol className="space-y-2.5" aria-label="Meistgemeldete ungelöste Probleme">
+        {children}
+      </ol>
+      <figcaption className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
+        {beleg}
+      </figcaption>
+    </figure>
+  );
+}
 
 /**
  * Proportionale Null-bis-Max-Schiene für die „Meistgemeldet“-Rangliste.

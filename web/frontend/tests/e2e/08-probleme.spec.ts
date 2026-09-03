@@ -114,6 +114,10 @@ test.describe("Öffentliche Problemübersicht", () => {
     await expect(entries.nth(2)).toContainText("Beispiel: getrennte Grünflächen");
     await expect(entries.nth(3)).toContainText("Beispiel: Musterquartier");
     await expect(page.locator('[data-ranggruppe="top-drei"]')).toHaveCount(3);
+    const attribution = page.locator("figcaption").filter({
+      hasText: "Quelle der Rangfolge: Freigegebene unabhängige Meldungen im Ratslotse-Meldungsbestand · gesamter Zeitraum",
+    });
+    await expect(attribution).toBeVisible();
     await expect(page.locator(".problem-rank-bar").first()).toHaveCSS("transition-duration", "0s");
     const rank = entries.nth(0).getByText("01", { exact: true });
     await expect(rank).toHaveCSS("font-family", /Inter/);
