@@ -2,15 +2,41 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, RefreshCw } from "lucide-react";
-import type { GeoJSON as LeafletGeoJSON, Map as LeafletMap, Marker, Path, PathOptions, TileLayer } from "leaflet";
+import type { GeoJSON as LeafletGeoJSON, LatLngBounds, Map as LeafletMap, Marker, Path, PathOptions, TileLayer } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { basemapUrl } from "@/lib/basemap";
-import { isProblemMappable, MELDE_HAEUFIGKEIT, PROBLEM_SCOPE, type ProblemFrequency, type PublicProblem } from "@/lib/probleme";
+import { isProblemMappable, PROBLEM_SCOPE, reportCountLabel, type ProblemFrequency, type PublicProblem } from "@/lib/probleme";
 import { cn } from "@/lib/utils";
 
 const TILES = basemapUrl("voyager");
 
-type ShapeEntry = { paths: Path[]; controls: Path[]; frequency: ProblemFrequency; scope: "route" | "area" };
+type ShapeEntry = {
+  paths: Path[];
+  controls: Path[];
+  bounds: LatLngBounds;
+  frequency: ProblemFrequency;
+  scope: "route" | "area";
+};
+
+function focusProblem(
+  map: LeafletMap,
+  problem: PublicProblem,
+  markers: Map<number, Marker>,
+  shapes: Map<number, ShapeEntry>,
+) {
+  const animate = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  map.stop();
+  if (problem.scope_kind === "point" || problem.scope_kind === "facility") {
+    const marker = markers.get(problem.id);
+    if (marker) map.flyTo(marker.getLatLng(), problem.scope_kind === "facility" ? 16 : 17, { animate, duration: 0.28 });
+    return;
+  }
+  const shape = shapes.get(problem.id);
+  if (shape?.bounds.isValid()) {
+    const zoom = Math.max(map.getMinZoom(), Math.min(16, map.getBoundsZoom(shape.bounds) - 1));
+    map.flyTo(shape.bounds.getCenter(), zoom, { animate, duration: 0.28 });
+  }
+}
 
 function shapeStyle(frequency: ProblemFrequency, scope: "route" | "area", selected: boolean): PathOptions {
   if (scope === "route") {
@@ -68,7 +94,7 @@ export function ProblemMap({ problems, selectedId, onSelect, className }: {
         for (const problem of problems) {
           if (!isProblemMappable(problem)) continue;
           const selected = problem.id === selectedRef.current;
-          const label = `${problem.title} · ${PROBLEM_SCOPE[problem.scope_kind]} · ${MELDE_HAEUFIGKEIT[problem.frequency]}`;
+          const label = `${problem.title} · ${PROBLEM_SCOPE[problem.scope_kind]} · ${reportCountLabel(problem.independent_reports)}`;
           if (problem.scope_kind === "point" || problem.scope_kind === "facility") {
             const size = problem.scope_kind === "facility" ? 40 : 34;
             const marker = L.marker([problem.latitude!, problem.longitude!], {
@@ -122,14 +148,19 @@ export function ProblemMap({ problems, selectedId, onSelect, className }: {
               selectRef.current(problem.id);
             });
           });
-          shapesRef.current.set(problem.id, { paths, controls, frequency: problem.frequency, scope });
           const shapeBounds = (shape as LeafletGeoJSON).getBounds();
+          shapesRef.current.set(problem.id, { paths, controls, bounds: shapeBounds, frequency: problem.frequency, scope });
           if (shapeBounds.isValid()) {
             bounds.extend(shapeBounds);
             hasBounds = true;
           }
         }
-        if (hasBounds) map.fitBounds(bounds, { padding: [36, 36], maxZoom: 14 });
+        const selectedProblem = problems.find((problem) => problem.id === selectedRef.current);
+        if (selectedProblem && isProblemMappable(selectedProblem)) {
+          focusProblem(map, selectedProblem, markers, shapes);
+        } else if (hasBounds) {
+          map.fitBounds(bounds, { padding: [36, 36], maxZoom: 14, animate: false });
+        }
       } catch (error) {
         console.error("[ProblemMap] Initialisierung fehlgeschlagen:", error);
         if (!cancelled) setMapError(true);
@@ -142,7 +173,10 @@ export function ProblemMap({ problems, selectedId, onSelect, className }: {
       mapRef.current = null;
       markers.clear();
       shapes.clear();
-      try { map?.remove(); } catch { /* StrictMode-Container ist bereits verworfen. */ }
+      try {
+        map?.stop();
+        map?.remove();
+      } catch { /* StrictMode-Container ist bereits verworfen. */ }
     };
   }, [problems, retryKey]);
 
@@ -155,7 +189,11 @@ export function ProblemMap({ problems, selectedId, onSelect, className }: {
       shape.paths.forEach((path) => path.setStyle(shapeStyle(shape.frequency, shape.scope, selected)));
       shape.controls.forEach((control) => control.getElement()?.setAttribute("aria-pressed", String(selected)));
     }
-  }, [selectedId]);
+    const selectedProblem = problems.find((problem) => problem.id === selectedId);
+    if (mapRef.current && selectedProblem && isProblemMappable(selectedProblem)) {
+      focusProblem(mapRef.current, selectedProblem, markersRef.current, shapesRef.current);
+    }
+  }, [problems, selectedId]);
 
   return (
     <div className={cn("relative overflow-hidden rounded-xl border border-border bg-card", className)}>

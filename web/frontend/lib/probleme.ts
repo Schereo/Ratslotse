@@ -27,7 +27,6 @@ export const PROBLEM_STATUS: Record<ProblemStatus, string> = {
   multiple_reports: "Mehrfach gemeldet",
   verified: "Geprüft",
   persists: "Weiterhin vorhanden",
-  apparently_resolved: "Offenbar behoben",
 };
 
 export const PROBLEM_SCOPE: Record<PublicProblem["scope_kind"], string> = {
@@ -39,11 +38,15 @@ export const PROBLEM_SCOPE: Record<PublicProblem["scope_kind"], string> = {
 };
 
 export const MELDE_HAEUFIGKEIT: Record<ProblemFrequency, string> = {
-  once: "einmal gemeldet",
-  several: "2–4 Mal gemeldet",
-  many: "5–9 Mal gemeldet",
-  very_many: "10 Mal oder öfter gemeldet",
+  once: "1 Meldung",
+  several: "2–4 Meldungen",
+  many: "5–9 Meldungen",
+  very_many: "10 oder mehr Meldungen",
 };
+
+export function reportCountLabel(count: number): string {
+  return `${count} unabhängige ${count === 1 ? "Meldung" : "Meldungen"}`;
+}
 
 function isPosition(value: unknown): value is number[] {
   return (

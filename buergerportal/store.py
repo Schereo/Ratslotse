@@ -187,7 +187,11 @@ class ProblemStore:
         category: str | None = None,
         status: str | None = None,
     ) -> list[dict[str, Any]]:
-        clauses = ["published_at IS NOT NULL", "independent_reports >= 1"]
+        clauses = [
+            "published_at IS NOT NULL",
+            "independent_reports >= 1",
+            "status != 'apparently_resolved'",
+        ]
         params: list[str] = []
         if category is not None:
             clauses.append("category = ?")
@@ -197,18 +201,18 @@ class ProblemStore:
             params.append(status)
         example_clauses = [clause for clause in clauses if clause != "published_at IS NOT NULL"]
         rows = self._conn.execute(
-            f"""SELECT id, title, category, scope_kind, location_label,
+            f"""SELECT id, title, summary, category, scope_kind, location_label,
                        latitude, longitude, geometry_json, status,
                        independent_reports, 0 AS is_fictional, last_observed_at
                 FROM civic_problems
                 WHERE {' AND '.join(clauses)}
                 UNION ALL
-                SELECT id, title, category, scope_kind, location_label,
+                SELECT id, title, summary, category, scope_kind, location_label,
                        latitude, longitude, geometry_json, status,
                        independent_reports, 1 AS is_fictional, last_observed_at
                 FROM civic_problem_feature_examples
                 WHERE {' AND '.join(example_clauses)}
-                ORDER BY last_observed_at DESC, id DESC""",
+                ORDER BY independent_reports DESC, title COLLATE NOCASE ASC, id ASC""",
             [*params, *params],
         ).fetchall()
         return [self._public_summary(row) for row in rows]
@@ -226,6 +230,7 @@ class ProblemStore:
         return {
             "id": row["id"],
             "title": row["title"],
+            "summary": row["summary"],
             "category": row["category"],
             "scope_kind": row["scope_kind"],
             "location_label": row["location_label"],
@@ -233,6 +238,7 @@ class ProblemStore:
             "longitude": longitude,
             "geometry": _public_geometry(row["scope_kind"], row["geometry_json"]),
             "status": row["status"],
+            "independent_reports": row["independent_reports"],
             "frequency": report_frequency(row["independent_reports"]),
             "fictional": bool(row["is_fictional"]),
         }

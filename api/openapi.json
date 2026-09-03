@@ -8368,7 +8368,7 @@
         "type": "object"
       },
       "PublicProblemSummary": {
-        "description": "Karten-/Board-Projektion ohne exakte Meldezahl oder private Evidenz.",
+        "description": "Datensparsame Übersicht aus der freigegebenen öffentlichen Projektion.",
         "properties": {
           "category": {
             "enum": [
@@ -8431,6 +8431,10 @@
             "title": "Id",
             "type": "integer"
           },
+          "independent_reports": {
+            "title": "Independent Reports",
+            "type": "integer"
+          },
           "latitude": {
             "title": "Latitude",
             "type": [
@@ -8465,10 +8469,13 @@
               "new",
               "multiple_reports",
               "verified",
-              "persists",
-              "apparently_resolved"
+              "persists"
             ],
             "title": "Status",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
             "type": "string"
           },
           "title": {
@@ -8479,6 +8486,7 @@
         "required": [
           "id",
           "title",
+          "summary",
           "category",
           "scope_kind",
           "location_label",
@@ -8486,6 +8494,7 @@
           "longitude",
           "geometry",
           "status",
+          "independent_reports",
           "frequency",
           "fictional"
         ],
@@ -17459,7 +17468,7 @@
     },
     "/api/probleme": {
       "get": {
-        "description": "Freigegebene, datensparsame Projektionen ohne exakte Meldezahlen.",
+        "description": "Ungelöste öffentliche Projektionen nach unabhängigen Meldungen.",
         "operationId": "public_problems_api_probleme_get",
         "parameters": [
           {
