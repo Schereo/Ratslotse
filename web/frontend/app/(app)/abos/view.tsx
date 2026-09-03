@@ -9,7 +9,7 @@ import { vertrag } from "@/lib/vertrag";
 import type { CommitteeDetail } from "@/lib/types";
 import { CardListSkeleton, ErrorState, PageHeader, formatDate, toast } from "@/components/ui";
 import { wochentagKurz } from "@/lib/utils";
-import { committeeExplains, committeeRank, shortCommittee } from "@/lib/committees";
+import { committeeExplains, committeeIcon, committeeRank, shortCommittee } from "@/lib/committees";
 
 /** Der Termin in zwei Längen — oder gar nicht.
  *
@@ -32,66 +32,108 @@ function terminText(d: CommitteeDetail): { kurz: string; lang: string } | null {
   return { kurz: `${praefix}${ohneJahr}${zeit}`, lang: `${praefix}${voll}${zeit}` };
 }
 
-function Zeile({ d, abonniert, onToggle, busy, laeutet }: {
+/** Das Zeichen des Gremiums auf getönter Scheibe — dieselbe Bauform wie im
+ *  Einrichtungs-Assistenten (`GremiumZeichen` in onboarding-flow.tsx), damit
+ *  ein Gremium überall gleich aussieht: Kelle für den Bau, Blatt fürs Grün.
+ *  Abonniert = gefüllt, wie dort „gewählt = gefüllt". */
+function GremiumZeichen({ committee, aktiv }: { committee: string; aktiv: boolean }) {
+  const Icon = committeeIcon(committee);
+  return (
+    <span aria-hidden className={
+      "flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] transition-colors "
+      + (aktiv ? "bg-primary text-primary-foreground" : "bg-primary/[0.08] text-primary")
+    }>
+      <Icon className="h-[18px] w-[18px]" strokeWidth={2} />
+    </span>
+  );
+}
+
+/** Eine Kachel je Gremium — Zeichen, Name, Erklärsatz, Termin, Beschlusszahl,
+ *  Knopf.
+ *
+ *  Bis 09/2026 war das eine flache Zeile in einer geteilten Liste. Sie trug
+ *  dieselben Angaben, aber sie sahen alle gleich aus: sechzehn Zeilen Text
+ *  untereinander, die man lesen musste, um sie zu unterscheiden — genau der
+ *  Einwand, der im Einrichtungs-Assistenten schon zu den Kacheln geführt hat
+ *  („sehr plain, sehr langweilig", Tim, 01.09.2026). Jetzt steht hier dieselbe
+ *  Kachel wie dort, nur um das erweitert, was die Abo-Seite mehr weiß.
+ *
+ *  Nichts fällt dabei weg: Die Beschlusszahl stand vorher erst ab 576 px
+ *  Blattbreite in der Zeile (`@xl:inline`) — auf dem Telefon war sie gar nicht
+ *  zu sehen. In der Kachel hat sie ihre eigene Fußzeile und gilt auf jeder
+ *  Breite. */
+function Kachel({ d, abonniert, onToggle, busy, laeutet }: {
   d: CommitteeDetail; abonniert: boolean; onToggle: () => void; busy: boolean;
   /** Gerade abonniert — die Glocke schwingt einmal aus. */
   laeutet: boolean;
 }) {
   const termin = terminText(d);
   const erklaerung = committeeExplains(d.name);
-  /* `items-center`: Seit die Zeile drei Zeilen trägt (Name, Erklärung,
-     Termin), klebten Beschlusszahl und Knopf oben am Namen und die Zeile sah
-     unten angeschnitten aus (Tim, 28.08.2026). Beide gehören zur ganzen Zeile,
-     nicht zum Namen — also in ihre Mitte. */
   return (
-    <div className="flex items-center gap-3 px-4 py-3">
-      <div className="min-w-0 flex-1">
-        {/* Der amtliche Name bleibt im title erreichbar — angezeigt wird der
-            Kurzname, wie im Einrichtungs-Assistenten (Design 28a/R3). */}
-        <p className="text-sm font-medium leading-snug text-foreground" title={d.name}>
-          {shortCommittee(d.name)}
-        </p>
-        {/* Der Erklärsatz kam mit Design 28a/R3 dazu, weil ein Gremienname
-            allein nicht sagt, worüber dort entschieden wird — und genau das
-            ist die Frage vor einem Abo. Ein unbekanntes Gremium bekommt
-            keinen erfundenen Satz, dann bleibt es beim Namen. */}
-        {erklaerung && (
-          <p className="mt-0.5 text-[12.5px] leading-relaxed text-muted-foreground">{erklaerung}</p>
-        )}
-        {/* Mobil ohne das Wort „Nächste Sitzung": Es kostete so viel Zeile,
-            dass die Uhrzeit dahinter abgeschnitten wurde — also genau die
-            Angabe, für die die Zeile da ist. Neben einem Datum in der Zukunft
-            sagt der Zusatz ohnehin wenig; auf dem Desktop ist Platz für ihn. */}
-        {termin && (
-          <p className="mt-1 truncate font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
-            <span className="hidden sm:inline">Nächste Sitzung · {termin.lang}</span>
-            <span className="sm:hidden">{termin.kurz}</span>
+    <div className={
+      "flex flex-col rounded-xl border p-3.5 transition-colors "
+      + (abonniert ? "border-primary bg-primary/5" : "border-border bg-card")
+    }>
+      <div className="flex items-start gap-3 pb-3">
+        <GremiumZeichen committee={d.name} aktiv={abonniert} />
+        <div className="min-w-0 flex-1">
+          {/* Der amtliche Name bleibt im title erreichbar — angezeigt wird der
+              Kurzname, wie im Einrichtungs-Assistenten (Design 28a/R3). */}
+          <p className="text-[13.5px] font-semibold leading-snug text-foreground" title={d.name}>
+            {shortCommittee(d.name)}
           </p>
-        )}
+          {/* Der Erklärsatz kam mit Design 28a/R3 dazu, weil ein Gremienname
+              allein nicht sagt, worüber dort entschieden wird — und genau das
+              ist die Frage vor einem Abo. Ein unbekanntes Gremium bekommt
+              keinen erfundenen Satz, dann bleibt es beim Namen. */}
+          {erklaerung && (
+            <p className="mt-0.5 text-[12px] leading-snug text-muted-foreground">{erklaerung}</p>
+          )}
+        </div>
       </div>
-      {d.decisions_year > 0 && (
-        <span className="hidden shrink-0 whitespace-nowrap text-[11px] text-muted-foreground @xl:inline">
-          {d.decisions_year} {d.decisions_year === 1 ? "Beschluss" : "Beschlüsse"} {new Date().getFullYear()}
-        </span>
-      )}
-      <button
-        type="button" onClick={onToggle} disabled={busy}
-        aria-label={`${d.name} ${abonniert ? "abbestellen" : "abonnieren"}`}
-        className={
-          abonniert
-            ? "inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl border border-border bg-card px-3 text-[13px] font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-50"
-            : "inline-flex h-8 shrink-0 items-center whitespace-nowrap rounded-xl bg-primary px-3 text-[13px] font-medium text-primary-foreground shadow-[0_1px_2px_hsl(var(--primary)/0.25)] transition-opacity hover:opacity-90 disabled:opacity-50"
-        }
-      >
-        {/* Direkt nach dem Abonnieren läutet kurz die Glocke — sie sagt, was
-            das Abo zusagt („ab jetzt melde ich mich"). Danach steht dort
-            wieder das ruhige Häkchen; ein dauerhaftes Glockensymbol wäre in
-            einer Liste mit zehn Zeilen nur Unruhe. */}
-        {laeutet
-          ? <Bell className="glocke-laeutet h-3.5 w-3.5" aria-hidden />
-          : abonniert && <Check className="h-3.5 w-3.5" aria-hidden />}
-        {abonniert ? "Abonniert" : "Abonnieren"}
-      </button>
+
+      {/* Die Fußzeile trägt die harten Angaben und den Knopf. `mt-auto` hält
+          sie am Boden: Im zweispaltigen Raster stehen zwei Kacheln
+          nebeneinander, deren Erklärsätze verschieden lang umbrechen — ohne
+          das säßen ihre Knöpfe auf verschiedenen Höhen. */}
+      <div className="mt-auto flex items-end justify-between gap-3 border-t border-border/60 pt-3">
+        <div className="min-w-0">
+          {/* Mobil ohne das Wort „Nächste Sitzung": Es kostete so viel Zeile,
+              dass die Uhrzeit dahinter abgeschnitten wurde — also genau die
+              Angabe, für die die Zeile da ist. Neben einem Datum in der Zukunft
+              sagt der Zusatz ohnehin wenig; auf dem Desktop ist Platz für ihn. */}
+          {termin && (
+            <p className="truncate font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
+              <span className="hidden @2xl:inline">Nächste Sitzung · {termin.lang}</span>
+              <span className="@2xl:hidden">{termin.kurz}</span>
+            </p>
+          )}
+          {d.decisions_year > 0 && (
+            <p className="mt-1 truncate text-[11px] text-muted-foreground">
+              {d.decisions_year} {d.decisions_year === 1 ? "Beschluss" : "Beschlüsse"} {new Date().getFullYear()}
+            </p>
+          )}
+        </div>
+        <button
+          type="button" onClick={onToggle} disabled={busy}
+          aria-pressed={abonniert}
+          aria-label={`${d.name} ${abonniert ? "abbestellen" : "abonnieren"}`}
+          className={
+            abonniert
+              ? "inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl border border-border bg-card px-3 text-[13px] font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-50"
+              : "inline-flex h-8 shrink-0 items-center whitespace-nowrap rounded-xl bg-primary px-3 text-[13px] font-medium text-primary-foreground shadow-[0_1px_2px_hsl(var(--primary)/0.25)] transition-opacity hover:opacity-90 disabled:opacity-50"
+          }
+        >
+          {/* Direkt nach dem Abonnieren läutet kurz die Glocke — sie sagt, was
+              das Abo zusagt („ab jetzt melde ich mich"). Danach steht dort
+              wieder das ruhige Häkchen; ein dauerhaftes Glockensymbol wäre in
+              einer Liste mit sechzehn Kacheln nur Unruhe. */}
+          {laeutet
+            ? <Bell className="glocke-laeutet h-3.5 w-3.5" aria-hidden />
+            : abonniert && <Check className="h-3.5 w-3.5" aria-hidden />}
+          {abonniert ? "Abonniert" : "Abonnieren"}
+        </button>
+      </div>
     </div>
   );
 }
@@ -191,11 +233,15 @@ export function AbosView() {
         <span>Gremien ({sortiert.length})</span>
         <span>{anzahlAbos} abonniert</span>
       </div>
-      <div className="mt-2 divide-y divide-border/60 overflow-hidden rounded-xl border border-border bg-card shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+      {/* Zwei Spalten, sobald das Blatt 576 px hergibt (Container-Query, nicht
+          Fensterbreite — DESIGNSPRACHE §4), genau wie im Einrichtungs-
+          Assistenten: Sechzehn Kacheln untereinander wären eine Reise, neben-
+          einander sind sie ein Überblick. */}
+      <div className="mt-2 grid gap-2 @xl:grid-cols-2">
         {sortiert.map((d) => {
           const abonniert = abos.includes(d.name);
           return (
-            <Zeile key={d.name} d={d} abonniert={abonniert}
+            <Kachel key={d.name} d={d} abonniert={abonniert}
               onToggle={() => toggle(d.name, abonniert)} busy={subMutation.isPending}
               laeutet={laeutet === d.name} />
           );
