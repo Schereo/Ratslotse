@@ -402,7 +402,23 @@ unten sind der gemeinsame Nenner; die Bausteine dazu stehen in
 - **Nur `transform` und `opacity`.** Alles andere löst Layout oder Paint aus
   und ruckelt auf dem Telefon. Eine Fläche, die breiter wird, skaliert; eine
   Liste, die einläuft, verschiebt sich — keine animierten `width`, `height`,
-  `top`, `margin`.
+  `top`, `margin`. **Die eine Ausnahme ist das Aufklappen**
+  (`components/aufklapp.tsx`): Was Platz schafft, muss den Fluss darunter
+  mitnehmen, das geht per Definition nicht ohne Layout. Es läuft über
+  `grid-template-rows: 0fr ↔ 1fr` — Rasterspuren sind animierbar, `height:
+  auto` ist es nicht, und eine geschätzte `max-height` läuft entweder zu früh
+  aus oder lange leer nach.
+- **Was nachlädt, fährt erst auf, wenn es da ist.** Sonst klappt der Bereich
+  auf Spinner-Höhe auf und springt beim Eintreffen des Inhalts ein zweites Mal
+  (gemessen an der Sitzungs-Tagesordnung: 118 → 1.262 px in einem Bild). Der
+  Fortschritt gehört dorthin, wo getippt wurde — an der Sitzungskarte ersetzt
+  ein Spinner den Aufklapp-Pfeil, bis die Punkte da sind.
+- **Was schon dasteht, bleibt beim Nachladen stehen.** Eine Liste durch ein
+  Skelett zu ersetzen, ändert die Seitenhöhe zweimal statt einmal, und ein
+  gleichzeitig laufender Scroll arbeitet dagegen („ein hässlicher reload …
+  wodurch alles zuckt", Tim 03.09.2026). Beim Blättern und Filtern wird die
+  alte Liste nur leiser gestellt (`.liste-laedt`); ein Skelett gibt es nur,
+  wenn es nichts gibt, was stehen bleiben könnte.
 - **Der erste Auftritt bewegt sich nicht.** Eine Markierung, die beim
   Seitenaufruf aus der Ecke hereinfliegt, behauptet einen Weg, den niemand
   gegangen ist. Gefahren wird erst, wenn es einen Vorgängerstand gibt

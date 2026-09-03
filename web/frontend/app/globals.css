@@ -1281,6 +1281,47 @@ lotti-figur {
 .animate-scrim-auf { animation: scrim-auf var(--takt-fluss) ease-out both; }
 .animate-scrim-zu { animation: scrim-zu var(--takt-abgang) ease-in both; }
 
+/* ── Aufklappen (`components/aufklapp.tsx`) ────────────────────────────────
+   Die Ausnahme von der Regel „nur transform und opacity": Was aufklappt,
+   schiebt alles darunter weiter — das IST eine Layout-Änderung, und ohne sie
+   gäbe es keinen Platz für den Inhalt. Der Fluss darunter muss mitgehen,
+   sonst überdeckte die Tagesordnung die nächste Sitzung.
+
+   `0fr ↔ 1fr` statt `height: auto`: Rasterspuren sind animierbar, `auto` ist
+   es nicht. Das Kind braucht `min-height: 0`, sonst weigert es sich zu
+   schrumpfen (Rasterkinder haben eine automatische Mindestgröße), und
+   `overflow: hidden`, damit der Inhalt beim Zufahren wirklich abgeschnitten
+   wird statt herauszuragen. */
+.aufklapp {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--takt-weg) var(--ease-out-strong);
+}
+.aufklapp[data-offen="true"] {
+  grid-template-rows: 1fr;
+}
+
+/* ── Liste lädt nach (Seitenwechsel, Filterwechsel) ────────────────────────
+   Beim Blättern wurde die Liste bis 09/2026 durch ein Skelett ERSETZT. Die
+   Seite wurde dadurch schlagartig kürzer, der gleichzeitig laufende
+   Smooth-Scroll zum Listenkopf arbeitete gegen den Höhensprung, und wenn die
+   neue Seite ankam, sprang alles ein zweites Mal — „ein hässlicher reload …
+   wodurch alles zuckt" (Tim, 03.09.2026).
+
+   Jetzt bleibt stehen, was schon da ist, und wird nur leiser gestellt. Die
+   Höhe der Seite ändert sich damit erst, wenn die neuen Karten wirklich da
+   sind — statt zweimal. Ein Skelett gibt es nur noch, wenn es NICHTS gibt,
+   was stehen bleiben könnte (erster Aufruf, leeres Ergebnis).
+
+   `pointer-events: none` gehört dazu: Was hier steht, ist im Moment des
+   Ladens bereits überholt — ein Klick darauf öffnete einen Treffer, den die
+   Liste gerade verlässt. */
+.liste-laedt {
+  opacity: 0.55;
+  pointer-events: none;
+  transition: opacity var(--takt-fluss) ease-out;
+}
+
 /* ── Aufpoppen (Zähler, Punkte, frisch erschienene Marken) ─────────────────
    Mit Überschwingen (`--ease-back-out`), weil das Ding ANKOMMT — ein Zähler,
    der von 0 auf 3 springt, soll man bemerken. Nur für Kleinteile: Auf einer
