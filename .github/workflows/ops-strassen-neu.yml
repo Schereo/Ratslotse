@@ -86,9 +86,15 @@ jobs:
           # Der Abgleich rechnet ohne Netz; die Ortsbereichs-Zugehörigkeiten
           # werden am Ende in einem Rutsch neu aufgebaut. Ein paar Minuten.
           command_timeout: 30m
+          # Der Schalter kommt über eine Shell-Variable und NICHT als
+          # bedingte Fortsetzungszeile: `${{ … || '' }}` hinter einem
+          # Backslash hat argparse ein leeres Argument zugestellt
+          # („unrecognized arguments:"), der Lauf brach ab, bevor er etwas tat.
+          # Dasselbe Muster wie in ops-sitzungsorte.yml.
           script: |
             set -e
             cd ~/app
+            TROCKEN=""
+            if [ "${{ inputs.trocken }}" = "true" ]; then TROCKEN="--trocken"; fi
             .venv/bin/python scripts/strassen_snapshot.py anwenden \
-              --datei data/strassen-snapshot.json \
-              ${{ inputs.trocken && '--trocken' || '' }}
+              --datei data/strassen-snapshot.json $TROCKEN
