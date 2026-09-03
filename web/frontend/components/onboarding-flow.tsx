@@ -756,6 +756,9 @@ function StadtteilStep({ onNext }: { onNext: () => void }) {
 type TopicRow = {
   id: number; name: string; description: string;
   decision_count?: number; decision_count_capped?: boolean; matched?: boolean;
+  /** Treffer der letzten zwölf Monate — die Zahl, die dieser Schritt zeigt.
+   *  Die Gesamtzahl (`decision_count`) steht auf der Themen-Karte. */
+  hits_12m?: number;
 };
 
 function TopicStep({ onNext }: { onNext: () => void }) {
@@ -774,16 +777,15 @@ function TopicStep({ onNext }: { onNext: () => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [editing, setEditing] = useState<TopicRow | null>(null);
-  // Wie viele Beschlüsse auf die Beschreibung passen. NICHT decision_count aus
-  // /topics — das zählt, was der Wächter bereits zugeordnet hat, und ist bei
-  // einem frisch angelegten Thema immer 0 („0 Beschlüsse passen dazu" beim
-  // Fliegerhorst mit 158 Beschlüssen). Hier zählt, was die Beschreibung trifft.
+  // Die Zahl, die am angeklickten Chip stand — damit sie oben in „Deine
+  // Themen" dieselbe bleibt. Vorher trat dort die Gesamtzahl seit 2018 an ihre
+  // Stelle: Ein Klick auf „Digitale Verwaltung 7" ergab die Zeile „23
+  // Beschlüsse", und beides las sich wie dieselbe Größe (Tim, 03.09.2026).
   //
-  // Die Zahl trägt ihre Herkunft mit: Der Vorschlags-Chip kennt nur, wie oft
-  // die Entitäts-Erkennung den Namen im letzten Jahr gesehen hat — eine andere
-  // Größe als die Treffer auf die Beschreibung. Beide „12 Beschlüsse" zu nennen
-  // war genau Tims Befund vom 16.08. („die zahlen passen nicht zusammen").
-  const [matchCount, setMatchCount] = useState<Record<string, { n: number; source: "year" | "treffer" }>>({});
+  // In diesem Schritt zählt ausschließlich das Zwölf-Monats-Fenster — der
+  // Chip-Wert hier, sonst `hits_12m` vom Server. Der Bestand seit 2018 ist die
+  // Frage der Themen-Karte, nicht die der Einrichtung.
+  const [chipZahl, setChipZahl] = useState<Record<string, number>>({});
   const topics = useQuery({
     queryKey: ["topics"],
     queryFn: () => api.get<TopicRow[]>("/topics"),
@@ -870,7 +872,7 @@ function TopicStep({ onNext }: { onNext: () => void }) {
     setNote(null);
     try {
       let description = presetDescription ?? "";
-      if (typeof presetMatches === "number") setMatchCount((m) => ({ ...m, [clean]: { n: presetMatches, source: "year" } }));
+      if (typeof presetMatches === "number") setChipZahl((m) => ({ ...m, [clean]: presetMatches }));
       if (!description) {
         const d = await api.post<Described>("/topics/describe", { name: clean });
         if (d.verdict === "ungeeignet") {
@@ -878,7 +880,10 @@ function TopicStep({ onNext }: { onNext: () => void }) {
           return;
         }
         description = d.description;
-        setMatchCount((m) => ({ ...m, [clean]: { n: d.matches, source: "treffer" } }));
+        // `d.matches` ist die Gesamtzahl seit 2018 — sie steht hier bewusst
+        // NICHT in der Zeile. Bis die frische Themenliste da ist (eine
+        // Sekunde später, mit `hits_12m`), bleibt die Zeile lieber ohne Zahl
+        // als mit einer aus einem anderen Zeitraum.
         if (d.verdict === "plausibel") {
           setNote(`Über „${clean}" hat der Rat bisher nichts entschieden — Lotti meldet sich, sobald es so weit ist.`);
         }
@@ -966,7 +971,7 @@ function TopicStep({ onNext }: { onNext: () => void }) {
               </li>
             )}
             {mine.map((t) => (
-              <TopicZeile key={t.id} topic={t} matches={matchCount[t.name]}
+              <TopicZeile key={t.id} topic={t} chipZahl={chipZahl[t.name]}
                 istStadtteil={stadtteile.some((o) => o.name.toLowerCase() === t.name.toLowerCase())}
                 onEdit={() => setEditing(t)} onRemove={() => void remove(t.id)} />
             ))}
@@ -1016,7 +1021,10 @@ function TopicStep({ onNext }: { onNext: () => void }) {
           </Kicker>
           {stadtteilChips.length > 0
             ? <OrtsVorschlaege vorschlaege={stadtteilChips} vorhanden={mine} busy={busy}
-                onWaehlen={(v) => void add(v.name, v.description, v.n)} />
+                /* Ohne `v.n`: Die Karten zeigen keine Zahl (ihr Fenster ist je
+                   Stadtteil verschieden, s. `months`). Die Zeile oben nimmt
+                   deshalb die Zwölf-Monats-Zahl vom Server. */
+                onWaehlen={(v) => void add(v.name, v.description)} />
             : nochUnterwegs.length > 0 ? <KartenPlatzhalter anzahl={JE_STADTTEIL * gruppen.length} /> : null}
           {/* Leere Stadtteile ausdrücklich benennen statt sie wegzulassen —
               sonst sähe es aus, als hätte der Schritt etwas verschluckt. */}
@@ -1225,15 +1233,14 @@ function KartenPlatzhalter({ anzahl }: { anzahl: number }) {
  *  „anpassen" — als Absatz auf der Karte trug sie 60 % der Höhe, und die
  *  Liste rutschte unter den sichtbaren Bereich. Die Trefferzahl bleibt: Sie
  *  ist der Beleg dafür, dass die Beschreibung etwas taugt. */
-function TopicZeile({ topic, matches, istStadtteil, onEdit, onRemove }: {
+function TopicZeile({ topic, chipZahl, istStadtteil, onEdit, onRemove }: {
   topic: TopicRow;
-  /** Zahl samt Herkunft — undefined, solange nichts ermittelt ist. Dann bleibt
-   *  die Zeile leer statt „0" zu behaupten. `treffer` sind Beschlüsse, die auf
-   *  die Beschreibung passen (dieselbe Definition wie Themen-Karte und Liste);
-   *  `year` ist die viel gröbere Zahl aus dem Vorschlags-Chip — wie oft der
-   *  Name im letzten Jahr überhaupt vorkam. Beide „Beschlüsse" zu nennen hat
-   *  genau die Verwirrung erzeugt, die Tim am 16.08. gemeldet hat. */
-  matches?: { n: number; source: "year" | "treffer" };
+  /** Die Zahl, die am angeklickten Vorschlags-Chip stand. Sie hat Vorrang:
+   *  Wer „Digitale Verwaltung 7" anklickt, soll oben keine andere Zahl für
+   *  dasselbe Thema lesen. Fehlt sie (selbst getippt, Stadtteil aus Schritt 2),
+   *  zählt `hits_12m` vom Server — dasselbe Fenster, andere Rechnung
+   *  (Stichwörter am Chip, semantischer Abgleich am Thema). */
+  chipZahl?: number;
   /** Dieses Thema ist einer der in Schritt 2 gewählten Stadtteile. Es steht mit in der
    *  Liste — es IST ein Thema, nur so löst es Hinweise aus —, sagt das aber
    *  auch: Sonst wirkte die Trennung der beiden Schritte hinterher hinfällig,
@@ -1242,27 +1249,24 @@ function TopicZeile({ topic, matches, istStadtteil, onEdit, onRemove }: {
   onEdit: () => void;
   onRemove: () => void;
 }) {
-  // Seit dem Sofort-Abgleich (28.08.2026) trägt das angelegte Thema selbst die
-  // verbindliche Zahl — dieselbe, die gleich auf der Themen-Karte steht. Die
-  // hat Vorrang vor der lokalen Vorschau: Die stammt aus `/topics/describe` auf
-  // den bloßen Namen, das Thema wurde aber mit „Name. Beschreibung" abgeglichen.
-  // Zwei Wege, dieselbe Definition, minimal andere Zahl — genau die Sorte
-  // Abweichung, die hier schon einmal Verwirrung gestiftet hat.
-  const zahl = topic.matched && typeof topic.decision_count === "number"
-    ? { n: topic.decision_count, source: "treffer" as const, gedeckelt: !!topic.decision_count_capped }
-    : matches && { ...matches, gedeckelt: false };
+  // Nur das Zwölf-Monats-Fenster, in beiden Richtungen. Die Gesamtzahl seit
+  // 2018 (`decision_count`) steht bewusst nicht hier: Sie ist die Aussage der
+  // Themen-Karte („was liegt vor"), während dieser Schritt neben Chips steht,
+  // die „Beschlüsse der letzten 12 Monate" zählen. Beides nebeneinander waren
+  // zwei Zahlen für dasselbe Thema (Tim, 03.09.2026).
+  const zahl = chipZahl ?? (topic.matched ? topic.hits_12m : undefined);
   return (
     <li className="flex items-center gap-2 py-1.5 text-[13px]" title={topic.description}>
       <span className={cn("shrink-0", istStadtteil ? "text-primary" : "text-signal")} aria-hidden>
         {istStadtteil ? <MapPin className="h-3.5 w-3.5" /> : <Sparkles className="h-3.5 w-3.5" />}
       </span>
       <span className="min-w-0 flex-1 truncate font-semibold text-foreground">{topic.name}</span>
-      {zahl && zahl.n > 0 && (
+      {typeof zahl === "number" && zahl > 0 && (
         <span className="hidden shrink-0 text-[11px] text-muted-foreground sm:inline">
           <span className="rounded bg-primary/10 px-1.5 font-semibold tabular-nums text-primary">
-            {zahl.n}{zahl.gedeckelt ? "+" : ""}
+            {zahl}
           </span>{" "}
-          {zahl.source === "year" ? "im letzten Jahr" : zahl.n === 1 && !zahl.gedeckelt ? "Beschluss" : "Beschlüsse"}
+          {zahl === 1 ? "Beschluss" : "Beschlüsse"} in 12 Monaten
         </span>
       )}
       <button type="button" onClick={onEdit}

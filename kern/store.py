@@ -1624,9 +1624,19 @@ class Store:
         Menschen, die sie einordnen können: mindestens Schritt 1 erreicht (wer
         beim Gruß abbricht, hat nichts angefangen), nichts abgeschlossen, seit
         ``older_than_hours`` keine Bewegung, noch nie erinnert, Konto aktiv,
-        E-Mail bestätigt — und Benachrichtigungen nicht abgeschaltet. Letzteres
-        ist die Probe aufs Exempel: Ein Aus-Schalter, den die freundlich
-        gemeinte Erinnerung übergeht, ist keiner.
+        E-Mail bestätigt.
+
+        **Der Zustellweg zählt hier nicht.** Bis zum 03.09.2026 stand hier
+        ``delivery_channel <> 'off'``, und das war richtig, solange die
+        Registrierung ``email`` vorbelegte: ``off`` konnte nur eine bewusste
+        Abbestellung sein. Seit ein neues Browser-Konto ohne Zustellweg
+        startet (der Assistent fragt danach, s. ``routers/auth.py``), heißt
+        ``off`` bei genau dieser Gruppe „noch nicht gefragt" — die Bedingung
+        hätte also die halbfertigen Einrichtungen ausgeschlossen, um die es
+        hier geht. Das ist keine Ratsmeldung, sondern eine einmalige
+        Service-Mail zum eigenen, unfertigen Konto; die laufenden
+        Benachrichtigungen bleiben aus, bis jemand zustimmt (Tims
+        Entscheidung, 03.09.2026).
         """
         cutoff = (datetime.utcnow() - timedelta(hours=older_than_hours)).isoformat(timespec="seconds")
         rows = self._conn.execute(
@@ -1636,7 +1646,6 @@ class Store:
             "  AND setup_done_at IS NULL AND setup_reminded_at IS NULL "
             "  AND COALESCE(setup_step, 0) >= 1 "
             "  AND status = 'active' AND email_verified = 1 "
-            "  AND COALESCE(delivery_channel, 'email') <> 'off' "
             "ORDER BY setup_started_at LIMIT ?",
             (cutoff, limit),
         ).fetchall()

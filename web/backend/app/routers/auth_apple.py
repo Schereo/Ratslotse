@@ -29,7 +29,7 @@ from pydantic import BaseModel, Field
 
 from kern.store import Store
 
-from ..clients import client_kind
+from ..clients import client_kind, is_app_client
 from ..config import get_settings
 from ..deps import get_store
 from ..ratelimit import login_limiter
@@ -243,7 +243,10 @@ def apple_login(
             "admin" if is_admin else "user", "active", email_verified=True,
             signup_client=client_kind(request),
         )
-        store.set_delivery_channel(user_id, "email")
+        # Wie bei der Registrierung mit Passwort: Im Browser fragt der
+        # Assistent gleich danach, also nichts vorbelegen; die App fragt
+        # nur nach Push und behält deshalb die E-Mail als Rückfallweg.
+        store.set_delivery_channel(user_id, "email" if is_app_client(request) else "off")
         store.link_apple_sub(user_id, sub, password_set=False)
         if apple_name:
             store.set_display_name(user_id, apple_name)

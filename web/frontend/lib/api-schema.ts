@@ -8662,6 +8662,11 @@ export interface components {
             /** Description */
             description: string;
             /**
+             * Hits 12M
+             * @default 0
+             */
+            hits_12m: number;
+            /**
              * Hits 6M
              * @default 0
              */
@@ -13763,4 +13768,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 3fc59480dd1ba28e2cabae80578a2ba82e694254934979b7cc38af63be98b0bd
+// vertrag-sha256: c5a3e9555dedb2b7fce6e5cf2a0049ec89c27cf5e3311ca56a786e86100d9ac8
