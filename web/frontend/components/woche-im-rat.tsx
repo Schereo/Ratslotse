@@ -7,6 +7,7 @@ import { Card } from "@/components/ui";
 import { parteiDot } from "@/components/qa-bausteine";
 import { shortCommittee } from "@/lib/committees";
 import { cn } from "@/lib/utils";
+import { Aufklapp } from "@/components/aufklapp";
 
 export type WochenSitzung = {
   ksinr: number | null; committee: string; session_date: string;
@@ -417,10 +418,18 @@ function RailSitzung({ sitzung, punkte, rest, badge, treffer, mehrere, dichte }:
         )}
       </div>
       <div className="mt-1.5">
-        {[...punkte, ...(offen ? rest : [])].map((p) => (
+        {punkte.map((p) => (
           <RailPunkt key={`${p.ksinr}-${p.item_number}`} punkt={p} top={!!p.top}
                      mehrere={mehrere} dichte={dichte} />
         ))}
+        {/* Die weiteren Punkte fahren auf, statt zu erscheinen — sie sind
+            längst geladen, es geht nur um den Platz. */}
+        <Aufklapp offen={offen}>
+          {rest.map((p) => (
+            <RailPunkt key={`${p.ksinr}-${p.item_number}`} punkt={p} top={!!p.top}
+                       mehrere={mehrere} dichte={dichte} />
+          ))}
+        </Aufklapp>
         {/* Aufklappen statt wegnavigieren (Tims Wunsch 18.08.): Die Titel
             sind schon da — ein Seitenwechsel für drei Zeilen war zu viel
             Weg. Zur vollen Tagesordnung führt der Link im Sitzungskopf. */}
@@ -438,6 +447,22 @@ function RailSitzung({ sitzung, punkte, rest, badge, treffer, mehrere, dichte }:
         )}
       </div>
     </div>
+  );
+}
+
+/** Ein Punkt in der mobilen Sitzungs-Liste — dieselbe Zeile für die zuerst
+ *  gezeigten und die aufgeklappten, damit beide nicht auseinanderlaufen. */
+function MobilPunkt({ p }: { p: WochenPunkt }) {
+  return (
+    <Link href={topHref(p.ksinr, p.item_number)} className="flex items-start gap-1.5">
+      {/* Matrix 14d: mobil nur der Punkt, kein Antragsteller-Text. */}
+      {p.applicants
+        ? <span className="mt-[5px]"><ParteiPunkte wer={p.applicants} size={6} /></span>
+        : <span className="mt-[5px] h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground/40" />}
+      <span className="text-[12.5px] leading-snug text-foreground">
+        {p.titel_kurz || p.title}
+      </span>
+    </Link>
   );
 }
 
@@ -610,21 +635,17 @@ function MobilSitzung({ sitzung, punkte, rest, weitere, badge, treffer, heute, m
         )}
       </div>
       <div className="ml-[3px] mt-1.5 flex flex-col gap-1.5 border-l-2 border-primary/25 pl-2.5">
-        {[...punkte, ...(offen ? rest : [])].map((p) => (
-          <Link
-            key={`${p.ksinr}-${p.item_number}`}
-            href={topHref(p.ksinr, p.item_number)}
-            className="flex items-start gap-1.5"
-          >
-            {/* Matrix 14d: mobil nur der Punkt, kein Antragsteller-Text. */}
-            {p.applicants
-              ? <span className="mt-[5px]"><ParteiPunkte wer={p.applicants} size={6} /></span>
-              : <span className="mt-[5px] h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground/40" />}
-            <span className="text-[12.5px] leading-snug text-foreground">
-              {p.titel_kurz || p.title}
-            </span>
-          </Link>
-        ))}
+        {punkte.map((p) => <MobilPunkt key={`${p.ksinr}-${p.item_number}`} p={p} />)}
+        {/* Aufgefahren statt erschienen. Der Abstand zwischen den Punkten
+            gehört hier IN den Aufklapper: Die Zeilen stehen in einem
+            `flex-col gap-1.5`, und ein Kind, das auf 0 zusammenfährt, nähme
+            seine Lücke sonst mit — die Karte behielte 6 px Luft, wo nichts
+            mehr ist. */}
+        <Aufklapp offen={offen}>
+          <div className="flex flex-col gap-1.5 pt-1.5">
+            {rest.map((p) => <MobilPunkt key={`${p.ksinr}-${p.item_number}`} p={p} />)}
+          </div>
+        </Aufklapp>
         {/* Was die Karte schon geladen hat, klappt hier auf, statt die Seite
             zu wechseln — wegnavigieren für einen Titel war zu viel Weg. */}
         {!offen && rest.length > 0 && (
