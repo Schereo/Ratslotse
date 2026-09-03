@@ -11,18 +11,19 @@
 # Einrichtungs-Assistenten stand sie deshalb unter „direkt nebenan", während
 # sie mitten durch den eigenen Stadtteil führt (Tims Befund, 03.09.2026).
 #
-# WARUM DER LÄUFER HOLT UND NICHT DER SERVER. Der erste Anlauf ließ den Server
-# je Straße einzeln bei Overpass fragen — und lief ins Leere:
-# **overpass-api.de ist von beiden VPS aus überhaupt nicht erreichbar**
-# (Errno 101, „Network is unreachable", über das NAT-Gateway; dev wie Prod),
-# und die erreichbaren Spiegel antworten auf `/api/interpreter` nicht. Weil
-# der Rückfall auf Nominatim stumm war, meldete der Lauf `located=513,
-# missed=2, failed=0` und hatte trotzdem nur 15 Straßen wirklich geholt.
+# WARUM EIN AUFRUF UND NICHT 500. Der erste Anlauf ließ den Server je Straße
+# einzeln bei Overpass fragen und lief ins Leere: Die Instanz erlaubt dieser
+# IP zwei Abfragen gleichzeitig („Rate limit: 2"), 500 im Sekundentakt ernten
+# 429 und 504. Weil der Rückfall auf Nominatim stumm war, meldete der Lauf
+# `located=513, missed=2, failed=0` und hatte trotzdem nur 15 Straßen wirklich
+# geholt. EIN Aufruf holt stattdessen alle benannten Wege Oldenburgs (6.534
+# Wege, 1.950 Namen, 5,9 MB, ~7 s); der Abgleich läuft danach ohne Netz.
 #
-# Deshalb ist es jetzt umgedreht: Der GitHub-Läufer holt in EINEM Aufruf alle
-# benannten Wege Oldenburgs (6.534 Wege, 1.950 Namen, 5,9 MB, ~7 s), lädt den
-# Schnappschuss auf den Server, und dort läuft der Abgleich ganz ohne Netz.
-# Die Overpass-API bekommt einen Aufruf statt fünfhundert.
+# IM ALLTAG BRAUCHT ES DIESEN WORKFLOW NICHT: Seit #1051 macht der
+# wöchentliche Lauf (`weekly_enrich`, Schritt 3b) dasselbe auf dem Server
+# selbst. Dieser hier bleibt der Handweg — für den Nachschlag nach einem
+# größeren Ingest und für den Fall, dass der Server gerade keinen Zugang hat;
+# dann holt der Läufer den Schnappschuss und legt ihn per scp hin.
 name: "Ops: Straßen vollständig nachtragen"
 
 on:

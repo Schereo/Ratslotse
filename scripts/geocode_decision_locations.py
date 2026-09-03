@@ -28,7 +28,7 @@ COUNCIL_DB = ROOT / "data" / "council.sqlite"
 
 
 def process(council_db: Path, *, limit: int | None = None, sleep: float = 1.1,
-            erneut: bool = False, strassen_neu: bool = False) -> dict:
+            erneut: bool = False) -> dict:
     store = CouncilStore(council_db)
     curated = store.apply_curated_location_geocodes()
     reused = store.hydrate_location_geo_from_entities()
@@ -38,18 +38,6 @@ def process(council_db: Path, *, limit: int | None = None, sleep: float = 1.1,
     aus_namen = store.backfill_location_districts_from_name()
     catalog_links = store.backfill_location_place_ids()
     rows = store.locations_to_geocode(limit=limit, retry_failed=erneut)
-    nachzuholen: set[str] = set()
-    if strassen_neu:
-        # Bestands-Reparatur: Straßen, von denen nur ein Nominatim-Segment
-        # gespeichert ist, noch einmal ganz holen. Sie haben Koordinaten, sind
-        # also für die normale Warteschlange „erledigt" — genau deshalb braucht
-        # es den eigenen Schalter.
-        bekannt = {r["slug"] for r in rows}
-        nachgeholt = [r for r in store.street_locations_to_refine(limit=limit)
-                      if r["slug"] not in bekannt]
-        nachzuholen = {r["slug"] for r in nachgeholt}
-        print(f"Straßen neu zu holen: {len(nachgeholt)}", flush=True)
-        rows = rows + nachgeholt
     print(f"Orts-Geocoding: reused={reused}, pending={len(rows)}", flush=True)
     located = missed = failed = 0
     for index, row in enumerate(rows, start=1):
@@ -77,11 +65,6 @@ def process(council_db: Path, *, limit: int | None = None, sleep: float = 1.1,
         if result:
             store.set_location_geo(row["slug"], result[0], result[1], result[2])
             located += 1
-        elif row["slug"] in nachzuholen:
-            # Eine Reparatur, die nichts findet, darf das Vorhandene nicht
-            # löschen: Ein Segment ist weniger als die ganze Straße, aber viel
-            # mehr als keine Geometrie.
-            missed += 1
         else:
             store.set_location_geo(row["slug"], None, None, None)
             missed += 1
@@ -164,13 +147,9 @@ def main() -> int:
                     help="auch Orte erneut versuchen, bei denen das Geocoding schon "
                          "einmal misslungen ist (Overpass/Nominatim antworten nicht "
                          "jeden Tag gleich)")
-    ap.add_argument("--strassen-neu", action="store_true",
-                    help="Straßen, von denen nur ein einzelnes Segment gespeichert "
-                         "ist, noch einmal vollständig holen (Bestands-Reparatur)")
     ap.add_argument("--sleep", type=float, default=1.1)
     args = ap.parse_args()
-    stats = process(args.db, limit=args.limit, sleep=args.sleep, erneut=args.erneut,
-                    strassen_neu=args.strassen_neu)
+    stats = process(args.db, limit=args.limit, sleep=args.sleep, erneut=args.erneut)
     print("Orts-Geocoding: " + ", ".join(f"{key}={value}" for key, value in stats.items()))
     return 1 if stats["failed"] else 0
 
