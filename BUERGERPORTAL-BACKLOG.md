@@ -24,10 +24,13 @@ beginnt kein späterer Punkt.
    Projektionen, exakte lebenszeitliche Zahl unabhängiger Meldungen,
    deterministische Rangfolge, vergleichbare Balkenschienen, zugängliche
    Vorschauen und ehrlicher Kartenfokus.
-3. **Öffentliche Detailseite (#1058): umgesetzt auf diesem Task-Branch.** Sichere
-   Einzelprojektion, kanonische Web-Route, Query-Adapter im statischen Export,
-   Teilen, Lotti-Hilfe und ehrliche Detailkarte.
-4. Private Meldungs-Domäne und sichere Persistenz — offen.
+3. **Öffentliche Detailseite (#1058): auf `feature` umgesetzt und abgenommen.**
+   Sichere Einzelprojektion, kanonische Web-Route, Query-Adapter im statischen
+   Export, Teilen, Lotti-Hilfe und ehrliche Detailkarte.
+4. **Private Meldungs-Domäne und sichere Persistenz (#1071): umgesetzt auf
+   diesem Task-Branch.** Eigentümergebundene Entwürfe, einmaliges atomisches
+   Absenden, append-only Beobachtungen, versionierte Migrationen und
+   Kontolöschgrenze — weiterhin ohne HTTP- oder UI-Zugriff.
 5. Eigentümergebundene Entwurfs- und Einreichungs-API — offen.
 6. Geführter Meldechat und prominenter Einstieg — offen.
 7. Lokale Sicherheits-/Eignungsprüfung vor externen KI-Aufrufen — offen.
@@ -36,7 +39,7 @@ beginnt kein späterer Punkt.
 
 ## Noch nicht Teil des Bürgerportal-Stands
 
-Keine privaten Meldetabellen oder Meldungsendpunkte, KI-Aufrufe,
+Keine privaten Meldungsendpunkte oder Meldeoberfläche, KI-Aufrufe,
 Moderationsoberfläche, automatische Veröffentlichung, Uploads oder öffentlichen
-Kommentare. Iteration 3 ist erst nach ausdrücklicher Abnahme der deployten
-Detailseite abgeschlossen.
+Kommentare. Iteration 4 ist erst nach ausdrücklicher Abnahme des deployten
+Persistenzschnitts abgeschlossen.
