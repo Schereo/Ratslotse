@@ -116,12 +116,27 @@ let flowVisible = false;
  *  Flow den localStorage synchron und war sofort „sichtbar"; es gab keine Lücke.
  */
 let flowEntscheidet = false;
+/** Die Tour-Einladung (`tour-einladung.tsx`) ist der letzte Takt der Einrichtung:
+ *  Solange sie offen steht, halten die Abzeichen-Meldungen genauso still wie
+ *  unter dem Assistenten — sonst knallte das „Frühwarner"-Abzeichen genau in
+ *  Lottis Frage hinein. Die Einladung meldet sich hier an und ab. */
+let einladungOffen = false;
+export function setTourEinladungOffen(offen: boolean) {
+  einladungOffen = offen;
+}
 export function isOnboardingVisible(): boolean {
-  return flowVisible || flowEntscheidet;
+  return flowVisible || flowEntscheidet || einladungOffen;
 }
 /** Wird beim Abschluss/Abbruch gefeuert, damit aufgeschobene Abzeichen-Meldungen
- *  nachgeholt werden können. */
+ *  nachgeholt werden können. Feuert AUCH, wenn der Flow nur entschieden hat,
+ *  sich nicht zu zeigen — für „jemand hat die Einrichtung gerade wirklich
+ *  beendet" gibt es deshalb das zweite Ereignis darunter. */
 export const ONBOARDING_DONE_EVENT = "ratslotse:onboarding-done";
+/** Nur beim echten Abschluss des letzten Schritts (auch per „Überspringen"
+ *  dort) — das Signal, auf das die Tour-Einladung wartet. Vorher landete man
+ *  nach dem letzten Schritt unvermittelt auf „Heute" und musste die Tour in
+ *  der „Erste Schritte"-Karte erst einmal finden. */
+export const ONBOARDING_FINISHED_EVENT = "ratslotse:onboarding-finished";
 /** Der Auftakt tritt beiseite und gibt den Login frei. Die Login-Seite liegt
  *  darunter längst gemountet — ohne dieses Signal begrüßte sie eine:n
  *  Erstnutzer*in mit „Willkommen zurück". */
@@ -235,6 +250,10 @@ export function OnboardingFlow() {
       } catch { /* Speicher voll/gesperrt — dann eben nochmal beim nächsten Start */ }
       setStep(null);
       if (isUsable(user)) reportSetupStep(3, true);
+      // Reihenfolge ist Absicht: Erst nimmt die Einladung ihren Platz ein
+      // (und meldet sich als offen), dann erst dürfen die Abzeichen prüfen,
+      // ob sie sich zeigen dürfen — sie tun es dann nicht.
+      window.dispatchEvent(new Event(ONBOARDING_FINISHED_EVENT));
       window.dispatchEvent(new Event(ONBOARDING_DONE_EVENT));
       return;
     }
