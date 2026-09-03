@@ -12,6 +12,7 @@ import { initPush } from "@/lib/push";
 import { DesktopSidebar, MobileTopbar, MobileBottomNav, TABLEISTE_HOEHE } from "@/components/nav";
 import { SlashSearchShortcut } from "@/components/keyboard-shortcuts";
 import { GuidedTour } from "@/components/tour";
+import { TourEinladung } from "@/components/tour-einladung";
 import { CommandPalette } from "@/components/command-palette";
 import { FeedbackDialog } from "@/components/feedback";
 import { OnboardingTracker } from "@/components/onboarding";
@@ -96,6 +97,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </a>
       <SlashSearchShortcut />
       <GuidedTour />
+      {/* Lotti lädt nach der Einrichtung zur Tour ein — statt jemanden auf
+          einem vollen „Heute" stehen zu lassen. */}
+      <TourEinladung />
       <CommandPalette />
       <FeedbackDialog />
       {/* useSearchParams braucht eine Suspense-Grenze (CSR-Bailout beim Prerender). */}

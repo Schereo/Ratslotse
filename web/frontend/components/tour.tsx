@@ -187,6 +187,11 @@ function TourQaDemo() {
 }
 
 const SEEN_KEY = "ratslotse:tour-seen";
+/** Hat dieses Gerät die Tour schon einmal beendet? Die Einladung nach der
+ *  Einrichtung fragt das, bevor sie ein zweites Mal einlädt. */
+export function tourGesehen(): boolean {
+  try { return localStorage.getItem(SEEN_KEY) === "1"; } catch { return false; }
+}
 /** Signal „Tour startet" — auch der Hinweis-Slot hört mit und klappt auf,
  *  damit die Tour ihre Anker (z. B. „Erste Schritte") sichtbar vorfindet. */
 export const TOUR_START_EVENT = "ratslotse:start-tour";
