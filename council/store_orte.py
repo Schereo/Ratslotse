@@ -362,6 +362,20 @@ class OrteMixin:
             args = (int(limit),)
         return [dict(r) for r in self._conn.execute(sql, args)]
 
+    def street_location_names(self) -> list[str]:
+        """Die Namen ALLER Straßen und Plätze — der Prüfstein für einen
+        Straßen-Schnappschuss.
+
+        Ob eine Schnappschuss-Datei zu dieser Stadt gehört, misst man an der
+        Überdeckung mit dem gesamten Bestand, nicht an der Zahl der
+        Änderungen: Ist alles Reparierbare repariert, ändert ein richtiger
+        Schnappschuss null Zeilen — und wäre nach der einfachen Regel
+        fälschlich „die falsche Datei".
+        """
+        return [r["name"] for r in self._conn.execute(
+            "SELECT name FROM council_locations "
+            "WHERE kind IN ('street','square') AND name IS NOT NULL AND name <> ''")]
+
     def street_entities_to_refine(self) -> list[dict]:
         """Entitäten ohne vollständige Straßen-Geometrie.
 

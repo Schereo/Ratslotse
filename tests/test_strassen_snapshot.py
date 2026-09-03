@@ -180,8 +180,14 @@ def test_halber_schnappschuss_wird_abgewiesen(monkeypatch):
 
 
 def test_lauf_ohne_jeden_treffer_meldet_fehler(tmp_path, monkeypatch, capsys):
-    """Ein Schnappschuss, der zu keinem Ort passt, ist die falsche Datei — und
-    darf nicht als grüner Lauf durchgehen."""
+    """Ein Schnappschuss, der zu keiner bekannten Straße passt, ist die falsche
+    Datei — und darf nicht als grüner Lauf durchgehen.
+
+    Gemessen wird die ÜBERDECKUNG mit dem ganzen Bestand, nicht die Zahl der
+    Änderungen: Ist alles Reparierbare repariert, ändert der richtige
+    Schnappschuss null Zeilen. Die erste Fassung dieses Riegels schlug genau
+    dann an und hätte jeden Wochenlauf rot gemacht — auf Prod aufgefallen,
+    nicht im Test."""
     from scripts import strassen_snapshot as snap
 
     db = tmp_path / "c.sqlite"
@@ -193,4 +199,109 @@ def test_lauf_ohne_jeden_treffer_meldet_fehler(tmp_path, monkeypatch, capsys):
         encoding="utf-8")
     monkeypatch.setattr(sys, "argv", ["x", "anwenden", "--db", str(db), "--datei", str(datei)])
     assert snap.main() == 1
-    assert "KEIN Namenstreffer" in capsys.readouterr().err
+    assert "steht KEINE im Schnappschuss" in capsys.readouterr().err
+
+
+class _Antwort:
+    def __init__(self, status, wege=0):
+        self.status_code = status
+        self._wege = wege
+        self.content = b"x" * 100
+        self.text = "Fehlertext"
+
+    def json(self):
+        return {"elements": [
+            {"tags": {"name": f"Weg {i}"},
+             "geometry": [{"lon": 8.2, "lat": 53.1}, {"lon": 8.21, "lat": 53.1}]}
+            for i in range(self._wege)]}
+
+
+def test_ueberlastete_instanz_wird_wiederholt(monkeypatch):
+    """Gemessen am 03.09.2026: fünf identische Abfragen ergaben 2× 200 und
+    3× 504, drei schwere hintereinander endeten mit 429. Die Instanz ist nicht
+    gesperrt, sie ist ausgelastet — dagegen hilft warten."""
+    from scripts import strassen_snapshot as snap
+
+    antworten = [_Antwort(504), _Antwort(429), _Antwort(200, wege=3500)]
+    pausen = []
+    monkeypatch.setattr(snap.requests, "post", lambda *a, **k: antworten.pop(0))
+    monkeypatch.setattr(snap.time, "sleep", pausen.append)
+
+    daten = snap.holen()
+    assert len(daten["elements"]) == 3500
+    # Zwei Pausen für zwei Fehlschläge, und die zweite ist länger.
+    assert len(pausen) == 2 and pausen[1] > pausen[0]
+
+
+def test_eigene_kaputte_abfrage_wird_nicht_wiederholt(monkeypatch):
+    """400 heißt: Die Abfrage ist falsch. Sie wird beim vierten Mal nicht
+    besser — und ein Wiederholungslauf verdeckte nur die Ursache."""
+    import pytest
+
+    from scripts import strassen_snapshot as snap
+
+    versuche = {"n": 0}
+
+    def einmal(*a, **k):
+        versuche["n"] += 1
+        return _Antwort(400)
+
+    monkeypatch.setattr(snap.requests, "post", einmal)
+    monkeypatch.setattr(snap.time, "sleep", lambda s: None)
+    with pytest.raises(SystemExit) as fehler:
+        snap.holen()
+    assert versuche["n"] == 1
+    assert "unsere Abfrage" in str(fehler.value)
+
+
+def test_ipv6_trugschluss_steht_in_der_meldung(monkeypatch):
+    """„Network is unreachable" kommt vom LETZTEN Versuch (IPv6, das diese
+    Maschinen nicht haben) — nicht von der Ursache. Genau daran ist am
+    03.09.2026 eine Stunde draufgegangen; die Meldung sagt es jetzt dazu."""
+    import pytest
+    import requests as req
+
+    from scripts import strassen_snapshot as snap
+
+    def kaputt(*a, **k):
+        raise req.ConnectionError(
+            "HTTPSConnectionPool(host='overpass-api.de', port=443): "
+            "Failed to establish a new connection: [Errno 101] Network is unreachable")
+
+    monkeypatch.setattr(snap.requests, "post", kaputt)
+    monkeypatch.setattr(snap.time, "sleep", lambda s: None)
+    with pytest.raises(SystemExit) as fehler:
+        snap.holen()
+    text = str(fehler.value)
+    assert "kein globales IPv6" in text and "curl -4" in text
+
+
+def test_fertiger_bestand_ist_kein_fehler(tmp_path, monkeypatch, capsys):
+    """Der Gegentest zum Riegel: Ist alles Reparierbare repariert, ändert der
+    RICHTIGE Schnappschuss null Zeilen — und der Lauf ist trotzdem grün.
+
+    Genau das war auf Prod der Fall (291 offene Straßen, alle mit Namen, die
+    OSM nicht kennt: „Huntemannstr", „Otto-Modersohn-Str"). Die erste Fassung
+    des Riegels hätte hier jeden Wochenlauf rot gemacht.
+    """
+    from scripts import strassen_snapshot as snap
+
+    db = tmp_path / "c.sqlite"
+    _saat(db)
+    datei = tmp_path / "snap.json"
+    datei.write_text(json.dumps(SCHNAPPSCHUSS), encoding="utf-8")
+    anwenden(db, datei)                      # erster Lauf repariert
+
+    # Dazu eine Straße, die OSM unter diesem Namen nicht kennt — sie bleibt für
+    # immer offen, ohne dass etwas kaputt ist.
+    store = CouncilStore(db)
+    with store._conn:
+        store._conn.execute(
+            "INSERT INTO council_locations (slug,name,kind,geo_tried,updated_at) "
+            "VALUES ('huntemannstr','Huntemannstr','street',1,'2026-09-03T00:00:00Z')")
+    store.close()
+
+    monkeypatch.setattr(sys, "argv", ["x", "anwenden", "--db", str(db), "--datei", str(datei)])
+    assert snap.main() == 0
+    ausgabe = capsys.readouterr().out
+    assert "orte_neu=0" in ausgabe and "abgleichbar=1" in ausgabe
