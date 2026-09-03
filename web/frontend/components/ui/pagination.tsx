@@ -33,9 +33,15 @@ export function Pagination({
 }) {
   if (totalPages <= 1) return null;
   const items = pageItems(page, totalPages);
+  // Druck-Feedback wie an jedem anderen Ziel der App: Blättern ist ein Klick
+  // auf ein kleines Feld, und die Antwort darauf kommt erst mit der neuen
+  // Liste — bis dahin bestätigt wenigstens der Knopf, dass er getroffen wurde.
+  // Der kurze Takt für alle drei Eigenschaften: Ein Seitenknopf ist kein Weg,
+  // sondern ein Schalter (s. DESIGNSPRACHE.md § 7).
+  const zug = "transition-[color,background-color,transform] duration-tipp ease-out-strong active:scale-90";
   const base = compact
-    ? "flex h-7 min-w-7 items-center justify-center rounded-md px-1.5 text-xs font-medium transition-colors"
-    : "flex h-9 min-w-9 items-center justify-center rounded-md px-2 text-sm font-medium transition-colors";
+    ? `flex h-7 min-w-7 items-center justify-center rounded-md px-1.5 text-xs font-medium ${zug}`
+    : `flex h-9 min-w-9 items-center justify-center rounded-md px-2 text-sm font-medium ${zug}`;
   const ghost = "text-muted-foreground hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-40";
 
   return (
