@@ -5377,7 +5377,7 @@
           },
           "suggestions": {
             "items": {
-              "$ref": "#/components/schemas/TopicSuggestion"
+              "$ref": "#/components/schemas/LocalSuggestion"
             },
             "title": "Suggestions",
             "type": "array"
@@ -7127,6 +7127,46 @@
         "title": "LoanYear",
         "type": "object"
       },
+      "LocalSuggestion": {
+        "description": "Ein Vorschlag, der an einem Ortsbereich hängt.",
+        "properties": {
+          "context": {
+            "title": "Context",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "place_reason": {
+            "title": "Place Reason",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "description",
+          "n",
+          "context",
+          "place_reason"
+        ],
+        "title": "LocalSuggestion",
+        "type": "object"
+      },
       "LoginRequest": {
         "properties": {
           "email": {
@@ -7316,6 +7356,13 @@
           "place": {
             "title": "Place",
             "type": "string"
+          },
+          "place_reason": {
+            "title": "Place Reason",
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
@@ -7323,6 +7370,7 @@
           "description",
           "n",
           "context",
+          "place_reason",
           "place"
         ],
         "title": "NearbySuggestion",

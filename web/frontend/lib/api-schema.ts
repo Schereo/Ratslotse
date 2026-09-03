@@ -6044,7 +6044,7 @@ export interface components {
             /** Place Id */
             place_id: string;
             /** Suggestions */
-            suggestions: components["schemas"]["TopicSuggestion"][];
+            suggestions: components["schemas"]["LocalSuggestion"][];
         };
         /** Districts */
         Districts: {
@@ -6737,6 +6737,22 @@ export interface components {
             /** Year */
             year: number;
         };
+        /**
+         * LocalSuggestion
+         * @description Ein Vorschlag, der an einem Ortsbereich hängt.
+         */
+        LocalSuggestion: {
+            /** Context */
+            context: string | null;
+            /** Description */
+            description: string;
+            /** N */
+            n: number;
+            /** Name */
+            name: string;
+            /** Place Reason */
+            place_reason: string | null;
+        };
         /** LoginRequest */
         LoginRequest: {
             /**
@@ -6828,6 +6844,8 @@ export interface components {
             name: string;
             /** Place */
             place: string;
+            /** Place Reason */
+            place_reason: string | null;
         };
         /**
          * NotifyKind
@@ -13745,4 +13763,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: c6897098bac804122401af5f39d2a1cd16f060ea7e987a999e5ffefe74345e9c
+// vertrag-sha256: 3fc59480dd1ba28e2cabae80578a2ba82e694254934979b7cc38af63be98b0bd

@@ -133,6 +133,46 @@ class ThemenMixin:
             r["n_recent"] = r["n_recent"] or 0
         return rows
 
+    def local_reason_titles(self, slugs: list[str], place, date_from: str) -> dict[str, str]:
+        """Je Entität der Titel des JÜNGSTEN Beschlusses, der sie mit DIESEM
+        Ortsbereich verbindet.
+
+        Das ist die Antwort auf „warum steht das hier?". Bei der Kommunalen
+        Wärmeplanung unter Kreyenbrück ist sie „Maßnahme Machbarkeitsstudien"
+        — ein stadtweites Vorhaben mit einer Machbarkeitsstudie genau dort
+        (Tims Befund, 03.09.2026: „es bräuchte manchmal nur eine ganz kurze
+        Erklärung und dann wird man direkt verstehen, warum es diesen Bezug
+        gibt").
+
+        Der Beleg aus ``council_decision_locations.evidence`` taugt dafür
+        NICHT: Dort steht der Textschnipsel, an dem die Zuordnung hing
+        („Stadtteils Kreyenbrück") — er wiederholt nur den Ortsnamen. Der
+        Beschlusstitel sagt, was dort passiert.
+        """
+        if not slugs:
+            return {}
+        platz = ",".join("?" * len(slugs))
+        rows = self._conn.execute(
+            f"""SELECT e.slug, d.title, cs.session_date
+                  FROM council_entities e
+                  JOIN council_entity_links el ON el.entity_id = e.id
+                  JOIN council_decisions d ON d.id = el.decision_id
+                  JOIN council_sessions cs ON cs.ksinr = d.ksinr
+                  JOIN council_decision_locations dl ON dl.decision_id = d.id
+                  JOIN council_locations l ON l.slug = dl.location_slug
+                 WHERE e.slug IN ({platz}) AND cs.session_date >= ?
+                   AND (l.place_id = ? OR l.local_area_id = ? OR l.district = ?)
+                 ORDER BY cs.session_date DESC, d.id DESC""",
+            (*slugs, date_from, place.id, place.id, place.name)).fetchall()
+        # Der erste Treffer je Slug gewinnt — die Abfrage ist absteigend
+        # sortiert, ein GROUP BY mit MAX() über zwei Spalten wäre in SQLite
+        # zwar erlaubt, aber die Sortierung hier ist die, die auch der
+        # Vorschlag selbst benutzt.
+        neueste: dict[str, str] = {}
+        for r in rows:
+            neueste.setdefault(r["slug"], r["title"] or "")
+        return {k: v for k, v in neueste.items() if v}
+
     def decision_texts_since(self, date_from: str) -> list[str]:
         """Titel und Zusammenfassung jedes Beschlusses seit ``date_from`` — das
         Zählgut der Stadtthemen (``council.city_topics``). Nur echte

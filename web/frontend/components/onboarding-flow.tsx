@@ -989,9 +989,9 @@ function TopicStep({ onNext }: { onNext: () => void }) {
             {nochUnterwegs.length > 0 && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
           </Kicker>
           {stadtteilChips.length > 0
-            ? <VorschlagsChips vorschlaege={stadtteilChips} vorhanden={mine} busy={busy} alle
+            ? <OrtsVorschlaege vorschlaege={stadtteilChips} vorhanden={mine} busy={busy}
                 onWaehlen={(v) => void add(v.name, v.description, v.n)} />
-            : nochUnterwegs.length > 0 ? <VorschlagsPlatzhalter anzahl={JE_STADTTEIL * gruppen.length} /> : null}
+            : nochUnterwegs.length > 0 ? <KartenPlatzhalter anzahl={JE_STADTTEIL * gruppen.length} /> : null}
           {/* Leere Stadtteile ausdrücklich benennen statt sie wegzulassen —
               sonst sähe es aus, als hätte der Schritt etwas verschluckt. */}
           {stille.length > 0 && (
@@ -1040,14 +1040,17 @@ type Vorschlag = {
   name: string; description: string; n: number; context?: string | null;
   /** Nur bei „nebenan": aus welchem Ortsbereich der Vorschlag stammt. */
   place?: string;
+  /** Warum der Vorschlag an diesem Stadtteil hängt — der Titel des
+   *  Beschlusses, der beide verbindet. Nur bei Stadtteil-Vorschlägen. */
+  place_reason?: string | null;
 };
 
 /** Chips in Wartestellung: gleiche Höhe wie die echten, damit nichts springt,
  *  wenn die Gruppe eintrifft. */
-function VorschlagsPlatzhalter({ anzahl = 6 }: { anzahl?: number }) {
+function VorschlagsPlatzhalter() {
   return (
     <div className="mt-2.5 flex flex-wrap gap-2" aria-busy="true">
-      {[104, 128, 92, 140, 112, 96, 120, 100, 132, 96, 112, 124].slice(0, anzahl).map((w, i) => (
+      {[104, 128, 92, 140, 112, 96, 120, 100, 132].map((w, i) => (
         <span key={i} style={{ width: w }}
           className="h-[34px] animate-pulse rounded-full border border-dashed border-border bg-muted/40" />
       ))}
@@ -1119,6 +1122,74 @@ function VorschlagsChips({ vorschlaege, vorhanden, busy, betont, alle, zahl, onW
           </button>
         );
       })}
+    </div>
+  );
+}
+
+/** Die Vorschläge aus den gewählten Stadtteilen — als kleine Karten, nicht als
+ *  Pillen. Grund ist die zweite Zeile: Sie sagt, WARUM der Vorschlag an diesem
+ *  Stadtteil hängt, und in eine Pille (Radius 9999, eine Zeile) passt das
+ *  nicht. „Kommunale Wärmeplanung" unter Kreyenbrück las sich sonst wie ein
+ *  Fehler — mit „Maßnahme Machbarkeitsstudien" darunter ist es sofort klar
+ *  (Tim, 03.09.2026: „es bräuchte manchmal nur eine ganz kurze Erklärung").
+ *
+ *  Der Ortsname bleibt auf der ERSTEN Zeile beim Namen. Ihn stattdessen in die
+ *  Begründung zu ziehen („Machbarkeitsstudien in Kreyenbrück") bräuchte den
+ *  richtigen Artikel — „in Innenstadt" statt „in der Innenstadt" — und der
+ *  hängt am Stadtteil, nicht an einer Regel. */
+function OrtsVorschlaege({ vorschlaege, vorhanden, busy, onWaehlen }: {
+  vorschlaege: Vorschlag[];
+  vorhanden: { name: string }[];
+  busy: boolean;
+  onWaehlen: (v: Vorschlag) => void;
+}) {
+  return (
+    <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-2">
+      {vorschlaege.map((v) => {
+        const have = vorhanden.some((t) => t.name === v.name);
+        // Die Einordnung einer Plannummer ist selbst die Begründung — der
+        // Server schickt dann keine zweite dazu.
+        const zweite = v.place_reason || (istPlannummer(v.name) ? v.context : null);
+        return (
+          <button key={`${v.place}-${v.name}`} type="button" disabled={busy || have}
+            onClick={() => onWaehlen(v)}
+            className={cn(
+              "flex flex-col items-start gap-0.5 rounded-xl border px-3 py-2 text-left transition-colors",
+              have ? "border-primary/30 bg-primary/5"
+                   : "border-border bg-card hover:bg-muted disabled:opacity-50",
+            )}>
+            <span className="flex w-full items-center gap-1.5">
+              {have ? <Check className="h-3 w-3 shrink-0 text-primary" />
+                    : <Plus className="h-3 w-3 shrink-0 text-muted-foreground" />}
+              <span className={cn("truncate text-[13px] font-medium",
+                                  have ? "text-primary" : "text-foreground")}>
+                {v.name}
+              </span>
+              {v.place && (
+                <span className="ml-auto shrink-0 text-[11px] text-muted-foreground">{v.place}</span>
+              )}
+            </span>
+            {zweite && (
+              <span className="w-full truncate pl-[18px] text-[11px] leading-snug text-muted-foreground">
+                {zweite}
+              </span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Wartestellung für die Karten — gleiche Höhe wie die echten, damit nichts
+ *  springt, wenn sie eintreffen. */
+function KartenPlatzhalter({ anzahl }: { anzahl: number }) {
+  return (
+    <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-2" aria-busy="true">
+      {Array.from({ length: anzahl }, (_, i) => (
+        <span key={i}
+          className="h-[52px] animate-pulse rounded-xl border border-dashed border-border bg-muted/40" />
+      ))}
     </div>
   );
 }
